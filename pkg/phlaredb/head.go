@@ -18,7 +18,6 @@ import (
 	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/multierror"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -469,8 +468,17 @@ func (h *Head) InRange(start, end model.Time) bool {
 	return b.InRange(start, end)
 }
 
-func (h *Head) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
-	return h.profiles.index.SelectMatchingProfiles(ctx, params)
+// Returns underlying queries, the queriers should be roughly ordered in TS increasing order
+func (h *Head) Queriers() Queriers {
+	queriers := make([]Querier, 0, len(h.profiles.rowGroups)+1)
+	for idx := range h.profiles.rowGroups {
+		queriers = append(queriers, &headOnDiskQuerier{
+			head:        h,
+			rowGroupIdx: idx,
+		})
+	}
+	queriers = append(queriers, &headInMemoryQuerier{h})
+	return queriers
 }
 
 func checkProfileWithLabels(in interface{}) (*ProfileWithLabels, error) {
@@ -487,28 +495,10 @@ func checkProfileWithLabels(in interface{}) (*ProfileWithLabels, error) {
 	return nil, fmt.Errorf("unsupported profile type: %T", in)
 }
 
-func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Head")
-	defer sp.Finish()
-
-	stacktraceSamples := stacktraceSampleMap{}
+// add the location IDs to the stacktraces
+func (h *Head) resolveStacktraces(stacktraceSamples stacktraceSampleMap) *ingestv1.MergeProfilesStacktracesResult {
 	names := []string{}
 	functions := map[int64]int{}
-
-	// clone the rows to be able to iterate over them twice
-	multiRows, err := iter.CloneN(rows, 2)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		multiRows[0].Close()
-		multiRows[1].Close()
-	}()
-
-	// first get the on disk samples
-	if err := mergeOnDiskByStacktraces(ctx, multiRows[0], stacktraceSamples); err != nil {
-		return nil, err
-	}
 
 	h.stacktraces.lock.RLock()
 	h.locations.lock.RLock()
@@ -521,31 +511,6 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 		h.strings.lock.RUnlock()
 	}()
 
-	rows = multiRows[1]
-	for rows.Next() {
-		p, err := checkProfileWithLabels(rows.At())
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			continue
-		}
-
-		for _, s := range p.Samples() {
-			if s.Value == 0 {
-				continue
-			}
-			if _, exists := stacktraceSamples[int64(s.StacktraceID)]; !exists {
-				stacktraceSamples[int64(s.StacktraceID)] = &ingestv1.StacktraceSample{}
-			}
-			stacktraceSamples[int64(s.StacktraceID)].Value += s.Value
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	// add the location IDs to the stacktraces
 	for stacktraceID := range stacktraceSamples {
 		locs := h.stacktraces.slice[stacktraceID].LocationIDs
 		fnIds := make([]int32, 0, 2*len(locs))
@@ -568,97 +533,13 @@ func (h *Head) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profil
 	return &ingestv1.MergeProfilesStacktracesResult{
 		Stacktraces:   lo.Values(stacktraceSamples),
 		FunctionNames: names,
-	}, nil
+	}
 }
 
-func (h *Head) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Head")
-	defer sp.Finish()
-
-	labelsByFingerprint := map[model.Fingerprint]string{}
-	seriesByLabels := make(seriesByLabels)
-	labelBuf := make([]byte, 0, 1024)
-
-	// clone the rows to be able to iterate over them twice
-	multiRows, err := iter.CloneN(rows, 2)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		multiRows[0].Close()
-		multiRows[1].Close()
-	}()
-
-	// first get the on disk samples
-	if err := mergeOnDiskByLabels(ctx, multiRows[0], seriesByLabels, by...); err != nil {
-		return nil, err
-	}
-
-	rows = multiRows[1]
-	for rows.Next() {
-		p, err := checkProfileWithLabels(rows.At())
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			continue
-		}
-
-		labelsByString, ok := labelsByFingerprint[p.fp]
-		if !ok {
-			labelBuf = p.Labels().BytesWithLabels(labelBuf, by...)
-			labelsByString = string(labelBuf)
-			labelsByFingerprint[p.fp] = labelsByString
-			if _, ok := seriesByLabels[labelsByString]; !ok {
-				seriesByLabels[labelsByString] = &typesv1.Series{
-					Labels: p.Labels().WithLabels(by...),
-					Points: []*typesv1.Point{
-						{
-							Timestamp: int64(p.Timestamp()),
-							Value:     float64(p.Total()),
-						},
-					},
-				}
-				continue
-			}
-		}
-		series := seriesByLabels[labelsByString]
-		series.Points = append(series.Points, &typesv1.Point{
-			Timestamp: int64(p.Timestamp()),
-			Value:     float64(p.Total()),
-		})
-
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return seriesByLabels.normalize(), nil
-}
-
-// MergePprof merges profiles from the rows iterator into a single pprof profile.
-func (h *Head) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "MergePprof - Head")
-	defer sp.Finish()
-
-	stacktraceSamples := profileSampleMap{}
+func (h *Head) resolvePprof(stacktraceSamples profileSampleMap) *profile.Profile {
 	locations := map[uint64]*profile.Location{}
 	functions := map[uint64]*profile.Function{}
 	mappings := map[uint64]*profile.Mapping{}
-
-	multiRows, err := iter.CloneN(rows, 2)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		multiRows[0].Close()
-		multiRows[1].Close()
-	}()
-
-	// first get the on disk samples
-	if err := mergeOnDiskByStacktraces(ctx, multiRows[0], stacktraceSamples); err != nil {
-		return nil, err
-	}
 
 	h.stacktraces.lock.RLock()
 	h.locations.lock.RLock()
@@ -671,87 +552,64 @@ func (h *Head) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*pr
 		h.strings.lock.RUnlock()
 	}()
 
-	rows = multiRows[1]
-	for rows.Next() {
-		p, err := checkProfileWithLabels(rows.At())
-		if err != nil {
-			return nil, err
-		}
-		if p == nil {
-			continue
-		}
+	// now add locationIDs and stacktraces
+	for stacktraceID := range stacktraceSamples {
+		locationIds := h.stacktraces.slice[stacktraceID].LocationIDs
+		stacktraceLocations := make([]*profile.Location, len(locationIds))
 
-		for _, s := range p.Samples() {
-			if s.Value == 0 {
-				continue
-			}
-			if _, exists := stacktraceSamples[int64(s.StacktraceID)]; !exists {
-				stacktraceSamples[int64(s.StacktraceID)] = &profile.Sample{Value: []int64{0}}
-			}
-			stacktraceSamples[int64(s.StacktraceID)].Value[0] += s.Value
-		}
-
-		// now add locationIDs and stacktraces
-		for stacktraceID := range stacktraceSamples {
-			locationIds := h.stacktraces.slice[stacktraceID].LocationIDs
-			stacktraceLocations := make([]*profile.Location, len(locationIds))
-
-			for i, locId := range locationIds {
-				loc, ok := locations[locId]
+		for i, locId := range locationIds {
+			loc, ok := locations[locId]
+			if !ok {
+				locFound := h.locations.slice[locId]
+				mapping, ok := mappings[locFound.MappingId]
 				if !ok {
-					locFound := h.locations.slice[locId]
-					mapping, ok := mappings[locFound.MappingId]
-					if !ok {
-						mappingFound := h.mappings.slice[locFound.MappingId]
-						mapping = &profile.Mapping{
-							ID:              mappingFound.Id,
-							Start:           mappingFound.MemoryStart,
-							Limit:           mappingFound.MemoryLimit,
-							Offset:          mappingFound.FileOffset,
-							File:            h.strings.slice[mappingFound.Filename],
-							BuildID:         h.strings.slice[mappingFound.BuildId],
-							HasFunctions:    mappingFound.HasFunctions,
-							HasFilenames:    mappingFound.HasFilenames,
-							HasLineNumbers:  mappingFound.HasLineNumbers,
-							HasInlineFrames: mappingFound.HasInlineFrames,
-						}
-						mappings[locFound.MappingId] = mapping
+					mappingFound := h.mappings.slice[locFound.MappingId]
+					mapping = &profile.Mapping{
+						ID:              mappingFound.Id,
+						Start:           mappingFound.MemoryStart,
+						Limit:           mappingFound.MemoryLimit,
+						Offset:          mappingFound.FileOffset,
+						File:            h.strings.slice[mappingFound.Filename],
+						BuildID:         h.strings.slice[mappingFound.BuildId],
+						HasFunctions:    mappingFound.HasFunctions,
+						HasFilenames:    mappingFound.HasFilenames,
+						HasLineNumbers:  mappingFound.HasLineNumbers,
+						HasInlineFrames: mappingFound.HasInlineFrames,
 					}
-					loc = &profile.Location{
-						ID:       locFound.Id,
-						Address:  locFound.Address,
-						IsFolded: locFound.IsFolded,
-						Mapping:  mapping,
-						Line:     make([]profile.Line, len(locFound.Line)),
-					}
-					for i, line := range locFound.Line {
-						fn, ok := functions[line.FunctionId]
-						if !ok {
-							fnFound := h.functions.slice[line.FunctionId]
-							fn = &profile.Function{
-								ID:         fnFound.Id,
-								Name:       h.strings.slice[fnFound.Name],
-								SystemName: h.strings.slice[fnFound.SystemName],
-								Filename:   h.strings.slice[fnFound.Filename],
-								StartLine:  fnFound.StartLine,
-							}
-							functions[line.FunctionId] = fn
-						}
-						loc.Line[i] = profile.Line{
-							Line:     line.Line,
-							Function: fn,
-						}
-					}
-					locations[locId] = loc
+					mappings[locFound.MappingId] = mapping
 				}
-				stacktraceLocations[i] = loc
+				loc = &profile.Location{
+					ID:       locFound.Id,
+					Address:  locFound.Address,
+					IsFolded: locFound.IsFolded,
+					Mapping:  mapping,
+					Line:     make([]profile.Line, len(locFound.Line)),
+				}
+				for i, line := range locFound.Line {
+					fn, ok := functions[line.FunctionId]
+					if !ok {
+						fnFound := h.functions.slice[line.FunctionId]
+						fn = &profile.Function{
+							ID:         fnFound.Id,
+							Name:       h.strings.slice[fnFound.Name],
+							SystemName: h.strings.slice[fnFound.SystemName],
+							Filename:   h.strings.slice[fnFound.Filename],
+							StartLine:  fnFound.StartLine,
+						}
+						functions[line.FunctionId] = fn
+					}
+					loc.Line[i] = profile.Line{
+						Line:     line.Line,
+						Function: fn,
+					}
+				}
+				locations[locId] = loc
 			}
-			stacktraceSamples[stacktraceID].Location = stacktraceLocations
+			stacktraceLocations[i] = loc
 		}
+		stacktraceSamples[stacktraceID].Location = stacktraceLocations
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
+
 	result := &profile.Profile{
 		Sample:   lo.Values(stacktraceSamples),
 		Location: lo.Values(locations),
@@ -759,7 +617,7 @@ func (h *Head) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*pr
 		Mapping:  lo.Values(mappings),
 	}
 	normalizeProfileIds(result)
-	return result, nil
+	return result
 }
 
 func normalizeProfileIds(p *profile.Profile) {

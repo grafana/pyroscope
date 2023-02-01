@@ -122,7 +122,7 @@ func TestWriteRead(t *testing.T) {
 	}
 
 	tmpFile := t.TempDir() + "/test.db"
-	err = a.writeTo(context.Background(), tmpFile)
+	_, err = a.writeTo(context.Background(), tmpFile)
 	require.NoError(t, err)
 
 	r, err := index.NewFileReader(tmpFile)
@@ -169,7 +169,7 @@ func Test_rowRangeIter(t *testing.T) {
 		{"two elements-offset", &rowRange{10, 2}, []int64{10, 11}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			it := tc.r.iter()
+			it := rowRanges{tc.r: 0xff}.iter()
 			var result = []int64{}
 			for it.Next() {
 				result = append(result, it.At().RowNumber())

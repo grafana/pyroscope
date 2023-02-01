@@ -475,6 +475,5 @@ func mergeByLabels(ctx context.Context, profileSource Source, rows iter.Iterator
 			Value:     float64(total),
 		})
 	}
-
-	return nil
+	return it.Err()
 }
