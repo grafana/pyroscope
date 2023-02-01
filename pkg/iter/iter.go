@@ -157,3 +157,46 @@ func CloneN[T any](it Iterator[T], n int) ([]Iterator[T], error) {
 	}
 	return lo.Times(n, func(_ int) Iterator[T] { return NewSliceIterator(slice) }), nil
 }
+
+type unionIterator[T any] struct {
+	iters []Iterator[T]
+}
+
+func NewUnionIterator[T any](iters ...Iterator[T]) Iterator[T] {
+	return &unionIterator[T]{
+		iters: iters,
+	}
+}
+
+func (u *unionIterator[T]) Next() bool {
+	idx := 0
+	for idx < len(u.iters) {
+		it := u.iters[idx]
+
+		if it.Next() {
+			return true
+		}
+		if it.Err() != nil {
+			return false
+		}
+
+		u.iters = u.iters[1:]
+	}
+	return false
+}
+func (it *unionIterator[T]) At() T {
+	return it.iters[0].At()
+}
+
+func (it *unionIterator[T]) Err() error {
+	return it.iters[0].Err()
+}
+
+func (it *unionIterator[T]) Close() error {
+	for _, it := range it.iters {
+		if err := it.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}

@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -256,17 +258,13 @@ func TestProfileStore_Querying(t *testing.T) {
 		Start:         0,
 		End:           1000000000000,
 		LabelSelector: "{}",
-		Type: &typesv1.ProfileType{
-			Name:       "process_cpu",
-			SampleType: "cpu",
-			SampleUnit: "nanoseconds",
-			PeriodType: "cpu",
-			PeriodUnit: "nanoseconds",
-		},
+		Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
 	}
 
+	queriers := head.Queriers()
+
 	t.Run("select matching profiles", func(t *testing.T) {
-		pIt, err := head.SelectMatchingProfiles(ctx, params)
+		pIt, err := queriers.SelectMatchingProfiles(ctx, params)
 		require.NoError(t, err)
 
 		// ensure we see the profiles we expect
@@ -278,47 +276,188 @@ func TestProfileStore_Querying(t *testing.T) {
 	})
 
 	t.Run("merge by labels", func(t *testing.T) {
-		pIt, err := head.SelectMatchingProfiles(ctx, params)
-		require.NoError(t, err)
-		result, err := head.MergeByLabels(ctx, pIt, "stream")
-		require.NoError(t, err)
-		// expect 3 series
-		require.Len(t, result, 3)
+		client, cleanup := queriers.ingesterClient()
+		defer cleanup()
 
-		// expect all ts to be there
-		var profileTS []int64
-		for _, s := range result {
-			for _, p := range s.Points {
-				profileTS = append(profileTS, model.Time(p.Timestamp).Unix())
+		bidi := client.MergeProfilesLabels(ctx)
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesLabelsRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: params.LabelSelector,
+				Type:          params.Type,
+				Start:         params.Start,
+				End:           params.End,
+			},
+			By: []string{"stream"},
+		}))
+
+		for {
+			resp, err := bidi.Receive()
+			require.NoError(t, err)
+
+			// when empty, finished reading profiles
+			if resp.SelectedProfiles == nil {
+				break
+			}
+
+			selectProfiles := make([]bool, len(resp.SelectedProfiles.Profiles))
+			for pos := range resp.SelectedProfiles.Profiles {
+				selectProfiles[pos] = true
+			}
+
+			require.NoError(t, bidi.Send(&ingestv1.MergeProfilesLabelsRequest{
+				Profiles: selectProfiles,
+			}))
+		}
+
+		// still receiving a result
+		result, err := bidi.Receive()
+		require.NoError(t, err)
+
+		streams := []string{}
+		timestamps := []int64{}
+		values := []float64{}
+		for _, x := range result.Series {
+			streams = append(streams, phlaremodel.LabelPairsString(x.Labels))
+			for _, p := range x.Points {
+				timestamps = append(timestamps, p.Timestamp)
+				values = append(values, p.Value)
 			}
 		}
-		assert.ElementsMatch(t, []int64{0, 1, 2, 3, 4, 5, 6, 7, 8}, profileTS)
+		assert.Equal(
+			t,
+			[]string{`{stream="stream-a"}`, `{stream="stream-b"}`, `{stream="stream-c"}`},
+			streams,
+		)
+		assert.Equal(
+			t,
+			[]int64{0, 3000, 6000, 1000, 4000, 7000, 2000, 5000, 8000},
+			timestamps,
+		)
+		assert.Equal(
+			t,
+			[]float64{30, 30, 30, 30, 30, 30, 30, 30, 30},
+			values,
+		)
 	})
 
 	t.Run("merge by stacktraces", func(t *testing.T) {
-		pIt, err := head.SelectMatchingProfiles(ctx, params)
-		require.NoError(t, err)
-		result, err := head.MergeByStacktraces(ctx, pIt)
+		client, cleanup := queriers.ingesterClient()
+		defer cleanup()
+
+		bidi := client.MergeProfilesStacktraces(ctx)
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: params.LabelSelector,
+				Type:          params.Type,
+				Start:         params.Start,
+				End:           params.End,
+			},
+		}))
+
+		for {
+			resp, err := bidi.Receive()
+			require.NoError(t, err)
+
+			// when empty, finished reading profiles
+			if resp.SelectedProfiles == nil {
+				break
+			}
+
+			selectProfiles := make([]bool, len(resp.SelectedProfiles.Profiles))
+			for pos := range resp.SelectedProfiles.Profiles {
+				selectProfiles[pos] = true
+			}
+
+			require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+				Profiles: selectProfiles,
+			}))
+		}
+
+		// still receiving a result
+		result, err := bidi.Receive()
 		require.NoError(t, err)
 
-		var values []int64
-		for _, s := range result.Stacktraces {
-			values = append(values, s.Value)
+		var (
+			values      []int64
+			stacktraces []string
+			sb          strings.Builder
+		)
+		for _, x := range result.Result.Stacktraces {
+			values = append(values, x.Value)
+			sb.Reset()
+			for _, id := range x.FunctionIds {
+				v := result.Result.FunctionNames[id]
+				sb.WriteString(v)
+				sb.WriteString("/")
+			}
+
+			stacktraces = append(stacktraces, sb.String()[:sb.Len()-1])
 		}
-		assert.ElementsMatch(t, []int64{90, 180}, values)
+		assert.Equal(
+			t,
+			[]int64{180, 90},
+			values,
+		)
+		assert.Equal(
+			t,
+			[]string{"func1", "func1/func2"},
+			stacktraces,
+		)
 	})
 
 	t.Run("merge by pprof", func(t *testing.T) {
-		pIt, err := head.SelectMatchingProfiles(ctx, params)
-		require.NoError(t, err)
-		result, err := head.MergePprof(ctx, pIt)
+		client, cleanup := queriers.ingesterClient()
+		defer cleanup()
+
+		bidi := client.MergeProfilesPprof(ctx)
+
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: params.LabelSelector,
+				Type:          params.Type,
+				Start:         params.Start,
+				End:           params.End,
+			},
+		}))
+
+		for {
+			resp, err := bidi.Receive()
+			require.NoError(t, err)
+
+			// when empty, finished reading profiles
+			if resp.SelectedProfiles == nil {
+				break
+			}
+
+			selectProfiles := make([]bool, len(resp.SelectedProfiles.Profiles))
+			for pos := range resp.SelectedProfiles.Profiles {
+				selectProfiles[pos] = true
+			}
+
+			require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+				Profiles: selectProfiles,
+			}))
+		}
+
+		// still receiving a result
+		result, err := bidi.Receive()
 		require.NoError(t, err)
 
 		var values []int64
-		for _, s := range result.Sample {
-			values = append(values, s.Value...)
+
+		p, err := profile.ParseUncompressed(result.Result)
+		require.NoError(t, err)
+
+		for _, x := range p.Sample {
+			values = append(values, x.Value[0])
 		}
-		assert.ElementsMatch(t, []int64{90, 180}, values)
+		assert.Equal(
+			t,
+			[]int64{90, 180},
+			values,
+		)
 	})
 
 }

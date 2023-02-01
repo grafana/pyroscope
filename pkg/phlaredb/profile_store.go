@@ -13,12 +13,10 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/runutil"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/segmentio/parquet-go"
 	"go.uber.org/atomic"
 
-	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb/block"
@@ -153,8 +151,13 @@ func (s *profileStore) Flush(ctx context.Context) (numRows uint64, numRowGroups 
 		block.IndexFilename,
 	)
 
-	if err := s.index.writeTo(ctx, indexPath); err != nil {
+	rowRangerPerRG, err := s.index.writeTo(ctx, indexPath)
+	if err != nil {
 		return 0, 0, err
+	}
+
+	for idx, ranges := range rowRangerPerRG {
+		s.rowGroups[idx].seriesIndexes = ranges
 	}
 
 	parquetPath := filepath.Join(
@@ -229,7 +232,7 @@ func (s *profileStore) cutRowGroup() (err error) {
 	s.rowGroups = append(s.rowGroups, rowGroup)
 
 	// let index know about row group
-	if err := s.index.cutRowGroup(s.slice, rowGroup); err != nil {
+	if err := s.index.cutRowGroup(s.slice); err != nil {
 		return err
 	}
 
@@ -420,103 +423,4 @@ func (r *seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
 	r.pos += int64(n)
 
 	return n, nil
-}
-
-func mergeOnDiskByStacktraces(ctx context.Context, rows iter.Iterator[Profile], m mapAdder) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeOnDiskByStacktraces - Head")
-	defer sp.Finish()
-
-	var (
-		currentRG *profileRowGroup
-		profiles  []Profile
-	)
-
-	merge := func() error {
-		if currentRG == nil {
-			return nil
-		}
-
-		if err := mergeByStacktraces(ctx, currentRG.rowGroup, iter.NewSliceIterator(profiles), m); err != nil {
-			return err
-		}
-
-		profiles = profiles[:0]
-		currentRG = nil
-		return nil
-	}
-
-	for rows.Next() {
-		p, ok := rows.At().(profileOnDisk)
-		// if not a on disk profile, skip
-		if !ok {
-			continue
-		}
-
-		// check if we are talking about the same row group as before, if not run the merge
-		if currentRG != nil && currentRG != p.rowGroup {
-			if err := merge(); err != nil {
-				return err
-			}
-		}
-		currentRG = p.rowGroup
-		profiles = append(profiles, p)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	if len(profiles) > 0 {
-		return merge()
-	}
-
-	return nil
-}
-
-func mergeOnDiskByLabels(ctx context.Context, rows iter.Iterator[Profile], m seriesByLabels, by ...string) error {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeOnDiskByLabels - Head")
-	defer sp.Finish()
-
-	var (
-		currentRG *profileRowGroup
-		profiles  []Profile
-	)
-
-	merge := func() error {
-		if currentRG == nil {
-			return nil
-		}
-		if err := mergeByLabels(ctx, currentRG.rowGroup, iter.NewSliceIterator(profiles), m, by...); err != nil {
-			return err
-		}
-
-		profiles = profiles[:0]
-		currentRG = nil
-		return nil
-	}
-
-	for rows.Next() {
-		p, ok := rows.At().(profileOnDisk)
-		// if not a on disk profile, skip
-		if !ok {
-			continue
-		}
-
-		// check if we are talking about the same row group as before, if not run the merge
-		if currentRG != nil && currentRG != p.rowGroup {
-			if err := merge(); err != nil {
-				return err
-			}
-		}
-		currentRG = p.rowGroup
-		profiles = append(profiles, p)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	if len(profiles) > 0 {
-		return merge()
-	}
-
-	return nil
 }
