@@ -128,7 +128,7 @@ export default {
         test: /\.svg$/,
         issuer: /\.(j|t)sx?$/,
         use: [
-          { loader: 'babel-loader' },
+          //          { loader: 'babel-loader' },
           {
             loader: 'react-svg-loader',
             options: {
