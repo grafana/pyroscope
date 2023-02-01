@@ -165,6 +165,7 @@
   },
   "_dependencies": "Dependencies required to BUILD the application. When building in docker we only install dependencies to speed up the process",
   "dependencies": {
+    "@babel/preset-env": "^7.20.2",
     "@emotion/react": "^11.10.4",
     "@emotion/styled": "^11.10.4",
     "@fortawesome/fontawesome-free": "~5.14.0",
