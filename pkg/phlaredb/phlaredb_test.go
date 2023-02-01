@@ -180,7 +180,8 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 			Profiles: []bool{true},
 		}))
 
-		// expect empty resp:b  		resp, err = bidi.Receive()
+		// expect empty response
+		resp, err = bidi.Receive()
 		require.NoError(t, err)
 		require.Nil(t, resp.Result)
 
