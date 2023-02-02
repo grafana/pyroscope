@@ -445,17 +445,27 @@ func TestProfileStore_Querying(t *testing.T) {
 		result, err := bidi.Receive()
 		require.NoError(t, err)
 
-		var values []int64
+		var (
+			values = make(map[string]int64)
+			sb     strings.Builder
+		)
 
 		p, err := profile.ParseUncompressed(result.Result)
 		require.NoError(t, err)
 
 		for _, x := range p.Sample {
-			values = append(values, x.Value[0])
+			for _, loc := range x.Location {
+				for _, line := range loc.Line {
+					sb.WriteString(line.Function.Name)
+					sb.WriteString("/")
+				}
+			}
+			stacktrace := sb.String()[:sb.Len()-1]
+			values[stacktrace] = x.Value[0]
 		}
 		assert.Equal(
 			t,
-			[]int64{90, 180},
+			map[string]int64{"func1/func2": 90, "func1/func2/func1": 180},
 			values,
 		)
 	})

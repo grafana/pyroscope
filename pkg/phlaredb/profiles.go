@@ -13,12 +13,14 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/storage"
+	"github.com/samber/lo"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	query "github.com/grafana/phlare/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/phlare/pkg/phlaredb/tsdb"
 	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
@@ -41,12 +43,84 @@ type rowRangesWithSeriesIndex []rowRangeWithSeriesIndex
 func (s rowRangesWithSeriesIndex) getSeriesIndex(rowNum int64) uint32 {
 	// todo: binary search
 	for _, rg := range s {
+		// it is possible that the series is not existing
+		if rg.rowRange == nil {
+			continue
+		}
 		if rg.rowNum <= rowNum && rg.rowNum+int64(rg.length) > rowNum {
 			return rg.seriesIndex
 		}
 	}
 	panic("series index not found")
 }
+
+type rowRanges map[*rowRange]model.Fingerprint
+
+func (rR rowRanges) iter() iter.Iterator[fingerprintWithRowNum] {
+	// ensure row ranges is sorted
+	rRSlice := lo.Keys(rR)
+	sort.Slice(rRSlice, func(i, j int) bool {
+		return rRSlice[i].rowNum < rRSlice[j].rowNum
+	})
+
+	fps := make([]model.Fingerprint, 0, len(rR))
+	for _, elem := range rRSlice {
+		fps = append(fps, rR[elem])
+	}
+
+	return &rowRangesIter{
+		r:   rRSlice,
+		fps: fps,
+		pos: 0,
+	}
+}
+
+type fingerprintWithRowNum struct {
+	fp     model.Fingerprint
+	rowNum int64
+}
+
+func (f fingerprintWithRowNum) RowNumber() int64 {
+	return f.rowNum
+}
+
+func (r rowRanges) rowNums() query.Iterator {
+	return query.NewRowNumberIterator[fingerprintWithRowNum](r.iter())
+}
+
+type rowRangesIter struct {
+	r   []*rowRange
+	fps []model.Fingerprint
+	pos int64
+}
+
+func (i *rowRangesIter) At() fingerprintWithRowNum {
+	return fingerprintWithRowNum{
+		rowNum: i.pos - 1,
+		fp:     i.fps[0],
+	}
+}
+
+func (i *rowRangesIter) Next() bool {
+	if len(i.r) == 0 {
+		return false
+	}
+	if i.pos < i.r[0].rowNum {
+		i.pos = i.r[0].rowNum
+	}
+
+	if i.pos >= i.r[0].rowNum+int64(i.r[0].length) {
+		i.r = i.r[1:]
+		i.fps = i.fps[1:]
+		return i.Next()
+	}
+	i.pos++
+	return true
+}
+
+func (i *rowRangesIter) Close() error { return nil }
+
+func (i *rowRangesIter) Err() error { return nil }
 
 type profileOnDisk struct {
 	BlockProfile
