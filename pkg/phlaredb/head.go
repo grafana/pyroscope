@@ -481,20 +481,6 @@ func (h *Head) Queriers() Queriers {
 	return queriers
 }
 
-func checkProfileWithLabels(in interface{}) (*ProfileWithLabels, error) {
-	p, ok := in.(ProfileWithLabels)
-	if ok {
-		return &p, nil
-	}
-
-	switch in.(type) {
-	case profileOnDisk:
-		return nil, nil
-	}
-
-	return nil, fmt.Errorf("unsupported profile type: %T", in)
-}
-
 // add the location IDs to the stacktraces
 func (h *Head) resolveStacktraces(stacktraceSamples stacktraceSampleMap) *ingestv1.MergeProfilesStacktracesResult {
 	names := []string{}
