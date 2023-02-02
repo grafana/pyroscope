@@ -4,6 +4,15 @@
     {
       "source": {
         "git": {
+          "remote": "https://github.com/grafana/agent.git",
+          "subdir": "production/tanka/grafana-agent/v2"
+        }
+      },
+      "version": "main"
+    },
+    {
+      "source": {
+        "git": {
           "remote": "https://github.com/grafana/jsonnet-libs.git",
           "subdir": "grafana"
         }
@@ -40,11 +49,20 @@
     {
       "source": {
         "git": {
-          "remote": "https://github.com/jsonnet-libs/docsonnet.git",
-          "subdir": "doc-util"
+          "remote": "https://github.com/grafana/loki.git",
+          "subdir": "production/ksonnet/loki-simple-scalable"
         }
       },
-      "version": "master"
+      "version": "main"
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/grafana/tempo.git",
+          "subdir": "operations/jsonnet/single-binary"
+        }
+      },
+      "version": "main"
     },
     {
       "source": {
