@@ -84,7 +84,7 @@ func (f fingerprintWithRowNum) RowNumber() int64 {
 	return f.rowNum
 }
 
-func (r rowRanges) rowNums() query.Iterator {
+func (r rowRanges) fingerprintsWithRowNum() query.Iterator {
 	return query.NewRowNumberIterator[fingerprintWithRowNum](r.iter())
 }
 
@@ -121,11 +121,6 @@ func (i *rowRangesIter) Next() bool {
 func (i *rowRangesIter) Close() error { return nil }
 
 func (i *rowRangesIter) Err() error { return nil }
-
-type profileOnDisk struct {
-	BlockProfile
-	rowGroup *rowGroupOnDisk
-}
 
 type profileSeries struct {
 	lbs phlaremodel.Labels

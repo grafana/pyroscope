@@ -59,7 +59,7 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 	pIt := query.NewJoinIterator(
 		0,
 		[]query.Iterator{
-			rowRanges.rowNums(), // TODO: Make this store the fingerprint as a column
+			rowRanges.fingerprintsWithRowNum(),
 			rg.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"),
 		},
 		nil,
@@ -83,14 +83,11 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 		}
 
 		buf = res.Columns(buf, "TimeNanos")
-		profiles = append(profiles, profileOnDisk{
-			BlockProfile: BlockProfile{
-				labels: profileSeries.lbs,
-				fp:     profileSeries.fp,
-				ts:     model.TimeFromUnixNano(buf[0][0].Int64()),
-				RowNum: res.RowNumber[0],
-			},
-			rowGroup: rg,
+		profiles = append(profiles, BlockProfile{
+			labels: profileSeries.lbs,
+			fp:     profileSeries.fp,
+			ts:     model.TimeFromUnixNano(buf[0][0].Int64()),
+			RowNum: res.RowNumber[0],
 		})
 	}
 
@@ -137,7 +134,6 @@ func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterato
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - HeadOnDisk")
 	defer sp.Finish()
 
-	//labelsByFingerprint := map[model.Fingerprint]string{}
 	seriesByLabels := make(seriesByLabels)
 
 	if err := mergeByLabels(ctx, q.head.profiles.rowGroups[q.rowGroupIdx], rows, seriesByLabels, by...); err != nil {
