@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.35.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.35.0...@pyroscope/flamegraph@0.35.1) (2023-02-03)
+
+
+### Performance Improvements
+
+* **flamegraph:** don't convert to graphviz format unnecessarily ([#1834](https://github.com/pyroscope-io/pyroscope/issues/1834)) ([8f78e54](https://github.com/pyroscope-io/pyroscope/commit/8f78e54d75cf6f8067ef38da5b2c2eb15860ec09))
+
+
+
+
+
 # [0.35.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.34.3...@pyroscope/flamegraph@0.35.0) (2023-01-23)
 
 
