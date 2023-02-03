@@ -454,6 +454,7 @@ func TestProfileStore_Querying(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, x := range p.Sample {
+			sb.Reset()
 			for _, loc := range x.Location {
 				for _, line := range loc.Line {
 					sb.WriteString(line.Function.Name)
@@ -465,7 +466,7 @@ func TestProfileStore_Querying(t *testing.T) {
 		}
 		assert.Equal(
 			t,
-			map[string]int64{"func1/func2": 90, "func1/func2/func1": 180},
+			map[string]int64{"func1/func2": 90, "func1": 180},
 			values,
 		)
 	})
