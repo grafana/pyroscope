@@ -144,7 +144,16 @@ func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterato
 }
 
 func (q *headOnDiskQuerier) Sort(in []Profile) []Profile {
-	// TODO: Use per row group order
+	var rowI, rowJ int64
+	sort.Slice(in, func(i, j int) bool {
+		if pI, ok := in[i].(BlockProfile); ok {
+			rowI = pI.RowNum
+		}
+		if pJ, ok := in[j].(BlockProfile); ok {
+			rowJ = pJ.RowNum
+		}
+		return rowI < rowJ
+	})
 	return in
 }
 
