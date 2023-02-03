@@ -1,4 +1,4 @@
-import { Flamebearer } from 'packages/pyroscope-models/src';
+import type { Flamebearer } from '@pyroscope/models/src';
 import React, { useMemo } from 'react';
 import toGraphviz from '../../convert/toGraphviz';
 import styles from './GraphVizPanel.module.scss';
