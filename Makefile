@@ -206,6 +206,7 @@ unused: ## Staticcheck for unused code
 
 .PHONY: install-dev-tools
 install-dev-tools: ## Install dev tools
+	go install github.com/cosmtrek/air@latest
 	cat tools/tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI {} go install {}
 
 .PHONY: web-bootstrap
