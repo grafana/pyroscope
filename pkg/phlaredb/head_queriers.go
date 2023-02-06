@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 
+	"github.com/go-kit/log/level"
 	"github.com/google/pprof/profile"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -14,6 +15,7 @@ import (
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	query "github.com/grafana/phlare/pkg/phlaredb/query"
+	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 )
 
 type headOnDiskQuerier struct {
@@ -32,12 +34,19 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 		return nil, err
 	}
 
+	index.mutex.RLock()
+
 	// gather rowRanges from matching series
 	var rowRanges = make(rowRanges, len(ids))
 	for _, fp := range ids {
 		// skip if series no longer in index
 		profileSeries, ok := index.profilesPerFP[fp]
 		if !ok {
+			continue
+		}
+
+		if q.rowGroupIdx >= len(profileSeries.profilesOnDisk) {
+			level.Error(q.head.logger).Log("msg", "unable to find matching rowGroup", "rowGroups", len(profileSeries.profilesOnDisk), "rowGroupIdx", q.rowGroupIdx)
 			continue
 		}
 
@@ -50,16 +59,22 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 		rowRanges[rR] = fp
 	}
 
+	// generate row number and fingerprint iter and release the index lock
+	var (
+		rowIter = rowRanges.fingerprintsWithRowNum()
+		rg      = q.head.profiles.rowGroups[q.rowGroupIdx]
+	)
+	index.mutex.RUnlock()
+
 	// get time nano information for profiles
 	var (
 		start = model.Time(params.Start)
 		end   = model.Time(params.End)
-		rg    = q.head.profiles.rowGroups[q.rowGroupIdx]
 	)
 	pIt := query.NewJoinIterator(
 		0,
 		[]query.Iterator{
-			rowRanges.fingerprintsWithRowNum(),
+			rowIter,
 			rg.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"),
 		},
 		nil,
@@ -83,6 +98,10 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 		}
 
 		buf = res.Columns(buf, "TimeNanos")
+		if len(buf) != 1 || len(buf[0]) != 1 {
+			level.Error(q.head.logger).Log("msg", "unable to read timeNanos from profiles", "row", res.RowNumber[0], "rowGroup", q.rowGroupIdx)
+			continue
+		}
 		profiles = append(profiles, BlockProfile{
 			labels: profileSeries.lbs,
 			fp:     profileSeries.fp,
@@ -188,11 +207,14 @@ func (q *headInMemoryQuerier) SelectMatchingProfiles(ctx context.Context, params
 			continue
 		}
 
+		var profiles = make([]*schemav1.Profile, len(profileSeries.profiles))
+		copy(profiles, profileSeries.profiles)
+
 		iters = append(iters,
 			NewSeriesIterator(
 				profileSeries.lbs,
 				profileSeries.fp,
-				iter.NewTimeRangedIterator(iter.NewSliceIterator(profileSeries.profiles), start, end),
+				iter.NewTimeRangedIterator(iter.NewSliceIterator(profiles), start, end),
 			),
 		)
 	}

@@ -236,6 +236,8 @@ func (s *profileStore) cutRowGroup() (err error) {
 		return err
 	}
 
+	level.Debug(s.logger).Log("msg", "cut row group segment", "path", path, "numProfiles", n)
+
 	// reset slice and metrics
 	s.slice = s.slice[:0]
 	s.size.Store(0)
@@ -281,7 +283,6 @@ func (s *profileStore) ingest(_ context.Context, profiles []*schemav1.Profile, l
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	// do a binary search where to insert each profile
 	for pos, p := range profiles {
 		// check if row group is full
 		if s.cfg.MaxBufferRowCount > 0 && len(s.slice) >= s.cfg.MaxBufferRowCount ||
