@@ -470,6 +470,9 @@ func (h *Head) InRange(start, end model.Time) bool {
 
 // Returns underlying queries, the queriers should be roughly ordered in TS increasing order
 func (h *Head) Queriers() Queriers {
+	h.profiles.lock.RLock()
+	defer h.profiles.lock.RUnlock()
+
 	queriers := make([]Querier, 0, len(h.profiles.rowGroups)+1)
 	for idx := range h.profiles.rowGroups {
 		queriers = append(queriers, &headOnDiskQuerier{

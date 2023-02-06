@@ -2,7 +2,9 @@ package phlaredb
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -350,6 +352,84 @@ func TestHeadIngestRealProfiles(t *testing.T) {
 
 	require.NoError(t, head.Flush(ctx))
 	t.Logf("strings=%d samples=%d", len(head.strings.slice), head.totalSamples.Load())
+}
+
+// TestHead_Concurrent_Ingest_Querying tests that the head can handle concurrent reads and writes.
+func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
+
+	var (
+		ctx = testContext(t)
+		cfg = Config{
+			DataPath: t.TempDir(),
+		}
+		head, err = NewHead(ctx, cfg)
+	)
+	require.NoError(t, err)
+
+	// force different row group segements for profiles
+	head.profiles.cfg = &ParquetConfig{MaxRowGroupBytes: 128000, MaxBufferRowCount: 10}
+
+	wg := sync.WaitGroup{}
+
+	profilesPerSeries := 33
+
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		// ingester
+		go func(i int) {
+			defer wg.Done()
+			tick := time.NewTicker(time.Millisecond)
+			defer tick.Stop()
+			for j := 0; j < profilesPerSeries; j++ {
+				<-tick.C
+				require.NoError(t, ingestThreeProfileStreams(ctx, j*3+i, head.Ingest))
+			}
+			t.Logf("ingest stream %s done", streams[i])
+		}(i)
+
+		// querier
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			tick := time.NewTicker(time.Millisecond)
+			defer tick.Stop()
+
+			for j := 0; j < 50; j++ {
+				<-tick.C
+				// now query the store
+				params := &ingestv1.SelectProfilesRequest{
+					Start:         0,
+					End:           1000000000000,
+					LabelSelector: fmt.Sprintf(`{stream="%s"}`, streams[i]),
+					Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				}
+
+				queriers := head.Queriers()
+
+				pIt, err := queriers.SelectMatchingProfiles(ctx, params)
+				require.NoError(t, err)
+
+				var profileTS []int64
+				for pIt.Next() {
+					ts := pIt.At().Timestamp().Unix()
+					if (ts % 3) != int64(i) {
+						panic("unexpected timestamp")
+					}
+					profileTS = append(profileTS, ts)
+				}
+
+				// finish once we have all the profiles
+				if len(profileTS) == profilesPerSeries {
+					break
+				}
+			}
+			t.Logf("read stream %s done", streams[i])
+		}(i)
+	}
+
+	wg.Wait()
+
 }
 
 func BenchmarkHeadIngestProfiles(t *testing.B) {
