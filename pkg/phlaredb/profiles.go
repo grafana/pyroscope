@@ -233,6 +233,46 @@ outer:
 	return ids[:idx], nil
 }
 
+func (pi *profilesIndex) selectMatchingRowRanges(ctx context.Context, params *ingestv1.SelectProfilesRequest, rowGroupIdx int) (
+	query.Iterator,
+	map[model.Fingerprint]phlaremodel.Labels,
+	error,
+) {
+	ids, err := pi.selectMatchingFPs(ctx, params)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// gather rowRanges and labels from matching series under read lock of the index
+	var (
+		rowRanges   = make(rowRanges, len(ids))
+		labelsPerFP = make(map[model.Fingerprint]phlaremodel.Labels, len(ids))
+	)
+
+	pi.mutex.RLock()
+	defer pi.mutex.RUnlock()
+
+	for _, fp := range ids {
+		// skip if series no longer in index
+		profileSeries, ok := pi.profilesPerFP[fp]
+		if !ok {
+			continue
+		}
+
+		labelsPerFP[fp] = profileSeries.lbs
+
+		// skip if rowRange empty
+		rR := profileSeries.profilesOnDisk[rowGroupIdx]
+		if rR == nil {
+			continue
+		}
+
+		rowRanges[rR] = fp
+	}
+
+	return rowRanges.fingerprintsWithRowNum(), labelsPerFP, nil
+}
+
 type ProfileWithLabels struct {
 	*schemav1.Profile
 	lbs phlaremodel.Labels
