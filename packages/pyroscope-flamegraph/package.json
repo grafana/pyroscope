@@ -11,7 +11,8 @@
     "dist/**/*",
     "package.json",
     "README.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "scripts": {
     "test": "jest",

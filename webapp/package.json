@@ -2,6 +2,7 @@
   "name": "@pyroscope/webapp",
   "version": "1.68.3",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "test": "echo \"Error: run tests from root\" && exit 1",
     "dev": "webpack --config ../scripts/webpack/webpack.dev.ts --watch",
