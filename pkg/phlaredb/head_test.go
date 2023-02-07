@@ -395,6 +395,11 @@ func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
 			tick := time.NewTicker(time.Millisecond)
 			defer tick.Stop()
 
+			var tsToBeSeen = make(map[int64]struct{}, profilesPerSeries)
+			for j := 0; j < profilesPerSeries; j++ {
+				tsToBeSeen[int64(j*3+i)] = struct{}{}
+			}
+
 			for j := 0; j < 50; j++ {
 				<-tick.C
 				// now query the store
@@ -410,31 +415,33 @@ func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
 				pIt, err := queriers.SelectMatchingProfiles(ctx, params)
 				require.NoError(t, err)
 
-				var profileTS []int64
 				for pIt.Next() {
 					ts := pIt.At().Timestamp().Unix()
 					if (ts % 3) != int64(i) {
 						panic("unexpected timestamp")
 					}
-					profileTS = append(profileTS, ts)
+					delete(tsToBeSeen, ts)
 				}
 
 				// finish once we have all the profiles
-				if len(profileTS) == profilesPerSeries {
+				if len(tsToBeSeen) == 0 {
 					break
 				}
 			}
 			t.Logf("read stream %s done", streams[i])
 		}(i)
 
-		// flusher
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			<-time.After(100 * time.Millisecond)
-			require.NoError(t, head.Flush(ctx))
-		}()
 	}
+
+	// flusher
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-time.After(100 * time.Millisecond)
+		t.Log("flushing")
+		require.NoError(t, head.Flush(ctx))
+		t.Log("flushed")
+	}()
 
 	wg.Wait()
 
