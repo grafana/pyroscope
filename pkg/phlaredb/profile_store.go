@@ -142,6 +142,9 @@ func (s *profileStore) Flush(ctx context.Context) (numRows uint64, numRowGroups 
 		return 0, 0, err
 	}
 
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	if err := s.cutRowGroup(); err != nil {
 		return 0, 0, err
 	}
