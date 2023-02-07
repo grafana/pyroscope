@@ -23,48 +23,21 @@ type headOnDiskQuerier struct {
 	rowGroupIdx int
 }
 
+func (q *headOnDiskQuerier) rowGroup() *rowGroupOnDisk {
+	q.head.profiles.lock.RLock()
+	defer q.head.profiles.lock.RUnlock()
+	return q.head.profiles.rowGroups[q.rowGroupIdx]
+}
+
 func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - HeadOnDisk")
 	defer sp.Finish()
 
-	index := q.head.profiles.index
-
-	ids, err := index.selectMatchingFPs(ctx, params)
+	// query the index for rows
+	rowIter, labelsPerFP, err := q.head.profiles.index.selectMatchingRowRanges(ctx, params, q.rowGroupIdx)
 	if err != nil {
 		return nil, err
 	}
-
-	index.mutex.RLock()
-
-	// gather rowRanges from matching series
-	var rowRanges = make(rowRanges, len(ids))
-	for _, fp := range ids {
-		// skip if series no longer in index
-		profileSeries, ok := index.profilesPerFP[fp]
-		if !ok {
-			continue
-		}
-
-		if q.rowGroupIdx >= len(profileSeries.profilesOnDisk) {
-			level.Error(q.head.logger).Log("msg", "unable to find matching rowGroup", "rowGroups", len(profileSeries.profilesOnDisk), "rowGroupIdx", q.rowGroupIdx)
-			continue
-		}
-
-		// skip if rowRange empty
-		rR := profileSeries.profilesOnDisk[q.rowGroupIdx]
-		if rR == nil {
-			continue
-		}
-
-		rowRanges[rR] = fp
-	}
-
-	// generate row number and fingerprint iter and release the index lock
-	var (
-		rowIter = rowRanges.fingerprintsWithRowNum()
-		rg      = q.head.profiles.rowGroups[q.rowGroupIdx]
-	)
-	index.mutex.RUnlock()
 
 	// get time nano information for profiles
 	var (
@@ -75,7 +48,7 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 		0,
 		[]query.Iterator{
 			rowIter,
-			rg.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"),
+			q.rowGroup().columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"),
 		},
 		nil,
 	)
@@ -92,9 +65,9 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 			panic("no fingerprint information found")
 		}
 
-		profileSeries, ok := index.profilesPerFP[v.fp]
+		lbls, ok := labelsPerFP[v.fp]
 		if !ok {
-			panic("no profile series matching fingerprint found")
+			panic("no profile series labels with matching fingerprint found")
 		}
 
 		buf = res.Columns(buf, "TimeNanos")
@@ -103,8 +76,8 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 			continue
 		}
 		profiles = append(profiles, BlockProfile{
-			labels: profileSeries.lbs,
-			fp:     profileSeries.fp,
+			labels: lbls,
+			fp:     v.fp,
 			ts:     model.TimeFromUnixNano(buf[0][0].Int64()),
 			RowNum: res.RowNumber[0],
 		})
@@ -129,7 +102,7 @@ func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.It
 
 	stacktraceSamples := stacktraceSampleMap{}
 
-	if err := mergeByStacktraces(ctx, q.head.profiles.rowGroups[q.rowGroupIdx], rows, stacktraceSamples); err != nil {
+	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, stacktraceSamples); err != nil {
 		return nil, err
 	}
 
