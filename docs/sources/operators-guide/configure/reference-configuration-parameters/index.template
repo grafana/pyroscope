@@ -148,6 +148,7 @@ You can refer to the Prometheus documentation the following block:
 - [relabel_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config)
 - [static_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#static_config)
 - [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config)
+- [http_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#http_sd_config)
 
 #### pprof_config
 
