@@ -382,7 +382,7 @@ func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
 			defer tick.Stop()
 			for j := 0; j < profilesPerSeries; j++ {
 				<-tick.C
-				require.NoError(t, ingestThreeProfileStreams(ctx, j*3+i, head.Ingest))
+				require.NoError(t, ingestThreeProfileStreams(ctx, profilesPerSeries*i+j, head.Ingest))
 			}
 			t.Logf("ingest stream %s done", streams[i])
 		}(i)
@@ -426,6 +426,14 @@ func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
 			}
 			t.Logf("read stream %s done", streams[i])
 		}(i)
+
+		// flusher
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-time.After(100 * time.Millisecond)
+			require.NoError(t, head.Flush(ctx))
+		}()
 	}
 
 	wg.Wait()
