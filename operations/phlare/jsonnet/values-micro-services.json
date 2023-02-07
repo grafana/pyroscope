@@ -55,6 +55,32 @@
             "memory": "256Mi"
           }
         }
+      },
+      "query-frontend": {
+        "kind": "Deployment",
+        "replicaCount": 2,
+        "resources": {
+          "limits": {
+            "memory": "1Gi"
+          },
+          "requests": {
+            "cpu": "100m",
+            "memory": "256Mi"
+          }
+        }
+      },
+      "query-scheduler": {
+        "kind": "Deployment",
+        "replicaCount": 2,
+        "resources": {
+          "limits": {
+            "memory": "1Gi"
+          },
+          "requests": {
+            "cpu": "100m",
+            "memory": "256Mi"
+          }
+        }
       }
     }
   }

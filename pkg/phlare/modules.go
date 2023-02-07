@@ -3,9 +3,9 @@ package phlare
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 
+	"github.com/bufbuild/connect-go"
 	"github.com/felixge/fgprof"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -15,10 +15,6 @@ import (
 	"github.com/grafana/dskit/services"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/pkg/errors"
-	"google.golang.org/genproto/googleapis/api/httpbody"
-	"google.golang.org/protobuf/encoding/protojson"
-	"gopkg.in/yaml.v2"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/thanos-io/thanos/pkg/discovery/dns"
@@ -26,6 +22,9 @@ import (
 	"github.com/weaveworks/common/server"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
+	"google.golang.org/genproto/googleapis/api/httpbody"
+	"google.golang.org/protobuf/encoding/protojson"
+	"gopkg.in/yaml.v2"
 
 	agentv1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1"
 	"github.com/grafana/phlare/api/gen/proto/go/agent/v1/agentv1connect"
@@ -36,11 +35,16 @@ import (
 	"github.com/grafana/phlare/api/openapiv2"
 	"github.com/grafana/phlare/pkg/agent"
 	"github.com/grafana/phlare/pkg/distributor"
+	frontend "github.com/grafana/phlare/pkg/frontend"
+	"github.com/grafana/phlare/pkg/frontend/frontendpb/frontendpbconnect"
 	"github.com/grafana/phlare/pkg/ingester"
 	objstoreclient "github.com/grafana/phlare/pkg/objstore/client"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/querier"
+	"github.com/grafana/phlare/pkg/querier/worker"
+	"github.com/grafana/phlare/pkg/scheduler"
+	"github.com/grafana/phlare/pkg/scheduler/schedulerpb/schedulerpbconnect"
 	"github.com/grafana/phlare/pkg/usagestats"
 	"github.com/grafana/phlare/pkg/util"
 	"github.com/grafana/phlare/pkg/util/build"
@@ -48,24 +52,24 @@ import (
 
 // The various modules that make up Phlare.
 const (
-	All          string = "all"
-	Agent        string = "agent"
-	Distributor  string = "distributor"
-	Server       string = "server"
-	Ring         string = "ring"
-	Ingester     string = "ingester"
-	MemberlistKV string = "memberlist-kv"
-	Querier      string = "querier"
-	GRPCGateway  string = "grpc-gateway"
-	Storage      string = "storage"
-	UsageReport  string = "usage-stats"
+	All            string = "all"
+	Agent          string = "agent"
+	Distributor    string = "distributor"
+	Server         string = "server"
+	Ring           string = "ring"
+	Ingester       string = "ingester"
+	MemberlistKV   string = "memberlist-kv"
+	Querier        string = "querier"
+	GRPCGateway    string = "grpc-gateway"
+	Storage        string = "storage"
+	UsageReport    string = "usage-stats"
+	QueryFrontend  string = "query-frontend"
+	QueryScheduler string = "query-scheduler"
 
 	// RuntimeConfig            string = "runtime-config"
 	// Overrides                string = "overrides"
 	// OverridesExporter        string = "overrides-exporter"
 	// TenantConfigs            string = "tenant-configs"
-	// IngesterQuerier          string = "ingester-querier"
-	// QueryFrontend            string = "query-frontend"
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
 	// RulerStorage             string = "ruler-storage"
 	// Ruler                    string = "ruler"
@@ -73,22 +77,106 @@ const (
 	// Compactor                string = "compactor"
 	// IndexGateway             string = "index-gateway"
 	// IndexGatewayRing         string = "index-gateway-ring"
-	// QueryScheduler           string = "query-scheduler"
 )
 
 var objectStoreTypeStats = usagestats.NewString("store_object_type")
 
-func (f *Phlare) initQuerier() (services.Service, error) {
-	q, err := querier.New(f.Cfg.Querier, f.ring, nil, f.logger, f.auth)
+func (f *Phlare) initQueryFrontend() (services.Service, error) {
+	if f.Cfg.Frontend.Addr == "" {
+		addr, err := util.GetFirstAddressOf(f.Cfg.Frontend.InfNames)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get frontend address")
+		}
+
+		f.Cfg.Frontend.Addr = addr
+	}
+
+	if f.Cfg.Frontend.Port == 0 {
+		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
+	}
+
+	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, log.With(f.logger, "component", "frontend"), f.reg)
 	if err != nil {
 		return nil, err
 	}
-	// Those API are not meant to stay but allows us for testing through Grafana.
-	f.Server.HTTP.Handle("/pyroscope/render", http.HandlerFunc(q.RenderHandler))
-	f.Server.HTTP.Handle("/pyroscope/label-values", http.HandlerFunc(q.LabelValuesHandler))
-	querierv1connect.RegisterQuerierServiceHandler(f.Server.HTTP, q, f.auth)
+	querierv1connect.RegisterQuerierServiceHandler(f.Server.HTTP, querier.NewGRPCRoundTripper(frontendSvc), f.auth)
+	frontendpbconnect.RegisterFrontendForQuerierHandler(f.Server.HTTP, frontendSvc, f.auth)
+	return frontendSvc, nil
+}
 
-	return q, nil
+type fakeLimits struct{}
+
+func (fakeLimits) MaxQueriersPerUser(user string) int { return 0 }
+
+func (f *Phlare) initQueryScheduler() (services.Service, error) {
+	f.Cfg.QueryScheduler.ServiceDiscovery.SchedulerRing.ListenPort = f.Cfg.Server.HTTPListenPort
+
+	s, err := scheduler.NewScheduler(f.Cfg.QueryScheduler, &fakeLimits{}, log.With(f.logger, "component", "scheduler"), f.reg)
+	if err != nil {
+		return nil, errors.Wrap(err, "query-scheduler init")
+	}
+	schedulerpbconnect.RegisterSchedulerForFrontendHandler(f.Server.HTTP, s)
+	schedulerpbconnect.RegisterSchedulerForQuerierHandler(f.Server.HTTP, s, f.schedulerQuerierTimeout())
+	return s, nil
+}
+
+// schedulerQuerierTimeout returns a HandlerOption that sets the timeout for the
+// communication between the scheduler and the querier.
+// This is required because connect streaming handler does not propagate timeouts
+// through the context.
+// Adding a timeout options to the handler enforce the timeout to be propagated
+// and cancel the stream if the timeout is reached.
+// Querier expects this and will gracefully reconnects.
+func (f *Phlare) schedulerQuerierTimeout() connect.HandlerOption {
+	opts := []connect.HandlerOption{}
+	timeout := f.Cfg.Server.HTTPServerReadTimeout
+	if f.Cfg.Server.HTTPServerWriteTimeout < timeout {
+		timeout = f.Cfg.Server.HTTPServerWriteTimeout
+	}
+
+	if timeout > 0 {
+		opts = append(opts, connect.WithInterceptors(util.WithTimeout(timeout)))
+	}
+	return connect.WithHandlerOptions(opts...)
+}
+
+func (f *Phlare) initQuerier() (services.Service, error) {
+	querierSvc, err := querier.New(f.Cfg.Querier, f.ring, nil, log.With(f.logger, "component", "querier"), f.auth)
+	if err != nil {
+		return nil, err
+	}
+	if !f.isModuleActive(QueryFrontend) {
+		querierv1connect.RegisterQuerierServiceHandler(f.Server.HTTP, querierSvc, f.auth)
+	}
+	worker, err := worker.NewQuerierWorker(f.Cfg.Worker, querier.NewGRPCHandler(querierSvc), log.With(f.logger, "component", "querier-worker"), f.reg)
+	if err != nil {
+		return nil, err
+	}
+
+	sm, err := services.NewManager(querierSvc, worker)
+	if err != nil {
+		return nil, err
+	}
+	w := services.NewFailureWatcher()
+	w.WatchManager(sm)
+
+	return services.NewBasicService(func(ctx context.Context) error {
+		err := sm.StartAsync(ctx)
+		if err != nil {
+			return err
+		}
+		return sm.AwaitHealthy(ctx)
+	}, func(ctx context.Context) error {
+		select {
+		case <-ctx.Done():
+			return nil
+		case err := <-w.Chan():
+			return err
+		}
+	}, func(failureCase error) error {
+		sm.StopAsync()
+		return sm.AwaitStopped(context.Background())
+	}), nil
 }
 
 func (f *Phlare) getPusherClient() pushv1connect.PusherServiceClient {
@@ -111,7 +199,7 @@ func (f *Phlare) initGRPCGateway() (services.Service, error) {
 }
 
 func (f *Phlare) initDistributor() (services.Service, error) {
-	d, err := distributor.New(f.Cfg.Distributor, f.ring, nil, f.reg, f.logger, f.auth)
+	d, err := distributor.New(f.Cfg.Distributor, f.ring, nil, f.reg, log.With(f.logger, "component", "distributor"), f.auth)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +212,7 @@ func (f *Phlare) initDistributor() (services.Service, error) {
 }
 
 func (f *Phlare) initAgent() (services.Service, error) {
-	a, err := agent.New(&f.Cfg.AgentConfig, f.logger, f.getPusherClient)
+	a, err := agent.New(&f.Cfg.AgentConfig, log.With(f.logger, "component", "agent"), f.getPusherClient)
 	if err != nil {
 		return nil, err
 	}
@@ -158,12 +246,16 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 	f.MemberlistKV = memberlist.NewKVInitService(&f.Cfg.MemberlistKV, f.logger, dnsProvider, f.reg)
 
 	f.Cfg.Ingester.LifecyclerConfig.RingConfig.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
+	f.Cfg.QueryScheduler.ServiceDiscovery.SchedulerRing.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
+
+	f.Cfg.Frontend.QuerySchedulerDiscovery = f.Cfg.QueryScheduler.ServiceDiscovery
+	f.Cfg.Worker.QuerySchedulerDiscovery = f.Cfg.QueryScheduler.ServiceDiscovery
 
 	return f.MemberlistKV, nil
 }
 
 func (f *Phlare) initRing() (_ services.Service, err error) {
-	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", f.logger, prometheus.WrapRegistererWithPrefix("phlare_", f.reg))
+	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", log.With(f.logger, "component", "ring"), prometheus.WrapRegistererWithPrefix("phlare_", f.reg))
 	if err != nil {
 		return nil, err
 	}

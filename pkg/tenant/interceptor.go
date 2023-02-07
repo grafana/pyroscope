@@ -2,6 +2,7 @@ package tenant
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/bufbuild/connect-go"
@@ -46,7 +47,12 @@ func (i *authInterceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 			return next(InjectTenantID(ctx, DefaultTenantID), req)
 		}
 		_, ctx, _ = ExtractTenantIDFromHeaders(ctx, req.Header())
-		return next(ctx, req)
+
+		resp, err := next(ctx, req)
+		if err != nil && errors.Is(err, ErrNoTenantID) {
+			return resp, connect.NewError(connect.CodeUnauthenticated, err)
+		}
+		return resp, err
 	}
 }
 
@@ -67,7 +73,13 @@ func (i *authInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc
 			return next(InjectTenantID(ctx, DefaultTenantID), conn)
 		}
 		_, ctx, _ = ExtractTenantIDFromHeaders(ctx, conn.RequestHeader())
-		return next(ctx, conn)
+		if err := next(ctx, conn); err != nil {
+			if errors.Is(err, ErrNoTenantID) {
+				return connect.NewError(connect.CodeUnauthenticated, err)
+			}
+			return err
+		}
+		return nil
 	}
 }
 

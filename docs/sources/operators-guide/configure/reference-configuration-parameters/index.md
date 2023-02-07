@@ -161,6 +161,15 @@ client:
 # The querier block configures the querier.
 [querier: <querier>]
 
+# The query_frontend block configures the query-frontend.
+[frontend: <query_frontend>]
+
+# The frontend_worker block configures the frontend-worker.
+[frontend_worker: <frontend_worker>]
+
+# The query_scheduler block configures the query-scheduler.
+[query_scheduler: <query_scheduler>]
+
 # The ingester block configures the ingester.
 [ingester: <ingester>]
 
@@ -761,6 +770,198 @@ pool_config:
 # Time to wait before sending more than the minimum successful query requests.
 # CLI flag: -querier.extra-query-delay
 [extra_query_delay: <duration> | default = 0s]
+```
+
+### query_frontend
+
+The `query_frontend` block configures the query-frontend.
+
+```yaml
+# Number of concurrent workers forwarding queries to single query-scheduler.
+# CLI flag: -query-frontend.scheduler-worker-concurrency
+[scheduler_worker_concurrency: <int> | default = 5]
+
+# Configures the gRPC client used to communicate between the query-frontends and
+# the query-schedulers.
+# The CLI flags prefix for this block configuration is:
+# query-frontend.grpc-client-config
+[grpc_client_config: <grpc_client>]
+
+# List of network interface names to look up when finding the instance IP
+# address. This address is sent to query-scheduler and querier, which uses it to
+# send the query response back to query-frontend.
+# CLI flag: -query-frontend.instance-interface-names
+[instance_interface_names: <list of strings> | default = [<private network interfaces>]]
+
+# IP address to advertise to the querier (via scheduler) (default is
+# auto-detected from network interfaces).
+# CLI flag: -query-frontend.instance-addr
+[address: <string> | default = ""]
+```
+
+### frontend_worker
+
+The `frontend_worker` block configures the frontend-worker.
+
+```yaml
+# Querier ID, sent to the query-frontend to identify requests from the same
+# querier. Defaults to hostname.
+# CLI flag: -querier.id
+[id: <string> | default = ""]
+
+# Configures the gRPC client used to communicate between the queriers and the
+# query-frontends / query-schedulers.
+# The CLI flags prefix for this block configuration is: querier.frontend-client
+[grpc_client_config: <grpc_client>]
+```
+
+### query_scheduler
+
+The `query_scheduler` block configures the query-scheduler.
+
+```yaml
+# Maximum number of outstanding requests per tenant per query-scheduler.
+# In-flight requests above this limit will fail with HTTP response status code
+# 429.
+# CLI flag: -query-scheduler.max-outstanding-requests-per-tenant
+[max_outstanding_requests_per_tenant: <int> | default = 100]
+
+# If a querier disconnects without sending notification about graceful shutdown,
+# the query-scheduler will keep the querier in the tenant's shard until the
+# forget delay has passed. This feature is useful to reduce the blast radius
+# when shuffle-sharding is enabled.
+# CLI flag: -query-scheduler.querier-forget-delay
+[querier_forget_delay: <duration> | default = 0s]
+
+# This configures the gRPC client used to report errors back to the
+# query-frontend.
+# The CLI flags prefix for this block configuration is:
+# query-scheduler.grpc-client-config
+[grpc_client_config: <grpc_client>]
+
+# The maximum number of query-scheduler instances to use, regardless how many
+# replicas are running. This option can be set only when
+# -query-scheduler.service-discovery-mode is set to 'ring'. 0 to use all
+# available query-scheduler instances.
+# CLI flag: -query-scheduler.max-used-instances
+[max_used_instances: <int> | default = 0]
+```
+
+### grpc_client
+
+The `grpc_client` block configures the gRPC client used to communicate between two Phlare components. The supported CLI flags `<prefix>` used to reference this configuration block are:
+
+- `querier.frontend-client`
+- `query-frontend.grpc-client-config`
+- `query-scheduler.grpc-client-config`
+
+&nbsp;
+
+```yaml
+# gRPC client max receive message size (bytes).
+# CLI flag: -<prefix>.grpc-max-recv-msg-size
+[max_recv_msg_size: <int> | default = 104857600]
+
+# gRPC client max send message size (bytes).
+# CLI flag: -<prefix>.grpc-max-send-msg-size
+[max_send_msg_size: <int> | default = 104857600]
+
+# Use compression when sending messages. Supported values are: 'gzip', 'snappy'
+# and '' (disable compression)
+# CLI flag: -<prefix>.grpc-compression
+[grpc_compression: <string> | default = ""]
+
+# Rate limit for gRPC client; 0 means disabled.
+# CLI flag: -<prefix>.grpc-client-rate-limit
+[rate_limit: <float> | default = 0]
+
+# Rate limit burst for gRPC client.
+# CLI flag: -<prefix>.grpc-client-rate-limit-burst
+[rate_limit_burst: <int> | default = 0]
+
+# Enable backoff and retry when we hit ratelimits.
+# CLI flag: -<prefix>.backoff-on-ratelimits
+[backoff_on_ratelimits: <boolean> | default = false]
+
+backoff_config:
+  # Minimum delay when backing off.
+  # CLI flag: -<prefix>.backoff-min-period
+  [min_period: <duration> | default = 100ms]
+
+  # Maximum delay when backing off.
+  # CLI flag: -<prefix>.backoff-max-period
+  [max_period: <duration> | default = 10s]
+
+  # Number of times to backoff and retry before failing.
+  # CLI flag: -<prefix>.backoff-retries
+  [max_retries: <int> | default = 10]
+
+# Enable TLS in the GRPC client. This flag needs to be enabled when any other
+# TLS flag is set. If set to false, insecure connection to gRPC server will be
+# used.
+# CLI flag: -<prefix>.tls-enabled
+[tls_enabled: <boolean> | default = false]
+
+# Path to the client certificate file, which will be used for authenticating
+# with the server. Also requires the key path to be configured.
+# CLI flag: -<prefix>.tls-cert-path
+[tls_cert_path: <string> | default = ""]
+
+# Path to the key file for the client certificate. Also requires the client
+# certificate to be configured.
+# CLI flag: -<prefix>.tls-key-path
+[tls_key_path: <string> | default = ""]
+
+# Path to the CA certificates file to validate server certificate against. If
+# not set, the host's root CA certificates are used.
+# CLI flag: -<prefix>.tls-ca-path
+[tls_ca_path: <string> | default = ""]
+
+# Override the expected name on the server certificate.
+# CLI flag: -<prefix>.tls-server-name
+[tls_server_name: <string> | default = ""]
+
+# Skip validating server certificate.
+# CLI flag: -<prefix>.tls-insecure-skip-verify
+[tls_insecure_skip_verify: <boolean> | default = false]
+
+# Override the default cipher suite list (separated by commas). Allowed values:
+# 
+# Secure Ciphers:
+# - TLS_RSA_WITH_AES_128_CBC_SHA
+# - TLS_RSA_WITH_AES_256_CBC_SHA
+# - TLS_RSA_WITH_AES_128_GCM_SHA256
+# - TLS_RSA_WITH_AES_256_GCM_SHA384
+# - TLS_AES_128_GCM_SHA256
+# - TLS_AES_256_GCM_SHA384
+# - TLS_CHACHA20_POLY1305_SHA256
+# - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+# - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+# - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+# - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+# - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+# - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+# - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+# - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+# - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+# - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+# 
+# Insecure Ciphers:
+# - TLS_RSA_WITH_RC4_128_SHA
+# - TLS_RSA_WITH_3DES_EDE_CBC_SHA
+# - TLS_RSA_WITH_AES_128_CBC_SHA256
+# - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
+# - TLS_ECDHE_RSA_WITH_RC4_128_SHA
+# - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+# - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+# - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+# CLI flag: -<prefix>.tls-cipher-suites
+[tls_cipher_suites: <string> | default = ""]
+
+# Override the default minimum TLS version. Allowed values: VersionTLS10,
+# VersionTLS11, VersionTLS12, VersionTLS13
+# CLI flag: -<prefix>.tls-min-version
+[tls_min_version: <string> | default = ""]
 ```
 
 ### memberlist

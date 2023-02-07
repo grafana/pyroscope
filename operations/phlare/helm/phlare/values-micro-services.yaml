@@ -13,6 +13,24 @@ phlare:
         requests:
           memory: 256Mi
           cpu: 100m
+    query-frontend:
+      kind: Deployment
+      replicaCount: 2
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 100m
+    query-scheduler:
+      kind: Deployment
+      replicaCount: 2
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 100m
     distributor:
       kind: Deployment
       replicaCount: 2
