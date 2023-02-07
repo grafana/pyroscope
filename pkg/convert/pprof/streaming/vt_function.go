@@ -8,6 +8,9 @@ import (
 
 // revive:disable-next-line:cognitive-complexity,cyclomatic necessary complexity
 func (m *function) UnmarshalVT(dAtA []byte) error {
+	m.id = 0
+	m.name = 0
+	m.filename = 0
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
