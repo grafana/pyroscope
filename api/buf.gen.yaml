@@ -8,11 +8,11 @@ managed:
 
 plugins:
   - name: go
-    out: api/gen/proto/go
+    out: gen/proto/go
     opt: paths=source_relative
 
   - name: go-vtproto
-    out: api/gen/proto/go
+    out: gen/proto/go
     opt:
       - paths=source_relative
       - features=marshal+unmarshal+size+pool+grpc+pool
@@ -20,19 +20,19 @@ plugins:
       - pool=github.com/grafana/phlare/api/gen/proto/go/google/v1.Sample
 
   - name: connect-go
-    out: api/gen/proto/go
+    out: gen/proto/go
     opt: paths=source_relative
 
   - name: connect-go-mux
-    out: api/gen/proto/go
+    out: gen/proto/go
     opt: paths=source_relative
 
   - name: grpc-gateway
-    out: api/gen/proto/go
+    out: gen/proto/go
     opt:
       - paths=source_relative
 
   - name: openapiv2
-    out: api/openapiv2/gen/
+    out: openapiv2/gen/
     strategy: all
     opt: allow_merge=true,merge_file_name=phlare

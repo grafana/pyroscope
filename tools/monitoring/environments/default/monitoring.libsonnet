@@ -48,10 +48,10 @@ prometheus {
       datasources: [
         prom_k_grafana.grafana_datasource(
           'phlare',
-          'http://phlare-micro-services-querier.default.svc.cluster.local.:4100',
+          'http://phlare-micro-services-query-frontend.default.svc.cluster.local.:4100',
           type='phlare'
         ) + grafana.datasource.withJsonData({
-          path: 'http://phlare-micro-services-querier.default.svc.cluster.local.:4100/',
+          path: 'http://phlare-micro-services-query-frontend.default.svc.cluster.local.:4100/',
         },),
       ],
     }),

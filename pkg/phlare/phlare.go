@@ -33,12 +33,16 @@ import (
 	"github.com/grafana/phlare/pkg/agent"
 	"github.com/grafana/phlare/pkg/cfg"
 	"github.com/grafana/phlare/pkg/distributor"
+	frontend "github.com/grafana/phlare/pkg/frontend"
 	"github.com/grafana/phlare/pkg/ingester"
 	"github.com/grafana/phlare/pkg/objstore"
 	objstoreclient "github.com/grafana/phlare/pkg/objstore/client"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb"
 	"github.com/grafana/phlare/pkg/querier"
+	"github.com/grafana/phlare/pkg/querier/worker"
+	"github.com/grafana/phlare/pkg/scheduler"
+	"github.com/grafana/phlare/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/phlare/pkg/tenant"
 	"github.com/grafana/phlare/pkg/tracing"
 	"github.com/grafana/phlare/pkg/usagestats"
@@ -46,15 +50,18 @@ import (
 )
 
 type Config struct {
-	Target       flagext.StringSliceCSV `yaml:"target,omitempty"`
-	AgentConfig  agent.Config           `yaml:",inline"`
-	Server       server.Config          `yaml:"server,omitempty"`
-	Distributor  distributor.Config     `yaml:"distributor,omitempty"`
-	Querier      querier.Config         `yaml:"querier,omitempty"`
-	Ingester     ingester.Config        `yaml:"ingester,omitempty"`
-	MemberlistKV memberlist.KVConfig    `yaml:"memberlist"`
-	PhlareDB     phlaredb.Config        `yaml:"phlaredb,omitempty"`
-	Tracing      tracing.Config         `yaml:"tracing"`
+	Target         flagext.StringSliceCSV `yaml:"target,omitempty"`
+	AgentConfig    agent.Config           `yaml:",inline"`
+	Server         server.Config          `yaml:"server,omitempty"`
+	Distributor    distributor.Config     `yaml:"distributor,omitempty"`
+	Querier        querier.Config         `yaml:"querier,omitempty"`
+	Frontend       frontend.Config        `yaml:"frontend,omitempty"`
+	Worker         worker.Config          `yaml:"frontend_worker"`
+	QueryScheduler scheduler.Config       `yaml:"query_scheduler"`
+	Ingester       ingester.Config        `yaml:"ingester,omitempty"`
+	MemberlistKV   memberlist.KVConfig    `yaml:"memberlist"`
+	PhlareDB       phlaredb.Config        `yaml:"phlaredb,omitempty"`
+	Tracing        tracing.Config         `yaml:"tracing"`
 
 	Storage StorageConfig `yaml:"storage"`
 
@@ -115,14 +122,21 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	// but we can take values from throwaway flag set and reregister into supplied flags with new default values.
 	c.Server.RegisterFlags(throwaway)
 	c.Ingester.RegisterFlags(throwaway)
+	c.Frontend.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
+	c.QueryScheduler.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
+	c.Worker.RegisterFlags(throwaway)
 
 	throwaway.VisitAll(func(f *flag.Flag) {
 		// Ignore errors when setting new values. We have a test to verify that it works.
 		switch f.Name {
 		case "server.http-listen-port":
 			_ = f.Value.Set("4100")
+		case "query-frontend.instance-port":
+			_ = f.Value.Set("4100")
 		case "distributor.replication-factor":
 			_ = f.Value.Set("1")
+		case "query-scheduler.service-discovery-mode":
+			_ = f.Value.Set(schedulerdiscovery.ModeRing)
 		}
 		fs.Var(f.Value, f.Name, f.Usage)
 	})
@@ -140,6 +154,11 @@ func (c *Config) Validate() error {
 
 func (c *Config) ApplyDynamicConfig() cfg.Source {
 	c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store = "memberlist"
+	c.Frontend.QuerySchedulerDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
+	c.Worker.QuerySchedulerDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
+	c.QueryScheduler.ServiceDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
+	c.Worker.MaxConcurrentRequests = 4 // todo we might want this as a config flags.
+
 	return func(dst cfg.Cloneable) error {
 		r, ok := dst.(*Config)
 		if !ok {
@@ -249,19 +268,23 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(Querier, f.initQuerier)
 	mm.RegisterModule(Agent, f.initAgent)
 	mm.RegisterModule(UsageReport, f.initUsageReport)
+	mm.RegisterModule(QueryFrontend, f.initQueryFrontend)
+	mm.RegisterModule(QueryScheduler, f.initQueryScheduler)
 	mm.RegisterModule(All, nil)
 
 	// Add dependencies
 	deps := map[string][]string{
-		All:          {Agent, Ingester, Distributor, Querier},
-		UsageReport:  {Storage, MemberlistKV},
-		Distributor:  {Ring, Server, UsageReport},
-		Querier:      {Ring, Server, UsageReport},
-		Agent:        {Server},
-		Ingester:     {Server, MemberlistKV, Storage, UsageReport},
-		Ring:         {Server, MemberlistKV},
-		MemberlistKV: {Server},
-		Server:       {GRPCGateway},
+		All:            {Agent, Ingester, Distributor, QueryScheduler, QueryFrontend, Querier},
+		UsageReport:    {Storage, MemberlistKV},
+		Distributor:    {Ring, Server, UsageReport},
+		Querier:        {Server, MemberlistKV, Ring, UsageReport},
+		QueryFrontend:  {Server, MemberlistKV, UsageReport},
+		QueryScheduler: {Server, MemberlistKV, UsageReport}, // todo: add overrides
+		Agent:          {Server},
+		Ingester:       {Server, MemberlistKV, Storage, UsageReport},
+		Ring:           {Server, MemberlistKV},
+		MemberlistKV:   {Server},
+		Server:         {GRPCGateway},
 
 		// Querier:                  {Store, Ring, Server, IngesterQuerier, TenantConfigs, UsageReport},
 		// QueryFrontendTripperware: {Server, Overrides, TenantConfigs},

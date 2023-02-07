@@ -665,6 +665,54 @@ spec:
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/component: "querier"
 ---
+# Source: phlare/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phlare-dev-query-frontend
+  labels:
+    helm.sh/chart: phlare-0.1.3
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.1.2"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "query-frontend"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4100
+      targetPort: http2
+      protocol: TCP
+      name: http2
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/component: "query-frontend"
+---
+# Source: phlare/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phlare-dev-query-scheduler
+  labels:
+    helm.sh/chart: phlare-0.1.3
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.1.2"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "query-scheduler"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4100
+      targetPort: http2
+      protocol: TCP
+      name: http2
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/component: "query-scheduler"
+---
 # Source: phlare/templates/deployments-statefulsets.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -866,6 +914,162 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=querier"
+            - "-memberlist.cluster-label=default-phlare-dev"
+            - "-memberlist.join=phlare-dev-memberlist.default.svc.cluster.local."
+            - "-config.file=/etc/phlare/config.yaml"
+            - "-log.level=debug"
+          ports:
+            - name: http2
+              containerPort: 4100
+              protocol: TCP
+            - name: memberlist
+              containerPort: 7946
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http2
+          volumeMounts:
+            - name: config
+              mountPath: /etc/phlare/config.yaml
+              subPath: config.yaml
+            - name: data
+              mountPath: /data
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: phlare-dev-config
+        - name: data
+          emptyDir: {}
+---
+# Source: phlare/templates/deployments-statefulsets.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phlare-dev-query-frontend
+  labels:
+    helm.sh/chart: phlare-0.1.3
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.1.2"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "query-frontend"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: phlare
+      app.kubernetes.io/instance: phlare-dev
+      app.kubernetes.io/component: "query-frontend"
+  template:
+    metadata:
+      annotations:
+        checksum/config: dac4b4ee80ee3e81bd96c0df7a55044281aff3104e08a4f5c30ac7c4d49f5a49
+        phlare.grafana.com/port: "4100"
+        phlare.grafana.com/scrape: "true"
+      labels:
+        app.kubernetes.io/name: phlare
+        app.kubernetes.io/instance: phlare-dev
+        app.kubernetes.io/component: "query-frontend"
+        name: "query-frontend"
+    spec:
+      serviceAccountName: phlare-dev
+      securityContext:
+        fsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: "query-frontend"
+          securityContext:
+            {}
+          image: "grafana/phlare:0.1.1"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-target=query-frontend"
+            - "-memberlist.cluster-label=default-phlare-dev"
+            - "-memberlist.join=phlare-dev-memberlist.default.svc.cluster.local."
+            - "-config.file=/etc/phlare/config.yaml"
+            - "-log.level=debug"
+          ports:
+            - name: http2
+              containerPort: 4100
+              protocol: TCP
+            - name: memberlist
+              containerPort: 7946
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http2
+          volumeMounts:
+            - name: config
+              mountPath: /etc/phlare/config.yaml
+              subPath: config.yaml
+            - name: data
+              mountPath: /data
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: phlare-dev-config
+        - name: data
+          emptyDir: {}
+---
+# Source: phlare/templates/deployments-statefulsets.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phlare-dev-query-scheduler
+  labels:
+    helm.sh/chart: phlare-0.1.3
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.1.2"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "query-scheduler"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: phlare
+      app.kubernetes.io/instance: phlare-dev
+      app.kubernetes.io/component: "query-scheduler"
+  template:
+    metadata:
+      annotations:
+        checksum/config: dac4b4ee80ee3e81bd96c0df7a55044281aff3104e08a4f5c30ac7c4d49f5a49
+        phlare.grafana.com/port: "4100"
+        phlare.grafana.com/scrape: "true"
+      labels:
+        app.kubernetes.io/name: phlare
+        app.kubernetes.io/instance: phlare-dev
+        app.kubernetes.io/component: "query-scheduler"
+        name: "query-scheduler"
+    spec:
+      serviceAccountName: phlare-dev
+      securityContext:
+        fsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: "query-scheduler"
+          securityContext:
+            {}
+          image: "grafana/phlare:0.1.1"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-target=query-scheduler"
             - "-memberlist.cluster-label=default-phlare-dev"
             - "-memberlist.join=phlare-dev-memberlist.default.svc.cluster.local."
             - "-config.file=/etc/phlare/config.yaml"

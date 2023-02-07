@@ -144,6 +144,16 @@
     {
       "source": {
         "git": {
+          "remote": "https://github.com/jsonnet-libs/docsonnet.git",
+          "subdir": "doc-util"
+        }
+      },
+      "version": "01f689fb4a2d93f0fa4415491e95ea3ca641d6d8",
+      "sum": "yRBlDzGmyJ4eTdfftx51XrRW1fcBrtym+/yJENZywyE="
+    },
+    {
+      "source": {
+        "git": {
           "remote": "https://github.com/jsonnet-libs/k8s-libsonnet.git",
           "subdir": "1.20"
         }

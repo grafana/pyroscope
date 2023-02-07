@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Provenance-includes-location: https://github.com/cortexproject/cortex/blob/master/pkg/querier/stats/stats.proto
+// Provenance-includes-license: Apache-2.0
+// Provenance-includes-copyright: The Cortex Authors.
+
+syntax = "proto3";
+
+package stats;
+
+option go_package = "stats";
+
+message Stats {
+  // The sum of all wall time spent in the querier to execute the query.
+  int64 wall_time = 1;
+  // The number of series fetched for the query
+  uint64 fetched_series_count = 2;
+  // The number of bytes of the chunks fetched for the query
+  uint64 fetched_chunk_bytes = 3;
+  // The number of chunks fetched for the query
+  uint64 fetched_chunks_count = 4;
+  // The number of sharded queries executed. 0 if sharding is disabled or the query can't be sharded.
+  uint32 sharded_queries = 5;
+  // The number of split partial queries executed. 0 if splitting is disabled or the query can't be split.
+  uint32 split_queries = 6;
+  // The number of index bytes fetched on the store-gateway for the query
+  uint64 fetched_index_bytes = 7;
+}

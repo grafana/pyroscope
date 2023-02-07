@@ -315,3 +315,11 @@ func NewHTTPMetricMiddleware(mux *mux.Router, namespace string, reg prometheus.R
 		InflightRequests: inflightRequests,
 	}, nil
 }
+
+// WriteHTMLResponse sends message as text/html response with 200 status code.
+func WriteHTMLResponse(w http.ResponseWriter, message string) {
+	w.Header().Set("Content-Type", "text/html")
+
+	// Ignore inactionable errors.
+	_, _ = w.Write([]byte(message))
+}

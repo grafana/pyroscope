@@ -48,13 +48,16 @@ test: go/test ## Run unit tests
 .PHONY: generate
 generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/protoc-gen-openapiv2 $(BIN)/protoc-gen-grpc-gateway $(BIN)/protoc-gen-connect-go $(BIN)/protoc-gen-connect-go-mux $(BIN)/gomodifytags ## Regenerate protobuf
 	rm -Rf api/openapiv2/gen/ api/gen
-	PATH=$(BIN) $(BIN)/buf generate
+	find pkg/ \( -name \*.pb.go -o -name \*.connect\*.go \) -delete
+	cd api/ && PATH=$(BIN) $(BIN)/buf generate
+	cd pkg && PATH=$(BIN) $(BIN)/buf generate
 	PATH=$(BIN):$(PATH) ./tools/add-parquet-tags.sh
 	go run ./tools/doc-generator/ ./docs/sources/operators-guide/configure/reference-configuration-parameters/index.template > docs/sources/operators-guide/configure/reference-configuration-parameters/index.md
 
 .PHONY: buf/lint
 buf/lint: $(BIN)/buf
-	$(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
+	cd api/ && $(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
+	cd pkg && $(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
@@ -120,7 +123,8 @@ fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint er
 	git ls-files '*.go' | grep -v 'vendor/' | xargs gofmt -s -w
 	# TODO: Reenable once golangci-lint support go 1.18 properly
 	# $(BIN)/golangci-lint run --fix
-	$(BIN)/buf format -w .
+	cd api/ && $(BIN)/buf format -w .
+	cd pkg && $(BIN)/buf format -w .
 	$(BIN)/tk fmt ./operations/phlare/jsonnet/ tools/monitoring/
 
 .PHONY: check/unstaged-changes
@@ -227,7 +231,7 @@ $(BIN)/kind: Makefile go.mod
 
 $(BIN)/tk: Makefile go.mod $(BIN)/jb
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/grafana/tanka/cmd/tk@v0.22.1
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grafana/tanka/cmd/tk@v0.24.0
 
 $(BIN)/jb: Makefile go.mod
 	@mkdir -p $(@D)

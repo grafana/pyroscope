@@ -22,6 +22,7 @@ Most components are stateless and do not require any data persisted between proc
 ### The write path
 
 [//]: # "To edit open with https://mermaid.live/edit#pako{...}"
+
 <p align="center">
   <img alt="Architecture of Grafana Phlare's write path" width="200px" src="https://mermaid.ink/svg/pako:eNqNUc9PwyAU_lcavGzJtrqi3cbBg9GzB008rDtQeLQoLQ08nMvS_11onHr09vH9gvc4E2ElEEaUsUfRcofZy33VZ1nw4Gb7V6cR_GGeLZd3mdQena4DWpccf46TrPsGPMKkXfAkWJ8o62f7p_oNBGY-RuAwT6zHk4HpskxpY9iV2qlF7LXvwK4opd94edQSW1YMn78h6_8dIQvSgeu4lnHSc6qoCLbQQUVYhBIUDwYrUvVjtIZBcoRHqeMzCVPceFgQHud8PvWCMHQBLqYHzRvHux-XsVxCDJ0Jnoa01iYuKVYK2yvdJD44E-kWcfAsz5O8ajS2oV4J2-Vey_QH7ceuzMui3PKCQrmh_JZSKer1bquKm7WSm-t1wck4jl9KVZdq" />
   </a>
@@ -43,12 +44,17 @@ By default, each profile series is replicated to three ingesters, and each inges
 ### The read path
 
 [//]: # "To edit open with https://mermaid.live/edit#pako{...}"
+
 <p align="center">
-  <img alt="Architecture of Grafana Phlare's read path" width="400px" src="https://mermaid.ink/svg/pako:eNqNkTFPwzAQhf-K5S6t1DY0gbTxwIBgRgK2poNrnxODEwf7TKmq_HfsqoDExPb03vfO9vlEhZVAGVXGHkTLHZKXu7onJHhw0-0TcOl3M7JY3JL3AE6DS-FFnm3dN-Dxr0-E7WJCvLX9GbM-AdZPt4_7VxBIPFoHu1lyPR4NnE8kShvDJqpSc4_OvgGbFEVx0YuDltiyfPj8LVn_7wqd0w5cx7WMzz2lETXFFjqoKYtSguLBYE3rfoxoGCRHeJA6XpMyxY2HOeUB7fOxF5ShC_AN3WveON79UMZyCbF0ongc0m4b7TGOFLZXukl-cCbaLeLgWZaleNlobMN-GdeWeS3TR7QfVZmVebnheQHluuA3RSHFflVtVH69UnJ9tco5HcfxC3-dl_E" />
+  <img alt="Architecture of Grafana Phlare's read path" width="400px" src="https://mermaid.ink/svg/pako:eNqNkU1PwzAMQP9KlF02aV1ZC92WAwcEZyTgtu6QNU4bSJOSOIxq6n8nnfg-7eY8P1uOfaSVFUAZldoeqoY7JE83pSEkeHDT7QNw4XczkiTX5DWA6xPprEEwYnT-kl-SrxoQQYP7shS4c9LK1ODxPyeVbWOGeGvNSbN-FKyfbu_3z1Ah8Wgd7GYj9dhrOE1PpNKaTeRGzj06-wJskuf5Z5wclMCGZd37T5H1Z5fQOW3BtVyJuLrj2KKk2EALJWUxFCB50FjS0gxR5QHtY28qytAFmNPQCY5wq3jteEuZ5Np_0zuh4me-obZcQHweKfbdeKdaeYwtK2ukqkcenI64Qew8S9MxvagVNmG_iGtLvRLjUZu3TZEWWbHmWQ7FKudXeS6q_XKzltnlUorVxTLjdBiGD-Nas38" />
   </a>
 </p>
 
-Queries coming into Grafana Phlare arrive at the [querier]({{< relref "../components/querier" >}}). The queriers connect to the ingesters to fetch all the data needed to execute a query. For more information about how the query is executed, refer to [querier]({{< relref "../components/querier.md" >}}).
+Queries coming into Grafana Phlare arrive at [query-frontend]({{< relref "../components/query-frontend" >}}) component which is responsible for accelerating queries and dispatching them to the [query-scheduler]({{< relref "../components/query-scheduler" >}}).
+
+The [query-scheduler]({{< relref "../components/query-scheduler" >}}) maintains a queue of queries and ensures that each tenant's queries are fairly executed.
+
+The [querier]({{< relref "../components/querier" >}}) act as workers, pulling queries from the queue in the query-scheduler. The queriers connect to the ingesters to fetch all the data needed to execute a query. For more information about how the query is executed, refer to [querier]({{< relref "../components/querier.md" >}}).
 
 ## Long-term storage
 
