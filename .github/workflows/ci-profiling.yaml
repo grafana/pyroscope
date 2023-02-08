@@ -77,3 +77,5 @@ jobs:
         run: yarn install --frozen-lockfile
       - name: Run tests and upload
         run: pyroscope-ci exec --apiKey=${{ secrets.PYROSCOPE_CLOUD_TOKEN }} yarn test --no-cache --max-workers=1
+        env:
+          DEBUG: 'pyroscope*'
