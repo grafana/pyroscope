@@ -722,7 +722,7 @@ func (h *Head) Close() error {
 
 // Flush closes the head and writes data to disk
 func (h *Head) Flush(ctx context.Context) error {
-	if len(h.profiles.slice) == 0 {
+	if h.profiles.empty() {
 		level.Info(h.logger).Log("msg", "head empty - no block written")
 		return os.RemoveAll(h.headPath)
 	}

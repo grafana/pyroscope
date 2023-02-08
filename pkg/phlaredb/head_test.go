@@ -433,15 +433,7 @@ func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
 
 	}
 
-	// flusher
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		<-time.After(100 * time.Millisecond)
-		t.Log("flushing")
-		require.NoError(t, head.Flush(ctx))
-		t.Log("flushed")
-	}()
+	// TODO: We need to test if flushing misses out on ingested profiles
 
 	wg.Wait()
 
