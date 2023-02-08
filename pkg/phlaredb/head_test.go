@@ -2,7 +2,9 @@ package phlaredb
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,11 +25,10 @@ import (
 
 func newTestHead(t testing.TB) *testHead {
 	dataPath := t.TempDir()
-	reg := prometheus.NewPedanticRegistry()
-	ctx := phlarecontext.WithRegistry(context.Background(), reg)
+	ctx := testContext(t)
 	head, err := NewHead(ctx, Config{DataPath: dataPath})
 	require.NoError(t, err)
-	return &testHead{Head: head, t: t, reg: reg}
+	return &testHead{Head: head, t: t, reg: phlarecontext.Registry(ctx).(*prometheus.Registry)}
 }
 
 type testHead struct {
@@ -240,9 +241,9 @@ func TestHeadIngestStacktraces(t *testing.T) {
 	ctx := context.Background()
 	head := newTestHead(t)
 
-	require.NoError(t, head.Ingest(ctx, newProfileFoo(), uuid.New()))
-	require.NoError(t, head.Ingest(ctx, newProfileBar(), uuid.New()))
-	require.NoError(t, head.Ingest(ctx, newProfileBar(), uuid.New()))
+	require.NoError(t, head.Ingest(ctx, newProfileFoo(), uuid.MustParse("00000000-0000-0000-0000-00000000000a")))
+	require.NoError(t, head.Ingest(ctx, newProfileBar(), uuid.MustParse("00000000-0000-0000-0000-00000000000b")))
+	require.NoError(t, head.Ingest(ctx, newProfileBar(), uuid.MustParse("00000000-0000-0000-0000-00000000000c")))
 
 	// expect 2 mappings
 	require.Equal(t, 2, len(head.mappings.slice))
@@ -351,6 +352,91 @@ func TestHeadIngestRealProfiles(t *testing.T) {
 
 	require.NoError(t, head.Flush(ctx))
 	t.Logf("strings=%d samples=%d", len(head.strings.slice), head.totalSamples.Load())
+}
+
+// TestHead_Concurrent_Ingest_Querying tests that the head can handle concurrent reads and writes.
+func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
+
+	var (
+		ctx = testContext(t)
+		cfg = Config{
+			DataPath: t.TempDir(),
+		}
+		head, err = NewHead(ctx, cfg)
+	)
+	require.NoError(t, err)
+
+	// force different row group segements for profiles
+	head.profiles.cfg = &ParquetConfig{MaxRowGroupBytes: 128000, MaxBufferRowCount: 10}
+
+	wg := sync.WaitGroup{}
+
+	profilesPerSeries := 33
+
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		// ingester
+		go func(i int) {
+			defer wg.Done()
+			tick := time.NewTicker(time.Millisecond)
+			defer tick.Stop()
+			for j := 0; j < profilesPerSeries; j++ {
+				<-tick.C
+				require.NoError(t, ingestThreeProfileStreams(ctx, profilesPerSeries*i+j, head.Ingest))
+			}
+			t.Logf("ingest stream %s done", streams[i])
+		}(i)
+
+		// querier
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			tick := time.NewTicker(time.Millisecond)
+			defer tick.Stop()
+
+			var tsToBeSeen = make(map[int64]struct{}, profilesPerSeries)
+			for j := 0; j < profilesPerSeries; j++ {
+				tsToBeSeen[int64(j*3+i)] = struct{}{}
+			}
+
+			for j := 0; j < 50; j++ {
+				<-tick.C
+				// now query the store
+				params := &ingestv1.SelectProfilesRequest{
+					Start:         0,
+					End:           1000000000000,
+					LabelSelector: fmt.Sprintf(`{stream="%s"}`, streams[i]),
+					Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				}
+
+				queriers := head.Queriers()
+
+				pIt, err := queriers.SelectMatchingProfiles(ctx, params)
+				require.NoError(t, err)
+
+				for pIt.Next() {
+					ts := pIt.At().Timestamp().Unix()
+					if (ts % 3) != int64(i) {
+						panic("unexpected timestamp")
+					}
+					delete(tsToBeSeen, ts)
+				}
+
+				// finish once we have all the profiles
+				if len(tsToBeSeen) == 0 {
+					break
+				}
+			}
+			t.Logf("read stream %s done", streams[i])
+		}(i)
+
+	}
+
+	// TODO: We need to test if flushing misses out on ingested profiles
+
+	wg.Wait()
+
 }
 
 func BenchmarkHeadIngestProfiles(t *testing.B) {

@@ -86,9 +86,9 @@ func (f *fakeBidiServerMergeProfilesStacktraces) Receive() (*ingestv1.MergeProfi
 	return res, nil
 }
 
-func (f *PhlareDB) ingesterClient() (ingesterv1connect.IngesterServiceClient, func()) {
+func (q Queriers) ingesterClient() (ingesterv1connect.IngesterServiceClient, func()) {
 	mux := http.NewServeMux()
-	mux.Handle(ingesterv1connect.NewIngesterServiceHandler(&ingesterHandlerPhlareDB{f}))
+	mux.Handle(ingesterv1connect.NewIngesterServiceHandler(&ingesterHandlerPhlareDB{q}))
 	serv := testhelper.NewInMemoryServer(mux)
 
 	var httpClient *http.Client = serv.Client()
@@ -101,7 +101,8 @@ func (f *PhlareDB) ingesterClient() (ingesterv1connect.IngesterServiceClient, fu
 }
 
 type ingesterHandlerPhlareDB struct {
-	*PhlareDB
+	Queriers
+	// *PhlareDB
 }
 
 func (i *ingesterHandlerPhlareDB) Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
@@ -154,7 +155,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	// create client
 	ctx := context.Background()
 
-	client, cleanup := db.ingesterClient()
+	client, cleanup := db.Queriers().ingesterClient()
 	defer cleanup()
 
 	t.Run("request the one existing series", func(t *testing.T) {
@@ -179,7 +180,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 			Profiles: []bool{true},
 		}))
 
-		// expect empty resp to signal it is finished
+		// expect empty response
 		resp, err = bidi.Receive()
 		require.NoError(t, err)
 		require.Nil(t, resp.Result)
@@ -282,7 +283,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 	// create client
 	ctx := context.Background()
 
-	client, cleanup := db.ingesterClient()
+	client, cleanup := db.Queriers().ingesterClient()
 	defer cleanup()
 
 	t.Run("request the one existing series", func(t *testing.T) {

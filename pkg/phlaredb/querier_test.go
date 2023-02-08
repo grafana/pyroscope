@@ -54,7 +54,7 @@ func TestQueryIndex(t *testing.T) {
 	}
 
 	tmpFile := t.TempDir() + "/test.db"
-	err = a.WriteTo(context.Background(), tmpFile)
+	_, err = a.writeTo(context.Background(), tmpFile)
 	require.NoError(t, err)
 
 	r, err := index.NewFileReader(tmpFile)
