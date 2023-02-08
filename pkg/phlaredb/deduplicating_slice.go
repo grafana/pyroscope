@@ -103,7 +103,7 @@ func (s *deduplicatingSlice[M, K, H, P]) maxRowsPerRowGroup() int {
 	return int(maxRows)
 }
 
-func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups uint64, err error) {
+func (s *deduplicatingSlice[M, K, H, P]) Flush(ctx context.Context) (numRows uint64, numRowGroups uint64, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -167,11 +167,6 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush() (numRows uint64, numRowGroups u
 	return uint64(rowsFlushed), uint64(rowGroupsFlushed), nil
 }
 
-func (s *deduplicatingSlice[M, K, H, P]) isDeduplicating() bool {
-	var k K
-	return !isNoKey(k)
-}
-
 func (s *deduplicatingSlice[M, K, H, P]) ingest(ctx context.Context, elems []M, rewriter *rewriter) error {
 	var (
 		rewritingMap = make(map[int64]int64)
@@ -183,20 +178,6 @@ func (s *deduplicatingSlice[M, K, H, P]) ingest(ctx context.Context, elems []M, 
 		if err := s.helper.rewrite(rewriter, elems[pos]); err != nil {
 			return err
 		}
-	}
-
-	// shortcut if not deduplication is requested
-	if !s.isDeduplicating() {
-		s.lock.Lock()
-		defer s.lock.Unlock()
-
-		for pos := range elems {
-			// increase size of stored data
-			s.slice = append(s.slice, s.helper.clone(elems[pos]))
-			s.size.Add(s.helper.size(elems[pos]))
-		}
-
-		return nil
 	}
 
 	// try to find if element already exists in slice, when supposed to depduplicate

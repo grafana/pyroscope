@@ -79,7 +79,7 @@ func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
 		if m.head == nil {
 			return 0.0
 		}
-		return float64(m.head.index.totalSeries.Load())
+		return float64(m.head.profiles.index.totalSeries.Load())
 	})
 	m.profiles = promauto.With(reg).NewGaugeFunc(prometheus.GaugeOpts{
 		Name: "phlare_head_profiles",
@@ -88,7 +88,7 @@ func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
 		if m.head == nil {
 			return 0.0
 		}
-		return float64(m.head.index.totalProfiles.Load())
+		return float64(m.head.profiles.index.totalProfiles.Load())
 	})
 
 	if reg != nil {

@@ -9,6 +9,7 @@ import (
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
+	"github.com/segmentio/parquet-go"
 
 	googlev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
@@ -21,64 +22,24 @@ import (
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
-	// clone the rows to be able to iterate over them twice
-	multiRows, err := iter.CloneN(rows, 2)
-	if err != nil {
+
+	stacktraceAggrValues := make(stacktraceSampleMap)
+	if err := mergeByStacktraces(ctx, b.profiles.file, rows, stacktraceAggrValues); err != nil {
 		return nil, err
 	}
-	it := query.NewMultiRepeatedPageIterator(
-		repeatedColumnIter(ctx, b.profiles.file, "Samples.list.element.StacktraceID", multiRows[0]),
-		repeatedColumnIter(ctx, b.profiles.file, "Samples.list.element.Value", multiRows[1]),
-	)
-	defer it.Close()
 
-	stacktraceAggrValues := map[int64]*ingestv1.StacktraceSample{}
-
-	for it.Next() {
-		values := it.At().Values
-		for i := 0; i < len(values[0]); i++ {
-			sample, ok := stacktraceAggrValues[values[0][i].Int64()]
-			if ok {
-				sample.Value += values[1][i].Int64()
-				continue
-			}
-			stacktraceAggrValues[values[0][i].Int64()] = &ingestv1.StacktraceSample{
-				Value: values[1][i].Int64(),
-			}
-		}
-	}
 	return b.resolveSymbols(ctx, stacktraceAggrValues)
 }
 
 func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
-	// clone the rows to be able to iterate over them twice
-	multiRows, err := iter.CloneN(rows, 2)
-	if err != nil {
+
+	stacktraceAggrValues := make(profileSampleMap)
+	if err := mergeByStacktraces(ctx, b.profiles.file, rows, stacktraceAggrValues); err != nil {
 		return nil, err
 	}
-	it := query.NewMultiRepeatedPageIterator(
-		repeatedColumnIter(ctx, b.profiles.file, "Samples.list.element.StacktraceID", multiRows[0]),
-		repeatedColumnIter(ctx, b.profiles.file, "Samples.list.element.Value", multiRows[1]),
-	)
-	defer it.Close()
 
-	stacktraceAggrValues := map[int64]*profile.Sample{}
-
-	for it.Next() {
-		values := it.At().Values
-		for i := 0; i < len(values[0]); i++ {
-			sample, ok := stacktraceAggrValues[values[0][i].Int64()]
-			if ok {
-				sample.Value[0] += values[1][i].Int64()
-				continue
-			}
-			stacktraceAggrValues[values[0][i].Int64()] = &profile.Sample{
-				Value: []int64{values[1][i].Int64()},
-			}
-		}
-	}
 	return b.resolvePprofSymbols(ctx, stacktraceAggrValues)
 }
 
@@ -382,16 +343,105 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 	}, nil
 }
 
+func (b *singleBlockQuerier) sampleMerge() *sampleMerge {
+	return &sampleMerge{
+		profileSource: b.profiles.file,
+	}
+}
+
 func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
 
-	it := repeatedColumnIter(ctx, b.profiles.file, "Samples.list.element.Value", rows)
+	m := make(seriesByLabels)
+	if err := mergeByLabels(ctx, b.profiles.file, rows, m, by...); err != nil {
+		return nil, err
+	}
+	return m.normalize(), nil
+}
+
+type Source interface {
+	Schema() *parquet.Schema
+	RowGroups() []parquet.RowGroup
+}
+
+type sampleMerge struct {
+	profileSource Source
+}
+
+type profileSampleMap map[int64]*profile.Sample
+
+func (m profileSampleMap) add(key, value int64) {
+	if _, ok := m[key]; ok {
+		m[key].Value[0] += value
+		return
+	}
+	m[key] = &profile.Sample{
+		Value: []int64{value},
+	}
+}
+
+type stacktraceSampleMap map[int64]*ingestv1.StacktraceSample
+
+func (m stacktraceSampleMap) add(key, value int64) {
+	if _, ok := m[key]; ok {
+		m[key].Value += value
+		return
+	}
+	m[key] = &ingestv1.StacktraceSample{
+		Value: value,
+	}
+}
+
+type mapAdder interface {
+	add(key, value int64)
+}
+
+func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], m mapAdder) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeByStacktraces")
+	defer sp.Finish()
+	// clone the rows to be able to iterate over them twice
+	multiRows, err := iter.CloneN(rows, 2)
+	if err != nil {
+		return err
+	}
+	it := query.NewMultiRepeatedPageIterator(
+		repeatedColumnIter(ctx, profileSource, "Samples.list.element.StacktraceID", multiRows[0]),
+		repeatedColumnIter(ctx, profileSource, "Samples.list.element.Value", multiRows[1]),
+	)
+	defer it.Close()
+
+	for it.Next() {
+		values := it.At().Values
+		for i := 0; i < len(values[0]); i++ {
+			m.add(values[0][i].Int64(), values[1][i].Int64())
+		}
+	}
+	return nil
+}
+
+type seriesByLabels map[string]*typesv1.Series
+
+func (m seriesByLabels) normalize() []*typesv1.Series {
+	result := lo.Values(m)
+	sort.Slice(result, func(i, j int) bool {
+		return phlaremodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
+	})
+	// we have to sort the points in each series because labels reduction may have changed the order
+	for _, s := range result {
+		sort.Slice(s.Points, func(i, j int) bool {
+			return s.Points[i].Timestamp < s.Points[j].Timestamp
+		})
+	}
+	return result
+}
+
+func mergeByLabels(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], m seriesByLabels, by ...string) error {
+	it := repeatedColumnIter(ctx, profileSource, "Samples.list.element.Value", rows)
 
 	defer it.Close()
 
 	labelsByFingerprint := map[model.Fingerprint]string{}
-	seriesByLabels := map[string]*typesv1.Series{}
 	labelBuf := make([]byte, 0, 1024)
 
 	for it.Next() {
@@ -406,8 +456,8 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 			labelBuf = p.Labels().BytesWithLabels(labelBuf, by...)
 			labelsByString = string(labelBuf)
 			labelsByFingerprint[p.Fingerprint()] = labelsByString
-			if _, ok := seriesByLabels[labelsByString]; !ok {
-				seriesByLabels[labelsByString] = &typesv1.Series{
+			if _, ok := m[labelsByString]; !ok {
+				m[labelsByString] = &typesv1.Series{
 					Labels: p.Labels().WithLabels(by...),
 					Points: []*typesv1.Point{
 						{
@@ -419,22 +469,11 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 				continue
 			}
 		}
-		series := seriesByLabels[labelsByString]
+		series := m[labelsByString]
 		series.Points = append(series.Points, &typesv1.Point{
 			Timestamp: int64(p.Timestamp()),
 			Value:     float64(total),
 		})
 	}
-
-	result := lo.Values(seriesByLabels)
-	sort.Slice(result, func(i, j int) bool {
-		return phlaremodel.CompareLabelPairs(result[i].Labels, result[j].Labels) < 0
-	})
-	// we have to sort the points in each series because labels reduction may have changed the order
-	for _, s := range result {
-		sort.Slice(s.Points, func(i, j int) bool {
-			return s.Points[i].Timestamp < s.Points[j].Timestamp
-		})
-	}
-	return result, nil
+	return it.Err()
 }
