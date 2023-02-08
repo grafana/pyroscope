@@ -194,6 +194,15 @@ func (s *profileStore) prepareFile(path string) (closer io.Closer, err error) {
 	return file, err
 }
 
+func (s *profileStore) empty() bool {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	if len(s.slice) == 0 {
+		return true
+	}
+	return false
+}
+
 // cutRowGroups gets called, when a patrticular row group has been finished and it will flush it to disk. The caller of cutRowGroups should be holding the write lock.
 // TODO: write row groups asynchronously
 func (s *profileStore) cutRowGroup() (err error) {
