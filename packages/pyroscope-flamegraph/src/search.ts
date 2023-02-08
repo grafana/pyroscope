@@ -1,4 +1,5 @@
 // Whether a query matches a node
 export function isMatch(query: string, nodeName: string) {
-  return nodeName.toLowerCase().includes(query.toLowerCase());
+  const regex = new RegExp(query, 'i');
+  return regex.test(nodeName);
 }
