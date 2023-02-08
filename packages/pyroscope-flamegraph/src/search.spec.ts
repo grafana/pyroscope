@@ -17,4 +17,8 @@ describe('search', () => {
     expect(isMatch('^foobar$', 'FOOBAR')).toBe(true);
     expect(isMatch('^foobar$', 'FOOBAR1')).toBe(false);
   });
+
+  it('doesnt crash when regexp is malformed', () => {
+    expect(isMatch('^(foobar', 'FOOBAR')).toBe(false);
+  });
 });
