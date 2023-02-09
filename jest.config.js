@@ -24,6 +24,7 @@ module.exports = {
   ],
   globals: {
     'ts-jest': {
+      isolatedModules: true,
       tsconfig: path.join(__dirname, `tsconfig.test.json`),
       diagnostics: {
         // https://github.com/kulshekhar/ts-jest/issues/1647#issuecomment-832577036
