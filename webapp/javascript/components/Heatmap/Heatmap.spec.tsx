@@ -34,28 +34,16 @@ describe('Component: Heatmap', () => {
     expect(screen.getByRole('img')).toBeInTheDocument();
     expect(screen.getByTestId('selection-canvas')).toBeInTheDocument();
     expect(screen.getByTestId('color-scale')).toBeInTheDocument();
-  });
-
-  it('should have correct x-axis', () => {
-    renderHeatmap();
 
     const xAxisTicks = within(screen.getByTestId('x-axis')).getAllByRole(
       'textbox'
     );
     expect(xAxisTicks).toHaveLength(8);
-  });
 
-  it('should have correct y-axis', () => {
-    renderHeatmap();
-
-    const xAxisTicks = within(screen.getByTestId('y-axis')).getAllByRole(
+    const yAxisTicks = within(screen.getByTestId('y-axis')).getAllByRole(
       'textbox'
     );
-    expect(xAxisTicks).toHaveLength(6);
-  });
-
-  it('should have correct color scale', () => {
-    renderHeatmap();
+    expect(yAxisTicks).toHaveLength(6);
 
     const [maxTextEl, midTextEl, minTextEl] = within(
       screen.getByTestId('color-scale')
