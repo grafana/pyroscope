@@ -139,10 +139,11 @@ type profileSeries struct {
 type profilesIndex struct {
 	ix *tsdb.BitPrefixInvertedIndex
 	// todo: like the inverted index we might want to shard fingerprint to avoid contentions.
-	profilesPerFP map[model.Fingerprint]*profileSeries
-	mutex         sync.RWMutex
-	totalProfiles *atomic.Int64
-	totalSeries   *atomic.Int64
+	profilesPerFP   map[model.Fingerprint]*profileSeries
+	mutex           sync.RWMutex
+	totalProfiles   *atomic.Int64
+	totalSeries     *atomic.Int64
+	rowGroupsOnDisk int
 
 	metrics *headMetrics
 }
@@ -170,10 +171,11 @@ func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs phlaremodel.Labels, profi
 	if !ok {
 		lbs := pi.ix.Add(lbs, ps.SeriesFingerprint)
 		profiles = &profileSeries{
-			lbs:     lbs,
-			fp:      ps.SeriesFingerprint,
-			minTime: ps.TimeNanos,
-			maxTime: ps.TimeNanos,
+			lbs:            lbs,
+			fp:             ps.SeriesFingerprint,
+			minTime:        ps.TimeNanos,
+			maxTime:        ps.TimeNanos,
+			profilesOnDisk: make([]*rowRange, pi.rowGroupsOnDisk),
 		}
 		pi.profilesPerFP[ps.SeriesFingerprint] = profiles
 		pi.totalSeries.Inc()
@@ -445,6 +447,8 @@ func (pl *profilesIndex) cutRowGroup(rgProfiles []*schemav1.Profile) error {
 
 	pl.mutex.Lock()
 	defer pl.mutex.Unlock()
+
+	pl.rowGroupsOnDisk += 1
 
 	for _, ps := range pl.profilesPerFP {
 		// empty all in memory profiles
