@@ -1,0 +1,1 @@
+This file exists to allow go vendor with pyroscope dependency - ie to avoid "go: pattern public: cannot embed directory public: contains no embeddable files"
