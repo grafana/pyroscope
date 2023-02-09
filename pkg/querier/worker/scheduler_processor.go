@@ -8,6 +8,7 @@ package worker
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -37,6 +38,10 @@ import (
 	"github.com/grafana/phlare/pkg/util/httpgrpcutil"
 )
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 var processorBackoffConfig = backoff.Config{
 	MinBackoff: 250 * time.Millisecond,
 	MaxBackoff: 2 * time.Second,
@@ -44,11 +49,12 @@ var processorBackoffConfig = backoff.Config{
 
 func newSchedulerProcessor(cfg Config, handler RequestHandler, log log.Logger, reg prometheus.Registerer) (*schedulerProcessor, []services.Service) {
 	p := &schedulerProcessor{
-		log:            log,
-		handler:        handler,
-		maxMessageSize: cfg.GRPCClientConfig.MaxSendMsgSize,
-		querierID:      cfg.QuerierID,
-		grpcConfig:     cfg.GRPCClientConfig,
+		log:             log,
+		handler:         handler,
+		maxMessageSize:  cfg.GRPCClientConfig.MaxSendMsgSize,
+		querierID:       cfg.QuerierID,
+		grpcConfig:      cfg.GRPCClientConfig,
+		maxLoopDuration: cfg.MaxLoopDuration,
 
 		schedulerClientFactory: func(conn *grpc.ClientConn) schedulerpb.SchedulerForQuerierClient {
 			return schedulerpb.NewSchedulerForQuerierClient(conn)
@@ -78,11 +84,12 @@ func newSchedulerProcessor(cfg Config, handler RequestHandler, log log.Logger, r
 
 // Handles incoming queries from query-scheduler.
 type schedulerProcessor struct {
-	log            log.Logger
-	handler        RequestHandler
-	grpcConfig     grpcclient.Config
-	maxMessageSize int
-	querierID      string
+	log             log.Logger
+	handler         RequestHandler
+	grpcConfig      grpcclient.Config
+	maxMessageSize  int
+	querierID       string
+	maxLoopDuration time.Duration
 
 	frontendPool                  *client.Pool
 	frontendClientRequestDuration *prometheus.HistogramVec
@@ -111,42 +118,68 @@ func (sp *schedulerProcessor) processQueriesOnSingleStream(workerCtx context.Con
 
 	backoff := backoff.New(execCtx, processorBackoffConfig)
 	for backoff.Ongoing() {
-		c, err := schedulerClient.QuerierLoop(execCtx)
-		if err == nil {
-			err = c.Send(&schedulerpb.QuerierToScheduler{QuerierID: sp.querierID})
-		}
-
-		if err != nil {
-			level.Warn(sp.log).Log("msg", "error contacting scheduler", "err", err, "addr", address)
-			backoff.Wait()
-			continue
-		}
-
-		if err := sp.querierLoop(c, address, inflightQuery); err != nil {
-			// Do not log an error is the query-scheduler is shutting down.
-			if s, ok := status.FromError(err); !ok ||
-				(!strings.Contains(s.Message(), schedulerpb.ErrSchedulerIsNotRunning.Error()) &&
-					!strings.Contains(s.Message(), context.DeadlineExceeded.Error()) &&
-					!strings.Contains(s.Message(), "stream terminated")) {
-				level.Error(sp.log).Log("msg", "error processing requests from scheduler", "err", err, "addr", address)
+		func() {
+			if err := sp.querierLoop(execCtx, schedulerClient, address, inflightQuery); err != nil {
+				// Do not log an error is the query-scheduler is shutting down.
+				if s, ok := status.FromError(err); !ok ||
+					(!strings.Contains(s.Message(), schedulerpb.ErrSchedulerIsNotRunning.Error()) &&
+						!strings.Contains(s.Message(), context.Canceled.Error()) &&
+						!strings.Contains(s.Message(), "stream terminated")) {
+					level.Error(sp.log).Log("msg", "error processing requests from scheduler", "err", err, "addr", address)
+				}
+				if strings.Contains(err.Error(), context.Canceled.Error()) || strings.Contains(err.Error(), "stream terminated") {
+					backoff.Reset()
+					return
+				}
+				backoff.Wait()
+				return
 			}
-			if strings.Contains(err.Error(), context.DeadlineExceeded.Error()) || strings.Contains(err.Error(), "stream terminated") {
-				backoff.Reset()
-				continue
-			}
-			backoff.Wait()
-			continue
-		}
 
-		backoff.Reset()
+			backoff.Reset()
+		}()
 	}
 }
 
 // process loops processing requests on an established stream.
-func (sp *schedulerProcessor) querierLoop(c schedulerpb.SchedulerForQuerier_QuerierLoopClient, address string, inflightQuery *atomic.Bool) error {
-	// Build a child context so we can cancel a query when the stream is closed.
-	ctx, cancel := context.WithCancel(c.Context())
-	defer cancel()
+func (sp *schedulerProcessor) querierLoop(parentCtx context.Context, schedulerClient schedulerpb.SchedulerForQuerierClient, address string, inflightQuery *atomic.Bool) error {
+	loopCtx, loopCancel := context.WithCancel(parentCtx)
+	defer loopCancel()
+
+	if sp.maxLoopDuration > 0 {
+		go func() {
+			timer := time.NewTimer(jitter(sp.maxLoopDuration, 0.3))
+			defer timer.Stop()
+
+			select {
+			case <-timer.C:
+				level.Debug(sp.log).Log("msg", "waiting for inflight queries to complete")
+				for inflightQuery.Load() {
+					select {
+					case <-parentCtx.Done():
+						// In the meanwhile, the execution context has been explicitly canceled, so we should just terminate.
+						return
+					default:
+						// Wait and check again inflight queries.
+						time.Sleep(100 * time.Millisecond)
+					}
+				}
+				level.Debug(sp.log).Log("msg", "refreshing scheduler connection")
+				loopCancel()
+			case <-parentCtx.Done():
+				return
+			}
+		}()
+	}
+
+	c, err := schedulerClient.QuerierLoop(loopCtx)
+	if err == nil {
+		err = c.Send(&schedulerpb.QuerierToScheduler{QuerierID: sp.querierID})
+	}
+
+	if err != nil {
+		level.Warn(sp.log).Log("msg", "error contacting scheduler", "err", err, "addr", address)
+		return err
+	}
 
 	for {
 		request, err := c.Recv()
@@ -165,7 +198,7 @@ func (sp *schedulerProcessor) querierLoop(c schedulerpb.SchedulerForQuerier_Quer
 			defer inflightQuery.Store(false)
 
 			// We need to inject user into context for sending response back.
-			ctx := user.InjectOrgID(ctx, request.UserID)
+			ctx := user.InjectOrgID(c.Context(), request.UserID)
 
 			tracer := opentracing.GlobalTracer()
 			// Ignore errors here. If we cannot get parent span, we just don't create new one.
@@ -186,6 +219,11 @@ func (sp *schedulerProcessor) querierLoop(c schedulerpb.SchedulerForQuerier_Quer
 			}
 		}()
 	}
+}
+
+func jitter(d time.Duration, factor float64) time.Duration {
+	maxJitter := time.Duration(float64(d) * factor)
+	return d - time.Duration(rand.Int63n(int64(maxJitter)))
 }
 
 func (sp *schedulerProcessor) runRequest(ctx context.Context, logger log.Logger, queryID uint64, frontendAddress string, statsEnabled bool, request *httpgrpc.HTTPRequest) {

@@ -35,6 +35,7 @@ type Config struct {
 	// This configuration is injected internally.
 	MaxConcurrentRequests   int                       `yaml:"-"` // Must be same as passed to PromQL Engine.
 	QuerySchedulerDiscovery schedulerdiscovery.Config `yaml:"-"`
+	MaxLoopDuration         time.Duration             `yaml:"-"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {

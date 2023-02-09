@@ -8,6 +8,7 @@ package frontend
 import (
 	"context"
 	"io"
+	"math/rand"
 	"net/http"
 	"sync"
 	"time"
@@ -27,6 +28,10 @@ import (
 	"github.com/grafana/phlare/pkg/util/httpgrpc"
 	"github.com/grafana/phlare/pkg/util/servicediscovery"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 const (
 	schedulerAddressLabel = "scheduler_address"
@@ -135,7 +140,7 @@ func (f *frontendSchedulerWorkers) addScheduler(address string) {
 	}
 
 	// No worker for this address yet, start a new one.
-	w = newFrontendSchedulerWorker(conn, address, f.frontendAddress, f.requestsCh, f.cfg.WorkerConcurrency, f.enqueuedRequests.WithLabelValues(address), f.log)
+	w = newFrontendSchedulerWorker(conn, address, f.frontendAddress, f.requestsCh, f.cfg.WorkerConcurrency, f.enqueuedRequests.WithLabelValues(address), f.cfg.MaxLoopDuration, f.log)
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -229,9 +234,11 @@ type frontendSchedulerWorker struct {
 
 	// Number of queries sent to this scheduler.
 	enqueuedRequests prometheus.Counter
+
+	maxLoopDuration time.Duration
 }
 
-func newFrontendSchedulerWorker(conn *grpc.ClientConn, schedulerAddr string, frontendAddr string, requestCh <-chan *frontendRequest, concurrency int, enqueuedRequests prometheus.Counter, log log.Logger) *frontendSchedulerWorker {
+func newFrontendSchedulerWorker(conn *grpc.ClientConn, schedulerAddr string, frontendAddr string, requestCh <-chan *frontendRequest, concurrency int, enqueuedRequests prometheus.Counter, maxLoopDuration time.Duration, log log.Logger) *frontendSchedulerWorker {
 	w := &frontendSchedulerWorker{
 		log:              log,
 		conn:             conn,
@@ -241,6 +248,7 @@ func newFrontendSchedulerWorker(conn *grpc.ClientConn, schedulerAddr string, fro
 		requestCh:        requestCh,
 		cancelCh:         make(chan uint64, schedulerWorkerCancelChanCapacity),
 		enqueuedRequests: enqueuedRequests,
+		maxLoopDuration:  maxLoopDuration,
 	}
 	w.ctx, w.cancel = context.WithCancel(context.Background())
 
@@ -308,6 +316,11 @@ func (w *frontendSchedulerWorker) runOne(ctx context.Context, client schedulerpb
 	}
 }
 
+func jitter(d time.Duration, factor float64) time.Duration {
+	maxJitter := time.Duration(float64(d) * factor)
+	return d - time.Duration(rand.Int63n(int64(maxJitter)))
+}
+
 func (w *frontendSchedulerWorker) schedulerLoop(loop schedulerpb.SchedulerForFrontend_FrontendLoopClient) error {
 	if err := loop.Send(&schedulerpb.FrontendToScheduler{
 		Type:            schedulerpb.FrontendToSchedulerType_INIT,
@@ -323,7 +336,22 @@ func (w *frontendSchedulerWorker) schedulerLoop(loop schedulerpb.SchedulerForFro
 		return errors.Errorf("unexpected status received for init: %v", resp.Status)
 	}
 
-	ctx := loop.Context()
+	ctx, cancel := context.WithCancel(loop.Context())
+	defer cancel()
+	if w.maxLoopDuration > 0 {
+		go func() {
+			timer := time.NewTimer(jitter(w.maxLoopDuration, 0.3))
+			defer timer.Stop()
+
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
+				cancel()
+				return
+			}
+		}()
+	}
 
 	for {
 		select {
@@ -335,7 +363,6 @@ func (w *frontendSchedulerWorker) schedulerLoop(loop schedulerpb.SchedulerForFro
 			// Reporting error here would delay reopening the stream (if the worker context is not done yet).
 			level.Debug(w.log).Log("msg", "stream context finished", "err", ctx.Err())
 			return nil
-
 		case req := <-w.requestCh:
 			err := loop.Send(&schedulerpb.FrontendToScheduler{
 				Type:            schedulerpb.FrontendToSchedulerType_ENQUEUE,
