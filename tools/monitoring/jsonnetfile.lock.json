@@ -4,6 +4,16 @@
     {
       "source": {
         "git": {
+          "remote": "https://github.com/grafana/agent.git",
+          "subdir": "production/tanka/grafana-agent/v2"
+        }
+      },
+      "version": "70e03f7fb63d5b3ccc70707bf1ef3dabca79da4d",
+      "sum": "rvXzmr0r/HOa4vj3prpxRkXr5rynFBXAeSpsezCSuIg="
+    },
+    {
+      "source": {
+        "git": {
           "remote": "https://github.com/grafana/grafana.git",
           "subdir": "grafana-mixin"
         }
@@ -144,12 +154,22 @@
     {
       "source": {
         "git": {
-          "remote": "https://github.com/jsonnet-libs/docsonnet.git",
-          "subdir": "doc-util"
+          "remote": "https://github.com/grafana/loki.git",
+          "subdir": "production/ksonnet/loki-simple-scalable"
         }
       },
-      "version": "01f689fb4a2d93f0fa4415491e95ea3ca641d6d8",
-      "sum": "yRBlDzGmyJ4eTdfftx51XrRW1fcBrtym+/yJENZywyE="
+      "version": "e6fb32b214740cf56da1a697c671e21b0b788eeb",
+      "sum": "zwc0b+Lvjax3Jc3zIV3HF+umiqshwyFbCGjpyzj0ulg="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/grafana/tempo.git",
+          "subdir": "operations/jsonnet/single-binary"
+        }
+      },
+      "version": "05bbe067929748b5f0af35d450d2f2fc71ce152e",
+      "sum": "mpj4WHrOkz1wMaR4JwUASHOTPz+JFXlLDdjpboAFxGU="
     },
     {
       "source": {
