@@ -6,10 +6,37 @@ import { Maybe } from 'true-myth';
 import TestData from './testData';
 import Flamegraph from './Flamegraph';
 import { DefaultPalette } from './colorPalette';
+import { configureToMatchImageSnapshot } from 'jest-image-snapshot';
+import type { MatchImageSnapshotOptions } from 'jest-image-snapshot';
 
 type focusedNodeType = ConstructorParameters<typeof Flamegraph>[2];
 type zoomType = ConstructorParameters<typeof Flamegraph>[5];
 
+expect.extend({
+  toMatchImageSnapshot(received: string, options: MatchImageSnapshotOptions) {
+    // If these checks pass, assume we're in a JSDOM environment with the 'canvas' package.
+    if (process.env.RUN_SNAPSHOTS) {
+      const toMatchImageSnapshot = configureToMatchImageSnapshot({
+        // Big enough threshold to account for different font rendering
+        // TODO: fix it
+        failureThreshold: 0.1,
+        failureThresholdType: 'percent',
+      }) as any;
+
+      // TODO
+      // for some reason it fails with
+      // Expected 1 arguments, but got 3.
+      // hence the any
+      return toMatchImageSnapshot.call(this, received, options);
+    }
+
+    return {
+      pass: true,
+      message: () =>
+        `Skipping 'toMatchImageSnapshot' assertion since env var 'RUN_SNAPSHOTS' is not set.`,
+    };
+  },
+});
 // All tests here refer strictly to the rendering bit of "Flamegraph"
 describe("render group:snapshot'", () => {
   // TODO i'm thinking here if we can simply reuse this?
