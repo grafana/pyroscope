@@ -1,12 +1,14 @@
 {
   "name": "@pyroscope/models",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "Apache-2.0",
   "files": [
     "dist/**/*",
-    "src/**/*"
+    "src/**/*",
+    "CHANGELOG.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

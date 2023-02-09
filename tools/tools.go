@@ -8,7 +8,6 @@
 package tools
 
 import (
-	_ "github.com/cosmtrek/air"
 	_ "github.com/davecgh/go-spew/spew"
 	_ "github.com/google/go-jsonnet/cmd/jsonnet"
 	_ "github.com/google/pprof"
