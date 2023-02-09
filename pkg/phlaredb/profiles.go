@@ -54,7 +54,7 @@ func (s rowRangesWithSeriesIndex) getSeriesIndex(rowNum int64) uint32 {
 	panic("series index not found")
 }
 
-type rowRanges map[*rowRange]model.Fingerprint
+type rowRanges map[rowRange]model.Fingerprint
 
 func (rR rowRanges) iter() iter.Iterator[fingerprintWithRowNum] {
 	// ensure row ranges is sorted
@@ -89,7 +89,7 @@ func (r rowRanges) fingerprintsWithRowNum() query.Iterator {
 }
 
 type rowRangesIter struct {
-	r   []*rowRange
+	r   []rowRange
 	fps []model.Fingerprint
 	pos int64
 }
@@ -269,7 +269,7 @@ func (pi *profilesIndex) selectMatchingRowRanges(ctx context.Context, params *in
 			continue
 		}
 
-		rowRanges[rR] = fp
+		rowRanges[*rR] = fp
 	}
 
 	return rowRanges.fingerprintsWithRowNum(), labelsPerFP, nil
