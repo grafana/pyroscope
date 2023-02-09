@@ -107,14 +107,12 @@ func decompress(bs []byte) ([]byte, error) {
 		defer gzipr.Close()
 		if err != nil {
 			return nil, fmt.Errorf("failed to read gzip header: %w", err)
-		} else {
-			buf := bytes.NewBuffer(nil)
-			if _, err = io.Copy(buf, gzipr); err != nil {
-				return nil, fmt.Errorf("failed to decompress jfr: %w", err)
-			} else {
-				return buf.Bytes(), nil
-			}
 		}
+		buf := bytes.NewBuffer(nil)
+		if _, err = io.Copy(buf, gzipr); err != nil {
+			return nil, fmt.Errorf("failed to decompress jfr: %w", err)
+		}
+		return buf.Bytes(), nil
 	} else {
 		return bs, nil
 	}
