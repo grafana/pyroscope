@@ -100,13 +100,13 @@ func loadJFRFromForm(r io.Reader, contentType string) (io.Reader, *LabelsSnapsho
 func decompress(bs []byte) ([]byte, error) {
 	var err error
 	if len(bs) < 2 {
-		return nil, fmt.Errorf("failed to read pprof profile header")
+		return nil, fmt.Errorf("failed to read magic")
 	} else if bs[0] == 0x1f && bs[1] == 0x8b {
 		var gzipr *gzip.Reader
 		gzipr, err = gzip.NewReader(bytes.NewReader(bs))
 		defer gzipr.Close()
 		if err != nil {
-			return nil, fmt.Errorf("failed to create pprof profile zip reader: %w", err)
+			return nil, fmt.Errorf("failed to read gzip header: %w", err)
 		} else {
 			buf := bytes.NewBuffer(nil)
 			if _, err = io.Copy(buf, gzipr); err != nil {
