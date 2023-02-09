@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
-	"github.com/bufbuild/connect-go"
 	"github.com/felixge/fgprof"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -116,28 +116,24 @@ func (f *Phlare) initQueryScheduler() (services.Service, error) {
 		return nil, errors.Wrap(err, "query-scheduler init")
 	}
 	schedulerpbconnect.RegisterSchedulerForFrontendHandler(f.Server.HTTP, s)
-	schedulerpbconnect.RegisterSchedulerForQuerierHandler(f.Server.HTTP, s, f.schedulerQuerierTimeout())
+	schedulerpbconnect.RegisterSchedulerForQuerierHandler(f.Server.HTTP, s)
 	return s, nil
 }
 
-// schedulerQuerierTimeout returns a HandlerOption that sets the timeout for the
-// communication between the scheduler and the querier.
-// This is required because connect streaming handler does not propagate timeouts
-// through the context.
-// Adding a timeout options to the handler enforce the timeout to be propagated
-// and cancel the stream if the timeout is reached.
-// Querier expects this and will gracefully reconnects.
-func (f *Phlare) schedulerQuerierTimeout() connect.HandlerOption {
-	opts := []connect.HandlerOption{}
+// setupWorkerTimeout sets the max loop duration for the querier worker and frontend worker
+// to 90% of the read or write http timeout, whichever is smaller.
+// This is to ensure that the worker doesn't timeout before the http handler and that the connection
+// is refreshed.
+func (f *Phlare) setupWorkerTimeout() {
 	timeout := f.Cfg.Server.HTTPServerReadTimeout
 	if f.Cfg.Server.HTTPServerWriteTimeout < timeout {
 		timeout = f.Cfg.Server.HTTPServerWriteTimeout
 	}
 
 	if timeout > 0 {
-		opts = append(opts, connect.WithInterceptors(util.WithTimeout(timeout)))
+		f.Cfg.Worker.MaxLoopDuration = time.Duration(float64(timeout) * 0.9)
+		f.Cfg.Frontend.MaxLoopDuration = time.Duration(float64(timeout) * 0.9)
 	}
-	return connect.WithHandlerOptions(opts...)
 }
 
 func (f *Phlare) initQuerier() (services.Service, error) {
@@ -309,6 +305,12 @@ func (f *Phlare) initServer() (services.Service, error) {
 	// see https://github.com/grafana/phlare/issues/231
 	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true
 
+	f.setupWorkerTimeout()
+	if f.isModuleActive(QueryScheduler) {
+		// to ensure that the query scheduler is always able to handle the request, we need to double the timeout
+		f.Cfg.Server.HTTPServerReadTimeout = 2 * f.Cfg.Server.HTTPServerReadTimeout
+		f.Cfg.Server.HTTPServerWriteTimeout = 2 * f.Cfg.Server.HTTPServerWriteTimeout
+	}
 	serv, err := server.New(f.Cfg.Server)
 	if err != nil {
 		return nil, err
