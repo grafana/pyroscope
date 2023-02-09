@@ -52,6 +52,7 @@ type Config struct {
 
 	// This configuration is injected internally.
 	QuerySchedulerDiscovery schedulerdiscovery.Config `yaml:"-"`
+	MaxLoopDuration         time.Duration             `yaml:"-"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
