@@ -98,6 +98,10 @@ release/build: release/prereq ## Build current platform release binaries
 go/deps:
 	$(GO) mod tidy
 
+.PHONY: go/bin-debug
+go/bin-debug:
+	$(MAKE) go/bin 'GO_FLAGS=-ldflags "-extldflags \"-static\" $(GO_LDFLAGS)" -tags netgo'
+
 .PHONY: go/bin
 go/bin:
 	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build $(GO_FLAGS) ./cmd/phlare
@@ -137,7 +141,7 @@ check/go/mod: go/mod
 
 
 define docker_buildx
-	docker buildx build $(1) --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/Dockerfile .
+	docker buildx build $(1) --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/Dockerfile$(2) .
 endef
 
 define deploy
@@ -149,6 +153,11 @@ define deploy
 		--set phlare.image.tag=$(IMAGE_TAG) --set phlare.image.repository=$(IMAGE_PREFIX)phlare --set phlare.service.port_name=http-metrics \
 		--set phlare.components.querier.resources=null --set phlare.components.distributor.resources=null --set phlare.components.ingester.resources=null
 endef
+
+.PHONY: docker-image/phlare/build-debug
+docker-image/phlare/build-debug: GOOS=linux GOARCH=amd64
+docker-image/phlare/build-debug: go/bin-debug $(BIN)/dlv
+	$(call docker_buildx,--load,.debug)
 
 .PHONY: docker-image/phlare/build
 docker-image/phlare/build: GOOS=linux GOARCH=amd64
@@ -260,6 +269,10 @@ $(BIN)/goreleaser: Makefile go.mod
 $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.9.0
+
+$(BIN)/dlv: Makefile go.mod
+	@mkdir -p $(@D)
+	GOBIN=$(abspath $(@D)) CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@v1.20.1
 
 $(BIN)/trunk: Makefile
 	@mkdir -p $(@D)
