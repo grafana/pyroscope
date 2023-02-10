@@ -52,6 +52,7 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 		},
 		nil,
 	)
+	defer pIt.Close()
 
 	var (
 		profiles []Profile
@@ -81,6 +82,9 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 			ts:     model.TimeFromUnixNano(buf[0][0].Int64()),
 			RowNum: res.RowNumber[0],
 		})
+	}
+	if err := pIt.Err(); err != nil {
+		return nil, errors.Wrap(pIt.Err(), "iterator error")
 	}
 
 	// Sort profiles by time, the slice is already sorted by series order
