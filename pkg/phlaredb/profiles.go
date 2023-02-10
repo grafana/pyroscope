@@ -232,6 +232,8 @@ outer:
 		idx++
 	}
 
+	sp.SetTag("matchedSeries", idx)
+
 	return ids[:idx], nil
 }
 
@@ -240,6 +242,9 @@ func (pi *profilesIndex) selectMatchingRowRanges(ctx context.Context, params *in
 	map[model.Fingerprint]phlaremodel.Labels,
 	error,
 ) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "selectMatchingRowRanges - Index")
+	defer sp.Finish()
+
 	ids, err := pi.selectMatchingFPs(ctx, params)
 	if err != nil {
 		return nil, nil, err
@@ -271,6 +276,16 @@ func (pi *profilesIndex) selectMatchingRowRanges(ctx context.Context, params *in
 
 		rowRanges[*rR] = fp
 	}
+
+	// TODO: Remove me, but this might help to see the verbose rowRange
+	rRSlice := lo.Keys(rowRanges)
+	sort.Slice(rRSlice, func(i, j int) bool {
+		return rRSlice[i].rowNum < rRSlice[j].rowNum
+	})
+
+	sp.SetTag("rowGroupSegment", rowGroupIdx)
+	sp.SetTag("matchedRowRangesCount", len(rRSlice))
+	sp.SetTag("matchedRowRanges", rRSlice)
 
 	return rowRanges.fingerprintsWithRowNum(), labelsPerFP, nil
 }
