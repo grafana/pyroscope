@@ -221,7 +221,6 @@ func (s *profileStore) cutRowGroup() (err error) {
 	if err != nil {
 		return err
 	}
-	defer runutil.CloseWithErrCapture(&err, fileCloser, "closing row group segment file")
 
 	// order profiles properly
 	sort.Slice(s.slice, s.profileSort)
@@ -232,7 +231,11 @@ func (s *profileStore) cutRowGroup() (err error) {
 	}
 
 	if err := s.writer.Close(); err != nil {
-		return errors.Wrap(err, "write row group segments to disk")
+		return errors.Wrap(err, "close row group segment writer")
+	}
+
+	if err := fileCloser.Close(); err != nil {
+		return errors.Wrap(err, "closing row group segment file")
 	}
 
 	s.rowsFlushed += uint64(n)

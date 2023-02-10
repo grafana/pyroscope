@@ -153,15 +153,15 @@ func TestWriteRead(t *testing.T) {
 func Test_rowRangeIter(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
-		r        *rowRange
+		r        rowRange
 		expected []int64
 	}{
-		{"empty", &rowRange{}, []int64{}},
-		{"first-element", &rowRange{0, 1}, []int64{0}},
-		{"first-3-elements", &rowRange{0, 3}, []int64{0, 1, 2}},
-		{"empty-offset", &rowRange{10, 0}, []int64{}},
-		{"one-element-offset", &rowRange{10, 1}, []int64{10}},
-		{"two elements-offset", &rowRange{10, 2}, []int64{10, 11}},
+		{"empty", rowRange{}, []int64{}},
+		{"first-element", rowRange{0, 1}, []int64{0}},
+		{"first-3-elements", rowRange{0, 3}, []int64{0, 1, 2}},
+		{"empty-offset", rowRange{10, 0}, []int64{}},
+		{"one-element-offset", rowRange{10, 1}, []int64{10}},
+		{"two elements-offset", rowRange{10, 2}, []int64{10, 11}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			it := rowRanges{tc.r: 0xff}.iter()
@@ -172,5 +172,78 @@ func Test_rowRangeIter(t *testing.T) {
 			assert.Equal(t, tc.expected, result)
 		})
 	}
+}
 
+func Test_rowRangesIter(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		r               rowRanges
+		expRows         []int64
+		expFingerprints []model.Fingerprint
+	}{
+		{name: "empty"},
+		{name: "empty-with-empty-elements",
+			r: rowRanges{
+				rowRange{0, 0}:  0xff,
+				rowRange{10, 0}: 0xff,
+			}},
+		{name: "three-elements-no-gaps",
+			r: rowRanges{
+				rowRange{1, 3}: 0xfa,
+				rowRange{4, 3}: 0xfb,
+				rowRange{7, 3}: 0xfc,
+			},
+			expRows:         []int64{1, 2, 3, 4, 5, 6, 7, 8, 9},
+			expFingerprints: []model.Fingerprint{0xfa, 0xfa, 0xfa, 0xfb, 0xfb, 0xfb, 0xfc, 0xfc, 0xfc},
+		},
+		{name: "starting-form-zero",
+			r: rowRanges{
+				rowRange{0, 3}: 0xf0,
+			},
+			expRows:         []int64{0, 1, 2},
+			expFingerprints: []model.Fingerprint{0xf0, 0xf0, 0xf0},
+		},
+		{name: "two-with-gaps",
+			r: rowRanges{
+				rowRange{1, 3}: 0xfa,
+				rowRange{5, 0}: 0xfb,
+				rowRange{7, 3}: 0xfc,
+			},
+			expRows:         []int64{1, 2, 3, 7, 8, 9},
+			expFingerprints: []model.Fingerprint{0xfa, 0xfa, 0xfa, 0xfc, 0xfc, 0xfc},
+		},
+		{name: "two-with-0-length-in-between",
+			r: rowRanges{
+				rowRange{1, 3}: 0xfa,
+				rowRange{4, 0}: 0xfb,
+				rowRange{7, 3}: 0xfc,
+			},
+			expRows:         []int64{1, 2, 3, 7, 8, 9},
+			expFingerprints: []model.Fingerprint{0xfa, 0xfa, 0xfa, 0xfc, 0xfc, 0xfc},
+		},
+		{name: "repeated-row-range",
+			r: rowRanges{
+				rowRange{1, 5}: 0xfc,
+				rowRange{1, 4}: 0xfb,
+				rowRange{1, 3}: 0xfa,
+			},
+			expRows:         []int64{1, 2, 3, 4, 5},
+			expFingerprints: []model.Fingerprint{0xfc, 0xfc, 0xfc, 0xfc, 0xfc},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			it := tc.r.iter()
+			var (
+				rows         []int64
+				fingerprints []model.Fingerprint
+			)
+
+			for it.Next() {
+				rows = append(rows, it.At().RowNumber())
+				fingerprints = append(fingerprints, it.At().fp)
+			}
+			assert.Equal(t, tc.expRows, rows)
+			assert.Equal(t, tc.expFingerprints, fingerprints)
+		})
+	}
 }

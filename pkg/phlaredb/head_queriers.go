@@ -52,6 +52,7 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 		},
 		nil,
 	)
+	defer pIt.Close()
 
 	var (
 		profiles []Profile
@@ -82,6 +83,9 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 			RowNum: res.RowNumber[0],
 		})
 	}
+	if err := pIt.Err(); err != nil {
+		return nil, errors.Wrap(pIt.Err(), "iterator error")
+	}
 
 	// Sort profiles by time, the slice is already sorted by series order
 	sort.Slice(profiles, func(i, j int) bool {
@@ -106,7 +110,7 @@ func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.It
 		return nil, err
 	}
 
-	return q.head.resolveStacktraces(stacktraceSamples), nil
+	return q.head.resolveStacktraces(ctx, stacktraceSamples), nil
 }
 
 func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
@@ -119,7 +123,7 @@ func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[P
 		return nil, err
 	}
 
-	return q.head.resolvePprof(stacktraceSamples), nil
+	return q.head.resolvePprof(ctx, stacktraceSamples), nil
 }
 
 func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
@@ -228,7 +232,7 @@ func (q *headInMemoryQuerier) MergeByStacktraces(ctx context.Context, rows iter.
 	}
 	q.head.stacktraces.lock.RUnlock()
 
-	return q.head.resolveStacktraces(stacktraceSamples), nil
+	return q.head.resolveStacktraces(ctx, stacktraceSamples), nil
 }
 
 func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
@@ -254,7 +258,7 @@ func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator
 		}
 	}
 
-	return q.head.resolvePprof(stacktraceSamples), nil
+	return q.head.resolvePprof(ctx, stacktraceSamples), nil
 
 }
 
