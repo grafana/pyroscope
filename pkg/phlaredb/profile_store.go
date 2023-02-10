@@ -26,9 +26,10 @@ import (
 )
 
 type profileStore struct {
-	slice []*schemav1.Profile
-	size  atomic.Uint64
-	lock  sync.RWMutex
+	slice     []*schemav1.Profile
+	size      atomic.Uint64
+	totalSize atomic.Uint64
+	lock      sync.RWMutex
 
 	metrics *headMetrics
 
@@ -71,6 +72,10 @@ func (s *profileStore) Name() string {
 }
 
 func (s *profileStore) Size() uint64 {
+	return s.totalSize.Load()
+}
+
+func (s *profileStore) MemorySize() uint64 {
 	return s.size.Load()
 }
 
@@ -311,7 +316,9 @@ func (s *profileStore) ingest(_ context.Context, profiles []*schemav1.Profile, l
 		s.index.Add(p, lbs, profileName)
 
 		// increase size of stored data
-		s.size.Add(s.helper.size(profiles[pos]))
+		addedBytes := s.helper.size(profiles[pos])
+		s.size.Add(addedBytes)
+		s.totalSize.Add(addedBytes)
 
 		// add to slice
 		s.slice = append(s.slice, p)
