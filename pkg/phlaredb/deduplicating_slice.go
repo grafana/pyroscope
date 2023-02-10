@@ -49,6 +49,10 @@ func (s *deduplicatingSlice[M, K, H, P]) Name() string {
 	return s.persister.Name()
 }
 
+func (s *deduplicatingSlice[M, K, H, P]) MemorySize() uint64 {
+	return s.size.Load()
+}
+
 func (s *deduplicatingSlice[M, K, H, P]) Size() uint64 {
 	return s.size.Load()
 }

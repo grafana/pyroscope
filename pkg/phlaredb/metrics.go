@@ -123,7 +123,7 @@ func (m *headMetrics) Describe(ch chan<- *prometheus.Desc) {
 func (m *headMetrics) Collect(ch chan<- prometheus.Metric) {
 	if m.head != nil {
 		for _, t := range m.head.tables {
-			m.sizeBytes.WithLabelValues(t.Name()).Set(float64(t.Size()))
+			m.sizeBytes.WithLabelValues(t.Name()).Set(float64(t.MemorySize()))
 		}
 	}
 	m.sizeBytes.Collect(ch)

@@ -104,7 +104,8 @@ type Helper[M Models, K comparable] interface {
 
 type Table interface {
 	Name() string
-	Size() uint64
+	Size() uint64       // Size estimates the uncompressed byte size of the table in memory and on disk.
+	MemorySize() uint64 // MemorySize estimates the uncompressed byte size of the table in memory.
 	Init(path string, cfg *ParquetConfig) error
 	Flush(context.Context) (numRows uint64, numRowGroups uint64, err error)
 	Close() error
@@ -202,6 +203,16 @@ func NewHead(phlarectx context.Context, cfg Config) (*Head, error) {
 	go h.loop()
 
 	return h, nil
+}
+
+func (h *Head) MemorySize() uint64 {
+	var size uint64
+	// TODO: Estimate size of TSDB index
+	for _, t := range h.tables {
+		size += t.MemorySize()
+	}
+
+	return size
 }
 
 func (h *Head) Size() uint64 {
