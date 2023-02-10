@@ -24,8 +24,8 @@ var int64SlicePool = &sync.Pool{
 
 var defaultParquetConfig = &ParquetConfig{
 	MaxBufferRowCount: 100_000,
-	MaxRowGroupBytes:  128 * 1024 * 1024,
-	MaxBlockBytes:     10 * 128 * 1024 * 1024,
+	MaxRowGroupBytes:  10 * 128 * 1024 * 1024,
+	MaxBlockBytes:     10 * 10 * 128 * 1024 * 1024,
 }
 
 type deduplicatingSlice[M Models, K comparable, H Helper[M, K], P schemav1.Persister[M]] struct {
