@@ -81,7 +81,7 @@ func loadJFRFromForm(r io.Reader, contentType string) (io.Reader, *LabelsSnapsho
 	var labels LabelsSnapshot
 	if len(labelsField) > 0 {
 		if err = proto.Unmarshal(labelsField, &labels); err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("failed to parse labels form field: %w", err)
 		}
 	}
 
