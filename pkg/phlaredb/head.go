@@ -18,6 +18,7 @@ import (
 	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/multierror"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -485,7 +486,10 @@ func (h *Head) Queriers() Queriers {
 }
 
 // add the location IDs to the stacktraces
-func (h *Head) resolveStacktraces(stacktraceSamples stacktraceSampleMap) *ingestv1.MergeProfilesStacktracesResult {
+func (h *Head) resolveStacktraces(ctx context.Context, stacktraceSamples stacktraceSampleMap) *ingestv1.MergeProfilesStacktracesResult {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "resolveStacktraces - Head")
+	defer sp.Finish()
+
 	names := []string{}
 	functions := map[int64]int{}
 
@@ -525,7 +529,10 @@ func (h *Head) resolveStacktraces(stacktraceSamples stacktraceSampleMap) *ingest
 	}
 }
 
-func (h *Head) resolvePprof(stacktraceSamples profileSampleMap) *profile.Profile {
+func (h *Head) resolvePprof(ctx context.Context, stacktraceSamples profileSampleMap) *profile.Profile {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "resolvePprof - Head")
+	defer sp.Finish()
+
 	locations := map[uint64]*profile.Location{}
 	functions := map[uint64]*profile.Function{}
 	mappings := map[uint64]*profile.Mapping{}

@@ -66,6 +66,7 @@ func NewBlockQuerier(phlarectx context.Context, bucketReader phlareobjstore.Buck
 				phlarecontext.Registry(phlarectx),
 			),
 		),
+		logger:       phlarecontext.Logger(phlarectx),
 		bucketReader: bucketReader,
 	}
 }
