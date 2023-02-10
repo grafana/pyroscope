@@ -277,15 +277,8 @@ func (pi *profilesIndex) selectMatchingRowRanges(ctx context.Context, params *in
 		rowRanges[*rR] = fp
 	}
 
-	// TODO: Remove me, but this might help to see the verbose rowRange
-	rRSlice := lo.Keys(rowRanges)
-	sort.Slice(rRSlice, func(i, j int) bool {
-		return rRSlice[i].rowNum < rRSlice[j].rowNum
-	})
-
 	sp.SetTag("rowGroupSegment", rowGroupIdx)
-	sp.SetTag("matchedRowRangesCount", len(rRSlice))
-	sp.SetTag("matchedRowRanges", rRSlice)
+	sp.SetTag("matchedRowRangesCount", len(rowRanges))
 
 	return rowRanges.fingerprintsWithRowNum(), labelsPerFP, nil
 }
