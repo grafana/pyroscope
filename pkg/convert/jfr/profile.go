@@ -2,6 +2,7 @@ package jfr
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -73,10 +74,18 @@ func loadJFRFromForm(r io.Reader, contentType string) (io.Reader, *LabelsSnapsho
 	if jfrField == nil {
 		return nil, nil, fmt.Errorf("jfr field is required")
 	}
+	jfrField, err = decompress(jfrField)
+	if err != nil {
+		return nil, nil, fmt.Errorf("loadJFRFromForm failed to decompress jfr: %w", err)
+	}
 
 	labelsField, err := form.ReadField(f, "labels")
 	if err != nil {
 		return nil, nil, err
+	}
+	labelsField, err = decompress(labelsField)
+	if err != nil {
+		return nil, nil, fmt.Errorf("loadJFRFromForm failed to decompress labels: %w", err)
 	}
 	var labels LabelsSnapshot
 	if len(labelsField) > 0 {
@@ -86,4 +95,25 @@ func loadJFRFromForm(r io.Reader, contentType string) (io.Reader, *LabelsSnapsho
 	}
 
 	return bytes.NewReader(jfrField), &labels, nil
+}
+
+func decompress(bs []byte) ([]byte, error) {
+	var err error
+	if len(bs) < 2 {
+		return nil, fmt.Errorf("failed to read magic")
+	} else if bs[0] == 0x1f && bs[1] == 0x8b {
+		var gzipr *gzip.Reader
+		gzipr, err = gzip.NewReader(bytes.NewReader(bs))
+		defer gzipr.Close()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read gzip header: %w", err)
+		}
+		buf := bytes.NewBuffer(nil)
+		if _, err = io.Copy(buf, gzipr); err != nil {
+			return nil, fmt.Errorf("failed to decompress jfr: %w", err)
+		}
+		return buf.Bytes(), nil
+	} else {
+		return bs, nil
+	}
 }
