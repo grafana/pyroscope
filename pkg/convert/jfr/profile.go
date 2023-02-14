@@ -83,12 +83,13 @@ func loadJFRFromForm(r io.Reader, contentType string) (io.Reader, *LabelsSnapsho
 	if err != nil {
 		return nil, nil, err
 	}
-	labelsField, err = decompress(labelsField)
-	if err != nil {
-		return nil, nil, fmt.Errorf("loadJFRFromForm failed to decompress labels: %w", err)
-	}
+
 	var labels LabelsSnapshot
 	if len(labelsField) > 0 {
+		labelsField, err = decompress(labelsField)
+		if err != nil {
+			return nil, nil, fmt.Errorf("loadJFRFromForm failed to decompress labels: %w", err)
+		}
 		if err = proto.Unmarshal(labelsField, &labels); err != nil {
 			return nil, nil, fmt.Errorf("failed to parse labels form field: %w", err)
 		}
