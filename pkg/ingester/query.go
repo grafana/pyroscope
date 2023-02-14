@@ -15,7 +15,7 @@ func (i *Ingester) LabelValues(ctx context.Context, req *connect.Request[ingestv
 	})
 }
 
-// LabelValues returns the possible label names.
+// LabelNames returns the possible label names.
 func (i *Ingester) LabelNames(ctx context.Context, req *connect.Request[ingestv1.LabelNamesRequest]) (*connect.Response[ingestv1.LabelNamesResponse], error) {
 	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[ingestv1.LabelNamesResponse], error) {
 		return instance.Head().LabelNames(ctx, req)

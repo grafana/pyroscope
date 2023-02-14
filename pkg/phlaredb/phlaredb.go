@@ -48,7 +48,7 @@ type Config struct {
 	// TODO: docs
 	RowGroupTargetSize uint64 `yaml:"row_group_target_size"`
 
-	Parquet *ParquetConfig `yaml:"-"` // Those configs should not be exposed to the user, rather they should be determiend by phlare itself. Currently they are solely used for test cases
+	Parquet *ParquetConfig `yaml:"-"` // Those configs should not be exposed to the user, rather they should be determined by phlare itself. Currently, they are solely used for test cases.
 }
 
 type ParquetConfig struct {

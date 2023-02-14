@@ -47,7 +47,7 @@ type PoolConfig struct {
 	RemoteTimeout        time.Duration `yaml:"remote_timeout"`
 }
 
-// RegisterFlags adds the flags required to config this to the given FlagSet.
+// RegisterFlagsWithPrefix adds the flags required to config this to the given FlagSet.
 func (cfg *PoolConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.DurationVar(&cfg.ClientCleanupPeriod, prefix+".client-cleanup-period", 15*time.Second, "How frequently to clean up clients for ingesters that have gone away.")
 	f.BoolVar(&cfg.HealthCheckIngesters, prefix+".health-check-ingesters", true, "Run a health check on each ingester client during periodic cleanup.")
