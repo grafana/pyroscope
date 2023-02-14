@@ -185,6 +185,10 @@ phlaredb:
   # CLI flag: -phlaredb.max-block-duration
   [max_block_duration: <duration> | default = 3h]
 
+  # How big should a single row group be
+  # CLI flag: -phlaredb.row-group-target-size
+  [row_group_target_size: <int> | default = 104857600]
+
 tracing:
   # Set to false to disable tracing.
   # CLI flag: -tracing.enabled
@@ -1491,6 +1495,7 @@ You can refer to the Prometheus documentation the following block:
 - [relabel_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config)
 - [static_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#static_config)
 - [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config)
+- [http_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#http_sd_config)
 
 #### pprof_config
 
