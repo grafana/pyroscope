@@ -240,7 +240,7 @@ func New(cfg Config) (*Phlare, error) {
 		phlare.tracer = trace
 	}
 
-	// instantiate a fallback pusher client (when not run with a local distributor
+	// instantiate a fallback pusher client (when not run with a local distributor)
 	pusherHTTPClient, err := commonconfig.NewClientFromConfig(cfg.AgentConfig.ClientConfig.Client, cfg.AgentConfig.ClientConfig.URL.String())
 	if err != nil {
 		return nil, err

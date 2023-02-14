@@ -29,7 +29,7 @@ All other required tools will be automatically downloaded `$(pwd)/.tmp/bin`.
 ## Formatting
 
 Grafana Phlare uses [`golang-ci-lint`](https://github.com/golangci/golangci-lint) tool to format the Go files, and sort imports.
-We use goimports with `-local github.com/grafana/phlare` parameter, to put Grafana Mimir internal imports into a separate group. We try to keep imports sorted into three groups: imports from standard library, imports of 3rd party packages and internal Grafana Phlare imports. Goimports will fix the order, but will keep existing newlines between imports in the groups. Avoid introducing newlines there. 
+We use goimports with `-local github.com/grafana/phlare` parameter, to put Grafana Phlare internal imports into a separate group. We try to keep imports sorted into three groups: imports from standard library, imports of 3rd party packages and internal Grafana Phlare imports. Goimports will fix the order, but will keep existing newlines between imports in the groups. Avoid introducing newlines there. 
 
 Use `make lint` to ensure formatting is correct.
 

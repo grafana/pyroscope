@@ -231,7 +231,7 @@ func (i *Ingester) TransferOut(ctx context.Context) error {
 	return ring.ErrTransferDisabled
 }
 
-// ReadinessHandler is used to indicate to k8s when the ingesters are ready for
+// CheckReady is used to indicate to k8s when the ingesters are ready for
 // the addition removal of another ingester. Returns 204 when the ingester is
 // ready, 500 otherwise.
 func (i *Ingester) CheckReady(ctx context.Context) error {
