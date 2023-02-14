@@ -400,7 +400,7 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 			return
 		}
 
-		http.Error(w, "ready", http.StatusOK)
+		util.WriteTextResponse(w, "ready")
 	}
 }
 
