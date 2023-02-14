@@ -323,3 +323,11 @@ func WriteHTMLResponse(w http.ResponseWriter, message string) {
 	// Ignore inactionable errors.
 	_, _ = w.Write([]byte(message))
 }
+
+// WriteTextResponse sends message as text/plain response with 200 status code.
+func WriteTextResponse(w http.ResponseWriter, message string) {
+	w.Header().Set("Content-Type", "text/plain")
+
+	// Ignore inactionable errors.
+	_, _ = w.Write([]byte(message))
+}
