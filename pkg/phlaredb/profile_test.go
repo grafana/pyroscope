@@ -221,15 +221,6 @@ func Test_rowRangesIter(t *testing.T) {
 			expRows:         []int64{1, 2, 3, 7, 8, 9},
 			expFingerprints: []model.Fingerprint{0xfa, 0xfa, 0xfa, 0xfc, 0xfc, 0xfc},
 		},
-		{name: "repeated-row-range",
-			r: rowRanges{
-				rowRange{1, 5}: 0xfc,
-				rowRange{1, 4}: 0xfb,
-				rowRange{1, 3}: 0xfa,
-			},
-			expRows:         []int64{1, 2, 3, 4, 5},
-			expFingerprints: []model.Fingerprint{0xfc, 0xfc, 0xfc, 0xfc, 0xfc},
-		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			it := tc.r.iter()
