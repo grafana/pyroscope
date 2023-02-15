@@ -203,7 +203,7 @@ func buildKey(n string, appLabels map[string]string, labels tree.Labels, snapsho
 	for k, v := range appLabels {
 		finalLabels[k] = v
 	}
-	for _, v := range labels { //todo
+	for _, v := range labels {
 		ks, ok := snapshot.Strings[v.Key]
 		if !ok {
 			continue
