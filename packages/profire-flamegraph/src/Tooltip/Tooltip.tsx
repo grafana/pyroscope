@@ -222,6 +222,11 @@ const tooltipTitles: Record<
     formattedValue: 'Thrown exceptions',
     total: '% of total thrown exceptions',
   },
+  set: {
+    percent: 'Share of time',
+    formattedValue: 'Time',
+    total: '% of total time',
+  },
   unknown: {
     percent: 'Percentage',
     formattedValue: 'Units',

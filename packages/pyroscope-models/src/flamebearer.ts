@@ -25,6 +25,7 @@ export type Flamebearer = {
    */
   sampleRate: number;
   units: Units;
+  unitStr: string;
 
   spyName: SpyName;
   // format: 'double' | 'single';

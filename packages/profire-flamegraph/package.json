@@ -1,6 +1,15 @@
 {
-  "name": "@pyroscope/flamegraph",
-  "version": "0.35.2",
+  "name": "profire-flamegraph",
+  "version": "0.0.1",
+  "description": "Profire flamegraph visualization library based on pyroscope-io's flamegraph",
+  "author": "Tianlin Yang",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TLin-Y/pyroscope.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "dist/index.node.js",
   "browser": "dist/index.js",
   "_types": "since we are importing stuff from webapp (ui components), tsc ends up generating a weird file tree",
@@ -16,10 +25,10 @@
   ],
   "scripts": {
     "test": "jest",
-    "watch": "yarn build:lib --watch",
-    "dev": "chokidar --initial \"src/**/*\" -c \"yarn run build:lib\"",
-    "build": "yarn build:types && yarn build:lib",
-    "build:lib": "NODE_ENV=production webpack --config ../../scripts/webpack/webpack.flamegraph.ts",
+    "watch": "npm build:lib --watch",
+    "dev": "chokidar --initial \"src/**/*\" -c \"npm run build:lib\"",
+    "build": "npm run build:types && npm run build:lib",
+    "build:lib": "set NODE_ENV=production&& webpack --config ../../scripts/webpack/webpack.flamegraph.ts",
     "build:types": "tsc -p tsconfig.json --emitDeclarationOnly && downlevel-dts dist dist",
     "build:types:watch": "tsc -p tsconfig.json --emitDeclarationOnly --watch --preserveWatchOutput",
     "type-check": "tsc -p tsconfig.json --noEmit",

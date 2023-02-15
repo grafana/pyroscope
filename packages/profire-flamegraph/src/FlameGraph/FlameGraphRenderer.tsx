@@ -59,6 +59,7 @@ function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
     format: 'single',
     names: [],
     units: 'unknown',
+    unitStr: '',
     levels: [[]],
     spyName: 'unknown',
     numTicks: 0,

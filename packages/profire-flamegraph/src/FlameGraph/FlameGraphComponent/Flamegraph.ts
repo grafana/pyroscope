@@ -85,6 +85,7 @@ export default class Flamegraph {
       spyName: this.flamebearer.spyName as SpyName,
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
       units: this.flamebearer.units as Units,
+      unitStr: this.flamebearer.unitStr,
       maxSelf: this.flamebearer.maxSelf,
 
       rangeMin,

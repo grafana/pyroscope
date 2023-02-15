@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.0.1](https://github.com/TLin-Y/pyroscope/compare/@pyroscope/flamegraph@0.35.1...@profire/flamegraph@0.0.1) (2025-04-26)
+
+**Note:** Initial release based on @pyroscope/flamegraph v0.37.2 with minor modifications for Profire flamegraph features.
+
 ## [0.35.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.35.1...@pyroscope/flamegraph@0.35.2) (2023-02-07)
 
 **Note:** Version bump only for package @pyroscope/flamegraph

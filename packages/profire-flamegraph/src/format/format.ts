@@ -20,7 +20,7 @@ export function diffPercent(leftPercent: number, rightPercent: number): number {
   return ((rightPercent - leftPercent) / leftPercent) * 100;
 }
 
-export function getFormatter(max: number, sampleRate: number, unit: Units) {
+export function getFormatter(max: number, sampleRate: number, unit: Units, unitStr: string = '') {
   switch (unit) {
     case 'samples':
       return new DurationFormatter(max / sampleRate);
@@ -35,12 +35,14 @@ export function getFormatter(max: number, sampleRate: number, unit: Units) {
     case 'lock_samples':
       return new ObjectsFormatter(max);
     case 'trace_samples':
-      return new DurationFormatter(max / sampleRate, '', true);
+      return new DurationFormatter(max / sampleRate, unitStr, true);
     case 'exceptions':
       return new ObjectsFormatter(max);
+    case 'set':
+      return new DurationFormatter(max / sampleRate, unitStr, true);
     default:
-      console.warn(`Unsupported unit: '${unit}'. Defaulting to ''`);
-      return new DurationFormatter(max / sampleRate, ' ');
+      console.warn(`Unsupported unit: '${unit}'. Defaulting to '${unitStr}'`);
+      return new DurationFormatter(max / sampleRate, unitStr);
   }
 }
 

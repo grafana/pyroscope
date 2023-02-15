@@ -36,6 +36,7 @@ export type FlamegraphTooltipProps = {
   canvasRef: RefObject<HTMLCanvasElement>;
 
   units: Units;
+  unitStr: string;
   sampleRate: number;
   numTicks: number;
   leftTicks: number;
@@ -60,6 +61,7 @@ export default function FlamegraphTooltip(props: FlamegraphTooltipProps) {
     numTicks,
     sampleRate,
     units,
+    unitStr,
     leftTicks,
     rightTicks,
     palette,
@@ -82,7 +84,7 @@ export default function FlamegraphTooltip(props: FlamegraphTooltipProps) {
       onMouseOut: () => void,
       e: MouseEvent
     ) => {
-      const formatter = getFormatter(numTicks, sampleRate, units);
+      const formatter = getFormatter(numTicks, sampleRate, units, unitStr);
       const opt = xyToData(e.offsetX, e.offsetY);
 
       let data: Unwrapped<typeof opt>;

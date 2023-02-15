@@ -33,6 +33,7 @@ export const MetadataSchema = z.object({
   spyName: SpyNameSchema,
 
   units: UnitsSchema,
+  unitStr: z.string().optional(),
 });
 
 export const FlamebearerProfileSchema = z.object({

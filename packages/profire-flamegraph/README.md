@@ -1,3 +1,16 @@
+# profire-flamegraph
+
+This is a fork of `@pyroscope/flamegraph` with modifications to improve flamegraph rendering.
+
+## Installation
+
+```bash
+npm install @profire/flamegraph
+```
+
+⚠️ The content below is directly from the original `@pyroscope/flamegraph` project's README.
+
+
 # Pyroscope Flamegraph
 This is a component which allows for you to render flamegraphs in your website or application.
 While this is typically used for profiling data this can also be used to render tracing data as well
@@ -6,13 +19,13 @@ While this is typically used for profiling data this can also be used to render 
 
 Import the CSS
 ```
-import '@pyroscope/flamegraph/dist/index.css';
+import '@profire/flamegraph/dist/index.css';
 ```
 
 Import the `FlamegraphRenderer` component
 
 ```
-import { FlamegraphRenderer, Box } from '@pyroscope/flamegraph';
+import { FlamegraphRenderer, Box } from '@profire/flamegraph';
 
 const SimpleTree = {
   version: 1,
@@ -124,8 +137,8 @@ We recommend wrapping  a `Box` around your component to give it some padding.
 Note: Currently Pyroscope only supports rendering tracing data from Jaeger.
 
 ```
-import { FlamegraphRenderer, convertJaegerTraceToProfile } from "@pyroscope/flamegraph";
-import "@pyroscope/flamegraph/dist/index.css";
+import { FlamegraphRenderer, convertJaegerTraceToProfile } from "@profire/flamegraph";
+import "@profire/flamegraph/dist/index.css";
 
 let trace = jaegerTrace.data[0];
 let convertedProfile = convertJaegerTraceToProfile(trace);

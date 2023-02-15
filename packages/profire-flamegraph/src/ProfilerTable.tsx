@@ -471,6 +471,7 @@ export default function ProfilerTable({
         numTicks={flamebearer.numTicks}
         sampleRate={flamebearer.sampleRate}
         units={flamebearer.units}
+        unitStr={flamebearer.unitStr}
         palette={palette}
       />
     </div>

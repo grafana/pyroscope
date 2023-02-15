@@ -1,3 +1,23 @@
+## [0.37.2](https://github.com/pyroscope-io/pyroscope/compare/v0.37.1...v0.37.2) (2023-02-15)
+
+
+### Bug Fixes
+
+* **jfr:** do no try to decompress labels if there are no labels ([#1852](https://github.com/pyroscope-io/pyroscope/issues/1852)) ([65e1d69](https://github.com/pyroscope-io/pyroscope/commit/65e1d6923461cb29ca46fe777bd6355bbaba1d06))
+* **pprof parsing:** initialize function to zero values ([#1837](https://github.com/pyroscope-io/pyroscope/issues/1837)) ([692f11b](https://github.com/pyroscope-io/pyroscope/commit/692f11bf68c9d08ccb219bf79bfa956fd13281c9))
+
+
+### Features
+
+* **jfr:** live objects ([#1849](https://github.com/pyroscope-io/pyroscope/issues/1849)) ([001e1e1](https://github.com/pyroscope-io/pyroscope/commit/001e1e195d00912704fde9bfbf72b5544c264015))
+
+
+### Performance Improvements
+
+* **flamegraph:** don't convert to graphviz format unnecessarily ([#1834](https://github.com/pyroscope-io/pyroscope/issues/1834)) ([8f78e54](https://github.com/pyroscope-io/pyroscope/commit/8f78e54d75cf6f8067ef38da5b2c2eb15860ec09))
+
+
+
 ## [0.37.1](https://github.com/pyroscope-io/pyroscope/compare/v0.37.0...v0.37.1) (2023-01-31)
 
 

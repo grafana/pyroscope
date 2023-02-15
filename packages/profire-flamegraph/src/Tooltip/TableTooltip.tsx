@@ -11,6 +11,7 @@ export interface TableTooltipProps {
   numTicks: number;
   sampleRate: number;
   units: Units;
+  unitStr: string;
   palette: FlamegraphPalette;
 }
 
@@ -18,10 +19,11 @@ export default function TableTooltip({
   numTicks,
   sampleRate,
   units,
+  unitStr,
   tableBodyRef,
   palette,
 }: TableTooltipProps) {
-  const formatter = getFormatter(numTicks, sampleRate, units);
+  const formatter = getFormatter(numTicks, sampleRate, units, unitStr);
   const totalFlamebearer = formatter.format(numTicks, sampleRate);
 
   const setTooltipContent = useCallback(
