@@ -185,9 +185,9 @@ phlaredb:
   # CLI flag: -phlaredb.max-block-duration
   [max_block_duration: <duration> | default = 3h]
 
-  # How big should a single row group be
+  # How big should a single row group be uncompressed
   # CLI flag: -phlaredb.row-group-target-size
-  [row_group_target_size: <int> | default = 104857600]
+  [row_group_target_size: <int> | default = 1342177280]
 
 tracing:
   # Set to false to disable tracing.
