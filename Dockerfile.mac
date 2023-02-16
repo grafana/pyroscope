@@ -35,32 +35,46 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 #                                           __/ |
 #                                          |___/
 
-FROM golang:1.19-alpine3.16 AS go-builder
+FROM --platform=$BUILDPLATFORM crazymax/osxcross:11.3 AS osxcross
+FROM ubuntu:22.04 AS go-builder
 
-RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash mingw-w64-gcc
+RUN apt-get update \
+    && apt-get -y install clang lld libc6-dev wget \
+    && wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz \
+    && tar -C /usr/local -xzf go1.20.1.linux-amd64.tar.gz
 
 WORKDIR /opt/pyroscope/
 
 COPY --from=js-builder /opt/pyroscope/webapp/public ./webapp/public
-
+COPY --from=osxcross /osxcross /osxcross
 COPY pkg ./pkg
 COPY cmd ./cmd
 COPY webapp/assets_embedded.go ./webapp/assets_embedded.go
 COPY scripts ./scripts
 COPY go.mod go.sum ./
 
-RUN GOOS=darwin GOARCH=arm64 go build \
+ENV CGO_ENABLED=1
+ENV PATH="/osxcross/bin:$PATH"
+ENV LD_LIBRARY_PATH="/osxcross/lib:$LD_LIBRARY_PATH"
+ENV PATH=$PATH:/usr/local/go/bin
+ENV CC=o64-clang
+ENV CXX=o64-clang++
+
+RUN GOOS=darwin GOARCH=arm64 \
+  HOST=arm64-apple-darwin15 AR=arm64-apple-darwin20.4-ar LD=arm64-apple-darwin20.4-ld \
+  go build \
   -trimpath -ldflags "$(scripts/generate-build-flags.sh)" \
   -tags dotnetspy,gospy,embedassets \
   -o /pyroscope-arm64 \
   ./cmd/pyroscope
 
-RUN GOOS=darwin GOARCH=amd64 go build \
+RUN GOOS=darwin GOARCH=amd64 \
+  HOST=amd64-apple-darwin15 AR=x86_64-apple-darwin20.4-ar LD=x86_64-apple-darwin20.4-ld \
+  go build \
   -trimpath -ldflags "$(scripts/generate-build-flags.sh)" \
   -tags dotnetspy,gospy,embedassets \
   -o /pyroscope-amd64 \
   ./cmd/pyroscope
 
 FROM scratch AS exporter
-COPY --from=go-builder /pyroscope-arm64 /
-COPY --from=go-builder /pyroscope-amd64 /
+COPY --from=go-builder /pyroscope-arm64 /pyroscope-amd64  /
