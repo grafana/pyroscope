@@ -261,12 +261,16 @@ update-protobuf: ## Update the protobuf
 	protoc --go_out=. pkg/convert/profile.proto
 
 .PHONY: docker-dev
-docker-dev: ## Build the docker dev
+docker-dev: ## Build docker dev image
 	docker build . --tag pyroscope/pyroscope:dev --progress=plain
 
 .PHONY: windows-dev
-windows-dev: ## Build the windows dev
+windows-dev: ## Build windows dev image
 	docker build --platform linux/amd64 -f Dockerfile.windows --progress=plain --output type=local,dest=out .
+
+.PHONY: mac-dev
+mac-dev: ## Build mac dev image
+	docker build -f Dockerfile.mac --progress=plain --output type=local,dest=out .
 
 .PHONY: print-deps-error-message
 print-deps-error-message:

@@ -1,0 +1,66 @@
+#                     _
+#                    | |
+#   __ _ ___ ___  ___| |_ ___
+#  / _` / __/ __|/ _ \ __/ __|
+# | (_| \__ \__ \  __/ |_\__ \
+#  \__,_|___/___/\___|\__|___/
+
+FROM node:16.18-alpine3.16 as js-builder
+
+RUN apk update && apk upgrade && \
+    apk add --no-cache make
+
+WORKDIR /opt/pyroscope
+
+COPY scripts ./scripts
+COPY package.json yarn.lock Makefile lerna.json ./
+COPY lib ./lib
+COPY packages ./packages
+COPY babel.config.js .eslintrc.js .eslintignore .prettierrc tsconfig.json ./
+COPY webapp ./webapp
+
+RUN make install-build-web-dependencies
+
+ARG EXTRA_METADATA=""
+
+RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
+
+
+#   __ _             _   _
+#  / _(_)           | | (_)
+# | |_ _ _ __   __ _| |  _ _ __ ___   __ _  __ _  ___
+# |  _| | '_ \ / _` | | | | '_ ` _ \ / _` |/ _` |/ _ \
+# | | | | | | | (_| | | | | | | | | | (_| | (_| |  __/
+# |_| |_|_| |_|\__,_|_| |_|_| |_| |_|\__,_|\__, |\___|
+#                                           __/ |
+#                                          |___/
+
+FROM golang:1.19-alpine3.16 AS go-builder
+
+RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash mingw-w64-gcc
+
+WORKDIR /opt/pyroscope/
+
+COPY --from=js-builder /opt/pyroscope/webapp/public ./webapp/public
+
+COPY pkg ./pkg
+COPY cmd ./cmd
+COPY webapp/assets_embedded.go ./webapp/assets_embedded.go
+COPY scripts ./scripts
+COPY go.mod go.sum ./
+
+RUN GOOS=darwin GOARCH=arm64 go build \
+  -trimpath -ldflags "$(scripts/generate-build-flags.sh)" \
+  -tags dotnetspy,gospy,embedassets \
+  -o /pyroscope-arm64 \
+  ./cmd/pyroscope
+
+RUN GOOS=darwin GOARCH=amd64 go build \
+  -trimpath -ldflags "$(scripts/generate-build-flags.sh)" \
+  -tags dotnetspy,gospy,embedassets \
+  -o /pyroscope-amd64 \
+  ./cmd/pyroscope
+
+FROM scratch AS exporter
+COPY --from=go-builder /pyroscope-arm64 /
+COPY --from=go-builder /pyroscope-amd64 /
