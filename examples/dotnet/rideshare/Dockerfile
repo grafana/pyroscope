@@ -9,7 +9,7 @@ ADD example .
 
 RUN dotnet publish -o . -r $(dotnet --info | grep RID | cut -b 6- | tr -d ' ')
 
-ENV PYROSCOPE_APPLICATION_NAME=tolyan.rideshare.dotnet.app.fargate
+ENV PYROSCOPE_APPLICATION_NAME=rideshare.dotnet.app
 ENV PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
 ENV PYROSCOPE_LOG_LEVEL=debug
 ENV CORECLR_ENABLE_PROFILING=1
