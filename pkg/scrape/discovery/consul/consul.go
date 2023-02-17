@@ -113,19 +113,19 @@ type SDConfig struct {
 	Datacenter   string        `yaml:"datacenter,omitempty"`
 	Namespace    string        `yaml:"namespace,omitempty"`
 	Partition    string        `yaml:"partition,omitempty"`
-	TagSeparator string        `yaml:"tag_separator,omitempty"`
+	TagSeparator string        `yaml:"tag-separator,omitempty"`
 	Scheme       string        `yaml:"scheme,omitempty"`
 	Username     string        `yaml:"username,omitempty"`
 	Password     config.Secret `yaml:"password,omitempty"`
 
 	// See https://www.consul.io/docs/internals/consensus.html#consistency-modes,
 	// stale reads are a lot cheaper and are a necessity if you have >5k targets.
-	AllowStale bool `yaml:"allow_stale"`
+	AllowStale bool `yaml:"allow-stale"`
 	// By default use blocking queries (https://www.consul.io/api/index.html#blocking-queries)
 	// but allow users to throttle updates if necessary. This can be useful because of "bugs" like
 	// https://github.com/hashicorp/consul/issues/3712 which cause an un-necessary
 	// amount of requests on consul.
-	RefreshInterval model.Duration `yaml:"refresh_interval,omitempty"`
+	RefreshInterval model.Duration `yaml:"refresh-interval,omitempty"`
 
 	// See https://www.consul.io/api/catalog.html#list-services
 	// The list of services for which targets are discovered.
@@ -134,7 +134,7 @@ type SDConfig struct {
 	// A list of tags used to filter instances inside a service. Services must contain all tags in the list.
 	ServiceTags []string `yaml:"tags,omitempty"`
 	// Desired node metadata.
-	NodeMeta map[string]string `yaml:"node_meta,omitempty"`
+	NodeMeta map[string]string `yaml:"node-meta,omitempty"`
 
 	HTTPClientConfig config.HTTPClientConfig `yaml:",inline"`
 }
@@ -284,7 +284,7 @@ func (d *Discovery) getDatacenter() error {
 
 	info, err := d.client.Agent().Self()
 	if err != nil {
-		d.logger.WithError(err).Error("Error retrieving datacenter name")
+		d.logger.WithError(err).Error("error retrieving datacenter name")
 		rpcFailuresCount.Inc()
 		return err
 	}
@@ -292,7 +292,7 @@ func (d *Discovery) getDatacenter() error {
 	dc, ok := info["Config"]["Datacenter"].(string)
 	if !ok {
 		err := fmt.Errorf("invalid value '%v' for Config.Datacenter", info["Config"]["Datacenter"])
-		d.logger.WithError(err).Error("Error retrieving datacenter name")
+		d.logger.WithError(err).Error("error retrieving datacenter name")
 		return err
 	}
 
@@ -363,7 +363,7 @@ func (d *Discovery) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 // entire list of services.
 func (d *Discovery) watchServices(ctx context.Context, ch chan<- []*targetgroup.Group, lastIndex *uint64, services map[string]func()) {
 	catalog := d.client.Catalog()
-	d.logger.WithField("tags", strings.Join(d.watchedTags, ",")).Debug("Watching services")
+	d.logger.WithField("tags", strings.Join(d.watchedTags, ",")).Debug("watching services")
 
 	opts := &consul.QueryOptions{
 		WaitIndex:  *lastIndex,
@@ -384,7 +384,7 @@ func (d *Discovery) watchServices(ctx context.Context, ch chan<- []*targetgroup.
 	}
 
 	if err != nil {
-		d.logger.WithError(err).Error("Error refreshing service list")
+		d.logger.WithError(err).Error("error refreshing service list")
 		rpcFailuresCount.Inc()
 		time.Sleep(retryInterval)
 		return
@@ -488,7 +488,7 @@ func (d *Discovery) watchService(ctx context.Context, ch chan<- []*targetgroup.G
 
 // Get updates for a service.
 func (srv *consulService) watch(ctx context.Context, ch chan<- []*targetgroup.Group, health *consul.Health, lastIndex *uint64) {
-	srv.logger.WithField("service", srv.name).WithField("tags", strings.Join(srv.tags, ",")).Debug("Watching service")
+	srv.logger.WithField("service", srv.name).WithField("tags", strings.Join(srv.tags, ",")).Debug("watching service")
 
 	opts := &consul.QueryOptions{
 		WaitIndex:  *lastIndex,
@@ -511,7 +511,7 @@ func (srv *consulService) watch(ctx context.Context, ch chan<- []*targetgroup.Gr
 	}
 
 	if err != nil {
-		srv.logger.WithError(err).WithField("service", srv.name).WithField("tags", strings.Join(srv.tags, ",")).Error("Error refreshing service")
+		srv.logger.WithError(err).WithField("service", srv.name).WithField("tags", strings.Join(srv.tags, ",")).Error("error refreshing service")
 		rpcFailuresCount.Inc()
 		time.Sleep(retryInterval)
 		return
