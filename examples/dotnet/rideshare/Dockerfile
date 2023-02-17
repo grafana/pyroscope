@@ -1,9 +1,9 @@
-FROM mcr.microsoft.com/dotnet/sdk:6.0
+FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:6.0
 
 WORKDIR /dotnet
 
-RUN wget https://github.com/pyroscope-io/pyroscope-dotnet/releases/download/v0.7.0/Pyroscope.Linux.ApiWrapper.x64.so
-RUN wget https://github.com/pyroscope-io/pyroscope-dotnet/releases/download/v0.7.0/Pyroscope.Profiler.Native.so
+RUN wget https://github.com/pyroscope-io/pyroscope-dotnet/releases/download/v0.7.2-pyroscope/Pyroscope.Linux.ApiWrapper.x64.so
+RUN wget https://github.com/pyroscope-io/pyroscope-dotnet/releases/download/v0.7.2-pyroscope/Pyroscope.Profiler.Native.so
 
 ADD example .
 
@@ -23,6 +23,7 @@ ENV PROFILING_EXCEPTION_ENABLED=true
 
 
 RUN adduser --disabled-password --gecos --quiet pyroscope
+RUN mkdir /var/log/pyroscope && chown pyroscope /var/log/pyroscope
 USER pyroscope
 
 CMD ["dotnet", "/dotnet/example.dll"]
