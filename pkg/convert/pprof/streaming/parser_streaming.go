@@ -321,7 +321,10 @@ func (p *VTStreamingParser) put(stIndex int, st *valueType, l Labels, t *tree.Tr
 			return false, err
 		}
 	}
-	pi.Key = p.buildName(sampleType, p.ResolveLabels(l))
+	pi.Key, err = p.buildName(sampleType, p.ResolveLabels(l))
+	if err != nil {
+		return false, err
+	}
 	err = p.putter.Put(p.ctx, &pi)
 	return sampleTypeConfig.Cumulative, err
 }
@@ -361,12 +364,17 @@ func (p *VTStreamingParser) ResolveLabels(l Labels) map[string]string {
 	return m
 }
 
-func (p *VTStreamingParser) buildName(sampleTypeName string, labels map[string]string) *segment.Key {
+func (p *VTStreamingParser) buildName(sampleTypeName string, labels map[string]string) (*segment.Key, error) {
 	for k, v := range p.labels {
 		labels[k] = v
 	}
 	labels["__name__"] += "." + sampleTypeName
-	return segment.NewKey(labels)
+	key := segment.NewKey(labels)
+	err := segment.ValidateKey(key)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
 }
 
 func (p *VTStreamingParser) getAppMetadata(sampleTypeIndex int) (string, metadata.Metadata) {
