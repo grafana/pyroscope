@@ -59,6 +59,7 @@ type serverService struct {
 	scrapeManager    *scrape.Manager
 	database         *sqlstore.SQLStore
 	remoteWriteQueue []*remotewrite.IngestionQueue
+	appNameMetrics   *server.AppNameMetrics
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -121,6 +122,9 @@ func newServerService(c *config.Server) (*serverService, error) {
 		svc.logger.Error(err)
 	}
 	appSvc := service.NewApplicationService(appMetadataSvc, svc.storage)
+
+	// TODO: hide behind a flag
+	svc.appNameMetrics = server.NewAppNameMetrics(logger, time.Minute, prometheus.DefaultRegisterer, appMetadataSvc)
 
 	// this needs to happen after storage is initiated!
 	if svc.config.EnableExperimentalAdmin {
@@ -278,6 +282,9 @@ func (svc *serverService) Start() error {
 		return svc.scrapeManager.Run(svc.discoveryManager.SyncCh())
 	})
 
+	svc.logger.Debug("starting app name metrics sync")
+	svc.appNameMetrics.Start()
+
 	defer close(svc.done)
 	select {
 	case <-svc.stopped:
@@ -329,6 +336,9 @@ func (svc *serverService) stop() {
 			q.Stop()
 		}
 	}
+
+	svc.logger.Debug("stopping app name metrics sync")
+	svc.appNameMetrics.Stop()
 
 	svc.logger.Debug("stopping ingestion queue")
 	svc.storageQueue.Stop()

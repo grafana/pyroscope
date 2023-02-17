@@ -35,12 +35,12 @@ func TestFoo(t *testing.T) {
 	log := logrus.New()
 	appNameMetrics := server.NewAppNameMetrics(log, time.Millisecond, reg, mockAppLister)
 
-	appNameMetrics.Start()
-
-	//
-	metricsLength := testutil.CollectAndCount(appNameMetrics.Gauge())
-	if metricsLength != len(mockAppLister.appNames) {
-		t.Fatalf("expected to ingest %d but found %d", len(mockAppLister.appNames), metricsLength)
+	// Helpers
+	assertNumOfMetrics := func() {
+		metricsLength := testutil.CollectAndCount(appNameMetrics.Gauge())
+		if metricsLength != len(mockAppLister.appNames) {
+			t.Fatalf("expected to have found '%d' metrics but found '%d'", len(mockAppLister.appNames), metricsLength)
+		}
 	}
 
 	assertLabelValuePresence := func(labelValue string) {
@@ -48,11 +48,28 @@ func TestFoo(t *testing.T) {
 
 		expectedAppLabelValue := 1.0
 		if expectedAppLabelValue != appLabelValue {
-			t.Fatalf("expected value to be %f but found %f", expectedAppLabelValue, appLabelValue)
+			t.Fatalf("expected value of app=%s to be %f but found %f", labelValue, expectedAppLabelValue, appLabelValue)
 		}
 	}
 
+	go func() { appNameMetrics.Start() }()
+	t.Cleanup(appNameMetrics.Stop)
+
+	// Artificial delay
+	time.Sleep(time.Millisecond * 5)
+
+	assertNumOfMetrics()
 	for _, v := range mockAppLister.appNames {
 		assertLabelValuePresence(v.FQName)
 	}
+
+	// Replace the first app for `myapp3`
+	mockAppLister.appNames[0].FQName = "myapp3"
+
+	time.Sleep(time.Millisecond * 5)
+	for _, v := range mockAppLister.appNames {
+		assertLabelValuePresence(v.FQName)
+	}
+	assertNumOfMetrics()
+
 }

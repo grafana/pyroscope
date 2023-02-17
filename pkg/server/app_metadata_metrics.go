@@ -29,7 +29,6 @@ type AppNameMetrics struct {
 }
 
 func NewAppNameMetrics(l *logrus.Logger, syncInterval time.Duration, reg prometheus.Registerer, appLister AppLister) *AppNameMetrics {
-	// TODO(eh-am): set a default for syncInterval
 	m :=
 		prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -61,8 +60,8 @@ func (a *AppNameMetrics) updateMetrics(ctx context.Context) error {
 		return err
 	}
 
-	// TODO: delete previous existence
-
+	// Reset so that deleted apps won't show up
+	a.metrics.Reset()
 	for _, app := range apps {
 		a.metrics.WithLabelValues(app.FQName).Set(1)
 	}
@@ -71,9 +70,25 @@ func (a *AppNameMetrics) updateMetrics(ctx context.Context) error {
 }
 
 func (a *AppNameMetrics) Start() {
-	err := a.updateMetrics(context.Background())
+	ctx := context.Background()
+	err := a.updateMetrics(ctx)
 	if err != nil {
 		a.logger.WithError(err).Error("failed to get app names")
+	}
+
+	defer close(a.done)
+	ticker := time.NewTicker(a.syncInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-a.stop:
+			return
+		case <-ticker.C:
+			err = a.updateMetrics(ctx)
+			if err != nil {
+				a.logger.WithError(err).Error("failed to get app names")
+			}
+		}
 	}
 }
 
