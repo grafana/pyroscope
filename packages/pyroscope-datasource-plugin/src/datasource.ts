@@ -47,7 +47,7 @@ export class DataSource extends DataSourceApi<
     return result;
   }
 
-  async metricFindQuery(query: string) {
+  async metricFindQuery() {
     const result = await this.backendSrv
       .fetch<{ name: string }[]>({
         method: 'GET',
