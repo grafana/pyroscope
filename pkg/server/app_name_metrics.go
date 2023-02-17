@@ -1,7 +1,3 @@
-// AppNameMetrics periodically syncs with an ApplicationMetadata store
-// And exports applications name as metrics
-// The primary use case is to be able to integrate with grafana variables (https://grafana.com/docs/grafana/latest/datasources/prometheus/template-variables/)
-// It uses the format `pyroscope_app{name="$APP_NAME"} 1`
 package server
 
 import (
@@ -28,6 +24,10 @@ type AppNameMetrics struct {
 	metrics *prometheus.GaugeVec
 }
 
+// NewAppNameMetrics creates an AppNameMetrics, which periodically syncs with an ApplicationMetadata store
+// And exports applications name as metrics
+// The primary use case is to be able to integrate with grafana variables (https://grafana.com/docs/grafana/latest/datasources/prometheus/template-variables/)
+// It uses the format `pyroscope_apps{name="$APP_NAME"} 1`
 func NewAppNameMetrics(l *logrus.Logger, syncInterval time.Duration, reg prometheus.Registerer, appLister AppLister) *AppNameMetrics {
 	m :=
 		prometheus.NewGaugeVec(
