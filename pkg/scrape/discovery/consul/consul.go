@@ -11,7 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package consul
+package consul // revive:disable-line:import-shadowing package name is not referenced
 
 import (
 	"context"
