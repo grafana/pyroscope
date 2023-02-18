@@ -112,9 +112,6 @@ func (p *Parser) Convert(ctx context.Context, startTime, endTime time.Time, prof
 			pi.Units = metadata.Units(profile.StringTable[vt.Unit])
 		}
 		pi.Key = p.buildName(sampleType, profile.ResolveLabels(l))
-		if err != nil {
-			return false, err
-		}
 		err = p.putter.Put(ctx, &pi)
 		return sampleTypeConfig.Cumulative, err
 	})

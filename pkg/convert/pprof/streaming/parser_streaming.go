@@ -322,9 +322,6 @@ func (p *VTStreamingParser) put(stIndex int, st *valueType, l Labels, t *tree.Tr
 		}
 	}
 	pi.Key = p.buildName(sampleType, p.ResolveLabels(l))
-	if err != nil {
-		return false, err
-	}
 	err = p.putter.Put(p.ctx, &pi)
 	return sampleTypeConfig.Cumulative, err
 }
