@@ -111,7 +111,7 @@ func (p *Parser) Convert(ctx context.Context, startTime, endTime time.Time, prof
 			// TODO(petethepig): this conversion is questionable
 			pi.Units = metadata.Units(profile.StringTable[vt.Unit])
 		}
-		pi.Key, err = p.buildName(sampleType, profile.ResolveLabels(l))
+		pi.Key = p.buildName(sampleType, profile.ResolveLabels(l))
 		if err != nil {
 			return false, err
 		}
@@ -136,17 +136,12 @@ func sampleRate(p *tree.Profile) uint32 {
 	return uint32(time.Second / (sampleUnit * time.Duration(p.Period)))
 }
 
-func (p *Parser) buildName(sampleTypeName string, labels map[string]string) (*segment.Key, error) {
+func (p *Parser) buildName(sampleTypeName string, labels map[string]string) *segment.Key {
 	for k, v := range p.labels {
 		labels[k] = v
 	}
 	labels["__name__"] += "." + sampleTypeName
-	key := segment.NewKey(labels)
-	err := segment.ValidateKey(key)
-	if err != nil {
-		return nil, err
-	}
-	return key, nil
+	return segment.NewKey(labels)
 }
 
 func (p *Parser) load(sampleType int64, labels tree.Labels) (*tree.Tree, bool) {

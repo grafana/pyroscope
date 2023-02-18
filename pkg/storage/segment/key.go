@@ -56,6 +56,10 @@ func ParseKey(name string) (*Key, error) {
 }
 
 func ValidateKey(k *Key) error {
+	if k == nil {
+		return flameql.ErrInvalidTagKey
+	}
+
 	for key, v := range k.labels {
 		if key == "__name__" {
 			if err := flameql.ValidateAppName(v); err != nil {

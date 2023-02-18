@@ -34,6 +34,10 @@ func (s *Storage) Put(ctx context.Context, pi *PutInput) error {
 		return errRetention
 	}
 
+	if err := segment.ValidateKey(pi.Key); err != nil {
+		return err
+	}
+
 	if err := s.appSvc.CreateOrUpdate(ctx, appmetadata.ApplicationMetadata{
 		FQName:          pi.Key.AppName(),
 		SpyName:         pi.SpyName,
