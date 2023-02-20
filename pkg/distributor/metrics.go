@@ -19,7 +19,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 				Help:      "The number of compressed bytes per profile received by the distributor.",
 				Buckets:   prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 30),
 			},
-			[]string{"type"},
+			[]string{"type", "tenant"},
 		),
 		receivedDecompressedBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
@@ -28,7 +28,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 				Help:      "The number of decompressed bytes per profiles received by the distributor.",
 				Buckets:   prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 30),
 			},
-			[]string{"type"},
+			[]string{"type", "tenant"},
 		),
 		receivedSamples: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
@@ -37,7 +37,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 				Help:      "The number of samples per profile name received by the distributor.",
 				Buckets:   prometheus.ExponentialBucketsRange(100, 100000, 30),
 			},
-			[]string{"type"},
+			[]string{"type", "tenant"},
 		),
 	}
 	if reg != nil {

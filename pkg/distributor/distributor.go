@@ -6,12 +6,16 @@ import (
 	"flag"
 	"fmt"
 	"hash/fnv"
+	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
+	"github.com/grafana/dskit/kv"
+	"github.com/grafana/dskit/limiter"
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
@@ -29,11 +33,22 @@ import (
 	"github.com/grafana/phlare/pkg/pprof"
 	"github.com/grafana/phlare/pkg/tenant"
 	"github.com/grafana/phlare/pkg/usagestats"
+	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/phlare/pkg/validation"
 )
 
 type PushClient interface {
 	Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
 }
+
+const (
+	// distributorRingKey is the key under which we store the distributors ring in the KVStore.
+	distributorRingKey = "distributor"
+
+	// ringAutoForgetUnhealthyPeriods is how many consecutive timeout periods an unhealthy instance
+	// in the ring will be automatically removed after.
+	ringAutoForgetUnhealthyPeriods = 10
+)
 
 // todo: move to non global metrics.
 var (
@@ -52,12 +67,16 @@ var (
 type Config struct {
 	PushTimeout time.Duration
 	PoolConfig  clientpool.PoolConfig `yaml:"pool_config,omitempty"`
+
+	// Distributors ring
+	DistributorRing RingConfig `yaml:"ring" doc:"hidden"`
 }
 
 // RegisterFlags registers distributor-related flags.
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
 	cfg.PoolConfig.RegisterFlagsWithPrefix("distributor", fs)
 	fs.DurationVar(&cfg.PushTimeout, "distributor.push.timeout", 5*time.Second, "Timeout when pushing data to ingester.")
+	cfg.DistributorRing.RegisterFlags(fs)
 }
 
 // Distributor coordinates replicates and distribution of log streams.
@@ -66,8 +85,16 @@ type Distributor struct {
 	logger log.Logger
 
 	cfg           Config
+	limits        Limits
 	ingestersRing ring.ReadRing
 	pool          *ring_client.Pool
+
+	// The global rate limiter requires a distributors ring to count
+	// the number of healthy instances
+	distributorsLifecycler *ring.BasicLifecycler
+	distributorsRing       *ring.Ring
+	healthyInstancesCount  *atomic.Uint32
+	ingestionRateLimiter   *limiter.RateLimiter
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -75,21 +102,47 @@ type Distributor struct {
 	metrics *metrics
 }
 
-func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Distributor, error) {
+type Limits interface {
+	IngestionRateBytes(tenantID string) float64
+	IngestionBurstSizeBytes(tenantID string) int
+	MaxLabelNameLength(userID string) int
+	MaxLabelValueLength(userID string) int
+	MaxLabelNamesPerSeries(userID string) int
+}
+
+func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, limits Limits, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Distributor, error) {
 	d := &Distributor{
-		cfg:           cfg,
-		logger:        logger,
-		ingestersRing: ingestersRing,
-		pool:          clientpool.NewPool(cfg.PoolConfig, ingestersRing, factory, clients, logger, clientsOptions...),
-		metrics:       newMetrics(reg),
+		cfg:                   cfg,
+		logger:                logger,
+		ingestersRing:         ingestersRing,
+		pool:                  clientpool.NewPool(cfg.PoolConfig, ingestersRing, factory, clients, logger, clientsOptions...),
+		metrics:               newMetrics(reg),
+		healthyInstancesCount: atomic.NewUint32(0),
+		limits:                limits,
 	}
 	var err error
-	d.subservices, err = services.NewManager(d.pool)
+
+	subservices := []services.Service(nil)
+	subservices = append(subservices, d.pool)
+
+	distributorsRing, distributorsLifecycler, err := newRingAndLifecycler(cfg.DistributorRing, d.healthyInstancesCount, logger, reg)
+	if err != nil {
+		return nil, err
+	}
+
+	subservices = append(subservices, distributorsLifecycler, distributorsRing)
+
+	d.ingestionRateLimiter = limiter.NewRateLimiter(newGlobalRateStrategy(newIngestionRateStrategy(limits), d), 10*time.Second)
+	d.distributorsLifecycler = distributorsLifecycler
+	d.distributorsRing = distributorsRing
+
+	d.subservices, err = services.NewManager(subservices...)
 	if err != nil {
 		return nil, errors.Wrap(err, "services manager")
 	}
 	d.subservicesWatcher = services.NewFailureWatcher()
 	d.subservicesWatcher.WatchManager(d.subservices)
+
 	d.Service = services.NewBasicService(d.starting, d.running, d.stopping)
 	rfStats.Set(int64(ingestersRing.ReplicationFactor()))
 	return d, nil
@@ -115,14 +168,21 @@ func (d *Distributor) stopping(_ error) error {
 func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 	var (
-		keys     = make([]uint32, 0, len(req.Msg.Series))
-		profiles = make([]*profileTracker, 0, len(req.Msg.Series))
+		keys                       = make([]uint32, 0, len(req.Msg.Series))
+		profiles                   = make([]*profileTracker, 0, len(req.Msg.Series))
+		totalPushUncompressedBytes int64
+		totalProfiles              int64
 	)
 
 	for _, series := range req.Msg.Series {
+		// include the labels in the size calculation
+		for _, lbs := range series.Labels {
+			totalPushUncompressedBytes += int64(len(lbs.Name))
+			totalPushUncompressedBytes += int64(len(lbs.Value))
+		}
 		keys = append(keys, TokenFor(tenantID, labelsString(series.Labels)))
 		profName := phlaremodel.Labels(series.Labels).Get(scrape.ProfileName)
 		for _, raw := range series.Samples {
@@ -130,14 +190,15 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 			profileReceivedStats.Inc(1)
 			bytesReceivedTotalStats.Inc(int64(len(raw.RawProfile)))
 			bytesReceivedStats.Record(float64(len(raw.RawProfile)))
-			d.metrics.receivedCompressedBytes.WithLabelValues(profName).Observe(float64(len(raw.RawProfile)))
+			totalProfiles++
+			d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(raw.RawProfile)))
 			p, err := pprof.RawFromBytes(raw.RawProfile)
 			if err != nil {
-				return nil, err
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
-			d.metrics.receivedDecompressedBytes.WithLabelValues(profName).Observe(float64(p.SizeBytes()))
-			d.metrics.receivedSamples.WithLabelValues(profName).Observe(float64(len(p.Sample)))
-
+			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(p.SizeBytes()))
+			d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
+			totalPushUncompressedBytes += int64(p.SizeBytes())
 			p.Normalize()
 
 			// zip the data back into the buffer
@@ -151,6 +212,24 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 			raw.ID = uuid.NewString()
 		}
 		profiles = append(profiles, &profileTracker{profile: series})
+	}
+
+	// validate the request
+	for _, series := range req.Msg.Series {
+		if err := validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
+			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
+			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+	}
+
+	// rate limit the request
+	if !d.ingestionRateLimiter.AllowN(time.Now(), tenantID, int(totalPushUncompressedBytes)) {
+		validation.DiscardedProfiles.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(totalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(totalPushUncompressedBytes))
+		return nil, connect.NewError(connect.CodeResourceExhausted,
+			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.Bytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.Bytes(uint64(totalPushUncompressedBytes))),
+		)
 	}
 
 	const maxExpectedReplicationSet = 5 // typical replication factor 3 plus one for inactive plus one for luck
@@ -245,6 +324,35 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 	return err
 }
 
+func (d *Distributor) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if d.distributorsRing != nil {
+		d.distributorsRing.ServeHTTP(w, req)
+	} else {
+		ringNotEnabledPage := `
+			<!DOCTYPE html>
+			<html>
+				<head>
+					<meta charset="UTF-8">
+					<title>Distributor Status</title>
+				</head>
+				<body>
+					<h1>Distributor Status</h1>
+					<p>Distributor is not running with global limits enabled</p>
+				</body>
+			</html>`
+		util.WriteHTMLResponse(w, ringNotEnabledPage)
+	}
+}
+
+// HealthyInstancesCount implements the ReadLifecycler interface
+//
+// We use a ring lifecycler delegate to count the number of members of the
+// ring. The count is then used to enforce rate limiting correctly for each
+// distributor. $EFFECTIVE_RATE_LIMIT = $GLOBAL_RATE_LIMIT / $NUM_INSTANCES
+func (d *Distributor) HealthyInstancesCount() int {
+	return int(d.healthyInstancesCount.Load())
+}
+
 type profileTracker struct {
 	profile     *pushv1.RawProfileSeries
 	minSuccess  int
@@ -282,4 +390,36 @@ func TokenFor(tenantID, labels string) uint32 {
 	_, _ = h.Write([]byte(tenantID))
 	_, _ = h.Write([]byte(labels))
 	return h.Sum32()
+}
+
+// newRingAndLifecycler creates a new distributor ring and lifecycler with all required lifecycler delegates
+func newRingAndLifecycler(cfg RingConfig, instanceCount *atomic.Uint32, logger log.Logger, reg prometheus.Registerer) (*ring.Ring, *ring.BasicLifecycler, error) {
+	reg = prometheus.WrapRegistererWithPrefix("phlare_", reg)
+	kvStore, err := kv.NewClient(cfg.KVStore, ring.GetCodec(), kv.RegistererWithKVName(reg, "distributor-lifecycler"), logger)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to initialize distributors' KV store")
+	}
+
+	lifecyclerCfg, err := cfg.ToBasicLifecyclerConfig(logger)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to build distributors' lifecycler config")
+	}
+
+	var delegate ring.BasicLifecyclerDelegate
+	delegate = ring.NewInstanceRegisterDelegate(ring.ACTIVE, lifecyclerCfg.NumTokens)
+	delegate = newHealthyInstanceDelegate(instanceCount, cfg.HeartbeatTimeout, delegate)
+	delegate = ring.NewLeaveOnStoppingDelegate(delegate, logger)
+	delegate = ring.NewAutoForgetDelegate(ringAutoForgetUnhealthyPeriods*cfg.HeartbeatTimeout, delegate, logger)
+
+	distributorsLifecycler, err := ring.NewBasicLifecycler(lifecyclerCfg, "distributor", distributorRingKey, kvStore, delegate, logger, reg)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to initialize distributors' lifecycler")
+	}
+
+	distributorsRing, err := ring.New(cfg.ToRingConfig(), "distributor", distributorRingKey, logger, reg)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to initialize distributors' ring client")
+	}
+
+	return distributorsRing, distributorsLifecycler, nil
 }

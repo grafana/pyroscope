@@ -167,6 +167,60 @@ client:
 # The frontend_worker block configures the frontend-worker.
 [frontend_worker: <frontend_worker>]
 
+limits:
+  # Per-tenant ingestion rate limit in sample size per second. Units in MB.
+  # CLI flag: -distributor.ingestion-rate-limit-mb
+  [ingestion_rate_mb: <float> | default = 4]
+
+  # Per-tenant allowed ingestion burst size (in sample size). Units in MB. The
+  # burst size refers to the per-distributor local rate limiter, and should be
+  # set at least to the maximum profile size expected in a single push request.
+  # CLI flag: -distributor.ingestion-burst-size-mb
+  [ingestion_burst_size_mb: <float> | default = 2]
+
+  # Maximum length accepted for label names.
+  # CLI flag: -validation.max-length-label-name
+  [max_label_name_length: <int> | default = 1024]
+
+  # Maximum length accepted for label value. This setting also applies to the
+  # metric name.
+  # CLI flag: -validation.max-length-label-value
+  [max_label_value_length: <int> | default = 2048]
+
+  # Maximum number of label names per series.
+  # CLI flag: -validation.max-label-names-per-series
+  [max_label_names_per_series: <int> | default = 30]
+
+  # Maximum number of active series of profiles per tenant, per ingester. 0 to
+  # disable.
+  # CLI flag: -ingester.max-series-per-tenant
+  [max_series_per_tenant: <int> | default = 0]
+
+  # Maximum number of active series of profiles per tenant, across the cluster.
+  # 0 to disable. When the global limit is enabled, each ingester is configured
+  # with a dynamic local limit based on the replication factor and the current
+  # number of healthy ingesters, and is kept updated whenever the number of
+  # ingesters change.
+  # CLI flag: -ingester.max-global-series-per-tenant
+  [max_global_series_per_user: <int> | default = 5000]
+
+  # Limit how far back in profiling data can be queried, up until lookback
+  # duration ago. This limit is enforced in the query frontend. If the requested
+  # time range is outside the allowed range, the request will not fail, but will
+  # be modified to only query data within the allowed time range. The default
+  # value of 0 does not set a limit.
+  # CLI flag: -querier.max-query-lookback
+  [max_query_lookback: <duration> | default = 0s]
+
+  # The limit to length of queries. 0 to disable.
+  # CLI flag: -querier.max-query-length
+  [max_query_length: <duration> | default = 30d1h]
+
+  # Maximum number of queries that will be scheduled in parallel by the
+  # frontend.
+  # CLI flag: -querier.max-query-parallelism
+  [max_query_parallelism: <int> | default = 32]
+
 # The query_scheduler block configures the query-scheduler.
 [query_scheduler: <query_scheduler>]
 
@@ -193,6 +247,16 @@ tracing:
   # Set to false to disable tracing.
   # CLI flag: -tracing.enabled
   [enabled: <boolean> | default = true]
+
+runtime_config:
+  # How often to check runtime config files.
+  # CLI flag: -runtime-config.reload-period
+  [period: <duration> | default = 10s]
+
+  # Comma separated list of yaml files with the configuration that can be
+  # updated at runtime. Runtime config files will be merged from left to right.
+  # CLI flag: -runtime-config.file
+  [file: <string> | default = ""]
 
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,

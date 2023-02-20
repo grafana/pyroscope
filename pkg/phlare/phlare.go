@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/modules"
 	"github.com/grafana/dskit/ring"
+	"github.com/grafana/dskit/runtimeconfig"
 	"github.com/grafana/dskit/services"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/prometheus/client_golang/prometheus"
@@ -47,21 +48,26 @@ import (
 	"github.com/grafana/phlare/pkg/tracing"
 	"github.com/grafana/phlare/pkg/usagestats"
 	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/phlare/pkg/validation"
+	"github.com/grafana/phlare/pkg/validation/exporter"
 )
 
 type Config struct {
-	Target         flagext.StringSliceCSV `yaml:"target,omitempty"`
-	AgentConfig    agent.Config           `yaml:",inline"`
-	Server         server.Config          `yaml:"server,omitempty"`
-	Distributor    distributor.Config     `yaml:"distributor,omitempty"`
-	Querier        querier.Config         `yaml:"querier,omitempty"`
-	Frontend       frontend.Config        `yaml:"frontend,omitempty"`
-	Worker         worker.Config          `yaml:"frontend_worker"`
-	QueryScheduler scheduler.Config       `yaml:"query_scheduler"`
-	Ingester       ingester.Config        `yaml:"ingester,omitempty"`
-	MemberlistKV   memberlist.KVConfig    `yaml:"memberlist"`
-	PhlareDB       phlaredb.Config        `yaml:"phlaredb,omitempty"`
-	Tracing        tracing.Config         `yaml:"tracing"`
+	Target            flagext.StringSliceCSV `yaml:"target,omitempty"`
+	AgentConfig       agent.Config           `yaml:",inline"`
+	Server            server.Config          `yaml:"server,omitempty"`
+	Distributor       distributor.Config     `yaml:"distributor,omitempty"`
+	Querier           querier.Config         `yaml:"querier,omitempty"`
+	Frontend          frontend.Config        `yaml:"frontend,omitempty"`
+	Worker            worker.Config          `yaml:"frontend_worker"`
+	LimitsConfig      validation.Limits      `yaml:"limits"`
+	QueryScheduler    scheduler.Config       `yaml:"query_scheduler"`
+	Ingester          ingester.Config        `yaml:"ingester,omitempty"`
+	MemberlistKV      memberlist.KVConfig    `yaml:"memberlist"`
+	PhlareDB          phlaredb.Config        `yaml:"phlaredb,omitempty"`
+	Tracing           tracing.Config         `yaml:"tracing"`
+	OverridesExporter exporter.Config        `yaml:"overrides_exporter" doc:"hidden"`
+	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
 
 	Storage StorageConfig `yaml:"storage"`
 
@@ -106,12 +112,13 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.AgentConfig.RegisterFlags(f)
 	c.MemberlistKV.RegisterFlags(f)
-	c.Distributor.RegisterFlags(f)
 	c.Querier.RegisterFlags(f)
 	c.PhlareDB.RegisterFlags(f)
 	c.Tracing.RegisterFlags(f)
 	c.Storage.RegisterFlagsWithContext(ctx, f)
+	c.RuntimeConfig.RegisterFlags(f)
 	c.Analytics.RegisterFlags(f)
+	c.LimitsConfig.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.
@@ -122,9 +129,11 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	// but we can take values from throwaway flag set and reregister into supplied flags with new default values.
 	c.Server.RegisterFlags(throwaway)
 	c.Ingester.RegisterFlags(throwaway)
+	c.Distributor.RegisterFlags(throwaway)
 	c.Frontend.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
 	c.QueryScheduler.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
 	c.Worker.RegisterFlags(throwaway)
+	c.OverridesExporter.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
 
 	throwaway.VisitAll(func(f *flag.Flag) {
 		// Ignore errors when setting new values. We have a test to verify that it works.
@@ -132,6 +141,10 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		case "server.http-listen-port":
 			_ = f.Value.Set("4100")
 		case "query-frontend.instance-port":
+			_ = f.Value.Set("4100")
+		case "distributor.ring.instance-port":
+			_ = f.Value.Set("4100")
+		case "overrides-exporter.ring.instance-port":
 			_ = f.Value.Set("4100")
 		case "distributor.replication-factor":
 			_ = f.Value.Set("1")
@@ -154,6 +167,8 @@ func (c *Config) Validate() error {
 
 func (c *Config) ApplyDynamicConfig() cfg.Source {
 	c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store = "memberlist"
+	c.Distributor.DistributorRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
+	c.OverridesExporter.Ring.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.Frontend.QuerySchedulerDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.Worker.QuerySchedulerDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.QueryScheduler.ServiceDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
@@ -202,6 +217,10 @@ type Phlare struct {
 	agent              *agent.Agent
 	pusherClient       pushv1connect.PusherServiceClient
 	usageReport        *usagestats.Reporter
+	RuntimeConfig      *runtimeconfig.Manager
+	Overrides          *validation.Overrides
+
+	TenantLimits validation.TenantLimits
 
 	storageBucket objstore.Bucket
 
@@ -262,6 +281,9 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(GRPCGateway, f.initGRPCGateway, modules.UserInvisibleModule)
 	mm.RegisterModule(MemberlistKV, f.initMemberlistKV, modules.UserInvisibleModule)
 	mm.RegisterModule(Ring, f.initRing, modules.UserInvisibleModule)
+	mm.RegisterModule(RuntimeConfig, f.initRuntimeConfig, modules.UserInvisibleModule)
+	mm.RegisterModule(Overrides, f.initOverrides, modules.UserInvisibleModule)
+	mm.RegisterModule(OverridesExporter, f.initOverridesExporter)
 	mm.RegisterModule(Ingester, f.initIngester)
 	mm.RegisterModule(Server, f.initServer, modules.UserInvisibleModule)
 	mm.RegisterModule(Distributor, f.initDistributor)
@@ -274,28 +296,22 @@ func (f *Phlare) setupModuleManager() error {
 
 	// Add dependencies
 	deps := map[string][]string{
-		All:            {Agent, Ingester, Distributor, QueryScheduler, QueryFrontend, Querier},
-		UsageReport:    {Storage, MemberlistKV},
-		Distributor:    {Ring, Server, UsageReport},
-		Querier:        {Server, MemberlistKV, Ring, UsageReport},
-		QueryFrontend:  {Server, MemberlistKV, UsageReport},
-		QueryScheduler: {Server, MemberlistKV, UsageReport}, // todo: add overrides
-		Agent:          {Server},
-		Ingester:       {Server, MemberlistKV, Storage, UsageReport},
-		Ring:           {Server, MemberlistKV},
-		MemberlistKV:   {Server},
-		Server:         {GRPCGateway},
+		All: {Agent, Ingester, Distributor, QueryScheduler, QueryFrontend, Querier},
 
-		// Querier:                  {Store, Ring, Server, IngesterQuerier, TenantConfigs, UsageReport},
-		// QueryFrontendTripperware: {Server, Overrides, TenantConfigs},
-		// QueryFrontend:            {QueryFrontendTripperware, UsageReport},
-		// QueryScheduler:           {Server, Overrides, MemberlistKV, UsageReport},
-		// Ruler:                    {Ring, Server, Store, RulerStorage, IngesterQuerier, Overrides, TenantConfigs, UsageReport},
-		// TableManager:             {Server, UsageReport},
-		// Compactor:                {Server, Overrides, MemberlistKV, UsageReport},
-		// IndexGateway:             {Server, Store, Overrides, UsageReport, MemberlistKV, IndexGatewayRing},
-		// IngesterQuerier:          {Ring},
-		// IndexGatewayRing:         {RuntimeConfig, Server, MemberlistKV},
+		Agent:          {Server},
+		Distributor:    {Overrides, Ring, Server, UsageReport},
+		Querier:        {Server, MemberlistKV, Ring, UsageReport},
+		QueryFrontend:  {OverridesExporter, Server, MemberlistKV, UsageReport},
+		QueryScheduler: {Overrides, Server, MemberlistKV, UsageReport},
+		Ingester:       {Overrides, Server, MemberlistKV, Storage, UsageReport},
+
+		UsageReport:       {Storage, MemberlistKV},
+		Overrides:         {RuntimeConfig},
+		OverridesExporter: {Overrides, MemberlistKV},
+		RuntimeConfig:     {Server},
+		Ring:              {Server, MemberlistKV},
+		MemberlistKV:      {Server},
+		Server:            {GRPCGateway},
 	}
 
 	for mod, targets := range deps {

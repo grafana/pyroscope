@@ -9,7 +9,7 @@ import (
 	"github.com/grafana/phlare/pkg/util/httpgrpc"
 )
 
-// todo: this could be generated.
+// todo: this could be generated but first we need more operational experience in case we need to change it.
 type grpcHandler struct {
 	querierv1connect.QuerierServiceHandler
 }
