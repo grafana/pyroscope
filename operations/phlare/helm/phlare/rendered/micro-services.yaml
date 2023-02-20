@@ -753,7 +753,7 @@ spec:
         - name: "agent"
           securityContext:
             {}
-          image: "grafana/phlare:0.1.1"
+          image: "grafana/phlare:0.2.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=agent"
@@ -832,7 +832,7 @@ spec:
         - name: "distributor"
           securityContext:
             {}
-          image: "grafana/phlare:0.1.1"
+          image: "grafana/phlare:0.2.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=distributor"
@@ -910,7 +910,7 @@ spec:
         - name: "querier"
           securityContext:
             {}
-          image: "grafana/phlare:0.1.1"
+          image: "grafana/phlare:0.2.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=querier"
@@ -988,7 +988,7 @@ spec:
         - name: "query-frontend"
           securityContext:
             {}
-          image: "grafana/phlare:0.1.1"
+          image: "grafana/phlare:0.2.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-frontend"
@@ -1066,7 +1066,7 @@ spec:
         - name: "query-scheduler"
           securityContext:
             {}
-          image: "grafana/phlare:0.1.1"
+          image: "grafana/phlare:0.2.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-scheduler"
@@ -1241,7 +1241,7 @@ spec:
         - name: "ingester"
           securityContext:
             {}
-          image: "grafana/phlare:0.1.1"
+          image: "grafana/phlare:0.2.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=ingester"

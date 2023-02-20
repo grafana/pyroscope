@@ -218,7 +218,7 @@ spec:
         - name: "phlare"
           securityContext:
             {}
-          image: "grafana/phlare:0.1.1"
+          image: "grafana/phlare:0.2.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=all"
