@@ -185,8 +185,8 @@ func NewScheduler(cfg Config, limits Limits, log log.Logger, registerer promethe
 
 // Limits needed for the Query Scheduler - interface used for decoupling.
 type Limits interface {
-	// MaxQueriersPerUser returns max queriers to use per tenant, or 0 if shuffle sharding is disabled.
-	MaxQueriersPerUser(user string) int
+	// MaxQueriersPerTenant returns max queriers to use per tenant, or 0 if shuffle sharding is disabled.
+	MaxQueriersPerTenant(tenant string) int
 }
 
 type schedulerRequest struct {
@@ -348,7 +348,7 @@ func (s *Scheduler) enqueueRequest(frontendContext context.Context, frontendAddr
 	if err != nil {
 		return err
 	}
-	maxQueriers := validation.SmallestPositiveNonZeroIntPerTenant(tenantIDs, s.limits.MaxQueriersPerUser)
+	maxQueriers := validation.SmallestPositiveNonZeroIntPerTenant(tenantIDs, s.limits.MaxQueriersPerTenant)
 
 	s.activeUsers.UpdateUserTimestamp(userID, now)
 	return s.requestQueue.EnqueueRequest(userID, req, maxQueriers, func() {

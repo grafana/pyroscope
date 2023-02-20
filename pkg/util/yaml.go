@@ -9,13 +9,13 @@ import "gopkg.in/yaml.v3"
 
 // YAMLMarshalUnmarshal utility function that converts a YAML interface in a map
 // doing marshal and unmarshal of the parameter
-func YAMLMarshalUnmarshal(in interface{}) (map[string]interface{}, error) {
+func YAMLMarshalUnmarshal(in interface{}) (map[interface{}]interface{}, error) {
 	yamlBytes, err := yaml.Marshal(in)
 	if err != nil {
 		return nil, err
 	}
 
-	object := make(map[string]interface{})
+	object := make(map[interface{}]interface{})
 	if err := yaml.Unmarshal(yamlBytes, object); err != nil {
 		return nil, err
 	}
