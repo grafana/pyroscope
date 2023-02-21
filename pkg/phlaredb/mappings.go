@@ -1,3 +1,4 @@
+// nolint unused
 package phlaredb
 
 import (
@@ -40,6 +41,7 @@ func (*mappingsHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable
 	r.mappings = elemRewriter
 }
 
+// nolint unparam
 func (*mappingsHelper) rewrite(r *rewriter, m *profilev1.Mapping) error {
 	r.strings.rewrite(&m.Filename)
 	r.strings.rewrite(&m.BuildId)
@@ -47,7 +49,7 @@ func (*mappingsHelper) rewrite(r *rewriter, m *profilev1.Mapping) error {
 }
 
 func (*mappingsHelper) setID(_, newID uint64, m *profilev1.Mapping) uint64 {
-	var oldID = m.Id
+	oldID := m.Id
 	m.Id = newID
 	return oldID
 }

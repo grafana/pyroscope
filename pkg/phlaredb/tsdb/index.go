@@ -247,6 +247,7 @@ type indexValueEntry struct {
 type unlockIndex map[string]indexEntry
 
 // This is the prevalent value for Intel and AMD CPUs as-at 2018.
+// nolint unused
 const cacheLineSize = 64
 
 // Roughly
@@ -255,7 +256,7 @@ type indexShard struct {
 	shard uint32
 	mtx   sync.RWMutex
 	idx   unlockIndex
-	//nolint:structcheck,unused
+	//nolint structcheck,unused
 	pad [cacheLineSize - unsafe.Sizeof(sync.Mutex{}) - unsafe.Sizeof(unlockIndex{})]byte
 }
 

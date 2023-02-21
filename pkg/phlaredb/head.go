@@ -46,6 +46,7 @@ func copySlice[T any](in []T) []T {
 
 type idConversionTable map[int64]int64
 
+// nolint unused
 func (t idConversionTable) rewrite(idx *int64) {
 	pos := *idx
 	var ok bool
@@ -55,6 +56,7 @@ func (t idConversionTable) rewrite(idx *int64) {
 	}
 }
 
+// nolint unused
 func (t idConversionTable) rewriteUint64(idx *uint64) {
 	pos := *idx
 	v, ok := t[int64(pos)]
@@ -76,9 +78,12 @@ func emptyRewriter() *rewriter {
 
 // rewriter contains slices to rewrite the per profile reference into per head references.
 type rewriter struct {
-	strings     stringConversionTable
-	functions   idConversionTable
-	mappings    idConversionTable
+	strings stringConversionTable
+	// nolint unused
+	functions idConversionTable
+	// nolint unused
+	mappings idConversionTable
+	// nolint unused
 	locations   idConversionTable
 	stacktraces idConversionTable
 }

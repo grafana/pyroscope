@@ -1,3 +1,4 @@
+// nolint unused
 package phlaredb
 
 import (
@@ -38,10 +39,11 @@ func (*functionsHelper) rewrite(r *rewriter, f *profilev1.Function) error {
 }
 
 func (*functionsHelper) setID(_, newID uint64, f *profilev1.Function) uint64 {
-	var oldID = f.Id
+	oldID := f.Id
 	f.Id = newID
 	return oldID
 }
+
 func (*functionsHelper) size(_ *profilev1.Function) uint64 {
 	return functionSize
 }

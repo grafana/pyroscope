@@ -451,14 +451,8 @@ func TestFilterProfiles(t *testing.T) {
 	}, filtered)
 }
 
-type fakeBlock struct {
-	id   string
-	size uint64 // in mbytes
-}
-
 type fakeVolumeFS struct {
 	mock.Mock
-	blocks []fakeBlock
 }
 
 func (f *fakeVolumeFS) HasHighDiskUtilization(path string) (*diskutil.VolumeStats, error) {
@@ -470,6 +464,7 @@ func (f *fakeVolumeFS) Open(path string) (fs.File, error) {
 	args := f.Called(path)
 	return args[0].(fs.File), args.Error(1)
 }
+
 func (f *fakeVolumeFS) RemoveAll(path string) error {
 	args := f.Called(path)
 	return args.Error(0)

@@ -142,7 +142,6 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush(ctx context.Context) (numRows uin
 		// cap max row size by buffer
 		if rowsToFlush > s.cfg.MaxBufferRowCount {
 			rowsToFlush = s.cfg.MaxBufferRowCount
-
 		}
 
 		rows := make([]parquet.Row, rowsToFlush)
@@ -171,7 +170,7 @@ func (s *deduplicatingSlice[M, K, H, P]) Flush(ctx context.Context) (numRows uin
 	return uint64(rowsFlushed), uint64(rowGroupsFlushed), nil
 }
 
-func (s *deduplicatingSlice[M, K, H, P]) ingest(ctx context.Context, elems []M, rewriter *rewriter) error {
+func (s *deduplicatingSlice[M, K, H, P]) ingest(_ context.Context, elems []M, rewriter *rewriter) error {
 	var (
 		rewritingMap = make(map[int64]int64)
 		missing      = int64SlicePool.Get().([]int64)
@@ -220,17 +219,11 @@ func (s *deduplicatingSlice[M, K, H, P]) ingest(ctx context.Context, elems []M, 
 		s.lock.Unlock()
 	}
 
+	// nolint staticcheck
 	int64SlicePool.Put(missing[:0])
 
 	// add rewrite information to struct
 	s.helper.addToRewriter(rewriter, rewritingMap)
 
 	return nil
-}
-
-func (s *deduplicatingSlice[M, K, H, P]) getIndex(key K) (int64, bool) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	v, ok := s.lookup[key]
-	return v, ok
 }

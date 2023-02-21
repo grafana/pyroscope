@@ -16,14 +16,12 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/gogo/status"
 	"github.com/google/pprof/profile"
-	"github.com/google/uuid"
 	"github.com/grafana/dskit/multierror"
 	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/samber/lo"
 	"github.com/segmentio/parquet-go"
@@ -95,7 +93,6 @@ func (b *BlockQuerier) Queriers() Queriers {
 		res = append(res, q)
 	}
 	return res
-
 }
 
 func (b *BlockQuerier) BlockMetas(ctx context.Context) (metas []*block.Meta, _ error) {
@@ -281,16 +278,15 @@ type singleBlockQuerier struct {
 
 	tables []tableReader
 
-	openLock              sync.Mutex
-	opened                bool
-	tsBoundaryPerRowGroup []minMax
-	index                 *index.Reader
-	strings               inMemoryparquetReader[*schemav1.StoredString, *schemav1.StringPersister]
-	functions             inMemoryparquetReader[*profilev1.Function, *schemav1.FunctionPersister]
-	locations             inMemoryparquetReader[*profilev1.Location, *schemav1.LocationPersister]
-	mappings              inMemoryparquetReader[*profilev1.Mapping, *schemav1.MappingPersister]
-	stacktraces           parquetReader[*schemav1.Stacktrace, *schemav1.StacktracePersister]
-	profiles              parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
+	openLock    sync.Mutex
+	opened      bool
+	index       *index.Reader
+	strings     inMemoryparquetReader[*schemav1.StoredString, *schemav1.StringPersister]
+	functions   inMemoryparquetReader[*profilev1.Function, *schemav1.FunctionPersister]
+	locations   inMemoryparquetReader[*profilev1.Location, *schemav1.LocationPersister]
+	mappings    inMemoryparquetReader[*profilev1.Mapping, *schemav1.MappingPersister]
+	stacktraces parquetReader[*schemav1.Stacktrace, *schemav1.StacktracePersister]
+	profiles    parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
 }
 
 func newSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlareobjstore.BucketReader, meta *block.Meta) *singleBlockQuerier {
@@ -426,91 +422,6 @@ func (m *mapPredicate[K, V]) KeepValue(v parquet.Value) bool {
 type labelsInfo struct {
 	fp  model.Fingerprint
 	lbs phlaremodel.Labels
-}
-
-func (b *singleBlockQuerier) forMatchingProfiles(ctx context.Context, matchers []*labels.Matcher, start, end model.Time,
-	fn func(lbs phlaremodel.Labels, profile *schemav1.Profile, samples []schemav1.Sample) error,
-) error {
-	postings, err := PostingsForMatchers(b.index, nil, matchers...)
-	if err != nil {
-		return err
-	}
-
-	var (
-		lbls         = make(phlaremodel.Labels, 0, 6)
-		chks         = make([]index.ChunkMeta, 1)
-		lblsPerIndex = make(map[uint32]labelsInfo)
-	)
-
-	// get all relevant labels/fingerprints
-	for postings.Next() {
-		fp, err := b.index.Series(postings.At(), &lbls, &chks)
-		if err != nil {
-			return err
-		}
-		if lblsExisting, exists := lblsPerIndex[chks[0].SeriesIndex]; exists {
-			// Compare to check if there is a clash
-			if phlaremodel.CompareLabelPairs(lbls, lblsExisting.lbs) != 0 {
-				panic("label hash conflict")
-			}
-		} else {
-			lblsPerIndex[chks[0].SeriesIndex] = labelsInfo{
-				fp:  model.Fingerprint(fp),
-				lbs: lbls,
-			}
-			lbls = make(phlaremodel.Labels, 0, 6)
-		}
-	}
-
-	rowNums := query.NewJoinIterator(
-		0,
-		[]query.Iterator{
-			b.profiles.columnIter(ctx, "SeriesIndex", newMapPredicate(lblsPerIndex), "SeriesIndex"),                              // get all profiles with matching seriesRef
-			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"), // get all profiles within the time window
-			b.profiles.columnIter(ctx, "ID", nil, "ID"),                                                                          // get all IDs
-			// TODO: Provide option to ignore samples
-			b.profiles.columnIter(ctx, "Samples.list.element.StacktraceID", nil, "StacktraceIDs"),
-			b.profiles.columnIter(ctx, "Samples.list.element.Value", nil, "SampleValues"),
-		},
-		nil,
-	)
-	defer rowNums.Close()
-	var (
-		samples       reconstructSamples
-		profile       schemav1.Profile
-		schemaSamples []schemav1.Sample
-		series        [][]parquet.Value
-	)
-
-	// retrieve the full profiles
-	for rowNums.Next() {
-		result := rowNums.At()
-
-		series = result.Columns(series, "ID", "TimeNanos", "SeriesIndex")
-		var err error
-		profile.ID, err = uuid.FromBytes(series[0][0].ByteArray())
-		if err != nil {
-			return err
-		}
-		profile.TimeNanos = series[1][0].Int64()
-		profile.SeriesIndex = series[2][0].Uint32()
-
-		samples.buffer = result.Columns(samples.buffer, "StacktraceIDs", "SampleValues")
-
-		labelsInfo, matched := lblsPerIndex[profile.SeriesIndex]
-		if !matched {
-			return nil
-		}
-		profile.SeriesFingerprint = labelsInfo.fp
-
-		schemaSamples = samples.samples(schemaSamples)
-
-		if err := fn(labelsInfo.lbs, &profile, schemaSamples); err != nil {
-			return err
-		}
-	}
-
-	return rowNums.Err()
 }
 
 type Profile interface {
@@ -945,22 +856,6 @@ func (b *singleBlockQuerier) Sort(in []Profile) []Profile {
 	return in
 }
 
-type reconstructSamples struct {
-	buffer [][]parquet.Value
-}
-
-func (s *reconstructSamples) samples(samples []schemav1.Sample) []schemav1.Sample {
-	if cap(samples) < len(s.buffer[0]) {
-		samples = make([]schemav1.Sample, len(s.buffer[0]))
-	}
-	samples = samples[:len(s.buffer[0])]
-	for pos := range samples {
-		samples[pos].StacktraceID = s.buffer[0][pos].Uint64()
-		samples[pos].Value = s.buffer[1][pos].Int64()
-	}
-	return samples
-}
-
 type uniqueIDs[T any] map[int64]T
 
 func newUniqueIDs[T any]() uniqueIDs[T] {
@@ -1173,108 +1068,6 @@ func repeatedColumnIter[T any](ctx context.Context, source Source, columnName st
 	return query.NewRepeatedPageIterator(ctx, rows, source.RowGroups(), column.ColumnIndex, 1e4)
 }
 
-type retrieveRowIterator[M any] struct {
-	idxRowGroup          int
-	minRowNum, maxRowNum int64
-	rowGroups            []parquet.RowGroup
-	reader               *parquet.GenericReader[M]
-	reconstruct          func(parquet.Row) (uint64, M, error)
-
-	result         ResultWithRowNum[M]
-	row            []M
-	rowNumIterator iter.Iterator[int64]
-	err            error
-}
-
-func (r *parquetReader[M, P]) retrieveRows(ctx context.Context, rowNumIterator iter.Iterator[int64]) iter.Iterator[ResultWithRowNum[M]] {
-	return &retrieveRowIterator[M]{
-		rowGroups:      r.file.RowGroups(),
-		row:            make([]M, 1),
-		rowNumIterator: rowNumIterator,
-	}
-}
-
-func (i *retrieveRowIterator[M]) Err() error {
-	return i.err
-}
-
-func (i *retrieveRowIterator[M]) nextRowGroup() error {
-	if i.reader != nil {
-		if err := i.reader.Close(); err != nil {
-			return errors.Wrap(err, "closing row group")
-		}
-		i.idxRowGroup++
-		if i.idxRowGroup >= len(i.rowGroups) {
-			return io.EOF
-		}
-	}
-	i.minRowNum = i.maxRowNum
-	i.maxRowNum += i.rowGroups[i.idxRowGroup].NumRows()
-	i.reader = parquet.NewGenericRowGroupReader[M](i.rowGroups[i.idxRowGroup])
-	return nil
-}
-
-func (i *retrieveRowIterator[M]) At() ResultWithRowNum[M] {
-	return i.result
-}
-
-func (i *retrieveRowIterator[M]) Next() bool {
-	// get the next row num
-	if !i.rowNumIterator.Next() {
-		if err := i.rowNumIterator.Err(); err != nil {
-			i.err = errors.Wrap(err, "error from row number iterator")
-		}
-		return false
-	}
-	rowNum := i.rowNumIterator.At()
-
-	// ensure we initialise on first iteration
-	if i.reader == nil {
-		if err := i.nextRowGroup(); err != nil {
-			i.err = errors.Wrap(err, "getting next row group")
-			return false
-		}
-	}
-
-	for {
-		if rowNum < i.minRowNum {
-			i.err = fmt.Errorf("row number selected %d is before current row number %d", rowNum, i.minRowNum)
-			return false
-		}
-		if err := i.reader.SeekToRow(rowNum - i.minRowNum); err != nil {
-			i.err = errors.Wrapf(err, "seek to row at rowNum=%d", rowNum)
-			return false
-		}
-		_, err := i.reader.Read(i.row)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				if err := i.nextRowGroup(); err != nil {
-					if errors.Is(err, io.EOF) {
-						continue
-					}
-					i.err = errors.Wrap(err, "getting next row group")
-					return false
-				}
-				continue
-			}
-			i.err = errors.Wrapf(err, "reading row at rowNum=%d", rowNum)
-			return false
-		}
-		break
-	}
-
-	i.result.RowNum = rowNum
-	i.result.Result = i.row[0]
-	return true
-}
-
-func (i *retrieveRowIterator[M]) Close() error {
-	if i.reader != nil {
-		return i.reader.Close()
-	}
-	return nil
-}
-
 type ResultWithRowNum[M any] struct {
 	Result M
 	RowNum int64
@@ -1331,13 +1124,6 @@ func (r *inMemoryparquetReader[M, P]) open(ctx context.Context, bucketReader phl
 	return nil
 }
 
-func (r *inMemoryparquetReader[M, P]) close() error {
-	if r.reader != nil {
-		return r.reader.Close()
-	}
-	return nil
-}
-
 func (r *inMemoryparquetReader[M, P]) NumRows() int64 {
 	return r.file.NumRows()
 }
@@ -1364,7 +1150,7 @@ func (r *inMemoryparquetReader[M, P]) info() block.File {
 	}
 }
 
-func (r *inMemoryparquetReader[M, P]) retrieveRows(ctx context.Context, rowNumIterator iter.Iterator[int64]) iter.Iterator[ResultWithRowNum[M]] {
+func (r *inMemoryparquetReader[M, P]) retrieveRows(_ context.Context, rowNumIterator iter.Iterator[int64]) iter.Iterator[ResultWithRowNum[M]] {
 	return &cacheIterator[M]{
 		cache:          r.cache,
 		rowNumIterator: rowNumIterator,

@@ -10,42 +10,50 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type dictString struct {
+	S string `parquet:",dict"`
+}
+
+type String struct {
+	S string `parquet:",dict"`
+}
+
 func TestSubstringPredicate(t *testing.T) {
 	// Normal case - all chunks/pages/values inspected
-	testPredicate(t, predicateTestCase{
+	testPredicate(t, predicateTestCase[String]{
 		predicate:  NewSubstringPredicate("b"),
 		keptChunks: 1,
 		keptPages:  1,
 		keptValues: 2,
-		writeData: func(w *parquet.Writer) {
-			type String struct {
-				S string `parquet:",dict"`
-			}
-			require.NoError(t, w.Write(&String{"abc"})) // kept
-			require.NoError(t, w.Write(&String{"bcd"})) // kept
-			require.NoError(t, w.Write(&String{"cde"})) // skipped
+		writeData: func(w *parquet.GenericWriter[String]) {
+			_, err := w.Write([]String{{"abc"}})
+			require.NoError(t, err) // kept
+			_, err = w.Write([]String{{"bcd"}})
+			require.NoError(t, err) // kept
+			_, err = w.Write([]String{{"cde"}})
+			require.NoError(t, err) // skipped
 		},
 	})
 
 	// Dictionary in the page header allows for skipping a page
-	testPredicate(t, predicateTestCase{
+	testPredicate(t, predicateTestCase[dictString]{
 		predicate:  NewSubstringPredicate("x"), // Not present in any values
 		keptChunks: 1,
 		keptPages:  0,
 		keptValues: 0,
-		writeData: func(w *parquet.Writer) {
-			type dictString struct {
-				S string `parquet:",dict"`
-			}
-			require.NoError(t, w.Write(&dictString{"abc"}))
-			require.NoError(t, w.Write(&dictString{"bcd"}))
-			require.NoError(t, w.Write(&dictString{"cde"}))
+		writeData: func(w *parquet.GenericWriter[dictString]) {
+			_, err := w.Write([]dictString{{"abc"}})
+			require.NoError(t, err)
+			_, err = w.Write([]dictString{{"bcd"}})
+			require.NoError(t, err)
+			_, err = w.Write([]dictString{{"cde"}})
+			require.NoError(t, err)
 		},
 	})
 }
 
-type predicateTestCase struct {
-	writeData  func(w *parquet.Writer)
+type predicateTestCase[P any] struct {
+	writeData  func(w *parquet.GenericWriter[P])
 	keptChunks int
 	keptPages  int
 	keptValues int
@@ -54,9 +62,9 @@ type predicateTestCase struct {
 
 // testPredicate by writing data and then iterating the column.  The data model
 // must contain a single column.
-func testPredicate(t *testing.T, tc predicateTestCase) {
+func testPredicate[T any](t *testing.T, tc predicateTestCase[T]) {
 	buf := new(bytes.Buffer)
-	w := parquet.NewWriter(buf)
+	w := parquet.NewGenericWriter[T](buf)
 	tc.writeData(w)
 	w.Flush()
 	w.Close()

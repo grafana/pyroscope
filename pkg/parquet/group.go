@@ -36,9 +36,7 @@ func (g Group) Leaf() bool { return false }
 
 func (g Group) Fields() []parquet.Field {
 	fields := make([]parquet.Field, len(g))
-	for pos := range g {
-		fields[pos] = g[pos]
-	}
+	copy(fields, g)
 	return fields
 }
 
