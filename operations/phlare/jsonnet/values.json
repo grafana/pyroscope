@@ -42,7 +42,7 @@
     "image": {
       "pullPolicy": "IfNotPresent",
       "repository": "grafana/phlare",
-      "tag": "0.1.1"
+      "tag": "0.4.0"
     },
     "imagePullSecrets": [],
     "memberlist": {
