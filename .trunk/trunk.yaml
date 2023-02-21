@@ -9,7 +9,7 @@ plugins:
       uri: https://github.com/trunk-io/plugins
 runtimes:
   enabled:
-    - go@1.19.4
+    - go@1.19.6
     - node@16.14.2
     - python@3.10.3
 lint:
@@ -23,7 +23,7 @@ lint:
     - flake8@5.0.4
     - git-diff-check
     - gitleaks@8.15.0
-    - gofmt@1.19.4
+    - gofmt@1.19.6
     - golangci-lint@1.50.1
     - goreleaser-check@1.12.3
     - hadolint@2.10.0
