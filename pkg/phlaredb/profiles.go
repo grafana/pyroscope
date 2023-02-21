@@ -20,7 +20,7 @@ import (
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
-	query "github.com/grafana/phlare/pkg/phlaredb/query"
+	"github.com/grafana/phlare/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/phlare/pkg/phlaredb/tsdb"
 	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"

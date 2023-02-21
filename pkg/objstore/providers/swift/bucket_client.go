@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/thanos-io/objstore"
 	"github.com/thanos-io/objstore/providers/swift"
-	yaml "gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 // NewBucketClient creates a new Swift bucket client

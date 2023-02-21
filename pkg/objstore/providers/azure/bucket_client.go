@@ -9,7 +9,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/thanos-io/objstore"
 	"github.com/thanos-io/objstore/providers/azure"
-	yaml "gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3"
 )
 
 func NewBucketClient(cfg Config, name string, logger log.Logger) (objstore.Bucket, error) {

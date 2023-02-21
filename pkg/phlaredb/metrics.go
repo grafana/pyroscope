@@ -7,7 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
-	query "github.com/grafana/phlare/pkg/phlaredb/query"
+	"github.com/grafana/phlare/pkg/phlaredb/query"
 )
 
 type contextKey uint8

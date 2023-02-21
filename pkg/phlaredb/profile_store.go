@@ -20,7 +20,7 @@ import (
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb/block"
-	query "github.com/grafana/phlare/pkg/phlaredb/query"
+	"github.com/grafana/phlare/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/phlare/pkg/util/build"
 )

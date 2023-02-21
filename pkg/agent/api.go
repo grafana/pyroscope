@@ -5,8 +5,8 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/pkg/errors"
-	durationpb "google.golang.org/protobuf/types/known/durationpb"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	agentv1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1"
 	"github.com/grafana/phlare/api/gen/proto/go/agent/v1/agentv1connect"

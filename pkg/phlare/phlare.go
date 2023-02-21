@@ -30,11 +30,11 @@ import (
 	"github.com/weaveworks/common/signals"
 	wwtracing "github.com/weaveworks/common/tracing"
 
-	pushv1connect "github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
+	"github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/phlare/pkg/agent"
 	"github.com/grafana/phlare/pkg/cfg"
 	"github.com/grafana/phlare/pkg/distributor"
-	frontend "github.com/grafana/phlare/pkg/frontend"
+	"github.com/grafana/phlare/pkg/frontend"
 	"github.com/grafana/phlare/pkg/ingester"
 	"github.com/grafana/phlare/pkg/objstore"
 	objstoreclient "github.com/grafana/phlare/pkg/objstore/client"
