@@ -1,0 +1,29 @@
+---
+version: '3.9'
+services:
+  app:
+    build:
+      context: ./app
+      dockerfile: ./Dockerfile
+    depends_on:
+      - consul
+
+  pyroscope:
+    image: 'pyroscope/pyroscope-dev:main'
+    ports:
+      - '4040:4040'
+    command: server
+    volumes:
+      - ./config/pyroscope-server.yml:/etc/pyroscope/server.yml
+    depends_on:
+      - consul
+
+  consul:
+    image: 'hashicorp/consul:latest'
+    ports:
+      - '8500:8500'
+      - '8600:8600/tcp'
+      - '8600:8600/udp'
+    command: agent
+    volumes:
+      - ./config/consul-server.json:/consul/config/server.json:ro
