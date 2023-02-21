@@ -415,7 +415,7 @@ func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRange
 	rangesPerRG := make([][]rowRangeWithSeriesIndex, len(pfs[0].profilesOnDisk))
 
 	// Add series
-	//pi.seriesIndexes = make(map[model.Fingerprint]uint32, len(pfs))
+	// pi.seriesIndexes = make(map[model.Fingerprint]uint32, len(pfs))
 	for i, s := range pfs {
 		if err := writer.AddSeries(storage.SeriesRef(i), s.lbs, s.fp, index.ChunkMeta{
 			MinTime: s.minTime,
@@ -436,7 +436,7 @@ func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRange
 
 func (pl *profilesIndex) cutRowGroup(rgProfiles []*schemav1.Profile) error {
 	// adding rowGroup and rowNum information per fingerprint
-	var rowRangePerFP = make(map[model.Fingerprint]*rowRange, len(pl.profilesPerFP))
+	rowRangePerFP := make(map[model.Fingerprint]*rowRange, len(pl.profilesPerFP))
 	for rowNum, p := range rgProfiles {
 		if _, ok := rowRangePerFP[p.SeriesFingerprint]; !ok {
 			rowRangePerFP[p.SeriesFingerprint] = &rowRange{
@@ -463,7 +463,7 @@ func (pl *profilesIndex) cutRowGroup(rgProfiles []*schemav1.Profile) error {
 		ps.profiles = ps.profiles[:0]
 
 		// attach rowGroup and rowNum information
-		rowRange, _ := rowRangePerFP[ps.fp]
+		rowRange := rowRangePerFP[ps.fp]
 
 		ps.profilesOnDisk = append(
 			ps.profilesOnDisk,
@@ -472,7 +472,6 @@ func (pl *profilesIndex) cutRowGroup(rgProfiles []*schemav1.Profile) error {
 	}
 
 	return nil
-
 }
 
 // SplitFiltersAndMatchers splits empty matchers off, which are treated as filters, see #220
@@ -500,10 +499,12 @@ const (
 
 type profilesHelper struct{}
 
+// nolint unused
 func (*profilesHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable) {
 	r.locations = elemRewriter
 }
 
+// nolint unused
 func (*profilesHelper) rewrite(r *rewriter, s *schemav1.Profile) error {
 	for pos := range s.Comments {
 		r.strings.rewrite(&s.Comments[pos])
@@ -515,14 +516,17 @@ func (*profilesHelper) rewrite(r *rewriter, s *schemav1.Profile) error {
 	return nil
 }
 
+// nolint unused
 func (*profilesHelper) setID(oldID, newID uint64, p *schemav1.Profile) uint64 {
 	return oldID
 }
 
+// nolint unused
 func sizeOfSample(s *schemav1.Sample) uint64 {
 	return sampleSize + 8
 }
 
+// nolint unused
 func (*profilesHelper) size(p *schemav1.Profile) uint64 {
 	size := profileSize
 
@@ -536,6 +540,7 @@ func (*profilesHelper) size(p *schemav1.Profile) uint64 {
 	return size
 }
 
+// nolint unused
 func (*profilesHelper) clone(p *schemav1.Profile) *schemav1.Profile {
 	return p
 }

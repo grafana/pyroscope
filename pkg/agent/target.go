@@ -85,9 +85,7 @@ func (tg *TargetGroup) sync(groups []*targetgroup.Group) {
 				actives = append(actives, t)
 			}
 		}
-		for _, dt := range dropped {
-			tg.droppedTargets = append(tg.droppedTargets, dt)
-		}
+		tg.droppedTargets = append(tg.droppedTargets, dropped...)
 	}
 
 	for _, t := range actives {

@@ -50,7 +50,7 @@ type profileStore struct {
 }
 
 func newProfileStore(phlarectx context.Context) *profileStore {
-	var s = &profileStore{
+	s := &profileStore{
 		logger:    phlarecontext.Logger(phlarectx),
 		metrics:   contextHeadMetrics(phlarectx),
 		persister: &schemav1.ProfilePersister{},
@@ -110,7 +110,6 @@ func (s *profileStore) Close() error {
 }
 
 func (s *profileStore) RowGroups() (rowGroups []parquet.RowGroup) {
-
 	rowGroups = make([]parquet.RowGroup, len(s.rowGroups))
 	for pos := range rowGroups {
 		rowGroups[pos] = s.rowGroups[pos]
@@ -139,7 +138,6 @@ func (s *profileStore) profileSort(i, j int) bool {
 
 	// finally use ID as tie breaker
 	return bytes.Compare(pI.ID[:], pJ.ID[:]) < 0
-
 }
 
 func (s *profileStore) Flush(ctx context.Context) (numRows uint64, numRowGroups uint64, err error) {
@@ -202,10 +200,7 @@ func (s *profileStore) prepareFile(path string) (closer io.Closer, err error) {
 func (s *profileStore) empty() bool {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
-	if len(s.slice) == 0 {
-		return true
-	}
-	return false
+	return len(s.slice) == 0
 }
 
 // cutRowGroups gets called, when a patrticular row group has been finished and it will flush it to disk. The caller of cutRowGroups should be holding the write lock.
@@ -368,7 +363,6 @@ func newRowGroupOnDisk(path string) (*rowGroupOnDisk, error) {
 	r.RowGroup = rowGroups[0]
 
 	return r, nil
-
 }
 
 func (r *rowGroupOnDisk) RowGroups() []parquet.RowGroup {
@@ -405,7 +399,6 @@ func (r *rowGroupOnDisk) columnIter(ctx context.Context, columnName string, pred
 		return query.NewErrIterator(fmt.Errorf("column '%s' not found in head row group segment '%s'", columnName, r.file.Name()))
 	}
 	return query.NewColumnIterator(ctx, []parquet.RowGroup{r.RowGroup}, column.ColumnIndex, columnName, 1000, predicate, alias)
-
 }
 
 type seriesIDRowsRewriter struct {
@@ -414,7 +407,7 @@ type seriesIDRowsRewriter struct {
 	seriesIndexes rowRangesWithSeriesIndex
 }
 
-func (r seriesIDRowsRewriter) SeekToRow(pos int64) error {
+func (r *seriesIDRowsRewriter) SeekToRow(pos int64) error {
 	if err := r.Rows.SeekToRow(pos); err != nil {
 		return err
 	}

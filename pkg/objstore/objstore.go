@@ -115,7 +115,7 @@ func (b *bucketWithPrefix) Upload(ctx context.Context, name string, r io.Reader)
 }
 
 func (b *bucketWithPrefix) Delete(ctx context.Context, name string) error {
-	return b.Delete(ctx, b.prefix(name))
+	return b.b.Delete(ctx, b.prefix(name))
 }
 
 func (b *bucketWithPrefix) Name() string {

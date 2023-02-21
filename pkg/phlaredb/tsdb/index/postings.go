@@ -480,6 +480,7 @@ func (it *intersectPostings) Err() error {
 	}
 	return nil
 }
+
 func (it *intersectPostings) Close() error {
 	for _, p := range it.arr {
 		if err := p.Close(); err != nil {
@@ -720,12 +721,6 @@ func (rp *removedPostings) Close() error {
 	}
 
 	return rp.remove.Close()
-}
-
-// ListPostings implements the Postings interface over a plain list.
-type ListPostings struct {
-	list []storage.SeriesRef
-	cur  storage.SeriesRef
 }
 
 // bigEndianPostings implements the Postings interface over a byte stream of

@@ -3,10 +3,11 @@ package httpgrpc
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/ptypes"
 	log "github.com/sirupsen/logrus"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 // Errorf returns a HTTP gRPC error than is correctly forwarded over
@@ -42,7 +43,7 @@ func HTTPResponseFromError(err error) (*HTTPResponse, bool) {
 	}
 
 	var resp HTTPResponse
-	if err := ptypes.UnmarshalAny(status.Details[0], &resp); err != nil {
+	if err := anypb.UnmarshalTo(status.Details[0], &resp, proto.UnmarshalOptions{}); err != nil {
 		log.Errorf("Got error containing non-response: %v", err)
 		return nil, false
 	}

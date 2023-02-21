@@ -343,12 +343,6 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 	}, nil
 }
 
-func (b *singleBlockQuerier) sampleMerge() *sampleMerge {
-	return &sampleMerge{
-		profileSource: b.profiles.file,
-	}
-}
-
 func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
@@ -363,10 +357,6 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 type Source interface {
 	Schema() *parquet.Schema
 	RowGroups() []parquet.RowGroup
-}
-
-type sampleMerge struct {
-	profileSource Source
 }
 
 type profileSampleMap map[int64]*profile.Sample

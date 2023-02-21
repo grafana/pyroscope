@@ -1,3 +1,4 @@
+// nolint unused
 package phlaredb
 
 type stringConversionTable []int64
@@ -28,6 +29,7 @@ func (*stringsHelper) addToRewriter(r *rewriter, m idConversionTable) {
 	}
 }
 
+// nolint unused
 func (*stringsHelper) rewrite(*rewriter, string) error {
 	return nil
 }

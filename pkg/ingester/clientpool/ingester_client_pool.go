@@ -12,6 +12,7 @@ import (
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
@@ -69,7 +70,7 @@ func NewPool(cfg PoolConfig, ring ring.ReadRing, factory ring_client.PoolFactory
 
 func PoolFactoryFn(options ...connect.ClientOption) ring_client.PoolFactory {
 	return func(addr string) (ring_client.PoolClient, error) {
-		conn, err := grpc.Dial(addr, grpc.WithInsecure())
+		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return nil, err
 		}

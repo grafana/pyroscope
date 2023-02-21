@@ -102,9 +102,7 @@ func (a *Agent) DroppedTargets() []*Target {
 
 	for _, tg := range a.groups {
 		tg.mtx.RLock()
-		for _, target := range tg.droppedTargets {
-			result = append(result, target)
-		}
+		result = append(result, tg.droppedTargets...)
 	}
 	return result
 }
