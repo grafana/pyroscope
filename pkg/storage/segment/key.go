@@ -55,6 +55,25 @@ func ParseKey(name string) (*Key, error) {
 	return k, nil
 }
 
+func ValidateKey(k *Key) error {
+	if k == nil {
+		return flameql.ErrInvalidTagKey
+	}
+
+	for key, v := range k.labels {
+		if key == "__name__" {
+			if err := flameql.ValidateAppName(v); err != nil {
+				return err
+			}
+		} else {
+			if err := flameql.ValidateTagKey(key); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 type parser struct {
 	parserState ParserState
 	key         *bytes.Buffer
