@@ -19,7 +19,7 @@ a piece of work is finished it should:
 
 To be able to run make targets you'll need to install:
 
-- [Go](https://go.dev/doc/install) (> 1.18)
+- [Go](https://go.dev/doc/install) (> 1.19)
 - [Docker](https://docs.docker.com/engine/install/)
 
 All other required tools will be automatically downloaded `$(pwd)/.tmp/bin`.

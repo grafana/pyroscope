@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"math/rand"
 	"os"
@@ -229,7 +228,7 @@ func ReadFromDir(dir string) (*Meta, error) {
 }
 
 func exhaustCloseWithErrCapture(err *error, r io.ReadCloser, format string) {
-	_, copyErr := io.Copy(ioutil.Discard, r)
+	_, copyErr := io.Copy(io.Discard, r)
 
 	runutil.CloseWithErrCapture(err, r, format)
 

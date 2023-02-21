@@ -11,7 +11,6 @@ package shipper
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"math"
 	"os"
 	"path"
@@ -369,7 +368,7 @@ func WriteMetaFile(logger log.Logger, dir string, meta *Meta) error {
 
 // ReadMetaFile reads the given meta from <dir>/shipper.json.
 func ReadMetaFile(dir string) (*Meta, error) {
-	b, err := ioutil.ReadFile(filepath.Join(dir, filepath.Clean(MetaFilename)))
+	b, err := os.ReadFile(filepath.Join(dir, filepath.Clean(MetaFilename)))
 	if err != nil {
 		return nil, err
 	}
