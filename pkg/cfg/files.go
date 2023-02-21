@@ -74,17 +74,10 @@ func YAMLFlag(args []string, name string) Source {
 		// parsing out the config file location.
 		dst.Clone().RegisterFlags(freshFlags)
 
-		usage := freshFlags.Usage
 		freshFlags.Usage = func() { /* don't do anything by default, we will print usage ourselves, but only when requested. */ }
 
-		err := freshFlags.Parse(args)
-		if err == flag.ErrHelp {
-			// print available parameters to stdout, so that users can grep/less it easily
-			freshFlags.SetOutput(os.Stdout)
-			usage()
-			os.Exit(2)
-		} else if err != nil {
-			fmt.Fprintln(freshFlags.Output(), "Run with -help to get list of available parameters")
+		if err := freshFlags.Parse(args); err != nil {
+			fmt.Fprintln(freshFlags.Output(), "Run with -help to get a list of available parameters")
 			os.Exit(2)
 		}
 
@@ -99,6 +92,5 @@ func YAMLFlag(args []string, name string) Source {
 		}
 
 		return YAML(f.Value.String(), expandEnv)(dst)
-
 	}
 }

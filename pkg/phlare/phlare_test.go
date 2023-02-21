@@ -22,6 +22,9 @@ func TestFlagDefaults(t *testing.T) {
 	f.PrintDefaults()
 
 	const delim = '\n'
+	// Because this is a short flag, it will be printed on the same line as the
+	// flag name. So we need to ignore this special case.
+	const ignoredHelpFlags = "-h\tPrint basic help."
 
 	// Populate map with parsed default flags.
 	// Key is the flag and value is the default text.
@@ -32,6 +35,10 @@ func TestFlagDefaults(t *testing.T) {
 			break
 		}
 		require.NoError(t, err)
+
+		if strings.Contains(line, ignoredHelpFlags) {
+			continue
+		}
 
 		nextLine, err := buf.ReadString(delim)
 		require.NoError(t, err)

@@ -75,7 +75,6 @@ type Config struct {
 	Analytics           usagestats.Config `yaml:"analytics"`
 
 	ConfigFile      string `yaml:"-"`
-	ShowVersion     bool   `yaml:"-"`
 	ConfigExpandEnv bool   `yaml:"-"`
 }
 
@@ -106,7 +105,6 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	f.Var(&c.Target, "target", "Comma-separated list of Phlare modules to load. "+
 		"The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode. ")
 	f.BoolVar(&c.MultitenancyEnabled, "auth.multitenancy-enabled", false, "When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.")
-	f.BoolVar(&c.ShowVersion, "version", false, "Show the version of phlare and exit")
 	f.BoolVar(&c.ConfigExpandEnv, "config.expand-env", false, "Expands ${var} in config according to the values of the environment variables.")
 
 	c.registerServerFlagsWithChangedDefaultValues(f)
@@ -165,6 +163,10 @@ func (c *Config) Validate() error {
 	return c.AgentConfig.Validate()
 }
 
+type phlareConfigGetter interface {
+	PhlareConfig() *Config
+}
+
 func (c *Config) ApplyDynamicConfig() cfg.Source {
 	c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store = "memberlist"
 	c.Distributor.DistributorRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
@@ -175,10 +177,11 @@ func (c *Config) ApplyDynamicConfig() cfg.Source {
 	c.Worker.MaxConcurrentRequests = 4 // todo we might want this as a config flags.
 
 	return func(dst cfg.Cloneable) error {
-		r, ok := dst.(*Config)
+		g, ok := dst.(phlareConfigGetter)
 		if !ok {
-			return errors.New("dst is not a Phlare config")
+			return fmt.Errorf("dst is not a Phlare config getter %T", dst)
 		}
+		r := g.PhlareConfig()
 		if r.AgentConfig.ClientConfig.URL.String() == "" {
 			listenAddress := "0.0.0.0"
 			if c.Server.HTTPListenAddress != "" {
@@ -232,11 +235,6 @@ type Phlare struct {
 func New(cfg Config) (*Phlare, error) {
 	logger := initLogger(&cfg.Server)
 	usagestats.Edition("oss")
-
-	if cfg.ShowVersion {
-		fmt.Println(version.Print("phlare"))
-		os.Exit(0)
-	}
 
 	phlare := &Phlare{
 		Cfg:    cfg,
