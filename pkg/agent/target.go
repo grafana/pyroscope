@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
@@ -244,7 +243,7 @@ func (t *Target) fetchProfile(ctx context.Context, profileType string, buf io.Wr
 	}
 	defer resp.Body.Close()
 
-	b, err := ioutil.ReadAll(io.TeeReader(resp.Body, buf))
+	b, err := io.ReadAll(io.TeeReader(resp.Body, buf))
 	if err != nil {
 		return fmt.Errorf("failed to read body: %w", err)
 	}

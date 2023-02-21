@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 
@@ -20,7 +19,7 @@ func JSON(f *string) Source {
 			return nil
 		}
 
-		j, err := ioutil.ReadFile(*f)
+		j, err := os.ReadFile(*f)
 		if err != nil {
 			return err
 		}
@@ -42,7 +41,7 @@ func dJSON(y []byte) Source {
 // using https://pkg.go.dev/github.com/drone/envsubst?tab=overview
 func YAML(f string, expandEnvVars bool) Source {
 	return func(dst Cloneable) error {
-		y, err := ioutil.ReadFile(f)
+		y, err := os.ReadFile(f)
 		if err != nil {
 			return err
 		}
