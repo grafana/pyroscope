@@ -199,6 +199,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
 	github.com/oracle/oci-go-sdk/v65 v65.28.0 // indirect
+	github.com/ovh/go-ovh v1.3.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
@@ -258,6 +259,6 @@ replace (
 	// Replace memberlist with our fork which includes some fixes that haven't been
 	// merged upstream yet.
 	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91
-	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.39.1
+	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.41.0
 	google.golang.org/grpc => google.golang.org/grpc v1.44.0
 )
