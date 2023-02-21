@@ -9,14 +9,15 @@ phlare:
     repository: grafana/phlare
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "0.1.1"
+    tag: "0.4.0"
 
   extraArgs:
     log.level: debug
 
   extraLabels: {}
 
-  extraEnvVars: {}
+  extraEnvVars:
+    {}
     # The following environment variables are set by the Helm chart.
     # JAEGER_AGENT_HOST: jaeger-agent.jaeger.svc.cluster.local.
 
