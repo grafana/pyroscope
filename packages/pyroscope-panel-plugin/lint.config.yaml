@@ -1,0 +1,4 @@
+global:
+  enabled: true
+  severity: error
+  jsonOutput: false
