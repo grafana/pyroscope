@@ -119,6 +119,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
      --set-string 'podAnnotations.phlare\.grafana\.com/scrape=true' \
      --set-string 'podAnnotations.phlare\.grafana\.com/port=6060'
    ```
+
    For details, see [Deploy Grafana on Kubernetes](/docs/grafana/latest/setup-grafana/installation/kubernetes/).
 
 1. Port-forward Grafana to `localhost`, by using the `kubectl` command:
@@ -134,7 +135,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
    | Field | Value                                                        |
    | ----- | ------------------------------------------------------------ |
    | Name  | Phlare                                                       |
-   | URL   | http://phlare-querier.phlare-test.svc.cluster.local.:4100/   |
+   | URL   | `http://phlare-querier.phlare-test.svc.cluster.local.:4100/`   |
 
    To add a data source, see [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
 
@@ -143,7 +144,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
    You should be able to query profiles in [Grafana Explore](/docs/grafana/latest/explore/),
    as well as create dashboard panels by using your newly configured Phlare data source.
 
-## Optional: Persistently add data source:
+## Optional: Persistently add data source
 
 The deployment of Grafana has no persistent database, so it will not retain settings like the data source configuration across restarts.
 
@@ -177,8 +178,41 @@ In order to get Phlare to scrape pods, you must add the following annotations to
 ```yaml
 metadata:
   annotations:
-    phlare.grafana.com/scrape: "true"
-    phlare.grafana.com/port: "8080"
+    profiles.grafana.com/memory.scrape: "true"
+    profiles.grafana.com/memory.port: "8080"
+    profiles.grafana.com/cpu.scrape: "true"
+    profiles.grafana.com/cpu.port: "8080"
+    profiles.grafana.com/goroutine.scrape: "true"
+    profiles.grafana.com/goroutine.port: "8080"
 ```
 
-`phlare.grafana.com/port` should be set to the port that your pod serves the `/debug/pprof/` endpoints from. Note that the values for `phlare.grafana.io/scrape` and `phlare.grafana.io/port` must be enclosed in double quotes to ensure it is represented as a string.
+The above example will scrape the `memory`, `cpu` and `goroutine` profiles from the `8080` port of the pod.
+
+Each profile type has a set of corresponding annotations which allows customization of scraping per profile type.
+
+```yaml
+metadata:
+  annotations:
+    profiles.grafana.com/<profile-type>.scrape: "true"
+    profiles.grafana.com/<profile-type>.port: "<port>"
+    profiles.grafana.com/<profile-type>.port_name: "<port-name>"
+    profiles.grafana.com/<profile-type>.scheme: "<scheme>"
+    profiles.grafana.com/<profile-type>.path: "<profile_path>"
+```
+
+The full list of profile types supported by annotations is `cpu`, `memory`, `goroutine`, `block` and `mutex`.
+
+The following table describes the annotations:
+
+| Annotation | Description | Default |
+| ---------- | ----------- | ------- |
+| `profiles.grafana.com/<profile-type>.scrape` | Whether to scrape the profile type. | `false` |
+| `profiles.grafana.com/<profile-type>.port` | The port to scrape the profile type from. | `` |
+| `profiles.grafana.com/<profile-type>.port_name` | The port name to scrape the profile type from. | `` |
+| `profiles.grafana.com/<profile-type>.scheme` | The scheme to scrape the profile type from. | `http` |
+| `profiles.grafana.com/<profile-type>.path` | The path to scrape the profile type from. | default golang path |
+
+By default, the port will be discovered using named port `http2` or ending with `-metrics` or `-profiles`.
+This means that if you don't have a named port the scraping target will be dropped.
+
+If you don't want to use the port name then you can use the `profiles.grafana.com/<profile-type>.port` annotation to statically specify the port number.
