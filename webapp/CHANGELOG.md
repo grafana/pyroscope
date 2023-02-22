@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.68.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.68.5...@pyroscope/webapp@1.68.6) (2023-02-22)
+
+
+### Bug Fixes
+
+* **webapp:** always render annotations in the viewport ([#1867](https://github.com/pyroscope-io/pyroscope/issues/1867)) ([2876881](https://github.com/pyroscope-io/pyroscope/commit/2876881a7204184668471b82fb8dab22509b7e7a))
+
+
+
+
+
 ## [1.68.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.68.4...@pyroscope/webapp@1.68.5) (2023-02-09)
 
 **Note:** Version bump only for package @pyroscope/webapp
