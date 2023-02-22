@@ -17,12 +17,12 @@ import (
 )
 
 type mainFlags struct {
-	phlare.Config
+	phlare.Config `yaml:",inline"`
 
-	PrintVersion bool
-	PrintModules bool
-	PrintHelp    bool
-	PrintHelpAll bool
+	PrintVersion bool `yaml:"-"`
+	PrintModules bool `yaml:"-"`
+	PrintHelp    bool `yaml:"-"`
+	PrintHelpAll bool `yaml:"-"`
 }
 
 func (mf *mainFlags) Clone() flagext.Registerer {
