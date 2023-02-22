@@ -16,6 +16,7 @@ interface IAnnotationMarkProps {
     content: string;
     timestamp: number;
   };
+  posX: number;
 }
 
 const getIcon = (type: IAnnotationMarkProps['type']) => {
@@ -25,7 +26,7 @@ const getIcon = (type: IAnnotationMarkProps['type']) => {
   }
 };
 
-const AnnotationMark = ({ type, color, value }: IAnnotationMarkProps) => {
+const AnnotationMark = ({ type, color, value, posX }: IAnnotationMarkProps) => {
   const { offset } = useTimeZone();
   const [visible, setVisible] = useState(false);
   const [target, setTarget] = useState<Element>();
@@ -37,10 +38,11 @@ const AnnotationMark = ({ type, color, value }: IAnnotationMarkProps) => {
     setVisible(true);
   };
 
+  // TODO: 150 refers to the timeline height, clean this up
+  const pos = { x: posX, y: 150 };
   const annotationInfoPopover = target ? (
     <AnnotationInfo
-      popoverAnchorPoint={{ x: 0, y: 27 }}
-      container={target}
+      popoverAnchorPoint={pos}
       value={value}
       timezone={offset === 0 ? 'utc' : 'browser'}
       timestamp={value.timestamp}

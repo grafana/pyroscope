@@ -86,11 +86,9 @@ function getPopoverPosition(
 
   if (anchorPoint.x + popoverWidth + marginToWindowEdge >= windowWidth) {
     // position to the left
-    // If the screen is resized to be smaller than the anchor point, use it instead
-    // Otherwise it will be rendered outside the window
     return {
       ...defaultProps,
-      left: `${Math.min(anchorPoint.x, windowWidth) - popoverWidth}px`,
+      left: `${windowWidth - popoverWidth - marginToWindowEdge}px`,
     };
   }
 
