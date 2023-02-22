@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.2.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/datasource-plugin@1.2.0...@pyroscope/datasource-plugin@1.2.1) (2023-02-22)
+
+**Note:** Version bump only for package @pyroscope/datasource-plugin
+
+
+
+
+
 # [1.2.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/datasource-plugin@1.1.5...@pyroscope/datasource-plugin@1.2.0) (2023-02-20)
 
 
