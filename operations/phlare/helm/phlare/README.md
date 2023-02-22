@@ -27,7 +27,7 @@
 | phlare.fullnameOverride | string | `""` |  |
 | phlare.image.pullPolicy | string | `"IfNotPresent"` |  |
 | phlare.image.repository | string | `"grafana/phlare"` |  |
-| phlare.image.tag | string | `"0.4.0"` |  |
+| phlare.image.tag | string | `"0.5.0"` |  |
 | phlare.imagePullSecrets | list | `[]` |  |
 | phlare.memberlist.port | int | `7946` |  |
 | phlare.memberlist.port_name | string | `"memberlist"` |  |
