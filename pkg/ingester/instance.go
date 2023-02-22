@@ -24,15 +24,16 @@ type instance struct {
 	logger      log.Logger
 	reg         prometheus.Registerer
 
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
+	cancel   context.CancelFunc
+	wg       sync.WaitGroup
+	tenantID string
 }
 
-func newInstance(phlarectx context.Context, cfg phlaredb.Config, tenantID string, storageBucket phlareobjstore.Bucket) (*instance, error) {
+func newInstance(phlarectx context.Context, cfg phlaredb.Config, tenantID string, storageBucket phlareobjstore.Bucket, limiter Limiter) (*instance, error) {
 	cfg.DataPath = path.Join(cfg.DataPath, tenantID)
 
 	phlarectx = phlarecontext.WrapTenant(phlarectx, tenantID)
-	db, err := phlaredb.New(phlarectx, cfg)
+	db, err := phlaredb.New(phlarectx, cfg, limiter)
 	if err != nil {
 		return nil, err
 	}
@@ -42,6 +43,7 @@ func newInstance(phlarectx context.Context, cfg phlaredb.Config, tenantID string
 		logger:   phlarecontext.Logger(phlarectx),
 		reg:      phlarecontext.Registry(phlarectx),
 		cancel:   cancel,
+		tenantID: tenantID,
 	}
 	if storageBucket != nil {
 		inst.shipper = shipper.New(

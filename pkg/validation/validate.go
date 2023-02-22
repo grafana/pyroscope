@@ -18,6 +18,7 @@ type Reason string
 
 const (
 	ReasonLabel string = "reason"
+	Unknown     Reason = "unknown"
 	// InvalidLabels is a reason for discarding profiles which have labels that are invalid.
 	InvalidLabels Reason = "invalid_labels"
 	// MissingLabels is a reason for discarding profiles which have no labels.
@@ -35,7 +36,11 @@ const (
 	LabelValueTooLong Reason = "label_value_too_long"
 	// DuplicateLabelNames is a reason for discarding a request which has duplicate label names
 	DuplicateLabelNames Reason = "duplicate_label_names"
+	// SeriesLimit is a reason for discarding lines when we can't create a new stream
+	// because the limit of active streams has been reached.
+	SeriesLimit Reason = "series_limit"
 
+	SeriesLimitErrorMsg            = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
 	MissingLabelsErrorMsg          = "error at least one label pair is required per profile"
 	InvalidLabelsErrorMsg          = "invalid labels '%s' with error: %s"
 	MaxLabelNamesPerSeriesErrorMsg = "profile series '%s' has %d label names; limit %d"
@@ -127,7 +132,7 @@ func ReasonOf(err error) Reason {
 	var validationErr *Error
 	ok := errors.As(err, &validationErr)
 	if !ok {
-		return "unknown"
+		return Unknown
 	}
 	return validationErr.Reason
 }

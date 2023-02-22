@@ -125,7 +125,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 			db, err := New(context.Background(), Config{
 				DataPath:         testPath,
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			})
+			}, NoLimit)
 			require.NoError(t, err)
 			ctx := context.Background()
 
@@ -268,7 +268,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 			db, err := New(context.Background(), Config{
 				DataPath:         testPath,
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			})
+			}, NoLimit)
 			require.NoError(t, err)
 			ctx := context.Background()
 
@@ -385,7 +385,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 			db, err := New(context.Background(), Config{
 				DataPath:         testPath,
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			})
+			}, NoLimit)
 			require.NoError(t, err)
 			ctx := context.Background()
 
@@ -510,7 +510,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			db, err := New(context.Background(), Config{
 				DataPath:         testPath,
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			})
+			}, NoLimit)
 			require.NoError(t, err)
 			ctx := context.Background()
 
@@ -548,7 +548,7 @@ func TestMergePprof(t *testing.T) {
 	db, err := New(context.Background(), Config{
 		DataPath:         testPath,
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	})
+	}, NoLimit)
 	require.NoError(t, err)
 	ctx := context.Background()
 
@@ -603,7 +603,7 @@ func TestHeadMergePprof(t *testing.T) {
 	db, err := New(context.Background(), Config{
 		DataPath:         testPath,
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	})
+	}, NoLimit)
 	require.NoError(t, err)
 	ctx := context.Background()
 

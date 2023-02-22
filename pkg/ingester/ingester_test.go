@@ -57,12 +57,13 @@ func Test_MultitenantReadWrite(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	ctx := phlarecontext.WithLogger(context.Background(), logger)
 	ctx = phlarecontext.WithRegistry(ctx, reg)
-	cfg := client.Config{StorageBackendConfig: client.StorageBackendConfig{
-		Backend: client.Filesystem,
-		Filesystem: filesystem.Config{
-			Directory: dbPath,
+	cfg := client.Config{
+		StorageBackendConfig: client.StorageBackendConfig{
+			Backend: client.Filesystem,
+			Filesystem: filesystem.Config{
+				Directory: dbPath,
+			},
 		},
-	},
 	}
 
 	fs, err := client.NewBucket(ctx, cfg, "storage")
@@ -71,7 +72,7 @@ func Test_MultitenantReadWrite(t *testing.T) {
 	ing, err := New(ctx, defaultIngesterTestConfig(t), phlaredb.Config{
 		DataPath:         dbPath,
 		MaxBlockDuration: 30 * time.Hour,
-	}, fs)
+	}, fs, &fakeLimits{})
 	require.NoError(t, err)
 	require.NoError(t, services.StartAndAwaitRunning(context.Background(), ing))
 

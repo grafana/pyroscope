@@ -55,7 +55,6 @@ func (tp *testProfile) populateFingerprint() {
 	lbls := phlaremodel.NewLabelsBuilder(tp.lbls)
 	lbls.Set(model.MetricNameLabel, tp.profileName)
 	tp.p.SeriesFingerprint = model.Fingerprint(lbls.Labels().Hash())
-
 }
 
 func sameProfileStream(i int) *testProfile {
@@ -168,7 +167,6 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 			assert.Equal(t, "00000000-0000-0000-0000-000000000000", rows[0].ID.String())
 			assert.Equal(t, "00000000-0000-0000-0000-000000000001", rows[1].ID.String())
 			assert.Equal(t, "00000000-0000-0000-0000-000000000002", rows[2].ID.String())
-
 		})
 	}
 }
@@ -236,13 +234,12 @@ func ingestThreeProfileStreams(ctx context.Context, i int, ingest func(context.C
 
 // TestProfileStore_Querying
 func TestProfileStore_Querying(t *testing.T) {
-
 	var (
 		ctx = testContext(t)
 		cfg = Config{
 			DataPath: t.TempDir(),
 		}
-		head, err = NewHead(ctx, cfg)
+		head, err = NewHead(ctx, cfg, NoLimit)
 	)
 	require.NoError(t, err)
 
@@ -470,5 +467,4 @@ func TestProfileStore_Querying(t *testing.T) {
 			values,
 		)
 	})
-
 }
