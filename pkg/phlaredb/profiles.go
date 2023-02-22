@@ -85,7 +85,7 @@ func (f fingerprintWithRowNum) RowNumber() int64 {
 }
 
 func (r rowRanges) fingerprintsWithRowNum() query.Iterator {
-	return query.NewRowNumberIterator[fingerprintWithRowNum](r.iter())
+	return query.NewRowNumberIterator(r.iter())
 }
 
 type rowRangesIter struct {
@@ -181,6 +181,7 @@ func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs phlaremodel.Labels, profi
 		pi.totalSeries.Inc()
 		pi.metrics.seriesCreated.WithLabelValues(profileName).Inc()
 	}
+
 	profiles.profiles = append(profiles.profiles, ps)
 	if ps.TimeNanos < profiles.minTime {
 		profiles.minTime = ps.TimeNanos
@@ -415,7 +416,6 @@ func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRange
 	rangesPerRG := make([][]rowRangeWithSeriesIndex, len(pfs[0].profilesOnDisk))
 
 	// Add series
-	// pi.seriesIndexes = make(map[model.Fingerprint]uint32, len(pfs))
 	for i, s := range pfs {
 		if err := writer.AddSeries(storage.SeriesRef(i), s.lbs, s.fp, index.ChunkMeta{
 			MinTime: s.minTime,

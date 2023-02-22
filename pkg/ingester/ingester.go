@@ -24,6 +24,7 @@ import (
 	"github.com/grafana/phlare/pkg/tenant"
 	"github.com/grafana/phlare/pkg/usagestats"
 	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/phlare/pkg/validation"
 )
 
 var activeTenantsStats = usagestats.NewInt("ingester_active_tenants")
@@ -57,7 +58,8 @@ type Ingester struct {
 	instances    map[string]*instance
 	instancesMtx sync.RWMutex
 
-	reg prometheus.Registerer
+	limits Limits
+	reg    prometheus.Registerer
 }
 
 type ingesterFlusherCompat struct {
@@ -71,7 +73,7 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
-func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobjstore.Bucket) (*Ingester, error) {
+func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobjstore.Bucket, limits Limits) (*Ingester, error) {
 	i := &Ingester{
 		cfg:           cfg,
 		phlarectx:     phlarectx,
@@ -80,6 +82,7 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		instances:     map[string]*instance{},
 		dbConfig:      dbConfig,
 		storageBucket: storageBucket,
+		limits:        limits,
 	}
 
 	var err error
@@ -135,7 +138,8 @@ func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //n
 	inst, ok = i.instances[tenantID]
 	if !ok {
 		var err error
-		inst, err = newInstance(i.phlarectx, i.dbConfig, tenantID, i.storageBucket)
+
+		inst, err = newInstance(i.phlarectx, i.dbConfig, tenantID, i.storageBucket, NewLimiter(tenantID, i.limits, i.lifecycler, i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor))
 		if err != nil {
 			return nil, err
 		}
@@ -184,16 +188,26 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 		level.Debug(instance.logger).Log("msg", "message received by ingester push")
 		for _, series := range req.Msg.Series {
 			for _, sample := range series.Samples {
-				p, err := pprof.FromBytes(sample.RawProfile)
+				p, size, err := pprof.FromBytes(sample.RawProfile)
 				if err != nil {
 					return nil, err
 				}
-
 				id, err := uuid.Parse(sample.ID)
 				if err != nil {
 					return nil, err
 				}
 				if err := instance.Head().Ingest(ctx, p, id, series.Labels...); err != nil {
+					reason := validation.ReasonOf(err)
+					if reason != validation.Unknown {
+						validation.DiscardedProfiles.WithLabelValues(string(reason), instance.tenantID).Add(float64(1))
+						validation.DiscardedBytes.WithLabelValues(string(reason), instance.tenantID).Add(float64(size))
+						switch validation.ReasonOf(err) {
+						case validation.OutOfOrder:
+							return nil, connect.NewError(connect.CodeInvalidArgument, err)
+						case validation.SeriesLimit:
+							return nil, connect.NewError(connect.CodeResourceExhausted, err)
+						}
+					}
 					return nil, err
 				}
 				p.ReturnToVTPool()

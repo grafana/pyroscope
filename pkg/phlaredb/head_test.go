@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -23,10 +24,20 @@ import (
 	"github.com/grafana/phlare/pkg/pprof"
 )
 
+type noLimit struct{}
+
+func (n noLimit) AllowProfile(fp model.Fingerprint, lbs phlaremodel.Labels, tsNano int64) error {
+	return nil
+}
+
+func (n noLimit) Stop() {}
+
+var NoLimit = noLimit{}
+
 func newTestHead(t testing.TB) *testHead {
 	dataPath := t.TempDir()
 	ctx := testContext(t)
-	head, err := NewHead(ctx, Config{DataPath: dataPath})
+	head, err := NewHead(ctx, Config{DataPath: dataPath}, NoLimit)
 	require.NoError(t, err)
 	return &testHead{Head: head, t: t, reg: phlarecontext.Registry(ctx).(*prometheus.Registry)}
 }
@@ -356,13 +367,12 @@ func TestHeadIngestRealProfiles(t *testing.T) {
 
 // TestHead_Concurrent_Ingest_Querying tests that the head can handle concurrent reads and writes.
 func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
-
 	var (
 		ctx = testContext(t)
 		cfg = Config{
 			DataPath: t.TempDir(),
 		}
-		head, err = NewHead(ctx, cfg)
+		head, err = NewHead(ctx, cfg, NoLimit)
 	)
 	require.NoError(t, err)
 
@@ -395,7 +405,7 @@ func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
 			tick := time.NewTicker(time.Millisecond)
 			defer tick.Stop()
 
-			var tsToBeSeen = make(map[int64]struct{}, profilesPerSeries)
+			tsToBeSeen := make(map[int64]struct{}, profilesPerSeries)
 			for j := 0; j < profilesPerSeries; j++ {
 				tsToBeSeen[int64(j*3+i)] = struct{}{}
 			}
@@ -436,7 +446,6 @@ func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
 	// TODO: We need to test if flushing misses out on ingested profiles
 
 	wg.Wait()
-
 }
 
 func BenchmarkHeadIngestProfiles(t *testing.B) {

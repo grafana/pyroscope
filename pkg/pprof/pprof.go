@@ -99,16 +99,16 @@ func RawFromBytes(input []byte) (*Profile, error) {
 }
 
 // Read Profile from Bytes
-func FromBytes(input []byte) (*profilev1.Profile, error) {
+func FromBytes(input []byte) (*profilev1.Profile, int, error) {
 	p, err := RawFromBytes(input)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-
+	uncompressedSize := p.buf.Len()
 	p.buf.Reset()
 	bufPool.Put(p.buf)
 
-	return p.Profile, nil
+	return p.Profile, uncompressedSize, nil
 }
 
 func FromProfile(p *profile.Profile) (*profilev1.Profile, error) {

@@ -27,8 +27,8 @@ type Limits struct {
 	MaxLabelNamesPerSeries int     `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
 
 	// Ingester enforced limits.
-	MaxLocalSeriesPerTenant  int `yaml:"max_series_per_tenant" json:"max_series_per_tenant"`
-	MaxGlobalSeriesPerTenant int `yaml:"max_global_series_per_user" json:"max_global_series_per_user"`
+	MaxLocalSeriesPerTenant  int `yaml:"max_local_series_per_tenant" json:"max_local_series_per_tenant"`
+	MaxGlobalSeriesPerTenant int `yaml:"max_global_series_per_tenant" json:"max_global_series_per_tenant"`
 
 	// Querier enforced limits.
 	MaxQueryLookback    model.Duration `yaml:"max_query_lookback" json:"max_query_lookback"`
@@ -51,7 +51,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxLabelValueLength, "validation.max-length-label-value", 2048, "Maximum length accepted for label value. This setting also applies to the metric name.")
 	f.IntVar(&l.MaxLabelNamesPerSeries, "validation.max-label-names-per-series", 30, "Maximum number of label names per series.")
 
-	f.IntVar(&l.MaxLocalSeriesPerTenant, "ingester.max-series-per-tenant", 0, "Maximum number of active series of profiles per tenant, per ingester. 0 to disable.")
+	f.IntVar(&l.MaxLocalSeriesPerTenant, "ingester.max-local-series-per-tenant", 0, "Maximum number of active series of profiles per tenant, per ingester. 0 to disable.")
 	f.IntVar(&l.MaxGlobalSeriesPerTenant, "ingester.max-global-series-per-tenant", 5000, "Maximum number of active series of profiles per tenant, across the cluster. 0 to disable. When the global limit is enabled, each ingester is configured with a dynamic local limit based on the replication factor and the current number of healthy ingesters, and is kept updated whenever the number of ingesters change.")
 
 	_ = l.MaxQueryLength.Set("721h")

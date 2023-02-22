@@ -41,13 +41,13 @@ func TestCreateLocalDir(t *testing.T) {
 	_, err := New(context.Background(), Config{
 		DataPath:         dataPath,
 		MaxBlockDuration: 30 * time.Minute,
-	})
+	}, NoLimit)
 	require.Error(t, err)
 	require.NoError(t, os.Remove(localFile))
 	_, err = New(context.Background(), Config{
 		DataPath:         dataPath,
 		MaxBlockDuration: 30 * time.Minute,
-	})
+	}, NoLimit)
 	require.NoError(t, err)
 }
 
@@ -142,7 +142,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	db, err := New(context.Background(), Config{
 		DataPath:         testDir,
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	})
+	}, NoLimit)
 	require.NoError(t, err)
 	defer require.NoError(t, db.Close())
 
@@ -270,7 +270,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 	db, err := New(context.Background(), Config{
 		DataPath:         testDir,
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	})
+	}, NoLimit)
 	require.NoError(t, err)
 	defer require.NoError(t, db.Close())
 

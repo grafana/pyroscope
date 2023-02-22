@@ -193,8 +193,8 @@ limits:
 
   # Maximum number of active series of profiles per tenant, per ingester. 0 to
   # disable.
-  # CLI flag: -ingester.max-series-per-tenant
-  [max_series_per_tenant: <int> | default = 0]
+  # CLI flag: -ingester.max-local-series-per-tenant
+  [max_local_series_per_tenant: <int> | default = 0]
 
   # Maximum number of active series of profiles per tenant, across the cluster.
   # 0 to disable. When the global limit is enabled, each ingester is configured
@@ -202,7 +202,7 @@ limits:
   # number of healthy ingesters, and is kept updated whenever the number of
   # ingesters change.
   # CLI flag: -ingester.max-global-series-per-tenant
-  [max_global_series_per_user: <int> | default = 5000]
+  [max_global_series_per_tenant: <int> | default = 5000]
 
   # Limit how far back in profiling data can be queried, up until lookback
   # duration ago. This limit is enforced in the query frontend. If the requested

@@ -74,6 +74,11 @@ func (*realFileSystem) Open(name string) (fs.File, error)          { return os.O
 func (*realFileSystem) ReadDir(name string) ([]fs.DirEntry, error) { return os.ReadDir(name) }
 func (*realFileSystem) RemoveAll(path string) error                { return os.RemoveAll(path) }
 
+type TenantLimiter interface {
+	AllowProfile(fp model.Fingerprint, lbs phlaremodel.Labels, tsNano int64) error
+	Stop()
+}
+
 type PhlareDB struct {
 	services.Service
 
@@ -91,9 +96,10 @@ type PhlareDB struct {
 	fs            fileSystem
 
 	blockQuerier *BlockQuerier
+	limiter      TenantLimiter
 }
 
-func New(phlarectx context.Context, cfg Config) (*PhlareDB, error) {
+func New(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*PhlareDB, error) {
 	fs, err := filesystem.NewBucket(cfg.DataPath)
 	if err != nil {
 		return nil, err
@@ -107,7 +113,8 @@ func New(phlarectx context.Context, cfg Config) (*PhlareDB, error) {
 			minFreeDisk,
 			minDiskAvailablePercentage,
 		),
-		fs: &realFileSystem{},
+		fs:      &realFileSystem{},
+		limiter: limiter,
 	}
 	if err := os.MkdirAll(f.LocalDataPath(), 0o777); err != nil {
 		return nil, fmt.Errorf("mkdir %s: %w", f.LocalDataPath(), err)
@@ -280,6 +287,7 @@ func (f *PhlareDB) Close() error {
 	if err := f.blockQuerier.Close(); err != nil {
 		errs.Add(err)
 	}
+	f.limiter.Stop()
 	return errs.Err()
 }
 
@@ -433,7 +441,7 @@ func (f *PhlareDB) initHead() (oldHead *Head, err error) {
 	f.headLock.Lock()
 	defer f.headLock.Unlock()
 	oldHead = f.head
-	f.head, err = NewHead(f.phlarectx, f.cfg)
+	f.head, err = NewHead(f.phlarectx, f.cfg, f.limiter)
 	if err != nil {
 		return oldHead, err
 	}
