@@ -47,7 +47,7 @@ jobs:
       - name: uninstall from gospy since profiler is already running
         run: rm pkg/agent/gospy/pyroscope_test.go
       - name: Run Go tests and upload
-        run: pyroscope-ci exec --apiKey=${{ secrets.PYROSCOPE_CLOUD_TOKEN }} make test
+        run: pyroscope-ci exec --logLevel=debug --apiKey=${{ secrets.PYROSCOPE_CLOUD_TOKEN }} make test
   js-tests:
     runs-on: ubuntu-latest
     # skip if user has not access to the token
