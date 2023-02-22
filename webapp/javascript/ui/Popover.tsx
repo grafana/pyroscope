@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import classnames from 'classnames';
 import OutsideClickHandler from 'react-outside-click-handler';
+import { useWindowWidth } from '@react-hook/window-size';
 import styles from './Popover.module.scss';
 
 export interface PopoverProps {
@@ -34,17 +35,18 @@ export function Popover({
   const [popoverPosition, setPopoverPosition] = useState<React.CSSProperties>({
     display: 'hidden',
   });
+  const windowWidth = useWindowWidth();
 
   useLayoutEffect(() => {
     if (isModalOpen && popoverRef.current) {
       const pos = getPopoverPosition(
         popoverRef.current.clientWidth,
-        window.innerWidth,
+        windowWidth,
         anchorPoint
       );
       setPopoverPosition(pos);
     }
-  }, [isModalOpen]);
+  }, [isModalOpen, popoverRef.current?.clientWidth, windowWidth, anchorPoint]);
 
   return (
     <OutsideClickHandler onOutsideClick={() => setModalOpenStatus(false)}>
@@ -84,9 +86,11 @@ function getPopoverPosition(
 
   if (anchorPoint.x + popoverWidth + marginToWindowEdge >= windowWidth) {
     // position to the left
+    // If the screen is resized to be smaller than the anchor point, use it instead
+    // Otherwise it will be rendered outside the window
     return {
       ...defaultProps,
-      left: `${anchorPoint.x - popoverWidth}px`,
+      left: `${Math.min(anchorPoint.x, windowWidth) - popoverWidth}px`,
     };
   }
 
