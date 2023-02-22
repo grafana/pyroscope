@@ -250,9 +250,9 @@ $(BIN)/helm: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.8.0
 
-$(BIN)/kubeval: Makefile go.mod
+$(BIN)/kubeconform: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/instrumenta/kubeval@v0.16.1
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/yannh/kubeconform/cmd/kubeconform@v0.5.0
 
 $(BIN)/mage: Makefile go.mod
 	@mkdir -p $(@D)
@@ -301,16 +301,16 @@ trunk/fmt: $(BIN)/trunk
 	$(BIN)/trunk fmt
 
 .PHONY: helm/check
-helm/check: $(BIN)/kubeval $(BIN)/helm
+helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm repo add --force-update minio https://charts.min.io/
 	$(BIN)/helm dependency build ./operations/phlare/helm/phlare/
 	mkdir -p ./operations/phlare/helm/phlare/rendered/
 	$(BIN)/helm template phlare-dev ./operations/phlare/helm/phlare/ \
 		| tee ./operations/phlare/helm/phlare/rendered/single-binary.yaml \
-		| $(BIN)/kubeval --strict
+		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.21.0
 	$(BIN)/helm template phlare-dev ./operations/phlare/helm/phlare/ --values operations/phlare/helm/phlare/values-micro-services.yaml \
 		| tee ./operations/phlare/helm/phlare/rendered/micro-services.yaml \
-		| $(BIN)/kubeval --strict
+		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.21.0
 	cat operations/phlare/helm/phlare/values-micro-services.yaml \
 		| go run ./tools/yaml-to-json \
 		> ./operations/phlare/jsonnet/values-micro-services.json
