@@ -41,7 +41,9 @@ FROM ubuntu:22.04 AS go-builder
 RUN apt-get update \
     && apt-get -y install clang lld libc6-dev wget \
     && wget https://go.dev/dl/go1.20.1.linux-amd64.tar.gz \
-    && tar -C /usr/local -xzf go1.20.1.linux-amd64.tar.gz
+    && tar -C /usr/local -xzf go1.20.1.linux-amd64.tar.gz \
+    && wget https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign%2F0.22.0/apple-codesign-0.22.0-x86_64-unknown-linux-musl.tar.gz \
+    && tar -C /usr/local -xzf apple-codesign-0.22.0-x86_64-unknown-linux-musl.tar.gz
 
 WORKDIR /opt/pyroscope/
 
@@ -56,7 +58,7 @@ COPY go.mod go.sum ./
 ENV CGO_ENABLED=1
 ENV PATH="/osxcross/bin:$PATH"
 ENV LD_LIBRARY_PATH="/osxcross/lib:$LD_LIBRARY_PATH"
-ENV PATH=$PATH:/usr/local/go/bin
+ENV PATH=$PATH:/usr/local/go/bin:/usr/local/apple-codesign-0.22.0-x86_64-unknown-linux-musl/
 ENV CC=o64-clang
 ENV CXX=o64-clang++
 
@@ -67,6 +69,8 @@ RUN GOOS=darwin GOARCH=arm64 \
   -tags dotnetspy,gospy,embedassets \
   -o /pyroscope-arm64 \
   ./cmd/pyroscope
+
+RUN rcodesign sign /pyroscope-arm64
 
 RUN GOOS=darwin GOARCH=amd64 \
   HOST=amd64-apple-darwin15 AR=x86_64-apple-darwin20.4-ar LD=x86_64-apple-darwin20.4-ld \
