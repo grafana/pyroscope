@@ -1,6 +1,6 @@
 {
   "name": "@pyroscope/webapp",
-  "version": "1.68.4",
+  "version": "1.68.6",
   "private": true,
   "license": "Apache-2.0",
   "scripts": {

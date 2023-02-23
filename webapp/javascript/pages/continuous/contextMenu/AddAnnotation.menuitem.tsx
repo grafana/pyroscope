@@ -12,6 +12,7 @@ import { Portal, PortalProps } from '@webapp/ui/Portal';
 import { NewAnnotation } from '@webapp/services/annotations';
 import TextField from '@webapp/ui/Form/TextField';
 import { useAnnotationForm } from './useAnnotationForm';
+import styles from './AddAnnotation.menuitem.module.css';
 
 export interface AddAnnotationProps {
   /** where to put the popover in the DOM */
@@ -56,6 +57,7 @@ function AddAnnotation(props: AddAnnotationProps) {
         <form
           id="annotation-form"
           name="annotation-form"
+          className={styles.form}
           onSubmit={handleSubmit((d) => {
             onCreateAnnotation(d.content as string);
           })}

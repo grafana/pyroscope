@@ -1,0 +1,98 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 5,
+  "iteration": 1676644496698,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "Pyroscope",
+      "gridPos": {
+        "h": 17,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "showToolbar": false
+      },
+      "pluginVersion": "7.3.6",
+      "targets": [
+        {
+          "format": "json",
+          "from": "now-1h",
+          "name": "$appName",
+          "queryType": "randomWalk",
+          "refId": "A",
+          "until": "now"
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Pyroscope Server CPU",
+      "type": "pyroscope-panel"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 30,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "pyroscope.server.cpu",
+          "value": "pyroscope.server.cpu"
+        },
+        "datasource": "Pyroscope",
+        "definition": ".*",
+        "description": null,
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": null,
+        "multi": false,
+        "name": "appName",
+        "options": [],
+        "query": ".*",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "With Dynamic Variables",
+  "uid": "xUeyxxJVk",
+  "version": 5
+}
