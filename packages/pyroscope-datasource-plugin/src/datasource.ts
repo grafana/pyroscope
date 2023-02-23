@@ -47,6 +47,23 @@ export class DataSource extends DataSourceApi<
     return result;
   }
 
+  async metricFindQuery() {
+    const result = await this.backendSrv
+      .fetch<{ name: string }[]>({
+        method: 'GET',
+        url: `${this.url}/render/api/apps`,
+      })
+      .toPromise();
+
+    if (!result) {
+      return [{ text: '' }];
+    }
+
+    return result.data.map((a) => ({
+      text: a.name,
+    }));
+  }
+
   async getNames() {
     const result = await this.backendSrv
       .fetch<string[]>({

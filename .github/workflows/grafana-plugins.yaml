@@ -1,0 +1,125 @@
+name: Lint Grafana Plugins
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # All this is also mirrored in https://github.com/pyroscope-io/grafana-datasource-plugin
+  # We do it here also so that the feedback loop is shorter
+  datasource:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16.18'
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+      - uses: actions/cache@v2
+        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn
+      - name: Install Webapp dependencies
+        run: yarn install --frozen-lockfile
+      - run: yarn build:datasource
+      - name: Get plugin metadata
+        id: metadata
+        run: |
+          sudo apt-get install jq
+
+          export GRAFANA_PLUGIN_ID=$(cat packages/pyroscope-datasource-plugin/dist/plugin.json | jq -r .id)
+          export GRAFANA_PLUGIN_VERSION=$(cat packages/pyroscope-datasource-plugin/dist/plugin.json | jq -r .info.version)
+          export GRAFANA_PLUGIN_TYPE=$(cat packages/pyroscope-datasource-plugin/dist/plugin.json | jq -r .type)
+          export GRAFANA_PLUGIN_ARTIFACT=${GRAFANA_PLUGIN_ID}-${GRAFANA_PLUGIN_VERSION}.zip
+          export GRAFANA_PLUGIN_ARTIFACT_CHECKSUM=${GRAFANA_PLUGIN_ARTIFACT}.md5
+
+          echo "::set-output name=plugin-id::${GRAFANA_PLUGIN_ID}"
+          echo "::set-output name=plugin-version::${GRAFANA_PLUGIN_VERSION}"
+          echo "::set-output name=plugin-type::${GRAFANA_PLUGIN_TYPE}"
+          echo "::set-output name=archive::${GRAFANA_PLUGIN_ARTIFACT}"
+          echo "::set-output name=archive-checksum::${GRAFANA_PLUGIN_ARTIFACT_CHECKSUM}"
+
+          echo ::set-output name=github-tag::${GITHUB_REF#refs/*/}
+
+      - name: Package plugin
+        id: package-plugin
+        run: |
+          mv packages/pyroscope-datasource-plugin/dist ${{ steps.metadata.outputs.plugin-id }}
+          zip ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }} -r
+          md5sum ${{ steps.metadata.outputs.archive }} > ${{ steps.metadata.outputs.archive-checksum }}
+          echo "::set-output name=checksum::$(cat ./${{ steps.metadata.outputs.archive-checksum }} | cut -d' ' -f1)"
+
+      - name: Lint plugin
+        run: |
+          export PATH="$(go env GOPATH)/bin/:$PATH"
+
+          git clone https://github.com/grafana/plugin-validator
+          pushd ./plugin-validator/pkg/cmd/plugincheck2
+          go install
+          popd
+          plugincheck2 -config packages/pyroscope-datasource-plugin/lint.config.yaml ${{ steps.metadata.outputs.archive }}
+
+  # All this is also mirrored in https://github.com/pyroscope-io/grafana-panel-plugin
+  # We do it here also so that the feedback loop is shorter
+  panel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16.18'
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+      - uses: actions/cache@v2
+        id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn
+      - name: Install Webapp dependencies
+        run: yarn install --frozen-lockfile
+      - run: yarn build:panel
+      - name: Get plugin metadata
+        id: metadata
+        run: |
+          sudo apt-get install jq
+
+          export GRAFANA_PLUGIN_ID=$(cat packages/pyroscope-panel-plugin/dist/plugin.json | jq -r .id)
+          export GRAFANA_PLUGIN_VERSION=$(cat packages/pyroscope-panel-plugin/dist/plugin.json | jq -r .info.version)
+          export GRAFANA_PLUGIN_TYPE=$(cat packages/pyroscope-panel-plugin/dist/plugin.json | jq -r .type)
+          export GRAFANA_PLUGIN_ARTIFACT=${GRAFANA_PLUGIN_ID}-${GRAFANA_PLUGIN_VERSION}.zip
+          export GRAFANA_PLUGIN_ARTIFACT_CHECKSUM=${GRAFANA_PLUGIN_ARTIFACT}.md5
+
+          echo "::set-output name=plugin-id::${GRAFANA_PLUGIN_ID}"
+          echo "::set-output name=plugin-version::${GRAFANA_PLUGIN_VERSION}"
+          echo "::set-output name=plugin-type::${GRAFANA_PLUGIN_TYPE}"
+          echo "::set-output name=archive::${GRAFANA_PLUGIN_ARTIFACT}"
+          echo "::set-output name=archive-checksum::${GRAFANA_PLUGIN_ARTIFACT_CHECKSUM}"
+
+          echo ::set-output name=github-tag::${GITHUB_REF#refs/*/}
+
+      - name: Package plugin
+        id: package-plugin
+        run: |
+          mv packages/pyroscope-panel-plugin/dist ${{ steps.metadata.outputs.plugin-id }}
+          zip ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }} -r
+          md5sum ${{ steps.metadata.outputs.archive }} > ${{ steps.metadata.outputs.archive-checksum }}
+          echo "::set-output name=checksum::$(cat ./${{ steps.metadata.outputs.archive-checksum }} | cut -d' ' -f1)"
+
+      - name: Lint plugin
+        run: |
+          export PATH="$(go env GOPATH)/bin/:$PATH"
+
+          git clone https://github.com/grafana/plugin-validator
+          pushd ./plugin-validator/pkg/cmd/plugincheck2
+          go install
+          popd
+          plugincheck2 -config packages/pyroscope-panel-plugin/lint.config.yaml ${{ steps.metadata.outputs.archive }}

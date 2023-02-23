@@ -116,6 +116,7 @@ function renderAnnotationIcon({
     <Provider store={store}>
       <AnnotationMark
         type={annotation.type}
+        posX={left}
         color={annotation.color}
         value={{ content: annotation.content, timestamp: annotation.timestamp }}
       />

@@ -2,8 +2,6 @@
 
 This example demonstrates how Pyroscope can be used to scrape pprof profiles from remote targets discovered via file-based service discovery mechanism.
 
-When using Pyroscope' file-based service discovery mechanism, the Prometheus instance will listen for changes to the file and automatically update the scrape target list, without requiring an instance restart.
-
 ### 1. Run Pyroscope server and demo applications in docker containers
 
 ```shell
@@ -32,7 +30,7 @@ scrape-configs:
 
 </details>
 
-The file contains a list of remote target the Pyroscope server will pull profiling data from:
+The file contains a list of remote target the Pyroscope server will pull profiling data from. When files from the list change, the server will automatically update the scrape target list, without requiring a restart.
 
 <details>
     <summary>targets.json</summary>
