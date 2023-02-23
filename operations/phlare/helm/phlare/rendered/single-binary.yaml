@@ -5,10 +5,10 @@ kind: ServiceAccount
 metadata:
   name: phlare-dev
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: phlare/templates/configmap.yaml
@@ -17,10 +17,10 @@ kind: ConfigMap
 metadata:
   name: phlare-dev-config
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 data:
   config.yaml: |
@@ -688,10 +688,10 @@ kind: ClusterRole
 metadata:
   name: default-phlare-dev
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 rules:
 - apiGroups:
@@ -714,10 +714,10 @@ kind: ClusterRoleBinding
 metadata:
   name: default-phlare-dev
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -734,10 +734,10 @@ kind: Service
 metadata:
   name: phlare-dev-memberlist
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -760,10 +760,10 @@ kind: Service
 metadata:
   name: phlare-dev
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -784,10 +784,10 @@ kind: Service
 metadata:
   name: phlare-dev-headless
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -808,10 +808,10 @@ kind: StatefulSet
 metadata:
   name: phlare-dev
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -826,7 +826,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 40caa3399d6f6cf21f8d4a37c3f80a6e7cb928e8b26c2e3e509d32ab62f355b5
+        checksum/config: ac293ebd123c467bba7f8764b390e471bb866b723a07da3062cf49a18e84f1b7
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.scrape: "true"
         profiles.grafana.com/memory.scrape: "true"
@@ -845,7 +845,7 @@ spec:
         - name: "phlare"
           securityContext:
             {}
-          image: "grafana/phlare:0.4.0"
+          image: "grafana/phlare:0.5.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=all"

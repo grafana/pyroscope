@@ -12,10 +12,10 @@ kind: ServiceAccount
 metadata:
   name: phlare-dev
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: phlare/charts/minio/templates/secrets.yaml
@@ -358,10 +358,10 @@ kind: ConfigMap
 metadata:
   name: phlare-dev-config
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 data:
   config.yaml: |
@@ -1037,10 +1037,10 @@ kind: ClusterRole
 metadata:
   name: default-phlare-dev
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 rules:
 - apiGroups:
@@ -1063,10 +1063,10 @@ kind: ClusterRoleBinding
 metadata:
   name: default-phlare-dev
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -1151,10 +1151,10 @@ kind: Service
 metadata:
   name: phlare-dev-memberlist
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -1177,10 +1177,10 @@ kind: Service
 metadata:
   name: phlare-dev-agent
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "agent"
 spec:
@@ -1201,10 +1201,10 @@ kind: Service
 metadata:
   name: phlare-dev-distributor
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
 spec:
@@ -1225,10 +1225,10 @@ kind: Service
 metadata:
   name: phlare-dev-ingester
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
@@ -1249,10 +1249,10 @@ kind: Service
 metadata:
   name: phlare-dev-ingester-headless
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
@@ -1273,10 +1273,10 @@ kind: Service
 metadata:
   name: phlare-dev-querier
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
 spec:
@@ -1297,10 +1297,10 @@ kind: Service
 metadata:
   name: phlare-dev-query-frontend
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-frontend"
 spec:
@@ -1321,10 +1321,10 @@ kind: Service
 metadata:
   name: phlare-dev-query-scheduler
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-scheduler"
 spec:
@@ -1345,10 +1345,10 @@ kind: Deployment
 metadata:
   name: phlare-dev-agent
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "agent"
 spec:
@@ -1361,7 +1361,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: bd9ccd8c78b2189bd2cf93b0df2974c34a38b43f3def0e3a15cc333b838b108d
+        checksum/config: 2a59c876c4ab201adffd949c067bc1c9198fc405e81f5ebab90507259e0fe283
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.scrape: "true"
         profiles.grafana.com/memory.scrape: "true"
@@ -1380,7 +1380,7 @@ spec:
         - name: "agent"
           securityContext:
             {}
-          image: "grafana/phlare:0.4.0"
+          image: "grafana/phlare:0.5.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=agent"
@@ -1425,10 +1425,10 @@ kind: Deployment
 metadata:
   name: phlare-dev-distributor
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
 spec:
@@ -1441,7 +1441,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: bd9ccd8c78b2189bd2cf93b0df2974c34a38b43f3def0e3a15cc333b838b108d
+        checksum/config: 2a59c876c4ab201adffd949c067bc1c9198fc405e81f5ebab90507259e0fe283
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.scrape: "true"
         profiles.grafana.com/memory.scrape: "true"
@@ -1460,7 +1460,7 @@ spec:
         - name: "distributor"
           securityContext:
             {}
-          image: "grafana/phlare:0.4.0"
+          image: "grafana/phlare:0.5.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=distributor"
@@ -1504,10 +1504,10 @@ kind: Deployment
 metadata:
   name: phlare-dev-querier
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
 spec:
@@ -1520,7 +1520,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: bd9ccd8c78b2189bd2cf93b0df2974c34a38b43f3def0e3a15cc333b838b108d
+        checksum/config: 2a59c876c4ab201adffd949c067bc1c9198fc405e81f5ebab90507259e0fe283
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.scrape: "true"
         profiles.grafana.com/memory.scrape: "true"
@@ -1539,7 +1539,7 @@ spec:
         - name: "querier"
           securityContext:
             {}
-          image: "grafana/phlare:0.4.0"
+          image: "grafana/phlare:0.5.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=querier"
@@ -1583,10 +1583,10 @@ kind: Deployment
 metadata:
   name: phlare-dev-query-frontend
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-frontend"
 spec:
@@ -1599,7 +1599,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: bd9ccd8c78b2189bd2cf93b0df2974c34a38b43f3def0e3a15cc333b838b108d
+        checksum/config: 2a59c876c4ab201adffd949c067bc1c9198fc405e81f5ebab90507259e0fe283
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.scrape: "true"
         profiles.grafana.com/memory.scrape: "true"
@@ -1618,7 +1618,7 @@ spec:
         - name: "query-frontend"
           securityContext:
             {}
-          image: "grafana/phlare:0.4.0"
+          image: "grafana/phlare:0.5.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-frontend"
@@ -1662,10 +1662,10 @@ kind: Deployment
 metadata:
   name: phlare-dev-query-scheduler
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-scheduler"
 spec:
@@ -1678,7 +1678,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: bd9ccd8c78b2189bd2cf93b0df2974c34a38b43f3def0e3a15cc333b838b108d
+        checksum/config: 2a59c876c4ab201adffd949c067bc1c9198fc405e81f5ebab90507259e0fe283
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.scrape: "true"
         profiles.grafana.com/memory.scrape: "true"
@@ -1697,7 +1697,7 @@ spec:
         - name: "query-scheduler"
           securityContext:
             {}
-          image: "grafana/phlare:0.4.0"
+          image: "grafana/phlare:0.5.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-scheduler"
@@ -1836,10 +1836,10 @@ kind: StatefulSet
 metadata:
   name: phlare-dev-ingester
   labels:
-    helm.sh/chart: phlare-0.4.0
+    helm.sh/chart: phlare-0.5.1
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
-    app.kubernetes.io/version: "0.4.0"
+    app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
@@ -1854,7 +1854,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: bd9ccd8c78b2189bd2cf93b0df2974c34a38b43f3def0e3a15cc333b838b108d
+        checksum/config: 2a59c876c4ab201adffd949c067bc1c9198fc405e81f5ebab90507259e0fe283
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.scrape: "true"
         profiles.grafana.com/memory.scrape: "true"
@@ -1873,7 +1873,7 @@ spec:
         - name: "ingester"
           securityContext:
             {}
-          image: "grafana/phlare:0.4.0"
+          image: "grafana/phlare:0.5.1"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=ingester"

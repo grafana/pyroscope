@@ -9,7 +9,7 @@ phlare:
     repository: grafana/phlare
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "0.4.0"
+    tag: "0.5.1"
 
   extraArgs:
     log.level: debug

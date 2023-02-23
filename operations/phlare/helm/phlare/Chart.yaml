@@ -2,8 +2,8 @@ apiVersion: v2
 name: phlare
 description: 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 type: application
-version: 0.4.0
-appVersion: 0.4.0
+version: 0.5.1
+appVersion: 0.5.1
 dependencies:
   - name: minio
     alias: minio
