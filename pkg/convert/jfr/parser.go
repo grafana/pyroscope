@@ -294,7 +294,7 @@ var zstdJniSoLibName = regexp.MustCompile("^(\\.?/tmp/)?(libzstd-jni-\\d+\\.\\d+
 
 // ./tmp/libamazonCorrettoCryptoProvider109b39cf33c563eb.so
 // ./tmp/amazonCorrettoCryptoProviderNativeLibraries.7382c2f79097f415/libcrypto.so (deleted)
-var amazonCorrettoCryptoProvider = regexp.MustCompile("^(\\.?/tmp/)?(lib)?(amazonCorrettoCryptoProvider)(NativeLibraries\\.)?([0-9a-f]{16})(\\.so)( \\(deleted\\))?$")
+var amazonCorrettoCryptoProvider = regexp.MustCompile("^(\\.?/tmp/)?(lib)?(amazonCorrettoCryptoProvider)(NativeLibraries\\.)?([0-9a-f]{16})(/libcrypto)?(\\.so)( \\(deleted\\))?$")
 
 // libasyncProfiler-linux-arm64-17b9a1d8156277a98ccc871afa9a8f69215f92.so
 var pyroscopeAsyncProfiler = regexp.MustCompile(
