@@ -106,16 +106,27 @@ type Server struct {
 	StorageQueueWorkers    int     `desc:"number of workers handling internal storage queue" mapstructure:"storage-queue-workers"`
 	MinFreeSpacePercentage float64 `def:"5" desc:"percentage of available disk space at which ingestion requests are discarded. Defaults to 5% but not less than 1GB. Set 0 to disable" mapstructure:"min-free-space-percentage"`
 
-	ExemplarsBatchQueueSize int           `deprecated:"true" mapstructure:"exemplars-batch-queue-size"`
-	ExemplarsBatchDuration  time.Duration `deprecated:"true" mapstructure:"exemplars-batch-duration"`
-	ExemplarsBatchSize      int           `deprecated:"true" mapstructure:"exemplars-batch-size"`
+	// Low-level storage options that should only in case of a performance issue.
+	// These options are not shown in the CLI help output.
+	BadgerValueLogSize        bytesize.ByteSize `def:"1GB" deprecated:"true" mapstructure:"badger-value-log-size"`
+	BadgerGCSizeDiff          bytesize.ByteSize `def:"1GB" deprecated:"true" mapstructure:"badger-gc-diff-size"`
+	BadgerGCDiscardRatio      float64           `def:"0.7" deprecated:"true" mapstructure:"badger-gc-discard-ratio"`
+	BadgerGCTaskInterval      time.Duration     `def:"5m" deprecated:"true" mapstructure:"badger-gc-task-interval"`
+	MetricsUpdateTaskInterval time.Duration     `def:"10s" deprecated:"true" mapstructure:"metrics-update-task-interval"`
+	WriteBackTaskInterval     time.Duration     `def:"1m" deprecated:"true" mapstructure:"writeback-task-interval"`
+	EvictionTaskInterval      time.Duration     `def:"20s" deprecated:"true" mapstructure:"eviction-task-interval"`
+	RetentionTaskInterval     time.Duration     `def:"10m" deprecated:"true" mapstructure:"retention-task-interval"`
+	ExemplarsBatchQueueSize   int               `deprecated:"true" mapstructure:"exemplars-batch-queue-size"`
+	ExemplarsBatchDuration    time.Duration     `deprecated:"true" mapstructure:"exemplars-batch-duration"`
+	ExemplarsBatchSize        int               `deprecated:"true" mapstructure:"exemplars-batch-size"`
 
 	APIBindAddr     string `def:":4040" desc:"port for the HTTP(S) server used for data ingestion and web UI" mapstructure:"api-bind-addr"`
 	BaseURL         string `def:"" desc:"base URL for when the server is behind a reverse proxy with a different path" mapstructure:"base-url"`
 	BaseURLBindAddr string `def:"" deprecated:"true" desc:"server for debugging base url" mapstructure:"base-url-bind-addr"`
 
-	CacheEvictThreshold float64 `def:"0.25" desc:"percentage of memory at which cache evictions start" mapstructure:"cache-evict-threshold"`
-	CacheEvictVolume    float64 `def:"0.33" desc:"percentage of cache that is evicted per eviction run" mapstructure:"cache-evict-volume"`
+	CacheEvictThreshold float64       `def:"0.25" desc:"percentage of memory at which cache evictions start" mapstructure:"cache-evict-threshold"`
+	CacheEvictVolume    float64       `def:"0.33" desc:"percentage of cache that is evicted per eviction run" mapstructure:"cache-evict-volume"`
+	CacheTTL            time.Duration `def:"120s" desc:"cached items are evicted and written to disk on the TTL expiration" mapstructure:"cache-ttl"`
 
 	Database Database `mapstructure:"database"`
 

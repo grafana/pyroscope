@@ -119,7 +119,7 @@ func (s *Storage) initExemplarsStorage(db BadgerDBWithCache) {
 	s.tasksWG.Add(1)
 
 	go func() {
-		retentionTicker := time.NewTicker(s.retentionTaskInterval)
+		retentionTicker := time.NewTicker(s.config.retentionTaskInterval)
 		batchFlushTicker := time.NewTicker(e.exemplarsBatchDuration())
 		defer func() {
 			batchFlushTicker.Stop()

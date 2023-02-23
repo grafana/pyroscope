@@ -29,7 +29,6 @@ var (
 
 type Storage struct {
 	config *Config
-	*storageOptions
 
 	logger *logrus.Logger
 	*metrics
@@ -53,16 +52,6 @@ type Storage struct {
 	tasksWG    sync.WaitGroup
 	stop       chan struct{}
 	putMutex   sync.Mutex
-}
-
-type storageOptions struct {
-	badgerGCTaskInterval      time.Duration
-	metricsUpdateTaskInterval time.Duration
-	writeBackTaskInterval     time.Duration
-	evictionTaskInterval      time.Duration
-	retentionTaskInterval     time.Duration
-	cacheTTL                  time.Duration
-	gcSizeDiff                bytesize.ByteSize
 }
 
 // MetricsExporter exports values of particular stack traces sample from profiling
@@ -90,22 +79,7 @@ type ApplicationMetadataSaver interface {
 
 func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health.Controller, appSvc ApplicationMetadataSaver) (*Storage, error) {
 	s := &Storage{
-		config: c,
-		storageOptions: &storageOptions{
-			// Interval at which GC triggered if the db size has increased more
-			// than by gcSizeDiff since the last probe.
-			badgerGCTaskInterval: 5 * time.Minute,
-			// DB size and cache size metrics are updated periodically.
-			metricsUpdateTaskInterval: 10 * time.Second,
-			writeBackTaskInterval:     time.Minute,
-			evictionTaskInterval:      20 * time.Second,
-			retentionTaskInterval:     10 * time.Minute,
-			cacheTTL:                  2 * time.Minute,
-			// gcSizeDiff specifies the minimal storage size difference that
-			// causes garbage collection to trigger.
-			gcSizeDiff: bytesize.GB,
-		},
-
+		config:  c,
 		hc:      hc,
 		logger:  logger,
 		metrics: newMetrics(reg),
@@ -113,6 +87,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 		appSvc:  appSvc,
 	}
 
+	c.setDefaults()
 	if c.NewBadger == nil {
 		c.NewBadger = s.newBadger
 	}
@@ -146,7 +121,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 		return nil, err
 	}
 
-	s.periodicTask(s.writeBackTaskInterval, s.writeBackTask)
+	s.periodicTask(s.config.writeBackTaskInterval, s.writeBackTask)
 
 	if !s.config.inMemory {
 		// TODO(kolesnikovae): Allow failure and skip evictionTask?
@@ -155,9 +130,9 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 			return nil, err
 		}
 
-		s.periodicTask(s.evictionTaskInterval, s.evictionTask(memTotal))
-		s.maintenanceTask(s.retentionTaskInterval, s.retentionTask)
-		s.periodicTask(s.metricsUpdateTaskInterval, s.updateMetricsTask)
+		s.periodicTask(s.config.evictionTaskInterval, s.evictionTask(memTotal))
+		s.maintenanceTask(s.config.retentionTaskInterval, s.retentionTask)
+		s.periodicTask(s.config.metricsUpdateTaskInterval, s.updateMetricsTask)
 	}
 
 	return s, nil

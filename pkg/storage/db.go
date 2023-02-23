@@ -70,7 +70,7 @@ func (s *Storage) newBadger(name string, p Prefix, codec cache.Codec) (BadgerDBW
 			d.Cache = cache.New(cache.Config{
 				DB:      badgerDB,
 				Metrics: s.metrics.createCacheMetrics(name),
-				TTL:     s.cacheTTL,
+				TTL:     s.config.cacheTTL,
 				Prefix:  p.String(),
 				Codec:   codec,
 			})
@@ -95,6 +95,7 @@ func (s *Storage) newBadger(name string, p Prefix, codec cache.Codec) (BadgerDBW
 	}()
 
 	badgerDB, err := badger.Open(badger.DefaultOptions(badgerPath).
+		WithValueLogFileSize(int64(s.config.badgerValueLogSize - 1)).
 		WithTruncate(!s.config.badgerNoTruncate).
 		WithSyncWrites(false).
 		WithCompactL0OnClose(false).
@@ -116,16 +117,16 @@ func (s *Storage) newBadger(name string, p Prefix, codec cache.Codec) (BadgerDBW
 		d.Cache = cache.New(cache.Config{
 			DB:      badgerDB,
 			Metrics: s.metrics.createCacheMetrics(name),
-			TTL:     s.cacheTTL,
+			TTL:     s.config.cacheTTL,
 			Prefix:  p.String(),
 			Codec:   codec,
 		})
 	}
 
-	s.maintenanceTask(s.badgerGCTaskInterval, func() {
+	s.maintenanceTask(s.config.badgerGCTaskInterval, func() {
 		diff := calculateDBSize(badgerPath) - d.lastGC
-		if d.lastGC == 0 || s.gcSizeDiff == 0 || diff > s.gcSizeDiff {
-			d.runGC(0.7)
+		if d.lastGC == 0 || s.config.badgerGCSizeDiff == 0 || diff > s.config.badgerGCSizeDiff {
+			d.runGC(s.config.badgerGCDiscardRatio)
 			d.gcCount.Inc()
 			d.lastGC = calculateDBSize(badgerPath)
 		}
@@ -172,9 +173,10 @@ func (d *db) runGC(discardRatio float64) (reclaimed bool) {
 }
 
 // TODO(kolesnikovae): filepath.Walk is notoriously slow.
-//  Consider use of https://github.com/karrick/godirwalk.
-//  Although, every badger.DB calculates its size (reported
-//  via Size) in the same way every minute.
+//
+//	Consider use of https://github.com/karrick/godirwalk.
+//	Although, every badger.DB calculates its size (reported
+//	via Size) in the same way every minute.
 func calculateDBSize(path string) bytesize.ByteSize {
 	var size int64
 	_ = filepath.Walk(path, func(path string, info os.FileInfo, err error) error {

@@ -26,3 +26,12 @@ remote-write:
 auth:
   signup-default-role: admin
   cookie-same-site: strict
+
+badger-value-log-size: 1GB
+badger-gc-diff-size: 1GB
+badger-gc-discard-ratio: 0.7
+badger-gc-task-interval: 5m
+metrics-update-task-interval: 10s
+writeback-task-interval: 1m
+eviction-task-interval: 20s
+retention-task-interval: 10m
