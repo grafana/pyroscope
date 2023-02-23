@@ -62,6 +62,10 @@ var _ = ginkgo.Describe("mergeJVMGeneratedClasses", func() {
 					"libamazonCorrettoCryptoProvider_.so",
 				},
 				{
+					"amazonCorrettoCryptoProviderNativeLibraries.24e42b0d5ecf5f50/libamazonCorrettoCryptoProvider.so",
+					"libamazonCorrettoCryptoProvider_.so",
+				},
+				{
 					"libzstd-jni-1.5.1-16931311898282279136.so",
 					"libzstd-jni-_.so",
 				},
