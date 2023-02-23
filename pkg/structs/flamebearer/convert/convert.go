@@ -163,13 +163,13 @@ func JSONToProfile(b []byte, name string, maxNodes int) (*flamebearer.Flamebeare
 		profile.Metadata.Name = name
 	}
 
-	tree, err := flamebearer.ProfileToTree(profile)
+	t, err := flamebearer.ProfileToTree(profile)
 	if err != nil {
 		return nil, fmt.Errorf("could not convert flameabearer to tree: %w", err)
 	}
 
 	pc := flamebearer.ProfileConfig{
-		Tree:     tree,
+		Tree:     t,
 		Name:     profile.Metadata.Name,
 		MaxNodes: maxNodes,
 		Metadata: metadata.Metadata{
