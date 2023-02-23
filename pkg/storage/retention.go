@@ -116,6 +116,12 @@ func (s *Storage) deleteSegmentData(ctx context.Context, k *segment.Key, rp *seg
 	}
 
 	_, err = seg.DeleteNodesBefore(rp)
+	// We call put here to explicitly invalidate the cached item:
+	// there is a big chance that the segment is not in use, which
+	// means that the modified segment would never be written to disk.
+	// Thus, the next time storage is opened, we would need to remove
+	// these nodes again, unless the entire segment is removed.
+	s.segments.Put(sk, seg)
 	return err
 }
 
