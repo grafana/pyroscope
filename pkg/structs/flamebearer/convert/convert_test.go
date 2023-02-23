@@ -689,7 +689,8 @@ var _ = Describe("Convert", func() {
 			Expect(err).To(BeNil())
 			Expect(b).ToNot(BeNil())
 
-			Expect(len(b.FlamebearerProfileV1.Flamebearer.Levels)).To(Equal(1))
+			// 1 + total
+			Expect(len(b.FlamebearerProfileV1.Flamebearer.Levels)).To(Equal(2))
 		})
 	})
 })

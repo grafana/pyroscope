@@ -105,9 +105,10 @@ func converterToFormat(f ConverterFn) ProfileFileType {
 }
 
 // TODO(kolesnikovae):
-//  Consider simpler (but more reliable) logic for format identification
-//  with fallbacks: from the most strict format to the loosest one, e.g:
-//    pprof, json, collapsed, perf.
+//
+//	Consider simpler (but more reliable) logic for format identification
+//	with fallbacks: from the most strict format to the loosest one, e.g:
+//	  pprof, json, collapsed, perf.
 func converter(p ProfileFile) (ConverterFn, error) {
 	if f, ok := formatConverters[p.Type]; ok {
 		return f, nil
@@ -150,7 +151,7 @@ func converter(p ProfileFile) (ConverterFn, error) {
 	return CollapsedToProfile, nil
 }
 
-func JSONToProfile(b []byte, name string, _ int) (*flamebearer.FlamebearerProfile, error) {
+func JSONToProfile(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
 	var profile flamebearer.FlamebearerProfile
 	if err := json.Unmarshal(b, &profile); err != nil {
 		return nil, fmt.Errorf("unable to unmarshall JSON: %w", err)
@@ -161,7 +162,22 @@ func JSONToProfile(b []byte, name string, _ int) (*flamebearer.FlamebearerProfil
 	if name != "" {
 		profile.Metadata.Name = name
 	}
-	return &profile, nil
+
+	tree, err := flamebearer.ProfileToTree(profile)
+	if err != nil {
+		return nil, fmt.Errorf("could not convert flameabearer to tree: %w", err)
+	}
+
+	// Convert it to tree
+	pc := flamebearer.ProfileConfig{
+		Tree:     tree,
+		Name:     profile.Metadata.Name,
+		MaxNodes: maxNodes,
+	}
+
+	p := flamebearer.NewProfile(pc)
+	return &p, nil
+	//	return &profile, nil
 }
 
 func PprofToProfile(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
