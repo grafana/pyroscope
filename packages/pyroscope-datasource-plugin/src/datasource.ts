@@ -6,6 +6,7 @@ import {
   DataSourceInstanceSettings,
   MutableDataFrame,
   FieldType,
+  MetricFindValue,
 } from '@grafana/data';
 import { getBackendSrv, BackendSrv, getTemplateSrv } from '@grafana/runtime';
 
@@ -47,32 +48,85 @@ export class DataSource extends DataSourceApi<
     return result;
   }
 
-  async metricFindQuery() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async metricFindQuery(query: string, options?: any) {
+    const expandedQuery = getTemplateSrv().replace(query, options.scopedVars);
+    const appNamesRegex = /^\s*(apps|applications)(\(\s*\))?\s*$/;
+    const labelNamesRegex = /^\s*label_names\((\s*[\w_.-]+)\)\s*$/;
+    const labelValuesRegex =
+      /^\s*label_values\(\s*([\w_.-]+)\s*,\s*([\w_]+)\s*\)\s*$/;
+
+    const appsQuery = query.match(appNamesRegex);
+    if (appsQuery) {
+      return this.queryAppNames();
+    }
+
+    const labelNamesQuery = expandedQuery.match(labelNamesRegex);
+    if (labelNamesQuery) {
+      return this.queryLabelNames(labelNamesQuery[1]);
+    }
+
+    const labelValuesQuery = expandedQuery.match(labelValuesRegex);
+    if (labelValuesQuery) {
+      return this.queryLabelValues(labelValuesQuery[1], labelValuesQuery[2]);
+    }
+
+    return [{ text: '' }];
+  }
+
+  async queryAppNames(): Promise<MetricFindValue[]> {
     const result = await this.backendSrv
       .fetch<{ name: string }[]>({
         method: 'GET',
         url: `${this.url}/render/api/apps`,
       })
       .toPromise();
-
     if (!result) {
       return [{ text: '' }];
     }
-
-    return result.data.map((a) => ({
-      text: a.name,
-    }));
+    return result.data.map((x) => ({ text: x.name }));
   }
 
-  async getNames() {
+  async queryLabelNames(appName: string): Promise<MetricFindValue[]> {
     const result = await this.backendSrv
       .fetch<string[]>({
         method: 'GET',
-        url: `${this.url}/render/label-values?label=__name__`,
+        url: `${this.url}/render/labels?query=${appName}{}`,
       })
       .toPromise();
+    if (!result) {
+      return [{ text: '' }];
+    }
+    const labels = result.data.filter((x) => x !== '__name__');
+    if (labels.length === 0) {
+      return [{ text: '' }];
+    }
+    return labels.map((x) => ({ text: x }));
+  }
 
-    return result;
+  async queryLabelValues(
+    appName: string,
+    labelName: string
+  ): Promise<MetricFindValue[]> {
+    const result = await this.backendSrv
+      .fetch<string[]>({
+        method: 'GET',
+        url: `${this.url}/render/label-values?label=${labelName}&query=${appName}{}`,
+      })
+      .toPromise();
+    if (!result) {
+      return [{ text: '' }];
+    }
+    return result.data.map((x) => ({ text: x }));
+  }
+
+  async fetchNames() {
+    await this.backendSrv
+      .fetch<string[]>({
+        method: 'GET',
+        url: `${this.url}/render/api/apps`,
+      })
+      .toPromise();
   }
 
   async query(
@@ -116,11 +170,11 @@ export class DataSource extends DataSourceApi<
   }
 
   loadAppNames(): Promise<ShamefulAny> {
-    return this.getNames();
+    return this.fetchNames();
   }
 
   async testDatasource() {
-    const names = await this.getNames();
+    const names = await this.fetchNames();
     if (names.status === 200) {
       return {
         status: 'success',
