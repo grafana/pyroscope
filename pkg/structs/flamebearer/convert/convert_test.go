@@ -673,6 +673,26 @@ var _ = Describe("Convert", func() {
 		Expect(err).To(BeNil())
 		Expect(b).ToNot(BeNil())
 	})
+
+	Describe("JSON", func() {
+		It("prunes tree", func() {
+			m := ProfileFile{
+				Type: "json",
+				Data: readFile("./testdata/profile.json"),
+			}
+
+			f, err := converter(m)
+			Expect(err).To(BeNil())
+			Expect(f).ToNot(BeNil())
+
+			b, err := f(m.Data, "appname", 1)
+			Expect(err).To(BeNil())
+			Expect(b).ToNot(BeNil())
+
+			// 1 + total
+			Expect(len(b.FlamebearerProfileV1.Flamebearer.Levels)).To(Equal(2))
+		})
+	})
 })
 
 func readFile(path string) []byte {
