@@ -198,6 +198,12 @@ clean: ## Delete intermediate build artifacts
 	@# -X only removes untracked files, -d recurses into directories, -f actually removes files/dirs
 	git clean -Xdf
 
+.PHONY: reference-help
+reference-help: ## Generates the reference help documentation.
+reference-help: build
+	@(./phlare -h || true) > cmd/phlare/help.txt.tmpl
+	@(./phlare -help-all || true) > cmd/phlare/help-all.txt.tmpl
+
 $(BIN)/buf: Makefile
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install github.com/bufbuild/buf/cmd/buf@v1.5.0

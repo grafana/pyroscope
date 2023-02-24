@@ -1,0 +1,751 @@
+Usage of ./phlare:
+  -auth.multitenancy-enabled
+    	When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
+  -client.tenant-id string
+    	Tenant ID to use when pushing profiles to Phlare (default: anonymous). (default "anonymous")
+  -client.url string
+    	URL of log server.
+  -config.expand-env
+    	Expands ${var} in config according to the values of the environment variables.
+  -config.file string
+    	yaml file to load
+  -consul.acl-token string
+    	ACL Token used to interact with Consul.
+  -consul.cas-retry-delay duration
+    	Maximum duration to wait before retrying a Compare And Swap (CAS) operation. (default 1s)
+  -consul.client-timeout duration
+    	HTTP timeout when talking to Consul (default 20s)
+  -consul.consistent-reads
+    	Enable consistent reads to Consul.
+  -consul.hostname string
+    	Hostname and port of Consul. (default "localhost:8500")
+  -consul.watch-burst-size int
+    	Burst size used in rate limit. Values less than 1 are treated as 1. (default 1)
+  -consul.watch-rate-limit float
+    	Rate limit when watching key or prefix in Consul, in requests per second. 0 disables the rate limit. (default 1)
+  -distributor.client-cleanup-period duration
+    	How frequently to clean up clients for ingesters that have gone away. (default 15s)
+  -distributor.excluded-zones comma-separated-list-of-strings
+    	Comma-separated list of zones to exclude from the ring. Instances in excluded zones will be filtered out from the ring.
+  -distributor.health-check-ingesters
+    	Run a health check on each ingester client during periodic cleanup. (default true)
+  -distributor.health-check-timeout duration
+    	Timeout for ingester client healthcheck RPCs. (default 5s)
+  -distributor.ingestion-burst-size-mb float
+    	Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request. (default 2)
+  -distributor.ingestion-rate-limit-mb float
+    	Per-tenant ingestion rate limit in sample size per second. Units in MB. (default 4)
+  -distributor.push.timeout duration
+    	Timeout when pushing data to ingester. (default 5s)
+  -distributor.replication-factor int
+    	The number of ingesters to write to and read from. (default 1)
+  -distributor.ring.consul.acl-token string
+    	ACL Token used to interact with Consul.
+  -distributor.ring.consul.cas-retry-delay duration
+    	Maximum duration to wait before retrying a Compare And Swap (CAS) operation. (default 1s)
+  -distributor.ring.consul.client-timeout duration
+    	HTTP timeout when talking to Consul (default 20s)
+  -distributor.ring.consul.consistent-reads
+    	Enable consistent reads to Consul.
+  -distributor.ring.consul.hostname string
+    	Hostname and port of Consul. (default "localhost:8500")
+  -distributor.ring.consul.watch-burst-size int
+    	Burst size used in rate limit. Values less than 1 are treated as 1. (default 1)
+  -distributor.ring.consul.watch-rate-limit float
+    	Rate limit when watching key or prefix in Consul, in requests per second. 0 disables the rate limit. (default 1)
+  -distributor.ring.etcd.dial-timeout duration
+    	The dial timeout for the etcd connection. (default 10s)
+  -distributor.ring.etcd.endpoints string
+    	The etcd endpoints to connect to.
+  -distributor.ring.etcd.max-retries int
+    	The maximum number of retries to do for failed ops. (default 10)
+  -distributor.ring.etcd.password string
+    	Etcd password.
+  -distributor.ring.etcd.tls-ca-path string
+    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+  -distributor.ring.etcd.tls-cert-path string
+    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+  -distributor.ring.etcd.tls-cipher-suites string
+    	Override the default cipher suite list (separated by commas).
+  -distributor.ring.etcd.tls-enabled
+    	Enable TLS.
+  -distributor.ring.etcd.tls-insecure-skip-verify
+    	Skip validating server certificate.
+  -distributor.ring.etcd.tls-key-path string
+    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+  -distributor.ring.etcd.tls-min-version string
+    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+  -distributor.ring.etcd.tls-server-name string
+    	Override the expected name on the server certificate.
+  -distributor.ring.etcd.username string
+    	Etcd username.
+  -distributor.ring.heartbeat-period duration
+    	Period at which to heartbeat to the ring. 0 = disabled. (default 5s)
+  -distributor.ring.heartbeat-timeout duration
+    	The heartbeat timeout after which distributors are considered unhealthy within the ring. 0 = never (timeout disabled). (default 1m0s)
+  -distributor.ring.instance-addr string
+    	IP address to advertise in the ring.
+  -distributor.ring.instance-id string
+    	Instance ID to register in the ring. (default "<hostname>")
+  -distributor.ring.instance-interface-names string
+    	Name of network interface to read address from. (default [<private network interfaces>])
+  -distributor.ring.instance-port int
+    	Port to advertise in the ring (defaults to server.http-listen-port). (default 4100)
+  -distributor.ring.multi.mirror-enabled
+    	Mirror writes to secondary store.
+  -distributor.ring.multi.mirror-timeout duration
+    	Timeout for storing value to secondary store. (default 2s)
+  -distributor.ring.multi.primary string
+    	Primary backend storage used by multi-client.
+  -distributor.ring.multi.secondary string
+    	Secondary backend storage used by multi-client.
+  -distributor.ring.prefix string
+    	The prefix for the keys in the store. Should end with a /. (default "collectors/")
+  -distributor.ring.store string
+    	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -distributor.zone-awareness-enabled
+    	True to enable the zone-awareness and replicate ingested samples across different availability zones.
+  -etcd.dial-timeout duration
+    	The dial timeout for the etcd connection. (default 10s)
+  -etcd.endpoints string
+    	The etcd endpoints to connect to.
+  -etcd.max-retries int
+    	The maximum number of retries to do for failed ops. (default 10)
+  -etcd.password string
+    	Etcd password.
+  -etcd.tls-ca-path string
+    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+  -etcd.tls-cert-path string
+    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+  -etcd.tls-cipher-suites string
+    	Override the default cipher suite list (separated by commas).
+  -etcd.tls-enabled
+    	Enable TLS.
+  -etcd.tls-insecure-skip-verify
+    	Skip validating server certificate.
+  -etcd.tls-key-path string
+    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+  -etcd.tls-min-version string
+    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+  -etcd.tls-server-name string
+    	Override the expected name on the server certificate.
+  -etcd.username string
+    	Etcd username.
+  -h
+    	Print basic help.
+  -help
+    	Print basic help.
+  -help-all
+    	Print help, also including advanced and experimental parameters.
+  -ingester.availability-zone string
+    	The availability zone where this instance is running.
+  -ingester.final-sleep duration
+    	Duration to sleep for before exiting, to ensure metrics are scraped.
+  -ingester.heartbeat-period duration
+    	Period at which to heartbeat to consul. 0 = disabled. (default 5s)
+  -ingester.heartbeat-timeout duration
+    	Heartbeat timeout after which instance is assumed to be unhealthy. 0 = disabled. (default 1m0s)
+  -ingester.join-after duration
+    	Period to wait for a claim from another member; will join automatically after this.
+  -ingester.lifecycler.ID string
+    	ID to register in the ring. (default "<hostname>")
+  -ingester.lifecycler.addr string
+    	IP address to advertise in the ring.
+  -ingester.lifecycler.interface string
+    	Name of network interface to read address from. (default [<private network interfaces>])
+  -ingester.lifecycler.port int
+    	port to advertise in consul (defaults to server.grpc-listen-port).
+  -ingester.max-global-series-per-tenant int
+    	Maximum number of active series of profiles per tenant, across the cluster. 0 to disable. When the global limit is enabled, each ingester is configured with a dynamic local limit based on the replication factor and the current number of healthy ingesters, and is kept updated whenever the number of ingesters change. (default 5000)
+  -ingester.max-local-series-per-tenant int
+    	Maximum number of active series of profiles per tenant, per ingester. 0 to disable.
+  -ingester.min-ready-duration duration
+    	Minimum duration to wait after the internal readiness checks have passed but before succeeding the readiness endpoint. This is used to slowdown deployment controllers (eg. Kubernetes) after an instance is ready and before they proceed with a rolling update, to give the rest of the cluster instances enough time to receive ring updates. (default 15s)
+  -ingester.num-tokens int
+    	Number of tokens for each ingester. (default 128)
+  -ingester.observe-period duration
+    	Observe tokens after generating to resolve collisions. Useful when using gossiping ring.
+  -ingester.readiness-check-ring-health
+    	When enabled the readiness probe succeeds only after all instances are ACTIVE and healthy in the ring, otherwise only the instance itself is checked. This option should be disabled if in your cluster multiple instances can be rolled out simultaneously, otherwise rolling updates may be slowed down. (default true)
+  -ingester.tokens-file-path string
+    	File path where tokens are stored. If empty, tokens are not stored at shutdown and restored at startup.
+  -ingester.unregister-on-shutdown
+    	Unregister from the ring upon clean shutdown. It can be useful to disable for rolling restarts with consistent naming in conjunction with -distributor.extend-writes=false. (default true)
+  -log.format value
+    	Output log messages in the given format. Valid formats: [logfmt, json] (default logfmt)
+  -log.level value
+    	Only log messages with the given severity or above. Valid levels: [debug, info, warn, error] (default info)
+  -memberlist.abort-if-join-fails
+    	If this node fails to join memberlist cluster, abort.
+  -memberlist.advertise-addr string
+    	Gossip address to advertise to other members in the cluster. Used for NAT traversal.
+  -memberlist.advertise-port int
+    	Gossip port to advertise to other members in the cluster. Used for NAT traversal. (default 7946)
+  -memberlist.bind-addr string
+    	IP address to listen on for gossip messages. Multiple addresses may be specified. Defaults to 0.0.0.0
+  -memberlist.bind-port int
+    	Port to listen on for gossip messages. (default 7946)
+  -memberlist.cluster-label string
+    	The cluster label is an optional string to include in outbound packets and gossip streams. Other members in the memberlist cluster will discard any message whose label doesn't match the configured one, unless the 'cluster-label-verification-disabled' configuration option is set to true.
+  -memberlist.cluster-label-verification-disabled
+    	When true, memberlist doesn't verify that inbound packets and gossip streams have the cluster label matching the configured one. This verification should be disabled while rolling out the change to the configured cluster label in a live memberlist cluster.
+  -memberlist.compression-enabled
+    	Enable message compression. This can be used to reduce bandwidth usage at the cost of slightly more CPU utilization. (default true)
+  -memberlist.dead-node-reclaim-time duration
+    	How soon can dead node's name be reclaimed with new address. 0 to disable.
+  -memberlist.gossip-interval duration
+    	How often to gossip. (default 200ms)
+  -memberlist.gossip-nodes int
+    	How many nodes to gossip to. (default 3)
+  -memberlist.gossip-to-dead-nodes-time duration
+    	How long to keep gossiping to dead nodes, to give them chance to refute their death. (default 30s)
+  -memberlist.join string
+    	Other cluster members to join. Can be specified multiple times. It can be an IP, hostname or an entry specified in the DNS Service Discovery format.
+  -memberlist.leave-timeout duration
+    	Timeout for leaving memberlist cluster. (default 20s)
+  -memberlist.left-ingesters-timeout duration
+    	How long to keep LEFT ingesters in the ring. (default 5m0s)
+  -memberlist.max-join-backoff duration
+    	Max backoff duration to join other cluster members. (default 1m0s)
+  -memberlist.max-join-retries int
+    	Max number of retries to join other cluster members. (default 10)
+  -memberlist.message-history-buffer-bytes int
+    	How much space to use for keeping received and sent messages in memory for troubleshooting (two buffers). 0 to disable.
+  -memberlist.min-join-backoff duration
+    	Min backoff duration to join other cluster members. (default 1s)
+  -memberlist.nodename string
+    	Name of the node in memberlist cluster. Defaults to hostname.
+  -memberlist.packet-dial-timeout duration
+    	Timeout used when connecting to other nodes to send packet. (default 2s)
+  -memberlist.packet-write-timeout duration
+    	Timeout for writing 'packet' data. (default 5s)
+  -memberlist.pullpush-interval duration
+    	How often to use pull/push sync. (default 30s)
+  -memberlist.randomize-node-name
+    	Add random suffix to the node name. (default true)
+  -memberlist.rejoin-interval duration
+    	If not 0, how often to rejoin the cluster. Occasional rejoin can help to fix the cluster split issue, and is harmless otherwise. For example when using only few components as a seed nodes (via -memberlist.join), then it's recommended to use rejoin. If -memberlist.join points to dynamic service that resolves to all gossiping nodes (eg. Kubernetes headless service), then rejoin is not needed.
+  -memberlist.retransmit-factor int
+    	Multiplication factor used when sending out messages (factor * log(N+1)). (default 4)
+  -memberlist.stream-timeout duration
+    	The timeout for establishing a connection with a remote node, and for read/write operations. (default 10s)
+  -memberlist.tls-ca-path string
+    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+  -memberlist.tls-cert-path string
+    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+  -memberlist.tls-cipher-suites string
+    	Override the default cipher suite list (separated by commas).
+  -memberlist.tls-enabled
+    	Enable TLS on the memberlist transport layer.
+  -memberlist.tls-insecure-skip-verify
+    	Skip validating server certificate.
+  -memberlist.tls-key-path string
+    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+  -memberlist.tls-min-version string
+    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+  -memberlist.tls-server-name string
+    	Override the expected name on the server certificate.
+  -memberlist.transport-debug
+    	Log debug transport messages. Note: global log.level must be at debug level as well.
+  -modules
+    	List available modules that can be used as target and exit.
+  -multi.mirror-enabled
+    	Mirror writes to secondary store.
+  -multi.mirror-timeout duration
+    	Timeout for storing value to secondary store. (default 2s)
+  -multi.primary string
+    	Primary backend storage used by multi-client.
+  -multi.secondary string
+    	Secondary backend storage used by multi-client.
+  -overrides-exporter.ring.consul.acl-token string
+    	ACL Token used to interact with Consul.
+  -overrides-exporter.ring.consul.cas-retry-delay duration
+    	Maximum duration to wait before retrying a Compare And Swap (CAS) operation. (default 1s)
+  -overrides-exporter.ring.consul.client-timeout duration
+    	HTTP timeout when talking to Consul (default 20s)
+  -overrides-exporter.ring.consul.consistent-reads
+    	Enable consistent reads to Consul.
+  -overrides-exporter.ring.consul.hostname string
+    	Hostname and port of Consul. (default "localhost:8500")
+  -overrides-exporter.ring.consul.watch-burst-size int
+    	Burst size used in rate limit. Values less than 1 are treated as 1. (default 1)
+  -overrides-exporter.ring.consul.watch-rate-limit float
+    	Rate limit when watching key or prefix in Consul, in requests per second. 0 disables the rate limit. (default 1)
+  -overrides-exporter.ring.etcd.dial-timeout duration
+    	The dial timeout for the etcd connection. (default 10s)
+  -overrides-exporter.ring.etcd.endpoints string
+    	The etcd endpoints to connect to.
+  -overrides-exporter.ring.etcd.max-retries int
+    	The maximum number of retries to do for failed ops. (default 10)
+  -overrides-exporter.ring.etcd.password string
+    	Etcd password.
+  -overrides-exporter.ring.etcd.tls-ca-path string
+    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+  -overrides-exporter.ring.etcd.tls-cert-path string
+    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+  -overrides-exporter.ring.etcd.tls-cipher-suites string
+    	Override the default cipher suite list (separated by commas).
+  -overrides-exporter.ring.etcd.tls-enabled
+    	Enable TLS.
+  -overrides-exporter.ring.etcd.tls-insecure-skip-verify
+    	Skip validating server certificate.
+  -overrides-exporter.ring.etcd.tls-key-path string
+    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+  -overrides-exporter.ring.etcd.tls-min-version string
+    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+  -overrides-exporter.ring.etcd.tls-server-name string
+    	Override the expected name on the server certificate.
+  -overrides-exporter.ring.etcd.username string
+    	Etcd username.
+  -overrides-exporter.ring.heartbeat-period duration
+    	Period at which to heartbeat to the ring. 0 = disabled. (default 15s)
+  -overrides-exporter.ring.heartbeat-timeout duration
+    	The heartbeat timeout after which overrides-exporters are considered unhealthy within the ring. 0 = never (timeout disabled). (default 1m0s)
+  -overrides-exporter.ring.instance-addr string
+    	IP address to advertise in the ring. Default is auto-detected.
+  -overrides-exporter.ring.instance-id string
+    	Instance ID to register in the ring. (default "<hostname>")
+  -overrides-exporter.ring.instance-interface-names string
+    	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
+  -overrides-exporter.ring.instance-port int
+    	Port to advertise in the ring (defaults to -server.http-listen-port). (default 4100)
+  -overrides-exporter.ring.multi.mirror-enabled
+    	Mirror writes to secondary store.
+  -overrides-exporter.ring.multi.mirror-timeout duration
+    	Timeout for storing value to secondary store. (default 2s)
+  -overrides-exporter.ring.multi.primary string
+    	Primary backend storage used by multi-client.
+  -overrides-exporter.ring.multi.secondary string
+    	Secondary backend storage used by multi-client.
+  -overrides-exporter.ring.prefix string
+    	The prefix for the keys in the store. Should end with a /. (default "collectors/")
+  -overrides-exporter.ring.store string
+    	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -overrides-exporter.ring.wait-stability-max-duration duration
+    	Maximum time to wait for ring stability at startup. If the overrides-exporter ring keeps changing after this period of time, it will start anyway. (default 5m0s)
+  -overrides-exporter.ring.wait-stability-min-duration duration
+    	Minimum time to wait for ring stability at startup, if set to positive value. Set to 0 to disable.
+  -phlaredb.data-path string
+    	Directory used for local storage. (default "./data")
+  -phlaredb.max-block-duration duration
+    	Upper limit to the duration of a Phlare block. (default 3h0m0s)
+  -phlaredb.row-group-target-size uint
+    	How big should a single row group be uncompressed (default 1342177280)
+  -querier.client-cleanup-period duration
+    	How frequently to clean up clients for ingesters that have gone away. (default 15s)
+  -querier.extra-query-delay duration
+    	Time to wait before sending more than the minimum successful query requests.
+  -querier.frontend-client.backoff-max-period duration
+    	Maximum delay when backing off. (default 10s)
+  -querier.frontend-client.backoff-min-period duration
+    	Minimum delay when backing off. (default 100ms)
+  -querier.frontend-client.backoff-on-ratelimits
+    	Enable backoff and retry when we hit ratelimits.
+  -querier.frontend-client.backoff-retries int
+    	Number of times to backoff and retry before failing. (default 10)
+  -querier.frontend-client.grpc-client-rate-limit float
+    	Rate limit for gRPC client; 0 means disabled.
+  -querier.frontend-client.grpc-client-rate-limit-burst int
+    	Rate limit burst for gRPC client.
+  -querier.frontend-client.grpc-compression string
+    	Use compression when sending messages. Supported values are: 'gzip', 'snappy' and '' (disable compression)
+  -querier.frontend-client.grpc-max-recv-msg-size int
+    	gRPC client max receive message size (bytes). (default 104857600)
+  -querier.frontend-client.grpc-max-send-msg-size int
+    	gRPC client max send message size (bytes). (default 104857600)
+  -querier.frontend-client.tls-ca-path string
+    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+  -querier.frontend-client.tls-cert-path string
+    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+  -querier.frontend-client.tls-cipher-suites string
+    	Override the default cipher suite list (separated by commas).
+  -querier.frontend-client.tls-enabled
+    	Enable TLS in the GRPC client. This flag needs to be enabled when any other TLS flag is set. If set to false, insecure connection to gRPC server will be used.
+  -querier.frontend-client.tls-insecure-skip-verify
+    	Skip validating server certificate.
+  -querier.frontend-client.tls-key-path string
+    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+  -querier.frontend-client.tls-min-version string
+    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+  -querier.frontend-client.tls-server-name string
+    	Override the expected name on the server certificate.
+  -querier.health-check-ingesters
+    	Run a health check on each ingester client during periodic cleanup. (default true)
+  -querier.health-check-timeout duration
+    	Timeout for ingester client healthcheck RPCs. (default 5s)
+  -querier.id string
+    	Querier ID, sent to the query-frontend to identify requests from the same querier. Defaults to hostname.
+  -querier.max-query-length duration
+    	The limit to length of queries. 0 to disable. (default 30d1h)
+  -querier.max-query-lookback duration
+    	Limit how far back in profiling data can be queried, up until lookback duration ago. This limit is enforced in the query frontend. If the requested time range is outside the allowed range, the request will not fail, but will be modified to only query data within the allowed time range. The default value of 0 does not set a limit.
+  -querier.max-query-parallelism int
+    	Maximum number of queries that will be scheduled in parallel by the frontend. (default 32)
+  -query-frontend.grpc-client-config.backoff-max-period duration
+    	Maximum delay when backing off. (default 10s)
+  -query-frontend.grpc-client-config.backoff-min-period duration
+    	Minimum delay when backing off. (default 100ms)
+  -query-frontend.grpc-client-config.backoff-on-ratelimits
+    	Enable backoff and retry when we hit ratelimits.
+  -query-frontend.grpc-client-config.backoff-retries int
+    	Number of times to backoff and retry before failing. (default 10)
+  -query-frontend.grpc-client-config.grpc-client-rate-limit float
+    	Rate limit for gRPC client; 0 means disabled.
+  -query-frontend.grpc-client-config.grpc-client-rate-limit-burst int
+    	Rate limit burst for gRPC client.
+  -query-frontend.grpc-client-config.grpc-compression string
+    	Use compression when sending messages. Supported values are: 'gzip', 'snappy' and '' (disable compression)
+  -query-frontend.grpc-client-config.grpc-max-recv-msg-size int
+    	gRPC client max receive message size (bytes). (default 104857600)
+  -query-frontend.grpc-client-config.grpc-max-send-msg-size int
+    	gRPC client max send message size (bytes). (default 104857600)
+  -query-frontend.grpc-client-config.tls-ca-path string
+    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+  -query-frontend.grpc-client-config.tls-cert-path string
+    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+  -query-frontend.grpc-client-config.tls-cipher-suites string
+    	Override the default cipher suite list (separated by commas).
+  -query-frontend.grpc-client-config.tls-enabled
+    	Enable TLS in the GRPC client. This flag needs to be enabled when any other TLS flag is set. If set to false, insecure connection to gRPC server will be used.
+  -query-frontend.grpc-client-config.tls-insecure-skip-verify
+    	Skip validating server certificate.
+  -query-frontend.grpc-client-config.tls-key-path string
+    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+  -query-frontend.grpc-client-config.tls-min-version string
+    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+  -query-frontend.grpc-client-config.tls-server-name string
+    	Override the expected name on the server certificate.
+  -query-frontend.instance-addr string
+    	IP address to advertise to the querier (via scheduler) (default is auto-detected from network interfaces).
+  -query-frontend.instance-interface-names string
+    	List of network interface names to look up when finding the instance IP address. This address is sent to query-scheduler and querier, which uses it to send the query response back to query-frontend. (default [<private network interfaces>])
+  -query-frontend.scheduler-worker-concurrency int
+    	Number of concurrent workers forwarding queries to single query-scheduler. (default 5)
+  -query-scheduler.grpc-client-config.backoff-max-period duration
+    	Maximum delay when backing off. (default 10s)
+  -query-scheduler.grpc-client-config.backoff-min-period duration
+    	Minimum delay when backing off. (default 100ms)
+  -query-scheduler.grpc-client-config.backoff-on-ratelimits
+    	Enable backoff and retry when we hit ratelimits.
+  -query-scheduler.grpc-client-config.backoff-retries int
+    	Number of times to backoff and retry before failing. (default 10)
+  -query-scheduler.grpc-client-config.grpc-client-rate-limit float
+    	Rate limit for gRPC client; 0 means disabled.
+  -query-scheduler.grpc-client-config.grpc-client-rate-limit-burst int
+    	Rate limit burst for gRPC client.
+  -query-scheduler.grpc-client-config.grpc-compression string
+    	Use compression when sending messages. Supported values are: 'gzip', 'snappy' and '' (disable compression)
+  -query-scheduler.grpc-client-config.grpc-max-recv-msg-size int
+    	gRPC client max receive message size (bytes). (default 104857600)
+  -query-scheduler.grpc-client-config.grpc-max-send-msg-size int
+    	gRPC client max send message size (bytes). (default 104857600)
+  -query-scheduler.grpc-client-config.tls-ca-path string
+    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+  -query-scheduler.grpc-client-config.tls-cert-path string
+    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+  -query-scheduler.grpc-client-config.tls-cipher-suites string
+    	Override the default cipher suite list (separated by commas).
+  -query-scheduler.grpc-client-config.tls-enabled
+    	Enable TLS in the GRPC client. This flag needs to be enabled when any other TLS flag is set. If set to false, insecure connection to gRPC server will be used.
+  -query-scheduler.grpc-client-config.tls-insecure-skip-verify
+    	Skip validating server certificate.
+  -query-scheduler.grpc-client-config.tls-key-path string
+    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+  -query-scheduler.grpc-client-config.tls-min-version string
+    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+  -query-scheduler.grpc-client-config.tls-server-name string
+    	Override the expected name on the server certificate.
+  -query-scheduler.max-outstanding-requests-per-tenant int
+    	Maximum number of outstanding requests per tenant per query-scheduler. In-flight requests above this limit will fail with HTTP response status code 429. (default 100)
+  -query-scheduler.max-used-instances int
+    	[experimental] The maximum number of query-scheduler instances to use, regardless how many replicas are running. This option can be set only when -query-scheduler.service-discovery-mode is set to 'ring'. 0 to use all available query-scheduler instances.
+  -query-scheduler.querier-forget-delay duration
+    	[experimental] If a querier disconnects without sending notification about graceful shutdown, the query-scheduler will keep the querier in the tenant's shard until the forget delay has passed. This feature is useful to reduce the blast radius when shuffle-sharding is enabled.
+  -query-scheduler.ring.consul.acl-token string
+    	ACL Token used to interact with Consul.
+  -query-scheduler.ring.consul.cas-retry-delay duration
+    	Maximum duration to wait before retrying a Compare And Swap (CAS) operation. (default 1s)
+  -query-scheduler.ring.consul.client-timeout duration
+    	HTTP timeout when talking to Consul (default 20s)
+  -query-scheduler.ring.consul.consistent-reads
+    	Enable consistent reads to Consul.
+  -query-scheduler.ring.consul.hostname string
+    	Hostname and port of Consul. (default "localhost:8500")
+  -query-scheduler.ring.consul.watch-burst-size int
+    	Burst size used in rate limit. Values less than 1 are treated as 1. (default 1)
+  -query-scheduler.ring.consul.watch-rate-limit float
+    	Rate limit when watching key or prefix in Consul, in requests per second. 0 disables the rate limit. (default 1)
+  -query-scheduler.ring.etcd.dial-timeout duration
+    	The dial timeout for the etcd connection. (default 10s)
+  -query-scheduler.ring.etcd.endpoints string
+    	The etcd endpoints to connect to.
+  -query-scheduler.ring.etcd.max-retries int
+    	The maximum number of retries to do for failed ops. (default 10)
+  -query-scheduler.ring.etcd.password string
+    	Etcd password.
+  -query-scheduler.ring.etcd.tls-ca-path string
+    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+  -query-scheduler.ring.etcd.tls-cert-path string
+    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+  -query-scheduler.ring.etcd.tls-cipher-suites string
+    	Override the default cipher suite list (separated by commas).
+  -query-scheduler.ring.etcd.tls-enabled
+    	Enable TLS.
+  -query-scheduler.ring.etcd.tls-insecure-skip-verify
+    	Skip validating server certificate.
+  -query-scheduler.ring.etcd.tls-key-path string
+    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+  -query-scheduler.ring.etcd.tls-min-version string
+    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+  -query-scheduler.ring.etcd.tls-server-name string
+    	Override the expected name on the server certificate.
+  -query-scheduler.ring.etcd.username string
+    	Etcd username.
+  -query-scheduler.ring.heartbeat-period duration
+    	Period at which to heartbeat to the ring. 0 = disabled. (default 15s)
+  -query-scheduler.ring.heartbeat-timeout duration
+    	The heartbeat timeout after which query-schedulers are considered unhealthy within the ring. When query-scheduler ring-based service discovery is enabled, this option needs be set on query-schedulers, query-frontends and queriers. (default 1m0s)
+  -query-scheduler.ring.instance-addr string
+    	IP address to advertise in the ring. Default is auto-detected.
+  -query-scheduler.ring.instance-id string
+    	Instance ID to register in the ring. (default "<hostname>")
+  -query-scheduler.ring.instance-interface-names string
+    	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
+  -query-scheduler.ring.instance-port int
+    	Port to advertise in the ring (defaults to -server.grpc-listen-port).
+  -query-scheduler.ring.multi.mirror-enabled
+    	Mirror writes to secondary store.
+  -query-scheduler.ring.multi.mirror-timeout duration
+    	Timeout for storing value to secondary store. (default 2s)
+  -query-scheduler.ring.multi.primary string
+    	Primary backend storage used by multi-client.
+  -query-scheduler.ring.multi.secondary string
+    	Secondary backend storage used by multi-client.
+  -query-scheduler.ring.prefix string
+    	The prefix for the keys in the store. Should end with a /. (default "collectors/")
+  -query-scheduler.ring.store string
+    	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -query-scheduler.service-discovery-mode string
+    	[experimental] Service discovery mode that query-frontends and queriers use to find query-scheduler instances. When query-scheduler ring-based service discovery is enabled, this option needs be set on query-schedulers, query-frontends and queriers. Supported values are: dns, ring. (default "ring")
+  -ring.heartbeat-timeout duration
+    	The heartbeat timeout after which ingesters are skipped for reads/writes. 0 = never (timeout disabled). (default 1m0s)
+  -ring.prefix string
+    	The prefix for the keys in the store. Should end with a /. (default "collectors/")
+  -ring.store string
+    	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -runtime-config.file comma-separated-list-of-strings
+    	Comma separated list of yaml files with the configuration that can be updated at runtime. Runtime config files will be merged from left to right.
+  -runtime-config.reload-period duration
+    	How often to check runtime config files. (default 10s)
+  -server.graceful-shutdown-timeout duration
+    	Timeout for graceful shutdowns (default 30s)
+  -server.grpc-conn-limit int
+    	Maximum number of simultaneous grpc connections, <=0 to disable
+  -server.grpc-listen-address string
+    	gRPC server listen address.
+  -server.grpc-listen-network string
+    	gRPC server listen network (default "tcp")
+  -server.grpc-listen-port int
+    	gRPC server listen port. (default 9095)
+  -server.grpc-max-concurrent-streams uint
+    	Limit on the number of concurrent streams for gRPC calls (0 = unlimited) (default 100)
+  -server.grpc-max-recv-msg-size-bytes int
+    	Limit on the size of a gRPC message this server can receive (bytes). (default 4194304)
+  -server.grpc-max-send-msg-size-bytes int
+    	Limit on the size of a gRPC message this server can send (bytes). (default 4194304)
+  -server.grpc-tls-ca-path string
+    	GRPC TLS Client CA path.
+  -server.grpc-tls-cert-path string
+    	GRPC TLS server cert path.
+  -server.grpc-tls-client-auth string
+    	GRPC TLS Client Auth type.
+  -server.grpc-tls-key-path string
+    	GRPC TLS server key path.
+  -server.grpc.keepalive.max-connection-age duration
+    	The duration for the maximum amount of time a connection may exist before it will be closed. Default: infinity (default 2562047h47m16.854775807s)
+  -server.grpc.keepalive.max-connection-age-grace duration
+    	An additive period after max-connection-age after which the connection will be forcibly closed. Default: infinity (default 2562047h47m16.854775807s)
+  -server.grpc.keepalive.max-connection-idle duration
+    	The duration after which an idle connection should be closed. Default: infinity (default 2562047h47m16.854775807s)
+  -server.grpc.keepalive.min-time-between-pings duration
+    	Minimum amount of time a client should wait before sending a keepalive ping. If client sends keepalive ping more often, server will send GOAWAY and close the connection. (default 5m0s)
+  -server.grpc.keepalive.ping-without-stream-allowed
+    	If true, server allows keepalive pings even when there are no active streams(RPCs). If false, and client sends ping when there are no active streams, server will send GOAWAY and close the connection.
+  -server.grpc.keepalive.time duration
+    	Duration after which a keepalive probe is sent in case of no activity over the connection., Default: 2h (default 2h0m0s)
+  -server.grpc.keepalive.timeout duration
+    	After having pinged for keepalive check, the duration after which an idle connection should be closed, Default: 20s (default 20s)
+  -server.http-conn-limit int
+    	Maximum number of simultaneous http connections, <=0 to disable
+  -server.http-idle-timeout duration
+    	Idle timeout for HTTP server (default 2m0s)
+  -server.http-listen-address string
+    	HTTP server listen address.
+  -server.http-listen-network string
+    	HTTP server listen network, default tcp (default "tcp")
+  -server.http-listen-port int
+    	HTTP server listen port. (default 4100)
+  -server.http-read-timeout duration
+    	Read timeout for HTTP server (default 30s)
+  -server.http-tls-ca-path string
+    	HTTP TLS Client CA path.
+  -server.http-tls-cert-path string
+    	HTTP server cert path.
+  -server.http-tls-client-auth string
+    	HTTP TLS Client Auth type.
+  -server.http-tls-key-path string
+    	HTTP server key path.
+  -server.http-write-timeout duration
+    	Write timeout for HTTP server (default 30s)
+  -server.log-request-at-info-level-enabled
+    	Optionally log requests at info level instead of debug level.
+  -server.log-source-ips-enabled
+    	Optionally log the source IPs.
+  -server.log-source-ips-header string
+    	Header field storing the source IPs. Only used if server.log-source-ips-enabled is true. If not set the default Forwarded, X-Real-IP and X-Forwarded-For headers are used
+  -server.log-source-ips-regex string
+    	Regex for matching the source IPs. Only used if server.log-source-ips-enabled is true. If not set the default Forwarded, X-Real-IP and X-Forwarded-For headers are used
+  -server.path-prefix string
+    	Base path to serve all API routes from (e.g. /v1/)
+  -server.register-instrumentation
+    	Register the intrumentation handlers (/metrics etc). (default true)
+  -server.tls-cipher-suites string
+    	Comma-separated list of cipher suites to use. If blank, the default Go cipher suites is used.
+  -server.tls-min-version string
+    	Minimum TLS version to use. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13. If blank, the Go TLS minimum version is used.
+  -storage.azure.account-key string
+    	Azure storage account key
+  -storage.azure.account-name string
+    	Azure storage account name
+  -storage.azure.container-name string
+    	Azure storage container name
+  -storage.azure.endpoint-suffix string
+    	Azure storage endpoint suffix without schema. The account name will be prefixed to this value to create the FQDN. If set to empty string, default endpoint suffix is used.
+  -storage.azure.max-retries int
+    	Number of retries for recoverable errors (default 20)
+  -storage.azure.user-assigned-id string
+    	User assigned identity. If empty, then System assigned identity is used.
+  -storage.backend string
+    	Backend storage to use. Supported backends are: s3, gcs, azure, swift, filesystem, cos. (default "filesystem")
+  -storage.cos.app-id string
+    	COS app id
+  -storage.cos.bucket string
+    	COS bucket name
+  -storage.cos.endpoint string
+    	COS storage endpoint
+  -storage.cos.expect-continue-timeout duration
+    	The time to wait for a server's first response headers after fully writing the request headers if the request has an Expect header. 0 to send the request body immediately. (default 1s)
+  -storage.cos.http.idle-conn-timeout duration
+    	The time an idle connection will remain idle before closing. (default 1m30s)
+  -storage.cos.http.insecure-skip-verify
+    	If the client connects to COS via HTTPS and this option is enabled, the client will accept any certificate and hostname.
+  -storage.cos.http.response-header-timeout duration
+    	The amount of time the client will wait for a servers response headers. (default 2m0s)
+  -storage.cos.max-connections-per-host int
+    	Maximum number of connections per host. 0 means no limit.
+  -storage.cos.max-idle-connections int
+    	Maximum number of idle (keep-alive) connections across all hosts. 0 means no limit. (default 100)
+  -storage.cos.max-idle-connections-per-host int
+    	Maximum number of idle (keep-alive) connections to keep per-host. If 0, a built-in default value is used. (default 100)
+  -storage.cos.region string
+    	COS region name
+  -storage.cos.secret-id string
+    	COS secret id
+  -storage.cos.secret-key string
+    	COS secret key
+  -storage.cos.tls-handshake-timeout duration
+    	Maximum time to wait for a TLS handshake. 0 means no limit. (default 10s)
+  -storage.filesystem.dir string
+    	Local filesystem storage directory.
+  -storage.gcs.bucket-name string
+    	GCS bucket name
+  -storage.gcs.service-account string
+    	JSON either from a Google Developers Console client_credentials.json file, or a Google Developers service account key. Needs to be valid JSON, not a filesystem path.
+  -storage.s3.access-key-id string
+    	S3 access key ID
+  -storage.s3.bucket-name string
+    	S3 bucket name
+  -storage.s3.endpoint string
+    	The S3 bucket endpoint. It could be an AWS S3 endpoint listed at https://docs.aws.amazon.com/general/latest/gr/s3.html or the address of an S3-compatible service in hostname:port format.
+  -storage.s3.expect-continue-timeout duration
+    	The time to wait for a server's first response headers after fully writing the request headers if the request has an Expect header. 0 to send the request body immediately. (default 1s)
+  -storage.s3.http.idle-conn-timeout duration
+    	The time an idle connection will remain idle before closing. (default 1m30s)
+  -storage.s3.http.insecure-skip-verify
+    	If the client connects to S3 via HTTPS and this option is enabled, the client will accept any certificate and hostname.
+  -storage.s3.http.response-header-timeout duration
+    	The amount of time the client will wait for a servers response headers. (default 2m0s)
+  -storage.s3.insecure
+    	If enabled, use http:// for the S3 endpoint instead of https://. This could be useful in local dev/test environments while using an S3-compatible backend storage, like Minio.
+  -storage.s3.max-connections-per-host int
+    	Maximum number of connections per host. 0 means no limit.
+  -storage.s3.max-idle-connections int
+    	Maximum number of idle (keep-alive) connections across all hosts. 0 means no limit. (default 100)
+  -storage.s3.max-idle-connections-per-host int
+    	Maximum number of idle (keep-alive) connections to keep per-host. If 0, a built-in default value is used. (default 100)
+  -storage.s3.region string
+    	S3 region. If unset, the client will issue a S3 GetBucketLocation API call to autodetect it.
+  -storage.s3.secret-access-key string
+    	S3 secret access key
+  -storage.s3.signature-version string
+    	The signature version to use for authenticating against S3. Supported values are: v4, v2. (default "v4")
+  -storage.s3.sse.kms-encryption-context string
+    	KMS Encryption Context used for object encryption. It expects JSON formatted string.
+  -storage.s3.sse.kms-key-id string
+    	KMS Key ID used to encrypt objects in S3
+  -storage.s3.sse.type string
+    	Enable AWS Server Side Encryption. Supported values: SSE-KMS, SSE-S3.
+  -storage.s3.tls-handshake-timeout duration
+    	Maximum time to wait for a TLS handshake. 0 means no limit. (default 10s)
+  -storage.storage-prefix string
+    	[experimental] Prefix for all objects stored in the backend storage. For simplicity, it may only contain digits and English alphabet letters.
+  -storage.swift.auth-url string
+    	OpenStack Swift authentication URL
+  -storage.swift.auth-version int
+    	OpenStack Swift authentication API version. 0 to autodetect.
+  -storage.swift.connect-timeout duration
+    	Time after which a connection attempt is aborted. (default 10s)
+  -storage.swift.container-name string
+    	Name of the OpenStack Swift container to put chunks in.
+  -storage.swift.domain-id string
+    	OpenStack Swift user's domain ID.
+  -storage.swift.domain-name string
+    	OpenStack Swift user's domain name.
+  -storage.swift.max-retries int
+    	Max retries on requests error. (default 3)
+  -storage.swift.password string
+    	OpenStack Swift API key.
+  -storage.swift.project-domain-id string
+    	ID of the OpenStack Swift project's domain (v3 auth only), only needed if it differs the from user domain.
+  -storage.swift.project-domain-name string
+    	Name of the OpenStack Swift project's domain (v3 auth only), only needed if it differs from the user domain.
+  -storage.swift.project-id string
+    	OpenStack Swift project ID (v2,v3 auth only).
+  -storage.swift.project-name string
+    	OpenStack Swift project name (v2,v3 auth only).
+  -storage.swift.region-name string
+    	OpenStack Swift Region to use (v2,v3 auth only).
+  -storage.swift.request-timeout duration
+    	Time after which an idle request is aborted. The timeout watchdog is reset each time some data is received, so the timeout triggers after X time no data is received on a request. (default 5s)
+  -storage.swift.user-domain-id string
+    	OpenStack Swift user's domain ID.
+  -storage.swift.user-domain-name string
+    	OpenStack Swift user's domain name.
+  -storage.swift.user-id string
+    	OpenStack Swift user ID.
+  -storage.swift.username string
+    	OpenStack Swift username.
+  -target comma-separated-list-of-strings
+    	Comma-separated list of Phlare modules to load. The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode.  (default all)
+  -tracing.enabled
+    	Set to false to disable tracing. (default true)
+  -usage-stats.enabled
+    	Enable anonymous usage reporting. (default true)
+  -validation.max-label-names-per-series int
+    	Maximum number of label names per series. (default 30)
+  -validation.max-length-label-name int
+    	Maximum length accepted for label names. (default 1024)
+  -validation.max-length-label-value int
+    	Maximum length accepted for label value. This setting also applies to the metric name. (default 2048)
+  -version
+    	Show the version of phlare and exit
