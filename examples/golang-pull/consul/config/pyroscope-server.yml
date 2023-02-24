@@ -13,6 +13,11 @@ scrape-configs:
          - test-service
 
     relabel-configs:
+      # Optionally filter out unhealthy instances.
+      - source-labels: [ __meta_consul_health ]
+        action: keep
+        regex: passing
+
       # Pyroscope server needs application name (the '__name__' label)
       # to be provided for every profile in order to properly aggregate data.
       - source-labels: [__meta_consul_service]

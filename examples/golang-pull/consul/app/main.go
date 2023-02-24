@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/consul/api"
 	"github.com/pyroscope-io/client/pyroscope"
@@ -73,8 +74,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("unable to initialize consul client: %v", err)
 	}
+
 	hostname, _ := os.Hostname()
+	checkURL := fmt.Sprintf("http://%s:%d/health", hostname, servicePort)
+	checkTimeout := 30 * time.Second
 	registration := &api.AgentServiceRegistration{
+		ID:      hostname,
 		Name:    serviceName,
 		Port:    servicePort,
 		Address: hostname,
@@ -82,15 +87,24 @@ func main() {
 			"env": "dev",
 		},
 		Check: &api.AgentServiceCheck{
-			HTTP:     fmt.Sprintf("http://%s:%d/health", hostname, servicePort),
+			HTTP:     checkURL,
 			Interval: "10s",
-			Timeout:  "30s",
+			Timeout:  checkTimeout.String(),
+			// The service and all its checks are deregistered after this check
+			// is in the critical state for more than the specified value.
+			// See https://developer.hashicorp.com/consul/docs/discovery/checks#deregister_critical_service_after
+			DeregisterCriticalServiceAfter: (checkTimeout * 3).String(),
 		},
 	}
 
 	if err = client.Agent().ServiceRegister(registration); err != nil {
-		log.Fatalf("failed to register consul client: %v", err)
+		log.Fatalln("failed to register service:", err)
 	}
+	defer func() {
+		if err = client.Agent().ServiceDeregister(registration.ID); err != nil {
+			log.Println("failed to deregister service:", err)
+		}
+	}()
 
 	pyroscope.TagWrapper(context.Background(), pyroscope.Labels("foo", "bar"), func(c context.Context) {
 		for {
