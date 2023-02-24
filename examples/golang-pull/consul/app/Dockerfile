@@ -3,9 +3,9 @@ FROM golang:1.18.3
 WORKDIR /go/src/app
 
 COPY main.go ./main.go
+COPY go.mod ./go.mod
+COPY go.sum ./go.sum
 
-RUN go mod init github.com/pyroscope-io/pyroscope/examples/golang-pull/file
-RUN go get -d ./
 RUN go build -o main .
 
 RUN adduser --disabled-password --gecos --quiet pyroscope

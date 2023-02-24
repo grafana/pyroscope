@@ -43,7 +43,7 @@ const (
 	HealthGood    TargetHealth = "up"
 	HealthBad     TargetHealth = "down"
 
-	spyName = "scrape"
+	spyName = "gospy"
 )
 
 // Target refers to a singular HTTP or HTTPS endpoint.
@@ -103,6 +103,13 @@ func (t *Target) offset(interval time.Duration) time.Duration {
 }
 
 func (t *Target) SpyName() string {
+	for _, l := range t.labels {
+		if l.Name == model.SpyNameLabel && l.Value != "" {
+			return l.Value
+		}
+	}
+	// N.B: There is no need to check discovered labels:
+	// in most cases, the label is created at relabeling.
 	for _, l := range t.discoveredLabels {
 		if l.Name == model.SpyNameLabel && l.Value != "" {
 			return l.Value
