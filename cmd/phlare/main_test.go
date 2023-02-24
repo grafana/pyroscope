@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/phlare/pkg/test"
 )
@@ -59,6 +61,69 @@ func TestFlagParsing(t *testing.T) {
 	}
 }
 
+func TestHelp(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		arg      string
+		filename string
+	}{
+		{
+			name:     "basic",
+			arg:      "-h",
+			filename: "help.txt.tmpl",
+		},
+		{
+			name:     "all",
+			arg:      "-help-all",
+			filename: "help-all.txt.tmpl",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			oldArgs, oldStdout, oldStderr, oldCmdLine := os.Args, os.Stdout, os.Stderr, flag.CommandLine
+			restored := false
+			restoreIfNeeded := func() {
+				if restored {
+					return
+				}
+
+				os.Stdout = oldStdout
+				os.Stderr = oldStderr
+				os.Args = oldArgs
+				flag.CommandLine = oldCmdLine
+				restored = true
+			}
+
+			oldDefaultRegistry := prometheus.DefaultRegisterer
+			defer func() {
+				prometheus.DefaultRegisterer = oldDefaultRegistry
+			}()
+			// We need to reset the default registry to avoid
+			// "duplicate metrics collector registration attempted" errors.
+			prometheus.DefaultRegisterer = prometheus.NewRegistry()
+
+			co := test.CaptureOutput(t)
+
+			const cmd = "./phlare"
+			os.Args = []string{cmd, tc.arg}
+
+			// reset default flags
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+			main()
+
+			stdout, stderr := co.Done()
+
+			// Restore stdout and stderr before reporting errors to make them visible.
+			restoreIfNeeded()
+
+			expected, err := os.ReadFile(tc.filename)
+			require.NoError(t, err)
+			assert.Equalf(t, string(expected), stdout, "%s %s output changed; try `make reference-help`", cmd, tc.arg)
+			assert.Empty(t, stderr)
+		})
+	}
+}
+
 func testSingle(t *testing.T, arguments []string, stdoutMessage, stderrMessage, stdoutExcluded, stderrExcluded string) {
 	t.Helper()
 	oldArgs, oldStdout, oldStderr := os.Args, os.Stdout, os.Stderr
@@ -72,7 +137,6 @@ func testSingle(t *testing.T, arguments []string, stdoutMessage, stderrMessage, 
 		os.Args = oldArgs
 		restored = true
 	}
-	defer restoreIfNeeded()
 
 	arguments = append([]string{"./phlare"}, arguments...)
 
