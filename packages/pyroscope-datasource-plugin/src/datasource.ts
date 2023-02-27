@@ -71,7 +71,7 @@ export class DataSource extends DataSourceApi<
       return this.queryLabelValues(labelValuesQuery[1], labelValuesQuery[2]);
     }
 
-    return [{ text: '' }];
+    return [];
   }
 
   async queryAppNames(): Promise<MetricFindValue[]> {
@@ -82,7 +82,7 @@ export class DataSource extends DataSourceApi<
       })
       .toPromise();
     if (!result) {
-      return [{ text: '' }];
+      return [];
     }
     return result.data.map((x) => ({ text: x.name }));
   }
@@ -95,13 +95,11 @@ export class DataSource extends DataSourceApi<
       })
       .toPromise();
     if (!result) {
-      return [{ text: '' }];
+      return [];
     }
-    const labels = result.data.filter((x) => x !== '__name__');
-    if (labels.length === 0) {
-      return [{ text: '' }];
-    }
-    return labels.map((x) => ({ text: x }));
+    return result.data
+      .filter((x) => x !== '__name__')
+      .map((x) => ({ text: x }));
   }
 
   async queryLabelValues(
@@ -115,7 +113,7 @@ export class DataSource extends DataSourceApi<
       })
       .toPromise();
     if (!result) {
-      return [{ text: '' }];
+      return [];
     }
     return result.data.map((x) => ({ text: x }));
   }
