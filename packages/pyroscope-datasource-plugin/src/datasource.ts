@@ -135,7 +135,10 @@ export class DataSource extends DataSourceApi<
     const until = range.raw.to.valueOf();
 
     const promises = options.targets.map((query) => {
-      const nameFromVar = getTemplateSrv().replace(query.name);
+      const nameFromVar = getTemplateSrv().replace(
+        query.name,
+        options.scopedVars
+      );
 
       return this.getFlamegraph({
         ...defaultQuery,
