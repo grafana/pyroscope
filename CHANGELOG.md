@@ -4,6 +4,8 @@
 
 ### Grafana Phlare
 
+* [CHANGE] Upgrade base image to latest alpine version 1.17.2
+
 ## 0.5.1
 
 ### Grafana Phlare
