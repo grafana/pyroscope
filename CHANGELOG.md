@@ -4,6 +4,65 @@
 
 ### Grafana Phlare
 
+## 0.5.1
+
+### Grafana Phlare
+
+* [BUGFIX] Ensure config file parses properly (#536) (#537)
+
+## 0.5.0
+
+### Grafana Phlare
+
+* [CHANGE] Move from kubeval to kubeconform (#534)
+* [CHANGE] Bump minimal support version to 1.19 (#531)
+* [CHANGE] Update go versions used to 1.19.6 (#533)
+* [CHANGE] Update prometheus to have latest relabeling support (#528)
+* [FEATURE] Ingester limits (#523)
+* [ENHANCEMENT] Add -modules support (#497)
+* [ENHANCEMENT] Improve annotations based scraping for helm (#529)
+* [ENHANCEMENT] Upgrade linter to work with Go Generics (#524)
+
+## 0.4.0
+
+### Grafana Phlare
+
+* [FEATURE] Add distributor limits (#510)
+
+## 0.3.0
+
+### Grafana Phlare
+
+* [CHANGE] Fix cutting by block size and adjust limits by @simonswine in https://github.com/grafana/phlare/pull/514
+* [CHANGE] Increase ingesters default limits by @cyriltovena in https://github.com/grafana/phlare/pull/518
+* [FEATURE] Flush profiles to disk per row groups by @simonswine in https://github.com/grafana/phlare/pull/486
+* [ENHANCEMENT] Add observability using Loki/Tempo and Grafana Agent by @simonswine in https://github.com/grafana/phlare/pull/495
+* [ENHANCEMENT] Add a debug image with phlare running through dlv by @simonswine in https://github.com/grafana/phlare/pull/511
+* [BUGFIX] Use the correct API in readyHandler by @hi-rustin in https://github.com/grafana/phlare/pull/516
+
+## 0.2.0
+
+### Grafana Phlare
+
+* [FEATURE] Add query-frontend, query-scheduler and querier worker. (#496)
+* [ENHANCEMENT] Add missing flags to expand config file (#492)
+* [ENHANCEMENT] Use gotestsum 5d6c5cf
+* [BUGFIX] Correctly implement connect health checker service (#491)
+
+## 0.1.2
+
+### Grafana Phlare
+
+* [CHANGE] Add an API go module for external usage. (#466)
+* [CHANGE] 27bb8d13 Add a github action to release automatically when tagging the repo. (#482)
+* [ENHANCEMENT] c2bfdbce Implements a pprof query API. (#474)
+* [ENHANCEMENT] 2f036598 Add query subcommand to profilecli for downloading pprof from phlare  (#475)
+* [ENHANCEMENT] 9b645e Add accept/encoding gzip to scrape client (#459)
+* [ENHANCEMENT] ac09c628 Add support HTTP service discovery (#453)
+* [BUGFIX] Fixes the scrape timeout validation. (#465)
+* [BUGFIX] Configure Minio correctly in helm (#459)
+* [BUGFIX] Usage stats reporter: fix to remove duplicate if block (#483)
+
 ## 0.1.1
 
 ### Grafana Phlare

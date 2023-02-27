@@ -10,7 +10,7 @@ To release a new version of the project you need to follow the following steps:
 
 The ci will automatically handle the build and create a draft github release.
 
-Once ready, you can edit and publish the draft release on Github.
+Once ready, you can edit and publish the draft release on Github. You will need to take the release notes and append them to the `CHANGELOG.md` file in the root of the repository.
 
 To release a minor version simply merge fixes to the release branch then create and push a new tag. (e.g. `v0.x.1`)
 
