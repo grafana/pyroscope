@@ -28,7 +28,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
                            querierSelector:: selector('querier'),
                            ingesterSelector:: selector('ingester'),
                          } +
-                         $.dashboard('Phlare / Reads', uid='reads')
+                         $.dashboard('Phlare / Reads', uid='phlare-reads')
                          .addCluster()
                          .addNamespace()
                          .addTag()

@@ -31,7 +31,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
                             distributorSelector:: selector('distributor'),
                             ingesterSelector:: selector('ingester'),
                           } +
-                          $.dashboard('Phlare / Writes', uid='writes')
+                          $.dashboard('Phlare / Writes', uid='phlare-writes')
                           .addCluster()
                           .addNamespace()
                           .addTag()
