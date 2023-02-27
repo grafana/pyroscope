@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/phlare/pkg/cfg"
 	"github.com/grafana/phlare/pkg/test"
 )
 
@@ -45,6 +46,12 @@ func TestFlagParsing(t *testing.T) {
 			arguments:      []string{"-version"},
 			stdoutMessage:  "phlare, version",
 			stderrExcluded: "phlare, version",
+		},
+		"unknown flag": {
+			arguments:      []string{"-unknown.flag"},
+			stderrMessage:  "Run with -help to get a list of available parameters",
+			stdoutExcluded: "Usage of", // No usage description on unknown flag.
+			stderrExcluded: "Usage of",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -126,15 +133,17 @@ func TestHelp(t *testing.T) {
 
 func testSingle(t *testing.T, arguments []string, stdoutMessage, stderrMessage, stdoutExcluded, stderrExcluded string) {
 	t.Helper()
-	oldArgs, oldStdout, oldStderr := os.Args, os.Stdout, os.Stderr
+	oldArgs, oldStdout, oldStderr, oldTestMode := os.Args, os.Stdout, os.Stderr, cfg.GetTestMode()
 	restored := false
+	cfg.SetTestMode(true)
 	restoreIfNeeded := func() {
 		if restored {
 			return
 		}
+		os.Args = oldArgs
 		os.Stdout = oldStdout
 		os.Stderr = oldStderr
-		os.Args = oldArgs
+		cfg.SetTestMode(oldTestMode)
 		restored = true
 	}
 
