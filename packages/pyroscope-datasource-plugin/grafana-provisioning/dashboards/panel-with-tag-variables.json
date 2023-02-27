@@ -86,12 +86,8 @@
         "allValue": null,
         "current": {
           "selected": true,
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
+          "text": ["All"],
+          "value": ["$__all"]
         },
         "datasource": "Pyroscope",
         "definition": "label_values($app,function)",

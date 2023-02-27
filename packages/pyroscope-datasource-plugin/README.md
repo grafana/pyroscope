@@ -30,22 +30,22 @@ You can use variables of the type **Query** to query Pyroscope for a list of app
 Variable query functions supported by Pyroscope data source:
 
 | Name                                  | Description                                              |
-|---------------------------------------|----------------------------------------------------------|
+| ------------------------------------- | -------------------------------------------------------- |
 | apps()                                | Returns a list of application names                      |
-| label_names(*app_name*)               | Returns a list of label names for the application        |
-| label_values(*app_name*,*label_name*) | Returns a list of label values for the application label |
+| label_names(_app_name_)               | Returns a list of label names for the application        |
+| label_values(_app_name_,_label_name_) | Returns a list of label values for the application label |
 
 #### Example
 
 Create a new variable in the dashboard settings:
- - Name: `appName`
- - Type: **Query**
- - Data source: **select your Pyroscope data source**
- - Query: `apps()`
+
+- Name: `appName`
+- Type: **Query**
+- Data source: **select your Pyroscope data source**
+- Query: `apps()`
 
 Now you should see the list of applications returned from the Pyroscope data source, and use the variable in the panel **Query** field:
 
 ```
 $appName{}
 ```
-
