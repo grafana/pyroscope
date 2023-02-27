@@ -4,6 +4,20 @@ import (
 	"flag"
 )
 
+// testMode is used to test flag parsing.
+var testMode = false
+
+// SetTestMode is used to set the testMode flag.
+// We don't want to exit the process when running tests.
+func SetTestMode(isTestMode bool) {
+	testMode = isTestMode
+}
+
+// GetTestMode is used to get the testMode flag when running tests.
+func GetTestMode() bool {
+	return testMode
+}
+
 // DynamicCloneable must be implemented by config structs that can be dynamically unmarshalled
 type DynamicCloneable interface {
 	Cloneable

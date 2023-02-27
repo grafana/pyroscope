@@ -49,14 +49,22 @@ func main() {
 		flags mainFlags
 	)
 
+	testMode := cfg.GetTestMode()
+
 	if err := cfg.DynamicUnmarshal(&flags, os.Args[1:], flag.CommandLine); err != nil {
 		fmt.Fprintf(os.Stderr, "failed parsing config: %v\n", err)
+		if testMode {
+			return
+		}
 		os.Exit(1)
 	}
 
 	f, err := phlare.New(flags.Config)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed creating phlare: %v\n", err)
+		if testMode {
+			return
+		}
 		os.Exit(1)
 	}
 
@@ -89,6 +97,9 @@ func main() {
 		flag.CommandLine.SetOutput(os.Stdout)
 		if err := usage.Usage(flags.PrintHelpAll, &flags); err != nil {
 			fmt.Fprintf(os.Stderr, "error printing usage: %s\n", err)
+			if testMode {
+				return
+			}
 			os.Exit(1)
 		}
 
@@ -98,6 +109,9 @@ func main() {
 	err = f.Run()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed running phlare: %v\n", err)
+		if testMode {
+			return
+		}
 		os.Exit(1)
 	}
 }
