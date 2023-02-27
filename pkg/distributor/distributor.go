@@ -214,6 +214,10 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 		profiles = append(profiles, &profileTracker{profile: series})
 	}
 
+	if totalProfiles == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no profiles received"))
+	}
+
 	// validate the request
 	for _, series := range req.Msg.Series {
 		if err := validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
