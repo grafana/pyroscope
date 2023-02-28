@@ -141,7 +141,7 @@ check/go/mod: go/mod
 
 
 define docker_buildx
-	docker buildx build $(1) --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/Dockerfile$(2) .
+	docker buildx build $(1) --platform $(IMAGE_PLATFORM) $(BUILDX_ARGS) --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) -t $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG) -f cmd/$(shell basename $(@D))/$(2)Dockerfile .
 endef
 
 define deploy
@@ -157,7 +157,7 @@ endef
 .PHONY: docker-image/phlare/build-debug
 docker-image/phlare/build-debug: GOOS=linux GOARCH=amd64
 docker-image/phlare/build-debug: go/bin-debug $(BIN)/dlv
-	$(call docker_buildx,--load,.debug)
+	$(call docker_buildx,--load,debug.)
 
 .PHONY: docker-image/phlare/build
 docker-image/phlare/build: GOOS=linux GOARCH=amd64
