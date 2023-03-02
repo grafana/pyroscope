@@ -741,3 +741,8 @@ minio:
   podAnnotations:
     phlare.grafana.com/scrape: "true"
     phlare.grafana.com/port: "9000"
+
+ingress:
+  enabled: false
+  # hosts:
+  #   - localhost
