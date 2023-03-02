@@ -38,8 +38,9 @@ jobs:
             ${{ runner.os }}-go-
       - name: Install go-task
         uses: jaxxstorm/action-install-gh-release@v1.5.0
-        with: # Grab the latest version
+        with:
           repo: pyroscope-io/ci
+          tag: v1.2.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: install
@@ -78,8 +79,9 @@ jobs:
             ${{ runner.os }}-yarn
       - name: Install go-task
         uses: jaxxstorm/action-install-gh-release@v1.5.0
-        with: # Grab the latest version
+        with:
           repo: pyroscope-io/ci
+          tag: v1.2.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Webapp dependencies
