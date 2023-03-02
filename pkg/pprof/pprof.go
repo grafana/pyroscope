@@ -344,6 +344,7 @@ var currentTime = time.Now
 //   - Removing empty samples.
 //   - Then remove unused references.
 //   - Ensure that the profile has a time_nanos set
+//   - Removes addresses from symbolized profiles.
 func (p *Profile) Normalize() {
 	// if the profile has no time, set it to now
 	if p.TimeNanos == 0 {
@@ -351,7 +352,7 @@ func (p *Profile) Normalize() {
 	}
 
 	p.ensureHasMapping()
-
+	p.clearAddresses()
 	// first we sort the samples location ids.
 	hashes := p.hasher.Hashes(p.Sample)
 
@@ -394,6 +395,22 @@ func (p *Profile) Normalize() {
 
 	// Remove references to removed samples.
 	p.clearSampleReferences(removedSamples)
+}
+
+// Removes addresses from symbolized profiles.
+func (p *Profile) clearAddresses() {
+	for _, m := range p.Mapping {
+		if m.HasFunctions {
+			m.MemoryLimit = 0
+			m.FileOffset = 0
+			m.MemoryStart = 0
+		}
+	}
+	for _, l := range p.Location {
+		if p.Mapping[l.MappingId-1].HasFunctions {
+			l.Address = 0
+		}
+	}
 }
 
 // ensureHasMapping ensures all locations have at least a mapping.
