@@ -83,6 +83,7 @@
       "name": ""
     },
     "structuredConfig": {},
+    "tenantOverrides": {},
     "tolerations": []
   }
 }

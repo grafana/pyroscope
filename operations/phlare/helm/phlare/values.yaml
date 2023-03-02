@@ -710,6 +710,12 @@ phlare:
             regex: Pending|Succeeded|Failed|Completed
             action: drop
 
+  # -- Allows to add tenant specific overrides to the default limit configuration.
+  tenantOverrides:
+    {}
+    # "foo":
+    #   ingestion_rate_mb: 1
+    #   ingestion_burst_size_mb: 2
 # -------------------------------------
 # Configuration for `minio` child chart
 # -------------------------------------
