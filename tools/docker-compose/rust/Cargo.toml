@@ -4,8 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-
-pprof = { version = "0.10", features = ["protobuf-codec"] }
+pprof = { version = "0.11", features = ["protobuf-codec"] }
 hyper-routing = "0.6.1"
 hyper = { version = "0.14", features = ["full"] }
 tokio = { version = "1", features = ["full"] }
@@ -14,3 +13,6 @@ pretty_env_logger = "0.4"
 log = "0.4"
 form_urlencoded = "*"
 libflate = "1.2.0"
+
+[target.aarch64-apple-darwin.dependencies]
+pprof = { version = "0.11", features = ["protobuf-codec","frame-pointer"] }

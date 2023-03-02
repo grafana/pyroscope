@@ -1,7 +1,5 @@
 FROM rust:1.64.0-bullseye as build
 
-#RUN apk add --no-cache musl-dev
-
 WORKDIR /usr/src/cp-rust
 RUN cargo init
 COPY Cargo.toml Cargo.lock ./
