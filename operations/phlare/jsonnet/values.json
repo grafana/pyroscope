@@ -1,4 +1,7 @@
 {
+  "ingress": {
+    "enabled": false
+  },
   "minio": {
     "buckets": [
       {

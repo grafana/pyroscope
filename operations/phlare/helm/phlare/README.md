@@ -14,6 +14,7 @@
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| ingress.enabled | bool | `false` |  |
 | minio | object | `{"buckets":[{"name":"grafana-phlare-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"persistence":{"size":"5Gi"},"podAnnotations":{"phlare.grafana.com/port":"9000","phlare.grafana.com/scrape":"true"},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-phlare"}` | ----------------------------------- |
 | phlare.affinity | object | `{}` |  |
 | phlare.components | object | `{}` |  |
