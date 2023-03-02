@@ -33,12 +33,12 @@ func TestNormalizeProfile(t *testing.T) {
 			{LocationId: []uint64{1, 2, 3}, Value: []int64{0, 0}, Label: []*profilev1.Label{{Num: 10, Key: 1}}},
 			{LocationId: []uint64{4}, Value: []int64{0, 0}, Label: []*profilev1.Label{{Num: 10, Key: 1}}},
 		},
-		Mapping: []*profilev1.Mapping{},
+		Mapping: []*profilev1.Mapping{{Id: 1, HasFunctions: true, MemoryStart: 100, MemoryLimit: 200, FileOffset: 200}},
 		Location: []*profilev1.Location{
-			{Id: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}, {FunctionId: 2, Line: 3}}},
-			{Id: 2, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}, {FunctionId: 3, Line: 3}}},
-			{Id: 3, Line: []*profilev1.Line{{FunctionId: 3, Line: 1}, {FunctionId: 4, Line: 3}}},
-			{Id: 4, Line: []*profilev1.Line{{FunctionId: 5, Line: 1}}},
+			{Id: 1, MappingId: 1, Address: 5, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}, {FunctionId: 2, Line: 3}}},
+			{Id: 2, MappingId: 1, Address: 2, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}, {FunctionId: 3, Line: 3}}},
+			{Id: 3, MappingId: 1, Address: 1, Line: []*profilev1.Line{{FunctionId: 3, Line: 1}, {FunctionId: 4, Line: 3}}},
+			{Id: 4, MappingId: 1, Address: 0, Line: []*profilev1.Line{{FunctionId: 5, Line: 1}}},
 		},
 		Function: []*profilev1.Function{
 			{Id: 1, Name: 5, SystemName: 6, Filename: 7, StartLine: 1},
@@ -71,8 +71,8 @@ func TestNormalizeProfile(t *testing.T) {
 			{LocationId: []uint64{2, 3}, Value: []int64{0, 1}, Label: []*profilev1.Label{}},
 		},
 		Mapping: []*profilev1.Mapping{{
-			Id:          1,
-			MemoryLimit: ^uint64(0),
+			Id:           1,
+			HasFunctions: true,
 		}},
 		Location: []*profilev1.Location{
 			{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}, {FunctionId: 3, Line: 3}}},
