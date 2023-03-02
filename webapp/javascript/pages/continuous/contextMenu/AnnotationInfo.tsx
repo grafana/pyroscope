@@ -8,9 +8,6 @@ import { AddAnnotationProps } from './AddAnnotation.menuitem';
 import { useAnnotationForm } from './useAnnotationForm';
 
 interface AnnotationInfo {
-  /** where to put the popover in the DOM */
-  container: AddAnnotationProps['container'];
-
   /** where to position the popover */
   popoverAnchorPoint: AddAnnotationProps['popoverAnchorPoint'];
   timestamp: AddAnnotationProps['timestamp'];
@@ -22,7 +19,6 @@ interface AnnotationInfo {
 }
 
 const AnnotationInfo = ({
-  container,
   popoverAnchorPoint,
   value,
   timezone,
@@ -33,7 +29,7 @@ const AnnotationInfo = ({
   const { register, errors } = useAnnotationForm({ value, timezone });
 
   return (
-    <Portal container={container}>
+    <Portal>
       <Popover
         anchorPoint={{ x: popoverAnchorPoint.x, y: popoverAnchorPoint.y }}
         isModalOpen={isOpen}

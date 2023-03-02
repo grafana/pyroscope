@@ -303,13 +303,13 @@ func isEmpty(p ProfileConfig) bool {
 // Diff takes two single profiles and generates a diff profile
 func Diff(name string, base, diff *FlamebearerProfile, maxNodes int) (FlamebearerProfile, error) {
 	var fb FlamebearerProfile
-	bt, err := profileToTree(*base)
+	bt, err := ProfileToTree(*base)
 	if err != nil {
 		return fb, fmt.Errorf("unable to convert base profile to tree: %w", err)
 	}
-	dt, err := profileToTree(*diff)
+	dt, err := ProfileToTree(*diff)
 	if err != nil {
-		return fb, fmt.Errorf("unable to convret diff profile to tree: %w", err)
+		return fb, fmt.Errorf("unable to convert diff profile to tree: %w", err)
 	}
 	baseProfile := ProfileConfig{
 		Name:     name,
@@ -334,13 +334,16 @@ func Diff(name string, base, diff *FlamebearerProfile, maxNodes int) (Flamebeare
 	return NewCombinedProfile(baseProfile, diffProfile)
 }
 
-func profileToTree(fb FlamebearerProfile) (*tree.Tree, error) {
+// ProfileToTree converts a FlamebearerProfile into a Tree
+// It currently only supports Single profiles
+func ProfileToTree(fb FlamebearerProfile) (*tree.Tree, error) {
 	if fb.Metadata.Format != string(tree.FormatSingle) {
 		return nil, fmt.Errorf("unsupported flamebearer format %s", fb.Metadata.Format)
 	}
 	if fb.Version != 1 {
 		return nil, fmt.Errorf("unsupported flamebearer version %d", fb.Version)
 	}
+
 	return flamebearerV1ToTree(fb.Flamebearer)
 }
 

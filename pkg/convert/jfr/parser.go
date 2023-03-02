@@ -23,6 +23,7 @@ const (
 	sampleTypeOutTLABBytes
 	sampleTypeLockSamples
 	sampleTypeLockDuration
+	sampleTypeLiveObject
 )
 
 func ParseJFR(ctx context.Context, s storage.Putter, body io.Reader, pi *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
@@ -88,6 +89,11 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *st
 					cache.GetOrCreateTreeByHash(sampleTypeLockSamples, labels, lh).InsertStackString(fs, 1)
 					cache.GetOrCreateTreeByHash(sampleTypeLockDuration, labels, lh).InsertStackString(fs, uint64(tp.Duration))
 				}
+			case *parser.LiveObject:
+				lo := e.(*parser.LiveObject)
+				if fs := frames(lo.StackTrace); fs != nil {
+					cache.GetOrCreateTreeByHash(sampleTypeLiveObject, labels, lh).InsertStackString(fs, 1)
+				}
 			}
 		}
 	}
@@ -99,7 +105,7 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *st
 			}
 		}
 	}
-	cb := func(n string, labels tree.Labels, t *tree.Tree, u metadata.Units) {
+	cb := func(n string, labels tree.Labels, t *tree.Tree, u metadata.Units, at metadata.AggregationType) {
 		key := buildKey(n, piOriginal.Key.Labels(), labels, jfrLabels)
 		pi := &storage.PutInput{
 			StartTime:       piOriginal.StartTime,
@@ -109,7 +115,7 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *st
 			SpyName:         piOriginal.SpyName,
 			SampleRate:      piOriginal.SampleRate,
 			Units:           u,
-			AggregationType: metadata.SumAggregationType,
+			AggregationType: at,
 		}
 		if putErr := s.Put(ctx, pi); putErr != nil {
 			err = multierror.Append(err, putErr)
@@ -121,8 +127,9 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *st
 		}
 		n := getName(sampleType, event)
 		units := getUnits(sampleType)
+		at := aggregationType(sampleType)
 		for _, e := range entries {
-			cb(n, e.Labels, e.Tree, units)
+			cb(n, e.Labels, e.Tree, units, at)
 		}
 	}
 	return err
@@ -152,8 +159,19 @@ func getName(sampleType int64, event string) string {
 		return "lock_count"
 	case sampleTypeLockDuration:
 		return "lock_duration"
+	case sampleTypeLiveObject:
+		return "live"
 	}
 	return "unknown"
+}
+
+func aggregationType(sampleType int64) metadata.AggregationType {
+	switch sampleType {
+	case sampleTypeLiveObject:
+		return metadata.AverageAggregationType
+	default:
+		return metadata.SumAggregationType
+	}
 }
 
 func getUnits(sampleType int64) metadata.Units {
@@ -174,6 +192,8 @@ func getUnits(sampleType int64) metadata.Units {
 		return metadata.LockSamplesUnits
 	case sampleTypeLockDuration:
 		return metadata.LockNanosecondsUnits
+	case sampleTypeLiveObject:
+		return metadata.ObjectsUnits
 	}
 	return metadata.SamplesUnits
 }
@@ -183,7 +203,7 @@ func buildKey(n string, appLabels map[string]string, labels tree.Labels, snapsho
 	for k, v := range appLabels {
 		finalLabels[k] = v
 	}
-	for _, v := range labels { //todo
+	for _, v := range labels {
 		ks, ok := snapshot.Strings[v.Key]
 		if !ok {
 			continue
@@ -241,6 +261,8 @@ func groupEventsByContextID(events []parser.Parseable) map[int64][]parser.Parsea
 		case *parser.ThreadPark:
 			tp := e.(*parser.ThreadPark)
 			res[tp.ContextId] = append(res[tp.ContextId], e)
+		case *parser.LiveObject:
+			res[0] = append(res[0], e)
 		}
 	}
 	return res
@@ -271,7 +293,9 @@ var lambdaGeneratedEnclosingClass = regexp.MustCompile("^(.+\\$\\$Lambda\\$)\\d+
 var zstdJniSoLibName = regexp.MustCompile("^(\\.?/tmp/)?(libzstd-jni-\\d+\\.\\d+\\.\\d+-)(\\d+)(\\.so)( \\(deleted\\))?$")
 
 // ./tmp/libamazonCorrettoCryptoProvider109b39cf33c563eb.so
-var amazonCorrettoCryptoProvider = regexp.MustCompile("^(\\.?/tmp/)?(libamazonCorrettoCryptoProvider)([0-9a-f]{16})(\\.so)( \\(deleted\\))?$")
+// ./tmp/amazonCorrettoCryptoProviderNativeLibraries.7382c2f79097f415/libcrypto.so (deleted)
+var amazonCorrettoCryptoProvider = regexp.MustCompile("^(\\.?/tmp/)?(lib)?(amazonCorrettoCryptoProvider)(NativeLibraries\\.)?([0-9a-f]{16})" +
+	"(/libcrypto|/libamazonCorrettoCryptoProvider)?(\\.so)( \\(deleted\\))?$")
 
 // libasyncProfiler-linux-arm64-17b9a1d8156277a98ccc871afa9a8f69215f92.so
 var pyroscopeAsyncProfiler = regexp.MustCompile(
