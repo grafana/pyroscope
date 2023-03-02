@@ -1,6 +1,6 @@
 # phlare
 
-![Version: 0.5.1](https://img.shields.io/badge/Version-0.5.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.5.1](https://img.shields.io/badge/AppVersion-0.5.1-informational?style=flat-square)
+![Version: 0.5.2](https://img.shields.io/badge/Version-0.5.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.5.1](https://img.shields.io/badge/AppVersion-0.5.1-informational?style=flat-square)
 
 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
@@ -53,6 +53,7 @@
 | phlare.serviceAccount.create | bool | `true` |  |
 | phlare.serviceAccount.name | string | `""` |  |
 | phlare.structuredConfig | object | `{}` | Allows to override Phlare's configuration using structured format. |
+| phlare.tenantOverrides | object | `{}` | Allows to add tenant specific overrides to the default limit configuration. |
 | phlare.tolerations | list | `[]` |  |
 
 ----------------------------------------------

@@ -55,15 +55,16 @@ spec:
             - "-client.url=http://{{ include "phlare.fullname" . }}-distributor.{{ .Release.Namespace }}.svc.cluster.local.:{{ $values.service.port }}"
           {{- end }}
             - "-config.file=/etc/phlare/config.yaml"
+            - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
           {{- range $key, $value := $values.extraArgs }}
             - "-{{ $key }}={{ $value }}"
           {{- end }}
           {{- with $values.extraEnvVars }}
           env:
-           {{- range $key, $value := . }}
+          {{- range $key, $value := . }}
             - name: {{ $key }}
               value: {{ $value | quote }}
-           {{- end }}
+          {{- end }}
           {{- end }}
           {{- with $values.extraEnvFrom }}
           envFrom:
@@ -84,6 +85,8 @@ spec:
             - name: config
               mountPath: /etc/phlare/config.yaml
               subPath: config.yaml
+            - name: overrides-config
+              mountPath: /etc/phlare/overrides/
             - name: data
               mountPath: /data
             {{- with $values.extraVolumeMounts }}
@@ -110,6 +113,9 @@ spec:
         - name: config
           configMap:
             name: {{ include "phlare.fullname" . }}-config
+        - name: overrides-config
+          configMap:
+            name: {{ include "phlare.fullname" . }}-overrides-config
   {{- $persistence := $values.persistence }}
   {{- if not $persistence.enabled }}
         - name: data
