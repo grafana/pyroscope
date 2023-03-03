@@ -68,7 +68,7 @@
           "value": "pyroscope.server.cpu"
         },
         "datasource": "Pyroscope",
-        "definition": ".*",
+        "definition": "apps()",
         "description": null,
         "error": null,
         "hide": 0,
@@ -77,7 +77,7 @@
         "multi": false,
         "name": "appName",
         "options": [],
-        "query": ".*",
+        "query": "apps()",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
