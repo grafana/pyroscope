@@ -19,7 +19,6 @@ spec:
   selector:
     {{- include "phlare.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
-{{- if eq $cfg.kind "StatefulSet" }}
 ---
 apiVersion: v1
 kind: Service
@@ -30,6 +29,7 @@ metadata:
     app.kubernetes.io/component: {{ $component | quote }}
 spec:
   type: {{ .Values.phlare.service.type }}
+  clusterIP: None
   ports:
     - port: {{ .Values.phlare.service.port }}
       targetPort: {{ .Values.phlare.service.port_name }}
@@ -38,6 +38,5 @@ spec:
   selector:
     {{- include "phlare.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
-{{- end }}
 {{- end }}
 {{- end }}
