@@ -1215,6 +1215,31 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: phlare-dev-agent-headless
+  labels:
+    helm.sh/chart: phlare-0.5.2
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.5.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "agent"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 4100
+      targetPort: http2
+      protocol: TCP
+      name: http2
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/component: "agent"
+---
+# Source: phlare/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
   name: phlare-dev-distributor
   labels:
     helm.sh/chart: phlare-0.5.2
@@ -1225,6 +1250,31 @@ metadata:
     app.kubernetes.io/component: "distributor"
 spec:
   type: ClusterIP
+  ports:
+    - port: 4100
+      targetPort: http2
+      protocol: TCP
+      name: http2
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/component: "distributor"
+---
+# Source: phlare/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phlare-dev-distributor-headless
+  labels:
+    helm.sh/chart: phlare-0.5.2
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.5.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "distributor"
+spec:
+  type: ClusterIP
+  clusterIP: None
   ports:
     - port: 4100
       targetPort: http2
@@ -1273,6 +1323,7 @@ metadata:
     app.kubernetes.io/component: "ingester"
 spec:
   type: ClusterIP
+  clusterIP: None
   ports:
     - port: 4100
       targetPort: http2
@@ -1311,6 +1362,31 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: phlare-dev-querier-headless
+  labels:
+    helm.sh/chart: phlare-0.5.2
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.5.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "querier"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 4100
+      targetPort: http2
+      protocol: TCP
+      name: http2
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/component: "querier"
+---
+# Source: phlare/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
   name: phlare-dev-query-frontend
   labels:
     helm.sh/chart: phlare-0.5.2
@@ -1335,6 +1411,31 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: phlare-dev-query-frontend-headless
+  labels:
+    helm.sh/chart: phlare-0.5.2
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.5.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "query-frontend"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 4100
+      targetPort: http2
+      protocol: TCP
+      name: http2
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/component: "query-frontend"
+---
+# Source: phlare/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
   name: phlare-dev-query-scheduler
   labels:
     helm.sh/chart: phlare-0.5.2
@@ -1345,6 +1446,31 @@ metadata:
     app.kubernetes.io/component: "query-scheduler"
 spec:
   type: ClusterIP
+  ports:
+    - port: 4100
+      targetPort: http2
+      protocol: TCP
+      name: http2
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/component: "query-scheduler"
+---
+# Source: phlare/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phlare-dev-query-scheduler-headless
+  labels:
+    helm.sh/chart: phlare-0.5.2
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.5.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "query-scheduler"
+spec:
+  type: ClusterIP
+  clusterIP: None
   ports:
     - port: 4100
       targetPort: http2
