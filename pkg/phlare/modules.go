@@ -3,6 +3,7 @@ package phlare
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -35,6 +36,7 @@ import (
 	statusv1 "github.com/grafana/phlare/api/gen/proto/go/status/v1"
 	"github.com/grafana/phlare/api/openapiv2"
 	"github.com/grafana/phlare/pkg/agent"
+	"github.com/grafana/phlare/pkg/api"
 	"github.com/grafana/phlare/pkg/distributor"
 	"github.com/grafana/phlare/pkg/frontend"
 	"github.com/grafana/phlare/pkg/frontend/frontendpb/frontendpbconnect"
@@ -126,6 +128,10 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 
 	f.Server.HTTP.Methods("GET").Path("/runtime_config").Handler(runtimeConfigHandler(f.RuntimeConfig, f.Cfg.LimitsConfig))
 	f.Server.HTTP.Methods("GET").Path("/api/v1/tenant_limits").Handler(middleware.AuthenticateUser.Wrap(validation.TenantLimitsHandler(f.Cfg.LimitsConfig, f.TenantLimits)))
+	f.IndexPage.AddLinks(api.RuntimeConfigWeight, "Current runtime config", []api.IndexPageLink{
+		{Desc: "Entire runtime config (including overrides)", Path: "/runtime_config"},
+		{Desc: "Only values that differ from the defaults", Path: "/runtime_config?mode=diff"},
+	})
 	return serv, err
 }
 
@@ -152,7 +158,9 @@ func (f *Phlare) initOverridesExporter() (services.Service, error) {
 	}
 
 	f.Server.HTTP.Methods("GET", "POST").Path("/overrides-exporter/ring").HandlerFunc(overridesExporter.RingHandler)
-
+	f.IndexPage.AddLinks(api.DefaultWeight, "Overrides-exporter", []api.IndexPageLink{
+		{Desc: "Ring status", Path: "/overrides-exporter/ring"},
+	})
 	return overridesExporter, nil
 }
 
@@ -254,6 +262,9 @@ func (f *Phlare) initDistributor() (services.Service, error) {
 
 	pushv1connect.RegisterPusherServiceHandler(f.Server.HTTP, d, f.auth)
 	f.Server.HTTP.Path("/distributor/ring").Methods("GET", "POST").Handler(d)
+	f.IndexPage.AddLinks(api.DefaultWeight, "Distributor", []api.IndexPageLink{
+		{Desc: "Ring status", Path: "/distributor/ring"},
+	})
 
 	return d, nil
 }
@@ -309,6 +320,9 @@ func (f *Phlare) initRing() (_ services.Service, err error) {
 		return nil, err
 	}
 	f.Server.HTTP.Path("/ring").Methods("GET", "POST").Handler(f.ring)
+	f.IndexPage.AddLinks(api.DefaultWeight, "Ingester", []api.IndexPageLink{
+		{Desc: "Ring status", Path: "/ring"},
+	})
 	return f.ring, nil
 }
 
@@ -419,6 +433,16 @@ func (f *Phlare) initServer() (services.Service, error) {
 	if err := statusv1.RegisterStatusServiceHandlerServer(context.Background(), f.grpcGatewayMux, f.statusService()); err != nil {
 		return nil, err
 	}
+
+	// register static assets
+	f.Server.HTTP.PathPrefix("/static/").Handler(http.FileServer(http.FS(api.StaticFiles)))
+
+	// register index page
+	f.IndexPage = api.NewIndexPageContent()
+	f.Server.HTTP.Path("/").Handler(api.IndexHandler("", f.IndexPage))
+	f.IndexPage.AddLinks(api.OpenAPIDefinitionWeight, "OpenAPI definition", []api.IndexPageLink{
+		{Desc: "Swagger JSON", Path: "/api/swagger.json"},
+	})
 
 	return s, nil
 }
