@@ -32,6 +32,7 @@ import (
 
 	"github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/phlare/pkg/agent"
+	"github.com/grafana/phlare/pkg/api"
 	"github.com/grafana/phlare/pkg/cfg"
 	"github.com/grafana/phlare/pkg/distributor"
 	"github.com/grafana/phlare/pkg/frontend"
@@ -214,6 +215,7 @@ type Phlare struct {
 
 	HTTPAuthMiddleware middleware.Interface
 	Server             *server.Server
+	IndexPage          *api.IndexPageContent
 	SignalHandler      *signals.Handler
 	MemberlistKV       *memberlist.KVInitService
 	ring               *ring.Ring
