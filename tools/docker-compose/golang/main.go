@@ -24,7 +24,7 @@ func primeNumberFrom1To(to int) []int {
 	}
 
 	a := [0]int{}
-	prime_numbers := a[:]
+	primeNumbers := a[:]
 
 	r1 := makeRange(1, to)
 	for _, i := range r1 {
@@ -36,13 +36,13 @@ func primeNumberFrom1To(to int) []int {
 						break
 					}
 				} else {
-					prime_numbers = append(prime_numbers, i)
+					primeNumbers = append(primeNumbers, i)
 					break
 				}
 			}
 		}
 	}
-	return prime_numbers
+	return primeNumbers
 }
 
 // test if i is divisible by j (integer division)
