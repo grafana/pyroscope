@@ -13,7 +13,7 @@ jobs:
     # if you ever update this container
     # remember to update the container that runs locally
     # (ie ./scripts/jest-snapshots)
-    container: node:16.18-slim
+    container: node:18.14-slim
     steps:
       - name: Checkout
         uses: actions/checkout@v2

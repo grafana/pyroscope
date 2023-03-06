@@ -21,7 +21,7 @@ RUN make build-phpspy-dependencies
 # | (_| \__ \__ \  __/ |_\__ \
 #  \__,_|___/___/\___|\__|___/
 
-FROM node:16.18-alpine3.16 as js-builder
+FROM node:18.14-alpine3.16 as js-builder
 
 RUN apk update && apk upgrade && \
     apk add --no-cache make
