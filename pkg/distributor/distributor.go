@@ -3,6 +3,7 @@ package distributor
 import (
 	"bytes"
 	"context"
+	"expvar"
 	"flag"
 	"fmt"
 	"hash/fnv"
@@ -50,19 +51,6 @@ const (
 	ringAutoForgetUnhealthyPeriods = 10
 )
 
-// todo: move to non global metrics.
-var (
-	clients = promauto.NewGauge(prometheus.GaugeOpts{
-		Namespace: "phlare",
-		Name:      "distributor_ingester_clients",
-		Help:      "The current number of ingester clients.",
-	})
-	rfStats                 = usagestats.NewInt("distributor_replication_factor")
-	bytesReceivedStats      = usagestats.NewStatistics("distributor_bytes_received")
-	bytesReceivedTotalStats = usagestats.NewCounter("distributor_bytes_received_total")
-	profileReceivedStats    = usagestats.NewCounter("distributor_profiles_received")
-)
-
 // Config for a Distributor.
 type Config struct {
 	PushTimeout time.Duration
@@ -99,7 +87,12 @@ type Distributor struct {
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
 
-	metrics *metrics
+	// Metrics and stats.
+	metrics                 *metrics
+	rfStats                 *expvar.Int
+	bytesReceivedStats      *usagestats.Statistics
+	bytesReceivedTotalStats *usagestats.Counter
+	profileReceivedStats    *usagestats.Counter
 }
 
 type Limits interface {
@@ -111,14 +104,23 @@ type Limits interface {
 }
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, limits Limits, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Distributor, error) {
+	clients := promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+		Namespace: "phlare",
+		Name:      "distributor_ingester_clients",
+		Help:      "The current number of ingester clients.",
+	})
 	d := &Distributor{
-		cfg:                   cfg,
-		logger:                logger,
-		ingestersRing:         ingestersRing,
-		pool:                  clientpool.NewPool(cfg.PoolConfig, ingestersRing, factory, clients, logger, clientsOptions...),
-		metrics:               newMetrics(reg),
-		healthyInstancesCount: atomic.NewUint32(0),
-		limits:                limits,
+		cfg:                     cfg,
+		logger:                  logger,
+		ingestersRing:           ingestersRing,
+		pool:                    clientpool.NewPool(cfg.PoolConfig, ingestersRing, factory, clients, logger, clientsOptions...),
+		metrics:                 newMetrics(reg),
+		healthyInstancesCount:   atomic.NewUint32(0),
+		limits:                  limits,
+		rfStats:                 usagestats.NewInt("distributor_replication_factor"),
+		bytesReceivedStats:      usagestats.NewStatistics("distributor_bytes_received"),
+		bytesReceivedTotalStats: usagestats.NewCounter("distributor_bytes_received_total"),
+		profileReceivedStats:    usagestats.NewCounter("distributor_profiles_received"),
 	}
 	var err error
 
@@ -144,7 +146,7 @@ func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactor
 	d.subservicesWatcher.WatchManager(d.subservices)
 
 	d.Service = services.NewBasicService(d.starting, d.running, d.stopping)
-	rfStats.Set(int64(ingestersRing.ReplicationFactor()))
+	d.rfStats.Set(int64(ingestersRing.ReplicationFactor()))
 	return d, nil
 }
 
@@ -187,9 +189,9 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 		profName := phlaremodel.Labels(series.Labels).Get(scrape.ProfileName)
 		for _, raw := range series.Samples {
 			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
-			profileReceivedStats.Inc(1)
-			bytesReceivedTotalStats.Inc(int64(len(raw.RawProfile)))
-			bytesReceivedStats.Record(float64(len(raw.RawProfile)))
+			d.profileReceivedStats.Inc(1)
+			d.bytesReceivedTotalStats.Inc(int64(len(raw.RawProfile)))
+			d.bytesReceivedStats.Record(float64(len(raw.RawProfile)))
 			totalProfiles++
 			d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(raw.RawProfile)))
 			p, err := pprof.RawFromBytes(raw.RawProfile)
