@@ -358,6 +358,7 @@ func Test_SelectMergeProfile(t *testing.T) {
 
 	expected := pprofth.FooBarProfile.Copy()
 	expected.DurationNanos = model.Time(req.Msg.End).UnixNano() - model.Time(req.Msg.Start).UnixNano()
+	expected.TimeNanos = model.Time(req.Msg.End).UnixNano()
 	for _, s := range expected.Sample {
 		s.Value[0] = s.Value[0] * 2
 	}

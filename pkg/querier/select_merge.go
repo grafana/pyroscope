@@ -348,7 +348,7 @@ func selectMergeStacktraces(ctx context.Context, responses []responseFromIngeste
 }
 
 // selectMergePprofProfile selects the  profile from each ingester by deduping them and request merges of stacktraces in the pprof format.
-func selectMergePprofProfile(ctx context.Context, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesPprof]) (*googlev1.Profile, error) {
+func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesPprof]) (*googlev1.Profile, error) {
 	mergeResults := make([]MergeResult[[]byte], len(responses))
 	iters := make([]MergeIterator, len(responses))
 	for i, resp := range responses {
@@ -388,6 +388,12 @@ func selectMergePprofProfile(ctx context.Context, responses []responseFromIngest
 	}
 	if err := g.Wait(); err != nil {
 		return nil, err
+	}
+
+	if len(results) == 0 {
+		empty := &profile.Profile{}
+		phlaremodel.SetProfileMetadata(empty, ty)
+		return pprof.FromProfile(empty)
 	}
 	p, err := profile.Merge(results)
 	if err != nil {

@@ -310,12 +310,12 @@ func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[q
 	}
 
 	// merge all profiles
-	profile, err := selectMergePprofProfile(gCtx, responses)
+	profile, err := selectMergePprofProfile(gCtx, profileType, responses)
 	if err != nil {
 		return nil, err
 	}
 	profile.DurationNanos = model.Time(req.Msg.End).UnixNano() - model.Time(req.Msg.Start).UnixNano()
-
+	profile.TimeNanos = model.Time(req.Msg.End).UnixNano()
 	return connect.NewResponse(profile), nil
 }
 

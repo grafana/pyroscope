@@ -386,6 +386,22 @@ func TestMergeProfilesPprof(t *testing.T) {
 		}))
 		require.NoError(t, bidi.CloseRequest())
 	})
+
+	t.Run("timerange with no Profiles", func(t *testing.T) {
+		bidi := client.MergeProfilesPprof(ctx)
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+			Request: &ingestv1.SelectProfilesRequest{
+				LabelSelector: `{pod="my-pod"}`,
+				Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+				Start:         0,
+				End:           1,
+			},
+		}))
+		_, err := bidi.Receive()
+		require.NoError(t, err)
+		_, err = bidi.Receive()
+		require.NoError(t, err)
+	})
 }
 
 func TestFilterProfiles(t *testing.T) {
