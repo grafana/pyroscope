@@ -92,7 +92,7 @@ release/build/all: release/prereq ## Build all release binaries
 .PHONY: release/build
 release/build: release/prereq ## Build current platform release binaries
 	$(GORELEASER_ENV) \
-	$(BIN)/goreleaser build -p=$(shell nproc) --rm-dist --snapshot --single-target
+	$(BIN)/goreleaser release -p=$(shell nproc) --rm-dist --split
 
 .PHONY: go/deps
 go/deps:
@@ -264,7 +264,7 @@ $(BIN)/updater: Makefile
 
 $(BIN)/goreleaser: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser@v1.14.1
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser@v1.16.0
 
 $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)

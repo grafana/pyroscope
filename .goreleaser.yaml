@@ -8,14 +8,14 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
-      - darwin
+      #      - darwin
     goarch:
       - amd64
-      - arm64
-      - arm
-    goarm:
-      - "6"
-      - "7"
+      # - arm64
+      # - arm
+    #goarm:
+      #  - "6"
+      #  - "7"
     main: ./cmd/phlare
     mod_timestamp: "{{ .CommitTimestamp }}"
     flags:
@@ -43,15 +43,15 @@ builds:
         -X "github.com/grafana/phlare/pkg/util/build.BuildDate={{ .Env.GIT_LAST_COMMIT_DATE }}"
     goos:
       - linux
-      - windows
-      - darwin
+      #   - windows
+      # - darwin
     goarch:
       - amd64
-      - arm64
-      - arm
-    goarm:
-      - "6"
-      - "7"
+      #- arm64
+      #- arm
+    #goarm:
+      # - "6"
+      # - "7"
     ignore:
       - goos: windows
         goarch: arm
