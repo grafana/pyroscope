@@ -706,19 +706,12 @@ func (q Queriers) MergeProfilesPprof(ctx context.Context, stream *connect.BidiSt
 	if err := g.Wait(); err != nil {
 		return err
 	}
+	if len(result) == 0 {
+		result = append(result, &profile.Profile{})
+	}
 	for _, p := range result {
-		p.SampleType = []*profile.ValueType{{Type: r.Request.Type.SampleType, Unit: r.Request.Type.SampleUnit}}
-		p.DefaultSampleType = r.Request.Type.SampleType
-		p.PeriodType = &profile.ValueType{Type: r.Request.Type.PeriodType, Unit: r.Request.Type.PeriodUnit}
-		p.TimeNanos = model.Time(r.Request.Start).UnixNano()
-		switch r.Request.Type.Name {
-		case "process_cpu":
-			p.Period = 1000000000
-		case "memory":
-			p.Period = 512 * 1024
-		default:
-			p.Period = 1
-		}
+		phlaremodel.SetProfileMetadata(p, request.Type)
+		p.TimeNanos = model.Time(r.Request.End).UnixNano()
 	}
 	p, err := profile.Merge(result)
 	if err != nil {

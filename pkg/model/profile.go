@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/gogo/status"
+	"github.com/google/pprof/profile"
 	"github.com/prometheus/prometheus/model/labels"
 	"google.golang.org/grpc/codes"
 
@@ -43,5 +44,20 @@ func SelectorFromProfileType(profileType *typesv1.ProfileType) *labels.Matcher {
 		Type:  labels.MatchEqual,
 		Name:  LabelNameProfileType,
 		Value: profileType.Name + ":" + profileType.SampleType + ":" + profileType.SampleUnit + ":" + profileType.PeriodType + ":" + profileType.PeriodUnit,
+	}
+}
+
+// SetProfileMetadata sets the metadata on the profile.
+func SetProfileMetadata(p *profile.Profile, ty *typesv1.ProfileType) {
+	p.SampleType = []*profile.ValueType{{Type: ty.SampleType, Unit: ty.SampleUnit}}
+	p.DefaultSampleType = ty.SampleType
+	p.PeriodType = &profile.ValueType{Type: ty.PeriodType, Unit: ty.PeriodUnit}
+	switch ty.Name {
+	case "process_cpu": // todo: this should support other types of cpu profiles
+		p.Period = 1000000000
+	case "memory":
+		p.Period = 512 * 1024
+	default:
+		p.Period = 1
 	}
 }
