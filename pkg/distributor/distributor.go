@@ -234,7 +234,7 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 		validation.DiscardedProfiles.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(totalProfiles))
 		validation.DiscardedBytes.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(totalPushUncompressedBytes))
 		return nil, connect.NewError(connect.CodeResourceExhausted,
-			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.Bytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.Bytes(uint64(totalPushUncompressedBytes))),
+			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.IBytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.IBytes(uint64(totalPushUncompressedBytes))),
 		)
 	}
 
