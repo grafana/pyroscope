@@ -114,6 +114,13 @@ func FromBytes(input []byte) (*profilev1.Profile, int, error) {
 func FromProfile(p *profile.Profile) (*profilev1.Profile, error) {
 	r := profilev1.ProfileFromVTPool()
 	strings := make(map[string]int)
+
+	r.Sample = make([]*profilev1.Sample, 0, len(p.Sample))
+	r.SampleType = make([]*profilev1.ValueType, 0, len(p.SampleType))
+	r.Location = make([]*profilev1.Location, 0, len(p.Location))
+	r.Mapping = make([]*profilev1.Mapping, 0, len(p.Mapping))
+	r.Function = make([]*profilev1.Function, 0, len(p.Function))
+
 	addString(strings, "")
 	for _, st := range p.SampleType {
 		r.SampleType = append(r.SampleType, &profilev1.ValueType{
