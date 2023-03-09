@@ -17,10 +17,12 @@ jobs:
         run: echo "WEEKLY_IMAGE_TAG=$(./tools/image-tag)" >> $GITHUB_ENV
       # Forces goreleaser to use the correct previous tag for the changelog
       - name: Set GORELEASER_PREVIOUS_TAG
-        run: echo "GORELEASER_PREVIOUS_TAG=$(git tag -l --sort=-version:refname | grep -E '^v0\.\0\.0-weekly-.*' | head -n 2 | tail -1)" >> $GITHUB_ENV
+        run: echo "GORELEASER_PREVIOUS_TAG=$(git tag -l --sort=-version:refname | grep -E '^weekly-.*' | head -n 2 | tail -1)" >> $GITHUB_ENV
       - run: git fetch --force --tags
-      - name: Create tag for this weekly release
-        run: git tag $GORELEASER_CURRENT_TAG
+      - name: Create tags for this weekly release
+        run: |
+          git tag "$GORELEASER_CURRENT_TAG"
+          git tag "$WEEKLY_IMAGE_TAG"
       - uses: actions/setup-go@v3
         with:
           go-version: ">=1.19.5"
@@ -64,4 +66,4 @@ jobs:
           docker manifest create "grafana/phlare:${WEEKLY_IMAGE_TAG}" "${IMAGE_AMMENDS[@]}"
           docker manifest push "grafana/phlare:${WEEKLY_IMAGE_TAG}"
       - name: Push git tag for weekly release
-        run: git push https://grafanabot:${{ secrets.GH_BOT_ACCESS_TOKEN }}@github.com/grafana/phlare.git "${GORELEASER_CURRENT_TAG}"
+        run: git push https://grafanabot:${{ secrets.GH_BOT_ACCESS_TOKEN }}@github.com/grafana/phlare.git "${WEEKLY_IMAGE_TAG}"
