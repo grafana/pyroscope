@@ -5,6 +5,9 @@ on:
     # run only against tags
     tags:
       - "v*"
+      # do not run for weekly release tags
+      - "!v0.0.0-weekly*"
+
 permissions:
   contents: write
   packages: write
@@ -13,8 +16,6 @@ permissions:
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
-    # do not run me for weekly release tags
-    if: ${{ !startsWith(github.ref, 'refs/tags/v0.0.0-weekly-') }}
     steps:
       - uses: actions/checkout@v3
         with:
