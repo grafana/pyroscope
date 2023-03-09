@@ -6,6 +6,13 @@ on:
       - r[0-9]+ # Trigger builds after a push to weekly branches
   pull_request:
 
+concurrency:
+  # Cancel any running workflow for the same branch when new commits are pushed.
+  # We group both by ref_name (available when CI is triggered by a push to a branch/tag)
+  # and head_ref (available when CI is triggered by a PR).
+  group: "${{ github.ref_name }}-${{ github.head_ref }}"
+  cancel-in-progress: true
+
 jobs:
   test:
     strategy:
