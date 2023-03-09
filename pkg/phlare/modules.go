@@ -440,6 +440,16 @@ func (f *Phlare) initServer() (services.Service, error) {
 	// register index page
 	f.IndexPage = api.NewIndexPageContent()
 	f.Server.HTTP.Path("/").Handler(api.IndexHandler("", f.IndexPage))
+
+	// Add index page links.
+	f.IndexPage.AddLinks(api.BuildInfoWeight, "Build information", []api.IndexPageLink{
+		{Desc: "Build information", Path: "/api/v1/status/buildinfo"},
+	})
+	f.IndexPage.AddLinks(api.ConfigWeight, "Current config", []api.IndexPageLink{
+		{Desc: "Including the default values", Path: "/api/v1/status/config"},
+		{Desc: "Only values that differ from the defaults", Path: "/api/v1/status/config/diff"},
+		{Desc: "Default values", Path: "/api/v1/status/config/default"},
+	})
 	f.IndexPage.AddLinks(api.OpenAPIDefinitionWeight, "OpenAPI definition", []api.IndexPageLink{
 		{Desc: "Swagger JSON", Path: "/api/swagger.json"},
 	})

@@ -17,12 +17,13 @@ import (
 // List of weights to order link groups in the same order as weights are ordered here.
 const (
 	serviceStatusWeight = iota
-	configWeight
+	ConfigWeight
 	RuntimeConfigWeight
 	DefaultWeight
 	memberlistWeight
 	dangerousWeight
 	OpenAPIDefinitionWeight
+	BuildInfoWeight
 )
 
 func NewIndexPageContent() *IndexPageContent {
