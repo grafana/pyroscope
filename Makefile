@@ -25,7 +25,6 @@ IMAGE_TAG ?= $(shell ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 GIT_LAST_COMMIT_DATE := $(shell git log -1 --date=iso-strict --format=%cd)
-GORELEASER_ENV := GIT_LAST_COMMIT_DATE=$(GIT_LAST_COMMIT_DATE)
 
 # Build flags
 VPREFIX := github.com/grafana/phlare/pkg/util/build
@@ -76,22 +75,18 @@ release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
 
 .PHONY: release
 release: release/prereq ## Create a release
-	$(GORELEASER_ENV) \
 	$(BIN)/goreleaser release -p=$(shell nproc) --rm-dist
 
 .PHONY: release/prepare
 release/prepare: release/prereq ## Prepare a release
-	$(GORELEASER_ENV) \
 	$(BIN)/goreleaser release -p=$(shell nproc) --rm-dist --snapshot
 
 .PHONY: release/build/all
 release/build/all: release/prereq ## Build all release binaries
-	$(GORELEASER_ENV) \
 	$(BIN)/goreleaser build -p=$(shell nproc) --rm-dist --snapshot
 
 .PHONY: release/build
 release/build: release/prereq ## Build current platform release binaries
-	$(GORELEASER_ENV) \
 	$(BIN)/goreleaser build -p=$(shell nproc) --rm-dist --snapshot --single-target
 
 .PHONY: go/deps
