@@ -37,9 +37,10 @@ type deduplicatingSlice[M Models, K comparable, H Helper[M, K], P schemav1.Persi
 	persister P
 	helper    H
 
-	file   *os.File
-	cfg    *ParquetConfig
-	writer *parquet.GenericWriter[P]
+	file    *os.File
+	cfg     *ParquetConfig
+	metrics *headMetrics
+	writer  *parquet.GenericWriter[P]
 
 	buffer      *parquet.Buffer
 	rowsFlushed int
@@ -57,8 +58,9 @@ func (s *deduplicatingSlice[M, K, H, P]) Size() uint64 {
 	return s.size.Load()
 }
 
-func (s *deduplicatingSlice[M, K, H, P]) Init(path string, cfg *ParquetConfig) error {
+func (s *deduplicatingSlice[M, K, H, P]) Init(path string, cfg *ParquetConfig, metrics *headMetrics) error {
 	s.cfg = cfg
+	s.metrics = metrics
 	file, err := os.OpenFile(filepath.Join(path, s.persister.Name()+block.ParquetSuffix), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return err
@@ -214,7 +216,7 @@ func (s *deduplicatingSlice[M, K, H, P]) ingest(_ context.Context, elems []M, re
 			posSlice++
 
 			// increase size of stored data
-			s.size.Add(s.helper.size(elems[pos]))
+			s.metrics.sizeBytes.WithLabelValues(s.Name()).Set(float64(s.size.Add(s.helper.size(elems[pos]))))
 		}
 		s.lock.Unlock()
 	}

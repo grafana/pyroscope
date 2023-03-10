@@ -178,7 +178,7 @@ func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs phlaremodel.Labels, profi
 			profilesOnDisk: make([]*rowRange, pi.rowGroupsOnDisk),
 		}
 		pi.profilesPerFP[ps.SeriesFingerprint] = profiles
-		pi.totalSeries.Inc()
+		pi.metrics.series.Set(float64(pi.totalSeries.Inc()))
 		pi.metrics.seriesCreated.WithLabelValues(profileName).Inc()
 	}
 
@@ -190,7 +190,7 @@ func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs phlaremodel.Labels, profi
 		profiles.maxTime = ps.TimeNanos
 	}
 
-	pi.totalProfiles.Inc()
+	pi.metrics.profiles.Set(float64(pi.totalProfiles.Inc()))
 	pi.metrics.profilesCreated.WithLabelValues(profileName).Inc()
 }
 
