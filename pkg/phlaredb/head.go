@@ -111,7 +111,7 @@ type Table interface {
 	Name() string
 	Size() uint64       // Size estimates the uncompressed byte size of the table in memory and on disk.
 	MemorySize() uint64 // MemorySize estimates the uncompressed byte size of the table in memory.
-	Init(path string, cfg *ParquetConfig) error
+	Init(path string, cfg *ParquetConfig, metrics *headMetrics) error
 	Flush(context.Context) (numRows uint64, numRowGroups uint64, err error)
 	Close() error
 }
@@ -173,7 +173,6 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 	}
 	h.headPath = filepath.Join(cfg.DataPath, pathHead, h.meta.ULID.String())
 	h.localPath = filepath.Join(cfg.DataPath, pathLocal, h.meta.ULID.String())
-	h.metrics.setHead(h)
 
 	if cfg.Parquet != nil {
 		h.parquetConfig = cfg.Parquet
@@ -199,7 +198,7 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 		h.profiles,
 	}
 	for _, t := range h.tables {
-		if err := t.Init(h.headPath, h.parquetConfig); err != nil {
+		if err := t.Init(h.headPath, h.parquetConfig, h.metrics); err != nil {
 			return nil, err
 		}
 	}

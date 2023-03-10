@@ -80,7 +80,7 @@ func (s *profileStore) MemorySize() uint64 {
 }
 
 // resets the store
-func (s *profileStore) Init(path string, cfg *ParquetConfig) (err error) {
+func (s *profileStore) Init(path string, cfg *ParquetConfig, metrics *headMetrics) (err error) {
 	// close previous iteration
 	if err := s.Close(); err != nil {
 		return err
@@ -97,6 +97,7 @@ func (s *profileStore) Init(path string, cfg *ParquetConfig) (err error) {
 
 	s.path = path
 	s.cfg = cfg
+	s.metrics = metrics
 
 	s.slice = s.slice[:0]
 
@@ -256,7 +257,7 @@ func (s *profileStore) cutRowGroup() (err error) {
 	// reset slice and metrics
 	s.slice = s.slice[:0]
 	s.size.Store(0)
-
+	s.metrics.sizeBytes.WithLabelValues(s.Name()).Set(0)
 	return nil
 }
 
@@ -312,7 +313,7 @@ func (s *profileStore) ingest(_ context.Context, profiles []*schemav1.Profile, l
 
 		// increase size of stored data
 		addedBytes := s.helper.size(profiles[pos])
-		s.size.Add(addedBytes)
+		s.metrics.sizeBytes.WithLabelValues(s.Name()).Set(float64(s.size.Add(addedBytes)))
 		s.totalSize.Add(addedBytes)
 
 		// add to slice

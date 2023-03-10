@@ -141,7 +141,7 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			path := t.TempDir()
-			require.NoError(t, store.Init(path, tc.cfg))
+			require.NoError(t, store.Init(path, tc.cfg, newHeadMetrics(prometheus.NewRegistry())))
 
 			for i := 0; i < 100; i++ {
 				p := tc.values(i)
@@ -193,7 +193,7 @@ func TestProfileStore_Ingestion_SeriesIndexes(t *testing.T) {
 		store = newProfileStore(ctx)
 	)
 	path := t.TempDir()
-	require.NoError(t, store.Init(path, defaultParquetConfig))
+	require.NoError(t, store.Init(path, defaultParquetConfig, newHeadMetrics(prometheus.NewRegistry())))
 
 	for i := 0; i < 9; i++ {
 		p := threeProfileStreams(i)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
@@ -20,7 +21,7 @@ func TestInMemoryReader(t *testing.T) {
 		MaxBufferRowCount: defaultParquetConfig.MaxBufferRowCount / 1024,
 		MaxRowGroupBytes:  defaultParquetConfig.MaxRowGroupBytes / 1024,
 		MaxBlockBytes:     defaultParquetConfig.MaxBlockBytes,
-	}))
+	}, newHeadMetrics(prometheus.NewRegistry())))
 	rewrites := &rewriter{}
 	rgCount := 5
 	for i := 0; i < rgCount*st.cfg.MaxBufferRowCount; i++ {
