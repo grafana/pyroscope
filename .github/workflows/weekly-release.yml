@@ -1,0 +1,69 @@
+name: goreleaser-weekly
+
+on:
+  push:
+    branches:
+      - 'weekly/f*'
+jobs:
+  goreleaser-weekly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set GORELEASER_CURRENT_TAG
+        run: echo "GORELEASER_CURRENT_TAG=v0.0.0-$(./tools/image-tag)" >> $GITHUB_ENV
+      - name: Set WEEKLY_IMAGE_TAG
+        run: echo "WEEKLY_IMAGE_TAG=$(./tools/image-tag)" >> $GITHUB_ENV
+      # Forces goreleaser to use the correct previous tag for the changelog
+      - name: Set GORELEASER_PREVIOUS_TAG
+        run: echo "GORELEASER_PREVIOUS_TAG=$(git tag -l --sort=-version:refname | grep -E '^weekly-.*' | head -n 2 | tail -1)" >> $GITHUB_ENV
+      - run: git fetch --force --tags
+      - name: Create tags for this weekly release
+        run: |
+          git tag "$GORELEASER_CURRENT_TAG"
+          git tag "$WEEKLY_IMAGE_TAG"
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ">=1.19.5"
+          cache: true
+      # setup docker buildx
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      # login to docker hub
+      - uses: docker/login-action@v2
+        name: Login to Docker Hub
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: goreleaser/goreleaser-action@v4
+        with:
+          # either 'goreleaser' (default) or 'goreleaser-pro':
+          distribution: goreleaser
+          version: latest
+          args: release --clean --skip-publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_BOT_ACCESS_TOKEN }}
+          # Your GoReleaser Pro key, if you are using the 'goreleaser-pro'
+          # distribution:
+          # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
+          #
+      - name: Push per architecture images and create multi-arch manifest
+        run: |
+          set +x
+          IMAGE_AMMENDS=()
+
+          # the grep needs to remove an extra v, which is in the git tag, but not in the image tag
+          for image in $(docker images --format '{{.Repository}}:{{.Tag}}' | grep "grafana/phlare:${GORELEASER_CURRENT_TAG:1}-"); do
+            new_image="${image/0.0.0-/}"
+            docker tag "${image}" "${new_image}"
+            docker push "${new_image}"
+            IMAGE_AMMENDS+=( "--amend" "${new_image}" )
+          done
+
+          docker manifest create "grafana/phlare:${WEEKLY_IMAGE_TAG}" "${IMAGE_AMMENDS[@]}"
+          docker manifest push "grafana/phlare:${WEEKLY_IMAGE_TAG}"
+      - name: Push git tag for weekly release
+        run: git push https://grafanabot:${{ secrets.GH_BOT_ACCESS_TOKEN }}@github.com/grafana/phlare.git "${WEEKLY_IMAGE_TAG}"
