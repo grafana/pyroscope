@@ -24,8 +24,8 @@ type K8SServiceDiscovery struct {
 	pid2Labels         map[uint32]*spy.Labels
 }
 
-var knownContainerIDPrefixes = []string{"docker://", "containerd://"}
-var knownRuntimes = []string{"docker://", "containerd://"}
+var knownContainerIDPrefixes = []string{"docker://", "containerd://", "cri-o://"}
+var knownRuntimes = []string{"docker://", "containerd://", "cri-o://"}
 
 func NewK8ServiceDiscovery(ctx context.Context, logger log.Logger, nodeName string) (ServiceDiscovery, error) {
 	config, err := rest.InClusterConfig()
@@ -170,5 +170,5 @@ func getContainerIDFromCGroup(line string) string {
 var (
 	kubePattern        = regexp.MustCompile(`\d+:.+:/kubepods/[^/]+/pod[^/]+/([0-9a-f]{64})`)
 	dockerPattern      = regexp.MustCompile(`\d+:.+:/docker/pod[^/]+/([0-9a-f]{64})`)
-	cgroupScopePattern = regexp.MustCompile(`^\d+:.*/(?:docker-|cri-containerd-)([0-9a-f]{64})\.scope$`)
+	cgroupScopePattern = regexp.MustCompile(`^\d+:.*/(?:docker-|cri-containerd-|crio-)([0-9a-f]{64})\.scope$`)
 )
