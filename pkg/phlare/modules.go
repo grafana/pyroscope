@@ -311,6 +311,10 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 	f.Cfg.Frontend.QuerySchedulerDiscovery = f.Cfg.QueryScheduler.ServiceDiscovery
 	f.Cfg.Worker.QuerySchedulerDiscovery = f.Cfg.QueryScheduler.ServiceDiscovery
 
+	f.Server.HTTP.Path("/memberlist").Handler(api.MemberlistStatusHandler("", f.MemberlistKV))
+	f.IndexPage.AddLinks(api.MemberlistWeight, "Memberlist", []api.IndexPageLink{
+		{Desc: "Status", Path: "/memberlist"},
+	})
 	return f.MemberlistKV, nil
 }
 

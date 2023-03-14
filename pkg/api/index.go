@@ -20,7 +20,7 @@ const (
 	ConfigWeight
 	RuntimeConfigWeight
 	DefaultWeight
-	memberlistWeight
+	MemberlistWeight
 	dangerousWeight
 	OpenAPIDefinitionWeight
 	BuildInfoWeight
