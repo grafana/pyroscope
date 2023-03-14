@@ -35,9 +35,9 @@ import (
 var ringConfig = RingConfig{
 	KVStore:      kv.Config{Store: "inmemory"},
 	InstanceID:   "foo",
-	InstancePort: int(8080),
+	InstancePort: 8080,
 	InstanceAddr: "127.0.0.1",
-	ListenPort:   int(8080),
+	ListenPort:   8080,
 }
 
 func Test_ConnectPush(t *testing.T) {
@@ -176,7 +176,7 @@ func newFakeIngester(t testing.TB, fail bool) *fakeIngester {
 }
 
 func TestBuckets(t *testing.T) {
-	for _, r := range prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 30) {
+	for _, r := range prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount) {
 		t.Log(humanize.Bytes(uint64(r)))
 	}
 }
