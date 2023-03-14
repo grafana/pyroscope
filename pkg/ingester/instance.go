@@ -93,7 +93,7 @@ func (i *instance) runShipper(ctx context.Context) {
 	if err != nil {
 		level.Error(i.logger).Log("msg", "shipper run failed", "err", err)
 	} else {
-		level.Info(i.logger).Log("msg", "shipper finshed", "uploaded_blocks", uploaded)
+		level.Info(i.logger).Log("msg", "shipper finished", "uploaded_blocks", uploaded)
 	}
 }
 

@@ -451,7 +451,7 @@ func (h *Head) LabelValues(ctx context.Context, req *connect.Request[ingestv1.La
 	}), nil
 }
 
-// LabelValues returns the possible label values for a given label name.
+// LabelNames returns the possible label values for a given label name.
 func (h *Head) LabelNames(ctx context.Context, req *connect.Request[ingestv1.LabelNamesRequest]) (*connect.Response[ingestv1.LabelNamesResponse], error) {
 	values, err := h.profiles.index.ix.LabelNames(nil)
 	if err != nil {
