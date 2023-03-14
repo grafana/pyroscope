@@ -62,7 +62,7 @@ To contribute to Grafana Phlare, refer to [Contributing to Grafana Phlare](https
 
 If you have any questions or feedback regarding Grafana Phlare, join the [Grafana Phlare Discussion](https://github.com/grafana/phlare/discussions). Alternatively, consider joining the monthly [Grafana Phlare Community Call](TODO-doc-link).
 
-Your feedback is always welcome, and you can also share it via the [`#phlare` Slack channel](https://grafana.slack.com/archives/C049PLMV8TB).
+Your feedback is always welcome, and you can also share it via the [`#phlare` Slack channel](https://grafana.slack.com/archives/C049PLMV8TB). You can get an invite to the Grafana Slack workspace [here](https://slack.grafana.com/).
 
 ## License
 
