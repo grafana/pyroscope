@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.35.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.35.3...@pyroscope/flamegraph@0.35.4) (2023-03-14)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
 ## [0.35.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.35.2...@pyroscope/flamegraph@0.35.3) (2023-03-14)
 
 
