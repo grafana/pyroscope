@@ -28,7 +28,7 @@ builds:
         -X "github.com/grafana/phlare/pkg/util/build.Branch={{ .Branch }}"
         -X "github.com/grafana/phlare/pkg/util/build.Version={{ .Version }}"
         -X "github.com/grafana/phlare/pkg/util/build.Revision={{ .ShortCommit }}"
-        -X "github.com/grafana/phlare/pkg/util/build.BuildDate={{ .CommitTimestamp }}"
+        -X "github.com/grafana/phlare/pkg/util/build.BuildDate={{ .CommitDate }}"
     id: phlare
   - env:
       - CGO_ENABLED=0
@@ -40,7 +40,7 @@ builds:
         -X "github.com/grafana/phlare/pkg/util/build.Branch={{ .Branch }}"
         -X "github.com/grafana/phlare/pkg/util/build.Version={{ .Version }}"
         -X "github.com/grafana/phlare/pkg/util/build.Revision={{ .ShortCommit }}"
-        -X "github.com/grafana/phlare/pkg/util/build.BuildDate={{ .CommitTimestamp }}"
+        -X "github.com/grafana/phlare/pkg/util/build.BuildDate={{ .CommitDate }}"
     goos:
       - linux
       - windows
