@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.35.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.35.2...@pyroscope/flamegraph@0.35.3) (2023-03-14)
+
+
+### Bug Fixes
+
+* **flamegraph:** fix styling when in light mode ([#1889](https://github.com/pyroscope-io/pyroscope/issues/1889)) ([6bd54e2](https://github.com/pyroscope-io/pyroscope/commit/6bd54e2079bb622723844ce26c1ea3c8dc6a91c3))
+
+
+
+
+
 ## [0.35.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.35.1...@pyroscope/flamegraph@0.35.2) (2023-02-07)
 
 **Note:** Version bump only for package @pyroscope/flamegraph
