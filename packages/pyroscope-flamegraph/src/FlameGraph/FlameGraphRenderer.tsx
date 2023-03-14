@@ -86,7 +86,6 @@ export interface FlamegraphRendererProps {
   showPyroscopeLogo?: boolean;
   showCredit?: boolean;
   ExportData?: ProfileHeaderProps['ExportData'];
-  colorMode?: 'light' | 'dark';
 
   /** @deprecated  prefer Profile */
   flamebearer?: Flamebearer;
@@ -554,7 +553,7 @@ class FlameGraphRenderer extends Component<
     );
 
     return (
-      <div data-flamegraph-color-mode={this.props.colorMode || 'dark'}>
+      <div>
         <div>
           {toolbarVisible && (
             <Toolbar

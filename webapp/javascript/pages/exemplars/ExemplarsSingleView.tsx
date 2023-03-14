@@ -31,10 +31,7 @@ import ChartTitle from '@webapp/components/ChartTitle';
 /* eslint-disable css-modules/no-undef-class */
 import ChartTitleStyles from '@webapp/components/ChartTitle.module.scss';
 import { DEFAULT_HEATMAP_PARAMS } from '@webapp/components/Heatmap/constants';
-import {
-  FlamegraphRenderer,
-  FlamegraphRendererProps,
-} from '@pyroscope/flamegraph/src/FlamegraphRenderer';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
 import type { Profile } from '@pyroscope/models/src';
 import { diffTwoProfiles } from '@pyroscope/flamegraph/src/convert/diffTwoProfiles';
 import { subtract } from '@pyroscope/flamegraph/src/convert/subtract';
@@ -205,7 +202,7 @@ function ExemplarsSingleView() {
 export default ExemplarsSingleView;
 
 interface TabProps {
-  colorMode: FlamegraphRendererProps['colorMode'];
+  colorMode: ReturnType<typeof useColorMode>['colorMode'];
   type: LoadingType;
   selectionProfile: Profile;
 }
