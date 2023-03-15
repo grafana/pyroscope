@@ -15,7 +15,7 @@
 
 ### News
 
-On 2023-03-15, [Grafana Labs acquired Pyroscope](https://blog/2023/03/15/pyroscope-grafana-phlare-join-for-oss-continuous-profiling/).
+On 2023-03-15, [Grafana Labs acquired Pyroscope](https://grafana.com/blog/2023/03/15/pyroscope-grafana-phlare-join-for-oss-continuous-profiling/).
 
 The teams and codebases of both [Grafana Phlare](https://github.com/grafana/phlare) and [Pyroscope](https://github.com/pyroscope-io/pyroscope) are **merging into [Grafana Pyroscope](https://github.com/grafana/pyroscope)**.
 
