@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-kit/log/level"
 	"github.com/parca-dev/parca/pkg/config"
 	"github.com/parca-dev/parca/pkg/scrape"
 	"github.com/prometheus/common/model"
@@ -70,6 +71,8 @@ func populateLabels(lset labels.Labels, cfg ScrapeConfig) (res, orig labels.Labe
 	scrapeLabels := []labels.Label{
 		{Name: model.JobLabel, Value: cfg.JobName},
 		{Name: model.SchemeLabel, Value: cfg.Scheme},
+		{Name: model.ScrapeIntervalLabel, Value: cfg.ScrapeInterval.String()},
+		{Name: model.ScrapeTimeoutLabel, Value: cfg.ScrapeTimeout.String()},
 	}
 	lb := labels.NewBuilder(lset)
 
@@ -133,6 +136,28 @@ func populateLabels(lset labels.Labels, cfg ScrapeConfig) (res, orig labels.Labe
 		return nil, nil, err
 	}
 
+	interval := lset.Get(model.ScrapeIntervalLabel)
+	intervalDuration, err := model.ParseDuration(interval)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error parsing scrape interval: %v", err)
+	}
+	if time.Duration(intervalDuration) == 0 {
+		return nil, nil, errors.New("scrape interval cannot be 0")
+	}
+
+	timeout := lset.Get(model.ScrapeTimeoutLabel)
+	timeoutDuration, err := model.ParseDuration(timeout)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error parsing scrape timeout: %v", err)
+	}
+	if time.Duration(timeoutDuration) == 0 {
+		return nil, nil, errors.New("scrape timeout cannot be 0")
+	}
+
+	if timeoutDuration > intervalDuration {
+		return nil, nil, fmt.Errorf("scrape timeout cannot be greater than scrape interval (%q > %q)", timeout, interval)
+	}
+
 	// Meta labels are deleted after relabelling. Other internal labels propagate to
 	// the target which decides whether they will be part of their label set.
 	for _, l := range lset {
@@ -157,13 +182,30 @@ func populateLabels(lset labels.Labels, cfg ScrapeConfig) (res, orig labels.Labe
 	return res, lset, nil
 }
 
+// intervalAndTimeoutFromLabels returns the interval and timeout derived from the targets labels.
+func intervalAndTimeoutFromLabels(
+	labels labels.Labels,
+	defaultInterval, defaultDuration time.Duration,
+) (time.Duration, time.Duration, error) {
+	intervalLabel := labels.Get(model.ScrapeIntervalLabel)
+	interval, err := model.ParseDuration(intervalLabel)
+	if err != nil {
+		return defaultInterval, defaultDuration, fmt.Errorf("error parsing interval label %q: %v", intervalLabel, err)
+	}
+	timeoutLabel := labels.Get(model.ScrapeTimeoutLabel)
+	timeout, err := model.ParseDuration(timeoutLabel)
+	if err != nil {
+		return defaultInterval, defaultDuration, fmt.Errorf("error parsing timeout label %q: %v", timeoutLabel, err)
+	}
+
+	return time.Duration(interval), time.Duration(timeout), nil
+}
+
 // targetsFromGroup builds targets based on the given TargetGroup and config.
 func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, []*Target, error) {
 	var (
 		targets        = make([]*Target, 0, len(group.Targets))
 		droppedTargets = make([]*Target, 0, len(group.Targets))
-		interval       = time.Duration(tg.config.ScrapeInterval)
-		timeout        = time.Duration(tg.config.ScrapeTimeout)
 	)
 
 	for i, tlset := range group.Targets {
@@ -192,6 +234,23 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, []
 			if err != nil {
 				return nil, nil, fmt.Errorf("instance %d in group %s: %s", i, group, err)
 			}
+
+			// The scrape interval and timeout labels are set to the config's values initially,
+			// so whether changed via relabeling or not, they'll exist and hold the correct values
+			// for every target.
+			interval, timeout, err := intervalAndTimeoutFromLabels(
+				lbls,
+				time.Duration(tg.config.ScrapeInterval),
+				time.Duration(tg.config.ScrapeTimeout),
+			)
+			if err != nil {
+				level.Warn(tg.logger).Log(
+					"msg", "parse interval and timeout from target labels",
+					"job", tg.jobName,
+					"err", err,
+				)
+			}
+
 			// This is a dropped target, according to the current return behaviour of populateLabels
 			if lbls == nil && origLabels != nil {
 				// ensure we get the full url path for dropped targets
