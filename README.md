@@ -1,7 +1,5 @@
 
-<!--
-<p align="center"><img alt="Pyroscope" src="https://user-images.githubusercontent.com/662636/105129037-11334180-5a99-11eb-8951-1d4aaaed50de.png" width="500px"/></p>
--->
+<p align="center"><img alt="Pyroscope" src="https://raw.githubusercontent.com/grafana/pyroscope/main/webapp/images/grafana_pyroscope_logo.svg" width="500px"/></p>
 
 
 [![Go Tests Status](https://github.com/grafana/pyroscope/workflows/Go%20Tests/badge.svg)](https://github.com/grafana/pyroscope/actions?query=workflow%3AGo%20Tests)
