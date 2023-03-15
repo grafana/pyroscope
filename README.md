@@ -1,35 +1,31 @@
 
+<!--
 <p align="center"><img alt="Pyroscope" src="https://user-images.githubusercontent.com/662636/105129037-11334180-5a99-11eb-8951-1d4aaaed50de.png" width="500px"/></p>
+-->
 
 
-
-[![Go Tests Status](https://github.com/pyroscope-io/pyroscope/workflows/Go%20Tests/badge.svg)](https://github.com/pyroscope-io/pyroscope/actions?query=workflow%3AGo%20Tests)
-[![JS Tests Status](https://github.com/pyroscope-io/pyroscope/workflows/JS%20Tests/badge.svg)](https://github.com/pyroscope-io/pyroscope/actions?query=workflow%3AJS%20Tests)
-[![Go Report](https://goreportcard.com/badge/github.com/pyroscope-io/pyroscope)](https://goreportcard.com/report/github.com/pyroscope-io/pyroscope)
-[![Apache 2 License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fpyroscope-io%2Fpyroscope.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fpyroscope-io%2Fpyroscope?ref=badge_shield)
-[![Latest release](https://img.shields.io/github/release/pyroscope-io/pyroscope.svg)](https://github.com/pyroscope-io/pyroscope/releases)
+[![Go Tests Status](https://github.com/grafana/pyroscope/workflows/Go%20Tests/badge.svg)](https://github.com/grafana/pyroscope/actions?query=workflow%3AGo%20Tests)
+[![JS Tests Status](https://github.com/grafana/pyroscope/workflows/JS%20Tests/badge.svg)](https://github.com/grafana/pyroscope/actions?query=workflow%3AJS%20Tests)
+[![Go Report](https://goreportcard.com/badge/github.com/grafana/pyroscope)](https://goreportcard.com/report/github.com/grafana/pyroscope)
+[![License: AGPLv3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fgrafana%2Fpyroscope.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fgrafana%2Fpyroscope?ref=badge_shield)
+[![Latest release](https://img.shields.io/github/release/grafana/pyroscope.svg)](https://github.com/grafana/pyroscope/releases)
 [![DockerHub](https://img.shields.io/docker/pulls/pyroscope/pyroscope.svg)](https://hub.docker.com/r/pyroscope/pyroscope)
-[![GoDoc](https://godoc.org/github.com/pyroscope-io/pyroscope?status.svg)](https://godoc.org/github.com/pyroscope-io/pyroscope)
+[![GoDoc](https://godoc.org/github.com/grafana/pyroscope?status.svg)](https://godoc.org/github.com/grafana/pyroscope)
 
-<h2>
-  <a href="https://pyroscope.io/">Website</a>
-  <span> • </span>
-  <a href="https://pyroscope.io/docs">Docs</a>
-  <span> • </span>
-  <a href="https://demo.pyroscope.io/">Demo</a>
-  <span> • </span>
-  <a href="/examples">Examples</a>
-  <span> • </span>
-  <a href="https://pyroscope.io/slack">Slack</a>
-</h2>
+### News
 
-#### _Read this in other languages._
-<kbd>[<img title="中文 (Simplified)" alt="中文 (Simplified)" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/cn.svg" width="22">](translations/README.ch.md)</kbd>
+On 2023-03-15, [Grafana Labs acquired Pyroscope](https://blog/2023/03/15/pyroscope-grafana-phlare-join-for-oss-continuous-profiling/).
 
-### What is Pyroscope?
+The teams and codebases of both [Grafana Phlare](https://github.com/grafana/phlare) and [Pyroscope](https://github.com/pyroscope-io/pyroscope) are **merging into [Grafana Pyroscope](https://github.com/grafana/pyroscope)**.
 
-Pyroscope is an open source continuous profiling platform. It will help you:
+Grafana Pyroscope is a new project. It will take some time to merge codebases and get to the first release.
+
+Feel free to use the information from the original Pyroscope project until that time.
+
+### What is Grafana Pyroscope?
+
+Grafana Pyroscope is an open source continuous profiling platform. It will help you:
 * Find performance issues and bottlenecks in your code
 * Use high-cardinality tags/labels to analyze your application
 * Resolve issues with high CPU utilization
@@ -69,54 +65,54 @@ For more documentation on how to add the Pyroscope agent to your code, see the [
       <td align="center"><a href="https://pyroscope.io/docs/golang"><img src="https://user-images.githubusercontent.com/23323466/178160549-2d69a325-56ec-4e19-bca7-d460d400b163.png" width="100px;" alt=""/><br />
         <b>Golang</b></a><br />
           <a href="https://pyroscope.io/docs/golang" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/golang-push" title="golang-examples">Examples</a>
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/golang-push" title="golang-examples">Examples</a>
       </td>
       <td align="center"><a href="https://pyroscope.io/docs/java"><img src="https://user-images.githubusercontent.com/23323466/178160550-2b5a623a-0f4c-4911-923f-2c825784d45d.png" width="100px;" alt=""/><br />
         <b>Java</b></a><br />
           <a href="https://pyroscope.io/docs/java" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/java-jfr/rideshare" title="java-examples">Examples</a>
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/java-jfr/rideshare" title="java-examples">Examples</a>
       </td>
       <td align="center"><a href="https://pyroscope.io/docs/python"><img src="https://user-images.githubusercontent.com/23323466/178160553-c78b8c15-99b4-43f3-a2a0-252b6c4862b1.png" width="100px;" alt=""/><br />
         <b>Python</b></a><br />
           <a href="https://pyroscope.io/docs/python" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/python" title="python-examples">Examples</a>
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/python" title="python-examples">Examples</a>
       </td>
       <td align="center"><a href="https://pyroscope.io/docs/ruby"><img src="https://user-images.githubusercontent.com/23323466/178160554-b0be2bc5-8574-4881-ac4c-7977c0b2c195.png" width="100px;" alt=""/><br />
         <b>Ruby</b></a><br />
           <a href="https://pyroscope.io/docs/ruby" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/ruby" title="ruby-examples">Examples</a>
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/ruby" title="ruby-examples">Examples</a>
       </td>
       <td align="center"><a href="https://pyroscope.io/docs/rust"><img src="https://user-images.githubusercontent.com/23323466/178160555-fb6aeee7-5d31-4bcb-9e3e-41e9f2f7d5b4.png" width="100px;" alt=""/><br />
         <b>Rust</b></a><br />
           <a href="https://pyroscope.io/docs/rust" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/rust/rideshare" title="examples">Examples</a>
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/rust/rideshare" title="examples">Examples</a>
       </td>
    </tr>
    <tr>
       <td align="center"><a href="https://pyroscope.io/docs/nodejs"><img src="https://user-images.githubusercontent.com/23323466/178160551-a79ee6ff-a5d6-419e-89e6-39047cb08126.png" width="100px;" alt=""/><br />
         <b>NodeJS</b></a><br />
           <a href="https://pyroscope.io/docs/nodejs" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/nodejs/express" title="examples">Examples</a>
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/nodejs/express" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://pyroscope.io/docs/dotnet"><img src="https://user-images.githubusercontent.com/23323466/178160544-d2e189c6-a521-482c-a7dc-5375c1985e24.png" width="100px;" alt=""/><br />
         <b>Dotnet</b></a><br />
           <a href="https://pyroscope.io/docs/dotnet" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/dotnet" title="examples">Examples</a>
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/dotnet" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://pyroscope.io/docs/ebpf"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
         <b>eBPF</b></a><br />
           <a href="https://pyroscope.io/docs/ebpf" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/ebpf" title="examples">Examples</a>
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/ebpf" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://pyroscope.io/docs/php"><img src="https://user-images.githubusercontent.com/23323466/178160552-7aabf63a-b129-404d-8c62-16dedfefe32c.png" width="100px;" alt=""/><br />
         <b>PHP</b></a><br />
           <a href="https://pyroscope.io/docs/php" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/php" title="examples">Examples</a>
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/php" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://pyroscope.io/docs/grafana-plugins/"><img src="https://user-images.githubusercontent.com/23323466/178341477-c4ad2445-c90e-4ef9-b7f9-b6b3cf615e33.png" width="100px;" alt=""/><br />
         <b>Grafana</b></a><br />
           <a href="https://pyroscope.io/docs/grafana-plugins/" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/pyroscope-io/pyroscope/tree/main/examples/grafana-integration" title="examples">Examples</a>
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/grafana-integration" title="examples">Examples</a>
       </td>
    </tr>
 </table>
@@ -128,16 +124,16 @@ For more documentation on how to add the Pyroscope agent to your code, see the [
 ## Third-Party Integrations
 
 Pyroscope also supports several third-party integrations notably:
-- [Grafana Plugin](https://github.com/pyroscope-io/pyroscope/tree/main/examples/grafana-integration)
-- [Jaeger UI](https://github.com/pyroscope-io/jaeger-ui)
-- [OTel Golang (tracing)](https://github.com/pyroscope-io/otel-profiling-go)
+- [Grafana Plugin](https://github.com/grafana/pyroscope/tree/main/examples/grafana-integration)
+- [Jaeger UI](https://github.com/grafana/jaeger-ui)
+- [OTel Golang (tracing)](https://github.com/grafana/otel-profiling-go)
 - [AWS Lambda Extension](https://pyroscope.io/docs/aws-lambda)
 
 ## Documentation
 
 For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in production environment, check out our documentation:
 
-* [Public Roadmap](https://github.com/pyroscope-io/pyroscope/projects/1)
+* [Public Roadmap](https://github.com/grafana/pyroscope/projects/1)
 * [Getting Started](https://pyroscope.io/docs/)
 * [Deployment Guide](https://pyroscope.io/docs/deployment)
 * [Developer Guide](https://pyroscope.io/docs/developer-guide)
@@ -159,7 +155,7 @@ You can download the latest version of pyroscope for macOS, linux and Docker fro
 * [x] PHP (via `phpspy`)
 * [x] Node
 
-Let us know what other integrations you want to see in [our issues](https://github.com/pyroscope-io/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) or in [our slack](https://pyroscope.io/slack).
+Let us know what other integrations you want to see in [our issues](https://github.com/grafana/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) or in [our slack](https://pyroscope.io/slack).
 
 ## Credits
 
