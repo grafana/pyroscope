@@ -25,6 +25,8 @@ import (
 	"github.com/weaveworks/common/user"
 	"golang.org/x/net/http2"
 	"gopkg.in/yaml.v3"
+
+	"github.com/grafana/phlare/pkg/tenant"
 )
 
 var defaultTransport http.RoundTripper = &http2.Transport{
@@ -347,4 +349,23 @@ func WriteJSONResponse(w http.ResponseWriter, v interface{}) {
 	// Write will trigger sending Status code, so we cannot send a different status code afterwards.
 	// Also this isn't internal error, but error communicating with client.
 	_, _ = w.Write(data)
+}
+
+// AuthenticateUser propagates the user ID from HTTP headers back to the request's context.
+// If on is false, it will inject the default tenant ID.
+func AuthenticateUser(on bool) middleware.Interface {
+	return middleware.Func(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !on {
+				next.ServeHTTP(w, r.WithContext(user.InjectOrgID(r.Context(), tenant.DefaultTenantID)))
+				return
+			}
+			_, ctx, err := user.ExtractOrgIDFromHTTPRequest(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
 }
