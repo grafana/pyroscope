@@ -1,5 +1,7 @@
 
+<!--
 <p align="center"><img alt="Pyroscope" src="https://raw.githubusercontent.com/grafana/pyroscope/main/webapp/images/grafana_pyroscope_logo.svg" width="250px"/></p>
+-->
 
 
 [![Go Tests Status](https://github.com/grafana/pyroscope/workflows/Go%20Tests/badge.svg)](https://github.com/grafana/pyroscope/actions?query=workflow%3AGo%20Tests)
