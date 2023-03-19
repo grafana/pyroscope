@@ -16,12 +16,11 @@ import {
 import { selectCurrentUser } from '@webapp/redux/reducers/user';
 import { addNotification } from '@webapp/redux/reducers/notifications';
 import { type User } from '@webapp/models/users';
-import Input from '@webapp/ui/Input';
+import TextField from '@webapp/ui/Form/TextField';
 import { getUserTableRows } from './getUserTableRows';
 
 import userStyles from './Users.module.css';
 import tableStyles from '../SettingsTable.module.scss';
-import TextField from '@webapp/ui/Form/TextField';
 
 const headRow = [
   { name: '', label: '', sortable: 0 },

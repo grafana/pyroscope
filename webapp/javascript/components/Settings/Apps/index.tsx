@@ -9,14 +9,13 @@ import {
 } from '@webapp/redux/reducers/settings';
 import { addNotification } from '@webapp/redux/reducers/notifications';
 import { type App } from '@webapp/models/app';
-import Input from '@webapp/ui/Input';
 import TableUI from '@webapp/ui/Table';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
+import TextField from '@webapp/ui/Form/TextField';
 import { getAppTableRows } from './getAppTableRows';
 
 import appsStyles from './Apps.module.css';
 import tableStyles from '../SettingsTable.module.scss';
-import TextField from '@webapp/ui/Form/TextField';
 
 const headRow = [
   { name: '', label: 'Name', sortable: 0 },
