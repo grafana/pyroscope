@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import cx from 'classnames';
 import { Link } from 'react-router-dom';
-import InputField from '@webapp/ui/InputField';
 import StatusMessage from '@webapp/ui/StatusMessage';
 import { useAppDispatch } from '@webapp/redux/hooks';
 import { signUp, logIn } from '@webapp/services/users';
 import { loadCurrentUser } from '@webapp/redux/reducers/user';
 import useNavigateUserIntroPages from '@webapp/hooks/navigateUserIntroPages.hook';
 import { isSignupEnabled } from '@webapp/util/features';
+import TextField from '@webapp/ui/Form/TextField';
 import inputStyles from '../InputGroup.module.css';
 import styles from '../IntroPages.module.css';
 import Divider from '../Divider';
@@ -81,41 +81,45 @@ function SignUpPage() {
           <>
             <div>
               <StatusMessage type="error" message={form.errors?.join(', ')} />
-              <InputField
+              <TextField
                 type="text"
                 name="username"
                 label="Username"
                 placeholder="Username"
+                variant="light"
                 className={inputStyles.inputGroup}
                 value={form.username}
                 onChange={handleFormChange}
                 required
               />
-              <InputField
+              <TextField
                 type="email"
                 name="email"
                 label="Email"
                 placeholder="Email"
+                variant="light"
                 className={inputStyles.inputGroup}
                 value={form.email}
                 onChange={handleFormChange}
                 required
               />
-              <InputField
+              <TextField
                 type="text"
                 name="fullName"
                 label="Full Name"
                 placeholder="Full Name"
+                variant="light"
                 className={inputStyles.inputGroup}
                 value={form.fullName}
                 onChange={handleFormChange}
                 required
               />
-              <InputField
+              <TextField
                 type="password"
                 name="password"
                 label="Password"
                 placeholder="Password"
+                variant="light"
                 className={inputStyles.inputGroup}
                 value={form.password}
                 onChange={handleFormChange}

@@ -6,7 +6,7 @@ import { useAppDispatch } from '@webapp/redux/hooks';
 import { changeMyPassword } from '@webapp/redux/reducers/user';
 import { addNotification } from '@webapp/redux/reducers/notifications';
 import StatusMessage from '@webapp/ui/StatusMessage';
-import InputField from '@webapp/ui/InputField';
+import TextField from '@webapp/ui/Form/TextField';
 
 function ChangePasswordForm(props: ShamefulAny) {
   const { user } = props;
@@ -59,7 +59,7 @@ function ChangePasswordForm(props: ShamefulAny) {
       <div>
         <form onSubmit={handleFormSubmit}>
           <StatusMessage type="error" message={form.errors.join(', ')} />
-          <InputField
+          <TextField
             label="Old password"
             type="password"
             placeholder="Password"
@@ -67,8 +67,9 @@ function ChangePasswordForm(props: ShamefulAny) {
             required
             onChange={handleChange}
             value={form.oldPassword}
+            variant="light"
           />
-          <InputField
+          <TextField
             label="New password"
             type="password"
             placeholder="New password"
@@ -76,8 +77,9 @@ function ChangePasswordForm(props: ShamefulAny) {
             required
             onChange={handleChange}
             value={form.password}
+            variant="light"
           />
-          <InputField
+          <TextField
             label="Confirm new password"
             type="password"
             placeholder="New password"
@@ -85,6 +87,7 @@ function ChangePasswordForm(props: ShamefulAny) {
             required
             onChange={handleChange}
             value={form.passwordAgain}
+            variant="light"
           />
           <Button type="submit" kind="secondary">
             Save

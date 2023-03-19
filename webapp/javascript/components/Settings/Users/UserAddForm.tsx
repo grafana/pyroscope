@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import Button from '@webapp/ui/Button';
-import InputField from '@webapp/ui/InputField';
 import { useHistory } from 'react-router-dom';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
 import { createUser } from '@webapp/redux/reducers/settings';
 import { useAppDispatch } from '@webapp/redux/hooks';
 import { addNotification } from '@webapp/redux/reducers/notifications';
 import { passwordEncode, type User } from '@webapp/models/users';
+import TextField from '@webapp/ui/Form/TextField';
 
 export type UserAddProps = User & { password?: string };
 
@@ -56,37 +56,41 @@ function UserAddForm() {
     <>
       <h2>Add User</h2>
       <form onSubmit={handleFormSubmit}>
-        <InputField
+        <TextField
           label="Name"
           id="userAddName"
           name="name"
           value={form.name}
           onChange={handleFormChange}
           type="text"
+          variant="light"
         />
-        <InputField
+        <TextField
           label="Email"
           id="userAddEmail"
           name="email"
           value={form.email}
           onChange={handleFormChange}
           type="text"
+          variant="light"
         />
-        <InputField
+        <TextField
           label="Full name"
           id="userAddFullName"
           name="fullName"
           value={form.fullName}
           onChange={handleFormChange}
           type="text"
+          variant="light"
         />
-        <InputField
+        <TextField
           label="Password"
           id="userAddPassword"
           name="password"
           type="password"
           onChange={handleFormChange}
           value={form.password}
+          variant="light"
         />
         <div>
           <Button

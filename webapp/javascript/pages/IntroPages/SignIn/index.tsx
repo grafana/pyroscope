@@ -3,7 +3,6 @@ import { Link, useHistory, useLocation } from 'react-router-dom';
 import cx from 'classnames';
 import Icon from '@webapp/ui/Icon';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
-import InputField from '@webapp/ui/InputField';
 import StatusMessage from '@webapp/ui/StatusMessage';
 import { logIn } from '@webapp/services/users';
 import useNavigateUserIntroPages from '@webapp/hooks/navigateUserIntroPages.hook';
@@ -15,6 +14,7 @@ import {
   isSignupEnabled,
 } from '@webapp/util/features';
 import { PAGES } from '@webapp/pages/constants';
+import TextField from '@webapp/ui/Form/TextField';
 import { GitlabIcon, GoogleIcon } from '../Icons';
 import Divider from '../Divider';
 import inputStyles from '../InputGroup.module.css';
@@ -93,7 +93,7 @@ function SignInPage() {
           <>
             <div>
               <StatusMessage type="error" message={form.errors?.join(', ')} />
-              <InputField
+              <TextField
                 id="username"
                 type="text"
                 name="username"
@@ -103,8 +103,9 @@ function SignInPage() {
                 value={form.username}
                 onChange={handleFormChange}
                 required
+                variant="light"
               />
-              <InputField
+              <TextField
                 id="password"
                 type="password"
                 name="password"
@@ -114,6 +115,7 @@ function SignInPage() {
                 value={form.password}
                 onChange={handleFormChange}
                 required
+                variant="light"
               />
             </div>
             <button

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Button from '@webapp/ui/Button';
-import InputField from '@webapp/ui/InputField';
 import { TooltipInfoIcon } from '@webapp/ui/TooltipInfoIcon';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
@@ -12,6 +11,7 @@ import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
 import { Tooltip } from '@webapp/ui/Tooltip';
 import StatusMessage from '@webapp/ui/StatusMessage';
 import { addNotification } from '@webapp/redux/reducers/notifications';
+import TextField from '@webapp/ui/Form/TextField';
 import styles from './APIKeyForm.module.css';
 
 // Extend the API key, but add form validation errors and ttlSeconds
@@ -94,12 +94,13 @@ function APIKeyAddForm() {
           </div>
         ) : (
           <>
-            <InputField
+            <TextField
               label="Name"
               placeholder="Name"
               id="keyName"
               type="text"
               name="name"
+              variant="light"
               value={form.name}
               onChange={handleFormChange}
               required
@@ -133,10 +134,11 @@ function APIKeyAddForm() {
                 <MenuItem value="Agent">Agent</MenuItem>
               </Dropdown>
             </div>
-            <InputField
+            <TextField
               label="Valid for (seconds):"
               id="keyTTL"
               name="ttlSeconds"
+              variant="light"
               value={form.ttlSeconds}
               onChange={handleFormChange}
               type="number"

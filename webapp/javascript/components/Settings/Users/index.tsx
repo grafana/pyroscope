@@ -21,6 +21,7 @@ import { getUserTableRows } from './getUserTableRows';
 
 import userStyles from './Users.module.css';
 import tableStyles from '../SettingsTable.module.scss';
+import TextField from '@webapp/ui/Form/TextField';
 
 const headRow = [
   { name: '', label: '', sortable: 0 },
@@ -126,9 +127,11 @@ function Users() {
         </Button>
       </div>
       <div className={userStyles.searchContainer}>
-        <Input
+        <TextField
           type="text"
+          label="Search user"
           placeholder="Search user"
+          variant="light"
           value={search}
           onChange={(v) => setSearchField(v.target.value)}
           name="Search user input"

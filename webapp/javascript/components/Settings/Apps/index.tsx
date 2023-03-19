@@ -16,6 +16,7 @@ import { getAppTableRows } from './getAppTableRows';
 
 import appsStyles from './Apps.module.css';
 import tableStyles from '../SettingsTable.module.scss';
+import TextField from '@webapp/ui/Form/TextField';
 
 const headRow = [
   { name: '', label: 'Name', sortable: 0 },
@@ -87,9 +88,11 @@ function Apps() {
         {isLoading && !!apps ? <LoadingSpinner /> : null}
       </h2>
       <div className={appsStyles.searchContainer}>
-        <Input
+        <TextField
           type="text"
+          label="Search app"
           placeholder="Search app"
+          variant="light"
           value={search}
           onChange={(v) => setSearchField(v.target.value)}
           name="Search app input"

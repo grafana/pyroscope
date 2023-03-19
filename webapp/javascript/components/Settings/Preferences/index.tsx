@@ -7,7 +7,7 @@ import { editMe, withCurrentUser } from '@webapp/redux/reducers/user';
 import { addNotification } from '@webapp/redux/reducers/notifications';
 
 import StatusMessage from '@webapp/ui/StatusMessage';
-import InputField from '@webapp/ui/InputField';
+import TextField from '@webapp/ui/Form/TextField';
 
 function Preferences(props: ShamefulAny) {
   const { currentUser } = props;
@@ -45,7 +45,7 @@ function Preferences(props: ShamefulAny) {
       <h2>Edit profile</h2>
       <form onSubmit={handleFormSubmit}>
         <StatusMessage type="error" message={form.errors} />
-        <InputField
+        <TextField
           label="Username"
           type="text"
           placeholder="username"
@@ -54,22 +54,25 @@ function Preferences(props: ShamefulAny) {
           required
           disabled={isEditDisabled}
           onChange={handleFormChange}
+          variant="light"
         />
-        <InputField
+        <TextField
           label="Full Name"
           type="text"
           placeholder="Full Name"
           name="fullName"
           value={form?.fullName}
           onChange={handleFormChange}
+          variant="light"
         />
-        <InputField
+        <TextField
           label="Email"
           type="text"
           placeholder="email"
           value={form?.email}
           name="email"
           onChange={handleFormChange}
+          variant="light"
         />
         <Button type="submit" kind="secondary">
           Save
