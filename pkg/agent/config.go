@@ -128,7 +128,7 @@ func (c *ScrapeConfig) Validate() error {
 		c.ScrapeTimeout = c.ScrapeInterval + model.Duration(3*time.Second)
 	}
 	if c.ScrapeTimeout <= c.ScrapeInterval {
-		return fmt.Errorf("scrape timeout must be larger or equal to interval for: %v", c.JobName)
+		return fmt.Errorf("scrape timeout must be larger scrape to interval for: %v", c.JobName)
 	}
 
 	if cfg, ok := c.ProfilingConfig.PprofConfig[pprofProcessCPU]; ok {

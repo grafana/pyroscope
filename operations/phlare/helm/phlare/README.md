@@ -1,6 +1,6 @@
 # phlare
 
-![Version: 0.5.2](https://img.shields.io/badge/Version-0.5.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.5.1](https://img.shields.io/badge/AppVersion-0.5.1-informational?style=flat-square)
+![Version: 0.5.3](https://img.shields.io/badge/Version-0.5.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.5.1](https://img.shields.io/badge/AppVersion-0.5.1-informational?style=flat-square)
 
 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
@@ -38,8 +38,11 @@
 | phlare.persistence.annotations | object | `{}` |  |
 | phlare.persistence.enabled | bool | `false` |  |
 | phlare.persistence.size | string | `"10Gi"` |  |
+| phlare.podAnnotations."profiles.grafana.com/cpu.port_name" | string | `"http2"` |  |
 | phlare.podAnnotations."profiles.grafana.com/cpu.scrape" | string | `"true"` |  |
+| phlare.podAnnotations."profiles.grafana.com/goroutine.port_name" | string | `"http2"` |  |
 | phlare.podAnnotations."profiles.grafana.com/goroutine.scrape" | string | `"true"` |  |
+| phlare.podAnnotations."profiles.grafana.com/memory.port_name" | string | `"http2"` |  |
 | phlare.podAnnotations."profiles.grafana.com/memory.scrape" | string | `"true"` |  |
 | phlare.podSecurityContext.fsGroup | int | `10001` |  |
 | phlare.podSecurityContext.runAsNonRoot | bool | `true` |  |

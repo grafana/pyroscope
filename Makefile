@@ -146,6 +146,9 @@ define deploy
 	kubectl get pods
 	$(BIN)/helm upgrade --install $(1) ./operations/phlare/helm/phlare $(2) \
 		--set phlare.image.tag=$(IMAGE_TAG) --set phlare.image.repository=$(IMAGE_PREFIX)phlare --set phlare.service.port_name=http-metrics \
+		--set phlare.podAnnotations."profiles\.grafana\.com\/memory\.port_name"=http-metrics \
+		--set phlare.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
+		--set phlare.podAnnotations."profiles\.grafana\.com\/goroutine\.port_name"=http-metrics \
 		--set phlare.components.querier.resources=null --set phlare.components.distributor.resources=null --set phlare.components.ingester.resources=null
 endef
 
