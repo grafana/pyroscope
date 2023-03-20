@@ -74,7 +74,7 @@ func (tg *TargetGroup) sync(groups []*targetgroup.Group) {
 	var actives []*Target
 	tg.droppedTargets = []*Target{}
 	for _, group := range groups {
-		targets, dropped, err := tg.targetsFromGroup(group)
+		targets, dropped, err := tg.TargetsFromGroup(group)
 		if err != nil {
 			level.Error(tg.logger).Log("msg", "creating targets failed", "err", err)
 			continue

@@ -5,7 +5,7 @@ kind: ServiceAccount
 metadata:
   name: phlare-dev
   labels:
-    helm.sh/chart: phlare-0.5.2
+    helm.sh/chart: phlare-0.5.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
@@ -17,7 +17,7 @@ kind: ConfigMap
 metadata:
   name: phlare-dev-overrides-config
   labels:
-    helm.sh/chart: phlare-0.5.2
+    helm.sh/chart: phlare-0.5.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
@@ -33,7 +33,7 @@ kind: ConfigMap
 metadata:
   name: phlare-dev-config
   labels:
-    helm.sh/chart: phlare-0.5.2
+    helm.sh/chart: phlare-0.5.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
@@ -65,10 +65,6 @@ data:
         regex: ""
         source_labels:
         - __meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port_name
-      - action: keep
-        regex: (.*-(metrics|profiles)|http2)
-        source_labels:
-        - __meta_kubernetes_pod_container_port_name
       - action: replace
         regex: (https?)
         replacement: $1
@@ -186,6 +182,9 @@ data:
             enabled: false
           mutex:
             enabled: false
+          process_cpu:
+            delta: true
+            enabled: true
       relabel_configs:
       - action: keep
         regex: true
@@ -195,10 +194,6 @@ data:
         regex: ""
         source_labels:
         - __meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port_name
-      - action: keep
-        regex: (.*-(metrics|profiles)|http2)
-        source_labels:
-        - __meta_kubernetes_pod_container_port_name
       - action: replace
         regex: (https?)
         replacement: $1
@@ -250,6 +245,9 @@ data:
             enabled: false
           mutex:
             enabled: false
+          process_cpu:
+            delta: true
+            enabled: true
       relabel_configs:
       - action: keep
         regex: true
@@ -325,10 +323,6 @@ data:
         regex: ""
         source_labels:
         - __meta_kubernetes_pod_annotation_profiles_grafana_com_block_port_name
-      - action: keep
-        regex: (.*-(metrics|profiles)|http2)
-        source_labels:
-        - __meta_kubernetes_pod_container_port_name
       - action: replace
         regex: (https?)
         replacement: $1
@@ -457,10 +451,6 @@ data:
         regex: ""
         source_labels:
         - __meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port_name
-      - action: keep
-        regex: (.*-(metrics|profiles)|http2)
-        source_labels:
-        - __meta_kubernetes_pod_container_port_name
       - action: replace
         regex: (https?)
         replacement: $1
@@ -589,10 +579,6 @@ data:
         regex: ""
         source_labels:
         - __meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port_name
-      - action: keep
-        regex: (.*-(metrics|profiles)|http2)
-        source_labels:
-        - __meta_kubernetes_pod_container_port_name
       - action: replace
         regex: (https?)
         replacement: $1
@@ -704,7 +690,7 @@ kind: ClusterRole
 metadata:
   name: default-phlare-dev
   labels:
-    helm.sh/chart: phlare-0.5.2
+    helm.sh/chart: phlare-0.5.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
@@ -730,7 +716,7 @@ kind: ClusterRoleBinding
 metadata:
   name: default-phlare-dev
   labels:
-    helm.sh/chart: phlare-0.5.2
+    helm.sh/chart: phlare-0.5.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
@@ -750,7 +736,7 @@ kind: Service
 metadata:
   name: phlare-dev-memberlist
   labels:
-    helm.sh/chart: phlare-0.5.2
+    helm.sh/chart: phlare-0.5.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
@@ -776,7 +762,7 @@ kind: Service
 metadata:
   name: phlare-dev
   labels:
-    helm.sh/chart: phlare-0.5.2
+    helm.sh/chart: phlare-0.5.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
@@ -800,7 +786,7 @@ kind: Service
 metadata:
   name: phlare-dev-headless
   labels:
-    helm.sh/chart: phlare-0.5.2
+    helm.sh/chart: phlare-0.5.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
@@ -825,7 +811,7 @@ kind: StatefulSet
 metadata:
   name: phlare-dev
   labels:
-    helm.sh/chart: phlare-0.5.2
+    helm.sh/chart: phlare-0.5.3
     app.kubernetes.io/name: phlare
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
@@ -843,9 +829,12 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 900951ae5419296c60dba7db00d74498cf782f19fc2e006bf8c2f12b24f2bab7
+        checksum/config: a781867cc5e9bddb8a630ac1d270dfc07fd37bfa5f566f550419e23902522266
+        profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
+        profiles.grafana.com/goroutine.port_name: http2
         profiles.grafana.com/goroutine.scrape: "true"
+        profiles.grafana.com/memory.port_name: http2
         profiles.grafana.com/memory.scrape: "true"
       labels:
         app.kubernetes.io/name: phlare

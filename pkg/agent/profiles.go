@@ -99,10 +99,6 @@ func populateLabels(lset labels.Labels, cfg ScrapeConfig) (res, orig labels.Labe
 		return nil, nil, errors.New("no address")
 	}
 
-	if v := lset.Get(model.AddressLabel); v == "" {
-		return nil, nil, fmt.Errorf("no address")
-	}
-
 	lb = labels.NewBuilder(lset)
 
 	// addPort checks whether we should add a default port to the address.
@@ -154,8 +150,8 @@ func populateLabels(lset labels.Labels, cfg ScrapeConfig) (res, orig labels.Labe
 		return nil, nil, errors.New("scrape timeout cannot be 0")
 	}
 
-	if timeoutDuration > intervalDuration {
-		return nil, nil, fmt.Errorf("scrape timeout cannot be greater than scrape interval (%q > %q)", timeout, interval)
+	if timeoutDuration <= intervalDuration {
+		return nil, nil, fmt.Errorf("scrape timeout must be larger than scrape interval for (%q <= %q)", timeout, interval)
 	}
 
 	// Meta labels are deleted after relabelling. Other internal labels propagate to
@@ -188,11 +184,17 @@ func intervalAndTimeoutFromLabels(
 	defaultInterval, defaultDuration time.Duration,
 ) (time.Duration, time.Duration, error) {
 	intervalLabel := labels.Get(model.ScrapeIntervalLabel)
+	if intervalLabel == "" {
+		intervalLabel = defaultInterval.String()
+	}
 	interval, err := model.ParseDuration(intervalLabel)
 	if err != nil {
 		return defaultInterval, defaultDuration, fmt.Errorf("error parsing interval label %q: %v", intervalLabel, err)
 	}
 	timeoutLabel := labels.Get(model.ScrapeTimeoutLabel)
+	if timeoutLabel == "" {
+		timeoutLabel = defaultDuration.String()
+	}
 	timeout, err := model.ParseDuration(timeoutLabel)
 	if err != nil {
 		return defaultInterval, defaultDuration, fmt.Errorf("error parsing timeout label %q: %v", timeoutLabel, err)
@@ -201,8 +203,8 @@ func intervalAndTimeoutFromLabels(
 	return time.Duration(interval), time.Duration(timeout), nil
 }
 
-// targetsFromGroup builds targets based on the given TargetGroup and config.
-func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, []*Target, error) {
+// TargetsFromGroup builds targets based on the given TargetGroup and config.
+func (tg *TargetGroup) TargetsFromGroup(group *targetgroup.Group) ([]*Target, []*Target, error) {
 	var (
 		targets        = make([]*Target, 0, len(group.Targets))
 		droppedTargets = make([]*Target, 0, len(group.Targets))
@@ -287,7 +289,7 @@ func (tg *TargetGroup) targetsFromGroup(group *targetgroup.Group) ([]*Target, []
 				}
 
 				if pcfg, found := tg.config.ProfilingConfig.PprofConfig[profType]; found && pcfg.Delta {
-					params.Add("seconds", strconv.Itoa(int(time.Duration(tg.config.ScrapeInterval)/time.Second)-1))
+					params.Add("seconds", strconv.Itoa(int(interval/time.Second)-1))
 				}
 				targets = append(targets, &Target{
 					Target:               scrape.NewTarget(lbls, origLabels, params),

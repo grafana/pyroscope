@@ -31,7 +31,7 @@ func TestPopulateLabels(t *testing.T) {
 				Scheme:         "https",
 				JobName:        "job",
 				ScrapeInterval: model.Duration(time.Second),
-				ScrapeTimeout:  model.Duration(time.Second),
+				ScrapeTimeout:  2 * model.Duration(time.Second),
 			},
 			wantRes: labels.FromMap(map[string]string{
 				model.AddressLabel:        "1.2.3.4:1000",
@@ -39,7 +39,7 @@ func TestPopulateLabels(t *testing.T) {
 				model.SchemeLabel:         "https",
 				model.JobLabel:            "job",
 				model.ScrapeIntervalLabel: "1s",
-				model.ScrapeTimeoutLabel:  "1s",
+				model.ScrapeTimeoutLabel:  "2s",
 				"custom":                  "value",
 			}),
 			wantOrig: labels.FromMap(map[string]string{
@@ -47,7 +47,7 @@ func TestPopulateLabels(t *testing.T) {
 				model.SchemeLabel:         "https",
 				model.JobLabel:            "job",
 				model.ScrapeIntervalLabel: "1s",
-				model.ScrapeTimeoutLabel:  "1s",
+				model.ScrapeTimeoutLabel:  "2s",
 				"custom":                  "value",
 			}),
 			wantErr: false,
@@ -59,13 +59,13 @@ func TestPopulateLabels(t *testing.T) {
 				model.SchemeLabel:         "http",
 				model.JobLabel:            "custom-job",
 				model.ScrapeIntervalLabel: "2s",
-				model.ScrapeTimeoutLabel:  "2s",
+				model.ScrapeTimeoutLabel:  "3s",
 			}),
 			cfg: ScrapeConfig{
 				Scheme:         "https",
 				JobName:        "job",
 				ScrapeInterval: model.Duration(time.Second),
-				ScrapeTimeout:  model.Duration(time.Second),
+				ScrapeTimeout:  2 * model.Duration(time.Second),
 			},
 			wantRes: labels.FromMap(map[string]string{
 				model.AddressLabel:        "1.2.3.4:80",
@@ -73,14 +73,14 @@ func TestPopulateLabels(t *testing.T) {
 				model.SchemeLabel:         "http",
 				model.JobLabel:            "custom-job",
 				model.ScrapeIntervalLabel: "2s",
-				model.ScrapeTimeoutLabel:  "2s",
+				model.ScrapeTimeoutLabel:  "3s",
 			}),
 			wantOrig: labels.FromMap(map[string]string{
 				model.AddressLabel:        "1.2.3.4",
 				model.SchemeLabel:         "http",
 				model.JobLabel:            "custom-job",
 				model.ScrapeIntervalLabel: "2s",
-				model.ScrapeTimeoutLabel:  "2s",
+				model.ScrapeTimeoutLabel:  "3s",
 			}),
 			wantErr: false,
 		},
@@ -94,7 +94,7 @@ func TestPopulateLabels(t *testing.T) {
 				Scheme:         "https",
 				JobName:        "job",
 				ScrapeInterval: model.Duration(time.Second),
-				ScrapeTimeout:  model.Duration(time.Second),
+				ScrapeTimeout:  2 * model.Duration(time.Second),
 			},
 			wantRes: labels.FromMap(map[string]string{
 				model.AddressLabel:        "[::1]:443",
@@ -102,7 +102,7 @@ func TestPopulateLabels(t *testing.T) {
 				model.SchemeLabel:         "https",
 				model.JobLabel:            "job",
 				model.ScrapeIntervalLabel: "1s",
-				model.ScrapeTimeoutLabel:  "1s",
+				model.ScrapeTimeoutLabel:  "2s",
 			}),
 			wantOrig: labels.FromMap(map[string]string{
 				model.AddressLabel:        "[::1]",
@@ -110,7 +110,7 @@ func TestPopulateLabels(t *testing.T) {
 				model.SchemeLabel:         "https",
 				model.JobLabel:            "job",
 				model.ScrapeIntervalLabel: "1s",
-				model.ScrapeTimeoutLabel:  "1s",
+				model.ScrapeTimeoutLabel:  "2s",
 			}),
 			wantErr: false,
 		},
@@ -121,7 +121,7 @@ func TestPopulateLabels(t *testing.T) {
 				Scheme:         "https",
 				JobName:        "job",
 				ScrapeInterval: model.Duration(time.Second),
-				ScrapeTimeout:  model.Duration(time.Second),
+				ScrapeTimeout:  2 * model.Duration(time.Second),
 			},
 			wantRes:  nil,
 			wantOrig: nil,
@@ -134,7 +134,7 @@ func TestPopulateLabels(t *testing.T) {
 				Scheme:         "https",
 				JobName:        "job",
 				ScrapeInterval: model.Duration(time.Second),
-				ScrapeTimeout:  model.Duration(time.Second),
+				ScrapeTimeout:  2 * model.Duration(time.Second),
 				RelabelConfigs: []*relabel.Config{
 					{
 						Action:       relabel.Replace,
@@ -151,7 +151,7 @@ func TestPopulateLabels(t *testing.T) {
 				model.SchemeLabel:         "https",
 				model.JobLabel:            "job",
 				model.ScrapeIntervalLabel: "1s",
-				model.ScrapeTimeoutLabel:  "1s",
+				model.ScrapeTimeoutLabel:  "2s",
 				"custom":                  "host:1234",
 			}),
 			wantOrig: labels.FromMap(map[string]string{
@@ -159,7 +159,7 @@ func TestPopulateLabels(t *testing.T) {
 				model.SchemeLabel:         "https",
 				model.JobLabel:            "job",
 				model.ScrapeIntervalLabel: "1s",
-				model.ScrapeTimeoutLabel:  "1s",
+				model.ScrapeTimeoutLabel:  "2s",
 				"custom":                  "host:1234",
 			}),
 		},
@@ -173,7 +173,7 @@ func TestPopulateLabels(t *testing.T) {
 				Scheme:         "https",
 				JobName:        "job",
 				ScrapeInterval: model.Duration(time.Second),
-				ScrapeTimeout:  model.Duration(time.Second),
+				ScrapeTimeout:  2 * model.Duration(time.Second),
 			},
 			wantRes:  nil,
 			wantOrig: nil,
@@ -189,7 +189,7 @@ func TestPopulateLabels(t *testing.T) {
 				Scheme:         "https",
 				JobName:        "job",
 				ScrapeInterval: model.Duration(time.Second),
-				ScrapeTimeout:  model.Duration(time.Second),
+				ScrapeTimeout:  2 * model.Duration(time.Second),
 			},
 			wantRes:  nil,
 			wantOrig: nil,
@@ -205,7 +205,7 @@ func TestPopulateLabels(t *testing.T) {
 				Scheme:         "https",
 				JobName:        "job",
 				ScrapeInterval: model.Duration(time.Second),
-				ScrapeTimeout:  model.Duration(time.Second),
+				ScrapeTimeout:  2 * model.Duration(time.Second),
 			},
 			wantRes:  nil,
 			wantOrig: nil,
@@ -237,7 +237,7 @@ func TestPopulateLabels(t *testing.T) {
 				Scheme:         "https",
 				JobName:        "job",
 				ScrapeInterval: model.Duration(time.Second),
-				ScrapeTimeout:  model.Duration(time.Second),
+				ScrapeTimeout:  2 * model.Duration(time.Second),
 			},
 			wantRes:  nil,
 			wantOrig: nil,
@@ -247,13 +247,13 @@ func TestPopulateLabels(t *testing.T) {
 			name: "timeout less than interval",
 			labels: labels.FromMap(map[string]string{
 				model.AddressLabel:        "1.2.3.4:1000",
-				model.ScrapeIntervalLabel: "1s",
-				model.ScrapeTimeoutLabel:  "2s",
+				model.ScrapeIntervalLabel: "2s",
+				model.ScrapeTimeoutLabel:  "1s",
 			}),
 			cfg: ScrapeConfig{
 				Scheme:         "https",
 				JobName:        "job",
-				ScrapeInterval: model.Duration(time.Second),
+				ScrapeInterval: 2 * model.Duration(time.Second),
 				ScrapeTimeout:  model.Duration(time.Second),
 			},
 			wantRes:  nil,
@@ -289,7 +289,7 @@ func TestTargetGroup_targetsFromGroup(t *testing.T) {
 			tg: &TargetGroup{
 				jobName: "job",
 				config: ScrapeConfig{
-					ScrapeTimeout:  model.Duration(10 * time.Second),
+					ScrapeTimeout:  model.Duration(10 * time.Minute),
 					ScrapeInterval: model.Duration(time.Minute),
 					ProfilingConfig: &config.ProfilingConfig{
 						PprofConfig: config.PprofConfig{
@@ -331,7 +331,7 @@ func TestTargetGroup_targetsFromGroup(t *testing.T) {
 				},
 				Labels: model.LabelSet{
 					model.ScrapeIntervalLabel: "30s",
-					model.ScrapeTimeoutLabel:  "20s",
+					model.ScrapeTimeoutLabel:  "40s",
 				},
 			},
 			wantTargets: 1,
@@ -341,7 +341,7 @@ func TestTargetGroup_targetsFromGroup(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTargets, gotDropped, err := tt.tg.targetsFromGroup(tt.group)
+			gotTargets, gotDropped, err := tt.tg.TargetsFromGroup(tt.group)
 			if tt.wantErr {
 				require.NoError(t, err)
 			} else {
