@@ -218,6 +218,39 @@ func TestProfileStore_Ingestion_SeriesIndexes(t *testing.T) {
 	}
 }
 
+func BenchmarkFlush(b *testing.B) {
+	b.StopTimer()
+	ctx := testContext(b)
+	metrics := newHeadMetrics(prometheus.NewRegistry())
+	rw := emptyRewriter()
+	b.ReportAllocs()
+	samples := make([]*schemav1.Sample, 10000)
+	for i := 0; i < 10000; i++ {
+		samples[i] = &schemav1.Sample{
+			Value:        int64(i),
+			StacktraceID: uint64(i),
+		}
+	}
+	for i := 0; i < b.N; i++ {
+
+		path := b.TempDir()
+		store := newProfileStore(ctx)
+		require.NoError(b, store.Init(path, defaultParquetConfig, metrics))
+		for rg := 0; rg < 10; rg++ {
+			for i := 0; i < 10^6; i++ {
+				p := threeProfileStreams(i)
+				p.p.Samples = samples
+				require.NoError(b, store.ingest(ctx, []*schemav1.Profile{&p.p}, p.lbls, p.profileName, rw))
+			}
+			require.NoError(b, store.cutRowGroup())
+		}
+		b.StartTimer()
+		_, _, err := store.Flush(context.Background())
+		require.NoError(b, err)
+		b.StopTimer()
+	}
+}
+
 func ingestThreeProfileStreams(ctx context.Context, i int, ingest func(context.Context, *profilev1.Profile, uuid.UUID, ...*typesv1.LabelPair) error) error {
 	p := testhelper.NewProfileBuilder(time.Second.Nanoseconds() * int64(i))
 	p.CPUProfile()
