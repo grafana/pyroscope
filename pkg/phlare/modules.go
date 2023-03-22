@@ -3,6 +3,7 @@ package phlare
 import (
 	"context"
 	"fmt"
+	"github.com/grafana/phlare/pkg/ingester/pyroscope"
 	"net/http"
 	"os"
 	"time"
@@ -363,12 +364,15 @@ func (f *Phlare) context() context.Context {
 func (f *Phlare) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
-	ingester, err := ingester.New(f.context(), f.Cfg.Ingester, f.Cfg.PhlareDB, f.storageBucket, f.Overrides)
+	svc, err := ingester.New(f.context(), f.Cfg.Ingester, f.Cfg.PhlareDB, f.storageBucket, f.Overrides)
 	if err != nil {
 		return nil, err
 	}
-	ingesterv1connect.RegisterIngesterServiceHandler(f.Server.HTTP, ingester, f.auth)
-	return ingester, nil
+	ingesterv1connect.RegisterIngesterServiceHandler(f.Server.HTTP, svc, f.auth)
+	//pyroscopePath := "/pyroscope/ingest"
+	pyroscopePath := "/ingest"
+	f.Server.HTTP.Handle(pyroscopePath, util.AuthenticateUser(f.Cfg.MultitenancyEnabled).Wrap(pyroscope.NewPyroscopeIngestHandler(svc, f.logger)))
+	return svc, nil
 }
 
 func (f *Phlare) initServer() (services.Service, error) {
