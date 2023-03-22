@@ -6,7 +6,7 @@ import { getAlias, getJsLoader, getStyleLoaders } from './shared';
 
 const common = {
   mode: 'production',
-  //devtool: 'source-map',
+  devtool: 'source-map',
 
   resolve: {
     extensions: ['.ts', '.tsx', '.es6', '.js', '.jsx', '.json', '.svg'],
