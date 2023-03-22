@@ -52,14 +52,17 @@ const arrayToTree = (nodesArray: TreeNode[], total: number): TreeNode => {
 };
 
 function dedupTree(node: TreeNode) {
-  const childrenMap: { [key: string]: TreeNode } = {};
+  const childrenMap = new Map<string, TreeNode>();
   for (let i = 0; i < node.children.length; i += 1) {
-    childrenMap[node.children[i].name] ||= node.children[i];
+    if (!childrenMap.has(node.children[i].name)) {
+      childrenMap.set(node.children[i].name, node.children[i]);
+    }
   }
+
   for (let i = 0; i < node.children.length; i += 1) {
     const currentNode = node.children[i];
-    const existingNode = childrenMap[node.children[i].name];
-    if (existingNode !== currentNode) {
+    const existingNode = childrenMap.get(node.children[i].name);
+    if (existingNode && existingNode !== currentNode) {
       existingNode.total[0] += currentNode.total[0];
       existingNode.self[0] += currentNode.self[0];
       existingNode.children = existingNode.children.concat(
