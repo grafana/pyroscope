@@ -110,6 +110,8 @@ GEM
     nokogiri (1.13.4)
       mini_portile2 (~> 2.8.0)
       racc (~> 1.4)
+    nokogiri (1.13.4-aarch64-linux)
+      racc (~> 1.4)
     nokogiri (1.13.4-x86_64-darwin)
       racc (~> 1.4)
     nokogiri (1.13.4-x86_64-linux)
@@ -163,11 +165,13 @@ GEM
       opentelemetry-api (~> 1.0)
     puma (5.6.4)
       nio4r (~> 2.0)
-    pyroscope (0.5.1)
+    pyroscope (0.5.2)
       ffi
-    pyroscope (0.5.1-x86_64-darwin)
+    pyroscope (0.5.2-aarch64-linux)
       ffi
-    pyroscope (0.5.1-x86_64-linux)
+    pyroscope (0.5.2-x86_64-darwin)
+      ffi
+    pyroscope (0.5.2-x86_64-linux)
       ffi
     pyroscope-otel (0.1.1)
       opentelemetry-api (~> 1.1.0)
@@ -226,6 +230,7 @@ GEM
     zeitwerk (2.5.4)
 
 PLATFORMS
+  aarch64-linux
   ruby
   x86_64-darwin-21
   x86_64-linux
@@ -236,7 +241,7 @@ DEPENDENCIES
   opentelemetry-instrumentation-rails
   opentelemetry-sdk (~> 1.2.0)
   puma (~> 5.0)
-  pyroscope (~> 0.5.1)
+  pyroscope (~> 0.5.2)
   pyroscope-otel (~> 0.1.1)
   rails (~> 7.0.2, >= 7.0.2.3)
   sprockets-rails
