@@ -70,7 +70,7 @@ function dedupTree(node: TreeNode) {
       );
     }
   }
-  node.children = Object.values(childrenMap);
+  node.children = Array.from(childrenMap.values());
   for (let i = 0; i < node.children.length; i += 1) {
     dedupTree(node.children[i]);
   }
