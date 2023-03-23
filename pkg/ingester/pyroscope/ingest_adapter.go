@@ -104,6 +104,10 @@ func recoverMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app stri
 		metricName = "process_cpu"
 		stType = "samples"
 		stUnit = "count"
+	case "wall":
+		metricName = "wall"
+		stType = "samples"
+		stUnit = "count"
 	case "inuse_objects":
 		metricName = "memory"
 		stUnit = "count"
@@ -135,6 +139,38 @@ func recoverMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app stri
 		stType = "delay"
 		stUnit = "nanoseconds"
 		metricName = "block"
+	case "itimer":
+		metricName = "process_cpu"
+		stType = "samples"
+		stUnit = "count"
+	case "alloc_in_new_tlab_objects":
+		metricName = "memory"
+		stType = "alloc_in_new_tlab_objects"
+		stUnit = "count"
+	case "alloc_in_new_tlab_bytes":
+		metricName = "memory"
+		stType = "alloc_in_new_tlab_bytes"
+		stUnit = "bytes"
+	case "alloc_outside_tlab_objects":
+		metricName = "memory"
+		stType = "alloc_outside_tlab_objects"
+		stUnit = "count"
+	case "alloc_outside_tlab_bytes":
+		metricName = "memory"
+		stType = "alloc_outside_tlab_bytes"
+		stUnit = "bytes"
+	case "lock_count":
+		stType = "contentions"
+		stUnit = "count"
+		metricName = "block"
+	case "lock_duration":
+		stType = "delay"
+		stUnit = "nanoseconds"
+		metricName = "block"
+	case "live":
+		metricName = "memory"
+		stType = "live"
+		stUnit = "count"
 	}
 
 	return metricName, stType, stUnit, app
