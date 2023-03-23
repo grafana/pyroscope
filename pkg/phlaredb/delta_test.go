@@ -93,7 +93,7 @@ func TestDeltaSample(t *testing.T) {
 		{StacktraceID: 2, Value: 1},
 		{StacktraceID: 3, Value: 1},
 	}
-	highest := deltaSamples([]*schemav1.Sample{}, new)
+	highest, _ := deltaSamples([]*schemav1.Sample{}, new)
 	require.Equal(t, 2, len(highest))
 	require.Equal(t, []*schemav1.Sample{
 		{StacktraceID: 2, Value: 1},
@@ -106,7 +106,7 @@ func TestDeltaSample(t *testing.T) {
 			{StacktraceID: 2, Value: 1},
 			{StacktraceID: 3, Value: 1},
 		}
-		highest = deltaSamples(highest, new)
+		highest, _ = deltaSamples(highest, new)
 		require.Equal(t, 2, len(highest))
 		require.Equal(t, []*schemav1.Sample{
 			{StacktraceID: 2, Value: 1},
@@ -123,7 +123,7 @@ func TestDeltaSample(t *testing.T) {
 			{StacktraceID: 2, Value: 1},
 			{StacktraceID: 3, Value: 1},
 		}
-		highest = deltaSamples(highest, new)
+		highest, _ = deltaSamples(highest, new)
 		require.Equal(t, 2, len(highest))
 		require.Equal(t, []*schemav1.Sample{
 			{StacktraceID: 2, Value: 1},
@@ -140,16 +140,12 @@ func TestDeltaSample(t *testing.T) {
 			{StacktraceID: 3, Value: 6},
 			{StacktraceID: 5, Value: 1},
 		}
-		highest = deltaSamples(highest, new)
+		highest, _ = deltaSamples(highest, new)
 		require.Equal(t, []*schemav1.Sample{
 			{StacktraceID: 2, Value: 1},
 			{StacktraceID: 3, Value: 6},
 			{StacktraceID: 5, Value: 1},
 		}, highest)
-		require.Equal(t, []*schemav1.Sample{
-			{StacktraceID: 3, Value: 5},
-			{StacktraceID: 5, Value: 1},
-		}, new)
 	})
 
 	t.Run("same stacktraces, counter samples resetting", func(t *testing.T) {
@@ -157,12 +153,9 @@ func TestDeltaSample(t *testing.T) {
 			{StacktraceID: 3, Value: 1},
 			{StacktraceID: 5, Value: 0},
 		}
-		highest = deltaSamples(highest, new)
-		require.Equal(t, []*schemav1.Sample{
-			{StacktraceID: 2, Value: 1},
-			{StacktraceID: 3, Value: 1},
-			{StacktraceID: 5, Value: 0},
-		}, highest)
+		highest, reset := deltaSamples(highest, new)
+		require.Nil(t, highest)
+		require.True(t, reset)
 		require.Equal(t, []*schemav1.Sample{
 			{StacktraceID: 3, Value: 1},
 			{StacktraceID: 5, Value: 0},
@@ -175,7 +168,7 @@ func TestDeltaSample(t *testing.T) {
 			{StacktraceID: 1, Value: 2},
 			{StacktraceID: 7, Value: 1},
 		}
-		highest = deltaSamples(highest, new)
+		highest, _ = deltaSamples(highest, new)
 		sort.Slice(highest, func(i, j int) bool {
 			return highest[i].StacktraceID < highest[j].StacktraceID
 		})
@@ -183,8 +176,8 @@ func TestDeltaSample(t *testing.T) {
 			{StacktraceID: 0, Value: 10},
 			{StacktraceID: 1, Value: 2},
 			{StacktraceID: 2, Value: 1},
-			{StacktraceID: 3, Value: 1},
-			{StacktraceID: 5, Value: 0},
+			{StacktraceID: 3, Value: 6},
+			{StacktraceID: 5, Value: 1},
 			{StacktraceID: 7, Value: 1},
 		}, highest)
 		require.Equal(t, []*schemav1.Sample{

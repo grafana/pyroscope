@@ -254,6 +254,10 @@ func (s *profileStore) cutRowGroup() (err error) {
 
 	level.Debug(s.logger).Log("msg", "cut row group segment", "path", path, "numProfiles", n)
 
+	for i := range s.slice {
+		// don't retain profiles and samples in memory as re-slice.
+		s.slice[i] = nil
+	}
 	// reset slice and metrics
 	s.slice = s.slice[:0]
 	s.size.Store(0)
