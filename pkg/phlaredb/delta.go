@@ -42,7 +42,7 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbs phlaremodel.Label
 	if !ok {
 		// if we don't have the last profile, we can't compute the delta.
 		// so we remove the delta from the list of labels and profiles.
-		d.highestSamples[ps.SeriesFingerprint] = ps.Samples
+		d.highestSamples[ps.SeriesFingerprint] = copySampleSlice(ps.Samples)
 
 		return nil
 	}
@@ -54,7 +54,13 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbs phlaremodel.Label
 		return ps
 	}
 
-	highestSamples := deltaSamples(lastSamples, ps.Samples)
+	highestSamples, reset := deltaSamples(lastSamples, ps.Samples)
+	if reset {
+		// if we reset the delta, we can't compute the delta anymore.
+		// so we remove the delta from the list of labels and profiles.
+		d.highestSamples[ps.SeriesFingerprint] = copySampleSlice(ps.Samples)
+		return nil
+	}
 
 	// remove samples that are all zero
 	i := 0
@@ -64,9 +70,30 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbs phlaremodel.Label
 			i++
 		}
 	}
-	ps.Samples = ps.Samples[:i]
+	ps.Samples = copySlice(ps.Samples[:i])
 	d.highestSamples[ps.SeriesFingerprint] = highestSamples
 	return ps
+}
+
+func copySampleSlice(s []*schemav1.Sample) []*schemav1.Sample {
+	if s == nil {
+		return nil
+	}
+	r := make([]*schemav1.Sample, len(s))
+	for i := range s {
+		r[i] = copySample(s[i])
+	}
+	return r
+}
+
+func copySample(s *schemav1.Sample) *schemav1.Sample {
+	if s == nil {
+		return nil
+	}
+	return &schemav1.Sample{
+		StacktraceID: s.StacktraceID,
+		Value:        s.Value,
+	}
 }
 
 func isDelta(lbs phlaremodel.Labels) bool {
@@ -79,7 +106,7 @@ func isDelta(lbs phlaremodel.Labels) bool {
 	return false
 }
 
-func deltaSamples(highest, new []*schemav1.Sample) []*schemav1.Sample {
+func deltaSamples(highest, new []*schemav1.Sample) ([]*schemav1.Sample, bool) {
 	stacktraces := make(map[uint64]*schemav1.Sample)
 	for _, h := range highest {
 		stacktraces[h.StacktraceID] = h
@@ -91,11 +118,12 @@ func deltaSamples(highest, new []*schemav1.Sample) []*schemav1.Sample {
 				n.Value -= s.Value
 				s.Value = newMax
 			} else {
-				s.Value = n.Value
+				// this is a reset, we can't compute the delta anymore.
+				return nil, true
 			}
 			continue
 		}
-		highest = append(highest, n)
+		highest = append(highest, copySample(n))
 	}
-	return highest
+	return highest, false
 }

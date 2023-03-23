@@ -274,7 +274,7 @@ func TestHeadIngestStacktraces(t *testing.T) {
 		}
 	}
 	// expect 4 samples, 3 of which distinct
-	require.Equal(t, []uint64{0, 1, 2, 2}, samples)
+	require.Equal(t, []uint64{1, 0, 2, 2}, samples)
 }
 
 func TestHeadLabelValues(t *testing.T) {
