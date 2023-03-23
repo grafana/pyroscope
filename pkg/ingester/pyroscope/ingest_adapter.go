@@ -9,6 +9,7 @@ import (
 	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/ingester"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
@@ -58,7 +59,7 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 	}
 	req := &pushv1.PushRequest{}
 	series := &pushv1.RawProfileSeries{
-		Labels: make([]*typesv1.LabelPair, 0, 1+len(pi.Key.Labels())),
+		Labels: make([]*typesv1.LabelPair, 0, 2+len(pi.Key.Labels())),
 	}
 	series.Labels = append(series.Labels, &typesv1.LabelPair{
 		Name:  labels.MetricName,
@@ -66,7 +67,11 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 	}, &typesv1.LabelPair{
 		Name:  "pyroscope_app",
 		Value: app,
-	})
+	},
+		&typesv1.LabelPair{
+			Name:  phlaremodel.LabelNameDelta,
+			Value: "false",
+		})
 	for k, v := range pi.Key.Labels() {
 		if strings.HasPrefix(k, "__") {
 			continue
