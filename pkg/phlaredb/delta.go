@@ -73,6 +73,9 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbs phlaremodel.Label
 }
 
 func isDelta(lbs phlaremodel.Labels) bool {
+	if lbs.Get(phlaremodel.LabelNameDelta) == "false" {
+		return false
+	}
 	if lbs.Get(model.MetricNameLabel) == memoryProfileName {
 		ty := lbs.Get(phlaremodel.LabelNameType)
 		if ty == allocObjectTypeName || ty == allocSpaceTypeName {
