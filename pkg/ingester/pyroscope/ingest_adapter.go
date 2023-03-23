@@ -40,6 +40,20 @@ func (p *pyroscopeIngesterAdapter) Ingest(ctx context.Context, in *ingestion.Ing
 	return in.Profile.Parse(ctx, p, p, in.Metadata)
 }
 
+const (
+	metricProcessCPU  = "process_cpu"
+	metricMemory      = "memory"
+	metricMutex       = "mutex"
+	metricBlock       = "block"
+	metricWall        = "wall"
+	stUnitCount       = "count"
+	stTypeSamples     = "samples"
+	stUnitBytes       = "bytes"
+	stTypeContentions = "contentions"
+	stTypeDelay       = "delay"
+	stUnitNanos       = "nanoseconds"
+)
+
 func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput) error {
 	if pi.Key.HasProfileID() {
 		return nil
@@ -50,8 +64,20 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 		Unit:      stUnit,
 		StartTime: pi.StartTime,
 	})
-	// a fake mapping
-	pprof.Mapping = []*tree.Mapping{{Id: 0}}
+	newString := func(value string) int64 {
+		id := int64(len(pprof.StringTable))
+		pprof.StringTable = append(pprof.StringTable, value)
+		return id
+	}
+	// todo(korniltsev) the pprof is partially built by pyroscope oss and partially here, do it in one place
+	pprof.Mapping = []*tree.Mapping{{Id: 0}} // a fake mapping
+	if pi.SampleRate != 0 && (metric == metricWall || metric == metricProcessCPU) {
+		pprof.Period = 1_000_000_000 / int64(pi.SampleRate)
+		pprof.PeriodType = &tree.ValueType{
+			Type: newString("cpu"),
+			Unit: newString(stUnitNanos),
+		}
+	}
 
 	b, err := proto.Marshal(pprof)
 	if err != nil {
@@ -59,7 +85,7 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 	}
 	req := &pushv1.PushRequest{}
 	series := &pushv1.RawProfileSeries{
-		Labels: make([]*typesv1.LabelPair, 0, 2+len(pi.Key.Labels())),
+		Labels: make([]*typesv1.LabelPair, 0, 3+len(pi.Key.Labels())),
 	}
 	series.Labels = append(series.Labels, &typesv1.LabelPair{
 		Name:  labels.MetricName,
@@ -67,11 +93,16 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 	}, &typesv1.LabelPair{
 		Name:  "pyroscope_app",
 		Value: app,
-	},
-		&typesv1.LabelPair{
-			Name:  phlaremodel.LabelNameDelta,
-			Value: "false",
+	}, &typesv1.LabelPair{
+		Name:  phlaremodel.LabelNameDelta,
+		Value: "false",
+	})
+	if pi.SpyName != "" {
+		series.Labels = append(series.Labels, &typesv1.LabelPair{
+			Name:  "pyroscope_spy",
+			Value: pi.SpyName,
 		})
+	}
 	for k, v := range pi.Key.Labels() {
 		if strings.HasPrefix(k, "__") {
 			continue
@@ -98,17 +129,6 @@ func (p *pyroscopeIngesterAdapter) Evaluate(input *storage.PutInput) (storage.Sa
 }
 
 func recoverMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app string) {
-	const (
-		stUnitCount       = "count"
-		stTypeSamples     = "samples"
-		metricMemory      = "memory"
-		stUnitBytes       = "bytes"
-		stTypeContentions = "contentions"
-		metricMutex       = "mutex"
-		stTypeDelay       = "delay"
-		stUnitNanos       = "nanoseconds"
-		metricBlock       = "block"
-	)
 	app = pi.Key.AppName()
 	parts := strings.Split(app, ".")
 	if len(parts) > 1 {
@@ -117,7 +137,7 @@ func recoverMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app stri
 	}
 	switch stType {
 	case "cpu":
-		metricName = "process_cpu"
+		metricName = metricProcessCPU
 		stType = stTypeSamples
 		stUnit = stUnitCount
 	case "wall":
@@ -156,7 +176,7 @@ func recoverMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app stri
 		stUnit = stUnitNanos
 		metricName = metricBlock
 	case "itimer":
-		metricName = "process_cpu"
+		metricName = metricProcessCPU
 		stType = stTypeSamples
 		stUnit = stUnitCount
 	case "alloc_in_new_tlab_objects":
