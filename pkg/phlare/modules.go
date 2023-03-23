@@ -18,6 +18,7 @@ import (
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/common/version"
 	"github.com/thanos-io/thanos/pkg/discovery/dns"
 	"github.com/weaveworks/common/middleware"
@@ -372,7 +373,12 @@ func (f *Phlare) initIngester() (_ services.Service, err error) {
 }
 
 func (f *Phlare) initServer() (services.Service, error) {
-	prometheus.MustRegister(version.NewCollector("phlare"))
+	f.reg.MustRegister(version.NewCollector("phlare"))
+	f.reg.Unregister(collectors.NewGoCollector())
+	// register collector with additional metrics
+	f.reg.MustRegister(collectors.NewGoCollector(
+		collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll),
+	))
 	DisableSignalHandling(&f.Cfg.Server)
 	f.Cfg.Server.Registerer = prometheus.WrapRegistererWithPrefix("phlare_", f.reg)
 	// Not all default middleware works with http2 so we'll add then manually.
