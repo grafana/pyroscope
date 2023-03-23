@@ -83,7 +83,7 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 	}
 	series.Samples = []*pushv1.RawSample{{
 		RawProfile: b,
-		ID:         uuid.New().String(), //todo generate on a client
+		ID:         uuid.New().String(),
 	}}
 	req.Series = append(req.Series, series)
 	_, err = p.svc.Push(ctx, connect.NewRequest(req))
