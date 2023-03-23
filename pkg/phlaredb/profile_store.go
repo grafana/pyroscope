@@ -271,12 +271,17 @@ func (s *profileStore) writeRowGroups(path string, rowGroups []parquet.RowGroup)
 	for rgN, rg := range rowGroups {
 		level.Debug(s.logger).Log("msg", "writing row group", "path", path, "row_group_number", rgN, "rows", rg.NumRows())
 
-		nInt64, err := s.writer.WriteRowGroup(rg)
+		nInt64, err := s.writer.ReadRowsFrom(rg.Rows())
 		if err != nil {
 			return 0, 0, err
 		}
+
 		n += uint64(nInt64)
 		numRowGroups += 1
+
+		if err := s.writer.Flush(); err != nil {
+			return 0, 0, err
+		}
 	}
 
 	if err := s.writer.Close(); err != nil {
