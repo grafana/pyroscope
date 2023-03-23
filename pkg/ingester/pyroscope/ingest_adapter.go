@@ -106,7 +106,7 @@ func recoverMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app stri
 		stTypeContentions = "contentions"
 		metricMutex       = "mutex"
 		stTypeDelay       = "delay"
-		stUniNanos        = "nanoseconds"
+		stUnitNanos       = "nanoseconds"
 		metricBlock       = "block"
 	)
 	app = pi.Key.AppName()
@@ -145,7 +145,7 @@ func recoverMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app stri
 		metricName = metricMutex
 	case "mutex_duration":
 		stType = stTypeDelay
-		stUnit = stUniNanos
+		stUnit = stUnitNanos
 		metricName = metricMutex
 	case "block_count":
 		stType = stTypeContentions
@@ -153,7 +153,7 @@ func recoverMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app stri
 		metricName = metricBlock
 	case "block_duration":
 		stType = stTypeDelay
-		stUnit = stUniNanos
+		stUnit = stUnitNanos
 		metricName = metricBlock
 	case "itimer":
 		metricName = "process_cpu"
@@ -181,7 +181,7 @@ func recoverMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app stri
 		metricName = metricBlock
 	case "lock_duration":
 		stType = stTypeDelay
-		stUnit = stUniNanos
+		stUnit = stUnitNanos
 		metricName = metricBlock
 	case "live":
 		metricName = metricMemory
