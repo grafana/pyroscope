@@ -98,6 +98,17 @@ func (p *pyroscopeIngesterAdapter) Evaluate(input *storage.PutInput) (storage.Sa
 }
 
 func recoverMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app string) {
+	const (
+		stUnitCount       = "count"
+		stTypeSamples     = "samples"
+		metricMemory      = "memory"
+		stUnitBytes       = "bytes"
+		stTypeContentions = "contentions"
+		metricMutex       = "mutex"
+		stTypeDelay       = "delay"
+		stUniNanos        = "nanoseconds"
+		metricBlock       = "block"
+	)
 	app = pi.Key.AppName()
 	parts := strings.Split(app, ".")
 	if len(parts) > 1 {
@@ -107,75 +118,75 @@ func recoverMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app stri
 	switch stType {
 	case "cpu":
 		metricName = "process_cpu"
-		stType = "samples"
-		stUnit = "count"
+		stType = stTypeSamples
+		stUnit = stUnitCount
 	case "wall":
 		metricName = "wall"
-		stType = "samples"
-		stUnit = "count"
+		stType = stTypeSamples
+		stUnit = stUnitCount
 	case "inuse_objects":
-		metricName = "memory"
-		stUnit = "count"
+		metricName = metricMemory
+		stUnit = stUnitCount
 	case "inuse_space":
-		metricName = "memory"
-		stUnit = "bytes"
+		metricName = metricMemory
+		stUnit = stUnitBytes
 	case "alloc_objects":
-		metricName = "memory"
-		stUnit = "count"
+		metricName = metricMemory
+		stUnit = stUnitCount
 	case "alloc_space":
-		metricName = "memory"
-		stUnit = "bytes"
+		metricName = metricMemory
+		stUnit = stUnitBytes
 	case "goroutines":
 		metricName = "goroutine"
-		stUnit = "count"
+		stUnit = stUnitCount
 	case "mutex_count":
-		stType = "contentions"
-		stUnit = "count"
-		metricName = "mutex"
+		stType = stTypeContentions
+		stUnit = stUnitCount
+		metricName = metricMutex
 	case "mutex_duration":
-		stType = "delay"
-		stUnit = "nanoseconds"
-		metricName = "mutex"
+		stType = stTypeDelay
+		stUnit = stUniNanos
+		metricName = metricMutex
 	case "block_count":
-		stType = "contentions"
-		stUnit = "count"
-		metricName = "block"
+		stType = stTypeContentions
+		stUnit = stUnitCount
+		metricName = metricBlock
 	case "block_duration":
-		stType = "delay"
-		stUnit = "nanoseconds"
-		metricName = "block"
+		stType = stTypeDelay
+		stUnit = stUniNanos
+		metricName = metricBlock
 	case "itimer":
 		metricName = "process_cpu"
-		stType = "samples"
-		stUnit = "count"
+		stType = stTypeSamples
+		stUnit = stUnitCount
 	case "alloc_in_new_tlab_objects":
-		metricName = "memory"
+		metricName = metricMemory
 		stType = "alloc_in_new_tlab_objects"
-		stUnit = "count"
+		stUnit = stUnitCount
 	case "alloc_in_new_tlab_bytes":
-		metricName = "memory"
+		metricName = metricMemory
 		stType = "alloc_in_new_tlab_bytes"
-		stUnit = "bytes"
+		stUnit = stUnitBytes
 	case "alloc_outside_tlab_objects":
-		metricName = "memory"
+		metricName = metricMemory
 		stType = "alloc_outside_tlab_objects"
-		stUnit = "count"
+		stUnit = stUnitCount
 	case "alloc_outside_tlab_bytes":
-		metricName = "memory"
+		metricName = metricMemory
 		stType = "alloc_outside_tlab_bytes"
-		stUnit = "bytes"
+		stUnit = stUnitBytes
 	case "lock_count":
-		stType = "contentions"
-		stUnit = "count"
-		metricName = "block"
+		stType = stTypeContentions
+		stUnit = stUnitCount
+		metricName = metricBlock
 	case "lock_duration":
-		stType = "delay"
-		stUnit = "nanoseconds"
-		metricName = "block"
+		stType = stTypeDelay
+		stUnit = stUniNanos
+		metricName = metricBlock
 	case "live":
-		metricName = "memory"
+		metricName = metricMemory
 		stType = "live"
-		stUnit = "count"
+		stUnit = stUnitCount
 	}
 
 	return metricName, stType, stUnit, app
