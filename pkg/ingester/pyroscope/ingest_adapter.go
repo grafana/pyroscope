@@ -3,32 +3,33 @@ package pyroscope
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
-	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/ingester"
-	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"net/http"
-	"strings"
+
+	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
+	"github.com/grafana/phlare/pkg/ingester"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 func NewPyroscopeIngestHandler(svc *ingester.Ingester, logger log.Logger) http.Handler {
-	var ll = logrus.StandardLogger() //todo adapter to logkit
 	return server.NewIngestHandler(
-		ll,
+		logger,
 		&pyroscopeIngesterAdapter{svc: svc},
 		func(input *ingestion.IngestInput) {},
-		httputils.NewDefaultHelper(ll),
+		httputils.NewLogKitErrorUtils(logger),
 	)
 }
 
@@ -58,27 +59,21 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 	if pi.Key.HasProfileID() {
 		return nil
 	}
-	metric, stType, stUnit, app := recoverMetadata(pi)
-	pprof := pi.Val.Pprof(&tree.PprofMetadata{
+	metric, stType, stUnit, app, err := convetMetadata(pi)
+	if err != nil {
+		return fmt.Errorf("pyroscopeIngesterAdapter failed to convert metadata: %w", err)
+	}
+	mdata := &tree.PprofMetadata{
 		Type:      stType,
 		Unit:      stUnit,
 		StartTime: pi.StartTime,
-	})
-	newString := func(value string) int64 {
-		id := int64(len(pprof.StringTable))
-		pprof.StringTable = append(pprof.StringTable, value)
-		return id
 	}
-	// todo(korniltsev) the pprof is partially built by pyroscope oss and partially here, do it in one place
-	pprof.Mapping = []*tree.Mapping{{Id: 0}} // a fake mapping
 	if pi.SampleRate != 0 && (metric == metricWall || metric == metricProcessCPU) {
-		pprof.Period = 1_000_000_000 / int64(pi.SampleRate)
-		pprof.PeriodType = &tree.ValueType{
-			Type: newString("cpu"),
-			Unit: newString(stUnitNanos),
-		}
+		mdata.Period = time.Second.Nanoseconds() / int64(pi.SampleRate)
+		mdata.PeriodType = "cpu"
+		mdata.PeriodUnit = stUnitNanos
 	}
-
+	pprof := pi.Val.Pprof(mdata)
 	b, err := proto.Marshal(pprof)
 	if err != nil {
 		return fmt.Errorf("pyroscopeIngesterAdapter failed to marshal pprof: %w", err)
@@ -128,13 +123,15 @@ func (p *pyroscopeIngesterAdapter) Evaluate(input *storage.PutInput) (storage.Sa
 	return nil, false // noop
 }
 
-func recoverMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app string) {
+func convetMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app string, err error) {
 	app = pi.Key.AppName()
 	parts := strings.Split(app, ".")
-	if len(parts) > 1 {
-		stType = parts[len(parts)-1]
-		app = strings.Join(parts[:len(parts)-1], ".")
+	if len(parts) <= 1 {
+		err = fmt.Errorf("app name is not in the format of <app>.<profile_type> - %s", app)
+		return metricName, stType, stUnit, app, err
 	}
+	stType = parts[len(parts)-1]
+	app = strings.Join(parts[:len(parts)-1], ".")
 	switch stType {
 	case "cpu":
 		metricName = metricProcessCPU
@@ -209,5 +206,5 @@ func recoverMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app stri
 		stUnit = stUnitCount
 	}
 
-	return metricName, stType, stUnit, app
+	return metricName, stType, stUnit, app, err
 }
