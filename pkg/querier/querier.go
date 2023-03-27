@@ -28,6 +28,7 @@ import (
 	"github.com/grafana/phlare/pkg/ingester/clientpool"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/util"
 )
 
 // todo: move to non global metrics.
@@ -238,7 +239,7 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	g, gCtx := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
-		g.Go(func() error {
+		g.Go(util.RecoverPanic(func() error {
 			return r.response.Send(&ingestv1.MergeProfilesStacktracesRequest{
 				Request: &ingestv1.SelectProfilesRequest{
 					LabelSelector: req.Msg.LabelSelector,
@@ -247,7 +248,7 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 					Type:          profileType,
 				},
 			})
-		})
+		}))
 	}
 	if err := g.Wait(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -294,7 +295,7 @@ func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[q
 	g, gCtx := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
-		g.Go(func() error {
+		g.Go(util.RecoverPanic(func() error {
 			return r.response.Send(&ingestv1.MergeProfilesPprofRequest{
 				Request: &ingestv1.SelectProfilesRequest{
 					LabelSelector: req.Msg.LabelSelector,
@@ -303,7 +304,7 @@ func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[q
 					Type:          profileType,
 				},
 			})
-		})
+		}))
 	}
 	if err := g.Wait(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
@@ -363,7 +364,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	g, gCtx := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
-		g.Go(func() error {
+		g.Go(util.RecoverPanic(func() error {
 			return r.response.Send(&ingestv1.MergeProfilesLabelsRequest{
 				Request: &ingestv1.SelectProfilesRequest{
 					LabelSelector: req.Msg.LabelSelector,
@@ -373,7 +374,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 				},
 				By: req.Msg.GroupBy,
 			})
-		})
+		}))
 	}
 	if err := g.Wait(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
