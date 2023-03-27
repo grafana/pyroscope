@@ -95,8 +95,10 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 	if sr := q.Get("sampleRate"); sr != "" {
 		sampleRate, err := strconv.Atoi(sr)
 		if err != nil {
-			_ = level.Error(h.log).Log("err", err,
-				"msg", fmt.Sprintf("invalid sample rate: %q", sr))
+			_ = level.Error(h.log).Log(
+				"err", err,
+				"msg", fmt.Sprintf("invalid sample rate: %q", sr),
+			)
 			input.Metadata.SampleRate = types.DefaultSampleRate
 		} else {
 			input.Metadata.SampleRate = uint32(sampleRate)
