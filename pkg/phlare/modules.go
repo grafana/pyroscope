@@ -3,7 +3,6 @@ package phlare
 import (
 	"context"
 	"fmt"
-	"github.com/grafana/phlare/pkg/ingester/pyroscope"
 	"net/http"
 	"os"
 	"time"
@@ -42,6 +41,7 @@ import (
 	"github.com/grafana/phlare/pkg/frontend"
 	"github.com/grafana/phlare/pkg/frontend/frontendpb/frontendpbconnect"
 	"github.com/grafana/phlare/pkg/ingester"
+	"github.com/grafana/phlare/pkg/ingester/pyroscope"
 	objstoreclient "github.com/grafana/phlare/pkg/objstore/client"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
