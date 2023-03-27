@@ -41,9 +41,9 @@ func (ctrl *Controller) ingestHandler() http.Handler {
 	}, ctrl.httpUtils)
 }
 
-func NewIngestHandler(log log.Logger, p ingestion.Ingester, onSuccess func(*ingestion.IngestInput), httpUtils httputils.ErrorUtils) http.Handler {
+func NewIngestHandler(l log.Logger, p ingestion.Ingester, onSuccess func(*ingestion.IngestInput), httpUtils httputils.ErrorUtils) http.Handler {
 	return ingestHandler{
-		log:       log,
+		log:       l,
 		ingester:  p,
 		onSuccess: onSuccess,
 		httpUtils: httpUtils,
