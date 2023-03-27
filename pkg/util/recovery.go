@@ -26,21 +26,33 @@ var (
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			defer func() {
 				if p := recover(); p != nil {
-					WriteError(onPanic(p), w)
+					WriteError(httpgrpc.Errorf(http.StatusInternalServerError, "error while processing request: %v", panicError(p)), w)
 				}
 			}()
 			next.ServeHTTP(w, req)
 		})
 	})
-	RecoveryGRPCStreamInterceptor = grpc_recovery.StreamServerInterceptor(grpc_recovery.WithRecoveryHandler(onPanic))
-	RecoveryGRPCUnaryInterceptor  = grpc_recovery.UnaryServerInterceptor(grpc_recovery.WithRecoveryHandler(onPanic))
+	RecoveryGRPCStreamInterceptor = grpc_recovery.StreamServerInterceptor(grpc_recovery.WithRecoveryHandler(panicError))
+	RecoveryGRPCUnaryInterceptor  = grpc_recovery.UnaryServerInterceptor(grpc_recovery.WithRecoveryHandler(panicError))
 )
 
-func onPanic(p interface{}) error {
+func panicError(p interface{}) error {
 	stack := make([]byte, maxStacksize)
 	stack = stack[:runtime.Stack(stack, true)]
 	// keep a multiline stack
 	fmt.Fprintf(os.Stderr, "panic: %v\n%s", p, stack)
 	panicTotal.Inc()
-	return httpgrpc.Errorf(http.StatusInternalServerError, "error while processing request: %v", p)
+	return fmt.Errorf("%v", p)
+}
+
+// RecoverPanic is a helper function to recover from panic and return an error.
+func RecoverPanic(f func() error) func() error {
+	return func() (err error) {
+		defer func() {
+			if p := recover(); p != nil {
+				err = panicError(p)
+			}
+		}()
+		return f()
+	}
 }

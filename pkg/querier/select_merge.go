@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/pprof"
+	"github.com/grafana/phlare/pkg/util"
 )
 
 type ProfileWithLabels struct {
@@ -330,7 +331,7 @@ func selectMergeStacktraces(ctx context.Context, responses []responseFromIngeste
 	g, _ := errgroup.WithContext(ctx)
 	for _, iter := range mergeResults {
 		iter := iter
-		g.Go(func() error {
+		g.Go(util.RecoverPanic(func() error {
 			result, err := iter.Result()
 			if err != nil {
 				return err
@@ -339,7 +340,7 @@ func selectMergeStacktraces(ctx context.Context, responses []responseFromIngeste
 				results = append(results, result)
 			})
 			return nil
-		})
+		}))
 	}
 	if err := g.Wait(); err != nil {
 		return nil, err
@@ -371,7 +372,7 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 	g, _ := errgroup.WithContext(ctx)
 	for _, iter := range mergeResults {
 		iter := iter
-		g.Go(func() error {
+		g.Go(util.RecoverPanic(func() error {
 			result, err := iter.Result()
 			if err != nil {
 				return err
@@ -384,7 +385,7 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 				results = append(results, p)
 			})
 			return nil
-		})
+		}))
 	}
 	if err := g.Wait(); err != nil {
 		return nil, err
@@ -458,7 +459,7 @@ func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[cl
 	g, _ := errgroup.WithContext(ctx)
 	for _, iter := range mergeResults {
 		iter := iter
-		g.Go(func() error {
+		g.Go(util.RecoverPanic(func() error {
 			result, err := iter.Result()
 			if err != nil {
 				return err
@@ -467,7 +468,7 @@ func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[cl
 				results = append(results, result)
 			})
 			return nil
-		})
+		}))
 	}
 	if err := g.Wait(); err != nil {
 		return nil, err
