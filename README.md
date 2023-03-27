@@ -125,8 +125,8 @@ For more documentation on how to add the Pyroscope agent to your code, see the [
 
 Pyroscope also supports several third-party integrations notably:
 - [Grafana Plugin](https://github.com/grafana/pyroscope/tree/main/examples/grafana-integration)
-- [Jaeger UI](https://github.com/grafana/jaeger-ui)
-- [OTel Golang (tracing)](https://github.com/grafana/otel-profiling-go)
+- [Jaeger UI](https://github.com/pyroscope-io/jaeger-ui)
+- [OTel Golang (tracing)](https://github.com/pyroscope-io/otel-profiling-go)
 - [AWS Lambda Extension](https://pyroscope.io/docs/aws-lambda)
 
 ## Documentation
