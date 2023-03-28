@@ -59,7 +59,7 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 	if pi.Key.HasProfileID() {
 		return nil
 	}
-	metric, stType, stUnit, app, err := convetMetadata(pi)
+	metric, stType, stUnit, app, err := convertMetadata(pi)
 	if err != nil {
 		return fmt.Errorf("pyroscopeIngesterAdapter failed to convert metadata: %w", err)
 	}
@@ -123,7 +123,7 @@ func (p *pyroscopeIngesterAdapter) Evaluate(input *storage.PutInput) (storage.Sa
 	return nil, false // noop
 }
 
-func convetMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app string, err error) {
+func convertMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app string, err error) {
 	app = pi.Key.AppName()
 	parts := strings.Split(app, ".")
 	if len(parts) <= 1 {
@@ -204,6 +204,12 @@ func convetMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app strin
 		metricName = metricMemory
 		stType = "live"
 		stUnit = stUnitCount
+	case "exceptions":
+		metricName = "exceptions"
+		stType = "exceptions"
+		stUnit = stUnitCount
+	default:
+		err = fmt.Errorf("unknown profile type: %s", stType)
 	}
 
 	return metricName, stType, stUnit, app, err
