@@ -106,6 +106,9 @@ func (r *Client) ingestInputToRequest(in *ingestion.IngestInput) (*http.Request,
 	}
 
 	req, err := http.NewRequest("POST", r.config.Address+"/ingest", bytes.NewReader(b))
+	for k, v := range r.config.Headers {
+		req.Header.Set(k, v)
+	}
 	if err != nil {
 		return nil, err
 	}

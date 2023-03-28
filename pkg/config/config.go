@@ -406,6 +406,7 @@ type RemoteWriteTarget struct {
 	// TODO(eh-am): use a custom type here to not accidentaly leak the AuthToken?
 	AuthToken    string            `json:"-" desc:"authorization token used to upload profiling data" yaml:"auth-token"`
 	Tags         map[string]string `name:"tag" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
+	Headers      map[string]string `name:"header" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"headers"`
 	Timeout      time.Duration     `desc:"profile upload timeout" mapstructure:"timeout" yaml:"timeout"`
 	QueueSize    int               `desc:"number of items in the queue" yaml:"queue-size"`
 	QueueWorkers int               `desc:"number of queue workers" yaml:"queue-workers"`
