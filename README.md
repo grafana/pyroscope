@@ -213,7 +213,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/SusyQinqinYang"><img src="https://avatars.githubusercontent.com/u/55719616?v=4" title="SusyQinqinYang" width="80" height="80"></a>
 <a href="https://github.com/yashrsharma44"><img src="https://avatars.githubusercontent.com/u/31438680?v=4" title="yashrsharma44" width="80" height="80"></a>
 <a href="https://github.com/cuishuang"><img src="https://avatars.githubusercontent.com/u/15921519?v=4" title="cuishuang" width="80" height="80"></a>
-<a href="https://github.com/eastfisher"><img src="https://avatars.githubusercontent.com/u/10803535?v=4" title="eastfisher" width="80" height="80"></a>
+<a href="https://github.com/teckick"><img src="https://avatars.githubusercontent.com/u/10803535?v=4" title="teckick" width="80" height="80"></a>
 <a href="https://github.com/wusphinx"><img src="https://avatars.githubusercontent.com/u/1380777?v=4" title="wusphinx" width="80" height="80"></a>
 <a href="https://github.com/ayeniblessing101"><img src="https://avatars.githubusercontent.com/u/29165344?v=4" title="ayeniblessing101" width="80" height="80"></a>
 <a href="https://github.com/awwalker"><img src="https://avatars.githubusercontent.com/u/11507633?v=4" title="awwalker" width="80" height="80"></a>
@@ -245,6 +245,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/proggga"><img src="https://avatars.githubusercontent.com/u/12262156?v=4" title="proggga" width="80" height="80"></a>
 <a href="https://github.com/navinpai"><img src="https://avatars.githubusercontent.com/u/408863?v=4" title="navinpai" width="80" height="80"></a>
 <a href="https://github.com/robbymilo"><img src="https://avatars.githubusercontent.com/u/8106669?v=4" title="robbymilo" width="80" height="80"></a>
+<a href="https://github.com/hi-rustin"><img src="https://avatars.githubusercontent.com/u/29879298?v=4" title="hi-rustin" width="80" height="80"></a>
 <a href="https://github.com/samoilenko"><img src="https://avatars.githubusercontent.com/u/4024256?v=4" title="samoilenko" width="80" height="80"></a>
 <a href="https://github.com/teivah"><img src="https://avatars.githubusercontent.com/u/934784?v=4" title="teivah" width="80" height="80"></a>
 <a href="https://github.com/dreamalligator"><img src="https://avatars.githubusercontent.com/u/2218331?v=4" title="dreamalligator" width="80" height="80"></a>
