@@ -492,6 +492,7 @@ func SplitFiltersAndMatchers(allMatchers []*labels.Matcher) (filters, matchers [
 	return
 }
 
+// nolint unused
 const (
 	profileSize = uint64(unsafe.Sizeof(schemav1.Profile{}))
 	sampleSize  = uint64(unsafe.Sizeof(schemav1.Sample{}))

@@ -36,6 +36,7 @@ import (
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/phlare/pkg/slices"
 )
 
 func copySlice[T any](in []T) []T {
@@ -348,10 +349,32 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 
 	var profileIngested bool
 	for idxType := range samplesPerType {
+		samples := samplesPerType[idxType]
+		// Sort samples per stacktraceID and aggregate duplicate stacktraceIDs into
+		// a single value to make sure we won't have any duplicates, as this is not recognized as part of the delta calculation.
+		sort.Slice(samples, func(i, j int) bool {
+			return samples[i].StacktraceID > samples[j].StacktraceID
+		})
+		total := len(samples)
+		samples = slices.RemoveInPlace(samples, func(s *schemav1.Sample, i int) bool {
+			if s.Value == 0 {
+				return true
+			}
+			if i < len(p.Sample)-1 && s.StacktraceID == samples[i+1].StacktraceID {
+				samples[i+1].Value += s.Value
+				// TODO: Currently we're not aggregating labels, and we should probably decide what to do with them in this case.
+				return true
+			}
+			return false
+		})
+		if total != len(samples) {
+			// copy samples if there are less than received to avoid retaining memory.
+			samples = copySlice(samples)
+		}
 		profile := &schemav1.Profile{
 			ID:                id,
 			SeriesFingerprint: seriesFingerprints[idxType],
-			Samples:           samplesPerType[idxType],
+			Samples:           samples,
 			DropFrames:        p.DropFrames,
 			KeepFrames:        p.KeepFrames,
 			TimeNanos:         p.TimeNanos,
@@ -363,6 +386,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		profile = h.delta.computeDelta(profile, labels[idxType])
 
 		if profile == nil {
+			level.Debug(h.logger).Log("msg", "profile is empty after delta computation", "metricName", metricName)
 			continue
 		}
 
@@ -371,6 +395,9 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		}
 
 		profileIngested = true
+		h.totalSamples.Add(uint64(len(profile.Samples)))
+		h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(len(profile.Samples)))
+		h.metrics.sampleValuesReceived.WithLabelValues(metricName).Add(float64(len(p.Sample)))
 	}
 
 	if !profileIngested {
@@ -386,11 +413,6 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		h.meta.MaxTime = v
 	}
 	h.metaLock.Unlock()
-
-	samplesInProfile := len(samplesPerType[0]) * len(labels)
-	h.totalSamples.Add(sampleSize)
-	h.metrics.sampleValuesIngested.WithLabelValues(metricName).Add(float64(samplesInProfile))
-	h.metrics.sampleValuesReceived.WithLabelValues(metricName).Add(float64(len(p.Sample) * len(labels)))
 
 	return nil
 }
