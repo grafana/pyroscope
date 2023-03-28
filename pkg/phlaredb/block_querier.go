@@ -40,6 +40,7 @@ import (
 	"github.com/grafana/phlare/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/phlare/pkg/util"
 )
 
 type tableReader interface {
@@ -113,7 +114,7 @@ func (b *BlockQuerier) BlockMetas(ctx context.Context) (metas []*block.Meta, _ e
 	metas = make([]*block.Meta, len(names))
 	for pos := range names {
 		func(pos int) {
-			g.Go(func() error {
+			g.Go(util.RecoverPanic(func() error {
 				path := filepath.Join(names[pos].String(), block.MetaFilename)
 				metaReader, err := b.bucketReader.Get(ctx, path)
 				if err != nil {
@@ -140,7 +141,7 @@ func (b *BlockQuerier) BlockMetas(ctx context.Context) (metas []*block.Meta, _ e
 					return nil
 				}
 				return nil
-			})
+			}))
 		}(pos)
 	}
 
@@ -515,7 +516,7 @@ func (q Queriers) MergeProfilesStacktraces(ctx context.Context, stream *connect.
 		// Sort profiles for better read locality.
 		selectedProfiles = q.Sort(selectedProfiles)
 		// Merge async the result so we can continue streaming profiles.
-		g.Go(func() error {
+		g.Go(util.RecoverPanic(func() error {
 			merge, err := q.MergeByStacktraces(ctx, iter.NewSliceIterator(selectedProfiles))
 			if err != nil {
 				return err
@@ -524,7 +525,7 @@ func (q Queriers) MergeProfilesStacktraces(ctx context.Context, stream *connect.
 			defer lock.Unlock()
 			result = append(result, merge)
 			return nil
-		})
+		}))
 	}
 
 	// Signals the end of the profile streaming by sending an empty response.
@@ -600,7 +601,7 @@ func (q Queriers) MergeProfilesLabels(ctx context.Context, stream *connect.BidiS
 		// Sort profiles for better read locality.
 		selectedProfiles = q.Sort(selectedProfiles)
 		// Merge async the result so we can continue streaming profiles.
-		g.Go(func() error {
+		g.Go(util.RecoverPanic(func() error {
 			merge, err := q.MergeByLabels(ctx, iter.NewSliceIterator(selectedProfiles), by...)
 			if err != nil {
 				return err
@@ -610,7 +611,7 @@ func (q Queriers) MergeProfilesLabels(ctx context.Context, stream *connect.BidiS
 			})
 
 			return nil
-		})
+		}))
 	}
 
 	// Signals the end of the profile streaming by sending an empty request.
@@ -685,7 +686,7 @@ func (q Queriers) MergeProfilesPprof(ctx context.Context, stream *connect.BidiSt
 		// Sort profiles for better read locality.
 		selectedProfiles = q.Sort(selectedProfiles)
 		// Merge async the result so we can continue streaming profiles.
-		g.Go(func() error {
+		g.Go(util.RecoverPanic(func() error {
 			merge, err := q.MergePprof(ctx, iter.NewSliceIterator(selectedProfiles))
 			if err != nil {
 				return err
@@ -694,7 +695,7 @@ func (q Queriers) MergeProfilesPprof(ctx context.Context, stream *connect.BidiSt
 			defer lock.Unlock()
 			result = append(result, merge)
 			return nil
-		})
+		}))
 	}
 
 	// Signals the end of the profile streaming by sending an empty response.
@@ -957,7 +958,7 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 		sp.Finish()
 	}()
 	g, ctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
+	g.Go(util.RecoverPanic(func() error {
 		// open tsdb index
 		indexBytes, err := newByteSliceFromBucketReader(ctx, q.bucketReader, block.IndexFilename)
 		if err != nil {
@@ -969,17 +970,17 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 			return errors.Wrap(err, "opening tsdb index")
 		}
 		return nil
-	})
+	}))
 
 	// open parquet files
 	for _, tableReader := range q.tables {
 		tableReader := tableReader
-		g.Go(func() error {
+		g.Go(util.RecoverPanic(func() error {
 			if err := tableReader.open(contextWithBlockMetrics(ctx, q.metrics), q.bucketReader); err != nil {
 				return err
 			}
 			return nil
-		})
+		}))
 	}
 
 	return g.Wait()
