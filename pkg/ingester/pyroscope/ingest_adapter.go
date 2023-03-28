@@ -206,7 +206,7 @@ func convertMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app stri
 		stUnit = stUnitCount
 	case "exceptions":
 		metricName = "exceptions"
-		stType = "exceptions"
+		stType = stTypeSamples
 		stUnit = stUnitCount
 	default:
 		err = fmt.Errorf("unknown profile type: %s", stType)
