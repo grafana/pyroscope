@@ -13,6 +13,9 @@ const (
 	memoryProfileName   = "memory"
 	allocObjectTypeName = "alloc_objects"
 	allocSpaceTypeName  = "alloc_space"
+	blockProfileName    = "block"
+	contentionsTypeName = "contentions"
+	delayTypeName       = "delay"
 )
 
 // deltaProfiles is a helper to compute delta of profiles.
@@ -97,6 +100,9 @@ func copySample(s *schemav1.Sample) *schemav1.Sample {
 }
 
 func isDelta(lbs phlaremodel.Labels) bool {
+	if lbs.Get(phlaremodel.LabelNameDelta) == "false" {
+		return false
+	}
 	if lbs.Get(model.MetricNameLabel) == memoryProfileName {
 		ty := lbs.Get(phlaremodel.LabelNameType)
 		if ty == allocObjectTypeName || ty == allocSpaceTypeName {
