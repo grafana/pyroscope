@@ -109,12 +109,6 @@ func isDelta(lbs phlaremodel.Labels) bool {
 			return true
 		}
 	}
-	//if lbs.Get(model.MetricNameLabel) == blockProfileName {
-	//	ty := lbs.Get(phlaremodel.LabelNameType)
-	//	if ty == contentionsTypeName || ty == delayTypeName {
-	//		return true
-	//	}
-	//}
 	return false
 }
 
