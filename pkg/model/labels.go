@@ -21,6 +21,7 @@ const (
 	LabelNameUnit        = "__unit__"
 	LabelNamePeriodType  = "__period_type__"
 	LabelNamePeriodUnit  = "__period_unit__"
+	LabelNameDelta       = "__delta__"
 
 	labelSep = '\xfe'
 )
