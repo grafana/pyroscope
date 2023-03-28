@@ -370,8 +370,7 @@ func (f *Phlare) initIngester() (_ services.Service, err error) {
 		return nil, err
 	}
 	ingesterv1connect.RegisterIngesterServiceHandler(f.Server.HTTP, svc, f.auth)
-	//pyroscopePath := "/pyroscope/ingest"
-	pyroscopePath := "/ingest"
+	pyroscopePath := "/pyroscope/ingest"
 	f.Server.HTTP.Handle(pyroscopePath, util.AuthenticateUser(f.Cfg.MultitenancyEnabled).Wrap(pyroscope.NewPyroscopeIngestHandler(svc, f.logger)))
 	return svc, nil
 }
