@@ -88,10 +88,13 @@ type pprof struct {
 }
 
 type PprofMetadata struct {
-	Type      string
-	Unit      string
-	StartTime time.Time
-	Duration  time.Duration
+	Type       string
+	Unit       string
+	PeriodType string
+	PeriodUnit string
+	Period     int64
+	StartTime  time.Time
+	Duration   time.Duration
 }
 
 func (t *Tree) Pprof(mdata *PprofMetadata) *Profile {
@@ -106,10 +109,17 @@ func (t *Tree) Pprof(mdata *PprofMetadata) *Profile {
 			StringTable: []string{""},
 		},
 	}
-
+	p.profile.Mapping = []*Mapping{{Id: 0}} // a fake mapping
 	p.profile.SampleType = []*ValueType{{Type: p.newString(mdata.Type), Unit: p.newString(mdata.Unit)}}
 	p.profile.TimeNanos = mdata.StartTime.UnixNano()
 	p.profile.DurationNanos = mdata.Duration.Nanoseconds()
+	if mdata.Period != 0 && mdata.PeriodType != "" && mdata.PeriodUnit != "" {
+		p.profile.Period = mdata.Period
+		p.profile.PeriodType = &ValueType{
+			Type: p.newString(mdata.PeriodType),
+			Unit: p.newString(mdata.PeriodUnit),
+		}
+	}
 	t.IterateStacks(func(name string, self uint64, stack []string) {
 		value := []int64{int64(self)}
 		loc := []uint64{}

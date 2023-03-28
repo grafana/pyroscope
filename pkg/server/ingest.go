@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"fmt"
+	"github.com/go-kit/kit/log/logrus"
 	"io"
 	"net/http"
 	"strconv"
@@ -10,7 +11,9 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/convert/speedscope"
-	"github.com/sirupsen/logrus"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/jfr"
@@ -24,23 +27,23 @@ import (
 )
 
 type ingestHandler struct {
-	log       *logrus.Logger
+	log       log.Logger
 	ingester  ingestion.Ingester
 	onSuccess func(*ingestion.IngestInput)
-	httpUtils httputils.Utils
+	httpUtils httputils.ErrorUtils
 }
 
 func (ctrl *Controller) ingestHandler() http.Handler {
-	return NewIngestHandler(ctrl.log, ctrl.ingestser, func(pi *ingestion.IngestInput) {
+	return NewIngestHandler(logrus.NewLogger(ctrl.log), ctrl.ingestser, func(pi *ingestion.IngestInput) {
 		ctrl.StatsInc("ingest")
 		ctrl.StatsInc("ingest:" + pi.Metadata.SpyName)
 		ctrl.appStats.Add(hashString(pi.Metadata.Key.AppName()))
 	}, ctrl.httpUtils)
 }
 
-func NewIngestHandler(log *logrus.Logger, p ingestion.Ingester, onSuccess func(*ingestion.IngestInput), httpUtils httputils.Utils) http.Handler {
+func NewIngestHandler(l log.Logger, p ingestion.Ingester, onSuccess func(*ingestion.IngestInput), httpUtils httputils.ErrorUtils) http.Handler {
 	return ingestHandler{
-		log:       log,
+		log:       l,
 		ingester:  p,
 		onSuccess: onSuccess,
 		httpUtils: httpUtils,
@@ -92,7 +95,10 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 	if sr := q.Get("sampleRate"); sr != "" {
 		sampleRate, err := strconv.Atoi(sr)
 		if err != nil {
-			h.log.WithError(err).Errorf("invalid sample rate: %q", sr)
+			_ = level.Error(h.log).Log(
+				"err", err,
+				"msg", fmt.Sprintf("invalid sample rate: %q", sr),
+			)
 			input.Metadata.SampleRate = types.DefaultSampleRate
 		} else {
 			input.Metadata.SampleRate = uint32(sampleRate)
