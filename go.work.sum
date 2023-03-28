@@ -581,6 +581,7 @@ github.com/pyroscope-io/client v0.6.1-0.20230130114945-a64d920d2fba h1:SyF8fpp4K
 github.com/pyroscope-io/dotnetdiag v1.2.1 h1:3XEMrfFJnZ87BiEhozyQKmCUAuMd/Spq7KChPuD2Cf0=
 github.com/pyroscope-io/godeltaprof v0.1.0 h1:UBqtjt0yZi4jTxqZmLAs34XG6ycS3vUTlhEUSq4NHLE=
 github.com/pyroscope-io/goldga v0.4.2-0.20220218190441-817afcc3a7f1 h1:T1fDdt3E3UpaGZ7tRF2IYrUFwNyuPlIWGeCOjfINp1s=
+github.com/pyroscope-io/pyroscope v0.37.2/go.mod h1:r4wq4ajJvN7g1OeXGyNvmwzBfQ+Tm5alYvmxqEQSTsc=
 github.com/rainycape/unidecode v0.0.0-20150907023854-cb7f23ec59be h1:ta7tUOvsPHVHGom5hKW5VXNc2xZIkfCKP8iaqOyYtUQ=
 github.com/rlmcpherson/s3gof3r v0.5.0 h1:1izOJpTiohSibfOHuNyEA/yQnAirh05enzEdmhez43k=
 github.com/rogpeppe/fastuuid v1.2.0 h1:Ppwyp6VYCF1nvBTXL3trRso7mXMlRrw9ooo375wvi2s=

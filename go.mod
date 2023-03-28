@@ -38,7 +38,7 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.39.0
 	github.com/prometheus/prometheus v1.99.0
-	github.com/pyroscope-io/pyroscope v0.37.2
+	github.com/pyroscope-io/pyroscope v0.37.3-0.20230328035933-35db4234452a
 	github.com/samber/lo v1.37.0
 	github.com/segmentio/parquet-go v0.0.0-20221214174709-7a0ad59e0540
 	github.com/sirupsen/logrus v1.9.0
@@ -278,6 +278,5 @@ replace (
 	// merged upstream yet.
 	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.41.0
-	github.com/pyroscope-io/pyroscope => ../../pyroscope/pyroscope
 	google.golang.org/grpc => google.golang.org/grpc v1.44.0
 )
