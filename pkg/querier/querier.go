@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
@@ -224,6 +225,10 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	_, err = parser.ParseMetricSelector(req.Msg.LabelSelector)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -277,6 +282,10 @@ func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[q
 	}()
 
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	_, err = parser.ParseMetricSelector(req.Msg.LabelSelector)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -334,6 +343,11 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 		sp.Finish()
 	}()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	_, err = parser.ParseMetricSelector(req.Msg.LabelSelector)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
