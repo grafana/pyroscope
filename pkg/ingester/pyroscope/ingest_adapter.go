@@ -20,11 +20,14 @@ import (
 
 	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/ingester"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
-func NewPyroscopeIngestHandler(svc *ingester.Ingester, logger log.Logger) http.Handler {
+type PushService interface {
+	Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
+}
+
+func NewPyroscopeIngestHandler(svc PushService, logger log.Logger) http.Handler {
 	return server.NewIngestHandler(
 		logger,
 		&pyroscopeIngesterAdapter{svc: svc},
@@ -34,7 +37,7 @@ func NewPyroscopeIngestHandler(svc *ingester.Ingester, logger log.Logger) http.H
 }
 
 type pyroscopeIngesterAdapter struct {
-	svc *ingester.Ingester
+	svc PushService
 }
 
 func (p *pyroscopeIngesterAdapter) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
