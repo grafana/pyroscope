@@ -1,8 +1,0 @@
-{
-  "baseUrl": "http://localhost:3000",
-  "integrationFolder": "cypress/integration/panel",
-  "reporter": "cypress-image-snapshot/reporter",
-  "retries": {
-    "runMode": 5
-  }
-}
