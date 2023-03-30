@@ -100,8 +100,11 @@ func copySample(s *schemav1.Sample) *schemav1.Sample {
 }
 
 func isDelta(lbs phlaremodel.Labels) bool {
-	if lbs.Get(phlaremodel.LabelNameDelta) == "false" {
+	switch lbs.Get(phlaremodel.LabelNameDelta) {
+	case "false":
 		return false
+	case "true":
+		return true
 	}
 	if lbs.Get(model.MetricNameLabel) == memoryProfileName {
 		ty := lbs.Get(phlaremodel.LabelNameType)
