@@ -762,7 +762,7 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 	return connect.NewResponse(response), nil
 }
 
-// Flush closes the head and writes data to disk
+// Closes closes the head
 func (h *Head) Close() error {
 	close(h.stopCh)
 
@@ -777,6 +777,19 @@ func (h *Head) Close() error {
 
 // Flush closes the head and writes data to disk
 func (h *Head) Flush(ctx context.Context) error {
+	start := time.Now()
+	defer func() {
+		h.metrics.flushedBlockDurationSeconds.Observe(time.Since(start).Seconds())
+	}()
+	if err := h.flush(ctx); err != nil {
+		h.metrics.flushedBlocks.WithLabelValues("failed").Inc()
+		return err
+	}
+	h.metrics.flushedBlocks.WithLabelValues("success").Inc()
+	return nil
+}
+
+func (h *Head) flush(ctx context.Context) error {
 	if h.profiles.empty() {
 		level.Info(h.logger).Log("msg", "head empty - no block written")
 		return os.RemoveAll(h.headPath)
@@ -800,14 +813,16 @@ func (h *Head) Flush(ctx context.Context) error {
 	indexPath := filepath.Join(h.headPath, block.IndexFilename)
 	files[0].RelPath = block.IndexFilename
 	h.meta.Stats.NumSeries = uint64(h.profiles.index.totalSeries.Load())
+	h.metrics.flushedBlockSeries.Observe(float64(h.meta.Stats.NumSeries))
 	files[0].TSDB = &block.TSDBFile{
 		NumSeries: h.meta.Stats.NumSeries,
 	}
-
 	// add index file size
 	if stat, err := os.Stat(indexPath); err == nil {
 		files[0].SizeBytes = uint64(stat.Size())
+		h.metrics.flushedFileSizeBytes.WithLabelValues("tsdb").Observe(float64(files[0].SizeBytes))
 	}
+	totalSize := files[0].SizeBytes
 
 	for idx, t := range h.tables {
 		if err := t.Close(); err != nil {
@@ -818,19 +833,24 @@ func (h *Head) Flush(ctx context.Context) error {
 		files[idx+1].RelPath = t.Name() + block.ParquetSuffix
 		if stat, err := os.Stat(filepath.Join(h.headPath, files[idx+1].RelPath)); err == nil {
 			files[idx+1].SizeBytes = uint64(stat.Size())
+			h.metrics.flushedFileSizeBytes.WithLabelValues(t.Name()).Observe(float64(files[idx+1].SizeBytes))
+			totalSize += files[idx+1].SizeBytes
 		}
 	}
-
+	h.metrics.flushedBlockSizeBytes.Observe(float64(totalSize))
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].RelPath < files[j].RelPath
 	})
 	h.meta.Files = files
 	h.meta.Stats.NumProfiles = uint64(h.profiles.index.totalProfiles.Load())
 	h.meta.Stats.NumSamples = h.totalSamples.Load()
+	h.metrics.flushedBlockSamples.Observe(float64(h.meta.Stats.NumSamples))
+	h.metrics.flusehdBlockProfiles.Observe(float64(h.meta.Stats.NumProfiles))
 
 	if _, err := h.meta.WriteToFile(h.logger, h.headPath); err != nil {
 		return err
 	}
+	h.metrics.blockDurationSeconds.Observe(h.meta.MaxTime.Sub(h.meta.MinTime).Seconds())
 
 	// move block to the local directory
 	if err := os.MkdirAll(filepath.Dir(h.localPath), defaultFolderMode); err != nil {
@@ -841,6 +861,5 @@ func (h *Head) Flush(ctx context.Context) error {
 	}
 
 	level.Info(h.logger).Log("msg", "head successfully written to block", "block_path", h.localPath)
-
 	return nil
 }
