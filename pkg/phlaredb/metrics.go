@@ -29,6 +29,15 @@ type headMetrics struct {
 
 	sampleValuesIngested *prometheus.CounterVec
 	sampleValuesReceived *prometheus.CounterVec
+
+	flushedFileSizeBytes        *prometheus.HistogramVec
+	flushedBlockSizeBytes       prometheus.Histogram
+	flushedBlockDurationSeconds prometheus.Histogram
+	flushedBlockSeries          prometheus.Histogram
+	flushedBlockSamples         prometheus.Histogram
+	flusehdBlockProfiles        prometheus.Histogram
+	blockDurationSeconds        prometheus.Histogram
+	flushedBlocks               *prometheus.CounterVec
 }
 
 func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
@@ -73,6 +82,52 @@ func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
 			Name: "phlare_head_profiles",
 			Help: "Total number of profiles in the head block.",
 		}),
+		flushedFileSizeBytes: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name: "phlare_head_flushed_table_size_bytes",
+			Help: "Size of a flushed table in bytes.",
+			//  [2MB, 4MB, 8MB, 16MB, 32MB, 64MB, 128MB, 256MB, 512MB, 1GB, 2GB]
+			Buckets: prometheus.ExponentialBuckets(2*1024*1024, 2, 11),
+		}, []string{"name"}),
+		flushedBlockSizeBytes: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name: "phlare_head_flushed_block_size_bytes",
+			Help: "Size of a flushed block in bytes.",
+			// [50MB, 75MB, 112.5MB, 168.75MB, 253.125MB, 379.688MB, 569.532MB, 854.298MB, 1.281MB, 1.922MB, 2.883MB]
+			Buckets: prometheus.ExponentialBuckets(50*1024*1024, 1.5, 11),
+		}),
+		flushedBlockDurationSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name: "phlare_head_flushed_block_duration_seconds",
+			Help: "Time to flushed a block in seconds.",
+			// [100ms, 200ms, 400ms, 800ms, 1.6s, 3.2s, 6.4s, 12.8s, 25.6s, 51.2s]
+			Buckets: prometheus.ExponentialBuckets(0.1, 2, 10),
+		}),
+		flushedBlockSeries: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name: "phlare_head_flushed_block_series",
+			Help: "Number of series in a flushed block.",
+			// [5k, 10k, 20k, 40k, 80k, 160k, 320k, 640k, 1.28M, 2.56M]
+			Buckets: prometheus.LinearBuckets(5000, 5000, 10),
+		}),
+		flushedBlockSamples: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name: "phlare_head_flushed_block_samples",
+			Help: "Number of samples in a flushed block.",
+			// [10k, 20k, 40k, 80k, 160k, 320k, 640k, 1.28M, 2.56M, 5.12M]
+			Buckets: prometheus.ExponentialBuckets(10000, 2, 10),
+		}),
+		flusehdBlockProfiles: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name: "phlare_head_flushed_block_profiles",
+			Help: "Number of profiles in a flushed block.",
+			// [1k, 2k, 4k, 8k, 16k, 32k, 64k, 128k, 256k, 512k]
+			Buckets: prometheus.ExponentialBuckets(1000, 2, 10),
+		}),
+		blockDurationSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name: "phlare_head_block_duration_seconds",
+			Help: "Duration of a block in seconds (the range it covers).",
+			// [20m, 40m, 1h, 1h20, 1h40, 2h, 2h20, 2h40, 3h, 3h20, 3h40, 4h, 4h20, 4h40, 5h, 5h20, 5h40, 6h, 6h20, 6h40, 7h, 7h20, 7h40, 8h]
+			Buckets: prometheus.LinearBuckets(1200, 1200, 24),
+		}),
+		flushedBlocks: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "phlare_head_flushed_blocks_total",
+			Help: "Total number of blocks flushed.",
+		}, []string{"status"}),
 	}
 
 	m.register(reg)
@@ -91,6 +146,14 @@ func (m *headMetrics) register(reg prometheus.Registerer) {
 	m.rowsWritten = util.RegisterOrGet(reg, m.rowsWritten)
 	m.sampleValuesIngested = util.RegisterOrGet(reg, m.sampleValuesIngested)
 	m.sampleValuesReceived = util.RegisterOrGet(reg, m.sampleValuesReceived)
+	m.flushedFileSizeBytes = util.RegisterOrGet(reg, m.flushedFileSizeBytes)
+	m.flushedBlockSizeBytes = util.RegisterOrGet(reg, m.flushedBlockSizeBytes)
+	m.flushedBlockDurationSeconds = util.RegisterOrGet(reg, m.flushedBlockDurationSeconds)
+	m.flushedBlockSeries = util.RegisterOrGet(reg, m.flushedBlockSeries)
+	m.flushedBlockSamples = util.RegisterOrGet(reg, m.flushedBlockSamples)
+	m.flusehdBlockProfiles = util.RegisterOrGet(reg, m.flusehdBlockProfiles)
+	m.blockDurationSeconds = util.RegisterOrGet(reg, m.blockDurationSeconds)
+	m.flushedBlocks = util.RegisterOrGet(reg, m.flushedBlocks)
 }
 
 func contextWithHeadMetrics(ctx context.Context, m *headMetrics) context.Context {
