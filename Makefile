@@ -25,11 +25,12 @@ IMAGE_TAG ?= $(shell ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 GIT_LAST_COMMIT_DATE := $(shell git log -1 --date=iso-strict --format=%cd)
+EMBEDASSETS ?= embedassets
 
 # Build flags
 VPREFIX := github.com/grafana/phlare/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
-GO_FLAGS     := -ldflags "-extldflags \"-static\" -s -w $(GO_LDFLAGS)" -tags netgo
+GO_FLAGS     := -ldflags "-extldflags \"-static\" -s -w $(GO_LDFLAGS)" -tags "netgo $(EMBEDASSETS)"
 
 .PHONY: help
 help: ## Describe useful make targets
@@ -63,7 +64,19 @@ go/test: $(BIN)/gotestsum
 	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) ./...
 
 .PHONY: build
-build: go/bin
+build: go/bin ## Do a production build (requiring the frontend build to be present)
+
+.PHONY: build-dev
+build-dev: ## Do a dev build (without requiring the frontend)
+	$(MAKE) EMBEDASSETS="" go/bin
+
+.PHONY: frontend/build
+frontend/build: frontend/deps ## Do a production build for the frontend
+	yarn build
+
+.PHONY: frontend/deps
+frontend/deps:
+	yarn --frozen-lockfile
 
 .PHONY: release
 release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
@@ -154,16 +167,16 @@ endef
 
 .PHONY: docker-image/phlare/build-debug
 docker-image/phlare/build-debug: GOOS=linux GOARCH=amd64
-docker-image/phlare/build-debug: go/bin-debug $(BIN)/dlv
+docker-image/phlare/build-debug: frontend/build go/bin-debug $(BIN)/dlv
 	$(call docker_buildx,--load,debug.)
 
 .PHONY: docker-image/phlare/build
 docker-image/phlare/build: GOOS=linux GOARCH=amd64
-docker-image/phlare/build: go/bin
+docker-image/phlare/build: frontend/build go/bin
 	$(call docker_buildx,--load)
 
 .PHONY: docker-image/phlare/push
-docker-image/phlare/push: go/bin
+docker-image/phlare/push: frontend/build go/bin
 	$(call docker_buildx,--push)
 
 define UPDATER_CONFIG_JSON
