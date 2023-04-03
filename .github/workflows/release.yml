@@ -30,6 +30,10 @@ jobs:
         with:
           go-version: ">=1.19.5"
           cache: true
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.15.0
+          cache: yarn
       # setup docker buildx
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -41,6 +45,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - run: make frontend/build
       - uses: goreleaser/goreleaser-action@v4
         with:
           # either 'goreleaser' (default) or 'goreleaser-pro':

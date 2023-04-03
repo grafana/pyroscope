@@ -38,6 +38,11 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.15.0
+          cache: yarn
+      - run: make frontend/build
       - uses: goreleaser/goreleaser-action@v4
         with:
           # either 'goreleaser' (default) or 'goreleaser-pro':

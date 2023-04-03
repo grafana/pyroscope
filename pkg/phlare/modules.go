@@ -29,6 +29,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v2"
 
+	"github.com/grafana/phlare/public"
+
 	agentv1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1"
 	"github.com/grafana/phlare/api/gen/proto/go/agent/v1/agentv1connect"
 	"github.com/grafana/phlare/api/gen/proto/go/ingester/v1/ingesterv1connect"
@@ -452,6 +454,13 @@ func (f *Phlare) initServer() (services.Service, error) {
 
 	// register static assets
 	f.Server.HTTP.PathPrefix("/static/").Handler(http.FileServer(http.FS(api.StaticFiles)))
+
+	// register ui
+	uiAssets, err := public.Assets()
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize the ui: %w", err)
+	}
+	f.Server.HTTP.PathPrefix("/ui/").Handler(http.StripPrefix("/ui/", http.FileServer(uiAssets)))
 
 	// register index page
 	f.IndexPage = api.NewIndexPageContent()
