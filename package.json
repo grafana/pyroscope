@@ -22,6 +22,7 @@
   "dependencies": {
     "jquery": "^3.6.4",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "pyroscope-oss": "git+https://github.com/pyroscope-io/pyroscope.git#5e544c2ef6cb88eedec84fae560e947ac0f183cb"
   }
 }

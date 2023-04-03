@@ -16,6 +16,14 @@ module.exports = {
   resolve: {
     extensions: ['.ts', '.tsx', '.es6', '.js', '.json', '.svg'],
     modules: ['node_modules', path.resolve('public')],
+
+    // TODO: unify with tsconfig.json
+    alias: {
+      '@webapp': path.resolve(
+        __dirname,
+        '../../node_modules/pyroscope-oss/webapp/javascript'
+      ),
+    },
   },
   ignoreWarnings: [/export .* was not found in/],
   stats: {
@@ -40,7 +48,8 @@ module.exports = {
       },
       {
         test: /\.(js|ts)x?$/,
-        exclude: /node_modules/,
+        // Ignore everything except pyroscope-oss, since it's used as if it was local code
+        exclude: /node_modules\/(?!pyroscope-oss).*/,
         use: [
           {
             loader: 'esbuild-loader',
