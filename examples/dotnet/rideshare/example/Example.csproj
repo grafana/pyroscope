@@ -7,6 +7,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Pyroscope" Version="0.4.0" />
+    <Reference Include="Pyroscope">
+      <HintPath>..\..\..\..\..\pyroscope-dotnet\Pyroscope\Pyroscope\bin\Debug\net6.0\Pyroscope.dll</HintPath>
+    </Reference>
   </ItemGroup>
 </Project>
