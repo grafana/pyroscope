@@ -188,7 +188,7 @@ func (s *profileStore) Flush(ctx context.Context) (numRows uint64, numRowGroups 
 	return numRows, numRowGroups, nil
 }
 
-func (s *profileStore) prepareFile(path string) (closer io.Closer, err error) {
+func (s *profileStore) prepareFile(path string) (f *os.File, err error) {
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return nil, err
@@ -207,6 +207,13 @@ func (s *profileStore) empty() bool {
 // cutRowGroups gets called, when a patrticular row group has been finished and it will flush it to disk. The caller of cutRowGroups should be holding the write lock.
 // TODO: write row groups asynchronously
 func (s *profileStore) cutRowGroup() (err error) {
+	// if cutRowGroup fails record it as failed segment
+	defer func() {
+		if err != nil {
+			s.metrics.writtenProfileSegments.WithLabelValues("failed").Inc()
+		}
+	}()
+
 	// do nothing with empty buffer
 	bufferRowNums := len(s.slice)
 	if bufferRowNums == 0 {
@@ -218,7 +225,7 @@ func (s *profileStore) cutRowGroup() (err error) {
 		fmt.Sprintf("%s.%d%s", s.persister.Name(), s.rowsFlushed, block.ParquetSuffix),
 	)
 
-	fileCloser, err := s.prepareFile(path)
+	f, err := s.prepareFile(path)
 	if err != nil {
 		return err
 	}
@@ -235,8 +242,14 @@ func (s *profileStore) cutRowGroup() (err error) {
 		return errors.Wrap(err, "close row group segment writer")
 	}
 
-	if err := fileCloser.Close(); err != nil {
+	if err := f.Close(); err != nil {
 		return errors.Wrap(err, "closing row group segment file")
+	}
+	s.metrics.writtenProfileSegments.WithLabelValues("success").Inc()
+
+	// get row group segment size on disk
+	if stat, err := f.Stat(); err == nil {
+		s.metrics.writtenProfileSegmentsBytes.Observe(float64(stat.Size()))
 	}
 
 	s.rowsFlushed += uint64(n)
