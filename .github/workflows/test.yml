@@ -22,7 +22,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go-version }}
       - name: Checkout code
@@ -30,8 +30,8 @@ jobs:
       # Get values for cache paths to be used in later steps
       - id: go-cache-paths
         run: |
-         echo "go-build={$(go env GOCACHE)}" >> $GITHUB_OUTPUT
-         echo "go-mod={$(go env GOMODCACHE)}" >> $GITHUB_OUTPUT
+          echo "go-build={$(go env GOCACHE)}" >> $GITHUB_OUTPUT
+          echo "go-mod={$(go env GOMODCACHE)}" >> $GITHUB_OUTPUT
 
       # Cache go build cache, used to speedup go test
       - name: Go Build Cache
@@ -63,7 +63,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go-version }}
       - name: Checkout code
@@ -71,8 +71,8 @@ jobs:
       # Get values for cache paths to be used in later steps
       - id: go-cache-paths
         run: |
-         echo "go-build={$(go env GOCACHE)}" >> $GITHUB_OUTPUT
-         echo "go-mod={$(go env GOMODCACHE)}" >> $GITHUB_OUTPUT
+          echo "go-build={$(go env GOCACHE)}" >> $GITHUB_OUTPUT
+          echo "go-mod={$(go env GOMODCACHE)}" >> $GITHUB_OUTPUT
 
       # Cache go build cache, used to speedup go test
       - name: Go Build Cache
