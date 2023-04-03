@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -19,8 +18,6 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/common/version"
-	"gopkg.in/alecthomas/kingpin.v2"
 
 	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
 	"github.com/grafana/phlare/api/gen/proto/go/querier/v1/querierv1connect"
@@ -31,8 +28,6 @@ const (
 	outputRaw     = "raw"
 	outputPprof   = "pprof="
 )
-
-var userAgentHeader = fmt.Sprintf("phlare/%s", version.Version)
 
 func parseTime(s string) (time.Time, error) {
 	if s == "" {
@@ -68,35 +63,6 @@ func parseRelativeTime(s string) (time.Duration, error) {
 	return time.Duration(d), nil
 }
 
-type phlareClient struct {
-	TenantID string
-	URL      string
-	client   *http.Client
-}
-
-type authRoundTripper struct {
-	tenantID string
-	next     http.RoundTripper
-}
-
-func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	if a.tenantID != "" {
-		req.Header.Set("X-Scope-OrgID", a.tenantID)
-	}
-	req.Header.Set("User-Agent", userAgentHeader)
-	return a.next.RoundTrip(req)
-}
-
-func (c *phlareClient) httpClient() *http.Client {
-	if c.client == nil {
-		c.client = &http.Client{Transport: &authRoundTripper{
-			tenantID: c.TenantID,
-			next:     http.DefaultTransport,
-		}}
-	}
-	return c.client
-}
-
 func (c *phlareClient) queryClient() querierv1connect.QuerierServiceClient {
 	return querierv1connect.NewQuerierServiceClient(
 		c.httpClient(),
@@ -129,19 +95,7 @@ func (p *queryParams) parseFromTo() (from time.Time, to time.Time, err error) {
 	return from, to, nil
 }
 
-type flagger interface {
-	Flag(name, help string) *kingpin.FlagClause
-}
-
-func addPhlareClient(queryCmd flagger) *phlareClient {
-	client := &phlareClient{}
-
-	queryCmd.Flag("url", "URL of the profile store.").Default("http://localhost:4100").StringVar(&client.URL)
-	queryCmd.Flag("tenant-id", "The tenant ID to be used for the X-Scope-OrgID header.").Default("").StringVar(&client.TenantID)
-	return client
-}
-
-func addQueryParams(queryCmd flagger) *queryParams {
+func addQueryParams(queryCmd commander) *queryParams {
 	var (
 		params = &queryParams{}
 	)

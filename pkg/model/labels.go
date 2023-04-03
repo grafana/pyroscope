@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/cespare/xxhash/v2"
+	pmodel "github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 
@@ -22,6 +23,7 @@ const (
 	LabelNamePeriodType  = "__period_type__"
 	LabelNamePeriodUnit  = "__period_unit__"
 	LabelNameDelta       = "__delta__"
+	LabelNameProfileName = pmodel.MetricNameLabel
 
 	labelSep = '\xfe'
 )
