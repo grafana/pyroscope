@@ -38,6 +38,9 @@ type headMetrics struct {
 	flusehdBlockProfiles        prometheus.Histogram
 	blockDurationSeconds        prometheus.Histogram
 	flushedBlocks               *prometheus.CounterVec
+	flushedBlocksReasons        *prometheus.CounterVec
+	writtenProfileSegments      *prometheus.CounterVec
+	writtenProfileSegmentsBytes prometheus.Histogram
 }
 
 func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
@@ -128,6 +131,20 @@ func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
 			Name: "phlare_head_flushed_blocks_total",
 			Help: "Total number of blocks flushed.",
 		}, []string{"status"}),
+		flushedBlocksReasons: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "phlare_head_flushed_reason_total",
+			Help: "Total count of reasons why block has been flushed.",
+		}, []string{"reason"}),
+		writtenProfileSegments: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "phlare_head_written_profile_segments_total",
+			Help: "Total number and status of profile row groups segments written.",
+		}, []string{"status"}),
+		writtenProfileSegmentsBytes: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name: "phlare_head_written_profile_segments_size_bytes",
+			Help: "Size of a flushed table in bytes.",
+			//  [512KB, 1MB, 2MB, 4MB, 8MB, 16MB, 32MB, 64MB, 128MB, 256MB, 512MB]
+			Buckets: prometheus.ExponentialBuckets(512*1024, 2, 11),
+		}),
 	}
 
 	m.register(reg)
@@ -154,6 +171,9 @@ func (m *headMetrics) register(reg prometheus.Registerer) {
 	m.flusehdBlockProfiles = util.RegisterOrGet(reg, m.flusehdBlockProfiles)
 	m.blockDurationSeconds = util.RegisterOrGet(reg, m.blockDurationSeconds)
 	m.flushedBlocks = util.RegisterOrGet(reg, m.flushedBlocks)
+	m.flushedBlocksReasons = util.RegisterOrGet(reg, m.flushedBlocksReasons)
+	m.writtenProfileSegments = util.RegisterOrGet(reg, m.writtenProfileSegments)
+	m.writtenProfileSegmentsBytes = util.RegisterOrGet(reg, m.writtenProfileSegmentsBytes)
 }
 
 func contextWithHeadMetrics(ctx context.Context, m *headMetrics) context.Context {

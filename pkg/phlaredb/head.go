@@ -246,11 +246,13 @@ func (h *Head) loop() {
 	for {
 		select {
 		case <-h.flushForcedTimer.C:
+			h.metrics.flushedBlocksReasons.WithLabelValues("max-duration").Inc()
 			level.Debug(h.logger).Log("msg", "max block duration reached, flush to disk")
 			close(h.flushCh)
 			return
 		case <-tick.C:
 			if currentSize := h.Size(); currentSize > h.parquetConfig.MaxBlockBytes {
+				h.metrics.flushedBlocksReasons.WithLabelValues("max-block-bytes").Inc()
 				level.Debug(h.logger).Log(
 					"msg", "max block bytes reached, flush to disk",
 					"max_size", humanize.Bytes(h.parquetConfig.MaxBlockBytes),
