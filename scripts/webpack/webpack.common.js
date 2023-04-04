@@ -4,6 +4,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const {
   dependencies: pyroOSSDeps,
 } = require('../../node_modules/pyroscope-oss/package.json');
+const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
 // this is so that we don't import dependencies twice, once from pyroscope-oss and another from here
 const deps = Object.entries(pyroOSSDeps).reduce((prev, [name]) => {
@@ -30,26 +31,17 @@ module.exports = {
 
     // TODO: unify with tsconfig.json
     alias: {
-      '@pyroscope/webapp': path.resolve(
-        __dirname,
-        '../../node_modules/pyroscope-oss/webapp'
-      ),
-      '@webapp': path.resolve(
-        __dirname,
-        '../../node_modules/pyroscope-oss/webapp/javascript'
-      ),
-      '@pyroscope/flamegraph': path.resolve(
-        __dirname,
-        '../../node_modules/pyroscope-oss/packages/pyroscope-flamegraph'
-      ),
-      '@pyroscope/models': path.resolve(
-        __dirname,
-        '../../node_modules/pyroscope-oss/packages/pyroscope-models'
-      ),
-
       // Dependencies
       ...deps,
     },
+    plugins: [
+      // Use same alias from tsconfig.json
+      new TsconfigPathsPlugin({
+        logLevel: 'info',
+        // TODO: figure out why it could not use the baseUrl from tsconfig.json
+        baseUrl: path.resolve(__dirname, '../../'),
+      }),
+    ],
   },
   ignoreWarnings: [/export .* was not found in/],
   stats: {
