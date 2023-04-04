@@ -210,6 +210,7 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 			// zip the data back into the buffer
 			bw := bytes.NewBuffer(raw.RawProfile[:0])
 			if _, err := p.WriteTo(bw); err != nil {
+				p.Close()
 				return nil, err
 			}
 			p.Close()
