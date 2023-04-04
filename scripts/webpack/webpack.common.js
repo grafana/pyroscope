@@ -1,6 +1,17 @@
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const {
+  dependencies: pyroOSSDeps,
+} = require('../../node_modules/pyroscope-oss/package.json');
+
+// this is so that we don't import dependencies twice, once from pyroscope-oss and another from here
+const deps = Object.entries(pyroOSSDeps).reduce((prev, [name]) => {
+  return {
+    ...prev,
+    [name]: path.resolve(__dirname, `../../node_modules/${name}`),
+  };
+}, {});
 
 module.exports = {
   target: 'web',
@@ -19,10 +30,25 @@ module.exports = {
 
     // TODO: unify with tsconfig.json
     alias: {
+      '@pyroscope/webapp': path.resolve(
+        __dirname,
+        '../../node_modules/pyroscope-oss/webapp'
+      ),
       '@webapp': path.resolve(
         __dirname,
         '../../node_modules/pyroscope-oss/webapp/javascript'
       ),
+      '@pyroscope/flamegraph': path.resolve(
+        __dirname,
+        '../../node_modules/pyroscope-oss/packages/pyroscope-flamegraph'
+      ),
+      '@pyroscope/models': path.resolve(
+        __dirname,
+        '../../node_modules/pyroscope-oss/packages/pyroscope-models'
+      ),
+
+      // Dependencies
+      ...deps,
     },
   },
   ignoreWarnings: [/export .* was not found in/],
@@ -76,6 +102,24 @@ module.exports = {
             options: {
               loader: 'tsx',
               target: 'es2015',
+            },
+          },
+        ],
+      },
+
+      // SVG
+      {
+        test: /\.svg$/,
+        use: [
+          {
+            loader: 'react-svg-loader',
+            options: {
+              svgo: {
+                plugins: [
+                  { convertPathData: { noSpaceAfterFlags: false } },
+                  { removeViewBox: false },
+                ],
+              },
             },
           },
         ],
