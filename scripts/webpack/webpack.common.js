@@ -37,11 +37,19 @@ module.exports = {
       // Specific Component overrides
       '@webapp/components/ExportData': path.resolve(
         __dirname,
-        '../../public/app/overrides/ExportData'
+        '../../public/app/overrides/components/ExportData'
       ),
       '@webapp/services/apps': path.resolve(
         __dirname,
         '../../public/app/overrides/services/appNames'
+      ),
+      '@webapp/services/render': path.resolve(
+        __dirname,
+        '../../public/app/overrides/services/render'
+      ),
+      '@webapp/services/tags': path.resolve(
+        __dirname,
+        '../../public/app/overrides/services/tags'
       ),
 
       // Common

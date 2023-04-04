@@ -7,8 +7,12 @@
       "@webapp/redux/*": ["./node_modules/pyroscope-oss/webapp/javascript/redux/*"],
       "@pyroscope/flamegraph/*": ["./node_modules/pyroscope-oss/packages/pyroscope-flamegraph/*"],
       "@pyroscope/models/*": ["./node_modules/pyroscope-oss/packages/pyroscope-models/*"],
-      "@webapp/components/ExportData": ["./public/app/overrides/ExportData"],
+
+      "@webapp/components/ExportData": ["./public/app/overrides/components/ExportData"],
       "@webapp/services/apps": ["./public/app/overrides/services/appNames"],
+      "@webapp/services/render": ["./public/app/overrides/services/render"],
+      "@webapp/services/tags": ["./public/app/overrides/services/tags"],
+
       "@webapp/*": ["./node_modules/pyroscope-oss/webapp/javascript/*"]
     },
     "target": "es5",
