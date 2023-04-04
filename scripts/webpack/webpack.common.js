@@ -30,17 +30,49 @@ module.exports = {
     modules: ['node_modules', path.resolve('public')],
 
     // TODO: unify with tsconfig.json
+    // When using TsconfigPathsPlugin, paths overrides don't work
+    // For example, setting a) '@webapp/*' and  b) '@webapp/components/ExportData'
+    // Would end up ignoring b)
     alias: {
+      // Specific Component overrides
+      '@webapp/components/ExportData': path.resolve(
+        __dirname,
+        '../../public/app/overrides/ExportData'
+      ),
+      '@webapp/services/apps': path.resolve(
+        __dirname,
+        '../../public/app/overrides/services/appNames'
+      ),
+
+      // Common
+      '@pyroscope/webapp': path.resolve(
+        __dirname,
+        '../../node_modules/pyroscope-oss/webapp'
+      ),
+      '@pyroscope/flamegraph': path.resolve(
+        __dirname,
+        '../../node_modules/pyroscope-oss/packages/pyroscope-flamegraph'
+      ),
+      '@pyroscope/models': path.resolve(
+        __dirname,
+        '../../node_modules/pyroscope-oss/packages/pyroscope-models'
+      ),
+
+      '@webapp': path.resolve(
+        __dirname,
+        '../../node_modules/pyroscope-oss/webapp/javascript'
+      ),
+
       // Dependencies
       ...deps,
     },
     plugins: [
       // Use same alias from tsconfig.json
-      new TsconfigPathsPlugin({
-        logLevel: 'info',
-        // TODO: figure out why it could not use the baseUrl from tsconfig.json
-        baseUrl: path.resolve(__dirname, '../../'),
-      }),
+      //      new TsconfigPathsPlugin({
+      //        logLevel: 'info',
+      //        // TODO: figure out why it could not use the baseUrl from tsconfig.json
+      //        baseUrl: path.resolve(__dirname, '../../'),
+      //      }),
     ],
   },
   ignoreWarnings: [/export .* was not found in/],

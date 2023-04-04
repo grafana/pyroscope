@@ -6,6 +6,9 @@ module.exports = merge(common, {
   mode: 'development',
   devServer: {
     port: 4040,
+    proxy: {
+      '/pyroscope': 'http://localhost:4100',
+    },
   },
   optimization: {
     runtimeChunk: 'single',
