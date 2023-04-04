@@ -4,9 +4,12 @@
     "plugins": [{ "name": "typescript-plugin-css-modules" }],
     "paths": {
       "@pyroscope/webapp/*": ["./node_modules/pyroscope-oss/webapp/*"],
-      "@webapp/*": ["./node_modules/pyroscope-oss/webapp/javascript/*"],
+      "@webapp/redux/*": ["./node_modules/pyroscope-oss/webapp/javascript/redux/*"],
       "@pyroscope/flamegraph/*": ["./node_modules/pyroscope-oss/packages/pyroscope-flamegraph/*"],
-      "@pyroscope/models/*": ["./node_modules/pyroscope-oss/packages/pyroscope-models/*"]
+      "@pyroscope/models/*": ["./node_modules/pyroscope-oss/packages/pyroscope-models/*"],
+      "@webapp/components/ExportData": ["./public/app/overrides/ExportData"],
+      "@webapp/services/apps": ["./public/app/overrides/services/appNames"],
+      "@webapp/*": ["./node_modules/pyroscope-oss/webapp/javascript/*"]
     },
     "target": "es5",
     "lib": [
@@ -31,9 +34,9 @@
     "strictNullChecks": true
   },
   "include": [
-    "node_modules/pyroscope-oss/lib/",
-    "node_modules/pyroscope-oss/webapp/javascript/types",
-    "src"
+    "./node_modules/pyroscope-oss/lib/",
+    "./node_modules/pyroscope-oss/webapp/javascript/types",
+    "public"
   ]
 }
 

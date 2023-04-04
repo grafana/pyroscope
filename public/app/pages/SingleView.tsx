@@ -1,3 +1,8 @@
 import ContinuousSingleView from '@webapp/pages/ContinuousSingleView';
+import { loadAppNames } from '../hooks/loadAppNames';
 
-export { ContinuousSingleView as SingleView };
+export function SingleView() {
+  loadAppNames();
+
+  return <ContinuousSingleView />;
+}
