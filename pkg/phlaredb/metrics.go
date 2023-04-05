@@ -100,26 +100,26 @@ func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
 		flushedBlockDurationSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: "phlare_head_flushed_block_duration_seconds",
 			Help: "Time to flushed a block in seconds.",
-			// [100ms, 200ms, 400ms, 800ms, 1.6s, 3.2s, 6.4s, 12.8s, 25.6s, 51.2s]
-			Buckets: prometheus.ExponentialBuckets(0.1, 2, 10),
+			// [5s, 7.5s, 11.25s, 16.875s, 25.3125s, 37.96875s, 56.953125s, 85.4296875s, 128.14453125s, 192.216796875s]
+			Buckets: prometheus.ExponentialBuckets(5, 1.5, 10),
 		}),
 		flushedBlockSeries: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: "phlare_head_flushed_block_series",
 			Help: "Number of series in a flushed block.",
-			// [5k, 10k, 20k, 40k, 80k, 160k, 320k, 640k, 1.28M, 2.56M]
-			Buckets: prometheus.LinearBuckets(5000, 5000, 10),
+			// [1k, 3k, 5k, 7k, 9k, 11k, 13k, 15k, 17k, 19k]
+			Buckets: prometheus.LinearBuckets(1000, 2000, 10),
 		}),
 		flushedBlockSamples: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: "phlare_head_flushed_block_samples",
 			Help: "Number of samples in a flushed block.",
-			// [10k, 20k, 40k, 80k, 160k, 320k, 640k, 1.28M, 2.56M, 5.12M]
-			Buckets: prometheus.ExponentialBuckets(10000, 2, 10),
+			// [200k, 400k, 800k, 1.6M, 3.2M, 6.4M, 12.8M, 25.6M, 51.2M, 102.4M, 204.8M, 409.6M, 819.2M, 1.6384G, 3.2768G]
+			Buckets: prometheus.ExponentialBuckets(200_000, 2, 15),
 		}),
 		flusehdBlockProfiles: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: "phlare_head_flushed_block_profiles",
 			Help: "Number of profiles in a flushed block.",
-			// [1k, 2k, 4k, 8k, 16k, 32k, 64k, 128k, 256k, 512k]
-			Buckets: prometheus.ExponentialBuckets(1000, 2, 10),
+			// [20k, 40k, 80k, 160k, 320k, 640k, 1.28M, 2.56M, 5.12M, 10.24M]
+			Buckets: prometheus.ExponentialBuckets(20_000, 2, 10),
 		}),
 		blockDurationSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: "phlare_head_block_duration_seconds",
