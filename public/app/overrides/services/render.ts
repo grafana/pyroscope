@@ -73,3 +73,30 @@ export async function renderSingle(
 
   return Result.err(parsed.error);
 }
+
+export type RenderDiffResponse = Profile;
+export interface RenderExploreOutput {
+  profile: Profile;
+  groups: Groups;
+}
+
+export async function renderDiff(
+  props: unknown,
+  controller?: {
+    signal?: AbortSignal;
+  }
+) {
+  return Result.err<Profile, { message: string }>({
+    message: 'TODO: implement ',
+  });
+}
+export async function renderExplore(
+  props: unknown,
+  controller?: {
+    signal?: AbortSignal;
+  }
+) {
+  return Result.err<RenderExploreOutput, { message: string }>({
+    message: 'TODO: implement ',
+  });
+}
