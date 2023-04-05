@@ -64,7 +64,7 @@ go/test: $(BIN)/gotestsum
 	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) ./...
 
 .PHONY: build
-build: go/bin ## Do a production build (requiring the frontend build to be present)
+build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)
 
 .PHONY: build-dev
 build-dev: ## Do a dev build (without requiring the frontend)
