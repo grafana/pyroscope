@@ -12,6 +12,4 @@ export function loadAppNames() {
 
     run();
   }, [dispatch]);
-
-  return [];
 }

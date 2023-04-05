@@ -1,3 +1,18 @@
-export async function fetchTags() {
-  return [];
+import { Result } from '@webapp/util/fp';
+
+export async function fetchTags(query: string, from: number, until: number) {
+  return Result.err<string[], { message: string }>({
+    message: 'TODO: implement ',
+  });
+}
+
+export async function fetchLabelValues(
+  label: string,
+  query: string,
+  from: number,
+  until: number
+) {
+  return Result.err<string[], { message: string }>({
+    message: 'TODO: implement ',
+  });
 }

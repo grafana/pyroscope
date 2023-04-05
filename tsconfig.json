@@ -10,6 +10,10 @@
 
       "@webapp/components/ExportData": ["./public/app/overrides/components/ExportData"],
       "@webapp/components/TimelineChart/TimelineChartWrapper": ["./public/app/overrides/components/TimelineChart/TimelineChartWrapper"],
+      "@webapp/components/TimelineChart/ContextMenu.plugin": ["./public/app/overrides/components/TimelineChart/ContextMenu.plugin"],
+      "@webapp/components/TimelineChart/Tooltip.plugin": ["./public/app/overrides/components/TimelineChart/Tooltip.plugin"],
+      "@webapp/redux/store": ["./public/app/redux/store"],
+      "@webapp/redux/hooks": ["./public/app/redux/hooks"],
       "@webapp/services/apps": ["./public/app/overrides/services/appNames"],
       "@webapp/services/render": ["./public/app/overrides/services/render"],
       "@webapp/services/tags": ["./public/app/overrides/services/tags"],
@@ -41,7 +45,8 @@
   "include": [
     "./node_modules/pyroscope-oss/lib/",
     "./node_modules/pyroscope-oss/webapp/javascript/types",
-    "public"
+    "public",
+    "public/app/types.ts"
   ]
 }
 

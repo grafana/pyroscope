@@ -43,6 +43,22 @@ module.exports = {
         __dirname,
         '../../public/app/overrides/components/TimelineChart/TimelineChartWrapper'
       ),
+      '@webapp/components/TimelineChart/ContextMenu.plugin': path.resolve(
+        __dirname,
+        '../../public/app/overrides/components/TimelineChart/ContextMenu.plugin'
+      ),
+      '@webapp/components/TimelineChart/Tooltip.plugin': path.resolve(
+        __dirname,
+        '../../public/app/overrides/components/TimelineChart/Tooltip.plugin'
+      ),
+      '@webapp/redux/store': path.resolve(
+        __dirname,
+        '../../public/app/redux/store'
+      ),
+      '@webapp/redux/hooks': path.resolve(
+        __dirname,
+        '../../public/app/redux/hooks'
+      ),
       '@webapp/services/apps': path.resolve(
         __dirname,
         '../../public/app/overrides/services/appNames'
