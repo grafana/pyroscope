@@ -39,8 +39,5 @@ declare module 'react-svg-spinner' {
     speed?: 'fast' | 'slow' | 'default';
   };
 
-  // eslint-disable-next-line react/prefer-stateless-function
-  class Spinner extends React.Component<SpinnerProps, ShamefulAny> {}
-
-  export default Spinner;
+  export default React.FC<SpinnerProps>();
 }
