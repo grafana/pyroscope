@@ -39,6 +39,10 @@ module.exports = {
         __dirname,
         '../../public/app/overrides/components/ExportData'
       ),
+      '@webapp/components/TimelineChart/TimelineChartWrapper': path.resolve(
+        __dirname,
+        '../../public/app/overrides/components/TimelineChart/TimelineChartWrapper'
+      ),
       '@webapp/services/apps': path.resolve(
         __dirname,
         '../../public/app/overrides/services/appNames'
