@@ -5,15 +5,24 @@ import type { ZodError } from 'zod';
 import type { RequestError } from '@webapp/services/base';
 import { parseResponse, request } from '@webapp/services/base';
 
-const appNamesResponse = z.array(z.string()).transform((names) => {
-  return names.map((name) => {
-    return {
-      name,
-      spyName: 'unknown',
-      units: 'unknown',
-    };
-  });
-});
+const appNamesResponse = z.preprocess(
+  (arg) => {
+    if (!Array.isArray(arg)) {
+      return [];
+    }
+
+    return arg;
+  },
+  z.array(z.string()).transform((names) => {
+    return names.map((name) => {
+      return {
+        name,
+        spyName: 'gospy',
+        units: 'unknown',
+      };
+    });
+  })
+);
 
 export async function fetchApps(): Promise<
   Result<App[], RequestError | ZodError>
