@@ -23,6 +23,7 @@ jobs:
         with:
           node-version: 18.15.0
           cache: yarn
+      - run: yarn --frozen-lockfile
       - name: Run type-check
         run: yarn type-check
   build:
@@ -34,6 +35,7 @@ jobs:
         with:
           node-version: 18.15.0
           cache: yarn
+      - run: yarn --frozen-lockfile
       - name: Run build
         run: yarn build
   test:
@@ -45,5 +47,6 @@ jobs:
         with:
           node-version: 18.15.0
           cache: yarn
+      - run: yarn --frozen-lockfile
       - name: Run tests
         run: yarn test
