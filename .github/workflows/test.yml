@@ -15,78 +15,70 @@ concurrency:
 
 jobs:
   test:
-    strategy:
-      matrix:
-        go-version: [1.19.6]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: 1.19.8
       - name: Checkout code
         uses: actions/checkout@v3
       # Get values for cache paths to be used in later steps
       - id: go-cache-paths
         run: |
-          echo "go-build={$(go env GOCACHE)}" >> $GITHUB_OUTPUT
-          echo "go-mod={$(go env GOMODCACHE)}" >> $GITHUB_OUTPUT
+          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+          echo "go-version=$(go env GOVERSION)" >> $GITHUB_OUTPUT
 
       # Cache go build cache, used to speedup go test
       - name: Go Build Cache
         uses: actions/cache@v3
         with:
           path: ${{ steps.go-cache-paths.outputs.go-build }}
-          key: ${{ runner.os }}-go-build-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-build-${{ steps.go-cache-paths.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
 
       # Cache go mod cache, used to speedup builds
       - name: Go Mod Cache
         uses: actions/cache@v3
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-mod-${{ steps.go-cache-paths.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
       - name: Go Mod
         run: make check/go/mod
-        if: matrix.os == 'ubuntu-latest'
       - name: Format
         run: make fmt check/unstaged-changes
-        if: matrix.os == 'ubuntu-latest'
       - name: Test
         run: make go/test
 
   lint:
-    strategy:
-      matrix:
-        go-version: [1.19.6]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: 1.19.8
       - name: Checkout code
         uses: actions/checkout@v3
       # Get values for cache paths to be used in later steps
       - id: go-cache-paths
         run: |
-          echo "go-build={$(go env GOCACHE)}" >> $GITHUB_OUTPUT
-          echo "go-mod={$(go env GOMODCACHE)}" >> $GITHUB_OUTPUT
+          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
+          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
+          echo "go-version=$(go env GOVERSION)" >> $GITHUB_OUTPUT
 
       # Cache go build cache, used to speedup go test
       - name: Go Build Cache
         uses: actions/cache@v3
         with:
           path: ${{ steps.go-cache-paths.outputs.go-build }}
-          key: ${{ runner.os }}-go-build-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-build-${{ steps.go-cache-paths.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
 
       # Cache go mod cache, used to speedup builds
       - name: Go Mod Cache
         uses: actions/cache@v3
         with:
           path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+          key: ${{ runner.os }}-go-mod-${{ steps.go-cache-paths.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
       - name: Run linter
         run: make lint
       - name: Check helm manifests
@@ -116,7 +108,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19.6
+          go-version: 1.19.8
       - uses: actions/setup-node@v3
         with:
           node-version: 18.15.0
@@ -138,7 +130,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19.6
+          go-version: 1.19.8
       - uses: actions/setup-node@v3
         with:
           node-version: 18.15.0
