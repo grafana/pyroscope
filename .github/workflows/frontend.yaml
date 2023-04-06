@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - r[0-9]+ # Trigger builds after a push to weekly branches
   pull_request:
 
 concurrency:
