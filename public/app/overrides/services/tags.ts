@@ -1,9 +1,7 @@
 import { Result } from '@webapp/util/fp';
 
 export async function fetchTags(query: string, from: number, until: number) {
-  return Result.err<string[], { message: string }>({
-    message: 'TODO: implement ',
-  });
+  return Result.ok([]);
 }
 
 export async function fetchLabelValues(
