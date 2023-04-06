@@ -23,61 +23,9 @@ $buttonHeight: 37px;
   color: var(--ps-toolbar-icon-color);
 }
 
-.toggleViewButton {
-  height: $buttonHeight;
-  min-width: auto;
-  width: 40px;
-  margin: 0 2px;
-  padding: 0;
-  border-color: transparent;
-  background-color: transparent;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  svg {
-    width: 22px;
-    height: 22px;
-  }
-
-  &.selected {
-    background-color: var(--ps-fl-toolbar-btn-bg);
-
-    &:hover {
-      background-color: var(--ps-fl-toolbar-btn-bg);
-    }
-
-    svg {
-      color: white;
-    }
-  }
-}
-
-.fitModeButton {
-  @extend .toggleViewButton;
-}
-
-.collapseNodeButton {
-  min-width: initial;
-  width: 40px;
-  height: $buttonHeight;
-  margin: 0 2px;
-  padding: 0;
-  background-color: transparent;
-  border-color: transparent;
-}
-
-.resetViewButton {
-  @extend .collapseNodeButton;
-  width: 40px;
-  min-width: initial;
-  margin: 0 2px;
-  padding: 0;
-}
-
 .divider {
   width: 1px;
-  margin: 0 2px;
+  margin: 0 4px;
   height: $buttonHeight;
   background-color: var(--ps-ui-border);
 }
@@ -85,23 +33,7 @@ $buttonHeight: 37px;
 .itemsContainer,
 .item {
   display: flex;
-}
-
-.moreButton {
-  border-radius: 4px;
-  border: none;
-  padding: 0 5px;
-  height: $buttonHeight;
-
-  &.active,
-  &.active:hover {
-    background-color: var(--ps-fl-toolbar-btn-bg);
-  }
-
-  &:hover {
-    background-color: var(--ps-ui-element-bg-highlight);
-    cursor: pointer;
-  }
+  align-items: center;
 }
 
 .navbarCollapsedItems {
