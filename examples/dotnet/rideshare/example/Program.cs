@@ -12,8 +12,8 @@ public static class Program
 {
     public static void Main(string[] args)
     {
-        object _lock = new();
-
+        object globalLock = new();
+        var strings = new List<string>();
         var orderService = new OrderService();
         var bikeService = new BikeService(orderService);
         var scooterService = new ScooterService(orderService);
@@ -36,37 +36,58 @@ public static class Program
             carService.Order(3);
             return "Car ordered";
         });
-        app.MapGet("/debug/sampler", (HttpRequest request) =>
+        
+        
+        app.MapGet("/pyroscope/cpu", (HttpRequest request) =>
         {
-            bool enable = request.Query["enable"] == "true";
-            Pyroscope.Profiler.Instance.SetStackSamplerEnabled(enable);
+            var enable = request.Query["enable"] == "true";
+            Pyroscope.Profiler.Instance.SetCPUTrackingEnabled(enable);
             return "OK";
         });
-        app.MapGet("/debug/allocation", (HttpRequest request) =>
+        app.MapGet("/pyroscope/allocation", (HttpRequest request) =>
         {
-            bool enable = request.Query["enable"] == "true";
+            var enable = request.Query["enable"] == "true";
             Pyroscope.Profiler.Instance.SetAllocationTrackingEnabled(enable);
             return "OK";
         });
-        app.MapGet("/debug/contention", (HttpRequest request) =>
+        app.MapGet("/pyroscope/contention", (HttpRequest request) =>
         {
-            bool enable = request.Query["enable"] == "true";
+            var enable = request.Query["enable"] == "true";
             Pyroscope.Profiler.Instance.SetContentionTrackingEnabled(enable);
             return "OK";
         });
-        app.MapGet("/pg/allocate", (HttpRequest request) =>
+        app.MapGet("/pyroscope/contention", (HttpRequest request) =>
         {
-            List<String> ss = new List<string>();
-            for (int i = 0; i < 10000; i++)
+            var enable = request.Query["enable"] == "true";
+            Pyroscope.Profiler.Instance.SetExceptionTrackingEnabled(enable);
+            return "OK";
+        });
+        
+        
+        app.MapGet("/playground/allocation", (HttpRequest request) =>
+        {
+            var strings = new List<string>();
+            for (var i = 0; i < 10000; i++)
             {
-                ss.Add("foobar" + i);
+                strings.Add("foobar" + i);
             }
 
             return "OK";
         });
-        app.MapGet("/pg/exception", (HttpRequest request) =>
+        app.MapGet("/playground/contention", (HttpRequest request) =>
         {
-            for (int i = 0; i < 1000; i++)
+            for (var i = 0; i < 100; i++)
+            {
+                lock (globalLock)
+                {
+                    Thread.Sleep(10);
+                }
+            }
+            return "OK";
+        });
+        app.MapGet("/playground/exception", (HttpRequest request) =>
+        {
+            for (var i = 0; i < 1000; i++)
             {
                 try
                 {
@@ -78,14 +99,11 @@ public static class Program
             }
             return "OK";
         });
-        app.MapGet("/pg/contention", (HttpRequest request) =>
+        app.MapGet("/playground/leak", (HttpRequest request) =>
         {
-            for (int i = 0; i < 100; i++)
+            for (var i = 0; i < 1000; i++)
             {
-                lock (_lock)
-                {
-                    Thread.Sleep(10);
-                }
+                strings.Add("leak " + i);
             }
             return "OK";
         });
