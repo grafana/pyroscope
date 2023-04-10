@@ -56,7 +56,7 @@ public static class Program
             Pyroscope.Profiler.Instance.SetContentionTrackingEnabled(enable);
             return "OK";
         });
-        app.MapGet("/pyroscope/contention", (HttpRequest request) =>
+        app.MapGet("/pyroscope/exception", (HttpRequest request) =>
         {
             var enable = request.Query["enable"] == "true";
             Pyroscope.Profiler.Instance.SetExceptionTrackingEnabled(enable);
