@@ -91,23 +91,36 @@ function generateTable(
   const { names, levels, format } = flamebearer;
   const ff = format !== 'double' ? singleFF : doubleFF;
 
-  const hash: Record<string, (DoubleCell | SingleCell) & { name: string }> = {};
+  const hash = new Map<string, (DoubleCell | SingleCell) & { name: string }>();
   // eslint-disable-next-line no-plusplus
   for (let i = 0; i < levels.length; i++) {
     const level = levels[i];
     for (let j = 0; j < level.length; j += ff.jStep) {
       const key = ff.getBarName(level, j);
       const name = names[key];
-      hash[name] = hash[name] || { name: name || '<empty>' };
+
+      if (!hash.has(name)) {
+        hash.set(name, {
+          name: name || '<empty>',
+          self: 0,
+          total: 0,
+        } as SingleCell & { name: string });
+      }
+
+      const cell = hash.get(name);
+      // Should not happen
+      if (!cell) {
+        break;
+      }
 
       // TODO(eh-am): not the most optimal performance wise
       // but better for type checking
       if (format === 'single') {
-        generateCellSingle(singleFF, hash[name] as SingleCell, level, j);
+        generateCellSingle(singleFF, cell as SingleCell, level, j);
       } else {
         generateCellDouble(
           doubleFF,
-          hash[name] as DoubleCell,
+          cell as DoubleCell,
           level,
           j,
           flamebearer.leftTicks,
@@ -117,7 +130,7 @@ function generateTable(
     }
   }
 
-  return Object.values(hash);
+  return Array.from(hash.values());
 }
 
 // the value must be negative or zero

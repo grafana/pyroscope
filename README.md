@@ -125,8 +125,8 @@ For more documentation on how to add the Pyroscope agent to your code, see the [
 
 Pyroscope also supports several third-party integrations notably:
 - [Grafana Plugin](https://github.com/grafana/pyroscope/tree/main/examples/grafana-integration)
-- [Jaeger UI](https://github.com/grafana/jaeger-ui)
-- [OTel Golang (tracing)](https://github.com/grafana/otel-profiling-go)
+- [Jaeger UI](https://github.com/pyroscope-io/jaeger-ui)
+- [OTel Golang (tracing)](https://github.com/pyroscope-io/otel-profiling-go)
 - [AWS Lambda Extension](https://pyroscope.io/docs/aws-lambda)
 
 ## Documentation
@@ -181,9 +181,9 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/eh-am"><img src="https://avatars.githubusercontent.com/u/6951209?v=4" title="eh-am" width="80" height="80"></a>
 <a href="https://github.com/Rperry2174"><img src="https://avatars.githubusercontent.com/u/23323466?v=4" title="Rperry2174" width="80" height="80"></a>
 <a href="https://github.com/kolesnikovae"><img src="https://avatars.githubusercontent.com/u/12090599?v=4" title="kolesnikovae" width="80" height="80"></a>
+<a href="https://github.com/korniltsev"><img src="https://avatars.githubusercontent.com/u/331773?v=4" title="korniltsev" width="80" height="80"></a>
 <a href="https://github.com/dogfrogfog"><img src="https://avatars.githubusercontent.com/u/47758224?v=4" title="dogfrogfog" width="80" height="80"></a>
 <a href="https://github.com/abeaumont"><img src="https://avatars.githubusercontent.com/u/80059?v=4" title="abeaumont" width="80" height="80"></a>
-<a href="https://github.com/korniltsev"><img src="https://avatars.githubusercontent.com/u/331773?v=4" title="korniltsev" width="80" height="80"></a>
 <a href="https://github.com/pavelpashkovsky"><img src="https://avatars.githubusercontent.com/u/7372044?v=4" title="pavelpashkovsky" width="80" height="80"></a>
 <a href="https://github.com/LouisInFlow"><img src="https://avatars.githubusercontent.com/u/84481279?v=4" title="LouisInFlow" width="80" height="80"></a>
 <a href="https://github.com/shaleynikov"><img src="https://avatars.githubusercontent.com/u/8720058?v=4" title="shaleynikov" width="80" height="80"></a>
@@ -231,6 +231,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/Juneezee"><img src="https://avatars.githubusercontent.com/u/20135478?v=4" title="Juneezee" width="80" height="80"></a>
 <a href="https://github.com/Faria-Ejaz"><img src="https://avatars.githubusercontent.com/u/14238844?v=4" title="Faria-Ejaz" width="80" height="80"></a>
 <a href="https://github.com/gabrielzezze"><img src="https://avatars.githubusercontent.com/u/38350130?v=4" title="gabrielzezze" width="80" height="80"></a>
+<a href="https://github.com/pendolf"><img src="https://avatars.githubusercontent.com/u/598479?v=4" title="pendolf" width="80" height="80"></a>
 <a href="https://github.com/yveshield"><img src="https://avatars.githubusercontent.com/u/8733258?v=4" title="yveshield" width="80" height="80"></a>
 <a href="https://github.com/czeslavo"><img src="https://avatars.githubusercontent.com/u/8835851?v=4" title="czeslavo" width="80" height="80"></a>
 <a href="https://github.com/hlts2"><img src="https://avatars.githubusercontent.com/u/25459661?v=4" title="hlts2" width="80" height="80"></a>

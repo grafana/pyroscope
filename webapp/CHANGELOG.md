@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.68.12](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.11...@pyroscope/webapp@1.68.12) (2023-04-05)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.68.11](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.10...@pyroscope/webapp@1.68.11) (2023-03-29)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.68.10](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.9...@pyroscope/webapp@1.68.10) (2023-03-28)
+
+
+### Bug Fixes
+
+* **webapp:** fix heatmap y axis ([#1912](https://github.com/grafana/pyroscope/issues/1912)) ([7e3b651](https://github.com/grafana/pyroscope/commit/7e3b65165710937c10c2bbe128942da028a031dc))
+
+
+
+
+
 ## [1.68.9](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.68.8...@pyroscope/webapp@1.68.9) (2023-03-14)
 
 **Note:** Version bump only for package @pyroscope/webapp
