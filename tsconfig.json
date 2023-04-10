@@ -1,0 +1,52 @@
+{
+  "baseUrl": ".",
+  "compilerOptions": {
+    "plugins": [{ "name": "typescript-plugin-css-modules" }],
+    "paths": {
+      "@pyroscope/webapp/*": ["./node_modules/pyroscope-oss/webapp/*"],
+      "@webapp/redux/*": ["./node_modules/pyroscope-oss/webapp/javascript/redux/*"],
+      "@pyroscope/flamegraph/*": ["./node_modules/pyroscope-oss/packages/pyroscope-flamegraph/*"],
+      "@pyroscope/models/*": ["./node_modules/pyroscope-oss/packages/pyroscope-models/*"],
+
+      "@webapp/components/ExportData": ["./public/app/overrides/components/ExportData"],
+      "@webapp/components/TimelineChart/TimelineChartWrapper": ["./public/app/overrides/components/TimelineChart/TimelineChartWrapper"],
+      "@webapp/components/TimelineChart/ContextMenu.plugin": ["./public/app/overrides/components/TimelineChart/ContextMenu.plugin"],
+      "@webapp/components/TimelineChart/Tooltip.plugin": ["./public/app/overrides/components/TimelineChart/Tooltip.plugin"],
+      "@webapp/redux/store": ["./public/app/redux/store"],
+      "@webapp/redux/hooks": ["./public/app/redux/hooks"],
+      "@webapp/services/apps": ["./public/app/overrides/services/appNames"],
+      "@webapp/services/render": ["./public/app/overrides/services/render"],
+      "@webapp/services/tags": ["./public/app/overrides/services/tags"],
+
+      "@webapp/*": ["./node_modules/pyroscope-oss/webapp/javascript/*"]
+    },
+    "target": "es5",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "noImplicitAny": true,
+    "strictNullChecks": true
+  },
+  "include": [
+    "./node_modules/pyroscope-oss/lib/",
+    "./node_modules/pyroscope-oss/webapp/javascript/types",
+    "public",
+    "public/app/types.ts"
+  ]
+}
+
