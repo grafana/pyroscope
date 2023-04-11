@@ -17,32 +17,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
       - name: Install Go
         uses: actions/setup-go@v4
         with:
           go-version: 1.19.8
-      - name: Checkout code
-        uses: actions/checkout@v3
-      # Get values for cache paths to be used in later steps
-      - id: go-cache-paths
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-          echo "go-version=$(go env GOVERSION)" >> $GITHUB_OUTPUT
-
-      # Cache go build cache, used to speedup go test
-      - name: Go Build Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-build }}
-          key: ${{ runner.os }}-go-build-${{ steps.go-cache-paths.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
-
-      # Cache go mod cache, used to speedup builds
-      - name: Go Mod Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ steps.go-cache-paths.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
       - name: Go Mod
         run: make check/go/mod
       - name: Format
@@ -53,32 +33,12 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
       - name: Install Go
         uses: actions/setup-go@v4
         with:
           go-version: 1.19.8
-      - name: Checkout code
-        uses: actions/checkout@v3
-      # Get values for cache paths to be used in later steps
-      - id: go-cache-paths
-        run: |
-          echo "go-build=$(go env GOCACHE)" >> $GITHUB_OUTPUT
-          echo "go-mod=$(go env GOMODCACHE)" >> $GITHUB_OUTPUT
-          echo "go-version=$(go env GOVERSION)" >> $GITHUB_OUTPUT
-
-      # Cache go build cache, used to speedup go test
-      - name: Go Build Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-build }}
-          key: ${{ runner.os }}-go-build-${{ steps.go-cache-paths.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
-
-      # Cache go mod cache, used to speedup builds
-      - name: Go Mod Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ steps.go-cache-paths.outputs.go-mod }}
-          key: ${{ runner.os }}-go-mod-${{ steps.go-cache-paths.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
       - name: Run linter
         run: make lint
       - name: Check helm manifests
