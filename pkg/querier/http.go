@@ -19,6 +19,28 @@ import (
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
+// LabelHandler returns all labels
+// /labels
+func (q *Querier) LabelNamesHandler(w http.ResponseWriter, req *http.Request) {
+	var (
+		res []string
+		err error
+	)
+
+	response, err := q.LabelNames(req.Context(), connect.NewRequest(&querierv1.LabelNamesRequest{}))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res = response.Msg.GetNames()
+
+	w.Header().Add("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 // LabelValuesHandler only returns the label values for the given label name.
 // This is mostly for fulfilling the pyroscope API and won't be used in the future.
 // /label-values?label=__name__
@@ -43,7 +65,9 @@ func (q *Querier) LabelValuesHandler(w http.ResponseWriter, req *http.Request) {
 			res = append(res, t.ID)
 		}
 	} else {
-		response, err := q.LabelValues(req.Context(), connect.NewRequest(&querierv1.LabelValuesRequest{}))
+		response, err := q.LabelValues(req.Context(), connect.NewRequest(&querierv1.LabelValuesRequest{
+			Name: label,
+		}))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

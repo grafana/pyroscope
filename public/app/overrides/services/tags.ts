@@ -1,7 +1,22 @@
 import { Result } from '@webapp/util/fp';
+import {
+  Tags,
+  TagsValuesSchema,
+  TagsValues,
+  TagsSchema,
+} from '@webapp/models/tags';
+import { parseResponse, request } from '@webapp/services/base';
 
 export async function fetchTags(query: string, from: number, until: number) {
-  return Result.ok<string[], { message: string }>([]);
+  const response = await request('/pyroscope/labels');
+  const isMetaTag = (tag: string) => tag.startsWith('__') && tag.endsWith('__');
+
+  return parseResponse(
+    response,
+    TagsSchema.transform((tags) => {
+      return tags.filter((t) => !isMetaTag(t));
+    })
+  );
 }
 
 export async function fetchLabelValues(
@@ -10,7 +25,10 @@ export async function fetchLabelValues(
   from: number,
   until: number
 ) {
-  return Result.err<string[], { message: string }>({
-    message: 'TODO: implement ',
+  const searchParams = new URLSearchParams({
+    label,
   });
+  const response = await request('/pyroscope/label-values?' + searchParams);
+
+  return parseResponse(response, TagsValuesSchema);
 }
