@@ -5,7 +5,7 @@ OS ?= $(shell uname)
 
 
 # if you change the name of this variable please change it in generate-git-info.sh file
-PHPSPY_VERSION ?= c7d2b542812ef3c8ca30280266fb3d57a91d001d
+PHPSPY_VERSION ?= 66b6fdb2f9da1d87912b46b7faf68796d471c209
 
 ifeq ("$(OS)", "Darwin")
 	ifeq ("$(ARCH)", "arm64")
