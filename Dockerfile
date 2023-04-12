@@ -7,7 +7,7 @@
 # | |         | |       | |     __/ |
 # |_|         |_|       |_|    |___/
 
-FROM php:7.4-fpm-alpine3.16 as phpspy-builder
+FROM alpine:3.16 as phpspy-builder
 RUN apk update && apk upgrade \
     && apk add --update alpine-sdk
 COPY Makefile Makefile
