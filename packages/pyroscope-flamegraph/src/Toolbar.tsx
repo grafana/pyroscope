@@ -6,21 +6,17 @@ import React, {
   useLayoutEffect,
   isValidElement,
   memo,
+  useCallback,
 } from 'react';
-import classNames from 'classnames/bind';
-import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
-import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
 import { faProjectDiagram } from '@fortawesome/free-solid-svg-icons/faProjectDiagram';
-import { faEllipsisV } from '@fortawesome/free-solid-svg-icons/faEllipsisV';
 import { Maybe } from 'true-myth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import useResizeObserver from '@react-hook/resize-observer';
 // until ui is moved to its own package this should do it
 // eslint-disable-next-line import/no-extraneous-dependencies
-import Button from '@webapp/ui/Button';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
-import { FitModes } from './fitMode/fitMode';
+import { Button as GButton } from '@grafana/ui';
+import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
 import SharedQueryInput from './SharedQueryInput';
 import type { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 import type { FlamegraphRendererProps } from './FlameGraph/FlameGraphRenderer';
@@ -29,30 +25,21 @@ import {
   TablePlusFlamegraphIcon,
   FlamegraphIcon,
   SandwichIcon,
-  HeadFirstIcon,
-  TailFirstIcon,
 } from './Icons';
 
 import styles from './Toolbar.module.scss';
 
-const cx = classNames.bind(styles);
-
-const DIVIDER_WIDTH = 5;
 const QUERY_INPUT_WIDTH = 175;
-const LEFT_MARGIN = 2;
-const RIGHT_MARGIN = 2;
-const TOOLBAR_SQUARE_WIDTH = 40 + LEFT_MARGIN + RIGHT_MARGIN;
 const MORE_BUTTON_WIDTH = 16;
 
 const calculateCollapsedItems = (
   clientWidth: number,
-  collapsedItemsNumber: number,
+  itemsCollapsed: boolean,
   itemsW: number[]
 ) => {
-  const availableToolbarItemsWidth =
-    collapsedItemsNumber === 0
-      ? clientWidth - QUERY_INPUT_WIDTH - 5
-      : clientWidth - QUERY_INPUT_WIDTH - MORE_BUTTON_WIDTH - 5;
+  const availableToolbarItemsWidth = itemsCollapsed
+    ? clientWidth - QUERY_INPUT_WIDTH - MORE_BUTTON_WIDTH - 5
+    : clientWidth - QUERY_INPUT_WIDTH - 5;
 
   let collapsedItems = 0;
   let visibleItemsWidth = 0;
@@ -66,45 +53,60 @@ const calculateCollapsedItems = (
   return collapsedItems;
 };
 
+const BUTTON_WIDTH = 32;
+const BUTTON_MARGIN = 4;
+
+/**
+ * Computes if a "More" button should be shown and if so, which items should be hidden. It hides a sections of the
+ * toolbar not individual buttons.
+ * @param target
+ * @param toolbarSections
+ */
 const useMoreButton = (
   target: RefObject<HTMLDivElement>,
-  toolbarItemsWidth: number[]
+  toolbarSections: { el: ReactNode; buttons: number }[]
 ) => {
-  const [isCollapsed, setCollapsedStatus] = useState(true);
+  const toolbarItemsWidth = toolbarSections.reduce(
+    (acc, v) => [...acc, v.buttons * (BUTTON_WIDTH + BUTTON_MARGIN)],
+    [] as number[]
+  );
+
+  const [isMenuOpen, setMenuOpen] = useState(true);
   const [collapsedItemsNumber, setCollapsedItemsNumber] = useState(0);
 
-  useLayoutEffect(() => {
-    if (target.current) {
-      const { width } = target.current.getBoundingClientRect();
+  const handleSizeChange = useCallback(
+    (wrapper: Element) => {
+      const { width } = wrapper.getBoundingClientRect();
       const collapsedItems = calculateCollapsedItems(
         width,
-        collapsedItemsNumber,
+        collapsedItemsNumber > 0,
         toolbarItemsWidth
       );
       setCollapsedItemsNumber(collapsedItems);
-    }
-  }, [target.current, toolbarItemsWidth]);
+    },
+    [collapsedItemsNumber, toolbarItemsWidth]
+  );
 
-  const handleMoreClick = () => {
-    setCollapsedStatus((v) => !v);
-  };
+  useLayoutEffect(() => {
+    if (target.current) {
+      handleSizeChange(target.current);
+    }
+  }, [target, handleSizeChange]);
 
   useResizeObserver(target, (entry: ResizeObserverEntry) => {
-    const { width } = entry.target.getBoundingClientRect();
-    const collapsedItems = calculateCollapsedItems(
-      width,
-      collapsedItemsNumber,
-      toolbarItemsWidth
-    );
-
-    setCollapsedItemsNumber(collapsedItems);
-    setCollapsedStatus(true);
+    handleSizeChange(entry.target);
+    setMenuOpen(false);
   });
 
   return {
-    isCollapsed,
-    handleMoreClick,
-    collapsedItemsNumber,
+    isMenuOpen,
+    handleMoreClick: () => {
+      setMenuOpen((v) => !v);
+    },
+    hiddenItems: toolbarSections
+      .slice(0, collapsedItemsNumber)
+      .map((i) => i.el),
+    visibleItems: toolbarSections.slice(collapsedItemsNumber).map((i) => i.el),
   };
 };
 
@@ -132,13 +134,6 @@ export interface ProfileHeaderProps {
   sharedQuery?: FlamegraphRendererProps['sharedQuery'];
 }
 
-const Divider = () => <div className={styles.divider} />;
-
-type ToolbarItemType = {
-  width: number;
-  el: ReactNode;
-};
-
 const Toolbar = memo(
   ({
     view,
@@ -158,86 +153,51 @@ const Toolbar = memo(
   }: ProfileHeaderProps) => {
     const toolbarRef = useRef<HTMLDivElement>(null);
 
-    const fitModeItem = {
-      el: (
-        <>
-          <FitMode fitMode={fitMode} updateFitMode={updateFitMode} />
-          <Divider />
-        </>
-      ),
-      width: TOOLBAR_SQUARE_WIDTH * 2 + DIVIDER_WIDTH,
-    };
-    const resetItem = {
-      el: <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />,
-      width: TOOLBAR_SQUARE_WIDTH,
-    };
-    const focusOnSubtree = {
-      el: (
-        <>
-          <FocusOnSubtree
-            selectedNode={selectedNode}
-            onFocusOnSubtree={onFocusOnSubtree}
-          />
-          <Divider />
-        </>
-      ),
-      width: TOOLBAR_SQUARE_WIDTH + DIVIDER_WIDTH,
-    };
-
-    const viewSectionItem = enableChangingDisplay
-      ? {
-          el: (
-            <ViewSection
-              flamegraphType={flamegraphType}
-              view={view}
-              updateView={updateView}
-            />
-          ),
-          // sandwich view is hidden in diff view
-          width: TOOLBAR_SQUARE_WIDTH * (flamegraphType === 'single' ? 5 : 3), // 1px is to display divider
-        }
-      : null;
-    const exportDataItem = isValidElement(ExportData)
-      ? {
-          el: (
-            <>
-              <Divider />
-              {ExportData}
-            </>
-          ),
-          width: TOOLBAR_SQUARE_WIDTH + DIVIDER_WIDTH,
-        }
-      : null;
-
-    const filteredToolbarItems = [
-      fitModeItem,
-      resetItem,
-      focusOnSubtree,
-      viewSectionItem,
-      exportDataItem,
-    ].filter((v) => v !== null) as ToolbarItemType[];
-    const toolbarItemsWidth = filteredToolbarItems.reduce(
-      (acc, v) => [...acc, v.width],
-      [] as number[]
-    );
-
-    const { isCollapsed, collapsedItemsNumber, handleMoreClick } =
-      useMoreButton(toolbarRef, toolbarItemsWidth);
-
-    const toolbarFilteredItems = filteredToolbarItems.reduce(
-      (acc, v, i) => {
-        const isHiddenItem = i < collapsedItemsNumber;
-
-        if (isHiddenItem) {
-          acc.hidden.push(v);
-        } else {
-          acc.visible.push(v);
-        }
-
-        return acc;
+    // Sections of a toolbar, sections have a divider between them and can consist of multiple buttons
+    const filteredToolbarSections = [
+      {
+        el: <FitMode fitMode={fitMode} updateFitMode={updateFitMode} />,
+        buttons: 2,
       },
-      { visible: [] as ToolbarItemType[], hidden: [] as ToolbarItemType[] }
-    );
+      {
+        el: (
+          <>
+            <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />
+            <FocusOnSubtree
+              selectedNode={selectedNode}
+              onFocusOnSubtree={onFocusOnSubtree}
+            />
+          </>
+        ),
+        buttons: 2,
+      },
+    ];
+
+    if (enableChangingDisplay) {
+      filteredToolbarSections.push({
+        el: (
+          <ViewSection
+            flamegraphType={flamegraphType}
+            view={view}
+            updateView={updateView}
+          />
+        ),
+        // sandwich view is hidden in diff view
+        buttons: flamegraphType === 'single' ? 4 : 5,
+      });
+    }
+
+    if (isValidElement(ExportData)) {
+      filteredToolbarSections.push({
+        el: ExportData,
+        buttons: 1,
+      });
+    }
+
+    // Check if we have enough space to display all the buttons. If not we will show a "More" button where we will
+    // hide some buttons.
+    const { isMenuOpen, handleMoreClick, hiddenItems, visibleItems } =
+      useMoreButton(toolbarRef, filteredToolbarSections);
 
     return (
       <div role="toolbar" ref={toolbarRef}>
@@ -252,39 +212,22 @@ const Toolbar = memo(
           </div>
           <div>
             <div className={styles.itemsContainer}>
-              {toolbarFilteredItems.visible.map((v, i) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <div key={i} className={styles.item} style={{ width: v.width }}>
-                  {v.el}
-                </div>
-              ))}
-              {collapsedItemsNumber !== 0 && (
+              <ToolbarButtons items={visibleItems} />
+              {hiddenItems.length > 0 && (
                 <Tooltip placement="top" title="More">
-                  <button
+                  <GButton
                     onClick={handleMoreClick}
-                    className={cx({
-                      [styles.moreButton]: true,
-                      [styles.active]: !isCollapsed,
-                    })}
-                  >
-                    <FontAwesomeIcon icon={faEllipsisV} />
-                  </button>
+                    variant="secondary"
+                    fill="outline"
+                    icon="ellipsis-v"
+                  />
                 </Tooltip>
               )}
             </div>
           </div>
-          {!isCollapsed && (
+          {isMenuOpen && (
             <div className={styles.navbarCollapsedItems}>
-              {toolbarFilteredItems.hidden.map((v, i) => (
-                <div
-                  // eslint-disable-next-line react/no-array-index-key
-                  key={i}
-                  className={styles.item}
-                  style={{ width: v.width }}
-                >
-                  {v.el}
-                </div>
-              ))}
+              <ToolbarButtons items={hiddenItems} />
             </div>
           )}
         </div>
@@ -293,6 +236,20 @@ const Toolbar = memo(
   }
 );
 
+function ToolbarButtons(props: { items: React.ReactNode[] }) {
+  return (
+    <>
+      {props.items.map((el, i) => (
+        // eslint-disable-next-line react/no-array-index-key
+        <div key={i} className={styles.item}>
+          {el}
+          {i !== props.items.length - 1 && <div className={styles.divider} />}
+        </div>
+      ))}
+    </>
+  );
+}
+
 function FocusOnSubtree({
   onFocusOnSubtree,
   selectedNode,
@@ -300,24 +257,19 @@ function FocusOnSubtree({
   selectedNode: ProfileHeaderProps['selectedNode'];
   onFocusOnSubtree: ProfileHeaderProps['onFocusOnSubtree'];
 }) {
-  const onClick = selectedNode.mapOr(
-    () => {},
-    (f) => {
-      return () => onFocusOnSubtree(f.i, f.j);
-    }
-  );
-
   return (
     <Tooltip placement="top" title="Collapse nodes above">
       <div>
-        <Button
+        <GButton
           disabled={!selectedNode.isJust}
-          onClick={onClick}
-          className={styles.collapseNodeButton}
+          onClick={() => {
+            if (selectedNode.isJust) {
+              onFocusOnSubtree(selectedNode.value.i, selectedNode.value.j);
+            }
+          }}
           aria-label="Collapse nodes above"
-        >
-          <FontAwesomeIcon icon={faCompressAlt} />
-        </Button>
+          icon="sort-amount-up"
+        />
       </div>
     </Tooltip>
   );
@@ -333,15 +285,14 @@ function ResetView({
   return (
     <Tooltip placement="top" title="Reset View">
       <span>
-        <Button
+        <GButton
           id="reset"
           disabled={!isFlamegraphDirty}
           onClick={reset}
-          className={styles.resetViewButton}
           aria-label="Reset View"
-        >
-          <FontAwesomeIcon icon={faUndo} />
-        </Button>
+          icon="history-alt"
+          style={{ marginRight: BUTTON_MARGIN }}
+        />
       </span>
     </Tooltip>
   );
@@ -359,71 +310,60 @@ function FitMode({
   return (
     <>
       <Tooltip placement="top" title="Head first">
-        <Button
-          onClick={() => updateFitMode('HEAD')}
-          className={cx({
-            [styles.fitModeButton]: true,
-            [styles.selected]: isSelected('HEAD'),
-          })}
-        >
-          <HeadFirstIcon />
-        </Button>
+        <GButton
+          onClick={() => updateFitMode(HeadMode)}
+          variant="secondary"
+          fill={isSelected(HeadMode) ? 'solid' : 'outline'}
+          icon="horizontal-align-left"
+          style={{ marginRight: BUTTON_MARGIN }}
+        />
       </Tooltip>
       <Tooltip placement="top" title="Tail first">
-        <Button
-          onClick={() => updateFitMode('TAIL')}
-          className={cx({
-            [styles.fitModeButton]: true,
-            [styles.selected]: isSelected('TAIL'),
-          })}
-        >
-          <TailFirstIcon />
-        </Button>
+        <GButton
+          onClick={() => updateFitMode(TailMode)}
+          variant="secondary"
+          fill={isSelected(TailMode) ? 'solid' : 'outline'}
+          icon="horizontal-align-right"
+        />
       </Tooltip>
     </>
   );
 }
 
-const getViewOptions = (
-  flamegraphType: ProfileHeaderProps['flamegraphType']
-): Array<{
+type ViewOptionItem = {
   label: string;
   value: ViewTypes;
   Icon: (props: { fill?: string | undefined }) => JSX.Element;
-}> =>
-  flamegraphType === 'single'
-    ? [
-        { label: 'Table', value: 'table', Icon: TableIcon },
-        {
-          label: 'Table and Flamegraph',
-          value: 'both',
-          Icon: TablePlusFlamegraphIcon,
-        },
-        {
-          label: 'Flamegraph',
-          value: 'flamegraph',
-          Icon: FlamegraphIcon,
-        },
-        { label: 'Sandwich', value: 'sandwich', Icon: SandwichIcon },
-        {
-          label: 'GraphViz',
-          value: 'graphviz',
-          Icon: () => <FontAwesomeIcon icon={faProjectDiagram} />,
-        },
-      ]
-    : [
-        { label: 'Table', value: 'table', Icon: TableIcon },
-        {
-          label: 'Table and Flamegraph',
-          value: 'both',
-          Icon: TablePlusFlamegraphIcon,
-        },
-        {
-          label: 'Flamegraph',
-          value: 'flamegraph',
-          Icon: FlamegraphIcon,
-        },
-      ];
+};
+
+const getViewOptions = (
+  flamegraphType: ProfileHeaderProps['flamegraphType']
+): Array<ViewOptionItem> => {
+  let options: Array<ViewOptionItem> = [
+    { label: 'Table', value: 'table', Icon: TableIcon },
+    {
+      label: 'Table and Flamegraph',
+      value: 'both',
+      Icon: TablePlusFlamegraphIcon,
+    },
+    {
+      label: 'Flamegraph',
+      value: 'flamegraph',
+      Icon: FlamegraphIcon,
+    },
+  ];
+  if (flamegraphType === 'single') {
+    options = options.concat([
+      { label: 'Sandwich', value: 'sandwich', Icon: SandwichIcon },
+      {
+        label: 'GraphViz',
+        value: 'graphviz',
+        Icon: () => <FontAwesomeIcon icon={faProjectDiagram} />,
+      },
+    ]);
+  }
+  return options;
+};
 
 function ViewSection({
   view,
@@ -440,16 +380,26 @@ function ViewSection({
     <div className={styles.viewType}>
       {options.map(({ label, value, Icon }) => (
         <Tooltip key={value} placement="top" title={label}>
-          <Button
+          <GButton
             data-testid={value}
             onClick={() => updateView(value)}
-            className={cx({
-              [styles.toggleViewButton]: true,
-              selected: view === value,
-            })}
+            variant="secondary"
+            fill={view === value ? 'solid' : 'outline'}
+            style={{ marginRight: BUTTON_MARGIN }}
           >
-            <Icon />
-          </Button>
+            <div
+              // Weird styling but this is to get same size as with built in icons which don't take any actual space
+              // and the sizing is done by padding of the button. With this we basically get rid of the icons actual
+              // size of 16px and the size of the button is just it's padding same as with the icon prop.
+              style={{
+                width: 16,
+                marginLeft: -8,
+                marginRight: -8,
+              }}
+            >
+              <Icon />
+            </div>
+          </GButton>
         </Tooltip>
       ))}
     </div>

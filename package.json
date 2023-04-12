@@ -155,6 +155,7 @@
     "@babel/preset-env": "^7.10.4",
     "@babel/preset-react": "^7.12.10",
     "@babel/preset-typescript": "7.8.3",
+    "@babel/runtime": "^7.21.0",
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
     "@fortawesome/fontawesome-free": "~5.14.0",
