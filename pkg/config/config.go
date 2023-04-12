@@ -291,6 +291,7 @@ type Exec struct {
 	SampleRate         uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
 	SpyName            string `def:"auto" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>" mapstructure:"spy-name"`
 	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
+	PHPSpyArgs         string `def:"" desc:"todo" mapstructure:"php-spy-args"`
 
 	// Remote upstream configuration
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
@@ -314,6 +315,7 @@ type Connect struct {
 	SampleRate         uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
 	SpyName            string `def:"" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>" mapstructure:"spy-name"`
 	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
+	PHPSpyArgs         string `def:"" desc:"todo" mapstructure:"php-spy-args"`
 
 	// Remote upstream configuration
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`

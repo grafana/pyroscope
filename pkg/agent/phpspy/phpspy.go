@@ -8,11 +8,13 @@ package phpspy
 // #cgo linux,!musl LDFLAGS: -L../../../third_party/phpspy -lphpspy -ldl -lrt
 // #cgo linux,musl LDFLAGS: -L../../../third_party/phpspy -lphpspy
 // #include "../../../third_party/phpspy/phpspy.h"
+// #include <stdlib.h>
 import "C"
 
 import (
 	"bytes"
 	"errors"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -33,7 +35,16 @@ type PhpSpy struct {
 	pid int
 }
 
+var phpSpyInitOnce = sync.Once{}
+
 func Start(params spy.InitParams) (spy.Spy, error) {
+	phpSpyInitOnce.Do(func() {
+		if params.PHPSpyArgs != "" {
+			params := C.CString(params.PHPSpyArgs)
+			defer C.free(unsafe.Pointer(params))
+			C.phpspy_init_spy(params)
+		}
+	})
 	dataBuf := make([]byte, bufferLength)
 	dataPtr := unsafe.Pointer(&dataBuf[0])
 
@@ -44,7 +55,7 @@ func Start(params spy.InitParams) (spy.Spy, error) {
 	// TODO: handle this better
 	time.Sleep(1 * time.Second)
 
-	r := C.phpspy_init(C.int(params.Pid), errorPtr, C.int(bufferLength))
+	r := C.phpspy_init_pid(C.int(params.Pid), errorPtr, C.int(bufferLength))
 
 	if r < 0 {
 		return nil, errors.New(string(errorBuf[:-r]))
