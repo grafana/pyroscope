@@ -195,18 +195,19 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 						return err
 					}
 					if err = instance.Head().Ingest(ctx, p, id, series.Labels...); err != nil {
-						switch reason := validation.ReasonOf(err); reason {
-						case validation.OutOfOrder:
-							return connect.NewError(connect.CodeInvalidArgument, err)
-						case validation.SeriesLimit:
-							return connect.NewError(connect.CodeResourceExhausted, err)
-						default:
+						reason := validation.ReasonOf(err)
+						if reason != validation.Unknown {
 							validation.DiscardedProfiles.WithLabelValues(string(reason), instance.tenantID).Add(float64(1))
 							validation.DiscardedBytes.WithLabelValues(string(reason), instance.tenantID).Add(float64(size))
-							return err
+							switch validation.ReasonOf(err) {
+							case validation.OutOfOrder:
+								return connect.NewError(connect.CodeInvalidArgument, err)
+							case validation.SeriesLimit:
+								return connect.NewError(connect.CodeResourceExhausted, err)
+							}
 						}
 					}
-					return nil
+					return err
 				})
 				if err != nil {
 					return nil, err
