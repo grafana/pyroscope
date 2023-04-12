@@ -118,7 +118,6 @@ build-phpspy-dependencies: ## Builds the PHP dependency
 	cd third_party/phpspy_src && git checkout $(PHPSPY_VERSION)
 	cd third_party/phpspy_src && make clean static
 	cp third_party/phpspy_src/libphpspy.a third_party/phpspy/libphpspy.a
-	cp third_party/phpspy_src/phpspy.h third_party/phpspy/phpspy.h
 
 .PHONY: build-libbpf
 build-libbpf:
