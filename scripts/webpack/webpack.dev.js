@@ -8,6 +8,7 @@ module.exports = merge(common, {
     port: 4040,
     proxy: {
       '/pyroscope': 'http://localhost:4100',
+      '/querier.v1.QuerierService': 'http://localhost:4100',
     },
   },
   optimization: {
