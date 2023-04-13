@@ -1,18 +1,27 @@
 import { parseResponse, request } from '@webapp/services/base';
 import { z } from 'zod';
 
-const seriesLabelsSchema = z.object({
-  labelsSet: z.array(
-    z.object({
-      labels: z.array(
-        z.object({
-          name: z.string(),
-          value: z.string(),
-        })
-      ),
-    })
-  ),
-});
+const seriesLabelsSchema = z.preprocess(
+  (a: any) => {
+    if ('labelsSet' in a) {
+      return a;
+    }
+
+    return { labelsSet: [{ labels: [] }] };
+  },
+  z.object({
+    labelsSet: z.array(
+      z.object({
+        labels: z.array(
+          z.object({
+            name: z.string(),
+            value: z.string(),
+          })
+        ),
+      })
+    ),
+  })
+);
 
 async function fetchLabelsSeries<T>(
   query: string,
