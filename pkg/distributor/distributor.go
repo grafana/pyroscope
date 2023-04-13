@@ -99,9 +99,10 @@ type Distributor struct {
 type Limits interface {
 	IngestionRateBytes(tenantID string) float64
 	IngestionBurstSizeBytes(tenantID string) int
-	MaxLabelNameLength(userID string) int
-	MaxLabelValueLength(userID string) int
-	MaxLabelNamesPerSeries(userID string) int
+	IngestionTenantShardSize(tenantID string) int
+	MaxLabelNameLength(tenantID string) int
+	MaxLabelValueLength(tenantID string) int
+	MaxLabelNamesPerSeries(tenantID string) int
 }
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, limits Limits, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Distributor, error) {
@@ -249,7 +250,10 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 	samplesByIngester := map[string][]*profileTracker{}
 	ingesterDescs := map[string]ring.InstanceDesc{}
 	for i, key := range keys {
-		replicationSet, err := d.ingestersRing.Get(key, ring.Write, descs[:0], nil, nil)
+		// Get a subring if tenant has shuffle shard size configured.
+		subRing := d.ingestersRing.ShuffleShard(tenantID, d.limits.IngestionTenantShardSize(tenantID))
+
+		replicationSet, err := subRing.Get(key, ring.Write, descs[:0], nil, nil)
 		if err != nil {
 			return nil, err
 		}

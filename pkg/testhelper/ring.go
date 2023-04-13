@@ -64,9 +64,19 @@ func (r MockRing) HasInstance(instanceID string) bool {
 }
 
 func (r MockRing) ShuffleShard(identifier string, size int) ring.ReadRing {
-	// take advantage of pass by value to bound to size:
-	r.ingesters = r.ingesters[:size]
-	return r
+	// Nothing to do if the shard size is not smaller then the actual ring.
+	if size <= 0 || r.InstancesCount() <= size {
+		return r
+	}
+
+	if rf := int(r.replicationFactor); size < rf {
+		size = rf
+	}
+
+	return &MockRing{
+		ingesters:         r.ingesters[:size],
+		replicationFactor: r.replicationFactor,
+	}
 }
 
 func (r MockRing) ShuffleShardWithLookback(identifier string, size int, lookbackPeriod time.Duration, now time.Time) ring.ReadRing {

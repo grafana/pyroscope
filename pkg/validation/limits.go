@@ -26,6 +26,12 @@ type Limits struct {
 	MaxLabelValueLength    int     `yaml:"max_label_value_length" json:"max_label_value_length"`
 	MaxLabelNamesPerSeries int     `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
 
+	// The tenant shard size determines the how many ingesters a particular
+	// tenant will be sharded to. Needs to be specified on distributors for
+	// correct distribution and on ingesters so that the local ingestion limit
+	// can be calculated correctly.
+	IngestionTenantShardSize int `yaml:"ingestion_tenant_shard_size" json:"ingestion_tenant_shard_size"`
+
 	// Ingester enforced limits.
 	MaxLocalSeriesPerTenant  int `yaml:"max_local_series_per_tenant" json:"max_local_series_per_tenant"`
 	MaxGlobalSeriesPerTenant int `yaml:"max_global_series_per_tenant" json:"max_global_series_per_tenant"`
@@ -47,6 +53,9 @@ func (e LimitError) Error() string {
 func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Float64Var(&l.IngestionRateMB, "distributor.ingestion-rate-limit-mb", 4, "Per-tenant ingestion rate limit in sample size per second. Units in MB.")
 	f.Float64Var(&l.IngestionBurstSizeMB, "distributor.ingestion-burst-size-mb", 2, "Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request.")
+
+	f.IntVar(&l.IngestionTenantShardSize, "distributor.ingestion-tenant-shard-size", 0, "The tenant's shard size used by shuffle-sharding. Must be set both on ingesters and distributors. 0 disables shuffle sharding.")
+
 	f.IntVar(&l.MaxLabelNameLength, "validation.max-length-label-name", 1024, "Maximum length accepted for label names.")
 	f.IntVar(&l.MaxLabelValueLength, "validation.max-length-label-value", 2048, "Maximum length accepted for label value. This setting also applies to the metric name.")
 	f.IntVar(&l.MaxLabelNamesPerSeries, "validation.max-label-names-per-series", 30, "Maximum number of label names per series.")
@@ -138,6 +147,11 @@ func (o *Overrides) IngestionRateBytes(tenantID string) float64 {
 // IngestionBurstSizeBytes returns the burst size for ingestion rate.
 func (o *Overrides) IngestionBurstSizeBytes(tenantID string) int {
 	return int(o.getOverridesForTenant(tenantID).IngestionBurstSizeMB * bytesInMB)
+}
+
+// IngestionTenantShardSize returns the ingesters shard size for a given user.
+func (o *Overrides) IngestionTenantShardSize(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).IngestionTenantShardSize
 }
 
 // MaxLabelNameLength returns maximum length a label name can be.

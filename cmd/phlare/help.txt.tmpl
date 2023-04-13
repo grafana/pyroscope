@@ -21,6 +21,8 @@ Usage of ./phlare:
     	Per-tenant allowed ingestion burst size (in sample size). Units in MB. The burst size refers to the per-distributor local rate limiter, and should be set at least to the maximum profile size expected in a single push request. (default 2)
   -distributor.ingestion-rate-limit-mb float
     	Per-tenant ingestion rate limit in sample size per second. Units in MB. (default 4)
+  -distributor.ingestion-tenant-shard-size int
+    	The tenant's shard size used by shuffle-sharding. Must be set both on ingesters and distributors. 0 disables shuffle sharding.
   -distributor.push.timeout duration
     	Timeout when pushing data to ingester. (default 5s)
   -distributor.replication-factor int

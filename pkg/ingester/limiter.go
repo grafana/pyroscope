@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
+	"github.com/samber/lo"
 
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/util"
 	"github.com/grafana/phlare/pkg/validation"
 )
 
@@ -23,6 +25,7 @@ type RingCount interface {
 type Limits interface {
 	MaxLocalSeriesPerTenant(tenantID string) int
 	MaxGlobalSeriesPerTenant(tenantID string) int
+	IngestionTenantShardSize(tenantID string) int
 }
 
 type Limiter interface {
@@ -147,7 +150,7 @@ func (l *limiter) assertMaxSeriesPerUser(tenantID string, series int) error {
 	// We can assume that series are evenly distributed across ingesters
 	// so we do convert the global limit into a local limit
 	globalLimit := l.limits.MaxGlobalSeriesPerTenant(tenantID)
-	adjustedGlobalLimit := convertGlobalToLocalLimit(globalLimit, l.ring, l.replicationFactor)
+	adjustedGlobalLimit := l.convertGlobalToLocalLimit(tenantID, globalLimit)
 
 	// Set the calculated limit to the lesser of the local limit or the new calculated global limit
 	calculatedLimit := minNonZero(localLimit, adjustedGlobalLimit)
@@ -164,7 +167,7 @@ func (l *limiter) assertMaxSeriesPerUser(tenantID string, series int) error {
 	return validation.NewErrorf(validation.SeriesLimit, validation.SeriesLimitErrorMsg, series, calculatedLimit)
 }
 
-func convertGlobalToLocalLimit(globalLimit int, ringCount RingCount, replicationFactor int) int {
+func (l *limiter) convertGlobalToLocalLimit(tenantID string, globalLimit int) int {
 	if globalLimit == 0 {
 		return 0
 	}
@@ -173,15 +176,23 @@ func convertGlobalToLocalLimit(globalLimit int, ringCount RingCount, replication
 	// topology changes) and we prefer to always be in favor of the tenant,
 	// we can use a per-ingester limit equal to:
 	// (global limit / number of ingesters) * replication factor
-	numIngesters := ringCount.HealthyInstancesCount()
+	numIngesters := l.ring.HealthyInstancesCount()
 
-	// May happen because the number of ingesters is asynchronously updated.
+	// No healthy ingester may happen because the number of ingesters is asynchronously updated.
 	// If happens, we just temporarily ignore the global limit.
-	if numIngesters > 0 {
-		return int((float64(globalLimit) / float64(numIngesters)) * float64(replicationFactor))
+	if numIngesters == 0 {
+		return 0
 	}
 
-	return 0
+	// If the number of available ingesters is greater than the tenant's shard
+	// size, then we should honor the shard size because series/metadata won't
+	// be written to more ingesters than it.
+	if shardSize := l.limits.IngestionTenantShardSize(tenantID); shardSize > 0 {
+		// We use Min() to protect from the case the expected shard size is > available ingesters.
+		numIngesters = lo.Min([]int{numIngesters, util.ShuffleShardExpectedInstances(shardSize, 1)})
+	}
+
+	return int((float64(globalLimit) / float64(numIngesters)) * float64(l.replicationFactor))
 }
 
 func minNonZero(first, second int) int {
