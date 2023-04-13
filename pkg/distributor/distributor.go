@@ -148,6 +148,7 @@ func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactor
 
 	d.Service = services.NewBasicService(d.starting, d.running, d.stopping)
 	d.rfStats.Set(int64(ingestersRing.ReplicationFactor()))
+	d.metrics.replicationFactor.Set(float64(ingestersRing.ReplicationFactor()))
 	return d, nil
 }
 

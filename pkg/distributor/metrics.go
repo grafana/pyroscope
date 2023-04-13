@@ -16,10 +16,16 @@ type metrics struct {
 	receivedSamples           *prometheus.HistogramVec
 	receivedSamplesBytes      *prometheus.HistogramVec
 	receivedSymbolsBytes      *prometheus.HistogramVec
+	replicationFactor         prometheus.Gauge
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
 	m := &metrics{
+		replicationFactor: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "phlare",
+			Name:      "distributor_replication_factor",
+			Help:      "The configured replication factor for the distributor.",
+		}),
 		receivedCompressedBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace: "phlare",
