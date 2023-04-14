@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
 
+	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	ingesterv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
 	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
@@ -188,29 +189,29 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 		level.Debug(instance.logger).Log("msg", "message received by ingester push")
 		for _, series := range req.Msg.Series {
 			for _, sample := range series.Samples {
-				p, size, err := pprof.FromBytes(sample.RawProfile)
-				if err != nil {
-					return nil, err
-				}
-				id, err := uuid.Parse(sample.ID)
-				if err != nil {
-					return nil, err
-				}
-				if err := instance.Head().Ingest(ctx, p, id, series.Labels...); err != nil {
-					reason := validation.ReasonOf(err)
-					if reason != validation.Unknown {
-						validation.DiscardedProfiles.WithLabelValues(string(reason), instance.tenantID).Add(float64(1))
-						validation.DiscardedBytes.WithLabelValues(string(reason), instance.tenantID).Add(float64(size))
-						switch validation.ReasonOf(err) {
-						case validation.OutOfOrder:
-							return nil, connect.NewError(connect.CodeInvalidArgument, err)
-						case validation.SeriesLimit:
-							return nil, connect.NewError(connect.CodeResourceExhausted, err)
+				err := pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
+					id, err := uuid.Parse(sample.ID)
+					if err != nil {
+						return err
+					}
+					if err = instance.Head().Ingest(ctx, p, id, series.Labels...); err != nil {
+						reason := validation.ReasonOf(err)
+						if reason != validation.Unknown {
+							validation.DiscardedProfiles.WithLabelValues(string(reason), instance.tenantID).Add(float64(1))
+							validation.DiscardedBytes.WithLabelValues(string(reason), instance.tenantID).Add(float64(size))
+							switch validation.ReasonOf(err) {
+							case validation.OutOfOrder:
+								return connect.NewError(connect.CodeInvalidArgument, err)
+							case validation.SeriesLimit:
+								return connect.NewError(connect.CodeResourceExhausted, err)
+							}
 						}
 					}
+					return err
+				})
+				if err != nil {
 					return nil, err
 				}
-				p.ReturnToVTPool()
 			}
 		}
 		return connect.NewResponse(&pushv1.PushResponse{}), nil

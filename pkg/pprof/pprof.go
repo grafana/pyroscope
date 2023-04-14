@@ -69,46 +69,54 @@ func (r *gzipReader) openBytes(input []byte) (io.Reader, error) {
 	return r.gzip, nil
 }
 
-func fromUncompressedReader(r io.Reader) (*Profile, error) {
-	buf := bufPool.Get().(*bytes.Buffer)
-
-	_, err := io.Copy(buf, r)
-	if err != nil {
-		return nil, errors.Wrap(err, "copy to buffer")
-	}
-
-	p := profilev1.ProfileFromVTPool()
-	if err := p.UnmarshalVT(buf.Bytes()); err != nil {
-		return nil, err
-	}
-
-	return &Profile{Profile: p, buf: buf}, nil
-}
-
 // Read RawProfile from bytes
-func RawFromBytes(input []byte) (*Profile, error) {
+func RawFromBytes(input []byte) (_ *Profile, err error) {
 	gzipReader := gzipReaderPool.Get().(*gzipReader)
-	defer gzipReaderPool.Put(gzipReader)
+	// We borrow all the necessary objects from respective pools in advance.
+	// If an error happens before the function returns, we ensure that these
+	// are returned to their pools. Otherwise, the ownership is transferred to
+	// the caller: Profile.Close must be called to dispose the resources
+	// allocated.
+	buf := bufPool.Get().(*bytes.Buffer)
+	pbp := profilev1.ProfileFromVTPool()
+	defer func() {
+		// Note that gzip reader should be returned unconditionally.
+		gzipReaderPool.Put(gzipReader)
+		if err != nil {
+			buf.Reset()
+			bufPool.Put(buf)
+			pbp.ReturnToVTPool()
+		}
+	}()
 
 	r, err := gzipReader.openBytes(input)
 	if err != nil {
 		return nil, err
 	}
 
-	return fromUncompressedReader(r)
+	if _, err = io.Copy(buf, r); err != nil {
+		return nil, errors.Wrap(err, "copy to buffer")
+	}
+
+	if err = pbp.UnmarshalVT(buf.Bytes()); err != nil {
+		return nil, err
+	}
+
+	return &Profile{Profile: pbp, buf: buf}, nil
 }
 
 // Read Profile from Bytes
-func FromBytes(input []byte) (*profilev1.Profile, int, error) {
+func FromBytes(input []byte, fn func(*profilev1.Profile, int) error) error {
 	p, err := RawFromBytes(input)
 	if err != nil {
-		return nil, 0, err
+		return err
 	}
 	uncompressedSize := p.buf.Len()
 	p.buf.Reset()
 	bufPool.Put(p.buf)
-
-	return p.Profile, uncompressedSize, nil
+	err = fn(p.Profile, uncompressedSize)
+	p.ReturnToVTPool()
+	return err
 }
 
 func FromProfile(p *profile.Profile) (*profilev1.Profile, error) {
