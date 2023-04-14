@@ -9,6 +9,7 @@ module.exports = merge(common, {
     historyApiFallback: true,
     proxy: {
       '/pyroscope': 'http://localhost:4100',
+      '/querier.v1.QuerierService': 'http://localhost:4100',
     },
   },
   optimization: {
