@@ -29,7 +29,9 @@ export default function useTimelines() {
 
   // Only reload timelines when an item that affects a timeline has changed
   useEffect(() => {
-    dispatch(fetchSideTimelines(null));
+    if (leftQuery && rightQuery) {
+      dispatch(fetchSideTimelines(null));
+    }
   }, [from, until, refreshToken, maxNodes, leftQuery, rightQuery]);
 
   const leftTimeline = {
