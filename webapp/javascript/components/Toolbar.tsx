@@ -12,9 +12,9 @@ import {
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
 import Button from '@webapp/ui/Button';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
-import DateRangePicker from './DateRangePicker';
-import RefreshButton from './RefreshButton';
-import AppSelector from './AppSelector';
+import DateRangePicker from '@webapp/components/DateRangePicker';
+import RefreshButton from '@webapp/components/RefreshButton';
+import AppSelector from '@webapp/components/AppSelector';
 import styles from './Toolbar.module.css';
 
 interface ToolbarProps {
