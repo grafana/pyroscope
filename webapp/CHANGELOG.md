@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.68.15](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.14...@pyroscope/webapp@1.68.15) (2023-04-14)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.68.14](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.13...@pyroscope/webapp@1.68.14) (2023-04-14)
 
 
