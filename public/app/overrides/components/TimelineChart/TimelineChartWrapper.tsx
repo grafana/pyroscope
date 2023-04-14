@@ -9,22 +9,31 @@ interface TooltipCallbackProps {
     // TODO: remove this
     tagName: string;
   }>;
-  //  coordsToCanvasPos?: jquery.flot.axis['p2c'];
   coordsToCanvasPos?: unknown;
   canvasX?: number;
 }
 
+export type TimelineData = any;
+
 interface TimelineChartWrapperProps {
   id: string;
   timelineA: unknown;
-  height: unknown;
   timezone: string;
-  title: React.ReactNode;
-  annotations: unknown;
-  ContextMenu: unknown;
+  annotations?: unknown;
   selectionType: unknown;
   onSelect: (from: string, until: string) => void;
   onHoverDisplayTooltip?: React.FC<TooltipCallbackProps>;
+  format?: any;
+  timelineB?: unknown;
+  selectionWithHandler?: unknown;
+  syncCrosshairsWith?: unknown;
+  selection?: {
+    left?: unknown;
+    right?: unknown;
+  };
+  ContextMenu?: (props: any) => React.ReactNode;
+  height?: unknown;
+  title?: React.ReactNode;
 }
 export default function (props: TimelineChartWrapperProps) {
   const ref = useRef<HTMLDivElement>(null);
