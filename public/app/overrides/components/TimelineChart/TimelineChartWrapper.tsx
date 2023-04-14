@@ -29,10 +29,17 @@ interface TimelineChartWrapperProps {
 export default function (props: TimelineChartWrapperProps) {
   const ref = useRef<HTMLDivElement>(null);
 
-  // Since this element is inside a <Box>, also make the box hidden
+  // Horrible hack to hide the parent <Box>
+  // This won't be necessary after Timelines are implemented properly
   useEffect(() => {
     const parentElement = ref.current?.parentElement?.parentElement;
-    if (parentElement) {
+
+    // When timelines are within a pyro-flamegraph (eg in comparison page, don't do anything)
+    if (
+      parentElement?.parentElement?.tagName.toLowerCase() !==
+        'pyro-flamegraph' &&
+      parentElement
+    ) {
       parentElement.style.display = 'none';
     }
   }, [ref.current]);

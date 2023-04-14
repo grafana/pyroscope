@@ -74,10 +74,40 @@ ReduxQuerySync({
       selector: (state: RootState) => state.continuous.until,
       action: continuousActions.setUntil,
     },
+    leftFrom: {
+      defaultValue: 'now-1h',
+      selector: (state: RootState) => state.continuous.leftFrom,
+      action: continuousActions.setLeftFrom,
+    },
+    leftUntil: {
+      defaultValue: 'now-30m',
+      selector: (state: RootState) => state.continuous.leftUntil,
+      action: continuousActions.setLeftUntil,
+    },
+    rightFrom: {
+      defaultValue: 'now-30m',
+      selector: (state: RootState) => state.continuous.rightFrom,
+      action: continuousActions.setRightFrom,
+    },
+    rightUntil: {
+      defaultValue: 'now',
+      selector: (state: RootState) => state.continuous.rightUntil,
+      action: continuousActions.setRightUntil,
+    },
     query: {
       defaultvalue: '',
       selector: (state: RootState) => state.continuous.query,
       action: continuousActions.setQuery,
+    },
+    rightQuery: {
+      defaultvalue: '',
+      selector: (state: RootState) => state.continuous.rightQuery,
+      action: continuousActions.setRightQuery,
+    },
+    leftQuery: {
+      defaultvalue: '',
+      selector: (state: RootState) => state.continuous.leftQuery,
+      action: continuousActions.setLeftQuery,
     },
     maxNodes: {
       defaultValue: '0',
