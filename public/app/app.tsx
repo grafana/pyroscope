@@ -11,6 +11,7 @@ import history from '@webapp/util/history';
 
 import { SingleView } from './pages/SingleView';
 import { ComparisonView } from './pages/ComparisonView';
+import { LoadAppNames } from './components/LoadAppNames';
 
 const container = document.getElementById('reactRoot') as HTMLElement;
 const root = ReactDOM.createRoot(container);
@@ -18,15 +19,17 @@ const root = ReactDOM.createRoot(container);
 root.render(
   <Provider store={store}>
     <Notifications />
-    <Router history={history}>
-      <Switch>
-        <Route exact path={'/'}>
-          <SingleView />
-        </Route>
-        <Route path={'/comparison'}>
-          <ComparisonView />
-        </Route>
-      </Switch>
-    </Router>
+    <LoadAppNames>
+      <Router history={history}>
+        <Switch>
+          <Route exact path={'/'}>
+            <SingleView />
+          </Route>
+          <Route path={'/comparison'}>
+            <ComparisonView />
+          </Route>
+        </Switch>
+      </Router>
+    </LoadAppNames>
   </Provider>
 );
