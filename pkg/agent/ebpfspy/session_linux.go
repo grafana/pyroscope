@@ -181,7 +181,7 @@ func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, p
 
 func (s *Session) Stop() {
 	s.symCache.clear()
-	for fd := range s.perfEventFds {
+	for _, fd := range s.perfEventFds {
 		_ = syscall.Close(fd)
 	}
 	s.module.Close()
