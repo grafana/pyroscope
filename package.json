@@ -26,6 +26,7 @@
     "@types/react-dom": "^18.0.11",
     "@types/react-helmet": "^6.1.5",
     "@types/react-outside-click-handler": "^1.3.1",
+    "@types/react-router-dom": "5.3.0",
     "copy-webpack-plugin": "^11.0.0",
     "esbuild-loader": "^3.0.1",
     "expose-loader": "^4.1.0",
@@ -60,6 +61,7 @@
     "react-notifications-component": "~3.1.0",
     "react-outside-click-handler": "^1.3.0",
     "react-redux": "^7.2.1",
+    "react-router-dom": "5.3.0",
     "react-textarea-autosize": "8.3.0"
   }
 }
