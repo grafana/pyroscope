@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.68.14](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.13...@pyroscope/webapp@1.68.14) (2023-04-14)
+
+
+### Bug Fixes
+
+* **webapp:** only load timelines when both queries are set ([#1921](https://github.com/grafana/pyroscope/issues/1921)) ([dadec3e](https://github.com/grafana/pyroscope/commit/dadec3e8089f96b75a5e02fb14eca6c92ad99da5))
+
+
+
+
+
 ## [1.68.13](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.12...@pyroscope/webapp@1.68.13) (2023-04-14)
 
 **Note:** Version bump only for package @pyroscope/webapp
