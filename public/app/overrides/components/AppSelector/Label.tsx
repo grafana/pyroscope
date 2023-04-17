@@ -1,5 +1,5 @@
 export function Label() {
-  return <>ProfileID:&nbsp;</>;
+  return <>Profile Type:&nbsp;</>;
 }
 
-export const LabelString = 'Select ProfileID';
+export const LabelString = 'Select Profile Type';
