@@ -23,6 +23,8 @@ type agentService struct {
 func newAgentService(logger *logrus.Logger, cfg *config.Agent) (*agentService, error) {
 	rc := remote.RemoteConfig{
 		AuthToken:              cfg.AuthToken,
+		ScopeOrgID:             cfg.ScopeOrgID,
+		HTTPHeaders:            cfg.Headers,
 		UpstreamThreads:        cfg.UpstreamThreads,
 		UpstreamAddress:        cfg.ServerAddress,
 		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,

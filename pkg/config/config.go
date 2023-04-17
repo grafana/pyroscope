@@ -70,10 +70,12 @@ type Agent struct {
 	LogLevel    string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	NoLogging   bool   `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
 
-	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
-	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
-	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+	ServerAddress          string            `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
+	AuthToken              string            `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	ScopeOrgID             string            `def:"" desc:"X-Scope-OrgID  used to upload profiling data to phlare" mapstructure:"auth-token"`
+	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
+	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
+	UpstreamRequestTimeout time.Duration     `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
 
 	Targets []Target `yaml:"targets" desc:"list of targets to be profiled" mapstructure:"-"`
 
@@ -293,10 +295,12 @@ type Exec struct {
 	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
 
 	// Remote upstream configuration
-	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
-	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
-	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+	ServerAddress          string            `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
+	AuthToken              string            `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	ScopeOrgID             string            `def:"" desc:"X-Scope-OrgID  used to upload profiling data to phlare" mapstructure:"auth-token"`
+	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
+	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
+	UpstreamRequestTimeout time.Duration     `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
 
 	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 
@@ -316,10 +320,12 @@ type Connect struct {
 	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
 
 	// Remote upstream configuration
-	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
-	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
-	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+	ServerAddress          string            `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
+	AuthToken              string            `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	ScopeOrgID             string            `def:"" desc:"X-Scope-OrgID  used to upload profiling data to phlare" mapstructure:"auth-token"`
+	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
+	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
+	UpstreamRequestTimeout time.Duration     `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
 
 	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 
@@ -335,10 +341,12 @@ type EBPF struct {
 	SampleRate      uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
 
 	// Remote upstream configuration
-	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
-	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
-	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+	ServerAddress          string            `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
+	AuthToken              string            `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	ScopeOrgID             string            `def:"" desc:"X-Scope-OrgID  used to upload profiling data to phlare" mapstructure:"auth-token"`
+	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
+	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
+	UpstreamRequestTimeout time.Duration     `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
 
 	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 
@@ -406,7 +414,7 @@ type RemoteWriteTarget struct {
 	// TODO(eh-am): use a custom type here to not accidentaly leak the AuthToken?
 	AuthToken    string            `json:"-" desc:"authorization token used to upload profiling data" yaml:"auth-token"`
 	Tags         map[string]string `name:"tag" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
-	Headers      map[string]string `name:"header" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"headers"`
+	Headers      map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
 	Timeout      time.Duration     `desc:"profile upload timeout" mapstructure:"timeout" yaml:"timeout"`
 	QueueSize    int               `desc:"number of items in the queue" yaml:"queue-size"`
 	QueueWorkers int               `desc:"number of queue workers" yaml:"queue-workers"`
