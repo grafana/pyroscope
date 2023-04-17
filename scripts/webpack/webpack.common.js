@@ -51,6 +51,11 @@ module.exports = {
         __dirname,
         '../../public/app/overrides/components/TimelineChart/Tooltip.plugin'
       ),
+      '@webapp/components/AppSelector/Label': path.resolve(
+        __dirname,
+        '../../public/app/overrides/components/AppSelector/Label'
+      ),
+
       '@webapp/redux/store': path.resolve(
         __dirname,
         '../../public/app/redux/store'
