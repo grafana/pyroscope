@@ -2,6 +2,7 @@
   "baseUrl": ".",
   "compilerOptions": {
     "plugins": [{ "name": "typescript-plugin-css-modules" }],
+    // TODO: unify with webpack.common.js
     "paths": {
       "@pyroscope/webapp/*": ["./node_modules/pyroscope-oss/webapp/*"],
       "@webapp/redux/*": ["./node_modules/pyroscope-oss/webapp/javascript/redux/*"],
@@ -12,6 +13,8 @@
       "@webapp/components/TimelineChart/TimelineChartWrapper": ["./public/app/overrides/components/TimelineChart/TimelineChartWrapper"],
       "@webapp/components/TimelineChart/ContextMenu.plugin": ["./public/app/overrides/components/TimelineChart/ContextMenu.plugin"],
       "@webapp/components/TimelineChart/Tooltip.plugin": ["./public/app/overrides/components/TimelineChart/Tooltip.plugin"],
+      "@webapp/components/AppSelector/Label": ["./public/app/overrides/components/AppSelector/Label"],
+
       "@webapp/redux/store": ["./public/app/redux/store"],
       "@webapp/redux/hooks": ["./public/app/redux/hooks"],
       "@webapp/services/apps": ["./public/app/overrides/services/appNames"],
