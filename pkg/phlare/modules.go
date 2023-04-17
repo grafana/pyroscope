@@ -104,7 +104,7 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	querierv1connect.RegisterQuerierServiceHandler(f.Server.HTTP, querier.NewGRPCRoundTripper(frontendSvc), f.auth)
+	f.registerQuerierHandlers(querier.NewGRPCRoundTripper(frontendSvc))
 	frontendpbconnect.RegisterFrontendForQuerierHandler(f.Server.HTTP, frontendSvc, f.auth)
 	return frontendSvc, nil
 }
@@ -196,21 +196,31 @@ func (f *Phlare) setupWorkerTimeout() {
 	}
 }
 
+func (f *Phlare) registerQuerierHandlers(svc querierv1connect.QuerierServiceHandler) {
+	var (
+		handlers = querier.NewHTTPHandlers(svc)
+		wrap     = func(fn http.HandlerFunc) http.Handler {
+			return util.AuthenticateUser(f.Cfg.MultitenancyEnabled).Wrap(fn)
+		}
+	)
+
+	querierv1connect.RegisterQuerierServiceHandler(f.Server.HTTP, svc, f.auth)
+	f.Server.HTTP.Handle("/pyroscope/render", wrap(handlers.Render))
+	f.Server.HTTP.Handle("/pyroscope/label-values", wrap(handlers.LabelValues))
+}
+
 func (f *Phlare) initQuerier() (services.Service, error) {
 	querierSvc, err := querier.New(f.Cfg.Querier, f.ring, nil, log.With(f.logger, "component", "querier"), f.auth)
 	if err != nil {
 		return nil, err
 	}
 	if !f.isModuleActive(QueryFrontend) {
-		querierv1connect.RegisterQuerierServiceHandler(f.Server.HTTP, querierSvc, f.auth)
+		f.registerQuerierHandlers(querierSvc)
 	}
 	worker, err := worker.NewQuerierWorker(f.Cfg.Worker, querier.NewGRPCHandler(querierSvc), log.With(f.logger, "component", "querier-worker"), f.reg)
 	if err != nil {
 		return nil, err
 	}
-
-	f.Server.HTTP.Handle("/pyroscope/render", util.AuthenticateUser(f.Cfg.MultitenancyEnabled).Wrap(http.HandlerFunc(querierSvc.RenderHandler)))
-	f.Server.HTTP.Handle("/pyroscope/label-values", util.AuthenticateUser(f.Cfg.MultitenancyEnabled).Wrap(http.HandlerFunc(querierSvc.LabelValuesHandler)))
 
 	sm, err := services.NewManager(querierSvc, worker)
 	if err != nil {
