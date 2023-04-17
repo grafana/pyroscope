@@ -158,7 +158,10 @@ define deploy
 	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)phlare:$(IMAGE_TAG)
 	kubectl get pods
 	$(BIN)/helm upgrade --install $(1) ./operations/phlare/helm/phlare $(2) \
-		--set phlare.image.tag=$(IMAGE_TAG) --set phlare.image.repository=$(IMAGE_PREFIX)phlare --set phlare.service.port_name=http-metrics \
+		--set phlare.image.tag=$(IMAGE_TAG) \
+		--set phlare.image.repository=$(IMAGE_PREFIX)phlare \
+		--set phlare.podAnnotations.image-id=$(shell cat .docker-image-id-phlare) \
+		--set phlare.service.port_name=http-metrics \
 		--set phlare.podAnnotations."profiles\.grafana\.com\/memory\.port_name"=http-metrics \
 		--set phlare.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
 		--set phlare.podAnnotations."profiles\.grafana\.com\/goroutine\.port_name"=http-metrics \
@@ -173,7 +176,7 @@ docker-image/phlare/build-debug: frontend/build go/bin-debug $(BIN)/dlv
 .PHONY: docker-image/phlare/build
 docker-image/phlare/build: GOOS=linux GOARCH=amd64
 docker-image/phlare/build: frontend/build go/bin
-	$(call docker_buildx,--load)
+	$(call docker_buildx,--load --iidfile .docker-image-id-phlare)
 
 .PHONY: docker-image/phlare/push
 docker-image/phlare/push: frontend/build go/bin

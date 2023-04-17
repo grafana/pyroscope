@@ -32,3 +32,6 @@ node_modules
 dist/
 
 public/build
+
+# Contains the docker image id for phlare
+/.docker-image-id-phlare
