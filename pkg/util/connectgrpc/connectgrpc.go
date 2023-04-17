@@ -1,8 +1,11 @@
 package connectgrpc
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/bufbuild/connect-go"
@@ -29,7 +32,7 @@ func HandleUnary[Req any, Res any](ctx context.Context, req *httpgrpc.HTTPReques
 			return &httpgrpc.HTTPResponse{
 				Code:    CodeToHTTP(connectErr.Code()),
 				Body:    []byte(connectErr.Message()),
-				Headers: connectHeaderToHTTPHeader(connectErr.Meta()),
+				Headers: connectHeaderToHTTPGRPCHeader(connectErr.Meta()),
 			}, nil
 		}
 
@@ -71,7 +74,7 @@ func RoundTripUnary[Req any, Res any](rt GRPCRoundTripper, ctx context.Context, 
 
 func encodeResponse[Req any](resp *connect.Response[Req]) (*httpgrpc.HTTPResponse, error) {
 	out := &httpgrpc.HTTPResponse{
-		Headers: connectHeaderToHTTPHeader(resp.Header()),
+		Headers: connectHeaderToHTTPGRPCHeader(resp.Header()),
 		Code:    http.StatusOK,
 	}
 	var err error
@@ -82,13 +85,21 @@ func encodeResponse[Req any](resp *connect.Response[Req]) (*httpgrpc.HTTPRespons
 	return out, nil
 }
 
-func connectHeaderToHTTPHeader(header http.Header) []*httpgrpc.Header {
-	result := []*httpgrpc.Header{}
+func connectHeaderToHTTPGRPCHeader(header http.Header) []*httpgrpc.Header {
+	result := make([]*httpgrpc.Header, 0, len(header))
 	for k, v := range header {
 		result = append(result, &httpgrpc.Header{
 			Key:    k,
 			Values: v,
 		})
+	}
+	return result
+}
+
+func httpgrpcHeaderToConnectHeader(header []*httpgrpc.Header) http.Header {
+	result := make(http.Header, len(header))
+	for _, h := range header {
+		result[h.Key] = h.Values
 	}
 	return result
 }
@@ -105,14 +116,15 @@ func decodeRequest[Req any](req *httpgrpc.HTTPRequest) (*connect.Request[Req], e
 }
 
 func encodeRequest[Req any](req *connect.Request[Req]) (*httpgrpc.HTTPRequest, error) {
+	if req.Spec().Procedure == "" {
+		return nil, errors.New("cannot encode a request with empty procedure")
+	}
 	out := &httpgrpc.HTTPRequest{
 		Method:  http.MethodPost,
 		Url:     req.Spec().Procedure,
-		Headers: []*httpgrpc.Header{},
+		Headers: connectHeaderToHTTPGRPCHeader(req.Header()),
 	}
-	for k, v := range req.Header() {
-		out.Headers = append(out.Headers, &httpgrpc.Header{Key: k, Values: v})
-	}
+
 	var err error
 	msg := req.Any()
 	out.Body, err = proto.Marshal(msg.(proto.Message))
@@ -192,4 +204,88 @@ func HTTPToCode(httpCode int32) connect.Code {
 	default:
 		return connect.CodeUnknown
 	}
+}
+
+type responseWriter struct {
+	header http.Header
+	resp   httpgrpc.HTTPResponse
+}
+
+func (r *responseWriter) Header() http.Header {
+	return r.header
+}
+
+func (r *responseWriter) Write(data []byte) (int, error) {
+	r.resp.Body = append(r.resp.Body, data...)
+	return len(data), nil
+}
+
+func (r *responseWriter) WriteHeader(statusCode int) {
+	r.resp.Code = int32(statusCode)
+}
+
+func (r *responseWriter) HTTPResponse() *httpgrpc.HTTPResponse {
+	r.resp.Headers = connectHeaderToHTTPGRPCHeader(r.header)
+	return &r.resp
+}
+
+// NewHandler converts a Connect handler into a HTTPGRPC handler
+type grpcHandler struct {
+	next http.Handler
+}
+
+func NewHandler(h http.Handler) GRPCHandler {
+	return &grpcHandler{next: h}
+}
+
+func newResponseWriter() *responseWriter {
+	rw := &responseWriter{header: http.Header{}}
+	rw.resp.Code = 200
+	return rw
+}
+
+func (q *grpcHandler) Handle(ctx context.Context, req *httpgrpc.HTTPRequest) (*httpgrpc.HTTPResponse, error) {
+	stdReq, err := http.NewRequestWithContext(ctx, req.Method, req.Url, bytes.NewReader(req.Body))
+	if err != nil {
+		return nil, err
+	}
+	stdReq.Header = httpgrpcHeaderToConnectHeader(req.Headers)
+
+	rw := newResponseWriter()
+	q.next.ServeHTTP(rw, stdReq)
+
+	return rw.HTTPResponse(), nil
+}
+
+type httpgrpcClient struct {
+	transport GRPCRoundTripper
+}
+
+func NewClient(transport GRPCRoundTripper) connect.HTTPClient {
+	return &httpgrpcClient{transport: transport}
+}
+
+func (g *httpgrpcClient) Do(req *http.Request) (*http.Response, error) {
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := g.transport.RoundTripGRPC(req.Context(), &httpgrpc.HTTPRequest{
+		Url:     req.URL.String(),
+		Headers: connectHeaderToHTTPGRPCHeader(req.Header),
+		Method:  req.Method,
+		Body:    body,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("grpc roundtripper error: %w", err)
+	}
+
+	return &http.Response{
+		Body:          io.NopCloser(bytes.NewReader(resp.Body)),
+		ContentLength: int64(len(resp.Body)),
+		StatusCode:    int(resp.Code),
+		Header:        httpgrpcHeaderToConnectHeader(resp.Headers),
+	}, nil
+
 }
