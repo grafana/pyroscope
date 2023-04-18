@@ -6,6 +6,7 @@ module.exports = merge(common, {
   mode: 'development',
   devServer: {
     port: 4040,
+    historyApiFallback: true,
     proxy: {
       '/pyroscope': 'http://localhost:4100',
       '/querier.v1.QuerierService': 'http://localhost:4100',
