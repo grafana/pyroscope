@@ -364,6 +364,20 @@ func (t *Tree) iterateWithTotal(cb func(total uint64) bool) {
 	}
 }
 
+func (t *Tree) Scale(s uint64) {
+	nodes := []*treeNode{t.root}
+
+	for len(nodes) > 0 {
+		node := nodes[len(nodes)-1]
+		nodes = nodes[:len(nodes)-1]
+
+		node.Self *= s
+		node.Total *= s
+
+		nodes = append(node.ChildrenNodes, nodes...)
+	}
+}
+
 func (t *Tree) Samples() uint64 {
 	return t.root.Total
 }
