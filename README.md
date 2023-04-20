@@ -237,6 +237,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/hlts2"><img src="https://avatars.githubusercontent.com/u/25459661?v=4" title="hlts2" width="80" height="80"></a>
 <a href="https://github.com/johnduhart"><img src="https://avatars.githubusercontent.com/u/113642?v=4" title="johnduhart" width="80" height="80"></a>
 <a href="https://github.com/radixdev"><img src="https://avatars.githubusercontent.com/u/2373546?v=4" title="radixdev" width="80" height="80"></a>
+<a href="https://github.com/Jun10ng"><img src="https://avatars.githubusercontent.com/u/46768176?v=4" title="Jun10ng" width="80" height="80"></a>
 <a href="https://github.com/lizthegrey"><img src="https://avatars.githubusercontent.com/u/614704?v=4" title="lizthegrey" width="80" height="80"></a>
 <a href="https://github.com/louisphn"><img src="https://avatars.githubusercontent.com/u/72560298?v=4" title="louisphn" width="80" height="80"></a>
 <a href="https://github.com/Gookuruto"><img src="https://avatars.githubusercontent.com/u/25951216?v=4" title="Gookuruto" width="80" height="80"></a>
