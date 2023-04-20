@@ -12,12 +12,14 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
 	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
 	"github.com/grafana/phlare/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/querier/timeline"
 )
 
 func NewHTTPHandlers(svc querierv1connect.QuerierServiceHandler) *QueryHandlers {
@@ -82,13 +84,45 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	res, err := q.upstream.SelectMergeStacktraces(req.Context(), connect.NewRequest(selectParams))
+
+	var resFlame *connect.Response[querierv1.SelectMergeStacktracesResponse]
+	g, ctx := errgroup.WithContext(req.Context())
+	g.Go(func() error {
+		resFlame, err = q.upstream.SelectMergeStacktraces(ctx, connect.NewRequest(selectParams))
+		return err
+	})
+
+	timelineStep := timeline.CalcPointInterval(selectParams.Start, selectParams.End)
+	var resSeries *connect.Response[querierv1.SelectSeriesResponse]
+	g.Go(func() error {
+		resSeries, err = q.upstream.SelectSeries(req.Context(),
+			connect.NewRequest(&querierv1.SelectSeriesRequest{
+				ProfileTypeID: selectParams.ProfileTypeID,
+				LabelSelector: selectParams.LabelSelector,
+				Start:         selectParams.Start,
+				End:           selectParams.End,
+				Step:          timelineStep,
+			}))
+
+		return err
+	})
+
+	err = g.Wait()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	seriesVal := &typesv1.Series{}
+	if len(resSeries.Msg.Series) == 1 {
+		seriesVal = resSeries.Msg.Series[0]
+	}
+
+	fb := ExportToFlamebearer(resFlame.Msg.Flamegraph, profileType)
+	fb.Timeline = timeline.New(seriesVal, selectParams.Start, selectParams.End, int64(timelineStep))
+
 	w.Header().Add("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(ExportToFlamebearer(res.Msg.Flamegraph, profileType)); err != nil {
+	if err := json.NewEncoder(w).Encode(fb); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

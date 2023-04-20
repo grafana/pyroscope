@@ -39,17 +39,9 @@ module.exports = {
         __dirname,
         '../../public/app/overrides/components/ExportData'
       ),
-      '@webapp/components/TimelineChart/TimelineChartWrapper': path.resolve(
-        __dirname,
-        '../../public/app/overrides/components/TimelineChart/TimelineChartWrapper'
-      ),
       '@webapp/components/TimelineChart/ContextMenu.plugin': path.resolve(
         __dirname,
         '../../public/app/overrides/components/TimelineChart/ContextMenu.plugin'
-      ),
-      '@webapp/components/TimelineChart/Tooltip.plugin': path.resolve(
-        __dirname,
-        '../../public/app/overrides/components/TimelineChart/Tooltip.plugin'
       ),
       '@webapp/components/AppSelector/Label': path.resolve(
         __dirname,
