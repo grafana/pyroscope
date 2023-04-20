@@ -25,7 +25,6 @@ import (
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/version"
 	"github.com/weaveworks/common/logging"
-	"github.com/weaveworks/common/middleware"
 	"github.com/weaveworks/common/server"
 	"github.com/weaveworks/common/signals"
 	wwtracing "github.com/weaveworks/common/tracing"
@@ -56,6 +55,7 @@ import (
 type Config struct {
 	Target            flagext.StringSliceCSV `yaml:"target,omitempty"`
 	AgentConfig       agent.Config           `yaml:",inline"`
+	API               api.Config             `yaml:"api"`
 	Server            server.Config          `yaml:"server,omitempty"`
 	Distributor       distributor.Config     `yaml:"distributor,omitempty"`
 	Querier           querier.Config         `yaml:"querier,omitempty"`
@@ -98,7 +98,7 @@ func (c *Config) RegisterFlags(f *flag.FlagSet) {
 	c.RegisterFlagsWithContext(context.Background(), f)
 }
 
-// RegisterFlags registers flag.
+// RegisterFlagsWithContext registers flag.
 func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) {
 	// Set the default module list to 'all'
 	c.Target = []string{All}
@@ -213,17 +213,16 @@ type Phlare struct {
 	serviceMap    map[string]services.Service
 	deps          map[string][]string
 
-	HTTPAuthMiddleware middleware.Interface
-	Server             *server.Server
-	IndexPage          *api.IndexPageContent
-	SignalHandler      *signals.Handler
-	MemberlistKV       *memberlist.KVInitService
-	ring               *ring.Ring
-	agent              *agent.Agent
-	pusherClient       pushv1connect.PusherServiceClient
-	usageReport        *usagestats.Reporter
-	RuntimeConfig      *runtimeconfig.Manager
-	Overrides          *validation.Overrides
+	API           *api.API
+	Server        *server.Server
+	SignalHandler *signals.Handler
+	MemberlistKV  *memberlist.KVInitService
+	ring          *ring.Ring
+	agent         *agent.Agent
+	pusherClient  pushv1connect.PusherServiceClient
+	usageReport   *usagestats.Reporter
+	RuntimeConfig *runtimeconfig.Manager
+	Overrides     *validation.Overrides
 
 	TenantLimits validation.TenantLimits
 
@@ -271,6 +270,12 @@ func New(cfg Config) (*Phlare, error) {
 		cfg.AgentConfig.ClientConfig.URL.String(),
 		phlare.auth,
 	)
+
+	phlare.Cfg.API = api.Config{
+		HTTPAuthMiddleware: util.AuthenticateUser(cfg.MultitenancyEnabled),
+		GrpcAuthMiddleware: phlare.auth,
+	}
+
 	return phlare, nil
 }
 
@@ -286,6 +291,7 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(OverridesExporter, f.initOverridesExporter)
 	mm.RegisterModule(Ingester, f.initIngester)
 	mm.RegisterModule(Server, f.initServer, modules.UserInvisibleModule)
+	mm.RegisterModule(API, f.initAPI, modules.UserInvisibleModule)
 	mm.RegisterModule(Distributor, f.initDistributor)
 	mm.RegisterModule(Querier, f.initQuerier)
 	mm.RegisterModule(Agent, f.initAgent)
@@ -298,20 +304,21 @@ func (f *Phlare) setupModuleManager() error {
 	deps := map[string][]string{
 		All: {Agent, Ingester, Distributor, QueryScheduler, QueryFrontend, Querier},
 
-		Agent:          {Server},
-		Distributor:    {Overrides, Ring, Server, UsageReport},
-		Querier:        {Server, MemberlistKV, Ring, UsageReport},
-		QueryFrontend:  {OverridesExporter, Server, MemberlistKV, UsageReport},
-		QueryScheduler: {Overrides, Server, MemberlistKV, UsageReport},
-		Ingester:       {Overrides, Server, MemberlistKV, Storage, UsageReport},
+		Server:         {GRPCGateway},
+		API:            {Server},
+		Agent:          {API},
+		Distributor:    {Overrides, Ring, API, UsageReport},
+		Querier:        {API, MemberlistKV, Ring, UsageReport},
+		QueryFrontend:  {OverridesExporter, API, MemberlistKV, UsageReport},
+		QueryScheduler: {Overrides, API, MemberlistKV, UsageReport},
+		Ingester:       {Overrides, API, MemberlistKV, Storage, UsageReport},
 
 		UsageReport:       {Storage, MemberlistKV},
 		Overrides:         {RuntimeConfig},
 		OverridesExporter: {Overrides, MemberlistKV},
-		RuntimeConfig:     {Server},
-		Ring:              {Server, MemberlistKV},
-		MemberlistKV:      {Server},
-		Server:            {GRPCGateway},
+		RuntimeConfig:     {API},
+		Ring:              {API, MemberlistKV},
+		MemberlistKV:      {API},
 	}
 
 	for mod, targets := range deps {
@@ -447,6 +454,20 @@ func initLogger(cfg *server.Config) log.Logger {
 	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 	util.Logger = logger
 	return logger
+}
+
+func (f *Phlare) initAPI() (services.Service, error) {
+	a, err := api.New(f.Cfg.API, f.Server, f.grpcGatewayMux, util.Logger)
+	if err != nil {
+		return nil, err
+	}
+	f.API = a
+
+	if err := f.API.RegisterAPI(f.statusService()); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 func levelFilter(l string) level.Option {
