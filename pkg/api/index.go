@@ -17,13 +17,13 @@ import (
 // List of weights to order link groups in the same order as weights are ordered here.
 const (
 	serviceStatusWeight = iota
-	ConfigWeight
-	RuntimeConfigWeight
-	DefaultWeight
-	MemberlistWeight
+	configWeight
+	runtimeConfigWeight
+	defaultWeight
+	memberlistWeight
 	dangerousWeight
-	OpenAPIDefinitionWeight
-	BuildInfoWeight
+	openAPIDefinitionWeight
+	buildInfoWeight
 )
 
 func NewIndexPageContent() *IndexPageContent {
@@ -79,9 +79,9 @@ type indexPageContents struct {
 }
 
 //go:embed static
-var StaticFiles embed.FS
+var staticFiles embed.FS
 
-func IndexHandler(httpPathPrefix string, content *IndexPageContent) http.HandlerFunc {
+func indexHandler(httpPathPrefix string, content *IndexPageContent) http.HandlerFunc {
 	templ := template.New("main")
 	templ.Funcs(map[string]interface{}{
 		"AddPathPrefix": func(link string) string {

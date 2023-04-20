@@ -15,7 +15,7 @@ import (
 
 func TestIndexHandlerPrefix(t *testing.T) {
 	c := NewIndexPageContent()
-	c.AddLinks(DefaultWeight, "Store Gateway", []IndexPageLink{{Desc: "Ring status", Path: "/store-gateway/ring"}})
+	c.AddLinks(defaultWeight, "Store Gateway", []IndexPageLink{{Desc: "Ring status", Path: "/store-gateway/ring"}})
 
 	for _, tc := range []struct {
 		prefix    string
@@ -26,7 +26,7 @@ func TestIndexHandlerPrefix(t *testing.T) {
 		// All the extra slashed are cleaned up in the result.
 		{prefix: "///test///", toBeFound: "<a href=\"/test/store-gateway/ring\">"},
 	} {
-		h := IndexHandler(tc.prefix, c)
+		h := indexHandler(tc.prefix, c)
 
 		req := httptest.NewRequest("GET", "/", nil)
 		resp := httptest.NewRecorder()
@@ -40,12 +40,12 @@ func TestIndexHandlerPrefix(t *testing.T) {
 
 func TestIndexPageContent(t *testing.T) {
 	c := NewIndexPageContent()
-	c.AddLinks(DefaultWeight, "Some group", []IndexPageLink{
+	c.AddLinks(defaultWeight, "Some group", []IndexPageLink{
 		{Desc: "Some link", Path: "/store-gateway/ring"},
 		{Dangerous: true, Desc: "Boom!", Path: "/store-gateway/boom"},
 	})
 
-	h := IndexHandler("", c)
+	h := indexHandler("", c)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	resp := httptest.NewRecorder()
