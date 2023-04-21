@@ -32,7 +32,6 @@ class TimelineChart extends ReactFlot<TimelineChartProps> {
   }
 
   componentDidUpdate() {
-    console.log('data', this.props.data);
     this.draw();
   }
 
