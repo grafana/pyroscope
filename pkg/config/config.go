@@ -420,12 +420,14 @@ type RemoteRead struct {
 type RemoteWriteTarget struct {
 	Address string `desc:"server that implements the pyroscope /ingest endpoint" mapstructure:"address"`
 	// TODO(eh-am): use a custom type here to not accidentaly leak the AuthToken?
-	AuthToken    string            `json:"-" desc:"authorization token used to upload profiling data" yaml:"auth-token"`
-	Tags         map[string]string `name:"tag" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
-	Headers      map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
-	Timeout      time.Duration     `desc:"profile upload timeout" mapstructure:"timeout" yaml:"timeout"`
-	QueueSize    int               `desc:"number of items in the queue" yaml:"queue-size"`
-	QueueWorkers int               `desc:"number of queue workers" yaml:"queue-workers"`
+	AuthToken         string            `json:"-" desc:"authorization token used to upload profiling data" yaml:"auth-token"`
+	BasicAuthUser     string            `def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user"`
+	BasicAuthPassword string            `def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password"`
+	Tags              map[string]string `name:"tag" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
+	Headers           map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
+	Timeout           time.Duration     `desc:"profile upload timeout" mapstructure:"timeout" yaml:"timeout"`
+	QueueSize         int               `desc:"number of items in the queue" yaml:"queue-size"`
+	QueueWorkers      int               `desc:"number of queue workers" yaml:"queue-workers"`
 }
 
 func (r RemoteWriteTarget) String() string {
