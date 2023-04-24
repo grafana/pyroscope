@@ -19,13 +19,31 @@ services:
       context: .
 
   pyroscope:
-    image: pyroscope/pyroscope
+    image: pyroscope/pyroscope@sha256:f352b0260521702d1cdd93f6fd35f4234027e056d3b70b3452f9b60335d29574
     environment:
       - PYROSCOPE_LOG_LEVEL=debug
-    ports:
-      - '4040:4040'
-    command:
-      - 'server'
+        #    ports:
+        #      - '4040:4040'
+
+    entrypoint:
+    - pyroscope
+    - server
+    - --config
+    - /etc/pyroscope/server.yaml
+
+      #    command:
+      #      - 'server'
+      #      - '--config'
+      #      - '/etc/pyroscope/server.yml'
+    volumes:
+      - ./pyroscope:/etc/pyroscope
+
+
+  docker-host:
+    image: "qoomon/docker-host"
+    cap_add:
+      - "NET_ADMIN"
+      - "NET_RAW"
 
   load-generator:
     build:
