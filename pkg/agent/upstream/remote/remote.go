@@ -35,6 +35,8 @@ type Remote struct {
 
 type RemoteConfig struct {
 	AuthToken              string
+	BasicAuthUser          string
+	BasicAuthPassword      string
 	ScopeOrgID             string
 	HTTPHeaders            map[string]string
 	UpstreamThreads        int
@@ -127,6 +129,8 @@ func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
 
 	if r.cfg.AuthToken != "" {
 		request.Header.Set("Authorization", "Bearer "+r.cfg.AuthToken)
+	} else if r.cfg.BasicAuthUser != "" && r.cfg.BasicAuthPassword != "" {
+		request.SetBasicAuth(r.cfg.BasicAuthUser, r.cfg.BasicAuthPassword)
 	}
 	if r.cfg.ScopeOrgID != "" {
 		request.Header.Set("X-Scope-OrgID", r.cfg.ScopeOrgID)

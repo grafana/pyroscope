@@ -55,6 +55,8 @@ func NewExec(cfg *config.Exec, args []string) (*Exec, error) {
 	rc := remote.RemoteConfig{
 		AuthToken:              cfg.AuthToken,
 		ScopeOrgID:             cfg.ScopeOrgID,
+		BasicAuthUser:          cfg.BasicAuthUser,
+		BasicAuthPassword:      cfg.BasicAuthPassword,
 		HTTPHeaders:            cfg.Headers,
 		UpstreamThreads:        cfg.UpstreamThreads,
 		UpstreamAddress:        cfg.ServerAddress,

@@ -35,6 +35,8 @@ func RunEBPF(cfg *config.EBPF) error {
 		AuthToken:              cfg.AuthToken,
 		ScopeOrgID:             cfg.ScopeOrgID,
 		HTTPHeaders:            cfg.Headers,
+		BasicAuthUser:          cfg.BasicAuthUser,
+		BasicAuthPassword:      cfg.BasicAuthPassword,
 		UpstreamThreads:        cfg.UpstreamThreads,
 		UpstreamAddress:        cfg.ServerAddress,
 		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
