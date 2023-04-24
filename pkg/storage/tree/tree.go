@@ -377,7 +377,6 @@ func (t *Tree) Scale(s uint64) {
 		nodes = append(node.ChildrenNodes, nodes...)
 	}
 }
-
 func (t *Tree) Samples() uint64 {
 	return t.root.Total
 }
