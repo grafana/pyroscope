@@ -1,5 +1,7 @@
 const { merge } = require('webpack-merge');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 const common = require('./webpack.common');
+const webpack = require('webpack');
 
 module.exports = merge(common, {
   devtool: 'eval-source-map',
@@ -15,4 +17,15 @@ module.exports = merge(common, {
   optimization: {
     runtimeChunk: 'single',
   },
+  plugins: [
+    new webpack.DefinePlugin({
+      'process.env.BASEPATH': JSON.stringify(''),
+    }),
+    // Duplicated in webpack.prod.js
+    new HtmlWebpackPlugin({
+      filename: path.resolve(__dirname, '../../public/build/index.html'),
+      template: path.resolve(__dirname, '../../public/templates/index.html'),
+      chunksSortMode: 'none',
+    }),
+  ],
 });

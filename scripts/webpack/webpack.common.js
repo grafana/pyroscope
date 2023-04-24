@@ -4,6 +4,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const {
   dependencies: pyroOSSDeps,
 } = require('../../node_modules/pyroscope-oss/package.json');
+const webpack = require('webpack');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
 // this is so that we don't import dependencies twice, once from pyroscope-oss and another from here
@@ -105,14 +106,7 @@ module.exports = {
     children: false,
     source: false,
   },
-  plugins: [
-    new MiniCssExtractPlugin({}),
-    new HtmlWebpackPlugin({
-      filename: path.resolve(__dirname, '../../public/build/index.html'),
-      template: path.resolve(__dirname, '../../public/templates/index.html'),
-      chunksSortMode: 'none',
-    }),
-  ],
+  plugins: [new MiniCssExtractPlugin({})],
   module: {
     rules: [
       // CSS
