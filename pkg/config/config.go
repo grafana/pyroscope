@@ -421,8 +421,9 @@ type RemoteWriteTarget struct {
 	Address string `desc:"server that implements the pyroscope /ingest endpoint" mapstructure:"address"`
 	// TODO(eh-am): use a custom type here to not accidentaly leak the AuthToken?
 	AuthToken         string            `json:"-" desc:"authorization token used to upload profiling data" yaml:"auth-token"`
-	BasicAuthUser     string            `json:"-" def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user"`
-	BasicAuthPassword string            `json:"-" def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password"`
+	BasicAuthUser     string            `json:"-" def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user" yaml:"basic-auth-user"`
+	BasicAuthPassword string            `json:"-" def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password" yaml:"basic-auth-password"`
+	ScopeOrgID        string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id" yaml:"scope-org-id"`
 	Tags              map[string]string `name:"tag" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 	Headers           map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
 	Timeout           time.Duration     `desc:"profile upload timeout" mapstructure:"timeout" yaml:"timeout"`
