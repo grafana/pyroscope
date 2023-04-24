@@ -190,9 +190,9 @@ func FromProfile(p *profile.Profile) (*profilev1.Profile, error) {
 		r.Mapping = append(r.Mapping, &profilev1.Mapping{
 			Id:              m.ID,
 			Filename:        addString(strings, m.File),
-			MemoryStart:     m.Start,
-			MemoryLimit:     m.Limit,
-			FileOffset:      m.Offset,
+			MemoryStart:     (m.Start),
+			MemoryLimit:     (m.Limit),
+			FileOffset:      (m.Offset),
 			BuildId:         addString(strings, m.BuildID),
 			HasFunctions:    m.HasFunctions,
 			HasFilenames:    m.HasFilenames,

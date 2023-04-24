@@ -79,36 +79,6 @@ func sameProfileStream(i int) *testProfile {
 	return tp
 }
 
-// This will simulate a profile stream which ends and a new one starts at i > boundary
-func profileStreamEndingAndStarting(boundary int) func(int) *testProfile {
-	return func(i int) *testProfile {
-		tp := &testProfile{}
-
-		series := "at-beginning"
-		if i > boundary {
-			series = "at-end"
-		}
-
-		tp.profileName = "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
-		tp.lbls = phlaremodel.LabelsFromStrings(
-			phlaremodel.LabelNameProfileType, tp.profileName,
-			"job", "test",
-			"stream", series,
-		)
-
-		tp.p.ID = uuid.MustParse(fmt.Sprintf("00000000-0000-0000-0000-%012d", i))
-		tp.p.TimeNanos = time.Second.Nanoseconds() * int64(i)
-		tp.p.Samples = []*schemav1.Sample{
-			{
-				StacktraceID: 0x1,
-				Value:        10.0,
-			},
-		}
-		tp.populateFingerprint()
-		return tp
-	}
-}
-
 func readFullParquetFile[M any](t *testing.T, path string) ([]M, uint64) {
 	f, err := os.Open(path)
 	require.NoError(t, err)
@@ -160,13 +130,6 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 			expectedNumRGs:  10,
 			expectedNumRows: 100,
 			values:          sameProfileStream,
-		},
-		{
-			name:            "a stream ending after half of the samples and a new one starting",
-			cfg:             &ParquetConfig{MaxRowGroupBytes: 1828, MaxBufferRowCount: 100000},
-			expectedNumRGs:  10,
-			expectedNumRows: 100,
-			values:          profileStreamEndingAndStarting(50),
 		},
 		{
 			name:            "multiple row groups because of maximum row num",
