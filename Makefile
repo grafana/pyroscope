@@ -133,8 +133,7 @@ go/mod:
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
 	git ls-files '*.go' | grep -v 'vendor/' | xargs gofmt -s -w
-	# TODO: Reenable once golangci-lint support go 1.18 properly
-	# $(BIN)/golangci-lint run --fix
+	$(BIN)/golangci-lint run --fix
 	cd api/ && $(BIN)/buf format -w .
 	cd pkg && $(BIN)/buf format -w .
 	$(BIN)/tk fmt ./operations/phlare/jsonnet/ tools/monitoring/
@@ -224,7 +223,7 @@ $(BIN)/buf: Makefile
 
 $(BIN)/golangci-lint: Makefile
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.2
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.52.2
 
 $(BIN)/protoc-gen-go: Makefile go.mod
 	@mkdir -p $(@D)
