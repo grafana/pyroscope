@@ -72,8 +72,8 @@ type Agent struct {
 
 	ServerAddress          string            `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
 	AuthToken              string            `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	BasicAuthUser          string            `def:"HTTP Basic authentication username" desc:"" mapstructure:"basic-auth-user"`
-	BasicAuthPassword      string            `def:"HTTP Basic authentication password" desc:"" mapstructure:"basic-auth-password"`
+	BasicAuthUser          string            `def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user"`
+	BasicAuthPassword      string            `def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password"`
 	ScopeOrgID             string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id"`
 	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
 	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
@@ -299,8 +299,8 @@ type Exec struct {
 	// Remote upstream configuration
 	ServerAddress          string            `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
 	AuthToken              string            `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	BasicAuthUser          string            `def:"HTTP Basic authentication username" desc:"" mapstructure:"basic-auth-user"`
-	BasicAuthPassword      string            `def:"HTTP Basic authentication password" desc:"" mapstructure:"basic-auth-password"`
+	BasicAuthUser          string            `def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user"`
+	BasicAuthPassword      string            `def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password"`
 	ScopeOrgID             string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id"`
 	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
 	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
@@ -326,8 +326,8 @@ type Connect struct {
 	// Remote upstream configuration
 	ServerAddress          string            `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
 	AuthToken              string            `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	BasicAuthUser          string            `def:"HTTP Basic authentication username" desc:"" mapstructure:"basic-auth-user"`
-	BasicAuthPassword      string            `def:"HTTP Basic authentication password" desc:"" mapstructure:"basic-auth-password"`
+	BasicAuthUser          string            `def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user"`
+	BasicAuthPassword      string            `def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password"`
 	ScopeOrgID             string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id"`
 	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
 	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
@@ -349,8 +349,8 @@ type EBPF struct {
 	// Remote upstream configuration
 	ServerAddress          string            `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
 	AuthToken              string            `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	BasicAuthUser          string            `def:"HTTP Basic authentication username" desc:"" mapstructure:"basic-auth-user"`
-	BasicAuthPassword      string            `def:"HTTP Basic authentication password" desc:"" mapstructure:"basic-auth-password"`
+	BasicAuthUser          string            `def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user"`
+	BasicAuthPassword      string            `def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password"`
 	ScopeOrgID             string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id"`
 	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
 	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
