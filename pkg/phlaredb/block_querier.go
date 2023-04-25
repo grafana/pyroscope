@@ -509,7 +509,7 @@ func (q Queriers) MergeProfilesStacktraces(ctx context.Context, stream *connect.
 		selectedProfiles, err := filterProfiles[
 			BidiServerMerge[*ingestv1.MergeProfilesStacktracesResponse, *ingestv1.MergeProfilesStacktracesRequest],
 			*ingestv1.MergeProfilesStacktracesResponse,
-			*ingestv1.MergeProfilesStacktracesRequest](ctx, profiles, 128, stream)
+			*ingestv1.MergeProfilesStacktracesRequest](ctx, profiles, 2048, stream)
 		if err != nil {
 			return err
 		}
@@ -594,7 +594,7 @@ func (q Queriers) MergeProfilesLabels(ctx context.Context, stream *connect.BidiS
 		selectedProfiles, err := filterProfiles[
 			BidiServerMerge[*ingestv1.MergeProfilesLabelsResponse, *ingestv1.MergeProfilesLabelsRequest],
 			*ingestv1.MergeProfilesLabelsResponse,
-			*ingestv1.MergeProfilesLabelsRequest](ctx, profiles, 128, stream)
+			*ingestv1.MergeProfilesLabelsRequest](ctx, profiles, 2048, stream)
 		if err != nil {
 			return err
 		}
@@ -679,7 +679,7 @@ func (q Queriers) MergeProfilesPprof(ctx context.Context, stream *connect.BidiSt
 		selectedProfiles, err := filterProfiles[
 			BidiServerMerge[*ingestv1.MergeProfilesPprofResponse, *ingestv1.MergeProfilesPprofRequest],
 			*ingestv1.MergeProfilesPprofResponse,
-			*ingestv1.MergeProfilesPprofRequest](ctx, profiles, 128, stream)
+			*ingestv1.MergeProfilesPprofRequest](ctx, profiles, 2048, stream)
 		if err != nil {
 			return err
 		}
