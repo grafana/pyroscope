@@ -47,6 +47,7 @@ type MergeResult[R any] interface {
 type MergeIterator interface {
 	iter.Iterator[ProfileWithLabels]
 	Keep()
+	NewBatch() bool
 }
 
 type mergeIterator[R any, Req Request, Res Response] struct {
@@ -79,7 +80,7 @@ func NewMergeIterator[
 }
 
 func (s *mergeIterator[R, Req, Res]) Next() bool {
-	if s.curr == nil || s.currIdx >= len(s.curr.Profiles)-1 {
+	if s.NewBatch() {
 		// ensure we send keep before reading next batch.
 		// the iterator only need to precise profile to keep, not the ones to drop.
 		if !s.keepSent {
@@ -148,9 +149,9 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 	return true
 }
 
-// func(s *mergeIterator[R, Req, Res]) fetchNext() {
-// 	return s.err
-// }
+func (s *mergeIterator[R, Req, Res]) NewBatch() bool {
+	return s.curr == nil || s.currIdx >= len(s.curr.Profiles)-1
+}
 
 func (s *mergeIterator[R, Req, Res]) Keep() {
 	s.keep[s.currIdx] = true
@@ -302,13 +303,24 @@ func skipDuplicates(its []MergeIterator) error {
 // requeueAsync multiple iterators, in parallel, it will only requeue iterators that are not done.
 // It will close the iterators that are done.
 func requeueAsync(worker chan MergeIterator, result chan workerResult, h heap.Interface, eis ...MergeIterator) error {
+	var multiErr multierror.MultiError
+	async := 0
 	for _, ei := range eis {
+		if !ei.NewBatch() {
+			if ei.Next() {
+				heap.Push(h, ei)
+			} else {
+				if err := ei.Close(); err != nil {
+					multiErr.Add(err)
+				}
+			}
+			continue
+		}
 		worker <- ei
+		async++
 	}
 
-	var multiErr multierror.MultiError
-
-	for range eis {
+	for i := 0; i < async; i++ {
 		res := <-result
 		if res.next {
 			heap.Push(h, res.it)

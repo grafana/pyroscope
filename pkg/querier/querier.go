@@ -64,6 +64,8 @@ type Querier struct {
 }
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, logger log.Logger, clientsOptions ...connect.ClientOption) (*Querier, error) {
+	// disable gzip compression for querier
+	clientsOptions = append(clientsOptions, connect.WithAcceptCompression("gzip", nil, nil))
 	q := &Querier{
 		cfg:           cfg,
 		logger:        logger,
