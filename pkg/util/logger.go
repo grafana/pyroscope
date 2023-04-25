@@ -13,15 +13,15 @@ var Logger = log.NewNopLogger()
 
 // LoggerWithUserID returns a Logger that has information about the current user in
 // its details.
-func LoggerWithUserID(userID string, l log.Logger) log.Logger {
+func LoggerWithUserID(tenantID string, l log.Logger) log.Logger {
 	// See note in WithContext.
-	return log.With(l, "user", userID)
+	return log.With(l, "tenant", tenantID)
 }
 
 // LoggerWithUserIDs returns a Logger that has information about the current user or
 // users (separated by "|") in its details.
-func LoggerWithUserIDs(userIDs []string, l log.Logger) log.Logger {
-	return log.With(l, "user", tenant.JoinTenantIDs(userIDs))
+func LoggerWithUserIDs(tenantIDs []string, l log.Logger) log.Logger {
+	return log.With(l, "tenant", tenant.JoinTenantIDs(tenantIDs))
 }
 
 // LoggerWithTraceID returns a Logger that has information about the traceID in
@@ -37,7 +37,7 @@ func LoggerWithTraceID(traceID string, l log.Logger) log.Logger {
 // e.g.
 //
 //	log = util.WithContext(ctx, log)
-//	# level=error user=user-1|user-2 traceID=123abc msg="Could not chunk chunks" err="an error"
+//	# level=error tenant=user-1|user-2 traceID=123abc msg="Could not chunk chunks" err="an error"
 //	level.Error(log).Log("msg", "Could not chunk chunks", "err", err)
 func LoggerWithContext(ctx context.Context, l log.Logger) log.Logger {
 	// Weaveworks uses "orgs" and "orgID" to represent Cortex users,

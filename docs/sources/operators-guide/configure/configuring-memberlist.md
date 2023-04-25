@@ -51,7 +51,7 @@ If you run multiple Phlare processes on the same node or the port `7946` is not 
 
 ### Fine tuning memberlist changes propagation latency
 
-The `cortex_ring_oldest_member_timestamp` metric can be used to measure the propagation of hash ring changes.
+The `phlare_ring_oldest_member_timestamp` metric can be used to measure the propagation of hash ring changes.
 This metric tracks the oldest heartbeat timestamp across all instances in the ring.
 You can execute the following query to measure the age of the oldest heartbeat timestamp in the ring:
 

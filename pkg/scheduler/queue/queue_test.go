@@ -29,8 +29,8 @@ func BenchmarkGetNextRequest(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		queue := NewRequestQueue(maxOutstandingPerTenant, 0,
-			promauto.With(nil).NewGaugeVec(prometheus.GaugeOpts{}, []string{"user"}),
-			promauto.With(nil).NewCounterVec(prometheus.CounterOpts{}, []string{"user"}),
+			promauto.With(nil).NewGaugeVec(prometheus.GaugeOpts{}, []string{"tenant"}),
+			promauto.With(nil).NewCounterVec(prometheus.CounterOpts{}, []string{"tenant"}),
 		)
 		queues = append(queues, queue)
 
@@ -40,9 +40,9 @@ func BenchmarkGetNextRequest(b *testing.B) {
 
 		for i := 0; i < maxOutstandingPerTenant; i++ {
 			for j := 0; j < numTenants; j++ {
-				userID := strconv.Itoa(j)
+				tenantID := strconv.Itoa(j)
 
-				err := queue.EnqueueRequest(userID, "request", 0, nil)
+				err := queue.EnqueueRequest(tenantID, "request", 0, nil)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -86,7 +86,7 @@ func BenchmarkQueueRequest(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		q := NewRequestQueue(maxOutstandingPerTenant, 0,
-			promauto.With(nil).NewGaugeVec(prometheus.GaugeOpts{}, []string{"user"}),
+			promauto.With(nil).NewGaugeVec(prometheus.GaugeOpts{}, []string{"tenant"}),
 			promauto.With(nil).NewCounterVec(prometheus.CounterOpts{}, []string{"user"}),
 		)
 
