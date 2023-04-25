@@ -304,28 +304,11 @@ func skipDuplicates(its []MergeIterator) error {
 // It will close the iterators that are done.
 func requeueAsync(worker chan MergeIterator, result chan workerResult, h heap.Interface, eis ...MergeIterator) error {
 	var multiErr multierror.MultiError
-	async := 0
 	for _, ei := range eis {
-		if !ei.NewBatch() {
-			if ei.Next() {
-				heap.Push(h, ei)
-			} else {
-				if err := ei.Close(); err != nil {
-					multiErr.Add(err)
-				}
-			}
-			continue
-		}
-		worker <- ei
-		async++
-	}
-
-	for i := 0; i < async; i++ {
-		res := <-result
-		if res.next {
-			heap.Push(h, res.it)
+		if ei.Next() {
+			heap.Push(h, ei)
 		} else {
-			if err := res.it.Close(); err != nil {
+			if err := ei.Close(); err != nil {
 				multiErr.Add(err)
 			}
 		}
