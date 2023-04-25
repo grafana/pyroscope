@@ -148,6 +148,10 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 	return true
 }
 
+// func(s *mergeIterator[R, Req, Res]) fetchNext() {
+// 	return s.err
+// }
+
 func (s *mergeIterator[R, Req, Res]) Keep() {
 	s.keep[s.currIdx] = true
 }
@@ -236,12 +240,30 @@ func newProfilesHeap(its []MergeIterator) *ProfileIteratorHeap {
 	return &heap
 }
 
+type workerResult struct {
+	next bool
+	it   MergeIterator
+}
+
 // skipDuplicates iterates through the iterator and skip duplicates.
 func skipDuplicates(its []MergeIterator) error {
 	profilesHeap := newProfilesHeap(its)
 	tuples := make([]MergeIterator, 0, len(its))
 
-	if err := requeueAsync(profilesHeap, its...); err != nil {
+	nextQueue := make(chan MergeIterator)
+	defer close(nextQueue)
+	nextResults := make(chan workerResult)
+
+	// create worker pool to requeue async
+	for i := 0; i < len(its); i++ {
+		go func() {
+			for it := range nextQueue {
+				nextResults <- workerResult{it.Next(), it}
+			}
+		}()
+	}
+
+	if err := requeueAsync(nextQueue, nextResults, profilesHeap, its...); err != nil {
 		return err
 	}
 
@@ -269,7 +291,8 @@ func skipDuplicates(its []MergeIterator) error {
 
 		// right now we pick the first ingester.
 		tuples[0].Keep()
-		if err := requeueAsync(profilesHeap, tuples...); err != nil {
+
+		if err := requeueAsync(nextQueue, nextResults, profilesHeap, tuples...); err != nil {
 			return err
 		}
 		tuples = tuples[:0]
@@ -278,27 +301,24 @@ func skipDuplicates(its []MergeIterator) error {
 
 // requeueAsync multiple iterators, in parallel, it will only requeue iterators that are not done.
 // It will close the iterators that are done.
-func requeueAsync(h heap.Interface, eis ...MergeIterator) error {
-	sync := lo.Synchronize()
-	errs := make([]chan error, len(eis))
-	for i, ei := range eis {
-		ei := ei
-		errs[i] = lo.Async(func() error {
-			if ei.Next() {
-				sync.Do(func() {
-					heap.Push(h, ei)
-				})
-				return nil
-			}
-			ei.Close()
-			return ei.Err()
-		})
+func requeueAsync(worker chan MergeIterator, result chan workerResult, h heap.Interface, eis ...MergeIterator) error {
+	for _, ei := range eis {
+		worker <- ei
 	}
+
 	var multiErr multierror.MultiError
-	// wait for all async.
-	for _, err := range errs {
-		multiErr.Add(<-err)
+
+	for range eis {
+		res := <-result
+		if res.next {
+			heap.Push(h, res.it)
+		} else {
+			if err := res.it.Close(); err != nil {
+				multiErr.Add(err)
+			}
+		}
 	}
+
 	return multiErr.Err()
 }
 
