@@ -118,7 +118,7 @@ func createAnnotationsTableMigration() *gormigrate.Migration {
 	type annotation struct {
 		ID        uint      `gorm:"primarykey"`
 		AppName   string    `gorm:"not null;default:null"`
-		Timestamp time.Time `form:"not null;default:null"`
+		Timestamp time.Time `gorm:"not null;default:null"`
 		Content   string    `gorm:"not null;default:null"`
 		CreatedAt time.Time
 		UpdatedAt time.Time
