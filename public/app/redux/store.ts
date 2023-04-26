@@ -22,7 +22,7 @@ import uiStore, {
 
 const reducer = combineReducers({
   continuous: continuousReducer,
-  ui: uiStore,
+  ui: persistReducer(uiPersistConfig, uiStore),
 });
 
 function isError(action: unknown): action is { error: unknown } {
