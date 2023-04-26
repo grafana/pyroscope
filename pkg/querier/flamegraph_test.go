@@ -50,6 +50,7 @@ func Test_ExportToFlamebearer(t *testing.T) {
 					value:     1,
 				},
 			}),
+			-1,
 		), &typesv1.ProfileType{
 			ID:         "memory:inuse_space:bytes:space:bytes",
 			Name:       "memory",
@@ -75,6 +76,6 @@ func BenchmarkFlamegraph(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		f = NewFlameGraph(tr)
+		f = NewFlameGraph(tr, -1)
 	}
 }

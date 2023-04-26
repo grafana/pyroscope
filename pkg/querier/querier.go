@@ -63,6 +63,8 @@ type Querier struct {
 	ingesterQuerier *IngesterQuerier
 }
 
+const maxNodesDefault = int64(2048)
+
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, logger log.Logger, clientsOptions ...connect.ClientOption) (*Querier, error) {
 	// disable gzip compression for querier
 	clientsOptions = append(clientsOptions, connect.WithAcceptCompression("gzip", nil, nil))
@@ -266,8 +268,12 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, err
 	}
+	if req.Msg.MaxNodes == nil {
+		mn := maxNodesDefault
+		req.Msg.MaxNodes = &mn
+	}
 	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
-		Flamegraph: NewFlameGraph(newTree(st)),
+		Flamegraph: NewFlameGraph(newTree(st), *req.Msg.MaxNodes),
 	}), nil
 }
 

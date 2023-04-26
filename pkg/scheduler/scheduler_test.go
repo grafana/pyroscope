@@ -444,19 +444,19 @@ func TestSchedulerMetrics(t *testing.T) {
 	})
 
 	require.NoError(t, promtest.GatherAndCompare(reg, strings.NewReader(`
-		# HELP cortex_query_scheduler_queue_length Number of queries in the queue.
-		# TYPE cortex_query_scheduler_queue_length gauge
-		cortex_query_scheduler_queue_length{user="another"} 1
-		cortex_query_scheduler_queue_length{user="test"} 1
-	`), "cortex_query_scheduler_queue_length"))
+		# HELP phlare_query_scheduler_queue_length Number of queries in the queue.
+		# TYPE phlare_query_scheduler_queue_length gauge
+		phlare_query_scheduler_queue_length{tenant="another"} 1
+		phlare_query_scheduler_queue_length{tenant="test"} 1
+	`), "phlare_query_scheduler_queue_length"))
 
 	scheduler.cleanupMetricsForInactiveUser("test")
 
 	require.NoError(t, promtest.GatherAndCompare(reg, strings.NewReader(`
-		# HELP cortex_query_scheduler_queue_length Number of queries in the queue.
-		# TYPE cortex_query_scheduler_queue_length gauge
-		cortex_query_scheduler_queue_length{user="another"} 1
-	`), "cortex_query_scheduler_queue_length"))
+		# HELP phlare_query_scheduler_queue_length Number of queries in the queue.
+		# TYPE phlare_query_scheduler_queue_length gauge
+		phlare_query_scheduler_queue_length{tenant="another"} 1
+	`), "phlare_query_scheduler_queue_length"))
 }
 
 func initFrontendLoop(t *testing.T, client schedulerpb.SchedulerForFrontendClient, frontendAddr string) schedulerpb.SchedulerForFrontend_FrontendLoopClient {
