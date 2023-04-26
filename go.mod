@@ -38,7 +38,7 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.39.0
 	github.com/prometheus/prometheus v1.99.0
-	github.com/pyroscope-io/pyroscope v0.37.3-0.20230328035933-35db4234452a
+	github.com/pyroscope-io/pyroscope v0.37.3-0.20230424172735-981d3aa1203f
 	github.com/samber/lo v1.37.0
 	github.com/segmentio/parquet-go v0.0.0-20221214174709-7a0ad59e0540
 	github.com/sirupsen/logrus v1.9.0
