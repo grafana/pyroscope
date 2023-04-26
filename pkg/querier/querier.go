@@ -266,7 +266,7 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, err
 	}
-	if req.Msg.MaxNodes == nil {
+	if req.Msg.MaxNodes == nil || *req.Msg.MaxNodes == 0 {
 		mn := maxNodesDefault
 		req.Msg.MaxNodes = &mn
 	}
