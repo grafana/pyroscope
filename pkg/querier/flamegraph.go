@@ -159,6 +159,23 @@ func ExportToFlamebearer(fg *querierv1.FlameGraph, profileType *typesv1.ProfileT
 	}
 }
 
+func ExportDiffToFlamebearer(fg *querierv1.FlameGraphDiff, profileType *typesv1.ProfileType) *flamebearer.FlamebearerProfile {
+	// Since a normal flamegraph and a diff are so similar, convert it to reuse the export function
+	singleFlamegraph := &querierv1.FlameGraph{
+		Names:   fg.Names,
+		Levels:  fg.Levels,
+		Total:   fg.Total,
+		MaxSelf: fg.MaxSelf,
+	}
+
+	fb := ExportToFlamebearer(singleFlamegraph, profileType)
+	fb.LeftTicks = uint64(fg.LeftTicks)
+	fb.RightTicks = uint64(fg.RightTicks)
+	fb.FlamebearerProfileV1.Metadata.Format = "double"
+
+	return fb
+}
+
 // minValue returns the minimum "total" value a node in a tree has to have to show up in
 // the resulting flamegraph
 func (t *tree) minValue(maxNodes int64) int64 {
