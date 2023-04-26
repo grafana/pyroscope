@@ -52,6 +52,11 @@ type MergeIterator interface {
 	Keep()
 }
 
+type keepResponse struct {
+	*ingestv1.MergeProfilesStacktracesRequest
+	*ingestv1.MergeProfilesLabelsRequest
+	*ingestv1.MergeProfilesPprofRequest
+}
 type mergeIterator[R any, Req Request, Res Response] struct {
 	ctx          context.Context
 	bidi         BidiClientMerge[Req, Res]
@@ -64,6 +69,8 @@ type mergeIterator[R any, Req Request, Res Response] struct {
 	keepSent bool // keepSent is true if we have sent the keep request to the ingester.
 
 	currentProfile *ProfileWithLabels
+
+	response keepResponse
 }
 
 // NewMergeIterator return a new iterator that stream profiles and allows to filter them using `Keep` to keep
@@ -80,6 +87,11 @@ func NewMergeIterator[
 		keepSent:       true, // at the start we don't send a keep request.
 		ctx:            ctx,
 		currentProfile: &ProfileWithLabels{IngesterAddr: r.addr},
+		response: keepResponse{
+			MergeProfilesStacktracesRequest: &ingestv1.MergeProfilesStacktracesRequest{},
+			MergeProfilesLabelsRequest:      &ingestv1.MergeProfilesLabelsRequest{},
+			MergeProfilesPprofRequest:       &ingestv1.MergeProfilesPprofRequest{},
+		},
 	}
 }
 
@@ -89,17 +101,14 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 			var err error
 			switch bidi := (s.bidi).(type) {
 			case BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]:
-				err = bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
-					Profiles: s.keep,
-				})
+				s.response.MergeProfilesStacktracesRequest.Profiles = s.keep
+				err = bidi.Send(s.response.MergeProfilesStacktracesRequest)
 			case BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]:
-				err = bidi.Send(&ingestv1.MergeProfilesLabelsRequest{
-					Profiles: s.keep,
-				})
+				s.response.MergeProfilesLabelsRequest.Profiles = s.keep
+				err = bidi.Send(s.response.MergeProfilesLabelsRequest)
 			case BidiClientMerge[*ingestv1.MergeProfilesPprofRequest, *ingestv1.MergeProfilesPprofResponse]:
-				err = bidi.Send(&ingestv1.MergeProfilesPprofRequest{
-					Profiles: s.keep,
-				})
+				s.response.MergeProfilesPprofRequest.Profiles = s.keep
+				err = bidi.Send(s.response.MergeProfilesPprofRequest)
 			}
 			if err != nil {
 				s.err = err
