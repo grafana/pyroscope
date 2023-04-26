@@ -10,7 +10,7 @@ import (
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 )
 
-func MergeBatchMergeStacktraces(sort bool, responses ...*ingestv1.MergeProfilesStacktracesResult) *ingestv1.MergeProfilesStacktracesResult {
+func MergeBatchMergeStacktraces(responses ...*ingestv1.MergeProfilesStacktracesResult) *ingestv1.MergeProfilesStacktracesResult {
 	var (
 		result      *ingestv1.MergeProfilesStacktracesResult
 		posByName   map[string]int32
@@ -104,9 +104,7 @@ func MergeBatchMergeStacktraces(sort bool, responses ...*ingestv1.MergeProfilesS
 	}
 
 	// sort stacktraces by function name
-	if sort {
-		sortStacktraces(result)
-	}
+	sortStacktraces(result)
 
 	return result
 }

@@ -115,7 +115,7 @@ func TestMergeBatchResponse(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			res := MergeBatchMergeStacktraces(true, tc.in...)
+			res := MergeBatchMergeStacktraces(tc.in...)
 			testhelper.EqualProto(t, tc.expected, res)
 		})
 	}

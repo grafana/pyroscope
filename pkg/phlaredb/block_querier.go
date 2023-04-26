@@ -540,7 +540,7 @@ func (q Queriers) MergeProfilesStacktraces(ctx context.Context, stream *connect.
 
 	// sends the final result to the client.
 	err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
-		Result: phlaremodel.MergeBatchMergeStacktraces(false, result...),
+		Result: phlaremodel.MergeBatchMergeStacktraces(result...),
 	})
 	if err != nil {
 		if errors.Is(err, io.EOF) {

@@ -394,7 +394,7 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 
 // mergeProfilesStacktracesResult merges the results of multiple MergeProfilesStacktraces into a single result.
 func mergeProfilesStacktracesResult(results []*ingestv1.MergeProfilesStacktracesResult) []stacktraces {
-	merge := phlaremodel.MergeBatchMergeStacktraces(true, results...)
+	merge := phlaremodel.MergeBatchMergeStacktraces(results...)
 	result := make([]stacktraces, 0, len(merge.Stacktraces))
 	for _, st := range merge.Stacktraces {
 		locs := make([]string, len(st.FunctionIds))
