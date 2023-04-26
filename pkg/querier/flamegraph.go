@@ -1,6 +1,8 @@
 package querier
 
 import (
+	"container/heap"
+
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/samber/lo"
@@ -15,7 +17,7 @@ type stackNode struct {
 	node    *node
 }
 
-func NewFlameGraph(t *tree) *querierv1.FlameGraph {
+func NewFlameGraph(t *tree, maxNodes int64) *querierv1.FlameGraph {
 	var total, max int64
 	for _, node := range t.root {
 		total += node.total
@@ -28,6 +30,8 @@ func NewFlameGraph(t *tree) *querierv1.FlameGraph {
 			stackIntPool.Put(stack)
 		}
 	}()
+
+	minVal := t.minValue(maxNodes)
 
 	stack := stackNodePool.Get().(*Stack[stackNode])
 	defer stackNodePool.Put(stack)
@@ -71,11 +75,27 @@ func NewFlameGraph(t *tree) *querierv1.FlameGraph {
 		level.Push(int64(current.xOffset))
 		current.xOffset += int(current.node.self)
 
+		otherTotal := int64(0)
 		for _, child := range current.node.children {
+			if child.total >= minVal && child.name != "other" {
+				stack.Push(stackNode{xOffset: current.xOffset, level: current.level + 1, node: child})
+				current.xOffset += int(child.total)
+			} else {
+				otherTotal += child.total
+			}
+		}
+		if otherTotal != 0 {
+			child := &node{
+				name:   "other",
+				parent: current.node,
+				self:   otherTotal,
+				total:  otherTotal,
+			}
 			stack.Push(stackNode{xOffset: current.xOffset, level: current.level + 1, node: child})
 			current.xOffset += int(child.total)
 		}
 	}
+
 	result := make([][]int64, len(res))
 	for i := range result {
 		result[i] = res[i].Slice()
@@ -137,4 +157,38 @@ func ExportToFlamebearer(fg *querierv1.FlameGraph, profileType *typesv1.ProfileT
 			},
 		},
 	}
+}
+
+// minValue returns the minimum "total" value a node in a tree has to have to show up in
+// the resulting flamegraph
+func (t *tree) minValue(maxNodes int64) int64 {
+	if maxNodes == -1 { // -1 means show all nodes
+		return 0
+	}
+	nodes := t.root
+
+	mh := &minHeap{}
+	heap.Init(mh)
+
+	for len(nodes) > 0 {
+		node := nodes[0]
+		nodes = nodes[1:]
+		number := node.total
+
+		if mh.Len() < int(maxNodes) {
+			heap.Push(mh, number)
+		} else {
+			if number > (*mh)[0] {
+				heap.Pop(mh)
+				heap.Push(mh, number)
+				nodes = append(node.children, nodes...)
+			}
+		}
+	}
+
+	if mh.Len() < int(maxNodes) {
+		return 0
+	}
+
+	return (*mh)[0]
 }

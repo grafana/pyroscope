@@ -48,6 +48,7 @@ message SelectMergeStacktracesRequest {
   string label_selector = 2;
   int64 start = 3; // milliseconds since epoch
   int64 end = 4; // milliseconds since epoch
+  optional int64 max_nodes = 5; // Limit the nodes returned to only show the node with the max_node's biggest total
 }
 
 message SelectMergeStacktracesResponse {

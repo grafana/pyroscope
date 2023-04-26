@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/bufbuild/connect-go"
@@ -136,17 +137,23 @@ func parseSelectProfilesRequest(req *http.Request) (*querierv1.SelectMergeStackt
 	}
 
 	v := req.URL.Query()
-
-	// parse time using pyroscope's attime parser
-	start := model.TimeFromUnixNano(attime.Parse(v.Get("from")).UnixNano())
-	end := model.TimeFromUnixNano(attime.Parse(v.Get("until")).UnixNano())
-
-	return &querierv1.SelectMergeStacktracesRequest{
-		Start:         int64(start),
-		End:           int64(end),
+	p := &querierv1.SelectMergeStacktracesRequest{
 		LabelSelector: selector,
 		ProfileTypeID: ptype.ID,
-	}, ptype, nil
+		Start:         int64(model.TimeFromUnixNano(attime.Parse(v.Get("from")).UnixNano())),
+		End:           int64(model.TimeFromUnixNano(attime.Parse(v.Get("until")).UnixNano())),
+	}
+
+	var mn int64
+	if v, err := strconv.Atoi(v.Get("max-nodes")); err == nil && v != 0 {
+		mn = int64(v)
+	}
+	if v, err := strconv.Atoi(v.Get("maxNodes")); err == nil && v != 0 {
+		mn = int64(v)
+	}
+	p.MaxNodes = &mn
+
+	return p, ptype, nil
 }
 
 func parseQuery(req *http.Request) (string, *typesv1.ProfileType, error) {
