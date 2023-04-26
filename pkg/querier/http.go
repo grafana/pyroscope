@@ -55,7 +55,7 @@ func (q *QueryHandlers) LabelValues(w http.ResponseWriter, req *http.Request) {
 			res = append(res, t.ID)
 		}
 	} else {
-		response, err := q.upstream.LabelValues(req.Context(), connect.NewRequest(&querierv1.LabelValuesRequest{}))
+		response, err := q.upstream.LabelValues(req.Context(), connect.NewRequest(&typesv1.LabelValuesRequest{}))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

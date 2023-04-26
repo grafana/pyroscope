@@ -31,3 +31,20 @@ message Point {
   // Milliseconds unix timestamp
   int64 timestamp = 2;
 }
+
+message LabelValuesRequest {
+  string name = 1;
+  repeated string matchers = 2;
+}
+
+message LabelValuesResponse {
+  repeated string names = 1;
+}
+
+message LabelNamesRequest {
+  repeated string matchers = 1;
+}
+
+message LabelNamesResponse {
+  repeated string names = 1;
+}

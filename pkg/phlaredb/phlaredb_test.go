@@ -108,11 +108,11 @@ func (i *ingesterHandlerPhlareDB) Push(context.Context, *connect.Request[pushv1.
 	return nil, errors.New("not implemented")
 }
 
-func (i *ingesterHandlerPhlareDB) LabelValues(context.Context, *connect.Request[ingestv1.LabelValuesRequest]) (*connect.Response[ingestv1.LabelValuesResponse], error) {
+func (i *ingesterHandlerPhlareDB) LabelValues(context.Context, *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
 	return nil, errors.New("not implemented")
 }
 
-func (i *ingesterHandlerPhlareDB) LabelNames(context.Context, *connect.Request[ingestv1.LabelNamesRequest]) (*connect.Response[ingestv1.LabelNamesResponse], error) {
+func (i *ingesterHandlerPhlareDB) LabelNames(context.Context, *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
 	return nil, errors.New("not implemented")
 }
 

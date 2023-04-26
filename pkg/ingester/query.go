@@ -6,18 +6,19 @@ import (
 	"github.com/bufbuild/connect-go"
 
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 )
 
 // LabelValues returns the possible label values for a given label name.
-func (i *Ingester) LabelValues(ctx context.Context, req *connect.Request[ingestv1.LabelValuesRequest]) (*connect.Response[ingestv1.LabelValuesResponse], error) {
-	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[ingestv1.LabelValuesResponse], error) {
+func (i *Ingester) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
+	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[typesv1.LabelValuesResponse], error) {
 		return instance.Head().LabelValues(ctx, req)
 	})
 }
 
 // LabelNames returns the possible label names.
-func (i *Ingester) LabelNames(ctx context.Context, req *connect.Request[ingestv1.LabelNamesRequest]) (*connect.Response[ingestv1.LabelNamesResponse], error) {
-	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[ingestv1.LabelNamesResponse], error) {
+func (i *Ingester) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
+	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[typesv1.LabelNamesResponse], error) {
 		return instance.Head().LabelNames(ctx, req)
 	})
 }

@@ -7,8 +7,8 @@ import "types/v1/types.proto";
 
 service QuerierService {
   rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {}
-  rpc LabelValues(LabelValuesRequest) returns (LabelValuesResponse) {}
-  rpc LabelNames(LabelNamesRequest) returns (LabelNamesResponse) {}
+  rpc LabelValues(types.v1.LabelValuesRequest) returns (types.v1.LabelValuesResponse) {}
+  rpc LabelNames(types.v1.LabelNamesRequest) returns (types.v1.LabelNamesResponse) {}
   rpc Series(SeriesRequest) returns (SeriesResponse) {}
   rpc SelectMergeStacktraces(SelectMergeStacktracesRequest) returns (SelectMergeStacktracesResponse) {}
   rpc SelectMergeProfile(SelectMergeProfileRequest) returns (google.v1.Profile) {}
@@ -20,20 +20,6 @@ message ProfileTypesRequest {}
 
 message ProfileTypesResponse {
   repeated types.v1.ProfileType profile_types = 1;
-}
-
-message LabelValuesRequest {
-  string name = 1;
-}
-
-message LabelValuesResponse {
-  repeated string names = 1;
-}
-
-message LabelNamesRequest {}
-
-message LabelNamesResponse {
-  repeated string names = 1;
 }
 
 message SeriesRequest {

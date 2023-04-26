@@ -135,7 +135,7 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 	return connect.NewResponse(result), nil
 }
 
-func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[querierv1.LabelValuesRequest]) (*connect.Response[querierv1.LabelValuesResponse], error) {
+func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues")
 	defer func() {
 		sp.LogFields(
@@ -144,9 +144,7 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[querierv
 		sp.Finish()
 	}()
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
-		res, err := ic.LabelValues(childCtx, connect.NewRequest(&ingestv1.LabelValuesRequest{
-			Name: req.Msg.Name,
-		}))
+		res, err := ic.LabelValues(childCtx, req)
 		if err != nil {
 			return nil, err
 		}
@@ -156,16 +154,16 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[querierv
 		return nil, err
 	}
 
-	return connect.NewResponse(&querierv1.LabelValuesResponse{
+	return connect.NewResponse(&typesv1.LabelValuesResponse{
 		Names: uniqueSortedStrings(responses),
 	}), nil
 }
 
-func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[querierv1.LabelNamesRequest]) (*connect.Response[querierv1.LabelNamesResponse], error) {
+func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames")
 	defer sp.Finish()
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
-		res, err := ic.LabelNames(childCtx, connect.NewRequest(&ingestv1.LabelNamesRequest{}))
+		res, err := ic.LabelNames(childCtx, req)
 		if err != nil {
 			return nil, err
 		}
@@ -175,7 +173,7 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[querierv1
 		return nil, err
 	}
 
-	return connect.NewResponse(&querierv1.LabelNamesResponse{
+	return connect.NewResponse(&typesv1.LabelNamesResponse{
 		Names: uniqueSortedStrings(responses),
 	}), nil
 }

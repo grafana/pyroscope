@@ -8,8 +8,9 @@ import (
 	context "context"
 	errors "errors"
 	connect_go "github.com/bufbuild/connect-go"
-	v11 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	v12 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	v1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
+	v11 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	http "net/http"
 	strings "strings"
 )
@@ -31,12 +32,12 @@ type IngesterServiceClient interface {
 	Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error)
 	LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error)
 	LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error)
-	ProfileTypes(context.Context, *connect_go.Request[v11.ProfileTypesRequest]) (*connect_go.Response[v11.ProfileTypesResponse], error)
-	Series(context.Context, *connect_go.Request[v11.SeriesRequest]) (*connect_go.Response[v11.SeriesResponse], error)
-	Flush(context.Context, *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error)
-	MergeProfilesStacktraces(context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]
-	MergeProfilesLabels(context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]
-	MergeProfilesPprof(context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse]
+	ProfileTypes(context.Context, *connect_go.Request[v12.ProfileTypesRequest]) (*connect_go.Response[v12.ProfileTypesResponse], error)
+	Series(context.Context, *connect_go.Request[v12.SeriesRequest]) (*connect_go.Response[v12.SeriesResponse], error)
+	Flush(context.Context, *connect_go.Request[v12.FlushRequest]) (*connect_go.Response[v12.FlushResponse], error)
+	MergeProfilesStacktraces(context.Context) *connect_go.BidiStreamForClient[v12.MergeProfilesStacktracesRequest, v12.MergeProfilesStacktracesResponse]
+	MergeProfilesLabels(context.Context) *connect_go.BidiStreamForClient[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse]
+	MergeProfilesPprof(context.Context) *connect_go.BidiStreamForClient[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse]
 }
 
 // NewIngesterServiceClient constructs a client for the ingester.v1.IngesterService service. By
@@ -64,32 +65,32 @@ func NewIngesterServiceClient(httpClient connect_go.HTTPClient, baseURL string, 
 			baseURL+"/ingester.v1.IngesterService/LabelNames",
 			opts...,
 		),
-		profileTypes: connect_go.NewClient[v11.ProfileTypesRequest, v11.ProfileTypesResponse](
+		profileTypes: connect_go.NewClient[v12.ProfileTypesRequest, v12.ProfileTypesResponse](
 			httpClient,
 			baseURL+"/ingester.v1.IngesterService/ProfileTypes",
 			opts...,
 		),
-		series: connect_go.NewClient[v11.SeriesRequest, v11.SeriesResponse](
+		series: connect_go.NewClient[v12.SeriesRequest, v12.SeriesResponse](
 			httpClient,
 			baseURL+"/ingester.v1.IngesterService/Series",
 			opts...,
 		),
-		flush: connect_go.NewClient[v11.FlushRequest, v11.FlushResponse](
+		flush: connect_go.NewClient[v12.FlushRequest, v12.FlushResponse](
 			httpClient,
 			baseURL+"/ingester.v1.IngesterService/Flush",
 			opts...,
 		),
-		mergeProfilesStacktraces: connect_go.NewClient[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse](
+		mergeProfilesStacktraces: connect_go.NewClient[v12.MergeProfilesStacktracesRequest, v12.MergeProfilesStacktracesResponse](
 			httpClient,
 			baseURL+"/ingester.v1.IngesterService/MergeProfilesStacktraces",
 			opts...,
 		),
-		mergeProfilesLabels: connect_go.NewClient[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse](
+		mergeProfilesLabels: connect_go.NewClient[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse](
 			httpClient,
 			baseURL+"/ingester.v1.IngesterService/MergeProfilesLabels",
 			opts...,
 		),
-		mergeProfilesPprof: connect_go.NewClient[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse](
+		mergeProfilesPprof: connect_go.NewClient[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse](
 			httpClient,
 			baseURL+"/ingester.v1.IngesterService/MergeProfilesPprof",
 			opts...,
@@ -102,12 +103,12 @@ type ingesterServiceClient struct {
 	push                     *connect_go.Client[v1.PushRequest, v1.PushResponse]
 	labelValues              *connect_go.Client[v11.LabelValuesRequest, v11.LabelValuesResponse]
 	labelNames               *connect_go.Client[v11.LabelNamesRequest, v11.LabelNamesResponse]
-	profileTypes             *connect_go.Client[v11.ProfileTypesRequest, v11.ProfileTypesResponse]
-	series                   *connect_go.Client[v11.SeriesRequest, v11.SeriesResponse]
-	flush                    *connect_go.Client[v11.FlushRequest, v11.FlushResponse]
-	mergeProfilesStacktraces *connect_go.Client[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]
-	mergeProfilesLabels      *connect_go.Client[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]
-	mergeProfilesPprof       *connect_go.Client[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse]
+	profileTypes             *connect_go.Client[v12.ProfileTypesRequest, v12.ProfileTypesResponse]
+	series                   *connect_go.Client[v12.SeriesRequest, v12.SeriesResponse]
+	flush                    *connect_go.Client[v12.FlushRequest, v12.FlushResponse]
+	mergeProfilesStacktraces *connect_go.Client[v12.MergeProfilesStacktracesRequest, v12.MergeProfilesStacktracesResponse]
+	mergeProfilesLabels      *connect_go.Client[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse]
+	mergeProfilesPprof       *connect_go.Client[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse]
 }
 
 // Push calls ingester.v1.IngesterService.Push.
@@ -126,32 +127,32 @@ func (c *ingesterServiceClient) LabelNames(ctx context.Context, req *connect_go.
 }
 
 // ProfileTypes calls ingester.v1.IngesterService.ProfileTypes.
-func (c *ingesterServiceClient) ProfileTypes(ctx context.Context, req *connect_go.Request[v11.ProfileTypesRequest]) (*connect_go.Response[v11.ProfileTypesResponse], error) {
+func (c *ingesterServiceClient) ProfileTypes(ctx context.Context, req *connect_go.Request[v12.ProfileTypesRequest]) (*connect_go.Response[v12.ProfileTypesResponse], error) {
 	return c.profileTypes.CallUnary(ctx, req)
 }
 
 // Series calls ingester.v1.IngesterService.Series.
-func (c *ingesterServiceClient) Series(ctx context.Context, req *connect_go.Request[v11.SeriesRequest]) (*connect_go.Response[v11.SeriesResponse], error) {
+func (c *ingesterServiceClient) Series(ctx context.Context, req *connect_go.Request[v12.SeriesRequest]) (*connect_go.Response[v12.SeriesResponse], error) {
 	return c.series.CallUnary(ctx, req)
 }
 
 // Flush calls ingester.v1.IngesterService.Flush.
-func (c *ingesterServiceClient) Flush(ctx context.Context, req *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error) {
+func (c *ingesterServiceClient) Flush(ctx context.Context, req *connect_go.Request[v12.FlushRequest]) (*connect_go.Response[v12.FlushResponse], error) {
 	return c.flush.CallUnary(ctx, req)
 }
 
 // MergeProfilesStacktraces calls ingester.v1.IngesterService.MergeProfilesStacktraces.
-func (c *ingesterServiceClient) MergeProfilesStacktraces(ctx context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse] {
+func (c *ingesterServiceClient) MergeProfilesStacktraces(ctx context.Context) *connect_go.BidiStreamForClient[v12.MergeProfilesStacktracesRequest, v12.MergeProfilesStacktracesResponse] {
 	return c.mergeProfilesStacktraces.CallBidiStream(ctx)
 }
 
 // MergeProfilesLabels calls ingester.v1.IngesterService.MergeProfilesLabels.
-func (c *ingesterServiceClient) MergeProfilesLabels(ctx context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse] {
+func (c *ingesterServiceClient) MergeProfilesLabels(ctx context.Context) *connect_go.BidiStreamForClient[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse] {
 	return c.mergeProfilesLabels.CallBidiStream(ctx)
 }
 
 // MergeProfilesPprof calls ingester.v1.IngesterService.MergeProfilesPprof.
-func (c *ingesterServiceClient) MergeProfilesPprof(ctx context.Context) *connect_go.BidiStreamForClient[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse] {
+func (c *ingesterServiceClient) MergeProfilesPprof(ctx context.Context) *connect_go.BidiStreamForClient[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse] {
 	return c.mergeProfilesPprof.CallBidiStream(ctx)
 }
 
@@ -160,12 +161,12 @@ type IngesterServiceHandler interface {
 	Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error)
 	LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error)
 	LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error)
-	ProfileTypes(context.Context, *connect_go.Request[v11.ProfileTypesRequest]) (*connect_go.Response[v11.ProfileTypesResponse], error)
-	Series(context.Context, *connect_go.Request[v11.SeriesRequest]) (*connect_go.Response[v11.SeriesResponse], error)
-	Flush(context.Context, *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error)
-	MergeProfilesStacktraces(context.Context, *connect_go.BidiStream[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]) error
-	MergeProfilesLabels(context.Context, *connect_go.BidiStream[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]) error
-	MergeProfilesPprof(context.Context, *connect_go.BidiStream[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse]) error
+	ProfileTypes(context.Context, *connect_go.Request[v12.ProfileTypesRequest]) (*connect_go.Response[v12.ProfileTypesResponse], error)
+	Series(context.Context, *connect_go.Request[v12.SeriesRequest]) (*connect_go.Response[v12.SeriesResponse], error)
+	Flush(context.Context, *connect_go.Request[v12.FlushRequest]) (*connect_go.Response[v12.FlushResponse], error)
+	MergeProfilesStacktraces(context.Context, *connect_go.BidiStream[v12.MergeProfilesStacktracesRequest, v12.MergeProfilesStacktracesResponse]) error
+	MergeProfilesLabels(context.Context, *connect_go.BidiStream[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse]) error
+	MergeProfilesPprof(context.Context, *connect_go.BidiStream[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse]) error
 }
 
 // NewIngesterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -238,26 +239,26 @@ func (UnimplementedIngesterServiceHandler) LabelNames(context.Context, *connect_
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.LabelNames is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) ProfileTypes(context.Context, *connect_go.Request[v11.ProfileTypesRequest]) (*connect_go.Response[v11.ProfileTypesResponse], error) {
+func (UnimplementedIngesterServiceHandler) ProfileTypes(context.Context, *connect_go.Request[v12.ProfileTypesRequest]) (*connect_go.Response[v12.ProfileTypesResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.ProfileTypes is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) Series(context.Context, *connect_go.Request[v11.SeriesRequest]) (*connect_go.Response[v11.SeriesResponse], error) {
+func (UnimplementedIngesterServiceHandler) Series(context.Context, *connect_go.Request[v12.SeriesRequest]) (*connect_go.Response[v12.SeriesResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.Series is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) Flush(context.Context, *connect_go.Request[v11.FlushRequest]) (*connect_go.Response[v11.FlushResponse], error) {
+func (UnimplementedIngesterServiceHandler) Flush(context.Context, *connect_go.Request[v12.FlushRequest]) (*connect_go.Response[v12.FlushResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.Flush is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) MergeProfilesStacktraces(context.Context, *connect_go.BidiStream[v11.MergeProfilesStacktracesRequest, v11.MergeProfilesStacktracesResponse]) error {
+func (UnimplementedIngesterServiceHandler) MergeProfilesStacktraces(context.Context, *connect_go.BidiStream[v12.MergeProfilesStacktracesRequest, v12.MergeProfilesStacktracesResponse]) error {
 	return connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.MergeProfilesStacktraces is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) MergeProfilesLabels(context.Context, *connect_go.BidiStream[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]) error {
+func (UnimplementedIngesterServiceHandler) MergeProfilesLabels(context.Context, *connect_go.BidiStream[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse]) error {
 	return connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.MergeProfilesLabels is not implemented"))
 }
 
-func (UnimplementedIngesterServiceHandler) MergeProfilesPprof(context.Context, *connect_go.BidiStream[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse]) error {
+func (UnimplementedIngesterServiceHandler) MergeProfilesPprof(context.Context, *connect_go.BidiStream[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse]) error {
 	return connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.MergeProfilesPprof is not implemented"))
 }

@@ -77,7 +77,7 @@ func Test_QuerySampleType(t *testing.T) {
 }
 
 func Test_QueryLabelValues(t *testing.T) {
-	req := connect.NewRequest(&querierv1.LabelValuesRequest{Name: "foo"})
+	req := connect.NewRequest(&typesv1.LabelValuesRequest{Name: "foo"})
 	querier, err := New(Config{
 		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
@@ -88,11 +88,11 @@ func Test_QueryLabelValues(t *testing.T) {
 		q := newFakeQuerier()
 		switch addr {
 		case "1":
-			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelValuesResponse{Names: []string{"foo", "bar"}}), nil)
+			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelValuesResponse{Names: []string{"foo", "bar"}}), nil)
 		case "2":
-			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelValuesResponse{Names: []string{"bar", "buzz"}}), nil)
+			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelValuesResponse{Names: []string{"bar", "buzz"}}), nil)
 		case "3":
-			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelValuesResponse{Names: []string{"buzz", "foo"}}), nil)
+			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelValuesResponse{Names: []string{"buzz", "foo"}}), nil)
 		}
 		return q, nil
 	}, log.NewLogfmtLogger(os.Stdout))
@@ -104,7 +104,7 @@ func Test_QueryLabelValues(t *testing.T) {
 }
 
 func Test_QueryLabelNames(t *testing.T) {
-	req := connect.NewRequest(&querierv1.LabelNamesRequest{})
+	req := connect.NewRequest(&typesv1.LabelNamesRequest{})
 	querier, err := New(Config{
 		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
@@ -115,11 +115,11 @@ func Test_QueryLabelNames(t *testing.T) {
 		q := newFakeQuerier()
 		switch addr {
 		case "1":
-			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelNamesResponse{Names: []string{"foo", "bar"}}), nil)
+			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}}), nil)
 		case "2":
-			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelNamesResponse{Names: []string{"bar", "buzz"}}), nil)
+			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"bar", "buzz"}}), nil)
 		case "3":
-			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&ingestv1.LabelNamesResponse{Names: []string{"buzz", "foo"}}), nil)
+			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"buzz", "foo"}}), nil)
 		}
 		return q, nil
 	}, log.NewLogfmtLogger(os.Stdout))
@@ -497,14 +497,14 @@ func newFakeQuerier() *fakeQuerierIngester {
 	return &fakeQuerierIngester{}
 }
 
-func (f *fakeQuerierIngester) LabelValues(ctx context.Context, req *connect.Request[ingestv1.LabelValuesRequest]) (*connect.Response[ingestv1.LabelValuesResponse], error) {
+func (f *fakeQuerierIngester) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
 	var (
 		args = f.Called(ctx, req)
-		res  *connect.Response[ingestv1.LabelValuesResponse]
+		res  *connect.Response[typesv1.LabelValuesResponse]
 		err  error
 	)
 	if args[0] != nil {
-		res = args[0].(*connect.Response[ingestv1.LabelValuesResponse])
+		res = args[0].(*connect.Response[typesv1.LabelValuesResponse])
 	}
 	if args[1] != nil {
 		err = args.Get(1).(error)
@@ -512,14 +512,14 @@ func (f *fakeQuerierIngester) LabelValues(ctx context.Context, req *connect.Requ
 	return res, err
 }
 
-func (f *fakeQuerierIngester) LabelNames(ctx context.Context, req *connect.Request[ingestv1.LabelNamesRequest]) (*connect.Response[ingestv1.LabelNamesResponse], error) {
+func (f *fakeQuerierIngester) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
 	var (
 		args = f.Called(ctx, req)
-		res  *connect.Response[ingestv1.LabelNamesResponse]
+		res  *connect.Response[typesv1.LabelNamesResponse]
 		err  error
 	)
 	if args[0] != nil {
-		res = args[0].(*connect.Response[ingestv1.LabelNamesResponse])
+		res = args[0].(*connect.Response[typesv1.LabelNamesResponse])
 	}
 	if args[1] != nil {
 		err = args.Get(1).(error)
