@@ -41,5 +41,6 @@ func newConnect(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) (
 		SampleRate:         sampleRate,
 		DetectSubprocesses: cfg.DetectSubprocesses,
 		Pid:                cfg.Pid,
+		PHPSpyArgs:         cfg.PHPSpyArgs,
 	}, nil
 }
