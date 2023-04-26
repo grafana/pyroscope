@@ -52,6 +52,8 @@ const (
 	metricWall        = "wall"
 	stUnitCount       = "count"
 	stTypeSamples     = "samples"
+	stTypeCPU         = "cpu"
+	stTypeWall        = "wall"
 	stUnitBytes       = "bytes"
 	stTypeContentions = "contentions"
 	stTypeDelay       = "delay"
@@ -72,9 +74,17 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 		StartTime: pi.StartTime,
 	}
 	if pi.SampleRate != 0 && (metric == metricWall || metric == metricProcessCPU) {
-		mdata.Period = time.Second.Nanoseconds() / int64(pi.SampleRate)
+		period := time.Second.Nanoseconds() / int64(pi.SampleRate)
+		mdata.Period = period
 		mdata.PeriodType = "cpu"
 		mdata.PeriodUnit = stUnitNanos
+		if metric == metricWall {
+			mdata.Type = stTypeWall
+		} else {
+			mdata.Type = stTypeCPU
+		}
+		mdata.Unit = stUnitNanos
+		pi.Val.Scale(uint64(period))
 	}
 	pprof := pi.Val.Pprof(mdata)
 	b, err := proto.Marshal(pprof)
@@ -141,7 +151,7 @@ func convertMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app stri
 		stType = stTypeSamples
 		stUnit = stUnitCount
 	case "wall":
-		metricName = "wall"
+		metricName = metricWall
 		stType = stTypeSamples
 		stUnit = stUnitCount
 	case "inuse_objects":

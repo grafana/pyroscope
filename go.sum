@@ -833,8 +833,8 @@ github.com/prometheus/prometheus v0.41.0/go.mod h1:Uu5817xm7ibU/VaDZ9pu1ssGzcpO9
 github.com/prometheus/statsd_exporter v0.15.0/go.mod h1:Dv8HnkoLQkeEjkIE4/2ndAA7WL1zHKK7WMqFQqu72rw=
 github.com/pyroscope-io/jfr-parser v0.6.0 h1:4cQqs+9edZMbZ1ogJ0XDGtgM+PoII4kybJOunVMeD9I=
 github.com/pyroscope-io/jfr-parser v0.6.0/go.mod h1:ZMcbJjfDkOwElEK8CvUJbpetztRWRXszCmf5WU0erV8=
-github.com/pyroscope-io/pyroscope v0.37.3-0.20230328035933-35db4234452a h1:PbppLKCTjK5dN3FeQxchCz5IJO+EqGmoS5AouzB7XWQ=
-github.com/pyroscope-io/pyroscope v0.37.3-0.20230328035933-35db4234452a/go.mod h1:BQfXcD5+jFB/B0jZRGmvyfn7+twVvC6syMBBpd8Pifk=
+github.com/pyroscope-io/pyroscope v0.37.3-0.20230424172735-981d3aa1203f h1:BhFAmuGi5aOm+6Qx2mKCKSF6lc+gEgZKHYzC0xy/zQg=
+github.com/pyroscope-io/pyroscope v0.37.3-0.20230424172735-981d3aa1203f/go.mod h1:BQfXcD5+jFB/B0jZRGmvyfn7+twVvC6syMBBpd8Pifk=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.3 h1:utMvzDsuh3suAEnhH0RdHmoPbU648o6CvXxTx4SBMOw=
 github.com/rivo/uniseg v0.4.3/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=
