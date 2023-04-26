@@ -1,8 +1,8 @@
 package querier
 
 import (
-	"container/heap"
 	"context"
+	"math"
 
 	"github.com/google/pprof/profile"
 	"github.com/grafana/dskit/multierror"
@@ -19,6 +19,8 @@ import (
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/pprof"
 	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/phlare/pkg/util/loser"
+	otlog "github.com/opentracing/opentracing-go/log"
 )
 
 type ProfileWithLabels struct {
@@ -48,7 +50,6 @@ type MergeResult[R any] interface {
 type MergeIterator interface {
 	iter.Iterator[ProfileWithLabels]
 	Keep()
-	NewBatch() bool
 }
 
 type mergeIterator[R any, Req Request, Res Response] struct {
@@ -81,9 +82,7 @@ func NewMergeIterator[
 }
 
 func (s *mergeIterator[R, Req, Res]) Next() bool {
-	if s.NewBatch() {
-		// ensure we send keep before reading next batch.
-		// the iterator only need to precise profile to keep, not the ones to drop.
+	if s.newBatch() {
 		if !s.keepSent {
 			var err error
 			switch bidi := (s.bidi).(type) {
@@ -102,7 +101,6 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 			}
 			if err != nil {
 				s.err = err
-				return false
 			}
 		}
 		var selectedProfiles *ingestv1.ProfileSets
@@ -150,7 +148,7 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 	return true
 }
 
-func (s *mergeIterator[R, Req, Res]) NewBatch() bool {
+func (s *mergeIterator[R, Req, Res]) newBatch() bool {
 	return s.curr == nil || s.currIdx >= len(s.curr.Profiles)-1
 }
 
@@ -210,127 +208,43 @@ func (s *mergeIterator[R, Req, Res]) Close() error {
 	return errs.Err()
 }
 
-// ProfileIteratorHeap is a heap that sorts profiles by timestamp then labels at the top.
-type ProfileIteratorHeap []MergeIterator
-
-func (h ProfileIteratorHeap) Len() int { return len(h) }
-func (h ProfileIteratorHeap) Swap(i, j int) {
-	h[i], h[j] = h[j], h[i]
-}
-func (h ProfileIteratorHeap) Peek() MergeIterator { return h[0] }
-func (h *ProfileIteratorHeap) Push(x interface{}) {
-	*h = append(*h, x.(MergeIterator))
-}
-
-func (h *ProfileIteratorHeap) Pop() interface{} {
-	n := len(*h)
-	x := (*h)[n-1]
-	*h = (*h)[0 : n-1]
-	return x
-}
-
-func (h ProfileIteratorHeap) Less(i, j int) bool {
-	p1, p2 := h[i].At(), h[j].At()
-	if p1.Timestamp == p2.Timestamp {
-		return phlaremodel.CompareLabelPairs(p1.Labels, p2.Labels) < 0
-	}
-	return p1.Timestamp < p2.Timestamp
-}
-
-func newProfilesHeap(its []MergeIterator) *ProfileIteratorHeap {
-	heap := make(ProfileIteratorHeap, 0, len(its))
-	return &heap
-}
-
-type workerResult struct {
-	next bool
-	it   MergeIterator
-}
-
 // skipDuplicates iterates through the iterator and skip duplicates.
 func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "skipDuplicates")
 	defer span.Finish()
-	profilesHeap := newProfilesHeap(its)
-	tuples := make([]MergeIterator, 0, len(its))
 
-	if err := requeueAsync(profilesHeap, its...); err != nil {
-		return err
-	}
-
-	for {
-		if profilesHeap.Len() == 0 {
-			return nil
-		}
-		if profilesHeap.Len() == 1 {
-			profilesHeap.Peek().Keep()
-			if !profilesHeap.Peek().Next() {
-				profilesHeap.Pop()
+	tree := loser.New(its,
+		ProfileWithLabels{
+			Timestamp: math.MaxInt64,
+		},
+		func(s MergeIterator) ProfileWithLabels {
+			return s.At()
+		},
+		func(p1, p2 ProfileWithLabels) bool {
+			if p1.Timestamp == p2.Timestamp {
+				return phlaremodel.CompareLabelPairs(p1.Labels, p2.Labels) < 0
 			}
-			continue
+			return p1.Timestamp < p2.Timestamp
+		},
+		func(s MergeIterator) { s.Close() })
+
+	defer tree.Close()
+	duplicates := 0
+	total := 0
+	previous := ProfileWithLabels{Timestamp: -1}
+	for tree.Next() {
+		next := tree.Winner()
+		profile := next.At()
+		total++
+		if previous.Timestamp != profile.Timestamp || phlaremodel.CompareLabelPairs(previous.Labels, profile.Labels) != 0 {
+			previous = profile
+			next.Keep()
 		}
-
-		for profilesHeap.Len() > 0 {
-			next := profilesHeap.Peek()
-			value := next.At()
-			if len(tuples) > 0 && (tuples[0].At().Timestamp != value.Timestamp || phlaremodel.CompareLabelPairs(tuples[0].At().Labels, value.Labels) != 0) {
-				break
-			}
-			heap.Pop(profilesHeap)
-			tuples = append(tuples, next)
-		}
-
-		// right now we pick the first ingester.
-		tuples[0].Keep()
-
-		if err := requeue(profilesHeap, tuples...); err != nil {
-			return err
-		}
-		tuples = tuples[:0]
+		duplicates++
 	}
-}
-
-// requeueAsync multiple iterators, in parallel, it will only requeue iterators that are not done.
-// It will close the iterators that are done.
-func requeueAsync(h heap.Interface, eis ...MergeIterator) error {
-	sync := lo.Synchronize()
-	errs := make([]chan error, len(eis))
-	for i, ei := range eis {
-		ei := ei
-		errs[i] = lo.Async(func() error {
-			if ei.Next() {
-				sync.Do(func() {
-					heap.Push(h, ei)
-				})
-				return nil
-			}
-			ei.Close()
-			return ei.Err()
-		})
-	}
-	var multiErr multierror.MultiError
-	// wait for all async.
-	for _, err := range errs {
-		multiErr.Add(<-err)
-	}
-	return multiErr.Err()
-}
-
-// requeueAsync multiple iterators, in parallel, it will only requeue iterators that are not done.
-// It will close the iterators that are done.
-func requeue(h heap.Interface, eis ...MergeIterator) error {
-	var multiErr multierror.MultiError
-	for _, ei := range eis {
-		if ei.Next() {
-			heap.Push(h, ei)
-		} else {
-			if err := ei.Close(); err != nil {
-				multiErr.Add(err)
-			}
-		}
-	}
-
-	return multiErr.Err()
+	span.LogFields(otlog.Int("duplicates", duplicates))
+	span.LogFields(otlog.Int("total", total))
+	return nil
 }
 
 type stacktraces struct {
@@ -340,6 +254,9 @@ type stacktraces struct {
 
 // selectMergeStacktraces selects the  profile from each ingester by deduping them and request merges of stacktraces of them.
 func selectMergeStacktraces(ctx context.Context, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesStacktraces]) ([]stacktraces, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "selectMergeStacktraces")
+	defer span.Finish()
+
 	mergeResults := make([]MergeResult[*ingestv1.MergeProfilesStacktracesResult], len(responses))
 	iters := make([]MergeIterator, len(responses))
 	for i, resp := range responses {
