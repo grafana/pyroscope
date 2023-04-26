@@ -149,4 +149,11 @@ func (r *Client) enhanceWithAuth(req *http.Request) {
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
+
+	if r.config.BasicAuthUser != "" && r.config.BasicAuthPassword != "" {
+		req.SetBasicAuth(r.config.BasicAuthUser, r.config.BasicAuthPassword)
+	}
+	if r.config.ScopeOrgID != "" {
+		req.Header.Set("X-Scope-OrgID", r.config.ScopeOrgID)
+	}
 }

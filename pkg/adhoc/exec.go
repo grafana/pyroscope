@@ -43,5 +43,6 @@ func newExec(cfg *config.Adhoc, args []string, st *storage.Storage, logger *logr
 		ApplicationName:    exec.CheckApplicationName(logger, cfg.ApplicationName, spyName, args),
 		SampleRate:         sampleRate,
 		DetectSubprocesses: cfg.DetectSubprocesses,
+		PHPSpyArgs:         cfg.PHPSpyArgs,
 	}, nil
 }

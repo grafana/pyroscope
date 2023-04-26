@@ -31,6 +31,7 @@ type Exec struct {
 	NoRootDrop         bool
 	UserName           string
 	GroupName          string
+	PHPSpyArgs         string
 }
 
 func NewExec(cfg *config.Exec, args []string) (*Exec, error) {
@@ -54,6 +55,10 @@ func NewExec(cfg *config.Exec, args []string) (*Exec, error) {
 
 	rc := remote.RemoteConfig{
 		AuthToken:              cfg.AuthToken,
+		ScopeOrgID:             cfg.ScopeOrgID,
+		BasicAuthUser:          cfg.BasicAuthUser,
+		BasicAuthPassword:      cfg.BasicAuthPassword,
+		HTTPHeaders:            cfg.Headers,
 		UpstreamThreads:        cfg.UpstreamThreads,
 		UpstreamAddress:        cfg.ServerAddress,
 		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
@@ -81,6 +86,7 @@ func NewExec(cfg *config.Exec, args []string) (*Exec, error) {
 		NoRootDrop:         cfg.NoRootDrop,
 		UserName:           cfg.UserName,
 		GroupName:          cfg.GroupName,
+		PHPSpyArgs:         cfg.PHPSpyArgs,
 	}, nil
 }
 
@@ -123,6 +129,7 @@ func (e *Exec) Run() error {
 		Pid:              cmd.Process.Pid,
 		WithSubprocesses: e.DetectSubprocesses,
 		Logger:           e.Logger,
+		PHPSpyArgs:       e.PHPSpyArgs,
 	}
 	session, err := agent.NewSession(sc)
 	if err != nil {

@@ -104,6 +104,7 @@ type SessionConfig struct {
 	Pid              int
 	WithSubprocesses bool
 	ClibIntegration  bool
+	PHPSpyArgs       string
 }
 
 func NewSession(c SessionConfig) (*ProfileSession, error) {
@@ -159,6 +160,7 @@ func NewGenericSpyFactory(c SessionConfig) SpyFactory {
 				SampleRate:    c.SampleRate,
 				DisableGCRuns: c.DisableGCRuns,
 				Logger:        c.Logger,
+				PHPSpyArgs:    c.PHPSpyArgs,
 			}
 			s, err := sf(params)
 

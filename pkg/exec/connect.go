@@ -27,6 +27,7 @@ type Connect struct {
 	DetectSubprocesses bool
 	Tags               map[string]string
 	Pid                int
+	PHPSpyArgs         string
 }
 
 func NewConnect(cfg *config.Connect) (*Connect, error) {
@@ -45,6 +46,10 @@ func NewConnect(cfg *config.Connect) (*Connect, error) {
 
 	rc := remote.RemoteConfig{
 		AuthToken:              cfg.AuthToken,
+		ScopeOrgID:             cfg.ScopeOrgID,
+		BasicAuthUser:          cfg.BasicAuthUser,
+		BasicAuthPassword:      cfg.BasicAuthPassword,
+		HTTPHeaders:            cfg.Headers,
 		UpstreamThreads:        cfg.UpstreamThreads,
 		UpstreamAddress:        cfg.ServerAddress,
 		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
@@ -69,6 +74,7 @@ func NewConnect(cfg *config.Connect) (*Connect, error) {
 		DetectSubprocesses: cfg.DetectSubprocesses,
 		Tags:               cfg.Tags,
 		Pid:                cfg.Pid,
+		PHPSpyArgs:         cfg.PHPSpyArgs,
 	}, nil
 }
 
@@ -96,6 +102,7 @@ func (c *Connect) Run() error {
 		Pid:              c.Pid,
 		WithSubprocesses: c.DetectSubprocesses,
 		Logger:           c.Logger,
+		PHPSpyArgs:       c.PHPSpyArgs,
 	}
 	session, err := agent.NewSession(sc)
 	if err != nil {

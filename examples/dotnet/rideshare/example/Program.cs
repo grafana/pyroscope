@@ -1,15 +1,19 @@
-namespace Example;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using Microsoft.AspNetCore.Http;
 
+namespace Example;
 
 using System.Collections;
 using Microsoft.AspNetCore.Builder;
-
-
 
 public static class Program
 {
     public static void Main(string[] args)
     {
+        object globalLock = new();
+        var strings = new List<string>();
         var orderService = new OrderService();
         var bikeService = new BikeService(orderService);
         var scooterService = new ScooterService(orderService);
@@ -26,11 +30,82 @@ public static class Program
             scooterService.Order(2);
             return "Scooter ordered";
         });
-        
+
         app.MapGet("/car", () =>
         {
             carService.Order(3);
             return "Car ordered";
+        });
+        
+        
+        app.MapGet("/pyroscope/cpu", (HttpRequest request) =>
+        {
+            var enable = request.Query["enable"] == "true";
+            Pyroscope.Profiler.Instance.SetCPUTrackingEnabled(enable);
+            return "OK";
+        });
+        app.MapGet("/pyroscope/allocation", (HttpRequest request) =>
+        {
+            var enable = request.Query["enable"] == "true";
+            Pyroscope.Profiler.Instance.SetAllocationTrackingEnabled(enable);
+            return "OK";
+        });
+        app.MapGet("/pyroscope/contention", (HttpRequest request) =>
+        {
+            var enable = request.Query["enable"] == "true";
+            Pyroscope.Profiler.Instance.SetContentionTrackingEnabled(enable);
+            return "OK";
+        });
+        app.MapGet("/pyroscope/exception", (HttpRequest request) =>
+        {
+            var enable = request.Query["enable"] == "true";
+            Pyroscope.Profiler.Instance.SetExceptionTrackingEnabled(enable);
+            return "OK";
+        });
+        
+        
+        app.MapGet("/playground/allocation", (HttpRequest request) =>
+        {
+            var strings = new List<string>();
+            for (var i = 0; i < 10000; i++)
+            {
+                strings.Add("foobar" + i);
+            }
+
+            return "OK";
+        });
+        app.MapGet("/playground/contention", (HttpRequest request) =>
+        {
+            for (var i = 0; i < 100; i++)
+            {
+                lock (globalLock)
+                {
+                    Thread.Sleep(10);
+                }
+            }
+            return "OK";
+        });
+        app.MapGet("/playground/exception", (HttpRequest request) =>
+        {
+            for (var i = 0; i < 1000; i++)
+            {
+                try
+                {
+                    throw new Exception("foobar" + i);
+                }
+                catch (Exception e)
+                {
+                }
+            }
+            return "OK";
+        });
+        app.MapGet("/playground/leak", (HttpRequest request) =>
+        {
+            for (var i = 0; i < 1000; i++)
+            {
+                strings.Add("leak " + i);
+            }
+            return "OK";
         });
         app.MapGet("/", () =>
         {
@@ -41,10 +116,7 @@ public static class Program
             }
             return env;
         });
-        
+
         app.Run();
     }
 }
-
-
-

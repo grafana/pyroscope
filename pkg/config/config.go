@@ -50,6 +50,7 @@ type Adhoc struct {
 	SampleRate         uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
 	SpyName            string `def:"auto" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>" mapstructure:"spy-name"`
 	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
+	PHPSpyArgs         string `def:"" desc:"comma separated list of phpspy's argument. direct_mem=true/false,php_awk_pattern=libphp'" mapstructure:"php-spy-args"`
 
 	// Connect mode configuration
 	Pid int `def:"0" desc:"PID of the process you want to profile. Pass -1 to profile the whole system (only supported by ebpfspy)" mapstructure:"pid"`
@@ -70,10 +71,14 @@ type Agent struct {
 	LogLevel    string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	NoLogging   bool   `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
 
-	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
-	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
-	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+	ServerAddress          string            `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
+	AuthToken              string            `json:"-" def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	BasicAuthUser          string            `json:"-" def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user"`
+	BasicAuthPassword      string            `json:"-" def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password"`
+	ScopeOrgID             string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id"`
+	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
+	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
+	UpstreamRequestTimeout time.Duration     `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
 
 	Targets []Target `yaml:"targets" desc:"list of targets to be profiled" mapstructure:"-"`
 
@@ -291,12 +296,17 @@ type Exec struct {
 	SampleRate         uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
 	SpyName            string `def:"auto" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>" mapstructure:"spy-name"`
 	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
+	PHPSpyArgs         string `def:"" desc:"comma separated list of phpspy's argument. direct_mem=true/false,php_awk_pattern=libphp'" mapstructure:"php-spy-args"`
 
 	// Remote upstream configuration
-	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
-	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
-	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+	ServerAddress          string            `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
+	AuthToken              string            `json:"-" def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	BasicAuthUser          string            `json:"-" def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user"`
+	BasicAuthPassword      string            `json:"-" def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password"`
+	ScopeOrgID             string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id"`
+	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
+	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
+	UpstreamRequestTimeout time.Duration     `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
 
 	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 
@@ -314,12 +324,17 @@ type Connect struct {
 	SampleRate         uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
 	SpyName            string `def:"" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>" mapstructure:"spy-name"`
 	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
+	PHPSpyArgs         string `def:"" desc:"comma separated list of phpspy's argument. direct_mem=true/false,php_awk_pattern=libphp'" mapstructure:"php-spy-args"`
 
 	// Remote upstream configuration
-	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
-	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
-	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+	ServerAddress          string            `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
+	AuthToken              string            `json:"-" def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	BasicAuthUser          string            `json:"-" def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user"`
+	BasicAuthPassword      string            `json:"-" def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password"`
+	ScopeOrgID             string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id"`
+	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
+	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
+	UpstreamRequestTimeout time.Duration     `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
 
 	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 
@@ -335,10 +350,14 @@ type EBPF struct {
 	SampleRate      uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
 
 	// Remote upstream configuration
-	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
-	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
-	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
-	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+	ServerAddress          string            `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
+	AuthToken              string            `json:"-" def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	BasicAuthUser          string            `json:"-" def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user"`
+	BasicAuthPassword      string            `json:"-" def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password"`
+	ScopeOrgID             string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id"`
+	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
+	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
+	UpstreamRequestTimeout time.Duration     `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
 
 	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 
@@ -404,12 +423,15 @@ type RemoteRead struct {
 type RemoteWriteTarget struct {
 	Address string `desc:"server that implements the pyroscope /ingest endpoint" mapstructure:"address"`
 	// TODO(eh-am): use a custom type here to not accidentaly leak the AuthToken?
-	AuthToken    string            `json:"-" desc:"authorization token used to upload profiling data" yaml:"auth-token"`
-	Tags         map[string]string `name:"tag" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
-	Headers      map[string]string `name:"header" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"headers"`
-	Timeout      time.Duration     `desc:"profile upload timeout" mapstructure:"timeout" yaml:"timeout"`
-	QueueSize    int               `desc:"number of items in the queue" yaml:"queue-size"`
-	QueueWorkers int               `desc:"number of queue workers" yaml:"queue-workers"`
+	AuthToken         string            `json:"-" desc:"authorization token used to upload profiling data" yaml:"auth-token"`
+	BasicAuthUser     string            `json:"-" def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user" yaml:"basic-auth-user"`
+	BasicAuthPassword string            `json:"-" def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password" yaml:"basic-auth-password"`
+	ScopeOrgID        string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id" yaml:"scope-org-id"`
+	Tags              map[string]string `name:"tag" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
+	Headers           map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
+	Timeout           time.Duration     `desc:"profile upload timeout" mapstructure:"timeout" yaml:"timeout"`
+	QueueSize         int               `desc:"number of items in the queue" yaml:"queue-size"`
+	QueueWorkers      int               `desc:"number of queue workers" yaml:"queue-workers"`
 }
 
 func (r RemoteWriteTarget) String() string {
