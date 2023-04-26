@@ -2,6 +2,7 @@ const { merge } = require('webpack-merge');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const common = require('./webpack.common');
 const webpack = require('webpack');
+const path = require('path');
 
 module.exports = merge(common, {
   devtool: 'eval-source-map',

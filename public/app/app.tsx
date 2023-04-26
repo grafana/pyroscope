@@ -11,6 +11,7 @@ import { createBrowserHistory } from 'history';
 
 import { SingleView } from './pages/SingleView';
 import { ComparisonView } from './pages/ComparisonView';
+import { DiffView } from './pages/DiffView';
 import { LoadAppNames } from './components/LoadAppNames';
 
 const container = document.getElementById('reactRoot') as HTMLElement;
@@ -32,6 +33,9 @@ function App() {
             </Route>
             <Route path={'/comparison'}>
               <ComparisonView />
+            </Route>
+            <Route path={'/comparison-diff'}>
+              <DiffView />
             </Route>
           </Switch>
         </Router>

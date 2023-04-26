@@ -441,6 +441,14 @@
         }
       }
     },
+    "v1DiffResponse": {
+      "type": "object",
+      "properties": {
+        "flamegraph": {
+          "$ref": "#/definitions/v1FlameGraphDiff"
+        }
+      }
+    },
     "v1FlameGraph": {
       "type": "object",
       "properties": {
@@ -461,6 +469,39 @@
           "format": "int64"
         },
         "maxSelf": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1FlameGraphDiff": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Level"
+          }
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxSelf": {
+          "type": "string",
+          "format": "int64"
+        },
+        "leftTicks": {
+          "type": "string",
+          "format": "int64"
+        },
+        "rightTicks": {
           "type": "string",
           "format": "int64"
         }
@@ -838,6 +879,29 @@
         }
       },
       "description": "Each Sample records values encountered in some program\ncontext. The program context is typically a stack trace, perhaps\naugmented with auxiliary information like the thread-id, some\nindicator of a higher level request being handled etc."
+    },
+    "v1SelectMergeStacktracesRequest": {
+      "type": "object",
+      "properties": {
+        "profileTypeID": {
+          "type": "string"
+        },
+        "labelSelector": {
+          "type": "string"
+        },
+        "start": {
+          "type": "string",
+          "format": "int64"
+        },
+        "end": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxNodes": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
     },
     "v1SelectMergeStacktracesResponse": {
       "type": "object",

@@ -54,4 +54,9 @@ func RegisterQuerierServiceHandler(mux *mux.Router, svc QuerierServiceHandler, o
 		svc.SelectSeries,
 		opts...,
 	))
+	mux.Handle("/querier.v1.QuerierService/Diff", connect_go.NewUnaryHandler(
+		"/querier.v1.QuerierService/Diff",
+		svc.Diff,
+		opts...,
+	))
 }
