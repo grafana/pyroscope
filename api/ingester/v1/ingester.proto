@@ -8,28 +8,14 @@ import "types/v1/types.proto";
 
 service IngesterService {
   rpc Push(push.v1.PushRequest) returns (push.v1.PushResponse) {}
-  rpc LabelValues(LabelValuesRequest) returns (LabelValuesResponse) {}
-  rpc LabelNames(LabelNamesRequest) returns (LabelNamesResponse) {}
+  rpc LabelValues(types.v1.LabelValuesRequest) returns (types.v1.LabelValuesResponse) {}
+  rpc LabelNames(types.v1.LabelNamesRequest) returns (types.v1.LabelNamesResponse) {}
   rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {}
   rpc Series(SeriesRequest) returns (SeriesResponse) {}
   rpc Flush(FlushRequest) returns (FlushResponse) {}
   rpc MergeProfilesStacktraces(stream MergeProfilesStacktracesRequest) returns (stream MergeProfilesStacktracesResponse) {}
   rpc MergeProfilesLabels(stream MergeProfilesLabelsRequest) returns (stream MergeProfilesLabelsResponse) {}
   rpc MergeProfilesPprof(stream MergeProfilesPprofRequest) returns (stream MergeProfilesPprofResponse) {}
-}
-
-message LabelValuesRequest {
-  string name = 1;
-}
-
-message LabelValuesResponse {
-  repeated string names = 1;
-}
-
-message LabelNamesRequest {}
-
-message LabelNamesResponse {
-  repeated string names = 1;
 }
 
 message ProfileTypesRequest {}
