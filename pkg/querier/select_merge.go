@@ -48,7 +48,7 @@ type MergeResult[R any] interface {
 	Result() (R, error)
 }
 type MergeIterator interface {
-	iter.Iterator[ProfileWithLabels]
+	iter.Iterator[*ProfileWithLabels]
 	Keep()
 }
 
@@ -62,6 +62,8 @@ type mergeIterator[R any, Req Request, Res Response] struct {
 	currIdx  int
 	keep     []bool
 	keepSent bool // keepSent is true if we have sent the keep request to the ingester.
+
+	currentProfile *ProfileWithLabels
 }
 
 // NewMergeIterator return a new iterator that stream profiles and allows to filter them using `Keep` to keep
@@ -74,10 +76,10 @@ func NewMergeIterator[
 ](ctx context.Context, r responseFromIngesters[BidiClientMerge[Req, Res]],
 ) *mergeIterator[R, Req, Res] {
 	return &mergeIterator[R, Req, Res]{
-		bidi:         r.response,
-		ingesterAddr: r.addr,
-		keepSent:     true, // at the start we don't send a keep request.
-		ctx:          ctx,
+		bidi:           r.response,
+		keepSent:       true, // at the start we don't send a keep request.
+		ctx:            ctx,
+		currentProfile: &ProfileWithLabels{IngesterAddr: r.addr},
 	}
 }
 
@@ -142,9 +144,13 @@ func (s *mergeIterator[R, Req, Res]) Next() bool {
 		}
 		s.currIdx = 0
 		s.keepSent = false
+		s.currentProfile.Timestamp = s.curr.Profiles[s.currIdx].Timestamp
+		s.currentProfile.Labels = s.curr.LabelsSets[s.curr.Profiles[s.currIdx].LabelIndex].Labels
 		return true
 	}
 	s.currIdx++
+	s.currentProfile.Timestamp = s.curr.Profiles[s.currIdx].Timestamp
+	s.currentProfile.Labels = s.curr.LabelsSets[s.curr.Profiles[s.currIdx].LabelIndex].Labels
 	return true
 }
 
@@ -156,12 +162,8 @@ func (s *mergeIterator[R, Req, Res]) Keep() {
 	s.keep[s.currIdx] = true
 }
 
-func (s *mergeIterator[R, Req, Res]) At() ProfileWithLabels {
-	return ProfileWithLabels{
-		Timestamp:    s.curr.Profiles[s.currIdx].Timestamp,
-		Labels:       s.curr.LabelsSets[s.curr.Profiles[s.currIdx].LabelIndex].Labels,
-		IngesterAddr: s.ingesterAddr,
-	}
+func (s *mergeIterator[R, Req, Res]) At() *ProfileWithLabels {
+	return s.currentProfile
 }
 
 func (s *mergeIterator[R, Req, Res]) Result() (R, error) {
@@ -214,13 +216,13 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 	defer span.Finish()
 
 	tree := loser.New(its,
-		ProfileWithLabels{
+		&ProfileWithLabels{
 			Timestamp: math.MaxInt64,
 		},
-		func(s MergeIterator) ProfileWithLabels {
+		func(s MergeIterator) *ProfileWithLabels {
 			return s.At()
 		},
-		func(p1, p2 ProfileWithLabels) bool {
+		func(p1, p2 *ProfileWithLabels) bool {
 			if p1.Timestamp == p2.Timestamp {
 				return phlaremodel.CompareLabelPairs(p1.Labels, p2.Labels) < 0
 			}
@@ -231,13 +233,15 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 	defer tree.Close()
 	duplicates := 0
 	total := 0
-	previous := ProfileWithLabels{Timestamp: -1}
+	previousTs := int64(-1)
+	previousLabels := phlaremodel.Labels{}
 	for tree.Next() {
 		next := tree.Winner()
 		profile := next.At()
 		total++
-		if previous.Timestamp != profile.Timestamp || phlaremodel.CompareLabelPairs(previous.Labels, profile.Labels) != 0 {
-			previous = profile
+		if previousTs != profile.Timestamp || phlaremodel.CompareLabelPairs(previousLabels, profile.Labels) != 0 {
+			previousTs = profile.Timestamp
+			previousLabels = profile.Labels
 			next.Keep()
 			continue
 		}
