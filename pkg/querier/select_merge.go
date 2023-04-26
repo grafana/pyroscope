@@ -239,6 +239,7 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 		if previous.Timestamp != profile.Timestamp || phlaremodel.CompareLabelPairs(previous.Labels, profile.Labels) != 0 {
 			previous = profile
 			next.Keep()
+			continue
 		}
 		duplicates++
 	}
