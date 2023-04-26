@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/pprof/profile"
 	"github.com/grafana/dskit/multierror"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
@@ -247,7 +248,9 @@ type workerResult struct {
 }
 
 // skipDuplicates iterates through the iterator and skip duplicates.
-func skipDuplicates(its []MergeIterator) error {
+func skipDuplicates(ctx context.Context, its []MergeIterator) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "skipDuplicates")
+	defer span.Finish()
 	profilesHeap := newProfilesHeap(its)
 	tuples := make([]MergeIterator, 0, len(its))
 
@@ -349,7 +352,7 @@ func selectMergeStacktraces(ctx context.Context, responses []responseFromIngeste
 		mergeResults[i] = it
 	}
 
-	if err := skipDuplicates(iters); err != nil {
+	if err := skipDuplicates(ctx, iters); err != nil {
 		return nil, err
 	}
 
@@ -390,7 +393,7 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 		mergeResults[i] = it
 	}
 
-	if err := skipDuplicates(iters); err != nil {
+	if err := skipDuplicates(ctx, iters); err != nil {
 		return nil, err
 	}
 
@@ -477,7 +480,7 @@ func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[cl
 		mergeResults[i] = it
 	}
 
-	if err := skipDuplicates(iters); err != nil {
+	if err := skipDuplicates(ctx, iters); err != nil {
 		return nil, err
 	}
 
