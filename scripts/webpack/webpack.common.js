@@ -48,6 +48,10 @@ module.exports = {
         __dirname,
         '../../public/app/overrides/components/AppSelector/Label'
       ),
+      '@webapp/ui/Sidebar': path.resolve(
+        __dirname,
+        '../../public/app/overrides/ui/Sidebar'
+      ),
 
       '@webapp/redux/store': path.resolve(
         __dirname,
@@ -106,9 +110,11 @@ module.exports = {
     children: false,
     source: false,
   },
-  plugins: [new MiniCssExtractPlugin({
-    filename: "[name].[contenthash].css"
-  })],
+  plugins: [
+    new MiniCssExtractPlugin({
+      filename: '[name].[contenthash].css',
+    }),
+  ],
   module: {
     rules: [
       // CSS

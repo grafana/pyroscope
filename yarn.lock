@@ -10137,9 +10137,9 @@ pure-rand@^6.0.0:
   resolved "https://registry.yarnpkg.com/pure-rand/-/pure-rand-6.0.1.tgz#31207dddd15d43f299fdcdb2f572df65030c19af"
   integrity sha512-t+x1zEHDjBwkDGY5v5ApnZ/utcd4XYDiJsaQQoptTXgUXX95sDg1elCdJghzicm7n2mbCBJ3uYWr6M22SO19rg==
 
-"pyroscope-oss@git+https://github.com/pyroscope-io/pyroscope.git#c93a993":
+"pyroscope-oss@git+https://github.com/pyroscope-io/pyroscope.git#b63a15e":
   version "0.37.2"
-  resolved "git+https://github.com/pyroscope-io/pyroscope.git#c93a993da72f001354536b758f6378000b1f7461"
+  resolved "git+https://github.com/pyroscope-io/pyroscope.git#b63a15ec7d8a515229666ed32c5be8f9132e1794"
   dependencies:
     "@babel/plugin-transform-runtime" "^7.16.4"
     "@babel/preset-env" "^7.10.4"

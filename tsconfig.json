@@ -12,6 +12,7 @@
       "@webapp/components/ExportData": ["./public/app/overrides/components/ExportData"],
       "@webapp/components/TimelineChart/ContextMenu.plugin": ["./public/app/overrides/components/TimelineChart/ContextMenu.plugin"],
       "@webapp/components/AppSelector/Label": ["./public/app/overrides/components/AppSelector/Label"],
+      "@webapp/ui/Sidebar": ["./public/app/overrides/ui/Sidebar"],
 
       "@webapp/redux/store": ["./public/app/redux/store"],
       "@webapp/redux/hooks": ["./public/app/redux/hooks"],
