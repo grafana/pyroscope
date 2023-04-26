@@ -137,6 +137,10 @@ type node struct {
 	name        string
 }
 
+func (n *node) String() string {
+	return fmt.Sprintf("{%s: self %d total %d}", n.name, n.self, n.total)
+}
+
 func (n *node) Add(name string, self, total int64) *node {
 	new := &node{
 		parent: n,

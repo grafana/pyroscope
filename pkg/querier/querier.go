@@ -213,6 +213,55 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 	}), nil
 }
 
+func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Diff")
+	defer func() {
+		sp.LogFields(
+			otlog.String("leftStart", model.Time(req.Msg.Left.Start).Time().String()),
+			otlog.String("leftEnd", model.Time(req.Msg.Left.End).Time().String()),
+			// Assume are the same
+			otlog.String("selector", req.Msg.Left.LabelSelector),
+			otlog.String("profile_id", req.Msg.Left.ProfileTypeID),
+		)
+		sp.Finish()
+	}()
+
+	var leftTree, rightTree *tree
+	g, gCtx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		res, err := q.selectTree(gCtx, req.Msg.Left)
+		if err != nil {
+			return err
+		}
+
+		leftTree = res
+		return nil
+	})
+
+	g.Go(func() error {
+		res, err := q.selectTree(gCtx, req.Msg.Right)
+		if err != nil {
+			return err
+		}
+		rightTree = res
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	fd, err := NewFlamegraphDiff(leftTree, rightTree, MaxNodes)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	return connect.NewResponse(&querierv1.DiffResponse{
+		Flamegraph: fd,
+	}), nil
+}
+
 func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeStacktraces")
 	defer func() {
@@ -225,11 +274,27 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 		sp.Finish()
 	}()
 
-	profileType, err := phlaremodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
+	t, err := q.selectTree(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Msg.MaxNodes == nil || *req.Msg.MaxNodes == 0 {
+		mn := maxNodesDefault
+		req.Msg.MaxNodes = &mn
+	}
+
+	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
+		Flamegraph: NewFlameGraph(t, *req.Msg.MaxNodes),
+	}), nil
+}
+
+func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*tree, error) {
+	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	_, err = parser.ParseMetricSelector(req.Msg.LabelSelector)
+	_, err = parser.ParseMetricSelector(req.LabelSelector)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -251,9 +316,9 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 		g.Go(util.RecoverPanic(func() error {
 			return r.response.Send(&ingestv1.MergeProfilesStacktracesRequest{
 				Request: &ingestv1.SelectProfilesRequest{
-					LabelSelector: req.Msg.LabelSelector,
-					Start:         req.Msg.Start,
-					End:           req.Msg.End,
+					LabelSelector: req.LabelSelector,
+					Start:         req.Start,
+					End:           req.End,
 					Type:          profileType,
 				},
 			})
@@ -268,13 +333,7 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	if err != nil {
 		return nil, err
 	}
-	if req.Msg.MaxNodes == nil {
-		mn := maxNodesDefault
-		req.Msg.MaxNodes = &mn
-	}
-	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
-		Flamegraph: NewFlameGraph(newTree(st), *req.Msg.MaxNodes),
-	}), nil
+	return newTree(st), nil
 }
 
 func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[googlev1.Profile], error) {

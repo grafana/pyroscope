@@ -106,7 +106,9 @@ module.exports = {
     children: false,
     source: false,
   },
-  plugins: [new MiniCssExtractPlugin({})],
+  plugins: [new MiniCssExtractPlugin({
+    filename: "[name].[contenthash].css"
+  })],
   module: {
     rules: [
       // CSS
