@@ -30,7 +30,6 @@ EMBEDASSETS ?= embedassets
 # Build flags
 VPREFIX := github.com/grafana/phlare/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
-GO_FLAGS     := -ldflags "-extldflags \"-static\" -s -w $(GO_LDFLAGS)" -tags "netgo $(EMBEDASSETS)"
 
 .PHONY: help
 help: ## Describe useful make targets
@@ -106,14 +105,18 @@ release/build: release/prereq ## Build current platform release binaries
 go/deps:
 	$(GO) mod tidy
 
+define go_build
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" ./cmd/phlare
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" ./cmd/profilecli
+endef
+
 .PHONY: go/bin-debug
 go/bin-debug:
-	$(MAKE) go/bin 'GO_FLAGS=-ldflags "-extldflags \"-static\" $(GO_LDFLAGS)" -tags netgo'
+	$(call go_build,$(GO_LDFLAGS))
 
 .PHONY: go/bin
 go/bin:
-	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build $(GO_FLAGS) ./cmd/phlare
-	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build $(GO_FLAGS) ./cmd/profilecli
+	$(call go_build,-s -w $(GO_LDFLAGS))
 
 .PHONY: go/lint
 go/lint: $(BIN)/golangci-lint
