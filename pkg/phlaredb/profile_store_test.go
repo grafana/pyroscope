@@ -2,7 +2,9 @@ package phlaredb
 
 import (
 	"context"
+	"crypto/md5"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -79,6 +81,53 @@ func sameProfileStream(i int) *testProfile {
 	return tp
 }
 
+// This will simulate a profile stream which ends and a new one starts at i > boundary
+func profileStreamEndingAndStarting(boundary int) func(int) *testProfile {
+	return func(i int) *testProfile {
+		tp := &testProfile{}
+
+		series := "at-beginning"
+		if i > boundary {
+			series = "at-end"
+		}
+
+		tp.profileName = "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
+		tp.lbls = phlaremodel.LabelsFromStrings(
+			phlaremodel.LabelNameProfileType, tp.profileName,
+			"job", "test",
+			"stream", series,
+		)
+
+		tp.p.ID = uuid.MustParse(fmt.Sprintf("00000000-0000-0000-0000-%012d", i))
+		tp.p.TimeNanos = time.Second.Nanoseconds() * int64(i)
+		tp.p.Samples = []*schemav1.Sample{
+			{
+				StacktraceID: 0x1,
+				Value:        10.0,
+			},
+		}
+		tp.populateFingerprint()
+		return tp
+	}
+}
+
+func nProfileStreams(n int) func(int) *testProfile {
+	return func(i int) *testProfile {
+		tp := sameProfileStream(i / n)
+
+		tp.lbls = phlaremodel.LabelsFromStrings(
+			phlaremodel.LabelNameProfileType, tp.profileName,
+			"job", "test",
+			"stream", fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%d", i%n)))),
+		)
+		tp.p.ID = uuid.MustParse(fmt.Sprintf("00000000-0000-0000-0000-%012d", i))
+
+		tp.populateFingerprint()
+		return tp
+
+	}
+}
+
 func readFullParquetFile[M any](t *testing.T, path string) ([]M, uint64) {
 	f, err := os.Open(path)
 	require.NoError(t, err)
@@ -95,8 +144,15 @@ func readFullParquetFile[M any](t *testing.T, path string) ([]M, uint64) {
 	reader := parquet.NewGenericReader[M](f)
 
 	slice := make([]M, reader.NumRows())
-	_, err = reader.Read(slice)
-	require.NoError(t, err)
+	offset := 0
+	for {
+		n, err := reader.Read(slice[offset:])
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		offset += n
+	}
 
 	return slice, numRGs
 }
@@ -132,11 +188,25 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 			values:          sameProfileStream,
 		},
 		{
+			name:            "a stream ending after half of the samples and a new one starting",
+			cfg:             &ParquetConfig{MaxRowGroupBytes: 1828, MaxBufferRowCount: 100000},
+			expectedNumRGs:  10,
+			expectedNumRows: 100,
+			values:          profileStreamEndingAndStarting(50),
+		},
+		{
 			name:            "multiple row groups because of maximum row num",
 			cfg:             &ParquetConfig{MaxRowGroupBytes: 128000, MaxBufferRowCount: 10},
 			expectedNumRGs:  10,
 			expectedNumRows: 100,
 			values:          sameProfileStream,
+		},
+		{
+			name:            "a single sample per series",
+			cfg:             &ParquetConfig{MaxRowGroupBytes: 1828, MaxBufferRowCount: 100000},
+			expectedNumRGs:  10,
+			expectedNumRows: 100,
+			values:          nProfileStreams(100),
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -164,9 +234,19 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 			rows, numRGs := readFullParquetFile[*schemav1.Profile](t, path+"/profiles.parquet")
 			require.Equal(t, int(tc.expectedNumRows), len(rows))
 			assert.Equal(t, tc.expectedNumRGs, numRGs)
-			assert.Equal(t, "00000000-0000-0000-0000-000000000000", rows[0].ID.String())
-			assert.Equal(t, "00000000-0000-0000-0000-000000000001", rows[1].ID.String())
-			assert.Equal(t, "00000000-0000-0000-0000-000000000002", rows[2].ID.String())
+
+			// ensure all profiles are there
+			idExisting := make(map[uuid.UUID]int, tc.expectedNumRows)
+			for i := range rows {
+				_, ok := idExisting[rows[i].ID]
+				assert.False(t, ok, "expected ID to not exists more than once")
+				idExisting[rows[i].ID] = i
+			}
+			for i := 0; i < int(tc.expectedNumRows); i++ {
+				id := uuid.MustParse(fmt.Sprintf("00000000-0000-0000-0000-%012d", i))
+				_, ok := idExisting[id]
+				assert.True(t, ok, fmt.Sprintf("expected ID %s to exist in output", id.String()))
+			}
 		})
 	}
 }
