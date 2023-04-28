@@ -17,7 +17,7 @@ const maxStacksize = 8 * 1024
 
 var (
 	panicTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: "phlare",
+		Namespace: "pyroscope",
 		Name:      "panic_total",
 		Help:      "The total number of panic triggered",
 	})

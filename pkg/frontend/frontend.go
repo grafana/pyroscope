@@ -143,14 +143,14 @@ func NewFrontend(cfg Config, log log.Logger, reg prometheus.Registerer) (*Fronte
 	f.lastQueryID.Store(rand.Uint64())
 
 	promauto.With(reg).NewGaugeFunc(prometheus.GaugeOpts{
-		Name: "phlare_query_frontend_queries_in_progress",
+		Name: "pyroscope_query_frontend_queries_in_progress",
 		Help: "Number of queries in progress handled by this frontend.",
 	}, func() float64 {
 		return float64(f.requests.count())
 	})
 
 	promauto.With(reg).NewGaugeFunc(prometheus.GaugeOpts{
-		Name: "phlare_query_frontend_connected_schedulers",
+		Name: "pyroscope_query_frontend_connected_schedulers",
 		Help: "Number of schedulers this frontend is connected to.",
 	}, func() float64 {
 		return float64(f.schedulerWorkers.getWorkersCount())

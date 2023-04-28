@@ -24,7 +24,7 @@ import (
 
 const (
 	// File name for the cluster seed file.
-	ClusterSeedFileName = "phlare_cluster_seed.json"
+	ClusterSeedFileName = "pyroscope_cluster_seed.json"
 	// attemptNumber how many times we will try to read a corrupted cluster seed before deleting it.
 	attemptNumber = 4
 	// seedKey is the key for the cluster seed to use with the kv store.

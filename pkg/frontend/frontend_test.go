@@ -156,11 +156,11 @@ func TestFrontendRequestsPerWorkerMetric(t *testing.T) {
 	})
 
 	expectedMetrics := fmt.Sprintf(`
-		# HELP phlare_query_frontend_workers_enqueued_requests_total Total number of requests enqueued by each query frontend worker (regardless of the result), labeled by scheduler address.
-		# TYPE phlare_query_frontend_workers_enqueued_requests_total counter
-		phlare_query_frontend_workers_enqueued_requests_total{scheduler_address="%s"} 0
+		# HELP pyroscope_query_frontend_workers_enqueued_requests_total Total number of requests enqueued by each query frontend worker (regardless of the result), labeled by scheduler address.
+		# TYPE pyroscope_query_frontend_workers_enqueued_requests_total counter
+		pyroscope_query_frontend_workers_enqueued_requests_total{scheduler_address="%s"} 0
 	`, f.cfg.SchedulerAddress)
-	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "phlare_query_frontend_workers_enqueued_requests_total"))
+	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "pyroscope_query_frontend_workers_enqueued_requests_total"))
 
 	resp, err := f.RoundTripGRPC(user.InjectOrgID(context.Background(), userID), &httpgrpc.HTTPRequest{})
 	require.NoError(t, err)
@@ -168,16 +168,16 @@ func TestFrontendRequestsPerWorkerMetric(t *testing.T) {
 	require.Equal(t, []byte(body), resp.Body)
 
 	expectedMetrics = fmt.Sprintf(`
-		# HELP phlare_query_frontend_workers_enqueued_requests_total Total number of requests enqueued by each query frontend worker (regardless of the result), labeled by scheduler address.
-		# TYPE phlare_query_frontend_workers_enqueued_requests_total counter
-		phlare_query_frontend_workers_enqueued_requests_total{scheduler_address="%s"} 1
+		# HELP pyroscope_query_frontend_workers_enqueued_requests_total Total number of requests enqueued by each query frontend worker (regardless of the result), labeled by scheduler address.
+		# TYPE pyroscope_query_frontend_workers_enqueued_requests_total counter
+		pyroscope_query_frontend_workers_enqueued_requests_total{scheduler_address="%s"} 1
 	`, f.cfg.SchedulerAddress)
-	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "phlare_query_frontend_workers_enqueued_requests_total"))
+	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "pyroscope_query_frontend_workers_enqueued_requests_total"))
 
 	// Manually remove the address, check that label is removed.
 	f.schedulerWorkers.InstanceRemoved(servicediscovery.Instance{Address: f.cfg.SchedulerAddress, InUse: true})
 	expectedMetrics = ``
-	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "phlare_query_frontend_workers_enqueued_requests_total"))
+	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(expectedMetrics), "pyroscope_query_frontend_workers_enqueued_requests_total"))
 }
 
 func TestFrontendRetryEnqueue(t *testing.T) {

@@ -36,12 +36,12 @@ local utils = import 'mixin-utils/utils.libsonnet';
                            $.row('Querier')
                            .addPanel(
                              $.panel('QPS') +
-                             $.qpsPanel('phlare_request_duration_seconds_count{%s route=~"%s"}' % [dashboards['phlare-reads.json'].querierSelector, http_route])
+                             $.qpsPanel('pyroscope_request_duration_seconds_count{%s route=~"%s"}' % [dashboards['phlare-reads.json'].querierSelector, http_route])
                            )
                            .addPanel(
                              $.panel('Latency') +
                              utils.latencyRecordingRulePanel(
-                               'phlare_request_duration_seconds',
+                               'pyroscope_request_duration_seconds',
                                dashboards['phlare-reads.json'].matchers.querier + [utils.selector.re('route', http_route)] + dashboards['phlare-reads.json'].clusterMatchers,
                                sum_by=['route']
                              )
@@ -51,12 +51,12 @@ local utils = import 'mixin-utils/utils.libsonnet';
                            $.row('Ingester')
                            .addPanel(
                              $.panel('QPS') +
-                             $.qpsPanel('phlare_request_duration_seconds_count{%s route=~"%s"}' % [dashboards['phlare-reads.json'].ingesterSelector, http_route])
+                             $.qpsPanel('pyroscope_request_duration_seconds_count{%s route=~"%s"}' % [dashboards['phlare-reads.json'].ingesterSelector, http_route])
                            )
                            .addPanel(
                              $.panel('Latency') +
                              utils.latencyRecordingRulePanel(
-                               'phlare_request_duration_seconds',
+                               'pyroscope_request_duration_seconds',
                                dashboards['phlare-reads.json'].matchers.ingester + [utils.selector.re('route', http_route)] + dashboards['phlare-reads.json'].clusterMatchers,
                                sum_by=['route']
                              )

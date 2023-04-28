@@ -22,13 +22,13 @@ type metrics struct {
 func newMetrics(reg prometheus.Registerer) *metrics {
 	m := &metrics{
 		replicationFactor: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: "phlare",
+			Namespace: "pyroscope",
 			Name:      "distributor_replication_factor",
 			Help:      "The configured replication factor for the distributor.",
 		}),
 		receivedCompressedBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "phlare",
+				Namespace: "pyroscope",
 				Name:      "distributor_received_compressed_bytes",
 				Help:      "The number of compressed bytes per profile received by the distributor.",
 				Buckets:   prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
@@ -37,7 +37,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		),
 		receivedDecompressedBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "phlare",
+				Namespace: "pyroscope",
 				Name:      "distributor_received_decompressed_bytes",
 				Help:      "The number of decompressed bytes per profiles received by the distributor.",
 				Buckets:   prometheus.ExponentialBucketsRange(minBytes, maxBytes, bucketsCount),
@@ -46,7 +46,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		),
 		receivedSamples: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "phlare",
+				Namespace: "pyroscope",
 				Name:      "distributor_received_samples",
 				Help:      "The number of samples per profile name received by the distributor.",
 				Buckets:   prometheus.ExponentialBucketsRange(100, 100000, 30),
@@ -55,7 +55,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		),
 		receivedSamplesBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "phlare",
+				Namespace: "pyroscope",
 				Name:      "distributor_received_samples_bytes",
 				Help:      "The size of samples without symbols received by the distributor.",
 				Buckets:   prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 30),
@@ -64,7 +64,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		),
 		receivedSymbolsBytes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "phlare",
+				Namespace: "pyroscope",
 				Name:      "distributor_received_symbols_bytes",
 				Help:      "The size of symbols received by the distributor.",
 				Buckets:   prometheus.ExponentialBucketsRange(10*1024, 15*1024*1024, 30),

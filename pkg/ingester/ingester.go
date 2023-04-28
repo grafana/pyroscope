@@ -93,7 +93,7 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		"ingester",
 		"ring",
 		true,
-		i.logger, prometheus.WrapRegistererWithPrefix("phlare_", i.reg))
+		i.logger, prometheus.WrapRegistererWithPrefix("pyroscope_", i.reg))
 	if err != nil {
 		return nil, err
 	}

@@ -63,13 +63,13 @@ func NewOverridesExporter(
 		defaultLimits: defaultLimits,
 		tenantLimits:  tenantLimits,
 		overrideDescription: prometheus.NewDesc(
-			"phlare_limits_overrides",
+			"pyroscope_limits_overrides",
 			"Resource limit overrides applied to tenants",
 			[]string{"limit_name", "tenant"},
 			nil,
 		),
 		defaultsDescription: prometheus.NewDesc(
-			"phlare_limits_defaults",
+			"pyroscope_limits_defaults",
 			"Resource limit defaults for tenants without overrides",
 			[]string{"limit_name"},
 			nil,

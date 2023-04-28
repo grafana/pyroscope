@@ -61,14 +61,14 @@ func newSchedulerProcessor(cfg Config, handler RequestHandler, log log.Logger, r
 		},
 
 		frontendClientRequestDuration: promauto.With(reg).NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "phlare_querier_query_frontend_request_duration_seconds",
+			Name:    "pyroscope_querier_query_frontend_request_duration_seconds",
 			Help:    "Time spend doing requests to frontend.",
 			Buckets: prometheus.ExponentialBuckets(0.001, 4, 6),
 		}, []string{"operation", "status_code"}),
 	}
 
 	frontendClientsGauge := promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-		Name: "phlare_querier_query_frontend_clients",
+		Name: "pyroscope_querier_query_frontend_clients",
 		Help: "The current number of clients connected to query-frontend.",
 	})
 

@@ -109,7 +109,7 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 	// make sure to set default limits before we start loading configuration into memory
 	validation.SetDefaultLimitsForYAMLUnmarshalling(f.Cfg.LimitsConfig)
 
-	serv, err := runtimeconfig.New(f.Cfg.RuntimeConfig, prometheus.WrapRegistererWithPrefix("phlare_", f.reg), log.With(f.logger, "component", "runtime-config"))
+	serv, err := runtimeconfig.New(f.Cfg.RuntimeConfig, prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg), log.With(f.logger, "component", "runtime-config"))
 	if err == nil {
 		// TenantLimits just delegates to RuntimeConfig and doesn't have any state or need to do
 		// anything in the start/stopping phase. Thus we can create it as part of runtime config
@@ -273,7 +273,7 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 	}
 
 	dnsProviderReg := prometheus.WrapRegistererWithPrefix(
-		"phlare_",
+		"pyroscope_",
 		prometheus.WrapRegistererWith(
 			prometheus.Labels{"name": "memberlist"},
 			f.reg,
@@ -297,7 +297,7 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 }
 
 func (f *Phlare) initRing() (_ services.Service, err error) {
-	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", log.With(f.logger, "component", "ring"), prometheus.WrapRegistererWithPrefix("phlare_", f.reg))
+	f.ring, err = ring.New(f.Cfg.Ingester.LifecyclerConfig.RingConfig, "ingester", "ring", log.With(f.logger, "component", "ring"), prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg))
 	if err != nil {
 		return nil, err
 	}
@@ -348,14 +348,14 @@ func (f *Phlare) initIngester() (_ services.Service, err error) {
 }
 
 func (f *Phlare) initServer() (services.Service, error) {
-	f.reg.MustRegister(version.NewCollector("phlare"))
+	f.reg.MustRegister(version.NewCollector("pyroscope"))
 	f.reg.Unregister(collectors.NewGoCollector())
 	// register collector with additional metrics
 	f.reg.MustRegister(collectors.NewGoCollector(
 		collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll),
 	))
 	DisableSignalHandling(&f.Cfg.Server)
-	f.Cfg.Server.Registerer = prometheus.WrapRegistererWithPrefix("phlare_", f.reg)
+	f.Cfg.Server.Registerer = prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg)
 	// Not all default middleware works with http2 so we'll add then manually.
 	// see https://github.com/grafana/phlare/issues/231
 	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true

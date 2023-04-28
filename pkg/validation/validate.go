@@ -53,7 +53,7 @@ var (
 	// DiscardedBytes is a metric of the total discarded bytes, by reason.
 	DiscardedBytes = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Namespace: "phlare",
+			Namespace: "pyroscope",
 			Name:      "discarded_bytes_total",
 			Help:      "The total number of bytes that were discarded.",
 		},
@@ -63,7 +63,7 @@ var (
 	// DiscardedProfiles is a metric of the number of discarded profiles, by reason.
 	DiscardedProfiles = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Namespace: "phlare",
+			Namespace: "pyroscope",
 			Name:      "discarded_samples_total",
 			Help:      "The total number of samples that were discarded.",
 		},

@@ -69,7 +69,7 @@ func newFrontendSchedulerWorkers(cfg Config, frontendAddress string, requestsCh 
 		workers:                   map[string]*frontendSchedulerWorker{},
 		schedulerDiscoveryWatcher: services.NewFailureWatcher(),
 		enqueuedRequests: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
-			Name: "phlare_query_frontend_workers_enqueued_requests_total",
+			Name: "pyroscope_query_frontend_workers_enqueued_requests_total",
 			Help: "Total number of requests enqueued by each query frontend worker (regardless of the result), labeled by scheduler address.",
 		}, []string{schedulerAddressLabel}),
 	}

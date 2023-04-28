@@ -125,36 +125,36 @@ func NewScheduler(cfg Config, limits Limits, log log.Logger, registerer promethe
 	}
 
 	s.queueLength = promauto.With(registerer).NewGaugeVec(prometheus.GaugeOpts{
-		Name: "phlare_query_scheduler_queue_length",
+		Name: "pyroscope_query_scheduler_queue_length",
 		Help: "Number of queries in the queue.",
 	}, []string{"tenant"})
 
 	s.cancelledRequests = promauto.With(registerer).NewCounterVec(prometheus.CounterOpts{
-		Name: "phlare_query_scheduler_cancelled_requests_total",
+		Name: "pyroscope_query_scheduler_cancelled_requests_total",
 		Help: "Total number of query requests that were cancelled after enqueuing.",
 	}, []string{"tenant"})
 	s.discardedRequests = promauto.With(registerer).NewCounterVec(prometheus.CounterOpts{
-		Name: "phlare_query_scheduler_discarded_requests_total",
+		Name: "pyroscope_query_scheduler_discarded_requests_total",
 		Help: "Total number of query requests discarded.",
 	}, []string{"tenant"})
 	s.requestQueue = queue.NewRequestQueue(cfg.MaxOutstandingPerTenant, cfg.QuerierForgetDelay, s.queueLength, s.discardedRequests)
 
 	s.queueDuration = promauto.With(registerer).NewHistogram(prometheus.HistogramOpts{
-		Name:    "phlare_query_scheduler_queue_duration_seconds",
+		Name:    "pyroscope_query_scheduler_queue_duration_seconds",
 		Help:    "Time spend by requests in queue before getting picked up by a querier.",
 		Buckets: prometheus.DefBuckets,
 	})
 	s.connectedQuerierClients = promauto.With(registerer).NewGaugeFunc(prometheus.GaugeOpts{
-		Name: "phlare_query_scheduler_connected_querier_clients",
+		Name: "pyroscope_query_scheduler_connected_querier_clients",
 		Help: "Number of querier worker clients currently connected to the query-scheduler.",
 	}, s.requestQueue.GetConnectedQuerierWorkersMetric)
 	s.connectedFrontendClients = promauto.With(registerer).NewGaugeFunc(prometheus.GaugeOpts{
-		Name: "phlare_query_scheduler_connected_frontend_clients",
+		Name: "pyroscope_query_scheduler_connected_frontend_clients",
 		Help: "Number of query-frontend worker clients currently connected to the query-scheduler.",
 	}, s.getConnectedFrontendClientsMetric)
 
 	s.inflightRequests = promauto.With(registerer).NewSummary(prometheus.SummaryOpts{
-		Name:       "phlare_query_scheduler_inflight_requests",
+		Name:       "pyroscope_query_scheduler_inflight_requests",
 		Help:       "Number of inflight requests (either queued or processing) sampled at a regular interval. Quantile buckets keep track of inflight requests over the last 60s.",
 		Objectives: map[float64]float64{0.5: 0.05, 0.75: 0.02, 0.8: 0.02, 0.9: 0.01, 0.95: 0.01, 0.99: 0.001},
 		MaxAge:     time.Minute,

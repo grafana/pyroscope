@@ -151,7 +151,7 @@ type overridesExporterRing struct {
 
 // newRing creates a new overridesExporterRing from the given configuration.
 func newRing(config RingConfig, logger log.Logger, reg prometheus.Registerer) (*overridesExporterRing, error) {
-	reg = prometheus.WrapRegistererWithPrefix("phlare_", reg)
+	reg = prometheus.WrapRegistererWithPrefix("pyroscope_", reg)
 	kvStore, err := kv.NewClient(
 		config.KVStore,
 		ring.GetCodec(),
