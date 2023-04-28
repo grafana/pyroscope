@@ -16,8 +16,8 @@ local utils = import 'mixin-utils/utils.libsonnet';
                                [],
 
                            matchers:: {
-                             querier: [utils.selector.re('job', '($namespace)/querier')],
-                             ingester: [utils.selector.re('job', '($namespace)/ingester')],
+                             querier: [utils.selector.re('job', '($namespace)/(phlare|querier)')],
+                             ingester: [utils.selector.re('job', '($namespace)/(phlare|ingester)')],
                            },
 
                            local selector(matcherId) =

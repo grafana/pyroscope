@@ -167,7 +167,7 @@ define deploy
 		--set phlare.podAnnotations."profiles\.grafana\.com\/memory\.port_name"=http-metrics \
 		--set phlare.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
 		--set phlare.podAnnotations."profiles\.grafana\.com\/goroutine\.port_name"=http-metrics \
-		--set phlare.components.querier.resources=null --set phlare.components.distributor.resources=null --set phlare.components.ingester.resources=null
+		--set phlare.extraEnvVars.JAEGER_AGENT_HOST=jaeger.monitoring.svc.cluster.local.
 endef
 
 .PHONY: docker-image/phlare/build-debug
@@ -342,11 +342,13 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/phlare/build
-	$(call deploy,phlare-dev,--set=phlare.extraEnvVars.JAEGER_AGENT_HOST=jaeger.monitoring.svc.cluster.local.)
+	$(call deploy,phlare-dev,)
+	# Create a service to provide the same endpoint as micro-services
+	echo '{"kind":"Service","apiVersion":"v1","metadata":{"name":"phlare-micro-services-query-frontend"},"spec":{"ports":[{"name":"phlare","port":4100,"targetPort":4100}],"selector":{"app.kubernetes.io/component":"all","app.kubernetes.io/instance":"phlare-dev"},"type":"ClusterIP"}}' | kubectl apply -f -
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/phlare/build
-	$(call deploy,phlare-micro-services,--values=operations/phlare/helm/phlare/values-micro-services.yaml --set=phlare.extraEnvVars.JAEGER_AGENT_HOST=jaeger.monitoring.svc.cluster.local.)
+	$(call deploy,phlare-micro-services,--values=operations/phlare/helm/phlare/values-micro-services.yaml --set phlare.components.querier.resources=null --set phlare.components.distributor.resources=null --set phlare.components.ingester.resources=null)
 
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json
