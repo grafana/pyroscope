@@ -19,8 +19,8 @@ func TestMultipleRegistrationMetrics(t *testing.T) {
 
 	// collect metrics and compare them
 	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-# HELP phlare_head_profiles_created_total Total number of profiles created in the head
-# TYPE phlare_head_profiles_created_total counter
-phlare_head_profiles_created_total{profile_name="test"} 2
-`), "phlare_head_profiles_created_total"))
+# HELP pyroscope_head_profiles_created_total Total number of profiles created in the head
+# TYPE pyroscope_head_profiles_created_total counter
+pyroscope_head_profiles_created_total{profile_name="test"} 2
+`), "pyroscope_head_profiles_created_total"))
 }

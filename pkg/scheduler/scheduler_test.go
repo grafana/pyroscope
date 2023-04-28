@@ -444,19 +444,19 @@ func TestSchedulerMetrics(t *testing.T) {
 	})
 
 	require.NoError(t, promtest.GatherAndCompare(reg, strings.NewReader(`
-		# HELP phlare_query_scheduler_queue_length Number of queries in the queue.
-		# TYPE phlare_query_scheduler_queue_length gauge
-		phlare_query_scheduler_queue_length{tenant="another"} 1
-		phlare_query_scheduler_queue_length{tenant="test"} 1
-	`), "phlare_query_scheduler_queue_length"))
+		# HELP pyroscope_query_scheduler_queue_length Number of queries in the queue.
+		# TYPE pyroscope_query_scheduler_queue_length gauge
+		pyroscope_query_scheduler_queue_length{tenant="another"} 1
+		pyroscope_query_scheduler_queue_length{tenant="test"} 1
+	`), "pyroscope_query_scheduler_queue_length"))
 
 	scheduler.cleanupMetricsForInactiveUser("test")
 
 	require.NoError(t, promtest.GatherAndCompare(reg, strings.NewReader(`
-		# HELP phlare_query_scheduler_queue_length Number of queries in the queue.
-		# TYPE phlare_query_scheduler_queue_length gauge
-		phlare_query_scheduler_queue_length{tenant="another"} 1
-	`), "phlare_query_scheduler_queue_length"))
+		# HELP pyroscope_query_scheduler_queue_length Number of queries in the queue.
+		# TYPE pyroscope_query_scheduler_queue_length gauge
+		pyroscope_query_scheduler_queue_length{tenant="another"} 1
+	`), "pyroscope_query_scheduler_queue_length"))
 }
 
 func initFrontendLoop(t *testing.T, client schedulerpb.SchedulerForFrontendClient, frontendAddr string) schedulerpb.SchedulerForFrontend_FrontendLoopClient {

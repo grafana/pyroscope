@@ -130,7 +130,7 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*PhlareD
 	f.wg.Add(1)
 	go f.loop()
 
-	bucketReader := client.ReaderAtBucket(pathLocal, fs, prometheus.WrapRegistererWithPrefix("phlaredb_", reg))
+	bucketReader := client.ReaderAtBucket(pathLocal, fs, prometheus.WrapRegistererWithPrefix("pyroscopedb_", reg))
 
 	f.blockQuerier = NewBlockQuerier(phlarectx, bucketReader)
 

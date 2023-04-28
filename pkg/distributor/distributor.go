@@ -107,7 +107,7 @@ type Limits interface {
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, limits Limits, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Distributor, error) {
 	clients := promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-		Namespace: "phlare",
+		Namespace: "pyroscope",
 		Name:      "distributor_ingester_clients",
 		Help:      "The current number of ingester clients.",
 	})
@@ -435,7 +435,7 @@ func TokenFor(tenantID, labels string) uint32 {
 
 // newRingAndLifecycler creates a new distributor ring and lifecycler with all required lifecycler delegates
 func newRingAndLifecycler(cfg RingConfig, instanceCount *atomic.Uint32, logger log.Logger, reg prometheus.Registerer) (*ring.Ring, *ring.BasicLifecycler, error) {
-	reg = prometheus.WrapRegistererWithPrefix("phlare_", reg)
+	reg = prometheus.WrapRegistererWithPrefix("pyroscope_", reg)
 	kvStore, err := kv.NewClient(cfg.KVStore, ring.GetCodec(), kv.RegistererWithKVName(reg, "distributor-lifecycler"), logger)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to initialize distributors' KV store")

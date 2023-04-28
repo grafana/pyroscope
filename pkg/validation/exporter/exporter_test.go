@@ -97,39 +97,39 @@ func TestOverridesExporter_withConfig(t *testing.T) {
 		return rs.Instances[0].Tokens
 	})
 	limitsMetrics := `
-# HELP phlare_limits_overrides Resource limit overrides applied to tenants
-# TYPE phlare_limits_overrides gauge
-phlare_limits_overrides{limit_name="ingestion_rate_mb",tenant="tenant-a"} 10
-phlare_limits_overrides{limit_name="ingestion_burst_size_mb",tenant="tenant-a"} 11
-phlare_limits_overrides{limit_name="max_global_series_per_tenant",tenant="tenant-a"} 12
-phlare_limits_overrides{limit_name="max_series_per_tenant",tenant="tenant-a"} 13
-phlare_limits_overrides{limit_name="max_label_name_length",tenant="tenant-a"} 14
-phlare_limits_overrides{limit_name="max_label_value_length",tenant="tenant-a"} 15
-phlare_limits_overrides{limit_name="max_label_names_per_series",tenant="tenant-a"} 16
-phlare_limits_overrides{limit_name="max_query_lookback",tenant="tenant-a"} 17
-phlare_limits_overrides{limit_name="max_query_length",tenant="tenant-a"} 18
-phlare_limits_overrides{limit_name="max_query_parallelism",tenant="tenant-a"} 19
+# HELP pyroscope_limits_overrides Resource limit overrides applied to tenants
+# TYPE pyroscope_limits_overrides gauge
+pyroscope_limits_overrides{limit_name="ingestion_rate_mb",tenant="tenant-a"} 10
+pyroscope_limits_overrides{limit_name="ingestion_burst_size_mb",tenant="tenant-a"} 11
+pyroscope_limits_overrides{limit_name="max_global_series_per_tenant",tenant="tenant-a"} 12
+pyroscope_limits_overrides{limit_name="max_series_per_tenant",tenant="tenant-a"} 13
+pyroscope_limits_overrides{limit_name="max_label_name_length",tenant="tenant-a"} 14
+pyroscope_limits_overrides{limit_name="max_label_value_length",tenant="tenant-a"} 15
+pyroscope_limits_overrides{limit_name="max_label_names_per_series",tenant="tenant-a"} 16
+pyroscope_limits_overrides{limit_name="max_query_lookback",tenant="tenant-a"} 17
+pyroscope_limits_overrides{limit_name="max_query_length",tenant="tenant-a"} 18
+pyroscope_limits_overrides{limit_name="max_query_parallelism",tenant="tenant-a"} 19
 `
 
 	// Make sure each override matches the values from the supplied `Limit`
-	err = testutil.CollectAndCompare(exporter, bytes.NewBufferString(limitsMetrics), "phlare_limits_overrides")
+	err = testutil.CollectAndCompare(exporter, bytes.NewBufferString(limitsMetrics), "pyroscope_limits_overrides")
 	assert.NoError(t, err)
 
 	limitsMetrics = `
-# HELP phlare_limits_defaults Resource limit defaults for tenants without overrides
-# TYPE phlare_limits_defaults gauge
-phlare_limits_defaults{limit_name="ingestion_rate_mb"} 20
-phlare_limits_defaults{limit_name="ingestion_burst_size_mb"} 21
-phlare_limits_defaults{limit_name="max_global_series_per_tenant"} 22
-phlare_limits_defaults{limit_name="max_series_per_tenant"} 23
-phlare_limits_defaults{limit_name="max_label_name_length"} 24
-phlare_limits_defaults{limit_name="max_label_value_length"} 25
-phlare_limits_defaults{limit_name="max_label_names_per_series"} 26
-phlare_limits_defaults{limit_name="max_query_lookback"} 27
-phlare_limits_defaults{limit_name="max_query_length"} 28
-phlare_limits_defaults{limit_name="max_query_parallelism"} 29
+# HELP pyroscope_limits_defaults Resource limit defaults for tenants without overrides
+# TYPE pyroscope_limits_defaults gauge
+pyroscope_limits_defaults{limit_name="ingestion_rate_mb"} 20
+pyroscope_limits_defaults{limit_name="ingestion_burst_size_mb"} 21
+pyroscope_limits_defaults{limit_name="max_global_series_per_tenant"} 22
+pyroscope_limits_defaults{limit_name="max_series_per_tenant"} 23
+pyroscope_limits_defaults{limit_name="max_label_name_length"} 24
+pyroscope_limits_defaults{limit_name="max_label_value_length"} 25
+pyroscope_limits_defaults{limit_name="max_label_names_per_series"} 26
+pyroscope_limits_defaults{limit_name="max_query_lookback"} 27
+pyroscope_limits_defaults{limit_name="max_query_length"} 28
+pyroscope_limits_defaults{limit_name="max_query_parallelism"} 29
 `
-	err = testutil.CollectAndCompare(exporter, bytes.NewBufferString(limitsMetrics), "phlare_limits_defaults")
+	err = testutil.CollectAndCompare(exporter, bytes.NewBufferString(limitsMetrics), "pyroscope_limits_defaults")
 	assert.NoError(t, err)
 }
 
@@ -208,5 +208,5 @@ func TestOverridesExporter_withRing(t *testing.T) {
 }
 
 func hasOverrideMetrics(e1 prometheus.Collector) bool {
-	return testutil.CollectAndCount(e1, "phlare_limits_overrides") > 0
+	return testutil.CollectAndCount(e1, "pyroscope_limits_overrides") > 0
 }

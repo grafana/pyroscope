@@ -34,7 +34,7 @@ import (
 
 // todo: move to non global metrics.
 var clients = promauto.NewGauge(prometheus.GaugeOpts{
-	Namespace: "phlare",
+	Namespace: "pyroscope",
 	Name:      "querier_ingester_clients",
 	Help:      "The current number of ingester clients.",
 })

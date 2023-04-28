@@ -187,30 +187,30 @@ func TestHeadMetrics(t *testing.T) {
 	time.Sleep(time.Second)
 	require.NoError(t, testutil.GatherAndCompare(head.reg,
 		strings.NewReader(`
-# HELP phlare_head_ingested_sample_values_total Number of sample values ingested into the head per profile type.
-# TYPE phlare_head_ingested_sample_values_total counter
-phlare_head_ingested_sample_values_total{profile_name=""} 3
-# HELP phlare_head_profiles_created_total Total number of profiles created in the head
-# TYPE phlare_head_profiles_created_total counter
-phlare_head_profiles_created_total{profile_name=""} 2
-# HELP phlare_head_received_sample_values_total Number of sample values received into the head per profile type.
-# TYPE phlare_head_received_sample_values_total counter
-phlare_head_received_sample_values_total{profile_name=""} 3
+# HELP pyroscope_head_ingested_sample_values_total Number of sample values ingested into the head per profile type.
+# TYPE pyroscope_head_ingested_sample_values_total counter
+pyroscope_head_ingested_sample_values_total{profile_name=""} 3
+# HELP pyroscope_head_profiles_created_total Total number of profiles created in the head
+# TYPE pyroscope_head_profiles_created_total counter
+pyroscope_head_profiles_created_total{profile_name=""} 2
+# HELP pyroscope_head_received_sample_values_total Number of sample values received into the head per profile type.
+# TYPE pyroscope_head_received_sample_values_total counter
+pyroscope_head_received_sample_values_total{profile_name=""} 3
 
-# HELP phlare_head_size_bytes Size of a particular in memory store within the head phlaredb block.
-# TYPE phlare_head_size_bytes gauge
-phlare_head_size_bytes{type="functions"} 240
-phlare_head_size_bytes{type="locations"} 344
-phlare_head_size_bytes{type="mappings"} 192
-phlare_head_size_bytes{type="profiles"} 416
-phlare_head_size_bytes{type="stacktraces"} 104
-phlare_head_size_bytes{type="strings"} 52
+# HELP pyroscope_head_size_bytes Size of a particular in memory store within the head phlaredb block.
+# TYPE pyroscope_head_size_bytes gauge
+pyroscope_head_size_bytes{type="functions"} 240
+pyroscope_head_size_bytes{type="locations"} 344
+pyroscope_head_size_bytes{type="mappings"} 192
+pyroscope_head_size_bytes{type="profiles"} 416
+pyroscope_head_size_bytes{type="stacktraces"} 104
+pyroscope_head_size_bytes{type="strings"} 52
 
 `),
-		"phlare_head_received_sample_values_total",
-		"phlare_head_profiles_created_total",
-		"phlare_head_ingested_sample_values_total",
-		"phlare_head_size_bytes",
+		"pyroscope_head_received_sample_values_total",
+		"pyroscope_head_profiles_created_total",
+		"pyroscope_head_ingested_sample_values_total",
+		"pyroscope_head_size_bytes",
 	))
 }
 
