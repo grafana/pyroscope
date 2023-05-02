@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	opFlagCountStructs = 1 << 0
-	opFlagParseStructs = 1 << 1
-	opFlagParseSamples = 1 << 2
+	opFlagCountStructs           = 1 << 0
+	opFlagParseStructs           = 1 << 1
+	opFlagParseSamples           = 1 << 2
 	opFlagParseSamplesWriteBatch = 1 << 3
 )
 
@@ -24,11 +24,11 @@ func (p *VTStreamingParser) UnmarshalVTProfile(dAtA []byte, opFlag uint64) error
 	strWriteIndex := 0
 	locationWriteIndex := 0
 	functionWriteIndex := 0
-	sampelTypeWriteIndex := 0
-	p.strings = p.strings[:cap(p.strings)]
-	p.locations = p.locations[:cap(p.locations)]
-	p.functions = p.functions[:cap(p.functions)]
-	p.sampleTypes = p.sampleTypes[:cap(p.sampleTypes)]
+	sampleTypeWriteIndex := 0
+	p.strings = p.strings[:p.nStrings]
+	p.locations = p.locations[:p.nLocations]
+	p.functions = p.functions[:p.nFunctions]
+	p.sampleTypes = p.sampleTypes[:p.nSampleTypes]
 	if countStructs {
 		p.period = 0
 		p.nStrings = 0
@@ -96,10 +96,10 @@ func (p *VTStreamingParser) UnmarshalVTProfile(dAtA []byte, opFlag uint64) error
 			}
 			if parseStructs {
 				//p.sampleTypes = append(p.sampleTypes, valueType{})
-				if err := p.sampleTypes[sampelTypeWriteIndex].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				if err := p.sampleTypes[sampleTypeWriteIndex].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
-				sampelTypeWriteIndex++
+				sampleTypeWriteIndex++
 			}
 			iNdEx = postIndex
 		case 2:
