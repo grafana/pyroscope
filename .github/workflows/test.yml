@@ -14,6 +14,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.19.8
+      - name: Format
+        run: make fmt check/unstaged-changes
   test:
     runs-on: ubuntu-latest
     steps:
@@ -25,8 +36,6 @@ jobs:
           go-version: 1.19.9
       - name: Go Mod
         run: make check/go/mod
-      - name: Format
-        run: make fmt check/unstaged-changes
       - name: Test
         run: make go/test
 
