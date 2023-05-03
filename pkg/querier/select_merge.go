@@ -12,6 +12,8 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
+	otlog "github.com/opentracing/opentracing-go/log"
+
 	googlev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
@@ -21,7 +23,6 @@ import (
 	"github.com/grafana/phlare/pkg/pprof"
 	"github.com/grafana/phlare/pkg/util"
 	"github.com/grafana/phlare/pkg/util/loser"
-	otlog "github.com/opentracing/opentracing-go/log"
 )
 
 type ProfileWithLabels struct {
@@ -231,7 +232,7 @@ func (s *mergeIterator[R, Req, Res]) Close() error {
 
 // skipDuplicates iterates through the iterator and skip duplicates.
 func skipDuplicates(ctx context.Context, its []MergeIterator) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "skipDuplicates")
+	span, _ := opentracing.StartSpanFromContext(ctx, "skipDuplicates")
 	defer span.Finish()
 	var errors multierror.MultiError
 	tree := loser.New(its,
