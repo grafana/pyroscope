@@ -24,6 +24,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
 	"github.com/pyroscope-io/pyroscope/pkg/analytics"
+	"github.com/pyroscope-io/pyroscope/pkg/chstore"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
@@ -35,7 +36,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/selfprofiling"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
-	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
+
+	// "github.com/pyroscope-io/pyroscope/pkg/sqlstore"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 )
@@ -58,7 +60,8 @@ type serverService struct {
 	adminServer      *admin.Server
 	discoveryManager *discovery.Manager
 	scrapeManager    *scrape.Manager
-	database         *sqlstore.SQLStore
+	// database         *sqlstore.SQLStore
+	database         *chstore.CHStore
 	remoteWriteQueue []*remotewrite.IngestionQueue
 
 	stopped chan struct{}
@@ -91,12 +94,15 @@ func newServerService(c *config.Server) (*serverService, error) {
 		Path:      c.StoragePath,
 	}
 
-	svc.database, err = sqlstore.Open(c)
+	svc.database, err = chstore.Open(c)
+	// svc.database, err = sqlstore.Open(c)
 	if err != nil {
 		return nil, fmt.Errorf("can't open database %q: %w", c.Database.URL, err)
 	}
 
 	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
+
+	fmt.Println("metadata saver keval")
 
 	var appMetadataSaver storage.ApplicationMetadataSaver = service.NewApplicationMetadataService(svc.database.DB())
 	appMetadataSaver = service.NewApplicationMetadataCacheService(service.ApplicationMetadataCacheServiceConfig{}, appMetadataSaver)
@@ -160,13 +166,20 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 	var ingester ingestion.Ingester
 	if !svc.config.RemoteWrite.Enabled || !svc.config.RemoteWrite.DisableLocalWrites {
+		fmt.Println("if keval")
 		ingester = parser.New(svc.logger, svc.storageQueue, metricsExporter)
 	} else {
+		fmt.Println("else keval")
 		ingester = ingestion.NewNoopIngester()
 	}
 
+	// ingester = ingestion.NewMiddlewareIngester()
+
 	// If remote write is available, let's write to both local storage and to the remote server
 	if svc.config.RemoteWrite.Enabled {
+
+		fmt.Println("\nremote write enabled keval\n")
+
 		err = loadRemoteWriteTargetConfigsFromFile(svc.config)
 		if err != nil {
 			return nil, err
