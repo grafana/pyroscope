@@ -1,5 +1,5 @@
-FROM mcr.microsoft.com/dotnet/sdk:6.0
-# FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine
+FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:6.0
+# FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:6.0-alpine
 
 WORKDIR /dotnet
 
