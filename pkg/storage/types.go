@@ -6,6 +6,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/ClickHouse/clickhouse-go/v2"
+	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/dgraph-io/badger/v2"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
@@ -106,4 +108,118 @@ type BadgerDBWithCache interface {
 	DBInstance() *badger.DB
 	CacheInstance() *cache.Cache
 	Name() string
+}
+
+type ClickHouseDB interface {
+	Exec(query string, args ...interface{}) (interface{}, error)
+	Query(query string, args ...interface{}) (driver.Rows, error)
+	// BeginTx() (*sql.Tx, error)
+	// CommitTx(tx *sql.Tx) error
+	// RollbackTx(tx *sql.Tx) error
+}
+
+type ClickHouseDBWithCache interface {
+	ClickHouseDB
+	// WriteTxn(fn func(db ClickHouseDB) error) error
+	// ReadTxn(fn func(db ClickHouseDB) error) error
+	CacheLayer
+
+	Size() bytesize.ByteSize
+	CacheSize() uint64
+
+	DBInstance() clickhouse.Conn
+	CacheInstance() *cache.Cache
+	Name() string
+}
+
+type chDB struct {
+	Conn clickhouse.Conn
+}
+
+func (d *chDB) Exec(query string, args ...interface{}) (interface{}, error) {
+	ctx := context.Background()
+	return d.Conn.Exec(ctx, query, args...), nil
+}
+
+func (d *chDB) Query(query string, args ...interface{}) (driver.Rows, error) {
+	ctx := context.Background()
+	return d.Conn.Query(ctx, query, args...)
+}
+
+// func (d *chDB) BeginTx() (*sql.Tx, error) {
+// 	return nil, errors.New("BeginTx not implemented for ClickHouse")
+// }
+
+// func (d *chDB) CommitTx(tx *sql.Tx) error {
+// 	return errors.New("CommitTx not implemented for ClickHouse")
+// }
+
+// func (d *chDB) RollbackTx(tx *sql.Tx) error {
+// 	return errors.New("RollbackTx not implemented for ClickHouse")
+// }
+
+// Define a new struct type that embeds the chDB type and implements ClickHouseDBWithCache.
+type chDBWithCache struct {
+	*chDB
+	*cache.Cache
+}
+
+// func (db *chDBWithCache) WriteTxn(fn func(db ClickHouseDB) error) error {
+// 	return fn(db)
+// }
+
+// func (db *chDBWithCache) ReadTxn(fn func(db ClickHouseDB) error) error {
+// 	return db.WriteTxn(fn)
+// }
+
+func (db *chDBWithCache) CacheGet(key string) ([]byte, bool) {
+	if db.Cache == nil {
+		return nil, false
+	}
+	item, err := db.Cache.GetOrCreate(key)
+	if err != nil {
+		return nil, false
+	}
+	data, ok := item.([]byte)
+	return data, ok
+}
+
+func (db *chDBWithCache) CacheSet(key string, value []byte) {
+	if db.Cache == nil {
+		return
+	}
+	db.Cache.Put(key, value)
+}
+
+func (db *chDBWithCache) CacheDelete(key string) {
+	if db.Cache == nil {
+		return
+	}
+	db.Cache.Delete(key)
+}
+
+func (db *chDBWithCache) Size() bytesize.ByteSize {
+	if db.Cache == nil {
+		return 0
+	}
+	return bytesize.ByteSize(8)
+}
+
+func (db *chDBWithCache) CacheSize() uint64 {
+	if db.Cache == nil {
+		return 0
+	}
+	return 9
+}
+
+func (db *chDBWithCache) DBInstance() clickhouse.Conn {
+	return db.Conn
+}
+
+func (db *chDBWithCache) CacheInstance() *cache.Cache {
+	return db.Cache
+}
+
+func (db *chDBWithCache) Name() string {
+	return "ClickhouseDatabaseName"
 }

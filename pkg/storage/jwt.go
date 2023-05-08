@@ -2,61 +2,46 @@ package storage
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
-
-	"github.com/dgraph-io/badger/v2"
 )
 
 const (
-	jwtLenght = 32
+	jwtLength = 32
 	jwtSecret = "jwtSecret"
 )
 
 func (s *Storage) JWT() (string, error) {
-	var secret []byte
-	err := s.main.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(jwtSecret))
-		if err != nil {
-			if err == badger.ErrKeyNotFound {
-				return nil
-			}
-			return err
-		}
-
-		err = item.Value(func(val []byte) error {
-			secret = append([]byte{}, val...)
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	var secret string
+	row, err := s.main.Query("SELECT secret FROM "+jwtSecret+" WHERE id = ?", 1)
 	if err != nil {
 		return "", err
 	}
-
-	if secret == nil {
+	defer row.Close()
+	if row.Next() {
+		if err := row.Scan(&secret); err != nil {
+			return "", err
+		}
+	}
+	if secret == "" {
 		generatedJWT, err := newJWTSecret()
 		if err != nil {
 			return "", err
 		}
-		secret = []byte(generatedJWT)
-		err = s.main.Update(func(txn *badger.Txn) error {
-			return txn.SetEntry(badger.NewEntry([]byte(jwtSecret), secret))
-		})
+		secret = generatedJWT
+		query := fmt.Sprintf("INSERT INTO %s (id, secret) VALUES (?, ?)", jwtSecret)
+		_, err = s.main.Exec(query, 1, secret)
 		if err != nil {
 			return "", err
 		}
 	}
-
-	return string(secret), nil
+	return secret, nil
 }
 
 func newJWTSecret() (string, error) {
 	const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-"
-	ret := make([]byte, jwtLenght)
-	for i := 0; i < jwtLenght; i++ {
+	ret := make([]byte, jwtLength)
+	for i := 0; i < jwtLength; i++ {
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
 		if err != nil {
 			return "", err

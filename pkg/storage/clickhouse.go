@@ -97,14 +97,14 @@ package storage
 // 	gcCount prometheus.Counter
 // }
 
-// type ClickhouseDBWithCache interface {
+// type ClickHouseDBWithCache interface {
 // 	DB() *clickhouse.Conn
 // 	Cache() *cache.Cache
 // 	Name() string
 // 	Close() error
 // }
 
-// func (s *Storage) newClickHouse(name string, p Prefix, codec cache.Codec) (ClickhouseDBWithCache, error) {
+// func (s *Storage) newClickHouse(name string, p Prefix, codec cache.Codec) (ClickHouseDBWithCache, error) {
 // 	var d *db
 // 	var err error
 // 	logger := logrus.New()

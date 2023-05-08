@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dgraph-io/badger/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
@@ -36,8 +35,8 @@ type exemplars struct {
 	logger  *logrus.Logger
 	config  *Config
 	metrics *metrics
-	db      BadgerDBWithCache
-	dicts   BadgerDBWithCache
+	db      ClickHouseDBWithCache
+	dicts   ClickHouseDBWithCache
 
 	once         sync.Once
 	mu           sync.Mutex
@@ -55,7 +54,7 @@ type exemplarsBatch struct {
 	entries   map[string]*exemplarEntry
 	config    *Config
 	metrics   *metrics
-	dicts     BadgerDBWithCache
+	dicts     ClickHouseDBWithCache
 }
 
 type exemplarEntry struct {
@@ -103,7 +102,7 @@ func (e *exemplars) newExemplarsBatch() *exemplarsBatch {
 	}
 }
 
-func (s *Storage) initExemplarsStorage(db BadgerDBWithCache) {
+func (s *Storage) initExemplarsStorage(db ClickHouseDBWithCache) {
 	e := exemplars{
 		logger:  s.logger,
 		config:  s.config,
@@ -258,17 +257,11 @@ func (e *exemplars) flush(b *exemplarsBatch) {
 		return
 	}
 	e.logger.Debug("flushing completed batch")
-	err := e.db.Update(func(txn *badger.Txn) error {
-		for _, entry := range b.entries {
-			if err := b.writeExemplarToDB(txn, entry); err != nil {
-				return err
-			}
+	for _, entry := range b.entries {
+		if err := b.writeExemplarToDB(e.db, entry); err != nil {
+			e.logger.WithError(err).Error("failed to write exemplars batch")
+			return
 		}
-		return nil
-	})
-
-	if err != nil {
-		e.logger.WithError(err).Error("failed to write exemplars batch")
 	}
 }
 
@@ -292,39 +285,47 @@ func (e *exemplars) fetch(ctx context.Context, appName string, profileIDs []stri
 		return nil
 	}
 	dx := d.(*dict.Dict)
-	return e.db.View(func(txn *badger.Txn) error {
-		for _, profileID := range profileIDs {
-			if err := ctx.Err(); err != nil {
+
+	for _, profileID := range profileIDs {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		k := exemplarKey(appName, profileID)
+
+		// Query for the exemplar entry using the key
+		rows, err := e.db.Query("SELECT data FROM exemplars WHERE key = ?", k)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		// Read the rows and deserialize the exemplar entry
+		for rows.Next() {
+			var val []byte
+			if err := rows.Scan(&val); err != nil {
 				return err
 			}
-			k := exemplarKey(appName, profileID)
-			item, err := txn.Get(k)
-			switch {
-			default:
+			e.metrics.exemplarsReadBytes.Observe(float64(len(val)))
+
+			var x exemplarEntry
+			if err := x.Deserialize(dx, val); err != nil {
 				return err
-			case errors.Is(err, badger.ErrKeyNotFound):
-			case err == nil:
-				// TODO(kolesnikovae): Optimize:
-				//   It makes sense to lookup the dictionary keys only after all
-				//   exemplars fetched and merged.
-				err = item.Value(func(val []byte) error {
-					e.metrics.exemplarsReadBytes.Observe(float64(len(val)))
-					var x exemplarEntry
-					if err = x.Deserialize(dx, val); err != nil {
-						return err
-					}
-					x.Key = k
-					x.AppName = appName
-					x.ProfileID = profileID
-					return fn(x)
-				})
-				if err != nil {
-					return err
-				}
+			}
+			x.Key = k
+			x.AppName = appName
+			x.ProfileID = profileID
+
+			if err := fn(x); err != nil {
+				return err
 			}
 		}
-		return nil
-	})
+
+		if err := rows.Err(); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (e *exemplars) truncateBefore(ctx context.Context, before time.Time) (err error) {
@@ -347,50 +348,12 @@ func (e *exemplars) truncateBefore(ctx context.Context, before time.Time) (err e
 
 func (e *exemplars) truncateN(before time.Time, count int) (bool, error) {
 	beforeTs := before.UnixNano()
-	keys := make([][]byte, 0, 2*count)
-	err := e.db.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.IteratorOptions{
-			Prefix: exemplarTimestampPrefix.bytes(),
-		})
-		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
-			if len(keys) == cap(keys) {
-				return nil
-			}
-			item := it.Item()
-			keyTs, exKey, ok := parseExemplarTimestamp(item.Key())
-			if !ok {
-				continue
-			}
-			if keyTs > beforeTs {
-				break
-			}
-			keys = append(keys, item.KeyCopy(nil))
-			keys = append(keys, exKey)
-		}
-		return nil
-	})
-
+	query := fmt.Sprintf("ALTER TABLE exemplars DELETE WHERE timestamp <= %d LIMIT %d", beforeTs, count)
+	_, err := e.db.Exec(query)
 	if err != nil {
 		return false, err
 	}
-	if len(keys) == 0 {
-		return false, nil
-	}
-
-	batch := e.db.NewWriteBatch()
-	defer batch.Cancel()
-	for i := range keys {
-		if err = batch.Delete(keys[i]); err != nil {
-			return false, err
-		}
-	}
-
-	if err = batch.Flush(); err == nil {
-		e.metrics.exemplarsRemovedTotal.Add(float64(len(keys) / 2))
-	}
-
-	return true, err
+	return true, nil
 }
 
 func (s *Storage) ensureAppSegmentExists(in *PutInput) error {
@@ -440,12 +403,12 @@ func (b *exemplarsBatch) insert(_ context.Context, input *PutInput) error {
 	return nil
 }
 
-func (b *exemplarsBatch) writeExemplarToDB(txn *badger.Txn, e *exemplarEntry) error {
+func (b *exemplarsBatch) writeExemplarToDB(db ClickHouseDB, e *exemplarEntry) error {
 	k, ok := exemplarKeyToTimestampKey(e.Key, e.EndTime)
 	if !ok {
 		return fmt.Errorf("invalid exemplar key")
 	}
-	if err := txn.Set(k, nil); err != nil {
+	if _, err := db.Exec("INSERT INTO exemplars (timestamp, key) VALUES (?, ?)", k, e.Key); err != nil {
 		return err
 	}
 	d, err := b.dicts.GetOrCreate(e.AppName)
@@ -454,36 +417,31 @@ func (b *exemplarsBatch) writeExemplarToDB(txn *badger.Txn, e *exemplarEntry) er
 	}
 	dx := d.(*dict.Dict)
 
-	item, err := txn.Get(e.Key)
-	switch {
-	default:
+	rows, err := db.Query("SELECT value FROM exemplars WHERE key = ?", e.Key)
+	if err != nil {
 		return err
-	case errors.Is(err, badger.ErrKeyNotFound):
-		// Fast path: there is no exemplar with this key in the database.
-	case err == nil:
-		// Merge with the found exemplar using the buffer provided.
-		// Ideally, we should also drop existing timestamp key and create a new one,
-		// so that the exemplar wouldn't be deleted before its actual EndTime passes
-		// the retention policy threshold. The time difference is negligible, therefore
-		// it's not happening: only the first EndTime is honored.
-		err = item.Value(func(val []byte) error {
-			b.metrics.exemplarsReadBytes.Observe(float64(len(val)))
-			var x exemplarEntry
-			if err = x.Deserialize(dx, val); err == nil {
-				e = x.Merge(e)
-			}
-			return err
-		})
-		if err != nil {
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		var val []byte
+		if err := rows.Scan(&val); err != nil {
 			return err
 		}
+		b.metrics.exemplarsReadBytes.Observe(float64(len(val)))
+		var x exemplarEntry
+		if err = x.Deserialize(dx, val); err == nil {
+			e = x.Merge(e)
+		}
+	} else {
+		// b.metrics.exemplarsReadMisses.Inc()
 	}
 
 	r, err := e.Serialize(dx, b.config.maxNodesSerialization)
 	if err != nil {
 		return err
 	}
-	if err = txn.Set(e.Key, r); err != nil {
+	if _, err = db.Exec("INSERT INTO exemplars (key, value) VALUES (?, ?)", e.Key, r); err != nil {
 		return err
 	}
 	b.metrics.exemplarsWriteBytes.Observe(float64(len(r)))

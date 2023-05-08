@@ -1,11 +1,13 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime/debug"
 
+	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
 	"github.com/prometheus/client_golang/prometheus"
@@ -44,6 +46,57 @@ func (p Prefix) trim(k []byte) ([]byte, bool) {
 		return k[len(p):], true
 	}
 	return nil, false
+}
+
+func (s *Storage) newClickhouse(name string, p Prefix, codec cache.Codec) (ClickHouseDBWithCache, error) {
+
+	ctx := context.Background()
+
+	// var d *ClickHouseDB
+	var err error
+	logger := logrus.New()
+	logger.SetLevel(logrus.DebugLevel)
+
+	// dsn := fmt.Sprintf("clickhouse://clickhouse:clickhouse@localhost:9000/default")
+
+	db, err := clickhouse.Open(&clickhouse.Options{
+		Addr: []string{"127.0.0.1:9000"},
+		Auth: clickhouse.Auth{
+			Database: "default",
+			Username: "clickhouse",
+			Password: "clickhouse",
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err := db.Ping(ctx); err != nil {
+		return nil, err
+	}
+
+	// Define a new struct type that embeds *sql.DB and implements ClickHouseDB.
+	d := &chDBWithCache{
+		chDB: &chDB{
+			Conn: db,
+		},
+	}
+
+	if codec != nil {
+		d.Cache = cache.New(cache.Config{
+			ClickConn: db,
+			Metrics:   s.metrics.createCacheMetrics(name),
+			TTL:       s.cacheTTL,
+			Prefix:    p.String(),
+			Codec:     codec,
+		})
+	}
+
+	// s.maintenanceTask(s.clickhouseGCTaskInterval, func() {
+	// 	// TODO: Implement garbage collection for ClickHouse cache.
+	// })
+
+	return d, nil
 }
 
 func (s *Storage) newBadger(name string, p Prefix, codec cache.Codec) (BadgerDBWithCache, error) {
@@ -172,9 +225,10 @@ func (d *db) runGC(discardRatio float64) (reclaimed bool) {
 }
 
 // TODO(kolesnikovae): filepath.Walk is notoriously slow.
-//  Consider use of https://github.com/karrick/godirwalk.
-//  Although, every badger.DB calculates its size (reported
-//  via Size) in the same way every minute.
+//
+//	Consider use of https://github.com/karrick/godirwalk.
+//	Although, every badger.DB calculates its size (reported
+//	via Size) in the same way every minute.
 func calculateDBSize(path string) bytesize.ByteSize {
 	var size int64
 	_ = filepath.Walk(path, func(path string, info os.FileInfo, err error) error {

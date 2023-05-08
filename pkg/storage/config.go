@@ -26,7 +26,8 @@ type Config struct {
 	exemplarsBatchQueueSize int
 	exemplarsBatchDuration  time.Duration
 
-	NewBadger func(name string, p Prefix, codec cache.Codec) (BadgerDBWithCache, error)
+	NewBadger     func(name string, p Prefix, codec cache.Codec) (BadgerDBWithCache, error)
+	NewClickhouse func(name string, p Prefix, codec cache.Codec) (ClickHouseDBWithCache, error)
 }
 
 // NewConfig returns a new storage config from a server config

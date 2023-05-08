@@ -3,9 +3,9 @@ package storage
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
-	"github.com/dgraph-io/badger/v2"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
@@ -76,42 +76,27 @@ func (s *Storage) deleteSegmentData(ctx context.Context, k *segment.Key, rp *seg
 	}
 
 	var removed int
-	batch := s.trees.NewWriteBatch()
 	defer func() {
-		batch.Cancel()
+		if removed > 0 {
+			sk := k.SegmentKey()
+			query := fmt.Sprintf("ALTER TABLE segment DROP PARTITION IF EXISTS %s", sk)
+			_, err := s.trees.Exec(query)
+			if err != nil {
+				// log.Errorf("error dropping segment partition %s: %v", sk, err)
+			}
+		}
 	}()
 
 	for _, n := range nodes {
 		treeKey := segment.TreeKey(sk, n.depth, n.time)
 		s.trees.Discard(treeKey)
-		switch err = batch.Delete(treePrefix.key(treeKey)); {
-		case err == nil:
-		case errors.Is(err, badger.ErrKeyNotFound):
-			continue
-		default:
-			return err
-		}
-		// It is not possible to make size estimation without reading
-		// the item. Therefore, the call does not report reclaimed space.
-		if removed++; removed%defaultBatchSize == 0 {
-			if err = batch.Flush(); err != nil {
-				return err
-			}
-			select {
-			default:
-				batch = s.trees.NewWriteBatch()
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-		}
-	}
 
-	// Flush remaining items, if any: it's important to make sure
-	// all trees were removed before deleting segment nodes - see
-	// note on a potential inconsistency above.
-	if removed%defaultBatchSize != 0 {
-		if err = batch.Flush(); err != nil {
-			return err
+		if removed++; removed%defaultBatchSize == 0 {
+			query := fmt.Sprintf("ALTER TABLE segment DROP PARTITION IF EXISTS %s", sk)
+			_, err = s.trees.Exec(query)
+			if err != nil {
+				// log.Errorf("error dropping segment partition %s: %v", sk, err)
+			}
 		}
 	}
 
@@ -127,12 +112,8 @@ func (s *Storage) deleteSegmentData(ctx context.Context, k *segment.Key, rp *seg
 // eventually, there is no way to juxtapose the actual occupied disk size
 // and the number of items to remove based on their estimated size.
 func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int64) error {
-	batchSize := s.trees.MaxBatchCount()
-	batch := s.trees.NewWriteBatch()
-	defer func() {
-		batch.Cancel()
-	}()
-
+	var myInt64 int64 = 10000
+	batchSize := myInt64
 	var (
 		removed   int64
 		reclaimed int64
@@ -141,66 +122,55 @@ func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int64) error {
 
 	// Keep track of the most recent removed tree time per every segment level.
 	rp := &segment.RetentionPolicy{Levels: make(map[int]time.Time)}
-	err = s.trees.View(func(txn *badger.Txn) error {
-		// Lower-level trees come first because of the lexicographical order:
-		// from the very first tree to the most recent one, from the lowest
-		// level (with highest resolution) to the highest.
-		it := txn.NewIterator(badger.IteratorOptions{
-			// We count all version so that our estimation is more precise
-			// but slightly higher than the actual size in practice,
-			// meaning that we delete less data (and reclaim less space);
-			// otherwise there is a chance to remove more trees than needed.
-			AllVersions: true,
-			// The prefix matches all trees in the segment.
-			Prefix: treePrefix.key(k.SegmentKey()),
-		})
-		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
-			if size-reclaimed <= 0 {
-				return nil
-			}
 
-			item := it.Item()
-			if tk, ok := treePrefix.trim(item.Key()); ok {
-				treeKey := string(tk)
-				s.trees.Discard(treeKey)
-				// Update the time boundary for the segment level.
-				t, level, err := segment.ParseTreeKey(treeKey)
-				if err == nil {
-					if t.After(rp.Levels[level]) {
-						rp.Levels[level] = t
-					}
-				}
-			}
-
-			// A key copy must be taken. The slice is reused
-			// by iterator but is also used in the batch.
-			switch err = batch.Delete(item.KeyCopy(nil)); {
-			case err == nil:
-			case errors.Is(err, badger.ErrKeyNotFound):
-				continue
-			default:
-				return err
-			}
-
-			reclaimed += item.EstimatedSize()
-			if removed++; removed%batchSize == 0 {
-				if batch, err = s.flushTreeBatch(batch); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	})
+	// Lower-level trees come first because of the lexicographical order:
+	// from the very first tree to the most recent one, from the lowest
+	// level (with highest resolution) to the highest.
+	rows, err := s.main.Query("SELECT * FROM trees WHERE segment_key = ? ORDER BY tree_key", k.SegmentKey())
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 
-	// Flush remaining items, if any: it's important to make sure
-	// all trees were removed before deleting segment nodes - see
-	// note on a potential inconsistency above.
+	for rows.Next() {
+		if size-reclaimed <= 0 {
+			break
+		}
+
+		var (
+			treeKey     string
+			treeEstSize int64
+		)
+		err = rows.Scan(&treeKey, &treeEstSize)
+		if err != nil {
+			return err
+		}
+		s.trees.Discard(treeKey)
+		// Update the time boundary for the segment level.
+		t, level, err := segment.ParseTreeKey(treeKey)
+		if err == nil {
+			if t.After(rp.Levels[level]) {
+				rp.Levels[level] = t
+			}
+		}
+
+		_, err = s.main.Exec("DELETE FROM trees WHERE tree_key = ?", treeKey)
+		if err != nil {
+			return err
+		}
+
+		reclaimed += treeEstSize
+		if removed++; removed%batchSize == 0 {
+			// Commit the current batch.
+			if _, err = s.main.Exec("COMMIT"); err != nil {
+				return err
+			}
+		}
+	}
+
 	if removed%batchSize != 0 {
-		if err = batch.Flush(); err != nil {
+		// Commit any remaining batch.
+		if _, err = s.main.Exec("COMMIT"); err != nil {
 			return err
 		}
 	}
@@ -220,17 +190,17 @@ func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int64) error {
 // the batch unchanged in case of an error so that it can be safely cancelled.
 //
 // If the storage was requested to close, errClosed will be returned.
-func (s *Storage) flushTreeBatch(batch *badger.WriteBatch) (*badger.WriteBatch, error) {
-	if err := batch.Flush(); err != nil {
-		return batch, err
-	}
-	select {
-	case <-s.stop:
-		return batch, errClosed
-	default:
-		return s.trees.NewWriteBatch(), nil
-	}
-}
+// func (s *Storage) flushTreeBatch(batch *sql.Tx) (*sql.Tx, error) {
+// 	if err := batch.Commit(); err != nil {
+// 		return batch, err
+// 	}
+// 	select {
+// 	case <-s.stop:
+// 		return batch, errClosed
+// 	default:
+// 		return s.main, nil
+// 	}
+// }
 
 func (s *Storage) iterateOverAllSegments(cb func(*segment.Key) error) error {
 	nameKey := "__name__"

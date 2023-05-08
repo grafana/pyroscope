@@ -20,7 +20,7 @@ func (s *Storage) DebugExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	n := mux.Vars(r)["db"]
-	var d BadgerDBWithCache
+	var d ClickHouseDBWithCache
 	switch n {
 	case "segments":
 		d = s.segments
@@ -44,16 +44,22 @@ func (s *Storage) DebugExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	err := d.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(k[0]))
-		if err != nil {
-			return err
-		}
-		return item.Value(func(v []byte) error {
-			_, err = io.Copy(w, bytes.NewBuffer(v))
-			return err
-		})
-	})
+	query := "SELECT value FROM debug_info WHERE key = ?"
+	row, err := d.Query(query, k[0])
+	if err != nil {
+		return
+	}
+	defer row.Close()
+	if !row.Next() {
+		return
+	}
+	var value []byte
+	if err := row.Scan(&value); err != nil {
+		return
+	}
+	if _, err := io.Copy(w, bytes.NewBuffer(value)); err != nil {
+		return
+	}
 
 	switch {
 	case err == nil:
