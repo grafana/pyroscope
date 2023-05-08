@@ -146,7 +146,10 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.
 		sp.Finish()
 	}()
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
-		res, err := ic.LabelValues(childCtx, req)
+		res, err := ic.LabelValues(childCtx, connect.NewRequest(&typesv1.LabelValuesRequest{
+			Name:     req.Msg.Name,
+			Matchers: req.Msg.Matchers,
+		}))
 		if err != nil {
 			return nil, err
 		}
@@ -165,7 +168,9 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames")
 	defer sp.Finish()
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
-		res, err := ic.LabelNames(childCtx, req)
+		res, err := ic.LabelNames(childCtx, connect.NewRequest(&typesv1.LabelNamesRequest{
+			Matchers: req.Msg.Matchers,
+		}))
 		if err != nil {
 			return nil, err
 		}
