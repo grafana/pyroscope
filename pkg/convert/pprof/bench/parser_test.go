@@ -33,12 +33,12 @@ import (
 	"time"
 )
 
-const benchmarkCorps = "../../../../../pprof-testdata"
+const benchmarkCorpus = "../../../../../pprof-testdata"
 const compareCorpus = "../../../../../pprof-testdata"
 
-const pprofSmall = benchmarkCorps +
+const pprofSmall = benchmarkCorpus +
 	"/2022-10-08T00:44:10Z-55903298-d296-4730-a28d-9dcc7c5e25d6.txt"
-const pprofBig = benchmarkCorps +
+const pprofBig = benchmarkCorpus +
 	"/2022-10-08T00:07:00Z-911c824f-a086-430c-99d7-315a53b58095.txt"
 
 // GOEXPERIMENT=arenas go test -v -test.count=10 -test.run=none -bench=".*Streaming.*"  ./pkg/convert/pprof/bench
@@ -224,7 +224,7 @@ func BenchmarkBigUnmarshal(b *testing.B) {
 }
 
 func BenchmarkCorpus(b *testing.B) {
-	corpus := readCorpus(benchmarkCorps, benchWithoutGzip)
+	corpus := readCorpus(benchmarkCorpus, benchWithoutGzip)
 	n := benchmarkCorpusSize
 	for _, testType := range streamingTestTypes {
 		for i := 0; i < n; i++ {
@@ -235,6 +235,34 @@ func BenchmarkCorpus(b *testing.B) {
 					benchmarkStreamingOne(b, t, testType)
 				})
 		}
+	}
+}
+
+func TestBugReusingSlices(t *testing.T) {
+	profiles := readCorpus(benchmarkCorpus+"/bugs/bug1_slice_reuse", false)
+	if len(profiles) == 0 {
+		t.Skip()
+		return
+	}
+	for _, p := range profiles {
+		parse(t, p, streamingTestType{pool: true, arenas: false})
+	}
+}
+
+func parse(t *testing.T, c *testcase, typ streamingTestType) {
+	mock := &MockPutter{keep: true}
+	key, _ := segment.ParseKey("foo.bar")
+	p := pprof.RawProfile{
+		Profile:             c.profile,
+		PreviousProfile:     c.prev,
+		SampleTypeConfig:    c.config,
+		StreamingParser:     true,
+		PoolStreamingParser: typ.pool,
+		ArenasEnabled:       typ.arenas,
+	}
+	err := p.Parse(context.TODO(), mock, nil, ingestion.Metadata{Key: key, SpyName: c.spyname})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
