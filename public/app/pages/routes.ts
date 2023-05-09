@@ -1,5 +1,5 @@
 export enum ROUTES {
-  CONTINOUS_SINGLE_VIEW = '/',
+  SINGLE_VIEW = '/',
   COMPARISON_VIEW = '/comparison',
   COMPARISON_DIFF_VIEW = '/comparison-diff',
 }
