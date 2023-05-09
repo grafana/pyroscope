@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './jquery-import';
 import { Provider } from 'react-redux';
-import store, { persistor } from './redux/store';
+import store from './redux/store';
 import '@webapp/../sass/profile.scss';
 import '@szhsin/react-menu/dist/index.css';
 import Notifications from '@webapp/ui/Notifications';
@@ -31,7 +31,7 @@ function App() {
         <div className="pyroscope-app">
           <LoadAppNames>
             <Switch>
-              <Route exact path={ROUTES.CONTINOUS_SINGLE_VIEW}>
+              <Route exact path={ROUTES.SINGLE_VIEW}>
                 <SingleView />
               </Route>
               <Route path={ROUTES.COMPARISON_VIEW}>
