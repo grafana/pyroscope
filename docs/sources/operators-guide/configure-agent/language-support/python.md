@@ -1,131 +1,88 @@
 ---
 title: "Python"
 menuTitle: "Python"
-description: "Instrumenting Pyhton applications for continuous profiling"
-weight: 50
+description: "Instrumenting Python applications for continuous profiling"
+weight: 30
 ---
 
 # Python
 
-The Python module [pypprof] adds HTTP-based endpoints similar like Go's [`net/http/pprof`] for collecting profiles from a Python application.
+## How to add Python profiling to your application
 
-Under the hood, it uses [zprofile] and [mprofile] to collect CPU and heap profiles with minimal overhead.
+Install `pyroscope-io` pip package:
 
-[`net/http/pprof`]: https://golang.org/pkg/net/http/pprof/
-[pypprof]: https://github.com/timpalpant/pypprof
-[zprofile]: https://github.com/timpalpant/zprofile
-[mprofile]: https://github.com/timpalpant/mprofile
-
-## How to instrument your application
-
-First of all required Python modules need to be installed:
-
-```shell
-# Add the modules to the requirements.txt file
-cat >> requirements.txt <<EOF
-mprofile==0.0.14
-protobuf==3.20.3
-pypprof==0.0.1
-six==1.16.0
-zprofile==1.0.12
-EOF
-
-# Build the module's wheels locally
-pip3 wheel --wheel-dir=/tmp/wheels -r requirements.txt
-
-# Install the modules
-pip3 install --no-index --find-links=/tmp/wheels -r requirements.txt
+```bash
+pip install pyroscope-io
 ```
 
-Now the initialization code of your application should be invoking the web server exposing the profiling data:
+## Pyroscope Python pip package configuration
+
+Add the following code to your application. This code will initialize pyroscope profiler and start profiling:
 
 ```python
-# import continuous profiling modules
-from pypprof.net_http import start_pprof_server
-import mprofile
+import pyroscope
 
-# start memory profiling
-mprofile.start(sample_rate=128 * 1024)
-
-# enable pprof http server
-start_pprof_server(host='0.0.0.0', port=8081)
+pyroscope.configure(
+  application_name = "my.python.app", # replace this with some name for your application
+  server_address   = "http://my-pyroscope-server:4040", # replace this with the address of your pyroscope server
+)
 ```
 
-To test the handlers you can use the [pprof] tool:
-
-```shell
-# Profile the current heap memory usage
-pprof -http :6060 "http://127.0.0.1:8081/debug/pprof/heap"
-
-# Profile the cpu for 5 seconds
-pprof -http :6060 "http://127.0.0.1:8081/debug/pprof/profile?seconds=5"
-```
-
-[pprof]: https://github.com/google/pprof
-
-## How to instrument a Django application
-
-You can use [django-pypprof], a wrapper around pypprof to add the endpoints to
-your Django applications. The following instructions are provided as information,
-refer to django-pypprof's documentation for up-to-date instructions.
-
-[django-pypprof]: https://gitlab.com/prologin/tech/packages/django-pypprof
-
-First, install the required Python modules:
-
-```shell
-# Add the modules to the requirements.txt file
-cat >> requirements.txt <<EOF
---extra-index-url=https://gitlab.com/api/v4/groups/prologin/-/packages/pypi/simple
-django-pypprof==1.0.0
-EOF
-
-# Build the module's wheels locally
-pip3 wheel --wheel-dir=/tmp/wheels -r requirements.txt
-
-# Install the modules
-pip3 install --no-index --find-links=/tmp/wheels -r requirements.txt
-```
-
-In your Django settings, add `django_pypprof` to your `INSTALLED_APPS`:
+Optionally, you can configure several additional parameters:
 
 ```python
-INSTALLED_APPS = [
-    ...
-    'django_pypprof',
-    ...
-]
+import pyroscope
+
+pyroscope.configure(
+  application_name    = "my.python.app", # replace this with some name for your application
+  server_address      = "http://my-pyroscope-server:4040", # replace this with the address of your pyroscope server
+  auth_token          = "{YOUR_API_KEY}", # optional, if authentication is enabled, specify the API key
+  sample_rate         = 100, # default is 100
+  detect_subprocesses = False, # detect subprocesses started by the main process; default is False
+  oncpu               = True, # report cpu time only; default is True
+  native              = False, # profile native extensions; default is False
+  gil_only            = True, # only include traces for threads that are holding on to the Global Interpreter Lock; default is True
+  log_level           = "info", # default is info, possible values: trace, debug, info, warn, error and critical 
+  tags           = {
+    "region":   '{os.getenv("REGION")}',
+  }
+)
 ```
 
-Add the endpoints to your `urls.py`:
+## How to add profiling labels to Python applications
+
+You can add tags to certain parts of your code:
 
 ```python
-urlpatterns = [
-    ...
-    path('debug/pprof/', include('django_pypprof.urls')),
-    ...
-]
+# You can use a wrapper:
+with pyroscope.tag_wrapper({ "controller": "slow_controller_i_want_to_profile" }):
+  slow_code()
 ```
 
-### Configuration of django-pypprof
+## Sending data to Phlare with Pyroscope Python integration
 
-You can configure the sample rate of `mprofile` by adding the following setting:
+Starting with [weekly-f8](https://hub.docker.com/r/grafana/phlare/tags) you can ingest pyroscope profiles directly to phlare.
 
 ```python
-PPROF_SAMPLE_RATE = 128 * 1024 # the default
+import pyroscope
+
+pyroscope.configure(
+	application_name = "phlare.python.app",
+	server_address = "<URL>",
+	basic_auth_username='<User>',
+	basic_auth_password='<Password>',
+	scope_org_id="<TenantID>",
+)
 ```
 
-### Configuration of scrape targets
+To configure Python integration to send data to Phlare, replace the `<URL>` placeholder with the appropriate server URL. This could be the grafana.com Phlare URL or your own custom Phlare server URL.
 
-Use the following profiling configuration when configuring a Django scrape target:
+If you need to send data to grafana.com, you'll have to configure HTTP Basic authentication. Replace `<User>` with your grafana.com stack user and `<Password>` with your grafana.com API key.
 
-```yaml
-profiling_config:
-  pprof_config:
-    block:
-      enabled: false
-    mutex:
-      enabled: false
-    memory:
-      path: /debug/pprof/heap
-```
+If your Phlare server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Phlare tenant ID.
+
+## Python profiling examples
+
+Check out the following resources to learn more about Python profiling:
+- [Python examples](https://github.com/pyroscope-io/pyroscope/tree/main/examples/python)
+- [Python demo](https://demo.pyroscope.io/?query=rideshare-app-python.cpu%7B%7D) showing Python example with tags
