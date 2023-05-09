@@ -64,7 +64,7 @@ func Test_QuerySampleType(t *testing.T) {
 				}), nil)
 		}
 		return q, nil
-	}, log.NewLogfmtLogger(os.Stdout))
+	}, nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	out, err := querier.ProfileTypes(context.Background(), connect.NewRequest(&querierv1.ProfileTypesRequest{}))
@@ -95,7 +95,7 @@ func Test_QueryLabelValues(t *testing.T) {
 			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelValuesResponse{Names: []string{"buzz", "foo"}}), nil)
 		}
 		return q, nil
-	}, log.NewLogfmtLogger(os.Stdout))
+	}, nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	out, err := querier.LabelValues(context.Background(), req)
@@ -122,7 +122,7 @@ func Test_QueryLabelNames(t *testing.T) {
 			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"buzz", "foo"}}), nil)
 		}
 		return q, nil
-	}, log.NewLogfmtLogger(os.Stdout))
+	}, nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	out, err := querier.LabelNames(context.Background(), req)
@@ -155,7 +155,7 @@ func Test_Series(t *testing.T) {
 			q.On("Series", mock.Anything, mock.Anything).Return(ingesterReponse, nil)
 		}
 		return q, nil
-	}, log.NewLogfmtLogger(os.Stdout))
+	}, nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	out, err := querier.Series(context.Background(), req)
@@ -241,7 +241,7 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 			q.On("MergeProfilesStacktraces", mock.Anything).Once().Return(bidi3)
 		}
 		return q, nil
-	}, log.NewLogfmtLogger(os.Stdout))
+	}, nil, log.NewLogfmtLogger(os.Stdout))
 	require.NoError(t, err)
 	flame, err := querier.SelectMergeStacktraces(context.Background(), req)
 	require.NoError(t, err)
@@ -346,7 +346,7 @@ func Test_SelectMergeProfile(t *testing.T) {
 			q.On("MergeProfilesPprof", mock.Anything).Once().Return(bidi3)
 		}
 		return q, nil
-	}, log.NewLogfmtLogger(os.Stdout))
+	}, nil, log.NewLogfmtLogger(os.Stdout))
 	require.NoError(t, err)
 	res, err := querier.SelectMergeProfile(context.Background(), req)
 	require.NoError(t, err)
@@ -460,7 +460,7 @@ func TestSelectSeries(t *testing.T) {
 			q.On("MergeProfilesLabels", mock.Anything).Once().Return(bidi3)
 		}
 		return q, nil
-	}, log.NewLogfmtLogger(os.Stdout))
+	}, nil, log.NewLogfmtLogger(os.Stdout))
 	require.NoError(t, err)
 	res, err := querier.SelectSeries(context.Background(), req)
 	require.NoError(t, err)

@@ -180,7 +180,7 @@ func (f *Phlare) setupWorkerTimeout() {
 }
 
 func (f *Phlare) initQuerier() (services.Service, error) {
-	querierSvc, err := querier.New(f.Cfg.Querier, f.ring, nil, log.With(f.logger, "component", "querier"), f.auth)
+	querierSvc, err := querier.New(f.Cfg.Querier, f.ring, nil, f.reg, log.With(f.logger, "component", "querier"), f.auth)
 	if err != nil {
 		return nil, err
 	}
