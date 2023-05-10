@@ -18,6 +18,17 @@ func MergeBatchMergeStacktraces(responses ...*ingestv1.MergeProfilesStacktracesR
 		stacktraces = map[uint64]*ingestv1.StacktraceSample{}
 	)
 
+	largestNames := 0
+
+	for _, resp := range responses {
+		if resp != nil {
+			if len(resp.FunctionNames) > largestNames {
+				largestNames = len(resp.FunctionNames)
+			}
+		}
+	}
+	rewrite := make([]int32, largestNames)
+
 	for _, resp := range responses {
 		// skip empty results
 		if resp == nil || len(resp.Stacktraces) == 0 {
@@ -35,7 +46,7 @@ func MergeBatchMergeStacktraces(responses ...*ingestv1.MergeProfilesStacktracesR
 
 		// build up the lookup map the first time
 		if posByName == nil {
-			posByName = make(map[string]int32)
+			posByName = make(map[string]int32, len(result.FunctionNames))
 			for idx, n := range result.FunctionNames {
 				posByName[n] = int32(idx)
 			}
@@ -43,7 +54,7 @@ func MergeBatchMergeStacktraces(responses ...*ingestv1.MergeProfilesStacktracesR
 
 		// lookup and add missing functionNames
 		var (
-			rewrite = make([]int32, len(resp.FunctionNames))
+			rewrite = rewrite[:len(resp.FunctionNames)]
 			ok      bool
 		)
 		for idx, n := range resp.FunctionNames {
