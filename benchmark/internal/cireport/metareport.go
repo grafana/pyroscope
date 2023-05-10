@@ -1,7 +1,6 @@
 package cireport
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"text/template"
@@ -94,7 +93,7 @@ func (mr *MetaReport) validate(m []meta) error {
 }
 
 func (*MetaReport) tpl(title string, m []meta) (string, error) {
-	var tpl bytes.Buffer
+	var tpl strings.Builder
 
 	data := struct {
 		Title string

@@ -1,7 +1,6 @@
 package cireport
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"path"
@@ -132,7 +131,7 @@ func normalizeWord(s string) string {
 }
 
 func (*ImageReporter) tpl(panels []screenshotPanel) (string, error) {
-	var tpl bytes.Buffer
+	var tpl strings.Builder
 
 	data := struct {
 		Panels []screenshotPanel
