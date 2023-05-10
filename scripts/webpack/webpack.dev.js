@@ -20,7 +20,7 @@ module.exports = merge(common, {
   },
   plugins: [
     new webpack.DefinePlugin({
-      'process.env.BASEPATH': JSON.stringify(''),
+      'process.env.BASEPATH': JSON.stringify('/'),
     }),
     // Duplicated in webpack.prod.js
     new HtmlWebpackPlugin({

@@ -371,3 +371,7 @@ deploy-demo: $(BIN)/kind
 .PHONY: docs/%
 docs/%:
 	$(MAKE) -C docs $*
+
+.PHONY: run
+run: ## Run the phlare binary (pass parameters with 'make run PARAMS=-myparam')
+	./phlare $(PARAMS)

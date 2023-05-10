@@ -7,6 +7,7 @@ package api
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net/http"
 	"strings"
@@ -47,6 +48,7 @@ type Config struct {
 	// The following configs are injected by the upstream caller.
 	HTTPAuthMiddleware middleware.Interface `yaml:"-"`
 	GrpcAuthMiddleware connect.Option       `yaml:"-"`
+	BaseURL            string               `yaml:"base-url"`
 }
 
 type API struct {
@@ -138,7 +140,7 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 		return fmt.Errorf("unable to initialize the ui: %w", err)
 	}
 
-	uiIndexHandler, err := public.NewIndexHandler()
+	uiIndexHandler, err := public.NewIndexHandler(a.cfg.BaseURL)
 	if err != nil {
 		return fmt.Errorf("unable to initialize the ui: %w", err)
 	}
@@ -247,4 +249,9 @@ func (a *API) RegisterQueryFrontend(frontendSvc *frontend.Frontend) {
 func (a *API) RegisterQueryScheduler(s *scheduler.Scheduler) {
 	schedulerpbconnect.RegisterSchedulerForFrontendHandler(a.server.HTTP, s)
 	schedulerpbconnect.RegisterSchedulerForQuerierHandler(a.server.HTTP, s)
+}
+
+// RegisterFlags registers api-related flags.
+func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
+	fs.StringVar(&cfg.BaseURL, "api.base-url", "", "base URL for when the server is behind a reverse proxy with a different path")
 }
