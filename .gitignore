@@ -35,3 +35,5 @@ public/build
 
 # Contains the docker image id for phlare
 /.docker-image-id-phlare
+
+cypress/screenshots

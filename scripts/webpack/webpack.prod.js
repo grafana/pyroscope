@@ -13,11 +13,11 @@ module.exports = merge(common, {
   },
   plugins: [
     new webpack.DefinePlugin({
-      'process.env.BASEPATH': JSON.stringify('/ui'),
+      // The go server will parse this HTML file
+      'process.env.BASEPATH': JSON.stringify('{{ .BaseURL }}'),
     }),
     // Duplicated in webpack.dev.js
     new HtmlWebpackPlugin({
-      base: { href: '/ui/' },
       filename: path.resolve(__dirname, '../../public/build/index.html'),
       template: path.resolve(__dirname, '../../public/templates/index.html'),
       chunksSortMode: 'none',

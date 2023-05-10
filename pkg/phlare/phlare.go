@@ -118,6 +118,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.RuntimeConfig.RegisterFlags(f)
 	c.Analytics.RegisterFlags(f)
 	c.LimitsConfig.RegisterFlags(f)
+	c.API.RegisterFlags(f)
 }
 
 // registerServerFlagsWithChangedDefaultValues registers *Config.Server flags, but overrides some defaults set by the weaveworks package.
@@ -271,10 +272,8 @@ func New(cfg Config) (*Phlare, error) {
 		phlare.auth,
 	)
 
-	phlare.Cfg.API = api.Config{
-		HTTPAuthMiddleware: util.AuthenticateUser(cfg.MultitenancyEnabled),
-		GrpcAuthMiddleware: phlare.auth,
-	}
+	phlare.Cfg.API.HTTPAuthMiddleware = util.AuthenticateUser(cfg.MultitenancyEnabled)
+	phlare.Cfg.API.GrpcAuthMiddleware = phlare.auth
 
 	return phlare, nil
 }

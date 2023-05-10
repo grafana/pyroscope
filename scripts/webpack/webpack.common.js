@@ -52,6 +52,10 @@ module.exports = {
         __dirname,
         '../../public/app/overrides/ui/Sidebar'
       ),
+      '@webapp/util/baseurl': path.resolve(
+        __dirname,
+        '../../public/app/overrides/util/baseurl'
+      ),
 
       '@webapp/redux/store': path.resolve(
         __dirname,
