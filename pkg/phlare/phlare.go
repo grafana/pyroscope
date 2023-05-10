@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
@@ -24,6 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/version"
+	"github.com/samber/lo"
 	"github.com/weaveworks/common/logging"
 	"github.com/weaveworks/common/server"
 	"github.com/weaveworks/common/signals"
@@ -413,9 +415,18 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 			msg := bytes.Buffer{}
 			msg.WriteString("Some services are not Running:\n")
 
-			byState := sm.ServicesByState()
-			for st, ls := range byState {
-				msg.WriteString(fmt.Sprintf("%v: %d\n", st, len(ls)))
+			byState := map[services.State][]string{}
+			for name, svc := range f.serviceMap {
+				state := svc.State()
+				byState[state] = append(byState[state], name)
+			}
+
+			states := lo.Keys(byState)
+			sort.Slice(states, func(i, j int) bool { return states[i] < states[j] })
+
+			for _, st := range states {
+				sort.Strings(byState[st])
+				msg.WriteString(fmt.Sprintf("%v: %v\n", st, byState[st]))
 			}
 
 			http.Error(w, msg.String(), http.StatusServiceUnavailable)
