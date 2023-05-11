@@ -21,6 +21,11 @@ if __name__ == "__main__":
         host = HOSTS[random.randint(0, len(HOSTS) - 1)]
         vehicle = VEHICLES[random.randint(0, len(VEHICLES) - 1)]
         print(f"requesting {vehicle} from {host}")
-        resp = requests.get(f'http://{host}:5000/{vehicle}')
-        print(f"received {resp}")
+        try:
+            resp = requests.get(f'http://{host}:5000/{vehicle}')
+            resp.raise_for_status()
+            print(f"received {resp}")
+        except BaseException as e:
+            print (f"http error {e}")
+
         time.sleep(random.uniform(0.2, 0.4))
