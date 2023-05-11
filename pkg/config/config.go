@@ -75,7 +75,7 @@ type Agent struct {
 	AuthToken              string            `json:"-" def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
 	BasicAuthUser          string            `json:"-" def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user"`
 	BasicAuthPassword      string            `json:"-" def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password"`
-	ScopeOrgID             string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id"`
+	TenantID               string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"tenant-id"`
 	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
 	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
 	UpstreamRequestTimeout time.Duration     `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
@@ -303,7 +303,7 @@ type Exec struct {
 	AuthToken              string            `json:"-" def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
 	BasicAuthUser          string            `json:"-" def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user"`
 	BasicAuthPassword      string            `json:"-" def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password"`
-	ScopeOrgID             string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id"`
+	TenantID               string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"tenant-id"`
 	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
 	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
 	UpstreamRequestTimeout time.Duration     `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
@@ -331,7 +331,7 @@ type Connect struct {
 	AuthToken              string            `json:"-" def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
 	BasicAuthUser          string            `json:"-" def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user"`
 	BasicAuthPassword      string            `json:"-" def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password"`
-	ScopeOrgID             string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id"`
+	TenantID               string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"tenant-id"`
 	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
 	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
 	UpstreamRequestTimeout time.Duration     `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
@@ -354,7 +354,7 @@ type EBPF struct {
 	AuthToken              string            `json:"-" def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
 	BasicAuthUser          string            `json:"-" def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user"`
 	BasicAuthPassword      string            `json:"-" def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password"`
-	ScopeOrgID             string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id"`
+	TenantID               string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"tenant-id"`
 	Headers                map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
 	UpstreamThreads        int               `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
 	UpstreamRequestTimeout time.Duration     `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
@@ -426,7 +426,7 @@ type RemoteWriteTarget struct {
 	AuthToken         string            `json:"-" desc:"authorization token used to upload profiling data" yaml:"auth-token"`
 	BasicAuthUser     string            `json:"-" def:"" desc:"HTTP Basic authentication username" mapstructure:"basic-auth-user" yaml:"basic-auth-user"`
 	BasicAuthPassword string            `json:"-" def:"" desc:"HTTP Basic authentication password" mapstructure:"basic-auth-password" yaml:"basic-auth-password"`
-	ScopeOrgID        string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"scope-org-id" yaml:"scope-org-id"`
+	TenantID          string            `def:"" desc:"Phlare tenant ID passed as X-Scope-OrgID http header" mapstructure:"tenant-id" yaml:"tenant-id"`
 	Tags              map[string]string `name:"tag" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 	Headers           map[string]string `name:"header" desc:"extra http header. The flag may be specified multiple times" mapstructure:"headers"`
 	Timeout           time.Duration     `desc:"profile upload timeout" mapstructure:"timeout" yaml:"timeout"`

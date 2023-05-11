@@ -33,7 +33,7 @@ func RunEBPF(cfg *config.EBPF) error {
 
 	rc := remote.RemoteConfig{
 		AuthToken:              cfg.AuthToken,
-		ScopeOrgID:             cfg.ScopeOrgID,
+		TenantID:               cfg.TenantID,
 		HTTPHeaders:            cfg.Headers,
 		BasicAuthUser:          cfg.BasicAuthUser,
 		BasicAuthPassword:      cfg.BasicAuthPassword,

@@ -46,7 +46,7 @@ func NewConnect(cfg *config.Connect) (*Connect, error) {
 
 	rc := remote.RemoteConfig{
 		AuthToken:              cfg.AuthToken,
-		ScopeOrgID:             cfg.ScopeOrgID,
+		TenantID:               cfg.TenantID,
 		BasicAuthUser:          cfg.BasicAuthUser,
 		BasicAuthPassword:      cfg.BasicAuthPassword,
 		HTTPHeaders:            cfg.Headers,

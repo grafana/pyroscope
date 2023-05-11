@@ -25,7 +25,7 @@ func newAgentService(logger *logrus.Logger, cfg *config.Agent) (*agentService, e
 		AuthToken:              cfg.AuthToken,
 		BasicAuthUser:          cfg.BasicAuthUser,
 		BasicAuthPassword:      cfg.BasicAuthPassword,
-		ScopeOrgID:             cfg.ScopeOrgID,
+		TenantID:               cfg.TenantID,
 		HTTPHeaders:            cfg.Headers,
 		UpstreamThreads:        cfg.UpstreamThreads,
 		UpstreamAddress:        cfg.ServerAddress,
