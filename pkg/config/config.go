@@ -160,8 +160,9 @@ type Server struct {
 	AdminSocketPath         string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket will be created." mapstructure:"admin-socket-path"`
 	EnableExperimentalAdmin bool   `def:"true" deprecated:"true" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
 
-	NoAdhocUI     bool   `def:"false" desc:"disable the adhoc ui interface" mapstructure:"no-adhoc-ui"`
-	AdhocDataPath string `def:"<defaultAdhocDataPath>" desc:"directory where pyroscope stores adhoc profiles" mapstructure:"adhoc-data-path"`
+	NoAdhocUI        bool   `def:"false" desc:"disable the adhoc ui interface" mapstructure:"no-adhoc-ui"`
+	AdhocDataPath    string `def:"<defaultAdhocDataPath>" desc:"directory where pyroscope stores adhoc profiles" mapstructure:"adhoc-data-path"`
+	AdhocMaxFileSize int    `def:"52428800" desc:"maximum size of adhoc profile file. To remove any size limitations, set the value to -1" mapstructure:"adhoc-max-file-size"`
 
 	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`
 

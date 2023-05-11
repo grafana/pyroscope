@@ -86,8 +86,8 @@ func (r *Router) RegisterAnnotationsHandlers() {
 	x.Methods(http.MethodPost).HandlerFunc(h.CreateAnnotation)
 }
 
-func (r *Router) RegisterAdhocHandlers() {
-	h := api.NewAdhocHandler(r.AdhocService, httputils.NewDefaultHelper(r.Logger))
+func (r *Router) RegisterAdhocHandlers(maxFileSize int64) {
+	h := api.NewAdhocHandler(r.AdhocService, httputils.NewDefaultHelper(r.Logger), maxFileSize)
 
 	x := r.PathPrefix("/adhoc/v1").Subrouter()
 	x.Methods(http.MethodGet).PathPrefix("/profiles").HandlerFunc(h.GetProfiles)

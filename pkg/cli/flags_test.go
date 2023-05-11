@@ -218,6 +218,7 @@ var _ = Describe("flags", func() {
 					DisablePprofEndpoint:    false,
 					EnableExperimentalAdmin: true,
 					NoAdhocUI:               false,
+					AdhocMaxFileSize:        52428800,
 					MaxNodesSerialization:   2048,
 					MaxNodesRender:          8192,
 					HideApplications:        []string{},

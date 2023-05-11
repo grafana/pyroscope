@@ -220,7 +220,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	}
 	apiRouter.RegisterAnnotationsHandlers()
 	if !ctrl.config.NoAdhocUI {
-		apiRouter.RegisterAdhocHandlers()
+		apiRouter.RegisterAdhocHandlers(int64(ctrl.config.AdhocMaxFileSize))
 	}
 
 	// FIXME: not optimal, unify this with the remoteReadHandler at the top
