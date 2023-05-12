@@ -5,10 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 	"sync"
 	"time"
 
@@ -32,12 +30,6 @@ import (
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb/block"
-	diskutil "github.com/grafana/phlare/pkg/util/disk"
-)
-
-const (
-	minFreeDisk                = 10 * 1024 * 1024 * 1024 // 10Gi
-	minDiskAvailablePercentage = 0.05
 )
 
 type Config struct {
@@ -63,17 +55,6 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.Uint64Var(&cfg.RowGroupTargetSize, "phlaredb.row-group-target-size", 10*128*1024*1024, "How big should a single row group be uncompressed") // This should roughly be 128MiB compressed
 }
 
-type fileSystem interface {
-	fs.ReadDirFS
-	RemoveAll(string) error
-}
-
-type realFileSystem struct{}
-
-func (*realFileSystem) Open(name string) (fs.File, error)          { return os.Open(name) }
-func (*realFileSystem) ReadDir(name string) ([]fs.DirEntry, error) { return os.ReadDir(name) }
-func (*realFileSystem) RemoveAll(path string) error                { return os.RemoveAll(path) }
-
 type TenantLimiter interface {
 	AllowProfile(fp model.Fingerprint, lbs phlaremodel.Labels, tsNano int64) error
 	Stop()
@@ -92,11 +73,9 @@ type PhlareDB struct {
 	headLock sync.RWMutex
 	head     *Head
 
-	volumeChecker diskutil.VolumeChecker
-	fs            fileSystem
-
 	blockQuerier *BlockQuerier
 	limiter      TenantLimiter
+	evictCh      chan *blockEviction
 }
 
 func New(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*PhlareDB, error) {
@@ -106,14 +85,10 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*PhlareD
 	}
 
 	f := &PhlareDB{
-		cfg:    cfg,
-		logger: phlarecontext.Logger(phlarectx),
-		stopCh: make(chan struct{}),
-		volumeChecker: diskutil.NewVolumeChecker(
-			minFreeDisk,
-			minDiskAvailablePercentage,
-		),
-		fs:      &realFileSystem{},
+		cfg:     cfg,
+		logger:  phlarecontext.Logger(phlarectx),
+		stopCh:  make(chan struct{}),
+		evictCh: make(chan *blockEviction),
 		limiter: limiter,
 	}
 	if err := os.MkdirAll(f.LocalDataPath(), 0o777); err != nil {
@@ -150,103 +125,7 @@ func (f *PhlareDB) BlockMetas(ctx context.Context) ([]*block.Meta, error) {
 	return f.blockQuerier.BlockMetas(ctx)
 }
 
-func (f *PhlareDB) listLocalULID() ([]ulid.ULID, error) {
-	path := f.LocalDataPath()
-	files, err := f.fs.ReadDir(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var ids []ulid.ULID
-	for _, file := range files {
-		if !file.IsDir() {
-			continue
-		}
-
-		id, ok := block.IsBlockDir(filepath.Join(path, file.Name()))
-		if !ok {
-			continue
-		}
-		ids = append(ids, id)
-	}
-
-	// sort the blocks by their id, which will be the time they've been created.
-	sort.Slice(ids, func(i, j int) bool {
-		return ids[i].Compare(ids[j]) < 0
-	})
-
-	return ids, nil
-}
-
-func (f *PhlareDB) cleanupBlocksWhenHighDiskUtilization(ctx context.Context) error {
-	var (
-		path      = f.LocalDataPath()
-		lastStats *diskutil.VolumeStats
-		lastULID  ulid.ULID
-	)
-
-	for {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
-		current, err := f.volumeChecker.HasHighDiskUtilization(path)
-		if err != nil {
-			return err
-		}
-
-		// not in high disk utilization, nothing to do.
-		if !current.HighDiskUtilization {
-			break
-		}
-
-		// when disk utilization is not lower since the last loop, we end the
-		// cleanup there to avoid deleting all block when disk usage reporting
-		// is delayed.
-		if lastStats != nil && lastStats.BytesAvailable >= current.BytesAvailable {
-			level.Warn(f.logger).Log("msg", "disk utilization is not lowered by deletion of block, pausing until next cycle", "path", path)
-			break
-		}
-
-		// get list of all ulids
-		ulids, err := f.listLocalULID()
-		if err != nil {
-			return err
-		}
-
-		// nothing to delete, when there are no ulids
-		if len(ulids) == 0 {
-			break
-		}
-
-		if lastULID.Compare(ulids[0]) == 0 {
-			return fmt.Errorf("making no progress in deletion: trying to delete block '%s' again", lastULID.String())
-		}
-
-		deletePath := filepath.Join(path, ulids[0].String())
-
-		// ensure that we never delete the root directory or anything above
-		if deletePath == path {
-			return errors.New("delete path is the same as the root path, this should never happen")
-		}
-
-		// delete oldest block
-		if err := f.fs.RemoveAll(deletePath); err != nil {
-			return fmt.Errorf("failed to delete oldest block %s: %w", deletePath, err)
-		}
-		level.Warn(f.logger).Log("msg", "disk utilization is high, deleted oldest block", "path", deletePath)
-		lastStats = current
-		lastULID = ulids[0]
-	}
-
-	return nil
-}
-
 func (f *PhlareDB) runBlockQuerierSync(ctx context.Context) {
-	if err := f.cleanupBlocksWhenHighDiskUtilization(ctx); err != nil {
-		level.Error(f.logger).Log("msg", "cleanup block check failed", "err", err)
-	}
-
 	if err := f.blockQuerier.Sync(ctx); err != nil {
 		level.Error(f.logger).Log("msg", "sync of blocks failed", "err", err)
 	}
@@ -273,6 +152,9 @@ func (f *PhlareDB) loop() {
 			f.runBlockQuerierSync(ctx)
 		case <-blockScanTicker.C:
 			f.runBlockQuerierSync(ctx)
+		case b := <-f.evictCh:
+			b.evicted, b.err = f.blockQuerier.evict(b.blockID)
+			close(b.done)
 		}
 	}
 }
@@ -284,6 +166,7 @@ func (f *PhlareDB) Close() error {
 	}
 	close(f.stopCh)
 	f.wg.Wait()
+	close(f.evictCh)
 	if err := f.blockQuerier.Close(); err != nil {
 		errs.Add(err)
 	}
@@ -458,4 +341,27 @@ func (f *PhlareDB) Flush(ctx context.Context) error {
 		return nil
 	}
 	return oldHead.Flush(ctx)
+}
+
+type blockEviction struct {
+	blockID ulid.ULID
+	err     error
+	evicted bool
+	done    chan struct{}
+}
+
+// Evict removes the given local block from the PhlareDB.
+// Note that the block files are not deleted from the disk.
+// No evictions should be done after and during the Close call.
+func (f *PhlareDB) Evict(blockID ulid.ULID) (bool, error) {
+	e := &blockEviction{
+		blockID: blockID,
+		done:    make(chan struct{}),
+	}
+	// It's assumed that the DB close is only called
+	// after all evictions are done, therefore it's safe
+	// to block here.
+	f.evictCh <- e
+	<-e.done
+	return e.evicted, e.err
 }

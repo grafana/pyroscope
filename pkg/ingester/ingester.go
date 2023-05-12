@@ -13,6 +13,8 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
+	"github.com/oklog/ulid"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
@@ -51,8 +53,9 @@ type Ingester struct {
 	logger    log.Logger
 	phlarectx context.Context
 
-	lifecycler        *ring.Lifecycler
-	lifecyclerWatcher *services.FailureWatcher
+	lifecycler         *ring.Lifecycler
+	subservices        *services.Manager
+	subservicesWatcher *services.FailureWatcher
 
 	storageBucket phlareobjstore.Bucket
 
@@ -98,34 +101,40 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		return nil, err
 	}
 
-	i.lifecyclerWatcher = services.NewFailureWatcher()
-	i.lifecyclerWatcher.WatchService(i.lifecycler)
+	rpEnforcer := newRetentionPolicyEnforcer(phlarecontext.Logger(phlarectx), i, defaultRetentionPolicy(), dbConfig)
+	i.subservices, err = services.NewManager(i.lifecycler, rpEnforcer)
+	if err != nil {
+		return nil, errors.Wrap(err, "services manager")
+	}
+	i.subservicesWatcher = services.NewFailureWatcher()
+	i.subservicesWatcher.WatchManager(i.subservices)
 	i.Service = services.NewBasicService(i.starting, i.running, i.stopping)
 	return i, nil
 }
 
 func (i *Ingester) starting(ctx context.Context) error {
-	// pass new context to lifecycler, so that it doesn't stop automatically when Ingester's service context is done
-	err := i.lifecycler.StartAsync(context.Background())
-	if err != nil {
-		return err
-	}
-
-	err = i.lifecycler.AwaitRunning(ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return services.StartManagerAndAwaitHealthy(ctx, i.subservices)
 }
 
 func (i *Ingester) running(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return nil
-	case err := <-i.lifecyclerWatcher.Chan(): // handle lifecycler errors
+	case err := <-i.subservicesWatcher.Chan(): // handle lifecycler errors
 		return fmt.Errorf("lifecycler failed: %w", err)
 	}
+}
+
+func (i *Ingester) stopping(_ error) error {
+	errs := multierror.New()
+	errs.Add(services.StopManagerAndAwaitStopped(context.Background(), i.subservices))
+	// stop all instances
+	i.instancesMtx.RLock()
+	defer i.instancesMtx.RUnlock()
+	for _, inst := range i.instances {
+		errs.Add(inst.Stop())
+	}
+	return errs.Err()
 }
 
 func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //nolint:revive
@@ -184,6 +193,25 @@ func (i *Ingester) forInstance(ctx context.Context, f func(*instance) error) err
 	return f(instance)
 }
 
+func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) error {
+	// We lock instances map for writes to ensure that no new instances are
+	// created during the procedure. Otherwise, during initialization, the
+	// new PhlareDB instance may try to load a block that has already been
+	// deleted, or is being deleted.
+	i.instancesMtx.RLock()
+	defer i.instancesMtx.RUnlock()
+	// The map only contains PhlareDB instances that has been initialized since
+	// the process start, therefore there is no guarantee that we will find the
+	// discovered candidate block there. If it is the case, we have to ensure that
+	// the block won't be accessed, before and during deleting it from the disk.
+	if tenantInstance, ok := i.instances[tenantID]; ok {
+		if _, err := tenantInstance.Evict(b); err != nil {
+			return fmt.Errorf("failed to evict block %s/%s: %w", tenantID, b, err)
+		}
+	}
+	return fn()
+}
+
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[pushv1.PushResponse], error) {
 		level.Debug(instance.logger).Log("msg", "message received by ingester push")
@@ -216,18 +244,6 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 		}
 		return connect.NewResponse(&pushv1.PushResponse{}), nil
 	})
-}
-
-func (i *Ingester) stopping(_ error) error {
-	errs := multierror.New()
-	errs.Add(services.StopAndAwaitTerminated(context.Background(), i.lifecycler))
-	// stop all instances
-	i.instancesMtx.RLock()
-	defer i.instancesMtx.RUnlock()
-	for _, inst := range i.instances {
-		errs.Add(inst.Stop())
-	}
-	return errs.Err()
 }
 
 func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1.FlushRequest]) (*connect.Response[ingesterv1.FlushResponse], error) {
