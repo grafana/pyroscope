@@ -77,6 +77,10 @@ module.exports = {
         __dirname,
         '../../public/app/overrides/services/tags'
       ),
+      '@webapp/services/base': path.resolve(
+        __dirname,
+        '../../public/app/overrides/services/base'
+      ),
 
       // Common
       '@pyroscope/webapp': path.resolve(
@@ -96,6 +100,8 @@ module.exports = {
         __dirname,
         '../../node_modules/pyroscope-oss/webapp/javascript'
       ),
+
+      '@phlare': path.resolve(__dirname, '../../public/app'),
 
       // Dependencies
       ...deps,

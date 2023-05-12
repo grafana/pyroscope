@@ -1,0 +1,19 @@
+.menuDivider {
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.accountDropdown {
+  border: none;
+  padding: 0;
+  width: 100%;
+  text-align: left;
+}
+
+.dropdown {
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.4) !important;
+}
+
+.orgID {
+  margin-right: 15px;
+}

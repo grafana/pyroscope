@@ -3,6 +3,7 @@ import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
+import { faUser } from '@fortawesome/free-solid-svg-icons/faUser';
 
 import {
   MenuItem,
@@ -26,6 +27,7 @@ import { useWindowWidth } from '@react-hook/window-size';
 import { isRouteActive, ROUTES } from '../pages/routes';
 import Logo from '../static/logo.svg';
 import styles from './Sidebar.module.css';
+import { SidebarTenant } from './SidebarTenant';
 
 export function Sidebar() {
   const collapsed = useAppSelector(selectSidebarCollapsed);
@@ -87,6 +89,7 @@ export function Sidebar() {
               exact
             />
           </MenuItem>
+          <SidebarTenant />
         </Menu>
       </SidebarContent>
       <SidebarFooter>
