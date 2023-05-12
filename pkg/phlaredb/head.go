@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -601,6 +602,7 @@ func (h *Head) resolveStacktraces(ctx context.Context, stacktraceSamples stacktr
 		h.strings.lock.RUnlock()
 	}()
 
+	sp.LogFields(otlog.String("msg", "building MergeProfilesStacktracesResult"))
 	for stacktraceID := range stacktraceSamples {
 		locs := h.stacktraces.slice[stacktraceID].LocationIDs
 		fnIds := make([]int32, 0, 2*len(locs))

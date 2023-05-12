@@ -310,6 +310,7 @@ func selectMergeStacktraces(ctx context.Context, responses []responseFromIngeste
 	}
 
 	// Collects the results in parallel.
+	span.LogFields(otlog.String("msg", "collecting merge results"))
 	results := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(iters))
 	s := lo.Synchronize()
 	g, _ := errgroup.WithContext(ctx)
@@ -329,6 +330,8 @@ func selectMergeStacktraces(ctx context.Context, responses []responseFromIngeste
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
+
+	span.LogFields(otlog.String("msg", "merging results"))
 	return mergeProfilesStacktracesResult(results), nil
 }
 

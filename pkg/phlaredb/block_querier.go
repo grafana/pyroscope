@@ -556,6 +556,7 @@ func (q Queriers) MergeProfilesStacktraces(ctx context.Context, stream *connect.
 
 	// Signals the end of the profile streaming by sending an empty response.
 	// This allows the client to not block other streaming ingesters.
+	sp.LogFields(otlog.String("msg", "signaling the end of the profile streaming"))
 	if err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{}); err != nil {
 		return err
 	}
@@ -565,6 +566,7 @@ func (q Queriers) MergeProfilesStacktraces(ctx context.Context, stream *connect.
 	}
 
 	// sends the final result to the client.
+	sp.LogFields(otlog.String("msg", "sending the final result to the client"))
 	err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
 		Result: phlaremodel.MergeBatchMergeStacktraces(result...),
 	})
