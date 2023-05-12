@@ -55,10 +55,9 @@ func (b *singleBlockQuerier) resolvePprofSymbols(ctx context.Context, stacktrace
 		return stacktraceIDs[i] < stacktraceIDs[j]
 	})
 
-	var (
-		locationIDs = newUniqueIDs[struct{}]()
-		stacktraces = repeatedColumnIter(ctx, b.stacktraces.file, "LocationIDs.list.element", iter.NewSliceIterator(stacktraceIDs))
-	)
+	locationIDs := newUniqueIDs[struct{}]()
+	stacktraces := repeatedColumnIter(ctx, b.stacktraces.file, "LocationIDs.list.element", iter.NewSliceIterator(stacktraceIDs))
+	defer stacktraces.Close()
 
 	for stacktraces.Next() {
 		s := stacktraces.At()
@@ -220,15 +219,15 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 	locationsByStacktraceID := map[int64][]uint64{}
 
 	// gather stacktraces
+	sp.LogFields(otlog.String("msg", "gather stacktraces"))
 	stacktraceIDs := lo.Keys(stacktraceAggrByID)
 	sort.Slice(stacktraceIDs, func(i, j int) bool {
 		return stacktraceIDs[i] < stacktraceIDs[j]
 	})
 
-	var (
-		locationIDs = newUniqueIDs[struct{}]()
-		stacktraces = repeatedColumnIter(ctx, b.stacktraces.file, "LocationIDs.list.element", iter.NewSliceIterator(stacktraceIDs))
-	)
+	locationIDs := newUniqueIDs[struct{}]()
+	stacktraces := repeatedColumnIter(ctx, b.stacktraces.file, "LocationIDs.list.element", iter.NewSliceIterator(stacktraceIDs))
+	defer stacktraces.Close()
 
 	for stacktraces.Next() {
 		s := stacktraces.At()
@@ -252,8 +251,10 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 	if err := stacktraces.Err(); err != nil {
 		return nil, err
 	}
-	sp.LogFields(otlog.Int("stacktraces", len(stacktraceIDs)))
+	sp.LogFields(otlog.Int("stacktraces", len(stacktraceIDs)), otlog.Int("locationIDs", len(locationIDs)))
+
 	// gather locations
+	sp.LogFields(otlog.String("msg", "gather locations"))
 	var (
 		locationIDsByFunctionID = newUniqueIDs[[]int64]()
 		locations               = b.locations.retrieveRows(ctx, locationIDs.iterator())
@@ -268,8 +269,10 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 	if err := locations.Err(); err != nil {
 		return nil, err
 	}
+	sp.LogFields(otlog.Int("functions", len(locationIDsByFunctionID)))
 
 	// gather functions
+	sp.LogFields(otlog.String("msg", "gather functions"))
 	var (
 		functionIDsByStringID = newUniqueIDs[[]int64]()
 		functions             = b.functions.retrieveRows(ctx, locationIDsByFunctionID.iterator())
@@ -284,6 +287,7 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 	}
 
 	// gather strings
+	sp.LogFields(otlog.String("msg", "gather strings"))
 	var (
 		names   = make([]string, len(functionIDsByStringID))
 		idSlice = make([][]int64, len(functionIDsByStringID))
@@ -300,6 +304,7 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktraceAggrB
 		return nil, err
 	}
 
+	sp.LogFields(otlog.String("msg", "build MergeProfilesStacktracesResult"))
 	// idSlice contains stringIDs and gets rewritten into functionIDs
 	for nameID := range idSlice {
 		var functionIDs []int64
