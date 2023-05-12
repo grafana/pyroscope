@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/phlare/pkg/iter"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
+	"github.com/grafana/phlare/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
 )
 
@@ -54,5 +56,63 @@ func TestInMemoryReader(t *testing.T) {
 		require.Equal(t, it.At().RowNum, rows[j])
 		require.Equal(t, it.At().Result.ID, uint64(rows[j]))
 		j++
+	}
+}
+
+func TestQuerierBlockEviction(t *testing.T) {
+	type testCase struct {
+		blocks     []string
+		expected   []string
+		notEvicted bool
+	}
+
+	blockToEvict := "01H002D4Z9PKWSS17Q3XY1VEM9"
+	testCases := []testCase{
+		{
+			notEvicted: true,
+		},
+		{
+			blocks:     []string{"01H002D4Z9ES0DHMMSD18H5J5M"},
+			expected:   []string{"01H002D4Z9ES0DHMMSD18H5J5M"},
+			notEvicted: true,
+		},
+		{
+			blocks:   []string{blockToEvict},
+			expected: []string{},
+		},
+		{
+			blocks:   []string{blockToEvict, "01H002D4Z9ES0DHMMSD18H5J5M"},
+			expected: []string{"01H002D4Z9ES0DHMMSD18H5J5M"},
+		},
+		{
+			blocks:   []string{"01H002D4Z9ES0DHMMSD18H5J5M", blockToEvict},
+			expected: []string{"01H002D4Z9ES0DHMMSD18H5J5M"},
+		},
+		{
+			blocks:   []string{"01H002D4Z9ES0DHMMSD18H5J5M", blockToEvict, "01H003A2QTY5JF30Z441CDQE70"},
+			expected: []string{"01H002D4Z9ES0DHMMSD18H5J5M", "01H003A2QTY5JF30Z441CDQE70"},
+		},
+		{
+			blocks:   []string{"01H003A2QTY5JF30Z441CDQE70", blockToEvict, "01H002D4Z9ES0DHMMSD18H5J5M"},
+			expected: []string{"01H003A2QTY5JF30Z441CDQE70", "01H002D4Z9ES0DHMMSD18H5J5M"},
+		},
+	}
+
+	for _, tc := range testCases {
+		q := BlockQuerier{queriers: make([]*singleBlockQuerier, len(tc.blocks))}
+		for i, b := range tc.blocks {
+			q.queriers[i] = &singleBlockQuerier{meta: &block.Meta{ULID: ulid.MustParse(b)}}
+		}
+
+		evicted, err := q.evict(ulid.MustParse(blockToEvict))
+		require.NoError(t, err)
+		require.Equal(t, !tc.notEvicted, evicted)
+
+		actual := make([]string, 0, len(tc.expected))
+		for _, b := range q.queriers {
+			actual = append(actual, b.meta.ULID.String())
+		}
+
+		require.ElementsMatch(t, tc.expected, actual)
 	}
 }
