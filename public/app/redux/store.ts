@@ -19,10 +19,14 @@ import continuousReducer, {
 import uiStore, {
   persistConfig as uiPersistConfig,
 } from '@webapp/redux/reducers/ui';
+import tenantReducer, {
+  persistConfig as tenantPersistConfig,
+} from './reducers/tenant';
 
 const reducer = combineReducers({
   continuous: continuousReducer,
   ui: persistReducer(uiPersistConfig, uiStore),
+  tenant: persistReducer(tenantPersistConfig, tenantReducer),
 });
 
 function isError(action: unknown): action is { error: unknown } {
