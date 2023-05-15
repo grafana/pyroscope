@@ -65,6 +65,10 @@ module.exports = {
         __dirname,
         '../../public/app/redux/hooks'
       ),
+      '@webapp/redux/reducers/tenant': path.resolve(
+        __dirname,
+        '../../public/app/redux/reducers/tenant'
+      ),
       '@webapp/services/apps': path.resolve(
         __dirname,
         '../../public/app/overrides/services/appNames'
@@ -102,7 +106,6 @@ module.exports = {
       ),
 
       '@phlare': path.resolve(__dirname, '../../public/app'),
-
       // Dependencies
       ...deps,
     },

@@ -12,7 +12,7 @@ import {
   SubMenuProps,
 } from 'react-pro-sidebar';
 import { IconProps } from '@webapp/ui/Icon';
-import '../../../../node_modules/pyroscope-oss/webapp/javascript/ui/Sidebar.scss';
+import '@pyroscope/webapp/javascript/ui/Sidebar.scss';
 
 export interface SidebarProps {
   children: React.ReactNode;

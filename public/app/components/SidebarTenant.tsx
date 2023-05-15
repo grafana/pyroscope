@@ -1,3 +1,4 @@
+import React from 'react';
 import { faCog } from '@fortawesome/free-solid-svg-icons/faCog';
 import { faUser } from '@fortawesome/free-solid-svg-icons/faUser';
 import { MenuButton, MenuProps, MenuHeader } from '@szhsin/react-menu';
@@ -9,9 +10,9 @@ import {
   selectIsMultiTenant,
   selectTenantID,
   actions,
-} from '@phlare/redux/reducers/tenant';
-import { useAppSelector, useAppDispatch } from '../redux/hooks';
-import styles from './SidebarTenant.module.css';
+} from '@webapp/redux/reducers/tenant';
+import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
+import styles from '@phlare/components/SidebarTenant.module.css';
 import cx from 'classnames';
 
 export interface DropdownProps {

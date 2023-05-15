@@ -25,6 +25,30 @@ jobs:
       - run: yarn --frozen-lockfile
       - name: Run type-check
         run: yarn type-check
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.15.0
+          cache: yarn
+      - run: yarn --frozen-lockfile
+      - name: Run format
+        run: yarn run format
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.15.0
+          cache: yarn
+      - run: yarn --frozen-lockfile
+      - name: Run lint
+        run: yarn lint
   build:
     runs-on: ubuntu-latest
     steps:

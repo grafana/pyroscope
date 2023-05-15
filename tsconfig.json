@@ -7,33 +7,41 @@
       "@phlare/*": ["./public/app/*"],
 
       "@pyroscope/webapp/*": ["./node_modules/pyroscope-oss/webapp/*"],
-      "@webapp/redux/*": ["./node_modules/pyroscope-oss/webapp/javascript/redux/*"],
-      "@pyroscope/flamegraph/*": ["./node_modules/pyroscope-oss/packages/pyroscope-flamegraph/*"],
-      "@pyroscope/models/*": ["./node_modules/pyroscope-oss/packages/pyroscope-models/*"],
+      "@webapp/redux/*": [
+        "./node_modules/pyroscope-oss/webapp/javascript/redux/*"
+      ],
+      "@pyroscope/flamegraph/*": [
+        "./node_modules/pyroscope-oss/packages/pyroscope-flamegraph/*"
+      ],
+      "@pyroscope/models/*": [
+        "./node_modules/pyroscope-oss/packages/pyroscope-models/*"
+      ],
 
-      "@webapp/components/ExportData": ["./public/app/overrides/components/ExportData"],
-      "@webapp/components/TimelineChart/ContextMenu.plugin": ["./public/app/overrides/components/TimelineChart/ContextMenu.plugin"],
-      "@webapp/components/AppSelector/Label": ["./public/app/overrides/components/AppSelector/Label"],
+      "@webapp/components/ExportData": [
+        "./public/app/overrides/components/ExportData"
+      ],
+      "@webapp/components/TimelineChart/ContextMenu.plugin": [
+        "./public/app/overrides/components/TimelineChart/ContextMenu.plugin"
+      ],
+      "@webapp/components/AppSelector/Label": [
+        "./public/app/overrides/components/AppSelector/Label"
+      ],
       "@webapp/ui/Sidebar": ["./public/app/overrides/ui/Sidebar"],
       "@webapp/util/baseurl": ["./public/app/overrides/util/baseurl"],
 
       "@webapp/redux/store": ["./public/app/redux/store"],
       "@webapp/redux/hooks": ["./public/app/redux/hooks"],
+      "@webapp/redux/reducers/tenant": ["./public/app/redux/reducers/tenant"],
       "@webapp/services/apps": ["./public/app/overrides/services/appNames"],
       "@webapp/services/render": ["./public/app/overrides/services/render"],
       "@webapp/services/tags": ["./public/app/overrides/services/tags"],
       "@webapp/services/base": ["./public/app/overrides/services/base"],
       "@webapp/*": ["./node_modules/pyroscope-oss/webapp/javascript/*"],
-
       // Without this files under pyroscope-oss would resolve to ./node_modules/pyroscope-oss/@mui/base
       "@mui/base/*": ["./node_modules/@mui/base/*"]
     },
     "target": "es5",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -57,4 +65,3 @@
     "public/app/types.ts"
   ]
 }
-

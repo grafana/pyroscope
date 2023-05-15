@@ -1,22 +1,22 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './jquery-import';
+import '@phlare/jquery-import';
 import { Provider } from 'react-redux';
-import store from './redux/store';
+import store from '@webapp/redux/store';
 import '@webapp/../sass/profile.scss';
 import '@szhsin/react-menu/dist/index.css';
 import Notifications from '@webapp/ui/Notifications';
 import { Router, Switch, Route } from 'react-router-dom';
 import { createBrowserHistory } from 'history';
 
-import { ROUTES } from './pages/routes';
-import { SingleView } from './pages/SingleView';
-import { ComparisonView } from './pages/ComparisonView';
-import { DiffView } from './pages/DiffView';
-import { LoadAppNames } from './components/LoadAppNames';
-import { Sidebar } from './components/Sidebar';
-import { TenantWall } from './components/TenantWall';
-import { baseurl } from './overrides/util/baseurl';
+import { ROUTES } from '@phlare/pages/routes';
+import { SingleView } from '@phlare/pages/SingleView';
+import { ComparisonView } from '@phlare/pages/ComparisonView';
+import { DiffView } from '@phlare/pages/DiffView';
+import { LoadAppNames } from '@phlare/components/LoadAppNames';
+import { Sidebar } from '@phlare/components/Sidebar';
+import { TenantWall } from '@phlare/components/TenantWall';
+import { baseurl } from '@webapp/util/baseurl';
 
 const container = document.getElementById('reactRoot') as HTMLElement;
 const root = ReactDOM.createRoot(container);

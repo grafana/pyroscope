@@ -3,16 +3,14 @@ import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
-import { faUser } from '@fortawesome/free-solid-svg-icons/faUser';
 
-import {
+import SidebarUI, {
   MenuItem,
   SidebarHeader,
   SidebarFooter,
   SidebarContent,
   Menu,
 } from '@webapp/ui/Sidebar';
-import SidebarUI from '@webapp/ui/Sidebar';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
 import {
   selectSidebarCollapsed,
@@ -24,10 +22,10 @@ import { useLocation, NavLink } from 'react-router-dom';
 import Icon from '@webapp/ui/Icon';
 import clsx from 'clsx';
 import { useWindowWidth } from '@react-hook/window-size';
-import { isRouteActive, ROUTES } from '../pages/routes';
-import Logo from '../static/logo.svg';
-import styles from './Sidebar.module.css';
-import { SidebarTenant } from './SidebarTenant';
+import { isRouteActive, ROUTES } from '@phlare/pages/routes';
+import Logo from '@phlare/static/logo.svg';
+import styles from '@webapp/components/Sidebar.module.css';
+import { SidebarTenant } from '@phlare/components/SidebarTenant';
 
 export function Sidebar() {
   const collapsed = useAppSelector(selectSidebarCollapsed);

@@ -1,4 +1,4 @@
-import { parseResponse, request } from '@webapp/services/base';
+import { parseResponse, requestWithOrgID } from '@webapp/services/base';
 import { z } from 'zod';
 
 const seriesLabelsSchema = z.preprocess(
@@ -25,10 +25,10 @@ const seriesLabelsSchema = z.preprocess(
 
 async function fetchLabelsSeries<T>(
   query: string,
-  transformFn: (t: { name: string; value: string }[]) => T
+  transformFn: (t: Array<{ name: string; value: string }>) => T
 ) {
   const profileTypeID = query.replace(/\{.*/g, '');
-  const response = await request('/querier.v1.QuerierService/Series', {
+  const response = await requestWithOrgID('/querier.v1.QuerierService/Series', {
     method: 'POST',
     body: JSON.stringify({
       matchers: [`{__profile_type__=\"${profileTypeID}\"}`],

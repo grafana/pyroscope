@@ -1,9 +1,8 @@
 import { App } from '@webapp/models/app';
 import { Result } from '@webapp/util/fp';
-import { z } from 'zod';
-import type { ZodError } from 'zod';
+import { z, ZodError } from 'zod';
 import type { RequestError } from '@webapp/services/base';
-import { parseResponse, request } from '@webapp/services/base';
+import { parseResponse, requestWithOrgID } from '@webapp/services/base';
 
 const appNamesResponse = z.preprocess(
   (arg) => {
@@ -27,7 +26,9 @@ const appNamesResponse = z.preprocess(
 export async function fetchApps(): Promise<
   Result<App[], RequestError | ZodError>
 > {
-  const response = await request('/pyroscope/label-values?label=__name__');
+  const response = await requestWithOrgID(
+    '/pyroscope/label-values?label=__name__'
+  );
 
   if (response.isOk) {
     return parseResponse(response, appNamesResponse);

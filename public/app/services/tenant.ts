@@ -1,9 +1,8 @@
-import { RequestNotOkError } from '@webapp/services/base';
-import store from '@phlare/redux/store';
-import { request } from '@webapp/services/base';
+import { RequestNotOkError, requestWithOrgID } from '@webapp/services/base';
+import store from '@webapp/redux/store';
 
 export async function isMultiTenancyEnabled() {
-  const res = await request('/pyroscope/label-values?label=__name__', {
+  const res = await requestWithOrgID('/pyroscope/label-values?label=__name__', {
     // Without this it would automatically add the OrgID
     // Which doesn't tell us whether multitenancy is enabled or not
     headers: {
@@ -19,12 +18,12 @@ export async function isMultiTenancyEnabled() {
   return isOrgRequiredError(res);
 }
 
-function isOrgRequiredError(res: Awaited<ReturnType<typeof request>>) {
+function isOrgRequiredError(res: Awaited<ReturnType<typeof requestWithOrgID>>) {
   // TODO: is 'no org id' a stable message?
   return (
     res.isErr &&
     res.error instanceof RequestNotOkError &&
-    res.error.code == 401 &&
+    res.error.code === 401 &&
     res.error.description === 'no org id\n'
   );
 }

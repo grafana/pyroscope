@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useAppDispatch } from '@webapp/redux/hooks';
 import { reloadAppNames } from '@webapp/redux/reducers/continuous';
 
-export function loadAppNames() {
+export function useAppNames() {
   const dispatch = useAppDispatch();
 
   useEffect(() => {

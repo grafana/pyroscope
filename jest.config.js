@@ -14,4 +14,7 @@ module.exports = {
     // https://stackoverflow.com/a/69150188
     'node_modules/(?!(true-myth|d3|d3-array|internmap|d3-scale|react-notifications-component|graphviz-react))',
   ],
+  moduleNameMapper: {
+    '@webapp/util/baseurl': ['<rootDir>/public/app/overrides/util/baseurl'],
+  },
 };

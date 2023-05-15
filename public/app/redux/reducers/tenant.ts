@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { createAsyncThunk } from '@webapp/redux/async-thunk';
-import type { RootState } from '../store';
+import type { RootState } from '@webapp/redux/store';
 import {
   isMultiTenancyEnabled,
   tenantIDFromStorage,
@@ -56,7 +56,6 @@ export const checkTenancyIsRequired = createAsyncThunk<
   {
     // This check is only valid if we don't know what's the tenancy status yet
     condition: (query, thunkAPI) => {
-      thunkAPI.getState;
       const state = thunkAPI.getState().tenant;
 
       return state.tenancy === 'unknown';

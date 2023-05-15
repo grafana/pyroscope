@@ -1,0 +1,8 @@
+public/build/**
+scripts/**
+pkg/api/static/**
+**/dist
+.eslintrc.js
+jest.config.js
+cypress/**
+cypress.config.ts

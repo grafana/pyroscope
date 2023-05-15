@@ -1,3 +1,5 @@
+import React from 'react';
+
 interface ExportDataProps {
   flamebearer?: unknown;
   exportPNG?: unknown;
@@ -7,6 +9,7 @@ interface ExportDataProps {
   exportFlamegraphDotCom?: unknown;
   exportFlamegraphDotComFn?: unknown;
 }
-export default function (props: ExportDataProps) {
+
+export default function ExportData(props: ExportDataProps) {
   return <></>;
 }
