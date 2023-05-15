@@ -1,4 +1,4 @@
-import baseurlForAPI, { baseurl } from './baseurl';
+import baseurlForAPI, { baseurl } from '@webapp/util/baseurl';
 
 function mockSelector(href: string) {
   const base = document.createElement('base');

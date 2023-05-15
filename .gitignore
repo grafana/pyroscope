@@ -1,20 +1,27 @@
 # Binaries for programs and plugins
 bin
-# Test binary, built with `go test -c`
-*.test
 /phlare
 /profilecli
-
+# Test binary, built with `go test -c`
+*.test
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
 /cmd/phlare/data
 data/
 .DS_Store
+**/dist
 
+# IDE
+.idea
+.vscode
+
+# Frontend
+public/build
+cypress/screenshots
+.eslintcache
 node_modules
 /grafana/flamegraph/coverage/
-
 # Yarn
 **/.yarn/*
 !**/.yarn/patches
@@ -23,17 +30,7 @@ node_modules
 !**/.yarn/sdks
 !**/.yarn/versions
 .pnp.*
-
-
-**/dist
-
-.idea
-
-dist/
-
-public/build
+yarn-error.log
 
 # Contains the docker image id for phlare
 /.docker-image-id-phlare
-
-cypress/screenshots

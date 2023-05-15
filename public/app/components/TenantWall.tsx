@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useAppDispatch, useAppSelector } from '../redux/hooks';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import TextField from '@webapp/ui/Form/TextField';
 import {
   Dialog,
@@ -13,7 +13,7 @@ import {
   selectTenancy,
   actions,
   selectTenantID,
-} from '@phlare/redux/reducers/tenant';
+} from '@webapp/redux/reducers/tenant';
 
 export function TenantWall({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();
@@ -102,7 +102,7 @@ function SelectTenantIDDialog({
                 </p>
                 <p>
                   Notice that if you migrated from a non-multitenant version,
-                  data can be found under Tenant ID "anonymous".
+                  data can be found under Tenant ID {'"'}anonymous{'"'}.
                 </p>
 
                 <TextField
