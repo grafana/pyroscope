@@ -12,14 +12,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/link"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/sd"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/log"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"golang.org/x/sys/unix"
 	"sync"
-	"syscall"
 )
 
 //#cgo CFLAGS: -I./bpf/
@@ -37,7 +35,7 @@ type Session struct {
 	serviceDiscovery sd.ServiceDiscovery
 	onlyServices     bool
 
-	perfEventFds []int
+	perfEvents []*perfEvent
 
 	symCache *symbolCache
 
@@ -46,7 +44,6 @@ type Session struct {
 	modMutex sync.Mutex
 
 	roundNumber int
-	links       []*link.RawLink
 }
 
 const btf = "should not be used" // canary to detect we got relocations
@@ -80,13 +77,13 @@ func (s *Session) Start() error {
 
 	opts := &ebpf.CollectionOptions{}
 	if err := loadProfileObjects(&s.bpf, opts); err != nil {
-		return fmt.Errorf("session start fail: %w", err)
+		return fmt.Errorf("load bpf objects: %w", err)
 	}
 	if err = s.initArgs(); err != nil {
-		return fmt.Errorf("session start fail: %w", err)
+		return fmt.Errorf("init bpf args: %w", err)
 	}
-	if err = s.attachPerfEvent(); err != nil {
-		return fmt.Errorf("session start fail: %w", err)
+	if err = s.attachPerfEvents(); err != nil {
+		return fmt.Errorf("attach perf events: %w", err)
 	}
 	return nil
 }
@@ -105,12 +102,12 @@ func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, p
 
 	keys, values, batch, err := s.getCountsMapValues()
 	if err != nil {
-		return err
+		return fmt.Errorf("get counts map: %w", err)
 	}
 
 	err = <-refreshResult
 	if err != nil {
-		return err
+		return fmt.Errorf("service discovery refresh: %w", err)
 	}
 
 	type sf struct {
@@ -160,21 +157,18 @@ func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, p
 		}
 	}
 	if err = s.clearCountsMap(keys, batch); err != nil {
-		return err
+		return fmt.Errorf("clear counts map %w", err)
 	}
 	if err = s.clearStacksMap(knownStacks); err != nil {
-		return err
+		return fmt.Errorf("clear stacks map %w", err)
 	}
 	return nil
 }
 
 func (s *Session) Stop() {
 	s.symCache.clear()
-	for _, fd := range s.perfEventFds {
-		_ = syscall.Close(fd)
-	}
-	for _, rawLink := range s.links {
-		_ = rawLink.Close()
+	for _, pe := range s.perfEvents {
+		_ = pe.Close()
 	}
 }
 
@@ -195,35 +189,21 @@ func (s *Session) initArgs() error {
 	return nil
 }
 
-func (s *Session) attachPerfEvent() error {
+func (s *Session) attachPerfEvents() error {
 	var cpus []uint
 	var err error
 	if cpus, err = cpuonline.Get(); err != nil {
-		return fmt.Errorf("attachPerfEvent fail: %w", err)
+		return fmt.Errorf("get cpuonline: %w", err)
 	}
 	for _, cpu := range cpus {
-		attr := unix.PerfEventAttr{
-			Type:   unix.PERF_TYPE_SOFTWARE,
-			Config: unix.PERF_COUNT_SW_CPU_CLOCK,
-			Bits:   unix.PerfBitFreq,
-			Sample: uint64(s.sampleRate),
-		}
-		fd, err := unix.PerfEventOpen(&attr, -1, int(cpu), -1, unix.PERF_FLAG_FD_CLOEXEC)
+		pe, err := newPerfEvent(int(cpu), int(s.sampleRate))
+
+		s.perfEvents = append(s.perfEvents, pe)
+
+		err = pe.attachPerfEvent(s.bpf.profilePrograms.DoPerfEvent)
 		if err != nil {
-			return err
+			return fmt.Errorf("attach perf event: %w", err)
 		}
-		s.perfEventFds = append(s.perfEventFds, fd)
-		opts := link.RawLinkOptions{
-			Target:  fd,
-			Program: s.bpf.profilePrograms.DoPerfEvent,
-			Attach:  ebpf.AttachPerfEvent,
-		}
-		// todo(korniltsev): add fallback for old kernels
-		l, err := link.AttachRawLink(opts)
-		if err != nil {
-			return fmt.Errorf("attachPerfEvent fail: %w", err)
-		}
-		s.links = append(s.links, l)
 	}
 	return nil
 }
