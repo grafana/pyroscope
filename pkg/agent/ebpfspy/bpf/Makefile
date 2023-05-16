@@ -15,7 +15,7 @@ get-libbpf-headers:
 .PHONY: get-vmlinux-header
 get-vmlinux-header:
 	cd vmlinux && \
-		curl -O https://raw.githubusercontent.com/iovisor/bcc/v0.27.0/libbpf-tools/x86/vmlinux_518.h
+		curl -o vmlinux.h https://raw.githubusercontent.com/iovisor/bcc/v0.27.0/libbpf-tools/x86/vmlinux_518.h
 
 
 .PHONY: get-headers
