@@ -139,7 +139,7 @@ export PYROSCOPE_APPLICATION_NAME=phlare.dotnet.app
 export PYROSCOPE_SERVER_ADDRESS=<URL>
 export PYROSCOPE_BASIC_AUTH_USER=<User>
 export PYROSCOPE_BASIC_AUTH_PASSWORD=<Password>
-export PYROSCOPE_SCOPE_ORGID=<TenantID>
+export PYROSCOPE_TENANT_ID=<TenantID>
 ```
 
 To configure .NET integration to send data to Phlare, replace the `<URL>` placeholder with the appropriate server URL. This could be the grafana.com Phlare URL or your own custom Phlare server URL.
