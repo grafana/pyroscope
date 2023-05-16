@@ -55,12 +55,8 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 FROM alpine:3.16 as ebpf-builder
 RUN apk update && apk upgrade && \
     apk add cmake make binutils gcc g++ clang musl-dev linux-headers zlib-dev elfutils-dev libelf-static zlib-static git openssh
-ADD third_party/libbpf/Makefile /build/libbpf/
-RUN make -C /build/libbpf/
 ADD third_party/bcc/Makefile /build/bcc/
 RUN make -C /build/bcc/
-ADD pkg/agent/ebpfspy/bpf/Makefile pkg/agent/ebpfspy/bpf/profile.bpf.c pkg/agent/ebpfspy/bpf/profile.bpf.h /build/profile.bpf/
-RUN CFLAGS=-I/build/libbpf/lib/include make -C /build/profile.bpf
 
 #              _
 #             | |
@@ -76,7 +72,7 @@ FROM golang:1.19-alpine3.16 AS go-builder
 
 RUN apk update && apk upgrade && \
     apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash zlib-dev elfutils-dev libelf-static zlib-static \
-    linux-headers
+    linux-headers clang curl llvm
 
 WORKDIR /opt/pyroscope
 
@@ -85,8 +81,6 @@ COPY third_party/phpspy/phpspy.h /opt/pyroscope/third_party/phpspy/phpspy.h
 COPY --from=phpspy-builder /third_party/phpspy/libphpspy.a /opt/pyroscope/third_party/phpspy/libphpspy.a
 COPY --from=js-builder /opt/pyroscope/webapp/public ./webapp/public
 COPY --from=ebpf-builder /build/bcc/lib third_party/bcc/lib
-COPY --from=ebpf-builder /build/libbpf/lib third_party/libbpf/lib
-COPY --from=ebpf-builder /build/profile.bpf/profile.bpf.o pkg/agent/ebpfspy/bpf/profile.bpf.o
 COPY Makefile ./
 COPY tools ./tools
 COPY go.mod go.sum ./
@@ -98,6 +92,8 @@ COPY cmd ./cmd
 COPY webapp/assets_embedded.go ./webapp/assets_embedded.go
 COPY webapp/assets.go ./webapp/assets.go
 COPY scripts ./scripts
+
+RUN make bpf-get-headers bpf-generate
 
 RUN ENABLED_SPIES_RELEASE="ebpfspy,phpspy,dotnetspy" \
     EMBEDDED_ASSETS_DEPS="" \
