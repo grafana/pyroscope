@@ -88,7 +88,7 @@ Starting with [weekly-f8](https://hub.docker.com/r/grafana/phlare/tags) you can 
   --server-address=<URL>              \
   --basic-auth-user="<User>"          \
   --basic-auth-password="<Password>"  \
-  --scope-org-id=<TenantID>           \
+  --tenant-id=<TenantID>              \
 ```
 
 To configure eBPF integration to send data to Phlare, replace the `<URL>` placeholder with the appropriate server URL. This could be the grafana.com Phlare URL or your own custom Phlare server URL.

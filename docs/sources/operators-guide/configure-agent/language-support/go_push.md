@@ -122,7 +122,7 @@ pyroscope.Start(pyroscope.Config{
   BasicAuthUser:     "<User>",
   BasicAuthPassword: "<Password>",
   // Optional Phlare tenant ID
-  ScopeOrgID:        "<TenantID>",
+  TenantID:          "<TenantID>",
   ProfileTypes: []pyroscope.ProfileType{
     pyroscope.ProfileCPU,
     pyroscope.ProfileInuseObjects,

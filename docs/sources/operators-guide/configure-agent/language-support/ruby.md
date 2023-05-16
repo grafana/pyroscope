@@ -80,7 +80,7 @@ Pyroscope.configure do |config|
   config.server_address = "<URL>"
   config.basic_auth_username='<User>'
   config.basic_auth_password='<Password>'
-  config.scope_org_id='<TenantID>'
+  config.tenant_id='<TenantID>'
 end
 ```
 

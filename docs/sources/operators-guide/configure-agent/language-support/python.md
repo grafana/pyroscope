@@ -69,9 +69,9 @@ import pyroscope
 pyroscope.configure(
 	application_name = "phlare.python.app",
 	server_address = "<URL>",
-	basic_auth_username='<User>',
-	basic_auth_password='<Password>',
-	scope_org_id="<TenantID>",
+	basic_auth_username = '<User>',
+	basic_auth_password = '<Password>',
+	tenant_id = "<TenantID>",
 )
 ```
 
