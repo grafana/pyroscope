@@ -15,7 +15,7 @@ import (
 )
 
 func (s *Session) getCountsMapValues() (keys []profileSampleKey, values []uint32, batch bool, err error) {
-	// try lookup_and_delete_batch
+	// try batch first
 	var (
 		m       = s.bpf.profileMaps.Counts
 		mapSize = m.MaxEntries()
@@ -30,22 +30,18 @@ func (s *Session) getCountsMapValues() (keys []profileSampleKey, values []uint32
 		s.logger.Debugf("getCountsMapValues batch got %d stack-traces", n)
 		return keys[:n], values[:n], true, nil
 	}
-	// todo(korniltsev): do not merge, handle err properly, ENOENT, etc
-	_ = nextKey
-
-	// batch failed or unsupported or just unlucky and got 0 stack-traces
-	// try iterating
+	// try iterating if batch failed
 	keys = keys[:0]
 	values = values[:0]
 	it := m.Iterate()
 	k := profileSampleKey{}
 	v := uint32(0)
 	for {
-		ok := it.Next(&k, &v) // todo(korniltsev): do not merge, double check it does not do 16k syscalls
+		ok := it.Next(&k, &v)
 		if !ok {
 			err := it.Err()
 			if err != nil {
-				err = fmt.Errorf("getCountsMapValues fail: %w", err)
+				err = fmt.Errorf("map %s iteration : %w", m.String(), err)
 				return nil, nil, false, err
 			}
 			break
