@@ -17,13 +17,10 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/log"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"golang.org/x/sys/unix"
+	"reflect"
 	"sync"
+	"unsafe"
 )
-
-//#cgo CFLAGS: -I./bpf/
-//#include <linux/types.h>
-//#include "profile.bpf.h"
-import "C"
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -Wall -fpie -Wno-unused-variable -Wno-unused-function" profile bpf/profile.bpf.c -- -I./bpf/libbpf -I./bpf/vmlinux/
 
@@ -124,26 +121,26 @@ func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, p
 		ck := &keys[i]
 		value := values[i]
 
-		pid := uint32(ck.Pid)
-		kStackID := int64(ck.KernStack)
-		uStackID := int64(ck.UserStack)
-		count := uint32(value)
-		//todo
-		//var comm string = C.GoString(&ck.comm[0])
-		var comm string = "TODO comm"
-		if uStackID >= 0 {
-			knownStacks[uint32(uStackID)] = true
+		if ck.UserStack >= 0 {
+			knownStacks[uint32(ck.UserStack)] = true
 		}
-		if kStackID >= 0 {
-			knownStacks[uint32(kStackID)] = true
+		if ck.KernStack >= 0 {
+			knownStacks[uint32(ck.KernStack)] = true
 		}
-		labels := s.serviceDiscovery.GetLabels(pid)
+		labels := s.serviceDiscovery.GetLabels(ck.Pid)
 		if labels == nil && s.onlyServices {
 			continue
 		}
-		uStack := s.getStack(uStackID)
-		kStack := s.getStack(kStackID)
-		sfs = append(sfs, sf{pid: pid, uStack: uStack, kStack: kStack, count: count, comm: comm, labels: labels})
+		uStack := s.getStack(ck.UserStack)
+		kStack := s.getStack(ck.KernStack)
+		sfs = append(sfs, sf{
+			pid:    ck.Pid,
+			uStack: uStack,
+			kStack: kStack,
+			count:  value,
+			comm:   getComm(ck),
+			labels: labels,
+		})
 	}
 	for _, it := range sfs {
 		buf := bytes.NewBuffer(nil)
@@ -254,4 +251,18 @@ func reverse(s []string) {
 	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
 		s[i], s[j] = s[j], s[i]
 	}
+}
+
+func getComm(k *profileSampleKey) string {
+	res := ""
+	sh := (*reflect.StringHeader)(unsafe.Pointer(&res))
+	sh.Data = uintptr(unsafe.Pointer(&k.Comm[0]))
+	for _, c := range k.Comm {
+		if c != 0 {
+			sh.Len++
+		} else {
+			break
+		}
+	}
+	return res
 }
