@@ -5,10 +5,6 @@
 //	https://github.com/iovisor/bcc/blob/master/tools/profile.py
 package ebpfspy
 
-//#cgo CFLAGS: -I./bpf/
-//#include <linux/types.h>
-//#include "profile.bpf.h"
-import "C"
 import (
 	"fmt"
 	"github.com/cilium/ebpf"
