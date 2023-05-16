@@ -1,11 +1,11 @@
 #include "vmlinux.h"
-#include <bpf/bpf_helpers.h>
-#include <bpf/bpf_tracing.h>
+#include "bpf_helpers.h"
+#include "bpf_tracing.h"
 #include "profile.bpf.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct profile_key_t);
+	__type(key, struct sample_key);
 	__type(value, u32);
 	__uint(max_entries, PROFILE_MAPS_SIZE);
 } counts SEC(".maps");
@@ -21,9 +21,11 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
     __type(key, u32);
-    __type(value, struct profile_bss_args_t);
+    __type(value, struct bss_arg);
     __uint(max_entries, 1);
 } args SEC(".maps");
+
+struct bss_arg arg2;
 
 #define KERN_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP)
 #define USER_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK)
@@ -36,9 +38,9 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
     u64 id = bpf_get_current_pid_tgid();
     u32 tgid = id >> 32;
     u32 pid = id;
-	struct profile_key_t key = { .pid = tgid };
+	struct sample_key key = { .pid = tgid };
 	u32 *val, one = 1, zero = 0;
-	struct profile_bss_args_t *arg = bpf_map_lookup_elem(&args, &zero);
+	struct bss_arg *arg = bpf_map_lookup_elem(&args, &zero);
     if (!arg) {
         return 0;
     }

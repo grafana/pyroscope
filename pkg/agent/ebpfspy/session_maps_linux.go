@@ -5,48 +5,59 @@
 //	https://github.com/iovisor/bcc/blob/master/tools/profile.py
 package ebpfspy
 
-import (
-	"unsafe"
-)
-
 //#cgo CFLAGS: -I./bpf/
 //#include <linux/types.h>
 //#include "profile.bpf.h"
 import "C"
+import (
+	"fmt"
+	"github.com/cilium/ebpf"
+)
 
-func (s *Session) getCountsMapValues() (keys [][]byte, values [][]byte, batch bool, err error) {
+func (s *Session) getCountsMapValues() (keys []profileSampleKey, values []uint32, batch bool, err error) {
 	// try lookup_and_delete_batch
 	var (
-		mapSize = C.PROFILE_MAPS_SIZE
-		keySize = int(unsafe.Sizeof(C.struct_profile_key_t{}))
-		allKeys = make([]byte, mapSize*keySize)
-		pKeys   = unsafe.Pointer(&allKeys[0])
-		nextKey = C.struct_profile_key_t{}
+		m       = s.bpf.profileMaps.Counts
+		mapSize = m.MaxEntries()
+		nextKey = profileSampleKey{}
 	)
-	values, err = s.mapCounts.GetValueAndDeleteBatch(pKeys, nil, unsafe.Pointer(&nextKey), uint32(mapSize))
-	if len(values) > 0 {
-		keys = collectBatchValues(allKeys, len(values), keySize)
-		return keys, values, true, nil
+	keys = make([]profileSampleKey, mapSize)
+	values = make([]uint32, mapSize)
+
+	opts := &ebpf.BatchOptions{}
+	n, err := m.BatchLookupAndDelete(nil, &nextKey, keys, values, opts)
+	if n > 0 {
+		s.logger.Debugf("getCountsMapValues batch got %d stack-traces", n)
+		return keys[:n], values[:n], true, nil
 	}
+	// todo(korniltsev): do not merge, handle err properly, ENOENT, etc
+	_ = nextKey
 
 	// batch failed or unsupported or just unlucky and got 0 stack-traces
 	// try iterating
-	it := s.mapCounts.Iterator()
-	for it.Next() {
-		key := it.Key()
-		v, err := s.mapCounts.GetValue(unsafe.Pointer(&key[0]))
-		if err != nil {
-			return nil, nil, false, err
+	keys = keys[:0]
+	values = values[:0]
+	it := m.Iterate()
+	k := profileSampleKey{}
+	v := uint32(0)
+	for {
+		ok := it.Next(&k, &v) // todo(korniltsev): do not merge, double check it does not do 16k syscalls
+		if !ok {
+			err := it.Err()
+			if err != nil {
+				err = fmt.Errorf("getCountsMapValues fail: %w", err)
+				return nil, nil, false, err
+			}
+			break
 		}
-		keyCopy := make([]byte, len(key)) // The slice is valid only until the next call to Next.
-		copy(keyCopy, key)
-		keys = append(keys, keyCopy)
+		keys = append(keys, k)
 		values = append(values, v)
 	}
+	s.logger.Debugf("getCountsMapValues got %d stack-traces", len(keys))
 	return keys, values, false, nil
 }
 
-func (s *Session) clearCountsMap(keys [][]byte, batch bool) error {
+func (s *Session) clearCountsMap(keys []profileSampleKey, batch bool) error {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -54,55 +65,56 @@ func (s *Session) clearCountsMap(keys [][]byte, batch bool) error {
 		// do nothing, already deleted with GetValueAndDeleteBatch in getCountsMapValues
 		return nil
 	}
-	for _, key := range keys {
-		err := s.mapCounts.DeleteKey(unsafe.Pointer(&key[0]))
+	m := s.bpf.profileMaps.Counts
+	for i := range keys {
+		err := m.Delete(&keys[i])
 		if err != nil {
 			return err
 		}
 	}
+	s.logger.Debugf("count map: deleted %d keys\n", len(keys))
 	return nil
 }
 
 func (s *Session) clearStacksMap(knownKeys map[uint32]bool) error {
-	m := s.mapStacks
+	m := s.bpf.Stacks
 	cnt := 0
 	errs := 0
 	if s.roundNumber%10 == 0 {
 		// do a full reset once in a while
-		it := m.Iterator()
-		var keys [][]byte
-		for it.Next() {
-			key := it.Key()
-			keyCopy := make([]byte, len(key)) // The slice is valid only until the next call to Next.
-			copy(keyCopy, key)
-			keys = append(keys, keyCopy)
+		it := m.Iterate()
+		v := make([]byte, m.ValueSize())
+		var keys []uint32
+		for {
+			k := uint32(0)
+			ok := it.Next(&k, &v) // todo use unsafe.Pointer to save on allocations
+			if !ok {
+				err := it.Err()
+				if err != nil {
+					return fmt.Errorf("clearStacksMap fail: %w", err)
+				}
+				break
+			}
+			keys = append(keys, k)
 		}
-		for _, key := range keys {
-			if err := m.DeleteKey(unsafe.Pointer(&key[0])); err != nil {
+		for i := range keys {
+			if err := m.Delete(&keys[i]); err != nil {
 				errs += 1
 			} else {
 				cnt += 1
 			}
 		}
+		s.logger.Debugf("stacks map: iteratively deleted %d keys, %d errors\n", cnt, errs)
 		return nil
 	}
 	for stackId := range knownKeys {
 		k := stackId
-		if err := m.DeleteKey(unsafe.Pointer(&k)); err != nil {
+		if err := m.Delete(&k); err != nil {
 			errs += 1
 		} else {
 			cnt += 1
 		}
 	}
+	s.logger.Debugf("stacks map: deleted %d keys, %d errors\n", cnt, errs)
 	return nil
-}
-
-func collectBatchValues(values []byte, count int, valueSize int) [][]byte {
-	var value []byte
-	var collected [][]byte
-	for i := 0; i < count*valueSize; i += valueSize {
-		value = values[i : i+valueSize]
-		collected = append(collected, value)
-	}
-	return collected
 }

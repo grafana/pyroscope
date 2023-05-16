@@ -5,13 +5,14 @@
 //	https://github.com/iovisor/bcc/blob/master/tools/profile.py
 package ebpfspy
 
-import "C"
 import (
 	"bytes"
 	"context"
 	_ "embed"
 	"encoding/binary"
 	"fmt"
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/link"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/cpuonline"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/sd"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/log"
@@ -19,15 +20,14 @@ import (
 	"golang.org/x/sys/unix"
 	"sync"
 	"syscall"
-	"unsafe"
-
-	bpf "github.com/aquasecurity/libbpfgo"
 )
 
 //#cgo CFLAGS: -I./bpf/
 //#include <linux/types.h>
 //#include "profile.bpf.h"
 import "C"
+
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -Wall -fpie -Wno-unused-variable -Wno-unused-function" profile bpf/profile.bpf.c -- -I./bpf/libbpf -I./bpf/vmlinux/
 
 type Session struct {
 	logger           log.Logger
@@ -41,16 +41,12 @@ type Session struct {
 
 	symCache *symbolCache
 
-	module    *bpf.Module
-	mapCounts *bpf.BPFMap
-	mapStacks *bpf.BPFMap
-	mapArgs   *bpf.BPFMap
-	prog      *bpf.BPFProg
-	link      *bpf.BPFLink
+	bpf profileObjects
 
 	modMutex sync.Mutex
 
 	roundNumber int
+	links       []*link.RawLink
 }
 
 const btf = "should not be used" // canary to detect we got relocations
@@ -81,25 +77,16 @@ func (s *Session) Start() error {
 	if s.symCache, err = newSymbolCache(s.symbolCacheSize); err != nil {
 		return err
 	}
-	args := bpf.NewModuleArgs{BPFObjBuff: profileBpf,
-		BTFObjPath: btf}
-	if s.module, err = bpf.NewModuleFromBufferArgs(args); err != nil {
-		return err
-	}
-	if err = s.module.BPFLoadObject(); err != nil {
-		return err
-	}
-	if s.prog, err = s.module.GetProgram("do_perf_event"); err != nil {
-		return err
-	}
-	if err = s.findMaps(); err != nil {
-		return err
+
+	opts := &ebpf.CollectionOptions{}
+	if err := loadProfileObjects(&s.bpf, opts); err != nil {
+		return fmt.Errorf("session start fail: %w", err)
 	}
 	if err = s.initArgs(); err != nil {
-		return err
+		return fmt.Errorf("session start fail: %w", err)
 	}
 	if err = s.attachPerfEvent(); err != nil {
-		return err
+		return fmt.Errorf("session start fail: %w", err)
 	}
 	return nil
 }
@@ -136,15 +123,17 @@ func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, p
 	}
 	var sfs []sf
 	knownStacks := map[uint32]bool{}
-	for i, key := range keys {
-		ck := (*C.struct_profile_key_t)(unsafe.Pointer(&key[0]))
+	for i := range keys {
+		ck := &keys[i]
 		value := values[i]
 
-		pid := uint32(ck.pid)
-		kStackID := int64(ck.kern_stack)
-		uStackID := int64(ck.user_stack)
-		count := binary.LittleEndian.Uint32(value)
-		var comm string = C.GoString(&ck.comm[0])
+		pid := uint32(ck.Pid)
+		kStackID := int64(ck.KernStack)
+		uStackID := int64(ck.UserStack)
+		count := uint32(value)
+		//todo
+		//var comm string = C.GoString(&ck.comm[0])
+		var comm string = "TODO comm"
 		if uStackID >= 0 {
 			knownStacks[uint32(uStackID)] = true
 		}
@@ -181,40 +170,27 @@ func (s *Session) Reset(cb func(labels *spy.Labels, name []byte, value uint64, p
 
 func (s *Session) Stop() {
 	s.symCache.clear()
-	for fd := range s.perfEventFds {
+	for _, fd := range s.perfEventFds {
 		_ = syscall.Close(fd)
 	}
-	s.module.Close()
+	for _, rawLink := range s.links {
+		_ = rawLink.Close()
+	}
 }
 
-func (s *Session) findMaps() error {
-	var err error
-	if s.mapArgs, err = s.module.GetMap("args"); err != nil {
-		return err
-	}
-	if s.mapCounts, err = s.module.GetMap("counts"); err != nil {
-		return err
-	}
-	if s.mapStacks, err = s.module.GetMap("stacks"); err != nil {
-		return err
-	}
-	return nil
-}
 func (s *Session) initArgs() error {
 	var zero uint32
-	var err error
 	var tgidFilter uint32
 	if s.pid <= 0 {
 		tgidFilter = 0
 	} else {
 		tgidFilter = uint32(s.pid)
 	}
-	args := C.struct_profile_bss_args_t{
-		tgid_filter: C.uint(tgidFilter),
+	arg := &profileBssArg{
+		TgidFilter: tgidFilter,
 	}
-	err = s.mapArgs.UpdateValueFlags(unsafe.Pointer(&zero), unsafe.Pointer(&args), 0)
-	if err != nil {
-		return err
+	if err := s.bpf.Args.Update(&zero, arg, 0); err != nil {
+		return fmt.Errorf("init args fail: %w", err)
 	}
 	return nil
 }
@@ -223,7 +199,7 @@ func (s *Session) attachPerfEvent() error {
 	var cpus []uint
 	var err error
 	if cpus, err = cpuonline.Get(); err != nil {
-		return err
+		return fmt.Errorf("attachPerfEvent fail: %w", err)
 	}
 	for _, cpu := range cpus {
 		attr := unix.PerfEventAttr{
@@ -237,9 +213,17 @@ func (s *Session) attachPerfEvent() error {
 			return err
 		}
 		s.perfEventFds = append(s.perfEventFds, fd)
-		if _, err = s.prog.AttachPerfEvent(fd); err != nil {
-			return err
+		opts := link.RawLinkOptions{
+			Target:  fd,
+			Program: s.bpf.profilePrograms.DoPerfEvent,
+			Attach:  ebpf.AttachPerfEvent,
 		}
+		// todo(korniltsev): add fallback for old kernels
+		l, err := link.AttachRawLink(opts)
+		if err != nil {
+			return fmt.Errorf("attachPerfEvent fail: %w", err)
+		}
+		s.links = append(s.links, l)
 	}
 	return nil
 }
@@ -249,13 +233,11 @@ func (s *Session) getStack(stackId int64) []byte {
 		return nil
 	}
 	stackIdU32 := uint32(stackId)
-	key := unsafe.Pointer(&stackIdU32)
-	stack, err := s.mapStacks.GetValue(key)
+	res, err := s.bpf.profileMaps.Stacks.LookupBytes(stackIdU32)
 	if err != nil {
 		return nil
 	}
-	return stack
-
+	return res
 }
 func (s *Session) walkStack(line *bytes.Buffer, stack []byte, pid uint32, userspace bool) {
 	if len(stack) == 0 {
@@ -293,6 +275,3 @@ func reverse(s []string) {
 		s[i], s[j] = s[j], s[i]
 	}
 }
-
-//go:embed bpf/profile.bpf.o
-var profileBpf []byte

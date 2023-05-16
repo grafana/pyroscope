@@ -40,11 +40,9 @@ GO_TAGS = $(ENABLED_SPIES)$(EXTRA_GO_TAGS)
 ALPINE_TAG =
 
 ifneq (,$(findstring ebpfspy,$(GO_TAGS)))
-	EXTRA_CGO_CFLAGS := $(EXTRA_CGO_CFLAGS) -I$(abspath ./third_party/libbpf/lib/include) \
-		-I$(abspath ./third_party/bcc/lib/include)
-	EXTRA_CGO_LDFLAGS := $(EXTRA_CGO_LDFLAGS)  -L$(abspath ./third_party/libbpf/lib/lib64) -lbpf \
-		-L$(abspath ./third_party/bcc/lib/lib) -lbcc-syms -lstdc++ -lelf -lz
-	THIRD_PARTY_DEPENDENCIES := $(THIRD_PARTY_DEPENDENCIES) build-profile-bpf build-bcc build-libbpf
+	EXTRA_CGO_CFLAGS := $(EXTRA_CGO_CFLAGS) -I$(abspath ./third_party/bcc/lib/include)
+	EXTRA_CGO_LDFLAGS := $(EXTRA_CGO_LDFLAGS) -L$(abspath ./third_party/bcc/lib/lib) -lbcc-syms -lstdc++ -lelf -lz
+	THIRD_PARTY_DEPENDENCIES := $(THIRD_PARTY_DEPENDENCIES) bpf-get-headers bpf-generate build-bcc
 endif
 
 ifeq ("$(OS)", "Linux")
@@ -119,18 +117,17 @@ build-phpspy-dependencies: ## Builds the PHP dependency
 	cd third_party/phpspy_src && make clean static
 	cp third_party/phpspy_src/libphpspy.a third_party/phpspy/libphpspy.a
 
-.PHONY: build-libbpf
-build-libbpf:
-	$(MAKE) -C third_party/libbpf
-
 .PHONY: build-bcc
 build-bcc:
 	$(MAKE) -C third_party/bcc
 
-.PHONY: build-profile-bpf
-build-profile-bpf: build-libbpf
-	CFLAGS="-I$(abspath ./third_party/libbpf/lib/include)" $(MAKE) -C pkg/agent/ebpfspy/bpf
+.PHONY: bpf-get-headers
+bpf-get-headers:
+	$(MAKE) -C pkg/agent/ebpfspy/bpf get-headers
 
+.PHONY: bpf-generate
+bpf-generate:
+	go generate pkg/agent/ebpfspy/session_linux.go
 
 .PHONY: build-third-party-dependencies
 build-third-party-dependencies: $(shell echo $(THIRD_PARTY_DEPENDENCIES)) ## Builds third party dep
