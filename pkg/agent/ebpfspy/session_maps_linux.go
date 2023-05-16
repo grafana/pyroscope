@@ -83,7 +83,7 @@ func (s *Session) clearStacksMap(knownKeys map[uint32]bool) error {
 		var keys []uint32
 		for {
 			k := uint32(0)
-			ok := it.Next(&k, &v) // todo(korniltsev) use unsafe.Pointer to save on allocations
+			ok := it.Next(&k, &v)
 			if !ok {
 				err := it.Err()
 				if err != nil {
