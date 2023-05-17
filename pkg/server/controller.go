@@ -78,6 +78,7 @@ type Controller struct {
 	authService        service.AuthService
 	userService        service.UserService
 	jwtTokenService    service.JWTTokenService
+	apiKeyService      service.APIKeyService
 	annotationsService service.AnnotationsService
 	signupDefaultRole  model.Role
 
@@ -191,7 +192,8 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		[]byte(ctrl.config.Auth.JWTSecret),
 		24*time.Hour*time.Duration(ctrl.config.Auth.LoginMaximumLifetimeDays))
 
-	ctrl.authService = service.NewAuthService(ctrl.db, ctrl.jwtTokenService)
+	ctrl.apiKeyService = service.NewAPIKeyService(ctrl.db, ctrl.config.Auth.APIKeyBcryptCost)
+	ctrl.authService = service.NewAuthService(ctrl.db, ctrl.jwtTokenService, ctrl.apiKeyService)
 	ctrl.userService = service.NewUserService(ctrl.db)
 	ctrl.annotationsService = service.NewAnnotationsService(ctrl.db)
 
@@ -200,7 +202,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	apiRouter := router.New(r.PathPrefix("/api").Subrouter(), router.Services{
 		Logger:             ctrl.log,
-		APIKeyService:      service.NewAPIKeyService(ctrl.db),
+		APIKeyService:      ctrl.apiKeyService,
 		AuthService:        ctrl.authService,
 		UserService:        ctrl.userService,
 		AnnotationsService: ctrl.annotationsService,

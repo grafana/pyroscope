@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	scrape "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
@@ -284,13 +285,14 @@ var _ = Describe("flags", func() {
 						},
 						Ingestion: config.IngestionAuth{
 							Enabled:   false,
-							CacheTTL:  time.Second,
+							CacheTTL:  time.Minute,
 							CacheSize: 1024,
 						},
 						JWTSecret:                "",
 						LoginMaximumLifetimeDays: 0,
 						SignupDefaultRole:        "admin",
 						CookieSameSite:           http.SameSiteStrictMode,
+						APIKeyBcryptCost:         bcrypt.MinCost,
 					},
 
 					MetricsExportRules: config.MetricsExportRules{

@@ -76,7 +76,8 @@ func ValidateAPIKeyName(apiKeyName string) error {
 // to be persisted.
 //
 // The key format:
-//   [4 byte magic][payload]
+//
+//	[4 byte magic][payload]
 //
 // Currently, the function generates 'psx' key, the payload structure is
 // defined as follows: base64(id + secret), where:
@@ -86,13 +87,17 @@ func ValidateAPIKeyName(apiKeyName string) error {
 // The call encodes base64 using raw URL encoding (unpadded alternate base64
 // encoding defined in RFC 4648).
 func GenerateAPIKey(id uint) (key string, hashed []byte, err error) {
+	return GenerateAPIKeyWithCost(id, bcrypt.DefaultCost)
+}
+
+func GenerateAPIKeyWithCost(id uint, cost int) (key string, hashed []byte, err error) {
 	b := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(b, uint64(id))
 	secret := make([]byte, apiKeySecretLen)
 	if _, err = rand.Read(secret); err != nil {
 		return "", nil, err
 	}
-	h, err := bcrypt.GenerateFromPassword(secret, bcrypt.DefaultCost)
+	h, err := bcrypt.GenerateFromPassword(secret, cost)
 	if err != nil {
 		return "", nil, err
 	}

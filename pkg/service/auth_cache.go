@@ -29,11 +29,27 @@ func NewCachingAuthService(authService AuthService, c CachingAuthServiceConfig) 
 
 func (svc CachingAuthService) APIKeyFromToken(ctx context.Context, t string) (model.APIKey, error) {
 	if svc.cache != nil {
-		if v, ok := svc.cache.get(t); ok {
-			return v.(model.APIKey), nil
-		}
+		return svc.cachedAPIKeyFromToken(ctx, t)
 	}
 	return svc.AuthService.APIKeyFromToken(ctx, t)
+}
+
+func (svc CachingAuthService) cachedAPIKeyFromToken(ctx context.Context, t string) (model.APIKey, error) {
+	if v, ok := svc.cache.get(t); ok {
+		switch x := v.(type) {
+		case error:
+			return model.APIKey{}, x
+		case model.APIKey:
+			return x, nil
+		}
+	}
+	k, err := svc.AuthService.APIKeyFromToken(ctx, t)
+	if err != nil {
+		svc.cache.put(t, err)
+		return k, err
+	}
+	svc.cache.put(t, k)
+	return k, err
 }
 
 func (svc CachingAuthService) PutAPIKey(t string, k model.APIKey) {

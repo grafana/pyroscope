@@ -26,3 +26,4 @@ remote-write:
 auth:
   signup-default-role: admin
   cookie-same-site: strict
+  api-key-bcrypt-cost: 4

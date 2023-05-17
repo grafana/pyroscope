@@ -17,11 +17,11 @@ type AuthService struct {
 	jwtTokenService JWTTokenService
 }
 
-func NewAuthService(db *gorm.DB, jwtTokenService JWTTokenService) AuthService {
+func NewAuthService(db *gorm.DB, jwtTokenService JWTTokenService, apiKeyService APIKeyService) AuthService {
 	return AuthService{
 		db:              db,
 		userService:     NewUserService(db),
-		apiKeyService:   NewAPIKeyService(db),
+		apiKeyService:   apiKeyService,
 		jwtTokenService: jwtTokenService,
 	}
 }
