@@ -76,9 +76,10 @@ func (*realFileSystem) RemoveAll(path string) error                { return os.R
 
 // blockEvicter unloads blocks from tenant instance.
 type blockEvicter interface {
-	// evictBlock evicts the block by its ID for the given tenant and invokes
-	// fn callback, if the tenant is found. The call is thread-safe: tenant
-	// can't be added or removed during the execution.
+	// evictBlock evicts the block by its ID from the memory and
+	// invokes fn callback, regardless of if the tenant is found.
+	// The call is thread-safe: tenant can't be added or removed
+	// during the execution.
 	evictBlock(tenant string, b ulid.ULID, fn func() error) error
 }
 

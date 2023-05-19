@@ -221,6 +221,7 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 			// ensure the correct number of files are created
 			numRows, numRGs, err := store.Flush(context.Background())
 			require.NoError(t, err)
+			require.NoError(t, store.DeleteRowGroups())
 			assert.Equal(t, tc.expectedNumRows, numRows)
 			assert.Equal(t, tc.expectedNumRGs, numRGs)
 
