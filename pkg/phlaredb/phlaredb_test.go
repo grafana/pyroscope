@@ -148,7 +148,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	// create client
 	ctx := context.Background()
 
-	client, cleanup := db.Queriers().ingesterClient()
+	client, cleanup := db.queriers().ingesterClient()
 	defer cleanup()
 
 	t.Run("request the one existing series", func(t *testing.T) {
@@ -276,7 +276,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 	// create client
 	ctx := context.Background()
 
-	client, cleanup := db.Queriers().ingesterClient()
+	client, cleanup := db.queriers().ingesterClient()
 	defer cleanup()
 
 	t.Run("request the one existing series", func(t *testing.T) {

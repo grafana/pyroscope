@@ -193,7 +193,7 @@ func (i *Ingester) forInstance(ctx context.Context, f func(*instance) error) err
 	return f(instance)
 }
 
-func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) error {
+func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) (err error) {
 	// We lock instances map for writes to ensure that no new instances are
 	// created during the procedure. Otherwise, during initialization, the
 	// new PhlareDB instance may try to load a block that has already been
@@ -204,12 +204,18 @@ func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) err
 	// the process start, therefore there is no guarantee that we will find the
 	// discovered candidate block there. If it is the case, we have to ensure that
 	// the block won't be accessed, before and during deleting it from the disk.
+	var evicted bool
 	if tenantInstance, ok := i.instances[tenantID]; ok {
-		if _, err := tenantInstance.Evict(b); err != nil {
+		if evicted, err = tenantInstance.Evict(b, fn); err != nil {
 			return fmt.Errorf("failed to evict block %s/%s: %w", tenantID, b, err)
 		}
 	}
-	return fn()
+	// If the instance is not found, or the querier is not aware of the block,
+	// and thus the callback has not been invoked, do it now.
+	if !evicted {
+		return fn()
+	}
+	return nil
 }
 
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
@@ -222,7 +228,7 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 					if err != nil {
 						return err
 					}
-					if err = instance.Head().Ingest(ctx, p, id, series.Labels...); err != nil {
+					if err = instance.Ingest(ctx, p, id, series.Labels...); err != nil {
 						reason := validation.ReasonOf(err)
 						if reason != validation.Unknown {
 							validation.DiscardedProfiles.WithLabelValues(string(reason), instance.tenantID).Add(float64(1))

@@ -24,8 +24,8 @@ type headOnDiskQuerier struct {
 }
 
 func (q *headOnDiskQuerier) rowGroup() *rowGroupOnDisk {
-	q.head.profiles.lock.RLock()
-	defer q.head.profiles.lock.RUnlock()
+	q.head.profiles.rowsLock.RLock()
+	defer q.head.profiles.rowsLock.RUnlock()
 	return q.head.profiles.rowGroups[q.rowGroupIdx]
 }
 
@@ -119,7 +119,7 @@ func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[P
 
 	stacktraceSamples := profileSampleMap{}
 
-	if err := mergeByStacktraces(ctx, q.head.profiles.rowGroups[q.rowGroupIdx], rows, stacktraceSamples); err != nil {
+	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, stacktraceSamples); err != nil {
 		return nil, err
 	}
 
@@ -132,7 +132,7 @@ func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterato
 
 	seriesByLabels := make(seriesByLabels)
 
-	if err := mergeByLabels(ctx, q.head.profiles.rowGroups[q.rowGroupIdx], rows, seriesByLabels, by...); err != nil {
+	if err := mergeByLabels(ctx, q.rowGroup(), rows, seriesByLabels, by...); err != nil {
 		return nil, err
 	}
 

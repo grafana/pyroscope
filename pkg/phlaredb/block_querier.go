@@ -225,10 +225,25 @@ func (b *BlockQuerier) Sync(ctx context.Context) error {
 	return nil
 }
 
+func (b *BlockQuerier) AddBlockQuerierByMeta(m *block.Meta) {
+	q := newSingleBlockQuerierFromMeta(b.phlarectx, b.bucketReader, m)
+	b.queriersLock.Lock()
+	defer b.queriersLock.Unlock()
+	i := sort.Search(len(b.queriers), func(i int) bool {
+		return b.queriers[i].meta.MinTime >= m.MinTime
+	})
+	if i < len(b.queriers) && b.queriers[i].meta.ULID == m.ULID {
+		// Block with this meta is already present, skipping.
+		return
+	}
+	b.queriers = append(b.queriers, q) // Ensure we have enough capacity.
+	copy(b.queriers[i+1:], b.queriers[i:])
+	b.queriers[i] = q
+}
+
 // evict removes the block with the given ULID from the querier.
 func (b *BlockQuerier) evict(blockID ulid.ULID) (bool, error) {
 	b.queriersLock.Lock()
-	defer b.queriersLock.Unlock()
 	// N.B: queriers are sorted by meta.MinTime.
 	j := -1
 	for i, q := range b.queriers {
@@ -238,17 +253,16 @@ func (b *BlockQuerier) evict(blockID ulid.ULID) (bool, error) {
 		}
 	}
 	if j < 0 {
+		b.queriersLock.Unlock()
 		return false, nil
 	}
 	blockQuerier := b.queriers[j]
-	if err := blockQuerier.Close(); err != nil {
-		return true, err
-	}
 	// Delete the querier from the slice and make it eligible for GC.
 	copy(b.queriers[j:], b.queriers[j+1:])
 	b.queriers[len(b.queriers)-1] = nil
 	b.queriers = b.queriers[:len(b.queriers)-1]
-	return true, nil
+	b.queriersLock.Unlock()
+	return true, blockQuerier.Close()
 }
 
 func (b *BlockQuerier) Close() error {
