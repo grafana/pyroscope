@@ -1,5 +1,6 @@
 import React from 'react';
-import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
+import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons/faWindowMaximize';
+import { faSearch } from '@fortawesome/free-solid-svg-icons/faSearch';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
@@ -24,7 +25,7 @@ import clsx from 'clsx';
 import { useWindowWidth } from '@react-hook/window-size';
 import { isRouteActive, ROUTES } from '@phlare/pages/routes';
 import Logo from '@phlare/static/logo.svg';
-import styles from '@webapp/components/Sidebar.module.css';
+import styles from '@phlare/components/Sidebar.module.css';
 import { SidebarTenant } from '@phlare/components/SidebarTenant';
 
 export function Sidebar() {
@@ -59,6 +60,17 @@ export function Sidebar() {
       </SidebarHeader>
       <SidebarContent>
         <Menu iconShape="square" popperArrow>
+          <MenuItem
+            active={isRouteActive(pathname, ROUTES.EXPLORE_VIEW)}
+            icon={<Icon icon={faSearch} />}
+          >
+            Tag Explorer
+            <NavLink
+              activeClassName="active-route"
+              to={{ pathname: ROUTES.EXPLORE_VIEW, search }}
+              exact
+            />
+          </MenuItem>
           <MenuItem
             active={isRouteActive(pathname, ROUTES.SINGLE_VIEW)}
             icon={<Icon icon={faWindowMaximize} />}

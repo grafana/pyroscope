@@ -12,6 +12,7 @@ import { createBrowserHistory } from 'history';
 import { ROUTES } from '@phlare/pages/routes';
 import { SingleView } from '@phlare/pages/SingleView';
 import { ComparisonView } from '@phlare/pages/ComparisonView';
+import { ExploreView } from '@phlare/pages/ExploreView';
 import { DiffView } from '@phlare/pages/DiffView';
 import { LoadAppNames } from '@phlare/components/LoadAppNames';
 import { Sidebar } from '@phlare/components/Sidebar';
@@ -32,6 +33,9 @@ function App() {
           <TenantWall>
             <LoadAppNames>
               <Switch>
+                <Route exact path={ROUTES.EXPLORE_VIEW}>
+                  <ExploreView />
+                </Route>
                 <Route exact path={ROUTES.SINGLE_VIEW}>
                   <SingleView />
                 </Route>

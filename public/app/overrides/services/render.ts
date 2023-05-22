@@ -3,6 +3,7 @@ import {
   Profile,
   Groups,
   FlamebearerProfileSchema,
+  GroupsSchema,
 } from '@pyroscope/models/src';
 import { z } from 'zod';
 import type { ZodError } from 'zod';
@@ -112,17 +113,44 @@ export async function renderDiff(
   );
 }
 
-export interface RenderExploreOutput {
-  profile: Profile;
-  groups: Groups;
+const RenderExploreSchema = FlamebearerProfileSchema.extend({
+  groups: z.preprocess((groups) => {
+    const groupNames = Object.keys(groups as Groups);
+    return groupNames.length
+      ? groupNames
+          .filter((g) => !!g.trim())
+          .reduce(
+            (acc, current) => ({
+              ...acc,
+              [current]: (groups as Groups)[current],
+            }),
+            {}
+          )
+      : groups;
+  }, GroupsSchema),
+}).transform((values) => {
+  return {
+    profile: values,
+    groups: values.groups,
+  };
+});
+
+interface RenderExploreProps extends Omit<RenderSingleProps, 'maxNodes'> {
+  groupBy: string;
+  grouByTagValue: string;
 }
+
+export type RenderExploreOutput = z.infer<typeof RenderExploreSchema>;
+
 export async function renderExplore(
-  props: unknown,
+  props: RenderExploreProps,
   controller?: {
     signal?: AbortSignal;
   }
-) {
-  return Result.err<RenderExploreOutput, { message: string }>({
-    message: 'TODO: implement ',
+): Promise<Result<RenderExploreOutput, RequestError | ZodError>> {
+  const url = buildRenderURL(props);
+  const response = await requestWithOrgID(`/pyroscope/${url}&format=json`, {
+    signal: controller?.signal,
   });
+  return parseResponse<RenderExploreOutput>(response, RenderExploreSchema);
 }
