@@ -65,7 +65,6 @@ func (p *ProcTable) refresh(procMaps []byte) {
 		if e != nil {
 			r.elfTable = e
 		}
-
 	}
 }
 
@@ -92,7 +91,7 @@ func (p *ProcTable) Resolve(pc uint64) *Symbol {
 	return sym
 }
 
-func (_ *ProcTable) Close() {
+func (*ProcTable) Close() {
 }
 
 func (p *ProcTable) createElfTable(m *elfRange) *ElfTable {
