@@ -9,15 +9,7 @@ import (
 	"os"
 )
 
-type GoSymbolTable struct {
-	file string
-	tab  *SimpleSymbolTable
-	// for non go symbols
-	fallback      *func() SymbolTable
-	fallbackTable SymbolTable
-}
-
-func NewGoSymbolTable(file string, fallback *func() SymbolTable) (*GoSymbolTable, error) {
+func newGoSymbols(file string) (*SymTab, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
@@ -25,11 +17,18 @@ func NewGoSymbolTable(file string, fallback *func() SymbolTable) (*GoSymbolTable
 	defer func() {
 		_ = f.Close()
 	}()
-
-	var gosymtab, pclntab []byte
-
 	obj, err := elf.NewFile(f)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open elf file: %w", err)
+	}
 
+	return getELFSymbolsFromPCLN(file, obj)
+}
+
+func getELFSymbolsFromPCLN(file string, obj *elf.File) (*SymTab, error) {
+	var gosymtab []byte
+	var err error
+	var pclntab []byte
 	text := obj.Section(".text")
 	if text == nil {
 		return nil, errors.New("empty .text")
@@ -48,6 +47,7 @@ func NewGoSymbolTable(file string, fallback *func() SymbolTable) (*GoSymbolTable
 	}
 
 	textStart := parseRuntimeTextFromPclntab18(pclntab)
+	//fmt.Printf("textStart %x\n", textStart)
 	if textStart == 0 {
 		// for older versions text.Addr is enough
 		// https://github.com/golang/go/commit/b38ab0ac5f78ac03a38052018ff629c03e36b864
@@ -65,37 +65,12 @@ func NewGoSymbolTable(file string, fallback *func() SymbolTable) (*GoSymbolTable
 		return nil, errors.New("gosymtab: no symbols found")
 	}
 
-	es := make([]SimpleSymbolTableEntry, 0, len(table.Funcs))
+	es := make([]Symbol, 0, len(table.Funcs))
 	for _, fun := range table.Funcs {
-		es = append(es, SimpleSymbolTableEntry{Entry: fun.Entry, End: fun.End, Name: fun.Name})
+		es = append(es, Symbol{Start: fun.Entry, Name: fun.Name, Module: file})
 	}
-	res := &GoSymbolTable{
-		file:     file,
-		tab:      NewSimpleSymbolTable(es),
-		fallback: fallback,
-	}
-	return res, err
-}
-
-func (g *GoSymbolTable) Resolve(addr uint64, refresh bool) Symbol {
-	sym := g.tab.Resolve(addr)
-
-	if sym != "" {
-		return Symbol{Name: sym, Module: g.file, Offset: addr}
-	}
-	if g.fallback == nil {
-		return Symbol{"", "", addr}
-	}
-	if g.fallbackTable == nil {
-		g.fallbackTable = (*g.fallback)()
-	}
-	return g.fallbackTable.Resolve(addr, refresh)
-}
-
-func (g *GoSymbolTable) Close() {
-	if g.fallbackTable != nil {
-		g.fallbackTable.Close()
-	}
+	tab := NewSymTab(es)
+	return tab, nil
 }
 
 func parseRuntimeTextFromPclntab18(pclntab []byte) uint64 {
@@ -103,8 +78,9 @@ func parseRuntimeTextFromPclntab18(pclntab []byte) uint64 {
 		return 0
 	}
 	magic := binary.LittleEndian.Uint32(pclntab[0:4])
-	if magic == 0xFFFFFFF0 {
+	if magic == 0xFFFFFFF0 || magic == 0xFFFFFFF1 {
 		// https://github.com/golang/go/blob/go1.18/src/runtime/symtab.go#L395
+		// 0xFFFFFFF1 is the same https://github.com/golang/go/commit/0f8dffd0aa71ed996d32e77701ac5ec0bc7cde01#diff-cd2a310ac9c65654449e25d5e1426fb929193f11da2cdfb622f3eb7f948c8d69R396
 		//type pcHeader struct {
 		//	magic          uint32  // 0xFFFFFFF0
 		//	pad1, pad2     uint8   // 0,0
@@ -122,5 +98,6 @@ func parseRuntimeTextFromPclntab18(pclntab []byte) uint64 {
 		textStart := binary.LittleEndian.Uint64(pclntab[24:32])
 		return textStart
 	}
+
 	return 0
 }

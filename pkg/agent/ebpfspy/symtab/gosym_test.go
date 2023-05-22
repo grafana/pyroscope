@@ -13,11 +13,11 @@ import (
 func TestGoSymSelfTest(t *testing.T) {
 	var ptr = reflect.ValueOf(TestGoSymSelfTest).Pointer()
 	mod := "/proc/self/exe"
-	symtab, err := NewGoSymbolTable(mod, nil)
+	symtab, err := newGoSymbols(mod)
 	if err != nil {
 		t.Fatalf("failed to create symtab %v", err)
 	}
-	sym := symtab.Resolve(uint64(ptr), false)
+	sym := symtab.Resolve(uint64(ptr))
 	expectedSym := "github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy/symtab.TestGoSymSelfTest"
 	if sym.Name != expectedSym {
 		t.Fatalf("Expected %s got %s", expectedSym, sym.Name)
@@ -25,8 +25,9 @@ func TestGoSymSelfTest(t *testing.T) {
 	if sym.Module != mod {
 		t.Fatalf("Expected %s got %s", mod, sym.Module)
 	}
-	if sym.Offset != uint64(ptr) {
-		t.Fatalf("Expected %d got %d", ptr, sym.Offset)
+	if sym.Start != uint64(ptr) {
+		//0x50ee00
+		t.Fatalf("Expected %x got %x", ptr, sym.Start)
 	}
 }
 
@@ -44,14 +45,15 @@ func TestPclntab18(t *testing.T) {
 }
 
 func BenchmarkGoSym(b *testing.B) {
-	gosym, _ := NewGoSymbolTable("/proc/self/exe", nil)
-	if len(gosym.tab.symbols) < 1000 {
+	gosym, _ := newGoSymbols("/proc/self/exe")
+	gosym.Refresh()
+	if len(gosym.symbols) < 1000 {
 		b.FailNow()
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		for _, symbol := range gosym.tab.symbols {
-			gosym.Resolve(symbol.Entry, false)
+		for _, symbol := range gosym.symbols {
+			gosym.Resolve(symbol.Start)
 		}
 	}
 }

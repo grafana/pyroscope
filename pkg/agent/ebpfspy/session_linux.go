@@ -228,13 +228,13 @@ func (s *Session) walkStack(line *bytes.Buffer, stack []byte, pid uint32, usersp
 			break
 		}
 		sym := s.symCache.bccResolve(pid, ip, s.roundNumber)
-		if !userspace && sym.Name == "" {
+		if sym == nil {
 			continue
 		}
 		name := sym.Name
 		if sym.Name == "" {
 			if sym.Module != "" {
-				name = fmt.Sprintf("%s+0x%x", sym.Module, sym.Offset)
+				name = fmt.Sprintf("%s+0x%x", sym.Module, sym.Start)
 			} else {
 				name = "[unknown]"
 			}
