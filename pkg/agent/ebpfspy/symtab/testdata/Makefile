@@ -1,5 +1,5 @@
 
 .PHONY: testdata
 testdata:
-	docker build . --output=.
+	DOCKER_BUILDKIT=1 docker build . --output=.
 
