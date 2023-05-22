@@ -1,5 +1,5 @@
 import React from 'react';
-import * as ReactDOM from 'react-dom';
+import ReactDOM from 'react-dom';
 import injectTooltip from '@webapp/components/TimelineChart/injectTooltip';
 import { ITooltipWrapperProps } from '@webapp/components/TimelineChart/TooltipWrapper';
 
@@ -54,7 +54,7 @@ type PositionType = {
           value,
         });
 
-        ReactDOM.render(Tooltip, tooltipWrapper?.[0]);
+        ReactDOM.render(<>{Tooltip}</>, tooltipWrapper?.[0]);
       }
     }
 
