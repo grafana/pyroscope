@@ -18,5 +18,5 @@ get-vmlinux-header:
 		curl -o vmlinux.h https://raw.githubusercontent.com/iovisor/bcc/v0.27.0/libbpf-tools/x86/vmlinux_518.h
 
 .PHONY: clean
-clean: ## Clean up storage
+clean:
 	rm -rf libbpf/*.h vmlinux/*.h
