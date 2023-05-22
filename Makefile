@@ -40,9 +40,7 @@ GO_TAGS = $(ENABLED_SPIES)$(EXTRA_GO_TAGS)
 ALPINE_TAG =
 
 ifneq (,$(findstring ebpfspy,$(GO_TAGS)))
-	EXTRA_CGO_CFLAGS := $(EXTRA_CGO_CFLAGS) -I$(abspath ./third_party/bcc/lib/include)
-	EXTRA_CGO_LDFLAGS := $(EXTRA_CGO_LDFLAGS) -L$(abspath ./third_party/bcc/lib/lib) -lbcc-syms -lstdc++ -lelf -lz
-	THIRD_PARTY_DEPENDENCIES := $(THIRD_PARTY_DEPENDENCIES) bpf-get-headers bpf-generate build-bcc
+	THIRD_PARTY_DEPENDENCIES := $(THIRD_PARTY_DEPENDENCIES) bpf-get-headers bpf-generate
 endif
 
 ifeq ("$(OS)", "Linux")
@@ -117,9 +115,6 @@ build-phpspy-dependencies: ## Builds the PHP dependency
 	cd third_party/phpspy_src && make clean static
 	cp third_party/phpspy_src/libphpspy.a third_party/phpspy/libphpspy.a
 
-.PHONY: build-bcc
-build-bcc:
-	$(MAKE) -C third_party/bcc
 
 .PHONY: bpf-get-headers
 bpf-get-headers:

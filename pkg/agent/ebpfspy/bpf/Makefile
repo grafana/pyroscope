@@ -4,6 +4,9 @@
 LIBBPF_VERSION=0.6.1
 LIBBPF_PREFIX="https://raw.githubusercontent.com/libbpf/libbpf/v$(LIBBPF_VERSION)"
 
+.PHONY: get-headers
+get-headers: get-libbpf-headers get-vmlinux-header
+
 .PHONY: get-libbpf-headers
 get-libbpf-headers:
 	cd libbpf && \
@@ -18,5 +21,8 @@ get-vmlinux-header:
 		curl -o vmlinux.h https://raw.githubusercontent.com/iovisor/bcc/v0.27.0/libbpf-tools/x86/vmlinux_518.h
 
 
-.PHONY: get-headers
-get-headers: get-libbpf-headers get-vmlinux-header
+
+
+.PHONY: clean
+clean: ## Clean up storage
+	rm -rf libbpf/*.h vmlinux/*.h
