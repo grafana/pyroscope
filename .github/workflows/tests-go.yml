@@ -28,6 +28,8 @@ jobs:
         run: make install-dev-tools
       - name: Ensure logrus is not used by pkg/agent/profiler
         run: make ensure-logrus-not-used
+      - name: Generate symtab testdata
+        run: make -C pkg/agent/ebpfspy/symtab/testdata testdata
       - name: Run Go tests
         run: make coverage
       - name: Upload codecov coverage
