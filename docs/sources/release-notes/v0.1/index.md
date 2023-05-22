@@ -2,7 +2,7 @@
 title: "Grafana Phlare version 0.1 release notes"
 menuTitle: "V0.1 release notes"
 description: "Release notes for Grafana Phlare version 0.1"
-weight: 100
+weight: 10
 ---
 
 # Grafana Phlare version 0.1 release notes
@@ -21,7 +21,7 @@ From the first release you can expect:
 
 ![Grafana Phlare UI](phlare-ui.png)
 
-Ready to give it a try, follow our [getting started]({{< relref "../../operators-guide/get-started/" >}}) documentation.
+Ready to give it a try, follow our [getting started]({{< relref "../../get-started/" >}}) documentation.
 
 > **Note:** This is an early release and there are a couple of limitations:
 >
