@@ -17,6 +17,11 @@ type Utils interface {
 	// these methods were originally extracted from server package
 	WriteResponseJSON(r *http.Request, w http.ResponseWriter, res interface{})
 	WriteResponseFile(r *http.Request, w http.ResponseWriter, filename string, content []byte)
+
+	ErrorUtils
+}
+
+type ErrorUtils interface {
 	WriteInvalidMethodError(r *http.Request, w http.ResponseWriter)
 	WriteInvalidParameterError(r *http.Request, w http.ResponseWriter, err error)
 	WriteInternalServerError(r *http.Request, w http.ResponseWriter, err error, msg string)

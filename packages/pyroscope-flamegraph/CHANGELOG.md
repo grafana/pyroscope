@@ -3,6 +3,56 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.35.5](https://github.com/grafana/pyroscope/compare/@pyroscope/flamegraph@0.35.4...@pyroscope/flamegraph@0.35.5) (2023-03-29)
+
+
+### Bug Fixes
+
+* **pyroscope-flamegraph:** don't pollute property from prototype ([#1907](https://github.com/grafana/pyroscope/issues/1907)) ([272fbe0](https://github.com/grafana/pyroscope/commit/272fbe097da25214d8f70d280a88faa580a4f5d6))
+* **pyroscope-flamegraph:** use map in sandwich conversion to not conflict with properties from the prototype ([#1906](https://github.com/grafana/pyroscope/issues/1906)) ([5371b95](https://github.com/grafana/pyroscope/commit/5371b95a6ca71d0c52fa25931c93e73942e00234))
+
+
+
+
+
+## [0.35.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.35.3...@pyroscope/flamegraph@0.35.4) (2023-03-14)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.35.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.35.2...@pyroscope/flamegraph@0.35.3) (2023-03-14)
+
+
+### Bug Fixes
+
+* **flamegraph:** fix styling when in light mode ([#1889](https://github.com/pyroscope-io/pyroscope/issues/1889)) ([6bd54e2](https://github.com/pyroscope-io/pyroscope/commit/6bd54e2079bb622723844ce26c1ea3c8dc6a91c3))
+
+
+
+
+
+## [0.35.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.35.1...@pyroscope/flamegraph@0.35.2) (2023-02-07)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
+## [0.35.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.35.0...@pyroscope/flamegraph@0.35.1) (2023-02-03)
+
+
+### Performance Improvements
+
+* **flamegraph:** don't convert to graphviz format unnecessarily ([#1834](https://github.com/pyroscope-io/pyroscope/issues/1834)) ([8f78e54](https://github.com/pyroscope-io/pyroscope/commit/8f78e54d75cf6f8067ef38da5b2c2eb15860ec09))
+
+
+
+
+
 # [0.35.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.34.3...@pyroscope/flamegraph@0.35.0) (2023-01-23)
 
 

@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"time"
 
+	kitLogrus "github.com/go-kit/kit/log/logrus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
@@ -36,7 +37,7 @@ func newPush(_ *config.Adhoc, args []string, st *storage.Storage, logger *logrus
 	p := parser.New(logger, st, e)
 	return push{
 		args:    args,
-		handler: server.NewIngestHandler(logger, p, func(*ingestion.IngestInput) {}, httputils.NewDefaultHelper(logger)),
+		handler: server.NewIngestHandler(kitLogrus.NewLogger(logger), p, func(*ingestion.IngestInput) {}, httputils.NewDefaultHelper(logger)),
 		logger:  logger,
 	}, nil
 }

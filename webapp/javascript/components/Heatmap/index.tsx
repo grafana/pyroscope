@@ -260,13 +260,19 @@ interface AxisProps {
 
 function Axis({ axis, max, min, ticksCount, timezone, sampleRate }: AxisProps) {
   const yAxisformatter = sampleRate && getFormatter(max, sampleRate, 'samples');
+  let ticks: string[];
 
-  const ticks = getTicks(
+  ticks = getTicks(
     min,
     max,
     { timezone, formatter: yAxisformatter, ticksCount },
     sampleRate
   );
+
+  // There's not enough data to construct the Y axis
+  if (axis === 'y' && min === 0 && max === 0) {
+    ticks = ['0'];
+  }
 
   return (
     <div

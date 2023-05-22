@@ -130,7 +130,8 @@ export interface TooltipCallbackProps {
           coordsToCanvasPos: plot.p2c.bind(plot),
         });
 
-        ReactDOM.render(Tooltip, exploreTooltip?.[0]);
+        // Type checking will be wrong if a React 18 app tries to use this code
+        ReactDOM.render(Tooltip as ShamefulAny, exploreTooltip?.[0]);
       }
     });
 

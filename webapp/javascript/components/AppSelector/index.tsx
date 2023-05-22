@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
 import Input from '@webapp/ui/Input';
 import { App } from '@webapp/models/app';
-import SelectButton from './SelectButton';
+import SelectButton from '@webapp/components/AppSelector/SelectButton';
+import { Label, LabelString } from '@webapp/components/AppSelector/Label';
 import styles from './AppSelector.module.scss';
 
 interface AppSelectorProps {
@@ -28,7 +29,7 @@ const AppSelector = ({
 
   return (
     <div className={styles.container}>
-      Application:&nbsp;
+      <Label />
       <SelectorModalWithToggler
         selectAppName={selectAppName}
         appNames={appNames}
@@ -173,10 +174,10 @@ export const SelectorModalWithToggler = ({
           </div>
         ) : null
       }
-      toggleText={appName || 'Select application'}
+      toggleText={appName || LabelString}
       headerEl={
         <>
-          <div className={styles.headerTitle}>SELECT APPLICATION</div>
+          <div className={styles.headerTitle}>{LabelString}</div>
           <Input
             name="application seach"
             type="text"

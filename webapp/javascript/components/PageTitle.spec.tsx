@@ -2,12 +2,20 @@ import React from 'react';
 import PageTitle, { AppNameContext } from './PageTitle';
 import { render, screen, waitFor } from '@testing-library/react';
 
+// Default is 1000, try a few more times since it was failing in ci
+const waitForOpts = {
+  timeout: 5000,
+};
+
 describe('PageTitle', () => {
   describe("there's no app name in context", () => {
     it('defaults to Pyroscope', async () => {
       render(<PageTitle title={'mypage'} />);
 
-      await waitFor(() => expect(document.title).toEqual('mypage | Pyroscope'));
+      await waitFor(
+        () => expect(document.title).toEqual('mypage | Pyroscope'),
+        waitForOpts
+      );
     });
   });
 
@@ -19,7 +27,10 @@ describe('PageTitle', () => {
         </AppNameContext.Provider>
       );
 
-      await waitFor(() => expect(document.title).toEqual('mypage | myapp'));
+      await waitFor(
+        () => expect(document.title).toEqual('mypage | myapp'),
+        waitForOpts
+      );
     });
   });
 });

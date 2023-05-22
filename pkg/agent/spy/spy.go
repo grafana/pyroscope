@@ -62,6 +62,7 @@ type InitParams struct {
 	SampleRate    uint32
 	DisableGCRuns bool
 	Logger        log.Logger
+	PHPSpyArgs    string
 }
 type SpyIntitializer func(InitParams) (Spy, error)
 

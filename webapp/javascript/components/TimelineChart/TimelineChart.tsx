@@ -4,13 +4,13 @@ import React from 'react';
 
 import ReactFlot from 'react-flot';
 import 'react-flot/flot/jquery.flot.time.min';
-import './Selection.plugin';
+import '@webapp/components/TimelineChart/Selection.plugin';
 import 'react-flot/flot/jquery.flot.crosshair';
-import './TimelineChartPlugin';
-import './Tooltip.plugin';
-import './Annotations.plugin';
-import './ContextMenu.plugin';
-import './CrosshairSync.plugin';
+import '@webapp/components/TimelineChart/TimelineChartPlugin';
+import '@webapp/components/TimelineChart/Tooltip.plugin';
+import '@webapp/components/TimelineChart/Annotations.plugin';
+import '@webapp/components/TimelineChart/ContextMenu.plugin';
+import '@webapp/components/TimelineChart/CrosshairSync.plugin';
 
 interface TimelineChartProps {
   onSelect: (from: string, until: string) => void;

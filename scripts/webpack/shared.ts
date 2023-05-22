@@ -38,16 +38,6 @@ export function getAlias() {
     // this alias maps that dependency to core-js@t3
     'core-js/library/fn': 'core-js/stable',
     '@webapp': path.resolve(__dirname, '../../webapp/javascript'),
-
-    // https://github.com/reactjs/react-transition-group/issues/556#issuecomment-544512681
-    'dom-helpers/addClass': path.resolve(
-      __dirname,
-      '../../node_modules/dom-helpers/class/addClass'
-    ),
-    'dom-helpers/removeClass': path.resolve(
-      __dirname,
-      '../../node_modules/dom-helpers/class/removeClass'
-    ),
   };
 }
 
@@ -64,36 +54,6 @@ export function getJsLoader() {
             target: 'es2015',
           },
         },
-        //        {
-        //          loader: 'babel-loader',
-        //          options: {
-        //            cacheDirectory: true,
-        //            babelrc: true,
-        //
-        //            plugins: ['@babel/plugin-transform-runtime'],
-        //            // Note: order is bottom-to-top and/or right-to-left
-        //            presets: [
-        //              [
-        //                '@babel/preset-env',
-        //                {
-        //                  targets: {
-        //                    browsers: 'last 3 versions',
-        //                  },
-        //                  useBuiltIns: 'entry',
-        //                  corejs: 3,
-        //                  modules: false,
-        //                },
-        //              ],
-        //              [
-        //                '@babel/preset-typescript',
-        //                {
-        //                  allowNamespaces: true,
-        //                },
-        //              ],
-        //              '@babel/preset-react',
-        //            ],
-        //          },
-        //        },
       ],
     },
   ];

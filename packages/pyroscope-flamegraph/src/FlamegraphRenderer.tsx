@@ -26,12 +26,17 @@ declare global {
 }
 
 // TODO: type props
-export const FlamegraphRenderer = (props: FlamegraphRendererProps) => {
+export const FlamegraphRenderer = (
+  props: FlamegraphRendererProps & { colorMode?: 'light' | 'dark' }
+) => {
   // Although 'flamegraph' is not a valid HTML element
   // It's used to scope css without affecting specificity
   // For more info see flamegraph.scss
   return (
-    <pyro-flamegraph is="span">
+    <pyro-flamegraph
+      is="span"
+      data-flamegraph-color-mode={props.colorMode || 'dark'}
+    >
       {/* eslint-disable-next-line react/jsx-props-no-spreading */}
       <FlameGraphRenderer {...props} {...overrideProps} />
     </pyro-flamegraph>

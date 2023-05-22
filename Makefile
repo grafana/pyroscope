@@ -5,7 +5,7 @@ OS ?= $(shell uname)
 
 
 # if you change the name of this variable please change it in generate-git-info.sh file
-PHPSPY_VERSION ?= be3abd72e8e2dd5dd4e61008fcd702f90c6eb238
+PHPSPY_VERSION ?= 66b6fdb2f9da1d87912b46b7faf68796d471c209
 
 ifeq ("$(OS)", "Darwin")
 	ifeq ("$(ARCH)", "arm64")
@@ -116,7 +116,7 @@ build-panel:
 build-phpspy-dependencies: ## Builds the PHP dependency
 	cd third_party && cd phpspy_src || (git clone https://github.com/pyroscope-io/phpspy.git phpspy_src && cd phpspy_src)
 	cd third_party/phpspy_src && git checkout $(PHPSPY_VERSION)
-	cd third_party/phpspy_src && USE_ZEND=1 make CFLAGS="-DUSE_DIRECT" || $(MAKE) print-deps-error-message
+	cd third_party/phpspy_src && make clean static
 	cp third_party/phpspy_src/libphpspy.a third_party/phpspy/libphpspy.a
 
 .PHONY: build-libbpf
@@ -206,6 +206,7 @@ unused: ## Staticcheck for unused code
 
 .PHONY: install-dev-tools
 install-dev-tools: ## Install dev tools
+	go install github.com/cosmtrek/air@latest
 	cat tools/tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI {} go install {}
 
 .PHONY: web-bootstrap

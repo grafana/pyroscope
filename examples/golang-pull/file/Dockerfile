@@ -4,7 +4,7 @@ WORKDIR /go/src/app
 
 COPY main.go ./main.go
 
-RUN go mod init github.com/pyroscope-io/pyroscope/examples/golang-pull/static
+RUN go mod init github.com/pyroscope-io/pyroscope/examples/golang-pull/file
 RUN go get -d ./
 RUN go build -o main .
 

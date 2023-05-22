@@ -3,6 +3,138 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.68.17](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.16...@pyroscope/webapp@1.68.17) (2023-04-24)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.68.16](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.15...@pyroscope/webapp@1.68.16) (2023-04-20)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.68.15](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.14...@pyroscope/webapp@1.68.15) (2023-04-14)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.68.14](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.13...@pyroscope/webapp@1.68.14) (2023-04-14)
+
+
+### Bug Fixes
+
+* **webapp:** only load timelines when both queries are set ([#1921](https://github.com/grafana/pyroscope/issues/1921)) ([dadec3e](https://github.com/grafana/pyroscope/commit/dadec3e8089f96b75a5e02fb14eca6c92ad99da5))
+
+
+
+
+
+## [1.68.13](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.12...@pyroscope/webapp@1.68.13) (2023-04-14)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.68.12](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.11...@pyroscope/webapp@1.68.12) (2023-04-05)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.68.11](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.10...@pyroscope/webapp@1.68.11) (2023-03-29)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.68.10](https://github.com/grafana/pyroscope/compare/@pyroscope/webapp@1.68.9...@pyroscope/webapp@1.68.10) (2023-03-28)
+
+
+### Bug Fixes
+
+* **webapp:** fix heatmap y axis ([#1912](https://github.com/grafana/pyroscope/issues/1912)) ([7e3b651](https://github.com/grafana/pyroscope/commit/7e3b65165710937c10c2bbe128942da028a031dc))
+
+
+
+
+
+## [1.68.9](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.68.8...@pyroscope/webapp@1.68.9) (2023-03-14)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.68.8](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.68.7...@pyroscope/webapp@1.68.8) (2023-03-14)
+
+
+### Bug Fixes
+
+* **flamegraph:** fix styling when in light mode ([#1889](https://github.com/pyroscope-io/pyroscope/issues/1889)) ([6bd54e2](https://github.com/pyroscope-io/pyroscope/commit/6bd54e2079bb622723844ce26c1ea3c8dc6a91c3))
+
+
+
+
+
+## [1.68.7](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.68.6...@pyroscope/webapp@1.68.7) (2023-02-23)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.68.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.68.5...@pyroscope/webapp@1.68.6) (2023-02-22)
+
+
+### Bug Fixes
+
+* **webapp:** always render annotations in the viewport ([#1867](https://github.com/pyroscope-io/pyroscope/issues/1867)) ([2876881](https://github.com/pyroscope-io/pyroscope/commit/2876881a7204184668471b82fb8dab22509b7e7a))
+
+
+
+
+
+## [1.68.5](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.68.4...@pyroscope/webapp@1.68.5) (2023-02-09)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.68.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.68.3...@pyroscope/webapp@1.68.4) (2023-02-07)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.68.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.68.2...@pyroscope/webapp@1.68.3) (2023-02-03)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.68.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.68.1...@pyroscope/webapp@1.68.2) (2023-01-23)
 
 **Note:** Version bump only for package @pyroscope/webapp

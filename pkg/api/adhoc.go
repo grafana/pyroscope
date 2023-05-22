@@ -3,6 +3,9 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -34,11 +37,11 @@ type AdhocHandler struct {
 	maxNodes     int
 }
 
-func NewAdhocHandler(adhocService AdhocService, httpUtils httputils.Utils) AdhocHandler {
+func NewAdhocHandler(adhocService AdhocService, httpUtils httputils.Utils, maxBodySize int64) AdhocHandler {
 	return AdhocHandler{
 		adhocService: adhocService,
 		httpUtils:    httpUtils,
-		maxBodySize:  5 << 20, // 5M
+		maxBodySize:  maxBodySize,
 	}
 }
 
@@ -126,7 +129,9 @@ func (h AdhocHandler) GetProfileDiff(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h AdhocHandler) Upload(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, h.maxBodySize)
+	if h.maxBodySize > 0 {
+		r.Body = &MaxBytesReader{http.MaxBytesReader(w, r.Body, h.maxBodySize)}
+	}
 	var req adhocUploadRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.httpUtils.HandleError(r, w, httputils.JSONError{Err: err})
@@ -144,4 +149,23 @@ func (h AdhocHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		ID:          id,
 		Flamebearer: p,
 	})
+}
+
+type MaxBytesReader struct {
+	r io.ReadCloser
+}
+
+func (m MaxBytesReader) Read(p []byte) (n int, err error) {
+	n, err = m.r.Read(p)
+	if err != nil {
+		targetErr := &http.MaxBytesError{}
+		if errors.As(err, &targetErr) {
+			err = fmt.Errorf("profile too large, max size is %d bytes", targetErr.Limit)
+		}
+	}
+	return n, err
+}
+
+func (m *MaxBytesReader) Close() error {
+	return m.r.Close()
 }

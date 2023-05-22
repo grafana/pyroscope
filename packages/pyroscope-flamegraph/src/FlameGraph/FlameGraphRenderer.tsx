@@ -21,30 +21,13 @@ import {
   calleesProfile,
   callersProfile,
 } from '../convert/sandwichViewProfiles';
-import toGraphviz from '../convert/toGraphviz';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
 import decode from './decode';
 import { FitModes } from '../fitMode/fitMode';
 import { ViewTypes } from './FlameGraphComponent/viewTypes';
-
-interface IGraphvizProps {
-  dot: string;
-  options?: object;
-  className?: string;
-}
-
-// this is to make sure that graphviz-react is not used in node.js
-let Graphviz = (obj: IGraphvizProps) => {
-  if (obj) {
-    return null;
-  }
-  return null;
-};
-if (typeof process === 'undefined') {
-  Graphviz = require('graphviz-react').Graphviz;
-}
+import { GraphVizPane } from './FlameGraphComponent/GraphVizPane';
 
 // Still support old flamebearer format
 // But prefer the new 'profile' one
@@ -103,7 +86,6 @@ export interface FlamegraphRendererProps {
   showPyroscopeLogo?: boolean;
   showCredit?: boolean;
   ExportData?: ProfileHeaderProps['ExportData'];
-  colorMode?: 'light' | 'dark';
 
   /** @deprecated  prefer Profile */
   flamebearer?: Flamebearer;
@@ -560,46 +542,6 @@ class FlameGraphRenderer extends Component<
     //   //  rightTicks?: number;
     // } & addTicks;
 
-    const graphvizPane = (() => {
-      // TODO(@petethepig): I don't understand what's going on with types here
-      //   need to fix at some point
-      const flamebearer = this.state.flamebearer as ShamefulAny;
-      // flamebearer
-      const dot =
-        flamebearer.metadata?.format && flamebearer.flamebearer?.levels
-          ? toGraphviz(flamebearer)
-          : null;
-
-      // Graphviz doesn't update position and scale value on rerender
-      // so image sometimes moves out of the screen
-      // to fix it we remounting graphViz component by updating key
-      const key = `graphviz-pane-${
-        flamebearer?.appName || String(new Date().valueOf())
-      }`;
-
-      return (
-        <div className={styles.graphVizPane} key={key}>
-          {dot ? (
-            <Graphviz
-              // options https://github.com/magjac/d3-graphviz#supported-options
-              options={{
-                zoom: true,
-                width: '150%',
-                height: '100%',
-                scale: 1,
-                // 'true' by default, but causes warning
-                // https://github.com/magjac/d3-graphviz/blob/master/README.md#defining-the-hpcc-jswasm-script-tag
-                useWorker: false,
-              }}
-              dot={dot}
-            />
-          ) : (
-            <div>NO DATA</div>
-          )}
-        </div>
-      );
-    })();
-
     const dataUnavailable =
       !this.state.flamebearer || this.state.flamebearer.names.length <= 1;
     const panes = decidePanesOrder(
@@ -607,11 +549,11 @@ class FlameGraphRenderer extends Component<
       flameGraphPane,
       tablePane,
       sandwichPane,
-      graphvizPane
+      <GraphVizPane flamebearer={this.state.flamebearer} />
     );
 
     return (
-      <div data-flamegraph-color-mode={this.props.colorMode || 'dark'}>
+      <div>
         <div>
           {toolbarVisible && (
             <Toolbar

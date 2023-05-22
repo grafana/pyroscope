@@ -105,11 +105,6 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := expectFormats(p.format); err != nil {
-		rh.httpUtils.WriteInvalidParameterError(r, w, errUnknownFormat)
-		return
-	}
-
 	out, err := rh.storage.Get(r.Context(), p.gi)
 	var appName string
 	if p.gi.Key != nil {

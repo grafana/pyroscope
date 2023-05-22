@@ -1,7 +1,8 @@
 {
   "name": "@pyroscope/webapp",
-  "version": "1.68.2",
+  "version": "1.68.17",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "test": "echo \"Error: run tests from root\" && exit 1",
     "dev": "webpack --config ../scripts/webpack/webpack.dev.ts --watch",
@@ -13,7 +14,7 @@
     "build:webapp": "NODE_ENV=production webpack --config ../scripts/webpack/webpack.prod.ts"
   },
   "dependencies": {
-    "@pyroscope/flamegraph": "^0.35.0",
-    "@pyroscope/models": "^0.4.6"
+    "@pyroscope/flamegraph": "^0.35.5",
+    "@pyroscope/models": "^0.4.7"
   }
 }

@@ -8,13 +8,16 @@ import type { Timeline } from '@webapp/models/timeline';
 import { Annotation } from '@webapp/models/annotation';
 import Legend from '@webapp/pages/tagExplorer/components/Legend';
 import type { TooltipCallbackProps } from '@webapp/components/TimelineChart/Tooltip.plugin';
-import type { ITooltipWrapperProps } from './TooltipWrapper';
-import TooltipWrapper from './TooltipWrapper';
-import TimelineChart from './TimelineChart';
+import TooltipWrapper from '@webapp/components/TimelineChart/TooltipWrapper';
+import type { ITooltipWrapperProps } from '@webapp/components/TimelineChart/TooltipWrapper';
+import TimelineChart from '@webapp/components/TimelineChart/TimelineChart';
+import { ContextMenuProps } from '@webapp/components/TimelineChart/ContextMenu.plugin';
+import {
+  markingsFromSelection,
+  ANNOTATION_COLOR,
+} from '@webapp/components/TimelineChart/markings';
+import { centerTimelineData } from '@webapp/components/TimelineChart/centerTimelineData';
 import styles from './TimelineChartWrapper.module.css';
-import { markingsFromSelection, ANNOTATION_COLOR } from './markings';
-import { ContextMenuProps } from './ContextMenu.plugin';
-import { centerTimelineData } from './centerTimelineData';
 
 export interface TimelineGroupData {
   data: Group;

@@ -268,6 +268,18 @@ var _ = Describe("tree package", func() {
 				Expect(treeA.String()).To(Equal(treeStr(`a;b 5|a;c 2|a;d 8|a;e 15|`)))
 			})
 		})
+
+		Context("tree.scale", func() {
+			treeA := New()
+			treeA.Insert([]byte("a;b"), uint64(1))
+			treeA.Insert([]byte("a;c"), uint64(2))
+			treeA.Insert([]byte("a;e"), uint64(3))
+			treeA.Insert([]byte("a"), uint64(4))
+			treeA.Scale(3)
+			It("", func() {
+				Expect(treeA.String()).To(Equal(treeStr(`a 12|a;b 3|a;c 6|a;e 9|`)))
+			})
+		})
 	})
 })
 
