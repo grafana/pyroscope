@@ -1,5 +1,6 @@
 export enum ROUTES {
   SINGLE_VIEW = '/',
+  EXPLORE_VIEW = '/explore',
   COMPARISON_VIEW = '/comparison',
   COMPARISON_DIFF_VIEW = '/comparison-diff',
 }
