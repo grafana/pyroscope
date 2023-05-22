@@ -88,12 +88,12 @@ func getELFSymbolsFromSymtab(elfPath string, elfFile *elf.File) *SymTab {
 	return NewSymTab(symbols)
 }
 
-func findBuildId(fs string, elfFile *elf.File) (string, error) {
-	buildIdSection := elfFile.Section(".note.gnu.build-id")
-	if buildIdSection == nil {
+func findBuildID(fs string, elfFile *elf.File) (string, error) {
+	buildIDSection := elfFile.Section(".note.gnu.build-id")
+	if buildIDSection == nil {
 		return "", nil
 	}
-	data, err := buildIdSection.Data()
+	data, err := buildIDSection.Data()
 	if err != nil {
 		return "", fmt.Errorf("reading .note.gnu.build-id %w", err)
 	}
@@ -124,7 +124,7 @@ func findDebugFile(fs string, elfFilePath string, elfFile *elf.File) string {
 	//- /usr/bin/ls.debug
 	//- /usr/bin/.debug/ls.debug
 	//- /usr/lib/debug/usr/bin/ls.debug.
-	debugFile, _ := findBuildId(fs, elfFile)
+	debugFile, _ := findBuildID(fs, elfFile)
 	if debugFile != "" {
 		return debugFile
 	}

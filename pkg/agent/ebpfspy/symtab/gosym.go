@@ -80,7 +80,8 @@ func parseRuntimeTextFromPclntab18(pclntab []byte) uint64 {
 	magic := binary.LittleEndian.Uint32(pclntab[0:4])
 	if magic == 0xFFFFFFF0 || magic == 0xFFFFFFF1 {
 		// https://github.com/golang/go/blob/go1.18/src/runtime/symtab.go#L395
-		// 0xFFFFFFF1 is the same https://github.com/golang/go/commit/0f8dffd0aa71ed996d32e77701ac5ec0bc7cde01#diff-cd2a310ac9c65654449e25d5e1426fb929193f11da2cdfb622f3eb7f948c8d69R396
+		// 0xFFFFFFF1 is the same
+		// https://github.com/golang/go/commit/0f8dffd0aa71ed996d32e77701ac5ec0bc7cde01
 		//type pcHeader struct {
 		//	magic          uint32  // 0xFFFFFFF0
 		//	pad1, pad2     uint8   // 0,0

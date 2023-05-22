@@ -33,6 +33,6 @@ func (t *SymTab) Resolve(addr uint64) *Symbol {
 	return &t.symbols[i]
 }
 
-func (t *SymTab) Refresh() {
+func (_ *SymTab) Refresh() {
 
 }

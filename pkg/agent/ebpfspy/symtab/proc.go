@@ -92,8 +92,7 @@ func (p *ProcTable) Resolve(pc uint64) *Symbol {
 	return sym
 }
 
-func (p *ProcTable) Close() {
-
+func (_ *ProcTable) Close() {
 }
 
 func (p *ProcTable) createElfTable(m *elfRange) *ElfTable {
@@ -110,21 +109,17 @@ func (p *ProcTable) createElfTable(m *elfRange) *ElfTable {
 
 	if rebase(m, e) {
 		return e
-	} else {
-		return nil
 	}
+	return nil
 }
 
 func rebase(m *elfRange, e *ElfTable) bool {
-
 	if e.typ == elf.ET_EXEC {
 		return true
 	}
 	for _, executable := range e.executables {
 		if m.mapRange.offset == executable.Off {
 			base := m.mapRange.start - executable.Vaddr
-			//fmt.Printf("base %x %s\n", base, m.file)
-
 			e.table.Rebase(base)
 			return true
 		}

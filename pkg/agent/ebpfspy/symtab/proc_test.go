@@ -12,7 +12,7 @@ import (
 
 func TestTestdataMD5(t *testing.T) {
 	elfs := []struct {
-		md5, file string
+		md5Sum, file string
 	}{
 		{"bd5290f82511ce60aad5d2a75e668130", "elf"},
 		{"6dc6f1b3693aecf1a49b5cd2371c6d8d", "elf.debug"},
@@ -30,12 +30,11 @@ func TestTestdataMD5(t *testing.T) {
 		}
 		hash := md5.New()
 		hash.Write(data)
-		md5 := hex.EncodeToString(hash.Sum(nil))
-		if md5 != elf.md5 {
-			t.Errorf("failed to check md5 %v %v", elf, md5)
+		md5Sum := hex.EncodeToString(hash.Sum(nil))
+		if md5Sum != elf.md5Sum {
+			t.Errorf("failed to check md5 %v %v", elf, md5Sum)
 		}
 	}
-
 }
 
 type procTestdata struct {
@@ -56,8 +55,8 @@ func testProc(t *testing.T, maps string, data []procTestdata) {
 			t.Errorf("failed to resolve %v (%v)", td, sym)
 		}
 	}
-
 }
+
 func TestProc(t *testing.T) {
 	maps := `558d93249000-558d9324a000 r--p 00000000 00:2b 14178666                   /elfs/elf
 558d9324a000-558d9324b000 r-xp 00001000 00:2b 14178666                   /elfs/elf
