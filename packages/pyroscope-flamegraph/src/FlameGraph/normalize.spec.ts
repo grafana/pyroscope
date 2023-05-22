@@ -1,5 +1,5 @@
 import { normalize } from './normalize';
-import { Flamebearer } from '@pyroscope/models/src';
+import { Flamebearer, Profile } from '@pyroscope/models/src';
 
 describe('normalize', () => {
   it('accepts a flamebearer', () => {
@@ -18,7 +18,7 @@ describe('normalize', () => {
   });
 
   it('accepts a profile', () => {
-    const flame = normalize({
+    const input: { profile: Profile } = {
       profile: {
         metadata: {
           spyName: 'unknown',
@@ -27,26 +27,37 @@ describe('normalize', () => {
           units: 'unknown',
         },
         flamebearer: {
-          levels: [[99]],
+          levels: [
+            [0, 609, 0, 0],
+            [0, 606, 0, 13, 0, 3, 0, 1],
+          ],
           maxSelf: 1,
-          names: ['foo'],
+          names: ['total', 'foo'],
           numTicks: 10,
         },
       },
-    });
+    };
+    const snapshot = JSON.parse(JSON.stringify(input));
+
+    const flame = normalize(input);
 
     expect(flame).toStrictEqual({
       format: 'single',
-      names: ['foo'],
+      names: ['total', 'foo'],
       units: 'unknown',
-      levels: [[99]],
+      levels: [
+        [0, 609, 0, 0],
+        [0, 606, 0, 13, 606, 3, 0, 1],
+      ],
       spyName: 'unknown',
       numTicks: 10,
       sampleRate: 100,
       maxSelf: 1,
-      rightTicks: undefined,
-      leftTicks: undefined,
     });
+
+    // It should not modify the original object
+    // Since it's stored in the redux store
+    expect(input).toStrictEqual(snapshot);
   });
 
   it('accepts nothing', () => {

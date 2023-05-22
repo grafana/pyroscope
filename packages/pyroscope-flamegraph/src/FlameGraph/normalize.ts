@@ -1,5 +1,5 @@
 import { Flamebearer, Profile } from '@pyroscope/models/src';
-import decode from './decode';
+import { decodeFlamebearer } from './decode';
 
 // normalize receives either a Profile or a Flamebearer
 // then generates an usable 'Flamebearer', the expected format downstream
@@ -11,17 +11,30 @@ export function normalize(p: { profile?: Profile; flamebearer?: Flamebearer }) {
   }
 
   if (p.profile) {
-    // TODO: copy levels, since that's modified by decode
-    const copy = JSON.parse(JSON.stringify(p.profile));
-    const profile = decode(copy);
+    const copy = {
+      ...p.profile,
+      flamebearer: { ...p.profile.flamebearer },
+    };
 
-    // TODO: clean this
-    return {
-      leftTicks: profile.leftTicks,
-      rightTicks: profile.rightTicks,
-      ...profile.flamebearer,
-      ...profile.metadata,
-    } as Flamebearer;
+    // TODO: copy levels, since that's modified by decode
+    copy.flamebearer.levels = JSON.parse(
+      JSON.stringify(copy.flamebearer.levels)
+    );
+    decodeFlamebearer(copy);
+
+    const p2 = {
+      ...copy,
+      ...copy.metadata,
+      ...copy.flamebearer,
+
+      // We won't need these fields again
+      flamebearer: undefined,
+      metadata: undefined,
+    };
+
+    delete p2.flamebearer;
+    delete p2.metadata;
+    return p2;
   }
 
   if (p.flamebearer) {

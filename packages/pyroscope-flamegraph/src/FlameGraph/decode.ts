@@ -62,14 +62,17 @@ export function deltaDiffWrapper(
   return mutableLevels;
 }
 
-export default function decodeFlamebearer(fb: Profile): Profile {
-  // Make a copy since we will modify the undelying data structure
-  const copy = JSON.parse(JSON.stringify(fb));
-
-  copy.flamebearer.levels = deltaDiffWrapper(
-    copy.metadata.format,
-    copy.flamebearer.levels
+/*
+ * decodeLevels decodes an unecoded
+ * It:
+ * - expects input data to be not decoded (ie. not idempotent)
+ * - mutates the 'flamebearer.levels' field in place
+ */
+export function decodeFlamebearer(fb: Profile) {
+  fb.flamebearer.levels = deltaDiffWrapper(
+    fb.metadata.format,
+    fb.flamebearer.levels
   );
 
-  return copy;
+  return fb;
 }
