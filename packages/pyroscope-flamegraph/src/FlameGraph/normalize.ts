@@ -3,7 +3,10 @@ import { decodeFlamebearer } from './decode';
 
 // normalize receives either a Profile or a Flamebearer
 // then generates an usable 'Flamebearer', the expected format downstream
-export function normalize(p: { profile?: Profile; flamebearer?: Flamebearer }) {
+export function normalize(p: {
+  profile?: Profile;
+  flamebearer?: Flamebearer;
+}): Flamebearer {
   if (p.profile && p.flamebearer) {
     console.warn(
       "'profile' and 'flamebearer' properties are mutually exclusive. Please use profile if possible."
@@ -34,7 +37,7 @@ export function normalize(p: { profile?: Profile; flamebearer?: Flamebearer }) {
 
     delete p2.flamebearer;
     delete p2.metadata;
-    return p2;
+    return p2 as Flamebearer;
   }
 
   if (p.flamebearer) {
