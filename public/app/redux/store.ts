@@ -21,7 +21,7 @@ import uiStore, {
 } from '@webapp/redux/reducers/ui';
 import tenantReducer, {
   persistConfig as tenantPersistConfig,
-} from '@webapp/redux/reducers/tenant';
+} from '@phlare/redux/reducers/tenant';
 
 const reducer = combineReducers({
   continuous: continuousReducer,

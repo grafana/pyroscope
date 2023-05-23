@@ -51,7 +51,7 @@ async function fetchLabelsSeries<T>(
   );
 }
 
-export async function fetchTags(query: string, from: number, until: number) {
+export async function fetchTags(query: string, _from: number, _until: number) {
   return fetchLabelsSeries(query, function (t) {
     const labelNames = t.map((a) => a.name);
     return Array.from(new Set(labelNames));
@@ -61,8 +61,8 @@ export async function fetchTags(query: string, from: number, until: number) {
 export async function fetchLabelValues(
   label: string,
   query: string,
-  from: number,
-  until: number
+  _from: number,
+  _until: number
 ) {
   return fetchLabelsSeries(query, function (t) {
     const labelValues = t.filter((l) => label === l.name).map((a) => a.value);

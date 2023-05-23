@@ -6,13 +6,14 @@ module.exports = {
   ],
   plugins: ['unused-imports'],
   rules: {
-    'react-hooks/exhaustive-deps': 'warn',
+    'react/react-in-jsx-scope': 'error',
+    'react-hooks/exhaustive-deps': 'error',
     'no-duplicate-imports': 'off',
     '@typescript-eslint/no-duplicate-imports': 'error',
     '@typescript-eslint/no-unused-vars': 'off',
     'unused-imports/no-unused-imports': 'error',
     'unused-imports/no-unused-vars': [
-      'warn',
+      'error',
       {
         vars: 'all',
         varsIgnorePattern: '^_',

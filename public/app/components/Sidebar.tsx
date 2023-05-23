@@ -37,7 +37,7 @@ export function Sidebar() {
 
   React.useLayoutEffect(() => {
     dispatch(recalculateSidebar());
-  }, [windowWidth]);
+  }, [dispatch, windowWidth]);
 
   const toggleCollapse = () => {
     const action = collapsed ? uncollapseSidebar : collapseSidebar;

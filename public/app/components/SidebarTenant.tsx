@@ -10,7 +10,7 @@ import {
   selectIsMultiTenant,
   selectTenantID,
   actions,
-} from '@webapp/redux/reducers/tenant';
+} from '@phlare/redux/reducers/tenant';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
 import styles from '@phlare/components/SidebarTenant.module.css';
 import cx from 'classnames';
