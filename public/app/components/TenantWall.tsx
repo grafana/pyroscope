@@ -13,7 +13,7 @@ import {
   selectTenancy,
   actions,
   selectTenantID,
-} from '@webapp/redux/reducers/tenant';
+} from '@phlare/redux/reducers/tenant';
 
 export function TenantWall({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();
@@ -26,7 +26,7 @@ export function TenantWall({ children }: { children: React.ReactNode }) {
 
   // Don't rerender all the children when this component changes
   // For example, when user wants to change the tenant ID
-  const memoedChildren = React.useMemo(() => children, []);
+  const memoedChildren = React.useMemo(() => children, [children]);
 
   switch (tenancy) {
     case 'unknown':

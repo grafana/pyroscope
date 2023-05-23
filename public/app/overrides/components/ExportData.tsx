@@ -10,6 +10,6 @@ interface ExportDataProps {
   exportFlamegraphDotComFn?: unknown;
 }
 
-export default function ExportData(props: ExportDataProps) {
+export default function ExportData(_props: ExportDataProps) {
   return <></>;
 }

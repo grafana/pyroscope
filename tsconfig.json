@@ -31,7 +31,7 @@
 
       "@webapp/redux/store": ["./public/app/redux/store"],
       "@webapp/redux/hooks": ["./public/app/redux/hooks"],
-      "@webapp/redux/reducers/tenant": ["./public/app/redux/reducers/tenant"],
+
       "@webapp/services/apps": ["./public/app/overrides/services/appNames"],
       "@webapp/services/render": ["./public/app/overrides/services/render"],
       "@webapp/services/tags": ["./public/app/overrides/services/tags"],
