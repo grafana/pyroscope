@@ -457,7 +457,7 @@ export interface ProfilerTableProps {
   tableBodyRef: RefObject<HTMLTableSectionElement>;
 }
 
-export default function ProfilerTable({
+const ProfilerTable = React.memo(function ProfilerTable({
   flamebearer,
   fitMode,
   handleTableItemClick,
@@ -488,4 +488,6 @@ export default function ProfilerTable({
       />
     </div>
   );
-}
+});
+
+export default ProfilerTable;
