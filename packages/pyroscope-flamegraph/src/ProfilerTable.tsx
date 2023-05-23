@@ -420,7 +420,7 @@ const getTableBody = ({
 
       return isMatch(highlightQuery, x.name);
     })
-    .reduce((acc, x) => {
+    .map((x) => {
       const pn = getPackageNameFromStackTrace(spyName, x.name);
       const color = isDoubles
         ? defaultColor
@@ -430,13 +430,11 @@ const getTableBody = ({
       };
 
       if (x.type === 'double') {
-        acc.push(getDoubleRow(x, style));
-        return acc;
+        return getDoubleRow(x, style);
       }
 
-      acc.push(getSingleRow(x, color, style));
-      return acc;
-    }, [] as BodyRow[]);
+      return getSingleRow(x, color, style);
+    });
 
   return rows.length > 0
     ? { bodyRows: rows, type: 'filled' as const }
