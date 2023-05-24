@@ -1,0 +1,17 @@
+server:
+  log_level: info
+
+metrics:
+  global:
+    scrape_interval: 1m
+  configs:
+    - name: test
+      host_filter: false
+      scrape_configs:
+        - job_name: local_scrape
+          static_configs:
+            - targets: ['127.0.0.1:12345']
+              labels:
+                cluster: 'localhost'
+      remote_write:
+        - url: http://localhost:9009/api/prom/push
