@@ -1,8 +1,6 @@
-package querier
+package model
 
 import (
-	"container/heap"
-
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/samber/lo"
@@ -11,13 +9,7 @@ import (
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 )
 
-type stackNode struct {
-	xOffset int
-	level   int
-	node    *node
-}
-
-func NewFlameGraph(t *tree, maxNodes int64) *querierv1.FlameGraph {
+func NewFlameGraph(t *Tree, maxNodes int64) *querierv1.FlameGraph {
 	var total, max int64
 	for _, node := range t.root {
 		total += node.total
@@ -174,38 +166,4 @@ func ExportDiffToFlamebearer(fg *querierv1.FlameGraphDiff, profileType *typesv1.
 	fb.FlamebearerProfileV1.Metadata.Format = "double"
 
 	return fb
-}
-
-// minValue returns the minimum "total" value a node in a tree has to have to show up in
-// the resulting flamegraph
-func (t *tree) minValue(maxNodes int64) int64 {
-	if maxNodes == -1 { // -1 means show all nodes
-		return 0
-	}
-	nodes := t.root
-
-	mh := &minHeap{}
-	heap.Init(mh)
-
-	for len(nodes) > 0 {
-		node := nodes[0]
-		nodes = nodes[1:]
-		number := node.total
-
-		if mh.Len() < int(maxNodes) {
-			heap.Push(mh, number)
-		} else {
-			if number > (*mh)[0] {
-				heap.Pop(mh)
-				heap.Push(mh, number)
-				nodes = append(node.children, nodes...)
-			}
-		}
-	}
-
-	if mh.Len() < int(maxNodes) {
-		return 0
-	}
-
-	return (*mh)[0]
 }

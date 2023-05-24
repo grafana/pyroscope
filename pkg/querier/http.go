@@ -110,7 +110,7 @@ func (q *QueryHandlers) RenderDiff(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Header().Add("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(ExportDiffToFlamebearer(res.Msg.Flamegraph, leftProfileType)); err != nil {
+	if err := json.NewEncoder(w).Encode(phlaremodel.ExportDiffToFlamebearer(res.Msg.Flamegraph, leftProfileType)); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -163,7 +163,7 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 		seriesVal = resSeries.Msg.Series[0]
 	}
 
-	fb := ExportToFlamebearer(resFlame.Msg.Flamegraph, profileType)
+	fb := phlaremodel.ExportToFlamebearer(resFlame.Msg.Flamegraph, profileType)
 	fb.Timeline = timeline.New(seriesVal, selectParams.Start, selectParams.End, int64(timelineStep))
 
 	if len(groupBy) > 0 {

@@ -42,18 +42,29 @@ message SelectProfilesRequest {
   int64 start = 3;
   int64 end = 4;
 }
+
 message MergeProfilesStacktracesRequest {
   // The client starts the stream with a request containing the profile type and the labels.
   SelectProfilesRequest request = 1;
-
+  // Max nodes in the resulting tree.
+  optional int64 max_nodes = 3;
   // On a batch of profiles, the client sends the profiles to keep for merging.
   repeated bool profiles = 2;
 }
 
 message MergeProfilesStacktracesResult {
+  StacktracesMergeFormat format = 3;
   // The list of stracktraces with their respective value
   repeated StacktraceSample stacktraces = 1;
   repeated string function_names = 2;
+  // Merge result marshaled to pyroscope tree bytes.
+  bytes tree_bytes = 4;
+}
+
+enum StacktracesMergeFormat {
+  MERGE_FORMAT_UNSPECIFIED = 0;
+  MERGE_FORMAT_STACKTRACES = 1;
+  MERGE_FORMAT_TREE = 2;
 }
 
 message MergeProfilesStacktracesResponse {

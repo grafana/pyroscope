@@ -532,10 +532,8 @@ func (q Queriers) MergeProfilesStacktraces(ctx context.Context, stream *connect.
 	)
 
 	queriers := q.ForTimeRange(model.Time(request.Start), model.Time(request.End))
-
-	result := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(queriers))
-	var lock sync.Mutex
 	g, ctx := errgroup.WithContext(ctx)
+	m := phlaremodel.NewStackTraceMerger()
 
 	// Start streaming profiles from all stores in order.
 	// This allows the client to dedupe in order.
@@ -561,9 +559,7 @@ func (q Queriers) MergeProfilesStacktraces(ctx context.Context, stream *connect.
 			if err != nil {
 				return err
 			}
-			lock.Lock()
-			defer lock.Unlock()
-			result = append(result, merge)
+			m.MergeStackTraces(merge.Stacktraces, merge.FunctionNames)
 			return nil
 		}))
 	}
@@ -571,18 +567,21 @@ func (q Queriers) MergeProfilesStacktraces(ctx context.Context, stream *connect.
 	// Signals the end of the profile streaming by sending an empty response.
 	// This allows the client to not block other streaming ingesters.
 	sp.LogFields(otlog.String("msg", "signaling the end of the profile streaming"))
-	if err := stream.Send(&ingestv1.MergeProfilesStacktracesResponse{}); err != nil {
+	if err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{}); err != nil {
 		return err
 	}
 
-	if err := g.Wait(); err != nil {
+	if err = g.Wait(); err != nil {
 		return err
 	}
 
 	// sends the final result to the client.
 	sp.LogFields(otlog.String("msg", "sending the final result to the client"))
 	err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
-		Result: phlaremodel.MergeBatchMergeStacktraces(result...),
+		Result: &ingestv1.MergeProfilesStacktracesResult{
+			Format:    ingestv1.StacktracesMergeFormat_MERGE_FORMAT_TREE,
+			TreeBytes: m.TreeBytes(r.GetMaxNodes()),
+		},
 	})
 	if err != nil {
 		if errors.Is(err, io.EOF) {

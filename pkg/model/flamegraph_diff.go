@@ -1,4 +1,4 @@
-package querier
+package model
 
 import (
 	"bytes"
@@ -25,7 +25,7 @@ const MaxNodes = 8192
 //	i+4 = total   , right tree
 //	i+5 = self    , right tree
 //	i+6 = index in the names array
-func NewFlamegraphDiff(left, right *tree, maxNodes int) (*querierv1.FlameGraphDiff, error) {
+func NewFlamegraphDiff(left, right *Tree, maxNodes int) (*querierv1.FlameGraphDiff, error) {
 	// The algorithm doesn't work properly with negative nodes
 	// Although it's possible to silently drop these nodes
 	// Let's fail early and analyze properly with real data when the issue happens
@@ -148,7 +148,7 @@ func NewFlamegraphDiff(left, right *tree, maxNodes int) (*querierv1.FlameGraphDi
 // combineTree aligns 2 trees by making them having the same structure with the
 // same number of nodes
 // It also makes the tree have a single root
-func combineTree(leftTree, rightTree *tree) (*tree, *tree) {
+func combineTree(leftTree, rightTree *Tree) (*Tree, *Tree) {
 	leftTotal := int64(0)
 	for _, l := range leftTree.root {
 		leftTotal = leftTotal + l.total
@@ -161,7 +161,7 @@ func combineTree(leftTree, rightTree *tree) (*tree, *tree) {
 
 	// differently from pyroscope, there could be multiple roots
 	// so we add a fake root as expected
-	leftTree = &tree{
+	leftTree = &Tree{
 		root: []*node{{
 			children: leftTree.root,
 			total:    leftTotal,
@@ -169,7 +169,7 @@ func combineTree(leftTree, rightTree *tree) (*tree, *tree) {
 		}},
 	}
 
-	rightTree = &tree{
+	rightTree = &Tree{
 		root: []*node{{
 			children: rightTree.root,
 			total:    rightTotal,
@@ -263,7 +263,7 @@ func nextPow2(a int) int {
 	return a
 }
 
-func combineMinValues(leftTree, rightTree *tree, maxNodes int) uint64 {
+func combineMinValues(leftTree, rightTree *Tree, maxNodes int) uint64 {
 	c := cappedarr.New(maxNodes)
 	combineIterateWithTotal(leftTree, rightTree, func(left uint64, right uint64) bool {
 		return c.Push(maxUint64(left, right))
@@ -272,7 +272,7 @@ func combineMinValues(leftTree, rightTree *tree, maxNodes int) uint64 {
 }
 
 // iterate both trees, both trees must be returned from combineTree
-func combineIterateWithTotal(leftTree, rightTree *tree, cb func(uint64, uint64) bool) {
+func combineIterateWithTotal(leftTree, rightTree *Tree, cb func(uint64, uint64) bool) {
 	leftNodes, rghtNodes := leftTree.root, rightTree.root
 	i := 0
 	for len(leftNodes) > 0 {
@@ -289,7 +289,7 @@ func combineIterateWithTotal(leftTree, rightTree *tree, cb func(uint64, uint64) 
 }
 
 // isPositiveTree returns whether a tree only contain positive values
-func isPositiveTree(t *tree) bool {
+func isPositiveTree(t *Tree) bool {
 	stack := Stack[*node]{}
 	for _, node := range t.root {
 		stack.Push(node)
@@ -313,7 +313,7 @@ func isPositiveTree(t *tree) bool {
 	return true
 }
 
-func assertPositiveTrees(left *tree, right *tree) error {
+func assertPositiveTrees(left *Tree, right *Tree) error {
 	leftRes := isPositiveTree(left)
 	rightRes := isPositiveTree(right)
 

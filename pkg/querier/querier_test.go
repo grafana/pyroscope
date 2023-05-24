@@ -607,6 +607,7 @@ func (f *fakeBidiClientStacktraces) Receive() (*ingestv1.MergeProfilesStacktrace
 	if profiles == nil {
 		return &ingestv1.MergeProfilesStacktracesResponse{
 			Result: &ingestv1.MergeProfilesStacktracesResult{
+				Format: ingestv1.StacktracesMergeFormat_MERGE_FORMAT_STACKTRACES,
 				Stacktraces: []*ingestv1.StacktraceSample{
 					{FunctionIds: []int32{0, 1, 2}, Value: 1},
 				},
@@ -621,6 +622,12 @@ func (f *fakeBidiClientStacktraces) Receive() (*ingestv1.MergeProfilesStacktrace
 }
 func (f *fakeBidiClientStacktraces) CloseRequest() error  { return nil }
 func (f *fakeBidiClientStacktraces) CloseResponse() error { return nil }
+
+func requireFakeMergeProfilesStacktracesResultTree(t *testing.T, r *phlaremodel.Tree) {
+	flame := phlaremodel.NewFlameGraph(r, -1)
+	sort.Strings(flame.Names)
+	require.Equal(t, []string{"bar", "buzz", "foo", "total"}, flame.Names)
+}
 
 type fakeBidiClientProfiles struct {
 	profiles chan *ingestv1.ProfileSets
