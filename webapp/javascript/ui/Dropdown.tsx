@@ -46,6 +46,8 @@ export interface DropdownProps {
   ariaLabel?: MenuProps['aria-label'];
 
   menuButton?: JSX.Element;
+
+  portal?: MenuProps['portal'];
 }
 
 export default function Dropdown({
@@ -66,6 +68,7 @@ export default function Dropdown({
   offsetY,
   menuButtonClassName = '',
   ariaLabel,
+  portal,
   ...props
 }: DropdownProps) {
   const menuButtonComponent = props.menuButton || (
@@ -95,6 +98,7 @@ export default function Dropdown({
       offsetX={offsetX}
       offsetY={offsetY}
       menuButton={menuButtonComponent}
+      portal={portal}
     >
       <MenuHeader>{label}</MenuHeader>
       {children}
