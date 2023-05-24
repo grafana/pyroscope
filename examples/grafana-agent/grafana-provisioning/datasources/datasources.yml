@@ -7,6 +7,6 @@ datasources:
     type: 'phlare'
     access: 'proxy'
     grafanaOrgId: 1
-    url: http://phlare:4100
+    url: http://pyroscope:4100
     isDefault: true
     editable: true

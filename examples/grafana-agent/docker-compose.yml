@@ -9,13 +9,13 @@ services:
     ports:
       - 3000:3000
 
-  phlare:
+  pyroscope:
     image: 'grafana/phlare:latest'
     ports:
       - 4100:4100
-    command: -config.file=/etc/phlare/config.yaml
+    command: -config.file=/etc/pyroscope/config.yaml
     volumes:
-      - ./phlare/config.yaml:/etc/phlare/config.yaml
+      - ./pyroscope/config.yaml:/etc/pyroscope/config.yaml
 
   agent:
     image: grafana/agent:latest
