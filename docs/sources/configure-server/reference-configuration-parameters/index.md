@@ -153,7 +153,7 @@ client:
 
 api:
   # base URL for when the server is behind a reverse proxy with a different path
-  # CLI flag: -base-url
+  # CLI flag: -api.base-url
   [base-url: <string> | default = ""]
 
 # The server block configures the HTTP and gRPC server of the launched

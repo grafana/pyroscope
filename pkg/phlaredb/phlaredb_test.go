@@ -182,8 +182,10 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 		resp, err = bidi.Receive()
 		require.NoError(t, err)
 		require.NotNil(t, resp.Result)
-		require.Len(t, resp.Result.Stacktraces, 48)
-		require.Len(t, resp.Result.FunctionNames, 247)
+
+		at, err := phlaremodel.UnmarshalTree(resp.Result.TreeBytes)
+		require.NoError(t, err)
+		require.Equal(t, int64(500000000), at.Total())
 	})
 
 	t.Run("request non existing series", func(t *testing.T) {

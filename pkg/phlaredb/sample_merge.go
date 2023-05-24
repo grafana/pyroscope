@@ -28,6 +28,7 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 		return nil, err
 	}
 
+	// TODO: Truncate insignificant stacks.
 	return b.resolveSymbols(ctx, stacktraceAggrValues)
 }
 

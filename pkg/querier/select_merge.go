@@ -2,6 +2,7 @@ package querier
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"sync"
 
@@ -277,14 +278,10 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 	return errors.Err()
 }
 
-type stacktraces struct {
-	locations []string
-	value     int64
-}
-
-// selectMergeStacktraces selects the  profile from each ingester by deduping them and request merges of stacktraces of them.
-func selectMergeStacktraces(ctx context.Context, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesStacktraces]) ([]stacktraces, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "selectMergeStacktraces")
+// selectMergeTree selects the  profile from each ingester by deduping them and
+// returns merge of stacktrace samples represented as a tree.
+func selectMergeTree(ctx context.Context, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesStacktraces]) (*phlaremodel.Tree, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "selectMergeTree")
 	defer span.Finish()
 
 	mergeResults := make([]MergeResult[*ingestv1.MergeProfilesStacktracesResult], len(responses))
@@ -311,9 +308,9 @@ func selectMergeStacktraces(ctx context.Context, responses []responseFromIngeste
 
 	// Collects the results in parallel.
 	span.LogFields(otlog.String("msg", "collecting merge results"))
-	results := make([]*ingestv1.MergeProfilesStacktracesResult, 0, len(iters))
-	s := lo.Synchronize()
 	g, _ := errgroup.WithContext(ctx)
+	m := phlaremodel.NewTreeMerger()
+	sm := phlaremodel.NewStackTraceMerger()
 	for _, iter := range mergeResults {
 		iter := iter
 		g.Go(util.RecoverPanic(func() error {
@@ -321,18 +318,30 @@ func selectMergeStacktraces(ctx context.Context, responses []responseFromIngeste
 			if err != nil {
 				return err
 			}
-			s.Do(func() {
-				results = append(results, result)
-			})
-			return nil
+			switch result.Format {
+			default:
+				return fmt.Errorf("unknown merge result format")
+			case ingestv1.StacktracesMergeFormat_MERGE_FORMAT_STACKTRACES:
+				sm.MergeStackTraces(result.Stacktraces, result.FunctionNames)
+			case ingestv1.StacktracesMergeFormat_MERGE_FORMAT_TREE:
+				err = m.MergeTreeBytes(result.TreeBytes)
+			}
+			return err
 		}))
 	}
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
+	if sm.Size() > 0 {
+		// For backward compatibility: during a rollout, multiple formats
+		// may coexist for some period of time (efficiency is not a concern).
+		if err := m.MergeTreeBytes(sm.TreeBytes(-1)); err != nil {
+			return nil, err
+		}
+	}
 
-	span.LogFields(otlog.String("msg", "merging results"))
-	return mergeProfilesStacktracesResult(results), nil
+	span.LogFields(otlog.String("msg", "building tree"))
+	return m.Tree(), nil
 }
 
 // selectMergePprofProfile selects the  profile from each ingester by deduping them and request merges of stacktraces in the pprof format.
@@ -394,23 +403,6 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 		return nil, err
 	}
 	return pprof.FromProfile(p)
-}
-
-// mergeProfilesStacktracesResult merges the results of multiple MergeProfilesStacktraces into a single result.
-func mergeProfilesStacktracesResult(results []*ingestv1.MergeProfilesStacktracesResult) []stacktraces {
-	merge := phlaremodel.MergeBatchMergeStacktraces(results...)
-	result := make([]stacktraces, 0, len(merge.Stacktraces))
-	for _, st := range merge.Stacktraces {
-		locs := make([]string, len(st.FunctionIds))
-		for i, id := range st.FunctionIds {
-			locs[i] = merge.FunctionNames[id]
-		}
-		result = append(result, stacktraces{
-			value:     st.Value,
-			locations: locs,
-		})
-	}
-	return result
 }
 
 type ProfileValue struct {

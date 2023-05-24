@@ -228,7 +228,7 @@ func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffR
 		sp.Finish()
 	}()
 
-	var leftTree, rightTree *tree
+	var leftTree, rightTree *phlaremodel.Tree
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
@@ -254,7 +254,7 @@ func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffR
 		return nil, err
 	}
 
-	fd, err := NewFlamegraphDiff(leftTree, rightTree, MaxNodes)
+	fd, err := phlaremodel.NewFlamegraphDiff(leftTree, rightTree, phlaremodel.MaxNodes)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
@@ -276,22 +276,22 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 		sp.Finish()
 	}()
 
-	t, err := q.selectTree(ctx, req.Msg)
-	if err != nil {
-		return nil, err
-	}
-
 	if req.Msg.MaxNodes == nil || *req.Msg.MaxNodes == 0 {
 		mn := maxNodesDefault
 		req.Msg.MaxNodes = &mn
 	}
 
+	t, err := q.selectTree(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
 	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
-		Flamegraph: NewFlameGraph(t, *req.Msg.MaxNodes),
+		Flamegraph: phlaremodel.NewFlameGraph(t, req.Msg.GetMaxNodes()),
 	}), nil
 }
 
-func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*tree, error) {
+func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*phlaremodel.Tree, error) {
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -323,19 +323,17 @@ func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStac
 					End:           req.End,
 					Type:          profileType,
 				},
+				MaxNodes: req.MaxNodes,
+				// TODO(kolesnikovae): Max stacks.
 			})
 		}))
 	}
-	if err := g.Wait(); err != nil {
+	if err = g.Wait(); err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
 	// merge all profiles
-	st, err := selectMergeStacktraces(gCtx, responses)
-	if err != nil {
-		return nil, err
-	}
-	return newTree(st), nil
+	return selectMergeTree(gCtx, responses)
 }
 
 func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[googlev1.Profile], error) {

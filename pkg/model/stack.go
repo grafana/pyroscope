@@ -1,4 +1,4 @@
-package querier
+package model
 
 import "sync"
 
@@ -12,6 +12,12 @@ var stackNodePool = sync.Pool{
 	New: func() interface{} {
 		return NewStack[stackNode]()
 	},
+}
+
+type stackNode struct {
+	xOffset int
+	level   int
+	node    *node
 }
 
 // Stack is a stack of values. Pushing and popping values is O(1).
@@ -49,7 +55,7 @@ func (s *Stack[T]) Slice() []T {
 	return result
 }
 
-// Release releases the stack's resources.
+// Reset releases the stack's resources.
 func (s *Stack[T]) Reset() {
 	s.values = s.values[:0]
 }
