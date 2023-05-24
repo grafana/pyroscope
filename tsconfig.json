@@ -2,7 +2,6 @@
   "baseUrl": ".",
   "compilerOptions": {
     "plugins": [{ "name": "typescript-plugin-css-modules" }],
-    // TODO: unify with webpack.common.js
     "paths": {
       "@phlare/*": ["./public/app/*"],
 
@@ -37,7 +36,6 @@
       "@webapp/services/tags": ["./public/app/overrides/services/tags"],
       "@webapp/services/base": ["./public/app/overrides/services/base"],
       "@webapp/*": ["./node_modules/pyroscope-oss/webapp/javascript/*"],
-      // Without this files under pyroscope-oss would resolve to ./node_modules/pyroscope-oss/@mui/base
       "@mui/base/*": ["./node_modules/@mui/base/*"]
     },
     "target": "es5",

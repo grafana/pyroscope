@@ -19,9 +19,10 @@ export async function requestWithOrgID(
 
   // Reuse headers if they were passed
   if (!config?.headers?.hasOwnProperty('X-Scope-OrgID')) {
+    const tenantID = tenantIDFromStorage();
     headers = {
       ...config?.headers,
-      'X-Scope-OrgID': tenantIDFromStorage(),
+      ...(tenantID && { 'X-Scope-OrgID': tenantID }),
     };
   }
 

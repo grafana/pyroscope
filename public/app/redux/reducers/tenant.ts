@@ -51,7 +51,7 @@ export const checkTenancyIsRequired = createAsyncThunk<
       return Promise.resolve({ tenancy: 'multi_tenant', tenantID });
     }
 
-    return Promise.resolve({ tenancy: 'single_tenant', tenantID });
+    return Promise.resolve({ tenancy: 'single_tenant', tenantID: undefined });
   },
   {
     // This check is only valid if we don't know what's the tenancy status yet
@@ -77,9 +77,6 @@ const tenantSlice = createSlice({
     },
     setWantsToChange(state) {
       state.tenancy = 'wants_to_change';
-    },
-    setTenancy(state, action: PayloadAction<TenantState['tenancy']>) {
-      state.tenancy = action.payload;
     },
   },
   extraReducers: (builder) => {
