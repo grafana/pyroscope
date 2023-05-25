@@ -1,5 +1,6 @@
 import type { Profile } from '@pyroscope/models/src';
-import decodeFlamebearer, {
+import {
+  decodeFlamebearer,
   deltaDiffWrapperReverse,
 } from '../FlameGraph/decode';
 import { flamebearersToTree, TreeNode } from './flamebearersToTree';

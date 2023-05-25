@@ -24,49 +24,11 @@ import {
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
-import decode from './decode';
 import { FitModes } from '../fitMode/fitMode';
 import { ViewTypes } from './FlameGraphComponent/viewTypes';
 import { GraphVizPane } from './FlameGraphComponent/GraphVizPane';
-
-// Still support old flamebearer format
-// But prefer the new 'profile' one
-function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
-  if (p.profile && p.flamebearer) {
-    console.warn(
-      "'profile' and 'flamebearer' properties are mutually exclusive. Please use profile if possible."
-    );
-  }
-
-  if (p.profile) {
-    const copy = JSON.parse(JSON.stringify(p.profile));
-    const profile = decode(copy);
-
-    return {
-      ...profile,
-      ...profile.flamebearer,
-      ...profile.metadata,
-    } as Flamebearer;
-  }
-
-  if (p.flamebearer) {
-    return p.flamebearer;
-  }
-
-  // people may send us both values as undefined
-  // but we still have to render something
-  const noop: Flamebearer = {
-    format: 'single',
-    names: [],
-    units: 'unknown',
-    levels: [[]],
-    spyName: 'unknown',
-    numTicks: 0,
-    sampleRate: 0,
-    maxSelf: 0,
-  };
-  return noop;
-}
+import { isSameFlamebearer } from './uniqueness';
+import { normalize } from './normalize';
 
 // Refers to a node in the flamegraph
 interface Node {
@@ -75,9 +37,9 @@ interface Node {
 }
 
 export interface FlamegraphRendererProps {
-  /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
   profile?: Profile;
 
+  /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
   onlyDisplay?: ViewTypes;
   showToolbar?: boolean;
 
@@ -149,7 +111,7 @@ class FlameGraphRenderer extends Component<
       isFlamegraphDirty: false,
       view: this.props.onlyDisplay ? this.props.onlyDisplay : 'both',
       fitMode: 'HEAD',
-      flamebearer: mountFlamebearer(props),
+      flamebearer: normalize(props),
 
       // Default to horizontal since it's the most common case
       panesOrientation: props.panesOrientation
@@ -172,8 +134,8 @@ class FlameGraphRenderer extends Component<
     prevState: FlamegraphRendererState
   ) {
     // TODO: this is a slow operation
-    const prevFlame = mountFlamebearer(prevProps);
-    const currFlame = mountFlamebearer(this.props);
+    const prevFlame = normalize(prevProps);
+    const currFlame = normalize(this.props);
 
     if (!this.isSameFlamebearer(prevFlame, currFlame)) {
       const newConfigs = this.calcNewConfigs(prevFlame, currFlame);
@@ -246,9 +208,10 @@ class FlameGraphRenderer extends Component<
   };
 
   isSameFlamebearer = (prevFlame: Flamebearer, currFlame: Flamebearer) => {
+    return isSameFlamebearer(prevFlame, currFlame);
     // TODO: come up with a less resource intensive operation
     // keep in mind naive heuristics may provide bad behaviours like (https://github.com/pyroscope-io/pyroscope/issues/1192)
-    return JSON.stringify(prevFlame) === JSON.stringify(currFlame);
+    //    return JSON.stringify(prevFlame) === JSON.stringify(currFlame);
   };
 
   onReset = () => {
