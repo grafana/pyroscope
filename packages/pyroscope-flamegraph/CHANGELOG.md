@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.35.6](https://github.com/grafana/pyroscope/compare/@pyroscope/flamegraph@0.35.5...@pyroscope/flamegraph@0.35.6) (2023-05-25)
+
+
+### Performance Improvements
+
+* **flamegraph:** improve performance ([#1957](https://github.com/grafana/pyroscope/issues/1957)) ([e1f2caf](https://github.com/grafana/pyroscope/commit/e1f2caf78c24850d2487b1abd0a1f5558486d8f8))
+
+
+
+
+
 ## [0.35.5](https://github.com/grafana/pyroscope/compare/@pyroscope/flamegraph@0.35.4...@pyroscope/flamegraph@0.35.5) (2023-03-29)
 
 
