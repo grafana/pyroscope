@@ -1,12 +1,12 @@
 package cireport
 
 import (
-	"bytes"
 	"context"
 	"embed"
 	"fmt"
 	"math"
 	"os"
+	"strings"
 	"sync"
 	"text/template"
 	"time"
@@ -113,7 +113,7 @@ func (r *TableReport) Report(ctx context.Context, qCfg *QueriesConfig) (string, 
 		return "", err
 	}
 
-	var tpl bytes.Buffer
+	var tpl strings.Builder
 
 	data := struct {
 		QC *QueriesConfig
