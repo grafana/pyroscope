@@ -9,9 +9,17 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
-type APIKeyService struct{ db *gorm.DB }
+type APIKeyService struct {
+	db         *gorm.DB
+	bcryptCost int
+}
 
-func NewAPIKeyService(db *gorm.DB) APIKeyService { return APIKeyService{db: db} }
+func NewAPIKeyService(db *gorm.DB, bcryptCost int) APIKeyService {
+	return APIKeyService{
+		db:         db,
+		bcryptCost: bcryptCost,
+	}
+}
 
 func (svc APIKeyService) CreateAPIKey(ctx context.Context, params model.CreateAPIKeyParams) (model.APIKey, string, error) {
 	if err := params.Validate(); err != nil {
@@ -37,7 +45,7 @@ func (svc APIKeyService) CreateAPIKey(ctx context.Context, params model.CreateAP
 			return err
 		}
 		var hash []byte
-		if secret, hash, err = model.GenerateAPIKey(apiKey.ID); err != nil {
+		if secret, hash, err = model.GenerateAPIKeyWithCost(apiKey.ID, svc.bcryptCost); err != nil {
 			return err
 		}
 		apiKey.Hash = hash

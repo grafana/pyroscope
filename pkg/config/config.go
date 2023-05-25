@@ -205,6 +205,7 @@ type Auth struct {
 	CookieSecure             bool          `json:"-" deprecated:"true" def:"false" desc:"specifies Secure attribute for JWT token cookie" mapstructure:"cookie-secure"`
 	JWTSecret                string        `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
 	LoginMaximumLifetimeDays int           `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." mapstructure:"login-maximum-lifetime-days"`
+	APIKeyBcryptCost         int           `json:"-" deprecated:"true" def:"10" mapstructure:"api-key-bcrypt-cost"`
 }
 
 type InternalAuth struct {
@@ -215,7 +216,7 @@ type InternalAuth struct {
 
 type IngestionAuth struct {
 	Enabled   bool          `json:"-" deprecated:"true" def:"false" desc:"require authentication for ingestion endpoint" mapstructure:"enabled"`
-	CacheTTL  time.Duration `json:"-" deprecated:"true" def:"1s" mapstructure:"cache-ttl"`
+	CacheTTL  time.Duration `json:"-" deprecated:"true" def:"1m" mapstructure:"cache-ttl"`
 	CacheSize int           `json:"-" deprecated:"true" def:"1024" mapstructure:"cache-size"`
 }
 

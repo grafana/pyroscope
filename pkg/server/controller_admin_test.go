@@ -90,7 +90,7 @@ var _ = Describe("server", func() {
 		startController(c, "http", ":4040")
 		defer c.Stop()
 
-		k := service.NewAPIKeyService(sql.DB())
+		k := service.NewAPIKeyService(sql.DB(), 0)
 		cb(testServices{s, k})
 	}
 	createToken := func(s testServices, role model.Role) string {

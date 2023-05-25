@@ -18,7 +18,7 @@ var _ = Describe("APIKeyService", func() {
 
 	var svc service.APIKeyService
 	BeforeEach(func() {
-		svc = service.NewAPIKeyService(s.DB())
+		svc = service.NewAPIKeyService(s.DB(), 0)
 	})
 
 	Describe("API key creation", func() {
