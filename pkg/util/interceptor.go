@@ -5,6 +5,11 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/weaveworks/common/tracing"
+
+	"github.com/grafana/phlare/pkg/tenant"
 )
 
 type timeoutInterceptor struct {
@@ -38,4 +43,38 @@ func (s timeoutInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFu
 		defer cancel()
 		return next(ctx, shc)
 	})
+}
+
+// LogRequest logs the request parameters.
+// It logs all kinds of requests.
+func NewLogInterceptor(logger log.Logger) connect.UnaryInterceptorFunc {
+	interceptor := func(next connect.UnaryFunc) connect.UnaryFunc {
+		return connect.UnaryFunc(func(
+			ctx context.Context,
+			req connect.AnyRequest,
+		) (connect.AnyResponse, error) {
+			begin := time.Now()
+			tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+			if err != nil {
+				tenantID = "anonymous"
+			}
+			traceID, ok := tracing.ExtractTraceID(ctx)
+			if !ok {
+				traceID = "unknown"
+			}
+			defer func() {
+				level.Info(logger).Log(
+					"msg", "request parameters",
+					"route", req.Spec().Procedure,
+					"tenant", tenantID,
+					"traceID", traceID,
+					"parameters", req.Any(),
+					"duration", time.Since(begin),
+				)
+			}()
+
+			return next(ctx, req)
+		})
+	}
+	return connect.UnaryInterceptorFunc(interceptor)
 }
