@@ -25,6 +25,7 @@ var (
 )
 
 type Client struct {
+	url     string
 	log     logrus.FieldLogger
 	config  config.RemoteWriteTarget
 	client  *http.Client
@@ -50,6 +51,7 @@ func NewClient(logger logrus.FieldLogger, reg prometheus.Registerer, targetName 
 	metrics.mustRegister()
 
 	return &Client{
+		url:     cfg.Address + "/ingest",
 		log:     logger,
 		config:  cfg,
 		client:  client,
@@ -93,7 +95,7 @@ func (r *Client) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
 	if !(res.StatusCode >= 200 && res.StatusCode < 300) {
 		// read all the response body
 		respBody, _ := ioutil.ReadAll(res.Body)
-		return fmt.Errorf("%w: %v", ErrNotOkResponse, fmt.Errorf("status code: '%d'. body: '%s'", res.StatusCode, respBody))
+		return fmt.Errorf("%w: %v", ErrNotOkResponse, fmt.Errorf("status code: '%d'. body: '%s'. url: '%s'", res.StatusCode, respBody, req.URL.Redacted()))
 	}
 
 	return nil
@@ -105,7 +107,7 @@ func (r *Client) ingestInputToRequest(in *ingestion.IngestInput) (*http.Request,
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", r.config.Address+"/ingest", bytes.NewReader(b))
+	req, err := http.NewRequest("POST", r.url, bytes.NewReader(b))
 	for k, v := range r.config.Headers {
 		req.Header.Set(k, v)
 	}
