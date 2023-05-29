@@ -1,0 +1,24 @@
+phlare.write "example" {
+  // Send metrics to a locally running Phlare instance.
+  endpoint {
+    url = "http://pyroscope:4100"
+
+    // To send data to Grafana Cloud you'll need to provide username and password.
+    // basic_auth {
+    //   username = "myuser"
+    //   password = "mypassword"
+    // }
+  }
+  external_labels = {
+    "env" = "example",
+  }
+}
+
+
+phlare.scrape "default" {
+  targets = [
+    {"__address__" = "pyroscope:4100", "app"="pyroscope"},
+    {"__address__" = "agent:12345", "app"="agent"},
+  ]
+  forward_to = [phlare.write.example.receiver]
+}

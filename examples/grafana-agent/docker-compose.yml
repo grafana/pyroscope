@@ -1,0 +1,31 @@
+version: '3.9'
+services:
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./grafana-provisioning:/etc/grafana/provisioning
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/home.json:/default-dashboard.json
+    ports:
+      - 3000:3000
+
+  pyroscope:
+    image: 'grafana/phlare:latest'
+    ports:
+      - 4100:4100
+    command: -config.file=/etc/pyroscope/config.yaml
+    volumes:
+      - ./pyroscope/config.yaml:/etc/pyroscope/config.yaml
+
+  agent:
+    image: grafana/agent:latest
+    volumes:
+      - ./agent/config:/etc/agent-config
+    command:
+      - run
+      - /etc/agent-config/config.river
+    environment:
+      HOSTNAME: agent
+      AGENT_MODE: flow
+    ports:
+      - "12345:12345"
