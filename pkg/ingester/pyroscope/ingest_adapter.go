@@ -99,7 +99,7 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 		Name:  labels.MetricName,
 		Value: metric,
 	}, &typesv1.LabelPair{
-		Name:  "pyroscope_app",
+		Name:  "service_name",
 		Value: app,
 	}, &typesv1.LabelPair{
 		Name:  phlaremodel.LabelNameDelta,
