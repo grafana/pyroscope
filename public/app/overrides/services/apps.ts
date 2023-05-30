@@ -1,4 +1,9 @@
-import { App, AppSchema } from '@webapp/models/app';
+import {
+  App,
+  AppSchema,
+  PyroscopeAppLabel,
+  ServiceNameLabel,
+} from '@webapp/models/app';
 import { Result } from '@webapp/util/fp';
 import { z, ZodError } from 'zod';
 import type { RequestError } from '@webapp/services/base';
@@ -34,8 +39,17 @@ type SeriesResponse = z.infer<typeof SeriesResponseSchema>;
 // * flattens all labels from the same labelSet into an object (App)
 // * remove duplicates
 const ListOfAppsSchema = SeriesResponseSchema.transform(flattenAndMergeLabels)
+  .transform(removeWithoutRequiredLabels)
   .pipe(z.array(AppSchema))
   .transform(removeDuplicateApps);
+
+function removeWithoutRequiredLabels(
+  s: ReturnType<typeof flattenAndMergeLabels>
+) {
+  return s.filter((a) => {
+    return PyroscopeAppLabel in a || ServiceNameLabel in a;
+  });
+}
 
 function flattenAndMergeLabels(s: SeriesResponse) {
   return s.labelsSet.map((v) => {

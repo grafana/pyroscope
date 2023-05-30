@@ -1,11 +1,14 @@
 import { parse, brandQuery, Query } from '@webapp/models/query';
 import { z } from 'zod';
 
+export const PyroscopeAppLabel = 'pyroscope_app';
+export const ServiceNameLabel = 'service_name';
+
 const AppWithPyroscopeAppIndex = z.object({
   __profile_type__: z.string(),
   pyroscope_app: z.string(),
   // Fake a discriminated union
-  __name_id__: z.enum(['pyroscope_app']).default('pyroscope_app'),
+  __name_id__: z.enum([PyroscopeAppLabel]).default(PyroscopeAppLabel),
   name: z.string().optional().default(''),
 });
 
@@ -13,7 +16,7 @@ const AppWithServiceNameIndex = z.object({
   __profile_type__: z.string(),
   service_name: z.string(),
   // Fake a discriminated union
-  __name_id__: z.enum(['service_name']).default('service_name'),
+  __name_id__: z.enum([ServiceNameLabel]).default(ServiceNameLabel),
   name: z.string().optional().default(''),
 });
 

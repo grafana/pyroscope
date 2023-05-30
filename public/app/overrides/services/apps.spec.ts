@@ -887,4 +887,30 @@ describe('appsService', () => {
       },
     ]);
   });
+
+  it('filters out flagSets without pyroscope_app nor service_name', async () => {
+    const spy = jest.spyOn(base, 'requestWithOrgID');
+    const mockData = {
+      labelsSet: [
+        {
+          labels: [],
+        },
+        {
+          labels: [
+            {
+              name: '__profile_type__',
+              value: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds',
+            },
+            { name: '__type__', value: 'cpu' },
+            { name: '__name__', value: 'process_cpu' },
+          ],
+        },
+      ],
+    };
+    spy.mockReturnValue(Promise.resolve(Result.ok(mockData)));
+
+    const res = await fetchApps();
+    expect(res.isOk).toBe(true);
+    expect(res.value).toEqual([]);
+  });
 });
