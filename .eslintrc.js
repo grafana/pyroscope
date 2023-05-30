@@ -53,4 +53,13 @@ module.exports = {
   parserOptions: {
     project: ['tsconfig.json'],
   },
+  overrides: [
+    {
+      // For tests it's fine to import with ./myfile, since tests won't be overriden downstream
+      files: ['*.spec.tsx', '*.spec.ts'],
+      rules: {
+        'no-restricted-imports': 'off',
+      },
+    },
+  ],
 };

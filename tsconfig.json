@@ -22,8 +22,14 @@
       "@webapp/components/TimelineChart/ContextMenu.plugin": [
         "./public/app/overrides/components/TimelineChart/ContextMenu.plugin"
       ],
+      "@webapp/components/AppSelector": [
+        "./public/app/overrides/components/AppSelector"
+      ],
       "@webapp/components/AppSelector/Label": [
         "./public/app/overrides/components/AppSelector/Label"
+      ],
+      "@webapp/components/Toolbar": [
+        "./public/app/overrides/components/Toolbar"
       ],
       "@webapp/ui/Sidebar": ["./public/app/overrides/ui/Sidebar"],
       "@webapp/util/baseurl": ["./public/app/overrides/util/baseurl"],
@@ -31,12 +37,15 @@
       "@webapp/redux/store": ["./public/app/redux/store"],
       "@webapp/redux/hooks": ["./public/app/redux/hooks"],
 
-      "@webapp/services/apps": ["./public/app/overrides/services/appNames"],
+      "@webapp/models/query": ["./public/app/overrides/models/query"],
+      "@webapp/models/app": ["./public/app/overrides/models/app"],
+      "@webapp/services/apps": ["./public/app/overrides/services/apps"],
       "@webapp/services/render": ["./public/app/overrides/services/render"],
       "@webapp/services/tags": ["./public/app/overrides/services/tags"],
       "@webapp/services/base": ["./public/app/overrides/services/base"],
       "@webapp/*": ["./node_modules/pyroscope-oss/webapp/javascript/*"],
-      "@mui/base/*": ["./node_modules/@mui/base/*"]
+      "@mui/base/*": ["./node_modules/@mui/base/*"],
+      "zod": ["./node_modules/zod"]
     },
     "target": "es5",
     "lib": ["dom", "dom.iterable", "esnext"],

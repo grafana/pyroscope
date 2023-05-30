@@ -8,7 +8,10 @@ module.exports = {
   testMatch: ['**/?(*.)+(spec|test).+(ts|tsx|js)'],
   transform: {
     '^.+\\.(t|j)sx?$': ['@swc/jest'],
+    '\\.module\\.(css|scss)$': 'jest-css-modules-transform',
+    '\\.(css|scss)$': 'jest-css-modules-transform',
   },
+  setupFilesAfterEnv: ['<rootDir>/testSetupFile.js'],
 
   transformIgnorePatterns: [
     // force us to transpile these dependencies
