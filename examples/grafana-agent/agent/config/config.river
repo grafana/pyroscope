@@ -1,4 +1,4 @@
-phlare.write "example" {
+pyroscope.write "example" {
   // Send metrics to a locally running Phlare instance.
   endpoint {
     url = "http://pyroscope:4100"
@@ -15,10 +15,10 @@ phlare.write "example" {
 }
 
 
-phlare.scrape "default" {
+pyroscope.scrape "default" {
   targets = [
     {"__address__" = "pyroscope:4100", "app"="pyroscope"},
     {"__address__" = "agent:12345", "app"="agent"},
   ]
-  forward_to = [phlare.write.example.receiver]
+  forward_to = [pyroscope.write.example.receiver]
 }
