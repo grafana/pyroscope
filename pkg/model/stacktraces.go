@@ -347,26 +347,25 @@ func (t *stacktraceTree) insert(stack []int32, v int64) {
 
 // minValue returns the minimum "total" value a node in a tree has to have.
 func (t *stacktraceTree) minValue(maxNodes int64) int64 {
-	if maxNodes <= 0 || maxNodes >= int64(len(t.nodes)) {
+	if maxNodes < 1 || maxNodes >= int64(len(t.nodes)) {
 		return 0
 	}
 	s := make(minHeap, 0, maxNodes)
-	mh := &s
-	heap.Init(mh)
+	h := &s
 	for _, n := range t.nodes {
-		if n.total == 0 {
-			continue
+		if h.Len() >= int(maxNodes) {
+			if n.total > (*h)[0] {
+				heap.Pop(h)
+			} else {
+				continue
+			}
 		}
-		if mh.Len() < int(maxNodes) {
-			heap.Push(mh, n.total)
-			continue
-		}
-		if n.total > (*mh)[0] {
-			heap.Pop(mh)
-			heap.Push(mh, n.total)
-		}
+		heap.Push(h, n.total)
 	}
-	return (*mh)[0]
+	if h.Len() < int(maxNodes) {
+		return 0
+	}
+	return (*h)[0]
 }
 
 const lostDuringSerializationNameReference = -1
