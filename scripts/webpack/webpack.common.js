@@ -48,6 +48,14 @@ module.exports = {
         __dirname,
         '../../public/app/overrides/components/AppSelector/Label'
       ),
+      '@webapp/components/AppSelector': path.resolve(
+        __dirname,
+        '../../public/app/overrides/components/AppSelector/AppSelector'
+      ),
+      '@webapp/components/Toolbar': path.resolve(
+        __dirname,
+        '../../public/app/overrides/components/Toolbar'
+      ),
       '@webapp/ui/Sidebar': path.resolve(
         __dirname,
         '../../public/app/overrides/ui/Sidebar'
@@ -65,9 +73,17 @@ module.exports = {
         __dirname,
         '../../public/app/redux/hooks'
       ),
+      '@webapp/models/query': path.resolve(
+        __dirname,
+        '../../public/app/overrides/models/query'
+      ),
+      '@webapp/models/app': path.resolve(
+        __dirname,
+        '../../public/app/overrides/models/app'
+      ),
       '@webapp/services/apps': path.resolve(
         __dirname,
-        '../../public/app/overrides/services/appNames'
+        '../../public/app/overrides/services/apps'
       ),
       '@webapp/services/render': path.resolve(
         __dirname,

@@ -6,3 +6,4 @@ pkg/api/static/**
 jest.config.js
 cypress/**
 cypress.config.ts
+testSetupFile.js

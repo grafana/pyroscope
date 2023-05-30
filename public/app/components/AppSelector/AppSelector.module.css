@@ -1,0 +1,4 @@
+.appSelectorModal {
+  /* upstream code is positioned based on a label */
+  left: initial !important;
+}
