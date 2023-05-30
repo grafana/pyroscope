@@ -14,16 +14,17 @@ import { SingleView } from '@phlare/pages/SingleView';
 import { ComparisonView } from '@phlare/pages/ComparisonView';
 import { ExploreView } from '@phlare/pages/ExploreView';
 import { DiffView } from '@phlare/pages/DiffView';
-import { LoadAppNames } from '@phlare/components/LoadAppNames';
 import { Sidebar } from '@phlare/components/Sidebar';
 import { TenantWall } from '@phlare/components/TenantWall';
 import { baseurl } from '@webapp/util/baseurl';
+import { useSelectFirstApp } from '@phlare/hooks/useAppNames';
 
 const container = document.getElementById('reactRoot') as HTMLElement;
 const root = ReactDOM.createRoot(container);
 
 function App() {
   const history = createBrowserHistory({ basename: baseurl() });
+  useSelectFirstApp();
 
   return (
     <Router history={history}>
@@ -31,22 +32,20 @@ function App() {
         <Sidebar />
         <div className="pyroscope-app">
           <TenantWall>
-            <LoadAppNames>
-              <Switch>
-                <Route exact path={ROUTES.EXPLORE_VIEW}>
-                  <ExploreView />
-                </Route>
-                <Route exact path={ROUTES.SINGLE_VIEW}>
-                  <SingleView />
-                </Route>
-                <Route path={ROUTES.COMPARISON_VIEW}>
-                  <ComparisonView />
-                </Route>
-                <Route path={ROUTES.COMPARISON_DIFF_VIEW}>
-                  <DiffView />
-                </Route>
-              </Switch>
-            </LoadAppNames>
+            <Switch>
+              <Route exact path={ROUTES.EXPLORE_VIEW}>
+                <ExploreView />
+              </Route>
+              <Route exact path={ROUTES.SINGLE_VIEW}>
+                <SingleView />
+              </Route>
+              <Route path={ROUTES.COMPARISON_VIEW}>
+                <ComparisonView />
+              </Route>
+              <Route path={ROUTES.COMPARISON_DIFF_VIEW}>
+                <DiffView />
+              </Route>
+            </Switch>
           </TenantWall>
         </div>
       </div>
