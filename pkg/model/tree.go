@@ -126,7 +126,7 @@ func (n *node) insert(name string) *node {
 // minValue returns the minimum "total" value a node in a tree has to have to show up in
 // the resulting flamegraph
 func (t *Tree) minValue(maxNodes int64) int64 {
-	if maxNodes == -1 { // -1 means show all nodes
+	if maxNodes < 1 {
 		return 0
 	}
 
