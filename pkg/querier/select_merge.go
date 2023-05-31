@@ -464,7 +464,7 @@ func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[cl
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
-	series := phlaremodel.MergeSeries(results...)
+	series := phlaremodel.SumSeries(results...)
 	seriesIters := make([]iter.Iterator[ProfileValue], 0, len(series))
 	for _, s := range series {
 		s := s

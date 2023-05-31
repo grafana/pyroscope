@@ -178,7 +178,6 @@ func (c *Config) ApplyDynamicConfig() cfg.Source {
 	c.Frontend.QuerySchedulerDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.Worker.QuerySchedulerDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.QueryScheduler.ServiceDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
-	c.Worker.MaxConcurrentRequests = 4 // todo we might want this as a config flags.
 
 	return func(dst cfg.Cloneable) error {
 		g, ok := dst.(phlareConfigGetter)

@@ -23,7 +23,7 @@ type node struct {
 	name        string
 }
 
-func (t Tree) String() string {
+func (t *Tree) String() string {
 	type branch struct {
 		nodes []*node
 		treeprint.Tree
@@ -60,7 +60,6 @@ func (t *Tree) InsertStack(v int64, stack ...string) {
 	for j := range stack {
 		n.total += v
 		n = n.insert(stack[j])
-		fmt.Println(n)
 	}
 	// Leaf.
 	n.total += v

@@ -110,6 +110,7 @@ func (oe *OverridesExporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(oe.defaultsDescription, prometheus.GaugeValue, float64(oe.defaultLimits.MaxQueryLookback), "max_query_lookback")
 	ch <- prometheus.MustNewConstMetric(oe.defaultsDescription, prometheus.GaugeValue, float64(oe.defaultLimits.MaxQueryLength), "max_query_length")
 	ch <- prometheus.MustNewConstMetric(oe.defaultsDescription, prometheus.GaugeValue, float64(oe.defaultLimits.MaxQueryParallelism), "max_query_parallelism")
+	ch <- prometheus.MustNewConstMetric(oe.defaultsDescription, prometheus.GaugeValue, float64(oe.defaultLimits.QuerySplitDuration), "split_queries_by_interval")
 
 	// Do not export per-tenant limits if they've not been configured at all.
 	if oe.tenantLimits == nil {
@@ -131,7 +132,7 @@ func (oe *OverridesExporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, float64(limits.MaxQueryLookback), "max_query_lookback", tenant)
 		ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, float64(limits.MaxQueryLength), "max_query_length", tenant)
 		ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, float64(limits.MaxQueryParallelism), "max_query_parallelism", tenant)
-
+		ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, float64(limits.QuerySplitDuration), "split_queries_by_interval", tenant)
 	}
 }
 

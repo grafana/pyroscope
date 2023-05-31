@@ -134,7 +134,9 @@ Usage of ./phlare:
   -querier.max-query-lookback duration
     	Limit how far back in profiling data can be queried, up until lookback duration ago. This limit is enforced in the query frontend. If the requested time range is outside the allowed range, the request will not fail, but will be modified to only query data within the allowed time range. The default value of 0 does not set a limit.
   -querier.max-query-parallelism int
-    	Maximum number of queries that will be scheduled in parallel by the frontend. (default 32)
+    	Maximum number of queries that will be scheduled in parallel by the frontend.
+  -querier.split-queries-by-interval duration
+    	Split queries by a time interval and execute in parallel. The value 0 disables splitting by time
   -query-scheduler.max-outstanding-requests-per-tenant int
     	Maximum number of outstanding requests per tenant per query-scheduler. In-flight requests above this limit will fail with HTTP response status code 429. (default 100)
   -query-scheduler.ring.consul.hostname string

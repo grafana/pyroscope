@@ -219,9 +219,11 @@ func (a *API) RegisterRing(r http.Handler) {
 
 // RegisterQuerier registers the endpoints associated with the querier.
 func (a *API) RegisterQuerier(svc querierv1connect.QuerierServiceHandler) {
-	handlers := querier.NewHTTPHandlers(svc)
 	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware, a.grpcLogMiddleware)
+}
 
+func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceClient) {
+	handlers := querier.NewHTTPHandlers(client)
 	a.RegisterRoute("/pyroscope/render", http.HandlerFunc(handlers.Render), true, true, "GET")
 	a.RegisterRoute("/pyroscope/render-diff", http.HandlerFunc(handlers.RenderDiff), true, true, "GET")
 	a.RegisterRoute("/pyroscope/label-values", http.HandlerFunc(handlers.LabelValues), true, true, "GET")

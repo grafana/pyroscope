@@ -122,7 +122,7 @@ func TestResetConcurrency(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := Config{
-				MaxConcurrentRequests: tt.maxConcurrent,
+				MaxConcurrent: tt.maxConcurrent,
 			}
 
 			w, err := newQuerierWorkerWithProcessor(cfg, log.NewNopLogger(), &mockProcessor{}, nil, nil)
@@ -209,7 +209,7 @@ func TestQuerierWorker_getDesiredConcurrency(t *testing.T) {
 	for testName, testData := range tests {
 		t.Run(testName, func(t *testing.T) {
 			cfg := Config{
-				MaxConcurrentRequests: testData.maxConcurrent,
+				MaxConcurrent: testData.maxConcurrent,
 			}
 
 			w, err := newQuerierWorkerWithProcessor(cfg, log.NewNopLogger(), &mockProcessor{}, nil, nil)

@@ -24,12 +24,12 @@ import (
 	"github.com/grafana/phlare/pkg/querier/timeline"
 )
 
-func NewHTTPHandlers(svc querierv1connect.QuerierServiceHandler) *QueryHandlers {
-	return &QueryHandlers{svc}
+func NewHTTPHandlers(client querierv1connect.QuerierServiceClient) *QueryHandlers {
+	return &QueryHandlers{client}
 }
 
 type QueryHandlers struct {
-	upstream querierv1connect.QuerierServiceHandler
+	client querierv1connect.QuerierServiceClient
 }
 
 // LabelValues only returns the label values for the given label name.
@@ -44,7 +44,7 @@ func (q *QueryHandlers) LabelValues(w http.ResponseWriter, req *http.Request) {
 	var res []string
 
 	if label == "__name__" {
-		response, err := q.upstream.ProfileTypes(req.Context(), connect.NewRequest(&querierv1.ProfileTypesRequest{}))
+		response, err := q.client.ProfileTypes(req.Context(), connect.NewRequest(&querierv1.ProfileTypesRequest{}))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -53,7 +53,7 @@ func (q *QueryHandlers) LabelValues(w http.ResponseWriter, req *http.Request) {
 			res = append(res, t.ID)
 		}
 	} else {
-		response, err := q.upstream.LabelValues(req.Context(), connect.NewRequest(&typesv1.LabelValuesRequest{}))
+		response, err := q.client.LabelValues(req.Context(), connect.NewRequest(&typesv1.LabelValuesRequest{}))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -100,7 +100,7 @@ func (q *QueryHandlers) RenderDiff(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	res, err := q.upstream.Diff(req.Context(), connect.NewRequest(&querierv1.DiffRequest{
+	res, err := q.client.Diff(req.Context(), connect.NewRequest(&querierv1.DiffRequest{
 		Left:  leftSelectParams,
 		Right: rightSelectParams,
 	}))
@@ -132,14 +132,14 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 	var resFlame *connect.Response[querierv1.SelectMergeStacktracesResponse]
 	g, ctx := errgroup.WithContext(req.Context())
 	g.Go(func() error {
-		resFlame, err = q.upstream.SelectMergeStacktraces(ctx, connect.NewRequest(selectParams))
+		resFlame, err = q.client.SelectMergeStacktraces(ctx, connect.NewRequest(selectParams))
 		return err
 	})
 
 	timelineStep := timeline.CalcPointInterval(selectParams.Start, selectParams.End)
 	var resSeries *connect.Response[querierv1.SelectSeriesResponse]
 	g.Go(func() error {
-		resSeries, err = q.upstream.SelectSeries(req.Context(),
+		resSeries, err = q.client.SelectSeries(req.Context(),
 			connect.NewRequest(&querierv1.SelectSeriesRequest{
 				ProfileTypeID: selectParams.ProfileTypeID,
 				LabelSelector: selectParams.LabelSelector,

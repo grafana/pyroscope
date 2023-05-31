@@ -32,14 +32,16 @@ type Config struct {
 	QuerierID        string            `yaml:"id" category:"advanced"`
 	GRPCClientConfig grpcclient.Config `yaml:"grpc_client_config" doc:"description=Configures the gRPC client used to communicate between the queriers and the query-frontends / query-schedulers."`
 
+	MaxConcurrent int `yaml:"max_concurrent" category:"advanced"`
+
 	// This configuration is injected internally.
-	MaxConcurrentRequests   int                       `yaml:"-"` // Must be same as passed to PromQL Engine.
 	QuerySchedulerDiscovery schedulerdiscovery.Config `yaml:"-"`
 	MaxLoopDuration         time.Duration             `yaml:"-"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.QuerierID, "querier.id", "", "Querier ID, sent to the query-frontend to identify requests from the same querier. Defaults to hostname.")
+	f.IntVar(&cfg.MaxConcurrent, "querier.max-concurrent", 4, "The maximum number of concurrent queries allowed.")
 
 	cfg.GRPCClientConfig.RegisterFlagsWithPrefix("querier.frontend-client", f)
 }
@@ -315,12 +317,12 @@ func (w *querierWorker) getDesiredConcurrency() map[string]int {
 			continue
 		}
 
-		concurrency := w.cfg.MaxConcurrentRequests / numInUse
+		concurrency := w.cfg.MaxConcurrent / numInUse
 
 		// If max concurrency does not evenly divide into in-use instances, then a subset will be chosen
 		// to receive an extra connection. Since we're iterating a map (whose iteration order is not guaranteed),
-		// then this should pratically select a random address for the extra connection.
-		if inUseIndex < w.cfg.MaxConcurrentRequests%numInUse {
+		// then this should practically select a random address for the extra connection.
+		if inUseIndex < w.cfg.MaxConcurrent%numInUse {
 			level.Warn(w.log).Log("msg", "max concurrency is not evenly divisible across targets, adding an extra connection", "addr", address)
 			concurrency++
 		}
