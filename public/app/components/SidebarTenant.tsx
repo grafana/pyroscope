@@ -42,6 +42,7 @@ function FlatDropdown({
       label={label}
       className={className}
       menuButton={menuButton}
+      portal={true}
     >
       {flattenChildren(children) as unknown as JSX.Element}
     </Dropdown>
