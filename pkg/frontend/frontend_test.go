@@ -71,7 +71,7 @@ func setupFrontendWithConcurrencyAndServerOptions(t *testing.T, reg prometheus.R
 	cfg.Port = port
 
 	logger := log.NewLogfmtLogger(os.Stdout)
-	f, err := NewFrontend(cfg, logger, reg)
+	f, err := NewFrontend(cfg, mockLimits{}, logger, reg)
 	require.NoError(t, err)
 
 	frontendpbconnect.RegisterFrontendForQuerierHandler(mux, f)
@@ -337,6 +337,12 @@ func TestFrontendFailedCancellation(t *testing.T) {
 		require.Equal(t, 1, len(ms.msgs))
 	})
 }
+
+type mockLimits struct{}
+
+func (mockLimits) QuerySplitDuration(string) time.Duration { return 0 }
+
+func (mockLimits) MaxQueryParallelism(string) int { return 1 }
 
 type mockScheduler struct {
 	t *testing.T

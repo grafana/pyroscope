@@ -37,6 +37,7 @@ func TestOverridesExporter_withConfig(t *testing.T) {
 			MaxQueryLookback:         17,
 			MaxQueryLength:           18,
 			MaxQueryParallelism:      19,
+			QuerySplitDuration:       20,
 		},
 	}
 	ringStore, closer := consul.NewInMemoryClient(ring.GetCodec(), log.NewNopLogger(), nil)
@@ -68,6 +69,7 @@ func TestOverridesExporter_withConfig(t *testing.T) {
 		MaxQueryLookback:         27,
 		MaxQueryLength:           28,
 		MaxQueryParallelism:      29,
+		QuerySplitDuration:       30,
 	}, validation.NewMockTenantLimits(tenantLimits), log.NewNopLogger(), nil)
 	require.NoError(t, err)
 
@@ -109,6 +111,7 @@ pyroscope_limits_overrides{limit_name="max_label_names_per_series",tenant="tenan
 pyroscope_limits_overrides{limit_name="max_query_lookback",tenant="tenant-a"} 17
 pyroscope_limits_overrides{limit_name="max_query_length",tenant="tenant-a"} 18
 pyroscope_limits_overrides{limit_name="max_query_parallelism",tenant="tenant-a"} 19
+pyroscope_limits_overrides{limit_name="split_queries_by_interval",tenant="tenant-a"} 20
 `
 
 	// Make sure each override matches the values from the supplied `Limit`
@@ -128,6 +131,7 @@ pyroscope_limits_defaults{limit_name="max_label_names_per_series"} 26
 pyroscope_limits_defaults{limit_name="max_query_lookback"} 27
 pyroscope_limits_defaults{limit_name="max_query_length"} 28
 pyroscope_limits_defaults{limit_name="max_query_parallelism"} 29
+pyroscope_limits_defaults{limit_name="split_queries_by_interval"} 30
 `
 	err = testutil.CollectAndCompare(exporter, bytes.NewBufferString(limitsMetrics), "pyroscope_limits_defaults")
 	assert.NoError(t, err)

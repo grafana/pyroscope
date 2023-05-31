@@ -1,6 +1,9 @@
 package model
 
 import (
+	"sort"
+	"sync"
+
 	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/samber/lo"
@@ -166,4 +169,76 @@ func ExportDiffToFlamebearer(fg *querierv1.FlameGraphDiff, profileType *typesv1.
 	fb.FlamebearerProfileV1.Metadata.Format = "double"
 
 	return fb
+}
+
+type FlameGraphMerger struct {
+	mu sync.Mutex
+	t  *Tree
+}
+
+func NewFlameGraphMerger() *FlameGraphMerger {
+	return &FlameGraphMerger{t: new(Tree)}
+}
+
+// MergeFlameGraph adds the flame graph stack traces to the resulting
+// flame graph. The call is thread-safe, but the resulting flame graph
+// or tree should be only accessed after all the samples are merged.
+func (m *FlameGraphMerger) MergeFlameGraph(src *querierv1.FlameGraph) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	deltaDecoding(src.Levels, 0, 4)
+	dst := make([]string, 0, len(src.Levels))
+	for i, l := range src.Levels {
+		if i == 0 {
+			// Skip the root node ("total").
+			continue
+		}
+		for j := 0; j < len(l.Values); j += 4 {
+			self := l.Values[j+2]
+			if self > 0 {
+				dst = buildStack(dst, src, i, j)
+				m.t.InsertStack(self, dst...)
+			}
+		}
+	}
+}
+
+func (m *FlameGraphMerger) Tree() *Tree { return m.t }
+
+func (m *FlameGraphMerger) FlameGraph(maxNodes int64) *querierv1.FlameGraph {
+	t := m.t
+	if t == nil {
+		t = new(Tree)
+	}
+	return NewFlameGraph(t, maxNodes)
+}
+
+func deltaDecoding(levels []*querierv1.Level, start, step int) {
+	for _, l := range levels {
+		prev := int64(0)
+		for i := start; i < len(l.Values); i += step {
+			delta := l.Values[i] + l.Values[i+1]
+			l.Values[i] += prev
+			prev += delta
+		}
+	}
+}
+
+func buildStack(dst []string, f *querierv1.FlameGraph, level, idx int) []string {
+	if cap(dst) < level {
+		// Actually, it should never be the case, because
+		// we know the depth in advance and can allocate
+		// dst with the right capacity.
+		dst = make([]string, level, level*2)
+	} else {
+		dst = dst[:level]
+	}
+	dst[level-1] = f.Names[f.Levels[level].Values[idx+3]]
+	x := f.Levels[level].Values[idx]
+	for i := level - 1; i > 0; i-- {
+		j := sort.Search(len(f.Levels[i].Values)/4, func(j int) bool { return f.Levels[i].Values[j*4] > x }) - 1
+		dst[i-1] = f.Names[f.Levels[i].Values[j*4+3]]
+		x = f.Levels[i].Values[j*4]
+	}
+	return dst
 }

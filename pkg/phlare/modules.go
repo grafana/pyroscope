@@ -88,12 +88,14 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 		f.Cfg.Frontend.Port = f.Cfg.Server.HTTPListenPort
 	}
 
-	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, log.With(f.logger, "component", "frontend"), f.reg)
+	frontendSvc, err := frontend.NewFrontend(f.Cfg.Frontend, f.Overrides, log.With(f.logger, "component", "frontend"), f.reg)
 	if err != nil {
 		return nil, err
 	}
+
+	f.API.RegisterPyroscopeHandlers(querier.NewGRPCRoundTripper(frontendSvc))
 	f.API.RegisterQueryFrontend(frontendSvc)
-	f.API.RegisterQuerier(querier.NewGRPCRoundTripper(frontendSvc))
+	f.API.RegisterQuerier(frontendSvc)
 
 	return frontendSvc, nil
 }
@@ -185,6 +187,7 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 		return nil, err
 	}
 	if !f.isModuleActive(QueryFrontend) {
+		f.API.RegisterPyroscopeHandlers(querierSvc)
 		f.API.RegisterQuerier(querierSvc)
 	}
 	worker, err := worker.NewQuerierWorker(f.Cfg.Worker, querier.NewGRPCHandler(querierSvc), log.With(f.logger, "component", "querier-worker"), f.reg)

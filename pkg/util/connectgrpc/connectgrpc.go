@@ -2,11 +2,13 @@ package connectgrpc
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/bufbuild/connect-go"
 	"google.golang.org/protobuf/proto"
@@ -49,7 +51,7 @@ type GRPCHandler interface {
 	Handle(ctx context.Context, req *httpgrpc.HTTPRequest) (*httpgrpc.HTTPResponse, error)
 }
 
-func RoundTripUnary[Req any, Res any](rt GRPCRoundTripper, ctx context.Context, in *connect.Request[Req]) (*connect.Response[Res], error) {
+func RoundTripUnary[Req any, Res any](ctx context.Context, rt GRPCRoundTripper, in *connect.Request[Req]) (*connect.Response[Res], error) {
 	req, err := encodeRequest(in)
 	if err != nil {
 		return nil, err
@@ -61,15 +63,13 @@ func RoundTripUnary[Req any, Res any](rt GRPCRoundTripper, ctx context.Context, 
 	if res.Code/100 != 2 {
 		return nil, connect.NewError(HTTPToCode(res.Code), errors.New(string(res.Body)))
 	}
-	result := &connect.Response[Res]{
-		Msg: new(Res),
-	}
+	return decodeResponse[Res](res)
+}
 
-	err = proto.Unmarshal(res.Body, result.Any().(proto.Message))
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+func CloneRequest[Req any](base *connect.Request[Req], msg *Req) *connect.Request[Req] {
+	r := *base
+	r.Msg = msg
+	return &r
 }
 
 func encodeResponse[Req any](resp *connect.Response[Req]) (*httpgrpc.HTTPResponse, error) {
@@ -119,12 +119,15 @@ func encodeRequest[Req any](req *connect.Request[Req]) (*httpgrpc.HTTPRequest, e
 	if req.Spec().Procedure == "" {
 		return nil, errors.New("cannot encode a request with empty procedure")
 	}
+	// The original Content-* headers could be invalidated,
+	// e.g. initial Content-Type could be 'application/json'.
+	h := removeContentHeaders(req.Header().Clone())
+	h.Set("Content-Type", "application/proto")
 	out := &httpgrpc.HTTPRequest{
 		Method:  http.MethodPost,
 		Url:     req.Spec().Procedure,
-		Headers: connectHeaderToHTTPGRPCHeader(req.Header()),
+		Headers: connectHeaderToHTTPGRPCHeader(h),
 	}
-
 	var err error
 	msg := req.Any()
 	out.Body, err = proto.Marshal(msg.(proto.Message))
@@ -132,6 +135,55 @@ func encodeRequest[Req any](req *connect.Request[Req]) (*httpgrpc.HTTPRequest, e
 		return nil, err
 	}
 	return out, nil
+}
+
+func removeContentHeaders(h http.Header) http.Header {
+	for k := range h {
+		if strings.HasPrefix(strings.ToLower(k), "content-") {
+			h.Del(k)
+		}
+	}
+	return h
+}
+
+func decodeResponse[Resp any](r *httpgrpc.HTTPResponse) (*connect.Response[Resp], error) {
+	if err := decompressResponse(r); err != nil {
+		return nil, err
+	}
+	resp := &connect.Response[Resp]{Msg: new(Resp)}
+	if err := proto.Unmarshal(r.Body, resp.Any().(proto.Message)); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func decompressResponse(r *httpgrpc.HTTPResponse) error {
+	// We use gziphandler to compress responses of some methods,
+	// therefore decompression is very likely to be required.
+	// The handling is pretty much the same as in http.Transport,
+	// which only supports gzip Content-Encoding.
+	for _, h := range r.Headers {
+		if h.Key == "Content-Encoding" {
+			for _, v := range h.Values {
+				switch {
+				default:
+					return fmt.Errorf("unsupported Content-Encoding: %s", v)
+				case v == "":
+				case strings.EqualFold(v, "gzip"):
+					// bytes.Buffer implements flate.Reader, therefore
+					// a gzip reader does not allocate a buffer.
+					g, err := gzip.NewReader(bytes.NewBuffer(r.Body))
+					if err != nil {
+						return err
+					}
+					r.Body, err = io.ReadAll(g)
+					return err
+				}
+			}
+			return nil
+		}
+	}
+	return nil
 }
 
 func CodeToHTTP(code connect.Code) int32 {

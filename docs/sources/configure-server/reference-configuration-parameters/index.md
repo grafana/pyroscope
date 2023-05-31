@@ -229,7 +229,12 @@ limits:
   # Maximum number of queries that will be scheduled in parallel by the
   # frontend.
   # CLI flag: -querier.max-query-parallelism
-  [max_query_parallelism: <int> | default = 32]
+  [max_query_parallelism: <int> | default = 0]
+
+  # Split queries by a time interval and execute in parallel. The value 0
+  # disables splitting by time
+  # CLI flag: -querier.split-queries-by-interval
+  [split_queries_by_interval: <duration> | default = 0s]
 
 # The query_scheduler block configures the query-scheduler.
 [query_scheduler: <query_scheduler>]

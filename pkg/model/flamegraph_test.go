@@ -79,3 +79,74 @@ func BenchmarkFlamegraph(b *testing.B) {
 		f = NewFlameGraph(tr, -1)
 	}
 }
+
+func Test_FlameGraphMerger(t *testing.T) {
+	t.Run("two non-empty flamegraphs", func(t *testing.T) {
+		m := NewFlameGraphMerger()
+		s := new(Tree)
+		s.InsertStack(1, "foo", "bar")
+		s.InsertStack(1, "foo", "bar", "baz")
+		s.InsertStack(2, "foo", "qux")
+		s.InsertStack(1, "fred", "zoo")
+		s.InsertStack(1, "fred", "other")
+		m.MergeFlameGraph(NewFlameGraph(s, -1))
+
+		s = new(Tree)
+		s.InsertStack(1, "foo", "bar", "baz")
+		s.InsertStack(1, "fred", "zoo")
+		s.InsertStack(1, "fred", "zoo", "ward")
+		s.InsertStack(1, "func", "other")
+		s.InsertStack(1, "func")
+		s.InsertStack(1, "other")
+		m.MergeFlameGraph(NewFlameGraph(s, -1))
+
+		expected := new(Tree)
+		expected.InsertStack(1, "foo", "bar")
+		expected.InsertStack(1, "foo", "bar", "baz")
+		expected.InsertStack(2, "foo", "qux")
+		expected.InsertStack(1, "fred", "zoo")
+		expected.InsertStack(1, "fred", "other")
+		expected.InsertStack(1, "foo", "bar", "baz")
+		expected.InsertStack(1, "fred", "zoo")
+		expected.InsertStack(1, "fred", "zoo", "ward")
+		expected.InsertStack(1, "func", "other")
+		expected.InsertStack(1, "func")
+		expected.InsertStack(1, "other")
+
+		require.Equal(t, expected.String(), m.Tree().String())
+	})
+
+	t.Run("non-empty flamegraph result truncation", func(t *testing.T) {
+		m := NewFlameGraphMerger()
+		s := new(Tree)
+		s.InsertStack(1, "foo", "bar")
+		s.InsertStack(1, "foo", "bar", "baz")
+		s.InsertStack(2, "foo", "qux")
+		s.InsertStack(1, "fred", "zoo")
+		s.InsertStack(1, "fred", "other")
+		m.MergeFlameGraph(NewFlameGraph(s, -1))
+
+		fg := m.FlameGraph(4)
+		m = NewFlameGraphMerger()
+		m.MergeFlameGraph(fg)
+
+		expected := new(Tree)
+		expected.InsertStack(1, "foo", "bar")
+		expected.InsertStack(1, "foo", "bar", "other")
+		expected.InsertStack(2, "foo", "qux")
+		expected.InsertStack(2, "fred", "other")
+
+		require.Equal(t, expected.String(), m.Tree().String())
+	})
+
+	t.Run("empty flamegraph", func(t *testing.T) {
+		m := NewFlameGraphMerger()
+		m.MergeFlameGraph(NewFlameGraph(new(Tree), -1))
+		require.Equal(t, new(Tree).String(), m.Tree().String())
+	})
+
+	t.Run("no flamegraphs", func(t *testing.T) {
+		m := NewFlameGraphMerger()
+		require.Equal(t, new(Tree).String(), m.Tree().String())
+	})
+}

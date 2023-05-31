@@ -379,12 +379,16 @@ Usage of ./phlare:
     	Timeout for ingester client healthcheck RPCs. (default 5s)
   -querier.id string
     	Querier ID, sent to the query-frontend to identify requests from the same querier. Defaults to hostname.
+  -querier.max-concurrent int
+    	The maximum number of concurrent queries allowed. (default 4)
   -querier.max-query-length duration
     	The limit to length of queries. 0 to disable. (default 30d1h)
   -querier.max-query-lookback duration
     	Limit how far back in profiling data can be queried, up until lookback duration ago. This limit is enforced in the query frontend. If the requested time range is outside the allowed range, the request will not fail, but will be modified to only query data within the allowed time range. The default value of 0 does not set a limit.
   -querier.max-query-parallelism int
-    	Maximum number of queries that will be scheduled in parallel by the frontend. (default 32)
+    	Maximum number of queries that will be scheduled in parallel by the frontend.
+  -querier.split-queries-by-interval duration
+    	Split queries by a time interval and execute in parallel. The value 0 disables splitting by time
   -query-frontend.grpc-client-config.backoff-max-period duration
     	Maximum delay when backing off. (default 10s)
   -query-frontend.grpc-client-config.backoff-min-period duration

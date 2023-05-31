@@ -86,10 +86,16 @@ type Frontend struct {
 	// frontend workers will read from this channel, and send request to scheduler.
 	requestsCh chan *frontendRequest
 
+	limits                  Limits
 	schedulerWorkers        *frontendSchedulerWorkers
 	schedulerWorkersWatcher *services.FailureWatcher
 	requests                *requestsInProgress
 	frontendpb.UnimplementedFrontendForQuerierServer
+}
+
+type Limits interface {
+	QuerySplitDuration(string) time.Duration
+	MaxQueryParallelism(string) int
 }
 
 type frontendRequest struct {
@@ -121,7 +127,7 @@ type enqueueResult struct {
 }
 
 // NewFrontend creates a new frontend.
-func NewFrontend(cfg Config, log log.Logger, reg prometheus.Registerer) (*Frontend, error) {
+func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Registerer) (*Frontend, error) {
 	requestsCh := make(chan *frontendRequest)
 
 	schedulerWorkers, err := newFrontendSchedulerWorkers(cfg, fmt.Sprintf("%s:%d", cfg.Addr, cfg.Port), requestsCh, log, reg)
@@ -132,6 +138,7 @@ func NewFrontend(cfg Config, log log.Logger, reg prometheus.Registerer) (*Fronte
 	f := &Frontend{
 		cfg:                     cfg,
 		log:                     log,
+		limits:                  limits,
 		requestsCh:              requestsCh,
 		schedulerWorkers:        schedulerWorkers,
 		schedulerWorkersWatcher: services.NewFailureWatcher(),
@@ -259,8 +266,7 @@ enqueueAgain:
 
 	case resp := <-freq.response:
 		if stats.ShouldTrackHTTPGRPCResponse(resp.HttpResponse) {
-			stats := stats.FromContext(ctx)
-			stats.Merge(resp.Stats) // Safe if stats is nil.
+			stats.FromContext(ctx).Merge(resp.Stats) // Safe if stats is nil.
 		}
 
 		return resp.HttpResponse, nil
