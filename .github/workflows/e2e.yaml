@@ -32,7 +32,7 @@ jobs:
       - name: Cypress run
         uses: cypress-io/github-action@v5
         with:
-          wait-on: http://localhost:4100/ui/
+          wait-on: http://localhost:4100/ready
           start: make run
           config-file: cypress/ci.ts
         env:
@@ -64,7 +64,7 @@ jobs:
       - name: Cypress run
         uses: cypress-io/github-action@v5
         with:
-          wait-on: http://localhost:8080/foobar/
+          wait-on: http://localhost:8080/foobar/ready
           start: |
             make run PARAMS=-api.base-url=/foobar/
           config-file: cypress/ci-base-path.ts
