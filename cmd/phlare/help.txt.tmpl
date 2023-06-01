@@ -3,6 +3,8 @@ Usage of ./phlare:
     	base URL for when the server is behind a reverse proxy with a different path
   -auth.multitenancy-enabled
     	When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
+  -blocks-storage.bucket-store.sync-dir string
+    	Directory to store synchronized pyroscope block headers. This directory is not required to be persisted between restarts, but it's highly recommended in order to improve the store-gateway startup time. (default "./data/pyroscope-sync/")
   -client.tenant-id string
     	Tenant ID to use when pushing profiles to Phlare (default: anonymous). (default "anonymous")
   -client.url string
@@ -123,8 +125,6 @@ Usage of ./phlare:
     	How big should a single row group be uncompressed (default 1342177280)
   -querier.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
-  -querier.extra-query-delay duration
-    	Time to wait before sending more than the minimum successful query requests.
   -querier.health-check-ingesters
     	Run a health check on each ingester client during periodic cleanup. (default true)
   -querier.health-check-timeout duration
@@ -216,7 +216,11 @@ Usage of ./phlare:
   -server.http-write-timeout duration
     	Write timeout for HTTP server (default 30s)
   -server.log-request-at-info-level-enabled
-    	Optionally log requests at info level instead of debug level.
+    	Optionally log requests at info level instead of debug level. Applies to request headers as well if server.log-request-headers is enabled.
+  -server.log-request-headers
+    	Optionally log request headers.
+  -server.log-request-headers-exclude-list string
+    	Comma separated list of headers to exclude from loggin. Only used if server.log-request-headers is true.
   -server.log-source-ips-enabled
     	Optionally log the source IPs.
   -server.log-source-ips-header string
@@ -305,6 +309,28 @@ Usage of ./phlare:
     	OpenStack Swift user ID.
   -storage.swift.username string
     	OpenStack Swift username.
+  -store-gateway.sharding-ring.consul.hostname string
+    	Hostname and port of Consul. (default "localhost:8500")
+  -store-gateway.sharding-ring.etcd.endpoints string
+    	The etcd endpoints to connect to.
+  -store-gateway.sharding-ring.etcd.password string
+    	Etcd password.
+  -store-gateway.sharding-ring.etcd.username string
+    	Etcd username.
+  -store-gateway.sharding-ring.instance-availability-zone string
+    	The availability zone where this instance is running. Required if zone-awareness is enabled.
+  -store-gateway.sharding-ring.instance-interface-names string
+    	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
+  -store-gateway.sharding-ring.store string
+    	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -store-gateway.sharding-ring.tokens-file-path string
+    	File path where tokens are stored. If empty, tokens are not stored at shutdown and restored at startup.
+  -store-gateway.sharding-ring.unregister-on-shutdown
+    	Unregister from the ring upon clean shutdown. (default true)
+  -store-gateway.sharding-ring.zone-awareness-enabled
+    	True to enable zone-awareness and replicate blocks across different availability zones. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode.
+  -store-gateway.tenant-shard-size int
+    	The tenant's shard size, used when store-gateway sharding is enabled. Value of 0 disables shuffle sharding for the tenant, that is all tenant blocks are sharded across all store-gateway replicas.
   -target comma-separated-list-of-strings
     	Comma-separated list of Phlare modules to load. The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode.  (default all)
   -tracing.enabled

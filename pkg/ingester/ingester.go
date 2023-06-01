@@ -20,7 +20,7 @@ import (
 	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	ingesterv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
-	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
+	phlareobj "github.com/grafana/phlare/pkg/objstore"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb"
 	"github.com/grafana/phlare/pkg/pprof"
@@ -57,7 +57,7 @@ type Ingester struct {
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
 
-	storageBucket phlareobjstore.Bucket
+	storageBucket phlareobj.Bucket
 
 	instances    map[string]*instance
 	instancesMtx sync.RWMutex
@@ -77,7 +77,7 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
-func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobjstore.Bucket, limits Limits) (*Ingester, error) {
+func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits) (*Ingester, error) {
 	i := &Ingester{
 		cfg:           cfg,
 		phlarectx:     phlarectx,

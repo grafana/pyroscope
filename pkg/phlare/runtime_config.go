@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/runtimeconfig"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/phlare/pkg/util"
 	"github.com/grafana/phlare/pkg/validation"
@@ -35,7 +35,7 @@ func loadRuntimeConfig(r io.Reader) (interface{}, error) {
 	overrides := &runtimeConfigValues{}
 
 	decoder := yaml.NewDecoder(r)
-	decoder.SetStrict(true)
+	decoder.KnownFields(true)
 	if err := decoder.Decode(&overrides); err != nil {
 		return nil, err
 	}

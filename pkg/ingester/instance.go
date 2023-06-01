@@ -10,7 +10,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 
-	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
+	phlareobj "github.com/grafana/phlare/pkg/objstore"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb"
 	"github.com/grafana/phlare/pkg/phlaredb/block"
@@ -29,7 +29,7 @@ type instance struct {
 	tenantID string
 }
 
-func newInstance(phlarectx context.Context, cfg phlaredb.Config, tenantID string, storageBucket phlareobjstore.Bucket, limiter Limiter) (*instance, error) {
+func newInstance(phlarectx context.Context, cfg phlaredb.Config, tenantID string, storageBucket phlareobj.Bucket, limiter Limiter) (*instance, error) {
 	cfg.DataPath = path.Join(cfg.DataPath, tenantID)
 
 	phlarectx = phlarecontext.WrapTenant(phlarectx, tenantID)
@@ -45,12 +45,13 @@ func newInstance(phlarectx context.Context, cfg phlaredb.Config, tenantID string
 		cancel:   cancel,
 		tenantID: tenantID,
 	}
+	// Todo we should not ship when using filesystem storage.
 	if storageBucket != nil {
 		inst.shipper = shipper.New(
 			inst.logger,
 			inst.reg,
 			db,
-			phlareobjstore.BucketWithPrefix(storageBucket, tenantID+"/phlaredb"),
+			phlareobj.NewPrefixedBucket(storageBucket, tenantID+"/phlaredb"),
 			block.IngesterSource,
 			false,
 			false,

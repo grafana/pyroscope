@@ -20,7 +20,6 @@ import (
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 
 	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
@@ -28,7 +27,7 @@ import (
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
-	"github.com/grafana/phlare/pkg/objstore/client"
+	phlareobj "github.com/grafana/phlare/pkg/objstore"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb/block"
@@ -89,6 +88,7 @@ type PhlareDB struct {
 }
 
 func New(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*PhlareDB, error) {
+	// todo: should be instrumented.
 	fs, err := filesystem.NewBucket(cfg.DataPath)
 	if err != nil {
 		return nil, err
@@ -115,9 +115,7 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*PhlareD
 	f.wg.Add(1)
 	go f.loop()
 
-	bucketReader := client.ReaderAtBucket(pathLocal, fs, prometheus.WrapRegistererWithPrefix("pyroscopedb_", reg))
-
-	f.blockQuerier = NewBlockQuerier(phlarectx, bucketReader)
+	f.blockQuerier = NewBlockQuerier(phlarectx, phlareobj.NewPrefixedBucket(fs, pathLocal))
 
 	// do an initial querier sync
 	ctx := context.Background()
@@ -254,19 +252,19 @@ func (f *PhlareDB) Series(ctx context.Context, req *connect.Request[ingestv1.Ser
 func (f *PhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
-	return f.queriers().MergeProfilesStacktraces(ctx, stream)
+	return MergeProfilesStacktraces(ctx, stream, f.queriers().ForTimeRange)
 }
 
 func (f *PhlareDB) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
-	return f.queriers().MergeProfilesLabels(ctx, stream)
+	return MergeProfilesLabels(ctx, stream, f.queriers().ForTimeRange)
 }
 
 func (f *PhlareDB) MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error {
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
-	return f.queriers().MergeProfilesPprof(ctx, stream)
+	return MergeProfilesPprof(ctx, stream, f.queriers().ForTimeRange)
 }
 
 type BidiServerMerge[Res any, Req any] interface {
@@ -279,18 +277,46 @@ type labelWithIndex struct {
 	index int
 }
 
-// filterProfiles sends profiles to the client and filters them via the bidi stream.
+type ProfileWithIndex struct {
+	Profile
+	Index int
+}
+
+type indexedProfileIterator struct {
+	iter.Iterator[Profile]
+	querierIndex int
+}
+
+func (pqi *indexedProfileIterator) At() ProfileWithIndex {
+	return ProfileWithIndex{
+		Profile: pqi.Iterator.At(),
+		Index:   pqi.querierIndex,
+	}
+}
+
+// filterProfiles merges and dedupe profiles from different iterators and allow filtering via a bidi stream.
 func filterProfiles[B BidiServerMerge[Res, Req],
 	Res *ingestv1.MergeProfilesStacktracesResponse | *ingestv1.MergeProfilesLabelsResponse | *ingestv1.MergeProfilesPprofResponse,
 	Req *ingestv1.MergeProfilesStacktracesRequest | *ingestv1.MergeProfilesLabelsRequest | *ingestv1.MergeProfilesPprofRequest](
-	ctx context.Context, profiles iter.Iterator[Profile], batchProfileSize int, stream B,
-) ([]Profile, error) {
-	selection := []Profile{}
+	ctx context.Context, profiles []iter.Iterator[Profile], batchProfileSize int, stream B,
+) ([][]Profile, error) {
+	selection := make([][]Profile, len(profiles))
 	selectProfileResult := &ingestv1.ProfileSets{
 		Profiles:   make([]*ingestv1.SeriesProfile, 0, batchProfileSize),
 		LabelsSets: make([]*typesv1.Labels, 0, batchProfileSize),
 	}
-	if err := iter.ReadBatch(ctx, profiles, batchProfileSize, func(ctx context.Context, batch []Profile) error {
+	its := make([]iter.Iterator[ProfileWithIndex], len(profiles))
+	for i, iter := range profiles {
+		iter := iter
+		its[i] = &indexedProfileIterator{
+			Iterator:     iter,
+			querierIndex: i,
+		}
+	}
+	if err := iter.ReadBatch(ctx, iter.NewMergeIterator(ProfileWithIndex{
+		Profile: maxBlockProfile,
+		Index:   0,
+	}, true, its...), batchProfileSize, func(ctx context.Context, batch []ProfileWithIndex) error {
 		sp, _ := opentracing.StartSpanFromContext(ctx, "filterProfiles - Filtering batch")
 		sp.LogFields(
 			otlog.Int("batch_len", len(batch)),
@@ -376,7 +402,7 @@ func filterProfiles[B BidiServerMerge[Res, Req],
 		sp.LogFields(otlog.String("msg", "selection received"))
 		for i, k := range selected {
 			if k {
-				selection = append(selection, batch[i])
+				selection[batch[i].Index] = append(selection[batch[i].Index], batch[i].Profile)
 			}
 		}
 		return nil

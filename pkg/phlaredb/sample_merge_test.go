@@ -553,7 +553,7 @@ func TestMergePprof(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 3; i++ {
-		require.NoError(t, db.Head().Ingest(ctx, generateProfile(t), uuid.New(), &typesv1.LabelPair{
+		require.NoError(t, db.Head().Ingest(ctx, generateProfile(t, i*1000), uuid.New(), &typesv1.LabelPair{
 			Name:  model.MetricNameLabel,
 			Value: "process_cpu",
 		}))
@@ -588,7 +588,7 @@ func TestMergePprof(t *testing.T) {
 	result, err := q.queriers[0].MergePprof(ctx, iter.NewSliceIterator(profiles))
 	require.NoError(t, err)
 
-	data, err := proto.Marshal(generateProfile(t))
+	data, err := proto.Marshal(generateProfile(t, 1))
 	require.NoError(t, err)
 	expected, err := profile.ParseUncompressed(data)
 	require.NoError(t, err)
@@ -608,7 +608,7 @@ func TestHeadMergePprof(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 3; i++ {
-		require.NoError(t, db.Head().Ingest(ctx, generateProfile(t), uuid.New(), &typesv1.LabelPair{
+		require.NoError(t, db.Head().Ingest(ctx, generateProfile(t, i*1000), uuid.New(), &typesv1.LabelPair{
 			Name:  model.MetricNameLabel,
 			Value: "process_cpu",
 		}))
@@ -634,7 +634,7 @@ func TestHeadMergePprof(t *testing.T) {
 	result, err := db.Head().Queriers()[0].MergePprof(ctx, iter.NewSliceIterator(profiles))
 	require.NoError(t, err)
 
-	data, err := proto.Marshal(generateProfile(t))
+	data, err := proto.Marshal(generateProfile(t, 1))
 	require.NoError(t, err)
 	expected, err := profile.ParseUncompressed(data)
 	require.NoError(t, err)
@@ -644,12 +644,13 @@ func TestHeadMergePprof(t *testing.T) {
 	compareProfile(t, expected, result)
 }
 
-func generateProfile(t *testing.T) *googlev1.Profile {
+func generateProfile(t *testing.T, ts int) *googlev1.Profile {
 	t.Helper()
 
 	prof, err := pprof.FromProfile(pprofth.FooBarProfile)
 
 	require.NoError(t, err)
+	prof.TimeNanos = int64(ts)
 	return prof
 }
 

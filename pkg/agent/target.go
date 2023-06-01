@@ -14,7 +14,6 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/parca-dev/parca/pkg/scrape"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
@@ -25,6 +24,7 @@ import (
 	agentv1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1"
 	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
+	"github.com/grafana/phlare/pkg/agent/scrape"
 	"github.com/grafana/phlare/pkg/tenant"
 )
 

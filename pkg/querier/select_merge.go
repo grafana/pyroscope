@@ -18,7 +18,7 @@ import (
 	googlev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/ingester/clientpool"
+	"github.com/grafana/phlare/pkg/clientpool"
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/pprof"
@@ -83,7 +83,7 @@ func NewMergeIterator[
 	R any,
 	Req Request,
 	Res Response,
-](ctx context.Context, r responseFromIngesters[BidiClientMerge[Req, Res]],
+](ctx context.Context, r ResponseFromReplica[BidiClientMerge[Req, Res]],
 ) *mergeIterator[R, Req, Res] {
 	it := &mergeIterator[R, Req, Res]{
 		bidi:           r.response,
@@ -280,7 +280,7 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 
 // selectMergeTree selects the  profile from each ingester by deduping them and
 // returns merge of stacktrace samples represented as a tree.
-func selectMergeTree(ctx context.Context, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesStacktraces]) (*phlaremodel.Tree, error) {
+func selectMergeTree(ctx context.Context, responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesStacktraces]) (*phlaremodel.Tree, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "selectMergeTree")
 	defer span.Finish()
 
@@ -289,10 +289,10 @@ func selectMergeTree(ctx context.Context, responses []responseFromIngesters[clie
 	var wg sync.WaitGroup
 	for i, resp := range responses {
 		wg.Add(1)
-		go func(i int, resp responseFromIngesters[clientpool.BidiClientMergeProfilesStacktraces]) {
+		go func(i int, resp ResponseFromReplica[clientpool.BidiClientMergeProfilesStacktraces]) {
 			defer wg.Done()
 			it := NewMergeIterator[*ingestv1.MergeProfilesStacktracesResult](
-				ctx, responseFromIngesters[BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]]{
+				ctx, ResponseFromReplica[BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]]{
 					addr:     resp.addr,
 					response: resp.response,
 				})
@@ -345,16 +345,16 @@ func selectMergeTree(ctx context.Context, responses []responseFromIngesters[clie
 }
 
 // selectMergePprofProfile selects the  profile from each ingester by deduping them and request merges of stacktraces in the pprof format.
-func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesPprof]) (*googlev1.Profile, error) {
+func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesPprof]) (*googlev1.Profile, error) {
 	mergeResults := make([]MergeResult[[]byte], len(responses))
 	iters := make([]MergeIterator, len(responses))
 	var wg sync.WaitGroup
 	for i, resp := range responses {
 		wg.Add(1)
-		go func(i int, resp responseFromIngesters[clientpool.BidiClientMergeProfilesPprof]) {
+		go func(i int, resp ResponseFromReplica[clientpool.BidiClientMergeProfilesPprof]) {
 			defer wg.Done()
 			it := NewMergeIterator[[]byte](
-				ctx, responseFromIngesters[BidiClientMerge[*ingestv1.MergeProfilesPprofRequest, *ingestv1.MergeProfilesPprofResponse]]{
+				ctx, ResponseFromReplica[BidiClientMerge[*ingestv1.MergeProfilesPprofRequest, *ingestv1.MergeProfilesPprofResponse]]{
 					addr:     resp.addr,
 					response: resp.response,
 				})
@@ -421,16 +421,16 @@ func (p ProfileValue) Timestamp() model.Time {
 }
 
 // selectMergeSeries selects the  profile from each ingester by deduping them and request merges of total values.
-func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[clientpool.BidiClientMergeProfilesLabels]) (iter.Iterator[ProfileValue], error) {
+func selectMergeSeries(ctx context.Context, responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]) (iter.Iterator[ProfileValue], error) {
 	mergeResults := make([]MergeResult[[]*typesv1.Series], len(responses))
 	iters := make([]MergeIterator, len(responses))
 	var wg sync.WaitGroup
 	for i, resp := range responses {
 		wg.Add(1)
-		go func(i int, resp responseFromIngesters[clientpool.BidiClientMergeProfilesLabels]) {
+		go func(i int, resp ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]) {
 			defer wg.Done()
 			it := NewMergeIterator[[]*typesv1.Series](
-				ctx, responseFromIngesters[BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]]{
+				ctx, ResponseFromReplica[BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]]{
 					addr:     resp.addr,
 					response: resp.response,
 				})
@@ -470,7 +470,7 @@ func selectMergeSeries(ctx context.Context, responses []responseFromIngesters[cl
 		s := s
 		seriesIters = append(seriesIters, newSeriesIterator(s.Labels, s.Points))
 	}
-	return iter.NewSortProfileIterator(seriesIters), nil
+	return iter.NewMergeIterator(ProfileValue{Ts: math.MaxInt64}, false, seriesIters...), nil
 }
 
 type seriesIterator struct {
