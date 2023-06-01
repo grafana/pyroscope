@@ -7,8 +7,6 @@ import '@webapp/../sass/profile.scss';
 import '@szhsin/react-menu/dist/index.css';
 import Notifications from '@webapp/ui/Notifications';
 import { Router, Switch, Route } from 'react-router-dom';
-import { createBrowserHistory } from 'history';
-
 import { ROUTES } from '@phlare/pages/routes';
 import { SingleView } from '@phlare/pages/SingleView';
 import { ComparisonView } from '@phlare/pages/ComparisonView';
@@ -16,14 +14,13 @@ import { ExploreView } from '@phlare/pages/ExploreView';
 import { DiffView } from '@phlare/pages/DiffView';
 import { Sidebar } from '@phlare/components/Sidebar';
 import { TenantWall } from '@phlare/components/TenantWall';
-import { baseurl } from '@webapp/util/baseurl';
+import { history } from '@phlare/util/history';
 import { useSelectFirstApp } from '@phlare/hooks/useAppNames';
 
 const container = document.getElementById('reactRoot') as HTMLElement;
 const root = ReactDOM.createRoot(container);
 
 function App() {
-  const history = createBrowserHistory({ basename: baseurl() });
   useSelectFirstApp();
 
   return (
