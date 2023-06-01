@@ -10,8 +10,7 @@ import {
 } from 'redux-persist';
 import ReduxQuerySync from 'redux-query-sync';
 import { configureStore, combineReducers, Middleware } from '@reduxjs/toolkit';
-
-import history from '@webapp/util/history';
+import { history } from '@phlare/util/history';
 
 import continuousReducer, {
   actions as continuousActions,
