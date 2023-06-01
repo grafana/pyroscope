@@ -32,6 +32,7 @@ import (
 	"github.com/grafana/phlare/pkg/iter"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
 	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/phlare/pkg/util/math"
 )
 
 type Config struct {
@@ -391,55 +392,18 @@ func (sq storeQueries) Log(logger log.Logger) {
 // todo(ctovena): Later we should try to deduplicate blocks between ingesters and store gateways (prefer) and simply query both
 func splitQueryToStores(start, end model.Time, now model.Time, queryStoreAfter time.Duration) (queries storeQueries) {
 	queries.queryStoreAfter = queryStoreAfter
-	// If the start time is in the future, there is nothing to query.
-	if start > now {
-		queries.storeGateway.shouldQuery = false
-		queries.ingester.shouldQuery = false
-		return
-	}
-
-	// If we do not have a query store after duration, then the only store we
-	// need to query is the store gateway.
-	if queryStoreAfter == 0 {
-		queries.storeGateway.shouldQuery = true
-		queries.storeGateway.start = start
-		queries.storeGateway.end = end
-
-		queries.ingester.shouldQuery = false
-		return
-	}
-
 	cutOff := now.Add(-queryStoreAfter)
-	if start >= cutOff {
-		queries.storeGateway.shouldQuery = false
-
-		queries.ingester.shouldQuery = true
-		queries.ingester.start = start
-		queries.ingester.end = end
-		return
+	if start.Before(cutOff) {
+		queries.storeGateway = storeQuery{shouldQuery: true, start: start, end: math.Min(cutOff, end)}
 	}
-	// If the cut off is in the middle of the query, then we need to query both
-	// the store gateway and the ingester.
-	if cutOff < end && cutOff > start {
-		queries.storeGateway.shouldQuery = true
-		queries.storeGateway.start = start
-		queries.storeGateway.end = cutOff
-
-		queries.ingester.shouldQuery = true
-		queries.ingester.start = cutOff + 1
-		queries.ingester.end = end
-
-		return
+	if end.After(cutOff) {
+		queries.ingester = storeQuery{shouldQuery: true, start: math.Max(cutOff, start), end: end}
+		// Note that the ranges must not overlap.
+		if queries.storeGateway.shouldQuery {
+			queries.ingester.start++
+		}
 	}
-
-	// If the cut off is not in the query, then we only need to query the store
-	// gateway.
-	queries.storeGateway.shouldQuery = true
-	queries.storeGateway.start = start
-	queries.storeGateway.end = end
-
-	queries.ingester.shouldQuery = false
-	return
+	return queries
 }
 
 func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[googlev1.Profile], error) {
