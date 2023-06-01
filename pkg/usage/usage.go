@@ -36,6 +36,12 @@ func Usage(printAll bool, configs ...interface{}) error {
 			return
 		}
 
+		// Do not print usage for vmodule flag which is not exported see glog@v1.1.0/glog.go
+		switch fl.Name {
+		case "vmodule", "v", "log_backtrace_at", "logtostderr", "alsologtostderr", "stderrthreshold", "log_dir", "log_link", "logbuflevel":
+			return
+		}
+
 		if override, ok := fieldcategory.GetOverride(fl.Name); ok {
 			fieldCat = override
 		} else if v.Kind() == reflect.Ptr {

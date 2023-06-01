@@ -29,6 +29,10 @@ func (q *headOnDiskQuerier) rowGroup() *rowGroupOnDisk {
 	return q.head.profiles.rowGroups[q.rowGroupIdx]
 }
 
+func (q *headOnDiskQuerier) Open(_ context.Context) error {
+	return nil
+}
+
 func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - HeadOnDisk")
 	defer sp.Finish()
@@ -95,9 +99,9 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 	return iter.NewSliceIterator(profiles), nil
 }
 
-func (q *headOnDiskQuerier) InRange(start, end model.Time) bool {
+func (q *headOnDiskQuerier) Bounds() (model.Time, model.Time) {
 	// TODO: Use per rowgroup information
-	return q.head.InRange(start, end)
+	return q.head.Bounds()
 }
 
 func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
@@ -158,6 +162,10 @@ type headInMemoryQuerier struct {
 	head *Head
 }
 
+func (q *headInMemoryQuerier) Open(_ context.Context) error {
+	return nil
+}
+
 func (q *headInMemoryQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - HeadInMemory")
 	defer sp.Finish()
@@ -185,7 +193,7 @@ func (q *headInMemoryQuerier) SelectMatchingProfiles(ctx context.Context, params
 			continue
 		}
 
-		var profiles = make([]*schemav1.Profile, len(profileSeries.profiles))
+		profiles := make([]*schemav1.Profile, len(profileSeries.profiles))
 		copy(profiles, profileSeries.profiles)
 
 		iters = append(iters,
@@ -197,12 +205,12 @@ func (q *headInMemoryQuerier) SelectMatchingProfiles(ctx context.Context, params
 		)
 	}
 
-	return iter.NewSortProfileIterator(iters), nil
+	return iter.NewMergeIterator(maxBlockProfile, false, iters...), nil
 }
 
-func (q *headInMemoryQuerier) InRange(start, end model.Time) bool {
+func (q *headInMemoryQuerier) Bounds() (model.Time, model.Time) {
 	// TODO: Use per rowgroup information
-	return q.head.InRange(start, end)
+	return q.head.Bounds()
 }
 
 func (q *headInMemoryQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
@@ -263,7 +271,6 @@ func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator
 	}
 
 	return q.head.resolvePprof(ctx, stacktraceSamples), nil
-
 }
 
 func (q *headInMemoryQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {

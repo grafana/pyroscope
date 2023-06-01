@@ -1,0 +1,87 @@
+{{- /*gotype: github.com/grafana/mimir/pkg/storegateway.blocksPageContents*/ -}}
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <title>Store-gateway: bucket tenant blocks</title>
+</head>
+<body>
+<h1>Store-gateway: bucket tenant blocks</h1>
+<p>Current time: {{ .Now }}</p>
+<p>Showing blocks for tenant: <strong>{{ .Tenant }}</strong></p>
+<p>
+    <form>
+        <input type="checkbox" id="show-deleted" name="show_deleted" {{ if .ShowDeleted }} checked {{ end }}>&nbsp;<label for="show-deleted">Show Deleted</label> &nbsp;&nbsp;
+        <input type="checkbox" id="show-sources" name="show_sources" {{ if .ShowSources }} checked {{ end }}>&nbsp;<label for="show-sources">Show Sources</label> &nbsp;&nbsp;
+        <input type="checkbox" id="show-parents" name="show_parents" {{ if .ShowParents }} checked {{ end }}>&nbsp;<label for="show-parents">Show Parents</label> &nbsp;&nbsp;
+        <label for="split-count">Split count (non-zero value shows block split ID):</label>&nbsp;<input id="split-count" name="split_count" type="text" value="{{ .SplitCount }}" style="width: 6em;" />
+        <button type="submit" style="background-color: lightgrey;">
+            <span style="padding: 0.5em 1em; font-size: 125%;">Reload</span>
+        </button>
+    </form>
+</p>
+<table border="1" cellpadding="5" style="border-collapse: collapse">
+    <thead>
+    <tr>
+        <th>Block ID</th>
+        {{ if gt .SplitCount 0 }}
+        <th>Split ID</th>{{ end }}
+        <th>ULID Time</th>
+        <th>Min Time</th>
+        <th>Max Time</th>
+        <th>Duration</th>
+        {{ if .ShowDeleted }}
+        <th>Deletion Time</th>{{ end }}
+        <th>Lvl</th>
+        <th>Size</th>
+        <th>Series</th>
+        <th>Samples</th>
+        <th>Chunks</th>
+        <th>Labels</th>
+        {{ if .ShowSources }}
+        <th>Sources</th>{{ end }}
+        {{ if .ShowParents }}
+        <th>Parents</th>{{ end }}
+    </tr>
+    </thead>
+    <tbody style="font-family: monospace;">
+    {{ $page := . }}
+    {{ range .FormattedBlocks }}
+        <tr>
+            <td>{{ .ULID }}</td>
+            {{ if gt $page.SplitCount 0 }}
+            <td>{{ .SplitID }}</td>{{ end }}
+            <td>{{ .ULIDTime }}</td>
+            <td>{{ .MinTime }}</td>
+            <td>{{ .MaxTime }}</td>
+            <td>{{ .Duration }}</td>
+            {{ if $page.ShowDeleted }}
+            <td>{{ .DeletedTime }}</td>{{ end }}
+            <td>{{ .CompactionLevel }}</td>
+            <td>{{ .BlockSize }}</td>
+            <td>{{/* .Stats.NumSeries */}}</td>
+            <td>{{/* .Stats.NumSamples */}}</td>
+            <td>{{/* .Stats.NumChunks */}}</td>
+            <td>{{ .Labels }}</td>
+            {{ if $page.ShowSources }}
+                <td>
+                    {{ range $i, $source := .Sources }}
+                        {{ if $i }}<br>{{ end }}
+                        {{ . }}
+                    {{ end }}
+                </td>
+            {{ end }}
+            {{ if $page.ShowParents }}
+                <td>
+                    {{ range $i, $source := .Parents }}
+                        {{ if $i }}<br>{{ end }}
+                        {{ . }}
+                    {{ end }}
+                </td>
+            {{ end }}
+        </tr>
+    {{ end }}
+    </tbody>
+</table>
+</body>
+</html>

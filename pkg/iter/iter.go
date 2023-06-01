@@ -184,6 +184,7 @@ func (u *unionIterator[T]) Next() bool {
 	}
 	return false
 }
+
 func (it *unionIterator[T]) At() T {
 	return it.iters[0].At()
 }
@@ -199,4 +200,62 @@ func (it *unionIterator[T]) Close() error {
 		}
 	}
 	return nil
+}
+
+type emptyIterator[T any] struct{}
+
+func NewEmptyIterator[T any]() Iterator[T] {
+	return &emptyIterator[T]{}
+}
+
+func (it *emptyIterator[T]) Next() bool {
+	return false
+}
+
+func (it *emptyIterator[T]) At() T {
+	var t T
+	return t
+}
+
+func (it *emptyIterator[T]) Err() error {
+	return nil
+}
+
+func (it *emptyIterator[T]) Close() error {
+	return nil
+}
+
+type BufferedIterator[T any] struct {
+	Iterator[T]
+	buff chan T
+	at   T
+}
+
+// NewBufferedIterator returns an iterator that reads asynchronously from the given iterator and buffers up to size elements.
+func NewBufferedIterator[T any](it Iterator[T], size int) Iterator[T] {
+	buffered := &BufferedIterator[T]{
+		Iterator: it,
+		buff:     make(chan T, size),
+	}
+	go buffered.fill()
+	return buffered
+}
+
+func (it *BufferedIterator[T]) fill() {
+	defer close(it.buff)
+	for it.Iterator.Next() {
+		it.buff <- it.Iterator.At()
+	}
+}
+
+func (it *BufferedIterator[T]) Next() bool {
+	at, ok := <-it.buff
+	if ok {
+		it.at = at
+	}
+	return ok
+}
+
+func (it *BufferedIterator[T]) At() T {
+	return it.at
 }

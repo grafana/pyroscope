@@ -3,6 +3,14 @@ Usage of ./phlare:
     	base URL for when the server is behind a reverse proxy with a different path
   -auth.multitenancy-enabled
     	When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
+  -blocks-storage.bucket-store.ignore-blocks-within duration
+    	Blocks with minimum time within this duration are ignored, and not loaded by store-gateway. Useful when used together with -querier.query-store-after to prevent loading young blocks, because there are usually many of them (depending on number of ingesters) and they are not yet compacted. Negative values or 0 disable the filter. (default 2h0m0s)
+  -blocks-storage.bucket-store.sync-dir string
+    	Directory to store synchronized pyroscope block headers. This directory is not required to be persisted between restarts, but it's highly recommended in order to improve the store-gateway startup time. (default "./data/pyroscope-sync/")
+  -blocks-storage.bucket-store.sync-interval duration
+    	How frequently to scan the bucket, or to refresh the bucket index (if enabled), in order to look for changes (new blocks shipped by ingesters and blocks deleted by retention or compaction). (default 15m0s)
+  -blocks-storage.bucket-store.tenant-sync-concurrency int
+    	Maximum number of concurrent tenants synching blocks. (default 10)
   -client.tenant-id string
     	Tenant ID to use when pushing profiles to Phlare (default: anonymous). (default "anonymous")
   -client.url string
@@ -66,9 +74,9 @@ Usage of ./phlare:
   -distributor.ring.etcd.password string
     	Etcd password.
   -distributor.ring.etcd.tls-ca-path string
-    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -distributor.ring.etcd.tls-cert-path string
-    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
   -distributor.ring.etcd.tls-cipher-suites string
     	Override the default cipher suite list (separated by commas).
   -distributor.ring.etcd.tls-enabled
@@ -76,7 +84,7 @@ Usage of ./phlare:
   -distributor.ring.etcd.tls-insecure-skip-verify
     	Skip validating server certificate.
   -distributor.ring.etcd.tls-key-path string
-    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+    	Path to the key for the client certificate. Also requires the client certificate to be configured.
   -distributor.ring.etcd.tls-min-version string
     	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
   -distributor.ring.etcd.tls-server-name string
@@ -118,9 +126,9 @@ Usage of ./phlare:
   -etcd.password string
     	Etcd password.
   -etcd.tls-ca-path string
-    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -etcd.tls-cert-path string
-    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
   -etcd.tls-cipher-suites string
     	Override the default cipher suite list (separated by commas).
   -etcd.tls-enabled
@@ -128,7 +136,7 @@ Usage of ./phlare:
   -etcd.tls-insecure-skip-verify
     	Skip validating server certificate.
   -etcd.tls-key-path string
-    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+    	Path to the key for the client certificate. Also requires the client certificate to be configured.
   -etcd.tls-min-version string
     	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
   -etcd.tls-server-name string
@@ -143,6 +151,8 @@ Usage of ./phlare:
     	Print help, also including advanced and experimental parameters.
   -ingester.availability-zone string
     	The availability zone where this instance is running.
+  -ingester.enable-inet6
+    	Enable IPv6 support. Required to make use of IP addresses from IPv6 interfaces.
   -ingester.final-sleep duration
     	Duration to sleep for before exiting, to ensure metrics are scraped.
   -ingester.heartbeat-period duration
@@ -234,9 +244,9 @@ Usage of ./phlare:
   -memberlist.stream-timeout duration
     	The timeout for establishing a connection with a remote node, and for read/write operations. (default 10s)
   -memberlist.tls-ca-path string
-    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -memberlist.tls-cert-path string
-    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
   -memberlist.tls-cipher-suites string
     	Override the default cipher suite list (separated by commas).
   -memberlist.tls-enabled
@@ -244,7 +254,7 @@ Usage of ./phlare:
   -memberlist.tls-insecure-skip-verify
     	Skip validating server certificate.
   -memberlist.tls-key-path string
-    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+    	Path to the key for the client certificate. Also requires the client certificate to be configured.
   -memberlist.tls-min-version string
     	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
   -memberlist.tls-server-name string
@@ -284,9 +294,9 @@ Usage of ./phlare:
   -overrides-exporter.ring.etcd.password string
     	Etcd password.
   -overrides-exporter.ring.etcd.tls-ca-path string
-    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -overrides-exporter.ring.etcd.tls-cert-path string
-    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
   -overrides-exporter.ring.etcd.tls-cipher-suites string
     	Override the default cipher suite list (separated by commas).
   -overrides-exporter.ring.etcd.tls-enabled
@@ -294,7 +304,7 @@ Usage of ./phlare:
   -overrides-exporter.ring.etcd.tls-insecure-skip-verify
     	Skip validating server certificate.
   -overrides-exporter.ring.etcd.tls-key-path string
-    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+    	Path to the key for the client certificate. Also requires the client certificate to be configured.
   -overrides-exporter.ring.etcd.tls-min-version string
     	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
   -overrides-exporter.ring.etcd.tls-server-name string
@@ -337,8 +347,6 @@ Usage of ./phlare:
     	How big should a single row group be uncompressed (default 1342177280)
   -querier.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
-  -querier.extra-query-delay duration
-    	Time to wait before sending more than the minimum successful query requests.
   -querier.frontend-client.backoff-max-period duration
     	Maximum delay when backing off. (default 10s)
   -querier.frontend-client.backoff-min-period duration
@@ -358,9 +366,9 @@ Usage of ./phlare:
   -querier.frontend-client.grpc-max-send-msg-size int
     	gRPC client max send message size (bytes). (default 104857600)
   -querier.frontend-client.tls-ca-path string
-    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -querier.frontend-client.tls-cert-path string
-    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
   -querier.frontend-client.tls-cipher-suites string
     	Override the default cipher suite list (separated by commas).
   -querier.frontend-client.tls-enabled
@@ -368,7 +376,7 @@ Usage of ./phlare:
   -querier.frontend-client.tls-insecure-skip-verify
     	Skip validating server certificate.
   -querier.frontend-client.tls-key-path string
-    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+    	Path to the key for the client certificate. Also requires the client certificate to be configured.
   -querier.frontend-client.tls-min-version string
     	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
   -querier.frontend-client.tls-server-name string
@@ -387,6 +395,8 @@ Usage of ./phlare:
     	Limit how far back in profiling data can be queried, up until lookback duration ago. This limit is enforced in the query frontend. If the requested time range is outside the allowed range, the request will not fail, but will be modified to only query data within the allowed time range. The default value of 0 does not set a limit.
   -querier.max-query-parallelism int
     	Maximum number of queries that will be scheduled in parallel by the frontend.
+  -querier.query-store-after duration
+    	The time after which a metric should be queried from storage and not just ingesters. 0 means all queries are sent to store. If this option is enabled, the time range of the query sent to the store-gateway will be manipulated to ensure the query end is not more recent than 'now - query-store-after'. (default 4h0m0s)
   -querier.split-queries-by-interval duration
     	Split queries by a time interval and execute in parallel. The value 0 disables splitting by time
   -query-frontend.grpc-client-config.backoff-max-period duration
@@ -408,9 +418,9 @@ Usage of ./phlare:
   -query-frontend.grpc-client-config.grpc-max-send-msg-size int
     	gRPC client max send message size (bytes). (default 104857600)
   -query-frontend.grpc-client-config.tls-ca-path string
-    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -query-frontend.grpc-client-config.tls-cert-path string
-    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
   -query-frontend.grpc-client-config.tls-cipher-suites string
     	Override the default cipher suite list (separated by commas).
   -query-frontend.grpc-client-config.tls-enabled
@@ -418,7 +428,7 @@ Usage of ./phlare:
   -query-frontend.grpc-client-config.tls-insecure-skip-verify
     	Skip validating server certificate.
   -query-frontend.grpc-client-config.tls-key-path string
-    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+    	Path to the key for the client certificate. Also requires the client certificate to be configured.
   -query-frontend.grpc-client-config.tls-min-version string
     	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
   -query-frontend.grpc-client-config.tls-server-name string
@@ -448,9 +458,9 @@ Usage of ./phlare:
   -query-scheduler.grpc-client-config.grpc-max-send-msg-size int
     	gRPC client max send message size (bytes). (default 104857600)
   -query-scheduler.grpc-client-config.tls-ca-path string
-    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -query-scheduler.grpc-client-config.tls-cert-path string
-    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
   -query-scheduler.grpc-client-config.tls-cipher-suites string
     	Override the default cipher suite list (separated by commas).
   -query-scheduler.grpc-client-config.tls-enabled
@@ -458,7 +468,7 @@ Usage of ./phlare:
   -query-scheduler.grpc-client-config.tls-insecure-skip-verify
     	Skip validating server certificate.
   -query-scheduler.grpc-client-config.tls-key-path string
-    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+    	Path to the key for the client certificate. Also requires the client certificate to be configured.
   -query-scheduler.grpc-client-config.tls-min-version string
     	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
   -query-scheduler.grpc-client-config.tls-server-name string
@@ -492,9 +502,9 @@ Usage of ./phlare:
   -query-scheduler.ring.etcd.password string
     	Etcd password.
   -query-scheduler.ring.etcd.tls-ca-path string
-    	Path to the CA certificates file to validate server certificate against. If not set, the host's root CA certificates are used.
+    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
   -query-scheduler.ring.etcd.tls-cert-path string
-    	Path to the client certificate file, which will be used for authenticating with the server. Also requires the key path to be configured.
+    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
   -query-scheduler.ring.etcd.tls-cipher-suites string
     	Override the default cipher suite list (separated by commas).
   -query-scheduler.ring.etcd.tls-enabled
@@ -502,7 +512,7 @@ Usage of ./phlare:
   -query-scheduler.ring.etcd.tls-insecure-skip-verify
     	Skip validating server certificate.
   -query-scheduler.ring.etcd.tls-key-path string
-    	Path to the key file for the client certificate. Also requires the client certificate to be configured.
+    	Path to the key for the client certificate. Also requires the client certificate to be configured.
   -query-scheduler.ring.etcd.tls-min-version string
     	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
   -query-scheduler.ring.etcd.tls-server-name string
@@ -606,7 +616,11 @@ Usage of ./phlare:
   -server.http-write-timeout duration
     	Write timeout for HTTP server (default 30s)
   -server.log-request-at-info-level-enabled
-    	Optionally log requests at info level instead of debug level.
+    	Optionally log requests at info level instead of debug level. Applies to request headers as well if server.log-request-headers is enabled.
+  -server.log-request-headers
+    	Optionally log request headers.
+  -server.log-request-headers-exclude-list string
+    	Comma separated list of headers to exclude from loggin. Only used if server.log-request-headers is true.
   -server.log-source-ips-enabled
     	Optionally log the source IPs.
   -server.log-source-ips-header string
@@ -743,6 +757,88 @@ Usage of ./phlare:
     	OpenStack Swift user ID.
   -storage.swift.username string
     	OpenStack Swift username.
+  -store-gateway.sharding-ring.consul.acl-token string
+    	ACL Token used to interact with Consul.
+  -store-gateway.sharding-ring.consul.cas-retry-delay duration
+    	Maximum duration to wait before retrying a Compare And Swap (CAS) operation. (default 1s)
+  -store-gateway.sharding-ring.consul.client-timeout duration
+    	HTTP timeout when talking to Consul (default 20s)
+  -store-gateway.sharding-ring.consul.consistent-reads
+    	Enable consistent reads to Consul.
+  -store-gateway.sharding-ring.consul.hostname string
+    	Hostname and port of Consul. (default "localhost:8500")
+  -store-gateway.sharding-ring.consul.watch-burst-size int
+    	Burst size used in rate limit. Values less than 1 are treated as 1. (default 1)
+  -store-gateway.sharding-ring.consul.watch-rate-limit float
+    	Rate limit when watching key or prefix in Consul, in requests per second. 0 disables the rate limit. (default 1)
+  -store-gateway.sharding-ring.etcd.dial-timeout duration
+    	The dial timeout for the etcd connection. (default 10s)
+  -store-gateway.sharding-ring.etcd.endpoints string
+    	The etcd endpoints to connect to.
+  -store-gateway.sharding-ring.etcd.max-retries int
+    	The maximum number of retries to do for failed ops. (default 10)
+  -store-gateway.sharding-ring.etcd.password string
+    	Etcd password.
+  -store-gateway.sharding-ring.etcd.tls-ca-path string
+    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
+  -store-gateway.sharding-ring.etcd.tls-cert-path string
+    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
+  -store-gateway.sharding-ring.etcd.tls-cipher-suites string
+    	Override the default cipher suite list (separated by commas).
+  -store-gateway.sharding-ring.etcd.tls-enabled
+    	Enable TLS.
+  -store-gateway.sharding-ring.etcd.tls-insecure-skip-verify
+    	Skip validating server certificate.
+  -store-gateway.sharding-ring.etcd.tls-key-path string
+    	Path to the key for the client certificate. Also requires the client certificate to be configured.
+  -store-gateway.sharding-ring.etcd.tls-min-version string
+    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+  -store-gateway.sharding-ring.etcd.tls-server-name string
+    	Override the expected name on the server certificate.
+  -store-gateway.sharding-ring.etcd.username string
+    	Etcd username.
+  -store-gateway.sharding-ring.heartbeat-period duration
+    	Period at which to heartbeat to the ring. 0 = disabled. (default 15s)
+  -store-gateway.sharding-ring.heartbeat-timeout duration
+    	The heartbeat timeout after which store gateways are considered unhealthy within the ring. 0 = never (timeout disabled). This option needs be set both on the store-gateway, querier and ruler when running in microservices mode. (default 1m0s)
+  -store-gateway.sharding-ring.instance-addr string
+    	IP address to advertise in the ring. Default is auto-detected.
+  -store-gateway.sharding-ring.instance-availability-zone string
+    	The availability zone where this instance is running. Required if zone-awareness is enabled.
+  -store-gateway.sharding-ring.instance-enable-ipv6
+    	Enable using a IPv6 instance address. (default false)
+  -store-gateway.sharding-ring.instance-id string
+    	Instance ID to register in the ring. (default "<hostname>")
+  -store-gateway.sharding-ring.instance-interface-names string
+    	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
+  -store-gateway.sharding-ring.instance-port int
+    	Port to advertise in the ring (defaults to -server.grpc-listen-port).
+  -store-gateway.sharding-ring.multi.mirror-enabled
+    	Mirror writes to secondary store.
+  -store-gateway.sharding-ring.multi.mirror-timeout duration
+    	Timeout for storing value to secondary store. (default 2s)
+  -store-gateway.sharding-ring.multi.primary string
+    	Primary backend storage used by multi-client.
+  -store-gateway.sharding-ring.multi.secondary string
+    	Secondary backend storage used by multi-client.
+  -store-gateway.sharding-ring.prefix string
+    	The prefix for the keys in the store. Should end with a /. (default "collectors/")
+  -store-gateway.sharding-ring.replication-factor int
+    	The replication factor to use when sharding blocks. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode. (default 3)
+  -store-gateway.sharding-ring.store string
+    	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -store-gateway.sharding-ring.tokens-file-path string
+    	File path where tokens are stored. If empty, tokens are not stored at shutdown and restored at startup.
+  -store-gateway.sharding-ring.unregister-on-shutdown
+    	Unregister from the ring upon clean shutdown. (default true)
+  -store-gateway.sharding-ring.wait-stability-max-duration duration
+    	Maximum time to wait for ring stability at startup. If the store-gateway ring keeps changing after this period of time, the store-gateway will start anyway. (default 5m0s)
+  -store-gateway.sharding-ring.wait-stability-min-duration duration
+    	Minimum time to wait for ring stability at startup, if set to positive value.
+  -store-gateway.sharding-ring.zone-awareness-enabled
+    	True to enable zone-awareness and replicate blocks across different availability zones. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode.
+  -store-gateway.tenant-shard-size int
+    	The tenant's shard size, used when store-gateway sharding is enabled. Value of 0 disables shuffle sharding for the tenant, that is all tenant blocks are sharded across all store-gateway replicas.
   -target comma-separated-list-of-strings
     	Comma-separated list of Phlare modules to load. The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode.  (default all)
   -tracing.enabled

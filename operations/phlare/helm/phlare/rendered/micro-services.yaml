@@ -1467,6 +1467,55 @@ spec:
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/component: "query-scheduler"
 ---
+# Source: phlare/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phlare-dev-store-gateway
+  labels:
+    helm.sh/chart: phlare-0.5.3
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.5.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "store-gateway"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4100
+      targetPort: http2
+      protocol: TCP
+      name: http2
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/component: "store-gateway"
+---
+# Source: phlare/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: phlare-dev-store-gateway-headless
+  labels:
+    helm.sh/chart: phlare-0.5.3
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.5.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "store-gateway"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 4100
+      targetPort: http2
+      protocol: TCP
+      name: http2
+  selector:
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/component: "store-gateway"
+---
 # Source: phlare/templates/deployments-statefulsets.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -1720,7 +1769,7 @@ spec:
             limits:
               memory: 1Gi
             requests:
-              cpu: 100m
+              cpu: 1
               memory: 256Mi
       volumes:
         - name: config
@@ -2053,6 +2102,96 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=ingester"
+            - "-memberlist.cluster-label=default-phlare-dev"
+            - "-memberlist.join=phlare-dev-memberlist.default.svc.cluster.local."
+            - "-config.file=/etc/phlare/config.yaml"
+            - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
+            - "-log.level=debug"
+          ports:
+            - name: http2
+              containerPort: 4100
+              protocol: TCP
+            - name: memberlist
+              containerPort: 7946
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http2
+          volumeMounts:
+            - name: config
+              mountPath: /etc/phlare/config.yaml
+              subPath: config.yaml
+            - name: overrides-config
+              mountPath: /etc/phlare/overrides/
+            - name: data
+              mountPath: /data
+          resources:
+            limits:
+              memory: 16Gi
+            requests:
+              cpu: 1
+              memory: 8Gi
+      volumes:
+        - name: config
+          configMap:
+            name: phlare-dev-config
+        - name: overrides-config
+          configMap:
+            name: phlare-dev-overrides-config
+        - name: data
+          emptyDir: {}
+---
+# Source: phlare/templates/deployments-statefulsets.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: phlare-dev-store-gateway
+  labels:
+    helm.sh/chart: phlare-0.5.3
+    app.kubernetes.io/name: phlare
+    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/version: "0.5.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "store-gateway"
+spec:
+  serviceName: phlare-dev-store-gateway-headless
+  podManagementPolicy: Parallel
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: phlare
+      app.kubernetes.io/instance: phlare-dev
+      app.kubernetes.io/component: "store-gateway"
+  template:
+    metadata:
+      annotations:
+        checksum/config: 1115b23a6b64ac92648f9e4bc43a571f388662fa077280488b506475ab51d69d
+        profiles.grafana.com/cpu.port_name: http2
+        profiles.grafana.com/cpu.scrape: "true"
+        profiles.grafana.com/goroutine.port_name: http2
+        profiles.grafana.com/goroutine.scrape: "true"
+        profiles.grafana.com/memory.port_name: http2
+        profiles.grafana.com/memory.scrape: "true"
+      labels:
+        app.kubernetes.io/name: phlare
+        app.kubernetes.io/instance: phlare-dev
+        app.kubernetes.io/component: "store-gateway"
+        name: "store-gateway"
+    spec:
+      serviceAccountName: phlare-dev
+      securityContext:
+        fsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: "store-gateway"
+          securityContext:
+            {}
+          image: "grafana/phlare:0.5.1"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-target=store-gateway"
             - "-memberlist.cluster-label=default-phlare-dev"
             - "-memberlist.join=phlare-dev-memberlist.default.svc.cluster.local."
             - "-config.file=/etc/phlare/config.yaml"

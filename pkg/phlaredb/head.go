@@ -557,14 +557,10 @@ func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.P
 	}), nil
 }
 
-func (h *Head) InRange(start, end model.Time) bool {
+func (h *Head) Bounds() (mint, maxt model.Time) {
 	h.metaLock.RLock()
-	b := &minMax{
-		min: h.meta.MinTime,
-		max: h.meta.MaxTime,
-	}
-	h.metaLock.RUnlock()
-	return b.InRange(start, end)
+	defer h.metaLock.RUnlock()
+	return h.meta.MinTime, h.meta.MaxTime
 }
 
 // Returns underlying queries, the queriers should be roughly ordered in TS increasing order
@@ -826,7 +822,6 @@ func (h *Head) forMatchingSelectors(sels selectors, fn func(lbs phlaremodel.Labe
 	}
 
 	return nil
-
 }
 
 func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {

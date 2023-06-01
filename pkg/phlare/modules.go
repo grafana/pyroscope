@@ -25,7 +25,7 @@ import (
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/genproto/googleapis/api/httpbody"
 	"google.golang.org/protobuf/encoding/protojson"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
 	statusv1 "github.com/grafana/phlare/api/gen/proto/go/status/v1"
@@ -39,6 +39,7 @@ import (
 	"github.com/grafana/phlare/pkg/querier"
 	"github.com/grafana/phlare/pkg/querier/worker"
 	"github.com/grafana/phlare/pkg/scheduler"
+	"github.com/grafana/phlare/pkg/storegateway"
 	"github.com/grafana/phlare/pkg/usagestats"
 	"github.com/grafana/phlare/pkg/util"
 	"github.com/grafana/phlare/pkg/util/build"
@@ -57,6 +58,7 @@ const (
 	Ingester          string = "ingester"
 	MemberlistKV      string = "memberlist-kv"
 	Querier           string = "querier"
+	StoreGateway      string = "store-gateway"
 	GRPCGateway       string = "grpc-gateway"
 	Storage           string = "storage"
 	UsageReport       string = "usage-stats"
@@ -182,7 +184,19 @@ func (f *Phlare) setupWorkerTimeout() {
 }
 
 func (f *Phlare) initQuerier() (services.Service, error) {
-	querierSvc, err := querier.New(f.Cfg.Querier, f.ring, nil, f.reg, log.With(f.logger, "component", "querier"), f.auth)
+	var (
+		storeGatewayQuerier *querier.StoreGatewayQuerier
+		err                 error
+	)
+	// In microservices mode the store gateway is mandatory.
+	if f.Cfg.Target.String() != All {
+		storeGatewayQuerier, err = querier.NewStoreGatewayQuerier(f.Cfg.StoreGateway.Config, nil, f.Overrides, log.With(f.logger, "component", "store-gateway-querier"), f.reg, f.auth)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	querierSvc, err := querier.New(f.Cfg.Querier, f.ring, nil, storeGatewayQuerier, f.reg, log.With(f.logger, "component", "querier"), f.auth)
 	if err != nil {
 		return nil, err
 	}
@@ -290,6 +304,7 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 	f.Cfg.Ingester.LifecyclerConfig.RingConfig.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 	f.Cfg.QueryScheduler.ServiceDiscovery.SchedulerRing.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 	f.Cfg.OverridesExporter.Ring.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
+	f.Cfg.StoreGateway.ShardingRing.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 
 	f.Cfg.Frontend.QuerySchedulerDiscovery = f.Cfg.QueryScheduler.ServiceDiscovery
 	f.Cfg.Worker.QuerySchedulerDiscovery = f.Cfg.QueryScheduler.ServiceDiscovery
@@ -347,6 +362,17 @@ func (f *Phlare) initIngester() (_ services.Service, err error) {
 
 	f.API.RegisterIngester(svc)
 
+	return svc, nil
+}
+
+func (f *Phlare) initStoreGateway() (serv services.Service, err error) {
+	f.Cfg.StoreGateway.ShardingRing.ListenPort = f.Cfg.Server.HTTPListenPort
+
+	svc, err := storegateway.NewStoreGateway(f.Cfg.StoreGateway, f.storageBucket, f.Overrides, f.logger, f.reg)
+	if err != nil {
+		return nil, err
+	}
+	f.API.RegisterStoreGateway(svc)
 	return svc, nil
 }
 

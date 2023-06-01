@@ -15,31 +15,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/phlare/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/phlare/pkg/util"
 )
-
-type BidiClientMergeProfilesStacktraces interface {
-	Send(*ingestv1.MergeProfilesStacktracesRequest) error
-	Receive() (*ingestv1.MergeProfilesStacktracesResponse, error)
-	CloseRequest() error
-	CloseResponse() error
-}
-
-type BidiClientMergeProfilesLabels interface {
-	Send(*ingestv1.MergeProfilesLabelsRequest) error
-	Receive() (*ingestv1.MergeProfilesLabelsResponse, error)
-	CloseRequest() error
-	CloseResponse() error
-}
-
-type BidiClientMergeProfilesPprof interface {
-	Send(*ingestv1.MergeProfilesPprofRequest) error
-	Receive() (*ingestv1.MergeProfilesPprofResponse, error)
-	CloseRequest() error
-	CloseResponse() error
-}
 
 // PoolConfig is config for creating a Pool.
 type PoolConfig struct {
@@ -55,9 +33,9 @@ func (cfg *PoolConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.DurationVar(&cfg.RemoteTimeout, prefix+".health-check-timeout", 5*time.Second, "Timeout for ingester client healthcheck RPCs.")
 }
 
-func NewPool(cfg PoolConfig, ring ring.ReadRing, factory ring_client.PoolFactory, clientsMetric prometheus.Gauge, logger log.Logger, options ...connect.ClientOption) *ring_client.Pool {
+func NewIngesterPool(cfg PoolConfig, ring ring.ReadRing, factory ring_client.PoolFactory, clientsMetric prometheus.Gauge, logger log.Logger, options ...connect.ClientOption) *ring_client.Pool {
 	if factory == nil {
-		factory = PoolFactoryFn(options...)
+		factory = IngesterPoolFactoryFn(options...)
 	}
 	poolCfg := ring_client.PoolConfig{
 		CheckInterval:      cfg.ClientCleanupPeriod,
@@ -68,7 +46,7 @@ func NewPool(cfg PoolConfig, ring ring.ReadRing, factory ring_client.PoolFactory
 	return ring_client.NewPool("ingester", poolCfg, ring_client.NewRingServiceDiscovery(ring), factory, clientsMetric, logger)
 }
 
-func PoolFactoryFn(options ...connect.ClientOption) ring_client.PoolFactory {
+func IngesterPoolFactoryFn(options ...connect.ClientOption) ring_client.PoolFactory {
 	return func(addr string) (ring_client.PoolClient, error) {
 		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {

@@ -8,26 +8,18 @@ import "google/api/httpbody.proto";
 service StatusService {
   // Retrieve build information about the binary
   rpc GetBuildInfo(GetBuildInfoRequest) returns (GetBuildInfoResponse) {
-    option (google.api.http) = {
-      get: "/api/v1/status/buildinfo"
-    };
+    option (google.api.http) = {get: "/api/v1/status/buildinfo"};
   }
   // Retrieve the running config
   rpc GetConfig(GetConfigRequest) returns (google.api.HttpBody) {
-    option (google.api.http) = {
-      get: "/api/v1/status/config"
-    };
+    option (google.api.http) = {get: "/api/v1/status/config"};
   }
   // Retrieve the diff config to the defaults
   rpc GetDiffConfig(GetConfigRequest) returns (google.api.HttpBody) {
-    option (google.api.http) = {
-      get: "/api/v1/status/config/diff"
-    };
+    option (google.api.http) = {get: "/api/v1/status/config/diff"};
   }
   rpc GetDefaultConfig(GetConfigRequest) returns (google.api.HttpBody) {
-    option (google.api.http) = {
-      get: "/api/v1/status/config/default"
-    };
+    option (google.api.http) = {get: "/api/v1/status/config/default"};
   }
 }
 

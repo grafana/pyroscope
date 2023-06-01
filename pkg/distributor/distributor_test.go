@@ -27,7 +27,7 @@ import (
 	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
 	"github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/ingester/clientpool"
+	"github.com/grafana/phlare/pkg/clientpool"
 	"github.com/grafana/phlare/pkg/tenant"
 	"github.com/grafana/phlare/pkg/testhelper"
 	"github.com/grafana/phlare/pkg/validation"
@@ -408,5 +408,4 @@ func TestPush_ShuffleSharding(t *testing.T) {
 			require.Equal(t, 150, series)
 		}
 	}
-
 }

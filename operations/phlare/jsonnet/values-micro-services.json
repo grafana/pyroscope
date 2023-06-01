@@ -51,7 +51,7 @@
             "memory": "1Gi"
           },
           "requests": {
-            "cpu": "100m",
+            "cpu": 1,
             "memory": "256Mi"
           }
         }
@@ -79,6 +79,22 @@
           "requests": {
             "cpu": "100m",
             "memory": "256Mi"
+          }
+        }
+      },
+      "store-gateway": {
+        "kind": "StatefulSet",
+        "persistence": {
+          "enabled": false
+        },
+        "replicaCount": 3,
+        "resources": {
+          "limits": {
+            "memory": "16Gi"
+          },
+          "requests": {
+            "cpu": 1,
+            "memory": "8Gi"
           }
         }
       }

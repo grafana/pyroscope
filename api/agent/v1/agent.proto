@@ -10,9 +10,7 @@ import "google/protobuf/timestamp.proto";
 service AgentService {
   // Retrieve information about targets.
   rpc GetTargets(GetTargetsRequest) returns (GetTargetsResponse) {
-    option (google.api.http) = {
-      get: "/api/v1/targets"
-    };
+    option (google.api.http) = {get: "/api/v1/targets"};
   }
 }
 

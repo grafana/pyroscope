@@ -12,7 +12,7 @@ phlare:
           memory: 1Gi
         requests:
           memory: 256Mi
-          cpu: 100m
+          cpu: 1
     query-frontend:
       kind: Deployment
       replicaCount: 2
@@ -52,6 +52,19 @@ phlare:
     ingester:
       kind: StatefulSet
       replicaCount: 3
+      resources:
+        limits:
+          memory: 16Gi
+        requests:
+          memory: 8Gi
+          cpu: 1
+    store-gateway:
+      kind: StatefulSet
+      replicaCount: 3
+      persistence:
+      # The store-gateway needs not need persistent storage, but we still run it as a StatefulSet
+      # This is to avoid having blocks of data being
+        enabled: false
       resources:
         limits:
           memory: 16Gi

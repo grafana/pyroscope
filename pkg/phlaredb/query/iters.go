@@ -933,7 +933,6 @@ func (r *RowNumberIterator[T]) Err() error {
 
 func (r *RowNumberIterator[T]) Seek(to RowNumberWithDefinitionLevel) bool {
 	for CompareRowNumbers(0, r.current.RowNumber, to.RowNumber) == -1 {
-
 		if !r.Next() {
 			return false
 		}

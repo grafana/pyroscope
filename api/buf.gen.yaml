@@ -15,7 +15,7 @@ plugins:
     out: gen/proto/go
     opt:
       - paths=source_relative
-      - features=marshal+unmarshal+size+pool+grpc+pool
+      - features=marshal+unmarshal+size+pool+grpc+pool+clone
       - pool=github.com/grafana/phlare/api/gen/proto/go/google/v1.Profile
       - pool=github.com/grafana/phlare/api/gen/proto/go/google/v1.Sample
 

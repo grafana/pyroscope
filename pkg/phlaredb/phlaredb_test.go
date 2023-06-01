@@ -98,6 +98,18 @@ type ingesterHandlerPhlareDB struct {
 	// *PhlareDB
 }
 
+func (i *ingesterHandlerPhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
+	return MergeProfilesStacktraces(ctx, stream, i.ForTimeRange)
+}
+
+func (i *ingesterHandlerPhlareDB) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
+	return MergeProfilesLabels(ctx, stream, i.ForTimeRange)
+}
+
+func (i *ingesterHandlerPhlareDB) MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error {
+	return MergeProfilesPprof(ctx, stream, i.ForTimeRange)
+}
+
 func (i *ingesterHandlerPhlareDB) Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	return nil, errors.New("not implemented")
 }
@@ -417,9 +429,9 @@ func TestFilterProfiles(t *testing.T) {
 	filtered, err := filterProfiles[
 		BidiServerMerge[*ingestv1.MergeProfilesStacktracesResponse, *ingestv1.MergeProfilesStacktracesRequest],
 		*ingestv1.MergeProfilesStacktracesResponse,
-		*ingestv1.MergeProfilesStacktracesRequest](ctx, in, 5, bidi)
+		*ingestv1.MergeProfilesStacktracesRequest](ctx, []iter.Iterator[Profile]{in}, 5, bidi)
 	require.NoError(t, err)
-	require.Equal(t, 2, len(filtered))
+	require.Equal(t, 2, len(filtered[0]))
 	require.Equal(t, 3, len(bidi.profilesSent))
 	testhelper.EqualProto(t, []*ingestv1.ProfileSets{
 		{
@@ -459,5 +471,5 @@ func TestFilterProfiles(t *testing.T) {
 			lbs:     phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 10)),
 			fp:      model.Fingerprint(phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 10)).Hash()),
 		},
-	}, filtered)
+	}, filtered[0])
 }

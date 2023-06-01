@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -9,7 +10,7 @@ import (
 
 	"github.com/drone/envsubst"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // JSON returns a Source that opens the supplied `.json` file and loads it.
@@ -60,12 +61,19 @@ func YAML(f string, expandEnvVars bool) Source {
 // dYAML returns a YAML source and allows dependency injection
 func dYAML(y []byte) Source {
 	return func(dst Cloneable) error {
-		return yaml.UnmarshalStrict(y, dst)
+		if len(y) == 0 {
+			return nil
+		}
+		dec := yaml.NewDecoder(bytes.NewReader(y))
+		dec.KnownFields(true)
+		if err := dec.Decode(dst); err != nil {
+			return err
+		}
+		return nil
 	}
 }
 
 func YAMLFlag(args []string, name string) Source {
-
 	return func(dst Cloneable) error {
 		freshFlags := flag.NewFlagSet("config-file-loader", flag.ContinueOnError)
 

@@ -8,6 +8,7 @@ bin
 *.out
 
 /cmd/phlare/data
+pyroscope-sync/
 data/
 .DS_Store
 **/dist

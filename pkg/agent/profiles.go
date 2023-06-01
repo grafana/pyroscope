@@ -28,13 +28,13 @@ import (
 
 	"github.com/go-kit/log/level"
 	"github.com/parca-dev/parca/pkg/config"
-	"github.com/parca-dev/parca/pkg/scrape"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
 	agentv1v1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1"
+	"github.com/grafana/phlare/pkg/agent/scrape"
 )
 
 const (
@@ -88,11 +88,11 @@ func populateLabels(lset labels.Labels, cfg ScrapeConfig) (res, orig labels.Labe
 		}
 	}
 
-	preRelabelLabels := lb.Labels(nil)
-	lset = relabel.Process(preRelabelLabels, cfg.RelabelConfigs...)
+	preRelabelLabels := lb.Labels()
+	lset, keep := relabel.Process(preRelabelLabels, cfg.RelabelConfigs...)
 
 	// Check if the target was dropped.
-	if lset == nil {
+	if !keep {
 		return nil, preRelabelLabels, nil
 	}
 	if v := lset.Get(model.AddressLabel); v == "" {
@@ -167,7 +167,7 @@ func populateLabels(lset labels.Labels, cfg ScrapeConfig) (res, orig labels.Labe
 		lb.Set(model.InstanceLabel, addr)
 	}
 
-	res = lb.Labels(nil)
+	res = lb.Labels()
 	for _, l := range res {
 		// Check label values are valid, drop the target if not.
 		if !model.LabelValue(l.Value).IsValid() {

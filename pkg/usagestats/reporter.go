@@ -17,8 +17,8 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/thanos-io/objstore"
 
-	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
 	"github.com/grafana/phlare/pkg/util/build"
 )
 
@@ -51,7 +51,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 
 type Reporter struct {
 	logger log.Logger
-	bucket phlareobjstore.Bucket
+	bucket objstore.Bucket
 	reg    prometheus.Registerer
 
 	services.Service
@@ -62,7 +62,7 @@ type Reporter struct {
 	lastReport time.Time
 }
 
-func NewReporter(config Config, kvConfig kv.Config, objectClient phlareobjstore.Bucket, logger log.Logger, reg prometheus.Registerer) (*Reporter, error) {
+func NewReporter(config Config, kvConfig kv.Config, objectClient objstore.Bucket, logger log.Logger, reg prometheus.Registerer) (*Reporter, error) {
 	if !config.Enabled {
 		return nil, nil
 	}

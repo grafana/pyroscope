@@ -3,11 +3,9 @@ package client
 import (
 	"context"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thanos-io/objstore"
 
-	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
-	"github.com/grafana/phlare/pkg/objstore/client/parquet"
+	phlareobj "github.com/grafana/phlare/pkg/objstore"
 	"github.com/grafana/phlare/pkg/objstore/providers/azure"
 	"github.com/grafana/phlare/pkg/objstore/providers/cos"
 	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
@@ -18,7 +16,7 @@ import (
 )
 
 // NewBucket creates a new bucket client based on the configured backend
-func NewBucket(ctx context.Context, cfg Config, name string) (phlareobjstore.Bucket, error) {
+func NewBucket(ctx context.Context, cfg Config, name string) (phlareobj.Bucket, error) {
 	var (
 		backendClient objstore.Bucket
 		err           error
@@ -38,7 +36,25 @@ func NewBucket(ctx context.Context, cfg Config, name string) (phlareobjstore.Buc
 	case COS:
 		backendClient, err = cos.NewBucketClient(cfg.COS, name, logger)
 	case Filesystem:
-		backendClient, err = filesystem.NewBucket(cfg.Filesystem.Directory)
+		// Filesystem is a special case, as it is not a remote storage backend
+		// We want to use a fileReaderAt to read and seek from the filesystem
+		// This means middlewares and instrumentation is not triggered for `ReaderAt` function
+		middlewares := []func(objstore.Bucket) (objstore.Bucket, error){
+			func(b objstore.Bucket) (objstore.Bucket, error) {
+				return objstore.BucketWithMetrics(name, b, reg), nil
+			},
+			func(b objstore.Bucket) (objstore.Bucket, error) {
+				return objstore.NewTracingBucket(b), nil
+			},
+		}
+		fs, err := filesystem.NewBucket(cfg.Filesystem.Directory, append(middlewares, cfg.Middlewares...)...)
+		if err != nil {
+			return nil, err
+		}
+		if cfg.StoragePrefix == "" {
+			return fs, nil
+		}
+		return phlareobj.NewPrefixedBucket(fs, cfg.StoragePrefix), nil
 	default:
 		return nil, ErrUnsupportedStorageBackend
 	}
@@ -54,91 +70,10 @@ func NewBucket(ctx context.Context, cfg Config, name string) (phlareobjstore.Buc
 			return nil, err
 		}
 	}
+	bkt := phlareobj.NewBucket(objstore.NewTracingBucket(objstore.BucketWithMetrics(name, backendClient, reg)))
 
-	return ReaderAtBucket(cfg.StoragePrefix, backendClient, reg), nil
-}
-
-type readerAtBucket struct {
-	objstore.InstrumentedBucket
-	bkt phlareobjstore.Bucket
-}
-
-type readerAt struct {
-	objstore.InstrumentedBucket
-	size int64
-	name string
-	ctx  context.Context
-}
-
-func ReaderAtBucket(prefix string, b objstore.Bucket, reg prometheus.Registerer) phlareobjstore.InstrumentedBucket {
-	// Prefer to use custom phlareobjstore.BucketReaderAt implementation if possible.
-	if b, ok := b.(phlareobjstore.Bucket); ok {
-		if prefix != "" {
-			b = phlareobjstore.BucketWithPrefix(b, prefix)
-		}
-
-		return &readerAtBucket{
-			InstrumentedBucket: objstore.NewTracingBucket(objstore.BucketWithMetrics(b.Name(), b, reg)),
-			bkt:                b,
-		}
+	if cfg.StoragePrefix != "" {
+		bkt = phlareobj.NewPrefixedBucket(bkt, cfg.StoragePrefix)
 	}
-	if prefix != "" {
-		b = objstore.NewPrefixedBucket(b, prefix)
-	}
-	return &readerAtBucket{
-		InstrumentedBucket: objstore.NewTracingBucket(objstore.BucketWithMetrics(b.Name(), b, reg)),
-	}
-}
-
-func (b *readerAtBucket) ReaderAt(ctx context.Context, name string) (r phlareobjstore.ReaderAt, err error) {
-	if b.bkt != nil {
-		// use phlareobjstore.BucketReaderAt if possible.
-		r, err := b.bkt.ReaderAt(ctx, name)
-		if err != nil {
-			return nil, err
-		}
-		return parquet.NewReaderAt(r), nil
-	}
-	// fallback to using Attributes and GetRange
-	attr, err := b.InstrumentedBucket.Attributes(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-	return parquet.NewReaderAt(&readerAt{
-		InstrumentedBucket: b.InstrumentedBucket,
-		size:               attr.Size,
-		name:               name,
-		ctx:                ctx,
-	}), nil
-}
-
-func (b *readerAtBucket) WithExpectedErrs(expectedFunc objstore.IsOpFailureExpectedFunc) phlareobjstore.Bucket {
-	if ib, ok := b.InstrumentedBucket.WithExpectedErrs(expectedFunc).(objstore.InstrumentedBucket); ok {
-		return &readerAtBucket{
-			InstrumentedBucket: ib,
-			bkt:                b.bkt,
-		}
-	}
-	return b
-}
-
-func (b *readerAtBucket) ReaderWithExpectedErrs(expectedFunc objstore.IsOpFailureExpectedFunc) phlareobjstore.BucketReader {
-	return b.WithExpectedErrs(expectedFunc)
-}
-
-func (b *readerAt) Close() error {
-	return nil
-}
-
-func (b *readerAt) Size() int64 {
-	return b.size
-}
-
-func (b *readerAt) ReadAt(p []byte, off int64) (n int, err error) {
-	rc, err := b.InstrumentedBucket.GetRange(b.ctx, b.name, off, int64(len(p)))
-	if err != nil {
-		return -1, err
-	}
-	defer rc.Close()
-	return rc.Read(p)
+	return bkt, nil
 }
