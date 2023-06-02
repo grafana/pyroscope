@@ -96,6 +96,8 @@ type Frontend struct {
 type Limits interface {
 	QuerySplitDuration(string) time.Duration
 	MaxQueryParallelism(string) int
+	MaxQueryLength(tenantID string) time.Duration
+	MaxQueryLookback(tenantID string) time.Duration
 }
 
 type frontendRequest struct {
