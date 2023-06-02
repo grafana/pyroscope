@@ -42,6 +42,7 @@ import (
 	"github.com/grafana/phlare/pkg/scheduler/schedulerpb/schedulerpbconnect"
 	"github.com/grafana/phlare/pkg/util/httpgrpc"
 	"github.com/grafana/phlare/pkg/util/servicediscovery"
+	"github.com/grafana/phlare/pkg/validation"
 )
 
 const testFrontendWorkerConcurrency = 5
@@ -71,7 +72,7 @@ func setupFrontendWithConcurrencyAndServerOptions(t *testing.T, reg prometheus.R
 	cfg.Port = port
 
 	logger := log.NewLogfmtLogger(os.Stdout)
-	f, err := NewFrontend(cfg, mockLimits{}, logger, reg)
+	f, err := NewFrontend(cfg, validation.MockLimits{MaxQueryParallelismValue: 1}, logger, reg)
 	require.NoError(t, err)
 
 	frontendpbconnect.RegisterFrontendForQuerierHandler(mux, f)
@@ -337,12 +338,6 @@ func TestFrontendFailedCancellation(t *testing.T) {
 		require.Equal(t, 1, len(ms.msgs))
 	})
 }
-
-type mockLimits struct{}
-
-func (mockLimits) QuerySplitDuration(string) time.Duration { return 0 }
-
-func (mockLimits) MaxQueryParallelism(string) int { return 1 }
 
 type mockScheduler struct {
 	t *testing.T

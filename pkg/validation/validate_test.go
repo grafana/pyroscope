@@ -2,6 +2,7 @@ package validation
 
 import (
 	"testing"
+	"time"
 
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -84,7 +85,11 @@ func TestValidateLabels(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateLabels(fakeLabelsLimits{}, "foo", tt.lbs)
+			err := ValidateLabels(MockLimits{
+				MaxLabelNamesPerSeriesValue: 3,
+				MaxLabelNameLengthValue:     10,
+				MaxLabelValueLengthValue:    10,
+			}, "foo", tt.lbs)
 			if tt.expectedErr != "" {
 				require.Error(t, err)
 				require.Equal(t, tt.expectedErr, err.Error())
@@ -96,8 +101,72 @@ func TestValidateLabels(t *testing.T) {
 	}
 }
 
-type fakeLabelsLimits struct{}
-
-func (fakeLabelsLimits) MaxLabelNameLength(userID string) int     { return 10 }
-func (fakeLabelsLimits) MaxLabelValueLength(userID string) int    { return 10 }
-func (fakeLabelsLimits) MaxLabelNamesPerSeries(userID string) int { return 3 }
+func Test_ValidateRangeRequest(t *testing.T) {
+	now := model.Now()
+	for _, tt := range []struct {
+		name        string
+		in          model.Interval
+		expectedErr error
+		expected    ValidatedRangeRequest
+	}{
+		{
+			name: "valid",
+			in: model.Interval{
+				Start: now.Add(-24 * time.Hour),
+				End:   now,
+			},
+			expected: ValidatedRangeRequest{
+				Interval: model.Interval{
+					Start: now.Add(-24 * time.Hour),
+					End:   now,
+				},
+			},
+		},
+		{
+			name: "empty outside of the lookback",
+			in: model.Interval{
+				Start: now.Add(-75 * time.Hour),
+				End:   now.Add(-73 * time.Hour),
+			},
+			expected: ValidatedRangeRequest{
+				IsEmpty: true,
+				Interval: model.Interval{
+					Start: now.Add(-75 * time.Hour),
+					End:   now.Add(-73 * time.Hour),
+				},
+			},
+		},
+		{
+			name: "too large range",
+			in: model.Interval{
+				Start: now.Add(-150 * time.Hour),
+				End:   now.Add(time.Hour),
+			},
+			expected:    ValidatedRangeRequest{},
+			expectedErr: NewErrorf(QueryLimit, QueryTooLongErrorMsg, "73h0m0s", "2d"),
+		},
+		{
+			name: "reduced range to the lookback",
+			in: model.Interval{
+				Start: now.Add(-75 * time.Hour),
+				End:   now.Add(-68 * time.Hour),
+			},
+			expected: ValidatedRangeRequest{
+				Interval: model.Interval{
+					Start: now.Add(-72 * time.Hour),
+					End:   now.Add(-68 * time.Hour),
+				},
+			},
+		},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			actual, err := ValidateRangeRequest(MockLimits{
+				MaxQueryLengthValue:   48 * time.Hour,
+				MaxQueryLookbackValue: 72 * time.Hour,
+			}, []string{"foo"}, tt.in, now)
+			require.Equal(t, tt.expectedErr, err)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}

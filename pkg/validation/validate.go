@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -12,6 +14,8 @@ import (
 
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/phlare/pkg/util/validation"
 )
 
 type Reason string
@@ -39,6 +43,7 @@ const (
 	// SeriesLimit is a reason for discarding lines when we can't create a new stream
 	// because the limit of active streams has been reached.
 	SeriesLimit Reason = "series_limit"
+	QueryLimit  Reason = "query_limit"
 
 	SeriesLimitErrorMsg            = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
 	MissingLabelsErrorMsg          = "error at least one label pair is required per profile"
@@ -47,6 +52,7 @@ const (
 	LabelNameTooLongErrorMsg       = "profile with labels '%s' has label name too long: '%s'"
 	LabelValueTooLongErrorMsg      = "profile with labels '%s' has label value too long: '%s'"
 	DuplicateLabelNamesErrorMsg    = "profile with labels '%s' has duplicate label name: '%s'"
+	QueryTooLongErrorMsg           = "the query time range exceeds the limit (query length: %s, limit: %s)"
 )
 
 var (
@@ -135,4 +141,52 @@ func ReasonOf(err error) Reason {
 		return Unknown
 	}
 	return validationErr.Reason
+}
+
+type RangeRequestLimits interface {
+	MaxQueryLength(tenantID string) time.Duration
+	MaxQueryLookback(tenantID string) time.Duration
+}
+
+type ValidatedRangeRequest struct {
+	model.Interval
+	IsEmpty bool
+}
+
+func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req model.Interval, now model.Time) (ValidatedRangeRequest, error) {
+	if maxQueryLookback := validation.SmallestPositiveNonZeroDurationPerTenant(tenantIDs, limits.MaxQueryLookback); maxQueryLookback > 0 {
+		minStartTime := now.Add(-maxQueryLookback)
+
+		if req.End < minStartTime {
+			// The request is fully outside the allowed range, so we can return an
+			// empty response.
+			level.Debug(util.Logger).Log(
+				"msg", "skipping the execution of the query because its time range is before the 'max query lookback' setting",
+				"reqStart", util.FormatTimeMillis(int64(req.Start)),
+				"redEnd", util.FormatTimeMillis(int64(req.End)),
+				"maxQueryLookback", maxQueryLookback)
+
+			return ValidatedRangeRequest{IsEmpty: true, Interval: req}, nil
+		}
+
+		if req.Start < minStartTime {
+			// Replace the start time in the request.
+			level.Debug(util.Logger).Log(
+				"msg", "the start time of the query has been manipulated because of the 'max query lookback' setting",
+				"original", util.FormatTimeMillis(int64(req.Start)),
+				"updated", util.FormatTimeMillis(int64(minStartTime)))
+
+			req.Start = minStartTime
+		}
+	}
+
+	// Enforce the max query length.
+	if maxQueryLength := validation.SmallestPositiveNonZeroDurationPerTenant(tenantIDs, limits.MaxQueryLength); maxQueryLength > 0 {
+		queryLen := req.End.Sub(req.Start)
+		if queryLen > maxQueryLength {
+			return ValidatedRangeRequest{}, NewErrorf(QueryLimit, QueryTooLongErrorMsg, queryLen, model.Duration(maxQueryLength))
+		}
+	}
+
+	return ValidatedRangeRequest{Interval: req}, nil
 }
