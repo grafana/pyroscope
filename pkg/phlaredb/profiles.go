@@ -459,6 +459,10 @@ func (pl *profilesIndex) cutRowGroup(rgProfiles []*schemav1.Profile) error {
 
 	for _, ps := range pl.profilesPerFP {
 		// empty all in memory profiles
+		for i := range ps.profiles {
+			// Allow GC to evict the object.
+			ps.profiles[i] = nil
+		}
 		ps.profiles = ps.profiles[:0]
 
 		// attach rowGroup and rowNum information
