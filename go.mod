@@ -86,7 +86,6 @@ require (
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v0.8.1 // indirect
-	github.com/DataDog/zstd v1.4.1 // indirect
 	github.com/DmitriyVTitov/size v1.5.0 // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
@@ -271,6 +270,7 @@ require (
 )
 
 replace (
+	github.com/dgraph-io/badger/v2 => github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/grafana/phlare/api => ./api
 	// Replace memberlist with our fork which includes some fixes that haven't been
 	// merged upstream yet.
