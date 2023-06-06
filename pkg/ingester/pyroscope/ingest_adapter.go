@@ -95,9 +95,6 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 		Name:  labels.MetricName,
 		Value: metric,
 	}, &typesv1.LabelPair{
-		Name:  "service_name",
-		Value: app,
-	}, &typesv1.LabelPair{
 		Name:  phlaremodel.LabelNameDelta,
 		Value: "false",
 	})
@@ -107,13 +104,29 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 			Value: pi.SpyName,
 		})
 	}
+	hasServiceName := false
 	for k, v := range pi.Key.Labels() {
 		if strings.HasPrefix(k, "__") {
 			continue
 		}
+		if k == "service_name" {
+			hasServiceName = true
+		}
 		series.Labels = append(series.Labels, &typesv1.LabelPair{
 			Name:  k,
 			Value: v,
+		})
+	}
+	// If service_name is not present, use app_name as the service_name.
+	if !hasServiceName {
+		series.Labels = append(series.Labels, &typesv1.LabelPair{
+			Name:  "service_name",
+			Value: app,
+		})
+	} else {
+		series.Labels = append(series.Labels, &typesv1.LabelPair{
+			Name:  "app_name",
+			Value: app,
 		})
 	}
 	series.Samples = []*pushv1.RawSample{{

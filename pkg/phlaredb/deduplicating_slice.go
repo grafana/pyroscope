@@ -181,7 +181,7 @@ func (s *deduplicatingSlice[M, K, H, P]) ingest(_ context.Context, elems []M, re
 		}
 	}
 
-	// try to find if element already exists in slice, when supposed to depduplicate
+	// try to find if element already exists in slice, when supposed to deduplicate
 	s.lock.RLock()
 	for pos := range elems {
 		k := s.helper.key(elems[pos])
