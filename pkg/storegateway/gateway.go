@@ -56,8 +56,8 @@ type StoreGateway struct {
 }
 
 type Config struct {
-	storegateway.Config
-	BucketStoreConfig BucketStoreConfig `yaml:"bucket_store,omitempty"`
+	storegateway.Config `yaml:",inline"`
+	BucketStoreConfig   BucketStoreConfig `yaml:"bucket_store,omitempty"`
 }
 
 // RegisterFlags registers the Config flags.
