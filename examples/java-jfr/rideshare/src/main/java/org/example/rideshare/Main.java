@@ -9,7 +9,7 @@ import java.util.Map;
 @SpringBootApplication
 public class Main {
     public static void main(String[] args) {
-        Pyroscope.setStaticLabels(Map.of("REGION", System.getenv("REGION")));
+        Pyroscope.setStaticLabels(Map.of("region", System.getenv("REGION")));
         SpringApplication.run(Main.class, args);
     }
 }
