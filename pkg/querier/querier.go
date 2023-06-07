@@ -103,7 +103,7 @@ func (q *Querier) running(ctx context.Context) error {
 	case <-ctx.Done():
 		return nil
 	case err := <-q.subservicesWatcher.Chan():
-		return errors.Wrap(err, "distributor subservice failed")
+		return errors.Wrap(err, "querier subservice failed")
 	}
 }
 
