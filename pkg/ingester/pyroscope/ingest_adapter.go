@@ -62,7 +62,10 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 	}
 	metric, stType, stUnit, app, err := convertMetadata(pi)
 	if err != nil {
-		return fmt.Errorf("pyroscopeIngesterAdapter failed to convert metadata: %w", err)
+		return connect.NewError(
+			connect.CodeInvalidArgument,
+			fmt.Errorf("pyroscopeIngesterAdapter failed to convert metadata: %w", err),
+		)
 	}
 	mdata := &tree.PprofMetadata{
 		Type:      stType,
@@ -72,7 +75,7 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 	if pi.SampleRate != 0 && (metric == metricWall || metric == metricProcessCPU) {
 		period := time.Second.Nanoseconds() / int64(pi.SampleRate)
 		mdata.Period = period
-		mdata.PeriodType = "cpu"
+		mdata.PeriodType = stTypeCPU
 		mdata.PeriodUnit = stUnitNanos
 		if metric == metricWall {
 			mdata.Type = stTypeWall
@@ -85,7 +88,10 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 	pprof := pi.Val.Pprof(mdata)
 	b, err := proto.Marshal(pprof)
 	if err != nil {
-		return fmt.Errorf("pyroscopeIngesterAdapter failed to marshal pprof: %w", err)
+		return connect.NewError(
+			connect.CodeInvalidArgument,
+			fmt.Errorf("pyroscopeIngesterAdapter failed to marshal pprof: %w", err),
+		)
 	}
 	req := &pushv1.PushRequest{}
 	series := &pushv1.RawProfileSeries{
@@ -149,13 +155,13 @@ func convertMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app stri
 	app = pi.Key.AppName()
 	parts := strings.Split(app, ".")
 	if len(parts) <= 1 {
-		err = fmt.Errorf("app name is not in the format of <app>.<profile_type> - %s", app)
-		return metricName, stType, stUnit, app, err
+		stType = stTypeCPU
+	} else {
+		stType = parts[len(parts)-1]
+		app = strings.Join(parts[:len(parts)-1], ".")
 	}
-	stType = parts[len(parts)-1]
-	app = strings.Join(parts[:len(parts)-1], ".")
 	switch stType {
-	case "cpu":
+	case stTypeCPU:
 		metricName = metricProcessCPU
 		stType = stTypeSamples
 		stUnit = stUnitCount
