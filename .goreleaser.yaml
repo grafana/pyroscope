@@ -2,7 +2,7 @@ project_name: phlare
 before:
   hooks:
     # This hook ensures that goreleaser uses the correct go version for a Phlare release
-    - sh -euc "go version | grep "go version go1.19.9 " || { echo "Unexpected go version"; exit 1; }"
+    - sh -euc "go version | grep "go version go1.19.10 " || { echo "Unexpected go version"; exit 1; }"
 builds:
   - env:
       - CGO_ENABLED=0
