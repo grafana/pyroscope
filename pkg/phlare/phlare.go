@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"runtime"
 	"sort"
 
 	"github.com/bufbuild/connect-go"
@@ -74,7 +75,8 @@ type Config struct {
 	OverridesExporter exporter.Config        `yaml:"overrides_exporter" doc:"hidden"`
 	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
 
-	Storage StorageConfig `yaml:"storage"`
+	Storage       StorageConfig       `yaml:"storage"`
+	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
 
 	MultitenancyEnabled bool              `yaml:"multitenancy_enabled,omitempty"`
 	Analytics           usagestats.Config `yaml:"analytics"`
@@ -96,6 +98,17 @@ type StorageConfig struct {
 
 func (c *StorageConfig) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) {
 	c.Bucket.RegisterFlagsWithPrefix("storage.", f, phlarecontext.Logger(ctx))
+}
+
+type SelfProfilingConfig struct {
+	MutexProfileFraction int `yaml:"mutex_profile_fraction,omitempty"`
+	BlockProfileRate     int `yaml:"block_profile_rate,omitempty"`
+}
+
+func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
+	// these are values that worked well in OG Pyroscope Cloud without adding much overhead
+	f.IntVar(&c.MutexProfileFraction, "self-profiling.mutex-profile-fraction", 5, "")
+	f.IntVar(&c.BlockProfileRate, "self-profiling.block-profile-rate", 5, "")
 }
 
 func (c *Config) RegisterFlags(f *flag.FlagSet) {
@@ -120,6 +133,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.PhlareDB.RegisterFlags(f)
 	c.Tracing.RegisterFlags(f)
 	c.Storage.RegisterFlagsWithContext(ctx, f)
+	c.SelfProfiling.RegisterFlags(f)
 	c.RuntimeConfig.RegisterFlags(f)
 	c.Analytics.RegisterFlags(f)
 	c.LimitsConfig.RegisterFlags(f)
@@ -254,6 +268,9 @@ func New(cfg Config) (*Phlare, error) {
 	if err := phlare.setupModuleManager(); err != nil {
 		return nil, err
 	}
+
+	runtime.SetMutexProfileFraction(cfg.SelfProfiling.MutexProfileFraction)
+	runtime.SetBlockProfileRate(cfg.SelfProfiling.BlockProfileRate)
 
 	if cfg.Tracing.Enabled {
 		// Setting the environment variable JAEGER_AGENT_HOST enables tracing

@@ -155,6 +155,10 @@ Usage of ./phlare:
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -runtime-config.file comma-separated-list-of-strings
     	Comma separated list of yaml files with the configuration that can be updated at runtime. Runtime config files will be merged from left to right.
+  -self-profiling.block-profile-rate int
+    	 (default 5)
+  -self-profiling.mutex-profile-fraction int
+    	 (default 5)
   -server.graceful-shutdown-timeout duration
     	Timeout for graceful shutdowns (default 30s)
   -server.grpc-conn-limit int
