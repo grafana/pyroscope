@@ -36,7 +36,7 @@
         <th>Size</th>
         <th>Series</th>
         <th>Samples</th>
-        <th>Chunks</th>
+        <th>Profiles</th>
         <th>Labels</th>
         {{ if .ShowSources }}
         <th>Sources</th>{{ end }}
@@ -59,9 +59,9 @@
             <td>{{ .DeletedTime }}</td>{{ end }}
             <td>{{ .CompactionLevel }}</td>
             <td>{{ .BlockSize }}</td>
-            <td>{{/* .Stats.NumSeries */}}</td>
-            <td>{{/* .Stats.NumSamples */}}</td>
-            <td>{{/* .Stats.NumChunks */}}</td>
+            <td>{{ .Stats.NumSeries }}</td>
+            <td>{{ .Stats.NumSamples }}</td>
+            <td>{{ .Stats.NumProfiles }}</td>
             <td>{{ .Labels }}</td>
             {{ if $page.ShowSources }}
                 <td>

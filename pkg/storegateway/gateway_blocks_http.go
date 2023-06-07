@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/gorilla/mux"
 	"github.com/grafana/mimir/pkg/storage/tsdb"
 	"github.com/grafana/mimir/pkg/util"
@@ -46,7 +47,7 @@ type formattedBlockData struct {
 	Labels          string
 	Sources         []string
 	Parents         []string
-	// Stats           prom_tsdb.BlockStats
+	Stats           block.BlockStats
 }
 
 type richMeta struct {
@@ -106,6 +107,12 @@ func (s *StoreGateway) BlocksHandler(w http.ResponseWriter, req *http.Request) {
 			bsc := tsdb.HashBlockID(m.ULID) % uint32(splitCount)
 			blockSplitID = &bsc
 		}
+
+		var blockSize uint64
+		for _, f := range m.Files {
+			blockSize += f.SizeBytes
+		}
+
 		formattedBlocks = append(formattedBlocks, formattedBlockData{
 			ULID:            m.ULID.String(),
 			ULIDTime:        util.TimeFromMillis(int64(m.ULID.Time())).UTC().Format(time.RFC3339),
@@ -114,10 +121,10 @@ func (s *StoreGateway) BlocksHandler(w http.ResponseWriter, req *http.Request) {
 			MaxTime:         util.TimeFromMillis(int64(m.MaxTime)).UTC().Format(time.RFC3339),
 			Duration:        util.TimeFromMillis(int64(m.MaxTime)).Sub(util.TimeFromMillis(int64(m.MinTime))).String(),
 			CompactionLevel: m.Compaction.Level,
-			// todo format
-			// BlockSize:       listblocks.GetFormattedBlockSize(m),
-			Sources: sources,
-			Parents: parents,
+			BlockSize:       humanize.Bytes(blockSize),
+			Stats:           m.Stats,
+			Sources:         sources,
+			Parents:         parents,
 		})
 
 		richMetas = append(richMetas, richMeta{
