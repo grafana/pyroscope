@@ -1,5 +1,30 @@
 package ingester
 
+import (
+	"context"
+	"os"
+	"sort"
+	"testing"
+	"time"
+
+	"github.com/bufbuild/connect-go"
+	"github.com/go-kit/log"
+	"github.com/google/uuid"
+	"github.com/grafana/dskit/services"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/require"
+
+	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/phlare/pkg/model"
+	"github.com/grafana/phlare/pkg/objstore/client"
+	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
+	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	"github.com/grafana/phlare/pkg/phlaredb"
+	"github.com/grafana/phlare/pkg/tenant"
+)
+
 // func Test_selectMerge(t *testing.T) {
 // 	cfg := defaultIngesterTestConfig(t)
 // 	profileStore, err := profilestore.New(log.NewNopLogger(), nil, trace.NewNoopTracerProvider(), defaultProfileStoreTestConfig(t))
@@ -64,63 +89,70 @@ package ingester
 // 	)
 // }
 
-/*
 func Test_QueryMetadata(t *testing.T) {
-	cfg := defaultIngesterTestConfig(t)
-	logger := log.NewLogfmtLogger(os.Stdout)
-
-	profileStore, err := profilestore.New(logger, nil, trace.NewNoopTracerProvider(), defaultProfileStoreTestConfig(t))
-	require.NoError(t, err)
-
-	d, err := New(cfg, log.NewLogfmtLogger(os.Stdout), nil, profileStore)
-	require.NoError(t, err)
-
-	rawProfile := testProfile(t)
-	resp, err := d.Push(context.Background(), connect.NewRequest(&pushv1.PushRequest{
-		Series: []*pushv1.RawProfileSeries{
-			{
-				Labels: []*commonv1.LabelPair{
-					{Name: "__name__", Value: "memory"},
-					{Name: "cluster", Value: "us-central1"},
-				},
-				Samples: []*pushv1.RawSample{
-					{
-						RawProfile: rawProfile,
-					},
-				},
+	dbPath := t.TempDir()
+	logger := log.NewJSONLogger(os.Stdout)
+	reg := prometheus.NewRegistry()
+	ctx := phlarecontext.WithLogger(context.Background(), logger)
+	ctx = phlarecontext.WithRegistry(ctx, reg)
+	cfg := client.Config{
+		StorageBackendConfig: client.StorageBackendConfig{
+			Backend: client.Filesystem,
+			Filesystem: filesystem.Config{
+				Directory: dbPath,
 			},
-			{
-				Labels: []*commonv1.LabelPair{
-					{Name: "__name__", Value: "memory"},
-					{Name: "cluster", Value: "us-east1"},
-				},
-				Samples: []*pushv1.RawSample{
-					{
-						RawProfile: rawProfile,
+		},
+	}
+
+	fs, err := client.NewBucket(ctx, cfg, "storage")
+	require.NoError(t, err)
+
+	ing, err := New(ctx, defaultIngesterTestConfig(t), phlaredb.Config{
+		DataPath:         dbPath,
+		MaxBlockDuration: 30 * time.Hour,
+	}, fs, &fakeLimits{})
+	require.NoError(t, err)
+	require.NoError(t, services.StartAndAwaitRunning(context.Background(), ing))
+
+	req := &connect.Request[pushv1.PushRequest]{
+		Msg: &pushv1.PushRequest{
+			Series: []*pushv1.RawProfileSeries{
+				{
+					Samples: []*pushv1.RawSample{
+						{
+							ID:         uuid.NewString(),
+							RawProfile: testProfile(t),
+						},
 					},
 				},
 			},
 		},
-	}))
+	}
+	req.Msg.Series[0].Labels = phlaremodel.LabelsFromStrings("foo", "bar")
+	_, err = ing.Push(tenant.InjectTenantID(context.Background(), "foo"), req)
 	require.NoError(t, err)
-	require.NotNil(t, resp)
 
-	clusterRes, err := d.LabelValues(context.Background(), connect.NewRequest(&ingestv1.LabelValuesRequest{Name: "cluster"}))
+	labelsValues, err := ing.LabelValues(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&typesv1.LabelValuesRequest{Name: "foo"}))
 	require.NoError(t, err)
-	require.Equal(t, []string{"us-central1", "us-east1"}, clusterRes.Msg.Names)
-	typeRes, err := d.ProfileTypes(context.Background(), connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
+	require.Equal(t, []string{"bar"}, labelsValues.Msg.Names)
+
+	profileTypes, err := ing.ProfileTypes(tenant.InjectTenantID(context.Background(), "foo"), connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
 	require.NoError(t, err)
 	expectedTypes := []string{
-		"memory:inuse_space:bytes:space:bytes",
-		"memory:inuse_objects:count:space:bytes",
-		"memory:alloc_space:bytes:space:bytes",
-		"memory:alloc_objects:count:space:bytes",
+		":alloc_objects:count:space:bytes",
+		":alloc_space:bytes:space:bytes",
+		":inuse_objects:count:space:bytes",
+		":inuse_space:bytes:space:bytes",
 	}
 	sort.Strings(expectedTypes)
-	sort.Strings(typeRes.Msg.Names)
-	require.Equal(t, expectedTypes, typeRes.Msg.Names)
+	ids := make([]string, len(profileTypes.Msg.ProfileTypes))
+	for i, t := range profileTypes.Msg.ProfileTypes {
+		ids[i] = t.ID
+	}
+	sort.Strings(ids)
+	require.Equal(t, expectedTypes, ids)
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), ing))
 }
-*/
 
 /*
 func Test_selectProfiles(t *testing.T) {
