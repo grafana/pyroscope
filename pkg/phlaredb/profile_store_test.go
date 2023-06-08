@@ -124,7 +124,6 @@ func nProfileStreams(n int) func(int) *testProfile {
 
 		tp.populateFingerprint()
 		return tp
-
 	}
 }
 
@@ -216,6 +215,9 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 			for i := 0; i < 100; i++ {
 				p := tc.values(i)
 				require.NoError(t, store.ingest(ctx, []*schemav1.Profile{&p.p}, p.lbls, p.profileName, emptyRewriter()))
+				for store.flushing.Load() {
+					time.Sleep(time.Millisecond)
+				}
 			}
 
 			// ensure the correct number of files are created
@@ -323,7 +325,7 @@ func BenchmarkFlush(b *testing.B) {
 				p.p.Samples = samples
 				require.NoError(b, store.ingest(ctx, []*schemav1.Profile{&p.p}, p.lbls, p.profileName, rw))
 			}
-			require.NoError(b, store.cutRowGroup())
+			require.NoError(b, store.cutRowGroup(len(store.slice)))
 		}
 		b.StartTimer()
 		_, _, err := store.Flush(context.Background())
@@ -361,7 +363,16 @@ func TestProfileStore_Querying(t *testing.T) {
 	head.profiles.cfg = &ParquetConfig{MaxRowGroupBytes: 128000, MaxBufferRowCount: 3}
 
 	for i := 0; i < 9; i++ {
-		require.NoError(t, ingestThreeProfileStreams(ctx, i, head.Ingest))
+		require.NoError(t, ingestThreeProfileStreams(ctx, i, func(ctx context.Context, p *profilev1.Profile, u uuid.UUID, lp ...*typesv1.LabelPair) error {
+			defer func() {
+				// wait for the profile to be flushed
+				// todo(cyriltovena): We shouldn't need this, but when calling head.Queriers(), flushing row group and then querying using the queriers previously returned we will miss the new headDiskQuerier.
+				for head.profiles.flushing.Load() {
+					time.Sleep(time.Millisecond)
+				}
+			}()
+			return head.Ingest(ctx, p, u, lp...)
+		}))
 	}
 
 	// now query the store
@@ -372,10 +383,8 @@ func TestProfileStore_Querying(t *testing.T) {
 		Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
 	}
 
-	queriers := head.Queriers()
-
 	t.Run("select matching profiles", func(t *testing.T) {
-		pIt, err := queriers.SelectMatchingProfiles(ctx, params)
+		pIt, err := head.Queriers().SelectMatchingProfiles(ctx, params)
 		require.NoError(t, err)
 
 		// ensure we see the profiles we expect
@@ -387,7 +396,7 @@ func TestProfileStore_Querying(t *testing.T) {
 	})
 
 	t.Run("merge by labels", func(t *testing.T) {
-		client, cleanup := queriers.ingesterClient()
+		client, cleanup := head.Queriers().ingesterClient()
 		defer cleanup()
 
 		bidi := client.MergeProfilesLabels(ctx)
@@ -453,7 +462,7 @@ func TestProfileStore_Querying(t *testing.T) {
 	})
 
 	t.Run("merge by stacktraces", func(t *testing.T) {
-		client, cleanup := queriers.ingesterClient()
+		client, cleanup := head.Queriers().ingesterClient()
 		defer cleanup()
 
 		bidi := client.MergeProfilesStacktraces(ctx)
@@ -501,7 +510,7 @@ func TestProfileStore_Querying(t *testing.T) {
 	})
 
 	t.Run("merge by pprof", func(t *testing.T) {
-		client, cleanup := queriers.ingesterClient()
+		client, cleanup := head.Queriers().ingesterClient()
 		defer cleanup()
 
 		bidi := client.MergeProfilesPprof(ctx)

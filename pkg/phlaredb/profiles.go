@@ -433,10 +433,12 @@ func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRange
 	return rangesPerRG, writer.Close()
 }
 
-func (pl *profilesIndex) cutRowGroup(rgProfiles []*schemav1.Profile) error {
+func (pi *profilesIndex) cutRowGroup(rgProfiles []*schemav1.Profile) error {
 	// adding rowGroup and rowNum information per fingerprint
-	rowRangePerFP := make(map[model.Fingerprint]*rowRange, len(pl.profilesPerFP))
+	rowRangePerFP := make(map[model.Fingerprint]*rowRange, len(pi.profilesPerFP))
+	countPerFP := make(map[model.Fingerprint]int, len(pi.profilesPerFP))
 	for rowNum, p := range rgProfiles {
+		countPerFP[p.SeriesFingerprint]++
 		if _, ok := rowRangePerFP[p.SeriesFingerprint]; !ok {
 			rowRangePerFP[p.SeriesFingerprint] = &rowRange{
 				rowNum: int64(rowNum),
@@ -452,18 +454,19 @@ func (pl *profilesIndex) cutRowGroup(rgProfiles []*schemav1.Profile) error {
 		}
 	}
 
-	pl.mutex.Lock()
-	defer pl.mutex.Unlock()
+	pi.mutex.Lock()
+	defer pi.mutex.Unlock()
 
-	pl.rowGroupsOnDisk += 1
+	pi.rowGroupsOnDisk += 1
 
-	for _, ps := range pl.profilesPerFP {
+	for fp, ps := range pi.profilesPerFP {
+		count := countPerFP[fp]
 		// empty all in memory profiles
-		for i := range ps.profiles {
+		for i := range ps.profiles[:count] {
 			// Allow GC to evict the object.
 			ps.profiles[i] = nil
 		}
-		ps.profiles = ps.profiles[:0]
+		ps.profiles = ps.profiles[count:]
 
 		// attach rowGroup and rowNum information
 		rowRange := rowRangePerFP[ps.fp]
@@ -472,6 +475,7 @@ func (pl *profilesIndex) cutRowGroup(rgProfiles []*schemav1.Profile) error {
 			ps.profilesOnDisk,
 			rowRange,
 		)
+
 	}
 
 	return nil
