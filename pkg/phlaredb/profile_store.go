@@ -54,11 +54,12 @@ type profileStore struct {
 	rowGroups   []*rowGroupOnDisk
 	index       *profilesIndex
 
-	flushing    *atomic.Bool
-	flushQueue  chan int // channel to signal that a flush is needed for slice[:n]
-	closeOnce   sync.Once
-	flushWg     sync.WaitGroup
-	flushBuffer []*schemav1.Profile
+	flushing       *atomic.Bool
+	flushQueue     chan int // channel to signal that a flush is needed for slice[:n]
+	closeOnce      sync.Once
+	flushWg        sync.WaitGroup
+	flushBuffer    []*schemav1.Profile
+	flushBufferLbs []phlaremodel.Labels
 }
 
 func newProfileStore(phlarectx context.Context) *profileStore {
@@ -139,31 +140,6 @@ func (s *profileStore) RowGroups() (rowGroups []parquet.RowGroup) {
 		rowGroups[pos] = s.rowGroups[pos]
 	}
 	return rowGroups
-}
-
-func (s *profileStore) sortProfile(slice []*schemav1.Profile) {
-	sort.Slice(slice, func(i, j int) bool {
-		// first compare the labels, if they don't match return
-		var (
-			pI   = slice[i]
-			pJ   = slice[j]
-			lbsI = s.index.profilesPerFP[pI.SeriesFingerprint].lbs
-			lbsJ = s.index.profilesPerFP[pJ.SeriesFingerprint].lbs
-		)
-		if cmp := phlaremodel.CompareLabelPairs(lbsI, lbsJ); cmp != 0 {
-			return cmp < 0
-		}
-
-		// then compare timenanos, if they don't match return
-		if pI.TimeNanos < pJ.TimeNanos {
-			return true
-		} else if pI.TimeNanos > pJ.TimeNanos {
-			return false
-		}
-
-		// finally use ID as tie breaker
-		return bytes.Compare(pI.ID[:], pJ.ID[:]) < 0
-	})
 }
 
 // Flush writes row groups and the index to files on disk.
@@ -264,10 +240,6 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 		return err
 	}
 
-	// order profiles properly
-	// The slice is never accessed at reads, therefore we can sort it in-place.
-	s.sortProfile(s.flushBuffer)
-
 	n, err := s.writer.Write(s.flushBuffer)
 	if err != nil {
 		return errors.Wrap(err, "write row group segments to disk")
@@ -323,18 +295,64 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 	return nil
 }
 
-// loadProfilesToFlush loads profiles to flush into flushBuffer and returns the size of the profiles.
+type byLabels struct {
+	p   []*schemav1.Profile
+	lbs []phlaremodel.Labels
+}
+
+func (b byLabels) Len() int { return len(b.p) }
+func (b byLabels) Swap(i, j int) {
+	b.p[i], b.p[j] = b.p[j], b.p[i]
+	b.lbs[i], b.lbs[j] = b.lbs[j], b.lbs[i]
+}
+
+func (by byLabels) Less(i, j int) bool {
+	// first compare the labels, if they don't match return
+	var (
+		pI   = by.p[i]
+		pJ   = by.p[j]
+		lbsI = by.lbs[i]
+		lbsJ = by.lbs[j]
+	)
+	if cmp := phlaremodel.CompareLabelPairs(lbsI, lbsJ); cmp != 0 {
+		return cmp < 0
+	}
+
+	// then compare timenanos, if they don't match return
+	if pI.TimeNanos < pJ.TimeNanos {
+		return true
+	} else if pI.TimeNanos > pJ.TimeNanos {
+		return false
+	}
+
+	// finally use ID as tie breaker
+	return bytes.Compare(pI.ID[:], pJ.ID[:]) < 0
+}
+
+// loadProfilesToFlush loads and sort profiles to flush into flushBuffer and returns the size of the profiles.
 func (s *profileStore) loadProfilesToFlush(count int) uint64 {
-	var size uint64
-	s.profilesLock.Lock()
-	defer s.profilesLock.Unlock()
 	if cap(s.flushBuffer) < count {
 		s.flushBuffer = make([]*schemav1.Profile, 0, count)
 	}
+	if cap(s.flushBufferLbs) < count {
+		s.flushBufferLbs = make([]phlaremodel.Labels, 0, count)
+	}
+	s.flushBufferLbs = s.flushBufferLbs[:0]
 	s.flushBuffer = s.flushBuffer[:0]
+	s.profilesLock.Lock()
+	s.index.mutex.RLock()
 	for i := 0; i < count; i++ {
-		size += s.helper.size(s.slice[i])
-		s.flushBuffer = append(s.flushBuffer, s.slice[i])
+		profile := s.slice[i]
+		s.flushBuffer = append(s.flushBuffer, profile)
+		s.flushBufferLbs = append(s.flushBufferLbs, s.index.profilesPerFP[profile.SeriesFingerprint].lbs)
+	}
+	s.profilesLock.Unlock()
+	s.index.mutex.RUnlock()
+	// order profiles properly
+	sort.Sort(byLabels{p: s.flushBuffer, lbs: s.flushBufferLbs})
+	var size uint64
+	for _, p := range s.flushBuffer {
+		size += s.helper.size(p)
 	}
 	return size
 }
