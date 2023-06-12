@@ -40,7 +40,11 @@ Pyroscope.init({
   appName: 'myNodeService',
   tags: {
     region: ENV['region']
-  }
+  },
+  // authToken: ENV['PYROSCOPE_AUTH_TOKEN'],
+  // basicAuthUser: ENV['PYROSCOPE_BASIC_AUTH_USER'],
+  // basicAuthPassword: ENV['PYROSCOPE_BASIC_AUTH_PASSWORD'],
+  // tenantID: ENV['PYROSCOPE_TENANT_ID'],
 });
 
 Pyroscope.start()
@@ -57,7 +61,7 @@ Pyroscope.init({...})
 app.use(expressMiddleware())
 ```
 
-Note: you don't need to `.start()` but you'll need to `.init()`
+Note: For __pull mode__, you don't need to `.start()` but you'll need to `.init()` 
 
 ### Scrape configuration
 
@@ -83,6 +87,13 @@ scrape-configs:
           env: dev
 ```
 
+## Sending data to Phlare with Pyroscope NodeJS integration
+
+To configure NodeJS integration to send data to Phlare, replace the `serverAddress` placeholder with the appropriate server URL. This could be the Grafana Cloud Pyroscope URL or your own custom Phlare server URL.
+
+If you need to send data to Grafana Cloud, you’ll have to configure HTTP Basic authentication. Replace `basicAuthUser` with your Grafana Cloud stack user ID and `basicAuthPassword` with your Grafana Cloud API key.
+
+If your Phlare server has multi-tenancy enabled, you’ll need to configure a tenant ID. Replace `tenantID` with your Phlare tenant ID.
 
 ## Troubleshooting
 
