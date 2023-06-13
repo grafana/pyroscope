@@ -140,11 +140,11 @@ Java integration supports JFR format to be able to support multiple events (JFR 
 |`PYROSCOPE_ALLOC_LIVE`                   |is a boolean value that enables live object profiling when set to true. It is disabled by default.                                                                                                                                                                                                                                                                                          |
 |`PYROSCOPE_GC_BEFORE_DUMP`               |is a boolean value that executes a `System.gc()` command before dumping the profile when set to true. This option may be useful for live profiling, but is disabled by default.                                                                                                                                                                                                             |
 
-## Sending data to Phlare with Pyroscope java integration
+## Sending data to Grafana Cloud or Phlare with Pyroscope java SDK
 
-To configure java integration to send data to Phlare, replace the `<URL>` placeholder with the appropriate server URL. This could be the grafana.com Phlare URL or your own custom Phlare server URL.
+To configure java sdk to send data to Phlare, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Phlare server URL.
 
-If you need to send data to grafana.com, you'll have to configure HTTP Basic authentication. Replace `<User>` with your grafana.com stack user and `<Password>` with your grafana.com API key.
+If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
 
 If your Phlare server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Phlare tenant ID.
 
