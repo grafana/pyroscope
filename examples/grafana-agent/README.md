@@ -4,7 +4,7 @@ This example demonstrates how you can use Grafana Agent with Grafana Pyroscope (
 
 ### 1. Configure Grafana agent
 
-You'll need to configure the Grafana agent for things like profiling configuration, targets, and possibly authentication in order to have the Grafana Agent pull profiles from your application. 
+You'll need to configure the Grafana agent for things like profiling configuration, targets, and possibly authentication in order to have the Grafana Agent pull profiles from your application.
 
 You can find a list of [arguments](https://grafana.com/docs/agent/next/flow/reference/components/pyroscope.scrape/#arguments) and [supported blocks](https://grafana.com/docs/agent/next/flow/reference/components/pyroscope.scrape/#blocks) in the [Grafana Agent documentation for pyroscope](https://grafana.com/docs/agent/next/flow/reference/components/pyroscope.scrape/)
 
