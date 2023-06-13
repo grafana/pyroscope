@@ -118,14 +118,7 @@ Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/exampl
 | PYROSCOPE_PROFILING_ALLOCATION_ENABLED | Boolean      | If set to true, enables the Allocations profiling. Defaults to false. |
 | PYROSCOPE_PROFILING_LOCK_ENABLED       | Boolean      | If set to true, enables the Lock Contention profiling. Defaults to false. |
 
-## Sending data into Pyroscope Cloud
-
-1. Set `PYROSCOPE_SERVER_ADDRESS` to `PYROSCOPE_SERVER_ADDRESS=https://ingest.pyroscope.cloud`
-2. Go to [Pyroscope Cloud API Keys page](https://pyroscope.cloud/settings/api-keys)
-3. Copy one of the keys
-4. Add it to your .NET profiler configuration: `PYROSCOPE_AUTH_TOKEN="psx-..."`
-
-## Sending data to Phlare with Pyroscope .NET integration
+## Sending data to Grafana Cloud or Phlare with Pyroscope .NET SDK
 
 Starting with [weekly-f8](https://hub.docker.com/r/grafana/phlare/tags) you can ingest pyroscope profiles directly to phlare.
 
@@ -142,9 +135,9 @@ export PYROSCOPE_BASIC_AUTH_PASSWORD=<Password>
 export PYROSCOPE_TENANT_ID=<TenantID>
 ```
 
-To configure .NET integration to send data to Phlare, replace the `<URL>` placeholder with the appropriate server URL. This could be the grafana.com Phlare URL or your own custom Phlare server URL.
+To configure .NET sdk to send data to Grafana Cloud or Phlare, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Phlare server URL.
 
-If you need to send data to grafana.com, you'll have to configure HTTP Basic authentication. Replace `<User>` with your grafana.com stack user and `<Password>` with your grafana.com API key.
+If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafan Cloud API key.
 
 If your Phlare server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Phlare tenant ID.
 

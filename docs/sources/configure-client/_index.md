@@ -44,6 +44,11 @@ The decision of which mode to use depends on your specific use case and requirem
 To get started choose one of the integrations below:
 <table>
    <tr>
+      <td align="center"><a href="https://grafana.com/docs/phlare/latest/configure-client/grafana-agent/"><img src="https://github.com/grafana/phlare/assets/23323466/1d81f842-5fa0-415d-8d77-aff175a6266f" width="100px;" alt=""/><br />
+        <b>Grafana Agent<br />(Go Pull Mode)</b></a><br />
+          <a href="https://grafana.com/docs/phlare/latest/configure-client/grafana-agent/" title="Documentation">Documentation</a><br />
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/php" title="examples">Examples</a>
+      </td>
       <td align="center"><a href="https://grafana.com/docs/phlare/latest/configure-client/language-sdks/go_push/"><img src="https://user-images.githubusercontent.com/23323466/178160549-2d69a325-56ec-4e19-bca7-d460d400b163.png" width="100px;" alt=""/><br />
         <b>Golang</b></a><br />
           <a href="https://grafana.com/docs/phlare/latest/configure-client/language-sdks/go_push/" title="Documentation">Documentation</a><br />
@@ -64,22 +69,17 @@ To get started choose one of the integrations below:
           <a href="https://grafana.com/docs/phlare/latest/configure-client/language-sdks/python/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/python" title="python-examples">Examples</a>
       </td>
-      <td align="center"><a href="https://grafana.com/docs/phlare/latest/configure-client/language-sdks/ruby/"><img src="https://user-images.githubusercontent.com/23323466/178160554-b0be2bc5-8574-4881-ac4c-7977c0b2c195.png" width="100px;" alt=""/><br />
-        <b>Ruby</b></a><br />
-          <a href="https://grafana.com/docs/phlare/latest/configure-client/language-sdks/ruby/" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/grafana/pyroscope/tree/main/examples/ruby" title="ruby-examples">Examples</a>
-      </td>
    </tr>
    <tr>
-      <td align="center"><a href="https://grafana.com/docs/phlare/latest/configure-client/grafana-agent/"><img src="https://github.com/grafana/phlare/assets/23323466/1d81f842-5fa0-415d-8d77-aff175a6266f" width="100px;" alt=""/><br />
-        <b>Grafana Agent (Go Pull Mode)</b></a><br />
-          <a href="https://grafana.com/docs/phlare/latest/configure-client/grafana-agent/" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/grafana/pyroscope/tree/main/examples/php" title="examples">Examples</a>
-      </td>
       <td align="center"><a href="https://grafana.com/docs/phlare/latest/configure-client/language-sdks/dotnet/"><img src="https://user-images.githubusercontent.com/23323466/178160544-d2e189c6-a521-482c-a7dc-5375c1985e24.png" width="100px;" alt=""/><br />
         <b>Dotnet</b></a><br />
           <a href="https://grafana.com/docs/phlare/latest/configure-client/language-sdks/dotnet/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/dotnet" title="examples">Examples</a>
+      </td>
+      <td align="center"><a href="https://grafana.com/docs/phlare/latest/configure-client/language-sdks/ruby/"><img src="https://user-images.githubusercontent.com/23323466/178160554-b0be2bc5-8574-4881-ac4c-7977c0b2c195.png" width="100px;" alt=""/><br />
+        <b>Ruby</b></a><br />
+          <a href="https://grafana.com/docs/phlare/latest/configure-client/language-sdks/ruby/" title="Documentation">Documentation</a><br />
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/ruby" title="ruby-examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/phlare/latest/configure-client/language-sdks/nodejs/"><img src="https://user-images.githubusercontent.com/23323466/178160551-a79ee6ff-a5d6-419e-89e6-39047cb08126.png" width="100px;" alt=""/><br />
         <b>NodeJS</b></a><br />
