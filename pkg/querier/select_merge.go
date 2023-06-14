@@ -188,34 +188,21 @@ func (s *mergeIterator[R, Req, Res]) At() *ProfileWithLabels {
 }
 
 func (s *mergeIterator[R, Req, Res]) Result() (R, error) {
-	var result R
-	switch bidi := (s.bidi).(type) {
-	case BidiClientMerge[*ingestv1.MergeProfilesStacktracesRequest, *ingestv1.MergeProfilesStacktracesResponse]:
-		res, err := bidi.Receive()
-		if err != nil {
-			s.err = err
-			return result, err
-		}
-		result = any(res.Result).(R)
-	case BidiClientMerge[*ingestv1.MergeProfilesLabelsRequest, *ingestv1.MergeProfilesLabelsResponse]:
-		res, err := bidi.Receive()
-		if err != nil {
-			s.err = err
-			return result, err
-		}
-		result = any(res.Series).(R)
-	case BidiClientMerge[*ingestv1.MergeProfilesPprofRequest, *ingestv1.MergeProfilesPprofResponse]:
-		res, err := bidi.Receive()
-		if err != nil {
-			s.err = err
-			return result, err
-		}
-		result = any(res.Result).(R)
-	}
-	if err := s.bidi.CloseResponse(); err != nil {
+	res, err := s.bidi.Receive()
+	if err != nil {
 		s.err = err
+		return *new(R), err
 	}
-	return result, nil
+	switch result := any(res).(type) {
+	case *ingestv1.MergeProfilesStacktracesResponse:
+		return any(result.Result).(R), nil
+	case *ingestv1.MergeProfilesLabelsResponse:
+		return any(result.Series).(R), nil
+	case *ingestv1.MergeProfilesPprofResponse:
+		return any(result.Result).(R), nil
+	default:
+		return *new(R), fmt.Errorf("unexpected response type %T", result)
+	}
 }
 
 func (s *mergeIterator[R, Req, Res]) Err() error {
