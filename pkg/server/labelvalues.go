@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/pyroscope-io/pyroscope/pkg/server/httputils"
@@ -45,11 +44,6 @@ func NewLabelValuesHandler(s storage.LabelValuesGetter, httpUtils httputils.Util
 			})
 		}
 
-		b, err := json.Marshal(values)
-		if err != nil {
-			httpUtils.WriteJSONEncodeError(r, w, err)
-			return
-		}
-		_, _ = w.Write(b)
+		httpUtils.WriteResponseJSON(r, w, values)
 	}
 }
