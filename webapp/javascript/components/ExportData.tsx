@@ -9,7 +9,7 @@ import { buildRenderURL } from '@webapp/util/updateRequests';
 import { convertPresetsToDate } from '@webapp/util/formatDate';
 import { Profile } from '@pyroscope/models/src';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { basename } from '@webapp/util/baseurl';
+import basename from '@webapp/util/baseurl';
 import showModalWithInput from './Modals/ModalWithInput';
 import styles from './ExportData.module.scss';
 
