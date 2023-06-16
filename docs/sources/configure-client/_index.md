@@ -47,7 +47,7 @@ To get started choose one of the integrations below:
       <td align="center"><a href="https://grafana.com/docs/phlare/latest/configure-client/grafana-agent/"><img src="https://github.com/grafana/phlare/assets/23323466/1d81f842-5fa0-415d-8d77-aff175a6266f" width="100px;" alt=""/><br />
         <b>Grafana Agent<br />(Go Pull Mode)</b></a><br />
           <a href="https://grafana.com/docs/phlare/latest/configure-client/grafana-agent/" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/grafana/pyroscope/tree/main/examples/php" title="examples">Examples</a>
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/phlare/latest/configure-client/language-sdks/go_push/"><img src="https://user-images.githubusercontent.com/23323466/178160549-2d69a325-56ec-4e19-bca7-d460d400b163.png" width="100px;" alt=""/><br />
         <b>Golang</b></a><br />
