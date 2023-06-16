@@ -60,7 +60,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
                             $.row('Distributor Requests')
                             .addPanel(
                               $.panel('QPS') +
-                              $.qpsPanel('pyroscope_request_duration_seconds_count{%s, route=~".*push.*"}' % std.rstripChars(dashboards['phlare-writes.json'].distributorSelector, ','))
+                              $.qpsPanel('pyroscope_request_duration_seconds_count{%s, route=~".*push.*|ingest"}' % std.rstripChars(dashboards['phlare-writes.json'].distributorSelector, ','))
                             )
                             .addPanel(
                               $.panel('Latency') +
@@ -74,13 +74,13 @@ local utils = import 'mixin-utils/utils.libsonnet';
                             $.row('Ingester')
                             .addPanel(
                               $.panel('QPS') +
-                              $.qpsPanel('pyroscope_request_duration_seconds_count{%s route=~".*push.*"}' % dashboards['phlare-writes.json'].ingesterSelector)
+                              $.qpsPanel('pyroscope_request_duration_seconds_count{%s route=~".*push.*|ingest"}' % dashboards['phlare-writes.json'].ingesterSelector)
                             )
                             .addPanel(
                               $.panel('Latency') +
                               utils.latencyRecordingRulePanel(
                                 'pyroscope_request_duration_seconds',
-                                dashboards['phlare-writes.json'].matchers.ingester + [utils.selector.re('route', '.*push.*')] + dashboards['phlare-writes.json'].clusterMatchers,
+                                dashboards['phlare-writes.json'].matchers.ingester + [utils.selector.re('route', '.*push.*|ingest')] + dashboards['phlare-writes.json'].clusterMatchers,
                               )
                             )
                           )
