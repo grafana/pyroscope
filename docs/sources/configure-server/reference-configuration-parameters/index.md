@@ -628,6 +628,13 @@ storage:
   # CLI flag: -storage.storage-prefix
   [storage_prefix: <string> | default = ""]
 
+self_profiling:
+  # CLI flag: -self-profiling.mutex-profile-fraction
+  [mutex_profile_fraction: <int> | default = 5]
+
+  # CLI flag: -self-profiling.block-profile-rate
+  [block_profile_rate: <int> | default = 5]
+
 # When set to true, incoming HTTP requests must specify tenant ID in HTTP
 # X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
 # CLI flag: -auth.multitenancy-enabled

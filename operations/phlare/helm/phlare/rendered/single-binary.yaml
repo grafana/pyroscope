@@ -856,7 +856,7 @@ spec:
           args:
             - "-target=all"
             - "-memberlist.cluster-label=default-phlare-dev"
-            - "-memberlist.join=phlare-dev-memberlist.default.svc.cluster.local."
+            - "-memberlist.join=dns+phlare-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/phlare/config.yaml"
             - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
             - "-log.level=debug"
