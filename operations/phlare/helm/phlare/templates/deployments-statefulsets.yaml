@@ -50,7 +50,7 @@ spec:
           args:
             - "-target={{ $component }}"
             - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "phlare.fullname" .}}"
-            - "-memberlist.join={{ include "phlare.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.cluster.local."
+            - "-memberlist.join=dns+{{ include "phlare.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.phlare.memberlist.port }}"
           {{- if eq $component "agent" }}
             - "-client.url=http://{{ include "phlare.fullname" . }}-distributor.{{ .Release.Namespace }}.svc.cluster.local.:{{ $values.service.port }}"
           {{- end }}
