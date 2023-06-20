@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -182,6 +183,13 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 		totalProfiles              int64
 	)
 
+	for _, series := range req.Msg.Series {
+		serviceName := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
+		if serviceName == "" {
+			series.Labels = append(series.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "unspecified"})
+			sort.Sort(phlaremodel.Labels(series.Labels))
+		}
+	}
 	for _, series := range req.Msg.Series {
 		// include the labels in the size calculation
 		for _, lbs := range series.Labels {

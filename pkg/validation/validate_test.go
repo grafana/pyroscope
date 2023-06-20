@@ -7,6 +7,8 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
+	phlaremodel "github.com/grafana/phlare/pkg/model"
+
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 )
 
@@ -22,6 +24,7 @@ func TestValidateLabels(t *testing.T) {
 			lbs: []*typesv1.LabelPair{
 				{Name: "foo", Value: "bar"},
 				{Name: model.MetricNameLabel, Value: "qux"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 			},
 		},
 		{
@@ -31,63 +34,89 @@ func TestValidateLabels(t *testing.T) {
 			expectedReason: MissingLabels,
 		},
 		{
-			name:           "max labels",
-			lbs:            []*typesv1.LabelPair{{Name: "foo", Value: "bar"}, {Name: "foo1", Value: "bar"}, {Name: "foo2", Value: "bar"}, {Name: "foo3", Value: "bar"}, {Name: "foo4", Value: "bar"}},
-			expectedErr:    `profile series '{foo="bar", foo1="bar", foo2="bar", foo3="bar", foo4="bar"}' has 5 label names; limit 3`,
+			name: "missing service name",
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "qux"},
+			},
+			expectedErr:    `invalid labels '{__name__="qux"}' with error: service name is not provided`,
+			expectedReason: MissingLabels,
+		},
+		{
+			name: "max labels",
+			lbs: []*typesv1.LabelPair{
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "foo1", Value: "bar"},
+				{Name: "foo2", Value: "bar"},
+				{Name: "foo3", Value: "bar"},
+				{Name: "foo4", Value: "bar"},
+			},
+			expectedErr:    `profile series '{foo1="bar", foo2="bar", foo3="bar", foo4="bar", service_name="svc"}' has 5 label names; limit 3`,
 			expectedReason: MaxLabelNamesPerSeries,
 		},
 		{
-			name:           "invalid metric name",
-			lbs:            []*typesv1.LabelPair{{Name: model.MetricNameLabel, Value: "&&"}},
+			name: "invalid metric name",
+			lbs: []*typesv1.LabelPair{
+				{Name: model.MetricNameLabel, Value: "&&"},
+			},
 			expectedErr:    `invalid labels '{__name__="&&"}' with error: invalid metric name`,
 			expectedReason: InvalidLabels,
 		},
 		{
-			name:           "invalid label value",
-			lbs:            []*typesv1.LabelPair{{Name: model.MetricNameLabel, Value: "qux"}, {Name: "foo", Value: "\xc5"}},
-			expectedErr:    "invalid labels '{__name__=\"qux\", foo=\"\\xc5\"}' with error: invalid label value '\xc5'",
+			name: "invalid label value",
+			lbs: []*typesv1.LabelPair{
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: model.MetricNameLabel, Value: "qux"},
+				{Name: "foo", Value: "\xc5"},
+			},
+			expectedErr:    "invalid labels '{__name__=\"qux\", foo=\"\\xc5\", service_name=\"svc\"}' with error: invalid label value '\xc5'",
 			expectedReason: InvalidLabels,
 		},
 		{
-			name:           "invalid label name",
-			lbs:            []*typesv1.LabelPair{{Name: model.MetricNameLabel, Value: "qux"}, {Name: "\xc5", Value: "foo"}},
-			expectedErr:    "invalid labels '{__name__=\"qux\", \xc5=\"foo\"}' with error: invalid label name '\xc5'",
+			name: "invalid label name",
+			lbs: []*typesv1.LabelPair{
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: model.MetricNameLabel, Value: "qux"},
+				{Name: "\xc5", Value: "foo"},
+			},
+			expectedErr:    "invalid labels '{__name__=\"qux\", service_name=\"svc\", \xc5=\"foo\"}' with error: invalid label name '\xc5'",
 			expectedReason: InvalidLabels,
 		},
 		{
 			name: "name too long",
 			lbs: []*typesv1.LabelPair{
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 				{Name: "foooooooooooooooo", Value: "bar"},
 				{Name: model.MetricNameLabel, Value: "qux"},
 			},
 			expectedReason: LabelNameTooLong,
-			expectedErr:    "profile with labels '{__name__=\"qux\", foooooooooooooooo=\"bar\"}' has label name too long: 'foooooooooooooooo'",
+			expectedErr:    "profile with labels '{__name__=\"qux\", foooooooooooooooo=\"bar\", service_name=\"svc\"}' has label name too long: 'foooooooooooooooo'",
 		},
 		{
 			name: "value too long",
 			lbs: []*typesv1.LabelPair{
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 				{Name: "foo", Value: "barrrrrrrrrrrrrrr"},
 				{Name: model.MetricNameLabel, Value: "qux"},
 			},
 			expectedReason: LabelValueTooLong,
-			expectedErr:    `profile with labels '{__name__="qux", foo="barrrrrrrrrrrrrrr"}' has label value too long: 'barrrrrrrrrrrrrrr'`,
+			expectedErr:    `profile with labels '{__name__="qux", foo="barrrrrrrrrrrrrrr", service_name="svc"}' has label value too long: 'barrrrrrrrrrrrrrr'`,
 		},
 
 		{
 			name: "dupe",
 			lbs: []*typesv1.LabelPair{
-				{Name: "foo", Value: "bar"},
-				{Name: "foo", Value: "bar"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 				{Name: model.MetricNameLabel, Value: "qux"},
 			},
 			expectedReason: DuplicateLabelNames,
-			expectedErr:    "profile with labels '{__name__=\"qux\", foo=\"bar\", foo=\"bar\"}' has duplicate label name: 'foo'",
+			expectedErr:    "profile with labels '{__name__=\"qux\", service_name=\"svc\", service_name=\"svc\"}' has duplicate label name: 'service_name'",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateLabels(MockLimits{
 				MaxLabelNamesPerSeriesValue: 3,
-				MaxLabelNameLengthValue:     10,
+				MaxLabelNameLengthValue:     12,
 				MaxLabelValueLengthValue:    10,
 			}, "foo", tt.lbs)
 			if tt.expectedErr != "" {

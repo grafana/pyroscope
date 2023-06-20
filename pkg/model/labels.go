@@ -17,13 +17,15 @@ import (
 var seps = []byte{'\xff'}
 
 const (
-	LabelNameProfileType = "__profile_type__"
-	LabelNameType        = "__type__"
-	LabelNameUnit        = "__unit__"
-	LabelNamePeriodType  = "__period_type__"
-	LabelNamePeriodUnit  = "__period_unit__"
-	LabelNameDelta       = "__delta__"
-	LabelNameProfileName = pmodel.MetricNameLabel
+	LabelNameProfileType    = "__profile_type__"
+	LabelNameType           = "__type__"
+	LabelNameUnit           = "__unit__"
+	LabelNamePeriodType     = "__period_type__"
+	LabelNamePeriodUnit     = "__period_unit__"
+	LabelNameDelta          = "__delta__"
+	LabelNameProfileName    = pmodel.MetricNameLabel
+	LabelNameServiceName    = "service_name"
+	LabelNameServiceNameK8s = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
 
 	labelSep = '\xfe'
 )
