@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
@@ -55,7 +56,7 @@ func ingestProfiles(b testing.TB, db *PhlareDB, generator func(tsNano int64, t t
 	b.Helper()
 	for i := from; i <= to; i += int64(step) {
 		p, name := generator(i, b)
-		require.NoError(b, db.Head().Ingest(
+		require.NoError(b, db.Ingest(
 			context.Background(), p, uuid.New(), append(externalLabels, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name})...))
 	}
 }
@@ -150,7 +151,9 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 	}, NoLimit)
 	require.NoError(t, err)
-	defer require.NoError(t, db.Close())
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
 
 	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
 		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
@@ -280,7 +283,9 @@ func TestMergeProfilesPprof(t *testing.T) {
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 	}, NoLimit)
 	require.NoError(t, err)
-	defer require.NoError(t, db.Close())
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
 
 	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
 		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
@@ -472,4 +477,124 @@ func TestFilterProfiles(t *testing.T) {
 			fp:      model.Fingerprint(phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 10)).Hash()),
 		},
 	}, filtered[0])
+}
+
+func Test_QueryNotInitializedHead(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	db, err := New(context.Background(), Config{
+		DataPath:         t.TempDir(),
+		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
+	}, NoLimit)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
+
+	ctx := context.Background()
+	client, cleanup := db.queriers().ingesterClient()
+	defer cleanup()
+
+	t.Run("ProfileTypes", func(t *testing.T) {
+		resp, err := db.ProfileTypes(ctx, connect.NewRequest(new(ingestv1.ProfileTypesRequest)))
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.NotNil(t, resp.Msg)
+	})
+
+	t.Run("LabelNames", func(t *testing.T) {
+		resp, err := db.LabelNames(ctx, connect.NewRequest(new(typesv1.LabelNamesRequest)))
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.NotNil(t, resp.Msg)
+	})
+
+	t.Run("LabelValues", func(t *testing.T) {
+		resp, err := db.LabelValues(ctx, connect.NewRequest(new(typesv1.LabelValuesRequest)))
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.NotNil(t, resp.Msg)
+	})
+
+	t.Run("Series", func(t *testing.T) {
+		resp, err := db.Series(ctx, connect.NewRequest(&ingestv1.SeriesRequest{}))
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.NotNil(t, resp.Msg)
+	})
+
+	t.Run("MergeProfilesLabels", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		bidi := client.MergeProfilesLabels(ctx)
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesLabelsRequest{
+			Request: &ingestv1.SelectProfilesRequest{},
+		}))
+		cancel()
+	})
+
+	t.Run("MergeProfilesStacktraces", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		bidi := client.MergeProfilesStacktraces(ctx)
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesStacktracesRequest{
+			Request: &ingestv1.SelectProfilesRequest{},
+		}))
+		cancel()
+	})
+
+	t.Run("MergeProfilesPprof", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		bidi := client.MergeProfilesPprof(ctx)
+		require.NoError(t, bidi.Send(&ingestv1.MergeProfilesPprofRequest{
+			Request: &ingestv1.SelectProfilesRequest{},
+		}))
+		cancel()
+	})
+}
+
+func Test_FlushNotInitializedHead(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	db, err := New(context.Background(), Config{
+		DataPath: t.TempDir(),
+	}, NoLimit)
+
+	var (
+		end   = time.Unix(0, int64(time.Hour))
+		start = end.Add(-time.Minute)
+		step  = 5 * time.Second
+	)
+
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
+
+	require.Equal(t, db.headFlushCh(), db.stopCh)
+	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
+		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
+	)
+
+	ctx := context.Background()
+	c1 := db.headFlushCh()
+	require.NotEqual(t, db.stopCh, c1)
+	require.NoError(t, db.Flush(ctx))
+
+	// After flush and before the next head is initialized, stopCh is expected.
+	c2 := db.headFlushCh()
+	require.Equal(t, db.stopCh, c2)
+
+	// Once data is getting in, the head flush channel is updated.
+	require.Equal(t, db.headFlushCh(), db.stopCh)
+	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
+		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
+		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
+	)
+	c3 := db.headFlushCh()
+	require.NotEqual(t, c2, c3)
+	require.NotEqual(t, db.stopCh, c3)
+	require.NoError(t, db.Flush(ctx))
+
+	require.Equal(t, db.stopCh, db.headFlushCh())
+	require.NoError(t, db.Flush(ctx)) // Nil head flush does not cause errors.
 }

@@ -72,7 +72,9 @@ type PhlareDB struct {
 	wg     sync.WaitGroup
 
 	headLock sync.RWMutex
-	head     *Head
+	// Head for ingest requests and reads. May not be present,
+	// if no ingestion requests were handled.
+	head *Head
 	// Read only head. On Flush, writes are directed to
 	// the new head, and queries can read the former head
 	// till it gets written to the disk and becomes available
@@ -81,6 +83,7 @@ type PhlareDB struct {
 	// flushLock serializes flushes. Only one flush at a time
 	// is allowed.
 	flushLock sync.Mutex
+	headInit  chan struct{} // Closes every time a new head is initialized.
 
 	blockQuerier *BlockQuerier
 	limiter      TenantLimiter
@@ -95,11 +98,12 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*PhlareD
 	}
 
 	f := &PhlareDB{
-		cfg:     cfg,
-		logger:  phlarecontext.Logger(phlarectx),
-		stopCh:  make(chan struct{}),
-		evictCh: make(chan *blockEviction),
-		limiter: limiter,
+		cfg:      cfg,
+		logger:   phlarecontext.Logger(phlarectx),
+		stopCh:   make(chan struct{}),
+		evictCh:  make(chan *blockEviction),
+		headInit: make(chan struct{}),
+		limiter:  limiter,
 	}
 	if err := os.MkdirAll(f.LocalDataPath(), 0o777); err != nil {
 		return nil, fmt.Errorf("mkdir %s: %w", f.LocalDataPath(), err)
@@ -109,9 +113,6 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*PhlareD
 	// ensure head metrics are registered early so they are reused for the new head
 	phlarectx = contextWithHeadMetrics(phlarectx, newHeadMetrics(reg))
 	f.phlarectx = phlarectx
-	if f.head, err = NewHead(f.phlarectx, f.cfg, f.limiter); err != nil {
-		return nil, err
-	}
 	f.wg.Add(1)
 	go f.loop()
 
@@ -152,7 +153,7 @@ func (f *PhlareDB) loop() {
 		select {
 		case <-f.stopCh:
 			return
-		case <-f.Head().flushCh:
+		case <-f.headFlushCh():
 			if err := f.Flush(ctx); err != nil {
 				level.Error(f.logger).Log("msg", "flushing head block failed", "err", err)
 				continue
@@ -162,8 +163,37 @@ func (f *PhlareDB) loop() {
 			f.runBlockQuerierSync(ctx)
 		case e := <-f.evictCh:
 			f.evictBlock(e)
+		case <-f.headInit:
+			// headFlushCh() may actually be stopCh. When a new head is
+			// initialized, we re-build the select channel list, and get
+			// a valid flush channel of the new head.
+			f.headLock.Lock()
+			f.headInit = make(chan struct{})
+			f.headLock.Unlock()
 		}
 	}
+}
+
+// initHead initializes a new head and signals to the main closing the
+// headInit channel: must only be called with headLock held for writes.
+func (f *PhlareDB) initHead() (err error) {
+	if f.head, err = NewHead(f.phlarectx, f.cfg, f.limiter); err != nil {
+		return err
+	}
+	close(f.headInit) // Now can select from f.head.flushCh (headFlushCh).
+	return nil
+}
+
+func (f *PhlareDB) headFlushCh() chan struct{} {
+	f.headLock.RLock()
+	defer f.headLock.RUnlock()
+	if h := f.head; h != nil {
+		return h.flushCh
+	}
+	// It is okay to return stopCh: Flush can be called when
+	// no head exists; it will return immediately. When a new
+	// head is initialized, headFlushCh must be called again.
+	return f.stopCh
 }
 
 func (f *PhlareDB) evictBlock(e *blockEviction) {
@@ -175,12 +205,12 @@ func (f *PhlareDB) evictBlock(e *blockEviction) {
 }
 
 func (f *PhlareDB) Close() error {
-	errs := multierror.New()
-	if f.head != nil {
-		errs.Add(f.head.Close())
-	}
 	close(f.stopCh)
 	f.wg.Wait()
+	errs := multierror.New()
+	if f.head != nil {
+		errs.Add(f.head.Flush(f.phlarectx))
+	}
 	close(f.evictCh)
 	if err := f.blockQuerier.Close(); err != nil {
 		errs.Add(err)
@@ -189,15 +219,12 @@ func (f *PhlareDB) Close() error {
 	return errs.Err()
 }
 
-func (f *PhlareDB) Head() *Head {
-	f.headLock.RLock()
-	defer f.headLock.RUnlock()
-	return f.head
-}
-
 func (f *PhlareDB) queriers() Queriers {
 	queriers := f.blockQuerier.Queriers()
-	head := f.head.Queriers()
+	var head Queriers
+	if f.head != nil {
+		head = f.head.Queriers()
+	}
 	var oldHead Queriers
 	if f.oldHead != nil {
 		oldHead = f.oldHead.Queriers()
@@ -209,44 +236,80 @@ func (f *PhlareDB) queriers() Queriers {
 	return res
 }
 
-func (f *PhlareDB) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*typesv1.LabelPair) error {
+func (f *PhlareDB) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*typesv1.LabelPair) (err error) {
+	return f.withHeadForIngest(func(head *Head) error {
+		return head.Ingest(ctx, p, id, externalLabels...)
+	})
+}
+
+func (f *PhlareDB) withHeadForIngest(fn func(*Head) error) (err error) {
 	// We need to keep track of the in-flight ingestion requests to ensure that none
 	// of them will compete with Flush. Lock is acquired to avoid Add after Wait that
 	// is called in the very beginning of Flush.
 	f.headLock.RLock()
 	h := f.head
-	h.inFlightProfiles.Add(1)
+	if h != nil {
+		h.inFlightProfiles.Add(1)
+		f.headLock.RUnlock()
+		defer h.inFlightProfiles.Done()
+		return fn(h)
+	}
 	f.headLock.RUnlock()
+	f.headLock.Lock()
+	h = f.head
+	if h != nil {
+		h.inFlightProfiles.Add(1)
+		f.headLock.Unlock()
+		defer h.inFlightProfiles.Done()
+		return fn(h)
+	}
+	if err = f.initHead(); err != nil {
+		f.headLock.Unlock()
+		return err
+	}
+	h = f.head
+	h.inFlightProfiles.Add(1)
+	f.headLock.Unlock()
 	defer h.inFlightProfiles.Done()
-	return h.Ingest(ctx, p, id, externalLabels...)
+	return fn(h)
+}
+
+func withHeadForQuery[T any](f *PhlareDB, fn func(*Head) (*connect.Response[T], error)) (*connect.Response[T], error) {
+	f.headLock.RLock()
+	defer f.headLock.RUnlock()
+	h := f.head
+	if h == nil {
+		return connect.NewResponse(new(T)), nil
+	}
+	return fn(h)
 }
 
 // LabelValues returns the possible label values for a given label name.
-func (f *PhlareDB) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
-	f.headLock.RLock()
-	defer f.headLock.RUnlock()
-	return f.head.LabelValues(ctx, req)
+func (f *PhlareDB) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (resp *connect.Response[typesv1.LabelValuesResponse], err error) {
+	return withHeadForQuery(f, func(head *Head) (*connect.Response[typesv1.LabelValuesResponse], error) {
+		return head.LabelValues(ctx, req)
+	})
 }
 
 // LabelNames returns the possible label names.
-func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
-	f.headLock.RLock()
-	defer f.headLock.RUnlock()
-	return f.head.LabelNames(ctx, req)
+func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (resp *connect.Response[typesv1.LabelNamesResponse], err error) {
+	return withHeadForQuery(f, func(head *Head) (*connect.Response[typesv1.LabelNamesResponse], error) {
+		return head.LabelNames(ctx, req)
+	})
 }
 
 // ProfileTypes returns the possible profile types.
-func (f *PhlareDB) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-	f.headLock.RLock()
-	defer f.headLock.RUnlock()
-	return f.head.ProfileTypes(ctx, req)
+func (f *PhlareDB) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (resp *connect.Response[ingestv1.ProfileTypesResponse], err error) {
+	return withHeadForQuery(f, func(head *Head) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
+		return head.ProfileTypes(ctx, req)
+	})
 }
 
 // Series returns labels series for the given set of matchers.
-func (f *PhlareDB) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
-	f.headLock.RLock()
-	defer f.headLock.RUnlock()
-	return f.head.Series(ctx, req)
+func (f *PhlareDB) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (resp *connect.Response[ingestv1.SeriesResponse], err error) {
+	return withHeadForQuery(f, func(head *Head) (*connect.Response[ingestv1.SeriesResponse], error) {
+		return head.Series(ctx, req)
+	})
 }
 
 func (f *PhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
@@ -420,12 +483,11 @@ func (f *PhlareDB) Flush(ctx context.Context) (err error) {
 	// are blocked – after the lock is released, no new ingestion
 	// requests will be arriving to the old head.
 	f.headLock.Lock()
-	f.oldHead = f.head
-	f.head, err = NewHead(f.phlarectx, f.cfg, f.limiter)
-	if err != nil {
+	if f.head == nil {
 		f.headLock.Unlock()
-		return err
+		return nil
 	}
+	f.oldHead, f.head = f.head, nil
 	f.headLock.Unlock()
 	// Old head is available to readers during Flush.
 	if err = f.oldHead.Flush(ctx); err != nil {
@@ -438,12 +500,12 @@ func (f *PhlareDB) Flush(ctx context.Context) (err error) {
 	//  operation, consider making the lock more selective and block only
 	//  queries that target the old head.
 	f.headLock.Lock()
-	defer f.headLock.Unlock()
 	// Now that there are no in-flight queries we can move the head.
 	err = f.oldHead.Move()
 	// Propagate the new block to blockQuerier.
 	f.blockQuerier.AddBlockQuerierByMeta(f.oldHead.meta)
 	f.oldHead = nil
+	f.headLock.Unlock()
 	// The old in-memory head is not available to queries from now on.
 	return err
 }

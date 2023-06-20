@@ -17,7 +17,6 @@ import (
 	"github.com/gogo/status"
 	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
-	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
@@ -847,23 +846,12 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 	return connect.NewResponse(response), nil
 }
 
-// Closes closes the head
-func (h *Head) Close() error {
-	close(h.stopCh)
-
-	var merr multierror.MultiError
-	for _, t := range h.tables {
-		merr.Add(t.Close())
-	}
-
-	h.wg.Wait()
-	return merr.Err()
-}
-
 // Flush closes the head and writes data to disk. No ingestion requests should
 // be made concurrently with the call, or after it returns.
 // The call is thread-safe for reads.
 func (h *Head) Flush(ctx context.Context) error {
+	close(h.stopCh)
+	h.wg.Wait()
 	start := time.Now()
 	defer func() {
 		h.metrics.flushedBlockDurationSeconds.Observe(time.Since(start).Seconds())
