@@ -62,13 +62,15 @@ func Test_Relabeling(t *testing.T) {
 				[]model.LabelSet{
 					{
 						labeNameF("__meta_kubernetes_pod_annotation_profiles_grafana_com_%s_scrape", ty): "true",
-						"__address__": "foo:1234",
+						"__address__":  "foo:1234",
+						"service_name": "bar",
 					},
 				},
 				[]labels.Labels{
 					{
 						labels.Label{Name: "instance", Value: "foo:1234"},
 						labels.Label{Name: "job", Value: fmt.Sprintf("kubernetes-pods-%s-default-name", ty)},
+						labels.Label{Name: "service_name", Value: "bar"},
 					},
 				},
 			},
@@ -79,13 +81,15 @@ func Test_Relabeling(t *testing.T) {
 						labeNameF("__meta_kubernetes_pod_annotation_profiles_grafana_com_%s_scrape", ty): "true",
 						labeNameF("__meta_kubernetes_pod_annotation_profiles_grafana_com_%s_port", ty):   "4100",
 
-						"__address__": "foo:1234",
+						"__address__":  "foo:1234",
+						"service_name": "bar",
 					},
 				},
 				[]labels.Labels{
 					{
 						labels.Label{Name: "instance", Value: "foo:4100"},
 						labels.Label{Name: "job", Value: fmt.Sprintf("kubernetes-pods-%s-default-name", ty)},
+						labels.Label{Name: "service_name", Value: "bar"},
 					},
 				},
 			},
@@ -96,13 +100,15 @@ func Test_Relabeling(t *testing.T) {
 						labeNameF("__meta_kubernetes_pod_annotation_profiles_grafana_com_%s_scrape", ty): "true",
 						labeNameF("__meta_kubernetes_pod_annotation_profiles_grafana_com_%s_port", ty):   "4100",
 
-						"__address__": "foo",
+						"__address__":  "foo",
+						"service_name": "bar",
 					},
 				},
 				[]labels.Labels{
 					{
 						labels.Label{Name: "instance", Value: "foo:4100"},
 						labels.Label{Name: "job", Value: fmt.Sprintf("kubernetes-pods-%s-default-name", ty)},
+						labels.Label{Name: "service_name", Value: "bar"},
 					},
 				},
 			},
@@ -114,7 +120,8 @@ func Test_Relabeling(t *testing.T) {
 						labeNameF("__meta_kubernetes_pod_annotation_profiles_grafana_com_%s_port_name", ty): "http2",
 
 						"__meta_kubernetes_pod_container_port_name": "http2",
-						"__address__": "foo:123",
+						"__address__":  "foo:123",
+						"service_name": "bar",
 					},
 					{
 						labeNameF("__meta_kubernetes_pod_annotation_profiles_grafana_com_%s_scrape", ty):    "true",
@@ -122,13 +129,15 @@ func Test_Relabeling(t *testing.T) {
 						labeNameF("__meta_kubernetes_pod_annotation_profiles_grafana_com_%s_port_name", ty): "http2",
 
 						"__meta_kubernetes_pod_container_port_name": "http",
-						"__address__": "foo:123",
+						"__address__":  "foo:123",
+						"service_name": "bar",
 					},
 				},
 				[]labels.Labels{
 					{
 						labels.Label{Name: "instance", Value: "foo:123"},
 						labels.Label{Name: "job", Value: fmt.Sprintf("kubernetes-pods-%s-custom-name", ty)},
+						labels.Label{Name: "service_name", Value: "bar"},
 					},
 				},
 			},
@@ -141,7 +150,8 @@ func Test_Relabeling(t *testing.T) {
 						labeNameF("__meta_kubernetes_pod_annotation_profiles_grafana_com_%s_port_name", ty): "http2",
 
 						"__meta_kubernetes_pod_container_port_name": "http2",
-						"__address__": "foo:123",
+						"__address__":  "foo:123",
+						"service_name": "bar",
 					},
 					{
 						labeNameF("__meta_kubernetes_pod_annotation_profiles_grafana_com_%s_scrape", ty):    "true",
@@ -149,13 +159,33 @@ func Test_Relabeling(t *testing.T) {
 						labeNameF("__meta_kubernetes_pod_annotation_profiles_grafana_com_%s_port_name", ty): "http2",
 
 						"__meta_kubernetes_pod_container_port_name": "http",
-						"__address__": "foo:123",
+						"__address__":  "foo:123",
+						"service_name": "bar",
 					},
 				},
 				[]labels.Labels{
 					{
 						labels.Label{Name: "instance", Value: "foo:4100"},
 						labels.Label{Name: "job", Value: fmt.Sprintf("kubernetes-pods-%s-custom-name", ty)},
+						labels.Label{Name: "service_name", Value: "bar"},
+					},
+				},
+			},
+			{
+				"service name from annotation",
+				[]model.LabelSet{
+					{
+						labeNameF("__meta_kubernetes_pod_annotation_profiles_grafana_com_%s_scrape", ty): "true",
+
+						"__meta_kubernetes_pod_annotation_pyroscope_io_service_name": "bar",
+						"__address__": "foo:123",
+					},
+				},
+				[]labels.Labels{
+					{
+						labels.Label{Name: "instance", Value: "foo:123"},
+						labels.Label{Name: "job", Value: fmt.Sprintf("kubernetes-pods-%s-default-name", ty)},
+						labels.Label{Name: "service_name", Value: "bar"},
 					},
 				},
 			},

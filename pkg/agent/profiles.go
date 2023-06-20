@@ -33,6 +33,8 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
+	phlaremodel "github.com/grafana/phlare/pkg/model"
+
 	agentv1v1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1"
 	"github.com/grafana/phlare/pkg/agent/scrape"
 )
@@ -167,7 +169,12 @@ func populateLabels(lset labels.Labels, cfg ScrapeConfig) (res, orig labels.Labe
 		lb.Set(model.InstanceLabel, addr)
 	}
 
+	if serviceName := lset.Get(phlaremodel.LabelNameServiceName); serviceName == "" {
+		lb.Set(phlaremodel.LabelNameServiceName, inferServiceName(lset))
+	}
+
 	res = lb.Labels()
+
 	for _, l := range res {
 		// Check label values are valid, drop the target if not.
 		if !model.LabelValue(l.Value).IsValid() {
@@ -307,4 +314,21 @@ func (tg *TargetGroup) TargetsFromGroup(group *targetgroup.Group) ([]*Target, []
 	}
 
 	return targets, droppedTargets, nil
+}
+
+func inferServiceName(lset labels.Labels) string {
+	k8sServiceName := lset.Get(phlaremodel.LabelNameServiceNameK8s)
+	if k8sServiceName != "" {
+		return k8sServiceName
+	}
+	k8sNamespace := lset.Get("__meta_kubernetes_namespace")
+	k8sContainer := lset.Get("__meta_kubernetes_pod_container_name")
+	if k8sNamespace != "" && k8sContainer != "" {
+		return fmt.Sprintf("%s/%s", k8sNamespace, k8sContainer)
+	}
+	dockerContainer := lset.Get("__meta_docker_container_name")
+	if dockerContainer != "" {
+		return dockerContainer
+	}
+	return "unspecified"
 }

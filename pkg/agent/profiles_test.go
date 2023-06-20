@@ -10,6 +10,8 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
+
+	phlaremodel "github.com/grafana/phlare/pkg/model"
 )
 
 func TestPopulateLabels(t *testing.T) {
@@ -24,8 +26,9 @@ func TestPopulateLabels(t *testing.T) {
 		{
 			name: "regular case",
 			labels: labels.FromMap(map[string]string{
-				model.AddressLabel: "1.2.3.4:1000",
-				"custom":           "value",
+				model.AddressLabel:               "1.2.3.4:1000",
+				phlaremodel.LabelNameServiceName: "svc",
+				"custom":                         "value",
 			}),
 			cfg: ScrapeConfig{
 				Scheme:         "https",
@@ -34,32 +37,35 @@ func TestPopulateLabels(t *testing.T) {
 				ScrapeTimeout:  2 * model.Duration(time.Second),
 			},
 			wantRes: labels.FromMap(map[string]string{
-				model.AddressLabel:        "1.2.3.4:1000",
-				model.InstanceLabel:       "1.2.3.4:1000",
-				model.SchemeLabel:         "https",
-				model.JobLabel:            "job",
-				model.ScrapeIntervalLabel: "1s",
-				model.ScrapeTimeoutLabel:  "2s",
-				"custom":                  "value",
+				model.AddressLabel:               "1.2.3.4:1000",
+				phlaremodel.LabelNameServiceName: "svc",
+				model.InstanceLabel:              "1.2.3.4:1000",
+				model.SchemeLabel:                "https",
+				model.JobLabel:                   "job",
+				model.ScrapeIntervalLabel:        "1s",
+				model.ScrapeTimeoutLabel:         "2s",
+				"custom":                         "value",
 			}),
 			wantOrig: labels.FromMap(map[string]string{
-				model.AddressLabel:        "1.2.3.4:1000",
-				model.SchemeLabel:         "https",
-				model.JobLabel:            "job",
-				model.ScrapeIntervalLabel: "1s",
-				model.ScrapeTimeoutLabel:  "2s",
-				"custom":                  "value",
+				model.AddressLabel:               "1.2.3.4:1000",
+				phlaremodel.LabelNameServiceName: "svc",
+				model.SchemeLabel:                "https",
+				model.JobLabel:                   "job",
+				model.ScrapeIntervalLabel:        "1s",
+				model.ScrapeTimeoutLabel:         "2s",
+				"custom":                         "value",
 			}),
 			wantErr: false,
 		},
 		{
 			name: "overwrite scrape config",
 			labels: labels.FromMap(map[string]string{
-				model.AddressLabel:        "1.2.3.4",
-				model.SchemeLabel:         "http",
-				model.JobLabel:            "custom-job",
-				model.ScrapeIntervalLabel: "2s",
-				model.ScrapeTimeoutLabel:  "3s",
+				model.AddressLabel:               "1.2.3.4",
+				phlaremodel.LabelNameServiceName: "svc",
+				model.SchemeLabel:                "http",
+				model.JobLabel:                   "custom-job",
+				model.ScrapeIntervalLabel:        "2s",
+				model.ScrapeTimeoutLabel:         "3s",
 			}),
 			cfg: ScrapeConfig{
 				Scheme:         "https",
@@ -68,27 +74,30 @@ func TestPopulateLabels(t *testing.T) {
 				ScrapeTimeout:  2 * model.Duration(time.Second),
 			},
 			wantRes: labels.FromMap(map[string]string{
-				model.AddressLabel:        "1.2.3.4:80",
-				model.InstanceLabel:       "1.2.3.4:80",
-				model.SchemeLabel:         "http",
-				model.JobLabel:            "custom-job",
-				model.ScrapeIntervalLabel: "2s",
-				model.ScrapeTimeoutLabel:  "3s",
+				model.AddressLabel:               "1.2.3.4:80",
+				phlaremodel.LabelNameServiceName: "svc",
+				model.InstanceLabel:              "1.2.3.4:80",
+				model.SchemeLabel:                "http",
+				model.JobLabel:                   "custom-job",
+				model.ScrapeIntervalLabel:        "2s",
+				model.ScrapeTimeoutLabel:         "3s",
 			}),
 			wantOrig: labels.FromMap(map[string]string{
-				model.AddressLabel:        "1.2.3.4",
-				model.SchemeLabel:         "http",
-				model.JobLabel:            "custom-job",
-				model.ScrapeIntervalLabel: "2s",
-				model.ScrapeTimeoutLabel:  "3s",
+				model.AddressLabel:               "1.2.3.4",
+				phlaremodel.LabelNameServiceName: "svc",
+				model.SchemeLabel:                "http",
+				model.JobLabel:                   "custom-job",
+				model.ScrapeIntervalLabel:        "2s",
+				model.ScrapeTimeoutLabel:         "3s",
 			}),
 			wantErr: false,
 		},
 		{
 			name: "ipv6 instance label",
 			labels: labels.FromMap(map[string]string{
-				model.AddressLabel:  "[::1]",
-				model.InstanceLabel: "custom-instance",
+				model.AddressLabel:               "[::1]",
+				phlaremodel.LabelNameServiceName: "svc",
+				model.InstanceLabel:              "custom-instance",
 			}),
 			cfg: ScrapeConfig{
 				Scheme:         "https",
@@ -97,20 +106,22 @@ func TestPopulateLabels(t *testing.T) {
 				ScrapeTimeout:  2 * model.Duration(time.Second),
 			},
 			wantRes: labels.FromMap(map[string]string{
-				model.AddressLabel:        "[::1]:443",
-				model.InstanceLabel:       "custom-instance",
-				model.SchemeLabel:         "https",
-				model.JobLabel:            "job",
-				model.ScrapeIntervalLabel: "1s",
-				model.ScrapeTimeoutLabel:  "2s",
+				model.AddressLabel:               "[::1]:443",
+				phlaremodel.LabelNameServiceName: "svc",
+				model.InstanceLabel:              "custom-instance",
+				model.SchemeLabel:                "https",
+				model.JobLabel:                   "job",
+				model.ScrapeIntervalLabel:        "1s",
+				model.ScrapeTimeoutLabel:         "2s",
 			}),
 			wantOrig: labels.FromMap(map[string]string{
-				model.AddressLabel:        "[::1]",
-				model.InstanceLabel:       "custom-instance",
-				model.SchemeLabel:         "https",
-				model.JobLabel:            "job",
-				model.ScrapeIntervalLabel: "1s",
-				model.ScrapeTimeoutLabel:  "2s",
+				model.AddressLabel:               "[::1]",
+				phlaremodel.LabelNameServiceName: "svc",
+				model.InstanceLabel:              "custom-instance",
+				model.SchemeLabel:                "https",
+				model.JobLabel:                   "job",
+				model.ScrapeIntervalLabel:        "1s",
+				model.ScrapeTimeoutLabel:         "2s",
 			}),
 			wantErr: false,
 		},
@@ -128,8 +139,11 @@ func TestPopulateLabels(t *testing.T) {
 			wantErr:  true,
 		},
 		{
-			name:   "address label missing but relabelling",
-			labels: labels.FromStrings("custom", "host:1234"),
+			name: "address label missing but relabelling",
+			labels: labels.FromMap(map[string]string{
+				"custom":                            "host:1234",
+				phlaremodel.LabelNameServiceNameK8s: "svc",
+			}),
 			cfg: ScrapeConfig{
 				Scheme:         "https",
 				JobName:        "job",
@@ -146,21 +160,23 @@ func TestPopulateLabels(t *testing.T) {
 				},
 			},
 			wantRes: labels.FromMap(map[string]string{
-				model.AddressLabel:        "host:1234",
-				model.InstanceLabel:       "host:1234",
-				model.SchemeLabel:         "https",
-				model.JobLabel:            "job",
-				model.ScrapeIntervalLabel: "1s",
-				model.ScrapeTimeoutLabel:  "2s",
-				"custom":                  "host:1234",
+				model.AddressLabel:               "host:1234",
+				phlaremodel.LabelNameServiceName: "svc",
+				model.InstanceLabel:              "host:1234",
+				model.SchemeLabel:                "https",
+				model.JobLabel:                   "job",
+				model.ScrapeIntervalLabel:        "1s",
+				model.ScrapeTimeoutLabel:         "2s",
+				"custom":                         "host:1234",
 			}),
 			wantOrig: labels.FromMap(map[string]string{
-				model.AddressLabel:        "host:1234",
-				model.SchemeLabel:         "https",
-				model.JobLabel:            "job",
-				model.ScrapeIntervalLabel: "1s",
-				model.ScrapeTimeoutLabel:  "2s",
-				"custom":                  "host:1234",
+				model.AddressLabel:                  "host:1234",
+				phlaremodel.LabelNameServiceNameK8s: "svc",
+				model.SchemeLabel:                   "https",
+				model.JobLabel:                      "job",
+				model.ScrapeIntervalLabel:           "1s",
+				model.ScrapeTimeoutLabel:            "2s",
+				"custom":                            "host:1234",
 			}),
 		},
 		{
@@ -260,6 +276,106 @@ func TestPopulateLabels(t *testing.T) {
 			wantOrig: nil,
 			wantErr:  true,
 		},
+		{
+			name: "service name unspecified",
+			labels: labels.FromMap(map[string]string{
+				model.AddressLabel: "1.2.3.4:1000",
+			}),
+			cfg: ScrapeConfig{
+				ScrapeInterval: model.Duration(time.Second),
+				ScrapeTimeout:  2 * model.Duration(time.Second),
+			},
+			wantRes: labels.FromMap(map[string]string{
+				model.AddressLabel:               "1.2.3.4:1000",
+				phlaremodel.LabelNameServiceName: "unspecified",
+				model.InstanceLabel:              "1.2.3.4:1000",
+				model.ScrapeIntervalLabel:        "1s",
+				model.ScrapeTimeoutLabel:         "2s",
+			}),
+			wantOrig: labels.FromMap(map[string]string{
+				model.AddressLabel:        "1.2.3.4:1000",
+				model.ScrapeIntervalLabel: "1s",
+				model.ScrapeTimeoutLabel:  "2s",
+			}),
+			wantErr: false,
+		},
+		{
+			name: "service name inferred from pod annotation",
+			labels: labels.FromMap(map[string]string{
+				model.AddressLabel: "1.2.3.4:1000",
+				"__meta_kubernetes_pod_annotation_pyroscope_io_service_name": "k8s-svc",
+			}),
+			cfg: ScrapeConfig{
+				ScrapeInterval: model.Duration(time.Second),
+				ScrapeTimeout:  2 * model.Duration(time.Second),
+			},
+			wantRes: labels.FromMap(map[string]string{
+				model.AddressLabel:               "1.2.3.4:1000",
+				phlaremodel.LabelNameServiceName: "k8s-svc",
+				model.InstanceLabel:              "1.2.3.4:1000",
+				model.ScrapeIntervalLabel:        "1s",
+				model.ScrapeTimeoutLabel:         "2s",
+			}),
+			wantOrig: labels.FromMap(map[string]string{
+				model.AddressLabel: "1.2.3.4:1000",
+				"__meta_kubernetes_pod_annotation_pyroscope_io_service_name": "k8s-svc",
+				model.ScrapeIntervalLabel:                                    "1s",
+				model.ScrapeTimeoutLabel:                                     "2s",
+			}),
+			wantErr: false,
+		},
+		{
+			name: "service name inferred from k8s",
+			labels: labels.FromMap(map[string]string{
+				model.AddressLabel:                     "1.2.3.4:1000",
+				"__meta_kubernetes_namespace":          "ns",
+				"__meta_kubernetes_pod_container_name": "container",
+			}),
+			cfg: ScrapeConfig{
+				ScrapeInterval: model.Duration(time.Second),
+				ScrapeTimeout:  2 * model.Duration(time.Second),
+			},
+			wantRes: labels.FromMap(map[string]string{
+				model.AddressLabel:               "1.2.3.4:1000",
+				phlaremodel.LabelNameServiceName: "ns/container",
+				model.InstanceLabel:              "1.2.3.4:1000",
+				model.ScrapeIntervalLabel:        "1s",
+				model.ScrapeTimeoutLabel:         "2s",
+			}),
+			wantOrig: labels.FromMap(map[string]string{
+				model.AddressLabel:                     "1.2.3.4:1000",
+				"__meta_kubernetes_namespace":          "ns",
+				"__meta_kubernetes_pod_container_name": "container",
+				model.ScrapeIntervalLabel:              "1s",
+				model.ScrapeTimeoutLabel:               "2s",
+			}),
+			wantErr: false,
+		},
+		{
+			name: "service name inferred from docker",
+			labels: labels.FromMap(map[string]string{
+				model.AddressLabel:             "1.2.3.4:1000",
+				"__meta_docker_container_name": "container",
+			}),
+			cfg: ScrapeConfig{
+				ScrapeInterval: model.Duration(time.Second),
+				ScrapeTimeout:  2 * model.Duration(time.Second),
+			},
+			wantRes: labels.FromMap(map[string]string{
+				model.AddressLabel:               "1.2.3.4:1000",
+				phlaremodel.LabelNameServiceName: "container",
+				model.InstanceLabel:              "1.2.3.4:1000",
+				model.ScrapeIntervalLabel:        "1s",
+				model.ScrapeTimeoutLabel:         "2s",
+			}),
+			wantOrig: labels.FromMap(map[string]string{
+				model.AddressLabel:             "1.2.3.4:1000",
+				"__meta_docker_container_name": "container",
+				model.ScrapeIntervalLabel:      "1s",
+				model.ScrapeTimeoutLabel:       "2s",
+			}),
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -302,7 +418,10 @@ func TestTargetGroup_targetsFromGroup(t *testing.T) {
 			},
 			group: &targetgroup.Group{
 				Targets: []model.LabelSet{
-					{model.AddressLabel: "localhost:9000"},
+					{
+						model.AddressLabel:               "localhost:9000",
+						phlaremodel.LabelNameServiceName: "svc",
+					},
 				},
 			},
 			wantTargets: 1,
@@ -327,7 +446,10 @@ func TestTargetGroup_targetsFromGroup(t *testing.T) {
 			},
 			group: &targetgroup.Group{
 				Targets: []model.LabelSet{
-					{model.AddressLabel: "localhost:9000"},
+					{
+						model.AddressLabel:               "localhost:9000",
+						phlaremodel.LabelNameServiceName: "svc",
+					},
 				},
 				Labels: model.LabelSet{
 					model.ScrapeIntervalLabel: "30s",

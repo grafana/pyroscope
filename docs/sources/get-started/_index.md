@@ -61,7 +61,10 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
           scrape_interval: "15s"
           static_configs:
             - targets: ["127.0.0.1:4100"]
+              labels:
+                service_name: "service-demo"
       ```
+
     - To use a demo file, download our [demo configuration](https://raw.githubusercontent.com/grafana/phlare/main/cmd/phlare/phlare.yaml):
 
       ```bash
