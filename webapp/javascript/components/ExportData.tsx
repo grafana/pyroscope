@@ -9,6 +9,7 @@ import { buildRenderURL } from '@webapp/util/updateRequests';
 import { convertPresetsToDate } from '@webapp/util/formatDate';
 import { Profile } from '@pyroscope/models/src';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import basename from '@webapp/util/baseurl';
 import showModalWithInput from './Modals/ModalWithInput';
 import styles from './ExportData.module.scss';
 
@@ -207,13 +208,13 @@ function ExportData(props: ExportDataProps) {
       // This build url won't work in the following cases:
       // * absence of a public server (grafana, standalone)
       // * diff mode
-      const url = `${buildRenderURL({
+      let url = `${buildRenderURL({
         from: flamebearer.metadata.startTime.toString(),
         until: flamebearer.metadata.endTime.toString(),
         query: flamebearer.metadata.query,
         maxNodes: flamebearer.metadata.maxNodes,
       })}&format=pprof`;
-
+      url = baseURLCompatible(url);
       const downloadAnchorNode = document.createElement('a');
       downloadAnchorNode.setAttribute('href', url);
       document.body.appendChild(downloadAnchorNode); // required for firefox
@@ -247,8 +248,8 @@ function ExportData(props: ExportDataProps) {
               query: flamebearer.metadata.query,
               maxNodes: flamebearer.metadata.maxNodes,
             });
-      const urlWithFormat = `${url}&format=html`;
-
+      let urlWithFormat = `${url}&format=html`;
+      urlWithFormat = baseURLCompatible(urlWithFormat);
       const defaultExportName = getFilename(
         flamebearer.metadata.appName,
         flamebearer.metadata.startTime,
@@ -347,6 +348,14 @@ function ExportData(props: ExportDataProps) {
       </OutsideClickHandler>
     </div>
   );
+}
+
+function baseURLCompatible(url: string) {
+  const base = basename();
+  if (base) {
+    url = `${base}${url}`;
+  }
+  return url;
 }
 
 const dateFormat = 'yyyy-MM-dd_HHmm';
