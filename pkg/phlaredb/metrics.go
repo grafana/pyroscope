@@ -29,6 +29,7 @@ type headMetrics struct {
 
 	sampleValuesIngested *prometheus.CounterVec
 	sampleValuesReceived *prometheus.CounterVec
+	samples              prometheus.Gauge
 
 	flushedFileSizeBytes        *prometheus.HistogramVec
 	flushedBlockSizeBytes       prometheus.Histogram
@@ -145,6 +146,10 @@ func newHeadMetrics(reg prometheus.Registerer) *headMetrics {
 			//  [512KB, 1MB, 2MB, 4MB, 8MB, 16MB, 32MB, 64MB, 128MB, 256MB, 512MB]
 			Buckets: prometheus.ExponentialBuckets(512*1024, 2, 11),
 		}),
+		samples: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "pyroscope_head_samples",
+			Help: "Number of samples in the head.",
+		}),
 	}
 
 	m.register(reg)
@@ -192,6 +197,7 @@ type blocksMetrics struct {
 	query *query.Metrics
 
 	blockOpeningLatency prometheus.Histogram
+	blockOpened         prometheus.Gauge
 }
 
 func newBlocksMetrics(reg prometheus.Registerer) *blocksMetrics {
@@ -201,8 +207,13 @@ func newBlocksMetrics(reg prometheus.Registerer) *blocksMetrics {
 			Name: "pyroscopedb_block_opening_duration",
 			Help: "Latency of opening a block in seconds",
 		}),
+		blockOpened: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "pyroscopedb_blocks_currently_open",
+			Help: "Number of blocks opened",
+		}),
 	}
 	m.blockOpeningLatency = util.RegisterOrGet(reg, m.blockOpeningLatency)
+	m.blockOpened = util.RegisterOrGet(reg, m.blockOpened)
 	return m
 }
 

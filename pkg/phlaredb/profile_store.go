@@ -279,6 +279,7 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 	defer s.profilesLock.Unlock()
 	for i := range s.slice[:count] {
 		// don't retain profiles and samples in memory as re-slice.
+		s.metrics.samples.Sub(float64(len(s.slice[i].Samples)))
 		s.slice[i] = nil
 	}
 	// reset slice and metrics
@@ -420,6 +421,7 @@ func (s *profileStore) ingest(_ context.Context, profiles []*schemav1.Profile, l
 
 		// add to slice
 		s.slice = append(s.slice, p)
+		s.metrics.samples.Add(float64(len(p.Samples)))
 
 	}
 
