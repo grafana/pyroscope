@@ -101,7 +101,10 @@ func TestQuerierBlockEviction(t *testing.T) {
 	for _, tc := range testCases {
 		q := BlockQuerier{queriers: make([]*singleBlockQuerier, len(tc.blocks))}
 		for i, b := range tc.blocks {
-			q.queriers[i] = &singleBlockQuerier{meta: &block.Meta{ULID: ulid.MustParse(b)}}
+			q.queriers[i] = &singleBlockQuerier{
+				meta:    &block.Meta{ULID: ulid.MustParse(b)},
+				metrics: newBlocksMetrics(nil),
+			}
 		}
 
 		evicted, err := q.evict(ulid.MustParse(blockToEvict))
