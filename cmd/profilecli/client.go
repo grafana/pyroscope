@@ -21,7 +21,8 @@ type phlareClient struct {
 		Username string
 		Password string
 	}
-	client *http.Client
+	defaultTransport http.RoundTripper
+	client           *http.Client
 }
 
 type authRoundTripper struct {
@@ -45,9 +46,12 @@ func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 
 func (c *phlareClient) httpClient() *http.Client {
 	if c.client == nil {
+		if c.defaultTransport == nil {
+			c.defaultTransport = http.DefaultTransport
+		}
 		c.client = &http.Client{Transport: &authRoundTripper{
 			client: c,
-			next:   http.DefaultTransport,
+			next:   c.defaultTransport,
 		}}
 	}
 	return c.client
