@@ -95,23 +95,30 @@ func (m *ProfileBuilder) Name() string {
 	return ""
 }
 
-func (m *ProfileBuilder) CPUProfile() *ProfileBuilder {
-	m.Profile.SampleType = []*profilev1.ValueType{
-		{
-			Unit: m.addString("nanoseconds"),
-			Type: m.addString("cpu"),
-		},
-	}
-	m.Profile.DefaultSampleType = m.addString("cpu")
+func (m *ProfileBuilder) AddSampleType(typ, unit string) {
+	m.Profile.SampleType = append(m.Profile.SampleType, &profilev1.ValueType{
+		Type: m.addString(typ),
+		Unit: m.addString(unit),
+	})
+}
+
+func (m *ProfileBuilder) CustomProfile(name, typ, unit, periodType, periodUnit string) {
+	m.AddSampleType(typ, unit)
+	m.Profile.DefaultSampleType = m.addString(typ)
+
 	m.Profile.PeriodType = &profilev1.ValueType{
-		Unit: m.addString("nanoseconds"),
-		Type: m.addString("cpu"),
+		Type: m.addString(periodType),
+		Unit: m.addString(periodUnit),
 	}
+
 	m.Labels = append(m.Labels, &typesv1.LabelPair{
 		Name:  model.MetricNameLabel,
-		Value: "process_cpu",
+		Value: name,
 	})
+}
 
+func (m *ProfileBuilder) CPUProfile() *ProfileBuilder {
+	m.CustomProfile("process_cpu", "cpu", "nanoseconds", "cpu", "nanoseconds")
 	return m
 }
 

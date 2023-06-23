@@ -56,6 +56,9 @@ func main() {
 	uploadCmd := app.Command("upload", "Upload profile(s).")
 	uploadParams := addUploadParams(uploadCmd)
 
+	canaryExporterCmd := app.Command("canary-exporter", "Run the canary exporter.")
+	canaryExporterParams := addCanaryExporterParams(canaryExporterCmd)
+
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -79,6 +82,10 @@ func main() {
 		}
 	case uploadCmd.FullCommand():
 		if err := upload(ctx, uploadParams); err != nil {
+			os.Exit(checkError(err))
+		}
+	case canaryExporterCmd.FullCommand():
+		if err := newCanaryExporter(canaryExporterParams).run(ctx); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:
