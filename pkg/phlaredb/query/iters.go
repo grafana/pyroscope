@@ -403,6 +403,8 @@ func (c *ColumnIterator) iterate(ctx context.Context, readSize int) {
 							case c.ch <- newBuffer:
 							case <-c.quit:
 								return
+							case <-ctx.Done():
+								return
 							}
 						} else {
 							// All values excluded, we go ahead and immediately

@@ -25,6 +25,7 @@ var (
 	profilesSchema = parquet.NewSchema("Profile", phlareparquet.Group{
 		phlareparquet.NewGroupField("ID", parquet.UUID()),
 		phlareparquet.NewGroupField("SeriesIndex", parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
+		phlareparquet.NewGroupField("StacktracePartition", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("Samples", parquet.List(sampleField)),
 		phlareparquet.NewGroupField("DropFrames", parquet.Optional(stringRef)),
 		phlareparquet.NewGroupField("KeepFrames", parquet.Optional(stringRef)),
@@ -50,6 +51,9 @@ type Profile struct {
 	// writing the TSDB index. The SeriesIndex is different from block to
 	// block.
 	SeriesIndex uint32 `parquet:",delta"`
+
+	// StacktracePartition is the partition ID of the stacktrace table that this profile belongs to.
+	StacktracePartition uint64 `parquet:",delta"`
 
 	// SeriesFingerprint references the underlying series and is purely based
 	// on the label values. The value is consistent for the same label set (so

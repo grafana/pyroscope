@@ -78,6 +78,7 @@ func newProfileStore(phlarectx context.Context) *profileStore {
 	s.writer = parquet.NewGenericWriter[*schemav1.Profile](io.Discard, s.persister.Schema(),
 		parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "phlaredb-parquet-buffers*")),
 		parquet.CreatedBy("github.com/grafana/phlare/", build.Version, build.Revision),
+		parquet.PageBufferSize(3*1024*1024),
 	)
 
 	return s

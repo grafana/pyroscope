@@ -571,6 +571,8 @@ github.com/dgraph-io/ristretto v0.1.1 h1:6CWw5tJNgpegArSHpNHJKldNeq03FQCwYvfMVWa
 github.com/dgraph-io/ristretto v0.1.1/go.mod h1:S1GPSBCYCIhmVNfcth17y2zZtQT6wzkzgwUve0VDWWA=
 github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 h1:tdlZCpZ/P9DhczCTSixgIKmwPv6+wP5DGjqLYw5SUiA=
 github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
+github.com/dgryski/go-groupvarint v0.0.0-20211110171037-f5865eef0641 h1:z0nAHq7J9u9XvP/iyxka0dG6vGobRH5dAz38APXRCKo=
+github.com/dgryski/go-groupvarint v0.0.0-20211110171037-f5865eef0641/go.mod h1:MlkUQveSLEDbIgq2r1e++tSf0zfzU9mQpa9Qkczl+9Y=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/rVNCu3HqELle0jiPLLBs70cWOduZpkS1E78=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGF7a8hSLbxyZXjz+1KgoB3wDUb6vlszIc=
 github.com/digitalocean/godo v1.98.0 h1:potyC1eD0N9n5/P4/WmJuKgg+OGYZOBWEW+/aKTX6QQ=
