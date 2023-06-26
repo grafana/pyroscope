@@ -35,6 +35,7 @@ import (
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/phlare/pkg/phlaredb/symdb"
 	"github.com/grafana/phlare/pkg/slices"
 )
 
@@ -84,8 +85,7 @@ type rewriter struct {
 	// nolint unused
 	mappings idConversionTable
 	// nolint unused
-	locations   idConversionTable
-	stacktraces idConversionTable
+	locations idConversionTable
 }
 
 type storeHelper[M Models] interface {
@@ -132,12 +132,13 @@ type Head struct {
 	metaLock sync.RWMutex
 	meta     *block.Meta
 
-	parquetConfig   *ParquetConfig
-	strings         deduplicatingSlice[string, string, *stringsHelper, *schemav1.StringPersister]
-	mappings        deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper, *schemav1.MappingPersister]
-	functions       deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper, *schemav1.FunctionPersister]
-	locations       deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper, *schemav1.LocationPersister]
-	stacktraces     deduplicatingSlice[*schemav1.Stacktrace, stacktracesKey, *stacktracesHelper, *schemav1.StacktracePersister] // a stacktrace is a slice of location ids
+	parquetConfig *ParquetConfig
+	strings       deduplicatingSlice[string, string, *stringsHelper, *schemav1.StringPersister]
+	mappings      deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper, *schemav1.MappingPersister]
+	functions     deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper, *schemav1.FunctionPersister]
+	locations     deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper, *schemav1.LocationPersister]
+	symbolDB      *symdb.SymDB
+
 	profiles        *profileStore
 	totalSamples    *atomic.Uint64
 	tables          []Table
@@ -194,7 +195,6 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 		&h.mappings,
 		&h.functions,
 		&h.locations,
-		&h.stacktraces,
 		h.profiles,
 	}
 	for _, t := range h.tables {
@@ -202,6 +202,10 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 			return nil, err
 		}
 	}
+	h.symbolDB = symdb.NewSymDB(
+		symdb.DefaultConfig().
+			WithDirectory(filepath.Join(h.headPath, symdb.DefaultDirName)),
+	)
 
 	h.delta = newDeltaProfiles()
 
@@ -219,7 +223,7 @@ func (h *Head) MemorySize() uint64 {
 	for _, t := range h.tables {
 		size += t.MemorySize()
 	}
-
+	size += h.symbolDB.MemorySize()
 	return size
 }
 
@@ -229,6 +233,7 @@ func (h *Head) Size() uint64 {
 	for _, t := range h.tables {
 		size += t.Size()
 	}
+	size += h.symbolDB.Size()
 
 	return size
 }
@@ -266,16 +271,18 @@ func (h *Head) loop() {
 	}
 }
 
-func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.Sample) ([][]*schemav1.Sample, error) {
+func (h *Head) convertSamples(_ context.Context, r *rewriter, stacktracePartition uint64, in []*profilev1.Sample) [][]*schemav1.Sample {
 	if len(in) == 0 {
-		return nil, nil
+		return nil
 	}
 
 	// populate output
 	var (
-		out         = make([][]*schemav1.Sample, len(in[0].Value))
-		stacktraces = make([]*schemav1.Stacktrace, len(in))
+		out            = make([][]*schemav1.Sample, len(in[0].Value))
+		stacktraces    = make([]*schemav1.Stacktrace, len(in))
+		stacktracesIds = uint32SlicePool.Get()
 	)
+
 	for idxType := range out {
 		out[idxType] = make([]*schemav1.Sample, len(in))
 	}
@@ -296,21 +303,31 @@ func (h *Head) convertSamples(ctx context.Context, r *rewriter, in []*profilev1.
 			// will copy it, if it is required to be retained.
 			LocationIDs: in[idxSample].LocationId,
 		}
+		for i := range stacktraces[idxSample].LocationIDs {
+			r.locations.rewriteUint64(&stacktraces[idxSample].LocationIDs[i])
+		}
 	}
+	appender := h.symbolDB.MappingWriter(stacktracePartition).StacktraceAppender()
+	defer appender.Release()
 
-	// ingest stacktraces
-	if err := h.stacktraces.ingest(ctx, stacktraces, r); err != nil {
-		return nil, err
+	if cap(stacktracesIds) < len(stacktraces) {
+		stacktracesIds = make([]uint32, len(stacktraces))
 	}
+	stacktracesIds = stacktracesIds[:len(stacktraces)]
+	defer uint32SlicePool.Put(stacktracesIds)
+
+	appender.AppendStacktrace(stacktracesIds, stacktraces)
+
+	h.metrics.sizeBytes.WithLabelValues("stacktraces").Set(float64(h.symbolDB.MemorySize()))
 
 	// reference stacktraces
 	for idxType := range out {
 		for idxSample := range out[idxType] {
-			out[idxType][idxSample].StacktraceID = uint64(r.stacktraces[int64(idxSample)])
+			out[idxType][idxSample].StacktraceID = uint64(stacktracesIds[int64(idxSample)])
 		}
 	}
 
-	return out, nil
+	return out
 }
 
 func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*typesv1.LabelPair) error {
@@ -321,6 +338,9 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 			return err
 		}
 	}
+
+	// determine the stacktraces partition ID
+	stacktracePartition := phlaremodel.StacktracePartitionFromProfile(labels, p)
 
 	metricName := phlaremodel.Labels(externalLabels).Get(model.MetricNameLabel)
 
@@ -343,10 +363,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		return err
 	}
 
-	samplesPerType, err := h.convertSamples(ctx, rewrites, p.Sample)
-	if err != nil {
-		return err
-	}
+	samplesPerType := h.convertSamples(ctx, rewrites, stacktracePartition, p.Sample)
 
 	var profileIngested bool
 	for idxType := range samplesPerType {
@@ -373,15 +390,16 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 			samples = copySlice(samples)
 		}
 		profile := &schemav1.Profile{
-			ID:                id,
-			SeriesFingerprint: seriesFingerprints[idxType],
-			Samples:           samples,
-			DropFrames:        p.DropFrames,
-			KeepFrames:        p.KeepFrames,
-			TimeNanos:         p.TimeNanos,
-			DurationNanos:     p.DurationNanos,
-			Comments:          copySlice(p.Comment),
-			DefaultSampleType: p.DefaultSampleType,
+			ID:                  id,
+			SeriesFingerprint:   seriesFingerprints[idxType],
+			StacktracePartition: stacktracePartition,
+			Samples:             samples,
+			DropFrames:          p.DropFrames,
+			KeepFrames:          p.KeepFrames,
+			TimeNanos:           p.TimeNanos,
+			DurationNanos:       p.DurationNanos,
+			Comments:            copySlice(p.Comment),
+			DefaultSampleType:   p.DefaultSampleType,
 		}
 
 		profile = h.delta.computeDelta(profile, labels[idxType])
@@ -533,129 +551,167 @@ func (h *Head) Queriers() Queriers {
 }
 
 // add the location IDs to the stacktraces
-func (h *Head) resolveStacktraces(ctx context.Context, stacktraceSamples stacktraceSampleMap) *ingestv1.MergeProfilesStacktracesResult {
+func (h *Head) resolveStacktraces(ctx context.Context, stacktracesByMapping stacktracesByMapping) *ingestv1.MergeProfilesStacktracesResult {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "resolveStacktraces - Head")
 	defer sp.Finish()
 
 	names := []string{}
 	functions := map[int64]int{}
 
-	h.stacktraces.lock.RLock()
 	h.locations.lock.RLock()
 	h.functions.lock.RLock()
 	h.strings.lock.RLock()
 	defer func() {
-		h.stacktraces.lock.RUnlock()
 		h.locations.lock.RUnlock()
 		h.functions.lock.RUnlock()
 		h.strings.lock.RUnlock()
 	}()
 
 	sp.LogFields(otlog.String("msg", "building MergeProfilesStacktracesResult"))
-	for stacktraceID := range stacktraceSamples {
-		locs := h.stacktraces.slice[stacktraceID].LocationIDs
-		fnIds := make([]int32, 0, 2*len(locs))
-		for _, loc := range locs {
-			for _, line := range h.locations.slice[loc].Line {
-				fnNameID := h.functions.slice[line.FunctionId].Name
-				pos, ok := functions[fnNameID]
-				if !ok {
-					functions[fnNameID] = len(names)
-					fnIds = append(fnIds, int32(len(names)))
-					names = append(names, h.strings.slice[h.functions.slice[line.FunctionId].Name])
-					continue
-				}
-				fnIds = append(fnIds, int32(pos))
+	_ = stacktracesByMapping.ForEach(
+		func(mapping uint64, stacktraceSamples stacktraceSampleMap) error {
+			mp, ok := h.symbolDB.MappingReader(mapping)
+			if !ok {
+				return nil
 			}
-		}
-		stacktraceSamples[stacktraceID].FunctionIds = fnIds
-	}
+			resolver := mp.StacktraceResolver()
+			defer resolver.Release()
+			// sort the stacktrace IDs as expected by the resolver
+			stacktraceIDs := stacktraceSamples.Ids()
+			sort.Slice(stacktraceIDs, func(i, j int) bool {
+				return stacktraceIDs[i] < stacktraceIDs[j]
+			})
+			return resolver.ResolveStacktraces(
+				ctx,
+				symdb.StacktraceInserterFn(
+					func(stacktraceID uint32, locs []int32) {
+						fnIds := make([]int32, 0, 2*len(locs))
+						for _, loc := range locs {
+							for _, line := range h.locations.slice[loc].Line {
+								fnNameID := h.functions.slice[line.FunctionId].Name
+								pos, ok := functions[fnNameID]
+								if !ok {
+									functions[fnNameID] = len(names)
+									fnIds = append(fnIds, int32(len(names)))
+									names = append(names, h.strings.slice[h.functions.slice[line.FunctionId].Name])
+									continue
+								}
+								fnIds = append(fnIds, int32(pos))
+							}
+						}
+						stacktraceSamples[stacktraceID].FunctionIds = fnIds
+					},
+				),
+				stacktraceIDs,
+			)
+		},
+	)
 
 	return &ingestv1.MergeProfilesStacktracesResult{
-		Stacktraces:   lo.Values(stacktraceSamples),
+		Stacktraces:   stacktracesByMapping.StacktraceSamples(),
 		FunctionNames: names,
 	}
 }
 
-func (h *Head) resolvePprof(ctx context.Context, stacktraceSamples profileSampleMap) *profile.Profile {
+func (h *Head) resolvePprof(ctx context.Context, stacktracesByMapping profileSampleByMapping) *profile.Profile {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "resolvePprof - Head")
 	defer sp.Finish()
 
-	locations := map[uint64]*profile.Location{}
+	locations := map[int32]*profile.Location{}
 	functions := map[uint64]*profile.Function{}
 	mappings := map[uint64]*profile.Mapping{}
 
-	h.stacktraces.lock.RLock()
 	h.locations.lock.RLock()
 	h.functions.lock.RLock()
 	h.strings.lock.RLock()
 	defer func() {
-		h.stacktraces.lock.RUnlock()
 		h.locations.lock.RUnlock()
 		h.functions.lock.RUnlock()
 		h.strings.lock.RUnlock()
 	}()
 
 	// now add locationIDs and stacktraces
-	for stacktraceID := range stacktraceSamples {
-		locationIds := h.stacktraces.slice[stacktraceID].LocationIDs
-		stacktraceLocations := make([]*profile.Location, len(locationIds))
-
-		for i, locId := range locationIds {
-			loc, ok := locations[locId]
+	_ = stacktracesByMapping.ForEach(
+		func(mapping uint64, stacktraceSamples profileSampleMap) error {
+			mp, ok := h.symbolDB.MappingReader(mapping)
 			if !ok {
-				locFound := h.locations.slice[locId]
-				mapping, ok := mappings[locFound.MappingId]
-				if !ok {
-					mappingFound := h.mappings.slice[locFound.MappingId]
-					mapping = &profile.Mapping{
-						ID:              mappingFound.Id,
-						Start:           mappingFound.MemoryStart,
-						Limit:           mappingFound.MemoryLimit,
-						Offset:          mappingFound.FileOffset,
-						File:            h.strings.slice[mappingFound.Filename],
-						BuildID:         h.strings.slice[mappingFound.BuildId],
-						HasFunctions:    mappingFound.HasFunctions,
-						HasFilenames:    mappingFound.HasFilenames,
-						HasLineNumbers:  mappingFound.HasLineNumbers,
-						HasInlineFrames: mappingFound.HasInlineFrames,
-					}
-					mappings[locFound.MappingId] = mapping
-				}
-				loc = &profile.Location{
-					ID:       locFound.Id,
-					Address:  locFound.Address,
-					IsFolded: locFound.IsFolded,
-					Mapping:  mapping,
-					Line:     make([]profile.Line, len(locFound.Line)),
-				}
-				for i, line := range locFound.Line {
-					fn, ok := functions[line.FunctionId]
-					if !ok {
-						fnFound := h.functions.slice[line.FunctionId]
-						fn = &profile.Function{
-							ID:         fnFound.Id,
-							Name:       h.strings.slice[fnFound.Name],
-							SystemName: h.strings.slice[fnFound.SystemName],
-							Filename:   h.strings.slice[fnFound.Filename],
-							StartLine:  fnFound.StartLine,
-						}
-						functions[line.FunctionId] = fn
-					}
-					loc.Line[i] = profile.Line{
-						Line:     line.Line,
-						Function: fn,
-					}
-				}
-				locations[locId] = loc
+				return nil
 			}
-			stacktraceLocations[i] = loc
-		}
-		stacktraceSamples[stacktraceID].Location = stacktraceLocations
-	}
+			resolver := mp.StacktraceResolver()
+			defer resolver.Release()
+
+			// sort the stacktrace IDs as expected by the resolver
+			stacktraceIDs := stacktraceSamples.Ids()
+			sort.Slice(stacktraceIDs, func(i, j int) bool {
+				return stacktraceIDs[i] < stacktraceIDs[j]
+			})
+
+			return resolver.ResolveStacktraces(
+				ctx,
+				symdb.StacktraceInserterFn(
+					func(stacktraceID uint32, locationIds []int32) {
+						stacktraceLocations := make([]*profile.Location, len(locationIds))
+
+						for i, locId := range locationIds {
+							loc, ok := locations[locId]
+							if !ok {
+								locFound := h.locations.slice[locId]
+								mapping, ok := mappings[locFound.MappingId]
+								if !ok {
+									mappingFound := h.mappings.slice[locFound.MappingId]
+									mapping = &profile.Mapping{
+										ID:              mappingFound.Id,
+										Start:           mappingFound.MemoryStart,
+										Limit:           mappingFound.MemoryLimit,
+										Offset:          mappingFound.FileOffset,
+										File:            h.strings.slice[mappingFound.Filename],
+										BuildID:         h.strings.slice[mappingFound.BuildId],
+										HasFunctions:    mappingFound.HasFunctions,
+										HasFilenames:    mappingFound.HasFilenames,
+										HasLineNumbers:  mappingFound.HasLineNumbers,
+										HasInlineFrames: mappingFound.HasInlineFrames,
+									}
+									mappings[locFound.MappingId] = mapping
+								}
+								loc = &profile.Location{
+									ID:       locFound.Id,
+									Address:  locFound.Address,
+									IsFolded: locFound.IsFolded,
+									Mapping:  mapping,
+									Line:     make([]profile.Line, len(locFound.Line)),
+								}
+								for i, line := range locFound.Line {
+									fn, ok := functions[line.FunctionId]
+									if !ok {
+										fnFound := h.functions.slice[line.FunctionId]
+										fn = &profile.Function{
+											ID:         fnFound.Id,
+											Name:       h.strings.slice[fnFound.Name],
+											SystemName: h.strings.slice[fnFound.SystemName],
+											Filename:   h.strings.slice[fnFound.Filename],
+											StartLine:  fnFound.StartLine,
+										}
+										functions[line.FunctionId] = fn
+									}
+									loc.Line[i] = profile.Line{
+										Line:     line.Line,
+										Function: fn,
+									}
+								}
+								locations[locId] = loc
+							}
+							stacktraceLocations[i] = loc
+						}
+						stacktraceSamples[stacktraceID].Location = stacktraceLocations
+					},
+				),
+				stacktraceIDs,
+			)
+		},
+	)
 
 	result := &profile.Profile{
-		Sample:   lo.Values(stacktraceSamples),
+		Sample:   stacktracesByMapping.StacktraceSamples(),
 		Location: lo.Values(locations),
 		Function: lo.Values(functions),
 		Mapping:  lo.Values(mappings),
@@ -842,6 +898,10 @@ func (h *Head) flush(ctx context.Context) error {
 		}
 	}
 
+	if err := h.symbolDB.Flush(); err != nil {
+		return errors.Wrap(err, "flushing symbol database")
+	}
+
 	// get stats of index
 	indexPath := filepath.Join(h.headPath, block.IndexFilename)
 	files[0].RelPath = block.IndexFilename
@@ -870,6 +930,19 @@ func (h *Head) flush(ctx context.Context) error {
 			totalSize += files[idx+1].SizeBytes
 		}
 	}
+
+	// add total size symdb
+	symbDBFiles, error := h.SymDBFiles()
+	if error != nil {
+		return error
+	}
+
+	for _, file := range symbDBFiles {
+		files = append(files, file)
+		h.metrics.flushedFileSizeBytes.WithLabelValues(file.RelPath).Observe(float64(file.SizeBytes))
+		totalSize += file.SizeBytes
+	}
+
 	h.metrics.flushedBlockSizeBytes.Observe(float64(totalSize))
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].RelPath < files[j].RelPath
@@ -885,6 +958,27 @@ func (h *Head) flush(ctx context.Context) error {
 	}
 	h.metrics.blockDurationSeconds.Observe(h.meta.MaxTime.Sub(h.meta.MinTime).Seconds())
 	return nil
+}
+
+// SymDBFiles lists files in symdb folder
+func (h *Head) SymDBFiles() ([]block.File, error) {
+	files, err := os.ReadDir(filepath.Join(h.headPath, symdb.DefaultDirName))
+	if err != nil {
+		return nil, err
+	}
+	result := make([]block.File, len(files))
+	for idx, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		result[idx].RelPath = filepath.Join(symdb.DefaultDirName, f.Name())
+		info, err := f.Info()
+		if err != nil {
+			return nil, err
+		}
+		result[idx].SizeBytes = uint64(info.Size())
+	}
+	return result, nil
 }
 
 // Move moves the head directory to local blocks. The call is not thread-safe:

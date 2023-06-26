@@ -1,13 +1,16 @@
 package model
 
 import (
+	"path/filepath"
 	"strings"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/gogo/status"
 	"github.com/google/pprof/profile"
 	"github.com/prometheus/prometheus/model/labels"
 	"google.golang.org/grpc/codes"
 
+	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 )
@@ -60,4 +63,44 @@ func SetProfileMetadata(p *profile.Profile, ty *typesv1.ProfileType) {
 	default:
 		p.Period = 1
 	}
+}
+
+func StacktracePartitionFromProfile(lbls []Labels, p *profilev1.Profile) uint64 {
+	return xxhash.Sum64String(stacktracePartitionKeyFromProfile(lbls, p))
+}
+
+func stacktracePartitionKeyFromProfile(lbls []Labels, p *profilev1.Profile) string {
+	// take the first mapping (which is the main binary's file basename)
+	if len(p.Mapping) > 0 {
+		if filenameID := p.Mapping[0].Filename; filenameID > 0 {
+			if filename := extractMappingFilename(p.StringTable[filenameID]); filename != "" {
+				return filename
+			}
+		}
+	}
+
+	// failing that look through the labels for the ServiceName
+	if len(lbls) > 0 {
+		for _, lbl := range lbls[0] {
+			if lbl.Name == LabelNameServiceName {
+				return lbl.Value
+			}
+		}
+	}
+
+	return "unknown"
+}
+
+func extractMappingFilename(filename string) string {
+	// See github.com/google/pprof/profile/profile.go
+	// It's unlikely that the main binary mapping is one of them.
+	if filename == "" ||
+		strings.HasPrefix(filename, "[") ||
+		strings.HasPrefix(filename, "linux-vdso") ||
+		strings.HasPrefix(filename, "/dev/dri/") {
+		return ""
+	}
+	// Like filepath.ToSlash but doesn't rely on OS.
+	n := strings.ReplaceAll(filename, `\`, `/`)
+	return strings.TrimSpace(filepath.Base(filepath.Clean(n)))
 }

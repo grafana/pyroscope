@@ -289,6 +289,10 @@ type ProfileWithLabels struct {
 	fp  model.Fingerprint
 }
 
+func (p ProfileWithLabels) StacktracePartition() uint64 {
+	return p.Profile.StacktracePartition
+}
+
 func (p ProfileWithLabels) Timestamp() model.Time {
 	return model.TimeFromUnixNano(p.Profile.TimeNanos)
 }
