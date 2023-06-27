@@ -22,19 +22,27 @@ const (
 type deltaProfiles struct {
 	mtx sync.Mutex
 	// todo cleanup sample profiles that are not used anymore using a cleanup goroutine.
-	highestSamples map[model.Fingerprint][]*schemav1.Sample
+	highestSamples map[model.Fingerprint]map[uint32]uint64
 }
 
 func newDeltaProfiles() *deltaProfiles {
 	return &deltaProfiles{
-		highestSamples: make(map[model.Fingerprint][]*schemav1.Sample),
+		highestSamples: make(map[model.Fingerprint]map[uint32]uint64),
 	}
 }
 
-func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbs phlaremodel.Labels) *schemav1.Profile {
+func newSampleDict(samples schemav1.Samples) map[uint32]uint64 {
+	dict := make(map[uint32]uint64)
+	for i, s := range samples.StacktraceIDs {
+		dict[s] += samples.Values[i]
+	}
+	return dict
+}
+
+func (d *deltaProfiles) computeDelta(ps schemav1.InMemoryProfile, lbs phlaremodel.Labels) schemav1.Samples {
 	// there's no delta to compute for those profile.
 	if !isDelta(lbs) {
-		return ps
+		return ps.Samples
 	}
 
 	d.mtx.Lock()
@@ -45,58 +53,27 @@ func (d *deltaProfiles) computeDelta(ps *schemav1.Profile, lbs phlaremodel.Label
 	if !ok {
 		// if we don't have the last profile, we can't compute the delta.
 		// so we remove the delta from the list of labels and profiles.
-		d.highestSamples[ps.SeriesFingerprint] = copySampleSlice(ps.Samples)
+		d.highestSamples[ps.SeriesFingerprint] = newSampleDict(ps.Samples)
 
-		return nil
+		return schemav1.Samples{}
 	}
 
 	// we have the last profile, we can compute the delta.
 	// samples are sorted by stacktrace id.
 	// we need to compute the delta for each stacktrace.
 	if len(lastSamples) == 0 {
-		return ps
+		return ps.Samples
 	}
 
-	highestSamples, reset := deltaSamples(lastSamples, ps.Samples)
+	reset := deltaSamples(lastSamples, ps.Samples)
 	if reset {
 		// if we reset the delta, we can't compute the delta anymore.
 		// so we remove the delta from the list of labels and profiles.
-		d.highestSamples[ps.SeriesFingerprint] = copySampleSlice(ps.Samples)
-		return nil
+		d.highestSamples[ps.SeriesFingerprint] = newSampleDict(ps.Samples)
+		return schemav1.Samples{}
 	}
 
-	// remove samples that are all zero
-	i := 0
-	for _, x := range ps.Samples {
-		if x.Value != 0 {
-			ps.Samples[i] = x
-			i++
-		}
-	}
-	ps.Samples = copySlice(ps.Samples[:i])
-	d.highestSamples[ps.SeriesFingerprint] = highestSamples
-	return ps
-}
-
-func copySampleSlice(s []*schemav1.Sample) []*schemav1.Sample {
-	if s == nil {
-		return nil
-	}
-	r := make([]*schemav1.Sample, len(s))
-	for i := range s {
-		r[i] = copySample(s[i])
-	}
-	return r
-}
-
-func copySample(s *schemav1.Sample) *schemav1.Sample {
-	if s == nil {
-		return nil
-	}
-	return &schemav1.Sample{
-		StacktraceID: s.StacktraceID,
-		Value:        s.Value,
-	}
+	return ps.Samples.Compact(false).Clone()
 }
 
 func isDelta(lbs phlaremodel.Labels) bool {
@@ -115,24 +92,20 @@ func isDelta(lbs phlaremodel.Labels) bool {
 	return false
 }
 
-func deltaSamples(highest, new []*schemav1.Sample) ([]*schemav1.Sample, bool) {
-	stacktraces := make(map[uint64]*schemav1.Sample)
-	for _, h := range highest {
-		stacktraces[h.StacktraceID] = h
-	}
-	for _, n := range new {
-		if s, ok := stacktraces[n.StacktraceID]; ok {
-			if s.Value <= n.Value {
-				newMax := n.Value
-				n.Value -= s.Value
-				s.Value = newMax
+func deltaSamples(highest map[uint32]uint64, new schemav1.Samples) bool {
+	for i, id := range new.StacktraceIDs {
+		newValue := new.Values[i]
+		if s, ok := highest[id]; ok {
+			if s <= newValue {
+				new.Values[i] -= s
+				highest[id] = newValue
 			} else {
 				// this is a reset, we can't compute the delta anymore.
-				return nil, true
+				return true
 			}
 			continue
 		}
-		highest = append(highest, copySample(n))
+		highest[id] = newValue
 	}
-	return highest, false
+	return false
 }

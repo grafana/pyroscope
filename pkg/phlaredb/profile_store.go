@@ -35,7 +35,7 @@ type profileStore struct {
 
 	path      string
 	persister schemav1.Persister[*schemav1.Profile]
-	helper    storeHelper[*schemav1.Profile]
+	helper    storeHelper[*schemav1.InMemoryProfile]
 	writer    *parquet.GenericWriter[*schemav1.Profile]
 
 	// lock serializes appends to the slice. Every new profile is appended
@@ -43,7 +43,7 @@ type profileStore struct {
 	// only purpose is to accommodate the parquet writer: slice is never
 	// accessed for reads.
 	profilesLock sync.Mutex
-	slice        []*schemav1.Profile
+	slice        []schemav1.InMemoryProfile
 
 	// Rows lock synchronises access to the on-disk row groups.
 	// When the in-memory index (profiles) is being flushed on disk,
@@ -58,7 +58,7 @@ type profileStore struct {
 	flushQueue     chan int // channel to signal that a flush is needed for slice[:n]
 	closeOnce      sync.Once
 	flushWg        sync.WaitGroup
-	flushBuffer    []*schemav1.Profile
+	flushBuffer    []schemav1.InMemoryProfile
 	flushBufferLbs []phlaremodel.Labels
 }
 
@@ -241,7 +241,7 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 		return err
 	}
 
-	n, err := s.writer.Write(s.flushBuffer)
+	n, err := parquet.CopyRows(s.writer, schemav1.NewInMemoryProfilesRowReader(s.flushBuffer))
 	if err != nil {
 		return errors.Wrap(err, "write row group segments to disk")
 	}
@@ -279,12 +279,10 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 	s.profilesLock.Lock()
 	defer s.profilesLock.Unlock()
 	for i := range s.slice[:count] {
-		// don't retain profiles and samples in memory as re-slice.
-		s.metrics.samples.Sub(float64(len(s.slice[i].Samples)))
-		s.slice[i] = nil
+		s.metrics.samples.Sub(float64(len(s.slice[i].Samples.StacktraceIDs)))
 	}
 	// reset slice and metrics
-	s.slice = s.slice[count:]
+	s.slice = copySlice(s.slice[count:])
 	currentSize := s.size.Sub(size)
 	if err != nil {
 		return err
@@ -298,7 +296,7 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 }
 
 type byLabels struct {
-	p   []*schemav1.Profile
+	p   []schemav1.InMemoryProfile
 	lbs []phlaremodel.Labels
 }
 
@@ -334,7 +332,7 @@ func (by byLabels) Less(i, j int) bool {
 // loadProfilesToFlush loads and sort profiles to flush into flushBuffer and returns the size of the profiles.
 func (s *profileStore) loadProfilesToFlush(count int) uint64 {
 	if cap(s.flushBuffer) < count {
-		s.flushBuffer = make([]*schemav1.Profile, 0, count)
+		s.flushBuffer = make([]schemav1.InMemoryProfile, 0, count)
 	}
 	if cap(s.flushBufferLbs) < count {
 		s.flushBufferLbs = make([]phlaremodel.Labels, 0, count)
@@ -354,7 +352,7 @@ func (s *profileStore) loadProfilesToFlush(count int) uint64 {
 	sort.Sort(byLabels{p: s.flushBuffer, lbs: s.flushBufferLbs})
 	var size uint64
 	for _, p := range s.flushBuffer {
-		size += s.helper.size(p)
+		size += s.helper.size(&p)
 	}
 	return size
 }
@@ -391,10 +389,10 @@ func (s *profileStore) writeRowGroups(path string, rowGroups []parquet.RowGroup)
 	return n, numRowGroups, nil
 }
 
-func (s *profileStore) ingest(_ context.Context, profiles []*schemav1.Profile, lbs phlaremodel.Labels, profileName string, rewriter *rewriter) error {
+func (s *profileStore) ingest(_ context.Context, profiles []schemav1.InMemoryProfile, lbs phlaremodel.Labels, profileName string, rewriter *rewriter) error {
 	// rewrite elements
 	for pos := range profiles {
-		if err := s.helper.rewrite(rewriter, profiles[pos]); err != nil {
+		if err := s.helper.rewrite(rewriter, &profiles[pos]); err != nil {
 			return err
 		}
 	}
@@ -413,16 +411,16 @@ func (s *profileStore) ingest(_ context.Context, profiles []*schemav1.Profile, l
 		}
 
 		// add profile to the index
-		s.index.Add(p, lbs, profileName)
+		s.index.Add(&p, lbs, profileName)
 
 		// increase size of stored data
-		addedBytes := s.helper.size(profiles[pos])
+		addedBytes := s.helper.size(&profiles[pos])
 		s.metrics.sizeBytes.WithLabelValues(s.Name()).Set(float64(s.size.Add(addedBytes)))
 		s.totalSize.Add(addedBytes)
 
 		// add to slice
 		s.slice = append(s.slice, p)
-		s.metrics.samples.Add(float64(len(p.Samples)))
+		s.metrics.samples.Add(float64(len(p.Samples.StacktraceIDs)))
 
 	}
 
