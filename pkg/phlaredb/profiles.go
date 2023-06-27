@@ -128,7 +128,7 @@ type profileSeries struct {
 	minTime, maxTime int64
 
 	// profiles in memory
-	profiles []*schemav1.Profile
+	profiles []*schemav1.InMemoryProfile
 
 	// profiles temporary stored on disk in row group segements
 	// TODO: this information is crucial to recover segements to a full block later
@@ -163,7 +163,7 @@ func newProfileIndex(totalShards uint32, metrics *headMetrics) (*profilesIndex, 
 
 // Add a new set of profile to the index.
 // The seriesRef are expected to match the profile labels passed in.
-func (pi *profilesIndex) Add(ps *schemav1.Profile, lbs phlaremodel.Labels, profileName string) {
+func (pi *profilesIndex) Add(ps *schemav1.InMemoryProfile, lbs phlaremodel.Labels, profileName string) {
 	pi.mutex.Lock()
 	defer pi.mutex.Unlock()
 	profiles, ok := pi.profilesPerFP[ps.SeriesFingerprint]
@@ -284,17 +284,17 @@ func (pi *profilesIndex) selectMatchingRowRanges(ctx context.Context, params *in
 }
 
 type ProfileWithLabels struct {
-	*schemav1.Profile
-	lbs phlaremodel.Labels
-	fp  model.Fingerprint
+	profile *schemav1.InMemoryProfile
+	lbs     phlaremodel.Labels
+	fp      model.Fingerprint
 }
 
 func (p ProfileWithLabels) StacktracePartition() uint64 {
-	return p.Profile.StacktracePartition
+	return p.profile.StacktracePartition
 }
 
 func (p ProfileWithLabels) Timestamp() model.Time {
-	return model.TimeFromUnixNano(p.Profile.TimeNanos)
+	return model.TimeFromUnixNano(p.profile.TimeNanos)
 }
 
 func (p ProfileWithLabels) Fingerprint() model.Fingerprint {
@@ -305,18 +305,22 @@ func (p ProfileWithLabels) Labels() phlaremodel.Labels {
 	return p.lbs
 }
 
-func (p ProfileWithLabels) Samples() []*schemav1.Sample {
-	return p.Profile.Samples
+func (p ProfileWithLabels) Samples() schemav1.Samples {
+	return p.profile.Samples
+}
+
+func (p ProfileWithLabels) Total() int64 {
+	return p.profile.Total()
 }
 
 type SeriesIterator struct {
-	iter.Iterator[*schemav1.Profile]
+	iter.Iterator[*schemav1.InMemoryProfile]
 	curr ProfileWithLabels
 	fp   model.Fingerprint
 	lbs  phlaremodel.Labels
 }
 
-func NewSeriesIterator(labels phlaremodel.Labels, fingerprint model.Fingerprint, it iter.Iterator[*schemav1.Profile]) *SeriesIterator {
+func NewSeriesIterator(labels phlaremodel.Labels, fingerprint model.Fingerprint, it iter.Iterator[*schemav1.InMemoryProfile]) *SeriesIterator {
 	return &SeriesIterator{
 		Iterator: it,
 		fp:       fingerprint,
@@ -329,7 +333,7 @@ func (it *SeriesIterator) Next() bool {
 		return false
 	}
 	it.curr = ProfileWithLabels{
-		Profile: it.Iterator.At(),
+		profile: it.Iterator.At(),
 		lbs:     it.lbs,
 		fp:      it.fp,
 	}
@@ -437,7 +441,7 @@ func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRange
 	return rangesPerRG, writer.Close()
 }
 
-func (pi *profilesIndex) cutRowGroup(rgProfiles []*schemav1.Profile) error {
+func (pi *profilesIndex) cutRowGroup(rgProfiles []schemav1.InMemoryProfile) error {
 	// adding rowGroup and rowNum information per fingerprint
 	rowRangePerFP := make(map[model.Fingerprint]*rowRange, len(pi.profilesPerFP))
 	countPerFP := make(map[model.Fingerprint]int, len(pi.profilesPerFP))
@@ -505,8 +509,7 @@ func SplitFiltersAndMatchers(allMatchers []*labels.Matcher) (filters, matchers [
 
 // nolint unused
 const (
-	profileSize = uint64(unsafe.Sizeof(schemav1.Profile{}))
-	sampleSize  = uint64(unsafe.Sizeof(schemav1.Sample{}))
+	profileSize = uint64(unsafe.Sizeof(schemav1.InMemoryProfile{}))
 )
 
 type profilesHelper struct{}
@@ -517,7 +520,7 @@ func (*profilesHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable
 }
 
 // nolint unused
-func (*profilesHelper) rewrite(r *rewriter, s *schemav1.Profile) error {
+func (*profilesHelper) rewrite(r *rewriter, s *schemav1.InMemoryProfile) error {
 	for pos := range s.Comments {
 		r.strings.rewrite(&s.Comments[pos])
 	}
@@ -529,30 +532,24 @@ func (*profilesHelper) rewrite(r *rewriter, s *schemav1.Profile) error {
 }
 
 // nolint unused
-func (*profilesHelper) setID(oldID, newID uint64, p *schemav1.Profile) uint64 {
+func (*profilesHelper) setID(oldID, newID uint64, p *schemav1.InMemoryProfile) uint64 {
 	return oldID
 }
 
 // nolint unused
-func sizeOfSample(s *schemav1.Sample) uint64 {
-	return sampleSize + 8
-}
-
-// nolint unused
-func (*profilesHelper) size(p *schemav1.Profile) uint64 {
+func (*profilesHelper) size(p *schemav1.InMemoryProfile) uint64 {
 	size := profileSize
 
 	size += 8
 	size += uint64(len(p.Comments) * 8)
 
-	for _, s := range p.Samples {
-		size += sizeOfSample(s)
-	}
+	// 4 bytes for stacktrace id and 8 bytes for each stacktrace value
+	size += uint64(len(p.Samples.StacktraceIDs) * (4 + 8))
 
 	return size
 }
 
 // nolint unused
-func (*profilesHelper) clone(p *schemav1.Profile) *schemav1.Profile {
+func (*profilesHelper) clone(p *schemav1.InMemoryProfile) *schemav1.InMemoryProfile {
 	return p
 }

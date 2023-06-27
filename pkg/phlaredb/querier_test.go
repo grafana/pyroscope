@@ -38,12 +38,12 @@ func TestQueryIndex(t *testing.T) {
 
 		for k := int64(0); k < 10; k++ {
 			id := uuid.New()
-			a.Add(&v1.Profile{
+			a.Add(&v1.InMemoryProfile{
 				ID:                id,
 				TimeNanos:         k,
 				SeriesFingerprint: model.Fingerprint(lb1.Hash()),
 			}, lb1, "memory")
-			a.Add(&v1.Profile{
+			a.Add(&v1.InMemoryProfile{
 				ID:                id,
 				TimeNanos:         k,
 				SeriesFingerprint: model.Fingerprint(lb2.Hash()),

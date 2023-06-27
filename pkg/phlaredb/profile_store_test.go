@@ -48,7 +48,7 @@ func testContext(t testing.TB) context.Context {
 }
 
 type testProfile struct {
-	p           schemav1.Profile
+	p           schemav1.InMemoryProfile
 	profileName string
 	lbls        phlaremodel.Labels
 }
@@ -70,11 +70,10 @@ func sameProfileStream(i int) *testProfile {
 
 	tp.p.ID = uuid.MustParse(fmt.Sprintf("00000000-0000-0000-0000-%012d", i))
 	tp.p.TimeNanos = time.Second.Nanoseconds() * int64(i)
-	tp.p.Samples = []*schemav1.Sample{
-		{
-			StacktraceID: 0x1,
-			Value:        10.0,
-		},
+
+	tp.p.Samples = schemav1.Samples{
+		StacktraceIDs: []uint32{0x1},
+		Values:        []uint64{10},
 	}
 	tp.populateFingerprint()
 
@@ -100,11 +99,9 @@ func profileStreamEndingAndStarting(boundary int) func(int) *testProfile {
 
 		tp.p.ID = uuid.MustParse(fmt.Sprintf("00000000-0000-0000-0000-%012d", i))
 		tp.p.TimeNanos = time.Second.Nanoseconds() * int64(i)
-		tp.p.Samples = []*schemav1.Sample{
-			{
-				StacktraceID: 0x1,
-				Value:        10.0,
-			},
+		tp.p.Samples = schemav1.Samples{
+			StacktraceIDs: []uint32{0x1},
+			Values:        []uint64{10},
 		}
 		tp.populateFingerprint()
 		return tp
@@ -214,7 +211,7 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 
 			for i := 0; i < 100; i++ {
 				p := tc.values(i)
-				require.NoError(t, store.ingest(ctx, []*schemav1.Profile{&p.p}, p.lbls, p.profileName, emptyRewriter()))
+				require.NoError(t, store.ingest(ctx, []schemav1.InMemoryProfile{p.p}, p.lbls, p.profileName, emptyRewriter()))
 				for store.flushing.Load() {
 					time.Sleep(time.Millisecond)
 				}
@@ -280,7 +277,7 @@ func TestProfileStore_Ingestion_SeriesIndexes(t *testing.T) {
 
 	for i := 0; i < 9; i++ {
 		p := threeProfileStreams(i)
-		require.NoError(t, store.ingest(ctx, []*schemav1.Profile{&p.p}, p.lbls, p.profileName, emptyRewriter()))
+		require.NoError(t, store.ingest(ctx, []schemav1.InMemoryProfile{p.p}, p.lbls, p.profileName, emptyRewriter()))
 	}
 
 	// flush profiles and ensure the correct number of files are created
@@ -307,12 +304,13 @@ func BenchmarkFlush(b *testing.B) {
 	metrics := newHeadMetrics(prometheus.NewRegistry())
 	rw := emptyRewriter()
 	b.ReportAllocs()
-	samples := make([]*schemav1.Sample, 10000)
+	samples := schemav1.Samples{
+		Values:        make([]uint64, 10000),
+		StacktraceIDs: make([]uint32, 10000),
+	}
 	for i := 0; i < 10000; i++ {
-		samples[i] = &schemav1.Sample{
-			Value:        int64(i),
-			StacktraceID: uint64(i),
-		}
+		samples.Values[i] = uint64(i)
+		samples.StacktraceIDs[i] = uint32(i)
 	}
 	for i := 0; i < b.N; i++ {
 
@@ -323,7 +321,7 @@ func BenchmarkFlush(b *testing.B) {
 			for i := 0; i < 10^6; i++ {
 				p := threeProfileStreams(i)
 				p.p.Samples = samples
-				require.NoError(b, store.ingest(ctx, []*schemav1.Profile{&p.p}, p.lbls, p.profileName, rw))
+				require.NoError(b, store.ingest(ctx, []schemav1.InMemoryProfile{p.p}, p.lbls, p.profileName, rw))
 			}
 			require.NoError(b, store.cutRowGroup(len(store.slice)))
 		}

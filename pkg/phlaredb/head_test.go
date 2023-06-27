@@ -203,7 +203,7 @@ pyroscope_head_received_sample_values_total{profile_name=""} 3
 pyroscope_head_size_bytes{type="functions"} 240
 pyroscope_head_size_bytes{type="locations"} 344
 pyroscope_head_size_bytes{type="mappings"} 192
-pyroscope_head_size_bytes{type="profiles"} 432
+pyroscope_head_size_bytes{type="profiles"} 372
 pyroscope_head_size_bytes{type="stacktraces"} 0
 pyroscope_head_size_bytes{type="strings"} 52
 
@@ -265,11 +265,9 @@ func TestHeadIngestStacktraces(t *testing.T) {
 	// expect 3 profiles
 	require.Equal(t, 3, len(head.profiles.slice))
 
-	var samples []uint64
+	var samples []uint32
 	for pos := range head.profiles.slice {
-		for _, sample := range head.profiles.slice[pos].Samples {
-			samples = append(samples, sample.StacktraceID)
-		}
+		samples = append(samples, head.profiles.slice[pos].Samples.StacktraceIDs...)
 	}
 	// expect 4 samples, 2 of which distinct: stacktrace ID is
 	// only valid within the scope of the stacktrace partition,

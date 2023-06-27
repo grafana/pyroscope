@@ -421,7 +421,7 @@ func TestFilterProfiles(t *testing.T) {
 	ctx := context.Background()
 	profiles := lo.Times(11, func(i int) Profile {
 		return ProfileWithLabels{
-			Profile: &schemav1.Profile{TimeNanos: int64(i * int(time.Minute))},
+			profile: &schemav1.InMemoryProfile{TimeNanos: int64(i * int(time.Minute))},
 			lbs:     phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i)),
 			fp:      model.Fingerprint(phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i)).Hash()),
 		}
@@ -467,12 +467,12 @@ func TestFilterProfiles(t *testing.T) {
 
 	require.Equal(t, []Profile{
 		ProfileWithLabels{
-			Profile: &schemav1.Profile{TimeNanos: int64(5 * int(time.Minute))},
+			profile: &schemav1.InMemoryProfile{TimeNanos: int64(5 * int(time.Minute))},
 			lbs:     phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 5)),
 			fp:      model.Fingerprint(phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 5)).Hash()),
 		},
 		ProfileWithLabels{
-			Profile: &schemav1.Profile{TimeNanos: int64(10 * int(time.Minute))},
+			profile: &schemav1.InMemoryProfile{TimeNanos: int64(10 * int(time.Minute))},
 			lbs:     phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 10)),
 			fp:      model.Fingerprint(phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 10)).Hash()),
 		},
