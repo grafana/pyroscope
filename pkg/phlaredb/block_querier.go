@@ -951,6 +951,9 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
 	}
+	if params.Type == nil {
+		return nil, errors.New("no profileType given")
+	}
 	matchers = append(matchers, phlaremodel.SelectorFromProfileType(params.Type))
 
 	postings, err := PostingsForMatchers(b.index, nil, matchers...)
@@ -983,17 +986,29 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 			lbls = make(phlaremodel.Labels, 0, 6)
 		}
 	}
-	pIt := query.NewJoinIterator(
-		0,
-		[]query.Iterator{
+
+	var (
+		buf       [][]parquet.Value
+		joinIters []query.Iterator
+	)
+
+	if b.meta.Version >= 2 {
+		joinIters = []query.Iterator{
 			b.profiles.columnIter(ctx, "SeriesIndex", newMapPredicate(lblsPerRef), "SeriesIndex"),
 			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
 			b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
-		},
-		nil,
-	)
+		}
+		buf = make([][]parquet.Value, 3)
+	} else {
+		joinIters = []query.Iterator{
+			b.profiles.columnIter(ctx, "SeriesIndex", newMapPredicate(lblsPerRef), "SeriesIndex"),
+			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
+		}
+		buf = make([][]parquet.Value, 2)
+	}
+
+	pIt := query.NewJoinIterator(0, joinIters, nil)
 	iters := make([]iter.Iterator[Profile], 0, len(lblsPerRef))
-	buf := make([][]parquet.Value, 2)
 	defer pIt.Close()
 
 	currSeriesIndex := int64(-1)
