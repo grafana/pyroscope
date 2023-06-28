@@ -1018,7 +1018,7 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 		buf = res.Columns(buf, "SeriesIndex", "TimeNanos", "StacktracePartition")
 		seriesIndex := buf[0][0].Int64()
 		if seriesIndex != currSeriesIndex {
-			currSeriesIndex++
+			currSeriesIndex = seriesIndex
 			if len(currentSeriesSlice) > 0 {
 				iters = append(iters, iter.NewSliceIterator(currentSeriesSlice))
 			}
