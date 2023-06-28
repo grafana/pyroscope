@@ -9,6 +9,7 @@ import (
 
 	"github.com/gogo/status"
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
@@ -199,6 +200,9 @@ func (pi *profilesIndex) selectMatchingFPs(ctx context.Context, params *ingestv1
 	selectors, err := parser.ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
+	}
+	if params.Type == nil {
+		return nil, errors.New("no profileType given")
 	}
 	selectors = append(selectors, phlaremodel.SelectorFromProfileType(params.Type))
 

@@ -2,6 +2,7 @@ package query
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/grafana/dskit/multierror"
@@ -83,8 +84,10 @@ func (it *repeatedPageIterator[T]) seekRowNum() int64 {
 		return i.RowNumber()
 	case int64:
 		return i
+	case uint32:
+		return int64(i)
 	default:
-		panic("unknown type")
+		panic(fmt.Sprintf("unknown row type: %T", it.rows.At()))
 	}
 }
 
