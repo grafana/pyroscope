@@ -283,7 +283,6 @@ func (f *Phlare) initAgent() (services.Service, error) {
 }
 
 func (f *Phlare) initMemberlistKV() (services.Service, error) {
-	f.Cfg.MemberlistKV.MetricsRegisterer = f.reg
 	f.Cfg.MemberlistKV.Codecs = []codec.Codec{
 		ring.GetCodec(),
 		usagestats.JSONCodec,
