@@ -365,7 +365,11 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 	defer sp.Finish()
 
 	m := make(seriesByLabels)
-	if err := mergeByLabels(ctx, b.profiles.file, rows, m, by...); err != nil {
+	columnName := "TotalValue"
+	if b.meta.Version == 1 {
+		columnName = "Samples.list.element.Value"
+	}
+	if err := mergeByLabels(ctx, b.profiles.file, columnName, rows, m, by...); err != nil {
 		return nil, err
 	}
 	return m.normalize(), nil
@@ -503,8 +507,8 @@ func (m seriesByLabels) normalize() []*typesv1.Series {
 	return result
 }
 
-func mergeByLabels(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], m seriesByLabels, by ...string) error {
-	it := repeatedColumnIter(ctx, profileSource, "Samples.list.element.Value", rows)
+func mergeByLabels(ctx context.Context, profileSource Source, columnName string, rows iter.Iterator[Profile], m seriesByLabels, by ...string) error {
+	it := repeatedColumnIter(ctx, profileSource, columnName, rows)
 
 	defer it.Close()
 

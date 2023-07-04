@@ -383,6 +383,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		}
 
 		profile.Samples = h.delta.computeDelta(profile, labels[idxType])
+		profile.TotalValue = profile.Samples.Sum()
 
 		if profile.Samples.Len() == 0 {
 			level.Debug(h.logger).Log("msg", "profile is empty after delta computation", "metricName", metricName)
