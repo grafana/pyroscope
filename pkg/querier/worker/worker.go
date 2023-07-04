@@ -51,7 +51,7 @@ func (cfg *Config) Validate(log log.Logger) error {
 		return fmt.Errorf("scheduler address cannot be specified when query-scheduler service discovery mode is set to '%s'", cfg.QuerySchedulerDiscovery.Mode)
 	}
 
-	return cfg.GRPCClientConfig.Validate(log)
+	return cfg.GRPCClientConfig.Validate()
 }
 
 // RequestHandler for HTTP requests wrapped in protobuf messages.

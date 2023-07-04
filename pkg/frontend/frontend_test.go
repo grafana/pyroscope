@@ -427,7 +427,7 @@ func TestConfig_Validate(t *testing.T) {
 			flagext.DefaultValues(&cfg)
 			testData.setup(&cfg)
 
-			actualErr := cfg.Validate(log.NewNopLogger())
+			actualErr := cfg.Validate()
 			if testData.expectedErr == "" {
 				require.NoError(t, actualErr)
 			} else {

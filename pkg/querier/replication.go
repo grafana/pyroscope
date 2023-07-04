@@ -29,6 +29,9 @@ func forGivenReplicationSet[Result any, Querier any](ctx context.Context, client
 	results, err := ring.DoUntilQuorum(
 		ctx,
 		replicationSet,
+		ring.DoUntilQuorumConfig{
+			MinimizeRequests: true,
+		},
 		func(ctx context.Context, ingester *ring.InstanceDesc) (ResponseFromReplica[Result], error) {
 			var res ResponseFromReplica[Result]
 			client, err := clientFactory(ingester.Addr)
