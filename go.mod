@@ -7,7 +7,7 @@ require (
 	github.com/bufbuild/connect-grpchealth-go v1.0.0
 	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/dennwc/varint v1.0.0
-	github.com/dgryski/go-groupvarint v0.0.0-20211110171037-f5865eef0641
+	github.com/dgryski/go-groupvarint v0.0.0-20230630160417-2bfb7969fb3c
 	github.com/drone/envsubst v1.0.3
 	github.com/dustin/go-humanize v1.0.1
 	github.com/felixge/fgprof v0.9.4-0.20221116204635-ececf7638e93
