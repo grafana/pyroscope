@@ -26,13 +26,13 @@ type ClientFactory[T any] func(addr string) (T, error)
 // forGivenReplicationSet runs f, in parallel, for given replica set.
 // Under the hood it returns only enough responses to satisfy the quorum.
 func forGivenReplicationSet[Result any, Querier any](ctx context.Context, clientFactory func(string) (Querier, error), replicationSet ring.ReplicationSet, f QueryReplicaFn[Result, Querier]) ([]ResponseFromReplica[Result], error) {
-	results, err := ring.DoUntilQuorum(
+	results, err := ring.DoUntilQuorumWithoutSuccessfulContextCancellation(
 		ctx,
 		replicationSet,
 		ring.DoUntilQuorumConfig{
 			MinimizeRequests: true,
 		},
-		func(ctx context.Context, ingester *ring.InstanceDesc) (ResponseFromReplica[Result], error) {
+		func(ctx context.Context, ingester *ring.InstanceDesc, _ context.CancelFunc) (ResponseFromReplica[Result], error) {
 			var res ResponseFromReplica[Result]
 			client, err := clientFactory(ingester.Addr)
 			if err != nil {
