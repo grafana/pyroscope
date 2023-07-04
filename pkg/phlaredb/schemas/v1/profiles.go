@@ -1,7 +1,9 @@
 package v1
 
 import (
+	"fmt"
 	"io"
+	"math"
 	"sort"
 
 	"github.com/google/uuid"
@@ -38,7 +40,28 @@ var (
 		phlareparquet.NewGroupField("Comments", parquet.List(stringRef)),
 		phlareparquet.NewGroupField("DefaultSampleType", parquet.Optional(parquet.Int(64))),
 	})
+
+	maxProfileRow       parquet.Row
+	seriesIndexColIndex int
+	timeNanoColIndex    int
 )
+
+func init() {
+	maxProfileRow = deconstructMemoryProfile(InMemoryProfile{
+		SeriesIndex: math.MaxUint32,
+		TimeNanos:   math.MaxInt64,
+	}, maxProfileRow)
+	seriesCol, ok := profilesSchema.Lookup("SeriesIndex")
+	if !ok {
+		panic(fmt.Errorf("SeriesIndex index column not found"))
+	}
+	seriesIndexColIndex = seriesCol.ColumnIndex
+	timeCol, ok := profilesSchema.Lookup("TimeNanos")
+	if !ok {
+		panic(fmt.Errorf("TimeNanos column not found"))
+	}
+	timeNanoColIndex = timeCol.ColumnIndex
+}
 
 type Sample struct {
 	StacktraceID uint64             `parquet:",delta"`
@@ -385,4 +408,37 @@ func deconstructMemoryProfile(imp InMemoryProfile, row parquet.Row) parquet.Row 
 		row = append(row, parquet.Int64Value(imp.DefaultSampleType).Level(0, 1, newCol()))
 	}
 	return row
+}
+
+func NewMergeProfilesRowReader(rowGroups []parquet.RowReader) parquet.RowReader {
+	if len(rowGroups) == 0 {
+		return phlareparquet.EmptyRowReader
+	}
+	return phlareparquet.NewMergeRowReader(rowGroups, maxProfileRow, lessProfileRows)
+}
+
+func lessProfileRows(r1, r2 parquet.Row) bool {
+	// We can directly lookup the series index column and compare it
+	// because it's after only fixed length column
+	sv1, sv2 := r1[seriesIndexColIndex].Uint32(), r2[seriesIndexColIndex].Uint32()
+	if sv1 != sv2 {
+		return sv1 < sv2
+	}
+	// we need to find the TimeNanos column and compare it
+	// but it's after repeated columns, so we search from the end to avoid
+	// going through samples
+	var ts1, ts2 int64
+	for i := len(r1) - 1; i >= 0; i-- {
+		if r1[i].Column() == timeNanoColIndex {
+			ts1 = r1[i].Int64()
+			break
+		}
+	}
+	for i := len(r2) - 1; i >= 0; i-- {
+		if r2[i].Column() == timeNanoColIndex {
+			ts2 = r2[i].Int64()
+			break
+		}
+	}
+	return ts1 < ts2
 }

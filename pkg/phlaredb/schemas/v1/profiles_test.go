@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/segmentio/parquet-go"
 	"github.com/stretchr/testify/require"
+
+	phlareparquet "github.com/grafana/phlare/pkg/parquet"
 )
 
 func TestInMemoryProfilesRowReader(t *testing.T) {
@@ -35,9 +37,9 @@ const samplesPerProfile = 100
 func TestRoundtripProfile(t *testing.T) {
 	profiles := generateProfiles(1000)
 	iprofiles := generateMemoryProfiles(1000)
-	actual, err := readAll(NewInMemoryProfilesRowReader(iprofiles))
+	actual, err := phlareparquet.ReadAll(NewInMemoryProfilesRowReader(iprofiles))
 	require.NoError(t, err)
-	expected, err := readAll(NewProfilesRowReader(profiles))
+	expected, err := phlareparquet.ReadAll(NewProfilesRowReader(profiles))
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)
 
@@ -56,9 +58,9 @@ func TestRoundtripProfile(t *testing.T) {
 			inMemoryProfiles[i].DefaultSampleType = 0
 			inMemoryProfiles[i].KeepFrames = 0
 		}
-		expected, err := readAll(NewProfilesRowReader(profiles))
+		expected, err := phlareparquet.ReadAll(NewProfilesRowReader(profiles))
 		require.NoError(t, err)
-		actual, err := readAll(NewInMemoryProfilesRowReader(inMemoryProfiles))
+		actual, err := phlareparquet.ReadAll(NewInMemoryProfilesRowReader(inMemoryProfiles))
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
@@ -71,9 +73,9 @@ func TestRoundtripProfile(t *testing.T) {
 		for i := range inMemoryProfiles {
 			inMemoryProfiles[i].Comments = nil
 		}
-		expected, err := readAll(NewProfilesRowReader(profiles))
+		expected, err := phlareparquet.ReadAll(NewProfilesRowReader(profiles))
 		require.NoError(t, err)
-		actual, err := readAll(NewInMemoryProfilesRowReader(inMemoryProfiles))
+		actual, err := phlareparquet.ReadAll(NewInMemoryProfilesRowReader(inMemoryProfiles))
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
@@ -87,9 +89,9 @@ func TestRoundtripProfile(t *testing.T) {
 		for i := range inMemoryProfiles {
 			inMemoryProfiles[i].Samples = Samples{}
 		}
-		expected, err := readAll(NewProfilesRowReader(profiles))
+		expected, err := phlareparquet.ReadAll(NewProfilesRowReader(profiles))
 		require.NoError(t, err)
-		actual, err := readAll(NewInMemoryProfilesRowReader(inMemoryProfiles))
+		actual, err := phlareparquet.ReadAll(NewInMemoryProfilesRowReader(inMemoryProfiles))
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
@@ -127,7 +129,7 @@ func BenchmarkRowReader(b *testing.B) {
 	b.Run("in-memory", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_, err := readAll(NewInMemoryProfilesRowReader(iprofiles))
+			_, err := phlareparquet.ReadAll(NewInMemoryProfilesRowReader(iprofiles))
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -136,7 +138,7 @@ func BenchmarkRowReader(b *testing.B) {
 	b.Run("schema", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_, err := readAll(NewProfilesRowReader(profiles))
+			_, err := phlareparquet.ReadAll(NewProfilesRowReader(profiles))
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -144,22 +146,99 @@ func BenchmarkRowReader(b *testing.B) {
 	})
 }
 
-func readAll(r parquet.RowReader) ([]parquet.Row, error) {
-	var rows []parquet.Row
-	batch := make([]parquet.Row, 1000)
-	for {
-		n, err := r.ReadRows(batch)
-		if err != nil && err != io.EOF {
-			return rows, err
-		}
-		if n != 0 {
-			rows = append(rows, batch[:n]...)
-		}
-		if n == 0 || err == io.EOF {
-			break
-		}
+func TestMergeProfiles(t *testing.T) {
+	reader := NewMergeProfilesRowReader([]parquet.RowReader{
+		NewInMemoryProfilesRowReader([]InMemoryProfile{
+			{SeriesIndex: 1, TimeNanos: 1},
+			{SeriesIndex: 2, TimeNanos: 2},
+			{SeriesIndex: 3, TimeNanos: 3},
+		}),
+		NewInMemoryProfilesRowReader([]InMemoryProfile{
+			{SeriesIndex: 1, TimeNanos: 4},
+			{SeriesIndex: 2, TimeNanos: 5},
+			{SeriesIndex: 3, TimeNanos: 6},
+		}),
+		NewInMemoryProfilesRowReader([]InMemoryProfile{
+			{SeriesIndex: 1, TimeNanos: 7},
+			{SeriesIndex: 2, TimeNanos: 8},
+			{SeriesIndex: 3, TimeNanos: 9},
+		}),
+	})
+
+	actual, err := phlareparquet.ReadAll(reader)
+	require.NoError(t, err)
+	compareProfileRows(t, generateProfileRow([]InMemoryProfile{
+		{SeriesIndex: 1, TimeNanos: 1},
+		{SeriesIndex: 1, TimeNanos: 4},
+		{SeriesIndex: 1, TimeNanos: 7},
+		{SeriesIndex: 2, TimeNanos: 2},
+		{SeriesIndex: 2, TimeNanos: 5},
+		{SeriesIndex: 2, TimeNanos: 8},
+		{SeriesIndex: 3, TimeNanos: 3},
+		{SeriesIndex: 3, TimeNanos: 6},
+		{SeriesIndex: 3, TimeNanos: 9},
+	}), actual)
+}
+
+func TestLessProfileRows(t *testing.T) {
+	for _, tc := range []struct {
+		a, b     parquet.Row
+		expected bool
+	}{
+		{
+			a:        generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0],
+			b:        generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0],
+			expected: false,
+		},
+		{
+			a:        generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0],
+			b:        generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 2}})[0],
+			expected: true,
+		},
+		{
+			a:        generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0],
+			b:        generateProfileRow([]InMemoryProfile{{SeriesIndex: 2, TimeNanos: 1}})[0],
+			expected: true,
+		},
+	} {
+		t.Run("", func(t *testing.T) {
+			require.Equal(t, tc.expected, lessProfileRows(tc.a, tc.b))
+		})
 	}
-	return rows, nil
+}
+
+func BenchmarkProfileRows(b *testing.B) {
+	a := generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0]
+	a1 := generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 2}})[0]
+	a2 := generateProfileRow([]InMemoryProfile{{SeriesIndex: 2, TimeNanos: 1}})[0]
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		lessProfileRows(a, a)
+		lessProfileRows(a, a1)
+		lessProfileRows(a, a2)
+	}
+}
+
+func compareProfileRows(t *testing.T, expected, actual []parquet.Row) {
+	t.Helper()
+	require.Equal(t, len(expected), len(actual))
+	for i := range expected {
+		expectedProfile, actualProfile := &Profile{}, &Profile{}
+		require.NoError(t, profilesSchema.Reconstruct(actualProfile, actual[i]))
+		require.NoError(t, profilesSchema.Reconstruct(expectedProfile, expected[i]))
+		require.Equal(t, expectedProfile, actualProfile, "row %d", i)
+	}
+}
+
+func generateProfileRow(in []InMemoryProfile) []parquet.Row {
+	rows := make([]parquet.Row, len(in))
+	for i, p := range in {
+		rows[i] = deconstructMemoryProfile(p, rows[i])
+	}
+	return rows
 }
 
 func generateMemoryProfiles(n int) []InMemoryProfile {
