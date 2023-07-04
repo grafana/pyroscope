@@ -19,7 +19,7 @@ require (
 	github.com/google/pprof v0.0.0-20230406165453-00490a63f317
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
-	github.com/grafana/dskit v0.0.0-20230629144239-f335545f8ba3
+	github.com/grafana/dskit v0.0.0-20230704141205-12e5a855ec34
 	github.com/grafana/mimir v0.0.0-20230630050318-e4d286c69115
 	github.com/grafana/phlare/api v0.0.0-00010101000000-000000000000
 	github.com/grafana/regexp v0.0.0-20221122212121-6b5c0a4cb7fd
