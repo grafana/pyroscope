@@ -177,15 +177,8 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 			values:          sameProfileStream,
 		},
 		{
-			name:            "multiple row groups because of maximum size",
-			cfg:             &ParquetConfig{MaxRowGroupBytes: 1828, MaxBufferRowCount: 100000},
-			expectedNumRGs:  10,
-			expectedNumRows: 100,
-			values:          sameProfileStream,
-		},
-		{
 			name:            "a stream ending after half of the samples and a new one starting",
-			cfg:             &ParquetConfig{MaxRowGroupBytes: 1828, MaxBufferRowCount: 100000},
+			cfg:             &ParquetConfig{MaxRowGroupBytes: 128000, MaxBufferRowCount: 10},
 			expectedNumRGs:  10,
 			expectedNumRows: 100,
 			values:          profileStreamEndingAndStarting(50),
@@ -199,7 +192,7 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 		},
 		{
 			name:            "a single sample per series",
-			cfg:             &ParquetConfig{MaxRowGroupBytes: 1828, MaxBufferRowCount: 100000},
+			cfg:             &ParquetConfig{MaxRowGroupBytes: 128000, MaxBufferRowCount: 10},
 			expectedNumRGs:  10,
 			expectedNumRows: 100,
 			values:          nProfileStreams(100),

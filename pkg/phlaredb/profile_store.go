@@ -18,6 +18,7 @@ import (
 	"go.uber.org/atomic"
 
 	phlaremodel "github.com/grafana/phlare/pkg/model"
+	phlareparquet "github.com/grafana/phlare/pkg/parquet"
 	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
 	"github.com/grafana/phlare/pkg/phlaredb/block"
 	"github.com/grafana/phlare/pkg/phlaredb/query"
@@ -363,22 +364,11 @@ func (s *profileStore) writeRowGroups(path string, rowGroups []parquet.RowGroup)
 		return 0, 0, err
 	}
 	defer runutil.CloseWithErrCapture(&err, fileCloser, "closing parquet file")
-
-	for rgN, rg := range rowGroups {
-		level.Debug(s.logger).Log("msg", "writing row group", "path", path, "row_group_number", rgN, "rows", rg.NumRows())
-
-		nInt64, err := s.writer.ReadRowsFrom(rg.Rows())
-		if err != nil {
-			return 0, 0, err
-		}
-
-		n += uint64(nInt64)
-		numRowGroups += 1
-
-		if err := s.writer.Flush(); err != nil {
-			return 0, 0, err
-		}
+	readers := make([]parquet.RowReader, len(rowGroups))
+	for i, rg := range rowGroups {
+		readers[i] = rg.Rows()
 	}
+	n, numRowGroups, err = phlareparquet.CopyAsRowGroups(s.writer, schemav1.NewMergeProfilesRowReader(readers), s.cfg.MaxBufferRowCount)
 
 	if err := s.writer.Close(); err != nil {
 		return 0, 0, err
