@@ -139,7 +139,7 @@ func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterato
 
 	seriesByLabels := make(seriesByLabels)
 
-	if err := mergeByLabels(ctx, q.rowGroup(), rows, seriesByLabels, by...); err != nil {
+	if err := mergeByLabels(ctx, q.rowGroup(), "TotalValue", rows, seriesByLabels, by...); err != nil {
 		return nil, err
 	}
 

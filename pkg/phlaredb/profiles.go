@@ -314,7 +314,7 @@ func (p ProfileWithLabels) Samples() schemav1.Samples {
 }
 
 func (p ProfileWithLabels) Total() int64 {
-	return p.profile.Total()
+	return int64(p.profile.TotalValue)
 }
 
 type SeriesIterator struct {

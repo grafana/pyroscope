@@ -31,6 +31,7 @@ var (
 		phlareparquet.NewGroupField("ID", parquet.UUID()),
 		phlareparquet.NewGroupField("SeriesIndex", parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("StacktracePartition", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+		phlareparquet.NewGroupField("TotalValue", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("Samples", parquet.List(sampleField)),
 		phlareparquet.NewGroupField("DropFrames", parquet.Optional(stringRef)),
 		phlareparquet.NewGroupField("KeepFrames", parquet.Optional(stringRef)),
@@ -80,6 +81,9 @@ type Profile struct {
 
 	// StacktracePartition is the partition ID of the stacktrace table that this profile belongs to.
 	StacktracePartition uint64 `parquet:",delta"`
+
+	// TotalValue is the sum of all values in the profile.
+	TotalValue uint64 `parquet:",delta"`
 
 	// SeriesFingerprint references the underlying series and is purely based
 	// on the label values. The value is consistent for the same label set (so
@@ -194,6 +198,9 @@ type InMemoryProfile struct {
 	// StacktracePartition is the partition ID of the stacktrace table that this profile belongs to.
 	StacktracePartition uint64
 
+	// TotalValue is the sum of all values in the profile.
+	TotalValue uint64
+
 	// SeriesFingerprint references the underlying series and is purely based
 	// on the label values. The value is consistent for the same label set (so
 	// also between different blocks).
@@ -294,6 +301,14 @@ func (s Samples) Len() int {
 	return len(s.StacktraceIDs)
 }
 
+func (s Samples) Sum() uint64 {
+	var sum uint64
+	for _, v := range s.Values {
+		sum += v
+	}
+	return sum
+}
+
 func (p InMemoryProfile) Timestamp() model.Time {
 	return model.TimeFromUnixNano(p.TimeNanos)
 }
@@ -335,6 +350,7 @@ func deconstructMemoryProfile(imp InMemoryProfile, row parquet.Row) parquet.Row 
 	row = append(row, parquet.FixedLenByteArrayValue(imp.ID[:]).Level(0, 0, newCol()))
 	row = append(row, parquet.Int32Value(int32(imp.SeriesIndex)).Level(0, 0, newCol()))
 	row = append(row, parquet.Int64Value(int64(imp.StacktracePartition)).Level(0, 0, newCol()))
+	row = append(row, parquet.Int64Value(int64(imp.TotalValue)).Level(0, 0, newCol()))
 	newCol()
 	if len(imp.Samples.Values) == 0 {
 		row = append(row, parquet.Value{}.Level(0, 0, col))
