@@ -60,7 +60,7 @@ buf/lint: $(BIN)/buf
 
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
-	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) ./...
+	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) ./... ./ebpf/...
 
 .PHONY: build
 build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)
