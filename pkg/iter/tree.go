@@ -1,7 +1,11 @@
 package iter
 
 import (
+<<<<<<< HEAD
 	"github.com/grafana/pyroscope/pkg/util/loser"
+=======
+	"github.com/grafana/phlare/pkg/util/loser"
+>>>>>>> ee8a92e04 (Add first draft of block compaction)
 )
 
 var _ Iterator[interface{}] = &TreeIterator[interface{}]{}

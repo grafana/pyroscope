@@ -458,3 +458,24 @@ func lessProfileRows(r1, r2 parquet.Row) bool {
 	}
 	return ts1 < ts2
 }
+
+type ProfileRow parquet.Row
+
+func (p ProfileRow) SeriesIndex() uint32 {
+	return p[seriesIndexColIndex].Uint32()
+}
+
+func (p ProfileRow) TimeNanos() int64 {
+	var ts int64
+	for i := len(p) - 1; i >= 0; i-- {
+		if p[i].Column() == timeNanoColIndex {
+			ts = p[i].Int64()
+			break
+		}
+	}
+	return ts
+}
+
+func (p ProfileRow) SetSeriesIndex(v uint32) {
+	p[seriesIndexColIndex] = parquet.Int32Value(int32(v)).Level(0, 0, seriesIndexColIndex)
+}
