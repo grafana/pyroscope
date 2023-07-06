@@ -33,6 +33,9 @@ type SymbolReader interface {
 }
 
 func Compact(ctx context.Context, src []BlockReader, dst string) (block.Meta, error) {
+	if len(src) <= 1 {
+		return block.Meta{}, errors.New("not enough blocks to compact")
+	}
 	meta := block.NewMeta()
 	blockPath := filepath.Join(dst, meta.ULID.String())
 	if err := os.MkdirAll(blockPath, 0o777); err != nil {
