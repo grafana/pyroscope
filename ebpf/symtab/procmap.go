@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"strconv"
 	"unsafe"
-
-	"golang.org/x/sys/unix"
 )
 
 // ProcMapPermissions contains permission settings read from `/proc/[pid]/maps`.
@@ -77,7 +75,18 @@ func parseDevice(s []byte) (uint64, error) {
 		return 0, err
 	}
 
-	return unix.Mkdev(uint32(major), uint32(minor)), nil
+	return mkdev(uint32(major), uint32(minor)), nil
+}
+
+// mkdev returns a Linux device number generated from the given major and minor
+// components.
+// this is a copy-paste from unix.Mkdev
+func mkdev(major, minor uint32) uint64 {
+	dev := (uint64(major) & 0x00000fff) << 8
+	dev |= (uint64(major) & 0xfffff000) << 32
+	dev |= (uint64(minor) & 0x000000ff) << 0
+	dev |= (uint64(minor) & 0xffffff00) << 12
+	return dev
 }
 
 // parseAddress converts a hex-string to a uintptr.
