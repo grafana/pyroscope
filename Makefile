@@ -167,8 +167,9 @@ define deploy
 		--set phlare.podAnnotations."profiles\.grafana\.com\/memory\.port_name"=http-metrics \
 		--set phlare.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
 		--set phlare.podAnnotations."profiles\.grafana\.com\/goroutine\.port_name"=http-metrics \
-		--set phlare.extraEnvVars.JAEGER_AGENT_HOST=jaeger.monitoring.svc.cluster.local.
-endef
+		--set phlare.extraEnvVars.JAEGER_AGENT_HOST=jaeger.monitoring.svc.cluster.local. \
+		--set phlare.extraArgs."phlaredb\.max-block-duration"=5m
+  endef
 
 .PHONY: docker-image/phlare/build-debug
 docker-image/phlare/build-debug: GOOS=linux
