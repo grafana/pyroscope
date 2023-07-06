@@ -1,6 +1,6 @@
 ## Adhoc mode examples
 
-Pyroscope provides two options for using the "adhoc" mode, depending on whether you have the Pyroscope SDK installed or not. Choose the appropriate method based on your setup.
+Pyroscope provides three options for using the "adhoc" mode, depending on whether you have the Pyroscope SDK installed or not. Choose the appropriate method based on your setup.
 
 ### Option 1: Push mode (with SDK installed)
 If your application already uses an agent or has integration with the Pyroscope HTTP API, you can use push mode 
@@ -47,7 +47,7 @@ Using docker:
  docker run --rm -ti --privileged --pid=host pyroscope/pyroscope-rs-cli:0.2.7-457bb15 connect --pid=369936 --spy-name=pyspy --server-address="http://localhost:4100"
 ```
 
-### Pull mode
+### Option 2: Pull Mode
 
 If the application to profile supports pull-mode, that is, it's already running a HTTP server
 and serving profiling data in a supported format, like `pprof`,
