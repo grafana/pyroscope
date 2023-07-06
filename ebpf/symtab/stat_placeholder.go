@@ -1,4 +1,4 @@
-//go:build !unix
+//go:build !linux && !darwin
 
 package symtab
 
@@ -6,11 +6,11 @@ import (
 	"os"
 )
 
-type stat struct {
-	dev uint64
-	ino uint64
+type Stat struct {
+	Dev uint64
+	Ino uint64
 }
 
-func statFromFileInfo(file os.FileInfo) stat {
-	return stat{}
+func statFromFileInfo(file os.FileInfo) Stat {
+	return Stat{}
 }
