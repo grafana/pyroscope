@@ -57,8 +57,7 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (block.Meta, er
 	rowsIt = newSymbolsRewriter(rowsIt)
 	reader := phlareparquet.NewIteratorRowReader(newRowsIterator(rowsIt))
 
-	// todo size of rowgroups.
-	_, _, err = phlareparquet.CopyAsRowGroups(profileWriter, reader, 1024)
+	_, _, err = phlareparquet.CopyAsRowGroups(profileWriter, reader, defaultParquetConfig.MaxBufferRowCount)
 	if err != nil {
 		return block.Meta{}, err
 	}
