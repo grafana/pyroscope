@@ -171,16 +171,20 @@ define deploy
 endef
 
 .PHONY: docker-image/phlare/build-debug
-docker-image/phlare/build-debug: GOOS=linux GOARCH=amd64
+docker-image/phlare/build-debug: GOOS=linux
+docker-image/phlare/build-debug: GOARCH=amd64
 docker-image/phlare/build-debug: frontend/build go/bin-debug $(BIN)/dlv
 	$(call docker_buildx,--load,debug.)
 
 .PHONY: docker-image/phlare/build
-docker-image/phlare/build: GOOS=linux GOARCH=amd64
+docker-image/phlare/build: GOOS=linux
+docker-image/phlare/build: GOARCH=amd64
 docker-image/phlare/build: frontend/build go/bin
-	$(call docker_buildx,--load --iidfile .docker-image-id-phlare)
+	$(call docker_buildx,--load --iidfile .docker-image-id-phlare,)
 
 .PHONY: docker-image/phlare/push
+docker-image/phlare/push: GOOS=linux
+docker-image/phlare/push: GOARCH=amd64
 docker-image/phlare/push: frontend/build go/bin
 	$(call docker_buildx,--push)
 
