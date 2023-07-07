@@ -464,7 +464,7 @@ func grow[T any](a arenahelper.ArenaWrapper, it []T, n int) []T {
 }
 
 func StackFrameFormatterForSpyName(spyName string) StackFormatter {
-	if spyName == "rbspy" {
+	if spyName == "rbspy" || spyName == "pyspy" {
 		return StackFrameFormatterRuby
 	}
 	return StackFrameFormatterGo
