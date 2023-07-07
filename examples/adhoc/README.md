@@ -32,7 +32,6 @@ For example, this method will work for python or ruby _without_ the pip/gem inst
 
 Profile a script using adhoc
 ```
-# Run with spy-name autodetected.
 pyroscope adhoc --push pyroscope-cli exec --spy-name=pyspy main.py  
 ```
 
