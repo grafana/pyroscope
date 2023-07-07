@@ -40,7 +40,6 @@ Attach to and profile a process using adhoc
 sudo ./pyroscope-cli connect --pid=[369936] --spy-name=pyspy --server-address="http://localhost:4100"
 ```
 
-Using docker:
 ```
  docker run --rm -ti --privileged --pid=host pyroscope/pyroscope-rs-cli:0.2.7-457bb15 connect --pid=369936 --spy-name=pyspy --server-address="http://localhost:4100"
 ```
