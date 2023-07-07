@@ -18,7 +18,6 @@ pyroscope adhoc go run adhoc-push.go
 #### Python adhoc (using pip package)
 ```
 # pyspy is autodetected, --push is mandatory.
-# Note that you need pyroscope-io >= 0.6.0 for this to work.
 pyroscope adhoc --push python adhoc-push.py
 ```
 
