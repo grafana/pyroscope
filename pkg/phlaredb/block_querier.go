@@ -427,6 +427,14 @@ func newStacktraceResolverV2(bucketReader phlareobj.Bucket) StacktraceDB {
 	}
 }
 
+func (b *singleBlockQuerier) Profiles() []parquet.RowGroup {
+	return b.profiles.file.RowGroups()
+}
+
+func (b *singleBlockQuerier) Index() IndexReader {
+	return b.index
+}
+
 func (b *singleBlockQuerier) Close() error {
 	b.openLock.Lock()
 	defer func() {

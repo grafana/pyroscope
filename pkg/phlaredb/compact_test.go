@@ -14,6 +14,7 @@ import (
 )
 
 func TestCompact(t *testing.T) {
+	t.TempDir()
 	ctx := context.Background()
 	bkt, err := client.NewBucket(ctx, client.Config{
 		StorageBackendConfig: client.StorageBackendConfig{
@@ -31,14 +32,17 @@ func TestCompact(t *testing.T) {
 		mtx sync.Mutex
 	)
 
-	err = block.IterBlockMetas(ctx, bkt, now.Add(-6*time.Hour), now, func(m *block.Meta) {
+	err = block.IterBlockMetas(ctx, bkt, now.Add(-24*time.Hour), now, func(m *block.Meta) {
 		mtx.Lock()
 		defer mtx.Unlock()
-		// todo: meta to blockreader
-		// src = append(src, NewSingleBlockQuerierFromMeta(ctx, bkt, m))
+		b := NewSingleBlockQuerierFromMeta(ctx, bkt, m)
+		err := b.Open(ctx)
+		require.NoError(t, err)
+		src = append(src, b)
 	})
 	require.NoError(t, err)
-	new, err := Compact(ctx, src, "test/")
+	dst := t.TempDir()
+	new, err := Compact(ctx, src, dst)
 	require.NoError(t, err)
-	t.Log(new)
+	t.Log(new, dst)
 }
