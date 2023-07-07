@@ -46,7 +46,7 @@ Using docker:
  docker run --rm -ti --privileged --pid=host pyroscope/pyroscope-rs-cli:0.2.7-457bb15 connect --pid=369936 --spy-name=pyspy --server-address="http://localhost:4100"
 ```
 
-### Option 2: Pull Mode
+### Option 3: Pull Mode
 
 If the application to profile supports pull-mode, that is, it's already running a HTTP server
 and serving profiling data in a supported format, like `pprof`,
