@@ -33,7 +33,7 @@ func (RbspyFormatter) format(x *tree.Profile, fn *tree.Function, line *tree.Line
 }
 
 func StackFrameFormatterForSpyName(spyName string) StackFrameFormatter {
-	if spyName == "rbspy" {
+	if spyName == "rbspy" || spyName == "pyspy" {
 		return RbspyFormatter{}
 	}
 	return UnsafeFunctionNameFormatter{}
