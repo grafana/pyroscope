@@ -34,6 +34,19 @@ services:
     build:
       context: .
 
+  ap-south-alpine:
+    ports:
+      - 5000
+    environment:
+      - REGION=ap-south
+      - PYROSCOPE_LABELS=region:ap-south-alpine
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+      - ASPNETCORE_URLS=http://*:5000
+    build:
+      context: . 
+      dockerfile: musl.Dockerfile
+  
+
   pyroscope:
     image: pyroscope/pyroscope:latest
     environment:

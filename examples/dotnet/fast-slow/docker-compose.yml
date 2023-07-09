@@ -7,5 +7,11 @@ services:
       - '4040:4040'
     command:
       - 'server'
-  app:
-    build: ''
+  app-glibc:
+    build:
+      context: . 
+      dockerfile: Dockerfile
+  app-musl:
+    build:
+      context: . 
+      dockerfile: musl.Dockerfile
