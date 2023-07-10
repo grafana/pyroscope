@@ -1,9 +1,11 @@
+#![warn(rust_2018_idioms)]
+
 use pprof::protos::Message;
 use std::io;
 use std::task::{Context, Poll};
 use std::{thread, time};
 
-use log::info;
+use log::{info, warn};
 
 use futures_util::future;
 use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
