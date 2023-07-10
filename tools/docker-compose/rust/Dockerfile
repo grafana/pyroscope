@@ -1,4 +1,4 @@
-FROM rust:1.64.0-bullseye as build
+FROM rust:1.70.0-bullseye as build
 
 WORKDIR /usr/src/cp-rust
 RUN cargo init
@@ -11,8 +11,6 @@ RUN \
 COPY src ./src/
 
 RUN cargo install --debug --path .
-
-CMD ["cp-rust"]
 
 FROM debian:bullseye-slim
 
