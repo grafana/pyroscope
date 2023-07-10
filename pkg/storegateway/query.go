@@ -2,8 +2,10 @@ package storegateway
 
 import (
 	"context"
+	"io"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
@@ -12,34 +14,59 @@ import (
 )
 
 func (s *StoreGateway) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
-	return s.forBucketStore(ctx, func(bs *BucketStore) error {
+	found, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
 		return bs.MergeProfilesStacktraces(ctx, stream)
 	})
+	if err != nil || found {
+		return err
+	}
+	return terminateStream(stream)
 }
 
 func (s *StoreGateway) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
-	return s.forBucketStore(ctx, func(bs *BucketStore) error {
+	found, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
 		return bs.MergeProfilesLabels(ctx, stream)
 	})
+	if err != nil || found {
+		return err
+	}
+	return terminateStream(stream)
 }
 
 func (s *StoreGateway) MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error {
-	return s.forBucketStore(ctx, func(bs *BucketStore) error {
+	found, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
 		return bs.MergeProfilesPprof(ctx, stream)
 	})
+	if err != nil || found {
+		return err
+	}
+	return terminateStream(stream)
+}
+
+func terminateStream[Req, Resp any](stream *connect.BidiStream[Req, Resp]) (err error) {
+	if _, err = stream.Receive(); err != nil {
+		if errors.Is(err, io.EOF) {
+			return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+		}
+		return err
+	}
+	if err = stream.Send(new(Resp)); err != nil {
+		return err
+	}
+	return stream.Send(new(Resp))
 }
 
 // forBucketStore executes the given function for the bucketstore with the given tenant ID in the context.
-func (s *StoreGateway) forBucketStore(ctx context.Context, f func(*BucketStore) error) error {
+func (s *StoreGateway) forBucketStore(ctx context.Context, f func(*BucketStore) error) (bool, error) {
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
-		return connect.NewError(connect.CodeInvalidArgument, err)
+		return true, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	store := s.stores.getStore(tenantID)
-	if store == nil {
-		return nil
+	if store != nil {
+		return true, f(store)
 	}
-	return f(store)
+	return false, nil
 }
 
 func (s *BucketStore) openBlocksForReading(ctx context.Context, minT, maxT model.Time) (phlaredb.Queriers, error) {

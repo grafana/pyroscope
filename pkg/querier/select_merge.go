@@ -302,7 +302,7 @@ func selectMergeTree(ctx context.Context, responses []ResponseFromReplica[client
 		iter := iter
 		g.Go(util.RecoverPanic(func() error {
 			result, err := iter.Result()
-			if err != nil {
+			if err != nil || result == nil {
 				return err
 			}
 			switch result.Format {
@@ -363,7 +363,7 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 		iter := iter
 		g.Go(util.RecoverPanic(func() error {
 			result, err := iter.Result()
-			if err != nil {
+			if err != nil || result == nil {
 				return err
 			}
 			p, err := profile.ParseUncompressed(result)
@@ -439,7 +439,7 @@ func selectMergeSeries(ctx context.Context, responses []ResponseFromReplica[clie
 		iter := iter
 		g.Go(util.RecoverPanic(func() error {
 			result, err := iter.Result()
-			if err != nil {
+			if err != nil || result == nil {
 				return err
 			}
 			s.Do(func() {
