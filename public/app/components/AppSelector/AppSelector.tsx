@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
 import { App, appFromQuery, appToQuery } from '@webapp/models/app';
 import { Query } from '@webapp/models/query';
@@ -59,13 +59,26 @@ export function AppSelector({
   selectedQuery,
 }: AppSelectorProps) {
   const maybeSelectedApp = queryToApp(selectedQuery, apps);
+  const [filter, setFilter] = useState('');
+  const filteredApps = useMemo(
+    () =>
+      apps.filter((app) =>
+        app.name.toLowerCase().includes(filter.trim().toLowerCase())
+      ),
+    [apps, filter]
+  );
+  useEffect(() => {
+    setFilter('');
+  }, [selectedQuery]);
 
   return (
     <div className={ogStyles.container}>
       <SelectorModalWithToggler
-        apps={apps}
+        apps={filteredApps}
         onSelected={(app) => onSelected(appToQuery(app))}
         selectedApp={maybeSelectedApp}
+        filter={filter}
+        setFilter={setFilter}
       />
     </div>
   );
@@ -75,10 +88,14 @@ export const SelectorModalWithToggler = ({
   apps,
   selectedApp,
   onSelected: onSelectedUpstream,
+  filter,
+  setFilter,
 }: {
   apps: App[];
   selectedApp?: App;
   onSelected: (app: App) => void;
+  filter: string;
+  setFilter: (filter: string) => void;
 }) => {
   const onSelected = (app: App) => {
     // Reset state
@@ -142,6 +159,14 @@ export const SelectorModalWithToggler = ({
       headerEl={
         <>
           <div className={ogStyles.headerTitle}>{label}</div>
+          <input
+            type="text"
+            placeholder="Search..."
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className={styles.search}
+            data-testid="app-selector-search"
+          />
         </>
       }
       leftSideEl={leftSideApps.map((app) => (

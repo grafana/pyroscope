@@ -1,4 +1,21 @@
 .appSelectorModal {
   /* upstream code is positioned based on a label */
   left: initial !important;
+  max-width: calc(100vw - 290px);
+}
+
+.search {
+  background: var(--ps-immutable-off-white);
+  color: var(--ps-immutable-placeholder-text);
+  border: 1px solid var(--ps-ui-border);
+  margin: 10px 0 10px 10px;
+  border-radius: 4px;
+}
+
+.noData {
+  width: 600px;
+  height: 300px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
