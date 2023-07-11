@@ -55,7 +55,10 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (block.Meta, er
 
 	// todo new symbdb
 
-	rowsIt := newMergeRowProfileIterator(src)
+	rowsIt, err := newMergeRowProfileIterator(src)
+	if err != nil {
+		return block.Meta{}, err
+	}
 	rowsIt = newSeriesRewriter(rowsIt, indexw)
 	rowsIt = newSymbolsRewriter(rowsIt)
 	reader := phlareparquet.NewIteratorRowReader(newRowsIterator(rowsIt))
@@ -90,23 +93,30 @@ type profileRow struct {
 }
 
 type profileRowIterator struct {
-	profiles iter.Iterator[parquet.Row]
-	index    IndexReader
-	err      error
+	profiles    iter.Iterator[parquet.Row]
+	index       IndexReader
+	allPostings index.Postings
+	err         error
 
 	currentRow profileRow
 	chunks     []index.ChunkMeta
 }
 
-func newProfileRowIterator(profiles iter.Iterator[parquet.Row], idx IndexReader) *profileRowIterator {
+func newProfileRowIterator(reader parquet.RowReader, idx IndexReader) (*profileRowIterator, error) {
+	k, v := index.AllPostingsKey()
+	allPostings, err := idx.Postings(k, nil, v)
+	if err != nil {
+		return nil, err
+	}
 	return &profileRowIterator{
-		profiles: profiles,
-		index:    idx,
+		profiles:    phlareparquet.NewBufferedRowReaderIterator(reader, 1024),
+		index:       idx,
+		allPostings: allPostings,
 		currentRow: profileRow{
 			seriesRef: math.MaxUint32,
 		},
 		chunks: make([]index.ChunkMeta, 1),
-	}
+	}, nil
 }
 
 func (p *profileRowIterator) At() profileRow {
@@ -125,7 +135,16 @@ func (p *profileRowIterator) Next() bool {
 		return true
 	}
 	p.currentRow.seriesRef = seriesIndex
-	fp, err := p.index.Series(storage.SeriesRef(p.currentRow.seriesRef), &p.currentRow.labels, &p.chunks)
+	if !p.allPostings.Next() {
+		if err := p.allPostings.Err(); err != nil {
+			p.err = err
+			return false
+		}
+		p.err = errors.New("unexpected end of postings")
+		return false
+	}
+
+	fp, err := p.index.Series(p.allPostings.At(), &p.currentRow.labels, &p.chunks)
 	if err != nil {
 		p.err = err
 		return false
@@ -145,15 +164,19 @@ func (p *profileRowIterator) Close() error {
 	return p.profiles.Close()
 }
 
-func newMergeRowProfileIterator(src []BlockReader) iter.Iterator[profileRow] {
+func newMergeRowProfileIterator(src []BlockReader) (iter.Iterator[profileRow], error) {
 	its := make([]iter.Iterator[profileRow], len(src))
 	for i, s := range src {
 		// todo: may be we could merge rowgroups in parallel but that requires locking.
 		reader := parquet.MultiRowGroup(s.Profiles()...).Rows()
-		its[i] = newProfileRowIterator(
-			phlareparquet.NewBufferedRowReaderIterator(reader, 1024),
+		it, err := newProfileRowIterator(
+			reader,
 			s.Index(),
 		)
+		if err != nil {
+			return nil, err
+		}
+		its[i] = it
 	}
 	return &dedupeProfileRowIterator{
 		Iterator: iter.NewTreeIterator(loser.New(
@@ -178,7 +201,7 @@ func newMergeRowProfileIterator(src []BlockReader) iter.Iterator[profileRow] {
 			},
 			func(it iter.Iterator[profileRow]) { _ = it.Close() },
 		)),
-	}
+	}, nil
 }
 
 type symbolsRewriter struct {
