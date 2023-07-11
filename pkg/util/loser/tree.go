@@ -4,8 +4,27 @@ package loser
 
 type Sequence interface {
 	Next() bool // Advances and returns true if there is a value at this new position.
+	Err() error // Returns any error encountered while advancing.
 }
 
+// New returns a new loser tree that merges the given sequences.
+// The sequences must be sorted according to the less function already.
+// The maxVal is used to initialize the tree.
+// The at function returns the current value of the sequence.
+// The less function compares two values.
+// The close function is called on each sequence when the tree is closed or when a sequence returns false from Next().
+// If any sequence returns an error from Err() after Next() = false, the tree will stop and return that error in Err().
+// Examples:
+//
+//	tree := loser.New(...)
+//	defer tree.Close()
+//	for tree.Next() {
+//		value := tree.Winner().At()
+//		...
+//	}
+//	if err := tree.Err(); err != nil {
+//		...
+//	}
 func New[E any, S Sequence](sequences []S, maxVal E, at func(S) E, less func(E, E) bool, close func(S)) *Tree[E, S] {
 	nSequences := len(sequences)
 	t := Tree[E, S]{
@@ -17,7 +36,11 @@ func New[E any, S Sequence](sequences []S, maxVal E, at func(S) E, less func(E, 
 	}
 	for i, s := range sequences {
 		t.nodes[i+nSequences].items = s
-		t.moveNext(i + nSequences) // Must call Next on each item so that At() has a value.
+		if !t.moveNext(i + nSequences) { // Must call Next on each item so that At() has a value.
+			if t.err != nil {
+				break
+			}
+		}
 	}
 	if nSequences > 0 {
 		t.nodes[0].index = -1 // flag to be initialized on first call to Next().
@@ -44,6 +67,8 @@ type Tree[E any, S Sequence] struct {
 	less   func(E, E) bool
 	close  func(S) // Called when Next() returns false.
 	nodes  []node[E, S]
+
+	err error
 }
 
 type node[E any, S Sequence] struct {
@@ -59,6 +84,7 @@ func (t *Tree[E, S]) moveNext(index int) bool {
 		return true
 	}
 	t.close(n.items) // Next() returned false; close it and mark as finished.
+	t.err = n.items.Err()
 	n.value = t.maxVal
 	n.index = -1
 	return false
@@ -69,7 +95,7 @@ func (t *Tree[E, S]) Winner() S {
 }
 
 func (t *Tree[E, S]) Next() bool {
-	if len(t.nodes) == 0 {
+	if len(t.nodes) == 0 || t.err != nil {
 		return false
 	}
 	if t.nodes[0].index == -1 { // If tree has not been initialized yet, do that.
@@ -79,9 +105,15 @@ func (t *Tree[E, S]) Next() bool {
 	if t.nodes[t.nodes[0].index].index == -1 { // already exhausted
 		return false
 	}
-	t.moveNext(t.nodes[0].index)
+	if !t.moveNext(t.nodes[0].index) && t.err != nil {
+		return false
+	}
 	t.replayGames(t.nodes[0].index)
 	return t.nodes[t.nodes[0].index].index != -1
+}
+
+func (t *Tree[E, S]) Err() error {
+	return t.err
 }
 
 func (t *Tree[E, S]) initialize() {
@@ -131,15 +163,19 @@ func (t *Tree[E, S]) playGame(a, b int) (loser, winner int) {
 func parent(i int) int { return i / 2 }
 
 // Add a new sequence to the merge set
-func (t *Tree[E, S]) Push(sequence S) {
+func (t *Tree[E, S]) Push(sequence S) error {
 	// First, see if we can replace one that was previously finished.
 	for newPos := len(t.nodes) / 2; newPos < len(t.nodes); newPos++ {
 		if t.nodes[newPos].index == -1 {
 			t.nodes[newPos].index = newPos
 			t.nodes[newPos].items = sequence
-			t.moveNext(newPos)
+			if !t.moveNext(newPos) {
+				if t.err != nil {
+					return t.err
+				}
+			}
 			t.nodes[0].index = -1 // flag for re-initialize on next call to Next()
-			return
+			return nil
 		}
 	}
 	// We need to expand the tree. Pick the next biggest power of 2 to amortise resizing cost.
@@ -161,6 +197,11 @@ func (t *Tree[E, S]) Push(sequence S) {
 		t.nodes[i].index = -1
 		t.nodes[i].value = t.maxVal
 	}
-	t.moveNext(newPos)
+	if !t.moveNext(newPos) {
+		if t.err != nil {
+			return t.err
+		}
+	}
 	t.nodes[0].index = -1 // flag for re-initialize on next call to Next()
+	return nil
 }

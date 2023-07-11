@@ -261,6 +261,9 @@ func skipDuplicates(ctx context.Context, its []MergeIterator) error {
 	}
 	span.LogFields(otlog.Int("duplicates", duplicates))
 	span.LogFields(otlog.Int("total", total))
+	if err := tree.Err(); err != nil {
+		errors.Add(err)
+	}
 
 	return errors.Err()
 }
