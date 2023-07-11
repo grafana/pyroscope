@@ -44,7 +44,6 @@ sudo ./pyroscope-cli connect --pid=[369936] --spy-name=pyspy --server-address="h
 ```
 
 ```
- docker run --rm -ti --privileged --pid=host pyroscope/pyroscope-rs-cli:0.2.7-457bb15 connect --pid=369936 --spy-name=pyspy --server-address="http://localhost:4100"
 ```
 
 ### Option 3: Pull Mode
