@@ -9,6 +9,12 @@ func (t stringConversionTable) rewrite(idx *int64) {
 	*idx = newValue
 }
 
+func (t stringConversionTable) rewriteUint32(idx *uint32) {
+	originalValue := int(*idx)
+	newValue := t[originalValue]
+	*idx = uint32(newValue)
+}
+
 type stringsHelper struct{}
 
 func (*stringsHelper) key(s string) string {

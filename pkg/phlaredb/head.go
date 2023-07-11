@@ -66,8 +66,23 @@ func (t idConversionTable) rewriteUint64(idx *uint64) {
 	*idx = uint64(v)
 }
 
+// nolint unused
+func (t idConversionTable) rewriteUint32(idx *uint32) {
+	pos := *idx
+	v, ok := t[int64(pos)]
+	if !ok {
+		panic(fmt.Sprintf("unable to rewrite index %d", pos))
+	}
+	*idx = uint32(v)
+}
+
 type Models interface {
-	*schemav1.Profile | *schemav1.InMemoryProfile | *schemav1.Stacktrace | *profilev1.Location | *profilev1.Mapping | *profilev1.Function | string | *schemav1.StoredString
+	*schemav1.Profile | *schemav1.InMemoryProfile |
+		*profilev1.Location | *schemav1.InMemoryLocation |
+		*profilev1.Function | *schemav1.InMemoryFunction |
+		*profilev1.Mapping | *schemav1.InMemoryMapping |
+		*schemav1.StoredString | string |
+		*schemav1.Stacktrace
 }
 
 func emptyRewriter() *rewriter {
@@ -133,9 +148,9 @@ type Head struct {
 
 	parquetConfig *ParquetConfig
 	strings       deduplicatingSlice[string, string, *stringsHelper, *schemav1.StringPersister]
-	mappings      deduplicatingSlice[*profilev1.Mapping, mappingsKey, *mappingsHelper, *schemav1.MappingPersister]
-	functions     deduplicatingSlice[*profilev1.Function, functionsKey, *functionsHelper, *schemav1.FunctionPersister]
-	locations     deduplicatingSlice[*profilev1.Location, locationsKey, *locationsHelper, *schemav1.LocationPersister]
+	mappings      deduplicatingSlice[*schemav1.InMemoryMapping, mappingsKey, *mappingsHelper, *schemav1.MappingPersister]
+	functions     deduplicatingSlice[*schemav1.InMemoryFunction, functionsKey, *functionsHelper, *schemav1.FunctionPersister]
+	locations     deduplicatingSlice[*schemav1.InMemoryLocation, locationsKey, *locationsHelper, *schemav1.LocationPersister]
 	symbolDB      *symdb.SymDB
 
 	profiles     *profileStore
@@ -351,15 +366,58 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		return err
 	}
 
-	if err := h.mappings.ingest(ctx, p.Mapping, rewrites); err != nil {
+	mappings := make([]*schemav1.InMemoryMapping, len(p.Mapping))
+	for i, v := range p.Mapping {
+		mappings[i] = &schemav1.InMemoryMapping{
+			Id:              v.Id,
+			MemoryStart:     v.MemoryStart,
+			MemoryLimit:     v.MemoryLimit,
+			FileOffset:      v.FileOffset,
+			Filename:        uint32(v.Filename),
+			BuildId:         uint32(v.BuildId),
+			HasFunctions:    v.HasFunctions,
+			HasFilenames:    v.HasFilenames,
+			HasLineNumbers:  v.HasLineNumbers,
+			HasInlineFrames: v.HasInlineFrames,
+		}
+	}
+	if err := h.mappings.ingest(ctx, mappings, rewrites); err != nil {
 		return err
 	}
 
-	if err := h.functions.ingest(ctx, p.Function, rewrites); err != nil {
+	funcs := make([]*schemav1.InMemoryFunction, len(p.Function))
+	for i, v := range p.Function {
+		funcs[i] = &schemav1.InMemoryFunction{
+			Id:         v.Id,
+			Name:       uint32(v.Name),
+			SystemName: uint32(v.SystemName),
+			Filename:   uint32(v.Filename),
+			StartLine:  uint32(v.StartLine),
+		}
+	}
+
+	if err := h.functions.ingest(ctx, funcs, rewrites); err != nil {
 		return err
 	}
 
-	if err := h.locations.ingest(ctx, p.Location, rewrites); err != nil {
+	locs := make([]*schemav1.InMemoryLocation, len(p.Location))
+	for i, v := range p.Location {
+		x := &schemav1.InMemoryLocation{
+			Id:        v.Id,
+			Address:   v.Address,
+			MappingId: uint32(v.MappingId),
+			IsFolded:  v.IsFolded,
+		}
+		x.Line = make([]schemav1.InMemoryLine, len(v.Line))
+		for j, line := range v.Line {
+			x.Line[j] = schemav1.InMemoryLine{
+				FunctionId: uint32(line.FunctionId),
+				Line:       int32(line.Line),
+			}
+		}
+		locs[i] = x
+	}
+	if err := h.locations.ingest(ctx, locs, rewrites); err != nil {
 		return err
 	}
 
@@ -537,7 +595,7 @@ func (h *Head) resolveStacktraces(ctx context.Context, stacktracesByMapping stac
 	defer sp.Finish()
 
 	names := []string{}
-	functions := map[int64]int{}
+	functions := map[uint32]int{}
 
 	h.locations.lock.RLock()
 	h.functions.lock.RLock()
@@ -599,8 +657,8 @@ func (h *Head) resolvePprof(ctx context.Context, stacktracesByMapping profileSam
 	defer sp.Finish()
 
 	locations := map[int32]*profile.Location{}
-	functions := map[uint64]*profile.Function{}
-	mappings := map[uint64]*profile.Mapping{}
+	functions := map[uint32]*profile.Function{}
+	mappings := map[uint32]*profile.Mapping{}
 
 	h.locations.lock.RLock()
 	h.functions.lock.RLock()
@@ -670,12 +728,12 @@ func (h *Head) resolvePprof(ctx context.Context, stacktracesByMapping profileSam
 											Name:       h.strings.slice[fnFound.Name],
 											SystemName: h.strings.slice[fnFound.SystemName],
 											Filename:   h.strings.slice[fnFound.Filename],
-											StartLine:  fnFound.StartLine,
+											StartLine:  int64(fnFound.StartLine),
 										}
 										functions[line.FunctionId] = fn
 									}
 									loc.Line[i] = profile.Line{
-										Line:     line.Line,
+										Line:     int64(line.Line),
 										Function: fn,
 									}
 								}

@@ -166,3 +166,276 @@ func TestProfilesRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, newProfiles(), sRead)
 }
+
+func TestLocationsRoundTrip(t *testing.T) {
+	raw := []*profilev1.Location{
+		{
+			Id:        8,
+			Address:   9,
+			MappingId: 10,
+			Line: []*profilev1.Line{
+				{
+					FunctionId: 11,
+					Line:       12,
+				},
+				{
+					FunctionId: 13,
+					Line:       14,
+				},
+			},
+			IsFolded: true,
+		},
+		{
+			Id:        1,
+			Address:   2,
+			MappingId: 3,
+			Line: []*profilev1.Line{
+				{
+					FunctionId: 4,
+					Line:       5,
+				},
+				{
+					FunctionId: 6,
+					Line:       7,
+				},
+			},
+			IsFolded: false,
+		},
+	}
+
+	mem := []*InMemoryLocation{
+		{
+			Id:        8,
+			Address:   9,
+			MappingId: 10,
+			Line: []InMemoryLine{
+				{
+					FunctionId: 11,
+					Line:       12,
+				},
+				{
+					FunctionId: 13,
+					Line:       14,
+				},
+			},
+			IsFolded: true,
+		},
+		{
+			Id:        1,
+			Address:   2,
+			MappingId: 3,
+			Line: []InMemoryLine{
+				{
+					FunctionId: 4,
+					Line:       5,
+				},
+				{
+					FunctionId: 6,
+					Line:       7,
+				},
+			},
+			IsFolded: false,
+		},
+	}
+
+	var buf bytes.Buffer
+	require.NoError(t, new(ReadWriter[*profilev1.Location, *pprofLocationPersister]).WriteParquetFile(&buf, raw))
+	actual, err := new(ReadWriter[*InMemoryLocation, *LocationPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	require.NoError(t, err)
+	assert.Equal(t, mem, actual)
+
+	buf.Reset()
+	require.NoError(t, new(ReadWriter[*InMemoryLocation, *LocationPersister]).WriteParquetFile(&buf, mem))
+	actual, err = new(ReadWriter[*InMemoryLocation, *LocationPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	require.NoError(t, err)
+	assert.Equal(t, mem, actual)
+}
+
+var protoLocationsSchema = parquet.SchemaOf(&profilev1.Location{})
+
+type pprofLocationPersister struct{}
+
+func (*pprofLocationPersister) Name() string { return "locations" }
+
+func (*pprofLocationPersister) Schema() *parquet.Schema { return protoLocationsSchema }
+
+func (*pprofLocationPersister) SortingColumns() parquet.SortingOption {
+	return parquet.SortingColumns()
+}
+
+func (*pprofLocationPersister) Deconstruct(row parquet.Row, _ uint64, loc *profilev1.Location) parquet.Row {
+	row = protoLocationsSchema.Deconstruct(row, loc)
+	return row
+}
+
+func (*pprofLocationPersister) Reconstruct(row parquet.Row) (uint64, *profilev1.Location, error) {
+	var loc profilev1.Location
+	if err := protoLocationsSchema.Reconstruct(&loc, row); err != nil {
+		return 0, nil, err
+	}
+	return 0, &loc, nil
+}
+
+func TestFunctionsRoundTrip(t *testing.T) {
+	raw := []*profilev1.Function{
+		{
+			Id:         6,
+			Name:       7,
+			SystemName: 8,
+			Filename:   9,
+			StartLine:  10,
+		},
+		{
+			Id:         1,
+			Name:       2,
+			SystemName: 3,
+			Filename:   4,
+			StartLine:  5,
+		},
+	}
+
+	mem := []*InMemoryFunction{
+		{
+			Id:         6,
+			Name:       7,
+			SystemName: 8,
+			Filename:   9,
+			StartLine:  10,
+		},
+		{
+			Id:         1,
+			Name:       2,
+			SystemName: 3,
+			Filename:   4,
+			StartLine:  5,
+		},
+	}
+
+	var buf bytes.Buffer
+	require.NoError(t, new(ReadWriter[*profilev1.Function, *pprofFunctionPersister]).WriteParquetFile(&buf, raw))
+	actual, err := new(ReadWriter[*InMemoryFunction, *FunctionPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	require.NoError(t, err)
+	assert.Equal(t, mem, actual)
+
+	buf.Reset()
+	require.NoError(t, new(ReadWriter[*InMemoryFunction, *FunctionPersister]).WriteParquetFile(&buf, mem))
+	actual, err = new(ReadWriter[*InMemoryFunction, *FunctionPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	require.NoError(t, err)
+	assert.Equal(t, mem, actual)
+}
+
+var protoFunctionSchema = parquet.SchemaOf(&profilev1.Function{})
+
+type pprofFunctionPersister struct{}
+
+func (*pprofFunctionPersister) Name() string { return "functions" }
+
+func (*pprofFunctionPersister) Schema() *parquet.Schema { return protoFunctionSchema }
+
+func (*pprofFunctionPersister) SortingColumns() parquet.SortingOption {
+	return parquet.SortingColumns()
+}
+
+func (*pprofFunctionPersister) Deconstruct(row parquet.Row, _ uint64, loc *profilev1.Function) parquet.Row {
+	row = protoFunctionSchema.Deconstruct(row, loc)
+	return row
+}
+
+func (*pprofFunctionPersister) Reconstruct(row parquet.Row) (uint64, *profilev1.Function, error) {
+	var fn profilev1.Function
+	if err := protoFunctionSchema.Reconstruct(&fn, row); err != nil {
+		return 0, nil, err
+	}
+	return 0, &fn, nil
+}
+
+func TestMappingsRoundTrip(t *testing.T) {
+	raw := []*profilev1.Mapping{
+		{
+			Id:              7,
+			MemoryStart:     8,
+			MemoryLimit:     9,
+			FileOffset:      10,
+			Filename:        11,
+			BuildId:         12,
+			HasFunctions:    true,
+			HasFilenames:    false,
+			HasLineNumbers:  true,
+			HasInlineFrames: false,
+		},
+		{
+			Id:              1,
+			MemoryStart:     2,
+			MemoryLimit:     3,
+			FileOffset:      4,
+			Filename:        5,
+			BuildId:         6,
+			HasFunctions:    false,
+			HasFilenames:    true,
+			HasLineNumbers:  false,
+			HasInlineFrames: true,
+		},
+	}
+
+	mem := []*InMemoryMapping{
+		{
+			Id:              7,
+			MemoryStart:     8,
+			MemoryLimit:     9,
+			FileOffset:      10,
+			Filename:        11,
+			BuildId:         12,
+			HasFunctions:    true,
+			HasFilenames:    false,
+			HasLineNumbers:  true,
+			HasInlineFrames: false,
+		},
+		{
+			Id:              1,
+			MemoryStart:     2,
+			MemoryLimit:     3,
+			FileOffset:      4,
+			Filename:        5,
+			BuildId:         6,
+			HasFunctions:    false,
+			HasFilenames:    true,
+			HasLineNumbers:  false,
+			HasInlineFrames: true,
+		},
+	}
+
+	var buf bytes.Buffer
+	require.NoError(t, new(ReadWriter[*profilev1.Mapping, *pprofMappingPersister]).WriteParquetFile(&buf, raw))
+	actual, err := new(ReadWriter[*InMemoryMapping, *MappingPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	require.NoError(t, err)
+	assert.Equal(t, mem, actual)
+
+	//	buf.Reset()
+	//	require.NoError(t, new(ReadWriter[*InMemoryMapping, *MappingPersister]).WriteParquetFile(&buf, mem))
+	//	actual, err = new(ReadWriter[*InMemoryMapping, *MappingPersister]).ReadParquetFile(bytes.NewReader(buf.Bytes()))
+	//	require.NoError(t, err)
+	//	assert.Equal(t, mem, actual)
+}
+
+var protoMappingSchema = parquet.SchemaOf(&profilev1.Mapping{})
+
+type pprofMappingPersister struct{}
+
+func (*pprofMappingPersister) Name() string { return "mappings" }
+
+func (*pprofMappingPersister) Schema() *parquet.Schema { return protoMappingSchema }
+
+func (*pprofMappingPersister) SortingColumns() parquet.SortingOption { return parquet.SortingColumns() }
+
+func (*pprofMappingPersister) Deconstruct(row parquet.Row, _ uint64, loc *profilev1.Mapping) parquet.Row {
+	row = protoMappingSchema.Deconstruct(row, loc)
+	return row
+}
+
+func (*pprofMappingPersister) Reconstruct(row parquet.Row) (uint64, *profilev1.Mapping, error) {
+	var m profilev1.Mapping
+	if err := protoMappingSchema.Reconstruct(&m, row); err != nil {
+		return 0, nil, err
+	}
+	return 0, &m, nil
+}

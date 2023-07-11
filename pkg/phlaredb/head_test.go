@@ -200,9 +200,9 @@ pyroscope_head_received_sample_values_total{profile_name=""} 3
 
 # HELP pyroscope_head_size_bytes Size of a particular in memory store within the head phlaredb block.
 # TYPE pyroscope_head_size_bytes gauge
-pyroscope_head_size_bytes{type="functions"} 240
-pyroscope_head_size_bytes{type="locations"} 344
-pyroscope_head_size_bytes{type="mappings"} 192
+pyroscope_head_size_bytes{type="functions"} 72
+pyroscope_head_size_bytes{type="locations"} 152
+pyroscope_head_size_bytes{type="mappings"} 96
 pyroscope_head_size_bytes{type="profiles"} 388
 pyroscope_head_size_bytes{type="stacktraces"} 0
 pyroscope_head_size_bytes{type="strings"} 52
