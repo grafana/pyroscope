@@ -3,7 +3,7 @@
 Pyroscope provides three options for using the "adhoc" mode, depending on whether you have the Pyroscope SDK installed or not. Choose the appropriate method based on your setup.
 
 ### Option 1: Push mode (with SDK installed)
-If your application already uses an agent or has integration with the Pyroscope HTTP API, you can use push mode 
+If your application already uses an agent or has integration with the Pyroscope HTTP API, you can use push mode
 to profile the application without any additional configuration changes.
 
 #### Golang Adhoc (Push Mode)
@@ -32,7 +32,7 @@ For example, this method will work for python or ruby _without_ the pip/gem inst
 
 Profile a script using adhoc
 ```
-pyroscope adhoc --push pyroscope-cli exec --spy-name=pyspy main.py  
+pyroscope adhoc --push pyroscope-cli exec --spy-name=pyspy main.py
 ```
 
 Attach to and profile a process using adhoc
