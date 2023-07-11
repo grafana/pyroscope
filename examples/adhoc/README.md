@@ -40,7 +40,7 @@ pyroscope adhoc --push pyroscope-cli exec --spy-name=pyspy main.py
 
 Attach to a process and profile it using `pyroscope-cli`
 ```
-sudo ./pyroscope-cli connect --pid=[369936] --spy-name=pyspy --server-address="http://localhost:4100"
+sudo pyroscope adhoc --push pyroscope-cli connect --spy-name=pyspy --pid=<pid>
 ```
 
 ```
