@@ -190,5 +190,4 @@ func TestBlockCompatability(t *testing.T) {
 		})
 
 	}
-
 }
