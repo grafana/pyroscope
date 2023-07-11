@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
@@ -125,7 +126,9 @@ Outer:
 			it.rowFinished = true
 			it.skipping = false
 			var err error
+			pageReadStart := time.Now()
 			it.currentPage, err = it.currentPages.ReadPage()
+			pageReadDurationMs := time.Since(pageReadStart).Milliseconds()
 			if err != nil {
 				if err == io.EOF {
 					continue
@@ -138,6 +141,7 @@ Outer:
 				otlog.Int64("startRowGroupRowNum", it.startRowGroupRowNum),
 				otlog.Int64("startPageRowNum", it.startPageRowNum),
 				otlog.Int64("pageRowNum", it.currentPage.NumRows()),
+				otlog.Int64("duration_ms", pageReadDurationMs),
 			)
 			it.valueReader = it.currentPage.Values()
 		}
