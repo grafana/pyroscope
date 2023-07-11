@@ -3,13 +3,17 @@ package symdb
 import (
 	"bufio"
 	"io"
+	"unsafe"
 
 	"github.com/dgryski/go-groupvarint"
 
 	"github.com/grafana/phlare/pkg/util/math"
 )
 
-const defaultStacktraceTreeSize = 10 << 10
+const (
+	defaultStacktraceTreeSize = 10 << 10
+	stacktraceTreeNodeSize    = int(unsafe.Sizeof(node{}))
+)
 
 type stacktraceTree struct {
 	nodes []node

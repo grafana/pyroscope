@@ -3,14 +3,20 @@ package symdb
 import (
 	"sort"
 	"sync"
+	"sync/atomic"
+	"time"
 )
 
 type SymDB struct {
 	config *Config
 	writer *Writer
+	stats  stats
 
 	m        sync.RWMutex
 	mappings map[uint64]*inMemoryMapping
+
+	wg   sync.WaitGroup
+	stop chan struct{}
 }
 
 type Config struct {
@@ -20,6 +26,13 @@ type Config struct {
 
 type StacktracesConfig struct {
 	MaxNodesPerChunk uint32
+}
+
+const statsUpdateInterval = 10 * time.Second
+
+type stats struct {
+	memorySize atomic.Uint64
+	mappings   atomic.Uint32
 }
 
 func DefaultConfig() *Config {
@@ -43,11 +56,15 @@ func NewSymDB(c *Config) *SymDB {
 	if c == nil {
 		c = DefaultConfig()
 	}
-	return &SymDB{
+	db := &SymDB{
 		config:   c,
 		writer:   NewWriter(c.Dir),
 		mappings: make(map[uint64]*inMemoryMapping),
+		stop:     make(chan struct{}),
 	}
+	db.wg.Add(1)
+	go db.updateStats()
+	return db
 }
 
 func (s *SymDB) MappingWriter(mappingName uint64) MappingWriter {
@@ -93,26 +110,9 @@ func (s *SymDB) mapping(mappingName uint64) *inMemoryMapping {
 	return p
 }
 
-// TODO(kolesnikovae): Implement:
-
-type Stats struct {
-	MemorySize uint64
-	Mappings   uint32
-}
-
-func (s *SymDB) Stats() Stats {
-	return Stats{}
-}
-
-// TODO(kolesnikovae): Follow Table interface (but Init method).
-
-func (s *SymDB) Name() string { return s.config.Dir }
-
-func (s *SymDB) Size() uint64 { return 0 }
-
-func (s *SymDB) MemorySize() uint64 { return 0 }
-
 func (s *SymDB) Flush() error {
+	close(s.stop)
+	s.wg.Wait()
 	s.m.RLock()
 	m := make([]*inMemoryMapping, len(s.mappings))
 	var i int
@@ -132,4 +132,46 @@ func (s *SymDB) Flush() error {
 		}
 	}
 	return s.writer.Flush()
+}
+
+func (s *SymDB) Name() string { return s.config.Dir }
+
+func (s *SymDB) Size() uint64 {
+	// NOTE(kolesnikovae): SymDB does not use disk until flushed.
+	//  This method should be implemented once the logic changes.
+	return 0
+}
+
+func (s *SymDB) MemorySize() uint64 { return s.stats.memorySize.Load() }
+
+func (s *SymDB) updateStats() {
+	t := time.NewTicker(statsUpdateInterval)
+	defer func() {
+		t.Stop()
+		s.wg.Done()
+	}()
+	for {
+		select {
+		case <-s.stop:
+			return
+		case <-t.C:
+			s.m.RLock()
+			s.stats.mappings.Store(uint32(len(s.mappings)))
+			s.stats.memorySize.Store(uint64(s.calculateMemoryFootprint()))
+			s.m.RUnlock()
+		}
+	}
+}
+
+// calculateMemoryFootprint estimates the memory footprint.
+func (s *SymDB) calculateMemoryFootprint() (v int) {
+	for _, m := range s.mappings {
+		m.stacktraceMutex.RLock()
+		v += len(m.stacktraceChunkHeaders) * stacktraceChunkHeaderSize
+		for _, c := range m.stacktraceChunks {
+			v += stacktraceTreeNodeSize * cap(c.tree.nodes)
+		}
+		m.stacktraceMutex.RUnlock()
+	}
+	return v
 }
