@@ -41,7 +41,8 @@
             "cpu": 1,
             "memory": "8Gi"
           }
-        }
+        },
+        "terminationGracePeriodSeconds": 600
       },
       "querier": {
         "kind": "Deployment",
