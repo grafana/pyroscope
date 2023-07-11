@@ -6,6 +6,7 @@ import (
 
 	pq "github.com/segmentio/parquet-go"
 	"go.uber.org/atomic"
+	"golang.org/x/exp/constraints"
 )
 
 // Predicate is a pushdown predicate that can be applied at
@@ -253,4 +254,43 @@ func (p *InstrumentedPredicate) KeepValue(v pq.Value) bool {
 	}
 
 	return false
+}
+
+type mapPredicate[K constraints.Integer, V any] struct {
+	inbetweenPred Predicate
+	m             map[K]V
+}
+
+func NewMapPredicate[K constraints.Integer, V any](m map[K]V) Predicate {
+
+	var min, max int64
+
+	first := true
+	for k := range m {
+		if first || max < int64(k) {
+			max = int64(k)
+		}
+		if first || min > int64(k) {
+			min = int64(k)
+		}
+		first = false
+	}
+
+	return &mapPredicate[K, V]{
+		inbetweenPred: NewIntBetweenPredicate(min, max),
+		m:             m,
+	}
+}
+
+func (m *mapPredicate[K, V]) KeepColumnChunk(c pq.ColumnChunk) bool {
+	return m.inbetweenPred.KeepColumnChunk(c)
+}
+
+func (m *mapPredicate[K, V]) KeepPage(page pq.Page) bool {
+	return m.inbetweenPred.KeepPage(page)
+}
+
+func (m *mapPredicate[K, V]) KeepValue(v pq.Value) bool {
+	_, exists := m.m[K(v.Int64())]
+	return exists
 }

@@ -28,7 +28,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/segmentio/parquet-go"
 	"github.com/thanos-io/objstore"
-	"golang.org/x/exp/constraints"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
@@ -459,58 +458,6 @@ func (b *singleBlockQuerier) Close() error {
 
 func (b *singleBlockQuerier) Bounds() (model.Time, model.Time) {
 	return b.meta.MinTime, b.meta.MaxTime
-}
-
-type mapPredicate[K constraints.Integer, V any] struct {
-	min K
-	max K
-	m   map[K]V
-}
-
-func newMapPredicate[K constraints.Integer, V any](m map[K]V) query.Predicate {
-	p := &mapPredicate[K, V]{
-		m: m,
-	}
-
-	first := true
-	for k := range m {
-		if first || p.max < k {
-			p.max = k
-		}
-		if first || p.min > k {
-			p.min = k
-		}
-		first = false
-	}
-
-	return p
-}
-
-func (m *mapPredicate[K, V]) KeepColumnChunk(c parquet.ColumnChunk) bool {
-	if ci := c.ColumnIndex(); ci != nil {
-		for i := 0; i < ci.NumPages(); i++ {
-			min := K(ci.MinValue(i).Int64())
-			max := K(ci.MaxValue(i).Int64())
-			if m.max >= min && m.min <= max {
-				return true
-			}
-		}
-		return false
-	}
-
-	return true
-}
-
-func (m *mapPredicate[K, V]) KeepPage(page parquet.Page) bool {
-	if min, max, ok := page.Bounds(); ok {
-		return m.max >= K(min.Int64()) && m.min <= K(max.Int64())
-	}
-	return true
-}
-
-func (m *mapPredicate[K, V]) KeepValue(v parquet.Value) bool {
-	_, exists := m.m[K(v.Int64())]
-	return exists
 }
 
 type labelsInfo struct {
@@ -987,26 +934,26 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	}
 
 	var (
-		buf       [][]parquet.Value
-		joinIters []query.Iterator
+		buf [][]parquet.Value
+	)
+
+	pIt := query.NewBinaryJoinIterator(
+		0,
+		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
+		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
 	)
 
 	if b.meta.Version >= 2 {
-		joinIters = []query.Iterator{
-			b.profiles.columnIter(ctx, "SeriesIndex", newMapPredicate(lblsPerRef), "SeriesIndex"),
-			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
+		pIt = query.NewBinaryJoinIterator(
+			0,
+			pIt,
 			b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
-		}
+		)
 		buf = make([][]parquet.Value, 3)
 	} else {
-		joinIters = []query.Iterator{
-			b.profiles.columnIter(ctx, "SeriesIndex", newMapPredicate(lblsPerRef), "SeriesIndex"),
-			b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
-		}
 		buf = make([][]parquet.Value, 2)
 	}
 
-	pIt := query.NewJoinIterator(0, joinIters, nil)
 	iters := make([]iter.Iterator[Profile], 0, len(lblsPerRef))
 	defer pIt.Close()
 
@@ -1205,7 +1152,7 @@ func (r *parquetReader[M, P]) columnIter(ctx context.Context, columnName string,
 		return query.NewErrIterator(fmt.Errorf("column '%s' not found in parquet file '%s'", columnName, r.relPath()))
 	}
 	ctx = query.AddMetricsToContext(ctx, r.metrics.query)
-	return query.NewColumnIterator(ctx, r.file.RowGroups(), index, columnName, 1000, predicate, alias)
+	return query.NewSyncIterator(ctx, r.file.RowGroups(), index, columnName, 1000, predicate, alias)
 }
 
 func repeatedColumnIter[T any](ctx context.Context, source Source, columnName string, rows iter.Iterator[T]) iter.Iterator[*query.RepeatedRow[T]] {

@@ -48,14 +48,13 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 		start = model.Time(params.Start)
 		end   = model.Time(params.End)
 	)
-	pIt := query.NewJoinIterator(
-		0,
-		[]query.Iterator{
+	pIt := query.NewBinaryJoinIterator(0,
+		query.NewBinaryJoinIterator(
+			0,
 			rowIter,
 			q.rowGroup().columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"),
-			q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
-		},
-		nil,
+		),
+		q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
 	)
 	defer pIt.Close()
 

@@ -75,7 +75,7 @@ func testPredicate[T any](t *testing.T, tc predicateTestCase[T]) {
 
 	p := InstrumentedPredicate{pred: tc.predicate}
 
-	i := NewColumnIterator(context.TODO(), r.RowGroups(), 0, "test", 100, &p, "")
+	i := NewSyncIterator(context.TODO(), r.RowGroups(), 0, "test", 100, &p, "")
 	for i.Next() {
 	}
 
