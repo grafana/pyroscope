@@ -29,13 +29,16 @@ to the Pyroscope server using the adhoc mode as a sidecar.
 #### Python adhoc (no pip package -- Pyroscope sidecar)
 For languages with a supported spy and no other pyroscope integration, this is the easiest way to get profiling data.
 For example, this method will work for python or ruby _without_ the pip/gem instrumented in the code.
+For this you will need to use the `pyroscope-cli` from the [pyroscope-rs](https://github.com/grafana/pyroscope-rs/releases/tag/cli-0.2.7) project.
+
+**Note: this is different than using the pyroscope binary, `./pyroscope`, itself.**
 
 Profile a script using adhoc
 ```
 pyroscope adhoc --push pyroscope-cli exec --spy-name=pyspy main.py
 ```
 
-Attach to and profile a process using adhoc
+Attach to a process and profile it using `pyroscope-cli`
 ```
 sudo ./pyroscope-cli connect --pid=[369936] --spy-name=pyspy --server-address="http://localhost:4100"
 ```
