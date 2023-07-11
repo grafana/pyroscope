@@ -27,7 +27,7 @@ func lessProfile(p1, p2 Profile) bool {
 
 type MergeIterator[P Profile] struct {
 	tree        *loser.Tree[P, Iterator[P]]
-	errs        multierror.MultiError
+	closeErrs   multierror.MultiError
 	current     P
 	deduplicate bool
 }
@@ -59,7 +59,7 @@ func NewMergeIterator[P Profile](max P, deduplicate bool, iters ...Iterator[P]) 
 		},
 		func(s Iterator[P]) {
 			if err := s.Close(); err != nil {
-				iter.errs.Add(err)
+				iter.closeErrs.Add(err)
 			}
 		})
 	return iter
@@ -88,12 +88,12 @@ func (i *MergeIterator[P]) At() P {
 }
 
 func (i *MergeIterator[P]) Err() error {
-	return i.errs.Err()
+	return i.tree.Err()
 }
 
 func (i *MergeIterator[P]) Close() error {
 	i.tree.Close()
-	return i.Err()
+	return i.closeErrs.Err()
 }
 
 type TimeRangedIterator[T Timestamp] struct {

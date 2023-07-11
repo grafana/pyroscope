@@ -72,6 +72,9 @@ func (s *MergeRowReader) ReadRows(rows []parquet.Row) (int, error) {
 		}
 		if !s.tree.Next() {
 			s.tree.Close()
+			if err := s.tree.Err(); err != nil {
+				return n, err
+			}
 			return n, io.EOF
 		}
 		rows[n] = s.tree.Winner().At()

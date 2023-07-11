@@ -1,6 +1,7 @@
 package loser_test
 
 import (
+	"errors"
 	"math"
 	"testing"
 
@@ -10,6 +11,8 @@ import (
 type List struct {
 	list []uint64
 	cur  uint64
+
+	err error
 }
 
 func NewList(list ...uint64) *List {
@@ -19,6 +22,8 @@ func NewList(list ...uint64) *List {
 func (it *List) At() uint64 {
 	return it.cur
 }
+
+func (it *List) Err() error { return it.err }
 
 func (it *List) Next() bool {
 	if len(it.list) > 0 {
@@ -132,12 +137,47 @@ func TestPush(t *testing.T) {
 			}
 			lt := loser.New(nil, math.MaxUint64, at, less, close)
 			for _, s := range tt.args {
-				lt.Push(s)
+				if err := lt.Push(s); err != nil {
+					t.Fatalf("Push failed: %v", err)
+				}
 			}
 			checkIterablesEqual(t, tt.want, lt, at, at2, less)
 			if numCloses != len(tt.args) {
 				t.Errorf("Expected %d closes, got %d", len(tt.args), numCloses)
 			}
 		})
+	}
+}
+
+func TestInitWithErr(t *testing.T) {
+	l := NewList()
+	l.err = errors.New("test")
+	l2 := NewList(5, 6, 7, 8)
+	tree := loser.New([]*List{l, l2}, math.MaxUint64, func(s *List) uint64 { return s.At() }, func(a, b uint64) bool { return a < b }, func(s *List) {})
+
+	if tree.Next() {
+		t.Errorf("Next() should have returned false")
+	}
+	if tree.Err() != l.err {
+		t.Errorf("Err() should have returned %v, got %v", l.err, tree.Err())
+	}
+}
+
+func TestErrDuringNext(t *testing.T) {
+	l := NewList(5)
+	l.err = errors.New("test")
+	tree := loser.New([]*List{l}, math.MaxUint64, func(s *List) uint64 { return s.At() }, func(a, b uint64) bool { return a < b }, func(s *List) {})
+
+	if !tree.Next() {
+		t.Errorf("Next() should have returned true")
+	}
+	if tree.Next() {
+		t.Errorf("Next() should have returned false")
+	}
+	if tree.Err() != l.err {
+		t.Errorf("Err() should have returned %v, got %v", l.err, tree.Err())
+	}
+	if tree.Next() {
+		t.Errorf("Next() should have returned false")
 	}
 }
