@@ -110,6 +110,9 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if $values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ $values.terminationGracePeriodSeconds }}
+      {{- end }}
       volumes:
       {{- with $values.extraVolumes }}
       {{- toYaml . | nindent 8 }}

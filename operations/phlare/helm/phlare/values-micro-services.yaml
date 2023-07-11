@@ -52,6 +52,7 @@ phlare:
     ingester:
       kind: StatefulSet
       replicaCount: 3
+      terminationGracePeriodSeconds: 600
       resources:
         limits:
           memory: 16Gi
