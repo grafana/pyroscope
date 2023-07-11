@@ -32,7 +32,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
-	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	"github.com/grafana/phlare/pkg/iter"
@@ -297,9 +296,9 @@ type singleBlockQuerier struct {
 	opened      bool
 	index       *index.Reader
 	strings     inMemoryparquetReader[*schemav1.StoredString, *schemav1.StringPersister]
-	functions   inMemoryparquetReader[*profilev1.Function, *schemav1.FunctionPersister]
-	locations   inMemoryparquetReader[*profilev1.Location, *schemav1.LocationPersister]
-	mappings    inMemoryparquetReader[*profilev1.Mapping, *schemav1.MappingPersister]
+	functions   inMemoryparquetReader[*schemav1.InMemoryFunction, *schemav1.FunctionPersister]
+	locations   inMemoryparquetReader[*schemav1.InMemoryLocation, *schemav1.LocationPersister]
+	mappings    inMemoryparquetReader[*schemav1.InMemoryMapping, *schemav1.MappingPersister]
 	profiles    parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
 	stacktraces StacktraceDB
 }

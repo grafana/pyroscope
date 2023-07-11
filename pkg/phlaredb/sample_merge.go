@@ -108,16 +108,16 @@ func (b *singleBlockQuerier) resolvePprofSymbols(ctx context.Context, profileSam
 		mappingIDs          = newUniqueIDs[lo.Tuple2[*profile.Mapping, *googlev1.Mapping]]()
 		locations           = b.locations.retrieveRows(ctx, locationsIdsByStacktraceID.locationIds().iterator())
 		locationModelsByIds = map[uint64]*profile.Location{}
-		functionModelsByIds = map[uint64]*profile.Function{}
+		functionModelsByIds = map[uint32]*profile.Function{}
 	)
 	for locations.Next() {
 		s := locations.At()
 		m, ok := mappingIDs[int64(s.Result.MappingId)]
 		if !ok {
 			m = lo.T2(&profile.Mapping{
-				ID: s.Result.MappingId,
+				ID: uint64(s.Result.MappingId),
 			}, &googlev1.Mapping{
-				Id: s.Result.MappingId,
+				Id: uint64(s.Result.MappingId),
 			})
 			mappingIDs[int64(s.Result.MappingId)] = m
 		}
@@ -132,13 +132,13 @@ func (b *singleBlockQuerier) resolvePprofSymbols(ctx context.Context, profileSam
 			fn, ok := functionModelsByIds[line.FunctionId]
 			if !ok {
 				fn = &profile.Function{
-					ID: line.FunctionId,
+					ID: uint64(line.FunctionId),
 				}
 				functionModelsByIds[line.FunctionId] = fn
 			}
 
 			loc.Line = append(loc.Line, profile.Line{
-				Line:     line.Line,
+				Line:     int64(line.Line),
 				Function: fn,
 			})
 		}
@@ -158,14 +158,14 @@ func (b *singleBlockQuerier) resolvePprofSymbols(ctx context.Context, profileSam
 		s := functions.At()
 		functionsById[int64(s.Result.Id)] = &googlev1.Function{
 			Id:         s.Result.Id,
-			Name:       s.Result.Name,
-			SystemName: s.Result.SystemName,
-			Filename:   s.Result.Filename,
-			StartLine:  s.Result.StartLine,
+			Name:       int64(s.Result.Name),
+			SystemName: int64(s.Result.SystemName),
+			Filename:   int64(s.Result.Filename),
+			StartLine:  int64(s.Result.StartLine),
 		}
-		stringsIds[s.Result.Name] = 0
-		stringsIds[s.Result.Filename] = 0
-		stringsIds[s.Result.SystemName] = 0
+		stringsIds[int64(s.Result.Name)] = 0
+		stringsIds[int64(s.Result.Filename)] = 0
+		stringsIds[int64(s.Result.SystemName)] = 0
 	}
 	if err := functions.Err(); err != nil {
 		return nil, err
@@ -175,8 +175,8 @@ func (b *singleBlockQuerier) resolvePprofSymbols(ctx context.Context, profileSam
 	for mapping.Next() {
 		cur := mapping.At()
 		m := mappingIDs[int64(cur.Result.Id)]
-		m.B.Filename = cur.Result.Filename
-		m.B.BuildId = cur.Result.BuildId
+		m.B.Filename = int64(cur.Result.Filename)
+		m.B.BuildId = int64(cur.Result.BuildId)
 		m.A.Start = cur.Result.MemoryStart
 		m.A.Limit = cur.Result.MemoryLimit
 		m.A.Offset = cur.Result.FileOffset
@@ -185,8 +185,8 @@ func (b *singleBlockQuerier) resolvePprofSymbols(ctx context.Context, profileSam
 		m.A.HasLineNumbers = cur.Result.HasLineNumbers
 		m.A.HasInlineFrames = cur.Result.HasInlineFrames
 
-		stringsIds[cur.Result.Filename] = 0
-		stringsIds[cur.Result.BuildId] = 0
+		stringsIds[int64(cur.Result.Filename)] = 0
+		stringsIds[int64(cur.Result.BuildId)] = 0
 	}
 	// gather strings
 	var (
@@ -290,7 +290,7 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktracesByMa
 	for functions.Next() {
 		s := functions.At()
 
-		functionIDsByStringID[s.Result.Name] = append(functionIDsByStringID[s.Result.Name], s.RowNum)
+		functionIDsByStringID[int64(s.Result.Name)] = append(functionIDsByStringID[int64(s.Result.Name)], s.RowNum)
 	}
 	if err := functions.Err(); err != nil {
 		return nil, err
