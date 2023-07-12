@@ -74,7 +74,7 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (block.Meta, er
 	if err := profileWriter.Close(); err != nil {
 		return block.Meta{}, err
 	}
-	// todo: block meta
+	// todo: block meta files.
 	meta.Stats.NumProfiles = total
 	meta.Stats.NumSeries = seriesRewriter.NumSeries()
 	meta.Stats.NumSamples = symbolsRewriter.NumSamples()
