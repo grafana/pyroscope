@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"golang.org/x/sys/unix"
 )
 
 func TestProcMaps(t *testing.T) {
@@ -38,7 +37,7 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 	if err != nil {
 		t.Fatal(err)
 	}
-	dev := unix.Mkdev(9, 0)
+	dev := mkdev(9, 0)
 	expected := []*ProcMap{
 		{
 			StartAddr: 0x5644e74ce000,
