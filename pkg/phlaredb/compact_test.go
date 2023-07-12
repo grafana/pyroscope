@@ -69,6 +69,13 @@ func TestCompact(t *testing.T) {
 	testCompact(t, meta, bkt, dst)
 }
 
+// to download the blocks:
+// gsutil -m cp -r \
+// "gs://dev-us-central-0-profiles-dev-001-data/1218/phlaredb/01H53WJEAB43S3GJ26XMSNRSJA" \
+// "gs://dev-us-central-0-profiles-dev-001-data/1218/phlaredb/01H5454JBEV80V2J7CKYHPCBG8" \
+// "gs://dev-us-central-0-profiles-dev-001-data/1218/phlaredb/01H54553SYKH43FNJN5BVR1M2H" \
+// "gs://dev-us-central-0-profiles-dev-001-data/1218/phlaredb/01H5457Q89WYYH9FCK8PZ6XG75" \
+// .
 func TestCompactLocal(t *testing.T) {
 	t.TempDir()
 	ctx := context.Background()
