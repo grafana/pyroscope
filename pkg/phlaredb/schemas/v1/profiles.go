@@ -42,9 +42,10 @@ var (
 		phlareparquet.NewGroupField("DefaultSampleType", parquet.Optional(parquet.Int(64))),
 	})
 
-	maxProfileRow       parquet.Row
-	seriesIndexColIndex int
-	timeNanoColIndex    int
+	maxProfileRow        parquet.Row
+	seriesIndexColIndex  int
+	stacktraceIDColIndex int
+	timeNanoColIndex     int
 )
 
 func init() {
@@ -62,6 +63,11 @@ func init() {
 		panic(fmt.Errorf("TimeNanos column not found"))
 	}
 	timeNanoColIndex = timeCol.ColumnIndex
+	stacktraceIDCol, ok := profilesSchema.Lookup("Samples", "list", "element", "StacktraceID")
+	if !ok {
+		panic(fmt.Errorf("StacktraceID column not found"))
+	}
+	stacktraceIDColIndex = stacktraceIDCol.ColumnIndex
 }
 
 type Sample struct {
@@ -478,4 +484,23 @@ func (p ProfileRow) TimeNanos() int64 {
 
 func (p ProfileRow) SetSeriesIndex(v uint32) {
 	p[seriesIndexColIndex] = parquet.Int32Value(int32(v)).Level(0, 0, seriesIndexColIndex)
+}
+
+func (p ProfileRow) ForStacktraceIDsValues(fn func([]parquet.Value)) {
+	start := -1
+	var i int
+	for i = 0; i < len(p); i++ {
+		col := p[i].Column()
+		if col == stacktraceIDColIndex && p[i].DefinitionLevel() == 1 {
+			if start == -1 {
+				start = i
+			}
+		}
+		if col > stacktraceIDColIndex {
+			break
+		}
+	}
+	if start != -1 {
+		fn(p[start:i])
+	}
 }

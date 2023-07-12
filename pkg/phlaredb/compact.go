@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
@@ -23,20 +24,17 @@ import (
 )
 
 type BlockReader interface {
+	Meta() block.Meta
 	Profiles() []parquet.RowGroup
 	Index() IndexReader
-	// Symbols() SymbolReader
-}
-
-type SymbolReader interface {
-	// todo
+	// todo symbdb
 }
 
 func Compact(ctx context.Context, src []BlockReader, dst string) (block.Meta, error) {
 	if len(src) <= 1 {
 		return block.Meta{}, errors.New("not enough blocks to compact")
 	}
-	meta := block.NewMeta()
+	meta := compactedMeta(src)
 	blockPath := filepath.Join(dst, meta.ULID.String())
 	if err := os.MkdirAll(blockPath, 0o777); err != nil {
 		return block.Meta{}, err
@@ -59,9 +57,9 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (block.Meta, er
 	if err != nil {
 		return block.Meta{}, err
 	}
-	rowsIt = newSeriesRewriter(rowsIt, indexw)
-	rowsIt = newSymbolsRewriter(rowsIt)
-	reader := phlareparquet.NewIteratorRowReader(newRowsIterator(rowsIt))
+	seriesRewriter := newSeriesRewriter(rowsIt, indexw)
+	symbolsRewriter := newSymbolsRewriter(seriesRewriter)
+	reader := phlareparquet.NewIteratorRowReader(newRowsIterator(symbolsRewriter))
 
 	total, _, err := phlareparquet.CopyAsRowGroups(profileWriter, reader, defaultParquetConfig.MaxBufferRowCount)
 	if err != nil {
@@ -78,10 +76,59 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (block.Meta, er
 	}
 	// todo: block meta
 	meta.Stats.NumProfiles = total
+	meta.Stats.NumSeries = seriesRewriter.NumSeries()
+	meta.Stats.NumSamples = symbolsRewriter.NumSamples()
+
 	if _, err := meta.WriteToFile(util.Logger, blockPath); err != nil {
 		return block.Meta{}, err
 	}
 	return *meta, nil
+}
+
+func compactedMeta(src []BlockReader) *block.Meta {
+	meta := block.NewMeta()
+	highestCompactionLevel := 0
+	ulids := make([]ulid.ULID, len(src))
+	parents := make([]tsdb.BlockDesc, len(src))
+	minTime, maxTime := model.Latest, model.Earliest
+	labels := make(map[string]string)
+	for _, b := range src {
+		if b.Meta().Compaction.Level > highestCompactionLevel {
+			highestCompactionLevel = b.Meta().Compaction.Level
+		}
+		ulids = append(ulids, b.Meta().ULID)
+		parents = append(parents, tsdb.BlockDesc{
+			ULID:    b.Meta().ULID,
+			MinTime: int64(b.Meta().MinTime),
+			MaxTime: int64(b.Meta().MaxTime),
+		})
+		if b.Meta().MinTime < minTime {
+			minTime = b.Meta().MinTime
+		}
+		if b.Meta().MaxTime > maxTime {
+			maxTime = b.Meta().MaxTime
+		}
+		for k, v := range b.Meta().Labels {
+			if k == block.HostnameLabel {
+				continue
+			}
+			labels[k] = v
+		}
+	}
+	if hostname, err := os.Hostname(); err == nil {
+		labels[block.HostnameLabel] = hostname
+	}
+	meta.Source = block.CompactorSource
+	meta.Compaction = tsdb.BlockMetaCompaction{
+		Deletable: meta.Stats.NumSamples == 0,
+		Level:     highestCompactionLevel + 1,
+		Sources:   ulids,
+		Parents:   parents,
+	}
+	meta.MaxTime = maxTime
+	meta.MinTime = minTime
+	meta.Labels = labels
+	return meta
 }
 
 type profileRow struct {
@@ -205,14 +252,77 @@ func newMergeRowProfileIterator(src []BlockReader) (iter.Iterator[profileRow], e
 	}, nil
 }
 
+type noopStacktraceRewriter struct{}
+
+func (noopStacktraceRewriter) RewriteStacktraces(src, dst []uint32) error {
+	copy(dst, src)
+	return nil
+}
+
+type StacktraceRewriter interface {
+	RewriteStacktraces(src, dst []uint32) error
+}
+
 type symbolsRewriter struct {
 	iter.Iterator[profileRow]
+	err error
+
+	rewriter   StacktraceRewriter
+	src, dst   []uint32
+	numSamples uint64
 }
 
 // todo remap symbols & ingest symbols
 func newSymbolsRewriter(it iter.Iterator[profileRow]) *symbolsRewriter {
 	return &symbolsRewriter{
 		Iterator: it,
+		rewriter: noopStacktraceRewriter{},
+	}
+}
+
+func (s *symbolsRewriter) NumSamples() uint64 {
+	return s.numSamples
+}
+
+func (s *symbolsRewriter) Next() bool {
+	if !s.Iterator.Next() {
+		return false
+	}
+	var err error
+	s.Iterator.At().row.ForStacktraceIDsValues(func(values []parquet.Value) {
+		s.numSamples += uint64(len(values))
+		s.loadStacktracesID(values)
+		err = s.rewriter.RewriteStacktraces(s.src, s.dst)
+		if err != nil {
+			return
+		}
+		for i, v := range values {
+			values[i] = parquet.Int64Value(int64(s.dst[i])).Level(v.RepetitionLevel(), v.DefinitionLevel(), v.Column())
+		}
+	})
+	if err != nil {
+		s.err = err
+		return false
+	}
+	return true
+}
+
+func (s *symbolsRewriter) Err() error {
+	if s.err != nil {
+		return s.err
+	}
+	return s.Iterator.Err()
+}
+
+func (s *symbolsRewriter) loadStacktracesID(values []parquet.Value) {
+	if cap(s.src) < len(values) {
+		s.src = make([]uint32, len(values)*2)
+		s.dst = make([]uint32, len(values)*2)
+	}
+	s.src = s.src[:len(values)]
+	s.dst = s.dst[:len(values)]
+	for i := range values {
+		s.src[i] = values[i].Uint32()
 	}
 }
 
@@ -226,6 +336,8 @@ type seriesRewriter struct {
 	previousFp       model.Fingerprint
 	currentChunkMeta index.ChunkMeta
 	err              error
+
+	numSeries uint64
 }
 
 func newSeriesRewriter(it iter.Iterator[profileRow], indexw *index.Writer) *seriesRewriter {
@@ -235,6 +347,10 @@ func newSeriesRewriter(it iter.Iterator[profileRow], indexw *index.Writer) *seri
 	}
 }
 
+func (s *seriesRewriter) NumSeries() uint64 {
+	return s.numSeries
+}
+
 func (s *seriesRewriter) Next() bool {
 	if !s.Iterator.Next() {
 		if s.previousFp != 0 {
@@ -242,6 +358,7 @@ func (s *seriesRewriter) Next() bool {
 				s.err = err
 				return false
 			}
+			s.numSeries++
 		}
 		return false
 	}
@@ -253,6 +370,7 @@ func (s *seriesRewriter) Next() bool {
 				s.err = err
 				return false
 			}
+			s.numSeries++
 		}
 		s.seriesRef++
 		s.labels = currentProfile.labels.Clone()
