@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var _ RowGroupWriter = (*TestRowGroupWriter)(nil)
+var _ RowWriterFlusher = (*TestRowGroupWriter)(nil)
 
 type TestRowGroupWriter struct {
 	RowGroups       [][]parquet.Row

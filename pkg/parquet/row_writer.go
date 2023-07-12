@@ -6,7 +6,7 @@ import (
 	"github.com/segmentio/parquet-go"
 )
 
-type RowGroupWriter interface {
+type RowWriterFlusher interface {
 	parquet.RowWriter
 	Flush() error
 }
@@ -14,7 +14,7 @@ type RowGroupWriter interface {
 // CopyAsRowGroups copies row groups to dst from src and flush a rowgroup per rowGroupNumCount read.
 // It returns the total number of rows copied and the number of row groups written.
 // Flush is called to create a new row group.
-func CopyAsRowGroups(dst RowGroupWriter, src parquet.RowReader, rowGroupNumCount int) (total uint64, rowGroupCount uint64, err error) {
+func CopyAsRowGroups(dst RowWriterFlusher, src parquet.RowReader, rowGroupNumCount int) (total uint64, rowGroupCount uint64, err error) {
 	if rowGroupNumCount <= 0 {
 		panic("rowGroupNumCount must be positive")
 	}

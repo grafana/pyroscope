@@ -3,9 +3,11 @@ package parquet
 import (
 	"io"
 
+	"github.com/grafana/dskit/runutil"
 	"github.com/segmentio/parquet-go"
 
 	"github.com/grafana/phlare/pkg/iter"
+	"github.com/grafana/phlare/pkg/util"
 	"github.com/grafana/phlare/pkg/util/loser"
 )
 
@@ -16,7 +18,7 @@ const (
 var (
 	_ parquet.RowReader          = (*emptyRowReader)(nil)
 	_ parquet.RowReader          = (*ErrRowReader)(nil)
-	_ parquet.RowReader          = (*MergeRowReader)(nil)
+	_ parquet.RowReader          = (*IteratorRowReader)(nil)
 	_ iter.Iterator[parquet.Row] = (*BufferedRowReaderIterator)(nil)
 
 	EmptyRowReader = &emptyRowReader{}
@@ -32,10 +34,6 @@ func NewErrRowReader(err error) *ErrRowReader { return &ErrRowReader{err: err} }
 
 func (e ErrRowReader) ReadRows(rows []parquet.Row) (int, error) { return 0, e.err }
 
-type MergeRowReader struct {
-	tree *loser.Tree[parquet.Row, iter.Iterator[parquet.Row]]
-}
-
 // NewMergeRowReader returns a RowReader that k-way merges the given readers using the less function.
 // Each reader must be sorted according to the less function already.
 func NewMergeRowReader(readers []parquet.RowReader, maxValue parquet.Row, less func(parquet.Row, parquet.Row) bool) parquet.RowReader {
@@ -50,18 +48,31 @@ func NewMergeRowReader(readers []parquet.RowReader, maxValue parquet.Row, less f
 		its[i] = NewBufferedRowReaderIterator(readers[i], defaultRowBufferSize)
 	}
 
-	return &MergeRowReader{
-		tree: loser.New(
-			its,
-			maxValue,
-			func(it iter.Iterator[parquet.Row]) parquet.Row { return it.At() },
-			less,
-			func(it iter.Iterator[parquet.Row]) { it.Close() },
+	return NewIteratorRowReader(
+		iter.NewTreeIterator[parquet.Row](
+			loser.New(
+				its,
+				maxValue,
+				func(it iter.Iterator[parquet.Row]) parquet.Row { return it.At() },
+				less,
+				func(it iter.Iterator[parquet.Row]) { _ = it.Close() },
+			),
 		),
+	)
+}
+
+type IteratorRowReader struct {
+	iter.Iterator[parquet.Row]
+}
+
+// NewIteratorRowReader returns a RowReader that reads rows from the given iterator.
+func NewIteratorRowReader(it iter.Iterator[parquet.Row]) *IteratorRowReader {
+	return &IteratorRowReader{
+		Iterator: it,
 	}
 }
 
-func (s *MergeRowReader) ReadRows(rows []parquet.Row) (int, error) {
+func (it *IteratorRowReader) ReadRows(rows []parquet.Row) (int, error) {
 	var n int
 	if len(rows) == 0 {
 		return 0, nil
@@ -70,21 +81,27 @@ func (s *MergeRowReader) ReadRows(rows []parquet.Row) (int, error) {
 		if n == len(rows) {
 			break
 		}
-		if !s.tree.Next() {
-			s.tree.Close()
-			if err := s.tree.Err(); err != nil {
-				return n, err
+		if !it.Next() {
+			runutil.CloseWithLogOnErr(util.Logger, it.Iterator, "failed to close iterator")
+			if it.Err() != nil {
+				return n, it.Err()
 			}
 			return n, io.EOF
 		}
-		rows[n] = s.tree.Winner().At()
+		rows[n] = rows[n][:0]
+		for _, c := range it.At() {
+			rows[n] = append(rows[n], c.Clone())
+		}
 		n++
 	}
 	return n, nil
 }
 
 type BufferedRowReaderIterator struct {
-	reader     parquet.RowReader
+	reader       parquet.RowReader
+	bufferedRows []parquet.Row
+
+	// buff keep the original slice capacity to avoid allocations
 	buff       []parquet.Row
 	bufferSize int
 	err        error
@@ -100,16 +117,17 @@ func NewBufferedRowReaderIterator(reader parquet.RowReader, bufferSize int) *Buf
 }
 
 func (r *BufferedRowReaderIterator) Next() bool {
-	if len(r.buff) > 1 {
-		r.buff = r.buff[1:]
+	if len(r.bufferedRows) > 1 {
+		r.bufferedRows = r.bufferedRows[1:]
 		return true
 	}
 
+	// todo this seems to do allocations on every call since cap is always smaller
 	if cap(r.buff) < r.bufferSize {
 		r.buff = make([]parquet.Row, r.bufferSize)
 	}
-	r.buff = r.buff[:r.bufferSize]
-	n, err := r.reader.ReadRows(r.buff)
+	r.bufferedRows = r.buff[:r.bufferSize]
+	n, err := r.reader.ReadRows(r.bufferedRows)
 	if err != nil && err != io.EOF {
 		r.err = err
 		return false
@@ -118,15 +136,15 @@ func (r *BufferedRowReaderIterator) Next() bool {
 		return false
 	}
 
-	r.buff = r.buff[:n]
+	r.bufferedRows = r.bufferedRows[:n]
 	return true
 }
 
 func (r *BufferedRowReaderIterator) At() parquet.Row {
-	if len(r.buff) == 0 {
+	if len(r.bufferedRows) == 0 {
 		return parquet.Row{}
 	}
-	return r.buff[0]
+	return r.bufferedRows[0]
 }
 
 func (r *BufferedRowReaderIterator) Err() error {
@@ -150,7 +168,9 @@ func ReadAllWithBufferSize(r parquet.RowReader, bufferSize int) ([]parquet.Row, 
 			return rows, err
 		}
 		if n != 0 {
-			rows = append(rows, batch[:n]...)
+			for i := range batch[:n] {
+				rows = append(rows, batch[i].Clone())
+			}
 		}
 		if n == 0 || err == io.EOF {
 			break
