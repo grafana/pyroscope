@@ -63,7 +63,7 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (block.Meta, er
 	rowsIt = newSymbolsRewriter(rowsIt)
 	reader := phlareparquet.NewIteratorRowReader(newRowsIterator(rowsIt))
 
-	_, _, err = phlareparquet.CopyAsRowGroups(profileWriter, reader, defaultParquetConfig.MaxBufferRowCount)
+	total, _, err := phlareparquet.CopyAsRowGroups(profileWriter, reader, defaultParquetConfig.MaxBufferRowCount)
 	if err != nil {
 		return block.Meta{}, err
 	}
@@ -77,6 +77,7 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (block.Meta, er
 		return block.Meta{}, err
 	}
 	// todo: block meta
+	meta.Stats.NumProfiles = total
 	if _, err := meta.WriteToFile(util.Logger, blockPath); err != nil {
 		return block.Meta{}, err
 	}
