@@ -193,14 +193,40 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 	}), nil
 }
 
+func filterSeriesByLabelNames(labelSets []*typesv1.Labels, labelNameMap map[string]struct{}) {
+	if len(labelNameMap) == 0 {
+		return
+	}
+
+	for _, ls := range labelSets {
+		labelCount := 0
+		for idx := range ls.Labels {
+			_, ok := labelNameMap[ls.Labels[idx].Name]
+			if ok {
+				ls.Labels[labelCount] = ls.Labels[idx]
+				labelCount++
+			}
+		}
+		ls.Labels = ls.Labels[:labelCount]
+	}
+}
+
 func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series")
 	defer func() {
 		sp.LogFields(
 			otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
+			otlog.String("label_names", strings.Join(req.Msg.LabelNames, ",")),
 		)
 		sp.Finish()
 	}()
+
+	// build up map of label names
+	labelNameMap := make(map[string]struct{}, len(req.Msg.LabelNames))
+	for _, labelName := range req.Msg.LabelNames {
+		labelNameMap[labelName] = struct{}{}
+	}
+
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.Labels, error) {
 		res, err := ic.Series(childCtx, connect.NewRequest(&ingestv1.SeriesRequest{
 			Matchers: req.Msg.Matchers,
@@ -208,11 +234,14 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		if err != nil {
 			return nil, err
 		}
+		filterSeriesByLabelNames(res.Msg.LabelsSet, labelNameMap)
+
 		return res.Msg.LabelsSet, nil
 	})
 	if err != nil {
 		return nil, err
 	}
+
 	return connect.NewResponse(&querierv1.SeriesResponse{
 		LabelsSet: lo.UniqBy(
 			lo.FlatMap(responses, func(r ResponseFromReplica[[]*typesv1.Labels], _ int) []*typesv1.Labels {
