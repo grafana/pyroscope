@@ -12,7 +12,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/segmentio/parquet-go"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/phlare/pkg/iter"
 )
 
 type makeTestIterFn func(pf *parquet.File, idx int, filter Predicate, selectAs string) Iterator
@@ -464,4 +467,66 @@ func TestBinaryJoinIterator(t *testing.T) {
 
 		})
 	}
+}
+
+type rowGetter int64
+
+func (r rowGetter) RowNumber() int64 {
+	return int64(r)
+}
+
+func TestRowNumberIterator(t *testing.T) {
+	rows := []rowGetter{1, 2, 3, 50, 100, 102, 200}
+
+	t.Run("iterate over all", func(t *testing.T) {
+		it := NewRowNumberIterator(iter.NewSliceIterator(rows))
+		result := []int64{}
+		for it.Next() {
+			result = append(result, it.At().RowNumber[0])
+		}
+		require.NoError(t, it.Err())
+		assert.Equal(t, []int64{1, 2, 3, 50, 100, 102, 200}, result)
+	})
+
+	t.Run("seek into iter", func(t *testing.T) {
+		it := NewRowNumberIterator(iter.NewSliceIterator(rows))
+
+		to := EmptyRowNumber()
+		to[0] = 100
+		require.True(t, it.Seek(RowNumberWithDefinitionLevel{RowNumber: to}))
+		result := []int64{it.At().RowNumber[0]}
+		for it.Next() {
+			result = append(result, it.At().RowNumber[0])
+		}
+		require.NoError(t, it.Err())
+		assert.Equal(t, []int64{100, 102, 200}, result)
+	})
+
+	t.Run("seek to non existing value", func(t *testing.T) {
+		it := NewRowNumberIterator(iter.NewSliceIterator(rows))
+		to := EmptyRowNumber()
+		to[0] = 10
+		require.True(t, it.Seek(RowNumberWithDefinitionLevel{RowNumber: to}))
+		result := []int64{it.At().RowNumber[0]}
+		for it.Next() {
+			result = append(result, it.At().RowNumber[0])
+		}
+		require.NoError(t, it.Err())
+		assert.Equal(t, []int64{50, 100, 102, 200}, result)
+	})
+
+	t.Run("seek beyond rows", func(t *testing.T) {
+		it := NewRowNumberIterator(iter.NewSliceIterator(rows))
+		to := EmptyRowNumber()
+		to[0] = 300
+		require.False(t, it.Seek(RowNumberWithDefinitionLevel{RowNumber: to}))
+		require.NoError(t, it.Err())
+	})
+
+	t.Run("underlying iterator not ordered", func(t *testing.T) {
+		it := NewRowNumberIterator(iter.NewSliceIterator(append(rows, 300, 210, 500)))
+		for it.Next() {
+		}
+		require.ErrorContains(t, it.Err(), "is not sorted")
+	})
 }
