@@ -1,11 +1,15 @@
+FROM golang as builder
+
+WORKDIR /app
 FROM alpine:3.17.4
 
 RUN apk add --no-cache ca-certificates
 
+COPY .tmp/bin/linux_amd64/dlv /usr/bin/dlv
+
 COPY cmd/phlare/phlare.yaml /etc/phlare/config.yaml
 COPY profilecli /usr/bin/profilecli
 COPY phlare /usr/bin/phlare
-COPY .tmp/bin/dlv /usr/bin/dlv
 
 RUN addgroup -g 10001 -S phlare && \
     adduser -u 10001 -S phlare -G phlare
