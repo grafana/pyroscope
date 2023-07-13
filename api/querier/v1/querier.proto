@@ -24,6 +24,7 @@ message ProfileTypesResponse {
 
 message SeriesRequest {
   repeated string matchers = 1;
+  repeated string label_names = 2;
 }
 
 message SeriesResponse {
