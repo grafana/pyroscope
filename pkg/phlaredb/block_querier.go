@@ -294,7 +294,7 @@ type singleBlockQuerier struct {
 	openLock    sync.Mutex
 	opened      bool
 	index       *index.Reader
-	strings     inMemoryparquetReader[*schemav1.StoredString, *schemav1.StringPersister]
+	strings     inMemoryparquetReader[string, *schemav1.StringPersister]
 	functions   inMemoryparquetReader[*schemav1.InMemoryFunction, *schemav1.FunctionPersister]
 	locations   inMemoryparquetReader[*schemav1.InMemoryLocation, *schemav1.LocationPersister]
 	mappings    inMemoryparquetReader[*schemav1.InMemoryMapping, *schemav1.MappingPersister]
@@ -1170,7 +1170,7 @@ type ResultWithRowNum[M any] struct {
 	RowNum int64
 }
 
-type inMemoryparquetReader[M Models, P schemav1.PersisterName] struct {
+type inMemoryparquetReader[M Models, P schemav1.Persister[M]] struct {
 	persister P
 	file      *parquet.File
 	size      int64
@@ -1217,32 +1217,49 @@ func (r *inMemoryparquetReader[M, P]) open(ctx context.Context, bucketReader phl
 
 	// read all rows into memory
 	r.cache = make([]M, r.file.NumRows())
-	var read int
+	var offset int64
 	for _, rg := range r.file.RowGroups() {
-		err := func(rg parquet.RowGroup) error {
-			reader := parquet.NewGenericRowGroupReader[M](rg)
-			defer runutil.CloseWithLogOnErr(util.Logger, reader, "closing parquet generic row group reader")
-			for {
-				n, err := reader.Read(r.cache[read:])
-				read += n
+		rows := rg.NumRows()
+		dst := r.cache[offset : offset+rows]
+		offset += rows
+		if err = r.readRG(dst, rg); err != nil {
+			return errors.Wrapf(err, "reading row group from parquet file '%s'", filePath)
+		}
+	}
+	err = r.reader.Close()
+	r.reader = nil
+	r.file = nil
+	return err
+}
+
+// parquet.CopyRows uses hardcoded buffer size:
+// defaultRowBufferSize = 42
+const inMemoryReaderRowsBufSize = 1 << 10
+
+func (r *inMemoryparquetReader[M, P]) readRG(dst []M, rg parquet.RowGroup) (err error) {
+	rr := parquet.NewRowGroupReader(rg)
+	defer runutil.CloseWithLogOnErr(util.Logger, rr, "closing parquet row group reader")
+	buf := make([]parquet.Row, inMemoryReaderRowsBufSize)
+	for i := 0; i < len(dst); {
+		n, err := rr.ReadRows(buf)
+		if n > 0 {
+			for _, row := range buf[:n] {
+				_, v, err := r.persister.Reconstruct(row)
 				if err != nil {
-					if errors.Is(err, io.EOF) {
-						return nil
-					}
-					return errors.Wrapf(err, "reading row group from parquet file '%s'", filePath)
+					return err
 				}
+				dst[i] = v
+				i++
 			}
-		}(rg)
+		}
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
 			return err
 		}
 	}
-
 	return nil
-}
-
-func (r *inMemoryparquetReader[M, P]) NumRows() int64 {
-	return r.file.NumRows()
 }
 
 func (r *inMemoryparquetReader[M, P]) Close() error {

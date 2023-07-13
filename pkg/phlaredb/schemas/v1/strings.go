@@ -11,40 +11,24 @@ var stringsSchema = parquet.NewSchema("String", phlareparquet.Group{
 	phlareparquet.NewGroupField("String", parquet.Encoded(parquet.String(), &parquet.RLEDictionary)),
 })
 
-type StoredString struct {
-	ID     uint64 `parquet:",delta"`
-	String string `parquet:",dict"`
-}
-
 type StringPersister struct{}
 
-func (*StringPersister) Name() string {
-	return "strings"
-}
+func (*StringPersister) Name() string { return "strings" }
 
-func (*StringPersister) Schema() *parquet.Schema {
-	return stringsSchema
-}
+func (*StringPersister) Schema() *parquet.Schema { return stringsSchema }
 
-func (*StringPersister) SortingColumns() parquet.SortingOption {
-	return parquet.SortingColumns(
-		parquet.Ascending("ID"),
-		parquet.Ascending("String"),
-	)
-}
+func (*StringPersister) SortingColumns() parquet.SortingOption { return parquet.SortingColumns() }
 
 func (*StringPersister) Deconstruct(row parquet.Row, id uint64, s string) parquet.Row {
-	var stored StoredString
-	stored.ID = id
-	stored.String = s
-	row = stringsSchema.Deconstruct(row, &stored)
+	if cap(row) < 2 {
+		row = make(parquet.Row, 0, 2)
+	}
+	row = row[:0]
+	row = append(row, parquet.Int64Value(int64(id)).Level(0, 0, 0))
+	row = append(row, parquet.ByteArrayValue([]byte(s)).Level(0, 0, 1))
 	return row
 }
 
 func (*StringPersister) Reconstruct(row parquet.Row) (id uint64, s string, err error) {
-	var stored StoredString
-	if err := stringsSchema.Reconstruct(&stored, row); err != nil {
-		return 0, "", err
-	}
-	return stored.ID, stored.String, nil
+	return 0, row[1].String(), nil
 }

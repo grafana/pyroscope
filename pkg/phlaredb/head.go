@@ -81,8 +81,8 @@ type Models interface {
 		*profilev1.Location | *schemav1.InMemoryLocation |
 		*profilev1.Function | *schemav1.InMemoryFunction |
 		*profilev1.Mapping | *schemav1.InMemoryMapping |
-		*schemav1.StoredString | string |
-		*schemav1.Stacktrace
+		*schemav1.Stacktrace |
+		string
 }
 
 func emptyRewriter() *rewriter {
