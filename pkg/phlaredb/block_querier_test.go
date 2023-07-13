@@ -38,7 +38,7 @@ func TestInMemoryReader(t *testing.T) {
 	require.Equal(t, uint64(rgCount*st.cfg.MaxBufferRowCount), numRows)
 	require.Equal(t, uint64(rgCount), numRg)
 	require.NoError(t, st.Close())
-	reader := inMemoryparquetReader[*schemav1.StoredString, *schemav1.StringPersister]{}
+	reader := inMemoryparquetReader[string, *schemav1.StringPersister]{}
 	fs, err := filesystem.NewBucket(path)
 	require.NoError(t, err)
 
@@ -46,9 +46,8 @@ func TestInMemoryReader(t *testing.T) {
 	it := reader.retrieveRows(context.Background(), iter.NewSliceIterator(lo.Times(int(numRows), func(i int) int64 { return int64(i) })))
 	var j int
 	for it.Next() {
-		require.Equal(t, it.At().Result.String, fmt.Sprintf("foobar %d", j))
+		require.Equal(t, it.At().Result, fmt.Sprintf("foobar %d", j))
 		require.Equal(t, it.At().RowNum, int64(j))
-		require.Equal(t, it.At().Result.ID, uint64(j))
 		j++
 	}
 
@@ -56,9 +55,8 @@ func TestInMemoryReader(t *testing.T) {
 	it = reader.retrieveRows(context.Background(), iter.NewSliceIterator(rows))
 	j = 0
 	for it.Next() {
-		require.Equal(t, it.At().Result.String, fmt.Sprintf("foobar %d", rows[j]))
+		require.Equal(t, it.At().Result, fmt.Sprintf("foobar %d", rows[j]))
 		require.Equal(t, it.At().RowNum, rows[j])
-		require.Equal(t, it.At().Result.ID, uint64(rows[j]))
 		j++
 	}
 }

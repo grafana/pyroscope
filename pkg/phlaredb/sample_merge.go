@@ -196,7 +196,7 @@ func (b *singleBlockQuerier) resolvePprofSymbols(ctx context.Context, profileSam
 	)
 	for strings.Next() {
 		s := strings.At()
-		names[idx] = s.Result.String
+		names[idx] = s.Result
 		stringsIds[s.RowNum] = idx
 		idx++
 	}
@@ -306,7 +306,7 @@ func (b *singleBlockQuerier) resolveSymbols(ctx context.Context, stacktracesByMa
 	)
 	for strings.Next() {
 		s := strings.At()
-		names[idx] = s.Result.String
+		names[idx] = s.Result
 		idSlice[idx] = []int64{s.RowNum}
 		idx++
 	}
