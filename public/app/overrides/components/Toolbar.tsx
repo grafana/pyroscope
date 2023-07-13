@@ -14,7 +14,7 @@ import Button from '@webapp/ui/Button';
 import LoadingSpinner from '@webapp/ui/LoadingSpinner';
 import DateRangePicker from '@webapp/components/DateRangePicker';
 import RefreshButton from '@webapp/components/RefreshButton';
-import AppSelector from '@phlare/components/AppSelector/AppSelector';
+import { AppSelector } from '@phlare/components/AppSelector/AppSelector';
 import styles from '@pyroscope/webapp/javascript/components/Toolbar.module.css';
 
 interface ToolbarProps {
