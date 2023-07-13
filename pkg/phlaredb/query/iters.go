@@ -437,55 +437,62 @@ func NewBinaryJoinIterator(definitionLevel int, left, right Iterator) *BinaryJoi
 
 // nextOrSeek will use next if the iterator is exactly one row aways
 func (bj *BinaryJoinIterator) nextOrSeek(to RowNumberWithDefinitionLevel, it Iterator) bool {
+	oldResult := it.At()
+	defer iteratorResultPoolPut(oldResult)
 	// Seek when definition level is higher then 0, there is not previous iteration or when the difference between current position and to is not 1
-	if to.DefinitionLevel != 0 || it.At() == nil || to.RowNumber.Preceding() != it.At().RowNumber {
+	if to.DefinitionLevel != 0 || oldResult == nil || to.RowNumber[0] != (oldResult.RowNumber[0]-1) {
 		return it.Seek(to)
 	}
 	return it.Next()
 }
 
+func (bj *BinaryJoinIterator) makeResult() {
+	bj.res = iteratorResultPoolGet()
+	bj.res.RowNumber = EmptyRowNumber()
+	bj.res.RowNumber[0] = bj.left.At().RowNumber[0]
+	bj.res.Append(bj.left.At())
+	bj.res.Append(bj.right.At())
+}
+
 func (bj *BinaryJoinIterator) Next() bool {
 	for {
+		oldResult := bj.left.At()
 		if !bj.left.Next() {
 			bj.err = bj.left.Err()
 			return false
 		}
-		resLeft := bj.left.At()
+		defer iteratorResultPoolPut(oldResult)
 
 		// now seek the right iterator to the left position
-		if !bj.nextOrSeek(RowNumberWithDefinitionLevel{resLeft.RowNumber, bj.definitionLevel}, bj.right) {
+		if !bj.nextOrSeek(RowNumberWithDefinitionLevel{bj.left.At().RowNumber, bj.definitionLevel}, bj.right) {
 			bj.err = bj.right.Err()
 			return false
 		}
-		resRight := bj.right.At()
 
-		makeResult := func() {
-			bj.res = iteratorResultPoolGet()
-			bj.res.RowNumber = resLeft.RowNumber
-			bj.res.Append(resLeft)
-			bj.res.Append(resRight)
-			iteratorResultPoolPut(resLeft)
-			iteratorResultPoolPut(resRight)
-		}
-
-		if cmp := CompareRowNumbers(bj.definitionLevel, resLeft.RowNumber, resRight.RowNumber); cmp == 0 {
+		if cmp := CompareRowNumbers(bj.definitionLevel, bj.left.At().RowNumber, bj.right.At().RowNumber); cmp == 0 {
 			// we have a found an element
-			makeResult()
+			bj.makeResult()
 			return true
 		} else if cmp < 0 {
-			if !bj.nextOrSeek(RowNumberWithDefinitionLevel{resRight.RowNumber, bj.definitionLevel}, bj.left) {
+			// left is smaller, so we need to seek the left iterator to the right position
+			if !bj.nextOrSeek(RowNumberWithDefinitionLevel{bj.right.At().RowNumber, bj.definitionLevel}, bj.left) {
 				bj.err = bj.left.Err()
 				return false
 			}
-			resLeft = bj.left.At()
 
-			if cmp := CompareRowNumbers(bj.definitionLevel, resLeft.RowNumber, resRight.RowNumber); cmp == 0 {
-				makeResult()
+			if cmp := CompareRowNumbers(bj.definitionLevel, bj.left.At().RowNumber, bj.right.At().RowNumber); cmp == 0 {
+				bj.makeResult()
 				return true
 			}
 
 		} else {
-			panic("bug in iterator during join: the right iterator cannot be smaller than the left one, as it just has been Seeked beyond")
+			panic(fmt.Sprintf(
+				"bug in iterator during join: the right iterator cannot be smaller than the left one, as it just has been Seeked beyond left=%v %T right=%v %T",
+				bj.left.At().RowNumber[0],
+				bj.left,
+				bj.right.At().RowNumber[0],
+				bj.right,
+			))
 		}
 	}
 }
@@ -495,8 +502,22 @@ func (bj *BinaryJoinIterator) At() *IteratorResult {
 }
 
 func (bj *BinaryJoinIterator) Seek(to RowNumberWithDefinitionLevel) bool {
-	bj.left.Seek(to)
-	bj.right.Seek(to)
+	if !bj.left.Seek(to) {
+		bj.err = bj.left.Err()
+		return false
+	}
+	if !bj.right.Seek(to) {
+		bj.err = bj.right.Err()
+		return false
+	}
+
+	// if there is a match right away return true
+	if cmp := CompareRowNumbers(bj.definitionLevel, bj.left.At().RowNumber, bj.right.At().RowNumber); cmp == 0 {
+		bj.makeResult()
+		return true
+	}
+
+	// if not look for the next match
 	return bj.Next()
 }
 
@@ -507,8 +528,8 @@ func (bj *BinaryJoinIterator) Close() error {
 	return merr.Err()
 }
 
-func (c *BinaryJoinIterator) Err() error {
-	return c.err
+func (bj *BinaryJoinIterator) Err() error {
+	return bj.err
 }
 
 // UnionIterator produces all results for all given iterators.  When iterators
@@ -723,11 +744,14 @@ type RowNumberIterator[T any] struct {
 	iter.Iterator[T]
 	current *IteratorResult
 	err     error
+
+	lastRowNum int64
 }
 
 func NewRowNumberIterator[T any](iter iter.Iterator[T]) *RowNumberIterator[T] {
 	return &RowNumberIterator[T]{
-		Iterator: iter,
+		Iterator:   iter,
+		lastRowNum: -1,
 	}
 }
 
@@ -744,7 +768,18 @@ func (r *RowNumberIterator[T]) Next() bool {
 		}
 		return false
 	}
+
 	r.current.RowNumber = RowNumber{rowGetter.RowNumber(), -1, -1, -1, -1, -1}
+	if r.lastRowNum >= r.current.RowNumber[0] {
+		r.err = fmt.Errorf(
+			"row number iterator: %T is not sorted, last_element=%d current_element=%d",
+			r.Iterator,
+			r.lastRowNum,
+			r.current.RowNumber[0],
+		)
+		return false
+	}
+	r.lastRowNum = r.current.RowNumber[0]
 	r.current.Entries = append(r.current.Entries, struct {
 		k        string
 		V        parquet.Value
@@ -767,6 +802,9 @@ func (r *RowNumberIterator[T]) Err() error {
 }
 
 func (r *RowNumberIterator[T]) Seek(to RowNumberWithDefinitionLevel) bool {
+	if r.current == nil && !r.Next() {
+		return false
+	}
 	for CompareRowNumbers(0, r.current.RowNumber, to.RowNumber) == -1 {
 		if !r.Next() {
 			return false
