@@ -80,8 +80,29 @@ function removeDuplicateApps(app: App[]) {
 export async function fetchApps(): Promise<
   Result<App[], RequestError | ZodError>
 > {
-  // TODO: is this the best query?
-  const response = await requestWithOrgID('/querier.v1.QuerierService/Series', {
+  let response = await requestWithOrgID('/querier.v1.QuerierService/Series', {
+    method: 'POST',
+    body: JSON.stringify({
+      matchers: [],
+      labelNames: [
+        PyroscopeAppLabel,
+        ServiceNameLabel,
+        '__profile_type__',
+        '__type__',
+        '__name__',
+      ],
+    }),
+    headers: {
+      'content-type': 'application/json',
+    },
+  });
+
+  if (response.isOk) {
+    return parseResponse(response, ListOfAppsSchema);
+  }
+
+  // try without labelNames in case of an error since this has been added in a later version
+  response = await requestWithOrgID('/querier.v1.QuerierService/Series', {
     method: 'POST',
     body: JSON.stringify({
       matchers: [],
@@ -90,7 +111,6 @@ export async function fetchApps(): Promise<
       'content-type': 'application/json',
     },
   });
-
   if (response.isOk) {
     return parseResponse(response, ListOfAppsSchema);
   }
