@@ -2,11 +2,14 @@ package phlaredb
 
 import (
 	"context"
+	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/oklog/ulid"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
@@ -30,21 +33,43 @@ type BlockReader interface {
 	// todo symbdb
 }
 
-func Compact(ctx context.Context, src []BlockReader, dst string) (block.Meta, error) {
+func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
+	srcMetas := make([]block.Meta, len(src))
+	ulids := make([]string, len(src))
+
+	for i, b := range src {
+		srcMetas[i] = b.Meta()
+		ulids[i] = b.Meta().ULID.String()
+	}
+	meta = compactMetas(srcMetas)
+	blockPath := filepath.Join(dst, meta.ULID.String())
+	indexPath := filepath.Join(blockPath, block.IndexFilename)
+	profilePath := filepath.Join(blockPath, (&schemav1.ProfilePersister{}).Name()+block.ParquetSuffix)
+
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Compact")
+	defer func() {
+		// todo: context propagation is not working through objstore
+		// This is because the BlockReader has no context.
+		sp.SetTag("src", ulids)
+		sp.SetTag("block_id", meta.ULID.String())
+		if err != nil {
+			sp.SetTag("error", err)
+		}
+		sp.Finish()
+	}()
+
 	if len(src) <= 1 {
 		return block.Meta{}, errors.New("not enough blocks to compact")
 	}
-	meta := compactedMeta(src)
-	blockPath := filepath.Join(dst, meta.ULID.String())
 	if err := os.MkdirAll(blockPath, 0o777); err != nil {
 		return block.Meta{}, err
 	}
-	indexPath := filepath.Join(blockPath, block.IndexFilename)
+
 	indexw, err := prepareIndexWriter(ctx, indexPath, src)
 	if err != nil {
 		return block.Meta{}, err
 	}
-	profilePath := filepath.Join(blockPath, (&schemav1.ProfilePersister{}).Name()+block.ParquetSuffix)
+
 	profileFile, err := os.OpenFile(profilePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return block.Meta{}, err
@@ -74,18 +99,46 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (block.Meta, er
 	if err := profileWriter.Close(); err != nil {
 		return block.Meta{}, err
 	}
-	// todo: block meta files.
+
+	metaFiles, err := metaFilesFromDir(blockPath)
+	if err != nil {
+		return block.Meta{}, err
+	}
+	meta.Files = metaFiles
 	meta.Stats.NumProfiles = total
 	meta.Stats.NumSeries = seriesRewriter.NumSeries()
 	meta.Stats.NumSamples = symbolsRewriter.NumSamples()
-
 	if _, err := meta.WriteToFile(util.Logger, blockPath); err != nil {
 		return block.Meta{}, err
 	}
-	return *meta, nil
+	return meta, nil
 }
 
-func compactedMeta(src []BlockReader) *block.Meta {
+// todo implement and tests
+func metaFilesFromDir(dir string) ([]block.File, error) {
+	var files []block.File
+	err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		switch filepath.Ext(info.Name()) {
+		case strings.TrimPrefix(block.ParquetSuffix, "."):
+			// todo parquet file
+		case filepath.Ext(block.IndexFilename):
+			// todo tsdb index file
+		default:
+			// todo other files
+		}
+		return nil
+	})
+	return files, err
+}
+
+// todo write tests
+func compactMetas(src []block.Meta) block.Meta {
 	meta := block.NewMeta()
 	highestCompactionLevel := 0
 	ulids := make([]ulid.ULID, len(src))
@@ -93,22 +146,22 @@ func compactedMeta(src []BlockReader) *block.Meta {
 	minTime, maxTime := model.Latest, model.Earliest
 	labels := make(map[string]string)
 	for _, b := range src {
-		if b.Meta().Compaction.Level > highestCompactionLevel {
-			highestCompactionLevel = b.Meta().Compaction.Level
+		if b.Compaction.Level > highestCompactionLevel {
+			highestCompactionLevel = b.Compaction.Level
 		}
-		ulids = append(ulids, b.Meta().ULID)
+		ulids = append(ulids, b.ULID)
 		parents = append(parents, tsdb.BlockDesc{
-			ULID:    b.Meta().ULID,
-			MinTime: int64(b.Meta().MinTime),
-			MaxTime: int64(b.Meta().MaxTime),
+			ULID:    b.ULID,
+			MinTime: int64(b.MinTime),
+			MaxTime: int64(b.MaxTime),
 		})
-		if b.Meta().MinTime < minTime {
-			minTime = b.Meta().MinTime
+		if b.MinTime < minTime {
+			minTime = b.MinTime
 		}
-		if b.Meta().MaxTime > maxTime {
-			maxTime = b.Meta().MaxTime
+		if b.MaxTime > maxTime {
+			maxTime = b.MaxTime
 		}
-		for k, v := range b.Meta().Labels {
+		for k, v := range b.Labels {
 			if k == block.HostnameLabel {
 				continue
 			}
@@ -128,7 +181,7 @@ func compactedMeta(src []BlockReader) *block.Meta {
 	meta.MaxTime = maxTime
 	meta.MinTime = minTime
 	meta.Labels = labels
-	return meta
+	return *meta
 }
 
 type profileRow struct {
