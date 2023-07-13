@@ -174,7 +174,7 @@ define deploy
 .PHONY: docker-image/phlare/build-debug
 docker-image/phlare/build-debug: GOOS=linux
 docker-image/phlare/build-debug: GOARCH=amd64
-docker-image/phlare/build-debug: frontend/build go/bin-debug $(BIN)/dlv
+docker-image/phlare/build-debug: frontend/build go/bin-debug $(BIN)/linux_amd64/dlv
 	$(call docker_buildx,--load,debug.)
 
 .PHONY: docker-image/phlare/build
@@ -297,9 +297,19 @@ $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
 	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.9.0
 
+DLV_VERSION=v1.21.0
+
 $(BIN)/dlv: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@v1.20.1
+	GOBIN=$(abspath $(@D)) CGO_ENABLED=0 $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@$(DLV_VERSION)
+
+$(BIN)/linux_amd64/dlv: Makefile go.mod
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 GOPATH=$(CURDIR)/.tmp $(GO) install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@$(DLV_VERSION);
+	# Create a hardlink if you are on linux_amd64, so we are able to use the same dockerfile
+	if [[ "$(shell $(GO) env GOOS)" == "linux" && "$(shell $(GO) env GOARCH)" == "amd64" ]]; then \
+		mkdir -p "$(@D)"; \
+		ln -f $(BIN)/dlv "$@"; \
+	fi
 
 $(BIN)/trunk: Makefile
 	@mkdir -p $(@D)
