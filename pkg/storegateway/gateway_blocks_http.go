@@ -80,7 +80,7 @@ func (s *StoreGateway) BlocksHandler(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	metasMap, err := block.ListBlock(filepath.Join(s.gatewayCfg.BucketStoreConfig.SyncDir, tenantID), time.Time{})
+	metasMap, err := block.ListBlocks(filepath.Join(s.gatewayCfg.BucketStoreConfig.SyncDir, tenantID), time.Time{})
 	if err != nil {
 		util.WriteTextResponse(w, fmt.Sprintf("Failed to read block metadata: %s", err))
 		return
