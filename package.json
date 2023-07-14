@@ -202,7 +202,7 @@
     "jest-fetch-mock": "^3.0.3",
     "jquery": "3.6.0",
     "jquery.flot.tooltip": "^0.9.0",
-    "lerna": "^4",
+    "lerna": "^5",
     "lodash": "^4.17.21",
     "lodash.debounce": "^4.0.8",
     "lodash.defaults": "^4.2.0",
@@ -269,9 +269,7 @@
   "resolutions": {
     "react": "^16",
     "react-dom": "^16",
-    "jquery": "3.6.0",
-    "d3-graphviz": "5.0.2",
-    "d3-selection": "3.0.0"
+    "jquery": "3.6.0"
   },
   "optionalDependencies": {
     "@pyroscope/nodejs": "^0.2.5"
