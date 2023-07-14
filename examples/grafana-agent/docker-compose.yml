@@ -10,7 +10,7 @@ services:
       - 3000:3000
 
   pyroscope:
-    image: 'grafana/phlare:latest'
+    image: 'grafana/phlare:weekly-f22-06e09923'
     ports:
       - 4100:4100
     command: -config.file=/etc/pyroscope/config.yaml
@@ -24,6 +24,7 @@ services:
     command:
       - run
       - /etc/agent-config/config.river
+      - --server.http.listen-addr=0.0.0.0:12345
     environment:
       HOSTNAME: agent
       AGENT_MODE: flow
