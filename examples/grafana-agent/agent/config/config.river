@@ -1,3 +1,8 @@
+logging {
+  level = "debug"
+  format = "logfmt"
+}
+
 pyroscope.write "example" {
   // Send metrics to a locally running Phlare instance.
   endpoint {
@@ -17,8 +22,8 @@ pyroscope.write "example" {
 
 pyroscope.scrape "default" {
   targets = [
-    {"__address__" = "pyroscope:4100", "app"="pyroscope"},
-    {"__address__" = "agent:12345", "app"="agent"},
+    {"__address__" = "pyroscope:4100", "service_name"="pyroscope"},
+    {"__address__" = "agent:12345", "service_name"="agent"},
   ]
   forward_to = [pyroscope.write.example.receiver]
 }
