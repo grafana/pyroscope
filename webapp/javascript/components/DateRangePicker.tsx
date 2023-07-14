@@ -86,7 +86,7 @@ function DateRangePicker() {
     }
   };
 
-  const isPresetSelected = (preset: typeof defaultPresets[0][0]) => {
+  const isPresetSelected = (preset: (typeof defaultPresets)[0][0]) => {
     return preset.label === dateToLabel(from, until, offset);
   };
 

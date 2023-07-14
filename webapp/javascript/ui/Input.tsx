@@ -35,6 +35,7 @@ const Input = React.forwardRef(
     ref?: Ref<HTMLInputElement>
   ) => {
     return (
+      // @ts-ignore -- declaration of `DebounceInput` leads to superficial type checking error
       <DebounceInput
         inputRef={ref}
         data-testid={testId}

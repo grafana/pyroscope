@@ -119,7 +119,7 @@ function LabelsSubmenu({
   // TODO: type this properly
   const [filter, setFilter] = useState<Record<string, string>>({});
 
-  const GetTagValues = (labelName: string, t: typeof tags[1]) => {
+  const GetTagValues = (labelName: string, t: (typeof tags)[1]) => {
     const { type } = t;
     switch (type) {
       case 'loading': {

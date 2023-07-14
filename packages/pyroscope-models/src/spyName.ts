@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export type SpyNameFirstClassType = typeof SpyNameFirstClass[number];
+export type SpyNameFirstClassType = (typeof SpyNameFirstClass)[number];
 
 export const SpyNameFirstClass = [
   'dotnetspy',
@@ -23,7 +23,7 @@ export const SpyNameOther = [
 export const AllSpyNames = [...SpyNameFirstClass, ...SpyNameOther] as const;
 
 export const SpyNameSchema = z.preprocess((val) => {
-  if (!val || !AllSpyNames.includes(val as typeof AllSpyNames[number])) {
+  if (!val || !AllSpyNames.includes(val as (typeof AllSpyNames)[number])) {
     return 'unknown';
   }
   return val;

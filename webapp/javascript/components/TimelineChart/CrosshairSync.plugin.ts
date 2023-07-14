@@ -14,7 +14,7 @@ type PlotWithCrosshairsSupport = jquery.flot.plot &
   function init(plot: PlotWithCrosshairsSupport) {
     function getOptions() {
       return plot.getOptions() as jquery.flot.plotOptions & {
-        syncCrosshairsWith: typeof defaultOptions['syncCrosshairsWith'];
+        syncCrosshairsWith: (typeof defaultOptions)['syncCrosshairsWith'];
       };
     }
 
@@ -26,7 +26,7 @@ type PlotWithCrosshairsSupport = jquery.flot.plot &
     }
 
     function onPlotHover(
-      syncCrosshairsWith: typeof defaultOptions['syncCrosshairsWith'],
+      syncCrosshairsWith: (typeof defaultOptions)['syncCrosshairsWith'],
       e: unknown,
       position: { x: number; y: number }
     ) {
@@ -36,7 +36,7 @@ type PlotWithCrosshairsSupport = jquery.flot.plot &
     }
 
     function clearCrosshairs(
-      syncCrosshairsWith: typeof defaultOptions['syncCrosshairsWith']
+      syncCrosshairsWith: (typeof defaultOptions)['syncCrosshairsWith']
     ) {
       syncCrosshairsWith.forEach((id) =>
         accessExternalInstance(id).clearCrosshair()

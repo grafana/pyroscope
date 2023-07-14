@@ -145,21 +145,22 @@ function ExemplarsSingleView() {
           <p className={styles.heatmapTitle}>Heatmap</p>
           {heatmap}
         </Box>
-        {!exemplarsSingleView.selectionProfile && exemplarsSingleView.heatmap && (
-          <Box>
-            <div className={styles.heatmapSelectionGuide}>
-              <StatusMessage
-                type="info"
-                message="Select an area in the heatmap to get started"
-              />
-              <img
-                className={styles.gif}
-                src={heatmapSelectionPreviewGif}
-                alt="heatmap-selection-gif"
-              />
-            </div>
-          </Box>
-        )}
+        {!exemplarsSingleView.selectionProfile &&
+          exemplarsSingleView.heatmap && (
+            <Box>
+              <div className={styles.heatmapSelectionGuide}>
+                <StatusMessage
+                  type="info"
+                  message="Select an area in the heatmap to get started"
+                />
+                <img
+                  className={styles.gif}
+                  src={heatmapSelectionPreviewGif}
+                  alt="heatmap-selection-gif"
+                />
+              </div>
+            </Box>
+          )}
         {exemplarsSingleView.heatmap &&
         exemplarsSingleView.selectionProfile &&
         differenceProfile ? (
