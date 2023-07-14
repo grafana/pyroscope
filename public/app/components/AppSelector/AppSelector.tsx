@@ -134,6 +134,36 @@ export const SelectorModalWithToggler = ({
     return selectedApp?.__profile_type__ === a.__profile_type__;
   };
 
+  const groups = useMemo(() => {
+    const allGroups = leftSideApps.map((app) => app.name.split('-')[0]);
+    const uniqGroups = Array.from(new Set(allGroups));
+
+    const dedupedUniqGroups = uniqGroups.filter((x) => {
+      return !uniqGroups.find((y) => x !== y && y.startsWith(x));
+    });
+
+    const groupOrApp = dedupedUniqGroups.map((groupName) => {
+      const appNamesEntries = leftSideApps.filter((app) =>
+        app.name.startsWith(groupName)
+      );
+
+      return appNamesEntries.length > 1 ? groupName : appNamesEntries[0].name;
+    });
+
+    return groupOrApp;
+  }, [leftSideApps]);
+
+  const listHeight = useMemo(() => {
+    const windowHeight = window?.innerHeight || 0;
+    const listRequiredHeight = Math.max(groups.length, matchedApps.length) * 35;
+
+    if (windowHeight && listRequiredHeight) {
+      return windowHeight >= listRequiredHeight ? 'auto' : `${windowHeight}px`;
+    }
+
+    return 'auto';
+  }, [groups, matchedApps]);
+
   return (
     <ModalWithToggle
       isModalOpen={isModalOpen}
@@ -143,7 +173,7 @@ export const SelectorModalWithToggler = ({
         setSelectedLeftSide(undefined);
         setModalOpenStatus(false);
       }}
-      modalHeight={'auto'}
+      modalHeight={listHeight}
       noDataEl={
         !leftSideApps?.length ? (
           <div data-testid="app-selector-no-data" className={ogStyles.noData}>
@@ -164,7 +194,7 @@ export const SelectorModalWithToggler = ({
             placeholder="Search..."
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className={styles.search}
+            className={ogStyles.search}
             data-testid="app-selector-search"
           />
         </>
