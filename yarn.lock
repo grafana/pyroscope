@@ -19972,10 +19972,10 @@ sweetalert2-react-content@^4.2.0:
   resolved "https://registry.yarnpkg.com/sweetalert2-react-content/-/sweetalert2-react-content-4.2.0.tgz#ab4a6e02e37150dd0ea34d00179ec76952e3f442"
   integrity sha512-eB324swnq10UJH8nAH2S6GHuAKDgH6GpGU8vI+ulYdmlPzpb0T5QPc7O4RFNRx28GzVZUnfvtpxZbKtZ5/KOnQ==
 
-sweetalert2@^11.4.0:
-  version "11.4.0"
-  resolved "https://registry.yarnpkg.com/sweetalert2/-/sweetalert2-11.4.0.tgz#d5cb4b711af4cb5f580e4eef4389b95dbc417427"
-  integrity sha512-+p0jT2LxUQGreWa60j7nm1frJfqbcmamZcpZi4puEGAJ0CmyPqQ4UGmBqbB4WxkJYKsn8qcOA9ufqn0MWtQWLQ==
+"sweetalert2@^11.4.0, <11.4.9":
+  version "11.4.8"
+  resolved "https://registry.yarnpkg.com/sweetalert2/-/sweetalert2-11.4.8.tgz#f436eb34107c5637a0278fa7330edc722090ebbb"
+  integrity sha512-BDS/+E8RwaekGSxCPUbPnsRAyQ439gtXkTF/s98vY2l9DaVEOMjGj1FaQSorfGREKsbbxGSP7UXboibL5vgTMA==
 
 symbol-tree@^3.2.4:
   version "3.2.4"
