@@ -102,6 +102,7 @@ export const SelectorModalWithToggler = ({
     setSelectedLeftSide(undefined);
 
     onSelectedUpstream(app);
+    setModalOpenStatus(false);
   };
 
   const leftSideApps = uniqueByName(apps);
