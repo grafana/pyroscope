@@ -435,6 +435,11 @@ func (b *singleBlockQuerier) Index() IndexReader {
 	return b.index
 }
 
+func (b *singleBlockQuerier) Symbols() SymbolsReader {
+	// TODO(kolesnikovae)
+	return nil
+}
+
 func (b *singleBlockQuerier) Meta() block.Meta {
 	if b.meta == nil {
 		return block.Meta{}
