@@ -30,7 +30,7 @@ type BlockReader interface {
 	Meta() block.Meta
 	Profiles() []parquet.RowGroup
 	Index() IndexReader
-	SymbolsReader
+	Symbols() SymbolsReader
 }
 
 // TODO(kolesnikovae): Refactor to symdb.
@@ -517,7 +517,7 @@ func newSymbolsRewriter(it iter.Iterator[profileRow], blocks []BlockReader, w Sy
 		rewriters: make(map[BlockReader]*stacktraceRewriter, len(blocks)),
 	}
 	for _, r := range blocks {
-		sr.rewriters[r] = newStacktraceRewriter(r, w)
+		sr.rewriters[r] = newStacktraceRewriter(r.Symbols(), w)
 	}
 	return &sr
 }
@@ -549,6 +549,7 @@ func (s *symbolsRewriter) Next() bool {
 		}
 		s.numSamples += uint64(len(values))
 		for i, v := range values {
+			// FIXME: the original order is not preserved, which will affect encoding.
 			values[i] = parquet.Int64Value(int64(s.stacktraces[i])).Level(v.RepetitionLevel(), v.DefinitionLevel(), v.Column())
 		}
 	})
@@ -729,7 +730,7 @@ func (r *stacktraceRewriter) populateUnresolved(stacktraceIDs []uint32) error {
 
 func (r *stacktraceRewriter) appendRewrite(stacktraces []uint32) error {
 	for _, v := range r.strings.unresolved {
-		r.strings.storeResolved(v.uid, r.appender.AppendString(v.val))
+		r.strings.storeResolved(v.rid, r.appender.AppendString(v.val))
 	}
 
 	for _, v := range r.functions.unresolved {
@@ -737,14 +738,14 @@ func (r *stacktraceRewriter) appendRewrite(stacktraces []uint32) error {
 		function.Name = r.strings.lookupResolved(function.Name)
 		function.Filename = r.strings.lookupResolved(function.Filename)
 		function.SystemName = r.strings.lookupResolved(function.SystemName)
-		r.functions.storeResolved(v.uid, r.appender.AppendFunction(function))
+		r.functions.storeResolved(v.rid, r.appender.AppendFunction(function))
 	}
 
 	for _, v := range r.mappings.unresolved {
 		mapping := v.val
 		mapping.BuildId = r.strings.lookupResolved(mapping.BuildId)
 		mapping.Filename = r.strings.lookupResolved(mapping.Filename)
-		r.mappings.storeResolved(v.uid, r.appender.AppendMapping(mapping))
+		r.mappings.storeResolved(v.rid, r.appender.AppendMapping(mapping))
 	}
 
 	for _, v := range r.locations.unresolved {
@@ -753,7 +754,7 @@ func (r *stacktraceRewriter) appendRewrite(stacktraces []uint32) error {
 		for j, line := range location.Line {
 			location.Line[j].FunctionId = r.functions.lookupResolved(line.FunctionId)
 		}
-		r.locations.storeResolved(v.uid, r.appender.AppendLocation(location))
+		r.locations.storeResolved(v.rid, r.appender.AppendLocation(location))
 	}
 
 	src := r.stacktraces[r.partition]
@@ -762,7 +763,7 @@ func (r *stacktraceRewriter) appendRewrite(stacktraces []uint32) error {
 		for j, lid := range stacktrace.LocationIDs {
 			stacktrace.LocationIDs[j] = uint64(r.locations.lookupResolved(uint32(lid)))
 		}
-		src.storeResolved(v.uid, r.appender.AppendStacktrace(stacktrace))
+		src.storeResolved(v.rid, r.appender.AppendStacktrace(stacktrace))
 	}
 	for i, v := range stacktraces {
 		stacktraces[i] = src.lookupResolved(v)
@@ -773,7 +774,7 @@ func (r *stacktraceRewriter) appendRewrite(stacktraces []uint32) error {
 
 const (
 	marker     = 1 << 31
-	markedMask = math.MaxUint32 >> 1
+	markerMask = math.MaxUint32 >> 1
 )
 
 type lookupTable[T any] struct {
@@ -786,11 +787,13 @@ type lookupTable[T any] struct {
 
 type lookupTableValue[T any] struct {
 	rid uint32 // Index to resolved.
-	uid uint32 // Original index (unresolved).
 	val T
 }
 
-type lookupTableRef struct{ rid, uid uint32 }
+type lookupTableRef struct {
+	rid uint32 // Index to resolved.
+	uid uint32 // Original index (unresolved).
+}
 
 func newLookupTable[T any](size int) *lookupTable[T] {
 	var t lookupTable[T]
@@ -825,44 +828,41 @@ func (t *lookupTable[T]) tryLookup(x uint32) uint32 {
 		}
 		return v - 1 // Already resolved.
 	}
-	u := uint32(len(t.unresolved))
-	t.unresolved = append(t.unresolved, lookupTableValue[T]{
-		rid: x,
-		uid: u,
-	})
-	u |= marker
+	t.unresolved = append(t.unresolved, lookupTableValue[T]{rid: x})
+	u := uint32(len(t.unresolved)) | marker
 	t.resolved[x] = u
 	return u
 }
 
-func (t *lookupTable[T]) storeResolved(uid, v uint32) {
-	t.resolved[t.unresolved[uid].rid] = v + 1
-}
+func (t *lookupTable[T]) storeResolved(rid, v uint32) { t.resolved[rid] = v + 1 }
 
 func (t *lookupTable[T]) lookupResolved(x uint32) uint32 {
 	if x&marker > 0 {
-		return t.resolved[t.unresolved[x&markedMask].rid] - 1
+		return t.resolved[t.unresolved[x&markerMask-1].rid] - 1
 	}
 	return x // Already resolved.
 }
 
 func (t *lookupTable[T]) iter() *lookupTableIterator[T] {
+	t.initRefs()
+	sort.Sort(t)
+	return &lookupTableIterator[T]{table: t}
+}
+
+func (t *lookupTable[T]) initRefs() {
 	if cap(t.refs) < len(t.unresolved) {
 		t.refs = make([]lookupTableRef, len(t.unresolved))
 	} else {
 		t.refs = t.refs[:len(t.unresolved)]
 	}
 	for i, v := range t.unresolved {
-		t.refs[i] = lookupTableRef{
-			rid: v.rid,
-			uid: v.uid,
-		}
+		t.refs[i] = lookupTableRef{rid: v.rid, uid: uint32(i)}
 	}
-	sort.Slice(t.refs, func(i, j int) bool {
-		return t.refs[i].rid < t.refs[j].rid
-	})
-	return &lookupTableIterator[T]{table: t}
 }
+
+func (t *lookupTable[T]) Len() int           { return len(t.refs) }
+func (t *lookupTable[T]) Less(i, j int) bool { return t.refs[i].rid < t.refs[j].rid }
+func (t *lookupTable[T]) Swap(i, j int)      { t.refs[i], t.refs[j] = t.refs[j], t.refs[i] }
 
 type lookupTableIterator[T any] struct {
 	table *lookupTable[T]
@@ -880,7 +880,7 @@ func (t *lookupTableIterator[T]) At() uint32 {
 }
 
 func (t *lookupTableIterator[T]) setValue(v T) {
-	uid := t.table.refs[t.cur].uid
+	uid := t.table.refs[t.cur-1].uid
 	t.table.unresolved[uid].val = v
 }
 
