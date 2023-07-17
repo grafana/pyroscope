@@ -2,7 +2,10 @@ package phlaredb
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 	"testing"
@@ -12,6 +15,7 @@ import (
 
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
+	"github.com/segmentio/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
@@ -190,4 +194,103 @@ func TestProfileRowIterator(t *testing.T) {
 func addSeries(t *testing.T, idxw *index.Writer, idx int, labels phlaremodel.Labels) {
 	t.Helper()
 	require.NoError(t, idxw.AddSeries(storage.SeriesRef(idx), labels, model.Fingerprint(labels.Hash()), index.ChunkMeta{SeriesIndex: uint32(idx)}))
+}
+
+func TestMetaFilesFromDir(t *testing.T) {
+	dst := t.TempDir()
+	generateParquetFile(t, filepath.Join(dst, "foo.parquet"))
+	generateParquetFile(t, filepath.Join(dst, "symbols", "bar.parquet"))
+	generateFile(t, filepath.Join(dst, "symbols", "index.symdb"), 100)
+	generateFile(t, filepath.Join(dst, "symbols", "stacktraces.symdb"), 200)
+	generateIndexFile(t, dst)
+	actual, err := metaFilesFromDir(dst)
+
+	require.NoError(t, err)
+	require.Equal(t, 5, len(actual))
+	require.Equal(t, []block.File{
+		{
+			Parquet: &block.ParquetFile{
+				NumRows:      100,
+				NumRowGroups: 10,
+			},
+			RelPath:   "foo.parquet",
+			SizeBytes: fileSize(t, filepath.Join(dst, "foo.parquet")),
+		},
+		{
+			RelPath:   block.IndexFilename,
+			SizeBytes: fileSize(t, filepath.Join(dst, block.IndexFilename)),
+			TSDB: &block.TSDBFile{
+				NumSeries: 3,
+			},
+		},
+		{
+			Parquet: &block.ParquetFile{
+				NumRows:      100,
+				NumRowGroups: 10,
+			},
+			RelPath:   filepath.Join("symbols", "bar.parquet"),
+			SizeBytes: fileSize(t, filepath.Join(dst, "symbols", "bar.parquet")),
+		},
+		{
+			RelPath:   filepath.Join("symbols", "index.symdb"),
+			SizeBytes: fileSize(t, filepath.Join(dst, "symbols", "index.symdb")),
+		},
+		{
+			RelPath:   filepath.Join("symbols", "stacktraces.symdb"),
+			SizeBytes: fileSize(t, filepath.Join(dst, "symbols", "stacktraces.symdb")),
+		},
+	}, actual)
+}
+
+func fileSize(t *testing.T, path string) uint64 {
+	t.Helper()
+	fi, err := os.Stat(path)
+	require.NoError(t, err)
+	return uint64(fi.Size())
+}
+
+func generateFile(t *testing.T, path string, size int) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	f, err := os.Create(path)
+	require.NoError(t, err)
+	defer f.Close()
+	require.NoError(t, f.Truncate(int64(size)))
+}
+
+func generateIndexFile(t *testing.T, dir string) {
+	t.Helper()
+	filePath := filepath.Join(dir, block.IndexFilename)
+	idxw, err := index.NewWriter(context.Background(), filePath)
+	require.NoError(t, err)
+	require.NoError(t, idxw.AddSymbol("a"))
+	require.NoError(t, idxw.AddSymbol("b"))
+	require.NoError(t, idxw.AddSymbol("c"))
+	addSeries(t, idxw, 0, phlaremodel.Labels{
+		&typesv1.LabelPair{Name: "a", Value: "b"},
+	})
+	addSeries(t, idxw, 1, phlaremodel.Labels{
+		&typesv1.LabelPair{Name: "a", Value: "c"},
+	})
+	addSeries(t, idxw, 2, phlaremodel.Labels{
+		&typesv1.LabelPair{Name: "b", Value: "a"},
+	})
+	require.NoError(t, idxw.Close())
+}
+
+func generateParquetFile(t *testing.T, path string) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
+	require.NoError(t, err)
+	defer file.Close()
+
+	writer := parquet.NewGenericWriter[struct{ Name string }](file, parquet.MaxRowsPerRowGroup(10))
+	defer writer.Close()
+	for i := 0; i < 100; i++ {
+		_, err := writer.Write([]struct{ Name string }{
+			{Name: fmt.Sprintf("name-%d", i)},
+		})
+		require.NoError(t, err)
+	}
 }

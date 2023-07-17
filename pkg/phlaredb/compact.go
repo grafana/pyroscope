@@ -6,7 +6,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
@@ -114,7 +113,7 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Met
 	return meta, nil
 }
 
-// todo implement and tests
+// metaFilesFromDir returns a list of block files description from a directory.
 func metaFilesFromDir(dir string) ([]block.File, error) {
 	var files []block.File
 	err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
@@ -124,17 +123,56 @@ func metaFilesFromDir(dir string) ([]block.File, error) {
 		if info.IsDir() {
 			return nil
 		}
+		var f block.File
 		switch filepath.Ext(info.Name()) {
-		case strings.TrimPrefix(block.ParquetSuffix, "."):
-			// todo parquet file
+		case block.ParquetSuffix:
+			f, err = parquetMetaFile(path, info.Size())
+			if err != nil {
+				return err
+			}
 		case filepath.Ext(block.IndexFilename):
-			// todo tsdb index file
-		default:
-			// todo other files
+			f, err = tsdbMetaFile(path)
+			if err != nil {
+				return err
+			}
 		}
+		f.RelPath, err = filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+		f.SizeBytes = uint64(info.Size())
+		files = append(files, f)
 		return nil
 	})
 	return files, err
+}
+
+func tsdbMetaFile(filePath string) (block.File, error) {
+	idxReader, err := index.NewFileReader(filePath)
+	if err != nil {
+		return block.File{}, err
+	}
+
+	return idxReader.FileInfo(), nil
+}
+
+func parquetMetaFile(filePath string, size int64) (block.File, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return block.File{}, err
+	}
+	defer f.Close()
+
+	pqFile, err := parquet.OpenFile(f, size)
+	if err != nil {
+		return block.File{}, err
+	}
+	return block.File{
+		Parquet: &block.ParquetFile{
+			NumRowGroups: uint64(len(pqFile.RowGroups())),
+			NumRows:      uint64(pqFile.NumRows()),
+		},
+	}, nil
 }
 
 // todo write tests
