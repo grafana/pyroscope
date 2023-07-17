@@ -3,7 +3,7 @@ describe('smoke', () => {
   beforeEach(function () {
     const apiBasePath = Cypress.env('apiBasePath') || '';
 
-    cy.intercept(`${apiBasePath}/pyroscope/label-values?label=__name__`, {
+    cy.intercept(`${apiBasePath}/querier.v1.QuerierService/LabelNames`, {
       fixture: 'profileTypes.json',
     }).as('profileTypes');
   });
