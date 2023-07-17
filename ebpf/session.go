@@ -14,10 +14,10 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/rlimit"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/phlare/ebpf/cpuonline"
+	"github.com/grafana/phlare/ebpf/rlimit"
 	"github.com/grafana/phlare/ebpf/sd"
 	"github.com/grafana/phlare/ebpf/symtab"
 	"github.com/samber/lo"
