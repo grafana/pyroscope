@@ -87,7 +87,7 @@ func (r *symbolsResolverV1) Partition(_ context.Context, _ uint64) (symdb.Partit
 type stacktraceResolverV1 struct{ r *symbolsResolverV1 }
 
 func (r stacktraceResolverV1) ResolveStacktraceLocations(ctx context.Context, dst symdb.StacktraceInserter, stacktraces []uint32) error {
-	it := repeatedColumnIter(ctx, r.r.stacktraces.file, "LocationIDs.list.element", iter.NewSliceIterator(stacktraces))
+	it := repeatedColumnIter(ctx, r.r.stacktraces.Source(), "LocationIDs.list.element", iter.NewSliceIterator(stacktraces))
 	defer it.Close()
 	t := make([]int32, 0, 64)
 	for it.Next() {

@@ -264,7 +264,7 @@ func Test_RepeatedIterator(t *testing.T) {
 				}
 				actual := readPageIterator(t,
 					NewRepeatedPageIterator(
-						context.Background(), iter.NewSliceIterator(tc.rows), groups, 0, tc.readSize))
+						context.Background(), iter.NewSliceIterator(tc.rows), groups, 0, tc.readSize, nil))
 				if diff := cmp.Diff(tc.expected, actual, int64ParquetComparer()); diff != "" {
 					t.Errorf("result mismatch (-want +got):\n%s", diff)
 				}
@@ -375,9 +375,9 @@ func Test_MultiRepeatedPageIterator(t *testing.T) {
 			actual := readMultiPageIterator(t,
 				NewMultiRepeatedPageIterator(
 					NewRepeatedPageIterator(
-						context.Background(), iter.NewSliceIterator(tc.rows), groups, 0, 1000),
+						context.Background(), iter.NewSliceIterator(tc.rows), groups, 0, 1000, nil),
 					NewRepeatedPageIterator(
-						context.Background(), iter.NewSliceIterator(tc.rows), groups, 1, 1000),
+						context.Background(), iter.NewSliceIterator(tc.rows), groups, 1, 1000, nil),
 				),
 			)
 			if diff := cmp.Diff(tc.expected, actual, int64ParquetComparer()); diff != "" {

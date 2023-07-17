@@ -817,15 +817,16 @@ func (r *RowNumberIterator[T]) Seek(to RowNumberWithDefinitionLevel) bool {
 // Results are read by calling Next() until it returns nil.
 type SyncIterator struct {
 	// Config
-	column     int
-	columnName string
-	table      string
-	rgs        []parquet.RowGroup
-	rgsMin     []RowNumber
-	rgsMax     []RowNumber // Exclusive, row number of next one past the row group
-	readSize   int
-	selectAs   string
-	filter     *InstrumentedPredicate
+	column          int
+	columnName      string
+	table           string
+	readerSectioner parquet.ReaderSectioner
+	rgs             []parquet.RowGroup
+	rgsMin          []RowNumber
+	rgsMax          []RowNumber // Exclusive, row number of next one past the row group
+	readSize        int
+	selectAs        string
+	filter          *InstrumentedPredicate
 
 	// Status
 	ctx             context.Context
@@ -872,7 +873,7 @@ func syncIteratorPoolPut(b []parquet.Value) {
 	syncIteratorPool.Put(b) // nolint: staticcheck
 }
 
-func NewSyncIterator(ctx context.Context, rgs []parquet.RowGroup, column int, columnName string, readSize int, filter Predicate, selectAs string) *SyncIterator {
+func NewSyncIterator(ctx context.Context, rgs []parquet.RowGroup, column int, columnName string, readSize int, filter Predicate, selectAs string, readerSectioner parquet.ReaderSectioner) *SyncIterator {
 
 	// Assign row group bounds.
 	// Lower bound is inclusive
@@ -895,20 +896,21 @@ func NewSyncIterator(ctx context.Context, rgs []parquet.RowGroup, column int, co
 	ctx, cancel := context.WithCancel(ctx)
 
 	return &SyncIterator{
-		table:      strings.ToLower(rgs[0].Schema().Name()) + "s",
-		ctx:        ctx,
-		cancel:     cancel,
-		metrics:    getMetricsFromContext(ctx),
-		span:       span,
-		column:     column,
-		columnName: columnName,
-		rgs:        rgs,
-		readSize:   readSize,
-		selectAs:   selectAs,
-		rgsMin:     rgsMin,
-		rgsMax:     rgsMax,
-		filter:     &InstrumentedPredicate{pred: filter},
-		curr:       EmptyRowNumber(),
+		table:           strings.ToLower(rgs[0].Schema().Name()) + "s",
+		readerSectioner: readerSectioner,
+		ctx:             ctx,
+		cancel:          cancel,
+		metrics:         getMetricsFromContext(ctx),
+		span:            span,
+		column:          column,
+		columnName:      columnName,
+		rgs:             rgs,
+		readSize:        readSize,
+		selectAs:        selectAs,
+		rgsMin:          rgsMin,
+		rgsMax:          rgsMax,
+		filter:          &InstrumentedPredicate{pred: filter},
+		curr:            EmptyRowNumber(),
 	}
 }
 
@@ -1185,6 +1187,10 @@ func (c *SyncIterator) next() (RowNumber, *parquet.Value, error) {
 	}
 }
 
+type pagesWithContext interface {
+	PagesWithReaderSectioner(ctx context.Context, readerSectioner parquet.ReaderSectioner) parquet.Pages
+}
+
 func (c *SyncIterator) setRowGroup(rg parquet.RowGroup, min, max RowNumber) {
 	c.closeCurrRowGroup()
 	c.curr = min
@@ -1192,7 +1198,13 @@ func (c *SyncIterator) setRowGroup(rg parquet.RowGroup, min, max RowNumber) {
 	c.currRowGroupMin = min
 	c.currRowGroupMax = max
 	c.currChunk = rg.ColumnChunks()[c.column]
-	c.currPages = c.currChunk.Pages()
+
+	if cc, ok := c.currChunk.(pagesWithContext); ok {
+		c.currPages = cc.PagesWithReaderSectioner(c.ctx, c.readerSectioner)
+	} else {
+		c.currPages = c.currChunk.Pages()
+	}
+
 }
 
 func (c *SyncIterator) setPage(pg parquet.Page) {

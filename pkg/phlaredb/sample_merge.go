@@ -22,7 +22,7 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
-	if err := mergeByStacktraces(ctx, b.profiles.file, rows, r); err != nil {
+	if err := mergeByStacktraces(ctx, b.profiles.Source(), rows, r); err != nil {
 		return nil, err
 	}
 	return r.Tree()
@@ -33,7 +33,7 @@ func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
-	if err := mergeByStacktraces(ctx, b.profiles.file, rows, r); err != nil {
+	if err := mergeByStacktraces(ctx, b.profiles.Source(), rows, r); err != nil {
 		return nil, err
 	}
 	return r.Profile()
@@ -48,7 +48,7 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 	if b.meta.Version == 1 {
 		columnName = "Samples.list.element.Value"
 	}
-	if err := mergeByLabels(ctx, b.profiles.file, columnName, rows, m, by...); err != nil {
+	if err := mergeByLabels(ctx, b.profiles.Source(), columnName, rows, m, by...); err != nil {
 		return nil, err
 	}
 	return m.normalize(), nil
@@ -57,6 +57,7 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 type Source interface {
 	Schema() *parquet.Schema
 	RowGroups() []parquet.RowGroup
+	ReaderSectioner() parquet.ReaderSectioner
 }
 
 func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver) error {

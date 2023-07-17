@@ -15,6 +15,7 @@ type contextKey uint8
 const (
 	headMetricsContextKey contextKey = iota
 	blockMetricsContextKey
+	blockULIDContextKey
 )
 
 type headMetrics struct {
@@ -227,4 +228,16 @@ func contextBlockMetrics(ctx context.Context) *blocksMetrics {
 		return newBlocksMetrics(phlarecontext.Registry(ctx))
 	}
 	return m
+}
+
+func contextWithBlockULID(ctx context.Context, ulid string) context.Context {
+	return context.WithValue(ctx, blockULIDContextKey, ulid)
+}
+
+func contextBlockULID(ctx context.Context) string {
+	ulid, ok := ctx.Value(blockULIDContextKey).(string)
+	if !ok {
+		return ""
+	}
+	return ulid
 }

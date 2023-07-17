@@ -462,6 +462,10 @@ func newRowGroupOnDisk(path string) (*rowGroupOnDisk, error) {
 	return r, nil
 }
 
+func (r *rowGroupOnDisk) ReaderSectioner() parquet.ReaderSectioner {
+	return nil
+}
+
 func (r *rowGroupOnDisk) RowGroups() []parquet.RowGroup {
 	return []parquet.RowGroup{r.RowGroup}
 }
@@ -495,7 +499,7 @@ func (r *rowGroupOnDisk) columnIter(ctx context.Context, columnName string, pred
 	if !found {
 		return query.NewErrIterator(fmt.Errorf("column '%s' not found in head row group segment '%s'", columnName, r.file.Name()))
 	}
-	return query.NewSyncIterator(ctx, []parquet.RowGroup{r.RowGroup}, column.ColumnIndex, columnName, 1000, predicate, alias)
+	return query.NewSyncIterator(ctx, []parquet.RowGroup{r.RowGroup}, column.ColumnIndex, columnName, 1000, predicate, alias, nil)
 }
 
 type seriesIDRowsRewriter struct {

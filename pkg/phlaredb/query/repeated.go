@@ -55,6 +55,7 @@ func NewRepeatedPageIterator[T any](
 	rgs []parquet.RowGroup,
 	column int,
 	readSize int,
+	readerSectioner parquet.ReaderSectioner,
 ) iter.Iterator[*RepeatedRow[T]] {
 	if readSize <= 0 {
 		panic("readSize must be greater than 0")

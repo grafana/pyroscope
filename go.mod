@@ -45,7 +45,7 @@ require (
 	github.com/opentracing-contrib/go-grpc v0.0.0-20210225150812-73cb765af46e
 	github.com/opentracing-contrib/go-stdlib v1.0.0
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b
-	github.com/parquet-go/parquet-go v0.17.1-0.20230724165737-1e4f8bbc561c
+	github.com/parquet-go/parquet-go v0.18.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/common v0.44.0
@@ -222,6 +222,10 @@ replace (
 	// Replace memberlist with our fork which includes some fixes that haven't been
 	// merged upstream yet.
 	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91
+
+	// This adds additional calls to allow readers to be created
+	github.com/parquet-go/parquet-go => github.com/simonswine/parquet-go v0.18.1-0.20230907095455-66eb4e33aa8b
+
 	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.45.0
 
 	github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20230727114110-2394c72a3ec7
@@ -229,4 +233,5 @@ replace (
 	// + https://github.com/go-yaml/yaml/pull/691
 	// + https://github.com/go-yaml/yaml/pull/876
 	gopkg.in/yaml.v3 => github.com/colega/go-yaml-yaml v0.0.0-20220720105220-255a8d16d094
+
 )

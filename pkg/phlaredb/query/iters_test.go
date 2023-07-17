@@ -25,7 +25,7 @@ var iterTestCases = []struct {
 	makeIter makeTestIterFn
 }{
 	{"sync", func(pf *parquet.File, idx int, filter Predicate, selectAs string) Iterator {
-		return NewSyncIterator(context.TODO(), pf.RowGroups(), idx, selectAs, 1000, filter, selectAs)
+		return NewSyncIterator(context.TODO(), pf.RowGroups(), idx, selectAs, 1000, filter, selectAs, nil)
 	}},
 }
 
@@ -221,7 +221,7 @@ func TestColumnIteratorExitEarly(t *testing.T) {
 		// Cancel before iterating
 		ctx, cancel := context.WithCancel(context.TODO())
 		cancel()
-		iter := NewSyncIterator(ctx, pf.RowGroups(), idx, "", readSize, nil, "A")
+		iter := NewSyncIterator(ctx, pf.RowGroups(), idx, "", readSize, nil, "A", nil)
 		count, err := readIter(iter)
 		require.ErrorContains(t, err, "context canceled")
 		require.Equal(t, 0, count)
@@ -229,7 +229,7 @@ func TestColumnIteratorExitEarly(t *testing.T) {
 
 	t.Run("cancelledPartial", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.TODO())
-		iter := NewSyncIterator(ctx, pf.RowGroups(), idx, "", readSize, nil, "A")
+		iter := NewSyncIterator(ctx, pf.RowGroups(), idx, "", readSize, nil, "A", nil)
 
 		// Read some results
 		require.True(t, iter.Next())
@@ -244,7 +244,7 @@ func TestColumnIteratorExitEarly(t *testing.T) {
 
 	t.Run("closedEarly", func(t *testing.T) {
 		// Close before iterating
-		iter := NewSyncIterator(context.TODO(), pf.RowGroups(), idx, "", readSize, nil, "A")
+		iter := NewSyncIterator(context.TODO(), pf.RowGroups(), idx, "", readSize, nil, "A", nil)
 		iter.Close()
 		count, err := readIter(iter)
 		require.ErrorContains(t, err, "context canceled")
@@ -252,7 +252,7 @@ func TestColumnIteratorExitEarly(t *testing.T) {
 	})
 
 	t.Run("closedPartial", func(t *testing.T) {
-		iter := NewSyncIterator(context.TODO(), pf.RowGroups(), idx, "", readSize, nil, "A")
+		iter := NewSyncIterator(context.TODO(), pf.RowGroups(), idx, "", readSize, nil, "A", nil)
 
 		// Read some results
 		require.True(t, iter.Next())
@@ -438,8 +438,8 @@ func TestBinaryJoinIterator(t *testing.T) {
 			metrics.pageReadsTotal.WithLabelValues("ts", "TimeNanos").Add(0)
 			ctx = AddMetricsToContext(ctx, metrics)
 
-			seriesIt := NewSyncIterator(ctx, pf.RowGroups(), 0, "SeriesId", 1000, tc.seriesPredicate, "SeriesId")
-			timeIt := NewSyncIterator(ctx, pf.RowGroups(), 1, "TimeNanos", 1000, tc.timePredicate, "TimeNanos")
+			seriesIt := NewSyncIterator(ctx, pf.RowGroups(), 0, "SeriesId", 1000, tc.seriesPredicate, "SeriesId", nil)
+			timeIt := NewSyncIterator(ctx, pf.RowGroups(), 1, "TimeNanos", 1000, tc.timePredicate, "TimeNanos", nil)
 
 			it := NewBinaryJoinIterator(
 				0,
