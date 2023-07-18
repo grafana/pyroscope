@@ -305,7 +305,7 @@ type singleBlockQuerier struct {
 type StacktraceDB interface {
 	Open(ctx context.Context) error
 	Close() error
-	Resolve(ctx context.Context, mapping uint64, locs locationsIdsByStacktraceID, stacktraceIDs []uint32) error
+	Resolve(ctx context.Context, partition uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error
 }
 
 type stacktraceResolverV1 struct {
@@ -321,14 +321,17 @@ func (r *stacktraceResolverV1) Close() error {
 	return r.stacktraces.Close()
 }
 
-func (r *stacktraceResolverV1) Resolve(ctx context.Context, mapping uint64, locs locationsIdsByStacktraceID, stacktraceIDs []uint32) error {
+func (r *stacktraceResolverV1) Resolve(ctx context.Context, _ uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error {
 	stacktraces := repeatedColumnIter(ctx, r.stacktraces.file, "LocationIDs.list.element", iter.NewSliceIterator(stacktraceIDs))
 	defer stacktraces.Close()
-
+	t := make([]int32, 0, 64)
 	for stacktraces.Next() {
+		t = t[:0]
 		s := stacktraces.At()
-		locs.addFromParquet(int64(s.Row), s.Values)
-
+		for i, v := range s.Values {
+			t[i] = v.Int32()
+		}
+		locs.InsertStacktrace(s.Row, t)
 	}
 	return stacktraces.Err()
 }
@@ -351,19 +354,14 @@ func (r *stacktraceResolverV2) Close() error {
 	return nil
 }
 
-func (r *stacktraceResolverV2) Resolve(ctx context.Context, mapping uint64, locs locationsIdsByStacktraceID, stacktraceIDs []uint32) error {
+func (r *stacktraceResolverV2) Resolve(ctx context.Context, mapping uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error {
 	mr, ok := r.reader.MappingReader(mapping)
 	if !ok {
 		return nil
 	}
 	resolver := mr.StacktraceResolver()
 	defer resolver.Release()
-
-	return resolver.ResolveStacktraces(ctx, symdb.StacktraceInserterFn(
-		func(stacktraceID uint32, locations []int32) {
-			locs.add(int64(stacktraceID), locations)
-		},
-	), stacktraceIDs)
+	return resolver.ResolveStacktraces(ctx, locs, stacktraceIDs)
 }
 
 func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlareobj.Bucket, meta *block.Meta) *singleBlockQuerier {
