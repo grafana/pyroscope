@@ -525,7 +525,7 @@ func (s *symbolsRewriter) Next() bool {
 }
 
 func (s *symbolsRewriter) loadStacktracesID(values []parquet.Value) {
-	grow(s.stacktraces, len(values))
+	s.stacktraces = grow(s.stacktraces, len(values))
 	for i := range values {
 		s.stacktraces[i] = values[i].Uint32()
 	}
@@ -751,7 +751,7 @@ func (p *symdbPartition) resolveStacktraces(stacktraceIDs []uint32) error {
 	// Gather and sort references to unresolved stacks.
 	p.stacktraces.initRefs()
 	sort.Sort(p.stacktraces)
-	grow(p.r.inserter.s, len(p.stacktraces.refs))
+	p.r.inserter.s = grow(p.r.inserter.s, len(p.stacktraces.refs))
 	for j, u := range p.stacktraces.refs {
 		p.r.inserter.s[j] = u.rid
 	}
@@ -776,7 +776,7 @@ func (i *stacktraceInserter) InsertStacktrace(stacktrace uint32, locations []int
 	if v.rid != stacktrace {
 		panic("unexpected stack trace")
 	}
-	grow(v.val, len(locations))
+	v.val = grow(v.val, len(locations))
 	copy(v.val, locations)
 	i.c++
 }
@@ -846,8 +846,7 @@ func (t *lookupTable[T]) newUnresolvedValue(rid uint32) uint32 {
 	x := len(t.unresolved)
 	if x < cap(t.unresolved) {
 		// Try to reuse previously allocated value.
-		x++
-		t.unresolved = t.unresolved[:x]
+		t.unresolved = t.unresolved[:x+1]
 		t.unresolved[x].rid = rid
 	} else {
 		t.unresolved = append(t.unresolved, lookupTableValue[T]{rid: rid})
@@ -863,8 +862,8 @@ func (t *lookupTable[T]) referenceAt(x int) *lookupTableValue[T] {
 func (t *lookupTable[T]) storeResolved(rid, v uint32) { t.resolved[rid] = v + 1 }
 
 func (t *lookupTable[T]) lookupResolved(x uint32) uint32 {
-	if x&marker > 0 { // TODO: why?
-		return t.resolved[t.unresolved[x&markerMask-1].rid] - 1
+	if x&marker > 0 {
+		return t.resolved[t.unresolved[x&markerMask].rid] - 1
 	}
 	return x // Already resolved.
 }
@@ -876,7 +875,7 @@ func (t *lookupTable[T]) iter() *lookupTableIterator[T] {
 }
 
 func (t *lookupTable[T]) initRefs() {
-	grow(t.refs, len(t.unresolved))
+	t.refs = grow(t.refs, len(t.unresolved))
 	for i, v := range t.unresolved {
 		t.refs[i] = lookupTableRef{rid: v.rid, uid: uint32(i)}
 	}
