@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
+	"github.com/grafana/pyroscope/pkg/og/storage/segment"
+	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 )
 
 type App struct {

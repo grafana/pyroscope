@@ -2,7 +2,7 @@ package testing
 
 import (
 	"github.com/onsi/ginkgo/v2"
-	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/grafana/pyroscope/pkg/og/config"
 )
 
 func WithConfig(cb func(cfg **config.Config)) {

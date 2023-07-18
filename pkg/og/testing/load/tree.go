@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"math/rand"
 
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 )
 
 type TreeGenerator struct {

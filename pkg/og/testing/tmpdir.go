@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/onsi/ginkgo/v2"
-	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
+	"github.com/grafana/pyroscope/pkg/og/util/bytesize"
 )
 
 func DirStats(path string) (directories, files int, size bytesize.ByteSize) {

@@ -12,10 +12,10 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/health"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/testing/load"
+	"github.com/grafana/pyroscope/pkg/og/config"
+	"github.com/grafana/pyroscope/pkg/og/health"
+	"github.com/grafana/pyroscope/pkg/og/storage"
+	"github.com/grafana/pyroscope/pkg/og/testing/load"
 )
 
 type Config struct {
