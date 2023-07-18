@@ -12,9 +12,9 @@ import (
 	"github.com/segmentio/parquet-go"
 	"go.uber.org/atomic"
 
-	"github.com/grafana/phlare/pkg/phlaredb/block"
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/phlare/pkg/util/build"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/util/build"
 )
 
 var (
@@ -70,7 +70,7 @@ func (s *deduplicatingSlice[M, K, H, P]) Init(path string, cfg *ParquetConfig, m
 	// TODO: Reuse parquet.Writer beyond life time of the head.
 	s.writer = parquet.NewGenericWriter[P](file, s.persister.Schema(),
 		parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "phlaredb-parquet-buffers*")),
-		parquet.CreatedBy("github.com/grafana/phlare/", build.Version, build.Revision),
+		parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
 		parquet.PageBufferSize(3*1024*1024),
 	)
 	s.lookup = make(map[K]int64)

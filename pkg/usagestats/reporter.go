@@ -19,7 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thanos-io/objstore"
 
-	"github.com/grafana/phlare/pkg/util/build"
+	"github.com/grafana/pyroscope/pkg/util/build"
 )
 
 const (

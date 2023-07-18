@@ -16,10 +16,10 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/phlare/ebpf/cpuonline"
-	"github.com/grafana/phlare/ebpf/rlimit"
-	"github.com/grafana/phlare/ebpf/sd"
-	"github.com/grafana/phlare/ebpf/symtab"
+	"github.com/grafana/pyroscope/ebpf/cpuonline"
+	"github.com/grafana/pyroscope/ebpf/rlimit"
+	"github.com/grafana/pyroscope/ebpf/sd"
+	"github.com/grafana/pyroscope/ebpf/symtab"
 	"github.com/samber/lo"
 )
 

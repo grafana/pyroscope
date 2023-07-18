@@ -6,7 +6,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
 
-	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type ResponseFromReplica[T any] struct {

@@ -1,8 +1,8 @@
 package querier
 
 import (
-	"github.com/grafana/phlare/api/gen/proto/go/querier/v1/querierv1connect"
-	"github.com/grafana/phlare/pkg/util/connectgrpc"
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 )
 
 func NewGRPCHandler(svc querierv1connect.QuerierServiceHandler) connectgrpc.GRPCHandler {

@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-kit/log"
 
-	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 const (

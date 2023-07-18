@@ -10,13 +10,13 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 	"golang.org/x/sync/errgroup"
 
-	ingesterv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
-	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
-	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/clientpool"
-	phlaremodel "github.com/grafana/phlare/pkg/model"
-	"github.com/grafana/phlare/pkg/util"
+	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/clientpool"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type IngesterQueryClient interface {

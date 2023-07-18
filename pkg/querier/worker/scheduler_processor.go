@@ -30,12 +30,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/grafana/phlare/pkg/frontend/frontendpb"
-	querier_stats "github.com/grafana/phlare/pkg/querier/stats"
-	"github.com/grafana/phlare/pkg/scheduler/schedulerpb"
-	util_log "github.com/grafana/phlare/pkg/util"
-	"github.com/grafana/phlare/pkg/util/httpgrpc"
-	"github.com/grafana/phlare/pkg/util/httpgrpcutil"
+	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
+	querier_stats "github.com/grafana/pyroscope/pkg/querier/stats"
+	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb"
+	util_log "github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/pkg/util/httpgrpcutil"
 )
 
 func init() {

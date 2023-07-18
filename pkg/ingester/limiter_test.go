@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	phlaremodel "github.com/grafana/phlare/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 type fakeLimits struct {

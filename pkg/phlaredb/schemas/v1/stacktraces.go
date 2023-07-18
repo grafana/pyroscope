@@ -3,7 +3,7 @@ package v1
 import (
 	"github.com/segmentio/parquet-go"
 
-	phlareparquet "github.com/grafana/phlare/pkg/parquet"
+	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
 )
 
 var stacktracesSchema = parquet.NewSchema("Stacktrace", phlareparquet.Group{

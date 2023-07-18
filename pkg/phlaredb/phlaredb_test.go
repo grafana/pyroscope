@@ -18,15 +18,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
-	googlev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
-	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
-	"github.com/grafana/phlare/api/gen/proto/go/ingester/v1/ingesterv1connect"
-	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/iter"
-	phlaremodel "github.com/grafana/phlare/pkg/model"
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/phlare/pkg/testhelper"
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
 func TestCreateLocalDir(t *testing.T) {

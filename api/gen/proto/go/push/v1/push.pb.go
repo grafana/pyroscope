@@ -7,7 +7,7 @@
 package pushv1
 
 import (
-	v1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

@@ -12,7 +12,7 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 // querier holds information about a querier registered in the queue.

@@ -29,7 +29,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/fileutil"
 	"github.com/thanos-io/objstore"
 
-	"github.com/grafana/phlare/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 type metrics struct {

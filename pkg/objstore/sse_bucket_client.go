@@ -14,7 +14,7 @@ import (
 	"github.com/thanos-io/objstore"
 	"github.com/thanos-io/objstore/providers/s3"
 
-	phlare_s3 "github.com/grafana/phlare/pkg/objstore/providers/s3"
+	phlare_s3 "github.com/grafana/pyroscope/pkg/objstore/providers/s3"
 )
 
 // TenantConfigProvider defines a per-tenant config provider.

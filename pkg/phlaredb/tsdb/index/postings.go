@@ -23,9 +23,9 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
 
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/iter"
-	phlaremodel "github.com/grafana/phlare/pkg/model"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 var allPostingsKey = &typesv1.LabelPair{}

@@ -9,8 +9,8 @@ import (
 	"github.com/grafana/dskit/runtimeconfig"
 	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/phlare/pkg/util"
-	"github.com/grafana/phlare/pkg/validation"
+	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type runtimeConfigValues struct {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	elf2 "github.com/grafana/phlare/ebpf/symtab/elf"
+	elf2 "github.com/grafana/pyroscope/ebpf/symtab/elf"
 )
 
 var (

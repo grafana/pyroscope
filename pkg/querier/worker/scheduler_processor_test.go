@@ -18,8 +18,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/grafana/phlare/pkg/scheduler/schedulerpb"
-	"github.com/grafana/phlare/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb"
+	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 )
 
 func TestSchedulerProcessor_processQueriesOnSingleStream(t *testing.T) {

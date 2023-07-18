@@ -11,7 +11,7 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 var seps = []byte{'\xff'}

@@ -20,8 +20,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
-	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
-	"github.com/grafana/phlare/api/gen/proto/go/querier/v1/querierv1connect"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 )
 
 const (

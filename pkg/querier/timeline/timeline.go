@@ -3,7 +3,7 @@ package timeline
 import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 
-	v1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 // New generates a FlamebearerTimeline,

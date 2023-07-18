@@ -22,11 +22,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"google.golang.org/grpc"
 
-	"github.com/grafana/phlare/pkg/frontend/frontendpb"
-	"github.com/grafana/phlare/pkg/scheduler/schedulerdiscovery"
-	"github.com/grafana/phlare/pkg/scheduler/schedulerpb"
-	"github.com/grafana/phlare/pkg/util/httpgrpc"
-	"github.com/grafana/phlare/pkg/util/servicediscovery"
+	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
+	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
+	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb"
+	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/pkg/util/servicediscovery"
 )
 
 func init() {

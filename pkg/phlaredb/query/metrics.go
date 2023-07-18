@@ -5,7 +5,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type contextKey uint8

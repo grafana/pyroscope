@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/grafana/phlare/public"
+	"github.com/grafana/pyroscope/public"
 	"github.com/stretchr/testify/assert"
 )
 

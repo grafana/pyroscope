@@ -18,14 +18,14 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
-	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/clientpool"
-	"github.com/grafana/phlare/pkg/iter"
-	phlaremodel "github.com/grafana/phlare/pkg/model"
-	pprofth "github.com/grafana/phlare/pkg/pprof/testhelper"
-	"github.com/grafana/phlare/pkg/testhelper"
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/clientpool"
+	"github.com/grafana/pyroscope/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
 func Test_QuerySampleType(t *testing.T) {

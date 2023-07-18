@@ -11,11 +11,11 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/segmentio/parquet-go"
 
-	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/iter"
-	"github.com/grafana/phlare/pkg/phlaredb/query"
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/pkg/phlaredb/query"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 type headOnDiskQuerier struct {

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	gosym2 "github.com/grafana/phlare/ebpf/symtab/gosym"
+	gosym2 "github.com/grafana/pyroscope/ebpf/symtab/gosym"
 )
 
 type GoTable struct {

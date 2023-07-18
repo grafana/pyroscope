@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/phlare/pkg/phlaredb"
-	diskutil "github.com/grafana/phlare/pkg/util/disk"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
+	diskutil "github.com/grafana/pyroscope/pkg/util/disk"
 )
 
 type mockFS struct {

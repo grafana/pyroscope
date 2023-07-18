@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/phlare/pkg/util/build"
+	"github.com/grafana/pyroscope/pkg/util/build"
 
 	"github.com/cespare/xxhash/v2"
 	jsoniter "github.com/json-iterator/go"
@@ -25,7 +25,7 @@ import (
 var (
 	httpClient    = http.Client{Timeout: 5 * time.Second}
 	usageStatsURL = "https://stats.grafana.org/phlare-usage-report"
-	statsPrefix   = "github.com/grafana/phlare/"
+	statsPrefix   = "github.com/grafana/pyroscope/"
 	targetKey     = "target"
 	editionKey    = "edition"
 

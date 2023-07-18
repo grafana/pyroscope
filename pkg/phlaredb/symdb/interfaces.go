@@ -3,7 +3,7 @@ package symdb
 import (
 	"context"
 
-	schemasv1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	schemasv1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 // Mapping is a binary that is part of the program during the profile

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/phlare/pkg/agent"
+	"github.com/grafana/pyroscope/pkg/agent"
 )
 
 func Test_Relabeling(t *testing.T) {

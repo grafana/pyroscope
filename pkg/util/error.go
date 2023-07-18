@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/grafana/phlare/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 // StatusClientClosedRequest is the status code for when a client request cancellation of an http request

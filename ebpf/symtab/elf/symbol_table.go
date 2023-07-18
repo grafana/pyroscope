@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/grafana/phlare/ebpf/symtab/gosym"
+	"github.com/grafana/pyroscope/ebpf/symtab/gosym"
 )
 
 // symbols from .symtab, .dynsym

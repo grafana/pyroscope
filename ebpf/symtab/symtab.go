@@ -1,6 +1,6 @@
 package symtab
 
-import "github.com/grafana/phlare/ebpf/symtab/elf"
+import "github.com/grafana/pyroscope/ebpf/symtab/elf"
 
 type SymbolTable interface {
 	Refresh()

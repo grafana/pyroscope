@@ -16,9 +16,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	phlareobj "github.com/grafana/phlare/pkg/objstore"
-	"github.com/grafana/phlare/pkg/phlaredb/bucket"
-	"github.com/grafana/phlare/pkg/util"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 var errBucketStoreNotFound = errors.New("bucket store not found")

@@ -17,12 +17,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
-	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/phlare/pkg/model"
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
-	"github.com/grafana/phlare/pkg/pprof"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 type noLimit struct{}

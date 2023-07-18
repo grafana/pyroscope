@@ -11,12 +11,12 @@ import (
 	"github.com/samber/lo"
 	"github.com/thanos-io/objstore"
 
-	"github.com/grafana/phlare/pkg/objstore/providers/azure"
-	"github.com/grafana/phlare/pkg/objstore/providers/cos"
-	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
-	"github.com/grafana/phlare/pkg/objstore/providers/gcs"
-	"github.com/grafana/phlare/pkg/objstore/providers/s3"
-	"github.com/grafana/phlare/pkg/objstore/providers/swift"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/azure"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/cos"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/gcs"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/s3"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/swift"
 )
 
 const (

@@ -10,7 +10,7 @@ import (
 	"sync/atomic" //lint:ignore faillint we can't use go.uber.org/atomic with a protobuf struct without wrapping it.
 	"time"
 
-	"github.com/grafana/phlare/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 )
 
 type contextKey int

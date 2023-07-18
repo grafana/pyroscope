@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"unsafe"
 
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 type locationsKey struct {

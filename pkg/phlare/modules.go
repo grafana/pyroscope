@@ -27,24 +27,24 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
-	statusv1 "github.com/grafana/phlare/api/gen/proto/go/status/v1"
-	"github.com/grafana/phlare/pkg/agent"
-	"github.com/grafana/phlare/pkg/distributor"
-	"github.com/grafana/phlare/pkg/frontend"
-	"github.com/grafana/phlare/pkg/ingester"
-	objstoreclient "github.com/grafana/phlare/pkg/objstore/client"
-	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
-	"github.com/grafana/phlare/pkg/querier"
-	"github.com/grafana/phlare/pkg/querier/worker"
-	"github.com/grafana/phlare/pkg/scheduler"
-	"github.com/grafana/phlare/pkg/storegateway"
-	"github.com/grafana/phlare/pkg/usagestats"
-	"github.com/grafana/phlare/pkg/util"
-	"github.com/grafana/phlare/pkg/util/build"
-	"github.com/grafana/phlare/pkg/validation"
-	"github.com/grafana/phlare/pkg/validation/exporter"
+	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
+	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
+	"github.com/grafana/pyroscope/pkg/agent"
+	"github.com/grafana/pyroscope/pkg/distributor"
+	"github.com/grafana/pyroscope/pkg/frontend"
+	"github.com/grafana/pyroscope/pkg/ingester"
+	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
+	"github.com/grafana/pyroscope/pkg/querier"
+	"github.com/grafana/pyroscope/pkg/querier/worker"
+	"github.com/grafana/pyroscope/pkg/scheduler"
+	"github.com/grafana/pyroscope/pkg/storegateway"
+	"github.com/grafana/pyroscope/pkg/usagestats"
+	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/build"
+	"github.com/grafana/pyroscope/pkg/validation"
+	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
 
 // The various modules that make up Phlare.
@@ -385,7 +385,7 @@ func (f *Phlare) initServer() (services.Service, error) {
 	DisableSignalHandling(&f.Cfg.Server)
 	f.Cfg.Server.Registerer = prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg)
 	// Not all default middleware works with http2 so we'll add then manually.
-	// see https://github.com/grafana/phlare/issues/231
+	// see https://github.com/grafana/pyroscope/issues/231
 	f.Cfg.Server.DoNotAddDefaultHTTPMiddleware = true
 
 	f.setupWorkerTimeout()

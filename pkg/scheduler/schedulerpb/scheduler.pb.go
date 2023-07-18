@@ -12,7 +12,7 @@
 package schedulerpb
 
 import (
-	httpgrpc "github.com/grafana/phlare/pkg/util/httpgrpc"
+	httpgrpc "github.com/grafana/pyroscope/pkg/util/httpgrpc"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

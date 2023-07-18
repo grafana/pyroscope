@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/grafana/phlare/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/objstore"
 )
 
 var (

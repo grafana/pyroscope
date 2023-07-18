@@ -8,8 +8,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/pkg/errors"
 
-	"github.com/grafana/phlare/pkg/phlaredb"
-	"github.com/grafana/phlare/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 type BlockCloser interface {

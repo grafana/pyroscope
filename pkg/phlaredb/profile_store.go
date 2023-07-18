@@ -17,13 +17,13 @@ import (
 	"github.com/segmentio/parquet-go"
 	"go.uber.org/atomic"
 
-	phlaremodel "github.com/grafana/phlare/pkg/model"
-	phlareparquet "github.com/grafana/phlare/pkg/parquet"
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
-	"github.com/grafana/phlare/pkg/phlaredb/block"
-	"github.com/grafana/phlare/pkg/phlaredb/query"
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/phlare/pkg/util/build"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
+	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/query"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/util/build"
 )
 
 type profileStore struct {
@@ -78,7 +78,7 @@ func newProfileStore(phlarectx context.Context) *profileStore {
 	// TODO: Reuse parquet.Writer beyond life time of the head.
 	s.writer = parquet.NewGenericWriter[*schemav1.Profile](io.Discard, s.persister.Schema(),
 		parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "phlaredb-parquet-buffers*")),
-		parquet.CreatedBy("github.com/grafana/phlare/", build.Version, build.Revision),
+		parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
 		parquet.PageBufferSize(3*1024*1024),
 	)
 

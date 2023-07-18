@@ -29,14 +29,14 @@ import (
 	"github.com/weaveworks/common/user"
 	"google.golang.org/grpc"
 
-	"github.com/grafana/phlare/pkg/frontend/frontendpb"
-	"github.com/grafana/phlare/pkg/scheduler/queue"
-	"github.com/grafana/phlare/pkg/scheduler/schedulerdiscovery"
-	"github.com/grafana/phlare/pkg/scheduler/schedulerpb"
-	"github.com/grafana/phlare/pkg/util"
-	"github.com/grafana/phlare/pkg/util/httpgrpc"
-	"github.com/grafana/phlare/pkg/util/httpgrpcutil"
-	"github.com/grafana/phlare/pkg/util/validation"
+	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
+	"github.com/grafana/pyroscope/pkg/scheduler/queue"
+	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
+	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb"
+	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/pkg/util/httpgrpcutil"
+	"github.com/grafana/pyroscope/pkg/util/validation"
 )
 
 // Scheduler is responsible for queueing and dispatching queries to Queriers.

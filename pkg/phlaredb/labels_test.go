@@ -7,7 +7,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	phlaremodel "github.com/grafana/phlare/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 func TestLabelsForProfiles(t *testing.T) {

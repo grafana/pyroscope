@@ -6,7 +6,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/structs/cappedarr"
 
-	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 )
 
 const MaxNodes = 8192

@@ -4,8 +4,8 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/prometheus/common/model"
 
-	phlaremodel "github.com/grafana/phlare/pkg/model"
-	"github.com/grafana/phlare/pkg/util/loser"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/util/loser"
 )
 
 type Timestamp interface {

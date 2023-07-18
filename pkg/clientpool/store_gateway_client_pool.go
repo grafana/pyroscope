@@ -14,8 +14,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/grafana/phlare/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
-	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 func NeStoreGatewayPool(ring ring.ReadRing, factory ring_client.PoolFactory, clientsMetric prometheus.Gauge, logger log.Logger, options ...connect.ClientOption) *ring_client.Pool {

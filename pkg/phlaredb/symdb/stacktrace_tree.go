@@ -7,7 +7,7 @@ import (
 
 	"github.com/dgryski/go-groupvarint"
 
-	"github.com/grafana/phlare/pkg/util/math"
+	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 const (

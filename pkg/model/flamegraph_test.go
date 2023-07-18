@@ -7,8 +7,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/stretchr/testify/require"
 
-	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 func Test_ExportToFlamebearer(t *testing.T) {

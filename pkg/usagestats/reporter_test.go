@@ -14,8 +14,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/phlare/pkg/objstore/client"
-	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/objstore/client"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 )
 
 func Test_LeaderElection(t *testing.T) {

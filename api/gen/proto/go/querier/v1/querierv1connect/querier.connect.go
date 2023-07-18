@@ -8,9 +8,9 @@ import (
 	context "context"
 	errors "errors"
 	connect_go "github.com/bufbuild/connect-go"
-	v12 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
-	v1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
-	v11 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
+	v12 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	v11 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	http "net/http"
 	strings "strings"
 )

@@ -1,7 +1,7 @@
 package parquet
 
 import (
-	phlareobjstore "github.com/grafana/phlare/pkg/objstore"
+	phlareobjstore "github.com/grafana/pyroscope/pkg/objstore"
 )
 
 type optimizedReaderAt struct {

@@ -5,9 +5,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
-	"github.com/grafana/phlare/pkg/phlaredb/query"
-	"github.com/grafana/phlare/pkg/util"
+	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
+	"github.com/grafana/pyroscope/pkg/phlaredb/query"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type contextKey uint8

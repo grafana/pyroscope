@@ -1,7 +1,7 @@
 package symtab
 
 import (
-	"github.com/grafana/phlare/ebpf/util"
+	"github.com/grafana/pyroscope/ebpf/util"
 	"testing"
 
 	"github.com/stretchr/testify/require"

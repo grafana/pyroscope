@@ -18,13 +18,13 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 
-	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
-	"github.com/grafana/phlare/pkg/iter"
-	phlaremodel "github.com/grafana/phlare/pkg/model"
-	"github.com/grafana/phlare/pkg/phlaredb/query"
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/phlare/pkg/phlaredb/tsdb"
-	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	"github.com/grafana/pyroscope/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/phlaredb/query"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb"
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 )
 
 // delta encoding for ranges

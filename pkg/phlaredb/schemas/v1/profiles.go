@@ -10,8 +10,8 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/segmentio/parquet-go"
 
-	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
-	phlareparquet "github.com/grafana/phlare/pkg/parquet"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
 )
 
 var (

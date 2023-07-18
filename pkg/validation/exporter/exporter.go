@@ -16,8 +16,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/grafana/phlare/pkg/util"
-	"github.com/grafana/phlare/pkg/validation"
+	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 // Config holds the configuration for an overrides-exporter

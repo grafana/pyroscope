@@ -17,17 +17,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
-	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
-	ingesterv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
-	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
-	phlareobj "github.com/grafana/phlare/pkg/objstore"
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
-	"github.com/grafana/phlare/pkg/phlaredb"
-	"github.com/grafana/phlare/pkg/pprof"
-	"github.com/grafana/phlare/pkg/tenant"
-	"github.com/grafana/phlare/pkg/usagestats"
-	"github.com/grafana/phlare/pkg/util"
-	"github.com/grafana/phlare/pkg/validation"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
+	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/usagestats"
+	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 var activeTenantsStats = usagestats.NewInt("ingester_active_tenants")

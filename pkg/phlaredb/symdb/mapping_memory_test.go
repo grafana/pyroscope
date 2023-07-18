@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	googlev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/phlare/pkg/pprof"
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 func Test_StacktraceAppender_shards(t *testing.T) {

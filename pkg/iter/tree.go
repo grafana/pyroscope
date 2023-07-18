@@ -1,7 +1,7 @@
 package iter
 
 import (
-	"github.com/grafana/phlare/pkg/util/loser"
+	"github.com/grafana/pyroscope/pkg/util/loser"
 )
 
 var _ Iterator[interface{}] = &TreeIterator[interface{}]{}

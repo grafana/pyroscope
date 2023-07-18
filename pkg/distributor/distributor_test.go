@@ -24,15 +24,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
-	phlaremodel "github.com/grafana/phlare/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 
-	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
-	"github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/clientpool"
-	"github.com/grafana/phlare/pkg/tenant"
-	"github.com/grafana/phlare/pkg/testhelper"
-	"github.com/grafana/phlare/pkg/validation"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/clientpool"
+	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/testhelper"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 var ringConfig = RingConfig{

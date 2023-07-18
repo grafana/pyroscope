@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/phlare/pkg/validation"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 func TestOverridesExporter_withConfig(t *testing.T) {

@@ -16,9 +16,9 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"google.golang.org/protobuf/proto"
 
-	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/phlare/pkg/model"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 type PushService interface {

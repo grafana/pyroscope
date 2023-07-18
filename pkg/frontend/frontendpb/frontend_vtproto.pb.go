@@ -7,8 +7,8 @@ package frontendpb
 import (
 	context "context"
 	fmt "fmt"
-	stats "github.com/grafana/phlare/pkg/querier/stats"
-	httpgrpc "github.com/grafana/phlare/pkg/util/httpgrpc"
+	stats "github.com/grafana/pyroscope/pkg/querier/stats"
+	httpgrpc "github.com/grafana/pyroscope/pkg/util/httpgrpc"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

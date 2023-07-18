@@ -15,8 +15,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
-	"github.com/grafana/phlare/pkg/slices"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"github.com/grafana/pyroscope/pkg/slices"
 )
 
 var (

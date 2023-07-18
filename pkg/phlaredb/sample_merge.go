@@ -11,12 +11,12 @@ import (
 	"github.com/samber/lo"
 	"github.com/segmentio/parquet-go"
 
-	googlev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
-	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/iter"
-	phlaremodel "github.com/grafana/phlare/pkg/model"
-	"github.com/grafana/phlare/pkg/phlaredb/query"
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/phlaredb/query"
 )
 
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {

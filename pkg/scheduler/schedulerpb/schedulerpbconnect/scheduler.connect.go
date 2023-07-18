@@ -8,7 +8,7 @@ import (
 	context "context"
 	errors "errors"
 	connect_go "github.com/bufbuild/connect-go"
-	schedulerpb "github.com/grafana/phlare/pkg/scheduler/schedulerpb"
+	schedulerpb "github.com/grafana/pyroscope/pkg/scheduler/schedulerpb"
 	http "net/http"
 	strings "strings"
 )

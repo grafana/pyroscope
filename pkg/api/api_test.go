@@ -18,7 +18,7 @@ import (
 	"github.com/weaveworks/common/server"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/grafana/phlare/pkg/util/gziphandler"
+	"github.com/grafana/pyroscope/pkg/util/gziphandler"
 )
 
 func getHostnameAndRandomPort(t *testing.T) (string, int) {

@@ -14,7 +14,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/model/timestamp"
 
-	"github.com/grafana/phlare/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 const (

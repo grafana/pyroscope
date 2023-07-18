@@ -13,8 +13,8 @@ import (
 	"github.com/bufbuild/connect-go"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/grafana/phlare/pkg/tenant"
-	"github.com/grafana/phlare/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 )
 
 type UnaryHandler[Req any, Res any] func(context.Context, *connect.Request[Req]) (*connect.Response[Res], error)

@@ -7,10 +7,10 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/phlare/pkg/model"
-	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
-	"github.com/grafana/phlare/pkg/phlaredb/tsdb/shard"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/shard"
 )
 
 // BitPrefixInvertedIndex is another inverted index implementation

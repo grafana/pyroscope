@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/phlare/pkg/tenant"
-	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 func TestWriteTextResponse(t *testing.T) {

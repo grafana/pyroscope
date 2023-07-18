@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/grafana/phlare/ebpf/rlimit/internal"
+	"github.com/grafana/pyroscope/ebpf/rlimit/internal"
 	"golang.org/x/sys/unix"
 )
 

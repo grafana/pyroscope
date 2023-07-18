@@ -8,10 +8,10 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 
-	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
-	"github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
-	"github.com/grafana/phlare/pkg/model"
-	"github.com/grafana/phlare/pkg/pprof"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
+	"github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 func (c *phlareClient) pusherClient() pushv1connect.PusherServiceClient {
