@@ -55,7 +55,7 @@
     "build-storybook": "build-storybook"
   },
   "devDependencies": {
-    "@babel/core": "7.8.4",
+    "@babel/core": "^7.22.9",
     "@fortawesome/fontawesome-common-types": "~0.2.36",
     "@size-limit/file": "^6.0.3",
     "@size-limit/time": "^6.0.3",
@@ -248,7 +248,7 @@
     "serialize-error": "^9.1.0",
     "style-loader": "^3.2.1",
     "svg-url-loader": "^7.1.1",
-    "sweetalert2": "^11.4.0",
+    "sweetalert2": "^11.4.0, <11.4.9",
     "sweetalert2-react-content": "^4.2.0",
     "timezone-mock": "^1.3.0",
     "true-myth": "~5.2.0",
@@ -266,12 +266,18 @@
     "*.{js,jsx,ts,tsx,json,yml,yaml,eslintrc,prettierrc,css,scss}": "prettier --write"
   },
   "resolutions": {
+    "@babel/core": "^7.22.9",
+    "@babel/generator": "^7.22.9",
+    "@babel/traverse": "^7.22.8",
     "react": "16.14.0",
     "react-dom": "16.14.0",
     "jquery": "3.6.0",
     "nth-check": "^2.0.1",
+    "tough-cookie": "^4.1.3",
+    "optionator": "^0.9.3",
     "d3-graphviz": "5.0.2",
-    "d3-selection": "3.0.0"
+    "d3-selection": "3.0.0",
+    "semver": "^7.5.2"
   },
   "optionalDependencies": {
     "@pyroscope/nodejs": "^0.2.5"
