@@ -1,5 +1,7 @@
-#include <linux/sched.h>
-#include <uapi/linux/ptrace.h>
+#ifndef PYPERF_H
+#define PYPERF_H
+
+#include "bpf_core_read.h"
 
 #define PYTHON_STACK_FRAMES_PER_PROG 25
 #define PYTHON_STACK_PROG_CNT 3
@@ -89,7 +91,7 @@ typedef struct {
     // instead of storing symbol name here directly, we add it to another
     // hashmap with Symbols and only store the ids here
     int64_t stack_len;
-    int32_t stack[STACK_MAX_LEN];
+    uint32_t stack[STACK_MAX_LEN];
 } Event;
 
 #define _STR_CONCAT(str1, str2) str1##str2
@@ -101,21 +103,61 @@ typedef struct {
 // See comments in get_frame_data
 FAIL_COMPILATION_IF(sizeof(Symbol) == sizeof(struct bpf_perf_event_value))
 
+typedef u64 frame_ptr_t;
+
 typedef struct {
     OffsetConfig offsets;
     uint64_t cur_cpu;
     int64_t symbol_counter;
-    void* frame_ptr;
+    frame_ptr_t frame_ptr;
     int64_t python_stack_prog_call_cnt;
     Event event;
 } sample_state_t;
 
-BPF_PERCPU_ARRAY(state_heap, sample_state_t, 1);
-BPF_HASH(symbols, Symbol, int32_t, __SYMBOLS_SIZE__);
-BPF_HASH(pid_config, pid_t, PidData);
-BPF_PROG_ARRAY(progs, 1);
+// todo rename all maps, prefix with py_
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __type(key, u32);
+    __type(value, sample_state_t);
+    __uint(max_entries, 1);
+} state_heap SEC(".maps");
 
-BPF_PERF_OUTPUT(events);
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, Symbol);
+    __type(value, int32_t);
+    __uint(max_entries, 16384);
+} symbols SEC(".maps");
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, pid_t);
+    __type(value, PidData);
+    __uint(max_entries, 10240); // todo
+} pid_config SEC(".maps");
+
+#define PYTHON_PROG_IDX_ON_EVENT 0
+#define PYTHON_PROG_IDX_READ_PYTHON_STACK 1
+int read_python_stack(struct pt_regs* ctx);
+int on_event(struct pt_regs* ctx);
+struct {
+    __uint(type, BPF_MAP_TYPE_PROG_ARRAY);
+    __uint(max_entries, 2);
+    __type(key, int);
+    __array(values, int (void *)); //todo
+} progs SEC(".maps") = {
+        .values = {
+                [PYTHON_PROG_IDX_ON_EVENT] = (void *)&on_event,
+                [PYTHON_PROG_IDX_READ_PYTHON_STACK] = (void *)&read_python_stack,
+        },
+};
+
+
+struct {
+    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+    __uint(key_size, sizeof(u32));
+    __uint(value_size, sizeof(u32));
+} events SEC(".maps") ;
 
 static inline __attribute__((__always_inline__)) void* get_thread_state(
         void* tls_base,
@@ -147,8 +189,8 @@ static inline __attribute__((__always_inline__)) void* get_thread_state(
 static inline __attribute__((__always_inline__)) int submit_sample(
         struct pt_regs* ctx,
         sample_state_t* state) {
-    events.perf_submit(ctx, &state->event, sizeof(Event));
-    return 0;
+    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &state->event, sizeof(Event));
+    return 0; // todo return value
 }
 
 // this function is trivial, but we need to do map lookup in separate function,
@@ -156,7 +198,7 @@ static inline __attribute__((__always_inline__)) int submit_sample(
 // a macro (which we want to do in GET_STATE() macro below)
 static inline __attribute__((__always_inline__)) sample_state_t* get_state() {
     int zero = 0;
-    return state_heap.lookup(&zero);
+    return bpf_map_lookup_elem(&state_heap, &zero);
 }
 
 #define GET_STATE()                     \
@@ -254,10 +296,11 @@ get_pthread_id_match(void* thread_state, void* tls_base, PidData* pid_data) {
     }
 }
 
+SEC("perf_event")
 int on_event(struct pt_regs* ctx) {
     uint64_t pid_tgid = bpf_get_current_pid_tgid();
     pid_t pid = (pid_t)(pid_tgid >> 32);
-    PidData* pid_data = pid_config.lookup(&pid);
+    PidData* pid_data = bpf_map_lookup_elem(&pid_config, &pid);
     if (!pid_data) {
         return 0;
     }
@@ -282,20 +325,27 @@ int on_event(struct pt_regs* ctx) {
             (void*)pid_data->current_state_addr);
 
     struct task_struct* task = (struct task_struct*)bpf_get_current_task();
-#if __x86_64__
-// thread_struct->fs was renamed to fsbase in
-// https://github.com/torvalds/linux/commit/296f781a4b7801ad9c1c0219f9e87b6c25e196fe
-// so depending on kernel version, we need to account for that
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)
-    void* tls_base = (void*)task->thread.fs;
-#else
-    void* tls_base = (void*)task->thread.fsbase;
-#endif
-#elif __aarch64__
-    void* tls_base = (void*)task->thread.tp_value;
-#else
-#error "Unsupported platform"
-#endif
+    if (task == NULL) {
+        return 0;
+    }
+//#if __x86_64__
+//// thread_struct->fs was renamed to fsbase in
+//// https://github.com/torvalds/linux/commit/296f781a4b7801ad9c1c0219f9e87b6c25e196fe
+//// so depending on kernel version, we need to account for that
+//#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)
+//    void* tls_base = (void*)task->thread.fs;
+//#else
+//    void* tls_base = (void*)task->thread.fsbase;
+//#endif
+//#elif __aarch64__
+//    void* tls_base = (void*)task->thread.tp_value;
+//#else
+//#error "Unsupported platform"
+//#endif
+    void* tls_base = NULL;
+    if (bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.fsbase)) {
+        return 0;
+    }
 
     // Read PyThreadState of this Thread from TLS
     void* thread_state = get_thread_state(tls_base, pid_data);
@@ -325,7 +375,7 @@ int on_event(struct pt_regs* ctx) {
                 sizeof(void*),
                 thread_state + pid_data->offsets.PyThreadState_frame);
         // jump to reading first set of Python frames
-        progs.call(ctx, PYTHON_STACK_PROG_IDX);
+        bpf_tail_call(ctx, &progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
         // we won't ever get here
     }
 
@@ -333,7 +383,7 @@ int on_event(struct pt_regs* ctx) {
 }
 
 static inline __attribute__((__always_inline__)) void get_names(
-        void* cur_frame,
+        frame_ptr_t cur_frame,
         void* code_ptr,
         OffsetConfig* offsets,
         Symbol* symbol,
@@ -366,13 +416,13 @@ static inline __attribute__((__always_inline__)) void get_names(
     // (ab)use this behavior to clear the memory. It requires the size of Symbol
     // to be different from struct bpf_perf_event_value, which we check at
     // compilation time using the FAIL_COMPILATION_IF macro.
-    bpf_perf_prog_read_value(ctx, symbol, sizeof(Symbol));
+    bpf_perf_prog_read_value(ctx, (struct bpf_perf_event_value *)symbol, sizeof(Symbol));
 
     // Read class name from $frame->f_localsplus[0]->ob_type->tp_name.
     if (first_self || first_cls) {
         void* ptr;
         bpf_probe_read_user(
-                &ptr, sizeof(void*), cur_frame + offsets->PyFrameObject_localsplus);
+                &ptr, sizeof(void*), (void*)(cur_frame + offsets->PyFrameObject_localsplus));
         if (first_self) {
             // we are working with an instance, first we need to get type
             bpf_probe_read_user(&ptr, sizeof(void*), ptr + offsets->PyObject_type);
@@ -397,19 +447,19 @@ static inline __attribute__((__always_inline__)) void get_names(
 // get_frame_data reads current PyFrameObject filename/name and updates
 // stack_info->frame_ptr with pointer to next PyFrameObject
 static inline __attribute__((__always_inline__)) bool get_frame_data(
-        void** frame_ptr,
+        frame_ptr_t* frame_ptr,
         OffsetConfig* offsets,
         Symbol* symbol,
         // ctx is only used to call helper to clear symbol, see documentation below
         void* ctx) {
-    void* cur_frame = *frame_ptr;
+    frame_ptr_t cur_frame = *frame_ptr;
     if (!cur_frame) {
         return false;
     }
     void* code_ptr;
     // read PyCodeObject first, if that fails, then no point reading next frame
     bpf_probe_read_user(
-            &code_ptr, sizeof(void*), cur_frame + offsets->PyFrameObject_code);
+            &code_ptr, sizeof(void*), (void*)(cur_frame + offsets->PyFrameObject_code));
     if (!code_ptr) {
         return false;
     }
@@ -418,28 +468,30 @@ static inline __attribute__((__always_inline__)) bool get_frame_data(
 
     // read next PyFrameObject pointer, update in place
     bpf_probe_read_user(
-            frame_ptr, sizeof(void*), cur_frame + offsets->PyFrameObject_back);
+            frame_ptr, sizeof(void*), (void*)(cur_frame + offsets->PyFrameObject_back));
 
     return true;
 }
-
+// TODO NO MERGE, fix this
+#define NUM_CPUS 32
 // To avoid duplicate ids, every CPU needs to use different ids when inserting
 // into the hashmap. NUM_CPUS is defined at PyPerf backend side and passed
 // through CFlag.
 static inline __attribute__((__always_inline__)) int64_t get_symbol_id(
         sample_state_t* state,
         Symbol* sym) {
-    int32_t* symbol_id_ptr = symbols.lookup(sym);
+    int32_t* symbol_id_ptr = bpf_map_lookup_elem(&symbols, sym);
     if (symbol_id_ptr) {
         return *symbol_id_ptr;
     }
     // the symbol is new, bump the counter
     int32_t symbol_id = state->symbol_counter * NUM_CPUS + state->cur_cpu;
     state->symbol_counter++;
-    symbols.update(sym, &symbol_id);
+    bpf_map_update_elem(&symbols, sym, &symbol_id, BPF_ANY);
     return symbol_id;
 }
 
+SEC("perf_event")
 int read_python_stack(struct pt_regs* ctx) {
     GET_STATE();
 
@@ -474,8 +526,10 @@ int read_python_stack(struct pt_regs* ctx) {
     if (sample->stack_status == STACK_STATUS_TRUNCATED &&
         state->python_stack_prog_call_cnt < PYTHON_STACK_PROG_CNT) {
         // read next batch of frames
-        progs.call(ctx, PYTHON_STACK_PROG_IDX);
+        bpf_tail_call(ctx, &progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
     }
 
     return submit_sample(ctx, state);
 }
+
+#endif // PYPERF_H
