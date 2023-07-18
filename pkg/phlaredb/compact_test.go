@@ -306,7 +306,7 @@ func generateParquetFile(t *testing.T, path string) {
 
 func Test_lookupTable(t *testing.T) {
 	// Given the source data set.
-	// Copy arbitrary subsets of those items to dst.
+	// Copy arbitrary subsets of items from src to dst.
 	var dst []string
 	src := []string{
 		"zero",
