@@ -1,0 +1,54 @@
+scrape_configs:
+  - job_name: "phlare"
+    scrape_interval: "15s"
+    static_configs:
+      - targets: ["phlare:4100"]
+  - job_name: "grafana"
+    scrape_interval: "15s"
+    static_configs:
+      - targets: ["grafana:6060"]
+  - job_name: "cp-rust"
+    scrape_interval: "15s"
+    static_configs:
+      - targets: ["rust:8080"]
+    profiling_config:
+      pprof_config:
+        block: { enabled: false }
+        goroutine: { enabled: false }
+        memory: { enabled: false }
+        mutex: { enabled: false }
+  - job_name: "cp-java-simple"
+    scrape_interval: "15s"
+    static_configs:
+      - targets: ["java-simple:8080"]
+    profiling_config:
+      pprof_config:
+        block: { enabled: false }
+        goroutine: { enabled: false }
+        memory: { enabled: false }
+        mutex: { enabled: false }
+  - job_name: "cp-java-springboot"
+    scrape_interval: "15s"
+    static_configs:
+      - targets: ["java-springboot:8080"]
+    profiling_config:
+      pprof_config:
+        block: { enabled: false }
+        goroutine: { enabled: false }
+        memory: { enabled: false }
+        mutex: { enabled: false }
+  - job_name: "cp-python"
+    scrape_interval: "15s"
+    static_configs:
+      - targets: ["python:8080"]
+    profiling_config:
+      pprof_config:
+        block: { enabled: false }
+        goroutine: { enabled: false }
+        mutex: { enabled: false }
+        memory:
+          path: /debug/pprof/heap
+  - job_name: "golang"
+    scrape_interval: "15s"
+    static_configs:
+      - targets: ["golang:6060"]

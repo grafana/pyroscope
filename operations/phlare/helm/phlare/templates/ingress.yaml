@@ -1,0 +1,41 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "phlare.fullname" . }}-ingress
+  labels:
+    {{- include "phlare.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  rules:
+  {{- range $.Values.ingress.hosts }}
+  - host: {{ . | quote }}
+    http:
+      paths:
+      - backend:
+          service:
+            {{- if gt (len $.Values.phlare.components) 1}}
+            name: {{ include "phlare.fullname" $ }}-query-frontend
+            {{- else }}
+            name: {{ include "phlare.fullname" $ }}
+            {{- end }}
+            port:
+              number: {{ $.Values.phlare.service.port }}
+        path: /querier.v1.QuerierService/
+        pathType: Prefix
+      - backend:
+          service:
+            {{- if gt (len $.Values.phlare.components) 1}}
+            name: {{ include "phlare.fullname" $ }}-distributor
+            {{- else }}
+            name: {{ include "phlare.fullname" $ }}
+            {{- end }}
+            port:
+              number: {{ $.Values.phlare.service.port }}
+        path: /push.v1.PusherService/
+        pathType: Prefix
+  {{- end }}
+{{- end }}

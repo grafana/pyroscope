@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package storegateway.v1;
+
+import "google/v1/profile.proto";
+import "ingester/v1/ingester.proto";
+import "push/v1/push.proto";
+import "types/v1/types.proto";
+
+service StoreGatewayService {
+  rpc MergeProfilesStacktraces(stream ingester.v1.MergeProfilesStacktracesRequest) returns (stream ingester.v1.MergeProfilesStacktracesResponse) {}
+  rpc MergeProfilesLabels(stream ingester.v1.MergeProfilesLabelsRequest) returns (stream ingester.v1.MergeProfilesLabelsResponse) {}
+  rpc MergeProfilesPprof(stream ingester.v1.MergeProfilesPprofRequest) returns (stream ingester.v1.MergeProfilesPprofResponse) {}
+}

@@ -1,0 +1,193 @@
+project_name: phlare
+before:
+  hooks:
+    # This hook ensures that goreleaser uses the correct go version for a Phlare release
+    - sh -euc "go version | grep "go version go1.19.10 " || { echo "Unexpected go version"; exit 1; }"
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - "6"
+      - "7"
+    main: ./cmd/phlare
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    tags:
+      - netgo
+      - embedassets
+    ldflags:
+      - >
+        -extldflags "-static" -s -w
+        -X "github.com/grafana/phlare/pkg/util/build.Branch={{ .Branch }}"
+        -X "github.com/grafana/phlare/pkg/util/build.Version={{ .Version }}"
+        -X "github.com/grafana/phlare/pkg/util/build.Revision={{ .ShortCommit }}"
+        -X "github.com/grafana/phlare/pkg/util/build.BuildDate={{ .CommitDate }}"
+    id: phlare
+  - env:
+      - CGO_ENABLED=0
+    tags:
+      - netgo
+    ldflags:
+      - >
+        -extldflags "-static" -s -w
+        -X "github.com/grafana/phlare/pkg/util/build.Branch={{ .Branch }}"
+        -X "github.com/grafana/phlare/pkg/util/build.Version={{ .Version }}"
+        -X "github.com/grafana/phlare/pkg/util/build.Revision={{ .ShortCommit }}"
+        -X "github.com/grafana/phlare/pkg/util/build.BuildDate={{ .CommitDate }}"
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+      - arm
+    goarm:
+      - "6"
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: arm
+    main: ./cmd/profilecli
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    binary: profilecli
+    id: profilecli
+dockers:
+  - use: buildx
+    goos: linux
+    goarch: amd64
+    dockerfile: ./cmd/phlare/Dockerfile
+    ids:
+      - phlare
+      - profilecli
+    extra_files:
+      - cmd/phlare/phlare.yaml
+    image_templates:
+      - "grafana/{{ .ProjectName }}:{{ .Version }}-amd64"
+      - "grafana/{{ .ProjectName }}:latest-amd64"
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+  - use: buildx
+    goos: linux
+    goarch: arm64
+    extra_files:
+      - cmd/phlare/phlare.yaml
+    dockerfile: ./cmd/phlare/Dockerfile
+    image_templates:
+      - "grafana/{{ .ProjectName }}:{{ .Version }}-arm64v8"
+      - "grafana/{{ .ProjectName }}:latest-arm64v8"
+    build_flag_templates:
+      - "--platform=linux/arm64/v8"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+  - use: buildx
+    goos: linux
+    goarch: arm
+    goarm: "6"
+    extra_files:
+      - cmd/phlare/phlare.yaml
+    dockerfile: ./cmd/phlare/Dockerfile
+    image_templates:
+      - "grafana/{{ .ProjectName }}:{{ .Version }}-armv6"
+      - "grafana/{{ .ProjectName }}:latest-armv6"
+    build_flag_templates:
+      - "--platform=linux/arm/v6"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+  - use: buildx
+    goos: linux
+    goarch: arm
+    goarm: "7"
+    dockerfile: ./cmd/phlare/Dockerfile
+    extra_files:
+      - cmd/phlare/phlare.yaml
+    image_templates:
+      - "grafana/{{ .ProjectName }}:{{ .Version }}-armv7"
+      - "grafana/{{ .ProjectName }}:latest-armv7"
+    build_flag_templates:
+      - "--platform=linux/arm/v7"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+docker_manifests:
+  # https://goreleaser.com/customization/docker_manifest/
+  - name_template: grafana/{{ .ProjectName }}:{{ .Version }}
+    image_templates:
+      - grafana/{{ .ProjectName }}:{{ .Version }}-amd64
+      - grafana/{{ .ProjectName }}:{{ .Version }}-arm64v8
+      - grafana/{{ .ProjectName }}:{{ .Version }}-armv6
+      - grafana/{{ .ProjectName }}:{{ .Version }}-armv7
+  - name_template: grafana/{{ .ProjectName }}:latest
+    image_templates:
+      - grafana/{{ .ProjectName }}:latest-amd64
+      - grafana/{{ .ProjectName }}:latest-arm64v8
+      - grafana/{{ .ProjectName }}:latest-armv6
+      - grafana/{{ .ProjectName }}:latest-armv7
+archives:
+  - id: phlare
+    builds:
+      - phlare
+  - id: profilecli
+    name_template: 'profilecli_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
+    builds:
+      - profilecli
+    format_overrides:
+      - goos: windows
+        format: zip
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+release:
+  draft: true
+  footer: |
+    As always, feedbacks are more than welcome, feel free to open issues/discussions.
+    You can reach out to the team using:
+
+    - [Slack](https://grafana.slack.com/archives/C047CCW6YM8)
+    - [Github Discussions](https://github.com/grafana/phlare/discussions)
+    - [Github Issues](https://github.com/grafana/phlare/issues)
+    - [Mailing List](https://groups.google.com/g/phlare-team)
+
+    ## Docker Images
+
+    - [grafana/phlare](https://hub.docker.com/r/grafana/phlare/tags)
+
+    ```bash
+      docker pull docker.io/grafana/phlare:{{ trimprefix .Tag "v" }}
+    ```
+
+  ids:
+    - phlare
+    - profilecli
+# milestones:
+#   - close: true
+
+# modelines, feel free to remove those if you don't want/use them:
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj

@@ -1,0 +1,7 @@
+[
+  "memory:alloc_objects:count::",
+  "memory:alloc_space:bytes::",
+  "memory:inuse_objects:count::",
+  "memory:inuse_space:bytes::",
+  "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
+]

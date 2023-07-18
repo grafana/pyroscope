@@ -1,0 +1,130 @@
+name: ci
+on:
+  push:
+    branches:
+      - main
+      - r[0-9]+ # Trigger builds after a push to weekly branches
+  pull_request:
+
+concurrency:
+  # Cancel any running workflow for the same branch when new commits are pushed.
+  # We group both by ref_name (available when CI is triggered by a push to a branch/tag)
+  # and head_ref (available when CI is triggered by a PR).
+  group: "${{ github.ref_name }}-${{ github.head_ref }}"
+  cancel-in-progress: true
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.19.10
+      - name: Format
+        run: make fmt check/unstaged-changes
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.19.10
+      - name: Go Mod
+        run: make check/go/mod
+      - name: Test
+        run: make go/test
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.19.10
+      - name: Run linter
+        run: make lint
+      - name: Check helm manifests
+        run: make helm/check check/unstaged-changes
+
+  test-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Check out code"
+        uses: "actions/checkout@v3"
+      - name: "Test docs"
+        run: make docs/test
+      - name: "Validate docs"
+        run: make docs/validate
+
+  build-image:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Set up go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.19.10
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.15.0
+          cache: yarn
+      - name: Build image Phlare
+        run: make docker-image/phlare/build "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
+
+  build-push:
+    if: github.event_name == 'push' && github.repository == 'grafana/phlare'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Set up go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.19.10
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.15.0
+          cache: yarn
+      - name: Login to GCR
+        uses: docker/login-action@v2
+        with:
+          registry: us.gcr.io
+          username: _json_key
+          password: ${{ secrets.GCR_JSON_KEY }}
+      - name: Phlare Build & push multi-arch image
+        id: build-push
+        run: |
+          make docker-image/phlare/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
+
+  deploy-phlare-dev-001:
+    if: github.event_name == 'push' && github.repository == 'grafana/phlare'
+    runs-on: ubuntu-latest
+    needs: [build-push]
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: Deploy to phlare-dev-001
+        run: |
+          git config --global url."https://grafanabot:${{ secrets.GH_BOT_ACCESS_TOKEN }}@github.com/grafana/deployment_tools".insteadOf "https://github.com/grafana/deployment_tools"
+          make docker-image/phlare/deploy-dev-001
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_BOT_ACCESS_TOKEN }}

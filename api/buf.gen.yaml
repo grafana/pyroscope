@@ -1,0 +1,38 @@
+version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/grafana/phlare/api/gen/proto/go
+    except:
+      - buf.build/googleapis/googleapis
+
+plugins:
+  - name: go
+    out: gen/proto/go
+    opt: paths=source_relative
+
+  - name: go-vtproto
+    out: gen/proto/go
+    opt:
+      - paths=source_relative
+      - features=marshal+unmarshal+size+pool+grpc+pool+clone
+      - pool=github.com/grafana/phlare/api/gen/proto/go/google/v1.Profile
+      - pool=github.com/grafana/phlare/api/gen/proto/go/google/v1.Sample
+
+  - name: connect-go
+    out: gen/proto/go
+    opt: paths=source_relative
+
+  - name: connect-go-mux
+    out: gen/proto/go
+    opt: paths=source_relative
+
+  - name: grpc-gateway
+    out: gen/proto/go
+    opt:
+      - paths=source_relative
+
+  - name: openapiv2
+    out: openapiv2/gen/
+    strategy: all
+    opt: allow_merge=true,merge_file_name=phlare

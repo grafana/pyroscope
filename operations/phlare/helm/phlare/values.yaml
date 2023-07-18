@@ -1,0 +1,742 @@
+# Default values for phlare.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+phlare:
+  replicaCount: 1
+
+  image:
+    repository: grafana/phlare
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "0.5.1"
+
+  extraArgs:
+    log.level: debug
+
+  extraLabels: {}
+
+  extraEnvVars:
+    {}
+    # The following environment variables are set by the Helm chart.
+    # JAEGER_AGENT_HOST: jaeger-agent.jaeger.svc.cluster.local.
+
+  # -- Environment variables from secrets or configmaps to add to the pods
+  extraEnvFrom: []
+
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: ""
+
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name: ""
+
+  podAnnotations:
+    # Scrapes itself see https://grafana.com/docs/phlare/latest/operators-guide/deploy-kubernetes/#optional-scrape-your-own-workloads-profiles
+    profiles.grafana.com/memory.scrape: "true"
+    profiles.grafana.com/memory.port_name: http2
+    profiles.grafana.com/cpu.scrape: "true"
+    profiles.grafana.com/cpu.port_name: http2
+    profiles.grafana.com/goroutine.scrape: "true"
+    profiles.grafana.com/goroutine.port_name: http2
+    # profiles.grafana.com/block.scrape: "true"
+    # profiles.grafana.com/mutex.scrape: "true"
+
+  podSecurityContext:
+    fsGroup: 10001
+    runAsUser: 10001
+    runAsNonRoot: true
+
+  securityContext:
+    {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+  service:
+    type: ClusterIP
+    port: 4100
+    port_name: http2
+
+  memberlist:
+    port: 7946
+    port_name: memberlist
+
+  resources:
+    {}
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources'.
+    #
+    # Note that if memory consumption is higher than you would like, you can decrease the interval
+    # that profiles are written into blocks by setting `phlaredb.max-block-duration` in the `extraArgs`
+    # stanza. By default, it is set to 3h - override it, for example, as below:
+    # ```
+    # extraArgs:
+    #   phlaredb.max-block-duration: 30m
+    # ```
+    #
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  nodeSelector: {}
+
+  ## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+  ## If you set enabled as "True", you need :
+  ## - create a pv which above 10Gi and has same namespace with phlare
+  ## - keep storageClassName same with below setting
+  persistence:
+    enabled: false
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+    annotations: {}
+    # selector:
+    #   matchLabels:
+    #     app.kubernetes.io/name: phlare
+    # subPath: ""
+    # existingClaim:
+
+  extraVolumes:
+    []
+    # - name: backup-volume
+    #   emptydir: {}
+
+  extraVolumeMounts:
+    []
+    # - name: testing
+    #   mountPath: /var/lib/testing
+    #   readOnly: false
+    # - name: test-volume
+    #   mountPath: /var/tmp/test-volume
+    #   existingClaim: test-volume
+    #   readOnly: false
+
+  tolerations: []
+
+  affinity: {}
+
+  # run specific components separately
+  components: {}
+
+  # -- Allows to override Phlare's configuration using structured format.
+  structuredConfig: {}
+
+  # -- Contains Phlare's configuration as a string.
+  # @default -- The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml)
+  config: |
+    {{- if .Values.minio.enabled }}
+    storage:
+      backend: s3
+      s3:
+        endpoint: "{{ include "phlare.fullname" . }}-minio:9000"
+        bucket_name: {{(index .Values.minio.buckets 0).name | quote }}
+        access_key_id: {{ .Values.minio.rootUser | quote }}
+        secret_access_key: {{ .Values.minio.rootPassword | quote }}
+        insecure: true
+    {{- end }}
+    # The default scrape config allows to define annotations based scraping.
+    #
+    # For example the following annotations:
+    #
+    # ```
+    # profiles.grafana.com/memory.scrape: "true"
+    # profiles.grafana.com/memory.port: "8080"
+    # profiles.grafana.com/cpu.scrape: "true"
+    # profiles.grafana.com/cpu.port: "8080"
+    # profiles.grafana.com/goroutine.scrape: "true"
+    # profiles.grafana.com/goroutine.port: "8080"
+    # ```
+    #
+    # will scrape the `memory`, `cpu` and `goroutine` profiles from the `8080` port of the pod.
+    #
+    # For more information see https://grafana.com/docs/phlare/latest/operators-guide/deploy-kubernetes/#optional-scrape-your-own-workloads-profiles
+    scrape_configs:
+      - job_name: 'kubernetes-pods-memory-default-name'
+        scrape_interval: "15s"
+        kubernetes_sd_configs:
+          - role: pod
+        profiling_config:
+          pprof_config:
+            memory:
+              enabled: true
+            block:
+              enabled: false
+            mutex:
+              enabled: false
+            goroutine:
+              enabled: false
+            process_cpu:
+              enabled: false
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port_name]
+            action: keep
+            regex: ''
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_scheme']
+            action: 'replace'
+            target_label: '__scheme__'
+            regex: '(https?)'
+            replacement: '$1'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_path']
+            action: 'replace'
+            target_label: '__profile_path__'
+            regex: '(.+)'
+            replacement: '$1'
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port]
+            action: replace
+            regex: (.+?)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: ['__meta_kubernetes_pod_container_name']
+            action: 'replace'
+            target_label: 'container'
+          - source_labels: [__meta_kubernetes_pod_phase]
+            regex: Pending|Succeeded|Failed|Completed
+            action: drop
+      - job_name: 'kubernetes-pods-memory-custom-name'
+        scrape_interval: "15s"
+        kubernetes_sd_configs:
+          - role: pod
+        profiling_config:
+          pprof_config:
+            memory:
+              enabled: true
+            block:
+              enabled: false
+            mutex:
+              enabled: false
+            goroutine:
+              enabled: false
+            process_cpu:
+              enabled: false
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port_name]
+            action: drop
+            regex: ''
+          - source_labels: ['__meta_kubernetes_pod_container_port_name']
+            target_label: '__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port_name'
+            action: 'keepequal'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_scheme']
+            action: 'replace'
+            target_label: '__scheme__'
+            regex: '(https?)'
+            replacement: '$1'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_path']
+            action: 'replace'
+            target_label: '__profile_path__'
+            regex: '(.+)'
+            replacement: '$1'
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port]
+            action: replace
+            regex: (.+?)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: ['__meta_kubernetes_pod_container_name']
+            action: 'replace'
+            target_label: 'container'
+          - source_labels: [__meta_kubernetes_pod_phase]
+            regex: Pending|Succeeded|Failed|Completed
+            action: drop
+      - job_name: 'kubernetes-pods-cpu-default-name'
+        scrape_interval: "15s"
+        kubernetes_sd_configs:
+          - role: pod
+        profiling_config:
+          pprof_config:
+            memory:
+              enabled: false
+            block:
+              enabled: false
+            mutex:
+              enabled: false
+            goroutine:
+              enabled: false
+            process_cpu:
+              enabled: true
+              delta: true
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port_name]
+            action: keep
+            regex: ''
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_scheme']
+            action: 'replace'
+            target_label: '__scheme__'
+            regex: '(https?)'
+            replacement: '$1'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_path']
+            action: 'replace'
+            target_label: '__profile_path__'
+            regex: '(.+)'
+            replacement: '$1'
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port]
+            action: replace
+            regex: (.+?)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: ['__meta_kubernetes_pod_container_name']
+            action: 'replace'
+            target_label: 'container'
+          - source_labels: [__meta_kubernetes_pod_phase]
+            regex: Pending|Succeeded|Failed|Completed
+            action: drop
+      - job_name: 'kubernetes-pods-cpu-custom-name'
+        scrape_interval: "15s"
+        kubernetes_sd_configs:
+          - role: pod
+        profiling_config:
+          pprof_config:
+            memory:
+              enabled: false
+            block:
+              enabled: false
+            mutex:
+              enabled: false
+            goroutine:
+              enabled: false
+            process_cpu:
+              enabled: true
+              delta: true
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port_name]
+            action: drop
+            regex: ''
+          - source_labels: ['__meta_kubernetes_pod_container_port_name']
+            target_label: '__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port_name'
+            action: 'keepequal'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_scheme']
+            action: 'replace'
+            target_label: '__scheme__'
+            regex: '(https?)'
+            replacement: '$1'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_path']
+            action: 'replace'
+            target_label: '__profile_path__'
+            regex: '(.+)'
+            replacement: '$1'
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port]
+            action: replace
+            regex: (.+?)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: ['__meta_kubernetes_pod_container_name']
+            action: 'replace'
+            target_label: 'container'
+          - source_labels: [__meta_kubernetes_pod_phase]
+            regex: Pending|Succeeded|Failed|Completed
+            action: drop
+      - job_name: 'kubernetes-pods-block-default-name'
+        scrape_interval: "15s"
+        kubernetes_sd_configs:
+          - role: pod
+        profiling_config:
+          pprof_config:
+            memory:
+              enabled: false
+            block:
+              enabled: true
+            mutex:
+              enabled: false
+            goroutine:
+              enabled: false
+            process_cpu:
+              enabled: false
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_block_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_block_port_name]
+            action: keep
+            regex: ''
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_block_scheme']
+            action: 'replace'
+            target_label: '__scheme__'
+            regex: '(https?)'
+            replacement: '$1'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_block_path']
+            action: 'replace'
+            target_label: '__profile_path__'
+            regex: '(.+)'
+            replacement: '$1'
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_profiles_grafana_com_block_port]
+            action: replace
+            regex: (.+?)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: ['__meta_kubernetes_pod_container_name']
+            action: 'replace'
+            target_label: 'container'
+          - source_labels: [__meta_kubernetes_pod_phase]
+            regex: Pending|Succeeded|Failed|Completed
+            action: drop
+      - job_name: 'kubernetes-pods-block-custom-name'
+        scrape_interval: "15s"
+        kubernetes_sd_configs:
+          - role: pod
+        profiling_config:
+          pprof_config:
+            memory:
+              enabled: false
+            block:
+              enabled: true
+            mutex:
+              enabled: false
+            goroutine:
+              enabled: false
+            process_cpu:
+              enabled: false
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_block_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_block_port_name]
+            action: drop
+            regex: ''
+          - source_labels: ['__meta_kubernetes_pod_container_port_name']
+            target_label: '__meta_kubernetes_pod_annotation_profiles_grafana_com_block_port_name'
+            action: 'keepequal'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_block_scheme']
+            action: 'replace'
+            target_label: '__scheme__'
+            regex: '(https?)'
+            replacement: '$1'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_block_path']
+            action: 'replace'
+            target_label: '__profile_path__'
+            regex: '(.+)'
+            replacement: '$1'
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_profiles_grafana_com_block_port]
+            action: replace
+            regex: (.+?)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: ['__meta_kubernetes_pod_container_name']
+            action: 'replace'
+            target_label: 'container'
+          - source_labels: [__meta_kubernetes_pod_phase]
+            regex: Pending|Succeeded|Failed|Completed
+            action: drop
+      - job_name: 'kubernetes-pods-mutex-default-name'
+        scrape_interval: "15s"
+        kubernetes_sd_configs:
+          - role: pod
+        profiling_config:
+          pprof_config:
+            memory:
+              enabled: false
+            block:
+              enabled: false
+            mutex:
+              enabled: true
+            goroutine:
+              enabled: false
+            process_cpu:
+              enabled: false
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port_name]
+            action: keep
+            regex: ''
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_scheme']
+            action: 'replace'
+            target_label: '__scheme__'
+            regex: '(https?)'
+            replacement: '$1'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_path']
+            action: 'replace'
+            target_label: '__profile_path__'
+            regex: '(.+)'
+            replacement: '$1'
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port]
+            action: replace
+            regex: (.+?)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: ['__meta_kubernetes_pod_container_name']
+            action: 'replace'
+            target_label: 'container'
+          - source_labels: [__meta_kubernetes_pod_phase]
+            regex: Pending|Succeeded|Failed|Completed
+            action: drop
+      - job_name: 'kubernetes-pods-mutex-custom-name'
+        scrape_interval: "15s"
+        kubernetes_sd_configs:
+          - role: pod
+        profiling_config:
+          pprof_config:
+            memory:
+              enabled: false
+            block:
+              enabled: false
+            mutex:
+              enabled: true
+            goroutine:
+              enabled: false
+            process_cpu:
+              enabled: false
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port_name]
+            action: drop
+            regex: ''
+          - source_labels: ['__meta_kubernetes_pod_container_port_name']
+            target_label: '__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port_name'
+            action: 'keepequal'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_scheme']
+            action: 'replace'
+            target_label: '__scheme__'
+            regex: '(https?)'
+            replacement: '$1'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_path']
+            action: 'replace'
+            target_label: '__profile_path__'
+            regex: '(.+)'
+            replacement: '$1'
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port]
+            action: replace
+            regex: (.+?)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: ['__meta_kubernetes_pod_container_name']
+            action: 'replace'
+            target_label: 'container'
+          - source_labels: [__meta_kubernetes_pod_phase]
+            regex: Pending|Succeeded|Failed|Completed
+            action: drop
+      - job_name: 'kubernetes-pods-goroutine-default-name'
+        scrape_interval: "15s"
+        kubernetes_sd_configs:
+          - role: pod
+        profiling_config:
+          pprof_config:
+            memory:
+              enabled: false
+            block:
+              enabled: false
+            mutex:
+              enabled: false
+            goroutine:
+              enabled: true
+            process_cpu:
+              enabled: false
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port_name]
+            action: keep
+            regex: ''
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_scheme']
+            action: 'replace'
+            target_label: '__scheme__'
+            regex: '(https?)'
+            replacement: '$1'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_path']
+            action: 'replace'
+            target_label: '__profile_path__'
+            regex: '(.+)'
+            replacement: '$1'
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port]
+            action: replace
+            regex: (.+?)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: ['__meta_kubernetes_pod_container_name']
+            action: 'replace'
+            target_label: 'container'
+          - source_labels: [__meta_kubernetes_pod_phase]
+            regex: Pending|Succeeded|Failed|Completed
+            action: drop
+      - job_name: 'kubernetes-pods-goroutine-custom-name'
+        scrape_interval: "15s"
+        kubernetes_sd_configs:
+          - role: pod
+        profiling_config:
+          pprof_config:
+            memory:
+              enabled: false
+            block:
+              enabled: false
+            mutex:
+              enabled: false
+            goroutine:
+              enabled: true
+            process_cpu:
+              enabled: false
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port_name]
+            action: drop
+            regex: ''
+          - source_labels: ['__meta_kubernetes_pod_container_port_name']
+            target_label: '__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port_name'
+            action: 'keepequal'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_scheme']
+            action: 'replace'
+            target_label: '__scheme__'
+            regex: '(https?)'
+            replacement: '$1'
+          - source_labels: ['__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_path']
+            action: 'replace'
+            target_label: '__profile_path__'
+            regex: '(.+)'
+            replacement: '$1'
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port]
+            action: replace
+            regex: (.+?)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: ['__meta_kubernetes_pod_container_name']
+            action: 'replace'
+            target_label: 'container'
+          - source_labels: [__meta_kubernetes_pod_phase]
+            regex: Pending|Succeeded|Failed|Completed
+            action: drop
+
+  # -- Allows to add tenant specific overrides to the default limit configuration.
+  tenantOverrides:
+    {}
+    # "foo":
+    #   ingestion_rate_mb: 1
+    #   ingestion_burst_size_mb: 2
+# -------------------------------------
+# Configuration for `minio` child chart
+# -------------------------------------
+minio:
+  enabled: false
+  replicas: 1
+  # Minio requires 2 to 16 drives for erasure code (drivesPerNode * replicas)
+  # https://docs.min.io/docs/minio-erasure-code-quickstart-guide
+  # Since we only have 1 replica, that means 2 drives must be used.
+  drivesPerNode: 2
+  rootUser: grafana-phlare
+  rootPassword: supersecret
+  buckets:
+    - name: grafana-phlare-data
+      policy: none
+      purge: false
+  persistence:
+    size: 5Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  podAnnotations:
+    phlare.grafana.com/scrape: "true"
+    phlare.grafana.com/port: "9000"
+
+ingress:
+  enabled: false
+  # hosts:
+  #   - localhost

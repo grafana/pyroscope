@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package agent.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+service AgentService {
+  // Retrieve information about targets.
+  rpc GetTargets(GetTargetsRequest) returns (GetTargetsResponse) {
+    option (google.api.http) = {get: "/api/v1/targets"};
+  }
+}
+
+message GetTargetsRequest {
+  State state = 1 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message GetTargetsResponse {
+  repeated Target active_targets = 1;
+  repeated Target dropped_targets = 2;
+}
+
+enum Health {
+  HEALTH_UNSPECIFIED = 0;
+  HEALTH_UP = 1;
+  HEALTH_DOWN = 2;
+}
+
+enum State {
+  STATE_UNSPECIFIED = 0;
+  STATE_ACTIVE = 1;
+  STATE_DROPPED = 2;
+}
+
+message Target {
+  // Contains labels before any processing.
+  map<string, string> discovered_labels = 1;
+
+  // Labels as they are attached to ingested profiles.
+  map<string, string> labels = 2;
+
+  // Name of the scrape pool used
+  string scrape_pool = 3;
+  // URL that is used for retrieving the profile.
+  string scrape_url = 4;
+
+  // Contains the error if the last attempted scrape has failed.
+  string last_error = 5;
+  // Timestamp of last scrape
+  google.protobuf.Timestamp last_scrape = 6;
+  // Duation of last scrape.
+  google.protobuf.Duration last_scrape_duration = 7;
+  // Health of last scrape.
+  Health health = 8;
+
+  // Timeout duration for the scrape request.
+  google.protobuf.Duration scrape_timeout = 9;
+  // Interval how often profiles are scraped.
+  google.protobuf.Duration scrape_interval = 10;
+}

@@ -1,0 +1,13 @@
+public/build/**
+pkg/api/static/**
+vendor/**
+tools/**
+operations/**
+api/**
+data/**
+**/dist
+**/testdata
+*.md
+*.yaml
+*.yml
+*.html

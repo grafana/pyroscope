@@ -1,0 +1,104 @@
+{
+  "minio": {
+    "enabled": true
+  },
+  "phlare": {
+    "components": {
+      "agent": {
+        "kind": "Deployment",
+        "replicaCount": 1,
+        "resources": {
+          "limits": {
+            "memory": "512Mi"
+          },
+          "requests": {
+            "cpu": "50m",
+            "memory": "128Mi"
+          }
+        }
+      },
+      "distributor": {
+        "kind": "Deployment",
+        "replicaCount": 2,
+        "resources": {
+          "limits": {
+            "memory": "1Gi"
+          },
+          "requests": {
+            "cpu": "500m",
+            "memory": "256Mi"
+          }
+        }
+      },
+      "ingester": {
+        "kind": "StatefulSet",
+        "replicaCount": 3,
+        "resources": {
+          "limits": {
+            "memory": "16Gi"
+          },
+          "requests": {
+            "cpu": 1,
+            "memory": "8Gi"
+          }
+        },
+        "terminationGracePeriodSeconds": 600
+      },
+      "querier": {
+        "kind": "Deployment",
+        "replicaCount": 3,
+        "resources": {
+          "limits": {
+            "memory": "1Gi"
+          },
+          "requests": {
+            "cpu": 1,
+            "memory": "256Mi"
+          }
+        }
+      },
+      "query-frontend": {
+        "kind": "Deployment",
+        "replicaCount": 2,
+        "resources": {
+          "limits": {
+            "memory": "1Gi"
+          },
+          "requests": {
+            "cpu": "100m",
+            "memory": "256Mi"
+          }
+        }
+      },
+      "query-scheduler": {
+        "kind": "Deployment",
+        "replicaCount": 2,
+        "resources": {
+          "limits": {
+            "memory": "1Gi"
+          },
+          "requests": {
+            "cpu": "100m",
+            "memory": "256Mi"
+          }
+        }
+      },
+      "store-gateway": {
+        "kind": "StatefulSet",
+        "persistence": {
+          "enabled": false
+        },
+        "replicaCount": 3,
+        "resources": {
+          "limits": {
+            "memory": "16Gi"
+          },
+          "requests": {
+            "cpu": 1,
+            "memory": "8Gi"
+          }
+        }
+      }
+    }
+  }
+}

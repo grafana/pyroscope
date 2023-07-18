@@ -1,0 +1,75 @@
+{
+  "baseUrl": ".",
+  "compilerOptions": {
+    "plugins": [{ "name": "typescript-plugin-css-modules" }],
+    "paths": {
+      "@phlare/*": ["./public/app/*"],
+
+      "@pyroscope/webapp/*": ["./node_modules/pyroscope-oss/webapp/*"],
+      "@webapp/redux/*": [
+        "./node_modules/pyroscope-oss/webapp/javascript/redux/*"
+      ],
+      "@pyroscope/flamegraph/*": [
+        "./node_modules/pyroscope-oss/packages/pyroscope-flamegraph/*"
+      ],
+      "@pyroscope/models/*": [
+        "./node_modules/pyroscope-oss/packages/pyroscope-models/*"
+      ],
+
+      "@webapp/components/ExportData": [
+        "./public/app/overrides/components/ExportData"
+      ],
+      "@webapp/components/TimelineChart/ContextMenu.plugin": [
+        "./public/app/overrides/components/TimelineChart/ContextMenu.plugin"
+      ],
+      "@webapp/components/AppSelector": [
+        "./public/app/overrides/components/AppSelector"
+      ],
+      "@webapp/components/AppSelector/Label": [
+        "./public/app/overrides/components/AppSelector/Label"
+      ],
+      "@webapp/components/Toolbar": [
+        "./public/app/overrides/components/Toolbar"
+      ],
+      "@webapp/ui/Sidebar": ["./public/app/overrides/ui/Sidebar"],
+      "@webapp/util/baseurl": ["./public/app/overrides/util/baseurl"],
+
+      "@webapp/redux/store": ["./public/app/redux/store"],
+      "@webapp/redux/hooks": ["./public/app/redux/hooks"],
+
+      "@webapp/models/query": ["./public/app/overrides/models/query"],
+      "@webapp/models/app": ["./public/app/overrides/models/app"],
+      "@webapp/services/apps": ["./public/app/overrides/services/apps"],
+      "@webapp/services/render": ["./public/app/overrides/services/render"],
+      "@webapp/services/tags": ["./public/app/overrides/services/tags"],
+      "@webapp/services/base": ["./public/app/overrides/services/base"],
+      "@webapp/*": ["./node_modules/pyroscope-oss/webapp/javascript/*"],
+      "@mui/base/*": ["./node_modules/@mui/base/*"],
+      "zod": ["./node_modules/zod"]
+    },
+    "target": "es5",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "experimentalDecorators": true
+  },
+  "include": [
+    "./node_modules/pyroscope-oss/lib/",
+    "./node_modules/pyroscope-oss/webapp/javascript/types",
+    "public",
+    "public/app/types.ts"
+  ]
+}
