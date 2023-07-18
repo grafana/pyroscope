@@ -10,6 +10,7 @@ import (
 // collection. https://github.com/google/pprof/blob/main/proto/README.md
 //
 // In the package, Mapping represents all the version of a binary.
+// TODO(kolesnikovae): Rename mapping to Partition
 
 type MappingWriter interface {
 	// StacktraceAppender provides exclusive write access

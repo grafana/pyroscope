@@ -101,6 +101,20 @@ func NewSliceSeekIterator[A constraints.Ordered](s []A) SeekIterator[A, A] {
 	}
 }
 
+type slicePositionIterator[T constraints.Integer, M any] struct {
+	i Iterator[T]
+	s []M
+}
+
+func NewSliceIndexIterator[T constraints.Integer, M any](s []M, i Iterator[T]) Iterator[M] {
+	return slicePositionIterator[T, M]{s: s, i: i}
+}
+
+func (i slicePositionIterator[T, M]) Next() bool   { return i.i.Next() }
+func (i slicePositionIterator[T, M]) At() M        { return i.s[i.i.At()] }
+func (i slicePositionIterator[T, M]) Err() error   { return i.i.Err() }
+func (i slicePositionIterator[T, M]) Close() error { return i.i.Close() }
+
 type sliceSeekIterator[A constraints.Ordered] struct {
 	*sliceIterator[A]
 }

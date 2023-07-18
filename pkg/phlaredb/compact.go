@@ -33,42 +33,6 @@ type BlockReader interface {
 	Symbols() SymbolsReader
 }
 
-// TODO(kolesnikovae): Refactor to symdb.
-
-type SymbolsReader interface {
-	SymbolsResolver(partition uint64) (SymbolsResolver, error)
-}
-
-type SymbolsResolver interface {
-	Stacktraces(iter.Iterator[uint32]) iter.Iterator[*schemav1.Stacktrace]
-	Locations(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryLocation]
-	Mappings(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryMapping]
-	Functions(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryFunction]
-	Strings(iter.Iterator[uint32]) iter.Iterator[string]
-	WriteStats(*SymbolStats)
-}
-
-type SymbolStats struct {
-	StacktracesTotal int
-	LocationsTotal   int
-	MappingsTotal    int
-	FunctionsTotal   int
-	StringsTotal     int
-}
-
-type SymbolsWriter interface {
-	SymbolsAppender(partition uint64) (SymbolsAppender, error)
-}
-
-type SymbolsAppender interface {
-	AppendStacktrace(*schemav1.Stacktrace) uint32
-	AppendLocation(*schemav1.InMemoryLocation) uint32
-	AppendMapping(*schemav1.InMemoryMapping) uint32
-	AppendFunction(*schemav1.InMemoryFunction) uint32
-	AppendString(string) uint32
-	Flush() error
-}
-
 func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
 	srcMetas := make([]block.Meta, len(src))
 	ulids := make([]string, len(src))
@@ -575,7 +539,9 @@ type stacktraceRewriter struct {
 	writer SymbolsWriter
 
 	// Stack trace identifiers are only valid within the partition.
-	stacktraces map[uint64]*lookupTable[*schemav1.Stacktrace]
+	stacktraces map[uint64]*lookupTable[[]int32]
+	inserter    *stacktraceInserter
+
 	// Objects below have global addressing.
 	locations *lookupTable[*schemav1.InMemoryLocation]
 	mappings  *lookupTable[*schemav1.InMemoryMapping]
@@ -607,11 +573,12 @@ func (r *stacktraceRewriter) init(partition uint64) (err error) {
 
 	// Only stacktraces are yet partitioned.
 	if r.stacktraces == nil {
-		r.stacktraces = make(map[uint64]*lookupTable[*schemav1.Stacktrace])
+		r.stacktraces = make(map[uint64]*lookupTable[[]int32])
+		r.inserter = new(stacktraceInserter)
 	}
 	p, ok := r.stacktraces[partition]
 	if !ok {
-		p = newLookupTable[*schemav1.Stacktrace](r.stats.StacktracesTotal)
+		p = newLookupTable[[]int32](r.stats.StacktracesTotal)
 		r.stacktraces[partition] = p
 	}
 	p.reset()
@@ -627,6 +594,13 @@ func (r *stacktraceRewriter) init(partition uint64) (err error) {
 	r.mappings.reset()
 	r.functions.reset()
 	r.strings.reset()
+
+	r.inserter = &stacktraceInserter{
+		slt: p,
+		llt: r.locations,
+		s:   r.inserter.s,
+	}
+
 	return nil
 }
 
@@ -654,35 +628,20 @@ func (r *stacktraceRewriter) rewriteStacktraces(partition uint64, stacktraces []
 }
 
 func (r *stacktraceRewriter) populateUnresolved(stacktraceIDs []uint32) error {
-	// Filter out all stack traces that have been already resolved.
-	src := r.stacktraces[r.partition]
-	for i, v := range stacktraceIDs {
-		stacktraceIDs[i] = src.tryLookup(v)
+	// Filter out all stack traces that have been already
+	// resolved and populate locations lookup table.
+	if err := r.resolveStacktraces(stacktraceIDs); err != nil {
+		return err
 	}
-	if len(src.unresolved) == 0 {
+	if len(r.locations.unresolved) == 0 {
 		return nil
 	}
 
-	// Resolve locations for new stack traces.
-	var stacktrace *schemav1.Stacktrace
-	unresolvedStacktraces := src.iter()
-	stacktraces := r.resolver.Stacktraces(unresolvedStacktraces)
-	for ; stacktraces.Err() == nil && stacktraces.Next(); stacktrace = stacktraces.At() {
-		for j, loc := range stacktrace.LocationIDs {
-			stacktrace.LocationIDs[j] = uint64(r.locations.tryLookup(uint32(loc)))
-		}
-		// TODO(kolesnikovae): Copy.
-		unresolvedStacktraces.setValue(stacktrace)
-	}
-	if err := stacktraces.Err(); err != nil {
-		return err
-	}
-
 	// Resolve functions and mappings for new locations.
-	var location *schemav1.InMemoryLocation
 	unresolvedLocs := r.locations.iter()
 	locations := r.resolver.Locations(unresolvedLocs)
-	for ; locations.Err() == nil && locations.Next(); location = locations.At() {
+	for locations.Err() == nil && locations.Next() {
+		location := locations.At()
 		location.MappingId = r.mappings.tryLookup(location.MappingId)
 		for j, line := range location.Line {
 			location.Line[j].FunctionId = r.functions.tryLookup(line.FunctionId)
@@ -694,10 +653,10 @@ func (r *stacktraceRewriter) populateUnresolved(stacktraceIDs []uint32) error {
 	}
 
 	// Resolve strings.
-	var mapping *schemav1.InMemoryMapping
 	unresolvedMappings := r.mappings.iter()
 	mappings := r.resolver.Mappings(unresolvedMappings)
-	for ; mappings.Err() == nil && mappings.Next(); mapping = mappings.At() {
+	for mappings.Err() == nil && mappings.Next() {
+		mapping := mappings.At()
 		mapping.BuildId = r.strings.tryLookup(mapping.BuildId)
 		mapping.Filename = r.strings.tryLookup(mapping.Filename)
 		unresolvedMappings.setValue(mapping)
@@ -706,10 +665,10 @@ func (r *stacktraceRewriter) populateUnresolved(stacktraceIDs []uint32) error {
 		return err
 	}
 
-	var function *schemav1.InMemoryFunction
 	unresolvedFunctions := r.functions.iter()
 	functions := r.resolver.Functions(unresolvedFunctions)
-	for ; functions.Err() == nil && functions.Next(); function = functions.At() {
+	for functions.Err() == nil && functions.Next() {
+		function := functions.At()
 		function.Name = r.strings.tryLookup(function.Name)
 		function.Filename = r.strings.tryLookup(function.Filename)
 		function.SystemName = r.strings.tryLookup(function.SystemName)
@@ -719,11 +678,10 @@ func (r *stacktraceRewriter) populateUnresolved(stacktraceIDs []uint32) error {
 		return err
 	}
 
-	var str string
 	unresolvedStrings := r.strings.iter()
 	strings := r.resolver.Strings(unresolvedStrings)
-	for ; strings.Err() == nil && strings.Next(); str = strings.At() {
-		unresolvedStrings.setValue(str)
+	for strings.Err() == nil && strings.Next() {
+		unresolvedStrings.setValue(strings.At())
 	}
 	return strings.Err()
 }
@@ -760,8 +718,8 @@ func (r *stacktraceRewriter) appendRewrite(stacktraces []uint32) error {
 	src := r.stacktraces[r.partition]
 	for _, v := range src.unresolved {
 		stacktrace := v.val
-		for j, lid := range stacktrace.LocationIDs {
-			stacktrace.LocationIDs[j] = uint64(r.locations.lookupResolved(uint32(lid)))
+		for j, lid := range stacktrace {
+			stacktrace[j] = int32(r.locations.lookupResolved(uint32(lid)))
 		}
 		src.storeResolved(v.rid, r.appender.AppendStacktrace(stacktrace))
 	}
@@ -770,6 +728,48 @@ func (r *stacktraceRewriter) appendRewrite(stacktraces []uint32) error {
 	}
 
 	return r.appender.Flush()
+}
+
+func (r *stacktraceRewriter) resolveStacktraces(stacktraceIDs []uint32) error {
+	stacktraces := r.stacktraces[r.partition]
+	for i, v := range stacktraceIDs {
+		stacktraceIDs[i] = stacktraces.tryLookup(v)
+	}
+	if len(stacktraces.unresolved) == 0 {
+		return nil
+	}
+
+	// Gather and sort references to unresolved stacks.
+	stacktraces.initRefs()
+	sort.Sort(stacktraces)
+	grow(r.inserter.s, len(stacktraces.refs))
+	for j, u := range stacktraces.refs {
+		r.inserter.s[j] = u.rid
+	}
+
+	return r.resolver.ResolveStacktraces(context.TODO(), r.inserter, r.inserter.s)
+}
+
+type stacktraceInserter struct {
+	slt *lookupTable[[]int32]
+	llt *lookupTable[*schemav1.InMemoryLocation]
+	s   []uint32
+	c   int
+}
+
+func (i *stacktraceInserter) InsertStacktrace(stacktrace uint32, locations []int32) {
+	// Resolve locations for new stack traces.
+	for j, loc := range locations {
+		locations[j] = int32(i.llt.tryLookup(uint32(loc)))
+	}
+	// Update the unresolved value.
+	v := i.slt.referenceAt(i.c)
+	if v.rid != stacktrace {
+		panic("unexpected stack trace")
+	}
+	grow(v.val, len(locations))
+	copy(v.val, locations)
+	i.c++
 }
 
 const (
@@ -828,16 +828,33 @@ func (t *lookupTable[T]) tryLookup(x uint32) uint32 {
 		}
 		return v - 1 // Already resolved.
 	}
-	t.unresolved = append(t.unresolved, lookupTableValue[T]{rid: x})
-	u := uint32(len(t.unresolved)) | marker
+	u := t.newUnresolvedValue(x) | marker
 	t.resolved[x] = u
 	return u
+}
+
+func (t *lookupTable[T]) newUnresolvedValue(rid uint32) uint32 {
+	x := len(t.unresolved)
+	if x < cap(t.unresolved) {
+		// Try to reuse previously allocated value.
+		x++
+		t.unresolved = t.unresolved[:x]
+		t.unresolved[x].rid = rid
+	} else {
+		t.unresolved = append(t.unresolved, lookupTableValue[T]{rid: rid})
+	}
+	return uint32(x)
+}
+
+func (t *lookupTable[T]) referenceAt(x int) *lookupTableValue[T] {
+	u := t.refs[x].uid
+	return &t.unresolved[u]
 }
 
 func (t *lookupTable[T]) storeResolved(rid, v uint32) { t.resolved[rid] = v + 1 }
 
 func (t *lookupTable[T]) lookupResolved(x uint32) uint32 {
-	if x&marker > 0 {
+	if x&marker > 0 { // TODO: why?
 		return t.resolved[t.unresolved[x&markerMask-1].rid] - 1
 	}
 	return x // Already resolved.
@@ -850,11 +867,7 @@ func (t *lookupTable[T]) iter() *lookupTableIterator[T] {
 }
 
 func (t *lookupTable[T]) initRefs() {
-	if cap(t.refs) < len(t.unresolved) {
-		t.refs = make([]lookupTableRef, len(t.unresolved))
-	} else {
-		t.refs = t.refs[:len(t.unresolved)]
-	}
+	grow(t.refs, len(t.unresolved))
 	for i, v := range t.unresolved {
 		t.refs[i] = lookupTableRef{rid: v.rid, uid: uint32(i)}
 	}
@@ -887,6 +900,13 @@ func (t *lookupTableIterator[T]) setValue(v T) {
 func (t *lookupTableIterator[T]) Close() error { return nil }
 
 func (t *lookupTableIterator[T]) Err() error { return nil }
+
+func grow[T any](s []T, n int) []T {
+	if cap(s) < n {
+		return make([]T, n, 2*n)
+	}
+	return s[:n]
+}
 
 // TODO(kolesnikovae):
 
