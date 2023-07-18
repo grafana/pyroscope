@@ -135,7 +135,7 @@ go/mod:
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
-	git ls-files '*.go' | grep -v 'vendor/' | xargs gofmt -s -w
+	git ls-files '*.go' | grep -v 'vendor/' | grep -v 'og/' | xargs gofmt -s -w
 	$(BIN)/golangci-lint run --fix
 	cd api/ && $(BIN)/buf format -w .
 	cd pkg && $(BIN)/buf format -w .
