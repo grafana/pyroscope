@@ -24,15 +24,15 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
-	googlev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
-	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
-	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/clientpool"
-	"github.com/grafana/phlare/pkg/iter"
-	phlaremodel "github.com/grafana/phlare/pkg/model"
-	"github.com/grafana/phlare/pkg/util"
-	"github.com/grafana/phlare/pkg/util/math"
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/clientpool"
+	"github.com/grafana/pyroscope/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 type Config struct {

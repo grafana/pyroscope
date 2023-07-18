@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/phlare/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 func Benchmark_stacktrace_tree_insert(b *testing.B) {

@@ -12,12 +12,12 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
-	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/iter"
-	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
-	"github.com/grafana/phlare/pkg/phlaredb/block"
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 func TestInMemoryReader(t *testing.T) {

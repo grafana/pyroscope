@@ -16,7 +16,7 @@ import (
 	"github.com/grafana/mimir/pkg/storage/tsdb"
 	"github.com/grafana/mimir/pkg/util"
 
-	"github.com/grafana/phlare/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 //go:embed blocks.gohtml

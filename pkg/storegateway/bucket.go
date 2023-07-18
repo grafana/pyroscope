@@ -17,9 +17,9 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 
-	phlareobj "github.com/grafana/phlare/pkg/objstore"
-	"github.com/grafana/phlare/pkg/phlaredb"
-	"github.com/grafana/phlare/pkg/phlaredb/block"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 // TODO move this to a config.

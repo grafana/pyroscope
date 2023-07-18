@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/phlare/ebpf/symtab/elf"
-	"github.com/grafana/phlare/ebpf/util"
+	"github.com/grafana/pyroscope/ebpf/symtab/elf"
+	"github.com/grafana/pyroscope/ebpf/util"
 	"github.com/stretchr/testify/require"
 )
 

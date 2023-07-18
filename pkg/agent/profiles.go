@@ -33,10 +33,10 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
-	phlaremodel "github.com/grafana/phlare/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 
-	agentv1v1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1"
-	"github.com/grafana/phlare/pkg/agent/scrape"
+	agentv1v1 "github.com/grafana/pyroscope/api/gen/proto/go/agent/v1"
+	"github.com/grafana/pyroscope/pkg/agent/scrape"
 )
 
 const (

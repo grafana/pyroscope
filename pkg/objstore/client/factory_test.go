@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 )
 
 const (

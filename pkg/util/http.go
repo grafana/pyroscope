@@ -26,7 +26,7 @@ import (
 	"golang.org/x/net/http2"
 	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/phlare/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 var defaultTransport http.RoundTripper = &http2.Transport{

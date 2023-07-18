@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	ebpfspy "github.com/grafana/phlare/ebpf"
-	"github.com/grafana/phlare/ebpf/sd"
-	"github.com/grafana/phlare/ebpf/symtab"
+	ebpfspy "github.com/grafana/pyroscope/ebpf"
+	"github.com/grafana/pyroscope/ebpf/sd"
+	"github.com/grafana/pyroscope/ebpf/symtab"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

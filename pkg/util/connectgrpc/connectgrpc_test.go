@@ -12,8 +12,8 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
-	"github.com/grafana/phlare/api/gen/proto/go/querier/v1/querierv1connect"
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 type fakeQuerier struct {

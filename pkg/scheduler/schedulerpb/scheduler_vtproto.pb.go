@@ -7,7 +7,7 @@ package schedulerpb
 import (
 	context "context"
 	fmt "fmt"
-	httpgrpc "github.com/grafana/phlare/pkg/util/httpgrpc"
+	httpgrpc "github.com/grafana/pyroscope/pkg/util/httpgrpc"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

@@ -14,9 +14,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
-	"github.com/grafana/phlare/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
-	"github.com/grafana/phlare/pkg/util"
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type BidiClientMergeProfilesStacktraces interface {

@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/phlare/pkg/cfg"
-	"github.com/grafana/phlare/pkg/test"
+	"github.com/grafana/pyroscope/pkg/cfg"
+	"github.com/grafana/pyroscope/pkg/test"
 )
 
 func TestFlagParsing(t *testing.T) {

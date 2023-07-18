@@ -33,9 +33,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/atomic"
 
-	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
-	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
-	"github.com/grafana/phlare/pkg/pprof/testhelper"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
 type canaryExporterParams struct {

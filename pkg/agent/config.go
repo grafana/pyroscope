@@ -17,7 +17,7 @@ import (
 	"github.com/prometheus/prometheus/discovery/kubernetes"
 	"github.com/prometheus/prometheus/model/relabel"
 
-	"github.com/grafana/phlare/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 type Config struct {

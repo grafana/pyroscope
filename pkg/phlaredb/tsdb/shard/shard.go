@@ -10,7 +10,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 
-	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 )
 
 const (

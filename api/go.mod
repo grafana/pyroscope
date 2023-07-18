@@ -1,4 +1,4 @@
-module github.com/grafana/phlare/api
+module github.com/grafana/pyroscope/api
 
 go 1.19
 

@@ -4,7 +4,7 @@ import (
 	"sort"
 	"sync"
 
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 func SumSeries(series ...[]*typesv1.Series) []*typesv1.Series {

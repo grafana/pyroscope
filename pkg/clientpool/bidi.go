@@ -1,6 +1,6 @@
 package clientpool
 
-import ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
+import ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 
 type BidiClientMergeProfilesStacktraces interface {
 	Send(*ingestv1.MergeProfilesStacktracesRequest) error

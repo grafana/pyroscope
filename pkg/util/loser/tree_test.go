@@ -5,7 +5,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/grafana/phlare/pkg/util/loser"
+	"github.com/grafana/pyroscope/pkg/util/loser"
 )
 
 type List struct {

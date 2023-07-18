@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/phlare/pkg/iter"
+	"github.com/grafana/pyroscope/pkg/iter"
 )
 
 type makeTestIterFn func(pf *parquet.File, idx int, filter Predicate, selectAs string) Iterator

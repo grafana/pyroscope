@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 
-	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
-	"github.com/grafana/phlare/pkg/pprof/testhelper"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
 func TestNormalizeProfile(t *testing.T) {

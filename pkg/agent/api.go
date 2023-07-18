@@ -8,8 +8,8 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	agentv1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1"
-	"github.com/grafana/phlare/api/gen/proto/go/agent/v1/agentv1connect"
+	agentv1 "github.com/grafana/pyroscope/api/gen/proto/go/agent/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/agent/v1/agentv1connect"
 )
 
 func (a *Agent) GetTargets(ctx context.Context, req *agentv1.GetTargetsRequest) (*agentv1.GetTargetsResponse, error) {

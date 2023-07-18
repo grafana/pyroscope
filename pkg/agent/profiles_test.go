@@ -11,7 +11,7 @@ import (
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
 
-	phlaremodel "github.com/grafana/phlare/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 func TestPopulateLabels(t *testing.T) {

@@ -15,9 +15,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	phlareobj "github.com/grafana/phlare/pkg/objstore"
-	"github.com/grafana/phlare/pkg/util"
-	"github.com/grafana/phlare/pkg/validation"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 const (

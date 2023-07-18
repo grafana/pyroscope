@@ -10,7 +10,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/phlare/pkg/util/build"
+	"github.com/grafana/pyroscope/pkg/util/build"
 )
 
 func Test_BuildReport(t *testing.T) {

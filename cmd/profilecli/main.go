@@ -12,8 +12,8 @@ import (
 	"github.com/prometheus/common/version"
 	"gopkg.in/alecthomas/kingpin.v2"
 
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
-	_ "github.com/grafana/phlare/pkg/util/build"
+	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
+	_ "github.com/grafana/pyroscope/pkg/util/build"
 )
 
 var cfg struct {

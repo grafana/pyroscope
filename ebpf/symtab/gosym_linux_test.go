@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/phlare/ebpf/symtab/elf"
-	gosym2 "github.com/grafana/phlare/ebpf/symtab/gosym"
+	"github.com/grafana/pyroscope/ebpf/symtab/elf"
+	gosym2 "github.com/grafana/pyroscope/ebpf/symtab/gosym"
 )
 
 func TestGoSymSelfTest(t *testing.T) {
@@ -23,7 +23,7 @@ func TestGoSymSelfTest(t *testing.T) {
 	symtab, err := me.NewGoTable()
 	require.NoError(t, err)
 	sym := symtab.Resolve(uint64(ptr))
-	expectedSym := "github.com/grafana/phlare/ebpf/symtab.TestGoSymSelfTest"
+	expectedSym := "github.com/grafana/pyroscope/ebpf/symtab.TestGoSymSelfTest"
 	require.NotNil(t, sym)
 	require.Equal(t, expectedSym, sym)
 }

@@ -5,8 +5,8 @@ import (
 
 	"github.com/bufbuild/connect-go"
 
-	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
-	"github.com/grafana/phlare/pkg/util/connectgrpc"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 )
 
 func (f *Frontend) Diff(ctx context.Context, c *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/time/rate"
 
-	"github.com/grafana/phlare/pkg/validation"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 func TestIngestionRateStrategy(t *testing.T) {

@@ -9,10 +9,10 @@ import (
 
 	"github.com/grafana/dskit/tenant"
 
-	profilev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
-	querierv1 "github.com/grafana/phlare/api/gen/proto/go/querier/v1"
-	"github.com/grafana/phlare/pkg/util/connectgrpc"
-	"github.com/grafana/phlare/pkg/validation"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 func (f *Frontend) SelectMergeProfile(ctx context.Context, c *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[profilev1.Profile], error) {

@@ -15,8 +15,8 @@ import (
 
 	"github.com/go-kit/log"
 
-	"github.com/grafana/phlare/pkg/phlare"
-	"github.com/grafana/phlare/tools/doc-generator/parse"
+	"github.com/grafana/pyroscope/pkg/phlare"
+	"github.com/grafana/pyroscope/tools/doc-generator/parse"
 )
 
 const (

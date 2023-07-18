@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	ingestv1 "github.com/grafana/phlare/api/gen/proto/go/ingester/v1"
-	"github.com/grafana/phlare/pkg/testhelper"
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
 func TestMergeBatchResponse(t *testing.T) {

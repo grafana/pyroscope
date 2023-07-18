@@ -1,4 +1,4 @@
-module github.com/grafana/phlare
+module github.com/grafana/pyroscope
 
 go 1.19
 
@@ -21,7 +21,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/grafana/dskit v0.0.0-20230704141205-12e5a855ec34
 	github.com/grafana/mimir v0.0.0-20230630050318-e4d286c69115
-	github.com/grafana/phlare/api v0.0.0-00010101000000-000000000000
+	github.com/grafana/pyroscope/api v0.0.0-00010101000000-000000000000
 	github.com/grafana/regexp v0.0.0-20221122212121-6b5c0a4cb7fd
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.2
@@ -275,7 +275,7 @@ require (
 
 replace (
 	github.com/dgraph-io/badger/v2 => github.com/dgraph-io/badger/v2 v2.2007.4
-	github.com/grafana/phlare/api => ./api
+	github.com/grafana/pyroscope/api => ./api
 	// Replace memberlist with our fork which includes some fixes that haven't been
 	// merged upstream yet.
 	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91

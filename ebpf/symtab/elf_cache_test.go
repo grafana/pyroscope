@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/grafana/phlare/ebpf/util"
+	"github.com/grafana/pyroscope/ebpf/util"
 	"github.com/stretchr/testify/require"
 )
 

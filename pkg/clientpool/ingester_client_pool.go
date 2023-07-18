@@ -15,8 +15,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/grafana/phlare/api/gen/proto/go/ingester/v1/ingesterv1connect"
-	"github.com/grafana/phlare/pkg/util"
+	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 // PoolConfig is config for creating a Pool.

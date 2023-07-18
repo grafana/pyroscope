@@ -10,10 +10,10 @@ import (
 	"github.com/grafana/dskit/flagext"
 	"github.com/prometheus/common/version"
 
-	"github.com/grafana/phlare/pkg/cfg"
-	"github.com/grafana/phlare/pkg/phlare"
-	"github.com/grafana/phlare/pkg/usage"
-	_ "github.com/grafana/phlare/pkg/util/build"
+	"github.com/grafana/pyroscope/pkg/cfg"
+	"github.com/grafana/pyroscope/pkg/phlare"
+	"github.com/grafana/pyroscope/pkg/usage"
+	_ "github.com/grafana/pyroscope/pkg/util/build"
 )
 
 type mainFlags struct {

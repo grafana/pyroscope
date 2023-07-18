@@ -3,8 +3,8 @@ package model
 import (
 	"testing"
 
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/testhelper"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
 func Test_SeriesMerger(t *testing.T) {

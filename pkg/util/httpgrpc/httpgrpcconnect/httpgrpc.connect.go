@@ -8,7 +8,7 @@ import (
 	context "context"
 	errors "errors"
 	connect_go "github.com/bufbuild/connect-go"
-	httpgrpc "github.com/grafana/phlare/pkg/util/httpgrpc"
+	httpgrpc "github.com/grafana/pyroscope/pkg/util/httpgrpc"
 	http "net/http"
 	strings "strings"
 )

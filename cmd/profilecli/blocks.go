@@ -11,9 +11,9 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/olekukonko/tablewriter"
 
-	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
-	"github.com/grafana/phlare/pkg/phlaredb"
-	"github.com/grafana/phlare/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 func fileInfo(f *block.File) string {

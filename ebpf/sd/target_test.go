@@ -2,7 +2,7 @@ package sd
 
 import (
 	"fmt"
-	"github.com/grafana/phlare/ebpf/util"
+	"github.com/grafana/pyroscope/ebpf/util"
 	"io/fs"
 	"os"
 	"path/filepath"

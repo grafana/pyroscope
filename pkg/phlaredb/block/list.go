@@ -14,8 +14,8 @@ import (
 	"github.com/thanos-io/thanos/pkg/block"
 	"golang.org/x/sync/errgroup"
 
-	phlareobj "github.com/grafana/phlare/pkg/objstore"
-	"github.com/grafana/phlare/pkg/util"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 func ListBlocks(path string, ulidMinTime time.Time) (map[ulid.ULID]*Meta, error) {

@@ -5,8 +5,8 @@ import (
 
 	"github.com/prometheus/common/model"
 
-	phlaremodel "github.com/grafana/phlare/pkg/model"
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 const (

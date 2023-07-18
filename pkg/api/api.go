@@ -22,29 +22,29 @@ import (
 	"github.com/weaveworks/common/middleware"
 	"github.com/weaveworks/common/server"
 
-	"github.com/grafana/phlare/public"
+	"github.com/grafana/pyroscope/public"
 
-	agentv1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1"
-	"github.com/grafana/phlare/api/gen/proto/go/agent/v1/agentv1connect"
-	"github.com/grafana/phlare/api/gen/proto/go/ingester/v1/ingesterv1connect"
-	"github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
-	"github.com/grafana/phlare/api/gen/proto/go/querier/v1/querierv1connect"
-	statusv1 "github.com/grafana/phlare/api/gen/proto/go/status/v1"
-	"github.com/grafana/phlare/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
-	"github.com/grafana/phlare/api/openapiv2"
-	"github.com/grafana/phlare/pkg/agent"
-	"github.com/grafana/phlare/pkg/distributor"
-	"github.com/grafana/phlare/pkg/frontend"
-	"github.com/grafana/phlare/pkg/frontend/frontendpb/frontendpbconnect"
-	"github.com/grafana/phlare/pkg/ingester"
-	"github.com/grafana/phlare/pkg/ingester/pyroscope"
-	"github.com/grafana/phlare/pkg/querier"
-	"github.com/grafana/phlare/pkg/scheduler"
-	"github.com/grafana/phlare/pkg/scheduler/schedulerpb/schedulerpbconnect"
-	"github.com/grafana/phlare/pkg/storegateway"
-	"github.com/grafana/phlare/pkg/util"
-	"github.com/grafana/phlare/pkg/util/gziphandler"
-	"github.com/grafana/phlare/pkg/validation/exporter"
+	agentv1 "github.com/grafana/pyroscope/api/gen/proto/go/agent/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/agent/v1/agentv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
+	"github.com/grafana/pyroscope/api/openapiv2"
+	"github.com/grafana/pyroscope/pkg/agent"
+	"github.com/grafana/pyroscope/pkg/distributor"
+	"github.com/grafana/pyroscope/pkg/frontend"
+	"github.com/grafana/pyroscope/pkg/frontend/frontendpb/frontendpbconnect"
+	"github.com/grafana/pyroscope/pkg/ingester"
+	"github.com/grafana/pyroscope/pkg/ingester/pyroscope"
+	"github.com/grafana/pyroscope/pkg/querier"
+	"github.com/grafana/pyroscope/pkg/scheduler"
+	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
+	"github.com/grafana/pyroscope/pkg/storegateway"
+	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/gziphandler"
+	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
 
 type Config struct {
@@ -155,7 +155,7 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 	// Serve index to all other pages
 	a.RegisterRoutesWithPrefix("/ui/", uiIndexHandler, false, true, "GET")
 	// Redirect `/ui` to `/ui/`.
-	// See more: https://github.com/grafana/phlare/pull/649#issuecomment-1522958157.
+	// See more: https://github.com/grafana/pyroscope/pull/649#issuecomment-1522958157.
 	a.RegisterRoute("/ui", http.RedirectHandler("/ui/", http.StatusFound), false, true, "GET")
 
 	// register status service providing config and buildinfo at grpc gateway

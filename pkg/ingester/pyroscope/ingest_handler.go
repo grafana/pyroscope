@@ -12,7 +12,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/pkg/errors"
 
-	"github.com/grafana/phlare/pkg/util/connectgrpc"
+	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 
 	"github.com/pyroscope-io/pyroscope/pkg/convert/speedscope"
 

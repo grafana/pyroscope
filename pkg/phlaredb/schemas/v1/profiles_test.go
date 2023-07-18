@@ -9,7 +9,7 @@ import (
 	"github.com/segmentio/parquet-go"
 	"github.com/stretchr/testify/require"
 
-	phlareparquet "github.com/grafana/phlare/pkg/parquet"
+	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
 )
 
 func TestInMemoryProfilesRowReader(t *testing.T) {

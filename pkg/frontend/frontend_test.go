@@ -34,15 +34,15 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
-	"github.com/grafana/phlare/pkg/frontend/frontendpb"
-	"github.com/grafana/phlare/pkg/frontend/frontendpb/frontendpbconnect"
-	"github.com/grafana/phlare/pkg/querier/stats"
-	"github.com/grafana/phlare/pkg/scheduler/schedulerdiscovery"
-	"github.com/grafana/phlare/pkg/scheduler/schedulerpb"
-	"github.com/grafana/phlare/pkg/scheduler/schedulerpb/schedulerpbconnect"
-	"github.com/grafana/phlare/pkg/util/httpgrpc"
-	"github.com/grafana/phlare/pkg/util/servicediscovery"
-	"github.com/grafana/phlare/pkg/validation"
+	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
+	"github.com/grafana/pyroscope/pkg/frontend/frontendpb/frontendpbconnect"
+	"github.com/grafana/pyroscope/pkg/querier/stats"
+	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
+	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb"
+	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
+	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/pkg/util/servicediscovery"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 const testFrontendWorkerConcurrency = 5

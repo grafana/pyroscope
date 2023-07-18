@@ -5,14 +5,14 @@ import (
 
 	"github.com/thanos-io/objstore"
 
-	phlareobj "github.com/grafana/phlare/pkg/objstore"
-	"github.com/grafana/phlare/pkg/objstore/providers/azure"
-	"github.com/grafana/phlare/pkg/objstore/providers/cos"
-	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
-	"github.com/grafana/phlare/pkg/objstore/providers/gcs"
-	"github.com/grafana/phlare/pkg/objstore/providers/s3"
-	"github.com/grafana/phlare/pkg/objstore/providers/swift"
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/azure"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/cos"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/gcs"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/s3"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/swift"
+	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 )
 
 // NewBucket creates a new bucket client based on the configured backend

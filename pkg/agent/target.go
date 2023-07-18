@@ -21,11 +21,11 @@ import (
 	"github.com/prometheus/prometheus/util/pool"
 	"golang.org/x/net/context/ctxhttp"
 
-	agentv1 "github.com/grafana/phlare/api/gen/proto/go/agent/v1"
-	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	"github.com/grafana/phlare/pkg/agent/scrape"
-	"github.com/grafana/phlare/pkg/tenant"
+	agentv1 "github.com/grafana/pyroscope/api/gen/proto/go/agent/v1"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/agent/scrape"
+	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
 var (

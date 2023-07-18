@@ -12,8 +12,8 @@
 package frontendpb
 
 import (
-	stats "github.com/grafana/phlare/pkg/querier/stats"
-	httpgrpc "github.com/grafana/phlare/pkg/util/httpgrpc"
+	stats "github.com/grafana/pyroscope/pkg/querier/stats"
+	httpgrpc "github.com/grafana/pyroscope/pkg/util/httpgrpc"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

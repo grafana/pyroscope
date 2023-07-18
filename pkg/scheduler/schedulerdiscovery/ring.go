@@ -17,7 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
-	util_log "github.com/grafana/phlare/pkg/util"
+	util_log "github.com/grafana/pyroscope/pkg/util"
 )
 
 const (

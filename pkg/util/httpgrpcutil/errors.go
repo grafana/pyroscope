@@ -5,7 +5,7 @@ package httpgrpcutil
 import (
 	"net/http"
 
-	"github.com/grafana/phlare/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 )
 
 // PrioritizeRecoverableErr checks whether in the given slice of errors there is a recoverable error, if yes then it will

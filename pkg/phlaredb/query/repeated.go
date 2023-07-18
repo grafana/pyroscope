@@ -12,7 +12,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/segmentio/parquet-go"
 
-	"github.com/grafana/phlare/pkg/iter"
+	"github.com/grafana/pyroscope/pkg/iter"
 )
 
 type RepeatedRow[T any] struct {

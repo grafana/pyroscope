@@ -15,9 +15,9 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/oklog/ulid"
 
-	"github.com/grafana/phlare/pkg/phlaredb"
-	"github.com/grafana/phlare/pkg/phlaredb/block"
-	diskutil "github.com/grafana/phlare/pkg/util/disk"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	diskutil "github.com/grafana/pyroscope/pkg/util/disk"
 )
 
 const (

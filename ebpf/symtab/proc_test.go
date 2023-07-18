@@ -3,7 +3,7 @@ package symtab
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"github.com/grafana/phlare/ebpf/util"
+	"github.com/grafana/pyroscope/ebpf/util"
 	"os"
 	"path"
 	"strings"

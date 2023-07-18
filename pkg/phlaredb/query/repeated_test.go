@@ -9,7 +9,7 @@ import (
 	"github.com/segmentio/parquet-go"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/phlare/pkg/iter"
+	"github.com/grafana/pyroscope/pkg/iter"
 )
 
 type RepeatedTestRow struct {

@@ -10,11 +10,11 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 
-	phlareobj "github.com/grafana/phlare/pkg/objstore"
-	phlarecontext "github.com/grafana/phlare/pkg/phlare/context"
-	"github.com/grafana/phlare/pkg/phlaredb"
-	"github.com/grafana/phlare/pkg/phlaredb/block"
-	"github.com/grafana/phlare/pkg/phlaredb/shipper"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/shipper"
 )
 
 type instance struct {

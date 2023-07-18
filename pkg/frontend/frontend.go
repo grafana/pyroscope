@@ -29,11 +29,11 @@ import (
 
 	"github.com/grafana/dskit/tenant"
 
-	"github.com/grafana/phlare/pkg/frontend/frontendpb"
-	"github.com/grafana/phlare/pkg/querier/stats"
-	"github.com/grafana/phlare/pkg/scheduler/schedulerdiscovery"
-	"github.com/grafana/phlare/pkg/util/httpgrpc"
-	"github.com/grafana/phlare/pkg/util/httpgrpcutil"
+	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
+	"github.com/grafana/pyroscope/pkg/querier/stats"
+	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
+	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
+	"github.com/grafana/pyroscope/pkg/util/httpgrpcutil"
 )
 
 // Config for a Frontend.
