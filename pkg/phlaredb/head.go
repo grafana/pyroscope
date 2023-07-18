@@ -317,7 +317,7 @@ func (h *Head) convertSamples(_ context.Context, r *rewriter, stacktracePartitio
 			r.locations.rewriteUint64(&stacktraces[idxSample].LocationIDs[i])
 		}
 	}
-	appender := h.symbolDB.MappingWriter(stacktracePartition).StacktraceAppender()
+	appender := h.symbolDB.SymbolsAppender(stacktracePartition).StacktraceAppender()
 	defer appender.Release()
 
 	if cap(stacktracesIds) < len(stacktraces) {
@@ -609,7 +609,7 @@ func (h *Head) resolveStacktraces(ctx context.Context, stacktracesByMapping stac
 	sp.LogFields(otlog.String("msg", "building MergeProfilesStacktracesResult"))
 	_ = stacktracesByMapping.ForEach(
 		func(mapping uint64, stacktraceSamples stacktraceSampleMap) error {
-			mp, ok := h.symbolDB.MappingReader(mapping)
+			mp, ok := h.symbolDB.SymbolsResolver(mapping)
 			if !ok {
 				return nil
 			}
@@ -672,7 +672,7 @@ func (h *Head) resolvePprof(ctx context.Context, stacktracesByMapping profileSam
 	// now add locationIDs and stacktraces
 	_ = stacktracesByMapping.ForEach(
 		func(mapping uint64, stacktraceSamples profileSampleMap) error {
-			mp, ok := h.symbolDB.MappingReader(mapping)
+			mp, ok := h.symbolDB.SymbolsResolver(mapping)
 			if !ok {
 				return nil
 			}

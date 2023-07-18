@@ -15,23 +15,23 @@ import (
 )
 
 var (
-	_ MappingReader      = (*mappingFileReader)(nil)
+	_ SymbolsResolver    = (*partitionFileReader)(nil)
 	_ StacktraceResolver = (*stacktraceResolverFile)(nil)
 )
 
 type Reader struct {
 	bucket objstore.BucketReader
 
-	maxConcurrentChunkFetch int
-	chunkFetchBufferSize    int
+	maxConcurrentChunks  int
+	chunkFetchBufferSize int
 
-	idx      IndexFile
-	mappings map[uint64]*mappingFileReader
+	idx        IndexFile
+	partitions map[uint64]*partitionFileReader
 }
 
 const (
-	defaultMaxConcurrentChunkFetch = 8
-	defaultChunkFetchBufferSize    = 4096
+	defaultMaxConcurrentChunks  = 1
+	defaultChunkFetchBufferSize = 4096
 )
 
 // NOTE(kolesnikovae):
@@ -41,16 +41,16 @@ const (
 type ReaderConfig struct {
 	BucketReader objstore.BucketReader
 
-	MaxConcurrentChunkFetch int
-	ChunkFetchBufferSize    int
+	MaxConcurrentChunks  int
+	ChunkFetchBufferSize int
 }
 
 func Open(ctx context.Context, b objstore.BucketReader) (*Reader, error) {
 	r := Reader{
 		bucket: b,
 
-		maxConcurrentChunkFetch: defaultMaxConcurrentChunkFetch,
-		chunkFetchBufferSize:    defaultChunkFetchBufferSize,
+		maxConcurrentChunks:  defaultMaxConcurrentChunks,
+		chunkFetchBufferSize: defaultChunkFetchBufferSize,
 	}
 	if err := r.open(ctx); err != nil {
 		return nil, err
@@ -71,46 +71,55 @@ func (r *Reader) open(ctx context.Context) error {
 		return err
 	}
 	// TODO(kolesnikovae): Load in a smarter way as headers are ordered.
-	r.mappings = make(map[uint64]*mappingFileReader, len(r.idx.StacktraceChunkHeaders.Entries)/3)
+	r.partitions = make(map[uint64]*partitionFileReader, len(r.idx.StacktraceChunkHeaders.Entries)/3)
 	for _, h := range r.idx.StacktraceChunkHeaders.Entries {
-		r.mapping(h.MappingName).addStacktracesChunk(h)
+		r.partition(h.Partition).addStacktracesChunk(h)
 	}
 	return nil
 }
 
-func (r *Reader) mapping(n uint64) *mappingFileReader {
-	if m, ok := r.mappings[n]; ok {
+func (r *Reader) partition(n uint64) *partitionFileReader {
+	if m, ok := r.partitions[n]; ok {
 		return m
 	}
-	m := &mappingFileReader{reader: r}
-	r.mappings[n] = m
+	m := &partitionFileReader{reader: r}
+	r.partitions[n] = m
 	return m
 }
 
-func (r *Reader) MappingReader(mappingName uint64) (MappingReader, bool) {
-	m, ok := r.mappings[mappingName]
+func (r *Reader) SymbolsResolver(partition uint64) (SymbolsResolver, bool) {
+	m, ok := r.partitions[partition]
 	return m, ok
 }
 
-type mappingFileReader struct {
+type partitionFileReader struct {
 	reader           *Reader
 	stacktraceChunks []*stacktraceChunkFileReader
 }
 
-func (m *mappingFileReader) StacktraceResolver() StacktraceResolver {
+func (m *partitionFileReader) StacktraceResolver() StacktraceResolver {
 	return &stacktraceResolverFile{
-		mapping: m,
+		partition: m,
 	}
 }
 
-func (m *mappingFileReader) addStacktracesChunk(h StacktraceChunkHeader) {
+func (m *partitionFileReader) WriteStats(s *Stats) {
+	var nodes uint32
+	for _, c := range m.stacktraceChunks {
+		s.StacktracesTotal += int(c.header.Stacktraces)
+		nodes += c.header.StacktraceNodes
+	}
+	s.MaxStacktraceID = int(nodes)
+}
+
+func (m *partitionFileReader) addStacktracesChunk(h StacktraceChunkHeader) {
 	m.stacktraceChunks = append(m.stacktraceChunks, &stacktraceChunkFileReader{
 		reader: m.reader,
 		header: h,
 	})
 }
 
-func (m *mappingFileReader) stacktraceChunkReader(i uint32) *stacktraceChunkFileReader {
+func (m *partitionFileReader) stacktraceChunkReader(i uint32) *stacktraceChunkFileReader {
 	if int(i) < len(m.stacktraceChunks) {
 		return m.stacktraceChunks[i]
 	}
@@ -118,7 +127,7 @@ func (m *mappingFileReader) stacktraceChunkReader(i uint32) *stacktraceChunkFile
 }
 
 type stacktraceResolverFile struct {
-	mapping *mappingFileReader
+	partition *partitionFileReader
 }
 
 func (r *stacktraceResolverFile) Release() {}
@@ -126,37 +135,21 @@ func (r *stacktraceResolverFile) Release() {}
 var ErrInvalidStacktraceRange = fmt.Errorf("invalid range: stack traces can't be resolved")
 
 func (r *stacktraceResolverFile) ResolveStacktraces(ctx context.Context, dst StacktraceInserter, s []uint32) error {
-	if len(r.mapping.stacktraceChunks) == 0 {
+	if len(r.partition.stacktraceChunks) == 0 {
 		return ErrInvalidStacktraceRange
 	}
 
 	// First, we determine the chunks needed for the range.
 	// All chunks in a block must have the same StacktraceMaxNodes.
-	sr := SplitStacktraces(s, r.mapping.stacktraceChunks[0].header.StacktraceMaxNodes)
-
-	// TODO(kolesnikovae):
-	// Chunks are fetched concurrently, but inserted to dst sequentially,
-	// to avoid race condition on the implementation end:
-	//  - Add maxConcurrentChunkResolve option that controls the behaviour.
-	//  - Caching: already fetched chunks should be cached (serialized or not).
+	sr := SplitStacktraces(s, r.partition.stacktraceChunks[0].header.StacktraceMaxNodes)
 
 	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(r.mapping.reader.maxConcurrentChunkFetch)
-	rs := make([]*stacktracesResolve, len(sr))
-	for i, c := range sr {
-		rs[i] = r.newResolve(ctx, dst, c)
-		g.Go(rs[i].fetch)
-	}
-	if err := g.Wait(); err != nil {
-		return err
+	g.SetLimit(r.partition.reader.maxConcurrentChunks)
+	for _, c := range sr {
+		g.Go(r.newResolve(ctx, dst, c).do)
 	}
 
-	for _, cr := range rs {
-		cr.resolveStacktracesChunk(dst)
-		cr.release()
-	}
-
-	return nil
+	return g.Wait()
 }
 
 func (r *stacktraceResolverFile) newResolve(ctx context.Context, dst StacktraceInserter, c StacktracesRange) *stacktracesResolve {
@@ -179,8 +172,17 @@ type stacktracesResolve struct {
 	c   StacktracesRange
 }
 
+func (r *stacktracesResolve) do() error {
+	if err := r.fetch(); err != nil {
+		return err
+	}
+	r.resolveStacktracesChunk(r.dst)
+	r.release()
+	return nil
+}
+
 func (r *stacktracesResolve) fetch() (err error) {
-	if r.cr = r.r.mapping.stacktraceChunkReader(r.c.chunk); r.cr == nil {
+	if r.cr = r.r.partition.stacktraceChunkReader(r.c.chunk); r.cr == nil {
 		return ErrInvalidStacktraceRange
 	}
 	if r.t, err = r.cr.fetch(r.ctx); err != nil {

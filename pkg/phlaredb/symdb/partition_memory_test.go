@@ -22,7 +22,7 @@ func Test_StacktraceAppender_shards(t *testing.T) {
 			},
 		})
 
-		w := db.MappingWriter(0)
+		w := db.SymbolsAppender(0)
 		a := w.StacktraceAppender()
 		defer a.Release()
 
@@ -48,8 +48,8 @@ func Test_StacktraceAppender_shards(t *testing.T) {
 		})
 		assert.Equal(t, []uint32{18}, sids[:1])
 
-		require.Len(t, db.mappings, 1)
-		m := db.mappings[0]
+		require.Len(t, db.partitions, 1)
+		m := db.partitions[0]
 		require.Len(t, m.stacktraceChunks, 3)
 
 		c1 := m.stacktraceChunks[0]
@@ -67,7 +67,7 @@ func Test_StacktraceAppender_shards(t *testing.T) {
 
 	t.Run("WithoutMaxStacktraceTreeNodesPerChunk", func(t *testing.T) {
 		db := NewSymDB(new(Config))
-		w := db.MappingWriter(0)
+		w := db.SymbolsAppender(0)
 		a := w.StacktraceAppender()
 		defer a.Release()
 
@@ -81,8 +81,8 @@ func Test_StacktraceAppender_shards(t *testing.T) {
 		})
 		assert.Equal(t, []uint32{3, 2, 4, 5, 6}, sids)
 
-		require.Len(t, db.mappings, 1)
-		m := db.mappings[0]
+		require.Len(t, db.partitions, 1)
+		m := db.partitions[0]
 		require.Len(t, m.stacktraceChunks, 1)
 
 		c1 := m.stacktraceChunks[0]
@@ -166,7 +166,7 @@ func Test_StacktraceResolver_stacktraces_split(t *testing.T) {
 
 func Test_Stacktrace_append_existing(t *testing.T) {
 	db := NewSymDB(new(Config))
-	w := db.MappingWriter(0)
+	w := db.SymbolsAppender(0)
 	a := w.StacktraceAppender()
 	defer a.Release()
 	sids := make([]uint32, 2)
@@ -185,7 +185,7 @@ func Test_Stacktrace_append_existing(t *testing.T) {
 
 func Test_Stacktrace_append_empty(t *testing.T) {
 	db := NewSymDB(new(Config))
-	w := db.MappingWriter(0)
+	w := db.SymbolsAppender(0)
 	a := w.StacktraceAppender()
 	defer a.Release()
 
@@ -205,7 +205,7 @@ func Test_Stacktraces_append_resolve(t *testing.T) {
 
 	t.Run("single chunk", func(t *testing.T) {
 		db := NewSymDB(new(Config))
-		w := db.MappingWriter(0)
+		w := db.SymbolsAppender(0)
 		a := w.StacktraceAppender()
 		defer a.Release()
 
@@ -218,7 +218,7 @@ func Test_Stacktraces_append_resolve(t *testing.T) {
 			{LocationIDs: []uint64{5, 2, 1}},
 		})
 
-		mr, _ := db.MappingReader(0)
+		mr, _ := db.SymbolsResolver(0)
 		r := mr.StacktraceResolver()
 		defer r.Release()
 		dst := new(mockStacktraceInserter)
@@ -237,7 +237,7 @@ func Test_Stacktraces_append_resolve(t *testing.T) {
 			},
 		})
 
-		w := db.MappingWriter(0)
+		w := db.SymbolsAppender(0)
 		a := w.StacktraceAppender()
 		defer a.Release()
 
@@ -274,10 +274,10 @@ func Test_Stacktraces_append_resolve(t *testing.T) {
 		*/
 		sids := make([]uint32, len(stacktraces))
 		a.AppendStacktrace(sids, stacktraces)
-		require.Len(t, db.mappings[0].stacktraceChunks, 6)
+		require.Len(t, db.partitions[0].stacktraceChunks, 6)
 
 		t.Run("adjacent shards at beginning", func(t *testing.T) {
-			mr, _ := db.MappingReader(0)
+			mr, _ := db.SymbolsResolver(0)
 			r := mr.StacktraceResolver()
 			defer r.Release()
 			dst := new(mockStacktraceInserter)
@@ -290,7 +290,7 @@ func Test_Stacktraces_append_resolve(t *testing.T) {
 		})
 
 		t.Run("adjacent shards at end", func(t *testing.T) {
-			mr, _ := db.MappingReader(0)
+			mr, _ := db.SymbolsResolver(0)
 			r := mr.StacktraceResolver()
 			defer r.Release()
 			dst := new(mockStacktraceInserter)
@@ -303,7 +303,7 @@ func Test_Stacktraces_append_resolve(t *testing.T) {
 		})
 
 		t.Run("non-adjacent shards", func(t *testing.T) {
-			mr, _ := db.MappingReader(0)
+			mr, _ := db.SymbolsResolver(0)
 			r := mr.StacktraceResolver()
 			defer r.Release()
 			dst := new(mockStacktraceInserter)
@@ -348,13 +348,13 @@ func Test_Stacktraces_memory_resolve_pprof(t *testing.T) {
 	sids := make([]uint32, len(stacktraces))
 
 	db := NewSymDB(new(Config))
-	mw := db.MappingWriter(0)
+	mw := db.SymbolsAppender(0)
 	a := mw.StacktraceAppender()
 	defer a.Release()
 
 	a.AppendStacktrace(sids, stacktraces)
 
-	mr, ok := db.MappingReader(0)
+	mr, ok := db.SymbolsResolver(0)
 	require.True(t, ok)
 	r := mr.StacktraceResolver()
 	defer r.Release()
@@ -378,13 +378,13 @@ func Test_Stacktraces_memory_resolve_chunked(t *testing.T) {
 		},
 	}
 	db := NewSymDB(cfg)
-	mw := db.MappingWriter(0)
+	mw := db.SymbolsAppender(0)
 	a := mw.StacktraceAppender()
 	defer a.Release()
 
 	a.AppendStacktrace(sids, stacktraces)
 
-	mr, ok := db.MappingReader(0)
+	mr, ok := db.SymbolsResolver(0)
 	require.True(t, ok)
 	r := mr.StacktraceResolver()
 	defer r.Release()
@@ -417,7 +417,7 @@ func Test_Stacktraces_memory_resolve_concurrency(t *testing.T) {
 	// Allocate stacktrace IDs.
 	sids := make([]uint32, len(stacktraces))
 	db := NewSymDB(cfg)
-	mw := db.MappingWriter(0)
+	mw := db.SymbolsAppender(0)
 	a := mw.StacktraceAppender()
 	a.AppendStacktrace(sids, stacktraces)
 	a.Release()
@@ -438,7 +438,7 @@ func Test_Stacktraces_memory_resolve_concurrency(t *testing.T) {
 			go func() {
 				defer wg.Done()
 
-				a := db.MappingWriter(0).StacktraceAppender()
+				a := db.SymbolsAppender(0).StacktraceAppender()
 				defer a.Release()
 
 				for j := 0; j < appends; j++ {
@@ -452,7 +452,7 @@ func Test_Stacktraces_memory_resolve_concurrency(t *testing.T) {
 			go func() {
 				defer wg.Done()
 
-				mr, ok := db.MappingReader(0)
+				mr, ok := db.SymbolsResolver(0)
 				if !ok {
 					return
 				}

@@ -22,15 +22,7 @@ type SymbolsResolver interface {
 	Functions(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryFunction]
 	Strings(iter.Iterator[uint32]) iter.Iterator[string]
 
-	WriteStats(*SymbolStats)
-}
-
-type SymbolStats struct {
-	StacktracesTotal int
-	LocationsTotal   int
-	MappingsTotal    int
-	FunctionsTotal   int
-	StringsTotal     int
+	WriteStats(*symdb.Stats)
 }
 
 type inMemorySymbolsReader struct {
@@ -44,22 +36,20 @@ type inMemorySymbolsReader struct {
 	stacktraces StacktraceDB
 }
 
-func (r *inMemorySymbolsReader) Symbols(partition uint64) SymbolsResolver {
+func (r *inMemorySymbolsReader) SymbolsResolver(partition uint64) (SymbolsResolver, error) {
 	p, ok := r.partitions[partition]
 	if !ok {
 		p = &inMemorySymbolsResolver{
-			partition: 0,
-			ctx:       nil,
-			reader:    nil,
+			partition: partition,
+			reader:    r,
 		}
 		r.partitions[partition] = p
 	}
-	return p
+	return p, nil
 }
 
 type inMemorySymbolsResolver struct {
 	partition uint64
-	ctx       context.Context
 	reader    *inMemorySymbolsReader
 }
 
@@ -83,8 +73,8 @@ func (s inMemorySymbolsResolver) Strings(i iter.Iterator[uint32]) iter.Iterator[
 	return iter.NewSliceIndexIterator(s.reader.strings.cache, i)
 }
 
-func (s inMemorySymbolsResolver) WriteStats(stats *SymbolStats) {
-	stats.StacktracesTotal = 0 // TODO
+func (s inMemorySymbolsResolver) WriteStats(stats *symdb.Stats) {
+	s.reader.stacktraces.WriteStats(s.partition, stats)
 	stats.LocationsTotal = int(s.reader.locations.NumRows())
 	stats.MappingsTotal = int(s.reader.mappings.NumRows())
 	stats.FunctionsTotal = int(s.reader.functions.NumRows())

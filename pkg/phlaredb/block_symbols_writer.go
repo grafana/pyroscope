@@ -17,3 +17,13 @@ type SymbolsAppender interface {
 
 	Flush() error
 }
+
+type symbolsWriter struct{}
+
+func newSymbolsWriter(dst string) (*symbolsWriter, error) {
+	return &symbolsWriter{}, nil
+}
+
+func (w *symbolsWriter) SymbolsAppender(partition uint64) (SymbolsAppender, error) {
+	return nil, nil
+}
