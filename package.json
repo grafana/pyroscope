@@ -269,6 +269,7 @@
     "@babel/core": "^7.22.9",
     "@babel/generator": "^7.22.9",
     "@babel/traverse": "^7.22.8",
+    "d3-color": "^3.1.0",
     "react": "16.14.0",
     "react-dom": "16.14.0",
     "jquery": "3.6.0",
