@@ -20,5 +20,9 @@
   "devDependencies": {
     "@types/express": "^4.17.13",
     "@types/morgan": "^1.9.3"
+  },
+  "resolutions": {
+    "protobufjs": "^7.2.4"
   }
+
 }
