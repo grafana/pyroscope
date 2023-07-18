@@ -4,6 +4,7 @@
 #include "bpf_helpers.h"
 #include "bpf_tracing.h"
 #include "profile.bpf.h"
+#include "pyperf.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
