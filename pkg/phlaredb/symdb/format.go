@@ -80,8 +80,8 @@ type IndexFile struct {
 
 	// Version-specific parts.
 
-	// StacktraceChunkHeaders are sorted by mapping
-	// name and chunk index in ascending order.
+	// StacktraceChunkHeaders are sorted by
+	// partition and chunk index in ascending order.
 	StacktraceChunkHeaders StacktraceChunkHeaders
 
 	CRC uint32
@@ -201,29 +201,29 @@ func (h *StacktraceChunkHeaders) UnmarshalBinary(b []byte) error {
 	return nil
 }
 
-type stacktraceChunkHeadersByMappingAndIndex StacktraceChunkHeaders
+type stacktraceChunkHeadersByPartitionAndIndex StacktraceChunkHeaders
 
-func (h stacktraceChunkHeadersByMappingAndIndex) Len() int {
+func (h stacktraceChunkHeadersByPartitionAndIndex) Len() int {
 	return len(h.Entries)
 }
 
-func (h stacktraceChunkHeadersByMappingAndIndex) Less(i, j int) bool {
+func (h stacktraceChunkHeadersByPartitionAndIndex) Less(i, j int) bool {
 	a, b := h.Entries[i], h.Entries[j]
-	if a.MappingName == b.MappingName {
+	if a.Partition == b.Partition {
 		return a.ChunkIndex < b.ChunkIndex
 	}
-	return a.MappingName < b.MappingName
+	return a.Partition < b.Partition
 }
 
-func (h stacktraceChunkHeadersByMappingAndIndex) Swap(i, j int) {
+func (h stacktraceChunkHeadersByPartitionAndIndex) Swap(i, j int) {
 	h.Entries[i], h.Entries[j] = h.Entries[j], h.Entries[i]
 }
 
 type StacktraceChunkHeader struct {
-	Offset int64 // Relative to the mapping offset.
+	Offset int64
 	Size   int64
 
-	MappingName   uint64 // MappingName the chunk refers to.
+	Partition     uint64
 	ChunkIndex    uint16
 	ChunkEncoding ChunkEncoding
 	_             [5]byte // Reserved.
@@ -247,7 +247,7 @@ const (
 func (h *StacktraceChunkHeader) marshal(b []byte) {
 	binary.BigEndian.PutUint64(b[0:8], uint64(h.Offset))
 	binary.BigEndian.PutUint64(b[8:16], uint64(h.Size))
-	binary.BigEndian.PutUint64(b[16:24], h.MappingName)
+	binary.BigEndian.PutUint64(b[16:24], h.Partition)
 	binary.BigEndian.PutUint16(b[24:26], h.ChunkIndex)
 	b[27] = byte(h.ChunkEncoding)
 	// 5 bytes reserved.
@@ -262,7 +262,7 @@ func (h *StacktraceChunkHeader) marshal(b []byte) {
 func (h *StacktraceChunkHeader) unmarshal(b []byte) {
 	h.Offset = int64(binary.BigEndian.Uint64(b[0:8]))
 	h.Size = int64(binary.BigEndian.Uint64(b[8:16]))
-	h.MappingName = binary.BigEndian.Uint64(b[16:24])
+	h.Partition = binary.BigEndian.Uint64(b[16:24])
 	h.ChunkIndex = binary.BigEndian.Uint16(b[24:26])
 	h.ChunkEncoding = ChunkEncoding(b[27])
 	// 5 bytes reserved.
@@ -333,7 +333,7 @@ func (f *IndexFile) WriteTo(dst io.Writer) (n int64, err error) {
 		return w.offset, fmt.Errorf("toc write: %w", err)
 	}
 
-	sort.Sort(stacktraceChunkHeadersByMappingAndIndex(f.StacktraceChunkHeaders))
+	sort.Sort(stacktraceChunkHeadersByPartitionAndIndex(f.StacktraceChunkHeaders))
 	sch, _ := f.StacktraceChunkHeaders.MarshalBinary()
 	if _, err = w.Write(sch); err != nil {
 		return w.offset, fmt.Errorf("stacktrace chunk headers: %w", err)

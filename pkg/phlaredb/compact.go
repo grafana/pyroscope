@@ -525,10 +525,7 @@ func (s *symbolsRewriter) Next() bool {
 }
 
 func (s *symbolsRewriter) loadStacktracesID(values []parquet.Value) {
-	if cap(s.stacktraces) < len(values) {
-		s.stacktraces = make([]uint32, len(values)*2)
-	}
-	s.stacktraces = s.stacktraces[:len(values)]
+	grow(s.stacktraces, len(values))
 	for i := range values {
 		s.stacktraces[i] = values[i].Uint32()
 	}
@@ -538,20 +535,26 @@ type stacktraceRewriter struct {
 	reader SymbolsReader
 	writer SymbolsWriter
 
-	// Stack trace identifiers are only valid within the partition.
-	stacktraces map[uint64]*lookupTable[[]int32]
-	inserter    *stacktraceInserter
+	partitions map[uint64]*symdbPartition
+	inserter   *stacktraceInserter
 
 	// Objects below have global addressing.
+	// TODO(kolesnikovae): Move to symdbPartition.
 	locations *lookupTable[*schemav1.InMemoryLocation]
 	mappings  *lookupTable[*schemav1.InMemoryMapping]
 	functions *lookupTable[*schemav1.InMemoryFunction]
 	strings   *lookupTable[string]
+}
 
-	partition uint64
-	resolver  SymbolsResolver
-	appender  SymbolsAppender
-	stats     SymbolStats
+type symdbPartition struct {
+	name  uint64
+	stats symdb.Stats
+	// Stacktrace identifiers are only valid within the partition.
+	stacktraces *lookupTable[[]int32]
+	resolver    SymbolsResolver
+	appender    SymbolsAppender
+
+	r *stacktraceRewriter
 }
 
 func newStacktraceRewriter(r SymbolsReader, w SymbolsWriter) *stacktraceRewriter {
@@ -561,90 +564,98 @@ func newStacktraceRewriter(r SymbolsReader, w SymbolsWriter) *stacktraceRewriter
 	}
 }
 
-func (r *stacktraceRewriter) init(partition uint64) (err error) {
-	r.partition = partition
-	if r.appender, err = r.writer.SymbolsAppender(partition); err != nil {
-		return err
+func (r *stacktraceRewriter) init(partition uint64) (p *symdbPartition, err error) {
+	if r.partitions == nil {
+		r.partitions = make(map[uint64]*symdbPartition)
 	}
-	if r.resolver, err = r.reader.SymbolsResolver(partition); err != nil {
-		return err
+	if p, err = r.getOrCreatePartition(partition); err != nil {
+		return nil, err
 	}
-	r.resolver.WriteStats(&r.stats)
-
-	// Only stacktraces are yet partitioned.
-	if r.stacktraces == nil {
-		r.stacktraces = make(map[uint64]*lookupTable[[]int32])
-		r.inserter = new(stacktraceInserter)
-	}
-	p, ok := r.stacktraces[partition]
-	if !ok {
-		p = newLookupTable[[]int32](r.stats.StacktracesTotal)
-		r.stacktraces[partition] = p
-	}
-	p.reset()
 
 	if r.locations == nil {
-		r.locations = newLookupTable[*schemav1.InMemoryLocation](r.stats.LocationsTotal)
-		r.mappings = newLookupTable[*schemav1.InMemoryMapping](r.stats.MappingsTotal)
-		r.functions = newLookupTable[*schemav1.InMemoryFunction](r.stats.FunctionsTotal)
-		r.strings = newLookupTable[string](r.stats.StringsTotal)
-		return nil
+		r.locations = newLookupTable[*schemav1.InMemoryLocation](p.stats.LocationsTotal)
+		r.mappings = newLookupTable[*schemav1.InMemoryMapping](p.stats.MappingsTotal)
+		r.functions = newLookupTable[*schemav1.InMemoryFunction](p.stats.FunctionsTotal)
+		r.strings = newLookupTable[string](p.stats.StringsTotal)
+	} else {
+		r.locations.reset()
+		r.mappings.reset()
+		r.functions.reset()
+		r.strings.reset()
 	}
-	r.locations.reset()
-	r.mappings.reset()
-	r.functions.reset()
-	r.strings.reset()
 
 	r.inserter = &stacktraceInserter{
-		slt: p,
+		slt: p.stacktraces,
 		llt: r.locations,
 		s:   r.inserter.s,
 	}
 
+	return p, nil
+}
+
+func (r *stacktraceRewriter) getOrCreatePartition(partition uint64) (_ *symdbPartition, err error) {
+	p, ok := r.partitions[partition]
+	if ok {
+		p.reset()
+		return p, nil
+	}
+	n := &symdbPartition{name: partition}
+	if n.resolver, err = r.reader.SymbolsResolver(partition); err != nil {
+		return nil, err
+	}
+	if n.appender, err = r.writer.SymbolsAppender(partition); err != nil {
+		return nil, err
+	}
+	n.resolver.WriteStats(&n.stats)
+	n.stacktraces = newLookupTable[[]int32](n.stats.MaxStacktraceID)
+	r.partitions[partition] = n
+	return n, nil
+}
+
+func (r *stacktraceRewriter) rewriteStacktraces(partition uint64, stacktraces []uint32) error {
+	p, err := r.init(partition)
+	if err != nil {
+		return err
+	}
+	if err = p.populateUnresolved(stacktraces); err != nil {
+		return err
+	}
+	if p.hasUnresolved() {
+		return p.appendRewrite(stacktraces)
+	}
 	return nil
 }
 
-func (r *stacktraceRewriter) hasUnresolved() bool {
-	return len(r.stacktraces[r.partition].unresolved)+
-		len(r.locations.unresolved)+
-		len(r.mappings.unresolved)+
-		len(r.functions.unresolved)+
-		len(r.strings.unresolved) > 0
+func (p *symdbPartition) reset() {
+	p.stacktraces.reset()
 }
 
-func (r *stacktraceRewriter) rewriteStacktraces(partition uint64, stacktraces []uint32) (err error) {
-	if err = r.init(partition); err != nil {
-		return err
-	}
-	if err = r.populateUnresolved(stacktraces); err != nil {
-		return err
-	}
-	if r.hasUnresolved() {
-		if err = r.appendRewrite(stacktraces); err != nil {
-			return err
-		}
-	}
-	return nil
+func (p *symdbPartition) hasUnresolved() bool {
+	return len(p.stacktraces.unresolved)+
+		len(p.r.locations.unresolved)+
+		len(p.r.mappings.unresolved)+
+		len(p.r.functions.unresolved)+
+		len(p.r.strings.unresolved) > 0
 }
 
-func (r *stacktraceRewriter) populateUnresolved(stacktraceIDs []uint32) error {
+func (p *symdbPartition) populateUnresolved(stacktraceIDs []uint32) error {
 	// Filter out all stack traces that have been already
 	// resolved and populate locations lookup table.
-	if err := r.resolveStacktraces(stacktraceIDs); err != nil {
+	if err := p.resolveStacktraces(stacktraceIDs); err != nil {
 		return err
 	}
-	if len(r.locations.unresolved) == 0 {
+	if len(p.r.locations.unresolved) == 0 {
 		return nil
 	}
 
 	// Resolve functions and mappings for new locations.
-	unresolvedLocs := r.locations.iter()
-	locations := r.resolver.Locations(unresolvedLocs)
+	unresolvedLocs := p.r.locations.iter()
+	locations := p.resolver.Locations(unresolvedLocs)
 	for locations.Err() == nil && locations.Next() {
 		location := locations.At()
-		location.MappingId = r.mappings.tryLookup(location.MappingId)
+		location.MappingId = p.r.mappings.tryLookup(location.MappingId)
 		for j, line := range location.Line {
-			location.Line[j].FunctionId = r.functions.tryLookup(line.FunctionId)
+			location.Line[j].FunctionId = p.r.functions.tryLookup(line.FunctionId)
 		}
 		unresolvedLocs.setValue(location)
 	}
@@ -653,101 +664,99 @@ func (r *stacktraceRewriter) populateUnresolved(stacktraceIDs []uint32) error {
 	}
 
 	// Resolve strings.
-	unresolvedMappings := r.mappings.iter()
-	mappings := r.resolver.Mappings(unresolvedMappings)
+	unresolvedMappings := p.r.mappings.iter()
+	mappings := p.resolver.Mappings(unresolvedMappings)
 	for mappings.Err() == nil && mappings.Next() {
 		mapping := mappings.At()
-		mapping.BuildId = r.strings.tryLookup(mapping.BuildId)
-		mapping.Filename = r.strings.tryLookup(mapping.Filename)
+		mapping.BuildId = p.r.strings.tryLookup(mapping.BuildId)
+		mapping.Filename = p.r.strings.tryLookup(mapping.Filename)
 		unresolvedMappings.setValue(mapping)
 	}
 	if err := mappings.Err(); err != nil {
 		return err
 	}
 
-	unresolvedFunctions := r.functions.iter()
-	functions := r.resolver.Functions(unresolvedFunctions)
+	unresolvedFunctions := p.r.functions.iter()
+	functions := p.resolver.Functions(unresolvedFunctions)
 	for functions.Err() == nil && functions.Next() {
 		function := functions.At()
-		function.Name = r.strings.tryLookup(function.Name)
-		function.Filename = r.strings.tryLookup(function.Filename)
-		function.SystemName = r.strings.tryLookup(function.SystemName)
+		function.Name = p.r.strings.tryLookup(function.Name)
+		function.Filename = p.r.strings.tryLookup(function.Filename)
+		function.SystemName = p.r.strings.tryLookup(function.SystemName)
 		unresolvedFunctions.setValue(function)
 	}
 	if err := functions.Err(); err != nil {
 		return err
 	}
 
-	unresolvedStrings := r.strings.iter()
-	strings := r.resolver.Strings(unresolvedStrings)
+	unresolvedStrings := p.r.strings.iter()
+	strings := p.resolver.Strings(unresolvedStrings)
 	for strings.Err() == nil && strings.Next() {
 		unresolvedStrings.setValue(strings.At())
 	}
 	return strings.Err()
 }
 
-func (r *stacktraceRewriter) appendRewrite(stacktraces []uint32) error {
-	for _, v := range r.strings.unresolved {
-		r.strings.storeResolved(v.rid, r.appender.AppendString(v.val))
+func (p *symdbPartition) appendRewrite(stacktraces []uint32) error {
+	for _, v := range p.r.strings.unresolved {
+		p.r.strings.storeResolved(v.rid, p.appender.AppendString(v.val))
 	}
 
-	for _, v := range r.functions.unresolved {
+	for _, v := range p.r.functions.unresolved {
 		function := v.val
-		function.Name = r.strings.lookupResolved(function.Name)
-		function.Filename = r.strings.lookupResolved(function.Filename)
-		function.SystemName = r.strings.lookupResolved(function.SystemName)
-		r.functions.storeResolved(v.rid, r.appender.AppendFunction(function))
+		function.Name = p.r.strings.lookupResolved(function.Name)
+		function.Filename = p.r.strings.lookupResolved(function.Filename)
+		function.SystemName = p.r.strings.lookupResolved(function.SystemName)
+		p.r.functions.storeResolved(v.rid, p.appender.AppendFunction(function))
 	}
 
-	for _, v := range r.mappings.unresolved {
+	for _, v := range p.r.mappings.unresolved {
 		mapping := v.val
-		mapping.BuildId = r.strings.lookupResolved(mapping.BuildId)
-		mapping.Filename = r.strings.lookupResolved(mapping.Filename)
-		r.mappings.storeResolved(v.rid, r.appender.AppendMapping(mapping))
+		mapping.BuildId = p.r.strings.lookupResolved(mapping.BuildId)
+		mapping.Filename = p.r.strings.lookupResolved(mapping.Filename)
+		p.r.mappings.storeResolved(v.rid, p.appender.AppendMapping(mapping))
 	}
 
-	for _, v := range r.locations.unresolved {
+	for _, v := range p.r.locations.unresolved {
 		location := v.val
-		location.MappingId = r.mappings.lookupResolved(location.MappingId)
+		location.MappingId = p.r.mappings.lookupResolved(location.MappingId)
 		for j, line := range location.Line {
-			location.Line[j].FunctionId = r.functions.lookupResolved(line.FunctionId)
+			location.Line[j].FunctionId = p.r.functions.lookupResolved(line.FunctionId)
 		}
-		r.locations.storeResolved(v.rid, r.appender.AppendLocation(location))
+		p.r.locations.storeResolved(v.rid, p.appender.AppendLocation(location))
 	}
 
-	src := r.stacktraces[r.partition]
-	for _, v := range src.unresolved {
+	for _, v := range p.stacktraces.unresolved {
 		stacktrace := v.val
 		for j, lid := range stacktrace {
-			stacktrace[j] = int32(r.locations.lookupResolved(uint32(lid)))
+			stacktrace[j] = int32(p.r.locations.lookupResolved(uint32(lid)))
 		}
-		src.storeResolved(v.rid, r.appender.AppendStacktrace(stacktrace))
+		p.stacktraces.storeResolved(v.rid, p.appender.AppendStacktrace(stacktrace))
 	}
 	for i, v := range stacktraces {
-		stacktraces[i] = src.lookupResolved(v)
+		stacktraces[i] = p.stacktraces.lookupResolved(v)
 	}
 
-	return r.appender.Flush()
+	return p.appender.Flush()
 }
 
-func (r *stacktraceRewriter) resolveStacktraces(stacktraceIDs []uint32) error {
-	stacktraces := r.stacktraces[r.partition]
+func (p *symdbPartition) resolveStacktraces(stacktraceIDs []uint32) error {
 	for i, v := range stacktraceIDs {
-		stacktraceIDs[i] = stacktraces.tryLookup(v)
+		stacktraceIDs[i] = p.stacktraces.tryLookup(v)
 	}
-	if len(stacktraces.unresolved) == 0 {
+	if len(p.stacktraces.unresolved) == 0 {
 		return nil
 	}
 
 	// Gather and sort references to unresolved stacks.
-	stacktraces.initRefs()
-	sort.Sort(stacktraces)
-	grow(r.inserter.s, len(stacktraces.refs))
-	for j, u := range stacktraces.refs {
-		r.inserter.s[j] = u.rid
+	p.stacktraces.initRefs()
+	sort.Sort(p.stacktraces)
+	grow(p.r.inserter.s, len(p.stacktraces.refs))
+	for j, u := range p.stacktraces.refs {
+		p.r.inserter.s[j] = u.rid
 	}
 
-	return r.resolver.ResolveStacktraces(context.TODO(), r.inserter, r.inserter.s)
+	return p.resolver.ResolveStacktraces(context.TODO(), p.r.inserter, p.r.inserter.s)
 }
 
 type stacktraceInserter struct {
@@ -906,16 +915,4 @@ func grow[T any](s []T, n int) []T {
 		return make([]T, n, 2*n)
 	}
 	return s[:n]
-}
-
-// TODO(kolesnikovae):
-
-type symbolsWriter struct{}
-
-func newSymbolsWriter(dst string) (*symbolsWriter, error) {
-	return &symbolsWriter{}, nil
-}
-
-func (w *symbolsWriter) SymbolsAppender(partition uint64) (SymbolsAppender, error) {
-	return nil, nil
 }

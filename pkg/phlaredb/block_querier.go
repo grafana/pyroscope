@@ -306,6 +306,7 @@ type StacktraceDB interface {
 	Open(ctx context.Context) error
 	Close() error
 	Resolve(ctx context.Context, partition uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error
+	WriteStats(partition uint64, s *symdb.Stats)
 }
 
 type stacktraceResolverV1 struct {
@@ -336,6 +337,11 @@ func (r *stacktraceResolverV1) Resolve(ctx context.Context, _ uint64, locs symdb
 	return stacktraces.Err()
 }
 
+func (r *stacktraceResolverV1) WriteStats(_ uint64, s *symdb.Stats) {
+	s.StacktracesTotal = int(r.stacktraces.file.NumRows())
+	s.MaxStacktraceID = s.StacktracesTotal
+}
+
 type stacktraceResolverV2 struct {
 	reader       *symdb.Reader
 	bucketReader phlareobj.Bucket
@@ -354,14 +360,23 @@ func (r *stacktraceResolverV2) Close() error {
 	return nil
 }
 
-func (r *stacktraceResolverV2) Resolve(ctx context.Context, mapping uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error {
-	mr, ok := r.reader.MappingReader(mapping)
+func (r *stacktraceResolverV2) Resolve(ctx context.Context, partition uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error {
+	mr, ok := r.reader.SymbolsResolver(partition)
 	if !ok {
 		return nil
 	}
 	resolver := mr.StacktraceResolver()
 	defer resolver.Release()
 	return resolver.ResolveStacktraces(ctx, locs, stacktraceIDs)
+}
+
+func (r *stacktraceResolverV2) WriteStats(partition uint64, s *symdb.Stats) {
+	mr, ok := r.reader.SymbolsResolver(partition)
+	if !ok {
+		return
+	}
+	mr.WriteStats(s)
+	return
 }
 
 func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlareobj.Bucket, meta *block.Meta) *singleBlockQuerier {

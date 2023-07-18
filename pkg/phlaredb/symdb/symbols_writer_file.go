@@ -38,13 +38,13 @@ func (w *Writer) writeStacktraceChunk(ci int, c *stacktraceChunk) (err error) {
 	h := StacktraceChunkHeader{
 		Offset:             w.scd.w.offset,
 		Size:               0, // Set later.
-		MappingName:        c.mapping.name,
+		Partition:          c.parition.name,
 		ChunkIndex:         uint16(ci),
 		ChunkEncoding:      ChunkEncodingGroupVarint,
-		Stacktraces:        0, // TODO
+		Stacktraces:        c.stacks,
 		StacktraceNodes:    c.tree.len(),
 		StacktraceMaxDepth: 0, // TODO
-		StacktraceMaxNodes: c.mapping.maxNodesPerChunk,
+		StacktraceMaxNodes: c.parition.maxNodesPerChunk,
 		CRC:                0, // Set later.
 	}
 	crc := crc32.New(castagnoli)
