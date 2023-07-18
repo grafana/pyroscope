@@ -8884,7 +8884,7 @@ d3-chord@3:
     d3-path "1 - 3"
 
 "d3-color@1 - 3", d3-color@3:
-  version "3.0.1"
+  version "3.1.0"
   resolved "https://registry.yarnpkg.com/d3-color/-/d3-color-3.0.1.tgz#03316e595955d1fcd39d9f3610ad41bb90194d0a"
   integrity sha512-6/SlHkDOBLyQSJ1j1Ghs82OIUXpKWlR0hCsw0XrLSQhuUPuCSmLQ1QPH98vpnQxMUQM2/gfAkUEWsupVpd9JGw==
 
