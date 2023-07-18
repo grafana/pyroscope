@@ -30,6 +30,7 @@ type SessionOptions struct {
 	CollectKernel bool
 	CacheOptions  symtab.CacheOptions
 	SampleRate    int
+	PythonPIDs    []int
 }
 
 type Session interface {
@@ -59,6 +60,7 @@ type session struct {
 
 	options     SessionOptions
 	roundNumber int
+	pyperf      *pyPerf
 }
 
 func NewSession(
@@ -89,10 +91,29 @@ func (s *session) Start() error {
 		return err
 	}
 
-	opts := &ebpf.CollectionOptions{}
+	opts := &ebpf.CollectionOptions{
+		Programs: ebpf.ProgramOptions{
+			//LogLevel: ebpf.LogLevelInstruction | ebpf.LogLevelStats,
+			//LogSize:  1024 * 1024,
+		},
+	}
 	if err := loadProfileObjects(&s.bpf, opts); err != nil {
+		//if s.bpf.DoPerfEvent != nil {
+		//	fmt.Println(s.bpf.DoPerfEvent.VerifierLog)
+		//}
+
 		return fmt.Errorf("load bpf objects: %w", err)
 	}
+
+	if s.pyperf, err = newPyPerf(s.logger,
+		s.bpf.profileMaps.PyEvents,
+		s.bpf.profileMaps.PyPidConfig,
+		s.bpf.profileMaps.PySymbols,
+	); err != nil {
+		return fmt.Errorf("init perf: %w", err)
+	}
+	s.pyperf.setPythonPIDs(s.options.PythonPIDs)
+
 	if err = s.initArgs(); err != nil {
 		return fmt.Errorf("init bpf args: %w", err)
 	}
@@ -113,6 +134,8 @@ type sf struct {
 
 func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
 	defer s.symCache.Cleanup()
+
+	s.pyperf.CollectProfiles(cb, s.targetFinder)
 
 	s.symCache.NextRound()
 	s.roundNumber++
@@ -152,7 +175,7 @@ func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value ui
 			uStack: uStack,
 			kStack: kStack,
 			count:  value,
-			comm:   getComm(ck),
+			comm:   getComm(&ck.Comm),
 			labels: labels,
 		})
 	}
@@ -173,7 +196,7 @@ func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value ui
 			continue // only comm
 		}
 		lo.Reverse(sb.stack)
-		cb(it.labels, sb.stack, uint64(it.count), it.pid)
+		//cb(it.labels, sb.stack, uint64(it.count), it.pid)
 		s.debugDump(it, stats, sb)
 	}
 	if err = s.clearCountsMap(keys, batch); err != nil {
@@ -231,6 +254,7 @@ func (s *session) Stop() {
 	}
 	s.perfEvents = nil
 	s.bpf.Close()
+	s.pyperf.Close()
 }
 
 func (s *session) Update(options SessionOptions) error {
@@ -375,13 +399,13 @@ func (s *session) updateSampleRate(sampleRate int) error {
 	return nil
 }
 
-func getComm(k *profileSampleKey) string {
+func getComm(comm *[16]int8) string {
 	res := ""
 	// todo remove unsafe
 
 	sh := (*reflect.StringHeader)(unsafe.Pointer(&res))
-	sh.Data = uintptr(unsafe.Pointer(&k.Comm[0]))
-	for _, c := range k.Comm {
+	sh.Data = uintptr(unsafe.Pointer(&comm[0]))
+	for _, c := range comm {
 		if c != 0 {
 			sh.Len++
 		} else {

@@ -150,7 +150,7 @@ func parsePermissions(s []byte) (*ProcMapPermissions, error) {
 // buffer.
 // 7f5822ebe000-7f5822ec0000 r--p 00000000 09:00 533429                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
 // returns nil if entry is not executable
-func parseProcMap(line []byte) (*ProcMap, error) {
+func parseProcMap(line []byte, executableOnly bool) (*ProcMap, error) {
 	var i int
 	if i = bytes.IndexByte(line, ' '); i == -1 {
 		return nil, fmt.Errorf("invalid procmap entry: %s", line)
@@ -190,7 +190,7 @@ func parseProcMap(line []byte) (*ProcMap, error) {
 		return nil, err
 	}
 
-	if !perms.Execute {
+	if executableOnly && !perms.Execute {
 		return nil, nil
 	}
 
@@ -234,7 +234,7 @@ func parseProcMap(line []byte) (*ProcMap, error) {
 	}, nil
 }
 
-func parseProcMapsExecutableModules(procMaps []byte) ([]*ProcMap, error) {
+func ParseProcMapsExecutableModules(procMaps []byte, executableOnly bool) ([]*ProcMap, error) {
 	var modules []*ProcMap
 	for len(procMaps) > 0 {
 		nl := bytes.IndexByte(procMaps, '\n')
@@ -249,7 +249,7 @@ func parseProcMapsExecutableModules(procMaps []byte) ([]*ProcMap, error) {
 		if len(line) == 0 {
 			continue
 		}
-		m, err := parseProcMap(line)
+		m, err := parseProcMap(line, executableOnly)
 		if err != nil {
 			return nil, err
 		}

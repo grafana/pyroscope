@@ -85,7 +85,7 @@ func (p *ProcTable) refresh(procMaps []byte) {
 	}
 	p.ranges = p.ranges[:0]
 	filesToKeep := make(map[file]struct{})
-	maps, err := parseProcMapsExecutableModules(procMaps)
+	maps, err := ParseProcMapsExecutableModules(procMaps, true)
 	if err != nil {
 		return
 	}

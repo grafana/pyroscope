@@ -92,7 +92,7 @@ typedef struct {
     // hashmap with Symbols and only store the ids here
     int64_t stack_len;
     uint32_t stack[STACK_MAX_LEN];
-} Event;
+} py_event;
 
 #define _STR_CONCAT(str1, str2) str1##str2
 #define STR_CONCAT(str1, str2) _STR_CONCAT(str1, str2)
@@ -111,41 +111,49 @@ typedef struct {
     int64_t symbol_counter;
     frame_ptr_t frame_ptr;
     int64_t python_stack_prog_call_cnt;
-    Event event;
+    py_event event;
 } sample_state_t;
 
-// todo rename all maps, prefix with py_
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
     __type(key, u32);
     __type(value, sample_state_t);
     __uint(max_entries, 1);
-} state_heap SEC(".maps");
+} py_state_heap SEC(".maps");
+
+// this is a dumb map to generate py_event go structure . TODO: fix this
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __type(key, u32);
+    __type(value, py_event);
+    __uint(max_entries, 1);
+} py_stubs_events SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, Symbol);
     __type(value, int32_t);
     __uint(max_entries, 16384);
-} symbols SEC(".maps");
+} py_symbols SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, pid_t);
     __type(value, PidData);
     __uint(max_entries, 10240); // todo
-} pid_config SEC(".maps");
+} py_pid_config SEC(".maps");
 
 #define PYTHON_PROG_IDX_ON_EVENT 0
 #define PYTHON_PROG_IDX_READ_PYTHON_STACK 1
 int read_python_stack(struct pt_regs* ctx);
 int on_event(struct pt_regs* ctx);
+
 struct {
     __uint(type, BPF_MAP_TYPE_PROG_ARRAY);
     __uint(max_entries, 2);
     __type(key, int);
     __array(values, int (void *)); //todo
-} progs SEC(".maps") = {
+} py_progs SEC(".maps") = {
         .values = {
                 [PYTHON_PROG_IDX_ON_EVENT] = (void *)&on_event,
                 [PYTHON_PROG_IDX_READ_PYTHON_STACK] = (void *)&read_python_stack,
@@ -157,7 +165,7 @@ struct {
     __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
     __uint(key_size, sizeof(u32));
     __uint(value_size, sizeof(u32));
-} events SEC(".maps") ;
+} py_events SEC(".maps") ;
 
 static inline __attribute__((__always_inline__)) void* get_thread_state(
         void* tls_base,
@@ -189,7 +197,7 @@ static inline __attribute__((__always_inline__)) void* get_thread_state(
 static inline __attribute__((__always_inline__)) int submit_sample(
         struct pt_regs* ctx,
         sample_state_t* state) {
-    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &state->event, sizeof(Event));
+    bpf_perf_event_output(ctx, &py_events, BPF_F_CURRENT_CPU, &state->event, sizeof(py_event));
     return 0; // todo return value
 }
 
@@ -198,7 +206,7 @@ static inline __attribute__((__always_inline__)) int submit_sample(
 // a macro (which we want to do in GET_STATE() macro below)
 static inline __attribute__((__always_inline__)) sample_state_t* get_state() {
     int zero = 0;
-    return bpf_map_lookup_elem(&state_heap, &zero);
+    return bpf_map_lookup_elem(&py_state_heap, &zero);
 }
 
 #define GET_STATE()                     \
@@ -300,7 +308,7 @@ SEC("perf_event")
 int on_event(struct pt_regs* ctx) {
     uint64_t pid_tgid = bpf_get_current_pid_tgid();
     pid_t pid = (pid_t)(pid_tgid >> 32);
-    PidData* pid_data = bpf_map_lookup_elem(&pid_config, &pid);
+    PidData* pid_data = bpf_map_lookup_elem(&py_pid_config, &pid);
     if (!pid_data) {
         return 0;
     }
@@ -311,7 +319,7 @@ int on_event(struct pt_regs* ctx) {
     state->cur_cpu = bpf_get_smp_processor_id();
     state->python_stack_prog_call_cnt = 0;
 
-    Event* event = &state->event;
+    py_event* event = &state->event;
     event->pid = pid;
     event->tid = (pid_t)pid_tgid;
     bpf_get_current_comm(&event->comm, sizeof(event->comm));
@@ -375,7 +383,7 @@ int on_event(struct pt_regs* ctx) {
                 sizeof(void*),
                 thread_state + pid_data->offsets.PyThreadState_frame);
         // jump to reading first set of Python frames
-        bpf_tail_call(ctx, &progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
+        bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
         // we won't ever get here
     }
 
@@ -480,14 +488,14 @@ static inline __attribute__((__always_inline__)) bool get_frame_data(
 static inline __attribute__((__always_inline__)) int64_t get_symbol_id(
         sample_state_t* state,
         Symbol* sym) {
-    int32_t* symbol_id_ptr = bpf_map_lookup_elem(&symbols, sym);
+    int32_t* symbol_id_ptr = bpf_map_lookup_elem(&py_symbols, sym);
     if (symbol_id_ptr) {
         return *symbol_id_ptr;
     }
     // the symbol is new, bump the counter
     int32_t symbol_id = state->symbol_counter * NUM_CPUS + state->cur_cpu;
     state->symbol_counter++;
-    bpf_map_update_elem(&symbols, sym, &symbol_id, BPF_ANY);
+    bpf_map_update_elem(&py_symbols, sym, &symbol_id, BPF_ANY);
     return symbol_id;
 }
 
@@ -496,7 +504,7 @@ int read_python_stack(struct pt_regs* ctx) {
     GET_STATE();
 
     state->python_stack_prog_call_cnt++;
-    Event* sample = &state->event;
+    py_event* sample = &state->event;
 
     Symbol sym = {};
     bool last_res = false;
@@ -526,7 +534,7 @@ int read_python_stack(struct pt_regs* ctx) {
     if (sample->stack_status == STACK_STATUS_TRUNCATED &&
         state->python_stack_prog_call_cnt < PYTHON_STACK_PROG_CNT) {
         // read next batch of frames
-        bpf_tail_call(ctx, &progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
+        bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
     }
 
     return submit_sample(ctx, state);
