@@ -10,26 +10,27 @@ import (
 	"encoding/binary"
 	"fmt"
 	"reflect"
-	"strings"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/pyroscope/ebpf/cpuonline"
+	"github.com/grafana/pyroscope/ebpf/pyrobpf"
+	"github.com/grafana/pyroscope/ebpf/python"
 	"github.com/grafana/pyroscope/ebpf/rlimit"
 	"github.com/grafana/pyroscope/ebpf/sd"
 	"github.com/grafana/pyroscope/ebpf/symtab"
 	"github.com/samber/lo"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -Wall -fpie -Wno-unused-variable -Wno-unused-function" profile bpf/profile.bpf.c -- -I./bpf/libbpf -I./bpf/vmlinux/
-
 type SessionOptions struct {
-	CollectUser   bool
-	CollectKernel bool
-	CacheOptions  symtab.CacheOptions
-	SampleRate    int
+	CollectUser               bool
+	CollectKernel             bool
+	UnknownSymbolModuleOffset bool // use libfoo.so+0xef instead of libfoo.so for unknown symbols
+	//PythonEnabled             bool
+	CacheOptions symtab.CacheOptions
+	SampleRate   int
 }
 
 type Session interface {
@@ -55,7 +56,9 @@ type session struct {
 
 	symCache *symtab.SymbolCache
 
-	bpf profileObjects
+	bpf pyrobpf.ProfileObjects
+
+	pyperf *python.Perf
 
 	options     SessionOptions
 	roundNumber int
@@ -89,26 +92,30 @@ func (s *session) Start() error {
 		return err
 	}
 
-	opts := &ebpf.CollectionOptions{}
-	if err := loadProfileObjects(&s.bpf, opts); err != nil {
+	opts := &ebpf.CollectionOptions{
+		Programs: ebpf.ProgramOptions{
+			LogLevel: ebpf.LogLevelInstruction | ebpf.LogLevelStats,
+			LogSize:  100 * 1024 * 1024,
+		},
+	}
+	if err := pyrobpf.LoadProfileObjects(&s.bpf, opts); err != nil {
 		return fmt.Errorf("load bpf objects: %w", err)
 	}
+	perf, err := python.NewPerf(s.logger, s.bpf.ProfileMaps.PyEvents, s.bpf.ProfileMaps.PyPidConfig, s.bpf.PySymbols)
+	if err != nil {
+		return fmt.Errorf("pyperf creationg error %w", err)
+	}
+	s.pyperf = perf
+
 	if err = s.initArgs(); err != nil {
 		return fmt.Errorf("init bpf args: %w", err)
 	}
-	if err = s.attachPerfEvents(); err != nil {
+	s.perfEvents, err = attachPerfEvents(s.options.SampleRate, s.bpf.DoPerfEvent)
+	if err != nil {
+		s.Stop()
 		return fmt.Errorf("attach perf events: %w", err)
 	}
 	return nil
-}
-
-type sf struct {
-	pid    uint32
-	count  uint32
-	kStack []byte
-	uStack []byte
-	comm   string
-	labels *sd.Target
 }
 
 func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
@@ -117,13 +124,29 @@ func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value ui
 	s.symCache.NextRound()
 	s.roundNumber++
 
+	err := s.collectPythonProfile(cb)
+	if err != nil {
+		return err
+	}
+
+	err = s.collectRegularProfile(cb)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
+	sb := &stackBuilder{}
+
 	keys, values, batch, err := s.getCountsMapValues()
 	if err != nil {
 		return fmt.Errorf("get counts map: %w", err)
 	}
 
-	var sfs []sf
 	knownStacks := map[uint32]bool{}
+
 	for i := range keys {
 		ck := &keys[i]
 		value := values[i]
@@ -138,44 +161,38 @@ func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value ui
 		if labels == nil {
 			continue
 		}
+		proc := s.symCache.GetProcTable(symtab.PidKey(ck.Pid))
+		if proc.Python() {
+			s.pyperf.AddPythonPID(ck.Pid)
+			continue
+		}
 
 		var uStack []byte
 		var kStack []byte
 		if s.options.CollectUser {
-			uStack = s.getStack(ck.UserStack)
+			uStack = s.GetStack(ck.UserStack)
 		}
 		if s.options.CollectKernel {
-			kStack = s.getStack(ck.KernStack)
+			kStack = s.GetStack(ck.KernStack)
 		}
-		sfs = append(sfs, sf{
-			pid:    ck.Pid,
-			uStack: uStack,
-			kStack: kStack,
-			count:  value,
-			comm:   getComm(ck),
-			labels: labels,
-		})
-	}
 
-	sb := stackBuilder{}
-
-	for _, it := range sfs {
-		stats := stackResolveStats{}
-		sb.rest()
-		sb.append(it.comm)
+		stats := StackResolveStats{}
+		sb.reset()
+		sb.append(proc.Comm())
 		if s.options.CollectUser {
-			s.walkStack(&sb, it.uStack, it.pid, &stats)
+			s.WalkStack(sb, uStack, proc, &stats)
 		}
 		if s.options.CollectKernel {
-			s.walkStack(&sb, it.kStack, 0, &stats)
+			s.WalkStack(sb, kStack, s.symCache.GetKallsyms(), &stats)
 		}
 		if len(sb.stack) == 1 {
 			continue // only comm
 		}
 		lo.Reverse(sb.stack)
-		cb(it.labels, sb.stack, uint64(it.count), it.pid)
-		s.debugDump(it, stats, sb)
+		cb(labels, sb.stack, uint64(value), ck.Pid)
+		s.collectMetrics(labels, &stats, sb)
 	}
+
 	if err = s.clearCountsMap(keys, batch); err != nil {
 		return fmt.Errorf("clear counts map %w", err)
 	}
@@ -185,11 +202,68 @@ func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value ui
 	return nil
 }
 
-var unknownStacks = 0
+func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
 
-func (s *session) debugDump(it sf, stats stackResolveStats, sb stackBuilder) {
+	pyEvents := s.pyperf.ResetEvents()
+	if len(pyEvents) == 0 {
+		return nil
+	}
+	pySymbols, err := s.pyperf.GetSymbols() // todo keep it between rounds and refresh only if symbol not found
+	if err != nil {
+		return fmt.Errorf("pyperf symbols refresh failed %w", err)
+	}
+	sb := &stackBuilder{}
+	for _, event := range pyEvents {
+		stats := StackResolveStats{}
+		labels := s.targetFinder.FindTarget(event.Pid)
+		if labels == nil {
+			continue
+		}
+		proc := s.symCache.GetProcTable(symtab.PidKey(event.Pid))
+		sb.reset()
+		sb.append(proc.Comm())
+		var kStack []byte
+		if event.StackStatus == 1 {
+			//todo increase metric here or in pyperf
+		} else {
+			begin := len(sb.stack)
+			if event.StackStatus == 2 {
+				sb.append("pyperf_truncated")
+			}
+			for i := 0; i < int(event.StackLen); i++ {
+				sym, ok := pySymbols[event.Stack[i]]
+				if ok {
+					filename := cStringFromI8Unsafe(sym.File[:])
+					classname := cStringFromI8Unsafe(sym.Classname[:])
+					name := cStringFromI8Unsafe(sym.Name[:])
+					if classname == "" {
+						sb.append(fmt.Sprintf("%s %s", filename, name))
+					} else {
+						sb.append(fmt.Sprintf("%s %s.%s", filename, classname, name))
+					}
+				} else {
+					sb.append("pyperf_unknown")
+					//todo metric
+				}
+			}
+
+			end := len(sb.stack)
+			lo.Reverse(sb.stack[begin:end]) //todo do not reverse, but put in place from the first run
+		}
+		if s.options.CollectKernel && event.KernStack != -1 {
+			kStack = s.GetStack(event.KernStack)
+			s.WalkStack(sb, kStack, s.symCache.GetKallsyms(), &stats)
+		}
+		lo.Reverse(sb.stack)
+		cb(labels, sb.stack, uint64(1), event.Pid)
+		s.collectMetrics(labels, &stats, sb)
+	}
+	return nil
+}
+
+func (s *session) collectMetrics(labels *sd.Target, stats *StackResolveStats, sb *stackBuilder) {
 	m := s.options.CacheOptions.Metrics
-	serviceName := it.labels.ServiceName()
+	serviceName := labels.ServiceName()
 	if m != nil {
 		m.KnownSymbols.WithLabelValues(serviceName).Add(float64(stats.known))
 		m.UnknownSymbols.WithLabelValues(serviceName).Add(float64(stats.unknownSymbols))
@@ -197,31 +271,6 @@ func (s *session) debugDump(it sf, stats stackResolveStats, sb stackBuilder) {
 	}
 	if len(sb.stack) > 2 && stats.unknownSymbols+stats.unknownModules > stats.known {
 		m.UnknownStacks.WithLabelValues(serviceName).Inc()
-		unknownStacks++
-		if unknownStacks%10 == 0 && serviceName == "ebpf/pyroscope-ebpf/profiler" {
-			rawStack := strings.Builder{}
-			for i := 0; i < len(it.uStack); i += 8 {
-				PC := binary.LittleEndian.Uint64(it.uStack[i : i+8])
-				if PC == 0 {
-					break
-				}
-				rawStack.WriteString(fmt.Sprintf("%016x|", PC))
-			}
-			for i := 0; i < len(it.kStack); i += 8 {
-				PC := binary.LittleEndian.Uint64(it.kStack[i : i+8])
-				if PC == 0 {
-					break
-				}
-				rawStack.WriteString(fmt.Sprintf("%016x|", PC))
-			}
-			level.Debug(s.logger).Log(
-				"msg", "stack with unknown symbols",
-				"pid", it.pid,
-				"symbols", strings.Join(sb.stack, ";"),
-				"raw", rawStack.String(),
-			)
-		}
-
 	}
 }
 
@@ -230,7 +279,10 @@ func (s *session) Stop() {
 		_ = pe.Close()
 	}
 	s.perfEvents = nil
-	s.bpf.Close()
+	_ = s.bpf.Close()
+	if s.pyperf != nil {
+		s.pyperf.Close()
+	}
 }
 
 func (s *session) Update(options SessionOptions) error {
@@ -252,12 +304,6 @@ func (s *session) DebugInfo() interface{} {
 
 func (s *session) initArgs() error {
 	var zero uint32
-	var tgidFilter uint32
-	if s.pid <= 0 {
-		tgidFilter = 0
-	} else {
-		tgidFilter = uint32(s.pid)
-	}
 	collectUser := uint8(0)
 	collectKernel := uint8(0)
 	if s.options.CollectUser {
@@ -266,8 +312,7 @@ func (s *session) initArgs() error {
 	if s.options.CollectKernel {
 		collectKernel = 1
 	}
-	arg := &profileBssArg{
-		TgidFilter:    tgidFilter,
+	arg := &pyrobpf.ProfileBssArg{
 		CollectUser:   collectUser,
 		CollectKernel: collectKernel,
 	}
@@ -277,53 +322,55 @@ func (s *session) initArgs() error {
 	return nil
 }
 
-func (s *session) attachPerfEvents() error {
+func attachPerfEvents(sampleRate int, prog *ebpf.Program) ([]*perfEvent, error) {
+	var perfEvents []*perfEvent
 	var cpus []uint
 	var err error
 	if cpus, err = cpuonline.Get(); err != nil {
-		return fmt.Errorf("get cpuonline: %w", err)
+		return nil, fmt.Errorf("get cpuonline: %w", err)
 	}
 	for _, cpu := range cpus {
-		pe, err := newPerfEvent(int(cpu), s.options.SampleRate)
+		pe, err := newPerfEvent(int(cpu), sampleRate)
 		if err != nil {
-			return fmt.Errorf("new perf event: %w", err)
+			return perfEvents, fmt.Errorf("new perf event: %w", err)
 		}
-		s.perfEvents = append(s.perfEvents, pe)
+		perfEvents = append(perfEvents, pe)
 
-		err = pe.attachPerfEvent(s.bpf.profilePrograms.DoPerfEvent)
+		err = pe.attachPerfEvent(prog)
 		if err != nil {
-			return fmt.Errorf("attach perf event: %w", err)
+			return perfEvents, fmt.Errorf("attach perf event: %w", err)
 		}
 	}
-	return nil
+	return perfEvents, nil
 }
 
-func (s *session) getStack(stackId int64) []byte {
+func (s *session) GetStack(stackId int64) []byte {
 	if stackId < 0 {
 		return nil
 	}
 	stackIdU32 := uint32(stackId)
-	res, err := s.bpf.profileMaps.Stacks.LookupBytes(stackIdU32)
+	res, err := s.bpf.ProfileMaps.Stacks.LookupBytes(stackIdU32)
 	if err != nil {
 		return nil
 	}
 	return res
 }
 
-type stackResolveStats struct {
+type StackResolveStats struct {
 	known          uint32
 	unknownSymbols uint32
 	unknownModules uint32
 }
 
-func (s *stackResolveStats) add(other stackResolveStats) {
+func (s *StackResolveStats) add(other StackResolveStats) {
 	s.known += other.known
 	s.unknownSymbols += other.unknownSymbols
 	s.unknownModules += other.unknownModules
 }
 
+// WalkStack goes over stack, resolves symbols and appends top sb
 // stack is an array of 127 uint64s, where each uint64 is an instruction pointer
-func (s *session) walkStack(sb *stackBuilder, stack []byte, pid uint32, stats *stackResolveStats) {
+func (s *session) WalkStack(sb *stackBuilder, stack []byte, resolver symtab.SymbolTable, stats *StackResolveStats) {
 	if len(stack) == 0 {
 		return
 	}
@@ -334,15 +381,18 @@ func (s *session) walkStack(sb *stackBuilder, stack []byte, pid uint32, stats *s
 		if instructionPointer == 0 {
 			break
 		}
-		sym := s.symCache.Resolve(pid, instructionPointer)
+		sym := resolver.Resolve(instructionPointer)
 		var name string
 		if sym.Name != "" {
 			name = sym.Name
 			stats.known++
 		} else {
 			if sym.Module != "" {
-				//name = fmt.Sprintf("%s+%x", sym.Module, sym.Start) // todo expose an option to enable this
-				name = sym.Module
+				if s.options.UnknownSymbolModuleOffset {
+					name = fmt.Sprintf("%s+%x", sym.Module, sym.Start)
+				} else {
+					name = sym.Module
+				}
 				stats.unknownSymbols++
 			} else {
 				name = "[unknown]"
@@ -375,30 +425,29 @@ func (s *session) updateSampleRate(sampleRate int) error {
 	return nil
 }
 
-func getComm(k *profileSampleKey) string {
-	res := ""
-	// todo remove unsafe
-
-	sh := (*reflect.StringHeader)(unsafe.Pointer(&res))
-	sh.Data = uintptr(unsafe.Pointer(&k.Comm[0]))
-	for _, c := range k.Comm {
-		if c != 0 {
-			sh.Len++
-		} else {
-			break
-		}
-	}
-	return res
-}
-
 type stackBuilder struct {
 	stack []string
 }
 
-func (s *stackBuilder) rest() {
+func (s *stackBuilder) reset() {
 	s.stack = s.stack[:0]
 }
 
 func (s *stackBuilder) append(sym string) {
 	s.stack = append(s.stack, sym)
+}
+
+func cStringFromI8Unsafe(tok []int8) string {
+	i := 0
+	for ; i < len(tok); i++ {
+		if tok[i] == 0 {
+			break
+		}
+	}
+
+	res := ""
+	sh := (*reflect.StringHeader)(unsafe.Pointer(&res))
+	sh.Data = uintptr(unsafe.Pointer(&tok[0]))
+	sh.Len = i
+	return res
 }

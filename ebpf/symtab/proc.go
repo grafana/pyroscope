@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -21,12 +22,18 @@ type ProcTable struct {
 	file2Table map[file]*ElfTable
 	options    ProcTableOptions
 	rootFS     string
+	comm       string
+	python     bool
 }
 
 type ProcTableDebugInfo struct {
 	ElfTables map[string]elf.SymTabDebugInfo `river:"elfs,block,optional"`
 	Size      int                            `river:"size,attr,optional"`
 	Pid       int                            `river:"pid,attr,optional"`
+}
+
+func (p *ProcTable) Comm() string {
+	return p.comm
 }
 
 func (p *ProcTable) DebugInfo() ProcTableDebugInfo {
@@ -50,11 +57,18 @@ type ProcTableOptions struct {
 }
 
 func NewProcTable(logger log.Logger, options ProcTableOptions) *ProcTable {
+	comm, _ := os.ReadFile(fmt.Sprintf("/proc/%d/comm", options.Pid))
+	exePath, _ := os.Readlink(fmt.Sprintf("/proc/%d/exe", options.Pid))
+	exe := filepath.Base(exePath)
+	python := strings.HasPrefix(exe, "python")
+
 	return &ProcTable{
 		logger:     logger,
 		file2Table: make(map[file]*ElfTable),
 		options:    options,
 		rootFS:     path.Join("/proc", strconv.Itoa(options.Pid), "root"),
+		comm:       string(comm),
+		python:     python,
 	}
 }
 
@@ -65,6 +79,9 @@ type elfRange struct {
 }
 
 func (p *ProcTable) Refresh() {
+	if p.python {
+		return // we don't need modules for python until we implement collecting native python stacks
+	}
 	procMaps, err := os.ReadFile(fmt.Sprintf("/proc/%d/maps", p.options.Pid))
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
@@ -75,17 +92,17 @@ func (p *ProcTable) Refresh() {
 		}
 		return // todo return err
 	}
-	p.refresh(procMaps)
+	p.refreshProcMap(procMaps)
 }
 
-func (p *ProcTable) refresh(procMaps []byte) {
+func (p *ProcTable) refreshProcMap(procMaps []byte) {
 	// todo support perf map files
 	for i := range p.ranges {
 		p.ranges[i].elfTable = nil
 	}
 	p.ranges = p.ranges[:0]
 	filesToKeep := make(map[file]struct{})
-	maps, err := parseProcMapsExecutableModules(procMaps)
+	maps, err := ParseProcMapsExecutableModules(procMaps, true)
 	if err != nil {
 		return
 	}
@@ -153,6 +170,10 @@ func (p *ProcTable) createElfTable(m *ProcMap) *ElfTable {
 	}
 	e := NewElfTable(p.logger, m, p.rootFS, m.Pathname, p.options.ElfTableOptions)
 	return e
+}
+
+func (p *ProcTable) Python() bool {
+	return p.python
 }
 
 func (p *ProcTable) Cleanup() {

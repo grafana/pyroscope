@@ -10,7 +10,8 @@ get-libbpf-headers:
 		curl -O $(LIBBPF_PREFIX)/src/bpf_endian.h && \
 		curl -O $(LIBBPF_PREFIX)/src/bpf_helper_defs.h && \
 		curl -O $(LIBBPF_PREFIX)/src/bpf_helpers.h && \
-		curl -O $(LIBBPF_PREFIX)/src/bpf_tracing.h
+		curl -O $(LIBBPF_PREFIX)/src/bpf_tracing.h && \
+		curl -O $(LIBBPF_PREFIX)/src/bpf_core_read.h
 
 .PHONY: get-vmlinux-header
 get-vmlinux-header:

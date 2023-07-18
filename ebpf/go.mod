@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/avvmoto/buf-readerat v0.0.0-20171115124131-a17c8cb89270
 	github.com/cilium/ebpf v0.11.0
+	github.com/edsrzf/mmap-go v1.1.0
 	github.com/go-kit/log v0.2.1
 	github.com/google/pprof v0.0.0-20230705174524-200ffdc848b8
 	github.com/hashicorp/golang-lru/v2 v2.0.3
