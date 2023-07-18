@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package push.v1;
+
+import "types/v1/types.proto";
+
+service PusherService {
+  rpc Push(PushRequest) returns (PushResponse) {}
+}
+
+message PushResponse {}
+
+// WriteRawRequest writes a pprof profile
+message PushRequest {
+  // series is a set raw pprof profiles and accompanying labels
+  repeated RawProfileSeries series = 1;
+}
+
+// RawProfileSeries represents the pprof profile and its associated labels
+message RawProfileSeries {
+  // LabelPair is the key value pairs to identify the corresponding profile
+  repeated types.v1.LabelPair labels = 1;
+
+  // samples are the set of profile bytes
+  repeated RawSample samples = 2;
+}
+
+// RawSample is the set of bytes that correspond to a pprof profile
+message RawSample {
+  // raw_profile is the set of bytes of the pprof profile
+  bytes raw_profile = 1;
+  // unique ID of the profile
+  string ID = 2;
+}

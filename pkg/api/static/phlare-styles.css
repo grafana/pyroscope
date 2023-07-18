@@ -1,0 +1,38 @@
+a {
+    color: #2864bb;
+    text-decoration: none;
+}
+
+a:hover, a:active {
+    text-decoration: underline;
+}
+
+.header .phlare-brand {
+    max-width: 150px;
+}
+
+@media (min-width: 576px) {
+    .header .phlare-brand {
+        max-height: calc(1.375rem + 1.5vw); /* same as h1 font-size */
+    }
+}
+
+@media (min-width: 1200px) {
+    .header .phlare-brand {
+        max-height: 2.5rem; /* same as h1 font-size */
+    }
+}
+
+
+.service-row h2 {
+    display: inline;
+    font-size: var(--bs-body-font-size);
+    font-weight: bolder !important;
+    line-height: var(--bs-body-line-height);
+}
+
+/* fit table column to the width of the content */
+.fit-width {
+    width:0.1%;
+    white-space: nowrap;
+}

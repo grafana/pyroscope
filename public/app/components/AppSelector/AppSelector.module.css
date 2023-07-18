@@ -1,0 +1,13 @@
+.appSelectorModal {
+  /* upstream code is positioned based on a label */
+  left: initial !important;
+  max-width: calc(100vw - 290px);
+}
+
+.noData {
+  width: 600px;
+  height: 300px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

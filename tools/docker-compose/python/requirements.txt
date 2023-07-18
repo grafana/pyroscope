@@ -1,0 +1,5 @@
+mprofile==0.0.14
+protobuf==3.20.3
+git+https://github.com/simonswine/pypprof.git@a5b539b839f9eb91be9277ae22c1698eac9e5ce8#egg=pypprof
+six==1.16.0
+git+https://github.com/simonswine/zprofile.git@100934da015661b3baf7c7c45f68293546ba77f5#egg=zprofile

@@ -1,0 +1,81 @@
+networks:
+  phlare:
+
+
+services:
+  phlare:
+    image: grafana/phlare:latest
+    ports:
+      - "4100:4100"
+    command: -config.file=/etc/phlare/config.yaml
+    volumes:
+      - ./phlare.yaml:/etc/phlare/config.yaml
+      - data:/data
+    networks:
+      - phlare
+
+  grafana:
+    image: grafana/grafana:main
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_FEATURE_TOGGLES_ENABLE=flameGraph
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_DIAGNOSTICS_PROFILING_ENABLED=true
+      - GF_DIAGNOSTICS_PROFILING_ADDR=0.0.0.0
+      - GF_DIAGNOSTICS_PROFILING_PORT=6060
+    volumes:
+      - ./datasource.yaml:/etc/grafana/provisioning/datasources/datasources.yml
+    networks:
+      - phlare
+
+  python:
+    build:
+      context: python
+      dockerfile: Dockerfile
+    ports:
+      - 8081:8080
+    networks:
+      - phlare
+  rust:
+    build:
+      context: rust
+      dockerfile: Dockerfile
+    ports:
+      - 8082:8080
+    networks:
+      - phlare
+  java-simple:
+    build:
+      context: java/simple
+      dockerfile: Dockerfile
+    security_opt:
+      - seccomp:seccomp.json
+    ports:
+      - 8083:8080
+    networks:
+      - phlare
+  java-springboot:
+    build:
+      context: java/springboot
+      dockerfile: Dockerfile
+    security_opt:
+      - seccomp:seccomp.json
+    ports:
+      - 8084:8080
+    networks:
+      - phlare
+  golang:
+    build:
+      context: golang
+      dockerfile: Dockerfile
+    ports:
+      - 8085:6060
+    networks:
+      - phlare
+
+volumes:
+  data:
+
+    # yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json

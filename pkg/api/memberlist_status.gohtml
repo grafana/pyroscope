@@ -1,0 +1,295 @@
+{{- /*gotype: github.com/grafana/dskit/kv/memberlist.StatusPageData */ -}}
+<!DOCTYPE html>
+<html class="h-100">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Memberlist: Grafana Phlare</title>
+
+    <link rel="stylesheet" href="{{ AddPathPrefix "/static/bootstrap-5.1.3.min.css" }}">
+    <link rel="stylesheet" href="{{ AddPathPrefix "/static/bootstrap-icons-1.8.1.css" }}">
+    <link rel="stylesheet" href="{{ AddPathPrefix "/static/phlare-styles.css" }}">
+    <script src="{{ AddPathPrefix "/static/bootstrap-5.1.3.bundle.min.js" }}"></script>
+</head>
+<body class="d-flex flex-column h-100">
+<main class="flex-shrink-0">
+    <div class="container">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h1>Memberlist: Grafana Phlare</h1>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="{{AddPathPrefix "/"}}">
+                    <img alt="Phlare logo" class="phlare-brand" src="{{ AddPathPrefix "/static/phlare-logo.png" }}">
+                </a>
+            </div>
+        </div>
+        <div class="row my-3">
+            <div class="col-12">
+                {{ $HealthScore := .Memberlist.GetHealthScore }}
+                {{ if eq $HealthScore 0 }}
+                    <div class="alert alert-success" role="alert">
+                        Memberlist cluster has <strong>{{ .Memberlist.NumMembers }}</strong> members and it is <strong>healthy</strong>.
+                    </div>
+                {{ else }}
+                    <div class="alert alert-warning" role="alert">
+                        Memberlist cluster has <strong>{{ .Memberlist.NumMembers }}</strong> members but health score
+                        is {{ $HealthScore }} (lower is better, 0 = healthy).
+                    </div>
+                {{ end }}
+            </div>
+
+            <h2>KV Store</h2>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped">
+                    <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th class="fit-width">Codec</th>
+                        <th class="fit-width">
+                            <span class="text-nowrap">
+                                Version
+                                <i class="bi bi-info-circle"
+                                   data-bs-toggle="tooltip" data-bs-placement="top"
+                                   title="Note that value 'version' is node-specific. It starts with 0 (on restart), and increases on each received update."></i>
+                            </span>
+                        </th>
+                        <th class="fit-width">Actions</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    {{ range $k, $v := .Store }}
+                        <tr>
+                            <td class="align-middle font-monospace small">{{ $k }}</td>
+                            <td class="align-middle font-monospace small fit-width">{{ $v.CodecID }}</td>
+                            <td class="align-middle font-monospace small fit-width">{{ $v.Version }}</td>
+                            <td class="fit-width">
+                                <span class="text-nowrap">
+                                    <a href="?viewKey={{ $k }}&format=json-pretty" title="JSON pretty" class="text-decoration-none">
+                                        <i class="bi bi-filetype-json text-success"></i>
+                                    </a>
+                                    <a href="?viewKey={{ $k }}&format=json" title="JSON" class="text-decoration-none">
+                                        <i class="bi bi-filetype-json"></i>
+                                    </a>
+                                    <a href="?viewKey={{ $k }}&format=struct" title="Struct" class="text-decoration-none">
+                                        <i class="bi bi-file-earmark-code"></i>
+                                    </a>
+                                    <a href="?downloadKey={{ $k }}" title="Download" class="text-decoration-none">
+                                        <i class="bi bi-file-earmark-arrow-down"></i>
+                                    </a>
+                                </span>
+                            </td>
+                        </tr>
+                    {{ end }}
+                    </tbody>
+                </table>
+            </div>
+
+            <h2>Memberlist Cluster Members</h2>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped">
+                    <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th class="fit-width">
+                            <span class="text-nowrap">
+                                State
+                                <i class="bi bi-info-circle"
+                                   data-bs-toggle="tooltip" data-bs-placement="left"
+                                   title="State: 0 = Alive, 1 = Suspect, 2 = Dead, 3 = Left"></i>
+                            </span>
+                        </th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    {{ range .SortedMembers }}
+                        <tr>
+                            <td class="align-middle font-monospace small">{{ .Name }}</td>
+                            <td class="align-middle font-monospace small">{{ .Address }}</td>
+                            <td class="fit-width text-center py-1">
+                                {{ if eq .State 0}}
+                                    <span class="badge bg-success">Alive</span>
+                                {{ else if eq .State 1 }}
+                                    <span class="badge bg-warning text-dark">Suspect</span>
+                                {{ else if eq .State 2 }}
+                                    <span class="badge bg-danger">Dead</span>
+                                {{ else if eq.State 3}}
+                                    <span class="badge bg-info">Left</span>
+                                {{ else }}
+                                    <span class="badge bg-info">Unknown: {{ .State }}</span>
+                                {{ end }}
+                            </td>
+                        </tr>
+                    {{ end }}
+                    </tbody>
+                </table>
+            </div>
+
+            <h2>Message History
+                {{ if .MessageHistoryBufferBytes }}
+                    <a class="btn btn-outline-warning" href="?deleteMessages=true" data-bs-toggle="tooltip"
+                       data-bs-placement="right" title="Delete sent and received messages buffer">Flush</a>
+                {{ end }}
+            </h2>
+
+            {{ if .MessageHistoryBufferBytes }}
+                <div class="accordion">
+                    <div class="accordion-item">
+                        <h3 class="accordion-header" id="heading-received-messages">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#collapse-received-messages" aria-expanded="false"
+                                    aria-controls="collapse-received-messages">
+                                Received Messages
+                            </button>
+                        </h3>
+                        <div id="collapse-received-messages" class="accordion-collapse collapse"
+                             aria-labelledby="heading-received-messages">
+                            <div class="accordion-body p-0 table-responsive">
+                                {{ if .ReceivedMessages }}
+                                    <table class="table table-hover table-striped">
+                                        <thead>
+                                        <tr>
+                                            <th class="fit-width">ID</th>
+                                            <th>Time</th>
+                                            <th>Key</th>
+                                            <th class="fit-width">Size (B)</th>
+                                            <th class="fit-width">Codec</th>
+                                            <th class="fit-width">
+                                                <span class="text-nowrap">
+                                                    Version
+                                                    <i class="bi bi-info-circle"
+                                                       data-bs-toggle="tooltip" data-bs-placement="top"
+                                                       title="Version after update. 0 = No change."></i>
+                                                </span>
+                                            </th>
+                                            <th>Changes</th>
+                                            <th class="fit-width">Actions</th>
+                                        </tr>
+                                        </thead>
+
+                                        <tbody class="font-monospace small">
+                                        {{ range .ReceivedMessages }}
+                                            <tr>
+                                                <td class="font-monospace small fit-width">{{ .ID }}</td>
+                                                <td class="font-monospace small">{{ .Time.Format "15:04:05.000" }}</td>
+                                                <td class="font-monospace small">{{ .Pair.Key }}</td>
+                                                <td class="font-monospace small fit-width">{{ .Pair.Value | len }}</td>
+                                                <td class="font-monospace small fit-width">{{ .Pair.Codec }}</td>
+                                                <td class="font-monospace small fit-width">{{ .Version }}</td>
+                                                <td class="font-monospace small">{{ StringsJoin .Changes ", " }}</td>
+                                                <td class="fit-width">
+                                                    <span class="text-nowrap">
+                                                        <a href="?viewMsg={{ .ID }}&format=json-pretty" class="text-decoration-none">
+                                                            <i class="bi bi-filetype-json text-success"></i>
+                                                        </a>
+                                                        <a href="?viewMsg={{ .ID }}&format=json" class="text-decoration-none">
+                                                            <i class="bi bi-filetype-json"></i>
+                                                        </a>
+                                                        <a href="?viewMsg={{ .ID }}&format=struct" class="text-decoration-none">
+                                                            <i class="bi bi-file-earmark-code"></i>
+                                                        </a>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        {{ end }}
+                                        </tbody>
+
+                                    </table>
+                                {{ else }}
+                                    <span><i>There are no received messages.</i></span>
+                                {{ end }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h3 class="accordion-header" id="heading-sent-messages">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#collapse-sent-messages" aria-expanded="false"
+                                    aria-controls="collapse-sent-messages">
+                                Sent Messages
+                            </button>
+                        </h3>
+                        <div id="collapse-sent-messages" class="accordion-collapse collapse"
+                             aria-labelledby="heading-sent-messages">
+                            <div class="accordion-body p-0 table-responsive">
+
+                                {{ if .SentMessages }}
+                                    <table class="table table-hover table-striped">
+                                        <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Time</th>
+                                            <th>Key</th>
+                                            <th>Size</th>
+                                            <th>Codec</th>
+                                            <th>Version</th>
+                                            <th>Changes</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                        </thead>
+
+                                        <tbody>
+                                        {{ range .SentMessages }}
+                                            <tr>
+                                                <td class="font-monospace small">{{ .ID }}</td>
+                                                <td class="font-monospace small">{{ .Time.Format "15:04:05.000" }}</td>
+                                                <td class="font-monospace small">{{ .Pair.Key }}</td>
+                                                <td class="font-monospace small">{{ .Pair.Value | len }}</td>
+                                                <td class="font-monospace small">{{ .Pair.Codec }}</td>
+                                                <td class="font-monospace small">{{ .Version }}</td>
+                                                <td class="font-monospace small">{{ StringsJoin .Changes ", " }}</td>
+                                                <td>
+                                                    <span class="text-nowrap">
+                                                        <a href="?viewMsg={{ .ID }}&format=json-pretty" class="text-decoration-none">
+                                                            <i class="bi bi-filetype-json text-success"></i>
+                                                        </a>
+                                                        <a href="?viewMsg={{ .ID }}&format=json" class="text-decoration-none">
+                                                            <i class="bi bi-filetype-json"></i>
+                                                        </a>
+                                                        <a href="?viewMsg={{ .ID }}&format=struct" class="text-decoration-none">
+                                                            <i class="bi bi-file-earmark-code"></i>
+                                                        </a>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        {{ end }}
+                                        </tbody>
+                                    </table>
+
+                                {{ else }}
+                                    <span><i>There are no sent messages.</i></span>
+                                {{ end }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {{ else }}
+
+                <div class="col-12">
+                    <div class="alert alert-info" role="alert">
+                        Message history buffer is disabled.
+                        <br />Enable it by setting the <code>-memberlist.message-history-buffer-bytes</code> flag or the corresponding config key.
+                    </div>
+                </div>
+            {{ end }}
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3 bg-light">
+    <div class="container">
+        <small class="text-muted">Status @ {{ .Now.Format "2006-01-02 15:04:05.000" }}</small>
+    </div>
+</footer>
+<script type="text/javascript">
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+</script>
+</body>
+</html>

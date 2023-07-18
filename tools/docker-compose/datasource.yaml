@@ -1,0 +1,11 @@
+apiVersion: 1
+datasources:
+  - access: proxy
+    basicAuth: false
+    editable: true
+    isDefault: true
+    name: phlare
+    type: phlare
+    uid: phlare
+    url: http://phlare:4100
+    version: 1

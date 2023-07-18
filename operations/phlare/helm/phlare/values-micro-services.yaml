@@ -1,0 +1,77 @@
+# Default values for phlare.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+phlare:
+  components:
+    querier:
+      kind: Deployment
+      replicaCount: 3
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 1
+    query-frontend:
+      kind: Deployment
+      replicaCount: 2
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 100m
+    query-scheduler:
+      kind: Deployment
+      replicaCount: 2
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 100m
+    distributor:
+      kind: Deployment
+      replicaCount: 2
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 500m
+    agent:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 128Mi
+          cpu: 50m
+    ingester:
+      kind: StatefulSet
+      replicaCount: 3
+      terminationGracePeriodSeconds: 600
+      resources:
+        limits:
+          memory: 16Gi
+        requests:
+          memory: 8Gi
+          cpu: 1
+    store-gateway:
+      kind: StatefulSet
+      replicaCount: 3
+      persistence:
+      # The store-gateway needs not need persistent storage, but we still run it as a StatefulSet
+      # This is to avoid having blocks of data being
+        enabled: false
+      resources:
+        limits:
+          memory: 16Gi
+        requests:
+          memory: 8Gi
+          cpu: 1
+
+minio:
+  enabled: true

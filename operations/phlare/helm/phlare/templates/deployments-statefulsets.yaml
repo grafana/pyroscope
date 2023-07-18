@@ -1,0 +1,157 @@
+{{- $global := . }}
+{{- range $component, $cfg := (fromYaml (include "phlare.components" .)) }}
+{{- with $global }}
+{{-  $values := mustMergeOverwrite (deepCopy .Values.phlare ) ($cfg | default dict)}}
+---
+apiVersion: apps/v1
+kind: {{ $cfg.kind }}
+metadata:
+  name: {{ $cfg.name }}
+  labels:
+    {{- include "phlare.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component | quote }}
+spec:
+{{- if eq $values.kind "StatefulSet" }}
+  serviceName: {{ $values.name }}-headless
+  podManagementPolicy: Parallel
+{{- end }}
+{{- if hasKey $values "replicaCount" }}
+  replicas: {{ $values.replicaCount }}
+{{- end }}
+  selector:
+    matchLabels:
+      {{- include "phlare.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component | quote }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with $values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "phlare.templateLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ $component | quote }}
+        name: {{ if eq $component "all" }}"phlare"{{ else }}"{{ $component }}"{{ end }}
+    spec:
+      {{- with $values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "phlare.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml $values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ if eq $component "all" }}"phlare"{{ else }}"{{ $component }}"{{ end }}
+          securityContext:
+            {{- toYaml $values.securityContext | nindent 12 }}
+          image: "{{ $values.image.repository }}:{{ $values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ $values.image.pullPolicy }}
+          args:
+            - "-target={{ $component }}"
+            - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "phlare.fullname" .}}"
+            - "-memberlist.join=dns+{{ include "phlare.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.phlare.memberlist.port }}"
+          {{- if eq $component "agent" }}
+            - "-client.url=http://{{ include "phlare.fullname" . }}-distributor.{{ .Release.Namespace }}.svc.cluster.local.:{{ $values.service.port }}"
+          {{- end }}
+            - "-config.file=/etc/phlare/config.yaml"
+            - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
+          {{- range $key, $value := $values.extraArgs }}
+            - "-{{ $key }}={{ $value }}"
+          {{- end }}
+          {{- with $values.extraEnvVars }}
+          env:
+          {{- range $key, $value := . }}
+            - name: {{ $key }}
+              {{- if kindIs "map" $value }}
+              {{- toYaml $value | nindent 14 }}
+              {{- else }}
+              value: {{ $value | quote }}
+              {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- with $values.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: {{ $values.service.port_name }}
+              containerPort: {{ $values.service.port }}
+              protocol: TCP
+            - name: {{ $values.memberlist.port_name }}
+              containerPort: {{ $values.memberlist.port }}
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ $values.service.port_name }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/phlare/config.yaml
+              subPath: config.yaml
+            - name: overrides-config
+              mountPath: /etc/phlare/overrides/
+            - name: data
+              mountPath: /data
+            {{- with $values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml $values.resources | nindent 12 }}
+      {{- with $values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ $values.terminationGracePeriodSeconds }}
+      {{- end }}
+      volumes:
+      {{- with $values.extraVolumes }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+        - name: config
+          configMap:
+            name: {{ include "phlare.fullname" . }}-config
+        - name: overrides-config
+          configMap:
+            name: {{ include "phlare.fullname" . }}-overrides-config
+  {{- $persistence := $values.persistence }}
+  {{- if not $persistence.enabled }}
+        - name: data
+          emptyDir: {}
+  {{- else if $persistence.existingClaim}}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $persistence.existingClaim }}
+  {{- else if ne $cfg.kind "StatefulSet"}}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $cfg.name }}-data
+  {{- else }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      annotations:
+        {{- toYaml $persistence.annotations | nindent 8 }}
+    spec:
+      accessModes:
+        {{- toYaml $persistence.accessModes | nindent 8 }}
+      resources:
+        requests:
+          storage: {{ $persistence.size | quote }}
+      storageClassName: {{ $persistence.storageClassName }}
+      {{- if $persistence.selector }}
+      selector:
+        {{- toYaml $persistence.selector | nindent 8 }}
+      {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}

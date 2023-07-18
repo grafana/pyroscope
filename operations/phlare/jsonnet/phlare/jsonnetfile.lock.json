@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "dependencies": [
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/grafana/jsonnet-libs.git",
+          "subdir": "tanka-util"
+        }
+      },
+      "version": "9e9d5cddd4f02a25b9dec09a5910878a8ba8e045",
+      "sum": "AGgjH6IJe/1qwNtxFIiG8V1uyOJZascEydQsNrfPQ4c="
+    },
+    {
+      "source": {
+        "git": {
+          "remote": "https://github.com/jsonnet-libs/docsonnet.git",
+          "subdir": "doc-util"
+        }
+      },
+      "version": "fedfb4920fae931a27190df0aeec5ef858daf3b5",
+      "sum": "fzESn29CRKzLap9jTpcUNSNBy7MzvzOxZo1LYWyIrGs="
+    }
+  ],
+  "legacyImports": false
+}

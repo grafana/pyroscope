@@ -1,0 +1,1066 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "agent/v1/agent.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "AgentService"
+    },
+    {
+      "name": "PusherService"
+    },
+    {
+      "name": "IngesterService"
+    },
+    {
+      "name": "QuerierService"
+    },
+    {
+      "name": "StatusService"
+    },
+    {
+      "name": "StoreGatewayService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/api/v1/status/buildinfo": {
+      "get": {
+        "summary": "Retrieve build information about the binary",
+        "operationId": "StatusService_GetBuildInfo",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetBuildInfoResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "StatusService"
+        ]
+      }
+    },
+    "/api/v1/status/config": {
+      "get": {
+        "summary": "Retrieve the running config",
+        "operationId": "StatusService_GetConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiHttpBody"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "StatusService"
+        ]
+      }
+    },
+    "/api/v1/status/config/default": {
+      "get": {
+        "operationId": "StatusService_GetDefaultConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiHttpBody"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "StatusService"
+        ]
+      }
+    },
+    "/api/v1/status/config/diff": {
+      "get": {
+        "summary": "Retrieve the diff config to the defaults",
+        "operationId": "StatusService_GetDiffConfig",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/apiHttpBody"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "StatusService"
+        ]
+      }
+    },
+    "/api/v1/targets": {
+      "get": {
+        "summary": "Retrieve information about targets.",
+        "operationId": "AgentService_GetTargets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetTargetsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "STATE_UNSPECIFIED",
+              "STATE_ACTIVE",
+              "STATE_DROPPED"
+            ],
+            "default": "STATE_UNSPECIFIED"
+          }
+        ],
+        "tags": [
+          "AgentService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "apiHttpBody": {
+      "type": "object",
+      "properties": {
+        "contentType": {
+          "type": "string",
+          "description": "The HTTP Content-Type header value specifying the content type of the body."
+        },
+        "data": {
+          "type": "string",
+          "format": "byte",
+          "description": "The HTTP request/response body as raw binary."
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          },
+          "description": "Application specific response metadata. Must be set in the first response\nfor streaming APIs."
+        }
+      },
+      "description": "Message that represents an arbitrary HTTP body. It should only be used for\npayload formats that can't be represented as JSON, such as raw binary or\nan HTML page.\n\n\nThis message can be used both in streaming and non-streaming API methods in\nthe request as well as the response.\n\nIt can be used as a top-level request field, which is convenient if one\nwants to extract parameters from either the URL or HTTP template into the\nrequest fields and also want access to the raw HTTP body.\n\nExample:\n\n    message GetResourceRequest {\n      // A unique request id.\n      string request_id = 1;\n\n      // The raw HTTP body is bound to this field.\n      google.api.HttpBody http_body = 2;\n\n    }\n\n    service ResourceService {\n      rpc GetResource(GetResourceRequest)\n        returns (google.api.HttpBody);\n      rpc UpdateResource(google.api.HttpBody)\n        returns (google.protobuf.Empty);\n\n    }\n\nExample with streaming methods:\n\n    service CaldavService {\n      rpc GetCalendar(stream google.api.HttpBody)\n        returns (stream google.api.HttpBody);\n      rpc UpdateCalendar(stream google.api.HttpBody)\n        returns (stream google.api.HttpBody);\n\n    }\n\nUse of this type only changes how the request and response bodies are\nhandled, all other features will continue to work unchanged."
+    },
+    "googlev1Label": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "format": "int64"
+        },
+        "str": {
+          "type": "string",
+          "format": "int64",
+          "title": "At most one of the following must be present"
+        },
+        "num": {
+          "type": "string",
+          "format": "int64"
+        },
+        "numUnit": {
+          "type": "string",
+          "format": "int64",
+          "description": "Should only be present when num is present.\nSpecifies the units of num.\nUse arbitrary string (for example, \"requests\") as a custom count unit.\nIf no unit is specified, consumer may apply heuristic to deduce the unit.\nConsumers may also  interpret units like \"bytes\" and \"kilobytes\" as memory\nunits and units like \"seconds\" and \"nanoseconds\" as time units,\nand apply appropriate unit conversions to these."
+        }
+      }
+    },
+    "googlev1Location": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Unique nonzero id for the location.  A profile could use\ninstruction addresses or any integer sequence as ids."
+        },
+        "mappingId": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The id of the corresponding profile.Mapping for this location.\nIt can be unset if the mapping is unknown or not applicable for\nthis profile type."
+        },
+        "address": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The instruction address for this location, if available.  It\nshould be within [Mapping.memory_start...Mapping.memory_limit]\nfor the corresponding mapping. A non-leaf address may be in the\nmiddle of a call instruction. It is up to display tools to find\nthe beginning of the instruction if necessary."
+        },
+        "line": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Line"
+          },
+          "description": "Multiple line indicates this location has inlined functions,\nwhere the last entry represents the caller into which the\npreceding entries were inlined.\n\nE.g., if memcpy() is inlined into printf:\n   line[0].function_name == \"memcpy\"\n   line[1].function_name == \"printf\""
+        },
+        "isFolded": {
+          "type": "boolean",
+          "description": "Provides an indication that multiple symbols map to this location's\naddress, for example due to identical code folding by the linker. In that\ncase the line information above represents one of the multiple\nsymbols. This field must be recomputed when the symbolization state of the\nprofile changes."
+        }
+      },
+      "description": "Describes function and line table debug information."
+    },
+    "googlev1Profile": {
+      "type": "object",
+      "properties": {
+        "sampleType": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ValueType"
+          },
+          "description": "A description of the samples associated with each Sample.value.\nFor a cpu profile this might be:\n  [[\"cpu\",\"nanoseconds\"]] or [[\"wall\",\"seconds\"]] or [[\"syscall\",\"count\"]]\nFor a heap profile, this might be:\n  [[\"allocations\",\"count\"], [\"space\",\"bytes\"]],\nIf one of the values represents the number of events represented\nby the sample, by convention it should be at index 0 and use\nsample_type.unit == \"count\"."
+        },
+        "sample": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Sample"
+          },
+          "description": "The set of samples recorded in this profile."
+        },
+        "mapping": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Mapping"
+          },
+          "description": "Mapping from address ranges to the image/binary/library mapped\ninto that address range.  mapping[0] will be the main binary."
+        },
+        "location": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/googlev1Location"
+          },
+          "title": "Useful program location"
+        },
+        "function": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Function"
+          },
+          "title": "Functions referenced by locations"
+        },
+        "stringTable": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "A common table for strings referenced by various messages.\nstring_table[0] must always be \"\"."
+        },
+        "dropFrames": {
+          "type": "string",
+          "format": "int64",
+          "description": "frames with Function.function_name fully matching the following\nregexp will be dropped from the samples, along with their successors."
+        },
+        "keepFrames": {
+          "type": "string",
+          "format": "int64",
+          "description": "frames with Function.function_name fully matching the following\nregexp will be kept, even if it matches drop_frames."
+        },
+        "timeNanos": {
+          "type": "string",
+          "format": "int64",
+          "description": "Time of collection (UTC) represented as nanoseconds past the epoch."
+        },
+        "durationNanos": {
+          "type": "string",
+          "format": "int64",
+          "description": "Duration of the profile, if a duration makes sense."
+        },
+        "periodType": {
+          "$ref": "#/definitions/v1ValueType",
+          "title": "The kind of events between sampled ocurrences.\ne.g [ \"cpu\",\"cycles\" ] or [ \"heap\",\"bytes\" ]"
+        },
+        "period": {
+          "type": "string",
+          "format": "int64",
+          "description": "The number of events between sampled occurrences."
+        },
+        "comment": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          },
+          "description": "Freeform text associated to the profile."
+        },
+        "defaultSampleType": {
+          "type": "string",
+          "format": "int64",
+          "description": "Index into the string table of the type of the preferred sample\nvalue. If unset, clients should default to the last sample value."
+        }
+      }
+    },
+    "ingesterv1ProfileTypesResponse": {
+      "type": "object",
+      "properties": {
+        "profileTypes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ProfileType"
+          }
+        }
+      }
+    },
+    "ingesterv1SeriesResponse": {
+      "type": "object",
+      "properties": {
+        "labelsSet": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Labels"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string",
+          "description": "A URL/resource name that uniquely identifies the type of the serialized\nprotocol buffer message. This string must contain at least\none \"/\" character. The last segment of the URL's path must represent\nthe fully qualified name of the type (as in\n`path/google.protobuf.Duration`). The name should be in a canonical form\n(e.g., leading \".\" is not accepted).\n\nIn practice, teams usually precompile into the binary all types that they\nexpect it to use in the context of Any. However, for URLs which use the\nscheme `http`, `https`, or no scheme, one can optionally set up a type\nserver that maps type URLs to message definitions as follows:\n\n* If no scheme is provided, `https` is assumed.\n* An HTTP GET on the URL must yield a [google.protobuf.Type][]\n  value in binary format, or produce an error.\n* Applications are allowed to cache lookup results based on the\n  URL, or have them precompiled into a binary to avoid any\n  lookup. Therefore, binary compatibility needs to be preserved\n  on changes to types. (Use versioned type names to manage\n  breaking changes.)\n\nNote: this functionality is not currently available in the official\nprotobuf release, and it is not used for type URLs beginning with\ntype.googleapis.com.\n\nSchemes other than `http`, `https` (or the empty scheme) might be\nused with implementation specific semantics."
+        }
+      },
+      "additionalProperties": {},
+      "description": "`Any` contains an arbitrary serialized protocol buffer message along with a\nURL that describes the type of the serialized message.\n\nProtobuf library provides support to pack/unpack Any values in the form\nof utility functions or additional generated methods of the Any type.\n\nExample 1: Pack and unpack a message in C++.\n\n    Foo foo = ...;\n    Any any;\n    any.PackFrom(foo);\n    ...\n    if (any.UnpackTo(\u0026foo)) {\n      ...\n    }\n\nExample 2: Pack and unpack a message in Java.\n\n    Foo foo = ...;\n    Any any = Any.pack(foo);\n    ...\n    if (any.is(Foo.class)) {\n      foo = any.unpack(Foo.class);\n    }\n    // or ...\n    if (any.isSameTypeAs(Foo.getDefaultInstance())) {\n      foo = any.unpack(Foo.getDefaultInstance());\n    }\n\nExample 3: Pack and unpack a message in Python.\n\n    foo = Foo(...)\n    any = Any()\n    any.Pack(foo)\n    ...\n    if any.Is(Foo.DESCRIPTOR):\n      any.Unpack(foo)\n      ...\n\nExample 4: Pack and unpack a message in Go\n\n     foo := \u0026pb.Foo{...}\n     any, err := anypb.New(foo)\n     if err != nil {\n       ...\n     }\n     ...\n     foo := \u0026pb.Foo{}\n     if err := any.UnmarshalTo(foo); err != nil {\n       ...\n     }\n\nThe pack methods provided by protobuf library will by default use\n'type.googleapis.com/full.type.name' as the type URL and the unpack\nmethods only use the fully qualified type name after the last '/'\nin the type URL, for example \"foo.bar.com/x/y.z\" will yield type\nname \"y.z\".\n\nJSON\n\nThe JSON representation of an `Any` value uses the regular\nrepresentation of the deserialized, embedded message, with an\nadditional field `@type` which contains the type URL. Example:\n\n    package google.profile;\n    message Person {\n      string first_name = 1;\n      string last_name = 2;\n    }\n\n    {\n      \"@type\": \"type.googleapis.com/google.profile.Person\",\n      \"firstName\": \u003cstring\u003e,\n      \"lastName\": \u003cstring\u003e\n    }\n\nIf the embedded message type is well-known and has a custom JSON\nrepresentation, that representation will be embedded adding a field\n`value` which holds the custom JSON in addition to the `@type`\nfield. Example (for message [google.protobuf.Duration][]):\n\n    {\n      \"@type\": \"type.googleapis.com/google.protobuf.Duration\",\n      \"value\": \"1.212s\"\n    }"
+    },
+    "querierv1ProfileTypesResponse": {
+      "type": "object",
+      "properties": {
+        "profileTypes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1ProfileType"
+          }
+        }
+      }
+    },
+    "querierv1SeriesResponse": {
+      "type": "object",
+      "properties": {
+        "labelsSet": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Labels"
+          }
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1DiffResponse": {
+      "type": "object",
+      "properties": {
+        "flamegraph": {
+          "$ref": "#/definitions/v1FlameGraphDiff"
+        }
+      }
+    },
+    "v1FlameGraph": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Level"
+          }
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxSelf": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1FlameGraphDiff": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Level"
+          }
+        },
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxSelf": {
+          "type": "string",
+          "format": "int64"
+        },
+        "leftTicks": {
+          "type": "string",
+          "format": "int64"
+        },
+        "rightTicks": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1FlushResponse": {
+      "type": "object"
+    },
+    "v1Function": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Unique nonzero id for the function."
+        },
+        "name": {
+          "type": "string",
+          "format": "int64",
+          "description": "Name of the function, in human-readable form if available."
+        },
+        "systemName": {
+          "type": "string",
+          "format": "int64",
+          "description": "Name of the function, as identified by the system.\nFor instance, it can be a C++ mangled name."
+        },
+        "filename": {
+          "type": "string",
+          "format": "int64",
+          "description": "Source file containing the function."
+        },
+        "startLine": {
+          "type": "string",
+          "format": "int64",
+          "description": "Line number in source file."
+        }
+      }
+    },
+    "v1GetBuildInfoData": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "buildUser": {
+          "type": "string"
+        },
+        "buildDate": {
+          "type": "string"
+        },
+        "goVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "v1GetBuildInfoResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/v1GetBuildInfoData"
+        }
+      }
+    },
+    "v1GetTargetsResponse": {
+      "type": "object",
+      "properties": {
+        "activeTargets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Target"
+          }
+        },
+        "droppedTargets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Target"
+          }
+        }
+      }
+    },
+    "v1Health": {
+      "type": "string",
+      "enum": [
+        "HEALTH_UNSPECIFIED",
+        "HEALTH_UP",
+        "HEALTH_DOWN"
+      ],
+      "default": "HEALTH_UNSPECIFIED"
+    },
+    "v1LabelNamesResponse": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1LabelPair": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "v1LabelValuesResponse": {
+      "type": "object",
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1Labels": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1LabelPair"
+          },
+          "title": "LabelPair is the key value pairs to identify the corresponding profile"
+        }
+      }
+    },
+    "v1Level": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          }
+        }
+      }
+    },
+    "v1Line": {
+      "type": "object",
+      "properties": {
+        "functionId": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The id of the corresponding profile.Function for this line."
+        },
+        "line": {
+          "type": "string",
+          "format": "int64",
+          "description": "Line number in source code."
+        }
+      }
+    },
+    "v1Mapping": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Unique nonzero id for the mapping."
+        },
+        "memoryStart": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Address at which the binary (or DLL) is loaded into memory."
+        },
+        "memoryLimit": {
+          "type": "string",
+          "format": "uint64",
+          "description": "The limit of the address range occupied by this mapping."
+        },
+        "fileOffset": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Offset in the binary that corresponds to the first mapped address."
+        },
+        "filename": {
+          "type": "string",
+          "format": "int64",
+          "description": "The object this entry is loaded from.  This can be a filename on\ndisk for the main binary and shared libraries, or virtual\nabstractions like \"[vdso]\"."
+        },
+        "buildId": {
+          "type": "string",
+          "format": "int64",
+          "description": "A string that uniquely identifies a particular program version\nwith high probability. E.g., for binaries generated by GNU tools,\nit could be the contents of the .note.gnu.build-id field."
+        },
+        "hasFunctions": {
+          "type": "boolean",
+          "description": "The following fields indicate the resolution of symbolic info."
+        },
+        "hasFilenames": {
+          "type": "boolean"
+        },
+        "hasLineNumbers": {
+          "type": "boolean"
+        },
+        "hasInlineFrames": {
+          "type": "boolean"
+        }
+      }
+    },
+    "v1MergeProfilesLabelsResponse": {
+      "type": "object",
+      "properties": {
+        "selectedProfiles": {
+          "$ref": "#/definitions/v1ProfileSets",
+          "description": "The server replies batch of profiles.\nA last message without profiles signals the next message will be the result of the merge."
+        },
+        "series": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Series"
+          },
+          "title": "The list of series for the profile with their respective value"
+        }
+      }
+    },
+    "v1MergeProfilesPprofResponse": {
+      "type": "object",
+      "properties": {
+        "selectedProfiles": {
+          "$ref": "#/definitions/v1ProfileSets",
+          "description": "The server replies batch of profiles.\nA last message without profiles signals the next message will be the result of the merge."
+        },
+        "result": {
+          "type": "string",
+          "format": "byte",
+          "description": "The merge result in the pprof format."
+        }
+      }
+    },
+    "v1MergeProfilesStacktracesResponse": {
+      "type": "object",
+      "properties": {
+        "selectedProfiles": {
+          "$ref": "#/definitions/v1ProfileSets",
+          "description": "The server replies batch of profiles.\nA last message without profiles signals the next message will be the result of the merge."
+        },
+        "result": {
+          "$ref": "#/definitions/v1MergeProfilesStacktracesResult",
+          "title": "The list of stracktraces for the profile with their respective value"
+        }
+      }
+    },
+    "v1MergeProfilesStacktracesResult": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "$ref": "#/definitions/v1StacktracesMergeFormat"
+        },
+        "stacktraces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1StacktraceSample"
+          },
+          "title": "The list of stracktraces with their respective value"
+        },
+        "functionNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "treeBytes": {
+          "type": "string",
+          "format": "byte",
+          "description": "Merge result marshaled to pyroscope tree bytes."
+        }
+      }
+    },
+    "v1Point": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number",
+          "format": "double"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "title": "Milliseconds unix timestamp"
+        }
+      }
+    },
+    "v1ProfileSets": {
+      "type": "object",
+      "properties": {
+        "labelsSets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Labels"
+          }
+        },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1SeriesProfile"
+          }
+        }
+      }
+    },
+    "v1ProfileType": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sampleType": {
+          "type": "string"
+        },
+        "sampleUnit": {
+          "type": "string"
+        },
+        "periodType": {
+          "type": "string"
+        },
+        "periodUnit": {
+          "type": "string"
+        }
+      }
+    },
+    "v1PushResponse": {
+      "type": "object"
+    },
+    "v1RawProfileSeries": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1LabelPair"
+          },
+          "title": "LabelPair is the key value pairs to identify the corresponding profile"
+        },
+        "samples": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1RawSample"
+          },
+          "title": "samples are the set of profile bytes"
+        }
+      },
+      "title": "RawProfileSeries represents the pprof profile and its associated labels"
+    },
+    "v1RawSample": {
+      "type": "object",
+      "properties": {
+        "rawProfile": {
+          "type": "string",
+          "format": "byte",
+          "title": "raw_profile is the set of bytes of the pprof profile"
+        },
+        "ID": {
+          "type": "string",
+          "title": "unique ID of the profile"
+        }
+      },
+      "title": "RawSample is the set of bytes that correspond to a pprof profile"
+    },
+    "v1Sample": {
+      "type": "object",
+      "properties": {
+        "locationId": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          },
+          "description": "The ids recorded here correspond to a Profile.location.id.\nThe leaf is at location_id[0]."
+        },
+        "value": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "int64"
+          },
+          "description": "The type and unit of each value is defined by the corresponding\nentry in Profile.sample_type. All samples must have the same\nnumber of values, the same as the length of Profile.sample_type.\nWhen aggregating multiple samples into a single sample, the\nresult has a list of values that is the element-wise sum of the\nlists of the originals."
+        },
+        "label": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/googlev1Label"
+          },
+          "title": "label includes additional context for this sample. It can include\nthings like a thread id, allocation size, etc"
+        }
+      },
+      "description": "Each Sample records values encountered in some program\ncontext. The program context is typically a stack trace, perhaps\naugmented with auxiliary information like the thread-id, some\nindicator of a higher level request being handled etc."
+    },
+    "v1SelectMergeStacktracesRequest": {
+      "type": "object",
+      "properties": {
+        "profileTypeID": {
+          "type": "string"
+        },
+        "labelSelector": {
+          "type": "string"
+        },
+        "start": {
+          "type": "string",
+          "format": "int64"
+        },
+        "end": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxNodes": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1SelectMergeStacktracesResponse": {
+      "type": "object",
+      "properties": {
+        "flamegraph": {
+          "$ref": "#/definitions/v1FlameGraph"
+        }
+      }
+    },
+    "v1SelectProfilesRequest": {
+      "type": "object",
+      "properties": {
+        "labelSelector": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/v1ProfileType"
+        },
+        "start": {
+          "type": "string",
+          "format": "int64"
+        },
+        "end": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1SelectSeriesResponse": {
+      "type": "object",
+      "properties": {
+        "series": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Series"
+          }
+        }
+      }
+    },
+    "v1Series": {
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1LabelPair"
+          }
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1Point"
+          }
+        }
+      }
+    },
+    "v1SeriesProfile": {
+      "type": "object",
+      "properties": {
+        "labelIndex": {
+          "type": "integer",
+          "format": "int32",
+          "title": "The labels index of the series"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "title": "timestamp in milliseconds"
+        }
+      }
+    },
+    "v1StacktraceSample": {
+      "type": "object",
+      "properties": {
+        "functionIds": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "value": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1StacktracesMergeFormat": {
+      "type": "string",
+      "enum": [
+        "MERGE_FORMAT_UNSPECIFIED",
+        "MERGE_FORMAT_STACKTRACES",
+        "MERGE_FORMAT_TREE"
+      ],
+      "default": "MERGE_FORMAT_UNSPECIFIED"
+    },
+    "v1State": {
+      "type": "string",
+      "enum": [
+        "STATE_UNSPECIFIED",
+        "STATE_ACTIVE",
+        "STATE_DROPPED"
+      ],
+      "default": "STATE_UNSPECIFIED"
+    },
+    "v1Target": {
+      "type": "object",
+      "properties": {
+        "discoveredLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Contains labels before any processing."
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Labels as they are attached to ingested profiles."
+        },
+        "scrapePool": {
+          "type": "string",
+          "title": "Name of the scrape pool used"
+        },
+        "scrapeUrl": {
+          "type": "string",
+          "description": "URL that is used for retrieving the profile."
+        },
+        "lastError": {
+          "type": "string",
+          "description": "Contains the error if the last attempted scrape has failed."
+        },
+        "lastScrape": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Timestamp of last scrape"
+        },
+        "lastScrapeDuration": {
+          "type": "string",
+          "description": "Duation of last scrape."
+        },
+        "health": {
+          "$ref": "#/definitions/v1Health",
+          "description": "Health of last scrape."
+        },
+        "scrapeTimeout": {
+          "type": "string",
+          "description": "Timeout duration for the scrape request."
+        },
+        "scrapeInterval": {
+          "type": "string",
+          "description": "Interval how often profiles are scraped."
+        }
+      }
+    },
+    "v1ValueType": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "format": "int64"
+        },
+        "unit": {
+          "type": "string",
+          "format": "int64"
+        }
+      },
+      "description": "ValueType describes the semantics and measurement units of a value."
+    }
+  }
+}

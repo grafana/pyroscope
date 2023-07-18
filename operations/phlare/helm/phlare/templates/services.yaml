@@ -1,0 +1,42 @@
+{{- $global := . }}
+{{- range $component, $cfg := (fromYaml (include "phlare.components" .)) }}
+{{- with $global }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $cfg.name }}
+  labels:
+    {{- include "phlare.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component | quote }}
+spec:
+  type: {{ .Values.phlare.service.type }}
+  ports:
+    - port: {{ .Values.phlare.service.port }}
+      targetPort: {{ .Values.phlare.service.port_name }}
+      protocol: TCP
+      name: {{ .Values.phlare.service.port_name }}
+  selector:
+    {{- include "phlare.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $cfg.name }}-headless
+  labels:
+    {{- include "phlare.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component | quote }}
+spec:
+  type: {{ .Values.phlare.service.type }}
+  clusterIP: None
+  ports:
+    - port: {{ .Values.phlare.service.port }}
+      targetPort: {{ .Values.phlare.service.port_name }}
+      protocol: TCP
+      name: {{ .Values.phlare.service.port_name }}
+  selector:
+    {{- include "phlare.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component | quote }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package status.v1;
+
+import "google/api/annotations.proto";
+import "google/api/httpbody.proto";
+
+service StatusService {
+  // Retrieve build information about the binary
+  rpc GetBuildInfo(GetBuildInfoRequest) returns (GetBuildInfoResponse) {
+    option (google.api.http) = {get: "/api/v1/status/buildinfo"};
+  }
+  // Retrieve the running config
+  rpc GetConfig(GetConfigRequest) returns (google.api.HttpBody) {
+    option (google.api.http) = {get: "/api/v1/status/config"};
+  }
+  // Retrieve the diff config to the defaults
+  rpc GetDiffConfig(GetConfigRequest) returns (google.api.HttpBody) {
+    option (google.api.http) = {get: "/api/v1/status/config/diff"};
+  }
+  rpc GetDefaultConfig(GetConfigRequest) returns (google.api.HttpBody) {
+    option (google.api.http) = {get: "/api/v1/status/config/default"};
+  }
+}
+
+message GetBuildInfoRequest {}
+
+message GetBuildInfoResponse {
+  string status = 1;
+  GetBuildInfoData data = 2;
+}
+
+message GetBuildInfoData {
+  string version = 1;
+  string revision = 2;
+  string branch = 3;
+  string build_user = 4;
+  string build_date = 5;
+  string go_version = 6;
+}
+
+message GetConfigRequest {}
+
+message GetConfigResponse {}
