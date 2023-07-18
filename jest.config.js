@@ -19,6 +19,8 @@ module.exports = {
     'node_modules/(?!(true-myth|d3|d3-array|internmap|d3-scale|react-notifications-component|graphviz-react|pyroscope-oss))',
   ],
 
+  testPathIgnorePatterns: ['/node_modules/', '/og/'],
+
   // Reuse the same modules from typescript
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, {
     prefix: '<rootDir>',

@@ -7,3 +7,4 @@ jest.config.js
 cypress/**
 cypress.config.ts
 testSetupFile.js
+og/**
