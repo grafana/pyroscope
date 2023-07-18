@@ -272,6 +272,7 @@
     "react": "16.14.0",
     "react-dom": "16.14.0",
     "jquery": "3.6.0",
+    "protobufjs": "^7.2.4",
     "tough-cookie": "^4.1.3",
     "optionator": "^0.9.3",
     "d3-graphviz": "5.0.2",
