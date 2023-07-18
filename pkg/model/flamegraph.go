@@ -4,8 +4,8 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
-	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
+	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
+	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/samber/lo"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"

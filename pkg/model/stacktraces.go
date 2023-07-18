@@ -12,7 +12,7 @@ import (
 	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
-	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
+	"github.com/grafana/pyroscope/pkg/og/util/varint"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 )

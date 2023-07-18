@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+//package io.pyroscope.labels.pb;
+option go_package = "github.com/grafana/pyroscope/pkg/og/convert/jfr";
+
+message Context {
+  map<int64, int64> labels = 1;
+}
+message LabelsSnapshot {
+  map<int64, Context> contexts = 1;
+  map<int64, string> strings = 2;
+}

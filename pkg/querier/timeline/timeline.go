@@ -1,7 +1,7 @@
 package timeline
 
 import (
-	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
+	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )

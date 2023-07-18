@@ -11,9 +11,9 @@ import (
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/grafana/pyroscope/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/pkg/og/storage"
+	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 	"google.golang.org/protobuf/proto"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"

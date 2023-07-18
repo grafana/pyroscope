@@ -1,0 +1,81 @@
+{
+  "$schema": "https://www.speedscope.app/file-format-schema.json",
+  "profiles": [
+    {
+      "endValue": 14,
+      "events": [
+        {
+          "at": 0,
+          "frame": 0,
+          "type": "O"
+        },
+        {
+          "at": 0,
+          "frame": 1,
+          "type": "O"
+        },
+        {
+          "at": 0,
+          "frame": 2,
+          "type": "O"
+        },
+        {
+          "at": 2,
+          "frame": 2,
+          "type": "C"
+        },
+        {
+          "at": 2,
+          "frame": 3,
+          "type": "O"
+        },
+        {
+          "at": 6,
+          "frame": 3,
+          "type": "C"
+        },
+        {
+          "at": 6,
+          "frame": 2,
+          "type": "O"
+        },
+        {
+          "at": 9,
+          "frame": 2,
+          "type": "C"
+        },
+        {
+          "at": 14,
+          "frame": 1,
+          "type": "C"
+        },
+        {
+          "at": 14,
+          "frame": 0,
+          "type": "C"
+        }
+      ],
+      "name": "simple.txt",
+      "startValue": 0,
+      "type": "evented",
+      "unit": "none"
+    }
+  ],
+  "shared": {
+    "frames": [
+      {
+        "name": "a"
+      },
+      {
+        "name": "b"
+      },
+      {
+        "name": "c"
+      },
+      {
+        "name": "d"
+      }
+    ]
+  },
+  "version": "0.0.1"
+}

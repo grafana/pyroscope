@@ -14,19 +14,19 @@ import (
 
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 
-	"github.com/pyroscope-io/pyroscope/pkg/convert/speedscope"
+	"github.com/grafana/pyroscope/pkg/og/convert/speedscope"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
-	"github.com/pyroscope-io/pyroscope/pkg/convert/jfr"
-	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
-	"github.com/pyroscope-io/pyroscope/pkg/convert/profile"
-	"github.com/pyroscope-io/pyroscope/pkg/ingestion"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/metadata"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
+	"github.com/grafana/pyroscope/pkg/og/agent/types"
+	"github.com/grafana/pyroscope/pkg/og/convert/jfr"
+	"github.com/grafana/pyroscope/pkg/og/convert/pprof"
+	"github.com/grafana/pyroscope/pkg/og/convert/profile"
+	"github.com/grafana/pyroscope/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
+	"github.com/grafana/pyroscope/pkg/og/storage/segment"
+	"github.com/grafana/pyroscope/pkg/og/util/attime"
 )
 
 // Copy-pasted from

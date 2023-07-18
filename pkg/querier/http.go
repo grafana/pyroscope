@@ -12,8 +12,8 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
-	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
-	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
+	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
+	"github.com/grafana/pyroscope/pkg/og/util/attime"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
