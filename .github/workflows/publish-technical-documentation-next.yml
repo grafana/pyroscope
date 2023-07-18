@@ -3,7 +3,8 @@ name: "publish-technical-documentation-next"
 on:
   push:
     branches:
-    - "main"
+    - main
+    - next
     paths:
     - "docs/sources/**"
   workflow_dispatch:
