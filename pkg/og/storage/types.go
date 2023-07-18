@@ -6,104 +6,40 @@ import (
 	"context"
 	"time"
 
-	"github.com/dgraph-io/badger/v2"
-	"github.com/grafana/pyroscope/pkg/og/storage/cache"
-	"github.com/grafana/pyroscope/pkg/og/util/bytesize"
+	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
+	"github.com/grafana/pyroscope/pkg/og/storage/segment"
+	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 )
+
+// MetricsExporter exports values of particular stack traces sample from profiling
+// data as a Prometheus metrics.
+type MetricsExporter interface {
+	// Evaluate evaluates metrics export rules against the input key and creates
+	// prometheus counters for new time series, if required. Returned observer can
+	// be used to evaluate and observe particular samples.
+	//
+	// If there are no matching rules, the function returns false.
+	Evaluate(*PutInput) (SampleObserver, bool)
+}
+
+type SampleObserver interface {
+	// Observe adds v to the matched counters if k satisfies node selector.
+	// k is a sample stack trace where frames are delimited by semicolon.
+	// v is the sample value.
+	Observe(k []byte, v int)
+}
+
+type PutInput struct {
+	StartTime       time.Time
+	EndTime         time.Time
+	Key             *segment.Key
+	Val             *tree.Tree
+	SpyName         string
+	SampleRate      uint32
+	Units           metadata.Units
+	AggregationType metadata.AggregationType
+}
 
 type Putter interface {
 	Put(context.Context, *PutInput) error
-}
-
-type Getter interface {
-	Get(context.Context, *GetInput) (*GetOutput, error)
-}
-
-type ExemplarsGetter interface {
-	GetExemplar(context.Context, GetExemplarInput) (GetExemplarOutput, error)
-}
-
-type ExemplarsMerger interface {
-	MergeExemplars(context.Context, MergeExemplarsInput) (MergeExemplarsOutput, error)
-}
-
-type ExemplarsQuerier interface {
-	QueryExemplars(context.Context, QueryExemplarsInput) (QueryExemplarsOutput, error)
-}
-
-type GetLabelKeysByQueryInput struct {
-	StartTime time.Time
-	EndTime   time.Time
-	Query     string
-}
-
-type GetLabelKeysByQueryOutput struct {
-	Keys []string
-}
-
-type LabelsGetter interface {
-	GetKeys(ctx context.Context, cb func(string) bool)
-	GetKeysByQuery(ctx context.Context, in GetLabelKeysByQueryInput) (GetLabelKeysByQueryOutput, error)
-}
-
-type GetLabelValuesByQueryInput struct {
-	StartTime time.Time
-	EndTime   time.Time
-	Label     string
-	Query     string
-}
-
-type GetLabelValuesByQueryOutput struct {
-	Values []string
-}
-
-type LabelValuesGetter interface {
-	GetValues(ctx context.Context, key string, cb func(v string) bool)
-	GetValuesByQuery(ctx context.Context, in GetLabelValuesByQueryInput) (GetLabelValuesByQueryOutput, error)
-}
-
-// Other functions from storage.Storage:
-// type Backend interface {
-// 	Put(ctx context.Context, pi *PutInput) error
-// 	Get(ctx context.Context, gi *GetInput) (*GetOutput, error)
-
-// 	GetAppNames(ctx context.Context, ) []string
-// 	GetKeys(ctx context.Context, cb func(string) bool)
-// 	GetKeysByQuery(ctx context.Context, query string, cb func(_k string) bool) error
-// 	GetValues(ctx context.Context, key string, cb func(v string) bool)
-// 	GetValuesByQuery(ctx context.Context, label string, query string, cb func(v string) bool) error
-// 	DebugExport(ctx context.Context, w http.ResponseWriter, r *http.Request)
-
-// 	Delete(ctx context.Context, di *DeleteInput) error
-// 	DeleteApp(ctx context.Context, appname string) error
-// }
-
-type BadgerDB interface {
-	Update(func(txn *badger.Txn) error) error
-	View(func(txn *badger.Txn) error) error
-	NewWriteBatch() *badger.WriteBatch
-	MaxBatchCount() int64
-}
-
-type CacheLayer interface {
-	Put(key string, val interface{})
-	Evict(percent float64)
-	WriteBack()
-	Delete(key string) error
-	Discard(key string)
-	DiscardPrefix(prefix string) error
-	GetOrCreate(key string) (interface{}, error)
-	Lookup(key string) (interface{}, bool)
-}
-
-type BadgerDBWithCache interface {
-	BadgerDB
-	CacheLayer
-
-	Size() bytesize.ByteSize
-	CacheSize() uint64
-
-	DBInstance() *badger.DB
-	CacheInstance() *cache.Cache
-	Name() string
 }
