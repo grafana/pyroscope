@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/grafana/pyroscope/pkg/og/agent/spy"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -20,8 +19,6 @@ var (
 	GitSHA      = "N/A"
 	GitDirtyStr = "-1"
 	GitDirty    int
-
-	PhpspyGitSHA = "N/A"
 )
 
 func init() {
@@ -39,10 +36,6 @@ GENERAL
   Git SHA:            %s
   Git Dirty Files:    %d
   Embedded Assets:    %t
-
-AGENT
-  Supported Spies:    %q
-  phpspy Git SHA:     %q
 `
 
 func Summary() string {
@@ -55,8 +48,6 @@ func Summary() string {
 		Time,
 		GitSHA,
 		GitDirty,
-		spy.SupportedSpies,
-		PhpspyGitSHA,
 	)
 }
 
@@ -75,15 +66,14 @@ type buildInfoJSON struct {
 
 func generateBuildInfoJSON() buildInfoJSON {
 	return buildInfoJSON{
-		GOOS:         runtime.GOOS,
-		GOARCH:       runtime.GOARCH,
-		GoVersion:    runtime.Version(),
-		Version:      Version,
-		ID:           ID,
-		Time:         Time,
-		GitSHA:       GitSHA,
-		GitDirty:     GitDirty,
-		PhpspyGitSHA: PhpspyGitSHA,
+		GOOS:      runtime.GOOS,
+		GOARCH:    runtime.GOARCH,
+		GoVersion: runtime.Version(),
+		Version:   Version,
+		ID:        ID,
+		Time:      Time,
+		GitSHA:    GitSHA,
+		GitDirty:  GitDirty,
 	}
 }
 
