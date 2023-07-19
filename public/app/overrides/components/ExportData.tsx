@@ -2,6 +2,7 @@ import Button from '@webapp/ui/Button';
 import handleError from '@webapp/util/handleError';
 import OutsideClickHandler from 'react-outside-click-handler';
 import React, { useState } from 'react';
+import saveAs from 'file-saver';
 import showModalWithInput from '@pyroscope/webapp/javascript/components/Modals/ModalWithInput';
 import styles from '@pyroscope/webapp/javascript/components/ExportData.module.scss';
 import { ContinuousState } from '@pyroscope/webapp/javascript/redux/reducers/continuous/state';
@@ -18,7 +19,7 @@ import { Profile } from '@pyroscope/models/src';
 import { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import { useLocation } from 'react-router-dom';
-import saveAs from 'file-saver';
+import 'compression-streams-polyfill';
 
 /* eslint-disable react/destructuring-assignment */
 
@@ -263,6 +264,7 @@ function ExportData(props: ExportDataProps) {
         response.value.body?.pipeThrough(new CompressionStream('gzip'))
       ).blob();
       saveAs(data, customExportName);
+      return;
     }
   };
 

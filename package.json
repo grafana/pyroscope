@@ -79,6 +79,7 @@
     "@reduxjs/toolkit": "^1.6.2",
     "@szhsin/react-menu": "3.5.2",
     "@types/file-saver": "^2.0.5",
+    "compression-streams-polyfill": "^0.1.4",
     "file-saver": "^2.0.5",
     "graphviz-react": "^1.2.5",
     "jquery": "^3.6.4",
