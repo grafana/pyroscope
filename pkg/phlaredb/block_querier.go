@@ -449,8 +449,14 @@ func (b *singleBlockQuerier) Index() IndexReader {
 }
 
 func (b *singleBlockQuerier) Symbols() SymbolsReader {
-	// TODO(kolesnikovae)
-	return nil
+	return &inMemorySymbolsReader{
+		// TODO
+		//	strings:     b.strings,
+		functions:   b.functions,
+		locations:   b.locations,
+		mappings:    b.mappings,
+		stacktraces: b.stacktraces,
+	}
 }
 
 func (b *singleBlockQuerier) Meta() block.Meta {

@@ -75,7 +75,7 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Met
 		return block.Meta{}, err
 	}
 	profileWriter := newProfileWriter(profileFile)
-	symw, err := newSymbolsWriter(dst)
+	symw, err := newSymbolsWriter(blockPath, defaultParquetConfig)
 	if err != nil {
 		return block.Meta{}, err
 	}
@@ -535,18 +535,18 @@ type stacktraceRewriter struct {
 	reader SymbolsReader
 	writer SymbolsWriter
 
-	partitions map[uint64]*symdbPartition
+	partitions map[uint64]*symPartitionRewriter
 	inserter   *stacktraceInserter
 
 	// Objects below have global addressing.
-	// TODO(kolesnikovae): Move to symdbPartition.
+	// TODO(kolesnikovae): Move to partition.
 	locations *lookupTable[*schemav1.InMemoryLocation]
 	mappings  *lookupTable[*schemav1.InMemoryMapping]
 	functions *lookupTable[*schemav1.InMemoryFunction]
 	strings   *lookupTable[string]
 }
 
-type symdbPartition struct {
+type symPartitionRewriter struct {
 	name  uint64
 	stats symdb.Stats
 	// Stacktrace identifiers are only valid within the partition.
@@ -564,9 +564,9 @@ func newStacktraceRewriter(r SymbolsReader, w SymbolsWriter) *stacktraceRewriter
 	}
 }
 
-func (r *stacktraceRewriter) init(partition uint64) (p *symdbPartition, err error) {
+func (r *stacktraceRewriter) init(partition uint64) (p *symPartitionRewriter, err error) {
 	if r.partitions == nil {
-		r.partitions = make(map[uint64]*symdbPartition)
+		r.partitions = make(map[uint64]*symPartitionRewriter)
 	}
 	if p, err = r.getOrCreatePartition(partition); err != nil {
 		return nil, err
@@ -585,21 +585,20 @@ func (r *stacktraceRewriter) init(partition uint64) (p *symdbPartition, err erro
 	}
 
 	r.inserter = &stacktraceInserter{
-		slt: p.stacktraces,
-		llt: r.locations,
-		s:   r.inserter.s,
+		stacktraces: p.stacktraces,
+		locations:   r.locations,
 	}
 
 	return p, nil
 }
 
-func (r *stacktraceRewriter) getOrCreatePartition(partition uint64) (_ *symdbPartition, err error) {
+func (r *stacktraceRewriter) getOrCreatePartition(partition uint64) (_ *symPartitionRewriter, err error) {
 	p, ok := r.partitions[partition]
 	if ok {
 		p.reset()
 		return p, nil
 	}
-	n := &symdbPartition{name: partition}
+	n := &symPartitionRewriter{name: partition}
 	if n.resolver, err = r.reader.SymbolsResolver(partition); err != nil {
 		return nil, err
 	}
@@ -626,11 +625,11 @@ func (r *stacktraceRewriter) rewriteStacktraces(partition uint64, stacktraces []
 	return nil
 }
 
-func (p *symdbPartition) reset() {
+func (p *symPartitionRewriter) reset() {
 	p.stacktraces.reset()
 }
 
-func (p *symdbPartition) hasUnresolved() bool {
+func (p *symPartitionRewriter) hasUnresolved() bool {
 	return len(p.stacktraces.unresolved)+
 		len(p.r.locations.unresolved)+
 		len(p.r.mappings.unresolved)+
@@ -638,7 +637,7 @@ func (p *symdbPartition) hasUnresolved() bool {
 		len(p.r.strings.unresolved) > 0
 }
 
-func (p *symdbPartition) populateUnresolved(stacktraceIDs []uint32) error {
+func (p *symPartitionRewriter) populateUnresolved(stacktraceIDs []uint32) error {
 	// Filter out all stack traces that have been already
 	// resolved and populate locations lookup table.
 	if err := p.resolveStacktraces(stacktraceIDs); err != nil {
@@ -651,7 +650,7 @@ func (p *symdbPartition) populateUnresolved(stacktraceIDs []uint32) error {
 	// Resolve functions and mappings for new locations.
 	unresolvedLocs := p.r.locations.iter()
 	locations := p.resolver.Locations(unresolvedLocs)
-	for locations.Err() == nil && locations.Next() {
+	for locations.Next() {
 		location := locations.At()
 		location.MappingId = p.r.mappings.tryLookup(location.MappingId)
 		for j, line := range location.Line {
@@ -666,7 +665,7 @@ func (p *symdbPartition) populateUnresolved(stacktraceIDs []uint32) error {
 	// Resolve strings.
 	unresolvedMappings := p.r.mappings.iter()
 	mappings := p.resolver.Mappings(unresolvedMappings)
-	for mappings.Err() == nil && mappings.Next() {
+	for mappings.Next() {
 		mapping := mappings.At()
 		mapping.BuildId = p.r.strings.tryLookup(mapping.BuildId)
 		mapping.Filename = p.r.strings.tryLookup(mapping.Filename)
@@ -678,7 +677,7 @@ func (p *symdbPartition) populateUnresolved(stacktraceIDs []uint32) error {
 
 	unresolvedFunctions := p.r.functions.iter()
 	functions := p.resolver.Functions(unresolvedFunctions)
-	for functions.Err() == nil && functions.Next() {
+	for functions.Next() {
 		function := functions.At()
 		function.Name = p.r.strings.tryLookup(function.Name)
 		function.Filename = p.r.strings.tryLookup(function.Filename)
@@ -691,48 +690,48 @@ func (p *symdbPartition) populateUnresolved(stacktraceIDs []uint32) error {
 
 	unresolvedStrings := p.r.strings.iter()
 	strings := p.resolver.Strings(unresolvedStrings)
-	for strings.Err() == nil && strings.Next() {
+	for strings.Next() {
 		unresolvedStrings.setValue(strings.At())
 	}
 	return strings.Err()
 }
 
-func (p *symdbPartition) appendRewrite(stacktraces []uint32) error {
-	for _, v := range p.r.strings.unresolved {
-		p.r.strings.storeResolved(v.rid, p.appender.AppendString(v.val))
-	}
+func (p *symPartitionRewriter) appendRewrite(stacktraces []uint32) error {
+	p.appender.AppendStrings(p.r.strings.buf, p.r.strings.values)
+	p.r.strings.updateResolved()
 
-	for _, v := range p.r.functions.unresolved {
-		function := v.val
-		function.Name = p.r.strings.lookupResolved(function.Name)
-		function.Filename = p.r.strings.lookupResolved(function.Filename)
-		function.SystemName = p.r.strings.lookupResolved(function.SystemName)
-		p.r.functions.storeResolved(v.rid, p.appender.AppendFunction(function))
+	for _, v := range p.r.functions.values {
+		v.Name = p.r.strings.lookupResolved(v.Name)
+		v.Filename = p.r.strings.lookupResolved(v.Filename)
+		v.SystemName = p.r.strings.lookupResolved(v.SystemName)
 	}
+	p.appender.AppendFunctions(p.r.functions.buf, p.r.functions.values)
+	p.r.functions.updateResolved()
 
-	for _, v := range p.r.mappings.unresolved {
-		mapping := v.val
-		mapping.BuildId = p.r.strings.lookupResolved(mapping.BuildId)
-		mapping.Filename = p.r.strings.lookupResolved(mapping.Filename)
-		p.r.mappings.storeResolved(v.rid, p.appender.AppendMapping(mapping))
+	for _, v := range p.r.mappings.values {
+		v.BuildId = p.r.strings.lookupResolved(v.BuildId)
+		v.Filename = p.r.strings.lookupResolved(v.Filename)
 	}
+	p.appender.AppendMappings(p.r.mappings.buf, p.r.mappings.values)
+	p.r.mappings.updateResolved()
 
-	for _, v := range p.r.locations.unresolved {
-		location := v.val
-		location.MappingId = p.r.mappings.lookupResolved(location.MappingId)
-		for j, line := range location.Line {
-			location.Line[j].FunctionId = p.r.functions.lookupResolved(line.FunctionId)
+	for _, v := range p.r.locations.values {
+		v.MappingId = p.r.mappings.lookupResolved(v.MappingId)
+		for j, line := range v.Line {
+			v.Line[j].FunctionId = p.r.functions.lookupResolved(line.FunctionId)
 		}
-		p.r.locations.storeResolved(v.rid, p.appender.AppendLocation(location))
 	}
+	p.appender.AppendLocations(p.r.locations.buf, p.r.locations.values)
+	p.r.locations.updateResolved()
 
-	for _, v := range p.stacktraces.unresolved {
-		stacktrace := v.val
-		for j, lid := range stacktrace {
-			stacktrace[j] = int32(p.r.locations.lookupResolved(uint32(lid)))
+	for _, v := range p.stacktraces.values {
+		for j, location := range v {
+			v[j] = int32(p.r.locations.lookupResolved(uint32(location)))
 		}
-		p.stacktraces.storeResolved(v.rid, p.appender.AppendStacktrace(stacktrace))
 	}
+	p.appender.AppendStacktraces(p.stacktraces.buf, p.stacktraces.values)
+	p.stacktraces.updateResolved()
+
 	for i, v := range stacktraces {
 		stacktraces[i] = p.stacktraces.lookupResolved(v)
 	}
@@ -740,44 +739,35 @@ func (p *symdbPartition) appendRewrite(stacktraces []uint32) error {
 	return p.appender.Flush()
 }
 
-func (p *symdbPartition) resolveStacktraces(stacktraceIDs []uint32) error {
+func (p *symPartitionRewriter) resolveStacktraces(stacktraceIDs []uint32) error {
 	for i, v := range stacktraceIDs {
 		stacktraceIDs[i] = p.stacktraces.tryLookup(v)
 	}
 	if len(p.stacktraces.unresolved) == 0 {
 		return nil
 	}
-
-	// Gather and sort references to unresolved stacks.
-	p.stacktraces.initRefs()
-	sort.Sort(p.stacktraces)
-	p.r.inserter.s = grow(p.r.inserter.s, len(p.stacktraces.refs))
-	for j, u := range p.stacktraces.refs {
-		p.r.inserter.s[j] = u.rid
-	}
-
-	return p.resolver.ResolveStacktraces(context.TODO(), p.r.inserter, p.r.inserter.s)
+	p.stacktraces.initSorted()
+	return p.resolver.ResolveStacktraces(context.TODO(), p.r.inserter, p.stacktraces.buf)
 }
 
 type stacktraceInserter struct {
-	slt *lookupTable[[]int32]
-	llt *lookupTable[*schemav1.InMemoryLocation]
-	s   []uint32
-	c   int
+	stacktraces *lookupTable[[]int32]
+	locations   *lookupTable[*schemav1.InMemoryLocation]
+	c           int
 }
 
 func (i *stacktraceInserter) InsertStacktrace(stacktrace uint32, locations []int32) {
 	// Resolve locations for new stack traces.
 	for j, loc := range locations {
-		locations[j] = int32(i.llt.tryLookup(uint32(loc)))
+		locations[j] = int32(i.locations.tryLookup(uint32(loc)))
 	}
-	// Update the unresolved value.
-	v := i.slt.referenceAt(i.c)
-	if v.rid != stacktrace {
-		panic("unexpected stack trace")
-	}
-	v.val = grow(v.val, len(locations))
-	copy(v.val, locations)
+	// stacktrace points to resolved which should
+	// be a marked pointer to unresolved value.
+	v := &i.stacktraces.values[stacktrace&markerMask]
+	n := grow(*v, len(locations))
+	copy(n, locations)
+	// Preserve allocated capacity.
+	v = &n
 	i.c++
 }
 
@@ -790,18 +780,9 @@ type lookupTable[T any] struct {
 	// Index is source ID, and the value is the destination ID.
 	// If destination ID is not known, the element is index to 'unresolved' (marked).
 	resolved   []uint32
-	unresolved []lookupTableValue[T]
-	refs       []lookupTableRef
-}
-
-type lookupTableValue[T any] struct {
-	rid uint32 // Index to resolved.
-	val T
-}
-
-type lookupTableRef struct {
-	rid uint32 // Index to resolved.
-	uid uint32 // Original index (unresolved).
+	unresolved []uint32 // Points to resolved. Index matches values.
+	values     []T      // Values are populated for unresolved items.
+	buf        []uint32 // Sorted unresolved values.
 }
 
 func newLookupTable[T any](size int) *lookupTable[T] {
@@ -823,7 +804,8 @@ func (t *lookupTable[T]) init(size int) {
 
 func (t *lookupTable[T]) reset() {
 	t.unresolved = t.unresolved[:0]
-	t.refs = t.refs[:0]
+	t.values = t.values[:0]
+	t.buf = t.buf[:0]
 }
 
 // tryLookup looks up the value at x in resolved.
@@ -837,53 +819,61 @@ func (t *lookupTable[T]) tryLookup(x uint32) uint32 {
 		}
 		return v - 1 // Already resolved.
 	}
-	u := t.newUnresolvedValue(x) | marker
+	u := t.newUnresolved(x) | marker
 	t.resolved[x] = u
 	return u
 }
 
-func (t *lookupTable[T]) newUnresolvedValue(rid uint32) uint32 {
-	x := len(t.unresolved)
-	if x < cap(t.unresolved) {
+func (t *lookupTable[T]) newUnresolved(rid uint32) uint32 {
+	t.unresolved = append(t.unresolved, rid)
+	x := len(t.values)
+	if x < cap(t.values) {
 		// Try to reuse previously allocated value.
-		t.unresolved = t.unresolved[:x+1]
-		t.unresolved[x].rid = rid
+		t.values = t.values[:x+1]
 	} else {
-		t.unresolved = append(t.unresolved, lookupTableValue[T]{rid: rid})
+		var v T
+		t.values = append(t.values, v)
 	}
 	return uint32(x)
 }
 
-func (t *lookupTable[T]) referenceAt(x int) *lookupTableValue[T] {
-	u := t.refs[x].uid
-	return &t.unresolved[u]
+func (t *lookupTable[T]) storeResolved(i int, rid uint32) {
+	// The index is incremented to avoid 0 because it is
+	// used as sentinel and indicates absence (resolved is
+	// a sparse slice initialized with the maximal expected
+	// size). Correspondingly, lookupResolved should
+	// decrement the index on read.
+	t.resolved[t.unresolved[i]] = rid + 1
 }
-
-func (t *lookupTable[T]) storeResolved(rid, v uint32) { t.resolved[rid] = v + 1 }
 
 func (t *lookupTable[T]) lookupResolved(x uint32) uint32 {
 	if x&marker > 0 {
-		return t.resolved[t.unresolved[x&markerMask].rid] - 1
+		return t.resolved[t.unresolved[x&markerMask]] - 1
 	}
 	return x // Already resolved.
 }
 
-func (t *lookupTable[T]) iter() *lookupTableIterator[T] {
-	t.initRefs()
-	sort.Sort(t)
-	return &lookupTableIterator[T]{table: t}
-}
-
-func (t *lookupTable[T]) initRefs() {
-	t.refs = grow(t.refs, len(t.unresolved))
-	for i, v := range t.unresolved {
-		t.refs[i] = lookupTableRef{rid: v.rid, uid: uint32(i)}
+// updateResolved loads indices from buf to resolved.
+// It is expected that the order matches values.
+func (t *lookupTable[T]) updateResolved() {
+	for i, rid := range t.unresolved {
+		t.resolved[rid] = t.buf[i]
 	}
 }
 
-func (t *lookupTable[T]) Len() int           { return len(t.refs) }
-func (t *lookupTable[T]) Less(i, j int) bool { return t.refs[i].rid < t.refs[j].rid }
-func (t *lookupTable[T]) Swap(i, j int)      { t.refs[i], t.refs[j] = t.refs[j], t.refs[i] }
+func (t *lookupTable[T]) initSorted() {
+	// Gather and sort references to unresolved values.
+	t.buf = grow(t.buf, len(t.unresolved))
+	copy(t.buf, t.unresolved)
+	sort.Slice(t.buf, func(i, j int) bool {
+		return t.buf[i] < t.buf[j]
+	})
+}
+
+func (t *lookupTable[T]) iter() *lookupTableIterator[T] {
+	t.initSorted()
+	return &lookupTableIterator[T]{table: t}
+}
 
 type lookupTableIterator[T any] struct {
 	table *lookupTable[T]
@@ -891,18 +881,18 @@ type lookupTableIterator[T any] struct {
 }
 
 func (t *lookupTableIterator[T]) Next() bool {
-	return t.cur < uint32(len(t.table.refs))
+	return t.cur < uint32(len(t.table.buf))
 }
 
 func (t *lookupTableIterator[T]) At() uint32 {
-	x := t.table.refs[t.cur].rid
+	x := t.table.buf[t.cur]
 	t.cur++
 	return x
 }
 
 func (t *lookupTableIterator[T]) setValue(v T) {
-	uid := t.table.refs[t.cur-1].uid
-	t.table.unresolved[uid].val = v
+	u := t.table.resolved[t.table.buf[t.cur-1]]
+	t.table.values[u&markerMask] = v
 }
 
 func (t *lookupTableIterator[T]) Close() error { return nil }
