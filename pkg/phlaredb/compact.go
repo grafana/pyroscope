@@ -15,14 +15,14 @@ import (
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/segmentio/parquet-go"
 
-	"github.com/grafana/phlare/pkg/iter"
-	phlaremodel "github.com/grafana/phlare/pkg/model"
-	phlareparquet "github.com/grafana/phlare/pkg/parquet"
-	"github.com/grafana/phlare/pkg/phlaredb/block"
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
-	"github.com/grafana/phlare/pkg/util"
-	"github.com/grafana/phlare/pkg/util/loser"
+	"github.com/grafana/pyroscope/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/loser"
 )
 
 type BlockReader interface {

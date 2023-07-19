@@ -20,15 +20,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
-	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/phlare/pkg/model"
-	phlareobj "github.com/grafana/phlare/pkg/objstore"
-	"github.com/grafana/phlare/pkg/objstore/client"
-	"github.com/grafana/phlare/pkg/objstore/providers/filesystem"
-	"github.com/grafana/phlare/pkg/objstore/providers/gcs"
-	"github.com/grafana/phlare/pkg/phlaredb/block"
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/phlare/pkg/phlaredb/tsdb/index"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/objstore/client"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/gcs"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 )
 
 func init() {
