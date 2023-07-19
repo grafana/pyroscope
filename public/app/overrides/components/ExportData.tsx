@@ -1,23 +1,27 @@
-/* eslint-disable react/destructuring-assignment */
-import React, { useState } from 'react';
-import { format } from 'date-fns';
-import OutsideClickHandler from 'react-outside-click-handler';
-import { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
 import Button from '@webapp/ui/Button';
-import { faShareSquare } from '@fortawesome/free-solid-svg-icons/faShareSquare';
-import { createBiggestInterval } from '@webapp/util/timerange';
-import { convertPresetsToDate, formatAsOBject } from '@webapp/util/formatDate';
-import { Profile } from '@pyroscope/models/src';
-import { ContinuousState } from '@pyroscope/webapp/javascript/redux/reducers/continuous/state';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { isRouteActive, ROUTES } from '@phlare/pages/routes';
-import { useLocation } from 'react-router-dom';
+import handleError from '@webapp/util/handleError';
+import OutsideClickHandler from 'react-outside-click-handler';
+import React, { useState } from 'react';
+import saveAs from 'file-saver';
 import showModalWithInput from '@pyroscope/webapp/javascript/components/Modals/ModalWithInput';
 import styles from '@pyroscope/webapp/javascript/components/ExportData.module.scss';
+import { ContinuousState } from '@pyroscope/webapp/javascript/redux/reducers/continuous/state';
+import { convertPresetsToDate, formatAsOBject } from '@webapp/util/formatDate';
+import { createBiggestInterval } from '@webapp/util/timerange';
 import { downloadWithOrgID } from '@webapp/services/base';
-import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
-import { Message, Field } from 'protobufjs/light';
-import handleError from '@webapp/util/handleError';
+import { faShareSquare } from '@fortawesome/free-solid-svg-icons/faShareSquare';
+import { Field, Message } from 'protobufjs/light';
+import { flameGraphUpload } from '@phlare/services/flamegraphcom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { format } from 'date-fns';
+import { isRouteActive, ROUTES } from '@phlare/pages/routes';
+import { Profile } from '@pyroscope/models/src';
+import { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import { useLocation } from 'react-router-dom';
+import 'compression-streams-polyfill';
+
+/* eslint-disable react/destructuring-assignment */
 
 // These are modeled individually since each condition may have different values
 // For example, a exportPprof: true may accept a custom export function
@@ -101,7 +105,7 @@ function buildPprofQuery(state: ContinuousState) {
 function ExportData(props: ExportDataProps) {
   const { exportJSON = false } = props;
   let exportPprof = props.exportPprof;
-  let exportFlamegraphDotCom = false; // todo: add support for flamegraph.com
+  let exportFlamegraphDotCom = true;
   let exportPNG = true;
   let exportHTML = false;
   const { pathname } = useLocation();
@@ -154,12 +158,8 @@ function ExportData(props: ExportDataProps) {
       const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(
         JSON.stringify(flamebearer)
       )}`;
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute('href', dataStr);
-      downloadAnchorNode.setAttribute('download', filename);
-      document.body.appendChild(downloadAnchorNode); // required for firefox
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
+
+      saveAs(dataStr, filename);
     }
   };
 
@@ -181,39 +181,20 @@ function ExportData(props: ExportDataProps) {
     if (!customExportName) {
       return;
     }
-    // todo CORS
-    const response = await fetch('https://flamegraph.com/upload/v1', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        fileTypeData: {
-          units: flamebearer.metadata.units,
-          spyName: flamebearer.metadata.spyName,
-        },
-        name: customExportName,
-        profile: btoa(JSON.stringify(flamebearer)),
-        type: 'json',
-      }),
-    });
-    const data = await response.json();
-    console.log(data);
-    // props.exportFlamegraphDotComFn(customExportName).then((url) => {
-    //   // there has been an error which should've been handled
-    //   // so we just ignore it
-    //   if (!url) {
-    //     return;
-    //   }
 
-    //   const dlLink = document.createElement('a');
-    //   dlLink.target = '_blank';
-    //   dlLink.href = url;
+    const url = await flameGraphUpload(customExportName, flamebearer);
+    if (url.isErr) {
+      handleError(dispatch, 'Failed to export to flamegraph.com', url.error);
+      return;
+    }
 
-    //   document.body.appendChild(dlLink);
-    //   dlLink.click();
-    //   document.body.removeChild(dlLink);
-    // });
+    const dlLink = document.createElement('a');
+    dlLink.target = '_blank';
+    dlLink.href = url.value;
+
+    document.body.appendChild(dlLink);
+    dlLink.click();
+    document.body.removeChild(dlLink);
   };
 
   const downloadPNG = async () => {
@@ -234,28 +215,17 @@ function ExportData(props: ExportDataProps) {
 
       const filename = `${customExportName}.png`;
 
-      const mimeType = 'png';
       // TODO use ref
       // this won't work for comparison side by side
       const canvasElement = document.querySelector(
         '.flamegraph-canvas'
       ) as HTMLCanvasElement;
-      const MIME_TYPE = `image/${mimeType}`;
-      const imgURL = canvasElement.toDataURL();
-      const dlLink = document.createElement('a');
-
-      dlLink.download = filename;
-      dlLink.href = imgURL;
-      dlLink.dataset.downloadurl = [
-        MIME_TYPE,
-        dlLink.download,
-        dlLink.href,
-      ].join(':');
-
-      document.body.appendChild(dlLink);
-      dlLink.click();
-      document.body.removeChild(dlLink);
-      setToggleMenu(!toggleMenu);
+      canvasElement.toBlob(function (blob) {
+        if (!blob) {
+          return;
+        }
+        saveAs(blob, filename);
+      });
     }
   };
 
@@ -288,18 +258,13 @@ function ExportData(props: ExportDataProps) {
       );
       if (response.isErr) {
         handleError(dispatch, 'Failed to export to pprof', response.error);
-        return null;
+        return;
       }
       let data = await new Response(
         response.value.body?.pipeThrough(new CompressionStream('gzip'))
       ).blob();
-      let element = document.createElement('a');
-      element.setAttribute('href', window.URL.createObjectURL(data));
-      element.setAttribute('download', customExportName);
-      element.style.display = 'none';
-      document.body.appendChild(element);
-
-      element.click();
+      saveAs(data, customExportName);
+      return;
     }
   };
 
