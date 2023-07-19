@@ -117,7 +117,7 @@ jobs:
           make docker-image/phlare/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
   deploy-phlare-dev-001:
-    if: github.event_name == 'push' && github.repository == 'grafana/phlare'
+    if: github.event_name == 'push' && github.repository == 'grafana/pyroscope'
     runs-on: ubuntu-latest
     needs: [build-push]
     steps:
