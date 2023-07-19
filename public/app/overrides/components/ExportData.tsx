@@ -18,6 +18,7 @@ import { downloadWithOrgID } from '@webapp/services/base';
 import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
 import { Message, Field } from 'protobufjs/light';
 import handleError from '@webapp/util/handleError';
+import { flameGraphUpload } from '@phlare/services/flamegraphcom';
 
 // These are modeled individually since each condition may have different values
 // For example, a exportPprof: true may accept a custom export function
@@ -101,7 +102,7 @@ function buildPprofQuery(state: ContinuousState) {
 function ExportData(props: ExportDataProps) {
   const { exportJSON = false } = props;
   let exportPprof = props.exportPprof;
-  let exportFlamegraphDotCom = false; // todo: add support for flamegraph.com
+  let exportFlamegraphDotCom = true;
   let exportPNG = true;
   let exportHTML = false;
   const { pathname } = useLocation();
@@ -181,39 +182,20 @@ function ExportData(props: ExportDataProps) {
     if (!customExportName) {
       return;
     }
-    // todo CORS
-    const response = await fetch('https://flamegraph.com/upload/v1', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        fileTypeData: {
-          units: flamebearer.metadata.units,
-          spyName: flamebearer.metadata.spyName,
-        },
-        name: customExportName,
-        profile: btoa(JSON.stringify(flamebearer)),
-        type: 'json',
-      }),
-    });
-    const data = await response.json();
-    console.log(data);
-    // props.exportFlamegraphDotComFn(customExportName).then((url) => {
-    //   // there has been an error which should've been handled
-    //   // so we just ignore it
-    //   if (!url) {
-    //     return;
-    //   }
 
-    //   const dlLink = document.createElement('a');
-    //   dlLink.target = '_blank';
-    //   dlLink.href = url;
+    const url = await flameGraphUpload(customExportName, flamebearer);
+    if (url.isErr) {
+      handleError(dispatch, 'Failed to export to flamegraph.com', url.error);
+      return;
+    }
 
-    //   document.body.appendChild(dlLink);
-    //   dlLink.click();
-    //   document.body.removeChild(dlLink);
-    // });
+    const dlLink = document.createElement('a');
+    dlLink.target = '_blank';
+    dlLink.href = url.value;
+
+    document.body.appendChild(dlLink);
+    dlLink.click();
+    document.body.removeChild(dlLink);
   };
 
   const downloadPNG = async () => {
