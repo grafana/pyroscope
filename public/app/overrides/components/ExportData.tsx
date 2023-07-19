@@ -219,12 +219,12 @@ function ExportData(props: ExportDataProps) {
       const canvasElement = document.querySelector(
         '.flamegraph-canvas'
       ) as HTMLCanvasElement;
-      canvasElement.toBlob(function(blob) {
+      canvasElement.toBlob(function (blob) {
         if (!blob) {
           return;
         }
         saveAs(blob, filename);
-    });
+      });
     }
   };
 
