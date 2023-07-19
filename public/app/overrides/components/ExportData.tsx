@@ -259,13 +259,7 @@ function ExportData(props: ExportDataProps) {
       let data = await new Response(
         response.value.body?.pipeThrough(new CompressionStream('gzip'))
       ).blob();
-      let element = document.createElement('a');
-      element.setAttribute('href', window.URL.createObjectURL(data));
-      element.setAttribute('download', customExportName);
-      element.style.display = 'none';
-      document.body.appendChild(element);
-
-      element.click();
+      saveAs(data, customExportName);
     }
   };
 
