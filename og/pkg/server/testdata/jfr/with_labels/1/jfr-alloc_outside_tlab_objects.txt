@@ -1,4 +1,0 @@
-alloc/OutsideTLAB.context1;alloc/OutsideTLAB.method1 1
-alloc/OutsideTLAB.context1;alloc/OutsideTLAB.method2 2
-alloc/OutsideTLAB.context2;alloc/OutsideTLAB.method1 1
-alloc/OutsideTLAB.context2;alloc/OutsideTLAB.method2 2

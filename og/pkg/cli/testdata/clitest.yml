@@ -1,7 +1,0 @@
----
-foo: config-value
-foos:
-  - config-1
-  - config-2
-foo-struct:
-  bar: config-value
