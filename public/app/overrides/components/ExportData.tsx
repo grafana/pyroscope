@@ -258,7 +258,7 @@ function ExportData(props: ExportDataProps) {
       );
       if (response.isErr) {
         handleError(dispatch, 'Failed to export to pprof', response.error);
-        return null;
+        return;
       }
       let data = await new Response(
         response.value.body?.pipeThrough(new CompressionStream('gzip'))
