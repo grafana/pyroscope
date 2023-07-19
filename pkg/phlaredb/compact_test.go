@@ -368,9 +368,9 @@ func Test_lookupTable(t *testing.T) {
 	resolveAppend := func() {
 		// Populate dst with the newly resolved values.
 		// Note that order in dst does not have to match src.
-		for _, n := range l.unresolved {
-			l.storeResolved(n.rid, uint32(len(dst)))
-			dst = append(dst, n.val)
+		for i, v := range l.values {
+			l.storeResolved(i, uint32(len(dst)))
+			dst = append(dst, v)
 		}
 	}
 

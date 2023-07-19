@@ -971,9 +971,9 @@ func (h *Head) flush(ctx context.Context) error {
 	}
 
 	// add total size symdb
-	symbDBFiles, error := h.SymDBFiles()
-	if error != nil {
-		return error
+	symbDBFiles, err := h.SymDBFiles()
+	if err != nil {
+		return err
 	}
 
 	for _, file := range symbDBFiles {

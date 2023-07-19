@@ -92,6 +92,9 @@ func (r *Reader) SymbolsResolver(partition uint64) (SymbolsResolver, bool) {
 	return m, ok
 }
 
+// Load causes reader to load all contents into memory.
+func (r *Reader) Load() error { panic("implement me") }
+
 type partitionFileReader struct {
 	reader           *Reader
 	stacktraceChunks []*stacktraceChunkFileReader
@@ -135,6 +138,9 @@ func (r *stacktraceResolverFile) Release() {}
 var ErrInvalidStacktraceRange = fmt.Errorf("invalid range: stack traces can't be resolved")
 
 func (r *stacktraceResolverFile) ResolveStacktraces(ctx context.Context, dst StacktraceInserter, s []uint32) error {
+	if len(s) == 0 {
+		return nil
+	}
 	if len(r.partition.stacktraceChunks) == 0 {
 		return ErrInvalidStacktraceRange
 	}
