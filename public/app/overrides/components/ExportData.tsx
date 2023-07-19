@@ -220,6 +220,9 @@ function ExportData(props: ExportDataProps) {
         '.flamegraph-canvas'
       ) as HTMLCanvasElement;
       canvasElement.toBlob(function(blob) {
+        if (!blob) {
+          return;
+        }
         saveAs(blob, filename);
     });
     }
