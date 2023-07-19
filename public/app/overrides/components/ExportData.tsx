@@ -18,6 +18,8 @@ import { Profile } from '@pyroscope/models/src';
 import { Tooltip } from '@pyroscope/webapp/javascript/ui/Tooltip';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import { useLocation } from 'react-router-dom';
+import saveAs from 'file-saver';
+
 /* eslint-disable react/destructuring-assignment */
 
 // These are modeled individually since each condition may have different values
@@ -155,12 +157,8 @@ function ExportData(props: ExportDataProps) {
       const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(
         JSON.stringify(flamebearer)
       )}`;
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute('href', dataStr);
-      downloadAnchorNode.setAttribute('download', filename);
-      document.body.appendChild(downloadAnchorNode); // required for firefox
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
+
+      saveAs(dataStr, filename);
     }
   };
 
@@ -216,28 +214,14 @@ function ExportData(props: ExportDataProps) {
 
       const filename = `${customExportName}.png`;
 
-      const mimeType = 'png';
       // TODO use ref
       // this won't work for comparison side by side
       const canvasElement = document.querySelector(
         '.flamegraph-canvas'
       ) as HTMLCanvasElement;
-      const MIME_TYPE = `image/${mimeType}`;
-      const imgURL = canvasElement.toDataURL();
-      const dlLink = document.createElement('a');
-
-      dlLink.download = filename;
-      dlLink.href = imgURL;
-      dlLink.dataset.downloadurl = [
-        MIME_TYPE,
-        dlLink.download,
-        dlLink.href,
-      ].join(':');
-
-      document.body.appendChild(dlLink);
-      dlLink.click();
-      document.body.removeChild(dlLink);
-      setToggleMenu(!toggleMenu);
+      canvasElement.toBlob(function(blob) {
+        saveAs(blob, filename);
+    });
     }
   };
 
