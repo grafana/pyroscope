@@ -1,2 +1,0 @@
-execution/Running.context0;execution/Running.method1 1
-execution/Running.context0;execution/Running.method2 2

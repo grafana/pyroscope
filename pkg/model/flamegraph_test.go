@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
+	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/stretchr/testify/require"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"

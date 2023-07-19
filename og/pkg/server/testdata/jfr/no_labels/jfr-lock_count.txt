@@ -1,2 +1,0 @@
-lock/Lock.context0;lock/Lock.method1 1
-lock/Lock.context0;lock/Lock.method2 2

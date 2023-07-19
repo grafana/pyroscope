@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/pyroscope-io/pyroscope/pkg/structs/cappedarr"
+	"github.com/grafana/pyroscope/pkg/og/structs/cappedarr"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 )

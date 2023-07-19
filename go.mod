@@ -15,6 +15,7 @@ require (
 	github.com/go-kit/log v0.2.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/gogo/status v1.1.1
+	github.com/golang/protobuf v1.5.3
 	github.com/google/go-cmp v0.5.9
 	github.com/google/pprof v0.0.0-20230602150820-91b7bce49751
 	github.com/google/uuid v1.3.0
@@ -25,6 +26,7 @@ require (
 	github.com/grafana/regexp v0.0.0-20221122212121-6b5c0a4cb7fd
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.2
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k0kubun/pp/v3 v3.2.0
 	github.com/klauspost/compress v1.16.6
@@ -33,6 +35,8 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/oklog/ulid v1.3.1
 	github.com/olekukonko/tablewriter v0.0.5
+	github.com/onsi/ginkgo/v2 v2.4.0
+	github.com/onsi/gomega v1.24.0
 	github.com/opentracing-contrib/go-grpc v0.0.0-20210225150812-73cb765af46e
 	github.com/opentracing-contrib/go-stdlib v1.0.0
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b
@@ -41,7 +45,7 @@ require (
 	github.com/prometheus/client_golang v1.15.1
 	github.com/prometheus/common v0.44.0
 	github.com/prometheus/prometheus v1.99.0
-	github.com/pyroscope-io/pyroscope v0.37.3-0.20230709100419-765c32838879
+	github.com/pyroscope-io/jfr-parser v0.6.0
 	github.com/samber/lo v1.37.0
 	github.com/segmentio/parquet-go v0.0.0-20230309140036-b6d0a6236da6
 	github.com/sirupsen/logrus v1.9.0
@@ -49,6 +53,7 @@ require (
 	github.com/thanos-io/objstore v0.0.0-20230306180455-fb5482c10670
 	github.com/thanos-io/thanos v0.31.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
+	github.com/valyala/bytebufferpool v1.0.0
 	github.com/weaveworks/common v0.0.0-20230511094633-334485600903
 	github.com/xlab/treeprint v1.2.0
 	go.uber.org/atomic v1.10.0
@@ -89,7 +94,6 @@ require (
 	github.com/AzureAD/microsoft-authentication-library-for-go v0.8.1 // indirect
 	github.com/DmitriyVTitov/size v1.5.0 // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect
-	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/aliyun/aliyun-oss-go-sdk v2.2.6+incompatible // indirect
@@ -117,9 +121,7 @@ require (
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
-	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/digitalocean/godo v1.98.0 // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
@@ -137,7 +139,6 @@ require (
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
 	github.com/go-openapi/errors v0.20.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
@@ -156,7 +157,6 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/glog v1.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/gnostic v0.6.9 // indirect
@@ -175,7 +175,6 @@ require (
 	github.com/hashicorp/go-hclog v1.4.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-msgpack v1.1.5 // indirect
-	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.2 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
@@ -222,21 +221,18 @@ require (
 	github.com/prometheus/common/sigv4 v0.1.0 // indirect
 	github.com/prometheus/exporter-toolkit v0.9.1 // indirect
 	github.com/prometheus/procfs v0.10.0 // indirect
-	github.com/pyroscope-io/jfr-parser v0.6.0 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/rs/xid v1.4.0 // indirect
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.15 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
 	github.com/segmentio/encoding v0.3.6 // indirect
 	github.com/sercand/kuberesolver/v4 v4.0.0 // indirect
-	github.com/shirou/gopsutil v3.21.4+incompatible // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/sony/gobreaker v0.5.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/tencentyun/cos-go-sdk-v5 v0.7.40 // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
-	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/vultr/govultr/v2 v2.17.2 // indirect
 	github.com/weaveworks/promrus v1.2.0 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.6 // indirect

@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	dvarint "github.com/dennwc/varint"
-	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
+	"github.com/grafana/pyroscope/pkg/og/util/varint"
 	"github.com/xlab/treeprint"
 )
 

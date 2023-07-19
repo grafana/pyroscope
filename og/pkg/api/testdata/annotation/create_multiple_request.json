@@ -1,5 +1,0 @@
-{
-  "appNames": ["myApp1.cpu", "myApp1.goroutines", "myApp1.alloc_objects"],
-  "content": "mycontent",
-  "timestamp": 1662729099
-}
