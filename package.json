@@ -84,6 +84,7 @@
     "file-saver": "^2.0.5",
     "graphviz-react": "^1.2.5",
     "jquery": "^3.6.4",
+    "protobufjs": "^7.2.4",
     "react": "^18.2.0",
     "react-datepicker": "^4.7.0",
     "react-debounce-input": "^3.2.5",
@@ -101,8 +102,6 @@
     "zod": "^3.21.4"
   },
   "workspaces": [
-    "og/packages/*",
-    "og/webapp",
     "og"
   ]
 }

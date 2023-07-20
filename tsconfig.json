@@ -4,8 +4,16 @@
     "plugins": [{ "name": "typescript-plugin-css-modules" }],
     "paths": {
       "@phlare/*": ["./public/app/*"],
-
       "@pyroscope/webapp/*": ["./og/webapp/*"],
+      "@webapp/redux/*": [
+        "./og/webapp/javascript/redux/*"
+      ],
+      "@pyroscope/flamegraph/*": [
+        "./og/packages/pyroscope-flamegraph/*"
+      ],
+      "@pyroscope/models/*": [
+        "./og/packages/pyroscope-models/*"
+      ],
       "@webapp/components/ExportData": [
         "./public/app/overrides/components/ExportData"
       ],
@@ -60,6 +68,6 @@
     "./node_modules/pyroscope-oss/lib/",
     "./node_modules/pyroscope-oss/webapp/javascript/types",
     "public",
-    "public/app/types.ts"
+    "public/app/types.d.ts"
   ]
 }
