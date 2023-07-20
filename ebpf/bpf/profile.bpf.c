@@ -4,7 +4,6 @@
 #include "bpf_helpers.h"
 #include "bpf_tracing.h"
 #include "profile.bpf.h"
-#include "pyperf.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -43,7 +42,6 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
     u32 pid = id;
 	struct sample_key key = {};
 	u32 *val, one = 1, zero = 0;
-    PidData *pid_data;
 
 	struct bss_arg *arg = bpf_map_lookup_elem(&args, &zero);
     if (!arg) {
@@ -56,12 +54,6 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
         return 0;
     }
 
-    //todo the lookup is done twice, here and in the on_event functin, do it once
-    pid_data = bpf_map_lookup_elem(&py_pid_config, &tgid);
-    if (pid_data) {
-        bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_ON_EVENT);
-        return 0;
-    }
 
     key.pid = tgid;
     key.kern_stack = -1;

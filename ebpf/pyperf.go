@@ -19,6 +19,8 @@ import (
 	"github.com/samber/lo"
 )
 
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -Wall -fpie -Wno-unused-variable -Wno-unused-function" pyperf bpf/pyperf.bpf.c -- -I./bpf/libbpf -I./bpf/vmlinux/
+
 type pyPerf struct {
 	rd             *perf.Reader
 	logger         log.Logger

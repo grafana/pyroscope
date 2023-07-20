@@ -10,7 +10,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"reflect"
-	"strings"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -117,7 +116,9 @@ func (s *session) Start() error {
 	if err = s.initArgs(); err != nil {
 		return fmt.Errorf("init bpf args: %w", err)
 	}
-	if err = s.attachPerfEvents(); err != nil {
+	s.perfEvents, err = attachPerfEvents(s.options.SampleRate, s.bpf.DoPerfEvent)
+	if err != nil {
+		s.Stop()
 		return fmt.Errorf("attach perf events: %w", err)
 	}
 	return nil
@@ -221,30 +222,6 @@ func (s *session) debugDump(it sf, stats stackResolveStats, sb stackBuilder) {
 	if len(sb.stack) > 2 && stats.unknownSymbols+stats.unknownModules > stats.known {
 		m.UnknownStacks.WithLabelValues(serviceName).Inc()
 		unknownStacks++
-		if unknownStacks%10 == 0 && serviceName == "ebpf/pyroscope-ebpf/profiler" {
-			rawStack := strings.Builder{}
-			for i := 0; i < len(it.uStack); i += 8 {
-				PC := binary.LittleEndian.Uint64(it.uStack[i : i+8])
-				if PC == 0 {
-					break
-				}
-				rawStack.WriteString(fmt.Sprintf("%016x|", PC))
-			}
-			for i := 0; i < len(it.kStack); i += 8 {
-				PC := binary.LittleEndian.Uint64(it.kStack[i : i+8])
-				if PC == 0 {
-					break
-				}
-				rawStack.WriteString(fmt.Sprintf("%016x|", PC))
-			}
-			level.Debug(s.logger).Log(
-				"msg", "stack with unknown symbols",
-				"pid", it.pid,
-				"symbols", strings.Join(sb.stack, ";"),
-				"raw", rawStack.String(),
-			)
-		}
-
 	}
 }
 
@@ -253,7 +230,7 @@ func (s *session) Stop() {
 		_ = pe.Close()
 	}
 	s.perfEvents = nil
-	s.bpf.Close()
+	_ = s.bpf.Close()
 	s.pyperf.Close()
 }
 
@@ -301,25 +278,26 @@ func (s *session) initArgs() error {
 	return nil
 }
 
-func (s *session) attachPerfEvents() error {
+func attachPerfEvents(sampleRate int, prog *ebpf.Program) ([]*perfEvent, error) {
+	var perfEvents []*perfEvent
 	var cpus []uint
 	var err error
 	if cpus, err = cpuonline.Get(); err != nil {
-		return fmt.Errorf("get cpuonline: %w", err)
+		return nil, fmt.Errorf("get cpuonline: %w", err)
 	}
 	for _, cpu := range cpus {
-		pe, err := newPerfEvent(int(cpu), s.options.SampleRate)
+		pe, err := newPerfEvent(int(cpu), sampleRate)
 		if err != nil {
-			return fmt.Errorf("new perf event: %w", err)
+			return perfEvents, fmt.Errorf("new perf event: %w", err)
 		}
-		s.perfEvents = append(s.perfEvents, pe)
+		perfEvents = append(perfEvents, pe)
 
-		err = pe.attachPerfEvent(s.bpf.profilePrograms.DoPerfEvent)
+		err = pe.attachPerfEvent(prog)
 		if err != nil {
-			return fmt.Errorf("attach perf event: %w", err)
+			return perfEvents, fmt.Errorf("attach perf event: %w", err)
 		}
 	}
-	return nil
+	return perfEvents, nil
 }
 
 func (s *session) getStack(stackId int64) []byte {

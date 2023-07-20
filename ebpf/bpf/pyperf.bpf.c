@@ -1,7 +1,18 @@
 #ifndef PYPERF_H
 #define PYPERF_H
 
+#include "vmlinux.h"
+#include "bpf_helpers.h"
+
+// todo create a header for it
+#if defined(PYROSCOPE_UME)
+#define pyro_bpf_core_read(dst, sz, src)					    \
+		bpf_probe_read_kernel(dst, sz, src)
+#else
 #include "bpf_core_read.h"
+#define pyro_bpf_core_read(dst, sz, src)					    \
+	bpf_core_read(dst, sz, src)
+#endif
 
 #define PYTHON_STACK_FRAMES_PER_PROG 25
 #define PYTHON_STACK_PROG_CNT 3
@@ -306,6 +317,7 @@ get_pthread_id_match(void* thread_state, void* tls_base, PidData* pid_data) {
 
 SEC("perf_event")
 int on_event(struct pt_regs* ctx) {
+    bpf_printk("%x %x", 0xcafe,0xdead, 0xbeef);
     uint64_t pid_tgid = bpf_get_current_pid_tgid();
     pid_t pid = (pid_t)(pid_tgid >> 32);
     PidData* pid_data = bpf_map_lookup_elem(&py_pid_config, &pid);
@@ -351,7 +363,7 @@ int on_event(struct pt_regs* ctx) {
 //#error "Unsupported platform"
 //#endif
     void* tls_base = NULL;
-    if (bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.fsbase)) {
+    if (pyro_bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.fsbase)) {
         return 0;
     }
 
