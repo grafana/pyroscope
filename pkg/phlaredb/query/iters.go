@@ -456,12 +456,11 @@ func (bj *BinaryJoinIterator) makeResult() {
 
 func (bj *BinaryJoinIterator) Next() bool {
 	for {
-		oldResult := bj.left.At()
+		iteratorResultPoolPut(bj.left.At())
 		if !bj.left.Next() {
 			bj.err = bj.left.Err()
 			return false
 		}
-		defer iteratorResultPoolPut(oldResult)
 
 		// now seek the right iterator to the left position
 		if !bj.nextOrSeek(RowNumberWithDefinitionLevel{bj.left.At().RowNumber, bj.definitionLevel}, bj.right) {
