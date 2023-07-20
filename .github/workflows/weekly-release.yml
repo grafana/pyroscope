@@ -71,4 +71,4 @@ jobs:
           docker manifest create "grafana/phlare:${WEEKLY_IMAGE_TAG}" "${IMAGE_AMMENDS[@]}"
           docker manifest push "grafana/phlare:${WEEKLY_IMAGE_TAG}"
       - name: Push git tag for weekly release
-        run: git push https://grafanabot:${{ secrets.GH_BOT_ACCESS_TOKEN }}@github.com/grafana/phlare.git "${WEEKLY_IMAGE_TAG}"
+        run: git push https://grafanabot:${{ secrets.GH_BOT_ACCESS_TOKEN }}@github.com/grafana/pyroscope.git "${WEEKLY_IMAGE_TAG}"

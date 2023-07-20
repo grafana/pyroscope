@@ -80,7 +80,7 @@ frontend/deps:
 .PHONY: release
 release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
 	# remove local git tags coming from helm chart release
-	git tag -d $(shell git tag -l "phlare-*" "api/*")
+	git tag -d $(shell git tag -l "phlare-*" "api/*" "@pyroscope*")
 	# ensure there is a docker cli command
 	@which docker || { apt-get update && apt-get install -y docker.io; }
 	@docker info > /dev/null
