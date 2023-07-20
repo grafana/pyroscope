@@ -2,7 +2,7 @@ version: v1
 managed:
   enabled: true
   go_package_prefix:
-    default: github.com/grafana/phlare/api/gen/proto/go
+    default: github.com/grafana/pyroscope/api/gen/proto/go
     except:
       - buf.build/googleapis/googleapis
 
@@ -16,8 +16,8 @@ plugins:
     opt:
       - paths=source_relative
       - features=marshal+unmarshal+size+pool+grpc+pool+clone
-      - pool=github.com/grafana/phlare/api/gen/proto/go/google/v1.Profile
-      - pool=github.com/grafana/phlare/api/gen/proto/go/google/v1.Sample
+      - pool=github.com/grafana/pyroscope/api/gen/proto/go/google/v1.Profile
+      - pool=github.com/grafana/pyroscope/api/gen/proto/go/google/v1.Sample
 
   - name: connect-go
     out: gen/proto/go

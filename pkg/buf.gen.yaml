@@ -2,7 +2,7 @@ version: v1
 managed:
   enabled: true
   go_package_prefix:
-    default: github.com/grafana/phlare/pkg/
+    default: github.com/grafana/pyroscope/pkg/
     except:
       - buf.build/googleapis/googleapis
 
@@ -16,6 +16,7 @@ plugins:
     opt:
       - paths=source_relative
       - features=marshal+unmarshal+size+pool+grpc+pool
+      - pool=github.com/grafana/pyroscope/pkg/og/storage/tree.Profile
 
   - name: connect-go
     out: .
