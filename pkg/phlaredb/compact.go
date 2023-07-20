@@ -21,6 +21,7 @@ import (
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/loser"
@@ -124,6 +125,13 @@ func metaFilesFromDir(dir string) ([]block.File, error) {
 			return err
 		}
 		if info.IsDir() {
+			if info.Name() == symdb.DefaultDirName {
+				f, err := symdbMetaFiles(dir)
+				if err != nil {
+					return err
+				}
+				files = append(files, f...)
+			}
 			return nil
 		}
 		var f block.File
@@ -138,6 +146,8 @@ func metaFilesFromDir(dir string) ([]block.File, error) {
 			if err != nil {
 				return err
 			}
+		default:
+			return nil
 		}
 		f.RelPath, err = filepath.Rel(dir, path)
 		if err != nil {

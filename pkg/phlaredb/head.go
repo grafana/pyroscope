@@ -971,7 +971,7 @@ func (h *Head) flush(ctx context.Context) error {
 	}
 
 	// add total size symdb
-	symbDBFiles, err := h.SymDBFiles()
+	symbDBFiles, err := symdbMetaFiles(h.headPath)
 	if err != nil {
 		return err
 	}
@@ -1002,6 +1002,26 @@ func (h *Head) flush(ctx context.Context) error {
 // SymDBFiles lists files in symdb folder
 func (h *Head) SymDBFiles() ([]block.File, error) {
 	files, err := os.ReadDir(filepath.Join(h.headPath, symdb.DefaultDirName))
+	if err != nil {
+		return nil, err
+	}
+	result := make([]block.File, len(files))
+	for idx, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		result[idx].RelPath = filepath.Join(symdb.DefaultDirName, f.Name())
+		info, err := f.Info()
+		if err != nil {
+			return nil, err
+		}
+		result[idx].SizeBytes = uint64(info.Size())
+	}
+	return result, nil
+}
+
+func symdbMetaFiles(dir string) ([]block.File, error) {
+	files, err := os.ReadDir(filepath.Join(dir, symdb.DefaultDirName))
 	if err != nil {
 		return nil, err
 	}
