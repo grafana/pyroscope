@@ -110,7 +110,7 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Met
 	meta.Files = metaFiles
 	meta.Stats.NumProfiles = total
 	meta.Stats.NumSeries = seriesRewriter.NumSeries()
-	meta.Stats.NumSamples = symbolsRewriter.NumSamples()
+	meta.Stats.NumSamples = symRewriter.NumSamples()
 	if _, err := meta.WriteToFile(util.Logger, blockPath); err != nil {
 		return block.Meta{}, err
 	}
