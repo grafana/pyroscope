@@ -86,3 +86,7 @@ type PlotWithCrosshairsSupport = jquery.flot.plot &
     version: '1.0',
   });
 })(jQuery);
+
+// TS1208: 'CrosshairSync.plugin.ts' cannot be compiled under '--isolatedModules' because it is considered a global script file. 
+// Add an import, export, or an empty 'export {}' statement to make it a module.
+export {};
