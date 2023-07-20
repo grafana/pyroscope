@@ -95,20 +95,19 @@ func (s symbolsAppender) AppendStacktraces(dst []uint32, stacktraces [][]int32) 
 }
 
 func (s symbolsAppender) AppendLocations(dst []uint32, locations []*schemav1.InMemoryLocation) {
-	// TODO: rewriter -> dst.
-	_ = s.writer.locations.ingest(context.Background(), locations, nil)
+	s.writer.locations.append(dst, locations)
 }
 
 func (s symbolsAppender) AppendMappings(dst []uint32, mappings []*schemav1.InMemoryMapping) {
-	_ = s.writer.mappings.ingest(context.Background(), mappings, nil)
+	s.writer.mappings.append(dst, mappings)
 }
 
 func (s symbolsAppender) AppendFunctions(dst []uint32, functions []*schemav1.InMemoryFunction) {
-	_ = s.writer.functions.ingest(context.Background(), functions, nil)
+	s.writer.functions.append(dst, functions)
 }
 
 func (s symbolsAppender) AppendStrings(dst []uint32, strings []string) {
-	_ = s.writer.strings.ingest(context.Background(), strings, nil)
+	s.writer.strings.append(dst, strings)
 }
 
 func (s symbolsAppender) Flush() error {
