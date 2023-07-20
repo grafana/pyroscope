@@ -1,7 +1,7 @@
 {
   "name": "grafana-pyroscope",
   "version": "0.0.1",
-  "repository": "git@github.com:grafana/phlare.git",
+  "repository": "git@github.com:grafana/pyroscope.git",
   "author": "Grafana Labs",
   "license": "AGPL-3.0-only",
   "private": true,
@@ -83,7 +83,6 @@
     "file-saver": "^2.0.5",
     "graphviz-react": "^1.2.5",
     "jquery": "^3.6.4",
-    "pyroscope-oss": "git+https://github.com/pyroscope-io/pyroscope.git#f710852",
     "react": "^18.2.0",
     "react-datepicker": "^4.7.0",
     "react-debounce-input": "^3.2.5",
@@ -98,5 +97,10 @@
     "react-router-dom": "5.3.0",
     "react-textarea-autosize": "8.3.0",
     "zod": "^3.21.4"
-  }
+  },
+  "workspaces": [
+    "og/packages/*",
+    "og/webapp",
+    "og"
+  ]
 }

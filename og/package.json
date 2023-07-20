@@ -9,10 +9,6 @@
     "type": "git",
     "url": "https://github.com/pyroscope-io/pyroscope.git"
   },
-  "workspaces": [
-    "packages/*",
-    "webapp"
-  ],
   "scripts": {
     "start": "lerna-watch @pyroscope/webapp",
     "bootstrap": "lerna bootstrap && husky install",
