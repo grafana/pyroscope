@@ -1,9 +1,7 @@
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const {
-  dependencies: pyroOSSDeps,
-} = require('../../og/package.json');
+const { dependencies: pyroOSSDeps } = require('../../og/package.json');
 const webpack = require('webpack');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
@@ -99,10 +97,7 @@ module.exports = {
       ),
 
       // Common
-      '@pyroscope/webapp': path.resolve(
-        __dirname,
-        '../../og/webapp'
-      ),
+      '@pyroscope/webapp': path.resolve(__dirname, '../../og/webapp'),
       '@pyroscope/flamegraph': path.resolve(
         __dirname,
         '../../og/packages/pyroscope-flamegraph'
@@ -112,10 +107,7 @@ module.exports = {
         '../../og/packages/pyroscope-models'
       ),
 
-      '@webapp': path.resolve(
-        __dirname,
-        '../../og/webapp/javascript'
-      ),
+      '@webapp': path.resolve(__dirname, '../../og/webapp/javascript'),
 
       '@phlare': path.resolve(__dirname, '../../public/app'),
       // Dependencies
