@@ -227,3 +227,35 @@ func (s *deduplicatingSlice[M, K, H, P]) ingest(_ context.Context, elems []M, re
 
 	return nil
 }
+
+func (s *deduplicatingSlice[M, K, H, P]) append(dst []uint32, elems []M) {
+	missing := int64SlicePool.Get()[:0]
+	s.lock.RLock()
+	for i, v := range elems {
+		k := s.helper.key(v)
+		if x, ok := s.lookup[k]; ok {
+			dst[i] = uint32(x)
+		} else {
+			missing = append(missing, int64(i))
+		}
+	}
+	s.lock.RUnlock()
+	if len(missing) > 0 {
+		s.lock.RLock()
+		p := uint32(len(s.slice))
+		for _, i := range missing {
+			k := s.helper.key(elems[i])
+			x, ok := s.lookup[k]
+			if !ok {
+				dst[i] = uint32(x)
+				continue
+			}
+			s.slice = append(s.slice, s.helper.clone(elems[i]))
+			s.lookup[k] = int64(p)
+			dst[i] = p
+			p++
+		}
+		s.lock.RUnlock()
+	}
+	int64SlicePool.Put(missing)
+}
