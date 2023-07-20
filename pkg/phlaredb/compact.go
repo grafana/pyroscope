@@ -746,7 +746,7 @@ func (p *symPartitionRewriter) appendRewrite(stacktraces []uint32) error {
 		stacktraces[i] = p.stacktraces.lookupResolved(v)
 	}
 
-	return p.appender.Flush()
+	return nil
 }
 
 func (p *symPartitionRewriter) resolveStacktraces(stacktraceIDs []uint32) error {

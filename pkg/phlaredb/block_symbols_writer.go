@@ -16,13 +16,11 @@ type SymbolsWriter interface {
 }
 
 type SymbolsAppender interface {
-	AppendStacktraces([]uint32, [][]int32)
+	AppendStacktraces([]uint32, []*schemav1.Stacktrace)
 	AppendLocations([]uint32, []*schemav1.InMemoryLocation)
 	AppendMappings([]uint32, []*schemav1.InMemoryMapping)
 	AppendFunctions([]uint32, []*schemav1.InMemoryFunction)
 	AppendStrings([]uint32, []string)
-
-	Flush() error
 }
 
 type symbolsWriter struct {
@@ -89,8 +87,7 @@ type symbolsAppender struct {
 	writer      *symbolsWriter
 }
 
-func (s symbolsAppender) AppendStacktraces(dst []uint32, stacktraces [][]int32) {
-	// TODO: []*schemav1.Stacktrace -> [][]uint32.
+func (s symbolsAppender) AppendStacktraces(dst []uint32, stacktraces []*schemav1.Stacktrace) {
 	s.stacktraces.AppendStacktrace(dst, stacktraces)
 }
 
@@ -108,9 +105,4 @@ func (s symbolsAppender) AppendFunctions(dst []uint32, functions []*schemav1.InM
 
 func (s symbolsAppender) AppendStrings(dst []uint32, strings []string) {
 	s.writer.strings.append(dst, strings)
-}
-
-func (s symbolsAppender) Flush() error {
-	// TODO: Reset state (e.g. rewriter).
-	return nil
 }
