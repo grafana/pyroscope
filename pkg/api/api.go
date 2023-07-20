@@ -157,6 +157,9 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 	// Redirect `/ui` to `/ui/`.
 	// See more: https://github.com/grafana/pyroscope/pull/649#issuecomment-1522958157.
 	a.RegisterRoute("/ui", http.RedirectHandler("/ui/", http.StatusFound), false, true, "GET")
+	a.indexPage.AddLinks(defaultWeight, "User interface", []IndexPageLink{
+		{Desc: "User interface", Path: "/ui"},
+	})
 
 	// register status service providing config and buildinfo at grpc gateway
 	if err := statusv1.RegisterStatusServiceHandlerServer(context.Background(), a.grpcGatewayMux, statusService); err != nil {
