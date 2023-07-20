@@ -31,10 +31,6 @@ const defaultPresets = [
     { label: 'Last 7 days', from: 'now-7d', until: 'now' },
     { label: 'Last 30 days', from: 'now-30d', until: 'now' },
     { label: 'Last 90 days', from: 'now-90d', until: 'now' },
-    { label: 'Last 6 months', from: 'now-6M', until: 'now' },
-    { label: 'Last 1 year', from: 'now-1y', until: 'now' },
-    { label: 'Last 2 years', from: 'now-2y', until: 'now' },
-    { label: 'Last 5 years', from: 'now-5y', until: 'now' },
   ],
 ];
 
