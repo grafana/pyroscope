@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	schemav1 "github.com/grafana/phlare/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/phlare/pkg/phlaredb/symdb"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
 
 // TODO(kolesnikovae): Refactor to symdb.
