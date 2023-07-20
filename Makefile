@@ -163,8 +163,8 @@ define deploy
 	kubectl get pods
 	$(BIN)/helm upgrade --install $(1) ./operations/phlare/helm/phlare $(2) \
 		--set phlare.image.tag=$(IMAGE_TAG) \
-		--set phlare.image.repository=$(IMAGE_PREFIX)phlare \
-		--set phlare.podAnnotations.image-id=$(shell cat .docker-image-id-phlare) \
+		--set phlare.image.repository=$(IMAGE_PREFIX)pyroscope \
+		--set phlare.podAnnotations.image-id=$(shell cat .docker-image-id-pyroscope) \
 		--set phlare.service.port_name=http-metrics \
 		--set phlare.podAnnotations."profiles\.grafana\.com\/memory\.port_name"=http-metrics \
 		--set phlare.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
