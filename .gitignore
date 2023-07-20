@@ -6,6 +6,7 @@ bin
 *.test
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+*.class
 
 /cmd/phlare/data
 pyroscope-sync/
