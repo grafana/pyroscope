@@ -38,6 +38,11 @@ func New[E any, S Sequence](sequences []S, maxVal E, at func(S) E, less func(E, 
 		t.nodes[i+nSequences].items = s
 		if !t.moveNext(i + nSequences) { // Must call Next on each item so that At() has a value.
 			if t.err != nil {
+				// error during initialize, requires us to close sequences not touched yet and mark nodes as uninitialized
+				for j := i + 1; j < nSequences; j++ {
+					t.close(sequences[j])
+					t.nodes[j+nSequences].index = -1
+				}
 				break
 			}
 		}
