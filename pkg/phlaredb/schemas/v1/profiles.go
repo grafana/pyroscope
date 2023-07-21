@@ -178,8 +178,11 @@ func (r *SliceRowReader[T]) ReadRows(rows []parquet.Row) (n int, err error) {
 		err = io.EOF
 	}
 	for pos, p := range r.slice[:len(rows)] {
-		// serialize the row
-		rows[pos] = r.serialize(p, rows[pos])
+		// Serialize the row. Note that the row may
+		// be already initialized and contain values,
+		// therefore it must be reset.
+		row := rows[pos][:0]
+		rows[pos] = r.serialize(p, row)
 		n++
 	}
 	r.slice = r.slice[len(rows):]
