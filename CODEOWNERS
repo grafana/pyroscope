@@ -1,0 +1,8 @@
+# Default owners for everything in the repo, unless a later match takes precedence.
+* @grafana/pyroscope-team
+
+# Documentation.
+/docs/ @grafana/docs-profiles @grafana/pyroscope-team
+
+# eBPF collector
+/ebpf/ @korniltsev
