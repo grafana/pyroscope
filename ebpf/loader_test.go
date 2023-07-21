@@ -1,7 +1,9 @@
-package ume
+package ebpfspy
 
 import (
 	"fmt"
+	"github.com/cilium/ebpf"
+	ume "github.com/grafana/phlare/ebpf/testkit/ume"
 	"github.com/stretchr/testify/require"
 	"os"
 	"regexp"
@@ -11,11 +13,20 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	ume, err := New("/home/korniltsev/pyro/pyroscope/ebpf/bpf/pyperf.so", "on_event")
+	pid := uint32(4242)
+	e, err := ume.New("/home/korniltsev/pyro/pyroscope/ebpf/bpf/pyperf.so", "on_event")
 	require.NoError(t, err)
 
+	e.SetPIDTGID(0xdead, pid)
+
+	pidConfig := ume.NewHashMap[uint32, pyperfPidData]()
+	e.SetMap("py_state_heap", ume.NewArrayMap[pyperfSampleStateT](1))
+	e.SetMap("py_pid_config", pidConfig)
+
+	pidConfig.Update(pid, pyperfPidData{}, ebpf.UpdateAny)
+
 	//waitForDebugger()
-	ume.invoke(unsafe.Pointer(uintptr(239)))
+	e.Invoke(unsafe.Pointer(uintptr(239)))
 
 }
 

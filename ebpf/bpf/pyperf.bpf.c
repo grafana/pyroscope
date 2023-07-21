@@ -317,7 +317,9 @@ get_pthread_id_match(void* thread_state, void* tls_base, PidData* pid_data) {
 
 SEC("perf_event")
 int on_event(struct pt_regs* ctx) {
-    bpf_printk("%x %x", 0xcafe,0xdead, 0xbeef);
+    bpf_printk("sizeof(sample_state_t) = %d ", sizeof(sample_state_t));
+    bpf_printk("sizeof(PidData) = %d ", sizeof(PidData));
+    bpf_printk("sizeof(pid_t) = %d ", sizeof(pid_t));
     uint64_t pid_tgid = bpf_get_current_pid_tgid();
     pid_t pid = (pid_t)(pid_tgid >> 32);
     PidData* pid_data = bpf_map_lookup_elem(&py_pid_config, &pid);
