@@ -218,6 +218,30 @@ limits:
   # CLI flag: -validation.max-label-names-per-series
   [max_label_names_per_series: <int> | default = 30]
 
+  # Maximum size of a profile in bytes. This is based off the uncompressed size.
+  # 0 to disable.
+  # CLI flag: -validation.max-profile-size-bytes
+  [max_profile_size_bytes: <int> | default = 2097152]
+
+  # Maximum number of samples in a profile. 0 to disable.
+  # CLI flag: -validation.max-profile-stacktrace-samples
+  [max_profile_stacktrace_samples: <int> | default = 2000]
+
+  # Maximum number of labels in a profile sample. 0 to disable.
+  # CLI flag: -validation.max-profile-stacktrace-sample-labels
+  [max_profile_stacktrace_sample_labels: <int> | default = 100]
+
+  # Maximum depth of a profile stacktrace. Profiles are not rejected instead
+  # stacktraces are truncated. 0 to disable.
+  # CLI flag: -validation.max-profile-stacktrace-depth
+  [max_profile_stacktrace_depth: <int> | default = 1000]
+
+  # Maximum length of a profile symbol value (labels, function names and
+  # filenames, etc...). Profiles are not rejected instead symbol values are
+  # truncated. 0 to disable.
+  # CLI flag: -validation.max-profile-symbol-value-length
+  [max_profile_symbol_value_length: <int> | default = 1024]
+
   # The tenant's shard size used by shuffle-sharding. Must be set both on
   # ingesters and distributors. 0 disables shuffle sharding.
   # CLI flag: -distributor.ingestion-tenant-shard-size

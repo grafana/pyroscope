@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
 
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -42,8 +43,9 @@ const (
 	DuplicateLabelNames Reason = "duplicate_label_names"
 	// SeriesLimit is a reason for discarding lines when we can't create a new stream
 	// because the limit of active streams has been reached.
-	SeriesLimit Reason = "series_limit"
-	QueryLimit  Reason = "query_limit"
+	SeriesLimit    Reason = "series_limit"
+	QueryLimit     Reason = "query_limit"
+	InvalidProfile Reason = "invalid_profile"
 
 	SeriesLimitErrorMsg            = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
 	MissingLabelsErrorMsg          = "error at least one label pair is required per profile"
@@ -53,6 +55,9 @@ const (
 	LabelValueTooLongErrorMsg      = "profile with labels '%s' has label value too long: '%s'"
 	DuplicateLabelNamesErrorMsg    = "profile with labels '%s' has duplicate label name: '%s'"
 	QueryTooLongErrorMsg           = "the query time range exceeds the limit (query length: %s, limit: %s)"
+	ProfileTooBigErrorMsg          = "the profile with labels '%s' size exceeds the limit (profile size: %d, limit: %d)"
+	ProfileTooManySamplesErrorMsg  = "the profile with labels '%s' size exceeds the samples limit (actual: %d, limit: %d)"
+	ProfileTooManyLabelsErrorMsg   = "the profile with labels '%s' size exceeds the sample labels limit (actual: %d, limit: %d)"
 )
 
 var (
@@ -119,6 +124,47 @@ func ValidateLabels(limits LabelValidationLimits, userID string, ls []*typesv1.L
 		lastLabelName = l.Name
 	}
 
+	return nil
+}
+
+type ProfileValidationLimits interface {
+	MaxProfileSizeBytes(userID string) int
+	MaxProfileStacktraceSamples(userID string) int
+	MaxProfileStacktraceSampleLabels(userID string) int
+	MaxProfileStacktraceDepth(userID string) int
+	MaxProfileSymbolValueLength(userID string) int
+}
+
+func ValidateProfile(limits ProfileValidationLimits, userID string, prof *googlev1.Profile, uncompressedSize int, ls phlaremodel.Labels) error {
+	if prof == nil {
+		return nil
+	}
+	if limit := limits.MaxProfileSizeBytes(userID); limit != 0 && uncompressedSize > limit {
+		return NewErrorf(InvalidProfile, ProfileTooBigErrorMsg, phlaremodel.LabelPairsString(ls), uncompressedSize, limit)
+	}
+	if limit, size := limits.MaxProfileStacktraceSamples(userID), len(prof.Sample); limit != 0 && size > limit {
+		return NewErrorf(InvalidProfile, ProfileTooManySamplesErrorMsg, phlaremodel.LabelPairsString(ls), size, limit)
+	}
+	var (
+		depthLimit        = limits.MaxProfileStacktraceDepth(userID)
+		labelsLimit       = limits.MaxProfileStacktraceSampleLabels(userID)
+		symbolLengthLimit = limits.MaxProfileSymbolValueLength(userID)
+	)
+	for _, s := range prof.Sample {
+
+		if depthLimit != 0 && len(s.LocationId) > depthLimit {
+			// truncate the deepest frames
+			s.LocationId = s.LocationId[:depthLimit]
+		}
+		if labelsLimit != 0 && len(s.Label) > labelsLimit {
+			return NewErrorf(InvalidProfile, ProfileTooManyLabelsErrorMsg, phlaremodel.LabelPairsString(ls), len(s.Label), labelsLimit)
+		}
+	}
+	for i := range prof.StringTable {
+		if symbolLengthLimit != 0 && len(prof.StringTable[i]) > symbolLengthLimit {
+			prof.StringTable[i] = prof.StringTable[i][len(prof.StringTable[i])-symbolLengthLimit:]
+		}
+	}
 	return nil
 }
 

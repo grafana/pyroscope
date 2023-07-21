@@ -104,6 +104,11 @@ type Limits interface {
 	MaxLabelNameLength(tenantID string) int
 	MaxLabelValueLength(tenantID string) int
 	MaxLabelNamesPerSeries(tenantID string) int
+	MaxProfileSizeBytes(userID string) int
+	MaxProfileStacktraceSamples(userID string) int
+	MaxProfileStacktraceSampleLabels(userID string) int
+	MaxProfileStacktraceDepth(userID string) int
+	MaxProfileSymbolValueLength(userID string) int
 }
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, limits Limits, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Distributor, error) {
@@ -212,6 +217,14 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(p.SizeBytes()))
 			d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
 			totalPushUncompressedBytes += int64(p.SizeBytes())
+
+			if err := validation.ValidateProfile(d.limits, tenantID, p.Profile, p.SizeBytes(), phlaremodel.Labels(series.Labels)); err != nil {
+				validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
+				validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
+				p.Close()
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
+			}
+
 			p.Normalize()
 			symbolsSize, samplesSize := profileSizeBytes(p.Profile)
 			d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(samplesSize))
