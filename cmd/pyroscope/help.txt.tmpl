@@ -1,4 +1,4 @@
-Usage of ./phlare:
+Usage of ./pyroscope:
   -api.base-url string
     	base URL for when the server is behind a reverse proxy with a different path
   -auth.multitenancy-enabled
@@ -347,6 +347,16 @@ Usage of ./phlare:
     	Maximum length accepted for label names. (default 1024)
   -validation.max-length-label-value int
     	Maximum length accepted for label value. This setting also applies to the metric name. (default 2048)
+  -validation.max-profile-size-bytes int
+    	Maximum size of a profile in bytes. This is based off the uncompressed size. 0 to disable. (default 2097152)
+  -validation.max-profile-stacktrace-depth int
+    	Maximum depth of a profile stacktrace. Profiles are not rejected instead stacktraces are truncated. 0 to disable. (default 1000)
+  -validation.max-profile-stacktrace-sample-labels int
+    	Maximum number of labels in a profile sample. 0 to disable. (default 100)
+  -validation.max-profile-stacktrace-samples int
+    	Maximum number of samples in a profile. 0 to disable. (default 2000)
+  -validation.max-profile-symbol-value-length int
+    	Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable. (default 1024)
   -version
     	Show the version of phlare and exit
 
