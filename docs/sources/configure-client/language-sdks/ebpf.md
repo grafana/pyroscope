@@ -67,6 +67,9 @@ agent:
     privileged: true
     runAsGroup: 0
     runAsUser: 0
+
+controller:
+  hostPID: true
 ```
 Replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Phlare server URL.
 
