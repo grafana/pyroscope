@@ -426,7 +426,7 @@ func deconstructMemoryProfile(imp InMemoryProfile, row parquet.Row) parquet.Row 
 	return row
 }
 
-func NewMergeProfilesRowReader(rowGroups []parquet.RowReader) parquet.RowReader {
+func NewMergeProfilesRowReader(rowGroups []parquet.Rows) parquet.RowReader {
 	if len(rowGroups) == 0 {
 		return phlareparquet.EmptyRowReader
 	}
