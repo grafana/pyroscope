@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultRowBufferSize = 1024
+	defaultRowBufferSize = 64
 )
 
 var (
