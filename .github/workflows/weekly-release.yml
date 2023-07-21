@@ -61,14 +61,14 @@ jobs:
           IMAGE_AMMENDS=()
 
           # the grep needs to remove an extra v, which is in the git tag, but not in the image tag
-          for image in $(docker images --format '{{.Repository}}:{{.Tag}}' | grep "grafana/phlare:${GORELEASER_CURRENT_TAG:1}-"); do
+          for image in $(docker images --format '{{.Repository}}:{{.Tag}}' | grep "grafana/pyroscope:${GORELEASER_CURRENT_TAG:1}-"); do
             new_image="${image/0.0.0-/}"
             docker tag "${image}" "${new_image}"
             docker push "${new_image}"
             IMAGE_AMMENDS+=( "--amend" "${new_image}" )
           done
 
-          docker manifest create "grafana/phlare:${WEEKLY_IMAGE_TAG}" "${IMAGE_AMMENDS[@]}"
-          docker manifest push "grafana/phlare:${WEEKLY_IMAGE_TAG}"
+          docker manifest create "grafana/pyroscope:${WEEKLY_IMAGE_TAG}" "${IMAGE_AMMENDS[@]}"
+          docker manifest push "grafana/pyroscope:${WEEKLY_IMAGE_TAG}"
       - name: Push git tag for weekly release
         run: git push https://grafanabot:${{ secrets.GH_BOT_ACCESS_TOKEN }}@github.com/grafana/pyroscope.git "${WEEKLY_IMAGE_TAG}"
