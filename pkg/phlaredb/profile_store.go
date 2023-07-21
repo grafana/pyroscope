@@ -364,7 +364,7 @@ func (s *profileStore) writeRowGroups(path string, rowGroups []parquet.RowGroup)
 		return 0, 0, err
 	}
 	defer runutil.CloseWithErrCapture(&err, fileCloser, "closing parquet file")
-	readers := make([]parquet.Rows, len(rowGroups))
+	readers := make([]parquet.RowReader, len(rowGroups))
 	for i, rg := range rowGroups {
 		readers[i] = rg.Rows()
 	}

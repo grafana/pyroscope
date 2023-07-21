@@ -36,7 +36,7 @@ func (e ErrRowReader) ReadRows(rows []parquet.Row) (int, error) { return 0, e.er
 
 // NewMergeRowReader returns a RowReader that k-way merges the given readers using the less function.
 // Each reader must be sorted according to the less function already.
-func NewMergeRowReader(readers []parquet.Rows, maxValue parquet.Row, less func(parquet.Row, parquet.Row) bool) parquet.RowReader {
+func NewMergeRowReader(readers []parquet.RowReader, maxValue parquet.Row, less func(parquet.Row, parquet.Row) bool) parquet.RowReader {
 	if len(readers) == 0 {
 		return EmptyRowReader
 	}
@@ -98,19 +98,19 @@ func (it *IteratorRowReader) ReadRows(rows []parquet.Row) (int, error) {
 }
 
 type BufferedRowReaderIterator struct {
-	rows parquet.Rows
-	buf  []parquet.Row
-	err  error
-	r    int
-	w    int
+	reader parquet.RowReader
+	buf    []parquet.Row
+	err    error
+	r      int
+	w      int
 }
 
-// NewBufferedRowReaderIterator returns a new `iter.Iterator[parquet.Row]` for rows.
+// NewBufferedRowReaderIterator returns a new `iter.Iterator[parquet.Row]` from a RowReader.
 // The iterator will buffer `bufferSize` rows from the reader.
-func NewBufferedRowReaderIterator(rows parquet.Rows, bufferSize int) *BufferedRowReaderIterator {
+func NewBufferedRowReaderIterator(reader parquet.RowReader, bufferSize int) *BufferedRowReaderIterator {
 	return &BufferedRowReaderIterator{
-		buf:  make([]parquet.Row, bufferSize),
-		rows: rows,
+		reader: reader,
+		buf:    make([]parquet.Row, bufferSize),
 	}
 }
 
@@ -120,7 +120,7 @@ func (r *BufferedRowReaderIterator) Next() bool {
 		return true
 	}
 	var err error
-	if r.w, err = r.rows.ReadRows(r.buf); err != nil && err != io.EOF {
+	if r.w, err = r.reader.ReadRows(r.buf); err != nil && err != io.EOF {
 		r.err = err
 		return false
 	}
@@ -140,10 +140,7 @@ func (r *BufferedRowReaderIterator) Err() error {
 }
 
 func (r *BufferedRowReaderIterator) Close() error {
-	err := r.rows.Close()
-	r.rows = nil
-	r.buf = nil
-	return err
+	return r.err
 }
 
 func ReadAll(r parquet.RowReader) ([]parquet.Row, error) {

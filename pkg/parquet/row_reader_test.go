@@ -13,15 +13,12 @@ import (
 var _ parquet.RowReader = (*BatchReader)(nil)
 
 type BatchReader struct {
-	parquet.Rows
 	batches [][]parquet.Row
 }
 
 func NewBatchReader(batches [][]parquet.Row) *BatchReader {
 	return &BatchReader{batches: batches}
 }
-
-func (br *BatchReader) Close() error { return nil }
 
 func (br *BatchReader) ReadRows(rows []parquet.Row) (int, error) {
 	if len(br.batches) == 0 {
@@ -69,12 +66,12 @@ func TestNewMergeRowReader(t *testing.T) {
 		t.Run(fmt.Sprintf("%d", bufferSize), func(t *testing.T) {
 			for _, tc := range []struct {
 				name     string
-				readers  []parquet.Rows
+				readers  []parquet.RowReader
 				expected []parquet.Row
 			}{
 				{
 					"merge 1 readers",
-					[]parquet.Rows{
+					[]parquet.RowReader{
 						NewBatchReader([][]parquet.Row{
 							{{parquet.Int32Value(1)}},
 							{{parquet.Int32Value(3)}},
@@ -89,7 +86,7 @@ func TestNewMergeRowReader(t *testing.T) {
 				},
 				{
 					"merge 2 readers",
-					[]parquet.Rows{
+					[]parquet.RowReader{
 						NewBatchReader([][]parquet.Row{
 							{{parquet.Int32Value(1)}},
 							{{parquet.Int32Value(3)}},
@@ -112,7 +109,7 @@ func TestNewMergeRowReader(t *testing.T) {
 				},
 				{
 					"merge 3 readers 1 value",
-					[]parquet.Rows{
+					[]parquet.RowReader{
 						NewBatchReader([][]parquet.Row{
 							{{parquet.Int32Value(1)}},
 						}),
