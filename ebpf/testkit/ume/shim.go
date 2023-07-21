@@ -1,11 +1,10 @@
 package ume
 
 /*
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
-
-#define _GNU_SOURCE
 #include <dlfcn.h>
 
 typedef struct {
@@ -17,14 +16,6 @@ typedef struct {
    uintptr_t a4;
    uintptr_t a5;
 } ShimArgs;
-
-
-static uintptr_t foo(uintptr_t arg) {
-    uintptr_t (*fptr)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t) = (void*)arg;
-printf("fptr %p\n", fptr);
-    return fptr(0xcafe0001, 0xcafe0002, 0xcafe0003, 0xcafe0004, 0xcafe0005);
-}
-
 
 extern uintptr_t GoShim(ShimArgs *args);
 static void *getGoShimAddress() {
@@ -86,8 +77,4 @@ func rwx() mmap.MMap {
 		panic(err)
 	}
 	return res
-}
-
-func fooGo(a uintptr) uintptr {
-	return uintptr(C.foo(C.ulong(a)))
 }
