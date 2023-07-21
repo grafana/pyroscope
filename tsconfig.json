@@ -5,15 +5,9 @@
     "paths": {
       "@phlare/*": ["./public/app/*"],
       "@pyroscope/webapp/*": ["./og/webapp/*"],
-      "@webapp/redux/*": [
-        "./og/webapp/javascript/redux/*"
-      ],
-      "@pyroscope/flamegraph/*": [
-        "./og/packages/pyroscope-flamegraph/*"
-      ],
-      "@pyroscope/models/*": [
-        "./og/packages/pyroscope-models/*"
-      ],
+      "@webapp/redux/*": ["./og/webapp/javascript/redux/*"],
+      "@pyroscope/flamegraph/*": ["./og/packages/pyroscope-flamegraph/*"],
+      "@pyroscope/models/*": ["./og/packages/pyroscope-models/*"],
       "@webapp/components/ExportData": [
         "./public/app/overrides/components/ExportData"
       ],
