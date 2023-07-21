@@ -899,11 +899,22 @@ func (m *Profile) ResetVT() {
 	for _, mm := range m.Sample {
 		mm.ResetVT()
 	}
+	for _, mm := range m.Mapping {
+		mm.Reset()
+	}
 	f0 := m.StringTable[:0]
 	f1 := m.Comment[:0]
+	f2 :=  m.Sample[:0]
+	f3 := m.Mapping[:0]
+	f4 := m.Location[:0]
+	f5 := m.Function[:0]
 	m.Reset()
 	m.StringTable = f0
 	m.Comment = f1
+	m.Sample = f2
+	m.Mapping = f3
+	m.Location = f4
+	m.Function = f5
 }
 func (m *Profile) ReturnToVTPool() {
 	if m != nil {
