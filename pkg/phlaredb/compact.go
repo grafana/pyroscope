@@ -125,13 +125,6 @@ func metaFilesFromDir(dir string) ([]block.File, error) {
 			return err
 		}
 		if info.IsDir() {
-			if info.Name() == symdb.DefaultDirName {
-				f, err := symdbMetaFiles(dir)
-				if err != nil {
-					return err
-				}
-				files = append(files, f...)
-			}
 			return nil
 		}
 		var f block.File
@@ -146,8 +139,6 @@ func metaFilesFromDir(dir string) ([]block.File, error) {
 			if err != nil {
 				return err
 			}
-		default:
-			return nil
 		}
 		f.RelPath, err = filepath.Rel(dir, path)
 		if err != nil {
