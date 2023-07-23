@@ -565,6 +565,10 @@ type symPartitionRewriter struct {
 	appender    SymbolsAppender
 
 	r *stacktraceRewriter
+
+	// FIXME(kolesnikovae): schemav1.Stacktrace should be just a uint32 slice:
+	//   type Stacktrace []uint32
+	current []*schemav1.Stacktrace
 }
 
 func newStacktraceRewriter(r SymbolsReader, w SymbolsWriter) *stacktraceRewriter {
@@ -637,6 +641,7 @@ func (r *stacktraceRewriter) rewriteStacktraces(partition uint64, stacktraces []
 
 func (p *symPartitionRewriter) reset() {
 	p.stacktraces.reset()
+	p.current = p.current[:0]
 }
 
 func (p *symPartitionRewriter) hasUnresolved() bool {
@@ -739,7 +744,7 @@ func (p *symPartitionRewriter) appendRewrite(stacktraces []uint32) error {
 			v[j] = int32(p.r.locations.lookupResolved(uint32(location)))
 		}
 	}
-	p.appender.AppendStacktraces(p.stacktraces.buf, p.stacktraces.values)
+	p.appender.AppendStacktraces(p.stacktraces.buf, p.stacktracesFromResolvedValues())
 	p.stacktraces.updateResolved()
 
 	for i, v := range stacktraces {
@@ -758,6 +763,22 @@ func (p *symPartitionRewriter) resolveStacktraces(stacktraceIDs []uint32) error 
 	}
 	p.stacktraces.initSorted()
 	return p.resolver.ResolveStacktraces(context.TODO(), p.r.inserter, p.stacktraces.buf)
+}
+
+func (p *symPartitionRewriter) stacktracesFromResolvedValues() []*schemav1.Stacktrace {
+	p.current = grow(p.current, len(p.stacktraces.values))
+	for i, v := range p.stacktraces.values {
+		s := p.current[i]
+		if s == nil {
+			s = &schemav1.Stacktrace{LocationIDs: make([]uint64, len(v))}
+			p.current[i] = s
+		}
+		s.LocationIDs = grow(s.LocationIDs, len(v))
+		for j, m := range v {
+			s.LocationIDs[j] = uint64(m)
+		}
+	}
+	return p.current
 }
 
 type stacktraceInserter struct {
