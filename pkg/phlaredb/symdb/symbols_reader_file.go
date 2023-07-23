@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"sort"
 	"sync"
 
 	"github.com/grafana/dskit/multierror"
@@ -93,7 +94,45 @@ func (r *Reader) SymbolsResolver(partition uint64) (SymbolsResolver, bool) {
 }
 
 // Load causes reader to load all contents into memory.
-func (r *Reader) Load() error { panic("implement me") }
+func (r *Reader) Load(ctx context.Context) error {
+	partitions := make([]*partitionFileReader, len(r.partitions))
+	var i int
+	for _, v := range r.partitions {
+		partitions[i] = v
+		i++
+	}
+	sort.Slice(partitions, func(i, j int) bool {
+		return partitions[i].stacktraceChunks[0].header.Offset <
+			partitions[j].stacktraceChunks[0].header.Offset
+	})
+
+	offset := partitions[0].stacktraceChunks[0].header.Offset
+	var size int64
+	for i = range partitions {
+		for _, c := range partitions[i].stacktraceChunks {
+			size += c.header.Size
+		}
+	}
+
+	rc, err := r.bucket.GetRange(ctx, StacktracesFileName, offset, size)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = multierror.New(err, rc.Close()).Err()
+	}()
+
+	buf := bufio.NewReaderSize(rc, r.chunkFetchBufferSize)
+	for _, p := range partitions {
+		for _, c := range p.stacktraceChunks {
+			if err = c.readFrom(io.LimitReader(buf, c.header.Size)); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
 
 type partitionFileReader struct {
 	reader           *Reader
@@ -215,6 +254,10 @@ type stacktraceChunkFileReader struct {
 	header StacktraceChunkHeader
 	m      sync.Mutex
 	tree   *parentPointerTree
+	// Indicates that the chunk has been loaded into
+	// memory with Load call and should not be released
+	// until the block is closed.
+	loaded bool
 }
 
 func (c *stacktraceChunkFileReader) fetch(ctx context.Context) (_ *parentPointerTree, err error) {
@@ -223,7 +266,6 @@ func (c *stacktraceChunkFileReader) fetch(ctx context.Context) (_ *parentPointer
 	if c.tree != nil {
 		return c.tree, nil
 	}
-
 	rc, err := c.reader.bucket.GetRange(ctx, StacktracesFileName, c.header.Offset, c.header.Size)
 	if err != nil {
 		return nil, err
@@ -231,36 +273,41 @@ func (c *stacktraceChunkFileReader) fetch(ctx context.Context) (_ *parentPointer
 	defer func() {
 		err = multierror.New(err, rc.Close()).Err()
 	}()
+	// Consider pooling the buffer.
+	buf := bufio.NewReaderSize(rc, c.reader.chunkFetchBufferSize)
+	if err = c.readFrom(buf); err != nil {
+		return nil, err
+	}
+	return c.tree, nil
+}
 
+func (c *stacktraceChunkFileReader) readFrom(r io.Reader) error {
 	// NOTE(kolesnikovae): Pool of node chunks could reduce
 	//   the alloc size, but it may affect memory locality.
 	//   Although, properly aligned chunks of, say, 1-4K nodes
 	//   which is 8-32KiB respectively, should not make things
 	//   much worse than they are. Worth experimenting.
 	t := newParentPointerTree(c.header.StacktraceNodes)
-
 	// We unmarshal the tree speculatively, before validating
 	// the checksum. Even random bytes can be unmarshalled to
 	// a tree not causing any errors, therefore it is vital
 	// to verify the correctness of the data.
 	crc := crc32.New(castagnoli)
-	tee := io.TeeReader(rc, crc)
-
-	// Consider pooling the buffer.
-	buf := bufio.NewReaderSize(tee, c.reader.chunkFetchBufferSize)
-	if _, err = t.ReadFrom(buf); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal stack treaces: %w", err)
+	tee := io.TeeReader(r, crc)
+	if _, err := t.ReadFrom(tee); err != nil {
+		return fmt.Errorf("failed to unmarshal stack treaces: %w", err)
 	}
 	if c.header.CRC != crc.Sum32() {
-		return nil, ErrInvalidCRC
+		return ErrInvalidCRC
 	}
-
 	c.tree = t
-	return t, nil
+	return nil
 }
 
 func (c *stacktraceChunkFileReader) reset() {
 	c.m.Lock()
-	c.tree = nil
+	if !c.loaded {
+		c.tree = nil
+	}
 	c.m.Unlock()
 }
