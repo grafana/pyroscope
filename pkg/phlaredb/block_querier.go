@@ -305,8 +305,13 @@ type singleBlockQuerier struct {
 type StacktraceDB interface {
 	Open(ctx context.Context) error
 	Close() error
-	Resolve(ctx context.Context, partition uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error
+
+	// Load the database into memory entirely.
+	// This method is used at compaction.
+	Load(context.Context) error
 	WriteStats(partition uint64, s *symdb.Stats)
+
+	Resolve(ctx context.Context, partition uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error
 }
 
 type stacktraceResolverV1 struct {
@@ -327,8 +332,8 @@ func (r *stacktraceResolverV1) Resolve(ctx context.Context, _ uint64, locs symdb
 	defer stacktraces.Close()
 	t := make([]int32, 0, 64)
 	for stacktraces.Next() {
-		t = t[:0]
 		s := stacktraces.At()
+		t = grow(t, len(s.Values))
 		for i, v := range s.Values {
 			t[i] = v.Int32()
 		}
@@ -340,6 +345,13 @@ func (r *stacktraceResolverV1) Resolve(ctx context.Context, _ uint64, locs symdb
 func (r *stacktraceResolverV1) WriteStats(_ uint64, s *symdb.Stats) {
 	s.StacktracesTotal = int(r.stacktraces.file.NumRows())
 	s.MaxStacktraceID = s.StacktracesTotal
+}
+
+func (r *stacktraceResolverV1) Load(context.Context) error {
+	// FIXME(kolesnikovae): Loading all stacktraces from parquet file
+	//  into memory is likely a bad choice. Instead we could convert
+	//  it to symdb first.
+	return nil
 }
 
 type stacktraceResolverV2 struct {
@@ -368,6 +380,10 @@ func (r *stacktraceResolverV2) Resolve(ctx context.Context, partition uint64, lo
 	resolver := mr.StacktraceResolver()
 	defer resolver.Release()
 	return resolver.ResolveStacktraces(ctx, locs, stacktraceIDs)
+}
+
+func (r *stacktraceResolverV2) Load(ctx context.Context) error {
+	return r.reader.Load(ctx)
 }
 
 func (r *stacktraceResolverV2) WriteStats(partition uint64, s *symdb.Stats) {
@@ -450,8 +466,7 @@ func (b *singleBlockQuerier) Index() IndexReader {
 
 func (b *singleBlockQuerier) Symbols() SymbolsReader {
 	return &inMemorySymbolsReader{
-		// TODO
-		//	strings:     b.strings,
+		strings:     b.strings,
 		functions:   b.functions,
 		locations:   b.locations,
 		mappings:    b.mappings,

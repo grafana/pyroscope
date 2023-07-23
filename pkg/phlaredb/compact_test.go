@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"path/filepath"
 	"sort"
 	"sync"
 	"testing"
 	"time"
-
-	_ "net/http/pprof"
 
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
@@ -119,9 +118,11 @@ func testCompact(t *testing.T, metas []*block.Meta, bkt phlareobj.Bucket, dst st
 			"numSamples", m.Stats.NumSamples)
 		b := NewSingleBlockQuerierFromMeta(ctx, bkt, m)
 		g.Go(func() error {
-			return b.Open(ctx)
+			if err := b.Open(ctx); err != nil {
+				return err
+			}
+			return b.stacktraces.Load(ctx)
 		})
-
 		src = append(src, b)
 	}
 
