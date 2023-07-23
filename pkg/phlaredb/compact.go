@@ -784,7 +784,6 @@ func (p *symPartitionRewriter) stacktracesFromResolvedValues() []*schemav1.Stack
 type stacktraceInserter struct {
 	stacktraces *lookupTable[[]int32]
 	locations   *lookupTable[*schemav1.InMemoryLocation]
-	c           int
 }
 
 func (i *stacktraceInserter) InsertStacktrace(stacktrace uint32, locations []int32) {
@@ -794,12 +793,12 @@ func (i *stacktraceInserter) InsertStacktrace(stacktrace uint32, locations []int
 	}
 	// stacktrace points to resolved which should
 	// be a marked pointer to unresolved value.
-	v := &i.stacktraces.values[stacktrace&markerMask]
+	idx := i.stacktraces.resolved[stacktrace] & markerMask
+	v := &i.stacktraces.values[idx]
 	n := grow(*v, len(locations))
 	copy(n, locations)
 	// Preserve allocated capacity.
-	v = &n
-	i.c++
+	i.stacktraces.values[idx] = n
 }
 
 const (
