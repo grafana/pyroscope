@@ -388,11 +388,9 @@ func (r *stacktraceResolverV2) Load(ctx context.Context) error {
 
 func (r *stacktraceResolverV2) WriteStats(partition uint64, s *symdb.Stats) {
 	mr, ok := r.reader.SymbolsResolver(partition)
-	if !ok {
-		return
+	if ok {
+		mr.WriteStats(s)
 	}
-	mr.WriteStats(s)
-	return
 }
 
 func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlareobj.Bucket, meta *block.Meta) *singleBlockQuerier {
