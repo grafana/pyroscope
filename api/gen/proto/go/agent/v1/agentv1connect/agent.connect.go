@@ -25,6 +25,18 @@ const (
 	AgentServiceName = "agent.v1.AgentService"
 )
 
+// These constants are the fully-qualified names of the RPCs defined in this package. They're
+// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+//
+// Note that these are different from the fully-qualified method names used by
+// google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
+// reflection-formatted method names, remove the leading slash and convert the remaining slash to a
+// period.
+const (
+	// AgentServiceGetTargetsProcedure is the fully-qualified name of the AgentService's GetTargets RPC.
+	AgentServiceGetTargetsProcedure = "/agent.v1.AgentService/GetTargets"
+)
+
 // AgentServiceClient is a client for the agent.v1.AgentService service.
 type AgentServiceClient interface {
 	// Retrieve information about targets.
@@ -43,7 +55,7 @@ func NewAgentServiceClient(httpClient connect_go.HTTPClient, baseURL string, opt
 	return &agentServiceClient{
 		getTargets: connect_go.NewClient[v1.GetTargetsRequest, v1.GetTargetsResponse](
 			httpClient,
-			baseURL+"/agent.v1.AgentService/GetTargets",
+			baseURL+AgentServiceGetTargetsProcedure,
 			opts...,
 		),
 	}
@@ -71,13 +83,19 @@ type AgentServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewAgentServiceHandler(svc AgentServiceHandler, opts ...connect_go.HandlerOption) (string, http.Handler) {
-	mux := http.NewServeMux()
-	mux.Handle("/agent.v1.AgentService/GetTargets", connect_go.NewUnaryHandler(
-		"/agent.v1.AgentService/GetTargets",
+	agentServiceGetTargetsHandler := connect_go.NewUnaryHandler(
+		AgentServiceGetTargetsProcedure,
 		svc.GetTargets,
 		opts...,
-	))
-	return "/agent.v1.AgentService/", mux
+	)
+	return "/agent.v1.AgentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case AgentServiceGetTargetsProcedure:
+			agentServiceGetTargetsHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
 }
 
 // UnimplementedAgentServiceHandler returns CodeUnimplemented from all methods.

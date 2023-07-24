@@ -176,6 +176,7 @@
         "extensions": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/protobufAny"
           },
           "description": "Application specific response metadata. Must be set in the first response\nfor streaming APIs."
@@ -188,11 +189,13 @@
       "properties": {
         "key": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "title": "Index into string table"
         },
         "str": {
           "type": "string",
           "format": "int64",
+          "description": "Index into string table",
           "title": "At most one of the following must be present"
         },
         "num": {
@@ -202,7 +205,7 @@
         "numUnit": {
           "type": "string",
           "format": "int64",
-          "description": "Should only be present when num is present.\nSpecifies the units of num.\nUse arbitrary string (for example, \"requests\") as a custom count unit.\nIf no unit is specified, consumer may apply heuristic to deduce the unit.\nConsumers may also  interpret units like \"bytes\" and \"kilobytes\" as memory\nunits and units like \"seconds\" and \"nanoseconds\" as time units,\nand apply appropriate unit conversions to these."
+          "description": "Should only be present when num is present.\nSpecifies the units of num.\nUse arbitrary string (for example, \"requests\") as a custom count unit.\nIf no unit is specified, consumer may apply heuristic to deduce the unit.\nConsumers may also  interpret units like \"bytes\" and \"kilobytes\" as memory\nunits and units like \"seconds\" and \"nanoseconds\" as time units,\nand apply appropriate unit conversions to these.\n\nIndex into string table"
         }
       }
     },
@@ -227,6 +230,7 @@
         "line": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Line"
           },
           "description": "Multiple line indicates this location has inlined functions,\nwhere the last entry represents the caller into which the\npreceding entries were inlined.\n\nE.g., if memcpy() is inlined into printf:\n   line[0].function_name == \"memcpy\"\n   line[1].function_name == \"printf\""
@@ -244,6 +248,7 @@
         "sampleType": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1ValueType"
           },
           "description": "A description of the samples associated with each Sample.value.\nFor a cpu profile this might be:\n  [[\"cpu\",\"nanoseconds\"]] or [[\"wall\",\"seconds\"]] or [[\"syscall\",\"count\"]]\nFor a heap profile, this might be:\n  [[\"allocations\",\"count\"], [\"space\",\"bytes\"]],\nIf one of the values represents the number of events represented\nby the sample, by convention it should be at index 0 and use\nsample_type.unit == \"count\"."
@@ -251,6 +256,7 @@
         "sample": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Sample"
           },
           "description": "The set of samples recorded in this profile."
@@ -258,6 +264,7 @@
         "mapping": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Mapping"
           },
           "description": "Mapping from address ranges to the image/binary/library mapped\ninto that address range.  mapping[0] will be the main binary."
@@ -265,6 +272,7 @@
         "location": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/googlev1Location"
           },
           "title": "Useful program location"
@@ -272,6 +280,7 @@
         "function": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Function"
           },
           "title": "Functions referenced by locations"
@@ -286,12 +295,12 @@
         "dropFrames": {
           "type": "string",
           "format": "int64",
-          "description": "frames with Function.function_name fully matching the following\nregexp will be dropped from the samples, along with their successors."
+          "description": "frames with Function.function_name fully matching the following\nregexp will be dropped from the samples, along with their successors.\n\nIndex into string table."
         },
         "keepFrames": {
           "type": "string",
           "format": "int64",
-          "description": "frames with Function.function_name fully matching the following\nregexp will be kept, even if it matches drop_frames."
+          "description": "frames with Function.function_name fully matching the following\nregexp will be kept, even if it matches drop_frames.\n\nIndex into string table."
         },
         "timeNanos": {
           "type": "string",
@@ -318,7 +327,7 @@
             "type": "string",
             "format": "int64"
           },
-          "description": "Freeform text associated to the profile."
+          "description": "Freeform text associated to the profile.\n\nIndices into string table."
         },
         "defaultSampleType": {
           "type": "string",
@@ -333,6 +342,7 @@
         "profileTypes": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1ProfileType"
           }
         }
@@ -344,6 +354,7 @@
         "labelsSet": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Labels"
           }
         }
@@ -366,6 +377,7 @@
         "profileTypes": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1ProfileType"
           }
         }
@@ -377,6 +389,7 @@
         "labelsSet": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Labels"
           }
         }
@@ -395,6 +408,7 @@
         "details": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
         }
@@ -420,6 +434,7 @@
         "levels": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Level"
           }
         },
@@ -445,6 +460,7 @@
         "levels": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Level"
           }
         },
@@ -480,17 +496,17 @@
         "name": {
           "type": "string",
           "format": "int64",
-          "description": "Name of the function, in human-readable form if available."
+          "description": "Name of the function, in human-readable form if available.\n\nIndex into string table"
         },
         "systemName": {
           "type": "string",
           "format": "int64",
-          "description": "Name of the function, as identified by the system.\nFor instance, it can be a C++ mangled name."
+          "description": "Name of the function, as identified by the system.\nFor instance, it can be a C++ mangled name.\n\nIndex into string table"
         },
         "filename": {
           "type": "string",
           "format": "int64",
-          "description": "Source file containing the function."
+          "description": "Source file containing the function.\n\nIndex into string table"
         },
         "startLine": {
           "type": "string",
@@ -539,12 +555,14 @@
         "activeTargets": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Target"
           }
         },
         "droppedTargets": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Target"
           }
         }
@@ -598,6 +616,7 @@
         "labels": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1LabelPair"
           },
           "title": "LabelPair is the key value pairs to identify the corresponding profile"
@@ -657,12 +676,12 @@
         "filename": {
           "type": "string",
           "format": "int64",
-          "description": "The object this entry is loaded from.  This can be a filename on\ndisk for the main binary and shared libraries, or virtual\nabstractions like \"[vdso]\"."
+          "description": "The object this entry is loaded from.  This can be a filename on\ndisk for the main binary and shared libraries, or virtual\nabstractions like \"[vdso]\".\n\nIndex into string table"
         },
         "buildId": {
           "type": "string",
           "format": "int64",
-          "description": "A string that uniquely identifies a particular program version\nwith high probability. E.g., for binaries generated by GNU tools,\nit could be the contents of the .note.gnu.build-id field."
+          "description": "A string that uniquely identifies a particular program version\nwith high probability. E.g., for binaries generated by GNU tools,\nit could be the contents of the .note.gnu.build-id field.\n\nIndex into string table"
         },
         "hasFunctions": {
           "type": "boolean",
@@ -689,6 +708,7 @@
         "series": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Series"
           },
           "title": "The list of series for the profile with their respective value"
@@ -731,6 +751,7 @@
         "stacktraces": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1StacktraceSample"
           },
           "title": "The list of stracktraces with their respective value"
@@ -768,12 +789,14 @@
         "labelsSets": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Labels"
           }
         },
         "profiles": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1SeriesProfile"
           }
         }
@@ -811,6 +834,7 @@
         "labels": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1LabelPair"
           },
           "title": "LabelPair is the key value pairs to identify the corresponding profile"
@@ -818,6 +842,7 @@
         "samples": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1RawSample"
           },
           "title": "samples are the set of profile bytes"
@@ -862,6 +887,7 @@
         "label": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/googlev1Label"
           },
           "title": "label includes additional context for this sample. It can include\nthings like a thread id, allocation size, etc"
@@ -880,15 +906,18 @@
         },
         "start": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "title": "milliseconds since epoch"
         },
         "end": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "title": "milliseconds since epoch"
         },
         "maxNodes": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "title": "Limit the nodes returned to only show the node with the max_node's biggest total"
         }
       }
     },
@@ -925,6 +954,7 @@
         "series": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Series"
           }
         }
@@ -936,12 +966,14 @@
         "labels": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1LabelPair"
           }
         },
         "points": {
           "type": "array",
           "items": {
+            "type": "object",
             "$ref": "#/definitions/v1Point"
           }
         }
@@ -1053,11 +1085,13 @@
       "properties": {
         "type": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "Index into string table."
         },
         "unit": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "Index into string table."
         }
       },
       "description": "ValueType describes the semantics and measurement units of a value."

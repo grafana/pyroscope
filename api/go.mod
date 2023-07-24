@@ -3,13 +3,13 @@ module github.com/grafana/pyroscope/api
 go 1.19
 
 require (
-	github.com/bufbuild/connect-go v1.4.1
+	github.com/bufbuild/connect-go v1.9.0
 	github.com/gorilla/mux v1.8.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.2
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0
 	github.com/prometheus/common v0.44.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20230530153820-e85fd2cbaebc
 	google.golang.org/grpc v1.56.1
-	google.golang.org/protobuf v1.30.0
+	google.golang.org/protobuf v1.31.0
 )
 
 require (

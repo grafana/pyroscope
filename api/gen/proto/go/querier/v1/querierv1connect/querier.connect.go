@@ -27,6 +27,38 @@ const (
 	QuerierServiceName = "querier.v1.QuerierService"
 )
 
+// These constants are the fully-qualified names of the RPCs defined in this package. They're
+// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+//
+// Note that these are different from the fully-qualified method names used by
+// google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
+// reflection-formatted method names, remove the leading slash and convert the remaining slash to a
+// period.
+const (
+	// QuerierServiceProfileTypesProcedure is the fully-qualified name of the QuerierService's
+	// ProfileTypes RPC.
+	QuerierServiceProfileTypesProcedure = "/querier.v1.QuerierService/ProfileTypes"
+	// QuerierServiceLabelValuesProcedure is the fully-qualified name of the QuerierService's
+	// LabelValues RPC.
+	QuerierServiceLabelValuesProcedure = "/querier.v1.QuerierService/LabelValues"
+	// QuerierServiceLabelNamesProcedure is the fully-qualified name of the QuerierService's LabelNames
+	// RPC.
+	QuerierServiceLabelNamesProcedure = "/querier.v1.QuerierService/LabelNames"
+	// QuerierServiceSeriesProcedure is the fully-qualified name of the QuerierService's Series RPC.
+	QuerierServiceSeriesProcedure = "/querier.v1.QuerierService/Series"
+	// QuerierServiceSelectMergeStacktracesProcedure is the fully-qualified name of the QuerierService's
+	// SelectMergeStacktraces RPC.
+	QuerierServiceSelectMergeStacktracesProcedure = "/querier.v1.QuerierService/SelectMergeStacktraces"
+	// QuerierServiceSelectMergeProfileProcedure is the fully-qualified name of the QuerierService's
+	// SelectMergeProfile RPC.
+	QuerierServiceSelectMergeProfileProcedure = "/querier.v1.QuerierService/SelectMergeProfile"
+	// QuerierServiceSelectSeriesProcedure is the fully-qualified name of the QuerierService's
+	// SelectSeries RPC.
+	QuerierServiceSelectSeriesProcedure = "/querier.v1.QuerierService/SelectSeries"
+	// QuerierServiceDiffProcedure is the fully-qualified name of the QuerierService's Diff RPC.
+	QuerierServiceDiffProcedure = "/querier.v1.QuerierService/Diff"
+)
+
 // QuerierServiceClient is a client for the querier.v1.QuerierService service.
 type QuerierServiceClient interface {
 	ProfileTypes(context.Context, *connect_go.Request[v1.ProfileTypesRequest]) (*connect_go.Response[v1.ProfileTypesResponse], error)
@@ -51,42 +83,42 @@ func NewQuerierServiceClient(httpClient connect_go.HTTPClient, baseURL string, o
 	return &querierServiceClient{
 		profileTypes: connect_go.NewClient[v1.ProfileTypesRequest, v1.ProfileTypesResponse](
 			httpClient,
-			baseURL+"/querier.v1.QuerierService/ProfileTypes",
+			baseURL+QuerierServiceProfileTypesProcedure,
 			opts...,
 		),
 		labelValues: connect_go.NewClient[v11.LabelValuesRequest, v11.LabelValuesResponse](
 			httpClient,
-			baseURL+"/querier.v1.QuerierService/LabelValues",
+			baseURL+QuerierServiceLabelValuesProcedure,
 			opts...,
 		),
 		labelNames: connect_go.NewClient[v11.LabelNamesRequest, v11.LabelNamesResponse](
 			httpClient,
-			baseURL+"/querier.v1.QuerierService/LabelNames",
+			baseURL+QuerierServiceLabelNamesProcedure,
 			opts...,
 		),
 		series: connect_go.NewClient[v1.SeriesRequest, v1.SeriesResponse](
 			httpClient,
-			baseURL+"/querier.v1.QuerierService/Series",
+			baseURL+QuerierServiceSeriesProcedure,
 			opts...,
 		),
 		selectMergeStacktraces: connect_go.NewClient[v1.SelectMergeStacktracesRequest, v1.SelectMergeStacktracesResponse](
 			httpClient,
-			baseURL+"/querier.v1.QuerierService/SelectMergeStacktraces",
+			baseURL+QuerierServiceSelectMergeStacktracesProcedure,
 			opts...,
 		),
 		selectMergeProfile: connect_go.NewClient[v1.SelectMergeProfileRequest, v12.Profile](
 			httpClient,
-			baseURL+"/querier.v1.QuerierService/SelectMergeProfile",
+			baseURL+QuerierServiceSelectMergeProfileProcedure,
 			opts...,
 		),
 		selectSeries: connect_go.NewClient[v1.SelectSeriesRequest, v1.SelectSeriesResponse](
 			httpClient,
-			baseURL+"/querier.v1.QuerierService/SelectSeries",
+			baseURL+QuerierServiceSelectSeriesProcedure,
 			opts...,
 		),
 		diff: connect_go.NewClient[v1.DiffRequest, v1.DiffResponse](
 			httpClient,
-			baseURL+"/querier.v1.QuerierService/Diff",
+			baseURL+QuerierServiceDiffProcedure,
 			opts...,
 		),
 	}
@@ -162,48 +194,68 @@ type QuerierServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect_go.HandlerOption) (string, http.Handler) {
-	mux := http.NewServeMux()
-	mux.Handle("/querier.v1.QuerierService/ProfileTypes", connect_go.NewUnaryHandler(
-		"/querier.v1.QuerierService/ProfileTypes",
+	querierServiceProfileTypesHandler := connect_go.NewUnaryHandler(
+		QuerierServiceProfileTypesProcedure,
 		svc.ProfileTypes,
 		opts...,
-	))
-	mux.Handle("/querier.v1.QuerierService/LabelValues", connect_go.NewUnaryHandler(
-		"/querier.v1.QuerierService/LabelValues",
+	)
+	querierServiceLabelValuesHandler := connect_go.NewUnaryHandler(
+		QuerierServiceLabelValuesProcedure,
 		svc.LabelValues,
 		opts...,
-	))
-	mux.Handle("/querier.v1.QuerierService/LabelNames", connect_go.NewUnaryHandler(
-		"/querier.v1.QuerierService/LabelNames",
+	)
+	querierServiceLabelNamesHandler := connect_go.NewUnaryHandler(
+		QuerierServiceLabelNamesProcedure,
 		svc.LabelNames,
 		opts...,
-	))
-	mux.Handle("/querier.v1.QuerierService/Series", connect_go.NewUnaryHandler(
-		"/querier.v1.QuerierService/Series",
+	)
+	querierServiceSeriesHandler := connect_go.NewUnaryHandler(
+		QuerierServiceSeriesProcedure,
 		svc.Series,
 		opts...,
-	))
-	mux.Handle("/querier.v1.QuerierService/SelectMergeStacktraces", connect_go.NewUnaryHandler(
-		"/querier.v1.QuerierService/SelectMergeStacktraces",
+	)
+	querierServiceSelectMergeStacktracesHandler := connect_go.NewUnaryHandler(
+		QuerierServiceSelectMergeStacktracesProcedure,
 		svc.SelectMergeStacktraces,
 		opts...,
-	))
-	mux.Handle("/querier.v1.QuerierService/SelectMergeProfile", connect_go.NewUnaryHandler(
-		"/querier.v1.QuerierService/SelectMergeProfile",
+	)
+	querierServiceSelectMergeProfileHandler := connect_go.NewUnaryHandler(
+		QuerierServiceSelectMergeProfileProcedure,
 		svc.SelectMergeProfile,
 		opts...,
-	))
-	mux.Handle("/querier.v1.QuerierService/SelectSeries", connect_go.NewUnaryHandler(
-		"/querier.v1.QuerierService/SelectSeries",
+	)
+	querierServiceSelectSeriesHandler := connect_go.NewUnaryHandler(
+		QuerierServiceSelectSeriesProcedure,
 		svc.SelectSeries,
 		opts...,
-	))
-	mux.Handle("/querier.v1.QuerierService/Diff", connect_go.NewUnaryHandler(
-		"/querier.v1.QuerierService/Diff",
+	)
+	querierServiceDiffHandler := connect_go.NewUnaryHandler(
+		QuerierServiceDiffProcedure,
 		svc.Diff,
 		opts...,
-	))
-	return "/querier.v1.QuerierService/", mux
+	)
+	return "/querier.v1.QuerierService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case QuerierServiceProfileTypesProcedure:
+			querierServiceProfileTypesHandler.ServeHTTP(w, r)
+		case QuerierServiceLabelValuesProcedure:
+			querierServiceLabelValuesHandler.ServeHTTP(w, r)
+		case QuerierServiceLabelNamesProcedure:
+			querierServiceLabelNamesHandler.ServeHTTP(w, r)
+		case QuerierServiceSeriesProcedure:
+			querierServiceSeriesHandler.ServeHTTP(w, r)
+		case QuerierServiceSelectMergeStacktracesProcedure:
+			querierServiceSelectMergeStacktracesHandler.ServeHTTP(w, r)
+		case QuerierServiceSelectMergeProfileProcedure:
+			querierServiceSelectMergeProfileHandler.ServeHTTP(w, r)
+		case QuerierServiceSelectSeriesProcedure:
+			querierServiceSelectSeriesHandler.ServeHTTP(w, r)
+		case QuerierServiceDiffProcedure:
+			querierServiceDiffHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
 }
 
 // UnimplementedQuerierServiceHandler returns CodeUnimplemented from all methods.
