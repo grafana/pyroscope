@@ -22,11 +22,11 @@ get-vmlinux-header:
 clean:
 	rm -rf libbpf/*.h vmlinux/*.h
 
-.PHONY: pyperf.so
-pyperf.so:
-	clang -DBPF_NO_PRESERVE_ACCESS_INDEX -DPYROSCOPE_UME \
+.PHONY: profile.so
+profile.so:
+	clang -DBPF_NO_PRESERVE_ACCESS_INDEX -DPYROSCOPE_UME -D __TARGET_ARCH_x86 \
  		-O0 -g3 -Wall -fpie -fPIC -nostdinc -std=gnu11 \
  		-shared \
  		-Wno-unused-variable -Wno-unused-function \
  		-I./libbpf -I./vmlinux/ \
- 		-o pyperf.so  pyperf.bpf.c
+ 		-o ../profile_ume_x86.so  profile.bpf.c

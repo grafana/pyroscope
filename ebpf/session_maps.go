@@ -12,14 +12,14 @@ import (
 	"github.com/go-kit/log/level"
 )
 
-func (s *session) getCountsMapValues() (keys []profileSampleKey, values []uint32, batch bool, err error) {
+func (s *session) getCountsMapValues() (keys []ProfileSampleKey, values []uint32, batch bool, err error) {
 	// try batch first
 	var (
-		m       = s.bpf.profileMaps.Counts
+		m       = s.bpf.ProfileMaps.Counts
 		mapSize = m.MaxEntries()
-		nextKey = profileSampleKey{}
+		nextKey = ProfileSampleKey{}
 	)
-	keys = make([]profileSampleKey, mapSize)
+	keys = make([]ProfileSampleKey, mapSize)
 	values = make([]uint32, mapSize)
 
 	opts := &ebpf.BatchOptions{}
@@ -35,7 +35,7 @@ func (s *session) getCountsMapValues() (keys []profileSampleKey, values []uint32
 	resultKeys := keys[:0]
 	resultValues := values[:0]
 	it := m.Iterate()
-	k := profileSampleKey{}
+	k := ProfileSampleKey{}
 	v := uint32(0)
 	for {
 		ok := it.Next(&k, &v)
@@ -57,7 +57,7 @@ func (s *session) getCountsMapValues() (keys []profileSampleKey, values []uint32
 	return resultKeys, resultValues, false, nil
 }
 
-func (s *session) clearCountsMap(keys []profileSampleKey, batch bool) error {
+func (s *session) clearCountsMap(keys []ProfileSampleKey, batch bool) error {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -65,7 +65,7 @@ func (s *session) clearCountsMap(keys []profileSampleKey, batch bool) error {
 		// do nothing, already deleted with GetValueAndDeleteBatch in getCountsMapValues
 		return nil
 	}
-	m := s.bpf.profileMaps.Counts
+	m := s.bpf.ProfileMaps.Counts
 	for i := range keys {
 		err := m.Delete(&keys[i])
 		if err != nil {

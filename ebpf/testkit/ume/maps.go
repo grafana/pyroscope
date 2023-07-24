@@ -2,9 +2,10 @@ package ume
 
 import (
 	"fmt"
-	"github.com/cilium/ebpf"
 	"reflect"
 	"unsafe"
+
+	"github.com/cilium/ebpf"
 )
 
 type Array struct {
@@ -12,6 +13,15 @@ type Array struct {
 	valueSize  uint32
 	maxEntries uint32
 	data       []byte
+}
+
+func (a *Array) UpdateElem(k uintptr, v uintptr, flags uintptr) uintptr {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a *Array) PerfEventOutput(data uintptr, size uintptr, flags uintptr) uintptr {
+	panic("wrong map")
 }
 
 func (a *Array) Update(k, v any, flags ebpf.MapUpdateFlags) error {
@@ -44,7 +54,22 @@ type HashMap[K comparable, V any] struct {
 	data map[K]*V
 }
 
-func NewHashMap[K comparable, V any]() Map {
+func (h HashMap[K, V]) UpdateElem(k uintptr, v uintptr, flags uintptr) uintptr {
+	//TODO implement me
+	pk := (*K)(unsafe.Pointer(k))
+	pv := (*V)(unsafe.Pointer(v))
+
+	kk := *pk
+	vv := *pv
+	h.data[kk] = &vv
+	return 0
+}
+
+func (h HashMap[K, V]) PerfEventOutput(data uintptr, size uintptr, flags uintptr) uintptr {
+	panic("wrong map")
+}
+
+func NewHashMap[K comparable, V any]() *HashMap[K, V] {
 	return &HashMap[K, V]{
 		data: make(map[K]*V),
 	}
@@ -60,14 +85,7 @@ func (h HashMap[K, V]) Update(k, v any, flags ebpf.MapUpdateFlags) error {
 	if !ok {
 		panic(fmt.Sprintf("value type mismatch %v", v))
 	}
-	//// UpdateAny creates a new element or update an existing one.
-	//UpdateAny MapUpdateFlags = iota
-	//// UpdateNoExist creates a new element.
-	//UpdateNoExist MapUpdateFlags = 1 << (iota - 1)
-	//// UpdateExist updates an existing element.
-	//UpdateExist
-	//// UpdateLock updates elements under bpf_spin_lock.
-	//UpdateLock
+
 	if flags == ebpf.UpdateAny {
 		h.data[kk] = &vv
 		return nil
@@ -91,8 +109,33 @@ func (h HashMap[K, V]) Update(k, v any, flags ebpf.MapUpdateFlags) error {
 }
 
 func (h HashMap[K, V]) Lookup(pkey uintptr) uintptr {
-	//TODO implement me
 	k := *(*K)(unsafe.Pointer(pkey))
 	v := h.data[k]
 	return uintptr(unsafe.Pointer(v))
+}
+
+type PerfEventMap struct {
+	ch chan []byte
+}
+
+func (p PerfEventMap) UpdateElem(k uintptr, v uintptr, flags uintptr) uintptr {
+	//TODO implement me
+	panic("implement me")
+}
+
+func NewPerfEventMap(sz int) *PerfEventMap {
+	return &PerfEventMap{
+		ch: make(chan []byte, sz),
+	}
+}
+
+func (p PerfEventMap) Lookup(pkey uintptr) uintptr {
+	panic("wrong map")
+}
+
+func (p PerfEventMap) PerfEventOutput(data uintptr, size uintptr, flags uintptr) uintptr {
+	buf := make([]byte, size)
+	memcpy_(uintptr(unsafe.Pointer(&buf[0])), data, size)
+	p.ch <- buf
+	return 0
 }

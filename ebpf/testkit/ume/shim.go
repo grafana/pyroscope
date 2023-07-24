@@ -28,8 +28,9 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"github.com/edsrzf/mmap-go"
 	"unsafe"
+
+	"github.com/edsrzf/mmap-go"
 )
 
 //export GoShim
@@ -47,10 +48,21 @@ func GoShim(args *C.ShimArgs) uintptr {
 		f := (*func(a1, a2 uintptr) uintptr)(unsafe.Pointer(uintptr(args.ctx)))
 		return (*f)(uintptr(args.a1), uintptr(args.a2))
 	}
+	if n == 3 {
+		f := (*func(a1, a2, a3 uintptr) uintptr)(unsafe.Pointer(uintptr(args.ctx)))
+		return (*f)(uintptr(args.a1), uintptr(args.a2), uintptr(args.a3))
+	}
+	if n == 4 {
+		f := (*func(a1, a2, a3, a4 uintptr) uintptr)(unsafe.Pointer(uintptr(args.ctx)))
+		return (*f)(uintptr(args.a1), uintptr(args.a2), uintptr(args.a3), uintptr(args.a4))
+	}
+	panic(fmt.Sprintf("unimplemented GoShim n %d", n))
 	return 0
 }
 
 type func5 func(a1, a2, a3, a4, a5 uintptr) uintptr
+type func4 func(a1, a2, a3, a4 uintptr) uintptr
+type func3 func(a1, a2, a3 uintptr) uintptr
 type func2 func(a1, a2 uintptr) uintptr
 type func0 func() uintptr
 
@@ -60,6 +72,14 @@ func newFunc0Shim(f *func0) shim {
 
 func newFunc2Shim(f *func2) shim {
 	return newFuncShim(2, unsafe.Pointer(f))
+}
+
+func newFunc3Shim(f *func3) shim {
+	return newFuncShim(3, unsafe.Pointer(f))
+}
+
+func newFunc4Shim(f *func4) shim {
+	return newFuncShim(4, unsafe.Pointer(f))
 }
 
 func newFunc5Shim(f *func5) shim {

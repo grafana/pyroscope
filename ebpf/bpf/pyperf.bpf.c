@@ -4,15 +4,7 @@
 #include "vmlinux.h"
 #include "bpf_helpers.h"
 
-// todo create a header for it
-#if defined(PYROSCOPE_UME)
-#define pyro_bpf_core_read(dst, sz, src)					    \
-		bpf_probe_read_kernel(dst, sz, src)
-#else
-#include "bpf_core_read.h"
-#define pyro_bpf_core_read(dst, sz, src)					    \
-	bpf_core_read(dst, sz, src)
-#endif
+#include "ume.h"
 
 #define PYTHON_STACK_FRAMES_PER_PROG 25
 #define PYTHON_STACK_PROG_CNT 3
@@ -72,15 +64,15 @@ typedef struct {
     int64_t PyTupleObject_item;
     int64_t String_data;
     int64_t String_size;
-} OffsetConfig;
+} py_offset_config;
 
 typedef struct {
     uintptr_t current_state_addr; // virtual address of _PyThreadState_Current
     uintptr_t tls_key_addr; // virtual address of autoTLSkey for pthreads TLS
     uintptr_t gil_locked_addr; // virtual address of gil_locked
     uintptr_t gil_last_holder_addr; // virtual address of gil_last_holder
-    OffsetConfig offsets;
-} PidData;
+    py_offset_config offsets;
+} py_pid_data;
 
 typedef struct {
     char classname[CLASS_NAME_LEN];
@@ -89,7 +81,7 @@ typedef struct {
     // NOTE: PyFrameObject also has line number but it is typically just the
     // first line of that function and PyCode_Addr2Line needs to be called
     // to get the actual line
-} Symbol;
+} py_symbol;
 
 typedef struct {
     uint32_t pid;
@@ -112,37 +104,30 @@ typedef struct {
     char _condition_check[1 - 2 * !!(condition)]; \
   } STR_CONCAT(compile_time_condition_check, __COUNTER__);
 // See comments in get_frame_data
-FAIL_COMPILATION_IF(sizeof(Symbol) == sizeof(struct bpf_perf_event_value))
+FAIL_COMPILATION_IF(sizeof(py_symbol) == sizeof(struct bpf_perf_event_value))
 
 typedef u64 frame_ptr_t;
 
 typedef struct {
-    OffsetConfig offsets;
+    py_offset_config offsets;
     uint64_t cur_cpu;
     int64_t symbol_counter;
     frame_ptr_t frame_ptr;
     int64_t python_stack_prog_call_cnt;
     py_event event;
-} sample_state_t;
+} py_sample_state_t;
 
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
     __type(key, u32);
-    __type(value, sample_state_t);
+    __type(value, py_sample_state_t);
     __uint(max_entries, 1);
 } py_state_heap SEC(".maps");
 
-// this is a dumb map to generate py_event go structure . TODO: fix this
-struct {
-    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __type(key, u32);
-    __type(value, py_event);
-    __uint(max_entries, 1);
-} py_stubs_events SEC(".maps");
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, Symbol);
+    __type(key, py_symbol);
     __type(value, int32_t);
     __uint(max_entries, 16384);
 } py_symbols SEC(".maps");
@@ -150,7 +135,7 @@ struct {
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, pid_t);
-    __type(value, PidData);
+    __type(value, py_pid_data);
     __uint(max_entries, 10240); // todo
 } py_pid_config SEC(".maps");
 
@@ -180,7 +165,7 @@ struct {
 
 static inline __attribute__((__always_inline__)) void* get_thread_state(
         void* tls_base,
-        PidData* pid_data) {
+        py_pid_data* pid_data) {
     // Python sets the thread_state using pthread_setspecific with the key
     // stored in a global variable autoTLSkey.
     // We read the value of the key from the global variable and then read
@@ -190,6 +175,8 @@ static inline __attribute__((__always_inline__)) void* get_thread_state(
     //    specific_1stblock[autoTLSkey]->data
     int key;
     bpf_probe_read_user(&key, sizeof(key), (void*)pid_data->tls_key_addr);
+
+    bpf_printk("pid_data->tls_key_addr = %x, key=%x", pid_data->tls_key_addr, key);
     // This assumes autoTLSkey < 32, which means that the TLS is stored in
     //   pthread->specific_1stblock[autoTLSkey]
     // 0x310 is offsetof(struct pthread, specific_1stblock),
@@ -202,12 +189,14 @@ static inline __attribute__((__always_inline__)) void* get_thread_state(
             &thread_state,
             sizeof(thread_state),
             tls_base + 0x310 + key * 0x10 + 0x08);
+    bpf_printk("thread_state=%x", thread_state);
+
     return thread_state;
 }
 
 static inline __attribute__((__always_inline__)) int submit_sample(
         struct pt_regs* ctx,
-        sample_state_t* state) {
+        py_sample_state_t* state) {
     bpf_perf_event_output(ctx, &py_events, BPF_F_CURRENT_CPU, &state->event, sizeof(py_event));
     return 0; // todo return value
 }
@@ -215,13 +204,13 @@ static inline __attribute__((__always_inline__)) int submit_sample(
 // this function is trivial, but we need to do map lookup in separate function,
 // because BCC doesn't allow direct map calls (including lookups) from inside
 // a macro (which we want to do in GET_STATE() macro below)
-static inline __attribute__((__always_inline__)) sample_state_t* get_state() {
+static inline __attribute__((__always_inline__)) py_sample_state_t* get_state() {
     int zero = 0;
     return bpf_map_lookup_elem(&py_state_heap, &zero);
 }
 
 #define GET_STATE()                     \
-  sample_state_t* state = get_state();  \
+  py_sample_state_t* state = get_state();  \
   if (!state) {                         \
     return 0; /* should never happen */ \
   }
@@ -248,7 +237,7 @@ static inline __attribute__((__always_inline__)) int get_thread_state_match(
 static inline __attribute__((__always_inline__)) int get_gil_state(
         void* this_thread_state,
         void* global_thread_state,
-        PidData* pid_data) {
+        py_pid_data* pid_data) {
     // Get information of GIL state
     if (pid_data->gil_locked_addr == 0 || pid_data->gil_last_holder_addr == 0) {
         return GIL_STATE_NO_INFO;
@@ -287,7 +276,7 @@ static inline __attribute__((__always_inline__)) int get_gil_state(
 }
 
 static inline __attribute__((__always_inline__)) int
-get_pthread_id_match(void* thread_state, void* tls_base, PidData* pid_data) {
+get_pthread_id_match(void* thread_state, void* tls_base, py_pid_data* pid_data) {
     if (thread_state == 0) {
         return PTHREAD_ID_THREAD_STATE_NULL;
     }
@@ -317,12 +306,9 @@ get_pthread_id_match(void* thread_state, void* tls_base, PidData* pid_data) {
 
 SEC("perf_event")
 int on_event(struct pt_regs* ctx) {
-    bpf_printk("sizeof(sample_state_t) = %d ", sizeof(sample_state_t));
-    bpf_printk("sizeof(PidData) = %d ", sizeof(PidData));
-    bpf_printk("sizeof(pid_t) = %d ", sizeof(pid_t));
     uint64_t pid_tgid = bpf_get_current_pid_tgid();
     pid_t pid = (pid_t)(pid_tgid >> 32);
-    PidData* pid_data = bpf_map_lookup_elem(&py_pid_config, &pid);
+    py_pid_data* pid_data = bpf_map_lookup_elem(&py_pid_config, &pid);
     if (!pid_data) {
         return 0;
     }
@@ -350,24 +336,19 @@ int on_event(struct pt_regs* ctx) {
     if (task == NULL) {
         return 0;
     }
-//#if __x86_64__
-//// thread_struct->fs was renamed to fsbase in
-//// https://github.com/torvalds/linux/commit/296f781a4b7801ad9c1c0219f9e87b6c25e196fe
-//// so depending on kernel version, we need to account for that
-//#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)
-//    void* tls_base = (void*)task->thread.fs;
-//#else
-//    void* tls_base = (void*)task->thread.fsbase;
-//#endif
-//#elif __aarch64__
-//    void* tls_base = (void*)task->thread.tp_value;
-//#else
-//#error "Unsupported platform"
-//#endif
     void* tls_base = NULL;
+
+#if defined(__TARGET_ARCH_x86)
     if (pyro_bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.fsbase)) {
         return 0;
     }
+#elif defined(__TARGET_ARCH_arm64)
+    if (pyro_bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.uw.tp_value)) { // todo what is tp_value2??
+        return 0;
+    }
+#else
+    #error "Unknown architecture"
+#endif
 
     // Read PyThreadState of this Thread from TLS
     void* thread_state = get_thread_state(tls_base, pid_data);
@@ -392,12 +373,13 @@ int on_event(struct pt_regs* ctx) {
 
     if (thread_state != 0) {
         // Get pointer to top frame from PyThreadState
-        bpf_probe_read_user(
+        int res = bpf_probe_read_user(
                 &state->frame_ptr,
                 sizeof(void*),
                 thread_state + pid_data->offsets.PyThreadState_frame);
+        bpf_printk("state->frame_ptr %x %d", state->frame_ptr, res);
         // jump to reading first set of Python frames
-        bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
+        pyro_bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
         // we won't ever get here
     }
 
@@ -407,8 +389,8 @@ int on_event(struct pt_regs* ctx) {
 static inline __attribute__((__always_inline__)) void get_names(
         frame_ptr_t cur_frame,
         void* code_ptr,
-        OffsetConfig* offsets,
-        Symbol* symbol,
+        py_offset_config* offsets,
+        py_symbol* symbol,
         void* ctx) {
     // Figure out if we want to parse class name, basically checking the name of
     // the first argument,
@@ -430,15 +412,15 @@ static inline __attribute__((__always_inline__)) void get_names(
     bool first_self = *(int32_t*)symbol->name == *(int32_t*)self_str;
     bool first_cls = *(int32_t*)symbol->name == *(int32_t*)cls_str;
 
-    // We re-use the same Symbol instance across loop iterations, which means
+    // We re-use the same py_symbol instance across loop iterations, which means
     // we will have left-over data in the struct. Although this won't affect
     // correctness of the result because we have '\0' at end of the strings read,
     // it would affect effectiveness of the deduplication.
     // Helper bpf_perf_prog_read_value clears the buffer on error, so here we
-    // (ab)use this behavior to clear the memory. It requires the size of Symbol
+    // (ab)use this behavior to clear the memory. It requires the size of py_symbol
     // to be different from struct bpf_perf_event_value, which we check at
     // compilation time using the FAIL_COMPILATION_IF macro.
-    bpf_perf_prog_read_value(ctx, (struct bpf_perf_event_value *)symbol, sizeof(Symbol));
+    bpf_perf_prog_read_value(ctx, (struct bpf_perf_event_value *)symbol, sizeof(py_symbol));
 
     // Read class name from $frame->f_localsplus[0]->ob_type->tp_name.
     if (first_self || first_cls) {
@@ -470,8 +452,8 @@ static inline __attribute__((__always_inline__)) void get_names(
 // stack_info->frame_ptr with pointer to next PyFrameObject
 static inline __attribute__((__always_inline__)) bool get_frame_data(
         frame_ptr_t* frame_ptr,
-        OffsetConfig* offsets,
-        Symbol* symbol,
+        py_offset_config* offsets,
+        py_symbol* symbol,
         // ctx is only used to call helper to clear symbol, see documentation below
         void* ctx) {
     frame_ptr_t cur_frame = *frame_ptr;
@@ -500,8 +482,8 @@ static inline __attribute__((__always_inline__)) bool get_frame_data(
 // into the hashmap. NUM_CPUS is defined at PyPerf backend side and passed
 // through CFlag.
 static inline __attribute__((__always_inline__)) int64_t get_symbol_id(
-        sample_state_t* state,
-        Symbol* sym) {
+        py_sample_state_t* state,
+        py_symbol* sym) {
     int32_t* symbol_id_ptr = bpf_map_lookup_elem(&py_symbols, sym);
     if (symbol_id_ptr) {
         return *symbol_id_ptr;
@@ -520,7 +502,7 @@ int read_python_stack(struct pt_regs* ctx) {
     state->python_stack_prog_call_cnt++;
     py_event* sample = &state->event;
 
-    Symbol sym = {};
+    py_symbol sym = {};
     bool last_res = false;
 #pragma unroll
     for (int i = 0; i < PYTHON_STACK_FRAMES_PER_PROG; i++) {
@@ -548,7 +530,7 @@ int read_python_stack(struct pt_regs* ctx) {
     if (sample->stack_status == STACK_STATUS_TRUNCATED &&
         state->python_stack_prog_call_cnt < PYTHON_STACK_PROG_CNT) {
         // read next batch of frames
-        bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
+        pyro_bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
     }
 
     return submit_sample(ctx, state);

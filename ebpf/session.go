@@ -22,7 +22,8 @@ import (
 	"github.com/samber/lo"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -Wall -fpie -Wno-unused-variable -Wno-unused-function" profile bpf/profile.bpf.c -- -I./bpf/libbpf -I./bpf/vmlinux/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -type py_event -target amd64 -cc clang -cflags "-O2 -Wall -fpie -Wno-unused-variable -Wno-unused-function" Profile bpf/profile.bpf.c -- -I./bpf/libbpf -I./bpf/vmlinux/
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -type py_event -target arm64 -cc clang -cflags "-O2 -Wall -fpie -Wno-unused-variable -Wno-unused-function" Profile bpf/profile.bpf.c -- -I./bpf/libbpf -I./bpf/vmlinux/
 
 type SessionOptions struct {
 	CollectUser   bool
@@ -55,11 +56,10 @@ type session struct {
 
 	symCache *symtab.SymbolCache
 
-	bpf profileObjects
+	bpf ProfileObjects
 
 	options     SessionOptions
 	roundNumber int
-	pyperf      *pyPerf
 }
 
 func NewSession(
@@ -96,22 +96,13 @@ func (s *session) Start() error {
 			//LogSize:  1024 * 1024,
 		},
 	}
-	if err := loadProfileObjects(&s.bpf, opts); err != nil {
+	if err := LoadProfileObjects(&s.bpf, opts); err != nil {
 		//if s.bpf.DoPerfEvent != nil {
 		//	fmt.Println(s.bpf.DoPerfEvent.VerifierLog)
 		//}
 
 		return fmt.Errorf("load bpf objects: %w", err)
 	}
-
-	if s.pyperf, err = newPyPerf(s.logger,
-		s.bpf.profileMaps.PyEvents,
-		s.bpf.profileMaps.PyPidConfig,
-		s.bpf.profileMaps.PySymbols,
-	); err != nil {
-		return fmt.Errorf("init perf: %w", err)
-	}
-	s.pyperf.setPythonPIDs(s.options.PythonPIDs)
 
 	if err = s.initArgs(); err != nil {
 		return fmt.Errorf("init bpf args: %w", err)
@@ -136,7 +127,7 @@ type sf struct {
 func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
 	defer s.symCache.Cleanup()
 
-	s.pyperf.CollectProfiles(cb, s.targetFinder)
+	//s.pyperf.CollectProfiles(cb, s.targetFinder)
 
 	s.symCache.NextRound()
 	s.roundNumber++
@@ -197,7 +188,7 @@ func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value ui
 			continue // only comm
 		}
 		lo.Reverse(sb.stack)
-		//cb(it.labels, sb.stack, uint64(it.count), it.pid)
+		cb(it.labels, sb.stack, uint64(it.count), it.pid)
 		s.debugDump(it, stats, sb)
 	}
 	if err = s.clearCountsMap(keys, batch); err != nil {
@@ -231,7 +222,7 @@ func (s *session) Stop() {
 	}
 	s.perfEvents = nil
 	_ = s.bpf.Close()
-	s.pyperf.Close()
+	//s.pyperf.Close()
 }
 
 func (s *session) Update(options SessionOptions) error {
@@ -267,7 +258,7 @@ func (s *session) initArgs() error {
 	if s.options.CollectKernel {
 		collectKernel = 1
 	}
-	arg := &profileBssArg{
+	arg := &ProfileBssArg{
 		TgidFilter:    tgidFilter,
 		CollectUser:   collectUser,
 		CollectKernel: collectKernel,
@@ -305,7 +296,7 @@ func (s *session) getStack(stackId int64) []byte {
 		return nil
 	}
 	stackIdU32 := uint32(stackId)
-	res, err := s.bpf.profileMaps.Stacks.LookupBytes(stackIdU32)
+	res, err := s.bpf.ProfileMaps.Stacks.LookupBytes(stackIdU32)
 	if err != nil {
 		return nil
 	}

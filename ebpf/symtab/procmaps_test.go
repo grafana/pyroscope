@@ -33,7 +33,7 @@ func TestProcMaps(t *testing.T) {
 7ffe157f4000-7ffe157f6000 r-xp 00000000 00:00 0                          [vdso]
 ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]
 `
-	maps, err := ParseProcMapsExecutableModules([]byte(data))
+	maps, err := ParseProcMapsExecutableModules([]byte(data), true)
 	if err != nil {
 		t.Fatal(err)
 	}

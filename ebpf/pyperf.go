@@ -19,15 +19,13 @@ import (
 	"github.com/samber/lo"
 )
 
-//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc clang -cflags "-O2 -Wall -fpie -Wno-unused-variable -Wno-unused-function" pyperf bpf/pyperf.bpf.c -- -I./bpf/libbpf -I./bpf/vmlinux/
-
 type pyPerf struct {
 	rd             *perf.Reader
 	logger         log.Logger
 	pidDataHashMap *ebpf.Map
 	symbolsHashMp  *ebpf.Map
 
-	events     []*profilePyEvent
+	events     []*ProfilePyEvent
 	eventsLock sync.Mutex
 }
 
@@ -57,16 +55,15 @@ func (s *pyPerf) setPythonPIDs(pids []int) {
 	}
 }
 
-func (s *pyPerf) addPythonPID(pid int) error {
-	//todo do not do this multiple times
+func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 	mapsPath := fmt.Sprintf("/proc/%d/maps", pid)
 	maps, err := os.ReadFile(mapsPath) //todo should we streaming parse it?
 	if err != nil {
-		return fmt.Errorf("reading proc maps %s: %w", mapsPath, err)
+		return nil, fmt.Errorf("reading proc maps %s: %w", mapsPath, err)
 	}
 	modules, err := symtab.ParseProcMapsExecutableModules(maps, false)
 	if err != nil {
-		return fmt.Errorf("parsing proc maps %s: %w", mapsPath, err)
+		return nil, fmt.Errorf("parsing proc maps %s: %w", mapsPath, err)
 	}
 
 	var found *symtab.ProcMap
@@ -77,19 +74,19 @@ func (s *pyPerf) addPythonPID(pid int) error {
 		}
 	}
 	if found == nil { // todo other versions
-		return fmt.Errorf("libpython3.6 not found")
+		return nil, fmt.Errorf("libpython3.6 not found")
 	}
 	path := fmt.Sprintf("/proc/%d/root%s", pid, found.Pathname)
 	ef, err := elf.Open(path)
 	if err != nil {
-		return fmt.Errorf("opening elf %s: %w", path, err)
+		return nil, fmt.Errorf("opening elf %s: %w", path, err)
 	}
 	symbols, err := ef.Symbols() // todo reuse parser from symtab, make it optionally streaming
 	if err != nil {
-		return fmt.Errorf("reading symbols from elf %s: %w", path, err)
+		return nil, fmt.Errorf("reading symbols from elf %s: %w", path, err)
 	}
 
-	data := profilePidData{}
+	data := &ProfilePyPidData{}
 	for _, symbol := range symbols {
 		switch symbol.Name {
 		case "autoTLSkey":
@@ -105,7 +102,7 @@ func (s *pyPerf) addPythonPID(pid int) error {
 		}
 	}
 	if data.TlsKeyAddr == 0 || data.CurrentStateAddr == 0 || data.GilLockedAddr == 0 || data.GilLastHolderAddr == 0 {
-		return fmt.Errorf("missing symbols")
+		return nil, fmt.Errorf("missing symbols")
 	}
 	offsetConfig := py36OffsetConfig
 	data.Offsets.PyObjectType = offsetConfig.PyObject_type
@@ -122,7 +119,15 @@ func (s *pyPerf) addPythonPID(pid int) error {
 	data.Offsets.PyTupleObjectItem = offsetConfig.PyTupleObject_item
 	data.Offsets.StringData = offsetConfig.String_data
 	data.Offsets.StringSize = offsetConfig.String_size
+	return data, nil
+}
 
+func (s *pyPerf) addPythonPID(pid int) error {
+	//todo do not do this multiple times
+	data, err := GetPyPerfPidData(pid)
+	if err != nil {
+		return fmt.Errorf("error collecting python data %w", err)
+	}
 	err = s.pidDataHashMap.Update(uint32(pid), data, ebpf.UpdateAny)
 	if err != nil {
 		return fmt.Errorf("updating pid data hash map: %w", err)
@@ -149,7 +154,7 @@ func (s *pyPerf) loop() {
 		}
 
 		// Parse the perf event entry into a bpfEvent structure.
-		event := &profilePyEvent{}
+		event := &ProfilePyEvent{}
 		if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, event); err != nil {
 			_ = level.Error(s.logger).Log("msg", "[pyperf] parsing perf event record", "err", err)
 			continue
@@ -169,9 +174,9 @@ func (s *pyPerf) getSymbols() map[uint32]string {
 	var (
 		m       = s.symbolsHashMp
 		mapSize = m.MaxEntries()
-		nextKey = profileSampleKey{}
+		nextKey = ProfilePySymbol{}
 	)
-	keys := make([]profileSymbol, mapSize)
+	keys := make([]ProfilePySymbol, mapSize)
 	values := make([]uint32, mapSize)
 
 	opts := &ebpf.BatchOptions{}
@@ -195,6 +200,7 @@ func (s *pyPerf) getSymbols() map[uint32]string {
 	}
 	// batch not supported
 	//todo implement
+	panic("implement me")
 	return nil
 }
 
@@ -241,9 +247,9 @@ func (s *pyPerf) CollectProfiles(cb func(t *sd.Target, stack []string, value uin
 	}
 }
 
-func (s *pyPerf) resetEvents() []*profilePyEvent {
+func (s *pyPerf) resetEvents() []*ProfilePyEvent {
 	s.eventsLock.Lock()
-	eventsCopy := make([]*profilePyEvent, len(s.events))
+	eventsCopy := make([]*ProfilePyEvent, len(s.events))
 	copy(eventsCopy, s.events)
 	for i := range s.events {
 		s.events[i] = nil

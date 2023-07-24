@@ -75,6 +75,8 @@ func main() {
 }
 
 func ingest(profile []byte, name string, labels labels.Labels) {
+	//todo labels
+	//todo sample type config
 	url := "http://localhost:4100/ingest?name=" + name + "&format=pprof"
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(profile))
 	if err != nil {
