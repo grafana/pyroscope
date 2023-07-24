@@ -1,6 +1,7 @@
 # Binaries for programs and plugins
 bin
 /phlare
+/pyroscope
 /profilecli
 # Test binary, built with `go test -c`
 *.test
@@ -8,6 +9,7 @@ bin
 *.out
 
 /cmd/phlare/data
+/cmd/pyroscope/data
 pyroscope-sync/
 data/
 .DS_Store
@@ -33,5 +35,7 @@ node_modules
 .pnp.*
 yarn-error.log
 
-# Contains the docker image id for phlare
-/.docker-image-id-phlare
+# Contains the docker image id for pyroscope
+/.docker-image-id-pyroscope
+
+/.tmp
