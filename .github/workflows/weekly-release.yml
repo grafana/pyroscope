@@ -40,7 +40,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - uses: actions/setup-node@v3
         with:
-          node-version: 18.15.0
+          node-version: lts/hydrogen
           cache: yarn
       - run: make frontend/build
       - uses: goreleaser/goreleaser-action@v4

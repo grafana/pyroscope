@@ -5,14 +5,6 @@
   "version": "0.37.2",
   "license": "Apache-2.0",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/pyroscope-io/pyroscope.git"
-  },
-  "workspaces": [
-    "packages/*",
-    "webapp"
-  ],
   "scripts": {
     "start": "lerna-watch @pyroscope/webapp",
     "bootstrap": "lerna bootstrap && husky install",
@@ -134,7 +126,7 @@
     "lint-staged": "^11.1.2",
     "monaco-editor-webpack-plugin": "^1.9.0",
     "npm-run-all": "^4.1.5",
-    "oauth2-mock-server": "^4.3.0",
+    "oauth2-mock-server": "^6.0.0",
     "optimize-css-assets-webpack-plugin": "^6.0.1",
     "prettier": "^2.2.1",
     "redux-mock-store": "^1.5.4",
@@ -281,7 +273,8 @@
     "d3-selection": "3.0.0",
     "semver": "^7.5.2"
   },
-  "optionalDependencies": {
-    "@pyroscope/nodejs": "^0.2.5"
-  }
+  "workspaces": [
+    "packages/*",
+    "webapp"
+  ]
 }
