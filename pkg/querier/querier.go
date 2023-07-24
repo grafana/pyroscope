@@ -229,11 +229,13 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.Labels, error) {
 		res, err := ic.Series(childCtx, connect.NewRequest(&ingestv1.SeriesRequest{
-			Matchers: req.Msg.Matchers,
+			Matchers:   req.Msg.Matchers,
+			LabelNames: req.Msg.LabelNames,
 		}))
 		if err != nil {
 			return nil, err
 		}
+		// TODO: Remove this once we have the ingesters returning the filtered response, has been rolled out (f25).
 		filterSeriesByLabelNames(res.Msg.LabelsSet, labelNameMap)
 
 		return res.Msg.LabelsSet, nil
