@@ -1,5 +1,5 @@
-import { RequestNotOkError, requestWithOrgID } from '@webapp/services/base';
-import store from '@webapp/redux/store';
+import { RequestNotOkError, requestWithOrgID } from '@phlare/services/base';
+import store from '@phlare/redux/store';
 
 export async function isMultiTenancyEnabled() {
   const res = await requestWithOrgID('/querier.v1.QuerierService/LabelNames', {

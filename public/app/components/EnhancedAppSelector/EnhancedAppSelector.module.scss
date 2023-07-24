@@ -1,0 +1,119 @@
+@use '@phlare/sass/mixins/outline.scss' as *;
+
+.container {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.appSelectorModal {
+  height: auto;
+  width: auto;
+  right: unset;
+  left: -100px;
+  z-index: 999;
+}
+
+.header {
+  display: flex;
+}
+
+.headerTitle {
+  position: relative;
+  margin-left: 10px;
+  color: var(--ps-select-modal-title);
+  font-weight: 700;
+  font-size: 0.8em;
+}
+
+.searchInput {
+  height: 40px;
+  background: var(--ps-immutable-off-white);
+  color: var(--ps-immutable-placeholder-text);
+  border: 1px solid var(--ps-ui-border);
+  margin: 10px 0 10px 10px;
+}
+
+.filter {
+  margin: 10px;
+  min-height: 40px;
+  display: flex;
+}
+
+.filterName {
+  margin: 0;
+  padding: 0;
+  min-width: 100px;
+  line-height: 40px;
+  color: var(--ps-select-modal-title);
+}
+
+.iconsContainer,
+.profileTypesContainer {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 400px;
+}
+
+.profileTypesContainer {
+  flex-wrap: wrap;
+}
+
+.icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  border-color: var(--ps-app-selector-filter);
+  width: 40px;
+  height: 40px;
+  margin: 0 5px 5px 0;
+  line-height: 40px;
+
+  &.active {
+    background-color: var(--ps-blue-primary);
+  }
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.profileType {
+  border: none;
+  line-height: 25px;
+  cursor: pointer;
+  border-radius: 10px;
+  background-color: var(--ps-app-selector-filter);
+  margin: 0 5px 5px 0;
+  padding: 0 10px;
+  color: var(--ps-tooltip-text);
+
+  &.active {
+    background-color: var(--ps-blue-primary);
+    color: var(--ps-immutable-white);
+  }
+}
+
+.noData {
+  width: 100%;
+  height: 300px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.resetFilters {
+  position: absolute;
+  left: 100px;
+  top: -5px;
+  border: none;
+  color: var(--ps-immutable-white);
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+    color: var(--ps-disabled-button-text);
+  }
+}

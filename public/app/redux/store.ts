@@ -14,10 +14,10 @@ import { history } from '@phlare/util/history';
 
 import continuousReducer, {
   actions as continuousActions,
-} from '@webapp/redux/reducers/continuous';
+} from '@phlare/redux/reducers/continuous';
 import uiStore, {
   persistConfig as uiPersistConfig,
-} from '@webapp/redux/reducers/ui';
+} from '@phlare/redux/reducers/ui';
 import tenantReducer, {
   persistConfig as tenantPersistConfig,
 } from '@phlare/redux/reducers/tenant';

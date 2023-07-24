@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { createAsyncThunk } from '@webapp/redux/async-thunk';
-import type { RootState } from '@webapp/redux/store';
+import { createAsyncThunk } from '@phlare/redux/async-thunk';
+import type { RootState } from '@phlare/redux/store';
 import {
   isMultiTenancyEnabled,
   tenantIDFromStorage,

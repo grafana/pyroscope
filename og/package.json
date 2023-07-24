@@ -272,9 +272,5 @@
     "d3-graphviz": "5.0.2",
     "d3-selection": "3.0.0",
     "semver": "^7.5.2"
-  },
-  "workspaces": [
-    "packages/*",
-    "webapp"
-  ]
+  }
 }

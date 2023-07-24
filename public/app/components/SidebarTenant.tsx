@@ -2,16 +2,16 @@ import React from 'react';
 import { faCog } from '@fortawesome/free-solid-svg-icons/faCog';
 import { faUser } from '@fortawesome/free-solid-svg-icons/faUser';
 import { MenuButton, MenuProps, MenuHeader } from '@szhsin/react-menu';
-import Dropdown, { MenuItem as DropdownMenuItem } from '@webapp/ui/Dropdown';
+import Dropdown, { MenuItem as DropdownMenuItem } from '@phlare/ui/Dropdown';
 import flattenChildren from 'react-flatten-children';
-import Icon from '@webapp/ui/Icon';
-import { MenuItem } from '@webapp/ui/Sidebar';
+import Icon from '@phlare/ui/Icon';
+import { MenuItem } from '@phlare/ui/Sidebar';
 import {
   selectIsMultiTenant,
   selectTenantID,
   actions,
 } from '@phlare/redux/reducers/tenant';
-import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
+import { useAppSelector, useAppDispatch } from '@phlare/redux/hooks';
 import styles from '@phlare/components/SidebarTenant.module.css';
 import cx from 'classnames';
 

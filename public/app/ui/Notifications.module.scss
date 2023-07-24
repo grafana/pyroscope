@@ -1,0 +1,15 @@
+.notificationsComponent {
+  // Overwrites react-notification-component
+  // TODO: Ideally we would create a custom component
+  // (https://github.com/teodosii/react-notifications-component/blob/a4a452d4994930861c21768c5d54352aafc80a2c/README.md?plain=1#L340-L344)
+  // but this should do for now
+  [class~='notification__close']::after {
+    font-size: 48px;
+    cursor: pointer;
+  }
+
+  [class~='notification__item'] {
+    // Since the only way to close the notification is via the close button
+    cursor: auto !important;
+  }
+}

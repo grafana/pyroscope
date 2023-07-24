@@ -1,5 +1,5 @@
 {
-  "name": "@pyroscope/webapp",
+  "name": "@pyroscope/legacy-webapp",
   "version": "1.68.22",
   "private": true,
   "license": "Apache-2.0",

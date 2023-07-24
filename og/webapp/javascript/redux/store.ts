@@ -14,6 +14,7 @@ import {
 import ReduxQuerySync from 'redux-query-sync';
 import { configureStore, combineReducers, Middleware } from '@reduxjs/toolkit';
 
+import tracingReducer, { actions as tracingActions } from "grafana-pyroscope/public/app/redux/reducers/tracing";
 import history from '../util/history';
 
 import settingsReducer from './reducers/settings';
@@ -21,9 +22,8 @@ import userReducer from './reducers/user';
 import continuousReducer, {
   actions as continuousActions,
 } from './reducers/continuous';
-import tracingReducer, { actions as tracingActions } from './reducers/tracing';
 import serviceDiscoveryReducer from './reducers/serviceDiscovery';
-import adhocReducer from './reducers/adhoc';
+import adhocReducer from '../../../../public/app/redux/reducers/continuous/adhoc';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 
 const reducer = combineReducers({

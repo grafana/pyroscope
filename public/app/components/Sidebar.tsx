@@ -11,16 +11,16 @@ import SidebarUI, {
   SidebarFooter,
   SidebarContent,
   Menu,
-} from '@webapp/ui/Sidebar';
-import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
+} from '@phlare/ui/Sidebar';
+import { useAppSelector, useAppDispatch } from '@phlare/redux/hooks';
 import {
   selectSidebarCollapsed,
   collapseSidebar,
   uncollapseSidebar,
   recalculateSidebar,
-} from '@webapp/redux/reducers/ui';
+} from '@phlare/redux/reducers/ui';
 import { useLocation, NavLink } from 'react-router-dom';
-import Icon from '@webapp/ui/Icon';
+import Icon from '@phlare/ui/Icon';
 import clsx from 'clsx';
 import { useWindowWidth } from '@react-hook/window-size';
 import { isRouteActive, ROUTES } from '@phlare/pages/routes';

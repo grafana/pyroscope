@@ -1,5 +1,5 @@
 import React from 'react';
-import ContinuousComparisonView from '@webapp/pages/ContinuousComparisonView';
+import ContinuousComparisonView from '@phlare/pages/ContinuousComparisonView';
 
 export function ComparisonView() {
   return <ContinuousComparisonView />;

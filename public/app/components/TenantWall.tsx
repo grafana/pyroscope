@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
-import TextField from '@webapp/ui/Form/TextField';
+import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
+import TextField from '@phlare/ui/Form/TextField';
 import {
   Dialog,
   DialogBody,
   DialogFooter,
   DialogHeader,
-} from '@webapp/ui/Dialog';
-import Button from '@webapp/ui/Button';
+} from '@phlare/ui/Dialog';
+import Button from '@phlare/ui/Button';
 import {
   checkTenancyIsRequired,
   selectTenancy,
@@ -61,6 +61,8 @@ export function TenantWall({ children }: { children: React.ReactNode }) {
       return <>{memoedChildren}</>;
     }
   }
+
+  return <></>;
 }
 
 function SelectTenantIDDialog({

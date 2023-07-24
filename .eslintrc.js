@@ -26,11 +26,12 @@ module.exports = {
       'error',
       {
         patterns: [
-          {
-            group: ['../*', './*'],
-            message:
-              'Usage of relative parent imports is not allowed. Please use absolute(use alias) imports instead.',
-          },
+          // Dialing back this restriction for now
+          // {
+          //   group: ['../*', './*'],
+          //   message:
+          //     'Usage of relative parent imports is not allowed. Please use absolute(use alias) imports instead.',
+          // },
         ],
       },
     ],
