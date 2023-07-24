@@ -1,8 +1,8 @@
 package pprof
 
 import (
-	"io/ioutil"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
@@ -188,7 +188,7 @@ func countSampleDuplicates(p *Profile) int {
 var prof *profilev1.Profile
 
 func BenchmarkFromRawBytes(b *testing.B) {
-	data, err := ioutil.ReadFile("testdata/heap")
+	data, err := os.ReadFile("testdata/heap")
 	require.NoError(b, err)
 	b.ResetTimer()
 	b.ReportAllocs()

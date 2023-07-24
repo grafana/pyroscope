@@ -110,7 +110,7 @@ func TestHelp(t *testing.T) {
 
 			co := test.CaptureOutput(t)
 
-			const cmd = "./phlare"
+			const cmd = "./pyroscope"
 			os.Args = []string{cmd, tc.arg}
 
 			// reset default flags
