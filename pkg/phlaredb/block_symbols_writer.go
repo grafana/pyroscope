@@ -75,6 +75,9 @@ func (w *symbolsWriter) Close() error {
 		if err != nil {
 			return fmt.Errorf("flushing table %s: %w", t.Name(), err)
 		}
+		if err = t.Close(); err != nil {
+			return fmt.Errorf("closing table %s: %w", t.Name(), err)
+		}
 	}
 	if err := w.symdb.Flush(); err != nil {
 		return fmt.Errorf("flushing symbol database: %w", err)
