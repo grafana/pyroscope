@@ -1226,7 +1226,6 @@ type inMemoryparquetReader[M Models, P schemav1.Persister[M]] struct {
 	persister P
 	file      *parquet.File
 	size      int64
-	numRows   int64
 	reader    phlareobj.ReaderAtCloser
 	cache     []M
 }
