@@ -1,0 +1,17 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/grafana/pyroscope/pkg/pprof
+cpu: Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz
+BenchmarkFromRawBytes
+BenchmarkFromRawBytes-16    	     234	   5033396 ns/op	  194510 B/op	    3023 allocs/op
+BenchmarkFromRawBytes-16    	     231	   4900172 ns/op	  213061 B/op	    3025 allocs/op
+BenchmarkFromRawBytes-16    	     254	   4676182 ns/op	  201379 B/op	    3024 allocs/op
+BenchmarkFromRawBytes-16    	     254	   4655499 ns/op	  201379 B/op	    3024 allocs/op
+BenchmarkFromRawBytes-16    	     244	   4914444 ns/op	  211098 B/op	    3024 allocs/op
+BenchmarkFromRawBytes-16    	     244	   4691141 ns/op	  202463 B/op	    3024 allocs/op
+BenchmarkFromRawBytes-16    	     258	   4729181 ns/op	  233542 B/op	    3329 allocs/op
+BenchmarkFromRawBytes-16    	     255	   4684683 ns/op	  209592 B/op	    3024 allocs/op
+BenchmarkFromRawBytes-16    	     252	   4664927 ns/op	  234906 B/op	    3336 allocs/op
+BenchmarkFromRawBytes-16    	     249	   4630778 ns/op	  184869 B/op	    3022 allocs/op
+PASS
+ok  	github.com/grafana/pyroscope/pkg/pprof	16.930s
