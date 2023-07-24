@@ -464,6 +464,8 @@ func (b *singleBlockQuerier) Index() IndexReader {
 
 func (b *singleBlockQuerier) Symbols() SymbolsReader {
 	return &inMemorySymbolsReader{
+		partitions: make(map[uint64]*inMemorySymbolsResolver),
+
 		strings:     b.strings,
 		functions:   b.functions,
 		locations:   b.locations,
@@ -1224,6 +1226,7 @@ type inMemoryparquetReader[M Models, P schemav1.Persister[M]] struct {
 	persister P
 	file      *parquet.File
 	size      int64
+	numRows   int64
 	reader    phlareobj.ReaderAtCloser
 	cache     []M
 }

@@ -244,13 +244,15 @@ func (s *deduplicatingSlice[M, K, H, P]) append(dst []uint32, elems []M) {
 		s.lock.RLock()
 		p := uint32(len(s.slice))
 		for _, i := range missing {
-			k := s.helper.key(elems[i])
+			e := elems[i]
+			k := s.helper.key(e)
 			x, ok := s.lookup[k]
-			if !ok {
+			if ok {
 				dst[i] = uint32(x)
 				continue
 			}
-			s.slice = append(s.slice, s.helper.clone(elems[i]))
+			s.size.Add(s.helper.size(e))
+			s.slice = append(s.slice, s.helper.clone(e))
 			s.lookup[k] = int64(p)
 			dst[i] = p
 			p++

@@ -75,8 +75,8 @@ func (s inMemorySymbolsResolver) Strings(i iter.Iterator[uint32]) iter.Iterator[
 
 func (s inMemorySymbolsResolver) WriteStats(stats *symdb.Stats) {
 	s.reader.stacktraces.WriteStats(s.partition, stats)
-	stats.LocationsTotal = int(s.reader.locations.file.NumRows())
-	stats.MappingsTotal = int(s.reader.mappings.file.NumRows())
-	stats.FunctionsTotal = int(s.reader.functions.file.NumRows())
-	stats.StringsTotal = int(s.reader.strings.file.NumRows())
+	stats.LocationsTotal = len(s.reader.locations.cache)
+	stats.MappingsTotal = len(s.reader.mappings.cache)
+	stats.FunctionsTotal = len(s.reader.functions.cache)
+	stats.StringsTotal = len(s.reader.strings.cache)
 }

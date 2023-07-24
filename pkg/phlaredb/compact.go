@@ -94,12 +94,19 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Met
 		return block.Meta{}, err
 	}
 
-	// flush the index file.
-	if err := indexw.Close(); err != nil {
+	if err = symRewriter.Close(); err != nil {
+		return block.Meta{}, err
+	}
+	if err = symw.Close(); err != nil {
 		return block.Meta{}, err
 	}
 
-	if err := profileWriter.Close(); err != nil {
+	// flush the index file.
+	if err = indexw.Close(); err != nil {
+		return block.Meta{}, err
+	}
+
+	if err = profileWriter.Close(); err != nil {
 		return block.Meta{}, err
 	}
 
@@ -183,8 +190,8 @@ func parquetMetaFile(filePath string, size int64) (block.File, error) {
 func compactMetas(src []block.Meta) block.Meta {
 	meta := block.NewMeta()
 	highestCompactionLevel := 0
-	ulids := make([]ulid.ULID, len(src))
-	parents := make([]tsdb.BlockDesc, len(src))
+	ulids := make([]ulid.ULID, 0, len(src))
+	parents := make([]tsdb.BlockDesc, 0, len(src))
 	minTime, maxTime := model.Latest, model.Earliest
 	labels := make(map[string]string)
 	for _, b := range src {
@@ -603,7 +610,7 @@ func (r *stacktraceRewriter) getOrCreatePartition(partition uint64) (_ *symParti
 		p.reset()
 		return p, nil
 	}
-	n := &symPartitionRewriter{name: partition}
+	n := &symPartitionRewriter{r: r, name: partition}
 	if n.resolver, err = r.reader.SymbolsResolver(partition); err != nil {
 		return nil, err
 	}
@@ -878,7 +885,7 @@ func (t *lookupTable[T]) lookupResolved(x uint32) uint32 {
 // It is expected that the order matches values.
 func (t *lookupTable[T]) updateResolved() {
 	for i, rid := range t.unresolved {
-		t.resolved[rid] = t.buf[i]
+		t.resolved[rid] = t.buf[i] + 1
 	}
 }
 
