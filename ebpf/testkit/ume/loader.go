@@ -46,15 +46,11 @@ type ProcMem interface {
 type UME struct {
 	handle  unsafe.Pointer
 	progSym unsafe.Pointer
-	//todo how to keep in once slice?
-	f5      []func5
-	f3      []func3
-	f4      []func4
-	f2      []func2
-	f0      []func0
-	shims   []shim
-	symbols []elf.Symbol
-	base    uintptr
+	// use interface{} to keep pointers to different type of functions - func0, func1...
+	funcPointers []interface{}
+	shims        []shim
+	symbols      []elf.Symbol
+	base         uintptr
 
 	pidtgid        uint64
 	smpProcessorID uint64
@@ -164,8 +160,8 @@ func (u *UME) Symbol(sym string) int {
 }
 
 func (u *UME) BindFunc0(sym string, f func0) {
-	u.f0 = append(u.f0, f)
-	fptr := &u.f0[len(u.f0)-1]
+	fptr := &f
+	u.funcPointers = append(u.funcPointers, fptr)
 	sh := newFunc0Shim(fptr)
 	u.shims = append(u.shims, sh)
 
@@ -175,8 +171,8 @@ func (u *UME) BindFunc0(sym string, f func0) {
 }
 
 func (u *UME) BindFunc2(sym string, f func2) {
-	u.f2 = append(u.f2, f)
-	fptr := &u.f2[len(u.f2)-1]
+	fptr := &f
+	u.funcPointers = append(u.funcPointers, fptr)
 	sh := newFunc2Shim(fptr)
 	u.shims = append(u.shims, sh)
 
@@ -186,8 +182,8 @@ func (u *UME) BindFunc2(sym string, f func2) {
 }
 
 func (u *UME) BindFunc3(sym string, f func3) {
-	u.f3 = append(u.f3, f)
-	fptr := &u.f3[len(u.f3)-1]
+	fptr := &f
+	u.funcPointers = append(u.funcPointers, fptr)
 	sh := newFunc3Shim(fptr)
 	u.shims = append(u.shims, sh)
 
@@ -197,8 +193,8 @@ func (u *UME) BindFunc3(sym string, f func3) {
 }
 
 func (u *UME) BindFunc4(sym string, f func4) {
-	u.f4 = append(u.f4, f)
-	fptr := &u.f4[len(u.f4)-1]
+	fptr := &f
+	u.funcPointers = append(u.funcPointers, fptr)
 	sh := newFunc4Shim(fptr)
 	u.shims = append(u.shims, sh)
 
@@ -208,8 +204,8 @@ func (u *UME) BindFunc4(sym string, f func4) {
 }
 
 func (u *UME) BindFunc5(sym string, f func5) {
-	u.f5 = append(u.f5, f)
-	fptr := &u.f5[len(u.f5)-1]
+	fptr := &f
+	u.funcPointers = append(u.funcPointers, fptr)
 	sh := newFunc5Shim(fptr)
 	u.shims = append(u.shims, sh)
 

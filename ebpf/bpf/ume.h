@@ -1,4 +1,4 @@
-#if !defined(UME_H)
+#ifndef UME_H
 #define UME_H
 
 

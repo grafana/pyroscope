@@ -167,7 +167,7 @@ func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value ui
 			uStack: uStack,
 			kStack: kStack,
 			count:  value,
-			comm:   getComm(&ck.Comm),
+			//comm:   getComm(&ck.Comm), // todo get com from pid from userspace
 			labels: labels,
 		})
 	}
@@ -244,12 +244,12 @@ func (s *session) DebugInfo() interface{} {
 
 func (s *session) initArgs() error {
 	var zero uint32
-	var tgidFilter uint32
-	if s.pid <= 0 {
-		tgidFilter = 0
-	} else {
-		tgidFilter = uint32(s.pid)
-	}
+	//var tgidFilter uint32
+	//if s.pid <= 0 {
+	//	tgidFilter = 0
+	//} else {
+	//	tgidFilter = uint32(s.pid)
+	//}
 	collectUser := uint8(0)
 	collectKernel := uint8(0)
 	if s.options.CollectUser {
@@ -259,7 +259,7 @@ func (s *session) initArgs() error {
 		collectKernel = 1
 	}
 	arg := &ProfileBssArg{
-		TgidFilter:    tgidFilter,
+		//TgidFilter:    tgidFilter,
 		CollectUser:   collectUser,
 		CollectKernel: collectKernel,
 	}

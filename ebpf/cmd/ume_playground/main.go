@@ -60,7 +60,6 @@ func main() {
 	cnt := 0
 	for {
 		cnt += 1
-		fmt.Println("[dbg] wait")
 		if err = proc.Wait(); err != nil {
 			panic(err)
 		}
@@ -77,19 +76,16 @@ func main() {
 				ume.WaitForDebugger()
 			}
 		})
-		fmt.Printf("invoke %d\n", cnt)
 		e.Invoke(unsafe.Pointer(uintptr(239)))
 
-		fmt.Println("[dbg] cont")
 		if err = proc.Continue(); err != nil {
 			panic(err)
 		}
 
-		if cnt%10 == 0 {
-			printStacks(pySymbols, pyEvents)
-		}
-		time.Sleep(100 * time.Millisecond)
-		fmt.Println("[dbg] stop")
+		//if cnt%10 == 0 {
+		printStacks(pySymbols, pyEvents)
+		//}
+		time.Sleep(1000 * time.Millisecond)
 		if err = proc.Stop(); err != nil {
 			panic(err)
 		}
@@ -133,7 +129,7 @@ func printStack(e []byte, reverseSymbols map[uint32]ebpfspy.ProfilePySymbol) {
 		}
 		//fmt.Printf("sym %8d\n", symID)
 		symbol := reverseSymbols[symID]
-		fmt.Printf("%10d %s\n", symID, strFromInt8(symbol.Name[:]))
+		fmt.Printf("%10d %s | %s | %s \n", symID, strFromInt8(symbol.Name[:]), strFromInt8(symbol.Classname[:]), strFromInt8(symbol.File[:]))
 	}
 }
 

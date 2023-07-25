@@ -54,7 +54,7 @@ func (p *Proc) Wait() error {
 	if err != nil {
 		return fmt.Errorf("Wait4 on pid %d failed: %s\n", p.tid, err)
 	}
-	fmt.Printf("StopSignal %v\n", wstatus.StopSignal())
+	//fmt.Printf("StopSignal %v\n", wstatus.StopSignal())
 	return nil
 }
 

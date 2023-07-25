@@ -1,17 +1,15 @@
 #ifndef PYPERF_H
 #define PYPERF_H
 
-#include "vmlinux.h"
-#include "bpf_helpers.h"
+#include "pyperf.bpf.h"
 
-#include "ume.h"
 
 #define PYTHON_STACK_FRAMES_PER_PROG 25
 #define PYTHON_STACK_PROG_CNT 3
-#define STACK_MAX_LEN (PYTHON_STACK_FRAMES_PER_PROG * PYTHON_STACK_PROG_CNT)
-#define CLASS_NAME_LEN 32
-#define FUNCTION_NAME_LEN 64
-#define FILE_NAME_LEN 128
+#define PYTHON_STACK_MAX_LEN (PYTHON_STACK_FRAMES_PER_PROG * PYTHON_STACK_PROG_CNT)
+#define PYTHON_CLASS_NAME_LEN 32
+#define PYTHON_FUNCTION_NAME_LEN 64
+#define PYTHON_FILE_NAME_LEN 128
 #define TASK_COMM_LEN 16
 
 enum {
@@ -75,9 +73,9 @@ typedef struct {
 } py_pid_data;
 
 typedef struct {
-    char classname[CLASS_NAME_LEN];
-    char name[FUNCTION_NAME_LEN];
-    char file[FILE_NAME_LEN];
+    char classname[PYTHON_CLASS_NAME_LEN];
+    char name[PYTHON_FUNCTION_NAME_LEN];
+    char file[PYTHON_FILE_NAME_LEN];
     // NOTE: PyFrameObject also has line number but it is typically just the
     // first line of that function and PyCode_Addr2Line needs to be called
     // to get the actual line
@@ -94,7 +92,7 @@ typedef struct {
     // instead of storing symbol name here directly, we add it to another
     // hashmap with Symbols and only store the ids here
     int64_t stack_len;
-    uint32_t stack[STACK_MAX_LEN];
+    uint32_t stack[PYTHON_STACK_MAX_LEN];
 } py_event;
 
 #define _STR_CONCAT(str1, str2) str1##str2
@@ -176,7 +174,7 @@ static inline __attribute__((__always_inline__)) void* get_thread_state(
     int key;
     bpf_probe_read_user(&key, sizeof(key), (void*)pid_data->tls_key_addr);
 
-    bpf_printk("pid_data->tls_key_addr = %x, key=%x", pid_data->tls_key_addr, key);
+//    bpf_printk("pid_data->tls_key_addr = %x, key=%x", pid_data->tls_key_addr, key);
     // This assumes autoTLSkey < 32, which means that the TLS is stored in
     //   pthread->specific_1stblock[autoTLSkey]
     // 0x310 is offsetof(struct pthread, specific_1stblock),
@@ -189,7 +187,7 @@ static inline __attribute__((__always_inline__)) void* get_thread_state(
             &thread_state,
             sizeof(thread_state),
             tls_base + 0x310 + key * 0x10 + 0x08);
-    bpf_printk("thread_state=%x", thread_state);
+//    bpf_printk("thread_state=%x", thread_state);
 
     return thread_state;
 }
@@ -378,7 +376,7 @@ int on_event(struct pt_regs* ctx) {
                 &state->frame_ptr,
                 sizeof(void*),
                 thread_state + pid_data->offsets.PyThreadState_frame);
-        bpf_printk("state->frame_ptr %x %d", state->frame_ptr, res);
+        if (state->frame_ptr == 239) bpf_printk("state->frame_ptr %x %d", state->frame_ptr, res);
         // jump to reading first set of Python frames
         pyro_bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
         // we won't ever get here
@@ -399,6 +397,7 @@ static inline __attribute__((__always_inline__)) void get_names(
     // If it's 'self', we get the type and it's name, if it's cls, we just get
     // the name. This is not perfect but there is no better way to figure this
     // out from the code object.
+    bpf_printk("------------");
     void* args_ptr;
     bpf_probe_read_user(
             &args_ptr, sizeof(void*), code_ptr + offsets->PyCodeObject_varnames);
@@ -406,6 +405,7 @@ static inline __attribute__((__always_inline__)) void get_names(
             &args_ptr, sizeof(void*), args_ptr + offsets->PyTupleObject_item);
     bpf_probe_read_user_str(
             &symbol->name, sizeof(symbol->name), args_ptr + offsets->String_data);
+    bpf_printk("get_names name %s", symbol->name);
 
     // compare strings as ints to save instructions
     char self_str[4] = {'s', 'e', 'l', 'f'};
@@ -486,10 +486,8 @@ static inline __attribute__((__always_inline__)) int64_t get_symbol_id(
         py_sample_state_t* state,
         py_symbol* sym) {
 
-    bpf_printk("sym  %s ", sym->name);
     int32_t* symbol_id_ptr = bpf_map_lookup_elem(&py_symbols, sym);
     if (symbol_id_ptr) {
-        bpf_printk("sym %s = %d", sym->name, *symbol_id_ptr);
         return *symbol_id_ptr;
     }
     // the symbol is new, bump the counter
@@ -514,7 +512,7 @@ int read_python_stack(struct pt_regs* ctx) {
         if (last_res) {
             uint32_t symbol_id = get_symbol_id(state, &sym);
             int64_t cur_len = sample->stack_len;
-            if (cur_len >= 0 && cur_len < STACK_MAX_LEN) {
+            if (cur_len >= 0 && cur_len < PYTHON_STACK_MAX_LEN) {
                 sample->stack[cur_len] = symbol_id;
                 sample->stack_len++;
             }

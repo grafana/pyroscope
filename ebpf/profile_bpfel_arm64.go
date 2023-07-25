@@ -13,10 +13,8 @@ import (
 )
 
 type ProfileBssArg struct {
-	TgidFilter    uint32
 	CollectUser   uint8
 	CollectKernel uint8
-	_             [2]byte
 }
 
 type ProfilePyEvent struct {
@@ -88,10 +86,9 @@ type ProfilePySymbol struct {
 
 type ProfileSampleKey struct {
 	Pid       uint32
-	_         [4]byte
+	Flags     uint32
 	KernStack int64
 	UserStack int64
-	Comm      [16]int8
 }
 
 // LoadProfile returns the embedded CollectionSpec for Profile.
