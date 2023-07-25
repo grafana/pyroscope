@@ -1,7 +1,6 @@
 package iter
 
 import (
-	"context"
 	"math"
 	"testing"
 
@@ -164,7 +163,7 @@ func Test_BufferedIterator(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			actual, err := Slice(
-				NewBufferedIterator(context.Background(),
+				NewBufferedIterator(
 					NewSliceIterator(tc.in), tc.size),
 			)
 			require.NoError(t, err)

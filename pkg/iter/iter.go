@@ -275,9 +275,6 @@ func (it *BufferedIterator[T]) Next() bool {
 }
 
 func (it *BufferedIterator[T]) Err() error {
-	if it.ctx.Err() != nil {
-		return it.ctx.Err()
-	}
 	return it.Iterator.Err()
 }
 
