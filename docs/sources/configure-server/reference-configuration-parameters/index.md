@@ -221,11 +221,11 @@ limits:
   # Maximum size of a profile in bytes. This is based off the uncompressed size.
   # 0 to disable.
   # CLI flag: -validation.max-profile-size-bytes
-  [max_profile_size_bytes: <int> | default = 2097152]
+  [max_profile_size_bytes: <int> | default = 4194304]
 
   # Maximum number of samples in a profile. 0 to disable.
   # CLI flag: -validation.max-profile-stacktrace-samples
-  [max_profile_stacktrace_samples: <int> | default = 2000]
+  [max_profile_stacktrace_samples: <int> | default = 4000]
 
   # Maximum number of labels in a profile sample. 0 to disable.
   # CLI flag: -validation.max-profile-stacktrace-sample-labels

@@ -877,9 +877,22 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 	if err != nil {
 		return nil, err
 	}
+
+	// build up map of label names
+	labelNameMap := make(map[string]struct{}, len(req.Msg.LabelNames))
+	for _, labelName := range req.Msg.LabelNames {
+		labelNameMap[labelName] = struct{}{}
+	}
+
 	response := &ingestv1.SeriesResponse{}
 	uniqu := map[model.Fingerprint]struct{}{}
 	if err := h.forMatchingSelectors(selectors, func(lbs phlaremodel.Labels, fp model.Fingerprint) error {
+		if len(req.Msg.LabelNames) > 0 {
+			lbs = lbs.WithLabels(req.Msg.LabelNames...)
+			fp = model.Fingerprint(lbs.Hash())
+
+		}
+
 		if _, ok := uniqu[fp]; ok {
 			return nil
 		}
@@ -889,6 +902,7 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 	}); err != nil {
 		return nil, err
 	}
+
 	sort.Slice(response.LabelsSet, func(i, j int) bool {
 		return phlaremodel.CompareLabelPairs(response.LabelsSet[i].Labels, response.LabelsSet[j].Labels) < 0
 	})
