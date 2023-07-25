@@ -42,9 +42,13 @@ func NewIngesterQuerier(pool *ring_client.Pool, ring ring.ReadRing) *IngesterQue
 	}
 }
 
+// readNoExtend is a ring.Operation that only selects instances marked as ring.ACTIVE.
+// This should mirror the operation used when choosing ingesters to write series to (ring.WriteNoExtend).
+var readNoExtend = ring.NewOp([]ring.InstanceState{ring.ACTIVE}, nil)
+
 // forAllIngesters runs f, in parallel, for all ingesters
 func forAllIngesters[T any](ctx context.Context, ingesterQuerier *IngesterQuerier, f QueryReplicaFn[T, IngesterQueryClient]) ([]ResponseFromReplica[T], error) {
-	replicationSet, err := ingesterQuerier.ring.GetReplicationSetForOperation(ring.Read)
+	replicationSet, err := ingesterQuerier.ring.GetReplicationSetForOperation(readNoExtend)
 	if err != nil {
 		return nil, err
 	}
