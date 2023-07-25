@@ -193,6 +193,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/shaleynikov"><img src="https://avatars.githubusercontent.com/u/8720058?v=4" title="shaleynikov" width="80" height="80"></a>
 <a href="https://github.com/09jvilla"><img src="https://avatars.githubusercontent.com/u/9610816?v=4" title="09jvilla" width="80" height="80"></a>
 <a href="https://github.com/joey-grafana"><img src="https://avatars.githubusercontent.com/u/90795735?v=4" title="joey-grafana" width="80" height="80"></a>
+<a href="https://github.com/darrenjaneczek"><img src="https://avatars.githubusercontent.com/u/38694490?v=4" title="darrenjaneczek" width="80" height="80"></a>
 <a href="https://github.com/Eve832"><img src="https://avatars.githubusercontent.com/u/81647476?v=4" title="Eve832" width="80" height="80"></a>
 <a href="https://github.com/iOliverNguyen"><img src="https://avatars.githubusercontent.com/u/6618620?v=4" title="iOliverNguyen" width="80" height="80"></a>
 <a href="https://github.com/AdrK"><img src="https://avatars.githubusercontent.com/u/15175440?v=4" title="AdrK" width="80" height="80"></a>
@@ -249,7 +250,6 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/cwalv"><img src="https://avatars.githubusercontent.com/u/887222?v=4" title="cwalv" width="80" height="80"></a>
 <a href="https://github.com/dleviminzi"><img src="https://avatars.githubusercontent.com/u/51272568?v=4" title="dleviminzi" width="80" height="80"></a>
 <a href="https://github.com/Dzalevski"><img src="https://avatars.githubusercontent.com/u/9572827?v=4" title="Dzalevski" width="80" height="80"></a>
-<a href="https://github.com/darrenjaneczek"><img src="https://avatars.githubusercontent.com/u/38694490?v=4" title="darrenjaneczek" width="80" height="80"></a>
 <a href="https://github.com/vasi-stripe"><img src="https://avatars.githubusercontent.com/u/28717751?v=4" title="vasi-stripe" width="80" height="80"></a>
 <a href="https://github.com/dhanusaputra"><img src="https://avatars.githubusercontent.com/u/35093673?v=4" title="dhanusaputra" width="80" height="80"></a>
 <a href="https://github.com/slim-bean"><img src="https://avatars.githubusercontent.com/u/10332331?v=4" title="slim-bean" width="80" height="80"></a>
