@@ -6,6 +6,7 @@ import (
 
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
@@ -169,6 +170,14 @@ func Test_BufferedIterator(t *testing.T) {
 			require.Equal(t, tc.in, actual)
 		})
 	}
+}
+
+func Test_BufferedIteratorClose(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	it := NewBufferedIterator(
+		NewSliceIterator(generatesProfiles(t, 100)), 10)
+	require.NoError(t, it.Close())
 }
 
 func generatesProfiles(t *testing.T, n int) []profile {

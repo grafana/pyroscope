@@ -3,6 +3,7 @@ package phlaredb
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strings"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -134,7 +136,6 @@ func (p *profileCounter) Next() bool {
 	}
 
 	return r
-
 }
 
 func TestBlockCompatability(t *testing.T) {
@@ -148,7 +149,6 @@ func TestBlockCompatability(t *testing.T) {
 
 	for _, meta := range metas {
 		t.Run(fmt.Sprintf("block-v%d-%s", meta.Version, meta.ULID.String()), func(t *testing.T) {
-
 			q := NewSingleBlockQuerierFromMeta(ctx, bucket, meta)
 			require.NoError(t, q.Open(ctx))
 
@@ -186,6 +186,36 @@ func TestBlockCompatability(t *testing.T) {
 
 			require.Equal(t, int(meta.Stats.NumProfiles), profileCount)
 		})
-
 	}
+}
+
+type fakeQuerier struct {
+	Querier
+	doErr bool
+}
+
+func (f *fakeQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
+	// add some jitter
+	time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
+	if f.doErr {
+		return nil, fmt.Errorf("fake error")
+	}
+	profiles := []Profile{}
+	for i := 0; i < 100000; i++ {
+		profiles = append(profiles, BlockProfile{})
+	}
+	return iter.NewSliceIterator(profiles), nil
+}
+
+func TestSelectMatchingProfilesCleanUp(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	_, err := SelectMatchingProfiles(context.Background(), &ingestv1.SelectProfilesRequest{}, Queriers{
+		&fakeQuerier{},
+		&fakeQuerier{},
+		&fakeQuerier{},
+		&fakeQuerier{},
+		&fakeQuerier{doErr: true},
+	})
+	require.Error(t, err)
 }
