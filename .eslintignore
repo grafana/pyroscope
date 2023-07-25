@@ -8,3 +8,4 @@ cypress/**
 cypress.config.ts
 testSetupFile.js
 og/**
+examples/**
