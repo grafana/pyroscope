@@ -3,6 +3,8 @@ title: "Pyroscope Language SDKs"
 menuTitle: "Language SDKs"
 description: "Send data from your application"
 weight: 20
+aliases:
+  - /docs/phlare/latest/configure-client/language-sdks/
 ---
 
 # Grafana Pyroscope Language SDKs
