@@ -45,6 +45,7 @@ require (
 	github.com/prometheus/client_golang v1.15.1
 	github.com/prometheus/common v0.44.0
 	github.com/prometheus/prometheus v1.99.0
+	github.com/pyroscope-io/client v0.7.1
 	github.com/pyroscope-io/jfr-parser v0.6.0
 	github.com/samber/lo v1.37.0
 	github.com/segmentio/parquet-go v0.0.0-20230309140036-b6d0a6236da6
@@ -221,6 +222,7 @@ require (
 	github.com/prometheus/common/sigv4 v0.1.0 // indirect
 	github.com/prometheus/exporter-toolkit v0.9.1 // indirect
 	github.com/prometheus/procfs v0.10.0 // indirect
+	github.com/pyroscope-io/godeltaprof v0.1.0 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/rs/xid v1.4.0 // indirect
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.15 // indirect
