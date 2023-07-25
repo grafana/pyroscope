@@ -2,7 +2,9 @@
 title: "eBPF"
 menuTitle: "eBPF"
 description: "Instrumenting eBPF applications for continuous profiling"
-weight: 30
+weight: 20
+aliases:
+  - /docs/phlare/latest/configure-client/language-sdks/ebpf/
 ---
 
 # eBPF
@@ -23,7 +25,7 @@ For the reasons mentioned above, we recommend an hybrid approach for better resu
 
 ### Prerequisites for profiling with eBPF
 For the eBPF integration to work you'll need:
-* A Pyroscope or Phlare server where the agent will send profiling data
+* A Pyroscope server where the agent will send profiling data
 * A Linux machine with the kernel version >= 4.9 (due to [BPF_PROG_TYPE_PERF_EVENT](https://lkml.org/lkml/2016/9/1/831))
 
 ## Running eBPF profiler on Kubernetes
@@ -78,24 +80,23 @@ All parameters below are also supported as CLI arguments, a full list can be acc
 | `PYROSCOPE_ONLY_SERVICES`     | `false`                             | Ignore processes unknown to service discovery. In a Kubernetes cluster it ignores processes like `containerd, runc, kubelet` etc | 
 | `PYROSCOPE_SYMBOL_CACHE_SIZE` | `256`                          | Max size of symbols cache (1 entry per process). Change this value if you’re experiencing memory pressure or have many individual services. |
 
-## Sending data to Grafana Cloud or Phlare with Pyroscope eBPF integration
-
-Starting with [weekly-f8](https://hub.docker.com/r/grafana/phlare/tags) you can ingest pyroscope profiles directly to phlare.
+## Sending data to Pyroscope OSS or Grafana Cloud Profiles with eBPF integration
 
 ```bash
 ./pyroscope ebpf \
-  --application-name=phlare.ebpf.app  \
+  --application-name=example.ebpf.app  \
   --server-address=<URL>              \
   --basic-auth-user="<User>"          \
   --basic-auth-password="<Password>"  \
-  --tenant-id=<TenantID>              \
+  # tenant-id only needed if multi-tenancy enabled
+  # --tenant-id=<TenantID>              \
 ```
 
-To configure eBPF integration to send data to Phlare, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Phlare server URL.
+To configure eBPF integration to send data to Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
 
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
 
-If your Phlare server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Phlare tenant ID.
+If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
 
 ## Examples
 
