@@ -12,7 +12,7 @@ weight: 30
 
 Pyroscope is a continuous profiling database that allows you to analyze the performance of your applications. When sending profiles to Pyroscope, you have two options: using the Grafana agent in pull mode or utilizing the Pyroscope SDKs in push mode. This document will provide an overview of these two methods and guide you on when to choose each option.
 
-![Phlare agent server diagram](phlare-agent-server-diag.png)
+![Phlare agent server diagram](pyroscope-agent-server-diag.png)
 
 ## Grafana Agent (Pull Mode)
 
