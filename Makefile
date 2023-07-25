@@ -249,7 +249,7 @@ $(BIN)/protoc-gen-connect-go-mux: Makefile go.mod
 
 $(BIN)/protoc-gen-go-vtproto: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/grafana/vtprotobuf/cmd/protoc-gen-go-vtproto@69fa34dad3472084bcae0b557e8813e6d4678f2b
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grafana/vtprotobuf/cmd/protoc-gen-go-vtproto@5b3aae6571b83099f5a6cd803e8d72296550a973
 
 $(BIN)/protoc-gen-openapiv2: Makefile go.mod
 	@mkdir -p $(@D)
