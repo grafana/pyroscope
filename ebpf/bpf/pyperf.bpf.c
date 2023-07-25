@@ -338,6 +338,7 @@ int on_event(struct pt_regs* ctx) {
     }
     void* tls_base = NULL;
 
+//todo can we read fsbase from pt_regs?
 #if defined(__TARGET_ARCH_x86)
     if (pyro_bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.fsbase)) {
         return 0;
@@ -484,13 +485,16 @@ static inline __attribute__((__always_inline__)) bool get_frame_data(
 static inline __attribute__((__always_inline__)) int64_t get_symbol_id(
         py_sample_state_t* state,
         py_symbol* sym) {
+
+    bpf_printk("sym  %s ", sym->name);
     int32_t* symbol_id_ptr = bpf_map_lookup_elem(&py_symbols, sym);
     if (symbol_id_ptr) {
+        bpf_printk("sym %s = %d", sym->name, *symbol_id_ptr);
         return *symbol_id_ptr;
     }
     // the symbol is new, bump the counter
-    int32_t symbol_id = state->symbol_counter * NUM_CPUS + state->cur_cpu;
     state->symbol_counter++;
+    int32_t symbol_id = state->symbol_counter * NUM_CPUS + state->cur_cpu;
     bpf_map_update_elem(&py_symbols, sym, &symbol_id, BPF_ANY);
     return symbol_id;
 }

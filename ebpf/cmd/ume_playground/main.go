@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"flag"
 	"fmt"
 	"path/filepath"
+	"sync"
+	"time"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -15,6 +18,8 @@ import (
 var pid = flag.Int("pid", -1, "")
 var gdb = flag.Bool("gdb", false, "")
 
+var dbgOnce sync.Once
+
 func main() {
 	flag.Parse()
 	pid := *pid
@@ -23,6 +28,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer proc.Close()
+
 	data, err := ebpfspy.GetPyPerfPidData(pid)
 	if err != nil {
 		panic(err)
@@ -47,26 +54,100 @@ func main() {
 
 	pidConfig.Update(uint32(pid), *data, ebpf.UpdateAny)
 
-	err = proc.Stop()
-	if err != nil {
-		panic(err)
-	}
-	regs, err := proc.PtraceGetRegs()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%x\n", regs.Fs_base)
 	currentTask := make([]byte, 0x2000)
-	putFSBase(currentTask, regs.Fs_base)
 	e.SetCurrentTask(currentTask)
 
-	if *gdb {
-		//ume.StartGDBServer()
-		ume.WaitForDebugger()
+	cnt := 0
+	for {
+		cnt += 1
+		fmt.Println("[dbg] wait")
+		if err = proc.Wait(); err != nil {
+			panic(err)
+		}
+
+		regs, err := proc.PtraceGetRegs()
+		if err != nil {
+			panic(err)
+		}
+
+		putFSBase(currentTask, regs.Fs_base)
+
+		dbgOnce.Do(func() {
+			if *gdb {
+				ume.WaitForDebugger()
+			}
+		})
+		fmt.Printf("invoke %d\n", cnt)
+		e.Invoke(unsafe.Pointer(uintptr(239)))
+
+		fmt.Println("[dbg] cont")
+		if err = proc.Continue(); err != nil {
+			panic(err)
+		}
+
+		if cnt%10 == 0 {
+			printStacks(pySymbols, pyEvents)
+		}
+		time.Sleep(100 * time.Millisecond)
+		fmt.Println("[dbg] stop")
+		if err = proc.Stop(); err != nil {
+			panic(err)
+		}
 	}
-	e.Invoke(unsafe.Pointer(uintptr(239)))
+
+}
+
+func printStacks(pySymbols *ume.HashMap[ebpfspy.ProfilePySymbol, uint32], pyEvents *ume.PerfEventMap) {
+	reverseSymbols := getSymbols(pySymbols)
+
+	for {
+		select {
+		case e := <-pyEvents.Events():
+			printStack(e, reverseSymbols)
+			break
+		default:
+			fmt.Println("no more stacks")
+			return
+		}
+
+	}
+}
+
+func getSymbols(pySymbols *ume.HashMap[ebpfspy.ProfilePySymbol, uint32]) map[uint32]ebpfspy.ProfilePySymbol {
+	reverseSymbols := make(map[uint32]ebpfspy.ProfilePySymbol)
+	for _, e := range pySymbols.Entries() {
+		reverseSymbols[*e.V] = e.K
+	}
+	return reverseSymbols
+}
+
+func printStack(e []byte, reverseSymbols map[uint32]ebpfspy.ProfilePySymbol) {
+	event := &ebpfspy.ProfilePyEvent{}
+	if err := binary.Read(bytes.NewBuffer(e), binary.LittleEndian, event); err != nil {
+		panic(err)
+	}
+	fmt.Println("==============")
+	for i, symID := range event.Stack {
+		if i >= int(event.StackLen) {
+			break
+		}
+		//fmt.Printf("sym %8d\n", symID)
+		symbol := reverseSymbols[symID]
+		fmt.Printf("%10d %s\n", symID, strFromInt8(symbol.Name[:]))
+	}
 }
 
 func putFSBase(currentTask []byte, val uint64) {
 	binary.LittleEndian.PutUint64(currentTask[0x1b68:], uint64(val))
+}
+
+func strFromInt8(file []int8) any {
+	u8 := make([]uint8, 0, len(file))
+	for _, v := range file {
+		if v == 0 {
+			break
+		}
+		u8 = append(u8, uint8(v))
+	}
+	return string(u8)
 }

@@ -249,6 +249,7 @@ func (u *UME) helperProbeReadUser(dst, size, src uintptr) uintptr {
 		b := (*byte)(unsafe.Pointer(dst + uintptr(i)))
 		*b = buf[i]
 	}
+	//fmt.Printf("mem read %x %s\n", src, hex.EncodeToString(buf))
 	return 0
 }
 
@@ -287,21 +288,33 @@ func (u *UME) helperBPFTracePrintk(a1, a2, a3, a4, a5 uintptr) uintptr {
 	if !strings.HasSuffix(gfmt, "\n") {
 		gfmt += "\n"
 	}
-	count := strings.Count(gfmt, "%")
-	switch count {
-	case 0:
-		fmt.Printf(gfmt)
-	case 1:
-		fmt.Printf(gfmt, a3)
-	case 2:
-		fmt.Printf(gfmt, a3, a4)
-	case 3:
-		fmt.Printf(gfmt, a3, a4, a5)
-	default:
-		fmt.Printf("WARNING unsupported number of args: %d\n", count)
-		fmt.Printf(gfmt, a3, a4, a5)
+	args := []uintptr{
+		a3, a4, a5,
 	}
-	return 0xdeadbeef
+	iarg := 0
+	i := 0
+	for i < len(gfmt) {
+		var ch = gfmt[i]
+		if int(ch) == '%' {
+			a := args[iarg]
+			iarg++
+			typ := int(gfmt[i+1])
+			if typ == 'd' {
+				fmt.Printf("%d", a)
+			} else if typ == 'x' || typ == 'p' {
+				fmt.Printf("%x", a)
+			} else if typ == 's' {
+				fmt.Printf("%s", C.GoString((*C.char)(unsafe.Pointer(a))))
+			} else {
+				panic(fmt.Sprintf("wrong format %s", gfmt))
+			}
+			i += 2
+		} else {
+			fmt.Printf("%s", string([]byte{byte(ch)}))
+			i++
+		}
+	}
+	return 0
 }
 
 // static long (*bpf_probe_read_user_str)(void *dst, __u32 size, const void *unsafe_ptr) = (void *) 114;
@@ -318,6 +331,9 @@ func (u *UME) helperProbeReadUserStr(dst, size, src uintptr) uintptr {
 	for i := 0; i < int(size); i++ {
 		b := (*byte)(unsafe.Pointer(dst + uintptr(i)))
 		*b = buf[i]
+		if buf[i] == 0 {
+			break
+		}
 	}
 	return 0
 }

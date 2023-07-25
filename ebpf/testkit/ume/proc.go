@@ -1,9 +1,9 @@
 package ume
 
 import (
-	"encoding/hex"
 	"fmt"
 	"os"
+	"runtime"
 	"syscall"
 )
 
@@ -24,11 +24,6 @@ func NewProc(pid int, tid int) (*Proc, error) {
 		return nil, err
 	}
 
-	_, err = syscall.Wait4(tid, nil, 0, nil)
-	if err != nil {
-		return nil, err
-	}
-
 	memFD, err := os.Open(fmt.Sprintf("/proc/%d/mem", pid))
 	if err != nil {
 		return nil, err
@@ -39,11 +34,9 @@ func NewProc(pid int, tid int) (*Proc, error) {
 		tid:     tid,
 		memFD:   memFD,
 	}
-	err = res.Continue()
-	if err != nil {
-		res.Close()
-		return nil, fmt.Errorf("continue failed %w", err)
-	}
+
+	runtime.LockOSThread()
+
 	return res, nil
 }
 
@@ -52,14 +45,21 @@ func (p *Proc) Stop() error {
 	if err != nil {
 		return err
 	}
-	_, err = syscall.Wait4(p.tid, nil, 0, nil)
+	return nil
+}
+
+func (p *Proc) Wait() error {
+	wstatus := syscall.WaitStatus(0)
+	_, err := syscall.Wait4(p.tid, &wstatus, 0, nil)
 	if err != nil {
 		return fmt.Errorf("Wait4 on pid %d failed: %s\n", p.tid, err)
 	}
+	fmt.Printf("StopSignal %v\n", wstatus.StopSignal())
 	return nil
 }
 
 func (p *Proc) Continue() error {
+
 	err := syscall.PtraceCont(p.tid, 0)
 	if err != nil {
 		return err
@@ -68,6 +68,7 @@ func (p *Proc) Continue() error {
 }
 
 func (p *Proc) Close() error {
+	defer runtime.UnlockOSThread()
 	return syscall.PtraceDetach(p.tid)
 }
 
@@ -90,6 +91,5 @@ func (p *Proc) ReadMem(size, src uintptr) []byte {
 		return nil
 	}
 
-	fmt.Printf("mem read %x %s\n", src, hex.EncodeToString(buf))
 	return buf
 }

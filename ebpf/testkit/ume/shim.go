@@ -35,6 +35,7 @@ import (
 
 //export GoShim
 func GoShim(args *C.ShimArgs) uintptr {
+	fmt.Printf("GoShim %d %d\n", args.n, args.ctx)
 	n := int(args.n)
 	if n == 5 {
 		f := (*func(a1, a2, a3, a4, a5 uintptr) uintptr)(unsafe.Pointer(uintptr(args.ctx)))
@@ -50,7 +51,8 @@ func GoShim(args *C.ShimArgs) uintptr {
 	}
 	if n == 3 {
 		f := (*func(a1, a2, a3 uintptr) uintptr)(unsafe.Pointer(uintptr(args.ctx)))
-		return (*f)(uintptr(args.a1), uintptr(args.a2), uintptr(args.a3))
+		f2 := *f
+		return f2(uintptr(args.a1), uintptr(args.a2), uintptr(args.a3))
 	}
 	if n == 4 {
 		f := (*func(a1, a2, a3, a4 uintptr) uintptr)(unsafe.Pointer(uintptr(args.ctx)))

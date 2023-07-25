@@ -75,7 +75,7 @@ func NewHashMap[K comparable, V any]() *HashMap[K, V] {
 	}
 }
 
-func (h HashMap[K, V]) Update(k, v any, flags ebpf.MapUpdateFlags) error {
+func (h *HashMap[K, V]) Update(k, v any, flags ebpf.MapUpdateFlags) error {
 	//TODO implement me
 	kk, ok := k.(K)
 	if !ok {
@@ -108,10 +108,23 @@ func (h HashMap[K, V]) Update(k, v any, flags ebpf.MapUpdateFlags) error {
 	return nil
 }
 
-func (h HashMap[K, V]) Lookup(pkey uintptr) uintptr {
+type Entry[K comparable, V any] struct {
+	K K
+	V *V
+}
+
+func (h *HashMap[K, V]) Lookup(pkey uintptr) uintptr {
 	k := *(*K)(unsafe.Pointer(pkey))
 	v := h.data[k]
 	return uintptr(unsafe.Pointer(v))
+}
+
+func (h *HashMap[K, V]) Entries() []Entry[K, V] {
+	res := make([]Entry[K, V], 0, len(h.data))
+	for k, v := range h.data {
+		res = append(res, Entry[K, V]{k, v})
+	}
+	return res
 }
 
 type PerfEventMap struct {
@@ -129,13 +142,21 @@ func NewPerfEventMap(sz int) *PerfEventMap {
 	}
 }
 
-func (p PerfEventMap) Lookup(pkey uintptr) uintptr {
+func (p *PerfEventMap) Lookup(pkey uintptr) uintptr {
 	panic("wrong map")
 }
 
-func (p PerfEventMap) PerfEventOutput(data uintptr, size uintptr, flags uintptr) uintptr {
+func (p *PerfEventMap) PerfEventOutput(data uintptr, size uintptr, flags uintptr) uintptr {
 	buf := make([]byte, size)
 	memcpy_(uintptr(unsafe.Pointer(&buf[0])), data, size)
-	p.ch <- buf
+	select {
+	case p.ch <- buf:
+	default:
+		fmt.Println("Channel full. Discarding perf event data")
+	}
 	return 0
+}
+
+func (p *PerfEventMap) Events() <-chan []byte {
+	return p.ch
 }
