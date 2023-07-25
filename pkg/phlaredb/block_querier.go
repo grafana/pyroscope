@@ -544,7 +544,7 @@ func SelectMatchingProfiles(ctx context.Context, request *ingestv1.SelectProfile
 			if err != nil {
 				return err
 			}
-			iters[i] = iter.NewBufferedIterator(profiles, 1024)
+			iters[i] = iter.NewBufferedIterator(ctx, profiles, 1024)
 			return nil
 		}))
 	}

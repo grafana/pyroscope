@@ -1,11 +1,13 @@
 package iter
 
 import (
+	"context"
 	"math"
 	"testing"
 
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
@@ -162,13 +164,21 @@ func Test_BufferedIterator(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			actual, err := Slice(
-				NewBufferedIterator(
+				NewBufferedIterator(context.Background(),
 					NewSliceIterator(tc.in), tc.size),
 			)
 			require.NoError(t, err)
 			require.Equal(t, tc.in, actual)
 		})
 	}
+}
+
+func Test_BufferedIteratorClose(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	it := NewBufferedIterator(context.Background(),
+		NewSliceIterator(generatesProfiles(t, 100)), 10)
+	require.NoError(t, it.Close())
 }
 
 func generatesProfiles(t *testing.T, n int) []profile {
