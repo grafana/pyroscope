@@ -2,7 +2,7 @@
 title: ".NET"
 menuTitle: ".NET"
 description: "Instrumenting .NET applications for continuous profiling"
-weight: 30
+weight: 40
 aliases:
   - /docs/phlare/latest/configure-client/language-sdks/dotnet/
 ---
