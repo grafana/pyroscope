@@ -5,9 +5,7 @@
     "labels": {
       "env": "dev"
     },
-    "targets": [
-      "hotrod:6060"
-    ]
+    "targets": ["hotrod:6060"]
   },
   {
     "application": "last-app",
@@ -15,8 +13,6 @@
     "labels": {
       "env": "dev"
     },
-    "targets": [
-      "app:6060"
-    ]
+    "targets": ["app:6060"]
   }
 ]
