@@ -238,8 +238,8 @@ type BufferedIterator[T any] struct {
 }
 
 // NewBufferedIterator returns an iterator that reads asynchronously from the given iterator and buffers up to size elements.
-func NewBufferedIterator[T any](ctx context.Context, it Iterator[T], size int) Iterator[T] {
-	ctx, cancel := context.WithCancel(ctx)
+func NewBufferedIterator[T any](it Iterator[T], size int) Iterator[T] {
+	ctx, cancel := context.WithCancel(context.Background())
 	buffered := &BufferedIterator[T]{
 		Iterator: it,
 		buff:     make(chan T, size),

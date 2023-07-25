@@ -176,7 +176,7 @@ func Test_BufferedIterator(t *testing.T) {
 func Test_BufferedIteratorClose(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	it := NewBufferedIterator(context.Background(),
+	it := NewBufferedIterator(
 		NewSliceIterator(generatesProfiles(t, 100)), 10)
 	require.NoError(t, it.Close())
 }
