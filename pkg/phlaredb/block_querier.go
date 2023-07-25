@@ -550,6 +550,11 @@ func SelectMatchingProfiles(ctx context.Context, request *ingestv1.SelectProfile
 	}
 
 	if err := g.Wait(); err != nil {
+		for _, it := range iters {
+			if it != nil {
+				it.Close()
+			}
+		}
 		return nil, err
 	}
 	return iters, nil
@@ -933,9 +938,7 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 		}
 	}
 
-	var (
-		buf [][]parquet.Value
-	)
+	var buf [][]parquet.Value
 
 	pIt := query.NewBinaryJoinIterator(
 		0,
