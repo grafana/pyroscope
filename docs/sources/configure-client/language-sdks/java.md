@@ -4,7 +4,7 @@ menuTitle: "Java"
 description: "Instrumenting Java applications for continuous profiling"
 weight: 30
 aliases:
-  - /docs/phlare/latest/configure-client/language-sdks/go_push
+  - /docs/phlare/latest/configure-client/language-sdks/java
 ---
 
 # Java
