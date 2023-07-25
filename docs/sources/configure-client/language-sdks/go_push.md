@@ -2,7 +2,9 @@
 title: "Go (push mode)"
 menuTitle: "Go (push mode)"
 description: "Instrumenting Golang applications for continuous profiling"
-weight: 30
+weight: 10
+aliases:
+  - /docs/phlare/latest/configure-client/language-sdks/go_push
 ---
 
 # Go (push mode)
@@ -110,19 +112,18 @@ runtime.SetBlockProfileRate(rate)
 
 `rate` parameter controls the fraction of goroutine blocking events that are reported in the blocking profile. The profiler aims to sample an average of one blocking event per rate nanoseconds spent blocked.
 
-## Sending data to Grafana Cloud or Phlare with Pyroscope Golang SDK
+## Sending data to Pyroscope OSS or Grafana Cloud Profiles using Golang SDK
 
-Starting with [weekly-f8](https://hub.docker.com/r/grafana/phlare/tags) you can ingest pyroscope profiles directly to phlare.
 
 ```go
 pyroscope.Start(pyroscope.Config{
-  ApplicationName:   "phlare.golang.app",
+  ApplicationName:   "example.golang.app",
   ServerAddress:     "<URL>",
   // Optional HTTP Basic authentication
   BasicAuthUser:     "<User>",
   BasicAuthPassword: "<Password>",
-  // Optional Phlare tenant ID
-  TenantID:          "<TenantID>",
+  // Optional Pyroscope tenant ID (only needed if using multi-tenancy)
+  // TenantID:          "<TenantID>",
   ProfileTypes: []pyroscope.ProfileType{
     pyroscope.ProfileCPU,
     pyroscope.ProfileInuseObjects,
@@ -133,11 +134,11 @@ pyroscope.Start(pyroscope.Config{
 })
 ```
 
-To configure the Golang sdk to send data to Phlare, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Phlare server URL.
+To configure the Golang sdk to send data to Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
 
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
 
-If your Phlare server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Phlare tenant ID.
+If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
 
 
 ## Golang profiling examples
