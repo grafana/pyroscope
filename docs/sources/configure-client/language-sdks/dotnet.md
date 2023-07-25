@@ -3,6 +3,8 @@ title: ".NET"
 menuTitle: ".NET"
 description: "Instrumenting .NET applications for continuous profiling"
 weight: 30
+aliases:
+  - /docs/phlare/latest/configure-client/language-sdks/dotnet/
 ---
 
 # .NET
@@ -118,9 +120,7 @@ Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/exampl
 | PYROSCOPE_PROFILING_ALLOCATION_ENABLED | Boolean      | If set to true, enables the Allocations profiling. Defaults to false. |
 | PYROSCOPE_PROFILING_LOCK_ENABLED       | Boolean      | If set to true, enables the Lock Contention profiling. Defaults to false. |
 
-## Sending data to Grafana Cloud or Phlare with Pyroscope .NET SDK
-
-Starting with [weekly-f8](https://hub.docker.com/r/grafana/phlare/tags) you can ingest pyroscope profiles directly to phlare.
+## Sending data to Pyroscope OSS or Grafana Cloud Profiles with .NET SDK
 
 ```bash
 export CORECLR_ENABLE_PROFILING=1
@@ -128,17 +128,17 @@ export CORECLR_PROFILER={BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}
 export CORECLR_PROFILER_PATH=/dotnet/Pyroscope.Profiler.Native.so
 export LD_PRELOAD=/dotnet/Pyroscope.Linux.ApiWrapper.x64.so
 export PYROSCOPE_PROFILING_ENABLED=1
-export PYROSCOPE_APPLICATION_NAME=phlare.dotnet.app
+export PYROSCOPE_APPLICATION_NAME=example.dotnet.app
 export PYROSCOPE_SERVER_ADDRESS=<URL>
 export PYROSCOPE_BASIC_AUTH_USER=<User>
 export PYROSCOPE_BASIC_AUTH_PASSWORD=<Password>
-export PYROSCOPE_TENANT_ID=<TenantID>
+export PYROSCOPE_TENANT_ID=<TenantID> # only needed if using multi-tenancy
 ```
 
-To configure .NET sdk to send data to Grafana Cloud or Phlare, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Phlare server URL.
+To configure .NET sdk to send data to Grafana Cloud Profiles or Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
 
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafan Cloud API key.
 
-If your Phlare server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Phlare tenant ID.
+If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
 
 
