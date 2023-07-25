@@ -19,7 +19,7 @@ func FindNearestVehicle(ctx context.Context, searchRadius int64, vehicle string)
 		checkDriverAvailability(ctx, searchRadius)
 	}
 
-	if vehicle == "bike" && time.Now().Minute()%10 == 0 {	
+	if vehicle == "bike" && time.Now().Minute()%10 == 0 {
 		checkBikeAvailability(ctx, searchRadius)
 	}
 }
