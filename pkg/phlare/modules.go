@@ -3,6 +3,7 @@ package phlare
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -14,10 +15,12 @@ import (
 	"github.com/grafana/dskit/runtimeconfig"
 	"github.com/grafana/dskit/services"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/common/version"
+	objstoretracing "github.com/thanos-io/objstore/tracing"
 	"github.com/thanos-io/thanos/pkg/discovery/dns"
 	"github.com/weaveworks/common/middleware"
 	"github.com/weaveworks/common/server"
@@ -375,6 +378,16 @@ func (f *Phlare) initStoreGateway() (serv services.Service, err error) {
 	return svc, nil
 }
 
+var objstoreTracerMiddleware = middleware.Func(func(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		if tracer := opentracing.GlobalTracer(); tracer != nil {
+			ctx = objstoretracing.ContextWithTracer(ctx, opentracing.GlobalTracer())
+		}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+})
+
 func (f *Phlare) initServer() (services.Service, error) {
 	f.reg.MustRegister(version.NewCollector("pyroscope"))
 	f.reg.Unregister(collectors.NewGoCollector())
@@ -425,6 +438,7 @@ func (f *Phlare) initServer() (services.Service, error) {
 			LogRequestAtInfoLevel: f.Cfg.Server.LogRequestAtInfoLevel,
 		},
 		httpMetric,
+		objstoreTracerMiddleware,
 	}
 	f.Server.HTTPServer.Handler = middleware.Merge(defaultHTTPMiddleware...).Wrap(f.Server.HTTP)
 

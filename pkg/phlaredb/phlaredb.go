@@ -28,7 +28,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
@@ -91,8 +91,10 @@ type PhlareDB struct {
 }
 
 func New(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*PhlareDB, error) {
-	// todo: should be instrumented.
-	fs, err := filesystem.NewBucket(cfg.DataPath)
+	localStoreCfg := objstoreclient.Config{}
+	localStoreCfg.Backend = "filesystem"
+	localStoreCfg.Filesystem.Directory = cfg.DataPath
+	fs, err := objstoreclient.NewBucket(phlarectx, localStoreCfg, "local")
 	if err != nil {
 		return nil, err
 	}
