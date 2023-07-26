@@ -4,16 +4,19 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/gorilla/mux"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 )
 
 type fakeQuerier struct {
@@ -49,7 +52,13 @@ func Test_DecodeGRPC(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "POST", encoded.Method)
 	require.Equal(t, "/querier.v1.QuerierService/LabelValues", encoded.Url)
-	require.Len(t, encoded.Headers, 4)
+	//  require.Len(t, encoded.Headers, 4)
+	actualHeaders := lo.Map(encoded.Headers, func(h *httpgrpc.Header, index int) string {
+		return h.Key + ": " + strings.Join(h.Values, ",")
+	})
+	require.Contains(t, actualHeaders, "Content-Type: application/proto")
+	require.Contains(t, actualHeaders, "Connect-Protocol-Version: 1")
+	require.Contains(t, actualHeaders, "Accept-Encoding: gzip")
 
 	decoded, err := decodeRequest[typesv1.LabelValuesRequest](encoded)
 	require.NoError(t, err)

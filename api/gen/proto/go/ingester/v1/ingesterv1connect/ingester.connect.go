@@ -27,6 +27,40 @@ const (
 	IngesterServiceName = "ingester.v1.IngesterService"
 )
 
+// These constants are the fully-qualified names of the RPCs defined in this package. They're
+// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+//
+// Note that these are different from the fully-qualified method names used by
+// google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
+// reflection-formatted method names, remove the leading slash and convert the remaining slash to a
+// period.
+const (
+	// IngesterServicePushProcedure is the fully-qualified name of the IngesterService's Push RPC.
+	IngesterServicePushProcedure = "/ingester.v1.IngesterService/Push"
+	// IngesterServiceLabelValuesProcedure is the fully-qualified name of the IngesterService's
+	// LabelValues RPC.
+	IngesterServiceLabelValuesProcedure = "/ingester.v1.IngesterService/LabelValues"
+	// IngesterServiceLabelNamesProcedure is the fully-qualified name of the IngesterService's
+	// LabelNames RPC.
+	IngesterServiceLabelNamesProcedure = "/ingester.v1.IngesterService/LabelNames"
+	// IngesterServiceProfileTypesProcedure is the fully-qualified name of the IngesterService's
+	// ProfileTypes RPC.
+	IngesterServiceProfileTypesProcedure = "/ingester.v1.IngesterService/ProfileTypes"
+	// IngesterServiceSeriesProcedure is the fully-qualified name of the IngesterService's Series RPC.
+	IngesterServiceSeriesProcedure = "/ingester.v1.IngesterService/Series"
+	// IngesterServiceFlushProcedure is the fully-qualified name of the IngesterService's Flush RPC.
+	IngesterServiceFlushProcedure = "/ingester.v1.IngesterService/Flush"
+	// IngesterServiceMergeProfilesStacktracesProcedure is the fully-qualified name of the
+	// IngesterService's MergeProfilesStacktraces RPC.
+	IngesterServiceMergeProfilesStacktracesProcedure = "/ingester.v1.IngesterService/MergeProfilesStacktraces"
+	// IngesterServiceMergeProfilesLabelsProcedure is the fully-qualified name of the IngesterService's
+	// MergeProfilesLabels RPC.
+	IngesterServiceMergeProfilesLabelsProcedure = "/ingester.v1.IngesterService/MergeProfilesLabels"
+	// IngesterServiceMergeProfilesPprofProcedure is the fully-qualified name of the IngesterService's
+	// MergeProfilesPprof RPC.
+	IngesterServiceMergeProfilesPprofProcedure = "/ingester.v1.IngesterService/MergeProfilesPprof"
+)
+
 // IngesterServiceClient is a client for the ingester.v1.IngesterService service.
 type IngesterServiceClient interface {
 	Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error)
@@ -52,47 +86,47 @@ func NewIngesterServiceClient(httpClient connect_go.HTTPClient, baseURL string, 
 	return &ingesterServiceClient{
 		push: connect_go.NewClient[v1.PushRequest, v1.PushResponse](
 			httpClient,
-			baseURL+"/ingester.v1.IngesterService/Push",
+			baseURL+IngesterServicePushProcedure,
 			opts...,
 		),
 		labelValues: connect_go.NewClient[v11.LabelValuesRequest, v11.LabelValuesResponse](
 			httpClient,
-			baseURL+"/ingester.v1.IngesterService/LabelValues",
+			baseURL+IngesterServiceLabelValuesProcedure,
 			opts...,
 		),
 		labelNames: connect_go.NewClient[v11.LabelNamesRequest, v11.LabelNamesResponse](
 			httpClient,
-			baseURL+"/ingester.v1.IngesterService/LabelNames",
+			baseURL+IngesterServiceLabelNamesProcedure,
 			opts...,
 		),
 		profileTypes: connect_go.NewClient[v12.ProfileTypesRequest, v12.ProfileTypesResponse](
 			httpClient,
-			baseURL+"/ingester.v1.IngesterService/ProfileTypes",
+			baseURL+IngesterServiceProfileTypesProcedure,
 			opts...,
 		),
 		series: connect_go.NewClient[v12.SeriesRequest, v12.SeriesResponse](
 			httpClient,
-			baseURL+"/ingester.v1.IngesterService/Series",
+			baseURL+IngesterServiceSeriesProcedure,
 			opts...,
 		),
 		flush: connect_go.NewClient[v12.FlushRequest, v12.FlushResponse](
 			httpClient,
-			baseURL+"/ingester.v1.IngesterService/Flush",
+			baseURL+IngesterServiceFlushProcedure,
 			opts...,
 		),
 		mergeProfilesStacktraces: connect_go.NewClient[v12.MergeProfilesStacktracesRequest, v12.MergeProfilesStacktracesResponse](
 			httpClient,
-			baseURL+"/ingester.v1.IngesterService/MergeProfilesStacktraces",
+			baseURL+IngesterServiceMergeProfilesStacktracesProcedure,
 			opts...,
 		),
 		mergeProfilesLabels: connect_go.NewClient[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse](
 			httpClient,
-			baseURL+"/ingester.v1.IngesterService/MergeProfilesLabels",
+			baseURL+IngesterServiceMergeProfilesLabelsProcedure,
 			opts...,
 		),
 		mergeProfilesPprof: connect_go.NewClient[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse](
 			httpClient,
-			baseURL+"/ingester.v1.IngesterService/MergeProfilesPprof",
+			baseURL+IngesterServiceMergeProfilesPprofProcedure,
 			opts...,
 		),
 	}
@@ -175,53 +209,75 @@ type IngesterServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect_go.HandlerOption) (string, http.Handler) {
-	mux := http.NewServeMux()
-	mux.Handle("/ingester.v1.IngesterService/Push", connect_go.NewUnaryHandler(
-		"/ingester.v1.IngesterService/Push",
+	ingesterServicePushHandler := connect_go.NewUnaryHandler(
+		IngesterServicePushProcedure,
 		svc.Push,
 		opts...,
-	))
-	mux.Handle("/ingester.v1.IngesterService/LabelValues", connect_go.NewUnaryHandler(
-		"/ingester.v1.IngesterService/LabelValues",
+	)
+	ingesterServiceLabelValuesHandler := connect_go.NewUnaryHandler(
+		IngesterServiceLabelValuesProcedure,
 		svc.LabelValues,
 		opts...,
-	))
-	mux.Handle("/ingester.v1.IngesterService/LabelNames", connect_go.NewUnaryHandler(
-		"/ingester.v1.IngesterService/LabelNames",
+	)
+	ingesterServiceLabelNamesHandler := connect_go.NewUnaryHandler(
+		IngesterServiceLabelNamesProcedure,
 		svc.LabelNames,
 		opts...,
-	))
-	mux.Handle("/ingester.v1.IngesterService/ProfileTypes", connect_go.NewUnaryHandler(
-		"/ingester.v1.IngesterService/ProfileTypes",
+	)
+	ingesterServiceProfileTypesHandler := connect_go.NewUnaryHandler(
+		IngesterServiceProfileTypesProcedure,
 		svc.ProfileTypes,
 		opts...,
-	))
-	mux.Handle("/ingester.v1.IngesterService/Series", connect_go.NewUnaryHandler(
-		"/ingester.v1.IngesterService/Series",
+	)
+	ingesterServiceSeriesHandler := connect_go.NewUnaryHandler(
+		IngesterServiceSeriesProcedure,
 		svc.Series,
 		opts...,
-	))
-	mux.Handle("/ingester.v1.IngesterService/Flush", connect_go.NewUnaryHandler(
-		"/ingester.v1.IngesterService/Flush",
+	)
+	ingesterServiceFlushHandler := connect_go.NewUnaryHandler(
+		IngesterServiceFlushProcedure,
 		svc.Flush,
 		opts...,
-	))
-	mux.Handle("/ingester.v1.IngesterService/MergeProfilesStacktraces", connect_go.NewBidiStreamHandler(
-		"/ingester.v1.IngesterService/MergeProfilesStacktraces",
+	)
+	ingesterServiceMergeProfilesStacktracesHandler := connect_go.NewBidiStreamHandler(
+		IngesterServiceMergeProfilesStacktracesProcedure,
 		svc.MergeProfilesStacktraces,
 		opts...,
-	))
-	mux.Handle("/ingester.v1.IngesterService/MergeProfilesLabels", connect_go.NewBidiStreamHandler(
-		"/ingester.v1.IngesterService/MergeProfilesLabels",
+	)
+	ingesterServiceMergeProfilesLabelsHandler := connect_go.NewBidiStreamHandler(
+		IngesterServiceMergeProfilesLabelsProcedure,
 		svc.MergeProfilesLabels,
 		opts...,
-	))
-	mux.Handle("/ingester.v1.IngesterService/MergeProfilesPprof", connect_go.NewBidiStreamHandler(
-		"/ingester.v1.IngesterService/MergeProfilesPprof",
+	)
+	ingesterServiceMergeProfilesPprofHandler := connect_go.NewBidiStreamHandler(
+		IngesterServiceMergeProfilesPprofProcedure,
 		svc.MergeProfilesPprof,
 		opts...,
-	))
-	return "/ingester.v1.IngesterService/", mux
+	)
+	return "/ingester.v1.IngesterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case IngesterServicePushProcedure:
+			ingesterServicePushHandler.ServeHTTP(w, r)
+		case IngesterServiceLabelValuesProcedure:
+			ingesterServiceLabelValuesHandler.ServeHTTP(w, r)
+		case IngesterServiceLabelNamesProcedure:
+			ingesterServiceLabelNamesHandler.ServeHTTP(w, r)
+		case IngesterServiceProfileTypesProcedure:
+			ingesterServiceProfileTypesHandler.ServeHTTP(w, r)
+		case IngesterServiceSeriesProcedure:
+			ingesterServiceSeriesHandler.ServeHTTP(w, r)
+		case IngesterServiceFlushProcedure:
+			ingesterServiceFlushHandler.ServeHTTP(w, r)
+		case IngesterServiceMergeProfilesStacktracesProcedure:
+			ingesterServiceMergeProfilesStacktracesHandler.ServeHTTP(w, r)
+		case IngesterServiceMergeProfilesLabelsProcedure:
+			ingesterServiceMergeProfilesLabelsHandler.ServeHTTP(w, r)
+		case IngesterServiceMergeProfilesPprofProcedure:
+			ingesterServiceMergeProfilesPprofHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
 }
 
 // UnimplementedIngesterServiceHandler returns CodeUnimplemented from all methods.

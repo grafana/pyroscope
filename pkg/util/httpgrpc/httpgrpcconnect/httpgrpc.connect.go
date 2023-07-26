@@ -25,6 +25,18 @@ const (
 	HTTPName = "httpgrpc.HTTP"
 )
 
+// These constants are the fully-qualified names of the RPCs defined in this package. They're
+// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+//
+// Note that these are different from the fully-qualified method names used by
+// google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
+// reflection-formatted method names, remove the leading slash and convert the remaining slash to a
+// period.
+const (
+	// HTTPHandleProcedure is the fully-qualified name of the HTTP's Handle RPC.
+	HTTPHandleProcedure = "/httpgrpc.HTTP/Handle"
+)
+
 // HTTPClient is a client for the httpgrpc.HTTP service.
 type HTTPClient interface {
 	Handle(context.Context, *connect_go.Request[httpgrpc.HTTPRequest]) (*connect_go.Response[httpgrpc.HTTPResponse], error)
@@ -42,7 +54,7 @@ func NewHTTPClient(httpClient connect_go.HTTPClient, baseURL string, opts ...con
 	return &hTTPClient{
 		handle: connect_go.NewClient[httpgrpc.HTTPRequest, httpgrpc.HTTPResponse](
 			httpClient,
-			baseURL+"/httpgrpc.HTTP/Handle",
+			baseURL+HTTPHandleProcedure,
 			opts...,
 		),
 	}
@@ -69,13 +81,19 @@ type HTTPHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewHTTPHandler(svc HTTPHandler, opts ...connect_go.HandlerOption) (string, http.Handler) {
-	mux := http.NewServeMux()
-	mux.Handle("/httpgrpc.HTTP/Handle", connect_go.NewUnaryHandler(
-		"/httpgrpc.HTTP/Handle",
+	hTTPHandleHandler := connect_go.NewUnaryHandler(
+		HTTPHandleProcedure,
 		svc.Handle,
 		opts...,
-	))
-	return "/httpgrpc.HTTP/", mux
+	)
+	return "/httpgrpc.HTTP/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case HTTPHandleProcedure:
+			hTTPHandleHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
 }
 
 // UnimplementedHTTPHandler returns CodeUnimplemented from all methods.
