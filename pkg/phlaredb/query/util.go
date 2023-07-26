@@ -3,7 +3,7 @@ package query
 import (
 	"strings"
 
-	pq "github.com/segmentio/parquet-go"
+	pq "github.com/parquet-go/parquet-go"
 )
 
 func GetColumnIndexByPath(pf *pq.File, s string) (index, depth int) {

@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/oklog/ulid"
+	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb"
-	"github.com/segmentio/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

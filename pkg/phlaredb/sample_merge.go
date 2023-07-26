@@ -7,9 +7,9 @@ import (
 	"github.com/google/pprof/profile"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
-	"github.com/segmentio/parquet-go"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"

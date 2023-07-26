@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
-	"github.com/segmentio/parquet-go"
+	"github.com/parquet-go/parquet-go"
 
 	"github.com/grafana/pyroscope/pkg/iter"
 )
