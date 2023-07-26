@@ -48,7 +48,7 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
       from: formatAsOBject(from),
       until: formatAsOBject(until),
     });
-  }, [from, until]);
+  }, [selectedDate, from, until]);
 
   const selectFromAsDate = getUTCdate(selectedDate.from, offset);
   const selectUntilAsDate = getUTCdate(selectedDate.until, offset);

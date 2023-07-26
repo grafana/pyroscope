@@ -26,12 +26,12 @@ export interface DropdownProps {
   /** Dropdown label */
   label: string;
 
-  /** Dropdown value*/
+  /** Dropdown value */
   value?: string;
 
   children?: JSX.Element[] | JSX.Element;
 
-  /** Event that fires when an item is activated*/
+  /** Event that fires when an item is activated */
   onItemClick?: (event: ClickEvent) => void;
 
   overflow?: MenuProps['overflow'];

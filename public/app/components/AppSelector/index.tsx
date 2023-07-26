@@ -115,7 +115,7 @@ export const SelectorModalWithToggler = ({
     }
 
     return [];
-  }, [selected, groups, filteredAppNames]);
+  }, [selected, filteredAppNames]);
 
   const onSelect = ({ index, name }: { index: number; name: string }) => {
     const filtered = getGroupMembers(filteredAppNames, name);

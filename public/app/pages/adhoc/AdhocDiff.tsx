@@ -59,11 +59,7 @@ function AdhocDiff() {
         })
       );
     }
-  }, [
-    dispatch,
-    unwrappedLeftProfileId,
-    unwrappedRightProfileId
-  ]);
+  }, [dispatch, unwrappedLeftProfileId, unwrappedRightProfileId]);
 
   const flamegraph = (
     profile: Maybe<Profile>,

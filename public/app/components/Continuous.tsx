@@ -30,7 +30,7 @@ export default function Continuous({
     if (!selectedAppName && appNames.length > 0) {
       dispatch(setQuery(queryFromAppName(appNames[0])));
     }
-  }, [appNames, selectedAppName]);
+  }, [dispatch, appNames, selectedAppName]);
 
   return children;
 }

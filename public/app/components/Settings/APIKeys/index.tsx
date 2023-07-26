@@ -78,7 +78,7 @@ const ApiKeys = () => {
 
   useEffect(() => {
     dispatch(reloadApiKeys());
-  }, []);
+  }, [dispatch]);
 
   const onDelete = (key: APIKey) => {
     dispatch(deleteAPIKey(key))

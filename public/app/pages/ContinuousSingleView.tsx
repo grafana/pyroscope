@@ -62,7 +62,7 @@ function ContinuousSingleView() {
       return () => fetchData.abort('cancel');
     }
     return undefined;
-  }, [from, until, query, refreshToken, maxNodes]);
+  }, [from, until, query, refreshToken, maxNodes, dispatch]);
 
   const getRaw = () => {
     switch (singleView.type) {
@@ -130,18 +130,25 @@ function ContinuousSingleView() {
     if (!isAnnotationsEnabled) {
       return null;
     }
+
+    const { click, timestamp, containerEl } = props;
+
+    if (!click) {
+      return null;
+    }
+
     return (
-      <ContextMenu position={props.click}>
+      <ContextMenu position={props?.click}>
         <AddAnnotationMenuItem
-          container={props.containerEl}
-          popoverAnchorPoint={{ x: props.click.pageX, y: props.click.pageY }}
-          timestamp={props.timestamp}
+          container={containerEl}
+          popoverAnchorPoint={{ x: click.pageX, y: click.pageY }}
+          timestamp={timestamp}
           timezone={offset === 0 ? 'utc' : 'browser'}
           onCreateAnnotation={(content) => {
             dispatch(
               addAnnotation({
                 appName: query,
-                timestamp: props.timestamp,
+                timestamp,
                 content,
               })
             );

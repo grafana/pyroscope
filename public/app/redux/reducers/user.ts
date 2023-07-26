@@ -7,8 +7,8 @@ import {
   editMyUser as editMyUserAPI,
 } from '@phlare/services/users';
 import type { RootState } from '@phlare/redux/store';
-import { addNotification } from './notifications';
 import { createAsyncThunk } from '@phlare/redux/async-thunk';
+import { addNotification } from './notifications';
 
 interface UserRootState {
   type: 'loading' | 'loaded' | 'failed';

@@ -41,7 +41,7 @@ function Users() {
 
   useEffect(() => {
     dispatch(reloadUsers());
-  }, []);
+  }, [dispatch]);
   const displayUsers =
     (users &&
       users.filter(

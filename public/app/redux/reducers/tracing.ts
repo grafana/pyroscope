@@ -206,9 +206,9 @@ export const tracingSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    /*************************/
+    /** ********************** */
     /*      Single View      */
-    /*************************/
+    /** ********************** */
     builder.addCase(fetchSingleView.pending, (state) => {
       switch (state.singleView.type) {
         // if we are fetching but there's already data
@@ -264,9 +264,9 @@ export const tracingSlice = createSlice({
       }
     });
 
-    /***********************************/
+    /** ******************************** */
     /*      Exemplars Single View      */
-    /***********************************/
+    /** ******************************** */
 
     builder.addCase(fetchExemplarsSingleView.pending, (state) => {
       switch (state.exemplarsSingleView.type) {
@@ -324,9 +324,9 @@ export const tracingSlice = createSlice({
       }
     });
 
-    /**************************************/
+    /** *********************************** */
     /*      Heatmap Selection Profile      */
-    /**************************************/
+    /** *********************************** */
 
     builder.addCase(fetchSelectionProfile.pending, (state) => {
       switch (state.exemplarsSingleView.type) {

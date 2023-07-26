@@ -8,12 +8,12 @@ import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import { Tooltip } from '@phlare/ui/Tooltip';
 import { SpyNameFirstClassType } from '@pyroscope/models/src';
 import cl from 'classnames';
-import SelectButton from '../AppSelector/SelectButton';
+import { SelectButton } from '../AppSelector/SelectButton';
 import useFilters from './useFilters';
 import { SPY_NAMES_TOOLTIPS, SPY_NAMES_ICONS } from './SpyNameIcons';
 import styles from './EnhancedAppSelector.module.scss';
 
-export interface EnhancedAppSelector {
+export interface EnhancedAppSelectorProps {
   /** Triggered when an app is selected */
   onSelected: (name: string) => void;
 
@@ -29,7 +29,7 @@ function EnhancedAppSelector({
   onSelected,
   selectedAppName,
   apps,
-}: EnhancedAppSelector) {
+}: EnhancedAppSelectorProps) {
   return (
     <div className={styles.container}>
       Application:&nbsp;
@@ -133,7 +133,7 @@ const SelectorModalWithToggler = ({
     }
 
     return [];
-  }, [selectedApp, groups, filteredAppNames]);
+  }, [selectedApp, filteredAppNames]);
 
   const onSelect = ({ index, name }: { index: number; name: string }) => {
     const filtered = getGroupMembers(filteredAppNames, name);
@@ -214,7 +214,11 @@ const SelectorModalWithToggler = ({
                 <div className={styles.filterName}>Language</div>
                 <div className={styles.iconsContainer}>
                   {spyNameValues.map((v) => (
-                    <Tooltip placement="top" title={SPY_NAMES_TOOLTIPS[v]}>
+                    <Tooltip
+                      key={v}
+                      placement="top"
+                      title={SPY_NAMES_TOOLTIPS[v]}
+                    >
                       <button
                         type="button"
                         key={v}

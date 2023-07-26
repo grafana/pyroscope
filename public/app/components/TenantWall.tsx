@@ -104,7 +104,7 @@ function SelectTenantIDDialog({
                 </p>
                 <p>
                   Notice that if you migrated from a non-multitenant version,
-                  data can be found under Tenant ID {'"'}anonymous{'"'}.
+                  data can be found under Tenant ID {`"anonymous"`}.
                 </p>
 
                 <TextField

@@ -1,4 +1,5 @@
 module.exports = {
+  plugins: ['@typescript-eslint', 'css-modules'],
   extends: [
     '@grafana/eslint-config',
     'plugin:import/recommended',
@@ -9,6 +10,10 @@ module.exports = {
     'react/react-in-jsx-scope': 'error',
     'react-hooks/exhaustive-deps': 'error',
     'no-duplicate-imports': 'off',
+    '@typescript-eslint/naming-convention': [
+      'warn',
+      { selector: 'function', format: ['PascalCase', 'camelCase'] },
+    ],
     '@typescript-eslint/no-duplicate-imports': 'error',
     '@typescript-eslint/no-unused-vars': 'off',
     'unused-imports/no-unused-imports': 'error',
@@ -35,6 +40,7 @@ module.exports = {
         ],
       },
     ],
+    'react/prop-types': ['off'],
   },
   env: {
     browser: true,

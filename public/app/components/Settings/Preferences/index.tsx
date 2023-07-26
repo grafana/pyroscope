@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import React, { useState } from 'react';
 import Button from '@phlare/ui/Button';
 import { useAppDispatch } from '@phlare/redux/hooks';

@@ -29,5 +29,5 @@ export default function usePopulateLeftRightQuery() {
       dispatch(actions.setRightQuery(query));
       dispatch(actions.setLeftQuery(query));
     }
-  }, [shouldResetQuery]);
+  }, [dispatch, query, shouldResetQuery]);
 }

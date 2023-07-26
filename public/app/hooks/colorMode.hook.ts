@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useAppSelector, useAppDispatch } from '@phlare/redux/hooks';
 import { setColorMode, selectAppColorMode } from '@phlare/redux/reducers/ui';
 
@@ -7,8 +7,10 @@ const useColorMode = () => {
   const colorMode = useAppSelector(selectAppColorMode);
   const { body } = document;
 
-  const changeColorMode = (newColorMode: 'light' | 'dark') =>
-    dispatch(setColorMode(newColorMode));
+  const changeColorMode = useCallback(
+    (newColorMode: 'light' | 'dark') => dispatch(setColorMode(newColorMode)),
+    [dispatch]
+  );
 
   useEffect(() => {
     // sync data-theme attr with redux value
@@ -36,14 +38,14 @@ const useColorMode = () => {
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [body, changeColorMode, colorMode]);
 
   useEffect(() => {
     // sync redux value with DOM body attr
     if (body.dataset.theme !== colorMode) {
       body.dataset.theme = colorMode;
     }
-  }, [colorMode]);
+  }, [colorMode, body, body.dataset]);
 
   return {
     colorMode,

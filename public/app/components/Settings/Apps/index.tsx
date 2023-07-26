@@ -32,7 +32,7 @@ function Apps() {
 
   useEffect(() => {
     dispatch(reloadApps());
-  }, []);
+  }, [dispatch]);
 
   const displayApps =
     (apps &&

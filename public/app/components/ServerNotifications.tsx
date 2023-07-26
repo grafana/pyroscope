@@ -24,7 +24,7 @@ export default function ServerNotifications() {
         })
       );
     }
-  }, []);
+  }, [dispatch]);
 
   return null;
 }

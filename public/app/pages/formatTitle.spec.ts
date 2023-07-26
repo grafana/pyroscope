@@ -1,5 +1,5 @@
-import { formatTitle } from './formatTitle';
 import { brandQuery } from '@phlare/models/query';
+import { formatTitle } from './formatTitle';
 
 describe('format title', () => {
   describe('when both left and right query are falsy', () => {

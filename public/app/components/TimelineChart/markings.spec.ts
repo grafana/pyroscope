@@ -52,19 +52,19 @@ describe('markingsFromSelection', () => {
       markingsFromSelection('double', {
         from: `${from}`,
         to: `${to}`,
-        color: color,
+        color,
         overlayColor: color,
       })
     ).toStrictEqual([
       {
-        color: color,
+        color,
         xaxis: {
           from: from * 1000,
           to: to * 1000,
         },
       },
       {
-        color: color,
+        color,
         lineWidth: 1,
         xaxis: {
           from: from * 1000,
@@ -72,7 +72,7 @@ describe('markingsFromSelection', () => {
         },
       },
       {
-        color: color,
+        color,
         lineWidth: 1,
         xaxis: {
           from: to * 1000,

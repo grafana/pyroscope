@@ -28,6 +28,7 @@ import { isExportToFlamegraphDotComEnabled } from '@phlare/util/features';
 import { LoadingOverlay } from '@phlare/ui/LoadingOverlay';
 import PageTitle from '@phlare/components/PageTitle';
 import { Query } from '@phlare/models/query';
+import { isLoadingOrReloading } from '@phlare/pages/loading';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
 import useTimelines, {
@@ -38,7 +39,6 @@ import useTimelines, {
 import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 import useFlamegraphSharedQuery from '../hooks/flamegraphSharedQuery.hook';
 import { formatTitle } from './formatTitle';
-import { isLoadingOrReloading } from '@phlare/pages/loading';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
@@ -83,7 +83,7 @@ function ComparisonApp() {
       return fetchLeftQueryData.abort;
     }
     return undefined;
-  }, [leftFrom, leftUntil, leftQuery, refreshToken]);
+  }, [dispatch, leftFrom, leftUntil, leftQuery, refreshToken]);
 
   useEffect(() => {
     if (rightQuery) {
@@ -94,7 +94,7 @@ function ComparisonApp() {
       return fetchRightQueryData.abort;
     }
     return undefined;
-  }, [rightFrom, rightUntil, rightQuery, refreshToken]);
+  }, [dispatch, rightFrom, rightUntil, rightQuery, refreshToken]);
 
   const leftSide = comparisonLeft.profile;
   const rightSide = comparisonRight.profile;

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import React, { useState } from 'react';
-import { Tab, TabPanel, Tabs } from './Tabs';
 import userEvent from '@testing-library/user-event';
+import { Tab, TabPanel, Tabs } from './Tabs';
 
 function TabsComponent() {
   const [value, setTab] = useState(0);

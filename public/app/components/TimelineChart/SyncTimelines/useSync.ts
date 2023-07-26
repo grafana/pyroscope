@@ -51,7 +51,7 @@ export function useSync({
     if (isIgnoring) {
       setIgnoring(false);
     }
-  }, [leftSelection, rightSelection, timeline]);
+  }, [isIgnoring, leftSelection, rightSelection, timeline]);
 
   const { from: leftFrom, to: leftTo } = getSelectionBoundaries(
     leftSelection as Selection

@@ -66,12 +66,16 @@ export class PprofRequest extends Message<PprofRequest> {
     this.start = start;
     this.end = end;
   }
+
   @Field.d(1, 'string')
   profile_typeID: string;
+
   @Field.d(2, 'string')
   label_selector: string;
+
   @Field.d(3, 'int64')
   start: number;
+
   @Field.d(4, 'int64')
   end: number;
 }
@@ -104,10 +108,10 @@ function buildPprofQuery(state: ContinuousState) {
 
 function ExportData(props: ExportDataProps) {
   const { exportJSON = false } = props;
-  let exportPprof = props.exportPprof;
-  let exportFlamegraphDotCom = true;
-  let exportPNG = true;
-  let exportHTML = false;
+  let { exportPprof } = props;
+  const exportFlamegraphDotCom = true;
+  const exportPNG = true;
+  const exportHTML = false;
   const { pathname } = useLocation();
   const dispatch = useAppDispatch();
   const pprofQuery = useAppSelector((state: { continuous: ContinuousState }) =>
@@ -246,7 +250,7 @@ function ExportData(props: ExportDataProps) {
       if (!customExportName) {
         return;
       }
-      let response = await downloadWithOrgID(
+      const response = await downloadWithOrgID(
         '/querier.v1.QuerierService/SelectMergeProfile',
         {
           headers: {
@@ -260,11 +264,10 @@ function ExportData(props: ExportDataProps) {
         handleError(dispatch, 'Failed to export to pprof', response.error);
         return;
       }
-      let data = await new Response(
+      const data = await new Response(
         response.value.body?.pipeThrough(new CompressionStream('gzip'))
       ).blob();
       saveAs(data, customExportName);
-      return;
     }
   };
 

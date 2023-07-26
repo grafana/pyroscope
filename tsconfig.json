@@ -29,12 +29,11 @@
     "strictNullChecks": true,
     "experimentalDecorators": true,
 
-    "types": ["node"],
-    
+    "types": ["node"]
   },
   "include": [
     "public",
-    "public/app/types.d.ts",
+    "public/app/types/types.d.ts",
     "public/app/lib/global.d.ts",
     "public/app/lib/types.d.ts"
   ]

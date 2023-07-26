@@ -16,7 +16,7 @@ export default function useTimeZone() {
     if (typeof selectedOffset !== 'number') {
       dispatch(changeTimeZoneOffset(offset));
     }
-  }, []);
+  }, [dispatch, offset, selectedOffset]);
 
   const browserTimeLabel = useMemo(() => {
     const absOffset = Math.abs(offset);

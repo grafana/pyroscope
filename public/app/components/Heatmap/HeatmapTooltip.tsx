@@ -82,25 +82,37 @@ function HeatmapTooltip({
         count: heatmap.values[matrixCoords[0]][matrixCoords[1]],
       });
     },
-    [tooltipRef, setTooltipParams, heatmapW, heatmap, timezone, dataSourceElRef]
+    [
+      formatter,
+      sampleRate,
+      valueFormatter,
+      tooltipRef,
+      setTooltipParams,
+      heatmapW,
+      heatmap,
+      dataSourceElRef,
+    ]
   );
 
   // to show tooltip when move mouse over selected area
-  const handleWindowMouseMove = (e: MouseEvent) => {
-    if (
-      (e.target as HTMLCanvasElement).id !== 'selectionCanvas' &&
-      (e.target as HTMLCanvasElement).id !== 'selectionArea'
-    ) {
-      window.removeEventListener('mousemove', memoizedOnMouseMove);
-      setTooltipParams(undefined);
-    } else {
-      memoizedOnMouseMove(e);
-    }
-  };
+  const handleWindowMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (
+        (e.target as HTMLCanvasElement).id !== 'selectionCanvas' &&
+        (e.target as HTMLCanvasElement).id !== 'selectionArea'
+      ) {
+        window.removeEventListener('mousemove', memoizedOnMouseMove);
+        setTooltipParams(undefined);
+      } else {
+        memoizedOnMouseMove(e);
+      }
+    },
+    [memoizedOnMouseMove]
+  );
 
-  const handleMouseEnter = () => {
+  const handleMouseEnter = useCallback(() => {
     window.addEventListener('mousemove', handleWindowMouseMove);
-  };
+  }, [handleWindowMouseMove]);
 
   useEffect(() => {
     // use closure to "cache" the current dataSourceRef(canvas/table) reference
@@ -118,7 +130,12 @@ function HeatmapTooltip({
       window.removeEventListener('mousemove', memoizedOnMouseMove);
       window.removeEventListener('mousemove', handleWindowMouseMove);
     };
-  }, [dataSourceElRef.current, memoizedOnMouseMove]);
+  }, [
+    dataSourceElRef,
+    handleMouseEnter,
+    handleWindowMouseMove,
+    memoizedOnMouseMove,
+  ]);
 
   return (
     <div data-testid="heatmap-tooltip" ref={tooltipRef}>

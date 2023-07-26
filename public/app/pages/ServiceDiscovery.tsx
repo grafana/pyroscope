@@ -28,7 +28,7 @@ const ServiceDiscoveryApp = () => {
     }
 
     run();
-  }, []);
+  }, [dispatch]);
 
   function getUpCount(targets: Target[]) {
     return targets.filter((t) => t.health === 'up').length;

@@ -75,7 +75,7 @@ describe('Component: ViewTagsSelectLinkModal', () => {
       });
     });
 
-    //second click
+    // second click
     screen.getByTestId('toggler').click();
     expect(modalWithToggleEl).not.toBeInTheDocument();
   });

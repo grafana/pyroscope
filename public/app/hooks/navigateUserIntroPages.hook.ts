@@ -15,12 +15,12 @@ export default function useNavigateUserIntroPages() {
   // loading user on page mount
   useEffect(() => {
     dispatch(loadCurrentUser());
-  }, []);
+  }, [dispatch]);
   // there are cases when user doesn't exist on page mount
   // but appears after submitting login/signup form
   useEffect(() => {
     if (currentUser) {
       history.push(PAGES.CONTINOUS_SINGLE_VIEW);
     }
-  }, [currentUser]);
+  }, [history, currentUser]);
 }

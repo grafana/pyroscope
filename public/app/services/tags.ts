@@ -20,8 +20,10 @@ export function queryToMatchers(query: string) {
   if (labelsIndex > 0) {
     const profileTypeID = query.substring(0, labelsIndex);
     return [
-      `{__profile_type__=\"${profileTypeID}\", ` +
-        query.substring(labelsIndex + 1, query.length),
+      `{__profile_type__=\"${profileTypeID}\", ${query.substring(
+        labelsIndex + 1,
+        query.length
+      )}`,
     ];
   }
   if (labelsIndex === 0) {

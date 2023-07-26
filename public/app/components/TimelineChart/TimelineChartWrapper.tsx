@@ -132,13 +132,12 @@ class TimelineChartWrapper extends React.Component<
         overlayColor:
           props.selectionType === 'double'
             ? undefined
-            : props?.selection?.['right']?.overlayColor ||
-              props?.selection?.['left']?.overlayColor,
+            : props?.selection?.right?.overlayColor ||
+              props?.selection?.left?.overlayColor,
         boundaryColor:
           props.selectionType === 'double'
             ? undefined
-            : props?.selection?.['right']?.color ||
-              props?.selection?.['left']?.color,
+            : props?.selection?.right?.color || props?.selection?.left?.color,
       },
       crosshair: {
         mode: 'x',

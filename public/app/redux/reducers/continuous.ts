@@ -178,9 +178,9 @@ export const continuousSlice = createSlice({
   },
 
   extraReducers: (builder) => {
-    /**********************/
+    /** ******************* */
     /* GENERAL GUIDELINES */
-    /**********************/
+    /** ******************* */
 
     // There are (currently) only 2 ways an action can be aborted:
     // 1. The component is unmounting, eg when changing route
@@ -189,9 +189,9 @@ export const continuousSlice = createSlice({
     // Specially in the second case, where a 'rejected' may happen AFTER a 'pending' is dispatched
     // https://redux-toolkit.js.org/api/createAsyncThunk#checking-if-a-promise-rejection-was-from-an-error-or-cancellation
 
-    /*************************/
+    /** ********************** */
     /*      Single View      */
-    /*************************/
+    /** ********************** */
     builder.addCase(fetchSingleView.pending, (state) => {
       switch (state.singleView.type) {
         // if we are fetching but there's already data
@@ -228,9 +228,9 @@ export const continuousSlice = createSlice({
       };
     });
 
-    /*****************************/
+    /** ************************** */
     /*      Comparison View      */
-    /*****************************/
+    /** ************************** */
     builder.addCase(fetchComparisonSide.pending, (state, action) => {
       const s = state.comparisonView[action.meta.arg.side];
       switch (s.type) {
@@ -271,9 +271,9 @@ export const continuousSlice = createSlice({
       };
     });
 
-    /*****************************/
+    /** ************************** */
     /*      Timeline Sides       */
-    /*****************************/
+    /** ************************** */
     builder.addCase(fetchSideTimelines.pending, (state) => {
       state.leftTimeline = {
         ...state.leftTimeline,
@@ -300,9 +300,9 @@ export const continuousSlice = createSlice({
     // TODO
     builder.addCase(fetchSideTimelines.rejected, () => {});
 
-    /***********************/
+    /** ******************** */
     /*      Diff View      */
-    /***********************/
+    /** ******************** */
     builder.addCase(fetchDiffView.pending, (state) => {
       switch (state.diffView.type) {
         // if we are fetching but there's already data
@@ -341,9 +341,9 @@ export const continuousSlice = createSlice({
       };
     });
 
-    /*******************************/
+    /** **************************** */
     /*      Tag Explorer View      */
-    /*******************************/
+    /** **************************** */
 
     builder.addCase(fetchTagExplorerView.pending, (state) => {
       switch (state.tagExplorerView.groupsLoadingType) {
@@ -377,9 +377,9 @@ export const continuousSlice = createSlice({
 
     builder.addCase(fetchTagExplorerView.rejected, () => {});
 
-    /***************************************/
+    /** ************************************ */
     /*      Tag Explorer View Profile      */
-    /***************************************/
+    /** ************************************ */
 
     builder.addCase(fetchTagExplorerViewProfile.pending, (state) => {
       switch (state.tagExplorerView.activeTagProfileLoadingType) {
@@ -409,9 +409,9 @@ export const continuousSlice = createSlice({
 
     builder.addCase(fetchTagExplorerViewProfile.rejected, () => {});
 
-    /*****************/
+    /** ************** */
     /*      Tags     */
-    /*****************/
+    /** ************** */
 
     // TODO:
     builder.addCase(fetchTags.pending, () => {});
@@ -443,9 +443,9 @@ export const continuousSlice = createSlice({
       };
     });
 
-    /***********************/
+    /** ******************** */
     /*      App Names      */
-    /***********************/
+    /** ******************** */
     builder.addCase(reloadAppNames.fulfilled, (state, action) => {
       state.apps = { type: 'loaded', data: action.payload };
     });
@@ -456,9 +456,9 @@ export const continuousSlice = createSlice({
       state.apps = { type: 'failed', data: state.apps.data };
     });
 
-    /*****************/
+    /** ************** */
     /*  Annotation   */
-    /*****************/
+    /** ************** */
     builder.addCase(addAnnotation.fulfilled, (state, action) => {
       // TODO(eh-am): allow arbitrary views
       if ('annotations' in state.singleView) {

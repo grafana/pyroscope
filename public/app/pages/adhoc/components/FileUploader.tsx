@@ -1,4 +1,4 @@
-/* eslint-disable react/jsx-props-no-spreading, jsx-a11y/role-supports-aria-props */
+/* eslint-disable react/jsx-props-no-spreading */
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Button from '@phlare/ui/Button';

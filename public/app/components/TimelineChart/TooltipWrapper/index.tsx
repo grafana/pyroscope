@@ -6,7 +6,7 @@ const cx = classNames.bind(styles);
 
 const EXPLORE_TOOLTIP_WRAPPER_ID = 'explore_tooltip_wrapper';
 
-export interface ITooltipWrapperProps {
+export interface TooltipWrapperProps {
   pageX: number;
   pageY: number;
   align: 'left' | 'right';
@@ -20,7 +20,7 @@ const TooltipWrapper = ({
   pageY,
   align,
   children,
-}: ITooltipWrapperProps) => {
+}: TooltipWrapperProps) => {
   const isHidden = useMemo(() => pageX < 0 || pageY < 0, [pageX, pageY]);
 
   const style =

@@ -36,7 +36,7 @@ function Settings() {
         <ul className={styles.settingsNav}>
           <li>
             <NavLink
-              to={`${url}`}
+              to={url}
               exact
               className={(isActive) =>
                 cx({ [styles.navLink]: true, [styles.navLinkActive]: isActive })

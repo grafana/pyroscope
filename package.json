@@ -41,6 +41,7 @@
     "@testing-library/user-event": "^13.2.1",
     "@types/color": "^3.0.2",
     "@types/d3-scale": "^4.0.2",
+    "@types/d3-scale-chromatic": "^3.0.0",
     "@types/flot": "^0.0.32",
     "@types/history": "4.7.11",
     "@types/jest": "^29.5.0",
@@ -50,6 +51,7 @@
     "@types/lodash.map": "^4.6.13",
     "@types/prismjs": "^1.26.0",
     "@types/react": "^18.0.0",
+    "@types/react-copy-to-clipboard": "^5.0.2",
     "@types/react-datepicker": "^4.3.4",
     "@types/react-dom": "^18.0.11",
     "@types/react-helmet": "^6.1.5",
@@ -65,6 +67,7 @@
     "cypress": "^12.11.0",
     "cypress-image-snapshot": "^4.0.1",
     "d3-scale": "^4.0.2",
+    "d3-scale-chromatic": "^3.0.0",
     "esbuild-loader": "^3.0.1",
     "eslint": "^8.40.0",
     "eslint-config-airbnb": "18.2.1",
@@ -72,14 +75,14 @@
     "eslint-config-airbnb-typescript-prettier": "^4.2.0",
     "eslint-import-resolver-lerna": "^2.0.0",
     "eslint-import-resolver-typescript": "^3.5.5",
-    "eslint-plugin-css-modules": "^2.11.0",    
+    "eslint-plugin-css-modules": "^2.11.0",
     "eslint-plugin-cypress": "^2.12.1",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-jest": "^25.3.4",
     "eslint-plugin-jsdoc": "^44.2.2",
     "eslint-plugin-jsx-a11y": "^6.4.1",
     "eslint-plugin-prettier": "^3.3.1",
-    "eslint-plugin-react": "^7.32.2",
+    "eslint-plugin-react": "^7.33.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-unused-imports": "^2.0.0",
     "expose-loader": "^4.1.0",
@@ -110,6 +113,7 @@
   "dependencies": {
     "@fortawesome/react-fontawesome": "~0.1.11",
     "@fortawesome/fontawesome-svg-core": "~1.2.30",
+    "@fortawesome/free-brands-svg-icons": "~5.15.1",
     "@fortawesome/free-solid-svg-icons": "~5.14.0",
     "@fortawesome/free-regular-svg-icons": "~5.15.2",
     "@hookform/resolvers": "^2.9.8",
@@ -132,6 +136,7 @@
     "prismjs": "^1.27.0",
     "protobufjs": "^7.2.4",
     "react": "^18.2.0",
+    "react-copy-to-clipboard": "^5.0.4",
     "react-datepicker": "^4.7.0",
     "react-debounce-input": "^3.2.5",
     "react-dom": "^18.2.0",
@@ -156,5 +161,4 @@
     "ts-custom-error": "^3.2.0",
     "zod": "^3.21.4"
   }
-
 }

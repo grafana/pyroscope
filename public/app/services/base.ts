@@ -57,7 +57,7 @@ export async function connectDownload(
   request: RequestInfo,
   config?: RequestInit
 ): Promise<Result<Response, RequestError>> {
-  let response = await fetchAndHandleErrors(request, config);
+  const response = await fetchAndHandleErrors(request, config);
   if (!response.isOk) {
     return Result.err(response.error);
   }
@@ -68,7 +68,7 @@ export async function connectRequest(
   request: RequestInfo,
   config?: RequestInit
 ): Promise<Result<unknown, RequestError>> {
-  let response = await fetchAndHandleErrors(request, config);
+  const response = await fetchAndHandleErrors(request, config);
   if (!response.isOk) {
     return response;
   }

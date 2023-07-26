@@ -1,6 +1,6 @@
 import { Result } from '@phlare/util/fp';
-import { fetchApps } from './apps';
 import * as base from '@phlare/services/base';
+import { fetchApps } from './apps';
 
 jest.mock('@phlare/services/base', () => {
   return {
@@ -630,9 +630,9 @@ const mockData = {
   ],
 };
 
-//it('smoke', () => {
+// it('smoke', () => {
 //  expect(groupByAppAndProfileId(mockData)).toBe(true);
-//});
+// });
 //
 describe('appsService', () => {
   afterEach(() => {

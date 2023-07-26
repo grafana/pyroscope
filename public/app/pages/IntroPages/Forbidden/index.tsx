@@ -1,4 +1,3 @@
-/* eslint css-modules/no-unused-class: [2, { markAsUsed: ['link'] }] */
 import React from 'react';
 import cx from 'classnames';
 import { Link } from 'react-router-dom';

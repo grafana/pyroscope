@@ -83,6 +83,7 @@ function ComparisonDiffApp() {
     }
     return undefined;
   }, [
+    dispatch,
     leftFrom,
     leftUntil,
     leftQuery,

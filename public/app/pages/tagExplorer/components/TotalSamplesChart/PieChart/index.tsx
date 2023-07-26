@@ -2,7 +2,7 @@ import React from 'react';
 import ReactFlot from 'react-flot';
 import Color from 'color';
 import TooltipWrapper, {
-  ITooltipWrapperProps,
+  TooltipWrapperProps,
 } from '@phlare/components/TimelineChart/TooltipWrapper';
 import styles from './styles.module.scss';
 import 'react-flot/flot/jquery.flot.pie';
@@ -29,7 +29,7 @@ interface PieChartProps {
 }
 
 const setOnHoverDisplayTooltip = (
-  data: TooltipProps & ITooltipWrapperProps,
+  data: TooltipProps & TooltipWrapperProps,
   onHoverTooltip: React.FC<TooltipProps>
 ) => {
   const TooltipBody = onHoverTooltip;
@@ -81,7 +81,7 @@ const PieChart = ({
       clickable: false,
     },
     pieChartTooltip: onHoverTooltip
-      ? (tooltipData: TooltipProps & ITooltipWrapperProps) =>
+      ? (tooltipData: TooltipProps & TooltipWrapperProps) =>
           setOnHoverDisplayTooltip(tooltipData, onHoverTooltip)
       : null,
   };

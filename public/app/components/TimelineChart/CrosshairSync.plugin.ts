@@ -13,9 +13,7 @@ type PlotWithCrosshairsSupport = jquery.flot.plot &
 (function ($) {
   function init(plot: PlotWithCrosshairsSupport) {
     function getOptions() {
-      return plot.getOptions() as jquery.flot.plotOptions & {
-        syncCrosshairsWith: (typeof defaultOptions)['syncCrosshairsWith'];
-      };
+      return plot.getOptions();
     }
 
     function accessExternalInstance(id: string) {

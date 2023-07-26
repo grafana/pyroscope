@@ -47,7 +47,7 @@ import {
   getTableIntegerSpaceLengthByColumn,
   formatValue,
 } from './formatTableData';
-// eslint-disable-next-line css-modules/no-unused-class
+// eslint-disable-next-line
 import styles from './TagExplorerView.module.scss';
 import { formatTitle } from './formatTitle';
 
@@ -182,7 +182,7 @@ function TagExplorerView() {
     if (query) {
       dispatch(fetchTags(query));
     }
-  }, [query]);
+  }, [query, dispatch]);
 
   const {
     groupByTag,
@@ -197,7 +197,7 @@ function TagExplorerView() {
       return () => fetchData.abort('cancel');
     }
     return undefined;
-  }, [from, until, query, groupByTagValue]);
+  }, [from, until, query, groupByTagValue, dispatch]);
 
   useEffect(() => {
     if (from && until && query) {
@@ -205,7 +205,7 @@ function TagExplorerView() {
       return () => fetchData.abort('cancel');
     }
     return undefined;
-  }, [from, until, query, groupByTag, refreshToken]);
+  }, [from, until, query, groupByTag, refreshToken, dispatch]);
 
   const getGroupsData = (): {
     groupsData: TimelineGroupData[];
@@ -382,9 +382,9 @@ function TagExplorerView() {
           </div>
         </Box>
         <CollapseBox
-          title={`${appName
+          title={appName
             .map((a) => `${a} Tag Breakdown`)
-            .unwrapOr('Tag Breakdown')}`}
+            .unwrapOr('Tag Breakdown')}
         >
           <div className={styles.statisticsBox}>
             <div className={styles.pieChartWrapper}>
@@ -689,7 +689,7 @@ function ExploreHeader({
     if (tagKeys.length && !selectedTag) {
       handleGroupByTagChange(tagKeys[0]);
     }
-  }, [tagKeys, selectedTag]);
+  }, [tagKeys, selectedTag, handleGroupByTagChange]);
 
   return (
     <div className={styles.header} data-testid="explore-header">

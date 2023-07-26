@@ -7,7 +7,7 @@ import { SelectButton } from '@phlare/components/AppSelector/SelectButton';
 import ogStyles from '@phlare/components/AppSelector/AppSelector.module.scss';
 import styles from '@phlare/components/AppSelector/AppSelector.module.css';
 
-//type App = Omit<OgApp, 'name'>;
+// type App = Omit<OgApp, 'name'>;
 
 interface AppSelectorProps {
   /** Triggered when an app is selected */

@@ -25,7 +25,7 @@ export default function Protected({
         }
       });
     }
-  }, [dispatch]);
+  }, [dispatch, history, location]);
 
   if (!isAuthRequired || currentUser) {
     return <>{children}</>;

@@ -1,8 +1,8 @@
 import React from 'react';
-import { AppSelector } from './AppSelector';
 import { brandQuery } from '@phlare/models/query';
 import { appToQuery, App } from '@phlare/models/app';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { AppSelector } from './AppSelector';
 import { MENU_ITEM_ROLE } from './SelectButton';
 
 jest.mock('@phlare/services/apps');
@@ -104,11 +104,7 @@ describe('AppSelector', () => {
     const onSelected = jest.fn();
 
     render(
-      <AppSelector
-        apps={mockApps}
-        onSelected={onSelected}
-        selectedAppName={''}
-      />
+      <AppSelector apps={mockApps} onSelected={onSelected} selectedAppName="" />
     );
 
     getByTestId('toggler').click();
@@ -154,11 +150,7 @@ describe('AppSelector', () => {
     const onSelected = jest.fn();
 
     render(
-      <AppSelector
-        apps={mockApps}
-        onSelected={onSelected}
-        selectedAppName={''}
-      />
+      <AppSelector apps={mockApps} onSelected={onSelected} selectedAppName="" />
     );
 
     getByTestId('toggler').click();

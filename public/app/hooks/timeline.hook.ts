@@ -32,7 +32,7 @@ export default function useTimelines() {
     if (leftQuery && rightQuery) {
       dispatch(fetchSideTimelines(null));
     }
-  }, [from, until, refreshToken, maxNodes, leftQuery, rightQuery]);
+  }, [dispatch, from, until, refreshToken, maxNodes, leftQuery, rightQuery]);
 
   const leftTimeline = {
     color: leftColor.rgb().toString(),

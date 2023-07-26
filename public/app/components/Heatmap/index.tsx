@@ -14,7 +14,6 @@ import HeatmapTooltip from './HeatmapTooltip';
 import { HEATMAP_HEIGHT, HEATMAP_COLORS } from './constants';
 import { getTicks } from './utils';
 
-// eslint-disable-next-line css-modules/no-unused-class
 import styles from './Heatmap.module.scss';
 
 interface HeatmapProps {
@@ -192,7 +191,7 @@ export function Heatmap({
   );
 }
 
-interface ResizedSelectedArea {
+interface ResizedSelectedAreaProps {
   resizedSelectedAreaRef: RefObject<HTMLDivElement>;
   containerW: number;
   start: SelectedAreaCoordsType;
@@ -208,7 +207,7 @@ function ResizedSelectedArea({
   end,
   resizeRatio,
   handleClick,
-}: ResizedSelectedArea) {
+}: ResizedSelectedAreaProps) {
   const top = start.y > end.y ? end.y : start.y;
   const originalLeftOffset = start.x > end.x ? end.x : start.x;
 

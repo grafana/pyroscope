@@ -18,7 +18,7 @@ export async function flameGraphUpload(
         units: flamebearer.metadata.units,
         spyName: flamebearer.metadata.spyName,
       },
-      name: name,
+      name,
       profile: btoa(JSON.stringify(flamebearer)),
       type: 'json',
     }),

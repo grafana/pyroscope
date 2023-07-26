@@ -41,8 +41,8 @@ export default function QueryInput({
 
   useEffect(() => {
     setTextAreaSize({
-      width: textareaRef?.current?.['offsetWidth'] || 0,
-      height: textareaRef?.current?.['offsetHeight'] || 0,
+      width: textareaRef?.current?.offsetWidth || 0,
+      height: textareaRef?.current?.offsetHeight || 0,
     });
   }, [query, windowWidth, onSubmit]);
 
