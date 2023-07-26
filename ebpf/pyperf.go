@@ -189,12 +189,12 @@ func (s *pyPerf) getSymbols() map[uint32]string {
 		res := make(map[uint32]string, n)
 		for i := 0; i < int(n); i++ {
 			k := values[i]
-			name := strFromInt8(keys[i].Name[:])
-			fmt.Printf("sym %d %s\n", k, name)
-			file := strFromInt8(keys[i].File[:])
-			className := strFromInt8(keys[i].Classname[:])
-			_ = className
-			res[k] = fmt.Sprintf("%s!%s", file, name) // todo propper format
+			//name := strFromInt8(keys[i].Name[:])
+			//fmt.Printf("sym %d %s\n", k, name)
+			//file := strFromInt8(keys[i].File[:])
+			//className := strFromInt8(keys[i].Classname[:])
+			//_ = className
+			res[k] = fmt.Sprintf("%s!%s", keys[i].Name, keys[i].File) // todo propper format
 		}
 		return res
 	}
@@ -226,7 +226,8 @@ func (s *pyPerf) CollectProfiles(cb func(t *sd.Target, stack []string, value uin
 		}
 
 		sb.rest()
-		sb.append(getComm(&event.Comm))
+		//sb.append(getComm(&event.Comm))
+		// todo get comm from pid
 		for _, symID := range event.Stack {
 			if symID == 0 {
 				break

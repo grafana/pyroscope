@@ -21,7 +21,6 @@ int ume_bpf_invoke(void *sym, void *arg) {
 */
 import "C"
 import (
-	"bytes"
 	"debug/elf"
 	"fmt"
 	"strings"
@@ -102,25 +101,26 @@ func New(soPath string, prog string) (*UME, error) {
 
 		maps: make(map[uintptr]Map),
 	}
-	res.BindFunc5("bpf_trace_printk", res.helperBPFTracePrintk)
-	res.BindFunc0("bpf_get_current_pid_tgid", res.helperGetCurrentPIDTGID)
-	res.BindFunc0("bpf_get_smp_processor_id", res.helperGetSMProcessorID)
-	res.BindFunc2("bpf_get_current_comm", res.helperGetCurrentComm)
-	res.BindFunc2("bpf_map_lookup_elem", res.helperMapLookupElem)
-	res.BindFunc3("bpf_probe_read_user", res.helperProbeReadUser)
-	res.BindFunc3("bpf_probe_read_user_str", res.helperProbeReadUserStr)
-	res.BindFunc3("bpf_probe_read_kernel", res.helperProbeReadKernel)
-	res.BindFunc0("bpf_get_current_task", res.helperGetCurrentTask)
-
-	res.BindFunc5("bpf_perf_event_output", res.helperPerfEventOutput)
-
-	res.BindFunc3("bpf_perf_prog_read_value", res.helperPerfProgReadValue)
-	res.BindFunc4("bpf_map_update_elem", res.helperMapUpdateElem)
+	warnOnError(res.BindFunc5("bpf_trace_printk", res.helperBPFTracePrintk))
+	warnOnError(res.BindFunc2("bpf_get_current_comm", res.helperGetCurrentComm))
+	mustNotError(res.BindFunc0("bpf_get_current_pid_tgid", res.helperGetCurrentPIDTGID))
+	mustNotError(res.BindFunc0("bpf_get_smp_processor_id", res.helperGetSMProcessorID))
+	mustNotError(res.BindFunc2("bpf_map_lookup_elem", res.helperMapLookupElem))
+	mustNotError(res.BindFunc3("bpf_probe_read_user", res.helperProbeReadUser))
+	mustNotError(res.BindFunc3("bpf_probe_read_user_str", res.helperProbeReadUserStr))
+	mustNotError(res.BindFunc3("bpf_probe_read_kernel", res.helperProbeReadKernel))
+	mustNotError(res.BindFunc0("bpf_get_current_task", res.helperGetCurrentTask))
+	mustNotError(res.BindFunc5("bpf_perf_event_output", res.helperPerfEventOutput))
+	warnOnError(res.BindFunc3("bpf_perf_prog_read_value", res.helperPerfProgReadValue))
+	mustNotError(res.BindFunc4("bpf_map_update_elem", res.helperMapUpdateElem))
 	return res, nil
 }
 
 func (u *UME) SetMap(name string, m Map) {
 	addr := u.Symbol(name)
+	if addr == -1 {
+		panic(fmt.Sprintf("map %s not found", name))
+	}
 	u.maps[(u.base + uintptr(addr))] = m
 }
 
@@ -156,62 +156,82 @@ func (u *UME) Symbol(sym string) int {
 			break
 		}
 	}
-	panic(fmt.Sprintf("symbol %s not found", sym))
+	return -1
 }
 
-func (u *UME) BindFunc0(sym string, f func0) {
+func (u *UME) BindFunc0(sym string, f func0) error {
 	fptr := &f
 	u.funcPointers = append(u.funcPointers, fptr)
 	sh := newFunc0Shim(fptr)
 	u.shims = append(u.shims, sh)
 
 	found := u.Symbol(sym)
+	if found == -1 {
+		return fmt.Errorf("func %s not found", sym)
+	}
 	p := (*uintptr)(unsafe.Pointer(u.base + uintptr(found)))
 	*p = sh.start
+	return nil
 }
 
-func (u *UME) BindFunc2(sym string, f func2) {
+func (u *UME) BindFunc2(sym string, f func2) error {
 	fptr := &f
 	u.funcPointers = append(u.funcPointers, fptr)
 	sh := newFunc2Shim(fptr)
 	u.shims = append(u.shims, sh)
 
 	found := u.Symbol(sym)
+	if found == -1 {
+		return fmt.Errorf("func %s not found", sym)
+	}
 	p := (*uintptr)(unsafe.Pointer(u.base + uintptr(found)))
 	*p = sh.start
+	return nil
 }
 
-func (u *UME) BindFunc3(sym string, f func3) {
+func (u *UME) BindFunc3(sym string, f func3) error {
 	fptr := &f
 	u.funcPointers = append(u.funcPointers, fptr)
 	sh := newFunc3Shim(fptr)
 	u.shims = append(u.shims, sh)
 
 	found := u.Symbol(sym)
+	if found == -1 {
+		return fmt.Errorf("func %s not found", sym)
+	}
 	p := (*uintptr)(unsafe.Pointer(u.base + uintptr(found)))
 	*p = sh.start
+	return nil
 }
 
-func (u *UME) BindFunc4(sym string, f func4) {
+func (u *UME) BindFunc4(sym string, f func4) error {
 	fptr := &f
 	u.funcPointers = append(u.funcPointers, fptr)
 	sh := newFunc4Shim(fptr)
 	u.shims = append(u.shims, sh)
 
 	found := u.Symbol(sym)
+	if found == -1 {
+		return fmt.Errorf("func %s not found", sym)
+	}
 	p := (*uintptr)(unsafe.Pointer(u.base + uintptr(found)))
 	*p = sh.start
+	return nil
 }
 
-func (u *UME) BindFunc5(sym string, f func5) {
+func (u *UME) BindFunc5(sym string, f func5) error {
 	fptr := &f
 	u.funcPointers = append(u.funcPointers, fptr)
 	sh := newFunc5Shim(fptr)
 	u.shims = append(u.shims, sh)
 
 	found := u.Symbol(sym)
+	if found == -1 {
+		return fmt.Errorf("func %s not found", sym)
+	}
 	p := (*uintptr)(unsafe.Pointer(u.base + uintptr(found)))
 	*p = sh.start
+	return nil
 }
 
 // static __u64 (*bpf_get_current_pid_tgid)(void) = (void *) 14;
@@ -315,23 +335,29 @@ func (u *UME) helperBPFTracePrintk(a1, a2, a3, a4, a5 uintptr) uintptr {
 
 // static long (*bpf_probe_read_user_str)(void *dst, __u32 size, const void *unsafe_ptr) = (void *) 114;
 func (u *UME) helperProbeReadUserStr(dst, size, src uintptr) uintptr {
+	if size == 0 {
+		res := -1
+		return uintptr(res)
+	}
 	buf := u.mem.ReadMem(size, src)
 	if buf == nil {
 		res := -1
 		return uintptr(res)
 	}
-	i := bytes.Index(buf, []byte{0})
-	if i != -1 {
-		fmt.Printf("bpf_probe_read_user_str = %s\n", string(buf[:i]))
-	}
-	for i := 0; i < int(size); i++ {
+	i := 0
+	for i < int(size) {
 		b := (*byte)(unsafe.Pointer(dst + uintptr(i)))
 		*b = buf[i]
+
 		if buf[i] == 0 {
-			break
+			return uintptr(i + 1)
 		}
+		i++
 	}
-	return 0
+	b := (*byte)(unsafe.Pointer(dst + size - 1))
+	*b = 0
+
+	return size
 }
 
 // static long (*bpf_perf_event_output)(void *ctx, void *map, __u64 flags, void *data, __u64 size) = (void *) 25;
@@ -374,5 +400,17 @@ func memcpy_(dst, src, sz uintptr) {
 		pdst := (*byte)(unsafe.Pointer(dst + uintptr(i)))
 		psrc := (*byte)(unsafe.Pointer(src + uintptr(i)))
 		*pdst = *psrc
+	}
+}
+
+func mustNotError(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func warnOnError(err error) {
+	if err != nil {
+		fmt.Printf("WARNING %v\n", err)
 	}
 }

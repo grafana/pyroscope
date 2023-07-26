@@ -32,6 +32,8 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
         return 0;
     }
 
+    // this will not return if it is python
+    pyperf_collect_impl(ctx, (pid_t)tgid);
 
     key.pid = tgid;
     key.kern_stack = -1;

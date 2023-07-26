@@ -17,18 +17,15 @@ type ProfileBssArg struct {
 	CollectKernel uint8
 }
 
+type ProfileHashedString struct{ Str [128]int8 }
+
 type ProfilePyEvent struct {
-	Pid              uint32
-	Tid              uint32
-	Comm             [16]int8
-	ThreadStateMatch uint8
-	GilState         uint8
-	PthreadIdMatch   uint8
-	StackStatus      uint8
-	_                [4]byte
-	StackLen         int64
-	Stack            [75]uint32
-	_                [4]byte
+	Pid         uint32
+	StackStatus uint8
+	_           [3]byte
+	StackLen    int64
+	Stack       [75]uint32
+	_           [4]byte
 }
 
 type ProfilePyPidData struct {
@@ -71,17 +68,19 @@ type ProfilePySampleStateT struct {
 		StringData              int64
 		StringSize              int64
 	}
-	CurCpu                 uint64
+	CurCpu                 uint32
+	_                      [4]byte
 	SymbolCounter          int64
 	FramePtr               uint64
 	PythonStackProgCallCnt int64
 	Event                  ProfilePyEvent
+	TmpStr                 ProfileHashedString
 }
 
 type ProfilePySymbol struct {
-	Classname [32]int8
-	Name      [64]int8
-	File      [128]int8
+	Classname uint32
+	Name      uint32
+	File      uint32
 }
 
 type ProfileSampleKey struct {
@@ -133,7 +132,7 @@ type ProfileSpecs struct {
 // It can be passed ebpf.CollectionSpec.Assign.
 type ProfileProgramSpecs struct {
 	DoPerfEvent     *ebpf.ProgramSpec `ebpf:"do_perf_event"`
-	OnEvent         *ebpf.ProgramSpec `ebpf:"on_event"`
+	PyperfCollect   *ebpf.ProgramSpec `ebpf:"pyperf_collect"`
 	ReadPythonStack *ebpf.ProgramSpec `ebpf:"read_python_stack"`
 }
 
@@ -141,14 +140,15 @@ type ProfileProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type ProfileMapSpecs struct {
-	Args        *ebpf.MapSpec `ebpf:"args"`
-	Counts      *ebpf.MapSpec `ebpf:"counts"`
-	PyEvents    *ebpf.MapSpec `ebpf:"py_events"`
-	PyPidConfig *ebpf.MapSpec `ebpf:"py_pid_config"`
-	PyProgs     *ebpf.MapSpec `ebpf:"py_progs"`
-	PyStateHeap *ebpf.MapSpec `ebpf:"py_state_heap"`
-	PySymbols   *ebpf.MapSpec `ebpf:"py_symbols"`
-	Stacks      *ebpf.MapSpec `ebpf:"stacks"`
+	Args          *ebpf.MapSpec `ebpf:"args"`
+	Counts        *ebpf.MapSpec `ebpf:"counts"`
+	HashedStrings *ebpf.MapSpec `ebpf:"hashed_strings"`
+	PyEvents      *ebpf.MapSpec `ebpf:"py_events"`
+	PyPidConfig   *ebpf.MapSpec `ebpf:"py_pid_config"`
+	PyProgs       *ebpf.MapSpec `ebpf:"py_progs"`
+	PyStateHeap   *ebpf.MapSpec `ebpf:"py_state_heap"`
+	PySymbols     *ebpf.MapSpec `ebpf:"py_symbols"`
+	Stacks        *ebpf.MapSpec `ebpf:"stacks"`
 }
 
 // ProfileObjects contains all objects after they have been loaded into the kernel.
@@ -170,20 +170,22 @@ func (o *ProfileObjects) Close() error {
 //
 // It can be passed to LoadProfileObjects or ebpf.CollectionSpec.LoadAndAssign.
 type ProfileMaps struct {
-	Args        *ebpf.Map `ebpf:"args"`
-	Counts      *ebpf.Map `ebpf:"counts"`
-	PyEvents    *ebpf.Map `ebpf:"py_events"`
-	PyPidConfig *ebpf.Map `ebpf:"py_pid_config"`
-	PyProgs     *ebpf.Map `ebpf:"py_progs"`
-	PyStateHeap *ebpf.Map `ebpf:"py_state_heap"`
-	PySymbols   *ebpf.Map `ebpf:"py_symbols"`
-	Stacks      *ebpf.Map `ebpf:"stacks"`
+	Args          *ebpf.Map `ebpf:"args"`
+	Counts        *ebpf.Map `ebpf:"counts"`
+	HashedStrings *ebpf.Map `ebpf:"hashed_strings"`
+	PyEvents      *ebpf.Map `ebpf:"py_events"`
+	PyPidConfig   *ebpf.Map `ebpf:"py_pid_config"`
+	PyProgs       *ebpf.Map `ebpf:"py_progs"`
+	PyStateHeap   *ebpf.Map `ebpf:"py_state_heap"`
+	PySymbols     *ebpf.Map `ebpf:"py_symbols"`
+	Stacks        *ebpf.Map `ebpf:"stacks"`
 }
 
 func (m *ProfileMaps) Close() error {
 	return _ProfileClose(
 		m.Args,
 		m.Counts,
+		m.HashedStrings,
 		m.PyEvents,
 		m.PyPidConfig,
 		m.PyProgs,
@@ -198,14 +200,14 @@ func (m *ProfileMaps) Close() error {
 // It can be passed to LoadProfileObjects or ebpf.CollectionSpec.LoadAndAssign.
 type ProfilePrograms struct {
 	DoPerfEvent     *ebpf.Program `ebpf:"do_perf_event"`
-	OnEvent         *ebpf.Program `ebpf:"on_event"`
+	PyperfCollect   *ebpf.Program `ebpf:"pyperf_collect"`
 	ReadPythonStack *ebpf.Program `ebpf:"read_python_stack"`
 }
 
 func (p *ProfilePrograms) Close() error {
 	return _ProfileClose(
 		p.DoPerfEvent,
-		p.OnEvent,
+		p.PyperfCollect,
 		p.ReadPythonStack,
 	)
 }
