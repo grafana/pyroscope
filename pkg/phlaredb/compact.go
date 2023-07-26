@@ -118,6 +118,7 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Met
 	meta.Stats.NumProfiles = total
 	meta.Stats.NumSeries = seriesRewriter.NumSeries()
 	meta.Stats.NumSamples = symRewriter.NumSamples()
+	meta.Compaction.Deletable = meta.Stats.NumSamples == 0
 	if _, err := meta.WriteToFile(util.Logger, blockPath); err != nil {
 		return block.Meta{}, err
 	}
@@ -222,7 +223,7 @@ func compactMetas(src []block.Meta) block.Meta {
 	}
 	meta.Source = block.CompactorSource
 	meta.Compaction = tsdb.BlockMetaCompaction{
-		Deletable: meta.Stats.NumSamples == 0,
+		Deletable: false,
 		Level:     highestCompactionLevel + 1,
 		Sources:   ulids,
 		Parents:   parents,
@@ -236,10 +237,9 @@ func compactMetas(src []block.Meta) block.Meta {
 type profileRow struct {
 	timeNanos int64
 
-	seriesRef uint32
-	labels    phlaremodel.Labels
-	fp        model.Fingerprint
-	row       schemav1.ProfileRow
+	labels phlaremodel.Labels
+	fp     model.Fingerprint
+	row    schemav1.ProfileRow
 
 	blockReader BlockReader
 }
@@ -251,25 +251,26 @@ type profileRowIterator struct {
 	allPostings index.Postings
 	err         error
 
-	currentRow profileRow
-	chunks     []index.ChunkMeta
+	currentRow       profileRow
+	currentSeriesIdx uint32
+	chunks           []index.ChunkMeta
 }
 
-func newProfileRowIterator(reader parquet.RowReader, s BlockReader) (*profileRowIterator, error) {
+func newProfileRowIterator(s BlockReader) (*profileRowIterator, error) {
 	k, v := index.AllPostingsKey()
 	allPostings, err := s.Index().Postings(k, nil, v)
 	if err != nil {
 		return nil, err
 	}
+	// todo close once https://github.com/grafana/pyroscope/issues/2172 is done.
+	reader := parquet.MultiRowGroup(s.Profiles()...).Rows()
 	return &profileRowIterator{
-		profiles:    phlareparquet.NewBufferedRowReaderIterator(reader, 1024),
-		blockReader: s,
-		index:       s.Index(),
-		allPostings: allPostings,
-		currentRow: profileRow{
-			seriesRef: math.MaxUint32,
-		},
-		chunks: make([]index.ChunkMeta, 1),
+		profiles:         phlareparquet.NewBufferedRowReaderIterator(reader, 1024),
+		blockReader:      s,
+		index:            s.Index(),
+		allPostings:      allPostings,
+		currentSeriesIdx: math.MaxUint32,
+		chunks:           make([]index.ChunkMeta, 1),
 	}, nil
 }
 
@@ -286,10 +287,10 @@ func (p *profileRowIterator) Next() bool {
 	seriesIndex := p.currentRow.row.SeriesIndex()
 	p.currentRow.timeNanos = p.currentRow.row.TimeNanos()
 	// do we have a new series?
-	if seriesIndex == p.currentRow.seriesRef {
+	if seriesIndex == p.currentSeriesIdx {
 		return true
 	}
-	p.currentRow.seriesRef = seriesIndex
+	p.currentSeriesIdx = seriesIndex
 	if !p.allPostings.Next() {
 		if err := p.allPostings.Err(); err != nil {
 			p.err = err
@@ -322,13 +323,14 @@ func (p *profileRowIterator) Close() error {
 func newMergeRowProfileIterator(src []BlockReader) (iter.Iterator[profileRow], error) {
 	its := make([]iter.Iterator[profileRow], len(src))
 	for i, s := range src {
-		// todo: may be we could merge rowgroups in parallel but that requires locking.
-		reader := parquet.MultiRowGroup(s.Profiles()...).Rows()
-		it, err := newProfileRowIterator(reader, s)
+		it, err := newProfileRowIterator(s)
 		if err != nil {
 			return nil, err
 		}
 		its[i] = it
+	}
+	if len(its) == 1 {
+		return its[0], nil
 	}
 	return &dedupeProfileRowIterator{
 		Iterator: iter.NewTreeIterator(loser.New(
@@ -384,7 +386,8 @@ func (s *seriesRewriter) NumSeries() uint64 {
 func (s *seriesRewriter) Next() bool {
 	if !s.Iterator.Next() {
 		if s.previousFp != 0 {
-			if err := s.indexw.AddSeries(s.seriesRef, s.labels, s.previousFp, s.currentChunkMeta); err != nil {
+			s.currentChunkMeta.SeriesIndex = uint32(s.seriesRef) - 1
+			if err := s.indexw.AddSeries(s.seriesRef-1, s.labels, s.previousFp, s.currentChunkMeta); err != nil {
 				s.err = err
 				return false
 			}
@@ -394,9 +397,9 @@ func (s *seriesRewriter) Next() bool {
 	}
 	currentProfile := s.Iterator.At()
 	if s.previousFp != currentProfile.fp {
-		// store the previous series.
 		if s.previousFp != 0 {
-			if err := s.indexw.AddSeries(s.seriesRef, s.labels, s.previousFp, s.currentChunkMeta); err != nil {
+			s.currentChunkMeta.SeriesIndex = uint32(s.seriesRef) - 1
+			if err := s.indexw.AddSeries(s.seriesRef-1, s.labels, s.previousFp, s.currentChunkMeta); err != nil {
 				s.err = err
 				return false
 			}

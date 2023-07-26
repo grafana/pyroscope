@@ -287,8 +287,8 @@ func compareProfileRows(t *testing.T, expected, actual []parquet.Row) {
 	require.Equal(t, len(expected), len(actual))
 	for i := range expected {
 		expectedProfile, actualProfile := &Profile{}, &Profile{}
-		require.NoError(t, profilesSchema.Reconstruct(actualProfile, actual[i]))
-		require.NoError(t, profilesSchema.Reconstruct(expectedProfile, expected[i]))
+		require.NoError(t, ProfilesSchema.Reconstruct(actualProfile, actual[i]))
+		require.NoError(t, ProfilesSchema.Reconstruct(expectedProfile, expected[i]))
 		require.Equal(t, expectedProfile, actualProfile, "row %d", i)
 	}
 }
