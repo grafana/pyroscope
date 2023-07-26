@@ -2,7 +2,6 @@
 #define PYPERF_H
 
 #include "pyperf.bpf.h"
-#include "hash.h"
 
 
 #define PYTHON_STACK_FRAMES_PER_PROG 25
@@ -74,9 +73,9 @@ typedef struct {
 } py_pid_data;
 
 typedef struct {
-    hashed_string_id classname;
-    hashed_string_id name;
-    hashed_string_id file;
+    char classname[PYTHON_CLASS_NAME_LEN];
+    char name[PYTHON_FUNCTION_NAME_LEN];
+    char file[PYTHON_FILE_NAME_LEN];
 
     // NOTE: PyFrameObject also has line number but it is typically just the
     // first line of that function and PyCode_Addr2Line needs to be called
@@ -113,12 +112,10 @@ typedef u64 frame_ptr_t;
 typedef struct {
     py_offset_config offsets;
     uint32_t cur_cpu;
-//    uint32_t num_cpu;
     int64_t symbol_counter;
     frame_ptr_t frame_ptr;
     int64_t python_stack_prog_call_cnt;
     py_event event;
-    hashed_string tmp_str;
 } py_sample_state_t;
 
 struct {
@@ -194,8 +191,6 @@ static inline __attribute__((__always_inline__)) void *get_thread_state(
             &thread_state,
             sizeof(thread_state),
             tls_base + 0x310 + key * 0x10 + 0x08);
-//    bpf_printk("thread_state=%x", thread_state);
-
     return thread_state;
 }
 
@@ -402,7 +397,6 @@ static inline __attribute__((__always_inline__)) void get_names(
         void *code_ptr,
         py_offset_config *offsets,
         py_symbol *symbol,
-        hashed_string *tmp_str,
         void *ctx) {
     // Figure out if we want to parse class name, basically checking the name of
     // the first argument,
@@ -416,17 +410,23 @@ static inline __attribute__((__always_inline__)) void get_names(
     bpf_probe_read_user(
             &args_ptr, sizeof(void *), args_ptr + offsets->PyTupleObject_item);
     bpf_probe_read_user_str(
-            &tmp_str->str, sizeof(tmp_str->str), args_ptr + offsets->String_data);
-
+            &symbol->name, sizeof(symbol->name), args_ptr + offsets->String_data);
+    
     // compare strings as ints to save instructions
     char self_str[4] = {'s', 'e', 'l', 'f'};
     char cls_str[4] = {'c', 'l', 's', '\0'};
-    bool first_self = *(int32_t *) tmp_str->str == *(int32_t *) self_str;
-    bool first_cls = *(int32_t *) tmp_str->str == *(int32_t *) cls_str;
+    bool first_self = *(int32_t *) symbol->name == *(int32_t *) self_str;
+    bool first_cls = *(int32_t *) symbol->name == *(int32_t *) cls_str;
 
-    symbol->name = 0;
-    symbol->file = 0;
-    symbol->classname = 0;
+    // We re-use the same py_symbol instance across loop iterations, which means
+    // we will have left-over data in the struct. Although this won't affect
+    // correctness of the result because we have '\0' at end of the strings read,
+    // it would affect effectiveness of the deduplication.
+    // Helper bpf_perf_prog_read_value clears the buffer on error, so here we
+    // (ab)use this behavior to clear the memory. It requires the size of py_symbol
+    // to be different from struct bpf_perf_event_value, which we check at
+    // compilation time using the FAIL_COMPILATION_IF macro.
+    bpf_perf_prog_read_value(ctx, (struct bpf_perf_event_value *) symbol, sizeof(py_symbol));
 
     // Read class name from $frame->f_localsplus[0]->ob_type->tp_name.
     if (first_self || first_cls) {
@@ -438,18 +438,20 @@ static inline __attribute__((__always_inline__)) void get_names(
             bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyObject_type);
         }
         bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyTypeObject_name);
-        pyro_hash_string_user(tmp_str, ptr, &symbol->classname); // todo handle error
+        bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr);
     }
 
     void *pystr_ptr;
     // read PyCodeObject's filename into symbol
     bpf_probe_read_user(
             &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_filename);
-    pyro_hash_string_user(tmp_str, pystr_ptr + offsets->String_data, &symbol->file);
+    bpf_probe_read_user_str(
+            &symbol->file, sizeof(symbol->file), pystr_ptr + offsets->String_data);
     // read PyCodeObject's name into symbol
     bpf_probe_read_user(
             &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_name);
-    pyro_hash_string_user(tmp_str, pystr_ptr + offsets->String_data, &symbol->name);
+    bpf_probe_read_user_str(
+            &symbol->name, sizeof(symbol->name), pystr_ptr + offsets->String_data);
 }
 
 // get_frame_data reads current PyFrameObject filename/name and updates
@@ -458,7 +460,6 @@ static inline __attribute__((__always_inline__)) bool get_frame_data(
         frame_ptr_t *frame_ptr,
         py_offset_config *offsets,
         py_symbol *symbol,
-        hashed_string *tmp_str,
         // ctx is only used to call helper to clear symbol, see documentation below
         void *ctx) {
     frame_ptr_t cur_frame = *frame_ptr;
@@ -473,7 +474,7 @@ static inline __attribute__((__always_inline__)) bool get_frame_data(
         return false;
     }
 
-    get_names(cur_frame, code_ptr, offsets, symbol, tmp_str, ctx);
+    get_names(cur_frame, code_ptr, offsets, symbol, ctx);
 
     // read next PyFrameObject pointer, update in place
     bpf_probe_read_user(
@@ -513,7 +514,7 @@ int read_python_stack(struct bpf_perf_event_data *ctx) {
     bool last_res = false;
 #pragma unroll
     for (int i = 0; i < PYTHON_STACK_FRAMES_PER_PROG; i++) {
-        last_res = get_frame_data(&state->frame_ptr, &state->offsets, &sym, &state->tmp_str, ctx);
+        last_res = get_frame_data(&state->frame_ptr, &state->offsets, &sym, ctx);
         if (last_res) {
             uint32_t symbol_id = get_symbol_id(state, &sym);
             int64_t cur_len = sample->stack_len;

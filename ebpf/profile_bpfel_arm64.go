@@ -17,8 +17,6 @@ type ProfileBssArg struct {
 	CollectKernel uint8
 }
 
-type ProfileHashedString struct{ Str [128]int8 }
-
 type ProfilePyEvent struct {
 	Pid         uint32
 	StackStatus uint8
@@ -74,13 +72,12 @@ type ProfilePySampleStateT struct {
 	FramePtr               uint64
 	PythonStackProgCallCnt int64
 	Event                  ProfilePyEvent
-	TmpStr                 ProfileHashedString
 }
 
 type ProfilePySymbol struct {
-	Classname uint32
-	Name      uint32
-	File      uint32
+	Classname [32]int8
+	Name      [64]int8
+	File      [128]int8
 }
 
 type ProfileSampleKey struct {
@@ -140,15 +137,14 @@ type ProfileProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type ProfileMapSpecs struct {
-	Args          *ebpf.MapSpec `ebpf:"args"`
-	Counts        *ebpf.MapSpec `ebpf:"counts"`
-	HashedStrings *ebpf.MapSpec `ebpf:"hashed_strings"`
-	PyEvents      *ebpf.MapSpec `ebpf:"py_events"`
-	PyPidConfig   *ebpf.MapSpec `ebpf:"py_pid_config"`
-	PyProgs       *ebpf.MapSpec `ebpf:"py_progs"`
-	PyStateHeap   *ebpf.MapSpec `ebpf:"py_state_heap"`
-	PySymbols     *ebpf.MapSpec `ebpf:"py_symbols"`
-	Stacks        *ebpf.MapSpec `ebpf:"stacks"`
+	Args        *ebpf.MapSpec `ebpf:"args"`
+	Counts      *ebpf.MapSpec `ebpf:"counts"`
+	PyEvents    *ebpf.MapSpec `ebpf:"py_events"`
+	PyPidConfig *ebpf.MapSpec `ebpf:"py_pid_config"`
+	PyProgs     *ebpf.MapSpec `ebpf:"py_progs"`
+	PyStateHeap *ebpf.MapSpec `ebpf:"py_state_heap"`
+	PySymbols   *ebpf.MapSpec `ebpf:"py_symbols"`
+	Stacks      *ebpf.MapSpec `ebpf:"stacks"`
 }
 
 // ProfileObjects contains all objects after they have been loaded into the kernel.
@@ -170,22 +166,20 @@ func (o *ProfileObjects) Close() error {
 //
 // It can be passed to LoadProfileObjects or ebpf.CollectionSpec.LoadAndAssign.
 type ProfileMaps struct {
-	Args          *ebpf.Map `ebpf:"args"`
-	Counts        *ebpf.Map `ebpf:"counts"`
-	HashedStrings *ebpf.Map `ebpf:"hashed_strings"`
-	PyEvents      *ebpf.Map `ebpf:"py_events"`
-	PyPidConfig   *ebpf.Map `ebpf:"py_pid_config"`
-	PyProgs       *ebpf.Map `ebpf:"py_progs"`
-	PyStateHeap   *ebpf.Map `ebpf:"py_state_heap"`
-	PySymbols     *ebpf.Map `ebpf:"py_symbols"`
-	Stacks        *ebpf.Map `ebpf:"stacks"`
+	Args        *ebpf.Map `ebpf:"args"`
+	Counts      *ebpf.Map `ebpf:"counts"`
+	PyEvents    *ebpf.Map `ebpf:"py_events"`
+	PyPidConfig *ebpf.Map `ebpf:"py_pid_config"`
+	PyProgs     *ebpf.Map `ebpf:"py_progs"`
+	PyStateHeap *ebpf.Map `ebpf:"py_state_heap"`
+	PySymbols   *ebpf.Map `ebpf:"py_symbols"`
+	Stacks      *ebpf.Map `ebpf:"stacks"`
 }
 
 func (m *ProfileMaps) Close() error {
 	return _ProfileClose(
 		m.Args,
 		m.Counts,
-		m.HashedStrings,
 		m.PyEvents,
 		m.PyPidConfig,
 		m.PyProgs,

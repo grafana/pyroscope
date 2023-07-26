@@ -48,13 +48,11 @@ func main() {
 	stateHeap := ume.NewArrayMap[ebpfspy.ProfilePySampleStateT](1)
 	args := ume.NewArrayMap[ebpfspy.ProfileBssArg](1)
 	pyEvents := ume.NewPerfEventMap(239)
-	hashedStrings := ume.NewHashMap[uint32, ebpfspy.ProfileHashedString]()
 	e.SetMap("py_state_heap", stateHeap)
 	e.SetMap("py_pid_config", pidConfig)
 	e.SetMap("py_events", pyEvents)
 	e.SetMap("py_symbols", pySymbols)
 	e.SetMap("args", args)
-	e.SetMap("hashed_strings", hashedStrings)
 
 	pidConfig.Update(uint32(pid), *data, ebpf.UpdateAny)
 
@@ -87,7 +85,7 @@ func main() {
 		}
 
 		//if cnt%10 == 0 {
-		printStacks(pySymbols, pyEvents, hashedStrings)
+		printStacks(pySymbols, pyEvents)
 		//}
 		time.Sleep(1000 * time.Millisecond)
 		if err = proc.Stop(); err != nil {
@@ -97,13 +95,13 @@ func main() {
 
 }
 
-func printStacks(pySymbols *ume.HashMap[ebpfspy.ProfilePySymbol, uint32], pyEvents *ume.PerfEventMap, hashedStrings *ume.HashMap[uint32, ebpfspy.ProfileHashedString]) {
+func printStacks(pySymbols *ume.HashMap[ebpfspy.ProfilePySymbol, uint32], pyEvents *ume.PerfEventMap) {
 	reverseSymbols := getSymbols(pySymbols)
 
 	for {
 		select {
 		case e := <-pyEvents.Events():
-			printStack(e, reverseSymbols, hashedStrings)
+			printStack(e, reverseSymbols)
 			break
 		default:
 			fmt.Println("no more stacks")
@@ -121,7 +119,7 @@ func getSymbols(pySymbols *ume.HashMap[ebpfspy.ProfilePySymbol, uint32]) map[uin
 	return reverseSymbols
 }
 
-func printStack(e []byte, reverseSymbols map[uint32]ebpfspy.ProfilePySymbol, hashedStrings *ume.HashMap[uint32, ebpfspy.ProfileHashedString]) {
+func printStack(e []byte, reverseSymbols map[uint32]ebpfspy.ProfilePySymbol) {
 	event := &ebpfspy.ProfilePyEvent{}
 	if err := binary.Read(bytes.NewBuffer(e), binary.LittleEndian, event); err != nil {
 		panic(err)
@@ -133,10 +131,10 @@ func printStack(e []byte, reverseSymbols map[uint32]ebpfspy.ProfilePySymbol, has
 		}
 		//fmt.Printf("sym %8d\n", symID)
 		symbol := reverseSymbols[symID]
-		Name := hashedStrings.Data[symbol.Name]
-		Classname := hashedStrings.Data[symbol.Classname]
-		File := hashedStrings.Data[symbol.File]
-		fmt.Printf("%10d %s | %s | %s \n", symID, strFromHashedString(Name), strFromHashedString(Classname), strFromHashedString(File))
+		Name := strFromInt8(symbol.Name[:])
+		Classname := strFromInt8(symbol.Classname[:])
+		File := strFromInt8(symbol.File[:])
+		fmt.Printf("%10d %s | %s | %s \n", symID, Name, Classname, File)
 	}
 }
 
@@ -144,12 +142,6 @@ func putFSBase(currentTask []byte, val uint64) {
 	binary.LittleEndian.PutUint64(currentTask[0x1b68:], uint64(val))
 }
 
-func strFromHashedString(s *ebpfspy.ProfileHashedString) string {
-	if s == nil {
-		return ""
-	}
-	return strFromInt8(s.Str[:])
-}
 func strFromInt8(file []int8) string {
 	u8 := make([]uint8, 0, len(file))
 	for _, v := range file {

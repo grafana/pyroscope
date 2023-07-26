@@ -51,7 +51,7 @@ func (a *Array) Lookup(pkey uintptr) uintptr {
 }
 
 type HashMap[K comparable, V any] struct {
-	data map[K]*V
+	Data map[K]*V
 }
 
 func (h HashMap[K, V]) UpdateElem(k uintptr, v uintptr, flags uintptr) uintptr {
@@ -61,7 +61,7 @@ func (h HashMap[K, V]) UpdateElem(k uintptr, v uintptr, flags uintptr) uintptr {
 
 	kk := *pk
 	vv := *pv
-	h.data[kk] = &vv
+	h.Data[kk] = &vv
 	return 0
 }
 
@@ -71,7 +71,7 @@ func (h HashMap[K, V]) PerfEventOutput(data uintptr, size uintptr, flags uintptr
 
 func NewHashMap[K comparable, V any]() *HashMap[K, V] {
 	return &HashMap[K, V]{
-		data: make(map[K]*V),
+		Data: make(map[K]*V),
 	}
 }
 
@@ -87,22 +87,22 @@ func (h *HashMap[K, V]) Update(k, v any, flags ebpf.MapUpdateFlags) error {
 	}
 
 	if flags == ebpf.UpdateAny {
-		h.data[kk] = &vv
+		h.Data[kk] = &vv
 		return nil
 	}
-	_, ok = h.data[kk]
+	_, ok = h.Data[kk]
 	if flags == ebpf.UpdateNoExist {
 		if ok {
 			return fmt.Errorf("already exist %v ", k)
 		}
-		h.data[kk] = &vv
+		h.Data[kk] = &vv
 		return nil
 	}
 	if flags == ebpf.UpdateExist {
 		if !ok {
 			return fmt.Errorf("does not exist %v ", k)
 		}
-		h.data[kk] = &vv
+		h.Data[kk] = &vv
 	}
 	panic(fmt.Sprintf("unknown flag %d", flags))
 	return nil
@@ -115,13 +115,13 @@ type Entry[K comparable, V any] struct {
 
 func (h *HashMap[K, V]) Lookup(pkey uintptr) uintptr {
 	k := *(*K)(unsafe.Pointer(pkey))
-	v := h.data[k]
+	v := h.Data[k]
 	return uintptr(unsafe.Pointer(v))
 }
 
 func (h *HashMap[K, V]) Entries() []Entry[K, V] {
-	res := make([]Entry[K, V], 0, len(h.data))
-	for k, v := range h.data {
+	res := make([]Entry[K, V], 0, len(h.Data))
+	for k, v := range h.Data {
 		res = append(res, Entry[K, V]{k, v})
 	}
 	return res
