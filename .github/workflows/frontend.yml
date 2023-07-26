@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 18.15.0
+          node-version: lts/hydrogen
           cache: yarn
       - run: yarn --frozen-lockfile
       - name: Run type-check
@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 18.15.0
+          node-version: lts/hydrogen
           cache: yarn
       - run: yarn --frozen-lockfile
       - name: Run format
@@ -45,7 +45,7 @@ jobs:
         uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 18.15.0
+          node-version: lts/hydrogen
           cache: yarn
       - run: yarn --frozen-lockfile
       - name: Run lint
@@ -57,7 +57,7 @@ jobs:
         uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 18.15.0
+          node-version: lts/hydrogen
           cache: yarn
       - run: yarn --frozen-lockfile
       - name: Run build
@@ -69,7 +69,7 @@ jobs:
         uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 18.15.0
+          node-version: lts/hydrogen
           cache: yarn
       - run: yarn --frozen-lockfile
       - name: Run tests

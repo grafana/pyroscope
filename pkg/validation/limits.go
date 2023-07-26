@@ -26,6 +26,12 @@ type Limits struct {
 	MaxLabelValueLength    int     `yaml:"max_label_value_length" json:"max_label_value_length"`
 	MaxLabelNamesPerSeries int     `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
 
+	MaxProfileSizeBytes              int `yaml:"max_profile_size_bytes" json:"max_profile_size_bytes"`
+	MaxProfileStacktraceSamples      int `yaml:"max_profile_stacktrace_samples" json:"max_profile_stacktrace_samples"`
+	MaxProfileStacktraceSampleLabels int `yaml:"max_profile_stacktrace_sample_labels" json:"max_profile_stacktrace_sample_labels"`
+	MaxProfileStacktraceDepth        int `yaml:"max_profile_stacktrace_depth" json:"max_profile_stacktrace_depth"`
+	MaxProfileSymbolValueLength      int `yaml:"max_profile_symbol_value_length" json:"max_profile_symbol_value_length"`
+
 	// The tenant shard size determines the how many ingesters a particular
 	// tenant will be sharded to. Needs to be specified on distributors for
 	// correct distribution and on ingesters so that the local ingestion limit
@@ -81,6 +87,12 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.Var(&l.QuerySplitDuration, "querier.split-queries-by-interval", "Split queries by a time interval and execute in parallel. The value 0 disables splitting by time")
 
 	f.IntVar(&l.MaxQueryParallelism, "querier.max-query-parallelism", 0, "Maximum number of queries that will be scheduled in parallel by the frontend.")
+
+	f.IntVar(&l.MaxProfileSizeBytes, "validation.max-profile-size-bytes", 4*1024*1024, "Maximum size of a profile in bytes. This is based off the uncompressed size. 0 to disable.")
+	f.IntVar(&l.MaxProfileStacktraceSamples, "validation.max-profile-stacktrace-samples", 4000, "Maximum number of samples in a profile. 0 to disable.")
+	f.IntVar(&l.MaxProfileStacktraceSampleLabels, "validation.max-profile-stacktrace-sample-labels", 100, "Maximum number of labels in a profile sample. 0 to disable.")
+	f.IntVar(&l.MaxProfileStacktraceDepth, "validation.max-profile-stacktrace-depth", 1000, "Maximum depth of a profile stacktrace. Profiles are not rejected instead stacktraces are truncated. 0 to disable.")
+	f.IntVar(&l.MaxProfileSymbolValueLength, "validation.max-profile-symbol-value-length", 1024, "Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable.")
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -180,6 +192,31 @@ func (o *Overrides) MaxLabelValueLength(tenantID string) int {
 // MaxLabelNamesPerSeries returns maximum number of label/value pairs timeseries.
 func (o *Overrides) MaxLabelNamesPerSeries(tenantID string) int {
 	return o.getOverridesForTenant(tenantID).MaxLabelNamesPerSeries
+}
+
+// MaxProfileSizeBytes returns the maximum size of a profile in bytes.
+func (o *Overrides) MaxProfileSizeBytes(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).MaxProfileSizeBytes
+}
+
+// MaxProfileStacktraceSamples returns the maximum number of samples in a profile.
+func (o *Overrides) MaxProfileStacktraceSamples(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).MaxProfileStacktraceSamples
+}
+
+// MaxProfileStacktraceSampleLabels returns the maximum number of labels in a profile sample.
+func (o *Overrides) MaxProfileStacktraceSampleLabels(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).MaxProfileStacktraceSampleLabels
+}
+
+// MaxProfileStacktraceDepth returns the maximum depth of a profile stacktrace.
+func (o *Overrides) MaxProfileStacktraceDepth(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).MaxProfileStacktraceDepth
+}
+
+// MaxProfileSymbolValueLength returns the maximum length of a profile symbol value (labels, function name and filename, etc...).
+func (o *Overrides) MaxProfileSymbolValueLength(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).MaxProfileSymbolValueLength
 }
 
 // MaxLocalSeriesPerTenant returns the maximum number of series a tenant is allowed to store

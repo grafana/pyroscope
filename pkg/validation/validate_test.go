@@ -7,9 +7,9 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
 func TestValidateLabels(t *testing.T) {
@@ -196,6 +196,101 @@ func Test_ValidateRangeRequest(t *testing.T) {
 			}, []string{"foo"}, tt.in, now)
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestValidateProfile(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		profile     *googlev1.Profile
+		size        int
+		limits      ProfileValidationLimits
+		expectedErr error
+		assert      func(t *testing.T, profile *googlev1.Profile)
+	}{
+		{
+			"nil profile",
+			nil,
+			0,
+			MockLimits{},
+			nil,
+			nil,
+		},
+		{
+			"too big",
+			&googlev1.Profile{},
+			3,
+			MockLimits{
+				MaxProfileSizeBytesValue: 1,
+			},
+			NewErrorf(InvalidProfile, ProfileTooBigErrorMsg, `{foo="bar"}`, 3, 1),
+			nil,
+		},
+		{
+			"too many samples",
+			&googlev1.Profile{
+				Sample: make([]*googlev1.Sample, 3),
+			},
+			0,
+			MockLimits{
+				MaxProfileStacktraceSamplesValue: 2,
+			},
+			NewErrorf(InvalidProfile, ProfileTooManySamplesErrorMsg, `{foo="bar"}`, 3, 2),
+			nil,
+		},
+		{
+			"too many labels",
+			&googlev1.Profile{
+				Sample: []*googlev1.Sample{
+					{
+						Label: make([]*googlev1.Label, 3),
+					},
+				},
+			},
+			0,
+			MockLimits{
+				MaxProfileStacktraceSampleLabelsValue: 2,
+			},
+			NewErrorf(InvalidProfile, ProfileTooManyLabelsErrorMsg, `{foo="bar"}`, 3, 2),
+			nil,
+		},
+		{
+			"truncate labels and stacktrace",
+			&googlev1.Profile{
+				StringTable: []string{"foo", "/foo/bar"},
+				Sample: []*googlev1.Sample{
+					{
+						LocationId: []uint64{0, 1, 2, 3, 4, 5},
+					},
+				},
+			},
+			0,
+			MockLimits{
+				MaxProfileStacktraceDepthValue:   2,
+				MaxProfileSymbolValueLengthValue: 3,
+			},
+			nil,
+			func(t *testing.T, profile *googlev1.Profile) {
+				t.Helper()
+				require.Equal(t, []string{"foo", "bar"}, profile.StringTable)
+				require.Equal(t, []uint64{0, 1}, profile.Sample[0].LocationId)
+			},
+		},
+	} {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateProfile(tc.limits, "foo", tc.profile, tc.size, phlaremodel.LabelsFromStrings("foo", "bar"))
+			if tc.expectedErr != nil {
+				require.Error(t, err)
+				require.Equal(t, tc.expectedErr, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			if tc.assert != nil {
+				tc.assert(t, tc.profile)
+			}
 		})
 	}
 }

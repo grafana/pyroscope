@@ -6,7 +6,7 @@ func RemoveInPlace[T any](collection []T, predicate func(T, int) bool) []T {
 	i := 0
 	for j, x := range collection {
 		if !predicate(x, j) {
-			collection[i] = x
+			collection[j], collection[i] = collection[i], collection[j]
 			i++
 		}
 	}

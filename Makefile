@@ -28,7 +28,7 @@ GIT_LAST_COMMIT_DATE := $(shell git log -1 --date=iso-strict --format=%cd)
 EMBEDASSETS ?= embedassets
 
 # Build flags
-VPREFIX := github.com/grafana/phlare/pkg/util/build
+VPREFIX := github.com/grafana/pyroscope/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
 
 .PHONY: help
@@ -80,7 +80,7 @@ frontend/deps:
 .PHONY: release
 release/prereq: $(BIN)/goreleaser ## Ensure release pre requesites are met
 	# remove local git tags coming from helm chart release
-	git tag -d $(shell git tag -l "phlare-*" "api/*")
+	git tag -d $(shell git tag -l "phlare-*" "api/*" "ebpf/*" "@pyroscope*")
 	# ensure there is a docker cli command
 	@which docker || { apt-get update && apt-get install -y docker.io; }
 	@docker info > /dev/null
@@ -106,7 +106,7 @@ go/deps:
 	$(GO) mod tidy
 
 define go_build
-	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" ./cmd/phlare
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" ./cmd/pyroscope
 	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" ./cmd/profilecli
 endef
 
@@ -159,12 +159,12 @@ endef
 define deploy
 	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
 	# Load image into nodes
-	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)phlare:$(IMAGE_TAG)
+	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)
 	kubectl get pods
 	$(BIN)/helm upgrade --install $(1) ./operations/phlare/helm/phlare $(2) \
 		--set phlare.image.tag=$(IMAGE_TAG) \
-		--set phlare.image.repository=$(IMAGE_PREFIX)phlare \
-		--set phlare.podAnnotations.image-id=$(shell cat .docker-image-id-phlare) \
+		--set phlare.image.repository=$(IMAGE_PREFIX)pyroscope \
+		--set phlare.podAnnotations.image-id=$(shell cat .docker-image-id-pyroscope) \
 		--set phlare.service.port_name=http-metrics \
 		--set phlare.podAnnotations."profiles\.grafana\.com\/memory\.port_name"=http-metrics \
 		--set phlare.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
@@ -173,22 +173,22 @@ define deploy
 		--set phlare.extraArgs."phlaredb\.max-block-duration"=5m
   endef
 
-.PHONY: docker-image/phlare/build-debug
-docker-image/phlare/build-debug: GOOS=linux
-docker-image/phlare/build-debug: GOARCH=amd64
-docker-image/phlare/build-debug: frontend/build go/bin-debug $(BIN)/linux_amd64/dlv
+.PHONY: docker-image/pyroscope/build-debug
+docker-image/pyroscope/build-debug: GOOS=linux
+docker-image/pyroscope/build-debug: GOARCH=amd64
+docker-image/pyroscope/build-debug: frontend/build go/bin-debug $(BIN)/linux_amd64/dlv
 	$(call docker_buildx,--load,debug.)
 
-.PHONY: docker-image/phlare/build
-docker-image/phlare/build: GOOS=linux
-docker-image/phlare/build: GOARCH=amd64
-docker-image/phlare/build: frontend/build go/bin
-	$(call docker_buildx,--load --iidfile .docker-image-id-phlare,)
+.PHONY: docker-image/pyroscope/build
+docker-image/pyroscope/build: GOOS=linux
+docker-image/pyroscope/build: GOARCH=amd64
+docker-image/pyroscope/build: frontend/build go/bin
+	$(call docker_buildx,--load --iidfile .docker-image-id-pyroscope,)
 
-.PHONY: docker-image/phlare/push
-docker-image/phlare/push: GOOS=linux
-docker-image/phlare/push: GOARCH=amd64
-docker-image/phlare/push: frontend/build go/bin
+.PHONY: docker-image/pyroscope/push
+docker-image/pyroscope/push: GOOS=linux
+docker-image/pyroscope/push: GOARCH=amd64
+docker-image/pyroscope/push: frontend/build go/bin
 	$(call docker_buildx,--push)
 
 define UPDATER_CONFIG_JSON
@@ -196,7 +196,7 @@ define UPDATER_CONFIG_JSON
   "repo_name": "deployment_tools",
   "destination_branch": "master",
   "wait_for_ci": true,
-  "wait_for_ci_branch_prefix": "automation/phlare-dev-deploy",
+  "wait_for_ci_branch_prefix": "automation/pyroscope-dev-deploy",
   "wait_for_ci_timeout": "10m",
   "wait_for_ci_required_status": [
     "continuous-integration/drone/push"
@@ -205,15 +205,15 @@ define UPDATER_CONFIG_JSON
     {
       "file_path": "ksonnet/environments/phlare/waves/dev.libsonnet",
       "jsonnet_key": "phlare",
-      "jsonnet_value": "$(IMAGE_PREFIX)phlare:$(IMAGE_TAG)"
+      "jsonnet_value": "$(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)"
     }
   ]
 }
 endef
 
-.PHONY: docker-image/phlare/deploy-dev-001
-docker-image/phlare/deploy-dev-001: export CONFIG_JSON:=$(call UPDATER_CONFIG_JSON)
-docker-image/phlare/deploy-dev-001: $(BIN)/updater
+.PHONY: docker-image/pyroscope/deploy-dev-001
+docker-image/pyroscope/deploy-dev-001: export CONFIG_JSON:=$(call UPDATER_CONFIG_JSON)
+docker-image/pyroscope/deploy-dev-001: $(BIN)/updater
 	$(BIN)/updater
 
 .PHONY: clean
@@ -224,8 +224,8 @@ clean: ## Delete intermediate build artifacts
 .PHONY: reference-help
 reference-help: ## Generates the reference help documentation.
 reference-help: build
-	@(./phlare -h || true) > cmd/phlare/help.txt.tmpl
-	@(./phlare -help-all || true) > cmd/phlare/help-all.txt.tmpl
+	@(./pyroscope -h || true) > cmd/pyroscope/help.txt.tmpl
+	@(./pyroscope -help-all || true) > cmd/pyroscope/help-all.txt.tmpl
 
 $(BIN)/buf: Makefile
 	@mkdir -p $(@D)
@@ -249,7 +249,7 @@ $(BIN)/protoc-gen-connect-go-mux: Makefile go.mod
 
 $(BIN)/protoc-gen-go-vtproto: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/planetscale/vtprotobuf/cmd/protoc-gen-go-vtproto@v0.4.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grafana/vtprotobuf/cmd/protoc-gen-go-vtproto@5b3aae6571b83099f5a6cd803e8d72296550a973
 
 $(BIN)/protoc-gen-openapiv2: Makefile go.mod
 	@mkdir -p $(@D)
@@ -318,7 +318,7 @@ $(BIN)/trunk: Makefile
 	curl -L https://trunk.io/releases/trunk -o $(@D)/trunk
 	chmod +x $(@D)/trunk
 
-KIND_CLUSTER = phlare-dev
+KIND_CLUSTER = pyroscope-dev
 
 .PHONY: helm/lint
 helm/lint: $(BIN)/helm
@@ -358,13 +358,13 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 		> ./operations/phlare/jsonnet/values.json
 
 .PHONY: deploy
-deploy: $(BIN)/kind $(BIN)/helm docker-image/phlare/build
+deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 	$(call deploy,phlare-dev,)
 	# Create a service to provide the same endpoint as micro-services
 	echo '{"kind":"Service","apiVersion":"v1","metadata":{"name":"phlare-micro-services-query-frontend"},"spec":{"ports":[{"name":"phlare","port":4100,"targetPort":4100}],"selector":{"app.kubernetes.io/component":"all","app.kubernetes.io/instance":"phlare-dev"},"type":"ClusterIP"}}' | kubectl apply -f -
 
 .PHONY: deploy-micro-services
-deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/phlare/build
+deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 	$(call deploy,phlare-micro-services,--values=operations/phlare/helm/phlare/values-micro-services.yaml --set phlare.components.querier.resources=null --set phlare.components.distributor.resources=null --set phlare.components.ingester.resources=null --set phlare.components.store-gateway.resources=null)
 
 .PHONY: deploy-monitoring
@@ -391,4 +391,4 @@ docs/%:
 
 .PHONY: run
 run: ## Run the phlare binary (pass parameters with 'make run PARAMS=-myparam')
-	./phlare $(PARAMS)
+	./pyroscope $(PARAMS)

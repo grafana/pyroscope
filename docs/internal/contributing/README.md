@@ -50,7 +50,7 @@ make go/test
 To build the docker image use:
 
 ```
-make docker-image/phlare/build
+make docker-image/pyroscope/build
 ```
 
 This target uses the `go/bin` target to first build binaries to include in the image.
@@ -59,7 +59,7 @@ Make sure to pass the correct `GOOS` and `GOARCH` env variables.
 For example for `linux/amd64`:
 
 ```
-GOOS=linux GOARCH=amd64 make docker-image/phlare/build
+GOOS=linux GOARCH=amd64 make docker-image/pyroscope/build
 ```
 
 ### Dependency management

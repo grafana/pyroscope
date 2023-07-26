@@ -307,18 +307,30 @@ func TestHeadSeries(t *testing.T) {
 	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New(), fooLabels...))
 	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New(), barLabels...))
 
-	expected := phlaremodel.NewLabelsBuilder(nil).
+	lblBuilder := phlaremodel.NewLabelsBuilder(nil).
 		Set("namespace", "phlare").
 		Set("job", "foo").
 		Set("__period_type__", "type").
 		Set("__period_unit__", "unit").
 		Set("__type__", "type").
 		Set("__unit__", "unit").
-		Set("__profile_type__", ":type:unit:type:unit").
-		Labels()
+		Set("__profile_type__", ":type:unit:type:unit")
+	expected := lblBuilder.Labels()
 	res, err := head.Series(context.Background(), connect.NewRequest(&ingestv1.SeriesRequest{Matchers: []string{`{job="foo"}`}}))
 	require.NoError(t, err)
 	require.Equal(t, []*typesv1.Labels{{Labels: expected}}, res.Msg.LabelsSet)
+
+	// Test we can filter labelNames
+	res, err = head.Series(context.Background(), connect.NewRequest(&ingestv1.SeriesRequest{LabelNames: []string{"job", "not-existing"}}))
+	require.NoError(t, err)
+	lblBuilder.Reset(nil)
+	jobFoo := lblBuilder.Set("job", "foo").Labels()
+	lblBuilder.Reset(nil)
+	jobBar := lblBuilder.Set("job", "bar").Labels()
+	require.Len(t, res.Msg.LabelsSet, 2)
+	require.Contains(t, res.Msg.LabelsSet, &typesv1.Labels{Labels: jobFoo})
+	require.Contains(t, res.Msg.LabelsSet, &typesv1.Labels{Labels: jobBar})
+
 }
 
 func TestHeadProfileTypes(t *testing.T) {

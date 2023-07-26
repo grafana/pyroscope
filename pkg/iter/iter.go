@@ -1,7 +1,9 @@
 package iter
 
 import (
+	"context"
 	"sort"
+	"sync"
 
 	"github.com/samber/lo"
 	"golang.org/x/exp/constraints"
@@ -243,22 +245,38 @@ type BufferedIterator[T any] struct {
 	Iterator[T]
 	buff chan T
 	at   T
+
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 }
 
 // NewBufferedIterator returns an iterator that reads asynchronously from the given iterator and buffers up to size elements.
 func NewBufferedIterator[T any](it Iterator[T], size int) Iterator[T] {
+	ctx, cancel := context.WithCancel(context.Background())
 	buffered := &BufferedIterator[T]{
 		Iterator: it,
 		buff:     make(chan T, size),
+		ctx:      ctx,
+		cancel:   cancel,
 	}
+
+	buffered.wg.Add(1)
 	go buffered.fill()
 	return buffered
 }
 
 func (it *BufferedIterator[T]) fill() {
+	defer it.wg.Done()
 	defer close(it.buff)
+
 	for it.Iterator.Next() {
-		it.buff <- it.Iterator.At()
+		select {
+		case <-it.ctx.Done():
+			return
+		case it.buff <- it.Iterator.At():
+			continue
+		}
 	}
 }
 
@@ -270,6 +288,17 @@ func (it *BufferedIterator[T]) Next() bool {
 	return ok
 }
 
+func (it *BufferedIterator[T]) Err() error {
+	return it.Iterator.Err()
+}
+
 func (it *BufferedIterator[T]) At() T {
 	return it.at
+}
+
+func (it *BufferedIterator[T]) Close() error {
+	err := it.Iterator.Close()
+	it.cancel()
+	it.wg.Wait()
+	return err
 }

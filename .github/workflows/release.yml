@@ -32,7 +32,7 @@ jobs:
           cache: true
       - uses: actions/setup-node@v3
         with:
-          node-version: 18.15.0
+          node-version: lts/hydrogen
           cache: yarn
       # setup docker buildx
       - name: Set up QEMU
