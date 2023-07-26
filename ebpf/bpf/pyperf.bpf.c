@@ -378,7 +378,7 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
                 sizeof(void *),
                 thread_state + pid_data->offsets.PyThreadState_frame);
         // jump to reading first set of Python frames
-        pyro_bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
+        bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
         // we won't ever get here
     }
 
@@ -411,7 +411,7 @@ static inline __attribute__((__always_inline__)) void get_names(
             &args_ptr, sizeof(void *), args_ptr + offsets->PyTupleObject_item);
     bpf_probe_read_user_str(
             &symbol->name, sizeof(symbol->name), args_ptr + offsets->String_data);
-    
+
     // compare strings as ints to save instructions
     char self_str[4] = {'s', 'e', 'l', 'f'};
     char cls_str[4] = {'c', 'l', 's', '\0'};
@@ -538,7 +538,7 @@ int read_python_stack(struct bpf_perf_event_data *ctx) {
     if (sample->stack_status == STACK_STATUS_TRUNCATED &&
         state->python_stack_prog_call_cnt < PYTHON_STACK_PROG_CNT) {
         // read next batch of frames
-        pyro_bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
+        bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
     }
 
     return submit_sample(ctx, state);

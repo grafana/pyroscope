@@ -3,20 +3,10 @@ package ume
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"regexp"
-	"strconv"
 	"time"
 )
 
-func StartGDBServer() {
-	//gdbserver --attach :4343 65639
-	dateCmd := exec.Command("date", "--attach", ":4343", strconv.Itoa(os.Getpid()))
-	err := dateCmd.Start()
-	if err != nil {
-		panic(err)
-	}
-}
 func WaitForDebugger() {
 	re := regexp.MustCompile("TracerPid:\\s+(\\d+)")
 	for {

@@ -7,15 +7,44 @@ package ume
 
 #define _GNU_SOURCE
 #include <dlfcn.h>
-
+#include <setjmp.h>
 #include <link.h>
 
 typedef struct link_map LinkMap;
 
+jmp_buf tail_call_jmp_buff;
+
+int (*tail_call_fptr)(void *ctx) = 0;
+void *tail_call_ctx = 0;
+
+//todo this is only valid for this map declaration, make it universal
+struct prog_array_map_mirror {
+	void *type;
+	void *max_entries;
+	void *key;
+    void *values[];
+};
+//static long (*bpf_tail_call)(void *ctx, void *prog_array_map, __u32 index) = (void *) 12;
+static void ume_bpf_tail_call(void *ctx, void *prog_array_map, int index) {
+	struct prog_array_map_mirror *mm = prog_array_map;
+	void *ff = mm->values[index];
+	tail_call_ctx = ctx;
+	tail_call_fptr = (void *)ff;
+    longjmp(tail_call_jmp_buff, 1);
+}
+
+void *ume_get_bpf_tail_call() {
+	return ume_bpf_tail_call;
+}
 
 int ume_bpf_invoke(void *sym, void *arg) {
-    int (*pFunction)(void *) = sym;
-    return pFunction(arg);
+	int res = setjmp(tail_call_jmp_buff);
+	if (res == 0) {
+		int (*pFunction)(void *) = sym;
+		return pFunction(arg);
+	} else {
+		return tail_call_fptr(tail_call_ctx);
+    }
 };
 
 */
@@ -113,6 +142,8 @@ func New(soPath string, prog string) (*UME, error) {
 	mustNotError(res.BindFunc5("bpf_perf_event_output", res.helperPerfEventOutput))
 	warnOnError(res.BindFunc3("bpf_perf_prog_read_value", res.helperPerfProgReadValue))
 	mustNotError(res.BindFunc4("bpf_map_update_elem", res.helperMapUpdateElem))
+	mustNotError(res.BindBPFTailCall())
+
 	return res, nil
 }
 
@@ -386,6 +417,19 @@ func (u *UME) helperMapUpdateElem(m, k, v, flags uintptr) uintptr {
 		panic(fmt.Sprintf("map %x not found", m))
 	}
 	return mm.UpdateElem(k, v, flags)
+}
+
+func (u *UME) BindBPFTailCall() error {
+
+	found := u.Symbol("bpf_tail_call")
+	if found == -1 {
+		return fmt.Errorf("func bpf_tail_call not found")
+	}
+
+	tc := C.ume_get_bpf_tail_call()
+	p := (*uintptr)(unsafe.Pointer(u.base + uintptr(found)))
+	*p = uintptr(tc)
+	return nil
 }
 
 func memset_(buf uintptr, b uint8, sz uintptr) {

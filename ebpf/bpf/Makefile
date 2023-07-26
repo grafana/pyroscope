@@ -26,6 +26,7 @@ clean:
 profile.so:
 	clang -DBPF_NO_PRESERVE_ACCESS_INDEX -DPYROSCOPE_UME -D __TARGET_ARCH_x86 \
  		-O0 -g3 -Wall -fpie -fPIC -nostdinc -std=gnu11 \
+ 		-fno-omit-frame-pointer \
  		-shared \
  		-Wno-unused-variable -Wno-unused-function \
  		-I./libbpf -I./vmlinux/ \
