@@ -12,8 +12,8 @@ type SymDB struct {
 	writer *Writer
 	stats  stats
 
-	m        sync.RWMutex
-	mappings map[uint64]*inMemoryMapping
+	m          sync.RWMutex
+	partitions map[uint64]*inMemoryPartition
 
 	wg   sync.WaitGroup
 	stop chan struct{}
@@ -32,7 +32,7 @@ const statsUpdateInterval = 10 * time.Second
 
 type stats struct {
 	memorySize atomic.Uint64
-	mappings   atomic.Uint32
+	partitions atomic.Uint32
 }
 
 func DefaultConfig() *Config {
@@ -57,27 +57,27 @@ func NewSymDB(c *Config) *SymDB {
 		c = DefaultConfig()
 	}
 	db := &SymDB{
-		config:   c,
-		writer:   NewWriter(c.Dir),
-		mappings: make(map[uint64]*inMemoryMapping),
-		stop:     make(chan struct{}),
+		config:     c,
+		writer:     NewWriter(c.Dir),
+		partitions: make(map[uint64]*inMemoryPartition),
+		stop:       make(chan struct{}),
 	}
 	db.wg.Add(1)
 	go db.updateStats()
 	return db
 }
 
-func (s *SymDB) MappingWriter(mappingName uint64) MappingWriter {
-	return s.mapping(mappingName)
+func (s *SymDB) SymbolsAppender(partition uint64) SymbolsAppender {
+	return s.partition(partition)
 }
 
-func (s *SymDB) MappingReader(mappingName uint64) (MappingReader, bool) {
-	return s.lookupMapping(mappingName)
+func (s *SymDB) SymbolsResolver(partition uint64) (SymbolsResolver, bool) {
+	return s.lookupPartition(partition)
 }
 
-func (s *SymDB) lookupMapping(mappingName uint64) (*inMemoryMapping, bool) {
+func (s *SymDB) lookupPartition(partition uint64) (*inMemoryPartition, bool) {
 	s.m.RLock()
-	p, ok := s.mappings[mappingName]
+	p, ok := s.partitions[partition]
 	if ok {
 		s.m.RUnlock()
 		return p, true
@@ -86,26 +86,26 @@ func (s *SymDB) lookupMapping(mappingName uint64) (*inMemoryMapping, bool) {
 	return nil, false
 }
 
-func (s *SymDB) mapping(mappingName uint64) *inMemoryMapping {
-	p, ok := s.lookupMapping(mappingName)
+func (s *SymDB) partition(partition uint64) *inMemoryPartition {
+	p, ok := s.lookupPartition(partition)
 	if ok {
 		return p
 	}
 	s.m.Lock()
-	if p, ok = s.mappings[mappingName]; ok {
+	if p, ok = s.partitions[partition]; ok {
 		s.m.Unlock()
 		return p
 	}
-	p = &inMemoryMapping{
-		name:               mappingName,
+	p = &inMemoryPartition{
+		name:               partition,
 		maxNodesPerChunk:   s.config.Stacktraces.MaxNodesPerChunk,
 		stacktraceHashToID: make(map[uint64]uint32, defaultStacktraceTreeSize/2),
 	}
 	p.stacktraceChunks = append(p.stacktraceChunks, &stacktraceChunk{
-		tree:    newStacktraceTree(defaultStacktraceTreeSize),
-		mapping: p,
+		tree:     newStacktraceTree(defaultStacktraceTreeSize),
+		parition: p,
 	})
-	s.mappings[mappingName] = p
+	s.partitions[partition] = p
 	s.m.Unlock()
 	return p
 }
@@ -114,9 +114,9 @@ func (s *SymDB) Flush() error {
 	close(s.stop)
 	s.wg.Wait()
 	s.m.RLock()
-	m := make([]*inMemoryMapping, len(s.mappings))
+	m := make([]*inMemoryPartition, len(s.partitions))
 	var i int
-	for _, v := range s.mappings {
+	for _, v := range s.partitions {
 		m[i] = v
 		i++
 	}
@@ -156,7 +156,7 @@ func (s *SymDB) updateStats() {
 			return
 		case <-t.C:
 			s.m.RLock()
-			s.stats.mappings.Store(uint32(len(s.mappings)))
+			s.stats.partitions.Store(uint32(len(s.partitions)))
 			s.stats.memorySize.Store(uint64(s.calculateMemoryFootprint()))
 			s.m.RUnlock()
 		}
@@ -165,7 +165,7 @@ func (s *SymDB) updateStats() {
 
 // calculateMemoryFootprint estimates the memory footprint.
 func (s *SymDB) calculateMemoryFootprint() (v int) {
-	for _, m := range s.mappings {
+	for _, m := range s.partitions {
 		m.stacktraceMutex.RLock()
 		v += len(m.stacktraceChunkHeaders) * stacktraceChunkHeaderSize
 		for _, c := range m.stacktraceChunks {

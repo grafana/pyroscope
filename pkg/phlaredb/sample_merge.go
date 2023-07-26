@@ -56,20 +56,12 @@ func newLocationsIdsByStacktraceID(size int) locationsIdsByStacktraceID {
 	}
 }
 
-func (l locationsIdsByStacktraceID) addFromParquet(stacktraceID int64, locs []parquet.Value) {
-	l.byStacktraceID[stacktraceID] = make([]int32, len(locs))
-	for i, locationID := range locs {
-		locID := locationID.Uint64()
-		l.ids[int64(locID)] = struct{}{}
-		l.byStacktraceID[stacktraceID][i] = int32(locID)
-	}
-}
-
-func (l locationsIdsByStacktraceID) add(stacktraceID int64, locs []int32) {
-	l.byStacktraceID[stacktraceID] = make([]int32, len(locs))
+func (l locationsIdsByStacktraceID) InsertStacktrace(stacktraceID uint32, locs []int32) {
+	s := make([]int32, len(locs))
+	l.byStacktraceID[int64(stacktraceID)] = s
 	for i, locationID := range locs {
 		l.ids[int64(locationID)] = struct{}{}
-		l.byStacktraceID[stacktraceID][i] = locationID
+		s[i] = locationID
 	}
 }
 

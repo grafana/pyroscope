@@ -11,24 +11,22 @@ import (
 //
 // In the package, Mapping represents all the version of a binary.
 
-type MappingWriter interface {
-	// StacktraceAppender provides exclusive write access
-	// to the stack traces of the mapping.
-	//
-	// StacktraceAppender.Release must be called in order
-	// to dispose the object and release the lock.
-	// Released resolver must not be used.
+type SymbolsAppender interface {
 	StacktraceAppender() StacktraceAppender
 }
 
-type MappingReader interface {
-	// StacktraceResolver provides non-exclusive read
-	// access to the stack traces of the mapping.
-	//
-	// StacktraceResolver.Release must be called in order
-	// to dispose the object and release the lock.
-	// Released resolver must not be used.
+type SymbolsResolver interface {
 	StacktraceResolver() StacktraceResolver
+	WriteStats(*Stats)
+}
+
+type Stats struct {
+	StacktracesTotal int
+	LocationsTotal   int
+	MappingsTotal    int
+	FunctionsTotal   int
+	StringsTotal     int
+	MaxStacktraceID  int
 }
 
 type StacktraceAppender interface {
