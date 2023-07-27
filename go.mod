@@ -17,7 +17,7 @@ require (
 	github.com/gogo/status v1.1.1
 	github.com/golang/protobuf v1.5.3
 	github.com/google/go-cmp v0.5.9
-	github.com/google/pprof v0.0.0-20230602150820-91b7bce49751
+	github.com/google/pprof v0.0.0-20230705174524-200ffdc848b8
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grafana/dskit v0.0.0-20230704141205-12e5a855ec34
@@ -29,7 +29,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/json-iterator/go v1.1.12
 	github.com/k0kubun/pp/v3 v3.2.0
-	github.com/klauspost/compress v1.16.6
+	github.com/klauspost/compress v1.16.7
 	github.com/mattn/go-isatty v0.0.17
 	github.com/minio/minio-go/v7 v7.0.45
 	github.com/mitchellh/go-wordwrap v1.0.1
@@ -41,14 +41,14 @@ require (
 	github.com/opentracing-contrib/go-stdlib v1.0.0
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b
 	github.com/parca-dev/parca v0.17.0
+	github.com/parquet-go/parquet-go v0.17.1-0.20230724165737-1e4f8bbc561c
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.15.1
+	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/common v0.44.0
 	github.com/prometheus/prometheus v1.99.0
 	github.com/pyroscope-io/client v0.7.1
 	github.com/pyroscope-io/jfr-parser v0.6.0
 	github.com/samber/lo v1.37.0
-	github.com/segmentio/parquet-go v0.0.0-20230309140036-b6d0a6236da6
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.4
 	github.com/thanos-io/objstore v0.0.0-20230306180455-fb5482c10670
@@ -59,10 +59,10 @@ require (
 	github.com/xlab/treeprint v1.2.0
 	go.uber.org/atomic v1.10.0
 	go.uber.org/goleak v1.2.1
-	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
+	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
 	golang.org/x/net v0.11.0
 	golang.org/x/sync v0.3.0
-	golang.org/x/sys v0.9.0
+	golang.org/x/sys v0.10.0
 	golang.org/x/text v0.10.0
 	golang.org/x/time v0.3.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20230530153820-e85fd2cbaebc
@@ -98,7 +98,7 @@ require (
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/aliyun/aliyun-oss-go-sdk v2.2.6+incompatible // indirect
-	github.com/andybalholm/brotli v1.0.4 // indirect
+	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go v1.44.284 // indirect
@@ -214,14 +214,14 @@ require (
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
 	github.com/oracle/oci-go-sdk/v65 v65.28.0 // indirect
 	github.com/ovh/go-ovh v1.4.1 // indirect
-	github.com/pierrec/lz4/v4 v4.1.17 // indirect
+	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/alertmanager v0.25.1-0.20230502165937-0f3ab929fa37 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common/sigv4 v0.1.0 // indirect
 	github.com/prometheus/exporter-toolkit v0.9.1 // indirect
-	github.com/prometheus/procfs v0.10.0 // indirect
+	github.com/prometheus/procfs v0.11.0 // indirect
 	github.com/pyroscope-io/godeltaprof v0.1.0 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/rs/xid v1.4.0 // indirect
@@ -249,7 +249,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.10.0 // indirect
-	golang.org/x/mod v0.10.0 // indirect
+	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/oauth2 v0.8.0 // indirect
 	golang.org/x/term v0.9.0 // indirect
 	golang.org/x/tools v0.8.0 // indirect

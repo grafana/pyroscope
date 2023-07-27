@@ -13,8 +13,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/runutil"
+	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
-	"github.com/segmentio/parquet-go"
 	"go.uber.org/atomic"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"

@@ -6,11 +6,11 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/segmentio/parquet-go"
-	"github.com/segmentio/parquet-go/compress"
-	"github.com/segmentio/parquet-go/deprecated"
-	"github.com/segmentio/parquet-go/encoding"
-	"github.com/segmentio/parquet-go/format"
+	"github.com/parquet-go/parquet-go"
+	"github.com/parquet-go/parquet-go/compress"
+	"github.com/parquet-go/parquet-go/deprecated"
+	"github.com/parquet-go/parquet-go/encoding"
+	"github.com/parquet-go/parquet-go/format"
 )
 
 // Group allows to write a custom ordered schema. As opposed to parquet.Group which orders fields alphabethical as it is based on a map.

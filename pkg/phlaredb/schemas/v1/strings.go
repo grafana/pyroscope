@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"github.com/segmentio/parquet-go"
+	"github.com/parquet-go/parquet-go"
 
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
 )

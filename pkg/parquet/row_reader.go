@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/grafana/dskit/runutil"
-	"github.com/segmentio/parquet-go"
+	"github.com/parquet-go/parquet-go"
 
 	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/util"

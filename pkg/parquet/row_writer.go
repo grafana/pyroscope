@@ -3,7 +3,7 @@ package parquet
 import (
 	"io"
 
-	"github.com/segmentio/parquet-go"
+	"github.com/parquet-go/parquet-go"
 )
 
 type RowWriterFlusher interface {

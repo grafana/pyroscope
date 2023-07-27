@@ -10,11 +10,11 @@ import (
 
 	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
+	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb"
-	"github.com/segmentio/parquet-go"
 
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"

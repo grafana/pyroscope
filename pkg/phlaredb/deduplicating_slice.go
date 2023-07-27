@@ -7,9 +7,9 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/util/zeropool"
-	"github.com/segmentio/parquet-go"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
