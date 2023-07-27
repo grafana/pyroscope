@@ -27,7 +27,7 @@ var (
 		phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("Labels", pprofLabels),
 	}
-	profilesSchema = parquet.NewSchema("Profile", phlareparquet.Group{
+	ProfilesSchema = parquet.NewSchema("Profile", phlareparquet.Group{
 		phlareparquet.NewGroupField("ID", parquet.UUID()),
 		phlareparquet.NewGroupField("SeriesIndex", parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("StacktracePartition", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
@@ -54,22 +54,22 @@ func init() {
 		SeriesIndex: math.MaxUint32,
 		TimeNanos:   math.MaxInt64,
 	}, maxProfileRow)
-	seriesCol, ok := profilesSchema.Lookup("SeriesIndex")
+	seriesCol, ok := ProfilesSchema.Lookup("SeriesIndex")
 	if !ok {
 		panic(fmt.Errorf("SeriesIndex index column not found"))
 	}
 	seriesIndexColIndex = seriesCol.ColumnIndex
-	timeCol, ok := profilesSchema.Lookup("TimeNanos")
+	timeCol, ok := ProfilesSchema.Lookup("TimeNanos")
 	if !ok {
 		panic(fmt.Errorf("TimeNanos column not found"))
 	}
 	timeNanoColIndex = timeCol.ColumnIndex
-	stacktraceIDCol, ok := profilesSchema.Lookup("Samples", "list", "element", "StacktraceID")
+	stacktraceIDCol, ok := ProfilesSchema.Lookup("Samples", "list", "element", "StacktraceID")
 	if !ok {
 		panic(fmt.Errorf("StacktraceID column not found"))
 	}
 	stacktraceIDColIndex = stacktraceIDCol.ColumnIndex
-	stacktracePartitionCol, ok := profilesSchema.Lookup("StacktracePartition")
+	stacktracePartitionCol, ok := ProfilesSchema.Lookup("StacktracePartition")
 	if !ok {
 		panic(fmt.Errorf("StacktracePartition column not found"))
 	}
@@ -143,7 +143,7 @@ func (*ProfilePersister) Name() string {
 }
 
 func (*ProfilePersister) Schema() *parquet.Schema {
-	return profilesSchema
+	return ProfilesSchema
 }
 
 func (*ProfilePersister) SortingColumns() parquet.SortingOption {
@@ -155,13 +155,13 @@ func (*ProfilePersister) SortingColumns() parquet.SortingOption {
 }
 
 func (*ProfilePersister) Deconstruct(row parquet.Row, id uint64, s *Profile) parquet.Row {
-	row = profilesSchema.Deconstruct(row, s)
+	row = ProfilesSchema.Deconstruct(row, s)
 	return row
 }
 
 func (*ProfilePersister) Reconstruct(row parquet.Row) (id uint64, s *Profile, err error) {
 	var profile Profile
-	if err := profilesSchema.Reconstruct(&profile, row); err != nil {
+	if err := ProfilesSchema.Reconstruct(&profile, row); err != nil {
 		return 0, nil, err
 	}
 	return 0, &profile, nil
@@ -176,7 +176,7 @@ func NewProfilesRowReader(slice []*Profile) *SliceRowReader[*Profile] {
 	return &SliceRowReader[*Profile]{
 		slice: slice,
 		serialize: func(p *Profile, r parquet.Row) parquet.Row {
-			return profilesSchema.Deconstruct(r, p)
+			return ProfilesSchema.Deconstruct(r, p)
 		},
 	}
 }

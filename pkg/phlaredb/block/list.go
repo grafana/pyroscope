@@ -28,7 +28,11 @@ func ListBlocks(path string, ulidMinTime time.Time) (map[ulid.ULID]*Meta, error)
 		if !entry.IsDir() {
 			continue
 		}
-		meta, _, err := MetaFromDir(filepath.Join(path, entry.Name()))
+		path := filepath.Join(path, entry.Name())
+		if _, ok := IsBlockDir(path); !ok {
+			continue
+		}
+		meta, _, err := MetaFromDir(path)
 		if err != nil {
 			return nil, err
 		}
