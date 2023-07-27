@@ -1,13 +1,10 @@
-import { useState, useEffect, RefObject } from 'react';
+import { useState, useEffect, RefObject, useCallback } from 'react';
 
 import type { Heatmap } from '@phlare/services/render';
 import { HEATMAP_HEIGHT } from './constants';
 import { clearRect, drawRect, getSelectionData } from './utils';
 
 const DEFAULT_SELECTED_COORDINATES = { start: null, end: null };
-let startCoords: SelectedAreaCoordsType | null = null;
-let endCoords: SelectedAreaCoordsType | null = null;
-let selectedAreaToHeatmapRatio = 1;
 
 export type SelectedAreaCoordsType = Record<'x' | 'y', number>;
 interface SelectedCoordinates {
@@ -42,13 +39,13 @@ export const useHeatmapSelection = ({
   const [selectedCoordinates, setSelectedCoordinates] =
     useState<SelectedCoordinates>(DEFAULT_SELECTED_COORDINATES);
 
-  const resetSelection = () => {
-    setSelectedCoordinates(DEFAULT_SELECTED_COORDINATES);
-    startCoords = null;
-    endCoords = null;
-  };
+  const [selectedAreaToHeatmapRatio, setSelectedAreaToHeatmapRatio] = useState(1);
 
-  const handleCellClick = (x: number, y: number) => {
+  const resetSelection = useCallback(() => {
+    setSelectedCoordinates(DEFAULT_SELECTED_COORDINATES);
+  }, [setSelectedCoordinates]);
+
+  const handleCellClick = useCallback((x: number, y: number) => {
     const cellW = heatmapW / heatmap.timeBuckets;
     const cellH = HEATMAP_HEIGHT / heatmap.valueBuckets;
 
@@ -62,14 +59,16 @@ export const useHeatmapSelection = ({
     }
 
     // set startCoords and endCoords to draw selection rectangle for single cell
-    startCoords = {
+    const startCoords = {
       x: (matrixCoords[0] + 1) * cellW,
       y: HEATMAP_HEIGHT - matrixCoords[1] * cellH,
     };
-    endCoords = {
+    const endCoords = {
       x: matrixCoords[0] * cellW,
       y: HEATMAP_HEIGHT - (matrixCoords[1] + 1) * cellH,
     };
+
+    setSelectedCoordinates({ start: startCoords, end: endCoords });
 
     const {
       selectionMinValue,
@@ -90,135 +89,176 @@ export const useHeatmapSelection = ({
       selectionStartTime,
       selectionEndTime
     );
-  };
+  }, [heatmap, heatmapW, onSelection]);
 
-  const startDrawing = (e: MouseEvent) => {
-    window.addEventListener('mousemove', handleDrawingEvent);
-    window.addEventListener('mouseup', endDrawing);
-
-    const canvas = canvasRef.current as HTMLCanvasElement;
-    const { left, top } = canvas.getBoundingClientRect();
-    resetSelection();
-
-    startCoords = { x: e.clientX - left, y: e.clientY - top };
-  };
-
-  const endDrawing = (e: MouseEvent) => {
-    if (startCoords) {
+  const handleDrawingEvent = useCallback(
+    (e: MouseEvent) => {
       const canvas = canvasRef.current as HTMLCanvasElement;
-      const { left, top, width, height } = canvas.getBoundingClientRect();
-      clearRect(canvas);
+      if (canvas && selectedCoordinates.start) {
+        const { left, top } = canvas.getBoundingClientRect();
+        const { x, y } = selectedCoordinates.start;
 
-      const xCursorPosition = e.clientX - left;
-      const yCursorPosition = e.clientY - top;
-      let xEnd;
-      let yEnd;
+        /**
+         * Cursor coordinates inside canvas
+         * @cursorXCoordinate - e.clientX - left
+         * @cursorYCoordinate - e.clientY - top
+         */
+        const width = e.clientX - left - x;
+        const h = e.clientY - top - y;
 
-      if (xCursorPosition < 0) {
-        xEnd = 0;
-      } else if (xCursorPosition > width) {
-        xEnd = width;
-      } else {
-        xEnd = xCursorPosition;
+        drawRect(canvas, x, y, width, h);
       }
+    },
+    [selectedCoordinates.start, canvasRef]
+  );
 
-      if (yCursorPosition < 0) {
-        yEnd = 0;
-      } else if (yCursorPosition > height) {
-        yEnd = parseInt(height.toFixed(0), 10);
-      } else {
-        yEnd = yCursorPosition;
+  const endDrawing = useCallback(
+    (e: MouseEvent) => {
+      if (selectedCoordinates.start) {
+        const canvas = canvasRef.current as HTMLCanvasElement;
+        const { left, top, width, height } = canvas.getBoundingClientRect();
+        clearRect(canvas);
+
+        const xCursorPosition = e.clientX - left;
+        const yCursorPosition = e.clientY - top;
+        let xEnd;
+        let yEnd;
+
+        if (xCursorPosition < 0) {
+          xEnd = 0;
+        } else if (xCursorPosition > width) {
+          xEnd = width;
+        } else {
+          xEnd = xCursorPosition;
+        }
+
+        if (yCursorPosition < 0) {
+          yEnd = 0;
+        } else if (yCursorPosition > height) {
+          yEnd = parseInt(height.toFixed(0), 10);
+        } else {
+          yEnd = yCursorPosition;
+        }
+
+        const end = { x: xEnd, y: yEnd };
+        const {start} = selectedCoordinates;
+
+        const isClickEvent = start.x === xEnd && start.y === end.y;
+
+        if (isClickEvent) {
+          handleCellClick(xEnd, yEnd);
+        } else {
+          const {
+            selectionMinValue,
+            selectionMaxValue,
+            selectionStartTime,
+            selectionEndTime,
+          } = getSelectionData(heatmap, heatmapW, start, end);
+
+          onSelection(
+            selectionMinValue,
+            selectionMaxValue,
+            selectionStartTime,
+            selectionEndTime
+          );
+        }
+
+        window.removeEventListener('mousemove', handleDrawingEvent);
+        window.removeEventListener('mouseup', endDrawing);
+
+        const selectedAreaW = end.x - start.x;
+        if (selectedAreaW) {
+          setSelectedAreaToHeatmapRatio(Math.abs(width / selectedAreaW));
+        } else {
+          setSelectedAreaToHeatmapRatio(1);
+        }
       }
+    },
+    [
+      selectedCoordinates,
+      canvasRef,
+      handleCellClick,
+      handleDrawingEvent,
+      heatmap,
+      heatmapW,
+      onSelection,
+    ]
+  );
 
-      endCoords = { x: xEnd, y: yEnd };
-      const isClickEvent = startCoords.x === xEnd && startCoords.y === yEnd;
+  const startDrawing = useCallback(
+    (e: MouseEvent) => {
+      window.addEventListener('mousemove', handleDrawingEvent);
+      window.addEventListener('mouseup', endDrawing);
 
-      if (isClickEvent) {
-        handleCellClick(xEnd, yEnd);
-      } else {
-        const {
-          selectionMinValue,
-          selectionMaxValue,
-          selectionStartTime,
-          selectionEndTime,
-        } = getSelectionData(heatmap, heatmapW, startCoords, endCoords);
-
-        onSelection(
-          selectionMinValue,
-          selectionMaxValue,
-          selectionStartTime,
-          selectionEndTime
-        );
-      }
-
-      window.removeEventListener('mousemove', handleDrawingEvent);
-      window.removeEventListener('mouseup', endDrawing);
-
-      const selectedAreaW = endCoords.x - startCoords.x;
-      if (selectedAreaW) {
-        selectedAreaToHeatmapRatio = Math.abs(width / selectedAreaW);
-      } else {
-        selectedAreaToHeatmapRatio = 1;
-      }
-    }
-  };
-
-  const handleDrawingEvent = (e: MouseEvent) => {
-    const canvas = canvasRef.current as HTMLCanvasElement;
-
-    if (canvas && startCoords) {
+      const canvas = canvasRef.current as HTMLCanvasElement;
       const { left, top } = canvas.getBoundingClientRect();
+      resetSelection();
 
-      /**
-       * Cursor coordinates inside canvas
-       * @cursorXCoordinate - e.clientX - left
-       * @cursorYCoordinate - e.clientY - top
-       */
-      const width = e.clientX - left - startCoords.x;
-      const h = e.clientY - top - startCoords.y;
+      const start = { x: e.clientX - left, y: e.clientY - top };
 
-      drawRect(canvas, startCoords.x, startCoords.y, width, h);
-    }
-  };
+      setSelectedCoordinates({...selectedCoordinates, start});
 
-  useEffect(() => {
-    if (canvasRef.current) {
-      canvasRef.current.addEventListener('mousedown', startDrawing);
-    }
+      return () => {
+        // Clean up old event listeners before adding new ones
+        window.removeEventListener('mousemove', handleDrawingEvent);
+        window.removeEventListener('mouseup', endDrawing);
+      };
+    },
+    [canvasRef, resetSelection, endDrawing, handleDrawingEvent, selectedCoordinates]
+  );
 
-    if (resizedSelectedAreaRef.current) {
-      resizedSelectedAreaRef.current.addEventListener(
-        'mousedown',
-        startDrawing
-      );
-    }
+  useEffect(
+    () => {
+      const currentCanvasRef = canvasRef.current;
+      const currentResizedSelectedAreaRef = resizedSelectedAreaRef.current;
 
-    return () => {
-      if (canvasRef.current) {
-        canvasRef.current.removeEventListener('mousedown', startDrawing);
+      if (currentCanvasRef) {
+        currentCanvasRef.addEventListener('mousedown', startDrawing);
       }
 
-      if (resizedSelectedAreaRef.current) {
-        resizedSelectedAreaRef.current.removeEventListener(
+      if (currentResizedSelectedAreaRef) {
+        currentResizedSelectedAreaRef.addEventListener(
           'mousedown',
           startDrawing
         );
       }
 
-      window.removeEventListener('mousemove', handleDrawingEvent);
-      window.removeEventListener('mouseup', endDrawing);
-    };
-  }, [heatmap, heatmapW]);
+      return () => {
+        if (currentCanvasRef) {
+          currentCanvasRef.removeEventListener('mousedown', startDrawing);
+        }
 
-  // set coordinates to display resizable selection rectangle (div element)
-  useEffect(() => {
-    if (startCoords && endCoords) {
-      setSelectedCoordinates({
-        start: { x: startCoords.x, y: startCoords.y },
-        end: { x: endCoords.x, y: endCoords.y },
-      });
-    }
-  }, [startCoords, endCoords]);
+        if (currentResizedSelectedAreaRef) {
+          currentResizedSelectedAreaRef.removeEventListener(
+            'mousedown',
+            startDrawing
+          );
+        }
+
+        window.removeEventListener('mousemove', handleDrawingEvent);
+        window.removeEventListener('mouseup', endDrawing);
+      };
+    },
+    [
+      heatmap,
+      heatmapW,
+      canvasRef,
+      endDrawing,
+      handleDrawingEvent,
+      resizedSelectedAreaRef,
+      startDrawing,
+    ] //
+  );
+
+  // // set coordinates to display resizable selection rectangle (div element)
+  // useEffect(() => {
+  //   if (selectedCoordinates) {
+  //     setSelectedCoordinates({
+  //       start: { x: startCoords.x, y: startCoords.y },
+  //       end: { x: endCoords.x, y: endCoords.y },
+  //     });
+  //   }
+  // }, [selectedCoordinates]);
 
   return {
     selectedCoordinates,
