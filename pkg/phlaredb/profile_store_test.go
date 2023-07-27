@@ -24,10 +24,23 @@ import (
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlareobjclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
+
+const (
+	contextKeyDataDir contextKey = iota + 32
+)
+
+func contextWithDataDir(ctx context.Context, path string) context.Context {
+	return context.WithValue(ctx, contextKeyDataDir, path)
+}
+
+func contextDataDir(ctx context.Context) string {
+	return ctx.Value(contextKeyDataDir).(string)
+}
 
 func testContext(t testing.TB) context.Context {
 	logger := log.NewNopLogger()
@@ -42,8 +55,16 @@ func testContext(t testing.TB) context.Context {
 
 	reg := prometheus.NewPedanticRegistry()
 	ctx = phlarecontext.WithRegistry(ctx, reg)
-	ctx = contextWithHeadMetrics(ctx, newHeadMetrics(reg))
 
+	dataPath := t.TempDir()
+	ctx = contextWithDataDir(ctx, dataPath)
+	bucketCfg := phlareobjclient.Config{}
+	bucketCfg.Backend = "filesystem"
+	bucketCfg.Filesystem.Directory = dataPath
+	bucketClient, err := phlareobjclient.NewBucket(ctx, bucketCfg, "testing")
+	require.NoError(t, err)
+	ctx = phlarecontext.WithLocalBucketClient(ctx, bucketClient)
+	ctx = contextWithHeadMetrics(ctx, newHeadMetrics(reg))
 	return ctx
 }
 

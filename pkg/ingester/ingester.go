@@ -21,6 +21,7 @@ import (
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	phlareobjclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -78,6 +79,17 @@ func (i *ingesterFlusherCompat) Flush() {
 }
 
 func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits) (*Ingester, error) {
+
+	// initialise the local bucket client
+	localBucketCfg := phlareobjclient.Config{}
+	localBucketCfg.Backend = "filesystem"
+	localBucketCfg.Filesystem.Directory = dbConfig.DataPath
+	localBucketClient, err := phlareobjclient.NewBucket(phlarectx, localBucketCfg, "local")
+	if err != nil {
+		return nil, err
+	}
+	phlarectx = phlarecontext.WithLocalBucketClient(phlarectx, localBucketClient)
+
 	i := &Ingester{
 		cfg:           cfg,
 		phlarectx:     phlarectx,
@@ -89,7 +101,6 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		limits:        limits,
 	}
 
-	var err error
 	i.lifecycler, err = ring.NewLifecycler(
 		cfg.LifecyclerConfig,
 		&ingesterFlusherCompat{i},

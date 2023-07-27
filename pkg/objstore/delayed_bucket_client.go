@@ -81,6 +81,10 @@ func (m *DelayedBucketClient) IsObjNotFoundErr(err error) bool {
 	return m.wrapped.IsObjNotFoundErr(err)
 }
 
+func (m *DelayedBucketClient) IsCustomerManagedKeyError(err error) bool {
+	return m.wrapped.IsCustomerManagedKeyError(err)
+}
+
 func (m *DelayedBucketClient) Attributes(ctx context.Context, name string) (objstore.ObjectAttributes, error) {
 	m.delay()
 	defer m.delay()

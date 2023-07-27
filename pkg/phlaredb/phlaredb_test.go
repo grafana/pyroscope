@@ -30,16 +30,17 @@ import (
 )
 
 func TestCreateLocalDir(t *testing.T) {
-	dataPath := t.TempDir()
+	ctx := testContext(t)
+	dataPath := contextDataDir(ctx)
 	localFile := dataPath + "/local"
 	require.NoError(t, os.WriteFile(localFile, []byte("d"), 0o644))
-	_, err := New(context.Background(), Config{
+	_, err := New(testContext(t), Config{
 		DataPath:         dataPath,
 		MaxBlockDuration: 30 * time.Minute,
 	}, NoLimit)
 	require.Error(t, err)
 	require.NoError(t, os.Remove(localFile))
-	_, err = New(context.Background(), Config{
+	_, err = New(ctx, Config{
 		DataPath:         dataPath,
 		MaxBlockDuration: 30 * time.Minute,
 	}, NoLimit)
@@ -140,13 +141,14 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 
 	// ingest some sample data
 	var (
-		testDir = t.TempDir()
+		ctx     = testContext(t)
+		testDir = contextDataDir(ctx)
 		end     = time.Unix(0, int64(time.Hour))
 		start   = end.Add(-time.Minute)
 		step    = 15 * time.Second
 	)
 
-	db, err := New(context.Background(), Config{
+	db, err := New(ctx, Config{
 		DataPath:         testDir,
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 	}, NoLimit)
@@ -161,7 +163,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	)
 
 	// create client
-	ctx := context.Background()
+	ctx = context.Background()
 
 	client, cleanup := db.queriers().ingesterClient()
 	defer cleanup()
@@ -272,13 +274,14 @@ func TestMergeProfilesPprof(t *testing.T) {
 
 	// ingest some sample data
 	var (
-		testDir = t.TempDir()
+		ctx     = testContext(t)
+		testDir = contextDataDir(ctx)
 		end     = time.Unix(0, int64(time.Hour))
 		start   = end.Add(-time.Minute)
 		step    = 15 * time.Second
 	)
 
-	db, err := New(context.Background(), Config{
+	db, err := New(ctx, Config{
 		DataPath:         testDir,
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 	}, NoLimit)
@@ -293,7 +296,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 	)
 
 	// create client
-	ctx := context.Background()
+	ctx = context.Background()
 
 	client, cleanup := db.queriers().ingesterClient()
 	defer cleanup()
@@ -482,8 +485,10 @@ func TestFilterProfiles(t *testing.T) {
 func Test_QueryNotInitializedHead(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	db, err := New(context.Background(), Config{
-		DataPath:         t.TempDir(),
+	ctx := testContext(t)
+
+	db, err := New(ctx, Config{
+		DataPath:         contextDataDir(ctx),
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 	}, NoLimit)
 	require.NoError(t, err)
@@ -491,7 +496,7 @@ func Test_QueryNotInitializedHead(t *testing.T) {
 		require.NoError(t, db.Close())
 	}()
 
-	ctx := context.Background()
+	ctx = context.Background()
 	client, cleanup := db.queriers().ingesterClient()
 	defer cleanup()
 
@@ -554,8 +559,10 @@ func Test_QueryNotInitializedHead(t *testing.T) {
 func Test_FlushNotInitializedHead(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	db, err := New(context.Background(), Config{
-		DataPath: t.TempDir(),
+	ctx := testContext(t)
+
+	db, err := New(ctx, Config{
+		DataPath: contextDataDir(ctx),
 	}, NoLimit)
 
 	var (
@@ -575,7 +582,7 @@ func Test_FlushNotInitializedHead(t *testing.T) {
 		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
 	)
 
-	ctx := context.Background()
+	ctx = context.Background()
 	c1 := db.headFlushCh()
 	require.NotEqual(t, db.stopCh, c1)
 	require.NoError(t, db.Flush(ctx))

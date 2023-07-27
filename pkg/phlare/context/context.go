@@ -6,6 +6,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
+
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 )
 
 type contextKey int
@@ -13,6 +15,7 @@ type contextKey int
 const (
 	loggerKey contextKey = iota
 	registryKey
+	localBucketClient
 )
 
 var (
@@ -41,6 +44,17 @@ func Registry(ctx context.Context) prometheus.Registerer {
 	return prometheus.NewRegistry()
 }
 
+func WithLocalBucketClient(ctx context.Context, client phlareobj.Bucket) context.Context {
+	return context.WithValue(ctx, localBucketClient, client)
+}
+
+func LocalBucketClient(ctx context.Context) phlareobj.Bucket {
+	if client, ok := ctx.Value(localBucketClient).(phlareobj.Bucket); ok {
+		return client
+	}
+	return nil
+}
+
 func WrapTenant(ctx context.Context, tenantID string) context.Context {
 	// wrap registry
 	reg := Registry(ctx)
@@ -54,6 +68,12 @@ func WrapTenant(ctx context.Context, tenantID string) context.Context {
 	ctx = WithLogger(ctx,
 		log.With(logger, "tenant", tenantID),
 	)
+
+	// wrap local bucket client
+	localBucket := LocalBucketClient(ctx)
+	if localBucket != nil {
+		ctx = WithLocalBucketClient(ctx, phlareobj.NewPrefixedBucket(localBucket, tenantID))
+	}
 
 	return ctx
 }

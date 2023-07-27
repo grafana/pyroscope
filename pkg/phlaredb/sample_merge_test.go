@@ -121,13 +121,12 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			testPath := t.TempDir()
-			db, err := New(context.Background(), Config{
-				DataPath:         testPath,
+			ctx := testContext(t)
+			db, err := New(ctx, Config{
+				DataPath:         contextDataDir(ctx),
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 			}, NoLimit)
 			require.NoError(t, err)
-			ctx := context.Background()
 
 			for _, p := range tc.in() {
 				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, p.Labels...))
@@ -135,11 +134,11 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 
 			require.NoError(t, db.Flush(context.Background()))
 
-			b, err := filesystem.NewBucket(filepath.Join(testPath, pathLocal))
+			b, err := filesystem.NewBucket(filepath.Join(contextDataDir(ctx), pathLocal))
 			require.NoError(t, err)
 
 			// open resulting block
-			q := NewBlockQuerier(context.Background(), b)
+			q := NewBlockQuerier(ctx, b)
 			require.NoError(t, q.Sync(context.Background()))
 
 			profiles, err := q.queriers[0].SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
@@ -264,13 +263,12 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			testPath := t.TempDir()
-			db, err := New(context.Background(), Config{
-				DataPath:         testPath,
+			ctx := testContext(t)
+			db, err := New(ctx, Config{
+				DataPath:         contextDataDir(ctx),
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 			}, NoLimit)
 			require.NoError(t, err)
-			ctx := context.Background()
 
 			for _, p := range tc.in() {
 				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, p.Labels...))
@@ -381,13 +379,12 @@ func TestMergeSampleByLabels(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			testPath := t.TempDir()
-			db, err := New(context.Background(), Config{
-				DataPath:         testPath,
+			ctx := testContext(t)
+			db, err := New(ctx, Config{
+				DataPath:         contextDataDir(ctx),
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 			}, NoLimit)
 			require.NoError(t, err)
-			ctx := context.Background()
 
 			for _, p := range tc.in() {
 				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, p.Labels...))
@@ -395,7 +392,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 
 			require.NoError(t, db.Flush(context.Background()))
 
-			b, err := filesystem.NewBucket(filepath.Join(testPath, pathLocal))
+			b, err := filesystem.NewBucket(filepath.Join(contextDataDir(ctx), pathLocal))
 			require.NoError(t, err)
 
 			// open resulting block
@@ -506,13 +503,12 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			testPath := t.TempDir()
-			db, err := New(context.Background(), Config{
-				DataPath:         testPath,
+			ctx := testContext(t)
+			db, err := New(ctx, Config{
+				DataPath:         contextDataDir(ctx),
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 			}, NoLimit)
 			require.NoError(t, err)
-			ctx := context.Background()
 
 			for _, p := range tc.in() {
 				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, p.Labels...))
@@ -544,13 +540,12 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 }
 
 func TestMergePprof(t *testing.T) {
-	testPath := t.TempDir()
-	db, err := New(context.Background(), Config{
-		DataPath:         testPath,
+	ctx := testContext(t)
+	db, err := New(ctx, Config{
+		DataPath:         contextDataDir(ctx),
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 	}, NoLimit)
 	require.NoError(t, err)
-	ctx := context.Background()
 
 	for i := 0; i < 3; i++ {
 		require.NoError(t, db.Ingest(ctx, generateProfile(t, i*1000), uuid.New(), &typesv1.LabelPair{
@@ -561,7 +556,7 @@ func TestMergePprof(t *testing.T) {
 
 	require.NoError(t, db.Flush(context.Background()))
 
-	b, err := filesystem.NewBucket(filepath.Join(testPath, pathLocal))
+	b, err := filesystem.NewBucket(filepath.Join(contextDataDir(ctx), pathLocal))
 	require.NoError(t, err)
 
 	// open resulting block
@@ -599,13 +594,12 @@ func TestMergePprof(t *testing.T) {
 }
 
 func TestHeadMergePprof(t *testing.T) {
-	testPath := t.TempDir()
-	db, err := New(context.Background(), Config{
-		DataPath:         testPath,
+	ctx := testContext(t)
+	db, err := New(ctx, Config{
+		DataPath:         contextDataDir(ctx),
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
 	}, NoLimit)
 	require.NoError(t, err)
-	ctx := context.Background()
 
 	for i := 0; i < 3; i++ {
 		require.NoError(t, db.Ingest(ctx, generateProfile(t, i*1000), uuid.New(), &typesv1.LabelPair{

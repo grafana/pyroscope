@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/thanos-io/objstore"
+	objtracing "github.com/thanos-io/objstore/tracing/opentracing"
 
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/azure"
@@ -41,10 +42,10 @@ func NewBucket(ctx context.Context, cfg Config, name string) (phlareobj.Bucket, 
 		// This means middlewares and instrumentation is not triggered for `ReaderAt` function
 		middlewares := []func(objstore.Bucket) (objstore.Bucket, error){
 			func(b objstore.Bucket) (objstore.Bucket, error) {
-				return objstore.BucketWithMetrics(name, b, reg), nil
+				return objstore.WrapWithMetrics(b, reg, name), nil
 			},
 			func(b objstore.Bucket) (objstore.Bucket, error) {
-				return objstore.NewTracingBucket(b), nil
+				return objtracing.WrapWithTraces(b), nil
 			},
 		}
 		fs, err := filesystem.NewBucket(cfg.Filesystem.Directory, append(middlewares, cfg.Middlewares...)...)
@@ -70,7 +71,7 @@ func NewBucket(ctx context.Context, cfg Config, name string) (phlareobj.Bucket, 
 			return nil, err
 		}
 	}
-	bkt := phlareobj.NewBucket(objstore.NewTracingBucket(objstore.BucketWithMetrics(name, backendClient, reg)))
+	bkt := phlareobj.NewBucket(objtracing.WrapWithTraces(objstore.WrapWithMetrics(backendClient, reg, name)))
 
 	if cfg.StoragePrefix != "" {
 		bkt = phlareobj.NewPrefixedBucket(bkt, cfg.StoragePrefix)
