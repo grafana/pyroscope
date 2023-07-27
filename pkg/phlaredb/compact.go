@@ -370,6 +370,7 @@ type seriesRewriter struct {
 	err              error
 
 	numSeries uint64
+	done      bool
 }
 
 func newSeriesRewriter(it iter.Iterator[profileRow], indexw *index.Writer) *seriesRewriter {
@@ -385,6 +386,10 @@ func (s *seriesRewriter) NumSeries() uint64 {
 
 func (s *seriesRewriter) Next() bool {
 	if !s.Iterator.Next() {
+		if s.done {
+			return false
+		}
+		s.done = true
 		if s.previousFp != 0 {
 			s.currentChunkMeta.SeriesIndex = uint32(s.seriesRef) - 1
 			if err := s.indexw.AddSeries(s.seriesRef-1, s.labels, s.previousFp, s.currentChunkMeta); err != nil {
@@ -411,7 +416,7 @@ func (s *seriesRewriter) Next() bool {
 		s.currentChunkMeta.MinTime = currentProfile.timeNanos
 	}
 	s.currentChunkMeta.MaxTime = currentProfile.timeNanos
-	currentProfile.row.SetSeriesIndex(uint32(s.seriesRef))
+	currentProfile.row.SetSeriesIndex(uint32(s.seriesRef - 1))
 	return true
 }
 

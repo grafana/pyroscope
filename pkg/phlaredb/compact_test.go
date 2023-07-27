@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/client"
@@ -25,6 +26,68 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
+
+func TestCompact(t *testing.T) {
+	ctx := context.Background()
+	b := newBlock(t, func() []*testhelper.ProfileBuilder {
+		return []*testhelper.ProfileBuilder{
+			testhelper.NewProfileBuilder(int64(time.Second*1)).
+				CPUProfile().
+				WithLabels(
+					"job", "a",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+			testhelper.NewProfileBuilder(int64(time.Second*2)).
+				CPUProfile().
+				WithLabels(
+					"job", "b",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+			testhelper.NewProfileBuilder(int64(time.Second*3)).
+				CPUProfile().
+				WithLabels(
+					"job", "c",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+		}
+	})
+	dst := t.TempDir()
+	new, err := Compact(ctx, []BlockReader{b, b, b, b}, dst)
+	require.NoError(t, err)
+	require.Equal(t, uint64(3), new.Stats.NumProfiles)
+	require.Equal(t, uint64(3), new.Stats.NumSamples)
+	require.Equal(t, uint64(3), new.Stats.NumSeries)
+	require.Equal(t, model.TimeFromUnix(1), new.MinTime)
+	require.Equal(t, model.TimeFromUnix(3), new.MaxTime)
+	querier := blockQuerierFromMeta(t, dst, new)
+
+	matchAll := &ingesterv1.SelectProfilesRequest{
+		LabelSelector: "{}",
+		Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+		Start:         0,
+		End:           40000,
+	}
+	it, err := querier.SelectMatchingProfiles(ctx, matchAll)
+	require.NoError(t, err)
+	series, err := querier.MergeByLabels(ctx, it, "job")
+	require.NoError(t, err)
+	require.Equal(t, []*typesv1.Series{
+		{Labels: phlaremodel.LabelsFromStrings("job", "a"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(1000)}}},
+		{Labels: phlaremodel.LabelsFromStrings("job", "b"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(2000)}}},
+		{Labels: phlaremodel.LabelsFromStrings("job", "c"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(3000)}}},
+	}, series)
+
+	it, err = querier.SelectMatchingProfiles(ctx, matchAll)
+	require.NoError(t, err)
+	res, err := querier.MergeByStacktraces(ctx, it)
+	require.NoError(t, err)
+	require.Equal(t, &ingesterv1.MergeProfilesStacktracesResult{
+		Stacktraces: []*ingesterv1.StacktraceSample{
+			{
+				FunctionIds: []int32{0, 1, 2},
+				Value:       3,
+			},
+		},
+		FunctionNames: []string{"foo", "bar", "baz"},
+	}, res)
+}
 
 func TestProfileRowIterator(t *testing.T) {
 	b := newBlock(t, func() []*testhelper.ProfileBuilder {
@@ -213,8 +276,21 @@ func TestSeriesRewriter(t *testing.T) {
 	idxw, err := prepareIndexWriter(context.Background(), filePath, []BlockReader{blk})
 	require.NoError(t, err)
 	it := newSeriesRewriter(rows, idxw)
-	for it.Next() {
-	}
+	// tests that all rows are written to the correct series index
+	require.True(t, it.Next())
+	require.Equal(t, uint32(0), it.At().row.SeriesIndex())
+	require.True(t, it.Next())
+	require.Equal(t, uint32(0), it.At().row.SeriesIndex())
+	require.True(t, it.Next())
+	require.Equal(t, uint32(0), it.At().row.SeriesIndex())
+	require.True(t, it.Next())
+	require.Equal(t, uint32(1), it.At().row.SeriesIndex())
+	require.True(t, it.Next())
+	require.Equal(t, uint32(2), it.At().row.SeriesIndex())
+	require.True(t, it.Next())
+	require.Equal(t, uint32(2), it.At().row.SeriesIndex())
+	require.False(t, it.Next())
+
 	require.NoError(t, it.Err())
 	require.NoError(t, it.Close())
 	require.NoError(t, idxw.Close())
@@ -303,6 +379,25 @@ func newBlock(t *testing.T, generator func() []*testhelper.ProfileBuilder) Block
 		meta = m
 	}
 	blk := NewSingleBlockQuerierFromMeta(ctx, bkt, meta)
+	require.NoError(t, blk.Open(ctx))
+	require.NoError(t, blk.stacktraces.Load(ctx))
+	return blk
+}
+
+func blockQuerierFromMeta(t *testing.T, dir string, m block.Meta) Querier {
+	t.Helper()
+	ctx := context.Background()
+	bkt, err := client.NewBucket(ctx, client.Config{
+		StorageBackendConfig: client.StorageBackendConfig{
+			Backend: client.Filesystem,
+			Filesystem: filesystem.Config{
+				Directory: dir,
+			},
+		},
+		StoragePrefix: "",
+	}, "test")
+	require.NoError(t, err)
+	blk := NewSingleBlockQuerierFromMeta(ctx, bkt, &m)
 	require.NoError(t, blk.Open(ctx))
 	require.NoError(t, blk.stacktraces.Load(ctx))
 	return blk

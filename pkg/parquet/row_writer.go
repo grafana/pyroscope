@@ -29,9 +29,9 @@ func CopyAsRowGroups(dst RowWriterFlusher, src parquet.RowReader, rowGroupNumCou
 	)
 
 	for {
-		n, err := src.ReadRows(buffer[:bufferSize])
-		if err != nil && err != io.EOF {
-			return 0, 0, err
+		n, readErr := src.ReadRows(buffer[:bufferSize])
+		if readErr != nil && readErr != io.EOF {
+			return 0, 0, readErr
 		}
 		if n == 0 {
 			break
@@ -52,6 +52,9 @@ func CopyAsRowGroups(dst RowWriterFlusher, src parquet.RowReader, rowGroupNumCou
 			currentGroupCount = 0
 		}
 		if len(buffer) == 0 {
+			if readErr == io.EOF {
+				break
+			}
 			continue
 		}
 		written, err := dst.WriteRows(buffer)
@@ -60,6 +63,9 @@ func CopyAsRowGroups(dst RowWriterFlusher, src parquet.RowReader, rowGroupNumCou
 		}
 		total += uint64(written)
 		currentGroupCount += written
+		if readErr == io.EOF {
+			break
+		}
 	}
 	if currentGroupCount > 0 {
 		if err := dst.Flush(); err != nil {
