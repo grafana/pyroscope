@@ -68,7 +68,7 @@ jobs:
       id: "publish-release"
       with:
         repository: "grafana/website"
-        branch: "master"
+        branch: "publish-to-pyroscope"
         host: "github.com"
         # PUBLISH_TO_WEBSITE_TOKEN is a fine-grained GitHub Personal Access Token that expires.
         # It must be regenerated in the grafanabot GitHub account and requires a Grafana organization
@@ -77,4 +77,4 @@ jobs:
         github_pat: "grafanabot:${{ secrets.PUBLISH_TO_WEBSITE_TOKEN }}"
         source_folder: "docs/sources"
         # Append ".x" to target to produce a v<major>.<minor>.x directory.
-        target_folder: "content/docs/phlare/${{ steps.target.outputs.target }}.x"
+        target_folder: "content/docs/pyroscope/${{ steps.target.outputs.target }}.x"
