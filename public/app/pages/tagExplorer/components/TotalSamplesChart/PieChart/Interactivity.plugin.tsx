@@ -1,6 +1,6 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
 import injectTooltip from '@phlare/components/TimelineChart/injectTooltip';
+import { createRoot } from 'react-dom/client';
 
 const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
 
@@ -42,7 +42,10 @@ type PositionType = {
           value,
         });
 
-        ReactDOM.render(<>{Tooltip}</>, tooltipWrapper?.[0]);
+
+        const container = tooltipWrapper?.[0];
+        const root = createRoot(container);
+        root.render(<>{Tooltip}</>, );
       }
     }
 

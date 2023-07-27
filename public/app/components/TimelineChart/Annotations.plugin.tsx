@@ -1,5 +1,5 @@
 import React from 'react';
-import * as ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import Color from 'color';
 import { Provider } from 'react-redux';
 import store from '@phlare/redux/store';
@@ -112,7 +112,12 @@ function renderAnnotationIcon({
     annotationMarkElement.css({ left });
   }
 
-  ReactDOM.render(
+  const container = document.getElementById(annotationMarkElementId);
+  if (!container) {
+    throw new Error("DOM state error: was not able to find container: " + annotationMarkElementId);
+  }
+  const root = createRoot(container);
+  root.render(
     <Provider store={store}>
       <AnnotationMark
         type={annotation.type}
@@ -120,7 +125,6 @@ function renderAnnotationIcon({
         color={annotation.color}
         value={{ content: annotation.content, timestamp: annotation.timestamp }}
       />
-    </Provider>,
-    document.getElementById(annotationMarkElementId)
+    </Provider>
   );
 }
