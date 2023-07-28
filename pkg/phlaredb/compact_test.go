@@ -410,7 +410,8 @@ func TestCompactMetas(t *testing.T) {
 			MinTime: model.TimeFromUnix(0),
 			MaxTime: model.TimeFromUnix(100),
 			Compaction: tsdb.BlockMetaCompaction{
-				Level: 1,
+				Level:   1,
+				Sources: []ulid.ULID{ulid.MustParse("00000000000000000000000001")},
 			},
 			Labels: map[string]string{"foo": "bar"},
 		},
@@ -419,7 +420,8 @@ func TestCompactMetas(t *testing.T) {
 			MinTime: model.TimeFromUnix(50),
 			MaxTime: model.TimeFromUnix(100),
 			Compaction: tsdb.BlockMetaCompaction{
-				Level: 0,
+				Level:   0,
+				Sources: []ulid.ULID{ulid.MustParse("00000000000000000000000002")},
 			},
 			Labels: map[string]string{"bar": "buzz"},
 		},
@@ -428,10 +430,11 @@ func TestCompactMetas(t *testing.T) {
 			MinTime: model.TimeFromUnix(50),
 			MaxTime: model.TimeFromUnix(200),
 			Compaction: tsdb.BlockMetaCompaction{
-				Level: 3,
+				Level:   3,
+				Sources: []ulid.ULID{ulid.MustParse("00000000000000000000000003")},
 			},
 		},
-	})
+	}...)
 	labels := map[string]string{"foo": "bar", "bar": "buzz"}
 	if hostname, err := os.Hostname(); err == nil {
 		labels[block.HostnameLabel] = hostname

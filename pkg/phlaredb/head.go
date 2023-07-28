@@ -16,6 +16,7 @@ import (
 	"github.com/gogo/status"
 	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
+	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
@@ -1003,6 +1004,7 @@ func (h *Head) flush(ctx context.Context) error {
 	h.meta.Files = files
 	h.meta.Stats.NumProfiles = uint64(h.profiles.index.totalProfiles.Load())
 	h.meta.Stats.NumSamples = h.totalSamples.Load()
+	h.meta.Compaction.Sources = []ulid.ULID{h.meta.ULID}
 	h.metrics.flushedBlockSamples.Observe(float64(h.meta.Stats.NumSamples))
 	h.metrics.flusehdBlockProfiles.Observe(float64(h.meta.Stats.NumProfiles))
 

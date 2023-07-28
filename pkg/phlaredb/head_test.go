@@ -10,9 +10,11 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/google/uuid"
+	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/tsdb"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +24,9 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
 type noLimit struct{}
@@ -330,7 +334,6 @@ func TestHeadSeries(t *testing.T) {
 	require.Len(t, res.Msg.LabelsSet, 2)
 	require.Contains(t, res.Msg.LabelsSet, &typesv1.Labels{Labels: jobFoo})
 	require.Contains(t, res.Msg.LabelsSet, &typesv1.Labels{Labels: jobBar})
-
 }
 
 func TestHeadProfileTypes(t *testing.T) {
@@ -457,6 +460,50 @@ func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
 	// TODO: We need to test if flushing misses out on ingested profiles
 
 	wg.Wait()
+}
+
+func TestFlushMeta(t *testing.T) {
+	b := newBlock(t, func() []*testhelper.ProfileBuilder {
+		return []*testhelper.ProfileBuilder{
+			testhelper.NewProfileBuilder(int64(time.Second*1)).
+				CPUProfile().
+				WithLabels(
+					"job", "a",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+			testhelper.NewProfileBuilder(int64(time.Second*2)).
+				CPUProfile().
+				WithLabels(
+					"job", "b",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+			testhelper.NewProfileBuilder(int64(time.Second*3)).
+				CPUProfile().
+				WithLabels(
+					"job", "c",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+		}
+	})
+
+	require.Equal(t, []ulid.ULID{b.Meta().ULID}, b.Meta().Compaction.Sources)
+	require.Equal(t, 0, b.Meta().Compaction.Level)
+	require.Equal(t, false, b.Meta().Compaction.Deletable)
+	require.Equal(t, false, b.Meta().Compaction.Failed)
+	require.Equal(t, []string(nil), b.Meta().Compaction.Hints)
+	require.Equal(t, []tsdb.BlockDesc(nil), b.Meta().Compaction.Parents)
+	require.Equal(t, block.MetaVersion2, b.Meta().Version)
+	require.Equal(t, model.Time(1000), b.Meta().MinTime)
+	require.Equal(t, model.Time(3000), b.Meta().MaxTime)
+	require.Equal(t, uint64(3), b.Meta().Stats.NumSeries)
+	require.Equal(t, uint64(3), b.Meta().Stats.NumSamples)
+	require.Equal(t, uint64(3), b.Meta().Stats.NumProfiles)
+	require.Len(t, b.Meta().Files, 8)
+	require.Equal(t, "functions.parquet", b.Meta().Files[0].RelPath)
+	require.Equal(t, "index.tsdb", b.Meta().Files[1].RelPath)
+	require.Equal(t, "locations.parquet", b.Meta().Files[2].RelPath)
+	require.Equal(t, "mappings.parquet", b.Meta().Files[3].RelPath)
+	require.Equal(t, "profiles.parquet", b.Meta().Files[4].RelPath)
+	require.Equal(t, "strings.parquet", b.Meta().Files[5].RelPath)
+	require.Equal(t, "symbols/index.symdb", b.Meta().Files[6].RelPath)
+	require.Equal(t, "symbols/stacktraces.symdb", b.Meta().Files[7].RelPath)
 }
 
 func BenchmarkHeadIngestProfiles(t *testing.B) {

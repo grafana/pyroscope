@@ -42,7 +42,7 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Met
 		srcMetas[i] = b.Meta()
 		ulids[i] = b.Meta().ULID.String()
 	}
-	meta = compactMetas(srcMetas)
+	meta = compactMetas(srcMetas...)
 	blockPath := filepath.Join(dst, meta.ULID.String())
 	indexPath := filepath.Join(blockPath, block.IndexFilename)
 	profilePath := filepath.Join(blockPath, (&schemav1.ProfilePersister{}).Name()+block.ParquetSuffix)
@@ -187,11 +187,10 @@ func parquetMetaFile(filePath string, size int64) (block.File, error) {
 	}, nil
 }
 
-// todo write tests
-func compactMetas(src []block.Meta) block.Meta {
+func compactMetas(src ...block.Meta) block.Meta {
 	meta := block.NewMeta()
 	highestCompactionLevel := 0
-	ulids := make([]ulid.ULID, 0, len(src))
+	sources := map[ulid.ULID]struct{}{}
 	parents := make([]tsdb.BlockDesc, 0, len(src))
 	minTime, maxTime := model.Latest, model.Earliest
 	labels := make(map[string]string)
@@ -199,7 +198,9 @@ func compactMetas(src []block.Meta) block.Meta {
 		if b.Compaction.Level > highestCompactionLevel {
 			highestCompactionLevel = b.Compaction.Level
 		}
-		ulids = append(ulids, b.ULID)
+		for _, s := range b.Compaction.Sources {
+			sources[s] = struct{}{}
+		}
 		parents = append(parents, tsdb.BlockDesc{
 			ULID:    b.ULID,
 			MinTime: int64(b.MinTime),
@@ -225,9 +226,14 @@ func compactMetas(src []block.Meta) block.Meta {
 	meta.Compaction = tsdb.BlockMetaCompaction{
 		Deletable: false,
 		Level:     highestCompactionLevel + 1,
-		Sources:   ulids,
 		Parents:   parents,
 	}
+	for s := range sources {
+		meta.Compaction.Sources = append(meta.Compaction.Sources, s)
+	}
+	sort.Slice(meta.Compaction.Sources, func(i, j int) bool {
+		return meta.Compaction.Sources[i].Compare(meta.Compaction.Sources[j]) < 0
+	})
 	meta.MaxTime = maxTime
 	meta.MinTime = minTime
 	meta.Labels = labels
