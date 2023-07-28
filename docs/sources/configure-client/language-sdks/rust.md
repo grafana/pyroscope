@@ -34,6 +34,23 @@ PyroscopeAgent::builder("http://localhost:4040", "myapp")
 .build()?;
 ```
 
+Important for users of a secured backend: You need to provide authentication details. For **Grafana Cloud** use basic authentication. Your username is a numeric value which you can get from the Details Page for Pyroscope from your stack on grafana.com. Use the the token you can create on the same page as password. The configuration then would look similar to (Username & Password assumed to be provided as environment variables):
+```rust
+fn  main() ->  Result<()> {
+std::env::set_var("RUST_LOG", "debug");
+pretty_env_logger::init_timed();
+let  user=  std::env::var("USER").unwrap();
+let  password=  std::env::var("PASSWORD").unwrap();
+let  url=  std::env::var("PYROSCOPE_URL").unwrap();
+let  samplerate  =  std::env::var("SAMPLE_RATE").unwrap().to_string().parse().unwrap();
+let  application_name=  "example.basic";
+
+let  agent  =  PyroscopeAgent::builder(url, application_name.to_string())
+.basic_auth(user, password).backend(pprof_backend(PprofConfig::new().sample_rate(samplerate)))
+.tags([("app", "Rust"), ("TagB", "ValueB")].to_vec())
+.build()?;
+```
+
 You can start profiling by invoking the following code: 
 
 ```rust
