@@ -50,7 +50,7 @@ output:
 
 linters-settings:
   goimports:
-    local-prefixes: github.com/grafana/phlare/pkg,github.com/grafana/phlare/api,github.com/grafana/phlare/tools
+    local-prefixes: github.com/grafana/pyroscope/pkg,github.com/grafana/pyroscope/api,github.com/grafana/pyroscope/tools
 
   depguard:
     list-type: blacklist

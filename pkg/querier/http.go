@@ -9,8 +9,6 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/gogo/status"
-	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
-	"github.com/grafana/pyroscope/pkg/og/util/attime"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
@@ -21,6 +19,8 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
+	"github.com/grafana/pyroscope/pkg/og/util/attime"
 	"github.com/grafana/pyroscope/pkg/querier/timeline"
 )
 

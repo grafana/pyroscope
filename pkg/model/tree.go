@@ -8,8 +8,9 @@ import (
 	"sync"
 
 	dvarint "github.com/dennwc/varint"
-	"github.com/grafana/pyroscope/pkg/og/util/varint"
 	"github.com/xlab/treeprint"
+
+	"github.com/grafana/pyroscope/pkg/og/util/varint"
 )
 
 type Tree struct {
