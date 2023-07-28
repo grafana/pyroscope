@@ -27,11 +27,9 @@ type ProfilePyEvent struct {
 }
 
 type ProfilePyPidData struct {
-	CurrentStateAddr  uint64
-	TlsKeyAddr        uint64
-	GilLockedAddr     uint64
-	GilLastHolderAddr uint64
-	Offsets           struct {
+	CurrentStateAddr uint64
+	TlsKeyAddr       uint64
+	Offsets          struct {
 		PyObjectType            int64
 		PyTypeObjectName        int64
 		PyThreadStateFrame      int64
@@ -46,6 +44,10 @@ type ProfilePyPidData struct {
 		PyTupleObjectItem       int64
 		StringData              int64
 		StringSize              int64
+	}
+	Version struct {
+		Major int32
+		Minor int32
 	}
 }
 

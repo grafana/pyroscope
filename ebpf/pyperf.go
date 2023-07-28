@@ -1,12 +1,15 @@
 package ebpfspy
 
 import (
+	"bufio"
 	"bytes"
 	"debug/elf"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -57,26 +60,21 @@ func (s *pyPerf) setPythonPIDs(pids []int) {
 
 func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 	mapsPath := fmt.Sprintf("/proc/%d/maps", pid)
-	maps, err := os.ReadFile(mapsPath) //todo should we streaming parse it?
+
+	mapsFD, err := os.Open(mapsPath)
 	if err != nil {
 		return nil, fmt.Errorf("reading proc maps %s: %w", mapsPath, err)
 	}
-	modules, err := symtab.ParseProcMapsExecutableModules(maps, false)
-	if err != nil {
-		return nil, fmt.Errorf("parsing proc maps %s: %w", mapsPath, err)
-	}
+	defer mapsFD.Close()
 
-	var found *symtab.ProcMap
-	for _, module := range modules {
-		if len(module.Pathname) > 0 && module.Pathname[0] == '/' && strings.Index(module.Pathname, "libpython3.6") != -1 {
-			found = module
-			break
-		}
+	info, err := GetPythonProcInfo(bufio.NewScanner(mapsFD))
+
+	if err != nil {
+		return nil, fmt.Errorf("GetPythonProcInfo error %s: %w", mapsPath, err)
 	}
-	if found == nil { // todo other versions
-		return nil, fmt.Errorf("libpython3.6 not found")
-	}
-	path := fmt.Sprintf("/proc/%d/root%s", pid, found.Pathname)
+	base := info.LibPythonMaps[0]
+
+	path := fmt.Sprintf("/proc/%d/root%s", pid, base.Pathname)
 	ef, err := elf.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("opening elf %s: %w", path, err)
@@ -90,21 +88,19 @@ func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 	for _, symbol := range symbols {
 		switch symbol.Name {
 		case "autoTLSkey":
-			data.TlsKeyAddr = found.StartAddr + symbol.Value
+			data.TlsKeyAddr = base.StartAddr + symbol.Value
 		case "_PyThreadState_Current":
-			data.CurrentStateAddr = found.StartAddr + symbol.Value
-		case "gil_locked":
-			data.GilLockedAddr = found.StartAddr + symbol.Value
-		case "gil_last_holder":
-			data.GilLastHolderAddr = found.StartAddr + symbol.Value
+			data.CurrentStateAddr = base.StartAddr + symbol.Value
 		default:
 			continue
 		}
 	}
-	if data.TlsKeyAddr == 0 || data.CurrentStateAddr == 0 || data.GilLockedAddr == 0 || data.GilLastHolderAddr == 0 {
+	if data.TlsKeyAddr == 0 || data.CurrentStateAddr == 0 {
 		return nil, fmt.Errorf("missing symbols")
 	}
-	offsetConfig := py36OffsetConfig
+	data.Version.Major = int32(info.Version.Major)
+	data.Version.Minor = int32(info.Version.Minor)
+	offsetConfig := py36OffsetConfig // todo
 	data.Offsets.PyObjectType = offsetConfig.PyObject_type
 	data.Offsets.PyTypeObjectName = offsetConfig.PyTypeObject_name
 	data.Offsets.PyThreadStateFrame = offsetConfig.PyThreadState_frame
@@ -194,7 +190,7 @@ func (s *pyPerf) getSymbols() map[uint32]string {
 			//file := strFromInt8(keys[i].File[:])
 			//className := strFromInt8(keys[i].Classname[:])
 			//_ = className
-			res[k] = fmt.Sprintf("%s!%s", keys[i].Name, keys[i].File) // todo propper format
+			res[k] = fmt.Sprintf("%s!%s", strFromInt8(keys[i].Name[:]), strFromInt8(keys[i].File[:]))
 		}
 		return res
 	}
@@ -309,4 +305,59 @@ var py36OffsetConfig OffsetConfig = OffsetConfig{
 	PyTupleObject_item:       24,  // offsetof(PyTupleObject, ob_item)
 	String_data:              48,  // sizeof(PyASCIIObject)
 	String_size:              16,  // offsetof(PyVarObject, ob_size)
+}
+
+type PythonVersion struct {
+	Major, Minor int
+}
+type PythonProcInfo struct {
+	Version       PythonVersion
+	LibPythonMaps []*symtab.ProcMap
+	RXMapIndex    int
+	Musl          bool
+}
+
+var libPythonRe = regexp.MustCompile("/.*/libpython(\\d)\\.(\\d+)[mu]?.so")
+
+func GetPythonProcInfo(s *bufio.Scanner) (PythonProcInfo, error) {
+	res := PythonProcInfo{
+		RXMapIndex: -1,
+	}
+	i := 0
+	for s.Scan() {
+		line := s.Bytes()
+		m, err := symtab.ParseProcMapLine(line, false)
+		if err != nil {
+			return res, err
+		}
+		if m.Pathname != "" {
+			matches := libPythonRe.FindAllStringSubmatch(m.Pathname, -1)
+			if matches != nil {
+				if res.Version.Major == 0 {
+					maj, err := strconv.Atoi(matches[0][1])
+					if err != nil {
+						return res, fmt.Errorf("failed to parse python version %s", m.Pathname)
+					}
+					min, err := strconv.Atoi(matches[0][2])
+					if err != nil {
+						return res, fmt.Errorf("failed to parse python version %s", m.Pathname)
+					}
+					res.Version.Major = maj
+					res.Version.Minor = min
+				}
+				res.LibPythonMaps = append(res.LibPythonMaps, m)
+				if m.Perms.Execute && m.Perms.Read {
+					res.RXMapIndex = i
+				}
+				i += 1
+			}
+			if strings.Contains(m.Pathname, "ld-musl-") {
+				res.Musl = true
+			}
+		}
+	}
+	if res.LibPythonMaps == nil || res.RXMapIndex == -1 {
+		return res, fmt.Errorf("no libpython found")
+	}
+	return res, nil
 }

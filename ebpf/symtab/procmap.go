@@ -146,11 +146,11 @@ func parsePermissions(s []byte) (*ProcMapPermissions, error) {
 	return &perms, nil
 }
 
-// parseProcMap will attempt to parse a single line within a proc/[pid]/maps
+// ParseProcMapLine will attempt to parse a single line within a proc/[pid]/maps
 // buffer.
 // 7f5822ebe000-7f5822ec0000 r--p 00000000 09:00 533429                     /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
 // returns nil if entry is not executable
-func parseProcMap(line []byte, executableOnly bool) (*ProcMap, error) {
+func ParseProcMapLine(line []byte, executableOnly bool) (*ProcMap, error) {
 	var i int
 	if i = bytes.IndexByte(line, ' '); i == -1 {
 		return nil, fmt.Errorf("invalid procmap entry: %s", line)
@@ -249,7 +249,7 @@ func ParseProcMapsExecutableModules(procMaps []byte, executableOnly bool) ([]*Pr
 		if len(line) == 0 {
 			continue
 		}
-		m, err := parseProcMap(line, executableOnly)
+		m, err := ParseProcMapLine(line, executableOnly)
 		if err != nil {
 			return nil, err
 		}

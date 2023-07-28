@@ -17,16 +17,7 @@ enum {
     STACK_STATUS_TRUNCATED = 2,
 };
 
-enum {
-    GIL_STATE_NO_INFO = 0,
-    GIL_STATE_ERROR = 1,
-    GIL_STATE_UNINITIALIZED = 2,
-    GIL_STATE_NOT_LOCKED = 3,
-    GIL_STATE_THIS_THREAD = 4,
-    GIL_STATE_GLOBAL_CURRENT_THREAD = 5,
-    GIL_STATE_OTHER_THREAD = 6,
-    GIL_STATE_NULL = 7,
-};
+
 
 enum {
     THREAD_STATE_UNKNOWN = 0,
@@ -37,14 +28,7 @@ enum {
     THREAD_STATE_BOTH_NULL = 5,
 };
 
-enum {
-    PTHREAD_ID_UNKNOWN = 0,
-    PTHREAD_ID_MATCH = 1,
-    PTHREAD_ID_MISMATCH = 2,
-    PTHREAD_ID_THREAD_STATE_NULL = 3,
-    PTHREAD_ID_NULL = 4,
-    PTHREAD_ID_ERROR = 5,
-};
+
 
 typedef struct {
     int64_t PyObject_type;
@@ -64,12 +48,15 @@ typedef struct {
 } py_offset_config;
 
 typedef struct {
+    int major;
+    int minor;
+} py_version;
+
+typedef struct {
     uintptr_t current_state_addr; // virtual address of _PyThreadState_Current
     uintptr_t tls_key_addr; // virtual address of autoTLSkey for pthreads TLS
-    uintptr_t gil_locked_addr; // virtual address of gil_locked
-    uintptr_t gil_last_holder_addr; // virtual address of gil_last_holder
     py_offset_config offsets;
-//    uint32_t num_cpu;
+    py_version version;
 } py_pid_data;
 
 typedef struct {
@@ -164,6 +151,8 @@ struct {
 static inline __attribute__((__always_inline__)) void *get_thread_state(
         void *tls_base,
         py_pid_data *pid_data) {
+    //todo this is a glibc only, need to support musl as well
+
     // Python sets the thread_state using pthread_setspecific with the key
     // stored in a global variable autoTLSkey.
     // We read the value of the key from the global variable and then read
@@ -229,75 +218,9 @@ static inline __attribute__((__always_inline__)) int get_thread_state_match(
     }
 }
 
-static inline __attribute__((__always_inline__)) int get_gil_state(
-        void *this_thread_state,
-        void *global_thread_state,
-        py_pid_data *pid_data) {
-    // Get information of GIL state
-    if (pid_data->gil_locked_addr == 0 || pid_data->gil_last_holder_addr == 0) {
-        return GIL_STATE_NO_INFO;
-    }
 
-    int gil_locked = 0;
-    void *gil_thread_state = 0;
-    if (bpf_probe_read_user(
-            &gil_locked, sizeof(gil_locked), (void *) pid_data->gil_locked_addr)) {
-        return GIL_STATE_ERROR;
-    }
 
-    switch (gil_locked) {
-        case -1:
-            return GIL_STATE_UNINITIALIZED;
-        case 0:
-            return GIL_STATE_NOT_LOCKED;
-        case 1:
-            // GIL is held by some Thread
-            bpf_probe_read_user(
-                    &gil_thread_state,
-                    sizeof(void *),
-                    (void *) pid_data->gil_last_holder_addr);
-            if (gil_thread_state == this_thread_state) {
-                return GIL_STATE_THIS_THREAD;
-            } else if (gil_thread_state == global_thread_state) {
-                return GIL_STATE_GLOBAL_CURRENT_THREAD;
-            } else if (gil_thread_state == 0) {
-                return GIL_STATE_NULL;
-            } else {
-                return GIL_STATE_OTHER_THREAD;
-            }
-        default:
-            return GIL_STATE_ERROR;
-    }
-}
 
-static inline __attribute__((__always_inline__)) int
-get_pthread_id_match(void *thread_state, void *tls_base, py_pid_data *pid_data) {
-    if (thread_state == 0) {
-        return PTHREAD_ID_THREAD_STATE_NULL;
-    }
-
-    uint64_t pthread_self, pthread_created;
-
-    bpf_probe_read_user(
-            &pthread_created,
-            sizeof(pthread_created),
-            thread_state + pid_data->offsets.PyThreadState_thread);
-    if (pthread_created == 0) {
-        return PTHREAD_ID_NULL;
-    }
-
-    // 0x10 = offsetof(struct pthread, header.self)
-    bpf_probe_read_user(&pthread_self, sizeof(pthread_self), tls_base + 0x10);
-    if (pthread_self == 0) {
-        return PTHREAD_ID_ERROR;
-    }
-
-    if (pthread_self == pthread_created) {
-        return PTHREAD_ID_MATCH;
-    } else {
-        return PTHREAD_ID_MISMATCH;
-    }
-}
 
 static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid) {
 
@@ -310,13 +233,10 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
 
     state->offsets = pid_data->offsets;
     state->cur_cpu = bpf_get_smp_processor_id();
-//    state->num_cpu = pid_data->num_cpu;
     state->python_stack_prog_call_cnt = 0;
 
     py_event *event = &state->event;
     event->pid = pid;
-//    event->tid = (pid_t)pid_tgid;
-//    bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
     // Get pointer of global PyThreadState, which should belong to the Thread
     // currently holds the GIL
@@ -348,21 +268,7 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
     // Read PyThreadState of this Thread from TLS
     void *thread_state = get_thread_state(tls_base, pid_data);
 
-    // Check for matching between TLS PyThreadState and
-    // the global _PyThreadState_Current
-//    event->thread_state_match =
-//            get_thread_state_match(thread_state, global_current_thread);
-//
-//    // Read GIL state
-//    event->gil_state =
-//            get_gil_state(thread_state, global_current_thread, pid_data);
-//
-//    // Check for matching between pthread ID created current PyThreadState and
-//    // pthread of actual current pthread
-//    event->pthread_id_match =
-//            get_pthread_id_match(thread_state, tls_base, pid_data);
-//
-//    // pre-initialize event struct in case any subprogram below fails
+    // pre-initialize event struct in case any subprogram below fails
     event->stack_status = STACK_STATUS_COMPLETE;
     event->stack_len = 0;
 
