@@ -86,11 +86,6 @@ typedef struct {
 
 typedef struct {
     uint32_t pid;
-//    uint32_t tid;
-//    char comm[TASK_COMM_LEN];
-//    uint8_t thread_state_match;
-//    uint8_t gil_state;
-//    uint8_t pthread_id_match;
     uint8_t stack_status;
     // instead of storing symbol name here directly, we add it to another
     // hashmap with Symbols and only store the ids here
@@ -125,11 +120,12 @@ struct {
     __uint(max_entries, 1);
 } py_state_heap SEC(".maps");
 
+typedef uint32_t py_symbol_id;
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, py_symbol);
-    __type(value, int32_t);
+    __type(value, py_symbol_id);
     __uint(max_entries, 16384);
 } py_symbols SEC(".maps");
 
@@ -178,7 +174,6 @@ static inline __attribute__((__always_inline__)) void *get_thread_state(
     int key;
     bpf_probe_read_user(&key, sizeof(key), (void *) pid_data->tls_key_addr);
 
-//    bpf_printk("pid_data->tls_key_addr = %x, key=%x", pid_data->tls_key_addr, key);
     // This assumes autoTLSkey < 32, which means that the TLS is stored in
     //   pthread->specific_1stblock[autoTLSkey]
     // 0x310 is offsetof(struct pthread, specific_1stblock),
@@ -482,8 +477,8 @@ static inline __attribute__((__always_inline__)) bool get_frame_data(
 
     return true;
 }
-// TODO NO MERGE, fix this
-#define NUM_CPUS 32
+// should be enough
+#define PY_NUM_CPU 512
 
 // To avoid duplicate ids, every CPU needs to use different ids when inserting
 // into the hashmap. NUM_CPUS is defined at PyPerf backend side and passed
@@ -492,14 +487,17 @@ static inline __attribute__((__always_inline__)) int64_t get_symbol_id(
         py_sample_state_t *state,
         py_symbol *sym) {
 
-    int32_t *symbol_id_ptr = bpf_map_lookup_elem(&py_symbols, sym);
+    py_symbol_id *symbol_id_ptr = bpf_map_lookup_elem(&py_symbols, sym);
     if (symbol_id_ptr) {
         return *symbol_id_ptr;
     }
     // the symbol is new, bump the counter
     state->symbol_counter++;
-    int32_t symbol_id = state->symbol_counter * NUM_CPUS + state->cur_cpu;
+    py_symbol_id symbol_id = state->symbol_counter * PY_NUM_CPU + state->cur_cpu;
     bpf_map_update_elem(&py_symbols, sym, &symbol_id, BPF_ANY);
+    // todo do not use BPF_ANY here?
+    // todo retry lookup if failed
+    // todo handler error
     return symbol_id;
 }
 
