@@ -484,7 +484,7 @@ func TestFlushMeta(t *testing.T) {
 	})
 
 	require.Equal(t, []ulid.ULID{b.Meta().ULID}, b.Meta().Compaction.Sources)
-	require.Equal(t, 0, b.Meta().Compaction.Level)
+	require.Equal(t, 1, b.Meta().Compaction.Level)
 	require.Equal(t, false, b.Meta().Compaction.Deletable)
 	require.Equal(t, false, b.Meta().Compaction.Failed)
 	require.Equal(t, []string(nil), b.Meta().Compaction.Hints)

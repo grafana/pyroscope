@@ -1005,6 +1005,7 @@ func (h *Head) flush(ctx context.Context) error {
 	h.meta.Stats.NumProfiles = uint64(h.profiles.index.totalProfiles.Load())
 	h.meta.Stats.NumSamples = h.totalSamples.Load()
 	h.meta.Compaction.Sources = []ulid.ULID{h.meta.ULID}
+	h.meta.Compaction.Level = 1
 	h.metrics.flushedBlockSamples.Observe(float64(h.meta.Stats.NumSamples))
 	h.metrics.flusehdBlockProfiles.Observe(float64(h.meta.Stats.NumProfiles))
 
