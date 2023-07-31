@@ -51,7 +51,9 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 	info, err := GetPythonProcInfo(bufio.NewScanner(bytes.NewReader([]byte(maps))))
 	require.NoError(t, err)
 	require.Equal(t, info.Musl, false)
-	require.Equal(t, info.Version, PythonVersion{3, 6})
+	require.Equal(t, info.Version, PythonVersion{3, 6, 0})
+	require.NotNil(t, info.PythonMaps)
+	require.NotNil(t, info.LibPythonMaps)
 
 	maps = `55c07863f000-55c078640000 r--p 00000000 00:32 39877587                   /usr/bin/python3.11
 55c078640000-55c078641000 r-xp 00001000 00:32 39877587                   /usr/bin/python3.11
@@ -109,5 +111,7 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 	info, err = GetPythonProcInfo(bufio.NewScanner(bytes.NewReader([]byte(maps))))
 	require.NoError(t, err)
 	require.Equal(t, info.Musl, true)
-	require.Equal(t, info.Version, PythonVersion{3, 11})
+	require.Equal(t, info.Version, PythonVersion{3, 11, 0})
+	require.NotNil(t, info.PythonMaps)
+	require.NotNil(t, info.LibPythonMaps)
 }

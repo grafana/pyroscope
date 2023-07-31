@@ -72,10 +72,29 @@ func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("GetPythonProcInfo error %s: %w", mapsPath, err)
 	}
-	base := info.LibPythonMaps[0]
-
+	var pythonMeat []*symtab.ProcMap
+	if info.LibPythonMaps == nil {
+		pythonMeat = info.PythonMaps
+	} else {
+		pythonMeat = info.LibPythonMaps
+	}
+	base := pythonMeat[0]
 	path := fmt.Sprintf("/proc/%d/root%s", pid, base.Pathname)
-	ef, err := elf.Open(path)
+	pythonFD, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("could not get python patch version %s %w", path, err)
+	}
+	defer pythonFD.Close()
+	version, err := GetPythonPatchVersion(pythonFD, info.Version)
+	if err != nil {
+		return nil, fmt.Errorf("could not get python patch version %s %w", path, err)
+	}
+
+	offsets, ok := pyVersions[version]
+	if !ok {
+		return nil, fmt.Errorf("unsupported python version %s %w", path, err)
+	}
+	ef, err := elf.NewFile(pythonFD)
 	if err != nil {
 		return nil, fmt.Errorf("opening elf %s: %w", path, err)
 	}
@@ -88,33 +107,32 @@ func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 	for _, symbol := range symbols {
 		switch symbol.Name {
 		case "autoTLSkey":
-			data.TlsKeyAddr = base.StartAddr + symbol.Value
+			data.AutoTLSkeyAddr = base.StartAddr + symbol.Value
 		case "_PyThreadState_Current":
-			data.CurrentStateAddr = base.StartAddr + symbol.Value
+			data.PyThreadStateCurrentAddr = base.StartAddr + symbol.Value
+		case "_PyRuntime":
+			data.PyRuntimeAddr = base.StartAddr + symbol.Value
 		default:
 			continue
 		}
 	}
-	if data.TlsKeyAddr == 0 || data.CurrentStateAddr == 0 {
-		return nil, fmt.Errorf("missing symbols")
+	if data.PyThreadStateCurrentAddr == 0 && data.PyRuntimeAddr == 0 {
+		return nil, fmt.Errorf("missing symbols _PyThreadState_Current _PyRuntime %s %v", path, version)
 	}
-	data.Version.Major = int32(info.Version.Major)
-	data.Version.Minor = int32(info.Version.Minor)
-	offsetConfig := py36OffsetConfig // todo
-	data.Offsets.PyObjectType = offsetConfig.PyObject_type
-	data.Offsets.PyTypeObjectName = offsetConfig.PyTypeObject_name
-	data.Offsets.PyThreadStateFrame = offsetConfig.PyThreadState_frame
-	data.Offsets.PyThreadStateThread = offsetConfig.PyThreadState_thread
-	data.Offsets.PyFrameObjectBack = offsetConfig.PyFrameObject_back
-	data.Offsets.PyFrameObjectCode = offsetConfig.PyFrameObject_code
-	data.Offsets.PyFrameObjectLineno = offsetConfig.PyFrameObject_lineno
-	data.Offsets.PyFrameObjectLocalsplus = offsetConfig.PyFrameObject_localsplus
-	data.Offsets.PyCodeObjectFilename = offsetConfig.PyCodeObject_filename
-	data.Offsets.PyCodeObjectName = offsetConfig.PyCodeObject_name
-	data.Offsets.PyCodeObjectVarnames = offsetConfig.PyCodeObject_varnames
-	data.Offsets.PyTupleObjectItem = offsetConfig.PyTupleObject_item
-	data.Offsets.StringData = offsetConfig.String_data
-	data.Offsets.StringSize = offsetConfig.String_size
+	if info.Version.Compare(PythonVersion{3, 7, 0}) < 0 && data.AutoTLSkeyAddr == 0 {
+		return nil, fmt.Errorf("missing symbols autoTLSkey %s %v", path, version)
+	}
+	if data.AutoTLSkeyAddr == 0 {
+		if offsets.PyRuntimeStateGilstate == -1 || offsets.GilstateRuntimeStateAutoTSSkey == -1 {
+			return nil, fmt.Errorf("missing offsets PyRuntimeStateGilstate GilstateRuntimeStateAutoTSSkey  % s%v", path, version)
+		}
+
+	}
+	data.Version.Major = uint32(version.Major)
+	data.Version.Minor = uint32(version.Minor)
+	data.Version.Patch = uint32(version.Patch)
+
+	data.Offsets = offsets
 	return data, nil
 }
 
@@ -256,73 +274,17 @@ func (s *pyPerf) resetEvents() []*ProfilePyEvent {
 	return eventsCopy
 }
 
-//extern const OffsetConfig kPy36OffsetConfig = {
-//.PyObject_type = 8,               // offsetof(PyObject, ob_type)
-//.PyTypeObject_name = 24,          // offsetof(PyTypeObject, tp_name)
-//.PyThreadState_frame = 24,        // offsetof(PyThreadState, frame)
-//.PyThreadState_thread = 152,      // offsetof(PyThreadState, thread_id)
-//.PyFrameObject_back = 24,         // offsetof(PyFrameObject, f_back)
-//.PyFrameObject_code = 32,         // offsetof(PyFrameObject, f_code)
-//.PyFrameObject_lineno = 124,      // offsetof(PyFrameObject, f_lineno)
-//.PyFrameObject_localsplus = 376,  // offsetof(PyFrameObject, f_localsplus)
-//.PyCodeObject_filename = 96,      // offsetof(PyCodeObject, co_filename)
-//.PyCodeObject_name = 104,         // offsetof(PyCodeObject, co_name)
-//.PyCodeObject_varnames = 64,      // offsetof(PyCodeObject, co_varnames)
-//.PyTupleObject_item = 24,         // offsetof(PyTupleObject, ob_item)
-//.String_data = 48,                // sizeof(PyASCIIObject)
-//.String_size = 16,                // offsetof(PyVarObject, ob_size)
-//};
-
-type OffsetConfig struct {
-	PyObject_type            int64
-	PyTypeObject_name        int64
-	PyThreadState_frame      int64
-	PyThreadState_thread     int64
-	PyFrameObject_back       int64
-	PyFrameObject_code       int64
-	PyFrameObject_lineno     int64
-	PyFrameObject_localsplus int64
-	PyCodeObject_filename    int64
-	PyCodeObject_name        int64
-	PyCodeObject_varnames    int64
-	PyTupleObject_item       int64
-	String_data              int64
-	String_size              int64
-}
-
-var py36OffsetConfig OffsetConfig = OffsetConfig{
-	PyObject_type:            8,   // offsetof(PyObject, ob_type)
-	PyTypeObject_name:        24,  // offsetof(PyTypeObject, tp_name)
-	PyThreadState_frame:      24,  // offsetof(PyThreadState, frame)
-	PyThreadState_thread:     152, // offsetof(PyThreadState, thread_id)
-	PyFrameObject_back:       24,  // offsetof(PyFrameObject, f_back)
-	PyFrameObject_code:       32,  // offsetof(PyFrameObject, f_code)
-	PyFrameObject_lineno:     124, // offsetof(PyFrameObject, f_lineno)
-	PyFrameObject_localsplus: 376, // offsetof(PyFrameObject, f_localsplus)
-	PyCodeObject_filename:    96,  // offsetof(PyCodeObject, co_filename)
-	PyCodeObject_name:        104, // offsetof(PyCodeObject, co_name)
-	PyCodeObject_varnames:    64,  // offsetof(PyCodeObject, co_varnames)
-	PyTupleObject_item:       24,  // offsetof(PyTupleObject, ob_item)
-	String_data:              48,  // sizeof(PyASCIIObject)
-	String_size:              16,  // offsetof(PyVarObject, ob_size)
-}
-
-type PythonVersion struct {
-	Major, Minor int
-}
 type PythonProcInfo struct {
 	Version       PythonVersion
+	PythonMaps    []*symtab.ProcMap
 	LibPythonMaps []*symtab.ProcMap
-	RXMapIndex    int
 	Musl          bool
 }
 
-var libPythonRe = regexp.MustCompile("/.*/libpython(\\d)\\.(\\d+)[mu]?.so")
+var rePython = regexp.MustCompile("/.*/((?:lib)?python)(\\d+)\\.(\\d+)(?:[mu]?\\.so)?(?:.1.0)?$")
 
 func GetPythonProcInfo(s *bufio.Scanner) (PythonProcInfo, error) {
-	res := PythonProcInfo{
-		RXMapIndex: -1,
-	}
+	res := PythonProcInfo{}
 	i := 0
 	for s.Scan() {
 		line := s.Bytes()
@@ -331,24 +293,27 @@ func GetPythonProcInfo(s *bufio.Scanner) (PythonProcInfo, error) {
 			return res, err
 		}
 		if m.Pathname != "" {
-			matches := libPythonRe.FindAllStringSubmatch(m.Pathname, -1)
+			matches := rePython.FindAllStringSubmatch(m.Pathname, -1)
 			if matches != nil {
 				if res.Version.Major == 0 {
-					maj, err := strconv.Atoi(matches[0][1])
+					maj, err := strconv.Atoi(matches[0][2])
 					if err != nil {
 						return res, fmt.Errorf("failed to parse python version %s", m.Pathname)
 					}
-					min, err := strconv.Atoi(matches[0][2])
+					min, err := strconv.Atoi(matches[0][3])
 					if err != nil {
 						return res, fmt.Errorf("failed to parse python version %s", m.Pathname)
 					}
 					res.Version.Major = maj
 					res.Version.Minor = min
 				}
-				res.LibPythonMaps = append(res.LibPythonMaps, m)
-				if m.Perms.Execute && m.Perms.Read {
-					res.RXMapIndex = i
+				typ := matches[0][1]
+				if typ == "python" {
+					res.PythonMaps = append(res.PythonMaps, m)
+				} else {
+					res.LibPythonMaps = append(res.LibPythonMaps, m)
 				}
+
 				i += 1
 			}
 			if strings.Contains(m.Pathname, "ld-musl-") {
@@ -356,8 +321,8 @@ func GetPythonProcInfo(s *bufio.Scanner) (PythonProcInfo, error) {
 			}
 		}
 	}
-	if res.LibPythonMaps == nil || res.RXMapIndex == -1 {
-		return res, fmt.Errorf("no libpython found")
+	if res.LibPythonMaps == nil && res.PythonMaps == nil {
+		return res, fmt.Errorf("no python found")
 	}
 	return res, nil
 }

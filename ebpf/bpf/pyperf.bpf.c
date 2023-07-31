@@ -2,6 +2,7 @@
 #define PYPERF_H
 
 #include "pyperf.bpf.h"
+#include "pthread.bpf.h"
 
 
 #define PYTHON_STACK_FRAMES_PER_PROG 25
@@ -18,7 +19,6 @@ enum {
 };
 
 
-
 enum {
     THREAD_STATE_UNKNOWN = 0,
     THREAD_STATE_MATCH = 1,
@@ -29,34 +29,38 @@ enum {
 };
 
 
-
 typedef struct {
-    int64_t PyObject_type;
-    int64_t PyTypeObject_name;
+    int64_t PyObject_ob_type;
+    int64_t PyTypeObject_tp_name;
     int64_t PyThreadState_frame;
-    int64_t PyThreadState_thread;
-    int64_t PyFrameObject_back;
-    int64_t PyFrameObject_code;
-    int64_t PyFrameObject_lineno;
-    int64_t PyFrameObject_localsplus;
-    int64_t PyCodeObject_filename;
-    int64_t PyCodeObject_name;
-    int64_t PyCodeObject_varnames;
-    int64_t PyTupleObject_item;
-    int64_t String_data;
+    int64_t PyFrameObject_f_back;
+    int64_t PyFrameObject_f_code;
+    int64_t PyFrameObject_f_frame;
+    int64_t PyFrameObject_f_localsplus;
+    int64_t PyCodeObject_co_filename;
+    int64_t PyCodeObject_co_name;
+    int64_t PyCodeObject_co_varnames;
+    int64_t PyTupleObject_ob_item;
+    int64_t PyInterpreterFrame_f_code;
+    int64_t PyRuntimeState_gilstate;
+    int64_t GilstateRuntimeState_autoTSSkey;
+    int64_t Py_tss_t_key;
     int64_t String_size;
 } py_offset_config;
 
 typedef struct {
-    int major;
-    int minor;
+    uint32_t major;
+    uint32_t minor;
+    uint32_t patch;
 } py_version;
 
 typedef struct {
-    uintptr_t current_state_addr; // virtual address of _PyThreadState_Current
-    uintptr_t tls_key_addr; // virtual address of autoTLSkey for pthreads TLS
+    uintptr_t PyThreadState_Current_addr; // virtual address of _PyThreadState_Current
+    uintptr_t autoTLSkey_addr; // virtual address of autoTLSkey for pthreads TLS
+    uintptr_t PyRuntime_addr; // virtual address of _PyRuntime
     py_offset_config offsets;
     py_version version;
+    uint8_t musl;// 1 if musl libc is used, 0 otherwise
 } py_pid_data;
 
 typedef struct {
@@ -68,7 +72,6 @@ typedef struct {
     // first line of that function and PyCode_Addr2Line needs to be called
     // to get the actual line
 } py_symbol;
-
 
 
 typedef struct {
@@ -117,7 +120,6 @@ struct {
 } py_symbols SEC(".maps");
 
 
-
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, pid_t);
@@ -148,34 +150,31 @@ struct {
     __uint(value_size, sizeof(u32));
 } py_events SEC(".maps");
 
-static inline __attribute__((__always_inline__)) void *get_thread_state(
+static inline __attribute__((__always_inline__)) int get_thread_state(
         void *tls_base,
-        py_pid_data *pid_data) {
+        py_pid_data *pid_data,
+        void **out_thread_state) {
     //todo this is a glibc only, need to support musl as well
 
-    // Python sets the thread_state using pthread_setspecific with the key
-    // stored in a global variable autoTLSkey.
-    // We read the value of the key from the global variable and then read
-    // the value in the thread-local storage. This relies on pthread implementation.
-    // This is basically the same as running the following in GDB:
-    //  p *(PyThreadState*)((struct pthread*)pthread_self())->
-    //    specific_1stblock[autoTLSkey]->data
-    int key;
-    bpf_probe_read_user(&key, sizeof(key), (void *) pid_data->tls_key_addr);
 
-    // This assumes autoTLSkey < 32, which means that the TLS is stored in
-    //   pthread->specific_1stblock[autoTLSkey]
-    // 0x310 is offsetof(struct pthread, specific_1stblock),
-    // 0x10 is sizeof(pthread_key_data)
-    // 0x8 is offsetof(struct pthread_key_data, data)
-    // 'struct pthread' is not in the public API so we have to hardcode
-    // the offsets here
-    void *thread_state;
-    bpf_probe_read_user(
-            &thread_state,
-            sizeof(thread_state),
-            tls_base + 0x310 + key * 0x10 + 0x08);
-    return thread_state;
+    int key;
+    if (pid_data->autoTLSkey_addr != 0) {
+        if (bpf_probe_read_user(&key, sizeof(key), (void *) pid_data->autoTLSkey_addr)) {
+            return -1;
+        }
+    } else {
+        //todo precompute this offset once in userspace
+        void *autoTSSAddr = (void *) pid_data->PyRuntime_addr +
+                            pid_data->offsets.PyRuntimeState_gilstate +
+                            pid_data->offsets.GilstateRuntimeState_autoTSSkey +
+                            pid_data->offsets.Py_tss_t_key;
+        if (bpf_probe_read_user(&key, sizeof(key), autoTSSAddr)) {
+            return -1;
+        }
+    }
+
+
+    return pyro_pthread_getspecific(0 /*todo*/, key, tls_base, out_thread_state);
 }
 
 static inline __attribute__((__always_inline__)) int submit_sample(
@@ -219,9 +218,6 @@ static inline __attribute__((__always_inline__)) int get_thread_state_match(
 }
 
 
-
-
-
 static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid) {
 
     py_pid_data *pid_data = bpf_map_lookup_elem(&py_pid_config, &pid);
@@ -240,11 +236,11 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
 
     // Get pointer of global PyThreadState, which should belong to the Thread
     // currently holds the GIL
-    void *global_current_thread = (void *) 0;
-    bpf_probe_read_user(
-            &global_current_thread,
-            sizeof(global_current_thread),
-            (void *) pid_data->current_state_addr);
+//    void *global_current_thread = (void *) 0;
+//    bpf_probe_read_user(
+//            &global_current_thread,
+//            sizeof(global_current_thread),
+//            (void *) pid_data->PyThreadState_Current_addr);
 
     struct task_struct *task = (struct task_struct *) bpf_get_current_task();
     if (task == NULL) {
@@ -266,7 +262,10 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
 #endif
 
     // Read PyThreadState of this Thread from TLS
-    void *thread_state = get_thread_state(tls_base, pid_data);
+    void *thread_state;
+    if (get_thread_state(tls_base, pid_data, &thread_state)) {
+        return -1;
+    };
 
     // pre-initialize event struct in case any subprogram below fails
     event->stack_status = STACK_STATUS_COMPLETE;
@@ -307,11 +306,11 @@ static inline __attribute__((__always_inline__)) void get_names(
     // out from the code object.
     void *args_ptr;
     bpf_probe_read_user(
-            &args_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_varnames);
+            &args_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_varnames);
     bpf_probe_read_user(
-            &args_ptr, sizeof(void *), args_ptr + offsets->PyTupleObject_item);
+            &args_ptr, sizeof(void *), args_ptr + offsets->PyTupleObject_ob_item);
     bpf_probe_read_user_str(
-            &symbol->name, sizeof(symbol->name), args_ptr + offsets->String_data);
+            &symbol->name, sizeof(symbol->name), args_ptr + offsets->String_size);
 
     // compare strings as ints to save instructions
     char self_str[4] = {'s', 'e', 'l', 'f'};
@@ -333,26 +332,26 @@ static inline __attribute__((__always_inline__)) void get_names(
     if (first_self || first_cls) {
         void *ptr;
         bpf_probe_read_user(
-                &ptr, sizeof(void *), (void *) (cur_frame + offsets->PyFrameObject_localsplus));
+                &ptr, sizeof(void *), (void *) (cur_frame + offsets->PyFrameObject_f_localsplus));
         if (first_self) {
             // we are working with an instance, first we need to get type
-            bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyObject_type);
+            bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyObject_ob_type);
         }
-        bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyTypeObject_name);
+        bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyTypeObject_tp_name);
         bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr);
     }
 
     void *pystr_ptr;
     // read PyCodeObject's filename into symbol
     bpf_probe_read_user(
-            &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_filename);
+            &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_filename);
     bpf_probe_read_user_str(
-            &symbol->file, sizeof(symbol->file), pystr_ptr + offsets->String_data);
+            &symbol->file, sizeof(symbol->file), pystr_ptr + offsets->String_size);
     // read PyCodeObject's name into symbol
     bpf_probe_read_user(
-            &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_name);
+            &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_name);
     bpf_probe_read_user_str(
-            &symbol->name, sizeof(symbol->name), pystr_ptr + offsets->String_data);
+            &symbol->name, sizeof(symbol->name), pystr_ptr + offsets->String_size);
 }
 
 // get_frame_data reads current PyFrameObject filename/name and updates
@@ -370,7 +369,7 @@ static inline __attribute__((__always_inline__)) bool get_frame_data(
     void *code_ptr;
     // read PyCodeObject first, if that fails, then no point reading next frame
     bpf_probe_read_user(
-            &code_ptr, sizeof(void *), (void *) (cur_frame + offsets->PyFrameObject_code));
+            &code_ptr, sizeof(void *), (void *) (cur_frame + offsets->PyFrameObject_f_code));
     if (!code_ptr) {
         return false;
     }
@@ -379,7 +378,7 @@ static inline __attribute__((__always_inline__)) bool get_frame_data(
 
     // read next PyFrameObject pointer, update in place
     bpf_probe_read_user(
-            frame_ptr, sizeof(void *), (void *) (cur_frame + offsets->PyFrameObject_back));
+            frame_ptr, sizeof(void *), (void *) (cur_frame + offsets->PyFrameObject_f_back));
 
     return true;
 }
