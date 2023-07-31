@@ -146,19 +146,22 @@ func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 		data.Musl = uint8(muslVersion)
 	}
 	data.Offsets = ProfilePyOffsetConfig{
-		PyObjectObType:            offsets.PyObjectObType,
-		PyTypeObjectTpName:        offsets.PyTypeObjectTpName,
-		PyThreadStateFrame:        offsets.PyThreadStateFrame,
-		PyFrameObjectF_back:       offsets.PyFrameObjectF_back,
-		PyFrameObjectF_code:       offsets.PyFrameObjectF_code,
-		PyFrameObjectF_frame:      offsets.PyFrameObjectF_frame,
-		PyFrameObjectF_localsplus: offsets.PyFrameObjectF_localsplus,
-		PyCodeObjectCoFilename:    offsets.PyCodeObjectCoFilename,
-		PyCodeObjectCoName:        offsets.PyCodeObjectCoName,
-		PyCodeObjectCoVarnames:    offsets.PyCodeObjectCoVarnames,
-		PyTupleObjectObItem:       offsets.PyTupleObjectObItem,
-		PyInterpreterFrameF_code:  offsets.PyInterpreterFrameF_code,
-		StringSize:                offsets.StringSize,
+		PyObjectObType:             offsets.PyObjectObType,
+		PyTypeObjectTpName:         offsets.PyTypeObjectTpName,
+		PyThreadStateFrame:         offsets.PyThreadStateFrame,
+		PyThreadStateCframe:        offsets.PyThreadStateCframe,
+		PyCFrameCurrentFrame:       offsets.PyCFrameCurrentFrame,
+		PyFrameObjectF_back:        offsets.PyFrameObjectF_back,
+		PyFrameObjectF_code:        offsets.PyFrameObjectF_code,
+		PyFrameObjectF_frame:       offsets.PyFrameObjectF_frame,
+		PyFrameObjectF_localsplus:  offsets.PyFrameObjectF_localsplus,
+		PyCodeObjectCoFilename:     offsets.PyCodeObjectCoFilename,
+		PyCodeObjectCoName:         offsets.PyCodeObjectCoName,
+		PyCodeObjectCoVarnames:     offsets.PyCodeObjectCoVarnames,
+		PyTupleObjectObItem:        offsets.PyTupleObjectObItem,
+		PyInterpreterFrameF_code:   offsets.PyInterpreterFrameF_code,
+		PyInterpreterFramePrevious: offsets.PyInterpreterFramePrevious,
+		StringSize:                 offsets.StringSize,
 	}
 	return data, nil
 }

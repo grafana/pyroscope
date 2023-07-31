@@ -19,12 +19,12 @@ enum {
 };
 
 
-
-
 typedef struct {
     int64_t PyObject_ob_type;
     int64_t PyTypeObject_tp_name;
     int64_t PyThreadState_frame;
+    int64_t PyThreadState_cframe;
+    int64_t PyCFrame_current_frame;
     int64_t PyFrameObject_f_back;
     int64_t PyFrameObject_f_code;
     int64_t PyFrameObject_f_frame;
@@ -34,6 +34,7 @@ typedef struct {
     int64_t PyCodeObject_co_varnames;
     int64_t PyTupleObject_ob_item;
     int64_t PyInterpreterFrame_f_code;
+    int64_t PyInterpreterFrame_previous;
     int64_t String_size;
 } py_offset_config;
 
@@ -79,6 +80,7 @@ typedef struct {
 // See comments in get_frame_data
 FAIL_COMPILATION_IF(sizeof(py_symbol) == sizeof(struct bpf_perf_event_value))
 
+//todo make it void *back, keep u64 in struct only
 typedef u64 frame_ptr_t;
 
 typedef struct {
@@ -165,6 +167,35 @@ static inline __attribute__((__always_inline__)) py_sample_state_t *get_state() 
     return -1; /* should never happen */ \
   }
 
+int get_top_frame(py_pid_data *pid_data, py_sample_state_t *state, void *thread_state) {
+    if (pid_data->offsets.PyThreadState_frame == -1) {
+        // py311
+        void *cframe;
+        if (bpf_probe_read_user(
+                &cframe,
+                sizeof(void *),
+                thread_state + pid_data->offsets.PyThreadState_cframe)) {
+            return -1;
+        }
+        if (cframe == 0) {
+            return -1;
+        }
+        if (bpf_probe_read_user(
+                &state->frame_ptr,
+                sizeof(void *),
+                cframe + pid_data->offsets.PyCFrame_current_frame)) {
+            return -1;
+        }
+        return 0;
+    }
+    if (bpf_probe_read_user(
+            &state->frame_ptr,
+            sizeof(void *),
+            thread_state + pid_data->offsets.PyThreadState_frame)) {
+        return -1;
+    }
+    return 0;
+}
 
 static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid) {
 
@@ -199,11 +230,7 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
     event->stack_len = 0;
 
     if (thread_state != 0) {
-        // Get pointer to top frame from PyThreadState
-        if (bpf_probe_read_user(
-                &state->frame_ptr,
-                sizeof(void *),
-                thread_state + pid_data->offsets.PyThreadState_frame) ){
+        if (get_top_frame(pid_data, state, thread_state)) {
             return -1;
         }
         // jump to reading first set of Python frames
@@ -285,31 +312,66 @@ static inline __attribute__((__always_inline__)) void get_names(
 
 // get_frame_data reads current PyFrameObject filename/name and updates
 // stack_info->frame_ptr with pointer to next PyFrameObject
-static inline __attribute__((__always_inline__)) bool get_frame_data(
+// since 311 frame_ptr is pointing to _PyInterpreterFrame
+// returns -1 on error, 1 on success, 0 if no more frames
+static inline __attribute__((__always_inline__)) int get_frame_data(
         frame_ptr_t *frame_ptr,
         py_offset_config *offsets,
         py_symbol *symbol,
         // ctx is only used to call helper to clear symbol, see documentation below
         void *ctx) {
-    frame_ptr_t cur_frame = *frame_ptr;
-    if (!cur_frame) {
-        return false;
-    }
     void *code_ptr;
-    // read PyCodeObject first, if that fails, then no point reading next frame
-    bpf_probe_read_user(
-            &code_ptr, sizeof(void *), (void *) (cur_frame + offsets->PyFrameObject_f_code));
-    if (!code_ptr) {
-        return false;
+    frame_ptr_t cur_frame = *frame_ptr;
+//    bpf_printk("fp %x", cur_frame);
+    if (!cur_frame) {
+        return 0;
+    }
+    if (offsets->PyFrameObject_f_code == -1) {
+//        py311
+//        _PyInterpreterFrame *frame = tstate->cframe->current_frame
+//        if frame == NULL:
+//            return
+//        while True:
+//            yield frame
+//            frame = frame->previous
+//            if frame == NULL:
+//                break
+//            }
+        if (bpf_probe_read_user(
+                &code_ptr, sizeof(void *), (void *) (cur_frame + offsets->PyInterpreterFrame_f_code))) {
+            return -1;
+        }
+        if (!code_ptr) {
+            return 0; // todo learn when this happens? calling c extension?
+        }
+        get_names(cur_frame, code_ptr, offsets, symbol, ctx); //todo handle error
+
+        if (bpf_probe_read_user(
+                frame_ptr, sizeof(void *), (void *) (cur_frame + offsets->PyInterpreterFrame_previous))) {
+            return -1;
+        }
+        return 1;
     }
 
-    get_names(cur_frame, code_ptr, offsets, symbol, ctx);
+
+    // read PyCodeObject first, if that fails, then no point reading next frame
+    if (bpf_probe_read_user(
+            &code_ptr, sizeof(void *), (void *) (cur_frame + offsets->PyFrameObject_f_code))) {
+        return -1;
+    }
+    if (!code_ptr) {
+        return 0; // todo learn when this happens
+    }
+
+    get_names(cur_frame, code_ptr, offsets, symbol, ctx); //todo handle error
 
     // read next PyFrameObject pointer, update in place
-    bpf_probe_read_user(
-            frame_ptr, sizeof(void *), (void *) (cur_frame + offsets->PyFrameObject_f_back));
+    if (bpf_probe_read_user(
+            frame_ptr, sizeof(void *), (void *) (cur_frame + offsets->PyFrameObject_f_back))) {
+        return -1;
+    }
 
-    return true;
+    return 1;
 }
 // should be enough
 #define PY_NUM_CPU 512
@@ -343,11 +405,17 @@ int read_python_stack(struct bpf_perf_event_data *ctx) {
     py_event *sample = &state->event;
 
     py_symbol sym = {};
-    bool last_res = false;
+    int last_res = false;
 #pragma unroll
     for (int i = 0; i < PYTHON_STACK_FRAMES_PER_PROG; i++) {
         last_res = get_frame_data(&state->frame_ptr, &state->offsets, &sym, ctx);
-        if (last_res) {
+        if (last_res == -1) {
+            return -1;
+        }
+        if (last_res == 0) {
+            break;
+        }
+        if (last_res == 1) {
             uint32_t symbol_id = get_symbol_id(state, &sym);
             int64_t cur_len = sample->stack_len;
             if (cur_len >= 0 && cur_len < PYTHON_STACK_MAX_LEN) {

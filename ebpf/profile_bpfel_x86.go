@@ -27,19 +27,22 @@ type ProfilePyEvent struct {
 }
 
 type ProfilePyOffsetConfig struct {
-	PyObjectObType            int64
-	PyTypeObjectTpName        int64
-	PyThreadStateFrame        int64
-	PyFrameObjectF_back       int64
-	PyFrameObjectF_code       int64
-	PyFrameObjectF_frame      int64
-	PyFrameObjectF_localsplus int64
-	PyCodeObjectCoFilename    int64
-	PyCodeObjectCoName        int64
-	PyCodeObjectCoVarnames    int64
-	PyTupleObjectObItem       int64
-	PyInterpreterFrameF_code  int64
-	StringSize                int64
+	PyObjectObType             int64
+	PyTypeObjectTpName         int64
+	PyThreadStateFrame         int64
+	PyThreadStateCframe        int64
+	PyCFrameCurrentFrame       int64
+	PyFrameObjectF_back        int64
+	PyFrameObjectF_code        int64
+	PyFrameObjectF_frame       int64
+	PyFrameObjectF_localsplus  int64
+	PyCodeObjectCoFilename     int64
+	PyCodeObjectCoName         int64
+	PyCodeObjectCoVarnames     int64
+	PyTupleObjectObItem        int64
+	PyInterpreterFrameF_code   int64
+	PyInterpreterFramePrevious int64
+	StringSize                 int64
 }
 
 type ProfilePyPidData struct {
