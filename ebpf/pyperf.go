@@ -104,33 +104,30 @@ func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 	}
 
 	data := &ProfilePyPidData{}
+	var (
+		autoTLSkeyAddr, pyRuntimeAddr uint64
+	)
 	for _, symbol := range symbols {
 		switch symbol.Name {
 		case "autoTLSkey":
-			data.AutoTLSkeyAddr = base.StartAddr + symbol.Value
-		case "_PyThreadState_Current":
-			data.PyThreadStateCurrentAddr = base.StartAddr + symbol.Value
+			autoTLSkeyAddr = base.StartAddr + symbol.Value
 		case "_PyRuntime":
-			data.PyRuntimeAddr = base.StartAddr + symbol.Value
+			pyRuntimeAddr = base.StartAddr + symbol.Value
 		default:
 			continue
 		}
 	}
-	if data.PyThreadStateCurrentAddr == 0 && data.PyRuntimeAddr == 0 {
-		return nil, fmt.Errorf("missing symbols _PyThreadState_Current _PyRuntime %s %v", pythonPath, version)
+	if pyRuntimeAddr == 0 && autoTLSkeyAddr == 0 {
+		return nil, fmt.Errorf("missing symbols pyRuntimeAddr autoTLSkeyAddr %s %v", pythonPath, version)
 	}
-	if info.Version.Compare(PythonVersion{3, 7, 0}) < 0 && data.AutoTLSkeyAddr == 0 {
-		return nil, fmt.Errorf("missing symbols autoTLSkey %s %v", pythonPath, version)
-	}
-	if data.AutoTLSkeyAddr == 0 {
-		if offsets.PyRuntimeStateGilstate == -1 || offsets.GilstateRuntimeStateAutoTSSkey == -1 {
-			return nil, fmt.Errorf("missing offsets PyRuntimeStateGilstate GilstateRuntimeStateAutoTSSkey  % s%v", pythonPath, version)
-		}
 
-	}
 	data.Version.Major = uint32(version.Major)
 	data.Version.Minor = uint32(version.Minor)
 	data.Version.Patch = uint32(version.Patch)
+	data.TssKey, err = getPythonTSSKey(pid, version, offsets, autoTLSkeyAddr, pyRuntimeAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get python tss key %w", err)
+	}
 	if info.Musl != nil {
 		muslPath := fmt.Sprintf("/proc/%d/root%s", pid, info.Musl[0].Pathname)
 
@@ -148,8 +145,60 @@ func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 
 		data.Musl = uint8(muslVersion)
 	}
-	data.Offsets = offsets
+	data.Offsets = ProfilePyOffsetConfig{
+		PyObjectObType:            offsets.PyObjectObType,
+		PyTypeObjectTpName:        offsets.PyTypeObjectTpName,
+		PyThreadStateFrame:        offsets.PyThreadStateFrame,
+		PyFrameObjectF_back:       offsets.PyFrameObjectF_back,
+		PyFrameObjectF_code:       offsets.PyFrameObjectF_code,
+		PyFrameObjectF_frame:      offsets.PyFrameObjectF_frame,
+		PyFrameObjectF_localsplus: offsets.PyFrameObjectF_localsplus,
+		PyCodeObjectCoFilename:    offsets.PyCodeObjectCoFilename,
+		PyCodeObjectCoName:        offsets.PyCodeObjectCoName,
+		PyCodeObjectCoVarnames:    offsets.PyCodeObjectCoVarnames,
+		PyTupleObjectObItem:       offsets.PyTupleObjectObItem,
+		PyInterpreterFrameF_code:  offsets.PyInterpreterFrameF_code,
+		StringSize:                offsets.StringSize,
+	}
 	return data, nil
+}
+
+func getPythonTSSKey(pid int, version PythonVersion, offsets userPyOffsetConfig, autoTLSkeyAddr, pyRuntime uint64) (int32, error) {
+	fd, err := os.Open(fmt.Sprintf("/proc/%d/mem", pid))
+	if err != nil {
+		return 0, fmt.Errorf("python memory open failed   %w", err)
+	}
+	defer fd.Close()
+	var key [4]byte
+	var pkey int64
+	if version.Compare(PythonVersion{3, 7, 0}) < 0 {
+		if autoTLSkeyAddr == 0 {
+			return 0, fmt.Errorf("python missing symbols autoTLSkey %d %v", pid, version)
+		}
+		pkey = int64(autoTLSkeyAddr)
+
+	} else {
+		if pyRuntime == 0 {
+			//should never happen
+			return 0, fmt.Errorf("python missing symbols pyRuntime %d %v", pid, version)
+		}
+		if offsets.PyRuntimeStateGilstate == -1 || offsets.GilstateRuntimeStateAutoTSSkey == -1 || offsets.PyTssT_key == -1 {
+			// should never happen
+			return 0, fmt.Errorf("python missing offsets PyRuntimeStateGilstate GilstateRuntimeStateAutoTSSkey PyTssT_key %d %v", pid, version)
+		}
+		pkey = int64(pyRuntime) + offsets.PyRuntimeStateGilstate + offsets.GilstateRuntimeStateAutoTSSkey + offsets.PyTssT_key
+	}
+
+	n, err := fd.ReadAt(key[:], int64(pkey))
+	if err != nil {
+		return 0, fmt.Errorf("python failed to read key %d %d %v %w", pid, pkey, version, err)
+	}
+	if n != 4 {
+		return 0, fmt.Errorf("python failed to read key %d %d %v %w", pid, pkey, version, err)
+	}
+	res := int32(binary.LittleEndian.Uint32(key[:]))
+	fmt.Printf("tssKey %x = %d\n", pkey, res)
+	return res, nil
 }
 
 func (s *pyPerf) addPythonPID(pid int) error {
