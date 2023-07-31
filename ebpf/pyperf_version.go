@@ -14,16 +14,16 @@ type PythonVersion struct {
 }
 
 func (p *PythonVersion) Compare(other PythonVersion) int {
-	major := other.Major - p.Major
+	major := p.Major - other.Major
 	if major != 0 {
 		return major
 	}
 
-	minor := other.Minor - p.Minor
+	minor := p.Minor - other.Minor
 	if minor != 0 {
 		return minor
 	}
-	return other.Patch - p.Patch
+	return p.Patch - other.Patch
 }
 
 // GetPythonPatchVersion searches for a patch version given a major + minor version with regexp
@@ -94,8 +94,236 @@ func rgrep(r io.Reader, re *regexp.Regexp) ([][]byte, error) {
 	return nil, fmt.Errorf("rgrep not found %v", re.String())
 }
 
-var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
-	// 3.6.0 /home/korniltsev/.asdf/./installs/python/3.6.0/lib/libpython3.6m.so.1.0
+type userPyOffsetConfig struct {
+	PyObjectObType                 int64
+	PyTypeObjectTpName             int64
+	PyThreadStateFrame             int64
+	PyFrameObjectF_back            int64
+	PyFrameObjectF_code            int64
+	PyFrameObjectF_frame           int64
+	PyFrameObjectF_localsplus      int64
+	PyCodeObjectCoFilename         int64
+	PyCodeObjectCoName             int64
+	PyCodeObjectCoVarnames         int64
+	PyTupleObjectObItem            int64
+	PyInterpreterFrameF_code       int64
+	PyRuntimeStateGilstate         int64
+	GilstateRuntimeStateAutoTSSkey int64
+	PyTssT_key                     int64
+	StringSize                     int64
+}
+
+var pyVersions = map[PythonVersion]userPyOffsetConfig{
+	// 3.5.0 /home/korniltsev/mygithub/dbudy/dwarfdump239/python35/python/3.5.0/lib/libpython3.5m.so.1.0
+	PythonVersion{3, 5, 0}: {
+		PyObjectObType:                 8,
+		PyTypeObjectTpName:             24,
+		PyThreadStateFrame:             24,
+		PyFrameObjectF_back:            24,
+		PyFrameObjectF_code:            32,
+		PyFrameObjectF_frame:           -1,
+		PyFrameObjectF_localsplus:      376,
+		PyCodeObjectCoFilename:         96,
+		PyCodeObjectCoName:             104,
+		PyCodeObjectCoVarnames:         64,
+		PyTupleObjectObItem:            24,
+		PyInterpreterFrameF_code:       -1,
+		PyRuntimeStateGilstate:         -1,
+		GilstateRuntimeStateAutoTSSkey: -1,
+		PyTssT_key:                     -1,
+		StringSize:                     48,
+	},
+	// 3.5.1 /home/korniltsev/mygithub/dbudy/dwarfdump239/python35/python/3.5.1/lib/libpython3.5m.so.1.0
+	PythonVersion{3, 5, 1}: {
+		PyObjectObType:                 8,
+		PyTypeObjectTpName:             24,
+		PyThreadStateFrame:             24,
+		PyFrameObjectF_back:            24,
+		PyFrameObjectF_code:            32,
+		PyFrameObjectF_frame:           -1,
+		PyFrameObjectF_localsplus:      376,
+		PyCodeObjectCoFilename:         96,
+		PyCodeObjectCoName:             104,
+		PyCodeObjectCoVarnames:         64,
+		PyTupleObjectObItem:            24,
+		PyInterpreterFrameF_code:       -1,
+		PyRuntimeStateGilstate:         -1,
+		GilstateRuntimeStateAutoTSSkey: -1,
+		PyTssT_key:                     -1,
+		StringSize:                     48,
+	},
+	// 3.5.2 /home/korniltsev/mygithub/dbudy/dwarfdump239/python35/python/3.5.2/lib/libpython3.5m.so.1.0
+	PythonVersion{3, 5, 2}: {
+		PyObjectObType:                 8,
+		PyTypeObjectTpName:             24,
+		PyThreadStateFrame:             24,
+		PyFrameObjectF_back:            24,
+		PyFrameObjectF_code:            32,
+		PyFrameObjectF_frame:           -1,
+		PyFrameObjectF_localsplus:      376,
+		PyCodeObjectCoFilename:         96,
+		PyCodeObjectCoName:             104,
+		PyCodeObjectCoVarnames:         64,
+		PyTupleObjectObItem:            24,
+		PyInterpreterFrameF_code:       -1,
+		PyRuntimeStateGilstate:         -1,
+		GilstateRuntimeStateAutoTSSkey: -1,
+		PyTssT_key:                     -1,
+		StringSize:                     48,
+	},
+	// 3.5.3 /home/korniltsev/mygithub/dbudy/dwarfdump239/python35/python/3.5.3/lib/libpython3.5m.so.1.0
+	PythonVersion{3, 5, 3}: {
+		PyObjectObType:                 8,
+		PyTypeObjectTpName:             24,
+		PyThreadStateFrame:             24,
+		PyFrameObjectF_back:            24,
+		PyFrameObjectF_code:            32,
+		PyFrameObjectF_frame:           -1,
+		PyFrameObjectF_localsplus:      376,
+		PyCodeObjectCoFilename:         96,
+		PyCodeObjectCoName:             104,
+		PyCodeObjectCoVarnames:         64,
+		PyTupleObjectObItem:            24,
+		PyInterpreterFrameF_code:       -1,
+		PyRuntimeStateGilstate:         -1,
+		GilstateRuntimeStateAutoTSSkey: -1,
+		PyTssT_key:                     -1,
+		StringSize:                     48,
+	},
+	// 3.5.4 /home/korniltsev/mygithub/dbudy/dwarfdump239/python35/python/3.5.4/lib/libpython3.5m.so.1.0
+	PythonVersion{3, 5, 4}: {
+		PyObjectObType:                 8,
+		PyTypeObjectTpName:             24,
+		PyThreadStateFrame:             24,
+		PyFrameObjectF_back:            24,
+		PyFrameObjectF_code:            32,
+		PyFrameObjectF_frame:           -1,
+		PyFrameObjectF_localsplus:      376,
+		PyCodeObjectCoFilename:         96,
+		PyCodeObjectCoName:             104,
+		PyCodeObjectCoVarnames:         64,
+		PyTupleObjectObItem:            24,
+		PyInterpreterFrameF_code:       -1,
+		PyRuntimeStateGilstate:         -1,
+		GilstateRuntimeStateAutoTSSkey: -1,
+		PyTssT_key:                     -1,
+		StringSize:                     48,
+	},
+	// 3.5.5 /home/korniltsev/mygithub/dbudy/dwarfdump239/python35/python/3.5.5/lib/libpython3.5m.so.1.0
+	PythonVersion{3, 5, 5}: {
+		PyObjectObType:                 8,
+		PyTypeObjectTpName:             24,
+		PyThreadStateFrame:             24,
+		PyFrameObjectF_back:            24,
+		PyFrameObjectF_code:            32,
+		PyFrameObjectF_frame:           -1,
+		PyFrameObjectF_localsplus:      376,
+		PyCodeObjectCoFilename:         96,
+		PyCodeObjectCoName:             104,
+		PyCodeObjectCoVarnames:         64,
+		PyTupleObjectObItem:            24,
+		PyInterpreterFrameF_code:       -1,
+		PyRuntimeStateGilstate:         -1,
+		GilstateRuntimeStateAutoTSSkey: -1,
+		PyTssT_key:                     -1,
+		StringSize:                     48,
+	},
+	// 3.5.6 /home/korniltsev/mygithub/dbudy/dwarfdump239/python35/python/3.5.6/lib/libpython3.5m.so.1.0
+	PythonVersion{3, 5, 6}: {
+		PyObjectObType:                 8,
+		PyTypeObjectTpName:             24,
+		PyThreadStateFrame:             24,
+		PyFrameObjectF_back:            24,
+		PyFrameObjectF_code:            32,
+		PyFrameObjectF_frame:           -1,
+		PyFrameObjectF_localsplus:      376,
+		PyCodeObjectCoFilename:         96,
+		PyCodeObjectCoName:             104,
+		PyCodeObjectCoVarnames:         64,
+		PyTupleObjectObItem:            24,
+		PyInterpreterFrameF_code:       -1,
+		PyRuntimeStateGilstate:         -1,
+		GilstateRuntimeStateAutoTSSkey: -1,
+		PyTssT_key:                     -1,
+		StringSize:                     48,
+	},
+	// 3.5.7 /home/korniltsev/mygithub/dbudy/dwarfdump239/python35/python/3.5.7/lib/libpython3.5m.so.1.0
+	PythonVersion{3, 5, 7}: {
+		PyObjectObType:                 8,
+		PyTypeObjectTpName:             24,
+		PyThreadStateFrame:             24,
+		PyFrameObjectF_back:            24,
+		PyFrameObjectF_code:            32,
+		PyFrameObjectF_frame:           -1,
+		PyFrameObjectF_localsplus:      376,
+		PyCodeObjectCoFilename:         96,
+		PyCodeObjectCoName:             104,
+		PyCodeObjectCoVarnames:         64,
+		PyTupleObjectObItem:            24,
+		PyInterpreterFrameF_code:       -1,
+		PyRuntimeStateGilstate:         -1,
+		GilstateRuntimeStateAutoTSSkey: -1,
+		PyTssT_key:                     -1,
+		StringSize:                     48,
+	},
+	// 3.5.8 /home/korniltsev/mygithub/dbudy/dwarfdump239/python35/python/3.5.8/lib/libpython3.5m.so.1.0
+	PythonVersion{3, 5, 8}: {
+		PyObjectObType:                 8,
+		PyTypeObjectTpName:             24,
+		PyThreadStateFrame:             24,
+		PyFrameObjectF_back:            24,
+		PyFrameObjectF_code:            32,
+		PyFrameObjectF_frame:           -1,
+		PyFrameObjectF_localsplus:      376,
+		PyCodeObjectCoFilename:         96,
+		PyCodeObjectCoName:             104,
+		PyCodeObjectCoVarnames:         64,
+		PyTupleObjectObItem:            24,
+		PyInterpreterFrameF_code:       -1,
+		PyRuntimeStateGilstate:         -1,
+		GilstateRuntimeStateAutoTSSkey: -1,
+		PyTssT_key:                     -1,
+		StringSize:                     48,
+	},
+	// 3.5.9 /home/korniltsev/mygithub/dbudy/dwarfdump239/python35/python/3.5.9/lib/libpython3.5m.so.1.0
+	PythonVersion{3, 5, 9}: {
+		PyObjectObType:                 8,
+		PyTypeObjectTpName:             24,
+		PyThreadStateFrame:             24,
+		PyFrameObjectF_back:            24,
+		PyFrameObjectF_code:            32,
+		PyFrameObjectF_frame:           -1,
+		PyFrameObjectF_localsplus:      376,
+		PyCodeObjectCoFilename:         96,
+		PyCodeObjectCoName:             104,
+		PyCodeObjectCoVarnames:         64,
+		PyTupleObjectObItem:            24,
+		PyInterpreterFrameF_code:       -1,
+		PyRuntimeStateGilstate:         -1,
+		GilstateRuntimeStateAutoTSSkey: -1,
+		PyTssT_key:                     -1,
+		StringSize:                     48,
+	},
+	// 3.5.10 /home/korniltsev/mygithub/dbudy/dwarfdump239/python35/python/3.5.10/lib/libpython3.5m.so.1.0
+	PythonVersion{3, 5, 10}: {
+		PyObjectObType:                 8,
+		PyTypeObjectTpName:             24,
+		PyThreadStateFrame:             24,
+		PyFrameObjectF_back:            24,
+		PyFrameObjectF_code:            32,
+		PyFrameObjectF_frame:           -1,
+		PyFrameObjectF_localsplus:      376,
+		PyCodeObjectCoFilename:         96,
+		PyCodeObjectCoName:             104,
+		PyCodeObjectCoVarnames:         64,
+		PyTupleObjectObItem:            24,
+		PyInterpreterFrameF_code:       -1,
+		PyRuntimeStateGilstate:         -1,
+		GilstateRuntimeStateAutoTSSkey: -1,
+		PyTssT_key:                     -1,
+		StringSize:                     48,
+	},
+	// 3.6.0 /home/korniltsev/.asdf/installs/python/3.6.0/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 0}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -114,7 +342,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.1 /home/korniltsev/.asdf/./installs/python/3.6.1/lib/libpython3.6m.so.1.0
+	// 3.6.1 /home/korniltsev/.asdf/installs/python/3.6.1/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 1}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -133,7 +361,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.2 /home/korniltsev/.asdf/./installs/python/3.6.2/lib/libpython3.6m.so.1.0
+	// 3.6.2 /home/korniltsev/.asdf/installs/python/3.6.2/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 2}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -152,7 +380,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.3 /home/korniltsev/.asdf/./installs/python/3.6.3/lib/libpython3.6m.so.1.0
+	// 3.6.3 /home/korniltsev/.asdf/installs/python/3.6.3/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 3}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -171,7 +399,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.4 /home/korniltsev/.asdf/./installs/python/3.6.4/lib/libpython3.6m.so.1.0
+	// 3.6.4 /home/korniltsev/.asdf/installs/python/3.6.4/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 4}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -190,7 +418,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.5 /home/korniltsev/.asdf/./installs/python/3.6.5/lib/libpython3.6m.so.1.0
+	// 3.6.5 /home/korniltsev/.asdf/installs/python/3.6.5/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 5}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -209,7 +437,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.6 /home/korniltsev/.asdf/./installs/python/3.6.6/lib/libpython3.6m.so.1.0
+	// 3.6.6 /home/korniltsev/.asdf/installs/python/3.6.6/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 6}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -228,7 +456,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.7 /home/korniltsev/.asdf/./installs/python/3.6.7/lib/libpython3.6m.so.1.0
+	// 3.6.7 /home/korniltsev/.asdf/installs/python/3.6.7/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 7}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -247,7 +475,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.8 /home/korniltsev/.asdf/./installs/python/3.6.8/lib/libpython3.6m.so.1.0
+	// 3.6.8 /home/korniltsev/.asdf/installs/python/3.6.8/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 8}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -266,7 +494,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.9 /home/korniltsev/.asdf/./installs/python/3.6.9/lib/libpython3.6m.so.1.0
+	// 3.6.9 /home/korniltsev/.asdf/installs/python/3.6.9/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 9}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -285,7 +513,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.10 /home/korniltsev/.asdf/./installs/python/3.6.10/lib/libpython3.6m.so.1.0
+	// 3.6.10 /home/korniltsev/.asdf/installs/python/3.6.10/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 10}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -304,7 +532,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.11 /home/korniltsev/.asdf/./installs/python/3.6.11/lib/libpython3.6m.so.1.0
+	// 3.6.11 /home/korniltsev/.asdf/installs/python/3.6.11/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 11}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -323,7 +551,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.12 /home/korniltsev/.asdf/./installs/python/3.6.12/lib/libpython3.6m.so.1.0
+	// 3.6.12 /home/korniltsev/.asdf/installs/python/3.6.12/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 12}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -342,7 +570,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.13 /home/korniltsev/.asdf/./installs/python/3.6.13/lib/libpython3.6m.so.1.0
+	// 3.6.13 /home/korniltsev/.asdf/installs/python/3.6.13/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 13}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -361,7 +589,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.14 /home/korniltsev/.asdf/./installs/python/3.6.14/lib/libpython3.6m.so.1.0
+	// 3.6.14 /home/korniltsev/.asdf/installs/python/3.6.14/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 14}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -380,7 +608,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.6.15 /home/korniltsev/.asdf/./installs/python/3.6.15/lib/libpython3.6m.so.1.0
+	// 3.6.15 /home/korniltsev/.asdf/installs/python/3.6.15/lib/libpython3.6m.so.1.0
 	PythonVersion{3, 6, 15}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -399,7 +627,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     -1,
 		StringSize:                     48,
 	},
-	// 3.7.0 /home/korniltsev/.asdf/./installs/python/3.7.0/lib/libpython3.7m.so.1.0
+	// 3.7.0 /home/korniltsev/.asdf/installs/python/3.7.0/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 0}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -418,7 +646,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.1 /home/korniltsev/.asdf/./installs/python/3.7.1/lib/libpython3.7m.so.1.0
+	// 3.7.1 /home/korniltsev/.asdf/installs/python/3.7.1/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 1}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -437,7 +665,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.2 /home/korniltsev/.asdf/./installs/python/3.7.2/lib/libpython3.7m.so.1.0
+	// 3.7.2 /home/korniltsev/.asdf/installs/python/3.7.2/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 2}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -456,7 +684,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.3 /home/korniltsev/.asdf/./installs/python/3.7.3/lib/libpython3.7m.so.1.0
+	// 3.7.3 /home/korniltsev/.asdf/installs/python/3.7.3/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 3}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -475,7 +703,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.4 /home/korniltsev/.asdf/./installs/python/3.7.4/lib/libpython3.7m.so.1.0
+	// 3.7.4 /home/korniltsev/.asdf/installs/python/3.7.4/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 4}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -494,7 +722,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.5 /home/korniltsev/.asdf/./installs/python/3.7.5/lib/libpython3.7m.so.1.0
+	// 3.7.5 /home/korniltsev/.asdf/installs/python/3.7.5/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 5}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -513,7 +741,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.6 /home/korniltsev/.asdf/./installs/python/3.7.6/lib/libpython3.7m.so.1.0
+	// 3.7.6 /home/korniltsev/.asdf/installs/python/3.7.6/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 6}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -532,7 +760,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.7 /home/korniltsev/.asdf/./installs/python/3.7.7/lib/libpython3.7m.so.1.0
+	// 3.7.7 /home/korniltsev/.asdf/installs/python/3.7.7/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 7}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -551,7 +779,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.8 /home/korniltsev/.asdf/./installs/python/3.7.8/lib/libpython3.7m.so.1.0
+	// 3.7.8 /home/korniltsev/.asdf/installs/python/3.7.8/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 8}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -570,7 +798,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.9 /home/korniltsev/.asdf/./installs/python/3.7.9/lib/libpython3.7m.so.1.0
+	// 3.7.9 /home/korniltsev/.asdf/installs/python/3.7.9/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 9}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -589,7 +817,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.10 /home/korniltsev/.asdf/./installs/python/3.7.10/lib/libpython3.7m.so.1.0
+	// 3.7.10 /home/korniltsev/.asdf/installs/python/3.7.10/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 10}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -608,7 +836,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.11 /home/korniltsev/.asdf/./installs/python/3.7.11/lib/libpython3.7m.so.1.0
+	// 3.7.11 /home/korniltsev/.asdf/installs/python/3.7.11/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 11}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -627,7 +855,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.12 /home/korniltsev/.asdf/./installs/python/3.7.12/lib/libpython3.7m.so.1.0
+	// 3.7.12 /home/korniltsev/.asdf/installs/python/3.7.12/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 12}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -646,7 +874,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.13 /home/korniltsev/.asdf/./installs/python/3.7.13/lib/libpython3.7m.so.1.0
+	// 3.7.13 /home/korniltsev/.asdf/installs/python/3.7.13/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 13}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -665,7 +893,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.14 /home/korniltsev/.asdf/./installs/python/3.7.14/lib/libpython3.7m.so.1.0
+	// 3.7.14 /home/korniltsev/.asdf/installs/python/3.7.14/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 14}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -684,7 +912,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.15 /home/korniltsev/.asdf/./installs/python/3.7.15/lib/libpython3.7m.so.1.0
+	// 3.7.15 /home/korniltsev/.asdf/installs/python/3.7.15/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 15}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -703,7 +931,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.16 /home/korniltsev/.asdf/./installs/python/3.7.16/lib/libpython3.7m.so.1.0
+	// 3.7.16 /home/korniltsev/.asdf/installs/python/3.7.16/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 16}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -722,7 +950,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.7.17 /home/korniltsev/.asdf/./installs/python/3.7.17/lib/libpython3.7m.so.1.0
+	// 3.7.17 /home/korniltsev/.asdf/installs/python/3.7.17/lib/libpython3.7m.so.1.0
 	PythonVersion{3, 7, 17}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -741,7 +969,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.0 /home/korniltsev/.asdf/./installs/python/3.8.0/lib/libpython3.8.so.1.0
+	// 3.8.0 /home/korniltsev/.asdf/installs/python/3.8.0/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 0}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -760,7 +988,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.1 /home/korniltsev/.asdf/./installs/python/3.8.1/lib/libpython3.8.so.1.0
+	// 3.8.1 /home/korniltsev/.asdf/installs/python/3.8.1/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 1}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -779,7 +1007,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.2 /home/korniltsev/.asdf/./installs/python/3.8.2/lib/libpython3.8.so.1.0
+	// 3.8.2 /home/korniltsev/.asdf/installs/python/3.8.2/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 2}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -798,7 +1026,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.3 /home/korniltsev/.asdf/./installs/python/3.8.3/lib/libpython3.8.so.1.0
+	// 3.8.3 /home/korniltsev/.asdf/installs/python/3.8.3/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 3}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -817,7 +1045,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.4 /home/korniltsev/.asdf/./installs/python/3.8.4/lib/libpython3.8.so.1.0
+	// 3.8.4 /home/korniltsev/.asdf/installs/python/3.8.4/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 4}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -836,7 +1064,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.5 /home/korniltsev/.asdf/./installs/python/3.8.5/lib/libpython3.8.so.1.0
+	// 3.8.5 /home/korniltsev/.asdf/installs/python/3.8.5/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 5}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -855,7 +1083,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.6 /home/korniltsev/.asdf/./installs/python/3.8.6/lib/libpython3.8.so.1.0
+	// 3.8.6 /home/korniltsev/.asdf/installs/python/3.8.6/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 6}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -874,7 +1102,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.7 /home/korniltsev/.asdf/./installs/python/3.8.7/lib/libpython3.8.so.1.0
+	// 3.8.7 /home/korniltsev/.asdf/installs/python/3.8.7/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 7}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -893,7 +1121,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.8 /home/korniltsev/.asdf/./installs/python/3.8.8/lib/libpython3.8.so.1.0
+	// 3.8.8 /home/korniltsev/.asdf/installs/python/3.8.8/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 8}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -912,7 +1140,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.9 /home/korniltsev/.asdf/./installs/python/3.8.9/lib/libpython3.8.so.1.0
+	// 3.8.9 /home/korniltsev/.asdf/installs/python/3.8.9/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 9}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -931,7 +1159,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.10 /home/korniltsev/.asdf/./installs/python/3.8.10/lib/libpython3.8.so.1.0
+	// 3.8.10 /home/korniltsev/.asdf/installs/python/3.8.10/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 10}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -950,7 +1178,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.11 /home/korniltsev/.asdf/./installs/python/3.8.11/lib/libpython3.8.so.1.0
+	// 3.8.11 /home/korniltsev/.asdf/installs/python/3.8.11/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 11}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -969,7 +1197,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.12 /home/korniltsev/.asdf/./installs/python/3.8.12/lib/libpython3.8.so.1.0
+	// 3.8.12 /home/korniltsev/.asdf/installs/python/3.8.12/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 12}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -988,7 +1216,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.13 /home/korniltsev/.asdf/./installs/python/3.8.13/lib/libpython3.8.so.1.0
+	// 3.8.13 /home/korniltsev/.asdf/installs/python/3.8.13/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 13}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1007,7 +1235,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.14 /home/korniltsev/.asdf/./installs/python/3.8.14/lib/libpython3.8.so.1.0
+	// 3.8.14 /home/korniltsev/.asdf/installs/python/3.8.14/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 14}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1026,7 +1254,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.15 /home/korniltsev/.asdf/./installs/python/3.8.15/lib/libpython3.8.so.1.0
+	// 3.8.15 /home/korniltsev/.asdf/installs/python/3.8.15/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 15}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1045,7 +1273,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.16 /home/korniltsev/.asdf/./installs/python/3.8.16/lib/libpython3.8.so.1.0
+	// 3.8.16 /home/korniltsev/.asdf/installs/python/3.8.16/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 16}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1064,7 +1292,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.8.17 /home/korniltsev/.asdf/./installs/python/3.8.17/lib/libpython3.8.so.1.0
+	// 3.8.17 /home/korniltsev/.asdf/installs/python/3.8.17/lib/libpython3.8.so.1.0
 	PythonVersion{3, 8, 17}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1083,7 +1311,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.0 /home/korniltsev/.asdf/./installs/python/3.9.0/lib/libpython3.9.so.1.0
+	// 3.9.0 /home/korniltsev/.asdf/installs/python/3.9.0/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 0}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1102,7 +1330,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.1 /home/korniltsev/.asdf/./installs/python/3.9.1/lib/libpython3.9.so.1.0
+	// 3.9.1 /home/korniltsev/.asdf/installs/python/3.9.1/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 1}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1121,7 +1349,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.2 /home/korniltsev/.asdf/./installs/python/3.9.2/lib/libpython3.9.so.1.0
+	// 3.9.2 /home/korniltsev/.asdf/installs/python/3.9.2/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 2}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1140,7 +1368,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.4 /home/korniltsev/.asdf/./installs/python/3.9.4/lib/libpython3.9.so.1.0
+	// 3.9.4 /home/korniltsev/.asdf/installs/python/3.9.4/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 4}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1159,7 +1387,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.5 /home/korniltsev/.asdf/./installs/python/3.9.5/lib/libpython3.9.so.1.0
+	// 3.9.5 /home/korniltsev/.asdf/installs/python/3.9.5/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 5}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1178,7 +1406,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.6 /home/korniltsev/.asdf/./installs/python/3.9.6/lib/libpython3.9.so.1.0
+	// 3.9.6 /home/korniltsev/.asdf/installs/python/3.9.6/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 6}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1197,7 +1425,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.7 /home/korniltsev/.asdf/./installs/python/3.9.7/lib/libpython3.9.so.1.0
+	// 3.9.7 /home/korniltsev/.asdf/installs/python/3.9.7/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 7}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1216,7 +1444,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.8 /home/korniltsev/.asdf/./installs/python/3.9.8/lib/libpython3.9.so.1.0
+	// 3.9.8 /home/korniltsev/.asdf/installs/python/3.9.8/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 8}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1235,7 +1463,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.9 /home/korniltsev/.asdf/./installs/python/3.9.9/lib/libpython3.9.so.1.0
+	// 3.9.9 /home/korniltsev/.asdf/installs/python/3.9.9/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 9}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1254,7 +1482,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.10 /home/korniltsev/.asdf/./installs/python/3.9.10/lib/libpython3.9.so.1.0
+	// 3.9.10 /home/korniltsev/.asdf/installs/python/3.9.10/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 10}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1273,7 +1501,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.11 /home/korniltsev/.asdf/./installs/python/3.9.11/lib/libpython3.9.so.1.0
+	// 3.9.11 /home/korniltsev/.asdf/installs/python/3.9.11/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 11}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1292,7 +1520,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.12 /home/korniltsev/.asdf/./installs/python/3.9.12/lib/libpython3.9.so.1.0
+	// 3.9.12 /home/korniltsev/.asdf/installs/python/3.9.12/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 12}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1311,7 +1539,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.13 /home/korniltsev/.asdf/./installs/python/3.9.13/lib/libpython3.9.so.1.0
+	// 3.9.13 /home/korniltsev/.asdf/installs/python/3.9.13/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 13}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1330,7 +1558,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.14 /home/korniltsev/.asdf/./installs/python/3.9.14/lib/libpython3.9.so.1.0
+	// 3.9.14 /home/korniltsev/.asdf/installs/python/3.9.14/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 14}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1349,7 +1577,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.15 /home/korniltsev/.asdf/./installs/python/3.9.15/lib/libpython3.9.so.1.0
+	// 3.9.15 /home/korniltsev/.asdf/installs/python/3.9.15/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 15}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1368,7 +1596,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.16 /home/korniltsev/.asdf/./installs/python/3.9.16/lib/libpython3.9.so.1.0
+	// 3.9.16 /home/korniltsev/.asdf/installs/python/3.9.16/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 16}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1387,7 +1615,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.9.17 /home/korniltsev/.asdf/./installs/python/3.9.17/lib/libpython3.9.so.1.0
+	// 3.9.17 /home/korniltsev/.asdf/installs/python/3.9.17/lib/libpython3.9.so.1.0
 	PythonVersion{3, 9, 17}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1406,7 +1634,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.10.0 /home/korniltsev/.asdf/./installs/python/3.10.0/lib/libpython3.10.so.1.0
+	// 3.10.0 /home/korniltsev/.asdf/installs/python/3.10.0/lib/libpython3.10.so.1.0
 	PythonVersion{3, 10, 0}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1425,7 +1653,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.10.1 /home/korniltsev/.asdf/./installs/python/3.10.1/lib/libpython3.10.so.1.0
+	// 3.10.1 /home/korniltsev/.asdf/installs/python/3.10.1/lib/libpython3.10.so.1.0
 	PythonVersion{3, 10, 1}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1444,7 +1672,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.10.2 /home/korniltsev/.asdf/./installs/python/3.10.2/lib/libpython3.10.so.1.0
+	// 3.10.2 /home/korniltsev/.asdf/installs/python/3.10.2/lib/libpython3.10.so.1.0
 	PythonVersion{3, 10, 2}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1463,7 +1691,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.10.3 /home/korniltsev/.asdf/./installs/python/3.10.3/lib/libpython3.10.so.1.0
+	// 3.10.3 /home/korniltsev/.asdf/installs/python/3.10.3/lib/libpython3.10.so.1.0
 	PythonVersion{3, 10, 3}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1482,7 +1710,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.10.4 /home/korniltsev/.asdf/./installs/python/3.10.4/lib/libpython3.10.so.1.0
+	// 3.10.4 /home/korniltsev/.asdf/installs/python/3.10.4/lib/libpython3.10.so.1.0
 	PythonVersion{3, 10, 4}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1501,7 +1729,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.10.5 /home/korniltsev/.asdf/./installs/python/3.10.5/lib/libpython3.10.so.1.0
+	// 3.10.5 /home/korniltsev/.asdf/installs/python/3.10.5/lib/libpython3.10.so.1.0
 	PythonVersion{3, 10, 5}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1520,7 +1748,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.10.6 /home/korniltsev/.asdf/./installs/python/3.10.6/lib/libpython3.10.so.1.0
+	// 3.10.6 /home/korniltsev/.asdf/installs/python/3.10.6/lib/libpython3.10.so.1.0
 	PythonVersion{3, 10, 6}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1539,7 +1767,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.10.7 /home/korniltsev/.asdf/./installs/python/3.10.7/lib/libpython3.10.so.1.0
+	// 3.10.7 /home/korniltsev/.asdf/installs/python/3.10.7/lib/libpython3.10.so.1.0
 	PythonVersion{3, 10, 7}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1558,7 +1786,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.10.8 /home/korniltsev/.asdf/./installs/python/3.10.8/lib/libpython3.10.so.1.0
+	// 3.10.8 /home/korniltsev/.asdf/installs/python/3.10.8/lib/libpython3.10.so.1.0
 	PythonVersion{3, 10, 8}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1577,7 +1805,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.10.9 /home/korniltsev/.asdf/./installs/python/3.10.9/lib/libpython3.10.so.1.0
+	// 3.10.9 /home/korniltsev/.asdf/installs/python/3.10.9/lib/libpython3.10.so.1.0
 	PythonVersion{3, 10, 9}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1596,7 +1824,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.10.10 /home/korniltsev/.asdf/./installs/python/3.10.10/lib/libpython3.10.so.1.0
+	// 3.10.10 /home/korniltsev/.asdf/installs/python/3.10.10/lib/libpython3.10.so.1.0
 	PythonVersion{3, 10, 10}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1615,7 +1843,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.10.11 /home/korniltsev/.asdf/./installs/python/3.10.11/lib/libpython3.10.so.1.0
+	// 3.10.11 /home/korniltsev/.asdf/installs/python/3.10.11/lib/libpython3.10.so.1.0
 	PythonVersion{3, 10, 11}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1634,7 +1862,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.10.12 /home/korniltsev/.asdf/./installs/python/3.10.12/lib/libpython3.10.so.1.0
+	// 3.10.12 /home/korniltsev/.asdf/installs/python/3.10.12/lib/libpython3.10.so.1.0
 	PythonVersion{3, 10, 12}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1653,7 +1881,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.11.0 /home/korniltsev/.asdf/./installs/python/3.11.0/lib/libpython3.11.so.1.0
+	// 3.11.0 /home/korniltsev/.asdf/installs/python/3.11.0/lib/libpython3.11.so.1.0
 	PythonVersion{3, 11, 0}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1672,7 +1900,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.11.1 /home/korniltsev/.asdf/./installs/python/3.11.1/lib/libpython3.11.so.1.0
+	// 3.11.1 /home/korniltsev/.asdf/installs/python/3.11.1/lib/libpython3.11.so.1.0
 	PythonVersion{3, 11, 1}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1691,7 +1919,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.11.2 /home/korniltsev/.asdf/./installs/python/3.11.2/lib/libpython3.11.so.1.0
+	// 3.11.2 /home/korniltsev/.asdf/installs/python/3.11.2/lib/libpython3.11.so.1.0
 	PythonVersion{3, 11, 2}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1710,7 +1938,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.11.3 /home/korniltsev/.asdf/./installs/python/3.11.3/lib/libpython3.11.so.1.0
+	// 3.11.3 /home/korniltsev/.asdf/installs/python/3.11.3/lib/libpython3.11.so.1.0
 	PythonVersion{3, 11, 3}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,
@@ -1729,7 +1957,7 @@ var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{
 		PyTssT_key:                     4,
 		StringSize:                     48,
 	},
-	// 3.11.4 /home/korniltsev/.asdf/./installs/python/3.11.4/lib/libpython3.11.so.1.0
+	// 3.11.4 /home/korniltsev/.asdf/installs/python/3.11.4/lib/libpython3.11.so.1.0
 	PythonVersion{3, 11, 4}: {
 		PyObjectObType:                 8,
 		PyTypeObjectTpName:             24,

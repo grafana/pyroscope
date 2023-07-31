@@ -35,6 +35,9 @@ static inline int pyro_get_tlsbase(void **out) {
 // musl 1 means musl 1.1.xx
 // musl 2 means musl 1.2.xx
 static inline int pyro_pthread_getspecific(uint8_t musl, int32_t key, void *tls_base, void **out) {
+    if (key == -1) {
+        return -1;
+    }
     if (musl) {
 //        0x7fd5a3c0c3be <tss_get>       mov    rax, qword ptr fs:[0]
 //        0x7fd5a3c0c3c7 <tss_get+9>     mov    rax, qword ptr [rax + 0x80]

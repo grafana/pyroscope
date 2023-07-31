@@ -19,14 +19,6 @@ enum {
 };
 
 
-enum {
-    THREAD_STATE_UNKNOWN = 0,
-    THREAD_STATE_MATCH = 1,
-    THREAD_STATE_MISMATCH = 2,
-    THREAD_STATE_THIS_THREAD_NULL = 3,
-    THREAD_STATE_GLOBAL_CURRENT_THREAD_NULL = 4,
-    THREAD_STATE_BOTH_NULL = 5,
-};
 
 
 typedef struct {
@@ -42,9 +34,6 @@ typedef struct {
     int64_t PyCodeObject_co_varnames;
     int64_t PyTupleObject_ob_item;
     int64_t PyInterpreterFrame_f_code;
-    int64_t PyRuntimeState_gilstate;
-    int64_t GilstateRuntimeState_autoTSSkey;
-    int64_t Py_tss_t_key;
     int64_t String_size;
 } py_offset_config;
 
@@ -55,13 +44,10 @@ typedef struct {
 } py_version;
 
 typedef struct {
-    uintptr_t PyThreadState_Current_addr; // virtual address of _PyThreadState_Current
-    uintptr_t autoTLSkey_addr; // virtual address of autoTLSkey for pthreads TLS
-    uintptr_t PyRuntime_addr; // virtual address of _PyRuntime
     py_offset_config offsets;
     py_version version;
-    uint8_t musl;// 1 if musl libc is used, 0 otherwise
-    int tssKey;//todo pass from userspace
+    uint8_t musl;// 1,2 if musl libc is used, 0 otherwise
+    int32_t tssKey;
 } py_pid_data;
 
 typedef struct {
@@ -155,26 +141,7 @@ static inline __attribute__((__always_inline__)) int get_thread_state(
         void *tls_base,
         py_pid_data *pid_data,
         void **out_thread_state) {
-    //todo cache
-    int key;
-    if (pid_data->autoTLSkey_addr != 0) {
-        if (bpf_probe_read_user(&key, sizeof(key), (void *) pid_data->autoTLSkey_addr)) {
-            return -1;
-        }
-    } else {
-        //todo precompute this offset once in userspace
-        void *autoTSSAddr = (void *) pid_data->PyRuntime_addr +
-                            pid_data->offsets.PyRuntimeState_gilstate +
-                            pid_data->offsets.GilstateRuntimeState_autoTSSkey +
-                            pid_data->offsets.Py_tss_t_key;
-        if (bpf_probe_read_user(&key, sizeof(key), autoTSSAddr)) {
-            return -1;
-        }
-    }
-    bpf_printk("key: %d\n", key);
-    bpf_printk("tls_base: %x\n", tls_base);
-
-    return pyro_pthread_getspecific(pid_data->musl, key, tls_base, out_thread_state);
+    return pyro_pthread_getspecific(pid_data->musl, pid_data->tssKey, tls_base, out_thread_state);
 }
 
 static inline __attribute__((__always_inline__)) int submit_sample(
@@ -197,25 +164,6 @@ static inline __attribute__((__always_inline__)) py_sample_state_t *get_state() 
   if (!state) {                         \
     return -1; /* should never happen */ \
   }
-
-static inline __attribute__((__always_inline__)) int get_thread_state_match(
-        void *this_thread_state,
-        void *global_thread_state) {
-    if (this_thread_state == 0 && global_thread_state == 0) {
-        return THREAD_STATE_BOTH_NULL;
-    }
-    if (this_thread_state == 0) {
-        return THREAD_STATE_THIS_THREAD_NULL;
-    }
-    if (global_thread_state == 0) {
-        return THREAD_STATE_GLOBAL_CURRENT_THREAD_NULL;
-    }
-    if (this_thread_state == global_thread_state) {
-        return THREAD_STATE_MATCH;
-    } else {
-        return THREAD_STATE_MISMATCH;
-    }
-}
 
 
 static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid) {
@@ -245,7 +193,6 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
     if (get_thread_state(tls_base, pid_data, &thread_state)) {
         return -1;
     }
-    bpf_printk("thread_state: %x\n", thread_state);
 
     // pre-initialize event struct in case any subprogram below fails
     event->stack_status = STACK_STATUS_COMPLETE;
