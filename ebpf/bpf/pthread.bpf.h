@@ -9,6 +9,12 @@
 
 static inline int pyro_pthread_getspecific(uint8_t musl, int32_t key, void *tls_base, void **out) {
     if (musl) {
+//        0x7fd5a3c0c3be <tss_get>       mov    rax, qword ptr fs:[0]
+//        0x7fd5a3c0c3c7 <tss_get+9>     mov    rax, qword ptr [rax + 0x80]
+//        0x7fd5a3c0c3ce <tss_get+16>    mov    edi, edi
+//        0x7fd5a3c0c3d0 <tss_get+18>    mov    rax, qword ptr [rax + rdi*8]
+//        0x7fd5a3c0c3d4 <tss_get+22>    ret
+
         return -1; // TODO
     }
     void *res;
