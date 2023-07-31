@@ -118,6 +118,18 @@ func (m *Meta) String() string {
 	)
 }
 
+func (m *Meta) Clone() *Meta {
+	data, err := json.Marshal(m)
+	if err != nil {
+		panic(err)
+	}
+	var clone Meta
+	if err := json.Unmarshal(data, &clone); err != nil {
+		panic(err)
+	}
+	return &clone
+}
+
 var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 func generateULID() ulid.ULID {
