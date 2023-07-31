@@ -132,17 +132,17 @@ func New(soPath string, prog string) (*UME, error) {
 	}
 	warnOnError(res.BindFunc5("bpf_trace_printk", res.helperBPFTracePrintk))
 	warnOnError(res.BindFunc2("bpf_get_current_comm", res.helperGetCurrentComm))
-	mustNotError(res.BindFunc0("bpf_get_current_pid_tgid", res.helperGetCurrentPIDTGID))
-	mustNotError(res.BindFunc0("bpf_get_smp_processor_id", res.helperGetSMProcessorID))
-	mustNotError(res.BindFunc2("bpf_map_lookup_elem", res.helperMapLookupElem))
-	mustNotError(res.BindFunc3("bpf_probe_read_user", res.helperProbeReadUser))
-	mustNotError(res.BindFunc3("bpf_probe_read_user_str", res.helperProbeReadUserStr))
-	mustNotError(res.BindFunc3("bpf_probe_read_kernel", res.helperProbeReadKernel))
-	mustNotError(res.BindFunc0("bpf_get_current_task", res.helperGetCurrentTask))
-	mustNotError(res.BindFunc5("bpf_perf_event_output", res.helperPerfEventOutput))
+	warnOnError(res.BindFunc0("bpf_get_current_pid_tgid", res.helperGetCurrentPIDTGID))
+	warnOnError(res.BindFunc0("bpf_get_smp_processor_id", res.helperGetSMProcessorID))
+	warnOnError(res.BindFunc2("bpf_map_lookup_elem", res.helperMapLookupElem))
+	warnOnError(res.BindFunc3("bpf_probe_read_user", res.helperProbeReadUser))
+	warnOnError(res.BindFunc3("bpf_probe_read_user_str", res.helperProbeReadUserStr))
+	warnOnError(res.BindFunc3("bpf_probe_read_kernel", res.helperProbeReadKernel))
+	warnOnError(res.BindFunc0("bpf_get_current_task", res.helperGetCurrentTask))
+	warnOnError(res.BindFunc5("bpf_perf_event_output", res.helperPerfEventOutput))
 	warnOnError(res.BindFunc3("bpf_perf_prog_read_value", res.helperPerfProgReadValue))
-	mustNotError(res.BindFunc4("bpf_map_update_elem", res.helperMapUpdateElem))
-	mustNotError(res.BindBPFTailCall())
+	warnOnError(res.BindFunc4("bpf_map_update_elem", res.helperMapUpdateElem))
+	warnOnError(res.BindBPFTailCall())
 
 	return res, nil
 }

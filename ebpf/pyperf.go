@@ -79,28 +79,28 @@ func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 		pythonMeat = info.LibPythonMaps
 	}
 	base := pythonMeat[0]
-	path := fmt.Sprintf("/proc/%d/root%s", pid, base.Pathname)
-	pythonFD, err := os.Open(path)
+	pythonPath := fmt.Sprintf("/proc/%d/root%s", pid, base.Pathname)
+	pythonFD, err := os.Open(pythonPath)
 	if err != nil {
-		return nil, fmt.Errorf("could not get python patch version %s %w", path, err)
+		return nil, fmt.Errorf("could not get python patch version %s %w", pythonPath, err)
 	}
 	defer pythonFD.Close()
 	version, err := GetPythonPatchVersion(pythonFD, info.Version)
 	if err != nil {
-		return nil, fmt.Errorf("could not get python patch version %s %w", path, err)
+		return nil, fmt.Errorf("could not get python patch version %s %w", pythonPath, err)
 	}
 
 	offsets, ok := pyVersions[version]
 	if !ok {
-		return nil, fmt.Errorf("unsupported python version %s %w", path, err)
+		return nil, fmt.Errorf("unsupported python version %s %w", pythonPath, err)
 	}
 	ef, err := elf.NewFile(pythonFD)
 	if err != nil {
-		return nil, fmt.Errorf("opening elf %s: %w", path, err)
+		return nil, fmt.Errorf("opening elf %s: %w", pythonPath, err)
 	}
 	symbols, err := ef.Symbols() // todo reuse parser from symtab, make it optionally streaming
 	if err != nil {
-		return nil, fmt.Errorf("reading symbols from elf %s: %w", path, err)
+		return nil, fmt.Errorf("reading symbols from elf %s: %w", pythonPath, err)
 	}
 
 	data := &ProfilePyPidData{}
@@ -117,21 +117,37 @@ func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 		}
 	}
 	if data.PyThreadStateCurrentAddr == 0 && data.PyRuntimeAddr == 0 {
-		return nil, fmt.Errorf("missing symbols _PyThreadState_Current _PyRuntime %s %v", path, version)
+		return nil, fmt.Errorf("missing symbols _PyThreadState_Current _PyRuntime %s %v", pythonPath, version)
 	}
 	if info.Version.Compare(PythonVersion{3, 7, 0}) < 0 && data.AutoTLSkeyAddr == 0 {
-		return nil, fmt.Errorf("missing symbols autoTLSkey %s %v", path, version)
+		return nil, fmt.Errorf("missing symbols autoTLSkey %s %v", pythonPath, version)
 	}
 	if data.AutoTLSkeyAddr == 0 {
 		if offsets.PyRuntimeStateGilstate == -1 || offsets.GilstateRuntimeStateAutoTSSkey == -1 {
-			return nil, fmt.Errorf("missing offsets PyRuntimeStateGilstate GilstateRuntimeStateAutoTSSkey  % s%v", path, version)
+			return nil, fmt.Errorf("missing offsets PyRuntimeStateGilstate GilstateRuntimeStateAutoTSSkey  % s%v", pythonPath, version)
 		}
 
 	}
 	data.Version.Major = uint32(version.Major)
 	data.Version.Minor = uint32(version.Minor)
 	data.Version.Patch = uint32(version.Patch)
+	if info.Musl != nil {
+		muslPath := fmt.Sprintf("/proc/%d/root%s", pid, info.Musl[0].Pathname)
 
+		muslFD, err := os.Open(muslPath)
+		if err != nil {
+			return nil, fmt.Errorf("couldnot determine musl version %s %w", muslPath, err)
+		}
+		muslVersion, err := GetMuslVersion(muslFD)
+		if err != nil {
+			return nil, fmt.Errorf("couldnot determine musl version %s %w", muslPath, err)
+		}
+		if muslVersion == 0 {
+			return nil, fmt.Errorf("couldnot determine musl version %s ", muslPath)
+		}
+
+		data.Musl = uint8(muslVersion)
+	}
 	data.Offsets = offsets
 	return data, nil
 }
@@ -278,7 +294,7 @@ type PythonProcInfo struct {
 	Version       PythonVersion
 	PythonMaps    []*symtab.ProcMap
 	LibPythonMaps []*symtab.ProcMap
-	Musl          bool
+	Musl          []*symtab.ProcMap
 }
 
 var rePython = regexp.MustCompile("/.*/((?:lib)?python)(\\d+)\\.(\\d+)(?:[mu]?\\.so)?(?:.1.0)?$")
@@ -316,8 +332,8 @@ func GetPythonProcInfo(s *bufio.Scanner) (PythonProcInfo, error) {
 
 				i += 1
 			}
-			if strings.Contains(m.Pathname, "ld-musl-") {
-				res.Musl = true
+			if strings.Contains(m.Pathname, "/lib/ld-musl-x86_64.so.1") {
+				res.Musl = append(res.Musl, m)
 			}
 		}
 	}

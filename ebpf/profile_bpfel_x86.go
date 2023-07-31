@@ -55,8 +55,10 @@ type ProfilePyPidData struct {
 		Minor uint32
 		Patch uint32
 	}
-	Musl uint8
-	_    [3]byte
+	Musl   uint8
+	_      [3]byte
+	TssKey int32
+	_      [4]byte
 }
 
 type ProfilePySampleStateT struct {

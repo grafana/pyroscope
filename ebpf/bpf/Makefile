@@ -31,3 +31,4 @@ profile.so:
  		-Wno-unused-variable -Wno-unused-function \
  		-I./libbpf -I./vmlinux/ \
  		-o ../profile_ume_x86.so  profile.bpf.c
+

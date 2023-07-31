@@ -29,27 +29,58 @@ func (p *PythonVersion) Compare(other PythonVersion) int {
 // GetPythonPatchVersion searches for a patch version given a major + minor version with regexp
 // r is libpython3.11.so or python3.11 elf binary
 func GetPythonPatchVersion(r io.Reader, v PythonVersion) (PythonVersion, error) {
-	re := regexp.MustCompile(fmt.Sprintf("%d\\.%d\\.(\\d+)[^\\d]", v.Major, v.Minor))
+	rePythonVersion := regexp.MustCompile(fmt.Sprintf("%d\\.%d\\.(\\d+)[^\\d]", v.Major, v.Minor))
+	res := v
+	res.Patch = 0
+	submatch, err := rgrep(r, rePythonVersion)
+	if err != nil {
+		return res, fmt.Errorf("rgrep python version %v %w", v, err)
+	}
+	patch, err := strconv.Atoi(string(submatch[1]))
+	if err != nil {
+		return res, fmt.Errorf("error trying to grep python patch version %s, %w", string(submatch[0]), err)
+	}
+	res.Patch = patch
+	return res, nil
+}
+
+var reMuslVersion = regexp.MustCompile("1\\.([12])\\.(\\d+)\\D")
+
+func GetMuslVersion(r io.Reader) (int, error) {
+	submatch, err := rgrep(r, reMuslVersion)
+	if err != nil {
+		return 0, fmt.Errorf("rgrep python version  %w", err)
+	}
+	fmt.Println(string(submatch[0]))
+	minor, err := strconv.Atoi(string(submatch[1]))
+	if err != nil {
+		return 0, fmt.Errorf("error trying to grep musl minor version %s, %w", string(submatch[0]), err)
+	}
+	patch, err := strconv.Atoi(string(submatch[2]))
+	if err != nil {
+		return 0, fmt.Errorf("error trying to grep musl patch version %s, %w", string(submatch[0]), err)
+	}
+	if minor == 1 {
+		return 1, nil
+	}
+	if patch <= 4 {
+		return 2, nil
+	}
+	//return 0, fmt.Errorf("untested musl version %s", string(submatch[0][0]))
+	return 2, nil // let's hope it won't change in patch fix
+}
+
+func rgrep(r io.Reader, re *regexp.Regexp) ([][]byte, error) {
 	const bufSize = 0x1000
 	const lookBack = 0x10
 	buf := make([]byte, bufSize+lookBack)
-	res := v
-	res.Patch = 0
 	for {
 		n, err := r.Read(buf[lookBack:])
 		if n > 0 {
 			it := buf[:lookBack+n]
-			submatch := re.FindAllSubmatch(it, -1)
+			submatch := re.FindSubmatch(it)
 			if submatch != nil {
-				patch, err := strconv.Atoi(string(submatch[0][1]))
-				if err != nil {
-					return res, fmt.Errorf("error trying to grep python patch version %s, %w", string(submatch[0][0]), err)
-				}
-				if res.Patch == 0 {
-					res.Patch = patch
-				} else if res.Patch != patch {
-					return res, fmt.Errorf("error trying to grep python patch version: ambiguous version %v %v", res, patch)
-				}
+				return submatch, nil
 			}
 			copy(buf[:lookBack], it[len(it)-lookBack:len(it)])
 		}
@@ -57,10 +88,10 @@ func GetPythonPatchVersion(r io.Reader, v PythonVersion) (PythonVersion, error) 
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return res, fmt.Errorf("error trying to grep python patch version %w", err)
+			return nil, fmt.Errorf("error trying to grep python patch version %w", err)
 		}
 	}
-	return res, nil
+	return nil, fmt.Errorf("rgrep not found %v", re.String())
 }
 
 var pyVersions = map[PythonVersion]ProfilePyOffsetConfig{

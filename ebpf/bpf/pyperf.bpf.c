@@ -61,6 +61,7 @@ typedef struct {
     py_offset_config offsets;
     py_version version;
     uint8_t musl;// 1 if musl libc is used, 0 otherwise
+    int tssKey;//todo pass from userspace
 } py_pid_data;
 
 typedef struct {
@@ -154,9 +155,7 @@ static inline __attribute__((__always_inline__)) int get_thread_state(
         void *tls_base,
         py_pid_data *pid_data,
         void **out_thread_state) {
-    //todo this is a glibc only, need to support musl as well
-
-
+    //todo cache
     int key;
     if (pid_data->autoTLSkey_addr != 0) {
         if (bpf_probe_read_user(&key, sizeof(key), (void *) pid_data->autoTLSkey_addr)) {
@@ -172,9 +171,10 @@ static inline __attribute__((__always_inline__)) int get_thread_state(
             return -1;
         }
     }
+    bpf_printk("key: %d\n", key);
+    bpf_printk("tls_base: %x\n", tls_base);
 
-
-    return pyro_pthread_getspecific(0 /*todo*/, key, tls_base, out_thread_state);
+    return pyro_pthread_getspecific(pid_data->musl, key, tls_base, out_thread_state);
 }
 
 static inline __attribute__((__always_inline__)) int submit_sample(
@@ -195,7 +195,7 @@ static inline __attribute__((__always_inline__)) py_sample_state_t *get_state() 
 #define GET_STATE()                     \
   py_sample_state_t* state = get_state();  \
   if (!state) {                         \
-    return 0; /* should never happen */ \
+    return -1; /* should never happen */ \
   }
 
 static inline __attribute__((__always_inline__)) int get_thread_state_match(
@@ -234,38 +234,18 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
     py_event *event = &state->event;
     event->pid = pid;
 
-    // Get pointer of global PyThreadState, which should belong to the Thread
-    // currently holds the GIL
-//    void *global_current_thread = (void *) 0;
-//    bpf_probe_read_user(
-//            &global_current_thread,
-//            sizeof(global_current_thread),
-//            (void *) pid_data->PyThreadState_Current_addr);
 
-    struct task_struct *task = (struct task_struct *) bpf_get_current_task();
-    if (task == NULL) {
-        return 0;
-    }
     void *tls_base = NULL;
-
-//todo can we read fsbase from pt_regs?
-#if defined(__TARGET_ARCH_x86)
-    if (pyro_bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.fsbase)) {
-        return 0;
+    if (pyro_get_tlsbase(&tls_base)) {
+        return -1;
     }
-#elif defined(__TARGET_ARCH_arm64)
-    if (pyro_bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.uw.tp_value)) { // todo what is tp_value2??
-        return 0;
-    }
-#else
-#error "Unknown architecture"
-#endif
 
     // Read PyThreadState of this Thread from TLS
     void *thread_state;
     if (get_thread_state(tls_base, pid_data, &thread_state)) {
         return -1;
-    };
+    }
+    bpf_printk("thread_state: %x\n", thread_state);
 
     // pre-initialize event struct in case any subprogram below fails
     event->stack_status = STACK_STATUS_COMPLETE;
@@ -273,10 +253,12 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
 
     if (thread_state != 0) {
         // Get pointer to top frame from PyThreadState
-        int res = bpf_probe_read_user(
+        if (bpf_probe_read_user(
                 &state->frame_ptr,
                 sizeof(void *),
-                thread_state + pid_data->offsets.PyThreadState_frame);
+                thread_state + pid_data->offsets.PyThreadState_frame) ){
+            return -1;
+        }
         // jump to reading first set of Python frames
         bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
         // we won't ever get here
