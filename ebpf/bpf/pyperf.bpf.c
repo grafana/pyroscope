@@ -421,22 +421,30 @@ static inline __attribute__((__always_inline__)) int get_frame_data(
 // To avoid duplicate ids, every CPU needs to use different ids when inserting
 // into the hashmap. NUM_CPUS is defined at PyPerf backend side and passed
 // through CFlag.
-static inline __attribute__((__always_inline__)) int64_t get_symbol_id(
+static inline __attribute__((__always_inline__)) int get_symbol_id(
         py_sample_state_t *state,
-        py_symbol *sym) {
+        py_symbol *sym,
+        py_symbol_id *out_symbol_id) {
 
     py_symbol_id *symbol_id_ptr = bpf_map_lookup_elem(&py_symbols, sym);
     if (symbol_id_ptr) {
-        return *symbol_id_ptr;
+        *out_symbol_id = *symbol_id_ptr;
+        return 0;
     }
     // the symbol is new, bump the counter
     state->symbol_counter++;
     py_symbol_id symbol_id = state->symbol_counter * PY_NUM_CPU + state->cur_cpu;
-    bpf_map_update_elem(&py_symbols, sym, &symbol_id, BPF_ANY);
-    // todo do not use BPF_ANY here?
-    // todo retry lookup if failed
-    // todo handler error
-    return symbol_id;
+    if (bpf_map_update_elem(&py_symbols, sym, &symbol_id, BPF_NOEXIST) == 0) {
+        *out_symbol_id = symbol_id;
+        return 0;
+    }
+    symbol_id_ptr = bpf_map_lookup_elem(&py_symbols, sym);
+    if (symbol_id_ptr) {
+        *out_symbol_id = *symbol_id_ptr;
+        return 0;
+    }
+    *out_symbol_id = 0;
+    return -1;
 }
 
 SEC("perf_event")
@@ -458,7 +466,10 @@ int read_python_stack(struct bpf_perf_event_data *ctx) {
             break;
         }
         if (last_res == 1) {
-            uint32_t symbol_id = get_symbol_id(state, &sym);
+            py_symbol_id symbol_id;
+            if (get_symbol_id(state, &sym, &symbol_id)) {
+                return -1;
+            }
             int64_t cur_len = sample->stack_len;
             if (cur_len >= 0 && cur_len < PYTHON_STACK_MAX_LEN) {
                 sample->stack[cur_len] = symbol_id;
