@@ -123,7 +123,7 @@ func (a *API) newRoute(path string, handler http.Handler, isPrefix, auth, gzip b
 // RegisterAPI registers the standard endpoints associated with a running Mimir.
 func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 	// register index page
-	a.RegisterRoute("/", indexHandler("", a.indexPage), false, true, "GET")
+	a.RegisterRoute("/admin", indexHandler("", a.indexPage), false, true, "GET")
 	// expose openapiv2 definition
 	openapiv2Handler, err := openapiv2.Handler()
 	if err != nil {
@@ -150,15 +150,15 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 		return fmt.Errorf("unable to initialize the ui: %w", err)
 	}
 
+	// The UI used to be at /ui, but now it's at /.
+	a.RegisterRoutesWithPrefix("/ui", http.RedirectHandler("/", http.StatusFound), false, true, "GET")
 	// All assets are served as static files
-	a.RegisterRoutesWithPrefix("/ui/assets/", http.StripPrefix("/ui/", http.FileServer(uiAssets)), false, true, "GET")
+	a.RegisterRoutesWithPrefix("/assets/", http.FileServer(uiAssets), false, true, "GET")
 	// Serve index to all other pages
-	a.RegisterRoutesWithPrefix("/ui/", uiIndexHandler, false, true, "GET")
-	// Redirect `/ui` to `/ui/`.
-	// See more: https://github.com/grafana/pyroscope/pull/649#issuecomment-1522958157.
-	a.RegisterRoute("/ui", http.RedirectHandler("/ui/", http.StatusFound), false, true, "GET")
+	a.RegisterRoutesWithPrefix("/", uiIndexHandler, false, true, "GET")
+
 	a.indexPage.AddLinks(defaultWeight, "User interface", []IndexPageLink{
-		{Desc: "User interface", Path: "/ui"},
+		{Desc: "User interface", Path: "/"},
 	})
 
 	// register status service providing config and buildinfo at grpc gateway
