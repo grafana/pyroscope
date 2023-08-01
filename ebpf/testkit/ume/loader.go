@@ -387,7 +387,6 @@ func (u *UME) helperProbeReadUserStr(dst, size, src uintptr) uintptr {
 	}
 	b := (*byte)(unsafe.Pointer(dst + size - 1))
 	*b = 0
-
 	return size
 }
 

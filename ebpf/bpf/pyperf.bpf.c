@@ -19,23 +19,25 @@ enum {
 };
 
 
+//todo compress it a bit, reuse fields depending on version
 typedef struct {
-    int64_t PyObject_ob_type;
-    int64_t PyTypeObject_tp_name;
-    int64_t PyThreadState_frame;
-    int64_t PyThreadState_cframe;
-    int64_t PyCFrame_current_frame;
-    int64_t PyFrameObject_f_back;
-    int64_t PyFrameObject_f_code;
-    int64_t PyFrameObject_f_frame;
-    int64_t PyFrameObject_f_localsplus;
-    int64_t PyCodeObject_co_filename;
-    int64_t PyCodeObject_co_name;
-    int64_t PyCodeObject_co_varnames;
-    int64_t PyTupleObject_ob_item;
-    int64_t PyInterpreterFrame_f_code;
-    int64_t PyInterpreterFrame_previous;
-    int64_t String_size;
+    int16_t PyVarObject_ob_size;
+    int16_t PyObject_ob_type;
+    int16_t PyTypeObject_tp_name;
+    int16_t PyThreadState_frame;
+    int16_t PyThreadState_cframe;
+    int16_t PyCFrame_current_frame;
+    int16_t PyCodeObject_co_filename;
+    int16_t PyCodeObject_co_name;
+    int16_t PyCodeObject_co_varnames;
+    int16_t PyCodeObject_co_localsplusnames;
+    int16_t PyTupleObject_ob_item;
+
+    int16_t VFrame_code; // PyFrameObject_f_code pre 311 or PyInterpreterFrame_f_code post 311
+    int16_t VFrame_previous; // PyFrameObject_f_back pre 311 or PyInterpreterFrame_previous post 311
+    int16_t VFrame_localsplus; // PyFrameObject_localsplus pre 311 or PyInterpreterFrame_localsplus post 311
+
+    int16_t String_size;
 } py_offset_config;
 
 typedef struct {
@@ -248,12 +250,11 @@ int pyperf_collect(struct bpf_perf_event_data *ctx) {
     return pyperf_collect_impl(ctx, pid);
 }
 
-static inline __attribute__((__always_inline__)) void get_names(
-        frame_ptr_t cur_frame,
-        void *code_ptr,
-        py_offset_config *offsets,
-        py_symbol *symbol,
-        void *ctx) {
+static inline __attribute__((__always_inline__)) int check_first_arg(void *code_ptr,
+                                                                     py_offset_config *offsets,
+                                                                     py_symbol *symbol,
+                                                                     bool *out_first_self,
+                                                                     bool *out_first_cls) {
     // Figure out if we want to parse class name, basically checking the name of
     // the first argument,
     //   ((PyTupleObject*)$frame->f_code->co_varnames)->ob_item[0]
@@ -261,18 +262,56 @@ static inline __attribute__((__always_inline__)) void get_names(
     // the name. This is not perfect but there is no better way to figure this
     // out from the code object.
     void *args_ptr;
-    bpf_probe_read_user(
-            &args_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_varnames);
-    bpf_probe_read_user(
-            &args_ptr, sizeof(void *), args_ptr + offsets->PyTupleObject_ob_item);
-    bpf_probe_read_user_str(
-            &symbol->name, sizeof(symbol->name), args_ptr + offsets->String_size);
-
+    uint64_t args_size;
+    if (offsets->PyCodeObject_co_varnames == -1) {
+        if (bpf_probe_read_user(
+                &args_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_localsplusnames)) {
+            return -1;
+        }
+    } else {
+        if (bpf_probe_read_user(
+                &args_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_varnames)) {
+            return -1;
+        }
+    }
+    if (bpf_probe_read_user(
+            &args_size, sizeof(args_size), args_ptr + offsets->PyVarObject_ob_size)) {
+        return -1;
+    }
+    if (args_size < 1) {
+        *out_first_self = false;
+        *out_first_cls = false;
+        return 0;
+    }
+    if (bpf_probe_read_user(
+            &args_ptr, sizeof(void *), args_ptr + offsets->PyTupleObject_ob_item)) {
+        return -1;
+    }
+    if (bpf_probe_read_user_str(
+            &symbol->name, sizeof(symbol->name), args_ptr + offsets->String_size) < 0) {
+        return -1;
+    }
     // compare strings as ints to save instructions
     char self_str[4] = {'s', 'e', 'l', 'f'};
     char cls_str[4] = {'c', 'l', 's', '\0'};
-    bool first_self = *(int32_t *) symbol->name == *(int32_t *) self_str;
-    bool first_cls = *(int32_t *) symbol->name == *(int32_t *) cls_str;
+    *out_first_self = *(int32_t *) symbol->name == *(int32_t *) self_str;
+    *out_first_cls = *(int32_t *) symbol->name == *(int32_t *) cls_str;
+
+    return 0;
+}
+
+static inline __attribute__((__always_inline__)) int get_names(
+        frame_ptr_t cur_frame,
+        void *code_ptr,
+        py_offset_config *offsets,
+        py_symbol *symbol,
+        void *ctx) {
+
+    bool first_self;
+    bool first_cls;
+    if (check_first_arg(code_ptr, offsets, symbol, &first_self, &first_cls)) {
+        return -1;
+    }
 
     // We re-use the same py_symbol instance across loop iterations, which means
     // we will have left-over data in the struct. Although this won't affect
@@ -282,13 +321,14 @@ static inline __attribute__((__always_inline__)) void get_names(
     // (ab)use this behavior to clear the memory. It requires the size of py_symbol
     // to be different from struct bpf_perf_event_value, which we check at
     // compilation time using the FAIL_COMPILATION_IF macro.
+    //todo just do bpf_probe_read_user of zero page, how to find one?
     bpf_perf_prog_read_value(ctx, (struct bpf_perf_event_value *) symbol, sizeof(py_symbol));
 
     // Read class name from $frame->f_localsplus[0]->ob_type->tp_name.
     if (first_self || first_cls) {
         void *ptr;
         bpf_probe_read_user(
-                &ptr, sizeof(void *), (void *) (cur_frame + offsets->PyFrameObject_f_localsplus));
+                &ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_localsplus));
         if (first_self) {
             // we are working with an instance, first we need to get type
             bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyObject_ob_type);
@@ -308,6 +348,7 @@ static inline __attribute__((__always_inline__)) void get_names(
             &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_name);
     bpf_probe_read_user_str(
             &symbol->name, sizeof(symbol->name), pystr_ptr + offsets->String_size);
+    return 0;
 }
 
 // get_frame_data reads current PyFrameObject filename/name and updates
@@ -326,8 +367,8 @@ static inline __attribute__((__always_inline__)) int get_frame_data(
     if (!cur_frame) {
         return 0;
     }
-    if (offsets->PyFrameObject_f_code == -1) {
-//        py311
+
+    //        py311
 //        _PyInterpreterFrame *frame = tstate->cframe->current_frame
 //        if frame == NULL:
 //            return
@@ -337,37 +378,23 @@ static inline __attribute__((__always_inline__)) int get_frame_data(
 //            if frame == NULL:
 //                break
 //            }
-        if (bpf_probe_read_user(
-                &code_ptr, sizeof(void *), (void *) (cur_frame + offsets->PyInterpreterFrame_f_code))) {
-            return -1;
-        }
-        if (!code_ptr) {
-            return 0; // todo learn when this happens? calling c extension?
-        }
-        get_names(cur_frame, code_ptr, offsets, symbol, ctx); //todo handle error
-
-        if (bpf_probe_read_user(
-                frame_ptr, sizeof(void *), (void *) (cur_frame + offsets->PyInterpreterFrame_previous))) {
-            return -1;
-        }
-        return 1;
-    }
-
-
+//
     // read PyCodeObject first, if that fails, then no point reading next frame
     if (bpf_probe_read_user(
-            &code_ptr, sizeof(void *), (void *) (cur_frame + offsets->PyFrameObject_f_code))) {
+            &code_ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_code))) {
         return -1;
     }
     if (!code_ptr) {
-        return 0; // todo learn when this happens
+        return 0; // todo learn when this happens, c extension?
     }
 
-    get_names(cur_frame, code_ptr, offsets, symbol, ctx); //todo handle error
+    if (get_names(cur_frame, code_ptr, offsets, symbol, ctx)) {
+        return -1;
+    }
 
-    // read next PyFrameObject pointer, update in place
+    // read next PyFrameObject/PyInterpreterFrame pointer, update in place
     if (bpf_probe_read_user(
-            frame_ptr, sizeof(void *), (void *) (cur_frame + offsets->PyFrameObject_f_back))) {
+            frame_ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_previous))) {
         return -1;
     }
 

@@ -27,26 +27,26 @@ type ProfilePyEvent struct {
 }
 
 type ProfilePyOffsetConfig struct {
-	PyObjectObType             int64
-	PyTypeObjectTpName         int64
-	PyThreadStateFrame         int64
-	PyThreadStateCframe        int64
-	PyCFrameCurrentFrame       int64
-	PyFrameObjectF_back        int64
-	PyFrameObjectF_code        int64
-	PyFrameObjectF_frame       int64
-	PyFrameObjectF_localsplus  int64
-	PyCodeObjectCoFilename     int64
-	PyCodeObjectCoName         int64
-	PyCodeObjectCoVarnames     int64
-	PyTupleObjectObItem        int64
-	PyInterpreterFrameF_code   int64
-	PyInterpreterFramePrevious int64
-	StringSize                 int64
+	PyVarObjectObSize             int16
+	PyObjectObType                int16
+	PyTypeObjectTpName            int16
+	PyThreadStateFrame            int16
+	PyThreadStateCframe           int16
+	PyCFrameCurrentFrame          int16
+	PyCodeObjectCoFilename        int16
+	PyCodeObjectCoName            int16
+	PyCodeObjectCoVarnames        int16
+	PyCodeObjectCoLocalsplusnames int16
+	PyTupleObjectObItem           int16
+	VFrameCode                    int16
+	VFramePrevious                int16
+	VFrameLocalsplus              int16
+	StringSize                    int16
 }
 
 type ProfilePyPidData struct {
 	Offsets ProfilePyOffsetConfig
+	_       [2]byte
 	Version struct {
 		Major uint32
 		Minor uint32
@@ -55,11 +55,11 @@ type ProfilePyPidData struct {
 	Musl   uint8
 	_      [3]byte
 	TssKey int32
-	_      [4]byte
 }
 
 type ProfilePySampleStateT struct {
 	Offsets                ProfilePyOffsetConfig
+	_                      [2]byte
 	CurCpu                 uint32
 	_                      [4]byte
 	SymbolCounter          int64

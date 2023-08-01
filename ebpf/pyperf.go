@@ -58,6 +58,14 @@ func (s *pyPerf) setPythonPIDs(pids []int) {
 	}
 }
 
+func getPythonOffsets(version PythonVersion) (userPyOffsetConfig, error) {
+	offsets, ok := pyVersions[version]
+	if !ok {
+		return offsets, fmt.Errorf("unsupported python version %v ", version)
+	}
+	return offsets, nil
+}
+
 func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 	mapsPath := fmt.Sprintf("/proc/%d/maps", pid)
 
@@ -90,10 +98,8 @@ func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 		return nil, fmt.Errorf("could not get python patch version %s %w", pythonPath, err)
 	}
 
-	offsets, ok := pyVersions[version]
-	if !ok {
-		return nil, fmt.Errorf("unsupported python version %s %w", pythonPath, err)
-	}
+	offsets, err := getPythonOffsets(version)
+
 	ef, err := elf.NewFile(pythonFD)
 	if err != nil {
 		return nil, fmt.Errorf("opening elf %s: %w", pythonPath, err)
@@ -145,23 +151,36 @@ func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 
 		data.Musl = uint8(muslVersion)
 	}
+	var vframeCode, vframeBack, vframeLocalPlus int16
+	if version.Compare(PythonVersion{3, 11, 0}) >= 0 {
+		vframeCode = offsets.PyInterpreterFrame_f_code
+		vframeBack = offsets.PyInterpreterFrame_previous
+		vframeLocalPlus = offsets.PyInterpreterFrame_localsplus
+	} else {
+		vframeCode = offsets.PyFrameObject_f_code
+		vframeBack = offsets.PyFrameObject_f_back
+		vframeLocalPlus = offsets.PyFrameObject_f_localsplus
+	}
+	if vframeCode == -1 || vframeBack == -1 || vframeLocalPlus == -1 {
+		return nil, fmt.Errorf("broken offsets %+v %+v", offsets, version)
+	}
+
 	data.Offsets = ProfilePyOffsetConfig{
-		PyObjectObType:             offsets.PyObjectObType,
-		PyTypeObjectTpName:         offsets.PyTypeObjectTpName,
-		PyThreadStateFrame:         offsets.PyThreadStateFrame,
-		PyThreadStateCframe:        offsets.PyThreadStateCframe,
-		PyCFrameCurrentFrame:       offsets.PyCFrameCurrentFrame,
-		PyFrameObjectF_back:        offsets.PyFrameObjectF_back,
-		PyFrameObjectF_code:        offsets.PyFrameObjectF_code,
-		PyFrameObjectF_frame:       offsets.PyFrameObjectF_frame,
-		PyFrameObjectF_localsplus:  offsets.PyFrameObjectF_localsplus,
-		PyCodeObjectCoFilename:     offsets.PyCodeObjectCoFilename,
-		PyCodeObjectCoName:         offsets.PyCodeObjectCoName,
-		PyCodeObjectCoVarnames:     offsets.PyCodeObjectCoVarnames,
-		PyTupleObjectObItem:        offsets.PyTupleObjectObItem,
-		PyInterpreterFrameF_code:   offsets.PyInterpreterFrameF_code,
-		PyInterpreterFramePrevious: offsets.PyInterpreterFramePrevious,
-		StringSize:                 offsets.StringSize,
+		PyVarObjectObSize:             offsets.PyVarObject_ob_size,
+		PyObjectObType:                offsets.PyObject_ob_type,
+		PyTypeObjectTpName:            offsets.PyTypeObject_tp_name,
+		PyThreadStateFrame:            offsets.PyThreadState_frame,
+		PyThreadStateCframe:           offsets.PyThreadState_cframe,
+		PyCFrameCurrentFrame:          offsets.PyCFrame_current_frame,
+		PyCodeObjectCoFilename:        offsets.PyCodeObject_co_filename,
+		PyCodeObjectCoName:            offsets.PyCodeObject_co_name,
+		PyCodeObjectCoVarnames:        offsets.PyCodeObject_co_varnames,
+		PyCodeObjectCoLocalsplusnames: offsets.PyCodeObject_co_localsplusnames,
+		PyTupleObjectObItem:           offsets.PyTupleObject_ob_item,
+		VFrameCode:                    vframeCode,
+		VFramePrevious:                vframeBack,
+		VFrameLocalsplus:              vframeLocalPlus,
+		StringSize:                    offsets.StringSize,
 	}
 	return data, nil
 }
@@ -185,11 +204,11 @@ func getPythonTSSKey(pid int, version PythonVersion, offsets userPyOffsetConfig,
 			//should never happen
 			return 0, fmt.Errorf("python missing symbols pyRuntime %d %v", pid, version)
 		}
-		if offsets.PyRuntimeStateGilstate == -1 || offsets.GilstateRuntimeStateAutoTSSkey == -1 || offsets.PyTssT_key == -1 {
+		if offsets.PyRuntimeState_gilstate == -1 || offsets.Gilstate_runtime_state_autoTSSkey == -1 || offsets.PyTssT_key == -1 {
 			// should never happen
 			return 0, fmt.Errorf("python missing offsets PyRuntimeStateGilstate GilstateRuntimeStateAutoTSSkey PyTssT_key %d %v", pid, version)
 		}
-		pkey = int64(pyRuntime) + offsets.PyRuntimeStateGilstate + offsets.GilstateRuntimeStateAutoTSSkey + offsets.PyTssT_key
+		pkey = int64(pyRuntime) + int64(offsets.PyRuntimeState_gilstate+offsets.Gilstate_runtime_state_autoTSSkey+offsets.PyTssT_key)
 	}
 
 	n, err := fd.ReadAt(key[:], int64(pkey))

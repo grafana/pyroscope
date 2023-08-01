@@ -82,6 +82,7 @@ func (p *Proc) ReadMem(size, src uintptr) []byte {
 	buf := make([]byte, size)
 	n, err := p.memFD.ReadAt(buf, int64(src))
 	if err != nil {
+		fmt.Printf("readmem %x err %v\n", src, err)
 
 		return nil
 	}
