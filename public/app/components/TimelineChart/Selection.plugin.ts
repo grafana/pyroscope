@@ -50,7 +50,7 @@ type EventType = { pageX: number; pageY: number; which?: number };
     function getCursorPositionX(e: EventType) {
       const plotOffset = plot.getPlotOffset();
       const offset = placeholder.offset();
-      return clamp(0, plot.width(), e.pageX - offset.left - plotOffset.left);
+      return clamp(0, plot.width(), e.pageX - offset!.left - plotOffset.left);
     }
 
     function getPlotSelection() {
@@ -176,11 +176,11 @@ type EventType = { pageX: number; pageY: number; which?: number };
 
         if (dragSide === 'right') {
           setSelectionPos(selection.first, {
-            pageX: left - plotOffset.left + offset.left + plotOffset.left,
+            pageX: left - plotOffset.left + offset!.left + plotOffset.left,
           } as EventType);
         } else if (dragSide === 'left') {
           setSelectionPos(selection.first, {
-            pageX: right - plotOffset.left + offset.left + plotOffset.left,
+            pageX: right - plotOffset.left + offset!.left + plotOffset.left,
           } as EventType);
         } else {
           setSelectionPos(selection.first, e);
@@ -274,8 +274,8 @@ type EventType = { pageX: number; pageY: number; which?: number };
       const options: IFlotOptions = plot.getOptions();
       const offset = placeholder.offset();
       const plotOffset = plot.getPlotOffset();
-      pos.x = clamp(0, plot.width(), e.pageX - offset.left - plotOffset.left);
-      pos.y = clamp(0, plot.height(), e.pageY - offset.top - plotOffset.top);
+      pos.x = clamp(0, plot.width(), e.pageX - offset!.left - plotOffset.left);
+      pos.y = clamp(0, plot.height(), e.pageY - offset!.top - plotOffset.top);
 
       if (options?.selection?.mode == 'y') {
         pos.x = pos == selection.first ? 0 : plot.width();

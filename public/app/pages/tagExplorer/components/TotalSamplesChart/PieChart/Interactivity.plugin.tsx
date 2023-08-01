@@ -1,6 +1,7 @@
 import React from 'react';
 import injectTooltip from '@phlare/components/TimelineChart/injectTooltip';
 import { createRoot } from 'react-dom/client';
+import { TooltipWrapperProps } from '@phlare/components/TimelineChart/TooltipWrapper';
 
 const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
 
@@ -17,12 +18,25 @@ type PositionType = {
   pageY: number;
 };
 
+type Options = jquery.flot.plotOptions & {
+  pieChartTooltip: (
+    props: Omit<
+      TooltipWrapperProps & {
+        label?: string;
+        percent?: number;
+        value?: number;
+      },
+      'children'
+    >
+  ) => React.ReactElement;
+};
+
 (function ($: JQueryStatic) {
   function init(plot: jquery.flot.plot & jquery.flot.plotOptions) {
     const tooltipWrapper = injectTooltip($, TOOLTIP_WRAPPER_ID);
 
     function onPlotHover(_: unknown, pos: PositionType, obj: ObjType) {
-      const options = plot.getOptions();
+      const options = plot.getOptions() as Options;
       const tooltip = options?.pieChartTooltip;
 
       if (tooltip && tooltipWrapper?.length) {
@@ -42,10 +56,9 @@ type PositionType = {
           value,
         });
 
-
         const container = tooltipWrapper?.[0];
         const root = createRoot(container);
-        root.render(<>{Tooltip}</>, );
+        root.render(<>{Tooltip}</>);
       }
     }
 

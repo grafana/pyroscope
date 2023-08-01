@@ -29,12 +29,19 @@
     "strictNullChecks": true,
     "experimentalDecorators": true,
 
-    "types": ["node"]
+    "types": ["node", "@types/jest"]
   },
   "include": [
     "public",
     "public/app/types/types.d.ts",
     "public/app/lib/global.d.ts",
-    "public/app/lib/types.d.ts"
+    "public/app/lib/types.d.ts",
+    "public/app/lib/flot.d.ts"
+  ],
+  "exclude": [
+    "public/app/**/*.spec.ts*",
+    "public/app/stories/**",
+    "**/node_modules",
+    "**/.*/"
   ]
 }

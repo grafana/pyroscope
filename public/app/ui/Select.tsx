@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import styles from './Select.module.scss';
 
 interface SelectProps {
@@ -37,7 +37,7 @@ export default function Select({
       value={value}
       onChange={onChange}
     >
-      {children}
+      {children as ReactNode}
     </select>
   );
 }

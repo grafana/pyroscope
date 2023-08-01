@@ -6,8 +6,8 @@ import {
   DialogHeader,
   DialogBody,
   DialogActions,
-} from '../webapp/javascript/ui/Dialog';
-import Button from '../webapp/javascript/ui/Button';
+} from '@phlare/ui/Dialog';
+import Button from '@phlare/ui/Button';
 import '../sass/profile.scss';
 
 export default {

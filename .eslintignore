@@ -11,3 +11,5 @@ og/**
 examples/**
 public/app/util/**
 public/app/stories/**
+**.spec.ts*
+

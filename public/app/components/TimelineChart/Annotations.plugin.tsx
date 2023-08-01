@@ -114,7 +114,10 @@ function renderAnnotationIcon({
 
   const container = document.getElementById(annotationMarkElementId);
   if (!container) {
-    throw new Error("DOM state error: was not able to find container: " + annotationMarkElementId);
+    throw new Error(
+      'DOM state error: was not able to find container: ' +
+        annotationMarkElementId
+    );
   }
   const root = createRoot(container);
   root.render(

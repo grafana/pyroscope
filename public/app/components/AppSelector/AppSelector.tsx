@@ -3,7 +3,7 @@ import ModalWithToggle from '@phlare/ui/Modals/ModalWithToggle';
 import { App, appFromQuery, appToQuery } from '@phlare/models/app';
 import { Query } from '@phlare/models/query';
 import cx from 'classnames';
-import { SelectButton } from '@phlare/components/AppSelector/SelectButton';
+import SelectButton from '@phlare/components/AppSelector/SelectButton';
 import ogStyles from '@phlare/components/AppSelector/AppSelector.module.scss';
 import styles from '@phlare/components/AppSelector/AppSelector.module.css';
 

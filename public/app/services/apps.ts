@@ -1,13 +1,18 @@
 import {
   App,
   AppSchema,
+  appsModel,
   PyroscopeAppLabel,
   ServiceNameLabel,
 } from '@phlare/models/app';
 import { Result } from '@phlare/util/fp';
 import { z, ZodError } from 'zod';
 import type { RequestError } from '@phlare/services/base';
-import { parseResponse, requestWithOrgID } from '@phlare/services/base';
+import {
+  parseResponse,
+  request,
+  requestWithOrgID,
+} from '@phlare/services/base';
 
 // SeriesResponse refers to the response from the server, without any manipulation
 const SeriesResponseSchema = z.preprocess(
@@ -116,4 +121,36 @@ export async function fetchApps(): Promise<
   }
 
   return Result.err<App[], RequestError>(response.error);
+}
+
+export interface FetchAppsError {
+  message?: string;
+}
+
+export async function fetchAppsOG(): Promise<
+  Result<App[], RequestError | ZodError>
+> {
+  const response = await request('/api/apps');
+
+  if (response.isOk) {
+    return parseResponse(response, appsModel);
+  }
+
+  return Result.err<App[], RequestError>(response.error);
+}
+
+export async function deleteApp(data: {
+  name: string;
+}): Promise<Result<boolean, RequestError | ZodError>> {
+  const { name } = data;
+  const response = await request(`/api/apps`, {
+    method: 'DELETE',
+    body: JSON.stringify({ name }),
+  });
+
+  if (response.isOk) {
+    return Result.ok(true);
+  }
+
+  return Result.err<boolean, RequestError>(response.error);
 }

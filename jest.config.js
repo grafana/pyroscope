@@ -10,6 +10,7 @@ module.exports = {
     '^.+\\.(t|j)sx?$': ['@swc/jest'],
     '\\.module\\.(css|scss)$': 'jest-css-modules-transform',
     '\\.(css|scss)$': 'jest-css-modules-transform',
+    '\\.svg$': path.join(__dirname, 'svg-transform.js'),
   },
   setupFilesAfterEnv: ['<rootDir>/testSetupFile.js'],
 

@@ -9,7 +9,7 @@ import { Annotation } from '@phlare/models/annotation';
 import Legend from '@phlare/pages/tagExplorer/components/Legend';
 import type { TooltipCallbackProps } from '@phlare/components/TimelineChart/Tooltip.plugin';
 import TooltipWrapper from '@phlare/components/TimelineChart/TooltipWrapper';
-import type { ITooltipWrapperProps } from '@phlare/components/TimelineChart/TooltipWrapper';
+import type { TooltipWrapperProps } from '@phlare/components/TimelineChart/TooltipWrapper';
 import TimelineChart from '@phlare/components/TimelineChart/TimelineChart';
 import { ContextMenuProps } from '@phlare/components/TimelineChart/ContextMenu.plugin';
 import {
@@ -254,7 +254,7 @@ class TimelineChartWrapper extends React.Component<
   };
 
   setOnHoverDisplayTooltip = (
-    data: ITooltipWrapperProps & TooltipCallbackProps
+    data: TooltipWrapperProps & TooltipCallbackProps
   ) => {
     const tooltipContent = [];
 
@@ -293,7 +293,7 @@ class TimelineChartWrapper extends React.Component<
 
     // TODO: unify with renderSingle
     const onHoverDisplayTooltip = (
-      data: ITooltipWrapperProps & TooltipCallbackProps
+      data: TooltipWrapperProps & TooltipCallbackProps
     ) => this.setOnHoverDisplayTooltip(data);
 
     const customFlotOptions = {
@@ -340,7 +340,7 @@ class TimelineChartWrapper extends React.Component<
 
     // TODO: unify with renderMultiple
     const onHoverDisplayTooltip = (
-      data: ITooltipWrapperProps & TooltipCallbackProps
+      data: TooltipWrapperProps & TooltipCallbackProps
     ) => this.setOnHoverDisplayTooltip(data);
 
     const customFlotOptions = {

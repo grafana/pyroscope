@@ -1,4 +1,5 @@
 import { parse, brandQuery, Query } from '@phlare/models/query';
+import { SpyNameSchema, UnitsSchema } from '@pyroscope/models/src';
 import { z } from 'zod';
 
 export const PyroscopeAppLabel = 'pyroscope_app';
@@ -99,11 +100,11 @@ export function appToQuery(app: z.infer<typeof BasicAppSchema>): Query {
 // TODO old App type
 //
 // export type App = z.infer<typeof appModel>;
-//
-// export const appModel = z.object({
-//   name: z.string(),
-//   spyName: SpyNameSchema,
-//   units: UnitsSchema,
-// });
 
-// export const appsModel = z.array(appModel);
+export const appModel = z.object({
+  name: z.string(),
+  spyName: SpyNameSchema,
+  units: UnitsSchema,
+});
+
+export const appsModel = z.array(appModel);

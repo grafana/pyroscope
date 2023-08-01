@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import saveAs from 'file-saver';
 import showModalWithInput from '@phlare/components/Modals/ModalWithInput';
 import styles from '@phlare/components/ExportData.module.scss';
-import { ContinuousState } from '@phlare/redux/reducers/continuous/state';
+import { ContinuousState } from '@phlare/redux/reducers/continuous';
 import { convertPresetsToDate, formatAsOBject } from '@phlare/util/formatDate';
 import { createBiggestInterval } from '@phlare/util/timerange';
 import { downloadWithOrgID } from '@phlare/services/base';

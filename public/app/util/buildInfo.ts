@@ -1,6 +1,6 @@
 // eslint-disable-next-line import/no-relative-packages
 import { Maybe } from 'true-myth';
-import { version as jsVersion } from '@pyroscope/legacy-webapp/package.json';
+import { version as jsVersion } from '../../../og/webapp/package.json';
 
 export interface BuildInfo {
   goos: string;

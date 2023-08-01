@@ -8,8 +8,8 @@ import {
   SelectionProfileOutput,
   getHeatmapSelectionProfile,
   Heatmap,
-  getHeatmapProps,
-  selectionProfileProps,
+  GetHeatmapProps,
+  SelectionProfileProps,
 } from '@phlare/services/render';
 import type { RootState } from '@phlare/redux/store';
 import { RequestAbortedError } from '@phlare/services/base';
@@ -121,7 +121,7 @@ export const fetchSingleView = createAsyncThunk<
 
 export const fetchExemplarsSingleView = createAsyncThunk<
   HeatmapOutput,
-  getHeatmapProps,
+  GetHeatmapProps,
   { state: { tracing: TracingState } }
 >('tracing/exemplarsSingleView', async (heatmapProps, thunkAPI) => {
   if (exemplarsSingleViewAbortController) {
@@ -157,7 +157,7 @@ export const fetchExemplarsSingleView = createAsyncThunk<
 
 export const fetchSelectionProfile = createAsyncThunk<
   SelectionProfileOutput,
-  selectionProfileProps,
+  SelectionProfileProps,
   { state: { tracing: TracingState } }
 >('tracing/fetchSelectionProfile', async (selectionProfileProps, thunkAPI) => {
   if (selectionProfileAbortController) {

@@ -39,57 +39,61 @@ export const useHeatmapSelection = ({
   const [selectedCoordinates, setSelectedCoordinates] =
     useState<SelectedCoordinates>(DEFAULT_SELECTED_COORDINATES);
 
-  const [selectedAreaToHeatmapRatio, setSelectedAreaToHeatmapRatio] = useState(1);
+  const [selectedAreaToHeatmapRatio, setSelectedAreaToHeatmapRatio] =
+    useState(1);
 
   const resetSelection = useCallback(() => {
     setSelectedCoordinates(DEFAULT_SELECTED_COORDINATES);
   }, [setSelectedCoordinates]);
 
-  const handleCellClick = useCallback((x: number, y: number) => {
-    const cellW = heatmapW / heatmap.timeBuckets;
-    const cellH = HEATMAP_HEIGHT / heatmap.valueBuckets;
+  const handleCellClick = useCallback(
+    (x: number, y: number) => {
+      const cellW = heatmapW / heatmap.timeBuckets;
+      const cellH = HEATMAP_HEIGHT / heatmap.valueBuckets;
 
-    const matrixCoords = [
-      Math.trunc(x / cellW),
-      Math.trunc((HEATMAP_HEIGHT - y) / cellH),
-    ];
+      const matrixCoords = [
+        Math.trunc(x / cellW),
+        Math.trunc((HEATMAP_HEIGHT - y) / cellH),
+      ];
 
-    if (heatmap.values[matrixCoords[0]][matrixCoords[1]] === 0) {
-      return;
-    }
+      if (heatmap.values[matrixCoords[0]][matrixCoords[1]] === 0) {
+        return;
+      }
 
-    // set startCoords and endCoords to draw selection rectangle for single cell
-    const startCoords = {
-      x: (matrixCoords[0] + 1) * cellW,
-      y: HEATMAP_HEIGHT - matrixCoords[1] * cellH,
-    };
-    const endCoords = {
-      x: matrixCoords[0] * cellW,
-      y: HEATMAP_HEIGHT - (matrixCoords[1] + 1) * cellH,
-    };
+      // set startCoords and endCoords to draw selection rectangle for single cell
+      const startCoords = {
+        x: (matrixCoords[0] + 1) * cellW,
+        y: HEATMAP_HEIGHT - matrixCoords[1] * cellH,
+      };
+      const endCoords = {
+        x: matrixCoords[0] * cellW,
+        y: HEATMAP_HEIGHT - (matrixCoords[1] + 1) * cellH,
+      };
 
-    setSelectedCoordinates({ start: startCoords, end: endCoords });
+      setSelectedCoordinates({ start: startCoords, end: endCoords });
 
-    const {
-      selectionMinValue,
-      selectionMaxValue,
-      selectionStartTime,
-      selectionEndTime,
-    } = getSelectionData(
-      heatmap,
-      heatmapW,
-      startCoords,
-      endCoords,
-      startCoords.y === HEATMAP_HEIGHT
-    );
+      const {
+        selectionMinValue,
+        selectionMaxValue,
+        selectionStartTime,
+        selectionEndTime,
+      } = getSelectionData(
+        heatmap,
+        heatmapW,
+        startCoords,
+        endCoords,
+        startCoords.y === HEATMAP_HEIGHT
+      );
 
-    onSelection(
-      selectionMinValue,
-      selectionMaxValue,
-      selectionStartTime,
-      selectionEndTime
-    );
-  }, [heatmap, heatmapW, onSelection]);
+      onSelection(
+        selectionMinValue,
+        selectionMaxValue,
+        selectionStartTime,
+        selectionEndTime
+      );
+    },
+    [heatmap, heatmapW, onSelection]
+  );
 
   const handleDrawingEvent = useCallback(
     (e: MouseEvent) => {
@@ -141,7 +145,7 @@ export const useHeatmapSelection = ({
         }
 
         const end = { x: xEnd, y: yEnd };
-        const {start} = selectedCoordinates;
+        const { start } = selectedCoordinates;
 
         const isClickEvent = start.x === xEnd && start.y === end.y;
 
@@ -196,7 +200,7 @@ export const useHeatmapSelection = ({
 
       const start = { x: e.clientX - left, y: e.clientY - top };
 
-      setSelectedCoordinates({...selectedCoordinates, start});
+      setSelectedCoordinates({ ...selectedCoordinates, start });
 
       return () => {
         // Clean up old event listeners before adding new ones
@@ -204,7 +208,13 @@ export const useHeatmapSelection = ({
         window.removeEventListener('mouseup', endDrawing);
       };
     },
-    [canvasRef, resetSelection, endDrawing, handleDrawingEvent, selectedCoordinates]
+    [
+      canvasRef,
+      resetSelection,
+      endDrawing,
+      handleDrawingEvent,
+      selectedCoordinates,
+    ]
   );
 
   useEffect(
