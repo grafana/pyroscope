@@ -24,6 +24,10 @@ This means that Pyroscope is now equipped to support large deployments with many
 
 Making big leaps means that we have to break some things. We've tried to minimize the impact of these changes as much as possible, but some of them are unavoidable. We apologize for any inconvenience this may cause. We encourage you to contribute to the community by creating new issues or upvoting existing ones with an `og-feature` label in the [Pyroscope GitHub repository](https://github.com/grafana/pyroscope/labels/og-feature).
 
+### Changes in the configuration file
+
+TODO: list common things people change in the config file, provide examples of how to change them in the new config file
+
 ### Dropping support for certain subcommands
 
 We stripped the pyroscope CLI of all subcommands that were related to the client side of profiling and only kept the ones that are related to the server side. This means that the following subcommands are no longer supported:
