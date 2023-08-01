@@ -123,9 +123,15 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
+      - name: Get github app token (valid for an hour)
+        id: app-release
+        uses: getsentry/action-github-app-token@v2
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
       - name: Deploy to fire-dev-001
         run: |
-          git config --global url."https://grafanabot:${{ secrets.GH_BOT_ACCESS_TOKEN }}@github.com/grafana/deployment_tools".insteadOf "https://github.com/grafana/deployment_tools"
+          git config --global url."https://x-access-token:${{ steps.app-release.output.token }}@github.com/grafana/deployment_tools".insteadOf "https://github.com/grafana/deployment_tools"
           make docker-image/pyroscope/deploy-dev-001
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_BOT_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-release.outputs.token }}
