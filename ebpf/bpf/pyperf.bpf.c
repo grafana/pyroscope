@@ -352,7 +352,7 @@ static inline __attribute__((__always_inline__)) int get_names(
         return -1;
     }
     if (bpf_probe_read_user_str(
-            &symbol->file, sizeof(symbol->file), pystr_ptr + offsets->String_size)) {
+            &symbol->file, sizeof(symbol->file), pystr_ptr + offsets->String_size) < 0)  {
         return -1;
     }
     // read PyCodeObject's name into symbol
