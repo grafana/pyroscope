@@ -63,6 +63,22 @@ func getPythonOffsets(version PythonVersion) (userPyOffsetConfig, error) {
 	if !ok {
 		return offsets, fmt.Errorf("unsupported python version %v ", version)
 	}
+	//#define PY_OFFSET_String_size 48
+	//#define PY_OFFSET_PyVarObject_ob_size 16
+	//#define PY_OFFSET_PyObject_ob_type 8
+	//#define PY_OFFSET_PyTypeObject_tp_name 24
+	if offsets.StringSize != 48 {
+		return offsets, fmt.Errorf("python offsets.StringSize != 48 %+v %+v", offsets, version)
+	}
+	if offsets.PyVarObject_ob_size != 16 {
+		return offsets, fmt.Errorf("python offsets.PyVarObject_ob_size != 16 %+v %+v", offsets, version)
+	}
+	if offsets.PyObject_ob_type != 8 {
+		return offsets, fmt.Errorf("python offsets.PyObject_ob_type !=  8 %+v %+v", offsets, version)
+	}
+	if offsets.PyTypeObject_tp_name != 24 {
+		return offsets, fmt.Errorf("python offsets.PyTypeObject_tp_name != 24 %+v %+v", offsets, version)
+	}
 	return offsets, nil
 }
 
@@ -166,9 +182,6 @@ func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 	}
 
 	data.Offsets = ProfilePyOffsetConfig{
-		PyVarObjectObSize:             offsets.PyVarObject_ob_size,
-		PyObjectObType:                offsets.PyObject_ob_type,
-		PyTypeObjectTpName:            offsets.PyTypeObject_tp_name,
 		PyThreadStateFrame:            offsets.PyThreadState_frame,
 		PyThreadStateCframe:           offsets.PyThreadState_cframe,
 		PyCFrameCurrentFrame:          offsets.PyCFrame_current_frame,
@@ -180,7 +193,6 @@ func GetPyPerfPidData(pid int) (*ProfilePyPidData, error) {
 		VFrameCode:                    vframeCode,
 		VFramePrevious:                vframeBack,
 		VFrameLocalsplus:              vframeLocalPlus,
-		StringSize:                    offsets.StringSize,
 	}
 	return data, nil
 }

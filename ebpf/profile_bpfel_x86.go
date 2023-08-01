@@ -27,9 +27,6 @@ type ProfilePyEvent struct {
 }
 
 type ProfilePyOffsetConfig struct {
-	PyVarObjectObSize             int16
-	PyObjectObType                int16
-	PyTypeObjectTpName            int16
 	PyThreadStateFrame            int16
 	PyThreadStateCframe           int16
 	PyCFrameCurrentFrame          int16
@@ -41,7 +38,6 @@ type ProfilePyOffsetConfig struct {
 	VFrameCode                    int16
 	VFramePrevious                int16
 	VFrameLocalsplus              int16
-	StringSize                    int16
 }
 
 type ProfilePyPidData struct {
