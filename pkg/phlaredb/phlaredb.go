@@ -89,12 +89,7 @@ type PhlareDB struct {
 	evictCh      chan *blockEviction
 }
 
-func New(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*PhlareDB, error) {
-	fs := phlarecontext.LocalBucketClient(phlarectx)
-	if fs == nil {
-		return nil, errors.New("failed to get local bucket client")
-	}
-
+func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlareobj.Bucket) (*PhlareDB, error) {
 	f := &PhlareDB{
 		cfg:      cfg,
 		logger:   phlarecontext.Logger(phlarectx),

@@ -37,13 +37,13 @@ func TestCreateLocalDir(t *testing.T) {
 	_, err := New(testContext(t), Config{
 		DataPath:         dataPath,
 		MaxBlockDuration: 30 * time.Minute,
-	}, NoLimit)
+	}, NoLimit, ctx.localBucketClient)
 	require.Error(t, err)
 	require.NoError(t, os.Remove(localFile))
 	_, err = New(ctx, Config{
 		DataPath:         dataPath,
 		MaxBlockDuration: 30 * time.Minute,
-	}, NoLimit)
+	}, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 }
 
@@ -151,7 +151,7 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	db, err := New(ctx, Config{
 		DataPath:         testDir,
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	}, NoLimit)
+	}, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, db.Close())
@@ -163,8 +163,6 @@ func TestMergeProfilesStacktraces(t *testing.T) {
 	)
 
 	// create client
-	ctx = context.Background()
-
 	client, cleanup := db.queriers().ingesterClient()
 	defer cleanup()
 
@@ -284,7 +282,7 @@ func TestMergeProfilesPprof(t *testing.T) {
 	db, err := New(ctx, Config{
 		DataPath:         testDir,
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	}, NoLimit)
+	}, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, db.Close())
@@ -294,9 +292,6 @@ func TestMergeProfilesPprof(t *testing.T) {
 		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
 		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
 	)
-
-	// create client
-	ctx = context.Background()
 
 	client, cleanup := db.queriers().ingesterClient()
 	defer cleanup()
@@ -490,13 +485,12 @@ func Test_QueryNotInitializedHead(t *testing.T) {
 	db, err := New(ctx, Config{
 		DataPath:         contextDataDir(ctx),
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	}, NoLimit)
+	}, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, db.Close())
 	}()
 
-	ctx = context.Background()
 	client, cleanup := db.queriers().ingesterClient()
 	defer cleanup()
 
@@ -563,7 +557,7 @@ func Test_FlushNotInitializedHead(t *testing.T) {
 
 	db, err := New(ctx, Config{
 		DataPath: contextDataDir(ctx),
-	}, NoLimit)
+	}, NoLimit, ctx.localBucketClient)
 
 	var (
 		end   = time.Unix(0, int64(time.Hour))
@@ -582,7 +576,6 @@ func Test_FlushNotInitializedHead(t *testing.T) {
 		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
 	)
 
-	ctx = context.Background()
 	c1 := db.headFlushCh()
 	require.NotEqual(t, db.stopCh, c1)
 	require.NoError(t, db.Flush(ctx))

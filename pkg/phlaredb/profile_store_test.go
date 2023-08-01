@@ -24,6 +24,7 @@ import (
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	phlareobjclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
@@ -42,7 +43,13 @@ func contextDataDir(ctx context.Context) string {
 	return ctx.Value(contextKeyDataDir).(string)
 }
 
-func testContext(t testing.TB) context.Context {
+type testCtx struct {
+	context.Context
+	dataDir           string
+	localBucketClient phlareobj.Bucket
+}
+
+func testContext(t testing.TB) testCtx {
 	logger := log.NewNopLogger()
 	if testing.Verbose() {
 		logger = log.NewLogfmtLogger(os.Stderr)
@@ -63,9 +70,13 @@ func testContext(t testing.TB) context.Context {
 	bucketCfg.Filesystem.Directory = dataPath
 	bucketClient, err := phlareobjclient.NewBucket(ctx, bucketCfg, "testing")
 	require.NoError(t, err)
-	ctx = phlarecontext.WithLocalBucketClient(ctx, bucketClient)
+
 	ctx = contextWithHeadMetrics(ctx, newHeadMetrics(reg))
-	return ctx
+	return testCtx{
+		Context:           ctx,
+		dataDir:           dataPath,
+		localBucketClient: bucketClient,
+	}
 }
 
 type testProfile struct {

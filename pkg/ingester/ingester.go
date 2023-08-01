@@ -58,6 +58,7 @@ type Ingester struct {
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
 
+	localBucket   phlareobj.Bucket
 	storageBucket phlareobj.Bucket
 
 	instances    map[string]*instance
@@ -80,16 +81,6 @@ func (i *ingesterFlusherCompat) Flush() {
 
 func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits) (*Ingester, error) {
 
-	// initialise the local bucket client
-	localBucketCfg := phlareobjclient.Config{}
-	localBucketCfg.Backend = "filesystem"
-	localBucketCfg.Filesystem.Directory = dbConfig.DataPath
-	localBucketClient, err := phlareobjclient.NewBucket(phlarectx, localBucketCfg, "local")
-	if err != nil {
-		return nil, err
-	}
-	phlarectx = phlarecontext.WithLocalBucketClient(phlarectx, localBucketClient)
-
 	i := &Ingester{
 		cfg:           cfg,
 		phlarectx:     phlarectx,
@@ -99,6 +90,18 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		dbConfig:      dbConfig,
 		storageBucket: storageBucket,
 		limits:        limits,
+	}
+
+	// initialise the local bucket client
+	var (
+		localBucketCfg phlareobjclient.Config
+		err            error
+	)
+	localBucketCfg.Backend = "filesystem"
+	localBucketCfg.Filesystem.Directory = dbConfig.DataPath
+	i.localBucket, err = phlareobjclient.NewBucket(phlarectx, localBucketCfg, "local")
+	if err != nil {
+		return nil, err
 	}
 
 	i.lifecycler, err = ring.NewLifecycler(
@@ -160,7 +163,7 @@ func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //n
 	if !ok {
 		var err error
 
-		inst, err = newInstance(i.phlarectx, i.dbConfig, tenantID, i.storageBucket, NewLimiter(tenantID, i.limits, i.lifecycler, i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor))
+		inst, err = newInstance(i.phlarectx, i.dbConfig, tenantID, i.localBucket, i.storageBucket, NewLimiter(tenantID, i.limits, i.lifecycler, i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor))
 		if err != nil {
 			return nil, err
 		}

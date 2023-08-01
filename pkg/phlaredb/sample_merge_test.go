@@ -125,7 +125,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 			db, err := New(ctx, Config{
 				DataPath:         contextDataDir(ctx),
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			}, NoLimit)
+			}, NoLimit, ctx.localBucketClient)
 			require.NoError(t, err)
 
 			for _, p := range tc.in() {
@@ -267,7 +267,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 			db, err := New(ctx, Config{
 				DataPath:         contextDataDir(ctx),
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			}, NoLimit)
+			}, NoLimit, ctx.localBucketClient)
 			require.NoError(t, err)
 
 			for _, p := range tc.in() {
@@ -383,7 +383,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 			db, err := New(ctx, Config{
 				DataPath:         contextDataDir(ctx),
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			}, NoLimit)
+			}, NoLimit, ctx.localBucketClient)
 			require.NoError(t, err)
 
 			for _, p := range tc.in() {
@@ -507,7 +507,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			db, err := New(ctx, Config{
 				DataPath:         contextDataDir(ctx),
 				MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-			}, NoLimit)
+			}, NoLimit, ctx.localBucketClient)
 			require.NoError(t, err)
 
 			for _, p := range tc.in() {
@@ -544,7 +544,7 @@ func TestMergePprof(t *testing.T) {
 	db, err := New(ctx, Config{
 		DataPath:         contextDataDir(ctx),
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	}, NoLimit)
+	}, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 
 	for i := 0; i < 3; i++ {
@@ -598,7 +598,7 @@ func TestHeadMergePprof(t *testing.T) {
 	db, err := New(ctx, Config{
 		DataPath:         contextDataDir(ctx),
 		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
-	}, NoLimit)
+	}, NoLimit, ctx.localBucketClient)
 	require.NoError(t, err)
 
 	for i := 0; i < 3; i++ {
