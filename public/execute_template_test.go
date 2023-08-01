@@ -21,14 +21,14 @@ func TestInjectingBaseURL(t *testing.T) {
 		basePath string
 		expected string
 	}{
-		{basePath: "", expected: "/ui/"},
-		{basePath: "     ", expected: "/ui/"},
-		{basePath: "/foobar/", expected: "/foobar/ui/"},
-		{basePath: "/foobar", expected: "/foobar/ui/"},
-		{basePath: "foobar", expected: "/foobar/ui/"},
-		{basePath: "   foobar   ", expected: "/foobar/ui/"},
-		{basePath: "http://localhost:8080/foobar/", expected: "http://localhost:8080/foobar/ui/"},
-		{basePath: "http://localhost:8080/foobar", expected: "http://localhost:8080/foobar/ui/"},
+		{basePath: "", expected: "/"},
+		{basePath: "     ", expected: "/"},
+		{basePath: "/foobar/", expected: "/foobar/"},
+		{basePath: "/foobar", expected: "/foobar/"},
+		{basePath: "foobar", expected: "/foobar/"},
+		{basePath: "   foobar   ", expected: "/foobar/"},
+		{basePath: "http://localhost:8080/foobar/", expected: "http://localhost:8080/foobar/"},
+		{basePath: "http://localhost:8080/foobar", expected: "http://localhost:8080/foobar/"},
 	} {
 		tc := tc
 		t.Run(fmt.Sprintf("'%s' -> '%s'", tc.basePath, tc.expected), func(t *testing.T) {
