@@ -33,7 +33,7 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
     }
 
     // this will not return if it is python
-    if (pyperf_collect_impl(ctx, (pid_t)tgid) < 0) {
+    if (pyperf_collect_impl(ctx, (pid_t)tgid, arg->collect_kernel) < 0) {
         return 0;
     }
 

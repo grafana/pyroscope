@@ -22,7 +22,7 @@ enum {
 #define PY_OFFSET_PyVarObject_ob_size 16
 #define PY_OFFSET_PyObject_ob_type 8
 #define PY_OFFSET_PyTypeObject_tp_name 24
-//todo compress it a bit, reuse fields depending on version
+
 typedef struct {
     int16_t PyThreadState_frame;
     int16_t PyThreadState_cframe;
@@ -66,6 +66,7 @@ typedef struct {
 typedef struct {
     uint32_t pid;
     uint8_t stack_status;
+    int64_t kern_stack;
     // instead of storing symbol name here directly, we add it to another
     // hashmap with Symbols and only store the ids here
     int64_t stack_len;
@@ -81,14 +82,12 @@ typedef struct {
 // See comments in get_frame_data
 FAIL_COMPILATION_IF(sizeof(py_symbol) == sizeof(struct bpf_perf_event_value))
 
-//todo make it void *back, keep u64 in struct only
-typedef u64 frame_ptr_t;
 
 typedef struct {
     py_offset_config offsets;
     uint32_t cur_cpu;
     int64_t symbol_counter;
-    frame_ptr_t frame_ptr;
+    uint64_t frame_ptr;
     int64_t python_stack_prog_call_cnt;
     py_event event;
 } py_sample_state_t;
@@ -114,7 +113,7 @@ struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, pid_t);
     __type(value, py_pid_data);
-    __uint(max_entries, 10240); // todo
+    __uint(max_entries, 10240);
 } py_pid_config SEC(".maps");
 
 #define PYTHON_PROG_IDX_READ_PYTHON_STACK 0
@@ -126,7 +125,7 @@ struct {
     __uint(type, BPF_MAP_TYPE_PROG_ARRAY);
     __uint(max_entries, 2);
     __type(key, int);
-    __array(values, int (void *)); //todo
+    __array(values, int (void *));
 } py_progs SEC(".maps") = {
         .values = {
                 [PYTHON_PROG_IDX_READ_PYTHON_STACK] = (void *) &read_python_stack,
@@ -151,7 +150,7 @@ static inline __attribute__((__always_inline__)) int submit_sample(
         void *ctx,
         py_sample_state_t *state) {
     bpf_perf_event_output(ctx, &py_events, BPF_F_CURRENT_CPU, &state->event, sizeof(py_event));
-    return 0; // todo return value
+    return 0;
 }
 
 // this function is trivial, but we need to do map lookup in separate function,
@@ -198,7 +197,7 @@ int get_top_frame(py_pid_data *pid_data, py_sample_state_t *state, void *thread_
     return 0;
 }
 
-static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid) {
+static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid, bool collect_kern_stack) {
 
     py_pid_data *pid_data = bpf_map_lookup_elem(&py_pid_config, &pid);
     if (!pid_data) {
@@ -213,6 +212,11 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
 
     py_event *event = &state->event;
     event->pid = pid;
+    if (collect_kern_stack) {
+        event->kern_stack = bpf_get_stackid(ctx, &stacks, KERN_STACKID_FLAGS);
+    } else {
+        event->kern_stack = -1;
+    }
 
 
     void *tls_base = NULL;
@@ -240,14 +244,14 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
         return -1;
     }
 
-    return -1;//todo maybe we should submit kernel stack only
+    return -1;
 }
 
 SEC("perf_event")
 int pyperf_collect(struct bpf_perf_event_data *ctx) {
     uint64_t pid_tgid = bpf_get_current_pid_tgid();
     pid_t pid = (pid_t) (pid_tgid >> 32);
-    return pyperf_collect_impl(ctx, pid);
+    return pyperf_collect_impl(ctx, pid, true);
 }
 
 static inline __attribute__((__always_inline__)) int check_first_arg(void *code_ptr,
@@ -301,7 +305,7 @@ static inline __attribute__((__always_inline__)) int check_first_arg(void *code_
 }
 
 static inline __attribute__((__always_inline__)) int get_names(
-        frame_ptr_t cur_frame,
+        void *cur_frame,
         void *code_ptr,
         py_offset_config *offsets,
         py_symbol *symbol,
@@ -321,7 +325,6 @@ static inline __attribute__((__always_inline__)) int get_names(
     // (ab)use this behavior to clear the memory. It requires the size of py_symbol
     // to be different from struct bpf_perf_event_value, which we check at
     // compilation time using the FAIL_COMPILATION_IF macro.
-    //todo just do bpf_probe_read_user of zero page, how to find one?
     bpf_perf_prog_read_value(ctx, (struct bpf_perf_event_value *) symbol, sizeof(py_symbol));
 
     // Read class name from $frame->f_localsplus[0]->ob_type->tp_name.
@@ -352,7 +355,7 @@ static inline __attribute__((__always_inline__)) int get_names(
         return -1;
     }
     if (bpf_probe_read_user_str(
-            &symbol->file, sizeof(symbol->file), pystr_ptr + PY_OFFSET_String_size) < 0)  {
+            &symbol->file, sizeof(symbol->file), pystr_ptr + PY_OFFSET_String_size) < 0) {
         return -1;
     }
     // read PyCodeObject's name into symbol
@@ -372,13 +375,13 @@ static inline __attribute__((__always_inline__)) int get_names(
 // since 311 frame_ptr is pointing to _PyInterpreterFrame
 // returns -1 on error, 1 on success, 0 if no more frames
 static inline __attribute__((__always_inline__)) int get_frame_data(
-        frame_ptr_t *frame_ptr,
+        void **frame_ptr,
         py_offset_config *offsets,
         py_symbol *symbol,
         // ctx is only used to call helper to clear symbol, see documentation below
         void *ctx) {
     void *code_ptr;
-    frame_ptr_t cur_frame = *frame_ptr;
+    void *cur_frame = *frame_ptr;
     if (!cur_frame) {
         return 0;
     }
@@ -458,7 +461,7 @@ int read_python_stack(struct bpf_perf_event_data *ctx) {
     int last_res;
 #pragma unroll
     for (int i = 0; i < PYTHON_STACK_FRAMES_PER_PROG; i++) {
-        last_res = get_frame_data(&state->frame_ptr, &state->offsets, &sym, ctx);
+        last_res = get_frame_data((void**)&state->frame_ptr, &state->offsets, &sym, ctx);
         if (last_res == -1) {
             return -1;
         }

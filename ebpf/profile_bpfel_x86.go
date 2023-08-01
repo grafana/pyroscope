@@ -21,6 +21,7 @@ type ProfilePyEvent struct {
 	Pid         uint32
 	StackStatus uint8
 	_           [3]byte
+	KernStack   int64
 	StackLen    int64
 	Stack       [75]uint32
 	_           [4]byte
