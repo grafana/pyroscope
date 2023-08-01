@@ -3,10 +3,10 @@
 DOCKER_ARGS="--net=host"
 
 if [[ $OSTYPE == 'darwin'* ]]; then
-    PHLARE_URL=${PHLARE_URL:-http://docker.for.mac.localhost:4100}
+    PHLARE_URL=${PHLARE_URL:-http://docker.for.mac.localhost:4040}
     DOCKER_ARGS=""
 else
-    PHLARE_URL=${PHLARE_URL:-http://localhost:4100}
+    PHLARE_URL=${PHLARE_URL:-http://localhost:4040}
 fi
 
 PYRO_URL=$PHLARE_URL/pyroscope

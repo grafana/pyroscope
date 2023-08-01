@@ -79,7 +79,7 @@
     "resources": {},
     "securityContext": {},
     "service": {
-      "port": 4100,
+      "port": 4040,
       "port_name": "http2",
       "type": "ClusterIP"
     },

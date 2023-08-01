@@ -13,6 +13,6 @@ RUN mkdir -p /data && \
 VOLUME /data
 
 USER pyroscope
-EXPOSE 4100
+EXPOSE 4040
 ENTRYPOINT [ "/usr/bin/pyroscope" ]
 CMD ["-config.file=/etc/pyroscope/config.yaml"]

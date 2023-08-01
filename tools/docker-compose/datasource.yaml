@@ -7,5 +7,5 @@ datasources:
     name: phlare
     type: phlare
     uid: phlare
-    url: http://phlare:4100
+    url: http://phlare:4040
     version: 1

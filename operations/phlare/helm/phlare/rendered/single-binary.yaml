@@ -771,7 +771,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -796,7 +796,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -862,7 +862,7 @@ spec:
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4100
+              containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946

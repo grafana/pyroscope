@@ -376,7 +376,7 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 	$(call deploy,phlare-dev,)
 	# Create a service to provide the same endpoint as micro-services
-	echo '{"kind":"Service","apiVersion":"v1","metadata":{"name":"phlare-micro-services-query-frontend"},"spec":{"ports":[{"name":"phlare","port":4100,"targetPort":4100}],"selector":{"app.kubernetes.io/component":"all","app.kubernetes.io/instance":"phlare-dev"},"type":"ClusterIP"}}' | kubectl apply -f -
+	echo '{"kind":"Service","apiVersion":"v1","metadata":{"name":"phlare-micro-services-query-frontend"},"spec":{"ports":[{"name":"phlare","port":4040,"targetPort":4040}],"selector":{"app.kubernetes.io/component":"all","app.kubernetes.io/instance":"phlare-dev"},"type":"ClusterIP"}}' | kubectl apply -f -
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
