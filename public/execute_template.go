@@ -43,6 +43,10 @@ func prepareBasePath(basepath string) (string, error) {
 
 	u.Path = strings.TrimSpace(u.Path)
 
+	if !strings.HasSuffix(u.Path, "/") {
+		u.Path = u.Path + "/"
+	}
+
 	if !strings.HasPrefix(u.Path, "/") {
 		u.Path = "/" + u.Path
 	}
