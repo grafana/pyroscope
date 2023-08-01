@@ -13,10 +13,10 @@ import (
 	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
+	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
-	"github.com/segmentio/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -24,12 +24,32 @@ import (
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	phlareobjclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
-func testContext(t testing.TB) context.Context {
+const (
+	contextKeyDataDir contextKey = iota + 32
+)
+
+func contextWithDataDir(ctx context.Context, path string) context.Context {
+	return context.WithValue(ctx, contextKeyDataDir, path)
+}
+
+func contextDataDir(ctx context.Context) string {
+	return ctx.Value(contextKeyDataDir).(string)
+}
+
+type testCtx struct {
+	context.Context
+	dataDir           string
+	localBucketClient phlareobj.Bucket
+}
+
+func testContext(t testing.TB) testCtx {
 	logger := log.NewNopLogger()
 	if testing.Verbose() {
 		logger = log.NewLogfmtLogger(os.Stderr)
@@ -42,9 +62,21 @@ func testContext(t testing.TB) context.Context {
 
 	reg := prometheus.NewPedanticRegistry()
 	ctx = phlarecontext.WithRegistry(ctx, reg)
-	ctx = contextWithHeadMetrics(ctx, newHeadMetrics(reg))
 
-	return ctx
+	dataPath := t.TempDir()
+	ctx = contextWithDataDir(ctx, dataPath)
+	bucketCfg := phlareobjclient.Config{}
+	bucketCfg.Backend = "filesystem"
+	bucketCfg.Filesystem.Directory = dataPath
+	bucketClient, err := phlareobjclient.NewBucket(ctx, bucketCfg, "testing")
+	require.NoError(t, err)
+
+	ctx = contextWithHeadMetrics(ctx, newHeadMetrics(reg))
+	return testCtx{
+		Context:           ctx,
+		dataDir:           dataPath,
+		localBucketClient: bucketClient,
+	}
 }
 
 type testProfile struct {

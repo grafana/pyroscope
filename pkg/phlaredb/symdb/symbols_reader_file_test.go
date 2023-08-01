@@ -19,7 +19,7 @@ func Test_Reader_Open(t *testing.T) {
 	}
 
 	db := NewSymDB(cfg)
-	w := db.MappingWriter(1)
+	w := db.SymbolsAppender(1)
 	a := w.StacktraceAppender()
 	sids := make([]uint32, 5)
 	a.AppendStacktrace(sids, []*schemav1.Stacktrace{
@@ -37,7 +37,7 @@ func Test_Reader_Open(t *testing.T) {
 	require.NoError(t, err)
 	x, err := Open(context.Background(), b)
 	require.NoError(t, err)
-	mr, ok := x.MappingReader(1)
+	mr, ok := x.SymbolsResolver(1)
 	require.True(t, ok)
 
 	dst := new(mockStacktraceInserter)

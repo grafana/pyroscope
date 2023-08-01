@@ -22,7 +22,7 @@ func Test_Writer_IndexFile(t *testing.T) {
 
 	sids := make([]uint32, 5)
 
-	w := db.MappingWriter(0)
+	w := db.SymbolsAppender(0)
 	a := w.StacktraceAppender()
 	a.AppendStacktrace(sids, []*schemav1.Stacktrace{
 		{LocationIDs: []uint64{3, 2, 1}},
@@ -34,7 +34,7 @@ func Test_Writer_IndexFile(t *testing.T) {
 	assert.Equal(t, []uint32{3, 2, 11, 16, 18}, sids)
 	a.Release()
 
-	w = db.MappingWriter(1)
+	w = db.SymbolsAppender(1)
 	a = w.StacktraceAppender()
 	a.AppendStacktrace(sids, []*schemav1.Stacktrace{
 		{LocationIDs: []uint64{3, 2, 1}},
@@ -46,9 +46,9 @@ func Test_Writer_IndexFile(t *testing.T) {
 	assert.Equal(t, []uint32{3, 2, 11, 16, 18}, sids)
 	a.Release()
 
-	require.Len(t, db.mappings, 2)
-	require.Len(t, db.mappings[0].stacktraceChunks, 3)
-	require.Len(t, db.mappings[1].stacktraceChunks, 3)
+	require.Len(t, db.partitions, 2)
+	require.Len(t, db.partitions[0].stacktraceChunks, 3)
+	require.Len(t, db.partitions[1].stacktraceChunks, 3)
 
 	require.NoError(t, db.Flush())
 
@@ -75,10 +75,10 @@ func Test_Writer_IndexFile(t *testing.T) {
 				{
 					Offset:             0,
 					Size:               10,
-					MappingName:        0x0,
+					Partition:          0x0,
 					ChunkIndex:         0x0,
 					ChunkEncoding:      0x1,
-					Stacktraces:        0x0,
+					Stacktraces:        0x2,
 					StacktraceNodes:    0x4,
 					StacktraceMaxDepth: 0x0,
 					StacktraceMaxNodes: 0x7,
@@ -87,10 +87,10 @@ func Test_Writer_IndexFile(t *testing.T) {
 				{
 					Offset:             10,
 					Size:               15,
-					MappingName:        0x0,
+					Partition:          0x0,
 					ChunkIndex:         0x1,
 					ChunkEncoding:      0x1,
-					Stacktraces:        0x0,
+					Stacktraces:        0x1,
 					StacktraceNodes:    0x5,
 					StacktraceMaxDepth: 0x0,
 					StacktraceMaxNodes: 0x7,
@@ -99,10 +99,10 @@ func Test_Writer_IndexFile(t *testing.T) {
 				{
 					Offset:             25,
 					Size:               15,
-					MappingName:        0x0,
+					Partition:          0x0,
 					ChunkIndex:         0x2,
 					ChunkEncoding:      0x1,
-					Stacktraces:        0x0,
+					Stacktraces:        0x3,
 					StacktraceNodes:    0x5,
 					StacktraceMaxDepth: 0x0,
 					StacktraceMaxNodes: 0x7,
@@ -111,10 +111,10 @@ func Test_Writer_IndexFile(t *testing.T) {
 				{
 					Offset:             40,
 					Size:               10,
-					MappingName:        0x1,
+					Partition:          0x1,
 					ChunkIndex:         0x0,
 					ChunkEncoding:      0x1,
-					Stacktraces:        0x0,
+					Stacktraces:        0x2,
 					StacktraceNodes:    0x4,
 					StacktraceMaxDepth: 0x0,
 					StacktraceMaxNodes: 0x7,
@@ -123,10 +123,10 @@ func Test_Writer_IndexFile(t *testing.T) {
 				{
 					Offset:             50,
 					Size:               15,
-					MappingName:        0x1,
+					Partition:          0x1,
 					ChunkIndex:         0x1,
 					ChunkEncoding:      0x1,
-					Stacktraces:        0x0,
+					Stacktraces:        0x1,
 					StacktraceNodes:    0x5,
 					StacktraceMaxDepth: 0x0,
 					StacktraceMaxNodes: 0x7,
@@ -135,10 +135,10 @@ func Test_Writer_IndexFile(t *testing.T) {
 				{
 					Offset:             65,
 					Size:               15,
-					MappingName:        0x1,
+					Partition:          0x1,
 					ChunkIndex:         0x2,
 					ChunkEncoding:      0x1,
-					Stacktraces:        0x0,
+					Stacktraces:        0x3,
 					StacktraceNodes:    0x5,
 					StacktraceMaxDepth: 0x0,
 					StacktraceMaxNodes: 0x7,
@@ -146,7 +146,7 @@ func Test_Writer_IndexFile(t *testing.T) {
 				},
 			},
 		},
-		CRC: 0x5bbecabf,
+		CRC: 0x6418eaed,
 	}
 
 	assert.Equal(t, expected, idx)

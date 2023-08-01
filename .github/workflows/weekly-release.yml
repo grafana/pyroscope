@@ -43,6 +43,12 @@ jobs:
           node-version: lts/hydrogen
           cache: yarn
       - run: make frontend/build
+      - name: Get github app token (valid for an hour)
+        id: app-goreleaser
+        uses: tibdex/github-app-token@v1
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
       - uses: goreleaser/goreleaser-action@v4
         with:
           # either 'goreleaser' (default) or 'goreleaser-pro':
@@ -50,7 +56,7 @@ jobs:
           version: latest
           args: release --clean --skip-publish --timeout 60m
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_BOT_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-releaser.outputs.token }}
           # Your GoReleaser Pro key, if you are using the 'goreleaser-pro'
           # distribution:
           # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
@@ -70,5 +76,11 @@ jobs:
 
           docker manifest create "grafana/pyroscope:${WEEKLY_IMAGE_TAG}" "${IMAGE_AMMENDS[@]}"
           docker manifest push "grafana/pyroscope:${WEEKLY_IMAGE_TAG}"
+      - name: Get github app token (valid for an hour)
+        id: app-git-tag
+        uses: tibdex/github-app-token@v1
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
       - name: Push git tag for weekly release
-        run: git push https://grafanabot:${{ secrets.GH_BOT_ACCESS_TOKEN }}@github.com/grafana/pyroscope.git "${WEEKLY_IMAGE_TAG}"
+        run: git push https://x-access-token:${{ steps.app-git-tag.output.token }}@github.com/grafana/pyroscope.git "${WEEKLY_IMAGE_TAG}"

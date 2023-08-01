@@ -26,6 +26,27 @@ const (
 	StatusServiceName = "status.v1.StatusService"
 )
 
+// These constants are the fully-qualified names of the RPCs defined in this package. They're
+// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+//
+// Note that these are different from the fully-qualified method names used by
+// google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
+// reflection-formatted method names, remove the leading slash and convert the remaining slash to a
+// period.
+const (
+	// StatusServiceGetBuildInfoProcedure is the fully-qualified name of the StatusService's
+	// GetBuildInfo RPC.
+	StatusServiceGetBuildInfoProcedure = "/status.v1.StatusService/GetBuildInfo"
+	// StatusServiceGetConfigProcedure is the fully-qualified name of the StatusService's GetConfig RPC.
+	StatusServiceGetConfigProcedure = "/status.v1.StatusService/GetConfig"
+	// StatusServiceGetDiffConfigProcedure is the fully-qualified name of the StatusService's
+	// GetDiffConfig RPC.
+	StatusServiceGetDiffConfigProcedure = "/status.v1.StatusService/GetDiffConfig"
+	// StatusServiceGetDefaultConfigProcedure is the fully-qualified name of the StatusService's
+	// GetDefaultConfig RPC.
+	StatusServiceGetDefaultConfigProcedure = "/status.v1.StatusService/GetDefaultConfig"
+)
+
 // StatusServiceClient is a client for the status.v1.StatusService service.
 type StatusServiceClient interface {
 	// Retrieve build information about the binary
@@ -49,22 +70,22 @@ func NewStatusServiceClient(httpClient connect_go.HTTPClient, baseURL string, op
 	return &statusServiceClient{
 		getBuildInfo: connect_go.NewClient[v1.GetBuildInfoRequest, v1.GetBuildInfoResponse](
 			httpClient,
-			baseURL+"/status.v1.StatusService/GetBuildInfo",
+			baseURL+StatusServiceGetBuildInfoProcedure,
 			opts...,
 		),
 		getConfig: connect_go.NewClient[v1.GetConfigRequest, httpbody.HttpBody](
 			httpClient,
-			baseURL+"/status.v1.StatusService/GetConfig",
+			baseURL+StatusServiceGetConfigProcedure,
 			opts...,
 		),
 		getDiffConfig: connect_go.NewClient[v1.GetConfigRequest, httpbody.HttpBody](
 			httpClient,
-			baseURL+"/status.v1.StatusService/GetDiffConfig",
+			baseURL+StatusServiceGetDiffConfigProcedure,
 			opts...,
 		),
 		getDefaultConfig: connect_go.NewClient[v1.GetConfigRequest, httpbody.HttpBody](
 			httpClient,
-			baseURL+"/status.v1.StatusService/GetDefaultConfig",
+			baseURL+StatusServiceGetDefaultConfigProcedure,
 			opts...,
 		),
 	}
@@ -115,28 +136,40 @@ type StatusServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewStatusServiceHandler(svc StatusServiceHandler, opts ...connect_go.HandlerOption) (string, http.Handler) {
-	mux := http.NewServeMux()
-	mux.Handle("/status.v1.StatusService/GetBuildInfo", connect_go.NewUnaryHandler(
-		"/status.v1.StatusService/GetBuildInfo",
+	statusServiceGetBuildInfoHandler := connect_go.NewUnaryHandler(
+		StatusServiceGetBuildInfoProcedure,
 		svc.GetBuildInfo,
 		opts...,
-	))
-	mux.Handle("/status.v1.StatusService/GetConfig", connect_go.NewUnaryHandler(
-		"/status.v1.StatusService/GetConfig",
+	)
+	statusServiceGetConfigHandler := connect_go.NewUnaryHandler(
+		StatusServiceGetConfigProcedure,
 		svc.GetConfig,
 		opts...,
-	))
-	mux.Handle("/status.v1.StatusService/GetDiffConfig", connect_go.NewUnaryHandler(
-		"/status.v1.StatusService/GetDiffConfig",
+	)
+	statusServiceGetDiffConfigHandler := connect_go.NewUnaryHandler(
+		StatusServiceGetDiffConfigProcedure,
 		svc.GetDiffConfig,
 		opts...,
-	))
-	mux.Handle("/status.v1.StatusService/GetDefaultConfig", connect_go.NewUnaryHandler(
-		"/status.v1.StatusService/GetDefaultConfig",
+	)
+	statusServiceGetDefaultConfigHandler := connect_go.NewUnaryHandler(
+		StatusServiceGetDefaultConfigProcedure,
 		svc.GetDefaultConfig,
 		opts...,
-	))
-	return "/status.v1.StatusService/", mux
+	)
+	return "/status.v1.StatusService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case StatusServiceGetBuildInfoProcedure:
+			statusServiceGetBuildInfoHandler.ServeHTTP(w, r)
+		case StatusServiceGetConfigProcedure:
+			statusServiceGetConfigHandler.ServeHTTP(w, r)
+		case StatusServiceGetDiffConfigProcedure:
+			statusServiceGetDiffConfigHandler.ServeHTTP(w, r)
+		case StatusServiceGetDefaultConfigProcedure:
+			statusServiceGetDefaultConfigHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
 }
 
 // UnimplementedStatusServiceHandler returns CodeUnimplemented from all methods.

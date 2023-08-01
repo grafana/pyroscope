@@ -29,11 +29,11 @@ type instance struct {
 	tenantID string
 }
 
-func newInstance(phlarectx context.Context, cfg phlaredb.Config, tenantID string, storageBucket phlareobj.Bucket, limiter Limiter) (*instance, error) {
+func newInstance(phlarectx context.Context, cfg phlaredb.Config, tenantID string, localBucket, storageBucket phlareobj.Bucket, limiter Limiter) (*instance, error) {
 	cfg.DataPath = path.Join(cfg.DataPath, tenantID)
 
 	phlarectx = phlarecontext.WrapTenant(phlarectx, tenantID)
-	db, err := phlaredb.New(phlarectx, cfg, limiter)
+	db, err := phlaredb.New(phlarectx, cfg, limiter, phlareobj.NewPrefixedBucket(localBucket, tenantID))
 	if err != nil {
 		return nil, err
 	}

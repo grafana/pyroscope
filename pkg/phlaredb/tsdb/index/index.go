@@ -1334,9 +1334,21 @@ func (r *Reader) Version() int {
 
 // FileInfo returns some general stats about the underlying file
 func (r *Reader) FileInfo() block.File {
+	k, v := AllPostingsKey()
+	postings, err := r.Postings(k, nil, v)
+	if err != nil {
+		panic(err)
+	}
+	var numSeries uint64
+	for postings.Next() {
+		numSeries++
+	}
 	return block.File{
 		RelPath:   block.IndexFilename,
 		SizeBytes: uint64(r.Size()),
+		TSDB: &block.TSDBFile{
+			NumSeries: numSeries,
+		},
 	}
 }
 

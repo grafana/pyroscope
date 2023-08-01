@@ -9,9 +9,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
-	"github.com/segmentio/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

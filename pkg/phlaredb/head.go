@@ -16,6 +16,7 @@ import (
 	"github.com/gogo/status"
 	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
+	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
@@ -317,7 +318,7 @@ func (h *Head) convertSamples(_ context.Context, r *rewriter, stacktracePartitio
 			r.locations.rewriteUint64(&stacktraces[idxSample].LocationIDs[i])
 		}
 	}
-	appender := h.symbolDB.MappingWriter(stacktracePartition).StacktraceAppender()
+	appender := h.symbolDB.SymbolsAppender(stacktracePartition).StacktraceAppender()
 	defer appender.Release()
 
 	if cap(stacktracesIds) < len(stacktraces) {
@@ -609,7 +610,7 @@ func (h *Head) resolveStacktraces(ctx context.Context, stacktracesByMapping stac
 	sp.LogFields(otlog.String("msg", "building MergeProfilesStacktracesResult"))
 	_ = stacktracesByMapping.ForEach(
 		func(mapping uint64, stacktraceSamples stacktraceSampleMap) error {
-			mp, ok := h.symbolDB.MappingReader(mapping)
+			mp, ok := h.symbolDB.SymbolsResolver(mapping)
 			if !ok {
 				return nil
 			}
@@ -672,7 +673,7 @@ func (h *Head) resolvePprof(ctx context.Context, stacktracesByMapping profileSam
 	// now add locationIDs and stacktraces
 	_ = stacktracesByMapping.ForEach(
 		func(mapping uint64, stacktraceSamples profileSampleMap) error {
-			mp, ok := h.symbolDB.MappingReader(mapping)
+			mp, ok := h.symbolDB.SymbolsResolver(mapping)
 			if !ok {
 				return nil
 			}
@@ -985,9 +986,9 @@ func (h *Head) flush(ctx context.Context) error {
 	}
 
 	// add total size symdb
-	symbDBFiles, error := h.SymDBFiles()
-	if error != nil {
-		return error
+	symbDBFiles, err := symdbMetaFiles(h.headPath)
+	if err != nil {
+		return err
 	}
 
 	for _, file := range symbDBFiles {
@@ -1003,6 +1004,8 @@ func (h *Head) flush(ctx context.Context) error {
 	h.meta.Files = files
 	h.meta.Stats.NumProfiles = uint64(h.profiles.index.totalProfiles.Load())
 	h.meta.Stats.NumSamples = h.totalSamples.Load()
+	h.meta.Compaction.Sources = []ulid.ULID{h.meta.ULID}
+	h.meta.Compaction.Level = 1
 	h.metrics.flushedBlockSamples.Observe(float64(h.meta.Stats.NumSamples))
 	h.metrics.flusehdBlockProfiles.Observe(float64(h.meta.Stats.NumProfiles))
 
@@ -1016,6 +1019,26 @@ func (h *Head) flush(ctx context.Context) error {
 // SymDBFiles lists files in symdb folder
 func (h *Head) SymDBFiles() ([]block.File, error) {
 	files, err := os.ReadDir(filepath.Join(h.headPath, symdb.DefaultDirName))
+	if err != nil {
+		return nil, err
+	}
+	result := make([]block.File, len(files))
+	for idx, f := range files {
+		if f.IsDir() {
+			continue
+		}
+		result[idx].RelPath = filepath.Join(symdb.DefaultDirName, f.Name())
+		info, err := f.Info()
+		if err != nil {
+			return nil, err
+		}
+		result[idx].SizeBytes = uint64(info.Size())
+	}
+	return result, nil
+}
+
+func symdbMetaFiles(dir string) ([]block.File, error) {
+	files, err := os.ReadDir(filepath.Join(dir, symdb.DefaultDirName))
 	if err != nil {
 		return nil, err
 	}

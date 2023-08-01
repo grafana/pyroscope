@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/segmentio/parquet-go"
+	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/require"
 )
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/segmentio/parquet-go"
+	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/require"
 
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
@@ -207,6 +207,66 @@ func TestLessProfileRows(t *testing.T) {
 	}
 }
 
+func TestProfileRowStacktraceIDs(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		expected []uint32
+		profile  InMemoryProfile
+	}{
+		{"empty", nil, InMemoryProfile{}},
+		{"one sample", []uint32{1}, InMemoryProfile{
+			SeriesIndex:         1,
+			StacktracePartition: 2,
+			TotalValue:          3,
+			Samples:             Samples{StacktraceIDs: []uint32{1}, Values: []uint64{1}},
+		}},
+		{"many", []uint32{1, 1, 2, 3, 4}, InMemoryProfile{
+			SeriesIndex:         1,
+			StacktracePartition: 2,
+			TotalValue:          3,
+			Samples: Samples{
+				StacktraceIDs: []uint32{1, 1, 2, 3, 4},
+				Values:        []uint64{4, 2, 4, 5, 2},
+			},
+		}},
+	} {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			rows := generateProfileRow([]InMemoryProfile{tc.profile})
+			var ids []uint32
+			ProfileRow(rows[0]).ForStacktraceIDsValues(func(values []parquet.Value) {
+				for _, v := range values {
+					ids = append(ids, v.Uint32())
+				}
+			})
+			require.Equal(t, tc.expected, ids)
+		})
+	}
+}
+
+func TestProfileRowMutateValues(t *testing.T) {
+	row := ProfileRow(generateProfileRow([]InMemoryProfile{
+		{
+			Samples: Samples{
+				StacktraceIDs: []uint32{1, 1, 2, 3, 4},
+				Values:        []uint64{4, 2, 4, 5, 2},
+			},
+		},
+	})[0])
+	row.ForStacktraceIDsValues(func(values []parquet.Value) {
+		for i := range values {
+			values[i] = parquet.Int32Value(1).Level(0, 1, values[i].Column())
+		}
+	})
+	var ids []uint32
+	row.ForStacktraceIDsValues(func(values []parquet.Value) {
+		for _, v := range values {
+			ids = append(ids, v.Uint32())
+		}
+	})
+	require.Equal(t, []uint32{1, 1, 1, 1, 1}, ids)
+}
+
 func BenchmarkProfileRows(b *testing.B) {
 	a := generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0]
 	a1 := generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 2}})[0]
@@ -227,8 +287,8 @@ func compareProfileRows(t *testing.T, expected, actual []parquet.Row) {
 	require.Equal(t, len(expected), len(actual))
 	for i := range expected {
 		expectedProfile, actualProfile := &Profile{}, &Profile{}
-		require.NoError(t, profilesSchema.Reconstruct(actualProfile, actual[i]))
-		require.NoError(t, profilesSchema.Reconstruct(expectedProfile, expected[i]))
+		require.NoError(t, ProfilesSchema.Reconstruct(actualProfile, actual[i]))
+		require.NoError(t, ProfilesSchema.Reconstruct(expectedProfile, expected[i]))
 		require.Equal(t, expectedProfile, actualProfile, "row %d", i)
 	}
 }

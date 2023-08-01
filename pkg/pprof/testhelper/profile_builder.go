@@ -76,7 +76,14 @@ func (m *ProfileBuilder) MemoryProfile() *ProfileBuilder {
 }
 
 func (m *ProfileBuilder) WithLabels(lv ...string) *ProfileBuilder {
+Outer:
 	for i := 0; i < len(lv); i += 2 {
+		for _, lbl := range m.Labels {
+			if lbl.Name == lv[i] {
+				lbl.Value = lv[i+1]
+				continue Outer
+			}
+		}
 		m.Labels = append(m.Labels, &typesv1.LabelPair{
 			Name:  lv[i],
 			Value: lv[i+1],
@@ -196,7 +203,7 @@ type StacktraceBuilder struct {
 	*ProfileBuilder
 }
 
-func (s *StacktraceBuilder) AddSamples(samples ...int64) {
+func (s *StacktraceBuilder) AddSamples(samples ...int64) *ProfileBuilder {
 	if exp, act := len(s.Profile.SampleType), len(samples); exp != act {
 		panic(fmt.Sprintf("profile expects %d sample(s), there was actually %d sample(s) given.", exp, act))
 	}
@@ -204,4 +211,5 @@ func (s *StacktraceBuilder) AddSamples(samples ...int64) {
 		LocationId: s.locationID,
 		Value:      samples,
 	})
+	return s.ProfileBuilder
 }

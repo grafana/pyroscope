@@ -9,8 +9,8 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/parquet-go/parquet-go"
 	"github.com/samber/lo"
-	"github.com/segmentio/parquet-go"
 
 	"github.com/grafana/pyroscope/pkg/iter"
 )

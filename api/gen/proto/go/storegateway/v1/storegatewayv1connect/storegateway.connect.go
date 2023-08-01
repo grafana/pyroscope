@@ -9,6 +9,7 @@ import (
 	errors "errors"
 	connect_go "github.com/bufbuild/connect-go"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	_ "github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1"
 	http "net/http"
 	strings "strings"
 )
@@ -23,6 +24,25 @@ const _ = connect_go.IsAtLeastVersion0_1_0
 const (
 	// StoreGatewayServiceName is the fully-qualified name of the StoreGatewayService service.
 	StoreGatewayServiceName = "storegateway.v1.StoreGatewayService"
+)
+
+// These constants are the fully-qualified names of the RPCs defined in this package. They're
+// exposed at runtime as Spec.Procedure and as the final two segments of the HTTP route.
+//
+// Note that these are different from the fully-qualified method names used by
+// google.golang.org/protobuf/reflect/protoreflect. To convert from these constants to
+// reflection-formatted method names, remove the leading slash and convert the remaining slash to a
+// period.
+const (
+	// StoreGatewayServiceMergeProfilesStacktracesProcedure is the fully-qualified name of the
+	// StoreGatewayService's MergeProfilesStacktraces RPC.
+	StoreGatewayServiceMergeProfilesStacktracesProcedure = "/storegateway.v1.StoreGatewayService/MergeProfilesStacktraces"
+	// StoreGatewayServiceMergeProfilesLabelsProcedure is the fully-qualified name of the
+	// StoreGatewayService's MergeProfilesLabels RPC.
+	StoreGatewayServiceMergeProfilesLabelsProcedure = "/storegateway.v1.StoreGatewayService/MergeProfilesLabels"
+	// StoreGatewayServiceMergeProfilesPprofProcedure is the fully-qualified name of the
+	// StoreGatewayService's MergeProfilesPprof RPC.
+	StoreGatewayServiceMergeProfilesPprofProcedure = "/storegateway.v1.StoreGatewayService/MergeProfilesPprof"
 )
 
 // StoreGatewayServiceClient is a client for the storegateway.v1.StoreGatewayService service.
@@ -44,17 +64,17 @@ func NewStoreGatewayServiceClient(httpClient connect_go.HTTPClient, baseURL stri
 	return &storeGatewayServiceClient{
 		mergeProfilesStacktraces: connect_go.NewClient[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse](
 			httpClient,
-			baseURL+"/storegateway.v1.StoreGatewayService/MergeProfilesStacktraces",
+			baseURL+StoreGatewayServiceMergeProfilesStacktracesProcedure,
 			opts...,
 		),
 		mergeProfilesLabels: connect_go.NewClient[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse](
 			httpClient,
-			baseURL+"/storegateway.v1.StoreGatewayService/MergeProfilesLabels",
+			baseURL+StoreGatewayServiceMergeProfilesLabelsProcedure,
 			opts...,
 		),
 		mergeProfilesPprof: connect_go.NewClient[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse](
 			httpClient,
-			baseURL+"/storegateway.v1.StoreGatewayService/MergeProfilesPprof",
+			baseURL+StoreGatewayServiceMergeProfilesPprofProcedure,
 			opts...,
 		),
 	}
@@ -96,23 +116,33 @@ type StoreGatewayServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewStoreGatewayServiceHandler(svc StoreGatewayServiceHandler, opts ...connect_go.HandlerOption) (string, http.Handler) {
-	mux := http.NewServeMux()
-	mux.Handle("/storegateway.v1.StoreGatewayService/MergeProfilesStacktraces", connect_go.NewBidiStreamHandler(
-		"/storegateway.v1.StoreGatewayService/MergeProfilesStacktraces",
+	storeGatewayServiceMergeProfilesStacktracesHandler := connect_go.NewBidiStreamHandler(
+		StoreGatewayServiceMergeProfilesStacktracesProcedure,
 		svc.MergeProfilesStacktraces,
 		opts...,
-	))
-	mux.Handle("/storegateway.v1.StoreGatewayService/MergeProfilesLabels", connect_go.NewBidiStreamHandler(
-		"/storegateway.v1.StoreGatewayService/MergeProfilesLabels",
+	)
+	storeGatewayServiceMergeProfilesLabelsHandler := connect_go.NewBidiStreamHandler(
+		StoreGatewayServiceMergeProfilesLabelsProcedure,
 		svc.MergeProfilesLabels,
 		opts...,
-	))
-	mux.Handle("/storegateway.v1.StoreGatewayService/MergeProfilesPprof", connect_go.NewBidiStreamHandler(
-		"/storegateway.v1.StoreGatewayService/MergeProfilesPprof",
+	)
+	storeGatewayServiceMergeProfilesPprofHandler := connect_go.NewBidiStreamHandler(
+		StoreGatewayServiceMergeProfilesPprofProcedure,
 		svc.MergeProfilesPprof,
 		opts...,
-	))
-	return "/storegateway.v1.StoreGatewayService/", mux
+	)
+	return "/storegateway.v1.StoreGatewayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case StoreGatewayServiceMergeProfilesStacktracesProcedure:
+			storeGatewayServiceMergeProfilesStacktracesHandler.ServeHTTP(w, r)
+		case StoreGatewayServiceMergeProfilesLabelsProcedure:
+			storeGatewayServiceMergeProfilesLabelsHandler.ServeHTTP(w, r)
+		case StoreGatewayServiceMergeProfilesPprofProcedure:
+			storeGatewayServiceMergeProfilesPprofHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
 }
 
 // UnimplementedStoreGatewayServiceHandler returns CodeUnimplemented from all methods.

@@ -28,7 +28,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
@@ -90,13 +89,7 @@ type PhlareDB struct {
 	evictCh      chan *blockEviction
 }
 
-func New(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*PhlareDB, error) {
-	// todo: should be instrumented.
-	fs, err := filesystem.NewBucket(cfg.DataPath)
-	if err != nil {
-		return nil, err
-	}
-
+func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlareobj.Bucket) (*PhlareDB, error) {
 	f := &PhlareDB{
 		cfg:      cfg,
 		logger:   phlarecontext.Logger(phlarectx),

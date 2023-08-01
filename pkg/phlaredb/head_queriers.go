@@ -7,9 +7,9 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/pprof/profile"
 	"github.com/opentracing/opentracing-go"
+	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
-	"github.com/segmentio/parquet-go"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"

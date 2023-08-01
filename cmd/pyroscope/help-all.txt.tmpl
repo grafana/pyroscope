@@ -360,7 +360,7 @@ Usage of ./pyroscope:
   -querier.frontend-client.connect-backoff-max-delay duration
     	Maximum backoff delay when establishing a connection. Only relevant if ConnectTimeout > 0. (default 5s)
   -querier.frontend-client.connect-timeout duration
-    	The maximum amount of time to establish a connection. A value of 0 means default gRPC connect timeout and backoff.
+    	The maximum amount of time to establish a connection. A value of 0 means default gRPC client connect timeout and backoff. (default 5s)
   -querier.frontend-client.grpc-client-rate-limit float
     	Rate limit for gRPC client; 0 means disabled.
   -querier.frontend-client.grpc-client-rate-limit-burst int
@@ -422,7 +422,7 @@ Usage of ./pyroscope:
   -query-frontend.grpc-client-config.connect-backoff-max-delay duration
     	Maximum backoff delay when establishing a connection. Only relevant if ConnectTimeout > 0. (default 5s)
   -query-frontend.grpc-client-config.connect-timeout duration
-    	The maximum amount of time to establish a connection. A value of 0 means default gRPC connect timeout and backoff.
+    	The maximum amount of time to establish a connection. A value of 0 means default gRPC client connect timeout and backoff. (default 5s)
   -query-frontend.grpc-client-config.grpc-client-rate-limit float
     	Rate limit for gRPC client; 0 means disabled.
   -query-frontend.grpc-client-config.grpc-client-rate-limit-burst int
@@ -472,7 +472,7 @@ Usage of ./pyroscope:
   -query-scheduler.grpc-client-config.connect-backoff-max-delay duration
     	Maximum backoff delay when establishing a connection. Only relevant if ConnectTimeout > 0. (default 5s)
   -query-scheduler.grpc-client-config.connect-timeout duration
-    	The maximum amount of time to establish a connection. A value of 0 means default gRPC connect timeout and backoff.
+    	The maximum amount of time to establish a connection. A value of 0 means default gRPC client connect timeout and backoff. (default 5s)
   -query-scheduler.grpc-client-config.grpc-client-rate-limit float
     	Rate limit for gRPC client; 0 means disabled.
   -query-scheduler.grpc-client-config.grpc-client-rate-limit-burst int

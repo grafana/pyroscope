@@ -7,8 +7,8 @@ import (
 	"sort"
 
 	"github.com/google/uuid"
+	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
-	"github.com/segmentio/parquet-go"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
@@ -27,7 +27,7 @@ var (
 		phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("Labels", pprofLabels),
 	}
-	profilesSchema = parquet.NewSchema("Profile", phlareparquet.Group{
+	ProfilesSchema = parquet.NewSchema("Profile", phlareparquet.Group{
 		phlareparquet.NewGroupField("ID", parquet.UUID()),
 		phlareparquet.NewGroupField("SeriesIndex", parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("StacktracePartition", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
@@ -42,9 +42,11 @@ var (
 		phlareparquet.NewGroupField("DefaultSampleType", parquet.Optional(parquet.Int(64))),
 	})
 
-	maxProfileRow       parquet.Row
-	seriesIndexColIndex int
-	timeNanoColIndex    int
+	maxProfileRow               parquet.Row
+	seriesIndexColIndex         int
+	stacktraceIDColIndex        int
+	timeNanoColIndex            int
+	stacktracePartitionColIndex int
 )
 
 func init() {
@@ -52,16 +54,26 @@ func init() {
 		SeriesIndex: math.MaxUint32,
 		TimeNanos:   math.MaxInt64,
 	}, maxProfileRow)
-	seriesCol, ok := profilesSchema.Lookup("SeriesIndex")
+	seriesCol, ok := ProfilesSchema.Lookup("SeriesIndex")
 	if !ok {
 		panic(fmt.Errorf("SeriesIndex index column not found"))
 	}
 	seriesIndexColIndex = seriesCol.ColumnIndex
-	timeCol, ok := profilesSchema.Lookup("TimeNanos")
+	timeCol, ok := ProfilesSchema.Lookup("TimeNanos")
 	if !ok {
 		panic(fmt.Errorf("TimeNanos column not found"))
 	}
 	timeNanoColIndex = timeCol.ColumnIndex
+	stacktraceIDCol, ok := ProfilesSchema.Lookup("Samples", "list", "element", "StacktraceID")
+	if !ok {
+		panic(fmt.Errorf("StacktraceID column not found"))
+	}
+	stacktraceIDColIndex = stacktraceIDCol.ColumnIndex
+	stacktracePartitionCol, ok := ProfilesSchema.Lookup("StacktracePartition")
+	if !ok {
+		panic(fmt.Errorf("StacktracePartition column not found"))
+	}
+	stacktracePartitionColIndex = stacktracePartitionCol.ColumnIndex
 }
 
 type Sample struct {
@@ -131,7 +143,7 @@ func (*ProfilePersister) Name() string {
 }
 
 func (*ProfilePersister) Schema() *parquet.Schema {
-	return profilesSchema
+	return ProfilesSchema
 }
 
 func (*ProfilePersister) SortingColumns() parquet.SortingOption {
@@ -143,13 +155,13 @@ func (*ProfilePersister) SortingColumns() parquet.SortingOption {
 }
 
 func (*ProfilePersister) Deconstruct(row parquet.Row, id uint64, s *Profile) parquet.Row {
-	row = profilesSchema.Deconstruct(row, s)
+	row = ProfilesSchema.Deconstruct(row, s)
 	return row
 }
 
 func (*ProfilePersister) Reconstruct(row parquet.Row) (id uint64, s *Profile, err error) {
 	var profile Profile
-	if err := profilesSchema.Reconstruct(&profile, row); err != nil {
+	if err := ProfilesSchema.Reconstruct(&profile, row); err != nil {
 		return 0, nil, err
 	}
 	return 0, &profile, nil
@@ -164,7 +176,7 @@ func NewProfilesRowReader(slice []*Profile) *SliceRowReader[*Profile] {
 	return &SliceRowReader[*Profile]{
 		slice: slice,
 		serialize: func(p *Profile, r parquet.Row) parquet.Row {
-			return profilesSchema.Deconstruct(r, p)
+			return ProfilesSchema.Deconstruct(r, p)
 		},
 	}
 }
@@ -460,4 +472,48 @@ func lessProfileRows(r1, r2 parquet.Row) bool {
 		}
 	}
 	return ts1 < ts2
+}
+
+type ProfileRow parquet.Row
+
+func (p ProfileRow) SeriesIndex() uint32 {
+	return p[seriesIndexColIndex].Uint32()
+}
+
+func (p ProfileRow) StacktracePartitionID() uint64 {
+	return p[stacktracePartitionColIndex].Uint64()
+}
+
+func (p ProfileRow) TimeNanos() int64 {
+	var ts int64
+	for i := len(p) - 1; i >= 0; i-- {
+		if p[i].Column() == timeNanoColIndex {
+			ts = p[i].Int64()
+			break
+		}
+	}
+	return ts
+}
+
+func (p ProfileRow) SetSeriesIndex(v uint32) {
+	p[seriesIndexColIndex] = parquet.Int32Value(int32(v)).Level(0, 0, seriesIndexColIndex)
+}
+
+func (p ProfileRow) ForStacktraceIDsValues(fn func([]parquet.Value)) {
+	start := -1
+	var i int
+	for i = 0; i < len(p); i++ {
+		col := p[i].Column()
+		if col == stacktraceIDColIndex && p[i].DefinitionLevel() == 1 {
+			if start == -1 {
+				start = i
+			}
+		}
+		if col > stacktraceIDColIndex {
+			break
+		}
+	}
+	if start != -1 {
+		fn(p[start:i])
+	}
 }

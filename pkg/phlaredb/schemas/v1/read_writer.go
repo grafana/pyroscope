@@ -4,7 +4,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/segmentio/parquet-go"
+	"github.com/parquet-go/parquet-go"
 )
 
 type PersisterName interface {

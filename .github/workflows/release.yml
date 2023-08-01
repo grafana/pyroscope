@@ -46,6 +46,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - run: make frontend/build
+      - name: Get github app token (valid for an hour)
+        id: app-goreleaser
+        uses: tibdex/github-app-token@v1
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
       - uses: goreleaser/goreleaser-action@v4
         with:
           # either 'goreleaser' (default) or 'goreleaser-pro':
@@ -53,7 +59,7 @@ jobs:
           version: latest
           args: release --rm-dist --timeout 60m
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_BOT_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-releaser.outputs.token }}
           # Your GoReleaser Pro key, if you are using the 'goreleaser-pro'
           # distribution:
           # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/segmentio/parquet-go"
+	"github.com/parquet-go/parquet-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -25,7 +25,7 @@ func TestSchemaMatch(t *testing.T) {
 		"required group element",
 	)
 
-	require.Equal(t, profilesStructSchema, profilesSchema.String())
+	require.Equal(t, profilesStructSchema, ProfilesSchema.String())
 
 	stacktracesStructSchema := parquet.SchemaOf(&storedStacktrace{})
 	require.Equal(t, strings.Replace(stacktracesStructSchema.String(), "message storedStacktrace", "message Stacktrace", 1), stacktracesSchema.String())

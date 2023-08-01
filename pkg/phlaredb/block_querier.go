@@ -22,11 +22,11 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
+	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/samber/lo"
-	"github.com/segmentio/parquet-go"
 	"github.com/thanos-io/objstore"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
@@ -305,7 +305,13 @@ type singleBlockQuerier struct {
 type StacktraceDB interface {
 	Open(ctx context.Context) error
 	Close() error
-	Resolve(ctx context.Context, mapping uint64, locs locationsIdsByStacktraceID, stacktraceIDs []uint32) error
+
+	// Load the database into memory entirely.
+	// This method is used at compaction.
+	Load(context.Context) error
+	WriteStats(partition uint64, s *symdb.Stats)
+
+	Resolve(ctx context.Context, partition uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error
 }
 
 type stacktraceResolverV1 struct {
@@ -321,16 +327,31 @@ func (r *stacktraceResolverV1) Close() error {
 	return r.stacktraces.Close()
 }
 
-func (r *stacktraceResolverV1) Resolve(ctx context.Context, mapping uint64, locs locationsIdsByStacktraceID, stacktraceIDs []uint32) error {
+func (r *stacktraceResolverV1) Resolve(ctx context.Context, _ uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error {
 	stacktraces := repeatedColumnIter(ctx, r.stacktraces.file, "LocationIDs.list.element", iter.NewSliceIterator(stacktraceIDs))
 	defer stacktraces.Close()
-
+	t := make([]int32, 0, 64)
 	for stacktraces.Next() {
 		s := stacktraces.At()
-		locs.addFromParquet(int64(s.Row), s.Values)
-
+		t = grow(t, len(s.Values))
+		for i, v := range s.Values {
+			t[i] = v.Int32()
+		}
+		locs.InsertStacktrace(s.Row, t)
 	}
 	return stacktraces.Err()
+}
+
+func (r *stacktraceResolverV1) WriteStats(_ uint64, s *symdb.Stats) {
+	s.StacktracesTotal = int(r.stacktraces.file.NumRows())
+	s.MaxStacktraceID = s.StacktracesTotal
+}
+
+func (r *stacktraceResolverV1) Load(context.Context) error {
+	// FIXME(kolesnikovae): Loading all stacktraces from parquet file
+	//  into memory is likely a bad choice. Instead we could convert
+	//  it to symdb first.
+	return nil
 }
 
 type stacktraceResolverV2 struct {
@@ -351,19 +372,25 @@ func (r *stacktraceResolverV2) Close() error {
 	return nil
 }
 
-func (r *stacktraceResolverV2) Resolve(ctx context.Context, mapping uint64, locs locationsIdsByStacktraceID, stacktraceIDs []uint32) error {
-	mr, ok := r.reader.MappingReader(mapping)
+func (r *stacktraceResolverV2) Resolve(ctx context.Context, partition uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error {
+	mr, ok := r.reader.SymbolsResolver(partition)
 	if !ok {
 		return nil
 	}
 	resolver := mr.StacktraceResolver()
 	defer resolver.Release()
+	return resolver.ResolveStacktraces(ctx, locs, stacktraceIDs)
+}
 
-	return resolver.ResolveStacktraces(ctx, symdb.StacktraceInserterFn(
-		func(stacktraceID uint32, locations []int32) {
-			locs.add(int64(stacktraceID), locations)
-		},
-	), stacktraceIDs)
+func (r *stacktraceResolverV2) Load(ctx context.Context) error {
+	return r.reader.Load(ctx)
+}
+
+func (r *stacktraceResolverV2) WriteStats(partition uint64, s *symdb.Stats) {
+	mr, ok := r.reader.SymbolsResolver(partition)
+	if ok {
+		mr.WriteStats(s)
+	}
 }
 
 func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlareobj.Bucket, meta *block.Meta) *singleBlockQuerier {
@@ -425,6 +452,33 @@ func newStacktraceResolverV2(bucketReader phlareobj.Bucket) StacktraceDB {
 	return &stacktraceResolverV2{
 		bucketReader: bucketReader,
 	}
+}
+
+func (b *singleBlockQuerier) Profiles() []parquet.RowGroup {
+	return b.profiles.file.RowGroups()
+}
+
+func (b *singleBlockQuerier) Index() IndexReader {
+	return b.index
+}
+
+func (b *singleBlockQuerier) Symbols() SymbolsReader {
+	return &inMemorySymbolsReader{
+		partitions: make(map[uint64]*inMemorySymbolsResolver),
+
+		strings:     b.strings,
+		functions:   b.functions,
+		locations:   b.locations,
+		mappings:    b.mappings,
+		stacktraces: b.stacktraces,
+	}
+}
+
+func (b *singleBlockQuerier) Meta() block.Meta {
+	if b.meta == nil {
+		return block.Meta{}
+	}
+	return *b.meta
 }
 
 func (b *singleBlockQuerier) Close() error {

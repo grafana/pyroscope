@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"github.com/segmentio/parquet-go"
+	"github.com/parquet-go/parquet-go"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 )
