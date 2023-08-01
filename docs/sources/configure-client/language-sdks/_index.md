@@ -7,7 +7,7 @@ aliases:
   - /docs/phlare/latest/configure-client/language-sdks/
 ---
 
-# Grafana Pyroscope Language SDKs
+# Pyroscope Language SDKs
 
 The following languages SDKs provide support for sending profiles from your application:
 
