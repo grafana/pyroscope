@@ -13,6 +13,7 @@ type contextKey int
 const (
 	loggerKey contextKey = iota
 	registryKey
+	localBucketClient
 )
 
 var (

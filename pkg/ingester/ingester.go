@@ -21,6 +21,7 @@ import (
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	phlareobjclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -57,6 +58,7 @@ type Ingester struct {
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
 
+	localBucket   phlareobj.Bucket
 	storageBucket phlareobj.Bucket
 
 	instances    map[string]*instance
@@ -78,6 +80,7 @@ func (i *ingesterFlusherCompat) Flush() {
 }
 
 func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits) (*Ingester, error) {
+
 	i := &Ingester{
 		cfg:           cfg,
 		phlarectx:     phlarectx,
@@ -89,7 +92,18 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		limits:        limits,
 	}
 
-	var err error
+	// initialise the local bucket client
+	var (
+		localBucketCfg phlareobjclient.Config
+		err            error
+	)
+	localBucketCfg.Backend = "filesystem"
+	localBucketCfg.Filesystem.Directory = dbConfig.DataPath
+	i.localBucket, err = phlareobjclient.NewBucket(phlarectx, localBucketCfg, "local")
+	if err != nil {
+		return nil, err
+	}
+
 	i.lifecycler, err = ring.NewLifecycler(
 		cfg.LifecyclerConfig,
 		&ingesterFlusherCompat{i},
@@ -149,7 +163,7 @@ func (i *Ingester) GetOrCreateInstance(tenantID string) (*instance, error) { //n
 	if !ok {
 		var err error
 
-		inst, err = newInstance(i.phlarectx, i.dbConfig, tenantID, i.storageBucket, NewLimiter(tenantID, i.limits, i.lifecycler, i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor))
+		inst, err = newInstance(i.phlarectx, i.dbConfig, tenantID, i.localBucket, i.storageBucket, NewLimiter(tenantID, i.limits, i.lifecycler, i.cfg.LifecyclerConfig.RingConfig.ReplicationFactor))
 		if err != nil {
 			return nil, err
 		}
