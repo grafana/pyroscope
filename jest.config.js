@@ -7,10 +7,10 @@ module.exports = {
   testEnvironment: 'jsdom',
   testMatch: ['**/?(*.)+(spec|test).+(ts|tsx|js)'],
   transform: {
-    '^.+\\.(t|j)sx?$': ['@swc/jest'],
     '\\.module\\.(css|scss)$': 'jest-css-modules-transform',
     '\\.(css|scss)$': 'jest-css-modules-transform',
     '\\.svg$': path.join(__dirname, 'svg-transform.js'),
+    '^.+\\.(t|j)sx?$': ['@swc/jest'],
   },
 
   transformIgnorePatterns: [

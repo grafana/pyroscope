@@ -6,7 +6,7 @@ import {
   TabsProps,
   TabProps,
 } from '@mui/material';
-import styles from '@phlare/ui/Tabs.module.scss';
+import styles from './Tabs.module.scss';
 
 interface TabPanelProps {
   index: number;

@@ -7,6 +7,15 @@ import basename from '@phlare/util/baseurl';
 import { Result } from '@phlare/util/fp';
 import { tenantIDFromStorage } from '@phlare/services/tenant';
 
+// RequestNotOkError refers to when the Response is not within the 2xx range
+export class RequestNotOkError extends CustomError {
+  constructor(public code: number, public description: string) {
+    super(
+      `Request failed with statusCode: '${code}' and description: '${description}'`
+    );
+  }
+}
+
 /**
  * request wraps around the original request
  * while sending the OrgID if available
@@ -187,14 +196,7 @@ async function fetchAndHandleErrors(
   }
 }
 
-// RequestNotOkError refers to when the Response is not within the 2xx range
-export class RequestNotOkError extends CustomError {
-  constructor(public code: number, public description: string) {
-    super(
-      `Request failed with statusCode: '${code}' and description: '${description}'`
-    );
-  }
-}
+
 
 export class RequestAbortedError extends CustomError {
   constructor(public description: string) {

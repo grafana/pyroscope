@@ -12,7 +12,7 @@ import {
   actions,
 } from '@phlare/redux/reducers/tenant';
 import { useAppSelector, useAppDispatch } from '@phlare/redux/hooks';
-import styles from '@phlare/components/SidebarTenant.module.css';
+import styles from './SidebarTenant.module.css';
 import cx from 'classnames';
 
 export interface DropdownProps {

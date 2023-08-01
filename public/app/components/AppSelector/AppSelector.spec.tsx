@@ -1,6 +1,6 @@
 import React from 'react';
-import { brandQuery } from '@phlare/models/query';
-import { appToQuery, App } from '@phlare/models/app';
+import { brandQuery } from '../../models/query';
+import { appToQuery, App } from '../../models/app';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AppSelector } from './AppSelector';
 import { MENU_ITEM_ROLE } from './SelectButton';

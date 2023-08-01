@@ -15,7 +15,7 @@ import LoadingSpinner from '@phlare/ui/LoadingSpinner';
 import DateRangePicker from '@phlare/components/DateRangePicker';
 import RefreshButton from '@phlare/components/RefreshButton';
 import { AppSelector } from '@phlare/components/AppSelector/AppSelector';
-import styles from '@phlare/components/Toolbar.module.css';
+import styles from './Toolbar.module.css';
 
 interface ToolbarProps {
   /** callback to be called when an app is selected via the dropdown */

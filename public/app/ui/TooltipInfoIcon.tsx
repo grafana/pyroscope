@@ -1,7 +1,7 @@
 import React from 'react';
 import { faInfoCircle } from '@fortawesome/free-solid-svg-icons/faInfoCircle';
 import Button from '@phlare/ui/Button';
-import styles from '@phlare/ui/TooltipInfoIcon.module.scss';
+import styles from './TooltipInfoIcon.module.scss';
 
 export const TooltipInfoIcon = React.forwardRef(function TooltipInfoIcon(
   props,
