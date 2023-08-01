@@ -26,10 +26,10 @@ type SymbolsAppender interface {
 type symbolsWriter struct {
 	partitions map[uint64]*symbolsAppender
 
-	locations deduplicatingSlice[*schemav1.InMemoryLocation, locationsKey, *locationsHelper, *schemav1.LocationPersister]
-	mappings  deduplicatingSlice[*schemav1.InMemoryMapping, mappingsKey, *mappingsHelper, *schemav1.MappingPersister]
-	functions deduplicatingSlice[*schemav1.InMemoryFunction, functionsKey, *functionsHelper, *schemav1.FunctionPersister]
-	strings   deduplicatingSlice[string, string, *stringsHelper, *schemav1.StringPersister]
+	locations symdb.deduplicatingSlice[*schemav1.InMemoryLocation, symdb.locationsKey, *symdb.locationsHelper, *schemav1.LocationPersister]
+	mappings  symdb.deduplicatingSlice[*schemav1.InMemoryMapping, symdb.mappingsKey, *symdb.mappingsHelper, *schemav1.MappingPersister]
+	functions symdb.deduplicatingSlice[*schemav1.InMemoryFunction, symdb.functionsKey, *symdb.functionsHelper, *schemav1.FunctionPersister]
+	strings   symdb.deduplicatingSlice[string, string, *symdb.stringsHelper, *schemav1.StringPersister]
 	tables    []Table
 
 	symdb *symdb.SymDB

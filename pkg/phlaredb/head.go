@@ -39,87 +39,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
 
-func copySlice[T any](in []T) []T {
-	out := make([]T, len(in))
-	copy(out, in)
-	return out
-}
-
-type idConversionTable map[int64]int64
-
-// nolint unused
-func (t idConversionTable) rewrite(idx *int64) {
-	pos := *idx
-	var ok bool
-	*idx, ok = t[pos]
-	if !ok {
-		panic(fmt.Sprintf("unable to rewrite index %d", pos))
-	}
-}
-
-// nolint unused
-func (t idConversionTable) rewriteUint64(idx *uint64) {
-	pos := *idx
-	v, ok := t[int64(pos)]
-	if !ok {
-		panic(fmt.Sprintf("unable to rewrite index %d", pos))
-	}
-	*idx = uint64(v)
-}
-
-// nolint unused
-func (t idConversionTable) rewriteUint32(idx *uint32) {
-	pos := *idx
-	v, ok := t[int64(pos)]
-	if !ok {
-		panic(fmt.Sprintf("unable to rewrite index %d", pos))
-	}
-	*idx = uint32(v)
-}
-
-type Models interface {
-	*schemav1.Profile | *schemav1.InMemoryProfile |
-		*profilev1.Location | *schemav1.InMemoryLocation |
-		*profilev1.Function | *schemav1.InMemoryFunction |
-		*profilev1.Mapping | *schemav1.InMemoryMapping |
-		*schemav1.Stacktrace |
-		string
-}
-
-func emptyRewriter() *rewriter {
-	return &rewriter{
-		strings: []int64{0},
-	}
-}
-
-// rewriter contains slices to rewrite the per profile reference into per head references.
-type rewriter struct {
-	strings stringConversionTable
-	// nolint unused
-	functions idConversionTable
-	// nolint unused
-	mappings idConversionTable
-	// nolint unused
-	locations idConversionTable
-}
-
-type storeHelper[M Models] interface {
-	// some Models contain their own IDs within the struct, this allows to set them and keep track of the preexisting ID. It should return the oldID that is supposed to be rewritten.
-	setID(existingSliceID uint64, newID uint64, element M) uint64
-
-	// size returns a (rough estimation) of the size of a single element M
-	size(M) uint64
-
-	// clone copies parts that are not optimally sized from protobuf parsing
-	clone(M) M
-
-	rewrite(*rewriter, M) error
-}
-
-type Helper[M Models, K comparable] interface {
-	storeHelper[M]
-	key(M) K
-	addToRewriter(*rewriter, idConversionTable)
+var defaultParquetConfig = &ParquetConfig{
+	MaxBufferRowCount: 100_000,
+	MaxRowGroupBytes:  10 * 128 * 1024 * 1024,
+	MaxBlockBytes:     10 * 10 * 128 * 1024 * 1024,
 }
 
 type Table interface {
@@ -148,16 +71,11 @@ type Head struct {
 	meta     *block.Meta
 
 	parquetConfig *ParquetConfig
-	strings       deduplicatingSlice[string, string, *stringsHelper, *schemav1.StringPersister]
-	mappings      deduplicatingSlice[*schemav1.InMemoryMapping, mappingsKey, *mappingsHelper, *schemav1.MappingPersister]
-	functions     deduplicatingSlice[*schemav1.InMemoryFunction, functionsKey, *functionsHelper, *schemav1.FunctionPersister]
-	locations     deduplicatingSlice[*schemav1.InMemoryLocation, locationsKey, *locationsHelper, *schemav1.LocationPersister]
-	symbolDB      *symdb.SymDB
-
-	profiles     *profileStore
-	totalSamples *atomic.Uint64
-	tables       []Table
-	delta        *deltaProfiles
+	symdb         *symdb.SymDB
+	profiles      *profileStore
+	totalSamples  *atomic.Uint64
+	tables        []Table
+	delta         *deltaProfiles
 
 	limiter TenantLimiter
 }
@@ -205,10 +123,6 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 	h.profiles = newProfileStore(phlarectx)
 
 	h.tables = []Table{
-		&h.strings,
-		&h.mappings,
-		&h.functions,
-		&h.locations,
 		h.profiles,
 	}
 	for _, t := range h.tables {
@@ -216,7 +130,7 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 			return nil, err
 		}
 	}
-	h.symbolDB = symdb.NewSymDB(
+	h.symdb = symdb.NewSymDB(
 		symdb.DefaultConfig().
 			WithDirectory(filepath.Join(h.headPath, symdb.DefaultDirName)),
 	)
@@ -235,7 +149,7 @@ func (h *Head) MemorySize() uint64 {
 	for _, t := range h.tables {
 		size += t.MemorySize()
 	}
-	size += h.symbolDB.MemorySize()
+	size += h.symdb.MemorySize()
 	return size
 }
 
@@ -245,7 +159,7 @@ func (h *Head) Size() uint64 {
 	for _, t := range h.tables {
 		size += t.Size()
 	}
-	size += h.symbolDB.Size()
+	size += h.symdb.Size()
 
 	return size
 }
@@ -283,68 +197,6 @@ func (h *Head) loop() {
 	}
 }
 
-func (h *Head) convertSamples(_ context.Context, r *rewriter, stacktracePartition uint64, in []*profilev1.Sample) []schemav1.Samples {
-	if len(in) == 0 {
-		return nil
-	}
-
-	// populate output
-	var (
-		out            = make([]schemav1.Samples, len(in[0].Value))
-		stacktraces    = make([]*schemav1.Stacktrace, len(in))
-		stacktracesIds = uint32SlicePool.Get()
-	)
-
-	for idxType := range out {
-		out[idxType] = schemav1.Samples{
-			Values:        make([]uint64, len(in)),
-			StacktraceIDs: make([]uint32, len(in)),
-		}
-	}
-
-	for idxSample := range in {
-		// populate samples
-		for idxType := range out {
-			out[idxType].Values[idxSample] = uint64(in[idxSample].Value[idxType])
-		}
-
-		// build full stack traces
-		stacktraces[idxSample] = &schemav1.Stacktrace{
-			// no copySlice necessary at this point,stacktracesHelper.clone
-			// will copy it, if it is required to be retained.
-			LocationIDs: in[idxSample].LocationId,
-		}
-		for i := range stacktraces[idxSample].LocationIDs {
-			r.locations.rewriteUint64(&stacktraces[idxSample].LocationIDs[i])
-		}
-	}
-	appender := h.symbolDB.SymbolsWriter(stacktracePartition)
-
-	if cap(stacktracesIds) < len(stacktraces) {
-		stacktracesIds = make([]uint32, len(stacktraces))
-	}
-	stacktracesIds = stacktracesIds[:len(stacktraces)]
-	defer uint32SlicePool.Put(stacktracesIds)
-
-	appender.AppendStacktraces(stacktracesIds, stacktraces)
-
-	h.metrics.sizeBytes.WithLabelValues("stacktraces").Set(float64(h.symbolDB.MemorySize()))
-
-	// reference stacktraces
-	for idxType := range out {
-		for idxSample := range out[idxType].StacktraceIDs {
-			out[idxType].StacktraceIDs[idxSample] = stacktracesIds[int64(idxSample)]
-		}
-		compacted := out[idxType].Compact(true)
-		if compacted.Len() != out[idxType].Len() {
-			compacted = compacted.Clone()
-		}
-		out[idxType] = compacted
-	}
-
-	return out
-}
-
 func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*typesv1.LabelPair) error {
 	labels, seriesFingerprints := labelsForProfile(p, externalLabels...)
 
@@ -359,87 +211,10 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 
 	metricName := phlaremodel.Labels(externalLabels).Get(model.MetricNameLabel)
 
-	// create a rewriter state
-	rewrites := &rewriter{}
-
-	if err := h.strings.ingest(ctx, p.StringTable, rewrites); err != nil {
-		return err
-	}
-
-	mappings := make([]*schemav1.InMemoryMapping, len(p.Mapping))
-	for i, v := range p.Mapping {
-		mappings[i] = &schemav1.InMemoryMapping{
-			Id:              v.Id,
-			MemoryStart:     v.MemoryStart,
-			MemoryLimit:     v.MemoryLimit,
-			FileOffset:      v.FileOffset,
-			Filename:        uint32(v.Filename),
-			BuildId:         uint32(v.BuildId),
-			HasFunctions:    v.HasFunctions,
-			HasFilenames:    v.HasFilenames,
-			HasLineNumbers:  v.HasLineNumbers,
-			HasInlineFrames: v.HasInlineFrames,
-		}
-	}
-	if err := h.mappings.ingest(ctx, mappings, rewrites); err != nil {
-		return err
-	}
-
-	funcs := make([]*schemav1.InMemoryFunction, len(p.Function))
-	for i, v := range p.Function {
-		funcs[i] = &schemav1.InMemoryFunction{
-			Id:         v.Id,
-			Name:       uint32(v.Name),
-			SystemName: uint32(v.SystemName),
-			Filename:   uint32(v.Filename),
-			StartLine:  uint32(v.StartLine),
-		}
-	}
-
-	if err := h.functions.ingest(ctx, funcs, rewrites); err != nil {
-		return err
-	}
-
-	locs := make([]*schemav1.InMemoryLocation, len(p.Location))
-	for i, v := range p.Location {
-		x := &schemav1.InMemoryLocation{
-			Id:        v.Id,
-			Address:   v.Address,
-			MappingId: uint32(v.MappingId),
-			IsFolded:  v.IsFolded,
-		}
-		x.Line = make([]schemav1.InMemoryLine, len(v.Line))
-		for j, line := range v.Line {
-			x.Line[j] = schemav1.InMemoryLine{
-				FunctionId: uint32(line.FunctionId),
-				Line:       int32(line.Line),
-			}
-		}
-		locs[i] = x
-	}
-	if err := h.locations.ingest(ctx, locs, rewrites); err != nil {
-		return err
-	}
-
-	samplesPerType := h.convertSamples(ctx, rewrites, stacktracePartition, p.Sample)
-
 	var profileIngested bool
-	for idxType := range samplesPerType {
-		samples := samplesPerType[idxType]
-
-		profile := schemav1.InMemoryProfile{
-			ID:                  id,
-			SeriesFingerprint:   seriesFingerprints[idxType],
-			StacktracePartition: stacktracePartition,
-			Samples:             samples,
-			DropFrames:          p.DropFrames,
-			KeepFrames:          p.KeepFrames,
-			TimeNanos:           p.TimeNanos,
-			DurationNanos:       p.DurationNanos,
-			Comments:            copySlice(p.Comment),
-			DefaultSampleType:   p.DefaultSampleType,
-		}
-
+	for idxType, profile := range h.symdb.SymbolsWriter(stacktracePartition).WriteProfileSymbols(p) {
+		profile.ID = id
+		profile.SeriesFingerprint = seriesFingerprints[idxType]
 		profile.Samples = h.delta.computeDelta(profile, labels[idxType])
 		profile.TotalValue = profile.Samples.Sum()
 
@@ -448,7 +223,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 			continue
 		}
 
-		if err := h.profiles.ingest(ctx, []schemav1.InMemoryProfile{profile}, labels[idxType], metricName, rewrites); err != nil {
+		if err := h.profiles.ingest(ctx, []schemav1.InMemoryProfile{profile}, labels[idxType], metricName); err != nil {
 			return err
 		}
 
@@ -609,7 +384,7 @@ func (h *Head) resolveStacktraces(ctx context.Context, stacktracesByMapping stac
 	sp.LogFields(otlog.String("msg", "building MergeProfilesStacktracesResult"))
 	_ = stacktracesByMapping.ForEach(
 		func(mapping uint64, stacktraceSamples stacktraceSampleMap) error {
-			resolver, ok := h.symbolDB.SymbolsReader(mapping)
+			resolver, ok := h.symdb.SymbolsReader(mapping)
 			if !ok {
 				return nil
 			}
@@ -670,7 +445,7 @@ func (h *Head) resolvePprof(ctx context.Context, stacktracesByMapping profileSam
 	// now add locationIDs and stacktraces
 	_ = stacktracesByMapping.ForEach(
 		func(mapping uint64, stacktraceSamples profileSampleMap) error {
-			resolver, ok := h.symbolDB.SymbolsReader(mapping)
+			resolver, ok := h.symdb.SymbolsReader(mapping)
 			if !ok {
 				return nil
 			}
@@ -947,7 +722,7 @@ func (h *Head) flush(ctx context.Context) error {
 		}
 	}
 
-	if err := h.symbolDB.Flush(); err != nil {
+	if err := h.symdb.Flush(); err != nil {
 		return errors.Wrap(err, "flushing symbol database")
 	}
 

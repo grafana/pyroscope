@@ -36,7 +36,6 @@ type profileStore struct {
 
 	path      string
 	persister schemav1.Persister[*schemav1.Profile]
-	helper    storeHelper[*schemav1.InMemoryProfile]
 	writer    *parquet.GenericWriter[*schemav1.Profile]
 
 	// lock serializes appends to the slice. Every new profile is appended
@@ -76,7 +75,6 @@ func newProfileStore(phlarectx context.Context) *profileStore {
 		logger:     phlarecontext.Logger(phlarectx),
 		metrics:    contextHeadMetrics(phlarectx),
 		persister:  &schemav1.ProfilePersister{},
-		helper:     &profilesHelper{},
 		flushing:   atomic.NewBool(false),
 		flushQueue: make(chan int),
 	}
@@ -357,7 +355,7 @@ func (s *profileStore) loadProfilesToFlush(count int) uint64 {
 	sort.Sort(byLabels{p: s.flushBuffer, lbs: s.flushBufferLbs})
 	var size uint64
 	for _, p := range s.flushBuffer {
-		size += s.helper.size(&p)
+		size += p.Size()
 	}
 	return size
 }
@@ -383,14 +381,7 @@ func (s *profileStore) writeRowGroups(path string, rowGroups []parquet.RowGroup)
 	return n, numRowGroups, nil
 }
 
-func (s *profileStore) ingest(_ context.Context, profiles []schemav1.InMemoryProfile, lbs phlaremodel.Labels, profileName string, rewriter *rewriter) error {
-	// rewrite elements
-	for pos := range profiles {
-		if err := s.helper.rewrite(rewriter, &profiles[pos]); err != nil {
-			return err
-		}
-	}
-
+func (s *profileStore) ingest(_ context.Context, profiles []schemav1.InMemoryProfile, lbs phlaremodel.Labels, profileName string) error {
 	s.profilesLock.Lock()
 	defer s.profilesLock.Unlock()
 
@@ -408,7 +399,7 @@ func (s *profileStore) ingest(_ context.Context, profiles []schemav1.InMemoryPro
 		s.index.Add(&p, lbs, profileName)
 
 		// increase size of stored data
-		addedBytes := s.helper.size(&profiles[pos])
+		addedBytes := profiles[pos].Size()
 		s.metrics.sizeBytes.WithLabelValues(s.Name()).Set(float64(s.size.Add(addedBytes)))
 		s.totalSize.Add(addedBytes)
 
@@ -543,4 +534,10 @@ func (r *seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
 	r.pos += int64(n)
 
 	return n, nil
+}
+
+func copySlice[T any](in []T) []T {
+	out := make([]T, len(in))
+	copy(out, in)
+	return out
 }

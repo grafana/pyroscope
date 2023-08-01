@@ -1139,7 +1139,7 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 	return g.Wait()
 }
 
-type parquetReader[M Models, P schemav1.PersisterName] struct {
+type parquetReader[M schemav1.Models, P schemav1.PersisterName] struct {
 	persister P
 	file      *parquet.File
 	reader    phlareobj.ReaderAtCloser
@@ -1225,7 +1225,7 @@ type ResultWithRowNum[M any] struct {
 	RowNum int64
 }
 
-type inMemoryparquetReader[M Models, P schemav1.Persister[M]] struct {
+type inMemoryparquetReader[M schemav1.Models, P schemav1.Persister[M]] struct {
 	persister P
 	file      *parquet.File
 	size      int64

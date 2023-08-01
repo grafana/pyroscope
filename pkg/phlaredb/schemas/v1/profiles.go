@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"sort"
+	"unsafe"
 
 	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
@@ -322,6 +323,14 @@ func (s Samples) Sum() uint64 {
 		sum += v
 	}
 	return sum
+}
+
+const profileSize = uint64(unsafe.Sizeof(InMemoryProfile{}))
+
+func (p InMemoryProfile) Size() uint64 {
+	size := profileSize + uint64(cap(p.Comments)*8)
+	// 4 bytes for stacktrace id and 8 bytes for each stacktrace value
+	return size + uint64(cap(p.Samples.StacktraceIDs)*(4+8))
 }
 
 func (p InMemoryProfile) Timestamp() model.Time {

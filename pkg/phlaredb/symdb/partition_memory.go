@@ -23,11 +23,17 @@ type Partition struct {
 	maxNodesPerChunk uint32
 	// maxStackDepth uint32
 
+	// TODO: Move to a dedicated struct "type stacktraces struct"
 	stacktraceMutex    sync.RWMutex
 	stacktraceHashToID map[uint64]uint32
 	stacktraceChunks   []*stacktraceChunk
 	// Headers of already written stack trace chunks.
 	stacktraceChunkHeaders []StacktraceChunkHeader
+
+	strings   deduplicatingSlice[string, string, *stringsHelper, *schemav1.StringPersister]
+	mappings  deduplicatingSlice[*schemav1.InMemoryMapping, mappingsKey, *mappingsHelper, *schemav1.MappingPersister]
+	functions deduplicatingSlice[*schemav1.InMemoryFunction, functionsKey, *functionsHelper, *schemav1.FunctionPersister]
+	locations deduplicatingSlice[*schemav1.InMemoryLocation, locationsKey, *locationsHelper, *schemav1.LocationPersister]
 }
 
 func (p *Partition) WriteStats(s *Stats) {

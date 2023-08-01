@@ -20,17 +20,18 @@ import (
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
 
 func TestInMemoryReader(t *testing.T) {
 	path := t.TempDir()
-	st := deduplicatingSlice[string, string, *stringsHelper, *schemav1.StringPersister]{}
+	st := symdb.deduplicatingSlice[string, string, *symdb.stringsHelper, *schemav1.StringPersister]{}
 	require.NoError(t, st.Init(path, &ParquetConfig{
 		MaxBufferRowCount: defaultParquetConfig.MaxBufferRowCount / 1024,
 		MaxRowGroupBytes:  defaultParquetConfig.MaxRowGroupBytes / 1024,
 		MaxBlockBytes:     defaultParquetConfig.MaxBlockBytes,
 	}, newHeadMetrics(prometheus.NewRegistry())))
-	rewrites := &rewriter{}
+	rewrites := &symdb.rewriter{}
 	rgCount := 5
 	for i := 0; i < rgCount*st.cfg.MaxBufferRowCount; i++ {
 		require.NoError(t, st.ingest(context.Background(), []string{fmt.Sprintf("foobar %d", i)}, rewrites))
