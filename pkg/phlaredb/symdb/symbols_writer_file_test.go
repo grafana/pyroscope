@@ -22,9 +22,8 @@ func Test_Writer_IndexFile(t *testing.T) {
 
 	sids := make([]uint32, 5)
 
-	w := db.SymbolsAppender(0)
-	a := w.StacktraceAppender()
-	a.AppendStacktrace(sids, []*schemav1.Stacktrace{
+	w := db.SymbolsWriter(0)
+	w.AppendStacktraces(sids, []*schemav1.Stacktrace{
 		{LocationIDs: []uint64{3, 2, 1}},
 		{LocationIDs: []uint64{2, 1}},
 		{LocationIDs: []uint64{4, 3, 2, 1}},
@@ -32,11 +31,9 @@ func Test_Writer_IndexFile(t *testing.T) {
 		{LocationIDs: []uint64{5, 2, 1}},
 	})
 	assert.Equal(t, []uint32{3, 2, 11, 16, 18}, sids)
-	a.Release()
 
-	w = db.SymbolsAppender(1)
-	a = w.StacktraceAppender()
-	a.AppendStacktrace(sids, []*schemav1.Stacktrace{
+	w = db.SymbolsWriter(1)
+	w.AppendStacktraces(sids, []*schemav1.Stacktrace{
 		{LocationIDs: []uint64{3, 2, 1}},
 		{LocationIDs: []uint64{2, 1}},
 		{LocationIDs: []uint64{4, 3, 2, 1}},
@@ -44,7 +41,6 @@ func Test_Writer_IndexFile(t *testing.T) {
 		{LocationIDs: []uint64{5, 2, 1}},
 	})
 	assert.Equal(t, []uint32{3, 2, 11, 16, 18}, sids)
-	a.Release()
 
 	require.Len(t, db.partitions, 2)
 	require.Len(t, db.partitions[0].stacktraceChunks, 3)

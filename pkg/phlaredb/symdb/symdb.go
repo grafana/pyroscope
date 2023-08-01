@@ -13,7 +13,7 @@ type SymDB struct {
 	stats  stats
 
 	m          sync.RWMutex
-	partitions map[uint64]*inMemoryPartition
+	partitions map[uint64]*Partition
 
 	wg   sync.WaitGroup
 	stop chan struct{}
@@ -59,7 +59,7 @@ func NewSymDB(c *Config) *SymDB {
 	db := &SymDB{
 		config:     c,
 		writer:     NewWriter(c.Dir),
-		partitions: make(map[uint64]*inMemoryPartition),
+		partitions: make(map[uint64]*Partition),
 		stop:       make(chan struct{}),
 	}
 	db.wg.Add(1)
@@ -67,15 +67,35 @@ func NewSymDB(c *Config) *SymDB {
 	return db
 }
 
-func (s *SymDB) SymbolsAppender(partition uint64) SymbolsAppender {
-	return s.partition(partition)
+func (s *SymDB) SymbolsWriter(partition uint64) *Partition {
+	p, ok := s.lookupPartition(partition)
+	if ok {
+		return p
+	}
+	s.m.Lock()
+	if p, ok = s.partitions[partition]; ok {
+		s.m.Unlock()
+		return p
+	}
+	p = &Partition{
+		name:               partition,
+		maxNodesPerChunk:   s.config.Stacktraces.MaxNodesPerChunk,
+		stacktraceHashToID: make(map[uint64]uint32, defaultStacktraceTreeSize/2),
+	}
+	p.stacktraceChunks = append(p.stacktraceChunks, &stacktraceChunk{
+		tree:      newStacktraceTree(defaultStacktraceTreeSize),
+		partition: p,
+	})
+	s.partitions[partition] = p
+	s.m.Unlock()
+	return p
 }
 
-func (s *SymDB) SymbolsResolver(partition uint64) (SymbolsResolver, bool) {
+func (s *SymDB) SymbolsReader(partition uint64) (*Partition, bool) {
 	return s.lookupPartition(partition)
 }
 
-func (s *SymDB) lookupPartition(partition uint64) (*inMemoryPartition, bool) {
+func (s *SymDB) lookupPartition(partition uint64) (*Partition, bool) {
 	s.m.RLock()
 	p, ok := s.partitions[partition]
 	if ok {
@@ -86,35 +106,11 @@ func (s *SymDB) lookupPartition(partition uint64) (*inMemoryPartition, bool) {
 	return nil, false
 }
 
-func (s *SymDB) partition(partition uint64) *inMemoryPartition {
-	p, ok := s.lookupPartition(partition)
-	if ok {
-		return p
-	}
-	s.m.Lock()
-	if p, ok = s.partitions[partition]; ok {
-		s.m.Unlock()
-		return p
-	}
-	p = &inMemoryPartition{
-		name:               partition,
-		maxNodesPerChunk:   s.config.Stacktraces.MaxNodesPerChunk,
-		stacktraceHashToID: make(map[uint64]uint32, defaultStacktraceTreeSize/2),
-	}
-	p.stacktraceChunks = append(p.stacktraceChunks, &stacktraceChunk{
-		tree:     newStacktraceTree(defaultStacktraceTreeSize),
-		parition: p,
-	})
-	s.partitions[partition] = p
-	s.m.Unlock()
-	return p
-}
-
 func (s *SymDB) Flush() error {
 	close(s.stop)
 	s.wg.Wait()
 	s.m.RLock()
-	m := make([]*inMemoryPartition, len(s.partitions))
+	m := make([]*Partition, len(s.partitions))
 	var i int
 	for _, v := range s.partitions {
 		m[i] = v

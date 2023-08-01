@@ -58,9 +58,9 @@ func newSymbolsWriter(dst string, cfg *ParquetConfig) (*symbolsWriter, error) {
 func (w *symbolsWriter) SymbolsAppender(partition uint64) (SymbolsAppender, error) {
 	p, ok := w.partitions[partition]
 	if !ok {
-		appender := w.symdb.SymbolsAppender(partition)
+		appender := w.symdb.SymbolsWriter(partition)
 		x := &symbolsAppender{
-			stacktraces: appender.StacktraceAppender(),
+			stacktraces: appender,
 			writer:      w,
 		}
 		w.partitions[partition] = x
@@ -86,12 +86,12 @@ func (w *symbolsWriter) Close() error {
 }
 
 type symbolsAppender struct {
-	stacktraces symdb.StacktraceAppender
+	stacktraces symdb.SymbolsWriter
 	writer      *symbolsWriter
 }
 
 func (s symbolsAppender) AppendStacktraces(dst []uint32, stacktraces []*schemav1.Stacktrace) {
-	s.stacktraces.AppendStacktrace(dst, stacktraces)
+	s.stacktraces.AppendStacktraces(dst, stacktraces)
 }
 
 func (s symbolsAppender) AppendLocations(dst []uint32, locations []*schemav1.InMemoryLocation) {

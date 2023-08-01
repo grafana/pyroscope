@@ -16,8 +16,7 @@ import (
 )
 
 var (
-	_ SymbolsResolver    = (*partitionFileReader)(nil)
-	_ StacktraceResolver = (*stacktraceResolverFile)(nil)
+	_ SymbolsReader = (*partitionFileReader)(nil)
 )
 
 type Reader struct {
@@ -88,7 +87,7 @@ func (r *Reader) partition(n uint64) *partitionFileReader {
 	return m
 }
 
-func (r *Reader) SymbolsResolver(partition uint64) (SymbolsResolver, bool) {
+func (r *Reader) SymbolsReader(partition uint64) (SymbolsReader, bool) {
 	m, ok := r.partitions[partition]
 	return m, ok
 }
@@ -139,77 +138,65 @@ type partitionFileReader struct {
 	stacktraceChunks []*stacktraceChunkFileReader
 }
 
-func (m *partitionFileReader) StacktraceResolver() StacktraceResolver {
-	return &stacktraceResolverFile{
-		partition: m,
-	}
-}
-
-func (m *partitionFileReader) WriteStats(s *Stats) {
+func (p *partitionFileReader) WriteStats(s *Stats) {
 	var nodes uint32
-	for _, c := range m.stacktraceChunks {
+	for _, c := range p.stacktraceChunks {
 		s.StacktracesTotal += int(c.header.Stacktraces)
 		nodes += c.header.StacktraceNodes
 	}
 	s.MaxStacktraceID = int(nodes)
 }
 
-func (m *partitionFileReader) addStacktracesChunk(h StacktraceChunkHeader) {
-	m.stacktraceChunks = append(m.stacktraceChunks, &stacktraceChunkFileReader{
-		reader: m.reader,
+func (p *partitionFileReader) addStacktracesChunk(h StacktraceChunkHeader) {
+	p.stacktraceChunks = append(p.stacktraceChunks, &stacktraceChunkFileReader{
+		reader: p.reader,
 		header: h,
 	})
 }
 
-func (m *partitionFileReader) stacktraceChunkReader(i uint32) *stacktraceChunkFileReader {
-	if int(i) < len(m.stacktraceChunks) {
-		return m.stacktraceChunks[i]
+func (p *partitionFileReader) stacktraceChunkReader(i uint32) *stacktraceChunkFileReader {
+	if int(i) < len(p.stacktraceChunks) {
+		return p.stacktraceChunks[i]
 	}
 	return nil
 }
 
-type stacktraceResolverFile struct {
-	partition *partitionFileReader
-}
-
-func (r *stacktraceResolverFile) Release() {}
-
 var ErrInvalidStacktraceRange = fmt.Errorf("invalid range: stack traces can't be resolved")
 
-func (r *stacktraceResolverFile) ResolveStacktraces(ctx context.Context, dst StacktraceInserter, s []uint32) error {
+func (p *partitionFileReader) ResolveStacktraces(ctx context.Context, dst StacktraceInserter, s []uint32) error {
 	if len(s) == 0 {
 		return nil
 	}
-	if len(r.partition.stacktraceChunks) == 0 {
+	if len(p.stacktraceChunks) == 0 {
 		return ErrInvalidStacktraceRange
 	}
 
 	// First, we determine the chunks needed for the range.
 	// All chunks in a block must have the same StacktraceMaxNodes.
-	sr := SplitStacktraces(s, r.partition.stacktraceChunks[0].header.StacktraceMaxNodes)
+	sr := SplitStacktraces(s, p.stacktraceChunks[0].header.StacktraceMaxNodes)
 
 	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(r.partition.reader.maxConcurrentChunks)
+	g.SetLimit(p.reader.maxConcurrentChunks)
 	for _, c := range sr {
-		g.Go(r.newResolve(ctx, dst, c).do)
+		g.Go(p.newResolve(ctx, dst, c).do)
 	}
 
 	return g.Wait()
 }
 
-func (r *stacktraceResolverFile) newResolve(ctx context.Context, dst StacktraceInserter, c StacktracesRange) *stacktracesResolve {
+func (p *partitionFileReader) newResolve(ctx context.Context, dst StacktraceInserter, c StacktracesRange) *stacktracesResolve {
 	return &stacktracesResolve{
 		ctx: ctx,
 		dst: dst,
 		c:   c,
-		r:   r,
+		r:   p,
 	}
 }
 
 // stacktracesResolve represents a stacktrace resolution operation.
 type stacktracesResolve struct {
 	ctx context.Context
-	r   *stacktraceResolverFile
+	r   *partitionFileReader
 	cr  *stacktraceChunkFileReader
 	t   *parentPointerTree
 
@@ -227,7 +214,7 @@ func (r *stacktracesResolve) do() error {
 }
 
 func (r *stacktracesResolve) fetch() (err error) {
-	if r.cr = r.r.partition.stacktraceChunkReader(r.c.chunk); r.cr == nil {
+	if r.cr = r.r.stacktraceChunkReader(r.c.chunk); r.cr == nil {
 		return ErrInvalidStacktraceRange
 	}
 	if r.t, err = r.cr.fetch(r.ctx); err != nil {

@@ -373,12 +373,10 @@ func (r *stacktraceResolverV2) Close() error {
 }
 
 func (r *stacktraceResolverV2) Resolve(ctx context.Context, partition uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error {
-	mr, ok := r.reader.SymbolsResolver(partition)
+	resolver, ok := r.reader.SymbolsReader(partition)
 	if !ok {
 		return nil
 	}
-	resolver := mr.StacktraceResolver()
-	defer resolver.Release()
 	return resolver.ResolveStacktraces(ctx, locs, stacktraceIDs)
 }
 
@@ -387,7 +385,7 @@ func (r *stacktraceResolverV2) Load(ctx context.Context) error {
 }
 
 func (r *stacktraceResolverV2) WriteStats(partition uint64, s *symdb.Stats) {
-	mr, ok := r.reader.SymbolsResolver(partition)
+	mr, ok := r.reader.SymbolsReader(partition)
 	if ok {
 		mr.WriteStats(s)
 	}

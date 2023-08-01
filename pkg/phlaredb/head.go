@@ -318,8 +318,7 @@ func (h *Head) convertSamples(_ context.Context, r *rewriter, stacktracePartitio
 			r.locations.rewriteUint64(&stacktraces[idxSample].LocationIDs[i])
 		}
 	}
-	appender := h.symbolDB.SymbolsAppender(stacktracePartition).StacktraceAppender()
-	defer appender.Release()
+	appender := h.symbolDB.SymbolsWriter(stacktracePartition)
 
 	if cap(stacktracesIds) < len(stacktraces) {
 		stacktracesIds = make([]uint32, len(stacktraces))
@@ -327,7 +326,7 @@ func (h *Head) convertSamples(_ context.Context, r *rewriter, stacktracePartitio
 	stacktracesIds = stacktracesIds[:len(stacktraces)]
 	defer uint32SlicePool.Put(stacktracesIds)
 
-	appender.AppendStacktrace(stacktracesIds, stacktraces)
+	appender.AppendStacktraces(stacktracesIds, stacktraces)
 
 	h.metrics.sizeBytes.WithLabelValues("stacktraces").Set(float64(h.symbolDB.MemorySize()))
 
@@ -610,12 +609,10 @@ func (h *Head) resolveStacktraces(ctx context.Context, stacktracesByMapping stac
 	sp.LogFields(otlog.String("msg", "building MergeProfilesStacktracesResult"))
 	_ = stacktracesByMapping.ForEach(
 		func(mapping uint64, stacktraceSamples stacktraceSampleMap) error {
-			mp, ok := h.symbolDB.SymbolsResolver(mapping)
+			resolver, ok := h.symbolDB.SymbolsReader(mapping)
 			if !ok {
 				return nil
 			}
-			resolver := mp.StacktraceResolver()
-			defer resolver.Release()
 			// sort the stacktrace IDs as expected by the resolver
 			stacktraceIDs := stacktraceSamples.Ids()
 			sort.Slice(stacktraceIDs, func(i, j int) bool {
@@ -673,12 +670,10 @@ func (h *Head) resolvePprof(ctx context.Context, stacktracesByMapping profileSam
 	// now add locationIDs and stacktraces
 	_ = stacktracesByMapping.ForEach(
 		func(mapping uint64, stacktraceSamples profileSampleMap) error {
-			mp, ok := h.symbolDB.SymbolsResolver(mapping)
+			resolver, ok := h.symbolDB.SymbolsReader(mapping)
 			if !ok {
 				return nil
 			}
-			resolver := mp.StacktraceResolver()
-			defer resolver.Release()
 
 			// sort the stacktrace IDs as expected by the resolver
 			stacktraceIDs := stacktraceSamples.Ids()

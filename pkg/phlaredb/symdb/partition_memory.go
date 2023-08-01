@@ -12,14 +12,11 @@ import (
 )
 
 var (
-	_ SymbolsResolver = (*inMemoryPartition)(nil)
-	_ SymbolsAppender = (*inMemoryPartition)(nil)
-
-	_ StacktraceAppender = (*stacktraceAppender)(nil)
-	_ StacktraceResolver = (*stacktraceResolverMemory)(nil)
+	_ SymbolsReader = (*Partition)(nil)
+	_ SymbolsWriter = (*Partition)(nil)
 )
 
-type inMemoryPartition struct {
+type Partition struct {
 	name uint64
 
 	maxNodesPerChunk uint32
@@ -32,23 +29,7 @@ type inMemoryPartition struct {
 	stacktraceChunkHeaders []StacktraceChunkHeader
 }
 
-func (b *inMemoryPartition) StacktraceAppender() StacktraceAppender {
-	b.stacktraceMutex.RLock()
-	c := b.currentStacktraceChunk()
-	b.stacktraceMutex.RUnlock()
-	return &stacktraceAppender{
-		partition: b,
-		chunk:     c,
-	}
-}
-
-func (b *inMemoryPartition) StacktraceResolver() StacktraceResolver {
-	return &stacktraceResolverMemory{
-		partition: b,
-	}
-}
-
-func (b *inMemoryPartition) WriteStats(s *Stats) {
+func (b *Partition) WriteStats(s *Stats) {
 	b.stacktraceMutex.RLock()
 	c := b.currentStacktraceChunk()
 	s.MaxStacktraceID = int(c.stid + c.tree.len())
@@ -59,17 +40,17 @@ func (b *inMemoryPartition) WriteStats(s *Stats) {
 // stacktraceChunkForInsert returns a chunk for insertion:
 // if the existing one has capacity, or a new one, if the former is full.
 // Must be called with the stracktraces mutex write lock held.
-func (b *inMemoryPartition) stacktraceChunkForInsert(x int) *stacktraceChunk {
+func (b *Partition) stacktraceChunkForInsert(x int) *stacktraceChunk {
 	c := b.currentStacktraceChunk()
 	if n := c.tree.len() + uint32(x); b.maxNodesPerChunk > 0 && n >= b.maxNodesPerChunk {
 		// Calculate number of stacks in the chunk.
 		s := uint32(len(b.stacktraceHashToID))
 		c.stacks = s - c.stacks
 		c = &stacktraceChunk{
-			parition: b,
-			tree:     newStacktraceTree(defaultStacktraceTreeSize),
-			stid:     c.stid + b.maxNodesPerChunk,
-			stacks:   s,
+			partition: b,
+			tree:      newStacktraceTree(defaultStacktraceTreeSize),
+			stid:      c.stid + b.maxNodesPerChunk,
+			stacks:    s,
 		}
 		b.stacktraceChunks = append(b.stacktraceChunks, c)
 	}
@@ -78,101 +59,17 @@ func (b *inMemoryPartition) stacktraceChunkForInsert(x int) *stacktraceChunk {
 
 // stacktraceChunkForRead returns a chunk for reads.
 // Must be called with the stracktraces mutex read lock held.
-func (b *inMemoryPartition) stacktraceChunkForRead(i int) (*stacktraceChunk, bool) {
+func (b *Partition) stacktraceChunkForRead(i int) (*stacktraceChunk, bool) {
 	if i < len(b.stacktraceChunks) {
 		return b.stacktraceChunks[i], true
 	}
 	return nil, false
 }
 
-func (b *inMemoryPartition) currentStacktraceChunk() *stacktraceChunk {
+func (b *Partition) currentStacktraceChunk() *stacktraceChunk {
 	// Assuming there is at least one chunk.
 	return b.stacktraceChunks[len(b.stacktraceChunks)-1]
 }
-
-type stacktraceChunk struct {
-	parition *inMemoryPartition
-	tree     *stacktraceTree
-	stid     uint32 // Initial stack trace ID.
-	stacks   uint32 //
-}
-
-func (s *stacktraceChunk) WriteTo(dst io.Writer) (int64, error) {
-	return s.tree.WriteTo(dst)
-}
-
-type stacktraceAppender struct {
-	partition   *inMemoryPartition
-	chunk       *stacktraceChunk
-	releaseOnce sync.Once
-}
-
-func (a *stacktraceAppender) AppendStacktrace(dst []uint32, s []*v1.Stacktrace) {
-	if len(s) == 0 {
-		return
-	}
-
-	var (
-		id     uint32
-		found  bool
-		misses int
-	)
-
-	a.partition.stacktraceMutex.RLock()
-	for i, x := range s {
-		if dst[i], found = a.partition.stacktraceHashToID[hashLocations(x.LocationIDs)]; !found {
-			misses++
-		}
-	}
-	a.partition.stacktraceMutex.RUnlock()
-	if misses == 0 {
-		return
-	}
-
-	// NOTE(kolesnikovae):
-	//
-	// Maybe we don't need this map at all: tree insertion might be
-	// done in a thread safe fashion, and optimised to the extent
-	// that its performance is comparable with:
-	//   map_read + r_(un)lock + map_overhead +
-	//   miss_rate * (map_write + w_(un)lock)
-	//
-	// Instead of inserting stacks one by one, it is better to
-	// build a tree, and merge it to the existing one.
-
-	a.partition.stacktraceMutex.Lock()
-	defer a.partition.stacktraceMutex.Unlock()
-
-	m := int(a.partition.maxNodesPerChunk)
-	t, j := a.chunk.tree, a.chunk.stid
-	for i, v := range dst[:len(s)] {
-		if v != 0 {
-			// Already resolved. ID 0 is reserved
-			// as it is the tree root.
-			continue
-		}
-
-		x := s[i].LocationIDs
-		if m > 0 && len(t.nodes)+len(x) >= m {
-			// If we're close to the max nodes limit and can
-			// potentially exceed it, we take the next chunk,
-			// even if there are some space.
-			a.chunk = a.partition.stacktraceChunkForInsert(len(x))
-			t, j = a.chunk.tree, a.chunk.stid
-		}
-
-		// Tree insertion is idempotent,
-		// we don't need to check the map.
-		id = t.insert(x) + j
-		h := hashLocations(x)
-		a.partition.stacktraceHashToID[h] = id
-		dst[i] = id
-	}
-}
-
-func (a *stacktraceAppender) Release() {}
-
-func (r *stacktraceResolverMemory) Release() {}
 
 var seed = maphash.MakeSeed()
 
@@ -188,8 +85,69 @@ func hashLocations(s []uint64) uint64 {
 	return maphash.Bytes(seed, b)
 }
 
-type stacktraceResolverMemory struct {
-	partition *inMemoryPartition
+func (b *Partition) AppendStacktraces(dst []uint32, s []*v1.Stacktrace) {
+	if len(s) == 0 {
+		return
+	}
+
+	var (
+		id     uint32
+		found  bool
+		misses int
+	)
+
+	b.stacktraceMutex.RLock()
+	for i, x := range s {
+		if dst[i], found = b.stacktraceHashToID[hashLocations(x.LocationIDs)]; !found {
+			misses++
+		}
+	}
+
+	b.stacktraceMutex.RUnlock()
+	if misses == 0 {
+		return
+	}
+
+	// NOTE(kolesnikovae):
+	//
+	// Maybe we don't need this map at all: tree insertion might be
+	// done in a thread safe fashion, and optimised to the extent
+	// that its performance is comparable with:
+	//   map_read + r_(un)lock + map_overhead +
+	//   miss_rate * (map_write + w_(un)lock)
+	//
+	// Instead of inserting stacks one by one, it is better to
+	// build a tree, and merge it to the existing one.
+
+	b.stacktraceMutex.Lock()
+	defer b.stacktraceMutex.Unlock()
+	chunk := b.currentStacktraceChunk()
+
+	m := int(b.maxNodesPerChunk)
+	t, j := chunk.tree, chunk.stid
+	for i, v := range dst[:len(s)] {
+		if v != 0 {
+			// Already resolved. ID 0 is reserved
+			// as it is the tree root.
+			continue
+		}
+
+		x := s[i].LocationIDs
+		if m > 0 && len(t.nodes)+len(x) >= m {
+			// If we're close to the max nodes limit and can
+			// potentially exceed it, we take the next chunk,
+			// even if there are some space.
+			chunk = b.stacktraceChunkForInsert(len(x))
+			t, j = chunk.tree, chunk.stid
+		}
+
+		// Tree insertion is idempotent,
+		// we don't need to check the map.
+		id = t.insert(x) + j
+		h := hashLocations(x)
+		b.stacktraceHashToID[h] = id
+		dst[i] = id
+	}
 }
 
 const defaultStacktraceDepth = 64
@@ -208,11 +166,11 @@ func (p *stacktraceLocationsPool) put(x []int32) {
 	stacktraceLocations.Put(x)
 }
 
-func (r *stacktraceResolverMemory) ResolveStacktraces(_ context.Context, dst StacktraceInserter, stacktraces []uint32) (err error) {
+func (b *Partition) ResolveStacktraces(_ context.Context, dst StacktraceInserter, stacktraces []uint32) (err error) {
 	// TODO(kolesnikovae): Add option to do resolve concurrently.
 	//   Depends on StacktraceInserter implementation.
-	for _, sr := range SplitStacktraces(stacktraces, r.partition.maxNodesPerChunk) {
-		if err = r.ResolveStacktracesChunk(dst, sr); err != nil {
+	for _, sr := range SplitStacktraces(stacktraces, b.maxNodesPerChunk) {
+		if err = b.ResolveStacktracesChunk(dst, sr); err != nil {
 			return err
 		}
 	}
@@ -226,11 +184,11 @@ func (r *stacktraceResolverMemory) ResolveStacktraces(_ context.Context, dst Sta
 //  slice, or an n-ary tree: the stacktraceTree should be one of
 //  the options, the package provides.
 
-func (r *stacktraceResolverMemory) ResolveStacktracesChunk(dst StacktraceInserter, sr StacktracesRange) error {
-	r.partition.stacktraceMutex.RLock()
-	c, found := r.partition.stacktraceChunkForRead(int(sr.chunk))
+func (b *Partition) ResolveStacktracesChunk(dst StacktraceInserter, sr StacktracesRange) error {
+	b.stacktraceMutex.RLock()
+	c, found := b.stacktraceChunkForRead(int(sr.chunk))
 	if !found {
-		r.partition.stacktraceMutex.RUnlock()
+		b.stacktraceMutex.RUnlock()
 		return ErrInvalidStacktraceRange
 	}
 	t := stacktraceTree{nodes: c.tree.nodes}
@@ -242,7 +200,7 @@ func (r *stacktraceResolverMemory) ResolveStacktracesChunk(dst StacktraceInserte
 	// races when the slice grows: in the worst case, the underlying
 	// capacity will be retained and thus not be eligible for GC during
 	// the call.
-	r.partition.stacktraceMutex.RUnlock()
+	b.stacktraceMutex.RUnlock()
 	s := stacktraceLocations.get()
 	// Restore the original stacktrace ID.
 	off := sr.offset()
@@ -252,6 +210,17 @@ func (r *stacktraceResolverMemory) ResolveStacktracesChunk(dst StacktraceInserte
 	}
 	stacktraceLocations.put(s)
 	return nil
+}
+
+type stacktraceChunk struct {
+	partition *Partition
+	tree      *stacktraceTree
+	stid      uint32 // Initial stack trace ID.
+	stacks    uint32 //
+}
+
+func (s *stacktraceChunk) WriteTo(dst io.Writer) (int64, error) {
+	return s.tree.WriteTo(dst)
 }
 
 type StacktracesRange struct {

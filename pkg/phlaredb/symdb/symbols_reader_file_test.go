@@ -19,10 +19,9 @@ func Test_Reader_Open(t *testing.T) {
 	}
 
 	db := NewSymDB(cfg)
-	w := db.SymbolsAppender(1)
-	a := w.StacktraceAppender()
+	w := db.SymbolsWriter(1)
 	sids := make([]uint32, 5)
-	a.AppendStacktrace(sids, []*schemav1.Stacktrace{
+	w.AppendStacktraces(sids, []*schemav1.Stacktrace{
 		{LocationIDs: []uint64{3, 2, 1}},
 		{LocationIDs: []uint64{2, 1}},
 		{LocationIDs: []uint64{4, 3, 2, 1}},
@@ -30,14 +29,13 @@ func Test_Reader_Open(t *testing.T) {
 		{LocationIDs: []uint64{5, 2, 1}},
 	})
 	require.Equal(t, []uint32{3, 2, 11, 16, 18}, sids)
-	a.Release()
 	require.NoError(t, db.Flush())
 
 	b, err := filesystem.NewBucket(cfg.Dir)
 	require.NoError(t, err)
 	x, err := Open(context.Background(), b)
 	require.NoError(t, err)
-	mr, ok := x.SymbolsResolver(1)
+	r, ok := x.SymbolsReader(1)
 	require.True(t, ok)
 
 	dst := new(mockStacktraceInserter)
@@ -47,8 +45,6 @@ func Test_Reader_Open(t *testing.T) {
 	dst.On("InsertStacktrace", uint32(16), []int32{3, 1})
 	dst.On("InsertStacktrace", uint32(18), []int32{5, 2, 1})
 
-	r := mr.StacktraceResolver()
 	err = r.ResolveStacktraces(context.Background(), dst, sids)
 	require.NoError(t, err)
-	r.Release()
 }
