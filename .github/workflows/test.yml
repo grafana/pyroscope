@@ -125,10 +125,11 @@ jobs:
         uses: actions/checkout@v3
       - name: Get github app token (valid for an hour)
         id: app-release
-        uses: getsentry/action-github-app-token@v2
+        uses: tibdex/github-app-token@v1
         with:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
+          repository: grafana/deployment_tools
       - name: Deploy to fire-dev-001
         run: |
           git config --global url."https://x-access-token:${{ steps.app-release.output.token }}@github.com/grafana/deployment_tools".insteadOf "https://github.com/grafana/deployment_tools"
