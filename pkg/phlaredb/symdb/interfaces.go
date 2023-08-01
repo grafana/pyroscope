@@ -3,6 +3,7 @@ package symdb
 import (
 	"context"
 
+	"github.com/grafana/pyroscope/pkg/iter"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
@@ -12,10 +13,10 @@ type SymbolsWriter interface {
 	// len(dst) must be equal to len(s).
 	// The leaf is at locations[0].
 	AppendStacktraces([]uint32, []*schemav1.Stacktrace)
-	//	AppendLocations([]uint32, []*schemav1.InMemoryLocation)
-	//	AppendMappings([]uint32, []*schemav1.InMemoryMapping)
-	//	AppendFunctions([]uint32, []*schemav1.InMemoryFunction)
-	//	AppendStrings([]uint32, []string)
+	AppendLocations([]uint32, []*schemav1.InMemoryLocation)
+	AppendMappings([]uint32, []*schemav1.InMemoryMapping)
+	AppendFunctions([]uint32, []*schemav1.InMemoryFunction)
+	AppendStrings([]uint32, []string)
 }
 
 type SymbolsReader interface {
@@ -28,10 +29,10 @@ type SymbolsReader interface {
 	//
 	// Stacktraces slice might be modified during the call.
 	ResolveStacktraces(ctx context.Context, dst StacktraceInserter, stacktraces []uint32) error
-	//	Locations(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryLocation]
-	//	Mappings(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryMapping]
-	//	Functions(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryFunction]
-	//	Strings(iter.Iterator[uint32]) iter.Iterator[string]
+	Locations(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryLocation]
+	Mappings(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryMapping]
+	Functions(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryFunction]
+	Strings(iter.Iterator[uint32]) iter.Iterator[string]
 	WriteStats(*Stats)
 }
 

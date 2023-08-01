@@ -12,7 +12,9 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/objstore"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 var (
@@ -297,4 +299,20 @@ func (c *stacktraceChunkFileReader) reset() {
 		c.tree = nil
 	}
 	c.m.Unlock()
+}
+
+func (p *partitionFileReader) Locations(i iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryLocation] {
+	panic("TODO")
+}
+
+func (p *partitionFileReader) Mappings(i iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryMapping] {
+	panic("TODO")
+}
+
+func (p *partitionFileReader) Functions(i iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryFunction] {
+	panic("TODO")
+}
+
+func (p *partitionFileReader) Strings(i iter.Iterator[uint32]) iter.Iterator[string] {
+	panic("TODO")
 }
