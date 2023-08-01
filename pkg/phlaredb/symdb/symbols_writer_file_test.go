@@ -12,7 +12,7 @@ import (
 )
 
 func Test_Writer_IndexFile(t *testing.T) {
-	dir := filepath.Join("testdata", DefaultDirName)
+	dir := filepath.Join(t.TempDir(), DefaultDirName)
 	db := NewSymDB(&Config{
 		Dir: dir,
 		Stacktraces: StacktracesConfig{
