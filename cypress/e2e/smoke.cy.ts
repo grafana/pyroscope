@@ -9,7 +9,7 @@ describe('smoke', () => {
   });
 
   it('loads admin page', () => {
-    cy.visit('../');
+    cy.visit('/admin');
   });
 
   it('loads single view (/)', () => {
