@@ -21,14 +21,3 @@ get-vmlinux-header:
 .PHONY: clean
 clean:
 	rm -rf libbpf/*.h vmlinux/*.h
-
-.PHONY: profile.so
-profile.so:
-	clang -DBPF_NO_PRESERVE_ACCESS_INDEX -DPYROSCOPE_UME -D __TARGET_ARCH_x86 \
- 		-O0 -g3 -Wall -fpie -fPIC -nostdinc -std=gnu11 \
- 		-fno-omit-frame-pointer \
- 		-shared \
- 		-Wno-unused-variable -Wno-unused-function \
- 		-I./libbpf -I./vmlinux/ \
- 		-o ../profile_ume_x86.so  profile.bpf.c
-

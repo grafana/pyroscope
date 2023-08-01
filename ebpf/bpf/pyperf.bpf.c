@@ -1,7 +1,9 @@
 #ifndef PYPERF_H
 #define PYPERF_H
 
-#include "pyperf.bpf.h"
+#include "vmlinux.h"
+#include "bpf_helpers.h"
+
 #include "pthread.bpf.h"
 
 
