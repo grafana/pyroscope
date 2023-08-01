@@ -7,7 +7,6 @@
       "@pyroscope/flamegraph/*": ["./og/packages/pyroscope-flamegraph/*"],
       "@pyroscope/models/*": ["./og/packages/pyroscope-models/*"],
       "@pyroscope/legacy-webapp": ["./og/webapp"],
-      "@mui/base/*": ["./node_modules/@mui/base/*"],
       "zod": ["./node_modules/zod"]
     },
     "target": "es5",

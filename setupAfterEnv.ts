@@ -1,3 +1,4 @@
+import '@testing-library/jest-dom/extend-expect';
 import '@testing-library/jest-dom';
 import 'jest-canvas-mock';
 import timezoneMock from 'timezone-mock';

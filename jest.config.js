@@ -12,7 +12,6 @@ module.exports = {
     '\\.(css|scss)$': 'jest-css-modules-transform',
     '\\.svg$': path.join(__dirname, 'svg-transform.js'),
   },
-  setupFilesAfterEnv: ['<rootDir>/testSetupFile.js'],
 
   transformIgnorePatterns: [
     // force us to transpile these dependencies
@@ -25,5 +24,10 @@ module.exports = {
   // Reuse the same modules from typescript
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, {
     prefix: '<rootDir>',
+    '@phlare/(.*)$': path.join(__dirname, 'public/app/$1')
   }),
+
+  globalSetup: '<rootDir>/globalSetup.js',
+  globalTeardown: '<rootDir>/globalTeardown.js',
+  setupFilesAfterEnv: [path.join(__dirname, 'setupAfterEnv.ts')],
 };
