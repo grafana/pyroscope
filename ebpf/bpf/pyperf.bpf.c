@@ -237,9 +237,10 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
         // jump to reading first set of Python frames
         bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
         // we won't ever get here
+        return -1;
     }
 
-    return submit_sample(ctx, state);
+    return -1;//todo maybe we should submit kernel stack only
 }
 
 SEC("perf_event")
@@ -378,7 +379,6 @@ static inline __attribute__((__always_inline__)) int get_frame_data(
         void *ctx) {
     void *code_ptr;
     frame_ptr_t cur_frame = *frame_ptr;
-//    bpf_printk("fp %x", cur_frame);
     if (!cur_frame) {
         return 0;
     }
@@ -447,7 +447,7 @@ int read_python_stack(struct bpf_perf_event_data *ctx) {
     py_event *sample = &state->event;
 
     py_symbol sym = {};
-    int last_res = false;
+    int last_res;
 #pragma unroll
     for (int i = 0; i < PYTHON_STACK_FRAMES_PER_PROG; i++) {
         last_res = get_frame_data(&state->frame_ptr, &state->offsets, &sym, ctx);
@@ -467,20 +467,17 @@ int read_python_stack(struct bpf_perf_event_data *ctx) {
         }
     }
 
-    if (!state->frame_ptr) {
+    if (last_res == 0) {
         sample->stack_status = STACK_STATUS_COMPLETE;
     } else {
-        if (!last_res) {
-            sample->stack_status = STACK_STATUS_ERROR;
-        } else {
-            sample->stack_status = STACK_STATUS_TRUNCATED;
-        }
+        sample->stack_status = STACK_STATUS_TRUNCATED;
     }
 
     if (sample->stack_status == STACK_STATUS_TRUNCATED &&
         state->python_stack_prog_call_cnt < PYTHON_STACK_PROG_CNT) {
         // read next batch of frames
         bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
+        return -1;
     }
 
     return submit_sample(ctx, state);

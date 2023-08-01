@@ -142,6 +142,7 @@ func New(soPath string, prog string) (*UME, error) {
 	warnOnError(res.BindFunc5("bpf_perf_event_output", res.helperPerfEventOutput))
 	warnOnError(res.BindFunc3("bpf_perf_prog_read_value", res.helperPerfProgReadValue))
 	warnOnError(res.BindFunc4("bpf_map_update_elem", res.helperMapUpdateElem))
+	warnOnError(res.BindFunc3("bpf_get_stackid", res.helperGetStackId))
 	warnOnError(res.BindBPFTailCall())
 
 	return res, nil
@@ -429,6 +430,10 @@ func (u *UME) BindBPFTailCall() error {
 	p := (*uintptr)(unsafe.Pointer(u.base + uintptr(found)))
 	*p = uintptr(tc)
 	return nil
+}
+
+func (u *UME) helperGetStackId(ctx uintptr, pmap uintptr, flags uintptr) uintptr {
+	return 239 // not implemented
 }
 
 func memset_(buf uintptr, b uint8, sz uintptr) {

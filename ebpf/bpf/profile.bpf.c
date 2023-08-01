@@ -33,15 +33,16 @@ int do_perf_event(struct bpf_perf_event_data *ctx)
     }
 
     // this will not return if it is python
-    pyperf_collect_impl(ctx, (pid_t)tgid);
+    if (pyperf_collect_impl(ctx, (pid_t)tgid) < 0) {
+        return 0;
+    }
+
 
     key.pid = tgid;
     key.kern_stack = -1;
     key.user_stack = -1;
 
-    //todo query py
 
-//    bpf_get_current_comm(&key.comm, sizeof(key.comm));
 
 	if (arg->collect_kernel) {
 	    key.kern_stack = bpf_get_stackid(ctx, &stacks, KERN_STACKID_FLAGS);
