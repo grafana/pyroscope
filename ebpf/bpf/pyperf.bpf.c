@@ -327,43 +327,27 @@ static inline __attribute__((__always_inline__)) int get_names(
     // Read class name from $frame->f_localsplus[0]->ob_type->tp_name.
     if (first_self || first_cls) {
         void *ptr;
-        if (bpf_probe_read_user(
-                &ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_localsplus))) {
-            return -1;
-        }
+        bpf_probe_read_user(
+                &ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_localsplus));
         if (first_self) {
             // we are working with an instance, first we need to get type
-            if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyObject_ob_type)) {
-                return -1;
-            }
+            bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyObject_ob_type);
         }
-        if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyTypeObject_tp_name)) {
-            return -1;
-        }
-        if (bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr) < 0) {
-            return -1;
-        }
+        bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyTypeObject_tp_name);
+        bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr);
     }
 
     void *pystr_ptr;
     // read PyCodeObject's filename into symbol
-    if (bpf_probe_read_user(
-            &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_filename)) {
-        return -1;
-    }
-    if (bpf_probe_read_user_str(
-            &symbol->file, sizeof(symbol->file), pystr_ptr + offsets->String_size)) {
-        return -1;
-    }
+    bpf_probe_read_user(
+            &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_filename);
+    bpf_probe_read_user_str(
+            &symbol->file, sizeof(symbol->file), pystr_ptr + offsets->String_size);
     // read PyCodeObject's name into symbol
-    if (bpf_probe_read_user(
-            &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_name)) {
-        return -1;
-    }
-    if (bpf_probe_read_user_str(
-            &symbol->name, sizeof(symbol->name), pystr_ptr + offsets->String_size) < 0) {
-        return -1;
-    }
+    bpf_probe_read_user(
+            &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_name);
+    bpf_probe_read_user_str(
+            &symbol->name, sizeof(symbol->name), pystr_ptr + offsets->String_size);
     return 0;
 }
 
