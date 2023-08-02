@@ -3,12 +3,14 @@ title: "Grafana agent"
 menuTitle: "Grafana agent"
 description: "Learn more about the Grafana agent"
 weight: 10
+aliases:
+  - /docs/phlare/latest/configure-client/grafana-agent/
 ---
 
 # Grafana agent
 
 The Grafana Agent is responsible for pulling profiles from applications and delivering them
-to the Grafana Phlare database.
+to the Pyroscope database.
 
 ## Configuring the agent
 

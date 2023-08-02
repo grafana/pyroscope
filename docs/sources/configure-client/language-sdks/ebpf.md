@@ -2,7 +2,9 @@
 title: "eBPF"
 menuTitle: "eBPF"
 description: "Instrumenting eBPF applications for continuous profiling"
-weight: 30
+weight: 20
+aliases:
+  - /docs/phlare/latest/configure-client/language-sdks/ebpf/
 ---
 
 # eBPF
@@ -23,7 +25,7 @@ For the reasons mentioned above, we recommend an hybrid approach for better resu
 
 ### Prerequisites for profiling with eBPF
 For the eBPF integration to work you'll need:
-* A Pyroscope or Phlare server where the agent will send profiling data
+* A Pyroscope server where the agent will send profiling data
 * A Linux machine with the kernel version >= 4.9 (due to [BPF_PROG_TYPE_PERF_EVENT](https://lkml.org/lkml/2016/9/1/831))
 
 ## Running eBPF profiler on Kubernetes

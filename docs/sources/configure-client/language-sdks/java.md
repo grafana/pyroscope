@@ -3,6 +3,8 @@ title: "Java"
 menuTitle: "Java"
 description: "Instrumenting Java applications for continuous profiling"
 weight: 30
+aliases:
+  - /docs/phlare/latest/configure-client/language-sdks/java
 ---
 
 # Java
@@ -129,7 +131,7 @@ Java integration supports JFR format to be able to support multiple events (JFR 
 |`PYROSCOPE_CONFIGURATION_FILE`           |sets an additional properties configuration file. The default value is `pyroscope.properties`.                                                                                                                                                                                                                                                                                              |
 |`PYROSCOPE_BASIC_AUTH_USER`              |HTTP Basic authentication username. The default value is `""` - empty string, no authentication.                                                                                                                                                                                                                                                                                            |
 |`PYROSCOPE_BASIC_AUTH_PASSWORD`          |HTTP Basic authentication password. The default value is `""` - empty string, no authentication.                                                                                                                                                                                                                                                                                            |
-|`PYROSCOPE_TENANT_ID`                    |phlare tenant ID, passed as X-Scope-OrgID http header. The default value is `""` - empty string, no tenant ID.                                                                                                                                                                                                                                                                              |
+|`PYROSCOPE_TENANT_ID`                    |pyroscope tenant ID, passed as X-Scope-OrgID http header. The default value is `""` - empty string, no tenant ID.                                                                                                                                                                                                                                                                              |
 |`PYROSCOPE_HTTP_HEADERS`                 |extra http headers in json format, for example: `{"X-Header": "Value"}`. The default value is `{}` - no extra headers.                                                                                                                                                                                                                                                                      |
 |`PYROSCOPE_LABELS`                       |sets static labels in the form of comma separated `key=value` pairs. The default value is `""` - empty string, no labels.                                                                                                                                                                                                                                                                   |
 |`PYROSCOPE_LOG_LEVEL`                    |determines the level of verbosity for Pyroscope's logger. Available options include `debug`, `info`, `warn`, and `error`. The default value is set to `info`.                                                                                                                                                                                                                               |
@@ -140,13 +142,13 @@ Java integration supports JFR format to be able to support multiple events (JFR 
 |`PYROSCOPE_ALLOC_LIVE`                   |is a boolean value that enables live object profiling when set to true. It is disabled by default.                                                                                                                                                                                                                                                                                          |
 |`PYROSCOPE_GC_BEFORE_DUMP`               |is a boolean value that executes a `System.gc()` command before dumping the profile when set to true. This option may be useful for live profiling, but is disabled by default.                                                                                                                                                                                                             |
 
-## Sending data to Grafana Cloud or Phlare with Pyroscope java SDK
+## Sending data to Pyroscope OSS or Grafana Cloud Profiles with Pyroscope java SDK
 
-To configure java sdk to send data to Phlare, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Phlare server URL.
+To configure java sdk to send data to Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
 
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
 
-If your Phlare server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Phlare tenant ID.
+If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
 
 ## Java profiling examples
 

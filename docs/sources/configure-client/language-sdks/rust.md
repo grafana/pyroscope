@@ -2,7 +2,9 @@
 title: "Rust"
 menuTitle: "Rust"
 description: "Instrumenting Rust applications for continuous profiling"
-weight: 30
+weight: 60
+aliases:
+  - /docs/phlare/latest/configure-client/language-sdks/rust
 ---
 
 # Rust
