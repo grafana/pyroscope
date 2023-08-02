@@ -223,5 +223,3 @@ export const SelectorModalWithToggler = ({
     />
   );
 };
-
-export default AppSelector;

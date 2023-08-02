@@ -1,2 +1,1 @@
-import AppSelector from './AppSelector';
-export default AppSelector;
+export { AppSelector } from './AppSelector';
