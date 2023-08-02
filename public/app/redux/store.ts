@@ -21,7 +21,8 @@ import { history } from '@phlare/util/history';
 
 import settingsReducer from './reducers/settings';
 import userReducer from './reducers/user';
-import continuousReducer, {
+import  {
+  continuousReducer,
   actions as continuousActions,
 } from './reducers/continuous';
 import serviceDiscoveryReducer from './reducers/serviceDiscovery';

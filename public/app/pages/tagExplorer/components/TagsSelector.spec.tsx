@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import { configureStore } from '@reduxjs/toolkit';
 import { BrowserRouter } from 'react-router-dom';
 
-import continuousReducer from '@phlare/redux/reducers/continuous';
+import {continuousReducer} from '../../../redux/reducers/continuous';
 import TagsSelector, { TagSelectorProps } from './TagsSelector';
 
 const whereDropdownItems = ['foo', 'bar', 'baz'];

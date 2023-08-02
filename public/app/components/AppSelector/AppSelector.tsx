@@ -4,7 +4,8 @@ import { App, appFromQuery, appToQuery } from '@phlare/models/app';
 import { Query } from '@phlare/models/query';
 import cx from 'classnames';
 import SelectButton from '@phlare/components/AppSelector/SelectButton';
-import styles from './AppSelector/AppSelector.module.css';
+import ogStyles from './AppSelector.module.scss';
+import styles from './AppSelector.module.css';
 
 // type App = Omit<OgApp, 'name'>;
 

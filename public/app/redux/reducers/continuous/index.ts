@@ -1,26 +1,20 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { fetchApps } from '@phlare/services/apps';
 import { Query } from '@phlare/models/query';
-import { addNotification } from './notifications';
-import { createAsyncThunk } from '../async-thunk';
-import { ContinuousState, TagsState } from './continuous/state';
-import { fetchTagValues, fetchTags } from './continuous/tags.thunks';
-import { addAnnotation } from './continuous/annotations.thunks';
-import { fetchSingleView } from './continuous/singleView.thunks';
-import { fetchComparisonSide } from './continuous/comparisonView.thunks';
-import { fetchSideTimelines } from './continuous/timelines.thunks';
+import { addNotification } from '../notifications';
+import { createAsyncThunk } from '../../async-thunk';
+import { ContinuousState, TagsState } from './state';
+import { fetchTagValues, fetchTags } from './tags.thunks';
+import { addAnnotation } from './annotations.thunks';
+import { fetchSingleView } from './singleView.thunks';
+import { fetchComparisonSide } from './comparisonView.thunks';
+import { fetchSideTimelines } from './timelines.thunks';
 import {
   fetchTagExplorerView,
   fetchTagExplorerViewProfile,
   ALL_TAGS,
-} from './continuous/tagExplorer.thunks';
-import { fetchDiffView } from './continuous/diffView.thunks';
-
-// TODO serach for duplication
-export const defaultcomparisonPeriod = {
-  label: '24 hours prior',
-  ms: 86400 * 1000,
-};
+} from './tagExplorer.thunks';
+import { fetchDiffView } from './diffView.thunks';
+import { defaultcomparisonPeriod } from '@phlare/components/SideTimelineComparator/periods';
 
 const initialState: ContinuousState = {
   from: 'now-1h',
@@ -479,7 +473,6 @@ export const continuousSlice = createSlice({
   },
 });
 
-export default continuousSlice.reducer;
 export const { actions } = continuousSlice;
 export const { setDateRange, setQuery } = continuousSlice.actions;
 
@@ -493,13 +486,17 @@ function getNextStateFromPending(
   return 'reloading';
 }
 
-export * from './continuous/selectors';
+export * from './selectors';
 
-export * from './continuous/state';
-export * from './continuous/tags.thunks';
-export * from './continuous/singleView.thunks';
-export * from './continuous/annotations.thunks';
-export * from './continuous/comparisonView.thunks';
-export * from './continuous/timelines.thunks';
-export * from './continuous/tagExplorer.thunks';
-export * from './continuous/diffView.thunks';
+export * from './state';
+export * from './tags.thunks';
+export * from './singleView.thunks';
+export * from './annotations.thunks';
+export * from './comparisonView.thunks';
+export * from './timelines.thunks';
+export * from './tagExplorer.thunks';
+export * from './diffView.thunks';
+
+export const continuousReducer = continuousSlice.reducer;
+
+
