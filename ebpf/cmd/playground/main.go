@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
@@ -15,9 +16,9 @@ import (
 	"github.com/grafana/phlare/ebpf/sd"
 	"github.com/grafana/phlare/ebpf/symtab"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/prometheus/model/labels"
 )
 
+const sampleRate = 11 // times per second
 func main() {
 	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
 
@@ -43,7 +44,7 @@ func main() {
 	for {
 		time.Sleep(5 * time.Second)
 
-		builders := pprof.NewProfileBuilders(options.SampleRate)
+		builders := pprof.NewProfileBuilders(time.Second.Nanoseconds() / sampleRate)
 		err := session.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32) {
 			labelsHash, labels := target.Labels()
 			builder := builders.BuilderForTarget(labelsHash, labels)
@@ -65,7 +66,7 @@ func main() {
 				panic(err)
 			}
 			rawProfile := buf.Bytes()
-			go ingest(rawProfile, serviceName, builder.Labels)
+			go ingest(rawProfile, serviceName)
 		}
 
 		if err != nil {
@@ -74,14 +75,44 @@ func main() {
 	}
 }
 
-func ingest(profile []byte, name string, labels labels.Labels) {
-	//todo labels
-	//todo sample type config
-	url := "http://localhost:4100/ingest?name=" + name + "&format=pprof"
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(profile))
+func ingest(profile []byte, name string) {
+
+	buf := bytes.NewBuffer(nil)
+	w := multipart.NewWriter(buf)
+	stcW, err := w.CreateFormFile("sample_type_config", "sample_type_config")
 	if err != nil {
 		panic(err)
 	}
+	_, err = stcW.Write([]byte(`{
+  "cpu": {
+    "units": "samples",
+    "sampled": true
+  }
+}`))
+	if err != nil {
+		panic(err)
+	}
+
+	profileW, err := w.CreateFormFile("profile", "profile")
+	if err != nil {
+		panic(err)
+	}
+	_, err = profileW.Write(profile)
+	if err != nil {
+		panic(err)
+	}
+	err = w.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	url := "http://localhost:4100/ingest?name=" + name + ""
+	req, err := http.NewRequest("POST", url, buf)
+	if err != nil {
+		panic(err)
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		fmt.Println(err)
@@ -95,8 +126,7 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 	return ebpfspy.SessionOptions{
 		CollectUser:   true,
 		CollectKernel: true,
-		SampleRate:    11,
-		PythonPIDs:    []int{222633},
+		SampleRate:    sampleRate,
 		CacheOptions: symtab.CacheOptions{
 			PidCacheOptions: symtab.GCacheOptions{
 				Size:       239,

@@ -20,6 +20,24 @@ enum {
     STACK_STATUS_TRUNCATED = 2,
 };
 
+enum {
+    PY_ERROR_GENERIC = 1,
+    PY_ERROR_THREAD_STATE = 2,
+    PY_ERROR_THREAD_STATE_NULL = 3,
+    PY_ERROR_TOP_FRAME = 4,
+    PY_ERROR_FRAME_CODE = 5,
+    PY_ERROR_FRAME_PREV = 6,
+    PY_ERROR_SYMBOL = 7,
+    PY_ERROR_TLSBASE = 8,
+    PY_ERROR_FIRST_ARG = 9,
+    PY_ERROR_CLASS_NAME = 10,
+    PY_ERROR_FILE_NAME = 11,
+    PY_ERROR_NAME = 12,
+    
+
+
+};
+
 #define PY_OFFSET_String_size 48
 #define PY_OFFSET_PyVarObject_ob_size 16
 #define PY_OFFSET_PyObject_ob_type 8
@@ -66,12 +84,15 @@ typedef struct {
 
 
 typedef struct {
-    uint32_t pid;
     uint8_t stack_status;
+    uint8_t err;
+    uint8_t reserved2;
+    uint8_t reserved3;
+    uint32_t pid;
     int64_t kern_stack;
     // instead of storing symbol name here directly, we add it to another
     // hashmap with Symbols and only store the ids here
-    int64_t stack_len;
+    uint32_t stack_len;
     uint32_t stack[PYTHON_STACK_MAX_LEN];
 } py_event;
 
@@ -84,11 +105,21 @@ typedef struct {
 // See comments in get_frame_data
 FAIL_COMPILATION_IF(sizeof(py_symbol) == sizeof(struct bpf_perf_event_value))
 
+typedef struct {
+    uint64_t err_tls_base;
+    uint64_t err_thread_state;
+    uint64_t err_thread_state_null;
+    uint64_t err_top_frame;
+    uint64_t err_symbol_id;
+} py_metrics;
+
 
 typedef struct {
+    int64_t symbol_counter;
+    py_metrics metrics;
+
     py_offset_config offsets;
     uint32_t cur_cpu;
-    int64_t symbol_counter;
     uint64_t frame_ptr;
     int64_t python_stack_prog_call_cnt;
     py_event event;
@@ -153,6 +184,16 @@ static inline __attribute__((__always_inline__)) int submit_sample(
         py_sample_state_t *state) {
     bpf_perf_event_output(ctx, &py_events, BPF_F_CURRENT_CPU, &state->event, sizeof(py_event));
     return 0;
+}
+
+static inline __attribute__((__always_inline__)) int submit_error_sample(
+        void *ctx,
+        py_sample_state_t *state, uint8_t err) {
+    state->event.stack_status = STACK_STATUS_ERROR;
+    state->event.err = err;
+    bpf_perf_event_output(ctx, &py_events, BPF_F_CURRENT_CPU, &state->event,
+                          offsetof(py_event, kern_stack) + sizeof(state->event.kern_stack));
+    return -1;
 }
 
 // this function is trivial, but we need to do map lookup in separate function,
@@ -223,13 +264,13 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
 
     void *tls_base = NULL;
     if (pyro_get_tlsbase(&tls_base)) {
-        return -1;
+        return submit_error_sample(ctx, state, PY_ERROR_TLSBASE);
     }
 
     // Read PyThreadState of this Thread from TLS
     void *thread_state;
     if (get_thread_state(tls_base, pid_data, &thread_state)) {
-        return -1;
+        return submit_error_sample(ctx, state, PY_ERROR_THREAD_STATE);
     }
 
     // pre-initialize event struct in case any subprogram below fails
@@ -238,15 +279,13 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
 
     if (thread_state != 0) {
         if (get_top_frame(pid_data, state, thread_state)) {
-            return -1;
+            return submit_error_sample(ctx, state, PY_ERROR_TOP_FRAME);
         }
         // jump to reading first set of Python frames
         bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
         // we won't ever get here
-        return -1;
     }
-
-    return -1;
+    return submit_error_sample(ctx, state, PY_ERROR_THREAD_STATE_NULL);
 }
 
 SEC("perf_event")
@@ -306,6 +345,7 @@ static inline __attribute__((__always_inline__)) int check_first_arg(void *code_
     return 0;
 }
 
+// return -PY_ERR_XX on error, 0 on success
 static inline __attribute__((__always_inline__)) int get_names(
         void *cur_frame,
         void *code_ptr,
@@ -316,7 +356,7 @@ static inline __attribute__((__always_inline__)) int get_names(
     bool first_self;
     bool first_cls;
     if (check_first_arg(code_ptr, offsets, symbol, &first_self, &first_cls)) {
-        return -1;
+        return -PY_ERROR_FIRST_ARG;
     }
 
     // We re-use the same py_symbol instance across loop iterations, which means
@@ -334,19 +374,19 @@ static inline __attribute__((__always_inline__)) int get_names(
         void *ptr;
         if (bpf_probe_read_user(
                 &ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_localsplus))) {
-            return -1;
+            return -PY_ERROR_CLASS_NAME;
         }
         if (first_self) {
             // we are working with an instance, first we need to get type
             if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + PY_OFFSET_PyObject_ob_type)) {
-                return -1;
+                return -PY_ERROR_CLASS_NAME;
             }
         }
         if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + PY_OFFSET_PyTypeObject_tp_name)) {
-            return -1;
+            return -PY_ERROR_CLASS_NAME;
         }
         if (bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr) < 0) {
-            return -1;
+            return -PY_ERROR_CLASS_NAME;
         }
     }
 
@@ -354,20 +394,20 @@ static inline __attribute__((__always_inline__)) int get_names(
     // read PyCodeObject's filename into symbol
     if (bpf_probe_read_user(
             &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_filename)) {
-        return -1;
+        return -PY_ERROR_FILE_NAME;
     }
     if (bpf_probe_read_user_str(
             &symbol->file, sizeof(symbol->file), pystr_ptr + PY_OFFSET_String_size) < 0) {
-        return -1;
+        return -PY_ERROR_FILE_NAME;
     }
     // read PyCodeObject's name into symbol
     if (bpf_probe_read_user(
             &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_name)) {
-        return -1;
+        return -PY_ERROR_NAME;
     }
     if (bpf_probe_read_user_str(
             &symbol->name, sizeof(symbol->name), pystr_ptr + PY_OFFSET_String_size) < 0) {
-        return -1;
+        return -PY_ERROR_NAME;
     }
     return 0;
 }
@@ -375,7 +415,7 @@ static inline __attribute__((__always_inline__)) int get_names(
 // get_frame_data reads current PyFrameObject filename/name and updates
 // stack_info->frame_ptr with pointer to next PyFrameObject
 // since 311 frame_ptr is pointing to _PyInterpreterFrame
-// returns -1 on error, 1 on success, 0 if no more frames
+// returns -PY_ERR_XXX on error, 1 on success, 0 if no more frames
 static inline __attribute__((__always_inline__)) int get_frame_data(
         void **frame_ptr,
         py_offset_config *offsets,
@@ -402,20 +442,21 @@ static inline __attribute__((__always_inline__)) int get_frame_data(
     // read PyCodeObject first, if that fails, then no point reading next frame
     if (bpf_probe_read_user(
             &code_ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_code))) {
-        return -1;
+        return -PY_ERROR_FRAME_CODE;
     }
     if (!code_ptr) {
         return 0; // todo learn when this happens, c extension?
     }
 
-    if (get_names(cur_frame, code_ptr, offsets, symbol, ctx)) {
-        return -1;
+    int res = get_names(cur_frame, code_ptr, offsets, symbol, ctx);
+    if (res < 0) {
+        return res;
     }
 
     // read next PyFrameObject/PyInterpreterFrame pointer, update in place
     if (bpf_probe_read_user(
             frame_ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_previous))) {
-        return -1;
+        return -PY_ERROR_FRAME_PREV;
     }
 
     return 1;
@@ -463,9 +504,9 @@ int read_python_stack(struct bpf_perf_event_data *ctx) {
     int last_res;
 #pragma unroll
     for (int i = 0; i < PYTHON_STACK_FRAMES_PER_PROG; i++) {
-        last_res = get_frame_data((void**)&state->frame_ptr, &state->offsets, &sym, ctx);
-        if (last_res == -1) {
-            return -1;
+        last_res = get_frame_data((void **) &state->frame_ptr, &state->offsets, &sym, ctx);
+        if (last_res < 0) {
+            return submit_error_sample(ctx, state, (uint8_t) (-last_res));
         }
         if (last_res == 0) {
             break;
@@ -473,10 +514,10 @@ int read_python_stack(struct bpf_perf_event_data *ctx) {
         if (last_res == 1) {
             py_symbol_id symbol_id;
             if (get_symbol_id(state, &sym, &symbol_id)) {
-                return -1;
+                return submit_error_sample(ctx, state, PY_ERROR_SYMBOL);
             }
-            int64_t cur_len = sample->stack_len;
-            if (cur_len >= 0 && cur_len < PYTHON_STACK_MAX_LEN) {
+            uint32_t cur_len = sample->stack_len;
+            if (cur_len < PYTHON_STACK_MAX_LEN) {
                 sample->stack[cur_len] = symbol_id;
                 sample->stack_len++;
             }

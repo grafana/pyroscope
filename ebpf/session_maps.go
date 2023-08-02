@@ -6,24 +6,26 @@
 package ebpfspy
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cilium/ebpf"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/phlare/ebpf/pyrobpf"
 )
 
-func (s *session) getCountsMapValues() (keys []ProfileSampleKey, values []uint32, batch bool, err error) {
+func (s *session) getCountsMapValues() (keys []pyrobpf.ProfileSampleKey, values []uint32, batch bool, err error) {
 	// try batch first
 	var (
 		m       = s.bpf.ProfileMaps.Counts
 		mapSize = m.MaxEntries()
-		nextKey = ProfileSampleKey{}
+		nextKey = pyrobpf.ProfileSampleKey{}
 	)
-	keys = make([]ProfileSampleKey, mapSize)
+	keys = make([]pyrobpf.ProfileSampleKey, mapSize)
 	values = make([]uint32, mapSize)
 
 	opts := &ebpf.BatchOptions{}
-	n, _ := m.BatchLookupAndDelete(nil, &nextKey, keys, values, opts)
+	n, err := m.BatchLookupAndDelete(nil, &nextKey, keys, values, opts)
 	if n > 0 {
 		level.Debug(s.logger).Log(
 			"msg", "getCountsMapValues BatchLookupAndDelete",
@@ -31,11 +33,14 @@ func (s *session) getCountsMapValues() (keys []ProfileSampleKey, values []uint32
 		)
 		return keys[:n], values[:n], true, nil
 	}
+	if errors.Is(err, ebpf.ErrKeyNotExist) {
+		return nil, nil, true, nil
+	}
 	// try iterating if batch failed
 	resultKeys := keys[:0]
 	resultValues := values[:0]
 	it := m.Iterate()
-	k := ProfileSampleKey{}
+	k := pyrobpf.ProfileSampleKey{}
 	v := uint32(0)
 	for {
 		ok := it.Next(&k, &v)
@@ -57,7 +62,7 @@ func (s *session) getCountsMapValues() (keys []ProfileSampleKey, values []uint32
 	return resultKeys, resultValues, false, nil
 }
 
-func (s *session) clearCountsMap(keys []ProfileSampleKey, batch bool) error {
+func (s *session) clearCountsMap(keys []pyrobpf.ProfileSampleKey, batch bool) error {
 	if len(keys) == 0 {
 		return nil
 	}

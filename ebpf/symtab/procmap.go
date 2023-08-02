@@ -263,8 +263,6 @@ func ParseProcMapsExecutableModules(procMaps []byte, executableOnly bool) ([]*Pr
 
 func tokenToStringUnsafe(tok []byte) string {
 	res := ""
-	// todo remove unsafe
-
 	sh := (*reflect.StringHeader)(unsafe.Pointer(&res))
 	sh.Data = uintptr(unsafe.Pointer(&tok[0]))
 	sh.Len = len(tok)
