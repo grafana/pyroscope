@@ -26,7 +26,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.19.10"
+          go-version: "1.19.12"
           cache: true         
       - run: yarn --frozen-lockfile
       - run: make build
@@ -56,7 +56,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.19.10"
+          go-version: "1.19.12"
           cache: true         
       - run: yarn --frozen-lockfile
       - run: make build
