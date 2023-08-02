@@ -18,56 +18,57 @@ func New(series *v1.Series, startMs int64, endMs int64, durationDeltaSec int64) 
 	points := series.GetPoints()
 	res := make([]uint64, len(points))
 
+	timeline := &flamebearer.FlamebearerTimelineV1{
+		StartTime:     startSec,
+		DurationDelta: durationDeltaSec,
+		Samples:       []uint64{},
+	}
+
 	if len(points) < 1 {
-		return &flamebearer.FlamebearerTimelineV1{
-			StartTime:     startSec,
-			DurationDelta: durationDeltaSec,
-			Samples:       backfill(startMs, endMs, durationDeltaSec),
+		if n := sizeToBackfill(startMs, endMs, durationDeltaSec); n > 0 {
+			timeline.Samples = make([]uint64, n)
 		}
+		return timeline
 	}
 
 	i := 0
 	prev := points[0]
 	for _, curr := range points {
+		res[i] = uint64(curr.Value)
+
 		backfillNum := sizeToBackfill(prev.Timestamp, curr.Timestamp, durationDeltaSec)
-
 		if backfillNum > 0 {
-			// backfill + newValue
-			bf := append(backfill(prev.Timestamp, curr.Timestamp, durationDeltaSec), uint64(curr.Value))
+			// Subtract 1 to account for the current value already being added
+			// to the result slice.
+			backfillNum--
 
-			// break the slice
-			first := res[:i]
-			second := res[i:]
+			// Insert backfill.
+			bf := make([]uint64, backfillNum)
+			res = append(res[:i], append(bf, res[i:]...)...)
 
-			// add new backfilled items
-			first = append(first, bf...)
-
-			// concatenate the three slices to form the new slice
-			res = append(first, second...)
-			prev = curr
-			i = i + int(backfillNum)
 		} else {
-			res[i] = uint64(curr.Value)
-			prev = curr
-			i = i + 1
+			backfillNum = 0
 		}
+
+		i += int(backfillNum) + 1
+		prev = curr
 	}
 
 	// Backfill with 0s for data that's not available
 	firstAvailableData := points[0]
 	lastAvailableData := points[len(points)-1]
-	backFillHead := backfill(startMs, firstAvailableData.Timestamp, durationDeltaSec)
-	backFillTail := backfill(lastAvailableData.Timestamp, endMs, durationDeltaSec)
 
-	res = append(backFillHead, res...)
-	res = append(res, backFillTail...)
-
-	timeline := &flamebearer.FlamebearerTimelineV1{
-		StartTime:     startSec,
-		DurationDelta: durationDeltaSec,
-		Samples:       res,
+	if n := sizeToBackfill(startMs, firstAvailableData.Timestamp, durationDeltaSec); n > 0 {
+		bf := make([]uint64, n)
+		res = append(bf, res...)
 	}
 
+	if n := sizeToBackfill(lastAvailableData.Timestamp, endMs, durationDeltaSec) - 1; n > 0 {
+		bf := make([]uint64, n)
+		res = append(res, bf...)
+	}
+
+	timeline.Samples = res
 	return timeline
 }
 
@@ -76,14 +77,6 @@ func New(series *v1.Series, startMs int64, endMs int64, durationDeltaSec int64) 
 func sizeToBackfill(startMs int64, endMs int64, stepSec int64) int64 {
 	startSec := startMs / 1000
 	endSec := endMs / 1000
-	size := ((endSec - startSec) / stepSec) - 1
+	size := (endSec - startSec) / stepSec
 	return size
-}
-
-func backfill(startMs int64, endMs int64, stepSec int64) []uint64 {
-	size := sizeToBackfill(startMs, endMs, stepSec)
-	if size <= 0 {
-		size = 0
-	}
-	return make([]uint64, size)
 }
