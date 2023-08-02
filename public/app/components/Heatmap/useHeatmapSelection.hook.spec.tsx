@@ -7,7 +7,7 @@ import tracingReducer from '@phlare/redux/reducers/tracing';
 
 import { useHeatmapSelection } from './useHeatmapSelection.hook';
 import { heatmapMockData } from '../../services/exemplarsTestData';
-
+import { setStore } from '@phlare/services/storage';
 const canvasEl = document.createElement('canvas');
 const divEl = document.createElement('div');
 const canvasRef = { current: canvasEl } as RefObject<HTMLCanvasElement>;
@@ -22,6 +22,7 @@ function createStore(preloadedState: any) {
     preloadedState,
   });
 
+  setStore(store);
   return store;
 }
 

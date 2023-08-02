@@ -5,7 +5,7 @@ import { modelToResult } from '@phlare/models/utils';
 import { CustomError } from 'ts-custom-error';
 import basename from '@phlare/util/baseurl';
 import { Result } from '@phlare/util/fp';
-import { tenantIDFromStorage } from '@phlare/services/tenant';
+import { tenantIDFromStorage } from './storage';
 
 // RequestNotOkError refers to when the Response is not within the 2xx range
 export class RequestNotOkError extends CustomError {

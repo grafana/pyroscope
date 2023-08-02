@@ -31,6 +31,7 @@ import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 import tenantReducer, {
   persistConfig as tenantPersistConfig,
 } from '@phlare/redux/reducers/tenant';
+import { setStore } from '@phlare/services/storage';
 
 const reducer = combineReducers({
   settings: settingsReducer,
@@ -165,3 +166,7 @@ export default store;
 export type RootState = ReturnType<typeof store.getState>;
 // Inferred type: {posts: PostsState, comments: CommentsState, users: UsersState}
 export type AppDispatch = typeof store.dispatch;
+
+export type StoreType = typeof store;
+
+setStore(store);

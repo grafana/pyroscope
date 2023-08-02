@@ -1,5 +1,4 @@
-import { RequestNotOkError, requestWithOrgID } from '@phlare/services/base';
-import store from '@phlare/redux/store';
+import  { RequestNotOkError, requestWithOrgID } from '@phlare/services/base';
 
 export async function isMultiTenancyEnabled() {
   const res = await requestWithOrgID('/querier.v1.QuerierService/LabelNames', {
@@ -31,8 +30,4 @@ function isOrgRequiredError(res: Awaited<ReturnType<typeof requestWithOrgID>>) {
     res.error.code === 401 &&
     res.error.description.includes('no org id')
   );
-}
-
-export function tenantIDFromStorage(): string {
-  return store.getState().tenant.tenantID || '';
 }

@@ -6,6 +6,7 @@ import { Provider } from 'react-redux';
 import uiReducer from '@phlare/redux/reducers/ui';
 
 import { Sidebar } from '@phlare/components/Sidebar';
+import { setStore } from '@phlare/services/storage';
 
 // TODO: figure out the types here
 function createStore(preloadedState: any) {
@@ -16,6 +17,7 @@ function createStore(preloadedState: any) {
     preloadedState,
   });
 
+  setStore(store)
   return store;
 }
 
