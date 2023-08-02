@@ -116,7 +116,7 @@ jobs:
         run: |
           make docker-image/pyroscope/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
-  deploy-phlare-dev-001:
+  deploy-dev-001:
     if: github.event_name == 'push' && github.repository == 'grafana/pyroscope'
     runs-on: ubuntu-latest
     needs: [build-push]
@@ -132,7 +132,7 @@ jobs:
           repository: grafana/deployment_tools
       - name: Deploy to fire-dev-001
         run: |
-          git config --global url."https://x-access-token:${{ steps.app-release.output.token }}@github.com/grafana/deployment_tools".insteadOf "https://github.com/grafana/deployment_tools"
+          git config --global url."https://x-access-token:$(echo "${GITHUB_TOKEN}" | xargs)@github.com/grafana/deployment_tools".insteadOf "https://github.com/grafana/deployment_tools"
           make docker-image/pyroscope/deploy-dev-001
         env:
           GITHUB_TOKEN: ${{ steps.app-release.outputs.token }}
