@@ -196,8 +196,6 @@ async function fetchAndHandleErrors(
   }
 }
 
-
-
 export class RequestAbortedError extends CustomError {
   constructor(public description: string) {
     super(`Request was aborted by user. Description: '${description}'`);

@@ -15,6 +15,7 @@ import {
 } from './tagExplorer.thunks';
 import { fetchDiffView } from './diffView.thunks';
 import { defaultcomparisonPeriod } from '@phlare/components/SideTimelineComparator/periods';
+import { fetchApps } from '@phlare/services/apps';
 
 const initialState: ContinuousState = {
   from: 'now-1h',
@@ -498,5 +499,3 @@ export * from './tagExplorer.thunks';
 export * from './diffView.thunks';
 
 export const continuousReducer = continuousSlice.reducer;
-
-

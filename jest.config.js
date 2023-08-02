@@ -24,7 +24,7 @@ module.exports = {
   // Reuse the same modules from typescript
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, {
     prefix: '<rootDir>',
-    '@phlare/(.*)$': path.join(__dirname, 'public/app/$1')
+    '@phlare/(.*)$': path.join(__dirname, 'public/app/$1'),
   }),
 
   globalSetup: '<rootDir>/globalSetup.js',
