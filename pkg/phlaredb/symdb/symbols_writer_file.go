@@ -2,6 +2,7 @@ package symdb
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -9,62 +10,141 @@ import (
 	"path/filepath"
 
 	"github.com/grafana/dskit/multierror"
+	"golang.org/x/sync/errgroup"
+
+	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 type Writer struct {
-	dir string
-	idx IndexFile
-	scd *fileWriter
+	config *Config
+
+	idx         IndexFile
+	stacktraces *fileWriter
+	// Parquet tables.
+	mappings  parquetWriter[*v1.InMemoryMapping, v1.Persister[*v1.InMemoryMapping]]
+	functions parquetWriter[*v1.InMemoryFunction, v1.Persister[*v1.InMemoryFunction]]
+	locations parquetWriter[*v1.InMemoryLocation, v1.Persister[*v1.InMemoryLocation]]
+	strings   parquetWriter[string, v1.Persister[string]]
 }
 
-func NewWriter(dir string) *Writer {
+func NewWriter(c *Config) *Writer {
 	return &Writer{
-		dir: dir,
+		config: c,
 		idx: IndexFile{
 			Header: Header{
 				Magic:   symdbMagic,
-				Version: FormatV1,
+				Version: FormatV2,
 			},
 		},
 	}
 }
 
-func (w *Writer) writeStacktraceChunk(ci int, c *stacktraceChunk) (err error) {
-	if w.scd == nil {
+func (w *Writer) writeStacktraces(partition *Partition) (err error) {
+	for ci, c := range partition.stacktraces.stacktraceChunks {
+		h := StacktraceChunkHeader{
+			Offset:             w.stacktraces.w.offset,
+			Size:               0, // Set later.
+			Partition:          partition.name,
+			ChunkIndex:         uint16(ci),
+			ChunkEncoding:      ChunkEncodingGroupVarint,
+			Stacktraces:        c.stacks,
+			StacktraceNodes:    c.tree.len(),
+			StacktraceMaxDepth: 0, // TODO
+			StacktraceMaxNodes: c.partition.maxNodesPerChunk,
+			CRC:                0, // Set later.
+		}
+		crc := crc32.New(castagnoli)
+		if h.Size, err = c.WriteTo(io.MultiWriter(crc, w.stacktraces)); err != nil {
+			return fmt.Errorf("writing stacktrace chunk data: %w", err)
+		}
+		h.CRC = crc.Sum32()
+		partition.header.StacktraceChunks = append(partition.header.StacktraceChunks, h)
+	}
+	return nil
+}
+
+func (w *Writer) WritePartitions(partitions []*Partition) error {
+	if err := w.createDir(); err != nil {
+		return err
+	}
+
+	g, _ := errgroup.WithContext(context.Background())
+	g.Go(func() (err error) {
 		if err = w.createStacktracesFile(); err != nil {
 			return err
 		}
+		for _, partition := range partitions {
+			if err = w.writeStacktraces(partition); err != nil {
+				return err
+			}
+		}
+		return w.stacktraces.Close()
+	})
+
+	g.Go(func() (err error) {
+		if err = w.strings.init(w.config.Dir, w.config.Parquet); err != nil {
+			return err
+		}
+		for _, partition := range partitions {
+			if err = w.strings.readFrom(partition.strings.slice); err != nil {
+				return err
+			}
+			partition.header.Strings = w.strings.rowRanges
+		}
+		return w.strings.Close()
+	})
+
+	g.Go(func() (err error) {
+		if err = w.functions.init(w.config.Dir, w.config.Parquet); err != nil {
+			return err
+		}
+		for _, partition := range partitions {
+			if err = w.functions.readFrom(partition.functions.slice); err != nil {
+				return err
+			}
+			partition.header.Functions = w.functions.rowRanges
+		}
+		return w.functions.Close()
+	})
+
+	g.Go(func() (err error) {
+		if err = w.mappings.init(w.config.Dir, w.config.Parquet); err != nil {
+			return err
+		}
+		for _, partition := range partitions {
+			if err = w.mappings.readFrom(partition.mappings.slice); err != nil {
+				return err
+			}
+			partition.header.Mappings = w.mappings.rowRanges
+		}
+		return w.mappings.Close()
+	})
+
+	g.Go(func() (err error) {
+		if err = w.locations.init(w.config.Dir, w.config.Parquet); err != nil {
+			return err
+		}
+		for _, partition := range partitions {
+			if err = w.locations.readFrom(partition.locations.slice); err != nil {
+				return err
+			}
+			partition.header.Locations = w.locations.rowRanges
+		}
+		return w.locations.Close()
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
 	}
-	h := StacktraceChunkHeader{
-		Offset:             w.scd.w.offset,
-		Size:               0, // Set later.
-		Partition:          c.partition.name,
-		ChunkIndex:         uint16(ci),
-		ChunkEncoding:      ChunkEncodingGroupVarint,
-		Stacktraces:        c.stacks,
-		StacktraceNodes:    c.tree.len(),
-		StacktraceMaxDepth: 0, // TODO
-		StacktraceMaxNodes: c.partition.maxNodesPerChunk,
-		CRC:                0, // Set later.
+
+	for _, partition := range partitions {
+		w.idx.PartitionHeaders = append(w.idx.PartitionHeaders, partition.header)
 	}
-	crc := crc32.New(castagnoli)
-	if h.Size, err = c.WriteTo(io.MultiWriter(crc, w.scd)); err != nil {
-		return fmt.Errorf("writing stacktrace chunk data: %w", err)
-	}
-	h.CRC = crc.Sum32()
-	w.idx.StacktraceChunkHeaders.Entries = append(w.idx.StacktraceChunkHeaders.Entries, h)
+
 	return nil
 }
 
 func (w *Writer) Flush() (err error) {
-	if err = w.createDir(); err != nil {
-		return err
-	}
-	if w.scd != nil {
-		if err = w.scd.Close(); err != nil {
-			return fmt.Errorf("flushing stacktraces: %w", err)
-		}
-	}
 	// Write the index file only after all the files were flushed.
 	f, err := w.newFile(IndexFileName)
 	if err != nil {
@@ -80,22 +160,19 @@ func (w *Writer) Flush() (err error) {
 }
 
 func (w *Writer) createDir() error {
-	if err := os.MkdirAll(w.dir, 0o755); err != nil {
-		return fmt.Errorf("failed to create directory %q: %w", w.dir, err)
+	if err := os.MkdirAll(w.config.Dir, 0o755); err != nil {
+		return fmt.Errorf("failed to create directory %q: %w", w.config.Dir, err)
 	}
 	return nil
 }
 
 func (w *Writer) createStacktracesFile() (err error) {
-	if err = w.createDir(); err != nil {
-		return err
-	}
-	w.scd, err = w.newFile(StacktracesFileName)
+	w.stacktraces, err = w.newFile(StacktracesFileName)
 	return err
 }
 
 func (w *Writer) newFile(name string) (f *fileWriter, err error) {
-	name = filepath.Join(w.dir, name)
+	name = filepath.Join(w.config.Dir, name)
 	if f, err = newFileWriter(name); err != nil {
 		return nil, fmt.Errorf("failed to create %q: %w", name, err)
 	}

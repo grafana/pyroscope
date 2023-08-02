@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultStacktraceTreeSize = 10 << 10
+	defaultStacktraceTreeSize = 1 << 10
 	stacktraceTreeNodeSize    = int(unsafe.Sizeof(node{}))
 )
 

@@ -72,21 +72,16 @@ func (r *Reader) open(ctx context.Context) error {
 	if r.idx, err = OpenIndexFile(b); err != nil {
 		return err
 	}
-	// TODO(kolesnikovae): Load in a smarter way as headers are ordered.
-	r.partitions = make(map[uint64]*partitionFileReader, len(r.idx.StacktraceChunkHeaders.Entries)/3)
-	for _, h := range r.idx.StacktraceChunkHeaders.Entries {
-		r.partition(h.Partition).addStacktracesChunk(h)
+	r.partitions = make(map[uint64]*partitionFileReader, len(r.idx.PartitionHeaders))
+	for _, h := range r.idx.PartitionHeaders {
+		p := &partitionFileReader{
+			reader: r,
+		}
+		p.setStacktracesChunks(h.StacktraceChunks)
+		// TODO: locations, mappings, etc
+		r.partitions[h.Partition] = p
 	}
 	return nil
-}
-
-func (r *Reader) partition(n uint64) *partitionFileReader {
-	if m, ok := r.partitions[n]; ok {
-		return m
-	}
-	m := &partitionFileReader{reader: r}
-	r.partitions[n] = m
-	return m
 }
 
 func (r *Reader) SymbolsReader(partition uint64) (SymbolsReader, bool) {
@@ -149,11 +144,14 @@ func (p *partitionFileReader) WriteStats(s *Stats) {
 	s.MaxStacktraceID = int(nodes)
 }
 
-func (p *partitionFileReader) addStacktracesChunk(h StacktraceChunkHeader) {
-	p.stacktraceChunks = append(p.stacktraceChunks, &stacktraceChunkFileReader{
-		reader: p.reader,
-		header: h,
-	})
+func (p *partitionFileReader) setStacktracesChunks(chunks []StacktraceChunkHeader) {
+	p.stacktraceChunks = make([]*stacktraceChunkFileReader, len(chunks))
+	for i, c := range chunks {
+		p.stacktraceChunks[i] = &stacktraceChunkFileReader{
+			reader: p.reader,
+			header: c,
+		}
+	}
 }
 
 func (p *partitionFileReader) stacktraceChunkReader(i uint32) *stacktraceChunkFileReader {

@@ -42,13 +42,16 @@ const (
 	_ = iota
 
 	FormatV1
+	FormatV2
+
 	unknownVersion
 )
 
 const (
 	// TOC entries are version-specific.
-	tocEntryStacktraceChunkHeaders = iota
-	tocEntries
+	tocEntryStacktraceChunkHeaders = 0
+	tocEntryPartitionHeaders       = 0
+	tocEntries                     = 1
 )
 
 // https://en.wikipedia.org/wiki/List_of_file_signatures
@@ -79,10 +82,7 @@ type IndexFile struct {
 	TOC    TOC
 
 	// Version-specific parts.
-
-	// StacktraceChunkHeaders are sorted by
-	// partition and chunk index in ascending order.
-	StacktraceChunkHeaders StacktraceChunkHeaders
+	PartitionHeaders []PartitionHeader
 
 	CRC uint32
 }
@@ -163,11 +163,21 @@ func (h *TOCEntry) unmarshal(b []byte) {
 	h.Offset = int64(binary.BigEndian.Uint64(b[8:16]))
 }
 
-// Types below define the Data section structure.
-// Currently, the data section is as follows:
-//
-// [1] StacktraceChunkHeaders // v1.
-//     TODO(kolesnikovae): Document chunking.
+type PartitionHeader struct {
+	Partition uint64
+
+	StacktraceChunks []StacktraceChunkHeader
+	Locations        []RowRangeReference
+	Mappings         []RowRangeReference
+	Functions        []RowRangeReference
+	Strings          []RowRangeReference
+}
+
+type RowRangeReference struct {
+	RowGroup uint32
+	Index    uint32
+	Rows     uint32
+}
 
 const stacktraceChunkHeaderSize = int(unsafe.Sizeof(StacktraceChunkHeader{}))
 
@@ -296,12 +306,20 @@ func OpenIndexFile(b []byte) (f IndexFile, err error) {
 		// Must never happen: the version is verified
 		// when the file header is read.
 		panic("bug: invalid version")
+
 	case FormatV1:
 		sch := f.TOC.Entries[tocEntryStacktraceChunkHeaders]
 		d := b[sch.Offset : sch.Offset+sch.Size]
-		if err = f.StacktraceChunkHeaders.UnmarshalBinary(d); err != nil {
+		var headers StacktraceChunkHeaders
+		if err = headers.UnmarshalBinary(d); err != nil {
 			return f, fmt.Errorf("unmarshal chunk header: %w", err)
 		}
+		// TODO: Convert StacktraceChunkHeaders to PartitionHeaders.
+
+	case FormatV2:
+		ph := f.TOC.Entries[tocEntryPartitionHeaders]
+		d := b[ph.Offset : ph.Offset+ph.Size]
+		// TODO: Unmarshal.
 	}
 
 	return f, nil

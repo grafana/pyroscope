@@ -38,11 +38,11 @@ type SymbolsReader interface {
 
 type Stats struct {
 	StacktracesTotal int
+	MaxStacktraceID  int
 	LocationsTotal   int
 	MappingsTotal    int
 	FunctionsTotal   int
 	StringsTotal     int
-	MaxStacktraceID  int
 }
 
 // StacktraceInserter accepts resolved locations for a given stack trace.
