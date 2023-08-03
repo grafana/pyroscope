@@ -4,7 +4,7 @@ import { faFolderOpen } from '@fortawesome/free-solid-svg-icons/faFolderOpen';
 import { faAngleRight } from '@fortawesome/free-solid-svg-icons/faAngleRight';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames/bind';
-import styles from '@pyroscope/webapp/javascript/components/AppSelector/SelectButton.module.scss';
+import styles from './SelectButton.module.scss';
 
 const cx = classNames.bind(styles);
 
@@ -53,7 +53,7 @@ const Icon = ({
   return <PyroscopeLogo className={styles.pyroscopeLogo} />;
 };
 
-export const SelectButton = ({
+const SelectButton = ({
   icon,
   name,
   isSelected,
@@ -79,3 +79,5 @@ export const SelectButton = ({
     </button>
   );
 };
+
+export default SelectButton;

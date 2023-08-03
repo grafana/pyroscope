@@ -97,7 +97,6 @@ module.exports = {
       ),
 
       // Common
-      '@pyroscope/webapp': path.resolve(__dirname, '../../og/webapp'),
       '@pyroscope/flamegraph': path.resolve(
         __dirname,
         '../../og/packages/pyroscope-flamegraph'
@@ -106,8 +105,6 @@ module.exports = {
         __dirname,
         '../../og/packages/pyroscope-models'
       ),
-
-      '@webapp': path.resolve(__dirname, '../../og/webapp/javascript'),
 
       '@phlare': path.resolve(__dirname, '../../public/app'),
       // Dependencies

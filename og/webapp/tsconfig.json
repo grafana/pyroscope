@@ -6,11 +6,11 @@
     "./javascript/**/*.ts",
     "./javascript/**/*.js",
     "./javascript/**/*.jsx"
-  ],
+, "../../public/app/components/Sidebar.spec.tsx", "../../public/app/models/appNames.ts", "../../public/app/models/flamebearer.ts", "../../public/app/models/tags.ts", "../../public/app/models/adhoc.ts", "../../public/app/redux/reducers/continuous/adhoc.ts", "../../public/app/services/serviceDiscovery.ts", "../../public/app/services/exemplarsTestData.ts", "../../public/app/services/TestData.ts", "../../public/app/redux/reducers/tracing.ts", "../../public/app/components/TimelineChart/TimelineChartWrapper.tsx"  ],
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@webapp/*": ["./javascript/*"]
+      "@phlare/*": ["./javascript/*"]
     }
   }
 }

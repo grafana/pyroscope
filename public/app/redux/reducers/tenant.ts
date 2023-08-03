@@ -1,12 +1,10 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { createAsyncThunk } from '@webapp/redux/async-thunk';
-import type { RootState } from '@webapp/redux/store';
-import {
-  isMultiTenancyEnabled,
-  tenantIDFromStorage,
-} from '@phlare/services/tenant';
+import { createAsyncThunk } from '@phlare/redux/async-thunk';
+import type { RootState } from '@phlare/redux/store';
+import { isMultiTenancyEnabled } from '@phlare/services/tenant';
 import storage from 'redux-persist/lib/storage';
 import { PersistConfig } from 'redux-persist/lib/types';
+import { tenantIDFromStorage } from '@phlare/services/storage';
 
 export const persistConfig: PersistConfig<TenantState> = {
   key: 'pyroscope:tenant',
@@ -82,8 +80,8 @@ const tenantSlice = createSlice({
   extraReducers: (builder) => {
     // This thunk will never reject
     builder.addCase(checkTenancyIsRequired.fulfilled, (state, action) => {
-      state.tenancy = action.payload.tenancy;
-      state.tenantID = action.payload.tenantID;
+      state.tenancy = action.payload?.tenancy;
+      state.tenantID = action.payload?.tenantID;
     });
     builder.addCase(checkTenancyIsRequired.pending, (state) => {
       state.tenancy = 'loading';
@@ -93,12 +91,12 @@ const tenantSlice = createSlice({
 
 export const { actions } = tenantSlice;
 
-export const selectTenancy = (state: RootState) => state.tenant.tenancy;
+export const selectTenancy = (state: RootState) => state.tenant?.tenancy;
 
 export const selectIsMultiTenant = (state: RootState) =>
-  state.tenant.tenancy === 'multi_tenant' ||
-  state.tenant.tenancy === 'wants_to_change';
+  state.tenant?.tenancy === 'multi_tenant' ||
+  state.tenant?.tenancy === 'wants_to_change';
 
-export const selectTenantID = (state: RootState) => state.tenant.tenantID;
+export const selectTenantID = (state: RootState) => state.tenant?.tenantID;
 
 export default tenantSlice.reducer;

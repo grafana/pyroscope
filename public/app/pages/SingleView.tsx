@@ -1,5 +1,5 @@
 import React from 'react';
-import ContinuousSingleView from '@webapp/pages/ContinuousSingleView';
+import ContinuousSingleView from '@phlare/pages/ContinuousSingleView';
 
 export function SingleView() {
   return <ContinuousSingleView />;

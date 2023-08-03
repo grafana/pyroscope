@@ -9,7 +9,7 @@ import TableUI, {
   useTableSort,
   BodyRow,
   TableBodyType,
-} from '@webapp/ui/Table';
+} from '@phlare/ui/Table';
 import TableTooltip from './Tooltip/TableTooltip';
 import { getFormatter, ratioToPercent, diffPercent } from './format/format';
 import {
