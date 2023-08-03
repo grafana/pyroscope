@@ -103,7 +103,7 @@ describe('pagination', () => {
     expect(items[0]).toHaveTextContent('1');
 
     // Second page
-    screen.getByLabelText('Next Page').click();
+    act(()=>screen.getByLabelText('Next Page').click());
     expect(screen.getByLabelText('Previous Page')).toBeEnabled();
     expect(screen.getByLabelText('Next Page')).toBeEnabled();
     items = await within(tbody).findAllByRole('row');
@@ -111,7 +111,7 @@ describe('pagination', () => {
     expect(items[0]).toHaveTextContent('2');
 
     // Third page
-    screen.getByLabelText('Next Page').click();
+    act(()=>screen.getByLabelText('Next Page').click());
     expect(screen.getByLabelText('Previous Page')).toBeEnabled();
     expect(screen.getByLabelText('Next Page')).toBeDisabled();
     items = await within(tbody).findAllByRole('row');
