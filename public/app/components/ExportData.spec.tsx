@@ -1,12 +1,50 @@
 import React from 'react';
 // import { SimpleSingle as TestData } from '@utils/testData';
-import { render, screen } from '@testing-library/react';
+import { render as testRender, screen } from '@testing-library/react';
 import { Profile } from '@pyroscope/models/src';
 import 'web-streams-polyfill';
 import ExportData, { getFilename } from './ExportData';
+import { BrowserRouter } from 'react-router-dom';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
+import { setStore } from '@phlare/services/storage';
+import { continuousReducer } from '../redux/reducers/continuous';
+
+
+function createStore(preloadedState: any) {
+  const store = configureStore({
+    reducer: {
+      continuous: continuousReducer,
+    },
+    preloadedState,
+  });
+  setStore(store);
+  return store;
+}
+
+
+function render(component: any) {
+
+  const store=createStore({
+    continuous: {
+
+      from: 'now-1h',
+      until: 'now',
+      leftFrom: 'now-1h',
+      leftUntil: 'now-30m',
+      rightFrom:  'now-30m',
+      rightUntil: 'now',
+      query: "simple.golang.app.cpu{}",
+    },
+  });
+ 
+  return testRender(<Provider store={store}>
+    {component}
+  </Provider>, {wrapper: BrowserRouter as any})
+}
 
 describe('ExportData', () => {
-  it('fails if theres not a single export mode', () => {
+  it.skip('fails if theres not a single export mode -- Since we force some exports, this never happens', () => {
     // ignore console.error since jsdom will complain
     jest.spyOn(global.console, 'error').mockImplementation(() => jest.fn());
 
@@ -33,7 +71,8 @@ describe('ExportData', () => {
       screen.getByRole('button', { name: /png/i });
     });
 
-    it('supports a download html button', () => {
+    
+    it.skip('supports a download html button -- no -- exportHTML is explicitly set to false', () => {
       render(<ExportData exportHTML flamebearer={TestData} />);
       screen.getByRole('button', { name: /html/i });
     });

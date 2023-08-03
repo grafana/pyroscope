@@ -87,6 +87,7 @@ type ExportDataProps = exportPprof &
   exportJSON;
 
 function biggestTimeRangeInUnixMs(state: ContinuousState) {
+  console.log("BIG", state)
   return createBiggestInterval({
     from: [state.from, state.leftFrom, state.rightFrom]
       .map(formatAsOBject)
