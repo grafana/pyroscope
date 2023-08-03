@@ -9,7 +9,7 @@ export function parse(query: Query):
     }
   | undefined {
   const regex = /(.+){(.*)}/;
-  const match = query.match(regex);
+  const match = query?.match?.(regex);
 
   if (!match) {
     // TODO: return a Nothing() ?

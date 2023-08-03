@@ -1,7 +1,7 @@
 import React from 'react';
 import { brandQuery } from '../../models/query';
 import { appToQuery, App } from '../../models/app';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { AppSelector } from './AppSelector';
 import { MENU_ITEM_ROLE } from './SelectButton';
 
@@ -107,7 +107,7 @@ describe('AppSelector', () => {
       <AppSelector apps={mockApps} onSelected={onSelected} selectedAppName="" />
     );
 
-    getByTestId('toggler').click();
+    act(()=>getByTestId('toggler').click());
 
     // checks that there are 3 groups
     expect(queryByRole(MENU_ITEM_ROLE, { name: 'single' })).toBeInTheDocument();
@@ -119,7 +119,7 @@ describe('AppSelector', () => {
     fireEvent.click(screen.getByRole(MENU_ITEM_ROLE, { name: 'single' }));
     expect(onSelected).toHaveBeenCalledWith('single');
 
-    getByTestId('toggler').click();
+    act(()=>getByTestId('toggler').click());
 
     // checks if 'triple' group expands 2 profile types
     fireEvent.click(screen.getByRole(MENU_ITEM_ROLE, { name: 'triple.app' }));
@@ -153,10 +153,10 @@ describe('AppSelector', () => {
       <AppSelector apps={mockApps} onSelected={onSelected} selectedAppName="" />
     );
 
-    getByTestId('toggler').click();
+    act(()=>getByTestId('toggler').click());
 
-    const input = screen.getByTestId('application-search');
-    fireEvent.change(input, { target: { value: 'triple.app' } });
+    const input = screen.getByTestId('app-selector-search');
+    act(()=>fireEvent.change(input, { target: { value: 'triple.app' } }));
 
     // picks groups, which either should be rendered or not
     await waitFor(() => {

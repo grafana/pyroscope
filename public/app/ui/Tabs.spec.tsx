@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React, { useState } from 'react';
 import userEvent from '@testing-library/user-event';
 import { Tab, TabPanel, Tabs } from './Tabs';
@@ -36,7 +36,8 @@ describe('Tabs', () => {
     expect(screen.getByText('Tab_1_Content')).toBeVisible();
     expect(screen.queryByText('Tab_2_Content')).toBeNull();
 
-    userEvent.click(screen.getByText('Tab_2'), { button: 1 });
+    const tab2 = screen.getByText('Tab_2');
+    act(()=>userEvent.click(tab2, { button: 1 }));
 
     expect(screen.getByText('Tab_2_Content')).toBeVisible();
     expect(screen.queryByText('Tab_1_Content')).toBeNull();

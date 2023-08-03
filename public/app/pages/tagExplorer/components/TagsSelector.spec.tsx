@@ -1,6 +1,6 @@
 import React from 'react';
 import { Provider } from 'react-redux';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { configureStore } from '@reduxjs/toolkit';
 import { BrowserRouter } from 'react-router-dom';
 
@@ -47,7 +47,7 @@ describe('Component: ViewTagsSelectLinkModal', () => {
     });
 
     // triggers click
-    screen.getByTestId('toggler').click();
+    act(()=>screen.getByTestId('toggler').click());
     const modalWithToggleEl = screen.getByTestId('modal');
 
     expect(modalWithToggleEl).toBeInTheDocument();
@@ -70,13 +70,13 @@ describe('Component: ViewTagsSelectLinkModal', () => {
     modalWithToggleEl.querySelectorAll('.tags').forEach((tagList) => {
       tagList.querySelectorAll('input').forEach((tag, i) => {
         expect(tag).toHaveAttribute('value', whereDropdownItems[i]);
-        tag.click();
+        act(()=>tag.click());
         expect(tag.parentElement).toHaveClass('selected');
       });
     });
 
     // second click
-    screen.getByTestId('toggler').click();
+    act(()=>screen.getByTestId('toggler').click());
     expect(modalWithToggleEl).not.toBeInTheDocument();
   });
 });
