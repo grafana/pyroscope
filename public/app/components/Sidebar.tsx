@@ -61,6 +61,7 @@ export function Sidebar() {
       <SidebarContent>
         <Menu iconShape="square" popperArrow>
           <MenuItem
+            data-testid="sidebar-explore-page"
             active={isRouteActive(pathname, ROUTES.EXPLORE_VIEW)}
             icon={<Icon icon={faSearch} />}
           >
@@ -72,6 +73,7 @@ export function Sidebar() {
             />
           </MenuItem>
           <MenuItem
+            data-testid="sidebar-continuous-single"
             active={isRouteActive(pathname, ROUTES.SINGLE_VIEW)}
             icon={<Icon icon={faWindowMaximize} />}
           >
@@ -83,6 +85,7 @@ export function Sidebar() {
             />
           </MenuItem>
           <MenuItem
+            data-testid="sidebar-continuous-comparison"
             active={isRouteActive(pathname, ROUTES.COMPARISON_VIEW)}
             icon={<Icon icon={faColumns} />}
           >
@@ -90,6 +93,7 @@ export function Sidebar() {
             <NavLink to={{ pathname: ROUTES.COMPARISON_VIEW, search }} exact />
           </MenuItem>
           <MenuItem
+            data-testid="sidebar-continuous-diff"
             active={isRouteActive(pathname, ROUTES.COMPARISON_DIFF_VIEW)}
             icon={<Icon icon={faChartBar} />}
           >
