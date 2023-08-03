@@ -52,6 +52,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
     To run Grafana Phlare as a monolith and with local filesystem storage, you can create your own file, or use a demo configuration file.
 
     - To create your own file, write the following YAML configuration to a file called `demo.yaml`:
+
       ```yaml
       # Do not use this configuration in production.
       # It is for demonstration purposes only.
@@ -63,6 +64,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
               labels:
                 service_name: "service-demo"
       ```
+
     - To use a demo file, download our [demo configuration](https://raw.githubusercontent.com/grafana/phlare/main/cmd/phlare/phlare.yaml):
 
       ```bash
