@@ -54,7 +54,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*pyrobpf.ProfilePyPidData, erro
 	if err != nil {
 		return nil, fmt.Errorf("opening elf %s: %w", pythonPath, err)
 	}
-	symbols, err := ef.Symbols()
+	symbols, err := ef.DynamicSymbols()
 	if err != nil {
 		return nil, fmt.Errorf("reading symbols from elf %s: %w", pythonPath, err)
 	}
