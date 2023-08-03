@@ -281,6 +281,9 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 			kStack = s.GetStack(event.KernStack)
 			s.WalkStack(sb, kStack, s.symCache.GetKallsyms(), &stats)
 		}
+		if len(sb.stack) == 1 {
+			continue // only comm .. todo skip with an option
+		}
 		lo.Reverse(sb.stack)
 		cb(labels, sb.stack, uint64(1), event.Pid)
 		s.collectMetrics(labels, &stats, sb)
