@@ -29,10 +29,10 @@ type SymbolsReader interface {
 	//
 	// Stacktraces slice might be modified during the call.
 	ResolveStacktraces(ctx context.Context, dst StacktraceInserter, stacktraces []uint32) error
-	Locations(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryLocation]
-	Mappings(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryMapping]
-	Functions(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryFunction]
-	Strings(iter.Iterator[uint32]) iter.Iterator[string]
+	Locations(context.Context, iter.Iterator[uint32]) (iter.Iterator[*schemav1.InMemoryLocation], error)
+	Mappings(context.Context, iter.Iterator[uint32]) (iter.Iterator[*schemav1.InMemoryMapping], error)
+	Functions(context.Context, iter.Iterator[uint32]) (iter.Iterator[*schemav1.InMemoryFunction], error)
+	Strings(context.Context, iter.Iterator[uint32]) (iter.Iterator[string], error)
 	WriteStats(*Stats)
 }
 

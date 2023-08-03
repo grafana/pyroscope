@@ -334,20 +334,20 @@ func (p *Partition) AppendStrings(dst []uint32, strings []string) {
 	p.strings.append(dst, strings)
 }
 
-func (p *Partition) Locations(i iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryLocation] {
-	return iter.NewSliceIndexIterator(p.locations.slice, i)
+func (p *Partition) Locations(_ context.Context, i iter.Iterator[uint32]) (iter.Iterator[*schemav1.InMemoryLocation], error) {
+	return iter.NewSliceIndexIterator(p.locations.slice, i), nil
 }
 
-func (p *Partition) Mappings(i iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryMapping] {
-	return iter.NewSliceIndexIterator(p.mappings.slice, i)
+func (p *Partition) Mappings(_ context.Context, i iter.Iterator[uint32]) (iter.Iterator[*schemav1.InMemoryMapping], error) {
+	return iter.NewSliceIndexIterator(p.mappings.slice, i), nil
 }
 
-func (p *Partition) Functions(i iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryFunction] {
-	return iter.NewSliceIndexIterator(p.functions.slice, i)
+func (p *Partition) Functions(_ context.Context, i iter.Iterator[uint32]) (iter.Iterator[*schemav1.InMemoryFunction], error) {
+	return iter.NewSliceIndexIterator(p.functions.slice, i), nil
 }
 
-func (p *Partition) Strings(i iter.Iterator[uint32]) iter.Iterator[string] {
-	return iter.NewSliceIndexIterator(p.strings.slice, i)
+func (p *Partition) Strings(_ context.Context, i iter.Iterator[uint32]) (iter.Iterator[string], error) {
+	return iter.NewSliceIndexIterator(p.strings.slice, i), nil
 }
 
 func (p *Partition) WriteStats(s *Stats) {

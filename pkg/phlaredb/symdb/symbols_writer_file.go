@@ -39,30 +39,6 @@ func NewWriter(c *Config) *Writer {
 	}
 }
 
-func (w *Writer) writeStacktraces(partition *Partition) (err error) {
-	for ci, c := range partition.stacktraces.chunks {
-		h := StacktraceChunkHeader{
-			Offset:             w.stacktraces.w.offset,
-			Size:               0, // Set later.
-			Partition:          partition.header.Partition,
-			ChunkIndex:         uint16(ci),
-			ChunkEncoding:      ChunkEncodingGroupVarint,
-			Stacktraces:        c.stacks,
-			StacktraceNodes:    c.tree.len(),
-			StacktraceMaxDepth: 0, // TODO
-			StacktraceMaxNodes: c.partition.maxNodesPerChunk,
-			CRC:                0, // Set later.
-		}
-		crc := crc32.New(castagnoli)
-		if h.Size, err = c.WriteTo(io.MultiWriter(crc, w.stacktraces)); err != nil {
-			return fmt.Errorf("writing stacktrace chunk data: %w", err)
-		}
-		h.CRC = crc.Sum32()
-		partition.header.StacktraceChunks = append(partition.header.StacktraceChunks, h)
-	}
-	return nil
-}
-
 func (w *Writer) WritePartitions(partitions []*Partition) error {
 	if err := w.createDir(); err != nil {
 		return err
@@ -141,6 +117,30 @@ func (w *Writer) WritePartitions(partitions []*Partition) error {
 		w.idx.PartitionHeaders = append(w.idx.PartitionHeaders, &partition.header)
 	}
 
+	return nil
+}
+
+func (w *Writer) writeStacktraces(partition *Partition) (err error) {
+	for ci, c := range partition.stacktraces.chunks {
+		h := StacktraceChunkHeader{
+			Offset:             w.stacktraces.w.offset,
+			Size:               0, // Set later.
+			Partition:          partition.header.Partition,
+			ChunkIndex:         uint16(ci),
+			ChunkEncoding:      ChunkEncodingGroupVarint,
+			Stacktraces:        c.stacks,
+			StacktraceNodes:    c.tree.len(),
+			StacktraceMaxDepth: 0, // TODO
+			StacktraceMaxNodes: c.partition.maxNodesPerChunk,
+			CRC:                0, // Set later.
+		}
+		crc := crc32.New(castagnoli)
+		if h.Size, err = c.WriteTo(io.MultiWriter(crc, w.stacktraces)); err != nil {
+			return fmt.Errorf("writing stacktrace chunk data: %w", err)
+		}
+		h.CRC = crc.Sum32()
+		partition.header.StacktraceChunks = append(partition.header.StacktraceChunks, h)
+	}
 	return nil
 }
 

@@ -3,17 +3,22 @@ package symdb
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
+	"path/filepath"
 	"sort"
 	"sync"
 
 	"github.com/grafana/dskit/multierror"
+	"github.com/parquet-go/parquet-go"
+	"github.com/thanos-io/thanos/pkg/block/metadata"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
@@ -27,8 +32,12 @@ type Reader struct {
 	maxConcurrentChunks  int
 	chunkFetchBufferSize int
 
-	idx        IndexFile
+	index      IndexFile
 	partitions map[uint64]*partitionFileReader
+	locations  parquetFile
+	mappings   parquetFile
+	functions  parquetFile
+	strings    parquetFile
 }
 
 const (
@@ -60,6 +69,15 @@ func Open(ctx context.Context, b objstore.BucketReader) (*Reader, error) {
 	return &r, nil
 }
 
+func (r *Reader) Close() error {
+	return multierror.New(
+		r.locations.reader.Close(),
+		r.mappings.reader.Close(),
+		r.functions.reader.Close(),
+		r.strings.reader.Close()).
+		Err()
+}
+
 func (r *Reader) open(ctx context.Context) error {
 	o, err := r.bucket.Get(ctx, IndexFileName)
 	if err != nil {
@@ -69,17 +87,48 @@ func (r *Reader) open(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if r.idx, err = ReadIndexFile(b); err != nil {
+	if r.index, err = ReadIndexFile(b); err != nil {
 		return err
 	}
-	r.partitions = make(map[uint64]*partitionFileReader, len(r.idx.PartitionHeaders))
-	for _, h := range r.idx.PartitionHeaders {
+	// TODO: Meta. We only need it for getting the file size –
+	//  should it be written to the index file?
+	if err = r.openParquetFiles(ctx, nil); err != nil {
+		return err
+	}
+
+	r.partitions = make(map[uint64]*partitionFileReader, len(r.index.PartitionHeaders))
+	for _, h := range r.index.PartitionHeaders {
 		p := &partitionFileReader{
+			header: h,
 			reader: r,
 		}
 		p.setStacktracesChunks(h.StacktraceChunks)
-		// TODO: locations, mappings, etc
+		p.locations.file = &r.locations
+		p.mappings.file = &r.mappings
+		p.functions.file = &r.functions
+		p.strings.file = &r.strings
 		r.partitions[h.Partition] = p
+	}
+
+	return nil
+}
+
+func (r *Reader) openParquetFiles(ctx context.Context, files []metadata.File) error {
+	m := map[string]*parquetFile{
+		new(schemav1.LocationPersister).Name(): &r.locations,
+		new(schemav1.MappingPersister).Name():  &r.mappings,
+		new(schemav1.FunctionPersister).Name(): &r.functions,
+		new(schemav1.StringPersister).Name():   &r.strings,
+	}
+	for _, f := range files {
+		if filepath.Ext(f.RelPath) != block.ParquetSuffix {
+			continue
+		}
+		if d, ok := m[f.RelPath]; ok {
+			if err := d.open(ctx, r.bucket, f); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -124,6 +173,7 @@ func (r *Reader) Load(ctx context.Context) error {
 			if err = c.readFrom(io.LimitReader(buf, c.header.Size)); err != nil {
 				return err
 			}
+			c.loaded = true
 		}
 	}
 
@@ -131,8 +181,14 @@ func (r *Reader) Load(ctx context.Context) error {
 }
 
 type partitionFileReader struct {
-	reader           *Reader
+	reader *Reader
+	header *PartitionHeader
+
 	stacktraceChunks []*stacktraceChunkFileReader
+	locations        parquetTable[*schemav1.InMemoryLocation, *schemav1.LocationPersister]
+	mappings         parquetTable[*schemav1.InMemoryMapping, *schemav1.MappingPersister]
+	functions        parquetTable[*schemav1.InMemoryFunction, *schemav1.FunctionPersister]
+	strings          parquetTable[string, *schemav1.StringPersister]
 }
 
 func (p *partitionFileReader) WriteStats(s *Stats) {
@@ -234,7 +290,7 @@ func (r *stacktracesResolve) resolveStacktracesChunk(dst StacktraceInserter) {
 	stacktraceLocations.put(s)
 }
 
-func (r *stacktracesResolve) release() { r.cr.reset() }
+func (r *stacktracesResolve) release() { r.cr.free() }
 
 type stacktraceChunkFileReader struct {
 	reader *Reader
@@ -291,7 +347,7 @@ func (c *stacktraceChunkFileReader) readFrom(r io.Reader) error {
 	return nil
 }
 
-func (c *stacktraceChunkFileReader) reset() {
+func (c *stacktraceChunkFileReader) free() {
 	c.m.Lock()
 	if !c.loaded {
 		c.tree = nil
@@ -299,18 +355,163 @@ func (c *stacktraceChunkFileReader) reset() {
 	c.m.Unlock()
 }
 
-func (p *partitionFileReader) Locations(i iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryLocation] {
-	panic("TODO")
+func (p *partitionFileReader) Locations(ctx context.Context, i iter.Iterator[uint32]) (iter.Iterator[*schemav1.InMemoryLocation], error) {
+	return p.locations.iterator(ctx, i)
 }
 
-func (p *partitionFileReader) Mappings(i iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryMapping] {
-	panic("TODO")
+func (p *partitionFileReader) Mappings(ctx context.Context, i iter.Iterator[uint32]) (iter.Iterator[*schemav1.InMemoryMapping], error) {
+	return p.mappings.iterator(ctx, i)
 }
 
-func (p *partitionFileReader) Functions(i iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryFunction] {
-	panic("TODO")
+func (p *partitionFileReader) Functions(ctx context.Context, i iter.Iterator[uint32]) (iter.Iterator[*schemav1.InMemoryFunction], error) {
+	return p.functions.iterator(ctx, i)
 }
 
-func (p *partitionFileReader) Strings(i iter.Iterator[uint32]) iter.Iterator[string] {
-	panic("TODO")
+func (p *partitionFileReader) Strings(ctx context.Context, i iter.Iterator[uint32]) (iter.Iterator[string], error) {
+	return p.strings.iterator(ctx, i)
+}
+
+type parquetFile struct {
+	*parquet.File
+	reader objstore.ReaderAtCloser
+	path   string
+	size   int64
+}
+
+const parquetReadBufferSize = 2 << 20 // 2MB
+
+func (f *parquetFile) open(ctx context.Context, b objstore.BucketReader, meta metadata.File) error {
+	f.path = meta.RelPath
+	f.size = meta.SizeBytes
+	if f.size == 0 {
+		attrs, err := b.Attributes(ctx, f.path)
+		if err != nil {
+			return fmt.Errorf("getting attributes for %q, %w", f.path, err)
+		}
+		f.size = attrs.Size
+	}
+	var err error
+	if f.reader, err = b.ReaderAt(ctx, f.path); err != nil {
+		return fmt.Errorf("create reader %q, %w", f.path, err)
+	}
+
+	// first try to open file, this is required otherwise OpenFile panics
+	f.File, err = parquet.OpenFile(f.reader, f.size,
+		parquet.SkipPageIndex(true),
+		parquet.SkipBloomFilters(true))
+	if err != nil {
+		return fmt.Errorf("opening parquet file %q: %w", f.path, err)
+	}
+	if f.File.NumRows() == 0 {
+		return fmt.Errorf("error parquet file %q contains no rows", f.path)
+	}
+
+	opts := []parquet.FileOption{
+		parquet.SkipBloomFilters(true), // we don't use bloom filters
+		parquet.FileReadMode(parquet.ReadModeAsync),
+		parquet.ReadBufferSize(parquetReadBufferSize),
+	}
+	// now open it for real
+	if f.File, err = parquet.OpenFile(f.reader, f.size, opts...); err != nil {
+		return fmt.Errorf("opening parquet file %q: %w", f.path, err)
+	}
+
+	return nil
+}
+
+type parquetTable[M schemav1.Models, P schemav1.Persister[M]] struct {
+	bucket    objstore.BucketReader
+	persister P
+
+	mu    sync.RWMutex
+	file  *parquetFile
+	slice []M
+}
+
+func (t *parquetTable[M, P]) iterator(ctx context.Context, i iter.Iterator[uint32]) (iter.Iterator[M], error) {
+	t.mu.RLock()
+	s := t.slice
+	t.mu.RUnlock()
+	if len(s) == 0 {
+		t.mu.Lock()
+		if len(t.slice) == 0 {
+			if err := t.fetchRows(ctx); err != nil {
+				t.mu.Unlock()
+				return nil, err
+			}
+		}
+		s = t.slice
+		t.mu.Unlock()
+	}
+	c := parquetTableIterator[M, P]{
+		Iterator: iter.NewSliceIndexIterator(s, i),
+		table:    t,
+	}
+	return c, nil
+}
+
+func (t *parquetTable[M, P]) fetchRows(_ context.Context) error {
+	if len(t.slice) != 0 {
+		return nil
+	}
+	// read all rows into memory
+	t.slice = make([]M, t.file.NumRows())
+	var offset int64
+	for _, rg := range t.file.RowGroups() {
+		rows := rg.NumRows()
+		dst := t.slice[offset : offset+rows]
+		offset += rows
+		if err := t.readRG(dst, rg); err != nil {
+			return fmt.Errorf("reading row group from parquet file %w: %q", t.file.path, err)
+		}
+	}
+	return nil
+}
+
+// parquet.CopyRows uses hardcoded buffer size:
+// defaultRowBufferSize = 42
+const inMemoryReaderRowsBufSize = 1 << 10
+
+func (t *parquetTable[M, P]) readRG(dst []M, rg parquet.RowGroup) (err error) {
+	rr := parquet.NewRowGroupReader(rg)
+	defer func() {
+		err = multierror.New(err, rr.Close()).Err()
+	}()
+	buf := make([]parquet.Row, inMemoryReaderRowsBufSize)
+	for i := 0; i < len(dst); {
+		n, err := rr.ReadRows(buf)
+		if n > 0 {
+			for _, row := range buf[:n] {
+				_, v, err := t.persister.Reconstruct(row)
+				if err != nil {
+					return err
+				}
+				dst[i] = v
+				i++
+			}
+		}
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *parquetTable[M, P]) free() {
+	t.mu.Lock()
+	t.slice = nil
+	t.mu.Unlock()
+}
+
+type parquetTableIterator[M schemav1.Models, P schemav1.Persister[M]] struct {
+	iter.Iterator[M]
+	table *parquetTable[M, P]
+}
+
+func (p parquetTableIterator[M, P]) Close() error {
+	p.table.free()
+	return nil
 }
