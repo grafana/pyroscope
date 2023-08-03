@@ -171,10 +171,14 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 		proc := s.symCache.GetProcTable(symtab.PidKey(ck.Pid))
 		if proc.Error() != nil {
 			dead[proc] = true
-			continue
+			if !proc.SeenAlive() {
+				//todo metric
+				continue
+			}
 		}
 		if proc.Python() {
 			s.pyperf.AddPythonPID(ck.Pid)
+			//todo handle error, metric both cases
 			continue
 		}
 

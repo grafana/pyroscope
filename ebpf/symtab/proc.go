@@ -25,6 +25,7 @@ type ProcTable struct {
 	comm       string
 	python     bool
 	err        error
+	seenAlive  bool
 }
 
 type ProcTableDebugInfo struct {
@@ -100,7 +101,13 @@ func (p *ProcTable) Refresh() {
 	p.err = p.refreshProcMap(procMaps)
 	if p.err != nil {
 		_ = level.Error(p.logger).Log("err", p.err)
+	} else {
+		p.seenAlive = true
 	}
+}
+
+func (p *ProcTable) SeenAlive() bool {
+	return p.seenAlive
 }
 
 func (p *ProcTable) Error() error {

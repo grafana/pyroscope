@@ -30,7 +30,7 @@ func main() {
 
 	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), l, sd.TargetsOptions{
 		TargetsOnly:        false,
-		DefaultTarget:      map[string]string{"service_name": "playground5"},
+		DefaultTarget:      map[string]string{"service_name": "playground7"},
 		ContainerCacheSize: 239,
 	})
 	if err != nil {
