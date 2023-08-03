@@ -64,6 +64,7 @@ func NewProcTable(logger log.Logger, options ProcTableOptions) *ProcTable {
 	exe := filepath.Base(exePath)
 	python := strings.HasPrefix(exe, "python")
 
+	fmt.Printf("%d %s %s\n", options.Pid, exePath, comm)
 	return &ProcTable{
 		logger:     logger,
 		file2Table: make(map[file]*ElfTable),

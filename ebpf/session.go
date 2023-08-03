@@ -177,7 +177,10 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 			}
 		}
 		if proc.Python() {
-			s.pyperf.AddPythonPID(ck.Pid)
+			err := s.pyperf.AddPythonPID(ck.Pid)
+			if err != nil {
+				_ = level.Error(s.logger).Log("err", err, "msg", "pyperf init failed", "pid", ck.Pid)
+			}
 			//todo handle error, metric both cases
 			continue
 		}
