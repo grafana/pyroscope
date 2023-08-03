@@ -184,7 +184,7 @@ func ReadPyEvent(raw []byte) (*pyrobpf.ProfilePyEvent, error) {
 	//	STACK_STATUS_ERROR = 1,
 	//	STACK_STATUS_TRUNCATED = 2,
 	//};
-	if status == 1 && len(raw) != 16 || status != 1 && len(raw) < 320 {
+	if status == 1 && len(raw) < 16 || status != 1 && len(raw) < 320 {
 		return nil, fmt.Errorf("unexpected pyevent size %d", len(raw))
 	}
 	event := &pyrobpf.ProfilePyEvent{}

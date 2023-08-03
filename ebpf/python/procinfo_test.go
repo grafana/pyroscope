@@ -50,7 +50,7 @@ func TestPythonProcInfo(t *testing.T) {
 ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]`
 	info, err := GetProcInfo(bufio.NewScanner(bytes.NewReader([]byte(maps))))
 	require.NoError(t, err)
-	require.Equal(t, info.Musl, false)
+	require.Nil(t, info.Musl)
 	require.Equal(t, info.Version, Version{3, 6, 0})
 	require.NotNil(t, info.PythonMaps)
 	require.NotNil(t, info.LibPythonMaps)
@@ -110,7 +110,7 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]`
 	info, err = GetProcInfo(bufio.NewScanner(bytes.NewReader([]byte(maps))))
 	require.NoError(t, err)
-	require.Equal(t, info.Musl, true)
+	require.NotNil(t, info.Musl)
 	require.Equal(t, info.Version, Version{3, 11, 0})
 	require.NotNil(t, info.PythonMaps)
 	require.NotNil(t, info.LibPythonMaps)
