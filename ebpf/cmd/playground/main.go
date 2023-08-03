@@ -30,7 +30,7 @@ func main() {
 
 	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), l, sd.TargetsOptions{
 		TargetsOnly:        false,
-		DefaultTarget:      map[string]string{"service_name": "playground"},
+		DefaultTarget:      map[string]string{"service_name": "playground5"},
 		ContainerCacheSize: 239,
 	})
 	if err != nil {
@@ -130,9 +130,11 @@ func ingest(profiles chan *pushv1.PushRequest) {
 func convertSessionOptions() ebpfspy.SessionOptions {
 	ms := symtab.NewMetrics(prometheus.DefaultRegisterer)
 	return ebpfspy.SessionOptions{
-		CollectUser:   true,
-		CollectKernel: true,
-		SampleRate:    sampleRate,
+		CollectUser:               true,
+		CollectKernel:             true,
+		SampleRate:                sampleRate,
+		UnknownSymbolAddress:      true,
+		UnknownSymbolModuleOffset: true,
 		CacheOptions: symtab.CacheOptions{
 			PidCacheOptions: symtab.GCacheOptions{
 				Size:       239,

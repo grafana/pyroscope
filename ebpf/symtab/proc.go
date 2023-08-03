@@ -24,6 +24,7 @@ type ProcTable struct {
 	rootFS     string
 	comm       string
 	python     bool
+	err        error
 }
 
 type ProcTableDebugInfo struct {
@@ -82,6 +83,9 @@ func (p *ProcTable) Refresh() {
 	if p.python {
 		return // we don't need modules for python until we implement collecting native python stacks
 	}
+	if p.err != nil {
+		return
+	}
 	procMaps, err := os.ReadFile(fmt.Sprintf("/proc/%d/maps", p.options.Pid))
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
@@ -90,12 +94,20 @@ func (p *ProcTable) Refresh() {
 		if p.options.Metrics != nil {
 			p.options.Metrics.ProcErrors.WithLabelValues(errorType(err)).Inc()
 		}
-		return // todo return err
+		p.err = err
+		return
 	}
-	p.refreshProcMap(procMaps)
+	p.err = p.refreshProcMap(procMaps)
+	if p.err != nil {
+		_ = level.Error(p.logger).Log("err", p.err)
+	}
 }
 
-func (p *ProcTable) refreshProcMap(procMaps []byte) {
+func (p *ProcTable) Error() error {
+	return p.err
+}
+
+func (p *ProcTable) refreshProcMap(procMaps []byte) error {
 	// todo support perf map files
 	for i := range p.ranges {
 		p.ranges[i].elfTable = nil
@@ -104,7 +116,7 @@ func (p *ProcTable) refreshProcMap(procMaps []byte) {
 	filesToKeep := make(map[file]struct{})
 	maps, err := ParseProcMapsExecutableModules(procMaps, true)
 	if err != nil {
-		return
+		return err
 	}
 
 	for _, m := range maps {
@@ -128,6 +140,7 @@ func (p *ProcTable) refreshProcMap(procMaps []byte) {
 	for _, f := range filesToDelete {
 		delete(p.file2Table, f)
 	}
+	return nil
 }
 
 func (p *ProcTable) getElfTable(r *elfRange) *ElfTable {
@@ -180,6 +193,10 @@ func (p *ProcTable) Cleanup() {
 	for _, table := range p.file2Table {
 		table.Cleanup()
 	}
+}
+
+func (p *ProcTable) Pid() int {
+	return p.options.Pid
 }
 
 func binarySearchElfRange(e elfRange, pc uint64) int {

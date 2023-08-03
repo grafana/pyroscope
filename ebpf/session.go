@@ -28,6 +28,8 @@ type SessionOptions struct {
 	CollectUser               bool
 	CollectKernel             bool
 	UnknownSymbolModuleOffset bool // use libfoo.so+0xef instead of libfoo.so for unknown symbols
+	UnknownSymbolAddress      bool // use 0xcafebabe instead of [unknown]
+	//UnknownProcessPid         bool // use pid_%d as comm instead of "" if comm is unknown
 	//PythonEnabled             bool
 	CacheOptions symtab.CacheOptions
 	SampleRate   int
@@ -161,7 +163,11 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 		if labels == nil {
 			continue
 		}
+
 		proc := s.symCache.GetProcTable(symtab.PidKey(ck.Pid))
+		if proc.Error() != nil {
+			continue
+		}
 		if proc.Python() {
 			s.pyperf.AddPythonPID(ck.Pid)
 			continue
@@ -178,7 +184,7 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 
 		stats := StackResolveStats{}
 		sb.reset()
-		sb.append(proc.Comm())
+		sb.append(s.comm(proc))
 		if s.options.CollectUser {
 			s.WalkStack(sb, uStack, proc, &stats)
 		}
@@ -202,6 +208,14 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 	return nil
 }
 
+func (s *session) comm(proc *symtab.ProcTable) string {
+	comm := proc.Comm()
+	if comm != "" {
+		return comm
+	}
+	return "pid_unknown"
+}
+
 func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
 
 	pyEvents := s.pyperf.ResetEvents()
@@ -221,7 +235,8 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 		}
 		proc := s.symCache.GetProcTable(symtab.PidKey(event.Pid))
 		sb.reset()
-		sb.append(proc.Comm())
+
+		sb.append(s.comm(proc))
 		var kStack []byte
 		if event.StackStatus == 1 {
 			//todo increase metric here or in pyperf
@@ -395,7 +410,11 @@ func (s *session) WalkStack(sb *stackBuilder, stack []byte, resolver symtab.Symb
 				}
 				stats.unknownSymbols++
 			} else {
-				name = "[unknown]"
+				if s.options.UnknownSymbolAddress {
+					name = fmt.Sprintf("%x", instructionPointer)
+				} else {
+					name = "[unknown]"
+				}
 				stats.unknownModules++
 			}
 		}
