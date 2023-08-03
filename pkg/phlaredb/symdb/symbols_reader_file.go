@@ -69,7 +69,7 @@ func (r *Reader) open(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if r.idx, err = OpenIndexFile(b); err != nil {
+	if r.idx, err = ReadIndexFile(b); err != nil {
 		return err
 	}
 	r.partitions = make(map[uint64]*partitionFileReader, len(r.idx.PartitionHeaders))

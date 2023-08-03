@@ -51,7 +51,7 @@ func Test_Writer_IndexFile(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(dir, IndexFileName))
 	require.NoError(t, err)
 
-	idx, err := OpenIndexFile(b)
+	idx, err := ReadIndexFile(b)
 	require.NoError(t, err)
 	assert.Len(t, idx.StacktraceChunkHeaders.Entries, 6)
 
