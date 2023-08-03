@@ -121,8 +121,6 @@ func (s *session) Start() error {
 }
 
 func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
-	defer s.symCache.Cleanup()
-
 	s.symCache.NextRound()
 	s.roundNumber++
 
@@ -141,6 +139,12 @@ func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value ui
 
 func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
 	sb := &stackBuilder{}
+	dead := map[*symtab.ProcTable]bool{}
+	defer func() {
+		for p := range dead {
+			s.symCache.RemoveDead(p)
+		}
+	}()
 
 	keys, values, batch, err := s.getCountsMapValues()
 	if err != nil {
@@ -166,6 +170,7 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 
 		proc := s.symCache.GetProcTable(symtab.PidKey(ck.Pid))
 		if proc.Error() != nil {
+			dead[proc] = true
 			continue
 		}
 		if proc.Python() {

@@ -124,3 +124,7 @@ func (sc *SymbolCache) PidCacheDebugInfo() GCacheDebugInfo[ProcTableDebugInfo] {
 func (sc *SymbolCache) ElfCacheDebugInfo() ElfCacheDebugInfo {
 	return sc.elfCache.DebugInfo()
 }
+
+func (sc *SymbolCache) RemoveDead(proc *ProcTable) {
+	sc.pidCache.Remove(PidKey(proc.Pid()))
+}
