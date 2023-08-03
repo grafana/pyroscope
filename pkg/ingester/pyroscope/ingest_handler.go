@@ -12,6 +12,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/pkg/errors"
 
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 
 	"github.com/grafana/pyroscope/pkg/og/convert/speedscope"
@@ -52,9 +53,10 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tenantID, _ := tenant.ExtractTenantIDFromContext(r.Context())
 	err = h.ingester.Ingest(r.Context(), input)
 	if err != nil {
-		_ = h.log.Log("msg", "pyroscope ingest", "err", err)
+		_ = h.log.Log("msg", "pyroscope ingest", "err", err, "tenant_id", tenantID)
 		var connectErr *connect.Error
 		if ok := errors.As(err, &connectErr); ok {
 			w.WriteHeader(int(connectgrpc.CodeToHTTP(connectErr.Code())))

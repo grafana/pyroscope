@@ -2,7 +2,9 @@
 title: "NodeJS"
 menuTitle: "NodeJS"
 description: "Instrumenting nodeJS applications for continuous profiling"
-weight: 30
+weight: 80
+aliases:
+  - /docs/phlare/latest/configure-client/language-sdks/nodejs
 ---
 
 # NodeJS
@@ -87,13 +89,13 @@ scrape-configs:
           env: dev
 ```
 
-## Sending data to Grafana Cloud or Phlare with Pyroscope NodeJS SDK
+## Sending data to Pyroscope OSS or Grafana Cloud with Pyroscope NodeJS SDK
 
-To configure NodeJS sdk to send data to Phlare, replace the `serverAddress` placeholder with the appropriate server URL. This could be the Grafana Cloud Pyroscope URL or your own custom Phlare server URL.
+To configure NodeJS sdk to send data to Pyroscope, replace the `serverAddress` placeholder with the appropriate server URL. This could be the Grafana Cloud Pyroscope URL or your own custom Pyroscope server URL.
 
 If you need to send data to Grafana Cloud, you’ll have to configure HTTP Basic authentication. Replace `basicAuthUser` with your Grafana Cloud stack user ID and `basicAuthPassword` with your Grafana Cloud API key.
 
-If your Phlare server has multi-tenancy enabled, you’ll need to configure a tenant ID. Replace `tenantID` with your Phlare tenant ID.
+If your Pyroscope server has multi-tenancy enabled, you’ll need to configure a tenant ID. Replace `tenantID` with your Pyroscope tenant ID.
 
 ## Troubleshooting
 

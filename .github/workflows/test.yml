@@ -23,7 +23,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.19.10
+          go-version: 1.19.12
       - name: Format
         run: make fmt check/unstaged-changes
   test:
@@ -34,7 +34,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.19.10
+          go-version: 1.19.12
       - name: Go Mod
         run: make check/go/mod
       - name: Test
@@ -48,7 +48,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.19.10
+          go-version: 1.19.12
       - name: Run linter
         run: make lint
       - name: Check helm manifests
@@ -78,7 +78,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19.10
+          go-version: 1.19.12
       - uses: actions/setup-node@v3
         with:
           node-version: lts/hydrogen
@@ -100,7 +100,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19.10
+          go-version: 1.19.12
       - uses: actions/setup-node@v3
         with:
           node-version: lts/hydrogen
@@ -116,16 +116,23 @@ jobs:
         run: |
           make docker-image/pyroscope/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
-  deploy-phlare-dev-001:
+  deploy-dev-001:
     if: github.event_name == 'push' && github.repository == 'grafana/pyroscope'
     runs-on: ubuntu-latest
     needs: [build-push]
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
+      - name: Get github app token (valid for an hour)
+        id: app-release
+        uses: tibdex/github-app-token@v1
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+          repository: grafana/deployment_tools
       - name: Deploy to fire-dev-001
         run: |
-          git config --global url."https://grafanabot:${{ secrets.GH_BOT_ACCESS_TOKEN }}@github.com/grafana/deployment_tools".insteadOf "https://github.com/grafana/deployment_tools"
+          git config --global url."https://x-access-token:$(echo "${GITHUB_TOKEN}" | xargs)@github.com/grafana/deployment_tools".insteadOf "https://github.com/grafana/deployment_tools"
           make docker-image/pyroscope/deploy-dev-001
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_BOT_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-release.outputs.token }}
