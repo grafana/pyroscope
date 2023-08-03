@@ -20,7 +20,7 @@ func Test_No_Backfill(t *testing.T) {
 		},
 	}
 
-	timeline := timeline.New(points, TestDate.UnixMilli(), TestDate.UnixMilli(), timelineStepSec)
+	timeline := timeline.New(points, TestDate.UnixMilli(), TestDate.UnixMilli()+timelineStepSec, timelineStepSec)
 
 	assert.Equal(t, TestDate.UnixMilli()/1000, timeline.StartTime)
 	assert.Equal(t, []uint64{99}, timeline.Samples)
@@ -192,7 +192,6 @@ func Test_Backfill_LastSample(t *testing.T) {
 			69, // 23000
 			0,  // 33000
 			0,  // 43000
-			91, // 53000
 		}, tl.Samples)
 	})
 
@@ -206,13 +205,124 @@ func Test_Backfill_LastSample(t *testing.T) {
 			0,  // 33000
 			0,  // 43000
 			91, // 53000
+		}, tl.Samples)
+	})
+}
 
-			// note(bryan) We current don't pad the last bucket, but we DO add
-			// a value to the last bucket if it's a series value. We need to
-			// decide some behaviors surrounding what range we want allow. For
-			// example, [start, end) vs [start, end] and do we truncate
-			// outliers?
-			// 0,  // 63000
+func Test_Backfill_Bounds(t *testing.T) {
+	step := int64(1)
+	series := &typesv1.Series{
+		Points: []*typesv1.Point{
+			//    0 ms
+			// 1000 ms
+			{Timestamp: 2000, Value: 69},
+			{Timestamp: 3000, Value: 83},
+			// 4000 ms
+			// 5000 ms
+			{Timestamp: 6000, Value: 85},
+			// 7000 ms
+			{Timestamp: 8000, Value: 91},
+			// 9000 ms
+		},
+	}
+
+	t.Run("start bounded", func(t *testing.T) {
+		startMs := int64(1000)
+		endMs := int64(10_000)
+
+		tl := timeline.New(series, startMs, endMs, step)
+		assert.Equal(t, startMs/1000, tl.StartTime)
+
+		assert.Equal(t, []uint64{
+			0,  // 1000 ms
+			69, // 2000 ms
+			83, // 3000 ms
+			0,  // 4000 ms
+			0,  // 5000 ms
+			85, // 6000 ms
+			0,  // 7000 ms
+			91, // 8000 ms
+			0,  // 9000 ms
+		}, tl.Samples)
+	})
+
+	t.Run("end bounded", func(t *testing.T) {
+		startMs := int64(0)
+		endMs := int64(9000)
+
+		tl := timeline.New(series, startMs, endMs, step)
+		assert.Equal(t, startMs/1000, tl.StartTime)
+
+		assert.Equal(t, []uint64{
+			0,  //    0 ms
+			0,  // 1000 ms
+			69, // 2000 ms
+			83, // 3000 ms
+			0,  // 4000 ms
+			0,  // 5000 ms
+			85, // 6000 ms
+			0,  // 7000 ms
+			91, // 8000 ms
+		}, tl.Samples)
+	})
+
+	t.Run("start and end bounded", func(t *testing.T) {
+		startMs := int64(1000)
+		endMs := int64(9000)
+
+		tl := timeline.New(series, startMs, endMs, step)
+		assert.Equal(t, startMs/1000, tl.StartTime)
+
+		assert.Equal(t, []uint64{
+			0,  // 1000 ms
+			69, // 2000 ms
+			83, // 3000 ms
+			0,  // 4000 ms
+			0,  // 5000 ms
+			85, // 6000 ms
+			0,  // 7000 ms
+			91, // 8000 ms
+		}, tl.Samples)
+	})
+
+	t.Run("start and end are equal", func(t *testing.T) {
+		startMs := int64(1000)
+		endMs := startMs
+
+		tl := timeline.New(series, startMs, endMs, step)
+		assert.Equal(t, startMs/1000, tl.StartTime)
+
+		assert.Equal(t, []uint64{}, tl.Samples)
+	})
+
+	t.Run("start > end are equal", func(t *testing.T) {
+		startMs := int64(9000)
+		endMs := int64(1000)
+
+		tl := timeline.New(series, startMs, endMs, step)
+		assert.Equal(t, startMs/1000, tl.StartTime)
+
+		assert.Equal(t, []uint64{}, tl.Samples)
+	})
+
+	t.Run("points are not contained within start and end", func(t *testing.T) {
+		startMs := int64(10_000)
+		endMs := int64(20_000)
+
+		tl := timeline.New(series, startMs, endMs, step)
+		assert.Equal(t, startMs/1000, tl.StartTime)
+
+		assert.Equal(t, []uint64{
+			0, // 10000 ms
+			0, // 11000 ms
+			0, // 12000 ms
+			0, // 13000 ms
+			0, // 14000 ms
+			0, // 15000 ms
+			0, // 16000 ms
+			0, // 17000 ms
+			0, // 18000 ms
+			0, // 19000 ms
 		}, tl.Samples)
 	})
 }
