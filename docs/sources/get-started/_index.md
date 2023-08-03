@@ -14,7 +14,7 @@ Choose one of the following options to get started with Grafana Phlare:
 
 - The **written tutorial** below provides a series of imperative commands to start a single Phlare process, or [monolith]({{< relref "../reference-phlare-architecture/deployment-modes/index.md#monolithic-mode" >}}), which is designed for users getting started with the project.
 
-- The following **video tutorial** uses [`docker-compose`](https://github.com/grafana/phlare/tree/main/tools/docker-compose) to declaratively deploy Phlare and Grafana.
+- The following **video tutorial** uses [`docker-compose`](https://github.com/grafana/pyroscope/tree/main/tools/docker-compose) to declaratively deploy Pyroscope and Grafana.
 
   {{< vimeo 766316030 >}}
 

@@ -149,10 +149,10 @@ The ex-member is
 
 If needed, we reserve the right to publicly announce removal.
 
-[announce]: https://github.com/grafana/phlare/discussions/categories/announcements
-[coc]: https://github.com/grafana/phlare/blob/master/CODE_OF_CONDUCT.md
-[devs]: https://github.com/grafana/phlare/discussions/categories/development
-[maintainers]: https://github.com/grafana/phlare/blob/master/MAINTAINERS.md
+[announce]: https://github.com/grafana/pyroscope/discussions/categories/announcements
+[coc]: https://github.com/grafana/pyroscope/blob/master/CODE_OF_CONDUCT.md
+[devs]: https://github.com/grafana/pyroscope/discussions/categories/development
+[maintainers]: https://github.com/grafana/pyroscope/blob/master/MAINTAINERS.md
 [rough]: https://tools.ietf.org/html/rfc7282
 [team]: https://groups.google.com/g/phlare-team
-[users]: https://github.com/grafana/phlare/discussions
+[users]: https://github.com/grafana/pyroscope/discussions

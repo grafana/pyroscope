@@ -12,9 +12,9 @@ import (
 	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
-	"github.com/grafana/pyroscope/pkg/og/util/varint"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	"github.com/grafana/pyroscope/pkg/og/util/varint"
 )
 
 func MergeBatchMergeStacktraces(responses ...*ingestv1.MergeProfilesStacktracesResult) *ingestv1.MergeProfilesStacktracesResult {

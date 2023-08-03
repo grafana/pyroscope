@@ -52,7 +52,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
    helm repo update
    ```
 
-   > **Note:** The Helm chart at [https://grafana.github.io/helm-charts](https://grafana.github.io/helm-charts) is a publication of the source code at [**grafana/phlare**](https://github.com/grafana/phlare/tree/main/operations/phlare/helm/phlare).
+   > **Note:** The Helm chart at [https://grafana.github.io/helm-charts](https://grafana.github.io/helm-charts) is a publication of the source code at [**grafana/pyroscope**](https://github.com/grafana/pyroscope/tree/next/operations/phlare/helm/phlare).
 
 1. Install Grafana Phlare using the Helm chart using one of the following options:
 
@@ -66,7 +66,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
 
    ```bash
    # Gather the default config for micro-services
-   curl -LO values-micro-services.yaml https://raw.githubusercontent.com/grafana/phlare/main/operations/phlare/helm/phlare/values-micro-services.yaml
+   curl -LO values-micro-services.yaml https://raw.githubusercontent.com/grafana/pyroscope/main/operations/phlare/helm/phlare/values-micro-services.yaml
    helm -n phlare-test install phlare grafana/phlare --values values-micro-services.yaml
    ```
 

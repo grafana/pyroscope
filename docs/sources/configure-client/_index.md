@@ -45,7 +45,7 @@ The decision of which mode to use depends on your specific use case and requirem
 To get started choose one of the integrations below:
 <table>
    <tr>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/"><img src="https://github.com/grafana/phlare/assets/23323466/1d81f842-5fa0-415d-8d77-aff175a6266f" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/"><img src="https://github-production-user-asset-6210df.s3.amazonaws.com/223048/257522425-48683963-91ae-4caf-8c52-ce131e25bd65.png" width="100px;" alt=""/><br />
         <b>Grafana Agent<br />(Go Pull Mode)</b></a><br />
           <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent" title="examples">Examples</a>
