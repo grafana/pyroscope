@@ -16,7 +16,7 @@ func New(series *v1.Series, startMs int64, endMs int64, durationDeltaSec int64) 
 	// ms to seconds
 	startSec := startMs / 1000
 	points := series.GetPoints()
-	res := make([]uint64, len(points))
+	res := make([]uint64, 0, sizeToBackfill(startMs, endMs, durationDeltaSec))
 
 	timeline := &flamebearer.FlamebearerTimelineV1{
 		StartTime:     startSec,
@@ -26,46 +26,32 @@ func New(series *v1.Series, startMs int64, endMs int64, durationDeltaSec int64) 
 
 	if len(points) < 1 {
 		if n := sizeToBackfill(startMs, endMs, durationDeltaSec); n > 0 {
-			timeline.Samples = make([]uint64, n)
+			timeline.Samples = res[:n]
 		}
 		return timeline
 	}
 
-	i := 0
+	// Backfill before the first data point.
+	firstAvailableData := points[0]
+	if n := sizeToBackfill(startMs, firstAvailableData.Timestamp, durationDeltaSec); n > 0 {
+		res = res[:len(res)+int(n)]
+	}
+
 	prev := points[0]
 	for _, curr := range points {
-		res[i] = uint64(curr.Value)
-
-		backfillNum := sizeToBackfill(prev.Timestamp, curr.Timestamp, durationDeltaSec)
-		if backfillNum > 0 {
-			// Subtract 1 to account for the current value already being added
-			// to the result slice.
-			backfillNum--
-
+		if n := sizeToBackfill(prev.Timestamp, curr.Timestamp, durationDeltaSec) - 1; n > 0 {
 			// Insert backfill.
-			bf := make([]uint64, backfillNum)
-			res = append(res[:i], append(bf, res[i:]...)...)
-
-		} else {
-			backfillNum = 0
+			res = res[:len(res)+int(n)]
 		}
 
-		i += int(backfillNum) + 1
+		res = append(res, uint64(curr.Value))
 		prev = curr
 	}
 
-	// Backfill with 0s for data that's not available
-	firstAvailableData := points[0]
+	// Backfill after the last data point.
 	lastAvailableData := points[len(points)-1]
-
-	if n := sizeToBackfill(startMs, firstAvailableData.Timestamp, durationDeltaSec); n > 0 {
-		bf := make([]uint64, n)
-		res = append(bf, res...)
-	}
-
 	if n := sizeToBackfill(lastAvailableData.Timestamp, endMs, durationDeltaSec) - 1; n > 0 {
-		bf := make([]uint64, n)
-		res = append(res, bf...)
+		res = res[:len(res)+int(n)]
 	}
 
 	timeline.Samples = res
