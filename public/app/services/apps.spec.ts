@@ -664,8 +664,8 @@ describe('appsService', () => {
     const res = await fetchApps();
     expect(res.isOk).toBe(true);
     expect(res.value).toMatchInlineSnapshot(`
-      [
-        {
+      Array [
+        Object {
           "__name__": "memory",
           "__name_id__": "pyroscope_app",
           "__profile_type__": "memory:alloc_objects:count::",
@@ -673,7 +673,7 @@ describe('appsService', () => {
           "name": "simple.golang.app",
           "pyroscope_app": "simple.golang.app",
         },
-        {
+        Object {
           "__name__": "memory",
           "__name_id__": "pyroscope_app",
           "__profile_type__": "memory:alloc_objects:count::",
@@ -681,7 +681,7 @@ describe('appsService', () => {
           "name": "simple.golang.app2",
           "pyroscope_app": "simple.golang.app2",
         },
-        {
+        Object {
           "__name__": "memory",
           "__name_id__": "pyroscope_app",
           "__profile_type__": "memory:alloc_space:bytes::",
@@ -689,7 +689,7 @@ describe('appsService', () => {
           "name": "simple.golang.app",
           "pyroscope_app": "simple.golang.app",
         },
-        {
+        Object {
           "__name__": "memory",
           "__name_id__": "pyroscope_app",
           "__profile_type__": "memory:alloc_space:bytes::",
@@ -697,7 +697,7 @@ describe('appsService', () => {
           "name": "simple.golang.app2",
           "pyroscope_app": "simple.golang.app2",
         },
-        {
+        Object {
           "__name__": "memory",
           "__name_id__": "pyroscope_app",
           "__profile_type__": "memory:inuse_objects:count::",
@@ -705,7 +705,7 @@ describe('appsService', () => {
           "name": "simple.golang.app",
           "pyroscope_app": "simple.golang.app",
         },
-        {
+        Object {
           "__name__": "memory",
           "__name_id__": "pyroscope_app",
           "__profile_type__": "memory:inuse_objects:count::",
@@ -713,7 +713,7 @@ describe('appsService', () => {
           "name": "simple.golang.app2",
           "pyroscope_app": "simple.golang.app2",
         },
-        {
+        Object {
           "__name__": "memory",
           "__name_id__": "pyroscope_app",
           "__profile_type__": "memory:inuse_space:bytes::",
@@ -721,7 +721,7 @@ describe('appsService', () => {
           "name": "simple.golang.app",
           "pyroscope_app": "simple.golang.app",
         },
-        {
+        Object {
           "__name__": "memory",
           "__name_id__": "pyroscope_app",
           "__profile_type__": "memory:inuse_space:bytes::",
@@ -729,7 +729,7 @@ describe('appsService', () => {
           "name": "simple.golang.app2",
           "pyroscope_app": "simple.golang.app2",
         },
-        {
+        Object {
           "__name__": "process_cpu",
           "__name_id__": "pyroscope_app",
           "__profile_type__": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
@@ -737,7 +737,7 @@ describe('appsService', () => {
           "name": "simple.golang.app",
           "pyroscope_app": "simple.golang.app",
         },
-        {
+        Object {
           "__name__": "process_cpu",
           "__name_id__": "pyroscope_app",
           "__profile_type__": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
