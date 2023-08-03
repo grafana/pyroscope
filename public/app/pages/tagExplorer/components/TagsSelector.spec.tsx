@@ -47,7 +47,7 @@ describe('Component: ViewTagsSelectLinkModal', () => {
     });
 
     // triggers click
-    act(()=>screen.getByTestId('toggler').click());
+    act(() => screen.getByTestId('toggler').click());
     const modalWithToggleEl = screen.getByTestId('modal');
 
     expect(modalWithToggleEl).toBeInTheDocument();
@@ -70,13 +70,13 @@ describe('Component: ViewTagsSelectLinkModal', () => {
     modalWithToggleEl.querySelectorAll('.tags').forEach((tagList) => {
       tagList.querySelectorAll('input').forEach((tag, i) => {
         expect(tag).toHaveAttribute('value', whereDropdownItems[i]);
-        act(()=>tag.click());
+        act(() => tag.click());
         expect(tag.parentElement).toHaveClass('selected');
       });
     });
 
     // second click
-    act(()=>screen.getByTestId('toggler').click());
+    act(() => screen.getByTestId('toggler').click());
     expect(modalWithToggleEl).not.toBeInTheDocument();
   });
 });

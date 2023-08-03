@@ -1,9 +1,9 @@
-import type { StoreType } from "@phlare/redux/store";
+import type { StoreType } from '@phlare/redux/store';
 
 let _store: StoreType | null = null;
 
 export function setStore(store: StoreType) {
-  _store = store
+  _store = store;
 }
 
 export function getStore() {

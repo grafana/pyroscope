@@ -37,7 +37,7 @@ describe('Tabs', () => {
     expect(screen.queryByText('Tab_2_Content')).toBeNull();
 
     const tab2 = screen.getByText('Tab_2');
-    act(()=>userEvent.click(tab2, { button: 1 }));
+    act(() => userEvent.click(tab2, { button: 1 }));
 
     expect(screen.getByText('Tab_2_Content')).toBeVisible();
     expect(screen.queryByText('Tab_1_Content')).toBeNull();

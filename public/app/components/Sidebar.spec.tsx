@@ -17,7 +17,7 @@ function createStore(preloadedState: any) {
     preloadedState,
   });
 
-  setStore(store)
+  setStore(store);
   return store;
 }
 
