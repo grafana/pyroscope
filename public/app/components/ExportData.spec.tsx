@@ -10,7 +10,6 @@ import { configureStore } from '@reduxjs/toolkit';
 import { setStore } from '@phlare/services/storage';
 import { continuousReducer } from '../redux/reducers/continuous';
 
-
 function createStore(preloadedState: any) {
   const store = configureStore({
     reducer: {
@@ -22,25 +21,22 @@ function createStore(preloadedState: any) {
   return store;
 }
 
-
 function render(component: any) {
-
-  const store=createStore({
+  const store = createStore({
     continuous: {
-
       from: 'now-1h',
       until: 'now',
       leftFrom: 'now-1h',
       leftUntil: 'now-30m',
-      rightFrom:  'now-30m',
+      rightFrom: 'now-30m',
       rightUntil: 'now',
-      query: "simple.golang.app.cpu{}",
+      query: 'simple.golang.app.cpu{}',
     },
   });
- 
-  return testRender(<Provider store={store}>
-    {component}
-  </Provider>, {wrapper: BrowserRouter as any})
+
+  return testRender(<Provider store={store}>{component}</Provider>, {
+    wrapper: BrowserRouter as any,
+  });
 }
 
 describe('ExportData', () => {
@@ -71,7 +67,6 @@ describe('ExportData', () => {
       screen.getByRole('button', { name: /png/i });
     });
 
-    
     it.skip('supports a download html button -- no -- exportHTML is explicitly set to false', () => {
       render(<ExportData exportHTML flamebearer={TestData} />);
       screen.getByRole('button', { name: /html/i });
