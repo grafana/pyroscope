@@ -1,5 +1,5 @@
 import { requestWithOrgID } from '@phlare/services/base';
-import * as tenantSvc from '@phlare/services/tenant';
+import * as storageSvc from '@phlare/services/storage';
 
 jest.mock('@phlare/services/base', () => {
   return {
@@ -8,7 +8,7 @@ jest.mock('@phlare/services/base', () => {
   };
 });
 
-jest.mock('@phlare/services/tenant', () => {
+jest.mock('@phlare/services/storage', () => {
   return {
     __esModule: true,
     tenantIDFromStorage: jest.fn(),
@@ -50,7 +50,7 @@ describe('base', () => {
   });
 
   it('does not set X-Scope-OrgID if tenantID is not available', () => {
-    const tenantIdSpy = jest.spyOn(tenantSvc, 'tenantIDFromStorage');
+    const tenantIdSpy = jest.spyOn(storageSvc, 'tenantIDFromStorage');
 
     tenantIdSpy.mockReturnValueOnce('');
 
@@ -62,7 +62,7 @@ describe('base', () => {
   });
 
   it('sets X-Scope-OrgID if tenantID is available', () => {
-    const tenantIdSpy = jest.spyOn(tenantSvc, 'tenantIDFromStorage');
+    const tenantIdSpy = jest.spyOn(storageSvc, 'tenantIDFromStorage');
 
     tenantIdSpy.mockReturnValueOnce('myid');
 
