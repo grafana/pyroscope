@@ -420,6 +420,7 @@ func (f *parquetFile) open(ctx context.Context, b objstore.BucketReader, meta me
 }
 
 type parquetTable[M schemav1.Models, P schemav1.Persister[M]] struct {
+	headers   []RowRangeReference
 	bucket    objstore.BucketReader
 	persister P
 
@@ -454,16 +455,24 @@ func (t *parquetTable[M, P]) fetchRows(_ context.Context) error {
 	if len(t.slice) != 0 {
 		return nil
 	}
-	// read all rows into memory
-	t.slice = make([]M, t.file.NumRows())
-	var offset int64
-	for _, rg := range t.file.RowGroups() {
-		rows := rg.NumRows()
-		dst := t.slice[offset : offset+rows]
-		offset += rows
+	var s uint32
+	for _, h := range t.headers {
+		s += h.Rows
+	}
+	t.slice = make([]M, s)
+	var offset int
+	rgs := t.file.RowGroups()
+	for _, h := range t.headers {
+		rg := rgs[h.RowGroup]
+		rows := rg.Rows()
+		if err := rows.SeekToRow(int64(h.Index)); err != nil {
+			return err
+		}
+		dst := t.slice[offset : offset+int(h.Rows)]
 		if err := t.readRG(dst, rg); err != nil {
 			return fmt.Errorf("reading row group from parquet file %w: %q", t.file.path, err)
 		}
+		offset += int(h.Rows)
 	}
 	return nil
 }
