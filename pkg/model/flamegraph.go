@@ -128,7 +128,7 @@ func ExportToFlamebearer(fg *querierv1.FlameGraph, profileType *typesv1.ProfileT
 		unit = metadata.ObjectsUnits
 	case "cpu":
 		unit = metadata.SamplesUnits
-		sampleRate = uint32(100000000)
+		sampleRate = uint32(1_000_000_000)
 
 	}
 	levels := make([][]int, len(fg.Levels))
