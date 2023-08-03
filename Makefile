@@ -70,7 +70,7 @@ build-dev: ## Do a dev build (without requiring the frontend)
 	$(MAKE) EMBEDASSETS="" go/bin
 
 .PHONY: frontend/build
-frontend/build: frontend/deps ## Do a production build for the frontend
+frontend/build: ## Do a production build for the frontend
 	yarn build
 
 .PHONY: frontend/deps
