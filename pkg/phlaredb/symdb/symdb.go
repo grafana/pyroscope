@@ -109,7 +109,8 @@ func (s *SymDB) SymbolsWriter(partition uint64) *Partition {
 
 func (s *SymDB) newPartition(partition uint64) *Partition {
 	p := Partition{
-		name:        partition,
+		// name:        partition,
+		header:      PartitionHeader{Partition: partition},
 		stacktraces: newStacktracesPartition(s.config.Stacktraces.MaxNodesPerChunk),
 	}
 	p.strings.init()
@@ -198,7 +199,7 @@ func (s *SymDB) Flush() error {
 	}
 	s.m.RUnlock()
 	sort.Slice(partitions, func(i, j int) bool {
-		return partitions[i].name < partitions[j].name
+		return partitions[i].header.Partition < partitions[j].header.Partition
 	})
 
 	if err := s.writer.WritePartitions(partitions); err != nil {

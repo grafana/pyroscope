@@ -21,10 +21,10 @@ type Writer struct {
 	idx         IndexFile
 	stacktraces *fileWriter
 	// Parquet tables.
-	mappings  parquetWriter[*v1.InMemoryMapping, v1.Persister[*v1.InMemoryMapping]]
-	functions parquetWriter[*v1.InMemoryFunction, v1.Persister[*v1.InMemoryFunction]]
-	locations parquetWriter[*v1.InMemoryLocation, v1.Persister[*v1.InMemoryLocation]]
-	strings   parquetWriter[string, v1.Persister[string]]
+	mappings  parquetWriter[*v1.InMemoryMapping, *v1.MappingPersister]
+	functions parquetWriter[*v1.InMemoryFunction, *v1.FunctionPersister]
+	locations parquetWriter[*v1.InMemoryLocation, *v1.LocationPersister]
+	strings   parquetWriter[string, *v1.StringPersister]
 }
 
 func NewWriter(c *Config) *Writer {
@@ -40,11 +40,11 @@ func NewWriter(c *Config) *Writer {
 }
 
 func (w *Writer) writeStacktraces(partition *Partition) (err error) {
-	for ci, c := range partition.stacktraces.stacktraceChunks {
+	for ci, c := range partition.stacktraces.chunks {
 		h := StacktraceChunkHeader{
 			Offset:             w.stacktraces.w.offset,
 			Size:               0, // Set later.
-			Partition:          partition.name,
+			Partition:          partition.header.Partition,
 			ChunkIndex:         uint16(ci),
 			ChunkEncoding:      ChunkEncodingGroupVarint,
 			Stacktraces:        c.stacks,
@@ -138,7 +138,7 @@ func (w *Writer) WritePartitions(partitions []*Partition) error {
 	}
 
 	for _, partition := range partitions {
-		w.idx.PartitionHeaders = append(w.idx.PartitionHeaders, partition.header)
+		w.idx.PartitionHeaders = append(w.idx.PartitionHeaders, &partition.header)
 	}
 
 	return nil

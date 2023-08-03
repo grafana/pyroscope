@@ -18,7 +18,6 @@ var (
 )
 
 type Partition struct {
-	name   uint64
 	header PartitionHeader
 
 	stacktraces *stacktracesPartition
@@ -45,19 +44,18 @@ func (p *Partition) ResolveChunk(dst StacktraceInserter, sr StacktracesRange) er
 type stacktracesPartition struct {
 	maxNodesPerChunk uint32
 
-	mu                 sync.RWMutex
-	stacktraceHashToID map[uint64]uint32
-	stacktraceChunks   []*stacktraceChunk
-	// Headers of already written stack trace chunks.
-	stacktraceChunkHeaders []StacktraceChunkHeader
+	mu        sync.RWMutex
+	hashToIdx map[uint64]uint32
+	chunks    []*stacktraceChunk
+	header    []StacktraceChunkHeader
 }
 
 func newStacktracesPartition(maxNodesPerChunk uint32) *stacktracesPartition {
 	p := &stacktracesPartition{
-		maxNodesPerChunk:   maxNodesPerChunk,
-		stacktraceHashToID: make(map[uint64]uint32, defaultStacktraceTreeSize/2),
+		maxNodesPerChunk: maxNodesPerChunk,
+		hashToIdx:        make(map[uint64]uint32, defaultStacktraceTreeSize/2),
 	}
-	p.stacktraceChunks = append(p.stacktraceChunks, &stacktraceChunk{
+	p.chunks = append(p.chunks, &stacktraceChunk{
 		tree:      newStacktraceTree(defaultStacktraceTreeSize),
 		partition: p,
 	})
@@ -67,8 +65,8 @@ func newStacktracesPartition(maxNodesPerChunk uint32) *stacktracesPartition {
 func (p *stacktracesPartition) size() uint64 {
 	p.mu.RLock()
 	// TODO: map footprint isn't accounted.
-	v := len(p.stacktraceChunkHeaders) * stacktraceChunkHeaderSize
-	for _, c := range p.stacktraceChunks {
+	v := len(p.header) * stacktraceChunkHeaderSize
+	for _, c := range p.chunks {
 		v += stacktraceTreeNodeSize * cap(c.tree.nodes)
 	}
 	p.mu.RUnlock()
@@ -82,7 +80,7 @@ func (p *stacktracesPartition) stacktraceChunkForInsert(x int) *stacktraceChunk 
 	c := p.currentStacktraceChunk()
 	if n := c.tree.len() + uint32(x); p.maxNodesPerChunk > 0 && n >= p.maxNodesPerChunk {
 		// Calculate number of stacks in the chunk.
-		s := uint32(len(p.stacktraceHashToID))
+		s := uint32(len(p.hashToIdx))
 		c.stacks = s - c.stacks
 		c = &stacktraceChunk{
 			partition: p,
@@ -90,7 +88,7 @@ func (p *stacktracesPartition) stacktraceChunkForInsert(x int) *stacktraceChunk 
 			stid:      c.stid + p.maxNodesPerChunk,
 			stacks:    s,
 		}
-		p.stacktraceChunks = append(p.stacktraceChunks, c)
+		p.chunks = append(p.chunks, c)
 	}
 	return c
 }
@@ -98,15 +96,15 @@ func (p *stacktracesPartition) stacktraceChunkForInsert(x int) *stacktraceChunk 
 // stacktraceChunkForRead returns a chunk for reads.
 // Must be called with the stracktraces mutex read lock held.
 func (p *stacktracesPartition) stacktraceChunkForRead(i int) (*stacktraceChunk, bool) {
-	if i < len(p.stacktraceChunks) {
-		return p.stacktraceChunks[i], true
+	if i < len(p.chunks) {
+		return p.chunks[i], true
 	}
 	return nil, false
 }
 
 func (p *stacktracesPartition) currentStacktraceChunk() *stacktraceChunk {
 	// Assuming there is at least one chunk.
-	return p.stacktraceChunks[len(p.stacktraceChunks)-1]
+	return p.chunks[len(p.chunks)-1]
 }
 
 var seed = maphash.MakeSeed()
@@ -136,7 +134,7 @@ func (p *stacktracesPartition) append(dst []uint32, s []*schemav1.Stacktrace) {
 
 	p.mu.RLock()
 	for i, x := range s {
-		if dst[i], found = p.stacktraceHashToID[hashLocations(x.LocationIDs)]; !found {
+		if dst[i], found = p.hashToIdx[hashLocations(x.LocationIDs)]; !found {
 			misses++
 		}
 	}
@@ -183,7 +181,7 @@ func (p *stacktracesPartition) append(dst []uint32, s []*schemav1.Stacktrace) {
 		// we don't need to check the map.
 		id = t.insert(x) + j
 		h := hashLocations(x)
-		p.stacktraceHashToID[h] = id
+		p.hashToIdx[h] = id
 		dst[i] = id
 	}
 }
@@ -356,7 +354,7 @@ func (p *Partition) WriteStats(s *Stats) {
 	p.stacktraces.mu.RLock()
 	c := p.stacktraces.currentStacktraceChunk()
 	s.MaxStacktraceID = int(c.stid + c.tree.len())
-	s.StacktracesTotal = len(p.stacktraces.stacktraceHashToID)
+	s.StacktracesTotal = len(p.stacktraces.hashToIdx)
 	p.stacktraces.mu.RUnlock()
 
 	p.mappings.lock.RLock()

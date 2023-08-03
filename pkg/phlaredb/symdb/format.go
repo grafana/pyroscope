@@ -201,6 +201,7 @@ func (h *PartitionHeaders) WriteTo(dst io.Writer) (_ int64, err error) {
 
 func (h *PartitionHeaders) Unmarshal(b []byte) error {
 	partitions := binary.BigEndian.Uint32(b[0:4])
+	b = b[4:]
 	*h = make(PartitionHeaders, partitions)
 	for i := range *h {
 		var p PartitionHeader
@@ -243,7 +244,7 @@ func (h *PartitionHeader) marshal(buf []byte) {
 	binary.BigEndian.PutUint32(buf[24:28], uint32(len(h.Strings)))
 	n := 28
 	for i := range h.StacktraceChunks {
-		h.StacktraceChunks[i].marshal(buf)
+		h.StacktraceChunks[i].marshal(buf[n:])
 		n += stacktraceChunkHeaderSize
 	}
 	n += marshalRowRangeReferences(buf[n:], h.Locations)

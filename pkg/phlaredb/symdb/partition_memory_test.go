@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -47,17 +46,17 @@ func Test_StacktraceAppender_shards(t *testing.T) {
 
 		require.Len(t, db.partitions, 1)
 		m := db.partitions[0]
-		require.Len(t, m.stacktraceChunks, 3)
+		require.Len(t, m.stacktraces.chunks, 3)
 
-		c1 := m.stacktraceChunks[0]
+		c1 := m.stacktraces.chunks[0]
 		assert.Equal(t, uint32(0), c1.stid)
 		assert.Equal(t, uint32(4), c1.tree.len())
 
-		c2 := m.stacktraceChunks[1]
+		c2 := m.stacktraces.chunks[1]
 		assert.Equal(t, uint32(7), c2.stid)
 		assert.Equal(t, uint32(5), c2.tree.len())
 
-		c3 := m.stacktraceChunks[2]
+		c3 := m.stacktraces.chunks[2]
 		assert.Equal(t, uint32(14), c3.stid)
 		assert.Equal(t, uint32(5), c3.tree.len())
 	})
@@ -77,9 +76,9 @@ func Test_StacktraceAppender_shards(t *testing.T) {
 
 		require.Len(t, db.partitions, 1)
 		m := db.partitions[0]
-		require.Len(t, m.stacktraceChunks, 1)
+		require.Len(t, m.stacktraces.chunks, 1)
 
-		c1 := m.stacktraceChunks[0]
+		c1 := m.stacktraces.chunks[0]
 		assert.Equal(t, uint32(0), c1.stid)
 		assert.Equal(t, uint32(7), c1.tree.len())
 	})
@@ -257,7 +256,7 @@ func Test_Stacktraces_append_resolve(t *testing.T) {
 		*/
 		sids := make([]uint32, len(stacktraces))
 		w.AppendStacktraces(sids, stacktraces)
-		require.Len(t, db.partitions[0].stacktraceChunks, 6)
+		require.Len(t, db.partitions[0].stacktraces.chunks, 6)
 
 		t.Run("adjacent shards at beginning", func(t *testing.T) {
 			r, _ := db.SymbolsReader(0)
@@ -289,12 +288,6 @@ func Test_Stacktraces_append_resolve(t *testing.T) {
 			require.NoError(t, r.ResolveStacktraces(ctx, dst, []uint32{11, 32}))
 		})
 	})
-}
-
-type mockStacktraceInserter struct{ mock.Mock }
-
-func (m *mockStacktraceInserter) InsertStacktrace(stacktraceID uint32, locations []int32) {
-	m.Called(stacktraceID, locations)
 }
 
 func Test_hashLocations(t *testing.T) {

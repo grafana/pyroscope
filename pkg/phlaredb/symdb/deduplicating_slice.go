@@ -85,7 +85,7 @@ func (p *Partition) WriteProfileSymbols(profile *profilev1.Profile) []schemav1.I
 	profiles := make([]schemav1.InMemoryProfile, len(samplesPerType))
 	for idxType := range samplesPerType {
 		profiles[idxType] = schemav1.InMemoryProfile{
-			StacktracePartition: p.name,
+			StacktracePartition: p.header.Partition,
 			Samples:             samplesPerType[idxType],
 			DropFrames:          profile.DropFrames,
 			KeepFrames:          profile.KeepFrames,
@@ -340,7 +340,7 @@ func (s *deduplicatingSlice[M, K, H]) append(dst []uint32, elems []M) {
 }
 
 type parquetWriter[M schemav1.Models, P schemav1.Persister[M]] struct {
-	persister schemav1.Persister[M]
+	persister P
 	cfg       ParquetConfig
 
 	currentRowGroup uint32
@@ -350,7 +350,7 @@ type parquetWriter[M schemav1.Models, P schemav1.Persister[M]] struct {
 	rowsBatch []parquet.Row
 	rowRanges []RowRangeReference
 
-	writer *parquet.GenericWriter[M]
+	writer *parquet.GenericWriter[P]
 	file   *os.File
 }
 
@@ -358,17 +358,14 @@ func (s *parquetWriter[M, P]) init(dir string, c ParquetConfig) error {
 	s.cfg = c
 
 	s.rowsBatch = make([]parquet.Row, 0, 128)
-	s.buffer = parquet.NewBuffer(
-		s.persister.Schema(),
-		parquet.ColumnBufferCapacity(s.cfg.MaxBufferRowCount),
-	)
+	s.buffer = parquet.NewBuffer(s.persister.Schema(), parquet.ColumnBufferCapacity(s.cfg.MaxBufferRowCount))
 
 	file, err := os.OpenFile(filepath.Join(dir, s.persister.Name()+block.ParquetSuffix), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return err
 	}
 	s.file = file
-	s.writer = parquet.NewGenericWriter[M](file, s.persister.Schema(),
+	s.writer = parquet.NewGenericWriter[P](file, s.persister.Schema(),
 		parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "phlaredb-parquet-buffers*")),
 		parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
 		parquet.PageBufferSize(3*1024*1024),
