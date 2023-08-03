@@ -1,7 +1,6 @@
 package symtab
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path"
@@ -23,7 +22,6 @@ type ProcTable struct {
 	file2Table map[file]*ElfTable
 	options    ProcTableOptions
 	rootFS     string
-	exe        string
 	comm       string
 	python     bool
 }
@@ -59,20 +57,18 @@ type ProcTableOptions struct {
 }
 
 func NewProcTable(logger log.Logger, options ProcTableOptions) *ProcTable {
-	cmdline, _ := os.ReadFile(fmt.Sprintf("/proc/%d/cmdline", options.Pid))
-	exe := ""
-	if i := bytes.IndexByte(cmdline, 0); i != -1 {
-		exe = string(cmdline[:i])
-	}
-	comm := filepath.Base(exe)
+	comm, _ := os.ReadFile(fmt.Sprintf("/proc/%d/comm", options.Pid))
+	exePath, _ := os.Readlink(fmt.Sprintf("/proc/%d/exe", options.Pid))
+	exe := filepath.Base(exePath)
+	python := strings.HasPrefix(exe, "python")
+
 	return &ProcTable{
 		logger:     logger,
 		file2Table: make(map[file]*ElfTable),
 		options:    options,
 		rootFS:     path.Join("/proc", strconv.Itoa(options.Pid), "root"),
-		exe:        exe,
-		comm:       comm,
-		python:     strings.HasPrefix(comm, "python"),
+		comm:       string(comm),
+		python:     python,
 	}
 }
 

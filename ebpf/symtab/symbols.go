@@ -5,6 +5,7 @@ package symtab
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -88,6 +89,9 @@ func createKallsyms() (*SymbolTab, error) {
 func (sc *SymbolCache) GetProcTable(pid PidKey) *ProcTable {
 	cached := sc.pidCache.Get(pid)
 	if cached != nil {
+		if strings.HasPrefix(cached.Comm(), ".") {
+			fmt.Println("qwe")
+		}
 		return cached
 	}
 

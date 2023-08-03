@@ -2,23 +2,26 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
-	"mime/multipart"
-	"net/http"
 	"os"
-	"strings"
 	"time"
 
+	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	pushv1 "github.com/grafana/phlare/api/gen/proto/go/push/v1"
+	"github.com/grafana/phlare/api/gen/proto/go/push/v1/pushv1connect"
+	typesv1 "github.com/grafana/phlare/api/gen/proto/go/types/v1"
 	ebpfspy "github.com/grafana/phlare/ebpf"
 	"github.com/grafana/phlare/ebpf/pprof"
 	"github.com/grafana/phlare/ebpf/sd"
 	"github.com/grafana/phlare/ebpf/symtab"
 	"github.com/prometheus/client_golang/prometheus"
+	commonconfig "github.com/prometheus/common/config"
 )
 
-const sampleRate = 11 // times per second
+const sampleRate = 99 // times per second
 func main() {
 	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
 
@@ -41,15 +44,18 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	profiles := make(chan *pushv1.PushRequest, 128)
+	go ingest(profiles)
 	for {
 		time.Sleep(5 * time.Second)
 
-		builders := pprof.NewProfileBuilders(time.Second.Nanoseconds() / sampleRate)
+		builders := pprof.NewProfileBuilders(sampleRate)
 		err := session.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32) {
 			labelsHash, labels := target.Labels()
 			builder := builders.BuilderForTarget(labelsHash, labels)
 			builder.AddSample(stack, value)
-			fmt.Printf("%s %d\n", strings.Join(stack, ";"), value)
+			//fmt.Printf("%s %d\n", strings.Join(stack, ";"), value)
 		})
 
 		if err != nil {
@@ -58,7 +64,13 @@ func main() {
 		level.Debug(l).Log("msg", "ebpf collectProfiles done", "profiles", len(builders.Builders))
 
 		for _, builder := range builders.Builders {
-			serviceName := builder.Labels.Get("service_name")
+
+			protoLabels := make([]*typesv1.LabelPair, 0, builder.Labels.Len())
+			for _, label := range builder.Labels {
+				protoLabels = append(protoLabels, &typesv1.LabelPair{
+					Name: label.Name, Value: label.Value,
+				})
+			}
 
 			buf := bytes.NewBuffer(nil)
 			_, err := builder.Write(buf)
@@ -66,7 +78,24 @@ func main() {
 				panic(err)
 			}
 			rawProfile := buf.Bytes()
-			go ingest(rawProfile, serviceName)
+			req := &pushv1.PushRequest{
+				Series: []*pushv1.RawProfileSeries{
+					{
+						Labels: protoLabels,
+						Samples: []*pushv1.RawSample{
+							{
+								RawProfile: rawProfile,
+							},
+						},
+					},
+				},
+			}
+			select {
+			case profiles <- req:
+			default:
+				fmt.Println("dropping profile")
+			}
+
 		}
 
 		if err != nil {
@@ -75,50 +104,24 @@ func main() {
 	}
 }
 
-func ingest(profile []byte, name string) {
+func ingest(profiles chan *pushv1.PushRequest) {
+	httpClient, err := commonconfig.NewClientFromConfig(commonconfig.DefaultHTTPClientConfig, "http_playground")
+	if err != nil {
+		panic(err)
+	}
+	client := pushv1connect.NewPusherServiceClient(httpClient, "http://localhost:4100")
 
-	buf := bytes.NewBuffer(nil)
-	w := multipart.NewWriter(buf)
-	stcW, err := w.CreateFormFile("sample_type_config", "sample_type_config")
-	if err != nil {
-		panic(err)
-	}
-	_, err = stcW.Write([]byte(`{
-  "cpu": {
-    "units": "samples",
-    "sampled": true
-  }
-}`))
-	if err != nil {
-		panic(err)
-	}
-
-	profileW, err := w.CreateFormFile("profile", "profile")
-	if err != nil {
-		panic(err)
-	}
-	_, err = profileW.Write(profile)
-	if err != nil {
-		panic(err)
-	}
-	err = w.Close()
-	if err != nil {
-		panic(err)
+	for {
+		it := <-profiles
+		res, err := client.Push(context.TODO(), connect.NewRequest(it))
+		if err != nil {
+			fmt.Println(err)
+		}
+		if res != nil {
+			fmt.Println(res)
+		}
 	}
 
-	url := "http://localhost:4100/ingest?name=" + name + ""
-	req, err := http.NewRequest("POST", url, buf)
-	if err != nil {
-		panic(err)
-	}
-	req.Header.Set("Content-Type", w.FormDataContentType())
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Printf("ingested %s %s\n", name, res.Status)
-	}
 }
 
 func convertSessionOptions() ebpfspy.SessionOptions {

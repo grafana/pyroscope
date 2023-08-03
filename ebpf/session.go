@@ -203,14 +203,16 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 }
 
 func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
-	sb := &stackBuilder{}
 
 	pyEvents := s.pyperf.ResetEvents()
+	if len(pyEvents) == 0 {
+		return nil
+	}
 	pySymbols, err := s.pyperf.GetSymbols() // todo keep it between rounds and refresh only if symbol not found
 	if err != nil {
 		return fmt.Errorf("pyperf symbols refresh failed %w", err)
 	}
-
+	sb := &stackBuilder{}
 	for _, event := range pyEvents {
 		stats := StackResolveStats{}
 		labels := s.targetFinder.FindTarget(event.Pid)
