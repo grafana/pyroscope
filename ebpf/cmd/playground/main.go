@@ -23,6 +23,8 @@ import (
 )
 
 const sampleRate = 99 // times per second
+
+// todo remove this cmd or move to a separate go module or out of repository, because it adds a bunch of dependencies
 func main() {
 	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
 
