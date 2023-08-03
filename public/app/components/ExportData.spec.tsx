@@ -2,6 +2,7 @@ import React from 'react';
 // import { SimpleSingle as TestData } from '@utils/testData';
 import { render, screen } from '@testing-library/react';
 import { Profile } from '@pyroscope/models/src';
+import 'web-streams-polyfill';
 import ExportData, { getFilename } from './ExportData';
 
 describe('ExportData', () => {
