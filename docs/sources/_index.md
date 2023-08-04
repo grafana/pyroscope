@@ -10,6 +10,7 @@ keywords:
   - profiles storage
   - profiles datastore
   - observability
+  - continuous profiling
 ---
 # Grafana Pyroscope documentation
 
