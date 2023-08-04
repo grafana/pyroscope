@@ -1,15 +1,15 @@
 ---
-title: "Grafana Phlare querier"
+title: "Pyroscope querier"
 menuTitle: "Querier"
 description: "The querier evaluates PromQL expressions."
 weight: 50
 ---
 
-# Grafana Phlare querier
+# Pyroscope querier
 
 The querier is a stateless component that evaluates queries  expressions by fetching profiles series and labels on the read path.
 
-The querier uses the [ingester]({{< relref "ingester.md" >}}) component only to query recently written data. The support of querying the [long-term storage]({{< relref "../about-grafana-phlare-architecture/index.md#long-term-storage" >}}) is planned for the next release.
+The querier uses the [ingester]({{< relref "ingester.md" >}}) component only to query recently written data. The support of querying the [long-term storage]({{< relref "../about-grafana-pyroscope-architecture/index.md#long-term-storage" >}}) is planned for the next release.
 
 ### Connecting to ingesters
 
