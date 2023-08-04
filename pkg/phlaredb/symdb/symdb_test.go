@@ -1,6 +1,7 @@
 package symdb
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
@@ -25,12 +26,12 @@ func Test_symdb_read_write(t *testing.T) {
 	w := db.SymbolsWriter(1)
 	p, err := pprof.OpenFile("testdata/profile.pb.gz")
 	require.NoError(t, err)
-	w.WriteProfileSymbols(p.Profile)
+	m1 := w.WriteProfileSymbols(p.Profile)
 
 	w = db.SymbolsWriter(2)
 	p, err = pprof.OpenFile("testdata/profile.pb.gz")
 	require.NoError(t, err)
-	w.WriteProfileSymbols(p.Profile)
+	_ = w.WriteProfileSymbols(p.Profile)
 
 	require.NoError(t, db.Flush())
 
@@ -43,21 +44,21 @@ func Test_symdb_read_write(t *testing.T) {
 	p1, err := r.SymbolsReader(context.Background(), 1)
 	require.NoError(t, err)
 
-	_ = p1
-	/*
-		locs, err := p1.Locations(context.Background(), nil)
-		require.NoError(t, err)
-		require.NoError(t, locs.Close())
+	sr := Resolver{
+		Stacktraces: p1,
+		Locations:   p1.locations.slice,
+		Mappings:    p1.mappings.slice,
+		Functions:   p1.functions.slice,
+		Strings:     p1.strings.slice,
+	}
 
-		maps, err := p1.Mappings(context.Background(), nil)
-		require.NoError(t, err)
-		require.NoError(t, maps.Close())
+	resolved, err := sr.ResolveProfile(context.Background(), m1[0].Samples)
+	require.NoError(t, err)
 
-		funcs, err := p1.Functions(context.Background(), nil)
-		require.NoError(t, err)
-		require.NoError(t, funcs.Close())
+	var buf bytes.Buffer
+	err = resolved.WriteUncompressed(&buf)
+	require.NoError(t, err)
 
-		strings, err := p1.Strings(context.Background(), nil)
-		require.NoError(t, err)
-		require.NoError(t, strings.Close())*/
+	p, err = pprof.RawFromBytes(buf.Bytes())
+	require.NoError(t, err)
 }
