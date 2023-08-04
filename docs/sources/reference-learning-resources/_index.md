@@ -1,7 +1,7 @@
 ---
 title: "Reference: Learning resources"
 menuTitle: "Reference: Learning resources"
-description: "Blog posts, podcasts, and videos about Grafana Phlare"
+description: "Blog posts, podcasts, and videos about Pyroscope"
 weight: 90
 keywords:
   - Grafana Pyroscope blog posts, podcasts, and videos
