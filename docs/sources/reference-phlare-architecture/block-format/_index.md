@@ -1,13 +1,15 @@
 ---
-title: "Grafana Phlare Block format"
+title: "Pyroscope Block format"
 menuTitle: "Block format"
-description: "Describe how Grafana Phlare's stores profiles on the durable object storage"
+description: "Describe how Pyroscope's stores profiles on the durable object storage"
 weight: 50
+aliases:
+  - /docs/phlare/latest/reference-phlare-architecture/block-format/
 ---
 
-# Grafana Phlare Block format
+# Pyroscope Block format
 
-This document describes how Grafana Phlare stores the data in its blocks. Each
+This document describes how Pyroscope stores the data in its blocks. Each
 block belongs to a single tenant and is identfied by a unique [ULID]. Within
 the block there are multiple files:
 
@@ -27,7 +29,7 @@ The data model within the block is fairly aligned to Google's [proto
 definition][pprof] for the pprof wire format.  In general strings within the
 block are referenced by their position in a string table.
 
-Grafana Phlare's profiles have two types of labels:
+Pyroscope's profiles have two types of labels:
 
 * External Labels: Contain additional information gathered at ingestion time
   and can be used to select certain profiles. They are comparable to
