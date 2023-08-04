@@ -1,11 +1,11 @@
 ---
-title: "Grafana Phlare distributor"
+title: "Pyroscope distributor"
 menuTitle: "Distributor"
 description: "The distributor validates time-series data and sends the data to ingesters."
 weight: 20
 ---
 
-# Grafana Phlare distributor
+# Pyroscope distributor
 
 The distributor is a stateless component that receives profiling data from the agent.
 The distributor then divides the data into batches and sends it to multiple [ingesters]({{< relref "ingester.md" >}}) in parallel, shards the series among ingesters, and replicates each series by the configured replication factor. By default, the configured replication factor is three.
@@ -39,13 +39,13 @@ For more information, see [hash ring]({{< relref "../hash-ring/index.md" >}}).
 
 Because distributors share access to the same hash ring, write requests can be sent to any distributor. You can also set up a stateless load balancer in front of it.
 
-To ensure consistent query results, Phlare uses [Dynamo-style](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf) quorum consistency on reads and writes.
+To ensure consistent query results, Pyroscope uses [Dynamo-style](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf) quorum consistency on reads and writes.
 The distributor waits for a successful response from `n`/2 + 1 ingesters, where `n` is the configured replication factor, before sending a successful response to the Agent push request.
 
 ## Load balancing across distributors
 
 We recommend randomly load balancing write requests across distributor instances.
-If you're running Grafana Phlare in a Kubernetes cluster, you can define a Kubernetes [Service](https://kubernetes.io/docs/concepts/services-networking/service/) as ingress for the distributors.
+If you're running Pyroscope in a Kubernetes cluster, you can define a Kubernetes [Service](https://kubernetes.io/docs/concepts/services-networking/service/) as ingress for the distributors.
 
 > **Note:** A Kubernetes Service balances TCP connections across Kubernetes endpoints and does not balance HTTP requests within a single TCP connection.
 > If you enable HTTP persistent connections (HTTP keep-alive), because the Agent uses HTTP keep-alive, it re-uses the same TCP connection for each push HTTP request.
