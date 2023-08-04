@@ -3,6 +3,8 @@ title: "Pyroscope distributor"
 menuTitle: "Distributor"
 description: "The distributor validates time-series data and sends the data to ingesters."
 weight: 20
+aliases:
+  - /docs/phlare/latest/reference-phlare-architecture/components/distributor/
 ---
 
 # Pyroscope distributor
