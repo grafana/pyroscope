@@ -1,21 +1,22 @@
 ---
-aliases:
-  - /docs/phlare/latest/operators-guide/deploying-grafana-phlare/jsonnet/
-description: Learn how to deploy Grafana Phlare on Kubernetes with Jsonnet and Tanka.
+description: Learn how to deploy Pyroscope on Kubernetes with Jsonnet and Tanka.
 keywords:
-  - Phlare deployment
+  - Pyroscope deployment
   - Kubernetes
   - Jsonnet
   - Tanka
 menuTitle: Deploy with Jsonnet and Tanka
-title: Deploy Grafana Phlare with Jsonnet and Tanka
+title: Deploy Pyroscope with Jsonnet and Tanka
 weight: 50
+aliases:
+  - /docs/phlare/latest/operators-guide/deploying-grafana-phlare/jsonnet/
+  - /docs/phlare/latest/deploy-kubernetes/tanka-jsonnet/
 ---
 
-# Deploy Grafana Phlare with Jsonnet and Tanka
+# Deploy Pyroscope with Jsonnet and Tanka
 
-Grafana Labs publishes a [Jsonnet](https://jsonnet.org/) library that you can use to deploy Grafana Phlare.
-The Jsonnet files are located in the [Phlare repository](https://github.com/grafana/pyroscope/tree/main/operations/phlare/jsonnet) and are using the helm charts as a source.
+Grafana Labs publishes a [Jsonnet](https://jsonnet.org/) library that you can use to deploy Pyroscope.
+The Jsonnet files are located in the [Pyroscope repository](https://github.com/grafana/pyroscope/tree/main/operations/pyroscope/jsonnet) and are using the helm charts as a source.
 
 
 ## Install tools and deploy the first cluster
@@ -35,7 +36,7 @@ You can use [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com
 1. Set up a Jsonnet project, based on the example that follows:
 
    - Initialize Tanka
-   - Install Grafana Phlare and Kubernetes Jsonnet libraries
+   - Install Pyroscope and Kubernetes Jsonnet libraries
    - Set up an environment
 
    ```console
@@ -43,8 +44,8 @@ You can use [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com
    mkdir jsonnet-example && cd jsonnet-example
    tk init --k8s=1.21
 
-   # Install Phlare jsonnet
-   jb install github.com/grafana/pyroscope/operations/phlare@main
+   # Install Pyroscope jsonnet
+   jb install github.com/grafana/pyroscope/operations/pyroscope@main
 
    # Install required tanka-util
    jb install github.com/grafana/jsonnet-libs/tanka-util@master
@@ -53,15 +54,15 @@ You can use [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com
    tk env set environments/default --server-from-context=$(kubectl config current-context)
    ```
 
-1. Decide if you want to run Grafana Phlare in the monolithic or the micro-services mode
+1. Decide if you want to run Pyroscope in the monolithic or the micro-services mode
 
   - Option A) For monolithic mode the file `environments/default/main.jsonnet`, should look like;
 
     ```jsonnet
-    local phlare = import 'phlare/jsonnet/phlare/phlare.libsonnet';
+    local pyroscope = import 'pyroscope/jsonnet/pyroscope/pyroscope.libsonnet';
     local tk = import 'tk';
 
-    phlare.new(overrides={
+    pyroscope.new(overrides={
       namespace: tk.env.spec.namespace,
     })
     ```
@@ -69,11 +70,11 @@ You can use [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com
   - Option B) For micro services mode the file `environments/default/main.jsonnet`, should look like;
 
     ```jsonnet
-    local phlare = import 'phlare/jsonnet/phlare/phlare.libsonnet';
-    local valuesMicroServices = import 'phlare/jsonnet/values-micro-services.json';
+    local pyroscope = import 'pyroscope/jsonnet/pyroscope/pyroscope.libsonnet';
+    local valuesMicroServices = import 'pyroscope/jsonnet/values-micro-services.json';
     local tk = import 'tk';
 
-    phlare.new(overrides={
+    pyroscope.new(overrides={
       namespace: tk.env.spec.namespace,
       values+: valuesMicroServices,
     })
