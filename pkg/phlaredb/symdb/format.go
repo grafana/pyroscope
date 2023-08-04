@@ -291,8 +291,11 @@ func (h *PartitionHeader) unmarshal(buf []byte) (err error) {
 }
 
 func (h *PartitionHeader) Size() int64 {
-	return int64(28 + (len(h.StacktraceChunks) * stacktraceChunkHeaderSize) +
-		(len(h.Locations)+len(h.Mappings)+len(h.Functions)+len(h.Strings))*rowRangeReferenceSize)
+	s := 28
+	s += len(h.StacktraceChunks) * stacktraceChunkHeaderSize
+	r := len(h.Locations) + len(h.Mappings) + len(h.Functions) + len(h.Strings)
+	s += r * rowRangeReferenceSize
+	return int64(s)
 }
 
 func (h *PartitionHeader) unmarshalStacktraceChunks(b []byte) error {
@@ -336,13 +339,13 @@ type RowRangeReference struct {
 	Rows     uint32
 }
 
-func (r RowRangeReference) marshal(b []byte) {
+func (r *RowRangeReference) marshal(b []byte) {
 	binary.BigEndian.PutUint32(b[0:4], r.RowGroup)
 	binary.BigEndian.PutUint32(b[4:8], r.Index)
 	binary.BigEndian.PutUint32(b[8:12], r.Rows)
 }
 
-func (r RowRangeReference) unmarshal(b []byte) {
+func (r *RowRangeReference) unmarshal(b []byte) {
 	r.RowGroup = binary.BigEndian.Uint32(b[0:4])
 	r.Index = binary.BigEndian.Uint32(b[4:8])
 	r.Rows = binary.BigEndian.Uint32(b[8:12])

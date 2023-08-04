@@ -10,15 +10,19 @@ import (
 	"path/filepath"
 
 	"github.com/grafana/dskit/multierror"
+	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
-	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/util/build"
+	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 type Writer struct {
 	config *Config
 
-	idx         IndexFile
+	index       IndexFile
 	stacktraces *fileWriter
 	// Parquet tables.
 	mappings  parquetWriter[*v1.InMemoryMapping, *v1.MappingPersister]
@@ -30,7 +34,7 @@ type Writer struct {
 func NewWriter(c *Config) *Writer {
 	return &Writer{
 		config: c,
-		idx: IndexFile{
+		index: IndexFile{
 			Header: Header{
 				Magic:   symdbMagic,
 				Version: FormatV2,
@@ -114,7 +118,7 @@ func (w *Writer) WritePartitions(partitions []*Partition) error {
 	}
 
 	for _, partition := range partitions {
-		w.idx.PartitionHeaders = append(w.idx.PartitionHeaders, &partition.header)
+		w.index.PartitionHeaders = append(w.index.PartitionHeaders, &partition.header)
 	}
 
 	return nil
@@ -153,7 +157,7 @@ func (w *Writer) Flush() (err error) {
 	defer func() {
 		err = multierror.New(err, f.Close()).Err()
 	}()
-	if _, err = w.idx.WriteTo(f); err != nil {
+	if _, err = w.index.WriteTo(f); err != nil {
 		return fmt.Errorf("failed to write index file: %w", err)
 	}
 	return nil
@@ -244,4 +248,109 @@ func (w *writerOffset) Write(p []byte) (n int, err error) {
 	n, err = w.Writer.Write(p)
 	w.offset += int64(n)
 	return n, err
+}
+
+type parquetWriter[M v1.Models, P v1.Persister[M]] struct {
+	persister P
+	cfg       ParquetConfig
+
+	currentRowGroup uint32
+	currentRows     uint32
+
+	buffer    *parquet.Buffer
+	rowsBatch []parquet.Row
+	rowRanges []RowRangeReference
+
+	writer *parquet.GenericWriter[P]
+	file   *os.File
+}
+
+func (s *parquetWriter[M, P]) init(dir string, c ParquetConfig) error {
+	s.cfg = c
+
+	s.rowsBatch = make([]parquet.Row, 0, 128)
+	s.buffer = parquet.NewBuffer(s.persister.Schema(), parquet.ColumnBufferCapacity(s.cfg.MaxBufferRowCount))
+
+	file, err := os.OpenFile(filepath.Join(dir, s.persister.Name()+block.ParquetSuffix), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return err
+	}
+	s.file = file
+	s.writer = parquet.NewGenericWriter[P](file, s.persister.Schema(),
+		parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "phlaredb-parquet-buffers*")),
+		parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
+		parquet.PageBufferSize(3*1024*1024),
+	)
+
+	return nil
+}
+
+func (s *parquetWriter[M, P]) readFrom(values []M) (err error) {
+	var r RowRangeReference
+	s.rowRanges = s.rowRanges[:0]
+	for len(values) > 0 {
+		if r, err = s.writeGroup(values); err != nil {
+			return err
+		}
+		s.rowRanges = append(s.rowRanges, r)
+		values = values[r.Rows:]
+	}
+	return nil
+}
+
+func (s *parquetWriter[M, P]) writeGroup(values []M) (r RowRangeReference, err error) {
+	r.RowGroup = s.currentRowGroup
+	r.Index = s.currentRows
+	// r.Rows = s.currentRows
+	if len(values) == 0 {
+		return r, nil
+	}
+	var n int
+	for len(values) > 0 && int(s.currentRows)+cap(s.rowsBatch) < s.cfg.MaxBufferRowCount {
+		values = values[s.fillBatch(values):]
+		if n, err = s.buffer.WriteRows(s.rowsBatch); err != nil {
+			return r, err
+		}
+		s.currentRows += uint32(n)
+		r.Rows += uint32(n)
+	}
+	if int(s.currentRows)+cap(s.rowsBatch) >= s.cfg.MaxBufferRowCount {
+		if err = s.flushBuffer(); err != nil {
+			return r, err
+		}
+	}
+	return r, nil
+}
+
+func (s *parquetWriter[M, P]) fillBatch(values []M) int {
+	m := math.Min(len(values), cap(s.rowsBatch))
+	s.rowsBatch = s.rowsBatch[:m]
+	for i := 0; i < m; i++ {
+		row := s.rowsBatch[i][:0]
+		s.rowsBatch[i] = s.persister.Deconstruct(row, 0, values[i])
+	}
+	return m
+}
+
+func (s *parquetWriter[M, P]) flushBuffer() error {
+	if _, err := s.writer.WriteRowGroup(s.buffer); err != nil {
+		return err
+	}
+	s.currentRowGroup++
+	s.currentRows = 0
+	s.buffer.Reset()
+	return nil
+}
+
+func (s *parquetWriter[M, P]) Close() error {
+	if err := s.flushBuffer(); err != nil {
+		return fmt.Errorf("flushing parquet buffer: %w", err)
+	}
+	if err := s.writer.Close(); err != nil {
+		return fmt.Errorf("closing parquet writer: %w", err)
+	}
+	if err := s.file.Close(); err != nil {
+		return fmt.Errorf("closing parquet file: %w", err)
+	}
+	return nil
 }

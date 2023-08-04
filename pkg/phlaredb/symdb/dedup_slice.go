@@ -3,21 +3,15 @@ package symdb
 import (
 	"fmt"
 	"hash/maphash"
-	"os"
-	"path/filepath"
 	"reflect"
 	"sync"
 	"unsafe"
 
-	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/prometheus/util/zeropool"
 	"go.uber.org/atomic"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/util/build"
-	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 // Refactored as is from the phlaredb package.
@@ -233,9 +227,9 @@ type Helper[M schemav1.Models, K comparable] interface {
 }
 
 type deduplicatingSlice[M schemav1.Models, K comparable, H Helper[M, K]] struct {
+	lock   sync.RWMutex
 	slice  []M
 	size   atomic.Uint64
-	lock   sync.RWMutex
 	lookup map[K]int64
 
 	helper H
@@ -339,108 +333,11 @@ func (s *deduplicatingSlice[M, K, H]) append(dst []uint32, elems []M) {
 	int64SlicePool.Put(missing)
 }
 
-type parquetWriter[M schemav1.Models, P schemav1.Persister[M]] struct {
-	persister P
-	cfg       ParquetConfig
-
-	currentRowGroup uint32
-	currentRows     uint32
-
-	buffer    *parquet.Buffer
-	rowsBatch []parquet.Row
-	rowRanges []RowRangeReference
-
-	writer *parquet.GenericWriter[P]
-	file   *os.File
-}
-
-func (s *parquetWriter[M, P]) init(dir string, c ParquetConfig) error {
-	s.cfg = c
-
-	s.rowsBatch = make([]parquet.Row, 0, 128)
-	s.buffer = parquet.NewBuffer(s.persister.Schema(), parquet.ColumnBufferCapacity(s.cfg.MaxBufferRowCount))
-
-	file, err := os.OpenFile(filepath.Join(dir, s.persister.Name()+block.ParquetSuffix), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
-	if err != nil {
-		return err
-	}
-	s.file = file
-	s.writer = parquet.NewGenericWriter[P](file, s.persister.Schema(),
-		parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "phlaredb-parquet-buffers*")),
-		parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
-		parquet.PageBufferSize(3*1024*1024),
-	)
-
-	return nil
-}
-
-func (s *parquetWriter[M, P]) readFrom(values []M) (err error) {
-	var r RowRangeReference
-	for len(values) > 0 {
-		if r, err = s.writeGroup(values); err != nil {
-			return err
-		}
-		s.rowRanges = append(s.rowRanges, r)
-		values = values[r.Rows:]
-	}
-	return nil
-}
-
-func (s *parquetWriter[M, P]) writeGroup(values []M) (r RowRangeReference, err error) {
-	r.RowGroup = s.currentRowGroup
-	r.Index = s.currentRows
-	r.Rows = s.currentRows
-	if len(values) == 0 {
-		return r, nil
-	}
-	var n int
-	for len(values) > 0 && int(s.currentRows)+cap(s.rowsBatch) < s.cfg.MaxBufferRowCount {
-		values = values[s.fillBatch(values):]
-		if n, err = s.buffer.WriteRows(s.rowsBatch); err != nil {
-			return r, err
-		}
-		s.currentRows += uint32(n)
-		r.Rows += uint32(n)
-	}
-	if int(s.currentRows)+cap(s.rowsBatch) >= s.cfg.MaxBufferRowCount {
-		if err = s.flushBuffer(); err != nil {
-			return r, err
-		}
-	}
-	return r, nil
-}
-
-func (s *parquetWriter[M, P]) fillBatch(values []M) int {
-	m := math.Min(len(values), cap(s.rowsBatch))
-	s.rowsBatch = s.rowsBatch[:m]
-	for i, v := range values {
-		row := s.rowsBatch[i][:0]
-		s.rowsBatch[i] = s.persister.Deconstruct(row, 0, v)
-	}
-	return m
-}
-
-func (s *parquetWriter[M, P]) flushBuffer() error {
-	if _, err := s.writer.WriteRowGroup(s.buffer); err != nil {
-		return err
-	}
-	s.currentRowGroup++
-	s.currentRows = 0
-	s.buffer.Reset()
-	return nil
-}
-
-func (s *parquetWriter[M, P]) Close() error {
-	if err := s.flushBuffer(); err != nil {
-		return fmt.Errorf("flushing parquet buffer: %w", err)
-	}
-	if err := s.writer.Close(); err != nil {
-		return fmt.Errorf("closing parquet writer: %w", err)
-	}
-	if err := s.file.Close(); err != nil {
-		return fmt.Errorf("closing parquet file: %w", err)
-	}
-	return nil
+func (s *deduplicatingSlice[M, K, H]) sliceHeaderCopy() []M {
+	s.lock.RLock()
+	h := s.slice
+	s.lock.RUnlock()
+	return h
 }
 
 type stringConversionTable []int64

@@ -8,13 +8,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/grafana/pyroscope/pkg/iter"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-)
-
-var (
-	_ SymbolsReader = (*Partition)(nil)
-	_ SymbolsWriter = (*Partition)(nil)
 )
 
 type Partition struct {
@@ -332,22 +326,6 @@ func (p *Partition) AppendFunctions(dst []uint32, functions []*schemav1.InMemory
 
 func (p *Partition) AppendStrings(dst []uint32, strings []string) {
 	p.strings.append(dst, strings)
-}
-
-func (p *Partition) Locations(_ context.Context, i iter.Iterator[uint32]) (iter.Iterator[*schemav1.InMemoryLocation], error) {
-	return iter.NewSliceIndexIterator(p.locations.slice, i), nil
-}
-
-func (p *Partition) Mappings(_ context.Context, i iter.Iterator[uint32]) (iter.Iterator[*schemav1.InMemoryMapping], error) {
-	return iter.NewSliceIndexIterator(p.mappings.slice, i), nil
-}
-
-func (p *Partition) Functions(_ context.Context, i iter.Iterator[uint32]) (iter.Iterator[*schemav1.InMemoryFunction], error) {
-	return iter.NewSliceIndexIterator(p.functions.slice, i), nil
-}
-
-func (p *Partition) Strings(_ context.Context, i iter.Iterator[uint32]) (iter.Iterator[string], error) {
-	return iter.NewSliceIndexIterator(p.strings.slice, i), nil
 }
 
 func (p *Partition) WriteStats(s *Stats) {

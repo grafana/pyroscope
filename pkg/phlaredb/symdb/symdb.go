@@ -33,6 +33,15 @@ type ParquetConfig struct {
 	MaxBufferRowCount int
 }
 
+type Stats struct {
+	StacktracesTotal int
+	MaxStacktraceID  int
+	LocationsTotal   int
+	MappingsTotal    int
+	FunctionsTotal   int
+	StringsTotal     int
+}
+
 type MemoryStats struct {
 	StacktracesSize uint64
 	LocationsSize   uint64
