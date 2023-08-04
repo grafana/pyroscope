@@ -183,7 +183,7 @@ func Test_Backfill_LastSample(t *testing.T) {
 		},
 	}
 
-	t.Run("series value in last step bucket is included", func(t *testing.T) {
+	t.Run("series value in last step bucket is not included", func(t *testing.T) {
 		tl := timeline.New(series, startMs, int64(53000), step)
 		assert.Equal(t, startMs/1000, tl.StartTime)
 		assert.Equal(t, []uint64{
@@ -195,7 +195,7 @@ func Test_Backfill_LastSample(t *testing.T) {
 		}, tl.Samples)
 	})
 
-	t.Run("no series value in last step bucket doesn't get backfilled", func(t *testing.T) {
+	t.Run("last bucket does not get backfilled", func(t *testing.T) {
 		tl := timeline.New(series, startMs, int64(63000), step)
 		assert.Equal(t, startMs/1000, tl.StartTime)
 		assert.Equal(t, []uint64{
@@ -209,7 +209,7 @@ func Test_Backfill_LastSample(t *testing.T) {
 	})
 }
 
-func Test_Backfill_Bounds(t *testing.T) {
+func Test_Timeline_Bounds(t *testing.T) {
 	step := int64(1)
 	series := &typesv1.Series{
 		Points: []*typesv1.Point{
@@ -285,7 +285,7 @@ func Test_Backfill_Bounds(t *testing.T) {
 		}, tl.Samples)
 	})
 
-	t.Run("start and end are equal", func(t *testing.T) {
+	t.Run("start == end", func(t *testing.T) {
 		startMs := int64(1000)
 		endMs := startMs
 
@@ -295,7 +295,7 @@ func Test_Backfill_Bounds(t *testing.T) {
 		assert.Equal(t, []uint64{}, tl.Samples)
 	})
 
-	t.Run("start > end are equal", func(t *testing.T) {
+	t.Run("start > end", func(t *testing.T) {
 		startMs := int64(9000)
 		endMs := int64(1000)
 
