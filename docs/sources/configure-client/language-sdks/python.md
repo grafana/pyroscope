@@ -68,7 +68,7 @@ with pyroscope.tag_wrapper({ "controller": "slow_controller_i_want_to_profile" }
 import pyroscope
 
 pyroscope.configure(
-	application_name = "phlare.python.app",
+	application_name = "example.python.app",
 	server_address = "<URL>",
 	basic_auth_username = '<User>',
 	basic_auth_password = '<Password>',

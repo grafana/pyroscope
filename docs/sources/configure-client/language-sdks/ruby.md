@@ -76,7 +76,7 @@ end
 require "pyroscope"
 
 Pyroscope.configure do |config|
-  config.application_name = "phlare.ruby.app"
+  config.application_name = "example.ruby.app"
   config.server_address = "<URL>"
   config.basic_auth_username='<User>'
   config.basic_auth_password='<Password>'
