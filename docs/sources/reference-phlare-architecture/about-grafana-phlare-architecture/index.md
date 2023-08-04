@@ -32,9 +32,9 @@ Most components are stateless and do not require any data persisted between proc
 </p>
 
 Ingesters receive incoming profiles from the distributors.
-Each push request belongs to a tenant, and the ingester appends the received profiles to the specific per-tenant PhlareDB that is stored on the local disk.
+Each push request belongs to a tenant, and the ingester appends the received profiles to the specific per-tenant Pyroscope db that is stored on the local disk.
 
-The per-tenant PhlareDB is lazily created in each ingester as soon as the first profiles are received for that tenant.
+The per-tenant Pyroscope db is lazily created in each ingester as soon as the first profiles are received for that tenant.
 
 The in-memory profiles are periodically flushed to disk and new block is created.
 
