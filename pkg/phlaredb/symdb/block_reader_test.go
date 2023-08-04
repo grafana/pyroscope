@@ -39,8 +39,8 @@ func Test_Reader_Open(t *testing.T) {
 	require.NoError(t, err)
 	x, err := Open(context.Background(), b)
 	require.NoError(t, err)
-	r, ok := x.SymbolsReader(1)
-	require.True(t, ok)
+	r, err := x.SymbolsReader(context.Background(), 1)
+	require.NoError(t, err)
 
 	dst := new(mockStacktraceInserter)
 	dst.On("InsertStacktrace", uint32(2), []int32{2, 1})
@@ -58,8 +58,8 @@ func Test_Reader_Open_v1(t *testing.T) {
 	require.NoError(t, err)
 	x, err := Open(context.Background(), b)
 	require.NoError(t, err)
-	r, ok := x.SymbolsReader(1)
-	require.True(t, ok)
+	r, err := x.SymbolsReader(context.Background(), 1)
+	require.NoError(t, err)
 
 	dst := new(mockStacktraceInserter)
 	dst.On("InsertStacktrace", uint32(2), []int32{2, 1})

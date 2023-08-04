@@ -15,7 +15,6 @@ import (
 	"github.com/thanos-io/thanos/pkg/block/metadata"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
@@ -28,10 +27,11 @@ type Reader struct {
 
 	index      IndexFile
 	partitions map[uint64]*PartitionReader
-	locations  parquetFile
-	mappings   parquetFile
-	functions  parquetFile
-	strings    parquetFile
+
+	locations parquetFile
+	mappings  parquetFile
+	functions parquetFile
+	strings   parquetFile
 }
 
 const (
@@ -85,11 +85,14 @@ func (r *Reader) open(ctx context.Context) error {
 		return err
 	}
 
-	// TODO: Meta. We only need it for getting the file size –
-	//  should it be written to the index file?
-	if err = r.openParquetFiles(ctx, nil); err != nil {
-		return err
+	if r.index.Header.Version == FormatV2 {
+		// TODO: Meta. We only need it for getting the file size –
+		//  should it be written to the index file?
+		if err = r.openParquetFiles(ctx, nil); err != nil {
+			return err
+		}
 	}
+
 	r.partitions = make(map[uint64]*PartitionReader, len(r.index.PartitionHeaders))
 	for _, h := range r.index.PartitionHeaders {
 		r.partitions[h.Partition] = r.partitionReader(h)
@@ -178,10 +181,10 @@ func (r *Reader) Load(ctx context.Context) error {
 		}
 		// TODO: Load tables into memory and split into partitions.
 		err = multierror.New(
-			p.locations.fetchRows(ctx),
-			p.mappings.fetchRows(ctx),
-			p.functions.fetchRows(ctx),
-			p.strings.fetchRows(ctx)).
+			p.locations.fetch(ctx),
+			p.mappings.fetch(ctx),
+			p.functions.fetch(ctx),
+			p.strings.fetch(ctx)).
 			Err()
 		if err != nil {
 			return err
@@ -191,9 +194,17 @@ func (r *Reader) Load(ctx context.Context) error {
 	return nil
 }
 
-func (r *Reader) SymbolsReader(partition uint64) (*PartitionReader, bool) {
-	m, ok := r.partitions[partition]
-	return m, ok
+var ErrPartitionNotFound = fmt.Errorf("partition not found")
+
+func (r *Reader) SymbolsReader(ctx context.Context, partition uint64) (*PartitionReader, error) {
+	p, ok := r.partitions[partition]
+	if !ok {
+		return nil, ErrPartitionNotFound
+	}
+	if err := p.init(ctx); err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 type PartitionReader struct {
@@ -206,16 +217,34 @@ type PartitionReader struct {
 	strings          parquetTableRange[string, *schemav1.StringPersister]
 }
 
-func (p *PartitionReader) Init(ctx context.Context) error {
-
+func (p *PartitionReader) init(ctx context.Context) error {
+	g, ctx := errgroup.WithContext(ctx)
+	for _, c := range p.stacktraceChunks {
+		c := c
+		g.Go(func() error { return c.fetch(ctx) })
+	}
+	if p.reader.index.Header.Version == FormatV2 {
+		g.Go(func() error { return p.locations.fetch(ctx) })
+		g.Go(func() error { return p.mappings.fetch(ctx) })
+		g.Go(func() error { return p.functions.fetch(ctx) })
+		g.Go(func() error { return p.strings.fetch(ctx) })
+	}
+	err := g.Wait()
+	return err
 }
 
 func (p *PartitionReader) Release() {
-
-}
-
-func (p *PartitionReader) Close() error {
-
+	var wg sync.WaitGroup
+	wg.Add(len(p.stacktraceChunks) + 4)
+	for _, c := range p.stacktraceChunks {
+		c := c
+		go c.release()
+	}
+	go p.locations.release()
+	go p.mappings.release()
+	go p.functions.release()
+	go p.strings.release()
+	wg.Wait()
 }
 
 func (p *PartitionReader) WriteStats(s *Stats) {
@@ -225,6 +254,7 @@ func (p *PartitionReader) WriteStats(s *Stats) {
 		nodes += c.header.StacktraceNodes
 	}
 	s.MaxStacktraceID = int(nodes)
+	// TODO: Write ALL stats.
 }
 
 var ErrInvalidStacktraceRange = fmt.Errorf("invalid range: stack traces can't be resolved")
@@ -279,41 +309,25 @@ func (p *PartitionReader) newResolve(ctx context.Context, dst StacktraceInserter
 // stacktracesResolve represents a stacktrace resolution operation.
 type stacktracesResolve struct {
 	ctx context.Context
-	r   *PartitionReader
-	cr  *stacktraceChunkReader
-	t   *parentPointerTree
-
 	dst StacktraceInserter
 	c   StacktracesRange
+	r   *PartitionReader
 }
 
 func (r *stacktracesResolve) do() error {
-	if err := r.fetch(); err != nil {
-		return err
-	}
-	r.resolveStacktracesChunk(r.dst)
-	return nil
-}
-
-func (r *stacktracesResolve) fetch() (err error) {
-	if r.cr = r.r.stacktraceChunkReader(r.c.chunk); r.cr == nil {
+	cr := r.r.stacktraceChunkReader(r.c.chunk)
+	if cr == nil {
 		return ErrInvalidStacktraceRange
 	}
-	if r.t, err = r.cr.fetch(r.ctx); err != nil {
-		return fmt.Errorf("failed to fetch stack traces: %w", err)
-	}
-	return r.ctx.Err()
-}
-
-func (r *stacktracesResolve) resolveStacktracesChunk(dst StacktraceInserter) {
 	s := stacktraceLocations.get()
 	// Restore the original stacktrace ID.
 	off := r.c.offset()
 	for _, sid := range r.c.ids {
-		s = r.t.resolve(s, sid)
-		dst.InsertStacktrace(off+sid, s)
+		s = cr.tree.resolve(s, sid)
+		r.dst.InsertStacktrace(off+sid, s)
 	}
 	stacktraceLocations.put(s)
+	return nil
 }
 
 type stacktraceChunkReader struct {
@@ -323,25 +337,21 @@ type stacktraceChunkReader struct {
 	tree   *parentPointerTree
 }
 
-func (c *stacktraceChunkReader) fetch(ctx context.Context) (_ *parentPointerTree, err error) {
+func (c *stacktraceChunkReader) fetch(ctx context.Context) (err error) {
 	c.m.Lock()
 	defer c.m.Unlock()
 	if c.tree != nil {
-		return c.tree, nil
+		return nil
 	}
 	rc, err := c.reader.bucket.GetRange(ctx, StacktracesFileName, c.header.Offset, c.header.Size)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer func() {
 		err = multierror.New(err, rc.Close()).Err()
 	}()
 	// Consider pooling the buffer.
-	buf := bufio.NewReaderSize(rc, c.reader.chunkFetchBufferSize)
-	if err = c.readFrom(buf); err != nil {
-		return nil, err
-	}
-	return c.tree, nil
+	return c.readFrom(bufio.NewReaderSize(rc, c.reader.chunkFetchBufferSize))
 }
 
 func (c *stacktraceChunkReader) readFrom(r io.Reader) error {
@@ -365,6 +375,12 @@ func (c *stacktraceChunkReader) readFrom(r io.Reader) error {
 	}
 	c.tree = t
 	return nil
+}
+
+func (c *stacktraceChunkReader) release() {
+	c.m.Lock()
+	c.tree = nil
+	c.m.Unlock()
 }
 
 type parquetFile struct {
@@ -398,9 +414,6 @@ func (f *parquetFile) open(ctx context.Context, b objstore.BucketReader, meta me
 	if err != nil {
 		return fmt.Errorf("opening parquet file %q: %w", f.path, err)
 	}
-	if f.File.NumRows() == 0 {
-		return fmt.Errorf("error parquet file %q contains no rows", f.path)
-	}
 
 	opts := []parquet.FileOption{
 		parquet.SkipBloomFilters(true), // we don't use bloom filters
@@ -425,25 +438,7 @@ type parquetTableRange[M schemav1.Models, P schemav1.Persister[M]] struct {
 	slice []M
 }
 
-func (t *parquetTableRange[M, P]) iterator(ctx context.Context, i iter.Iterator[uint32]) ([]M, error) {
-	t.mu.RLock()
-	s := t.slice
-	t.mu.RUnlock()
-	if len(s) == 0 {
-		t.mu.Lock()
-		if len(t.slice) == 0 {
-			if err := t.fetchRows(ctx); err != nil {
-				t.mu.Unlock()
-				return nil, err
-			}
-		}
-		s = t.slice
-		t.mu.Unlock()
-	}
-	return s, nil
-}
-
-func (t *parquetTableRange[M, P]) fetchRows(_ context.Context) error {
+func (t *parquetTableRange[M, P]) fetch(_ context.Context) error {
 	if len(t.slice) != 0 {
 		return nil
 	}
@@ -501,4 +496,10 @@ func (t *parquetTableRange[M, P]) readRG(dst []M, buf []parquet.Row, rg parquet.
 		}
 	}
 	return nil
+}
+
+func (t *parquetTableRange[M, P]) release() {
+	t.mu.Lock()
+	t.slice = nil
+	t.mu.Unlock()
 }
