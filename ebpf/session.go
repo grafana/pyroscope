@@ -96,8 +96,9 @@ func (s *session) Start() error {
 
 	opts := &ebpf.CollectionOptions{
 		Programs: ebpf.ProgramOptions{
-			LogLevel: ebpf.LogLevelInstruction | ebpf.LogLevelStats,
-			LogSize:  100 * 1024 * 1024,
+			LogDisabled: true,
+			//LogLevel: ebpf.LogLevelInstruction | ebpf.LogLevelStats,
+			//LogSize:  100 * 1024 * 1024,
 		},
 	}
 	if err := pyrobpf.LoadProfileObjects(&s.bpf, opts); err != nil {
