@@ -1,15 +1,16 @@
 ---
 aliases:
   - /docs/phlare/latest/operators-guide/deploy-kubernetes/
-description: Learn how to get started with Grafana Phlare using the Helm chart.
+  - /docs/phlare/latest/deploy-kubernetes/
+description: Learn how to get started with Pyroscope using the Helm chart.
 menuTitle: Deploy on Kubernetes
-title: Deploy Grafana Phlare using the Helm chart
+title: Deploy Pyroscope using the Helm chart
 weight: 50
 ---
 
-# Deploy Grafana Phlare using the Helm chart
+# Deploy Pyroscope using the Helm chart
 
-The [Helm](https://helm.sh/) chart allows you to configure, install, and upgrade Grafana Phlare within a Kubernetes cluster.
+The [Helm](https://helm.sh/) chart allows you to configure, install, and upgrade Pyroscope within a Kubernetes cluster.
 
 ## Before you begin
 
@@ -37,10 +38,10 @@ Verify that you have:
 
 Use a custom namespace so that you do not have to overwrite the default namespace later in the procedure.
 
-1. Create a unique Kubernetes namespace, for example `phlare-test`:
+1. Create a unique Kubernetes namespace, for example `pyroscope-test`:
 
    ```console
-   kubectl create namespace phlare-test
+   kubectl create namespace pyroscope-test
    ```
 
    For more details, see the Kubernetes documentation about [Creating a new namespace](https://kubernetes.io/docs/tasks/administer-cluster/namespaces/#creating-a-new-namespace).
@@ -52,22 +53,22 @@ Use a custom namespace so that you do not have to overwrite the default namespac
    helm repo update
    ```
 
-   > **Note:** The Helm chart at [https://grafana.github.io/helm-charts](https://grafana.github.io/helm-charts) is a publication of the source code at [**grafana/pyroscope**](https://github.com/grafana/pyroscope/tree/next/operations/phlare/helm/phlare).
+   > **Note:** The Helm chart at [https://grafana.github.io/helm-charts](https://grafana.github.io/helm-charts) is a publication of the source code at [**grafana/pyroscope**](https://github.com/grafana/pyroscope/tree/next/operations/pyroscope/helm/pyroscope).
 
-1. Install Grafana Phlare using the Helm chart using one of the following options:
+1. Install Pyroscope using the Helm chart using one of the following options:
 
-   - Option A: Install Grafana Phlare as single binary
+   - Option A: Install Pyroscope as single binary
 
    ```bash
-   helm -n phlare-test install phlare grafana/phlare
+   helm -n pyroscope-test install pyroscope grafana/pyroscope
    ```
 
-   - Option B: Install Grafana Phlare as micro-services
+   - Option B: Install Pyroscope as micro-services
 
    ```bash
    # Gather the default config for micro-services
-   curl -LO values-micro-services.yaml https://raw.githubusercontent.com/grafana/pyroscope/main/operations/phlare/helm/phlare/values-micro-services.yaml
-   helm -n phlare-test install phlare grafana/phlare --values values-micro-services.yaml
+   curl -LO values-micro-services.yaml https://raw.githubusercontent.com/grafana/pyroscope/main/operations/pyroscope/helm/pyroscope/values-micro-services.yaml
+   helm -n pyroscope-test install pyroscope grafana/pyroscope --values values-micro-services.yaml
    ```
 
    > **Note:** The output of the command contains the query URLs necessary for the following steps, so for a micro-service setup it will look like this:
@@ -75,41 +76,41 @@ Use a custom namespace so that you do not have to overwrite the default namespac
    ```
    [...]
    The in-cluster query URL is:
-   http://phlare-querier.phlare-test.svc.cluster.local.:4100
+   http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4100
    [...]
    ```
 
-1. Check the statuses of the Phlare pods:
+1. Check the statuses of the Pyroscope pods:
 
    ```bash
-   kubectl -n phlare-test get pods
+   kubectl -n pyroscope-test get pods
    ```
 
    The results look similar to this when you are in micro-services mode:
 
    ```bash
-   kubectl -n phlare-test get pods
+   kubectl -n pyroscope-test get pods
    NAME                                 READY   STATUS    RESTARTS   AGE
-   phlare-agent-7d75b4f9dc-xwpsw        1/1     Running   0          3m23s
-   phlare-distributor-7c474947c-2p5cc   1/1     Running   0          3m23s
-   phlare-distributor-7c474947c-xbszv   1/1     Running   0          3m23s
-   phlare-ingester-0                    1/1     Running   0          5s
-   phlare-ingester-1                    1/1     Running   0          37s
-   phlare-ingester-2                    1/1     Running   0          69s
-   phlare-minio-0                       1/1     Running   0          3m23s
-   phlare-querier-66bf58dfcc-89gb8      1/1     Running   0          3m23s
-   phlare-querier-66bf58dfcc-p7lnc      1/1     Running   0          3m23s
-   phlare-querier-66bf58dfcc-zbggm      1/1     Running   0          3m23s
+   pyroscope-agent-7d75b4f9dc-xwpsw        1/1     Running   0          3m23s
+   pyroscope-distributor-7c474947c-2p5cc   1/1     Running   0          3m23s
+   pyroscope-distributor-7c474947c-xbszv   1/1     Running   0          3m23s
+   pyroscope-ingester-0                    1/1     Running   0          5s
+   pyroscope-ingester-1                    1/1     Running   0          37s
+   pyroscope-ingester-2                    1/1     Running   0          69s
+   pyroscope-minio-0                       1/1     Running   0          3m23s
+   pyroscope-querier-66bf58dfcc-89gb8      1/1     Running   0          3m23s
+   pyroscope-querier-66bf58dfcc-p7lnc      1/1     Running   0          3m23s
+   pyroscope-querier-66bf58dfcc-zbggm      1/1     Running   0          3m23s
    ```
 
 1. Wait until all of the pods have a status of `Running` or `Completed`, which might take a few minutes.
 
 ## Query profiles in Grafana
 
-1. Install Grafana in the same Kubernetes cluster where you installed Phlare.
+1. Install Grafana in the same Kubernetes cluster where you installed Pyroscope.
 
    ```
-   helm upgrade -n phlare-test --install grafana grafana/grafana \
+   helm upgrade -n pyroscope-test --install grafana grafana/grafana \
      --set image.repository=grafana/grafana \
      --set image.tag=main \
      --set env.GF_FEATURE_TOGGLES_ENABLE=flameGraph \
@@ -118,8 +119,8 @@ Use a custom namespace so that you do not have to overwrite the default namespac
      --set env.GF_DIAGNOSTICS_PROFILING_ENABLED=true \
      --set env.GF_DIAGNOSTICS_PROFILING_ADDR=0.0.0.0 \
      --set env.GF_DIAGNOSTICS_PROFILING_PORT=6060 \
-     --set-string 'podAnnotations.phlare\.grafana\.com/scrape=true' \
-     --set-string 'podAnnotations.phlare\.grafana\.com/port=6060'
+     --set-string 'podAnnotations.pyroscope\.grafana\.com/scrape=true' \
+     --set-string 'podAnnotations.pyroscope\.grafana\.com/port=6060'
    ```
 
    For details, see [Deploy Grafana on Kubernetes](/docs/grafana/latest/setup-grafana/installation/kubernetes/).
@@ -127,24 +128,24 @@ Use a custom namespace so that you do not have to overwrite the default namespac
 1. Port-forward Grafana to `localhost`, by using the `kubectl` command:
 
    ```bash
-   kubectl port-forward -n phlare-test service/grafana 3000:80
+   kubectl port-forward -n pyroscope-test service/grafana 3000:80
    ```
 
 1. In a browser, go to the Grafana server at [http://localhost:3000](http://localhost:3000).
 1. On the left-hand side, go to **Configuration** > **Data sources**.
-1. Configure a new Grafana Phlare data source to query the Grafana Phlare server, by using the following settings:
+1. Configure a new Pyroscope data source to query the Pyroscope server, by using the following settings:
 
    | Field | Value                                                        |
    | ----- | ------------------------------------------------------------ |
-   | Name  | Phlare                                                       |
-   | URL   | `http://phlare-querier.phlare-test.svc.cluster.local.:4100/`   |
+   | Name  | Pyroscope                                                       |
+   | URL   | `http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4100/`   |
 
    To add a data source, see [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
 
 1. Verify success:
 
    You should be able to query profiles in [Grafana Explore](/docs/grafana/latest/explore/),
-   as well as create dashboard panels by using your newly configured Phlare data source.
+   as well as create dashboard panels by using your newly configured Pyroscope data source.
 
 ## Optional: Persistently add data source
 
@@ -154,28 +155,28 @@ To ensure the data source gets provisioned at start-up, create the following `da
 
 ```yaml
 datasources:
-  phlare.yaml:
+  pyroscope.yaml:
    apiVersion: 1
    datasources:
-   - name: Phlare
-     type: phlare
-     uid: phlare-test
-     url: http://phlare-querier.phlare-test.svc.cluster.local.:4100/
+   - name: Pyroscope
+     type: pyroscope
+     uid: pyroscope-test
+     url: http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4100/
 ```
 
 Modify the Helm deployment by running:
 
 ```bash
-   helm upgrade -n phlare-test --reuse-values grafana grafana/grafana \
+   helm upgrade -n pyroscope-test --reuse-values grafana grafana/grafana \
      --values datasources.yaml
 ```
 
 ## Optional: Scrape your own workload's profiles
 
-The Phlare chart uses a default configuration that causes its agent to scrape Pods, provided they have the correct annotations.
+The Pyroscope chart uses a default configuration that causes its agent to scrape Pods, provided they have the correct annotations.
 This functionality uses [relabel_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config) and [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config) you might be familiar with the Prometheus or Grafana Agent config.
 
-To get Phlare to scrape pods, you must add the following annotations to the  pods:
+To get Pyroscope to scrape pods, you must add the following annotations to the  pods:
 
 ```yaml
 metadata:
