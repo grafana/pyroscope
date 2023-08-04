@@ -20,7 +20,7 @@ require (
 	github.com/google/pprof v0.0.0-20230705174524-200ffdc848b8
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
-	github.com/grafana/dskit v0.0.0-20230721071918-7ba66579c3ac
+	github.com/grafana/dskit v0.0.0-20230804003603-740f56bd2934
 	github.com/grafana/mimir v0.0.0-20230728104016-12792f6adf17
 	github.com/grafana/pyroscope/api v0.0.0-00010101000000-000000000000
 	github.com/grafana/regexp v0.0.0-20221122212121-6b5c0a4cb7fd
@@ -55,7 +55,6 @@ require (
 	github.com/thanos-io/thanos v0.31.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/valyala/bytebufferpool v1.0.0
-	github.com/weaveworks/common v0.0.0-20230714173453-d1f8877b91ce
 	github.com/xlab/treeprint v1.2.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/goleak v1.2.1
@@ -237,6 +236,7 @@ require (
 	github.com/tencentyun/cos-go-sdk-v5 v0.7.40 // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/vultr/govultr/v2 v2.17.2 // indirect
+	github.com/weaveworks/common v0.0.0-20230714173453-d1f8877b91ce // indirect
 	github.com/weaveworks/promrus v1.2.0 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.6 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.6 // indirect

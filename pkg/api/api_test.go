@@ -13,9 +13,9 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/stretchr/testify/require"
-	"github.com/weaveworks/common/server"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/grafana/pyroscope/pkg/util/gziphandler"

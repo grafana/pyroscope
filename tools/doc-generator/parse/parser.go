@@ -14,14 +14,13 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/grafana/regexp"
-
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/flagext"
+	dslog "github.com/grafana/dskit/log"
+	"github.com/grafana/regexp"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
-	"github.com/weaveworks/common/logging"
 )
 
 const (
@@ -483,7 +482,7 @@ func getFieldExample(fieldKey string, fieldType reflect.Type) *FieldExample {
 }
 
 func getCustomFieldEntry(cfg interface{}, field reflect.StructField, fieldValue reflect.Value, flags map[uintptr]*flag.Flag) *ConfigEntry {
-	if field.Type == reflect.TypeOf(logging.Level{}) || field.Type == reflect.TypeOf(logging.Format{}) {
+	if field.Type == reflect.TypeOf(dslog.Level{}) || field.Type == reflect.TypeOf(dslog.Format{}) {
 		fieldFlag := getFieldFlag(field, fieldValue, flags)
 		if fieldFlag == nil {
 			return nil

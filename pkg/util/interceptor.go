@@ -7,7 +7,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/weaveworks/common/tracing"
+	"github.com/grafana/dskit/tracing"
 
 	"github.com/grafana/pyroscope/pkg/tenant"
 )

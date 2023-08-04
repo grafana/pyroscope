@@ -3,7 +3,7 @@ package tenant
 import (
 	"context"
 
-	"github.com/weaveworks/common/user"
+	"github.com/grafana/dskit/user"
 )
 
 const ErrNoTenantID = user.ErrNoOrgID
