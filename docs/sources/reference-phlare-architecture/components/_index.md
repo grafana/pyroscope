@@ -1,23 +1,23 @@
 ---
-title: "Grafana Phlare components"
+title: "Pyroscope components"
 menuTitle: "Components"
-description: "Grafana Phlare includes a set of components that interact to form a cluster."
+description: "Pyroscope includes a set of components that interact to form a cluster."
 weight: 30
 keywords:
-  - Phlare components
-  - Phlare compactor
-  - Phlare distributor
-  - Phlare ingester
-  - Phlare querier
-  - Phlare query-frontend
-  - Phlare store-gateway
-  - Phlare overrides-exporter
-  - Phlare query-scheduler
-  - Phlare ruler
+  - Pyroscope components
+  - Pyroscope compactor
+  - Pyroscope distributor
+  - Pyroscope ingester
+  - Pyroscope querier
+  - Pyroscope query-frontend
+  - Pyroscope store-gateway
+  - Pyroscope overrides-exporter
+  - Pyroscope query-scheduler
+  - Pyroscope ruler
 ---
 
-# Grafana Phlare components
+# Pyroscope components
 
-Grafana Phlare includes a set of components that interact to form a cluster.
+Pyroscope includes a set of components that interact to form a cluster.
 
 {{< section menuTitle="true" >}}
