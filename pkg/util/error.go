@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/weaveworks/common/httpgrpc"
+	"github.com/grafana/dskit/httpgrpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 

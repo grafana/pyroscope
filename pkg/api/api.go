@@ -18,9 +18,9 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/kv/memberlist"
+	"github.com/grafana/dskit/middleware"
+	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/weaveworks/common/middleware"
-	"github.com/weaveworks/common/server"
 
 	"github.com/grafana/pyroscope/public"
 

@@ -7,7 +7,7 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/grafana/dskit/tenant"
-	"github.com/weaveworks/common/user"
+	"github.com/grafana/dskit/user"
 )
 
 // DefaultTenantID is the default tenant ID used when the interceptor is disabled.
