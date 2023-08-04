@@ -44,7 +44,7 @@ there are entries missing in the tables for the different models they are also
 inserted.
 
 [//source]:<> (https://https://mermaid.live/edit#pako:eNptU11P4zAQ_CuWn4HSlgvUjyicVImTTgTdC-ZhsTeJdYkdOfYJVOW_n_PhJFR9W8_Ozs6OkhMVRiJlVFTQtqmCwkLNNSFSWRROGU1eH_v30CeZs0oXy_sXNE0AyKmHCDmmhBGvtEvueqBbiM9GwKA2MafBY7rmE_KsNLaMvL33xblEgKbpn14P3i6NM3Jpf5xYnwLir7MgMHqKHo_pYOHiHb-tyVU1j2RoFbYvmH_3kUHdVOMhY3mmMoKzyOzk_J4_UPmzg7iOmXO65ZRcX5upivbZnC3XfSChrQfiwhhinrrEhM6oEENiS75cr3IamXq9a5UZ1zGcmRaPj41F4DVLH49a4mdYMIYx4ouZZS9bB8Q1vaI12hqUDJ_tECGnrsQaOWWhlJiDrxynXHeB6hsJDp-kcsZSlkPV4hUF70z2pQVlznqMpOnrn1mVAYlh6ETdV9P_I4VqXZAURueq6HFvqwCXzjUt22z69k2hXOk_boSpN62SJVhX_jskm2SXPMBuj8n9Hn7s91J8bA8P-e5um8v72-0OaNd1_wF4hit7)
-![Data model of Phlare blocks](model.svg)
+![Data model of Pyroscope blocks](model.svg)
 
 [pprof]: https://github.com/google/pprof/blob/main/proto/profile.proto
 [TSDB index]: https://ganeshvernekar.com/blog/prometheus-tsdb-persistent-block-and-its-index/
