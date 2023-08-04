@@ -1,12 +1,12 @@
 ---
-title: "Grafana Phlare release notes"
+title: "Pyroscope release notes"
 menuTitle: "Release notes"
-description: "Release notes for all versions of Grafana Phlare."
+description: "Release notes for all versions of Pyroscope."
 weight: 10
 keywords:
-  - Grafana Phlare release notes
+  - Pyroscope release notes
 ---
 
-# Grafana Phlare release notes
+# Pyroscope release notes
 
 {{< section menuTitle="true" >}}

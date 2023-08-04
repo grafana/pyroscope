@@ -1,11 +1,11 @@
 ---
-title: "Grafana Phlare query-frontend"
+title: "Pyroscope query-frontend"
 menuTitle: "Query-frontend"
 description: "The query-frontend accelerates queries."
 weight: 60
 ---
 
-# Grafana Phlare query-frontend
+# Pyroscope query-frontend
 
 The query-frontend is a stateless component that provides the same API as the [querier]({{< relref "../querier.md" >}}) and can be used to accelerate the read path and ensure fair scheduling between tenants using the [query-scheduler]({{< relref "../query-scheduler/index.md" >}}).
 
