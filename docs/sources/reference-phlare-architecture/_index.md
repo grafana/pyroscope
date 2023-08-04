@@ -1,12 +1,12 @@
 ---
-title: "Grafana Phlare architecture"
-menuTitle: "Reference: Phlare Architecture"
-description: "Learn about the Grafana Phlare architecture components and services."
+title: "Pyroscope architecture"
+menuTitle: "Reference: Pyroscope Architecture"
+description: "Learn about the Pyroscope architecture components and services."
 weight: 60
 ---
 
-# Grafana Phlare architecture
+# Pyroscope architecture
 
-The following topics include overviews of the Grafana Phlare architecture.
+The following topics include overviews of the Pyroscope architecture.
 
 {{< section menuTitle="true" >}}
