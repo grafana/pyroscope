@@ -1188,7 +1188,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4040
+    - port: 4100
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1213,7 +1213,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4040
+    - port: 4100
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1237,7 +1237,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4040
+    - port: 4100
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1262,7 +1262,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4040
+    - port: 4100
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1286,7 +1286,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4040
+    - port: 4100
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1311,7 +1311,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4040
+    - port: 4100
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1335,7 +1335,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4040
+    - port: 4100
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1360,7 +1360,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4040
+    - port: 4100
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1384,7 +1384,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4040
+    - port: 4100
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1409,7 +1409,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4040
+    - port: 4100
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1433,7 +1433,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4040
+    - port: 4100
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1458,7 +1458,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4040
+    - port: 4100
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1482,7 +1482,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4040
+    - port: 4100
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1507,7 +1507,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4040
+    - port: 4100
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1566,13 +1566,13 @@ spec:
             - "-target=agent"
             - "-memberlist.cluster-label=default-phlare-dev"
             - "-memberlist.join=dns+phlare-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-client.url=http://phlare-dev-distributor.default.svc.cluster.local.:4040"
+            - "-client.url=http://phlare-dev-distributor.default.svc.cluster.local.:4100"
             - "-config.file=/etc/phlare/config.yaml"
             - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4040
+              containerPort: 4100
               protocol: TCP
             - name: memberlist
               containerPort: 7946
@@ -1660,7 +1660,7 @@ spec:
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4040
+              containerPort: 4100
               protocol: TCP
             - name: memberlist
               containerPort: 7946
@@ -1748,7 +1748,7 @@ spec:
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4040
+              containerPort: 4100
               protocol: TCP
             - name: memberlist
               containerPort: 7946
@@ -1836,7 +1836,7 @@ spec:
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4040
+              containerPort: 4100
               protocol: TCP
             - name: memberlist
               containerPort: 7946
@@ -1924,7 +1924,7 @@ spec:
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4040
+              containerPort: 4100
               protocol: TCP
             - name: memberlist
               containerPort: 7946
@@ -2109,7 +2109,7 @@ spec:
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4040
+              containerPort: 4100
               protocol: TCP
             - name: memberlist
               containerPort: 7946
@@ -2200,7 +2200,7 @@ spec:
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4040
+              containerPort: 4100
               protocol: TCP
             - name: memberlist
               containerPort: 7946

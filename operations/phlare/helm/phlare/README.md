@@ -50,7 +50,7 @@
 | phlare.replicaCount | int | `1` |  |
 | phlare.resources | object | `{}` |  |
 | phlare.securityContext | object | `{}` |  |
-| phlare.service.port | int | `4040` |  |
+| phlare.service.port | int | `4100` |  |
 | phlare.service.port_name | string | `"http2"` |  |
 | phlare.service.type | string | `"ClusterIP"` |  |
 | phlare.serviceAccount.annotations | object | `{}` |  |

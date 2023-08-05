@@ -64,7 +64,7 @@ phlare:
 
   service:
     type: ClusterIP
-    port: 4040
+    port: 4100
     port_name: http2
 
   memberlist:
