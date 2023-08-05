@@ -109,27 +109,24 @@ func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.It
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - HeadOnDisk")
 	defer sp.Finish()
 
-	stacktraceSamples := stacktracesByMapping{}
-
-	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, stacktraceSamples); err != nil {
+	m := make(sampleMerge)
+	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, m); err != nil {
 		return nil, err
 	}
 
 	// TODO: Truncate insignificant stacks.
-	return q.head.resolveStacktraces(ctx, stacktraceSamples), nil
+	return q.head.resolveStacktraces(ctx, m), nil
 }
 
 func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByPprof - HeadOnDisk")
 	defer sp.Finish()
 
-	stacktraceSamples := profileSampleByMapping{}
-
-	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, stacktraceSamples); err != nil {
+	m := make(sampleMerge)
+	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, m); err != nil {
 		return nil, err
 	}
-
-	return q.head.resolvePprof(ctx, stacktraceSamples), nil
+	return q.head.resolvePprof(ctx, m), nil
 }
 
 func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {

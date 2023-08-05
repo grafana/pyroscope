@@ -15,7 +15,7 @@ type SymbolsReader interface {
 }
 
 type SymbolsResolver interface {
-	ResolveStacktraces(ctx context.Context, dst symdb.StacktraceInserter, stacktraces []uint32) error
+	ResolveStacktraceLocations(ctx context.Context, dst symdb.StacktraceInserter, stacktraces []uint32) error
 
 	Locations(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryLocation]
 	Mappings(iter.Iterator[uint32]) iter.Iterator[*schemav1.InMemoryMapping]
@@ -53,7 +53,7 @@ type inMemorySymbolsResolver struct {
 	reader    *inMemorySymbolsReader
 }
 
-func (s inMemorySymbolsResolver) ResolveStacktraces(ctx context.Context, dst symdb.StacktraceInserter, stacktraces []uint32) error {
+func (s inMemorySymbolsResolver) ResolveStacktraceLocations(ctx context.Context, dst symdb.StacktraceInserter, stacktraces []uint32) error {
 	return s.reader.stacktraces.Resolve(ctx, s.partition, dst, stacktraces)
 }
 

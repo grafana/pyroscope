@@ -6,11 +6,12 @@ import (
 
 	"github.com/google/pprof/profile"
 
+	"github.com/grafana/pyroscope/pkg/model"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 type StacktraceResolver interface {
-	// ResolveStacktraces resolves locations for each stack trace
+	// ResolveStacktraceLocations resolves locations for each stack trace
 	// and inserts it to the StacktraceInserter provided.
 	//
 	// The stacktraces must be ordered in the ascending order.
@@ -18,7 +19,7 @@ type StacktraceResolver interface {
 	// array of locations.
 	//
 	// Stacktraces slice might be modified during the call.
-	ResolveStacktraces(ctx context.Context, dst StacktraceInserter, stacktraces []uint32) error
+	ResolveStacktraceLocations(ctx context.Context, dst StacktraceInserter, stacktraces []uint32) error
 }
 
 // StacktraceInserter accepts resolved locations for a given stack trace.
@@ -45,11 +46,48 @@ type Resolver struct {
 	Strings     []string
 }
 
+// TODO: Max nodes limit.
+
+func (r *Resolver) ResolveTree(ctx context.Context, samples v1.Samples) (*model.Tree, error) {
+	// TODO: Make it reusable.
+	t := &locationsResolve{
+		samples: &samples,
+		tree:    model.NewStacktraceTree(1 << 10),
+	}
+	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
+		return nil, err
+	}
+	return t.tree.Tree(-1, t.unfoldLocation), nil
+}
+
+type locationsResolve struct {
+	tree     *model.StacktraceTree
+	resolver *Resolver
+	samples  *v1.Samples
+	lines    []string
+	cur      int
+}
+
+func (r *locationsResolve) InsertStacktrace(_ uint32, locations []int32) {
+	r.tree.Insert(locations, int64(r.samples.Values[r.cur]))
+	r.cur++
+}
+
+func (r *locationsResolve) unfoldLocation(location int32) []string {
+	r.lines = r.lines[:0]
+	// TODO: Check order.
+	for _, line := range r.resolver.Locations[location].Line {
+		f := r.resolver.Functions[line.FunctionId]
+		r.lines = append(r.lines, r.resolver.Strings[f.Name])
+	}
+	return r.lines
+}
+
 func (r *Resolver) ResolveProfile(ctx context.Context, samples v1.Samples) (*profile.Profile, error) {
 	t := pprofResolveFromPool()
 	defer t.reset()
 	t.init(r, samples)
-	if err := r.Stacktraces.ResolveStacktraces(ctx, t, samples.StacktraceIDs); err != nil {
+	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
 		return nil, err
 	}
 	return t.profile, nil

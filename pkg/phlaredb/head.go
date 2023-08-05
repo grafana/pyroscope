@@ -393,7 +393,7 @@ func (h *Head) resolveStacktraces(ctx context.Context, stacktracesByMapping stac
 			sort.Slice(stacktraceIDs, func(i, j int) bool {
 				return stacktraceIDs[i] < stacktraceIDs[j]
 			})
-			return resolver.ResolveStacktraces(
+			return resolver.ResolveStacktraceLocations(
 				ctx,
 				symdb.StacktraceInserterFn(
 					func(stacktraceID uint32, locs []int32) {
@@ -456,7 +456,7 @@ func (h *Head) resolvePprof(ctx context.Context, stacktracesByMapping profileSam
 				return stacktraceIDs[i] < stacktraceIDs[j]
 			})
 
-			return resolver.ResolveStacktraces(
+			return resolver.ResolveStacktraceLocations(
 				ctx,
 				symdb.StacktraceInserterFn(
 					func(stacktraceID uint32, locationIds []int32) {

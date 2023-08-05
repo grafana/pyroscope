@@ -377,7 +377,7 @@ func (r *stacktraceResolverV2) Resolve(ctx context.Context, partition uint64, lo
 	if !ok {
 		return nil
 	}
-	return resolver.ResolveStacktraces(ctx, locs, stacktraceIDs)
+	return resolver.ResolveStacktraceLocations(ctx, locs, stacktraceIDs)
 }
 
 func (r *stacktraceResolverV2) Load(ctx context.Context) error {

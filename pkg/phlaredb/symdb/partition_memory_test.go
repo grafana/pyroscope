@@ -212,7 +212,7 @@ func Test_Stacktraces_append_resolve(t *testing.T) {
 		dst.On("InsertStacktrace", uint32(4), []int32{4, 3, 2, 1})
 		dst.On("InsertStacktrace", uint32(5), []int32{3, 1})
 		dst.On("InsertStacktrace", uint32(6), []int32{5, 2, 1})
-		require.NoError(t, r.ResolveStacktraces(ctx, dst, []uint32{2, 3, 4, 5, 6}))
+		require.NoError(t, r.ResolveStacktraceLocations(ctx, dst, []uint32{2, 3, 4, 5, 6}))
 	})
 
 	t.Run("multiple chunks", func(t *testing.T) {
@@ -266,7 +266,7 @@ func Test_Stacktraces_append_resolve(t *testing.T) {
 			dst.On("InsertStacktrace", uint32(11), []int32{4, 3, 2, 1})
 			dst.On("InsertStacktrace", uint32(16), []int32{3, 1})
 			dst.On("InsertStacktrace", uint32(18), []int32{5, 2, 1})
-			require.NoError(t, r.ResolveStacktraces(ctx, dst, []uint32{2, 3, 11, 16, 18}))
+			require.NoError(t, r.ResolveStacktraceLocations(ctx, dst, []uint32{2, 3, 11, 16, 18}))
 		})
 
 		t.Run("adjacent shards at end", func(t *testing.T) {
@@ -277,7 +277,7 @@ func Test_Stacktraces_append_resolve(t *testing.T) {
 			dst.On("InsertStacktrace", uint32(32), []int32{14, 13, 12, 11})
 			dst.On("InsertStacktrace", uint32(37), []int32{13, 11})
 			dst.On("InsertStacktrace", uint32(39), []int32{15, 12, 11})
-			require.NoError(t, r.ResolveStacktraces(ctx, dst, []uint32{23, 24, 32, 37, 39}))
+			require.NoError(t, r.ResolveStacktraceLocations(ctx, dst, []uint32{23, 24, 32, 37, 39}))
 		})
 
 		t.Run("non-adjacent shards", func(t *testing.T) {
@@ -285,7 +285,7 @@ func Test_Stacktraces_append_resolve(t *testing.T) {
 			dst := new(mockStacktraceInserter)
 			dst.On("InsertStacktrace", uint32(11), []int32{4, 3, 2, 1})
 			dst.On("InsertStacktrace", uint32(32), []int32{14, 13, 12, 11})
-			require.NoError(t, r.ResolveStacktraces(ctx, dst, []uint32{11, 32}))
+			require.NoError(t, r.ResolveStacktraceLocations(ctx, dst, []uint32{11, 32}))
 		})
 	})
 }
@@ -325,7 +325,7 @@ func Test_Stacktraces_memory_resolve_pprof(t *testing.T) {
 	require.True(t, ok)
 
 	si := newStacktracesMapInserter()
-	err = r.ResolveStacktraces(context.Background(), si, sids)
+	err = r.ResolveStacktraceLocations(context.Background(), si, sids)
 	require.NoError(t, err)
 
 	si.assertValid(t, sids, stacktraces)
@@ -349,13 +349,13 @@ func Test_Stacktraces_memory_resolve_chunked(t *testing.T) {
 	r, ok := db.SymbolsReader(0)
 	require.True(t, ok)
 
-	// ResolveStacktraces modifies sids in-place,
+	// ResolveStacktraceLocations modifies sids in-place,
 	// if stacktraces are chunked.
 	sidsCopy := make([]uint32, len(sids))
 	copy(sidsCopy, sids)
 
 	si := newStacktracesMapInserter()
-	err = r.ResolveStacktraces(context.Background(), si, sids)
+	err = r.ResolveStacktraceLocations(context.Background(), si, sids)
 	require.NoError(t, err)
 
 	si.assertValid(t, sidsCopy, stacktraces)
@@ -413,7 +413,7 @@ func Test_Stacktraces_memory_resolve_concurrency(t *testing.T) {
 				}
 				require.True(t, ok)
 
-				// ResolveStacktraces modifies sids in-place,
+				// ResolveStacktraceLocations modifies sids in-place,
 				// if stacktraces are chunked.
 				sidsCopy := make([]uint32, len(sids))
 				copy(sidsCopy, sids)
@@ -422,7 +422,7 @@ func Test_Stacktraces_memory_resolve_concurrency(t *testing.T) {
 				// be appended by the time of querying, therefore validation
 				// of the result is omitted (covered separately).
 				si := newStacktracesMapInserter()
-				_ = r.ResolveStacktraces(context.Background(), si, sidsCopy)
+				_ = r.ResolveStacktraceLocations(context.Background(), si, sidsCopy)
 			}()
 		}
 

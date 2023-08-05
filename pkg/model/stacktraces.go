@@ -12,6 +12,7 @@ import (
 	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
+
 	"github.com/grafana/pyroscope/pkg/og/util/varint"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
@@ -166,7 +167,7 @@ func sortStacktraces(r *ingestv1.MergeProfilesStacktracesResult) {
 
 type StacktraceMerger struct {
 	mu sync.Mutex
-	s  *stacktraceTree
+	s  *StacktraceTree
 	r  *functionsRewriter
 }
 
@@ -188,11 +189,11 @@ func (m *StacktraceMerger) MergeStackTraces(stacks []*ingestv1.StacktraceSample,
 		// will grow (factor of 2 is quite conservative).
 		// 4 here is the branching factor: how many new nodes per
 		// a stack on average we expect.
-		m.s = newStacktraceTree(len(stacks) * 4 * 2)
+		m.s = NewStacktraceTree(len(stacks) * 4 * 2)
 		// We can use function IDs as is for the first batch.
 		m.r = newFunctionsRewriter(names)
 		for _, s := range stacks {
-			m.s.insert(s.FunctionIds, s.Value)
+			m.s.Insert(s.FunctionIds, s.Value)
 		}
 		m.mu.Unlock()
 		return
@@ -200,30 +201,30 @@ func (m *StacktraceMerger) MergeStackTraces(stacks []*ingestv1.StacktraceSample,
 	m.r.union(names)
 	for _, s := range stacks {
 		m.r.rewrite(s.FunctionIds)
-		m.s.insert(s.FunctionIds, s.Value)
+		m.s.Insert(s.FunctionIds, s.Value)
 	}
 	m.mu.Unlock()
 }
 
 func (m *StacktraceMerger) TreeBytes(maxNodes int64) []byte {
-	if m.s == nil || len(m.s.nodes) == 0 {
+	if m.s == nil || len(m.s.Nodes) == 0 {
 		return nil
 	}
 	// Reuse of the slice (or the whole StacktraceMerger) is possible,
 	// but it is unlikely that the performance will be impacted.
-	size := len(m.s.nodes)
+	size := len(m.s.Nodes)
 	if mn := int(maxNodes); maxNodes > 0 && mn < size {
 		size = mn
 	}
 	buf := make([]byte, 0, size*estimateBytesPerNode)
 	b := bytes.NewBuffer(buf)
-	m.s.bytes(b, maxNodes, m.r.names)
+	m.s.Bytes(b, maxNodes, m.r.names)
 	return b.Bytes()
 }
 
 func (m *StacktraceMerger) Size() int {
 	if m.s != nil {
-		return len(m.s.nodes)
+		return len(m.s.Nodes)
 	}
 	return 0
 }
@@ -268,99 +269,94 @@ func (r *functionsRewriter) rewrite(stack []int32) {
 	}
 }
 
-// stacktraceTree represents a profile built from a collection of StacktraceSamples.
-type stacktraceTree struct{ nodes []stacktraceNode }
+type StacktraceTree struct{ Nodes []StacktraceNode }
 
-type stacktraceNode struct {
-	i     int32
-	fc    int32
-	ns    int32
-	fid   int32
-	val   int64
-	total int64
+type StacktraceNode struct {
+	FirstChild  int32
+	NextSibling int32
+	Parent      int32
+	Location    int32
+	Value       int64
+	Total       int64
 }
 
-func newStacktraceTree(size int) *stacktraceTree {
-	t := stacktraceTree{nodes: make([]stacktraceNode, 0, size)}
-	t.newNode(0)
+func NewStacktraceTree(size int) *StacktraceTree {
+	if size < 1 {
+		size = 1
+	}
+	t := StacktraceTree{Nodes: make([]StacktraceNode, 1, size)}
+	t.Nodes[0] = StacktraceNode{
+		FirstChild:  sentinel,
+		NextSibling: sentinel,
+	}
 	return &t
 }
 
-func (t *stacktraceTree) newNode(fid int32) *stacktraceNode {
-	n := stacktraceNode{
-		fid: fid,
-		i:   int32(len(t.nodes)),
-		fc:  -1,
-		ns:  -1,
-	}
-	t.nodes = append(t.nodes, n)
-	return &t.nodes[n.i]
-}
+const sentinel = -1
 
-// stack of function IDs, the root it the last element.
-func (t *stacktraceTree) insert(stack []int32, v int64) {
+func (t *StacktraceTree) len() uint32 { return uint32(len(t.Nodes)) }
+
+func (t *StacktraceTree) Insert(locations []int32, value int64) {
 	var (
-		i int32
-		n = new(stacktraceNode)
+		n = &t.Nodes[0]
+		i = n.FirstChild
+		x int32
 	)
-	// Iterate over the stack in reverse order.
-	// Note that j is not decremented automatically.
-	for j := len(stack) - 1; j >= 0; {
-		r := stack[j]
-		if i < 0 {
-			// Next node is not found.
-			x := t.newNode(r)
-			n.fc = x.i
-			t.nodes[n.i] = *n
-			n = x
+
+	for j := len(locations) - 1; j >= 0; {
+		r := locations[j]
+		if i == sentinel {
+			ni := int32(len(t.Nodes))
+			n.FirstChild = ni
+			t.Nodes = append(t.Nodes, StacktraceNode{
+				Parent:      x,
+				FirstChild:  sentinel,
+				NextSibling: sentinel,
+				Location:    r,
+			})
+			x = ni
+			n = &t.Nodes[ni]
 		} else {
-			n = &t.nodes[i]
+			x = i
+			n = &t.Nodes[i]
 		}
-		if n.fid == r && n.i != 0 {
-			// There already is a node with this function ID.
-			// Update it and go to the next level.
-			n.total += v
-			t.nodes[n.i] = *n
-			i = n.fc
+		if n.Location == r {
+			n.Total += value
+			i = n.FirstChild
 			j--
 			continue
 		}
-		if n.i == 0 {
-			i = n.fc
-			continue
+		if n.NextSibling < 0 {
+			n.NextSibling = int32(len(t.Nodes))
+			t.Nodes = append(t.Nodes, StacktraceNode{
+				Parent:      n.Parent,
+				FirstChild:  sentinel,
+				NextSibling: sentinel,
+				Location:    r,
+			})
 		}
-		// No more siblings, insert one.
-		if n.ns < 0 {
-			x := t.newNode(r)
-			n.ns = x.i
-			t.nodes[n.i] = *n
-		}
-		// Go to the next sibling, without decrementing j,
-		// so that the same function ID is evaluated.
-		i = n.ns
+		i = n.NextSibling
 	}
-	// Reached end of the stack.
-	n = &t.nodes[n.i]
-	n.val += v
-	t.nodes[n.i] = *n
+
+	t.Nodes[x].Value += value
 }
 
 // minValue returns the minimum "total" value a node in a tree has to have.
-func (t *stacktraceTree) minValue(maxNodes int64) int64 {
-	if maxNodes < 1 || maxNodes >= int64(len(t.nodes)) {
+func (t *StacktraceTree) minValue(maxNodes int64) int64 {
+	if maxNodes < 1 || maxNodes >= int64(len(t.Nodes)) {
 		return 0
 	}
 	s := make(minHeap, 0, maxNodes)
 	h := &s
-	for _, n := range t.nodes {
+	for _, n := range t.Nodes {
 		if h.Len() >= int(maxNodes) {
-			if n.total > (*h)[0] {
+			if n.Total > (*h)[0] {
 				heap.Pop(h)
 			} else {
 				continue
 			}
 		}
-		heap.Push(h, n.total)
+		heap.Push(h, n.Total)
 	}
 	if h.Len() < int(maxNodes) {
 		return 0
@@ -368,16 +364,10 @@ func (t *stacktraceTree) minValue(maxNodes int64) int64 {
 	return (*h)[0]
 }
 
-const lostDuringSerializationNameReference = -1
+type StacktraceTreeTraverseFn = func(index int32, children []int32) error
 
-var lostDuringSerializationNameBytes = []byte(lostDuringSerializationName)
-
-func (t *stacktraceTree) bytes(dst io.Writer, maxNodes int64, funcs []string) {
-	if len(t.nodes) == 0 || len(funcs) == 0 {
-		return
-	}
+func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) error {
 	min := t.minValue(maxNodes)
-	vw := varint.NewWriter()
 	children := make([]int32, 0, 128) // Children per node.
 	nodesSize := maxNodes             // Depth search buffer.
 	if nodesSize < 1 || nodesSize > 10<<10 {
@@ -388,49 +378,122 @@ func (t *stacktraceTree) bytes(dst io.Writer, maxNodes int64, funcs []string) {
 	for len(nodes) > 0 {
 		current, nodes, children = nodes[len(nodes)-1], nodes[:len(nodes)-1], children[:0]
 		var truncated int64
-		n := &t.nodes[current]
-		if n.fid == lostDuringSerializationNameReference {
-			goto write
+		n := &t.Nodes[current]
+		if n.Location == StacktraceTreeNodeTruncated {
+			goto call
 		}
 
-		for x := n.fc; x > 0; {
-			child := &t.nodes[x]
-			if child.total >= min && child.fid != lostDuringSerializationNameReference {
+		for x := n.FirstChild; x > 0; {
+			child := &t.Nodes[x]
+			if child.Total >= min && child.Location != StacktraceTreeNodeTruncated {
 				children = append(children, x)
 			} else {
-				truncated += child.total
+				truncated += child.Total
 			}
-			x = child.ns
+			x = child.NextSibling
 		}
 
 		if truncated > 0 {
 			// Create a stub for removed nodes.
-			s := t.newNode(lostDuringSerializationNameReference)
-			s.val = truncated
-			t.nodes[s.i] = *s
-			children = append(children, s.i)
+			i := len(t.Nodes)
+			t.Nodes = append(t.Nodes, StacktraceNode{
+				Location: StacktraceTreeNodeTruncated,
+				Value:    truncated,
+			})
+			children = append(children, int32(i))
 		}
 
 		if len(children) > 0 {
 			nodes = append(nodes, children...)
 		}
 
-	write:
+	call:
+		if err := fn(current, children); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+const StacktraceTreeNodeTruncated = -1
+
+type LocationUnfoldFn func(location int32) []string
+
+func (t *StacktraceTree) Tree(maxNodes int64, unfold LocationUnfoldFn) *Tree {
+	// TODO: Allow custom node allocator.
+	nodes := make([]*node, len(t.Nodes))
+
+	_ = t.Traverse(maxNodes, func(index int32, children []int32) error {
+		n := t.Nodes[index]
+		x := nodes[index]
+		if x == nil {
+			x = new(node)
+			if n.Parent > 0 {
+				x.parent = nodes[n.Parent]
+			}
+			nodes[index] = x
+		}
+		x.total = n.Total
+		lines := unfold(n.Location)
+		x.name = lines[0]
+		for _, line := range lines[1:] {
+			m := &node{
+				parent: x,
+				total:  x.total,
+				name:   line,
+			}
+			x.children = []*node{m}
+			x = m
+		}
+		nodes[index] = x
+		x.self = n.Value
+		for i := range x.children {
+			nodes[children[i]] = &node{
+				parent: x,
+			}
+		}
+		return nil
+	})
+
+	dst := Tree{root: make([]*node, 0, 64)}
+	for _, n := range nodes {
+		if n.parent == nil {
+			dst.root = append(dst.root, n)
+		}
+		sort.Slice(n.children, func(i, j int) bool {
+			return n.children[i].name < n.children[j].name
+		})
+	}
+
+	return &dst
+}
+
+var lostDuringSerializationNameBytes = []byte(lostDuringSerializationName)
+
+func (t *StacktraceTree) Bytes(dst io.Writer, maxNodes int64, funcs []string) {
+	if len(t.Nodes) == 0 || len(funcs) == 0 {
+		return
+	}
+	vw := varint.NewWriter()
+	_ = t.Traverse(maxNodes, func(index int32, children []int32) error {
+		n := t.Nodes[index]
 		var name []byte
-		switch n.fid {
+		switch n.Location {
 		default:
 			// It is guaranteed that funcs slice and its contents are immutable,
 			// and the byte slice backing capacity is managed by GC.
-			name = unsafeStringBytes(funcs[n.fid])
-		case lostDuringSerializationNameReference:
+			name = unsafeStringBytes(funcs[n.Location])
+		case StacktraceTreeNodeTruncated:
 			name = lostDuringSerializationNameBytes
 		}
 
 		_, _ = vw.Write(dst, uint64(len(name)))
 		_, _ = dst.Write(name)
-		_, _ = vw.Write(dst, uint64(n.val))
+		_, _ = vw.Write(dst, uint64(n.Value))
 		_, _ = vw.Write(dst, uint64(len(children)))
-	}
+		return nil
+	})
 }
 
 func unsafeStringBytes(s string) []byte {

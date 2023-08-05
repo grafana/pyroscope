@@ -25,7 +25,7 @@ func (p *Partition) AppendStacktraces(dst []uint32, s []*schemav1.Stacktrace) {
 	p.stacktraces.append(dst, s)
 }
 
-func (p *Partition) ResolveStacktraces(_ context.Context, dst StacktraceInserter, stacktraces []uint32) error {
+func (p *Partition) ResolveStacktraceLocations(_ context.Context, dst StacktraceInserter, stacktraces []uint32) error {
 	// TODO(kolesnikovae): Add option to do resolve concurrently.
 	//   Depends on StacktraceInserter implementation.
 	return p.stacktraces.resolve(dst, stacktraces)

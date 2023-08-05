@@ -774,7 +774,7 @@ func (p *symPartitionRewriter) resolveStacktraces(stacktraceIDs []uint32) error 
 		return nil
 	}
 	p.stacktraces.initSorted()
-	return p.resolver.ResolveStacktraces(context.TODO(), p.r.inserter, p.stacktraces.buf)
+	return p.resolver.ResolveStacktraceLocations(context.TODO(), p.r.inserter, p.stacktraces.buf)
 }
 
 func (p *symPartitionRewriter) stacktracesFromResolvedValues() []*schemav1.Stacktrace {

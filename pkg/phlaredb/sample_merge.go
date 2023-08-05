@@ -17,31 +17,32 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
+	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
 
-	stacktraceAggrValues := make(stacktracesByMapping)
-	if err := mergeByStacktraces(ctx, b.profiles.file, rows, stacktraceAggrValues); err != nil {
+	m := make(sampleMerge)
+	if err := mergeByStacktraces(ctx, b.profiles.file, rows, m); err != nil {
 		return nil, err
 	}
 
 	// TODO: Truncate insignificant stacks.
-	return b.resolveSymbols(ctx, stacktraceAggrValues)
+	return b.resolveSymbols(ctx, m)
 }
 
 func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
 
-	stacktraceAggrValues := make(profileSampleByMapping)
-	if err := mergeByStacktraces(ctx, b.profiles.file, rows, stacktraceAggrValues); err != nil {
+	m := make(sampleMerge)
+	if err := mergeByStacktraces(ctx, b.profiles.file, rows, m); err != nil {
 		return nil, err
 	}
 
-	return b.resolvePprofSymbols(ctx, stacktraceAggrValues)
+	return b.resolvePprofSymbols(ctx, m)
 }
 
 type locationsIdsByStacktraceID struct {
@@ -398,6 +399,30 @@ func (m profileSampleByMapping) StacktraceSamples() []*profile.Sample {
 	return result
 }
 
+type sampleMerge map[uint64]map[uint32]int64
+
+func (m sampleMerge) Add(partition uint64, stacktraceID uint32, value int64) {
+	p, ok := m[partition]
+	if !ok {
+		p = make(map[uint32]int64, 128)
+		m[partition] = p
+	}
+	p[stacktraceID] += value
+}
+
+func (m sampleMerge) Sum(partition uint64, dst v1.Samples) {
+	p, ok := m[partition]
+	if !ok {
+		return
+	}
+	dst.StacktraceIDs = dst.StacktraceIDs[:0]
+	dst.Values = dst.Values[:0]
+	for k, v := range p {
+		dst.StacktraceIDs = append(dst.StacktraceIDs, k)
+		dst.Values = append(dst.Values, uint64(v))
+	}
+}
+
 type profileSampleMap map[uint32]*profile.Sample
 
 func (m profileSampleMap) add(key uint32, value int64) {
@@ -460,7 +485,7 @@ type mapAdder interface {
 	add(mapping uint64, key uint32, value int64)
 }
 
-func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], m mapAdder) error {
+func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], m sampleMerge) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeByStacktraces")
 	defer sp.Finish()
 	// clone the rows to be able to iterate over them twice
@@ -476,8 +501,9 @@ func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Ite
 
 	for it.Next() {
 		values := it.At().Values
+		p := it.At().Row.StacktracePartition()
 		for i := 0; i < len(values[0]); i++ {
-			m.add(it.At().Row.StacktracePartition(), uint32(values[0][i].Int64()), values[1][i].Int64())
+			m.Add(p, uint32(values[0][i].Int64()), values[1][i].Int64())
 		}
 	}
 	return nil

@@ -259,7 +259,7 @@ func (p *PartitionReader) WriteStats(s *Stats) {
 
 var ErrInvalidStacktraceRange = fmt.Errorf("invalid range: stack traces can't be resolved")
 
-func (p *PartitionReader) ResolveStacktraces(ctx context.Context, dst StacktraceInserter, s []uint32) error {
+func (p *PartitionReader) ResolveStacktraceLocations(ctx context.Context, dst StacktraceInserter, s []uint32) error {
 	if len(s) == 0 {
 		return nil
 	}
