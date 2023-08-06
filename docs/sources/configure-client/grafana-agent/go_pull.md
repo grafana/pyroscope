@@ -18,24 +18,20 @@ To be able to pull profiles from applications, your applications needs to expose
 
 Before proceeding with the configuration, ensure that you have the following:
 
-- Go application with Pyroscope agent instrumentation (more languages coming soon)
-- Docker and Docker Compose installed on your system
+1. Install Grafana Agent in [flow mode](/docs/agent/next/flow/setup/install/)
+2. Configure Grafana Agent in Flow mode
 
-## Configuring the agent
+## Adding Profiling to the Grafana Agent
 
 This guide presents how to configure the Grafana Agent for scraping performance profiles from a pprof endpoint using `pyroscope.scrape`. 
-
-Please note, `pyroscope.scrape` is currently a beta feature. As such, it may undergo changes and updates.
 
 **While this documentation will contain a simple example for more configuration options visit the [agent configuration documentation](/docs/agent/next/flow/reference/components/pyroscope.scrape/).**
 
 ### Setup
 
-To set up the Grafana Agent in pull mode, follow these steps:
+To set up the Grafana Agent for profiling in pull mode (see [example](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent)), follow these steps:
 
-Clone the Pyroscope repository or navigate to your project directory.
-
-Create the following directory structure for the example files:
+Create the following directory structure:
 ```
 ├── examples
 │   └── your-application-example
@@ -48,16 +44,15 @@ Create the following directory structure for the example files:
 └── ...
 ```
 
-
 ## Agent Configuration
 
-Use the `pyroscope.scrape` to establish a pprof scraping job for specific targets. The performance profiles obtained from the scraping process are then passed to the receivers specified in `forward_to`.
+In [`/agent/config/config.river`](https://github.com/grafana/pyroscope/blob/main/examples/grafana-agent/agent/config/config.river) file use `pyroscope.scrape` to establish a pprof scraping job for specific targets. The performance profiles obtained from the scraping process are then passed to the receivers specified in `forward_to`.
 
 You can define multiple `pyroscope.scrape` components, each distinguished by unique labels. 
 
 Here is the general usage:
 
-```plaintext
+```river
 pyroscope.scrape "LABEL" {
   targets    = TARGET_LIST
   forward_to = RECEIVER_LIST
