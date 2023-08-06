@@ -10,37 +10,37 @@ weight: 30
 
 # Sending profiles from your application
 
-Pyroscope is a continuous profiling database that allows you to analyze the performance of your applications. When sending profiles to Pyroscope, you have two options: using the Grafana agent in pull mode or utilizing the Pyroscope SDKs in push mode. This document will provide an overview of these two methods and guide you on when to choose each option.
+Pyroscope is a continuous profiling database that allows you to analyze the performance of your applications. When sending profiles to Pyroscope, you can choose between two primary methods: SDK Instrumentation and Auto-Instrumentation using the Grafana agent. This document will explain these two techniques and guide you when to choose each one.
 
 ![Pyroscope agent server diagram](pyroscope-agent-server-diag.png)
 
-## Grafana Agent (Pull Mode)
+## Grafana Agent (Auto-Instrumentation)
 
-The Grafana agent is a component that runs alongside your application and periodically pulls the profiles from it. This mode is suitable when you want to collect profiles from existing applications without modifying their source code. Here's how it works:
+The Grafana agent is a component that runs alongside your application and periodically gathers profiling data from it. This method is suitable when you want to collect profiles from existing applications without modifying their source code. This approach is made even simpler with the eBPF profiling option that doesn't necessitate pull or push mechanisms. Here's how it works:
 
-1. Install and configure the Grafana agent on the same machine or container where your application is running.
-2. The agent will periodically query your application's performance profiling endpoints, such as pprof endpoints in Go applications.
-3. The retrieved profiles are then sent to the Pyroscope server for storage and analysis.
+1. Install and configure the Grafana agent on the same machine or container where your application is running
+2. The agent will periodically retrieve your application's performance profiling data, regardless of the language or technology stack your application is using
+3. The captured profiles are then sent to the Pyroscope server for storage and analysis
 
-Using the Grafana agent is a convenient option when you have multiple applications or microservices, as you can centralize the profiling process without making any changes to your application's codebase.
+Using the Grafana agent provides a hassle-free option, especially when dealing with multiple applications or microservices, allowing you to centralize the profiling process without changing your application's codebase.
 
-## Pyroscope SDKs (Push Mode)
+## Pyroscope SDKs (SDK Instrumentation)
 
-Alternatively, you can use the Pyroscope SDKs to push profiles from your application directly to the Pyroscope server. This mode is suitable when you want to have more control over the profiling process or when the application you are profiling is written in a language supported by the SDKs (e.g., Ruby, Python, etc.). Follow these steps to use the Pyroscope SDKs:
+Alternatively, Pyroscope SDKs offer you the ability to instrument your application directly for more precise profiling. This mode is suitable when you wish to have complete control over the profiling process or when the application you are profiling is written in a language supported by the SDKs (e.g. Java, Python, .NET, etc.). Here's how to use Pyroscope SDKs:
 
-1. Install the relevant Pyroscope SDK for your application's programming language (e.g., Ruby gem, pip package, etc.)
+1. Install the relevant Pyroscope SDK for your application's programming language (e.g. pip package, npm package, ruby gem, etc.)
 2. Instrument your application's code using the SDK to capture the necessary profiling data
-3. Periodically push the captured profiles to the Pyroscope server for storage and analysis
+3. SDK will automatically periodically push the captured profiles to the Pyroscope server for storage and analysis
 
 By using the Pyroscope SDKs, you have the flexibility to customize the profiling process according to your application's specific requirements. You can selectively profile specific sections of code or send profiles at different intervals, depending on your needs.
 
 ## Choosing the Grafana agent or Pyroscope SDK to send profiles
 
-The decision of which mode to use depends on your specific use case and requirements. Here are some factors to consider when making the choice:
+The choice between using Grafana Agent (Auto-Instrumentation) or Pyroscope SDKs (SDK Instrumentation) depends on your specific use case and requirements. Here are some factors to consider when making the choice:
 
-- Ease of setup: If you want a quick and straightforward setup without modifying your application's code, the Grafana agent in pull mode is a good choice
-- Language support: If your application is written in a language supported by the Pyroscope SDKs and you want more control over the profiling process, using the SDKs in push mode is recommended
-- Flexibility: The Pyroscope SDKs provide more flexibility in terms of customizing the profiling process and capturing specific sections of code with labels. If you have specific profiling needs or want to fine-tune the data collection process, the SDKs offer greater flexibility
+- Ease of setup: The Grafana agent is an ideal choice for a quick and straightforward setup without modifying your application's code. Note that eBPF profiling supports some languages (i.e. Golang) better than others, but more robust support for Python, Java, and other languages is coming soon!
+- Language support: If your application is written in a language supported by the Pyroscope SDKs, and you want more control over the profiling process, using the SDKs is recommended.
+- Flexibility: The Pyroscope SDKs offer greater flexibility in terms of customizing the profiling process and capturing specific sections of code with labels. If you have particular profiling needs or want to fine-tune the data collection process, the SDKs would be your best bet.
 
 To get started choose one of the integrations below:
 <table>
