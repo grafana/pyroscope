@@ -1,13 +1,13 @@
 ---
-title: "Grafana agent"
-menuTitle: "Grafana agent"
-description: "Learn more about the Grafana agent"
+title: "Go (pull mode)"
+menuTitle: "Go (pull mode)"
+description:  "Instrumenting Golang applications for continuous profiling"
 weight: 10
 aliases:
   - /docs/phlare/latest/configure-client/grafana-agent/
 ---
 
-# Grafana agent
+# Go (pull mode)
 
 The Grafana Agent is responsible for pulling profiles from applications and delivering them
 to the Pyroscope database.
