@@ -191,8 +191,8 @@ go get github.com/pyroscope-io/godeltaprof@latest
 ```
 and add it to your imports:
 ```go
-// import _ "net/http/pprof"
-import _ "github.com/pyroscope-io/godeltaprof/http/pprof"
+import _ "net/http/pprof"
+import _ "github.com/pyroscope-io/godeltaprof/http/pprof" // add this line as well
 ```
 
 If you do not have ability to update your code then disable all the `goddeltaprof_X` profiles and enable the corresponding standard `X` profiles.
