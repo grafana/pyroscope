@@ -26,17 +26,20 @@ type ElfTable struct {
 	loadedCached bool
 	err          error
 
-	options ElfTableOptions
+	options *ElfTableOptions
 	logger  log.Logger
 	procMap *ProcMap
 }
-
+type SymbolOptions struct {
+	GolangSymbolTableFallback bool
+}
 type ElfTableOptions struct {
-	ElfCache *ElfCache
-	Metrics  *Metrics // may be nil for tests
+	ElfCache      *ElfCache
+	Metrics       *Metrics // may be nil for tests
+	SymbolOptions SymbolOptions
 }
 
-func NewElfTable(logger log.Logger, procMap *ProcMap, fs string, elfFilePath string, options ElfTableOptions) *ElfTable {
+func NewElfTable(logger log.Logger, procMap *ProcMap, fs string, elfFilePath string, options *ElfTableOptions) *ElfTable {
 	res := &ElfTable{
 		procMap:     procMap,
 		fs:          fs,
@@ -148,8 +151,16 @@ func (et *ElfTable) load() {
 }
 
 func (et *ElfTable) createSymbolTable(me *elf2.MMapedElfFile) (SymbolNameResolver, error) {
-	symTable, symErr := me.NewSymbolTable()
 	goTable, goErr := me.NewGoTable()
+	if !et.options.SymbolOptions.GolangSymbolTableFallback && goErr == nil {
+		return goTable, nil
+	}
+	symbolOptions := elf2.SymbolsOptions{}
+	if goErr == nil && goTable.Index.Entry.Length() > 0 {
+		symbolOptions.FilterTo = goTable.Index.Entry.Get(0)
+		symbolOptions.FilterTo = goTable.Index.End
+	}
+	symTable, symErr := me.NewSymbolTable(&symbolOptions)
 	if symErr != nil && goErr != nil {
 		return nil, fmt.Errorf("s: %s g: %s", symErr.Error(), goErr.Error())
 	}

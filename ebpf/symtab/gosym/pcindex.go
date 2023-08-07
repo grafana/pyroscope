@@ -50,6 +50,13 @@ func (it *PCIndex) Length() int {
 	return len(it.i64)
 }
 
+func (it *PCIndex) Get(idx int) uint64 {
+	if it.i32 != nil {
+		return uint64(it.i32[idx])
+	}
+	return it.i64[idx]
+}
+
 func (it *PCIndex) Is32() bool {
 	return it.i32 != nil
 }

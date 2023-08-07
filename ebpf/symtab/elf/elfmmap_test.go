@@ -21,7 +21,7 @@ func TestElfSymbolComparison(t *testing.T) {
 		require.NoError(t, err)
 		defer me.Close()
 
-		tab, _ := me.NewSymbolTable()
+		tab, _ := me.NewSymbolTable(&SymbolsOptions{})
 		if tab == nil {
 			tab = &SymbolTable{}
 		}

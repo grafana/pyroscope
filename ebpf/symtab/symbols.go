@@ -19,16 +19,17 @@ type PidKey uint32
 type SymbolCache struct {
 	pidCache *GCache[PidKey, *ProcTable]
 
-	elfCache *ElfCache
 	kallsyms SymbolTable
 	logger   log.Logger
-	metrics  *Metrics
+
+	elfOptions ElfTableOptions
 }
 type CacheOptions struct {
 	PidCacheOptions      GCacheOptions
 	BuildIDCacheOptions  GCacheOptions
 	SameFileCacheOptions GCacheOptions
-	Metrics              *Metrics // may be nil for tests
+	Metrics              *Metrics      // may be nil for tests
+	SymbolOptions        SymbolOptions // this should be per target when we have per target options
 }
 
 func NewSymbolCache(logger log.Logger, options CacheOptions) (*SymbolCache, error) {
@@ -45,18 +46,21 @@ func NewSymbolCache(logger log.Logger, options CacheOptions) (*SymbolCache, erro
 		logger:   logger,
 		pidCache: cache,
 		kallsyms: nil,
-		elfCache: elfCache,
-		metrics:  options.Metrics,
+		elfOptions: ElfTableOptions{
+			ElfCache:      elfCache,
+			Metrics:       options.Metrics,
+			SymbolOptions: options.SymbolOptions,
+		},
 	}, nil
 }
 
 func (sc *SymbolCache) NextRound() {
 	sc.pidCache.NextRound()
-	sc.elfCache.NextRound()
+	sc.elfOptions.ElfCache.NextRound()
 }
 
 func (sc *SymbolCache) Cleanup() {
-	sc.elfCache.Cleanup()
+	sc.elfOptions.ElfCache.Cleanup()
 	sc.pidCache.Cleanup()
 }
 
@@ -97,11 +101,8 @@ func (sc *SymbolCache) GetProcTable(pid PidKey) *ProcTable {
 
 	level.Debug(sc.logger).Log("msg", "NewProcTable", "pid", pid)
 	fresh := NewProcTable(sc.logger, ProcTableOptions{
-		Pid: int(pid),
-		ElfTableOptions: ElfTableOptions{
-			ElfCache: sc.elfCache,
-			Metrics:  sc.metrics,
-		},
+		Pid:             int(pid),
+		ElfTableOptions: &sc.elfOptions,
 	})
 
 	sc.pidCache.Cache(pid, fresh)
@@ -110,7 +111,7 @@ func (sc *SymbolCache) GetProcTable(pid PidKey) *ProcTable {
 
 func (sc *SymbolCache) UpdateOptions(options CacheOptions) {
 	sc.pidCache.Update(options.PidCacheOptions)
-	sc.elfCache.Update(options.BuildIDCacheOptions, options.SameFileCacheOptions)
+	sc.elfOptions.ElfCache.Update(options.BuildIDCacheOptions, options.SameFileCacheOptions)
 }
 
 func (sc *SymbolCache) PidCacheDebugInfo() GCacheDebugInfo[ProcTableDebugInfo] {
@@ -122,7 +123,7 @@ func (sc *SymbolCache) PidCacheDebugInfo() GCacheDebugInfo[ProcTableDebugInfo] {
 }
 
 func (sc *SymbolCache) ElfCacheDebugInfo() ElfCacheDebugInfo {
-	return sc.elfCache.DebugInfo()
+	return sc.elfOptions.ElfCache.DebugInfo()
 }
 
 func (sc *SymbolCache) RemoveDead(proc *ProcTable) {

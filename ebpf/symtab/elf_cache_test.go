@@ -19,7 +19,7 @@ func TestElfCacheStrippedEmpty(t *testing.T) {
 	elfCache, _ := NewElfCache(testCacheOptions, testCacheOptions)
 	fs := "." // make it unable to find debug file by buildID
 	stripped := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, fs, "elf/testdata/elfs/elf.stripped",
-		ElfTableOptions{
+		&ElfTableOptions{
 
 			ElfCache: elfCache,
 		})
@@ -42,12 +42,12 @@ func TestElfCacheBuildID(t *testing.T) {
 	elfCache, _ := NewElfCache(testCacheOptions, testCacheOptions)
 	logger := util.TestLogger(t)
 	debug := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, ".", "elf/testdata/elfs/elf",
-		ElfTableOptions{
+		&ElfTableOptions{
 			ElfCache: elfCache,
 		})
 
 	stripped := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, ".", "elf/testdata/elfs/elf.stripped",
-		ElfTableOptions{
+		&ElfTableOptions{
 			ElfCache: elfCache,
 		})
 
@@ -74,12 +74,12 @@ func TestElfCacheStat(t *testing.T) {
 	elfCache, _ := NewElfCache(testCacheOptions, testCacheOptions)
 	logger := util.TestLogger(t)
 	f1 := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, ".", "elf/testdata/elfs/elf.nobuildid",
-		ElfTableOptions{
+		&ElfTableOptions{
 			ElfCache: elfCache,
 		})
 
 	f2 := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, ".", "elf/testdata/elfs/elf.nobuildid",
-		ElfTableOptions{
+		&ElfTableOptions{
 			ElfCache: elfCache,
 		})
 
@@ -114,12 +114,12 @@ func TestElfCacheBuildIDProcessDeath(t *testing.T) {
 	require.NoError(t, err)
 
 	f1 := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, root, "/elf1",
-		ElfTableOptions{
+		&ElfTableOptions{
 			ElfCache: elfCache,
 		})
 
 	f2 := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, root, "/elf2",
-		ElfTableOptions{
+		&ElfTableOptions{
 			ElfCache: elfCache,
 		})
 	require.Equal(t, "iter", f1.Resolve(0x1149))

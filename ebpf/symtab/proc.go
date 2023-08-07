@@ -55,7 +55,7 @@ func (p *ProcTable) DebugInfo() ProcTableDebugInfo {
 
 type ProcTableOptions struct {
 	Pid int
-	ElfTableOptions
+	*ElfTableOptions
 }
 
 func NewProcTable(logger log.Logger, options ProcTableOptions) *ProcTable {

@@ -19,7 +19,7 @@ func TestMallocResolve(t *testing.T) {
 	logger := util.TestLogger(t)
 	gosym := NewProcTable(logger, ProcTableOptions{
 		Pid: os.Getpid(),
-		ElfTableOptions: ElfTableOptions{
+		ElfTableOptions: &ElfTableOptions{
 			ElfCache: elfCache,
 		},
 	})
@@ -59,7 +59,7 @@ func TestSelfElfSymbolsLazy(t *testing.T) {
 	me, err := elf.NewMMapedElfFile(f)
 	require.NoError(t, err)
 
-	symbolTable, err := me.NewSymbolTable()
+	symbolTable, err := me.NewSymbolTable(&elf.SymbolsOptions{})
 	require.NoError(t, err)
 
 	require.Greater(t, len(symbolTable.Index.Names), 500)

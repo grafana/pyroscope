@@ -149,6 +149,9 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 				KeepRounds: 3,
 			},
 			Metrics: ms,
+			SymbolOptions: symtab.SymbolOptions{
+				GolangSymbolTableFallback: false,
+			},
 		},
 	}
 }
