@@ -150,7 +150,7 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 			},
 			Metrics: ms,
 			SymbolOptions: symtab.SymbolOptions{
-				GolangSymbolTableFallback: false,
+				GolangSymbolTableFallback: true,
 			},
 		},
 	}
