@@ -13,6 +13,7 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/pyroscope/ebpf/cpuonline"
@@ -109,6 +110,8 @@ func (s *session) Start() error {
 		return fmt.Errorf("pyperf creationg error %w", err)
 	}
 	s.pyperf = perf
+
+	btf.FlushKernelSpec() // save some memory, when  pyperf is made lazy, this should be called after pyperf is loaded
 
 	if err = s.initArgs(); err != nil {
 		return fmt.Errorf("init bpf args: %w", err)
