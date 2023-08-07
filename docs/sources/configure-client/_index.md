@@ -45,10 +45,10 @@ The choice between using Grafana Agent (Auto-Instrumentation) or Pyroscope SDKs 
 To get started choose one of the integrations below:
 <table>
    <tr>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/grafana-agent/"><img src="https://github-production-user-asset-6210df.s3.amazonaws.com/223048/257522425-48683963-91ae-4caf-8c52-ce131e25bd65.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/grafana-agent/go_pull"><img src="https://github-production-user-asset-6210df.s3.amazonaws.com/223048/257522425-48683963-91ae-4caf-8c52-ce131e25bd65.png" width="100px;" alt=""/><br />
         <b>Grafana Agent</b></a><br />
           <a href="https://grafana.com/docs/pyroscope/next/configure-client/grafana-agent/go_pull/" title="Documentation">Documentation</a><br />
-          <a href="https://grafana.com/docs/pyroscope/next/configure-client/grafana-agent/go_pull/" title="examples">Examples</a>
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/go_push/"><img src="https://user-images.githubusercontent.com/23323466/178160549-2d69a325-56ec-4e19-bca7-d460d400b163.png" width="100px;" alt=""/><br />
         <b>Golang</b></a><br />
@@ -60,10 +60,10 @@ To get started choose one of the integrations below:
           <a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/java/">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/java-jfr/rideshare" title="java-examples">Examples</a>
       </td>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/ebpf/"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/grafana-agent/ebpf"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
         <b>eBPF</b></a><br />
           <a href="https://grafana.com/docs/pyroscope/next/configure-client/grafana-agent/ebpf" title="Documentation">Documentation</a><br />
-          <a href="https://grafana.com/docs/pyroscope/next/configure-client/grafana-agent/ebpf" title="examples">Examples</a>
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/ebpf" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/python/"><img src="https://user-images.githubusercontent.com/23323466/178160553-c78b8c15-99b4-43f3-a2a0-252b6c4862b1.png" width="100px;" alt=""/><br />
         <b>Python</b></a><br />
