@@ -24,24 +24,9 @@ Before proceeding with the configuration, ensure that you have the following:
 
 ## Adding Profiling to the Grafana Agent
 
-This guide presents how to configure the Grafana Agent for scraping performance profiles from a pprof endpoint using `pyroscope.scrape`. 
+This guide presents how to configure the Grafana Agent for scraping performance profiles from a pprof endpoint using `pyroscope.scrape` and then write to a reciever defined in `pyroscope.write`.
 
-**While this documentation will contain a simple example for more configuration options visit the [agent configuration documentation](/docs/agent/next/flow/reference/components/pyroscope.scrape/).**
-
-### Setup
-
-To set up the Grafana Agent for profiling in pull mode (see [example](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent)), follow these steps:
-
-Create the following directory structure:
-```
-├── examples
-│   └── your-application-example
-│       ├── agent
-│       │   └── config
-│       │       └── config.river
-│       │── docker-compose.yml
-└── ...
-```
+**While this documentation will contain a simple example for more configuration options visit the agent documentation for [`pyrosope.scrape`](/docs/agent/next/flow/reference/components/pyroscope.scrape/) and [`pyroscope.write`](/docs/agent/next/flow/reference/components/pyroscope.write/#pyroscopewrite).**
 
 ## Agent Configuration
 
@@ -175,6 +160,21 @@ Collects profiles from godeltaprof block endpoint. The delta is computed on the 
 ## Example
 
 The following configuration sets up a scraping job in `config.river` that scrapes the application. The profiles obtained are then sent over to the receivers as defined by other components.
+
+### Setup
+
+To set up the Grafana Agent for profiling in pull mode (see [example](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent)), follow these steps:
+
+Create the following directory structure:
+```
+├── examples
+│   └── your-application-example
+│       ├── agent
+│       │   └── config
+│       │       └── config.river
+│       │── docker-compose.yml
+└── ...
+```
 
 **Note: ensure that the url property points to the correct Pyroscope instance.**
 
