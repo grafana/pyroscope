@@ -20,6 +20,7 @@ Before proceeding with the configuration, ensure that you have the following:
 
 1. Install Grafana Agent in [flow mode](/docs/agent/next/flow/setup/install/)
 2. Configure Grafana Agent in Flow mode
+3. Start the Grafana Agent
 
 ## Adding Profiling to the Grafana Agent
 
@@ -38,21 +39,38 @@ Create the following directory structure:
 │       ├── agent
 │       │   └── config
 │       │       └── config.river
-│       ├── docker-compose.yml
-│       └── pyroscope
-│           └── config.yaml
+│       │── docker-compose.yml
 └── ...
 ```
 
 ## Agent Configuration
 
-In [`/agent/config/config.river`](https://github.com/grafana/pyroscope/blob/main/examples/grafana-agent/agent/config/config.river) file use `pyroscope.scrape` to establish a pprof scraping job for specific targets. The performance profiles obtained from the scraping process are then passed to the receivers specified in `forward_to`.
+In [`/agent/config/config.river`](https://github.com/grafana/pyroscope/blob/main/examples/grafana-agent/agent/config/config.river) file you will need two blocks, `pyroscope.write` and `pyroscope.scrape`:
 
-You can define multiple `pyroscope.scrape` components, each distinguished by unique labels. 
+![Grafana agent go pull diagram](grafana_agent_pull_mode_diag)
+
+1. `pyroscope.write` to configure the receivers to which the profiles are forwarded.
+2. `pyroscope.scrape` to establish a pprof scraping job for specific targets. The performance profiles obtained from the scraping process are then passed to the receivers specified in `forward_to`. You can define multiple `pyroscope.scrape` components, each distinguished by unique labels. 
 
 Here is the general usage:
 
 ```river
+pyroscope.write "example" {
+  // Send metrics to a locally running Pyroscope instance.
+  endpoint {
+    url = "http://pyroscope:4040"
+
+    // To send data to Grafana Cloud you'll need to provide username and password.
+    // basic_auth {
+    //   username = "myuser"
+    //   password = "mypassword"
+    // }
+  }
+  external_labels = {
+    "env" = "staging",
+  }
+}
+
 pyroscope.scrape "LABEL" {
   targets    = TARGET_LIST
   forward_to = RECEIVER_LIST
@@ -63,7 +81,7 @@ Here, `LABEL` is a unique identifier for the scraping job, `TARGET_LIST` is a li
 
 ## Profiling Configuration
 
-The `profiling_config` block tailors the profiling settings for the scraping targets. It includes a number of blocks, each corresponding to a specific profile type. These blocks can be enabled or disabled, and the scraping path can be customized. A `delta` option is available to scrape the profile as a delta, adding a seconds query parameter to requests.
+The `profiling_config` block inside of `pyroscope.scrape` tailors the profiling settings for the scraping targets. It includes a number of blocks, each corresponding to a specific profile type. These blocks can be enabled or disabled, and the scraping path can be customized. A `delta` option is available to scrape the profile as a delta, adding a seconds query parameter to requests.
 
 Below are the blocks available within `profiling_config`:
 
@@ -156,12 +174,20 @@ Collects profiles from godeltaprof block endpoint. The delta is computed on the 
 
 ## Example
 
-The following configuration sets up a scraping job that scrapes two local applications (the Agent itself and Pyroscope). The profiles obtained are then sent over to the receivers as defined by other components.
+The following configuration sets up a scraping job in `config.river` that scrapes the application. The profiles obtained are then sent over to the receivers as defined by other components.
+
+**Note: ensure that the url property points to the correct Pyroscope instance.**
 
 ```river
+pyroscope.write "example" {
+  endpoint {
+    url = "http://pyroscope:4040"
+  }
+}
+
 pyroscope.scrape "default_settings" {
-  targets    = ["http://localhost:12345"]
-  forward_to = ["http://localhost:4040"]
+  targets    = [ { "__address__" = "http://localhost:12345", "service_name" = "example_service" } ]
+  forward_to = [pyroscope.write.example.receiver]
   profiling_config {
     profile.goroutine {
       enabled = true
@@ -207,32 +233,6 @@ pyroscope.scrape "default_settings" {
 
 By adjusting the configuration as demonstrated above, you can enable the Grafana Agent to suitably scrape and process profile data from your pprof endpoints.
 
-
-Copy the example configuration files from the [Pyroscope example](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent) to their respective locations in the project directory:
-
-- `examples/your-application-example/agent/config/config.river`
-- `examples/your-application-example/docker-compose.yml`
-- `examples/your-application-example/pyroscope/config.yaml`
-
-Open the `examples/your-application-example/agent/config/config.river` file and configure the `pyroscope.write` section based on your needs. 
-
-**Ensure that the url property points to the correct Pyroscope instance.**
-
-Open the `examples/your-application-example/docker-compose.yml` file and review the service definitions for pyroscope and agent. Adjust the volumes and ports if needed.
-
-Open the `examples/your-application-example/pyroscope/config.yaml` file and modify the `scrape_configs` section as required. Add the necessary targets for your Go application.
-
-## Running the Grafana Agent
-
-To run the Grafana Agent in pull mode, execute the following steps:
-
-1. Open a terminal or command prompt and navigate to the project directory
-2. Start the Grafana Agent and Pyroscope containers using Docker Compose:
-
-`docker-compose -f examples/your-application-example/docker-compose.yml up -d`
-
-3. Wait for the containers to start successfully. You can check their status using the docker ps command.
-
-## Example
+## Resources
 
 Visit the [Pyroscope examples](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent) to see an example of how to run Pyroscope with the Grafana Agent.
