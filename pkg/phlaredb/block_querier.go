@@ -342,6 +342,13 @@ func (r *stacktraceResolverV1) Resolve(ctx context.Context, _ uint64, locs symdb
 	return stacktraces.Err()
 }
 
+func grow[T any](s []T, n int) []T {
+	if cap(s) < n {
+		return make([]T, n, 2*n)
+	}
+	return s[:n]
+}
+
 func (r *stacktraceResolverV1) WriteStats(_ uint64, s *symdb.Stats) {
 	s.StacktracesTotal = int(r.stacktraces.file.NumRows())
 	s.MaxStacktraceID = s.StacktracesTotal
@@ -373,8 +380,8 @@ func (r *stacktraceResolverV2) Close() error {
 }
 
 func (r *stacktraceResolverV2) Resolve(ctx context.Context, partition uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error {
-	resolver, ok := r.reader.SymbolsReader(partition)
-	if !ok {
+	resolver, err := r.reader.SymbolsReader(ctx, partition)
+	if err != nil {
 		return nil
 	}
 	return resolver.ResolveStacktraceLocations(ctx, locs, stacktraceIDs)
@@ -385,8 +392,8 @@ func (r *stacktraceResolverV2) Load(ctx context.Context) error {
 }
 
 func (r *stacktraceResolverV2) WriteStats(partition uint64, s *symdb.Stats) {
-	mr, ok := r.reader.SymbolsReader(partition)
-	if ok {
+	mr, err := r.reader.SymbolsReader(context.Background(), partition)
+	if err == nil {
 		mr.WriteStats(s)
 	}
 }
@@ -460,18 +467,6 @@ func (b *singleBlockQuerier) Index() IndexReader {
 	return b.index
 }
 
-func (b *singleBlockQuerier) Symbols() SymbolsReader {
-	return &inMemorySymbolsReader{
-		partitions: make(map[uint64]*inMemorySymbolsResolver),
-
-		strings:     b.strings,
-		functions:   b.functions,
-		locations:   b.locations,
-		mappings:    b.mappings,
-		stacktraces: b.stacktraces,
-	}
-}
-
 func (b *singleBlockQuerier) Meta() block.Meta {
 	if b.meta == nil {
 		return block.Meta{}
@@ -527,7 +522,7 @@ type Profile interface {
 type Querier interface {
 	Bounds() (model.Time, model.Time)
 	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
-	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error)
+	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error)
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
 	MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error)
 	Open(ctx context.Context) error
@@ -654,7 +649,8 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 		return err
 	}
 
-	m := phlaremodel.NewStackTraceMerger()
+	var m sync.Mutex
+	t := new(phlaremodel.Tree)
 	g, ctx := errgroup.WithContext(ctx)
 
 	for i, querier := range queriers {
@@ -670,7 +666,9 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 			if err != nil {
 				return err
 			}
-			m.MergeStackTraces(merge.Stacktraces, merge.FunctionNames)
+			m.Lock()
+			t.Merge(merge)
+			m.Unlock()
 			return nil
 		}))
 	}
@@ -686,12 +684,17 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 		return err
 	}
 
+	var buf bytes.Buffer
+	if err = t.MarshalTruncate(&buf, r.GetMaxNodes()); err != nil {
+		return err
+	}
+
 	// sends the final result to the client.
 	sp.LogFields(otlog.String("msg", "sending the final result to the client"))
 	err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
 		Result: &ingestv1.MergeProfilesStacktracesResult{
 			Format:    ingestv1.StacktracesMergeFormat_MERGE_FORMAT_TREE,
-			TreeBytes: m.TreeBytes(r.GetMaxNodes()),
+			TreeBytes: buf.Bytes(),
 		},
 	})
 	if err != nil {

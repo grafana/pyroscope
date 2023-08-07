@@ -18,7 +18,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -26,6 +25,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/fileutil"
 	"github.com/samber/lo"
 	"go.uber.org/atomic"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -364,183 +364,81 @@ func (h *Head) Queriers() Queriers {
 	return queriers
 }
 
-// add the location IDs to the stacktraces
-func (h *Head) resolveStacktraces(ctx context.Context, stacktracesByMapping stacktracesByMapping) *ingestv1.MergeProfilesStacktracesResult {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "resolveStacktraces - Head")
-	defer sp.Finish()
-
-	names := []string{}
-	functions := map[uint32]int{}
-
-	h.locations.lock.RLock()
-	h.functions.lock.RLock()
-	h.strings.lock.RLock()
-	defer func() {
-		h.locations.lock.RUnlock()
-		h.functions.lock.RUnlock()
-		h.strings.lock.RUnlock()
-	}()
-
-	sp.LogFields(otlog.String("msg", "building MergeProfilesStacktracesResult"))
-	_ = stacktracesByMapping.ForEach(
-		func(mapping uint64, stacktraceSamples stacktraceSampleMap) error {
-			resolver, ok := h.symdb.SymbolsReader(mapping)
-			if !ok {
-				return nil
-			}
-			// sort the stacktrace IDs as expected by the resolver
-			stacktraceIDs := stacktraceSamples.Ids()
-			sort.Slice(stacktraceIDs, func(i, j int) bool {
-				return stacktraceIDs[i] < stacktraceIDs[j]
-			})
-			return resolver.ResolveStacktraceLocations(
-				ctx,
-				symdb.StacktraceInserterFn(
-					func(stacktraceID uint32, locs []int32) {
-						fnIds := make([]int32, 0, 2*len(locs))
-						for _, loc := range locs {
-							for _, line := range h.locations.slice[loc].Line {
-								fnNameID := h.functions.slice[line.FunctionId].Name
-								pos, ok := functions[fnNameID]
-								if !ok {
-									functions[fnNameID] = len(names)
-									fnIds = append(fnIds, int32(len(names)))
-									names = append(names, h.strings.slice[h.functions.slice[line.FunctionId].Name])
-									continue
-								}
-								fnIds = append(fnIds, int32(pos))
-							}
-						}
-						stacktraceSamples[stacktraceID].FunctionIds = fnIds
-					},
-				),
-				stacktraceIDs,
-			)
-		},
-	)
-
-	return &ingestv1.MergeProfilesStacktracesResult{
-		Stacktraces:   stacktracesByMapping.StacktraceSamples(),
-		FunctionNames: names,
-	}
+type symbolsReader interface {
+	resolver(ctx context.Context, partition uint64) (*symdb.Resolver, error)
 }
 
-func (h *Head) resolvePprof(ctx context.Context, stacktracesByMapping profileSampleByMapping) *profile.Profile {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "resolvePprof - Head")
+func resolveStacktraces(ctx context.Context, sr symbolsReader, m phlaremodel.SampleMerge, concurrency int) (*phlaremodel.Tree, error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "resolveStacktraces")
 	defer sp.Finish()
 
-	locations := map[int32]*profile.Location{}
-	functions := map[uint32]*profile.Function{}
-	mappings := map[uint32]*profile.Mapping{}
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(concurrency)
 
-	h.locations.lock.RLock()
-	h.functions.lock.RLock()
-	h.strings.lock.RLock()
-	defer func() {
-		h.locations.lock.RUnlock()
-		h.functions.lock.RUnlock()
-		h.strings.lock.RUnlock()
-	}()
+	var tm sync.Mutex
+	tree := new(phlaremodel.Tree)
 
-	// now add locationIDs and stacktraces
-	_ = stacktracesByMapping.ForEach(
-		func(mapping uint64, stacktraceSamples profileSampleMap) error {
-			resolver, ok := h.symdb.SymbolsReader(mapping)
-			if !ok {
-				return nil
+	for partition, v := range m {
+		partition := partition
+		v := v
+		g.Go(func() error {
+			r, err := sr.resolver(ctx, partition)
+			if err != nil {
+				return err
 			}
-
-			// sort the stacktrace IDs as expected by the resolver
-			stacktraceIDs := stacktraceSamples.Ids()
-			sort.Slice(stacktraceIDs, func(i, j int) bool {
-				return stacktraceIDs[i] < stacktraceIDs[j]
-			})
-
-			return resolver.ResolveStacktraceLocations(
-				ctx,
-				symdb.StacktraceInserterFn(
-					func(stacktraceID uint32, locationIds []int32) {
-						stacktraceLocations := make([]*profile.Location, len(locationIds))
-
-						for i, locId := range locationIds {
-							loc, ok := locations[locId]
-							if !ok {
-								locFound := h.locations.slice[locId]
-								mapping, ok := mappings[locFound.MappingId]
-								if !ok {
-									mappingFound := h.mappings.slice[locFound.MappingId]
-									mapping = &profile.Mapping{
-										ID:              mappingFound.Id,
-										Start:           mappingFound.MemoryStart,
-										Limit:           mappingFound.MemoryLimit,
-										Offset:          mappingFound.FileOffset,
-										File:            h.strings.slice[mappingFound.Filename],
-										BuildID:         h.strings.slice[mappingFound.BuildId],
-										HasFunctions:    mappingFound.HasFunctions,
-										HasFilenames:    mappingFound.HasFilenames,
-										HasLineNumbers:  mappingFound.HasLineNumbers,
-										HasInlineFrames: mappingFound.HasInlineFrames,
-									}
-									mappings[locFound.MappingId] = mapping
-								}
-								loc = &profile.Location{
-									ID:       locFound.Id,
-									Address:  locFound.Address,
-									IsFolded: locFound.IsFolded,
-									Mapping:  mapping,
-									Line:     make([]profile.Line, len(locFound.Line)),
-								}
-								for i, line := range locFound.Line {
-									fn, ok := functions[line.FunctionId]
-									if !ok {
-										fnFound := h.functions.slice[line.FunctionId]
-										fn = &profile.Function{
-											ID:         fnFound.Id,
-											Name:       h.strings.slice[fnFound.Name],
-											SystemName: h.strings.slice[fnFound.SystemName],
-											Filename:   h.strings.slice[fnFound.Filename],
-											StartLine:  int64(fnFound.StartLine),
-										}
-										functions[line.FunctionId] = fn
-									}
-									loc.Line[i] = profile.Line{
-										Line:     int64(line.Line),
-										Function: fn,
-									}
-								}
-								locations[locId] = loc
-							}
-							stacktraceLocations[i] = loc
-						}
-						stacktraceSamples[stacktraceID].Location = stacktraceLocations
-					},
-				),
-				stacktraceIDs,
-			)
-		},
-	)
-
-	result := &profile.Profile{
-		Sample:   stacktracesByMapping.StacktraceSamples(),
-		Location: lo.Values(locations),
-		Function: lo.Values(functions),
-		Mapping:  lo.Values(mappings),
+			samples := schemav1.NewSamples(len(v))
+			m.WriteSamples(partition, &samples)
+			p, err := r.ResolveTree(ctx, samples)
+			if err != nil {
+				return err
+			}
+			tm.Lock()
+			tree.Merge(p)
+			tm.Unlock()
+			return nil
+		})
 	}
-	normalizeProfileIds(result)
-	return result
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return tree, nil
 }
 
-func normalizeProfileIds(p *profile.Profile) {
-	// normalize IDs
-	for i, l := range p.Location {
-		l.ID = uint64(i) + 1
+func resolvePprof(ctx context.Context, sr symbolsReader, m phlaremodel.SampleMerge, concurrency int) (*profile.Profile, error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "resolvePprof")
+	defer sp.Finish()
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(concurrency)
+
+	var tm sync.Mutex
+	results := make([]*profile.Profile, 0, len(m))
+
+	for partition, v := range m {
+		partition := partition
+		v := v
+		g.Go(func() error {
+			r, err := sr.resolver(ctx, partition)
+			if err != nil {
+				return err
+			}
+			samples := schemav1.NewSamples(len(v))
+			m.WriteSamples(partition, &samples)
+			p, err := r.ResolveProfile(ctx, samples)
+			if err != nil {
+				return err
+			}
+			tm.Lock()
+			results = append(results, p)
+			tm.Unlock()
+			return nil
+		})
 	}
-	for i, f := range p.Function {
-		f.ID = uint64(i) + 1
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
-	for i, m := range p.Mapping {
-		m.ID = uint64(i) + 1
-	}
+
+	return profile.Merge(results)
 }
 
 func (h *Head) Sort(in []Profile) []Profile {

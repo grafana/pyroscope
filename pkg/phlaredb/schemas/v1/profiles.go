@@ -248,6 +248,13 @@ type Samples struct {
 	Values        []uint64
 }
 
+func NewSamples(size int) Samples {
+	return Samples{
+		StacktraceIDs: make([]uint32, 0, size),
+		Values:        make([]uint64, 0, size),
+	}
+}
+
 // Compact zero samples and optionally duplicates.
 func (s Samples) Compact(dedupe bool) Samples {
 	if len(s.StacktraceIDs) == 0 {

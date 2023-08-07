@@ -3,167 +3,16 @@ package model
 import (
 	"bytes"
 	"container/heap"
-	"encoding/binary"
 	"io"
 	"reflect"
-	"sort"
-	"strings"
 	"sync"
 	"unsafe"
 
-	"github.com/cespare/xxhash/v2"
-
-	"github.com/grafana/pyroscope/pkg/og/util/varint"
-
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	"github.com/grafana/pyroscope/pkg/og/util/varint"
 )
 
-func MergeBatchMergeStacktraces(responses ...*ingestv1.MergeProfilesStacktracesResult) *ingestv1.MergeProfilesStacktracesResult {
-	var (
-		result      *ingestv1.MergeProfilesStacktracesResult
-		posByName   map[string]int32
-		hasher      StacktracesHasher
-		stacktraces = map[uint64]*ingestv1.StacktraceSample{}
-	)
-
-	largestNames := 0
-
-	for _, resp := range responses {
-		if resp != nil {
-			if len(resp.FunctionNames) > largestNames {
-				largestNames = len(resp.FunctionNames)
-			}
-		}
-	}
-	rewrite := make([]int32, largestNames)
-
-	for _, resp := range responses {
-		// skip empty results
-		if resp == nil || len(resp.Stacktraces) == 0 {
-			continue
-		}
-
-		// first non-empty result result
-		if result == nil {
-			result = resp
-			for _, s := range result.Stacktraces {
-				stacktraces[hasher.Hashes(s.FunctionIds)] = s
-			}
-			continue
-		}
-
-		// build up the lookup map the first time
-		if posByName == nil {
-			posByName = make(map[string]int32, len(result.FunctionNames))
-			for idx, n := range result.FunctionNames {
-				posByName[n] = int32(idx)
-			}
-		}
-
-		// lookup and add missing functionNames
-		var (
-			rewrite = rewrite[:len(resp.FunctionNames)]
-			ok      bool
-		)
-		for idx, n := range resp.FunctionNames {
-			rewrite[idx], ok = posByName[n]
-			if ok {
-				continue
-			}
-
-			// need to add functionName to list
-			rewrite[idx] = int32(len(result.FunctionNames))
-			result.FunctionNames = append(result.FunctionNames, n)
-		}
-
-		// rewrite existing function ids, by building a list of unique slices
-		functionIDsUniq := make(map[*int32][]int32)
-		for _, sample := range resp.Stacktraces {
-			if len(sample.FunctionIds) == 0 {
-				continue
-			}
-			functionIDsUniq[&sample.FunctionIds[0]] = sample.FunctionIds
-
-		}
-		// now rewrite those ids in slices
-		for _, slice := range functionIDsUniq {
-			for idx, functionID := range slice {
-				slice[idx] = rewrite[functionID]
-			}
-		}
-		// if the stacktraces is missing add it or merge it.
-		for _, sample := range resp.Stacktraces {
-			if len(sample.FunctionIds) == 0 {
-				continue
-			}
-			hash := hasher.Hashes(sample.FunctionIds)
-			if existing, ok := stacktraces[hash]; ok {
-				existing.Value += sample.Value
-			} else {
-				stacktraces[hash] = sample
-				result.Stacktraces = append(result.Stacktraces, sample)
-			}
-		}
-	}
-
-	// ensure nil will always be the empty response
-	if result == nil {
-		result = &ingestv1.MergeProfilesStacktracesResult{}
-	}
-
-	// sort stacktraces by function name
-	sortStacktraces(result)
-
-	return result
-}
-
-type StacktracesHasher struct {
-	hash *xxhash.Digest
-	b    [4]byte
-}
-
-// todo we might want to reuse the results to avoid allocations
-func (h StacktracesHasher) Hashes(fnIds []int32) uint64 {
-	if h.hash == nil {
-		h.hash = xxhash.New()
-	} else {
-		h.hash.Reset()
-	}
-
-	for _, locID := range fnIds {
-		binary.LittleEndian.PutUint32(h.b[:], uint32(locID))
-		if _, err := h.hash.Write(h.b[:]); err != nil {
-			panic("unable to write hash")
-		}
-	}
-	return h.hash.Sum64()
-}
-
-// sortStacktraces sorts the stacktraces by function name
-func sortStacktraces(r *ingestv1.MergeProfilesStacktracesResult) {
-	sort.Slice(r.Stacktraces, func(i, j int) bool {
-		pos := 0
-		for {
-			// check slice lengths
-			if pos >= len(r.Stacktraces[i].FunctionIds) {
-				break
-			}
-			if pos >= len(r.Stacktraces[j].FunctionIds) {
-				return false
-			}
-
-			if diff := strings.Compare(r.FunctionNames[r.Stacktraces[i].FunctionIds[pos]], r.FunctionNames[r.Stacktraces[j].FunctionIds[pos]]); diff < 0 {
-				break
-			} else if diff > 0 {
-				return false
-			}
-			pos++
-		}
-
-		// when we get here, i is less than j
-		return true
-	})
-}
+// TODO(kolesnikovae): Unused in practice. Delete.
 
 type StacktraceMerger struct {
 	mu sync.Mutex
@@ -341,8 +190,8 @@ func (t *StacktraceTree) Insert(locations []int32, value int64) {
 	t.Nodes[x].Value += value
 }
 
-// minValue returns the minimum "total" value a node in a tree has to have.
-func (t *StacktraceTree) minValue(maxNodes int64) int64 {
+// MinValue returns the minimum "total" value a node in a tree has to have.
+func (t *StacktraceTree) MinValue(maxNodes int64) int64 {
 	if maxNodes < 1 || maxNodes >= int64(len(t.Nodes)) {
 		return 0
 	}
@@ -367,7 +216,7 @@ func (t *StacktraceTree) minValue(maxNodes int64) int64 {
 type StacktraceTreeTraverseFn = func(index int32, children []int32) error
 
 func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) error {
-	min := t.minValue(maxNodes)
+	min := t.MinValue(maxNodes)
 	children := make([]int32, 0, 128) // Children per node.
 	nodesSize := maxNodes             // Depth search buffer.
 	if nodesSize < 1 || nodesSize > 10<<10 {
@@ -379,13 +228,13 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 		current, nodes, children = nodes[len(nodes)-1], nodes[:len(nodes)-1], children[:0]
 		var truncated int64
 		n := &t.Nodes[current]
-		if n.Location == StacktraceTreeNodeTruncated {
+		if n.Location == stacktraceTreeNodeTruncated {
 			goto call
 		}
 
 		for x := n.FirstChild; x > 0; {
 			child := &t.Nodes[x]
-			if child.Total >= min && child.Location != StacktraceTreeNodeTruncated {
+			if child.Total >= min && child.Location != stacktraceTreeNodeTruncated {
 				children = append(children, x)
 			} else {
 				truncated += child.Total
@@ -397,7 +246,7 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 			// Create a stub for removed nodes.
 			i := len(t.Nodes)
 			t.Nodes = append(t.Nodes, StacktraceNode{
-				Location: StacktraceTreeNodeTruncated,
+				Location: stacktraceTreeNodeTruncated,
 				Value:    truncated,
 			})
 			children = append(children, int32(i))
@@ -416,60 +265,9 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 	return nil
 }
 
-const StacktraceTreeNodeTruncated = -1
+const stacktraceTreeNodeTruncated = -1
 
-type LocationUnfoldFn func(location int32) []string
-
-func (t *StacktraceTree) Tree(maxNodes int64, unfold LocationUnfoldFn) *Tree {
-	// TODO: Allow custom node allocator.
-	nodes := make([]*node, len(t.Nodes))
-
-	_ = t.Traverse(maxNodes, func(index int32, children []int32) error {
-		n := t.Nodes[index]
-		x := nodes[index]
-		if x == nil {
-			x = new(node)
-			if n.Parent > 0 {
-				x.parent = nodes[n.Parent]
-			}
-			nodes[index] = x
-		}
-		x.total = n.Total
-		lines := unfold(n.Location)
-		x.name = lines[0]
-		for _, line := range lines[1:] {
-			m := &node{
-				parent: x,
-				total:  x.total,
-				name:   line,
-			}
-			x.children = []*node{m}
-			x = m
-		}
-		nodes[index] = x
-		x.self = n.Value
-		for i := range x.children {
-			nodes[children[i]] = &node{
-				parent: x,
-			}
-		}
-		return nil
-	})
-
-	dst := Tree{root: make([]*node, 0, 64)}
-	for _, n := range nodes {
-		if n.parent == nil {
-			dst.root = append(dst.root, n)
-		}
-		sort.Slice(n.children, func(i, j int) bool {
-			return n.children[i].name < n.children[j].name
-		})
-	}
-
-	return &dst
-}
-
-var lostDuringSerializationNameBytes = []byte(lostDuringSerializationName)
+var lostDuringSerializationNameBytes = []byte(truncatedNodeName)
 
 func (t *StacktraceTree) Bytes(dst io.Writer, maxNodes int64, funcs []string) {
 	if len(t.Nodes) == 0 || len(funcs) == 0 {
@@ -484,7 +282,7 @@ func (t *StacktraceTree) Bytes(dst io.Writer, maxNodes int64, funcs []string) {
 			// It is guaranteed that funcs slice and its contents are immutable,
 			// and the byte slice backing capacity is managed by GC.
 			name = unsafeStringBytes(funcs[n.Location])
-		case StacktraceTreeNodeTruncated:
+		case stacktraceTreeNodeTruncated:
 			name = lostDuringSerializationNameBytes
 		}
 

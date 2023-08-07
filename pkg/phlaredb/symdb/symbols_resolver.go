@@ -7,7 +7,7 @@ import (
 	"github.com/google/pprof/profile"
 
 	"github.com/grafana/pyroscope/pkg/model"
-	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 type StacktraceResolver interface {
@@ -46,41 +46,58 @@ type Resolver struct {
 	Strings     []string
 }
 
-// TODO: Max nodes limit.
-
 func (r *Resolver) ResolveTree(ctx context.Context, samples v1.Samples) (*model.Tree, error) {
-	// TODO: Make it reusable.
-	t := &locationsResolve{
-		samples: &samples,
-		tree:    model.NewStacktraceTree(1 << 10),
-	}
+	t := locationsResolveFromPool()
+	defer t.reset()
+	t.init(r, samples)
 	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
 		return nil, err
 	}
-	return t.tree.Tree(-1, t.unfoldLocation), nil
+	return t.tree, nil
 }
 
 type locationsResolve struct {
-	tree     *model.StacktraceTree
 	resolver *Resolver
 	samples  *v1.Samples
+	tree     *model.Tree
 	lines    []string
 	cur      int
 }
 
-func (r *locationsResolve) InsertStacktrace(_ uint32, locations []int32) {
-	r.tree.Insert(locations, int64(r.samples.Values[r.cur]))
-	r.cur++
+var locationsResolvePool = sync.Pool{
+	New: func() any { return new(locationsResolve) },
 }
 
-func (r *locationsResolve) unfoldLocation(location int32) []string {
+func locationsResolveFromPool() *locationsResolve {
+	return locationsResolvePool.Get().(*locationsResolve)
+}
+
+func (r *locationsResolve) reset() {
+	r.resolver = nil
+	r.samples = nil
+	r.tree = nil
 	r.lines = r.lines[:0]
-	// TODO: Check order.
-	for _, line := range r.resolver.Locations[location].Line {
-		f := r.resolver.Functions[line.FunctionId]
-		r.lines = append(r.lines, r.resolver.Strings[f.Name])
+	r.cur = 0
+	locationsResolvePool.Put(r)
+}
+
+func (r *locationsResolve) init(resolver *Resolver, samples v1.Samples) {
+	r.resolver = resolver
+	r.samples = &samples
+	r.tree = new(model.Tree)
+}
+
+func (r *locationsResolve) InsertStacktrace(_ uint32, locations []int32) {
+	r.lines = r.lines[:0]
+	for i := len(locations) - 1; i >= 0; i-- {
+		lines := r.resolver.Locations[locations[i]].Line
+		for j := len(lines) - 1; j >= 0; j-- {
+			f := r.resolver.Functions[lines[j].FunctionId]
+			r.lines = append(r.lines, r.resolver.Strings[f.Name])
+		}
 	}
-	return r.lines
+	r.tree.InsertStack(int64(r.samples.Values[r.cur]), r.lines...)
+	r.cur++
 }
 
 func (r *Resolver) ResolveProfile(ctx context.Context, samples v1.Samples) (*profile.Profile, error) {
@@ -90,6 +107,7 @@ func (r *Resolver) ResolveProfile(ctx context.Context, samples v1.Samples) (*pro
 	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
 		return nil, err
 	}
+	t.incrementIDs()
 	return t.profile, nil
 }
 
@@ -229,5 +247,17 @@ func (r *pprofResolve) inMemoryFunctionToPprof(m *v1.InMemoryFunction) *profile.
 		SystemName: r.resolver.Strings[m.SystemName],
 		Filename:   r.resolver.Strings[m.Filename],
 		StartLine:  int64(m.StartLine),
+	}
+}
+
+func (r *pprofResolve) incrementIDs() {
+	for i, l := range r.profile.Location {
+		l.ID = uint64(i) + 1
+	}
+	for i, f := range r.profile.Function {
+		f.ID = uint64(i) + 1
+	}
+	for i, m := range r.profile.Mapping {
+		m.ID = uint64(i) + 1
 	}
 }
