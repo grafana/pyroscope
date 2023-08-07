@@ -194,35 +194,35 @@ pyroscope.scrape "default_settings" {
       path = "/debug/pprof/goroutine"
       delta = false
     }
-    profile.mutex {
-      enabled = true
-      path = "/debug/pprof/mutex"
-      delta = false
-    }
     profile.process_cpu {
       enabled = true
       path = "/debug/pprof/profile"
       delta = true
     }
     profile.godeltaprof_memory {
-      enabled = false
+      enabled = true
       path = "/debug/pprof/delta_heap"
     }
     profile.memory {
-      enabled = true
+      enabled = false
       path = "/debug/pprof/memory"
       delta = false
     }
     profile.godeltaprof_mutex {
-      enabled = false
+      enabled = true
       path = "/debug/pprof/delta_mutex"
     }
-    profile.godeltaprof_block {
+    profile.mutex {
       enabled = false
+      path = "/debug/pprof/mutex"
+      delta = false
+    }
+    profile.godeltaprof_block {
+      enabled = true
       path = "/debug/pprof/delta_block"
     }
     profile.block {
-      enabled = true
+      enabled = false
       path = "/debug/pprof/block"
       delta = false
     }
