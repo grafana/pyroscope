@@ -32,7 +32,7 @@ This guide presents how to configure the Grafana Agent for scraping performance 
 
 In [`/agent/config/config.river`](https://github.com/grafana/pyroscope/blob/main/examples/grafana-agent/agent/config/config.river) file you will need two blocks, `pyroscope.write` and `pyroscope.scrape`:
 
-![Grafana agent go pull diagram](/media/docs/pyroscope/grafana_agent_pull_mode_diagram.png)
+![Grafana agent go pull diagram](https://grafana.com/media/docs/pyroscope/grafana_agent_pull_mode_diagram.png)
 
 1. `pyroscope.write` to configure the receivers to which the profiles are forwarded.
 2. `pyroscope.scrape` to establish a pprof scraping job for specific targets. The performance profiles obtained from the scraping process are then passed to the receivers specified in `forward_to`. You can define multiple `pyroscope.scrape` components, each distinguished by unique labels. 
