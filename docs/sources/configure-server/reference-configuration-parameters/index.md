@@ -225,7 +225,7 @@ limits:
 
   # Maximum number of samples in a profile. 0 to disable.
   # CLI flag: -validation.max-profile-stacktrace-samples
-  [max_profile_stacktrace_samples: <int> | default = 4000]
+  [max_profile_stacktrace_samples: <int> | default = 16000]
 
   # Maximum number of labels in a profile sample. 0 to disable.
   # CLI flag: -validation.max-profile-stacktrace-sample-labels
