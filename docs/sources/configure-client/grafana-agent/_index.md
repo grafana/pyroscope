@@ -42,7 +42,7 @@ In pull mode, the Grafana Agent periodically retrieves profiles from Golang appl
 
 1. Ensure your Golang application exposes pprof endpoints.
 2. Install and configure the Grafana Agent on the same machine or container where your application runs.
-3. Ensure the agent is set to pull mode and targeting the correct pprof endpoints. For step-by-step instructions, visit the [Grafana Agent documentation](/docs/pyroscope/next/configure-client/grafana-agent/go_pull).
+3. Ensure the agent is set to pull mode and targeting the correct pprof endpoints. For step-by-step instructions, visit the [Go (Pull Mode)](/docs/pyroscope/next/configure-client/grafana-agent/go_pull) docs.
 4. The agent will start querying the pprof endpoints of your Golang application, collecting the profiles, and forwarding them to the Pyroscope server.
 
 ## Next steps
