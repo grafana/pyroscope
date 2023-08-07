@@ -3,8 +3,6 @@ title: "Go (pull mode)"
 menuTitle: "Go (pull mode)"
 description:  "Instrumenting Golang applications for continuous profiling"
 weight: 10
-aliases:
-  - /docs/phlare/latest/configure-client/grafana-agent/
 ---
 
 # Go (pull mode)
