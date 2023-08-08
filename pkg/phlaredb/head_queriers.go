@@ -110,7 +110,7 @@ func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.It
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces")
 	defer sp.Finish()
 
-	m := make(schemav1.SampleMerge)
+	m := make(schemav1.SampleMap)
 	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, m); err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[P
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergePprof")
 	defer sp.Finish()
 
-	m := make(schemav1.SampleMerge)
+	m := make(schemav1.SampleMap)
 	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, m); err != nil {
 		return nil, err
 	}
@@ -216,7 +216,7 @@ func (q *headInMemoryQuerier) MergeByStacktraces(ctx context.Context, rows iter.
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - HeadInMemory")
 	defer sp.Finish()
 
-	m := make(schemav1.SampleMerge)
+	m := make(schemav1.SampleMap)
 	for rows.Next() {
 		p, ok := rows.At().(ProfileWithLabels)
 		if !ok {
@@ -235,7 +235,7 @@ func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergePprof - HeadInMemory")
 	defer sp.Finish()
 
-	m := make(schemav1.SampleMerge)
+	m := make(schemav1.SampleMap)
 	for rows.Next() {
 		p, ok := rows.At().(ProfileWithLabels)
 		if !ok {

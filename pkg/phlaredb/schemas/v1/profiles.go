@@ -334,29 +334,27 @@ func (s Samples) Sum() uint64 {
 
 // TODO(kolesnikovae): Consider map alternatives.
 
-type SampleMerge map[uint64]map[uint32]int64
+// SampleMap is a map of partitioned samples structured
+// as follows: partition => stacktrace_id => value
+type SampleMap map[uint64]map[uint32]int64
 
-func (m SampleMerge) Add(partition uint64, stacktraceID uint32, value int64) {
-	p, ok := m[partition]
+func (m SampleMap) Partition(p uint64) map[uint32]int64 {
+	s, ok := m[p]
 	if !ok {
-		p = make(map[uint32]int64, 128)
-		m[partition] = p
+		s = make(map[uint32]int64, 128)
+		m[p] = s
 	}
-	p[stacktraceID] += value
+	return s
 }
 
-func (m SampleMerge) AddSamples(partition uint64, samples Samples) {
-	p, ok := m[partition]
-	if !ok {
-		p = make(map[uint32]int64, len(samples.StacktraceIDs))
-		m[partition] = p
-	}
+func (m SampleMap) AddSamples(partition uint64, samples Samples) {
+	p := m.Partition(partition)
 	for i, sid := range samples.StacktraceIDs {
 		p[sid] = int64(samples.Values[i])
 	}
 }
 
-func (m SampleMerge) WriteSamples(partition uint64, dst *Samples) {
+func (m SampleMap) WriteSamples(partition uint64, dst *Samples) {
 	p, ok := m[partition]
 	if !ok {
 		return

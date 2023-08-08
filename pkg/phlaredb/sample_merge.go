@@ -21,7 +21,7 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
 
-	m := make(v1.SampleMerge)
+	m := make(v1.SampleMap)
 	if err := mergeByStacktraces(ctx, b.profiles.file, rows, m); err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
 
-	m := make(v1.SampleMerge)
+	m := make(v1.SampleMap)
 	if err := mergeByStacktraces(ctx, b.profiles.file, rows, m); err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ type Source interface {
 	RowGroups() []parquet.RowGroup
 }
 
-func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], m v1.SampleMerge) error {
+func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], m v1.SampleMap) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeByStacktraces")
 	defer sp.Finish()
 	// clone the rows to be able to iterate over them twice
@@ -77,9 +77,9 @@ func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Ite
 
 	for it.Next() {
 		values := it.At().Values
-		p := it.At().Row.StacktracePartition()
+		p := m.Partition(it.At().Row.StacktracePartition())
 		for i := 0; i < len(values[0]); i++ {
-			m.Add(p, uint32(values[0][i].Int64()), values[1][i].Int64())
+			p[uint32(values[0][i].Int64())] += values[1][i].Int64()
 		}
 	}
 	return nil
