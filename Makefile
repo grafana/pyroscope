@@ -193,19 +193,34 @@ docker-image/pyroscope/push: frontend/build go/bin
 
 define UPDATER_CONFIG_JSON
 {
+  "git_author_name": "grafana-pyroscope-bot[bot]",
+  "git_author_email": "140177480+grafana-pyroscope-bot[bot]@users.noreply.github.com",
+  "git_committer_name": "grafana-pyroscope-bot[bot]",
+  "git_committer_email": "140177480+grafana-pyroscope-bot[bot]@users.noreply.github.com",
+  "pull_request_enabled": true,
+  "pull_request_branch_prefix": "auto-merge/grafana-pyroscope-bot/",
   "repo_name": "deployment_tools",
   "destination_branch": "master",
-  "wait_for_ci": true,
-  "wait_for_ci_branch_prefix": "automation/pyroscope-dev-deploy",
-  "wait_for_ci_timeout": "10m",
-  "wait_for_ci_required_status": [
-    "continuous-integration/drone/push"
-  ],
   "update_jsonnet_attribute_configs": [
     {
-      "file_path": "ksonnet/environments/phlare/waves/dev.libsonnet",
+      "file_path": "ksonnet/lib/phlare/releases/dev/images.libsonnet",
       "jsonnet_key": "phlare",
       "jsonnet_value": "$(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)"
+    }
+  ],
+  "update_jsonnet_lib_configs": [
+    {
+      "jsonnet_dir": "ksonnet/lib/phlare/releases/dev",
+      "dependencies": [
+        {
+          "owner": "grafana",
+          "name": "pyroscope",
+          "version": "$(GIT_REVISION)",
+          "sub_dirs": [
+            "operations/phlare"
+          ]
+        }
+      ]
     }
   ]
 }
@@ -213,7 +228,7 @@ endef
 
 .PHONY: docker-image/pyroscope/deploy-dev-001
 docker-image/pyroscope/deploy-dev-001: export CONFIG_JSON:=$(call UPDATER_CONFIG_JSON)
-docker-image/pyroscope/deploy-dev-001: $(BIN)/updater
+docker-image/pyroscope/deploy-dev-001: $(BIN)/updater $(BIN)/jb
 	$(BIN)/updater
 
 .PHONY: clean
