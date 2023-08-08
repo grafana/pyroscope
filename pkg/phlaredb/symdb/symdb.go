@@ -199,14 +199,12 @@ func (s *SymDB) calculateMemoryFootprint() (v int) {
 func (s *SymDB) Flush() error {
 	close(s.stop)
 	s.wg.Wait()
-	s.m.RLock()
 	partitions := make([]*Partition, len(s.partitions))
 	var i int
 	for _, v := range s.partitions {
 		partitions[i] = v
 		i++
 	}
-	s.m.RUnlock()
 	sort.Slice(partitions, func(i, j int) bool {
 		return partitions[i].header.Partition < partitions[j].header.Partition
 	})

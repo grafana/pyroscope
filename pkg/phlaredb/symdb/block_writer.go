@@ -301,7 +301,6 @@ func (s *parquetWriter[M, P]) readFrom(values []M) (err error) {
 func (s *parquetWriter[M, P]) writeGroup(values []M) (r RowRangeReference, err error) {
 	r.RowGroup = s.currentRowGroup
 	r.Index = s.currentRows
-	// r.Rows = s.currentRows
 	if len(values) == 0 {
 		return r, nil
 	}

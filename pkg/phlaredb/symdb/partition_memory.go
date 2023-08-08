@@ -32,7 +32,7 @@ func (p *Partition) ResolveStacktraceLocations(_ context.Context, dst Stacktrace
 }
 
 func (p *Partition) ResolveChunk(dst StacktraceInserter, sr StacktracesRange) error {
-	return p.stacktraces.resolveChunk(dst, sr)
+	return p.stacktraces.ResolveChunk(dst, sr)
 }
 
 type stacktracesPartition struct {
@@ -198,7 +198,7 @@ func (p *stacktraceLocationsPool) put(x []int32) {
 
 func (p *stacktracesPartition) resolve(dst StacktraceInserter, stacktraces []uint32) (err error) {
 	for _, sr := range SplitStacktraces(stacktraces, p.maxNodesPerChunk) {
-		if err = p.resolveChunk(dst, sr); err != nil {
+		if err = p.ResolveChunk(dst, sr); err != nil {
 			return err
 		}
 	}
@@ -212,7 +212,7 @@ func (p *stacktracesPartition) resolve(dst StacktraceInserter, stacktraces []uin
 //  slice, or an n-ary tree: the stacktraceTree should be one of
 //  the options, the package provides.
 
-func (p *stacktracesPartition) resolveChunk(dst StacktraceInserter, sr StacktracesRange) error {
+func (p *stacktracesPartition) ResolveChunk(dst StacktraceInserter, sr StacktracesRange) error {
 	p.mu.RLock()
 	c, found := p.stacktraceChunkForRead(int(sr.chunk))
 	if !found {

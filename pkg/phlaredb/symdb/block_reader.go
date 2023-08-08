@@ -238,12 +238,15 @@ func (p *PartitionReader) Release() {
 	wg.Add(len(p.stacktraceChunks) + 4)
 	for _, c := range p.stacktraceChunks {
 		c := c
-		go c.release()
+		go func() {
+			c.release()
+			wg.Done()
+		}()
 	}
-	go p.locations.release()
-	go p.mappings.release()
-	go p.functions.release()
-	go p.strings.release()
+	go func() { p.locations.release(); wg.Done() }()
+	go func() { p.mappings.release(); wg.Done() }()
+	go func() { p.functions.release(); wg.Done() }()
+	go func() { p.strings.release(); wg.Done() }()
 	wg.Wait()
 }
 
@@ -499,6 +502,7 @@ func (t *parquetTableRange[M, P]) readRG(dst []M, buf []parquet.Row, rg parquet.
 }
 
 func (t *parquetTableRange[M, P]) release() {
+	// TODO: Ref counting.
 	t.mu.Lock()
 	t.slice = nil
 	t.mu.Unlock()

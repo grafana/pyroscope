@@ -18,6 +18,7 @@ import (
 
 func Test_symdb_Resolver_ResolveProfile(t *testing.T) {
 	s := newResolverSuite(t, "testdata/profile.pb.gz")
+	defer s.teardown()
 	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
 	resolved, err := s.resolver.ResolveProfile(context.Background(), s.indexed[0][0].Samples)
 	require.NoError(t, err)
@@ -26,6 +27,7 @@ func Test_symdb_Resolver_ResolveProfile(t *testing.T) {
 
 func Test_symdb_Resolver_ResolveTree(t *testing.T) {
 	s := newResolverSuite(t, "testdata/profile.pb.gz")
+	defer s.teardown()
 	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
 	tree, err := s.resolver.ResolveTree(context.Background(), s.indexed[0][0].Samples)
 	require.NoError(t, err)
@@ -35,6 +37,7 @@ func Test_symdb_Resolver_ResolveTree(t *testing.T) {
 func Benchmark_symdb_Resolver_ResolveProfile(t *testing.B) {
 	// Benchmark_symdb_Resolver_ResolveProfile-10    	    6638	    178299 ns/op	  296507 B/op	    3798 allocs/op
 	s := newResolverSuite(t, "testdata/profile.pb.gz")
+	defer s.teardown()
 	t.ResetTimer()
 	t.ReportAllocs()
 	for i := 0; i < t.N; i++ {
@@ -46,6 +49,7 @@ func Benchmark_symdb_Resolver_ResolveProfile(t *testing.B) {
 func Benchmark_symdb_Resolver_ResolveTree(t *testing.B) {
 	// Benchmark_symdb_Resolver_ResolveTree-10    	    4317	    263400 ns/op	  131787 B/op	    3090 allocs/op
 	s := newResolverSuite(t, "testdata/profile.pb.gz")
+	defer s.teardown()
 	t.ResetTimer()
 	t.ReportAllocs()
 	for i := 0; i < t.N; i++ {
@@ -57,12 +61,14 @@ func Benchmark_symdb_Resolver_ResolveTree(t *testing.B) {
 type resolverSuite struct {
 	t testing.TB
 
-	config   *Config
-	db       *SymDB
-	files    []string
-	profiles []*pprof.Profile
-	indexed  [][]v1.InMemoryProfile
-	resolver *Resolver
+	config    *Config
+	db        *SymDB
+	files     []string
+	profiles  []*pprof.Profile
+	indexed   [][]v1.InMemoryProfile
+	reader    *Reader
+	partition *PartitionReader
+	resolver  *Resolver
 }
 
 func newResolverSuite(t testing.TB, files ...string) *resolverSuite {
@@ -101,18 +107,23 @@ func (s *resolverSuite) init() {
 
 	b, err := filesystem.NewBucket(s.config.Dir)
 	require.NoError(s.t, err)
-	r, err := Open(context.Background(), b)
+	s.reader, err = Open(context.Background(), b)
 	require.NoError(s.t, err)
 
-	pr, err := r.SymbolsReader(context.Background(), 1)
+	s.partition, err = s.reader.SymbolsReader(context.Background(), 1)
 	require.NoError(s.t, err)
 	s.resolver = &Resolver{
-		Stacktraces: pr,
-		Locations:   pr.locations.slice,
-		Mappings:    pr.mappings.slice,
-		Functions:   pr.functions.slice,
-		Strings:     pr.strings.slice,
+		Stacktraces: s.partition,
+		Locations:   s.partition.locations.slice,
+		Mappings:    s.partition.mappings.slice,
+		Functions:   s.partition.functions.slice,
+		Strings:     s.partition.strings.slice,
 	}
+}
+
+func (s *resolverSuite) teardown() {
+	s.partition.Release()
+	require.NoError(s.t, s.reader.Close())
 }
 
 func pprofFingerprint(p *googlev1.Profile, typ int) [][2]uint64 {
