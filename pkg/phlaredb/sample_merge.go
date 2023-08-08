@@ -14,13 +14,14 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
+	"github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
 
-	m := make(phlaremodel.SampleMerge)
+	m := make(v1.SampleMerge)
 	if err := mergeByStacktraces(ctx, b.profiles.file, rows, m); err != nil {
 		return nil, err
 	}
@@ -32,7 +33,7 @@ func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
 
-	m := make(phlaremodel.SampleMerge)
+	m := make(v1.SampleMerge)
 	if err := mergeByStacktraces(ctx, b.profiles.file, rows, m); err != nil {
 		return nil, err
 	}
@@ -60,7 +61,7 @@ type Source interface {
 	RowGroups() []parquet.RowGroup
 }
 
-func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], m phlaremodel.SampleMerge) error {
+func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], m v1.SampleMerge) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeByStacktraces")
 	defer sp.Finish()
 	// clone the rows to be able to iterate over them twice
