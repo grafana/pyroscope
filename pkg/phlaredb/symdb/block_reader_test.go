@@ -24,6 +24,7 @@ var testBlockMeta = block.Meta{
 }
 
 func Test_Reader_Open(t *testing.T) {
+	// TODO: Read db from disk.
 	cfg := &Config{
 		Dir: t.TempDir(),
 		Stacktraces: StacktracesConfig{
@@ -46,6 +47,7 @@ func Test_Reader_Open(t *testing.T) {
 	})
 	require.Equal(t, []uint32{3, 2, 11, 16, 18}, sids)
 	require.NoError(t, db.Flush())
+	t.Log(db.Files())
 
 	b, err := filesystem.NewBucket(cfg.Dir)
 	require.NoError(t, err)

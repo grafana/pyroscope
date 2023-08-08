@@ -5,6 +5,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 type SymDB struct {
@@ -118,7 +120,6 @@ func (s *SymDB) SymbolsWriter(partition uint64) *Partition {
 
 func (s *SymDB) newPartition(partition uint64) *Partition {
 	p := Partition{
-		// name:        partition,
 		header:      PartitionHeader{Partition: partition},
 		stacktraces: newStacktracesPartition(s.config.Stacktraces.MaxNodesPerChunk),
 	}
@@ -145,14 +146,6 @@ func (s *SymDB) lookupPartition(partition uint64) (*Partition, bool) {
 	}
 	s.m.RUnlock()
 	return nil, false
-}
-
-func (s *SymDB) Name() string { return s.config.Dir }
-
-func (s *SymDB) Size() uint64 {
-	// NOTE(kolesnikovae): SymDB does not use disk until flushed.
-	//  This method should be implemented once the logic changes.
-	return 0
 }
 
 func (s *SymDB) MemorySize() uint64 {
@@ -211,10 +204,15 @@ func (s *SymDB) Flush() error {
 	sort.Slice(partitions, func(i, j int) bool {
 		return partitions[i].header.Partition < partitions[j].header.Partition
 	})
-
+	if err := s.writer.createDir(); err != nil {
+		return err
+	}
 	if err := s.writer.WritePartitions(partitions); err != nil {
 		return fmt.Errorf("writing partitions: %w", err)
 	}
-
 	return s.writer.Flush()
+}
+
+func (s *SymDB) Files() []block.File {
+	return s.writer.files
 }

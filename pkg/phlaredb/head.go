@@ -121,7 +121,7 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 
 	// create profile store
 	h.profiles = newProfileStore(phlarectx)
-
+	h.delta = newDeltaProfiles()
 	h.tables = []Table{
 		h.profiles,
 	}
@@ -130,12 +130,12 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 			return nil, err
 		}
 	}
-	h.symdb = symdb.NewSymDB(
-		symdb.DefaultConfig().
-			WithDirectory(filepath.Join(h.headPath, symdb.DefaultDirName)),
-	)
 
-	h.delta = newDeltaProfiles()
+	h.symdb = symdb.NewSymDB(symdb.DefaultConfig().
+		WithDirectory(filepath.Join(h.headPath, symdb.DefaultDirName)).
+		WithParquetConfig(symdb.ParquetConfig{
+			MaxBufferRowCount: cfg.Parquet.MaxBufferRowCount,
+		}))
 
 	h.wg.Add(1)
 	go h.loop()
@@ -144,24 +144,13 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 }
 
 func (h *Head) MemorySize() uint64 {
-	var size uint64
-	// TODO: Estimate size of TSDB index
-	for _, t := range h.tables {
-		size += t.MemorySize()
-	}
-	size += h.symdb.MemorySize()
-	return size
+	// TODO: TSDB index
+	return h.profiles.MemorySize() + h.symdb.MemorySize()
 }
 
 func (h *Head) Size() uint64 {
-	var size uint64
-	// TODO: Estimate size of TSDB index
-	for _, t := range h.tables {
-		size += t.Size()
-	}
-	size += h.symdb.Size()
-
-	return size
+	// TODO: TSDB and SymDB.
+	return h.profiles.Size()
 }
 
 func (h *Head) loop() {
@@ -606,66 +595,61 @@ func (h *Head) flush(ctx context.Context) error {
 		return os.RemoveAll(h.headPath)
 	}
 
-	files := make([]block.File, len(h.tables)+1)
+	var blockSize uint64
+	files := make([]block.File, 0, 8)
 
-	for idx, t := range h.tables {
+	// profiles
+	for _, t := range h.tables {
 		numRows, numRowGroups, err := t.Flush(ctx)
 		if err != nil {
-			return errors.Wrapf(err, "flushing of table %s", t.Name())
+			return errors.Wrapf(err, "flushing table %s", t.Name())
 		}
 		h.metrics.rowsWritten.WithLabelValues(t.Name()).Add(float64(numRows))
-		files[idx+1].Parquet = &block.ParquetFile{
-			NumRowGroups: numRowGroups,
-			NumRows:      numRows,
+		f := block.File{
+			RelPath: t.Name() + block.ParquetSuffix,
+			Parquet: &block.ParquetFile{
+				NumRowGroups: numRowGroups,
+				NumRows:      numRows,
+			},
+		}
+		if err = t.Close(); err != nil {
+			return errors.Wrapf(err, "closing table %s", t.Name())
+		}
+		if stat, err := os.Stat(filepath.Join(h.headPath, f.RelPath)); err == nil {
+			f.SizeBytes = uint64(stat.Size())
+			blockSize += f.SizeBytes
+			h.metrics.flushedFileSizeBytes.WithLabelValues(t.Name()).Observe(float64(f.SizeBytes))
 		}
 	}
 
+	// symdb
 	if err := h.symdb.Flush(); err != nil {
 		return errors.Wrap(err, "flushing symbol database")
 	}
+	for _, file := range h.symdb.Files() {
+		// Files' path is relative to the symdb dir.
+		file.RelPath = filepath.Join(symdb.DefaultDirName, file.RelPath)
+		files = append(files, file)
+		blockSize += file.SizeBytes
+		h.metrics.flushedFileSizeBytes.WithLabelValues(file.RelPath).Observe(float64(file.SizeBytes))
+	}
 
-	// get stats of index
-	indexPath := filepath.Join(h.headPath, block.IndexFilename)
-	files[0].RelPath = block.IndexFilename
+	// tsdb
+	f := block.File{
+		RelPath: block.IndexFilename,
+		TSDB: &block.TSDBFile{
+			NumSeries: h.meta.Stats.NumSeries,
+		},
+	}
 	h.meta.Stats.NumSeries = uint64(h.profiles.index.totalSeries.Load())
 	h.metrics.flushedBlockSeries.Observe(float64(h.meta.Stats.NumSeries))
-	files[0].TSDB = &block.TSDBFile{
-		NumSeries: h.meta.Stats.NumSeries,
-	}
-	// add index file size
-	if stat, err := os.Stat(indexPath); err == nil {
-		files[0].SizeBytes = uint64(stat.Size())
-		h.metrics.flushedFileSizeBytes.WithLabelValues("tsdb").Observe(float64(files[0].SizeBytes))
-	}
-	totalSize := files[0].SizeBytes
-
-	for idx, t := range h.tables {
-		if err := t.Close(); err != nil {
-			return errors.Wrapf(err, "closing of table %s", t.Name())
-		}
-
-		// add file size
-		files[idx+1].RelPath = t.Name() + block.ParquetSuffix
-		if stat, err := os.Stat(filepath.Join(h.headPath, files[idx+1].RelPath)); err == nil {
-			files[idx+1].SizeBytes = uint64(stat.Size())
-			h.metrics.flushedFileSizeBytes.WithLabelValues(t.Name()).Observe(float64(files[idx+1].SizeBytes))
-			totalSize += files[idx+1].SizeBytes
-		}
+	if stat, err := os.Stat(filepath.Join(h.headPath, block.IndexFilename)); err == nil {
+		f.SizeBytes = uint64(stat.Size())
+		blockSize += f.SizeBytes
+		h.metrics.flushedFileSizeBytes.WithLabelValues("tsdb").Observe(float64(f.SizeBytes))
 	}
 
-	// add total size symdb
-	symbDBFiles, err := symdbMetaFiles(h.headPath)
-	if err != nil {
-		return err
-	}
-
-	for _, file := range symbDBFiles {
-		files = append(files, file)
-		h.metrics.flushedFileSizeBytes.WithLabelValues(file.RelPath).Observe(float64(file.SizeBytes))
-		totalSize += file.SizeBytes
-	}
-
-	h.metrics.flushedBlockSizeBytes.Observe(float64(totalSize))
+	h.metrics.flushedBlockSizeBytes.Observe(float64(blockSize))
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].RelPath < files[j].RelPath
 	})
@@ -682,47 +666,6 @@ func (h *Head) flush(ctx context.Context) error {
 	}
 	h.metrics.blockDurationSeconds.Observe(h.meta.MaxTime.Sub(h.meta.MinTime).Seconds())
 	return nil
-}
-
-// SymDBFiles lists files in symdb folder
-func (h *Head) SymDBFiles() ([]block.File, error) {
-	files, err := os.ReadDir(filepath.Join(h.headPath, symdb.DefaultDirName))
-	if err != nil {
-		return nil, err
-	}
-	result := make([]block.File, len(files))
-	for idx, f := range files {
-		if f.IsDir() {
-			continue
-		}
-		result[idx].RelPath = filepath.Join(symdb.DefaultDirName, f.Name())
-		info, err := f.Info()
-		if err != nil {
-			return nil, err
-		}
-		result[idx].SizeBytes = uint64(info.Size())
-	}
-	return result, nil
-}
-
-func symdbMetaFiles(dir string) ([]block.File, error) {
-	files, err := os.ReadDir(filepath.Join(dir, symdb.DefaultDirName))
-	if err != nil {
-		return nil, err
-	}
-	result := make([]block.File, len(files))
-	for idx, f := range files {
-		if f.IsDir() {
-			continue
-		}
-		result[idx].RelPath = filepath.Join(symdb.DefaultDirName, f.Name())
-		info, err := f.Info()
-		if err != nil {
-			return nil, err
-		}
-		result[idx].SizeBytes = uint64(info.Size())
-	}
-	return result, nil
 }
 
 // Move moves the head directory to local blocks. The call is not thread-safe:

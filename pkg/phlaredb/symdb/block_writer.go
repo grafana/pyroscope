@@ -23,7 +23,10 @@ type Writer struct {
 	config *Config
 
 	index       IndexFile
+	indexWriter *fileWriter
 	stacktraces *fileWriter
+	files       []block.File
+
 	// Parquet tables.
 	mappings  parquetWriter[*v1.InMemoryMapping, *v1.MappingPersister]
 	functions parquetWriter[*v1.InMemoryFunction, *v1.FunctionPersister]
@@ -44,13 +47,9 @@ func NewWriter(c *Config) *Writer {
 }
 
 func (w *Writer) WritePartitions(partitions []*Partition) error {
-	if err := w.createDir(); err != nil {
-		return err
-	}
-
 	g, _ := errgroup.WithContext(context.Background())
 	g.Go(func() (err error) {
-		if err = w.createStacktracesFile(); err != nil {
+		if w.stacktraces, err = w.newFile(StacktracesFileName); err != nil {
 			return err
 		}
 		for _, partition := range partitions {
@@ -124,6 +123,21 @@ func (w *Writer) WritePartitions(partitions []*Partition) error {
 	return nil
 }
 
+func (w *Writer) Flush() (err error) {
+	if err = w.writeIndexFile(); err != nil {
+		return err
+	}
+	w.files = []block.File{
+		w.indexWriter.meta(),
+		w.stacktraces.meta(),
+		w.locations.meta(),
+		w.mappings.meta(),
+		w.functions.meta(),
+		w.strings.meta(),
+	}
+	return nil
+}
+
 func (w *Writer) writeStacktraces(partition *Partition) (err error) {
 	for ci, c := range partition.stacktraces.chunks {
 		h := StacktraceChunkHeader{
@@ -148,21 +162,6 @@ func (w *Writer) writeStacktraces(partition *Partition) (err error) {
 	return nil
 }
 
-func (w *Writer) Flush() (err error) {
-	// Write the index file only after all the files were flushed.
-	f, err := w.newFile(IndexFileName)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err = multierror.New(err, f.Close()).Err()
-	}()
-	if _, err = w.index.WriteTo(f); err != nil {
-		return fmt.Errorf("failed to write index file: %w", err)
-	}
-	return nil
-}
-
 func (w *Writer) createDir() error {
 	if err := os.MkdirAll(w.config.Dir, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory %q: %w", w.config.Dir, err)
@@ -170,28 +169,37 @@ func (w *Writer) createDir() error {
 	return nil
 }
 
-func (w *Writer) createStacktracesFile() (err error) {
-	w.stacktraces, err = w.newFile(StacktracesFileName)
+func (w *Writer) writeIndexFile() (err error) {
+	// Write the index file only after all the files were flushed.
+	if w.indexWriter, err = w.newFile(IndexFileName); err != nil {
+		return err
+	}
+	defer func() {
+		err = multierror.New(err, w.indexWriter.Close()).Err()
+	}()
+	if _, err = w.index.WriteTo(w.indexWriter); err != nil {
+		return fmt.Errorf("failed to write index file: %w", err)
+	}
 	return err
 }
 
-func (w *Writer) newFile(name string) (f *fileWriter, err error) {
-	name = filepath.Join(w.config.Dir, name)
-	if f, err = newFileWriter(name); err != nil {
-		return nil, fmt.Errorf("failed to create %q: %w", name, err)
+func (w *Writer) newFile(path string) (f *fileWriter, err error) {
+	path = filepath.Join(w.config.Dir, path)
+	if f, err = newFileWriter(path); err != nil {
+		return nil, fmt.Errorf("failed to create %q: %w", path, err)
 	}
 	return f, err
 }
 
 type fileWriter struct {
-	name string
+	path string
 	buf  *bufio.Writer
 	f    *os.File
 	w    *writerOffset
 }
 
-func newFileWriter(name string) (*fileWriter, error) {
-	f, err := os.Create(name)
+func newFileWriter(path string) (*fileWriter, error) {
+	f, err := os.Create(path)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +208,7 @@ func newFileWriter(name string) (*fileWriter, error) {
 	b := bufio.NewWriterSize(f, 4096)
 	w := withWriterOffset(b, 0)
 	fw := fileWriter{
-		name: name,
+		path: path,
 		buf:  b,
 		f:    f,
 		w:    w,
@@ -224,6 +232,14 @@ func (f *fileWriter) Close() (err error) {
 		return err
 	}
 	return f.f.Close()
+}
+
+func (f *fileWriter) meta() (m block.File) {
+	m.RelPath = filepath.Base(f.path)
+	if stat, err := os.Stat(f.path); err == nil {
+		m.SizeBytes = uint64(stat.Size())
+	}
+	return m
 }
 
 type writerOffset struct {
@@ -252,10 +268,11 @@ func (w *writerOffset) Write(p []byte) (n int, err error) {
 
 type parquetWriter[M v1.Models, P v1.Persister[M]] struct {
 	persister P
-	cfg       ParquetConfig
+	config    ParquetConfig
 
 	currentRowGroup uint32
 	currentRows     uint32
+	rowsTotal       uint64
 
 	buffer    *parquet.Buffer
 	rowsBatch []parquet.Row
@@ -263,33 +280,31 @@ type parquetWriter[M v1.Models, P v1.Persister[M]] struct {
 
 	writer *parquet.GenericWriter[P]
 	file   *os.File
+	path   string
 }
 
-func (s *parquetWriter[M, P]) init(dir string, c ParquetConfig) error {
-	s.cfg = c
-
-	s.rowsBatch = make([]parquet.Row, 0, 128)
-	s.buffer = parquet.NewBuffer(s.persister.Schema(), parquet.ColumnBufferCapacity(s.cfg.MaxBufferRowCount))
-
-	file, err := os.OpenFile(filepath.Join(dir, s.persister.Name()+block.ParquetSuffix), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
+func (s *parquetWriter[M, P]) init(dir string, c ParquetConfig) (err error) {
+	s.config = c
+	s.path = filepath.Join(dir, s.persister.Name()+block.ParquetSuffix)
+	s.file, err = os.OpenFile(s.path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return err
 	}
-	s.file = file
-	s.writer = parquet.NewGenericWriter[P](file, s.persister.Schema(),
+	s.rowsBatch = make([]parquet.Row, 0, 128)
+	s.buffer = parquet.NewBuffer(s.persister.Schema(), parquet.ColumnBufferCapacity(s.config.MaxBufferRowCount))
+	s.writer = parquet.NewGenericWriter[P](s.file, s.persister.Schema(),
 		parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "phlaredb-parquet-buffers*")),
 		parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
 		parquet.PageBufferSize(3*1024*1024),
 	)
-
 	return nil
 }
 
 func (s *parquetWriter[M, P]) readFrom(values []M) (err error) {
-	var r RowRangeReference
 	s.rowRanges = s.rowRanges[:0]
 	for len(values) > 0 {
-		if r, err = s.writeGroup(values); err != nil {
+		var r RowRangeReference
+		if r, err = s.writeRows(values); err != nil {
 			return err
 		}
 		s.rowRanges = append(s.rowRanges, r)
@@ -298,14 +313,14 @@ func (s *parquetWriter[M, P]) readFrom(values []M) (err error) {
 	return nil
 }
 
-func (s *parquetWriter[M, P]) writeGroup(values []M) (r RowRangeReference, err error) {
+func (s *parquetWriter[M, P]) writeRows(values []M) (r RowRangeReference, err error) {
 	r.RowGroup = s.currentRowGroup
 	r.Index = s.currentRows
 	if len(values) == 0 {
 		return r, nil
 	}
 	var n int
-	for len(values) > 0 && int(s.currentRows)+cap(s.rowsBatch) < s.cfg.MaxBufferRowCount {
+	for len(values) > 0 && int(s.currentRows)+cap(s.rowsBatch) < s.config.MaxBufferRowCount {
 		values = values[s.fillBatch(values):]
 		if n, err = s.buffer.WriteRows(s.rowsBatch); err != nil {
 			return r, err
@@ -313,7 +328,7 @@ func (s *parquetWriter[M, P]) writeGroup(values []M) (r RowRangeReference, err e
 		s.currentRows += uint32(n)
 		r.Rows += uint32(n)
 	}
-	if int(s.currentRows)+cap(s.rowsBatch) >= s.cfg.MaxBufferRowCount {
+	if int(s.currentRows)+cap(s.rowsBatch) >= s.config.MaxBufferRowCount {
 		if err = s.flushBuffer(); err != nil {
 			return r, err
 		}
@@ -335,10 +350,28 @@ func (s *parquetWriter[M, P]) flushBuffer() error {
 	if _, err := s.writer.WriteRowGroup(s.buffer); err != nil {
 		return err
 	}
+	s.rowsTotal += uint64(s.buffer.NumRows())
 	s.currentRowGroup++
 	s.currentRows = 0
 	s.buffer.Reset()
 	return nil
+}
+
+func (s *parquetWriter[M, P]) meta() block.File {
+	f := block.File{
+		// Note that the path is relative to the symdb root dir.
+		RelPath: filepath.Base(s.path),
+		Parquet: &block.ParquetFile{
+			NumRows: s.rowsTotal,
+		},
+	}
+	if f.Parquet.NumRows > 0 {
+		f.Parquet.NumRowGroups = uint64(s.currentRowGroup + 1)
+	}
+	if stat, err := os.Stat(s.path); err == nil {
+		f.SizeBytes = uint64(stat.Size())
+	}
+	return f
 }
 
 func (s *parquetWriter[M, P]) Close() error {
