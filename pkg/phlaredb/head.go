@@ -357,6 +357,11 @@ type symbolsReader interface {
 	resolver(ctx context.Context, partition uint64) (*symdb.Resolver, error)
 }
 
+type SymbolsResolver interface {
+	ResolveTree(context.Context, schemav1.SampleMap) (*phlaremodel.Tree, error)
+	ResolveProfile(context.Context, schemav1.SampleMap) (*profile.Profile, error)
+}
+
 func resolveStacktraces(ctx context.Context, sr symbolsReader, m schemav1.SampleMap, concurrency int) (*phlaremodel.Tree, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "resolveStacktraces")
 	defer sp.Finish()

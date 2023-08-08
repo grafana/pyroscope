@@ -12,10 +12,12 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/google/pprof/profile"
 	"github.com/grafana/dskit/multierror"
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
@@ -200,6 +202,23 @@ func (r *Reader) loadStacktraces(ctx context.Context) error {
 	return nil
 }
 
+func (r *Reader) ResolveTree(ctx context.Context, m schemav1.SampleMap) (*phlaremodel.Tree, error) {
+	return resolveTree(ctx, m, defaultResolveConcurrency, r.withResolver)
+}
+
+func (r *Reader) ResolveProfile(ctx context.Context, m schemav1.SampleMap) (*profile.Profile, error) {
+	return resolveProfile(ctx, m, defaultResolveConcurrency, r.withResolver)
+}
+
+func (r *Reader) withResolver(ctx context.Context, partition uint64, fn func(*Resolver) error) error {
+	pr, err := r.SymbolsReader(ctx, partition)
+	if err != nil {
+		return err
+	}
+	defer pr.Release()
+	return fn(pr.Resolver())
+}
+
 var ErrPartitionNotFound = fmt.Errorf("partition not found")
 
 func (r *Reader) SymbolsReader(ctx context.Context, partition uint64) (*PartitionReader, error) {
@@ -237,6 +256,16 @@ func (p *PartitionReader) init(ctx context.Context) error {
 	}
 	err := g.Wait()
 	return err
+}
+
+func (p *PartitionReader) Resolver() *Resolver {
+	return &Resolver{
+		Stacktraces: p,
+		Locations:   p.locations.slice,
+		Mappings:    p.mappings.slice,
+		Functions:   p.functions.slice,
+		Strings:     p.strings.slice,
+	}
 }
 
 func (p *PartitionReader) Release() {
@@ -391,6 +420,7 @@ func (c *stacktraceChunkReader) readFrom(r io.Reader) error {
 }
 
 func (c *stacktraceChunkReader) release() {
+	// TODO: Ref counting.
 	c.m.Lock()
 	c.tree = nil
 	c.m.Unlock()
@@ -441,12 +471,14 @@ type parquetTableRange[M schemav1.Models, P schemav1.Persister[M]] struct {
 	bucket    objstore.BucketReader
 	persister P
 
-	mu    sync.RWMutex
+	m     sync.RWMutex
 	file  *parquetFile
 	slice []M
 }
 
 func (t *parquetTableRange[M, P]) fetch(_ context.Context) error {
+	t.m.Lock()
+	defer t.m.Unlock()
 	if len(t.slice) != 0 {
 		return nil
 	}
@@ -508,7 +540,7 @@ func (t *parquetTableRange[M, P]) readRG(dst []M, buf []parquet.Row, rg parquet.
 
 func (t *parquetTableRange[M, P]) release() {
 	// TODO: Ref counting.
-	t.mu.Lock()
+	t.m.Lock()
 	t.slice = nil
-	t.mu.Unlock()
+	t.m.Unlock()
 }

@@ -328,6 +328,16 @@ func (p *Partition) AppendStrings(dst []uint32, strings []string) {
 	p.strings.append(dst, strings)
 }
 
+func (p *Partition) Resolver() *Resolver {
+	return &Resolver{
+		Stacktraces: p,
+		Locations:   p.locations.sliceHeaderCopy(),
+		Mappings:    p.mappings.sliceHeaderCopy(),
+		Functions:   p.functions.sliceHeaderCopy(),
+		Strings:     p.strings.sliceHeaderCopy(),
+	}
+}
+
 func (p *Partition) WriteStats(s *Stats) {
 	p.stacktraces.mu.RLock()
 	c := p.stacktraces.currentStacktraceChunk()

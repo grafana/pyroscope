@@ -5,14 +5,25 @@ import (
 	"sync"
 
 	"github.com/google/pprof/profile"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
+type SymbolsResolver interface {
+	ResolveTree(context.Context, v1.SampleMap) (*model.Tree, error)
+	ResolveProfile(context.Context, v1.SampleMap) (*profile.Profile, error)
+}
+
+var (
+	_ SymbolsResolver = (*Reader)(nil)
+	_ SymbolsResolver = (*SymDB)(nil)
+)
+
 type StacktraceResolver interface {
-	// ResolveStacktraceLocations resolves locations for each stack trace
-	// and inserts it to the StacktraceInserter provided.
+	// ResolveStacktraceLocations resolves locations for each stack
+	// trace and inserts it to the StacktraceInserter provided.
 	//
 	// The stacktraces must be ordered in the ascending order.
 	// If a stacktrace can't be resolved, dst receives an empty
@@ -22,20 +33,14 @@ type StacktraceResolver interface {
 	ResolveStacktraceLocations(ctx context.Context, dst StacktraceInserter, stacktraces []uint32) error
 }
 
-// StacktraceInserter accepts resolved locations for a given stack trace.
-// The leaf is at locations[0].
+// StacktraceInserter accepts resolved locations for a given stack
+// trace. The leaf is at locations[0].
 //
 // Locations slice must not be retained by implementation.
 // It is guaranteed, that for a given stacktrace ID
 // InsertStacktrace is called not more than once.
 type StacktraceInserter interface {
 	InsertStacktrace(stacktraceID uint32, locations []int32)
-}
-
-type StacktraceInserterFn func(stacktraceID uint32, locations []int32)
-
-func (fn StacktraceInserterFn) InsertStacktrace(stacktraceID uint32, locations []int32) {
-	fn(stacktraceID, locations)
 }
 
 type Resolver struct {
@@ -260,4 +265,66 @@ func (r *pprofResolve) incrementIDs() {
 	for i, m := range r.profile.Mapping {
 		m.ID = uint64(i) + 1
 	}
+}
+
+type resolveFn = func(context.Context, uint64, func(resolver *Resolver) error) error
+
+const defaultResolveConcurrency = 8
+
+func resolveTree(ctx context.Context, m v1.SampleMap, concurrency int, fn resolveFn) (*model.Tree, error) {
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(concurrency)
+	var tm sync.Mutex
+	tree := new(model.Tree)
+	for partition, v := range m {
+		p := partition
+		v := v
+		g.Go(func() error {
+			samples := v1.NewSamples(len(v))
+			m.WriteSamples(p, &samples)
+			return fn(ctx, p, func(resolver *Resolver) error {
+				r, err := resolver.ResolveTree(ctx, samples)
+				if err != nil {
+					return err
+				}
+				tm.Lock()
+				tree.Merge(r)
+				tm.Unlock()
+				return nil
+			})
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return tree, nil
+}
+
+func resolveProfile(ctx context.Context, m v1.SampleMap, concurrency int, fn resolveFn) (*profile.Profile, error) {
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(concurrency)
+	var tm sync.Mutex
+	profiles := make([]*profile.Profile, 0, len(m))
+	for partition, v := range m {
+		p := partition
+		v := v
+		g.Go(func() error {
+			samples := v1.NewSamples(len(v))
+			m.WriteSamples(p, &samples)
+			return fn(ctx, p, func(resolver *Resolver) error {
+				r, err := resolver.ResolveProfile(ctx, samples)
+				if err != nil {
+					return err
+				}
+				tm.Lock()
+				profiles = append(profiles, r)
+				tm.Unlock()
+				return nil
+			})
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return profile.Merge(profiles)
 }
