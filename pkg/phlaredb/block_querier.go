@@ -388,7 +388,7 @@ func (r *stacktraceResolverV2) Resolve(ctx context.Context, partition uint64, lo
 }
 
 func (r *stacktraceResolverV2) Load(ctx context.Context) error {
-	return r.reader.Load(ctx)
+	return r.reader.loadStacktraces(ctx)
 }
 
 func (r *stacktraceResolverV2) WriteStats(partition uint64, s *symdb.Stats) {

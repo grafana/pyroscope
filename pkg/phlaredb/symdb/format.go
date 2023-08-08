@@ -30,7 +30,8 @@ import (
 //
 
 const (
-	DefaultDirName      = "symbols"
+	DefaultDirName = "symbols"
+
 	IndexFileName       = "index.symdb"
 	StacktracesFileName = "stacktraces.symdb"
 )

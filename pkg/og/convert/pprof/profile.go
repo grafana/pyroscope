@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/streaming"
-	"github.com/grafana/pyroscope/pkg/og/stackbuilder"
 	"io"
 	"mime/multipart"
 	"sync"
+
+	"github.com/grafana/pyroscope/pkg/og/convert/pprof/streaming"
+	"github.com/grafana/pyroscope/pkg/og/stackbuilder"
 
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage"
@@ -225,7 +226,7 @@ func (p *RawProfile) handleRawData() (cont bool, err error) {
 			return false, nil
 		}
 		if p.FormDataContentType != "" {
-			// The profile was ingested as a multipart form. Load parts to
+			// The profile was ingested as a multipart form. loadStacktraces parts to
 			// Profile, PreviousProfile, and SampleTypeConfig.
 			if err := p.loadPprofFromForm(); err != nil {
 				return false, err

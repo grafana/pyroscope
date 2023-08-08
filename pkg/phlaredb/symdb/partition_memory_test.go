@@ -321,8 +321,8 @@ func Test_Stacktraces_memory_resolve_pprof(t *testing.T) {
 	w := db.SymbolsWriter(0)
 	w.AppendStacktraces(sids, stacktraces)
 
-	r, ok := db.SymbolsReader(0)
-	require.True(t, ok)
+	r, err := db.SymbolsReader(0)
+	require.NoError(t, err)
 
 	si := newStacktracesMapInserter()
 	err = r.ResolveStacktraceLocations(context.Background(), si, sids)
@@ -346,8 +346,8 @@ func Test_Stacktraces_memory_resolve_chunked(t *testing.T) {
 	w := db.SymbolsWriter(0)
 	w.AppendStacktraces(sids, stacktraces)
 
-	r, ok := db.SymbolsReader(0)
-	require.True(t, ok)
+	r, err := db.SymbolsReader(0)
+	require.NoError(t, err)
 
 	// ResolveStacktraceLocations modifies sids in-place,
 	// if stacktraces are chunked.
@@ -407,11 +407,11 @@ func Test_Stacktraces_memory_resolve_concurrency(t *testing.T) {
 			go func() {
 				defer wg.Done()
 
-				r, ok := db.SymbolsReader(0)
-				if !ok {
+				r, err := db.SymbolsReader(0)
+				if err != nil {
+					require.ErrorIs(t, ErrPartitionNotFound, err)
 					return
 				}
-				require.True(t, ok)
 
 				// ResolveStacktraceLocations modifies sids in-place,
 				// if stacktraces are chunked.

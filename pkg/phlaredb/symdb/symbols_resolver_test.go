@@ -16,8 +16,24 @@ import (
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
-func Test_symdb_Resolver_ResolveProfile(t *testing.T) {
+func Test_symdb_memory_Resolver_ResolveProfile(t *testing.T) {
 	s := newResolverSuite(t, "testdata/profile.pb.gz")
+	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
+	resolved, err := s.resolver.ResolveProfile(context.Background(), s.indexed[0][0].Samples)
+	require.NoError(t, err)
+	require.Equal(t, expectedFingerprint, profileFingerprint(resolved, 0))
+}
+
+func Test_symdb_memory_Resolver_ResolveTree(t *testing.T) {
+	s := newResolverSuite(t, "testdata/profile.pb.gz")
+	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
+	tree, err := s.resolver.ResolveTree(context.Background(), s.indexed[0][0].Samples)
+	require.NoError(t, err)
+	require.Equal(t, expectedFingerprint, treeFingerprint(tree))
+}
+
+func Test_symdb_block_Resolver_ResolveProfile(t *testing.T) {
+	s := newBlockResolverSuite(t, "testdata/profile.pb.gz")
 	defer s.teardown()
 	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
 	resolved, err := s.resolver.ResolveProfile(context.Background(), s.indexed[0][0].Samples)
@@ -25,8 +41,8 @@ func Test_symdb_Resolver_ResolveProfile(t *testing.T) {
 	require.Equal(t, expectedFingerprint, profileFingerprint(resolved, 0))
 }
 
-func Test_symdb_Resolver_ResolveTree(t *testing.T) {
-	s := newResolverSuite(t, "testdata/profile.pb.gz")
+func Test_symdb_block_Resolver_ResolveTree(t *testing.T) {
+	s := newBlockResolverSuite(t, "testdata/profile.pb.gz")
 	defer s.teardown()
 	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
 	tree, err := s.resolver.ResolveTree(context.Background(), s.indexed[0][0].Samples)
@@ -34,9 +50,8 @@ func Test_symdb_Resolver_ResolveTree(t *testing.T) {
 	require.Equal(t, expectedFingerprint, treeFingerprint(tree))
 }
 
-func Benchmark_symdb_Resolver_ResolveProfile(t *testing.B) {
-	// Benchmark_symdb_Resolver_ResolveProfile-10    	    6638	    178299 ns/op	  296507 B/op	    3798 allocs/op
-	s := newResolverSuite(t, "testdata/profile.pb.gz")
+func Benchmark_symdb_block_Resolver_ResolveProfile(t *testing.B) {
+	s := newBlockResolverSuite(t, "testdata/profile.pb.gz")
 	defer s.teardown()
 	t.ResetTimer()
 	t.ReportAllocs()
@@ -46,9 +61,8 @@ func Benchmark_symdb_Resolver_ResolveProfile(t *testing.B) {
 	}
 }
 
-func Benchmark_symdb_Resolver_ResolveTree(t *testing.B) {
-	// Benchmark_symdb_Resolver_ResolveTree-10    	    4317	    263400 ns/op	  131787 B/op	    3090 allocs/op
-	s := newResolverSuite(t, "testdata/profile.pb.gz")
+func Benchmark_symdb_block_Resolver_ResolveTree(t *testing.B) {
+	s := newBlockResolverSuite(t, "testdata/profile.pb.gz")
 	defer s.teardown()
 	t.ResetTimer()
 	t.ReportAllocs()
@@ -61,14 +75,19 @@ func Benchmark_symdb_Resolver_ResolveTree(t *testing.B) {
 type resolverSuite struct {
 	t testing.TB
 
-	config    *Config
-	db        *SymDB
-	files     []string
-	profiles  []*pprof.Profile
-	indexed   [][]v1.InMemoryProfile
+	config   *Config
+	db       *SymDB
+	files    []string
+	profiles []*pprof.Profile
+	indexed  [][]v1.InMemoryProfile
+	resolver *Resolver
+}
+
+type blockResolverSuite struct {
+	*resolverSuite
+
 	reader    *Reader
 	partition *PartitionReader
-	resolver  *Resolver
 }
 
 func newResolverSuite(t testing.TB, files ...string) *resolverSuite {
@@ -77,7 +96,22 @@ func newResolverSuite(t testing.TB, files ...string) *resolverSuite {
 		s.files = append(s.files, f)
 	}
 	s.init()
+	r, err := s.db.SymbolsReader(1)
+	require.NoError(t, err)
+	s.resolver = &Resolver{
+		Stacktraces: r,
+		Locations:   r.locations.slice,
+		Mappings:    r.mappings.slice,
+		Functions:   r.functions.slice,
+		Strings:     r.strings.slice,
+	}
 	return &s
+}
+
+func newBlockResolverSuite(t testing.TB, files ...string) *blockResolverSuite {
+	b := blockResolverSuite{resolverSuite: newResolverSuite(t, files...)}
+	b.flush()
+	return &b
 }
 
 func (s *resolverSuite) init() {
@@ -103,11 +137,13 @@ func (s *resolverSuite) init() {
 		s.profiles = append(s.profiles, p)
 		s.indexed = append(s.indexed, w.WriteProfileSymbols(p.Profile))
 	}
-	require.NoError(s.t, s.db.Flush())
+}
 
+func (s *blockResolverSuite) flush() {
+	require.NoError(s.t, s.db.Flush())
 	b, err := filesystem.NewBucket(s.config.Dir)
 	require.NoError(s.t, err)
-	s.reader, err = Open(context.Background(), b)
+	s.reader, err = Open(context.Background(), b, testBlockMeta)
 	require.NoError(s.t, err)
 
 	s.partition, err = s.reader.SymbolsReader(context.Background(), 1)
@@ -121,7 +157,7 @@ func (s *resolverSuite) init() {
 	}
 }
 
-func (s *resolverSuite) teardown() {
+func (s *blockResolverSuite) teardown() {
 	s.partition.Release()
 	require.NoError(s.t, s.reader.Close())
 }

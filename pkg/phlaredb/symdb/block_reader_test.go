@@ -8,8 +8,20 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
+
+var testBlockMeta = block.Meta{
+	Files: []block.File{
+		{RelPath: IndexFileName},
+		{RelPath: StacktracesFileName},
+		{RelPath: "locations.parquet"},
+		{RelPath: "mappings.parquet"},
+		{RelPath: "functions.parquet"},
+		{RelPath: "strings.parquet"},
+	},
+}
 
 func Test_Reader_Open(t *testing.T) {
 	cfg := &Config{
@@ -37,7 +49,7 @@ func Test_Reader_Open(t *testing.T) {
 
 	b, err := filesystem.NewBucket(cfg.Dir)
 	require.NoError(t, err)
-	x, err := Open(context.Background(), b)
+	x, err := Open(context.Background(), b, testBlockMeta)
 	require.NoError(t, err)
 	r, err := x.SymbolsReader(context.Background(), 1)
 	require.NoError(t, err)
@@ -56,7 +68,7 @@ func Test_Reader_Open(t *testing.T) {
 func Test_Reader_Open_v1(t *testing.T) {
 	b, err := filesystem.NewBucket("testdata/symbols/v1")
 	require.NoError(t, err)
-	x, err := Open(context.Background(), b)
+	x, err := Open(context.Background(), b, testBlockMeta)
 	require.NoError(t, err)
 	r, err := x.SymbolsReader(context.Background(), 1)
 	require.NoError(t, err)

@@ -604,7 +604,7 @@ func (w *Writer) finishSymbols() error {
 		return err
 	}
 
-	// Load in the symbol table efficiently for the rest of the index writing.
+	// loadStacktraces in the symbol table efficiently for the rest of the index writing.
 	w.symbols, err = NewSymbols(RealByteSlice(w.symbolFile.Bytes()), FormatV2, int(w.toc.Symbols))
 	if err != nil {
 		return errors.Wrap(err, "read symbols")

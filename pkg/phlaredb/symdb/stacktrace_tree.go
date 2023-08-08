@@ -102,10 +102,6 @@ func (t *stacktraceTree) resolve(dst []int32, id uint32) []int32 {
 	return dst
 }
 
-// TODO(kolesnikovae): Implement tree merge.
-//
-// func (t *stacktraceTree) merge(*stacktraceTree) {}
-
 const (
 	maxGroupSize = 17 // 4 * uint32 + control byte
 	// minGroupSize = 5  // 4 * byte + control byte
@@ -228,7 +224,7 @@ func (d *treeDecoder) unmarshal(t *parentPointerTree, r io.Reader) error {
 	var eof bool
 
 	for !eof {
-		// Load the next peekSize bytes.
+		// loadStacktraces the next peekSize bytes.
 		// Must not exceed Reader's buffer size.
 		b, err := buf.Peek(d.peekSize)
 		if err != nil {

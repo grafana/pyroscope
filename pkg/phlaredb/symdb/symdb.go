@@ -129,8 +129,11 @@ func (s *SymDB) newPartition(partition uint64) *Partition {
 	return &p
 }
 
-func (s *SymDB) SymbolsReader(partition uint64) (*Partition, bool) {
-	return s.lookupPartition(partition)
+func (s *SymDB) SymbolsReader(partition uint64) (*Partition, error) {
+	if p, ok := s.lookupPartition(partition); ok {
+		return p, nil
+	}
+	return nil, ErrPartitionNotFound
 }
 
 func (s *SymDB) lookupPartition(partition uint64) (*Partition, bool) {

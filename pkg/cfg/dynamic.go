@@ -41,10 +41,10 @@ func DynamicUnmarshal(dst DynamicCloneable, args []string, fs *flag.FlagSet) err
 		// config files so that values from a common, or shared, section can be used in
 		// the dynamic evaluation
 		dst.ApplyDynamicConfig(),
-		// Load configs from the config file a second time, this will supersede anything set by the common
+		// loadStacktraces configs from the config file a second time, this will supersede anything set by the common
 		// config with values specified in the config file.
 		YAMLFlag(args, "config.file"),
-		// Load the flags again, this will supersede anything set from config file with flags from the command line.
+		// loadStacktraces the flags again, this will supersede anything set from config file with flags from the command line.
 		Flags(args, fs),
 	)
 }

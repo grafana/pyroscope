@@ -7,20 +7,24 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/parquet-go/parquet-go"
-	"github.com/thanos-io/thanos/pkg/block/metadata"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 type Reader struct {
 	bucket objstore.BucketReader
+	files  map[string]block.File
+	meta   block.Meta
 
 	maxConcurrentChunks  int
 	chunkFetchBufferSize int
@@ -39,20 +43,11 @@ const (
 	defaultChunkFetchBufferSize = 4096
 )
 
-// NOTE(kolesnikovae):
-//  We could accept fs.FS and implement it with the BucketReader, but it
-//  brings no actual value other than a cleaner signature.
-
-type ReaderConfig struct {
-	BucketReader objstore.BucketReader
-
-	MaxConcurrentChunks  int
-	ChunkFetchBufferSize int
-}
-
-func Open(ctx context.Context, b objstore.BucketReader) (*Reader, error) {
+func Open(ctx context.Context, b objstore.BucketReader, m block.Meta) (*Reader, error) {
 	r := Reader{
 		bucket: b,
+		meta:   m,
+		files:  make(map[string]block.File),
 
 		maxConcurrentChunks:  defaultMaxConcurrentChunks,
 		chunkFetchBufferSize: defaultChunkFetchBufferSize,
@@ -63,17 +58,31 @@ func Open(ctx context.Context, b objstore.BucketReader) (*Reader, error) {
 	return &r, nil
 }
 
-func (r *Reader) Close() error {
-	return multierror.New(
-		r.locations.reader.Close(),
-		r.mappings.reader.Close(),
-		r.functions.reader.Close(),
-		r.strings.reader.Close()).
-		Err()
+func (r *Reader) open(ctx context.Context) (err error) {
+	for _, f := range r.meta.Files {
+		r.files[filepath.Base(f.RelPath)] = f
+	}
+	if err = r.openIndexFile(ctx); err != nil {
+		return fmt.Errorf("openning index file: %w", err)
+	}
+	if r.index.Header.Version == FormatV2 {
+		if err = r.openParquetFiles(ctx); err != nil {
+			return err
+		}
+	}
+	r.partitions = make(map[uint64]*PartitionReader, len(r.index.PartitionHeaders))
+	for _, h := range r.index.PartitionHeaders {
+		r.partitions[h.Partition] = r.partitionReader(h)
+	}
+	return nil
 }
 
-func (r *Reader) open(ctx context.Context) error {
-	o, err := r.bucket.Get(ctx, IndexFileName)
+func (r *Reader) openIndexFile(ctx context.Context) error {
+	f, err := r.file(IndexFileName)
+	if err != nil {
+		return err
+	}
+	o, err := r.bucket.Get(ctx, f.RelPath)
 	if err != nil {
 		return err
 	}
@@ -81,23 +90,35 @@ func (r *Reader) open(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if r.index, err = ReadIndexFile(b); err != nil {
-		return err
-	}
+	r.index, err = ReadIndexFile(b)
+	return err
+}
 
-	if r.index.Header.Version == FormatV2 {
-		// TODO: Meta. We only need it for getting the file size –
-		//  should it be written to the index file?
-		if err = r.openParquetFiles(ctx, nil); err != nil {
+func (r *Reader) openParquetFiles(ctx context.Context) error {
+	m := map[string]*parquetFile{
+		new(schemav1.LocationPersister).Name() + block.ParquetSuffix: &r.locations,
+		new(schemav1.MappingPersister).Name() + block.ParquetSuffix:  &r.mappings,
+		new(schemav1.FunctionPersister).Name() + block.ParquetSuffix: &r.functions,
+		new(schemav1.StringPersister).Name() + block.ParquetSuffix:   &r.strings,
+	}
+	for n, fp := range m {
+		fm, err := r.file(n)
+		if err != nil {
 			return err
 		}
-	}
-
-	r.partitions = make(map[uint64]*PartitionReader, len(r.index.PartitionHeaders))
-	for _, h := range r.index.PartitionHeaders {
-		r.partitions[h.Partition] = r.partitionReader(h)
+		if err = fp.open(ctx, r.bucket, fm); err != nil {
+			return fmt.Errorf("openning file %q: %w", n, err)
+		}
 	}
 	return nil
+}
+
+func (r *Reader) file(name string) (block.File, error) {
+	f, ok := r.files[name]
+	if !ok {
+		return block.File{}, fmt.Errorf("%q: %w", name, os.ErrNotExist)
+	}
+	return f, nil
 }
 
 func (r *Reader) partitionReader(h *PartitionHeader) *PartitionReader {
@@ -128,27 +149,29 @@ func (r *Reader) partitionReader(h *PartitionHeader) *PartitionReader {
 	return p
 }
 
-func (r *Reader) openParquetFiles(ctx context.Context, files []metadata.File) error {
-	m := map[string]*parquetFile{
-		"locations.parquet": &r.locations,
-		"mappings.parquet":  &r.mappings,
-		"functions.parquet": &r.functions,
-		"strings.parquet":   &r.strings,
-	}
-	for n, f := range m {
-		if err := f.open(ctx, r.bucket, metadata.File{RelPath: n}); err != nil {
-			return err
-		}
-	}
-	return nil
+func (r *Reader) Close() error {
+	return multierror.New(
+		r.locations.reader.Close(),
+		r.mappings.reader.Close(),
+		r.functions.reader.Close(),
+		r.strings.reader.Close()).
+		Err()
 }
 
-// Load causes reader to load all contents into memory.
-func (r *Reader) Load(ctx context.Context) error {
+func (r *Reader) loadStacktraces(ctx context.Context) error {
+	f, err := r.file(StacktracesFileName)
+	if err != nil {
+		return err
+	}
+
 	partitions := make([]*PartitionReader, len(r.partitions))
+	var size int64
 	var i int
 	for _, v := range r.partitions {
 		partitions[i] = v
+		for _, c := range v.stacktraceChunks {
+			size += c.header.Size
+		}
 		i++
 	}
 	sort.Slice(partitions, func(i, j int) bool {
@@ -157,14 +180,7 @@ func (r *Reader) Load(ctx context.Context) error {
 	})
 
 	offset := partitions[0].stacktraceChunks[0].header.Offset
-	var size int64
-	for i = range partitions {
-		for _, c := range partitions[i].stacktraceChunks {
-			size += c.header.Size
-		}
-	}
-
-	rc, err := r.bucket.GetRange(ctx, StacktracesFileName, offset, size)
+	rc, err := r.bucket.GetRange(ctx, f.RelPath, offset, size)
 	if err != nil {
 		return err
 	}
@@ -178,16 +194,6 @@ func (r *Reader) Load(ctx context.Context) error {
 			if err = c.readFrom(io.LimitReader(buf, c.header.Size)); err != nil {
 				return err
 			}
-		}
-		// TODO: Load tables into memory and split into partitions.
-		err = multierror.New(
-			p.locations.fetch(ctx),
-			p.mappings.fetch(ctx),
-			p.functions.fetch(ctx),
-			p.strings.fetch(ctx)).
-			Err()
-		if err != nil {
-			return err
 		}
 	}
 
@@ -346,7 +352,11 @@ func (c *stacktraceChunkReader) fetch(ctx context.Context) (err error) {
 	if c.tree != nil {
 		return nil
 	}
-	rc, err := c.reader.bucket.GetRange(ctx, StacktracesFileName, c.header.Offset, c.header.Size)
+	f, err := c.reader.file(StacktracesFileName)
+	if err != nil {
+		return err
+	}
+	rc, err := c.reader.bucket.GetRange(ctx, f.RelPath, c.header.Offset, c.header.Size)
 	if err != nil {
 		return err
 	}
@@ -395,19 +405,19 @@ type parquetFile struct {
 
 const parquetReadBufferSize = 2 << 20 // 2MB
 
-func (f *parquetFile) open(ctx context.Context, b objstore.BucketReader, meta metadata.File) error {
+func (f *parquetFile) open(ctx context.Context, b objstore.BucketReader, meta block.File) error {
 	f.path = meta.RelPath
-	f.size = meta.SizeBytes
+	f.size = int64(meta.SizeBytes)
 	if f.size == 0 {
 		attrs, err := b.Attributes(ctx, f.path)
 		if err != nil {
-			return fmt.Errorf("getting attributes for %q, %w", f.path, err)
+			return fmt.Errorf("getting attributes: %w", err)
 		}
 		f.size = attrs.Size
 	}
 	var err error
 	if f.reader, err = b.ReaderAt(ctx, f.path); err != nil {
-		return fmt.Errorf("create reader %q, %w", f.path, err)
+		return fmt.Errorf("creating reader: %w", err)
 	}
 
 	// first try to open file, this is required otherwise OpenFile panics
@@ -415,20 +425,15 @@ func (f *parquetFile) open(ctx context.Context, b objstore.BucketReader, meta me
 		parquet.SkipPageIndex(true),
 		parquet.SkipBloomFilters(true))
 	if err != nil {
-		return fmt.Errorf("opening parquet file %q: %w", f.path, err)
+		return err
 	}
 
-	opts := []parquet.FileOption{
+	// now open it for real
+	f.File, err = parquet.OpenFile(f.reader, f.size,
 		parquet.SkipBloomFilters(true), // we don't use bloom filters
 		parquet.FileReadMode(parquet.ReadModeAsync),
-		parquet.ReadBufferSize(parquetReadBufferSize),
-	}
-	// now open it for real
-	if f.File, err = parquet.OpenFile(f.reader, f.size, opts...); err != nil {
-		return fmt.Errorf("opening parquet file %q: %w", f.path, err)
-	}
-
-	return nil
+		parquet.ReadBufferSize(parquetReadBufferSize))
+	return err
 }
 
 type parquetTableRange[M schemav1.Models, P schemav1.Persister[M]] struct {
