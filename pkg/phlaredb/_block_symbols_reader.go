@@ -33,7 +33,7 @@ type inMemorySymbolsReader struct {
 	functions   inMemoryparquetReader[*schemav1.InMemoryFunction, *schemav1.FunctionPersister]
 	locations   inMemoryparquetReader[*schemav1.InMemoryLocation, *schemav1.LocationPersister]
 	mappings    inMemoryparquetReader[*schemav1.InMemoryMapping, *schemav1.MappingPersister]
-	stacktraces StacktraceDB
+	stacktraces symbolsReader
 }
 
 func (r *inMemorySymbolsReader) SymbolsResolver(partition uint64) (SymbolsResolver, error) {

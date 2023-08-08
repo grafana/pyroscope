@@ -39,6 +39,7 @@ const (
 	// Version1 is a enumeration of Phlare section of TSDB meta supported by Phlare.
 	MetaVersion1 = MetaVersion(1)
 	MetaVersion2 = MetaVersion(2)
+	MetaVersion3 = MetaVersion(3)
 )
 
 type BlockStats struct {
@@ -143,7 +144,7 @@ func NewMeta() *Meta {
 		MinTime: math.MaxInt64,
 		MaxTime: 0,
 		Labels:  make(map[string]string),
-		Version: MetaVersion2,
+		Version: MetaVersion3,
 	}
 }
 
@@ -160,6 +161,7 @@ func MetaFromDir(dir string) (*Meta, int64, error) {
 	switch m.Version {
 	case MetaVersion1:
 	case MetaVersion2:
+	case MetaVersion3:
 	default:
 		return nil, 0, errors.Errorf("unexpected meta file version %d", m.Version)
 	}
@@ -267,6 +269,7 @@ func Read(rc io.ReadCloser) (_ *Meta, err error) {
 	switch m.Version {
 	case MetaVersion1:
 	case MetaVersion2:
+	case MetaVersion3:
 	default:
 		return nil, errors.Errorf("unexpected meta file version %d", m.Version)
 	}

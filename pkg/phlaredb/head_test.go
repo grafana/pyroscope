@@ -3,20 +3,14 @@ package phlaredb
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/google/uuid"
-	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/tsdb"
-	"github.com/samber/lo"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -24,10 +18,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
 type noLimit struct{}
@@ -183,102 +174,6 @@ func newProfileBaz() *profilev1.Profile {
 			"func_c",
 		},
 	}
-}
-
-func TestHeadMetrics(t *testing.T) {
-	head := newTestHead(t)
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New()))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New()))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBaz(), uuid.New()))
-	time.Sleep(time.Second)
-	require.NoError(t, testutil.GatherAndCompare(head.reg,
-		strings.NewReader(`
-# HELP pyroscope_head_ingested_sample_values_total Number of sample values ingested into the head per profile type.
-# TYPE pyroscope_head_ingested_sample_values_total counter
-pyroscope_head_ingested_sample_values_total{profile_name=""} 3
-# HELP pyroscope_head_profiles_created_total Total number of profiles created in the head
-# TYPE pyroscope_head_profiles_created_total counter
-pyroscope_head_profiles_created_total{profile_name=""} 2
-# HELP pyroscope_head_received_sample_values_total Number of sample values received into the head per profile type.
-# TYPE pyroscope_head_received_sample_values_total counter
-pyroscope_head_received_sample_values_total{profile_name=""} 3
-
-# HELP pyroscope_head_size_bytes Size of a particular in memory store within the head phlaredb block.
-# TYPE pyroscope_head_size_bytes gauge
-pyroscope_head_size_bytes{type="functions"} 72
-pyroscope_head_size_bytes{type="locations"} 152
-pyroscope_head_size_bytes{type="mappings"} 96
-pyroscope_head_size_bytes{type="profiles"} 388
-pyroscope_head_size_bytes{type="stacktraces"} 0
-pyroscope_head_size_bytes{type="strings"} 52
-
-`),
-		"pyroscope_head_received_sample_values_total",
-		"pyroscope_head_profiles_created_total",
-		"pyroscope_head_ingested_sample_values_total",
-		"pyroscope_head_size_bytes",
-	))
-}
-
-func TestHeadIngestFunctions(t *testing.T) {
-	head := newTestHead(t)
-
-	require.NoError(t, head.Ingest(context.Background(), newProfileFoo(), uuid.New()))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBar(), uuid.New()))
-	require.NoError(t, head.Ingest(context.Background(), newProfileBaz(), uuid.New()))
-
-	require.Equal(t, 3, len(head.functions.slice))
-	helper := &symdb.functionsHelper{}
-	assert.Equal(t, symdb.functionsKey{Name: 3}, helper.key(head.functions.slice[0]))
-	assert.Equal(t, symdb.functionsKey{Name: 4}, helper.key(head.functions.slice[1]))
-	assert.Equal(t, symdb.functionsKey{Name: 7}, helper.key(head.functions.slice[2]))
-}
-
-func TestHeadIngestStrings(t *testing.T) {
-	ctx := context.Background()
-	head := newTestHead(t)
-
-	r := &symdb.rewriter{}
-	require.NoError(t, head.strings.ingest(ctx, newProfileFoo().StringTable, r))
-	require.Equal(t, []string{"", "unit", "type", "func_a", "func_b", "my-foo-binary"}, head.strings.slice)
-	require.Equal(t, symdb.stringConversionTable{0, 1, 2, 3, 4, 5}, r.strings)
-
-	r = &symdb.rewriter{}
-	require.NoError(t, head.strings.ingest(ctx, newProfileBar().StringTable, r))
-	require.Equal(t, []string{"", "unit", "type", "func_a", "func_b", "my-foo-binary", "my-bar-binary"}, head.strings.slice)
-	require.Equal(t, symdb.stringConversionTable{0, 1, 2, 4, 3, 6}, r.strings)
-
-	r = &symdb.rewriter{}
-	require.NoError(t, head.strings.ingest(ctx, newProfileBaz().StringTable, r))
-	require.Equal(t, []string{"", "unit", "type", "func_a", "func_b", "my-foo-binary", "my-bar-binary", "func_c"}, head.strings.slice)
-	require.Equal(t, symdb.stringConversionTable{0, 7}, r.strings)
-}
-
-func TestHeadIngestStacktraces(t *testing.T) {
-	ctx := context.Background()
-	head := newTestHead(t)
-
-	require.NoError(t, head.Ingest(ctx, newProfileFoo(), uuid.MustParse("00000000-0000-0000-0000-00000000000a")))
-	require.NoError(t, head.Ingest(ctx, newProfileBar(), uuid.MustParse("00000000-0000-0000-0000-00000000000b")))
-	require.NoError(t, head.Ingest(ctx, newProfileBar(), uuid.MustParse("00000000-0000-0000-0000-00000000000c")))
-
-	// expect 2 mappings
-	require.Equal(t, 2, len(head.mappings.slice))
-	assert.Equal(t, "my-foo-binary", head.strings.slice[head.mappings.slice[0].Filename])
-	assert.Equal(t, "my-bar-binary", head.strings.slice[head.mappings.slice[1].Filename])
-
-	// expect 3 profiles
-	require.Equal(t, 3, len(head.profiles.slice))
-
-	var samples []uint32
-	for pos := range head.profiles.slice {
-		samples = append(samples, head.profiles.slice[pos].Samples.StacktraceIDs...)
-	}
-	// expect 4 samples, 2 of which distinct: stacktrace ID is
-	// only valid within the scope of the stacktrace partition,
-	// which depends on the main binary mapping filename.
-	require.Len(t, lo.Uniq(samples), 2)
-	require.Len(t, samples, 4)
 }
 
 func TestHeadLabelValues(t *testing.T) {
@@ -461,50 +356,6 @@ func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
 	// TODO: We need to test if flushing misses out on ingested profiles
 
 	wg.Wait()
-}
-
-func TestFlushMeta(t *testing.T) {
-	b := newBlock(t, func() []*testhelper.ProfileBuilder {
-		return []*testhelper.ProfileBuilder{
-			testhelper.NewProfileBuilder(int64(time.Second*1)).
-				CPUProfile().
-				WithLabels(
-					"job", "a",
-				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
-			testhelper.NewProfileBuilder(int64(time.Second*2)).
-				CPUProfile().
-				WithLabels(
-					"job", "b",
-				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
-			testhelper.NewProfileBuilder(int64(time.Second*3)).
-				CPUProfile().
-				WithLabels(
-					"job", "c",
-				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
-		}
-	})
-
-	require.Equal(t, []ulid.ULID{b.Meta().ULID}, b.Meta().Compaction.Sources)
-	require.Equal(t, 1, b.Meta().Compaction.Level)
-	require.Equal(t, false, b.Meta().Compaction.Deletable)
-	require.Equal(t, false, b.Meta().Compaction.Failed)
-	require.Equal(t, []string(nil), b.Meta().Compaction.Hints)
-	require.Equal(t, []tsdb.BlockDesc(nil), b.Meta().Compaction.Parents)
-	require.Equal(t, block.MetaVersion2, b.Meta().Version)
-	require.Equal(t, model.Time(1000), b.Meta().MinTime)
-	require.Equal(t, model.Time(3000), b.Meta().MaxTime)
-	require.Equal(t, uint64(3), b.Meta().Stats.NumSeries)
-	require.Equal(t, uint64(3), b.Meta().Stats.NumSamples)
-	require.Equal(t, uint64(3), b.Meta().Stats.NumProfiles)
-	require.Len(t, b.Meta().Files, 8)
-	require.Equal(t, "functions.parquet", b.Meta().Files[0].RelPath)
-	require.Equal(t, "index.tsdb", b.Meta().Files[1].RelPath)
-	require.Equal(t, "locations.parquet", b.Meta().Files[2].RelPath)
-	require.Equal(t, "mappings.parquet", b.Meta().Files[3].RelPath)
-	require.Equal(t, "profiles.parquet", b.Meta().Files[4].RelPath)
-	require.Equal(t, "strings.parquet", b.Meta().Files[5].RelPath)
-	require.Equal(t, "symbols/index.symdb", b.Meta().Files[6].RelPath)
-	require.Equal(t, "symbols/stacktraces.symdb", b.Meta().Files[7].RelPath)
 }
 
 func BenchmarkHeadIngestProfiles(t *testing.B) {

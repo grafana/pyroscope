@@ -26,7 +26,7 @@ import (
 type Reader struct {
 	bucket objstore.BucketReader
 	files  map[string]block.File
-	meta   block.Meta
+	meta   *block.Meta
 
 	maxConcurrentChunks  int
 	chunkFetchBufferSize int
@@ -45,7 +45,7 @@ const (
 	defaultChunkFetchBufferSize = 4096
 )
 
-func Open(ctx context.Context, b objstore.BucketReader, m block.Meta) (*Reader, error) {
+func Open(ctx context.Context, b objstore.BucketReader, m *block.Meta) (*Reader, error) {
 	r := Reader{
 		bucket: b,
 		meta:   m,

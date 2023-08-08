@@ -286,115 +286,18 @@ type singleBlockQuerier struct {
 	logger  log.Logger
 	metrics *blocksMetrics
 
-	bkt  phlareobj.Bucket
-	meta *block.Meta
+	bucket phlareobj.Bucket
+	meta   *block.Meta
 
 	tables []tableReader
 
-	openLock    sync.Mutex
-	opened      bool
-	index       *index.Reader
-	strings     inMemoryparquetReader[string, *schemav1.StringPersister]
-	functions   inMemoryparquetReader[*schemav1.InMemoryFunction, *schemav1.FunctionPersister]
-	locations   inMemoryparquetReader[*schemav1.InMemoryLocation, *schemav1.LocationPersister]
-	mappings    inMemoryparquetReader[*schemav1.InMemoryMapping, *schemav1.MappingPersister]
-	profiles    parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
-	stacktraces StacktraceDB
-}
-
-type StacktraceDB interface {
-	Open(ctx context.Context) error
-	Close() error
-
-	// Load the database into memory entirely.
-	// This method is used at compaction.
-	Load(context.Context) error
-	WriteStats(partition uint64, s *symdb.Stats)
-
-	Resolve(ctx context.Context, partition uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error
-}
-
-type stacktraceResolverV1 struct {
-	stacktraces  parquetReader[*schemav1.Stacktrace, *schemav1.StacktracePersister]
-	bucketReader phlareobj.Bucket
-}
-
-func (r *stacktraceResolverV1) Open(ctx context.Context) error {
-	return r.stacktraces.open(ctx, r.bucketReader)
-}
-
-func (r *stacktraceResolverV1) Close() error {
-	return r.stacktraces.Close()
-}
-
-func (r *stacktraceResolverV1) Resolve(ctx context.Context, _ uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error {
-	stacktraces := repeatedColumnIter(ctx, r.stacktraces.file, "LocationIDs.list.element", iter.NewSliceIterator(stacktraceIDs))
-	defer stacktraces.Close()
-	t := make([]int32, 0, 64)
-	for stacktraces.Next() {
-		s := stacktraces.At()
-		t = grow(t, len(s.Values))
-		for i, v := range s.Values {
-			t[i] = v.Int32()
-		}
-		locs.InsertStacktrace(s.Row, t)
-	}
-	return stacktraces.Err()
-}
-
-func grow[T any](s []T, n int) []T {
-	if cap(s) < n {
-		return make([]T, n, 2*n)
-	}
-	return s[:n]
-}
-
-func (r *stacktraceResolverV1) WriteStats(_ uint64, s *symdb.Stats) {
-	s.StacktracesTotal = int(r.stacktraces.file.NumRows())
-	s.MaxStacktraceID = s.StacktracesTotal
-}
-
-func (r *stacktraceResolverV1) Load(context.Context) error {
-	// FIXME(kolesnikovae): Loading all stacktraces from parquet file
-	//  into memory is likely a bad choice. Instead we could convert
-	//  it to symdb first.
-	return nil
-}
-
-type stacktraceResolverV2 struct {
-	reader       *symdb.Reader
-	bucketReader phlareobj.Bucket
-}
-
-func (r *stacktraceResolverV2) Open(ctx context.Context) error {
-	if r.reader != nil {
-		return nil
-	}
-	var err error
-	r.reader, err = symdb.Open(ctx, r.bucketReader)
-	return err
-}
-
-func (r *stacktraceResolverV2) Close() error {
-	return nil
-}
-
-func (r *stacktraceResolverV2) Resolve(ctx context.Context, partition uint64, locs symdb.StacktraceInserter, stacktraceIDs []uint32) error {
-	resolver, err := r.reader.SymbolsReader(ctx, partition)
-	if err != nil {
-		return nil
-	}
-	return resolver.ResolveStacktraceLocations(ctx, locs, stacktraceIDs)
-}
-
-func (r *stacktraceResolverV2) Load(ctx context.Context) error {
-	return r.reader.loadStacktraces(ctx)
-}
-
-func (r *stacktraceResolverV2) WriteStats(partition uint64, s *symdb.Stats) {
-	mr, err := r.reader.SymbolsReader(context.Background(), partition)
-	if err == nil {
-		mr.WriteStats(s)
+	openLock sync.Mutex
+	opened   bool
+	index    *index.Reader
+	profiles parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
+	symbols  interface {
+		symdb.SymbolsResolver
+		io.Closer
 	}
 }
 
@@ -402,61 +305,19 @@ func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlar
 	q := &singleBlockQuerier{
 		logger:  phlarecontext.Logger(phlarectx),
 		metrics: contextBlockMetrics(phlarectx),
-
-		bkt:  phlareobj.NewPrefixedBucket(bucketReader, meta.ULID.String()),
-		meta: meta,
+		bucket:  phlareobj.NewPrefixedBucket(bucketReader, meta.ULID.String()),
+		meta:    meta,
 	}
 	for _, f := range meta.Files {
 		switch f.RelPath {
 		case q.profiles.relPath():
 			q.profiles.size = int64(f.SizeBytes)
-		case q.locations.relPath():
-			q.locations.size = int64(f.SizeBytes)
-		case q.functions.relPath():
-			q.functions.size = int64(f.SizeBytes)
-		case q.mappings.relPath():
-			q.mappings.size = int64(f.SizeBytes)
-		case q.strings.relPath():
-			q.strings.size = int64(f.SizeBytes)
 		}
 	}
 	q.tables = []tableReader{
-		&q.strings,
-		&q.mappings,
-		&q.functions,
-		&q.locations,
 		&q.profiles,
 	}
-	switch meta.Version {
-	case block.MetaVersion1:
-		q.stacktraces = newStacktraceResolverV1(q.bkt, meta)
-	case block.MetaVersion2:
-		br := phlareobj.NewPrefixedBucket(q.bkt, symdb.DefaultDirName)
-		q.stacktraces = newStacktraceResolverV2(br)
-	default:
-		panic(fmt.Errorf("unsupported block version %d", meta.Version))
-	}
-
 	return q
-}
-
-func newStacktraceResolverV1(bucketReader phlareobj.Bucket, meta *block.Meta) StacktraceDB {
-	q := &stacktraceResolverV1{
-		bucketReader: bucketReader,
-	}
-	for _, f := range meta.Files {
-		switch f.RelPath {
-		case q.stacktraces.relPath():
-			q.stacktraces.size = int64(f.SizeBytes)
-		}
-	}
-	return q
-}
-
-func newStacktraceResolverV2(bucketReader phlareobj.Bucket) StacktraceDB {
-	return &stacktraceResolverV2{
-		bucketReader: bucketReader,
-	}
 }
 
 func (b *singleBlockQuerier) Profiles() []parquet.RowGroup {
@@ -494,8 +355,8 @@ func (b *singleBlockQuerier) Close() error {
 			errs.Add(err)
 		}
 	}
-	if b.stacktraces != nil {
-		if err := b.stacktraces.Close(); err != nil {
+	if b.symbols != nil {
+		if err := b.symbols.Close(); err != nil {
 			errs.Add(err)
 		}
 	}
@@ -1110,7 +971,7 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(util.RecoverPanic(func() error {
 		// open tsdb index
-		indexBytes, err := newByteSliceFromBucketReader(ctx, q.bkt, block.IndexFilename)
+		indexBytes, err := newByteSliceFromBucketReader(ctx, q.bucket, block.IndexFilename)
 		if err != nil {
 			return errors.Wrap(err, "error reading tsdb index")
 		}
@@ -1126,17 +987,24 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 	for _, tableReader := range q.tables {
 		tableReader := tableReader
 		g.Go(util.RecoverPanic(func() error {
-			if err := tableReader.open(contextWithBlockMetrics(ctx, q.metrics), q.bkt); err != nil {
+			if err := tableReader.open(contextWithBlockMetrics(ctx, q.metrics), q.bucket); err != nil {
 				return err
 			}
 			return nil
 		}))
 	}
-	g.Go(util.RecoverPanic(func() error {
-		if err := q.stacktraces.Open(ctx); err != nil {
-			return errors.Wrap(err, "opening stack traces")
+
+	g.Go(util.RecoverPanic(func() (err error) {
+		switch q.meta.Version {
+		// TODO
+		//	case block.MetaVersion1:
+		case block.MetaVersion2:
+		case block.MetaVersion3:
+			q.symbols, err = symdb.Open(ctx, q.bucket, q.meta)
+		default:
+			panic(fmt.Errorf("unsupported block version %d", q.meta.Version))
 		}
-		return nil
+		return err
 	}))
 
 	return g.Wait()

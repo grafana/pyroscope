@@ -20,25 +20,21 @@ import (
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
-
 	m := make(v1.SampleMap)
 	if err := mergeByStacktraces(ctx, b.profiles.file, rows, m); err != nil {
 		return nil, err
 	}
-
-	return resolveStacktraces(ctx, b.symbolsReader(), m, 4)
+	return b.symbols.ResolveTree(ctx, m)
 }
 
 func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
-
 	m := make(v1.SampleMap)
 	if err := mergeByStacktraces(ctx, b.profiles.file, rows, m); err != nil {
 		return nil, err
 	}
-
-	return resolvePprof(ctx, b.symbolsReader(), m, 4)
+	return b.symbols.ResolveProfile(ctx, m)
 }
 
 func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {

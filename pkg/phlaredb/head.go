@@ -131,7 +131,7 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 	h.symdb = symdb.NewSymDB(symdb.DefaultConfig().
 		WithDirectory(filepath.Join(h.headPath, symdb.DefaultDirName)).
 		WithParquetConfig(symdb.ParquetConfig{
-			MaxBufferRowCount: cfg.Parquet.MaxBufferRowCount,
+			MaxBufferRowCount: h.parquetConfig.MaxBufferRowCount,
 		}))
 
 	h.wg.Add(1)
@@ -193,12 +193,12 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	}
 
 	// determine the stacktraces partition ID
-	stacktracePartition := phlaremodel.StacktracePartitionFromProfile(labels, p)
+	partition := phlaremodel.StacktracePartitionFromProfile(labels, p)
 
 	metricName := phlaremodel.Labels(externalLabels).Get(model.MetricNameLabel)
 
 	var profileIngested bool
-	for idxType, profile := range h.symdb.SymbolsWriter(stacktracePartition).WriteProfileSymbols(p) {
+	for idxType, profile := range h.symdb.WriteProfileSymbols(partition, p) {
 		profile.ID = id
 		profile.SeriesFingerprint = seriesFingerprints[idxType]
 		profile.Samples = h.delta.computeDelta(profile, labels[idxType])
