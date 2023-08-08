@@ -229,7 +229,7 @@ endef
 .PHONY: docker-image/pyroscope/deploy-dev-001
 docker-image/pyroscope/deploy-dev-001: export CONFIG_JSON:=$(call UPDATER_CONFIG_JSON)
 docker-image/pyroscope/deploy-dev-001: $(BIN)/updater $(BIN)/jb
-	$(BIN)/updater
+	PATH=$(BIN):$(PATH) $(BIN)/updater
 
 .PHONY: clean
 clean: ## Delete intermediate build artifacts
