@@ -109,25 +109,21 @@ func (q *headOnDiskQuerier) Bounds() (model.Time, model.Time) {
 func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces")
 	defer sp.Finish()
-
 	m := make(schemav1.SampleMap)
 	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, m); err != nil {
 		return nil, err
 	}
-
-	return resolveStacktraces(ctx, q.symbolsReader(), m, 4)
+	return q.head.symdb.ResolveTree(ctx, m)
 }
 
 func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergePprof")
 	defer sp.Finish()
-
 	m := make(schemav1.SampleMap)
 	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, m); err != nil {
 		return nil, err
 	}
-
-	return resolvePprof(ctx, q.symbolsReader(), m, 4)
+	return q.head.symdb.ResolveProfile(ctx, m)
 }
 
 func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
@@ -228,7 +224,7 @@ func (q *headInMemoryQuerier) MergeByStacktraces(ctx context.Context, rows iter.
 		return nil, err
 	}
 
-	return resolveStacktraces(ctx, q.symbolsReader(), m, 4)
+	return q.head.symdb.ResolveTree(ctx, m)
 }
 
 func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
@@ -247,7 +243,7 @@ func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator
 		return nil, err
 	}
 
-	return resolvePprof(ctx, q.symbolsReader(), m, 4)
+	return q.head.symdb.ResolveProfile(ctx, m)
 }
 
 func (q *headInMemoryQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {

@@ -14,10 +14,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gogo/status"
-	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -25,7 +23,6 @@ import (
 	"github.com/prometheus/prometheus/tsdb/fileutil"
 	"github.com/samber/lo"
 	"go.uber.org/atomic"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -351,88 +348,6 @@ func (h *Head) Queriers() Queriers {
 	}
 	queriers = append(queriers, &headInMemoryQuerier{h})
 	return queriers
-}
-
-type symbolsReader interface {
-	resolver(ctx context.Context, partition uint64) (*symdb.Resolver, error)
-}
-
-type SymbolsResolver interface {
-	ResolveTree(context.Context, schemav1.SampleMap) (*phlaremodel.Tree, error)
-	ResolveProfile(context.Context, schemav1.SampleMap) (*profile.Profile, error)
-}
-
-func resolveStacktraces(ctx context.Context, sr symbolsReader, m schemav1.SampleMap, concurrency int) (*phlaremodel.Tree, error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "resolveStacktraces")
-	defer sp.Finish()
-
-	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(concurrency)
-
-	var tm sync.Mutex
-	tree := new(phlaremodel.Tree)
-
-	for partition, v := range m {
-		partition := partition
-		v := v
-		g.Go(func() error {
-			r, err := sr.resolver(ctx, partition)
-			if err != nil {
-				return err
-			}
-			samples := schemav1.NewSamples(len(v))
-			m.WriteSamples(partition, &samples)
-			p, err := r.ResolveTree(ctx, samples)
-			if err != nil {
-				return err
-			}
-			tm.Lock()
-			tree.Merge(p)
-			tm.Unlock()
-			return nil
-		})
-	}
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-
-	return tree, nil
-}
-
-func resolvePprof(ctx context.Context, sr symbolsReader, m schemav1.SampleMap, concurrency int) (*profile.Profile, error) {
-	sp, _ := opentracing.StartSpanFromContext(ctx, "resolvePprof")
-	defer sp.Finish()
-	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(concurrency)
-
-	var tm sync.Mutex
-	results := make([]*profile.Profile, 0, len(m))
-
-	for partition, v := range m {
-		partition := partition
-		v := v
-		g.Go(func() error {
-			r, err := sr.resolver(ctx, partition)
-			if err != nil {
-				return err
-			}
-			samples := schemav1.NewSamples(len(v))
-			m.WriteSamples(partition, &samples)
-			p, err := r.ResolveProfile(ctx, samples)
-			if err != nil {
-				return err
-			}
-			tm.Lock()
-			results = append(results, p)
-			tm.Unlock()
-			return nil
-		})
-	}
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-
-	return profile.Merge(results)
 }
 
 func (h *Head) Sort(in []Profile) []Profile {
