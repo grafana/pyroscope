@@ -198,7 +198,7 @@ define UPDATER_CONFIG_JSON
   "git_committer_name": "grafana-pyroscope-bot[bot]",
   "git_committer_email": "140177480+grafana-pyroscope-bot[bot]@users.noreply.github.com",
   "pull_request_enabled": true,
-  "pull_request_branch_prefix": "auto-merge/grafana-pyroscope-bot/",
+  "pull_request_branch_prefix": "auto-merge/grafana-pyroscope-bot",
   "repo_name": "deployment_tools",
   "destination_branch": "master",
   "update_jsonnet_attribute_configs": [
