@@ -5,6 +5,7 @@ description: "Instrumenting eBPF applications for continuous profiling"
 weight: 20
 aliases:
   - /docs/phlare/latest/configure-client/language-sdks/ebpf/
+  - /docs/pyroscope/next/configure-client/language-sdks/ebpf
 ---
 
 # eBPF
