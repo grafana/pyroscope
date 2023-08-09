@@ -12,7 +12,7 @@ import (
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
-var testBlockMeta = block.Meta{
+var testBlockMeta = &block.Meta{
 	Files: []block.File{
 		{RelPath: IndexFileName},
 		{RelPath: StacktracesFileName},

@@ -350,7 +350,7 @@ func (m SampleMap) Partition(p uint64) map[uint32]int64 {
 func (m SampleMap) AddSamples(partition uint64, samples Samples) {
 	p := m.Partition(partition)
 	for i, sid := range samples.StacktraceIDs {
-		p[sid] = int64(samples.Values[i])
+		p[sid] += int64(samples.Values[i])
 	}
 }
 

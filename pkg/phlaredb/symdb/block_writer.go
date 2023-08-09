@@ -65,10 +65,9 @@ func (w *Writer) WritePartitions(partitions []*Partition) error {
 			return err
 		}
 		for _, partition := range partitions {
-			if err = w.strings.readFrom(partition.strings.slice); err != nil {
+			if partition.header.Strings, err = w.strings.readFrom(partition.strings.slice); err != nil {
 				return err
 			}
-			partition.header.Strings = w.strings.rowRanges
 		}
 		return w.strings.Close()
 	})
@@ -78,10 +77,9 @@ func (w *Writer) WritePartitions(partitions []*Partition) error {
 			return err
 		}
 		for _, partition := range partitions {
-			if err = w.functions.readFrom(partition.functions.slice); err != nil {
+			if partition.header.Functions, err = w.functions.readFrom(partition.functions.slice); err != nil {
 				return err
 			}
-			partition.header.Functions = w.functions.rowRanges
 		}
 		return w.functions.Close()
 	})
@@ -91,10 +89,9 @@ func (w *Writer) WritePartitions(partitions []*Partition) error {
 			return err
 		}
 		for _, partition := range partitions {
-			if err = w.mappings.readFrom(partition.mappings.slice); err != nil {
+			if partition.header.Mappings, err = w.mappings.readFrom(partition.mappings.slice); err != nil {
 				return err
 			}
-			partition.header.Mappings = w.mappings.rowRanges
 		}
 		return w.mappings.Close()
 	})
@@ -104,10 +101,9 @@ func (w *Writer) WritePartitions(partitions []*Partition) error {
 			return err
 		}
 		for _, partition := range partitions {
-			if err = w.locations.readFrom(partition.locations.slice); err != nil {
+			if partition.header.Locations, err = w.locations.readFrom(partition.locations.slice); err != nil {
 				return err
 			}
-			partition.header.Locations = w.locations.rowRanges
 		}
 		return w.locations.Close()
 	})
@@ -276,7 +272,6 @@ type parquetWriter[M v1.Models, P v1.Persister[M]] struct {
 
 	buffer    *parquet.Buffer
 	rowsBatch []parquet.Row
-	rowRanges []RowRangeReference
 
 	writer *parquet.GenericWriter[P]
 	file   *os.File
@@ -300,17 +295,16 @@ func (s *parquetWriter[M, P]) init(dir string, c ParquetConfig) (err error) {
 	return nil
 }
 
-func (s *parquetWriter[M, P]) readFrom(values []M) (err error) {
-	s.rowRanges = s.rowRanges[:0]
+func (s *parquetWriter[M, P]) readFrom(values []M) (ranges []RowRangeReference, err error) {
 	for len(values) > 0 {
 		var r RowRangeReference
 		if r, err = s.writeRows(values); err != nil {
-			return err
+			return nil, err
 		}
-		s.rowRanges = append(s.rowRanges, r)
+		ranges = append(ranges, r)
 		values = values[r.Rows:]
 	}
-	return nil
+	return ranges, nil
 }
 
 func (s *parquetWriter[M, P]) writeRows(values []M) (r RowRangeReference, err error) {
@@ -321,12 +315,13 @@ func (s *parquetWriter[M, P]) writeRows(values []M) (r RowRangeReference, err er
 	}
 	var n int
 	for len(values) > 0 && int(s.currentRows)+cap(s.rowsBatch) < s.config.MaxBufferRowCount {
-		values = values[s.fillBatch(values):]
+		c := s.fillBatch(values)
 		if n, err = s.buffer.WriteRows(s.rowsBatch); err != nil {
 			return r, err
 		}
 		s.currentRows += uint32(n)
-		r.Rows += uint32(n)
+		r.Rows += uint32(c)
+		values = values[c:]
 	}
 	if int(s.currentRows)+cap(s.rowsBatch) >= s.config.MaxBufferRowCount {
 		if err = s.flushBuffer(); err != nil {

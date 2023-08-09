@@ -276,9 +276,8 @@ func resolveTree(ctx context.Context, m v1.SampleMap, concurrency int, fn resolv
 	g.SetLimit(concurrency)
 	var tm sync.Mutex
 	tree := new(model.Tree)
-	for partition, v := range m {
-		p := partition
-		v := v
+	for p, v := range m {
+		p, v := p, v
 		g.Go(func() error {
 			samples := v1.NewSamples(len(v))
 			m.WriteSamples(p, &samples)
@@ -305,9 +304,8 @@ func resolveProfile(ctx context.Context, m v1.SampleMap, concurrency int, fn res
 	g.SetLimit(concurrency)
 	var tm sync.Mutex
 	profiles := make([]*profile.Profile, 0, len(m))
-	for partition, v := range m {
-		p := partition
-		v := v
+	for p, v := range m {
+		p, v := p, v
 		g.Go(func() error {
 			samples := v1.NewSamples(len(v))
 			m.WriteSamples(p, &samples)

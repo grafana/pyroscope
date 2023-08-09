@@ -119,10 +119,10 @@ func (s *resolverSuite) init() {
 		s.config = &Config{
 			Dir: s.t.TempDir(),
 			Stacktraces: StacktracesConfig{
-				MaxNodesPerChunk: 1 << 20,
+				MaxNodesPerChunk: 1 << 10,
 			},
 			Parquet: ParquetConfig{
-				MaxBufferRowCount: 100 << 10,
+				MaxBufferRowCount: 512,
 			},
 		}
 	}

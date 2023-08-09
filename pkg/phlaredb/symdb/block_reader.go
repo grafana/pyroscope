@@ -500,7 +500,7 @@ func (t *parquetTableRange[M, P]) fetch(_ context.Context) error {
 			return err
 		}
 		dst := t.slice[offset : offset+int(h.Rows)]
-		if err := t.readRG(dst, buf, rg); err != nil {
+		if err := t.readRows(dst, buf, rows); err != nil {
 			return fmt.Errorf("reading row group from parquet file %q: %w", t.file.path, err)
 		}
 		offset += int(h.Rows)
@@ -508,13 +508,12 @@ func (t *parquetTableRange[M, P]) fetch(_ context.Context) error {
 	return nil
 }
 
-func (t *parquetTableRange[M, P]) readRG(dst []M, buf []parquet.Row, rg parquet.RowGroup) (err error) {
-	rr := parquet.NewRowGroupReader(rg)
+func (t *parquetTableRange[M, P]) readRows(dst []M, buf []parquet.Row, rows parquet.Rows) (err error) {
 	defer func() {
-		err = multierror.New(err, rr.Close()).Err()
+		err = multierror.New(err, rows.Close()).Err()
 	}()
 	for i := 0; i < len(dst); {
-		n, err := rr.ReadRows(buf)
+		n, err := rows.ReadRows(buf)
 		if n > 0 {
 			for _, row := range buf[:n] {
 				if i == len(dst) {
