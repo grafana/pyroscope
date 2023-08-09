@@ -45,9 +45,9 @@ The following languages SDKs provide support for sending profiles from your appl
           <a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/dotnet" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/dotnet" title="examples">Examples</a>
       </td>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/ebpf"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/grafana-agent/ebpf/"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
         <b>eBPF</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/ebpf" title="Documentation">Documentation</a><br />
+          <a href="https://grafana.com/docs/pyroscope/next/configure-client/grafana-agent/ebpf/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/ebpf" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/rust"><img src="https://user-images.githubusercontent.com/23323466/178160555-fb6aeee7-5d31-4bcb-9e3e-41e9f2f7d5b4.png" width="100px;" alt=""/><br />
