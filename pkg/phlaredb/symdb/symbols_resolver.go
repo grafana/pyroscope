@@ -2,6 +2,7 @@ package symdb
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/google/pprof/profile"
@@ -281,6 +282,7 @@ func resolveTree(ctx context.Context, m v1.SampleMap, concurrency int, fn resolv
 		g.Go(func() error {
 			samples := v1.NewSamples(len(v))
 			m.WriteSamples(p, &samples)
+			sort.Sort(samples)
 			return fn(ctx, p, func(resolver *Resolver) error {
 				r, err := resolver.ResolveTree(ctx, samples)
 				if err != nil {
@@ -309,6 +311,7 @@ func resolveProfile(ctx context.Context, m v1.SampleMap, concurrency int, fn res
 		g.Go(func() error {
 			samples := v1.NewSamples(len(v))
 			m.WriteSamples(p, &samples)
+			sort.Sort(samples)
 			return fn(ctx, p, func(resolver *Resolver) error {
 				r, err := resolver.ResolveProfile(ctx, samples)
 				if err != nil {

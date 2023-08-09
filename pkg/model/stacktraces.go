@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/util/varint"
 )
 
-// TODO(kolesnikovae): Unused in practice. Delete.
+// TODO(kolesnikovae): Remove support for StacktracesMergeFormat_MERGE_FORMAT_STACKTRACES.
 
 type StacktraceMerger struct {
 	mu sync.Mutex
