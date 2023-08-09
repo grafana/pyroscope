@@ -141,11 +141,11 @@ func (s *SymDB) WriteProfileSymbols(partition uint64, profile *profilev1.Profile
 }
 
 func (s *SymDB) ResolveTree(ctx context.Context, m schemav1.SampleMap) (*phlaremodel.Tree, error) {
-	return resolveTree(ctx, m, defaultResolveConcurrency, s.withResolver)
+	return ResolveTree(ctx, m, defaultResolveConcurrency, s.withResolver)
 }
 
 func (s *SymDB) ResolveProfile(ctx context.Context, m schemav1.SampleMap) (*profile.Profile, error) {
-	return resolveProfile(ctx, m, defaultResolveConcurrency, s.withResolver)
+	return ResolveProfile(ctx, m, defaultResolveConcurrency, s.withResolver)
 }
 
 func (s *SymDB) withResolver(_ context.Context, partition uint64, fn func(*Resolver) error) error {

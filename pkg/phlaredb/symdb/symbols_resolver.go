@@ -174,13 +174,14 @@ func clear[T any](s []T) {
 }
 
 func (r *pprofResolve) InsertStacktrace(_ uint32, locations []int32) {
-	var sample profile.Sample
-	sample.Value = []int64{int64(r.samples.Values[r.cur])}
-	sample.Location = make([]*profile.Location, len(locations))
+	sample := &profile.Sample{
+		Location: make([]*profile.Location, len(locations)),
+		Value:    []int64{int64(r.samples.Values[r.cur])},
+	}
 	for j, loc := range locations {
 		sample.Location[j] = r.location(loc)
 	}
-	r.profile.Sample[r.cur] = &sample
+	r.profile.Sample[r.cur] = sample
 	r.cur++
 }
 
@@ -268,11 +269,11 @@ func (r *pprofResolve) incrementIDs() {
 	}
 }
 
-type resolveFn = func(context.Context, uint64, func(resolver *Resolver) error) error
+type ResolverFn = func(ctx context.Context, partition uint64, fn func(resolver *Resolver) error) error
 
 const defaultResolveConcurrency = 8
 
-func resolveTree(ctx context.Context, m v1.SampleMap, concurrency int, fn resolveFn) (*model.Tree, error) {
+func ResolveTree(ctx context.Context, m v1.SampleMap, concurrency int, fn ResolverFn) (*model.Tree, error) {
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
 	var tm sync.Mutex
@@ -301,7 +302,7 @@ func resolveTree(ctx context.Context, m v1.SampleMap, concurrency int, fn resolv
 	return tree, nil
 }
 
-func resolveProfile(ctx context.Context, m v1.SampleMap, concurrency int, fn resolveFn) (*profile.Profile, error) {
+func ResolveProfile(ctx context.Context, m v1.SampleMap, concurrency int, fn ResolverFn) (*profile.Profile, error) {
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
 	var tm sync.Mutex

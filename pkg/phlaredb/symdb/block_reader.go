@@ -203,11 +203,11 @@ func (r *Reader) loadStacktraces(ctx context.Context) error {
 }
 
 func (r *Reader) ResolveTree(ctx context.Context, m schemav1.SampleMap) (*phlaremodel.Tree, error) {
-	return resolveTree(ctx, m, defaultResolveConcurrency, r.withResolver)
+	return ResolveTree(ctx, m, defaultResolveConcurrency, r.withResolver)
 }
 
 func (r *Reader) ResolveProfile(ctx context.Context, m schemav1.SampleMap) (*profile.Profile, error) {
-	return resolveProfile(ctx, m, defaultResolveConcurrency, r.withResolver)
+	return ResolveProfile(ctx, m, defaultResolveConcurrency, r.withResolver)
 }
 
 func (r *Reader) withResolver(ctx context.Context, partition uint64, fn func(*Resolver) error) error {

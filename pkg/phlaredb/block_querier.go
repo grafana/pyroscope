@@ -295,10 +295,7 @@ type singleBlockQuerier struct {
 	opened   bool
 	index    *index.Reader
 	profiles parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
-	symbols  interface {
-		symdb.SymbolsResolver
-		io.Closer
-	}
+	symbols  symbolsResolver
 }
 
 func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlareobj.Bucket, meta *block.Meta) *singleBlockQuerier {
@@ -996,9 +993,10 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 
 	g.Go(util.RecoverPanic(func() (err error) {
 		switch q.meta.Version {
-		// TODO
-		//	case block.MetaVersion1:
+		case block.MetaVersion1:
+			q.symbols, err = newSymbolsResolverV1(ctx, q.bucket, q.meta)
 		case block.MetaVersion2:
+			q.symbols, err = newSymbolsResolverV2(ctx, q.bucket, q.meta)
 		case block.MetaVersion3:
 			q.symbols, err = symdb.Open(ctx, q.bucket, q.meta)
 		default:
@@ -1089,152 +1087,4 @@ func repeatedColumnIter[T any](ctx context.Context, source Source, columnName st
 
 	opentracing.SpanFromContext(ctx).SetTag("columnName", columnName)
 	return query.NewRepeatedPageIterator(ctx, rows, source.RowGroups(), column.ColumnIndex, 1e4)
-}
-
-type ResultWithRowNum[M any] struct {
-	Result M
-	RowNum int64
-}
-
-type inMemoryparquetReader[M schemav1.Models, P schemav1.Persister[M]] struct {
-	persister P
-	file      *parquet.File
-	size      int64
-	reader    phlareobj.ReaderAtCloser
-	cache     []M
-}
-
-func (r *inMemoryparquetReader[M, P]) open(ctx context.Context, bucketReader phlareobj.BucketReader) error {
-	filePath := r.persister.Name() + block.ParquetSuffix
-
-	if r.size == 0 {
-		attrs, err := bucketReader.Attributes(ctx, filePath)
-		if err != nil {
-			return errors.Wrapf(err, "getting attributes for '%s'", filePath)
-		}
-		r.size = attrs.Size
-	}
-	ra, err := bucketReader.ReaderAt(ctx, filePath)
-	if err != nil {
-		return errors.Wrapf(err, "create reader '%s'", filePath)
-	}
-	ra = parquetobj.NewOptimizedReader(ra)
-
-	r.reader = ra
-
-	// first try to open file, this is required otherwise OpenFile panics
-	parquetFile, err := parquet.OpenFile(ra, r.size, parquet.SkipPageIndex(true), parquet.SkipBloomFilters(true))
-	if err != nil {
-		return errors.Wrapf(err, "opening parquet file '%s'", filePath)
-	}
-	if parquetFile.NumRows() == 0 {
-		return fmt.Errorf("error parquet file '%s' contains no rows", filePath)
-	}
-	opts := []parquet.FileOption{
-		parquet.SkipBloomFilters(true), // we don't use bloom filters
-		parquet.FileReadMode(parquet.ReadModeAsync),
-		parquet.ReadBufferSize(parquetReadBufferSize),
-	}
-	// now open it for real
-	r.file, err = parquet.OpenFile(ra, r.size, opts...)
-	if err != nil {
-		return errors.Wrapf(err, "opening parquet file '%s'", filePath)
-	}
-
-	// read all rows into memory
-	r.cache = make([]M, r.file.NumRows())
-	var offset int64
-	for _, rg := range r.file.RowGroups() {
-		rows := rg.NumRows()
-		dst := r.cache[offset : offset+rows]
-		offset += rows
-		if err = r.readRG(dst, rg); err != nil {
-			return errors.Wrapf(err, "reading row group from parquet file '%s'", filePath)
-		}
-	}
-	err = r.reader.Close()
-	r.reader = nil
-	r.file = nil
-	return err
-}
-
-// parquet.CopyRows uses hardcoded buffer size:
-// defaultRowBufferSize = 42
-const inMemoryReaderRowsBufSize = 1 << 10
-
-func (r *inMemoryparquetReader[M, P]) readRG(dst []M, rg parquet.RowGroup) (err error) {
-	rr := parquet.NewRowGroupReader(rg)
-	defer runutil.CloseWithLogOnErr(util.Logger, rr, "closing parquet row group reader")
-	buf := make([]parquet.Row, inMemoryReaderRowsBufSize)
-	for i := 0; i < len(dst); {
-		n, err := rr.ReadRows(buf)
-		if n > 0 {
-			for _, row := range buf[:n] {
-				_, v, err := r.persister.Reconstruct(row)
-				if err != nil {
-					return err
-				}
-				dst[i] = v
-				i++
-			}
-		}
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *inMemoryparquetReader[M, P]) Close() error {
-	if r.reader != nil {
-		return r.reader.Close()
-	}
-	r.reader = nil
-	r.file = nil
-	r.cache = nil
-	return nil
-}
-
-func (r *inMemoryparquetReader[M, P]) relPath() string {
-	return r.persister.Name() + block.ParquetSuffix
-}
-
-func (r *inMemoryparquetReader[M, P]) retrieveRows(_ context.Context, rowNumIterator iter.Iterator[int64]) iter.Iterator[ResultWithRowNum[M]] {
-	return &cacheIterator[M]{
-		cache:          r.cache,
-		rowNumIterator: rowNumIterator,
-	}
-}
-
-type cacheIterator[M any] struct {
-	cache          []M
-	rowNumIterator iter.Iterator[int64]
-}
-
-func (c *cacheIterator[M]) Next() bool {
-	if !c.rowNumIterator.Next() {
-		return false
-	}
-	if c.rowNumIterator.At() >= int64(len(c.cache)) {
-		return false
-	}
-	return true
-}
-
-func (c *cacheIterator[M]) At() ResultWithRowNum[M] {
-	return ResultWithRowNum[M]{
-		Result: c.cache[c.rowNumIterator.At()],
-		RowNum: c.rowNumIterator.At(),
-	}
-}
-
-func (c *cacheIterator[M]) Err() error {
-	return nil
-}
-
-func (c *cacheIterator[M]) Close() error {
-	return nil
 }
