@@ -1,5 +1,7 @@
 ## OTel Tracing integration example
 
+**NOTE: This example is just a Proof-of-concept at the moment. There is ongoing efforts to create an offical opentelemetry profiling signal and this example will be update to reflect that once it is approved**
+
 Currently this integration is supported for:
 - Go: [OTel Profiling Go](https://github.com/pyroscope-io/otel-profiling-go)
 - Java: [OTel Profiling Java](https://github.com/pyroscope-io/otel-profiling-java)
