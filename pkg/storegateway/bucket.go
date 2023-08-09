@@ -182,7 +182,7 @@ func (bs *BucketStore) addBlock(ctx context.Context, meta *block.Meta) (err erro
 	if err != nil {
 		return err
 	}
-	// loadStacktraces the block into memory if it's within the last 24 hours.
+	// Load the block into memory if it's within the last 24 hours.
 	// Todo make this configurable
 	if phlaredb.InRange(b, model.Now().Add(-24*time.Hour), model.Now()) {
 		level.Debug(bs.logger).Log("msg", "opening block",

@@ -160,7 +160,7 @@ func (r *Reader) Close() error {
 		Err()
 }
 
-func (r *Reader) loadStacktraces(ctx context.Context) error {
+func (r *Reader) Load(ctx context.Context) error {
 	f, err := r.file(StacktracesFileName)
 	if err != nil {
 		return err

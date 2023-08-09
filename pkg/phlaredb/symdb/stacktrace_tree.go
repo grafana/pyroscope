@@ -224,7 +224,7 @@ func (d *treeDecoder) unmarshal(t *parentPointerTree, r io.Reader) error {
 	var eof bool
 
 	for !eof {
-		// loadStacktraces the next peekSize bytes.
+		// Load the next peekSize bytes.
 		// Must not exceed Reader's buffer size.
 		b, err := buf.Peek(d.peekSize)
 		if err != nil {

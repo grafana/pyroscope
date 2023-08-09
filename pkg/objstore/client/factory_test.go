@@ -82,7 +82,7 @@ func TestNewClient(t *testing.T) {
 		testData := testData
 
 		t.Run(testName, func(t *testing.T) {
-			// loadStacktraces config
+			// Load config
 			cfg := Config{}
 			flagext.DefaultValues(&cfg)
 

@@ -226,7 +226,7 @@ func (p *RawProfile) handleRawData() (cont bool, err error) {
 			return false, nil
 		}
 		if p.FormDataContentType != "" {
-			// The profile was ingested as a multipart form. loadStacktraces parts to
+			// The profile was ingested as a multipart form. Load parts to
 			// Profile, PreviousProfile, and SampleTypeConfig.
 			if err := p.loadPprofFromForm(); err != nil {
 				return false, err
