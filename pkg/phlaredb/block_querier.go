@@ -951,6 +951,7 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 		)
 		sp.Finish()
 	}()
+	ctx = contextWithBlockMetrics(ctx, q.metrics)
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(util.RecoverPanic(func() error {
 		// open tsdb index
@@ -970,7 +971,7 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 	for _, tableReader := range q.tables {
 		tableReader := tableReader
 		g.Go(util.RecoverPanic(func() error {
-			if err := tableReader.open(contextWithBlockMetrics(ctx, q.metrics), q.bucket); err != nil {
+			if err := tableReader.open(ctx, q.bucket); err != nil {
 				return err
 			}
 			return nil
