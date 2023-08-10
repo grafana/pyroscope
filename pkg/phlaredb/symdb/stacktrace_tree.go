@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultStacktraceTreeSize = 1 << 10
+	defaultStacktraceTreeSize = 0
 	stacktraceTreeNodeSize    = int(unsafe.Sizeof(node{}))
 )
 
@@ -55,13 +55,13 @@ func (t *stacktraceTree) insert(refs []uint64) uint32 {
 		r := int32(refs[j])
 		if i == sentinel {
 			ni := int32(len(t.nodes))
+			n.fc = ni
 			t.nodes = append(t.nodes, node{
 				r:  r,
 				p:  x,
 				fc: sentinel,
 				ns: sentinel,
 			})
-			n.fc = ni
 			x = ni
 			n = &t.nodes[ni]
 		} else {
