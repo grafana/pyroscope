@@ -1,5 +1,5 @@
 import { createBrowserHistory } from 'history';
-import { baseurl } from '@webapp/util/baseurl';
+import { baseurl } from '@phlare/util/baseurl';
 
 // We share the same instance since react-query-sync expects the same
 // 'history' instance to be shared

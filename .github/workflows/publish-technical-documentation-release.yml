@@ -77,4 +77,4 @@ jobs:
         github_pat: "grafanabot:${{ secrets.PUBLISH_TO_WEBSITE_TOKEN }}"
         source_folder: "docs/sources"
         # Append ".x" to target to produce a v<major>.<minor>.x directory.
-        target_folder: "content/docs/phlare/${{ steps.target.outputs.target }}.x"
+        target_folder: "content/docs/pyroscope/${{ steps.target.outputs.target }}.x"

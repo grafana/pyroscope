@@ -30,7 +30,7 @@ Linting, testing etc is assumed to be ran in a different CI step.
 # Using alias imports
 Alias imports allow importing as if it was an external package, for example:
 ```javascript
-import Button from '@ui/Button';
+import Button from '@phlare/ui/Button';
 ```
 
 To be able to do that, you need to add the alias to the following files:

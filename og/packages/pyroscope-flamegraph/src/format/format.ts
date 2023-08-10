@@ -53,7 +53,7 @@ export class DurationFormatter {
 
   suffix = 'second';
 
-  durations: [number, string][] = [
+  durations: Array<[number, string]> = [
     [60, 'minute'],
     [60, 'hour'],
     [24, 'day'],
@@ -139,7 +139,7 @@ export class NanosecondsFormatter {
 
   suffix = 'second';
 
-  durations: [number, string][] = [
+  durations: Array<[number, string]> = [
     [60, 'minute'],
     [60, 'hour'],
     [24, 'day'],
@@ -193,7 +193,7 @@ export class ObjectsFormatter {
 
   suffix = '';
 
-  objects: [number, string][] = [
+  objects: Array<[number, string]> = [
     [1000, 'K'],
     [1000, 'M'],
     [1000, 'G'],
@@ -247,7 +247,7 @@ export class BytesFormatter {
 
   suffix = 'bytes';
 
-  bytes: [number, string][] = [
+  bytes: Array<[number, string]> = [
     [1024, 'KB'],
     [1024, 'MB'],
     [1024, 'GB'],

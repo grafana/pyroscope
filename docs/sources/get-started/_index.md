@@ -2,29 +2,32 @@
 aliases:
   - /docs/phlare/latest/operators-guide/getting-started/
   - /docs/phlare/latest/operators-guide/get-started/
-description: Learn how to get started with Grafana Phlare.
+  - /docs/phlare/latest/get-started/
+description: Learn how to get started with Grafana Pyroscope.
 menuTitle: Get started
-title: Get started with Grafana Phlare
+title: Get started with Grafana Pyroscope
 weight: 20
 ---
 
-# Get started with Grafana Phlare
+# Get started with Grafana Pyroscope
 
-Choose one of the following options to get started with Grafana Phlare:
+Note: Pyroscope 1.0 will be released in August 2023 -- you may see references to both Pyroscope and Phlare in the server documentation.
 
-- The **written tutorial** below provides a series of imperative commands to start a single Phlare process, or [monolith]({{< relref "../reference-phlare-architecture/deployment-modes/index.md#monolithic-mode" >}}), which is designed for users getting started with the project.
+Choose one of the following options to get started with Grafana Pyroscope:
 
-- The following **video tutorial** uses [`docker-compose`](https://github.com/grafana/phlare/tree/main/tools/docker-compose) to declaratively deploy Phlare and Grafana.
+- The **written tutorial** below provides a series of imperative commands to start a single Pyroscope process, or [monolith]({{< relref "../reference-phlare-architecture/deployment-modes/index.md#monolithic-mode" >}}), which is designed for users getting started with the project.
+
+- The following **video tutorial** uses [`docker-compose`](https://github.com/grafana/pyroscope/tree/main/tools/docker-compose) to declaratively deploy Pyroscope and Grafana.
 
   {{< vimeo 766316030 >}}
 
-For more information on the different ways to deploy Phlare, see [Grafana Phlare deployment modes]({{< relref "../reference-phlare-architecture/deployment-modes/index.md" >}}).
+For more information on the different ways to deploy Pyroscope, see [Grafana Pyroscope deployment modes]({{< relref "../reference-phlare-architecture/deployment-modes/index.md" >}}).
 
 ## Before you begin
 
 Verify that you have installed [Docker](https://docs.docker.com/engine/install/).
 
-## Download and configure Phlare
+## Download and configure Phlare 
 
 1. Download Grafana Phlare.
 

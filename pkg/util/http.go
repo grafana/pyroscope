@@ -14,15 +14,15 @@ import (
 
 	"github.com/felixge/httpsnoop"
 	"github.com/gorilla/mux"
+	"github.com/grafana/dskit/instrument"
+	"github.com/grafana/dskit/log"
+	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/multierror"
+	"github.com/grafana/dskit/tracing"
+	"github.com/grafana/dskit/user"
 	"github.com/opentracing-contrib/go-stdlib/nethttp"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/weaveworks/common/instrument"
-	"github.com/weaveworks/common/logging"
-	"github.com/weaveworks/common/middleware"
-	"github.com/weaveworks/common/tracing"
-	"github.com/weaveworks/common/user"
 	"golang.org/x/net/http2"
 	"gopkg.in/yaml.v3"
 
@@ -86,14 +86,14 @@ const (
 
 // Log middleware logs http requests
 type Log struct {
-	Log                   logging.Interface
+	Log                   log.Interface
 	LogRequestHeaders     bool // LogRequestHeaders true -> dump http headers at debug log level
 	LogRequestAtInfoLevel bool // LogRequestAtInfoLevel true -> log requests at info log level
 	SourceIPs             *middleware.SourceIPExtractor
 }
 
 // logWithRequest information from the request and context as fields.
-func (l Log) logWithRequest(r *http.Request) logging.Interface {
+func (l Log) logWithRequest(r *http.Request) log.Interface {
 	localLog := l.Log
 	traceID, ok := tracing.ExtractTraceID(r.Context())
 	if ok {

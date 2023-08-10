@@ -15,7 +15,7 @@ weight: 50
 # Deploy Grafana Phlare with Jsonnet and Tanka
 
 Grafana Labs publishes a [Jsonnet](https://jsonnet.org/) library that you can use to deploy Grafana Phlare.
-The Jsonnet files are located in the [Phlare repository](https://github.com/grafana/phlare/tree/main/operations/phlare/jsonnet) and are using the helm charts as a source.
+The Jsonnet files are located in the [Phlare repository](https://github.com/grafana/pyroscope/tree/main/operations/phlare/jsonnet) and are using the helm charts as a source.
 
 
 ## Install tools and deploy the first cluster
@@ -44,7 +44,7 @@ You can use [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com
    tk init --k8s=1.21
 
    # Install Phlare jsonnet
-   jb install github.com/grafana/phlare/operations/phlare@main
+   jb install github.com/grafana/pyroscope/operations/phlare@main
 
    # Install required tanka-util
    jb install github.com/grafana/jsonnet-libs/tanka-util@master

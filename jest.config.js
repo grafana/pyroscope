@@ -7,16 +7,16 @@ module.exports = {
   testEnvironment: 'jsdom',
   testMatch: ['**/?(*.)+(spec|test).+(ts|tsx|js)'],
   transform: {
-    '^.+\\.(t|j)sx?$': ['@swc/jest'],
     '\\.module\\.(css|scss)$': 'jest-css-modules-transform',
     '\\.(css|scss)$': 'jest-css-modules-transform',
+    '\\.svg$': path.join(__dirname, 'svg-transform.js'),
+    '^.+\\.(t|j)sx?$': ['@swc/jest'],
   },
-  setupFilesAfterEnv: ['<rootDir>/testSetupFile.js'],
 
   transformIgnorePatterns: [
     // force us to transpile these dependencies
     // https://stackoverflow.com/a/69150188
-    'node_modules/(?!(true-myth|d3|d3-array|internmap|d3-scale|react-notifications-component|graphviz-react|pyroscope-oss))',
+    'node_modules/(?!(true-myth|d3|d3-array|internmap|d3-scale|react-notifications-component|graphviz-react|@react-hook))',
   ],
 
   testPathIgnorePatterns: ['/node_modules/', '/og/'],
@@ -24,5 +24,10 @@ module.exports = {
   // Reuse the same modules from typescript
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, {
     prefix: '<rootDir>',
+    '@phlare/(.*)$': path.join(__dirname, 'public/app/$1'),
   }),
+
+  globalSetup: '<rootDir>/globalSetup.js',
+  globalTeardown: '<rootDir>/globalTeardown.js',
+  setupFilesAfterEnv: [path.join(__dirname, 'setupAfterEnv.ts')],
 };

@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { MenuItem } from '@webapp/ui/Menu';
+import { MenuItem } from '@phlare/ui/Menu';
 import userEvent from '@testing-library/user-event';
 
 import ContextMenu, { ContextMenuProps } from './ContextMenu';

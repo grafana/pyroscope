@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/grafana/dskit/httpgrpc"
 	"github.com/prometheus/common/model"
-	"github.com/weaveworks/common/httpgrpc"
 )
 
 func TimeToMillis(t time.Time) int64 {

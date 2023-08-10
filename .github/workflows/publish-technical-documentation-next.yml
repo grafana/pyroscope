@@ -45,4 +45,4 @@ jobs:
         # The IT helpdesk can update the organization secret.
         github_pat: "grafanabot:${{ secrets.PUBLISH_TO_WEBSITE_TOKEN }}"
         source_folder: "docs/sources"
-        target_folder: "content/docs/phlare/next"
+        target_folder: "content/docs/pyroscope/next"

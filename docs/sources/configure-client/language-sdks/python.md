@@ -2,7 +2,9 @@
 title: "Python"
 menuTitle: "Python"
 description: "Instrumenting Python applications for continuous profiling"
-weight: 30
+weight: 40
+aliases:
+  - /docs/phlare/latest/configure-client/language-sdks/python
 ---
 
 # Python
@@ -59,9 +61,8 @@ with pyroscope.tag_wrapper({ "controller": "slow_controller_i_want_to_profile" }
   slow_code()
 ```
 
-## Sending data to Grafana Cloud or Phlare with Pyroscope Python SDK
+## Sending data to Pyroscope OSS or Grafana Cloud Profiles with Python SDK
 
-Starting with [weekly-f8](https://hub.docker.com/r/grafana/phlare/tags) you can ingest pyroscope profiles directly to phlare.
 
 ```python
 import pyroscope
@@ -71,15 +72,16 @@ pyroscope.configure(
 	server_address = "<URL>",
 	basic_auth_username = '<User>',
 	basic_auth_password = '<Password>',
-	tenant_id = "<TenantID>",
+  # tenant_id only needed if multi-tenancy enabled,
+	# tenant_id = "<TenantID>",
 )
 ```
 
-To configure Python sdk to send data to Phlare, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Phlare server URL.
+To configure Python sdk to send data to Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
 
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
 
-If your Phlare server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Phlare tenant ID.
+If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
 
 ## Python profiling examples
 

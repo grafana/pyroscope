@@ -7,7 +7,7 @@ import (
 
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/kv/memberlist"
-	"github.com/weaveworks/common/server"
+	"github.com/grafana/dskit/server"
 
 	"github.com/grafana/pyroscope/pkg/agent"
 	"github.com/grafana/pyroscope/pkg/distributor"

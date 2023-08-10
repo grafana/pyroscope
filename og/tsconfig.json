@@ -10,8 +10,7 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "paths": {
-      "@webapp/*": ["./webapp/javascript/*"],
-      "@ui/*": ["./webapp/javascript/ui/*"]
+      "@phlare/*": ["../public/app/*"],
     },
     "types": ["node"],
     "plugins": [{ "name": "typescript-plugin-css-modules" }],
