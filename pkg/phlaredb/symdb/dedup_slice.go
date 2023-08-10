@@ -240,6 +240,7 @@ func (s *deduplicatingSlice[M, K, H]) init() {
 }
 
 func (s *deduplicatingSlice[M, K, H]) MemorySize() uint64 {
+	// FIXME(kolesnikovae): Map footprint + slice capacity.
 	return s.size.Load()
 }
 

@@ -38,7 +38,7 @@ func (p *Partition) ResolveChunk(dst StacktraceInserter, sr StacktracesRange) er
 type stacktracesPartition struct {
 	maxNodesPerChunk uint32
 
-	mu        sync.RWMutex
+	m         sync.RWMutex
 	hashToIdx map[uint64]uint32
 	chunks    []*stacktraceChunk
 	header    []StacktraceChunkHeader
@@ -57,13 +57,13 @@ func newStacktracesPartition(maxNodesPerChunk uint32) *stacktracesPartition {
 }
 
 func (p *stacktracesPartition) size() uint64 {
-	p.mu.RLock()
-	// TODO: map footprint isn't accounted.
+	p.m.RLock()
+	// TODO: map footprint isn't accounted
 	v := len(p.header) * stacktraceChunkHeaderSize
 	for _, c := range p.chunks {
 		v += stacktraceTreeNodeSize * cap(c.tree.nodes)
 	}
-	p.mu.RUnlock()
+	p.m.RUnlock()
 	return uint64(v)
 }
 
@@ -126,14 +126,14 @@ func (p *stacktracesPartition) append(dst []uint32, s []*schemav1.Stacktrace) {
 		misses int
 	)
 
-	p.mu.RLock()
+	p.m.RLock()
 	for i, x := range s {
 		if dst[i], found = p.hashToIdx[hashLocations(x.LocationIDs)]; !found {
 			misses++
 		}
 	}
 
-	p.mu.RUnlock()
+	p.m.RUnlock()
 	if misses == 0 {
 		return
 	}
@@ -149,8 +149,8 @@ func (p *stacktracesPartition) append(dst []uint32, s []*schemav1.Stacktrace) {
 	// Instead of inserting stacks one by one, it is better to
 	// build a tree, and merge it to the existing one.
 
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.m.Lock()
+	defer p.m.Unlock()
 	chunk := p.currentStacktraceChunk()
 
 	m := int(p.maxNodesPerChunk)
@@ -213,10 +213,10 @@ func (p *stacktracesPartition) resolve(dst StacktraceInserter, stacktraces []uin
 //  the options, the package provides.
 
 func (p *stacktracesPartition) ResolveChunk(dst StacktraceInserter, sr StacktracesRange) error {
-	p.mu.RLock()
+	p.m.RLock()
 	c, found := p.stacktraceChunkForRead(int(sr.chunk))
 	if !found {
-		p.mu.RUnlock()
+		p.m.RUnlock()
 		return ErrInvalidStacktraceRange
 	}
 	t := stacktraceTree{nodes: c.tree.nodes}
@@ -228,7 +228,7 @@ func (p *stacktracesPartition) ResolveChunk(dst StacktraceInserter, sr Stacktrac
 	// races when the slice grows: in the worst case, the underlying
 	// capacity will be retained and thus not be eligible for GC during
 	// the call.
-	p.mu.RUnlock()
+	p.m.RUnlock()
 	s := stacktraceLocations.get()
 	// Restore the original stacktrace ID.
 	off := sr.offset()
@@ -338,12 +338,12 @@ func (p *Partition) Resolver() *Resolver {
 	}
 }
 
-func (p *Partition) WriteStats(s *Stats) {
-	p.stacktraces.mu.RLock()
+func (p *Partition) WriteStats(s *PartitionStats) {
+	p.stacktraces.m.RLock()
 	c := p.stacktraces.currentStacktraceChunk()
 	s.MaxStacktraceID = int(c.stid + c.tree.len())
 	s.StacktracesTotal = len(p.stacktraces.hashToIdx)
-	p.stacktraces.mu.RUnlock()
+	p.stacktraces.m.RUnlock()
 
 	p.mappings.lock.RLock()
 	s.MappingsTotal = len(p.mappings.slice)

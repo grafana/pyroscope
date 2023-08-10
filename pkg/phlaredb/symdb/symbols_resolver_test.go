@@ -150,10 +150,10 @@ func (s *blockResolverSuite) flush() {
 	require.NoError(s.t, err)
 	s.resolver = &Resolver{
 		Stacktraces: s.partition,
-		Locations:   s.partition.locations.slice,
-		Mappings:    s.partition.mappings.slice,
-		Functions:   s.partition.functions.slice,
-		Strings:     s.partition.strings.slice,
+		Locations:   s.partition.locations.s,
+		Mappings:    s.partition.mappings.s,
+		Functions:   s.partition.functions.s,
+		Strings:     s.partition.strings.s,
 	}
 }
 

@@ -41,7 +41,7 @@ type ParquetConfig struct {
 	MaxBufferRowCount int
 }
 
-type Stats struct {
+type PartitionStats struct {
 	StacktracesTotal int
 	MaxStacktraceID  int
 	LocationsTotal   int
@@ -104,7 +104,7 @@ func NewSymDB(c *Config) *SymDB {
 		stop:       make(chan struct{}),
 	}
 	db.wg.Add(1)
-	go db.updateStats()
+	go db.updateStatsLoop()
 	return db
 }
 
@@ -181,14 +181,20 @@ func (s *SymDB) MemorySize() uint64 {
 	return m.MemorySize()
 }
 
+var emptyMemoryStats MemoryStats
+
 func (s *SymDB) WriteMemoryStats(m *MemoryStats) {
 	s.m.RLock()
 	c := s.stats
+	if c == emptyMemoryStats {
+		s.updateStats()
+		c = s.stats
+	}
 	s.m.RUnlock()
 	*m = c
 }
 
-func (s *SymDB) updateStats() {
+func (s *SymDB) updateStatsLoop() {
 	t := time.NewTicker(statsUpdateInterval)
 	defer func() {
 		t.Stop()
@@ -200,20 +206,20 @@ func (s *SymDB) updateStats() {
 			return
 		case <-t.C:
 			s.m.RLock()
-			s.calculateMemoryFootprint()
+			s.updateStats()
 			s.m.RUnlock()
 		}
 	}
 }
 
-// calculateMemoryFootprint estimates the memory footprint.
-func (s *SymDB) calculateMemoryFootprint() (v int) {
+func (s *SymDB) updateStats() (v int) {
+	s.stats = MemoryStats{}
 	for _, m := range s.partitions {
-		s.stats.StacktracesSize = m.stacktraces.size()
-		s.stats.MappingsSize = m.mappings.Size()
-		s.stats.FunctionsSize = m.functions.Size()
-		s.stats.LocationsSize = m.locations.Size()
-		s.stats.StringsSize = m.strings.Size()
+		s.stats.StacktracesSize += m.stacktraces.size()
+		s.stats.MappingsSize += m.mappings.Size()
+		s.stats.FunctionsSize += m.functions.Size()
+		s.stats.LocationsSize += m.locations.Size()
+		s.stats.StringsSize += m.strings.Size()
 	}
 	return v
 }
@@ -221,6 +227,7 @@ func (s *SymDB) calculateMemoryFootprint() (v int) {
 func (s *SymDB) Flush() error {
 	close(s.stop)
 	s.wg.Wait()
+	s.updateStats()
 	partitions := make([]*Partition, len(s.partitions))
 	var i int
 	for _, v := range s.partitions {

@@ -261,10 +261,10 @@ func (p *PartitionReader) init(ctx context.Context) error {
 func (p *PartitionReader) Resolver() *Resolver {
 	return &Resolver{
 		Stacktraces: p,
-		Locations:   p.locations.slice,
-		Mappings:    p.mappings.slice,
-		Functions:   p.functions.slice,
-		Strings:     p.strings.slice,
+		Locations:   p.locations.s,
+		Mappings:    p.mappings.s,
+		Functions:   p.functions.s,
+		Strings:     p.strings.s,
 	}
 }
 
@@ -285,14 +285,17 @@ func (p *PartitionReader) Release() {
 	wg.Wait()
 }
 
-func (p *PartitionReader) WriteStats(s *Stats) {
+func (p *PartitionReader) WriteStats(s *PartitionStats) {
 	var nodes uint32
 	for _, c := range p.stacktraceChunks {
 		s.StacktracesTotal += int(c.header.Stacktraces)
 		nodes += c.header.StacktraceNodes
 	}
 	s.MaxStacktraceID = int(nodes)
-	// TODO: Write ALL stats.
+	s.LocationsTotal = len(p.locations.s)
+	s.MappingsTotal = len(p.mappings.s)
+	s.FunctionsTotal = len(p.functions.s)
+	s.StringsTotal = len(p.strings.s)
 }
 
 var ErrInvalidStacktraceRange = fmt.Errorf("invalid range: stack traces can't be resolved")
@@ -361,7 +364,7 @@ func (r *stacktracesResolve) do() error {
 	// Restore the original stacktrace ID.
 	off := r.c.offset()
 	for _, sid := range r.c.ids {
-		s = cr.tree.resolve(s, sid)
+		s = cr.t.resolve(s, sid)
 		r.dst.InsertStacktrace(off+sid, s)
 	}
 	stacktraceLocations.put(s)
@@ -371,14 +374,20 @@ func (r *stacktracesResolve) do() error {
 type stacktraceChunkReader struct {
 	reader *Reader
 	header StacktraceChunkHeader
-	m      sync.Mutex
-	tree   *parentPointerTree
+
+	m sync.Mutex
+	r int64
+	t *parentPointerTree
 }
 
 func (c *stacktraceChunkReader) fetch(ctx context.Context) (err error) {
+	// Mutex is acquired to serialize access to the tree,
+	// so that the consequent callers only have access to
+	// it after it is fully loaded. Use of atomics here
+	// for reference counting is not sufficient.
 	c.m.Lock()
 	defer c.m.Unlock()
-	if c.tree != nil {
+	if c.r++; c.r > 1 {
 		return nil
 	}
 	f, err := c.reader.file(StacktracesFileName)
@@ -415,14 +424,18 @@ func (c *stacktraceChunkReader) readFrom(r io.Reader) error {
 	if c.header.CRC != crc.Sum32() {
 		return ErrInvalidCRC
 	}
-	c.tree = t
+	c.t = t
 	return nil
 }
 
 func (c *stacktraceChunkReader) release() {
-	// TODO: Ref counting.
+	// To avoid race with "fetch" caller that could
+	// have started re-reading the tree right after
+	// the reference counter has decreased to 0.
 	c.m.Lock()
-	c.tree = nil
+	if c.r--; c.r < 1 {
+		c.t = nil
+	}
 	c.m.Unlock()
 }
 
@@ -471,15 +484,17 @@ type parquetTableRange[M schemav1.Models, P schemav1.Persister[M]] struct {
 	bucket    objstore.BucketReader
 	persister P
 
-	m     sync.RWMutex
-	file  *parquetFile
-	slice []M
+	file *parquetFile
+
+	m sync.RWMutex
+	r int64
+	s []M
 }
 
 func (t *parquetTableRange[M, P]) fetch(_ context.Context) error {
 	t.m.Lock()
 	defer t.m.Unlock()
-	if len(t.slice) != 0 {
+	if t.r++; t.r > 1 {
 		return nil
 	}
 	var s uint32
@@ -490,7 +505,7 @@ func (t *parquetTableRange[M, P]) fetch(_ context.Context) error {
 	// defaultRowBufferSize = 42
 	const inMemoryReaderRowsBufSize = 1 << 10
 	buf := make([]parquet.Row, inMemoryReaderRowsBufSize)
-	t.slice = make([]M, s)
+	t.s = make([]M, s)
 	var offset int
 	rgs := t.file.RowGroups()
 	for _, h := range t.headers {
@@ -499,7 +514,7 @@ func (t *parquetTableRange[M, P]) fetch(_ context.Context) error {
 		if err := rows.SeekToRow(int64(h.Index)); err != nil {
 			return err
 		}
-		dst := t.slice[offset : offset+int(h.Rows)]
+		dst := t.s[offset : offset+int(h.Rows)]
 		if err := t.readRows(dst, buf, rows); err != nil {
 			return fmt.Errorf("reading row group from parquet file %q: %w", t.file.path, err)
 		}
@@ -538,8 +553,9 @@ func (t *parquetTableRange[M, P]) readRows(dst []M, buf []parquet.Row, rows parq
 }
 
 func (t *parquetTableRange[M, P]) release() {
-	// TODO: Ref counting.
 	t.m.Lock()
-	t.slice = nil
+	if t.r--; t.r < 1 {
+		t.s = nil
+	}
 	t.m.Unlock()
 }

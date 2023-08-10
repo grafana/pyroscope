@@ -153,6 +153,9 @@ func (h *Head) Size() uint64 {
 func (h *Head) loop() {
 	defer h.wg.Done()
 
+	symdbMetricsUpdateTicker := time.NewTicker(5 * time.Second)
+	var memStats symdb.MemoryStats
+
 	tick := time.NewTicker(5 * time.Second)
 	defer func() {
 		tick.Stop()
@@ -166,6 +169,7 @@ func (h *Head) loop() {
 			level.Debug(h.logger).Log("msg", "max block duration reached, flush to disk")
 			close(h.flushCh)
 			return
+
 		case <-tick.C:
 			if currentSize := h.Size(); currentSize > h.parquetConfig.MaxBlockBytes {
 				h.metrics.flushedBlocksReasons.WithLabelValues("max-block-bytes").Inc()
@@ -177,6 +181,9 @@ func (h *Head) loop() {
 				close(h.flushCh)
 				return
 			}
+		case <-symdbMetricsUpdateTicker.C:
+			h.updateSymbolsMemUsage(&memStats)
+
 		case <-h.stopCh:
 			return
 		}
@@ -544,7 +551,7 @@ func (h *Head) flush(ctx context.Context) error {
 
 	// symdb
 	if err := h.symdb.Flush(); err != nil {
-		return errors.Wrap(err, "flushing symbol database")
+		return errors.Wrap(err, "flushing symdb")
 	}
 	for _, file := range h.symdb.Files() {
 		// Files' path is relative to the symdb dir.
@@ -610,4 +617,14 @@ func (h *Head) Move() error {
 
 	level.Info(h.logger).Log("msg", "head successfully written to block", "block_path", h.localPath)
 	return nil
+}
+
+func (h *Head) updateSymbolsMemUsage(memStats *symdb.MemoryStats) {
+	h.symdb.WriteMemoryStats(memStats)
+	m := h.metrics.sizeBytes
+	m.WithLabelValues("stacktraces").Set(float64(memStats.StacktracesSize))
+	m.WithLabelValues("locations").Set(float64(memStats.LocationsSize))
+	m.WithLabelValues("functions").Set(float64(memStats.FunctionsSize))
+	m.WithLabelValues("mappings").Set(float64(memStats.MappingsSize))
+	m.WithLabelValues("strings").Set(float64(memStats.StringsSize))
 }
