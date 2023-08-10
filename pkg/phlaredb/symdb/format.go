@@ -225,11 +225,11 @@ func (h *PartitionHeaders) fromChunks(b []byte) error {
 		off := i * stacktraceChunkHeaderSize
 		chunks[i].unmarshal(b[off : off+stacktraceChunkHeaderSize])
 	}
-	var p PartitionHeader
+	var p *PartitionHeader
 	for _, c := range chunks {
-		if p.Partition != c.Partition {
-			p = PartitionHeader{Partition: c.Partition}
-			*h = append(*h, &p)
+		if p == nil || p.Partition != c.Partition {
+			p = &PartitionHeader{Partition: c.Partition}
+			*h = append(*h, p)
 		}
 		p.StacktraceChunks = append(p.StacktraceChunks, c)
 	}

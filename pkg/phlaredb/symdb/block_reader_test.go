@@ -86,6 +86,19 @@ func Test_Reader_Open_v1(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func Test_XXX(t *testing.T) {
+	ctx := context.Background()
+	b, err := filesystem.NewBucket("/Users/kolesnikovae/src/grafana/pyroscope/data/anonymous/local/01H7CD5A6GJ3N991NCS0P3RNG2")
+	require.NoError(t, err)
+	metaReader, err := b.Get(ctx, block.MetaFilename)
+	require.NoError(t, err)
+	m, err := block.Read(metaReader)
+	require.NoError(t, err)
+	r, err := Open(context.Background(), b, m)
+	require.NoError(t, err)
+	_ = r
+}
+
 type mockStacktraceInserter struct{ mock.Mock }
 
 func (m *mockStacktraceInserter) InsertStacktrace(stacktraceID uint32, locations []int32) {

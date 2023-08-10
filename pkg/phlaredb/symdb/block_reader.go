@@ -153,10 +153,10 @@ func (r *Reader) partitionReader(h *PartitionHeader) *PartitionReader {
 
 func (r *Reader) Close() error {
 	return multierror.New(
-		r.locations.reader.Close(),
-		r.mappings.reader.Close(),
-		r.functions.reader.Close(),
-		r.strings.reader.Close()).
+		r.locations.close(),
+		r.mappings.close(),
+		r.functions.close(),
+		r.strings.close()).
 		Err()
 }
 
@@ -477,6 +477,13 @@ func (f *parquetFile) open(ctx context.Context, b objstore.BucketReader, meta bl
 		parquet.FileReadMode(parquet.ReadModeAsync),
 		parquet.ReadBufferSize(parquetReadBufferSize))
 	return err
+}
+
+func (f *parquetFile) close() (err error) {
+	if f.reader != nil {
+		return f.reader.Close()
+	}
+	return nil
 }
 
 type parquetTableRange[M schemav1.Models, P schemav1.Persister[M]] struct {
