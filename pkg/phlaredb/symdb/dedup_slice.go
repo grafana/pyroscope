@@ -1,3 +1,4 @@
+//nolint:unused,unparam
 package symdb
 
 import (
@@ -511,7 +512,8 @@ func (*mappingsHelper) size(_ *schemav1.InMemoryMapping) uint64 {
 }
 
 func (*mappingsHelper) clone(m *schemav1.InMemoryMapping) *schemav1.InMemoryMapping {
-	return &(*m)
+	x := *m
+	return &x
 }
 
 type functionsKey struct {
@@ -556,5 +558,6 @@ func (*functionsHelper) size(_ *schemav1.InMemoryFunction) uint64 {
 }
 
 func (*functionsHelper) clone(f *schemav1.InMemoryFunction) *schemav1.InMemoryFunction {
-	return &(*f)
+	x := *f
+	return &x
 }

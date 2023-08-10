@@ -95,9 +95,7 @@ func (t *Tree) IterateStacks(cb func(name string, self int64, stack []string)) {
 			cb(label, self, stack)
 		}
 		nodes = nodes[1:]
-		for _, child := range n.children {
-			nodes = append(nodes, child)
-		}
+		nodes = append(nodes, n.children...)
 	}
 }
 

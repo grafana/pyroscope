@@ -14,7 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/util/build"
 	"github.com/grafana/pyroscope/pkg/util/math"
 )
@@ -28,10 +28,10 @@ type Writer struct {
 	files       []block.File
 
 	// Parquet tables.
-	mappings  parquetWriter[*v1.InMemoryMapping, *v1.MappingPersister]
-	functions parquetWriter[*v1.InMemoryFunction, *v1.FunctionPersister]
-	locations parquetWriter[*v1.InMemoryLocation, *v1.LocationPersister]
-	strings   parquetWriter[string, *v1.StringPersister]
+	mappings  parquetWriter[*schemav1.InMemoryMapping, *schemav1.MappingPersister]
+	functions parquetWriter[*schemav1.InMemoryFunction, *schemav1.FunctionPersister]
+	locations parquetWriter[*schemav1.InMemoryLocation, *schemav1.LocationPersister]
+	strings   parquetWriter[string, *schemav1.StringPersister]
 }
 
 func NewWriter(c *Config) *Writer {
@@ -262,7 +262,7 @@ func (w *writerOffset) Write(p []byte) (n int, err error) {
 	return n, err
 }
 
-type parquetWriter[M v1.Models, P v1.Persister[M]] struct {
+type parquetWriter[M schemav1.Models, P schemav1.Persister[M]] struct {
 	persister P
 	config    ParquetConfig
 

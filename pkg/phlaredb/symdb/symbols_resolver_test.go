@@ -44,8 +44,8 @@ func Test_symdb_block_Resolver_ResolveProfile(t *testing.T) {
 func Test_symdb_block_Resolver_ResolveTree(t *testing.T) {
 	s := newBlockResolverSuite(t, "testdata/profile.pb.gz")
 	defer s.teardown()
-	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
-	tree, err := s.resolver.ResolveTree(context.Background(), s.indexed[0][0].Samples)
+	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 1)
+	tree, err := s.resolver.ResolveTree(context.Background(), s.indexed[0][1].Samples)
 	require.NoError(t, err)
 	require.Equal(t, expectedFingerprint, treeFingerprint(tree))
 }
@@ -91,10 +91,7 @@ type blockResolverSuite struct {
 }
 
 func newResolverSuite(t testing.TB, files ...string) *resolverSuite {
-	s := resolverSuite{t: t}
-	for _, f := range files {
-		s.files = append(s.files, f)
-	}
+	s := resolverSuite{t: t, files: files}
 	s.init()
 	r, err := s.db.SymbolsReader(1)
 	require.NoError(t, err)

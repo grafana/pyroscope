@@ -910,20 +910,6 @@ func (b *singleBlockQuerier) Sort(in []Profile) []Profile {
 	return in
 }
 
-type uniqueIDs[T any] map[int64]T
-
-func newUniqueIDs[T any]() uniqueIDs[T] {
-	return uniqueIDs[T](make(map[int64]T))
-}
-
-func (m uniqueIDs[T]) iterator() iter.Iterator[int64] {
-	ids := lo.Keys(m)
-	sort.Slice(ids, func(i, j int) bool {
-		return ids[i] < ids[j]
-	})
-	return iter.NewSliceIterator(ids)
-}
-
 func newByteSliceFromBucketReader(ctx context.Context, bucketReader objstore.BucketReader, path string) (index.RealByteSlice, error) {
 	f, err := bucketReader.Get(ctx, path)
 	if err != nil {

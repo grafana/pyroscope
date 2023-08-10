@@ -251,7 +251,7 @@ func (h *PartitionHeader) marshal(buf []byte) {
 	n += marshalRowRangeReferences(buf[n:], h.Locations)
 	n += marshalRowRangeReferences(buf[n:], h.Mappings)
 	n += marshalRowRangeReferences(buf[n:], h.Functions)
-	n += marshalRowRangeReferences(buf[n:], h.Strings)
+	marshalRowRangeReferences(buf[n:], h.Strings)
 }
 
 func (h *PartitionHeader) unmarshal(buf []byte) (err error) {

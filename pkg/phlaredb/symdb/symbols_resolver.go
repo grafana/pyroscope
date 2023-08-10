@@ -9,12 +9,12 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 type SymbolsResolver interface {
-	ResolveTree(context.Context, v1.SampleMap) (*model.Tree, error)
-	ResolveProfile(context.Context, v1.SampleMap) (*profile.Profile, error)
+	ResolveTree(context.Context, schemav1.SampleMap) (*model.Tree, error)
+	ResolveProfile(context.Context, schemav1.SampleMap) (*profile.Profile, error)
 }
 
 var (
@@ -46,13 +46,13 @@ type StacktraceInserter interface {
 
 type Resolver struct {
 	Stacktraces StacktraceResolver
-	Locations   []*v1.InMemoryLocation
-	Mappings    []*v1.InMemoryMapping
-	Functions   []*v1.InMemoryFunction
+	Locations   []*schemav1.InMemoryLocation
+	Mappings    []*schemav1.InMemoryMapping
+	Functions   []*schemav1.InMemoryFunction
 	Strings     []string
 }
 
-func (r *Resolver) ResolveTree(ctx context.Context, samples v1.Samples) (*model.Tree, error) {
+func (r *Resolver) ResolveTree(ctx context.Context, samples schemav1.Samples) (*model.Tree, error) {
 	t := locationsResolveFromPool()
 	defer t.reset()
 	t.init(r, samples)
@@ -64,7 +64,7 @@ func (r *Resolver) ResolveTree(ctx context.Context, samples v1.Samples) (*model.
 
 type locationsResolve struct {
 	resolver *Resolver
-	samples  *v1.Samples
+	samples  *schemav1.Samples
 	tree     *model.Tree
 	lines    []string
 	cur      int
@@ -87,7 +87,7 @@ func (r *locationsResolve) reset() {
 	locationsResolvePool.Put(r)
 }
 
-func (r *locationsResolve) init(resolver *Resolver, samples v1.Samples) {
+func (r *locationsResolve) init(resolver *Resolver, samples schemav1.Samples) {
 	r.resolver = resolver
 	r.samples = &samples
 	r.tree = new(model.Tree)
@@ -106,7 +106,7 @@ func (r *locationsResolve) InsertStacktrace(_ uint32, locations []int32) {
 	r.cur++
 }
 
-func (r *Resolver) ResolveProfile(ctx context.Context, samples v1.Samples) (*profile.Profile, error) {
+func (r *Resolver) ResolveProfile(ctx context.Context, samples schemav1.Samples) (*profile.Profile, error) {
 	t := pprofResolveFromPool()
 	defer t.reset()
 	t.init(r, samples)
@@ -120,7 +120,7 @@ func (r *Resolver) ResolveProfile(ctx context.Context, samples v1.Samples) (*pro
 type pprofResolve struct {
 	profile  *profile.Profile
 	resolver *Resolver
-	samples  *v1.Samples
+	samples  *schemav1.Samples
 	cur      int
 
 	locations []*profile.Location
@@ -147,7 +147,7 @@ func (r *pprofResolve) reset() {
 	pprofResolvePool.Put(r)
 }
 
-func (r *pprofResolve) init(resolver *Resolver, samples v1.Samples) {
+func (r *pprofResolve) init(resolver *Resolver, samples schemav1.Samples) {
 	r.resolver = resolver
 	r.samples = &samples
 	r.profile = &profile.Profile{
@@ -215,7 +215,7 @@ func (r *pprofResolve) function(i uint32) *profile.Function {
 	return f
 }
 
-func (r *pprofResolve) inMemoryLocationToPprof(m *v1.InMemoryLocation) *profile.Location {
+func (r *pprofResolve) inMemoryLocationToPprof(m *schemav1.InMemoryLocation) *profile.Location {
 	x := &profile.Location{
 		ID:       m.Id,
 		Mapping:  r.mapping(m.MappingId),
@@ -232,7 +232,7 @@ func (r *pprofResolve) inMemoryLocationToPprof(m *v1.InMemoryLocation) *profile.
 	return x
 }
 
-func (r *pprofResolve) inMemoryMappingToPprof(m *v1.InMemoryMapping) *profile.Mapping {
+func (r *pprofResolve) inMemoryMappingToPprof(m *schemav1.InMemoryMapping) *profile.Mapping {
 	return &profile.Mapping{
 		ID:              m.Id,
 		Start:           m.MemoryStart,
@@ -247,7 +247,7 @@ func (r *pprofResolve) inMemoryMappingToPprof(m *v1.InMemoryMapping) *profile.Ma
 	}
 }
 
-func (r *pprofResolve) inMemoryFunctionToPprof(m *v1.InMemoryFunction) *profile.Function {
+func (r *pprofResolve) inMemoryFunctionToPprof(m *schemav1.InMemoryFunction) *profile.Function {
 	return &profile.Function{
 		ID:         m.Id,
 		Name:       r.resolver.Strings[m.Name],
@@ -273,7 +273,7 @@ type ResolverFn = func(ctx context.Context, partition uint64, fn func(resolver *
 
 const defaultResolveConcurrency = 8
 
-func ResolveTree(ctx context.Context, m v1.SampleMap, concurrency int, fn ResolverFn) (*model.Tree, error) {
+func ResolveTree(ctx context.Context, m schemav1.SampleMap, concurrency int, fn ResolverFn) (*model.Tree, error) {
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
 	var tm sync.Mutex
@@ -281,7 +281,7 @@ func ResolveTree(ctx context.Context, m v1.SampleMap, concurrency int, fn Resolv
 	for p, v := range m {
 		p, v := p, v
 		g.Go(func() error {
-			samples := v1.NewSamples(len(v))
+			samples := schemav1.NewSamples(len(v))
 			m.WriteSamples(p, &samples)
 			sort.Sort(samples)
 			return fn(ctx, p, func(resolver *Resolver) error {
@@ -302,7 +302,7 @@ func ResolveTree(ctx context.Context, m v1.SampleMap, concurrency int, fn Resolv
 	return tree, nil
 }
 
-func ResolveProfile(ctx context.Context, m v1.SampleMap, concurrency int, fn ResolverFn) (*profile.Profile, error) {
+func ResolveProfile(ctx context.Context, m schemav1.SampleMap, concurrency int, fn ResolverFn) (*profile.Profile, error) {
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
 	var tm sync.Mutex
@@ -310,7 +310,7 @@ func ResolveProfile(ctx context.Context, m v1.SampleMap, concurrency int, fn Res
 	for p, v := range m {
 		p, v := p, v
 		g.Go(func() error {
-			samples := v1.NewSamples(len(v))
+			samples := schemav1.NewSamples(len(v))
 			m.WriteSamples(p, &samples)
 			sort.Sort(samples)
 			return fn(ctx, p, func(resolver *Resolver) error {

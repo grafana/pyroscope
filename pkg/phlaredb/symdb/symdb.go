@@ -212,7 +212,7 @@ func (s *SymDB) updateStatsLoop() {
 	}
 }
 
-func (s *SymDB) updateStats() (v int) {
+func (s *SymDB) updateStats() {
 	s.stats = MemoryStats{}
 	for _, m := range s.partitions {
 		s.stats.StacktracesSize += m.stacktraces.size()
@@ -221,7 +221,6 @@ func (s *SymDB) updateStats() (v int) {
 		s.stats.LocationsSize += m.locations.Size()
 		s.stats.StringsSize += m.strings.Size()
 	}
-	return v
 }
 
 func (s *SymDB) Flush() error {

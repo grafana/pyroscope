@@ -143,8 +143,6 @@ func NewStacktraceTree(size int) *StacktraceTree {
 
 const sentinel = -1
 
-func (t *StacktraceTree) len() uint32 { return uint32(len(t.Nodes)) }
-
 func (t *StacktraceTree) Insert(locations []int32, value int64) {
 	var (
 		n = &t.Nodes[0]
