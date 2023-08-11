@@ -56,13 +56,8 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-<<<<<<< HEAD
           go-version: "1.19.12"
           cache: true
-=======
-          go-version: "1.19.10"
-          cache: true
->>>>>>> fe596a132 (chore: port change from 4100 to 4040)
       - run: yarn --frozen-lockfile
       - run: make build
       - name: run nginx with /foobar/
