@@ -387,7 +387,7 @@ func (bs *BucketStores) closeBucketStore(userID string) error {
 	}()
 
 	s := bs.stores[userID]
-	if bs == nil {
+	if s == nil {
 		return errBucketStoreNotFound
 	}
 
