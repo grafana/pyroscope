@@ -141,7 +141,7 @@ fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint er
 	$(BIN)/golangci-lint run --fix
 	cd api/ && $(BIN)/buf format -w .
 	cd pkg && $(BIN)/buf format -w .
-	$(BIN)/tk fmt ./operations/phlare/jsonnet/ tools/monitoring/
+	$(BIN)/tk fmt ./operations/pyroscope/jsonnet/ tools/monitoring/
 
 .PHONY: check/unstaged-changes
 check/unstaged-changes:
@@ -161,7 +161,7 @@ define deploy
 	# Load image into nodes
 	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)
 	kubectl get pods
-	$(BIN)/helm upgrade --install $(1) ./operations/phlare/helm/phlare $(2) \
+	$(BIN)/helm upgrade --install $(1) ./operations/pyroscope/helm/pyroscope $(2) \
 		--set phlare.image.tag=$(IMAGE_TAG) \
 		--set phlare.image.repository=$(IMAGE_PREFIX)pyroscope \
 		--set phlare.podAnnotations.image-id=$(shell cat .docker-image-id-pyroscope) \
@@ -217,7 +217,7 @@ define UPDATER_CONFIG_JSON
           "name": "pyroscope",
           "version": "$(GIT_REVISION)",
           "sub_dirs": [
-            "operations/phlare"
+            "operations/pyroscope"
           ]
         }
       ]
@@ -337,10 +337,10 @@ KIND_CLUSTER = pyroscope-dev
 
 .PHONY: helm/lint
 helm/lint: $(BIN)/helm
-	$(BIN)/helm lint ./operations/phlare/helm/phlare/
+	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope/
 
 helm/docs: $(BIN)/helm
-	docker run --rm --volume "$(CURDIR)/operations/phlare/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.8.1
+	docker run --rm --volume "$(CURDIR)/operations/pyroscope/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.8.1
 
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser
@@ -357,20 +357,20 @@ trunk/fmt: $(BIN)/trunk
 .PHONY: helm/check
 helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm repo add --force-update minio https://charts.min.io/
-	$(BIN)/helm dependency build ./operations/phlare/helm/phlare/
-	mkdir -p ./operations/phlare/helm/phlare/rendered/
-	$(BIN)/helm template phlare-dev ./operations/phlare/helm/phlare/ \
-		| tee ./operations/phlare/helm/phlare/rendered/single-binary.yaml \
+	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/
+	mkdir -p ./operations/pyroscope/helm/pyroscope/rendered/
+	$(BIN)/helm template phlare-dev ./operations/pyroscope/helm/pyroscope/ \
+		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.21.0
-	$(BIN)/helm template phlare-dev ./operations/phlare/helm/phlare/ --values operations/phlare/helm/phlare/values-micro-services.yaml \
-		| tee ./operations/phlare/helm/phlare/rendered/micro-services.yaml \
+	$(BIN)/helm template phlare-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
+		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.21.0
-	cat operations/phlare/helm/phlare/values-micro-services.yaml \
+	cat operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
 		| go run ./tools/yaml-to-json \
-		> ./operations/phlare/jsonnet/values-micro-services.json
-	cat operations/phlare/helm/phlare/values.yaml \
+		> ./operations/pyroscope/jsonnet/values-micro-services.json
+	cat operations/pyroscope/helm/pyroscope/values.yaml \
 		| go run ./tools/yaml-to-json \
-		> ./operations/phlare/jsonnet/values.json
+		> ./operations/pyroscope/jsonnet/values.json
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
@@ -380,7 +380,7 @@ deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,phlare-micro-services,--values=operations/phlare/helm/phlare/values-micro-services.yaml --set phlare.components.querier.resources=null --set phlare.components.distributor.resources=null --set phlare.components.ingester.resources=null --set phlare.components.store-gateway.resources=null)
+	$(call deploy,phlare-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set phlare.components.querier.resources=null --set phlare.components.distributor.resources=null --set phlare.components.ingester.resources=null --set phlare.components.store-gateway.resources=null)
 
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json

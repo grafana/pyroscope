@@ -19,7 +19,7 @@ import (
 
 func Test_Relabeling(t *testing.T) {
 	// This tests the expected behavior of the relabeling rules in the helm chart.
-	fdata, err := os.Open("helm/phlare/rendered/single-binary.yaml")
+	fdata, err := os.Open("helm/pyroscope/rendered/single-binary.yaml")
 	require.NoError(t, err)
 	defer fdata.Close()
 

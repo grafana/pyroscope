@@ -12,5 +12,5 @@ local defaults = {
 
 {
   new(name='phlare', overrides={})::
-    helm.template(name, '../../helm/phlare', defaults + overrides),
+    helm.template(name, '../../helm/pyroscope', defaults + overrides),
 }
