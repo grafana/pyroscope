@@ -10,11 +10,11 @@ metadata:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: phlare-dev-pyroscope
+  name: pyroscope-dev
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 ---
@@ -22,12 +22,12 @@ metadata:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: phlare-dev-minio
+  name: pyroscope-dev-minio
   namespace: "default"
   labels:
     app: minio
     chart: minio-4.0.12
-    release: phlare-dev
+    release: pyroscope-dev
     heritage: Helm
 type: Opaque
 data:
@@ -38,12 +38,12 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: phlare-dev-minio
+  name: pyroscope-dev-minio
   namespace: "default"
   labels:
     app: minio
     chart: minio-4.0.12
-    release: phlare-dev
+    release: pyroscope-dev
     heritage: Helm
 data:
   initialize: |-
@@ -356,11 +356,11 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: phlare-dev-pyroscope-overrides-config
+  name: pyroscope-dev-overrides-config
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 data:
@@ -372,11 +372,11 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: phlare-dev-pyroscope-config
+  name: pyroscope-dev-config
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 data:
@@ -1029,7 +1029,7 @@ data:
       s3:
         access_key_id: grafana-pyroscope
         bucket_name: grafana-pyroscope-data
-        endpoint: phlare-dev-pyroscope-minio:9000
+        endpoint: pyroscope-dev-minio:9000
         insecure: true
         secret_access_key: supersecret
 ---
@@ -1037,11 +1037,11 @@ data:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: default-phlare-dev-pyroscope
+  name: default-pyroscope-dev
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 rules:
@@ -1063,32 +1063,32 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: default-phlare-dev-pyroscope
+  name: default-pyroscope-dev
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: default-phlare-dev-pyroscope
+  name: default-pyroscope-dev
 subjects:
 - kind: ServiceAccount
-  name: phlare-dev-pyroscope
+  name: pyroscope-dev
   namespace: default
 ---
 # Source: pyroscope/charts/minio/templates/console-service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-minio-console
+  name: pyroscope-dev-minio-console
   namespace: "default"
   labels:
     app: minio
     chart: minio-4.0.12
-    release: phlare-dev
+    release: pyroscope-dev
     heritage: Helm
 spec:
   type: ClusterIP
@@ -1099,18 +1099,18 @@ spec:
       targetPort: 9001
   selector:
     app: minio
-    release: phlare-dev
+    release: pyroscope-dev
 ---
 # Source: pyroscope/charts/minio/templates/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-minio
+  name: pyroscope-dev-minio
   namespace: "default"
   labels:
     app: minio
     chart: minio-4.0.12
-    release: phlare-dev
+    release: pyroscope-dev
     heritage: Helm
     monitoring: "true"
 spec:
@@ -1122,18 +1122,18 @@ spec:
       targetPort: 9000
   selector:
     app: minio
-    release: phlare-dev
+    release: pyroscope-dev
 ---
 # Source: pyroscope/charts/minio/templates/statefulset.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-minio-svc
+  name: pyroscope-dev-minio-svc
   namespace: "default"
   labels:
     app: minio
     chart: minio-4.0.12
-    release: "phlare-dev"
+    release: "pyroscope-dev"
     heritage: "Helm"
 spec:
   publishNotReadyAddresses: true
@@ -1145,17 +1145,17 @@ spec:
       targetPort: 9000
   selector:
     app: minio
-    release: phlare-dev
+    release: pyroscope-dev
 ---
 # Source: pyroscope/templates/memberlist-service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-memberlist
+  name: pyroscope-dev-memberlist
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 spec:
@@ -1169,7 +1169,7 @@ spec:
   publishNotReadyAddresses: true
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     # TODO: Ensure only services that offer memberlist register
     # pyroscope.grafana.com/memberlist: "true"
 ---
@@ -1177,11 +1177,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-agent
+  name: pyroscope-dev-agent
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "agent"
@@ -1194,18 +1194,18 @@ spec:
       name: http2
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "agent"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-agent-headless
+  name: pyroscope-dev-agent-headless
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "agent"
@@ -1219,18 +1219,18 @@ spec:
       name: http2
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "agent"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-distributor
+  name: pyroscope-dev-distributor
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
@@ -1243,18 +1243,18 @@ spec:
       name: http2
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "distributor"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-distributor-headless
+  name: pyroscope-dev-distributor-headless
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
@@ -1268,18 +1268,18 @@ spec:
       name: http2
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "distributor"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-ingester
+  name: pyroscope-dev-ingester
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
@@ -1292,18 +1292,18 @@ spec:
       name: http2
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "ingester"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-ingester-headless
+  name: pyroscope-dev-ingester-headless
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
@@ -1317,18 +1317,18 @@ spec:
       name: http2
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "ingester"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-querier
+  name: pyroscope-dev-querier
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
@@ -1341,18 +1341,18 @@ spec:
       name: http2
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "querier"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-querier-headless
+  name: pyroscope-dev-querier-headless
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
@@ -1366,18 +1366,18 @@ spec:
       name: http2
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "querier"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-query-frontend
+  name: pyroscope-dev-query-frontend
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-frontend"
@@ -1390,18 +1390,18 @@ spec:
       name: http2
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "query-frontend"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-query-frontend-headless
+  name: pyroscope-dev-query-frontend-headless
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-frontend"
@@ -1415,18 +1415,18 @@ spec:
       name: http2
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "query-frontend"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-query-scheduler
+  name: pyroscope-dev-query-scheduler
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-scheduler"
@@ -1439,18 +1439,18 @@ spec:
       name: http2
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "query-scheduler"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-query-scheduler-headless
+  name: pyroscope-dev-query-scheduler-headless
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-scheduler"
@@ -1464,18 +1464,18 @@ spec:
       name: http2
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "query-scheduler"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-store-gateway
+  name: pyroscope-dev-store-gateway
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "store-gateway"
@@ -1488,18 +1488,18 @@ spec:
       name: http2
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "store-gateway"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-pyroscope-store-gateway-headless
+  name: pyroscope-dev-store-gateway-headless
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "store-gateway"
@@ -1513,18 +1513,18 @@ spec:
       name: http2
   selector:
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "store-gateway"
 ---
 # Source: pyroscope/templates/deployments-statefulsets.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: phlare-dev-pyroscope-agent
+  name: pyroscope-dev-agent
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "agent"
@@ -1533,12 +1533,12 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: pyroscope
-      app.kubernetes.io/instance: phlare-dev
+      app.kubernetes.io/instance: pyroscope-dev
       app.kubernetes.io/component: "agent"
   template:
     metadata:
       annotations:
-        checksum/config: 15793c7016e8b949eb0dc39925d8e2c83472d997d82fc9daa270c89c10805a84
+        checksum/config: cffd421d0668079465ecad41f015d18b5470b1e7be0a22ff51f4d875e4ad3831
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1547,11 +1547,11 @@ spec:
         profiles.grafana.com/memory.scrape: "true"
       labels:
         app.kubernetes.io/name: pyroscope
-        app.kubernetes.io/instance: phlare-dev
+        app.kubernetes.io/instance: pyroscope-dev
         app.kubernetes.io/component: "agent"
         name: "agent"
     spec:
-      serviceAccountName: phlare-dev-pyroscope
+      serviceAccountName: pyroscope-dev
       securityContext:
         fsGroup: 10001
         runAsNonRoot: true
@@ -1564,9 +1564,9 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=agent"
-            - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
-            - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
-            - "-client.url=http://phlare-dev-pyroscope-distributor.default.svc.cluster.local.:4100"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
+            - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
+            - "-client.url=http://pyroscope-dev-distributor.default.svc.cluster.local.:4100"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -1598,10 +1598,10 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: phlare-dev-pyroscope-config
+            name: pyroscope-dev-config
         - name: overrides-config
           configMap:
-            name: phlare-dev-pyroscope-overrides-config
+            name: pyroscope-dev-overrides-config
         - name: data
           emptyDir: {}
 ---
@@ -1609,11 +1609,11 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: phlare-dev-pyroscope-distributor
+  name: pyroscope-dev-distributor
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "distributor"
@@ -1622,12 +1622,12 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: pyroscope
-      app.kubernetes.io/instance: phlare-dev
+      app.kubernetes.io/instance: pyroscope-dev
       app.kubernetes.io/component: "distributor"
   template:
     metadata:
       annotations:
-        checksum/config: 15793c7016e8b949eb0dc39925d8e2c83472d997d82fc9daa270c89c10805a84
+        checksum/config: cffd421d0668079465ecad41f015d18b5470b1e7be0a22ff51f4d875e4ad3831
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1636,11 +1636,11 @@ spec:
         profiles.grafana.com/memory.scrape: "true"
       labels:
         app.kubernetes.io/name: pyroscope
-        app.kubernetes.io/instance: phlare-dev
+        app.kubernetes.io/instance: pyroscope-dev
         app.kubernetes.io/component: "distributor"
         name: "distributor"
     spec:
-      serviceAccountName: phlare-dev-pyroscope
+      serviceAccountName: pyroscope-dev
       securityContext:
         fsGroup: 10001
         runAsNonRoot: true
@@ -1653,8 +1653,8 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=distributor"
-            - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
-            - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
+            - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -1686,10 +1686,10 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: phlare-dev-pyroscope-config
+            name: pyroscope-dev-config
         - name: overrides-config
           configMap:
-            name: phlare-dev-pyroscope-overrides-config
+            name: pyroscope-dev-overrides-config
         - name: data
           emptyDir: {}
 ---
@@ -1697,11 +1697,11 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: phlare-dev-pyroscope-querier
+  name: pyroscope-dev-querier
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "querier"
@@ -1710,12 +1710,12 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: pyroscope
-      app.kubernetes.io/instance: phlare-dev
+      app.kubernetes.io/instance: pyroscope-dev
       app.kubernetes.io/component: "querier"
   template:
     metadata:
       annotations:
-        checksum/config: 15793c7016e8b949eb0dc39925d8e2c83472d997d82fc9daa270c89c10805a84
+        checksum/config: cffd421d0668079465ecad41f015d18b5470b1e7be0a22ff51f4d875e4ad3831
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1724,11 +1724,11 @@ spec:
         profiles.grafana.com/memory.scrape: "true"
       labels:
         app.kubernetes.io/name: pyroscope
-        app.kubernetes.io/instance: phlare-dev
+        app.kubernetes.io/instance: pyroscope-dev
         app.kubernetes.io/component: "querier"
         name: "querier"
     spec:
-      serviceAccountName: phlare-dev-pyroscope
+      serviceAccountName: pyroscope-dev
       securityContext:
         fsGroup: 10001
         runAsNonRoot: true
@@ -1741,8 +1741,8 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=querier"
-            - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
-            - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
+            - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -1774,10 +1774,10 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: phlare-dev-pyroscope-config
+            name: pyroscope-dev-config
         - name: overrides-config
           configMap:
-            name: phlare-dev-pyroscope-overrides-config
+            name: pyroscope-dev-overrides-config
         - name: data
           emptyDir: {}
 ---
@@ -1785,11 +1785,11 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: phlare-dev-pyroscope-query-frontend
+  name: pyroscope-dev-query-frontend
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-frontend"
@@ -1798,12 +1798,12 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: pyroscope
-      app.kubernetes.io/instance: phlare-dev
+      app.kubernetes.io/instance: pyroscope-dev
       app.kubernetes.io/component: "query-frontend"
   template:
     metadata:
       annotations:
-        checksum/config: 15793c7016e8b949eb0dc39925d8e2c83472d997d82fc9daa270c89c10805a84
+        checksum/config: cffd421d0668079465ecad41f015d18b5470b1e7be0a22ff51f4d875e4ad3831
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1812,11 +1812,11 @@ spec:
         profiles.grafana.com/memory.scrape: "true"
       labels:
         app.kubernetes.io/name: pyroscope
-        app.kubernetes.io/instance: phlare-dev
+        app.kubernetes.io/instance: pyroscope-dev
         app.kubernetes.io/component: "query-frontend"
         name: "query-frontend"
     spec:
-      serviceAccountName: phlare-dev-pyroscope
+      serviceAccountName: pyroscope-dev
       securityContext:
         fsGroup: 10001
         runAsNonRoot: true
@@ -1829,8 +1829,8 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-frontend"
-            - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
-            - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
+            - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -1862,10 +1862,10 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: phlare-dev-pyroscope-config
+            name: pyroscope-dev-config
         - name: overrides-config
           configMap:
-            name: phlare-dev-pyroscope-overrides-config
+            name: pyroscope-dev-overrides-config
         - name: data
           emptyDir: {}
 ---
@@ -1873,11 +1873,11 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: phlare-dev-pyroscope-query-scheduler
+  name: pyroscope-dev-query-scheduler
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "query-scheduler"
@@ -1886,12 +1886,12 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: pyroscope
-      app.kubernetes.io/instance: phlare-dev
+      app.kubernetes.io/instance: pyroscope-dev
       app.kubernetes.io/component: "query-scheduler"
   template:
     metadata:
       annotations:
-        checksum/config: 15793c7016e8b949eb0dc39925d8e2c83472d997d82fc9daa270c89c10805a84
+        checksum/config: cffd421d0668079465ecad41f015d18b5470b1e7be0a22ff51f4d875e4ad3831
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1900,11 +1900,11 @@ spec:
         profiles.grafana.com/memory.scrape: "true"
       labels:
         app.kubernetes.io/name: pyroscope
-        app.kubernetes.io/instance: phlare-dev
+        app.kubernetes.io/instance: pyroscope-dev
         app.kubernetes.io/component: "query-scheduler"
         name: "query-scheduler"
     spec:
-      serviceAccountName: phlare-dev-pyroscope
+      serviceAccountName: pyroscope-dev
       securityContext:
         fsGroup: 10001
         runAsNonRoot: true
@@ -1917,8 +1917,8 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-scheduler"
-            - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
-            - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
+            - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -1950,10 +1950,10 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: phlare-dev-pyroscope-config
+            name: pyroscope-dev-config
         - name: overrides-config
           configMap:
-            name: phlare-dev-pyroscope-overrides-config
+            name: pyroscope-dev-overrides-config
         - name: data
           emptyDir: {}
 ---
@@ -1961,32 +1961,32 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: phlare-dev-minio
+  name: pyroscope-dev-minio
   namespace: "default"
   labels:
     app: minio
     chart: minio-4.0.12
-    release: phlare-dev
+    release: pyroscope-dev
     heritage: Helm
 spec:
   updateStrategy:
     type: RollingUpdate
   podManagementPolicy: "Parallel"
-  serviceName: phlare-dev-minio-svc
+  serviceName: pyroscope-dev-minio-svc
   replicas: 1
   selector:
     matchLabels:
       app: minio
-      release: phlare-dev
+      release: pyroscope-dev
   template:
     metadata:
-      name: phlare-dev-minio
+      name: pyroscope-dev-minio
       labels:
         app: minio
-        release: phlare-dev
+        release: pyroscope-dev
       annotations:
-        checksum/secrets: b9e33f1d0d38e700e95ecf9b8be490f9739bb7fbd30c67569ac1f51cc0ce1065
-        checksum/config: fdcc6c295e0aff54c97db860946ee40aaf001dda791c8763d2c5229e2e2a681f
+        checksum/secrets: 2e760de5dbcac8daf468cd56713bca0aac7d7adc4445e2488b352dbb2b529507
+        checksum/config: 925d78a7321daaaa06a6dc4ee47dbaf5b8952be192bdbb57f13805ad472ce4e1
         phlare.grafana.com/port: "9000"
         phlare.grafana.com/scrape: "true"
     spec:
@@ -2004,7 +2004,7 @@ spec:
 
           command: [ "/bin/sh",
             "-ce",
-            "/usr/bin/docker-entrypoint.sh minio server  http://phlare-dev-minio-{0...0}.phlare-dev-minio-svc.default.svc.cluster.local/export-{0...1} -S /etc/minio/certs/ --address :9000 --console-address :9001" ]
+            "/usr/bin/docker-entrypoint.sh minio server  http://pyroscope-dev-minio-{0...0}.pyroscope-dev-minio-svc.default.svc.cluster.local/export-{0...1} -S /etc/minio/certs/ --address :9000 --console-address :9001" ]
           volumeMounts:
             - name: export-0
               mountPath: /export-0
@@ -2019,12 +2019,12 @@ spec:
             - name: MINIO_ROOT_USER
               valueFrom:
                 secretKeyRef:
-                  name: phlare-dev-minio
+                  name: pyroscope-dev-minio
                   key: rootUser
             - name: MINIO_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: phlare-dev-minio
+                  name: pyroscope-dev-minio
                   key: rootPassword
             - name: MINIO_PROMETHEUS_AUTH_TYPE
               value: "public"
@@ -2035,7 +2035,7 @@ spec:
       volumes:
         - name: minio-user
           secret:
-            secretName: phlare-dev-minio        
+            secretName: pyroscope-dev-minio        
   volumeClaimTemplates:
     - metadata:
         name: export-0
@@ -2056,27 +2056,27 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: phlare-dev-pyroscope-ingester
+  name: pyroscope-dev-ingester
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "ingester"
 spec:
-  serviceName: phlare-dev-pyroscope-ingester-headless
+  serviceName: pyroscope-dev-ingester-headless
   podManagementPolicy: Parallel
   replicas: 3
   selector:
     matchLabels:
       app.kubernetes.io/name: pyroscope
-      app.kubernetes.io/instance: phlare-dev
+      app.kubernetes.io/instance: pyroscope-dev
       app.kubernetes.io/component: "ingester"
   template:
     metadata:
       annotations:
-        checksum/config: 15793c7016e8b949eb0dc39925d8e2c83472d997d82fc9daa270c89c10805a84
+        checksum/config: cffd421d0668079465ecad41f015d18b5470b1e7be0a22ff51f4d875e4ad3831
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2085,11 +2085,11 @@ spec:
         profiles.grafana.com/memory.scrape: "true"
       labels:
         app.kubernetes.io/name: pyroscope
-        app.kubernetes.io/instance: phlare-dev
+        app.kubernetes.io/instance: pyroscope-dev
         app.kubernetes.io/component: "ingester"
         name: "ingester"
     spec:
-      serviceAccountName: phlare-dev-pyroscope
+      serviceAccountName: pyroscope-dev
       securityContext:
         fsGroup: 10001
         runAsNonRoot: true
@@ -2102,8 +2102,8 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=ingester"
-            - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
-            - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
+            - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -2136,10 +2136,10 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: phlare-dev-pyroscope-config
+            name: pyroscope-dev-config
         - name: overrides-config
           configMap:
-            name: phlare-dev-pyroscope-overrides-config
+            name: pyroscope-dev-overrides-config
         - name: data
           emptyDir: {}
 ---
@@ -2147,27 +2147,27 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: phlare-dev-pyroscope-store-gateway
+  name: pyroscope-dev-store-gateway
   labels:
     helm.sh/chart: pyroscope-0.5.4
     app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: phlare-dev
+    app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "store-gateway"
 spec:
-  serviceName: phlare-dev-pyroscope-store-gateway-headless
+  serviceName: pyroscope-dev-store-gateway-headless
   podManagementPolicy: Parallel
   replicas: 3
   selector:
     matchLabels:
       app.kubernetes.io/name: pyroscope
-      app.kubernetes.io/instance: phlare-dev
+      app.kubernetes.io/instance: pyroscope-dev
       app.kubernetes.io/component: "store-gateway"
   template:
     metadata:
       annotations:
-        checksum/config: 15793c7016e8b949eb0dc39925d8e2c83472d997d82fc9daa270c89c10805a84
+        checksum/config: cffd421d0668079465ecad41f015d18b5470b1e7be0a22ff51f4d875e4ad3831
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2176,11 +2176,11 @@ spec:
         profiles.grafana.com/memory.scrape: "true"
       labels:
         app.kubernetes.io/name: pyroscope
-        app.kubernetes.io/instance: phlare-dev
+        app.kubernetes.io/instance: pyroscope-dev
         app.kubernetes.io/component: "store-gateway"
         name: "store-gateway"
     spec:
-      serviceAccountName: phlare-dev-pyroscope
+      serviceAccountName: pyroscope-dev
       securityContext:
         fsGroup: 10001
         runAsNonRoot: true
@@ -2193,8 +2193,8 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=store-gateway"
-            - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
-            - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
+            - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -2226,10 +2226,10 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: phlare-dev-pyroscope-config
+            name: pyroscope-dev-config
         - name: overrides-config
           configMap:
-            name: phlare-dev-pyroscope-overrides-config
+            name: pyroscope-dev-overrides-config
         - name: data
           emptyDir: {}
 ---
@@ -2237,12 +2237,12 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: phlare-dev-minio-make-bucket-job
+  name: pyroscope-dev-minio-make-bucket-job
   namespace: "default"
   labels:
     app: minio-make-bucket-job
     chart: minio-4.0.12
-    release: phlare-dev
+    release: pyroscope-dev
     heritage: Helm
   annotations:
     "helm.sh/hook": post-install,post-upgrade
@@ -2252,7 +2252,7 @@ spec:
     metadata:
       labels:
         app: minio-job
-        release: phlare-dev
+        release: pyroscope-dev
     spec:
       restartPolicy: OnFailure      
       volumes:
@@ -2260,9 +2260,9 @@ spec:
           projected:
             sources:
             - configMap:
-                name: phlare-dev-minio
+                name: pyroscope-dev-minio
             - secret:
-                name: phlare-dev-minio
+                name: pyroscope-dev-minio
       containers:
       - name: minio-mc
         image: "quay.io/minio/mc:RELEASE.2022-08-11T00-30-48Z"
@@ -2270,7 +2270,7 @@ spec:
         command: ["/bin/sh", "/config/initialize"]
         env:
           - name: MINIO_ENDPOINT
-            value: phlare-dev-minio
+            value: pyroscope-dev-minio
           - name: MINIO_PORT
             value: "9000"
         volumeMounts:
@@ -2284,12 +2284,12 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: phlare-dev-minio-make-user-job
+  name: pyroscope-dev-minio-make-user-job
   namespace: "default"
   labels:
     app: minio-make-user-job
     chart: minio-4.0.12
-    release: phlare-dev
+    release: pyroscope-dev
     heritage: Helm
   annotations:
     "helm.sh/hook": post-install,post-upgrade
@@ -2299,7 +2299,7 @@ spec:
     metadata:
       labels:
         app: minio-job
-        release: phlare-dev
+        release: pyroscope-dev
     spec:
       restartPolicy: OnFailure      
       volumes:
@@ -2307,9 +2307,9 @@ spec:
           projected:
             sources:
             - configMap:
-                name: phlare-dev-minio
+                name: pyroscope-dev-minio
             - secret:
-                name: phlare-dev-minio
+                name: pyroscope-dev-minio
       containers:
       - name: minio-mc
         image: "quay.io/minio/mc:RELEASE.2022-08-11T00-30-48Z"
@@ -2317,7 +2317,7 @@ spec:
         command: ["/bin/sh", "/config/add-user"]
         env:
           - name: MINIO_ENDPOINT
-            value: phlare-dev-minio
+            value: pyroscope-dev-minio
           - name: MINIO_PORT
             value: "9000"
         volumeMounts:
