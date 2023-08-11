@@ -152,6 +152,9 @@ func (r *Reader) partitionReader(h *PartitionHeader) *PartitionReader {
 }
 
 func (r *Reader) Close() error {
+	if r == nil {
+		return nil
+	}
 	return multierror.New(
 		r.locations.close(),
 		r.mappings.close(),
@@ -480,7 +483,7 @@ func (f *parquetFile) open(ctx context.Context, b objstore.BucketReader, meta bl
 }
 
 func (f *parquetFile) close() (err error) {
-	if f != nil && f.reader != nil {
+	if f.reader != nil {
 		return f.reader.Close()
 	}
 	return nil

@@ -547,6 +547,7 @@ func (h *Head) flush(ctx context.Context) error {
 			blockSize += f.SizeBytes
 			h.metrics.flushedFileSizeBytes.WithLabelValues(t.Name()).Observe(float64(f.SizeBytes))
 		}
+		files = append(files, f)
 	}
 
 	// symdb
@@ -575,6 +576,7 @@ func (h *Head) flush(ctx context.Context) error {
 		blockSize += f.SizeBytes
 		h.metrics.flushedFileSizeBytes.WithLabelValues("tsdb").Observe(float64(f.SizeBytes))
 	}
+	files = append(files, f)
 
 	h.metrics.flushedBlockSizeBytes.Observe(float64(blockSize))
 	sort.Slice(files, func(i, j int) bool {
