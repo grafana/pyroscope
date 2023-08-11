@@ -480,7 +480,7 @@ func (f *parquetFile) open(ctx context.Context, b objstore.BucketReader, meta bl
 }
 
 func (f *parquetFile) close() (err error) {
-	if f.reader != nil {
+	if f != nil && f.reader != nil {
 		return f.reader.Close()
 	}
 	return nil
