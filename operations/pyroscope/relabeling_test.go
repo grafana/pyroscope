@@ -1,4 +1,4 @@
-package phlare
+package pyroscope
 
 import (
 	"context"
@@ -27,7 +27,7 @@ func Test_Relabeling(t *testing.T) {
 	configString := ``
 	dec := yaml.NewDecoder(fdata)
 	for dec.Decode(&values) == nil {
-		if values["metadata"].(map[string]interface{})["name"] == "phlare-dev-config" {
+		if values["metadata"].(map[string]interface{})["name"] == "pyroscope-dev-config" {
 			configString = values["data"].(map[string]interface{})["config.yaml"].(string)
 			break
 		}
