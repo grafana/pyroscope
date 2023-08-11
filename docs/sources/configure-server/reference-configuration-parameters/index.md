@@ -1384,9 +1384,9 @@ backoff_config:
 [tls_min_version: <string> | default = ""]
 
 # The maximum amount of time to establish a connection. A value of 0 means
-# default gRPC connect timeout and backoff.
+# default gRPC client connect timeout and backoff.
 # CLI flag: -<prefix>.connect-timeout
-[connect_timeout: <duration> | default = 0s]
+[connect_timeout: <duration> | default = 5s]
 
 # Initial backoff delay after first connection failure. Only relevant if
 # ConnectTimeout > 0.
