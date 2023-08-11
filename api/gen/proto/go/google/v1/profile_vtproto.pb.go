@@ -916,13 +916,13 @@ func (m *Profile) ResetVT() {
 	f2 := m.Mapping[:0]
 	for _, mm := range m.Location[:cap(m.Location)] {
 		if mm != nil {
-			mm.ResetVT()
+			mm.Reset()
 		}
 	}
 	f3 := m.Location[:0]
 	for _, mm := range m.Function[:cap(m.Function)] {
 		if mm != nil {
-			mm.ResetVT()
+			mm.Reset()
 		}
 	}
 	f4 := m.Function[:0]
@@ -1013,70 +1013,6 @@ func (m *Mapping) ReturnToVTPool() {
 }
 func MappingFromVTPool() *Mapping {
 	return vtprotoPool_Mapping.Get().(*Mapping)
-}
-
-var vtprotoPool_Location = sync.Pool{
-	New: func() interface{} {
-		return &Location{}
-	},
-}
-
-func (m *Location) ResetVT() {
-	for _, mm := range m.Line[:cap(m.Line)] {
-		if mm != nil {
-			mm.ResetVT()
-		}
-	}
-	f0 := m.Line[:0]
-	m.Reset()
-	m.Line = f0
-}
-func (m *Location) ReturnToVTPool() {
-	if m != nil {
-		m.ResetVT()
-		vtprotoPool_Location.Put(m)
-	}
-}
-func LocationFromVTPool() *Location {
-	return vtprotoPool_Location.Get().(*Location)
-}
-
-var vtprotoPool_Line = sync.Pool{
-	New: func() interface{} {
-		return &Line{}
-	},
-}
-
-func (m *Line) ResetVT() {
-	m.Reset()
-}
-func (m *Line) ReturnToVTPool() {
-	if m != nil {
-		m.ResetVT()
-		vtprotoPool_Line.Put(m)
-	}
-}
-func LineFromVTPool() *Line {
-	return vtprotoPool_Line.Get().(*Line)
-}
-
-var vtprotoPool_Function = sync.Pool{
-	New: func() interface{} {
-		return &Function{}
-	},
-}
-
-func (m *Function) ResetVT() {
-	m.Reset()
-}
-func (m *Function) ReturnToVTPool() {
-	if m != nil {
-		m.ResetVT()
-		vtprotoPool_Function.Put(m)
-	}
-}
-func FunctionFromVTPool() *Function {
-	return vtprotoPool_Function.Get().(*Function)
 }
 func (m *Profile) SizeVT() (n int) {
 	if m == nil {
@@ -2670,14 +2606,7 @@ func (m *Location) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if len(m.Line) == cap(m.Line) {
-				m.Line = append(m.Line, &Line{})
-			} else {
-				m.Line = m.Line[:len(m.Line)+1]
-				if m.Line[len(m.Line)-1] == nil {
-					m.Line[len(m.Line)-1] = &Line{}
-				}
-			}
+			m.Line = append(m.Line, &Line{})
 			if err := m.Line[len(m.Line)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
