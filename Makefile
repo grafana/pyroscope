@@ -162,15 +162,15 @@ define deploy
 	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)
 	kubectl get pods
 	$(BIN)/helm upgrade --install $(1) ./operations/pyroscope/helm/pyroscope $(2) \
-		--set phlare.image.tag=$(IMAGE_TAG) \
-		--set phlare.image.repository=$(IMAGE_PREFIX)pyroscope \
-		--set phlare.podAnnotations.image-id=$(shell cat .docker-image-id-pyroscope) \
-		--set phlare.service.port_name=http-metrics \
-		--set phlare.podAnnotations."profiles\.grafana\.com\/memory\.port_name"=http-metrics \
-		--set phlare.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
-		--set phlare.podAnnotations."profiles\.grafana\.com\/goroutine\.port_name"=http-metrics \
-		--set phlare.extraEnvVars.JAEGER_AGENT_HOST=jaeger.monitoring.svc.cluster.local. \
-		--set phlare.extraArgs."phlaredb\.max-block-duration"=5m
+		--set pyroscope.image.tag=$(IMAGE_TAG) \
+		--set pyroscope.image.repository=$(IMAGE_PREFIX)pyroscope \
+		--set pyroscope.podAnnotations.image-id=$(shell cat .docker-image-id-pyroscope) \
+		--set pyroscope.service.port_name=http-metrics \
+		--set pyroscope.podAnnotations."profiles\.grafana\.com\/memory\.port_name"=http-metrics \
+		--set pyroscope.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
+		--set pyroscope.podAnnotations."profiles\.grafana\.com\/goroutine\.port_name"=http-metrics \
+		--set pyroscope.extraEnvVars.JAEGER_AGENT_HOST=jaeger.monitoring.svc.cluster.local. \
+		--set pyroscope.extraArgs."phlaredb\.max-block-duration"=5m
   endef
 
 .PHONY: docker-image/pyroscope/build-debug
@@ -359,10 +359,10 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm repo add --force-update minio https://charts.min.io/
 	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/
 	mkdir -p ./operations/pyroscope/helm/pyroscope/rendered/
-	$(BIN)/helm template phlare-dev ./operations/pyroscope/helm/pyroscope/ \
+	$(BIN)/helm template pyroscope-dev ./operations/pyroscope/helm/pyroscope/ \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.21.0
-	$(BIN)/helm template phlare-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
+	$(BIN)/helm template pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.21.0
 	cat operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
@@ -374,9 +374,9 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,phlare-dev,)
+	$(call deploy,pyroscope-dev,)
 	# Create a service to provide the same endpoint as micro-services
-	echo '{"kind":"Service","apiVersion":"v1","metadata":{"name":"phlare-micro-services-query-frontend"},"spec":{"ports":[{"name":"phlare","port":4100,"targetPort":4100}],"selector":{"app.kubernetes.io/component":"all","app.kubernetes.io/instance":"phlare-dev"},"type":"ClusterIP"}}' | kubectl apply -f -
+	echo '{"kind":"Service","apiVersion":"v1","metadata":{"name":"phlare-micro-services-query-frontend"},"spec":{"ports":[{"name":"phlare","port":4100,"targetPort":4100}],"selector":{"app.kubernetes.io/component":"all","app.kubernetes.io/instance":"pyroscope-dev"},"type":"ClusterIP"}}' | kubectl apply -f -
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
@@ -392,7 +392,7 @@ tools/monitoring/environments/default/spec.json: $(BIN)/tk $(BIN)/kind
 	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
 	pushd tools/monitoring/ && rm -Rf vendor/ lib/ environments/default/spec.json  && PATH=$(BIN):$(PATH) $(BIN)/tk init -f
 	echo "import 'monitoring.libsonnet'" > tools/monitoring/environments/default/main.jsonnet
-	$(BIN)/tk env set tools/monitoring/environments/default --server=$(shell $(BIN)/kind get kubeconfig --name phlare-dev | grep server: | sed 's/server://g' | xargs) --namespace=monitoring
+	$(BIN)/tk env set tools/monitoring/environments/default --server=$(shell $(BIN)/kind get kubeconfig --name pyroscope-dev | grep server: | sed 's/server://g' | xargs) --namespace=monitoring
 
 .PHONY: deploy-demo
 deploy-demo: $(BIN)/kind
