@@ -151,15 +151,14 @@ func (h *Head) Size() uint64 {
 }
 
 func (h *Head) loop() {
-	defer h.wg.Done()
-
+	tick := time.NewTicker(5 * time.Second)
 	symdbMetricsUpdateTicker := time.NewTicker(5 * time.Second)
 	var memStats symdb.MemoryStats
-
-	tick := time.NewTicker(5 * time.Second)
 	defer func() {
 		tick.Stop()
+		symdbMetricsUpdateTicker.Stop()
 		h.flushForcedTimer.Stop()
+		h.wg.Done()
 	}()
 
 	for {
@@ -181,6 +180,7 @@ func (h *Head) loop() {
 				close(h.flushCh)
 				return
 			}
+
 		case <-symdbMetricsUpdateTicker.C:
 			h.updateSymbolsMemUsage(&memStats)
 

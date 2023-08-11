@@ -58,7 +58,7 @@ type MemoryStats struct {
 	StringsSize     uint64
 }
 
-func (m MemoryStats) MemorySize() uint64 {
+func (m *MemoryStats) MemorySize() uint64 {
 	return m.StacktracesSize +
 		m.LocationsSize +
 		m.MappingsSize +
@@ -66,7 +66,7 @@ func (m MemoryStats) MemorySize() uint64 {
 		m.StringsSize
 }
 
-const statsUpdateInterval = 10 * time.Second
+const statsUpdateInterval = 5 * time.Second
 
 func DefaultConfig() *Config {
 	return &Config{
@@ -184,13 +184,13 @@ func (s *SymDB) MemorySize() uint64 {
 var emptyMemoryStats MemoryStats
 
 func (s *SymDB) WriteMemoryStats(m *MemoryStats) {
-	s.m.RLock()
+	s.m.Lock()
 	c := s.stats
 	if c == emptyMemoryStats {
 		s.updateStats()
 		c = s.stats
 	}
-	s.m.RUnlock()
+	s.m.Unlock()
 	*m = c
 }
 
