@@ -3,7 +3,7 @@ local helm = tanka.helm.new(std.thisFile);
 
 local defaults = {
   namespace: 'monitoring',
-  phlare: {
+  pyroscope: {
     values: {
       persistence: { enabled: true },
     },
@@ -11,6 +11,6 @@ local defaults = {
 };
 
 {
-  new(name='phlare', overrides={})::
+  new(name='pyroscope', overrides={})::
     helm.template(name, '../../helm/pyroscope', defaults + overrides),
 }
