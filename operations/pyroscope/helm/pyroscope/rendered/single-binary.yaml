@@ -1,24 +1,24 @@
 ---
-# Source: phlare/templates/serviceaccount.yaml
+# Source: pyroscope/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: phlare-dev
+  name: phlare-dev-pyroscope
   labels:
-    helm.sh/chart: phlare-0.5.4
-    app.kubernetes.io/name: phlare
+    helm.sh/chart: pyroscope-0.5.4
+    app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 ---
-# Source: phlare/templates/configmap-overrides.yaml
+# Source: pyroscope/templates/configmap-overrides.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: phlare-dev-overrides-config
+  name: phlare-dev-pyroscope-overrides-config
   labels:
-    helm.sh/chart: phlare-0.5.4
-    app.kubernetes.io/name: phlare
+    helm.sh/chart: pyroscope-0.5.4
+    app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
@@ -27,14 +27,14 @@ data:
     overrides:
       {}
 ---
-# Source: phlare/templates/configmap.yaml
+# Source: pyroscope/templates/configmap.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: phlare-dev-config
+  name: phlare-dev-pyroscope-config
   labels:
-    helm.sh/chart: phlare-0.5.4
-    app.kubernetes.io/name: phlare
+    helm.sh/chart: pyroscope-0.5.4
+    app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
@@ -684,14 +684,14 @@ data:
         - __meta_kubernetes_pod_phase
       scrape_interval: 15s
 ---
-# Source: phlare/templates/clusterrole.yaml
+# Source: pyroscope/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: default-phlare-dev
+  name: default-phlare-dev-pyroscope
   labels:
-    helm.sh/chart: phlare-0.5.4
-    app.kubernetes.io/name: phlare
+    helm.sh/chart: pyroscope-0.5.4
+    app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
@@ -710,34 +710,34 @@ rules:
   verbs:
   - get
 ---
-# Source: phlare/templates/clusterrolebinding.yaml
+# Source: pyroscope/templates/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: default-phlare-dev
+  name: default-phlare-dev-pyroscope
   labels:
-    helm.sh/chart: phlare-0.5.4
-    app.kubernetes.io/name: phlare
+    helm.sh/chart: pyroscope-0.5.4
+    app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: default-phlare-dev
+  name: default-phlare-dev-pyroscope
 subjects:
 - kind: ServiceAccount
-  name: phlare-dev
+  name: phlare-dev-pyroscope
   namespace: default
 ---
-# Source: phlare/templates/memberlist-service.yaml
+# Source: pyroscope/templates/memberlist-service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-memberlist
+  name: phlare-dev-pyroscope-memberlist
   labels:
-    helm.sh/chart: phlare-0.5.4
-    app.kubernetes.io/name: phlare
+    helm.sh/chart: pyroscope-0.5.4
+    app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
@@ -751,19 +751,19 @@ spec:
       targetPort: 7946
   publishNotReadyAddresses: true
   selector:
-    app.kubernetes.io/name: phlare
+    app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: phlare-dev
     # TODO: Ensure only services that offer memberlist register
     # phlare.grafana.com/memberlist: "true"
 ---
-# Source: phlare/templates/services.yaml
+# Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev
+  name: phlare-dev-pyroscope
   labels:
-    helm.sh/chart: phlare-0.5.4
-    app.kubernetes.io/name: phlare
+    helm.sh/chart: pyroscope-0.5.4
+    app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
@@ -776,18 +776,18 @@ spec:
       protocol: TCP
       name: http2
   selector:
-    app.kubernetes.io/name: phlare
+    app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/component: "all"
 ---
-# Source: phlare/templates/services.yaml
+# Source: pyroscope/templates/services.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: phlare-dev-headless
+  name: phlare-dev-pyroscope-headless
   labels:
-    helm.sh/chart: phlare-0.5.4
-    app.kubernetes.io/name: phlare
+    helm.sh/chart: pyroscope-0.5.4
+    app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
@@ -801,35 +801,35 @@ spec:
       protocol: TCP
       name: http2
   selector:
-    app.kubernetes.io/name: phlare
+    app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/component: "all"
 ---
-# Source: phlare/templates/deployments-statefulsets.yaml
+# Source: pyroscope/templates/deployments-statefulsets.yaml
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: phlare-dev
+  name: phlare-dev-pyroscope
   labels:
-    helm.sh/chart: phlare-0.5.4
-    app.kubernetes.io/name: phlare
+    helm.sh/chart: pyroscope-0.5.4
+    app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: phlare-dev
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
-  serviceName: phlare-dev-headless
+  serviceName: phlare-dev-pyroscope-headless
   podManagementPolicy: Parallel
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: phlare
+      app.kubernetes.io/name: pyroscope
       app.kubernetes.io/instance: phlare-dev
       app.kubernetes.io/component: "all"
   template:
     metadata:
       annotations:
-        checksum/config: aff679be13b53f3f04cd7190b463fd9d399186bcfafb77397001857710088359
+        checksum/config: d29ed3f176c61f44fc4a9a724c4d018377e05debac81fab8725bcf4eae820610
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -837,12 +837,12 @@ spec:
         profiles.grafana.com/memory.port_name: http2
         profiles.grafana.com/memory.scrape: "true"
       labels:
-        app.kubernetes.io/name: phlare
+        app.kubernetes.io/name: pyroscope
         app.kubernetes.io/instance: phlare-dev
         app.kubernetes.io/component: "all"
         name: "phlare"
     spec:
-      serviceAccountName: phlare-dev
+      serviceAccountName: phlare-dev-pyroscope
       securityContext:
         fsGroup: 10001
         runAsNonRoot: true
@@ -855,8 +855,8 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=all"
-            - "-memberlist.cluster-label=default-phlare-dev"
-            - "-memberlist.join=dns+phlare-dev-memberlist.default.svc.cluster.local.:7946"
+            - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
+            - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/phlare/config.yaml"
             - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
             - "-log.level=debug"
@@ -884,9 +884,9 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: phlare-dev-config
+            name: phlare-dev-pyroscope-config
         - name: overrides-config
           configMap:
-            name: phlare-dev-overrides-config
+            name: phlare-dev-pyroscope-overrides-config
         - name: data
           emptyDir: {}

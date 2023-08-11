@@ -2,7 +2,7 @@
 remote: origin
 target-branch: main
 chart-dirs:
-  - operations/phlare/helm/
+  - operations/pyroscope/helm/
 chart-repos:
   - minio=https://charts.min.io/
   - grafana=https://grafana.github.io/helm-charts
