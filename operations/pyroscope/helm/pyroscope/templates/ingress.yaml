@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "phlare.fullname" . }}-ingress
+  name: {{ include "pyroscope.fullname" . }}-ingress
   labels:
-    {{- include "phlare.labels" . | nindent 4 }}
+    {{- include "pyroscope.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -17,24 +17,24 @@ spec:
       paths:
       - backend:
           service:
-            {{- if gt (len $.Values.phlare.components) 1}}
-            name: {{ include "phlare.fullname" $ }}-query-frontend
+            {{- if gt (len $.Values.pyroscope.components) 1}}
+            name: {{ include "pyroscope.fullname" $ }}-query-frontend
             {{- else }}
-            name: {{ include "phlare.fullname" $ }}
+            name: {{ include "pyroscope.fullname" $ }}
             {{- end }}
             port:
-              number: {{ $.Values.phlare.service.port }}
+              number: {{ $.Values.pyroscope.service.port }}
         path: /querier.v1.QuerierService/
         pathType: Prefix
       - backend:
           service:
-            {{- if gt (len $.Values.phlare.components) 1}}
-            name: {{ include "phlare.fullname" $ }}-distributor
+            {{- if gt (len $.Values.pyroscope.components) 1}}
+            name: {{ include "pyroscope.fullname" $ }}-distributor
             {{- else }}
-            name: {{ include "phlare.fullname" $ }}
+            name: {{ include "pyroscope.fullname" $ }}
             {{- end }}
             port:
-              number: {{ $.Values.phlare.service.port }}
+              number: {{ $.Values.pyroscope.service.port }}
         path: /push.v1.PusherService/
         pathType: Prefix
   {{- end }}

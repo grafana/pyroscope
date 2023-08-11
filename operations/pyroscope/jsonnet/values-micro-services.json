@@ -2,7 +2,7 @@
   "minio": {
     "enabled": true
   },
-  "phlare": {
+  "pyroscope": {
     "components": {
       "agent": {
         "kind": "Deployment",

@@ -754,7 +754,7 @@ spec:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: phlare-dev
     # TODO: Ensure only services that offer memberlist register
-    # phlare.grafana.com/memberlist: "true"
+    # pyroscope.grafana.com/memberlist: "true"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
@@ -840,7 +840,7 @@ spec:
         app.kubernetes.io/name: pyroscope
         app.kubernetes.io/instance: phlare-dev
         app.kubernetes.io/component: "all"
-        name: "phlare"
+        name: "pyroscope"
     spec:
       serviceAccountName: phlare-dev-pyroscope
       securityContext:
@@ -848,7 +848,7 @@ spec:
         runAsNonRoot: true
         runAsUser: 10001
       containers:
-        - name: "phlare"
+        - name: "pyroscope"
           securityContext:
             {}
           image: "grafana/phlare:0.5.1"
@@ -857,8 +857,8 @@ spec:
             - "-target=all"
             - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
             - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
-            - "-config.file=/etc/phlare/config.yaml"
-            - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
+            - "-config.file=/etc/pyroscope/config.yaml"
+            - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
           ports:
             - name: http2
@@ -873,10 +873,10 @@ spec:
               port: http2
           volumeMounts:
             - name: config
-              mountPath: /etc/phlare/config.yaml
+              mountPath: /etc/pyroscope/config.yaml
               subPath: config.yaml
             - name: overrides-config
-              mountPath: /etc/phlare/overrides/
+              mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
           resources:

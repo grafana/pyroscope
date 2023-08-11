@@ -4,16 +4,16 @@ In order to configure Grafana to use the Phlare datasource, you need to add the 
 
 The in-cluster query URL is:
 
-{{- if hasKey .Values.phlare.components "query-frontend" }}
-http://{{ include "phlare.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.phlare.service.port }}
+{{- if hasKey .Values.pyroscope.components "query-frontend" }}
+http://{{ include "pyroscope.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.service.port }}
 {{- else }}
-http://{{ include "phlare.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.phlare.service.port }}
+http://{{ include "pyroscope.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.service.port }}
 {{- end }}
 
 To forward the query API to your localhost you can use:
 
-{{- if hasKey .Values.phlare.components "query-frontend" }}
-kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "phlare.fullname" . }}-query-frontend {{ .Values.phlare.service.port }}:{{ .Values.phlare.service.port }}
+{{- if hasKey .Values.pyroscope.components "query-frontend" }}
+kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pyroscope.fullname" . }}-query-frontend {{ .Values.pyroscope.service.port }}:{{ .Values.pyroscope.service.port }}
 {{- else }}
-kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "phlare.fullname" . }} {{ .Values.phlare.service.port }}:{{ .Values.phlare.service.port }}
+kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pyroscope.fullname" . }} {{ .Values.pyroscope.service.port }}:{{ .Values.pyroscope.service.port }}
 {{- end }}

@@ -1,5 +1,5 @@
 {{- $global := . }}
-{{- range $component, $cfg := (fromYaml (include "phlare.components" .)) }}
+{{- range $component, $cfg := (fromYaml (include "pyroscope.components" .)) }}
 {{- with $global }}
 ---
 apiVersion: v1
@@ -7,17 +7,17 @@ kind: Service
 metadata:
   name: {{ $cfg.name }}
   labels:
-    {{- include "phlare.labels" . | nindent 4 }}
+    {{- include "pyroscope.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 spec:
-  type: {{ .Values.phlare.service.type }}
+  type: {{ .Values.pyroscope.service.type }}
   ports:
-    - port: {{ .Values.phlare.service.port }}
-      targetPort: {{ .Values.phlare.service.port_name }}
+    - port: {{ .Values.pyroscope.service.port }}
+      targetPort: {{ .Values.pyroscope.service.port_name }}
       protocol: TCP
-      name: {{ .Values.phlare.service.port_name }}
+      name: {{ .Values.pyroscope.service.port_name }}
   selector:
-    {{- include "phlare.selectorLabels" . | nindent 4 }}
+    {{- include "pyroscope.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 ---
 apiVersion: v1
@@ -25,18 +25,18 @@ kind: Service
 metadata:
   name: {{ $cfg.name }}-headless
   labels:
-    {{- include "phlare.labels" . | nindent 4 }}
+    {{- include "pyroscope.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 spec:
-  type: {{ .Values.phlare.service.type }}
+  type: {{ .Values.pyroscope.service.type }}
   clusterIP: None
   ports:
-    - port: {{ .Values.phlare.service.port }}
-      targetPort: {{ .Values.phlare.service.port_name }}
+    - port: {{ .Values.pyroscope.service.port }}
+      targetPort: {{ .Values.pyroscope.service.port_name }}
       protocol: TCP
-      name: {{ .Values.phlare.service.port_name }}
+      name: {{ .Values.pyroscope.service.port_name }}
   selector:
-    {{- include "phlare.selectorLabels" . | nindent 4 }}
+    {{- include "pyroscope.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 {{- end }}
 {{- end }}

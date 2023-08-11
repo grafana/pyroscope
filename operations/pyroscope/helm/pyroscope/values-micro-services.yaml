@@ -1,8 +1,8 @@
-# Default values for phlare.
+# Default values for pyroscope.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-phlare:
+pyroscope:
   components:
     querier:
       kind: Deployment

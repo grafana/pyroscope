@@ -1,14 +1,14 @@
 {{- $global := . }}
-{{- range $component, $cfg := (fromYaml (include "phlare.components" .)) }}
+{{- range $component, $cfg := (fromYaml (include "pyroscope.components" .)) }}
 {{- with $global }}
-{{-  $values := mustMergeOverwrite (deepCopy .Values.phlare ) ($cfg | default dict)}}
+{{-  $values := mustMergeOverwrite (deepCopy .Values.pyroscope ) ($cfg | default dict)}}
 ---
 apiVersion: apps/v1
 kind: {{ $cfg.kind }}
 metadata:
   name: {{ $cfg.name }}
   labels:
-    {{- include "phlare.labels" . | nindent 4 }}
+    {{- include "pyroscope.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 spec:
 {{- if eq $values.kind "StatefulSet" }}
@@ -20,7 +20,7 @@ spec:
 {{- end }}
   selector:
     matchLabels:
-      {{- include "phlare.selectorLabels" . | nindent 6 }}
+      {{- include "pyroscope.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: {{ $component | quote }}
   template:
     metadata:
@@ -30,32 +30,32 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "phlare.templateLabels" . | nindent 8 }}
+        {{- include "pyroscope.templateLabels" . | nindent 8 }}
         app.kubernetes.io/component: {{ $component | quote }}
-        name: {{ if eq $component "all" }}"phlare"{{ else }}"{{ $component }}"{{ end }}
+        name: {{ if eq $component "all" }}"pyroscope"{{ else }}"{{ $component }}"{{ end }}
     spec:
       {{- with $values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "phlare.serviceAccountName" . }}
+      serviceAccountName: {{ include "pyroscope.serviceAccountName" . }}
       securityContext:
         {{- toYaml $values.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ if eq $component "all" }}"phlare"{{ else }}"{{ $component }}"{{ end }}
+        - name: {{ if eq $component "all" }}"pyroscope"{{ else }}"{{ $component }}"{{ end }}
           securityContext:
             {{- toYaml $values.securityContext | nindent 12 }}
           image: "{{ $values.image.repository }}:{{ $values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ $values.image.pullPolicy }}
           args:
             - "-target={{ $component }}"
-            - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "phlare.fullname" .}}"
-            - "-memberlist.join=dns+{{ include "phlare.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.phlare.memberlist.port }}"
+            - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "pyroscope.fullname" .}}"
+            - "-memberlist.join=dns+{{ include "pyroscope.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.memberlist.port }}"
           {{- if eq $component "agent" }}
-            - "-client.url=http://{{ include "phlare.fullname" . }}-distributor.{{ .Release.Namespace }}.svc.cluster.local.:{{ $values.service.port }}"
+            - "-client.url=http://{{ include "pyroscope.fullname" . }}-distributor.{{ .Release.Namespace }}.svc.cluster.local.:{{ $values.service.port }}"
           {{- end }}
-            - "-config.file=/etc/phlare/config.yaml"
-            - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
+            - "-config.file=/etc/pyroscope/config.yaml"
+            - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
           {{- range $key, $value := $values.extraArgs }}
             - "-{{ $key }}={{ $value }}"
           {{- end }}
@@ -87,10 +87,10 @@ spec:
               port: {{ $values.service.port_name }}
           volumeMounts:
             - name: config
-              mountPath: /etc/phlare/config.yaml
+              mountPath: /etc/pyroscope/config.yaml
               subPath: config.yaml
             - name: overrides-config
-              mountPath: /etc/phlare/overrides/
+              mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
             {{- with $values.extraVolumeMounts }}
@@ -119,10 +119,10 @@ spec:
       {{- end }}
         - name: config
           configMap:
-            name: {{ include "phlare.fullname" . }}-config
+            name: {{ include "pyroscope.fullname" . }}-config
         - name: overrides-config
           configMap:
-            name: {{ include "phlare.fullname" . }}-overrides-config
+            name: {{ include "pyroscope.fullname" . }}-overrides-config
   {{- $persistence := $values.persistence }}
   {{- if not $persistence.enabled }}
         - name: data

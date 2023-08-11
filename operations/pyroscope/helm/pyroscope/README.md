@@ -15,50 +15,50 @@
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | ingress.enabled | bool | `false` |  |
-| minio | object | `{"buckets":[{"name":"grafana-phlare-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"persistence":{"size":"5Gi"},"podAnnotations":{"phlare.grafana.com/port":"9000","phlare.grafana.com/scrape":"true"},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-phlare"}` | ----------------------------------- |
-| phlare.affinity | object | `{}` |  |
-| phlare.components | object | `{}` |  |
-| phlare.config | string | The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml) | Contains Phlare's configuration as a string. |
-| phlare.extraArgs."log.level" | string | `"debug"` |  |
-| phlare.extraEnvFrom | list | `[]` | Environment variables from secrets or configmaps to add to the pods |
-| phlare.extraEnvVars | object | `{}` |  |
-| phlare.extraLabels | object | `{}` |  |
-| phlare.extraVolumeMounts | list | `[]` |  |
-| phlare.extraVolumes | list | `[]` |  |
-| phlare.fullnameOverride | string | `""` |  |
-| phlare.image.pullPolicy | string | `"IfNotPresent"` |  |
-| phlare.image.repository | string | `"grafana/phlare"` |  |
-| phlare.image.tag | string | `"0.5.1"` |  |
-| phlare.imagePullSecrets | list | `[]` |  |
-| phlare.memberlist.port | int | `7946` |  |
-| phlare.memberlist.port_name | string | `"memberlist"` |  |
-| phlare.nameOverride | string | `""` |  |
-| phlare.nodeSelector | object | `{}` |  |
-| phlare.persistence.accessModes[0] | string | `"ReadWriteOnce"` |  |
-| phlare.persistence.annotations | object | `{}` |  |
-| phlare.persistence.enabled | bool | `false` |  |
-| phlare.persistence.size | string | `"10Gi"` |  |
-| phlare.podAnnotations."profiles.grafana.com/cpu.port_name" | string | `"http2"` |  |
-| phlare.podAnnotations."profiles.grafana.com/cpu.scrape" | string | `"true"` |  |
-| phlare.podAnnotations."profiles.grafana.com/goroutine.port_name" | string | `"http2"` |  |
-| phlare.podAnnotations."profiles.grafana.com/goroutine.scrape" | string | `"true"` |  |
-| phlare.podAnnotations."profiles.grafana.com/memory.port_name" | string | `"http2"` |  |
-| phlare.podAnnotations."profiles.grafana.com/memory.scrape" | string | `"true"` |  |
-| phlare.podSecurityContext.fsGroup | int | `10001` |  |
-| phlare.podSecurityContext.runAsNonRoot | bool | `true` |  |
-| phlare.podSecurityContext.runAsUser | int | `10001` |  |
-| phlare.replicaCount | int | `1` |  |
-| phlare.resources | object | `{}` |  |
-| phlare.securityContext | object | `{}` |  |
-| phlare.service.port | int | `4100` |  |
-| phlare.service.port_name | string | `"http2"` |  |
-| phlare.service.type | string | `"ClusterIP"` |  |
-| phlare.serviceAccount.annotations | object | `{}` |  |
-| phlare.serviceAccount.create | bool | `true` |  |
-| phlare.serviceAccount.name | string | `""` |  |
-| phlare.structuredConfig | object | `{}` | Allows to override Phlare's configuration using structured format. |
-| phlare.tenantOverrides | object | `{}` | Allows to add tenant specific overrides to the default limit configuration. |
-| phlare.tolerations | list | `[]` |  |
+| minio | object | `{"buckets":[{"name":"grafana-pyroscope-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"persistence":{"size":"5Gi"},"podAnnotations":{"phlare.grafana.com/port":"9000","phlare.grafana.com/scrape":"true"},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-pyroscope"}` | ----------------------------------- |
+| pyroscope.affinity | object | `{}` |  |
+| pyroscope.components | object | `{}` |  |
+| pyroscope.config | string | The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml) | Contains Phlare's configuration as a string. |
+| pyroscope.extraArgs."log.level" | string | `"debug"` |  |
+| pyroscope.extraEnvFrom | list | `[]` | Environment variables from secrets or configmaps to add to the pods |
+| pyroscope.extraEnvVars | object | `{}` |  |
+| pyroscope.extraLabels | object | `{}` |  |
+| pyroscope.extraVolumeMounts | list | `[]` |  |
+| pyroscope.extraVolumes | list | `[]` |  |
+| pyroscope.fullnameOverride | string | `""` |  |
+| pyroscope.image.pullPolicy | string | `"IfNotPresent"` |  |
+| pyroscope.image.repository | string | `"grafana/phlare"` |  |
+| pyroscope.image.tag | string | `"0.5.1"` |  |
+| pyroscope.imagePullSecrets | list | `[]` |  |
+| pyroscope.memberlist.port | int | `7946` |  |
+| pyroscope.memberlist.port_name | string | `"memberlist"` |  |
+| pyroscope.nameOverride | string | `""` |  |
+| pyroscope.nodeSelector | object | `{}` |  |
+| pyroscope.persistence.accessModes[0] | string | `"ReadWriteOnce"` |  |
+| pyroscope.persistence.annotations | object | `{}` |  |
+| pyroscope.persistence.enabled | bool | `false` |  |
+| pyroscope.persistence.size | string | `"10Gi"` |  |
+| pyroscope.podAnnotations."profiles.grafana.com/cpu.port_name" | string | `"http2"` |  |
+| pyroscope.podAnnotations."profiles.grafana.com/cpu.scrape" | string | `"true"` |  |
+| pyroscope.podAnnotations."profiles.grafana.com/goroutine.port_name" | string | `"http2"` |  |
+| pyroscope.podAnnotations."profiles.grafana.com/goroutine.scrape" | string | `"true"` |  |
+| pyroscope.podAnnotations."profiles.grafana.com/memory.port_name" | string | `"http2"` |  |
+| pyroscope.podAnnotations."profiles.grafana.com/memory.scrape" | string | `"true"` |  |
+| pyroscope.podSecurityContext.fsGroup | int | `10001` |  |
+| pyroscope.podSecurityContext.runAsNonRoot | bool | `true` |  |
+| pyroscope.podSecurityContext.runAsUser | int | `10001` |  |
+| pyroscope.replicaCount | int | `1` |  |
+| pyroscope.resources | object | `{}` |  |
+| pyroscope.securityContext | object | `{}` |  |
+| pyroscope.service.port | int | `4100` |  |
+| pyroscope.service.port_name | string | `"http2"` |  |
+| pyroscope.service.type | string | `"ClusterIP"` |  |
+| pyroscope.serviceAccount.annotations | object | `{}` |  |
+| pyroscope.serviceAccount.create | bool | `true` |  |
+| pyroscope.serviceAccount.name | string | `""` |  |
+| pyroscope.structuredConfig | object | `{}` | Allows to override Phlare's configuration using structured format. |
+| pyroscope.tenantOverrides | object | `{}` | Allows to add tenant specific overrides to the default limit configuration. |
+| pyroscope.tolerations | list | `[]` |  |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.8.1](https://github.com/norwoodj/helm-docs/releases/v1.8.1)

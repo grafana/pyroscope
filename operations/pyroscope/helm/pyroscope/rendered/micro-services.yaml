@@ -31,7 +31,7 @@ metadata:
     heritage: Helm
 type: Opaque
 data:
-  rootUser: "Z3JhZmFuYS1waGxhcmU="
+  rootUser: "Z3JhZmFuYS1weXJvc2NvcGU="
   rootPassword: "c3VwZXJzZWNyZXQ="
 ---
 # Source: pyroscope/charts/minio/templates/configmap.yaml
@@ -157,7 +157,7 @@ data:
     
     
     # Create the buckets
-    createBucket grafana-phlare-data none false  
+    createBucket grafana-pyroscope-data none false  
   add-user: |-
     #!/bin/sh
     set -e ; # Have script exit in the event of a failed command.
@@ -1027,8 +1027,8 @@ data:
     storage:
       backend: s3
       s3:
-        access_key_id: grafana-phlare
-        bucket_name: grafana-phlare-data
+        access_key_id: grafana-pyroscope
+        bucket_name: grafana-pyroscope-data
         endpoint: phlare-dev-pyroscope-minio:9000
         insecure: true
         secret_access_key: supersecret
@@ -1171,7 +1171,7 @@ spec:
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: phlare-dev
     # TODO: Ensure only services that offer memberlist register
-    # phlare.grafana.com/memberlist: "true"
+    # pyroscope.grafana.com/memberlist: "true"
 ---
 # Source: pyroscope/templates/services.yaml
 apiVersion: v1
@@ -1538,7 +1538,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8a6599ed53edac6a78cd420daaa154da5b35aa38ac70c545d5552d00bc022df5
+        checksum/config: 15793c7016e8b949eb0dc39925d8e2c83472d997d82fc9daa270c89c10805a84
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1567,8 +1567,8 @@ spec:
             - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
             - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
             - "-client.url=http://phlare-dev-pyroscope-distributor.default.svc.cluster.local.:4100"
-            - "-config.file=/etc/phlare/config.yaml"
-            - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
+            - "-config.file=/etc/pyroscope/config.yaml"
+            - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
           ports:
             - name: http2
@@ -1583,10 +1583,10 @@ spec:
               port: http2
           volumeMounts:
             - name: config
-              mountPath: /etc/phlare/config.yaml
+              mountPath: /etc/pyroscope/config.yaml
               subPath: config.yaml
             - name: overrides-config
-              mountPath: /etc/phlare/overrides/
+              mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
           resources:
@@ -1627,7 +1627,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8a6599ed53edac6a78cd420daaa154da5b35aa38ac70c545d5552d00bc022df5
+        checksum/config: 15793c7016e8b949eb0dc39925d8e2c83472d997d82fc9daa270c89c10805a84
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1655,8 +1655,8 @@ spec:
             - "-target=distributor"
             - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
             - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
-            - "-config.file=/etc/phlare/config.yaml"
-            - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
+            - "-config.file=/etc/pyroscope/config.yaml"
+            - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
           ports:
             - name: http2
@@ -1671,10 +1671,10 @@ spec:
               port: http2
           volumeMounts:
             - name: config
-              mountPath: /etc/phlare/config.yaml
+              mountPath: /etc/pyroscope/config.yaml
               subPath: config.yaml
             - name: overrides-config
-              mountPath: /etc/phlare/overrides/
+              mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
           resources:
@@ -1715,7 +1715,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8a6599ed53edac6a78cd420daaa154da5b35aa38ac70c545d5552d00bc022df5
+        checksum/config: 15793c7016e8b949eb0dc39925d8e2c83472d997d82fc9daa270c89c10805a84
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1743,8 +1743,8 @@ spec:
             - "-target=querier"
             - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
             - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
-            - "-config.file=/etc/phlare/config.yaml"
-            - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
+            - "-config.file=/etc/pyroscope/config.yaml"
+            - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
           ports:
             - name: http2
@@ -1759,10 +1759,10 @@ spec:
               port: http2
           volumeMounts:
             - name: config
-              mountPath: /etc/phlare/config.yaml
+              mountPath: /etc/pyroscope/config.yaml
               subPath: config.yaml
             - name: overrides-config
-              mountPath: /etc/phlare/overrides/
+              mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
           resources:
@@ -1803,7 +1803,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8a6599ed53edac6a78cd420daaa154da5b35aa38ac70c545d5552d00bc022df5
+        checksum/config: 15793c7016e8b949eb0dc39925d8e2c83472d997d82fc9daa270c89c10805a84
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1831,8 +1831,8 @@ spec:
             - "-target=query-frontend"
             - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
             - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
-            - "-config.file=/etc/phlare/config.yaml"
-            - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
+            - "-config.file=/etc/pyroscope/config.yaml"
+            - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
           ports:
             - name: http2
@@ -1847,10 +1847,10 @@ spec:
               port: http2
           volumeMounts:
             - name: config
-              mountPath: /etc/phlare/config.yaml
+              mountPath: /etc/pyroscope/config.yaml
               subPath: config.yaml
             - name: overrides-config
-              mountPath: /etc/phlare/overrides/
+              mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
           resources:
@@ -1891,7 +1891,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8a6599ed53edac6a78cd420daaa154da5b35aa38ac70c545d5552d00bc022df5
+        checksum/config: 15793c7016e8b949eb0dc39925d8e2c83472d997d82fc9daa270c89c10805a84
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1919,8 +1919,8 @@ spec:
             - "-target=query-scheduler"
             - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
             - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
-            - "-config.file=/etc/phlare/config.yaml"
-            - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
+            - "-config.file=/etc/pyroscope/config.yaml"
+            - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
           ports:
             - name: http2
@@ -1935,10 +1935,10 @@ spec:
               port: http2
           volumeMounts:
             - name: config
-              mountPath: /etc/phlare/config.yaml
+              mountPath: /etc/pyroscope/config.yaml
               subPath: config.yaml
             - name: overrides-config
-              mountPath: /etc/phlare/overrides/
+              mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
           resources:
@@ -1985,8 +1985,8 @@ spec:
         app: minio
         release: phlare-dev
       annotations:
-        checksum/secrets: 724d4b2b4c21778e1a7ba2b50758a575320075a4ad70fb3d37039151f7a3320d
-        checksum/config: a33d0359184ba5e8ad28956d2aa6e225869c19657918cd81d3c90620a36609ba
+        checksum/secrets: b9e33f1d0d38e700e95ecf9b8be490f9739bb7fbd30c67569ac1f51cc0ce1065
+        checksum/config: fdcc6c295e0aff54c97db860946ee40aaf001dda791c8763d2c5229e2e2a681f
         phlare.grafana.com/port: "9000"
         phlare.grafana.com/scrape: "true"
     spec:
@@ -2076,7 +2076,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8a6599ed53edac6a78cd420daaa154da5b35aa38ac70c545d5552d00bc022df5
+        checksum/config: 15793c7016e8b949eb0dc39925d8e2c83472d997d82fc9daa270c89c10805a84
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2104,8 +2104,8 @@ spec:
             - "-target=ingester"
             - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
             - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
-            - "-config.file=/etc/phlare/config.yaml"
-            - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
+            - "-config.file=/etc/pyroscope/config.yaml"
+            - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
           ports:
             - name: http2
@@ -2120,10 +2120,10 @@ spec:
               port: http2
           volumeMounts:
             - name: config
-              mountPath: /etc/phlare/config.yaml
+              mountPath: /etc/pyroscope/config.yaml
               subPath: config.yaml
             - name: overrides-config
-              mountPath: /etc/phlare/overrides/
+              mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
           resources:
@@ -2167,7 +2167,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 8a6599ed53edac6a78cd420daaa154da5b35aa38ac70c545d5552d00bc022df5
+        checksum/config: 15793c7016e8b949eb0dc39925d8e2c83472d997d82fc9daa270c89c10805a84
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2195,8 +2195,8 @@ spec:
             - "-target=store-gateway"
             - "-memberlist.cluster-label=default-phlare-dev-pyroscope"
             - "-memberlist.join=dns+phlare-dev-pyroscope-memberlist.default.svc.cluster.local.:7946"
-            - "-config.file=/etc/phlare/config.yaml"
-            - "-runtime-config.file=/etc/phlare/overrides/overrides.yaml"
+            - "-config.file=/etc/pyroscope/config.yaml"
+            - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
           ports:
             - name: http2
@@ -2211,10 +2211,10 @@ spec:
               port: http2
           volumeMounts:
             - name: config
-              mountPath: /etc/phlare/config.yaml
+              mountPath: /etc/pyroscope/config.yaml
               subPath: config.yaml
             - name: overrides-config
-              mountPath: /etc/phlare/overrides/
+              mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
           resources:

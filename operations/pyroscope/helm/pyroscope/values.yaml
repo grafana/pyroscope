@@ -1,8 +1,8 @@
-# Default values for phlare.
+# Default values for pyroscope.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-phlare:
+pyroscope:
   replicaCount: 1
 
   image:
@@ -143,7 +143,7 @@ phlare:
     storage:
       backend: s3
       s3:
-        endpoint: "{{ include "phlare.fullname" . }}-minio:9000"
+        endpoint: "{{ include "pyroscope.fullname" . }}-minio:9000"
         bucket_name: {{(index .Values.minio.buckets 0).name | quote }}
         access_key_id: {{ .Values.minio.rootUser | quote }}
         secret_access_key: {{ .Values.minio.rootPassword | quote }}
@@ -720,10 +720,10 @@ minio:
   # https://docs.min.io/docs/minio-erasure-code-quickstart-guide
   # Since we only have 1 replica, that means 2 drives must be used.
   drivesPerNode: 2
-  rootUser: grafana-phlare
+  rootUser: grafana-pyroscope
   rootPassword: supersecret
   buckets:
-    - name: grafana-phlare-data
+    - name: grafana-pyroscope-data
       policy: none
       purge: false
   persistence:

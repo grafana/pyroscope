@@ -2,9 +2,9 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: {{ .Release.Namespace }}-{{ include "phlare.fullname" . }}
+  name: {{ .Release.Namespace }}-{{ include "pyroscope.fullname" . }}
   labels:
-    {{- include "phlare.labels" . | nindent 4 }}
+    {{- include "pyroscope.labels" . | nindent 4 }}
 rules:
 - apiGroups:
   - ""
