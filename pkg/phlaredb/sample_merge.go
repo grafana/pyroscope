@@ -14,27 +14,27 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
 
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
-	m := make(schemav1.SampleMap)
-	if err := mergeByStacktraces(ctx, b.profiles.file, rows, m); err != nil {
+	r := symdb.NewResolver(ctx, b.symbols)
+	if err := mergeByStacktraces(ctx, b.profiles.file, rows, r); err != nil {
 		return nil, err
 	}
-	return b.symbols.ResolveTree(ctx, m)
+	return r.Tree()
 }
 
 func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
-	m := make(schemav1.SampleMap)
-	if err := mergeByStacktraces(ctx, b.profiles.file, rows, m); err != nil {
+	r := symdb.NewResolver(ctx, b.symbols)
+	if err := mergeByStacktraces(ctx, b.profiles.file, rows, r); err != nil {
 		return nil, err
 	}
-	return b.symbols.ResolveProfile(ctx, m)
+	return r.Profile()
 }
 
 func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
@@ -57,7 +57,7 @@ type Source interface {
 	RowGroups() []parquet.RowGroup
 }
 
-func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], m schemav1.SampleMap) error {
+func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeByStacktraces")
 	defer sp.Finish()
 	// clone the rows to be able to iterate over them twice
@@ -70,15 +70,14 @@ func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Ite
 		repeatedColumnIter(ctx, profileSource, "Samples.list.element.Value", multiRows[1]),
 	)
 	defer it.Close()
-
 	for it.Next() {
 		values := it.At().Values
-		p := m.Partition(it.At().Row.StacktracePartition())
+		p := r.Partition(it.At().Row.StacktracePartition())
 		for i := 0; i < len(values[0]); i++ {
 			p[uint32(values[0][i].Int64())] += values[1][i].Int64()
 		}
 	}
-	return nil
+	return it.Err()
 }
 
 type seriesByLabels map[string]*typesv1.Series

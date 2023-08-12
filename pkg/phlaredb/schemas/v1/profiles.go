@@ -255,6 +255,20 @@ func NewSamples(size int) Samples {
 	}
 }
 
+func NewSamplesFromMap(m map[uint32]int64) Samples {
+	s := Samples{
+		StacktraceIDs: make([]uint32, len(m)),
+		Values:        make([]uint64, len(m)),
+	}
+	var i int
+	for k, v := range m {
+		s.StacktraceIDs[i] = k
+		s.Values[i] = uint64(v)
+		i++
+	}
+	return s
+}
+
 // Compact zero samples and optionally duplicates.
 func (s Samples) Compact(dedupe bool) Samples {
 	if len(s.StacktraceIDs) == 0 {

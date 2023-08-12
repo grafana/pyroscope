@@ -6,14 +6,12 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/google/pprof/profile"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/iter"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	parquetobj "github.com/grafana/pyroscope/pkg/objstore/parquet"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
@@ -25,7 +23,7 @@ import (
 // TODO(kolesnikovae) Decouple from phlaredb and refactor to symdb/compat.
 
 type symbolsResolver interface {
-	symdb.SymbolsResolver
+	symdb.SymbolsReader
 	io.Closer
 }
 
@@ -59,16 +57,8 @@ func (r *symbolsResolverV1) Close() error {
 		Err()
 }
 
-func (r *symbolsResolverV1) ResolveTree(ctx context.Context, m schemav1.SampleMap) (*phlaremodel.Tree, error) {
-	return symdb.ResolveTree(ctx, m, 1, r.withResolver)
-}
-
-func (r *symbolsResolverV1) ResolveProfile(ctx context.Context, m schemav1.SampleMap) (*profile.Profile, error) {
-	return symdb.ResolveProfile(ctx, m, 1, r.withResolver)
-}
-
-func (r *symbolsResolverV1) withResolver(_ context.Context, _ uint64, fn func(*symdb.Resolver) error) error {
-	return fn(&symdb.Resolver{
+func (r *symbolsResolverV1) Symbols(_ context.Context, _ uint64, fn func(*symdb.Symbols) error) error {
+	return fn(&symdb.Symbols{
 		Stacktraces: stacktraceResolverV1{r: r},
 		Locations:   r.locations.cache,
 		Mappings:    r.mappings.cache,
@@ -124,21 +114,13 @@ func (r *symbolsResolverV2) Close() error {
 		Err()
 }
 
-func (r *symbolsResolverV2) ResolveTree(ctx context.Context, m schemav1.SampleMap) (*phlaremodel.Tree, error) {
-	return symdb.ResolveTree(ctx, m, 1, r.withResolver)
-}
-
-func (r *symbolsResolverV2) ResolveProfile(ctx context.Context, m schemav1.SampleMap) (*profile.Profile, error) {
-	return symdb.ResolveProfile(ctx, m, 1, r.withResolver)
-}
-
-func (r *symbolsResolverV2) withResolver(ctx context.Context, p uint64, fn func(*symdb.Resolver) error) error {
+func (r *symbolsResolverV2) Symbols(ctx context.Context, p uint64, fn func(*symdb.Symbols) error) error {
 	sr, err := r.symbols.SymbolsReader(ctx, p)
 	if err != nil {
 		return err
 	}
 	defer sr.Release()
-	return fn(&symdb.Resolver{
+	return fn(&symdb.Symbols{
 		Stacktraces: sr,
 		Locations:   r.locations.cache,
 		Mappings:    r.mappings.cache,

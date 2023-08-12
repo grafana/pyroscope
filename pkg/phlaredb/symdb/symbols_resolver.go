@@ -2,7 +2,7 @@ package symdb
 
 import (
 	"context"
-	"sort"
+	"runtime"
 	"sync"
 
 	"github.com/google/pprof/profile"
@@ -12,15 +12,19 @@ import (
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
-type SymbolsResolver interface {
-	ResolveTree(context.Context, schemav1.SampleMap) (*model.Tree, error)
-	ResolveProfile(context.Context, schemav1.SampleMap) (*profile.Profile, error)
+// SymbolsReader provides access to a partition of symbols database.
+// Symbols must not be used outside the call back function.
+type SymbolsReader interface {
+	Symbols(ctx context.Context, partition uint64, fn func(*Symbols) error) error
 }
 
-var (
-	_ SymbolsResolver = (*Reader)(nil)
-	_ SymbolsResolver = (*SymDB)(nil)
-)
+type Symbols struct {
+	Stacktraces StacktraceResolver
+	Locations   []*schemav1.InMemoryLocation
+	Mappings    []*schemav1.InMemoryMapping
+	Functions   []*schemav1.InMemoryFunction
+	Strings     []string
+}
 
 type StacktraceResolver interface {
 	// ResolveStacktraceLocations resolves locations for each stack
@@ -44,16 +48,158 @@ type StacktraceInserter interface {
 	InsertStacktrace(stacktraceID uint32, locations []int32)
 }
 
+// Resolver converts stack trace samples to one of the profile
+// formats, such as tree or pprof.
+//
+// Resolver asynchronously loads symbols for each partition as
+// they are added with AddSamples or Partition calls.
+//
+// A new Resolver must be created for each profile.
 type Resolver struct {
-	Stacktraces StacktraceResolver
-	Locations   []*schemav1.InMemoryLocation
-	Mappings    []*schemav1.InMemoryMapping
-	Functions   []*schemav1.InMemoryFunction
-	Strings     []string
+	ctx context.Context
+	s   SymbolsReader
+	g   *errgroup.Group
+	c   int
+	m   sync.Mutex
+	p   map[uint64]*lazyPartition
 }
 
-func (r *Resolver) ResolveTree(ctx context.Context, samples schemav1.Samples) (*model.Tree, error) {
-	t := locationsResolveFromPool()
+type lazyPartition struct {
+	samples map[uint32]int64
+	c       chan *Symbols
+	done    chan struct{}
+}
+
+func NewResolver(ctx context.Context, s SymbolsReader) *Resolver {
+	r := Resolver{
+		s: s,
+		c: runtime.GOMAXPROCS(-1),
+		p: make(map[uint64]*lazyPartition),
+	}
+	r.g, r.ctx = errgroup.WithContext(ctx)
+	return &r
+}
+
+type ResolverOption func(*Resolver)
+
+// WithMaxConcurrent specifies how many partitions
+// can be resolved concurrently.
+func WithMaxConcurrent(n int) ResolverOption {
+	return func(r *Resolver) {
+		r.c = n
+	}
+}
+
+// AddSamples adds a collection of stack trace samples to the resolver.
+// Samples can be added to different partitions concurrently, but modification
+// of the same partition is not thread-safe.
+func (r *Resolver) AddSamples(partition uint64, s schemav1.Samples) {
+	p := r.Partition(partition)
+	for i, sid := range s.StacktraceIDs {
+		p[sid] += int64(s.Values[i])
+	}
+}
+
+// Partition returns map of samples corresponding to the partition.
+// The function initializes symbols of the partition on the first occurrence.
+// The call is thread-safe, but access to the returned map is not.
+func (r *Resolver) Partition(partition uint64) map[uint32]int64 {
+	r.m.Lock()
+	p, ok := r.p[partition]
+	if ok {
+		r.m.Unlock()
+		return p.samples
+	}
+	p = &lazyPartition{
+		samples: make(map[uint32]int64),
+		done:    make(chan struct{}),
+		c:       make(chan *Symbols, 1),
+	}
+	r.p[partition] = p
+	r.m.Unlock()
+	r.g.Go(func() error {
+		return r.s.Symbols(r.ctx, partition, func(symbols *Symbols) error {
+			select {
+			case <-r.ctx.Done():
+				return r.ctx.Err()
+			case p.c <- symbols:
+				<-p.done
+			}
+			return nil
+		})
+	})
+	return p.samples
+}
+
+func (r *Resolver) Tree() (*model.Tree, error) {
+	g, ctx := errgroup.WithContext(r.ctx)
+	g.SetLimit(r.c)
+
+	var tm sync.Mutex
+	tree := new(model.Tree)
+
+	for _, p := range r.p {
+		p := p
+		g.Go(func() error {
+			defer close(p.done)
+			select {
+			case <-r.ctx.Done():
+			case symbols := <-p.c:
+				samples := schemav1.NewSamplesFromMap(p.samples)
+				rt, err := symbols.Tree(ctx, samples)
+				if err != nil {
+					return err
+				}
+				tm.Lock()
+				tree.Merge(rt)
+				tm.Unlock()
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return tree, nil
+}
+
+func (r *Resolver) Profile() (*profile.Profile, error) {
+	g, ctx := errgroup.WithContext(r.ctx)
+	g.SetLimit(r.c)
+
+	var rm sync.Mutex
+	profiles := make([]*profile.Profile, 0, len(r.p))
+
+	for _, p := range r.p {
+		p := p
+		g.Go(func() error {
+			defer close(p.done)
+			select {
+			case <-r.ctx.Done():
+				return ctx.Err()
+			case symbols := <-p.c:
+				samples := schemav1.NewSamplesFromMap(p.samples)
+				rp, err := symbols.Profile(ctx, samples)
+				if err != nil {
+					return err
+				}
+				rm.Lock()
+				profiles = append(profiles, rp)
+				rm.Unlock()
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return profile.Merge(profiles)
+}
+
+func (r *Symbols) Tree(ctx context.Context, samples schemav1.Samples) (*model.Tree, error) {
+	t := treeSymbolsFromPool()
 	defer t.reset()
 	t.init(r, samples)
 	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
@@ -62,51 +208,51 @@ func (r *Resolver) ResolveTree(ctx context.Context, samples schemav1.Samples) (*
 	return t.tree, nil
 }
 
-type locationsResolve struct {
-	resolver *Resolver
-	samples  *schemav1.Samples
-	tree     *model.Tree
-	lines    []string
-	cur      int
+type treeSymbols struct {
+	symbols *Symbols
+	samples *schemav1.Samples
+	tree    *model.Tree
+	lines   []string
+	cur     int
 }
 
-var locationsResolvePool = sync.Pool{
-	New: func() any { return new(locationsResolve) },
+var treeSymbolsPool = sync.Pool{
+	New: func() any { return new(treeSymbols) },
 }
 
-func locationsResolveFromPool() *locationsResolve {
-	return locationsResolvePool.Get().(*locationsResolve)
+func treeSymbolsFromPool() *treeSymbols {
+	return treeSymbolsPool.Get().(*treeSymbols)
 }
 
-func (r *locationsResolve) reset() {
-	r.resolver = nil
+func (r *treeSymbols) reset() {
+	r.symbols = nil
 	r.samples = nil
 	r.tree = nil
 	r.lines = r.lines[:0]
 	r.cur = 0
-	locationsResolvePool.Put(r)
+	treeSymbolsPool.Put(r)
 }
 
-func (r *locationsResolve) init(resolver *Resolver, samples schemav1.Samples) {
-	r.resolver = resolver
+func (r *treeSymbols) init(symbols *Symbols, samples schemav1.Samples) {
+	r.symbols = symbols
 	r.samples = &samples
 	r.tree = new(model.Tree)
 }
 
-func (r *locationsResolve) InsertStacktrace(_ uint32, locations []int32) {
+func (r *treeSymbols) InsertStacktrace(_ uint32, locations []int32) {
 	r.lines = r.lines[:0]
 	for i := len(locations) - 1; i >= 0; i-- {
-		lines := r.resolver.Locations[locations[i]].Line
+		lines := r.symbols.Locations[locations[i]].Line
 		for j := len(lines) - 1; j >= 0; j-- {
-			f := r.resolver.Functions[lines[j].FunctionId]
-			r.lines = append(r.lines, r.resolver.Strings[f.Name])
+			f := r.symbols.Functions[lines[j].FunctionId]
+			r.lines = append(r.lines, r.symbols.Strings[f.Name])
 		}
 	}
 	r.tree.InsertStack(int64(r.samples.Values[r.cur]), r.lines...)
 	r.cur++
 }
 
-func (r *Resolver) ResolveProfile(ctx context.Context, samples schemav1.Samples) (*profile.Profile, error) {
+func (r *Symbols) Profile(ctx context.Context, samples schemav1.Samples) (*profile.Profile, error) {
 	t := pprofResolveFromPool()
 	defer t.reset()
 	t.init(r, samples)
@@ -117,45 +263,45 @@ func (r *Resolver) ResolveProfile(ctx context.Context, samples schemav1.Samples)
 	return t.profile, nil
 }
 
-type pprofResolve struct {
-	profile  *profile.Profile
-	resolver *Resolver
-	samples  *schemav1.Samples
-	cur      int
+type pprofSymbols struct {
+	profile *profile.Profile
+	symbols *Symbols
+	samples *schemav1.Samples
+	cur     int
 
 	locations []*profile.Location
 	mappings  []*profile.Mapping
 	functions []*profile.Function
 }
 
-var pprofResolvePool = sync.Pool{
-	New: func() any { return new(pprofResolve) },
+var pprofSymbolsPool = sync.Pool{
+	New: func() any { return new(pprofSymbols) },
 }
 
-func pprofResolveFromPool() *pprofResolve {
-	return pprofResolvePool.Get().(*pprofResolve)
+func pprofResolveFromPool() *pprofSymbols {
+	return pprofSymbolsPool.Get().(*pprofSymbols)
 }
 
-func (r *pprofResolve) reset() {
+func (r *pprofSymbols) reset() {
 	r.profile = nil
-	r.resolver = nil
+	r.symbols = nil
 	r.samples = nil
 	r.cur = 0
 	clear(r.locations)
 	clear(r.mappings)
 	clear(r.functions)
-	pprofResolvePool.Put(r)
+	pprofSymbolsPool.Put(r)
 }
 
-func (r *pprofResolve) init(resolver *Resolver, samples schemav1.Samples) {
-	r.resolver = resolver
+func (r *pprofSymbols) init(symbols *Symbols, samples schemav1.Samples) {
+	r.symbols = symbols
 	r.samples = &samples
 	r.profile = &profile.Profile{
 		Sample: make([]*profile.Sample, len(samples.StacktraceIDs)),
 	}
-	r.locations = grow(r.locations, len(r.resolver.Locations))
-	r.mappings = grow(r.mappings, len(r.resolver.Mappings))
-	r.functions = grow(r.functions, len(r.resolver.Functions))
+	r.locations = grow(r.locations, len(r.symbols.Locations))
+	r.mappings = grow(r.mappings, len(r.symbols.Mappings))
+	r.functions = grow(r.functions, len(r.symbols.Functions))
 }
 
 func grow[T any](s []T, n int) []T {
@@ -173,7 +319,7 @@ func clear[T any](s []T) {
 	}
 }
 
-func (r *pprofResolve) InsertStacktrace(_ uint32, locations []int32) {
+func (r *pprofSymbols) InsertStacktrace(_ uint32, locations []int32) {
 	sample := &profile.Sample{
 		Location: make([]*profile.Location, len(locations)),
 		Value:    []int64{int64(r.samples.Values[r.cur])},
@@ -185,37 +331,37 @@ func (r *pprofResolve) InsertStacktrace(_ uint32, locations []int32) {
 	r.cur++
 }
 
-func (r *pprofResolve) location(i int32) *profile.Location {
+func (r *pprofSymbols) location(i int32) *profile.Location {
 	if x := r.locations[i]; x != nil {
 		return x
 	}
-	loc := r.inMemoryLocationToPprof(r.resolver.Locations[i])
+	loc := r.inMemoryLocationToPprof(r.symbols.Locations[i])
 	r.profile.Location = append(r.profile.Location, loc)
 	r.locations[i] = loc
 	return loc
 }
 
-func (r *pprofResolve) mapping(i uint32) *profile.Mapping {
+func (r *pprofSymbols) mapping(i uint32) *profile.Mapping {
 	if x := r.mappings[i]; x != nil {
 		return x
 	}
-	m := r.inMemoryMappingToPprof(r.resolver.Mappings[i])
+	m := r.inMemoryMappingToPprof(r.symbols.Mappings[i])
 	r.profile.Mapping = append(r.profile.Mapping, m)
 	r.mappings[i] = m
 	return m
 }
 
-func (r *pprofResolve) function(i uint32) *profile.Function {
+func (r *pprofSymbols) function(i uint32) *profile.Function {
 	if x := r.functions[i]; x != nil {
 		return x
 	}
-	f := r.inMemoryFunctionToPprof(r.resolver.Functions[i])
+	f := r.inMemoryFunctionToPprof(r.symbols.Functions[i])
 	r.profile.Function = append(r.profile.Function, f)
 	r.functions[i] = f
 	return f
 }
 
-func (r *pprofResolve) inMemoryLocationToPprof(m *schemav1.InMemoryLocation) *profile.Location {
+func (r *pprofSymbols) inMemoryLocationToPprof(m *schemav1.InMemoryLocation) *profile.Location {
 	x := &profile.Location{
 		ID:       m.Id,
 		Mapping:  r.mapping(m.MappingId),
@@ -232,14 +378,14 @@ func (r *pprofResolve) inMemoryLocationToPprof(m *schemav1.InMemoryLocation) *pr
 	return x
 }
 
-func (r *pprofResolve) inMemoryMappingToPprof(m *schemav1.InMemoryMapping) *profile.Mapping {
+func (r *pprofSymbols) inMemoryMappingToPprof(m *schemav1.InMemoryMapping) *profile.Mapping {
 	return &profile.Mapping{
 		ID:              m.Id,
 		Start:           m.MemoryStart,
 		Limit:           m.MemoryLimit,
 		Offset:          m.FileOffset,
-		File:            r.resolver.Strings[m.Filename],
-		BuildID:         r.resolver.Strings[m.BuildId],
+		File:            r.symbols.Strings[m.Filename],
+		BuildID:         r.symbols.Strings[m.BuildId],
 		HasFunctions:    m.HasFunctions,
 		HasFilenames:    m.HasFilenames,
 		HasLineNumbers:  m.HasLineNumbers,
@@ -247,17 +393,17 @@ func (r *pprofResolve) inMemoryMappingToPprof(m *schemav1.InMemoryMapping) *prof
 	}
 }
 
-func (r *pprofResolve) inMemoryFunctionToPprof(m *schemav1.InMemoryFunction) *profile.Function {
+func (r *pprofSymbols) inMemoryFunctionToPprof(m *schemav1.InMemoryFunction) *profile.Function {
 	return &profile.Function{
 		ID:         m.Id,
-		Name:       r.resolver.Strings[m.Name],
-		SystemName: r.resolver.Strings[m.SystemName],
-		Filename:   r.resolver.Strings[m.Filename],
+		Name:       r.symbols.Strings[m.Name],
+		SystemName: r.symbols.Strings[m.SystemName],
+		Filename:   r.symbols.Strings[m.Filename],
 		StartLine:  int64(m.StartLine),
 	}
 }
 
-func (r *pprofResolve) incrementIDs() {
+func (r *pprofSymbols) incrementIDs() {
 	for i, l := range r.profile.Location {
 		l.ID = uint64(i) + 1
 	}
@@ -267,66 +413,4 @@ func (r *pprofResolve) incrementIDs() {
 	for i, m := range r.profile.Mapping {
 		m.ID = uint64(i) + 1
 	}
-}
-
-type ResolverFn = func(ctx context.Context, partition uint64, fn func(resolver *Resolver) error) error
-
-const defaultResolveConcurrency = 8
-
-func ResolveTree(ctx context.Context, m schemav1.SampleMap, concurrency int, fn ResolverFn) (*model.Tree, error) {
-	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(concurrency)
-	var tm sync.Mutex
-	tree := new(model.Tree)
-	for p, v := range m {
-		p, v := p, v
-		g.Go(func() error {
-			samples := schemav1.NewSamples(len(v))
-			m.WriteSamples(p, &samples)
-			sort.Sort(samples)
-			return fn(ctx, p, func(resolver *Resolver) error {
-				r, err := resolver.ResolveTree(ctx, samples)
-				if err != nil {
-					return err
-				}
-				tm.Lock()
-				tree.Merge(r)
-				tm.Unlock()
-				return nil
-			})
-		})
-	}
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-	return tree, nil
-}
-
-func ResolveProfile(ctx context.Context, m schemav1.SampleMap, concurrency int, fn ResolverFn) (*profile.Profile, error) {
-	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(concurrency)
-	var tm sync.Mutex
-	profiles := make([]*profile.Profile, 0, len(m))
-	for p, v := range m {
-		p, v := p, v
-		g.Go(func() error {
-			samples := schemav1.NewSamples(len(v))
-			m.WriteSamples(p, &samples)
-			sort.Sort(samples)
-			return fn(ctx, p, func(resolver *Resolver) error {
-				r, err := resolver.ResolveProfile(ctx, samples)
-				if err != nil {
-					return err
-				}
-				tm.Lock()
-				profiles = append(profiles, r)
-				tm.Unlock()
-				return nil
-			})
-		})
-	}
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-	return profile.Merge(profiles)
 }

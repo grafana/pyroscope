@@ -12,12 +12,12 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/google/pprof/profile"
 	"github.com/grafana/dskit/multierror"
+	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
@@ -205,21 +205,13 @@ func (r *Reader) Load(ctx context.Context) error {
 	return nil
 }
 
-func (r *Reader) ResolveTree(ctx context.Context, m schemav1.SampleMap) (*phlaremodel.Tree, error) {
-	return ResolveTree(ctx, m, defaultResolveConcurrency, r.withResolver)
-}
-
-func (r *Reader) ResolveProfile(ctx context.Context, m schemav1.SampleMap) (*profile.Profile, error) {
-	return ResolveProfile(ctx, m, defaultResolveConcurrency, r.withResolver)
-}
-
-func (r *Reader) withResolver(ctx context.Context, partition uint64, fn func(*Resolver) error) error {
+func (r *Reader) Symbols(ctx context.Context, partition uint64, fn func(*Symbols) error) error {
 	pr, err := r.SymbolsReader(ctx, partition)
 	if err != nil {
 		return err
 	}
 	defer pr.Release()
-	return fn(pr.Resolver())
+	return fn(pr.Symbols())
 }
 
 var ErrPartitionNotFound = fmt.Errorf("partition not found")
@@ -261,8 +253,8 @@ func (p *PartitionReader) init(ctx context.Context) error {
 	return err
 }
 
-func (p *PartitionReader) Resolver() *Resolver {
-	return &Resolver{
+func (p *PartitionReader) Symbols() *Symbols {
+	return &Symbols{
 		Stacktraces: p,
 		Locations:   p.locations.s,
 		Mappings:    p.mappings.s,
@@ -384,6 +376,13 @@ type stacktraceChunkReader struct {
 }
 
 func (c *stacktraceChunkReader) fetch(ctx context.Context) (err error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "stacktraceChunkReader.fetch")
+	span.LogFields(
+		otlog.Int64("size", c.header.Size),
+		otlog.Uint32("nodes", c.header.StacktraceNodes),
+		otlog.Uint32("stacks", c.header.Stacktraces),
+	)
+	defer span.Finish()
 	// Mutex is acquired to serialize access to the tree,
 	// so that the consequent callers only have access to
 	// it after it is fully loaded. Use of atomics here
@@ -462,7 +461,8 @@ func (f *parquetFile) open(ctx context.Context, b objstore.BucketReader, meta bl
 		f.size = attrs.Size
 	}
 	var err error
-	if f.reader, err = b.ReaderAt(ctx, f.path); err != nil {
+	// the same reader is used to serve all requests, so we pass context.Background() here
+	if f.reader, err = b.ReaderAt(context.Background(), f.path); err != nil {
 		return fmt.Errorf("creating reader: %w", err)
 	}
 
@@ -501,7 +501,12 @@ type parquetTableRange[M schemav1.Models, P schemav1.Persister[M]] struct {
 	s []M
 }
 
-func (t *parquetTableRange[M, P]) fetch(_ context.Context) error {
+func (t *parquetTableRange[M, P]) fetch(ctx context.Context) error {
+	span, _ := opentracing.StartSpanFromContext(ctx, "parquetTableRange.fetch", opentracing.Tags{
+		"table_name": t.persister.Name(),
+		"row_groups": len(t.headers),
+	})
+	defer span.Finish()
 	t.m.Lock()
 	defer t.m.Unlock()
 	if t.r++; t.r > 1 {
@@ -517,8 +522,14 @@ func (t *parquetTableRange[M, P]) fetch(_ context.Context) error {
 	buf := make([]parquet.Row, inMemoryReaderRowsBufSize)
 	t.s = make([]M, s)
 	var offset int
+	// TODO(kolesnikovae): Row groups could be fetched in parallel.
 	rgs := t.file.RowGroups()
 	for _, h := range t.headers {
+		span.LogFields(
+			otlog.Uint32("row_group", h.RowGroup),
+			otlog.Uint32("index_row", h.Index),
+			otlog.Uint32("rows", h.Rows),
+		)
 		rg := rgs[h.RowGroup]
 		rows := rg.Rows()
 		if err := rows.SeekToRow(int64(h.Index)); err != nil {

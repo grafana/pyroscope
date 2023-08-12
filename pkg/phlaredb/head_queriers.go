@@ -17,6 +17,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
 
 type headOnDiskQuerier struct {
@@ -109,21 +110,21 @@ func (q *headOnDiskQuerier) Bounds() (model.Time, model.Time) {
 func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces")
 	defer sp.Finish()
-	m := make(schemav1.SampleMap)
-	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, m); err != nil {
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, r); err != nil {
 		return nil, err
 	}
-	return q.head.symdb.ResolveTree(ctx, m)
+	return r.Tree()
 }
 
 func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergePprof")
 	defer sp.Finish()
-	m := make(schemav1.SampleMap)
-	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, m); err != nil {
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, r); err != nil {
 		return nil, err
 	}
-	return q.head.symdb.ResolveProfile(ctx, m)
+	return r.Profile()
 }
 
 func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
@@ -211,39 +212,35 @@ func (q *headInMemoryQuerier) Bounds() (model.Time, model.Time) {
 func (q *headInMemoryQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - HeadInMemory")
 	defer sp.Finish()
-
-	m := make(schemav1.SampleMap)
+	r := symdb.NewResolver(ctx, q.head.symdb)
 	for rows.Next() {
 		p, ok := rows.At().(ProfileWithLabels)
 		if !ok {
 			return nil, errors.New("expected ProfileWithLabels")
 		}
-		m.AddSamples(p.StacktracePartition(), p.Samples())
+		r.AddSamples(p.StacktracePartition(), p.Samples())
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-
-	return q.head.symdb.ResolveTree(ctx, m)
+	return r.Tree()
 }
 
 func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergePprof - HeadInMemory")
 	defer sp.Finish()
-
-	m := make(schemav1.SampleMap)
+	r := symdb.NewResolver(ctx, q.head.symdb)
 	for rows.Next() {
 		p, ok := rows.At().(ProfileWithLabels)
 		if !ok {
 			return nil, errors.New("expected ProfileWithLabels")
 		}
-		m.AddSamples(p.StacktracePartition(), p.Samples())
+		r.AddSamples(p.StacktracePartition(), p.Samples())
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-
-	return q.head.symdb.ResolveProfile(ctx, m)
+	return r.Profile()
 }
 
 func (q *headInMemoryQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {

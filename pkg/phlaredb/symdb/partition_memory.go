@@ -328,8 +328,8 @@ func (p *Partition) AppendStrings(dst []uint32, strings []string) {
 	p.strings.append(dst, strings)
 }
 
-func (p *Partition) Resolver() *Resolver {
-	return &Resolver{
+func (p *Partition) Symbols() *Symbols {
+	return &Symbols{
 		Stacktraces: p,
 		Locations:   p.locations.sliceHeaderCopy(),
 		Mappings:    p.mappings.sliceHeaderCopy(),

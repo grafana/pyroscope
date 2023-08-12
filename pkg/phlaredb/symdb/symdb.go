@@ -7,10 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/pprof/profile"
-
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
@@ -140,20 +137,12 @@ func (s *SymDB) WriteProfileSymbols(partition uint64, profile *profilev1.Profile
 	return s.SymbolsWriter(partition).WriteProfileSymbols(profile)
 }
 
-func (s *SymDB) ResolveTree(ctx context.Context, m schemav1.SampleMap) (*phlaremodel.Tree, error) {
-	return ResolveTree(ctx, m, defaultResolveConcurrency, s.withResolver)
-}
-
-func (s *SymDB) ResolveProfile(ctx context.Context, m schemav1.SampleMap) (*profile.Profile, error) {
-	return ResolveProfile(ctx, m, defaultResolveConcurrency, s.withResolver)
-}
-
-func (s *SymDB) withResolver(_ context.Context, partition uint64, fn func(*Resolver) error) error {
+func (s *SymDB) Symbols(_ context.Context, partition uint64, fn func(*Symbols) error) error {
 	pr, err := s.SymbolsReader(partition)
 	if err != nil {
 		return err
 	}
-	return fn(pr.Resolver())
+	return fn(pr.Symbols())
 }
 
 func (s *SymDB) SymbolsReader(partition uint64) (*Partition, error) {
