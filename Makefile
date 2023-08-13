@@ -203,14 +203,14 @@ define UPDATER_CONFIG_JSON
   "destination_branch": "master",
   "update_jsonnet_attribute_configs": [
     {
-      "file_path": "ksonnet/lib/phlare/releases/dev/images.libsonnet",
-      "jsonnet_key": "phlare",
+      "file_path": "ksonnet/lib/pyroscope/releases/dev/images.libsonnet",
+      "jsonnet_key": "pyroscope",
       "jsonnet_value": "$(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)"
     }
   ],
   "update_jsonnet_lib_configs": [
     {
-      "jsonnet_dir": "ksonnet/lib/phlare/releases/dev",
+      "jsonnet_dir": "ksonnet/lib/pyroscope/releases/dev",
       "dependencies": [
         {
           "owner": "grafana",
