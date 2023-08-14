@@ -329,21 +329,15 @@ func (f *Phlare) initRing() (_ services.Service, err error) {
 
 func (f *Phlare) initStorage() (_ services.Service, err error) {
 	objectStoreTypeStats.Set(f.Cfg.Storage.Bucket.Backend)
-	if cfg := f.Cfg.Storage.Bucket; cfg.Backend != "filesystem" {
-		b, err := objstoreclient.NewBucket(
-			f.context(),
-			cfg,
-			"storage",
-		)
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to initialise bucket")
-		}
-		f.storageBucket = b
+	b, err := objstoreclient.NewBucket(
+		f.context(),
+		f.Cfg.Storage.Bucket,
+		"storage",
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to initialise bucket")
 	}
-
-	if f.Cfg.Target.String() != All && f.storageBucket == nil {
-		return nil, errors.New("storage bucket configuration is required when running in microservices mode")
-	}
+	f.storageBucket = b
 
 	return nil, nil
 }
