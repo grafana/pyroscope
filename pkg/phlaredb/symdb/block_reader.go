@@ -268,10 +268,12 @@ func (p *partition) Release() {
 			wg.Done()
 		}()
 	}
-	go func() { p.locations.release(); wg.Done() }()
-	go func() { p.mappings.release(); wg.Done() }()
-	go func() { p.functions.release(); wg.Done() }()
-	go func() { p.strings.release(); wg.Done() }()
+	if p.reader.index.Header.Version == FormatV2 {
+		go func() { p.locations.release(); wg.Done() }()
+		go func() { p.mappings.release(); wg.Done() }()
+		go func() { p.functions.release(); wg.Done() }()
+		go func() { p.strings.release(); wg.Done() }()
+	}
 	wg.Wait()
 }
 

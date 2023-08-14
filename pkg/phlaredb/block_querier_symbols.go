@@ -150,9 +150,7 @@ func (r *symbolsResolverV2) Partition(ctx context.Context, partition uint64) (sy
 			Functions:   r.functions.cache,
 			Strings:     r.strings.cache,
 		},
-		release: func() {
-			sr.Release()
-		},
+		release: sr.Release,
 	}
 	return &p, nil
 }
