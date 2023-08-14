@@ -376,11 +376,11 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 	$(call deploy,pyroscope-dev,)
 	# Create a service to provide the same endpoint as micro-services
-	echo '{"kind":"Service","apiVersion":"v1","metadata":{"name":"phlare-micro-services-query-frontend"},"spec":{"ports":[{"name":"phlare","port":4100,"targetPort":4100}],"selector":{"app.kubernetes.io/component":"all","app.kubernetes.io/instance":"pyroscope-dev"},"type":"ClusterIP"}}' | kubectl apply -f -
+	echo '{"kind":"Service","apiVersion":"v1","metadata":{"name":"pyroscope-micro-services-query-frontend"},"spec":{"ports":[{"name":"pyroscope","port":4100,"targetPort":4100}],"selector":{"app.kubernetes.io/component":"all","app.kubernetes.io/instance":"pyroscope-dev"},"type":"ClusterIP"}}' | kubectl apply -f -
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,phlare-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set phlare.components.querier.resources=null --set phlare.components.distributor.resources=null --set phlare.components.ingester.resources=null --set phlare.components.store-gateway.resources=null)
+	$(call deploy,pyroscope-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set pyroscope.components.querier.resources=null --set pyroscope.components.distributor.resources=null --set pyroscope.components.ingester.resources=null --set pyroscope.components.store-gateway.resources=null)
 
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json
@@ -405,5 +405,5 @@ docs/%:
 	$(MAKE) -C docs $*
 
 .PHONY: run
-run: ## Run the phlare binary (pass parameters with 'make run PARAMS=-myparam')
+run: ## Run the pyroscope binary (pass parameters with 'make run PARAMS=-myparam')
 	./pyroscope $(PARAMS)
