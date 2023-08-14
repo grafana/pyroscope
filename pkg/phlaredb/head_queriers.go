@@ -111,6 +111,7 @@ func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.It
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
 	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, r); err != nil {
 		return nil, err
 	}
@@ -121,6 +122,7 @@ func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[P
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergePprof")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
 	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, r); err != nil {
 		return nil, err
 	}
@@ -213,6 +215,7 @@ func (q *headInMemoryQuerier) MergeByStacktraces(ctx context.Context, rows iter.
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - HeadInMemory")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
 	for rows.Next() {
 		p, ok := rows.At().(ProfileWithLabels)
 		if !ok {
@@ -230,6 +233,7 @@ func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergePprof - HeadInMemory")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
 	for rows.Next() {
 		p, ok := rows.At().(ProfileWithLabels)
 		if !ok {

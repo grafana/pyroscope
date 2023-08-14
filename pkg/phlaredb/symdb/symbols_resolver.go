@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/google/pprof/profile"
+	"github.com/opentracing/opentracing-go"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/model"
@@ -13,7 +14,7 @@ import (
 )
 
 // SymbolsReader provides access to a partition of symbols database.
-// Symbols must not be used outside the call back function.
+// Symbols must not be used outside the callback function.
 type SymbolsReader interface {
 	Symbols(ctx context.Context, partition uint64, fn func(*Symbols) error) error
 }
@@ -56,12 +57,24 @@ type StacktraceInserter interface {
 //
 // A new Resolver must be created for each profile.
 type Resolver struct {
-	ctx context.Context
-	s   SymbolsReader
-	g   *errgroup.Group
-	c   int
-	m   sync.Mutex
-	p   map[uint64]*lazyPartition
+	ctx  context.Context
+	span opentracing.Span
+
+	s SymbolsReader
+	g *errgroup.Group
+	c int
+	m sync.Mutex
+	p map[uint64]*lazyPartition
+}
+
+type ResolverOption func(*Resolver)
+
+// WithMaxConcurrent specifies how many partitions
+// can be resolved concurrently.
+func WithMaxConcurrent(n int) ResolverOption {
+	return func(r *Resolver) {
+		r.c = n
+	}
 }
 
 type lazyPartition struct {
@@ -76,18 +89,13 @@ func NewResolver(ctx context.Context, s SymbolsReader) *Resolver {
 		c: runtime.GOMAXPROCS(-1),
 		p: make(map[uint64]*lazyPartition),
 	}
+	r.span, r.ctx = opentracing.StartSpanFromContext(ctx, "NewResolver")
 	r.g, r.ctx = errgroup.WithContext(ctx)
 	return &r
 }
 
-type ResolverOption func(*Resolver)
-
-// WithMaxConcurrent specifies how many partitions
-// can be resolved concurrently.
-func WithMaxConcurrent(n int) ResolverOption {
-	return func(r *Resolver) {
-		r.c = n
-	}
+func (r *Resolver) Release() {
+	r.span.Finish()
 }
 
 // AddSamples adds a collection of stack trace samples to the resolver.
@@ -132,7 +140,10 @@ func (r *Resolver) Partition(partition uint64) map[uint32]int64 {
 }
 
 func (r *Resolver) Tree() (*model.Tree, error) {
-	g, ctx := errgroup.WithContext(r.ctx)
+	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Tree")
+	defer span.Finish()
+
+	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(r.c)
 
 	var tm sync.Mutex
@@ -143,7 +154,7 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 		g.Go(func() error {
 			defer close(p.done)
 			select {
-			case <-r.ctx.Done():
+			case <-ctx.Done():
 			case symbols := <-p.c:
 				samples := schemav1.NewSamplesFromMap(p.samples)
 				rt, err := symbols.Tree(ctx, samples)
@@ -165,7 +176,10 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 }
 
 func (r *Resolver) Profile() (*profile.Profile, error) {
-	g, ctx := errgroup.WithContext(r.ctx)
+	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Profile")
+	defer span.Finish()
+
+	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(r.c)
 
 	var rm sync.Mutex
@@ -176,7 +190,7 @@ func (r *Resolver) Profile() (*profile.Profile, error) {
 		g.Go(func() error {
 			defer close(p.done)
 			select {
-			case <-r.ctx.Done():
+			case <-ctx.Done():
 				return ctx.Err()
 			case symbols := <-p.c:
 				samples := schemav1.NewSamplesFromMap(p.samples)

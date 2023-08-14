@@ -31,6 +31,7 @@ func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, b.symbols)
+	defer r.Release()
 	if err := mergeByStacktraces(ctx, b.profiles.file, rows, r); err != nil {
 		return nil, err
 	}
