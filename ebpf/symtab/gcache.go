@@ -2,6 +2,7 @@ package symtab
 
 import (
 	"fmt"
+
 	lru "github.com/hashicorp/golang-lru/v2"
 )
 
@@ -114,18 +115,18 @@ func (g *GCache[K, V]) LRUSize() int {
 	return g.lruCache.Len()
 }
 
-func (g *GCache[K, V]) Each(f func(k K, v V)) {
+func (g *GCache[K, V]) Each(f func(k K, v V, round int)) {
 	g.EachLRU(f)
 	g.EachRound(f)
 }
-func (g *GCache[K, V]) EachLRU(f func(k K, v V)) {
+func (g *GCache[K, V]) EachLRU(f func(k K, v V, round int)) {
 	keys := g.lruCache.Keys()
 	for _, k := range keys {
 		e, ok := g.lruCache.Peek(k)
 		if !ok || e == nil {
 			continue
 		}
-		f(k, e.v)
+		f(k, e.v, e.round)
 	}
 }
 
@@ -133,14 +134,14 @@ func (g *GCache[K, V]) RoundSize() int {
 	return len(g.roundCache)
 }
 
-func (g *GCache[K, V]) EachRound(f func(k K, v V)) {
+func (g *GCache[K, V]) EachRound(f func(k K, v V, round int)) {
 	keys := g.lruCache.Keys()
 	for _, k := range keys {
 		e, ok := g.lruCache.Peek(k)
 		if !ok || e == nil {
 			continue
 		}
-		f(k, e.v)
+		f(k, e.v, e.round)
 	}
 }
 
@@ -150,24 +151,26 @@ func (g *GCache[K, V]) Remove(k K) {
 }
 
 type GCacheDebugInfo[T any] struct {
-	LRUSize   int `river:"lru_size,attr,optional"`
-	RoundSize int `river:"round_size,attr,optional"`
-	LRU       []T `river:"lru_dump,block,optional"`
-	Round     []T `river:"round_dump,block,optional"`
+	LRUSize      int `river:"lru_size,attr,optional"`
+	RoundSize    int `river:"round_size,attr,optional"`
+	CurrentRound int `river:"current_round,attr,optional"`
+	LRUDump      []T `river:"lru_dump,block,optional"`
+	RoundDump    []T `river:"round_dump,block,optional"`
 }
 
-func DebugInfo[K comparable, V Resource, D any](g *GCache[K, V], ff func(K, V) D) GCacheDebugInfo[D] {
+func DebugInfo[K comparable, V Resource, D any](g *GCache[K, V], ff func(K, V, int) D) GCacheDebugInfo[D] {
 	res := GCacheDebugInfo[D]{
-		LRUSize:   g.LRUSize(),
-		RoundSize: g.RoundSize(),
-		LRU:       make([]D, 0, g.LRUSize()),
-		Round:     make([]D, 0, g.RoundSize()),
+		LRUSize:      g.LRUSize(),
+		RoundSize:    g.RoundSize(),
+		CurrentRound: g.round,
+		LRUDump:      make([]D, 0, g.LRUSize()),
+		RoundDump:    make([]D, 0, g.RoundSize()),
 	}
-	g.EachLRU(func(k K, v V) {
-		res.LRU = append(res.LRU, ff(k, v))
+	g.EachLRU(func(k K, v V, round int) {
+		res.LRUDump = append(res.LRUDump, ff(k, v, round))
 	})
-	g.EachRound(func(k K, v V) {
-		res.Round = append(res.Round, ff(k, v))
+	g.EachRound(func(k K, v V, round int) {
+		res.RoundDump = append(res.RoundDump, ff(k, v, round))
 	})
 	return res
 }
