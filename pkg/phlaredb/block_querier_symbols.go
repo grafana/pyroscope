@@ -57,14 +57,25 @@ func (r *symbolsResolverV1) Close() error {
 		Err()
 }
 
-func (r *symbolsResolverV1) Symbols(_ context.Context, _ uint64, fn func(*symdb.Symbols) error) error {
-	return fn(&symdb.Symbols{
-		Stacktraces: stacktraceResolverV1{r: r},
-		Locations:   r.locations.cache,
-		Mappings:    r.mappings.cache,
-		Functions:   r.functions.cache,
-		Strings:     r.strings.cache,
-	})
+func (r *symbolsResolverV1) Partition(_ context.Context, _ uint64) (symdb.PartitionReader, error) {
+	p := symbolsPartition{
+		stats: symdb.PartitionStats{
+			StacktracesTotal: int(r.stacktraces.file.NumRows()),
+			MaxStacktraceID:  int(r.stacktraces.file.NumRows()),
+			LocationsTotal:   len(r.locations.cache),
+			MappingsTotal:    len(r.mappings.cache),
+			FunctionsTotal:   len(r.functions.cache),
+			StringsTotal:     len(r.strings.cache),
+		},
+		symbols: &symdb.Symbols{
+			Stacktraces: stacktraceResolverV1{r: r},
+			Locations:   r.locations.cache,
+			Mappings:    r.mappings.cache,
+			Functions:   r.functions.cache,
+			Strings:     r.strings.cache,
+		},
+	}
+	return &p, nil
 }
 
 type stacktraceResolverV1 struct{ r *symbolsResolverV1 }
@@ -114,19 +125,51 @@ func (r *symbolsResolverV2) Close() error {
 		Err()
 }
 
-func (r *symbolsResolverV2) Symbols(ctx context.Context, p uint64, fn func(*symdb.Symbols) error) error {
-	sr, err := r.symbols.SymbolsReader(ctx, p)
+func (r *symbolsResolverV2) Partition(ctx context.Context, partition uint64) (symdb.PartitionReader, error) {
+	sr, err := r.symbols.Partition(ctx, partition)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer sr.Release()
-	return fn(&symdb.Symbols{
-		Stacktraces: sr,
-		Locations:   r.locations.cache,
-		Mappings:    r.mappings.cache,
-		Functions:   r.functions.cache,
-		Strings:     r.strings.cache,
-	})
+	var t symdb.PartitionStats
+	sr.WriteStats(&t)
+	s := sr.Symbols()
+	p := symbolsPartition{
+		stats: symdb.PartitionStats{
+			StacktracesTotal: t.StacktracesTotal,
+			MaxStacktraceID:  t.MaxStacktraceID,
+			LocationsTotal:   len(s.Locations),
+			MappingsTotal:    len(s.Mappings),
+			FunctionsTotal:   len(s.Functions),
+			StringsTotal:     len(s.Strings),
+		},
+		symbols: &symdb.Symbols{
+			Stacktraces: s.Stacktraces,
+			Locations:   r.locations.cache,
+			Mappings:    r.mappings.cache,
+			Functions:   r.functions.cache,
+			Strings:     r.strings.cache,
+		},
+		release: func() {
+			sr.Release()
+		},
+	}
+	return &p, nil
+}
+
+type symbolsPartition struct {
+	stats   symdb.PartitionStats
+	symbols *symdb.Symbols
+	release func()
+}
+
+func (p *symbolsPartition) Symbols() *symdb.Symbols { return p.symbols }
+
+func (p *symbolsPartition) WriteStats(stats *symdb.PartitionStats) { *stats = p.stats }
+
+func (p *symbolsPartition) Release() {
+	if p.release != nil {
+		p.release()
+	}
 }
 
 type inMemoryParquetTables struct {
