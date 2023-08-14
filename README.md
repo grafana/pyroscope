@@ -17,9 +17,9 @@
 
 On 2023-03-15, [Grafana Labs acquired Pyroscope](https://grafana.com/blog/2023/03/15/pyroscope-grafana-phlare-join-for-oss-continuous-profiling/).
 
-The teams and codebases of both [Grafana Phlare](https://github.com/grafana/phlare) and [Pyroscope](https://github.com/pyroscope-io/pyroscope) are **merging into [Grafana Pyroscope](https://github.com/grafana/pyroscope)**. This branch *next* reflects the currect developent of Grafana Pyroscope and all enhancement/fixes should be merged into it.
+The teams and codebases [Grafana Phlare](https://github.com/grafana/phlare) and Pyroscope have **merged into Grafana Pyroscope**. The *next* branch reflects the current and ongoing developent of Grafana Pyroscope and all enhancement/fixes will and should be merged into it.
 
-Grafana Pyroscope is a new project. It will take some time to merge codebases and get to the first release.
+We plan to release Pyroscope 1.0 in the near future (by mid-September 2023) -- thanks for your patience!
 
 Feel free to use the information from the original Pyroscope project until that time, which can still be found the `main` branch.
 
@@ -33,8 +33,7 @@ Grafana Pyroscope is an open source continuous profiling platform. It will help 
 * Understand the call tree of your application
 * Auto-instrument your code to link profiling data to traces
 
-
-## 🔥 [Pyroscope Live Demo](https://demo.pyroscope.io/?name=hotrod.python.frontend%7B%7D) 🔥
+## 🔥 [Pyroscope Live Demo](https://demo.pyroscope.io/) 🔥
 
 [![Pyroscope GIF Demo](https://user-images.githubusercontent.com/23323466/143324845-16ff72df-231e-412d-bd0a-38ef2e09cba8.gif)](https://demo.pyroscope.io/)
 
