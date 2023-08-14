@@ -4,7 +4,6 @@ package symtab
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -19,7 +18,7 @@ type SymbolCache struct {
 	pidCache *GCache[PidKey, *ProcTable]
 
 	elfCache *ElfCache
-	kallsyms SymbolTable
+	kallsyms *SymbolTab
 	logger   log.Logger
 	metrics  *Metrics
 }
@@ -36,17 +35,6 @@ func NewSymbolCache(logger log.Logger, options CacheOptions) (*SymbolCache, erro
 		return nil, fmt.Errorf("create elf cache %w", err)
 	}
 
-	kallsymsData, err := os.ReadFile("/proc/kallsyms")
-	if err != nil {
-		return nil, fmt.Errorf("read kallsyms %w", err)
-	}
-	kallsyms, err := NewKallsyms(kallsymsData)
-	if err != nil {
-		return nil, fmt.Errorf("create kallsyms %w ", err)
-	}
-	if len(kallsyms.symbols) == 0 {
-		level.Error(logger).Log("msg", "kallsyms is empty. check your permissions kptr_restrict==0 && sysctl_perf_event_paranoid <= 1 or kptr_restrict==1 &&  CAP_SYSLOG")
-	}
 	cache, err := NewGCache[PidKey, *ProcTable](options.PidCacheOptions)
 	if err != nil {
 		return nil, fmt.Errorf("create pid cache %w", err)
@@ -54,7 +42,7 @@ func NewSymbolCache(logger log.Logger, options CacheOptions) (*SymbolCache, erro
 	return &SymbolCache{
 		logger:   logger,
 		pidCache: cache,
-		kallsyms: kallsyms,
+		kallsyms: nil,
 		elfCache: elfCache,
 		metrics:  options.Metrics,
 	}, nil
@@ -77,7 +65,7 @@ func (sc *SymbolCache) Cleanup() {
 
 func (sc *SymbolCache) getOrCreateCacheEntry(pid PidKey) SymbolTable {
 	if pid == 0 {
-		return sc.kallsyms
+		return sc.Kallsyms()
 	}
 	cached := sc.pidCache.Get(pid)
 	if cached != nil {
@@ -95,6 +83,28 @@ func (sc *SymbolCache) getOrCreateCacheEntry(pid PidKey) SymbolTable {
 
 	sc.pidCache.Cache(pid, fresh)
 	return fresh
+}
+
+func (sc *SymbolCache) Kallsyms() SymbolTable {
+	if sc.kallsyms != nil {
+		return sc.kallsyms
+	}
+	return sc.initKallsyms()
+}
+
+func (sc *SymbolCache) initKallsyms() SymbolTable {
+	var err error
+	sc.kallsyms, err = NewKallsyms()
+	if err != nil {
+		level.Error(sc.logger).Log("msg", "kallsyms init fail", "err", err)
+		sc.kallsyms = NewSymbolTab(nil)
+	}
+	if len(sc.kallsyms.symbols) == 0 {
+		_ = level.Error(sc.logger).
+			Log("msg", "kallsyms is empty. check your permissions kptr_restrict==0 && sysctl_perf_event_paranoid <= 1 or kptr_restrict==1 &&  CAP_SYSLOG")
+	}
+
+	return sc.kallsyms
 }
 
 func (sc *SymbolCache) UpdateOptions(options CacheOptions) {
