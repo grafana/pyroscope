@@ -42,7 +42,6 @@ pyroscope.configure(
   sample_rate         = 100, # default is 100
   detect_subprocesses = False, # detect subprocesses started by the main process; default is False
   oncpu               = True, # report cpu time only; default is True
-  native              = False, # profile native extensions; default is False
   gil_only            = True, # only include traces for threads that are holding on to the Global Interpreter Lock; default is True
   log_level           = "info", # default is info, possible values: trace, debug, info, warn, error and critical 
   tags           = {
