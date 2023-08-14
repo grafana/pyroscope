@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pyroscope.fullname" . }}-overrides-config
+  labels:
+    {{- include "pyroscope.labels" . | nindent 4 }}
+data:
+  overrides.yaml: |
+    overrides:
+      {{- toYaml .Values.pyroscope.tenantOverrides | nindent 6 }}
