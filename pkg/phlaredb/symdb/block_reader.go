@@ -32,7 +32,7 @@ type Reader struct {
 	chunkFetchBufferSize int
 
 	index      IndexFile
-	partitions map[uint64]*PartitionReader
+	partitions map[uint64]*partition
 
 	locations parquetFile
 	mappings  parquetFile
@@ -72,7 +72,7 @@ func (r *Reader) open(ctx context.Context) (err error) {
 			return err
 		}
 	}
-	r.partitions = make(map[uint64]*PartitionReader, len(r.index.PartitionHeaders))
+	r.partitions = make(map[uint64]*partition, len(r.index.PartitionHeaders))
 	for _, h := range r.index.PartitionHeaders {
 		r.partitions[h.Partition] = r.partitionReader(h)
 	}
@@ -123,8 +123,8 @@ func (r *Reader) file(name string) (block.File, error) {
 	return f, nil
 }
 
-func (r *Reader) partitionReader(h *PartitionHeader) *PartitionReader {
-	p := &PartitionReader{
+func (r *Reader) partitionReader(h *PartitionHeader) *partition {
+	p := &partition{
 		reader: r,
 		locations: parquetTableRange[*schemav1.InMemoryLocation, *schemav1.LocationPersister]{
 			bucket:  r.bucket,
@@ -169,7 +169,7 @@ func (r *Reader) Load(ctx context.Context) error {
 		return err
 	}
 
-	partitions := make([]*PartitionReader, len(r.partitions))
+	partitions := make([]*partition, len(r.partitions))
 	var size int64
 	var i int
 	for _, v := range r.partitions {
@@ -205,18 +205,13 @@ func (r *Reader) Load(ctx context.Context) error {
 	return nil
 }
 
-func (r *Reader) Symbols(ctx context.Context, partition uint64, fn func(*Symbols) error) error {
-	pr, err := r.SymbolsReader(ctx, partition)
-	if err != nil {
-		return err
-	}
-	defer pr.Release()
-	return fn(pr.Symbols())
-}
-
 var ErrPartitionNotFound = fmt.Errorf("partition not found")
 
-func (r *Reader) SymbolsReader(ctx context.Context, partition uint64) (*PartitionReader, error) {
+func (r *Reader) Partition(ctx context.Context, partition uint64) (PartitionReader, error) {
+	return r.partition(ctx, partition)
+}
+
+func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, error) {
 	p, ok := r.partitions[partition]
 	if !ok {
 		return nil, ErrPartitionNotFound
@@ -227,7 +222,7 @@ func (r *Reader) SymbolsReader(ctx context.Context, partition uint64) (*Partitio
 	return p, nil
 }
 
-type PartitionReader struct {
+type partition struct {
 	reader *Reader
 
 	stacktraceChunks []*stacktraceChunkReader
@@ -237,7 +232,7 @@ type PartitionReader struct {
 	strings          parquetTableRange[string, *schemav1.StringPersister]
 }
 
-func (p *PartitionReader) init(ctx context.Context) error {
+func (p *partition) init(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 	for _, c := range p.stacktraceChunks {
 		c := c
@@ -253,7 +248,7 @@ func (p *PartitionReader) init(ctx context.Context) error {
 	return err
 }
 
-func (p *PartitionReader) Symbols() *Symbols {
+func (p *partition) Symbols() *Symbols {
 	return &Symbols{
 		Stacktraces: p,
 		Locations:   p.locations.s,
@@ -263,7 +258,7 @@ func (p *PartitionReader) Symbols() *Symbols {
 	}
 }
 
-func (p *PartitionReader) Release() {
+func (p *partition) Release() {
 	var wg sync.WaitGroup
 	wg.Add(len(p.stacktraceChunks) + 4)
 	for _, c := range p.stacktraceChunks {
@@ -280,7 +275,7 @@ func (p *PartitionReader) Release() {
 	wg.Wait()
 }
 
-func (p *PartitionReader) WriteStats(s *PartitionStats) {
+func (p *partition) WriteStats(s *PartitionStats) {
 	var nodes uint32
 	for _, c := range p.stacktraceChunks {
 		s.StacktracesTotal += int(c.header.Stacktraces)
@@ -295,7 +290,7 @@ func (p *PartitionReader) WriteStats(s *PartitionStats) {
 
 var ErrInvalidStacktraceRange = fmt.Errorf("invalid range: stack traces can't be resolved")
 
-func (p *PartitionReader) ResolveStacktraceLocations(ctx context.Context, dst StacktraceInserter, s []uint32) error {
+func (p *partition) ResolveStacktraceLocations(ctx context.Context, dst StacktraceInserter, s []uint32) error {
 	if len(s) == 0 {
 		return nil
 	}
@@ -310,13 +305,13 @@ func (p *PartitionReader) ResolveStacktraceLocations(ctx context.Context, dst St
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(p.reader.maxConcurrentChunks)
 	for _, c := range sr {
-		g.Go(p.newResolve(ctx, dst, c).do)
+		g.Go(p.lookupStacktraces(ctx, dst, c).do)
 	}
 
 	return g.Wait()
 }
 
-func (p *PartitionReader) setStacktracesChunks(chunks []StacktraceChunkHeader) {
+func (p *partition) setStacktracesChunks(chunks []StacktraceChunkHeader) {
 	p.stacktraceChunks = make([]*stacktraceChunkReader, len(chunks))
 	for i, c := range chunks {
 		p.stacktraceChunks[i] = &stacktraceChunkReader{
@@ -326,15 +321,15 @@ func (p *PartitionReader) setStacktracesChunks(chunks []StacktraceChunkHeader) {
 	}
 }
 
-func (p *PartitionReader) stacktraceChunkReader(i uint32) *stacktraceChunkReader {
+func (p *partition) stacktraceChunkReader(i uint32) *stacktraceChunkReader {
 	if int(i) < len(p.stacktraceChunks) {
 		return p.stacktraceChunks[i]
 	}
 	return nil
 }
 
-func (p *PartitionReader) newResolve(ctx context.Context, dst StacktraceInserter, c StacktracesRange) *stacktracesResolve {
-	return &stacktracesResolve{
+func (p *partition) lookupStacktraces(ctx context.Context, dst StacktraceInserter, c StacktracesRange) *stacktracesLookup {
+	return &stacktracesLookup{
 		ctx: ctx,
 		dst: dst,
 		c:   c,
@@ -342,15 +337,15 @@ func (p *PartitionReader) newResolve(ctx context.Context, dst StacktraceInserter
 	}
 }
 
-// stacktracesResolve represents a stacktrace resolution operation.
-type stacktracesResolve struct {
+// stacktracesLookup represents a stacktrace resolution operation.
+type stacktracesLookup struct {
 	ctx context.Context
 	dst StacktraceInserter
 	c   StacktracesRange
-	r   *PartitionReader
+	r   *partition
 }
 
-func (r *stacktracesResolve) do() error {
+func (r *stacktracesLookup) do() error {
 	cr := r.r.stacktraceChunkReader(r.c.chunk)
 	if cr == nil {
 		return ErrInvalidStacktraceRange

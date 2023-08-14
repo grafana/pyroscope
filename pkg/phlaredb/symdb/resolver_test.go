@@ -87,14 +87,13 @@ type blockSuite struct {
 	*memSuite
 
 	reader    *Reader
-	partition *PartitionReader
+	partition *partition
 }
 
 func newSuite(t testing.TB, files ...string) *memSuite {
 	s := memSuite{t: t, files: files}
 	s.init()
-	r, err := s.db.SymbolsReader(1)
-	require.NoError(t, err)
+	r := s.db.PartitionWriter(1)
 	s.symbols = &Symbols{
 		Stacktraces: r,
 		Locations:   r.locations.slice,
@@ -127,7 +126,7 @@ func (s *memSuite) init() {
 		s.db = NewSymDB(s.config)
 	}
 
-	w := s.db.SymbolsWriter(1)
+	w := s.db.PartitionWriter(1)
 	for _, f := range s.files {
 		p, err := pprof.OpenFile(f)
 		require.NoError(s.t, err)
@@ -143,7 +142,7 @@ func (s *blockSuite) flush() {
 	s.reader, err = Open(context.Background(), b, testBlockMeta)
 	require.NoError(s.t, err)
 
-	s.partition, err = s.reader.SymbolsReader(context.Background(), 1)
+	s.partition, err = s.reader.partition(context.Background(), 1)
 	require.NoError(s.t, err)
 	s.symbols = &Symbols{
 		Stacktraces: s.partition,

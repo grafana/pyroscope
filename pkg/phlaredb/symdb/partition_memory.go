@@ -11,7 +11,7 @@ import (
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
-type Partition struct {
+type PartitionWriter struct {
 	header PartitionHeader
 
 	stacktraces *stacktracesPartition
@@ -21,17 +21,17 @@ type Partition struct {
 	locations   deduplicatingSlice[*schemav1.InMemoryLocation, locationsKey, *locationsHelper]
 }
 
-func (p *Partition) AppendStacktraces(dst []uint32, s []*schemav1.Stacktrace) {
+func (p *PartitionWriter) AppendStacktraces(dst []uint32, s []*schemav1.Stacktrace) {
 	p.stacktraces.append(dst, s)
 }
 
-func (p *Partition) ResolveStacktraceLocations(_ context.Context, dst StacktraceInserter, stacktraces []uint32) error {
+func (p *PartitionWriter) ResolveStacktraceLocations(_ context.Context, dst StacktraceInserter, stacktraces []uint32) error {
 	// TODO(kolesnikovae): Add option to do resolve concurrently.
 	//   Depends on StacktraceInserter implementation.
 	return p.stacktraces.resolve(dst, stacktraces)
 }
 
-func (p *Partition) ResolveChunk(dst StacktraceInserter, sr StacktracesRange) error {
+func (p *PartitionWriter) ResolveChunk(dst StacktraceInserter, sr StacktracesRange) error {
 	return p.stacktraces.ResolveChunk(dst, sr)
 }
 
@@ -312,23 +312,23 @@ func SplitStacktraces(s []uint32, n uint32) []StacktracesRange {
 	return cs
 }
 
-func (p *Partition) AppendLocations(dst []uint32, locations []*schemav1.InMemoryLocation) {
+func (p *PartitionWriter) AppendLocations(dst []uint32, locations []*schemav1.InMemoryLocation) {
 	p.locations.append(dst, locations)
 }
 
-func (p *Partition) AppendMappings(dst []uint32, mappings []*schemav1.InMemoryMapping) {
+func (p *PartitionWriter) AppendMappings(dst []uint32, mappings []*schemav1.InMemoryMapping) {
 	p.mappings.append(dst, mappings)
 }
 
-func (p *Partition) AppendFunctions(dst []uint32, functions []*schemav1.InMemoryFunction) {
+func (p *PartitionWriter) AppendFunctions(dst []uint32, functions []*schemav1.InMemoryFunction) {
 	p.functions.append(dst, functions)
 }
 
-func (p *Partition) AppendStrings(dst []uint32, strings []string) {
+func (p *PartitionWriter) AppendStrings(dst []uint32, strings []string) {
 	p.strings.append(dst, strings)
 }
 
-func (p *Partition) Symbols() *Symbols {
+func (p *PartitionWriter) Symbols() *Symbols {
 	return &Symbols{
 		Stacktraces: p,
 		Locations:   p.locations.sliceHeaderCopy(),
@@ -338,7 +338,7 @@ func (p *Partition) Symbols() *Symbols {
 	}
 }
 
-func (p *Partition) WriteStats(s *PartitionStats) {
+func (p *PartitionWriter) WriteStats(s *PartitionStats) {
 	p.stacktraces.m.RLock()
 	c := p.stacktraces.currentStacktraceChunk()
 	s.MaxStacktraceID = int(c.stid + c.tree.len())
@@ -360,4 +360,8 @@ func (p *Partition) WriteStats(s *PartitionStats) {
 	p.strings.lock.RLock()
 	s.StringsTotal += len(p.strings.slice)
 	p.strings.lock.RUnlock()
+}
+
+func (p *PartitionWriter) Release() {
+	// Noop. Satisfies PartitionReader interface.
 }

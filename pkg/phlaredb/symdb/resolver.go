@@ -13,42 +13,6 @@ import (
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
-// SymbolsReader provides access to a partition of symbols database.
-// Symbols must not be used outside the callback function.
-type SymbolsReader interface {
-	Symbols(ctx context.Context, partition uint64, fn func(*Symbols) error) error
-}
-
-type Symbols struct {
-	Stacktraces StacktraceResolver
-	Locations   []*schemav1.InMemoryLocation
-	Mappings    []*schemav1.InMemoryMapping
-	Functions   []*schemav1.InMemoryFunction
-	Strings     []string
-}
-
-type StacktraceResolver interface {
-	// ResolveStacktraceLocations resolves locations for each stack
-	// trace and inserts it to the StacktraceInserter provided.
-	//
-	// The stacktraces must be ordered in the ascending order.
-	// If a stacktrace can't be resolved, dst receives an empty
-	// array of locations.
-	//
-	// Stacktraces slice might be modified during the call.
-	ResolveStacktraceLocations(ctx context.Context, dst StacktraceInserter, stacktraces []uint32) error
-}
-
-// StacktraceInserter accepts resolved locations for a given stack
-// trace. The leaf is at locations[0].
-//
-// Locations slice must not be retained by implementation.
-// It is guaranteed, that for a given stacktrace ID
-// InsertStacktrace is called not more than once.
-type StacktraceInserter interface {
-	InsertStacktrace(stacktraceID uint32, locations []int32)
-}
-
 // Resolver converts stack trace samples to one of the profile
 // formats, such as tree or pprof.
 //
@@ -126,15 +90,18 @@ func (r *Resolver) Partition(partition uint64) map[uint32]int64 {
 	r.p[partition] = p
 	r.m.Unlock()
 	r.g.Go(func() error {
-		return r.s.Symbols(r.ctx, partition, func(symbols *Symbols) error {
-			select {
-			case <-r.ctx.Done():
-				return r.ctx.Err()
-			case p.c <- symbols:
-				<-p.done
-			}
-			return nil
-		})
+		pr, err := r.s.Partition(r.ctx, partition)
+		if err != nil {
+			return err
+		}
+		defer pr.Release()
+		select {
+		case <-r.ctx.Done():
+			return r.ctx.Err()
+		case p.c <- pr.Symbols():
+			<-p.done
+		}
+		return nil
 	})
 	return p.samples
 }

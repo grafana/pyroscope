@@ -22,7 +22,7 @@ var (
 	uint32SlicePool zeropool.Pool[[]uint32]
 )
 
-func (p *Partition) WriteProfileSymbols(profile *profilev1.Profile) []schemav1.InMemoryProfile {
+func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []schemav1.InMemoryProfile {
 	// create a rewriter state
 	rewrites := &rewriter{}
 
@@ -94,7 +94,7 @@ func (p *Partition) WriteProfileSymbols(profile *profilev1.Profile) []schemav1.I
 	return profiles
 }
 
-func (p *Partition) convertSamples(r *rewriter, in []*profilev1.Sample) []schemav1.Samples {
+func (p *PartitionWriter) convertSamples(r *rewriter, in []*profilev1.Sample) []schemav1.Samples {
 	if len(in) == 0 {
 		return nil
 	}

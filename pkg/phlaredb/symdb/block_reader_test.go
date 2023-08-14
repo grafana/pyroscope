@@ -36,7 +36,7 @@ func Test_Reader_Open(t *testing.T) {
 	}
 
 	db := NewSymDB(cfg)
-	w := db.SymbolsWriter(1)
+	w := db.PartitionWriter(1)
 	sids := make([]uint32, 5)
 	w.AppendStacktraces(sids, []*schemav1.Stacktrace{
 		{LocationIDs: []uint64{3, 2, 1}},
@@ -52,7 +52,7 @@ func Test_Reader_Open(t *testing.T) {
 	require.NoError(t, err)
 	x, err := Open(context.Background(), b, testBlockMeta)
 	require.NoError(t, err)
-	r, err := x.SymbolsReader(context.Background(), 1)
+	r, err := x.partition(context.Background(), 1)
 	require.NoError(t, err)
 
 	dst := new(mockStacktraceInserter)
@@ -71,7 +71,7 @@ func Test_Reader_Open_v1(t *testing.T) {
 	require.NoError(t, err)
 	x, err := Open(context.Background(), b, testBlockMeta)
 	require.NoError(t, err)
-	r, err := x.SymbolsReader(context.Background(), 1)
+	r, err := x.partition(context.Background(), 1)
 	require.NoError(t, err)
 
 	dst := new(mockStacktraceInserter)

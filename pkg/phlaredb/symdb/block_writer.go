@@ -19,7 +19,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
-type Writer struct {
+type writer struct {
 	config *Config
 
 	index       IndexFile
@@ -34,8 +34,8 @@ type Writer struct {
 	strings   parquetWriter[string, *schemav1.StringPersister]
 }
 
-func NewWriter(c *Config) *Writer {
-	return &Writer{
+func newWriter(c *Config) *writer {
+	return &writer{
 		config: c,
 		index: IndexFile{
 			Header: Header{
@@ -46,7 +46,7 @@ func NewWriter(c *Config) *Writer {
 	}
 }
 
-func (w *Writer) WritePartitions(partitions []*Partition) error {
+func (w *writer) writePartitions(partitions []*PartitionWriter) error {
 	g, _ := errgroup.WithContext(context.Background())
 	g.Go(func() (err error) {
 		if w.stacktraces, err = w.newFile(StacktracesFileName); err != nil {
@@ -119,7 +119,7 @@ func (w *Writer) WritePartitions(partitions []*Partition) error {
 	return nil
 }
 
-func (w *Writer) Flush() (err error) {
+func (w *writer) Flush() (err error) {
 	if err = w.writeIndexFile(); err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (w *Writer) Flush() (err error) {
 	return nil
 }
 
-func (w *Writer) writeStacktraces(partition *Partition) (err error) {
+func (w *writer) writeStacktraces(partition *PartitionWriter) (err error) {
 	for ci, c := range partition.stacktraces.chunks {
 		h := StacktraceChunkHeader{
 			Offset:             w.stacktraces.w.offset,
@@ -158,14 +158,14 @@ func (w *Writer) writeStacktraces(partition *Partition) (err error) {
 	return nil
 }
 
-func (w *Writer) createDir() error {
+func (w *writer) createDir() error {
 	if err := os.MkdirAll(w.config.Dir, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory %q: %w", w.config.Dir, err)
 	}
 	return nil
 }
 
-func (w *Writer) writeIndexFile() (err error) {
+func (w *writer) writeIndexFile() (err error) {
 	// Write the index file only after all the files were flushed.
 	if w.indexWriter, err = w.newFile(IndexFileName); err != nil {
 		return err
@@ -179,7 +179,7 @@ func (w *Writer) writeIndexFile() (err error) {
 	return err
 }
 
-func (w *Writer) newFile(path string) (f *fileWriter, err error) {
+func (w *writer) newFile(path string) (f *fileWriter, err error) {
 	path = filepath.Join(w.config.Dir, path)
 	if f, err = newFileWriter(path); err != nil {
 		return nil, fmt.Errorf("failed to create %q: %w", path, err)
