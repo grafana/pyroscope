@@ -102,3 +102,10 @@ func (it *PCIndex) PCIndex64() PCIndex {
 	res.i32 = nil
 	return res
 }
+
+func (it *PCIndex) Get(i int) uint64 {
+	if it.i32 != nil {
+		return uint64(it.i32[i])
+	}
+	return it.i64[i]
+}

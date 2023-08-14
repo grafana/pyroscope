@@ -25,14 +25,20 @@ import (
 	"fmt"
 )
 
+type SymbolsOptions struct {
+	// ignore symbols from FilterFrom to FilterTo
+	FilterFrom uint64
+	FilterTo   uint64
+}
+
 // todo consider using ReaderAt here, same as in gopcln
-func (f *MMapedElfFile) getSymbols(typ elf.SectionType) ([]SymbolIndex, uint32, error) {
+func (f *MMapedElfFile) getSymbols(typ elf.SectionType, opt *SymbolsOptions) ([]SymbolIndex, uint32, error) {
 	switch f.Class {
 	case elf.ELFCLASS64:
-		return f.getSymbols64(typ)
+		return f.getSymbols64(typ, opt)
 
 	case elf.ELFCLASS32:
-		return f.getSymbols32(typ)
+		return f.getSymbols32(typ, opt)
 	}
 
 	return nil, 0, errors.New("not implemented")
@@ -42,7 +48,7 @@ func (f *MMapedElfFile) getSymbols(typ elf.SectionType) ([]SymbolIndex, uint32, 
 // if there is no such section in the File.
 var ErrNoSymbols = errors.New("no symbol section")
 
-func (f *MMapedElfFile) getSymbols64(typ elf.SectionType) ([]SymbolIndex, uint32, error) {
+func (f *MMapedElfFile) getSymbols64(typ elf.SectionType, opt *SymbolsOptions) ([]SymbolIndex, uint32, error) {
 	symtabSection := f.sectionByType(typ)
 	if symtabSection == nil {
 		return nil, 0, ErrNoSymbols
@@ -83,10 +89,14 @@ func (f *MMapedElfFile) getSymbols64(typ elf.SectionType) ([]SymbolIndex, uint32
 		}
 
 		if sym.Value != 0 && sym.Info&0xf == byte(elf.STT_FUNC) {
-			symbols[i].Value = sym.Value
 			if sym.Name >= 0x7fffffff {
 				return nil, 0, fmt.Errorf("wrong sym name")
 			}
+			pc := sym.Value
+			if pc >= opt.FilterFrom && pc < opt.FilterTo {
+				continue
+			}
+			symbols[i].Value = pc
 			symbols[i].Name = NewName(sym.Name, linkIndex)
 			i++
 		}
@@ -95,7 +105,7 @@ func (f *MMapedElfFile) getSymbols64(typ elf.SectionType) ([]SymbolIndex, uint32
 	return symbols[:i], symtabSection.Link, nil
 }
 
-func (f *MMapedElfFile) getSymbols32(typ elf.SectionType) ([]SymbolIndex, uint32, error) {
+func (f *MMapedElfFile) getSymbols32(typ elf.SectionType, opt *SymbolsOptions) ([]SymbolIndex, uint32, error) {
 	symtabSection := f.sectionByType(typ)
 	if symtabSection == nil {
 		return nil, 0, ErrNoSymbols
@@ -136,9 +146,12 @@ func (f *MMapedElfFile) getSymbols32(typ elf.SectionType) ([]SymbolIndex, uint32
 		}
 
 		if sym.Value != 0 && sym.Info&0xf == byte(elf.STT_FUNC) {
-			symbols[i].Value = uint64(sym.Value)
 			if sym.Name >= 0x7fffffff {
 				return nil, 0, fmt.Errorf("wrong sym name")
+			}
+			pc := uint64(sym.Value)
+			if pc >= opt.FilterFrom && pc < opt.FilterTo {
+				continue
 			}
 			symbols[i].Name = NewName(sym.Name, linkIndex)
 			i++

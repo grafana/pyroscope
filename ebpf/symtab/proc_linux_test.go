@@ -59,7 +59,7 @@ func TestSelfElfSymbolsLazy(t *testing.T) {
 	me, err := elf.NewMMapedElfFile(f)
 	require.NoError(t, err)
 
-	symbolTable, err := me.NewSymbolTable()
+	symbolTable, err := me.NewSymbolTable(new(elf.SymbolsOptions))
 	require.NoError(t, err)
 
 	require.Greater(t, len(symbolTable.Index.Names), 500)
