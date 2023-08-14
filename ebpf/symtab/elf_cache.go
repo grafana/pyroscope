@@ -75,12 +75,6 @@ func (e *ElfCache) NextRound() {
 func (e *ElfCache) Cleanup() {
 	e.BuildIDCache.Cleanup()
 	e.SameFileCache.Cleanup()
-	//e.BuildIDCache.Each(func(k elf.BuildID, v SymbolNameResolver) {
-	//	e.BuildIDCache.Remove(k)
-	//})
-	//e.SameFileCache.Each(func(k Stat, v SymbolNameResolver) {
-	//	e.SameFileCache.Remove(k)
-	//})
 }
 
 type ElfCacheDebugInfo struct {
