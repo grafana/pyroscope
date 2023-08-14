@@ -389,6 +389,7 @@ func Test_Stacktraces_memory_resolve_concurrency(t *testing.T) {
 	)
 
 	runTest := func(t *testing.T) {
+		t.Helper()
 		db := NewSymDB(cfg)
 
 		var wg sync.WaitGroup

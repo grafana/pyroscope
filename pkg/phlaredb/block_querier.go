@@ -325,6 +325,10 @@ func (b *singleBlockQuerier) Index() IndexReader {
 	return b.index
 }
 
+func (b *singleBlockQuerier) Symbols() symdb.SymbolsReader {
+	return b.symbols
+}
+
 func (b *singleBlockQuerier) Meta() block.Meta {
 	if b.meta == nil {
 		return block.Meta{}

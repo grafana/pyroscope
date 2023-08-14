@@ -590,6 +590,7 @@ func (h *Head) flush(ctx context.Context) error {
 	h.metrics.flushedBlockSamples.Observe(float64(h.meta.Stats.NumSamples))
 	h.metrics.flusehdBlockProfiles.Observe(float64(h.meta.Stats.NumProfiles))
 
+	sort.Slice(files, func(i, j int) bool { return files[i].RelPath < files[j].RelPath })
 	if _, err := h.meta.WriteToFile(h.logger, h.headPath); err != nil {
 		return err
 	}

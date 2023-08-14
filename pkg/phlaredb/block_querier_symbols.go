@@ -25,6 +25,7 @@ import (
 type symbolsResolver interface {
 	symdb.SymbolsReader
 	io.Closer
+	// Load(context.Context) error
 }
 
 type symbolsResolverV1 struct {

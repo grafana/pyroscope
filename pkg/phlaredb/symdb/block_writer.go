@@ -314,14 +314,14 @@ func (s *parquetWriter[M, P]) writeRows(values []M) (r RowRangeReference, err er
 		return r, nil
 	}
 	var n int
-	for len(values) > 0 && int(s.currentRows)+cap(s.rowsBatch) < s.config.MaxBufferRowCount {
-		c := s.fillBatch(values)
+	for len(values) > 0 && int(s.currentRows) < s.config.MaxBufferRowCount {
+		s.fillBatch(values)
 		if n, err = s.buffer.WriteRows(s.rowsBatch); err != nil {
 			return r, err
 		}
 		s.currentRows += uint32(n)
-		r.Rows += uint32(c)
-		values = values[c:]
+		r.Rows += uint32(n)
+		values = values[n:]
 	}
 	if int(s.currentRows)+cap(s.rowsBatch) >= s.config.MaxBufferRowCount {
 		if err = s.flushBuffer(); err != nil {
