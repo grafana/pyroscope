@@ -118,8 +118,10 @@ func (sc *SymbolCache) UpdateOptions(options CacheOptions) {
 func (sc *SymbolCache) PidCacheDebugInfo() GCacheDebugInfo[ProcTableDebugInfo] {
 	return DebugInfo[PidKey, *ProcTable, ProcTableDebugInfo](
 		sc.pidCache,
-		func(k PidKey, v *ProcTable) ProcTableDebugInfo {
-			return v.DebugInfo()
+		func(k PidKey, v *ProcTable, round int) ProcTableDebugInfo {
+			res := v.DebugInfo()
+			res.LastUsedRound = round
+			return res
 		})
 }
 
