@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log/level"
-	"github.com/parca-dev/parca/pkg/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
@@ -40,13 +39,17 @@ import (
 )
 
 const (
+	pprofMemory     string = "memory"
+	pprofBlock      string = "block"
+	pprofGoroutine  string = "goroutine"
+	pprofMutex      string = "mutex"
 	pprofProcessCPU string = "process_cpu"
 )
 
 // LabelsByProfiles returns the labels for a given ProfilingConfig.
-func LabelsByProfiles(lset labels.Labels, c *config.ProfilingConfig) []labels.Labels {
+func LabelsByProfiles(lset labels.Labels, c *scrape.ProfilingConfig) []labels.Labels {
 	res := []labels.Labels{}
-	add := func(profileType string, cfgs ...config.PprofProfilingConfig) {
+	add := func(profileType string, cfgs ...scrape.PprofProfilingConfig) {
 		for _, p := range cfgs {
 			if *p.Enabled {
 				l := lset.Copy()
@@ -130,7 +133,7 @@ func populateLabels(lset labels.Labels, cfg ScrapeConfig) (res, orig labels.Labe
 		lb.Set(model.AddressLabel, addr)
 	}
 
-	if err := config.CheckTargetAddress(model.LabelValue(addr)); err != nil {
+	if err := scrape.CheckTargetAddress(model.LabelValue(addr)); err != nil {
 		return nil, nil, err
 	}
 
