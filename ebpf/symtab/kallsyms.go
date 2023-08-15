@@ -3,13 +3,26 @@ package symtab
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"runtime"
 	"strconv"
 )
 
 var kallsymsModule = []byte("kernel")
 
-func NewKallsyms(kallsyms []byte) (*SymbolTab, error) {
+func NewKallsyms() (*SymbolTab, error) {
+	return NewKallsymsFromFile("/proc/kallsyms")
+}
+
+func NewKallsymsFromFile(f string) (*SymbolTab, error) {
+	kallsymsData, err := os.ReadFile(f)
+	if err != nil {
+		return nil, fmt.Errorf("read kallsyms %w", err)
+	}
+	return NewKallsymsFromData(kallsymsData)
+}
+
+func NewKallsymsFromData(kallsyms []byte) (*SymbolTab, error) {
 	kernelAddrSpace := uint64(0)
 	if runtime.GOARCH == "amd64" {
 		// https://www.kernel.org/doc/Documentation/x86/x86_64/mm.txt

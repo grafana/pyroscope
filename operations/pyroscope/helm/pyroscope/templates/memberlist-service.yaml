@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "pyroscope.fullname" . }}-memberlist
+  labels:
+    {{- include "pyroscope.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: {{ .Values.pyroscope.memberlist.port_name }}
+      port: {{ .Values.pyroscope.memberlist.port }}
+      protocol: TCP
+      targetPort: {{ .Values.pyroscope.memberlist.port }}
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "pyroscope.selectorLabels" . | nindent 4 }}
+    # TODO: Ensure only services that offer memberlist register
+    # pyroscope.grafana.com/memberlist: "true"

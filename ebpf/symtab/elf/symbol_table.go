@@ -85,13 +85,13 @@ func (st *SymbolTable) Cleanup() {
 	st.File.Close()
 }
 
-func (f *MMapedElfFile) NewSymbolTable() (*SymbolTable, error) {
-	sym, sectionSym, err := f.getSymbols(elf.SHT_SYMTAB)
+func (f *MMapedElfFile) NewSymbolTable(opt *SymbolsOptions) (*SymbolTable, error) {
+	sym, sectionSym, err := f.getSymbols(elf.SHT_SYMTAB, opt)
 	if err != nil && !errors.Is(err, ErrNoSymbols) {
 		return nil, err
 	}
 
-	dynsym, sectionDynSym, err := f.getSymbols(elf.SHT_DYNSYM)
+	dynsym, sectionDynSym, err := f.getSymbols(elf.SHT_DYNSYM, opt)
 	if err != nil && !errors.Is(err, ErrNoSymbols) {
 		return nil, err
 	}

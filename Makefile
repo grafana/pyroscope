@@ -141,7 +141,7 @@ fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint er
 	$(BIN)/golangci-lint run --fix
 	cd api/ && $(BIN)/buf format -w .
 	cd pkg && $(BIN)/buf format -w .
-	$(BIN)/tk fmt ./operations/phlare/jsonnet/ tools/monitoring/
+	$(BIN)/tk fmt ./operations/pyroscope/jsonnet/ tools/monitoring/
 
 .PHONY: check/unstaged-changes
 check/unstaged-changes:
@@ -161,16 +161,16 @@ define deploy
 	# Load image into nodes
 	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)
 	kubectl get pods
-	$(BIN)/helm upgrade --install $(1) ./operations/phlare/helm/phlare $(2) \
-		--set phlare.image.tag=$(IMAGE_TAG) \
-		--set phlare.image.repository=$(IMAGE_PREFIX)pyroscope \
-		--set phlare.podAnnotations.image-id=$(shell cat .docker-image-id-pyroscope) \
-		--set phlare.service.port_name=http-metrics \
-		--set phlare.podAnnotations."profiles\.grafana\.com\/memory\.port_name"=http-metrics \
-		--set phlare.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
-		--set phlare.podAnnotations."profiles\.grafana\.com\/goroutine\.port_name"=http-metrics \
-		--set phlare.extraEnvVars.JAEGER_AGENT_HOST=jaeger.monitoring.svc.cluster.local. \
-		--set phlare.extraArgs."phlaredb\.max-block-duration"=5m
+	$(BIN)/helm upgrade --install $(1) ./operations/pyroscope/helm/pyroscope $(2) \
+		--set pyroscope.image.tag=$(IMAGE_TAG) \
+		--set pyroscope.image.repository=$(IMAGE_PREFIX)pyroscope \
+		--set pyroscope.podAnnotations.image-id=$(shell cat .docker-image-id-pyroscope) \
+		--set pyroscope.service.port_name=http-metrics \
+		--set pyroscope.podAnnotations."profiles\.grafana\.com\/memory\.port_name"=http-metrics \
+		--set pyroscope.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
+		--set pyroscope.podAnnotations."profiles\.grafana\.com\/goroutine\.port_name"=http-metrics \
+		--set pyroscope.extraEnvVars.JAEGER_AGENT_HOST=jaeger.monitoring.svc.cluster.local. \
+		--set pyroscope.extraArgs."phlaredb\.max-block-duration"=5m
   endef
 
 .PHONY: docker-image/pyroscope/build-debug
@@ -203,21 +203,21 @@ define UPDATER_CONFIG_JSON
   "destination_branch": "master",
   "update_jsonnet_attribute_configs": [
     {
-      "file_path": "ksonnet/lib/phlare/releases/dev/images.libsonnet",
-      "jsonnet_key": "phlare",
+      "file_path": "ksonnet/lib/pyroscope/releases/dev/images.libsonnet",
+      "jsonnet_key": "pyroscope",
       "jsonnet_value": "$(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)"
     }
   ],
   "update_jsonnet_lib_configs": [
     {
-      "jsonnet_dir": "ksonnet/lib/phlare/releases/dev",
+      "jsonnet_dir": "ksonnet/lib/pyroscope/releases/dev",
       "dependencies": [
         {
           "owner": "grafana",
           "name": "pyroscope",
           "version": "$(GIT_REVISION)",
           "sub_dirs": [
-            "operations/phlare"
+            "operations/pyroscope"
           ]
         }
       ]
@@ -248,7 +248,7 @@ $(BIN)/buf: Makefile
 
 $(BIN)/golangci-lint: Makefile
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.52.2
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.54.0
 
 $(BIN)/protoc-gen-go: Makefile go.mod
 	@mkdir -p $(@D)
@@ -337,10 +337,10 @@ KIND_CLUSTER = pyroscope-dev
 
 .PHONY: helm/lint
 helm/lint: $(BIN)/helm
-	$(BIN)/helm lint ./operations/phlare/helm/phlare/
+	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope/
 
 helm/docs: $(BIN)/helm
-	docker run --rm --volume "$(CURDIR)/operations/phlare/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.8.1
+	docker run --rm --volume "$(CURDIR)/operations/pyroscope/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.8.1
 
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser
@@ -357,30 +357,30 @@ trunk/fmt: $(BIN)/trunk
 .PHONY: helm/check
 helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm repo add --force-update minio https://charts.min.io/
-	$(BIN)/helm dependency build ./operations/phlare/helm/phlare/
-	mkdir -p ./operations/phlare/helm/phlare/rendered/
-	$(BIN)/helm template phlare-dev ./operations/phlare/helm/phlare/ \
-		| tee ./operations/phlare/helm/phlare/rendered/single-binary.yaml \
+	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/
+	mkdir -p ./operations/pyroscope/helm/pyroscope/rendered/
+	$(BIN)/helm template pyroscope-dev ./operations/pyroscope/helm/pyroscope/ \
+		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.21.0
-	$(BIN)/helm template phlare-dev ./operations/phlare/helm/phlare/ --values operations/phlare/helm/phlare/values-micro-services.yaml \
-		| tee ./operations/phlare/helm/phlare/rendered/micro-services.yaml \
+	$(BIN)/helm template pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
+		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.21.0
-	cat operations/phlare/helm/phlare/values-micro-services.yaml \
+	cat operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
 		| go run ./tools/yaml-to-json \
-		> ./operations/phlare/jsonnet/values-micro-services.json
-	cat operations/phlare/helm/phlare/values.yaml \
+		> ./operations/pyroscope/jsonnet/values-micro-services.json
+	cat operations/pyroscope/helm/pyroscope/values.yaml \
 		| go run ./tools/yaml-to-json \
-		> ./operations/phlare/jsonnet/values.json
+		> ./operations/pyroscope/jsonnet/values.json
 
 .PHONY: deploy
 deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,phlare-dev,)
+	$(call deploy,pyroscope-dev,)
 	# Create a service to provide the same endpoint as micro-services
-	echo '{"kind":"Service","apiVersion":"v1","metadata":{"name":"phlare-micro-services-query-frontend"},"spec":{"ports":[{"name":"phlare","port":4100,"targetPort":4100}],"selector":{"app.kubernetes.io/component":"all","app.kubernetes.io/instance":"phlare-dev"},"type":"ClusterIP"}}' | kubectl apply -f -
+	echo '{"kind":"Service","apiVersion":"v1","metadata":{"name":"pyroscope-micro-services-query-frontend"},"spec":{"ports":[{"name":"pyroscope","port":4100,"targetPort":4100}],"selector":{"app.kubernetes.io/component":"all","app.kubernetes.io/instance":"pyroscope-dev"},"type":"ClusterIP"}}' | kubectl apply -f -
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,phlare-micro-services,--values=operations/phlare/helm/phlare/values-micro-services.yaml --set phlare.components.querier.resources=null --set phlare.components.distributor.resources=null --set phlare.components.ingester.resources=null --set phlare.components.store-gateway.resources=null)
+	$(call deploy,pyroscope-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set pyroscope.components.querier.resources=null --set pyroscope.components.distributor.resources=null --set pyroscope.components.ingester.resources=null --set pyroscope.components.store-gateway.resources=null)
 
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json
@@ -392,7 +392,7 @@ tools/monitoring/environments/default/spec.json: $(BIN)/tk $(BIN)/kind
 	$(BIN)/kind export kubeconfig --name $(KIND_CLUSTER) || $(BIN)/kind create cluster --name $(KIND_CLUSTER)
 	pushd tools/monitoring/ && rm -Rf vendor/ lib/ environments/default/spec.json  && PATH=$(BIN):$(PATH) $(BIN)/tk init -f
 	echo "import 'monitoring.libsonnet'" > tools/monitoring/environments/default/main.jsonnet
-	$(BIN)/tk env set tools/monitoring/environments/default --server=$(shell $(BIN)/kind get kubeconfig --name phlare-dev | grep server: | sed 's/server://g' | xargs) --namespace=monitoring
+	$(BIN)/tk env set tools/monitoring/environments/default --server=$(shell $(BIN)/kind get kubeconfig --name pyroscope-dev | grep server: | sed 's/server://g' | xargs) --namespace=monitoring
 
 .PHONY: deploy-demo
 deploy-demo: $(BIN)/kind
@@ -405,5 +405,5 @@ docs/%:
 	$(MAKE) -C docs $*
 
 .PHONY: run
-run: ## Run the phlare binary (pass parameters with 'make run PARAMS=-myparam')
+run: ## Run the pyroscope binary (pass parameters with 'make run PARAMS=-myparam')
 	./pyroscope $(PARAMS)
