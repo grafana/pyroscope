@@ -11,6 +11,7 @@ import (
 	"os"
 	"runtime"
 	"sort"
+	"strings"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
@@ -530,9 +531,16 @@ func levelFilter(l string) level.Option {
 
 func printRoutes(r *mux.Router) {
 	r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		tpl, err1 := route.GetPathTemplate()
-		met, err2 := route.GetMethods()
-		fmt.Println(tpl, err1, met, err2)
+		path, err := route.GetPathTemplate()
+		if err != nil {
+			fmt.Printf("failed to get path template %s\n", err)
+			return nil
+		}
+		method, err := route.GetMethods()
+		if err != nil {
+			method = []string{"*"}
+		}
+		fmt.Printf("%s %s\n", strings.Join(method, ","), path)
 		return nil
 	})
 }
