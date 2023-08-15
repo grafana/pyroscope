@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/grafana/dskit/flagext"
-	"github.com/parca-dev/parca/pkg/config"
-	parcaconfig "github.com/parca-dev/parca/pkg/config"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery"
@@ -17,6 +15,7 @@ import (
 	"github.com/prometheus/prometheus/discovery/kubernetes"
 	"github.com/prometheus/prometheus/model/relabel"
 
+	"github.com/grafana/pyroscope/pkg/agent/scrape"
 	"github.com/grafana/pyroscope/pkg/tenant"
 )
 
@@ -69,20 +68,58 @@ func (c *ClientConfig) Validate() error {
 }
 
 type ScrapeConfig struct {
-	JobName                string                       `yaml:"job_name"`
-	Params                 url.Values                   `yaml:"params,omitempty"`
-	ScrapeInterval         model.Duration               `yaml:"scrape_interval,omitempty"`
-	ScrapeTimeout          model.Duration               `yaml:"scrape_timeout,omitempty"`
-	Scheme                 string                       `yaml:"scheme,omitempty"`
-	RelabelConfigs         []*relabel.Config            `yaml:"relabel_configs,omitempty"`
-	ServiceDiscoveryConfig ServiceDiscoveryConfig       `yaml:",inline"`
-	ProfilingConfig        *parcaconfig.ProfilingConfig `yaml:"profiling_config,omitempty"`
+	JobName                string                  `yaml:"job_name"`
+	Params                 url.Values              `yaml:"params,omitempty"`
+	ScrapeInterval         model.Duration          `yaml:"scrape_interval,omitempty"`
+	ScrapeTimeout          model.Duration          `yaml:"scrape_timeout,omitempty"`
+	Scheme                 string                  `yaml:"scheme,omitempty"`
+	RelabelConfigs         []*relabel.Config       `yaml:"relabel_configs,omitempty"`
+	ServiceDiscoveryConfig ServiceDiscoveryConfig  `yaml:",inline"`
+	ProfilingConfig        *scrape.ProfilingConfig `yaml:"profiling_config,omitempty"`
 
 	HTTPClientConfig commonconfig.HTTPClientConfig `yaml:",inline"`
 }
 
+func trueValue() *bool {
+	a := true
+	return &a
+}
+
+func DefaultScrapeConfig() ScrapeConfig {
+	return ScrapeConfig{
+		ScrapeInterval: model.Duration(time.Second * 10),
+		ScrapeTimeout:  model.Duration(time.Second * 0),
+		Scheme:         "http",
+		ProfilingConfig: &scrape.ProfilingConfig{
+			PprofConfig: scrape.PprofConfig{
+				pprofMemory: &scrape.PprofProfilingConfig{
+					Enabled: trueValue(),
+					Path:    "/debug/pprof/allocs",
+				},
+				pprofBlock: &scrape.PprofProfilingConfig{
+					Enabled: trueValue(),
+					Path:    "/debug/pprof/block",
+				},
+				pprofGoroutine: &scrape.PprofProfilingConfig{
+					Enabled: trueValue(),
+					Path:    "/debug/pprof/goroutine",
+				},
+				pprofMutex: &scrape.PprofProfilingConfig{
+					Enabled: trueValue(),
+					Path:    "/debug/pprof/mutex",
+				},
+				pprofProcessCPU: &scrape.PprofProfilingConfig{
+					Enabled: trueValue(),
+					Delta:   true,
+					Path:    "/debug/pprof/profile",
+				},
+			},
+		},
+	}
+}
+
 func (c *ScrapeConfig) Validate() error {
-	defaults := config.DefaultScrapeConfig()
+	defaults := DefaultScrapeConfig()
 	if c.ScrapeInterval == 0 {
 		c.ScrapeInterval = defaults.ScrapeInterval
 	}
