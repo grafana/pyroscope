@@ -42,7 +42,7 @@ It is possible to add labels to the profiling data. These labels can be used to 
 
 Create a LabelSet and wrap a piece of code with `Pyroscope.LabelsWrapper`.
 
-```java
+```cs
 var labels = Pyroscope.LabelSet.Empty.BuildUpon()
     .Add("key1", "value1")
     .Build();
@@ -53,7 +53,7 @@ Pyroscope.LabelsWrapper.Do(labels, () =>
 ```
 
 Labels can be nested. For nesting LabelSets use `LabelSet.BuildUpon` on non-empty set.
-```java
+```cs
 var labels = Pyroscope.LabelSet.Empty.BuildUpon()
     .Add("key1", "value1")
     .Build();
@@ -74,7 +74,7 @@ Pyroscope.LabelsWrapper.Do(labels, () =>
 
 It is possible to dynamically enable/disable specific profiling types. Profiling types have to be configured prior.
 
-```java
+```cs
 // Enables or disables CPU/wall profiling dynamically.
 // This function works in conjunction with the PYROSCOPE_PROFILING_CPU_ENABLED and
 // PYROSCOPE_PROFILING_WALLTIME_ENABLED environment variables. If CPU/wall profiling is not
@@ -96,7 +96,7 @@ Pyroscope.Profiler.Instance.SetExceptionTrackingEnabled(enabled);
 
 It is possible to dynamically change auth tokens.
 
-```java
+```cs
 // Set Authorization Bearer token. Clear any previously set Authorization tokens.
 Pyroscope.Profiler.Instance.SetAuthToken(token);
 // Set Authorization Basic username and password. Clear any previously set Authorization tokens.
@@ -107,18 +107,22 @@ Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/exampl
 
 ## Configuration
 
-| ENVIRONMENT VARIABLE            | Type         | DESCRIPTION |
-|---------------------------------|------------|-----------|
-| PYROSCOPE_PROFILING_LOG_DIR            | String       | Sets the directory for .NET Profiler logs. Defaults to /var/log/pyroscope/ . |
+## Configuration
+
+| ENVIRONMENT VARIABLE                   | Type         | DESCRIPTION |
+|----------------------------------------|--------------|-------------|
+| PYROSCOPE_PROFILING_LOG_DIR            | String       | Sets the directory for .NET Profiler logs. Defaults to /var/log/pyroscope/. |
 | PYROSCOPE_LABELS                       | String       | Static labels to apply to an uploaded profile. Must be a list of key:value separated by commas such as: layer:api,team:intake. |
-| PYROSCOPE_SERVER_ADDRESS                       | String       | Address of the Pyroscope Server. Use https://ingest.pyroscope.cloud if you're sending data into Pyroscope Cloud. |
-| PYROSCOPE_AUTH_TOKEN                       | String       | Optional Authentication Token. Typically used when you send data into [Pyroscope Cloud](https://pyroscope.io/pricing) |
+| PYROSCOPE_SERVER_ADDRESS               | String       | Address of the Pyroscope Server |
 | PYROSCOPE_PROFILING_ENABLED            | Boolean      | If set to true, enables the .NET Profiler. Defaults to false. |
 | PYROSCOPE_PROFILING_WALLTIME_ENABLED   | Boolean      | If set to false, disables the Wall time profiling. Defaults to true. |
 | PYROSCOPE_PROFILING_CPU_ENABLED        | Boolean      | If set to false, disables the CPU profiling. Defaults to true. |
 | PYROSCOPE_PROFILING_EXCEPTION_ENABLED  | Boolean      | If set to true, enables the Exceptions profiling. Defaults to false. |
 | PYROSCOPE_PROFILING_ALLOCATION_ENABLED | Boolean      | If set to true, enables the Allocations profiling. Defaults to false. |
 | PYROSCOPE_PROFILING_LOCK_ENABLED       | Boolean      | If set to true, enables the Lock Contention profiling. Defaults to false. |
+| PYROSCOPE_BASIC_AUTH_USER              | String       | Replace <User> with your Grafana Cloud stack user or Pyroscope user. For HTTP Basic Authentication. |
+| PYROSCOPE_BASIC_AUTH_PASSWORD          | String       | Replace <Password> with your Grafana Cloud API key or Pyroscope password. For HTTP Basic Authentication. |
+| PYROSCOPE_TENANT_ID                    | String       | Replace <TenantID> with the appropriate Tenant ID. Only needed if using multi-tenancy in Pyroscope. |
 
 ## Sending data to Pyroscope OSS or Grafana Cloud Profiles with .NET SDK
 
