@@ -120,9 +120,9 @@ func (a *API) newRoute(path string, handler http.Handler, isPrefix, auth, gzip b
 	return route
 }
 
-// RegisterAPI registers the standard endpoints associated with a running Mimir.
+// RegisterAPI registers the standard endpoints associated with a running Pyroscope.
 func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
-	// register index page
+	// register admin page
 	a.RegisterRoute("/admin", indexHandler("", a.indexPage), false, true, "GET")
 	// expose openapiv2 definition
 	openapiv2Handler, err := openapiv2.Handler()
@@ -145,21 +145,10 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 		return fmt.Errorf("unable to initialize the ui: %w", err)
 	}
 
-	uiIndexHandler, err := public.NewIndexHandler(a.cfg.BaseURL)
-	if err != nil {
-		return fmt.Errorf("unable to initialize the ui: %w", err)
-	}
-
 	// The UI used to be at /ui, but now it's at /.
 	a.RegisterRoutesWithPrefix("/ui", http.RedirectHandler("/", http.StatusFound), false, true, "GET")
 	// All assets are served as static files
 	a.RegisterRoutesWithPrefix("/assets/", http.FileServer(uiAssets), false, true, "GET")
-	// Serve index to all other pages
-	a.RegisterRoutesWithPrefix("/", uiIndexHandler, false, true, "GET")
-
-	a.indexPage.AddLinks(defaultWeight, "User interface", []IndexPageLink{
-		{Desc: "User interface", Path: "/"},
-	})
 
 	// register status service providing config and buildinfo at grpc gateway
 	if err := statusv1.RegisterStatusServiceHandlerServer(context.Background(), a.grpcGatewayMux, statusService); err != nil {
@@ -173,6 +162,21 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 		{Desc: "Only values that differ from the defaults", Path: "/api/v1/status/config/diff"},
 		{Desc: "Default values", Path: "/api/v1/status/config/default"},
 	})
+	return nil
+}
+
+func (a *API) RegisterCatchAll() error {
+	uiIndexHandler, err := public.NewIndexHandler(a.cfg.BaseURL)
+	if err != nil {
+		return fmt.Errorf("unable to initialize the ui: %w", err)
+	}
+	// Serve index to all other pages
+	a.RegisterRoutesWithPrefix("/", uiIndexHandler, false, true, "GET")
+
+	a.indexPage.AddLinks(defaultWeight, "User interface", []IndexPageLink{
+		{Desc: "User interface", Path: "/"},
+	})
+
 	return nil
 }
 

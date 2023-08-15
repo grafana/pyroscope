@@ -320,7 +320,7 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(UsageReport, f.initUsageReport)
 	mm.RegisterModule(QueryFrontend, f.initQueryFrontend)
 	mm.RegisterModule(QueryScheduler, f.initQueryScheduler)
-	mm.RegisterModule(All, nil)
+	mm.RegisterModule(All, f.initCatchAll)
 
 	// Add dependencies
 	deps := map[string][]string{
@@ -496,6 +496,14 @@ func (f *Phlare) initAPI() (services.Service, error) {
 	f.API = a
 
 	if err := f.API.RegisterAPI(f.statusService()); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+func (f *Phlare) initCatchAll() (services.Service, error) {
+	if err := f.API.RegisterCatchAll(); err != nil {
 		return nil, err
 	}
 
