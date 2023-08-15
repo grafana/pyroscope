@@ -165,7 +165,7 @@ func (et *ElfTable) createSymbolTable(me *elf2.MMapedElfFile) (SymbolNameResolve
 	}
 	symbolOptions := elf2.SymbolsOptions{}
 	if goErr == nil && goTable.Index.Entry.Length() > 0 {
-		symbolOptions.FilterTo = goTable.Index.Entry.Get(0)
+		symbolOptions.FilterFrom = goTable.Index.Entry.Get(0)
 		symbolOptions.FilterTo = goTable.Index.End
 	}
 	symTable, symErr := me.NewSymbolTable(&symbolOptions)
