@@ -2,7 +2,6 @@ package gosym
 
 import (
 	"math"
-	"sort"
 )
 
 type PCIndex struct {
@@ -61,25 +60,38 @@ func (it *PCIndex) First() uint64 {
 }
 
 func (it *PCIndex) FindIndex(addr uint64) int {
-	n := len(it.i32) + len(it.i64)
 	if it.i32 != nil {
-		var i int
+		n := len(it.i32)
 		if addr < uint64(it.i32[0]) {
 			return -1
 		}
-		i = sort.Search(n, func(i int) bool {
-			return addr < uint64(it.i32[i])
-		})
+		i, j := 0, n
+		for i < j {
+			h := int(uint(i+j) >> 1) // avoid overflow when computing h
+			// i ≤ h < j
+			if !(addr < uint64(it.i32[h])) {
+				i = h + 1 // preserves f(i-1) == false
+			} else {
+				j = h // preserves f(j) == true
+			}
+		}
 		i--
 		return i
 	}
-	var i int
+	n := len(it.i64)
 	if addr < it.i64[0] {
 		return -1
 	}
-	i = sort.Search(n, func(i int) bool {
-		return addr < it.i64[i]
-	})
+	i, j := 0, n
+	for i < j {
+		h := int(uint(i+j) >> 1) // avoid overflow when computing h
+		// i ≤ h < j
+		if !(addr < it.i64[h]) {
+			i = h + 1 // preserves f(i-1) == false
+		} else {
+			j = h // preserves f(j) == true
+		}
+	}
 	i--
 	return i
 }

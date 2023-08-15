@@ -1,7 +1,6 @@
 package gosym
 
 import (
-	"fmt"
 	"math/rand"
 	"testing"
 
@@ -29,5 +28,5 @@ func BenchmarkBinSearch(b *testing.B) {
 		}
 	}
 	b.StopTimer()
-	fmt.Println(idx)
+	//fmt.Println(idx)
 }
