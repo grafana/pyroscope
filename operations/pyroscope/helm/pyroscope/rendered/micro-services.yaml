@@ -51,7 +51,7 @@ data:
     set -e ; # Have script exit in the event of a failed command.
     MC_CONFIG_DIR="/etc/minio/mc/"
     MC="/usr/bin/mc --insecure --config-dir ${MC_CONFIG_DIR}"
-
+    
     # connectToMinio
     # Use a check-sleep-check loop to wait for MinIO service to be available
     connectToMinio() {
@@ -78,7 +78,7 @@ data:
       set -e ; # reset `e` as active
       return 0
     }
-
+    
     # checkBucketExists ($bucket)
     # Check if the bucket exists, by using the exit code of `mc ls`
     checkBucketExists() {
@@ -86,7 +86,7 @@ data:
       CMD=$(${MC} ls myminio/$BUCKET > /dev/null 2>&1)
       return $?
     }
-
+    
     # createBucket ($bucket, $policy, $purge)
     # Ensure bucket exists, purging if asked to
     createBucket() {
@@ -95,7 +95,7 @@ data:
       PURGE=$3
       VERSIONING=$4
       OBJECTLOCKING=$5
-
+    
       # Purge the bucket, if set & exists
       # Since PURGE is user input, check explicitly for `true`
       if [ $PURGE = true ]; then
@@ -108,7 +108,7 @@ data:
           echo "Bucket '$BUCKET' does not exist, skipping purge."
         fi
       fi
-
+    
     # Create the bucket if it does not exist and set objectlocking if enabled (NOTE: versioning will be not changed if OBJECTLOCKING is set because it enables versioning to the Buckets created)
     if ! checkBucketExists $BUCKET ; then
         if [ ! -z $OBJECTLOCKING ] ; then
@@ -123,11 +123,11 @@ data:
             echo "Creating bucket '$BUCKET'"
             ${MC} mb myminio/$BUCKET
       else
-        echo "Bucket '$BUCKET' already exists."
+        echo "Bucket '$BUCKET' already exists."  
       fi
       fi
-
-
+    
+    
       # set versioning for bucket if objectlocking is disabled or not set
       if [ -z $OBJECTLOCKING ] ; then
       if [ ! -z $VERSIONING ] ; then
@@ -142,33 +142,32 @@ data:
       else
           echo "Bucket '$BUCKET' versioning unchanged."
       fi
-
-
+    
+    
       # At this point, the bucket should exist, skip checking for existence
       # Set policy on the bucket
       echo "Setting policy of bucket '$BUCKET' to '$POLICY'."
       ${MC} policy set $POLICY myminio/$BUCKET
     }
-
+    
     # Try connecting to MinIO instance
     scheme=http
     connectToMinio $scheme
-
-
-
+    
+    
+    
     # Create the buckets
-    createBucket grafana-phlare-data none false
-    createBucket grafana-pyroscope-data none false
+    createBucket grafana-pyroscope-data none false  
   add-user: |-
     #!/bin/sh
     set -e ; # Have script exit in the event of a failed command.
     MC_CONFIG_DIR="/etc/minio/mc/"
     MC="/usr/bin/mc --insecure --config-dir ${MC_CONFIG_DIR}"
-
+    
     # AccessKey and secretkey credentials file are added to prevent shell execution errors caused by special characters.
     # Special characters for example : ',",<,>,{,}
     MINIO_ACCESSKEY_SECRETKEY_TMP="/tmp/accessKey_and_secretKey_tmp"
-
+    
     # connectToMinio
     # Use a check-sleep-check loop to wait for MinIO service to be available
     connectToMinio() {
@@ -195,14 +194,14 @@ data:
       set -e ; # reset `e` as active
       return 0
     }
-
+    
     # checkUserExists ()
     # Check if the user exists, by using the exit code of `mc admin user info`
     checkUserExists() {
       CMD=$(${MC} admin user info myminio $(head -1 $MINIO_ACCESSKEY_SECRETKEY_TMP) > /dev/null 2>&1)
       return $?
     }
-
+    
     # createUser ($policy)
     createUser() {
       POLICY=$1
@@ -226,7 +225,7 @@ data:
       fi
       #clean up credentials files.
       rm -f $MINIO_ACCESSKEY_SECRETKEY_TMP
-
+    
       # set policy for user
       if [ ! -z $POLICY -a $POLICY != " " ] ; then
           echo "Adding policy '$POLICY' for '$USER'"
@@ -235,24 +234,24 @@ data:
           echo "User '$USER' has no policy attached."
       fi
     }
-
+    
     # Try connecting to MinIO instance
     scheme=http
     connectToMinio $scheme
-
-
-
+    
+    
+    
     # Create the users
     echo console > $MINIO_ACCESSKEY_SECRETKEY_TMP
     echo console123 >> $MINIO_ACCESSKEY_SECRETKEY_TMP
     createUser consoleAdmin
-
+    
   add-policy: |-
     #!/bin/sh
     set -e ; # Have script exit in the event of a failed command.
     MC_CONFIG_DIR="/etc/minio/mc/"
     MC="/usr/bin/mc --insecure --config-dir ${MC_CONFIG_DIR}"
-
+    
     # connectToMinio
     # Use a check-sleep-check loop to wait for MinIO service to be available
     connectToMinio() {
@@ -279,7 +278,7 @@ data:
       set -e ; # reset `e` as active
       return 0
     }
-
+    
     # checkPolicyExists ($policy)
     # Check if the policy exists, by using the exit code of `mc admin policy info`
     checkPolicyExists() {
@@ -287,12 +286,12 @@ data:
       CMD=$(${MC} admin policy info myminio $POLICY > /dev/null 2>&1)
       return $?
     }
-
+    
     # createPolicy($name, $filename)
     createPolicy () {
       NAME=$1
       FILENAME=$2
-
+    
       # Create the name if it does not exist
       echo "Checking policy: $NAME (in /config/$FILENAME.json)"
       if ! checkPolicyExists $NAME ; then
@@ -301,20 +300,20 @@ data:
         echo "Policy '$NAME' already exists."
       fi
       ${MC} admin policy add myminio $NAME /config/$FILENAME.json
-
+    
     }
-
+    
     # Try connecting to MinIO instance
     scheme=http
     connectToMinio $scheme
-
-
+    
+    
   custom-command: |-
     #!/bin/sh
     set -e ; # Have script exit in the event of a failed command.
     MC_CONFIG_DIR="/etc/minio/mc/"
     MC="/usr/bin/mc --insecure --config-dir ${MC_CONFIG_DIR}"
-
+    
     # connectToMinio
     # Use a check-sleep-check loop to wait for MinIO service to be available
     connectToMinio() {
@@ -341,14 +340,14 @@ data:
       set -e ; # reset `e` as active
       return 0
     }
-
+    
     # runCommand ($@)
     # Run custom mc command
     runCommand() {
       ${MC} "$@"
       return $?
     }
-
+    
     # Try connecting to MinIO instance
     scheme=http
     connectToMinio $scheme
@@ -1189,7 +1188,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1214,7 +1213,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1238,7 +1237,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1263,7 +1262,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1287,7 +1286,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1312,7 +1311,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1336,7 +1335,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1361,7 +1360,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1385,7 +1384,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1410,7 +1409,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1434,7 +1433,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1459,7 +1458,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1483,7 +1482,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1508,7 +1507,7 @@ spec:
   type: ClusterIP
   clusterIP: None
   ports:
-    - port: 4100
+    - port: 4040
       targetPort: http2
       protocol: TCP
       name: http2
@@ -1567,13 +1566,13 @@ spec:
             - "-target=agent"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-client.url=http://pyroscope-dev-distributor.default.svc.cluster.local.:4100"
+            - "-client.url=http://pyroscope-dev-distributor.default.svc.cluster.local.:4040"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4100
+              containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
@@ -1661,7 +1660,7 @@ spec:
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4100
+              containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
@@ -1749,7 +1748,7 @@ spec:
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4100
+              containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
@@ -1837,7 +1836,7 @@ spec:
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4100
+              containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
@@ -1925,7 +1924,7 @@ spec:
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4100
+              containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
@@ -2010,7 +2009,7 @@ spec:
             - name: export-0
               mountPath: /export-0
             - name: export-1
-              mountPath: /export-1
+              mountPath: /export-1            
           ports:
             - name: http
               containerPort: 9000
@@ -2032,11 +2031,11 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 128Mi
+              memory: 128Mi      
       volumes:
         - name: minio-user
           secret:
-            secretName: pyroscope-dev-minio
+            secretName: pyroscope-dev-minio        
   volumeClaimTemplates:
     - metadata:
         name: export-0
@@ -2110,7 +2109,7 @@ spec:
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4100
+              containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
@@ -2201,7 +2200,7 @@ spec:
             - "-log.level=debug"
           ports:
             - name: http2
-              containerPort: 4100
+              containerPort: 4040
               protocol: TCP
             - name: memberlist
               containerPort: 7946
@@ -2255,7 +2254,7 @@ spec:
         app: minio-job
         release: pyroscope-dev
     spec:
-      restartPolicy: OnFailure
+      restartPolicy: OnFailure      
       volumes:
         - name: minio-configuration
           projected:
@@ -2302,7 +2301,7 @@ spec:
         app: minio-job
         release: pyroscope-dev
     spec:
-      restartPolicy: OnFailure
+      restartPolicy: OnFailure      
       volumes:
         - name: minio-configuration
           projected:
