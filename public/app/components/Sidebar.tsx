@@ -112,11 +112,7 @@ export function Sidebar() {
       <SidebarFooter>
         <Menu iconShape="square">
           <MenuItem icon={<Icon icon={faInfoCircle} />}>
-            <a
-              href="/admin"
-            >
-              Admin Page
-            </a>
+            <a href="/admin">Admin Page</a>
           </MenuItem>
           <MenuItem icon={<Icon icon={faFileAlt} />}>
             <a
