@@ -28,7 +28,7 @@ ffffffff81001820 T early_memtest
 ffffffff810018a0 T early_memtest_report`
 
 func TestKallsyms(t *testing.T) {
-	kallsyms, err := NewKallsyms([]byte(testdata))
+	kallsyms, err := NewKallsymsFromData([]byte(testdata))
 	if err != nil {
 		t.Fatal(err)
 	}
