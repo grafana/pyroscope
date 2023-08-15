@@ -531,9 +531,9 @@ func levelFilter(l string) level.Option {
 
 func printRoutes(r *mux.Router) {
 	r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		path, err := route.GetPathTemplate()
+		path, err := route.GetPathRegexp()
 		if err != nil {
-			fmt.Printf("failed to get path template %s\n", err)
+			fmt.Printf("failed to get path regexp %s\n", err)
 			return nil
 		}
 		method, err := route.GetMethods()
