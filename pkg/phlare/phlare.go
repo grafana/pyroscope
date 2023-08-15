@@ -384,7 +384,7 @@ func (f *Phlare) Run() error {
 		}
 	}
 
-	if f.API.RegisterCatchAll(); err != nil {
+	if err = f.API.RegisterCatchAll(); err != nil {
 		return err
 	}
 
@@ -530,7 +530,7 @@ func levelFilter(l string) level.Option {
 }
 
 func printRoutes(r *mux.Router) {
-	r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		path, err := route.GetPathRegexp()
 		if err != nil {
 			fmt.Printf("failed to get path regexp %s\n", err)
@@ -543,4 +543,7 @@ func printRoutes(r *mux.Router) {
 		fmt.Printf("%s %s\n", strings.Join(method, ","), path)
 		return nil
 	})
+	if err != nil {
+		fmt.Printf("failed to walk routes %s\n", err)
+	}
 }
