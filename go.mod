@@ -47,7 +47,7 @@ require (
 	github.com/prometheus/common v0.44.0
 	github.com/prometheus/prometheus v1.8.2-0.20220620125440-d7e7b8e04b5e
 	github.com/pyroscope-io/client v0.7.1
-	github.com/pyroscope-io/jfr-parser v0.6.0
+	github.com/pyroscope-io/jfr-parser v0.7.0
 	github.com/samber/lo v1.37.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
