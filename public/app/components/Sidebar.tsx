@@ -4,6 +4,9 @@ import { faSearch } from '@fortawesome/free-solid-svg-icons/faSearch';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
+import { faInfoCircle } from '@fortawesome/free-solid-svg-icons/faInfoCircle';
+import { faFileAlt } from '@fortawesome/free-solid-svg-icons/faFileAlt';
+import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 
 import SidebarUI, {
   MenuItem,
@@ -108,6 +111,27 @@ export function Sidebar() {
       </SidebarContent>
       <SidebarFooter>
         <Menu iconShape="square">
+          <MenuItem icon={<Icon icon={faInfoCircle} />}>
+            <a href="/admin">Admin Page</a>
+          </MenuItem>
+          <MenuItem icon={<Icon icon={faFileAlt} />}>
+            <a
+              rel="noreferrer"
+              target="_blank"
+              href="https://grafana.com/docs/pyroscope"
+            >
+              Documentation
+            </a>
+          </MenuItem>
+          <MenuItem icon={<Icon icon={faGithub} />}>
+            <a
+              rel="noreferrer"
+              target="_blank"
+              href="https://github.com/grafana/pyroscope"
+            >
+              Github
+            </a>
+          </MenuItem>
           <MenuItem
             data-testid="collapse-sidebar"
             className={clsx(

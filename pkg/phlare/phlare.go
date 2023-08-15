@@ -11,10 +11,12 @@ import (
 	"os"
 	"runtime"
 	"sort"
+	"strings"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/dskit/grpcutil"
 	"github.com/grafana/dskit/kv/memberlist"
@@ -375,7 +377,16 @@ func (f *Phlare) Run() error {
 	f.Server.HTTP.Path("/ready").Methods("GET").Handler(f.readyHandler(sm))
 
 	RegisterHealthServer(f.Server.HTTP, grpcutil.WithManager(sm))
-	healthy := func() { level.Info(f.logger).Log("msg", "Phlare started", "version", version.Info()) }
+	healthy := func() {
+		level.Info(f.logger).Log("msg", "Phlare started", "version", version.Info())
+		if os.Getenv("PYROSCOPE_PRINT_ROUTES") != "" {
+			printRoutes(f.Server.HTTP)
+		}
+	}
+
+	if err = f.API.RegisterCatchAll(); err != nil {
+		return err
+	}
 
 	serviceFailed := func(service services.Service) {
 		// if any service fails, stop entire Phlare
@@ -428,6 +439,7 @@ func (f *Phlare) Run() error {
 			}
 		}
 	}
+
 	return err
 }
 
@@ -514,5 +526,24 @@ func levelFilter(l string) level.Option {
 		return level.AllowError()
 	default:
 		return level.AllowAll()
+	}
+}
+
+func printRoutes(r *mux.Router) {
+	err := r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		path, err := route.GetPathRegexp()
+		if err != nil {
+			fmt.Printf("failed to get path regexp %s\n", err)
+			return nil
+		}
+		method, err := route.GetMethods()
+		if err != nil {
+			method = []string{"*"}
+		}
+		fmt.Printf("%s %s\n", strings.Join(method, ","), path)
+		return nil
+	})
+	if err != nil {
+		fmt.Printf("failed to walk routes %s\n", err)
 	}
 }
