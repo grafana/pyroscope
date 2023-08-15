@@ -20,13 +20,15 @@ type SymbolCache struct {
 	elfCache *ElfCache
 	kallsyms *SymbolTab
 	logger   log.Logger
-	metrics  *Metrics
+
+	options CacheOptions
 }
 type CacheOptions struct {
 	PidCacheOptions      GCacheOptions
 	BuildIDCacheOptions  GCacheOptions
 	SameFileCacheOptions GCacheOptions
 	Metrics              *Metrics // may be nil for tests
+	SymbolOptions        SymbolOptions
 }
 
 func NewSymbolCache(logger log.Logger, options CacheOptions) (*SymbolCache, error) {
@@ -44,7 +46,7 @@ func NewSymbolCache(logger log.Logger, options CacheOptions) (*SymbolCache, erro
 		pidCache: cache,
 		kallsyms: nil,
 		elfCache: elfCache,
-		metrics:  options.Metrics,
+		options:  options,
 	}, nil
 }
 
@@ -76,8 +78,9 @@ func (sc *SymbolCache) getOrCreateCacheEntry(pid PidKey) SymbolTable {
 	fresh := NewProcTable(sc.logger, ProcTableOptions{
 		Pid: int(pid),
 		ElfTableOptions: ElfTableOptions{
-			ElfCache: sc.elfCache,
-			Metrics:  sc.metrics,
+			ElfCache:      sc.elfCache,
+			Metrics:       sc.options.Metrics,
+			SymbolOptions: &sc.options.SymbolOptions,
 		},
 	})
 
