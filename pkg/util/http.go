@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"html/template"
 	"io"
 	"net"
 	"net/http"
@@ -333,6 +334,22 @@ func WriteTextResponse(w http.ResponseWriter, message string) {
 
 	// Ignore inactionable errors.
 	_, _ = w.Write([]byte(message))
+}
+
+// RenderHTTPResponse either responds with JSON or a rendered HTML page using the passed in template
+// by checking the Accepts header.
+func RenderHTTPResponse(w http.ResponseWriter, v interface{}, t *template.Template, r *http.Request) {
+	accept := r.Header.Get("Accept")
+	if strings.Contains(accept, "application/json") {
+		WriteJSONResponse(w, v)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err := t.Execute(w, v)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // WriteJSONResponse writes some JSON as a HTTP response.

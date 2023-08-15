@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/dns"
 	"github.com/grafana/dskit/kv/codec"
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/middleware"
@@ -23,7 +24,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/common/version"
 	objstoretracing "github.com/thanos-io/objstore/tracing/opentracing"
-	"github.com/thanos-io/thanos/pkg/discovery/dns"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/genproto/googleapis/api/httpbody"
@@ -193,7 +193,7 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 	)
 	// In microservices mode the store gateway is mandatory.
 	if f.Cfg.Target.String() != All {
-		storeGatewayQuerier, err = querier.NewStoreGatewayQuerier(f.Cfg.StoreGateway.Config, nil, f.Overrides, log.With(f.logger, "component", "store-gateway-querier"), f.reg, f.auth)
+		storeGatewayQuerier, err = querier.NewStoreGatewayQuerier(f.Cfg.StoreGateway, nil, f.Overrides, log.With(f.logger, "component", "store-gateway-querier"), f.reg, f.auth)
 		if err != nil {
 			return nil, err
 		}

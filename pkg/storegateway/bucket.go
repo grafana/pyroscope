@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/mimir/pkg/storegateway"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
@@ -25,6 +24,11 @@ import (
 // TODO move this to a config.
 const blockSyncConcurrency = 100
 
+type BucketStoreStats struct {
+	// BlocksLoaded is the number of blocks currently loaded in the bucket store.
+	BlocksLoaded int
+}
+
 type BucketStore struct {
 	bucket            phlareobj.Bucket
 	tenantID, syncDir string
@@ -37,7 +41,7 @@ type BucketStore struct {
 
 	filters []BlockMetaFilter
 	metrics *Metrics
-	stats   storegateway.BucketStoreStats
+	stats   BucketStoreStats
 }
 
 func NewBucketStore(bucket phlareobj.Bucket, tenantID string, syncDir string, filters []BlockMetaFilter, logger log.Logger, Metrics *Metrics) (*BucketStore, error) {
@@ -202,7 +206,7 @@ func (bs *BucketStore) addBlock(ctx context.Context, meta *block.Meta) (err erro
 	return nil
 }
 
-func (b *BucketStore) Stats() storegateway.BucketStoreStats {
+func (b *BucketStore) Stats() BucketStoreStats {
 	return b.stats
 }
 

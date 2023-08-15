@@ -11,7 +11,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/oklog/ulid"
 	"github.com/thanos-io/objstore"
-	"github.com/thanos-io/thanos/pkg/block"
 	"golang.org/x/sync/errgroup"
 
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
@@ -64,7 +63,7 @@ func IterBlockMetas(ctx context.Context, bkt phlareobj.Bucket, from, to time.Tim
 		for _, id := range ids {
 			id := id
 			g.Go(func() error {
-				r, err := bkt.Get(ctx, id+block.MetaFilename)
+				r, err := bkt.Get(ctx, id+MetaFilename)
 				if err != nil {
 					return err
 				}
@@ -98,7 +97,7 @@ func listAllBlockByPrefixes(ctx context.Context, bkt phlareobj.Bucket, from, to 
 			level.Debug(util.Logger).Log("msg", "listing blocks", "prefix", prefix, "i", i)
 			prefixIds := []string{}
 			err := bkt.Iter(ctx, prefix, func(name string) error {
-				if _, ok := block.IsBlockDir(name); ok {
+				if _, ok := IsBlockDir(name); ok {
 					prefixIds = append(prefixIds, name)
 				}
 				return nil
