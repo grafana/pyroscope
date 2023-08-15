@@ -15,6 +15,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/dskit/grpcutil"
 	"github.com/grafana/dskit/kv/memberlist"
@@ -320,7 +321,7 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(UsageReport, f.initUsageReport)
 	mm.RegisterModule(QueryFrontend, f.initQueryFrontend)
 	mm.RegisterModule(QueryScheduler, f.initQueryScheduler)
-	mm.RegisterModule(All, f.initCatchAll)
+	mm.RegisterModule(All, nil)
 
 	// Add dependencies
 	deps := map[string][]string{
@@ -375,7 +376,16 @@ func (f *Phlare) Run() error {
 	f.Server.HTTP.Path("/ready").Methods("GET").Handler(f.readyHandler(sm))
 
 	RegisterHealthServer(f.Server.HTTP, grpcutil.WithManager(sm))
-	healthy := func() { level.Info(f.logger).Log("msg", "Phlare started", "version", version.Info()) }
+	healthy := func() {
+		level.Info(f.logger).Log("msg", "Phlare started", "version", version.Info())
+		if os.Getenv("PYROSCOPE_PRINT_ROUTES") != "" {
+			printRoutes(f.Server.HTTP)
+		}
+	}
+
+	if f.API.RegisterCatchAll(); err != nil {
+		return err
+	}
 
 	serviceFailed := func(service services.Service) {
 		// if any service fails, stop entire Phlare
@@ -428,6 +438,7 @@ func (f *Phlare) Run() error {
 			}
 		}
 	}
+
 	return err
 }
 
@@ -502,14 +513,6 @@ func (f *Phlare) initAPI() (services.Service, error) {
 	return nil, nil
 }
 
-func (f *Phlare) initCatchAll() (services.Service, error) {
-	if err := f.API.RegisterCatchAll(); err != nil {
-		return nil, err
-	}
-
-	return nil, nil
-}
-
 func levelFilter(l string) level.Option {
 	switch l {
 	case "debug":
@@ -523,4 +526,13 @@ func levelFilter(l string) level.Option {
 	default:
 		return level.AllowAll()
 	}
+}
+
+func printRoutes(r *mux.Router) {
+	r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		tpl, err1 := route.GetPathTemplate()
+		met, err2 := route.GetMethods()
+		fmt.Println(tpl, err1, met, err2)
+		return nil
+	})
 }
