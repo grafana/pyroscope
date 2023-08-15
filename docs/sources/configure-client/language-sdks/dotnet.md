@@ -120,9 +120,9 @@ Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/exampl
 | PYROSCOPE_PROFILING_EXCEPTION_ENABLED  | Boolean      | If set to true, enables the Exceptions profiling. Defaults to false. |
 | PYROSCOPE_PROFILING_ALLOCATION_ENABLED | Boolean      | If set to true, enables the Allocations profiling. Defaults to false. |
 | PYROSCOPE_PROFILING_LOCK_ENABLED       | Boolean      | If set to true, enables the Lock Contention profiling. Defaults to false. |
-| PYROSCOPE_BASIC_AUTH_USER              | String       | Replace <User> with your Grafana Cloud stack user or Pyroscope user. For HTTP Basic Authentication. |
-| PYROSCOPE_BASIC_AUTH_PASSWORD          | String       | Replace <Password> with your Grafana Cloud API key or Pyroscope password. For HTTP Basic Authentication. |
-| PYROSCOPE_TENANT_ID                    | String       | Replace <TenantID> with the appropriate Tenant ID. Only needed if using multi-tenancy in Pyroscope. |
+| PYROSCOPE_BASIC_AUTH_USER              | String       | For HTTP Basic Authentication, use this to send profiles to atuhenticated server, for example Grafana Cloud |
+| PYROSCOPE_BASIC_AUTH_PASSWORD          | String       | For HTTP Basic Authentication, use this to send profiles to atuhenticated server, for example Grafana Cloud |
+| PYROSCOPE_TENANT_ID                    | String       | Only needed if using multi-tenancy in Pyroscope. |
 
 ## Sending data to Pyroscope OSS or Grafana Cloud Profiles with .NET SDK
 
