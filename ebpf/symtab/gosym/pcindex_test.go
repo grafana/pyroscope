@@ -4,8 +4,25 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/slices"
 )
+
+func TestPCIndex_FindIndex(t *testing.T) {
+	s := "aaaaccfff"
+	pci := NewPCIndex(len(s))
+	for i := 0; i < len(s); i++ {
+		pci.Set(i, uint64(s[i]))
+	}
+	assert.Equal(t, -1, pci.FindIndex(uint64(0x20)))
+	assert.Equal(t, 0, pci.FindIndex(uint64('a')))
+	assert.Equal(t, 0, pci.FindIndex(uint64('b')))
+	assert.Equal(t, 4, pci.FindIndex(uint64('c')))
+	assert.Equal(t, 4, pci.FindIndex(uint64('d')))
+	assert.Equal(t, 4, pci.FindIndex(uint64('e')))
+	assert.Equal(t, 6, pci.FindIndex(uint64('f')))
+	assert.Equal(t, 6, pci.FindIndex(uint64('z')))
+}
 
 func BenchmarkBinSearch(b *testing.B) {
 	const nsym = 64 * 1024

@@ -2,6 +2,8 @@ package gosym
 
 import (
 	"math"
+
+	"golang.org/x/exp/slices"
 )
 
 type PCIndex struct {
@@ -61,38 +63,33 @@ func (it *PCIndex) First() uint64 {
 
 func (it *PCIndex) FindIndex(addr uint64) int {
 	if it.i32 != nil {
-		n := len(it.i32)
+
 		if addr < uint64(it.i32[0]) {
 			return -1
 		}
-		i, j := 0, n
-		for i < j {
-			h := int(uint(i+j) >> 1) // avoid overflow when computing h
-			// i ≤ h < j
-			if !(addr < uint64(it.i32[h])) {
-				i = h + 1 // preserves f(i-1) == false
-			} else {
-				j = h // preserves f(j) == true
-			}
+		i, found := slices.BinarySearch(it.i32, uint32(addr))
+		if found {
+			return i
 		}
 		i--
+		v := it.i32[i]
+		for i > 0 && it.i32[i-1] == v {
+			i--
+		}
 		return i
 	}
-	n := len(it.i64)
 	if addr < it.i64[0] {
 		return -1
 	}
-	i, j := 0, n
-	for i < j {
-		h := int(uint(i+j) >> 1) // avoid overflow when computing h
-		// i ≤ h < j
-		if !(addr < it.i64[h]) {
-			i = h + 1 // preserves f(i-1) == false
-		} else {
-			j = h // preserves f(j) == true
-		}
+	i, found := slices.BinarySearch(it.i64, addr)
+	if found {
+		return i
 	}
 	i--
+	v := it.i64[i]
+	for i > 0 && it.i64[i-1] == v {
+		i--
+	}
 	return i
 }
 
