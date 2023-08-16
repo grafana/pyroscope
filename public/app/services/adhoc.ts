@@ -1,6 +1,6 @@
 import { Result } from '@phlare/util/fp';
 import { CustomError } from 'ts-custom-error';
-import { FlamebearerProfileSchema, Profile } from '@pyroscope/models/src';
+import { FlamebearerProfileSchema, Profile } from '@phlare/legacy/models';
 import { AllProfilesSchema, AllProfiles } from '@phlare/models/adhoc';
 import type { ZodError } from 'zod';
 import { z } from 'zod';

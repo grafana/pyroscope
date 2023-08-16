@@ -1,7 +1,7 @@
 /* eslint-disable import/prefer-default-export */
 import { Result } from '@phlare/util/fp';
 import type { ZodError } from 'zod';
-import { Profile } from '@pyroscope/models/src';
+import { Profile } from '@phlare/legacy/models';
 import {
   FlamegraphDotComResponse,
   flamegraphDotComResponseScheme,

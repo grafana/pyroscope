@@ -6,7 +6,7 @@ import React, {
   useCallback,
 } from 'react';
 
-import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
+import { getFormatter } from '@phlare/legacy/flamegraph/format/format';
 import TooltipWrapper from '@phlare/components/TimelineChart/TooltipWrapper';
 import type { Heatmap } from '@phlare/services/render';
 import {

@@ -1,17 +1,17 @@
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const { dependencies: pyroOSSDeps } = require('../../og/package.json');
+//const { dependencies: pyroOSSDeps } = require('../../og/package.json');
 const webpack = require('webpack');
 const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
 // this is so that we don't import dependencies twice, once from pyroscope-oss and another from here
-const deps = Object.entries(pyroOSSDeps).reduce((prev, [name]) => {
-  return {
-    ...prev,
-    [name]: path.resolve(__dirname, `../../node_modules/${name}`),
-  };
-}, {});
+// const deps = Object.entries(pyroOSSDeps).reduce((prev, [name]) => {
+//   return {
+//     ...prev,
+//     [name]: path.resolve(__dirname, `../../node_modules/${name}`),
+//   };
+// }, {});
 
 module.exports = {
   target: 'web',
@@ -35,7 +35,7 @@ module.exports = {
     alias: {
       '@phlare': path.resolve(__dirname, '../../public/app'),
       // Dependencies
-      ...deps,
+      //...deps,
     },
     plugins: [
       // Use same alias from tsconfig.json
@@ -87,7 +87,7 @@ module.exports = {
       {
         test: /\.(js|ts)x?$/,
         // Ignore everything except pyroscope-oss, since it's used as if it was local code
-        exclude: /node_modules\/(?!pyroscope-oss).*/,
+        // exclude: /node_modules\/(?!pyroscope-oss).*/,
         use: [
           {
             loader: 'esbuild-loader',

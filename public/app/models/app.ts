@@ -1,5 +1,5 @@
 import { parse, brandQuery, Query } from '@phlare/models/query';
-import { SpyNameSchema, UnitsSchema } from '@pyroscope/models/src';
+import { SpyNameSchema, UnitsSchema } from '@phlare/legacy/models';
 import { z } from 'zod';
 
 export const PyroscopeAppLabel = 'pyroscope_app';

@@ -1,4 +1,4 @@
-import { Profile } from '@pyroscope/models/src';
+import { Profile } from '@phlare/legacy/models';
 import { shareWithFlamegraphDotcom } from '@phlare/services/share';
 import { useAppDispatch } from '@phlare/redux/hooks';
 import handleError from '@phlare/util/handleError';

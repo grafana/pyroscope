@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { Profile } from '@pyroscope/models/src';
+import type { Profile } from '@phlare/legacy/models';
 import {
   MergeOutput,
   mergeWithQueryID,

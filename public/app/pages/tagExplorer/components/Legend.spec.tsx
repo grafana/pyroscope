@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import type { TimelineGroupData } from '@phlare/components/TimelineChart/TimelineChartWrapper';
-import type { Group } from '@pyroscope/models/src';
+import type { Group } from '@phlare/legacy/models';
 
 import Legend from './Legend';
 

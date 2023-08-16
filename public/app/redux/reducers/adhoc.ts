@@ -1,4 +1,4 @@
-import { Profile } from '@pyroscope/models/src';
+import { Profile } from '@phlare/legacy/models';
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import {
   upload,

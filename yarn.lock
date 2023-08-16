@@ -2462,16 +2462,6 @@
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
   integrity sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==
 
-"@pyroscope/flamegraph@^0.35.6":
-  version "0.35.6"
-  resolved "https://registry.yarnpkg.com/@pyroscope/flamegraph/-/flamegraph-0.35.6.tgz#ac07abb2c9155a075ab6ccba9e1d08d6c07b6ba1"
-  integrity sha512-YNTNcF3Zb20gO7vbzPUmTOju8AF0p5XBw5eaPlOa8FxPIfUnYQ9sQ/8okde3wrZhYkEiUveo0dcHML6IEng4BA==
-
-"@pyroscope/models@^0.4.7":
-  version "0.4.7"
-  resolved "https://registry.yarnpkg.com/@pyroscope/models/-/models-0.4.7.tgz#5b62fd246b1abe091310d0269d5556d888e7cb6f"
-  integrity sha512-Lr25KVedM0hZQ1IpsN35pQeE/oqyfisqiFQaBLkn8b71DhhKEHGp5978rOw2rOqEcIlQqjSGnxUDnkBxBEoTlw==
-
 "@pyroscope/nodejs@^0.2.5":
   version "0.2.6"
   resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.2.6.tgz#edc91bb230f36dbddaf854fa5b31257cf7f1ada5"

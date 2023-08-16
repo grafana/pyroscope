@@ -4,7 +4,7 @@ import {
   Groups,
   FlamebearerProfileSchema,
   GroupsSchema,
-} from '@pyroscope/models/src';
+} from '@phlare/legacy/models';
 import { z } from 'zod';
 import type { ZodError } from 'zod';
 import {

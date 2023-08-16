@@ -3,7 +3,7 @@ import 'react-dom';
 
 import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
 import Box from '@phlare/ui/Box';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
+import { FlamegraphRenderer } from '@phlare/legacy/flamegraph/FlamegraphRenderer';
 import {
   fetchSingleView,
   setQuery,
@@ -24,10 +24,10 @@ import TagsBar from '@phlare/components/TagsBar';
 import useTimeZone from '@phlare/hooks/timeZone.hook';
 import PageTitle from '@phlare/components/PageTitle';
 import { ContextMenuProps } from '@phlare/components/TimelineChart/ContextMenu.plugin';
-import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
+import { getFormatter } from '@phlare/legacy/flamegraph/format/format';
 import { LoadingOverlay } from '@phlare/ui/LoadingOverlay';
 import { TooltipCallbackProps } from '@phlare/components/TimelineChart/Tooltip.plugin';
-import { Profile } from '@pyroscope/models/src';
+import { Profile } from '@phlare/legacy/models';
 import {
   isExportToFlamegraphDotComEnabled,
   isAnnotationsEnabled,

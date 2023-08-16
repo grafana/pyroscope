@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import 'react-dom';
 import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
 import Box from '@phlare/ui/Box';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
+import { FlamegraphRenderer } from '@phlare/legacy/flamegraph/FlamegraphRenderer';
 import FileList from '@phlare/components/FileList';
 import useExportToFlamegraphDotCom from '@phlare/components/exportToFlamegraphDotCom.hook';
 import ExportData from '@phlare/components/ExportData';

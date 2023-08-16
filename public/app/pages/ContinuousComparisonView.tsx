@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import 'react-dom';
 
 import Box from '@phlare/ui/Box';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
+import { FlamegraphRenderer } from '@phlare/legacy/flamegraph/FlamegraphRenderer';
 import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
 import {
   selectContinuousState,
