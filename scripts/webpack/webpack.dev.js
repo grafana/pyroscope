@@ -8,7 +8,7 @@ module.exports = merge(common, {
   devtool: 'eval-source-map',
   mode: 'development',
   devServer: {
-    port: 4040,
+    port: 4041,
     historyApiFallback: true,
     proxy: {
       '/pyroscope': 'http://localhost:4040',
