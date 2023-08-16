@@ -38,7 +38,27 @@ type MetaVersion int
 const (
 	// Version1 is a enumeration of Phlare section of TSDB meta supported by Phlare.
 	MetaVersion1 = MetaVersion(1)
+
+	// MetaVersion2 indicates the block format version.
+	// https://github.com/grafana/phlare/pull/767.
+	//  1. In this version we introduced symdb:
+	//     - stacktraces.parquet table has been deprecated.
+	//     - StacktracePartition column added to profiles.parquet table.
+	//     - symdb is stored in ./symbols sub-directory.
+	//  2. TotalValue column added to profiles.parquet table.
+	//  3. pprof labels discarded and never stored in the block.
 	MetaVersion2 = MetaVersion(2)
+
+	// MetaVersion3 indicates the block format version.
+	// https://github.com/grafana/pyroscope/pull/2196.
+	//  1. Introduction of symdb v2:
+	//     - locations, functions, mappings, strings parquet tables
+	//       moved to ./symbols sub-directory (symdb) and partitioned
+	//       by StacktracePartition. References to the partitions
+	//       are stored in the index.symdb file.
+	//  2. In this version, parquet tables are never loaded into
+	//     memory entirely. Instead, each partition (row range) is read
+	//     from the block on demand at query time.
 	MetaVersion3 = MetaVersion(3)
 )
 
