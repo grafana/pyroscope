@@ -30,6 +30,8 @@
   "include": [
     "public",
     "public/app/types/types.d.ts",
+    "public/app/types/custom.d.ts",
+    "public/app/types/alias.d.ts",
     "public/app/lib/global.d.ts",
     "public/app/lib/types.d.ts",
     "public/app/lib/flot.d.ts"
