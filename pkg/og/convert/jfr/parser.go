@@ -3,14 +3,15 @@ package jfr
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
-	"github.com/pyroscope-io/jfr-parser/parser"
+	"io"
+	"regexp"
+
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
 	"github.com/grafana/pyroscope/pkg/og/storage/segment"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
-	"io"
-	"regexp"
+	"github.com/hashicorp/go-multierror"
+	"github.com/pyroscope-io/jfr-parser/parser"
 )
 
 const (
@@ -44,59 +45,86 @@ func ParseJFR(ctx context.Context, s storage.Putter, body io.Reader, pi *storage
 // revive:disable-next-line:cognitive-complexity necessary complexity
 func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
 	var event string
-	for _, e := range c.Events {
-		if as, ok := e.(*parser.ActiveSetting); ok {
-			if as.Name == "event" {
-				event = as.Value
-			}
-		}
-	}
 	cache := make(tree.LabelsCache)
-	for contextID, events := range groupEventsByContextID(c.Events) {
-		labels := getContextLabels(contextID, jfrLabels)
-		lh := labels.Hash()
-		for _, e := range events {
-			switch e.(type) {
-			case *parser.ExecutionSample:
-				es := e.(*parser.ExecutionSample)
-				if fs := frames(es.StackTrace); fs != nil {
-					if es.State.Name == "STATE_RUNNABLE" {
-						cache.GetOrCreateTreeByHash(sampleTypeCPU, labels, lh).InsertStackString(fs, 1)
-					}
-					cache.GetOrCreateTreeByHash(sampleTypeWall, labels, lh).InsertStackString(fs, 1)
+	type labelsWithHash struct {
+		Labels tree.Labels
+		Hash   uint64
+	}
+	contexts := make(map[int64]labelsWithHash)
+	for c.Next() {
+		e := c.Event
+
+		getLabels := func(contextID int64) labelsWithHash {
+			res, ok := contexts[contextID]
+			if ok {
+				return res
+			}
+			ls := getContextLabels(contextID, jfrLabels)
+			res = labelsWithHash{
+				Labels: ls,
+				Hash:   ls.Hash(),
+			}
+			contexts[contextID] = res
+			return res
+		}
+
+		switch e.(type) {
+		case *parser.ExecutionSample:
+			es := e.(*parser.ExecutionSample)
+			if fs := frames(es.StackTrace); fs != nil {
+				lwh := getLabels(es.ContextId)
+				if es.State.Name == "STATE_RUNNABLE" {
+					cache.GetOrCreateTreeByHash(sampleTypeCPU, lwh.Labels, lwh.Hash).InsertStackString(fs, 1)
 				}
-			case *parser.ObjectAllocationInNewTLAB:
-				oa := e.(*parser.ObjectAllocationInNewTLAB)
-				if fs := frames(oa.StackTrace); fs != nil {
-					cache.GetOrCreateTreeByHash(sampleTypeInTLABObjects, labels, lh).InsertStackString(fs, 1)
-					cache.GetOrCreateTreeByHash(sampleTypeInTLABBytes, labels, lh).InsertStackString(fs, uint64(oa.TLABSize))
-				}
-			case *parser.ObjectAllocationOutsideTLAB:
-				oa := e.(*parser.ObjectAllocationOutsideTLAB)
-				if fs := frames(oa.StackTrace); fs != nil {
-					cache.GetOrCreateTreeByHash(sampleTypeOutTLABObjects, labels, lh).InsertStackString(fs, 1)
-					cache.GetOrCreateTreeByHash(sampleTypeOutTLABBytes, labels, lh).InsertStackString(fs, uint64(oa.AllocationSize))
-				}
-			case *parser.JavaMonitorEnter:
-				jme := e.(*parser.JavaMonitorEnter)
-				if fs := frames(jme.StackTrace); fs != nil {
-					cache.GetOrCreateTreeByHash(sampleTypeLockSamples, labels, lh).InsertStackString(fs, 1)
-					cache.GetOrCreateTreeByHash(sampleTypeLockDuration, labels, lh).InsertStackString(fs, uint64(jme.Duration))
-				}
-			case *parser.ThreadPark:
-				tp := e.(*parser.ThreadPark)
-				if fs := frames(tp.StackTrace); fs != nil {
-					cache.GetOrCreateTreeByHash(sampleTypeLockSamples, labels, lh).InsertStackString(fs, 1)
-					cache.GetOrCreateTreeByHash(sampleTypeLockDuration, labels, lh).InsertStackString(fs, uint64(tp.Duration))
-				}
-			case *parser.LiveObject:
-				lo := e.(*parser.LiveObject)
-				if fs := frames(lo.StackTrace); fs != nil {
-					cache.GetOrCreateTreeByHash(sampleTypeLiveObject, labels, lh).InsertStackString(fs, 1)
+				cache.GetOrCreateTreeByHash(sampleTypeWall, lwh.Labels, lwh.Hash).InsertStackString(fs, 1)
+			}
+		case *parser.ObjectAllocationInNewTLAB:
+			oa := e.(*parser.ObjectAllocationInNewTLAB)
+			if fs := frames(oa.StackTrace); fs != nil {
+				lwh := getLabels(oa.ContextId)
+				cache.GetOrCreateTreeByHash(sampleTypeInTLABObjects, lwh.Labels, lwh.Hash).InsertStackString(fs, 1)
+				cache.GetOrCreateTreeByHash(sampleTypeInTLABBytes, lwh.Labels, lwh.Hash).InsertStackString(fs, uint64(oa.TLABSize))
+			}
+		case *parser.ObjectAllocationOutsideTLAB:
+			oa := e.(*parser.ObjectAllocationOutsideTLAB)
+			if fs := frames(oa.StackTrace); fs != nil {
+				lwh := getLabels(oa.ContextId)
+				cache.GetOrCreateTreeByHash(sampleTypeOutTLABObjects, lwh.Labels, lwh.Hash).InsertStackString(fs, 1)
+				cache.GetOrCreateTreeByHash(sampleTypeOutTLABBytes, lwh.Labels, lwh.Hash).InsertStackString(fs, uint64(oa.AllocationSize))
+			}
+		case *parser.JavaMonitorEnter:
+			jme := e.(*parser.JavaMonitorEnter)
+			if fs := frames(jme.StackTrace); fs != nil {
+				lwh := getLabels(jme.ContextId)
+				cache.GetOrCreateTreeByHash(sampleTypeLockSamples, lwh.Labels, lwh.Hash).InsertStackString(fs, 1)
+				cache.GetOrCreateTreeByHash(sampleTypeLockDuration, lwh.Labels, lwh.Hash).InsertStackString(fs, uint64(jme.Duration))
+			}
+		case *parser.ThreadPark:
+			tp := e.(*parser.ThreadPark)
+			if fs := frames(tp.StackTrace); fs != nil {
+				lwh := getLabels(tp.ContextId)
+
+				cache.GetOrCreateTreeByHash(sampleTypeLockSamples, lwh.Labels, lwh.Hash).InsertStackString(fs, 1)
+				cache.GetOrCreateTreeByHash(sampleTypeLockDuration, lwh.Labels, lwh.Hash).InsertStackString(fs, uint64(tp.Duration))
+			}
+		case *parser.LiveObject:
+			lo := e.(*parser.LiveObject)
+			if fs := frames(lo.StackTrace); fs != nil {
+				lwh := getLabels(0)
+				cache.GetOrCreateTreeByHash(sampleTypeLiveObject, lwh.Labels, lwh.Hash).InsertStackString(fs, 1)
+			}
+		case *parser.ActiveSetting:
+			if as, ok := e.(*parser.ActiveSetting); ok {
+				if as.Name == "event" {
+					event = as.Value
 				}
 			}
 		}
 	}
+	if c.Err() != nil {
+		return fmt.Errorf("unable to parse JFR chunk to PutInput: %w", c.Err())
+	}
+
 	for sampleType, entries := range cache {
 		for _, e := range entries {
 			if i := labelIndex(jfrLabels, e.Labels, segment.ProfileIDLabelName); i != -1 {
@@ -242,32 +270,6 @@ func labelIndex(s *LabelsSnapshot, labels tree.Labels, key string) int {
 	return -1
 }
 
-func groupEventsByContextID(events []parser.Parseable) map[int64][]parser.Parseable {
-	res := make(map[int64][]parser.Parseable)
-	for _, e := range events {
-		switch e.(type) {
-		case *parser.ExecutionSample:
-			es := e.(*parser.ExecutionSample)
-			res[es.ContextId] = append(res[es.ContextId], e)
-		case *parser.ObjectAllocationInNewTLAB:
-			oa := e.(*parser.ObjectAllocationInNewTLAB)
-			res[oa.ContextId] = append(res[oa.ContextId], e)
-		case *parser.ObjectAllocationOutsideTLAB:
-			oa := e.(*parser.ObjectAllocationOutsideTLAB)
-			res[oa.ContextId] = append(res[oa.ContextId], e)
-		case *parser.JavaMonitorEnter:
-			jme := e.(*parser.JavaMonitorEnter)
-			res[jme.ContextId] = append(res[jme.ContextId], e)
-		case *parser.ThreadPark:
-			tp := e.(*parser.ThreadPark)
-			res[tp.ContextId] = append(res[tp.ContextId], e)
-		case *parser.LiveObject:
-			res[0] = append(res[0], e)
-		}
-	}
-	return res
-}
-
 func frames(st *parser.StackTrace) []string {
 	if st == nil {
 		return nil
@@ -310,7 +312,7 @@ func mergeJVMGeneratedClasses(frame string) string {
 	return frame
 }
 
-func processSymbols(meta parser.ClassMetadata, cpool *parser.CPool) {
+func processSymbols(meta *parser.ClassMetadata, cpool *parser.CPool) {
 	if meta.Name == "jdk.types.Symbol" {
 		for _, v := range cpool.Pool {
 			sym := v.(*parser.Symbol)
