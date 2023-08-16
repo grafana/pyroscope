@@ -10,7 +10,7 @@ tab 2: yarn && yarn dev
 
 ## Step 2. Running pyroscope
 tab 3:
-To run this (assuming phlare is already running on `http://localhost:4100`):
+To run this (assuming phlare is already running on `http://localhost:4040`):
 
 ```
 cd examples/rideshare-phlare

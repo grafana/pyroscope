@@ -4,7 +4,7 @@ services:
   pyroscope:
     image: 'grafana/pyroscope:weekly-f26-8e3be8fa'
     ports:
-      - '4100:4100'
+      - '4040:4040'
   app:
     image: 'docker.io/grafana/agent:v0.35.2'
     user: root

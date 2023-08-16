@@ -50,7 +50,7 @@
 | pyroscope.replicaCount | int | `1` |  |
 | pyroscope.resources | object | `{}` |  |
 | pyroscope.securityContext | object | `{}` |  |
-| pyroscope.service.port | int | `4100` |  |
+| pyroscope.service.port | int | `4040` |  |
 | pyroscope.service.port_name | string | `"http2"` |  |
 | pyroscope.service.type | string | `"ClusterIP"` |  |
 | pyroscope.serviceAccount.annotations | object | `{}` |  |

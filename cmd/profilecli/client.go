@@ -65,7 +65,7 @@ type commander interface {
 func addPhlareClient(cmd commander) *phlareClient {
 	client := &phlareClient{}
 
-	cmd.Flag("url", "URL of the profile store.").Default("http://localhost:4100").Envar(envPrefix + "URL").StringVar(&client.URL)
+	cmd.Flag("url", "URL of the profile store.").Default("http://localhost:4040").Envar(envPrefix + "URL").StringVar(&client.URL)
 	cmd.Flag("tenant-id", "The tenant ID to be used for the X-Scope-OrgID header.").Default("").Envar(envPrefix + "TENANT_ID").StringVar(&client.TenantID)
 	cmd.Flag("username", "The username to be used for basic auth.").Default("").Envar(envPrefix + "USERNAME").StringVar(&client.BasicAuth.Username)
 	cmd.Flag("password", "The password to be used for basic auth.").Default("").Envar(envPrefix + "PASSWORD").StringVar(&client.BasicAuth.Password)

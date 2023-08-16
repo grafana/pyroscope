@@ -63,7 +63,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
         - job_name: "default"
           scrape_interval: "15s"
           static_configs:
-            - targets: ["127.0.0.1:4100"]
+            - targets: ["127.0.0.1:4040"]
               labels:
                 service_name: "service-demo"
       ```
@@ -82,7 +82,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
 
         ```bash
         docker network create phlare-demo
-        docker run --rm --name phlare --network=phlare-demo -p 4100:4100 --volume "$(pwd)"/demo.yaml:/etc/phlare/demo.yaml grafana/phlare:latest --config.file=/etc/phlare/demo.yaml
+        docker run --rm --name phlare --network=phlare-demo -p 4040:4040 --volume "$(pwd)"/demo.yaml:/etc/phlare/demo.yaml grafana/phlare:latest --config.file=/etc/phlare/demo.yaml
         ```
 
       - Using a local binary:
@@ -91,10 +91,10 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
         ./phlare --config.file=./demo.yaml
         ```
 
-1. Verify that Phlare is ready. Grafana Phlare listens on port `4100`.
+1. Verify that Phlare is ready. Grafana Phlare listens on port `4040`.
 
       ```bash
-      curl localhost:4100/ready
+      curl localhost:4040/ready
       ```
 
 1. Configure Phlare to scrape profiles.
@@ -121,7 +121,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
    | Field | Value                                                                |
    | ----- | -------------------------------------------------------------------- |
    | Name  | Phlare                                                               |
-   | URL   | [http://phlare:4100/](http://phlare:4100/) |
+   | URL   | [http://phlare:4040/](http://phlare:4040/) |
 
   To learn more about adding data sources, see [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
 

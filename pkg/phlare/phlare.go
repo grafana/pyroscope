@@ -160,13 +160,13 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		// Ignore errors when setting new values. We have a test to verify that it works.
 		switch f.Name {
 		case "server.http-listen-port":
-			_ = f.Value.Set("4100")
+			_ = f.Value.Set("4040")
 		case "query-frontend.instance-port":
-			_ = f.Value.Set("4100")
+			_ = f.Value.Set("4040")
 		case "distributor.ring.instance-port":
-			_ = f.Value.Set("4100")
+			_ = f.Value.Set("4040")
 		case "overrides-exporter.ring.instance-port":
-			_ = f.Value.Set("4100")
+			_ = f.Value.Set("4040")
 		case "distributor.replication-factor":
 			_ = f.Value.Set("1")
 		case "query-scheduler.service-discovery-mode":
