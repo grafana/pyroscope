@@ -8,7 +8,7 @@ import (
 )
 
 func Test_Load(t *testing.T) {
-	s := newBlockResolverSuite(t, [][]string{
+	s := newBlockSuite(t, [][]string{
 		{"testdata/profile.pb.gz"},
 		{"testdata/profile.pb.gz"},
 	})

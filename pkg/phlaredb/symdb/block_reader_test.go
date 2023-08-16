@@ -23,47 +23,36 @@ var testBlockMeta = &block.Meta{
 	},
 }
 
-func Test_Reader_Open(t *testing.T) {
-	// TODO: Read db from disk.
-	cfg := &Config{
-		Dir: t.TempDir(),
-		Stacktraces: StacktracesConfig{
-			MaxNodesPerChunk: 7,
-		},
-		Parquet: ParquetConfig{
-			MaxBufferRowCount: 100 << 10,
-		},
-	}
-
-	db := NewSymDB(cfg)
-	w := db.PartitionWriter(1)
-	sids := make([]uint32, 5)
-	w.AppendStacktraces(sids, []*schemav1.Stacktrace{
-		{LocationIDs: []uint64{3, 2, 1}},
-		{LocationIDs: []uint64{2, 1}},
-		{LocationIDs: []uint64{4, 3, 2, 1}},
-		{LocationIDs: []uint64{3, 1}},
-		{LocationIDs: []uint64{5, 2, 1}},
-	})
-	require.Equal(t, []uint32{3, 2, 11, 16, 18}, sids)
-	require.NoError(t, db.Flush())
-
-	b, err := filesystem.NewBucket(cfg.Dir)
+func Test_Reader_Open_v2(t *testing.T) {
+	// The block contains two partitions (0 and 1), each partition
+	// stores symbols of the testdata/profile.pb.gz profile
+	b, err := filesystem.NewBucket("testdata/symbols/v2")
 	require.NoError(t, err)
 	x, err := Open(context.Background(), b, testBlockMeta)
 	require.NoError(t, err)
-	r, err := x.partition(context.Background(), 1)
-	require.NoError(t, err)
 
-	dst := new(mockStacktraceInserter)
-	dst.On("InsertStacktrace", uint32(2), []int32{2, 1})
-	dst.On("InsertStacktrace", uint32(3), []int32{3, 2, 1})
-	dst.On("InsertStacktrace", uint32(11), []int32{4, 3, 2, 1})
-	dst.On("InsertStacktrace", uint32(16), []int32{3, 1})
-	dst.On("InsertStacktrace", uint32(18), []int32{5, 2, 1})
+	r := NewResolver(context.Background(), x)
+	defer r.Release()
+	r.AddSamples(0, schemav1.Samples{
+		StacktraceIDs: []uint32{1, 2, 3, 4, 5},
+		Values:        []uint64{1, 1, 1, 1, 1},
+	})
+	r.AddSamples(1, schemav1.Samples{
+		StacktraceIDs: []uint32{1, 2, 3, 4, 5},
+		Values:        []uint64{1, 1, 1, 1, 1},
+	})
 
-	err = r.ResolveStacktraceLocations(context.Background(), dst, sids)
+	resolved, err := r.Tree()
 	require.NoError(t, err)
+	expected := `.
+└── github.com/pyroscope-io/pyroscope/pkg/scrape.(*scrapeLoop).run: self 2 total 10
+    └── github.com/pyroscope-io/pyroscope/pkg/scrape.(*Target).report: self 2 total 8
+        └── github.com/pyroscope-io/pyroscope/pkg/scrape.(*scrapeLoop).scrape: self 2 total 6
+            └── github.com/pyroscope-io/pyroscope/pkg/scrape.(*pprofWriter).writeProfile: self 2 total 4
+                └── google.golang.org/protobuf/proto.Unmarshal: self 2 total 2
+`
+
+	require.Equal(t, expected, resolved.String())
 }
 
 func Test_Reader_Open_v1(t *testing.T) {
