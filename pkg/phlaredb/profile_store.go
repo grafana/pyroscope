@@ -65,8 +65,8 @@ type profileStore struct {
 
 func newProfileWriter(writer io.Writer) *parquet.GenericWriter[*schemav1.Profile] {
 	return parquet.NewGenericWriter[*schemav1.Profile](writer, schemav1.ProfilesSchema,
-		parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "phlaredb-parquet-buffers*")),
-		parquet.CreatedBy("github.com/grafana/phlare/", build.Version, build.Revision),
+		parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "pyroscopedb-parquet-buffers*")),
+		parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
 		parquet.PageBufferSize(3*1024*1024),
 	)
 }
