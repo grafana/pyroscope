@@ -10,10 +10,10 @@ weight: 20
 Grafana Phlare's [ingester] component processes the received profiling data.
 First it keeps the data organized in memory, in the so called head block. Once
 the size of it exceeds a threshold or the head block is older than
-`-phlaredb.max-block-duration` (by default 3 hours), it will write the block to
+`-pyroscopedb.max-block-duration` (by default 3 hours), it will write the block to
 the local persistent disk (see [block format] for more detail about the block's
 layout). Each of those blocks are identified by an [ULID] and stored within
-Grafana Phlare's data path `-phlaredb.data-path=` (by default
+Grafana Phlare's data path `-pyroscopedb.data-path=` (by default
 `./data`) is organized the following:
 
 * `./<tenant-id>`: Each tenant has its own subdirectory with the following subdirectories:
