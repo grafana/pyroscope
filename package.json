@@ -178,8 +178,7 @@
     "@pyroscope/nodejs": "^0.2.5"
   },
   "resolutions": {
-      "d3-graphviz": "^5.1.0",
-      "jquery": "^3.6.4"
-
+    "d3-graphviz": "^5.1.0",
+    "jquery": "^3.6.4"
   }
 }

@@ -20,7 +20,7 @@ export const buildInfo = function (): BuildInfo {
   const win = window as unknown as { buildInfo: BuildInfo };
 
   return {
-    jsVersion: jsVersion ,
+    jsVersion: jsVersion,
     goos: win.buildInfo?.goos,
     goarch: win.buildInfo?.goarch,
     goVersion: win.buildInfo?.goVersion,
