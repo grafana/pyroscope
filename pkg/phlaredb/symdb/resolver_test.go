@@ -16,59 +16,73 @@ import (
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
-func Test_symdb_memory_Resolver_ResolveProfile(t *testing.T) {
-	s := newSuite(t, "testdata/profile.pb.gz")
+func Test_memory_Resolver_ResolveProfile(t *testing.T) {
+	s := newSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
-	resolved, err := s.symbols.Profile(context.Background(), s.indexed[0][0].Samples)
+	r := NewResolver(context.Background(), s.db)
+	defer r.Release()
+	r.AddSamples(0, s.indexed[0][0].Samples)
+	resolved, err := r.Profile()
 	require.NoError(t, err)
 	require.Equal(t, expectedFingerprint, profileFingerprint(resolved, 0))
 }
 
-func Test_symdb_memory_Resolver_ResolveTree(t *testing.T) {
-	s := newSuite(t, "testdata/profile.pb.gz")
+func Test_memory_Resolver_ResolveTree(t *testing.T) {
+	s := newSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
-	tree, err := s.symbols.Tree(context.Background(), s.indexed[0][0].Samples)
+	r := NewResolver(context.Background(), s.db)
+	defer r.Release()
+	r.AddSamples(0, s.indexed[0][0].Samples)
+	resolved, err := r.Tree()
 	require.NoError(t, err)
-	require.Equal(t, expectedFingerprint, treeFingerprint(tree))
+	require.Equal(t, expectedFingerprint, treeFingerprint(resolved))
 }
 
-func Test_symdb_block_Resolver_ResolveProfile(t *testing.T) {
-	s := newBlockResolverSuite(t, "testdata/profile.pb.gz")
+func Test_block_Resolver_ResolveProfile(t *testing.T) {
+	s := newBlockResolverSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	defer s.teardown()
 	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
-	resolved, err := s.symbols.Profile(context.Background(), s.indexed[0][0].Samples)
+	r := NewResolver(context.Background(), s.reader)
+	defer r.Release()
+	r.AddSamples(0, s.indexed[0][0].Samples)
+	resolved, err := r.Profile()
 	require.NoError(t, err)
 	require.Equal(t, expectedFingerprint, profileFingerprint(resolved, 0))
 }
 
-func Test_symdb_block_Resolver_ResolveTree(t *testing.T) {
-	s := newBlockResolverSuite(t, "testdata/profile.pb.gz")
+func Test_lock_Resolver_ResolveTree(t *testing.T) {
+	s := newBlockResolverSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	defer s.teardown()
-	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 1)
-	tree, err := s.symbols.Tree(context.Background(), s.indexed[0][1].Samples)
+	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
+	r := NewResolver(context.Background(), s.reader)
+	defer r.Release()
+	r.AddSamples(0, s.indexed[0][0].Samples)
+	resolved, err := r.Tree()
 	require.NoError(t, err)
-	require.Equal(t, expectedFingerprint, treeFingerprint(tree))
+	require.Equal(t, expectedFingerprint, treeFingerprint(resolved))
 }
 
-func Benchmark_symdb_block_Resolver_ResolveProfile(t *testing.B) {
-	s := newBlockResolverSuite(t, "testdata/profile.pb.gz")
+func Benchmark_block_Resolver_ResolveProfile(t *testing.B) {
+	s := newBlockResolverSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	defer s.teardown()
 	t.ResetTimer()
 	t.ReportAllocs()
 	for i := 0; i < t.N; i++ {
-		_, err := s.symbols.Profile(context.Background(), s.indexed[0][0].Samples)
-		require.NoError(t, err)
+		r := NewResolver(context.Background(), s.reader)
+		r.AddSamples(0, s.indexed[0][0].Samples)
+		_, _ = r.Profile()
 	}
 }
 
-func Benchmark_symdb_block_Resolver_ResolveTree(t *testing.B) {
-	s := newBlockResolverSuite(t, "testdata/profile.pb.gz")
+func Benchmark_block_Resolver_ResolveTree(t *testing.B) {
+	s := newBlockResolverSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	defer s.teardown()
 	t.ResetTimer()
 	t.ReportAllocs()
 	for i := 0; i < t.N; i++ {
-		_, err := s.symbols.Tree(context.Background(), s.indexed[0][0].Samples)
-		require.NoError(t, err)
+		r := NewResolver(context.Background(), s.reader)
+		r.AddSamples(0, s.indexed[0][0].Samples)
+		_, _ = r.Tree()
 	}
 }
 
@@ -77,35 +91,24 @@ type memSuite struct {
 
 	config   *Config
 	db       *SymDB
-	files    []string
+	files    [][]string
 	profiles []*pprof.Profile
 	indexed  [][]v1.InMemoryProfile
-	symbols  *Symbols
 }
 
 type blockSuite struct {
 	*memSuite
-
-	reader    *Reader
-	partition *partition
+	reader *Reader
 }
 
-func newSuite(t testing.TB, files ...string) *memSuite {
+func newSuite(t testing.TB, files [][]string) *memSuite {
 	s := memSuite{t: t, files: files}
 	s.init()
-	r := s.db.PartitionWriter(1)
-	s.symbols = &Symbols{
-		Stacktraces: r,
-		Locations:   r.locations.slice,
-		Mappings:    r.mappings.slice,
-		Functions:   r.functions.slice,
-		Strings:     r.strings.slice,
-	}
 	return &s
 }
 
-func newBlockResolverSuite(t testing.TB, files ...string) *blockSuite {
-	b := blockSuite{memSuite: newSuite(t, files...)}
+func newBlockResolverSuite(t testing.TB, files [][]string) *blockSuite {
+	b := blockSuite{memSuite: newSuite(t, files)}
 	b.flush()
 	return &b
 }
@@ -125,13 +128,14 @@ func (s *memSuite) init() {
 	if s.db == nil {
 		s.db = NewSymDB(s.config)
 	}
-
-	w := s.db.PartitionWriter(1)
-	for _, f := range s.files {
-		p, err := pprof.OpenFile(f)
-		require.NoError(s.t, err)
-		s.profiles = append(s.profiles, p)
-		s.indexed = append(s.indexed, w.WriteProfileSymbols(p.Profile))
+	for p, files := range s.files {
+		w := s.db.PartitionWriter(uint64(p))
+		for _, f := range files {
+			x, err := pprof.OpenFile(f)
+			require.NoError(s.t, err)
+			s.profiles = append(s.profiles, x)
+			s.indexed = append(s.indexed, w.WriteProfileSymbols(x.Profile))
+		}
 	}
 }
 
@@ -141,20 +145,9 @@ func (s *blockSuite) flush() {
 	require.NoError(s.t, err)
 	s.reader, err = Open(context.Background(), b, testBlockMeta)
 	require.NoError(s.t, err)
-
-	s.partition, err = s.reader.partition(context.Background(), 1)
-	require.NoError(s.t, err)
-	s.symbols = &Symbols{
-		Stacktraces: s.partition,
-		Locations:   s.partition.locations.s,
-		Mappings:    s.partition.mappings.s,
-		Functions:   s.partition.functions.s,
-		Strings:     s.partition.strings.s,
-	}
 }
 
 func (s *blockSuite) teardown() {
-	s.partition.Release()
 	require.NoError(s.t, s.reader.Close())
 }
 

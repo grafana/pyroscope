@@ -25,7 +25,7 @@ import (
 type symbolsResolver interface {
 	symdb.SymbolsReader
 	io.Closer
-	// Load(context.Context) error
+	Load(context.Context) error
 }
 
 type symbolsResolverV1 struct {
@@ -49,6 +49,11 @@ func newSymbolsResolverV1(ctx context.Context, bucketReader phlareobj.Bucket, me
 	}
 	r.inMemoryParquetTables, err = openInMemoryParquetTables(ctx, bucketReader, meta)
 	return r, err
+}
+
+func (r *symbolsResolverV1) Load(_ context.Context) error {
+	// Unsupported.
+	return nil
 }
 
 func (r *symbolsResolverV1) Close() error {
@@ -117,6 +122,10 @@ func newSymbolsResolverV2(ctx context.Context, b phlareobj.Bucket, meta *block.M
 	}
 	r.inMemoryParquetTables, err = openInMemoryParquetTables(ctx, b, meta)
 	return &r, err
+}
+
+func (r *symbolsResolverV2) Load(ctx context.Context) error {
+	return r.symbols.Load(ctx)
 }
 
 func (r *symbolsResolverV2) Close() error {

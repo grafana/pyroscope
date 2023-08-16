@@ -266,6 +266,7 @@ func NewSamplesFromMap(m map[uint32]int64) Samples {
 		s.Values[i] = uint64(v)
 		i++
 	}
+	sort.Sort(s)
 	return s
 }
 

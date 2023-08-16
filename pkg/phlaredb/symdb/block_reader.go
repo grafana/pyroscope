@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"sync"
 
 	"github.com/grafana/dskit/multierror"
@@ -163,48 +162,6 @@ func (r *Reader) Close() error {
 		Err()
 }
 
-func (r *Reader) Load(ctx context.Context) error {
-	f, err := r.file(StacktracesFileName)
-	if err != nil {
-		return err
-	}
-
-	partitions := make([]*partition, len(r.partitions))
-	var size int64
-	var i int
-	for _, v := range r.partitions {
-		partitions[i] = v
-		for _, c := range v.stacktraceChunks {
-			size += c.header.Size
-		}
-		i++
-	}
-	sort.Slice(partitions, func(i, j int) bool {
-		return partitions[i].stacktraceChunks[0].header.Offset <
-			partitions[j].stacktraceChunks[0].header.Offset
-	})
-
-	offset := partitions[0].stacktraceChunks[0].header.Offset
-	rc, err := r.bucket.GetRange(ctx, f.RelPath, offset, size)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err = multierror.New(err, rc.Close()).Err()
-	}()
-
-	buf := bufio.NewReaderSize(rc, r.chunkFetchBufferSize)
-	for _, p := range partitions {
-		for _, c := range p.stacktraceChunks {
-			if err = c.readFrom(io.LimitReader(buf, c.header.Size)); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
 var ErrPartitionNotFound = fmt.Errorf("partition not found")
 
 func (r *Reader) Partition(ctx context.Context, partition uint64) (PartitionReader, error) {
@@ -238,7 +195,7 @@ func (p *partition) init(ctx context.Context) error {
 		c := c
 		g.Go(func() error { return c.fetch(ctx) })
 	}
-	if p.reader.index.Header.Version == FormatV2 {
+	if p.reader.index.Header.Version > FormatV1 {
 		g.Go(func() error { return p.locations.fetch(ctx) })
 		g.Go(func() error { return p.mappings.fetch(ctx) })
 		g.Go(func() error { return p.functions.fetch(ctx) })
@@ -268,7 +225,7 @@ func (p *partition) Release() {
 			wg.Done()
 		}()
 	}
-	if p.reader.index.Header.Version == FormatV2 {
+	if p.reader.index.Header.Version > FormatV1 {
 		go func() { p.locations.release(); wg.Done() }()
 		go func() { p.mappings.release(); wg.Done() }()
 		go func() { p.functions.release(); wg.Done() }()
@@ -498,6 +455,10 @@ type parquetTableRange[M schemav1.Models, P schemav1.Persister[M]] struct {
 	s []M
 }
 
+// parquet.CopyRows uses hardcoded buffer size:
+// defaultRowBufferSize = 42
+const inMemoryReaderRowsBufSize = 1 << 10
+
 func (t *parquetTableRange[M, P]) fetch(ctx context.Context) error {
 	span, _ := opentracing.StartSpanFromContext(ctx, "parquetTableRange.fetch", opentracing.Tags{
 		"table_name": t.persister.Name(),
@@ -513,9 +474,6 @@ func (t *parquetTableRange[M, P]) fetch(ctx context.Context) error {
 	for _, h := range t.headers {
 		s += h.Rows
 	}
-	// parquet.CopyRows uses hardcoded buffer size:
-	// defaultRowBufferSize = 42
-	const inMemoryReaderRowsBufSize = 1 << 10
 	buf := make([]parquet.Row, inMemoryReaderRowsBufSize)
 	t.s = make([]M, s)
 	var offset int

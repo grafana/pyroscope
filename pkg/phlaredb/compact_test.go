@@ -420,7 +420,7 @@ func newBlock(t *testing.T, generator func() []*testhelper.ProfileBuilder) Block
 	}
 	blk := NewSingleBlockQuerierFromMeta(ctx, bkt, meta)
 	require.NoError(t, blk.Open(ctx))
-	//	require.NoError(t, blk.symbols.Load(ctx))
+	require.NoError(t, blk.symbols.Load(ctx))
 	return blk
 }
 
