@@ -4,9 +4,6 @@
     "plugins": [{ "name": "typescript-plugin-css-modules" }],
     "paths": {
       "@phlare/*": ["./public/app/*"],
-      "@pyroscope/flamegraph/*": ["./og/packages/pyroscope-flamegraph/*"],
-      "@pyroscope/models/*": ["./og/packages/pyroscope-models/*"],
-      "@pyroscope/legacy-webapp": ["./og/webapp"],
       "zod": ["./node_modules/zod"]
     },
     "target": "es5",

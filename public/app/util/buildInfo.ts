@@ -1,6 +1,6 @@
 // eslint-disable-next-line import/no-relative-packages
 import { Maybe } from 'true-myth';
-import { version as jsVersion } from '../../../og/webapp/package.json';
+import { version as jsVersion } from '../../../package.json';
 
 export interface BuildInfo {
   goos: string;
@@ -20,7 +20,7 @@ export const buildInfo = function (): BuildInfo {
   const win = window as unknown as { buildInfo: BuildInfo };
 
   return {
-    jsVersion,
+    jsVersion: jsVersion ,
     goos: win.buildInfo?.goos,
     goarch: win.buildInfo?.goarch,
     goVersion: win.buildInfo?.goVersion,
