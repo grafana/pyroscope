@@ -32,10 +32,10 @@ func Test_memory_Resolver_ResolveTree(t *testing.T) {
 func Test_block_Resolver_ResolveProfile(t *testing.T) {
 	s := newBlockSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	defer s.teardown()
-	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 1)
+	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
 	r := NewResolver(context.Background(), s.reader)
 	defer r.Release()
-	r.AddSamples(0, s.indexed[0][1].Samples)
+	r.AddSamples(0, s.indexed[0][0].Samples)
 	resolved, err := r.Profile()
 	require.NoError(t, err)
 	require.Equal(t, expectedFingerprint, profileFingerprint(resolved, 0))

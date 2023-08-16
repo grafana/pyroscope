@@ -81,6 +81,7 @@ func (s *blockSuite) teardown() {
 	require.NoError(s.t, s.reader.Close())
 }
 
+//nolint:unparam
 func pprofFingerprint(p *googlev1.Profile, typ int) [][2]uint64 {
 	m := make(map[uint64]uint64, len(p.Sample))
 	h := xxhash.New()
@@ -106,6 +107,7 @@ func pprofFingerprint(p *googlev1.Profile, typ int) [][2]uint64 {
 	return s
 }
 
+//nolint:unparam
 func profileFingerprint(p *profile.Profile, typ int) [][2]uint64 {
 	m := make(map[uint64]uint64, len(p.Sample))
 	h := xxhash.New()
