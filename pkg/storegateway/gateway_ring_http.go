@@ -10,10 +10,9 @@ import (
 	"net/http"
 	"text/template"
 
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
-
-	util_log "github.com/grafana/mimir/pkg/util/log"
 )
 
 var (
@@ -26,11 +25,11 @@ type ringStatusPageContents struct {
 	Message string
 }
 
-func writeMessage(w http.ResponseWriter, message string) {
+func writeMessage(logger log.Logger, w http.ResponseWriter, message string) {
 	w.WriteHeader(http.StatusOK)
 	err := ringStatusPageTemplate.Execute(w, ringStatusPageContents{Message: message})
 	if err != nil {
-		level.Error(util_log.Logger).Log("msg", "unable to serve store gateway ring page", "err", err)
+		level.Error(logger).Log("msg", "unable to serve store gateway ring page", "err", err)
 	}
 }
 
@@ -38,7 +37,7 @@ func (c *StoreGateway) RingHandler(w http.ResponseWriter, req *http.Request) {
 	if c.State() != services.Running {
 		// we cannot read the ring before the store gateway is in Running state,
 		// because that would lead to race condition.
-		writeMessage(w, "Store gateway is not running yet.")
+		writeMessage(c.logger, w, "Store gateway is not running yet.")
 		return
 	}
 

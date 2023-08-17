@@ -6,6 +6,7 @@ require (
 	github.com/bufbuild/connect-go v1.9.0
 	github.com/bufbuild/connect-grpchealth-go v1.0.0
 	github.com/cespare/xxhash/v2 v2.2.0
+	github.com/colega/zeropool v0.0.0-20230505084239-6fb4a4f75381
 	github.com/dennwc/varint v1.0.0
 	github.com/dgryski/go-groupvarint v0.0.0-20230630160417-2bfb7969fb3c
 	github.com/drone/envsubst v1.0.3
@@ -21,7 +22,6 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grafana/dskit v0.0.0-20230804003603-740f56bd2934
-	github.com/grafana/mimir v0.0.0-20230728104016-12792f6adf17
 	github.com/grafana/pyroscope/api v0.0.0-00010101000000-000000000000
 	github.com/grafana/regexp v0.0.0-20221122212121-6b5c0a4cb7fd
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -35,8 +35,8 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/oklog/ulid v1.3.1
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/onsi/ginkgo/v2 v2.9.4
-	github.com/onsi/gomega v1.27.6
+	github.com/onsi/ginkgo/v2 v2.11.0
+	github.com/onsi/gomega v1.27.10
 	github.com/opentracing-contrib/go-grpc v0.0.0-20210225150812-73cb765af46e
 	github.com/opentracing-contrib/go-stdlib v1.0.0
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b
@@ -44,14 +44,13 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/common v0.44.0
-	github.com/prometheus/prometheus v1.8.2-0.20220620125440-d7e7b8e04b5e
+	github.com/prometheus/prometheus v0.46.0
 	github.com/pyroscope-io/client v0.7.2
 	github.com/pyroscope-io/jfr-parser v0.7.0
 	github.com/samber/lo v1.37.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
 	github.com/thanos-io/objstore v0.0.0-20230727115635-d0c43443ecda
-	github.com/thanos-io/thanos v0.31.0
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/xlab/treeprint v1.2.0
@@ -77,12 +76,13 @@ require (
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.1 // indirect
 	cloud.google.com/go/storage v1.31.0 // indirect
+	github.com/Azure/azure-sdk-for-go v67.2.0+incompatible // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.7.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.3.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.0.0 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.0.0 // indirect
-	github.com/DmitriyVTitov/size v1.5.0 // indirect
+	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/aliyun/aliyun-oss-go-sdk v2.2.6+incompatible // indirect
@@ -103,18 +103,17 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.17.7 // indirect
 	github.com/aws/smithy-go v1.13.5 // indirect
 	github.com/baidubce/bce-sdk-go v0.9.138 // indirect
+	github.com/benbjohnson/clock v1.3.3 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/clbanning/mxj v1.8.4 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/dgraph-io/ristretto v0.1.1 // indirect
-	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/docker/go-connections v0.4.1-0.20210727194412-58542c764a11 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/efficientgo/core v1.0.0-rc.2 // indirect
+	github.com/efficientgo/e2e v0.14.1-0.20230710114240-c316eb95ae5b // indirect
 	github.com/emicklei/go-restful/v3 v3.10.2 // indirect
-	github.com/facette/natsort v0.0.0-20181210072756-2cd4dd1e2dcb // indirect
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
@@ -129,11 +128,9 @@ require (
 	github.com/go-openapi/strfmt v0.21.7 // indirect
 	github.com/go-openapi/swag v0.22.4 // indirect
 	github.com/go-openapi/validate v0.22.1 // indirect
-	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
-	github.com/golang/glog v1.1.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
@@ -143,7 +140,6 @@ require (
 	github.com/google/s2a-go v0.1.4 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.5 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
-	github.com/grafana/gomemcache v0.0.0-20230316202710-a081dae0aba9 // indirect
 	github.com/hashicorp/consul/api v1.22.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
@@ -152,6 +148,7 @@ require (
 	github.com/hashicorp/go-msgpack v1.1.5 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
+	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/golang-lru v0.6.0 // indirect
 	github.com/hashicorp/memberlist v0.5.0 // indirect
 	github.com/hashicorp/serf v0.10.1 // indirect
@@ -182,7 +179,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/alertmanager v0.25.1-0.20230502165937-0f3ab929fa37 // indirect
+	github.com/prometheus/alertmanager v0.25.0 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common/sigv4 v0.1.0 // indirect
 	github.com/prometheus/exporter-toolkit v0.10.0 // indirect
@@ -199,7 +196,6 @@ require (
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/tencentyun/cos-go-sdk-v5 v0.7.40 // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
-	github.com/weaveworks/common v0.0.0-20230714173453-d1f8877b91ce // indirect
 	github.com/weaveworks/promrus v1.2.0 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.6 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.6 // indirect
@@ -238,11 +234,11 @@ require (
 replace (
 	github.com/dgraph-io/badger/v2 => github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/grafana/pyroscope/api => ./api
+
 	// Replace memberlist with our fork which includes some fixes that haven't been
 	// merged upstream yet.
 	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91
-	// Using a fork of Prometheus with Mimir-specific changes.
-	github.com/prometheus/prometheus => github.com/grafana/mimir-prometheus v0.0.0-20230727094429-c8f5ad1492a4
+
 	github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20230727114110-2394c72a3ec7
 	// gopkg.in/yaml.v3
 	// + https://github.com/go-yaml/yaml/pull/691

@@ -7,11 +7,9 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
-	mimir_tsdb "github.com/grafana/mimir/pkg/storage/tsdb"
-	tsdb_block "github.com/grafana/mimir/pkg/storage/tsdb/block"
-	"github.com/grafana/mimir/pkg/storegateway"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/timestamp"
 
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
@@ -23,6 +21,11 @@ const (
 
 var errStoreGatewayUnhealthy = errors.New("store-gateway is unhealthy in the ring")
 
+// GaugeVec hides something like a Prometheus GaugeVec or an extprom.TxGaugeVec.
+type GaugeVec interface {
+	WithLabelValues(lvs ...string) prometheus.Gauge
+}
+
 type ShardingStrategy interface {
 	// FilterUsers whose blocks should be loaded by the store-gateway. Returns the list of user IDs
 	// that should be synced by the store-gateway.
@@ -31,11 +34,11 @@ type ShardingStrategy interface {
 	// FilterBlocks filters metas in-place keeping only blocks that should be loaded by the store-gateway.
 	// The provided loaded map contains blocks which have been previously returned by this function and
 	// are now loaded or loading in the store-gateway.
-	FilterBlocks(ctx context.Context, userID string, metas map[ulid.ULID]*block.Meta, loaded map[ulid.ULID]struct{}, synced tsdb_block.GaugeVec) error
+	FilterBlocks(ctx context.Context, userID string, metas map[ulid.ULID]*block.Meta, loaded map[ulid.ULID]struct{}, synced GaugeVec) error
 }
 
 type BlockMetaFilter interface {
-	Filter(ctx context.Context, metas map[ulid.ULID]*block.Meta, synced tsdb_block.GaugeVec) error
+	Filter(ctx context.Context, metas map[ulid.ULID]*block.Meta, synced GaugeVec) error
 }
 
 type shardingMetadataFilterAdapter struct {
@@ -52,12 +55,12 @@ type ShuffleShardingStrategy struct {
 	r            *ring.Ring
 	instanceID   string
 	instanceAddr string
-	limits       storegateway.ShardingLimits
+	limits       ShardingLimits
 	logger       log.Logger
 }
 
 // NewShuffleShardingStrategy makes a new ShuffleShardingStrategy.
-func NewShuffleShardingStrategy(r *ring.Ring, instanceID, instanceAddr string, limits storegateway.ShardingLimits, logger log.Logger) *ShuffleShardingStrategy {
+func NewShuffleShardingStrategy(r *ring.Ring, instanceID, instanceAddr string, limits ShardingLimits, logger log.Logger) *ShuffleShardingStrategy {
 	return &ShuffleShardingStrategy{
 		r:            r,
 		instanceID:   instanceID,
@@ -72,7 +75,7 @@ func (s *ShuffleShardingStrategy) FilterUsers(_ context.Context, userIDs []strin
 	// As a protection, ensure the store-gateway instance is healthy in the ring. It could also be missing
 	// in the ring if it was failing to heartbeat the ring and it got remove from another healthy store-gateway
 	// instance, because of the auto-forget feature.
-	if set, err := s.r.GetAllHealthy(storegateway.BlocksOwnerSync); err != nil {
+	if set, err := s.r.GetAllHealthy(BlocksOwnerSync); err != nil {
 		return nil, err
 	} else if !set.Includes(s.instanceAddr) {
 		return nil, errStoreGatewayUnhealthy
@@ -93,11 +96,11 @@ func (s *ShuffleShardingStrategy) FilterUsers(_ context.Context, userIDs []strin
 }
 
 // FilterBlocks implements ShardingStrategy.
-func (s *ShuffleShardingStrategy) FilterBlocks(_ context.Context, userID string, metas map[ulid.ULID]*block.Meta, loaded map[ulid.ULID]struct{}, synced tsdb_block.GaugeVec) error {
+func (s *ShuffleShardingStrategy) FilterBlocks(_ context.Context, userID string, metas map[ulid.ULID]*block.Meta, loaded map[ulid.ULID]struct{}, synced GaugeVec) error {
 	// As a protection, ensure the store-gateway instance is healthy in the ring. If it's unhealthy because it's failing
 	// to heartbeat or get updates from the ring, or even removed from the ring because of the auto-forget feature, then
 	// keep the previously loaded blocks.
-	if set, err := s.r.GetAllHealthy(storegateway.BlocksOwnerSync); err != nil || !set.Includes(s.instanceAddr) {
+	if set, err := s.r.GetAllHealthy(BlocksOwnerSync); err != nil || !set.Includes(s.instanceAddr) {
 		for blockID := range metas {
 			if _, ok := loaded[blockID]; ok {
 				level.Warn(s.logger).Log("msg", "store-gateway is unhealthy in the ring but block is kept because was previously loaded", "block", blockID.String(), "err", err)
@@ -117,10 +120,10 @@ func (s *ShuffleShardingStrategy) FilterBlocks(_ context.Context, userID string,
 	bufDescs, bufHosts, bufZones := ring.MakeBuffersForGet()
 
 	for blockID := range metas {
-		key := mimir_tsdb.HashBlockID(blockID)
+		key := block.HashBlockID(blockID)
 
 		// Check if the block is owned by the store-gateway
-		set, err := r.Get(key, storegateway.BlocksOwnerSync, bufDescs, bufHosts, bufZones)
+		set, err := r.Get(key, BlocksOwnerSync, bufDescs, bufHosts, bufZones)
 		// If an error occurs while checking the ring, we keep the previously loaded blocks.
 		if err != nil {
 			if _, ok := loaded[blockID]; ok {
@@ -146,7 +149,7 @@ func (s *ShuffleShardingStrategy) FilterBlocks(_ context.Context, userID string,
 		// for queries.
 		if _, ok := loaded[blockID]; ok {
 			// The ring Get() returns an error if there's no available instance.
-			if _, err := r.Get(key, storegateway.BlocksOwnerRead, bufDescs, bufHosts, bufZones); err != nil {
+			if _, err := r.Get(key, BlocksOwnerRead, bufDescs, bufHosts, bufZones); err != nil {
 				// Keep the block.
 				continue
 			}
@@ -164,7 +167,7 @@ func (s *ShuffleShardingStrategy) FilterBlocks(_ context.Context, userID string,
 
 // GetShuffleShardingSubring returns the subring to be used for a given user. This function
 // should be used both by store-gateway and querier in order to guarantee the same logic is used.
-func GetShuffleShardingSubring(ring *ring.Ring, userID string, limits storegateway.ShardingLimits) ring.ReadRing {
+func GetShuffleShardingSubring(ring *ring.Ring, userID string, limits ShardingLimits) ring.ReadRing {
 	shardSize := limits.StoreGatewayTenantShardSize(userID)
 
 	// A shard size of 0 means shuffle sharding is disabled for this specific user,
@@ -186,7 +189,7 @@ func NewShardingMetadataFilterAdapter(userID string, strategy ShardingStrategy) 
 
 // Filter implements block.MetadataFilter.
 // This function is NOT safe for use by multiple goroutines concurrently.
-func (a *shardingMetadataFilterAdapter) Filter(ctx context.Context, metas map[ulid.ULID]*block.Meta, synced tsdb_block.GaugeVec) error {
+func (a *shardingMetadataFilterAdapter) Filter(ctx context.Context, metas map[ulid.ULID]*block.Meta, synced GaugeVec) error {
 	if err := a.strategy.FilterBlocks(ctx, a.userID, metas, a.lastBlocks, synced); err != nil {
 		return err
 	}
@@ -211,7 +214,7 @@ func newMinTimeMetaFilter(limit time.Duration) *minTimeMetaFilter {
 	return &minTimeMetaFilter{limit: limit}
 }
 
-func (f *minTimeMetaFilter) Filter(_ context.Context, metas map[ulid.ULID]*block.Meta, synced tsdb_block.GaugeVec) error {
+func (f *minTimeMetaFilter) Filter(_ context.Context, metas map[ulid.ULID]*block.Meta, synced GaugeVec) error {
 	if f.limit <= 0 {
 		return nil
 	}
