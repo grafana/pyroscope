@@ -10,8 +10,6 @@ weight: 30
 Grafana Phlare can use different object storage services to persist blocks containing the profiles data.
 Blocks are flushed by ingesters [on disk]({{<relref "./configure-disk-storage.md">}}) first then are uploaded to object store.
 
-> The long term storage is still in development and querying from object store is not yet implemented.
-
 The supported backends are:
 
 - [Amazon S3](https://aws.amazon.com/s3/) (and compatible implementations like [MinIO](https://min.io/))

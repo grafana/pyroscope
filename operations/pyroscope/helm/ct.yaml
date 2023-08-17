@@ -1,6 +1,6 @@
 # See https://github.com/helm/chart-testing#configuration
 remote: origin
-target-branch: main
+target-branch: next
 chart-dirs:
   - operations/pyroscope/helm/
 chart-repos:

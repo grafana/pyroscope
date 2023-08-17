@@ -7,30 +7,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/fs"
+	"io/ioutil"
+	"mime/multipart"
+	"net/http"
+	"os"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/google/pprof/profile"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/streaming"
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/stackbuilder"
-	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
 	"github.com/grafana/pyroscope/pkg/og/storage/segment"
 	"github.com/grafana/pyroscope/pkg/og/util/form"
 	"golang.org/x/exp/slices"
-	"io"
-	"io/fs"
-	"math/big"
-	"mime/multipart"
-	"os"
-	"sort"
-	"strings"
 
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
-	"io/ioutil"
-	"net/http"
-
-	"testing"
-	"time"
 )
 
 const benchmarkCorpus = "../../../../../pprof-testdata"
@@ -161,7 +158,7 @@ func TestTreeIterationCorpus(t *testing.T) {
 	}
 	for _, c := range corpus {
 		key, _ := segment.ParseKey("foo.bar")
-		mock1 := &MockPutter{keep: true}
+		mock1 := &MockPutter{Keep: true}
 		profile1 := pprof.RawProfile{
 			Profile:             c.profile,
 			PreviousProfile:     c.prev,
@@ -175,7 +172,7 @@ func TestTreeIterationCorpus(t *testing.T) {
 		if err2 != nil {
 			t.Fatal(err2)
 		}
-		for _, put := range mock1.puts {
+		for _, put := range mock1.Puts {
 			testIterateOne(t, put.ValTree)
 		}
 	}
@@ -250,7 +247,7 @@ func TestBugReusingSlices(t *testing.T) {
 }
 
 func parse(t *testing.T, c *testcase, typ streamingTestType) {
-	mock := &MockPutter{keep: true}
+	mock := &MockPutter{Keep: true}
 	key, _ := segment.ParseKey("foo.bar")
 	p := pprof.RawProfile{
 		Profile:             c.profile,
@@ -419,7 +416,7 @@ func testCompareOne(t *testing.T, c *testcase, typ streamingTestType) {
 	})
 	fmt.Println(c.fname)
 	key, _ := segment.ParseKey("foo.bar")
-	mock1 := &MockPutter{keep: true}
+	mock1 := &MockPutter{Keep: true}
 	profile1 := pprof.RawProfile{
 		Profile:             c.profile,
 		PreviousProfile:     c.prev,
@@ -434,7 +431,7 @@ func testCompareOne(t *testing.T, c *testcase, typ streamingTestType) {
 		t.Fatal(err2)
 	}
 
-	mock2 := &MockPutter{keep: true}
+	mock2 := &MockPutter{Keep: true}
 	profile2 := pprof.RawProfile{
 		Profile:          c.profile,
 		PreviousProfile:  c.prev,
@@ -445,15 +442,12 @@ func testCompareOne(t *testing.T, c *testcase, typ streamingTestType) {
 		t.Fatal(err)
 	}
 
-	if len(mock1.puts) != len(mock2.puts) {
-		t.Fatalf("put mismatch %d %d", len(mock1.puts), len(mock2.puts))
+	if len(mock1.Puts) != len(mock2.Puts) {
+		t.Fatalf("put mismatch %d %d", len(mock1.Puts), len(mock2.Puts))
 	}
-	sort.Slice(mock1.puts, func(i, j int) bool {
-		return strings.Compare(mock1.puts[i].Key, mock1.puts[j].Key) < 0
-	})
-	sort.Slice(mock2.puts, func(i, j int) bool {
-		return strings.Compare(mock2.puts[i].Key, mock2.puts[j].Key) < 0
-	})
+	mock1.Sort()
+	mock2.Sort()
+
 	writeGlod := false
 	checkGold := true
 	trees := map[string]string{}
@@ -468,16 +462,16 @@ func testCompareOne(t *testing.T, c *testcase, typ streamingTestType) {
 			panic(err)
 		}
 	}
-	for i := range mock1.puts {
-		p1 := mock1.puts[i]
-		p2 := mock2.puts[i]
+	for i := range mock1.Puts {
+		p1 := mock1.Puts[i]
+		p2 := mock2.Puts[i]
 		k1 := p1.Key
 		k2 := p2.Key
 		if k1 != k2 {
 			t.Fatalf("key mismatch %s %s", k1, k2)
 		}
 		it := p1.Val
-		jit := mock2.puts[i].Val
+		jit := mock2.Puts[i].Val
 
 		if it != jit {
 			fmt.Println(key.SegmentKey())
@@ -545,7 +539,7 @@ func testCompareWriteBatchOne(t *testing.T, c *testcase) {
 		t.Fatal(err)
 	}
 
-	mock2 := &MockPutter{keep: true}
+	mock2 := &MockPutter{Keep: true}
 	profile2 := &pprof.RawProfile{
 		Profile:          c.profile,
 		PreviousProfile:  c.prev,
@@ -558,7 +552,7 @@ func testCompareWriteBatchOne(t *testing.T, c *testcase) {
 		t.Fatal(err)
 	}
 
-	for _, put := range mock2.puts {
+	for _, put := range mock2.Puts {
 		expectedCollapsed := put.Val
 		appenderCollapsed := ""
 		var found []*mockSamplesAppender
@@ -657,41 +651,6 @@ func testIterateOne(t *testing.T, pt *tree.Tree) {
 		got := strings.Join(lines, "\n")
 		t.Fatalf("expected %v got\n%v", expected, got)
 	}
-}
-
-type PutInputCopy struct {
-	Val string
-	Key string
-
-	StartTime       time.Time
-	EndTime         time.Time
-	SpyName         string
-	SampleRate      uint32
-	Units           metadata.Units
-	AggregationType metadata.AggregationType
-	ValTree         *tree.Tree
-}
-
-type MockPutter struct {
-	keep bool
-	puts []PutInputCopy
-}
-
-func (m *MockPutter) Put(_ context.Context, input *storage.PutInput) error {
-	if m.keep {
-		m.puts = append(m.puts, PutInputCopy{
-			Val:             input.Val.String(),
-			ValTree:         input.Val.Clone(big.NewRat(1, 1)),
-			Key:             input.Key.SegmentKey(),
-			StartTime:       input.StartTime,
-			EndTime:         input.EndTime,
-			SpyName:         input.SpyName,
-			SampleRate:      input.SampleRate,
-			Units:           input.Units,
-			AggregationType: input.AggregationType,
-		})
-	}
-	return nil
 }
 
 type mockStackBuilder struct {

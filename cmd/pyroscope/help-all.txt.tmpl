@@ -102,7 +102,7 @@ Usage of ./pyroscope:
   -distributor.ring.instance-interface-names string
     	Name of network interface to read address from. (default [<private network interfaces>])
   -distributor.ring.instance-port int
-    	Port to advertise in the ring (defaults to server.http-listen-port). (default 4100)
+    	Port to advertise in the ring (defaults to server.http-listen-port). (default 4040)
   -distributor.ring.multi.mirror-enabled
     	Mirror writes to secondary store.
   -distributor.ring.multi.mirror-timeout duration
@@ -322,7 +322,7 @@ Usage of ./pyroscope:
   -overrides-exporter.ring.instance-interface-names string
     	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -overrides-exporter.ring.instance-port int
-    	Port to advertise in the ring (defaults to -server.http-listen-port). (default 4100)
+    	Port to advertise in the ring (defaults to -server.http-listen-port). (default 4040)
   -overrides-exporter.ring.multi.mirror-enabled
     	Mirror writes to secondary store.
   -overrides-exporter.ring.multi.mirror-timeout duration
@@ -636,7 +636,7 @@ Usage of ./pyroscope:
   -server.http-listen-network string
     	HTTP server listen network, default tcp (default "tcp")
   -server.http-listen-port int
-    	HTTP server listen port. (default 4100)
+    	HTTP server listen port. (default 4040)
   -server.http-read-timeout duration
     	Read timeout for HTTP server (default 30s)
   -server.http-tls-ca-path string

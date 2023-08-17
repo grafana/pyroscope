@@ -51,7 +51,7 @@ func (st *SymbolTable) IsDead() bool {
 
 func (st *SymbolTable) DebugInfo() SymTabDebugInfo {
 	return SymTabDebugInfo{
-		Name: "SymbolTable",
+		Name: fmt.Sprintf("SymbolTable %p", st),
 		Size: len(st.Index.Names),
 		File: st.File.fpath,
 	}
@@ -137,7 +137,8 @@ func (st *SymbolTable) symbolName(idx int) (string, error) {
 }
 
 type SymTabDebugInfo struct {
-	Name string `river:"name,attr,optional"`
-	Size int    `river:"symbol_count,attr,optional"`
-	File string `river:"file,attr,optional"`
+	Name          string `river:"name,attr,optional"`
+	Size          int    `river:"symbol_count,attr,optional"`
+	File          string `river:"file,attr,optional"`
+	LastUsedRound int    `river:"last_used_round,attr,optional"`
 }

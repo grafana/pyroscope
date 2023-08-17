@@ -75,7 +75,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
    ```
    [...]
    The in-cluster query URL is:
-   http://phlare-querier.phlare-test.svc.cluster.local.:4100
+   http://phlare-querier.phlare-test.svc.cluster.local.:4040
    [...]
    ```
 
@@ -137,7 +137,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
    | Field | Value                                                        |
    | ----- | ------------------------------------------------------------ |
    | Name  | Phlare                                                       |
-   | URL   | `http://phlare-querier.phlare-test.svc.cluster.local.:4100/`   |
+   | URL   | `http://phlare-querier.phlare-test.svc.cluster.local.:4040/`   |
 
    To add a data source, see [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
 
@@ -160,7 +160,7 @@ datasources:
    - name: Phlare
      type: phlare
      uid: phlare-test
-     url: http://phlare-querier.phlare-test.svc.cluster.local.:4100/
+     url: http://phlare-querier.phlare-test.svc.cluster.local.:4040/
 ```
 
 Modify the Helm deployment by running:

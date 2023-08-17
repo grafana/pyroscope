@@ -383,7 +383,7 @@ store_gateway:
 
         # Override the default cipher suite list (separated by commas). Allowed
         # values:
-        # 
+        #
         # Secure Ciphers:
         # - TLS_RSA_WITH_AES_128_CBC_SHA
         # - TLS_RSA_WITH_AES_256_CBC_SHA
@@ -402,7 +402,7 @@ store_gateway:
         # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
         # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
         # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-        # 
+        #
         # Insecure Ciphers:
         # - TLS_RSA_WITH_RC4_128_SHA
         # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -697,7 +697,7 @@ The `server` block configures the HTTP and gRPC server of the launched service(s
 
 # HTTP server listen port.
 # CLI flag: -server.http-listen-port
-[http_listen_port: <int> | default = 4100]
+[http_listen_port: <int> | default = 4040]
 
 # Maximum number of simultaneous http connections, <=0 to disable
 # CLI flag: -server.http-conn-limit
@@ -989,7 +989,7 @@ lifecycler:
 
         # Override the default cipher suite list (separated by commas). Allowed
         # values:
-        # 
+        #
         # Secure Ciphers:
         # - TLS_RSA_WITH_AES_128_CBC_SHA
         # - TLS_RSA_WITH_AES_256_CBC_SHA
@@ -1008,7 +1008,7 @@ lifecycler:
         # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
         # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
         # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-        # 
+        #
         # Insecure Ciphers:
         # - TLS_RSA_WITH_RC4_128_SHA
         # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1346,7 +1346,7 @@ backoff_config:
 [tls_insecure_skip_verify: <boolean> | default = false]
 
 # Override the default cipher suite list (separated by commas). Allowed values:
-# 
+#
 # Secure Ciphers:
 # - TLS_RSA_WITH_AES_128_CBC_SHA
 # - TLS_RSA_WITH_AES_256_CBC_SHA
@@ -1365,7 +1365,7 @@ backoff_config:
 # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
 # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-# 
+#
 # Insecure Ciphers:
 # - TLS_RSA_WITH_RC4_128_SHA
 # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1559,7 +1559,7 @@ The `memberlist` block configures the Gossip memberlist.
 [tls_insecure_skip_verify: <boolean> | default = false]
 
 # Override the default cipher suite list (separated by commas). Allowed values:
-# 
+#
 # Secure Ciphers:
 # - TLS_RSA_WITH_AES_128_CBC_SHA
 # - TLS_RSA_WITH_AES_256_CBC_SHA
@@ -1578,7 +1578,7 @@ The `memberlist` block configures the Gossip memberlist.
 # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
 # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-# 
+#
 # Insecure Ciphers:
 # - TLS_RSA_WITH_RC4_128_SHA
 # - TLS_RSA_WITH_3DES_EDE_CBC_SHA

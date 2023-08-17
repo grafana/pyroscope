@@ -5,6 +5,6 @@ pyroscope.ebpf "instance" {
 }
 pyroscope.write "endpoint" {
   endpoint {
-    url = "http://pyroscope:4100"
+    url = "http://pyroscope:4040"
   }
 }

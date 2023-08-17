@@ -10,7 +10,6 @@ import (
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
-	"github.com/grafana/mimir/pkg/storegateway"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -34,7 +33,13 @@ const (
 var errInvalidTenantShardSize = errors.New("invalid tenant shard size, the value must be greater or equal to 0")
 
 type Limits interface {
-	storegateway.ShardingLimits
+	ShardingLimits
+}
+
+// ShardingLimits is the interface that should be implemented by the limits provider,
+// limiting the scope of the limits to the ones required by sharding strategies.
+type ShardingLimits interface {
+	StoreGatewayTenantShardSize(tenantID string) int
 }
 
 type StoreGateway struct {
@@ -56,13 +61,13 @@ type StoreGateway struct {
 }
 
 type Config struct {
-	storegateway.Config `yaml:",inline"`
-	BucketStoreConfig   BucketStoreConfig `yaml:"bucket_store,omitempty"`
+	ShardingRing      RingConfig        `yaml:"sharding_ring" doc:"description=The hash ring configuration."`
+	BucketStoreConfig BucketStoreConfig `yaml:"bucket_store,omitempty"`
 }
 
 // RegisterFlags registers the Config flags.
 func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
-	cfg.Config.RegisterFlags(f, logger)
+	cfg.ShardingRing.RegisterFlags(f, logger)
 	cfg.BucketStoreConfig.RegisterFlags(f, logger)
 }
 
@@ -118,18 +123,18 @@ func newStoreGateway(gatewayCfg Config, storageBucket phlareobj.Bucket, ringStor
 
 	// Define lifecycler delegates in reverse order (last to be called defined first because they're
 	// chained via "next delegate").
-	delegate := ring.BasicLifecyclerDelegate(ring.NewInstanceRegisterDelegate(ring.JOINING, storegateway.RingNumTokens))
+	delegate := ring.BasicLifecyclerDelegate(ring.NewInstanceRegisterDelegate(ring.JOINING, RingNumTokens))
 	delegate = ring.NewLeaveOnStoppingDelegate(delegate, logger)
 	delegate = ring.NewTokensPersistencyDelegate(gatewayCfg.ShardingRing.TokensFilePath, ring.JOINING, delegate, logger)
 	delegate = ring.NewAutoForgetDelegate(ringAutoForgetUnhealthyPeriods*gatewayCfg.ShardingRing.HeartbeatTimeout, delegate, logger)
 
-	g.ringLifecycler, err = ring.NewBasicLifecycler(lifecyclerCfg, storegateway.RingNameForServer, storegateway.RingKey, ringStore, delegate, logger, prometheus.WrapRegistererWithPrefix("cortex_", reg))
+	g.ringLifecycler, err = ring.NewBasicLifecycler(lifecyclerCfg, RingNameForServer, RingKey, ringStore, delegate, logger, prometheus.WrapRegistererWithPrefix("cortex_", reg))
 	if err != nil {
 		return nil, errors.Wrap(err, "create ring lifecycler")
 	}
 
 	ringCfg := gatewayCfg.ShardingRing.ToRingConfig()
-	g.ring, err = ring.NewWithStoreClientAndStrategy(ringCfg, storegateway.RingNameForServer, storegateway.RingKey, ringStore, ring.NewIgnoreUnhealthyInstancesReplicationStrategy(), prometheus.WrapRegistererWithPrefix("cortex_", reg), logger)
+	g.ring, err = ring.NewWithStoreClientAndStrategy(ringCfg, RingNameForServer, RingKey, ringStore, ring.NewIgnoreUnhealthyInstancesReplicationStrategy(), prometheus.WrapRegistererWithPrefix("cortex_", reg), logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "create ring client")
 	}
@@ -191,7 +196,7 @@ func (g *StoreGateway) starting(ctx context.Context) (err error) {
 		maxWaiting := g.gatewayCfg.ShardingRing.WaitStabilityMaxDuration
 
 		level.Info(g.logger).Log("msg", "waiting until store-gateway ring topology is stable", "min_waiting", minWaiting.String(), "max_waiting", maxWaiting.String())
-		if err := ring.WaitRingTokensStability(ctx, g.ring, storegateway.BlocksOwnerSync, minWaiting, maxWaiting); err != nil {
+		if err := ring.WaitRingTokensStability(ctx, g.ring, BlocksOwnerSync, minWaiting, maxWaiting); err != nil {
 			level.Warn(g.logger).Log("msg", "store-gateway ring topology is not stable after the max waiting time, proceeding anyway")
 		} else {
 			level.Info(g.logger).Log("msg", "store-gateway ring topology is stable")
@@ -230,7 +235,7 @@ func (g *StoreGateway) running(ctx context.Context) error {
 	syncTicker := time.NewTicker(util.DurationWithJitter(g.gatewayCfg.BucketStoreConfig.SyncInterval, 0.2))
 	defer syncTicker.Stop()
 
-	ringLastState, _ := g.ring.GetAllHealthy(storegateway.BlocksOwnerSync) // nolint:errcheck
+	ringLastState, _ := g.ring.GetAllHealthy(BlocksOwnerSync) // nolint:errcheck
 	ringTicker := time.NewTicker(util.DurationWithJitter(g.gatewayCfg.ShardingRing.RingCheckPeriod, 0.2))
 	defer ringTicker.Stop()
 
@@ -241,7 +246,7 @@ func (g *StoreGateway) running(ctx context.Context) error {
 		case <-ringTicker.C:
 			// We ignore the error because in case of error it will return an empty
 			// replication set which we use to compare with the previous state.
-			currRingState, _ := g.ring.GetAllHealthy(storegateway.BlocksOwnerSync) // nolint:errcheck
+			currRingState, _ := g.ring.GetAllHealthy(BlocksOwnerSync) // nolint:errcheck
 
 			if ring.HasReplicationSetChanged(ringLastState, currRingState) {
 				ringLastState = currRingState

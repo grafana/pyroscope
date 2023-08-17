@@ -50,7 +50,7 @@ export async function renderSingle(
 ): Promise<Result<RenderOutput, RequestError | ZodError>> {
   const url = buildRenderURL(props);
   // TODO
-  const response = await requestWithOrgID(`/pyroscope/${url}&format=json`, {
+  const response = await requestWithOrgID(`/pyroscope${url}&format=json`, {
     signal: controller?.signal,
   });
 

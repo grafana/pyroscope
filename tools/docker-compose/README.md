@@ -9,7 +9,7 @@ To start Grafana Phlare and Grafana, run the following command:
 docker-compose up -d
 ```
 
-Grafana should be available at http://localhost:3000 and Grafana Phlare should be available at http://localhost:4100.
+Grafana should be available at http://localhost:3000 and Grafana Phlare should be available at http://localhost:4040.
 
 By default the Grafana Phlare datasource is already configured in Grafana.
 
