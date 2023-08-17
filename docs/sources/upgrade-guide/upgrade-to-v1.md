@@ -10,7 +10,7 @@ keywords:
   - upgrading
 ---
 
-# Upgrade to v1.0
+# Upgrade to Grafana Pyroscope v1.0
 
 Version 1.0 of Pyroscope is a major release that includes breaking changes. This guide explains how to upgrade to v1.0 from previous versions.
 
