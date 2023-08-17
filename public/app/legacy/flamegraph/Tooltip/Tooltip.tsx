@@ -116,7 +116,6 @@ export function Tooltip({
     [tooltipRef, setTooltipContent]
   );
 
-
   useEffect(() => {
     const dataSourceEl = dataSourceRef.current;
 
@@ -152,7 +151,11 @@ export function Tooltip({
       style={style}
       ref={tooltipRef}
     >
-      {`HELLO ${JSON.stringify({shouldShowTitle, tooltips: content.tooltipData}, null, 2)}`}
+      {`HELLO ${JSON.stringify(
+        { shouldShowTitle, tooltips: content.tooltipData },
+        null,
+        2
+      )}`}
 
       {content.tooltipData.length > 0 && (
         <>

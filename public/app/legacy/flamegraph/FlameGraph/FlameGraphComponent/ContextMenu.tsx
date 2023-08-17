@@ -39,10 +39,10 @@ export default function ContextMenu(props: ContextMenuProps) {
   React.useEffect(() => {
     toggleMenu(false);
 
-    const canvasEl = canvasRef.current;
     // use closure to "cache" the current canvas reference
     // so that when cleaning up, it points to a valid canvas
     // (otherwise it would be null)
+    const canvasEl = canvasRef.current;
     if (!canvasEl) {
       return () => {};
     }
