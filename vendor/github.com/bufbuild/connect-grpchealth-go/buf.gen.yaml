@@ -1,0 +1,9 @@
+version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/bufbuild/connect-grpchealth-go/internal/gen/go
+plugins:
+  - name: go
+    out: internal/gen/go
+    opt: paths=source_relative

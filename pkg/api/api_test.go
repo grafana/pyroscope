@@ -39,7 +39,7 @@ func getServerConfig(t *testing.T) server.Config {
 	grpcHost, grpcPortNum := getHostnameAndRandomPort(t)
 	httpHost, httpPortNum := getHostnameAndRandomPort(t)
 
-	return server.Config{
+	serverCfg := server.Config{
 		HTTPListenAddress: httpHost,
 		HTTPListenPort:    httpPortNum,
 
@@ -48,6 +48,8 @@ func getServerConfig(t *testing.T) server.Config {
 
 		GPRCServerMaxRecvMsgSize: 1024,
 	}
+	require.NoError(t, serverCfg.LogLevel.Set("debug"))
+	return serverCfg
 }
 
 func TestApiGzip(t *testing.T) {

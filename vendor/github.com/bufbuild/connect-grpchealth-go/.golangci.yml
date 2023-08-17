@@ -1,0 +1,57 @@
+run:
+  skip-dirs-use-default: false
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+  exhaustruct:
+    include:
+      # No zero values for param structs.
+      - 'github\.com/bufbuild/connect-grpchealth-go\..*[pP]arams'
+  forbidigo:
+    forbid:
+      - '^fmt\.Print'
+      - '^log\.'
+      - '^print$'
+      - '^println$'
+      - '^panic$'
+  godox:
+    # TODO, OPT, etc. comments are fine to commit. Use FIXME comments for
+    # temporary hacks, and use godox to prevent committing them.
+    keywords: [FIXME]
+  varnamelen:
+    ignore-decls:
+      - T any
+      - i int
+      - 't *testing.T'
+      - tb testing.TB
+      - wg sync.WaitGroup
+linters:
+  enable-all: true
+  disable:
+    - cyclop            # covered by gocyclo
+    - deadcode          # abandoned
+    - exhaustivestruct  # replaced by exhaustruct
+    - funlen            # rely on code review to limit function length
+    - gocognit          # dubious "cognitive overhead" quantification
+    - gofumpt           # prefer standard gofmt
+    - golint            # deprecated by Go team
+    - gomnd             # some unnamed constants are okay
+    - ifshort           # deprecated by author
+    - interfacer        # deprecated by author
+    - ireturn           # "accept interfaces, return structs" isn't ironclad
+    - lll               # don't want hard limits for line length
+    - maintidx          # covered by gocyclo
+    - maligned          # readability trumps efficient struct packing
+    - nlreturn          # generous whitespace violates house style
+    - nosnakecase       # deprecated in https://github.com/golangci/golangci-lint/pull/3065
+    - scopelint         # deprecated by author
+    - structcheck       # abandoned
+    - testpackage       # internal tests are fine
+    - varcheck          # abandoned
+    - wrapcheck         # don't _always_ need to wrap errors
+    - wsl               # generous whitespace violates house style
+issues:
+  exclude:
+    # Don't ban use of fmt.Errorf to create new errors, but the remaining
+    # checks from err113 are useful.
+    - "err113: do not define dynamic errors.*"
