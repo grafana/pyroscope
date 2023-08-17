@@ -1,6 +1,6 @@
 import React from 'react';
 import userEvent from '@testing-library/user-event';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { Maybe } from 'true-myth';
 import FlamegraphComponent from './index';
 import TestData from './testData';
@@ -138,11 +138,13 @@ describe('FlamegraphComponent', () => {
         />
       );
 
-      userEvent.click(screen.getByTestId('flamegraph-canvas'), {
-        button: 2,
-        clientX: 1,
-        clientY: 1,
-      });
+      act(() =>
+        userEvent.click(screen.getByTestId('flamegraph-canvas'), {
+          button: 2,
+          clientX: 1,
+          clientY: 1,
+        })
+      );
 
       // should not be available unless we zoom
       await waitFor(() =>
@@ -174,9 +176,11 @@ describe('FlamegraphComponent', () => {
         />
       );
 
-      userEvent.click(screen.getByTestId('flamegraph-canvas'), {
-        button: 2,
-      });
+      act(() =>
+        userEvent.click(screen.getByTestId('flamegraph-canvas'), {
+          button: 2,
+        })
+      );
 
       // should be enabled now
       expect(
@@ -216,7 +220,9 @@ describe('FlamegraphComponent', () => {
       ).not.toBeVisible();
 
       // then we click
-      userEvent.click(screen.getByTestId('flamegraph-canvas'), { button: 2 });
+      act(() =>
+        userEvent.click(screen.getByTestId('flamegraph-canvas'), { button: 2 })
+      );
 
       // should be visible now
       expect(

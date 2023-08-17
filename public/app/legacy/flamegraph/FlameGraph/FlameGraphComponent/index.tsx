@@ -57,7 +57,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const flamegraphRef = useRef<Flamegraph>();
 
-  type ClickNode = { top: number; left: number; width: number }
+  type ClickNode = { top: number; left: number; width: number };
 
   const [rightClickedNode, setRightClickedNode] = React.useState<
     Maybe<ClickNode>
@@ -85,7 +85,6 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const { palette, setPalette } = props;
 
   const renderCanvas = useCallback(() => {
-    console.log("RENDER CANVAIS")
     canvasRef.current?.setAttribute('data-state', 'rendering');
     flamegraphRef.current?.render();
     canvasRef.current?.setAttribute('data-state', 'rendered');
@@ -109,84 +108,93 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     }
   });
 
-  const onClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+  const onClick = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!flamegraphRef.current) {
+        return;
+      }
 
-    if (!flamegraphRef.current) {
-      return;
-    }
+      const opt = flamegraphRef.current.xyToBar(
+        e.nativeEvent.offsetX,
+        e.nativeEvent.offsetY
+      );
 
-    const opt = flamegraphRef.current.xyToBar(
-      e.nativeEvent.offsetX,
-      e.nativeEvent.offsetY
-    );
-
-    opt.match({
-      // clicked on an invalid node
-      Nothing: () => {},
-      Just: (bar) => {
-        zoom.match({
-          // there's no existing zoom
-          // so just zoom on the clicked node
-          Nothing: () => {
-            onZoom(opt);
-          },
-
-          // it's already zoomed
-          Just: (z) => {
-            // TODO there mya be stale props here...
-            // we are clicking on the same node that's zoomed
-            if (bar.i === z.i && bar.j === z.j) {
-              // undo that zoom
-              onZoom(Maybe.nothing());
-            } else {
+      opt.match({
+        // clicked on an invalid node
+        Nothing: () => {},
+        Just: (bar) => {
+          zoom.match({
+            // there's no existing zoom
+            // so just zoom on the clicked node
+            Nothing: () => {
               onZoom(opt);
-            }
-          },
-        });
-      },
-    });
-  }, [flamegraphRef, zoom]);
+            },
 
-  const xyToHighlightData = useCallback((x: number, y: number) => {
+            // it's already zoomed
+            Just: (z) => {
+              // TODO there mya be stale props here...
+              // we are clicking on the same node that's zoomed
+              if (bar.i === z.i && bar.j === z.j) {
+                // undo that zoom
+                onZoom(Maybe.nothing());
+              } else {
+                onZoom(opt);
+              }
+            },
+          });
+        },
+      });
+    },
+    [flamegraphRef, zoom]
+  );
 
-    const canvasEl = canvasRef?.current;
+  const xyToHighlightData = useCallback(
+    (x: number, y: number) => {
+      const canvasEl = canvasRef?.current;
 
-    if (!flamegraphRef.current || !canvasEl) {
-      return Maybe.nothing<ClickNode>();
-    }
-    
-    const opt = flamegraphRef.current.xyToBar(x, y);
+      if (!flamegraphRef.current || !canvasEl) {
+        return Maybe.nothing<ClickNode>();
+      }
 
-    return opt.map((bar: ShamefulAny) => {
-      return {
-        left: canvasEl.offsetLeft + bar.x,
-        top: canvasEl.offsetTop + bar.y,
-        width: bar.width,
-      } as ClickNode;
-    });
-  }, [flamegraphRef, canvasRef]);
+      const opt = flamegraphRef.current.xyToBar(x, y);
 
-  const xyToTooltipData = useCallback((x: number, y: number) => {
-    if (!flamegraphRef.current) {
-      return null;
-    }
-    return flamegraphRef.current.xyToBar(x, y);
-  }, [flamegraphRef]);
+      return opt.map((bar: ShamefulAny) => {
+        return {
+          left: canvasEl.offsetLeft + bar.x,
+          top: canvasEl.offsetTop + bar.y,
+          width: bar.width,
+        } as ClickNode;
+      });
+    },
+    [flamegraphRef, canvasRef]
+  );
+
+  const xyToTooltipData = useCallback(
+    (x: number, y: number) => {
+      if (!flamegraphRef.current) {
+        return null;
+      }
+      return flamegraphRef.current.xyToBar(x, y);
+    },
+    [flamegraphRef]
+  );
 
   const onContextMenuClose = useCallback(() => {
     setRightClickedNode(Maybe.nothing());
   }, [setRightClickedNode]);
 
-  const onContextMenuOpen = useCallback((x: number, y: number) => {
-    setRightClickedNode(xyToHighlightData(x, y));
-  }, [setRightClickedNode, xyToHighlightData]);
+  const onContextMenuOpen = useCallback(
+    (x: number, y: number) => {
+      setRightClickedNode(xyToHighlightData(x, y));
+    },
+    [setRightClickedNode, xyToHighlightData]
+  );
 
   // Context Menu stuff
   const xyToContextMenuItems = useCallback(
     (x: number, y: number) => {
-
       if (!flamegraphRef.current) {
-        throw new Error("Flamegraph not available")
+        throw new Error('Flamegraph not available');
       }
 
       const dirty = isDirty();
@@ -316,7 +324,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       setActiveItem,
       updateFitMode,
       updateView,
-      flamegraphRef
+      flamegraphRef,
     ]
   );
 
@@ -333,7 +341,6 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         zoom,
         palette
       );
-      console.log("SET THAT FLAMEGRAF", {canvasRef, palette, flamebearer, focusedNode, fitMode, highlightQuery, zoom, renderCanvas})
       flamegraphRef.current = f;
     }
     renderCanvas();
@@ -351,14 +358,19 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const dataUnavailable =
     !flamebearer || (flamebearer && flamebearer.names.length <= 1);
 
-  const renderedCanvas = useMemo(()=><canvas
-  height="0"
-  data-testid="flamegraph-canvas"
-  data-highlightquery={highlightQuery}
-  className={clsx('flamegraph-canvas', styles.canvas)}
-  ref={canvasRef}
-  onClick={!disableClick ? onClick : undefined}
-/>, [canvasRef, disableClick, onClick, styles.canvas, highlightQuery])
+  const renderedCanvas = useMemo(
+    () => (
+      <canvas
+        height="0"
+        data-testid="flamegraph-canvas"
+        data-highlightquery={highlightQuery}
+        className={clsx('flamegraph-canvas', styles.canvas)}
+        ref={canvasRef}
+        onClick={!disableClick ? onClick : undefined}
+      />
+    ),
+    [canvasRef, disableClick, onClick, styles.canvas, highlightQuery]
+  );
 
   return (
     <div

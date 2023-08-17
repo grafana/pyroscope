@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { Tooltip, TooltipProps } from './Tooltip';
@@ -72,7 +72,7 @@ describe('Tooltip', () => {
 
       expect(screen.getByTestId('tooltip')).toBeInTheDocument();
 
-      userEvent.hover(screen.getByTestId('canvas'));
+      act(() => userEvent.hover(screen.getByTestId('canvas')));
 
       expect(screen.getByTestId('tooltip-title')).toHaveTextContent(
         'function_title'
@@ -125,7 +125,7 @@ describe('Tooltip', () => {
 
         expect(screen.getByTestId('tooltip')).toBeInTheDocument();
 
-        userEvent.hover(screen.getByTestId('canvas'));
+        act(() => userEvent.hover(screen.getByTestId('canvas')));
 
         expect(screen.getByTestId('tooltip-title')).toHaveTextContent(
           'function_title'
@@ -177,8 +177,7 @@ describe('Tooltip', () => {
 
         expect(screen.getByTestId('tooltip')).toBeInTheDocument();
 
-        userEvent.hover(screen.getByTestId('canvas'));
-
+        act(() => userEvent.hover(screen.getByTestId('canvas')));
         expect(screen.getByTestId('tooltip-title')).toHaveTextContent(
           'function_title'
         );
@@ -229,7 +228,7 @@ describe('Tooltip', () => {
 
         expect(screen.getByTestId('tooltip')).toBeInTheDocument();
 
-        userEvent.hover(screen.getByTestId('canvas'));
+        act(() => userEvent.hover(screen.getByTestId('canvas')));
 
         expect(screen.getByTestId('tooltip-title')).toHaveTextContent(
           'function_title'
@@ -281,7 +280,7 @@ describe('Tooltip', () => {
 
         expect(screen.getByTestId('tooltip')).toBeInTheDocument();
 
-        userEvent.hover(screen.getByTestId('canvas'));
+        act(() => userEvent.hover(screen.getByTestId('canvas')));
 
         expect(screen.getByTestId('tooltip-title')).toHaveTextContent(
           'function_title'
@@ -333,7 +332,7 @@ describe('Tooltip', () => {
 
         expect(screen.getByTestId('tooltip')).toBeInTheDocument();
 
-        userEvent.hover(screen.getByTestId('canvas'));
+        act(() => userEvent.hover(screen.getByTestId('canvas')));
 
         expect(screen.getByTestId('tooltip-title')).toHaveTextContent(
           'function_title'
@@ -382,7 +381,7 @@ describe('Tooltip', () => {
 
       expect(screen.getByTestId('tooltip')).toBeInTheDocument();
 
-      userEvent.hover(screen.getByTestId('table-body'));
+      act(() => userEvent.hover(screen.getByTestId('table-body')));
 
       expect(screen.getByTestId('tooltip-function-name')).toHaveTextContent(
         'function_title'

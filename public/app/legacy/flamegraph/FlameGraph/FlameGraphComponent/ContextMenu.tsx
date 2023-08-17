@@ -36,7 +36,6 @@ export default function ContextMenu(props: ContextMenuProps) {
     onCloseCallback();
   };
 
-
   React.useEffect(() => {
     toggleMenu(false);
 

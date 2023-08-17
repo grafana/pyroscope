@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Maybe } from 'true-myth';
 
@@ -36,7 +36,7 @@ describe('Highlight', () => {
         width: 100,
       })
     );
-    userEvent.hover(screen.getByTestId('canvas'));
+    act(() => userEvent.hover(screen.getByTestId('canvas')));
     expect(screen.getByTestId('flamegraph-highlight')).toBeVisible();
     expect(screen.getByTestId('flamegraph-highlight')).toHaveStyle({
       height: '50px',
@@ -47,7 +47,7 @@ describe('Highlight', () => {
 
     // hover outside the canvas
     xyToHighlightData.mockReturnValueOnce(Maybe.nothing());
-    userEvent.hover(screen.getByTestId('canvas'));
+    act(() => userEvent.hover(screen.getByTestId('canvas')));
     expect(screen.getByTestId('flamegraph-highlight')).not.toBeVisible();
   });
 });
