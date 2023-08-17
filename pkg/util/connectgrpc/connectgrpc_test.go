@@ -48,7 +48,7 @@ func Test_DecodeGRPC(t *testing.T) {
 	}
 	_, _ = client.LabelValues(context.Background(), connect.NewRequest(req))
 
-	encoded, err := encodeRequest(f.req)
+	encoded, err := encodeRequest(context.Background(), f.req)
 	require.NoError(t, err)
 	require.Equal(t, "POST", encoded.Method)
 	require.Equal(t, "/querier.v1.QuerierService/LabelValues", encoded.Url)

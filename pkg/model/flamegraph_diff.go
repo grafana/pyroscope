@@ -50,7 +50,10 @@ func NewFlamegraphDiff(left, right *Tree, maxNodes int) (*querierv1.FlameGraphDi
 	leftNodes, xLeftOffsets := leftTree.root, []int64{0}
 	rghtNodes, xRghtOffsets := rightTree.root, []int64{0}
 	levels := []int{0}
-	minVal := int64(combineMinValues(leftTree, rightTree, maxNodes))
+	var minVal int64
+	if maxNodes > 0 {
+		minVal = int64(combineMinValues(leftTree, rightTree, maxNodes))
+	}
 	nameLocationCache := map[string]int{}
 
 	for len(leftNodes) > 0 {

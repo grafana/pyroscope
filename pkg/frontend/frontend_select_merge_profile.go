@@ -11,11 +11,13 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 func (f *Frontend) SelectMergeProfile(ctx context.Context, c *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[profilev1.Profile], error) {
+	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeProfileProcedure)
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(http.StatusBadRequest, err)

@@ -52,7 +52,7 @@ type GRPCHandler interface {
 }
 
 func RoundTripUnary[Req any, Res any](ctx context.Context, rt GRPCRoundTripper, in *connect.Request[Req]) (*connect.Response[Res], error) {
-	req, err := encodeRequest(in)
+	req, err := encodeRequest(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -115,9 +115,23 @@ func decodeRequest[Req any](req *httpgrpc.HTTPRequest) (*connect.Request[Req], e
 	return result, nil
 }
 
-func encodeRequest[Req any](req *connect.Request[Req]) (*httpgrpc.HTTPRequest, error) {
-	if req.Spec().Procedure == "" {
-		return nil, errors.New("cannot encode a request with empty procedure")
+type connectURLCtxKey struct{}
+
+func WithProcedure(ctx context.Context, u string) context.Context {
+	return context.WithValue(ctx, connectURLCtxKey{}, u)
+}
+
+func ProcedureFromContext(ctx context.Context) string {
+	s, _ := ctx.Value(connectURLCtxKey{}).(string)
+	return s
+}
+
+func encodeRequest[Req any](ctx context.Context, req *connect.Request[Req]) (*httpgrpc.HTTPRequest, error) {
+	url := req.Spec().Procedure
+	if url == "" {
+		if url = ProcedureFromContext(ctx); url == "" {
+			return nil, errors.New("cannot encode a request with empty procedure")
+		}
 	}
 	// The original Content-* headers could be invalidated,
 	// e.g. initial Content-Type could be 'application/json'.
@@ -125,7 +139,7 @@ func encodeRequest[Req any](req *connect.Request[Req]) (*httpgrpc.HTTPRequest, e
 	h.Set("Content-Type", "application/proto")
 	out := &httpgrpc.HTTPRequest{
 		Method:  http.MethodPost,
-		Url:     req.Spec().Procedure,
+		Url:     url,
 		Headers: connectHeaderToHTTPGRPCHeader(h),
 	}
 	var err error
