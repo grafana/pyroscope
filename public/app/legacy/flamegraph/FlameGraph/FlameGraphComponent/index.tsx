@@ -82,15 +82,23 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const { 'data-testid': dataTestId } = props;
   const { palette, setPalette } = props;
 
+  const canvasEl = canvasRef?.current;
+  const currentFlamegraph = flamegraph?.current;
+
+  const renderCanvas = useCallback(() => {
+    canvasEl?.setAttribute('data-state', 'rendering');
+    currentFlamegraph?.render();
+    canvasEl?.setAttribute('data-state', 'rendered');
+  }, [canvasEl, currentFlamegraph]);
+
   // debounce rendering canvas
   // used for situations like resizing
   // triggered by eg collapsing the sidebar
-  const debouncedRenderCanvas = useCallback(
+  const debouncedRenderCanvas = useCallback(() => {
     debounce(() => {
       renderCanvas();
-    }, 50),
-    []
-  );
+    }, 50);
+  }, [renderCanvas]);
 
   // rerender whenever the canvas size changes
   // eg window resize, or simply changing the view
@@ -190,7 +198,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
       const CopyItem = () => {
         const onClick = () => {
-          if (!navigator.clipboard) return;
+          if (!navigator.clipboard) {
+            return;
+          }
 
           navigator.clipboard.writeText(barName);
         };
@@ -277,47 +287,42 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         FitModeItem(),
       ].filter(Boolean) as JSX.Element[];
     },
-    [flamegraph, selectedItem, fitMode]
+    [
+      selectedItem,
+      fitMode,
+      isDirty,
+      onFocusOnNode,
+      onReset,
+      setActiveItem,
+      updateFitMode,
+      updateView,
+    ]
   );
 
-  const constructCanvas = () => {
-    if (canvasRef.current) {
+  React.useEffect(() => {
+    if (canvasEl) {
       const f = new Flamegraph(
         flamebearer,
-        canvasRef.current,
+        canvasEl,
         focusedNode,
         fitMode,
         highlightQuery,
         zoom,
         palette
       );
-
       flamegraph.current = f;
     }
-  };
-
-  React.useEffect(() => {
-    constructCanvas();
-    renderCanvas();
-  }, [palette]);
-
-  React.useEffect(() => {
-    constructCanvas();
     renderCanvas();
   }, [
-    canvasRef.current,
+    canvasEl,
+    palette,
     flamebearer,
     focusedNode,
     fitMode,
     highlightQuery,
     zoom,
+    renderCanvas
   ]);
-
-  const renderCanvas = () => {
-    canvasRef?.current?.setAttribute('data-state', 'rendering');
-    flamegraph?.current?.render();
-    canvasRef?.current?.setAttribute('data-state', 'rendered');
-  };
 
   const dataUnavailable =
     !flamebearer || (flamebearer && flamebearer.names.length <= 1);

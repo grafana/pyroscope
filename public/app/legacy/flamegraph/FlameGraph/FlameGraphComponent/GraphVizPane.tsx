@@ -36,9 +36,11 @@ export function GraphVizPane({ flamebearer }: GraphVizPaneProps) {
   // so image sometimes moves out of the screen
   // to fix it we remounting graphViz component by updating key
   const key = `graphviz-pane-${fb?.appName || String(new Date().valueOf())}`;
+
+  // Assumes we can trust that a new `flamebearer` object is provided from the parent of `<GraphVizPane>` if it is different.
   const dotValue = useMemo(() => {
     return toGraphviz(fb);
-  }, [JSON.stringify(fb)]);
+  }, [fb]);
 
   return (
     <div className={styles.graphVizPane} key={key}>

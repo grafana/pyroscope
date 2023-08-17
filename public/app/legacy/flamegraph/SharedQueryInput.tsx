@@ -54,7 +54,13 @@ const SharedQueryInput = ({
         onHighlightChange('');
       }
     }
-  }, [sharedQuery?.searchQuery, sharedQuery?.syncEnabled]);
+  }, [
+    sharedQuery?.searchQuery,
+    sharedQuery?.syncEnabled,
+    sharedQuery?.id,
+    onHighlightChange,
+    prevSyncEnabled,
+  ]);
 
   const onToggleSync = () => {
     const newValue = sharedQuery?.syncEnabled ? false : sharedQuery?.id;

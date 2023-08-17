@@ -92,13 +92,15 @@ const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
     return 'large';
   };
 
+  const targetEl = target.current;
+
   React.useLayoutEffect(() => {
-    if (target.current) {
-      const { width } = target.current.getBoundingClientRect();
+    if (targetEl) {
+      const { width } = targetEl.getBoundingClientRect();
 
       setSize(calcMode(width));
     }
-  }, [target.current]);
+  }, [targetEl]);
 
   useResizeObserver(target, (entry: ResizeObserverEntry) => {
     setSize(calcMode(entry.contentRect.width));

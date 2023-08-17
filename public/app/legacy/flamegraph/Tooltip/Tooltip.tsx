@@ -116,11 +116,12 @@ export function Tooltip({
     [tooltipRef, setTooltipContent]
   );
 
+  const dataSourceEl = dataSourceRef.current;
+
   useEffect(() => {
     // use closure to "cache" the current dataSourceRef(canvas/table) reference
     // so that when cleaning up, it points to a valid canvas
     // (otherwise it would be null)
-    const dataSourceEl = dataSourceRef.current;
     if (!dataSourceEl) {
       return () => {};
     }
@@ -139,7 +140,7 @@ export function Tooltip({
       );
       dataSourceEl.removeEventListener('mouseout', onMouseOut);
     };
-  }, [dataSourceRef.current, memoizedOnMouseMove]);
+  }, [memoizedOnMouseMove, dataSourceEl]);
 
   return (
     <div

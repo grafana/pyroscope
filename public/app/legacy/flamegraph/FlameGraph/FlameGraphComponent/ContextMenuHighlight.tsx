@@ -34,7 +34,7 @@ export default function ContextMenuHighlight(props: HighlightProps) {
       });
     },
     // refresh callback functions when they change
-    [node]
+    [node, barHeight]
   );
 
   return (

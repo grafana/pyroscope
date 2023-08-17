@@ -131,7 +131,7 @@ export default function TableTooltip({
           break;
       }
     },
-    [tableBodyRef, numTicks, formatter, sampleRate]
+    [formatter, sampleRate, palette, totalFlamebearer, units]
   );
 
   return (

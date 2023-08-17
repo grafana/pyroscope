@@ -42,9 +42,9 @@ export const singleFF = {
   jName: 3,
   getBarOffset: (level: number[], j: number) => level[j],
   getBarTotal: (level: number[], j: number) => level[j + 1],
-  getBarTotalDiff: (level: number[], j: number) => 0,
+  getBarTotalDiff: (_: number[], __: number) => 0,
   getBarSelf: (level: number[], j: number) => level[j + 2],
-  getBarSelfDiff: (level: number[], j: number) => 0,
+  getBarSelfDiff: (_: number[], __: number) => 0,
   getBarName: (level: number[], j: number) => level[j + 3],
 };
 

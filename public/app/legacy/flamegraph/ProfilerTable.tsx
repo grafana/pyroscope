@@ -83,8 +83,8 @@ function generateCellDouble(
 // generates a table from data in flamebearer format
 function generateTable(
   flamebearer: Flamebearer
-): ((SingleCell | DoubleCell) & { name: string })[] {
-  const table: ((SingleCell | DoubleCell) & { name: string })[] = [];
+): Array<(SingleCell | DoubleCell) & { name: string }> {
+  const table: Array<(SingleCell | DoubleCell) & { name: string }> = [];
   if (!flamebearer) {
     return table;
   }
@@ -190,23 +190,23 @@ export function backgroundImageDiffStyle(
   };
 }
 
-const tableFormatSingle: {
+const tableFormatSingle: Array<{
   sortable: number;
   name: 'name' | 'self' | 'total';
   label: string;
   default?: boolean;
-}[] = [
+}> = [
   { sortable: 1, name: 'name', label: 'Location' },
   { sortable: 1, name: 'self', label: 'Self', default: true },
   { sortable: 1, name: 'total', label: 'Total' },
 ];
 
-const tableFormatDouble: {
+const tableFormatDouble: Array<{
   sortable: number;
   name: 'name' | 'baseline' | 'comparison' | 'diff';
   label: string;
   default?: boolean;
-}[] = [
+}> = [
   { sortable: 1, name: 'name', label: 'Location' },
   { sortable: 1, name: 'baseline', label: 'Baseline', default: true },
   { sortable: 1, name: 'comparison', label: 'Comparison' },
@@ -291,20 +291,20 @@ const getTableBody = ({
         break;
       }
       case 'baseline': {
-        sorted = (tableBodyCells as (DoubleCell & { name: string })[]).sort(
+        sorted = (tableBodyCells as Array<DoubleCell & { name: string }>).sort(
           (a, b) => m * (a.totalLeft / a.leftTicks - b.totalLeft / b.leftTicks)
         );
         break;
       }
       case 'comparison': {
-        sorted = (tableBodyCells as (DoubleCell & { name: string })[]).sort(
+        sorted = (tableBodyCells as Array<DoubleCell & { name: string }>).sort(
           (a, b) =>
             m * (a.totalRght / a.rightTicks - b.totalRght / b.rightTicks)
         );
         break;
       }
       case 'diff': {
-        sorted = (tableBodyCells as (DoubleCell & { name: string })[]).sort(
+        sorted = (tableBodyCells as Array<DoubleCell & { name: string }>).sort(
           (a, b) => {
             const totalDiffA = diffPercent(
               ratioToPercent(a.totalLeft / a.leftTicks),

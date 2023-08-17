@@ -1,5 +1,5 @@
 import { Maybe } from 'true-myth';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { DeepReadonly } from 'ts-essentials';
 import styles from './Highlight.module.css';
 
@@ -35,37 +35,41 @@ export default function Highlight(props: HighlightProps) {
     });
   }, [zoom]);
 
-  const onMouseMove = (e: MouseEvent) => {
-    const opt = xyToHighlightData(e.offsetX, e.offsetY);
-
-    if (opt.isJust) {
-      const data = opt.value;
-
-      setStyle({
-        visibility: 'visible',
-        height: `${barHeight}px`,
-        ...data,
-      });
-    } else {
-      // it doesn't map to a valid xy
-      // so it means we are hovering out
-      onMouseOut();
-    }
-  };
-
-  const onMouseOut = () => {
+  const onMouseOut = useCallback(() => {
     setStyle({
       ...style,
       visibility: 'hidden',
     });
-  };
+  }, [setStyle, style]);
+
+  const onMouseMove = useCallback(
+    (e: MouseEvent) => {
+      const opt = xyToHighlightData(e.offsetX, e.offsetY);
+
+      if (opt.isJust) {
+        const data = opt.value;
+
+        setStyle({
+          visibility: 'visible',
+          height: `${barHeight}px`,
+          ...data,
+        });
+      } else {
+        // it doesn't map to a valid xy
+        // so it means we are hovering out
+        onMouseOut();
+      }
+    },
+    [setStyle, onMouseOut, barHeight, xyToHighlightData]
+  );
+
+  const canvasEl = canvasRef.current;
 
   React.useEffect(
     () => {
       // use closure to "cache" the current canvas reference
       // so that when cleaning up, it points to a valid canvas
       // (otherwise it would be null)
-      const canvasEl = canvasRef.current;
       if (!canvasEl) {
         return () => {};
       }
@@ -81,7 +85,7 @@ export default function Highlight(props: HighlightProps) {
     },
 
     // refresh callback functions when they change
-    [canvasRef.current, onMouseMove, onMouseOut]
+    [canvasEl, onMouseMove, onMouseOut]
   );
 
   return (

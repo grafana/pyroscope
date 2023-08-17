@@ -153,7 +153,16 @@ export default function FlamegraphTooltip(props: FlamegraphTooltipProps) {
           throw new Error(`Unsupported format:'`);
       }
     },
-    [numTicks, sampleRate, units, leftTicks, rightTicks, palette]
+    [
+      numTicks,
+      sampleRate,
+      units,
+      leftTicks,
+      rightTicks,
+      palette,
+      format,
+      xyToData,
+    ]
   );
 
   return (

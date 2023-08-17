@@ -69,7 +69,7 @@ export default class Flamegraph {
     }
   }
 
-  public render() {
+  render() {
     const { rangeMin, rangeMax } = this.getRange();
 
     const props = {
@@ -408,7 +408,7 @@ export default class Flamegraph {
     }
   };
 
-  public isWithinBounds = (x: number, y: number) => {
+  isWithinBounds = (x: number, y: number) => {
     if (x < 0 || x > this.getCanvasWidth()) {
       return false;
     }
@@ -429,7 +429,7 @@ export default class Flamegraph {
    * Given x and y coordinates
    * return all information about the bar under those coordinates
    */
-  public xyToBar(x: number, y: number) {
+  xyToBar(x: number, y: number) {
     return this.parseXY(x, y).map((xyWithinBounds) => {
       const { i, j } = this.xyToBarIndex(x, y);
       const position = this.xyToBarPosition(xyWithinBounds);

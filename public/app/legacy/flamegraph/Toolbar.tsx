@@ -73,9 +73,11 @@ const useMoreButton = (
   const [isCollapsed, setCollapsedStatus] = useState(true);
   const [collapsedItemsNumber, setCollapsedItemsNumber] = useState(0);
 
+  const currentTarget = target.current;
+
   useLayoutEffect(() => {
-    if (target.current) {
-      const { width } = target.current.getBoundingClientRect();
+    if (currentTarget) {
+      const { width } = currentTarget.getBoundingClientRect();
       const collapsedItems = calculateCollapsedItems(
         width,
         collapsedItemsNumber,
@@ -83,7 +85,7 @@ const useMoreButton = (
       );
       setCollapsedItemsNumber(collapsedItems);
     }
-  }, [target.current, toolbarItemsWidth]);
+  }, [currentTarget, toolbarItemsWidth, collapsedItemsNumber]);
 
   const handleMoreClick = () => {
     setCollapsedStatus((v) => !v);
@@ -292,6 +294,7 @@ const Toolbar = memo(
     );
   }
 );
+Toolbar.displayName = 'Toolbar';
 
 function FocusOnSubtree({
   onFocusOnSubtree,
