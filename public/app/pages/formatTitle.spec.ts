@@ -1,4 +1,4 @@
-import { brandQuery } from '@phlare/models/query';
+import { brandQuery } from '@pyroscope/models/query';
 import { formatTitle } from './formatTitle';
 
 describe('format title', () => {

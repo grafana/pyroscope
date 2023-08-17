@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import Button from '@phlare/ui/Button';
-import InputField from '@phlare/ui/InputField';
-import { TooltipInfoIcon } from '@phlare/ui/TooltipInfoIcon';
+import Button from '@pyroscope/ui/Button';
+import InputField from '@pyroscope/ui/InputField';
+import { TooltipInfoIcon } from '@pyroscope/ui/TooltipInfoIcon';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
-import { createAPIKey } from '@phlare/redux/reducers/settings';
-import { useAppDispatch } from '@phlare/redux/hooks';
-import { type APIKey } from '@phlare/models/apikeys';
-import Dropdown, { MenuItem } from '@phlare/ui/Dropdown';
-import { Tooltip } from '@phlare/ui/Tooltip';
-import StatusMessage from '@phlare/ui/StatusMessage';
-import { addNotification } from '@phlare/redux/reducers/notifications';
+import { createAPIKey } from '@pyroscope/redux/reducers/settings';
+import { useAppDispatch } from '@pyroscope/redux/hooks';
+import { type APIKey } from '@pyroscope/models/apikeys';
+import Dropdown, { MenuItem } from '@pyroscope/ui/Dropdown';
+import { Tooltip } from '@pyroscope/ui/Tooltip';
+import StatusMessage from '@pyroscope/ui/StatusMessage';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
 import styles from './APIKeyForm.module.css';
 
 // Extend the API key, but add form validation errors and ttlSeconds

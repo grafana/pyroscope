@@ -3,20 +3,20 @@
 /* eslint-disable react/destructuring-assignment */
 import React, { ReactNode } from 'react';
 import Color from 'color';
-import type { Group } from '@phlare/legacy/models';
-import type { Timeline } from '@phlare/models/timeline';
-import { Annotation } from '@phlare/models/annotation';
-import Legend from '@phlare/pages/tagExplorer/components/Legend';
-import type { TooltipCallbackProps } from '@phlare/components/TimelineChart/Tooltip.plugin';
-import TooltipWrapper from '@phlare/components/TimelineChart/TooltipWrapper';
-import type { TooltipWrapperProps } from '@phlare/components/TimelineChart/TooltipWrapper';
-import TimelineChart from '@phlare/components/TimelineChart/TimelineChart';
-import { ContextMenuProps } from '@phlare/components/TimelineChart/ContextMenu.plugin';
+import type { Group } from '@pyroscope/legacy/models';
+import type { Timeline } from '@pyroscope/models/timeline';
+import { Annotation } from '@pyroscope/models/annotation';
+import Legend from '@pyroscope/pages/tagExplorer/components/Legend';
+import type { TooltipCallbackProps } from '@pyroscope/components/TimelineChart/Tooltip.plugin';
+import TooltipWrapper from '@pyroscope/components/TimelineChart/TooltipWrapper';
+import type { TooltipWrapperProps } from '@pyroscope/components/TimelineChart/TooltipWrapper';
+import TimelineChart from '@pyroscope/components/TimelineChart/TimelineChart';
+import { ContextMenuProps } from '@pyroscope/components/TimelineChart/ContextMenu.plugin';
 import {
   markingsFromSelection,
   ANNOTATION_COLOR,
-} from '@phlare/components/TimelineChart/markings';
-import { centerTimelineData } from '@phlare/components/TimelineChart/centerTimelineData';
+} from '@pyroscope/components/TimelineChart/markings';
+import { centerTimelineData } from '@pyroscope/components/TimelineChart/centerTimelineData';
 import styles from './TimelineChartWrapper.module.css';
 
 export interface TimelineGroupData {

@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
-import { useAppSelector, useAppDispatch } from '@phlare/redux/hooks';
+import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
 import {
   loadCurrentUser,
   selectCurrentUser,
-} from '@phlare/redux/reducers/user';
-import { isAuthRequired } from '@phlare/util/features';
+} from '@pyroscope/redux/reducers/user';
+import { isAuthRequired } from '@pyroscope/util/features';
 import { useHistory, useLocation } from 'react-router-dom';
 
 export default function Protected({

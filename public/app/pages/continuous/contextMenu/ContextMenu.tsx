@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useEffect } from 'react';
-import { ControlledMenu, useMenuState } from '@phlare/ui/Menu';
-import { ContextMenuProps as PluginContextMenuProps } from '@phlare/components/TimelineChart/ContextMenu.plugin';
+import { ControlledMenu, useMenuState } from '@pyroscope/ui/Menu';
+import { ContextMenuProps as PluginContextMenuProps } from '@pyroscope/components/TimelineChart/ContextMenu.plugin';
 
 interface ContextMenuProps {
   /** position */

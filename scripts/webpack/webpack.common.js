@@ -33,7 +33,7 @@ module.exports = {
     // For example, setting a) '@webapp/*' and  b) '@webapp/components/ExportData'
     // Would end up ignoring b)
     alias: {
-      '@phlare': path.resolve(__dirname, '../../public/app'),
+      '@pyroscope': path.resolve(__dirname, '../../public/app'),
       // Dependencies
       //...deps,
     },

@@ -1,5 +1,5 @@
 /* eslint-disable max-classes-per-file */
-import { Units } from '@phlare/legacy/models/units';
+import { Units } from '@pyroscope/legacy/models/units';
 
 export function numberWithCommas(x: number): string {
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');

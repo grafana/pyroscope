@@ -1,5 +1,5 @@
 import React, { useCallback, RefObject, Dispatch, SetStateAction } from 'react';
-import { Units } from '@phlare/legacy/models/units';
+import { Units } from '@pyroscope/legacy/models/units';
 
 import type { FlamegraphPalette } from '../FlameGraph/FlameGraphComponent/colorPalette';
 import { Tooltip, TooltipData } from './Tooltip';

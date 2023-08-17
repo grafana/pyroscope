@@ -1,7 +1,7 @@
 import { createSlice, combineReducers } from '@reduxjs/toolkit';
-import { Users, type User } from '@phlare/models/users';
-import { APIKey, APIKeys } from '@phlare/models/apikeys';
-import { App } from '@phlare/models/app';
+import { Users, type User } from '@pyroscope/models/users';
+import { APIKey, APIKeys } from '@pyroscope/models/apikeys';
+import { App } from '@pyroscope/models/app';
 
 import {
   fetchUsers,
@@ -10,14 +10,14 @@ import {
   disableUser as disableUserAPI,
   changeUserRole as changeUserRoleAPI,
   deleteUser as deleteUserAPI,
-} from '@phlare/services/users';
+} from '@pyroscope/services/users';
 import {
   fetchAPIKeys,
   createAPIKey as createAPIKeyAPI,
   deleteAPIKey as deleteAPIKeyAPI,
-} from '@phlare/services/apiKeys';
-import { fetchApps, deleteApp as deleteAppAPI } from '@phlare/services/apps';
-import type { RootState } from '@phlare/redux/store';
+} from '@pyroscope/services/apiKeys';
+import { fetchApps, deleteApp as deleteAppAPI } from '@pyroscope/services/apps';
+import type { RootState } from '@pyroscope/redux/store';
 import { addNotification } from './notifications';
 import { createAsyncThunk } from '../async-thunk';
 

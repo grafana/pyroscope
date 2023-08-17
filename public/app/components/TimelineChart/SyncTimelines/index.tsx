@@ -1,7 +1,7 @@
 import React from 'react';
-import Button from '@phlare/ui/Button';
-import { TimelineData } from '@phlare/components/TimelineChart/TimelineChartWrapper';
-import StatusMessage from '@phlare/ui/StatusMessage';
+import Button from '@pyroscope/ui/Button';
+import { TimelineData } from '@pyroscope/components/TimelineChart/TimelineChartWrapper';
+import StatusMessage from '@pyroscope/ui/StatusMessage';
 import { useSync } from './useSync';
 import styles from './styles.module.scss';
 

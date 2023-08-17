@@ -1,7 +1,7 @@
 /* eslint-disable import/prefer-default-export */
 import groupBy from 'lodash.groupby';
 import map from 'lodash.map';
-import type { Profile, Trace, TraceSpan } from '@phlare/legacy/models';
+import type { Profile, Trace, TraceSpan } from '@pyroscope/legacy/models';
 import { deltaDiffWrapperReverse } from '../FlameGraph/decode';
 
 interface Span extends TraceSpan {

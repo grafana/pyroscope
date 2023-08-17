@@ -1,4 +1,4 @@
-import { brandQuery } from '@phlare/models/query';
+import { brandQuery } from '@pyroscope/models/query';
 import { appToQuery, appFromQuery } from './app';
 
 it('converts an App to a query', () => {

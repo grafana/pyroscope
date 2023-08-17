@@ -2,7 +2,7 @@ import {
   readableRange,
   formatAsOBject,
   toUnixTimestamp,
-} from '@phlare/util/formatDate';
+} from '@pyroscope/util/formatDate';
 import * as dateFns from 'date-fns';
 
 describe('FormatDate', () => {

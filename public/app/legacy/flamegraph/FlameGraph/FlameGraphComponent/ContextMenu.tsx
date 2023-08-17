@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading, import/no-extraneous-dependencies */
 import React from 'react';
-import { ControlledMenu, useMenuState } from '@phlare/ui/Menu';
+import { ControlledMenu, useMenuState } from '@pyroscope/ui/Menu';
 import styles from './ContextMenu.module.scss';
 
 type xyToMenuItems = (x: number, y: number) => JSX.Element[];

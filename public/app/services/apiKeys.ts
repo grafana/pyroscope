@@ -1,11 +1,11 @@
-import { Result } from '@phlare/util/fp';
+import { Result } from '@pyroscope/util/fp';
 import type { ZodError } from 'zod';
 import {
   APIKeys,
   apikeyModel,
   apiKeysSchema,
   APIKey,
-} from '@phlare/models/apikeys';
+} from '@pyroscope/models/apikeys';
 import { request, parseResponse } from './base';
 import type { RequestError } from './base';
 

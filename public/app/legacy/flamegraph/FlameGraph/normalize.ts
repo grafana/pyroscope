@@ -1,4 +1,4 @@
-import { Flamebearer, Profile } from '@phlare/legacy/models';
+import { Flamebearer, Profile } from '@pyroscope/legacy/models';
 import { decodeFlamebearer } from './decode';
 
 // normalize receives either a Profile or a Flamebearer

@@ -9,8 +9,8 @@
 import React, { Dispatch, SetStateAction, ReactNode, Component } from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
-import { createFF, Flamebearer, Profile } from '@phlare/legacy/models';
-import NoData from '@phlare/ui/NoData';
+import { createFF, Flamebearer, Profile } from '@pyroscope/legacy/models';
+import NoData from '@pyroscope/ui/NoData';
 
 import Graph from './FlameGraphComponent';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment

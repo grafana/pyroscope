@@ -1,5 +1,5 @@
 /* eslint-disable import/prefer-default-export */
-import { doubleFF } from '@phlare/legacy/models';
+import { doubleFF } from '@pyroscope/legacy/models';
 
 // not entirely sure where this should fit
 function getRatios(

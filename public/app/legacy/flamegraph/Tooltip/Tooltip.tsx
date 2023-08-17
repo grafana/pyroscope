@@ -10,7 +10,7 @@ import React, {
   SetStateAction,
 } from 'react';
 import clsx from 'clsx';
-import type { Units } from '@phlare/legacy/models';
+import type { Units } from '@pyroscope/legacy/models';
 
 import RightClickIcon from './RightClickIcon';
 import LeftClickIcon from './LeftClickIcon';

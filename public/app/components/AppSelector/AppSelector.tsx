@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import ModalWithToggle from '@phlare/ui/Modals/ModalWithToggle';
-import { App, appFromQuery, appToQuery } from '@phlare/models/app';
-import { Query } from '@phlare/models/query';
+import ModalWithToggle from '@pyroscope/ui/Modals/ModalWithToggle';
+import { App, appFromQuery, appToQuery } from '@pyroscope/models/app';
+import { Query } from '@pyroscope/models/query';
 import cx from 'classnames';
-import SelectButton from '@phlare/components/AppSelector/SelectButton';
+import SelectButton from '@pyroscope/components/AppSelector/SelectButton';
 import ogStyles from './AppSelector.module.scss';
 import styles from './AppSelector.module.css';
 

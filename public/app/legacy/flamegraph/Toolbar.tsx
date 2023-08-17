@@ -17,9 +17,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import useResizeObserver from '@react-hook/resize-observer';
 // until ui is moved to its own package this should do it
 // eslint-disable-next-line import/no-extraneous-dependencies
-import Button from '@phlare/ui/Button';
+import Button from '@pyroscope/ui/Button';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { Tooltip } from '@phlare/ui/Tooltip';
+import { Tooltip } from '@pyroscope/ui/Tooltip';
 import { FitModes } from './fitMode/fitMode';
 import SharedQueryInput from './SharedQueryInput';
 import type { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';

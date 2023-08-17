@@ -1,4 +1,4 @@
-import ShowModal, { ShowModalParams } from '@phlare/ui/Modals';
+import ShowModal, { ShowModalParams } from '@pyroscope/ui/Modals';
 
 type ModalWithInputParams = Pick<
   ShowModalParams,

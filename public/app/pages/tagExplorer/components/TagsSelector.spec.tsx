@@ -6,7 +6,7 @@ import { BrowserRouter } from 'react-router-dom';
 
 import { continuousReducer } from '../../../redux/reducers/continuous';
 import TagsSelector, { TagSelectorProps } from './TagsSelector';
-import { setStore } from '@phlare/services/storage';
+import { setStore } from '@pyroscope/services/storage';
 const whereDropdownItems = ['foo', 'bar', 'baz'];
 const groupByTag = 'group-by-tag-test';
 const appName = 'app-name-test';

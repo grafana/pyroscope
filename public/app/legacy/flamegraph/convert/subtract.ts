@@ -1,4 +1,4 @@
-import type { Profile } from '@phlare/legacy/models';
+import type { Profile } from '@pyroscope/legacy/models';
 import {
   decodeFlamebearer,
   deltaDiffWrapperReverse,

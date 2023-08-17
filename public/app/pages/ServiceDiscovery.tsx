@@ -1,13 +1,13 @@
 import React, { Children, useEffect, useState } from 'react';
-import { Target } from '@phlare/models/targets';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
+import { Target } from '@pyroscope/models/targets';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   loadTargets,
   selectTargetsData,
-} from '@phlare/redux/reducers/serviceDiscovery';
+} from '@pyroscope/redux/reducers/serviceDiscovery';
 import { formatDistance, parseISO } from 'date-fns';
 import cx from 'classnames';
-import Button from '@phlare/ui/Button';
+import Button from '@pyroscope/ui/Button';
 import styles from './ServiceDiscovery.module.scss';
 
 enum Status {

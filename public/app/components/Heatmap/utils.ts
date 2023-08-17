@@ -1,6 +1,6 @@
-import type { Heatmap } from '@phlare/services/render';
+import type { Heatmap } from '@pyroscope/services/render';
 
-import { getTimelineFormatDate, getUTCdate } from '@phlare/util/formatDate';
+import { getTimelineFormatDate, getUTCdate } from '@pyroscope/util/formatDate';
 import { SELECTED_AREA_BACKGROUND, HEATMAP_HEIGHT } from './constants';
 import type { SelectedAreaCoordsType } from './useHeatmapSelection.hook';
 

@@ -1,7 +1,7 @@
-import { Query, queryToAppName } from '@phlare/models/query';
-import * as tagsService from '@phlare/services/tags';
-import { createBiggestInterval } from '@phlare/util/timerange';
-import { formatAsOBject, toUnixTimestamp } from '@phlare/util/formatDate';
+import { Query, queryToAppName } from '@pyroscope/models/query';
+import * as tagsService from '@pyroscope/services/tags';
+import { createBiggestInterval } from '@pyroscope/util/timerange';
+import { formatAsOBject, toUnixTimestamp } from '@pyroscope/util/formatDate';
 import { ContinuousState } from './state';
 import { addNotification } from '../notifications';
 import { createAsyncThunk } from '../../async-thunk';

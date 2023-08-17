@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { Profile } from '@phlare/legacy/models';
+import type { Profile } from '@pyroscope/legacy/models';
 import {
   MergeOutput,
   mergeWithQueryID,
@@ -10,10 +10,10 @@ import {
   Heatmap,
   GetHeatmapProps,
   SelectionProfileProps,
-} from '@phlare/services/render';
-import type { RootState } from '@phlare/redux/store';
-import { RequestAbortedError } from '@phlare/services/base';
-import { addNotification } from '@phlare/redux/reducers/notifications';
+} from '@pyroscope/services/render';
+import type { RootState } from '@pyroscope/redux/store';
+import { RequestAbortedError } from '@pyroscope/services/base';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
 import { createAsyncThunk } from '../async-thunk';
 
 type MergeMetadata = {

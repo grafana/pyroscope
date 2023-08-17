@@ -3,7 +3,7 @@
   "compilerOptions": {
     "plugins": [{ "name": "typescript-plugin-css-modules" }],
     "paths": {
-      "@phlare/*": ["./public/app/*"],
+      "@pyroscope/*": ["./public/app/*"],
       "zod": ["./node_modules/zod"]
     },
     "target": "es5",

@@ -1,7 +1,7 @@
 import React from 'react';
-import injectTooltip from '@phlare/components/TimelineChart/injectTooltip';
+import injectTooltip from '@pyroscope/components/TimelineChart/injectTooltip';
 import { createRoot } from 'react-dom/client';
-import { TooltipWrapperProps } from '@phlare/components/TimelineChart/TooltipWrapper';
+import { TooltipWrapperProps } from '@pyroscope/components/TimelineChart/TooltipWrapper';
 
 const TOOLTIP_WRAPPER_ID = 'explore_tooltip_parent';
 

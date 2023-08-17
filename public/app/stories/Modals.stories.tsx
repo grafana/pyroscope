@@ -1,6 +1,6 @@
 import React from 'react';
-import ShowModal from '@phlare/ui/Modals';
-import Button from '@phlare/ui/Button';
+import ShowModal from '@pyroscope/ui/Modals';
+import Button from '@pyroscope/ui/Button';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
 import '../sass/profile.scss';
 

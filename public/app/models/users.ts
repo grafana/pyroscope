@@ -1,5 +1,5 @@
 import { z, ZodError } from 'zod';
-import { Result } from '@phlare/util/fp';
+import { Result } from '@pyroscope/util/fp';
 import { modelToResult } from './utils';
 
 const zDateTime = z.string().transform((value: string | number | Date) => {

@@ -2,7 +2,7 @@ import { createSlice, createSelector, PayloadAction } from '@reduxjs/toolkit';
 import { createMigrate } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import { PersistedState } from 'redux-persist/lib/types';
-import type { RootState } from '@phlare/redux/store';
+import type { RootState } from '@pyroscope/redux/store';
 
 // Persistence Migrations
 // See examples on https://github.com/rt2zz/redux-persist/blob/master/docs/migrations.md

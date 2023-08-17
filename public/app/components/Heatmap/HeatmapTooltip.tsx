@@ -6,9 +6,9 @@ import React, {
   useCallback,
 } from 'react';
 
-import { getFormatter } from '@phlare/legacy/flamegraph/format/format';
-import TooltipWrapper from '@phlare/components/TimelineChart/TooltipWrapper';
-import type { Heatmap } from '@phlare/services/render';
+import { getFormatter } from '@pyroscope/legacy/flamegraph/format/format';
+import TooltipWrapper from '@pyroscope/components/TimelineChart/TooltipWrapper';
+import type { Heatmap } from '@pyroscope/services/render';
 import {
   getTimeDataByXCoord,
   getBucketsDurationByYCoord,

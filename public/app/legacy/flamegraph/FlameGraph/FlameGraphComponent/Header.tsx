@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flamebearer } from '@phlare/legacy/models';
+import { Flamebearer } from '@pyroscope/legacy/models';
 import styles from './Header.module.css';
 import { FlamegraphPalette } from './colorPalette';
 import { DiffLegendPaletteDropdown } from './DiffLegendPaletteDropdown';

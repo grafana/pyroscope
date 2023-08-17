@@ -4,13 +4,13 @@ import React from 'react';
 
 import ReactFlot from 'react-flot';
 import 'react-flot/flot/jquery.flot.time.min';
-import '@phlare/components/TimelineChart/Selection.plugin';
+import '@pyroscope/components/TimelineChart/Selection.plugin';
 import 'react-flot/flot/jquery.flot.crosshair';
-import '@phlare/components/TimelineChart/TimelineChartPlugin';
-import '@phlare/components/TimelineChart/Tooltip.plugin';
-import '@phlare/components/TimelineChart/Annotations.plugin';
-import '@phlare/components/TimelineChart/ContextMenu.plugin';
-import '@phlare/components/TimelineChart/CrosshairSync.plugin';
+import '@pyroscope/components/TimelineChart/TimelineChartPlugin';
+import '@pyroscope/components/TimelineChart/Tooltip.plugin';
+import '@pyroscope/components/TimelineChart/Annotations.plugin';
+import '@pyroscope/components/TimelineChart/ContextMenu.plugin';
+import '@pyroscope/components/TimelineChart/CrosshairSync.plugin';
 
 interface TimelineChartProps {
   onSelect: (from: string, until: string) => void;

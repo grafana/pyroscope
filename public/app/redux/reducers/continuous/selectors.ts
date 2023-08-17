@@ -1,5 +1,5 @@
-import { brandQuery, Query, queryToAppName } from '@phlare/models/query';
-import type { RootState } from '@phlare/redux/store';
+import { brandQuery, Query, queryToAppName } from '@pyroscope/models/query';
+import type { RootState } from '@pyroscope/redux/store';
 import { ContinuousState, TagsState } from './state';
 
 export const selectContinuousState = (state: RootState) => state.continuous;

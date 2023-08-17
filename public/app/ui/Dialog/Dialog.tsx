@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { Ref, ReactNode } from 'react';
 import ModalUnstyled from '@mui/base/ModalUnstyled';
-import Button from '@phlare/ui/Button';
+import Button from '@pyroscope/ui/Button';
 import cx from 'classnames';
 import styles from './Dialog.module.css';
 

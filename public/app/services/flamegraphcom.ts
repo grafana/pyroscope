@@ -1,8 +1,8 @@
-import { parseResponse, RequestNotOkError } from '@phlare/services/base';
+import { parseResponse, RequestNotOkError } from '@pyroscope/services/base';
 import { z, ZodError } from 'zod';
-import { Result } from '@phlare/util/fp';
-import type { RequestError } from '@phlare/services/base';
-import { Profile } from '@phlare/legacy/models';
+import { Result } from '@pyroscope/util/fp';
+import type { RequestError } from '@pyroscope/services/base';
+import { Profile } from '@pyroscope/legacy/models';
 
 export async function flameGraphUpload(
   name: string,

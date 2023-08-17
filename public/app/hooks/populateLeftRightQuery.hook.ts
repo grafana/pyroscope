@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { actions, selectQueries } from '@phlare/redux/reducers/continuous';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
-import { queryToAppName, Query } from '@phlare/models/query';
+import { actions, selectQueries } from '@pyroscope/redux/reducers/continuous';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import { queryToAppName, Query } from '@pyroscope/models/query';
 
 function isQueriesHasSameApp(queries: Query[]): boolean {
   const appName = queryToAppName(queries[0]);

@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import LoadingSpinner from '@phlare/ui/LoadingSpinner';
+import LoadingSpinner from '@pyroscope/ui/LoadingSpinner';
 import '../sass/profile.scss';
 
 export default {

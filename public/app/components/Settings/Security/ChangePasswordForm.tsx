@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import Button from '@phlare/ui/Button';
+import Button from '@pyroscope/ui/Button';
 
-import { useAppDispatch } from '@phlare/redux/hooks';
+import { useAppDispatch } from '@pyroscope/redux/hooks';
 
-import { changeMyPassword } from '@phlare/redux/reducers/user';
-import { addNotification } from '@phlare/redux/reducers/notifications';
-import StatusMessage from '@phlare/ui/StatusMessage';
-import InputField from '@phlare/ui/InputField';
+import { changeMyPassword } from '@pyroscope/redux/reducers/user';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
+import StatusMessage from '@pyroscope/ui/StatusMessage';
+import InputField from '@pyroscope/ui/InputField';
 
 function ChangePasswordForm(props: ShamefulAny) {
   const { user } = props;

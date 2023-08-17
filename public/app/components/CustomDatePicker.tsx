@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { isAfter, isSameSecond } from 'date-fns';
 import DatePicker from 'react-datepicker';
-import Button from '@phlare/ui/Button';
-import { formatAsOBject, getUTCdate } from '@phlare/util/formatDate';
-import useTimeZone from '@phlare/hooks/timeZone.hook';
-import Select from '@phlare/ui/Select';
-import TextField from '@phlare/ui/Form/TextField';
+import Button from '@pyroscope/ui/Button';
+import { formatAsOBject, getUTCdate } from '@pyroscope/util/formatDate';
+import useTimeZone from '@pyroscope/hooks/timeZone.hook';
+import Select from '@pyroscope/ui/Select';
+import TextField from '@pyroscope/ui/Form/TextField';
 import styles from './CustomDatePicker.module.scss';
 
 interface CustomDatePickerProps {

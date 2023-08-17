@@ -11,7 +11,7 @@ import {
 import { AppSelector } from './AppSelector';
 import { MENU_ITEM_ROLE } from './SelectButton';
 
-jest.mock('@phlare/services/apps');
+jest.mock('@pyroscope/services/apps');
 
 const { getByTestId, queryByRole } = screen;
 const mockApps: App[] = [

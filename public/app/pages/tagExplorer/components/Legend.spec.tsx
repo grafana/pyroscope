@@ -3,8 +3,8 @@ import Color from 'color';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import type { TimelineGroupData } from '@phlare/components/TimelineChart/TimelineChartWrapper';
-import type { Group } from '@phlare/legacy/models';
+import type { TimelineGroupData } from '@pyroscope/components/TimelineChart/TimelineChartWrapper';
+import type { Group } from '@pyroscope/legacy/models';
 
 import Legend from './Legend';
 

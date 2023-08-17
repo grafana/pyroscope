@@ -6,8 +6,8 @@ import {
   singleFF,
   doubleFF,
   SpyName,
-} from '@phlare/legacy/models';
-import type { Units } from '@phlare/legacy/models';
+} from '@pyroscope/legacy/models';
+import type { Units } from '@pyroscope/legacy/models';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
 import type { FlamegraphPalette } from './colorPalette';
 // there's a dependency cycle here but it should be fine

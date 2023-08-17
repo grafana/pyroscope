@@ -1,40 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { Tabs, Tab, TabPanel } from '@phlare/ui/Tabs';
-import useColorMode from '@phlare/hooks/colorMode.hook';
-import useTimeZone from '@phlare/hooks/timeZone.hook';
-import useTags from '@phlare/hooks/tags.hook';
-import { useAppSelector, useAppDispatch } from '@phlare/redux/hooks';
+import { Tabs, Tab, TabPanel } from '@pyroscope/ui/Tabs';
+import useColorMode from '@pyroscope/hooks/colorMode.hook';
+import useTimeZone from '@pyroscope/hooks/timeZone.hook';
+import useTags from '@pyroscope/hooks/tags.hook';
+import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
 import {
   actions,
   fetchTagValues,
   selectQueries,
   setQuery,
-} from '@phlare/redux/reducers/continuous';
+} from '@pyroscope/redux/reducers/continuous';
 import {
   fetchExemplarsSingleView,
   fetchSelectionProfile,
-} from '@phlare/redux/reducers/tracing';
-import Box from '@phlare/ui/Box';
-import NoData from '@phlare/ui/NoData';
-import { LoadingOverlay } from '@phlare/ui/LoadingOverlay';
-import LoadingSpinner from '@phlare/ui/LoadingSpinner';
-import StatusMessage from '@phlare/ui/StatusMessage';
-import { Tooltip } from '@phlare/ui/Tooltip';
-import { TooltipInfoIcon } from '@phlare/ui/TooltipInfoIcon';
-import Toolbar from '@phlare/components/Toolbar';
-import TagsBar from '@phlare/components/TagsBar';
-import PageTitle from '@phlare/components/PageTitle';
-import { Heatmap } from '@phlare/components/Heatmap';
-import ExportData from '@phlare/components/ExportData';
-import ChartTitle from '@phlare/components/ChartTitle';
+} from '@pyroscope/redux/reducers/tracing';
+import Box from '@pyroscope/ui/Box';
+import NoData from '@pyroscope/ui/NoData';
+import { LoadingOverlay } from '@pyroscope/ui/LoadingOverlay';
+import LoadingSpinner from '@pyroscope/ui/LoadingSpinner';
+import StatusMessage from '@pyroscope/ui/StatusMessage';
+import { Tooltip } from '@pyroscope/ui/Tooltip';
+import { TooltipInfoIcon } from '@pyroscope/ui/TooltipInfoIcon';
+import Toolbar from '@pyroscope/components/Toolbar';
+import TagsBar from '@pyroscope/components/TagsBar';
+import PageTitle from '@pyroscope/components/PageTitle';
+import { Heatmap } from '@pyroscope/components/Heatmap';
+import ExportData from '@pyroscope/components/ExportData';
+import ChartTitle from '@pyroscope/components/ChartTitle';
 /* eslint-disable */
-import ChartTitleStyles from '@phlare/components/ChartTitle.module.scss';
-import { DEFAULT_HEATMAP_PARAMS } from '@phlare/components/Heatmap/constants';
-import { FlamegraphRenderer } from '@phlare/legacy/flamegraph/FlamegraphRenderer';
-import type { Profile } from '@phlare/legacy/models';
-import { diffTwoProfiles } from '@phlare/legacy/flamegraph/convert/diffTwoProfiles';
-import { subtract } from '@phlare/legacy/flamegraph/convert/subtract';
+import ChartTitleStyles from '@pyroscope/components/ChartTitle.module.scss';
+import { DEFAULT_HEATMAP_PARAMS } from '@pyroscope/components/Heatmap/constants';
+import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph/FlamegraphRenderer';
+import type { Profile } from '@pyroscope/legacy/models';
+import { diffTwoProfiles } from '@pyroscope/legacy/flamegraph/convert/diffTwoProfiles';
+import { subtract } from '@pyroscope/legacy/flamegraph/convert/subtract';
 import { formatTitle } from '../formatTitle';
 import { isLoadingOrReloading, LoadingType } from '../loading';
 import heatmapSelectionPreviewGif from './heatmapSelectionPreview.gif';

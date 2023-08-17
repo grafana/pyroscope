@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
-import type { ClickEvent } from '@phlare/ui/Menu';
+import type { ClickEvent } from '@pyroscope/ui/Menu';
 import { formatRelative } from 'date-fns';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
 import { faToggleOff } from '@fortawesome/free-solid-svg-icons/faToggleOff';
 import { faToggleOn } from '@fortawesome/free-solid-svg-icons/faToggleOn';
 
-import Button from '@phlare/ui/Button';
-import Icon from '@phlare/ui/Icon';
-import Dropdown, { MenuItem } from '@phlare/ui/Dropdown';
-import { reloadUsers, changeUserRole } from '@phlare/redux/reducers/settings';
-import { useAppDispatch } from '@phlare/redux/hooks';
-import confirmDelete from '@phlare/components/Modals/ConfirmDelete';
-import type { User, Users } from '@phlare/models/users';
-import type { BodyRow } from '@phlare/ui/Table';
+import Button from '@pyroscope/ui/Button';
+import Icon from '@pyroscope/ui/Icon';
+import Dropdown, { MenuItem } from '@pyroscope/ui/Dropdown';
+import { reloadUsers, changeUserRole } from '@pyroscope/redux/reducers/settings';
+import { useAppDispatch } from '@pyroscope/redux/hooks';
+import confirmDelete from '@pyroscope/components/Modals/ConfirmDelete';
+import type { User, Users } from '@pyroscope/models/users';
+import type { BodyRow } from '@pyroscope/ui/Table';
 import styles from './UserTableItem.module.css';
 
 function DisableButton(props: { onDisable: (user: User) => void; user: User }) {

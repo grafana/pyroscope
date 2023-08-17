@@ -1,5 +1,5 @@
-import { Target } from '@phlare/models/targets';
-import { fetchTargets } from '@phlare/services/serviceDiscovery';
+import { Target } from '@pyroscope/models/targets';
+import { fetchTargets } from '@pyroscope/services/serviceDiscovery';
 import { createSlice } from '@reduxjs/toolkit';
 import { addNotification } from './notifications';
 import type { RootState } from '../store';
