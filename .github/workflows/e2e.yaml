@@ -67,7 +67,7 @@ jobs:
         with:
           wait-on: http://localhost:8080/foobar/ready
           start: |
-            make run PARAMS=-api.base-url=/foobar/
+            make run PARAMS=-api.base-url=/foobar/ -storage.filesystem.dir=/tmp/pyroscope
           config-file: cypress/ci-base-path.ts
         env:
           ELECTRON_ENABLE_LOGGING: 1
