@@ -44,11 +44,11 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
   // Since our component state back when they change
   useEffect(() => {
     setSelectedDate({
-      ...selectedDate,
+      // ...selectedDate, -- we are replacing all values in the object, no need to keep the old one
       from: formatAsOBject(from),
       until: formatAsOBject(until),
     });
-  }, [selectedDate, from, until]);
+  }, [from, until]);
 
   const selectFromAsDate = getUTCdate(selectedDate.from, offset);
   const selectUntilAsDate = getUTCdate(selectedDate.until, offset);
