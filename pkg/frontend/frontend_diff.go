@@ -24,6 +24,9 @@ func (f *Frontend) Diff(ctx context.Context,
 	var left, right *phlaremodel.Tree
 	g.Go(func() error {
 		resp, err := f.SelectMergeStacktraces(ctx, connect.NewRequest(c.Msg.Left))
+		if err != nil {
+			return err
+		}
 		m := phlaremodel.NewFlameGraphMerger()
 		m.MergeFlameGraph(resp.Msg.Flamegraph)
 		left = m.Tree()
