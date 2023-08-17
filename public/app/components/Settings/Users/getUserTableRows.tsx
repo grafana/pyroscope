@@ -9,7 +9,10 @@ import { faToggleOn } from '@fortawesome/free-solid-svg-icons/faToggleOn';
 import Button from '@pyroscope/ui/Button';
 import Icon from '@pyroscope/ui/Icon';
 import Dropdown, { MenuItem } from '@pyroscope/ui/Dropdown';
-import { reloadUsers, changeUserRole } from '@pyroscope/redux/reducers/settings';
+import {
+  reloadUsers,
+  changeUserRole,
+} from '@pyroscope/redux/reducers/settings';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
 import confirmDelete from '@pyroscope/components/Modals/ConfirmDelete';
 import type { User, Users } from '@pyroscope/models/users';

@@ -6,7 +6,10 @@ import saveAs from 'file-saver';
 import showModalWithInput from '@pyroscope/components/Modals/ModalWithInput';
 import styles from './ExportData.module.scss';
 import { ContinuousState } from '@pyroscope/redux/reducers/continuous';
-import { convertPresetsToDate, formatAsOBject } from '@pyroscope/util/formatDate';
+import {
+  convertPresetsToDate,
+  formatAsOBject,
+} from '@pyroscope/util/formatDate';
 import { createBiggestInterval } from '@pyroscope/util/timerange';
 import { downloadWithOrgID } from '@pyroscope/services/base';
 import { faShareSquare } from '@fortawesome/free-solid-svg-icons/faShareSquare';
