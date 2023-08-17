@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import { Link, useHistory, useLocation } from 'react-router-dom';
 import cx from 'classnames';
-import Icon from '@phlare/ui/Icon';
+import Icon from '@pyroscope/ui/Icon';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
-import InputField from '@phlare/ui/InputField';
-import StatusMessage from '@phlare/ui/StatusMessage';
-import { logIn } from '@phlare/services/users';
-import useNavigateUserIntroPages from '@phlare/hooks/navigateUserIntroPages.hook';
+import InputField from '@pyroscope/ui/InputField';
+import StatusMessage from '@pyroscope/ui/StatusMessage';
+import { logIn } from '@pyroscope/services/users';
+import useNavigateUserIntroPages from '@pyroscope/hooks/navigateUserIntroPages.hook';
 import {
   isGithubEnabled,
   isGitlabEnabled,
   isGoogleEnabled,
   isInternalAuthEnabled,
   isSignupEnabled,
-} from '@phlare/util/features';
-import { PAGES } from '@phlare/pages/constants';
+} from '@pyroscope/util/features';
+import { PAGES } from '@pyroscope/pages/constants';
 import { GitlabIcon, GoogleIcon } from '../Icons';
 import Divider from '../Divider';
 import inputStyles from '../InputGroup.module.css';

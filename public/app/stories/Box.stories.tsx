@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import Box, { CollapseBox } from '@phlare/ui/Box';
-import Button from '@phlare/ui/Button';
+import Box, { CollapseBox } from '@pyroscope/ui/Box';
+import Button from '@pyroscope/ui/Button';
 import { ComponentMeta } from '@storybook/react';
 import '../sass/profile.scss';
 

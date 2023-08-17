@@ -1,4 +1,4 @@
-import type { Flamebearer } from '@phlare/legacy/models';
+import type { Flamebearer } from '@pyroscope/legacy/models';
 import { flamebearersToTree, TreeNode } from './flamebearersToTree';
 
 interface FlamebearerData {

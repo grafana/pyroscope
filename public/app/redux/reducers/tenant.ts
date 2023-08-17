@@ -1,10 +1,10 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { createAsyncThunk } from '@phlare/redux/async-thunk';
-import type { RootState } from '@phlare/redux/store';
-import { isMultiTenancyEnabled } from '@phlare/services/tenant';
+import { createAsyncThunk } from '@pyroscope/redux/async-thunk';
+import type { RootState } from '@pyroscope/redux/store';
+import { isMultiTenancyEnabled } from '@pyroscope/services/tenant';
 import storage from 'redux-persist/lib/storage';
 import { PersistConfig } from 'redux-persist/lib/types';
-import { tenantIDFromStorage } from '@phlare/services/storage';
+import { tenantIDFromStorage } from '@pyroscope/services/storage';
 
 export const persistConfig: PersistConfig<TenantState> = {
   key: 'pyroscope:tenant',

@@ -2,7 +2,7 @@ import { treeToFlamebearer, calleesFlamebearer } from './sandwichViewProfiles';
 import { flamebearersToTree } from './flamebearersToTree';
 
 import { tree, singleAppearanceTrees } from './testData';
-import { Flamebearer } from '@phlare/legacy/models';
+import { Flamebearer } from '@pyroscope/legacy/models';
 
 const flamebearersProps = {
   spyName: 'gospy',

@@ -1,4 +1,4 @@
-import { queryToMatchers } from '@phlare/services/tags';
+import { queryToMatchers } from '@pyroscope/services/tags';
 
 describe('queryToMatchers', () => {
   it('full query', () => {

@@ -1,4 +1,4 @@
-import { formatAsOBject } from '@phlare/util/formatDate';
+import { formatAsOBject } from '@pyroscope/util/formatDate';
 import { Selection } from '../markings';
 
 export const getSelectionBoundaries = (selection: Selection) => {

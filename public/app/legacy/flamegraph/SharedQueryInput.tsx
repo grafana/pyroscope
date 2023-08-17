@@ -2,8 +2,8 @@
 import React, { useEffect, useMemo, ChangeEvent, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLink } from '@fortawesome/free-solid-svg-icons/faLink';
-import Input from '@phlare/ui/Input';
-import { Tooltip } from '@phlare/ui/Tooltip';
+import Input from '@pyroscope/ui/Input';
+import { Tooltip } from '@pyroscope/ui/Tooltip';
 import styles from './SharedQueryInput.module.scss';
 import type { ProfileHeaderProps } from './Toolbar';
 

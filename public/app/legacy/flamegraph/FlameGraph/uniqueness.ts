@@ -1,4 +1,4 @@
-import { Flamebearer } from '@phlare/legacy/models';
+import { Flamebearer } from '@pyroscope/legacy/models';
 
 export function isSameFlamebearer(
   prevFlame: Flamebearer,

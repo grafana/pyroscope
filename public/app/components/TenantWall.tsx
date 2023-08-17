@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
-import TextField from '@phlare/ui/Form/TextField';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import TextField from '@pyroscope/ui/Form/TextField';
 import {
   Dialog,
   DialogBody,
   DialogFooter,
   DialogHeader,
-} from '@phlare/ui/Dialog';
-import Button from '@phlare/ui/Button';
+} from '@pyroscope/ui/Dialog';
+import Button from '@pyroscope/ui/Button';
 import {
   checkTenancyIsRequired,
   selectTenancy,
   actions,
   selectTenantID,
-} from '@phlare/redux/reducers/tenant';
+} from '@pyroscope/redux/reducers/tenant';
 
 export function TenantWall({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();

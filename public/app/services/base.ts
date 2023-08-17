@@ -1,10 +1,10 @@
 /* eslint-disable max-classes-per-file */
 /* eslint-disable import/prefer-default-export */
 import type { ZodError } from 'zod';
-import { modelToResult } from '@phlare/models/utils';
+import { modelToResult } from '@pyroscope/models/utils';
 import { CustomError } from 'ts-custom-error';
-import basename from '@phlare/util/baseurl';
-import { Result } from '@phlare/util/fp';
+import basename from '@pyroscope/util/baseurl';
+import { Result } from '@pyroscope/util/fp';
 import { tenantIDFromStorage } from './storage';
 
 // RequestNotOkError refers to when the Response is not within the 2xx range

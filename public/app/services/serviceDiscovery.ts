@@ -1,8 +1,8 @@
-import { Result } from '@phlare/util/fp';
-import { Target, targetsModel } from '@phlare/models/targets';
+import { Result } from '@pyroscope/util/fp';
+import { Target, targetsModel } from '@pyroscope/models/targets';
 import type { ZodError } from 'zod';
-import { request, parseResponse } from '@phlare/services/base';
-import type { RequestError } from '@phlare/services/base';
+import { request, parseResponse } from '@pyroscope/services/base';
+import type { RequestError } from '@pyroscope/services/base';
 
 /* eslint-disable import/prefer-default-export */
 export async function fetchTargets(): Promise<

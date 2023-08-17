@@ -1,6 +1,6 @@
-import { Profile } from '@phlare/legacy/models';
+import { Profile } from '@pyroscope/legacy/models';
 import Color from 'color';
-import { getFormatter } from '@phlare/legacy/flamegraph/format/format';
+import { getFormatter } from '@pyroscope/legacy/flamegraph/format/format';
 
 export interface TableValuesData {
   color?: Color;

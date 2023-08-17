@@ -6,8 +6,8 @@ import {
   DialogHeader,
   DialogBody,
   DialogActions,
-} from '@phlare/ui/Dialog';
-import Button from '@phlare/ui/Button';
+} from '@pyroscope/ui/Dialog';
+import Button from '@pyroscope/ui/Button';
 import '../sass/profile.scss';
 
 export default {

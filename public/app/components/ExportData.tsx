@@ -1,23 +1,26 @@
-import Button from '@phlare/ui/Button';
-import handleError from '@phlare/util/handleError';
+import Button from '@pyroscope/ui/Button';
+import handleError from '@pyroscope/util/handleError';
 import OutsideClickHandler from 'react-outside-click-handler';
 import React, { useState } from 'react';
 import saveAs from 'file-saver';
-import showModalWithInput from '@phlare/components/Modals/ModalWithInput';
+import showModalWithInput from '@pyroscope/components/Modals/ModalWithInput';
 import styles from './ExportData.module.scss';
-import { ContinuousState } from '@phlare/redux/reducers/continuous';
-import { convertPresetsToDate, formatAsOBject } from '@phlare/util/formatDate';
-import { createBiggestInterval } from '@phlare/util/timerange';
-import { downloadWithOrgID } from '@phlare/services/base';
+import { ContinuousState } from '@pyroscope/redux/reducers/continuous';
+import {
+  convertPresetsToDate,
+  formatAsOBject,
+} from '@pyroscope/util/formatDate';
+import { createBiggestInterval } from '@pyroscope/util/timerange';
+import { downloadWithOrgID } from '@pyroscope/services/base';
 import { faShareSquare } from '@fortawesome/free-solid-svg-icons/faShareSquare';
 import { Field, Message } from 'protobufjs/light';
-import { flameGraphUpload } from '@phlare/services/flamegraphcom';
+import { flameGraphUpload } from '@pyroscope/services/flamegraphcom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { format } from 'date-fns';
-import { isRouteActive, ROUTES } from '@phlare/pages/routes';
-import { Profile } from '@phlare/legacy/models';
-import { Tooltip } from '@phlare/ui/Tooltip';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
+import { isRouteActive, ROUTES } from '@pyroscope/pages/routes';
+import { Profile } from '@pyroscope/legacy/models';
+import { Tooltip } from '@pyroscope/ui/Tooltip';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import { useLocation } from 'react-router-dom';
 import 'compression-streams-polyfill';
 

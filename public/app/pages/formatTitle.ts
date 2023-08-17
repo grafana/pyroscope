@@ -1,4 +1,4 @@
-import { Query } from '@phlare/models/query';
+import { Query } from '@pyroscope/models/query';
 
 /**
  * takes a page name and 2 optional queries

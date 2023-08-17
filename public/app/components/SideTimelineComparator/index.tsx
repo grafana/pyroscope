@@ -1,12 +1,12 @@
 import React, { useRef, useState } from 'react';
 import classNames from 'classnames/bind';
-import Button from '@phlare/ui/Button';
-import { Popover, PopoverBody } from '@phlare/ui/Popover';
-import { Portal } from '@phlare/ui/Portal';
+import Button from '@pyroscope/ui/Button';
+import { Popover, PopoverBody } from '@pyroscope/ui/Popover';
+import { Portal } from '@pyroscope/ui/Portal';
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons/faChevronDown';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Selection } from '@phlare/components/TimelineChart/markings';
-import { getSelectionBoundaries } from '@phlare/components/TimelineChart/SyncTimelines/getSelectionBoundaries';
+import { Selection } from '@pyroscope/components/TimelineChart/markings';
+import { getSelectionBoundaries } from '@pyroscope/components/TimelineChart/SyncTimelines/getSelectionBoundaries';
 import { comparisonPeriods } from './periods';
 import styles from './styles.module.scss';
 

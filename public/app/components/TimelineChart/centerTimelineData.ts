@@ -1,4 +1,4 @@
-import type { Timeline } from '@phlare/models/timeline';
+import type { Timeline } from '@pyroscope/models/timeline';
 
 export interface TimelineData {
   data?: Timeline;

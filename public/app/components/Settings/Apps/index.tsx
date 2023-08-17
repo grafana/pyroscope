@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import cl from 'classnames';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   selectApps,
   reloadApps,
   deleteApp,
   selectIsLoadingApps,
-} from '@phlare/redux/reducers/settings';
-import { addNotification } from '@phlare/redux/reducers/notifications';
-import { type App } from '@phlare/models/app';
-import Input from '@phlare/ui/Input';
-import TableUI from '@phlare/ui/Table';
-import LoadingSpinner from '@phlare/ui/LoadingSpinner';
+} from '@pyroscope/redux/reducers/settings';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
+import { type App } from '@pyroscope/models/app';
+import Input from '@pyroscope/ui/Input';
+import TableUI from '@pyroscope/ui/Table';
+import LoadingSpinner from '@pyroscope/ui/LoadingSpinner';
 import { getAppTableRows } from './getAppTableRows';
 
 import appsStyles from './Apps.module.css';

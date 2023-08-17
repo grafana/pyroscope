@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import StatusMessage from '@phlare/ui/StatusMessage';
+import StatusMessage from '@pyroscope/ui/StatusMessage';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
 import '../sass/profile.scss';
 

@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import 'react-dom';
-import { TagsState } from '@phlare/redux/reducers/continuous';
+import { TagsState } from '@pyroscope/redux/reducers/continuous';
 import Dropdown, {
   SubMenu,
   MenuItem,
   FocusableItem,
   MenuGroup,
-} from '@phlare/ui/Dropdown';
-import { Query, brandQuery } from '@phlare/models/query';
-import Input from '@phlare/ui/Input';
-import { appendLabelToQuery } from '@phlare/util/query';
-import QueryInput from '@phlare/components/QueryInput/QueryInput';
-import LoadingSpinner from '@phlare/ui/LoadingSpinner';
+} from '@pyroscope/ui/Dropdown';
+import { Query, brandQuery } from '@pyroscope/models/query';
+import Input from '@pyroscope/ui/Input';
+import { appendLabelToQuery } from '@pyroscope/util/query';
+import QueryInput from '@pyroscope/components/QueryInput/QueryInput';
+import LoadingSpinner from '@pyroscope/ui/LoadingSpinner';
 import styles from './TagsBar.module.scss';
 
 interface TagsBarProps {

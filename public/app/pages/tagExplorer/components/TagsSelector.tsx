@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { Redirect, useLocation } from 'react-router-dom';
 import cl from 'classnames';
 
-import { useAppDispatch } from '@phlare/redux/hooks';
-import { actions } from '@phlare/redux/reducers/continuous';
-import { appendLabelToQuery } from '@phlare/util/query';
-import { brandQuery } from '@phlare/models/query';
-import { PAGES } from '@phlare/pages/constants';
-import ModalWithToggle from '@phlare/ui/Modals/ModalWithToggle';
+import { useAppDispatch } from '@pyroscope/redux/hooks';
+import { actions } from '@pyroscope/redux/reducers/continuous';
+import { appendLabelToQuery } from '@pyroscope/util/query';
+import { brandQuery } from '@pyroscope/models/query';
+import { PAGES } from '@pyroscope/pages/constants';
+import ModalWithToggle from '@pyroscope/ui/Modals/ModalWithToggle';
 import styles from './TagsSelector.module.scss';
 
 const emptyTagsTag = 'No tags available';

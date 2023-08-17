@@ -1,7 +1,7 @@
 import React, { useCallback, RefObject, Dispatch, SetStateAction } from 'react';
 import { Maybe } from 'true-myth';
 import type { Unwrapped } from 'true-myth/maybe';
-import { Units } from '@phlare/legacy/models/units';
+import { Units } from '@pyroscope/legacy/models/units';
 import {
   getFormatter,
   numberWithCommas,

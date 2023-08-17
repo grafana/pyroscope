@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   fetchSideTimelines,
   selectContinuousState,
   selectTimelineSidesData,
-} from '@phlare/redux/reducers/continuous';
+} from '@pyroscope/redux/reducers/continuous';
 import Color from 'color';
 
 // Purple

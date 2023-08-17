@@ -3,7 +3,7 @@ import ReactFlot from 'react-flot';
 import Color from 'color';
 import TooltipWrapper, {
   TooltipWrapperProps,
-} from '@phlare/components/TimelineChart/TooltipWrapper';
+} from '@pyroscope/components/TimelineChart/TooltipWrapper';
 import styles from './styles.module.scss';
 import 'react-flot/flot/jquery.flot.pie';
 import './Interactivity.plugin';

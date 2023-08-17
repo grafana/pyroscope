@@ -1,5 +1,5 @@
 import { normalize } from './normalize';
-import { Flamebearer, Profile } from '@phlare/legacy/models';
+import { Flamebearer, Profile } from '@pyroscope/legacy/models';
 
 describe('normalize', () => {
   it('accepts a flamebearer', () => {

@@ -1,16 +1,16 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import Button from '@phlare/ui/Button';
+import Button from '@pyroscope/ui/Button';
 import type { DropzoneOptions } from 'react-dropzone';
 import { faFileUpload } from '@fortawesome/free-solid-svg-icons/faFileUpload';
 import classNames from 'classnames/bind';
-import Dropdown, { MenuItem } from '@phlare/ui/Dropdown';
+import Dropdown, { MenuItem } from '@pyroscope/ui/Dropdown';
 import {
   SpyNameFirstClass,
   SpyNameFirstClassType,
-} from '@phlare/legacy/models/spyName';
-import { units as possibleUnits, UnitsType } from '@phlare/legacy/models';
+} from '@pyroscope/legacy/models/spyName';
+import { units as possibleUnits, UnitsType } from '@pyroscope/legacy/models';
 import { humanizeSpyname, isJSONFile, humanizeUnits } from './humanize';
 import UploadIcon from './UploadIcon';
 import styles from './FileUploader.module.scss';

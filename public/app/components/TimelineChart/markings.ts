@@ -1,4 +1,4 @@
-import { formatAsOBject } from '@phlare/util/formatDate';
+import { formatAsOBject } from '@pyroscope/util/formatDate';
 import Color from 'color';
 
 // Same green as button

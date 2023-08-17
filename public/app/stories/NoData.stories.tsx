@@ -1,6 +1,6 @@
 import React from 'react';
-import NoData from '@phlare/ui/NoData';
-import Box from '@phlare/ui/Box';
+import NoData from '@pyroscope/ui/NoData';
+import Box from '@pyroscope/ui/Box';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
 import '../sass/profile.scss';
 

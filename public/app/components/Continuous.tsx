@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
-import { useAppSelector, useAppDispatch } from '@phlare/redux/hooks';
+import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
 import {
   reloadAppNames,
   selectAppNames,
   setQuery,
   selectApplicationName,
-} from '@phlare/redux/reducers/continuous';
-import { queryFromAppName } from '@phlare/models/query';
+} from '@pyroscope/redux/reducers/continuous';
+import { queryFromAppName } from '@pyroscope/models/query';
 
 export default function Continuous({
   children,

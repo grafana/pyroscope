@@ -2,7 +2,7 @@
 import React, { useRef } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { Units } from '@phlare/legacy/models';
+import type { Units } from '@pyroscope/legacy/models';
 import { DefaultPalette } from '../FlameGraph/FlameGraphComponent/colorPalette';
 
 import TableTooltip, { TableTooltipProps } from './TableTooltip';

@@ -2,7 +2,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 
-import type { Profile, Flamebearer } from '@phlare/legacy/models';
+import type { Profile, Flamebearer } from '@pyroscope/legacy/models';
 import {
   deltaDiffWrapper,
   deltaDiffWrapperReverse,

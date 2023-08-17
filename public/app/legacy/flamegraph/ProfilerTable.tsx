@@ -2,14 +2,14 @@ import React, { useRef, RefObject, CSSProperties } from 'react';
 import type Color from 'color';
 import cl from 'classnames';
 import type { Maybe } from 'true-myth';
-import { doubleFF, singleFF, Flamebearer } from '@phlare/legacy/models';
+import { doubleFF, singleFF, Flamebearer } from '@pyroscope/legacy/models';
 // until ui is moved to its own package this should do it
 // eslint-disable-next-line import/no-extraneous-dependencies
 import TableUI, {
   useTableSort,
   BodyRow,
   TableBodyType,
-} from '@phlare/ui/Table';
+} from '@pyroscope/ui/Table';
 import TableTooltip from './Tooltip/TableTooltip';
 import { getFormatter, ratioToPercent, diffPercent } from './format/format';
 import {

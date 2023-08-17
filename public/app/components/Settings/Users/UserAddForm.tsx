@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import Button from '@phlare/ui/Button';
-import InputField from '@phlare/ui/InputField';
+import Button from '@pyroscope/ui/Button';
+import InputField from '@pyroscope/ui/InputField';
 import { useHistory } from 'react-router-dom';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
-import { createUser } from '@phlare/redux/reducers/settings';
-import { useAppDispatch } from '@phlare/redux/hooks';
-import { addNotification } from '@phlare/redux/reducers/notifications';
-import { passwordEncode, type User } from '@phlare/models/users';
+import { createUser } from '@pyroscope/redux/reducers/settings';
+import { useAppDispatch } from '@pyroscope/redux/hooks';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
+import { passwordEncode, type User } from '@pyroscope/models/users';
 
 export type UserAddProps = User & { password?: string };
 

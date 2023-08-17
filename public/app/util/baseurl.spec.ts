@@ -1,4 +1,4 @@
-import { baseurl, baseurlForAPI } from '@phlare/util/baseurl';
+import { baseurl, baseurlForAPI } from '@pyroscope/util/baseurl';
 
 function mockSelector(href: string) {
   const base = document.createElement('base');

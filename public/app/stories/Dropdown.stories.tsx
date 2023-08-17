@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useState } from 'react';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
-import Dropdown, { MenuItem, SubMenu } from '@phlare/ui/Dropdown';
+import Dropdown, { MenuItem, SubMenu } from '@pyroscope/ui/Dropdown';
 import '../sass/profile.scss';
 
 const DropdownSelect = (args) => {

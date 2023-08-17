@@ -1,14 +1,14 @@
-import { requestWithOrgID } from '@phlare/services/base';
-import * as storageSvc from '@phlare/services/storage';
+import { requestWithOrgID } from '@pyroscope/services/base';
+import * as storageSvc from '@pyroscope/services/storage';
 
-jest.mock('@phlare/services/base', () => {
+jest.mock('@pyroscope/services/base', () => {
   return {
     __esModule: true,
-    ...jest.requireActual('@phlare/services/base'),
+    ...jest.requireActual('@pyroscope/services/base'),
   };
 });
 
-jest.mock('@phlare/services/storage', () => {
+jest.mock('@pyroscope/services/storage', () => {
   return {
     __esModule: true,
     tenantIDFromStorage: jest.fn(),

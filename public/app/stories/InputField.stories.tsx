@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import InputField from '@phlare/ui/InputField';
-import Button from '@phlare/ui/Button';
+import InputField from '@pyroscope/ui/InputField';
+import Button from '@pyroscope/ui/Button';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
 import '../sass/profile.scss';
 

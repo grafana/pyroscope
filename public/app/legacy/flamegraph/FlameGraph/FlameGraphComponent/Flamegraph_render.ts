@@ -22,7 +22,7 @@ THIS SOFTWARE.
 */
 
 /* eslint-disable no-continue */
-import { createFF, Flamebearer, SpyName } from '@phlare/legacy/models';
+import { createFF, Flamebearer, SpyName } from '@pyroscope/legacy/models';
 import {
   formatPercent,
   getFormatter,

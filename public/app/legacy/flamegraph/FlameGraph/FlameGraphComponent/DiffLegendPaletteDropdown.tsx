@@ -10,9 +10,9 @@ import DiffLegend from './DiffLegend';
 import CheckIcon from './CheckIcon';
 // Until we migrate ui to its own package this should do it
 // eslint-disable-next-line
-import Dropdown, { MenuItem, MenuButton } from '@phlare/ui/Dropdown';
+import Dropdown, { MenuItem, MenuButton } from '@pyroscope/ui/Dropdown';
 // eslint-disable-next-line
-import dropdownStyles from '@phlare/ui/Dropdown.module.scss';
+import dropdownStyles from '@pyroscope/ui/Dropdown.module.scss';
 
 import styles from './DiffLegendPaletteDropdown.module.css';
 

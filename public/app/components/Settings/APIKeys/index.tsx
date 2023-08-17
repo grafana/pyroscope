@@ -4,17 +4,17 @@ import { formatDistance, formatRelative } from 'date-fns/fp';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
 
-import Button from '@phlare/ui/Button';
-import Icon from '@phlare/ui/Icon';
-import TableUI, { BodyRow } from '@phlare/ui/Table';
-import type { APIKey, APIKeys } from '@phlare/models/apikeys';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
+import Button from '@pyroscope/ui/Button';
+import Icon from '@pyroscope/ui/Icon';
+import TableUI, { BodyRow } from '@pyroscope/ui/Table';
+import type { APIKey, APIKeys } from '@pyroscope/models/apikeys';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   reloadApiKeys,
   selectAPIKeys,
   deleteAPIKey,
-} from '@phlare/redux/reducers/settings';
-import confirmDelete from '@phlare/components/Modals/ConfirmDelete';
+} from '@pyroscope/redux/reducers/settings';
+import confirmDelete from '@pyroscope/components/Modals/ConfirmDelete';
 import styles from '../SettingsTable.module.scss';
 
 const getBodyRows = (

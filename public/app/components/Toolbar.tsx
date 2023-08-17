@@ -1,20 +1,20 @@
 import React from 'react';
 import 'react-dom';
 
-import { useAppSelector, useAppDispatch } from '@phlare/redux/hooks';
-import { Query } from '@phlare/models/query';
+import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
+import { Query } from '@pyroscope/models/query';
 import {
   selectApps,
   reloadAppNames,
   selectQueries,
   selectAppNamesState,
-} from '@phlare/redux/reducers/continuous';
+} from '@pyroscope/redux/reducers/continuous';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
-import Button from '@phlare/ui/Button';
-import LoadingSpinner from '@phlare/ui/LoadingSpinner';
-import DateRangePicker from '@phlare/components/DateRangePicker';
-import RefreshButton from '@phlare/components/RefreshButton';
-import { AppSelector } from '@phlare/components/AppSelector/AppSelector';
+import Button from '@pyroscope/ui/Button';
+import LoadingSpinner from '@pyroscope/ui/LoadingSpinner';
+import DateRangePicker from '@pyroscope/components/DateRangePicker';
+import RefreshButton from '@pyroscope/components/RefreshButton';
+import { AppSelector } from '@pyroscope/components/AppSelector/AppSelector';
 import styles from './Toolbar.module.css';
 
 interface ToolbarProps {

@@ -3,9 +3,9 @@ import { useWindowWidth } from '@react-hook/window-size';
 import TextareaAutosize from 'react-textarea-autosize';
 import cx from 'classnames';
 
-import { Query, brandQuery } from '@phlare/models/query';
-import { Prism } from '@phlare/util/prism';
-import Button from '@phlare/ui/Button';
+import { Query, brandQuery } from '@pyroscope/models/query';
+import { Prism } from '@pyroscope/util/prism';
+import Button from '@pyroscope/ui/Button';
 
 import styles from './QueryInput.module.scss';
 

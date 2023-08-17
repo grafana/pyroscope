@@ -4,15 +4,15 @@ import {
   appsModel,
   PyroscopeAppLabel,
   ServiceNameLabel,
-} from '@phlare/models/app';
-import { Result } from '@phlare/util/fp';
+} from '@pyroscope/models/app';
+import { Result } from '@pyroscope/util/fp';
 import { z, ZodError } from 'zod';
-import type { RequestError } from '@phlare/services/base';
+import type { RequestError } from '@pyroscope/services/base';
 import {
   parseResponse,
   request,
   requestWithOrgID,
-} from '@phlare/services/base';
+} from '@pyroscope/services/base';
 
 // SeriesResponse refers to the response from the server, without any manipulation
 const SeriesResponseSchema = z.preprocess(

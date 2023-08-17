@@ -1,4 +1,4 @@
-import { Maybe } from '@phlare/util/fp';
+import { Maybe } from '@pyroscope/util/fp';
 
 // ParseQuery parses a string of $app_name<{<$tag_matchers>}> form.
 // It assumes the query is well formed

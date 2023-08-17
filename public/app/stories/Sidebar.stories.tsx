@@ -8,10 +8,10 @@ import Sidebar, {
   SidebarContent,
   SubMenu,
   Menu,
-} from '@phlare/ui/Sidebar';
+} from '@pyroscope/ui/Sidebar';
 import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';
 import { faBaby } from '@fortawesome/free-solid-svg-icons/faBaby';
-import Icon from '@phlare/ui/Icon';
+import Icon from '@pyroscope/ui/Icon';
 import '../sass/profile.scss';
 
 export default {

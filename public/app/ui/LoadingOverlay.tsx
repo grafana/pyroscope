@@ -1,5 +1,5 @@
 import React, { ReactNode, useEffect, useState } from 'react';
-import LoadingSpinner from '@phlare/ui/LoadingSpinner';
+import LoadingSpinner from '@pyroscope/ui/LoadingSpinner';
 import cx from 'classnames';
 import styles from './LoadingOverlay.module.css';
 

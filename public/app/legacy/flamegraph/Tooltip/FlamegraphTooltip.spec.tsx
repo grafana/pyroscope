@@ -3,7 +3,7 @@ import React, { useRef } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Maybe } from 'true-myth';
-import type { Units } from '@phlare/legacy/models';
+import type { Units } from '@pyroscope/legacy/models';
 
 import FlamegraphTooltip, { FlamegraphTooltipProps } from './FlamegraphTooltip';
 import { DefaultPalette } from '../';

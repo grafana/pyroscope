@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import { Tooltip } from '@phlare/ui/Tooltip';
-import { TooltipInfoIcon } from '@phlare/ui/TooltipInfoIcon';
+import { Tooltip } from '@pyroscope/ui/Tooltip';
+import { TooltipInfoIcon } from '@pyroscope/ui/TooltipInfoIcon';
 import { ComponentMeta } from '@storybook/react';
 import '../sass/profile.scss';
 

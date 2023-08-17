@@ -1,13 +1,13 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { type User } from '@phlare/models/users';
+import { type User } from '@pyroscope/models/users';
 import { connect, useSelector } from 'react-redux';
 import {
   loadCurrentUser as loadCurrentUserAPI,
   changeMyPassword as changeMyPasswordAPI,
   editMyUser as editMyUserAPI,
-} from '@phlare/services/users';
-import type { RootState } from '@phlare/redux/store';
-import { createAsyncThunk } from '@phlare/redux/async-thunk';
+} from '@pyroscope/services/users';
+import type { RootState } from '@pyroscope/redux/store';
+import { createAsyncThunk } from '@pyroscope/redux/async-thunk';
 import { addNotification } from './notifications';
 
 interface UserRootState {
