@@ -321,7 +321,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     fitMode,
     highlightQuery,
     zoom,
-    renderCanvas
+    renderCanvas,
   ]);
 
   const dataUnavailable =
