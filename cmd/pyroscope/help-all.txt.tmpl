@@ -339,11 +339,11 @@ Usage of ./pyroscope:
     	Maximum time to wait for ring stability at startup. If the overrides-exporter ring keeps changing after this period of time, it will start anyway. (default 5m0s)
   -overrides-exporter.ring.wait-stability-min-duration duration
     	Minimum time to wait for ring stability at startup, if set to positive value. Set to 0 to disable.
-  -phlaredb.data-path string
+  -pyroscopedb.data-path string
     	Directory used for local storage. (default "./data")
-  -phlaredb.max-block-duration duration
+  -pyroscopedb.max-block-duration duration
     	Upper limit to the duration of a Phlare block. (default 3h0m0s)
-  -phlaredb.row-group-target-size uint
+  -pyroscopedb.row-group-target-size uint
     	How big should a single row group be uncompressed (default 1342177280)
   -querier.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
