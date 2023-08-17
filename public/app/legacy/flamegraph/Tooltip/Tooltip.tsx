@@ -116,9 +116,10 @@ export function Tooltip({
     [tooltipRef, setTooltipContent]
   );
 
-  const dataSourceEl = dataSourceRef.current;
 
   useEffect(() => {
+    const dataSourceEl = dataSourceRef.current;
+
     // use closure to "cache" the current dataSourceRef(canvas/table) reference
     // so that when cleaning up, it points to a valid canvas
     // (otherwise it would be null)
@@ -140,7 +141,7 @@ export function Tooltip({
       );
       dataSourceEl.removeEventListener('mouseout', onMouseOut);
     };
-  }, [memoizedOnMouseMove, dataSourceEl]);
+  }, [memoizedOnMouseMove, dataSourceRef]);
 
   return (
     <div
@@ -151,6 +152,8 @@ export function Tooltip({
       style={style}
       ref={tooltipRef}
     >
+      {`HELLO ${JSON.stringify({shouldShowTitle, tooltips: content.tooltipData}, null, 2)}`}
+
       {content.tooltipData.length > 0 && (
         <>
           {shouldShowTitle && (
