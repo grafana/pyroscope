@@ -151,12 +151,6 @@ export function Tooltip({
       style={style}
       ref={tooltipRef}
     >
-      {`HELLO ${JSON.stringify(
-        { shouldShowTitle, tooltips: content.tooltipData },
-        null,
-        2
-      )}`}
-
       {content.tooltipData.length > 0 && (
         <>
           {shouldShowTitle && (
