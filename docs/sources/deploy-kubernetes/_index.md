@@ -67,7 +67,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
 
    ```bash
    # Gather the default config for micro-services
-   curl -LO values-micro-services.yaml https://raw.githubusercontent.com/grafana/pyroscope/main/operations/pyroscope/helm/pyroscope/values-micro-services.yaml
+   curl -Lo values-micro-services.yaml https://raw.githubusercontent.com/grafana/pyroscope/main/operations/pyroscope/helm/pyroscope/values-micro-services.yaml
    helm -n pyroscope-test install pyroscope grafana/pyroscope --values values-micro-services.yaml
    ```
 
