@@ -71,6 +71,10 @@ Even though this is a major release, the HTTP API is not yet stable and is subje
 Pyroscope v1.0 comes with a huge architectural change and we've tried to minimize the impact of these changes as much as possible, but some of them are unavoidable. Our goal is for our users to have as smooth of a transition as possible. Therefore, we encourage you to contribute to the community by creating new issues or upvoting existing ones with an `og-feature` label in the [Pyroscope GitHub repository](https://github.com/grafana/pyroscope/labels/og-feature). Thank you for your feedback and engagement, which play a crucial role in shaping the future of Pyroscope.
 
 
+### Upgrade Checklists
+
+We provide the following checklists to help you upgrade to v1.0:
+
 ### Upgrade Checklist for Docker deployments
 
 When upgrading to v1.0 we suggest that you follow this checklist:
