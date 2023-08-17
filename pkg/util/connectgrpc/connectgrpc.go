@@ -127,9 +127,9 @@ func ProcedureFromContext(ctx context.Context) string {
 }
 
 func encodeRequest[Req any](ctx context.Context, req *connect.Request[Req]) (*httpgrpc.HTTPRequest, error) {
-	url := req.Spec().Procedure
+	url := ProcedureFromContext(ctx)
 	if url == "" {
-		if url = ProcedureFromContext(ctx); url == "" {
+		if url = req.Spec().Procedure; url == "" {
 			return nil, errors.New("cannot encode a request with empty procedure")
 		}
 	}
