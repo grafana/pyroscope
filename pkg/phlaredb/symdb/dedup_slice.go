@@ -8,7 +8,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/prometheus/prometheus/util/zeropool"
+	"github.com/colega/zeropool"
 	"go.uber.org/atomic"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
