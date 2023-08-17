@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-expressions, import/no-extraneous-dependencies */
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import clsx from 'clsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRedo } from '@fortawesome/free-solid-svg-icons/faRedo';
@@ -145,7 +145,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         },
       });
     },
-    [flamegraphRef, zoom]
+    [flamegraphRef, zoom, onZoom]
   );
 
   const xyToHighlightData = useCallback(
@@ -369,7 +369,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         onClick={!disableClick ? onClick : undefined}
       />
     ),
-    [canvasRef, disableClick, onClick, styles.canvas, highlightQuery]
+    [canvasRef, disableClick, onClick, highlightQuery]
   );
 
   return (

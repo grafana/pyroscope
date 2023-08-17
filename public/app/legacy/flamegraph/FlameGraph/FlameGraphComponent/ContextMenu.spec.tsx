@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { MenuItem } from '@phlare/ui/Menu';
 import userEvent from '@testing-library/user-event';
 
@@ -47,12 +47,12 @@ describe('ContextMenu', () => {
     expect(queryByRole('menu')).not.toBeInTheDocument();
 
     // trigger a right click
-    userEvent.click(screen.getByTestId('canvas'), { buttons: 2 });
+    act(() => userEvent.click(screen.getByTestId('canvas'), { buttons: 2 }));
 
     expect(queryByRole('menu')).toBeVisible();
     expect(queryAllByRole('menuitem')).toHaveLength(1);
 
-    userEvent.click(getByRole('menuitem'));
+    act(() => userEvent.click(getByRole('menuitem')));
     expect(hasBeenClicked).toBe(true);
   });
 
@@ -71,14 +71,14 @@ describe('ContextMenu', () => {
 
     // trigger a right click
     xyToMenuItems.mockReturnValueOnce([<MenuItem key="1">1</MenuItem>]);
-    userEvent.click(screen.getByTestId('canvas'), { buttons: 2 });
+    act(() => userEvent.click(screen.getByTestId('canvas'), { buttons: 2 }));
     expect(queryAllByRole('menuitem')).toHaveLength(1);
 
     xyToMenuItems.mockReturnValueOnce([
       <MenuItem key="1">1</MenuItem>,
       <MenuItem key="2">2</MenuItem>,
     ]);
-    userEvent.click(screen.getByTestId('canvas'), { buttons: 2 });
+    act(() => userEvent.click(screen.getByTestId('canvas'), { buttons: 2 }));
     expect(queryAllByRole('menuitem')).toHaveLength(2);
   });
 });
