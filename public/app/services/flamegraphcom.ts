@@ -2,7 +2,7 @@ import { parseResponse, RequestNotOkError } from '@phlare/services/base';
 import { z, ZodError } from 'zod';
 import { Result } from '@phlare/util/fp';
 import type { RequestError } from '@phlare/services/base';
-import { Profile } from '@pyroscope/models/src';
+import { Profile } from '@phlare/legacy/models';
 
 export async function flameGraphUpload(
   name: string,

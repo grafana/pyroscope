@@ -1,7 +1,7 @@
 import React from 'react';
 // import { SimpleSingle as TestData } from '@utils/testData';
 import { render as testRender, screen } from '@testing-library/react';
-import { Profile } from '@pyroscope/models/src';
+import { Profile } from '@phlare/legacy/models';
 import 'web-streams-polyfill';
 import ExportData, { getFilename } from './ExportData';
 import { BrowserRouter } from 'react-router-dom';

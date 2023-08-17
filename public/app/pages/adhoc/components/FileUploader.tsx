@@ -9,8 +9,8 @@ import Dropdown, { MenuItem } from '@phlare/ui/Dropdown';
 import {
   SpyNameFirstClass,
   SpyNameFirstClassType,
-} from '@pyroscope/models/src/spyName';
-import { units as possibleUnits, UnitsType } from '@pyroscope/models/src';
+} from '@phlare/legacy/models/spyName';
+import { units as possibleUnits, UnitsType } from '@phlare/legacy/models';
 import { humanizeSpyname, isJSONFile, humanizeUnits } from './humanize';
 import UploadIcon from './UploadIcon';
 import styles from './FileUploader.module.scss';

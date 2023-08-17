@@ -1,4 +1,4 @@
-import type { Profile, Groups } from '@pyroscope/models/src';
+import type { Profile, Groups } from '@phlare/legacy/models';
 import type { Timeline } from '@phlare/models/timeline';
 import type { Annotation } from '@phlare/models/annotation';
 import type { App } from '@phlare/models/app';

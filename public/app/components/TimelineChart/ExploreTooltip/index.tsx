@@ -1,7 +1,7 @@
 import React, { FC, useMemo } from 'react';
 import Color from 'color';
-import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
-import { Profile } from '@pyroscope/models/src';
+import { getFormatter } from '@phlare/legacy/flamegraph/format/format';
+import { Profile } from '@phlare/legacy/models';
 import { TimelineTooltip } from '../../TimelineTooltip';
 import { TooltipCallbackProps } from '../Tooltip.plugin';
 

@@ -3,7 +3,7 @@ import 'react-dom';
 import { format } from 'date-fns';
 import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
 import Box from '@phlare/ui/Box';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
+import { FlamegraphRenderer } from '@phlare/legacy/flamegraph/FlamegraphRenderer';
 import { fetchSingleView } from '@phlare/redux/reducers/tracing';
 import useColorMode from '@phlare/hooks/colorMode.hook';
 import ExportData from '@phlare/components/ExportData';

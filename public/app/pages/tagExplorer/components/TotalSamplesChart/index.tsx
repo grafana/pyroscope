@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { TimelineGroupData } from '@phlare/components/TimelineChart/TimelineChartWrapper';
-import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
-import { Profile } from '@pyroscope/models/src';
+import { getFormatter } from '@phlare/legacy/flamegraph/format/format';
+import { Profile } from '@phlare/legacy/models';
 import LoadingSpinner from '@phlare/ui/LoadingSpinner';
 import PieChart, { PieChartDataItem } from './PieChart';
 import PieChartTooltip from './PieChartTooltip';

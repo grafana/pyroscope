@@ -31,10 +31,10 @@ import ChartTitle from '@phlare/components/ChartTitle';
 /* eslint-disable */
 import ChartTitleStyles from '@phlare/components/ChartTitle.module.scss';
 import { DEFAULT_HEATMAP_PARAMS } from '@phlare/components/Heatmap/constants';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
-import type { Profile } from '@pyroscope/models/src';
-import { diffTwoProfiles } from '@pyroscope/flamegraph/src/convert/diffTwoProfiles';
-import { subtract } from '@pyroscope/flamegraph/src/convert/subtract';
+import { FlamegraphRenderer } from '@phlare/legacy/flamegraph/FlamegraphRenderer';
+import type { Profile } from '@phlare/legacy/models';
+import { diffTwoProfiles } from '@phlare/legacy/flamegraph/convert/diffTwoProfiles';
+import { subtract } from '@phlare/legacy/flamegraph/convert/subtract';
 import { formatTitle } from '../formatTitle';
 import { isLoadingOrReloading, LoadingType } from '../loading';
 import heatmapSelectionPreviewGif from './heatmapSelectionPreview.gif';

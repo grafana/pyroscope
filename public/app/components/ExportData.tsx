@@ -15,7 +15,7 @@ import { flameGraphUpload } from '@phlare/services/flamegraphcom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { format } from 'date-fns';
 import { isRouteActive, ROUTES } from '@phlare/pages/routes';
-import { Profile } from '@pyroscope/models/src';
+import { Profile } from '@phlare/legacy/models';
 import { Tooltip } from '@phlare/ui/Tooltip';
 import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
 import { useLocation } from 'react-router-dom';

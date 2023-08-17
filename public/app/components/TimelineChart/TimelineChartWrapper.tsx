@@ -3,7 +3,7 @@
 /* eslint-disable react/destructuring-assignment */
 import React, { ReactNode } from 'react';
 import Color from 'color';
-import type { Group } from '@pyroscope/models/src';
+import type { Group } from '@phlare/legacy/models';
 import type { Timeline } from '@phlare/models/timeline';
 import { Annotation } from '@phlare/models/annotation';
 import Legend from '@phlare/pages/tagExplorer/components/Legend';

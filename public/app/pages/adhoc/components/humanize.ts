@@ -1,6 +1,6 @@
 /* eslint-disable default-case, consistent-return */
-import { UnitsType } from '@pyroscope/models/src';
-import { SpyNameFirstClassType } from '@pyroscope/models/src/spyName';
+import { UnitsType } from '@phlare/legacy/models';
+import { SpyNameFirstClassType } from '@phlare/legacy/models/spyName';
 
 export const humanizeSpyname = (n: SpyNameFirstClassType) => {
   switch (n) {

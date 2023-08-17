@@ -4,14 +4,14 @@ import type { Maybe } from 'true-myth';
 import type { ClickEvent } from '@phlare/ui/Menu';
 import Color from 'color';
 import TotalSamplesChart from '@phlare/pages/tagExplorer/components/TotalSamplesChart';
-import type { Profile } from '@pyroscope/models/src';
+import type { Profile } from '@phlare/legacy/models';
 import Box, { CollapseBox } from '@phlare/ui/Box';
 import Toolbar from '@phlare/components/Toolbar';
 import ExportData from '@phlare/components/ExportData';
 import TimelineChartWrapper, {
   TimelineGroupData,
 } from '@phlare/components/TimelineChart/TimelineChartWrapper';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src';
+import { FlamegraphRenderer } from '@phlare/legacy/flamegraph';
 import Dropdown, { MenuItem } from '@phlare/ui/Dropdown';
 import TagsSelector from '@phlare/pages/tagExplorer/components/TagsSelector';
 import TableUI, { useTableSort, BodyRow } from '@phlare/ui/Table';
@@ -37,7 +37,7 @@ import {
 import { queryToAppName } from '@phlare/models/query';
 import PageTitle from '@phlare/components/PageTitle';
 import ExploreTooltip from '@phlare/components/TimelineChart/ExploreTooltip';
-import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
+import { getFormatter } from '@phlare/legacy/flamegraph/format/format';
 import { LoadingOverlay } from '@phlare/ui/LoadingOverlay';
 import { calculateMean, calculateStdDeviation, calculateTotal } from './math';
 import { PAGES } from './constants';

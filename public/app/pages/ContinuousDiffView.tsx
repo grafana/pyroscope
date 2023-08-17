@@ -10,7 +10,7 @@ import {
   selectTimelineSides,
   selectAnnotationsOrDefault,
 } from '@phlare/redux/reducers/continuous';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
+import { FlamegraphRenderer } from '@phlare/legacy/flamegraph/FlamegraphRenderer';
 import usePopulateLeftRightQuery from '@phlare/hooks/populateLeftRightQuery.hook';
 import useTimelines, {
   leftColor,
