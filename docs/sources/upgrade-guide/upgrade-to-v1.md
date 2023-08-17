@@ -94,4 +94,4 @@ When upgrading to v1.0 we suggest that you follow this checklist:
   helm repo update
   helm -n pyroscope install pyroscope grafana/pyroscope
   ```
-  For more information on how to install the Helm chart, see our Helm documentation [here]({{< relref "./examples/" >}}../deploy-kubernetes/).
+  For more information on how to install the Helm chart, see our Helm documentation [here]({{< relref "../deploy-kubernetes/" >}}).
