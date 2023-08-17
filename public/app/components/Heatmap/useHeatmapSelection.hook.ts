@@ -1,6 +1,6 @@
 import { useState, useEffect, RefObject, useCallback } from 'react';
 
-import type { Heatmap } from '@phlare/services/render';
+import type { Heatmap } from '@pyroscope/services/render';
 import { HEATMAP_HEIGHT } from './constants';
 import { clearRect, drawRect, getSelectionData } from './utils';
 

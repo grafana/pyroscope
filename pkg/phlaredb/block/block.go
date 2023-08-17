@@ -15,6 +15,8 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 	"github.com/thanos-io/objstore"
+
+	"github.com/grafana/pyroscope/pkg/util/fnv32"
 )
 
 const (
@@ -197,4 +199,14 @@ func deleteDirRec(ctx context.Context, logger log.Logger, bkt objstore.Bucket, d
 		level.Debug(logger).Log("msg", "deleted file", "file", name, "bucket", bkt.Name())
 		return nil
 	})
+}
+
+// HashBlockID returns a 32-bit hash of the block ID useful for
+// ring-based sharding.
+func HashBlockID(id ulid.ULID) uint32 {
+	h := fnv32.New()
+	for _, b := range id {
+		h = fnv32.AddByte32(h, b)
+	}
+	return h
 }

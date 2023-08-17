@@ -1,4 +1,4 @@
-import { brandQuery, parse } from '@phlare/models/query';
+import { brandQuery, parse } from '@pyroscope/models/query';
 
 const cases: Array<
   [string, { profileId: string; tags?: Record<string, string> } | undefined]

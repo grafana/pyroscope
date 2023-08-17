@@ -14,6 +14,7 @@
 package scrape
 
 import (
+	"fmt"
 	"net/url"
 	"strings"
 	"sync"
@@ -21,8 +22,6 @@ import (
 
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
-
-	"github.com/parca-dev/parca/pkg/config"
 )
 
 // TargetHealth describes the health state of a target.
@@ -34,6 +33,28 @@ const (
 	HealthGood    TargetHealth = "up"
 	HealthBad     TargetHealth = "down"
 )
+
+type ProfilingConfig struct {
+	PprofConfig PprofConfig `yaml:"pprof_config,omitempty"`
+	PprofPrefix string      `yaml:"path_prefix,omitempty"`
+}
+
+type PprofConfig map[string]*PprofProfilingConfig
+
+type PprofProfilingConfig struct {
+	Enabled *bool  `yaml:"enabled,omitempty"`
+	Path    string `yaml:"path,omitempty"`
+	Delta   bool   `yaml:"delta,omitempty"`
+}
+
+// CheckTargetAddress checks if target address is valid.
+func CheckTargetAddress(address model.LabelValue) error {
+	// For now check for a URL, we may want to expand this later.
+	if strings.Contains(string(address), "/") {
+		return fmt.Errorf("%q is not a valid hostname", address)
+	}
+	return nil
+}
 
 // Target refers to a singular HTTP or HTTPS endpoint.
 type Target struct {
@@ -171,7 +192,7 @@ func (t *Target) Health() TargetHealth {
 }
 
 // LabelsByProfiles returns the labels for a given ProfilingConfig.
-func LabelsByProfiles(lset labels.Labels, c *config.ProfilingConfig) []labels.Labels {
+func LabelsByProfiles(lset labels.Labels, c *ProfilingConfig) []labels.Labels {
 	res := []labels.Labels{}
 
 	if len(c.PprofConfig) > 0 {

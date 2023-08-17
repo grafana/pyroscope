@@ -2,7 +2,7 @@ scrape_configs:
   - job_name: "phlare"
     scrape_interval: "15s"
     static_configs:
-      - targets: ["phlare:4100"]
+      - targets: ["phlare:4040"]
   - job_name: "grafana"
     scrape_interval: "15s"
     static_configs:

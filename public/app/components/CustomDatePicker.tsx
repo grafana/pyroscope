@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { isAfter, isSameSecond } from 'date-fns';
 import DatePicker from 'react-datepicker';
-import Button from '@phlare/ui/Button';
-import { formatAsOBject, getUTCdate } from '@phlare/util/formatDate';
-import useTimeZone from '@phlare/hooks/timeZone.hook';
-import Select from '@phlare/ui/Select';
-import TextField from '@phlare/ui/Form/TextField';
+import Button from '@pyroscope/ui/Button';
+import { formatAsOBject, getUTCdate } from '@pyroscope/util/formatDate';
+import useTimeZone from '@pyroscope/hooks/timeZone.hook';
+import Select from '@pyroscope/ui/Select';
+import TextField from '@pyroscope/ui/Form/TextField';
 import styles from './CustomDatePicker.module.scss';
 
 interface CustomDatePickerProps {
@@ -44,11 +44,11 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
   // Since our component state back when they change
   useEffect(() => {
     setSelectedDate({
-      ...selectedDate,
+      // ...selectedDate, -- we are replacing all values in the object, no need to keep the old one
       from: formatAsOBject(from),
       until: formatAsOBject(until),
     });
-  }, [selectedDate, from, until]);
+  }, [from, until]);
 
   const selectFromAsDate = getUTCdate(selectedDate.from, offset);
   const selectUntilAsDate = getUTCdate(selectedDate.until, offset);

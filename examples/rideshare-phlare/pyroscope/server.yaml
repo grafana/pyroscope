@@ -2,4 +2,4 @@ remote-write:
   enabled: true
   targets:
     bar:
-      address: http://docker-host:4100/pyroscope
+      address: http://docker-host:4040/pyroscope

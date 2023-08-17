@@ -43,13 +43,9 @@ func prepareBasePath(basepath string) (string, error) {
 
 	u.Path = strings.TrimSpace(u.Path)
 
-	// ideally we would use https://pkg.go.dev/net/url#JoinPath
-	// but I found different results in darwin (it doesn't remove the leading slash)
-	u.Path = strings.Join(
-		// TODO: remove /ui/ once ui routes are moved to root
-		[]string{strings.TrimRight(u.Path, "/"), "ui/"},
-		"/",
-	)
+	if !strings.HasSuffix(u.Path, "/") {
+		u.Path = u.Path + "/"
+	}
 
 	if !strings.HasPrefix(u.Path, "/") {
 		u.Path = "/" + u.Path

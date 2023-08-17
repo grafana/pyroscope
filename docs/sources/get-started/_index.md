@@ -61,7 +61,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
         - job_name: "default"
           scrape_interval: "15s"
           static_configs:
-            - targets: ["127.0.0.1:4100"]
+            - targets: ["127.0.0.1:4040"]
               labels:
                 service_name: "service-demo"
       ```
@@ -80,7 +80,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
 
         ```bash
         docker network create pyroscope-demo
-        docker run --rm --name pyroscope --network=pyroscope-demo -p 4100:4100 --volume "$(pwd)"/demo.yaml:/etc/pyroscope/demo.yaml grafana/pyroscope:latest --config.file=/etc/pyroscope/demo.yaml
+        docker run --rm --name pyroscope --network=pyroscope-demo -p 4040:4040 --volume "$(pwd)"/demo.yaml:/etc/pyroscope/demo.yaml grafana/pyroscope:latest --config.file=/etc/pyroscope/demo.yaml
         ```
 
       - Using a local binary:
@@ -89,10 +89,10 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
         ./pyroscope --config.file=./demo.yaml
         ```
 
-1. Verify that Pyroscope is ready. Pyroscope listens on port `4100`.
+1. Verify that Pyroscope is ready. Pyroscope listens on port `4040`.
 
       ```bash
-      curl localhost:4100/ready
+      curl localhost:4040/ready
       ```
 
 1. Configure Pyroscope to scrape profiles.
@@ -119,7 +119,7 @@ Verify that you have installed [Docker](https://docs.docker.com/engine/install/)
    | Field | Value                                                                |
    | ----- | -------------------------------------------------------------------- |
    | Name  | Pyroscope                                                            |
-   | URL   | [http://pyroscope:4100/](http://pyroscope:4100/)                     |
+   | URL   | [http://pyroscope:4100/](http://pyroscope:4040/)                     |
 
   To learn more about adding data sources, see [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
 

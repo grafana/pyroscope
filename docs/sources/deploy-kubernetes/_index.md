@@ -76,7 +76,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
    ```
    [...]
    The in-cluster query URL is:
-   http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4100
+   http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4040
    [...]
    ```
 
@@ -138,7 +138,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
    | Field | Value                                                        |
    | ----- | ------------------------------------------------------------ |
    | Name  | Pyroscope                                                       |
-   | URL   | `http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4100/`   |
+   | URL   | `http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4040/`   |
 
    To add a data source, see [Add a data source](/docs/grafana/latest/datasources/add-a-data-source/).
 
@@ -161,7 +161,7 @@ datasources:
    - name: Pyroscope
      type: pyroscope
      uid: pyroscope-test
-     url: http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4100/
+     url: http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4040/
 ```
 
 Modify the Helm deployment by running:

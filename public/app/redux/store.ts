@@ -16,8 +16,8 @@ import { configureStore, combineReducers, Middleware } from '@reduxjs/toolkit';
 
 import tracingReducer, {
   actions as tracingActions,
-} from '@phlare/redux/reducers/tracing';
-import { history } from '@phlare/util/history';
+} from '@pyroscope/redux/reducers/tracing';
+import { history } from '@pyroscope/util/history';
 
 import settingsReducer from './reducers/settings';
 import userReducer from './reducers/user';
@@ -26,12 +26,12 @@ import {
   actions as continuousActions,
 } from './reducers/continuous';
 import serviceDiscoveryReducer from './reducers/serviceDiscovery';
-import adhocReducer from '@phlare/redux/reducers/adhoc';
+import adhocReducer from '@pyroscope/redux/reducers/adhoc';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 import tenantReducer, {
   persistConfig as tenantPersistConfig,
-} from '@phlare/redux/reducers/tenant';
-import { setStore } from '@phlare/services/storage';
+} from '@pyroscope/redux/reducers/tenant';
+import { setStore } from '@pyroscope/services/storage';
 
 const reducer = combineReducers({
   settings: settingsReducer,

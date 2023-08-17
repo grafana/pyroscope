@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { addNotification } from '@phlare/redux/reducers/notifications';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
 
 export default function ServerNotifications() {
   const dispatch = useDispatch();

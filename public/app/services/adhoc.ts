@@ -1,7 +1,7 @@
-import { Result } from '@phlare/util/fp';
+import { Result } from '@pyroscope/util/fp';
 import { CustomError } from 'ts-custom-error';
-import { FlamebearerProfileSchema, Profile } from '@pyroscope/models/src';
-import { AllProfilesSchema, AllProfiles } from '@phlare/models/adhoc';
+import { FlamebearerProfileSchema, Profile } from '@pyroscope/legacy/models';
+import { AllProfilesSchema, AllProfiles } from '@pyroscope/models/adhoc';
 import type { ZodError } from 'zod';
 import { z } from 'zod';
 import { request, parseResponse } from './base';

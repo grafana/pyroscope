@@ -1,7 +1,7 @@
-import type { Profile, Groups } from '@pyroscope/models/src';
-import type { Timeline } from '@phlare/models/timeline';
-import type { Annotation } from '@phlare/models/annotation';
-import type { App } from '@phlare/models/app';
+import type { Profile, Groups } from '@pyroscope/legacy/models';
+import type { Timeline } from '@pyroscope/models/timeline';
+import type { Annotation } from '@pyroscope/models/annotation';
+import type { App } from '@pyroscope/models/app';
 
 type NewAnnotationState =
   | {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { centerTimelineData } from '@phlare/components/TimelineChart/centerTimelineData';
-import { TimelineData } from '@phlare/components/TimelineChart/TimelineChartWrapper';
-import { getSelectionBoundaries } from '@phlare/components/TimelineChart/SyncTimelines/getSelectionBoundaries';
+import { centerTimelineData } from '@pyroscope/components/TimelineChart/centerTimelineData';
+import { TimelineData } from '@pyroscope/components/TimelineChart/TimelineChartWrapper';
+import { getSelectionBoundaries } from '@pyroscope/components/TimelineChart/SyncTimelines/getSelectionBoundaries';
 import { Selection } from '../markings';
 
 interface UseSyncParams {

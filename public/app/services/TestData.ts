@@ -1,4 +1,4 @@
-import { Profile } from '@pyroscope/models/src';
+import { Profile } from '@pyroscope/legacy/models';
 
 const SimpleGoApp: Profile = {
   flamebearer: {

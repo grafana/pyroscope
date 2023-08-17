@@ -1,0 +1,8 @@
+---
+pyroscope:
+  # these port overrides are temporary
+  service:
+    port: 4040
+  structuredConfig:
+    server:
+      http_listen_port: 4040

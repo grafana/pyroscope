@@ -1,6 +1,6 @@
 import { z, ZodError } from 'zod';
-import { Result } from '@phlare/util/fp';
-import { modelToResult } from '@phlare/models/utils';
+import { Result } from '@pyroscope/util/fp';
+import { modelToResult } from '@pyroscope/models/utils';
 
 const fooModel = z.array(z.string());
 

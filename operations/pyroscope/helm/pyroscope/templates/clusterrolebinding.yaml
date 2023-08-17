@@ -1,0 +1,15 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Namespace }}-{{ include "pyroscope.fullname" . }}
+  labels:
+    {{- include "pyroscope.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Namespace }}-{{ include "pyroscope.fullname" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "pyroscope.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}

@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/parca-dev/parca/pkg/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/pyroscope/pkg/agent/scrape"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
@@ -407,9 +407,9 @@ func TestTargetGroup_targetsFromGroup(t *testing.T) {
 				config: ScrapeConfig{
 					ScrapeTimeout:  model.Duration(10 * time.Minute),
 					ScrapeInterval: model.Duration(time.Minute),
-					ProfilingConfig: &config.ProfilingConfig{
-						PprofConfig: config.PprofConfig{
-							pprofProcessCPU: &config.PprofProfilingConfig{
+					ProfilingConfig: &scrape.ProfilingConfig{
+						PprofConfig: scrape.PprofConfig{
+							pprofProcessCPU: &scrape.PprofProfilingConfig{
 								Enabled: trueValue(),
 							},
 						},
@@ -435,9 +435,9 @@ func TestTargetGroup_targetsFromGroup(t *testing.T) {
 				config: ScrapeConfig{
 					ScrapeTimeout:  model.Duration(10 * time.Second),
 					ScrapeInterval: model.Duration(time.Minute),
-					ProfilingConfig: &config.ProfilingConfig{
-						PprofConfig: config.PprofConfig{
-							pprofProcessCPU: &config.PprofProfilingConfig{
+					ProfilingConfig: &scrape.ProfilingConfig{
+						PprofConfig: scrape.PprofConfig{
+							pprofProcessCPU: &scrape.PprofProfilingConfig{
 								Enabled: trueValue(),
 							},
 						},
@@ -473,9 +473,4 @@ func TestTargetGroup_targetsFromGroup(t *testing.T) {
 			require.Len(t, gotDropped, tt.wantDropped)
 		})
 	}
-}
-
-func trueValue() *bool {
-	b := true
-	return &b
 }

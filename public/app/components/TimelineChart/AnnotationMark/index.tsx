@@ -2,8 +2,8 @@
 import Color from 'color';
 import React, { useState } from 'react';
 import classNames from 'classnames/bind';
-import AnnotationInfo from '@phlare/pages/continuous/contextMenu/AnnotationInfo';
-import useTimeZone from '@phlare/hooks/timeZone.hook';
+import AnnotationInfo from '@pyroscope/pages/continuous/contextMenu/AnnotationInfo';
+import useTimeZone from '@pyroscope/hooks/timeZone.hook';
 
 import styles from './styles.module.scss';
 

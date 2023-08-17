@@ -3,10 +3,7 @@
   "compilerOptions": {
     "plugins": [{ "name": "typescript-plugin-css-modules" }],
     "paths": {
-      "@phlare/*": ["./public/app/*"],
-      "@pyroscope/flamegraph/*": ["./og/packages/pyroscope-flamegraph/*"],
-      "@pyroscope/models/*": ["./og/packages/pyroscope-models/*"],
-      "@pyroscope/legacy-webapp": ["./og/webapp"],
+      "@pyroscope/*": ["./public/app/*"],
       "zod": ["./node_modules/zod"]
     },
     "target": "es5",
@@ -33,6 +30,8 @@
   "include": [
     "public",
     "public/app/types/types.d.ts",
+    "public/app/types/custom.d.ts",
+    "public/app/types/alias.d.ts",
     "public/app/lib/global.d.ts",
     "public/app/lib/types.d.ts",
     "public/app/lib/flot.d.ts"

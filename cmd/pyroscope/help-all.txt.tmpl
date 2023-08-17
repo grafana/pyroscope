@@ -102,7 +102,7 @@ Usage of ./pyroscope:
   -distributor.ring.instance-interface-names string
     	Name of network interface to read address from. (default [<private network interfaces>])
   -distributor.ring.instance-port int
-    	Port to advertise in the ring (defaults to server.http-listen-port). (default 4100)
+    	Port to advertise in the ring (defaults to server.http-listen-port). (default 4040)
   -distributor.ring.multi.mirror-enabled
     	Mirror writes to secondary store.
   -distributor.ring.multi.mirror-timeout duration
@@ -322,7 +322,7 @@ Usage of ./pyroscope:
   -overrides-exporter.ring.instance-interface-names string
     	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -overrides-exporter.ring.instance-port int
-    	Port to advertise in the ring (defaults to -server.http-listen-port). (default 4100)
+    	Port to advertise in the ring (defaults to -server.http-listen-port). (default 4040)
   -overrides-exporter.ring.multi.mirror-enabled
     	Mirror writes to secondary store.
   -overrides-exporter.ring.multi.mirror-timeout duration
@@ -339,11 +339,11 @@ Usage of ./pyroscope:
     	Maximum time to wait for ring stability at startup. If the overrides-exporter ring keeps changing after this period of time, it will start anyway. (default 5m0s)
   -overrides-exporter.ring.wait-stability-min-duration duration
     	Minimum time to wait for ring stability at startup, if set to positive value. Set to 0 to disable.
-  -phlaredb.data-path string
+  -pyroscopedb.data-path string
     	Directory used for local storage. (default "./data")
-  -phlaredb.max-block-duration duration
+  -pyroscopedb.max-block-duration duration
     	Upper limit to the duration of a Phlare block. (default 3h0m0s)
-  -phlaredb.row-group-target-size uint
+  -pyroscopedb.row-group-target-size uint
     	How big should a single row group be uncompressed (default 1342177280)
   -querier.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
@@ -636,7 +636,7 @@ Usage of ./pyroscope:
   -server.http-listen-network string
     	HTTP server listen network, default tcp (default "tcp")
   -server.http-listen-port int
-    	HTTP server listen port. (default 4100)
+    	HTTP server listen port. (default 4040)
   -server.http-read-timeout duration
     	Read timeout for HTTP server (default 30s)
   -server.http-tls-ca-path string
@@ -892,7 +892,7 @@ Usage of ./pyroscope:
   -validation.max-profile-stacktrace-sample-labels int
     	Maximum number of labels in a profile sample. 0 to disable. (default 100)
   -validation.max-profile-stacktrace-samples int
-    	Maximum number of samples in a profile. 0 to disable. (default 4000)
+    	Maximum number of samples in a profile. 0 to disable. (default 16000)
   -validation.max-profile-symbol-value-length int
     	Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable. (default 1024)
   -version

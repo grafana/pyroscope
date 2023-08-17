@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import 'react-dom';
-import { Maybe } from '@phlare/util/fp';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
-import Box from '@phlare/ui/Box';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
-import { Profile } from '@pyroscope/models/src';
-import FileList from '@phlare/components/FileList';
-import useExportToFlamegraphDotCom from '@phlare/components/exportToFlamegraphDotCom.hook';
-import ExportData from '@phlare/components/ExportData';
+import { Maybe } from '@pyroscope/util/fp';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import Box from '@pyroscope/ui/Box';
+import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph/FlamegraphRenderer';
+import { Profile } from '@pyroscope/legacy/models';
+import FileList from '@pyroscope/components/FileList';
+import useExportToFlamegraphDotCom from '@pyroscope/components/exportToFlamegraphDotCom.hook';
+import ExportData from '@pyroscope/components/ExportData';
 import {
   fetchAllProfiles,
   fetchDiffProfile,
@@ -17,9 +17,9 @@ import {
   selectShared,
   selectDiffProfile,
   uploadFile,
-} from '@phlare/redux/reducers/adhoc';
-import useColorMode from '@phlare/hooks/colorMode.hook';
-import { Tabs, Tab, TabPanel } from '@phlare/ui/Tabs';
+} from '@pyroscope/redux/reducers/adhoc';
+import useColorMode from '@pyroscope/hooks/colorMode.hook';
+import { Tabs, Tab, TabPanel } from '@pyroscope/ui/Tabs';
 import adhocStyles from './Adhoc.module.scss';
 import adhocComparisonStyles from './AdhocComparison.module.scss';
 import FileUploader from './components/FileUploader';

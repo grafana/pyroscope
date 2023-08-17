@@ -1,9 +1,9 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { Dispatch, SetStateAction } from 'react';
-import { Popover, PopoverBody, PopoverFooter } from '@phlare/ui/Popover';
-import Button from '@phlare/ui/Button';
-import { Portal } from '@phlare/ui/Portal';
-import TextField from '@phlare/ui/Form/TextField';
+import { Popover, PopoverBody, PopoverFooter } from '@pyroscope/ui/Popover';
+import Button from '@pyroscope/ui/Button';
+import { Portal } from '@pyroscope/ui/Portal';
+import TextField from '@pyroscope/ui/Form/TextField';
 import { AddAnnotationProps } from './AddAnnotation.menuitem';
 import { useAnnotationForm } from './useAnnotationForm';
 

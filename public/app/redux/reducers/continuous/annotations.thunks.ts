@@ -1,4 +1,4 @@
-import * as annotationsService from '@phlare/services/annotations';
+import * as annotationsService from '@pyroscope/services/annotations';
 import { addNotification } from '../notifications';
 import { createAsyncThunk } from '../../async-thunk';
 

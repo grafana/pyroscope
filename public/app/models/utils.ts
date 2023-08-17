@@ -1,5 +1,5 @@
 import type { ZodError, ZodType } from 'zod';
-import { Result } from '@phlare/util/fp';
+import { Result } from '@pyroscope/util/fp';
 
 /**
  * modelToResult converts a (most likely) zod model into a Result

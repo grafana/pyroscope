@@ -1,5 +1,5 @@
-import { renderSingle, RenderOutput } from '@phlare/services/render';
-import { RequestAbortedError } from '@phlare/services/base';
+import { renderSingle, RenderOutput } from '@pyroscope/services/render';
+import { RequestAbortedError } from '@pyroscope/services/base';
 import { addNotification } from '../notifications';
 import { createAsyncThunk } from '../../async-thunk';
 import { ContinuousState } from './state';

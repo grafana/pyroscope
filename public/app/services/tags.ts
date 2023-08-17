@@ -1,4 +1,4 @@
-import { parseResponse, requestWithOrgID } from '@phlare/services/base';
+import { parseResponse, requestWithOrgID } from '@pyroscope/services/base';
 import { z } from 'zod';
 
 const labelNamesSchema = z.preprocess(

@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import Color from 'color';
 import { Provider } from 'react-redux';
-import store from '@phlare/redux/store';
+import store from '@pyroscope/redux/store';
 import extractRange from './extractRange';
 import AnnotationMark from './AnnotationMark';
 

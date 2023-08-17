@@ -1,7 +1,7 @@
-import type { RequestError } from '@phlare/services/base';
+import type { RequestError } from '@pyroscope/services/base';
 import { ZodError } from 'zod';
-import { addNotification } from '@phlare/redux/reducers/notifications';
-import { useAppDispatch } from '@phlare/redux/hooks';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
+import { useAppDispatch } from '@pyroscope/redux/hooks';
 
 /**
  * handleError handles service errors

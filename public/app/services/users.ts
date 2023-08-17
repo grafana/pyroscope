@@ -1,13 +1,13 @@
-import { Result } from '@phlare/util/fp';
+import { Result } from '@pyroscope/util/fp';
 import {
   Users,
   type User,
   userModel,
   usersModel,
   passwordEncode,
-} from '@phlare/models/users';
+} from '@pyroscope/models/users';
 import type { ZodError } from 'zod';
-import { modelToResult } from '@phlare/models/utils';
+import { modelToResult } from '@pyroscope/models/utils';
 import { request, parseResponse } from './base';
 import type { RequestError } from './base';
 

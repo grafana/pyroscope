@@ -2,7 +2,7 @@ import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
-import { getUTCdate, timezoneToOffset } from '@phlare/util/formatDate';
+import { getUTCdate, timezoneToOffset } from '@pyroscope/util/formatDate';
 
 interface UseAnnotationFormProps {
   timezone: 'browser' | 'utc';

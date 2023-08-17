@@ -50,6 +50,6 @@ func TestFlagDefaults(t *testing.T) {
 
 	flagToCheck := "-server.http-listen-port"
 	require.Contains(t, gotFlags, flagToCheck)
-	require.Equal(t, c.Server.HTTPListenPort, 4100)
-	require.Contains(t, gotFlags[flagToCheck], "(default 4100)")
+	require.Equal(t, c.Server.HTTPListenPort, 4040)
+	require.Contains(t, gotFlags[flagToCheck], "(default 4040)")
 }

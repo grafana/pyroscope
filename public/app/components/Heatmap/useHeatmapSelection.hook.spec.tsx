@@ -2,12 +2,12 @@ import React, { RefObject } from 'react';
 import { renderHook } from '@testing-library/react-hooks';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { continuousReducer } from '@phlare/redux/reducers/continuous';
-import tracingReducer from '@phlare/redux/reducers/tracing';
+import { continuousReducer } from '@pyroscope/redux/reducers/continuous';
+import tracingReducer from '@pyroscope/redux/reducers/tracing';
 
 import { useHeatmapSelection } from './useHeatmapSelection.hook';
 import { heatmapMockData } from '../../services/exemplarsTestData';
-import { setStore } from '@phlare/services/storage';
+import { setStore } from '@pyroscope/services/storage';
 const canvasEl = document.createElement('canvas');
 const divEl = document.createElement('div');
 const canvasRef = { current: canvasEl } as RefObject<HTMLCanvasElement>;

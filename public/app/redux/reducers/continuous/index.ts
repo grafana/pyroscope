@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Query } from '@phlare/models/query';
+import { Query } from '@pyroscope/models/query';
 import { addNotification } from '../notifications';
 import { createAsyncThunk } from '../../async-thunk';
 import { ContinuousState, TagsState } from './state';
@@ -14,8 +14,8 @@ import {
   ALL_TAGS,
 } from './tagExplorer.thunks';
 import { fetchDiffView } from './diffView.thunks';
-import { defaultcomparisonPeriod } from '@phlare/components/SideTimelineComparator/periods';
-import { fetchApps } from '@phlare/services/apps';
+import { defaultcomparisonPeriod } from '@pyroscope/components/SideTimelineComparator/periods';
+import { fetchApps } from '@pyroscope/services/apps';
 
 const initialState: ContinuousState = {
   from: 'now-1h',

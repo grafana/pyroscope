@@ -1,12 +1,12 @@
 import React from 'react';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 
-import Button from '@phlare/ui/Button';
-import Icon from '@phlare/ui/Icon';
-import { App } from '@phlare/models/app';
-import type { BodyRow } from '@phlare/ui/Table';
-import confirmDelete from '@phlare/components/Modals/ConfirmDelete';
-import LoadingSpinner from '@phlare/ui/LoadingSpinner';
+import Button from '@pyroscope/ui/Button';
+import Icon from '@pyroscope/ui/Icon';
+import { App } from '@pyroscope/models/app';
+import type { BodyRow } from '@pyroscope/ui/Table';
+import confirmDelete from '@pyroscope/components/Modals/ConfirmDelete';
+import LoadingSpinner from '@pyroscope/ui/LoadingSpinner';
 
 import styles from './AppTableItem.module.css';
 

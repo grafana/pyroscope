@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Tabs, Tab, TabPanel } from '@phlare/ui/Tabs';
+import { Tabs, Tab, TabPanel } from '@pyroscope/ui/Tabs';
 
 const LIGHT_COLOR_MODE = 'Light Color Mode';
 

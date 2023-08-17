@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import 'react-dom';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
-import Box from '@phlare/ui/Box';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
-import FileList from '@phlare/components/FileList';
-import useExportToFlamegraphDotCom from '@phlare/components/exportToFlamegraphDotCom.hook';
-import ExportData from '@phlare/components/ExportData';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import Box from '@pyroscope/ui/Box';
+import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph/FlamegraphRenderer';
+import FileList from '@pyroscope/components/FileList';
+import useExportToFlamegraphDotCom from '@pyroscope/components/exportToFlamegraphDotCom.hook';
+import ExportData from '@pyroscope/components/ExportData';
 import {
   uploadFile,
   fetchProfile,
@@ -13,9 +13,9 @@ import {
   fetchAllProfiles,
   selectedSelectedProfileId,
   selectProfile,
-} from '@phlare/redux/reducers/adhoc';
-import useColorMode from '@phlare/hooks/colorMode.hook';
-import { Tabs, Tab, TabPanel } from '@phlare/ui/Tabs';
+} from '@pyroscope/redux/reducers/adhoc';
+import useColorMode from '@pyroscope/hooks/colorMode.hook';
+import { Tabs, Tab, TabPanel } from '@pyroscope/ui/Tabs';
 import FileUploader from './components/FileUploader';
 import adhocStyles from './Adhoc.module.scss';
 

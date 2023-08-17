@@ -1,4 +1,4 @@
-import { RequestNotOkError, requestWithOrgID } from '@phlare/services/base';
+import { RequestNotOkError, requestWithOrgID } from '@pyroscope/services/base';
 
 export async function isMultiTenancyEnabled() {
   const res = await requestWithOrgID('/querier.v1.QuerierService/LabelNames', {

@@ -1,0 +1,42 @@
+{{- $global := . }}
+{{- range $component, $cfg := (fromYaml (include "pyroscope.components" .)) }}
+{{- with $global }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $cfg.name }}
+  labels:
+    {{- include "pyroscope.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component | quote }}
+spec:
+  type: {{ .Values.pyroscope.service.type }}
+  ports:
+    - port: {{ .Values.pyroscope.service.port }}
+      targetPort: {{ .Values.pyroscope.service.port_name }}
+      protocol: TCP
+      name: {{ .Values.pyroscope.service.port_name }}
+  selector:
+    {{- include "pyroscope.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $cfg.name }}-headless
+  labels:
+    {{- include "pyroscope.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component | quote }}
+spec:
+  type: {{ .Values.pyroscope.service.type }}
+  clusterIP: None
+  ports:
+    - port: {{ .Values.pyroscope.service.port }}
+      targetPort: {{ .Values.pyroscope.service.port_name }}
+      protocol: TCP
+      name: {{ .Values.pyroscope.service.port_name }}
+  selector:
+    {{- include "pyroscope.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component | quote }}
+{{- end }}
+{{- end }}

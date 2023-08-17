@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import Button from '@phlare/ui/Button';
+import Button from '@pyroscope/ui/Button';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
 import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import Button from '@phlare/ui/Button';
-import { useAppDispatch } from '@phlare/redux/hooks';
+import Button from '@pyroscope/ui/Button';
+import { useAppDispatch } from '@pyroscope/redux/hooks';
 
-import { editMe, withCurrentUser } from '@phlare/redux/reducers/user';
-import { addNotification } from '@phlare/redux/reducers/notifications';
+import { editMe, withCurrentUser } from '@pyroscope/redux/reducers/user';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
 
-import StatusMessage from '@phlare/ui/StatusMessage';
-import InputField from '@phlare/ui/InputField';
+import StatusMessage from '@pyroscope/ui/StatusMessage';
+import InputField from '@pyroscope/ui/InputField';
 
 function Preferences(props: ShamefulAny) {
   const { currentUser } = props;

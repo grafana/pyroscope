@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
 
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
-import Box from '@phlare/ui/Box';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import Box from '@pyroscope/ui/Box';
+import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph/FlamegraphRenderer';
 import {
   fetchSingleView,
   setQuery,
@@ -13,30 +13,30 @@ import {
   addAnnotation,
   actions,
   fetchTagValues,
-} from '@phlare/redux/reducers/continuous';
-import useColorMode from '@phlare/hooks/colorMode.hook';
-import TimelineChartWrapper from '@phlare/components/TimelineChart/TimelineChartWrapper';
-import Toolbar from '@phlare/components/Toolbar';
-import ExportData from '@phlare/components/ExportData';
-import ChartTitle from '@phlare/components/ChartTitle';
-import useExportToFlamegraphDotCom from '@phlare/components/exportToFlamegraphDotCom.hook';
-import TagsBar from '@phlare/components/TagsBar';
-import useTimeZone from '@phlare/hooks/timeZone.hook';
-import PageTitle from '@phlare/components/PageTitle';
-import { ContextMenuProps } from '@phlare/components/TimelineChart/ContextMenu.plugin';
-import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
-import { LoadingOverlay } from '@phlare/ui/LoadingOverlay';
-import { TooltipCallbackProps } from '@phlare/components/TimelineChart/Tooltip.plugin';
-import { Profile } from '@pyroscope/models/src';
+} from '@pyroscope/redux/reducers/continuous';
+import useColorMode from '@pyroscope/hooks/colorMode.hook';
+import TimelineChartWrapper from '@pyroscope/components/TimelineChart/TimelineChartWrapper';
+import Toolbar from '@pyroscope/components/Toolbar';
+import ExportData from '@pyroscope/components/ExportData';
+import ChartTitle from '@pyroscope/components/ChartTitle';
+import useExportToFlamegraphDotCom from '@pyroscope/components/exportToFlamegraphDotCom.hook';
+import TagsBar from '@pyroscope/components/TagsBar';
+import useTimeZone from '@pyroscope/hooks/timeZone.hook';
+import PageTitle from '@pyroscope/components/PageTitle';
+import { ContextMenuProps } from '@pyroscope/components/TimelineChart/ContextMenu.plugin';
+import { getFormatter } from '@pyroscope/legacy/flamegraph/format/format';
+import { LoadingOverlay } from '@pyroscope/ui/LoadingOverlay';
+import { TooltipCallbackProps } from '@pyroscope/components/TimelineChart/Tooltip.plugin';
+import { Profile } from '@pyroscope/legacy/models';
 import {
   isExportToFlamegraphDotComEnabled,
   isAnnotationsEnabled,
-} from '@phlare/util/features';
-import useTags from '@phlare/hooks/tags.hook';
+} from '@pyroscope/util/features';
+import useTags from '@pyroscope/hooks/tags.hook';
 import {
   TimelineTooltip,
   TimelineTooltipProps,
-} from '@phlare/components/TimelineTooltip';
+} from '@pyroscope/components/TimelineTooltip';
 import { formatTitle } from './formatTitle';
 import ContextMenu from './continuous/contextMenu/ContextMenu';
 import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
