@@ -36,11 +36,11 @@ export default function ContextMenu(props: ContextMenuProps) {
     onCloseCallback();
   };
 
-  const canvasEl = canvasRef.current;
 
   React.useEffect(() => {
     toggleMenu(false);
 
+    const canvasEl = canvasRef.current;
     // use closure to "cache" the current canvas reference
     // so that when cleaning up, it points to a valid canvas
     // (otherwise it would be null)
@@ -71,7 +71,7 @@ export default function ContextMenu(props: ContextMenuProps) {
     return () => {
       canvasEl.removeEventListener('contextmenu', onContextMenu);
     };
-  }, [xyToMenuItems, canvasEl, onOpenCallback, toggleMenu]);
+  }, [xyToMenuItems, canvasRef, onOpenCallback, toggleMenu]);
 
   return (
     <ControlledMenu

@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-expressions, import/no-extraneous-dependencies */
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRedo } from '@fortawesome/free-solid-svg-icons/faRedo';
@@ -55,11 +55,13 @@ interface FlamegraphProps {
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
-  const flamegraph = useRef<Flamegraph>();
+  const flamegraphRef = useRef<Flamegraph>();
+
+  type ClickNode = { top: number; left: number; width: number }
 
   const [rightClickedNode, setRightClickedNode] = React.useState<
-    Maybe<{ top: number; left: number; width: number }>
-  >(Maybe.nothing());
+    Maybe<ClickNode>
+  >(Maybe.nothing<ClickNode>());
 
   const {
     flamebearer,
@@ -82,14 +84,12 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const { 'data-testid': dataTestId } = props;
   const { palette, setPalette } = props;
 
-  const canvasEl = canvasRef?.current;
-  const currentFlamegraph = flamegraph?.current;
-
   const renderCanvas = useCallback(() => {
-    canvasEl?.setAttribute('data-state', 'rendering');
-    currentFlamegraph?.render();
-    canvasEl?.setAttribute('data-state', 'rendered');
-  }, [canvasEl, currentFlamegraph]);
+    console.log("RENDER CANVAIS")
+    canvasRef.current?.setAttribute('data-state', 'rendering');
+    flamegraphRef.current?.render();
+    canvasRef.current?.setAttribute('data-state', 'rendered');
+  }, [canvasRef, flamegraphRef]);
 
   // debounce rendering canvas
   // used for situations like resizing
@@ -103,14 +103,19 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   // rerender whenever the canvas size changes
   // eg window resize, or simply changing the view
   // to display the flamegraph isolated from the table
-  useResizeObserver(canvasRef, () => {
-    if (flamegraph) {
+  useResizeObserver(canvasRef.current, () => {
+    if (flamegraphRef.current) {
       debouncedRenderCanvas();
     }
   });
 
-  const onClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const opt = getFlamegraph().xyToBar(
+  const onClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+
+    if (!flamegraphRef.current) {
+      return;
+    }
+
+    const opt = flamegraphRef.current.xyToBar(
       e.nativeEvent.offsetX,
       e.nativeEvent.offsetY
     );
@@ -140,37 +145,52 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         });
       },
     });
-  };
+  }, [flamegraphRef, zoom]);
 
-  const xyToHighlightData = (x: number, y: number) => {
-    const opt = getFlamegraph().xyToBar(x, y);
+  const xyToHighlightData = useCallback((x: number, y: number) => {
 
-    return opt.map((bar) => {
+    const canvasEl = canvasRef?.current;
+
+    if (!flamegraphRef.current || !canvasEl) {
+      return Maybe.nothing<ClickNode>();
+    }
+    
+    const opt = flamegraphRef.current.xyToBar(x, y);
+
+    return opt.map((bar: ShamefulAny) => {
       return {
-        left: getCanvas().offsetLeft + bar.x,
-        top: getCanvas().offsetTop + bar.y,
+        left: canvasEl.offsetLeft + bar.x,
+        top: canvasEl.offsetTop + bar.y,
         width: bar.width,
-      };
+      } as ClickNode;
     });
-  };
+  }, [flamegraphRef, canvasRef]);
 
-  const xyToTooltipData = (x: number, y: number) => {
-    return getFlamegraph().xyToBar(x, y);
-  };
+  const xyToTooltipData = useCallback((x: number, y: number) => {
+    if (!flamegraphRef.current) {
+      return null;
+    }
+    return flamegraphRef.current.xyToBar(x, y);
+  }, [flamegraphRef]);
 
-  const onContextMenuClose = () => {
+  const onContextMenuClose = useCallback(() => {
     setRightClickedNode(Maybe.nothing());
-  };
+  }, [setRightClickedNode]);
 
-  const onContextMenuOpen = (x: number, y: number) => {
+  const onContextMenuOpen = useCallback((x: number, y: number) => {
     setRightClickedNode(xyToHighlightData(x, y));
-  };
+  }, [setRightClickedNode, xyToHighlightData]);
 
   // Context Menu stuff
   const xyToContextMenuItems = useCallback(
     (x: number, y: number) => {
+
+      if (!flamegraphRef.current) {
+        throw new Error("Flamegraph not available")
+      }
+
       const dirty = isDirty();
-      const bar = getFlamegraph().xyToBar(x, y);
+      const bar = flamegraphRef.current.xyToBar(x, y);
       const barName = bar.isJust ? bar.value.name : '';
 
       const CollapseItem = () => {
@@ -181,7 +201,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
         const onClick = bar.mapOrElse(
           () => () => {},
-          (f) => onFocusOnNode.bind(null, f.i, f.j)
+          (f: ShamefulAny) => onFocusOnNode.bind(null, f.i, f.j)
         );
 
         return (
@@ -296,10 +316,13 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       setActiveItem,
       updateFitMode,
       updateView,
+      flamegraphRef
     ]
   );
 
   React.useEffect(() => {
+    const canvasEl = canvasRef?.current;
+
     if (canvasEl) {
       const f = new Flamegraph(
         flamebearer,
@@ -310,11 +333,12 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         zoom,
         palette
       );
-      flamegraph.current = f;
+      console.log("SET THAT FLAMEGRAF", {canvasRef, palette, flamebearer, focusedNode, fitMode, highlightQuery, zoom, renderCanvas})
+      flamegraphRef.current = f;
     }
     renderCanvas();
   }, [
-    canvasEl,
+    canvasRef,
     palette,
     flamebearer,
     focusedNode,
@@ -327,19 +351,14 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const dataUnavailable =
     !flamebearer || (flamebearer && flamebearer.names.length <= 1);
 
-  const getCanvas = () => {
-    if (!canvasRef.current) {
-      throw new Error('Missing canvas');
-    }
-    return canvasRef.current;
-  };
-
-  const getFlamegraph = () => {
-    if (!flamegraph.current) {
-      throw new Error('Missing canvas');
-    }
-    return flamegraph.current;
-  };
+  const renderedCanvas = useMemo(()=><canvas
+  height="0"
+  data-testid="flamegraph-canvas"
+  data-highlightquery={highlightQuery}
+  className={clsx('flamegraph-canvas', styles.canvas)}
+  ref={canvasRef}
+  onClick={!disableClick ? onClick : undefined}
+/>, [canvasRef, disableClick, onClick, styles.canvas, highlightQuery])
 
   return (
     <div
@@ -363,17 +382,10 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           opacity: dataUnavailable && !showSingleLevel ? 0 : 1,
         }}
       >
-        <canvas
-          height="0"
-          data-testid="flamegraph-canvas"
-          data-highlightquery={highlightQuery}
-          className={clsx('flamegraph-canvas', styles.canvas)}
-          ref={canvasRef}
-          onClick={!disableClick ? onClick : undefined}
-        />
+        {renderedCanvas}
       </div>
       {showCredit ? <LogoLink /> : ''}
-      {flamegraph && canvasRef && (
+      {flamegraphRef && canvasRef && (
         <Highlight
           barHeight={PX_PER_LEVEL}
           canvasRef={canvasRef}
@@ -381,13 +393,13 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           xyToHighlightData={xyToHighlightData}
         />
       )}
-      {flamegraph && (
+      {flamegraphRef && (
         <ContextMenuHighlight
           barHeight={PX_PER_LEVEL}
           node={rightClickedNode}
         />
       )}
-      {flamegraph && (
+      {flamegraphRef && (
         <FlamegraphTooltip
           format={flamebearer.format}
           canvasRef={canvasRef}
@@ -405,7 +417,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         />
       )}
 
-      {!disableClick && flamegraph && canvasRef && (
+      {!disableClick && flamegraphRef && canvasRef && (
         <ContextMenu
           canvasRef={canvasRef}
           xyToMenuItems={xyToContextMenuItems}
