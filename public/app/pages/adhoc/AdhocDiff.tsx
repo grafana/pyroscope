@@ -23,6 +23,7 @@ import { Tabs, Tab, TabPanel } from '@pyroscope/ui/Tabs';
 import adhocStyles from './Adhoc.module.scss';
 import adhocComparisonStyles from './AdhocComparison.module.scss';
 import FileUploader from './components/FileUploader';
+import { PageContentWrapper } from '../layout';
 
 function AdhocDiff() {
   const dispatch = useAppDispatch();
@@ -88,7 +89,7 @@ function AdhocDiff() {
 
   return (
     <div>
-      <div className="main-wrapper">
+      <PageContentWrapper>
         <div
           className="comparison-container"
           data-testid="comparison-container"
@@ -159,7 +160,7 @@ function AdhocDiff() {
           </Box>
         </div>
         <Box>{flamegraph(diffProfile, exportToFlamegraphDotComFn)}</Box>
-      </div>
+      </PageContentWrapper>
     </div>
   );
 }
