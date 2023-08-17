@@ -1,19 +1,21 @@
 ---
-title: "Grafana Phlare ingester"
+title: "Pyroscope ingester"
 menuTitle: "Ingester"
 description: "The ingester writes incoming profiles to long-term storage."
 weight: 30
+aliases:
+  - /docs/phlare/latest/reference-phlare-architecture/components/ingester/
 ---
 
-# Grafana Phlare ingester
+# Pyroscope ingester
 
-The ingester is a stateful component that writes incoming profiles first to [on disk storage]({{< relref "../about-grafana-phlare-architecture/index.md#long-term-storage" >}}) on the write path and returns series samples for queries on the read path.
+The ingester is a stateful component that writes incoming profiles first to [on disk storage]({{< relref "../about-grafana-pyroscope-architecture/index.md#long-term-storage" >}}) on the write path and returns series samples for queries on the read path.
 
 Incoming profiles from [distributors]({{< relref "distributor.md" >}}) are not immediately written to the long-term storage but are either kept in ingesters memory or offloaded to ingesters disk.
 Eventually, all profiles are written to disk and periodically uploaded to the long-term storage.
 For this reason, the [queriers]({{< relref "querier.md" >}}) might need to fetch samples from both ingesters and long-term storage while executing a query on the read path.
 
-Any Grafana Phlare component that calls the ingesters starts by first looking up ingesters registered in the [hash ring]({{< relref "../hash-ring/index.md" >}}) to determine which ingesters are available.
+Any Pyroscope component that calls the ingesters starts by first looking up ingesters registered in the [hash ring]({{< relref "../hash-ring/index.md" >}}) to determine which ingesters are available.
 Each ingester could be in one of the following states:
 
 - `PENDING`<br />
@@ -37,7 +39,7 @@ Ingesters store recently received samples in-memory in order to perform write de
 If the ingesters immediately write received samples to the long-term storage, the system would have difficulty scaling due to the high pressure on the long-term storage.
 For this reason, the ingesters batch and compress samples in-memory and periodically upload them to the long-term storage.
 
-Write de-amplification is the main source of Phlare's low total cost of ownership (TCO).
+Write de-amplification is the main source of Pyroscope's low total cost of ownership (TCO).
 
 ## Ingesters failure and data loss
 
@@ -50,8 +52,8 @@ are the following ways to mitigate this failure mode:
 ### Replication
 
 By default, each profile series is replicated to three ingesters. Writes to the
-Phlare cluster are successful if a quorum of ingesters received the data, which
-is a minimum of 2 with a replication factor of 3. If the Phlare cluster loses an
+Pyroscope cluster are successful if a quorum of ingesters received the data, which
+is a minimum of 2 with a replication factor of 3. If the Pyroscope cluster loses an
 ingester, the in-memory profiles held by the head block of the lost ingester
 are available at least in one other ingester. In the event of a single ingester
 failure, no profiles are lost. If multiple ingesters fail, profiles might be

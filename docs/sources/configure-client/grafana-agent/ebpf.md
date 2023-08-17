@@ -74,6 +74,7 @@ agent:
 controller:
   hostPID: true
 ```
+Replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
 
 ## Sending data to Pyroscope OSS or Grafana Cloud Profiles with eBPF integration
 

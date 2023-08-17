@@ -1,17 +1,18 @@
 ---
+description: Describes parameters used to configure Pyroscope.
+menuTitle: Configuration parameters
+title: Pyroscope configuration parameters
+weight: 70
 aliases:
   - /docs/phlare/latest/operators-guide/configuring/reference-configuration-parameters/
-description: Describes parameters used to configure Grafana Phlare.
-menuTitle: Configuration parameters
-title: Grafana Phlare configuration parameters
-weight: 70
+  - /docs/phlare/latest/configure-server/reference-configuration-parameters/
 ---
 
-# Grafana Phlare configuration parameters
+# Pyroscope configuration parameters
 
 {{ .GeneratedFileWarning }}
 
-You can configure Grafana Phlare by using a YAML file or via command-line flags
+You can configure Pyroscope by using a YAML file or via command-line flags
 that represent configuration parameters.
 To specify the YAML file, use the `-config.file` command-line option.
 If you specify both the command-line flags and YAML configuration parameters,
