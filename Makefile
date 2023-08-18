@@ -108,7 +108,8 @@ go/deps:
 	$(GO) mod tidy
 
 define go_build
-	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" $(GO_EXTRA_FLAGS)  ./cmd/pyroscope
+	$(GO) clean -cache
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" -gcflags "all=-m=2 -d=pgodebug=3 -d=pgoinline=3"  ./cmd/pyroscope  > build-no-pgo.log 2>&1
 	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" ./cmd/profilecli
 endef
 
