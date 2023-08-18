@@ -7,9 +7,8 @@ import (
 )
 
 // New generates a FlamebearerTimeline, backfilling any missing data with zeros.
-// If startMs is in the middle of its durationDeltaSec bucket, it will be
-// snapped to the beginning of that bucket. Similarly, if endMs is in the middle
-// of its bucket, it will be snapped to the beginning of the next bucket.
+// If startMs or endMs are in the middle of its durationDeltaSec bucket, they
+// will be snapped to the beginning of that bucket.
 //
 // It assumes:
 // * Ordered
@@ -18,7 +17,7 @@ func New(series *v1.Series, startMs int64, endMs int64, durationDeltaSec int64) 
 	// Snap startMs and endMs to bucket boundaries.
 	durationDeltaMs := durationDeltaSec * 1000
 	startMs = (startMs / durationDeltaMs) * durationDeltaMs
-	endMs = ((endMs + (durationDeltaMs - 1)) / durationDeltaMs) * durationDeltaMs
+	endMs = (endMs / durationDeltaMs) * durationDeltaMs
 
 	// ms to seconds
 	startSec := startMs / 1000
