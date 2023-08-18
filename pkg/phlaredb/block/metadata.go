@@ -38,7 +38,28 @@ type MetaVersion int
 const (
 	// Version1 is a enumeration of Phlare section of TSDB meta supported by Phlare.
 	MetaVersion1 = MetaVersion(1)
+
+	// MetaVersion2 indicates the block format version.
+	// https://github.com/grafana/phlare/pull/767.
+	//  1. In this version we introduced symdb:
+	//     - stacktraces.parquet table has been deprecated.
+	//     - StacktracePartition column added to profiles.parquet table.
+	//     - symdb is stored in ./symbols sub-directory.
+	//  2. TotalValue column added to profiles.parquet table.
+	//  3. pprof labels discarded and never stored in the block.
 	MetaVersion2 = MetaVersion(2)
+
+	// MetaVersion3 indicates the block format version.
+	// https://github.com/grafana/pyroscope/pull/2196.
+	//  1. Introduction of symdb v2:
+	//     - locations, functions, mappings, strings parquet tables
+	//       moved to ./symbols sub-directory (symdb) and partitioned
+	//       by StacktracePartition. References to the partitions
+	//       are stored in the index.symdb file.
+	//  2. In this version, parquet tables are never loaded into
+	//     memory entirely. Instead, each partition (row range) is read
+	//     from the block on demand at query time.
+	MetaVersion3 = MetaVersion(3)
 )
 
 type BlockStats struct {
@@ -143,7 +164,7 @@ func NewMeta() *Meta {
 		MinTime: math.MaxInt64,
 		MaxTime: 0,
 		Labels:  make(map[string]string),
-		Version: MetaVersion2,
+		Version: MetaVersion3,
 	}
 }
 
@@ -160,6 +181,7 @@ func MetaFromDir(dir string) (*Meta, int64, error) {
 	switch m.Version {
 	case MetaVersion1:
 	case MetaVersion2:
+	case MetaVersion3:
 	default:
 		return nil, 0, errors.Errorf("unexpected meta file version %d", m.Version)
 	}
@@ -267,6 +289,7 @@ func Read(rc io.ReadCloser) (_ *Meta, err error) {
 	switch m.Version {
 	case MetaVersion1:
 	case MetaVersion2:
+	case MetaVersion3:
 	default:
 		return nil, errors.Errorf("unexpected meta file version %d", m.Version)
 	}
