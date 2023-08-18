@@ -217,7 +217,7 @@ func (p *partition) Symbols() *Symbols {
 
 func (p *partition) Release() {
 	var wg sync.WaitGroup
-	wg.Add(len(p.stacktraceChunks) + 4)
+	wg.Add(len(p.stacktraceChunks))
 	for _, c := range p.stacktraceChunks {
 		c := c
 		go func() {
@@ -226,6 +226,7 @@ func (p *partition) Release() {
 		}()
 	}
 	if p.reader.index.Header.Version > FormatV1 {
+		wg.Add(4)
 		go func() { p.locations.release(); wg.Done() }()
 		go func() { p.mappings.release(); wg.Done() }()
 		go func() { p.functions.release(); wg.Done() }()
