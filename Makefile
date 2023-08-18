@@ -30,8 +30,6 @@ EMBEDASSETS ?= embedassets
 # Build flags
 VPREFIX := github.com/grafana/pyroscope/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
-GO_GCFLAGS ?=
-GO_EXTRA_FLAGS ?=
 
 .PHONY: help
 help: ## Describe useful make targets
