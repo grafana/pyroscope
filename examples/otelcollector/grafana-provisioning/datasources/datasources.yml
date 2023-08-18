@@ -1,0 +1,12 @@
+---
+apiVersion: 1
+datasources:
+  - name: Pyroscope
+    orgId: 1
+    uid: pyroscope
+    type: 'phlare'
+    access: 'proxy'
+    grafanaOrgId: 1
+    url: http://pyroscope:4040
+    isDefault: true
+    editable: true
