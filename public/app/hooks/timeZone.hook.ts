@@ -1,11 +1,11 @@
 /* eslint-disable prefer-template */
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
 import { useEffect, useMemo } from 'react';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   changeTimeZoneOffset,
   selectTimezoneOffset,
-} from '@phlare/redux/reducers/ui';
+} from '@pyroscope/redux/reducers/ui';
 
 export default function useTimeZone() {
   const dispatch = useAppDispatch();

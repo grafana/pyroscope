@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   loadCurrentUser,
   selectCurrentUser,
-} from '@phlare/redux/reducers/user';
+} from '@pyroscope/redux/reducers/user';
 import { useHistory } from 'react-router-dom';
-import { PAGES } from '@phlare/pages/constants';
+import { PAGES } from '@pyroscope/pages/constants';
 
 export default function useNavigateUserIntroPages() {
   const dispatch = useAppDispatch();

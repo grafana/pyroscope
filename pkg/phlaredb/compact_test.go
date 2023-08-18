@@ -49,14 +49,14 @@ func TestCompact(t *testing.T) {
 		}
 	})
 	dst := t.TempDir()
-	new, err := Compact(ctx, []BlockReader{b, b, b, b}, dst)
+	compacted, err := Compact(ctx, []BlockReader{b, b, b, b}, dst)
 	require.NoError(t, err)
-	require.Equal(t, uint64(3), new.Stats.NumProfiles)
-	require.Equal(t, uint64(3), new.Stats.NumSamples)
-	require.Equal(t, uint64(3), new.Stats.NumSeries)
-	require.Equal(t, model.TimeFromUnix(1), new.MinTime)
-	require.Equal(t, model.TimeFromUnix(3), new.MaxTime)
-	querier := blockQuerierFromMeta(t, dst, new)
+	require.Equal(t, uint64(3), compacted.Stats.NumProfiles)
+	require.Equal(t, uint64(3), compacted.Stats.NumSamples)
+	require.Equal(t, uint64(3), compacted.Stats.NumSeries)
+	require.Equal(t, model.TimeFromUnix(1), compacted.MinTime)
+	require.Equal(t, model.TimeFromUnix(3), compacted.MaxTime)
+	querier := blockQuerierFromMeta(t, dst, compacted)
 
 	matchAll := &ingesterv1.SelectProfilesRequest{
 		LabelSelector: "{}",
@@ -78,15 +78,11 @@ func TestCompact(t *testing.T) {
 	require.NoError(t, err)
 	res, err := querier.MergeByStacktraces(ctx, it)
 	require.NoError(t, err)
-	require.Equal(t, &ingesterv1.MergeProfilesStacktracesResult{
-		Stacktraces: []*ingesterv1.StacktraceSample{
-			{
-				FunctionIds: []int32{0, 1, 2},
-				Value:       3,
-			},
-		},
-		FunctionNames: []string{"foo", "bar", "baz"},
-	}, res)
+	require.NotNil(t, res)
+
+	expected := new(phlaremodel.Tree)
+	expected.InsertStack(3, "baz", "bar", "foo")
+	require.Equal(t, expected.String(), res.String())
 }
 
 func TestProfileRowIterator(t *testing.T) {
@@ -340,6 +336,50 @@ func TestSeriesRewriter(t *testing.T) {
 	}}, chunks)
 }
 
+func TestFlushMeta(t *testing.T) {
+	b := newBlock(t, func() []*testhelper.ProfileBuilder {
+		return []*testhelper.ProfileBuilder{
+			testhelper.NewProfileBuilder(int64(time.Second*1)).
+				CPUProfile().
+				WithLabels(
+					"job", "a",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+			testhelper.NewProfileBuilder(int64(time.Second*2)).
+				CPUProfile().
+				WithLabels(
+					"job", "b",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+			testhelper.NewProfileBuilder(int64(time.Second*3)).
+				CPUProfile().
+				WithLabels(
+					"job", "c",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+		}
+	})
+
+	require.Equal(t, []ulid.ULID{b.Meta().ULID}, b.Meta().Compaction.Sources)
+	require.Equal(t, 1, b.Meta().Compaction.Level)
+	require.Equal(t, false, b.Meta().Compaction.Deletable)
+	require.Equal(t, false, b.Meta().Compaction.Failed)
+	require.Equal(t, []string(nil), b.Meta().Compaction.Hints)
+	require.Equal(t, []tsdb.BlockDesc(nil), b.Meta().Compaction.Parents)
+	require.Equal(t, block.MetaVersion3, b.Meta().Version)
+	require.Equal(t, model.Time(1000), b.Meta().MinTime)
+	require.Equal(t, model.Time(3000), b.Meta().MaxTime)
+	require.Equal(t, uint64(3), b.Meta().Stats.NumSeries)
+	require.Equal(t, uint64(3), b.Meta().Stats.NumSamples)
+	require.Equal(t, uint64(3), b.Meta().Stats.NumProfiles)
+	require.Len(t, b.Meta().Files, 8)
+	require.Equal(t, "index.tsdb", b.Meta().Files[0].RelPath)
+	require.Equal(t, "profiles.parquet", b.Meta().Files[1].RelPath)
+	require.Equal(t, "symbols/functions.parquet", b.Meta().Files[2].RelPath)
+	require.Equal(t, "symbols/index.symdb", b.Meta().Files[3].RelPath)
+	require.Equal(t, "symbols/locations.parquet", b.Meta().Files[4].RelPath)
+	require.Equal(t, "symbols/mappings.parquet", b.Meta().Files[5].RelPath)
+	require.Equal(t, "symbols/stacktraces.symdb", b.Meta().Files[6].RelPath)
+	require.Equal(t, "symbols/strings.parquet", b.Meta().Files[7].RelPath)
+}
+
 func newBlock(t *testing.T, generator func() []*testhelper.ProfileBuilder) BlockReader {
 	t.Helper()
 	dir := t.TempDir()
@@ -380,7 +420,7 @@ func newBlock(t *testing.T, generator func() []*testhelper.ProfileBuilder) Block
 	}
 	blk := NewSingleBlockQuerierFromMeta(ctx, bkt, meta)
 	require.NoError(t, blk.Open(ctx))
-	require.NoError(t, blk.stacktraces.Load(ctx))
+	require.NoError(t, blk.symbols.Load(ctx))
 	return blk
 }
 
@@ -399,7 +439,7 @@ func blockQuerierFromMeta(t *testing.T, dir string, m block.Meta) Querier {
 	require.NoError(t, err)
 	blk := NewSingleBlockQuerierFromMeta(ctx, bkt, &m)
 	require.NoError(t, blk.Open(ctx))
-	require.NoError(t, blk.stacktraces.Load(ctx))
+	//	require.NoError(t, blk.symbols.Load(ctx))
 	return blk
 }
 
@@ -572,97 +612,4 @@ func generateParquetFile(t *testing.T, path string) {
 		})
 		require.NoError(t, err)
 	}
-}
-
-func Test_lookupTable(t *testing.T) {
-	// Given the source data set.
-	// Copy arbitrary subsets of items from src to dst.
-	var dst []string
-	src := []string{
-		"zero",
-		"one",
-		"two",
-		"three",
-		"four",
-		"five",
-		"six",
-		"seven",
-	}
-
-	type testCase struct {
-		description string
-		input       []uint32
-		expected    []string
-	}
-
-	testCases := []testCase{
-		{
-			description: "empty table",
-			input:       []uint32{5, 0, 3, 1, 2, 2, 4},
-			expected:    []string{"five", "zero", "three", "one", "two", "two", "four"},
-		},
-		{
-			description: "no new values",
-			input:       []uint32{2, 1, 2, 3},
-			expected:    []string{"two", "one", "two", "three"},
-		},
-		{
-			description: "new value mixed",
-			input:       []uint32{2, 1, 6, 2, 3},
-			expected:    []string{"two", "one", "six", "two", "three"},
-		},
-	}
-
-	// Try to lookup values in src lazily.
-	// Table size must be greater or equal
-	// to the source data set.
-	l := newLookupTable[string](10)
-
-	populate := func(t *testing.T, x []uint32) {
-		for i, v := range x {
-			x[i] = l.tryLookup(v)
-		}
-		// Resolve unknown yet values.
-		// Mind the order and deduplication.
-		p := -1
-		for it := l.iter(); it.Err() == nil && it.Next(); {
-			m := int(it.At())
-			if m <= p {
-				t.Fatal("iterator order invalid")
-			}
-			p = m
-			it.setValue(src[m])
-		}
-	}
-
-	resolveAppend := func() {
-		// Populate dst with the newly resolved values.
-		// Note that order in dst does not have to match src.
-		for i, v := range l.values {
-			l.storeResolved(i, uint32(len(dst)))
-			dst = append(dst, v)
-		}
-	}
-
-	resolve := func(x []uint32) []string {
-		// Lookup resolved values.
-		var resolved []string
-		for _, v := range x {
-			resolved = append(resolved, dst[l.lookupResolved(v)])
-		}
-		return resolved
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.description, func(t *testing.T) {
-			l.reset()
-			populate(t, tc.input)
-			resolveAppend()
-			assert.Equal(t, tc.expected, resolve(tc.input))
-		})
-	}
-
-	assert.Len(t, dst, 7)
-	assert.NotContains(t, dst, "seven")
 }

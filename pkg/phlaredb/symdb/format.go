@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
-	"sort"
 	"unsafe"
 )
 
 // The database is a collection of files. The only file that is guaranteed
 // to be present is the index file: it indicates the version of the format,
 // and the structure of the database contents. The file is supposed to be
-// read into memory entirely and opened with a OpenIndexFile call.
+// read into memory entirely and opened with a ReadIndexFile call.
 //
 // Big endian order is used unless otherwise noted.
 //
@@ -31,7 +30,8 @@ import (
 //
 
 const (
-	DefaultDirName      = "symbols"
+	DefaultDirName = "symbols"
+
 	IndexFileName       = "index.symdb"
 	StacktracesFileName = "stacktraces.symdb"
 )
@@ -42,13 +42,16 @@ const (
 	_ = iota
 
 	FormatV1
+	FormatV2
+
 	unknownVersion
 )
 
 const (
 	// TOC entries are version-specific.
-	tocEntryStacktraceChunkHeaders = iota
-	tocEntries
+	tocEntryStacktraceChunkHeaders = 0
+	tocEntryPartitionHeaders       = 0
+	tocEntries                     = 1
 )
 
 // https://en.wikipedia.org/wiki/List_of_file_signatures
@@ -79,10 +82,7 @@ type IndexFile struct {
 	TOC    TOC
 
 	// Version-specific parts.
-
-	// StacktraceChunkHeaders are sorted by
-	// partition and chunk index in ascending order.
-	StacktraceChunkHeaders StacktraceChunkHeaders
+	PartitionHeaders PartitionHeaders
 
 	CRC uint32
 }
@@ -163,61 +163,196 @@ func (h *TOCEntry) unmarshal(b []byte) {
 	h.Offset = int64(binary.BigEndian.Uint64(b[8:16]))
 }
 
-// Types below define the Data section structure.
-// Currently, the data section is as follows:
-//
-// [1] StacktraceChunkHeaders // v1.
-//     TODO(kolesnikovae): Document chunking.
+type PartitionHeaders []*PartitionHeader
 
-const stacktraceChunkHeaderSize = int(unsafe.Sizeof(StacktraceChunkHeader{}))
+type PartitionHeader struct {
+	Partition uint64
 
-type StacktraceChunkHeaders struct {
-	Entries []StacktraceChunkHeader
+	StacktraceChunks []StacktraceChunkHeader
+	Locations        []RowRangeReference
+	Mappings         []RowRangeReference
+	Functions        []RowRangeReference
+	Strings          []RowRangeReference
 }
 
-func (h *StacktraceChunkHeaders) Size() int64 {
-	return int64(stacktraceChunkHeaderSize * len(h.Entries))
-}
-
-func (h *StacktraceChunkHeaders) MarshalBinary() ([]byte, error) {
-	b := make([]byte, len(h.Entries)*stacktraceChunkHeaderSize)
-	for i := range h.Entries {
-		off := i * stacktraceChunkHeaderSize
-		h.Entries[i].marshal(b[off : off+stacktraceChunkHeaderSize])
+func (h *PartitionHeaders) Size() int64 {
+	s := int64(4)
+	for _, p := range *h {
+		s += p.Size()
 	}
-	return b, nil
+	return s
 }
 
-func (h *StacktraceChunkHeaders) UnmarshalBinary(b []byte) error {
-	s := len(b)
-	if s%stacktraceChunkHeaderSize > 0 {
-		return ErrInvalidSize
+func (h *PartitionHeaders) WriteTo(dst io.Writer) (_ int64, err error) {
+	w := withWriterOffset(dst, 0)
+	buf := make([]byte, 4, 128)
+	binary.BigEndian.PutUint32(buf, uint32(len(*h)))
+	w.write(buf)
+	for _, p := range *h {
+		s := p.Size()
+		if int(s) > cap(buf) {
+			buf = make([]byte, s)
+		}
+		buf = buf[:s]
+		p.marshal(buf)
+		w.write(buf)
 	}
-	h.Entries = make([]StacktraceChunkHeader, s/stacktraceChunkHeaderSize)
-	for i := range h.Entries {
-		off := i * stacktraceChunkHeaderSize
-		h.Entries[i].unmarshal(b[off : off+stacktraceChunkHeaderSize])
+	return w.offset, w.err
+}
+
+func (h *PartitionHeaders) Unmarshal(b []byte) error {
+	partitions := binary.BigEndian.Uint32(b[0:4])
+	b = b[4:]
+	*h = make(PartitionHeaders, partitions)
+	for i := range *h {
+		var p PartitionHeader
+		if err := p.unmarshal(b); err != nil {
+			return err
+		}
+		b = b[p.Size():]
+		(*h)[i] = &p
 	}
 	return nil
 }
 
-type stacktraceChunkHeadersByPartitionAndIndex StacktraceChunkHeaders
-
-func (h stacktraceChunkHeadersByPartitionAndIndex) Len() int {
-	return len(h.Entries)
-}
-
-func (h stacktraceChunkHeadersByPartitionAndIndex) Less(i, j int) bool {
-	a, b := h.Entries[i], h.Entries[j]
-	if a.Partition == b.Partition {
-		return a.ChunkIndex < b.ChunkIndex
+func (h *PartitionHeaders) fromChunks(b []byte) error {
+	s := len(b)
+	if s%stacktraceChunkHeaderSize > 0 {
+		return ErrInvalidSize
 	}
-	return a.Partition < b.Partition
+	chunks := make([]StacktraceChunkHeader, s/stacktraceChunkHeaderSize)
+	for i := range chunks {
+		off := i * stacktraceChunkHeaderSize
+		chunks[i].unmarshal(b[off : off+stacktraceChunkHeaderSize])
+	}
+	var p *PartitionHeader
+	for _, c := range chunks {
+		if p == nil || p.Partition != c.Partition {
+			p = &PartitionHeader{Partition: c.Partition}
+			*h = append(*h, p)
+		}
+		p.StacktraceChunks = append(p.StacktraceChunks, c)
+	}
+	return nil
 }
 
-func (h stacktraceChunkHeadersByPartitionAndIndex) Swap(i, j int) {
-	h.Entries[i], h.Entries[j] = h.Entries[j], h.Entries[i]
+func (h *PartitionHeader) marshal(buf []byte) {
+	binary.BigEndian.PutUint64(buf[0:8], h.Partition)
+	binary.BigEndian.PutUint32(buf[8:12], uint32(len(h.StacktraceChunks)))
+	binary.BigEndian.PutUint32(buf[12:16], uint32(len(h.Locations)))
+	binary.BigEndian.PutUint32(buf[16:20], uint32(len(h.Mappings)))
+	binary.BigEndian.PutUint32(buf[20:24], uint32(len(h.Functions)))
+	binary.BigEndian.PutUint32(buf[24:28], uint32(len(h.Strings)))
+	n := 28
+	for i := range h.StacktraceChunks {
+		h.StacktraceChunks[i].marshal(buf[n:])
+		n += stacktraceChunkHeaderSize
+	}
+	n += marshalRowRangeReferences(buf[n:], h.Locations)
+	n += marshalRowRangeReferences(buf[n:], h.Mappings)
+	n += marshalRowRangeReferences(buf[n:], h.Functions)
+	marshalRowRangeReferences(buf[n:], h.Strings)
 }
+
+func (h *PartitionHeader) unmarshal(buf []byte) (err error) {
+	h.Partition = binary.BigEndian.Uint64(buf[0:8])
+	h.StacktraceChunks = make([]StacktraceChunkHeader, int(binary.BigEndian.Uint32(buf[8:12])))
+	h.Locations = make([]RowRangeReference, int(binary.BigEndian.Uint32(buf[12:16])))
+	h.Mappings = make([]RowRangeReference, int(binary.BigEndian.Uint32(buf[16:20])))
+	h.Functions = make([]RowRangeReference, int(binary.BigEndian.Uint32(buf[20:24])))
+	h.Strings = make([]RowRangeReference, int(binary.BigEndian.Uint32(buf[24:28])))
+
+	buf = buf[28:]
+	stacktracesSize := len(h.StacktraceChunks) * stacktraceChunkHeaderSize
+	if err = h.unmarshalStacktraceChunks(buf[:stacktracesSize]); err != nil {
+		return err
+	}
+	buf = buf[stacktracesSize:]
+	locationsSize := len(h.Locations) * rowRangeReferenceSize
+	if err = h.unmarshalRowRangeReferences(h.Locations, buf[:locationsSize]); err != nil {
+		return err
+	}
+	buf = buf[locationsSize:]
+	mappingsSize := len(h.Mappings) * rowRangeReferenceSize
+	if err = h.unmarshalRowRangeReferences(h.Mappings, buf[:mappingsSize]); err != nil {
+		return err
+	}
+	buf = buf[mappingsSize:]
+	functionsSize := len(h.Functions) * rowRangeReferenceSize
+	if err = h.unmarshalRowRangeReferences(h.Functions, buf[:functionsSize]); err != nil {
+		return err
+	}
+	buf = buf[functionsSize:]
+	stringsSize := len(h.Strings) * rowRangeReferenceSize
+	if err = h.unmarshalRowRangeReferences(h.Strings, buf[:stringsSize]); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *PartitionHeader) Size() int64 {
+	s := 28
+	s += len(h.StacktraceChunks) * stacktraceChunkHeaderSize
+	r := len(h.Locations) + len(h.Mappings) + len(h.Functions) + len(h.Strings)
+	s += r * rowRangeReferenceSize
+	return int64(s)
+}
+
+func (h *PartitionHeader) unmarshalStacktraceChunks(b []byte) error {
+	s := len(b)
+	if s%stacktraceChunkHeaderSize > 0 {
+		return ErrInvalidSize
+	}
+	for i := range h.StacktraceChunks {
+		off := i * stacktraceChunkHeaderSize
+		h.StacktraceChunks[i].unmarshal(b[off : off+stacktraceChunkHeaderSize])
+	}
+	return nil
+}
+
+func (h *PartitionHeader) unmarshalRowRangeReferences(refs []RowRangeReference, b []byte) error {
+	s := len(b)
+	if s%rowRangeReferenceSize > 0 {
+		return ErrInvalidSize
+	}
+	for i := range refs {
+		off := i * rowRangeReferenceSize
+		refs[i].unmarshal(b[off : off+rowRangeReferenceSize])
+	}
+	return nil
+}
+
+func marshalRowRangeReferences(b []byte, refs []RowRangeReference) int {
+	var off int
+	for i := range refs {
+		refs[i].marshal(b[off : off+rowRangeReferenceSize])
+		off += rowRangeReferenceSize
+	}
+	return off
+}
+
+const rowRangeReferenceSize = int(unsafe.Sizeof(RowRangeReference{}))
+
+type RowRangeReference struct {
+	RowGroup uint32
+	Index    uint32
+	Rows     uint32
+}
+
+func (r *RowRangeReference) marshal(b []byte) {
+	binary.BigEndian.PutUint32(b[0:4], r.RowGroup)
+	binary.BigEndian.PutUint32(b[4:8], r.Index)
+	binary.BigEndian.PutUint32(b[8:12], r.Rows)
+}
+
+func (r *RowRangeReference) unmarshal(b []byte) {
+	r.RowGroup = binary.BigEndian.Uint32(b[0:4])
+	r.Index = binary.BigEndian.Uint32(b[4:8])
+	r.Rows = binary.BigEndian.Uint32(b[8:12])
+}
+
+const stacktraceChunkHeaderSize = int(unsafe.Sizeof(StacktraceChunkHeader{}))
 
 type StacktraceChunkHeader struct {
 	Offset int64
@@ -274,7 +409,7 @@ func (h *StacktraceChunkHeader) unmarshal(b []byte) {
 	h.CRC = binary.BigEndian.Uint32(b[60:64])
 }
 
-func OpenIndexFile(b []byte) (f IndexFile, err error) {
+func ReadIndexFile(b []byte) (f IndexFile, err error) {
 	s := len(b)
 	if !f.assertSizeIsValid(b) {
 		return f, ErrInvalidSize
@@ -296,11 +431,17 @@ func OpenIndexFile(b []byte) (f IndexFile, err error) {
 		// Must never happen: the version is verified
 		// when the file header is read.
 		panic("bug: invalid version")
+
 	case FormatV1:
 		sch := f.TOC.Entries[tocEntryStacktraceChunkHeaders]
-		d := b[sch.Offset : sch.Offset+sch.Size]
-		if err = f.StacktraceChunkHeaders.UnmarshalBinary(d); err != nil {
-			return f, fmt.Errorf("unmarshal chunk header: %w", err)
+		if err = f.PartitionHeaders.fromChunks(b[sch.Offset : sch.Offset+sch.Size]); err != nil {
+			return f, fmt.Errorf("unmarshal stacktraces: %w", err)
+		}
+
+	case FormatV2:
+		ph := f.TOC.Entries[tocEntryPartitionHeaders]
+		if err = f.PartitionHeaders.Unmarshal(b[ph.Offset : ph.Offset+ph.Size]); err != nil {
+			return f, fmt.Errorf("reading partition headers: %w", err)
 		}
 	}
 
@@ -324,19 +465,16 @@ func (f *IndexFile) WriteTo(dst io.Writer) (n int64, err error) {
 	}
 
 	toc := TOC{Entries: make([]TOCEntry, tocEntries)}
-	toc.Entries[tocEntryStacktraceChunkHeaders] = TOCEntry{
+	toc.Entries[tocEntryPartitionHeaders] = TOCEntry{
 		Offset: int64(f.dataOffset()),
-		Size:   f.StacktraceChunkHeaders.Size(),
+		Size:   f.PartitionHeaders.Size(),
 	}
 	tocBytes, _ := toc.MarshalBinary()
 	if _, err = w.Write(tocBytes); err != nil {
 		return w.offset, fmt.Errorf("toc write: %w", err)
 	}
-
-	sort.Sort(stacktraceChunkHeadersByPartitionAndIndex(f.StacktraceChunkHeaders))
-	sch, _ := f.StacktraceChunkHeaders.MarshalBinary()
-	if _, err = w.Write(sch); err != nil {
-		return w.offset, fmt.Errorf("stacktrace chunk headers: %w", err)
+	if _, err = f.PartitionHeaders.WriteTo(w); err != nil {
+		return w.offset, fmt.Errorf("partitions headers: %w", err)
 	}
 
 	f.CRC = checksum.Sum32()

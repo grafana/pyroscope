@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sort"
 	"sync"
-	"unsafe"
 
 	"github.com/gogo/status"
 	"github.com/opentracing/opentracing-go"
@@ -509,51 +508,4 @@ func SplitFiltersAndMatchers(allMatchers []*labels.Matcher) (filters, matchers [
 		}
 	}
 	return
-}
-
-// nolint unused
-const (
-	profileSize = uint64(unsafe.Sizeof(schemav1.InMemoryProfile{}))
-)
-
-type profilesHelper struct{}
-
-// nolint unused
-func (*profilesHelper) addToRewriter(r *rewriter, elemRewriter idConversionTable) {
-	r.locations = elemRewriter
-}
-
-// nolint unused
-func (*profilesHelper) rewrite(r *rewriter, s *schemav1.InMemoryProfile) error {
-	for pos := range s.Comments {
-		r.strings.rewrite(&s.Comments[pos])
-	}
-
-	r.strings.rewrite(&s.DropFrames)
-	r.strings.rewrite(&s.KeepFrames)
-
-	return nil
-}
-
-// nolint unused
-func (*profilesHelper) setID(oldID, newID uint64, p *schemav1.InMemoryProfile) uint64 {
-	return oldID
-}
-
-// nolint unused
-func (*profilesHelper) size(p *schemav1.InMemoryProfile) uint64 {
-	size := profileSize
-
-	size += 8
-	size += uint64(len(p.Comments) * 8)
-
-	// 4 bytes for stacktrace id and 8 bytes for each stacktrace value
-	size += uint64(len(p.Samples.StacktraceIDs) * (4 + 8))
-
-	return size
-}
-
-// nolint unused
-func (*profilesHelper) clone(p *schemav1.InMemoryProfile) *schemav1.InMemoryProfile {
-	return p
 }

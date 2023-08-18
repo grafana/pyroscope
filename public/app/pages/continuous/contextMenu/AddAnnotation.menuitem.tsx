@@ -1,16 +1,16 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useState } from 'react';
-import { MenuItem } from '@phlare/ui/Menu';
+import { MenuItem } from '@pyroscope/ui/Menu';
 import {
   Popover,
   PopoverBody,
   PopoverFooter,
   PopoverHeader,
-} from '@phlare/ui/Popover';
-import Button from '@phlare/ui/Button';
-import { Portal, PortalProps } from '@phlare/ui/Portal';
-import { NewAnnotation } from '@phlare/services/annotations';
-import TextField from '@phlare/ui/Form/TextField';
+} from '@pyroscope/ui/Popover';
+import Button from '@pyroscope/ui/Button';
+import { Portal, PortalProps } from '@pyroscope/ui/Portal';
+import { NewAnnotation } from '@pyroscope/services/annotations';
+import TextField from '@pyroscope/ui/Form/TextField';
 import { useAnnotationForm } from './useAnnotationForm';
 import styles from './AddAnnotation.menuitem.module.css';
 

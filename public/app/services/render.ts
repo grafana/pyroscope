@@ -1,24 +1,24 @@
-import { Result } from '@phlare/util/fp';
+import { Result } from '@pyroscope/util/fp';
 import {
   Profile,
   Groups,
   FlamebearerProfileSchema,
   GroupsSchema,
-} from '@pyroscope/models/src';
+} from '@pyroscope/legacy/models';
 import { z } from 'zod';
 import type { ZodError } from 'zod';
 import {
   buildRenderURL,
   buildMergeURLWithQueryID,
-} from '@phlare/util/updateRequests';
-import { Timeline, TimelineSchema } from '@phlare/models/timeline';
-import { Annotation, AnnotationSchema } from '@phlare/models/annotation';
-import type { RequestError } from '@phlare/services/base';
+} from '@pyroscope/util/updateRequests';
+import { Timeline, TimelineSchema } from '@pyroscope/models/timeline';
+import { Annotation, AnnotationSchema } from '@pyroscope/models/annotation';
+import type { RequestError } from '@pyroscope/services/base';
 import {
   request,
   parseResponse,
   requestWithOrgID,
-} from '@phlare/services/base';
+} from '@pyroscope/services/base';
 
 export interface RenderOutput {
   profile: Profile;

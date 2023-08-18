@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react';
-import { useAppSelector, useAppDispatch } from '@phlare/redux/hooks';
-import { setColorMode, selectAppColorMode } from '@phlare/redux/reducers/ui';
+import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
+import { setColorMode, selectAppColorMode } from '@pyroscope/redux/reducers/ui';
 
 const useColorMode = () => {
   const dispatch = useAppDispatch();

@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import Table from '@phlare/ui/Table';
-import { randomId } from '@phlare/util/randomId';
+import Table from '@pyroscope/ui/Table';
+import { randomId } from '@pyroscope/util/randomId';
 import { ComponentMeta } from '@storybook/react';
 import '../sass/profile.scss';
 

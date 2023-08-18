@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 
-import { Maybe } from '@phlare/util/fp';
-import { AllProfiles } from '@phlare/models/adhoc';
-import TableUI, { useTableSort, BodyRow } from '@phlare/ui/Table';
+import { Maybe } from '@pyroscope/util/fp';
+import { AllProfiles } from '@pyroscope/models/adhoc';
+import TableUI, { useTableSort, BodyRow } from '@pyroscope/ui/Table';
 import CheckIcon from './CheckIcon';
 import styles from './FileList.module.scss';
 

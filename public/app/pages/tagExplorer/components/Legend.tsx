@@ -1,6 +1,6 @@
 import React from 'react';
-import type { TimelineGroupData } from '@phlare/components/TimelineChart/TimelineChartWrapper';
-import { ALL_TAGS } from '@phlare/redux/reducers/continuous';
+import type { TimelineGroupData } from '@pyroscope/components/TimelineChart/TimelineChartWrapper';
+import { ALL_TAGS } from '@pyroscope/redux/reducers/continuous';
 import classNames from 'classnames/bind';
 import styles from './Legend.module.scss';
 

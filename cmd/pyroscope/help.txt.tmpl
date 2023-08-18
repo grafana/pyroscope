@@ -77,8 +77,8 @@ Usage of ./pyroscope:
     	Maximum number of active series of profiles per tenant, per ingester. 0 to disable.
   -ingester.tokens-file-path string
     	File path where tokens are stored. If empty, tokens are not stored at shutdown and restored at startup.
-  -log.format value
-    	Output log messages in the given format. Valid formats: [logfmt, json] (default logfmt)
+  -log.format string
+    	Output log messages in the given format. Valid formats: [logfmt, json] (default "logfmt")
   -log.level value
     	Only log messages with the given severity or above. Valid levels: [debug, info, warn, error] (default info)
   -memberlist.abort-if-join-fails
@@ -117,11 +117,11 @@ Usage of ./pyroscope:
     	Port to advertise in the ring (defaults to -server.http-listen-port). (default 4040)
   -overrides-exporter.ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
-  -phlaredb.data-path string
+  -pyroscopedb.data-path string
     	Directory used for local storage. (default "./data")
-  -phlaredb.max-block-duration duration
+  -pyroscopedb.max-block-duration duration
     	Upper limit to the duration of a Phlare block. (default 3h0m0s)
-  -phlaredb.row-group-target-size uint
+  -pyroscopedb.row-group-target-size uint
     	How big should a single row group be uncompressed (default 1342177280)
   -querier.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)

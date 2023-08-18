@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"sync"
 
 	dvarint "github.com/dennwc/varint"
 	"github.com/xlab/treeprint"
 
 	"github.com/grafana/pyroscope/pkg/og/util/varint"
+	"github.com/grafana/pyroscope/pkg/slices"
 )
 
 type Tree struct {
@@ -66,6 +68,35 @@ func (t *Tree) InsertStack(v int64, stack ...string) {
 	n.total += v
 	n.self += v
 	t.root = r.children
+}
+
+func (t *Tree) WriteCollapsed(dst io.Writer) {
+	t.IterateStacks(func(_ string, self int64, stack []string) {
+		slices.Reverse(stack)
+		_, _ = fmt.Fprintf(dst, "%s %d\n", strings.Join(stack, ";"), self)
+	})
+}
+
+func (t *Tree) IterateStacks(cb func(name string, self int64, stack []string)) {
+	nodes := make([]*node, len(t.root), 1024)
+	stack := make([]string, 0, 64)
+	copy(nodes, t.root)
+	for len(nodes) > 0 {
+		n := nodes[0]
+		self := n.self
+		label := n.name
+		if self > 0 {
+			current := n
+			stack = stack[:0]
+			for current != nil && current.parent != nil {
+				stack = append(stack, current.name)
+				current = current.parent
+			}
+			cb(label, self, stack)
+		}
+		nodes = nodes[1:]
+		nodes = append(nodes, n.children...)
+	}
 }
 
 // Default Depth First Search slice capacity. The value should be equal
@@ -188,7 +219,7 @@ func (h *minHeap) Pop() interface{} {
 	return x
 }
 
-const lostDuringSerializationName = "other"
+const truncatedNodeName = "other"
 
 // MarshalTruncate writes tree byte representation to the writer provider,
 // the number of nodes is limited to maxNodes. The function modifies
@@ -220,7 +251,7 @@ func (t *Tree) MarshalTruncate(w io.Writer, maxNodes int64) (err error) {
 		var other int64
 		var j int
 		for _, cn := range n.children {
-			if cn.total >= minVal || cn.name == lostDuringSerializationName {
+			if cn.total >= minVal || cn.name == truncatedNodeName {
 				n.children[j] = cn
 				j++
 			} else {
@@ -230,7 +261,7 @@ func (t *Tree) MarshalTruncate(w io.Writer, maxNodes int64) (err error) {
 
 		n.children = n.children[:j]
 		if other > 0 {
-			o := n.insert(lostDuringSerializationName)
+			o := n.insert(truncatedNodeName)
 			o.total += other
 			o.self += other
 		}

@@ -1,11 +1,11 @@
-import { Result } from '@phlare/util/fp';
-import * as base from '@phlare/services/base';
+import { Result } from '@pyroscope/util/fp';
+import * as base from '@pyroscope/services/base';
 import { fetchApps } from './apps';
 
-jest.mock('@phlare/services/base', () => {
+jest.mock('@pyroscope/services/base', () => {
   return {
     __esModule: true,
-    ...jest.requireActual('@phlare/services/base'),
+    ...jest.requireActual('@pyroscope/services/base'),
   };
 });
 

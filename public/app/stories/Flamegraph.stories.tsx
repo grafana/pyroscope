@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { FlamegraphRenderer, Box } from '@pyroscope/flamegraph';
+import { FlamegraphRenderer, Box } from '@pyroscope/legacy/flamegraph';
 import PyroscopeServerCPU from '../../../og/cypress/fixtures/pyroscope.server.cpu.json';
 import SimpleGolangCPU from '../../../og/cypress/fixtures/simple-golang-app-cpu.json';
-import Button from '@phlare/ui/Button';
+import Button from '@pyroscope/ui/Button';
 import { ComponentStory } from '@storybook/react';
 import '@pyroscope/flamegraph/dist/index.css';
 

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
-import Box from '@phlare/ui/Box';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import Box from '@pyroscope/ui/Box';
 import {
   fetchDiffView,
   selectContinuousState,
@@ -9,27 +9,27 @@ import {
   selectQueries,
   selectTimelineSides,
   selectAnnotationsOrDefault,
-} from '@phlare/redux/reducers/continuous';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
-import usePopulateLeftRightQuery from '@phlare/hooks/populateLeftRightQuery.hook';
+} from '@pyroscope/redux/reducers/continuous';
+import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph/FlamegraphRenderer';
+import usePopulateLeftRightQuery from '@pyroscope/hooks/populateLeftRightQuery.hook';
 import useTimelines, {
   leftColor,
   rightColor,
   selectionColor,
-} from '@phlare/hooks/timeline.hook';
-import useTimeZone from '@phlare/hooks/timeZone.hook';
-import useColorMode from '@phlare/hooks/colorMode.hook';
-import useTags from '@phlare/hooks/tags.hook';
-import Toolbar from '@phlare/components/Toolbar';
-import TagsBar from '@phlare/components/TagsBar';
-import TimelineChartWrapper from '@phlare/components/TimelineChart/TimelineChartWrapper';
-import SyncTimelines from '@phlare/components/TimelineChart/SyncTimelines';
-import useExportToFlamegraphDotCom from '@phlare/components/exportToFlamegraphDotCom.hook';
-import { LoadingOverlay } from '@phlare/ui/LoadingOverlay';
-import ExportData from '@phlare/components/ExportData';
-import ChartTitle from '@phlare/components/ChartTitle';
-import { isExportToFlamegraphDotComEnabled } from '@phlare/util/features';
-import PageTitle from '@phlare/components/PageTitle';
+} from '@pyroscope/hooks/timeline.hook';
+import useTimeZone from '@pyroscope/hooks/timeZone.hook';
+import useColorMode from '@pyroscope/hooks/colorMode.hook';
+import useTags from '@pyroscope/hooks/tags.hook';
+import Toolbar from '@pyroscope/components/Toolbar';
+import TagsBar from '@pyroscope/components/TagsBar';
+import TimelineChartWrapper from '@pyroscope/components/TimelineChart/TimelineChartWrapper';
+import SyncTimelines from '@pyroscope/components/TimelineChart/SyncTimelines';
+import useExportToFlamegraphDotCom from '@pyroscope/components/exportToFlamegraphDotCom.hook';
+import { LoadingOverlay } from '@pyroscope/ui/LoadingOverlay';
+import ExportData from '@pyroscope/components/ExportData';
+import ChartTitle from '@pyroscope/components/ChartTitle';
+import { isExportToFlamegraphDotComEnabled } from '@pyroscope/util/features';
+import PageTitle from '@pyroscope/components/PageTitle';
 import { formatTitle } from './formatTitle';
 import { isLoadingOrReloading } from './loading';
 

@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useState } from 'react';
-import ModalWithToggle from '@phlare/ui/Modals/ModalWithToggle';
-// import Button from '@phlare/ui/Button';
+import ModalWithToggle from '@pyroscope/ui/Modals/ModalWithToggle';
+// import Button from '@pyroscope/ui/Button';
 import { ComponentMeta } from '@storybook/react';
 import '../sass/profile.scss';
 

@@ -1,11 +1,11 @@
 /* eslint-disable import/prefer-default-export */
-import { Result } from '@phlare/util/fp';
+import { Result } from '@pyroscope/util/fp';
 import type { ZodError } from 'zod';
-import { Profile } from '@pyroscope/models/src';
+import { Profile } from '@pyroscope/legacy/models';
 import {
   FlamegraphDotComResponse,
   flamegraphDotComResponseScheme,
-} from '@phlare/models/flamegraphDotComResponse';
+} from '@pyroscope/models/flamegraphDotComResponse';
 import type { RequestError } from './base';
 import { request, parseResponse } from './base';
 

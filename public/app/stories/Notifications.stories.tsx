@@ -1,6 +1,6 @@
 import React from 'react';
-import Notifications, { store } from '@phlare/ui/Notifications';
-import Button from '@phlare/ui/Button';
+import Notifications, { store } from '@pyroscope/ui/Notifications';
+import Button from '@pyroscope/ui/Button';
 import '../sass/profile.scss';
 
 export default {

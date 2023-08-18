@@ -1,4 +1,4 @@
-import type { StoreType } from '@phlare/redux/store';
+import type { StoreType } from '@pyroscope/redux/store';
 
 let _store: StoreType | null = null;
 

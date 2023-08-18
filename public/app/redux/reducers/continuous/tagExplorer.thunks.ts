@@ -3,9 +3,9 @@ import {
   renderSingle,
   RenderOutput,
   renderExplore,
-} from '@phlare/services/render';
-import { RequestAbortedError } from '@phlare/services/base';
-import { appendLabelToQuery } from '@phlare/util/query';
+} from '@pyroscope/services/render';
+import { RequestAbortedError } from '@pyroscope/services/base';
+import { appendLabelToQuery } from '@pyroscope/util/query';
 import { addNotification } from '../notifications';
 import { createAsyncThunk } from '../../async-thunk';
 import { ContinuousState } from './state';

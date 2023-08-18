@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/streaming"
-	"github.com/grafana/pyroscope/pkg/og/stackbuilder"
 	"io"
 	"mime/multipart"
 	"sync"
+
+	"github.com/grafana/pyroscope/pkg/og/convert/pprof/streaming"
+	"github.com/grafana/pyroscope/pkg/og/stackbuilder"
 
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage"

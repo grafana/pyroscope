@@ -14,8 +14,10 @@ import (
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
 
 type headOnDiskQuerier struct {
@@ -105,31 +107,26 @@ func (q *headOnDiskQuerier) Bounds() (model.Time, model.Time) {
 	return q.head.Bounds()
 }
 
-func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - HeadOnDisk")
+func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces")
 	defer sp.Finish()
-
-	stacktraceSamples := stacktracesByMapping{}
-
-	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, stacktraceSamples); err != nil {
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
+	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, r); err != nil {
 		return nil, err
 	}
-
-	// TODO: Truncate insignificant stacks.
-	return q.head.resolveStacktraces(ctx, stacktraceSamples), nil
+	return r.Tree()
 }
 
 func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByPprof - HeadOnDisk")
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergePprof")
 	defer sp.Finish()
-
-	stacktraceSamples := profileSampleByMapping{}
-
-	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, stacktraceSamples); err != nil {
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
+	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, r); err != nil {
 		return nil, err
 	}
-
-	return q.head.resolvePprof(ctx, stacktraceSamples), nil
+	return r.Profile()
 }
 
 func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
@@ -214,56 +211,40 @@ func (q *headInMemoryQuerier) Bounds() (model.Time, model.Time) {
 	return q.head.Bounds()
 }
 
-func (q *headInMemoryQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*ingestv1.MergeProfilesStacktracesResult, error) {
+func (q *headInMemoryQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - HeadInMemory")
 	defer sp.Finish()
-
-	stacktraceSamples := stacktracesByMapping{}
-
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
 	for rows.Next() {
 		p, ok := rows.At().(ProfileWithLabels)
 		if !ok {
 			return nil, errors.New("expected ProfileWithLabels")
 		}
-		samples := p.Samples()
-		for i := range samples.StacktraceIDs {
-			value, stacktraceID := samples.Values[i], samples.StacktraceIDs[i]
-			if value == 0 {
-				continue
-			}
-			stacktraceSamples.add(p.StacktracePartition(), stacktraceID, int64(value))
-		}
+		r.AddSamples(p.StacktracePartition(), p.Samples())
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-
-	// TODO: Truncate insignificant stacks.
-	return q.head.resolveStacktraces(ctx, stacktraceSamples), nil
+	return r.Tree()
 }
 
 func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergePprof - HeadInMemory")
 	defer sp.Finish()
-
-	stacktraceSamples := profileSampleByMapping{}
-
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
 	for rows.Next() {
 		p, ok := rows.At().(ProfileWithLabels)
 		if !ok {
 			return nil, errors.New("expected ProfileWithLabels")
 		}
-		samples := p.Samples()
-		for i := range samples.StacktraceIDs {
-			value, stacktraceID := samples.Values[i], samples.StacktraceIDs[i]
-			if value == 0 {
-				continue
-			}
-			stacktraceSamples.add(p.StacktracePartition(), stacktraceID, int64(value))
-		}
+		r.AddSamples(p.StacktracePartition(), p.Samples())
 	}
-
-	return q.head.resolvePprof(ctx, stacktraceSamples), nil
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return r.Profile()
 }
 
 func (q *headInMemoryQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {

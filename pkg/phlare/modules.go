@@ -98,7 +98,7 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 		return nil, err
 	}
 
-	f.API.RegisterPyroscopeHandlers(querier.NewGRPCRoundTripper(frontendSvc))
+	f.API.RegisterPyroscopeHandlers(frontendSvc)
 	f.API.RegisterQueryFrontend(frontendSvc)
 	f.API.RegisterQuerier(frontendSvc)
 

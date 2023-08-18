@@ -11,7 +11,7 @@ import {
   MenuItemProps,
   SubMenuProps,
 } from 'react-pro-sidebar';
-import { IconProps } from '@phlare/ui/Icon';
+import { IconProps } from '@pyroscope/ui/Icon';
 import './Sidebar.scss';
 
 export interface SidebarProps {

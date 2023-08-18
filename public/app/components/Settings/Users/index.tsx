@@ -3,20 +3,20 @@ import { useHistory } from 'react-router-dom';
 import cl from 'classnames';
 import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
 
-import Button from '@phlare/ui/Button';
-import TableUI from '@phlare/ui/Table';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
+import Button from '@pyroscope/ui/Button';
+import TableUI from '@pyroscope/ui/Table';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   reloadUsers,
   selectUsers,
   enableUser,
   disableUser,
   deleteUser,
-} from '@phlare/redux/reducers/settings';
-import { selectCurrentUser } from '@phlare/redux/reducers/user';
-import { addNotification } from '@phlare/redux/reducers/notifications';
-import { type User } from '@phlare/models/users';
-import Input from '@phlare/ui/Input';
+} from '@pyroscope/redux/reducers/settings';
+import { selectCurrentUser } from '@pyroscope/redux/reducers/user';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
+import { type User } from '@pyroscope/models/users';
+import Input from '@pyroscope/ui/Input';
 import { getUserTableRows } from './getUserTableRows';
 
 import userStyles from './Users.module.css';

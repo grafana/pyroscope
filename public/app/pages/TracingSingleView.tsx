@@ -1,15 +1,15 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
 import { format } from 'date-fns';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
-import Box from '@phlare/ui/Box';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src/FlamegraphRenderer';
-import { fetchSingleView } from '@phlare/redux/reducers/tracing';
-import useColorMode from '@phlare/hooks/colorMode.hook';
-import ExportData from '@phlare/components/ExportData';
-import useExportToFlamegraphDotCom from '@phlare/components/exportToFlamegraphDotCom.hook';
-import PageTitle from '@phlare/components/PageTitle';
-import { isExportToFlamegraphDotComEnabled } from '@phlare/util/features';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import Box from '@pyroscope/ui/Box';
+import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph/FlamegraphRenderer';
+import { fetchSingleView } from '@pyroscope/redux/reducers/tracing';
+import useColorMode from '@pyroscope/hooks/colorMode.hook';
+import ExportData from '@pyroscope/components/ExportData';
+import useExportToFlamegraphDotCom from '@pyroscope/components/exportToFlamegraphDotCom.hook';
+import PageTitle from '@pyroscope/components/PageTitle';
+import { isExportToFlamegraphDotComEnabled } from '@pyroscope/util/features';
 import { formatTitle } from './formatTitle';
 
 import styles from './TracingSingleView.module.scss';

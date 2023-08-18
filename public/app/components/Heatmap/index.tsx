@@ -4,8 +4,8 @@ import Color from 'color';
 import cl from 'classnames';
 import { interpolateViridis } from 'd3-scale-chromatic';
 
-import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
-import type { Heatmap as HeatmapType } from '@phlare/services/render';
+import { getFormatter } from '@pyroscope/legacy/flamegraph/format/format';
+import type { Heatmap as HeatmapType } from '@pyroscope/services/render';
 import {
   SelectedAreaCoordsType,
   useHeatmapSelection,

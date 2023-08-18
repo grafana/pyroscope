@@ -1,15 +1,15 @@
-import { Profile } from '@pyroscope/models/src';
+import { Profile } from '@pyroscope/legacy/models';
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import {
   upload,
   retrieve,
   retrieveAll,
   retrieveDiff,
-} from '@phlare/services/adhoc';
-import type { RootState } from '@phlare/redux/store';
-import { Maybe } from '@phlare/util/fp';
-import { AllProfiles } from '@phlare/models/adhoc';
-import { addNotification } from '@phlare/redux/reducers/notifications';
+} from '@pyroscope/services/adhoc';
+import type { RootState } from '@pyroscope/redux/store';
+import { Maybe } from '@pyroscope/util/fp';
+import { AllProfiles } from '@pyroscope/models/adhoc';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
 
 type uploadState =
   | { type: 'pristine' }

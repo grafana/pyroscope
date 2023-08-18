@@ -14,7 +14,7 @@ module.exports = {
       ...config.resolve.alias,
       // Only allow importing ui elements, since at some point we want to move
       // ui to its own package
-      '@phlare/ui': path.resolve(__dirname, '../ui'),
+      '@pyroscope/ui': path.resolve(__dirname, '../ui'),
       '@ui': path.resolve(__dirname, '..//ui'),
 
       '@utils': path.resolve(__dirname, '../util'),

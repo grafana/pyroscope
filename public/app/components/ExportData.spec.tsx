@@ -1,13 +1,13 @@
 import React from 'react';
 // import { SimpleSingle as TestData } from '@utils/testData';
 import { render as testRender, screen } from '@testing-library/react';
-import { Profile } from '@pyroscope/models/src';
+import { Profile } from '@pyroscope/legacy/models';
 import 'web-streams-polyfill';
 import ExportData, { getFilename } from './ExportData';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { setStore } from '@phlare/services/storage';
+import { setStore } from '@pyroscope/services/storage';
 import { continuousReducer } from '../redux/reducers/continuous';
 
 function createStore(preloadedState: any) {

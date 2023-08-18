@@ -1,4 +1,4 @@
-import { Result } from '@phlare/util/fp';
+import { Result } from '@pyroscope/util/fp';
 import { ZodError } from 'zod';
 import { shareWithFlamegraphDotcom } from './share';
 import { setupServer, rest } from './testUtils';

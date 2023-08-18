@@ -542,17 +542,17 @@ store_gateway:
 # The memberlist block configures the Gossip memberlist.
 [memberlist: <memberlist>]
 
-phlaredb:
+pyroscopedb:
   # Directory used for local storage.
-  # CLI flag: -phlaredb.data-path
+  # CLI flag: -pyroscopedb.data-path
   [data_path: <string> | default = "./data"]
 
   # Upper limit to the duration of a Phlare block.
-  # CLI flag: -phlaredb.max-block-duration
+  # CLI flag: -pyroscopedb.max-block-duration
   [max_block_duration: <duration> | default = 3h]
 
   # How big should a single row group be uncompressed
-  # CLI flag: -phlaredb.row-group-target-size
+  # CLI flag: -pyroscopedb.row-group-target-size
   [row_group_target_size: <int> | default = 1342177280]
 
 tracing:

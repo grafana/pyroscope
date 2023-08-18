@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   fetchTags,
   selectRanges,
   selectQueries,
   selectAppTags,
-} from '@phlare/redux/reducers/continuous';
+} from '@pyroscope/redux/reducers/continuous';
 
 // useTags handle loading tags when any of the following changes
 // query, from, until

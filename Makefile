@@ -172,7 +172,7 @@ define deploy
 		--set pyroscope.podAnnotations."profiles\.grafana\.com\/cpu\.port_name"=http-metrics \
 		--set pyroscope.podAnnotations."profiles\.grafana\.com\/goroutine\.port_name"=http-metrics \
 		--set pyroscope.extraEnvVars.JAEGER_AGENT_HOST=jaeger.monitoring.svc.cluster.local. \
-		--set pyroscope.extraArgs."phlaredb\.max-block-duration"=5m
+		--set pyroscope.extraArgs."pyroscopedb\.max-block-duration"=5m
   endef
 
 .PHONY: docker-image/pyroscope/build-debug

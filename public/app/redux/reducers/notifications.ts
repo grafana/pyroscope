@@ -1,6 +1,6 @@
 /* eslint-disable import/prefer-default-export */
-import { store } from '@phlare/ui/Notifications';
-import type { NotificationOptions } from '@phlare/ui/Notifications';
+import { store } from '@pyroscope/ui/Notifications';
+import type { NotificationOptions } from '@pyroscope/ui/Notifications';
 import { createAsyncThunk } from '../async-thunk';
 
 export const addNotification = createAsyncThunk(

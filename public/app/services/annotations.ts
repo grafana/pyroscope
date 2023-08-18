@@ -1,6 +1,6 @@
-import { Result } from '@phlare/util/fp';
+import { Result } from '@pyroscope/util/fp';
 import type { ZodError } from 'zod';
-import { Annotation, AnnotationSchema } from '@phlare/models/annotation';
+import { Annotation, AnnotationSchema } from '@pyroscope/models/annotation';
 import { request, parseResponse } from './base';
 import type { RequestError } from './base';
 

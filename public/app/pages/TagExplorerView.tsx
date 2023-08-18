@@ -1,25 +1,25 @@
 import React, { useEffect, useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { Maybe } from 'true-myth';
-import type { ClickEvent } from '@phlare/ui/Menu';
+import type { ClickEvent } from '@pyroscope/ui/Menu';
 import Color from 'color';
-import TotalSamplesChart from '@phlare/pages/tagExplorer/components/TotalSamplesChart';
-import type { Profile } from '@pyroscope/models/src';
-import Box, { CollapseBox } from '@phlare/ui/Box';
-import Toolbar from '@phlare/components/Toolbar';
-import ExportData from '@phlare/components/ExportData';
+import TotalSamplesChart from '@pyroscope/pages/tagExplorer/components/TotalSamplesChart';
+import type { Profile } from '@pyroscope/legacy/models';
+import Box, { CollapseBox } from '@pyroscope/ui/Box';
+import Toolbar from '@pyroscope/components/Toolbar';
+import ExportData from '@pyroscope/components/ExportData';
 import TimelineChartWrapper, {
   TimelineGroupData,
-} from '@phlare/components/TimelineChart/TimelineChartWrapper';
-import { FlamegraphRenderer } from '@pyroscope/flamegraph/src';
-import Dropdown, { MenuItem } from '@phlare/ui/Dropdown';
-import TagsSelector from '@phlare/pages/tagExplorer/components/TagsSelector';
-import TableUI, { useTableSort, BodyRow } from '@phlare/ui/Table';
-import useColorMode from '@phlare/hooks/colorMode.hook';
-import useTimeZone from '@phlare/hooks/timeZone.hook';
-import { appendLabelToQuery } from '@phlare/util/query';
-import { useAppDispatch, useAppSelector } from '@phlare/redux/hooks';
-import useExportToFlamegraphDotCom from '@phlare/components/exportToFlamegraphDotCom.hook';
+} from '@pyroscope/components/TimelineChart/TimelineChartWrapper';
+import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph';
+import Dropdown, { MenuItem } from '@pyroscope/ui/Dropdown';
+import TagsSelector from '@pyroscope/pages/tagExplorer/components/TagsSelector';
+import TableUI, { useTableSort, BodyRow } from '@pyroscope/ui/Table';
+import useColorMode from '@pyroscope/hooks/colorMode.hook';
+import useTimeZone from '@pyroscope/hooks/timeZone.hook';
+import { appendLabelToQuery } from '@pyroscope/util/query';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import useExportToFlamegraphDotCom from '@pyroscope/components/exportToFlamegraphDotCom.hook';
 import {
   actions,
   setDateRange,
@@ -33,12 +33,12 @@ import {
   ALL_TAGS,
   setQuery,
   selectAnnotationsOrDefault,
-} from '@phlare/redux/reducers/continuous';
-import { queryToAppName } from '@phlare/models/query';
-import PageTitle from '@phlare/components/PageTitle';
-import ExploreTooltip from '@phlare/components/TimelineChart/ExploreTooltip';
-import { getFormatter } from '@pyroscope/flamegraph/src/format/format';
-import { LoadingOverlay } from '@phlare/ui/LoadingOverlay';
+} from '@pyroscope/redux/reducers/continuous';
+import { queryToAppName } from '@pyroscope/models/query';
+import PageTitle from '@pyroscope/components/PageTitle';
+import ExploreTooltip from '@pyroscope/components/TimelineChart/ExploreTooltip';
+import { getFormatter } from '@pyroscope/legacy/flamegraph/format/format';
+import { LoadingOverlay } from '@pyroscope/ui/LoadingOverlay';
 import { calculateMean, calculateStdDeviation, calculateTotal } from './math';
 import { PAGES } from './constants';
 import {

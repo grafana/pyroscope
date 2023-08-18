@@ -14,22 +14,22 @@ import SidebarUI, {
   SidebarFooter,
   SidebarContent,
   Menu,
-} from '@phlare/ui/Sidebar';
-import { useAppSelector, useAppDispatch } from '@phlare/redux/hooks';
+} from '@pyroscope/ui/Sidebar';
+import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
 import {
   selectSidebarCollapsed,
   collapseSidebar,
   uncollapseSidebar,
   recalculateSidebar,
-} from '@phlare/redux/reducers/ui';
+} from '@pyroscope/redux/reducers/ui';
 import { useLocation, NavLink } from 'react-router-dom';
-import Icon from '@phlare/ui/Icon';
+import Icon from '@pyroscope/ui/Icon';
 import clsx from 'clsx';
 import { useWindowWidth } from '@react-hook/window-size';
-import { isRouteActive, ROUTES } from '@phlare/pages/routes';
-import Logo from '@phlare/static/logo.svg';
+import { isRouteActive, ROUTES } from '@pyroscope/pages/routes';
+import Logo from '@pyroscope/static/logo.svg';
 import styles from './Sidebar.module.css';
-import { SidebarTenant } from '@phlare/components/SidebarTenant';
+import { SidebarTenant } from '@pyroscope/components/SidebarTenant';
 
 export function Sidebar() {
   const collapsed = useAppSelector(selectSidebarCollapsed);

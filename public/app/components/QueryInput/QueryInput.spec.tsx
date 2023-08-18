@@ -1,5 +1,5 @@
 import React from 'react';
-import { brandQuery } from '@phlare/models/query';
+import { brandQuery } from '@pyroscope/models/query';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 import QueryInput from './QueryInput';

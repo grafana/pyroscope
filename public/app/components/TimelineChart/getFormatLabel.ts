@@ -1,4 +1,4 @@
-import { getUTCdate, getTimelineFormatDate } from '@phlare/util/formatDate';
+import { getUTCdate, getTimelineFormatDate } from '@pyroscope/util/formatDate';
 
 function getFormatLabel({
   date,
