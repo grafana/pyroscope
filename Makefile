@@ -30,7 +30,8 @@ EMBEDASSETS ?= embedassets
 # Build flags
 VPREFIX := github.com/grafana/pyroscope/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
-GO_GCFLAGS ?= -gcflags="-m=2 -pgoprofile=ingester-3.pb.gz -d=pgodebug=3 -d=pgoinline=3"
+GO_GCFLAGS ?=
+GO_EXTRA_FLAGS ?=
 
 .PHONY: help
 help: ## Describe useful make targets
@@ -107,7 +108,7 @@ go/deps:
 	$(GO) mod tidy
 
 define go_build
-	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" "$(GO_GCFLAGS)" ./cmd/pyroscope
+	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -tags "netgo $(EMBEDASSETS)" -ldflags "-extldflags \"-static\" $(1)" $(GO_EXTRA_FLAGS) "$(GO_GCFLAGS)" ./cmd/pyroscope
 	GOOS=$(GOOS) GOARCH=$(GOARCH) CGO_ENABLED=0 $(GO) build -ldflags "-extldflags \"-static\" $(1)" ./cmd/profilecli
 endef
 
