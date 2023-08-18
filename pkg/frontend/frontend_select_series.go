@@ -11,6 +11,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	validationutil "github.com/grafana/pyroscope/pkg/util/validation"
@@ -21,6 +22,7 @@ func (f *Frontend) SelectSeries(ctx context.Context,
 	c *connect.Request[querierv1.SelectSeriesRequest]) (
 	*connect.Response[querierv1.SelectSeriesResponse], error,
 ) {
+	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectSeriesProcedure)
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(http.StatusBadRequest, err)
