@@ -325,4 +325,43 @@ func Test_Timeline_Bounds(t *testing.T) {
 			0, // 19000 ms
 		}, tl.Samples)
 	})
+
+	t.Run("start is halfway through a bucket window", func(t *testing.T) {
+		startMs := int64(500)
+		endMs := int64(9000)
+
+		tl := timeline.New(series, startMs, endMs, step)
+		assert.Equal(t, startMs/1000, tl.StartTime)
+
+		assert.Equal(t, []uint64{
+			0,  //    0 ms
+			0,  // 1000 ms
+			69, // 2000 ms
+			83, // 3000 ms
+			0,  // 4000 ms
+			0,  // 5000 ms
+			85, // 6000 ms
+			0,  // 7000 ms
+			91, // 8000 ms
+		}, tl.Samples)
+	})
+
+	t.Run("end is halfway through a bucket window", func(t *testing.T) {
+		startMs := int64(0)
+		endMs := int64(8500)
+
+		tl := timeline.New(series, startMs, endMs, step)
+		assert.Equal(t, startMs/1000, tl.StartTime)
+
+		assert.Equal(t, []uint64{
+			0,  //    0 ms
+			0,  // 1000 ms
+			69, // 2000 ms
+			83, // 3000 ms
+			0,  // 4000 ms
+			0,  // 5000 ms
+			85, // 6000 ms
+			0,  // 7000 ms
+		}, tl.Samples)
+	})
 }
