@@ -160,13 +160,16 @@ func (t *Tree) minValue(maxNodes int64) int64 {
 	if maxNodes < 1 {
 		return 0
 	}
+	nodes := make([]*node, 0, max(int64(len(t.root)), defaultDFSSize))
+	treeSize := t.size(nodes)
+	if treeSize <= maxNodes {
+		return 0
+	}
 
-	// We should not re-use t.root capacity for nodes.
-	nodes := make([]*node, len(t.root), max(int64(len(t.root)), defaultDFSSize))
-	copy(nodes, t.root)
 	s := make(minHeap, 0, maxNodes)
 	h := &s
 
+	nodes = append(nodes[:0], t.root...)
 	var n *node
 	for len(nodes) > 0 {
 		last := len(nodes) - 1
@@ -187,6 +190,21 @@ func (t *Tree) minValue(maxNodes int64) int64 {
 	}
 
 	return (*h)[0]
+}
+
+// size reports number of nodes the tree consists of.
+// Provided buffer used for DFS traversal.
+func (t *Tree) size(buf []*node) int64 {
+	nodes := append(buf, t.root...)
+	var s int64
+	var n *node
+	for len(nodes) > 0 {
+		last := len(nodes) - 1
+		n, nodes = nodes[last], nodes[:last]
+		nodes = append(nodes, n.children...)
+		s++
+	}
+	return s
 }
 
 // minHeap is a custom min-heap data structure that stores integers.
