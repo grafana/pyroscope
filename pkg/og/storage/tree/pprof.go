@@ -20,19 +20,19 @@ type SampleTypeConfig struct {
 //
 // TODO(kolesnikovae): We should find a way to eliminate collisions.
 //
-//  For example, both Go 'block' and 'mutex' profiles have
-//  'contentions' and 'delay' sample types - this means we can't
-//  override display name of the profile types and they would
-//  be indistinguishable for the server.
+//	For example, both Go 'block' and 'mutex' profiles have
+//	'contentions' and 'delay' sample types - this means we can't
+//	override display name of the profile types and they would
+//	be indistinguishable for the server.
 //
-//  The keys should have the following structure:
-//  	{origin}.{profile_type}.{sample_type}
+//	The keys should have the following structure:
+//		{origin}.{profile_type}.{sample_type}
 //
-//  Example names (can be a reserved label, e.g __type__):
-//    * go.cpu.samples
-//    * go.block.delay
-//    * go.mutex.delay
-//    * nodejs.heap.objects
+//	Example names (can be a reserved label, e.g __type__):
+//	  * go.cpu.samples
+//	  * go.block.delay
+//	  * go.mutex.delay
+//	  * nodejs.heap.objects
 //
 // Another problem is that in pull mode we don't have spy-name,
 // therefore we should solve this problem first.
@@ -120,9 +120,10 @@ func (t *Tree) Pprof(mdata *PprofMetadata) *Profile {
 			Unit: p.newString(mdata.PeriodUnit),
 		}
 	}
+
 	t.IterateStacks(func(name string, self uint64, stack []string) {
 		value := []int64{int64(self)}
-		loc := []uint64{}
+		loc := make([]uint64, 0, len(stack))
 		for _, l := range stack {
 			loc = append(loc, p.newLocation(l))
 		}
