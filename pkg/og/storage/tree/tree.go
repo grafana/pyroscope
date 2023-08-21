@@ -330,16 +330,18 @@ func (t *Tree) IterateWithStackBuilder(sb StackBuilder, cb func(stackID uint64, 
 }
 
 func (t *Tree) IterateStacks(cb func(name string, self uint64, stack []string)) {
-	nodes := make([]*treeNode, 0, 64)
+	nodes := make([]*treeNode, 0, 1024)
 	nodes = append(nodes, t.root)
 	parents := make(map[*treeNode]*treeNode)
+	stack := make([]string, 0, 64)
+
 	for len(nodes) > 0 {
 		node := nodes[0] // todo we need to chop off the last element, to avoid allocations
 		self := node.Self
 		label := node.nameAsStringUnsafe()
 		if self > 0 {
 			current := node
-			stack := []string{}
+			stack = stack[:0]
 			for current != nil && current != t.root {
 				stack = append(stack, current.nameAsStringUnsafe())
 				current = parents[current]
@@ -377,7 +379,7 @@ func (t *Tree) iterateWithTotal(cb func(total uint64) bool) {
 }
 
 func (t *Tree) Scale(s uint64) {
-	nodes := make([]*treeNode, 0, 64)
+	nodes := make([]*treeNode, 0, 1024)
 	nodes = append(nodes, t.root)
 
 	for len(nodes) > 0 {
