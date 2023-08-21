@@ -267,6 +267,16 @@ func nextPow2(a int) int {
 }
 
 func combineMinValues(leftTree, rightTree *Tree, maxNodes int) uint64 {
+	if maxNodes < 1 {
+		return 0
+	}
+	// Trees are combined, meaning that their structures are
+	// identical, therefore the resulting tree can not have
+	// more nodes than any of them.
+	treeSize := leftTree.size(make([]*node, 0, defaultDFSSize))
+	if treeSize <= int64(maxNodes) {
+		return 0
+	}
 	c := cappedarr.New(maxNodes)
 	combineIterateWithTotal(leftTree, rightTree, func(left uint64, right uint64) bool {
 		return c.Push(maxUint64(left, right))
