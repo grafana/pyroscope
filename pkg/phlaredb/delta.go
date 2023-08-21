@@ -42,7 +42,8 @@ func newSampleDict(samples schemav1.Samples) map[uint32]uint64 {
 func (d *deltaProfiles) computeDelta(ps schemav1.InMemoryProfile, lbs phlaremodel.Labels) schemav1.Samples {
 	// there's no delta to compute for those profile.
 	if !isDelta(lbs) {
-		return ps.Samples
+		// Trim zero and negative values.
+		return ps.Samples.Compact(false)
 	}
 
 	d.mtx.Lock()
@@ -62,7 +63,7 @@ func (d *deltaProfiles) computeDelta(ps schemav1.InMemoryProfile, lbs phlaremode
 	// samples are sorted by stacktrace id.
 	// we need to compute the delta for each stacktrace.
 	if len(lastSamples) == 0 {
-		return ps.Samples
+		return ps.Samples.Compact(false)
 	}
 
 	reset := deltaSamples(lastSamples, ps.Samples)

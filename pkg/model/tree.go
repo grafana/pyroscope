@@ -58,6 +58,9 @@ func (t *Tree) Total() (v int64) {
 }
 
 func (t *Tree) InsertStack(v int64, stack ...string) {
+	if v <= 0 {
+		return
+	}
 	r := &node{children: t.root}
 	n := r
 	for j := range stack {
