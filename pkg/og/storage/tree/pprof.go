@@ -97,6 +97,8 @@ type PprofMetadata struct {
 	Duration   time.Duration
 }
 
+const fakeMappingID = 1
+
 func (t *Tree) Pprof(mdata *PprofMetadata) *Profile {
 	t.RLock()
 	defer t.RUnlock()
@@ -109,7 +111,8 @@ func (t *Tree) Pprof(mdata *PprofMetadata) *Profile {
 			StringTable: []string{""},
 		},
 	}
-	p.profile.Mapping = []*Mapping{{Id: 0}} // a fake mapping
+
+	p.profile.Mapping = []*Mapping{{Id: fakeMappingID}} // a fake mapping
 	p.profile.SampleType = []*ValueType{{Type: p.newString(mdata.Type), Unit: p.newString(mdata.Unit)}}
 	p.profile.TimeNanos = mdata.StartTime.UnixNano()
 	p.profile.DurationNanos = mdata.Duration.Nanoseconds()
@@ -149,8 +152,9 @@ func (p *pprof) newLocation(location string) uint64 {
 	if !ok {
 		id = uint64(len(p.profile.Location) + 1)
 		newLoc := &Location{
-			Id:   id,
-			Line: []*Line{{FunctionId: p.newFunction(location)}},
+			Id:        id,
+			Line:      []*Line{{FunctionId: p.newFunction(location)}},
+			MappingId: fakeMappingID,
 		}
 		p.profile.Location = append(p.profile.Location, newLoc)
 		p.locations[location] = newLoc.Id
