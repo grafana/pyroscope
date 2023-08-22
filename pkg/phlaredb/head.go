@@ -563,13 +563,13 @@ func (h *Head) flush(ctx context.Context) error {
 	}
 
 	// tsdb
+	h.meta.Stats.NumSeries = uint64(h.profiles.index.totalSeries.Load())
 	f := block.File{
 		RelPath: block.IndexFilename,
 		TSDB: &block.TSDBFile{
 			NumSeries: h.meta.Stats.NumSeries,
 		},
 	}
-	h.meta.Stats.NumSeries = uint64(h.profiles.index.totalSeries.Load())
 	h.metrics.flushedBlockSeries.Observe(float64(h.meta.Stats.NumSeries))
 	if stat, err := os.Stat(filepath.Join(h.headPath, block.IndexFilename)); err == nil {
 		f.SizeBytes = uint64(stat.Size())
