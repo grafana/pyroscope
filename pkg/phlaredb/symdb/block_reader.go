@@ -403,7 +403,7 @@ type parquetFile struct {
 	size   int64
 }
 
-const parquetReadBufferSize = 2 << 20 // 2MB
+const parquetReadBufferSize = 256 << 10 // 256KB
 
 func (f *parquetFile) open(ctx context.Context, b objstore.BucketReader, meta block.File) error {
 	f.path = meta.RelPath
