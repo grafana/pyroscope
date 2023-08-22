@@ -29,7 +29,8 @@ const (
 
 func ParseJFR(ctx context.Context, s storage.Putter, body io.Reader, pi *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
 	chunks, err := parser.ParseWithOptions(body, &parser.ChunkParseOptions{
-		CPoolProcessor: processSymbols,
+		CPoolProcessor:     processSymbols,
+		UnsafeByteToString: true,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to parse JFR format: %w", err)
@@ -74,44 +75,44 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *st
 			if fs := frames(es.StackTrace); fs != nil {
 				lwh := getLabels(es.ContextId)
 				if es.State.Name == "STATE_RUNNABLE" {
-					cache.GetOrCreateTreeByHash(sampleTypeCPU, lwh.Labels, lwh.Hash).InsertStackString(fs, 1)
+					cache.GetOrCreateTreeByHash(sampleTypeCPU, lwh.Labels, lwh.Hash).InsertStack(fs, 1)
 				}
-				cache.GetOrCreateTreeByHash(sampleTypeWall, lwh.Labels, lwh.Hash).InsertStackString(fs, 1)
+				cache.GetOrCreateTreeByHash(sampleTypeWall, lwh.Labels, lwh.Hash).InsertStack(fs, 1)
 			}
 		case *parser.ObjectAllocationInNewTLAB:
 			oa := e.(*parser.ObjectAllocationInNewTLAB)
 			if fs := frames(oa.StackTrace); fs != nil {
 				lwh := getLabels(oa.ContextId)
-				cache.GetOrCreateTreeByHash(sampleTypeInTLABObjects, lwh.Labels, lwh.Hash).InsertStackString(fs, 1)
-				cache.GetOrCreateTreeByHash(sampleTypeInTLABBytes, lwh.Labels, lwh.Hash).InsertStackString(fs, uint64(oa.TLABSize))
+				cache.GetOrCreateTreeByHash(sampleTypeInTLABObjects, lwh.Labels, lwh.Hash).InsertStack(fs, 1)
+				cache.GetOrCreateTreeByHash(sampleTypeInTLABBytes, lwh.Labels, lwh.Hash).InsertStack(fs, uint64(oa.TLABSize))
 			}
 		case *parser.ObjectAllocationOutsideTLAB:
 			oa := e.(*parser.ObjectAllocationOutsideTLAB)
 			if fs := frames(oa.StackTrace); fs != nil {
 				lwh := getLabels(oa.ContextId)
-				cache.GetOrCreateTreeByHash(sampleTypeOutTLABObjects, lwh.Labels, lwh.Hash).InsertStackString(fs, 1)
-				cache.GetOrCreateTreeByHash(sampleTypeOutTLABBytes, lwh.Labels, lwh.Hash).InsertStackString(fs, uint64(oa.AllocationSize))
+				cache.GetOrCreateTreeByHash(sampleTypeOutTLABObjects, lwh.Labels, lwh.Hash).InsertStack(fs, 1)
+				cache.GetOrCreateTreeByHash(sampleTypeOutTLABBytes, lwh.Labels, lwh.Hash).InsertStack(fs, uint64(oa.AllocationSize))
 			}
 		case *parser.JavaMonitorEnter:
 			jme := e.(*parser.JavaMonitorEnter)
 			if fs := frames(jme.StackTrace); fs != nil {
 				lwh := getLabels(jme.ContextId)
-				cache.GetOrCreateTreeByHash(sampleTypeLockSamples, lwh.Labels, lwh.Hash).InsertStackString(fs, 1)
-				cache.GetOrCreateTreeByHash(sampleTypeLockDuration, lwh.Labels, lwh.Hash).InsertStackString(fs, uint64(jme.Duration))
+				cache.GetOrCreateTreeByHash(sampleTypeLockSamples, lwh.Labels, lwh.Hash).InsertStack(fs, 1)
+				cache.GetOrCreateTreeByHash(sampleTypeLockDuration, lwh.Labels, lwh.Hash).InsertStack(fs, uint64(jme.Duration))
 			}
 		case *parser.ThreadPark:
 			tp := e.(*parser.ThreadPark)
 			if fs := frames(tp.StackTrace); fs != nil {
 				lwh := getLabels(tp.ContextId)
 
-				cache.GetOrCreateTreeByHash(sampleTypeLockSamples, lwh.Labels, lwh.Hash).InsertStackString(fs, 1)
-				cache.GetOrCreateTreeByHash(sampleTypeLockDuration, lwh.Labels, lwh.Hash).InsertStackString(fs, uint64(tp.Duration))
+				cache.GetOrCreateTreeByHash(sampleTypeLockSamples, lwh.Labels, lwh.Hash).InsertStack(fs, 1)
+				cache.GetOrCreateTreeByHash(sampleTypeLockDuration, lwh.Labels, lwh.Hash).InsertStack(fs, uint64(tp.Duration))
 			}
 		case *parser.LiveObject:
 			lo := e.(*parser.LiveObject)
 			if fs := frames(lo.StackTrace); fs != nil {
 				lwh := getLabels(0)
-				cache.GetOrCreateTreeByHash(sampleTypeLiveObject, lwh.Labels, lwh.Hash).InsertStackString(fs, 1)
+				cache.GetOrCreateTreeByHash(sampleTypeLiveObject, lwh.Labels, lwh.Hash).InsertStack(fs, 1)
 			}
 		case *parser.ActiveSetting:
 			if as, ok := e.(*parser.ActiveSetting); ok {
@@ -270,16 +271,19 @@ func labelIndex(s *LabelsSnapshot, labels tree.Labels, key string) int {
 	return -1
 }
 
-func frames(st *parser.StackTrace) []string {
+func frames(st *parser.StackTrace) [][]byte {
 	if st == nil {
 		return nil
 	}
-	frames := make([]string, 0, len(st.Frames))
+	frames := make([][]byte, 0, len(st.Frames))
 	for i := len(st.Frames) - 1; i >= 0; i-- {
 		f := st.Frames[i]
 		// TODO(abeaumont): Add support for line numbers.
 		if f.Method != nil && f.Method.Type != nil && f.Method.Type.Name != nil && f.Method.Name != nil {
-			frames = append(frames, f.Method.Type.Name.String+"."+f.Method.Name.String)
+			if f.Method.Scratch == nil {
+				f.Method.Scratch = []byte(f.Method.Type.Name.String + "." + f.Method.Name.String)
+			}
+			frames = append(frames, f.Method.Scratch)
 		}
 	}
 	return frames
