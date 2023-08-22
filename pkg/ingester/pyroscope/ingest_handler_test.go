@@ -7,16 +7,16 @@ import (
 	"fmt"
 	"net/http/httptest"
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
+
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
@@ -59,10 +59,10 @@ func (m *MockPushService) CompareDump(file string) {
 	require.Equal(m.T, len(expected.Profiles), len(actual.Profiles))
 	for i := range expected.Profiles {
 		require.Equal(m.T, expected.Profiles[i].Labels, actual.Profiles[i].Labels)
-		if !reflect.DeepEqual(expected.Profiles[i].Collapsed, actual.Profiles[i].Collapsed) {
-			os.WriteFile(file+"_expected.txt", []byte(strings.Join(expected.Profiles[i].Collapsed, "\n")), 0644)
-			os.WriteFile(file+"_actual.txt", []byte(strings.Join(actual.Profiles[i].Collapsed, "\n")), 0644)
-		}
+		//if !reflect.DeepEqual(expected.Profiles[i].Collapsed, actual.Profiles[i].Collapsed) {
+		//	os.WriteFile(file+"_expected.txt", []byte(strings.Join(expected.Profiles[i].Collapsed, "\n")), 0644)
+		//	os.WriteFile(file+"_actual.txt", []byte(strings.Join(actual.Profiles[i].Collapsed, "\n")), 0644)
+		//}
 		require.Equal(m.T, expected.Profiles[i].Collapsed, actual.Profiles[i].Collapsed)
 	}
 }
@@ -107,8 +107,7 @@ func stackCollapse(p *profile.Profile) []string {
 		for i := range s.Location {
 			loc := s.Location[len(s.Location)-1-i]
 			for _, line := range loc.Line {
-				//funcs = append(funcs, fmt.Sprintf("%s(%s)", line.Function.Name, line.Function.Filename))
-				funcs = append(funcs, fmt.Sprintf("%s", line.Function.Name))
+				funcs = append(funcs, line.Function.Name)
 			}
 		}
 		ret = append(ret, fmt.Sprintf("%s %d", strings.Join(funcs, ";"), s.Value[0]))
