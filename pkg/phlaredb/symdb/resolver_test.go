@@ -81,8 +81,7 @@ func Test_Resolver_Unreleased_Failed_Partition(t *testing.T) {
 	s := newBlockSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	defer s.teardown()
 	ctx, cancel := context.WithCancel(context.Background())
-	// Pass canceled context to make partition
-	// initialization to fail and.
+	// Pass canceled context to make partition initialization to fail.
 	cancel()
 
 	r := NewResolver(ctx, s.reader)
