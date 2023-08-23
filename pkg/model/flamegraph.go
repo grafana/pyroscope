@@ -121,6 +121,9 @@ func NewFlameGraph(t *Tree, maxNodes int64) *querierv1.FlameGraph {
 
 // ExportToFlamebearer exports the flamegraph to a Flamebearer struct.
 func ExportToFlamebearer(fg *querierv1.FlameGraph, profileType *typesv1.ProfileType) *flamebearer.FlamebearerProfile {
+	if fg == nil {
+		fg = &querierv1.FlameGraph{}
+	}
 	unit := metadata.Units(profileType.SampleUnit)
 	sampleRate := uint32(100)
 
