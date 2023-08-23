@@ -343,7 +343,12 @@ func (c *stacktraceChunkReader) fetch(ctx context.Context) (err error) {
 	// it after it is fully loaded. Use of atomics here
 	// for reference counting is not sufficient.
 	c.m.Lock()
-	defer c.m.Unlock()
+	defer func() {
+		if err != nil {
+			c.r--
+		}
+		c.m.Unlock()
+	}()
 	if c.r++; c.r > 1 {
 		return nil
 	}
@@ -460,14 +465,19 @@ type parquetTableRange[M schemav1.Models, P schemav1.Persister[M]] struct {
 // defaultRowBufferSize = 42
 const inMemoryReaderRowsBufSize = 1 << 10
 
-func (t *parquetTableRange[M, P]) fetch(ctx context.Context) error {
+func (t *parquetTableRange[M, P]) fetch(ctx context.Context) (err error) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "parquetTableRange.fetch", opentracing.Tags{
 		"table_name": t.persister.Name(),
 		"row_groups": len(t.headers),
 	})
 	defer span.Finish()
 	t.m.Lock()
-	defer t.m.Unlock()
+	defer func() {
+		if err != nil {
+			t.r--
+		}
+		t.m.Unlock()
+	}()
 	if t.r++; t.r > 1 {
 		return nil
 	}
