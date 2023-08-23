@@ -64,7 +64,7 @@ func (r *Reader) open(ctx context.Context) (err error) {
 		r.files[filepath.Base(f.RelPath)] = f
 	}
 	if err = r.openIndexFile(ctx); err != nil {
-		return fmt.Errorf("openning index file: %w", err)
+		return fmt.Errorf("opening index file: %w", err)
 	}
 	if r.index.Header.Version == FormatV2 {
 		if err = r.openParquetFiles(ctx); err != nil {
@@ -102,16 +102,22 @@ func (r *Reader) openParquetFiles(ctx context.Context) error {
 		new(schemav1.FunctionPersister).Name() + block.ParquetSuffix: &r.functions,
 		new(schemav1.StringPersister).Name() + block.ParquetSuffix:   &r.strings,
 	}
+	g, ctx := errgroup.WithContext(ctx)
 	for n, fp := range m {
-		fm, err := r.file(n)
-		if err != nil {
-			return err
-		}
-		if err = fp.open(ctx, r.bucket, fm); err != nil {
-			return fmt.Errorf("openning file %q: %w", n, err)
-		}
+		n := n
+		fp := fp
+		g.Go(func() error {
+			fm, err := r.file(n)
+			if err != nil {
+				return err
+			}
+			if err = fp.open(ctx, r.bucket, fm); err != nil {
+				return fmt.Errorf("openning file %q: %w", n, err)
+			}
+			return nil
+		})
 	}
-	return nil
+	return g.Wait()
 }
 
 func (r *Reader) file(name string) (block.File, error) {
