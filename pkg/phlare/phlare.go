@@ -122,7 +122,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	// Set the default module list to 'all'
 	c.Target = []string{All}
 	f.StringVar(&c.ConfigFile, "config.file", "", "yaml file to load")
-	f.Var(&c.Target, "target", "Comma-separated list of Phlare modules to load. "+
+	f.Var(&c.Target, "target", "Comma-separated list of Pyroscope modules to load. "+
 		"The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode. ")
 	f.BoolVar(&c.MultitenancyEnabled, "auth.multitenancy-enabled", false, "When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.")
 	f.BoolVar(&c.ConfigExpandEnv, "config.expand-env", false, "Expands ${var} in config according to the values of the environment variables.")
@@ -379,7 +379,7 @@ func (f *Phlare) Run() error {
 
 	RegisterHealthServer(f.Server.HTTP, grpcutil.WithManager(sm))
 	healthy := func() {
-		level.Info(f.logger).Log("msg", "Phlare started", "version", version.Info())
+		level.Info(f.logger).Log("msg", "Pyroscope started", "version", version.Info())
 		if os.Getenv("PYROSCOPE_PRINT_ROUTES") != "" {
 			printRoutes(f.Server.HTTP)
 		}
@@ -473,7 +473,7 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 }
 
 func (f *Phlare) stopped() {
-	level.Info(f.logger).Log("msg", "Phlare stopped")
+	level.Info(f.logger).Log("msg", "Pyroscope stopped")
 	if f.tracer != nil {
 		if err := f.tracer.Close(); err != nil {
 			level.Error(f.logger).Log("msg", "error closing tracing", "err", err)
