@@ -48,7 +48,7 @@ import (
 
 const (
 	defaultBatchSize      = 4096
-	parquetReadBufferSize = 2 * 1024 * 1024 // 2MB
+	parquetReadBufferSize = 256 << 10 // 256KB
 )
 
 type tableReader interface {
