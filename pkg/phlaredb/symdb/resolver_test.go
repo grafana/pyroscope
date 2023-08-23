@@ -41,7 +41,7 @@ func Test_block_Resolver_ResolveProfile(t *testing.T) {
 	require.Equal(t, expectedFingerprint, profileFingerprint(resolved, 0))
 }
 
-func Test_lock_Resolver_ResolveTree(t *testing.T) {
+func Test_block_Resolver_ResolveTree(t *testing.T) {
 	s := newBlockSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	defer s.teardown()
 	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 1)
@@ -75,4 +75,25 @@ func Benchmark_block_Resolver_ResolveTree(t *testing.B) {
 		r.AddSamples(0, s.indexed[0][0].Samples)
 		_, _ = r.Tree()
 	}
+}
+
+func Test_Resolver_Unreleased_Failed_Partition(t *testing.T) {
+	s := newBlockSuite(t, [][]string{{"testdata/profile.pb.gz"}})
+	defer s.teardown()
+	ctx, cancel := context.WithCancel(context.Background())
+	// Pass canceled context to make partition initialization to fail.
+	cancel()
+
+	r := NewResolver(ctx, s.reader)
+	r.AddSamples(0, s.indexed[0][0].Samples)
+	_, err := r.Tree()
+	require.ErrorIs(t, err, context.Canceled)
+	r.Release()
+
+	// This time we pass normal context.
+	r = NewResolver(context.Background(), s.reader)
+	r.AddSamples(0, s.indexed[0][0].Samples)
+	_, err = r.Tree()
+	require.NoError(t, err)
+	r.Release()
 }
