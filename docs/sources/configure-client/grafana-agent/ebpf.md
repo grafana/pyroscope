@@ -247,4 +247,4 @@ Interpreted methods will display the interpreter function’s name rather than t
 Check out the following resources to learn more about eBPF profiling:
 - [The pros and cons of eBPF profiling](https://pyroscope.io/blog/ebpf-profiling-pros-cons) blog post (for more context on flamegraphs below)
 - [Demo](https://demo.pyroscope.io/?query=rideshare-cluster-ebpf.cpu%7B%7D) showing breakdown of our examples cluster
-- Grafana agent documnetation for [pyroscope.ebpf](/docs/agent/next/flow/reference/components/pyroscope.ebpf/), [pyroscope.write](/docs/agent/next/flow/reference/components/pyroscope.write/), [discovery.kubernetes](/docs/agent/next/flow/reference/components/discovery.kubernetes/), [discovery.relabel](/docs/agent/next/flow/reference/components/discovery.relabel/) components
+- Grafana Agent documentation for [pyroscope.ebpf](/docs/agent/next/flow/reference/components/pyroscope.ebpf/), [pyroscope.write](/docs/agent/next/flow/reference/components/pyroscope.write/), [discovery.kubernetes](/docs/agent/next/flow/reference/components/discovery.kubernetes/), [discovery.relabel](/docs/agent/next/flow/reference/components/discovery.relabel/) components
