@@ -20,7 +20,7 @@ cargo add pyroscope_pprofrs
 
 ### Rust client configuration
 
-At a minimum, you need to provide the URL of the Pyroscope Server and the name
+At a minimum, you need to provide the URL of the Pyroscope server and the name
 of your application. You also need to configure a profiling backend. For Rust,
 you can use [pprof-rs](https://github.com/pyroscope-io/pyroscope-rs/tree/main/pyroscope_backends/pyroscope_pprofrs).
 
@@ -30,10 +30,9 @@ let pprof_config = PprofConfig::new().sample_rate(100);
 let pprof_backend = Pprof::new(pprof_config);
 
 // Configure Pyroscope Agent
-let agent =
-PyroscopeAgent::builder("http://localhost:4040", "myapp")
-.backend(pprof_backend)
-.build()?;
+let agent = PyroscopeAgent::builder("http://localhost:4040", "myapp")
+    .backend(pprof_backend)
+    .build()?;
 ```
 
 Important for users of a secured backend: You need to provide authentication details. For **Grafana Cloud** use basic authentication. Your username is a numeric value which you can get from the Details Page for Pyroscope from your stack on grafana.com. Use the the token you can create on the same page as password. The configuration then would look similar to (Username & Password assumed to be provided as environment variables):
@@ -53,7 +52,7 @@ let  agent  =  PyroscopeAgent::builder(url, application_name.to_string())
 .build()?;
 ```
 
-You can start profiling by invoking the following code: 
+You can start profiling by invoking the following code:
 
 ```rust
  let agent_running = agent.start().unwrap();
@@ -89,17 +88,17 @@ let agent_running = agent.start().unwrap();
 // Generate Tag Wrapper functions
 let (add_tag, remove_tag) = agent_running.tag_wrapper();
 
-// Profiled code (with no tags) 
+// Profiled code (with no tags)
 
 // Add tags to the agent
 add_tag("key".to_string(), "value".to_string());
 
-// This portion will be profiled with the specified tag. 
+// This portion will be profiled with the specified tag.
 
 // Remove tags from the agent
 remove_tag("key".to_string(), "value".to_string());
 
-// Stop the agent 
+// Stop the agent
 let agent_ready = running_agent.stop();
 ```
 
