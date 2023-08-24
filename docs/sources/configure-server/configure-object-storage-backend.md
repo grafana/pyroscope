@@ -19,13 +19,13 @@ The supported backends are:
 - [Azure Blob Storage](https://azure.microsoft.com/es-es/services/storage/blobs/)
 - [Swift (OpenStack Object Storage)](https://wiki.openstack.org/wiki/Swift)
 
-> Under the hood Pyroscope uses [Thanos' object store client] library, so their stated limitations apply.
+> Internally, Pyroscope uses [Thanos' object store client] library, so their stated limitations apply.
 
 [Thanos' object store client]: https://github.com/thanos-io/objstore#supported-providers-clients
 
 ## Amazon S3
 
-To use an AWS S3 or S3-compatible bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][aws_ref]. Apart from those it is also possible to supply configuration using [the well-known environment variables] of the AWS SDK.
+To use an AWS S3 or S3-compatible bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][aws_ref]. Apart from those parameters, it is also possible to supply configuration  parameters using [the well-known environment variables][aws_enf] of the AWS SDK.
 
 At a minimum, you will need to provide a values for the `bucket_name`, `endpoint`, `access_key_id`, and `secret_access_key` keys.
 
