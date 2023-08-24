@@ -21,11 +21,11 @@ At startup, a Pyroscope instance connects to other Pyroscope replicas to join th
 A Pyroscope instance discovers the other replicas to join by resolving the addresses configured in `-memberlist.join`.
 The `-memberlist.join` CLI flag must resolve to other replicas in the cluster and can be specified multiple times.
 
-The `-memberlist.join` can be set to:
+The `-memberlist.join` can be set to an address in the following formats:
 
-- An address in the `<ip>:<port>` format.
-- An address in the `<hostname>:<port>` format.
-- An address in the [DNS service discovery](#supported-discovery-modes) format.
+- `<ip>:<port>`
+- `<hostname>:<port>`
+- [DNS service discovery](#supported-discovery-modes)
 
 The default port is `7946`.
 
