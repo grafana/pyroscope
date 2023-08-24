@@ -56,10 +56,10 @@ const (
 	LabelNameTooLongErrorMsg           = "profile with labels '%s' has label name too long: '%s'"
 	LabelValueTooLongErrorMsg          = "profile with labels '%s' has label value too long: '%s'"
 	DuplicateLabelNamesErrorMsg        = "profile with labels '%s' has duplicate label name: '%s'"
-	QueryTooLongErrorMsg               = "the query time range exceeds the limit (query length: %s, limit: %s)"
-	ProfileTooBigErrorMsg              = "the profile with labels '%s' size exceeds the limit (profile size: %d, limit: %d)"
-	ProfileTooManySamplesErrorMsg      = "the profile with labels '%s' size exceeds the samples limit (actual: %d, limit: %d)"
-	ProfileTooManySampleLabelsErrorMsg = "the profile with labels '%s' size exceeds the sample labels limit (actual: %d, limit: %d)"
+	QueryTooLongErrorMsg               = "the query time range exceeds the limit (max_query_length, actual: %s, limit: %s)"
+	ProfileTooBigErrorMsg              = "the profile with labels '%s' exceeds the size limit (max_profile_size_byte, actual: %d, limit: %d)"
+	ProfileTooManySamplesErrorMsg      = "the profile with labels '%s' exceeds the samples count limit (max_profile_stacktrace_samples, actual: %d, limit: %d)"
+	ProfileTooManySampleLabelsErrorMsg = "the profile with labels '%s' exceeds the sample labels limit (max_profile_stacktrace_sample_labels, actual: %d, limit: %d)"
 )
 
 var (
