@@ -137,7 +137,7 @@ export PYROSCOPE_BASIC_AUTH_PASSWORD=<Password>
 export PYROSCOPE_TENANT_ID=<TenantID> # only needed if using multi-tenancy
 ```
 
-To configure .NET sdk to send data to Grafana Cloud Profiles or Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
+To configure the .NET SDK to send data to Grafana Cloud Profiles or Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
 
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafan Cloud API key.
 
