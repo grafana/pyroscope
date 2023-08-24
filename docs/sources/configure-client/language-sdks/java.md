@@ -24,9 +24,9 @@ The latest release is also available on [Maven Central](https://search.maven.org
 
 ## Profiling Java applications
 
-You can start pyroscope either from your apps's java code or attach it as javaagent
+You can start Pyroscope either from your apps's Java code or attach it as javaagent.
 
-## Start pyroscope from app's java code
+## Start Pyroscope from app's Java code
 First, add Pyroscope dependency
 
 ### Maven
@@ -63,7 +63,7 @@ PyroscopeAgent.start(
   new PyroscopeAgent.Options.Builder(config)
     .setExporter(snapshot -> {
       // Your custom export/upload logic may go here
-      // It is invoked every 10 seconds by default with snapshot of 
+      // It is invoked every 10 seconds by default with snapshot of
       // profiling data
     })
     .setLogger((l, msg, args) -> {
@@ -78,7 +78,7 @@ PyroscopeAgent.start(
 );
 ```
 
-## Start pyroscope as javaagent
+## Start Pyroscope as javaagent
 To start profiling a Java application, run your application with `pyroscope.jar` javaagent:
 
 ```shell
@@ -116,7 +116,7 @@ PyroscopeAgent.start(new Config.Builder()
 
 ## Java client configuration options
 
-When you start pyroscope as javaagent or obtain configuration by `Config.build()` pyroscope searches 
+When you start Pyroscope as javaagent or obtain configuration by `Config.build()` Pyroscope searches
 for configuration in multiple sources: system properties, environment variables, pyroscope.properties file. Properties keys has same name as environment variables, but lowercased and replaced `_` with `.`, so `PYROSCOPE_FORMAT` becomes `pyroscope.format`
 
 Java integration supports JFR format to be able to support multiple events (JFR is the only output format that supports [multiple events in `async-profiler`](https://github.com/jvm-profiling-tools/async-profiler#multiple-events)). There are several environment variables that define how multiple event configuration works:
