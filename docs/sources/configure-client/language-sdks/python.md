@@ -19,14 +19,14 @@ pip install pyroscope-io
 
 ## Pyroscope Python pip package configuration
 
-Add the following code to your application. This code will initialize pyroscope profiler and start profiling:
+Add the following code to your application. This code will initialize the Pyroscope profiler and start profiling:
 
 ```python
 import pyroscope
 
 pyroscope.configure(
   application_name = "my.python.app", # replace this with some name for your application
-  server_address   = "http://my-pyroscope-server:4040", # replace this with the address of your pyroscope server
+  server_address   = "http://my-pyroscope-server:4040", # replace this with the address of your Pyroscope server
 )
 ```
 
@@ -37,7 +37,7 @@ import pyroscope
 
 pyroscope.configure(
   application_name    = "my.python.app", # replace this with some name for your application
-  server_address      = "http://my-pyroscope-server:4040", # replace this with the address of your pyroscope server
+  server_address      = "http://my-pyroscope-server:4040", # replace this with the address of your Pyroscope server
   sample_rate         = 100, # default is 100
   detect_subprocesses = False, # detect subprocesses started by the main process; default is False
   oncpu               = True, # report cpu time only; default is True
