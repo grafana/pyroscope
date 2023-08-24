@@ -18,7 +18,7 @@ To push profiles to Grafana Pyroscope for a specific tenant, refer to [Configure
 
 ## Restrictions
 
-Tenant IDs must be less-than or equal-to 150 bytes or characters in length and can only include the following supported characters:
+Tenant IDs cannot be longer than 150 bytes or characters in length and can only include the following supported characters:
 
 - Alphanumeric characters
   - `0-9`
