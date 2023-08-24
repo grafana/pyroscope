@@ -209,7 +209,7 @@ indicates that the symbols couldn't be mapped to their respective function names
 
 This can occur for several reasons:
 
-- The binary has been stripped, leaving no .symtab, .dynsym, or .gopclntab sections in the ELF file.
+- The binary has been stripped, leaving no `.symtab`, `.dynsym`, or `.gopclntab` sections in the ELF file.
 - The debug file is missing or could not be located.
 
 To fix this for your binaries, ensure that they are either not stripped or that you have separate
