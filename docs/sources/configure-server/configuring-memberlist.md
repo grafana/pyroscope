@@ -17,7 +17,6 @@ You can configure memberlist by either the CLI flag or its respective YAML [conf
 ## Memberlist
 
 Pyroscope uses `memberlist` as the KV store backend.
-
 At startup, a Pyroscope instance connects to other Pyroscope replicas to join the cluster.
 A Pyroscope instance discovers the other replicas to join by resolving the addresses configured in `-memberlist.join`.
 The `-memberlist.join` CLI flag must resolve to other replicas in the cluster and can be specified multiple times.
