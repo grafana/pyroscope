@@ -69,7 +69,7 @@ Note: For __pull mode__, you don't need to `.start()` but you'll need to `.init(
 
 ### Scrape configuration
 
-You will need to add the following content to your `pyroscope/server.yml` Pyroscope config file. See the [Server config documentation](/docs/server-configuration#configuration-file) for more information on where this config is located by default on your system.
+You will need to add the following content to your `config.yml` Pyroscope config file. See the [Server config documentation]({{< relref "../../configure-server/reference-configuration-parameters/" >}}) for more information on where this config is located by default on your system.
 
 ```yaml
 ---
