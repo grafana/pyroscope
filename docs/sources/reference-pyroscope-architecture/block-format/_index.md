@@ -28,7 +28,7 @@ the block there are multiple files:
 ## Data model
 
 The data model within the block is fairly aligned to Google's [proto
-definition][pprof] for the pprof wire format.  In general strings within the
+definition][pprof] for the pprof wire format.  In general, strings within the
 block are referenced by their position in a string table.
 
 Pyroscope's profiles have two types of labels:
