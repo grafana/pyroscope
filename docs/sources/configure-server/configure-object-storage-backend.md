@@ -101,7 +101,7 @@ storage:
 
 ## Azure Blob Storage
 
-To use a Google Cloud Storage (GCS) bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][azure_ref].
+To use an Azure Blob Storage bucket for long term storage, you can find Pyroscope's configuration parameters [in the reference config][azure_ref].
 
 [azure_ref]: {{< relref "./reference-configuration-parameters/#azure_storage_backend" >}}
 
