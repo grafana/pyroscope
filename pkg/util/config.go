@@ -10,6 +10,14 @@ import (
 	"reflect"
 )
 
+func stringKeyMapToInterfaceKeyMap(m map[string]interface{}) map[interface{}]interface{} {
+	result := map[interface{}]interface{}{}
+	for k, v := range m {
+		result[k] = v
+	}
+	return result
+}
+
 // DiffConfig utility function that returns the diff between two config map objects
 func DiffConfig(defaultConfig, actualConfig map[interface{}]interface{}) (map[interface{}]interface{}, error) {
 	output := make(map[interface{}]interface{})
@@ -58,6 +66,18 @@ func DiffConfig(defaultConfig, actualConfig map[interface{}]interface{}) (map[in
 				output[key] = value
 			}
 			diff, err := DiffConfig(defaultV, v)
+			if err != nil {
+				return nil, err
+			}
+			if len(diff) > 0 {
+				output[key] = diff
+			}
+		case map[string]interface{}:
+			defaultV, ok := defaultValue.(map[string]interface{})
+			if !ok {
+				output[key] = value
+			}
+			diff, err := DiffConfig(stringKeyMapToInterfaceKeyMap(defaultV), stringKeyMapToInterfaceKeyMap(v))
 			if err != nil {
 				return nil, err
 			}
