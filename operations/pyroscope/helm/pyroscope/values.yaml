@@ -710,6 +710,54 @@ pyroscope:
     # "foo":
     #   ingestion_rate_mb: 1
     #   ingestion_burst_size_mb: 2
+  # -- Grafana Agent Configuration.
+
+# -------------------------------------
+# Configuration for `grafana-agent` child chart
+# -------------------------------------
+agent:
+  enabled: true
+  configMap:
+    content: |
+      logging {
+        level  = "info"
+        format = "logfmt"
+      }
+      discovery.kubernetes "kubernetes" {
+        role = "pod"
+      }
+      discovery.relabel "labeling" {
+        rule {
+          action = "keep"
+          source_labels = ["__meta_kubernetes_pod_phase"]
+          regex = "Pending|Succeeded|Failed|Completed"
+        }
+        rule {
+          action = "labelmap"
+          regex = "__meta_kubernetes_pod_label_(.+)"
+        }
+        rule {
+          action = "replace"
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label = "namespace"
+        }
+        rule {
+          action = "replace"
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label = "pod"
+        }
+        rule {
+          action = "replace"
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label = "container"
+        }
+      }
+      pyroscope.write "pyroscope" {
+        endpoint {
+          url = "http://pyroscope:4040"
+        }
+      }
+
 # -------------------------------------
 # Configuration for `minio` child chart
 # -------------------------------------

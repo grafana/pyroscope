@@ -5,6 +5,11 @@ type: application
 version: 0.5.4
 appVersion: 0.5.1
 dependencies:
+  - name: grafana-agent
+    alias: agent
+    version: ">=0.21.0"
+    repository: https://grafana.github.io/helm-charts
+    condition: agent.enabled
   - name: minio
     alias: minio
     version: 4.0.12
