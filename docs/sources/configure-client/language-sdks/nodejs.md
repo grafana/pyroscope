@@ -55,7 +55,8 @@ Pyroscope.start()
 
 ## Pull mode profiling for NodeJS
 
-NodeJS integration also supports pull mode. For that to work you will need to make sure you have profiling routes (`/debug/pprof/profile` and `/debug/pprof/heap`) enabled in your http server. For that you may use our `expressMiddleware` or create endpoints yourself
+The NodeJS integration also supports pull mode. For that to work you will need to make sure you have profiling routes (`/debug/pprof/profile` and `/debug/pprof/heap`) enabled in your http server. You may use our `expressMiddleware` or create endpoints yourself.
+
 ```javascript
 const Pyroscope, { expressMiddleware } = require('@pyroscope/nodejs');
 
