@@ -1,9 +1,11 @@
 {
   "agent": {
-    "configMap": {
-      "content": "logging {\n  level  = \"info\"\n  format = \"logfmt\"\n}\ndiscovery.kubernetes \"kubernetes\" {\n  role = \"pod\"\n}\ndiscovery.relabel \"labeling\" {\n  rule {\n    action = \"keep\"\n    source_labels = [\"__meta_kubernetes_pod_phase\"]\n    regex = \"Pending|Succeeded|Failed|Completed\"\n  }\n  rule {\n    action = \"labelmap\"\n    regex = \"__meta_kubernetes_pod_label_(.+)\"\n  }\n  rule {\n    action = \"replace\"\n    source_labels = [\"__meta_kubernetes_namespace\"]\n    target_label = \"namespace\"\n  }\n  rule {\n    action = \"replace\"\n    source_labels = [\"__meta_kubernetes_pod_name\"]\n    target_label = \"pod\"\n  }\n  rule {\n    action = \"replace\"\n    source_labels = [\"__meta_kubernetes_pod_container_name\"]\n    target_label = \"container\"\n  }\n}\npyroscope.write \"pyroscope\" {\n  endpoint {\n    url = \"http://pyroscope:4040\"\n  }\n}\n"
-    },
-    "enabled": true
+    "agent": {
+      "configMap": {
+        "content": "logging {\n  level  = \"info\"\n  format = \"logfmt\"\n}\ndiscovery.kubernetes \"kubernetes\" {\n  role = \"pod\"\n}\ndiscovery.relabel \"labeling\" {\n  rule {\n    action = \"keep\"\n    source_labels = [\"__meta_kubernetes_pod_phase\"]\n    regex = \"Pending|Succeeded|Failed|Completed\"\n  }\n  rule {\n    action = \"labelmap\"\n    regex = \"__meta_kubernetes_pod_label_(.+)\"\n  }\n  rule {\n    action = \"replace\"\n    source_labels = [\"__meta_kubernetes_namespace\"]\n    target_label = \"namespace\"\n  }\n  rule {\n    action = \"replace\"\n    source_labels = [\"__meta_kubernetes_pod_name\"]\n    target_label = \"pod\"\n  }\n  rule {\n    action = \"replace\"\n    source_labels = [\"__meta_kubernetes_pod_container_name\"]\n    target_label = \"container\"\n  }\n}\npyroscope.write \"pyroscope\" {\n  endpoint {\n    url = \"http://pyroscope:4040\"\n  }\n}\n"
+      },
+      "enabled": true
+    }
   },
   "ingress": {
     "enabled": false

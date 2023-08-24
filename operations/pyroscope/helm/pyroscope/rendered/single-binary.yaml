@@ -19,14 +19,14 @@ spec:
       app.kubernetes.io/instance: pyroscope-dev
       app.kubernetes.io/component: "all"
 ---
-# Source: pyroscope/charts/grafana-agent/templates/serviceaccount.yaml
+# Source: pyroscope/charts/agent/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: pyroscope-dev-grafana-agent
+  name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: grafana-agent-0.21.0
-    app.kubernetes.io/name: grafana-agent
+    helm.sh/chart: agent-0.21.0
+    app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "v0.35.4"
     app.kubernetes.io/managed-by: Helm
@@ -43,46 +43,56 @@ metadata:
     app.kubernetes.io/version: "0.5.1"
     app.kubernetes.io/managed-by: Helm
 ---
-# Source: pyroscope/charts/grafana-agent/templates/configmap.yaml
+# Source: pyroscope/charts/agent/templates/configmap.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pyroscope-dev-grafana-agent
+  name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: grafana-agent-0.21.0
-    app.kubernetes.io/name: grafana-agent
+    helm.sh/chart: agent-0.21.0
+    app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "v0.35.4"
     app.kubernetes.io/managed-by: Helm
 data:
   config.river: |-
     logging {
-    	level  = "info"
-    	format = "logfmt"
+      level  = "info"
+      format = "logfmt"
     }
-    
-    discovery.kubernetes "pods" {
-    	role = "pod"
+    discovery.kubernetes "kubernetes" {
+      role = "pod"
     }
-    
-    discovery.kubernetes "nodes" {
-    	role = "node"
+    discovery.relabel "labeling" {
+      rule {
+        action = "keep"
+        source_labels = ["__meta_kubernetes_pod_phase"]
+        regex = "Pending|Succeeded|Failed|Completed"
+      }
+      rule {
+        action = "labelmap"
+        regex = "__meta_kubernetes_pod_label_(.+)"
+      }
+      rule {
+        action = "replace"
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label = "namespace"
+      }
+      rule {
+        action = "replace"
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label = "pod"
+      }
+      rule {
+        action = "replace"
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label = "container"
+      }
     }
-    
-    discovery.kubernetes "services" {
-    	role = "service"
-    }
-    
-    discovery.kubernetes "endpoints" {
-    	role = "endpoints"
-    }
-    
-    discovery.kubernetes "endpointslices" {
-    	role = "endpointslice"
-    }
-    
-    discovery.kubernetes "ingresses" {
-    	role = "ingress"
+    pyroscope.write "pyroscope" {
+      endpoint {
+        url = "http://pyroscope:4040"
+      }
     }
 ---
 # Source: pyroscope/templates/configmap-overrides.yaml
@@ -758,14 +768,14 @@ data:
         - __meta_kubernetes_pod_phase
       scrape_interval: 15s
 ---
-# Source: pyroscope/charts/grafana-agent/templates/rbac.yaml
+# Source: pyroscope/charts/agent/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: pyroscope-dev-grafana-agent
+  name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: grafana-agent-0.21.0
-    app.kubernetes.io/name: grafana-agent
+    helm.sh/chart: agent-0.21.0
+    app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "v0.35.4"
     app.kubernetes.io/managed-by: Helm
@@ -865,24 +875,24 @@ rules:
   verbs:
   - get
 ---
-# Source: pyroscope/charts/grafana-agent/templates/rbac.yaml
+# Source: pyroscope/charts/agent/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: pyroscope-dev-grafana-agent
+  name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: grafana-agent-0.21.0
-    app.kubernetes.io/name: grafana-agent
+    helm.sh/chart: agent-0.21.0
+    app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "v0.35.4"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: pyroscope-dev-grafana-agent
+  name: pyroscope-dev-agent
 subjects:
   - kind: ServiceAccount
-    name: pyroscope-dev-grafana-agent
+    name: pyroscope-dev-agent
     namespace: default
 ---
 # Source: pyroscope/templates/clusterrolebinding.yaml
@@ -905,21 +915,21 @@ subjects:
   name: pyroscope-dev
   namespace: default
 ---
-# Source: pyroscope/charts/grafana-agent/templates/service.yaml
+# Source: pyroscope/charts/agent/templates/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: pyroscope-dev-grafana-agent
+  name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: grafana-agent-0.21.0
-    app.kubernetes.io/name: grafana-agent
+    helm.sh/chart: agent-0.21.0
+    app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "v0.35.4"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: grafana-agent
+    app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
   ports:
     - name: http-metrics
@@ -1002,14 +1012,14 @@ spec:
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "all"
 ---
-# Source: pyroscope/charts/grafana-agent/templates/controllers/daemonset.yaml
+# Source: pyroscope/charts/agent/templates/controllers/daemonset.yaml
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: pyroscope-dev-grafana-agent
+  name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: grafana-agent-0.21.0
-    app.kubernetes.io/name: grafana-agent
+    helm.sh/chart: agent-0.21.0
+    app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "v0.35.4"
     app.kubernetes.io/managed-by: Helm
@@ -1017,15 +1027,15 @@ spec:
   minReadySeconds: 10
   selector:
     matchLabels:
-      app.kubernetes.io/name: grafana-agent
+      app.kubernetes.io/name: agent
       app.kubernetes.io/instance: pyroscope-dev
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: grafana-agent
+        app.kubernetes.io/name: agent
         app.kubernetes.io/instance: pyroscope-dev
     spec:
-      serviceAccountName: pyroscope-dev-grafana-agent
+      serviceAccountName: pyroscope-dev-agent
       containers:
         - name: grafana-agent
           image: docker.io/grafana/agent:v0.35.4
@@ -1070,7 +1080,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: pyroscope-dev-grafana-agent
+            name: pyroscope-dev-agent
 ---
 # Source: pyroscope/templates/deployments-statefulsets.yaml
 apiVersion: apps/v1
