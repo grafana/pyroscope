@@ -27,8 +27,6 @@ The `-memberlist.join` can be set to an address in the following formats:
 - `<hostname>:<port>`
 - [DNS service discovery](#supported-discovery-modes)
 
-The default port is `7946`.
-
 > **Note**: At a minimum, configure one or more addresses that resolve to a consistent subset of replicas (for example, all the ingesters).
 
 > **Note**: If you're running Pyroscope in Kubernetes, define a [headless Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services) which resolves to the IP addresses of all Pyroscope pods. Then you set `-memberlist.join` to `dnssrv+<service name>.<namespace>.svc.cluster.local:<port>`.
