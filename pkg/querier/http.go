@@ -96,7 +96,7 @@ func (q *QueryHandlers) RenderDiff(w http.ResponseWriter, req *http.Request) {
 	}
 	// TODO: check profile types?
 	if leftProfileType.ID != rightProfileType.ID {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "profile types must match", http.StatusBadRequest)
 		return
 	}
 
