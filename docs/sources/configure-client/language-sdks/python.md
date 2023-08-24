@@ -11,7 +11,7 @@ aliases:
 
 ## How to add Python profiling to your application
 
-Install `pyroscope-io` pip package:
+Install the `pyroscope-io` pip package:
 
 ```bash
 pip install pyroscope-io
@@ -42,7 +42,7 @@ pyroscope.configure(
   detect_subprocesses = False, # detect subprocesses started by the main process; default is False
   oncpu               = True, # report cpu time only; default is True
   gil_only            = True, # only include traces for threads that are holding on to the Global Interpreter Lock; default is True
-  log_level           = "info", # default is info, possible values: trace, debug, info, warn, error and critical 
+  log_level           = "info", # default is info, possible values: trace, debug, info, warn, error and critical
   tags           = {
     "region":   '{os.getenv("REGION")}',
   }
