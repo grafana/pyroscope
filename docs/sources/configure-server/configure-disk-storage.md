@@ -24,7 +24,7 @@ within Grafana Pyroscope's data path `-pyroscopedb.data-path=` (by default
 
 ## Object storage
 
-When an [object storage is configured][object-store], finished blocks are
+When [object storage is configured][object-store], finished blocks are
 uploaded to the object store bucket.
 
 ## High disk utilization
