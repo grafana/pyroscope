@@ -96,4 +96,4 @@ To get started choose one of the integrations below:
 </table>
 
 
-If you have more questions feel free to reach out in our Slack channel or create an issue on github and the Pyroscope team will help!
+If you have more questions feel free to reach out in our Slack channel or create an issue on GitHub and the Pyroscope team will help!
