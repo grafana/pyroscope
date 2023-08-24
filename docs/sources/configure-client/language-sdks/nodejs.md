@@ -93,7 +93,7 @@ scrape-configs:
 
 ## Sending data to Pyroscope OSS or Grafana Cloud with Pyroscope NodeJS SDK
 
-To configure NodeJS sdk to send data to Pyroscope, replace the `serverAddress` placeholder with the appropriate server URL. This could be the Grafana Cloud Pyroscope URL or your own custom Pyroscope server URL.
+To configure the NodeJS SDK to send data to Pyroscope, replace the `serverAddress` placeholder with the appropriate server URL. This could be the Grafana Cloud Pyroscope URL or your own custom Pyroscope server URL.
 
 If you need to send data to Grafana Cloud, you’ll have to configure HTTP Basic authentication. Replace `basicAuthUser` with your Grafana Cloud stack user ID and `basicAuthPassword` with your Grafana Cloud API key.
 
@@ -101,7 +101,7 @@ If your Pyroscope server has multi-tenancy enabled, you’ll need to configure a
 
 ## Troubleshooting
 
-You may set `DEBUG` env to `pyroscope` and see debugging information which can help you understand if everything is OK.
+Setting `DEBUG` env to `pyroscope` will provide additionally debugging information.
 
 ```bash
 DEBUG=pyroscope node index.js
