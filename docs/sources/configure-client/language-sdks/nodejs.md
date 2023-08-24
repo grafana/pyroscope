@@ -35,7 +35,7 @@ Pyroscope.start()
 
 ## How to add profiling labels to NodeJS applications
 
-It is possible to add tags (labels) to the profiling data. These tags can be used to filter the data in the UI. Dynamic tagging isn't supported yet
+It is possible to add tags (labels) to the profiling data. These tags can be used to filter the data in the UI. Dynamic tagging isn't supported yet.
 
 ```javascript
 Pyroscope.init({
