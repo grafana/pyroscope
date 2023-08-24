@@ -178,7 +178,7 @@ Create the following directory structure:
 
 We will use the following `config.river` file to configure the Grafana Agent to scrape profiles from the application and send them to the Pyroscope server. Be sure to replace the `url` property with the correct Pyroscope instance.
 
-**Note: We have swapped out the standard pprof `block`, `mutex` and `memory` profiles with the more efficient [godeltaprof package](https://github.com/grafana/godeltaprof) which produces `godeltaprof_block`, `godeltaprof_mutex` and `godeltaprof_memory`respectively**
+**Note: We have swapped out the standard pprof `block`, `mutex` and `memory` profiles with the more efficient [godeltaprof package](https://github.com/grafana/godeltaprof) which produces `godeltaprof_block`, `godeltaprof_mutex` and `godeltaprof_memory`respectively**.
 
 The reason for using this special package is because godeltaprof is a memory profiler specialized for collecting cumulative profiles(heap, block, mutex) efficiently. It is more efficient because it does the delta/merging before producing pprof data, avoiding extra decompression/parsing/allocations/compression.
 
