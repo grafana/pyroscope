@@ -292,7 +292,7 @@ $(BIN)/jb: Makefile go.mod
 
 $(BIN)/helm: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.8.0
+	GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.12.3
 
 $(BIN)/kubeconform: Makefile go.mod
 	@mkdir -p $(@D)
@@ -359,12 +359,12 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm dependency update ./operations/pyroscope/helm/pyroscope/
 	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/
 	mkdir -p ./operations/pyroscope/helm/pyroscope/rendered/
-	$(BIN)/helm template pyroscope-dev ./operations/pyroscope/helm/pyroscope/ \
+	$(BIN)/helm template --kube-version "1.22.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary.yaml \
-		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.21.0
-	$(BIN)/helm template pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
+		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.22.0
+	$(BIN)/helm template --kube-version "1.22.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services.yaml \
-		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.21.0
+		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.22.0
 	cat operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
 		| go run ./tools/yaml-to-json \
 		> ./operations/pyroscope/jsonnet/values-micro-services.json

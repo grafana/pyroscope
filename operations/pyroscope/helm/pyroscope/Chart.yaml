@@ -4,6 +4,7 @@ description: 🔥 horizontally-scalable, highly-available, multi-tenant continuo
 type: application
 version: 0.5.4
 appVersion: 0.5.1
+kubeVersion: ">=1.22"
 dependencies:
   - name: grafana-agent
     alias: agent
