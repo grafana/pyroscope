@@ -2,7 +2,7 @@
 import Color from 'color';
 import { scaleLinear } from 'd3-scale';
 import type { SpyName } from '@pyroscope/legacy/models';
-import murmurhash3_32_gc from './murmur3';
+import murmurhashThree32GC from './murmur3';
 import type { FlamegraphPalette } from './colorPalette';
 
 export const defaultColor = Color.rgb(148, 142, 142);
@@ -128,7 +128,7 @@ export function colorBasedOnPackageName(
   palette: FlamegraphPalette,
   name: string
 ) {
-  const hash = murmurhash3_32_gc(name, 0);
+  const hash = murmurhashThree32GC(name, 0);
   const colorIndex = hash % palette.colors.length;
   const baseClr = palette.colors[colorIndex];
   if (!baseClr) {
