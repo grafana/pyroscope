@@ -11,10 +11,8 @@ aliases:
 # Configuring Pyroscope memberlist
 
 [Hash rings]({{< relref "../reference-pyroscope-architecture/hash-ring/index.md" >}}) are a distributed consistent hashing scheme and are widely used by Pyroscope for sharding and replication.
-
-Pyroscope only support hash ring via memberlist protocol.
-
-You can configure memberlist either via the CLI flag or its respective YAML [config option]({{< relref "reference-configuration-parameters/index.md#memberlist" >}}).
+Pyroscope only supports hash ring via the memberlist protocol.
+You can configure memberlist by either the CLI flag or its respective YAML [config option]({{< relref "reference-configuration-parameters/index.md#memberlist" >}}).
 
 ## Memberlist
 
