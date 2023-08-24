@@ -224,7 +224,7 @@ func TestValidateProfile(t *testing.T) {
 			MockLimits{
 				MaxProfileSizeBytesValue: 1,
 			},
-			NewErrorf(InvalidProfile, ProfileTooBigErrorMsg, `{foo="bar"}`, 3, 1),
+			NewErrorf(ProfileSizeLimit, ProfileTooBigErrorMsg, `{foo="bar"}`, 3, 1),
 			nil,
 		},
 		{
@@ -236,7 +236,7 @@ func TestValidateProfile(t *testing.T) {
 			MockLimits{
 				MaxProfileStacktraceSamplesValue: 2,
 			},
-			NewErrorf(InvalidProfile, ProfileTooManySamplesErrorMsg, `{foo="bar"}`, 3, 2),
+			NewErrorf(SamplesLimit, ProfileTooManySamplesErrorMsg, `{foo="bar"}`, 3, 2),
 			nil,
 		},
 		{
@@ -252,7 +252,7 @@ func TestValidateProfile(t *testing.T) {
 			MockLimits{
 				MaxProfileStacktraceSampleLabelsValue: 2,
 			},
-			NewErrorf(InvalidProfile, ProfileTooManyLabelsErrorMsg, `{foo="bar"}`, 3, 2),
+			NewErrorf(SampleLabelsLimit, ProfileTooManyLabelsErrorMsg, `{foo="bar"}`, 3, 2),
 			nil,
 		},
 		{
@@ -274,7 +274,7 @@ func TestValidateProfile(t *testing.T) {
 			func(t *testing.T, profile *googlev1.Profile) {
 				t.Helper()
 				require.Equal(t, []string{"foo", "bar"}, profile.StringTable)
-				require.Equal(t, []uint64{0, 1}, profile.Sample[0].LocationId)
+				require.Equal(t, []uint64{4, 5}, profile.Sample[0].LocationId)
 			},
 		},
 	} {
