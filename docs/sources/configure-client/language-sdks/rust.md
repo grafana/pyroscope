@@ -35,7 +35,7 @@ let agent = PyroscopeAgent::builder("http://localhost:4040", "myapp")
     .build()?;
 ```
 
-Users of a secured backend will need to provide authentication details. **Grafana Cloud** uses Basic authentication. Your username is a numeric value which you can get from the "Details Page" for Pyroscope from your stack on [grafana.com](https://grafana.com/). On this same page, create a token and use it as the Basic authentication password. The configuration then would look similar to:
+Users of a secured backend will need to provide authentication details. **Grafana Cloud** uses Basic authentication. Your username is a numeric value which you can get from the "Details Page" for Pyroscope from your stack on grafana.com. On this same page, create a token and use it as the Basic authentication password. The configuration then would look similar to:
 
 ```rust
 fn  main() ->  Result<()> {
