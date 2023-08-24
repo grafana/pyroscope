@@ -40,7 +40,7 @@ dotnet add package Pyroscope
 
 It is possible to add labels to the profiling data. These labels can be used to filter the data in the UI.
 
-Create a LabelSet and wrap a piece of code with `Pyroscope.LabelsWrapper`.
+Create a `LabelSet` and wrap a piece of code with `Pyroscope.LabelsWrapper`.
 
 ```cs
 var labels = Pyroscope.LabelSet.Empty.BuildUpon()
