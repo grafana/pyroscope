@@ -21,21 +21,21 @@ bundle add pyroscope
 ## Pyroscope Ruby gem configuration
 
 
-Add the following code to your application. If you're using rails, put this into `config/initializers` directory. This code will initialize pyroscope profiler and start profiling:
+Add the following code to your application. If you're using Rails, put this into `config/initializers` directory. This code will initialize the Pyroscope profiler and start profiling:
 
 ```ruby
 require 'pyroscope'
 
 Pyroscope.configure do |config|
   config.application_name = "my.ruby.app" # replace this with some name for your application
-  config.server_address   = "http://my-pyroscope-server:4040" # replace this with the address of your pyroscope server
+  config.server_address   = "http://my-pyroscope-server:4040" # replace this with the address of your Pyroscope server
   # config.auth_token     = "{YOUR_API_KEY}" # optionally, if authentication is enabled, specify the API key
 end
 ```
 
 ## How to add profiling labels to Ruby applications
 
-Pyroscope ruby integration provides a number of ways to tag profiling data. For example, you can provide tags when you're initializing the profiler:
+The Pyroscope Ruby integration provides a number of ways to tag profiling data. For example, you can provide tags when you're initializing the profiler:
 
 ```ruby
 require 'pyroscope'
@@ -50,7 +50,7 @@ Pyroscope.configure do |config|
 end
 ```
 
-or you can dynamically tag certain parts of your code:
+Or you can dynamically tag certain parts of your code:
 
 ```ruby
 Pyroscope.tag_wrapper({ "controller": "slow_controller_i_want_to_profile" }) do
