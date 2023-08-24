@@ -107,8 +107,6 @@ Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/exampl
 
 ## Configuration
 
-## Configuration
-
 | ENVIRONMENT VARIABLE                   | Type         | DESCRIPTION |
 |----------------------------------------|--------------|-------------|
 | PYROSCOPE_PROFILING_LOG_DIR            | String       | Sets the directory for .NET Profiler logs. Defaults to /var/log/pyroscope/. |
