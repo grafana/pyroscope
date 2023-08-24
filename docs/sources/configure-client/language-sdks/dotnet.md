@@ -28,7 +28,7 @@ LD_PRELOAD=Pyroscope.Linux.ApiWrapper.x64.so
 
 ## Managed helper
 
-With a managed helper you can interact with pyroscope profiler from .Net.
+With a managed helper you can interact with the Pyroscope profiler from .NET.
 
 First, add dependency:
 
@@ -144,5 +144,3 @@ To configure .NET sdk to send data to Grafana Cloud Profiles or Pyroscope, repla
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafan Cloud API key.
 
 If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
-
-
