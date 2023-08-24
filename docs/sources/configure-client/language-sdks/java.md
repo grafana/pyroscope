@@ -117,7 +117,7 @@ PyroscopeAgent.start(new Config.Builder()
 ## Java client configuration options
 
 When you start Pyroscope as javaagent or obtain configuration by `Config.build()` Pyroscope searches
-for configuration in multiple sources: system properties, environment variables, pyroscope.properties file. Properties keys has same name as environment variables, but lowercased and replaced `_` with `.`, so `PYROSCOPE_FORMAT` becomes `pyroscope.format`
+for configuration in multiple sources: system properties, environment variables, and `pyroscope.properties`. Property keys have same name as environment variables, but are lowercased and replace `_` with `.`. For example, `PYROSCOPE_FORMAT` becomes `pyroscope.format`
 
 Java integration supports JFR format to be able to support multiple events (JFR is the only output format that supports [multiple events in `async-profiler`](https://github.com/jvm-profiling-tools/async-profiler#multiple-events)). There are several environment variables that define how multiple event configuration works:
 
