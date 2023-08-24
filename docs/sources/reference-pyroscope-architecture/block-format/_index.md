@@ -13,6 +13,8 @@ This document describes how Pyroscope stores the data in its blocks. Each
 block belongs to a single tenant and is identfied by a unique [ULID]. Within
 the block there are multiple files:
 
+[ULID]: https://github.com/ulid/spec
+
 * A metadata file `meta.json`, which contains information about what the block
   contains, like the time range of the profiling data.
 
