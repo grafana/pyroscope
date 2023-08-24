@@ -252,7 +252,7 @@ func TestValidateProfile(t *testing.T) {
 			MockLimits{
 				MaxProfileStacktraceSampleLabelsValue: 2,
 			},
-			NewErrorf(SampleLabelsLimit, ProfileTooManyLabelsErrorMsg, `{foo="bar"}`, 3, 2),
+			NewErrorf(SampleLabelsLimit, ProfileTooManySampleLabelsErrorMsg, `{foo="bar"}`, 3, 2),
 			nil,
 		},
 		{

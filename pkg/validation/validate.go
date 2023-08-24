@@ -49,17 +49,17 @@ const (
 	ProfileSizeLimit  Reason = "profile_size_limit"
 	SampleLabelsLimit Reason = "sample_labels_limit"
 
-	SeriesLimitErrorMsg            = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
-	MissingLabelsErrorMsg          = "error at least one label pair is required per profile"
-	InvalidLabelsErrorMsg          = "invalid labels '%s' with error: %s"
-	MaxLabelNamesPerSeriesErrorMsg = "profile series '%s' has %d label names; limit %d"
-	LabelNameTooLongErrorMsg       = "profile with labels '%s' has label name too long: '%s'"
-	LabelValueTooLongErrorMsg      = "profile with labels '%s' has label value too long: '%s'"
-	DuplicateLabelNamesErrorMsg    = "profile with labels '%s' has duplicate label name: '%s'"
-	QueryTooLongErrorMsg           = "the query time range exceeds the limit (query length: %s, limit: %s)"
-	ProfileTooBigErrorMsg          = "the profile with labels '%s' size exceeds the limit (profile size: %d, limit: %d)"
-	ProfileTooManySamplesErrorMsg  = "the profile with labels '%s' size exceeds the samples limit (actual: %d, limit: %d)"
-	ProfileTooManyLabelsErrorMsg   = "the profile with labels '%s' size exceeds the sample labels limit (actual: %d, limit: %d)"
+	SeriesLimitErrorMsg                = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
+	MissingLabelsErrorMsg              = "error at least one label pair is required per profile"
+	InvalidLabelsErrorMsg              = "invalid labels '%s' with error: %s"
+	MaxLabelNamesPerSeriesErrorMsg     = "profile series '%s' has %d label names; limit %d"
+	LabelNameTooLongErrorMsg           = "profile with labels '%s' has label name too long: '%s'"
+	LabelValueTooLongErrorMsg          = "profile with labels '%s' has label value too long: '%s'"
+	DuplicateLabelNamesErrorMsg        = "profile with labels '%s' has duplicate label name: '%s'"
+	QueryTooLongErrorMsg               = "the query time range exceeds the limit (query length: %s, limit: %s)"
+	ProfileTooBigErrorMsg              = "the profile with labels '%s' size exceeds the limit (profile size: %d, limit: %d)"
+	ProfileTooManySamplesErrorMsg      = "the profile with labels '%s' size exceeds the samples limit (actual: %d, limit: %d)"
+	ProfileTooManySampleLabelsErrorMsg = "the profile with labels '%s' size exceeds the sample labels limit (actual: %d, limit: %d)"
 )
 
 var (
@@ -158,7 +158,7 @@ func ValidateProfile(limits ProfileValidationLimits, userID string, prof *google
 			s.LocationId = s.LocationId[len(s.LocationId)-depthLimit:]
 		}
 		if labelsLimit != 0 && len(s.Label) > labelsLimit {
-			return NewErrorf(SampleLabelsLimit, ProfileTooManyLabelsErrorMsg, phlaremodel.LabelPairsString(ls), len(s.Label), labelsLimit)
+			return NewErrorf(SampleLabelsLimit, ProfileTooManySampleLabelsErrorMsg, phlaremodel.LabelPairsString(ls), len(s.Label), labelsLimit)
 		}
 	}
 	for i := range prof.StringTable {
