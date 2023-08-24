@@ -65,7 +65,7 @@ Pyroscope.init({...})
 app.use(expressMiddleware())
 ```
 
-Note: For __pull mode__, you don't need to `.start()` but you'll need to `.init()`
+Note: For __pull mode__, you don't need to `.start()` but you'll need to `.init()`.
 
 ### Scrape configuration
 
