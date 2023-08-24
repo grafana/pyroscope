@@ -133,7 +133,8 @@ PyroscopeAgent::builder("http://localhost:4040", "myapp")
 - **Backend**: The Pyroscope Agent uses [pprof-rs](https://github.com/tikv/pprof-rs) as a backend. As a result, the [limitations](https://github.com/tikv/pprof-rs#why-not-) for pprof-rs also applies.
 As of 0.5.0, the Pyroscope Agent supports tagging within threads. Check the [tags](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/tags.rs) and [multi-thread](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/multi-thread.rs) examples for usage.
 - **Timer**: epoll (for Linux) and kqueue (for macOS) are required for a more precise timer.
-- **Shutdown**: The Pyroscope Agent might take some time (usually less than 10 seconds) to shutdown properly and drop its threads. For a proper shutdown, it's recommended that you run the `shutdown` function before dropping the Agent.
+- **Shutdown**: The Pyroscope Agent might take some time (usually less than 10 seconds) to shutdown properly and drop its threads. For a proper shutdown, it's recommended that you run the `shutdown` function before dropping the agent.
+
 - **Relevant Links**
   - [Github Repository](https://github.com/pyroscope-io/pyroscope-rs)
   - [Cargo crate](https://crates.io/crates/pyroscope)
