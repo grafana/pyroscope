@@ -30,7 +30,7 @@ LD_PRELOAD=Pyroscope.Linux.ApiWrapper.x64.so
 
 With a managed helper you can interact with the Pyroscope profiler from .NET.
 
-First, add dependency:
+First, add the Pyroscope dependency:
 
 ```shell
 dotnet add package Pyroscope
