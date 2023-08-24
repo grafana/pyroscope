@@ -56,13 +56,13 @@ let agent = PyroscopeAgent::builder(url, application_name.to_string())
 You can start profiling by invoking the following code:
 
 ```rust
- let agent_running = agent.start().unwrap();
+let agent_running = agent.start().unwrap();
 ```
 
 The agent can be stopped at any point, and it'll send a last report to the server. The agent can be restarted at a later point.
 
 ```rust
- let agent_ready = agent.stop().unwrap();
+let agent_ready = agent.stop().unwrap();
 ```
 
 It's recommended to shutdown the agent before exiting the application. A last
@@ -75,12 +75,12 @@ agent_ready.shutdown();
 ## How to add profiling labels to Rust applications
 
 Tags can be added or removed after the agent is started. As of 0.5.0, the
-Pyroscope Agent supports tagging within threads. Check the [labels](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/tags.rs) and [Multi-Thread](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/multi-thread.rs) examples for detailed usage.
+Pyroscope Agent supports tagging within threads. Check the [tags](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/tags.rs) and [multi-thread](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/multi-thread.rs) examples for detailed usage.
 
-After the agent is started (Running state), the `tag_wrapper` function becomes
-available. `tag_wrapper` returns a tuple of functions to add and remove tags
-to the agent across thread boundaries. This function is available as long as
-the agent is running and can be called multiple times.
+After the agent is started, the `tag_wrapper` function becomes available.
+`tag_wrapper` returns a tuple of functions to add and remove tags to the agent
+across thread boundaries. This function is available as long as the agent is
+running and can be called multiple times.
 
 ```rust
 // Start Profiling
@@ -131,7 +131,7 @@ PyroscopeAgent::builder("http://localhost:4040", "myapp")
 
 ## Technical Details
 - **Backend**: The Pyroscope Agent uses [pprof-rs](https://github.com/tikv/pprof-rs) as a backend. As a result, the [limitations](https://github.com/tikv/pprof-rs#why-not-) for pprof-rs also applies.
-As of 0.5.0, the Pyroscope Agent supports tagging within threads. Check the [Tags](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/tags.rs) and [Multi-Thread](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/multi-thread.rs) examples for usage.
+As of 0.5.0, the Pyroscope Agent supports tagging within threads. Check the [tags](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/tags.rs) and [multi-thread](https://github.com/pyroscope-io/pyroscope-rs/blob/main/examples/multi-thread.rs) examples for usage.
 - **Timer**: epoll (for Linux) and kqueue (for macOS) are required for a more precise timer.
 - **Shutdown**: The Pyroscope Agent might take some time (usually less than 10 seconds) to shutdown properly and drop its threads. For a proper shutdown, it's recommended that you run the `shutdown` function before dropping the Agent.
 - **Relevant Links**
