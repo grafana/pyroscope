@@ -12,6 +12,7 @@ aliases:
 ## How to add NodeJS profiling to your application
 
 To start profiling a NodeJS application, you need to include the npm module in your app:
+
 ```
 npm install @pyroscope/nodejs
 
@@ -63,7 +64,7 @@ Pyroscope.init({...})
 app.use(expressMiddleware())
 ```
 
-Note: For __pull mode__, you don't need to `.start()` but you'll need to `.init()` 
+Note: For __pull mode__, you don't need to `.start()` but you'll need to `.init()`
 
 ### Scrape configuration
 
@@ -82,7 +83,7 @@ scrape-configs:
     # List of labeled statically configured targets for this job.
     static-configs:
       - application: my-nodejsapp-name
-        spy-name: nodespy 
+        spy-name: nodespy
         targets:
           - hostname:6060
         labels:
@@ -104,4 +105,3 @@ You may set `DEBUG` env to `pyroscope` and see debugging information which can h
 ```bash
 DEBUG=pyroscope node index.js
 ```
-
