@@ -28,7 +28,7 @@ Using the Grafana agent provides a hassle-free option, especially when dealing w
 
 Alternatively, Pyroscope SDKs offer you the ability to instrument your application directly for more precise profiling. This mode is suitable when you wish to have complete control over the profiling process or when the application you are profiling is written in a language supported by the SDKs (e.g. Java, Python, .NET, etc.). Here's how to use Pyroscope SDKs:
 
-1. Install the relevant Pyroscope SDK for your application's programming language (e.g. pip package, npm package, ruby gem, etc.)
+1. Install the relevant Pyroscope SDK for your application's programming language (e.g. pip package, npm package, Ruby gem, etc.)
 2. Instrument your application's code using the SDK to capture the necessary profiling data
 3. SDK will automatically periodically push the captured profiles to the Pyroscope server for storage and analysis
 
@@ -97,4 +97,3 @@ To get started choose one of the integrations below:
 
 
 If you have more questions feel free to reach out in our Slack channel or create an issue on github and the Pyroscope team will help!
-
