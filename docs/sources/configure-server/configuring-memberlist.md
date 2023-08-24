@@ -34,7 +34,6 @@ The default port is `7946`.
 > **Note**: If you're running Pyroscope in Kubernetes, define a [headless Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services) which resolves to the IP addresses of all Pyroscope pods. Then you set `-memberlist.join` to `dnssrv+<service name>.<namespace>.svc.cluster.local:<port>`.
 
 Pyroscope supports TLS for memberlist connections between its components.
-
 To see all supported configuration parameters, refer to [memberlist]({{< relref "reference-configuration-parameters/index.md#memberlist" >}}).
 
 #### Configuring the memberlist address and port
