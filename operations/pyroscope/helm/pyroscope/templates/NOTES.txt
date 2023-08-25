@@ -6,7 +6,8 @@ Pyroscope database comes with a built-in UI, to access it from your localhost yo
 
 ```
 {{- if hasKey .Values.pyroscope.components "query-frontend" }}
-kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pyroscope.fullname" . }}-query-frontend {{ .Values.pyroscope.service.port }}:{{ .Values.pyroscope.service.port }}
+{{- $port := ((index .Values.pyroscope.components "query-frontend").service).port | default .Values.pyroscope.service.port }}
+kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pyroscope.fullname" . }}-query-frontend {{ $port }}:{{ $port }}
 {{- else }}
 kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pyroscope.fullname" . }} {{ .Values.pyroscope.service.port }}:{{ .Values.pyroscope.service.port }}
 {{- end }}
@@ -20,7 +21,8 @@ The in-cluster query URL for the data source in Grafana is:
 
 ```
 {{- if hasKey .Values.pyroscope.components "query-frontend" }}
-http://{{ include "pyroscope.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.service.port }}
+{{- $port := ((index .Values.pyroscope.components "query-frontend").service).port | default .Values.pyroscope.service.port }}
+http://{{ include "pyroscope.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc.cluster.local.:{{ $port }}
 {{- else }}
 http://{{ include "pyroscope.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.service.port }}
 {{- end }}
