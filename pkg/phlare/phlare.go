@@ -109,7 +109,8 @@ func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
 	// these are values that worked well in OG Pyroscope Cloud without adding much overhead
 	f.IntVar(&c.MutexProfileFraction, "self-profiling.mutex-profile-fraction", 5, "")
 	f.IntVar(&c.BlockProfileRate, "self-profiling.block-profile-rate", 5, "")
-	f.BoolVar(&c.Disabled, "self-profiling.disabled", false, "Set True to disable self-profiling")
+	// how should this work ?
+	f.BoolVar(&c.Disabled, "self-profiling.disabled", false, "Set True to disable self-profiling. Self profiling is enabled")
 }
 
 func (c *Config) RegisterFlags(f *flag.FlagSet) {
