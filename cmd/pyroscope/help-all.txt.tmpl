@@ -11,10 +11,6 @@ Usage of ./pyroscope:
     	How frequently to scan the bucket, or to refresh the bucket index (if enabled), in order to look for changes (new blocks shipped by ingesters and blocks deleted by retention or compaction). (default 15m0s)
   -blocks-storage.bucket-store.tenant-sync-concurrency int
     	Maximum number of concurrent tenants synching blocks. (default 10)
-  -client.tenant-id string
-    	Tenant ID to use when pushing profiles to Phlare (default: anonymous). (default "anonymous")
-  -client.url string
-    	URL of log server.
   -config.expand-env
     	Expands ${var} in config according to the values of the environment variables.
   -config.file string

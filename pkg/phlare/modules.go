@@ -30,9 +30,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
-	"github.com/grafana/pyroscope/pkg/agent"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
@@ -53,7 +51,6 @@ import (
 // The various modules that make up Phlare.
 const (
 	All               string = "all"
-	Agent             string = "agent"
 	API               string = "api"
 	Distributor       string = "distributor"
 	Server            string = "server"
@@ -238,10 +235,6 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 	}), nil
 }
 
-func (f *Phlare) getPusherClient() pushv1connect.PusherServiceClient {
-	return f.pusherClient
-}
-
 func (f *Phlare) initGRPCGateway() (services.Service, error) {
 	f.grpcGatewayMux = grpcgw.NewServeMux(
 		grpcgw.WithMarshalerOption("application/json+pretty", &grpcgw.JSONPb{
@@ -264,25 +257,8 @@ func (f *Phlare) initDistributor() (services.Service, error) {
 		return nil, err
 	}
 
-	// initialise direct pusher, this overwrites the default HTTP client
-	f.pusherClient = d
-
 	f.API.RegisterDistributor(d)
 	return d, nil
-}
-
-func (f *Phlare) initAgent() (services.Service, error) {
-	a, err := agent.New(&f.Cfg.AgentConfig, log.With(f.logger, "component", "agent"), f.getPusherClient)
-	if err != nil {
-		return nil, err
-	}
-	f.agent = a
-
-	if err := f.API.RegisterAgent(a); err != nil {
-		return nil, err
-	}
-
-	return a, nil
 }
 
 func (f *Phlare) initMemberlistKV() (services.Service, error) {
