@@ -1,6 +1,7 @@
 package model
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -70,11 +71,29 @@ func Test_Diff_Tree_With_MaxNodes(t *testing.T) {
 		{locations: []string{"c", "a"}, value: 8},
 	})
 
-	res, err := NewFlamegraphDiff(tr, tr2, 2)
-	assert.NoError(t, err)
-	assert.Equal(t, []string{"total", "a", "other"}, res.Names)
-	assert.Equal(t, int64(12), res.MaxSelf)
-	assert.Equal(t, int64(15), res.Total)
+	t.Run("max nodes less than the tree size", func(t *testing.T) {
+		res, err := NewFlamegraphDiff(tr, tr2, 2)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"total", "a", "other"}, res.Names)
+		assert.Equal(t, int64(12), res.MaxSelf)
+		assert.Equal(t, int64(15), res.Total)
+	})
+
+	t.Run("max nodes greater than the tree size", func(t *testing.T) {
+		res, err := NewFlamegraphDiff(tr, tr2, math.MaxInt64)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"total", "a", "c", "b"}, res.Names)
+		assert.Equal(t, int64(8), res.MaxSelf)
+		assert.Equal(t, int64(15), res.Total)
+	})
+
+	t.Run("negative max nodes", func(t *testing.T) {
+		res, err := NewFlamegraphDiff(tr, tr2, -1)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"total", "a", "c", "b"}, res.Names)
+		assert.Equal(t, int64(8), res.MaxSelf)
+		assert.Equal(t, int64(15), res.Total)
+	})
 }
 
 func Test_Diff_Tree_With_NegativeNodes(t *testing.T) {

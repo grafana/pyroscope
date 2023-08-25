@@ -64,7 +64,7 @@ func (r *Reader) open(ctx context.Context) (err error) {
 		r.files[filepath.Base(f.RelPath)] = f
 	}
 	if err = r.openIndexFile(ctx); err != nil {
-		return fmt.Errorf("openning index file: %w", err)
+		return fmt.Errorf("opening index file: %w", err)
 	}
 	if r.index.Header.Version == FormatV2 {
 		if err = r.openParquetFiles(ctx); err != nil {
@@ -102,16 +102,22 @@ func (r *Reader) openParquetFiles(ctx context.Context) error {
 		new(schemav1.FunctionPersister).Name() + block.ParquetSuffix: &r.functions,
 		new(schemav1.StringPersister).Name() + block.ParquetSuffix:   &r.strings,
 	}
+	g, ctx := errgroup.WithContext(ctx)
 	for n, fp := range m {
-		fm, err := r.file(n)
-		if err != nil {
-			return err
-		}
-		if err = fp.open(ctx, r.bucket, fm); err != nil {
-			return fmt.Errorf("openning file %q: %w", n, err)
-		}
+		n := n
+		fp := fp
+		g.Go(func() error {
+			fm, err := r.file(n)
+			if err != nil {
+				return err
+			}
+			if err = fp.open(ctx, r.bucket, fm); err != nil {
+				return fmt.Errorf("openning file %q: %w", n, err)
+			}
+			return nil
+		})
 	}
-	return nil
+	return g.Wait()
 }
 
 func (r *Reader) file(name string) (block.File, error) {
@@ -217,7 +223,7 @@ func (p *partition) Symbols() *Symbols {
 
 func (p *partition) Release() {
 	var wg sync.WaitGroup
-	wg.Add(len(p.stacktraceChunks) + 4)
+	wg.Add(len(p.stacktraceChunks))
 	for _, c := range p.stacktraceChunks {
 		c := c
 		go func() {
@@ -226,6 +232,7 @@ func (p *partition) Release() {
 		}()
 	}
 	if p.reader.index.Header.Version > FormatV1 {
+		wg.Add(4)
 		go func() { p.locations.release(); wg.Done() }()
 		go func() { p.mappings.release(); wg.Done() }()
 		go func() { p.functions.release(); wg.Done() }()
@@ -342,7 +349,12 @@ func (c *stacktraceChunkReader) fetch(ctx context.Context) (err error) {
 	// it after it is fully loaded. Use of atomics here
 	// for reference counting is not sufficient.
 	c.m.Lock()
-	defer c.m.Unlock()
+	defer func() {
+		if err != nil {
+			c.r--
+		}
+		c.m.Unlock()
+	}()
 	if c.r++; c.r > 1 {
 		return nil
 	}
@@ -402,7 +414,7 @@ type parquetFile struct {
 	size   int64
 }
 
-const parquetReadBufferSize = 2 << 20 // 2MB
+const parquetReadBufferSize = 256 << 10 // 256KB
 
 func (f *parquetFile) open(ctx context.Context, b objstore.BucketReader, meta block.File) error {
 	f.path = meta.RelPath
@@ -459,14 +471,19 @@ type parquetTableRange[M schemav1.Models, P schemav1.Persister[M]] struct {
 // defaultRowBufferSize = 42
 const inMemoryReaderRowsBufSize = 1 << 10
 
-func (t *parquetTableRange[M, P]) fetch(ctx context.Context) error {
+func (t *parquetTableRange[M, P]) fetch(ctx context.Context) (err error) {
 	span, _ := opentracing.StartSpanFromContext(ctx, "parquetTableRange.fetch", opentracing.Tags{
 		"table_name": t.persister.Name(),
 		"row_groups": len(t.headers),
 	})
 	defer span.Finish()
 	t.m.Lock()
-	defer t.m.Unlock()
+	defer func() {
+		if err != nil {
+			t.r--
+		}
+		t.m.Unlock()
+	}()
 	if t.r++; t.r > 1 {
 		return nil
 	}

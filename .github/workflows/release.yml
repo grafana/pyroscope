@@ -28,7 +28,7 @@ jobs:
       - run: git fetch --force --tags
       - uses: actions/setup-go@v3
         with:
-          go-version: "1.19.12"
+          go-version: "1.21.0"
           cache: true
       - uses: actions/setup-node@v3
         with:
@@ -59,7 +59,7 @@ jobs:
           version: latest
           args: release --rm-dist --timeout 60m
         env:
-          GITHUB_TOKEN: ${{ steps.app-releaser.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-goreleaser.outputs.token }}
           # Your GoReleaser Pro key, if you are using the 'goreleaser-pro'
           # distribution:
           # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}

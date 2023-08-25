@@ -1,4 +1,24 @@
 ---
+# Source: pyroscope/templates/deployments-statefulsets.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pyroscope-dev
+  labels:
+    helm.sh/chart: pyroscope-0.5.4
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "0.5.1"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "all"
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pyroscope
+      app.kubernetes.io/instance: pyroscope-dev
+      app.kubernetes.io/component: "all"
+---
 # Source: pyroscope/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount

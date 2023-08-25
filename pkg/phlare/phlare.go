@@ -54,6 +54,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/tracing"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/cli"
 	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
@@ -122,7 +123,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	// Set the default module list to 'all'
 	c.Target = []string{All}
 	f.StringVar(&c.ConfigFile, "config.file", "", "yaml file to load")
-	f.Var(&c.Target, "target", "Comma-separated list of Phlare modules to load. "+
+	f.Var(&c.Target, "target", "Comma-separated list of Pyroscope modules to load. "+
 		"The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode. ")
 	f.BoolVar(&c.MultitenancyEnabled, "auth.multitenancy-enabled", false, "When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.")
 	f.BoolVar(&c.ConfigExpandEnv, "config.expand-env", false, "Expands ${var} in config according to the values of the environment variables.")
@@ -359,7 +360,21 @@ func (f *Phlare) setupModuleManager() error {
 	return nil
 }
 
+// made here https://patorjk.com/software/taag/#p=display&f=Doom&t=grafana%20pyroscope
+// also needed to replace all ` with '
+var banner = `
+                 / _|
+  __ _ _ __ __ _| |_ __ _ _ __   __ _   _ __  _   _ _ __ ___  ___  ___ ___  _ __   ___
+ / _' | '__/ _' |  _/ _' | '_ \ / _' | | '_ \| | | | '__/ _ \/ __|/ __/ _ \| '_ \ / _ \
+| (_| | | | (_| | || (_| | | | | (_| | | |_) | |_| | | | (_) \__ \ (_| (_) | |_) |  __/
+ \__, |_|  \__,_|_| \__,_|_| |_|\__,_| | .__/ \__, |_|  \___/|___/\___\___/| .__/ \___|
+  __/ |                                | |     __/ |                       | |
+ |___/                                 |_|    |___/                        |_|
+ `
+
 func (f *Phlare) Run() error {
+	_ = cli.GradientBanner(banner, os.Stderr)
+
 	serviceMap, err := f.ModuleManager.InitModuleServices(f.Cfg.Target...)
 	if err != nil {
 		return err
@@ -379,7 +394,7 @@ func (f *Phlare) Run() error {
 
 	RegisterHealthServer(f.Server.HTTP, grpcutil.WithManager(sm))
 	healthy := func() {
-		level.Info(f.logger).Log("msg", "Phlare started", "version", version.Info())
+		level.Info(f.logger).Log("msg", "Pyroscope started", "version", version.Info())
 		if os.Getenv("PYROSCOPE_PRINT_ROUTES") != "" {
 			printRoutes(f.Server.HTTP)
 		}
@@ -473,7 +488,7 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 }
 
 func (f *Phlare) stopped() {
-	level.Info(f.logger).Log("msg", "Phlare stopped")
+	level.Info(f.logger).Log("msg", "Pyroscope stopped")
 	if f.tracer != nil {
 		if err := f.tracer.Close(); err != nil {
 			level.Error(f.logger).Log("msg", "error closing tracing", "err", err)

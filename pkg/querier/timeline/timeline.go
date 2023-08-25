@@ -6,12 +6,19 @@ import (
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
-// New generates a FlamebearerTimeline,
-// backfilling any missing data with zeros
+// New generates a FlamebearerTimeline, backfilling any missing data with zeros.
+// If startMs or endMs are in the middle of its durationDeltaSec bucket, they
+// will be snapped to the beginning of that bucket.
+//
 // It assumes:
 // * Ordered
 // * Series timestamps are within [startMs, endMs)
 func New(series *v1.Series, startMs int64, endMs int64, durationDeltaSec int64) *flamebearer.FlamebearerTimelineV1 {
+	// Snap startMs and endMs to bucket boundaries.
+	durationDeltaMs := durationDeltaSec * 1000
+	startMs = (startMs / durationDeltaMs) * durationDeltaMs
+	endMs = (endMs / durationDeltaMs) * durationDeltaMs
+
 	// ms to seconds
 	startSec := startMs / 1000
 	points := series.GetPoints()
