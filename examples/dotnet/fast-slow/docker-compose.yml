@@ -2,16 +2,16 @@
 version: '3.9'
 services:
   pyroscope:
-    image: 'grafana/pyroscope:latest'
+    image: grafana/pyroscope
     ports:
       - '4040:4040'
-    command:
-      - 'server'
+
   app-glibc:
     platform: linux/amd64
     build:
       context: .
       dockerfile: Dockerfile
+
   app-musl:
     platform: linux/amd64
     build:

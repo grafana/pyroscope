@@ -2,9 +2,10 @@
 version: '3.9'
 services:
   pyroscope:
-    image: 'grafana/pyroscope:latest'
+    image: grafana/pyroscope
     ports:
       - '4040:4040'
+
   php:
     platform: linux/amd64
     build:
@@ -14,6 +15,7 @@ services:
       - SYS_PTRACE
     environment:
       - EXECUTION_TIMEOUT=0 # 0 equals infinity
+
   cgi-client:
     build:
       context: .

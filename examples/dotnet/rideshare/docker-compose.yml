@@ -1,5 +1,10 @@
 version: "3"
 services:
+  pyroscope:
+    image: grafana/pyroscope:latest
+    ports:
+      - '4040:4040'
+
   us-east:
     platform: linux/amd64
     ports:
@@ -49,16 +54,6 @@ services:
     build:
       context: .
       dockerfile: musl.Dockerfile
-
-
-  pyroscope:
-    image: grafana/pyroscope:latest
-    environment:
-      - PYROSCOPE_LOG_LEVEL=debug
-    ports:
-      - '4040:4040'
-    command:
-      - 'server'
 
   load-generator:
     build:

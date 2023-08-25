@@ -2,13 +2,10 @@
 version: '3.9'
 services:
   pyroscope:
-    image: 'grafana/pyroscope:latest'
-    environment:
-      - 'PYROSCOPE_LOG_LEVEL=debug'
+    image: grafana/pyroscope
     ports:
       - '4040:4040'
-    command:
-      - 'server'
+
   app:
     build: .
     privileged: true

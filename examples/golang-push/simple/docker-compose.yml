@@ -5,8 +5,7 @@ services:
     image: 'grafana/pyroscope:latest'
     ports:
       - '4040:4040'
-    command:
-      - 'server'
+
   app:
     build: .
     environment:

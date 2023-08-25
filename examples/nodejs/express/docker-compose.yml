@@ -1,5 +1,10 @@
 version: '3.9'
 services:
+  pyroscope:
+    image: grafana/pyroscope
+    ports:
+      - '4040:4040'
+
   us-east:
     ports:
       - 5000
@@ -23,11 +28,6 @@ services:
       - REGION=ap-south
     build:
       context: .
-
-  pyroscope:
-    image: grafana/pyroscope
-    ports:
-      - '4040:4040'
 
   load-generator:
     build:
