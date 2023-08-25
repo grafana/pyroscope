@@ -3,11 +3,8 @@ FROM openjdk:17-slim-bullseye
 WORKDIR /opt/app
 
 RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates && apt-get install -y git
-RUN git clone https://github.com/pyroscope-io/pyroscope-java.git && \
-    cd pyroscope-java && \
-    git checkout v0.6.0 && \
-    ./gradlew shadowJar && \
-    cp agent/build/libs/pyroscope.jar /opt/app/pyroscope.jar
+
+ADD https://github.com/grafana/pyroscope-java/releases/download/v0.11.5/pyroscope.jar /opt/app/pyroscope.jar
 
 COPY Main.java ./
 
