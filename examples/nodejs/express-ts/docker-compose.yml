@@ -18,12 +18,12 @@ services:
       - REGION=ap-south
     build:
       context: .
+
   pyroscope:
-    image: 'pyroscope/pyroscope:latest'
+    image: 'grafana/pyroscope:latest'
     ports:
       - '4040:4040'
-    command:
-      - 'server'
+
   load-generator:
     build:
       context: ../
