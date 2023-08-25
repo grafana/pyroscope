@@ -2,14 +2,11 @@
 version: '3.9'
 services:
   pyroscope:
-    container_name: pyroscope
-    image: 'pyroscope/pyroscope:latest'
+    image: 'grafana/pyroscope:latest'
     ports:
       - '4040:4040'
-    command:
-      - 'server'
   php:
-    container_name: pyroscope_php-fpm
+    platform: linux/amd64
     build:
       context: .
       dockerfile: php/Dockerfile
@@ -18,7 +15,6 @@ services:
     environment:
       - EXECUTION_TIMEOUT=0 # 0 equals infinity
   cgi-client:
-    container_name: pyroscope_cgi_client
     build:
       context: .
       dockerfile: client-cgi/Dockerfile
