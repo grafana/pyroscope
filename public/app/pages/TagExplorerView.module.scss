@@ -120,11 +120,6 @@ $pieChartWidth: 300px;
           margin-right: 10px;
         }
 
-        .bold {
-          font-weight: bold;
-          white-space: nowrap;
-        }
-
         .label {
           text-align: left;
         }
@@ -136,6 +131,12 @@ $pieChartWidth: 300px;
       border: 1px solid var(--ps-ui-border);
       padding: 4px 10px;
       width: 10%;
+      overflow: auto;
+
+      .bold {
+        font-weight: bold;
+        white-space: nowrap;
+      }
     }
   }
 }
