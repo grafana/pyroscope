@@ -5,10 +5,10 @@ kind: PodDisruptionBudget
 metadata:
   name: pyroscope-dev
   labels:
-    helm.sh/chart: pyroscope-0.5.4
+    helm.sh/chart: pyroscope-1.0.0-rc.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "0.5.1"
+    app.kubernetes.io/version: "1.0.0-rc.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
