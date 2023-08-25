@@ -3,7 +3,7 @@ name: pyroscope
 description: 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 type: application
 kubeVersion: ">=1.22"
-version: 1.0.0-rc.0
+version: 0.9.0
 appVersion: 1.0.0-rc.0
 dependencies:
   - name: grafana-agent

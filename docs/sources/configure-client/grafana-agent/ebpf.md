@@ -194,7 +194,7 @@ with a `.gnu_debuglink` set to `libc.so.6.debug` and a build ID `0123456789abcde
 
 ### Dealing with unknown symbols
 
-Unknown symbols in the profiles you’ve collected indicate that the profiler couldn't access an ELF file ￼associated with a given address in the trace.
+Unknown symbols in the profiles you’ve collected indicate that the profiler couldn't access an ELF file associated with a given address in the trace.
 
 This can occur for several reasons:
 
@@ -209,7 +209,7 @@ indicates that the symbols couldn't be mapped to their respective function names
 
 This can occur for several reasons:
 
-- The binary has been stripped, leaving no .symtab, .dynsym, or .gopclntab sections in the ELF file.
+- The binary has been stripped, leaving no `.symtab`, `.dynsym`, or `.gopclntab` sections in the ELF file.
 - The debug file is missing or could not be located.
 
 To fix this for your binaries, ensure that they are either not stripped or that you have separate
@@ -247,4 +247,4 @@ Interpreted methods will display the interpreter function’s name rather than t
 Check out the following resources to learn more about eBPF profiling:
 - [The pros and cons of eBPF profiling](https://pyroscope.io/blog/ebpf-profiling-pros-cons) blog post (for more context on flamegraphs below)
 - [Demo](https://demo.pyroscope.io/?query=rideshare-cluster-ebpf.cpu%7B%7D) showing breakdown of our examples cluster
-- Grafana agent documnetation for [pyroscope.ebpf](/docs/agent/next/flow/reference/components/pyroscope.ebpf/), [pyroscope.write](/docs/agent/next/flow/reference/components/pyroscope.write/), [discovery.kubernetes](/docs/agent/next/flow/reference/components/discovery.kubernetes/), [discovery.relabel](/docs/agent/next/flow/reference/components/discovery.relabel/) components
+- Grafana Agent documentation for [pyroscope.ebpf](/docs/agent/next/flow/reference/components/pyroscope.ebpf/), [pyroscope.write](/docs/agent/next/flow/reference/components/pyroscope.write/), [discovery.kubernetes](/docs/agent/next/flow/reference/components/discovery.kubernetes/), [discovery.relabel](/docs/agent/next/flow/reference/components/discovery.relabel/) components
