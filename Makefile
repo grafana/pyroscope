@@ -340,7 +340,7 @@ helm/lint: $(BIN)/helm
 	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope/
 
 helm/docs: $(BIN)/helm
-	docker run --rm --volume "$(CURDIR)/operations/pyroscope/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.8.1
+	docker run --rm --volume "$(CURDIR)/operations/pyroscope/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.11.0
 
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser
