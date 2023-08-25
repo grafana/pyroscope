@@ -51,8 +51,6 @@ PyroscopeAgent.start(
     .setProfilingEvent(EventType.ITIMER)
     .setFormat(Format.JFR)
     .setServerAddress("http://pyroscope-server:4040")
-    // Optionally, if authentication is enabled, specify the API key.
-    // .setAuthToken(System.getenv("PYROSCOPE_AUTH_TOKEN"))
     .build()
 );
 ```
@@ -84,9 +82,6 @@ To start profiling a Java application, run your application with `pyroscope.jar`
 ```shell
 export PYROSCOPE_APPLICATION_NAME=my.java.app
 export PYROSCOPE_SERVER_ADDRESS=http://pyroscope-server:4040
-
-# Optionally, if authentication is enabled, specify the API key.
-# export PYROSCOPE_AUTH_TOKEN={YOUR_API_KEY}
 
 java -javaagent:pyroscope.jar -jar app.jar
 ```
@@ -144,6 +139,21 @@ Java integration supports JFR format to be able to support multiple events (JFR 
 
 ## Sending data to Pyroscope OSS or Grafana Cloud Profiles with Pyroscope java SDK
 
+Add the following code to your application:
+```java
+PyroscopeAgent.start(
+    new Config.Builder()
+        .setApplicationName("test-java-app")
+        .setProfilingEvent(EventType.ITIMER)
+        .setFormat(Format.JFR)
+        .setServerAddress("<URL>")
+        .setBasicAuthUser("<User>")
+        .setBasicAuthPassword("<Password>")
+        // Optional Pyroscope tenant ID (only needed if using multi-tenancy). Not needed for Grafana cloud.
+        // .setTenantID("<TenantID>")
+        .build()
+);
+```
 To configure java sdk to send data to Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
 
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
