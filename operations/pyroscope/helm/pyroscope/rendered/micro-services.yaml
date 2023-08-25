@@ -1738,6 +1738,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=distributor"
+            - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
@@ -1827,6 +1828,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=querier"
+            - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
@@ -1916,6 +1918,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-frontend"
+            - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
@@ -2005,6 +2008,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-scheduler"
+            - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
@@ -2272,6 +2276,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=ingester"
+            - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
@@ -2364,6 +2369,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=store-gateway"
+            - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"

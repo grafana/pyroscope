@@ -1140,6 +1140,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=all"
+            - "-self-profiling.disable-push=true"
             - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"

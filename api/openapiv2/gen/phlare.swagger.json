@@ -1,13 +1,10 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "agent/v1/agent.proto",
+    "title": "google/v1/profile.proto",
     "version": "version not set"
   },
   "tags": [
-    {
-      "name": "AgentService"
-    },
     {
       "name": "PusherService"
     },
@@ -119,43 +116,6 @@
         },
         "tags": [
           "StatusService"
-        ]
-      }
-    },
-    "/api/v1/targets": {
-      "get": {
-        "summary": "Retrieve information about targets.",
-        "operationId": "AgentService_GetTargets",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1GetTargetsResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "state",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "STATE_UNSPECIFIED",
-              "STATE_ACTIVE",
-              "STATE_DROPPED"
-            ],
-            "default": "STATE_UNSPECIFIED"
-          }
-        ],
-        "tags": [
-          "AgentService"
         ]
       }
     }
@@ -548,34 +508,6 @@
           "$ref": "#/definitions/v1GetBuildInfoData"
         }
       }
-    },
-    "v1GetTargetsResponse": {
-      "type": "object",
-      "properties": {
-        "activeTargets": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1Target"
-          }
-        },
-        "droppedTargets": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1Target"
-          }
-        }
-      }
-    },
-    "v1Health": {
-      "type": "string",
-      "enum": [
-        "HEALTH_UNSPECIFIED",
-        "HEALTH_UP",
-        "HEALTH_DOWN"
-      ],
-      "default": "HEALTH_UNSPECIFIED"
     },
     "v1LabelNamesResponse": {
       "type": "object",
@@ -1018,67 +950,6 @@
         "MERGE_FORMAT_TREE"
       ],
       "default": "MERGE_FORMAT_UNSPECIFIED"
-    },
-    "v1State": {
-      "type": "string",
-      "enum": [
-        "STATE_UNSPECIFIED",
-        "STATE_ACTIVE",
-        "STATE_DROPPED"
-      ],
-      "default": "STATE_UNSPECIFIED"
-    },
-    "v1Target": {
-      "type": "object",
-      "properties": {
-        "discoveredLabels": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "description": "Contains labels before any processing."
-        },
-        "labels": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "description": "Labels as they are attached to ingested profiles."
-        },
-        "scrapePool": {
-          "type": "string",
-          "title": "Name of the scrape pool used"
-        },
-        "scrapeUrl": {
-          "type": "string",
-          "description": "URL that is used for retrieving the profile."
-        },
-        "lastError": {
-          "type": "string",
-          "description": "Contains the error if the last attempted scrape has failed."
-        },
-        "lastScrape": {
-          "type": "string",
-          "format": "date-time",
-          "title": "Timestamp of last scrape"
-        },
-        "lastScrapeDuration": {
-          "type": "string",
-          "description": "Duation of last scrape."
-        },
-        "health": {
-          "$ref": "#/definitions/v1Health",
-          "description": "Health of last scrape."
-        },
-        "scrapeTimeout": {
-          "type": "string",
-          "description": "Timeout duration for the scrape request."
-        },
-        "scrapeInterval": {
-          "type": "string",
-          "description": "Interval how often profiles are scraped."
-        }
-      }
     },
     "v1ValueType": {
       "type": "object",

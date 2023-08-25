@@ -49,6 +49,7 @@ spec:
           imagePullPolicy: {{ $values.image.pullPolicy }}
           args:
             - "-target={{ $component }}"
+            - "-self-profiling.disable-push=true"
             - "-server.http-listen-port={{ $values.service.port }}"
             - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "pyroscope.fullname" .}}"
             - "-memberlist.join=dns+{{ include "pyroscope.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.memberlist.port }}"
