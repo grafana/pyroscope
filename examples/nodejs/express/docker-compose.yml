@@ -1,32 +1,33 @@
 version: '3.9'
 services:
   us-east:
+    ports:
+      - 5000
     environment:
       - REGION=us-east
     build:
       context: .
 
   eu-north:
+    ports:
+      - 5000
     environment:
       - REGION=eu-north
     build:
       context: .
 
   ap-south:
+    ports:
+      - 5000
     environment:
       - REGION=ap-south
     build:
       context: .
 
   pyroscope:
-    container_name: pyroscope
-    image: pyroscope/pyroscope
-    environment:
-      - PYROSCOPE_LOG_LEVEL=debug
+    image: grafana/pyroscope
     ports:
       - '4040:4040'
-    command:
-      - 'server'
 
   load-generator:
     build:
