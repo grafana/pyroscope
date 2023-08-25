@@ -1,6 +1,7 @@
 version: "3"
 services:
   us-east:
+    platform: linux/amd64
     ports:
       - 5000
     environment:
@@ -12,6 +13,7 @@ services:
       context: .
 
   eu-north:
+    platform: linux/amd64
     ports:
       - 5000
     environment:
@@ -24,6 +26,7 @@ services:
       context: .
 
   ap-south:
+    platform: linux/amd64
     ports:
       - 5000
     environment:
@@ -35,6 +38,7 @@ services:
       context: .
 
   ap-south-alpine:
+    platform: linux/amd64
     ports:
       - 5000
     environment:
@@ -43,12 +47,12 @@ services:
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
       - ASPNETCORE_URLS=http://*:5000
     build:
-      context: . 
+      context: .
       dockerfile: musl.Dockerfile
-  
+
 
   pyroscope:
-    image: pyroscope/pyroscope:latest
+    image: grafana/pyroscope:latest
     environment:
       - PYROSCOPE_LOG_LEVEL=debug
     ports:
