@@ -356,6 +356,8 @@ trunk/fmt: $(BIN)/trunk
 
 .PHONY: helm/check
 helm/check: $(BIN)/kubeconform $(BIN)/helm
+	$(BIN)/helm repo add --force-update minio https://charts.min.io/
+	$(BIN)/helm repo add --force-update grafana https://grafana.github.io/helm-charts
 	$(BIN)/helm dependency update ./operations/pyroscope/helm/pyroscope/
 	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/
 	mkdir -p ./operations/pyroscope/helm/pyroscope/rendered/
