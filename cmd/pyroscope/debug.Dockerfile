@@ -1,7 +1,7 @@
 FROM golang as builder
 
 WORKDIR /app
-FROM alpine:3.17.4
+FROM alpine:3.18.3
 
 RUN apk add --no-cache ca-certificates
 
