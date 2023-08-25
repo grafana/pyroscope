@@ -36,7 +36,7 @@ definition][pprof] for the pprof wire format.
 Profile labels contain additional information gathered at ingestion time and can
 be used to select certain profiles. They are comparable to Prometeus'/Loki's label
 and typical labels are `namespace` and `pod` to describe which workload the profiles
-are coming form.
+are coming from.
 
 Each profile ingested will be added into a new row in the profile table. If
 there are entries missing in the tables for the different models they are also
