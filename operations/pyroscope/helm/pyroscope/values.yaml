@@ -6,10 +6,10 @@ pyroscope:
   replicaCount: 1
 
   image:
-    repository: grafana/phlare
+    repository: grafana/pyroscope
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "0.5.1"
+    tag: "1.0.0-rc.0"
 
   extraArgs:
     log.level: debug

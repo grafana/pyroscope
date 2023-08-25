@@ -3,12 +3,6 @@
 # Declare variables to be passed into your templates.
 
 pyroscope:
-  # these port overrides are temporary
-  service:
-    port: 4040
-  structuredConfig:
-    server:
-      http_listen_port: 4040
   components:
     querier:
       kind: Deployment

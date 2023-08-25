@@ -68,8 +68,8 @@
     "fullnameOverride": "",
     "image": {
       "pullPolicy": "IfNotPresent",
-      "repository": "grafana/phlare",
-      "tag": "0.5.1"
+      "repository": "grafana/pyroscope",
+      "tag": "1.0.0-rc.0"
     },
     "imagePullSecrets": [],
     "memberlist": {

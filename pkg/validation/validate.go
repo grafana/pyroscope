@@ -43,21 +43,23 @@ const (
 	DuplicateLabelNames Reason = "duplicate_label_names"
 	// SeriesLimit is a reason for discarding lines when we can't create a new stream
 	// because the limit of active streams has been reached.
-	SeriesLimit    Reason = "series_limit"
-	QueryLimit     Reason = "query_limit"
-	InvalidProfile Reason = "invalid_profile"
+	SeriesLimit       Reason = "series_limit"
+	QueryLimit        Reason = "query_limit"
+	SamplesLimit      Reason = "samples_limit"
+	ProfileSizeLimit  Reason = "profile_size_limit"
+	SampleLabelsLimit Reason = "sample_labels_limit"
 
-	SeriesLimitErrorMsg            = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
-	MissingLabelsErrorMsg          = "error at least one label pair is required per profile"
-	InvalidLabelsErrorMsg          = "invalid labels '%s' with error: %s"
-	MaxLabelNamesPerSeriesErrorMsg = "profile series '%s' has %d label names; limit %d"
-	LabelNameTooLongErrorMsg       = "profile with labels '%s' has label name too long: '%s'"
-	LabelValueTooLongErrorMsg      = "profile with labels '%s' has label value too long: '%s'"
-	DuplicateLabelNamesErrorMsg    = "profile with labels '%s' has duplicate label name: '%s'"
-	QueryTooLongErrorMsg           = "the query time range exceeds the limit (query length: %s, limit: %s)"
-	ProfileTooBigErrorMsg          = "the profile with labels '%s' size exceeds the limit (profile size: %d, limit: %d)"
-	ProfileTooManySamplesErrorMsg  = "the profile with labels '%s' size exceeds the samples limit (actual: %d, limit: %d)"
-	ProfileTooManyLabelsErrorMsg   = "the profile with labels '%s' size exceeds the sample labels limit (actual: %d, limit: %d)"
+	SeriesLimitErrorMsg                = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
+	MissingLabelsErrorMsg              = "error at least one label pair is required per profile"
+	InvalidLabelsErrorMsg              = "invalid labels '%s' with error: %s"
+	MaxLabelNamesPerSeriesErrorMsg     = "profile series '%s' has %d label names; limit %d"
+	LabelNameTooLongErrorMsg           = "profile with labels '%s' has label name too long: '%s'"
+	LabelValueTooLongErrorMsg          = "profile with labels '%s' has label value too long: '%s'"
+	DuplicateLabelNamesErrorMsg        = "profile with labels '%s' has duplicate label name: '%s'"
+	QueryTooLongErrorMsg               = "the query time range exceeds the limit (max_query_length, actual: %s, limit: %s)"
+	ProfileTooBigErrorMsg              = "the profile with labels '%s' exceeds the size limit (max_profile_size_byte, actual: %d, limit: %d)"
+	ProfileTooManySamplesErrorMsg      = "the profile with labels '%s' exceeds the samples count limit (max_profile_stacktrace_samples, actual: %d, limit: %d)"
+	ProfileTooManySampleLabelsErrorMsg = "the profile with labels '%s' exceeds the sample labels limit (max_profile_stacktrace_sample_labels, actual: %d, limit: %d)"
 )
 
 var (
@@ -140,10 +142,10 @@ func ValidateProfile(limits ProfileValidationLimits, userID string, prof *google
 		return nil
 	}
 	if limit := limits.MaxProfileSizeBytes(userID); limit != 0 && uncompressedSize > limit {
-		return NewErrorf(InvalidProfile, ProfileTooBigErrorMsg, phlaremodel.LabelPairsString(ls), uncompressedSize, limit)
+		return NewErrorf(ProfileSizeLimit, ProfileTooBigErrorMsg, phlaremodel.LabelPairsString(ls), uncompressedSize, limit)
 	}
 	if limit, size := limits.MaxProfileStacktraceSamples(userID), len(prof.Sample); limit != 0 && size > limit {
-		return NewErrorf(InvalidProfile, ProfileTooManySamplesErrorMsg, phlaremodel.LabelPairsString(ls), size, limit)
+		return NewErrorf(SamplesLimit, ProfileTooManySamplesErrorMsg, phlaremodel.LabelPairsString(ls), size, limit)
 	}
 	var (
 		depthLimit        = limits.MaxProfileStacktraceDepth(userID)
@@ -151,13 +153,12 @@ func ValidateProfile(limits ProfileValidationLimits, userID string, prof *google
 		symbolLengthLimit = limits.MaxProfileSymbolValueLength(userID)
 	)
 	for _, s := range prof.Sample {
-
 		if depthLimit != 0 && len(s.LocationId) > depthLimit {
-			// truncate the deepest frames
-			s.LocationId = s.LocationId[:depthLimit]
+			// Truncate the deepest frames: s.LocationId[0] is the leaf.
+			s.LocationId = s.LocationId[len(s.LocationId)-depthLimit:]
 		}
 		if labelsLimit != 0 && len(s.Label) > labelsLimit {
-			return NewErrorf(InvalidProfile, ProfileTooManyLabelsErrorMsg, phlaremodel.LabelPairsString(ls), len(s.Label), labelsLimit)
+			return NewErrorf(SampleLabelsLimit, ProfileTooManySampleLabelsErrorMsg, phlaremodel.LabelPairsString(ls), len(s.Label), labelsLimit)
 		}
 	}
 	for i := range prof.StringTable {
