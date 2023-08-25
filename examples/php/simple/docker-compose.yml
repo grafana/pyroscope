@@ -1,6 +1,5 @@
 ---
 version: '3.9'
-
 services:
   pyroscope:
     image: grafana/pyroscope
@@ -8,4 +7,7 @@ services:
       - '4040:4040'
 
   app:
+    platform: linux/amd64
     build: .
+    cap_add:
+      - SYS_PTRACE

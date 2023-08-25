@@ -1,6 +1,5 @@
 ---
 version: '3.9'
-
 services:
   pyroscope:
     image: grafana/pyroscope
@@ -9,3 +8,4 @@ services:
 
   app:
     build: .
+    privileged: true

@@ -1,7 +1,0 @@
-auth:
-  signup-default-role: Admin
-  internal:
-    enabled: true
-    # This will be overwritten by the env vars, therefore they can also be omitted here
-    name: IGNORED
-    password: IGNORED
