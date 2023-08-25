@@ -1,22 +1,50 @@
 Thanks for deploying Grafana Pyroscope.
 
-To access the Pyroscope UI from your localhost you can use:
+# Pyroscope UI & Grafana
 
+Pyroscope database comes with a built-in UI, to access it from your localhost you can use:
+
+```
 {{- if hasKey .Values.pyroscope.components "query-frontend" }}
 kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pyroscope.fullname" . }}-query-frontend {{ .Values.pyroscope.service.port }}:{{ .Values.pyroscope.service.port }}
 {{- else }}
 kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pyroscope.fullname" . }} {{ .Values.pyroscope.service.port }}:{{ .Values.pyroscope.service.port }}
 {{- end }}
+```
 
-
-In order to configure Grafana Explore to use the Pyroscope data source, you need to add the Pyroscope data source to your Grafana instance.
-
+You can also use Grafana to explore Pyroscope data.
+For that, you'll need to add the Pyroscope data source to your Grafana instance and configure the query URL accordingly.
 See https://grafana.com/docs/grafana/latest/datasources/grafana-pyroscope/ for more details.
 
 The in-cluster query URL for the data source in Grafana is:
 
+```
 {{- if hasKey .Values.pyroscope.components "query-frontend" }}
 http://{{ include "pyroscope.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.service.port }}
 {{- else }}
 http://{{ include "pyroscope.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.service.port }}
 {{- end }}
+```
+
+# Collecting profiles.
+
+{{ if .Values.agent.enabled }}
+The Grafana Agent has been installed to scrape and discover pprof profiles endpoint via pod annotations.
+
+As an example, to start collecting memory and cpu profile using the 8080 port, add the following annotations to your workload:
+
+```
+profiles.grafana.com/memory.scrape: "true"
+profiles.grafana.com/memory.port: "8080"
+profiles.grafana.com/cpu.scrape: "true"
+profiles.grafana.com/cpu.port: "8080"
+```
+
+
+To learn more supported annotations, read our guide https://grafana.com/docs/pyroscope/next/deploy-kubernetes/#optional-scrape-your-own-workloads-profiles
+{{- end }}
+
+There are various ways to collect profiles from your application depending on your needs.
+Follow our guide to setup profiling data collection for your workload:
+
+https://grafana.com/docs/pyroscope/next/configure-client/
