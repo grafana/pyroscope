@@ -11,7 +11,7 @@ aliases:
 
 ## How to add .NET profiling to your application
 
-1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarbal](https://github.com/pyroscope-io/pyroscope-dotnet/releases/):
+1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/pyroscope-io/pyroscope-dotnet/releases/):
 
 ```bash
 curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.8.8-pyroscope/pyroscope.0.8.8-glibc-x86_64.tar.gz  | tar xvz -C .
