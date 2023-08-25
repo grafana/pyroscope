@@ -33,7 +33,7 @@ the block there are multiple files:
 The data model within the block is fairly aligned to Google's [proto
 definition][pprof] for the pprof wire format.
 
-Profile labels contain additional information gathered at ingestion time and can
+Profile series labels contain additional information gathered at ingestion time and can
 be used to select certain profiles. They are comparable to Prometeus'/Loki's label
 and typical labels are `namespace` and `pod` to describe which workload the profiles
 are coming from.
