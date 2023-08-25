@@ -30,9 +30,12 @@ import (
 	wwtracing "github.com/grafana/dskit/tracing"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/prometheus/client_golang/prometheus"
+	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/version"
 	"github.com/samber/lo"
 
+	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
+	"github.com/grafana/pyroscope/pkg/agent"
 	"github.com/grafana/pyroscope/pkg/api"
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/distributor"
@@ -58,6 +61,7 @@ import (
 
 type Config struct {
 	Target            flagext.StringSliceCSV `yaml:"target,omitempty"`
+	AgentConfig       agent.Config           `yaml:",inline"`
 	API               api.Config             `yaml:"api"`
 	Server            server.Config          `yaml:"server,omitempty"`
 	Distributor       distributor.Config     `yaml:"distributor,omitempty"`
@@ -100,17 +104,14 @@ func (c *StorageConfig) RegisterFlagsWithContext(ctx context.Context, f *flag.Fl
 }
 
 type SelfProfilingConfig struct {
-	Disabled             bool `yaml:"disabled,omitempty"`
-	MutexProfileFraction int  `yaml:"mutex_profile_fraction,omitempty"`
-	BlockProfileRate     int  `yaml:"block_profile_rate,omitempty"`
+	MutexProfileFraction int `yaml:"mutex_profile_fraction,omitempty"`
+	BlockProfileRate     int `yaml:"block_profile_rate,omitempty"`
 }
 
 func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
 	// these are values that worked well in OG Pyroscope Cloud without adding much overhead
 	f.IntVar(&c.MutexProfileFraction, "self-profiling.mutex-profile-fraction", 5, "")
 	f.IntVar(&c.BlockProfileRate, "self-profiling.block-profile-rate", 5, "")
-	// how should this work ?
-	f.BoolVar(&c.Disabled, "self-profiling.disabled", false, "Set True to disable self-profiling. Self profiling is enabled")
 }
 
 func (c *Config) RegisterFlags(f *flag.FlagSet) {
@@ -128,6 +129,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	f.BoolVar(&c.ConfigExpandEnv, "config.expand-env", false, "Expands ${var} in config according to the values of the environment variables.")
 
 	c.registerServerFlagsWithChangedDefaultValues(f)
+	c.AgentConfig.RegisterFlags(f)
 	c.MemberlistKV.RegisterFlags(f)
 	c.Querier.RegisterFlags(f)
 	c.StoreGateway.RegisterFlags(f, util.Logger)
@@ -179,7 +181,14 @@ func (c *Config) Validate() error {
 	if len(c.Target) == 0 {
 		return errors.New("no modules specified")
 	}
-	return c.Ingester.Validate()
+	if err := c.Ingester.Validate(); err != nil {
+		return err
+	}
+	return c.AgentConfig.Validate()
+}
+
+type phlareConfigGetter interface {
+	PhlareConfig() *Config
 }
 
 func (c *Config) ApplyDynamicConfig() cfg.Source {
@@ -192,6 +201,21 @@ func (c *Config) ApplyDynamicConfig() cfg.Source {
 	c.StoreGateway.ShardingRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 
 	return func(dst cfg.Cloneable) error {
+		g, ok := dst.(phlareConfigGetter)
+		if !ok {
+			return fmt.Errorf("dst is not a Phlare config getter %T", dst)
+		}
+		r := g.PhlareConfig()
+		if r.AgentConfig.ClientConfig.URL.String() == "" {
+			listenAddress := "0.0.0.0"
+			if c.Server.HTTPListenAddress != "" {
+				listenAddress = c.Server.HTTPListenAddress
+			}
+
+			if err := r.AgentConfig.ClientConfig.URL.Set(fmt.Sprintf("http://%s:%d", listenAddress, c.Server.HTTPListenPort)); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 }
@@ -217,6 +241,8 @@ type Phlare struct {
 	SignalHandler *signals.Handler
 	MemberlistKV  *memberlist.KVInitService
 	ring          *ring.Ring
+	agent         *agent.Agent
+	pusherClient  pushv1connect.PusherServiceClient
 	usageReport   *usagestats.Reporter
 	RuntimeConfig *runtimeconfig.Manager
 	Overrides     *validation.Overrides
@@ -259,7 +285,19 @@ func New(cfg Config) (*Phlare, error) {
 		phlare.tracer = trace
 	}
 
+	// instantiate a fallback pusher client (when not run with a local distributor)
+	pusherHTTPClient, err := commonconfig.NewClientFromConfig(cfg.AgentConfig.ClientConfig.Client, cfg.AgentConfig.ClientConfig.URL.String())
+	if err != nil {
+		return nil, err
+	}
 	phlare.auth = connect.WithInterceptors(tenant.NewAuthInterceptor(cfg.MultitenancyEnabled))
+
+	pusherHTTPClient.Transport = util.WrapWithInstrumentedHTTPTransport(pusherHTTPClient.Transport)
+	phlare.pusherClient = pushv1connect.NewPusherServiceClient(pusherHTTPClient,
+		cfg.AgentConfig.ClientConfig.URL.String(),
+		phlare.auth,
+	)
+
 	phlare.Cfg.API.HTTPAuthMiddleware = util.AuthenticateUser(cfg.MultitenancyEnabled)
 	phlare.Cfg.API.GrpcAuthMiddleware = phlare.auth
 
@@ -282,6 +320,7 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(Distributor, f.initDistributor)
 	mm.RegisterModule(Querier, f.initQuerier)
 	mm.RegisterModule(StoreGateway, f.initStoreGateway)
+	mm.RegisterModule(Agent, f.initAgent)
 	mm.RegisterModule(UsageReport, f.initUsageReport)
 	mm.RegisterModule(QueryFrontend, f.initQueryFrontend)
 	mm.RegisterModule(QueryScheduler, f.initQueryScheduler)
@@ -289,10 +328,11 @@ func (f *Phlare) setupModuleManager() error {
 
 	// Add dependencies
 	deps := map[string][]string{
-		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier},
+		All: {Agent, Ingester, Distributor, QueryScheduler, QueryFrontend, Querier},
 
 		Server:         {GRPCGateway},
 		API:            {Server},
+		Agent:          {API},
 		Distributor:    {Overrides, Ring, API, UsageReport},
 		Querier:        {Overrides, API, MemberlistKV, Ring, UsageReport},
 		QueryFrontend:  {OverridesExporter, API, MemberlistKV, UsageReport},
