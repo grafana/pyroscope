@@ -31,6 +31,7 @@ import (
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
+	"github.com/pyroscope-io/client/pyroscope"
 	"github.com/samber/lo"
 
 	"github.com/grafana/pyroscope/pkg/api"
@@ -100,7 +101,7 @@ func (c *StorageConfig) RegisterFlagsWithContext(ctx context.Context, f *flag.Fl
 }
 
 type SelfProfilingConfig struct {
-	Disabled             bool `yaml:"disabled,omitempty"`
+	DisablePush          bool `yaml:"disable_push,omitempty"`
 	MutexProfileFraction int  `yaml:"mutex_profile_fraction,omitempty"`
 	BlockProfileRate     int  `yaml:"block_profile_rate,omitempty"`
 }
@@ -109,8 +110,7 @@ func (c *SelfProfilingConfig) RegisterFlags(f *flag.FlagSet) {
 	// these are values that worked well in OG Pyroscope Cloud without adding much overhead
 	f.IntVar(&c.MutexProfileFraction, "self-profiling.mutex-profile-fraction", 5, "")
 	f.IntVar(&c.BlockProfileRate, "self-profiling.block-profile-rate", 5, "")
-	// how should this work ?
-	f.BoolVar(&c.Disabled, "self-profiling.disabled", false, "Set True to disable self-profiling. Self profiling is enabled")
+	f.BoolVar(&c.DisablePush, "self-profiling.disable-push", false, "When running in single binary (--target=all) Pyroscope will push (Go SDK) profiles to itself. Set to true to disable self-profiling.")
 }
 
 func (c *Config) RegisterFlags(f *flag.FlagSet) {
@@ -357,6 +357,34 @@ func (f *Phlare) Run() error {
 		level.Info(f.logger).Log("msg", "Pyroscope started", "version", version.Info())
 		if os.Getenv("PYROSCOPE_PRINT_ROUTES") != "" {
 			printRoutes(f.Server.HTTP)
+		}
+
+		// Start profiling when Pyroscope is ready
+		if !f.Cfg.SelfProfiling.DisablePush && f.Cfg.Target.String() == All {
+			_, err := pyroscope.Start(pyroscope.Config{
+				ApplicationName: "pyroscope",
+				ServerAddress:   fmt.Sprintf("http://%s:%d", "localhost", f.Cfg.Server.HTTPListenPort),
+				Tags: map[string]string{
+					"hostname": os.Getenv("HOSTNAME"),
+					"target":   "all",
+					"version":  version.Version,
+				},
+				ProfileTypes: []pyroscope.ProfileType{
+					pyroscope.ProfileCPU,
+					pyroscope.ProfileAllocObjects,
+					pyroscope.ProfileAllocSpace,
+					pyroscope.ProfileInuseObjects,
+					pyroscope.ProfileInuseSpace,
+					pyroscope.ProfileGoroutines,
+					pyroscope.ProfileMutexCount,
+					pyroscope.ProfileMutexDuration,
+					pyroscope.ProfileBlockCount,
+					pyroscope.ProfileBlockDuration,
+				},
+			})
+			if err != nil {
+				level.Warn(f.logger).Log("msg", "failed to start pyroscope", "err", err)
+			}
 		}
 	}
 
