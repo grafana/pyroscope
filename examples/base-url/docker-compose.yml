@@ -1,11 +1,11 @@
 version: '3'
 services:
   pyroscope:
-    image: 'pyroscope/pyroscope:latest'
+    image: grafana/pyroscope
     command:
-      - 'server'
-    environment:
-      PYROSCOPE_BASE_URL: /pyroscope
+      - -api.base-url
+      - /pyroscope
+
   nginx:
     image: nginx
     ports:
