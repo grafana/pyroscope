@@ -2068,11 +2068,11 @@ spec:
   template:
     metadata:
       annotations:
-        profiles.grafana.com/cpu.port: "80"
+        profiles.grafana.com/cpu.port_name: http-metrics
         profiles.grafana.com/cpu.scrape: "true"
-        profiles.grafana.com/goroutine.port: "80"
+        profiles.grafana.com/goroutine.port_name: http-metrics
         profiles.grafana.com/goroutine.scrape: "true"
-        profiles.grafana.com/memory.port: "80"
+        profiles.grafana.com/memory.port_name: http-metrics
         profiles.grafana.com/memory.scrape: "true"
       labels:
         app.kubernetes.io/name: agent
