@@ -19,7 +19,7 @@ services:
       context: .
 
   pyroscope:
-    image: pyroscope/pyroscope
+    image: grafana/pyroscope
     environment:
       - PYROSCOPE_LOG_LEVEL=debug
     ports:
