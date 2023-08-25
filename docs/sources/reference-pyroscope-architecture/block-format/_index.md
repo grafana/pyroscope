@@ -13,6 +13,8 @@ This document describes how Pyroscope stores the data in its blocks. Each
 block belongs to a single tenant and is identfied by a unique [ULID]. Within
 the block there are multiple files:
 
+[ULID]: https://github.com/ulid/spec
+
 * A metadata file `meta.json`, which contains information about what the block
   contains, like the time range of the profiling data.
 
@@ -26,7 +28,7 @@ the block there are multiple files:
 ## Data model
 
 The data model within the block is fairly aligned to Google's [proto
-definition][pprof] for the pprof wire format.  In general strings within the
+definition][pprof] for the pprof wire format.  In general, strings within the
 block are referenced by their position in a string table.
 
 Pyroscope's profiles have two types of labels:

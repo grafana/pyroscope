@@ -17,7 +17,7 @@ To be able to pull profiles from applications, your applications needs to expose
 Before proceeding with the configuration, ensure that you have the following:
 
 1. Install Grafana Agent in [flow mode](/docs/agent/next/flow/setup/install/)
-2. Configure Grafana Agent in Flow mode
+2. Configure Grafana Agent in flow mode
 3. Start the Grafana Agent
 
 ## Adding Profiling to the Grafana Agent
@@ -33,7 +33,7 @@ In [`/agent/config/config.river`](https://github.com/grafana/pyroscope/blob/main
 ![Grafana agent go pull diagram](/media/docs/pyroscope/grafana_agent_pull_mode_diagram.png)
 
 1. `pyroscope.write` to configure the receivers to which the profiles are forwarded.
-2. `pyroscope.scrape` to establish a pprof scraping job for specific targets. The performance profiles obtained from the scraping process are then passed to the receivers specified in `forward_to`. You can define multiple `pyroscope.scrape` components, each distinguished by unique labels. 
+2. `pyroscope.scrape` to establish a pprof scraping job for specific targets. The performance profiles obtained from the scraping process are then passed to the receivers specified in `forward_to`. You can define multiple `pyroscope.scrape` components, each distinguished by unique labels.
 
 Here is the general usage:
 
@@ -178,9 +178,9 @@ Create the following directory structure:
 
 We will use the following `config.river` file to configure the Grafana Agent to scrape profiles from the application and send them to the Pyroscope server. Be sure to replace the `url` property with the correct Pyroscope instance.
 
-**Note: We have swapped out the standard pprof `block`, `mutex` and `memory` profiles with the more efficient [godeltaprof package](https://github.com/grafana/godeltaprof) which produces `godeltaprof_block`, `godeltaprof_mutex` and `godeltaprof_memory`respectively**
+**Note: We have swapped out the standard pprof `block`, `mutex` and `memory` profiles with the more efficient [godeltaprof package](https://github.com/grafana/godeltaprof) which produces `godeltaprof_block`, `godeltaprof_mutex` and `godeltaprof_memory`respectively**.
 
-The reason for using this special package is because godeltaprof is a memory profiler specialized for collecting cumulative profiles(heap, block, mutex) efficiently. It is more efficient because it does the delta/merging before producing pprof data, avoiding extra decompression/parsing/allocations/compression.
+The reason for using this special package is because godeltaprof is a memory profiler specialized for collecting cumulative profiles (heap, block, mutex) efficiently. It is more efficient because it does the delta/merging before producing pprof data, avoiding extra decompression/parsing/allocations/compression.
 
 To start using godeltaprof in pull mode in a Go application, you need to include godeltaprof module in your app:
 
