@@ -16,78 +16,70 @@ minikube start
 The official [Pyroscope Helm chart](https://github.com/pyroscope-io/helm-chart) deploys Pyroscope server and creates proper RBAC roles:
 
 ```shell
-helm repo add pyroscope-io https://pyroscope-io.github.io/helm-chart
-helm install demo pyroscope-io/pyroscope -f values.yaml
+helm repo add grafana https://grafana.github.io/helm-chart
+helm install pyroscope grafana/pyroscope --version v1.0.0-rc.0
 ```
 
-Note that we apply configuration defined in `values.yaml`: Pyroscope uses the same discovery mechanisms as
-Prometheus does in order to ensure smooth user experience, and it fully supports
-[Kubernetes Service Discovery](https://pyroscope.io/docs/golang-pull-mode/#kubernetes-service-discovery):
+### 3. Install Grafana Agent with Helm chart
 
+The official [Pyroscope Helm chart](https://github.com/pyroscope-io/helm-chart) deploys Pyroscope server and creates proper RBAC roles:
+
+```shell
+helm install agent grafana/grafana-agent -f values.yaml
+```
+
+Note that we apply configuration defined in `values.yaml`: Grafana Agent supports many different ways of discovering targets, in this example we use Kubernetes Service Discovery:
 
 ```yaml
----
-pyroscopeConfigs:
-  log-level: debug
-  scrape-configs:
-  - job-name: 'kubernetes-pods'
-    enabled-profiles: [ cpu, mem ]
-    kubernetes-sd-configs:
-      - role: pod
-    relabel-configs:
-      - source-labels: [__meta_kubernetes_pod_annotation_pyroscope_io_scrape]
-        action: keep
-        regex: true
-      - source-labels:
-          [__meta_kubernetes_pod_annotation_pyroscope_io_application_name]
-        action: replace
-        target-label: __name__
-      - source-labels: [__meta_kubernetes_pod_annotation_pyroscope_io_scheme]
-        action: replace
-        regex: (https?)
-        target-label: __scheme__
-      - source-labels:
-          [__address__, __meta_kubernetes_pod_annotation_pyroscope_io_port]
-        action: replace
-        regex: ([^:]+)(?::\d+)?;(\d+)
-        replacement: $1:$2
-        target-label: __address__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - source-labels: [__meta_kubernetes_namespace]
-        action: replace
-        target-label: kubernetes_namespace
-      - source-labels: [__meta_kubernetes_pod_name]
-        action: replace
-        target-label: kubernetes_pod_name
-      - source-labels: [__meta_kubernetes_pod_phase]
-        regex: Pending|Succeeded|Failed|Completed
-        action: drop
-      - action: labelmap
-        regex: __meta_kubernetes_pod_annotation_pyroscope_io_profile_(.+)
-        replacement: __profile_$1
+agent:
+  # -- Mode to run Grafana Agent in. Can be "flow" or "static".
+  mode: 'flow'
+  configMap:
+    # -- Create a new ConfigMap for the config file.
+    create: true
+    # -- Content to assign to the new ConfigMap.  This is passed into `tpl` allowing for templating from values.
+    content: |
+      logging {
+        level = "debug"
+        format = "logfmt"
+      }
+
+      discovery.kubernetes "pyroscope_kubernetes" {
+        role = "pod"
+      }
+
+      pyroscope.write "example" {
+        // Send metrics to a locally running Phlare instance.
+        endpoint {
+          url = "http://pyroscope:4040"
+
+          // To send data to Grafana Cloud you'll need to provide username and password.
+          // basic_auth {
+          //   username = "myuser"
+          //   password = "mypassword"
+          // }
+        }
+        external_labels = {
+          "env" = "example",
+        }
+      }
+
+      pyroscope.scrape "default" {
+        targets = discovery.kubernetes.pyroscope_kubernetes.targets
+        forward_to = [pyroscope.write.example.receiver]
+      }
 ```
 
-### 3. Deploy Hot R.O.D. application
+### 4. Deploy Hot R.O.D. application
 
 As a sample application we use slightly modified Jaeger [Hot R.O.D.](https://github.com/jaegertracing/jaeger/tree/master/examples/hotrod) demo –
 the only difference is that we enabled built-in Go `pprof` HTTP endpoints. You can find the modified code in the [hotrod-goland](https://github.com/pyroscope-io/hotrod-golang) repository.
-
-Kubernetes resources are defined in [`manifests.yaml`](manifests.yaml): notice pod labels defined – by this we instruct Pyroscope to
-scrape cpu and memory profiles at `:6060`:
-```yaml
-pyroscope.io/scrape: "true"
-pyroscope.io/application-name: "hotrod"
-pyroscope.io/profile-cpu-enabled: "true"
-pyroscope.io/profile-mem-enabled: "true"
-pyroscope.io/port: "6060"
-```
 
 ```shell
 kubectl apply -f manifests.yaml
 ```
 
-### 4. Observe profiling data
+### 5. Observe profiling data
 
 Profiling is more fun when the application does some work. Let's order some rides in our Hot R.O.D. app:
 ```shell
@@ -96,5 +88,5 @@ minikube service hotrod-golang
 
 Now that everything is set up, you can browse profiling data via Pyroscope UI:
 ```shell
-minikube service demo-pyroscope
+minikube service pyroscope-pyroscope
 ```

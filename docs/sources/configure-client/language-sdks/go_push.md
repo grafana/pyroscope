@@ -46,7 +46,7 @@ func main() {
 
     // optionally, if authentication is enabled, specify the API key:
     // AuthToken:    os.Getenv("PYROSCOPE_AUTH_TOKEN"),
-    
+
     // you can provide static tags via a map:
     Tags:            map[string]string{"hostname": os.Getenv("HOSTNAME")},
 
@@ -134,7 +134,7 @@ pyroscope.Start(pyroscope.Config{
 })
 ```
 
-To configure the Golang sdk to send data to Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
+To configure the Golang SDK to send data to Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
 
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
 

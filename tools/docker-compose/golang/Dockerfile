@@ -7,7 +7,7 @@ COPY main.go .
 COPY go.mod .
 RUN CGO_ENABLED=0 GOOS=linux go build
 
-FROM alpine:3.17.4
+FROM alpine:3.18.3
 
 # Copy over the directory containing the compiled binary for the profiling.
 COPY --from=builder /app/golang /golang

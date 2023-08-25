@@ -5,7 +5,7 @@ kind: PodDisruptionBudget
 metadata:
   name: pyroscope-dev-ingester
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -25,7 +25,7 @@ kind: PodDisruptionBudget
 metadata:
   name: pyroscope-dev-store-gateway
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -38,6 +38,18 @@ spec:
       app.kubernetes.io/name: pyroscope
       app.kubernetes.io/instance: pyroscope-dev
       app.kubernetes.io/component: "store-gateway"
+---
+# Source: pyroscope/charts/agent/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pyroscope-dev-agent
+  labels:
+    helm.sh/chart: agent-0.21.0
+    app.kubernetes.io/name: agent
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "v0.35.4"
+    app.kubernetes.io/managed-by: Helm
 ---
 # Source: pyroscope/charts/minio/templates/serviceaccount.yaml
 apiVersion: v1
@@ -52,7 +64,7 @@ kind: ServiceAccount
 metadata:
   name: pyroscope-dev
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -392,13 +404,675 @@ data:
     scheme=http
     connectToMinio $scheme
 ---
+# Source: pyroscope/templates/configmap-agent.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-agent-config-pyroscope
+  labels:
+    helm.sh/chart: pyroscope-0.9.0
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.0.0-rc.0"
+    app.kubernetes.io/managed-by: Helm
+data:
+  config.river: |
+    logging {
+    	level  = "info"
+    	format = "logfmt"
+    }
+
+    discovery.kubernetes "pyroscope_kubernetes" {
+    	role = "pod"
+    }
+
+    // The default scrape config allows to define annotations based scraping.
+    //
+    // For example the following annotations:
+    //
+    // ```
+    // profiles.grafana.com/memory.scrape: "true"
+    // profiles.grafana.com/memory.port: "8080"
+    // profiles.grafana.com/cpu.scrape: "true"
+    // profiles.grafana.com/cpu.port: "8080"
+    // profiles.grafana.com/goroutine.scrape: "true"
+    // profiles.grafana.com/goroutine.port: "8080"
+    // ```
+    //
+    // will scrape the `memory`, `cpu` and `goroutine` profiles from the `8080` port of the pod.
+    //
+    // For more information see https://grafana.com/docs/phlare/latest/operators-guide/deploy-kubernetes/#optional-scrape-your-own-workloads-profiles
+    discovery.relabel "kubernetes_pods" {
+    	targets = concat(discovery.kubernetes.pyroscope_kubernetes.targets)
+
+    	rule {
+    		action        = "drop"
+    		source_labels = ["__meta_kubernetes_pod_phase"]
+    		regex         = "Pending|Succeeded|Failed|Completed"
+    	}
+
+    	rule {
+    		action = "labelmap"
+    		regex  = "__meta_kubernetes_pod_label_(.+)"
+    	}
+
+    	rule {
+    		action        = "replace"
+    		source_labels = ["__meta_kubernetes_namespace"]
+    		target_label  = "namespace"
+    	}
+
+    	rule {
+    		action        = "replace"
+    		source_labels = ["__meta_kubernetes_pod_name"]
+    		target_label  = "pod"
+    	}
+
+    	rule {
+    		action        = "replace"
+    		source_labels = ["__meta_kubernetes_pod_container_name"]
+    		target_label  = "container"
+    	}
+    }
+
+    discovery.relabel "kubernetes_pods_memory_default_name" {
+    	targets = concat(discovery.relabel.kubernetes_pods.output)
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_scrape"]
+    		action        = "keep"
+    		regex         = "true"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port_name"]
+    		action        = "keep"
+    		regex         = ""
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_scheme"]
+    		action        = "replace"
+    		regex         = "(https?)"
+    		target_label  = "__scheme__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_path"]
+    		action        = "replace"
+    		regex         = "(.+)"
+    		target_label  = "__profile_path__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__address__", "__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port"]
+    		action        = "replace"
+    		regex         = "(.+?)(?::\\d+)?;(\\d+)"
+    		target_label  = "__address__"
+    		replacement   = "$1:$2"
+    	}
+    }
+
+    discovery.relabel "kubernetes_pods_memory_custom_name" {
+    	targets = concat(discovery.relabel.kubernetes_pods.output)
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_scrape"]
+    		action        = "keep"
+    		regex         = "true"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port_name"]
+    		action        = "drop"
+    		regex         = ""
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_container_port_name"]
+    		target_label  = "__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port_name"
+    		action        = "keepequal"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_scheme"]
+    		action        = "replace"
+    		regex         = "(https?)"
+    		target_label  = "__scheme__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_path"]
+    		action        = "replace"
+    		regex         = "(.+)"
+    		target_label  = "__profile_path__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__address__", "__meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port"]
+    		action        = "replace"
+    		regex         = "(.+?)(?::\\d+)?;(\\d+)"
+    		target_label  = "__address__"
+    		replacement   = "$1:$2"
+    	}
+    }
+
+    pyroscope.scrape "pyroscope_scrape_memory" {
+    	clustering {
+    		enabled = true
+    	}
+
+    	targets    = concat(discovery.relabel.kubernetes_pods_memory_default_name.output, discovery.relabel.kubernetes_pods_memory_custom_name.output)
+    	forward_to = [pyroscope.write.pyroscope_write.receiver]
+
+    	profiling_config {
+    		profile.memory {
+    			enabled = true
+    		}
+
+    		profile.process_cpu {
+    			enabled = false
+    		}
+
+    		profile.goroutine {
+    			enabled = false
+    		}
+
+    		profile.block {
+    			enabled = false
+    		}
+
+    		profile.mutex {
+    			enabled = false
+    		}
+    	}
+    }
+
+    discovery.relabel "kubernetes_pods_cpu_default_name" {
+    	targets = concat(discovery.relabel.kubernetes_pods.output)
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_scrape"]
+    		action        = "keep"
+    		regex         = "true"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port_name"]
+    		action        = "keep"
+    		regex         = ""
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_scheme"]
+    		action        = "replace"
+    		regex         = "(https?)"
+    		target_label  = "__scheme__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_path"]
+    		action        = "replace"
+    		regex         = "(.+)"
+    		target_label  = "__profile_path__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__address__", "__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port"]
+    		action        = "replace"
+    		regex         = "(.+?)(?::\\d+)?;(\\d+)"
+    		target_label  = "__address__"
+    		replacement   = "$1:$2"
+    	}
+    }
+
+    discovery.relabel "kubernetes_pods_cpu_custom_name" {
+    	targets = concat(discovery.relabel.kubernetes_pods.output)
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_scrape"]
+    		action        = "keep"
+    		regex         = "true"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port_name"]
+    		action        = "drop"
+    		regex         = ""
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_container_port_name"]
+    		target_label  = "__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port_name"
+    		action        = "keepequal"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_scheme"]
+    		action        = "replace"
+    		regex         = "(https?)"
+    		target_label  = "__scheme__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_path"]
+    		action        = "replace"
+    		regex         = "(.+)"
+    		target_label  = "__profile_path__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__address__", "__meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port"]
+    		action        = "replace"
+    		regex         = "(.+?)(?::\\d+)?;(\\d+)"
+    		target_label  = "__address__"
+    		replacement   = "$1:$2"
+    	}
+    }
+
+    pyroscope.scrape "pyroscope_scrape_cpu" {
+    	clustering {
+    		enabled = true
+    	}
+
+    	targets    = concat(discovery.relabel.kubernetes_pods_cpu_default_name.output, discovery.relabel.kubernetes_pods_cpu_custom_name.output)
+    	forward_to = [pyroscope.write.pyroscope_write.receiver]
+
+    	profiling_config {
+    		profile.memory {
+    			enabled = false
+    		}
+
+    		profile.process_cpu {
+    			enabled = true
+    		}
+
+    		profile.goroutine {
+    			enabled = false
+    		}
+
+    		profile.block {
+    			enabled = false
+    		}
+
+    		profile.mutex {
+    			enabled = false
+    		}
+    	}
+    }
+
+    discovery.relabel "kubernetes_pods_goroutine_default_name" {
+    	targets = concat(discovery.relabel.kubernetes_pods.output)
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_scrape"]
+    		action        = "keep"
+    		regex         = "true"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port_name"]
+    		action        = "keep"
+    		regex         = ""
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_scheme"]
+    		action        = "replace"
+    		regex         = "(https?)"
+    		target_label  = "__scheme__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_path"]
+    		action        = "replace"
+    		regex         = "(.+)"
+    		target_label  = "__profile_path__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__address__", "__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port"]
+    		action        = "replace"
+    		regex         = "(.+?)(?::\\d+)?;(\\d+)"
+    		target_label  = "__address__"
+    		replacement   = "$1:$2"
+    	}
+    }
+
+    discovery.relabel "kubernetes_pods_goroutine_custom_name" {
+    	targets = concat(discovery.relabel.kubernetes_pods.output)
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_scrape"]
+    		action        = "keep"
+    		regex         = "true"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port_name"]
+    		action        = "drop"
+    		regex         = ""
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_container_port_name"]
+    		target_label  = "__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port_name"
+    		action        = "keepequal"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_scheme"]
+    		action        = "replace"
+    		regex         = "(https?)"
+    		target_label  = "__scheme__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_path"]
+    		action        = "replace"
+    		regex         = "(.+)"
+    		target_label  = "__profile_path__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__address__", "__meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port"]
+    		action        = "replace"
+    		regex         = "(.+?)(?::\\d+)?;(\\d+)"
+    		target_label  = "__address__"
+    		replacement   = "$1:$2"
+    	}
+    }
+
+    pyroscope.scrape "pyroscope_scrape_goroutine" {
+    	clustering {
+    		enabled = true
+    	}
+
+    	targets    = concat(discovery.relabel.kubernetes_pods_goroutine_default_name.output, discovery.relabel.kubernetes_pods_goroutine_custom_name.output)
+    	forward_to = [pyroscope.write.pyroscope_write.receiver]
+
+    	profiling_config {
+    		profile.memory {
+    			enabled = false
+    		}
+
+    		profile.process_cpu {
+    			enabled = false
+    		}
+
+    		profile.goroutine {
+    			enabled = true
+    		}
+
+    		profile.block {
+    			enabled = false
+    		}
+
+    		profile.mutex {
+    			enabled = false
+    		}
+    	}
+    }
+
+    discovery.relabel "kubernetes_pods_block_default_name" {
+    	targets = concat(discovery.relabel.kubernetes_pods.output)
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_block_scrape"]
+    		action        = "keep"
+    		regex         = "true"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_block_port_name"]
+    		action        = "keep"
+    		regex         = ""
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_block_scheme"]
+    		action        = "replace"
+    		regex         = "(https?)"
+    		target_label  = "__scheme__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_block_path"]
+    		action        = "replace"
+    		regex         = "(.+)"
+    		target_label  = "__profile_path__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__address__", "__meta_kubernetes_pod_annotation_profiles_grafana_com_block_port"]
+    		action        = "replace"
+    		regex         = "(.+?)(?::\\d+)?;(\\d+)"
+    		target_label  = "__address__"
+    		replacement   = "$1:$2"
+    	}
+    }
+
+    discovery.relabel "kubernetes_pods_block_custom_name" {
+    	targets = concat(discovery.relabel.kubernetes_pods.output)
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_block_scrape"]
+    		action        = "keep"
+    		regex         = "true"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_block_port_name"]
+    		action        = "drop"
+    		regex         = ""
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_container_port_name"]
+    		target_label  = "__meta_kubernetes_pod_annotation_profiles_grafana_com_block_port_name"
+    		action        = "keepequal"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_block_scheme"]
+    		action        = "replace"
+    		regex         = "(https?)"
+    		target_label  = "__scheme__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_block_path"]
+    		action        = "replace"
+    		regex         = "(.+)"
+    		target_label  = "__profile_path__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__address__", "__meta_kubernetes_pod_annotation_profiles_grafana_com_block_port"]
+    		action        = "replace"
+    		regex         = "(.+?)(?::\\d+)?;(\\d+)"
+    		target_label  = "__address__"
+    		replacement   = "$1:$2"
+    	}
+    }
+
+    pyroscope.scrape "pyroscope_scrape_block" {
+    	clustering {
+    		enabled = true
+    	}
+
+    	targets    = concat(discovery.relabel.kubernetes_pods_block_default_name.output, discovery.relabel.kubernetes_pods_block_custom_name.output)
+    	forward_to = [pyroscope.write.pyroscope_write.receiver]
+
+    	profiling_config {
+    		profile.memory {
+    			enabled = false
+    		}
+
+    		profile.process_cpu {
+    			enabled = false
+    		}
+
+    		profile.goroutine {
+    			enabled = false
+    		}
+
+    		profile.block {
+    			enabled = true
+    		}
+
+    		profile.mutex {
+    			enabled = false
+    		}
+    	}
+    }
+
+    discovery.relabel "kubernetes_pods_mutex_default_name" {
+    	targets = concat(discovery.relabel.kubernetes_pods.output)
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_scrape"]
+    		action        = "keep"
+    		regex         = "true"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port_name"]
+    		action        = "keep"
+    		regex         = ""
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_scheme"]
+    		action        = "replace"
+    		regex         = "(https?)"
+    		target_label  = "__scheme__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_path"]
+    		action        = "replace"
+    		regex         = "(.+)"
+    		target_label  = "__profile_path__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__address__", "__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port"]
+    		action        = "replace"
+    		regex         = "(.+?)(?::\\d+)?;(\\d+)"
+    		target_label  = "__address__"
+    		replacement   = "$1:$2"
+    	}
+    }
+
+    discovery.relabel "kubernetes_pods_mutex_custom_name" {
+    	targets = concat(discovery.relabel.kubernetes_pods.output)
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_scrape"]
+    		action        = "keep"
+    		regex         = "true"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port_name"]
+    		action        = "drop"
+    		regex         = ""
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_container_port_name"]
+    		target_label  = "__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port_name"
+    		action        = "keepequal"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_scheme"]
+    		action        = "replace"
+    		regex         = "(https?)"
+    		target_label  = "__scheme__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_path"]
+    		action        = "replace"
+    		regex         = "(.+)"
+    		target_label  = "__profile_path__"
+    		replacement   = "$1"
+    	}
+
+    	rule {
+    		source_labels = ["__address__", "__meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port"]
+    		action        = "replace"
+    		regex         = "(.+?)(?::\\d+)?;(\\d+)"
+    		target_label  = "__address__"
+    		replacement   = "$1:$2"
+    	}
+    }
+
+    pyroscope.scrape "pyroscope_scrape_mutex" {
+    	clustering {
+    		enabled = true
+    	}
+
+    	targets    = concat(discovery.relabel.kubernetes_pods_mutex_default_name.output, discovery.relabel.kubernetes_pods_mutex_custom_name.output)
+    	forward_to = [pyroscope.write.pyroscope_write.receiver]
+
+    	profiling_config {
+    		profile.memory {
+    			enabled = false
+    		}
+
+    		profile.process_cpu {
+    			enabled = false
+    		}
+
+    		profile.goroutine {
+    			enabled = false
+    		}
+
+    		profile.block {
+    			enabled = false
+    		}
+
+    		profile.mutex {
+    			enabled = true
+    		}
+    	}
+    }
+
+    pyroscope.write "pyroscope_write" {
+    	endpoint {
+    		url = "http://pyroscope-dev-distributor.default.svc.cluster.local.:4040"
+    	}
+    }
+---
 # Source: pyroscope/templates/configmap-overrides.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: pyroscope-dev-overrides-config
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -414,656 +1088,13 @@ kind: ConfigMap
 metadata:
   name: pyroscope-dev-config
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
     app.kubernetes.io/managed-by: Helm
 data:
   config.yaml: |
-    scrape_configs:
-    - job_name: kubernetes-pods-memory-default-name
-      kubernetes_sd_configs:
-      - role: pod
-      profiling_config:
-        pprof_config:
-          block:
-            enabled: false
-          goroutine:
-            enabled: false
-          memory:
-            enabled: true
-          mutex:
-            enabled: false
-          process_cpu:
-            enabled: false
-      relabel_configs:
-      - action: keep
-        regex: true
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_memory_scrape
-      - action: keep
-        regex: ""
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port_name
-      - action: replace
-        regex: (https?)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_memory_scheme
-        target_label: __scheme__
-      - action: replace
-        regex: (.+)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_memory_path
-        target_label: __profile_path__
-      - action: replace
-        regex: (.+?)(?::\d+)?;(\d+)
-        replacement: $1:$2
-        source_labels:
-        - __address__
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port
-        target_label: __address__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - action: drop
-        regex: Pending|Succeeded|Failed|Completed
-        source_labels:
-        - __meta_kubernetes_pod_phase
-      scrape_interval: 15s
-    - job_name: kubernetes-pods-memory-custom-name
-      kubernetes_sd_configs:
-      - role: pod
-      profiling_config:
-        pprof_config:
-          block:
-            enabled: false
-          goroutine:
-            enabled: false
-          memory:
-            enabled: true
-          mutex:
-            enabled: false
-          process_cpu:
-            enabled: false
-      relabel_configs:
-      - action: keep
-        regex: true
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_memory_scrape
-      - action: drop
-        regex: ""
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port_name
-      - action: keepequal
-        source_labels:
-        - __meta_kubernetes_pod_container_port_name
-        target_label: __meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port_name
-      - action: replace
-        regex: (https?)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_memory_scheme
-        target_label: __scheme__
-      - action: replace
-        regex: (.+)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_memory_path
-        target_label: __profile_path__
-      - action: replace
-        regex: (.+?)(?::\d+)?;(\d+)
-        replacement: $1:$2
-        source_labels:
-        - __address__
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_memory_port
-        target_label: __address__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - action: drop
-        regex: Pending|Succeeded|Failed|Completed
-        source_labels:
-        - __meta_kubernetes_pod_phase
-      scrape_interval: 15s
-    - job_name: kubernetes-pods-cpu-default-name
-      kubernetes_sd_configs:
-      - role: pod
-      profiling_config:
-        pprof_config:
-          block:
-            enabled: false
-          goroutine:
-            enabled: false
-          memory:
-            enabled: false
-          mutex:
-            enabled: false
-          process_cpu:
-            delta: true
-            enabled: true
-      relabel_configs:
-      - action: keep
-        regex: true
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_scrape
-      - action: keep
-        regex: ""
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port_name
-      - action: replace
-        regex: (https?)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_scheme
-        target_label: __scheme__
-      - action: replace
-        regex: (.+)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_path
-        target_label: __profile_path__
-      - action: replace
-        regex: (.+?)(?::\d+)?;(\d+)
-        replacement: $1:$2
-        source_labels:
-        - __address__
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port
-        target_label: __address__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - action: drop
-        regex: Pending|Succeeded|Failed|Completed
-        source_labels:
-        - __meta_kubernetes_pod_phase
-      scrape_interval: 15s
-    - job_name: kubernetes-pods-cpu-custom-name
-      kubernetes_sd_configs:
-      - role: pod
-      profiling_config:
-        pprof_config:
-          block:
-            enabled: false
-          goroutine:
-            enabled: false
-          memory:
-            enabled: false
-          mutex:
-            enabled: false
-          process_cpu:
-            delta: true
-            enabled: true
-      relabel_configs:
-      - action: keep
-        regex: true
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_scrape
-      - action: drop
-        regex: ""
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port_name
-      - action: keepequal
-        source_labels:
-        - __meta_kubernetes_pod_container_port_name
-        target_label: __meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port_name
-      - action: replace
-        regex: (https?)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_scheme
-        target_label: __scheme__
-      - action: replace
-        regex: (.+)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_path
-        target_label: __profile_path__
-      - action: replace
-        regex: (.+?)(?::\d+)?;(\d+)
-        replacement: $1:$2
-        source_labels:
-        - __address__
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_cpu_port
-        target_label: __address__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - action: drop
-        regex: Pending|Succeeded|Failed|Completed
-        source_labels:
-        - __meta_kubernetes_pod_phase
-      scrape_interval: 15s
-    - job_name: kubernetes-pods-block-default-name
-      kubernetes_sd_configs:
-      - role: pod
-      profiling_config:
-        pprof_config:
-          block:
-            enabled: true
-          goroutine:
-            enabled: false
-          memory:
-            enabled: false
-          mutex:
-            enabled: false
-          process_cpu:
-            enabled: false
-      relabel_configs:
-      - action: keep
-        regex: true
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_block_scrape
-      - action: keep
-        regex: ""
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_block_port_name
-      - action: replace
-        regex: (https?)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_block_scheme
-        target_label: __scheme__
-      - action: replace
-        regex: (.+)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_block_path
-        target_label: __profile_path__
-      - action: replace
-        regex: (.+?)(?::\d+)?;(\d+)
-        replacement: $1:$2
-        source_labels:
-        - __address__
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_block_port
-        target_label: __address__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - action: drop
-        regex: Pending|Succeeded|Failed|Completed
-        source_labels:
-        - __meta_kubernetes_pod_phase
-      scrape_interval: 15s
-    - job_name: kubernetes-pods-block-custom-name
-      kubernetes_sd_configs:
-      - role: pod
-      profiling_config:
-        pprof_config:
-          block:
-            enabled: true
-          goroutine:
-            enabled: false
-          memory:
-            enabled: false
-          mutex:
-            enabled: false
-          process_cpu:
-            enabled: false
-      relabel_configs:
-      - action: keep
-        regex: true
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_block_scrape
-      - action: drop
-        regex: ""
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_block_port_name
-      - action: keepequal
-        source_labels:
-        - __meta_kubernetes_pod_container_port_name
-        target_label: __meta_kubernetes_pod_annotation_profiles_grafana_com_block_port_name
-      - action: replace
-        regex: (https?)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_block_scheme
-        target_label: __scheme__
-      - action: replace
-        regex: (.+)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_block_path
-        target_label: __profile_path__
-      - action: replace
-        regex: (.+?)(?::\d+)?;(\d+)
-        replacement: $1:$2
-        source_labels:
-        - __address__
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_block_port
-        target_label: __address__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - action: drop
-        regex: Pending|Succeeded|Failed|Completed
-        source_labels:
-        - __meta_kubernetes_pod_phase
-      scrape_interval: 15s
-    - job_name: kubernetes-pods-mutex-default-name
-      kubernetes_sd_configs:
-      - role: pod
-      profiling_config:
-        pprof_config:
-          block:
-            enabled: false
-          goroutine:
-            enabled: false
-          memory:
-            enabled: false
-          mutex:
-            enabled: true
-          process_cpu:
-            enabled: false
-      relabel_configs:
-      - action: keep
-        regex: true
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_scrape
-      - action: keep
-        regex: ""
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port_name
-      - action: replace
-        regex: (https?)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_scheme
-        target_label: __scheme__
-      - action: replace
-        regex: (.+)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_path
-        target_label: __profile_path__
-      - action: replace
-        regex: (.+?)(?::\d+)?;(\d+)
-        replacement: $1:$2
-        source_labels:
-        - __address__
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port
-        target_label: __address__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - action: drop
-        regex: Pending|Succeeded|Failed|Completed
-        source_labels:
-        - __meta_kubernetes_pod_phase
-      scrape_interval: 15s
-    - job_name: kubernetes-pods-mutex-custom-name
-      kubernetes_sd_configs:
-      - role: pod
-      profiling_config:
-        pprof_config:
-          block:
-            enabled: false
-          goroutine:
-            enabled: false
-          memory:
-            enabled: false
-          mutex:
-            enabled: true
-          process_cpu:
-            enabled: false
-      relabel_configs:
-      - action: keep
-        regex: true
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_scrape
-      - action: drop
-        regex: ""
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port_name
-      - action: keepequal
-        source_labels:
-        - __meta_kubernetes_pod_container_port_name
-        target_label: __meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port_name
-      - action: replace
-        regex: (https?)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_scheme
-        target_label: __scheme__
-      - action: replace
-        regex: (.+)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_path
-        target_label: __profile_path__
-      - action: replace
-        regex: (.+?)(?::\d+)?;(\d+)
-        replacement: $1:$2
-        source_labels:
-        - __address__
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_mutex_port
-        target_label: __address__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - action: drop
-        regex: Pending|Succeeded|Failed|Completed
-        source_labels:
-        - __meta_kubernetes_pod_phase
-      scrape_interval: 15s
-    - job_name: kubernetes-pods-goroutine-default-name
-      kubernetes_sd_configs:
-      - role: pod
-      profiling_config:
-        pprof_config:
-          block:
-            enabled: false
-          goroutine:
-            enabled: true
-          memory:
-            enabled: false
-          mutex:
-            enabled: false
-          process_cpu:
-            enabled: false
-      relabel_configs:
-      - action: keep
-        regex: true
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_scrape
-      - action: keep
-        regex: ""
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port_name
-      - action: replace
-        regex: (https?)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_scheme
-        target_label: __scheme__
-      - action: replace
-        regex: (.+)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_path
-        target_label: __profile_path__
-      - action: replace
-        regex: (.+?)(?::\d+)?;(\d+)
-        replacement: $1:$2
-        source_labels:
-        - __address__
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port
-        target_label: __address__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - action: drop
-        regex: Pending|Succeeded|Failed|Completed
-        source_labels:
-        - __meta_kubernetes_pod_phase
-      scrape_interval: 15s
-    - job_name: kubernetes-pods-goroutine-custom-name
-      kubernetes_sd_configs:
-      - role: pod
-      profiling_config:
-        pprof_config:
-          block:
-            enabled: false
-          goroutine:
-            enabled: true
-          memory:
-            enabled: false
-          mutex:
-            enabled: false
-          process_cpu:
-            enabled: false
-      relabel_configs:
-      - action: keep
-        regex: true
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_scrape
-      - action: drop
-        regex: ""
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port_name
-      - action: keepequal
-        source_labels:
-        - __meta_kubernetes_pod_container_port_name
-        target_label: __meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port_name
-      - action: replace
-        regex: (https?)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_scheme
-        target_label: __scheme__
-      - action: replace
-        regex: (.+)
-        replacement: $1
-        source_labels:
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_path
-        target_label: __profile_path__
-      - action: replace
-        regex: (.+?)(?::\d+)?;(\d+)
-        replacement: $1:$2
-        source_labels:
-        - __address__
-        - __meta_kubernetes_pod_annotation_profiles_grafana_com_goroutine_port
-        target_label: __address__
-      - action: labelmap
-        regex: __meta_kubernetes_pod_label_(.+)
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_namespace
-        target_label: namespace
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_name
-        target_label: pod
-      - action: replace
-        source_labels:
-        - __meta_kubernetes_pod_container_name
-        target_label: container
-      - action: drop
-        regex: Pending|Succeeded|Failed|Completed
-        source_labels:
-        - __meta_kubernetes_pod_phase
-      scrape_interval: 15s
     storage:
       backend: s3
       s3:
@@ -1073,13 +1104,94 @@ data:
         insecure: true
         secret_access_key: supersecret
 ---
+# Source: pyroscope/charts/agent/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pyroscope-dev-agent
+  labels:
+    helm.sh/chart: agent-0.21.0
+    app.kubernetes.io/name: agent
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "v0.35.4"
+    app.kubernetes.io/managed-by: Helm
+rules:
+  # Rules which allow discovery.kubernetes to function.
+  - apiGroups:
+      - ""
+      - "discovery.k8s.io"
+      - "networking.k8s.io"
+    resources:
+      - endpoints
+      - endpointslices
+      - ingresses
+      - nodes
+      - nodes/proxy
+      - nodes/metrics
+      - pods
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+  # Rules which allow loki.source.kubernetes and loki.source.podlogs to work.
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/log
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "monitoring.grafana.com"
+    resources:
+      - podlogs
+    verbs:
+      - get
+      - list
+      - watch
+  # Rules which allow mimir.rules.kubernetes to work.
+  - apiGroups: ["monitoring.coreos.com"]
+    resources:
+      - prometheusrules
+    verbs:
+      - get
+      - list
+      - watch
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
+  # Rules for prometheus.kubernetes.*
+  - apiGroups: ["monitoring.coreos.com"]
+    resources:
+      - podmonitors
+      - servicemonitors
+      - probes
+    verbs:
+      - get
+      - list
+      - watch
+  # Rules which allow eventhandler to work.
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - get
+      - list
+      - watch
+---
 # Source: pyroscope/templates/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: default-pyroscope-dev
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1099,13 +1211,33 @@ rules:
   verbs:
   - get
 ---
+# Source: pyroscope/charts/agent/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pyroscope-dev-agent
+  labels:
+    helm.sh/chart: agent-0.21.0
+    app.kubernetes.io/name: agent
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "v0.35.4"
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pyroscope-dev-agent
+subjects:
+  - kind: ServiceAccount
+    name: pyroscope-dev-agent
+    namespace: default
+---
 # Source: pyroscope/templates/clusterrolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: default-pyroscope-dev
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1118,6 +1250,57 @@ subjects:
 - kind: ServiceAccount
   name: pyroscope-dev
   namespace: default
+---
+# Source: pyroscope/charts/agent/templates/cluster_service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-agent-cluster
+  labels:
+    helm.sh/chart: agent-0.21.0
+    app.kubernetes.io/name: agent
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "v0.35.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  clusterIP: 'None'
+  selector:
+    app.kubernetes.io/name: agent
+    app.kubernetes.io/instance: pyroscope-dev
+  ports:
+    # Do not include the -metrics suffix in the port name, otherwise metrics
+    # can be double-collected with the non-headless Service if it's also
+    # enabled.
+    #
+    # This service should only be used for clustering, and not metric
+    # collection.
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: "TCP"
+---
+# Source: pyroscope/charts/agent/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-agent
+  labels:
+    helm.sh/chart: agent-0.21.0
+    app.kubernetes.io/name: agent
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "v0.35.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: agent
+    app.kubernetes.io/instance: pyroscope-dev
+  ports:
+    - name: http-metrics
+      port: 80
+      targetPort: 80
+      protocol: "TCP"
 ---
 # Source: pyroscope/charts/minio/templates/console-service.yaml
 apiVersion: v1
@@ -1193,7 +1376,7 @@ kind: Service
 metadata:
   name: pyroscope-dev-memberlist
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1217,58 +1400,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: pyroscope-dev-agent
-  labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.0.0-rc.0"
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/component: "agent"
-spec:
-  type: ClusterIP
-  ports:
-    - port: 4040
-      targetPort: http2
-      protocol: TCP
-      name: http2
-  selector:
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/component: "agent"
----
-# Source: pyroscope/templates/services.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: pyroscope-dev-agent-headless
-  labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.0.0-rc.0"
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/component: "agent"
-spec:
-  type: ClusterIP
-  clusterIP: None
-  ports:
-    - port: 4040
-      targetPort: http2
-      protocol: TCP
-      name: http2
-  selector:
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/component: "agent"
----
-# Source: pyroscope/templates/services.yaml
-apiVersion: v1
-kind: Service
-metadata:
   name: pyroscope-dev-distributor
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1292,7 +1426,7 @@ kind: Service
 metadata:
   name: pyroscope-dev-distributor-headless
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1317,7 +1451,7 @@ kind: Service
 metadata:
   name: pyroscope-dev-ingester
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1341,7 +1475,7 @@ kind: Service
 metadata:
   name: pyroscope-dev-ingester-headless
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1366,7 +1500,7 @@ kind: Service
 metadata:
   name: pyroscope-dev-querier
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1390,7 +1524,7 @@ kind: Service
 metadata:
   name: pyroscope-dev-querier-headless
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1415,7 +1549,7 @@ kind: Service
 metadata:
   name: pyroscope-dev-query-frontend
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1439,7 +1573,7 @@ kind: Service
 metadata:
   name: pyroscope-dev-query-frontend-headless
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1464,7 +1598,7 @@ kind: Service
 metadata:
   name: pyroscope-dev-query-scheduler
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1488,7 +1622,7 @@ kind: Service
 metadata:
   name: pyroscope-dev-query-scheduler-headless
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1513,7 +1647,7 @@ kind: Service
 metadata:
   name: pyroscope-dev-store-gateway
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1537,7 +1671,7 @@ kind: Service
 metadata:
   name: pyroscope-dev-store-gateway-headless
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1560,98 +1694,9 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pyroscope-dev-agent
-  labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
-    app.kubernetes.io/name: pyroscope
-    app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.0.0-rc.0"
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/component: "agent"
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: pyroscope
-      app.kubernetes.io/instance: pyroscope-dev
-      app.kubernetes.io/component: "agent"
-  template:
-    metadata:
-      annotations:
-        checksum/config: 6fe16ba2b1a5722aa6bd635556589287c1da29fd7886feffd5435076b71dfe9a
-        profiles.grafana.com/cpu.port_name: http2
-        profiles.grafana.com/cpu.scrape: "true"
-        profiles.grafana.com/goroutine.port_name: http2
-        profiles.grafana.com/goroutine.scrape: "true"
-        profiles.grafana.com/memory.port_name: http2
-        profiles.grafana.com/memory.scrape: "true"
-      labels:
-        app.kubernetes.io/name: pyroscope
-        app.kubernetes.io/instance: pyroscope-dev
-        app.kubernetes.io/component: "agent"
-        name: "agent"
-    spec:
-      serviceAccountName: pyroscope-dev
-      securityContext:
-        fsGroup: 10001
-        runAsNonRoot: true
-        runAsUser: 10001
-      containers:
-        - name: "agent"
-          securityContext:
-            {}
-          image: "grafana/pyroscope:1.0.0-rc.0"
-          imagePullPolicy: IfNotPresent
-          args:
-            - "-target=agent"
-            - "-memberlist.cluster-label=default-pyroscope-dev"
-            - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
-            - "-client.url=http://pyroscope-dev-distributor.default.svc.cluster.local.:4040"
-            - "-config.file=/etc/pyroscope/config.yaml"
-            - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
-            - "-log.level=debug"
-          ports:
-            - name: http2
-              containerPort: 4040
-              protocol: TCP
-            - name: memberlist
-              containerPort: 7946
-              protocol: TCP
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: http2
-          volumeMounts:
-            - name: config
-              mountPath: /etc/pyroscope/config.yaml
-              subPath: config.yaml
-            - name: overrides-config
-              mountPath: /etc/pyroscope/overrides/
-            - name: data
-              mountPath: /data
-          resources:
-            limits:
-              memory: 512Mi
-            requests:
-              cpu: 50m
-              memory: 128Mi
-      volumes:
-        - name: config
-          configMap:
-            name: pyroscope-dev-config
-        - name: overrides-config
-          configMap:
-            name: pyroscope-dev-overrides-config
-        - name: data
-          emptyDir: {}
----
-# Source: pyroscope/templates/deployments-statefulsets.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
   name: pyroscope-dev-distributor
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1667,7 +1712,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 6fe16ba2b1a5722aa6bd635556589287c1da29fd7886feffd5435076b71dfe9a
+        checksum/config: 4d9461237c6a0ee3e8cf3b380f605d21f57e65ddec58bb6fc81be6805f015aba
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1693,6 +1738,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=distributor"
+            - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
@@ -1739,7 +1785,7 @@ kind: Deployment
 metadata:
   name: pyroscope-dev-querier
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1755,7 +1801,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 6fe16ba2b1a5722aa6bd635556589287c1da29fd7886feffd5435076b71dfe9a
+        checksum/config: 4d9461237c6a0ee3e8cf3b380f605d21f57e65ddec58bb6fc81be6805f015aba
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1781,6 +1827,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=querier"
+            - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
@@ -1827,7 +1874,7 @@ kind: Deployment
 metadata:
   name: pyroscope-dev-query-frontend
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1843,7 +1890,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 6fe16ba2b1a5722aa6bd635556589287c1da29fd7886feffd5435076b71dfe9a
+        checksum/config: 4d9461237c6a0ee3e8cf3b380f605d21f57e65ddec58bb6fc81be6805f015aba
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1869,6 +1916,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-frontend"
+            - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
@@ -1915,7 +1963,7 @@ kind: Deployment
 metadata:
   name: pyroscope-dev-query-scheduler
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -1931,7 +1979,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 6fe16ba2b1a5722aa6bd635556589287c1da29fd7886feffd5435076b71dfe9a
+        checksum/config: 4d9461237c6a0ee3e8cf3b380f605d21f57e65ddec58bb6fc81be6805f015aba
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1957,6 +2005,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=query-scheduler"
+            - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
@@ -1996,6 +2045,87 @@ spec:
             name: pyroscope-dev-overrides-config
         - name: data
           emptyDir: {}
+---
+# Source: pyroscope/charts/agent/templates/controllers/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pyroscope-dev-agent
+  labels:
+    helm.sh/chart: agent-0.21.0
+    app.kubernetes.io/name: agent
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "v0.35.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  minReadySeconds: 10
+  serviceName: pyroscope-dev-agent
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agent
+      app.kubernetes.io/instance: pyroscope-dev
+  template:
+    metadata:
+      annotations:
+        profiles.grafana.com/cpu.port_name: http-metrics
+        profiles.grafana.com/cpu.scrape: "true"
+        profiles.grafana.com/goroutine.port_name: http-metrics
+        profiles.grafana.com/goroutine.scrape: "true"
+        profiles.grafana.com/memory.port_name: http-metrics
+        profiles.grafana.com/memory.scrape: "true"
+      labels:
+        app.kubernetes.io/name: agent
+        app.kubernetes.io/instance: pyroscope-dev
+    spec:
+      serviceAccountName: pyroscope-dev-agent
+      containers:
+        - name: grafana-agent
+          image: docker.io/grafana/agent:v0.35.4
+          imagePullPolicy: IfNotPresent
+          args:
+            - run
+            - /etc/agent/config.river
+            - --storage.path=/tmp/agent
+            - --server.http.listen-addr=0.0.0.0:80
+            - --cluster.enabled=true
+            - --cluster.join-addresses=pyroscope-dev-agent-cluster
+          env:
+            - name: AGENT_MODE
+              value: flow
+            - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          ports:
+            - containerPort: 80
+              name: http-metrics
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 80
+            initialDelaySeconds: 10
+            timeoutSeconds: 1
+          volumeMounts:
+            - name: config
+              mountPath: /etc/agent
+        - name: config-reloader
+          image: docker.io/jimmidyson/configmap-reload:v0.8.0
+          args:
+            - --volume-dir=/etc/agent
+            - --webhook-url=http://localhost:80/-/reload
+          volumeMounts:
+            - name: config
+              mountPath: /etc/agent
+          resources:
+            requests:
+              cpu: 1m
+              memory: 5Mi
+      dnsPolicy: ClusterFirst
+      volumes:
+        - name: config
+          configMap:
+            name: grafana-agent-config-pyroscope
 ---
 # Source: pyroscope/charts/minio/templates/statefulset.yaml
 apiVersion: apps/v1
@@ -2098,7 +2228,7 @@ kind: StatefulSet
 metadata:
   name: pyroscope-dev-ingester
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -2116,7 +2246,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 6fe16ba2b1a5722aa6bd635556589287c1da29fd7886feffd5435076b71dfe9a
+        checksum/config: 4d9461237c6a0ee3e8cf3b380f605d21f57e65ddec58bb6fc81be6805f015aba
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2142,6 +2272,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=ingester"
+            - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"
@@ -2189,7 +2320,7 @@ kind: StatefulSet
 metadata:
   name: pyroscope-dev-store-gateway
   labels:
-    helm.sh/chart: pyroscope-1.0.0-rc.0
+    helm.sh/chart: pyroscope-0.9.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.0.0-rc.0"
@@ -2207,7 +2338,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 6fe16ba2b1a5722aa6bd635556589287c1da29fd7886feffd5435076b71dfe9a
+        checksum/config: 4d9461237c6a0ee3e8cf3b380f605d21f57e65ddec58bb6fc81be6805f015aba
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2233,6 +2364,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - "-target=store-gateway"
+            - "-server.http-listen-port=4040"
             - "-memberlist.cluster-label=default-pyroscope-dev"
             - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
             - "-config.file=/etc/pyroscope/config.yaml"

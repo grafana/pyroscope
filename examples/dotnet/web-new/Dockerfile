@@ -3,10 +3,8 @@ FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:6.0
 
 WORKDIR /dotnet
 
-RUN wget -qO-  https://github.com/grafana/pyroscope-dotnet/releases/download/v0.8.3-pyroscope/pyroscope.glibc.tar.gz  \
-      | tar xvz
-# RUN wget -qO-  https://github.com/grafana/pyroscope-dotnet/releases/download/v0.8.3-pyroscope/pyroscope.musl.tar.gz  \
-#       | tar xvz
+COPY --from=pyroscope/pyroscope-dotnet:0.8.7-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
+COPY --from=pyroscope/pyroscope-dotnet:0.8.7-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
 
 ADD example .
 
