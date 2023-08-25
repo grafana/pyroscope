@@ -1,19 +1,22 @@
-Thanks for deploying Grafana Phlare.
+Thanks for deploying Grafana Pyroscope.
 
-In order to configure Grafana to use the Phlare datasource, you need to add the Phlare datasource to your Grafana instance.
-
-The in-cluster query URL is:
-
-{{- if hasKey .Values.pyroscope.components "query-frontend" }}
-http://{{ include "pyroscope.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.service.port }}
-{{- else }}
-http://{{ include "pyroscope.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.service.port }}
-{{- end }}
-
-To forward the query API to your localhost you can use:
+To access the Pyroscope UI from your localhost you can use:
 
 {{- if hasKey .Values.pyroscope.components "query-frontend" }}
 kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pyroscope.fullname" . }}-query-frontend {{ .Values.pyroscope.service.port }}:{{ .Values.pyroscope.service.port }}
 {{- else }}
 kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "pyroscope.fullname" . }} {{ .Values.pyroscope.service.port }}:{{ .Values.pyroscope.service.port }}
+{{- end }}
+
+
+In order to configure Grafana Explore to use the Pyroscope data source, you need to add the Pyroscope data source to your Grafana instance.
+
+See https://grafana.com/docs/grafana/latest/datasources/grafana-pyroscope/ for more details.
+
+The in-cluster query URL for the data source in Grafana is:
+
+{{- if hasKey .Values.pyroscope.components "query-frontend" }}
+http://{{ include "pyroscope.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.service.port }}
+{{- else }}
+http://{{ include "pyroscope.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.service.port }}
 {{- end }}
