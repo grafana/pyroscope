@@ -102,7 +102,7 @@ Pyroscope.Profiler.Instance.SetContentionTrackingEnabled(enabled);
 Pyroscope.Profiler.Instance.SetExceptionTrackingEnabled(enabled);
 ```
 
-It is possible to dynamically change Authorization credentials.
+It is possible to dynamically change authorization credentials.
 
 ```cs
 // Set Authorization Basic username and password. Clear any previously set Authorization credentials.
