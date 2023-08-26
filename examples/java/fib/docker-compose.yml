@@ -1,0 +1,15 @@
+---
+version: '3.9'
+services:
+  pyroscope:
+    image: grafana/pyroscope
+    ports:
+      - '4040:4040'
+
+  app:
+    build: .
+    privileged: true
+    environment:
+      - 'PYROSCOPE_APPLICATION_NAME=fibonacci-java-lock-push'
+      - 'PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040'
+      - 'PYROSCOPE_FORMAT=jfr'

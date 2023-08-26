@@ -30,7 +30,6 @@ import (
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/agent/scrape"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -51,6 +50,8 @@ const (
 	// ringAutoForgetUnhealthyPeriods is how many consecutive timeout periods an unhealthy instance
 	// in the ring will be automatically removed after.
 	ringAutoForgetUnhealthyPeriods = 10
+
+	ProfileName = "__name__"
 )
 
 // Config for a Distributor.
@@ -202,7 +203,7 @@ func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.Push
 			totalPushUncompressedBytes += int64(len(lbs.Value))
 		}
 		keys = append(keys, TokenFor(tenantID, labelsString(series.Labels)))
-		profName := phlaremodel.Labels(series.Labels).Get(scrape.ProfileName)
+		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
 		for _, raw := range series.Samples {
 			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 			d.profileReceivedStats.Inc(1)

@@ -22,15 +22,6 @@ pyroscope:
         requests:
           memory: 32Mi
           cpu: 50m
-    agent:
-      kind: Deployment
-      replicaCount: 1
-      resources:
-        limits:
-          memory: 512Mi
-        requests:
-          memory: 16Mi
-          cpu: 5m
     ingester:
       kind: StatefulSet
       replicaCount: 3
