@@ -181,7 +181,7 @@ func (f *PhlareDB) maxBlockDuration() time.Duration {
 
 func (f *PhlareDB) maxBlockBytes() uint64 {
 	maxBlockBytes := defaultParquetConfig.MaxBlockBytes
-	if f.cfg.Parquet != nil && f.cfg.Parquet.MaxBlockBytes > maxBlockBytes {
+	if f.cfg.Parquet != nil && f.cfg.Parquet.MaxBlockBytes > 0 {
 		maxBlockBytes = f.cfg.Parquet.MaxBlockBytes
 	}
 	return maxBlockBytes

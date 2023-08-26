@@ -139,8 +139,8 @@ func (h *Head) MemorySize() uint64 {
 }
 
 func (h *Head) Size() uint64 {
-	// TODO: TSDB and SymDB.
-	return h.profiles.Size()
+	// TODO: TSDB index
+	return h.profiles.Size() + h.symdb.MemorySize()
 }
 
 func (h *Head) loop() {
