@@ -105,7 +105,7 @@ Pyroscope.Profiler.Instance.SetExceptionTrackingEnabled(enabled);
 It is possible to dynamically change authorization credentials.
 
 ```cs
-// Set Authorization Basic username and password. Clear any previously set Authorization credentials.
+// Set Basic authorization username and password. Clears any previous authorization credentials.
 Pyroscope.Profiler.Instance.SetBasicAuth(basicAuthUser, BasicAuthPassword);
 ```
 
