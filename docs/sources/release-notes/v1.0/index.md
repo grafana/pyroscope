@@ -19,11 +19,7 @@ From the first release you can expect:
 
 ![Pyroscope UI](phlare-ui.png)
 
-Ready to give it a try, follow our [getting started]({{< relref "../../get-started/" >}}) documentation.
-
-> **Note:** This is an early release and there are a couple of limitations:
->
-> - As we iterate on Pyroscope, the APIs are still subject to change and we can’t yet provide stability. This is most likely going to be guaranteed in the future 1.0 release.
+Follow our [getting started]({{< relref "../../get-started/" >}}) documentation.
 
 We are keen to hear your feedback and ideas on what we should focus on next. Get in touch with the team using:
 
