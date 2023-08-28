@@ -42,6 +42,7 @@ import { HeatmapSelectionIcon, HeatmapNoSelectionIcon } from './HeatmapIcons';
 
 import styles from './ExemplarsSingleView.module.scss';
 import { filterNonCPU } from './filterNonCPU';
+import { PageContentWrapper } from '../layout';
 
 function ExemplarsSingleView() {
   const [tabIndex, setTabIndex] = useState(0);
@@ -124,7 +125,7 @@ function ExemplarsSingleView() {
   return (
     <div>
       <PageTitle title={formatTitle('Tracing single', query)} />
-      <div className="main-wrapper">
+      <PageContentWrapper>
         <Toolbar
           onSelectedApp={(query) => {
             dispatch(setQuery(query));
@@ -195,7 +196,7 @@ function ExemplarsSingleView() {
             </TabPanel>
           </>
         ) : null}
-      </div>
+      </PageContentWrapper>
     </div>
   );
 }

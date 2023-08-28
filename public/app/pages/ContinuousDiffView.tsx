@@ -32,6 +32,7 @@ import { isExportToFlamegraphDotComEnabled } from '@pyroscope/util/features';
 import PageTitle from '@pyroscope/components/PageTitle';
 import { formatTitle } from './formatTitle';
 import { isLoadingOrReloading } from './loading';
+import { PageContentWrapper } from './layout';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
@@ -109,7 +110,7 @@ function ComparisonDiffApp() {
   return (
     <div>
       <PageTitle title={formatTitle('Diff', leftQuery, rightQuery)} />
-      <div className="main-wrapper">
+      <PageContentWrapper>
         <Toolbar
           onSelectedApp={(query) => {
             dispatch(actions.setQuery(query));
@@ -250,7 +251,7 @@ function ComparisonDiffApp() {
             />
           </LoadingOverlay>
         </Box>
-      </div>
+      </PageContentWrapper>
     </div>
   );
 }
