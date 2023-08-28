@@ -11,13 +11,21 @@ aliases:
 
 ## How to add .NET profiling to your application
 
-1. Download `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from [latest release](https://github.com/pyroscope-io/pyroscope-dotnet/releases/)
+1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/pyroscope-io/pyroscope-dotnet/releases/):
+
+```bash
+curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.8.8-pyroscope/pyroscope.0.8.8-glibc-x86_64.tar.gz  | tar xvz -C .
+```
+Or copy them from the [latest docker image](https://hub.docker.com/r/pyroscope/pyroscope-dotnet/tags):
+```dockerfile
+COPY --from=pyroscope/pyroscope-dotnet:0.8.8-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
+COPY --from=pyroscope/pyroscope-dotnet:0.8.8-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
+````
 
 2. Set the following required environment variables to enable profiler
 ```shell
 PYROSCOPE_APPLICATION_NAME=rideshare.dotnet.app
 PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
-PYROSCOPE_AUTH_TOKEN="psx-..." # optional auth token
 PYROSCOPE_PROFILING_ENABLED=1
 CORECLR_ENABLE_PROFILING=1
 CORECLR_PROFILER={BD1A650D-AC5D-4896-B64F-D6FA25D6B26A}
@@ -94,12 +102,10 @@ Pyroscope.Profiler.Instance.SetContentionTrackingEnabled(enabled);
 Pyroscope.Profiler.Instance.SetExceptionTrackingEnabled(enabled);
 ```
 
-It is possible to dynamically change auth tokens.
+It is possible to dynamically change authorization credentials.
 
 ```cs
-// Set Authorization Bearer token. Clear any previously set Authorization tokens.
-Pyroscope.Profiler.Instance.SetAuthToken(token);
-// Set Authorization Basic username and password. Clear any previously set Authorization tokens.
+// Set Basic authorization username and password. Clears any previous authorization credentials.
 Pyroscope.Profiler.Instance.SetBasicAuth(basicAuthUser, BasicAuthPassword);
 ```
 
@@ -134,7 +140,8 @@ export PYROSCOPE_APPLICATION_NAME=example.dotnet.app
 export PYROSCOPE_SERVER_ADDRESS=<URL>
 export PYROSCOPE_BASIC_AUTH_USER=<User>
 export PYROSCOPE_BASIC_AUTH_PASSWORD=<Password>
-export PYROSCOPE_TENANT_ID=<TenantID> # only needed if using multi-tenancy
+# Optional Pyroscope tenant ID (only needed if using multi-tenancy). Not needed for Grafana Cloud.
+# export PYROSCOPE_TENANT_ID=<TenantID>
 ```
 
 To configure the .NET SDK to send data to Grafana Cloud Profiles or Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.

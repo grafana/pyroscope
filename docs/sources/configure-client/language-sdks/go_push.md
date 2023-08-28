@@ -44,9 +44,6 @@ func main() {
     // you can disable logging by setting this to nil
     Logger:          pyroscope.StandardLogger,
 
-    // optionally, if authentication is enabled, specify the API key:
-    // AuthToken:    os.Getenv("PYROSCOPE_AUTH_TOKEN"),
-
     // you can provide static tags via a map:
     Tags:            map[string]string{"hostname": os.Getenv("HOSTNAME")},
 
@@ -122,7 +119,7 @@ pyroscope.Start(pyroscope.Config{
   // Optional HTTP Basic authentication
   BasicAuthUser:     "<User>",
   BasicAuthPassword: "<Password>",
-  // Optional Pyroscope tenant ID (only needed if using multi-tenancy)
+  // Optional Pyroscope tenant ID (only needed if using multi-tenancy). Not needed for Grafana Cloud.
   // TenantID:          "<TenantID>",
   ProfileTypes: []pyroscope.ProfileType{
     pyroscope.ProfileCPU,
