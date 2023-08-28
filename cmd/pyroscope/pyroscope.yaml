@@ -1,2 +1,10 @@
 server:
   http_listen_port: 4040
+
+storage:
+  backend: gcs
+  gcs:
+    bucket_name: cyriltovena
+
+phlaredb:
+  max_block_duration: 5m
