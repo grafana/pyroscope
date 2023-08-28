@@ -14,11 +14,7 @@
 
 On 2023-03-15, [Grafana Labs acquired Pyroscope](https://grafana.com/blog/2023/03/15/pyroscope-grafana-phlare-join-for-oss-continuous-profiling/).
 
-The teams and codebases [Grafana Phlare](https://github.com/grafana/phlare) and Pyroscope have **merged into Grafana Pyroscope**. The *next* branch reflects the current and ongoing developent of Grafana Pyroscope and all enhancement/fixes will and should be merged into it.
-
-We plan to release Pyroscope 1.0 in the near future (by mid-September 2023) -- thanks for your patience!
-
-Feel free to use the information from the original Pyroscope project until that time, which can still be found the `main` branch.
+The teams and codebases of both [Grafana Phlare](https://github.com/grafana/phlare) and Pyroscope have **merged into Grafana Pyroscope**.
 
 ### What is Grafana Pyroscope?
 
@@ -62,41 +58,41 @@ For more documentation on how to add the Pyroscope agent to your code, see the [
           <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/go_push/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/next/examples/golang-push" title="golang-examples">Examples</a>
       </td>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/java/"><img src="https://user-images.githubusercontent.com/23323466/178160550-2b5a623a-0f4c-4911-923f-2c825784d45d.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/java/"><img src="https://user-images.githubusercontent.com/23323466/178160550-2b5a623a-0f4c-4911-923f-2c825784d45d.png" width="100px;" alt=""/><br />
         <b>Java</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/java/" title="Documentation">Documentation</a><br />
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/java/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/next/examples/java-jfr/rideshare" title="java-examples">Examples</a>
       </td>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/python/"><img src="https://user-images.githubusercontent.com/23323466/178160553-c78b8c15-99b4-43f3-a2a0-252b6c4862b1.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/python/"><img src="https://user-images.githubusercontent.com/23323466/178160553-c78b8c15-99b4-43f3-a2a0-252b6c4862b1.png" width="100px;" alt=""/><br />
         <b>Python</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/python/" title="Documentation">Documentation</a><br />
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/python/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/next/examples/python" title="python-examples">Examples</a>
       </td>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/ruby/"><img src="https://user-images.githubusercontent.com/23323466/178160554-b0be2bc5-8574-4881-ac4c-7977c0b2c195.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/ruby/"><img src="https://user-images.githubusercontent.com/23323466/178160554-b0be2bc5-8574-4881-ac4c-7977c0b2c195.png" width="100px;" alt=""/><br />
         <b>Ruby</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/ruby/" title="Documentation">Documentation</a><br />
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/ruby/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/next/examples/ruby" title="ruby-examples">Examples</a>
       </td>
    </tr>
    <tr>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/nodejs/"><img src="https://user-images.githubusercontent.com/23323466/178160551-a79ee6ff-a5d6-419e-89e6-39047cb08126.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/nodejs/"><img src="https://user-images.githubusercontent.com/23323466/178160551-a79ee6ff-a5d6-419e-89e6-39047cb08126.png" width="100px;" alt=""/><br />
         <b>NodeJS</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/nodejs/" title="Documentation">Documentation</a><br />
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/nodejs/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/next/examples/nodejs/express" title="examples">Examples</a>
       </td>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/dotnet/"><img src="https://user-images.githubusercontent.com/23323466/178160544-d2e189c6-a521-482c-a7dc-5375c1985e24.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/dotnet/"><img src="https://user-images.githubusercontent.com/23323466/178160544-d2e189c6-a521-482c-a7dc-5375c1985e24.png" width="100px;" alt=""/><br />
         <b>Dotnet</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/dotnet/" title="Documentation">Documentation</a><br />
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/dotnet/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/next/examples/dotnet" title="examples">Examples</a>
       </td>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/grafana-agent/ebpf/"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/ebpf/"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
         <b>eBPF</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/next/configure-client/grafana-agent/ebpf/" title="Documentation">Documentation</a><br />
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/ebpf/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/next/examples/ebpf" title="examples">Examples</a>
       </td>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/rust/"><img src="https://user-images.githubusercontent.com/23323466/178160555-fb6aeee7-5d31-4bcb-9e3e-41e9f2f7d5b4.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/rust/"><img src="https://user-images.githubusercontent.com/23323466/178160555-fb6aeee7-5d31-4bcb-9e3e-41e9f2f7d5b4.png" width="100px;" alt=""/><br />
         <b>Rust</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/rust/" title="Documentation">Documentation</a><br />
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/rust/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/next/examples/rust/rideshare" title="examples">Examples</a>
       </td>
    </tr>
@@ -119,9 +115,9 @@ Pyroscope also supports several third-party integrations, notably:
 For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in production environment, check out our documentation:
 
 * [Public Roadmap](https://github.com/grafana/pyroscope/projects/1)
-* [Getting Started](https://grafana.com/docs/pyroscope/next/get-started/)
-* [Deployment Guide](https://grafana.com/docs/pyroscope/next/deploy-kubernetes/)
-* [Pyroscope Architecture](https://grafana.com/docs/pyroscope/next/reference-pyroscope-architecture/)
+* [Getting Started](https://grafana.com/docs/pyroscope/latest/get-started/)
+* [Deployment Guide](https://grafana.com/docs/pyroscope/latest/deploy-kubernetes/)
+* [Pyroscope Architecture](https://grafana.com/docs/pyroscope/latest/reference-pyroscope-architecture/)
 
 
 ## Downloads
