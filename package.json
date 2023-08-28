@@ -10,6 +10,7 @@
     "type-check": "tsc -p tsconfig.json --noEmit",
     "build": "NODE_ENV=production webpack --progress --config scripts/webpack/webpack.prod.js",
     "dev": "NODE_ENV=development webpack serve --progress --color --config scripts/webpack/webpack.dev.js",
+    "backend:dev": "make build run 'PARAMS=--config.file ./cmd/pyroscope/pyroscope.yaml'",
     "cy": "cypress",
     "lint": "eslint . --ext .js,.tsx,.ts --cache",
     "lint:fix": "yarn lint --fix",
