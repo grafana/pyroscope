@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
@@ -65,6 +66,7 @@ type PhlareDB struct {
 
 	logger    log.Logger
 	phlarectx context.Context
+	metrics   *headMetrics
 
 	cfg    Config
 	stopCh chan struct{}
@@ -79,10 +81,13 @@ type PhlareDB struct {
 	// till it gets written to the disk and becomes available
 	// to blockQuerier.
 	oldHead *Head
+
+	// The current head block, if present, is flushed
+	// when the ticker fires.
+	forceFlush *time.Ticker
 	// flushLock serializes flushes. Only one flush at a time
 	// is allowed.
 	flushLock sync.Mutex
-	headInit  chan struct{} // Closes every time a new head is initialized.
 
 	blockQuerier *BlockQuerier
 	limiter      TenantLimiter
@@ -90,21 +95,23 @@ type PhlareDB struct {
 }
 
 func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlareobj.Bucket) (*PhlareDB, error) {
+	reg := phlarecontext.Registry(phlarectx)
 	f := &PhlareDB{
-		cfg:      cfg,
-		logger:   phlarecontext.Logger(phlarectx),
-		stopCh:   make(chan struct{}),
-		evictCh:  make(chan *blockEviction),
-		headInit: make(chan struct{}),
-		limiter:  limiter,
+		cfg:     cfg,
+		logger:  phlarecontext.Logger(phlarectx),
+		stopCh:  make(chan struct{}),
+		evictCh: make(chan *blockEviction),
+		metrics: newHeadMetrics(reg),
+		limiter: limiter,
 	}
+
+	f.forceFlush = time.NewTicker(f.maxBlockDuration())
 	if err := os.MkdirAll(f.LocalDataPath(), 0o777); err != nil {
 		return nil, fmt.Errorf("mkdir %s: %w", f.LocalDataPath(), err)
 	}
-	reg := phlarecontext.Registry(phlarectx)
 
 	// ensure head metrics are registered early so they are reused for the new head
-	phlarectx = contextWithHeadMetrics(phlarectx, newHeadMetrics(reg))
+	phlarectx = contextWithHeadMetrics(phlarectx, f.metrics)
 	f.phlarectx = phlarectx
 	f.wg.Add(1)
 	go f.loop()
@@ -135,8 +142,12 @@ func (f *PhlareDB) runBlockQuerierSync(ctx context.Context) {
 
 func (f *PhlareDB) loop() {
 	blockScanTicker := time.NewTicker(5 * time.Minute)
+	headSizeCheck := time.NewTicker(5 * time.Second)
+	maxBlockBytes := f.maxBlockBytes()
 	defer func() {
 		blockScanTicker.Stop()
+		headSizeCheck.Stop()
+		f.forceFlush.Stop()
 		f.wg.Done()
 	}()
 
@@ -146,47 +157,34 @@ func (f *PhlareDB) loop() {
 		select {
 		case <-f.stopCh:
 			return
-		case <-f.headFlushCh():
-			if err := f.Flush(ctx); err != nil {
-				level.Error(f.logger).Log("msg", "flushing head block failed", "err", err)
-				continue
-			}
-			f.runBlockQuerierSync(ctx)
 		case <-blockScanTicker.C:
 			f.runBlockQuerierSync(ctx)
+		case <-headSizeCheck.C:
+			if f.headSize() > maxBlockBytes {
+				f.flushHead(ctx, flushReasonMaxBlockBytes)
+			}
+		case <-f.forceFlush.C:
+			f.flushHead(ctx, flushReasonMaxDuration)
 		case e := <-f.evictCh:
 			f.evictBlock(e)
-		case <-f.headInit:
-			// headFlushCh() may actually be stopCh. When a new head is
-			// initialized, we re-build the select channel list, and get
-			// a valid flush channel of the new head.
-			f.headLock.Lock()
-			f.headInit = make(chan struct{})
-			f.headLock.Unlock()
 		}
 	}
 }
 
-// initHead initializes a new head and signals to the main closing the
-// headInit channel: must only be called with headLock held for writes.
-func (f *PhlareDB) initHead() (err error) {
-	if f.head, err = NewHead(f.phlarectx, f.cfg, f.limiter); err != nil {
-		return err
+func (f *PhlareDB) maxBlockDuration() time.Duration {
+	maxBlockDuration := 5 * time.Second
+	if f.cfg.MaxBlockDuration > maxBlockDuration {
+		maxBlockDuration = f.cfg.MaxBlockDuration
 	}
-	close(f.headInit) // Now can select from f.head.flushCh (headFlushCh).
-	return nil
+	return maxBlockDuration
 }
 
-func (f *PhlareDB) headFlushCh() chan struct{} {
-	f.headLock.RLock()
-	defer f.headLock.RUnlock()
-	if h := f.head; h != nil {
-		return h.flushCh
+func (f *PhlareDB) maxBlockBytes() uint64 {
+	maxBlockBytes := defaultParquetConfig.MaxBlockBytes
+	if f.cfg.Parquet != nil && f.cfg.Parquet.MaxBlockBytes > 0 {
+		maxBlockBytes = f.cfg.Parquet.MaxBlockBytes
 	}
-	// It is okay to return stopCh: Flush can be called when
-	// no head exists; it will return immediately. When a new
-	// head is initialized, headFlushCh must be called again.
-	return f.stopCh
+	return maxBlockBytes
 }
 
 func (f *PhlareDB) evictBlock(e *blockEviction) {
@@ -240,8 +238,7 @@ func (f *PhlareDB) withHeadForIngest(fn func(*Head) error) (err error) {
 	// of them will compete with Flush. Lock is acquired to avoid Add after Wait that
 	// is called in the very beginning of Flush.
 	f.headLock.RLock()
-	h := f.head
-	if h != nil {
+	if h := f.head; h != nil {
 		h.inFlightProfiles.Add(1)
 		f.headLock.RUnlock()
 		defer h.inFlightProfiles.Done()
@@ -249,22 +246,27 @@ func (f *PhlareDB) withHeadForIngest(fn func(*Head) error) (err error) {
 	}
 	f.headLock.RUnlock()
 	f.headLock.Lock()
-	h = f.head
-	if h != nil {
-		h.inFlightProfiles.Add(1)
-		f.headLock.Unlock()
-		defer h.inFlightProfiles.Done()
-		return fn(h)
+	if f.head == nil {
+		if err = f.initHead(); err != nil {
+			f.headLock.Unlock()
+			return err
+		}
 	}
-	if err = f.initHead(); err != nil {
-		f.headLock.Unlock()
-		return err
-	}
-	h = f.head
+	h := f.head
 	h.inFlightProfiles.Add(1)
 	f.headLock.Unlock()
 	defer h.inFlightProfiles.Done()
 	return fn(h)
+}
+
+// initHead initializes a new head and resets the flush timer.
+// Must only be called with headLock held for writes.
+func (f *PhlareDB) initHead() (err error) {
+	if f.head, err = NewHead(f.phlarectx, f.cfg, f.limiter); err != nil {
+		return err
+	}
+	f.forceFlush.Reset(f.maxBlockDuration())
+	return nil
 }
 
 func withHeadForQuery[T any](f *PhlareDB, fn func(*Head) (*connect.Response[T], error)) (*connect.Response[T], error) {
@@ -275,6 +277,35 @@ func withHeadForQuery[T any](f *PhlareDB, fn func(*Head) (*connect.Response[T], 
 		return connect.NewResponse(new(T)), nil
 	}
 	return fn(h)
+}
+
+func (f *PhlareDB) headSize() uint64 {
+	f.headLock.RLock()
+	defer f.headLock.RUnlock()
+	if h := f.head; h != nil {
+		return h.Size()
+	}
+	return 0
+}
+
+type flushReason string
+
+const (
+	flushReasonMaxDuration   = "max-duration"
+	flushReasonMaxBlockBytes = "max-block-bytes"
+)
+
+func (f *PhlareDB) flushHead(ctx context.Context, reason flushReason) {
+	f.metrics.flushedBlocksReasons.WithLabelValues(string(reason)).Inc()
+	level.Debug(f.logger).Log(
+		"msg", "flushing head to disk",
+		"reason", reason,
+		"max_size", humanize.Bytes(f.maxBlockBytes()),
+		"current_size", humanize.Bytes(f.headSize()),
+	)
+	if err := f.Flush(ctx); err != nil {
+		level.Error(f.logger).Log("msg", "flushing head block failed", "err", err)
+	}
 }
 
 // LabelValues returns the possible label values for a given label name.
