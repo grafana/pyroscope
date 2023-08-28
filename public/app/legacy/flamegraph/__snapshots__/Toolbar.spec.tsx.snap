@@ -169,7 +169,7 @@ exports[`ProfileHeader should render toolbar correctly 1`] = `
           </div>
           <div
             class="item"
-            style="width: 220px;"
+            style="width: 176px;"
           >
             <div
               class="viewType"

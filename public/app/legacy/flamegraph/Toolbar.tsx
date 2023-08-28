@@ -10,7 +10,6 @@ import React, {
 import classNames from 'classnames/bind';
 import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
-import { faProjectDiagram } from '@fortawesome/free-solid-svg-icons/faProjectDiagram';
 import { faEllipsisV } from '@fortawesome/free-solid-svg-icons/faEllipsisV';
 import { Maybe } from 'true-myth';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
