@@ -188,8 +188,9 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 		storeGatewayQuerier *querier.StoreGatewayQuerier
 		err                 error
 	)
-	// In microservices mode the store gateway is mandatory.
-	if f.Cfg.Target.String() != All {
+
+	// if a storage bucket is configure we need to create a store gateway querier
+	if f.storageBucket != nil {
 		storeGatewayQuerier, err = querier.NewStoreGatewayQuerier(f.Cfg.StoreGateway, nil, f.Overrides, log.With(f.logger, "component", "store-gateway-querier"), f.reg, f.auth)
 		if err != nil {
 			return nil, err
@@ -345,6 +346,9 @@ func (f *Phlare) initIngester() (_ services.Service, err error) {
 
 func (f *Phlare) initStoreGateway() (serv services.Service, err error) {
 	f.Cfg.StoreGateway.ShardingRing.ListenPort = f.Cfg.Server.HTTPListenPort
+	if f.storageBucket == nil {
+		return nil, nil
+	}
 
 	svc, err := storegateway.NewStoreGateway(f.Cfg.StoreGateway, f.storageBucket, f.Overrides, f.logger, f.reg)
 	if err != nil {

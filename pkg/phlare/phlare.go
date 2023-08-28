@@ -289,7 +289,7 @@ func (f *Phlare) setupModuleManager() error {
 
 	// Add dependencies
 	deps := map[string][]string{
-		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier},
+		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway},
 
 		Server:         {GRPCGateway},
 		API:            {Server},
@@ -298,7 +298,7 @@ func (f *Phlare) setupModuleManager() error {
 		QueryFrontend:  {OverridesExporter, API, MemberlistKV, UsageReport},
 		QueryScheduler: {Overrides, API, MemberlistKV, UsageReport},
 		Ingester:       {Overrides, API, MemberlistKV, Storage, UsageReport},
-		StoreGateway:   {API, Storage, Overrides, MemberlistKV},
+		StoreGateway:   {API, Storage, Overrides, MemberlistKV, UsageReport},
 
 		UsageReport:       {Storage, MemberlistKV},
 		Overrides:         {RuntimeConfig},

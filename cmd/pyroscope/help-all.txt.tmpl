@@ -856,7 +856,7 @@ Usage of ./pyroscope:
   -store-gateway.sharding-ring.prefix string
     	The prefix for the keys in the store. Should end with a /. (default "collectors/")
   -store-gateway.sharding-ring.replication-factor int
-    	The replication factor to use when sharding blocks. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode. (default 3)
+    	The replication factor to use when sharding blocks. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode. (default 1)
   -store-gateway.sharding-ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -store-gateway.sharding-ring.tokens-file-path string
