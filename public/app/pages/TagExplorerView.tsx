@@ -591,9 +591,7 @@ function Table({
                   className={styles.tagColor}
                   style={{ backgroundColor: color?.toString() }}
                 />
-                <span className={styles.label}>
-                  {tagName}
-                </span>
+                <span className={styles.label}>{tagName}</span>
               </div>
             ),
           },
@@ -607,7 +605,7 @@ function Table({
                   &nbsp;{`(${percentage.toFixed(2)}%)`}
                 </span>
               </div>
-            )
+            ),
           },
         ],
       };
@@ -657,7 +655,7 @@ function Table({
         sortByDirection={sortByDirection}
         table={table}
         className={styles.tagExplorerTable}
-        tableStyle={{tableLayout: 'auto'}}
+        tableStyle={{ tableLayout: 'auto' }}
       />
     </div>
   );
