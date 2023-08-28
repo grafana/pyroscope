@@ -54,7 +54,7 @@ Pyroscope supports all major architectures and is very easy to install. For exam
 brew install pyroscope-io/brew/pyroscope
 
 # start pyroscope server:
-pyroscope server
+pyroscope
 ```
 ## Send data to server via Pyroscope agent (language specific)
 
