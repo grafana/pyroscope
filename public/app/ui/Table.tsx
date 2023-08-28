@@ -87,6 +87,7 @@ interface TableProps {
   isLoading?: boolean;
   /* enables pagination */
   itemsPerPage?: number;
+  tableStyle?: React.CSSProperties;
 }
 
 function TableComponent({
@@ -98,6 +99,7 @@ function TableComponent({
   className,
   isLoading,
   itemsPerPage,
+  tableStyle,
 }: TableProps) {
   const hasSort = sortByDirection && sortBy && updateSortParams;
   const [currPage, setCurrPage] = useState(0);
@@ -113,6 +115,7 @@ function TableComponent({
           [className || '']: className,
         })}
         data-testid="table-ui"
+        style={tableStyle}
       >
         <thead>
           <tr>

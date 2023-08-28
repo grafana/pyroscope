@@ -591,18 +591,22 @@ function Table({
                   className={styles.tagColor}
                   style={{ backgroundColor: color?.toString() }}
                 />
-                <span className={styles.label}>
-                  {tagName}
-                  <span className={styles.bold}>
-                    &nbsp;{`(${percentage.toFixed(2)}%)`}
-                  </span>
-                </span>
+                <span className={styles.label}>{tagName}</span>
               </div>
             ),
           },
           { value: meanLabel },
           { value: stdDeviationLabel },
-          { value: totalLabel },
+          {
+            value: (
+              <div>
+                {totalLabel}
+                <span className={styles.bold}>
+                  &nbsp;{`(${percentage.toFixed(2)}%)`}
+                </span>
+              </div>
+            ),
+          },
         ],
       };
       acc.push(row);
@@ -651,6 +655,7 @@ function Table({
         sortByDirection={sortByDirection}
         table={table}
         className={styles.tagExplorerTable}
+        tableStyle={{ tableLayout: 'auto' }}
       />
     </div>
   );
