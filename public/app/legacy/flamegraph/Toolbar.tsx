@@ -196,7 +196,8 @@ const Toolbar = memo(
             />
           ),
           // sandwich view is hidden in diff view
-          width: TOOLBAR_SQUARE_WIDTH * (flamegraphType === 'single' ? 5 : 3), // 1px is to display divider
+          // Note that  that the toolbar sections width is hardcoded here in terms of the number of buttons expected -- 4x for one condition, and 3x for the other.
+          width: TOOLBAR_SQUARE_WIDTH * (flamegraphType === 'single' ? 4 : 3), // 1px is to display divider
         }
       : null;
     const exportDataItem = isValidElement(ExportData)
@@ -408,11 +409,6 @@ const getViewOptions = (
           Icon: FlamegraphIcon,
         },
         { label: 'Sandwich', value: 'sandwich', Icon: SandwichIcon },
-        {
-          label: 'GraphViz',
-          value: 'graphviz',
-          Icon: () => <FontAwesomeIcon icon={faProjectDiagram} />,
-        },
       ]
     : [
         { label: 'Table', value: 'table', Icon: TableIcon },
