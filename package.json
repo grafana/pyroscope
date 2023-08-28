@@ -142,7 +142,6 @@
     "d3-scale-chromatic": "^3.0.0",
     "d3-time": "^3.0.0",
     "file-saver": "^2.0.5",
-    "graphviz-react": "^1.2.5",
     "jquery": "^3.6.4",
     "jquery.flot.tooltip": "^0.9.0",
     "lodash.groupby": "^4.6.0",
@@ -181,7 +180,6 @@
     "@pyroscope/nodejs": "^0.2.5"
   },
   "resolutions": {
-    "d3-graphviz": "^5.1.0",
     "jquery": "^3.6.4",
     "braces": ">2.3.1",
     "d3-color": "^3.1.0",
