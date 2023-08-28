@@ -70,7 +70,7 @@ pyroscope.configure(
     server_address = "<URL>",
     basic_auth_username = '<User>',
     basic_auth_password = '<Password>',
-    # tenant_id only needed if multi-tenancy enabled,
+    # Optional Pyroscope tenant ID (only needed if using multi-tenancy). Not needed for Grafana Cloud.
     # tenant_id = "<TenantID>",
 )
 ```

@@ -21,6 +21,7 @@ import ApiKeys from './APIKeys';
 import styles from './Settings.module.css';
 import UserAddForm from './Users/UserAddForm';
 import APIKeyAddForm from './APIKeys/APIKeyAddForm';
+import { PageContentWrapper } from '@pyroscope/pages/layout';
 
 function Settings() {
   const { path, url } = useRouteMatch();
@@ -112,7 +113,7 @@ function Settings() {
           ) : null}
         </ul>
       </nav>
-      <div className="main-wrapper">
+      <PageContentWrapper>
         <Box className={styles.settingsWrapper}>
           <Switch>
             <Route exact path={path}>
@@ -159,7 +160,7 @@ function Settings() {
             </Route>
           </Switch>
         </Box>
-      </div>
+      </PageContentWrapper>
     </div>
   );
 }

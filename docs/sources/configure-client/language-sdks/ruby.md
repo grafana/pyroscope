@@ -29,7 +29,6 @@ require 'pyroscope'
 Pyroscope.configure do |config|
   config.application_name = "my.ruby.app" # replace this with some name for your application
   config.server_address   = "http://my-pyroscope-server:4040" # replace this with the address of your Pyroscope server
-  # config.auth_token     = "{YOUR_API_KEY}" # optionally, if authentication is enabled, specify the API key
 end
 ```
 
@@ -80,7 +79,7 @@ Pyroscope.configure do |config|
   config.server_address = "<URL>"
   config.basic_auth_username='<User>'
   config.basic_auth_password='<Password>'
-  # only need tenant_id if multi-tenancy enabled
+  # Optional Pyroscope tenant ID (only needed if using multi-tenancy). Not needed for Grafana Cloud.
   # config.tenant_id='<TenantID>'
 end
 ```

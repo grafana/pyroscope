@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
-	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gogo/status"
@@ -61,11 +60,8 @@ type Head struct {
 	localPath string // path once block has been cut
 
 	inFlightProfiles sync.WaitGroup // ongoing ingestion requests.
-	flushCh          chan struct{}  // this channel is closed once the Head should be flushed, should be used externally
-	flushForcedTimer *time.Timer    // this timer will phlare after the maximum
-
-	metaLock sync.RWMutex
-	meta     *block.Meta
+	metaLock         sync.RWMutex
+	meta             *block.Meta
 
 	parquetConfig *ParquetConfig
 	symdb         *symdb.SymDB
@@ -94,9 +90,6 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 
 		meta:         block.NewMeta(),
 		totalSamples: atomic.NewUint64(0),
-
-		flushCh:          make(chan struct{}),
-		flushForcedTimer: time.NewTimer(cfg.MaxBlockDuration),
 
 		parquetConfig: &parquetConfig,
 		limiter:       limiter,
@@ -146,44 +139,22 @@ func (h *Head) MemorySize() uint64 {
 }
 
 func (h *Head) Size() uint64 {
-	// TODO: TSDB and SymDB.
-	return h.profiles.Size()
+	// TODO: TSDB index
+	return h.profiles.Size() + h.symdb.MemorySize()
 }
 
 func (h *Head) loop() {
-	tick := time.NewTicker(5 * time.Second)
 	symdbMetricsUpdateTicker := time.NewTicker(5 * time.Second)
 	var memStats symdb.MemoryStats
 	defer func() {
-		tick.Stop()
 		symdbMetricsUpdateTicker.Stop()
-		h.flushForcedTimer.Stop()
 		h.wg.Done()
 	}()
 
 	for {
 		select {
-		case <-h.flushForcedTimer.C:
-			h.metrics.flushedBlocksReasons.WithLabelValues("max-duration").Inc()
-			level.Debug(h.logger).Log("msg", "max block duration reached, flush to disk")
-			close(h.flushCh)
-			return
-
-		case <-tick.C:
-			if currentSize := h.Size(); currentSize > h.parquetConfig.MaxBlockBytes {
-				h.metrics.flushedBlocksReasons.WithLabelValues("max-block-bytes").Inc()
-				level.Debug(h.logger).Log(
-					"msg", "max block bytes reached, flush to disk",
-					"max_size", humanize.Bytes(h.parquetConfig.MaxBlockBytes),
-					"current_head_size", humanize.Bytes(currentSize),
-				)
-				close(h.flushCh)
-				return
-			}
-
 		case <-symdbMetricsUpdateTicker.C:
 			h.updateSymbolsMemUsage(&memStats)
-
 		case <-h.stopCh:
 			return
 		}

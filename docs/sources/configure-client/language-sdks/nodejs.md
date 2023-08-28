@@ -44,10 +44,6 @@ Pyroscope.init({
   tags: {
     region: ENV['region']
   },
-  // authToken: ENV['PYROSCOPE_AUTH_TOKEN'],
-  // basicAuthUser: ENV['PYROSCOPE_BASIC_AUTH_USER'],
-  // basicAuthPassword: ENV['PYROSCOPE_BASIC_AUTH_PASSWORD'],
-  // tenantID: ENV['PYROSCOPE_TENANT_ID'],
 });
 
 Pyroscope.start()
@@ -93,7 +89,24 @@ scrape-configs:
 
 ## Sending data to Pyroscope OSS or Grafana Cloud with Pyroscope NodeJS SDK
 
+```javascript
+Pyroscope.init({
+  serverAddress: 'http://pyroscope:4040',
+  appName: 'myNodeService',
+  tags: {
+    region: ENV['region']
+  },
+  basicAuthUser: ENV['PYROSCOPE_BASIC_AUTH_USER'],
+  basicAuthPassword: ENV['PYROSCOPE_BASIC_AUTH_PASSWORD'],
+  // Optional Pyroscope tenant ID (only needed if using multi-tenancy). Not needed for Grafana Cloud.
+  // tenantID: ENV['PYROSCOPE_TENANT_ID'],
+});
+
+Pyroscope.start()
+```
+
 To configure the NodeJS SDK to send data to Pyroscope, replace the `serverAddress` placeholder with the appropriate server URL. This could be the Grafana Cloud Pyroscope URL or your own custom Pyroscope server URL.
+
 
 If you need to send data to Grafana Cloud, you’ll have to configure HTTP Basic authentication. Replace `basicAuthUser` with your Grafana Cloud stack user ID and `basicAuthPassword` with your Grafana Cloud API key.
 

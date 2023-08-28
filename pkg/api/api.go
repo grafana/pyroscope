@@ -24,15 +24,12 @@ import (
 
 	"github.com/grafana/pyroscope/public"
 
-	agentv1 "github.com/grafana/pyroscope/api/gen/proto/go/agent/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/agent/v1/agentv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	"github.com/grafana/pyroscope/api/openapiv2"
-	"github.com/grafana/pyroscope/pkg/agent"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb/frontendpbconnect"
@@ -236,17 +233,6 @@ func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceCl
 	a.RegisterRoute("/pyroscope/render", http.HandlerFunc(handlers.Render), true, true, "GET")
 	a.RegisterRoute("/pyroscope/render-diff", http.HandlerFunc(handlers.RenderDiff), true, true, "GET")
 	a.RegisterRoute("/pyroscope/label-values", http.HandlerFunc(handlers.LabelValues), true, true, "GET")
-}
-
-// RegisterAgent registers the endpoints associated with the agent.
-func (a *API) RegisterAgent(ag *agent.Agent) error {
-	// register endpoint at grpc gateway
-	if err := agentv1.RegisterAgentServiceHandlerServer(context.Background(), a.grpcGatewayMux, ag); err != nil {
-		return err
-	}
-	agentv1connect.RegisterAgentServiceHandler(a.server.HTTP, ag.ConnectHandler())
-
-	return nil
 }
 
 // RegisterIngester registers the endpoints associated with the ingester.
