@@ -137,10 +137,8 @@
     "compression-streams-polyfill": "^0.1.4",
     "css-loader": "^4.0.0",
     "d3": "^7.3.0",
-    "d3-array": "^3.1.1",
     "d3-scale": "^4.0.2",
     "d3-scale-chromatic": "^3.0.0",
-    "d3-time": "^3.0.0",
     "file-saver": "^2.0.5",
     "jquery": "^3.6.4",
     "jquery.flot.tooltip": "^0.9.0",
@@ -182,7 +180,6 @@
   "resolutions": {
     "jquery": "^3.6.4",
     "braces": ">2.3.1",
-    "d3-color": "^3.1.0",
     "glob-parent": ">5.1.2",
     "got": ">12.1.0",
     "json5": ">2.2.2",
