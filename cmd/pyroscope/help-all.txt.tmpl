@@ -338,7 +338,7 @@ Usage of ./pyroscope:
   -pyroscopedb.data-path string
     	Directory used for local storage. (default "./data")
   -pyroscopedb.max-block-duration duration
-    	Upper limit to the duration of a Phlare block. (default 3h0m0s)
+    	Upper limit to the duration of a Pyroscope block. (default 3h0m0s)
   -pyroscopedb.row-group-target-size uint
     	How big should a single row group be uncompressed (default 1342177280)
   -querier.client-cleanup-period duration
@@ -856,7 +856,7 @@ Usage of ./pyroscope:
   -store-gateway.sharding-ring.prefix string
     	The prefix for the keys in the store. Should end with a /. (default "collectors/")
   -store-gateway.sharding-ring.replication-factor int
-    	The replication factor to use when sharding blocks. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode. (default 3)
+    	The replication factor to use when sharding blocks. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode. (default 1)
   -store-gateway.sharding-ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -store-gateway.sharding-ring.tokens-file-path string
@@ -894,4 +894,4 @@ Usage of ./pyroscope:
   -validation.max-profile-symbol-value-length int
     	Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable. (default 1024)
   -version
-    	Show the version of phlare and exit
+    	Show the version of pyroscope and exit

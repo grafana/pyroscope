@@ -1,6 +1,1 @@
-export type ViewTypes =
-  | 'flamegraph'
-  | 'both'
-  | 'table'
-  | 'sandwich'
-  | 'graphviz';
+export type ViewTypes = 'flamegraph' | 'both' | 'table' | 'sandwich';

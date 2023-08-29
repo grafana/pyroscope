@@ -21,7 +21,7 @@ datasources:
   - name: Prometheus
     type: prometheus
     url: ${PROMETHEUS_URL}
-  - name: Phlare
+  - name: Pyroscope
     type: phlare
     url: ${PHLARE_URL}
     jsonData:

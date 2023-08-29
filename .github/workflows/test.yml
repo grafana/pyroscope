@@ -83,7 +83,7 @@ jobs:
         with:
           node-version: lts/hydrogen
           cache: yarn
-      - name: Build image Phlare
+      - name: Build image Pyroscope
         run: make docker-image/pyroscope/build "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
   build-push:
@@ -111,7 +111,7 @@ jobs:
           registry: us.gcr.io
           username: _json_key
           password: ${{ secrets.GCR_JSON_KEY }}
-      - name: Phlare Build & push multi-arch image
+      - name: Pyroscope Build & push multi-arch image
         id: build-push
         run: |
           make docker-image/pyroscope/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"

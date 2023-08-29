@@ -36,7 +36,7 @@ type SourceType string
 type MetaVersion int
 
 const (
-	// Version1 is a enumeration of Phlare section of TSDB meta supported by Phlare.
+	// Version1 is a enumeration of Pyroscope section of TSDB meta supported by Pyroscope.
 	MetaVersion1 = MetaVersion(1)
 
 	// MetaVersion2 indicates the block format version.
@@ -100,7 +100,7 @@ type Meta struct {
 	// Stats about the contents of the block.
 	Stats BlockStats `json:"stats,omitempty"`
 
-	// File is a sorted (by rel path) list of all files in block directory of this block known to PhlareDB.
+	// File is a sorted (by rel path) list of all files in block directory of this block known to PyroscopeDB.
 	// Sorted by relative path.
 	Files []File `json:"files,omitempty"`
 

@@ -30,7 +30,7 @@ const (
 	MissingLabels Reason = "missing_labels"
 	// RateLimited is one of the values for the reason to discard samples.
 	RateLimited Reason = "rate_limited"
-	// OutOfOrder is a reason for discarding profiles when Phlare doesn't accept out
+	// OutOfOrder is a reason for discarding profiles when Pyroscope doesn't accept out
 	// of order profiles.
 	OutOfOrder Reason = "out_of_order"
 	// MaxLabelNamesPerSeries is a reason for discarding a request which has too many label names

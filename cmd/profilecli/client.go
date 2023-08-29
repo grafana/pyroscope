@@ -12,7 +12,7 @@ const (
 	envPrefix = "PROFILECLI_"
 )
 
-var userAgentHeader = fmt.Sprintf("phlare/%s", version.Version)
+var userAgentHeader = fmt.Sprintf("pyroscope/%s", version.Version)
 
 type phlareClient struct {
 	TenantID  string

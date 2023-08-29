@@ -27,7 +27,7 @@ The distributor data cleanup includes the following transformation:
 ## Replication
 
 The distributor shards and replicates incoming series across ingesters.
-You can configure the number of ingester replicas that each series is written to via the `-ingester.ring.replication-factor` flag, which is `1` by default.
+You can configure the number of ingester replicas that each series is written to via the `-distributor.replication-factor` flag, which is `1` by default.
 Distributors use consistent hashing, in conjunction with a configurable replication factor, to determine which ingesters receive a given series.
 
 Sharding and replication uses the ingesters' hash ring.

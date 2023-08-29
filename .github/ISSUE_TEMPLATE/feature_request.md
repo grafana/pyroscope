@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for Phlare.
+about: Suggest an idea for Pyroscope.
 title: ''
 labels: ''
 assignees: ''

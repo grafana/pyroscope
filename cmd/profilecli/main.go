@@ -33,12 +33,12 @@ func main() {
 	ctx := phlarecontext.WithLogger(context.Background(), logger)
 	ctx = withOutput(ctx, os.Stdout)
 
-	app := kingpin.New(filepath.Base(os.Args[0]), "Tooling for Grafana Phlare, the continuous profiling aggregation system.").UsageWriter(os.Stdout)
-	app.Version(version.Print("phlaretool"))
+	app := kingpin.New(filepath.Base(os.Args[0]), "Tooling for Grafana Pyroscope, the continuous profiling aggregation system.").UsageWriter(os.Stdout)
+	app.Version(version.Print("profilecli"))
 	app.HelpFlag.Short('h')
 	app.Flag("verbose", "Enable verbose logging.").Short('v').Default("0").BoolVar(&cfg.verbose)
 
-	blocksCmd := app.Command("blocks", "Operate on Grafana Phlare's blocks.")
+	blocksCmd := app.Command("blocks", "Operate on Grafana Pyroscope's blocks.")
 	blocksCmd.Flag("path", "Path to blocks directory").Default("./data/local").StringVar(&cfg.blocks.path)
 
 	blocksListCmd := blocksCmd.Command("list", "List blocks.")

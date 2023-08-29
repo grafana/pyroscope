@@ -17,7 +17,7 @@ The official [Pyroscope Helm chart](https://github.com/pyroscope-io/helm-chart) 
 
 ```shell
 helm repo add grafana https://grafana.github.io/helm-chart
-helm install pyroscope grafana/pyroscope --version v1.0.0-rc.0
+helm install pyroscope grafana/pyroscope --version v1.0.0
 ```
 
 ### 3. Install Grafana Agent with Helm chart
@@ -49,7 +49,7 @@ agent:
       }
 
       pyroscope.write "example" {
-        // Send metrics to a locally running Phlare instance.
+        // Send metrics to a locally running Pyroscope instance.
         endpoint {
           url = "http://pyroscope:4040"
 
