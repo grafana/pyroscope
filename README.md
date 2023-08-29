@@ -10,13 +10,7 @@
 [![DockerHub](https://img.shields.io/docker/pulls/grafana/pyroscope.svg)](https://hub.docker.com/r/grafana/pyroscope)
 [![GoDoc](https://godoc.org/github.com/grafana/pyroscope?status.svg)](https://godoc.org/github.com/grafana/pyroscope)
 
-### News
-
-On 2023-03-15, [Grafana Labs acquired Pyroscope](https://grafana.com/blog/2023/03/15/pyroscope-grafana-phlare-join-for-oss-continuous-profiling/).
-
-The teams and codebases of both [Grafana Phlare](https://github.com/grafana/phlare) and Pyroscope have **merged into Grafana Pyroscope**.
-
-### What is Grafana Pyroscope?
+### 🌟 What is Grafana Pyroscope?
 
 Grafana Pyroscope is an open source continuous profiling platform. It will help you:
 * Find performance issues and bottlenecks in your code
@@ -30,18 +24,25 @@ Grafana Pyroscope is an open source continuous profiling platform. It will help 
 
 [![Pyroscope GIF Demo](https://user-images.githubusercontent.com/23323466/143324845-16ff72df-231e-412d-bd0a-38ef2e09cba8.gif)](https://demo.pyroscope.io/)
 
-## Features
+## 🎉 Features
 
 * Minimal CPU overhead
+* Horizontally scalable
 * Efficient compression, low disk space requirements
 * Can handle high-cardinality tags/labels
 * Calculate the performance "diff" between various tags/labels and time periods
-* Can store years of profiling data from multiple applications
 * Advanced analysis UI
 
-## Run Pyroscope Locally
+## 💻 Quick Start: Run Pyroscope Locally
 
-```shell
+### Homebrew
+```sh
+brew install pyroscope-io/brew/pyroscope
+brew services start pyroscope
+```
+
+### Docker
+```sh
 docker run -it -p 4040:4040 grafana/pyroscope
 ```
 
@@ -100,14 +101,7 @@ For more documentation on how to add the Pyroscope agent to your code, see the [
 
 ## Deployment Diagram
 
-![agent_server_diagram_11-01](https://user-images.githubusercontent.com/23323466/178165230-a94e1ee2-9725-4752-97ff-542158d1b703.svg)
-
-## Third-Party Integrations
-
-Pyroscope also supports several third-party integrations, notably:
-- [Jaeger UI](https://github.com/pyroscope-io/jaeger-ui)
-- [OTel Golang (tracing)](https://github.com/grafana/otel-profiling-go)
-- [AWS Lambda Extension](https://github.com/grafana/pyroscope-lambda-extension)
+![deployment_diagram](https://github.com/grafana/pyroscope/assets/23323466/2a32f401-2855-4d15-a1ac-8e3c91ecf9f9)
 
 ## Documentation
 
