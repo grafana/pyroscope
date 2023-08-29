@@ -25,7 +25,7 @@ eBPF (Extended Berkeley Packet Filter) is a modern Linux kernel technology that 
 
 1. Ensure your system runs a Linux kernel version 4.9 or newer.
 2. Install the Grafana Agent on the target machine or container.
-3. Configure the agent to use eBPF for profiling. Refer to the [eBPF documentation](/docs/pyroscope/next/configure-client/grafana-agent/ebpf) for detailed steps.
+3. Configure the agent to use eBPF for profiling. Refer to the [eBPF documentation](/docs/pyroscope/latest/configure-client/grafana-agent/ebpf) for detailed steps.
 4. Once configured, the agent will start collecting eBPF profiles and send them to the Pyroscope server.
 
 ## Golang Profiling in Pull Mode with Grafana Agent
@@ -42,7 +42,7 @@ In pull mode, the Grafana Agent periodically retrieves profiles from Golang appl
 
 1. Ensure your Golang application exposes pprof endpoints.
 2. Install and configure the Grafana Agent on the same machine or container where your application runs.
-3. Ensure the agent is set to pull mode and targeting the correct pprof endpoints. For step-by-step instructions, visit the [Go (Pull Mode)](/docs/pyroscope/next/configure-client/grafana-agent/go_pull) docs.
+3. Ensure the agent is set to pull mode and targeting the correct pprof endpoints. For step-by-step instructions, visit the [Go (Pull Mode)](/docs/pyroscope/latest/configure-client/grafana-agent/go_pull) docs.
 4. The agent will start querying the pprof endpoints of your Golang application, collecting the profiles, and forwarding them to the Pyroscope server.
 
 ## Next steps

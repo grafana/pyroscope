@@ -43,10 +43,10 @@ profiles.grafana.com/cpu.port: "8080"
 ```
 
 
-To learn more supported annotations, read our guide https://grafana.com/docs/pyroscope/next/deploy-kubernetes/#optional-scrape-your-own-workloads-profiles
+To learn more supported annotations, read our guide https://grafana.com/docs/pyroscope/latest/deploy-kubernetes/#optional-scrape-your-own-workloads-profiles
 {{- end }}
 
 There are various ways to collect profiles from your application depending on your needs.
 Follow our guide to setup profiling data collection for your workload:
 
-https://grafana.com/docs/pyroscope/next/configure-client/
+https://grafana.com/docs/pyroscope/latest/configure-client/
