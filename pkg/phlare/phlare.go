@@ -70,7 +70,7 @@ type Config struct {
 	Ingester          ingester.Config        `yaml:"ingester,omitempty"`
 	StoreGateway      storegateway.Config    `yaml:"store_gateway,omitempty"`
 	MemberlistKV      memberlist.KVConfig    `yaml:"memberlist"`
-	PhlareDB          phlaredb.Config        `yaml:"phlaredb,omitempty"`
+	PhlareDB          phlaredb.Config        `yaml:"pyroscopedb,omitempty"`
 	Tracing           tracing.Config         `yaml:"tracing"`
 	OverridesExporter exporter.Config        `yaml:"overrides_exporter" doc:"hidden"`
 	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
@@ -252,7 +252,7 @@ func New(cfg Config) (*Phlare, error) {
 
 	if cfg.Tracing.Enabled {
 		// Setting the environment variable JAEGER_AGENT_HOST enables tracing
-		trace, err := wwtracing.NewFromEnv(fmt.Sprintf("phlare-%s", cfg.Target))
+		trace, err := wwtracing.NewFromEnv(fmt.Sprintf("pyroscope-%s", cfg.Target))
 		if err != nil {
 			level.Error(logger).Log("msg", "error in initializing tracing. tracing will not be enabled", "err", err)
 		}

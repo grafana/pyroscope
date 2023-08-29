@@ -23,7 +23,7 @@ logging {
 }
 
 pyroscope.write "example" {
-  // Send metrics to a locally running Phlare instance.
+  // Send metrics to a locally running Pyroscope instance.
   endpoint {
     url = "http://pyroscope:4040"
 

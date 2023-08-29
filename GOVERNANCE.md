@@ -4,7 +4,7 @@ title: Governance
 
 # Governance
 
-This document describes the rules and governance of the project. It is meant to be followed by all the developers of the project and the Phlare community. Common terminology used in this governance document are listed below:
+This document describes the rules and governance of the project. It is meant to be followed by all the developers of the project and the Pyroscope community. Common terminology used in this governance document are listed below:
 
 - **Team members**: Any members of the private [team mailing list][team].
 
@@ -12,13 +12,13 @@ This document describes the rules and governance of the project. It is meant to 
 
 - **Projects**: A single repository in the Grafana GitHub organization and listed below is referred to as a project:
 
-  - Phlare
+  - Pyroscope
 
-- **The Phlare project**: The sum of all activities performed under this governance, concerning one or more repositories or the community.
+- **The Pyroscope project**: The sum of all activities performed under this governance, concerning one or more repositories or the community.
 
 ## Values
 
-The Phlare developers and community are expected to follow the values defined in the [Code of Conduct][coc]. Furthermore, the Phlare community strives for kindness, giving feedback effectively, and building a welcoming environment. The Phlare developers generally decide by consensus and only resort to conflict resolution by a majority vote if consensus cannot be reached.
+The Pyroscope developers and community are expected to follow the values defined in the [Code of Conduct][coc]. Furthermore, the Pyroscope community strives for kindness, giving feedback effectively, and building a welcoming environment. The Pyroscope developers generally decide by consensus and only resort to conflict resolution by a majority vote if consensus cannot be reached.
 
 ## Projects
 
@@ -28,7 +28,7 @@ Each project must have a [`MAINTAINERS.md`][maintainers] file with at least one 
 
 ### Team members
 
-Team member status may be given to those who have made ongoing contributions to the Phlare project for at least 3 months. This is usually in the form of code improvements and/or notable work on documentation, but organizing events or user support could also be taken into account.
+Team member status may be given to those who have made ongoing contributions to the Pyroscope project for at least 3 months. This is usually in the form of code improvements and/or notable work on documentation, but organizing events or user support could also be taken into account.
 
 New members may be proposed by any existing member by email to the [team mailing list][team]. It is highly desirable to reach consensus about acceptance of a new member. However, the proposal is ultimately voted on by a formal [supermajority vote](#supermajority-vote).
 
@@ -82,7 +82,7 @@ Any matter that needs a decision may be called to a vote by any member if they d
 
 ## Voting
 
-The Phlare project usually runs by informal consensus, however sometimes a formal decision must be made.
+The Pyroscope project usually runs by informal consensus, however sometimes a formal decision must be made.
 
 Depending on the subject matter, as laid out [above](#decision-making), different methods of voting are used.
 
@@ -96,7 +96,7 @@ For public discussions, anyone interested is encouraged to participate. Formal p
 
 ### Consensus
 
-The default decision making mechanism for the Phlare project is [rough][rough] consensus. This means that any decision on technical issues is considered supported by the [team][team] as long as nobody objects or the objection has been considered but not necessarily accommodated.
+The default decision making mechanism for the Pyroscope project is [rough][rough] consensus. This means that any decision on technical issues is considered supported by the [team][team] as long as nobody objects or the objection has been considered but not necessarily accommodated.
 
 Silence on any consensus decision is implicit agreement and equivalent to explicit agreement. Explicit agreement may be stated at will. Decisions may, but do not need to be called out and put up for decision on the [developers mailing list][devs] at any time and by anyone.
 

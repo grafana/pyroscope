@@ -33,7 +33,7 @@ func Handler() (http.Handler, error) {
 	}
 
 	obj["info"] = map[string]interface{}{
-		"title":   "Grafana Phlare",
+		"title":   "Grafana Pyroscope",
 		"version": version.Info(),
 	}
 
