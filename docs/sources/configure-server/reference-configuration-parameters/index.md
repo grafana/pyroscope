@@ -352,7 +352,7 @@ store_gateway:
     # set both on the store-gateway, querier and ruler when running in
     # microservices mode.
     # CLI flag: -store-gateway.sharding-ring.replication-factor
-    [replication_factor: <int> | default = 3]
+    [replication_factor: <int> | default = 1]
 
     # File path where tokens are stored. If empty, tokens are not stored at
     # shutdown and restored at startup.
@@ -434,12 +434,12 @@ store_gateway:
 # The memberlist block configures the Gossip memberlist.
 [memberlist: <memberlist>]
 
-phlaredb:
+pyroscopedb:
   # Directory used for local storage.
   # CLI flag: -pyroscopedb.data-path
   [data_path: <string> | default = "./data"]
 
-  # Upper limit to the duration of a Phlare block.
+  # Upper limit to the duration of a Pyroscope block.
   # CLI flag: -pyroscopedb.max-block-duration
   [max_block_duration: <duration> | default = 3h]
 
@@ -557,6 +557,11 @@ storage:
   [storage_prefix: <string> | default = ""]
 
 self_profiling:
+  # When running in single binary (--target=all) Pyroscope will push (Go SDK)
+  # profiles to itself. Set to true to disable self-profiling.
+  # CLI flag: -self-profiling.disable-push
+  [disable_push: <boolean> | default = false]
+
   # CLI flag: -self-profiling.mutex-profile-fraction
   [mutex_profile_fraction: <int> | default = 5]
 
@@ -1169,7 +1174,7 @@ The `query_scheduler` block configures the query-scheduler.
 
 ### grpc_client
 
-The `grpc_client` block configures the gRPC client used to communicate between two Phlare components. The supported CLI flags `<prefix>` used to reference this configuration block are:
+The `grpc_client` block configures the gRPC client used to communicate between two Pyroscope components. The supported CLI flags `<prefix>` used to reference this configuration block are:
 
 - `querier.frontend-client`
 - `query-frontend.grpc-client-config`

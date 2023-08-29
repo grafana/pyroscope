@@ -63,7 +63,7 @@ var RootBlocks = []RootBlock{
 	{
 		Name:       "grpc_client",
 		StructType: reflect.TypeOf(grpcclient.Config{}),
-		Desc:       "The grpc_client block configures the gRPC client used to communicate between two Phlare components.",
+		Desc:       "The grpc_client block configures the gRPC client used to communicate between two Pyroscope components.",
 	},
 	{
 		Name:       "memberlist",

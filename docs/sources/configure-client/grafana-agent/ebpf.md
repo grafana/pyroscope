@@ -78,7 +78,7 @@ Replace the `<URL>` placeholder with the appropriate server URL. This could be t
 
 ## Sending data to Pyroscope OSS or Grafana Cloud Profiles with eBPF integration
 
-Replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Phlare server URL.
+Replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
 
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
 

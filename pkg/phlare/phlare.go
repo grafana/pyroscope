@@ -70,7 +70,7 @@ type Config struct {
 	Ingester          ingester.Config        `yaml:"ingester,omitempty"`
 	StoreGateway      storegateway.Config    `yaml:"store_gateway,omitempty"`
 	MemberlistKV      memberlist.KVConfig    `yaml:"memberlist"`
-	PhlareDB          phlaredb.Config        `yaml:"phlaredb,omitempty"`
+	PhlareDB          phlaredb.Config        `yaml:"pyroscopedb,omitempty"`
 	Tracing           tracing.Config         `yaml:"tracing"`
 	OverridesExporter exporter.Config        `yaml:"overrides_exporter" doc:"hidden"`
 	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`

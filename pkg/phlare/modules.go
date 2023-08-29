@@ -48,7 +48,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
 
-// The various modules that make up Phlare.
+// The various modules that make up Pyroscope.
 const (
 	All               string = "all"
 	API               string = "api"
