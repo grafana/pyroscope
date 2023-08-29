@@ -34,7 +34,7 @@ func main() {
 	ctx = withOutput(ctx, os.Stdout)
 
 	app := kingpin.New(filepath.Base(os.Args[0]), "Tooling for Grafana Pyroscope, the continuous profiling aggregation system.").UsageWriter(os.Stdout)
-	app.Version(version.Print("phlaretool"))
+	app.Version(version.Print("profilecli"))
 	app.HelpFlag.Short('h')
 	app.Flag("verbose", "Enable verbose logging.").Short('v').Default("0").BoolVar(&cfg.verbose)
 
