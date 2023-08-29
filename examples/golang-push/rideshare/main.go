@@ -5,12 +5,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-
 	"rideshare/bike"
 	"rideshare/car"
 	"rideshare/scooter"
 
-	"github.com/pyroscope-io/client/pyroscope"
+	"github.com/grafana/pyroscope-golang/profiler"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	otelpyroscope "github.com/pyroscope-io/otel-profiling-go"
@@ -59,11 +58,11 @@ func main() {
 		_ = tp.Shutdown(context.Background())
 	}()
 
-	_, err := pyroscope.Start(pyroscope.Config{
+	_, err := profiler.Start(profiler.Config{
 		ApplicationName: appName,
 		ServerAddress:   serverAddress,
 		AuthToken:       os.Getenv("PYROSCOPE_AUTH_TOKEN"),
-		Logger:          pyroscope.StandardLogger,
+		Logger:          profiler.StandardLogger,
 		Tags:            map[string]string{"region": os.Getenv("REGION")},
 	})
 	if err != nil {

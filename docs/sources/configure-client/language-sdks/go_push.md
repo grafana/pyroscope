@@ -15,9 +15,9 @@ Pyroscope uses the standard `runtime/pprof` package to collect profiling data. R
 ## How to add Golang profiling to your application
 
 To start profiling a Go application, you need to include our go module in your app:
+
 ```
-# make sure you also upgrade pyroscope server to version 0.3.1 or higher
-go get github.com/pyroscope-io/client/pyroscope
+go get github.com/grafana/pyroscope-golang/profiler
 ```
 
 Note: If you'd prefer to use Pull mode you can do so using the Grafana Agent.
@@ -27,7 +27,7 @@ Then add the following code to your application:
 ```go
 package main
 
-import "github.com/pyroscope-io/client/pyroscope"
+import "github.com/grafana/pyroscope-golang/profiler"
 
 func main() {
   // These 2 lines are only required if you're using mutex or block profiling
@@ -35,32 +35,32 @@ func main() {
   runtime.SetMutexProfileFraction(5)
   runtime.SetBlockProfileRate(5)
 
-  pyroscope.Start(pyroscope.Config{
+  profiler.Start(profiler.Config{
     ApplicationName: "simple.golang.app",
 
     // replace this with the address of pyroscope server
     ServerAddress:   "http://pyroscope-server:4040",
 
     // you can disable logging by setting this to nil
-    Logger:          pyroscope.StandardLogger,
+    Logger:          profiler.StandardLogger,
 
     // you can provide static tags via a map:
     Tags:            map[string]string{"hostname": os.Getenv("HOSTNAME")},
 
-    ProfileTypes: []pyroscope.ProfileType{
+    ProfileTypes: []profiler.ProfileType{
       // these profile types are enabled by default:
-      pyroscope.ProfileCPU,
-      pyroscope.ProfileAllocObjects,
-      pyroscope.ProfileAllocSpace,
-      pyroscope.ProfileInuseObjects,
-      pyroscope.ProfileInuseSpace,
+      profiler.ProfileCPU,
+      profiler.ProfileAllocObjects,
+      profiler.ProfileAllocSpace,
+      profiler.ProfileInuseObjects,
+      profiler.ProfileInuseSpace,
 
       // these profile types are optional:
-      pyroscope.ProfileGoroutines,
-      pyroscope.ProfileMutexCount,
-      pyroscope.ProfileMutexDuration,
-      pyroscope.ProfileBlockCount,
-      pyroscope.ProfileBlockDuration,
+      profiler.ProfileGoroutines,
+      profiler.ProfileMutexCount,
+      profiler.ProfileMutexDuration,
+      profiler.ProfileBlockCount,
+      profiler.ProfileBlockDuration,
     },
   })
 
@@ -74,7 +74,7 @@ It is possible to add tags (labels) to the profiling data. These tags can be use
 
 ```go
 // these two ways of adding tags are equivalent:
-pyroscope.TagWrapper(context.Background(), pyroscope.Labels("controller", "slow_controller"), func(c context.Context) {
+profiler.TagWrapper(context.Background(), profiler.Labels("controller", "slow_controller"), func(c context.Context) {
   slowCode()
 })
 
@@ -88,6 +88,7 @@ pprof.Do(context.Background(), pprof.Labels("controller", "slow_controller"), fu
 Mutex profiling is useful for finding sources of contention within your application. It helps you to find out which mutexes are being held by which goroutines.
 
 To enable mutex profiling, you need to add the following code to your application:
+
 ```go
 runtime.SetMutexProfileFraction(rate)
 ```
@@ -97,12 +98,14 @@ runtime.SetMutexProfileFraction(rate)
 ## Block Profiling
 
 Block profiling lets you analyze how much time your program spends waiting on the blocking operations such as:
+
 * select
 * channel send/receive
 * semacquire
 * notifyListWait
 
 To enable block profiling, you need to add the following code to your application:
+
 ```go
 runtime.SetBlockProfileRate(rate)
 ```
@@ -111,9 +114,8 @@ runtime.SetBlockProfileRate(rate)
 
 ## Sending data to Pyroscope OSS or Grafana Cloud Profiles using Golang SDK
 
-
 ```go
-pyroscope.Start(pyroscope.Config{
+profiler.Start(profiler.Config{
   ApplicationName:   "example.golang.app",
   ServerAddress:     "<URL>",
   // Optional HTTP Basic authentication
@@ -121,12 +123,12 @@ pyroscope.Start(pyroscope.Config{
   BasicAuthPassword: "<Password>",
   // Optional Pyroscope tenant ID (only needed if using multi-tenancy). Not needed for Grafana Cloud.
   // TenantID:          "<TenantID>",
-  ProfileTypes: []pyroscope.ProfileType{
-    pyroscope.ProfileCPU,
-    pyroscope.ProfileInuseObjects,
-    pyroscope.ProfileAllocObjects,
-    pyroscope.ProfileInuseSpace,
-    pyroscope.ProfileAllocSpace,
+  ProfileTypes: []profiler.ProfileType{
+    profiler.ProfileCPU,
+    profiler.ProfileInuseObjects,
+    profiler.ProfileAllocObjects,
+    profiler.ProfileInuseSpace,
+    profiler.ProfileAllocSpace,
   },
 })
 ```
@@ -137,10 +139,9 @@ If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic a
 
 If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
 
-
 ## Golang profiling examples
 
 Check out the following resources to learn more about Golang profiling:
-- [Golang examples](https://github.com/pyroscope-io/pyroscope/tree/main/examples/golang-push)
-- [Golang Demo](https://demo.pyroscope.io/?query=rideshare-app-golang.cpu%7B%7D) showing golang example with tags
-- [Golang blog post](https://pyroscope.io/blog/profiling-go-apps-with-pyroscope)
+* [Golang examples](https://github.com/grafana/pyroscope-golang/blob/main/example/main.go)
+* [Golang Demo](https://demo.pyroscope.io/?query=rideshare-app-golang.cpu%7B%7D) showing golang example with tags
+* [Golang blog post](https://pyroscope.io/blog/profiling-go-apps-with-pyroscope)
