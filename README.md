@@ -38,6 +38,7 @@ Grafana Pyroscope is an open source continuous profiling platform. It will help 
 ### Homebrew
 ```sh
 brew install pyroscope-io/brew/pyroscope
+brew services start pyroscope
 ```
 
 ### Docker
