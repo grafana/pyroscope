@@ -13,7 +13,7 @@ export const PAGES = {
   TAG_EXPLORER: '/explore',
   TRACING_EXEMPLARS_MERGE: '/exemplars/merge',
   TRACING_EXEMPLARS_SINGLE: '/exemplars/single',
-}
+};
 
 export default {
   PAGES,
