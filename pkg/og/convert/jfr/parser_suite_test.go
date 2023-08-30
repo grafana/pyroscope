@@ -1,7 +1,6 @@
 package jfr
 
 import (
-	"bytes"
 	"context"
 	"strings"
 	"testing"
@@ -59,7 +58,7 @@ func TestParseCompareExpectedData(t *testing.T) {
 				err = proto.Unmarshal(labelsBytes, labels)
 				require.NoError(t, err)
 			}
-			err = ParseJFR(context.TODO(), putter, bytes.NewBuffer(jfr), pi, labels)
+			err = ParseJFR(context.TODO(), putter, jfr, pi, labels)
 			require.NoError(t, err)
 			jsonFile := strings.TrimSuffix(td.jfr, ".jfr.gz") + ".json.gz"
 			//err = putter.DumpJson(jsonFile)
