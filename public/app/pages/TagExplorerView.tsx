@@ -40,7 +40,7 @@ import ExploreTooltip from '@pyroscope/components/TimelineChart/ExploreTooltip';
 import { getFormatter } from '@pyroscope/legacy/flamegraph/format/format';
 import { LoadingOverlay } from '@pyroscope/ui/LoadingOverlay';
 import { calculateMean, calculateStdDeviation, calculateTotal } from './math';
-import { PAGES } from './constants';
+import { PAGES } from './urls';
 import {
   addSpaces,
   getIntegerSpaceLengthForString,

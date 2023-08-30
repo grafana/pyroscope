@@ -11,7 +11,7 @@ import { isSignupEnabled } from '@pyroscope/util/features';
 import inputStyles from '../InputGroup.module.css';
 import styles from '../IntroPages.module.css';
 import Divider from '../Divider';
-import { PAGES } from '../../constants';
+import { PAGES } from '../../urls';
 
 function SignUpPage() {
   const dispatch = useAppDispatch();
