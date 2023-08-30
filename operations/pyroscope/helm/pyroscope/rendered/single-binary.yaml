@@ -1044,7 +1044,7 @@ spec:
       serviceAccountName: pyroscope-dev-agent
       containers:
         - name: grafana-agent
-          image: docker.io/grafana/agent:v0.35.4
+          image: docker.io/grafana/agent:v0.36.0
           imagePullPolicy: IfNotPresent
           args:
             - run
