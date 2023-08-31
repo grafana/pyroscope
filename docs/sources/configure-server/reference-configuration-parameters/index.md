@@ -132,7 +132,7 @@ limits:
   # filenames, etc...). Profiles are not rejected instead symbol values are
   # truncated. 0 to disable.
   # CLI flag: -validation.max-profile-symbol-value-length
-  [max_profile_symbol_value_length: <int> | default = 1024]
+  [max_profile_symbol_value_length: <int> | default = 65535]
 
   # The tenant's shard size used by shuffle-sharding. Must be set both on
   # ingesters and distributors. 0 disables shuffle sharding.
