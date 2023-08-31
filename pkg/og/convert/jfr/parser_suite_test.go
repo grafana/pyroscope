@@ -98,7 +98,7 @@ func BenchmarkParser(b *testing.B) {
 			putter := &bench.MockPutter{Keep: false}
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				err = ParseJFR(context.TODO(), putter, bytes.NewReader(jfr), pi, nil)
+				err = ParseJFR(context.TODO(), putter, jfr, pi, nil)
 			}
 		})
 	}
