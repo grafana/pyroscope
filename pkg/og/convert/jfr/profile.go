@@ -35,7 +35,7 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 	}
 
 	labels := new(LabelsSnapshot)
-	var r io.Reader = bytes.NewReader(p.RawData)
+	var r = p.RawData
 	var err error
 	if strings.Contains(p.FormDataContentType, "multipart/form-data") {
 		if r, labels, err = loadJFRFromForm(r, p.FormDataContentType); err != nil {
@@ -53,13 +53,13 @@ func (p *RawProfile) ContentType() string {
 	return p.FormDataContentType
 }
 
-func loadJFRFromForm(r io.Reader, contentType string) (io.Reader, *LabelsSnapshot, error) {
+func loadJFRFromForm(r []byte, contentType string) ([]byte, *LabelsSnapshot, error) {
 	boundary, err := form.ParseBoundary(contentType)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	f, err := multipart.NewReader(r, boundary).ReadForm(32 << 20)
+	f, err := multipart.NewReader(bytes.NewBuffer(r), boundary).ReadForm(32 << 20)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -95,7 +95,7 @@ func loadJFRFromForm(r io.Reader, contentType string) (io.Reader, *LabelsSnapsho
 		}
 	}
 
-	return bytes.NewReader(jfrField), &labels, nil
+	return jfrField, &labels, nil
 }
 
 func decompress(bs []byte) ([]byte, error) {

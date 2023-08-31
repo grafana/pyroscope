@@ -6,12 +6,13 @@ import (
 	"io"
 	"regexp"
 
+	"github.com/grafana/jfr-parser/parser"
+	"github.com/grafana/jfr-parser/parser/types"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
 	"github.com/grafana/pyroscope/pkg/og/storage/segment"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pyroscope-io/jfr-parser/parser"
 )
 
 const (
@@ -27,40 +28,72 @@ const (
 	sampleTypeLiveObject
 )
 
-func ParseJFR(ctx context.Context, s storage.Putter, body io.Reader, pi *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
-	chunks, err := parser.ParseWithOptions(body, &parser.ChunkParseOptions{
-		CPoolProcessor:     processSymbols,
-		UnsafeByteToString: true,
-	})
-	if err != nil {
-		return fmt.Errorf("unable to parse JFR format: %w", err)
-	}
-	for _, c := range chunks {
-		if pErr := parse(ctx, c, s, pi, jfrLabels); pErr != nil {
-			err = multierror.Append(err, pErr)
+func ParseJFR(ctx context.Context, s storage.Putter, body []byte, pi *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("jfr parser panic: %v", r)
 		}
+	}()
+	p := parser.NewParser(body, parser.Options{
+		SymbolProcessor: processSymbols,
+	})
+	if pErr := parse(ctx, p, s, pi, jfrLabels); pErr != nil {
+		return err
 	}
-	return err
+	return nil
 }
 
 // revive:disable-next-line:cognitive-complexity necessary complexity
-func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
+func parse(ctx context.Context, c *parser.Parser, s storage.Putter, piOriginal *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
 	var event string
+
+	frames := func(ref types.StackTraceRef) [][]byte {
+		st := c.GetStacktrace(ref)
+		if st == nil {
+			return nil
+		}
+		frames := make([][]byte, 0, len(st.Frames))
+		for i := len(st.Frames) - 1; i >= 0; i-- {
+			f := st.Frames[i]
+			m := c.GetMethod(f.Method)
+			if m != nil {
+				if m.Scratch == nil {
+					cls := c.GetClass(m.Type)
+					if cls == nil {
+
+					} else {
+						clsName := c.GetSymbolString(cls.Name)
+						methodName := c.GetSymbolString(m.Name)
+						m.Scratch = []byte(clsName + "." + methodName)
+					}
+
+				}
+				frames = append(frames, m.Scratch)
+			}
+		}
+		return frames
+	}
 	cache := make(tree.LabelsCache)
 	type labelsWithHash struct {
 		Labels tree.Labels
 		Hash   uint64
 	}
-	contexts := make(map[int64]labelsWithHash)
-	for c.Next() {
-		e := c.Event
+	contexts := make(map[uint64]labelsWithHash)
+	for {
+		typ, err := c.ParseEvent()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return fmt.Errorf("jfr parser ParseEvent error: %w", err)
+		}
 
-		getLabels := func(contextID int64) labelsWithHash {
+		getLabels := func(contextID uint64) labelsWithHash {
 			res, ok := contexts[contextID]
 			if ok {
 				return res
 			}
-			ls := getContextLabels(contextID, jfrLabels)
+			ls := getContextLabels(int64(contextID), jfrLabels)
 			res = labelsWithHash{
 				Labels: ls,
 				Hash:   ls.Hash(),
@@ -69,61 +102,53 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, piOriginal *st
 			return res
 		}
 
-		switch e.(type) {
-		case *parser.ExecutionSample:
-			es := e.(*parser.ExecutionSample)
-			if fs := frames(es.StackTrace); fs != nil {
-				lwh := getLabels(es.ContextId)
-				if es.State.Name == "STATE_RUNNABLE" {
+		switch typ {
+		case c.TypeMap.T_EXECUTION_SAMPLE:
+			if fs := frames(c.ExecutionSample.StackTrace); fs != nil {
+				lwh := getLabels(c.ExecutionSample.ContextId)
+				ts := c.GetThreadState(c.ExecutionSample.State)
+				if ts != nil && ts.Name == "STATE_RUNNABLE" {
 					cache.GetOrCreateTreeByHash(sampleTypeCPU, lwh.Labels, lwh.Hash).InsertStack(fs, 1)
 				}
 				cache.GetOrCreateTreeByHash(sampleTypeWall, lwh.Labels, lwh.Hash).InsertStack(fs, 1)
 			}
-		case *parser.ObjectAllocationInNewTLAB:
-			oa := e.(*parser.ObjectAllocationInNewTLAB)
-			if fs := frames(oa.StackTrace); fs != nil {
-				lwh := getLabels(oa.ContextId)
+		case c.TypeMap.T_ALLOC_IN_NEW_TLAB:
+			if fs := frames(c.ObjectAllocationInNewTLAB.StackTrace); fs != nil {
+				lwh := getLabels(c.ObjectAllocationInNewTLAB.ContextId)
 				cache.GetOrCreateTreeByHash(sampleTypeInTLABObjects, lwh.Labels, lwh.Hash).InsertStack(fs, 1)
-				cache.GetOrCreateTreeByHash(sampleTypeInTLABBytes, lwh.Labels, lwh.Hash).InsertStack(fs, uint64(oa.TLABSize))
+				cache.GetOrCreateTreeByHash(sampleTypeInTLABBytes, lwh.Labels, lwh.Hash).InsertStack(fs, uint64(c.ObjectAllocationInNewTLAB.TlabSize))
 			}
-		case *parser.ObjectAllocationOutsideTLAB:
-			oa := e.(*parser.ObjectAllocationOutsideTLAB)
-			if fs := frames(oa.StackTrace); fs != nil {
-				lwh := getLabels(oa.ContextId)
+		case c.TypeMap.T_ALLOC_OUTSIDE_TLAB:
+			if fs := frames(c.ObjectAllocationOutsideTLAB.StackTrace); fs != nil {
+				lwh := getLabels(c.ObjectAllocationOutsideTLAB.ContextId)
 				cache.GetOrCreateTreeByHash(sampleTypeOutTLABObjects, lwh.Labels, lwh.Hash).InsertStack(fs, 1)
-				cache.GetOrCreateTreeByHash(sampleTypeOutTLABBytes, lwh.Labels, lwh.Hash).InsertStack(fs, uint64(oa.AllocationSize))
+				cache.GetOrCreateTreeByHash(sampleTypeOutTLABBytes, lwh.Labels, lwh.Hash).InsertStack(fs, uint64(c.ObjectAllocationOutsideTLAB.AllocationSize))
 			}
-		case *parser.JavaMonitorEnter:
-			jme := e.(*parser.JavaMonitorEnter)
-			if fs := frames(jme.StackTrace); fs != nil {
-				lwh := getLabels(jme.ContextId)
+		case c.TypeMap.T_MONITOR_ENTER:
+			if fs := frames(c.JavaMonitorEnter.StackTrace); fs != nil {
+				lwh := getLabels(c.JavaMonitorEnter.ContextId)
 				cache.GetOrCreateTreeByHash(sampleTypeLockSamples, lwh.Labels, lwh.Hash).InsertStack(fs, 1)
-				cache.GetOrCreateTreeByHash(sampleTypeLockDuration, lwh.Labels, lwh.Hash).InsertStack(fs, uint64(jme.Duration))
+				cache.GetOrCreateTreeByHash(sampleTypeLockDuration, lwh.Labels, lwh.Hash).InsertStack(fs, uint64(c.JavaMonitorEnter.Duration))
 			}
-		case *parser.ThreadPark:
-			tp := e.(*parser.ThreadPark)
-			if fs := frames(tp.StackTrace); fs != nil {
-				lwh := getLabels(tp.ContextId)
+		case c.TypeMap.T_THREAD_PARK:
+			if fs := frames(c.ThreadPark.StackTrace); fs != nil {
+				lwh := getLabels(c.ThreadPark.ContextId)
 
 				cache.GetOrCreateTreeByHash(sampleTypeLockSamples, lwh.Labels, lwh.Hash).InsertStack(fs, 1)
-				cache.GetOrCreateTreeByHash(sampleTypeLockDuration, lwh.Labels, lwh.Hash).InsertStack(fs, uint64(tp.Duration))
+				cache.GetOrCreateTreeByHash(sampleTypeLockDuration, lwh.Labels, lwh.Hash).InsertStack(fs, uint64(c.ThreadPark.Duration))
 			}
-		case *parser.LiveObject:
-			lo := e.(*parser.LiveObject)
-			if fs := frames(lo.StackTrace); fs != nil {
+		case c.TypeMap.T_LIVE_OBJECT:
+			if fs := frames(c.LiveObject.StackTrace); fs != nil {
 				lwh := getLabels(0)
 				cache.GetOrCreateTreeByHash(sampleTypeLiveObject, lwh.Labels, lwh.Hash).InsertStack(fs, 1)
 			}
-		case *parser.ActiveSetting:
-			if as, ok := e.(*parser.ActiveSetting); ok {
-				if as.Name == "event" {
-					event = as.Value
-				}
+		case c.TypeMap.T_ACTIVE_SETTING:
+
+			if c.ActiveSetting.Name == "event" {
+				event = c.ActiveSetting.Value
 			}
+
 		}
-	}
-	if c.Err() != nil {
-		return fmt.Errorf("unable to parse JFR chunk to PutInput: %w", c.Err())
 	}
 
 	for sampleType, entries := range cache {
@@ -271,24 +296,6 @@ func labelIndex(s *LabelsSnapshot, labels tree.Labels, key string) int {
 	return -1
 }
 
-func frames(st *parser.StackTrace) [][]byte {
-	if st == nil {
-		return nil
-	}
-	frames := make([][]byte, 0, len(st.Frames))
-	for i := len(st.Frames) - 1; i >= 0; i-- {
-		f := st.Frames[i]
-		// TODO(abeaumont): Add support for line numbers.
-		if f.Method != nil && f.Method.Type != nil && f.Method.Type.Name != nil && f.Method.Name != nil {
-			if f.Method.Scratch == nil {
-				f.Method.Scratch = []byte(f.Method.Type.Name.String + "." + f.Method.Name.String)
-			}
-			frames = append(frames, f.Method.Scratch)
-		}
-	}
-	return frames
-}
-
 // jdk/internal/reflect/GeneratedMethodAccessor31
 var generatedMethodAccessor = regexp.MustCompile("^(jdk/internal/reflect/GeneratedMethodAccessor)(\\d+)$")
 
@@ -316,11 +323,8 @@ func mergeJVMGeneratedClasses(frame string) string {
 	return frame
 }
 
-func processSymbols(meta *parser.ClassMetadata, cpool *parser.CPool) {
-	if meta.Name == "jdk.types.Symbol" {
-		for _, v := range cpool.Pool {
-			sym := v.(*parser.Symbol)
-			sym.String = mergeJVMGeneratedClasses(sym.String)
-		}
+func processSymbols(ref *types.SymbolList) {
+	for i := range ref.Symbol { //todo regex replace inplace
+		ref.Symbol[i].String = mergeJVMGeneratedClasses(ref.Symbol[i].String)
 	}
 }
