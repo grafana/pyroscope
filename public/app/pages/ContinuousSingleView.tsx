@@ -1,6 +1,15 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
 
+import {
+  createTheme,
+  DataFrameDTO,
+  FieldType,
+  createDataFrame,
+} from '@grafana/data';
+import { FlameGraph } from '@grafana/flamegraph';
+import { Button, Tooltip } from '@grafana/ui';
+
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import Box from '@pyroscope/ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph/FlamegraphRenderer';
@@ -79,10 +88,52 @@ function ContinuousSingleView() {
   };
   const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(getRaw());
 
+  const newFlamegraph = true;
   const flamegraphRenderer = (() => {
     switch (singleView.type) {
       case 'loaded':
       case 'reloading': {
+        if (newFlamegraph) {
+          const dataFrame = diffFlamebearerToDataFrameDTO(
+            singleView.profile?.flamebearer.levels,
+            singleView.profile?.flamebearer.names
+          );
+          return (
+            <FlameGraph
+              getTheme={() => createTheme({ colors: { mode: 'dark' } })}
+              data={dataFrame}
+              extraHeaderElements={
+                <ExportData
+                  flamebearer={singleView.profile}
+                  exportPNG
+                  exportJSON
+                  exportPprof
+                  exportHTML
+                  exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
+                  exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
+                  buttonEl={({ onClick }) => {
+                    return (
+                      <Tooltip content={'Export Data'}>
+                        <Button
+                          // Ugly hack to go around globally defined line height messing up sizing of the button.
+                          // Not sure why it happens even if everything is display: Block. To override it would
+                          // need changes in Flamegraph which would be weird so this seems relatively sensible.
+                          style={{ marginTop: -7 }}
+                          icon={'download-alt'}
+                          size={'sm'}
+                          variant={'secondary'}
+                          fill={'outline'}
+                          onClick={onClick}
+                        />
+                      </Tooltip>
+                    );
+                  }}
+                />
+              }
+            />
+          );
+        }
+
         return (
           <FlamegraphRenderer
             showCredit={false}
@@ -267,6 +318,87 @@ function prepareTimelineTooltipContent(
         };
       })
   );
+}
+
+function getNodes(level: number[], names: string[]) {
+  const nodes = [];
+  for (let i = 0; i < level.length; i += 4) {
+    nodes.push({
+      level: 0,
+      label: names[level[i + 3]],
+      val: level[i + 1],
+      self: level[i + 2],
+      offset: level[i],
+      children: [],
+    });
+  }
+  return nodes;
+}
+
+function diffFlamebearerToDataFrameDTO(levels: number[][], names: string[]) {
+  const nodeLevels: any[][] = [];
+  for (let i = 0; i < levels.length; i++) {
+    nodeLevels[i] = [];
+    for (const node of getNodes(levels[i], names)) {
+      node.level = i;
+      nodeLevels[i].push(node);
+      if (i > 0) {
+        const prevNodesInLevel = nodeLevels[i].slice(0, -1);
+        const currentNodeStart =
+          prevNodesInLevel.reduce(
+            (acc: number, n: any) => n.offset + n.val + acc,
+            0
+          ) + node.offset;
+
+        const prevLevel = nodeLevels[i - 1];
+        let prevLevelOffset = 0;
+        for (const prevLevelNode of prevLevel) {
+          const parentNodeStart = prevLevelOffset + prevLevelNode.offset;
+          const parentNodeEnd = parentNodeStart + prevLevelNode.val;
+
+          if (
+            parentNodeStart <= currentNodeStart &&
+            parentNodeEnd > currentNodeStart
+          ) {
+            prevLevelNode.children.push(node);
+            break;
+          } else {
+            prevLevelOffset += prevLevelNode.offset + prevLevelNode.val;
+          }
+        }
+      }
+    }
+  }
+
+  const root = nodeLevels[0][0];
+  const stack = [root];
+
+  const labelValues = [];
+  const levelValues = [];
+  const selfValues = [];
+  const valueValues = [];
+
+  while (stack.length) {
+    const node = stack.shift();
+    labelValues.push(node.label);
+    levelValues.push(node.level);
+    selfValues.push(node.self);
+    valueValues.push(node.val);
+    stack.unshift(...node.children);
+  }
+
+  const frame: DataFrameDTO = {
+    name: 'response',
+    meta: { preferredVisualisationType: 'flamegraph' },
+    fields: [
+      { name: 'level', values: levelValues },
+      { name: 'label', values: labelValues, type: FieldType.string },
+      { name: 'self', values: selfValues },
+      { name: 'value', values: valueValues },
+    ],
+  };
+
+  return createDataFrame(frame);
 }
 
 export default ContinuousSingleView;
