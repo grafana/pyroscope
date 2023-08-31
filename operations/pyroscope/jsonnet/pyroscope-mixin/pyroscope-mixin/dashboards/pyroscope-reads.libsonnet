@@ -4,7 +4,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
   grafanaDashboards+: {
     local dashboards = self,
     local http_route = '.*merge.*|.*series.*|.*type.*',
-    'phlare-reads.json': {
+    'pyroscope-reads.json': {
                            local cfg = self,
 
                            showMultiCluster:: $._config.multi_cluster,
@@ -16,8 +16,8 @@ local utils = import 'mixin-utils/utils.libsonnet';
                                [],
 
                            matchers:: {
-                             querier: [utils.selector.re('job', '($namespace)/(phlare|querier)')],
-                             ingester: [utils.selector.re('job', '($namespace)/(phlare|ingester)')],
+                             querier: [utils.selector.re('job', '($namespace)/(pyroscope|querier)')],
+                             ingester: [utils.selector.re('job', '($namespace)/(pyroscope|ingester)')],
                            },
 
                            local selector(matcherId) =
@@ -28,7 +28,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
                            querierSelector:: selector('querier'),
                            ingesterSelector:: selector('ingester'),
                          } +
-                         $.dashboard('Phlare / Reads', uid='phlare-reads')
+                         $.dashboard('Pyroscope / Reads', uid='pyroscope-reads')
                          .addCluster()
                          .addNamespace()
                          .addTag()
@@ -36,13 +36,13 @@ local utils = import 'mixin-utils/utils.libsonnet';
                            $.row('Querier')
                            .addPanel(
                              $.panel('QPS') +
-                             $.qpsPanel('pyroscope_request_duration_seconds_count{%s route=~"%s"}' % [dashboards['phlare-reads.json'].querierSelector, http_route])
+                             $.qpsPanel('pyroscope_request_duration_seconds_count{%s route=~"%s"}' % [dashboards['pyroscope-reads.json'].querierSelector, http_route])
                            )
                            .addPanel(
                              $.panel('Latency') +
                              utils.latencyRecordingRulePanel(
                                'pyroscope_request_duration_seconds',
-                               dashboards['phlare-reads.json'].matchers.querier + [utils.selector.re('route', http_route)] + dashboards['phlare-reads.json'].clusterMatchers,
+                               dashboards['pyroscope-reads.json'].matchers.querier + [utils.selector.re('route', http_route)] + dashboards['pyroscope-reads.json'].clusterMatchers,
                                sum_by=['route']
                              )
                            )
@@ -51,13 +51,13 @@ local utils = import 'mixin-utils/utils.libsonnet';
                            $.row('Ingester')
                            .addPanel(
                              $.panel('QPS') +
-                             $.qpsPanel('pyroscope_request_duration_seconds_count{%s route=~"%s"}' % [dashboards['phlare-reads.json'].ingesterSelector, http_route])
+                             $.qpsPanel('pyroscope_request_duration_seconds_count{%s route=~"%s"}' % [dashboards['pyroscope-reads.json'].ingesterSelector, http_route])
                            )
                            .addPanel(
                              $.panel('Latency') +
                              utils.latencyRecordingRulePanel(
                                'pyroscope_request_duration_seconds',
-                               dashboards['phlare-reads.json'].matchers.ingester + [utils.selector.re('route', http_route)] + dashboards['phlare-reads.json'].clusterMatchers,
+                               dashboards['pyroscope-reads.json'].matchers.ingester + [utils.selector.re('route', http_route)] + dashboards['pyroscope-reads.json'].clusterMatchers,
                                sum_by=['route']
                              )
                            )

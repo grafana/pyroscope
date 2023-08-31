@@ -6,7 +6,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
   grafanaDashboards+: {
     local dashboards = self,
 
-    'phlare-writes.json': {
+    'pyroscope-writes.json': {
                             local cfg = self,
 
                             showMultiCluster:: $._config.multi_cluster,
@@ -18,8 +18,8 @@ local utils = import 'mixin-utils/utils.libsonnet';
                                 [],
 
                             matchers:: {
-                              distributor: [utils.selector.re('job', '($namespace)/(phlare|distributor)')],
-                              ingester: [utils.selector.re('job', '($namespace)/(phlare|ingester)')],
+                              distributor: [utils.selector.re('job', '($namespace)/(pyroscope|distributor)')],
+                              ingester: [utils.selector.re('job', '($namespace)/(pyroscope|ingester)')],
                             },
 
                             local selector(matcherId) =
@@ -31,7 +31,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
                             distributorSelector:: selector('distributor'),
                             ingesterSelector:: selector('ingester'),
                           } +
-                          $.dashboard('Phlare / Writes', uid='phlare-writes')
+                          $.dashboard('Pyroscope / Writes', uid='pyroscope-writes')
                           .addCluster()
                           .addNamespace()
                           .addTag()
@@ -41,7 +41,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
                               $.panel('Compressed Size') +
                               utils.latencyRecordingRulePanel(
                                 'pyroscope_distributor_received_compressed_bytes',
-                                dashboards['phlare-writes.json'].matchers.distributor + [utils.selector.re('type', '.*')] + dashboards['phlare-writes.json'].clusterMatchers,
+                                dashboards['pyroscope-writes.json'].matchers.distributor + [utils.selector.re('type', '.*')] + dashboards['pyroscope-writes.json'].clusterMatchers,
                                 multiplier='1',
                                 sum_by=['type'],
                               ) + { yaxes: g.yaxes('bytes') },
@@ -50,7 +50,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
                               $.panel('Samples') +
                               utils.latencyRecordingRulePanel(
                                 'pyroscope_distributor_received_samples',
-                                dashboards['phlare-writes.json'].matchers.distributor + [utils.selector.re('type', '.*')] + dashboards['phlare-writes.json'].clusterMatchers,
+                                dashboards['pyroscope-writes.json'].matchers.distributor + [utils.selector.re('type', '.*')] + dashboards['pyroscope-writes.json'].clusterMatchers,
                                 multiplier='1',
                                 sum_by=['type'],
                               ) + { yaxes: g.yaxes('count') },
@@ -60,13 +60,13 @@ local utils = import 'mixin-utils/utils.libsonnet';
                             $.row('Distributor Requests')
                             .addPanel(
                               $.panel('QPS') +
-                              $.qpsPanel('pyroscope_request_duration_seconds_count{%s, route=~".*push.*|.*ingest.*"}' % std.rstripChars(dashboards['phlare-writes.json'].distributorSelector, ','))
+                              $.qpsPanel('pyroscope_request_duration_seconds_count{%s, route=~".*push.*|.*ingest.*"}' % std.rstripChars(dashboards['pyroscope-writes.json'].distributorSelector, ','))
                             )
                             .addPanel(
                               $.panel('Latency') +
                               utils.latencyRecordingRulePanel(
                                 'pyroscope_request_duration_seconds',
-                                dashboards['phlare-writes.json'].matchers.distributor + [utils.selector.re('route', '.*push.*')] + dashboards['phlare-writes.json'].clusterMatchers,
+                                dashboards['pyroscope-writes.json'].matchers.distributor + [utils.selector.re('route', '.*push.*')] + dashboards['pyroscope-writes.json'].clusterMatchers,
                               )
                             )
                           )
@@ -74,13 +74,13 @@ local utils = import 'mixin-utils/utils.libsonnet';
                             $.row('Ingester')
                             .addPanel(
                               $.panel('QPS') +
-                              $.qpsPanel('pyroscope_request_duration_seconds_count{%s route=~".*push.*|.*ingest.*"}' % dashboards['phlare-writes.json'].ingesterSelector)
+                              $.qpsPanel('pyroscope_request_duration_seconds_count{%s route=~".*push.*|.*ingest.*"}' % dashboards['pyroscope-writes.json'].ingesterSelector)
                             )
                             .addPanel(
                               $.panel('Latency') +
                               utils.latencyRecordingRulePanel(
                                 'pyroscope_request_duration_seconds',
-                                dashboards['phlare-writes.json'].matchers.ingester + [utils.selector.re('route', '.*push.*|.*ingest.*')] + dashboards['phlare-writes.json'].clusterMatchers,
+                                dashboards['pyroscope-writes.json'].matchers.ingester + [utils.selector.re('route', '.*push.*|.*ingest.*')] + dashboards['pyroscope-writes.json'].clusterMatchers,
                               )
                             )
                           )
@@ -97,14 +97,14 @@ local utils = import 'mixin-utils/utils.libsonnet';
                               local short_desc = 'Head size in bytes per table type';
                               $.panel(short_desc) +
                               $.panelDescription(short_desc, long_desc,) +
-                              $.queryPanel('sum(pyroscope_head_size_bytes{%s}) by (type)' % dashboards['phlare-writes.json'].ingesterSelector, '{{type}}') +
+                              $.queryPanel('sum(pyroscope_head_size_bytes{%s}) by (type)' % dashboards['pyroscope-writes.json'].ingesterSelector, '{{type}}') +
                               { yaxes: $.yaxes('bytes') },
                             )
                             .addPanel(
                               local short_desc = 'Head size in bytes per pod';
                               $.panel(short_desc) +
                               $.panelDescription(short_desc, long_desc,) +
-                              $.queryPanel('sum(pyroscope_head_size_bytes{%s}) by (instance)' % dashboards['phlare-writes.json'].ingesterSelector, '{{instance}}') +
+                              $.queryPanel('sum(pyroscope_head_size_bytes{%s}) by (instance)' % dashboards['pyroscope-writes.json'].ingesterSelector, '{{instance}}') +
                               { yaxes: $.yaxes('bytes') },
                             )
                           ),

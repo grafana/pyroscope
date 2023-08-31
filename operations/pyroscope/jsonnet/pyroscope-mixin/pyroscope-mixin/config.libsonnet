@@ -1,7 +1,7 @@
 {
   _config+:: {
     // Tags for dashboards.
-    tags: ['phlare'],
+    tags: ['pyroscope'],
 
     // The label used to differentiate between different application instances (i.e. 'pod' in a kubernetes install).
     per_instance_label: 'pod',
