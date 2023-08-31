@@ -70,20 +70,37 @@ func TestParseCompareExpectedData(t *testing.T) {
 }
 
 func BenchmarkParser(b *testing.B) {
-	jfr, err := bench.ReadGzipFile("testdata/cortex-dev-01__kafka-0__cpu__0.jfr.gz")
-	require.NoError(b, err)
-	k, err := segment.ParseKey("kafka.app")
-	require.NoError(b, err)
-	pi := &storage.PutInput{
-		StartTime:  time.UnixMilli(1000),
-		EndTime:    time.UnixMilli(2000),
-		Key:        k,
-		SpyName:    "java",
-		SampleRate: 100,
+	tests := []string{
+		"testdata/cortex-dev-01__kafka-0__cpu__0.jfr.gz",
+		"testdata/cortex-dev-01__kafka-0__cpu__1.jfr.gz",
+		"testdata/cortex-dev-01__kafka-0__cpu__2.jfr.gz",
+		"testdata/cortex-dev-01__kafka-0__cpu__3.jfr.gz",
+		"testdata/cortex-dev-01__kafka-0__cpu_lock_alloc__0.jfr.gz",
+		"testdata/cortex-dev-01__kafka-0__cpu_lock_alloc__1.jfr.gz",
+		"testdata/cortex-dev-01__kafka-0__cpu_lock_alloc__2.jfr.gz",
+		"testdata/cortex-dev-01__kafka-0__cpu_lock_alloc__3.jfr.gz",
+		"testdata/cortex-dev-01__kafka-0__cpu_lock0_alloc0__0.jfr.gz",
 	}
-	putter := &bench.MockPutter{Keep: false}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		err = ParseJFR(context.TODO(), putter, bytes.NewBuffer(jfr), pi, nil)
+
+	for _, testdata := range tests {
+		f := testdata
+		b.Run(testdata, func(b *testing.B) {
+			jfr, err := bench.ReadGzipFile(f)
+			require.NoError(b, err)
+			k, err := segment.ParseKey("kafka.app")
+			require.NoError(b, err)
+			pi := &storage.PutInput{
+				StartTime:  time.UnixMilli(1000),
+				EndTime:    time.UnixMilli(2000),
+				Key:        k,
+				SpyName:    "java",
+				SampleRate: 100,
+			}
+			putter := &bench.MockPutter{Keep: false}
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				err = ParseJFR(context.TODO(), putter, bytes.NewReader(jfr), pi, nil)
+			}
+		})
 	}
 }
