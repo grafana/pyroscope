@@ -6,7 +6,7 @@ import { useAppDispatch } from '@pyroscope/redux/hooks';
 import { actions } from '@pyroscope/redux/reducers/continuous';
 import { appendLabelToQuery } from '@pyroscope/util/query';
 import { brandQuery } from '@pyroscope/models/query';
-import { PAGES } from '@pyroscope/pages/constants';
+import { PAGES } from '@pyroscope/pages/urls';
 import ModalWithToggle from '@pyroscope/ui/Modals/ModalWithToggle';
 import styles from './TagsSelector.module.scss';
 

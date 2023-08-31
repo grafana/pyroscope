@@ -16,7 +16,7 @@ To be able to pull profiles from applications, your applications needs to expose
 
 Before proceeding with the configuration, ensure that you have the following:
 
-1. Install Grafana Agent in [flow mode](/docs/agent/next/flow/setup/install/)
+1. Install Grafana Agent in [flow mode](/docs/agent/latest/flow/setup/install/)
 2. Configure Grafana Agent in flow mode
 3. Start the Grafana Agent
 
@@ -24,7 +24,7 @@ Before proceeding with the configuration, ensure that you have the following:
 
 This guide presents how to configure the Grafana Agent for scraping performance profiles from a pprof endpoint using `pyroscope.scrape` and then write to a reciever defined in `pyroscope.write`.
 
-**While this documentation will contain a simple example for more configuration options visit the agent documentation for [`pyrosope.scrape`](/docs/agent/next/flow/reference/components/pyroscope.scrape/) and [`pyroscope.write`](/docs/agent/next/flow/reference/components/pyroscope.write/#pyroscopewrite).**
+**While this documentation will contain a simple example for more configuration options visit the agent documentation for [`pyrosope.scrape`](/docs/agent/latest/flow/reference/components/pyroscope.scrape/) and [`pyroscope.write`](/docs/agent/latest/flow/reference/components/pyroscope.write/#pyroscopewrite).**
 
 ## Agent Configuration
 

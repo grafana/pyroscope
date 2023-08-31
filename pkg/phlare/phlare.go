@@ -28,10 +28,10 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/signals"
 	wwtracing "github.com/grafana/dskit/tracing"
+	"github.com/grafana/pyroscope-go"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
-	"github.com/pyroscope-io/client/pyroscope"
 	"github.com/samber/lo"
 
 	"github.com/grafana/pyroscope/pkg/api"
