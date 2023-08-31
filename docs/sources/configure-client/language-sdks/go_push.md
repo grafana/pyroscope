@@ -35,7 +35,7 @@ func main() {
   runtime.SetMutexProfileFraction(5)
   runtime.SetBlockProfileRate(5)
 
-  pyroscope.Start(profiler.Config{
+  pyroscope.Start(pyroscope.Config{
     ApplicationName: "simple.golang.app",
 
     // replace this with the address of pyroscope server
@@ -115,7 +115,7 @@ runtime.SetBlockProfileRate(rate)
 ## Sending data to Pyroscope OSS or Grafana Cloud Profiles using Golang SDK
 
 ```go
-pyroscope.Start(profiler.Config{
+pyroscope.Start(pyroscope.Config{
   ApplicationName:   "example.golang.app",
   ServerAddress:     "<URL>",
   // Optional HTTP Basic authentication
