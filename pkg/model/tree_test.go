@@ -279,6 +279,30 @@ func Test_Tree_MarshalUnmarshal(t *testing.T) {
 	})
 }
 
+func Test_FormatNames(t *testing.T) {
+	x := newTree([]stacktraces{
+		{locations: []string{"c0", "b0", "a0"}, value: 3},
+		{locations: []string{"c1", "b0", "a0"}, value: 3},
+		{locations: []string{"d0", "b1", "a0"}, value: 2},
+		{locations: []string{"e1", "c1", "a1"}, value: 4},
+		{locations: []string{"e2", "c1", "a2"}, value: 4},
+	})
+	x.FormatNodeNames(func(n string) string {
+		if len(n) > 0 {
+			n = n[:1]
+		}
+		return n
+	})
+	expected := newTree([]stacktraces{
+		{locations: []string{"c", "b", "a"}, value: 3},
+		{locations: []string{"c", "b", "a"}, value: 3},
+		{locations: []string{"d", "b", "a"}, value: 2},
+		{locations: []string{"e", "c", "a"}, value: 4},
+		{locations: []string{"e", "c", "a"}, value: 4},
+	})
+	require.Equal(t, expected.String(), x.String())
+}
+
 func emptyTree() *Tree {
 	return &Tree{}
 }

@@ -1,0 +1,11 @@
+github.com/bufbuild/connect-go.(*Client[...]).CallUnary
+github.com/bufbuild/connect-go.(*Request[...]).setRequestMethod
+github.com/bufbuild/connect-go.(*Response[...]).Header
+github.com/bufbuild/connect-go.NewClient[...].func2
+github.com/bufbuild/connect-go.NewRequest[...]
+github.com/bufbuild/connect-go.NewResponse[...]
+github.com/bufbuild/connect-go.NewUnaryHandler[...].func2
+github.com/grafana/pyroscope/pkg/util/loser.(*Tree[...]).Next
+runtime/internal/atomic.(*Pointer[...]).Load
+sync/atomic.(*Pointer[...]).Store
+github.com/grafana/pyroscope/pkg/phlaredb/symdb.(*deduplicatingSlice[...]).ingest
