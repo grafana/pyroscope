@@ -3,7 +3,7 @@ module rideshare
 go 1.17
 
 require (
-	github.com/pyroscope-io/client v0.2.0
+	github.com/grafana/pyroscope-go v0.7.3-0.20230830141136-c882e651ed7a
 	github.com/pyroscope-io/otel-profiling-go v0.4.0
 	github.com/sirupsen/logrus v1.8.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.28.0
