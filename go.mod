@@ -25,7 +25,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/grafana/agent v0.35.4
 	github.com/grafana/dskit v0.0.0-20230817134647-90d7ee0bed7c
-	github.com/grafana/pyroscope-go v0.7.3-0.20230830141136-c882e651ed7a
+	github.com/grafana/pyroscope-go v1.0.0
 	github.com/grafana/pyroscope/api v0.0.0-00010101000000-000000000000
 	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0

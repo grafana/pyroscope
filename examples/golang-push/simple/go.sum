@@ -1,4 +1,4 @@
-github.com/grafana/pyroscope-go v0.7.3-0.20230830141136-c882e651ed7a h1:opKix5ogkTgNBU+QTnQoLbTqO2b8Ww1p6i+g0Iy57g0=
-github.com/grafana/pyroscope-go v0.7.3-0.20230830141136-c882e651ed7a/go.mod h1:ZfvwzkhpGG7i5PhUQBywNJ3BPHR7OqdsSt+mzY1ES24=
+github.com/grafana/pyroscope-go v1.0.0 h1:uBK2kAxz3tl8AYJCzOPOZkqBt+m5g9I2YPWB8z2Ts4c=
+github.com/grafana/pyroscope-go v1.0.0/go.mod h1:ZfvwzkhpGG7i5PhUQBywNJ3BPHR7OqdsSt+mzY1ES24=
 github.com/pyroscope-io/godeltaprof v0.1.2 h1:MdlEmYELd5w+lvIzmZvXGNMVzW2Qc9jDMuJaPOR75g4=
 github.com/pyroscope-io/godeltaprof v0.1.2/go.mod h1:psMITXp90+8pFenXkKIpNhrfmI9saQnPbba27VIaiQE=
