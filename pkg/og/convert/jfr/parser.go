@@ -29,10 +29,15 @@ const (
 )
 
 func ParseJFR(ctx context.Context, s storage.Putter, body []byte, pi *storage.PutInput, jfrLabels *LabelsSnapshot) (err error) {
-	parser := parser.NewParser(body, parser.Options{
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("jfr parser panic: %v", r)
+		}
+	}()
+	p := parser.NewParser(body, parser.Options{
 		SymbolProcessor: processSymbols,
 	})
-	if pErr := parse(ctx, parser, s, pi, jfrLabels); pErr != nil {
+	if pErr := parse(ctx, p, s, pi, jfrLabels); pErr != nil {
 		return err
 	}
 	return nil
