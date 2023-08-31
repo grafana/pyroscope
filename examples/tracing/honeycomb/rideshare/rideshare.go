@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/grafana/pyroscope-golang/profiler"
+	"github.com/grafana/pyroscope-go"
 	otelpyroscope "github.com/pyroscope-io/otel-profiling-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -108,11 +108,11 @@ func TracerProvider(c Config) (tp *sdktrace.TracerProvider, err error) {
 	return tp, err
 }
 
-func Profiler(c Config) (*profiler.Profiler, error) {
-	return profiler.Start(profiler.Config{
+func Profiler(c Config) (*pyroscope.Profiler, error) {
+	return pyroscope.Start(pyroscope.Config{
 		ApplicationName: c.AppName,
 		ServerAddress:   c.PyroscopeServerAddress,
-		Logger:          profiler.StandardLogger,
+		Logger:          pyroscope.StandardLogger,
 		Tags:            c.Tags,
 	})
 }

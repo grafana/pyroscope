@@ -28,7 +28,7 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/signals"
 	wwtracing "github.com/grafana/dskit/tracing"
-	"github.com/grafana/pyroscope-golang/profiler"
+	"github.com/grafana/pyroscope-go"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
@@ -361,7 +361,7 @@ func (f *Phlare) Run() error {
 
 		// Start profiling when Pyroscope is ready
 		if !f.Cfg.SelfProfiling.DisablePush && f.Cfg.Target.String() == All {
-			_, err := profiler.Start(profiler.Config{
+			_, err := pyroscope.Start(pyroscope.Config{
 				ApplicationName: "pyroscope",
 				ServerAddress:   fmt.Sprintf("http://%s:%d", "localhost", f.Cfg.Server.HTTPListenPort),
 				Tags: map[string]string{
@@ -369,17 +369,17 @@ func (f *Phlare) Run() error {
 					"target":   "all",
 					"version":  version.Version,
 				},
-				ProfileTypes: []profiler.ProfileType{
-					profiler.ProfileCPU,
-					profiler.ProfileAllocObjects,
-					profiler.ProfileAllocSpace,
-					profiler.ProfileInuseObjects,
-					profiler.ProfileInuseSpace,
-					profiler.ProfileGoroutines,
-					profiler.ProfileMutexCount,
-					profiler.ProfileMutexDuration,
-					profiler.ProfileBlockCount,
-					profiler.ProfileBlockDuration,
+				ProfileTypes: []pyroscope.ProfileType{
+					pyroscope.ProfileCPU,
+					pyroscope.ProfileAllocObjects,
+					pyroscope.ProfileAllocSpace,
+					pyroscope.ProfileInuseObjects,
+					pyroscope.ProfileInuseSpace,
+					pyroscope.ProfileGoroutines,
+					pyroscope.ProfileMutexCount,
+					pyroscope.ProfileMutexDuration,
+					pyroscope.ProfileBlockCount,
+					pyroscope.ProfileBlockDuration,
 				},
 			})
 			if err != nil {

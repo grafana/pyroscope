@@ -17,7 +17,7 @@ Pyroscope uses the standard `runtime/pprof` package to collect profiling data. R
 To start profiling a Go application, you need to include our go module in your app:
 
 ```
-go get github.com/grafana/pyroscope-golang/profiler
+go get github.com/grafana/pyroscope-go
 ```
 
 Note: If you'd prefer to use Pull mode you can do so using the Grafana Agent.
@@ -27,7 +27,7 @@ Then add the following code to your application:
 ```go
 package main
 
-import "github.com/grafana/pyroscope-golang/profiler"
+import "github.com/grafana/pyroscope-go"
 
 func main() {
   // These 2 lines are only required if you're using mutex or block profiling
@@ -35,32 +35,32 @@ func main() {
   runtime.SetMutexProfileFraction(5)
   runtime.SetBlockProfileRate(5)
 
-  profiler.Start(profiler.Config{
+  pyroscope.Start(profiler.Config{
     ApplicationName: "simple.golang.app",
 
     // replace this with the address of pyroscope server
     ServerAddress:   "http://pyroscope-server:4040",
 
     // you can disable logging by setting this to nil
-    Logger:          profiler.StandardLogger,
+    Logger:          pyroscope.StandardLogger,
 
     // you can provide static tags via a map:
     Tags:            map[string]string{"hostname": os.Getenv("HOSTNAME")},
 
-    ProfileTypes: []profiler.ProfileType{
+    ProfileTypes: []pyroscope.ProfileType{
       // these profile types are enabled by default:
-      profiler.ProfileCPU,
-      profiler.ProfileAllocObjects,
-      profiler.ProfileAllocSpace,
-      profiler.ProfileInuseObjects,
-      profiler.ProfileInuseSpace,
+      pyroscope.ProfileCPU,
+      pyroscope.ProfileAllocObjects,
+      pyroscope.ProfileAllocSpace,
+      pyroscope.ProfileInuseObjects,
+      pyroscope.ProfileInuseSpace,
 
       // these profile types are optional:
-      profiler.ProfileGoroutines,
-      profiler.ProfileMutexCount,
-      profiler.ProfileMutexDuration,
-      profiler.ProfileBlockCount,
-      profiler.ProfileBlockDuration,
+      pyroscope.ProfileGoroutines,
+      pyroscope.ProfileMutexCount,
+      pyroscope.ProfileMutexDuration,
+      pyroscope.ProfileBlockCount,
+      pyroscope.ProfileBlockDuration,
     },
   })
 
@@ -74,7 +74,7 @@ It is possible to add tags (labels) to the profiling data. These tags can be use
 
 ```go
 // these two ways of adding tags are equivalent:
-profiler.TagWrapper(context.Background(), profiler.Labels("controller", "slow_controller"), func(c context.Context) {
+pyroscope.TagWrapper(context.Background(), pyroscope.Labels("controller", "slow_controller"), func(c context.Context) {
   slowCode()
 })
 
@@ -115,7 +115,7 @@ runtime.SetBlockProfileRate(rate)
 ## Sending data to Pyroscope OSS or Grafana Cloud Profiles using Golang SDK
 
 ```go
-profiler.Start(profiler.Config{
+pyroscope.Start(profiler.Config{
   ApplicationName:   "example.golang.app",
   ServerAddress:     "<URL>",
   // Optional HTTP Basic authentication
@@ -123,12 +123,12 @@ profiler.Start(profiler.Config{
   BasicAuthPassword: "<Password>",
   // Optional Pyroscope tenant ID (only needed if using multi-tenancy). Not needed for Grafana Cloud.
   // TenantID:          "<TenantID>",
-  ProfileTypes: []profiler.ProfileType{
-    profiler.ProfileCPU,
-    profiler.ProfileInuseObjects,
-    profiler.ProfileAllocObjects,
-    profiler.ProfileInuseSpace,
-    profiler.ProfileAllocSpace,
+  ProfileTypes: []pyroscope.ProfileType{
+    pyroscope.ProfileCPU,
+    pyroscope.ProfileInuseObjects,
+    pyroscope.ProfileAllocObjects,
+    pyroscope.ProfileInuseSpace,
+    pyroscope.ProfileAllocSpace,
   },
 })
 ```
@@ -142,6 +142,7 @@ If your Pyroscope server has multi-tenancy enabled, you'll need to configure a t
 ## Golang profiling examples
 
 Check out the following resources to learn more about Golang profiling:
-* [Golang examples](https://github.com/grafana/pyroscope-golang/blob/main/example/main.go)
+
+* [Golang examples](https://github.com/grafana/pyroscope-go/blob/main/example/main.go)
 * [Golang Demo](https://demo.pyroscope.io/?query=rideshare-app-golang.cpu%7B%7D) showing golang example with tags
 * [Golang blog post](https://pyroscope.io/blog/profiling-go-apps-with-pyroscope)

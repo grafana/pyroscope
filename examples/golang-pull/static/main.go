@@ -11,7 +11,7 @@ import (
 
 	_ "net/http/pprof"
 
-	"github.com/grafana/pyroscope-golang/profiler"
+	"github.com/grafana/pyroscope-go"
 )
 
 //go:noinline
@@ -33,7 +33,7 @@ func init() {
 func fastFunction(c context.Context, wg *sync.WaitGroup) {
 	m.Lock()
 	defer m.Unlock()
-	profiler.TagWrapper(c, profiler.Labels("function", "fast"), func(c context.Context) {
+	pyroscope.TagWrapper(c, pyroscope.Labels("function", "fast"), func(c context.Context) {
 		work(20000000)
 	})
 	wg.Done()
@@ -57,7 +57,7 @@ func main() {
 	if serverAddress == "" {
 		serverAddress = "http://localhost:4040"
 	}
-	profiler.TagWrapper(context.Background(), profiler.Labels("foo", "bar"), func(c context.Context) {
+	pyroscope.TagWrapper(context.Background(), pyroscope.Labels("foo", "bar"), func(c context.Context) {
 		for {
 			wg := sync.WaitGroup{}
 			wg.Add(6)

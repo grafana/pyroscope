@@ -6,7 +6,7 @@ import (
 	"os"
 	"runtime/pprof"
 
-	"github.com/grafana/pyroscope-golang/profiler"
+	"github.com/grafana/pyroscope-go"
 )
 
 //go:noinline
@@ -18,7 +18,7 @@ func work(n int) {
 }
 
 func fastFunction(c context.Context) {
-	profiler.TagWrapper(c, profiler.Labels("function", "fast"), func(c context.Context) {
+	pyroscope.TagWrapper(c, pyroscope.Labels("function", "fast"), func(c context.Context) {
 		work(20000000)
 	})
 }
@@ -35,15 +35,15 @@ func main() {
 	if serverAddress == "" {
 		serverAddress = "http://localhost:4040"
 	}
-	_, err := profiler.Start(profiler.Config{
+	_, err := pyroscope.Start(pyroscope.Config{
 		ApplicationName: "simple.golang.app",
 		ServerAddress:   serverAddress,
-		Logger:          profiler.StandardLogger,
+		Logger:          pyroscope.StandardLogger,
 	})
 	if err != nil {
 		log.Fatalf("error starting pyroscope profiler: %v", err)
 	}
-	profiler.TagWrapper(context.Background(), profiler.Labels("foo", "bar"), func(c context.Context) {
+	pyroscope.TagWrapper(context.Background(), pyroscope.Labels("foo", "bar"), func(c context.Context) {
 		for {
 			fastFunction(c)
 			slowFunction(c)

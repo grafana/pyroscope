@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/grafana/pyroscope-golang/profiler"
+	"github.com/grafana/pyroscope-go"
 )
 
 const durationConstant = time.Duration(200 * time.Millisecond)
@@ -42,7 +42,7 @@ func checkDriverAvailability(n int64) {
 }
 
 func FindNearestVehicle(ctx context.Context, searchRadius int64, vehicle string) {
-	profiler.TagWrapper(ctx, profiler.Labels("vehicle", vehicle), func(ctx context.Context) {
+	pyroscope.TagWrapper(ctx, pyroscope.Labels("vehicle", vehicle), func(ctx context.Context) {
 		var i int64 = 0
 
 		startTime := time.Now()
