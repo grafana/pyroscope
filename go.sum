@@ -801,6 +801,8 @@ github.com/grafana/agent v0.35.4 h1:5MBSSZIB8qwDJRfeMndSTJpeHAFnz68O2DeTT/AZN2A=
 github.com/grafana/agent v0.35.4/go.mod h1:/NHq7TBP8AcX5ucJCgtbM7s5CyTnn7JDAsXKXvPsetQ=
 github.com/grafana/dskit v0.0.0-20230817134647-90d7ee0bed7c h1:UFt2isLqVSMfT2ajK6ew1Vg+3iePcNngqxnMpv3Rj5w=
 github.com/grafana/dskit v0.0.0-20230817134647-90d7ee0bed7c/go.mod h1:3u7fr4hmOhuUL9Yc1QP/oa3za73kxvqJnRJH4BA5fOM=
+github.com/grafana/jfr-parser v0.7.2-0.20230831140626-08fa3a941bf8 h1:Cod+QZWJXGLoCfKfuH66J3iSQ/WWw+R03R6QCwm8IB8=
+github.com/grafana/jfr-parser v0.7.2-0.20230831140626-08fa3a941bf8/go.mod h1:M5u1ux34Qo47ZBWksbMYVk40s7dvU3WMVYpxweEu4R0=
 github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91 h1:/NipyHnOmvRsVzj81j2qE0VxsvsqhOB0f4vJIhk2qCQ=
 github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91/go.mod h1:MS2lj3INKhZjWNqd3N0m3J+Jxf3DAOnAH9VT3Sh9MUE=
 github.com/grafana/objstore v0.0.0-20230727114110-2394c72a3ec7 h1:UrHG0C+TawTkMxaONRYUdtaM2fzBsvzkdbrTt2cXCQM=
@@ -1068,8 +1070,6 @@ github.com/prometheus/prometheus v0.45.0 h1:O/uG+Nw4kNxx/jDPxmjsSDd+9Ohql6E7ZSY1
 github.com/prometheus/prometheus v0.45.0/go.mod h1:jC5hyO8ItJBnDWGecbEucMyXjzxGv9cxsxsjS9u5s1w=
 github.com/pyroscope-io/godeltaprof v0.1.2 h1:MdlEmYELd5w+lvIzmZvXGNMVzW2Qc9jDMuJaPOR75g4=
 github.com/pyroscope-io/godeltaprof v0.1.2/go.mod h1:psMITXp90+8pFenXkKIpNhrfmI9saQnPbba27VIaiQE=
-github.com/pyroscope-io/jfr-parser v0.7.1 h1:DzfaSi+wzasIcCMl+dhNnyzX53eUUsYpSEcYr/IG8Rg=
-github.com/pyroscope-io/jfr-parser v0.7.1/go.mod h1:ZMcbJjfDkOwElEK8CvUJbpetztRWRXszCmf5WU0erV8=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.3 h1:utMvzDsuh3suAEnhH0RdHmoPbU648o6CvXxTx4SBMOw=
 github.com/rivo/uniseg v0.4.3/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=
