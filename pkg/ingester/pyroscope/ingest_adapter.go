@@ -10,20 +10,19 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
-	"github.com/prometheus/prometheus/model/labels"
-	"google.golang.org/protobuf/proto"
-
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
-	"github.com/grafana/pyroscope/pkg/og/storage"
-	"github.com/grafana/pyroscope/pkg/og/storage/tree"
-
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/pkg/og/storage"
+	"github.com/grafana/pyroscope/pkg/og/storage/tree"
+	"github.com/prometheus/prometheus/model/labels"
+	"google.golang.org/protobuf/proto"
 )
 
 type PushService interface {
 	Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
+	PushParsed(ctx context.Context, profiles []phlaremodel.ParsedProfileSeries) (*connect.Response[pushv1.PushResponse], error)
 }
 
 func NewPyroscopeIngestHandler(svc PushService, logger log.Logger) http.Handler {
@@ -38,7 +37,17 @@ type pyroscopeIngesterAdapter struct {
 }
 
 func (p *pyroscopeIngesterAdapter) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
-	return in.Profile.Parse(ctx, p, p, in.Metadata)
+	pprofable, ok := in.Profile.(ingestion.ParseableToPprof)
+	if ok {
+		profiles, err := pprofable.ParseToPprof(ctx, in.Metadata)
+		if err != nil {
+			return err
+		}
+		_, err = p.svc.PushParsed(ctx, profiles) //todo check
+		return err
+	} else {
+		return in.Profile.Parse(ctx, p, p, in.Metadata)
+	}
 }
 
 const (

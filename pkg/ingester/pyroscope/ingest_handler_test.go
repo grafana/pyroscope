@@ -27,6 +27,12 @@ type MockPushService struct {
 	T    testing.TB
 }
 
+func (m *MockPushService) PushParsed(ctx context.Context, profiles []phlaremodel.ParsedProfileSeries) (*connect.Response[pushv1.PushResponse], error) {
+
+	//TODO implement me
+	panic("implement me")
+}
+
 type DumpProfile struct {
 	Collapsed  []string
 	Labels     string

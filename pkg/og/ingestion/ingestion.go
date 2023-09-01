@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
 	"github.com/grafana/pyroscope/pkg/og/storage/segment"
@@ -34,9 +35,10 @@ const (
 
 type RawProfile interface {
 	Parse(context.Context, storage.Putter, storage.MetricsExporter, Metadata) error
-	Bytes() ([]byte, error)
-	// ContentType denotes Bytes output type. Must be only called after Bytes.
-	ContentType() string
+}
+
+type ParseableToPprof interface {
+	ParseToPprof(context.Context, Metadata) ([]phlaremodel.ParsedProfileSeries, error)
 }
 
 type Metadata struct {

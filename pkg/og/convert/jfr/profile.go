@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage"
@@ -22,28 +24,31 @@ type RawProfile struct {
 
 func (p *RawProfile) Bytes() ([]byte, error) { return p.RawData, nil }
 
+func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata) ([]phlaremodel.ParsedProfileSeries, error) {
+	input := storage.PutInput{
+		StartTime:       md.StartTime,
+		EndTime:         md.EndTime,
+		Key:             md.Key,
+		SpyName:         md.SpyName,
+		SampleRate:      md.SampleRate,
+		Units:           md.Units,
+		AggregationType: md.AggregationType,
+	}
+
+	labels := new(LabelsSnapshot)
+	var r = p.RawData
+	var err error
+	if strings.Contains(p.FormDataContentType, "multipart/form-data") {
+		if r, labels, err = loadJFRFromForm(r, p.FormDataContentType); err != nil {
+			return nil, err
+		}
+	}
+
+	return ParseJFR(ctx, r, &input, labels)
+}
+
 func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
-	//input := storage.PutInput{
-	//	StartTime:       md.StartTime,
-	//	EndTime:         md.EndTime,
-	//	Key:             md.Key,
-	//	SpyName:         md.SpyName,
-	//	SampleRate:      md.SampleRate,
-	//	Units:           md.Units,
-	//	AggregationType: md.AggregationType,
-	//}
-	//
-	//labels := new(LabelsSnapshot)
-	//var r = p.RawData
-	//var err error
-	//if strings.Contains(p.FormDataContentType, "multipart/form-data") {
-	//	if r, labels, err = loadJFRFromForm(r, p.FormDataContentType); err != nil {
-	//		return err
-	//	}
-	//}
-	//
-	//return ParseJFR(ctx, putter, r, &input, labels)
-	return nil
+	return fmt.Errorf("parsing to Tree/storage.Putter is no longer supported")
 }
 
 func (p *RawProfile) ContentType() string {

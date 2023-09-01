@@ -8,11 +8,9 @@ import (
 
 	"github.com/grafana/jfr-parser/parser"
 	"github.com/grafana/jfr-parser/parser/types"
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/storage"
-	"github.com/grafana/pyroscope/pkg/og/storage/segment"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/prometheus/prometheus/model/labels"
@@ -33,12 +31,7 @@ const (
 	sampleTypeLiveObject = 6
 )
 
-type ParsedProfiles struct {
-	Labels  []*v1.LabelPair
-	Profile *profilev1.Profile
-}
-
-func ParseJFR(ctx context.Context, body []byte, pi *storage.PutInput, jfrLabels *LabelsSnapshot) (profiles []ParsedProfiles, err error) {
+func ParseJFR(ctx context.Context, body []byte, pi *storage.PutInput, jfrLabels *LabelsSnapshot) (profiles []phlaremodel.ParsedProfileSeries, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("jfr parser panic: %v", r)
@@ -51,7 +44,7 @@ func ParseJFR(ctx context.Context, body []byte, pi *storage.PutInput, jfrLabels 
 }
 
 // revive:disable-next-line:cognitive-complexity necessary complexity
-func parse(ctx context.Context, c *parser.Parser, piOriginal *storage.PutInput, jfrLabels *LabelsSnapshot) (profiles []ParsedProfiles, err error) {
+func parse(ctx context.Context, c *parser.Parser, piOriginal *storage.PutInput, jfrLabels *LabelsSnapshot) (profiles []phlaremodel.ParsedProfileSeries, err error) {
 	var event string
 
 	cache := make(tree.LabelsCache[testhelper.ProfileBuilder])
@@ -138,7 +131,7 @@ func parse(ctx context.Context, c *parser.Parser, piOriginal *storage.PutInput, 
 			values[1] = int64(c.ObjectAllocationInNewTLAB.TlabSize)
 			addStacktrace(sampleTypeInTLAB, c.ObjectAllocationInNewTLAB.ContextId, c.ObjectAllocationInNewTLAB.StackTrace, values[:2])
 		case c.TypeMap.T_ALLOC_OUTSIDE_TLAB:
-			values[1] = int64(c.ObjectAllocationInNewTLAB.TlabSize)
+			values[1] = int64(c.ObjectAllocationOutsideTLAB.AllocationSize)
 			addStacktrace(sampleTypeOutTLAB, c.ObjectAllocationOutsideTLAB.ContextId, c.ObjectAllocationOutsideTLAB.StackTrace, values[:2])
 		case c.TypeMap.T_MONITOR_ENTER:
 			values[1] = int64(c.JavaMonitorEnter.Duration)
@@ -149,7 +142,6 @@ func parse(ctx context.Context, c *parser.Parser, piOriginal *storage.PutInput, 
 		case c.TypeMap.T_LIVE_OBJECT:
 			addStacktrace(sampleTypeLiveObject, 0, c.LiveObject.StackTrace, values[:1])
 		case c.TypeMap.T_ACTIVE_SETTING:
-
 			if c.ActiveSetting.Name == "event" {
 				event = c.ActiveSetting.Value
 			}
@@ -166,23 +158,9 @@ func parse(ctx context.Context, c *parser.Parser, piOriginal *storage.PutInput, 
 	//		}
 	//	}
 	//}
-	profiles = make([]ParsedProfiles, 0, len(cache))
-	//cb := func(n string, labels tree.Labels, t *tree.Tree, u metadata.Units, at metadata.AggregationType) {
-	//	key := buildKey(n, piOriginal.Key.Labels(), labels, jfrLabels)
-	//	pi := &storage.PutInput{
-	//		StartTime:       piOriginal.StartTime,
-	//		EndTime:         piOriginal.EndTime,
-	//		Key:             key,
-	//		Val:             t,
-	//		SpyName:         piOriginal.SpyName,
-	//		SampleRate:      piOriginal.SampleRate,
-	//		Units:           u,
-	//		AggregationType: at,
-	//	}
-	//	if putErr := s.Put(ctx, pi); putErr != nil {
-	//		err = multierror.Append(err, putErr)
-	//	}
-	//}
+
+	profiles = make([]phlaremodel.ParsedProfileSeries, 0, len(cache))
+
 	for sampleType, entries := range cache {
 		for _, e := range entries {
 			e.Value.TimeNanos = piOriginal.StartTime.UnixNano()
@@ -218,7 +196,7 @@ func parse(ctx context.Context, c *parser.Parser, piOriginal *storage.PutInput, 
 				e.Value.AddSampleType("live", "count")
 				metric = "memory"
 			}
-			ls := make([]*v1.LabelPair, 0, len(e.Labels)+4)
+			ls := make([]*v1.LabelPair, 0, len(e.Labels)+len(piOriginal.Key.Labels())+4)
 			ls = append(ls, &v1.LabelPair{
 				Name:  labels.MetricName,
 				Value: metric,
@@ -229,7 +207,7 @@ func parse(ctx context.Context, c *parser.Parser, piOriginal *storage.PutInput, 
 				Name:  "service_name",
 				Value: piOriginal.Key.AppName(),
 			}, &v1.LabelPair{
-				Name:  "javaspy_event",
+				Name:  "__javaspy_event__",
 				Value: event,
 			})
 			for k, v := range piOriginal.Key.Labels() {
@@ -241,104 +219,24 @@ func parse(ctx context.Context, c *parser.Parser, piOriginal *storage.PutInput, 
 					Value: v,
 				})
 			}
-			profiles = append(profiles, ParsedProfiles{
+			for _, label := range e.Labels {
+				ks, ok := jfrLabels.Strings[label.Key]
+				if !ok {
+					continue
+				}
+				vs, ok := jfrLabels.Strings[label.Str]
+				ls = append(ls, &v1.LabelPair{
+					Name:  ks,
+					Value: vs,
+				})
+			}
+			profiles = append(profiles, phlaremodel.ParsedProfileSeries{
 				Labels:  ls,
 				Profile: e.Value.Profile,
 			})
 		}
-		//n := getName(sampleType, event)
-		//units := getUnits(sampleType)
-		//at := aggregationType(sampleType)
-		//for _, e := range entries {
-		//	cb(n, e.Labels, e.Tree, units, at)
-		//}
-		//_ = n
-		//_ = units
-		//_ = at
-		_ = entries
 	}
 	return profiles, err
-}
-
-//func getName(sampleType int64, event string) string {
-//	switch sampleType {
-//	case sampleTypeCPU:
-//		if event == "cpu" || event == "itimer" || event == "wall" {
-//			profile := event
-//			if event == "wall" {
-//				profile = "cpu"
-//			}
-//			return profile
-//		}
-//	case sampleTypeWall:
-//		return "wall"
-//	case sampleTypeInTLABObjects:
-//		return "alloc_in_new_tlab_objects"
-//	case sampleTypeInTLABBytes:
-//		return "alloc_in_new_tlab_bytes"
-//	case sampleTypeOutTLABObjects:
-//		return "alloc_outside_tlab_objects"
-//	case sampleTypeOutTLABBytes:
-//		return "alloc_outside_tlab_bytes"
-//	case sampleTypeLockSamples:
-//		return "lock_count"
-//	case sampleTypeLockDuration:
-//		return "lock_duration"
-//	case sampleTypeLiveObject:
-//		return "live"
-//	}
-//	return "unknown"
-//}
-//
-//func aggregationType(sampleType int64) metadata.AggregationType {
-//	switch sampleType {
-//	case sampleTypeLiveObject:
-//		return metadata.AverageAggregationType
-//	default:
-//		return metadata.SumAggregationType
-//	}
-//}
-//
-//func getUnits(sampleType int64) metadata.Units {
-//	switch sampleType {
-//	case sampleTypeCPU:
-//		return metadata.SamplesUnits
-//	case sampleTypeWall:
-//		return metadata.SamplesUnits
-//	case sampleTypeInTLABObjects:
-//		return metadata.ObjectsUnits
-//	case sampleTypeInTLABBytes:
-//		return metadata.BytesUnits
-//	case sampleTypeOutTLABObjects:
-//		return metadata.ObjectsUnits
-//	case sampleTypeOutTLABBytes:
-//		return metadata.BytesUnits
-//	case sampleTypeLockSamples:
-//		return metadata.LockSamplesUnits
-//	case sampleTypeLockDuration:
-//		return metadata.LockNanosecondsUnits
-//	case sampleTypeLiveObject:
-//		return metadata.ObjectsUnits
-//	}
-//	return metadata.SamplesUnits
-//}
-
-func buildKey(n string, appLabels map[string]string, labels tree.Labels, snapshot *LabelsSnapshot) *segment.Key {
-	finalLabels := map[string]string{}
-	for k, v := range appLabels {
-		finalLabels[k] = v
-	}
-	for _, v := range labels {
-		ks, ok := snapshot.Strings[v.Key]
-		if !ok {
-			continue
-		}
-		vs, ok := snapshot.Strings[v.Str]
-		finalLabels[ks] = vs
-	}
-
-	finalLabels["__name__"] += "." + n
-	return segment.NewKey(finalLabels)
 }
 
 func getContextLabels(contextID int64, labels *LabelsSnapshot) tree.Labels {

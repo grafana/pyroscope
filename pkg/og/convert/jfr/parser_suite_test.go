@@ -80,7 +80,7 @@ func TestParseCompareExpectedData(t *testing.T) {
 	}
 }
 
-func compareWithJson(profiles []ParsedProfiles, file string) error {
+func compareWithJson(profiles []phlaremodel.ParsedProfileSeries, file string) error {
 	goldBS, err := bench.ReadGzipFile(file)
 	if err != nil {
 		return err
@@ -98,36 +98,61 @@ func compareWithJson(profiles []ParsedProfiles, file string) error {
 		metric := ls.Get(model.MetricNameLabel)
 		service_name := ls.Get("service_name")
 		typ := profile.Profile.StringTable[profile.Profile.SampleType[0].Type]
-
+		event := ls.Get("__javaspy_event__")
 		switch metric {
 		case "process_cpu":
-			keys = []string{service_name + "." + "cpu{}"}
+			switch event {
+			case "cpu":
+				keys = []string{service_name + "." + "cpu"}
+			case "itimer":
+				keys = []string{service_name + "." + "itimer"}
+			default:
+				panic("unknown event: " + event) //todo wall
+			}
 			valueIndices = []int{0}
 		case "memory":
 
 			if strings.Contains(typ, "alloc_in_new_tlab_objects") {
 				keys = []string{
-					service_name + "." + "alloc_in_new_tlab_objects{}",
-					service_name + "." + "alloc_in_new_tlab_bytes{}",
+					service_name + "." + "alloc_in_new_tlab_objects",
+					service_name + "." + "alloc_in_new_tlab_bytes",
 				}
 			} else {
 				keys = []string{
-					service_name + "." + "alloc_outside_tlab_objects{}",
-					service_name + "." + "alloc_outside_tlab_bytes{}",
+					service_name + "." + "alloc_outside_tlab_objects",
+					service_name + "." + "alloc_outside_tlab_bytes",
 				}
 			}
 			valueIndices = []int{0, 1}
 		case "mutex":
 			keys = []string{
-				service_name + "." + "lock_count{}",
-				service_name + "." + "lock_duration{}",
+				service_name + "." + "lock_count",
+				service_name + "." + "lock_duration",
+			}
+			valueIndices = []int{0, 1}
+		case "block":
+			keys = []string{
+				service_name + "." + "thread_park_count",
+				service_name + "." + "thread_park_duration",
 			}
 			valueIndices = []int{0, 1}
 		default:
 			panic("unknown metric: " + metric + " " + service_name)
 		}
+
 		for i := range keys {
 			key := keys[i]
+			parseKey, err := segment.ParseKey(key)
+			if err != nil {
+				return err
+			}
+			for _, label := range profile.Labels {
+				if strings.HasPrefix(label.Name, "__") || label.Name == "service_name" {
+					continue
+				}
+				parseKey.Add(label.Name, label.Value)
+			}
+			key = parseKey.Normalized()
 			expectedTree := trees[key]
 			if expectedTree == "" {
 				return fmt.Errorf("no tree found for %s", key)
@@ -145,8 +170,8 @@ func compareWithJson(profiles []ParsedProfiles, file string) error {
 			collapsedStr = strings.Trim(collapsedStr, "\n")
 
 			if expectedTree != collapsedStr {
-				os.WriteFile(file+"_expected.txt", []byte(expectedTree), 0644)
-				os.WriteFile(file+"_actual.txt", []byte(collapsedStr), 0644)
+				os.WriteFile(file+"_"+metric+"_"+typ+"_expected.txt", []byte(expectedTree), 0644)
+				os.WriteFile(file+"_"+metric+"_"+typ+"_actual.txt", []byte(collapsedStr), 0644)
 				return fmt.Errorf("expected tree:\n%s\ngot:\n%s", expectedTree, collapsedStr)
 			}
 		}
