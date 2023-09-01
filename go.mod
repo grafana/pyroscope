@@ -25,6 +25,9 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/grafana/agent v0.35.4
 	github.com/grafana/dskit v0.0.0-20230817134647-90d7ee0bed7c
+	github.com/grafana/jfr-parser v0.7.2-0.20230831140626-08fa3a941bf8
+	github.com/grafana/pyroscope-go v1.0.2
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.3
 	github.com/grafana/pyroscope/api v0.0.0-00010101000000-000000000000
 	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -48,8 +51,6 @@ require (
 	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/common v0.44.0
 	github.com/prometheus/prometheus v1.99.0
-	github.com/pyroscope-io/client v0.7.2
-	github.com/pyroscope-io/jfr-parser v0.7.1
 	github.com/samber/lo v1.38.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
@@ -177,7 +178,6 @@ require (
 	github.com/prometheus/common/sigv4 v0.1.0 // indirect
 	github.com/prometheus/exporter-toolkit v0.10.1-0.20230714054209-2f4150c63f97 // indirect
 	github.com/prometheus/procfs v0.11.0 // indirect
-	github.com/pyroscope-io/godeltaprof v0.1.2 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/rs/xid v1.5.0 // indirect

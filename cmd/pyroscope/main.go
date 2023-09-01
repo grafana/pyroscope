@@ -10,6 +10,8 @@ import (
 	"github.com/grafana/dskit/flagext"
 	"github.com/prometheus/common/version"
 
+	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"
+
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/phlare"
 	"github.com/grafana/pyroscope/pkg/usage"

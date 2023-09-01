@@ -161,9 +161,11 @@ func ValidateProfile(limits ProfileValidationLimits, userID string, prof *google
 			return NewErrorf(SampleLabelsLimit, ProfileTooManySampleLabelsErrorMsg, phlaremodel.LabelPairsString(ls), len(s.Label), labelsLimit)
 		}
 	}
-	for i := range prof.StringTable {
-		if symbolLengthLimit != 0 && len(prof.StringTable[i]) > symbolLengthLimit {
-			prof.StringTable[i] = prof.StringTable[i][len(prof.StringTable[i])-symbolLengthLimit:]
+	if symbolLengthLimit > 0 {
+		for i := range prof.StringTable {
+			if len(prof.StringTable[i]) > symbolLengthLimit {
+				prof.StringTable[i] = prof.StringTable[i][len(prof.StringTable[i])-symbolLengthLimit:]
+			}
 		}
 	}
 	return nil

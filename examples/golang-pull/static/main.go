@@ -3,15 +3,15 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"runtime"
 	"runtime/pprof"
 	"sync"
 
-	"net/http"
 	_ "net/http/pprof"
 
-	"github.com/pyroscope-io/client/pyroscope"
+	"github.com/grafana/pyroscope-go"
 )
 
 //go:noinline

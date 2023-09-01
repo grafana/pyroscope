@@ -16,7 +16,7 @@ To be able to pull profiles from applications, your applications needs to expose
 
 Before proceeding with the configuration, ensure that you have the following:
 
-1. Install Grafana Agent in [flow mode](/docs/agent/next/flow/setup/install/)
+1. Install Grafana Agent in [flow mode](/docs/agent/latest/flow/setup/install/)
 2. Configure Grafana Agent in flow mode
 3. Start the Grafana Agent
 
@@ -24,7 +24,7 @@ Before proceeding with the configuration, ensure that you have the following:
 
 This guide presents how to configure the Grafana Agent for scraping performance profiles from a pprof endpoint using `pyroscope.scrape` and then write to a reciever defined in `pyroscope.write`.
 
-**While this documentation will contain a simple example for more configuration options visit the agent documentation for [`pyrosope.scrape`](/docs/agent/next/flow/reference/components/pyroscope.scrape/) and [`pyroscope.write`](/docs/agent/next/flow/reference/components/pyroscope.write/#pyroscopewrite).**
+**While this documentation will contain a simple example for more configuration options visit the agent documentation for [`pyrosope.scrape`](/docs/agent/latest/flow/reference/components/pyroscope.scrape/) and [`pyroscope.write`](/docs/agent/latest/flow/reference/components/pyroscope.write/#pyroscopewrite).**
 
 ## Agent Configuration
 
@@ -164,6 +164,7 @@ The following configuration sets up a scraping job in `config.river` that scrape
 To set up the Grafana Agent for profiling in pull mode (see [example](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent)), follow these steps:
 
 Create the following directory structure:
+
 ```
 ├── examples
 │   └── your-application-example
@@ -185,12 +186,14 @@ The reason for using this special package is because godeltaprof is a memory pro
 To start using godeltaprof in pull mode in a Go application, you need to include godeltaprof module in your app:
 
 ```bash
-go get github.com/pyroscope-io/godeltaprof@latest
+go get github.com/grafana/pyroscope-go/godeltaprof@latest
 ```
+
 and add it to your imports:
+
 ```go
 import _ "net/http/pprof"
-import _ "github.com/pyroscope-io/godeltaprof/http/pprof" // add this line as well
+import _ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"// add this line as well
 ```
 
 If you do not have ability to update your code then disable all the `goddeltaprof_X` profiles and enable the corresponding standard `X` profiles.

@@ -5,7 +5,7 @@ import {
   selectCurrentUser,
 } from '@pyroscope/redux/reducers/user';
 import { useHistory } from 'react-router-dom';
-import { PAGES } from '@pyroscope/pages/constants';
+import { PAGES } from '@pyroscope/pages/urls';
 
 export default function useNavigateUserIntroPages() {
   const dispatch = useAppDispatch();

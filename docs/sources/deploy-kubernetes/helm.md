@@ -50,7 +50,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
    helm repo update
    ```
 
-   > **Note:** The Helm chart at [https://grafana.github.io/helm-charts](https://grafana.github.io/helm-charts) is a publication of the source code at [**grafana/pyroscope**](https://github.com/grafana/pyroscope/tree/next/operations/pyroscope/helm/pyroscope).
+   > **Note:** The Helm chart at [https://grafana.github.io/helm-charts](https://grafana.github.io/helm-charts) is a publication of the source code at [**grafana/pyroscope**](https://github.com/grafana/pyroscope/tree/main/operations/pyroscope/helm/pyroscope).
 
 1. Install Pyroscope using the Helm chart using one of the following options:
 
