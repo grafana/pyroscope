@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http/httptest"
 	"os"
 	"strings"
@@ -86,7 +85,7 @@ func (m *MockPushService) Dump() Dump {
 		slices.Sort(dp.Collapsed)
 		require.Equal(m.T, 1, len(p.SampleType))
 		dp.SampleType = p.SampleType[0].Type
-		dp.Collapsed = stackCollapse(p)
+		dp.Collapsed = bench.StackCollapseGoogle(p, 0)
 		res.Profiles = append(res.Profiles, dp)
 
 	}
@@ -98,21 +97,6 @@ func (m *MockPushService) Dump() Dump {
 		return strings.Compare(i.SampleType, j.SampleType) < 0
 	})
 	return res
-}
-
-func stackCollapse(p *profile.Profile) []string {
-	var ret []string
-	for _, s := range p.Sample {
-		var funcs []string
-		for i := range s.Location {
-			loc := s.Location[len(s.Location)-1-i]
-			for _, line := range loc.Line {
-				funcs = append(funcs, line.Function.Name)
-			}
-		}
-		ret = append(ret, fmt.Sprintf("%s %d", strings.Join(funcs, ";"), s.Value[0]))
-	}
-	return ret
 }
 
 func TestIngestJFR(b *testing.T) {

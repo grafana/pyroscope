@@ -24,7 +24,7 @@ type Parser struct {
 	sampleTypes         map[string]*tree.SampleTypeConfig
 	stackFrameFormatter StackFrameFormatter
 
-	cache             tree.LabelsCache
+	cache             tree.LabelsCache[tree.Tree]
 	sampleTypesFilter func(string) bool
 }
 
@@ -49,7 +49,7 @@ func NewParser(config ParserConfig) *Parser {
 		skipExemplars:       config.SkipExemplars,
 		stackFrameFormatter: config.StackFrameFormatter,
 
-		cache:             make(tree.LabelsCache),
+		cache:             make(tree.LabelsCache[tree.Tree]),
 		sampleTypesFilter: filterKnownSamples(config.SampleTypes),
 	}
 }
@@ -61,7 +61,7 @@ func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(stri
 	}
 }
 
-func (p *Parser) Reset() { p.cache = make(tree.LabelsCache) }
+func (p *Parser) Reset() { p.cache = make(tree.LabelsCache[tree.Tree]) }
 
 func (p *Parser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte, cumulativeOnly bool) error {
 	b := bytes.NewReader(bs)
@@ -146,16 +146,16 @@ func (p *Parser) load(sampleType int64, labels tree.Labels) (*tree.Tree, bool) {
 	if !ok {
 		return nil, false
 	}
-	return e.Tree, true
+	return e.Value, true
 }
 
 func (p *Parser) iterate(x *tree.Profile, cumulativeOnly bool, fn func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error)) error {
-	c := make(tree.LabelsCache)
+	c := make(tree.LabelsCache[tree.Tree])
 	p.readTrees(x, c, tree.NewFinder(x), cumulativeOnly)
 	for sampleType, entries := range c {
 		if t, ok := x.ResolveSampleType(sampleType); ok {
 			for h, e := range entries {
-				keep, err := fn(t, e.Labels, e.Tree)
+				keep, err := fn(t, e.Labels, e.Value)
 				if err != nil {
 					return err
 				}
@@ -170,7 +170,7 @@ func (p *Parser) iterate(x *tree.Profile, cumulativeOnly bool, fn func(vt *tree.
 }
 
 // readTrees generates trees from the profile populating c.
-func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache, f tree.Finder, cumulativeOnly bool) {
+func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache[tree.Tree], f tree.Finder, cumulativeOnly bool) {
 	// SampleType value indexes.
 	indexes := make([]int, 0, len(x.SampleType))
 	// Corresponding type IDs used as the main cache keys.
@@ -223,12 +223,20 @@ func (p *Parser) readTrees(x *tree.Profile, c tree.LabelsCache, f tree.Finder, c
 			if j := labelIndex(x, s.Label, segment.ProfileIDLabelName); j >= 0 {
 				// Regardless of whether we should skip exemplars or not, the value
 				// should be appended to the exemplar baseline profile (w/o ProfileID label).
-				c.GetOrCreateTree(types[i], tree.CutLabel(s.Label, j)).InsertStack(stack, v)
+				je := c.GetOrCreateTree(types[i], tree.CutLabel(s.Label, j))
+				if je.Value == nil {
+					je.Value = tree.New()
+				}
+				je.Value.InsertStack(stack, v)
 				if p.skipExemplars {
 					continue
 				}
 			}
-			c.GetOrCreateTree(types[i], s.Label).InsertStack(stack, v)
+			je := c.GetOrCreateTree(types[i], s.Label)
+			if je.Value == nil {
+				je.Value = tree.New()
+			}
+			je.Value.InsertStack(stack, v)
 		}
 		stack = stack[:0]
 	}
