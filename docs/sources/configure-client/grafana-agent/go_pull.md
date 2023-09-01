@@ -185,12 +185,14 @@ The reason for using this special package is because godeltaprof is a memory pro
 To start using godeltaprof in pull mode in a Go application, you need to include godeltaprof module in your app:
 
 ```bash
-go get github.com/pyroscope-io/godeltaprof@latest
+go get github.com/grafana/pyroscope-go/godeltaprof@latest
 ```
+
 and add it to your imports:
+
 ```go
 import _ "net/http/pprof"
-import _ "github.com/pyroscope-io/godeltaprof/http/pprof" // add this line as well
+import _ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"// add this line as well
 ```
 
 If you do not have ability to update your code then disable all the `goddeltaprof_X` profiles and enable the corresponding standard `X` profiles.
