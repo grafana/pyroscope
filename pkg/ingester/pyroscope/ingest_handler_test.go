@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"mime/multipart"
 	"net/http/httptest"
 	"os"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
-	"github.com/google/pprof/profile"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 
@@ -22,15 +25,16 @@ import (
 )
 
 type MockPushService struct {
-	Keep bool
-	req  []*pushv1.RawProfileSeries
-	T    testing.TB
+	Keep     bool
+	reqPprof []phlaremodel.ParsedProfileSeries
+	T        testing.TB
 }
 
 func (m *MockPushService) PushParsed(ctx context.Context, profiles []phlaremodel.ParsedProfileSeries) (*connect.Response[pushv1.PushResponse], error) {
-
-	//TODO implement me
-	panic("implement me")
+	if m.Keep {
+		m.reqPprof = append(m.reqPprof, profiles...)
+	}
+	return nil, nil
 }
 
 type DumpProfile struct {
@@ -43,57 +47,77 @@ type Dump struct {
 }
 
 func (m *MockPushService) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	//fmt.Printf("pushing %d profiles\n", len(req.Msg.Series))
-	if m.Keep {
-		m.req = append(m.req, req.Msg.Series...)
-	}
-	res := &connect.Response[pushv1.PushResponse]{
-		Msg: &pushv1.PushResponse{},
-	}
-	return res, nil
+	return nil, nil
 }
 
 func (m *MockPushService) CompareDump(file string) {
-	actual := m.Dump()
+
 	bs, err := bench.ReadGzipFile(file)
 	require.NoError(m.T, err)
 	expected := Dump{}
 	err = json.Unmarshal(bs, &expected)
 	require.NoError(m.T, err)
 
-	require.Equal(m.T, len(expected.Profiles), len(actual.Profiles))
-	for i := range expected.Profiles {
-		require.Equal(m.T, expected.Profiles[i].Labels, actual.Profiles[i].Labels)
-		//if !reflect.DeepEqual(expected.Profiles[i].Collapsed, actual.Profiles[i].Collapsed) {
-		//	os.WriteFile(file+"_expected.txt", []byte(strings.Join(expected.Profiles[i].Collapsed, "\n")), 0644)
-		//	os.WriteFile(file+"_actual.txt", []byte(strings.Join(actual.Profiles[i].Collapsed, "\n")), 0644)
-		//}
-		require.Equal(m.T, expected.Profiles[i].Collapsed, actual.Profiles[i].Collapsed)
+	selectActual := func(ls labels.Labels, st string) DumpProfile {
+		sort.Sort(ls)
+		lss := ls.String()
+		for _, p := range m.reqPprof {
+			promLabels := phlaremodel.Labels(p.Labels).ToPrometheusLabels()
+			sort.Sort(promLabels)
+			actualLabels := labels.NewBuilder(promLabels).Del("jfr_event").Labels()
+			als := actualLabels.String()
+			if als == lss {
+				for sti := range p.Profile.SampleType {
+					actualST := p.Profile.StringTable[p.Profile.SampleType[sti].Type]
+					if actualST == st {
+						dp := DumpProfile{}
+						dp.Labels = ls.String()
+						dp.SampleType = actualST
+						dp.Collapsed = bench.StackCollapseProto(p.Profile, sti, true)
+						slices.Sort(dp.Collapsed)
+						return dp
+					}
+				}
+			}
+		}
+		m.T.Fatalf("no profile found for %s %s", ls.String(), st)
+		return DumpProfile{}
 	}
-}
+	for i := range expected.Profiles {
+		expectedLabels := labels.Labels{}
 
-func (m *MockPushService) DumpTo(file string) {
-	d := m.Dump()
-	bs, err := json.Marshal(d)
-	require.NoError(m.T, err)
-	err = bench.WriteGzipFile(file, bs)
-	require.NoError(m.T, err)
+		err := expectedLabels.UnmarshalJSON([]byte(expected.Profiles[i].Labels))
+		require.NoError(m.T, err)
+
+		//err = actualLabels.UnmarshalJSON([]byte(actual.Profiles[i].Labels))
+		//require.NoError(m.T, err)
+		//actualLabels = labels.NewBuilder(actualLabels).Del("jfr_event").Labels()
+
+		//require.Equal(m.T, expectedLabels, actualLabels)
+		actual := selectActual(expectedLabels, expected.Profiles[i].SampleType)
+
+		if !reflect.DeepEqual(expected.Profiles[i].Collapsed, actual.Collapsed) {
+			os.WriteFile("expected.json", []byte(strings.Join(expected.Profiles[i].Collapsed, "\n")), 0644)
+			os.WriteFile("actual.json", []byte(strings.Join(actual.Collapsed, "\n")), 0644)
+		}
+		require.Equal(m.T, expected.Profiles[i].Collapsed, actual.Collapsed)
+	}
 }
 
 func (m *MockPushService) Dump() Dump {
 	res := Dump{}
-	for _, series := range m.req {
-		dp := DumpProfile{}
-		dp.Labels = phlaremodel.Labels(series.Labels).ToPrometheusLabels().String()
-		require.Equal(m.T, 1, len(series.Samples))
-		p, err := profile.ParseData(series.Samples[0].RawProfile)
-		require.NoError(m.T, err)
-		slices.Sort(dp.Collapsed)
-		require.Equal(m.T, 1, len(p.SampleType))
-		dp.SampleType = p.SampleType[0].Type
-		dp.Collapsed = bench.StackCollapseGoogle(p, 0)
-		res.Profiles = append(res.Profiles, dp)
 
+	for _, series := range m.reqPprof {
+		dp := DumpProfile{}
+		jsonLabels, err := phlaremodel.Labels(series.Labels).ToPrometheusLabels().MarshalJSON()
+		require.NoError(m.T, err)
+		dp.Labels = string(jsonLabels)
+		p := series.Profile
+
+		dp.SampleType = series.Profile.StringTable[p.SampleType[0].Type]
+		dp.Collapsed = bench.StackCollapseProto(p, 0, true)
+		slices.Sort(dp.Collapsed)
+		res.Profiles = append(res.Profiles, dp)
 	}
 	slices.SortFunc(res.Profiles, func(i, j DumpProfile) bool {
 		labels := strings.Compare(i.Labels, j.Labels)
@@ -105,32 +129,48 @@ func (m *MockPushService) Dump() Dump {
 	return res
 }
 
+const testdataDir = "../../../pkg/og/convert/jfr/testdata"
+
 func TestIngestJFR(b *testing.T) {
-	testdataDir := "../../../pkg/og/convert/jfr/testdata"
-	jfrs := []string{
-		"cortex-dev-01__kafka-0__cpu__0.jfr.gz",
-		"cortex-dev-01__kafka-0__cpu__1.jfr.gz",
-		"cortex-dev-01__kafka-0__cpu__2.jfr.gz",
-		"cortex-dev-01__kafka-0__cpu__3.jfr.gz",
-		"cortex-dev-01__kafka-0__cpu_lock0_alloc0__0.jfr.gz",
-		"cortex-dev-01__kafka-0__cpu_lock_alloc__0.jfr.gz",
-		"cortex-dev-01__kafka-0__cpu_lock_alloc__1.jfr.gz",
-		"cortex-dev-01__kafka-0__cpu_lock_alloc__2.jfr.gz",
-		"cortex-dev-01__kafka-0__cpu_lock_alloc__3.jfr.gz",
+	testdata := []struct {
+		jfr    string
+		labels string
+	}{
+		{"cortex-dev-01__kafka-0__cpu__0.jfr.gz", ""},
+		{"cortex-dev-01__kafka-0__cpu__1.jfr.gz", ""},
+		{"cortex-dev-01__kafka-0__cpu__2.jfr.gz", ""},
+		{"cortex-dev-01__kafka-0__cpu__3.jfr.gz", ""},
+		{"cortex-dev-01__kafka-0__cpu_lock_alloc__0.jfr.gz", ""},
+		{"cortex-dev-01__kafka-0__cpu_lock_alloc__1.jfr.gz", ""},
+		{"cortex-dev-01__kafka-0__cpu_lock_alloc__2.jfr.gz", ""},
+		{"cortex-dev-01__kafka-0__cpu_lock_alloc__3.jfr.gz", ""},
+		{"cortex-dev-01__kafka-0__cpu_lock0_alloc0__0.jfr.gz", ""},
+		{"dump1.jfr.gz", "dump1.labels.pb.gz"},
+		{"dump2.jfr.gz", "dump2.labels.pb.gz"},
 	}
 	l := log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr))
 
-	for _, jfr := range jfrs {
-		b.Run(jfr, func(t *testing.T) {
-			src := testdataDir + "/" + jfr
+	for _, jfr := range testdata {
+		td := jfr
+		b.Run(td.jfr, func(t *testing.T) {
+			src := testdataDir + "/" + td.jfr
+			dir, _ := os.Getwd()
+			_ = dir
 			jfr, err := bench.ReadGzipFile(src)
+			require.NoError(t, err)
+			var labels []byte
+			if td.labels != "" {
+				labels, err = bench.ReadGzipFile(testdataDir + "/" + td.labels)
+			}
+			require.NoError(t, err)
 			svc := &MockPushService{Keep: true, T: t}
 			h := NewPyroscopeIngestHandler(svc, l)
-			require.NoError(t, err)
 
 			res := httptest.NewRecorder()
-			req := httptest.NewRequest("POST", "/ingest?name=javaapp&format=jfr", bytes.NewReader(jfr))
-			req.Header.Set("Content-Type", "application/octet-stream")
+			body, ct := createRequestBody(t, jfr, labels)
+
+			req := httptest.NewRequest("POST", "/ingest?name=javaapp&format=jfr", bytes.NewReader(body))
+			req.Header.Set("Content-Type", ct)
 			h.ServeHTTP(res, req)
 
 			dst := strings.ReplaceAll(src, ".jfr.gz", ".pprof.json.gz")
@@ -142,8 +182,25 @@ func TestIngestJFR(b *testing.T) {
 
 }
 
+func createRequestBody(t *testing.T, jfr, labels []byte) ([]byte, string) {
+	var b bytes.Buffer
+	w := multipart.NewWriter(&b)
+	jfrw, err := w.CreateFormFile("jfr", "jfr")
+	require.NoError(t, err)
+	_, err = jfrw.Write(jfr)
+	require.NoError(t, err)
+	if labels != nil {
+		labelsw, err := w.CreateFormFile("labels", "labels")
+		require.NoError(t, err)
+		_, err = labelsw.Write(labels)
+		require.NoError(t, err)
+	}
+	err = w.Close()
+	require.NoError(t, err)
+	return b.Bytes(), w.FormDataContentType()
+}
+
 func BenchmarkIngestJFR(b *testing.B) {
-	testdataDir := "../../../pkg/og/convert/jfr/testdata"
 	jfrs := []string{
 		"cortex-dev-01__kafka-0__cpu__0.jfr.gz",
 		"cortex-dev-01__kafka-0__cpu__1.jfr.gz",

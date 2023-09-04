@@ -17,6 +17,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
@@ -42,6 +43,7 @@ func TestParseCompareExpectedData(t *testing.T) {
 		{"testdata/cortex-dev-01__kafka-0__cpu_lock_alloc__3.jfr.gz", ""},
 		{"testdata/cortex-dev-01__kafka-0__cpu_lock0_alloc0__0.jfr.gz", ""},
 		{"testdata/dump1.jfr.gz", "testdata/dump1.labels.pb.gz"},
+		{"testdata/dump2.jfr.gz", "testdata/dump2.labels.pb.gz"},
 	}
 	for _, td := range testdata {
 		t.Run(td.jfr, func(t *testing.T) {
@@ -73,14 +75,14 @@ func TestParseCompareExpectedData(t *testing.T) {
 			//todo
 			jsonFile := strings.TrimSuffix(td.jfr, ".jfr.gz") + ".json.gz"
 			//err = putter.DumpJson(jsonFile)
-			err = compareWithJson(profiles, jsonFile)
+			err = compareWithJson(t, profiles, jsonFile)
 			require.NoError(t, err)
 
 		})
 	}
 }
 
-func compareWithJson(profiles []phlaremodel.ParsedProfileSeries, file string) error {
+func compareWithJson(t *testing.T, profiles []phlaremodel.ParsedProfileSeries, file string) error {
 	goldBS, err := bench.ReadGzipFile(file)
 	if err != nil {
 		return err
@@ -90,6 +92,8 @@ func compareWithJson(profiles []phlaremodel.ParsedProfileSeries, file string) er
 	if err != nil {
 		return err
 	}
+
+	checkedSeries := make(map[string]struct{})
 	for _, profile := range profiles {
 
 		var keys []string
@@ -98,11 +102,13 @@ func compareWithJson(profiles []phlaremodel.ParsedProfileSeries, file string) er
 		metric := ls.Get(model.MetricNameLabel)
 		service_name := ls.Get("service_name")
 		typ := profile.Profile.StringTable[profile.Profile.SampleType[0].Type]
-		event := ls.Get("__javaspy_event__")
+		event := ls.Get("jfr_event")
+		keys = nil
 		switch metric {
 		case "process_cpu":
+			keys = nil
 			switch event {
-			case "cpu":
+			case "cpu", "wall":
 				keys = []string{service_name + "." + "cpu"}
 			case "itimer":
 				keys = []string{service_name + "." + "itimer"}
@@ -111,19 +117,23 @@ func compareWithJson(profiles []phlaremodel.ParsedProfileSeries, file string) er
 			}
 			valueIndices = []int{0}
 		case "memory":
-
-			if strings.Contains(typ, "alloc_in_new_tlab_objects") {
-				keys = []string{
-					service_name + "." + "alloc_in_new_tlab_objects",
-					service_name + "." + "alloc_in_new_tlab_bytes",
-				}
+			if typ == "live" {
+				keys = []string{service_name + "." + "live"}
+				valueIndices = []int{0}
 			} else {
-				keys = []string{
-					service_name + "." + "alloc_outside_tlab_objects",
-					service_name + "." + "alloc_outside_tlab_bytes",
+				if strings.Contains(typ, "alloc_in_new_tlab_objects") {
+					keys = []string{
+						service_name + "." + "alloc_in_new_tlab_objects",
+						service_name + "." + "alloc_in_new_tlab_bytes",
+					}
+				} else {
+					keys = []string{
+						service_name + "." + "alloc_outside_tlab_objects",
+						service_name + "." + "alloc_outside_tlab_bytes",
+					}
 				}
+				valueIndices = []int{0, 1}
 			}
-			valueIndices = []int{0, 1}
 		case "mutex":
 			keys = []string{
 				service_name + "." + "lock_count",
@@ -136,10 +146,15 @@ func compareWithJson(profiles []phlaremodel.ParsedProfileSeries, file string) er
 				service_name + "." + "thread_park_duration",
 			}
 			valueIndices = []int{0, 1}
+		case "wall":
+			keys = []string{service_name + "." + "wall"}
+			valueIndices = []int{0}
 		default:
 			panic("unknown metric: " + metric + " " + service_name)
 		}
-
+		if len(keys) == 0 {
+			return fmt.Errorf("no keys found for %s %s %s", metric, typ, service_name)
+		}
 		for i := range keys {
 			key := keys[i]
 			parseKey, err := segment.ParseKey(key)
@@ -147,7 +162,7 @@ func compareWithJson(profiles []phlaremodel.ParsedProfileSeries, file string) er
 				return err
 			}
 			for _, label := range profile.Labels {
-				if strings.HasPrefix(label.Name, "__") || label.Name == "service_name" {
+				if strings.HasPrefix(label.Name, "__") || label.Name == "service_name" || label.Name == "jfr_event" || label.Name == "pyroscope_spy" {
 					continue
 				}
 				parseKey.Add(label.Name, label.Value)
@@ -157,6 +172,7 @@ func compareWithJson(profiles []phlaremodel.ParsedProfileSeries, file string) er
 			if expectedTree == "" {
 				return fmt.Errorf("no tree found for %s", key)
 			}
+			checkedSeries[key] = struct{}{}
 			expectedLines := strings.Split(expectedTree, "\n")
 			slices.Sort(expectedLines)
 			expectedTree = strings.Join(expectedLines, "\n")
@@ -164,7 +180,7 @@ func compareWithJson(profiles []phlaremodel.ParsedProfileSeries, file string) er
 
 			pp := pprof.Profile{Profile: profile.Profile}
 			pp.Normalize()
-			collapseLines := bench.StackCollapseProto(pp.Profile, valueIndices[i])
+			collapseLines := bench.StackCollapseProto(pp.Profile, valueIndices[i], false)
 			slices.Sort(collapseLines)
 			collapsedStr := strings.Join(collapseLines, "\n")
 			collapsedStr = strings.Trim(collapsedStr, "\n")
@@ -174,8 +190,14 @@ func compareWithJson(profiles []phlaremodel.ParsedProfileSeries, file string) er
 				os.WriteFile(file+"_"+metric+"_"+typ+"_actual.txt", []byte(collapsedStr), 0644)
 				return fmt.Errorf("expected tree:\n%s\ngot:\n%s", expectedTree, collapsedStr)
 			}
+			fmt.Printf("ok %s %d\n", key, len(collapsedStr))
 		}
-
+	}
+	for k, v := range trees {
+		_ = v
+		if _, ok := checkedSeries[k]; !ok {
+			assert.Failf(t, "no profile found for ", "key=%s", k)
+		}
 	}
 	return nil
 }

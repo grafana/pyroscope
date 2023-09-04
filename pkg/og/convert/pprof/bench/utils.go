@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/pprof/profile"
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
@@ -145,22 +144,7 @@ func WriteGzipFile(f string, data []byte) error {
 
 }
 
-func StackCollapseGoogle(p *profile.Profile, valueIDX int) []string {
-	var ret []string
-	for _, s := range p.Sample {
-		var funcs []string
-		for i := range s.Location {
-			loc := s.Location[len(s.Location)-1-i]
-			for _, line := range loc.Line {
-				funcs = append(funcs, line.Function.Name)
-			}
-		}
-		ret = append(ret, fmt.Sprintf("%s %d", strings.Join(funcs, ";"), s.Value[valueIDX]))
-	}
-	return ret
-}
-
-func StackCollapseProto(p *profilev1.Profile, valueIDX int) []string {
+func StackCollapseProto(p *profilev1.Profile, valueIDX int, scaleByPeriod bool) []string {
 	type stack struct {
 		funcs string
 		value int64
@@ -178,9 +162,13 @@ func StackCollapseProto(p *profilev1.Profile, valueIDX int) []string {
 				funcs = append(funcs, fname)
 			}
 		}
+		v := s.Value[valueIDX]
+		if scaleByPeriod && p.Period != 0 {
+			v *= p.Period
+		}
 		ret = append(ret, stack{
 			funcs: strings.Join(funcs, ";"),
-			value: s.Value[valueIDX],
+			value: v,
 		})
 	}
 	slices.SortFunc(ret, func(i, j stack) bool {
