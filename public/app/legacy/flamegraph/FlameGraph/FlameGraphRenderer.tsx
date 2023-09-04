@@ -35,6 +35,14 @@ interface Node {
   j: number;
 }
 
+export type SharedQuery = {
+  searchQuery?: string;
+  onQueryChange: Dispatch<SetStateAction<string | undefined>>;
+  syncEnabled: string | boolean;
+  toggleSync: Dispatch<SetStateAction<boolean | string>>;
+  id: string;
+}
+
 export interface FlamegraphRendererProps {
   profile?: Profile;
 
@@ -50,13 +58,7 @@ export interface FlamegraphRendererProps {
 
   /** @deprecated  prefer Profile */
   flamebearer?: Flamebearer;
-  sharedQuery?: {
-    searchQuery?: string;
-    onQueryChange: Dispatch<SetStateAction<string | undefined>>;
-    syncEnabled: string | boolean;
-    toggleSync: Dispatch<SetStateAction<boolean | string>>;
-    id: string;
-  };
+  sharedQuery?: SharedQuery;
 
   children?: ReactNode;
 }
