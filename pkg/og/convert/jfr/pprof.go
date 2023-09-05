@@ -38,8 +38,10 @@ func newJfrPprofBuilders(p *parser.Parser, jfrLabels *LabelsSnapshot, piOriginal
 		appName:    piOriginal.Key.AppName(),
 		spyName:    piOriginal.SpyName,
 
-		parser:    p,
-		cache:     make(tree.LabelsCache[testhelper.ProfileBuilder]),
+		parser: p,
+		cache: tree.NewLabelsCache[testhelper.ProfileBuilder](func() *testhelper.ProfileBuilder {
+			return testhelper.NewProfileBuilderWithLabels(0, nil)
+		}),
 		contexts:  make(map[uint64]labelsWithHash),
 		baseline:  make(map[uint64]labelsWithHash),
 		jfrLabels: jfrLabels,
@@ -151,9 +153,9 @@ func (b *jfrPprofBuilders) addStacktraceImpl(sampleType int64, lwh labelsWithHas
 }
 
 func (b *jfrPprofBuilders) build(event string) []phlaremodel.ParsedProfileSeries {
-	profiles := make([]phlaremodel.ParsedProfileSeries, 0, len(b.cache))
+	profiles := make([]phlaremodel.ParsedProfileSeries, 0, len(b.cache.Map))
 
-	for sampleType, entries := range b.cache {
+	for sampleType, entries := range b.cache.Map {
 		for _, e := range entries {
 			e.Value.TimeNanos = b.timeNanos
 			metric := ""

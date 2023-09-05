@@ -49,7 +49,7 @@ func NewParser(config ParserConfig) *Parser {
 		skipExemplars:       config.SkipExemplars,
 		stackFrameFormatter: config.StackFrameFormatter,
 
-		cache:             make(tree.LabelsCache[tree.Tree]),
+		cache:             tree.NewLabelsCache[tree.Tree](tree.New),
 		sampleTypesFilter: filterKnownSamples(config.SampleTypes),
 	}
 }
@@ -61,7 +61,7 @@ func filterKnownSamples(sampleTypes map[string]*tree.SampleTypeConfig) func(stri
 	}
 }
 
-func (p *Parser) Reset() { p.cache = make(tree.LabelsCache[tree.Tree]) }
+func (p *Parser) Reset() { p.cache = tree.NewLabelsCache[tree.Tree](tree.New) }
 
 func (p *Parser) ParsePprof(ctx context.Context, startTime, endTime time.Time, bs []byte, cumulativeOnly bool) error {
 	b := bytes.NewReader(bs)
@@ -150,9 +150,9 @@ func (p *Parser) load(sampleType int64, labels tree.Labels) (*tree.Tree, bool) {
 }
 
 func (p *Parser) iterate(x *tree.Profile, cumulativeOnly bool, fn func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error)) error {
-	c := make(tree.LabelsCache[tree.Tree])
+	c := tree.NewLabelsCache[tree.Tree](tree.New)
 	p.readTrees(x, c, tree.NewFinder(x), cumulativeOnly)
-	for sampleType, entries := range c {
+	for sampleType, entries := range c.Map {
 		if t, ok := x.ResolveSampleType(sampleType); ok {
 			for h, e := range entries {
 				keep, err := fn(t, e.Labels, e.Value)

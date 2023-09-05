@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"mime/multipart"
 	"net/http/httptest"
 	"os"
-	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -47,59 +47,49 @@ type Dump struct {
 }
 
 func (m *MockPushService) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	return nil, nil
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (m *MockPushService) selectActualProfile(ls labels.Labels, st string) DumpProfile {
+	sort.Sort(ls)
+	lss := ls.String()
+	for _, p := range m.reqPprof {
+		promLabels := phlaremodel.Labels(p.Labels).ToPrometheusLabels()
+		sort.Sort(promLabels)
+		actualLabels := labels.NewBuilder(promLabels).Del("jfr_event").Labels()
+		als := actualLabels.String()
+		if als == lss {
+			for sti := range p.Profile.SampleType {
+				actualST := p.Profile.StringTable[p.Profile.SampleType[sti].Type]
+				if actualST == st {
+					dp := DumpProfile{}
+					dp.Labels = ls.String()
+					dp.SampleType = actualST
+					dp.Collapsed = bench.StackCollapseProto(p.Profile, sti, true)
+					slices.Sort(dp.Collapsed)
+					return dp
+				}
+			}
+		}
+	}
+	m.T.Fatalf("no profile found for %s %s", ls.String(), st)
+	return DumpProfile{}
 }
 
 func (m *MockPushService) CompareDump(file string) {
-
 	bs, err := bench.ReadGzipFile(file)
 	require.NoError(m.T, err)
+
 	expected := Dump{}
 	err = json.Unmarshal(bs, &expected)
 	require.NoError(m.T, err)
 
-	selectActual := func(ls labels.Labels, st string) DumpProfile {
-		sort.Sort(ls)
-		lss := ls.String()
-		for _, p := range m.reqPprof {
-			promLabels := phlaremodel.Labels(p.Labels).ToPrometheusLabels()
-			sort.Sort(promLabels)
-			actualLabels := labels.NewBuilder(promLabels).Del("jfr_event").Labels()
-			als := actualLabels.String()
-			if als == lss {
-				for sti := range p.Profile.SampleType {
-					actualST := p.Profile.StringTable[p.Profile.SampleType[sti].Type]
-					if actualST == st {
-						dp := DumpProfile{}
-						dp.Labels = ls.String()
-						dp.SampleType = actualST
-						dp.Collapsed = bench.StackCollapseProto(p.Profile, sti, true)
-						slices.Sort(dp.Collapsed)
-						return dp
-					}
-				}
-			}
-		}
-		m.T.Fatalf("no profile found for %s %s", ls.String(), st)
-		return DumpProfile{}
-	}
 	for i := range expected.Profiles {
 		expectedLabels := labels.Labels{}
-
 		err := expectedLabels.UnmarshalJSON([]byte(expected.Profiles[i].Labels))
 		require.NoError(m.T, err)
 
-		//err = actualLabels.UnmarshalJSON([]byte(actual.Profiles[i].Labels))
-		//require.NoError(m.T, err)
-		//actualLabels = labels.NewBuilder(actualLabels).Del("jfr_event").Labels()
-
-		//require.Equal(m.T, expectedLabels, actualLabels)
-		actual := selectActual(expectedLabels, expected.Profiles[i].SampleType)
-
-		if !reflect.DeepEqual(expected.Profiles[i].Collapsed, actual.Collapsed) {
-			os.WriteFile("expected.json", []byte(strings.Join(expected.Profiles[i].Collapsed, "\n")), 0644)
-			os.WriteFile("actual.json", []byte(strings.Join(actual.Collapsed, "\n")), 0644)
-		}
+		actual := m.selectActualProfile(expectedLabels, expected.Profiles[i].SampleType)
 		require.Equal(m.T, expected.Profiles[i].Collapsed, actual.Collapsed)
 	}
 }

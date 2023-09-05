@@ -1,7 +1,17 @@
 package tree
 
 // sample type -> labels hash -> entry
-type LabelsCache[T any] map[int64]map[uint64]*LabelsCacheEntry[T]
+type LabelsCache[T any] struct {
+	Map     map[int64]map[uint64]*LabelsCacheEntry[T]
+	Factory func() *T
+}
+
+func NewLabelsCache[T any](factory func() *T) LabelsCache[T] {
+	return LabelsCache[T]{
+		Map:     make(map[int64]map[uint64]*LabelsCacheEntry[T]),
+		Factory: factory,
+	}
+}
 
 type LabelsCacheEntry[T any] struct {
 	Labels //todo use the labels in the builder
@@ -10,17 +20,15 @@ type LabelsCacheEntry[T any] struct {
 
 func NewCacheEntry[T any](l Labels) *LabelsCacheEntry[T] {
 	return &LabelsCacheEntry[T]{
-		//ProfileBuilder: testhelper.NewProfileBuilder(0),
-
 		Labels: CopyLabels(l),
 	}
 }
 
-func (c LabelsCache[T]) GetOrCreateTree(sampleType int64, l Labels) *LabelsCacheEntry[T] {
-	p, ok := c[sampleType]
+func (c *LabelsCache[T]) GetOrCreateTree(sampleType int64, l Labels) *LabelsCacheEntry[T] {
+	p, ok := c.Map[sampleType]
 	if !ok {
 		e := NewCacheEntry[T](l)
-		c[sampleType] = map[uint64]*LabelsCacheEntry[T]{l.Hash(): e}
+		c.Map[sampleType] = map[uint64]*LabelsCacheEntry[T]{l.Hash(): e}
 		return e
 	}
 	h := l.Hash()
@@ -32,11 +40,11 @@ func (c LabelsCache[T]) GetOrCreateTree(sampleType int64, l Labels) *LabelsCache
 	return e
 }
 
-func (c LabelsCache[T]) GetOrCreateTreeByHash(sampleType int64, l Labels, h uint64) *LabelsCacheEntry[T] {
-	p, ok := c[sampleType]
+func (c *LabelsCache[T]) GetOrCreateTreeByHash(sampleType int64, l Labels, h uint64) *LabelsCacheEntry[T] {
+	p, ok := c.Map[sampleType]
 	if !ok {
 		e := NewCacheEntry[T](l)
-		c[sampleType] = map[uint64]*LabelsCacheEntry[T]{h: e}
+		c.Map[sampleType] = map[uint64]*LabelsCacheEntry[T]{h: e}
 		return e
 	}
 	e, found := p[h]
@@ -47,8 +55,8 @@ func (c LabelsCache[T]) GetOrCreateTreeByHash(sampleType int64, l Labels, h uint
 	return e
 }
 
-func (c LabelsCache[T]) Get(sampleType int64, h uint64) (*LabelsCacheEntry[T], bool) {
-	p, ok := c[sampleType]
+func (c *LabelsCache[T]) Get(sampleType int64, h uint64) (*LabelsCacheEntry[T], bool) {
+	p, ok := c.Map[sampleType]
 	if !ok {
 		return nil, false
 	}
@@ -56,23 +64,23 @@ func (c LabelsCache[T]) Get(sampleType int64, h uint64) (*LabelsCacheEntry[T], b
 	return x, ok
 }
 
-func (c LabelsCache[T]) Put(sampleType int64, e *LabelsCacheEntry[T]) {
-	p, ok := c[sampleType]
+func (c *LabelsCache[T]) Put(sampleType int64, e *LabelsCacheEntry[T]) {
+	p, ok := c.Map[sampleType]
 	if !ok {
 		p = make(map[uint64]*LabelsCacheEntry[T])
-		c[sampleType] = p
+		c.Map[sampleType] = p
 	}
 	p[e.Hash()] = e
 }
 
-func (c LabelsCache[T]) Remove(sampleType int64, h uint64) {
-	p, ok := c[sampleType]
+func (c *LabelsCache[T]) Remove(sampleType int64, h uint64) {
+	p, ok := c.Map[sampleType]
 	if !ok {
 		return
 	}
 	delete(p, h)
 	if len(p) == 0 {
-		delete(c, sampleType)
+		delete(c.Map, sampleType)
 	}
 }
 
