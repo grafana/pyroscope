@@ -11,6 +11,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/segment"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/prometheus/prometheus/model/labels"
 )
@@ -152,8 +153,8 @@ func (b *jfrPprofBuilders) addStacktraceImpl(sampleType int64, lwh labelsWithHas
 
 }
 
-func (b *jfrPprofBuilders) build(event string) []phlaremodel.ParsedProfileSeries {
-	profiles := make([]phlaremodel.ParsedProfileSeries, 0, len(b.cache.Map))
+func (b *jfrPprofBuilders) build(event string) *phlaremodel.PushRequest {
+	profiles := make([]*phlaremodel.ProfileSeries, 0, len(b.cache.Map))
 
 	for sampleType, entries := range b.cache.Map {
 		for _, e := range entries {
@@ -221,13 +222,21 @@ func (b *jfrPprofBuilders) build(event string) []phlaremodel.ParsedProfileSeries
 					Value: vs,
 				})
 			}
-			profiles = append(profiles, phlaremodel.ParsedProfileSeries{
-				Labels:  ls,
-				Profile: e.Value.Profile,
+			profiles = append(profiles, &phlaremodel.ProfileSeries{
+				Labels: ls,
+				Samples: []*phlaremodel.ProfileSample{
+					{
+						Profile: pprof.RawFromProto(e.Value.Profile),
+						Raw:     nil,
+						ID:      "",
+					},
+				},
 			})
 		}
 	}
-	return profiles
+	return &phlaremodel.PushRequest{
+		Series: profiles,
+	}
 }
 
 func getContextLabels(contextID int64, labels *LabelsSnapshot) tree.Labels {

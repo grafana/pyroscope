@@ -22,7 +22,7 @@ import (
 
 type PushService interface {
 	Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
-	PushParsed(ctx context.Context, profiles []phlaremodel.ParsedProfileSeries) (*connect.Response[pushv1.PushResponse], error)
+	PushParsed(ctx context.Context, req *phlaremodel.PushRequest) (*connect.Response[pushv1.PushResponse], error)
 }
 
 func NewPyroscopeIngestHandler(svc PushService, logger log.Logger) http.Handler {
@@ -43,7 +43,7 @@ func (p *pyroscopeIngesterAdapter) Ingest(ctx context.Context, in *ingestion.Ing
 		if err != nil {
 			return err
 		}
-		_, err = p.svc.PushParsed(ctx, profiles) //todo check
+		_, err = p.svc.PushParsed(ctx, profiles)
 		return err
 	} else {
 		return in.Profile.Parse(ctx, p, p, in.Metadata)

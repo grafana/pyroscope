@@ -1,7 +1,6 @@
 package jfr
 
 import (
-	"context"
 	"fmt"
 	"io"
 
@@ -10,7 +9,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/storage"
 )
 
-func ParseJFR(ctx context.Context, body []byte, pi *storage.PutInput, jfrLabels *LabelsSnapshot) (profiles []phlaremodel.ParsedProfileSeries, err error) {
+type stats struct {
+}
+
+func ParseJFR(body []byte, pi *storage.PutInput, jfrLabels *LabelsSnapshot) (req *phlaremodel.PushRequest, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("jfr parser panic: %v", r)
@@ -19,66 +21,57 @@ func ParseJFR(ctx context.Context, body []byte, pi *storage.PutInput, jfrLabels 
 	p := parser.NewParser(body, parser.Options{
 		SymbolProcessor: processSymbols,
 	})
-	return parse(ctx, p, pi, jfrLabels)
+	return parse(p, pi, jfrLabels)
 }
 
-func parse(ctx context.Context, c *parser.Parser, piOriginal *storage.PutInput, jfrLabels *LabelsSnapshot) (profiles []phlaremodel.ParsedProfileSeries, err error) {
+func parse(parser *parser.Parser, piOriginal *storage.PutInput, jfrLabels *LabelsSnapshot) (req *phlaremodel.PushRequest, err error) {
 	var event string
 
-	builders := newJfrPprofBuilders(c, jfrLabels, piOriginal)
+	builders := newJfrPprofBuilders(parser, jfrLabels, piOriginal)
 
 	var values = [2]int64{1, 0}
 
 	for {
-		typ, err := c.ParseEvent()
+		typ, err := parser.ParseEvent()
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
-			return profiles, fmt.Errorf("jfr parser ParseEvent error: %w", err)
+			return nil, fmt.Errorf("jfr parser ParseEvent error: %w", err)
 		}
 
 		switch typ {
-		case c.TypeMap.T_EXECUTION_SAMPLE:
-			ts := c.GetThreadState(c.ExecutionSample.State)
+		case parser.TypeMap.T_EXECUTION_SAMPLE:
+			ts := parser.GetThreadState(parser.ExecutionSample.State)
 			if ts != nil && ts.Name == "STATE_RUNNABLE" {
-				builders.addStacktrace(sampleTypeCPU, c.ExecutionSample.ContextId, c.ExecutionSample.StackTrace, values[:1])
+				builders.addStacktrace(sampleTypeCPU, parser.ExecutionSample.ContextId, parser.ExecutionSample.StackTrace, values[:1])
 			}
 			if event == "wall" {
-				builders.addStacktrace(sampleTypeWall, c.ExecutionSample.ContextId, c.ExecutionSample.StackTrace, values[:1])
+				builders.addStacktrace(sampleTypeWall, parser.ExecutionSample.ContextId, parser.ExecutionSample.StackTrace, values[:1])
 			}
-		case c.TypeMap.T_ALLOC_IN_NEW_TLAB:
-			values[1] = int64(c.ObjectAllocationInNewTLAB.TlabSize)
-			builders.addStacktrace(sampleTypeInTLAB, c.ObjectAllocationInNewTLAB.ContextId, c.ObjectAllocationInNewTLAB.StackTrace, values[:2])
-		case c.TypeMap.T_ALLOC_OUTSIDE_TLAB:
-			values[1] = int64(c.ObjectAllocationOutsideTLAB.AllocationSize)
-			builders.addStacktrace(sampleTypeOutTLAB, c.ObjectAllocationOutsideTLAB.ContextId, c.ObjectAllocationOutsideTLAB.StackTrace, values[:2])
-		case c.TypeMap.T_MONITOR_ENTER:
-			values[1] = int64(c.JavaMonitorEnter.Duration)
-			builders.addStacktrace(sampleTypeLock, c.JavaMonitorEnter.ContextId, c.JavaMonitorEnter.StackTrace, values[:2])
-		case c.TypeMap.T_THREAD_PARK:
-			values[1] = int64(c.ThreadPark.Duration)
-			builders.addStacktrace(sampleTypeThreadPark, c.ThreadPark.ContextId, c.ThreadPark.StackTrace, values[:2])
-		case c.TypeMap.T_LIVE_OBJECT:
-			builders.addStacktrace(sampleTypeLiveObject, 0, c.LiveObject.StackTrace, values[:1])
-		case c.TypeMap.T_ACTIVE_SETTING:
-			if c.ActiveSetting.Name == "event" {
-				event = c.ActiveSetting.Value
+		case parser.TypeMap.T_ALLOC_IN_NEW_TLAB:
+			values[1] = int64(parser.ObjectAllocationInNewTLAB.TlabSize)
+			builders.addStacktrace(sampleTypeInTLAB, parser.ObjectAllocationInNewTLAB.ContextId, parser.ObjectAllocationInNewTLAB.StackTrace, values[:2])
+		case parser.TypeMap.T_ALLOC_OUTSIDE_TLAB:
+			values[1] = int64(parser.ObjectAllocationOutsideTLAB.AllocationSize)
+			builders.addStacktrace(sampleTypeOutTLAB, parser.ObjectAllocationOutsideTLAB.ContextId, parser.ObjectAllocationOutsideTLAB.StackTrace, values[:2])
+		case parser.TypeMap.T_MONITOR_ENTER:
+			values[1] = int64(parser.JavaMonitorEnter.Duration)
+			builders.addStacktrace(sampleTypeLock, parser.JavaMonitorEnter.ContextId, parser.JavaMonitorEnter.StackTrace, values[:2])
+		case parser.TypeMap.T_THREAD_PARK:
+			values[1] = int64(parser.ThreadPark.Duration)
+			builders.addStacktrace(sampleTypeThreadPark, parser.ThreadPark.ContextId, parser.ThreadPark.StackTrace, values[:2])
+		case parser.TypeMap.T_LIVE_OBJECT:
+			builders.addStacktrace(sampleTypeLiveObject, 0, parser.LiveObject.StackTrace, values[:1])
+		case parser.TypeMap.T_ACTIVE_SETTING:
+			if parser.ActiveSetting.Name == "event" {
+				event = parser.ActiveSetting.Value
 			}
 
 		}
 	}
 
-	//todo
-	//for sampleType, entries := range cache {
-	//	for _, e := range entries {
-	//		if i := labelIndex(jfrLabels, e.Labels, segment.ProfileIDLabelName); i != -1 {
-	//			cutLabels := tree.CutLabel(e.Labels, i)
-	//			cache.GetOrCreateTree(sampleType, cutLabels).Merge(e.Tree)
-	//		}
-	//	}
-	//}
-	profiles = builders.build(event)
+	req = builders.build(event)
 
-	return profiles, err
+	return req, err
 }

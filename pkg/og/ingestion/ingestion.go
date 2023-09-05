@@ -38,7 +38,7 @@ type RawProfile interface {
 }
 
 type ParseableToPprof interface {
-	ParseToPprof(context.Context, Metadata) ([]phlaremodel.ParsedProfileSeries, error)
+	ParseToPprof(context.Context, Metadata) (*phlaremodel.PushRequest, error)
 }
 
 type Metadata struct {

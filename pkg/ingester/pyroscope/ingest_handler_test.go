@@ -14,6 +14,8 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
@@ -24,15 +26,27 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 )
 
+type flatProfileSeries struct {
+	Labels  []*v1.LabelPair
+	Profile *profilev1.Profile
+}
+
 type MockPushService struct {
 	Keep     bool
-	reqPprof []phlaremodel.ParsedProfileSeries
+	reqPprof []*flatProfileSeries
 	T        testing.TB
 }
 
-func (m *MockPushService) PushParsed(ctx context.Context, profiles []phlaremodel.ParsedProfileSeries) (*connect.Response[pushv1.PushResponse], error) {
+func (m *MockPushService) PushParsed(ctx context.Context, req *phlaremodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
 	if m.Keep {
-		m.reqPprof = append(m.reqPprof, profiles...)
+		for _, series := range req.Series {
+			for _, sample := range series.Samples {
+				m.reqPprof = append(m.reqPprof, &flatProfileSeries{
+					Labels:  series.Labels,
+					Profile: sample.Profile.Profile,
+				})
+			}
+		}
 	}
 	return nil, nil
 }

@@ -1,7 +1,6 @@
 package jfr
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/og/storage"
@@ -67,22 +68,36 @@ func TestParseCompareExpectedData(t *testing.T) {
 				err = proto.Unmarshal(labelsBytes, labels)
 				require.NoError(t, err)
 			}
-			profiles, err := ParseJFR(context.TODO(), jfr, pi, labels)
+			req, err := ParseJFR(jfr, pi, labels)
 			require.NoError(t, err)
-			if len(profiles) == 0 {
+			if len(req.Series) == 0 {
 				t.Fatal(err)
 			}
 			//todo
 			jsonFile := strings.TrimSuffix(td.jfr, ".jfr.gz") + ".json.gz"
 			//err = putter.DumpJson(jsonFile)
-			err = compareWithJson(t, profiles, jsonFile)
+			err = compareWithJson(t, req, jsonFile)
 			require.NoError(t, err)
 
 		})
 	}
 }
 
-func compareWithJson(t *testing.T, profiles []phlaremodel.ParsedProfileSeries, file string) error {
+func compareWithJson(t *testing.T, req *phlaremodel.PushRequest, file string) error {
+	type flatProfileSeries struct {
+		Labels  []*v1.LabelPair
+		Profile *profilev1.Profile
+	}
+
+	var profiles []*flatProfileSeries
+	for _, s := range req.Series {
+		for _, sample := range s.Samples {
+			profiles = append(profiles, &flatProfileSeries{
+				Labels:  s.Labels,
+				Profile: sample.Profile.Profile,
+			})
+		}
+	}
 	goldBS, err := bench.ReadGzipFile(file)
 	if err != nil {
 		return err
@@ -232,11 +247,11 @@ func BenchmarkParser(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				profiles, err := ParseJFR(context.TODO(), jfr, pi, nil)
+				profiles, err := ParseJFR(jfr, pi, nil)
 				if err != nil {
 					b.Fatal(err)
 				}
-				if len(profiles) == 0 {
+				if len(profiles.Series) == 0 {
 					b.Fatal()
 				}
 			}

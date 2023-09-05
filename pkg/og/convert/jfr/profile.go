@@ -24,7 +24,7 @@ type RawProfile struct {
 
 func (p *RawProfile) Bytes() ([]byte, error) { return p.RawData, nil }
 
-func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata) ([]phlaremodel.ParsedProfileSeries, error) {
+func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata) (*phlaremodel.PushRequest, error) {
 	input := storage.PutInput{
 		StartTime:       md.StartTime,
 		EndTime:         md.EndTime,
@@ -44,7 +44,7 @@ func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata) ([
 		}
 	}
 
-	return ParseJFR(ctx, r, &input, labels)
+	return ParseJFR(r, &input, labels)
 }
 
 func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
