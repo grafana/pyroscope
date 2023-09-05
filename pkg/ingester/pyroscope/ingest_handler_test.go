@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/grafana/pyroscope/pkg/distributor/model"
 	"mime/multipart"
 	"net/http/httptest"
 	"os"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/grafana/pyroscope/pkg/distributor/model"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
