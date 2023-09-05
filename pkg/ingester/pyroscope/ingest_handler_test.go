@@ -79,7 +79,7 @@ func (m *MockPushService) selectActualProfile(ls labels.Labels, st string) DumpP
 					dp := DumpProfile{}
 					dp.Labels = ls.String()
 					dp.SampleType = actualST
-					dp.Collapsed = bench.StackCollapseProto(p.Profile, sti, true)
+					dp.Collapsed = bench.StackCollapseProto(p.Profile, sti, 1.0)
 					slices.Sort(dp.Collapsed)
 					return dp
 				}
@@ -106,31 +106,6 @@ func (m *MockPushService) CompareDump(file string) {
 		actual := m.selectActualProfile(expectedLabels, expected.Profiles[i].SampleType)
 		require.Equal(m.T, expected.Profiles[i].Collapsed, actual.Collapsed)
 	}
-}
-
-func (m *MockPushService) Dump() Dump {
-	res := Dump{}
-
-	for _, series := range m.reqPprof {
-		dp := DumpProfile{}
-		jsonLabels, err := phlaremodel.Labels(series.Labels).ToPrometheusLabels().MarshalJSON()
-		require.NoError(m.T, err)
-		dp.Labels = string(jsonLabels)
-		p := series.Profile
-
-		dp.SampleType = series.Profile.StringTable[p.SampleType[0].Type]
-		dp.Collapsed = bench.StackCollapseProto(p, 0, true)
-		slices.Sort(dp.Collapsed)
-		res.Profiles = append(res.Profiles, dp)
-	}
-	slices.SortFunc(res.Profiles, func(i, j DumpProfile) bool {
-		labels := strings.Compare(i.Labels, j.Labels)
-		if labels != 0 {
-			return labels < 0
-		}
-		return strings.Compare(i.SampleType, j.SampleType) < 0
-	})
-	return res
 }
 
 const testdataDir = "../../../pkg/og/convert/jfr/testdata"

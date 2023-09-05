@@ -6,16 +6,16 @@ import (
 )
 
 type PushRequest struct {
-	CompressedSize        int
-	CompressedProfileType string // "jfr"
+	RawProfileSize int
+	RawProfileType string // should be set if not pprof, eg jfr
 
 	Series []*ProfileSeries
 }
 
 type ProfileSample struct {
-	Profile *pprof.Profile
-	Raw     []byte // may be nil if the Profile is composed not from pprof ( e.g. jfr)
-	ID      string
+	Profile    *pprof.Profile
+	RawProfile []byte // may be nil if the Profile is composed not from pprof ( e.g. jfr)
+	ID         string
 }
 
 type ProfileSeries struct {

@@ -36,6 +36,7 @@ func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata) (*
 	}
 
 	labels := new(LabelsSnapshot)
+	rawSize := len(p.RawData)
 	var r = p.RawData
 	var err error
 	if strings.Contains(p.FormDataContentType, "multipart/form-data") {
@@ -44,7 +45,13 @@ func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata) (*
 		}
 	}
 
-	return ParseJFR(r, &input, labels)
+	res, err := ParseJFR(r, &input, labels)
+	if err != nil {
+		return nil, err
+	}
+	res.RawProfileSize = rawSize
+	res.RawProfileType = "jfr"
+	return res, err
 }
 
 func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {

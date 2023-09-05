@@ -9,9 +9,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/storage"
 )
 
-type stats struct {
-}
-
 func ParseJFR(body []byte, pi *storage.PutInput, jfrLabels *LabelsSnapshot) (req *phlaremodel.PushRequest, err error) {
 	defer func() {
 		if r := recover(); r != nil {

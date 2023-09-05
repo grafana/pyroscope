@@ -144,10 +144,18 @@ func WriteGzipFile(f string, data []byte) error {
 
 }
 
-func StackCollapseProto(p *profilev1.Profile, valueIDX int, scaleByPeriod bool) []string {
+func StackCollapseProto(p *profilev1.Profile, valueIDX int, scale float64) []string {
 	type stack struct {
 		funcs string
 		value int64
+	}
+	locMap := make(map[int64]*profilev1.Location)
+	funcMap := make(map[int64]*profilev1.Function)
+	for _, l := range p.Location {
+		locMap[int64(l.Id)] = l
+	}
+	for _, f := range p.Function {
+		funcMap[int64(f.Id)] = f
 	}
 
 	var ret []stack
@@ -155,16 +163,16 @@ func StackCollapseProto(p *profilev1.Profile, valueIDX int, scaleByPeriod bool) 
 		var funcs []string
 		for i := range s.LocationId {
 			locID := s.LocationId[len(s.LocationId)-1-i]
-			loc := p.Location[locID-1]
+			loc := locMap[int64(locID)]
 			for _, line := range loc.Line {
-				f := p.Function[line.FunctionId-1]
+				f := funcMap[int64(line.FunctionId)]
 				fname := p.StringTable[f.Name]
 				funcs = append(funcs, fname)
 			}
 		}
 		v := s.Value[valueIDX]
-		if scaleByPeriod && p.Period != 0 {
-			v *= p.Period
+		if scale != 1 {
+			v = int64(float64(v) * scale)
 		}
 		ret = append(ret, stack{
 			funcs: strings.Join(funcs, ";"),

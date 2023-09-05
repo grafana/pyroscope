@@ -112,6 +112,7 @@ func compareWithJson(t *testing.T, req *phlaremodel.PushRequest, file string) er
 	for _, profile := range profiles {
 
 		var keys []string
+		scale := 1.0
 		var valueIndices []int
 		ls := phlaremodel.Labels(profile.Labels)
 		metric := ls.Get(model.MetricNameLabel)
@@ -130,6 +131,7 @@ func compareWithJson(t *testing.T, req *phlaremodel.PushRequest, file string) er
 			default:
 				panic("unknown event: " + event) //todo wall
 			}
+			scale = 1.0 / (1e9 / 100.0)
 			valueIndices = []int{0}
 		case "memory":
 			if typ == "live" {
@@ -164,6 +166,7 @@ func compareWithJson(t *testing.T, req *phlaremodel.PushRequest, file string) er
 		case "wall":
 			keys = []string{service_name + "." + "wall"}
 			valueIndices = []int{0}
+			scale = 1.0 / (1e9 / 100.0)
 		default:
 			panic("unknown metric: " + metric + " " + service_name)
 		}
@@ -195,7 +198,8 @@ func compareWithJson(t *testing.T, req *phlaremodel.PushRequest, file string) er
 
 			pp := pprof.Profile{Profile: profile.Profile}
 			pp.Normalize()
-			collapseLines := bench.StackCollapseProto(pp.Profile, valueIndices[i], false)
+
+			collapseLines := bench.StackCollapseProto(pp.Profile, valueIndices[i], scale)
 			slices.Sort(collapseLines)
 			collapsedStr := strings.Join(collapseLines, "\n")
 			collapsedStr = strings.Trim(collapsedStr, "\n")

@@ -2,7 +2,6 @@ package jfr
 
 import (
 	"strings"
-	"time"
 
 	"github.com/grafana/jfr-parser/parser"
 	"github.com/grafana/jfr-parser/parser/types"
@@ -32,12 +31,15 @@ const (
 )
 
 func newJfrPprofBuilders(p *parser.Parser, jfrLabels *LabelsSnapshot, piOriginal *storage.PutInput) *jfrPprofBuilders {
+	st := piOriginal.StartTime.UnixNano()
+	et := piOriginal.EndTime.UnixNano()
 	res := &jfrPprofBuilders{
-		timeNanos:  piOriginal.StartTime.UnixNano(),
-		labels:     nil, //todo
-		sampleRate: int(piOriginal.SampleRate),
-		appName:    piOriginal.Key.AppName(),
-		spyName:    piOriginal.SpyName,
+		timeNanos:     st,
+		durationNanos: et - st,
+		labels:        make([]*v1.LabelPair, 0, len(piOriginal.Key.Labels())+5),
+		period:        1e9 / int64(piOriginal.SampleRate),
+		appName:       piOriginal.Key.AppName(),
+		spyName:       piOriginal.SpyName,
 
 		parser: p,
 		cache: tree.NewLabelsCache[testhelper.ProfileBuilder](func() *testhelper.ProfileBuilder {
@@ -65,11 +67,11 @@ type labelsWithHash struct {
 	Hash   uint64
 }
 type jfrPprofBuilders struct {
-	timeNanos  int64
-	labels     []*v1.LabelPair
-	sampleRate int
-	appName    string
-	spyName    string
+	timeNanos     int64
+	durationNanos int64
+	labels        []*v1.LabelPair
+	appName       string
+	spyName       string
 
 	parser *parser.Parser
 	cache  tree.LabelsCache[testhelper.ProfileBuilder]
@@ -78,6 +80,7 @@ type jfrPprofBuilders struct {
 	baseline map[uint64]labelsWithHash // without profile_id
 
 	jfrLabels *LabelsSnapshot
+	period    int64
 }
 
 func (b *jfrPprofBuilders) getLabels(contextID uint64) labelsWithHash {
@@ -149,6 +152,9 @@ func (b *jfrPprofBuilders) addStacktraceImpl(sampleType int64, lwh labelsWithHas
 	}
 	vs := make([]int64, len(values))
 	copy(vs, values)
+	if sampleType == sampleTypeCPU || sampleType == sampleTypeWall {
+		vs[0] *= b.period
+	}
 	e.Value.AddSample(locations, vs)
 
 }
@@ -159,17 +165,16 @@ func (b *jfrPprofBuilders) build(event string) *phlaremodel.PushRequest {
 	for sampleType, entries := range b.cache.Map {
 		for _, e := range entries {
 			e.Value.TimeNanos = b.timeNanos
+			e.Value.DurationNanos = b.durationNanos
 			metric := ""
 			switch sampleType {
 			case sampleTypeCPU:
 				e.Value.AddSampleType("cpu", "nanoseconds")
 				e.Value.PeriodType("cpu", "nanoseconds")
-				e.Value.Period = time.Second.Nanoseconds() / int64(b.sampleRate)
 				metric = "process_cpu"
 			case sampleTypeWall:
 				e.Value.AddSampleType("wall", "nanoseconds")
 				e.Value.PeriodType("wall", "nanoseconds")
-				e.Value.Period = time.Second.Nanoseconds() / int64(b.sampleRate)
 				metric = "wall"
 			case sampleTypeInTLAB:
 				e.Value.AddSampleType("alloc_in_new_tlab_objects", "count")
@@ -226,9 +231,9 @@ func (b *jfrPprofBuilders) build(event string) *phlaremodel.PushRequest {
 				Labels: ls,
 				Samples: []*phlaremodel.ProfileSample{
 					{
-						Profile: pprof.RawFromProto(e.Value.Profile),
-						Raw:     nil,
-						ID:      "",
+						Profile:    pprof.RawFromProto(e.Value.Profile),
+						RawProfile: nil,
+						ID:         "",
 					},
 				},
 			})

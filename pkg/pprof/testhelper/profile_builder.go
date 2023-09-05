@@ -210,10 +210,12 @@ func (m *ProfileBuilder) AddExternalFunction(frame string, externalFunctionID ui
 	fname := m.addString(frame)
 	funcID := uint64(len(m.Function)) + 1
 	m.Function = append(m.Function, &profilev1.Function{
+		Id:   funcID,
 		Name: fname,
 	})
 	locID := uint64(len(m.Location)) + 1
 	m.Location = append(m.Location, &profilev1.Location{
+		Id:        locID,
 		MappingId: uint64(1),
 		Line:      []*profilev1.Line{{FunctionId: funcID}},
 	})
