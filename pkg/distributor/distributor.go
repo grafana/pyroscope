@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
+	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -178,20 +179,20 @@ func (d *Distributor) stopping(_ error) error {
 }
 
 func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	req := &phlaremodel.PushRequest{
-		Series: make([]*phlaremodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
+	req := &distributormodel.PushRequest{
+		Series: make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
 	}
 	for _, grpcSeries := range grpcReq.Msg.Series {
-		series := &phlaremodel.ProfileSeries{
+		series := &distributormodel.ProfileSeries{
 			Labels:  grpcSeries.Labels,
-			Samples: make([]*phlaremodel.ProfileSample, 0, len(grpcSeries.Samples)),
+			Samples: make([]*distributormodel.ProfileSample, 0, len(grpcSeries.Samples)),
 		}
 		for _, grpcSample := range grpcSeries.Samples {
 			profile, err := pprof.RawFromBytes(grpcSample.RawProfile)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
-			sample := &phlaremodel.ProfileSample{
+			sample := &distributormodel.ProfileSample{
 				Profile:    profile,
 				RawProfile: grpcSample.RawProfile,
 				ID:         grpcSample.ID,
@@ -204,7 +205,7 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	return d.pushImpl(ctx, req)
 }
 
-func (d *Distributor) PushParsed(ctx context.Context, req *phlaremodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
+func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
 	if req.RawProfileSize == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("RawProfileSize == 0"))
 	}
@@ -214,7 +215,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *phlaremodel.PushReque
 	return d.pushImpl(ctx, req)
 }
 
-func (d *Distributor) pushImpl(ctx context.Context, req *phlaremodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
+func (d *Distributor) pushImpl(ctx context.Context, req *distributormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
 	//todo defer close all profiles in case of error
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
@@ -481,7 +482,7 @@ func (d *Distributor) HealthyInstancesCount() int {
 }
 
 type profileTracker struct {
-	profile     *phlaremodel.ProfileSeries
+	profile     *distributormodel.ProfileSeries
 	minSuccess  int
 	maxFailures int
 	succeeded   atomic.Int32

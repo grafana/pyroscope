@@ -3,6 +3,7 @@ package jfr
 import (
 	"encoding/json"
 	"fmt"
+	model2 "github.com/grafana/pyroscope/pkg/distributor/model"
 	"os"
 	"strings"
 	"testing"
@@ -83,7 +84,7 @@ func TestParseCompareExpectedData(t *testing.T) {
 	}
 }
 
-func compareWithJson(t *testing.T, req *phlaremodel.PushRequest, file string) error {
+func compareWithJson(t *testing.T, req *model2.PushRequest, file string) error {
 	type flatProfileSeries struct {
 		Labels  []*v1.LabelPair
 		Profile *profilev1.Profile

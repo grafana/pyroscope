@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/grafana/pyroscope/pkg/distributor/model"
 	"mime/multipart"
 	"net/http/httptest"
 	"os"
@@ -38,7 +39,7 @@ type MockPushService struct {
 	T        testing.TB
 }
 
-func (m *MockPushService) PushParsed(ctx context.Context, req *phlaremodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
+func (m *MockPushService) PushParsed(ctx context.Context, req *model.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
 	if m.Keep {
 		for _, series := range req.Series {
 			for _, sample := range series.Samples {

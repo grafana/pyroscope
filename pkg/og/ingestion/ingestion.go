@@ -3,9 +3,9 @@ package ingestion
 import (
 	"context"
 	"errors"
+	phlaremodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"time"
 
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
 	"github.com/grafana/pyroscope/pkg/og/storage/segment"

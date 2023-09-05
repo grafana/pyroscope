@@ -5,13 +5,12 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	phlaremodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"io"
 	"mime/multipart"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/util/form"

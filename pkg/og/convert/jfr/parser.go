@@ -2,10 +2,10 @@ package jfr
 
 import (
 	"fmt"
+	phlaremodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"io"
 
 	"github.com/grafana/jfr-parser/parser"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 )
 

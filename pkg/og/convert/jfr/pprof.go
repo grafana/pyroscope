@@ -1,6 +1,7 @@
 package jfr
 
 import (
+	"github.com/grafana/pyroscope/pkg/distributor/model"
 	"strings"
 
 	"github.com/grafana/jfr-parser/parser"
@@ -159,8 +160,8 @@ func (b *jfrPprofBuilders) addStacktraceImpl(sampleType int64, lwh labelsWithHas
 
 }
 
-func (b *jfrPprofBuilders) build(event string) *phlaremodel.PushRequest {
-	profiles := make([]*phlaremodel.ProfileSeries, 0, len(b.cache.Map))
+func (b *jfrPprofBuilders) build(event string) *model.PushRequest {
+	profiles := make([]*model.ProfileSeries, 0, len(b.cache.Map))
 
 	for sampleType, entries := range b.cache.Map {
 		for _, e := range entries {
@@ -227,9 +228,9 @@ func (b *jfrPprofBuilders) build(event string) *phlaremodel.PushRequest {
 					Value: vs,
 				})
 			}
-			profiles = append(profiles, &phlaremodel.ProfileSeries{
+			profiles = append(profiles, &model.ProfileSeries{
 				Labels: ls,
-				Samples: []*phlaremodel.ProfileSample{
+				Samples: []*model.ProfileSample{
 					{
 						Profile:    pprof.RawFromProto(e.Value.Profile),
 						RawProfile: nil,
@@ -239,7 +240,7 @@ func (b *jfrPprofBuilders) build(event string) *phlaremodel.PushRequest {
 			})
 		}
 	}
-	return &phlaremodel.PushRequest{
+	return &model.PushRequest{
 		Series: profiles,
 	}
 }
