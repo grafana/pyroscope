@@ -51,7 +51,7 @@ import { formatTitle } from './formatTitle';
 import { PageContentWrapper } from './layout';
 import { Profile } from '@pyroscope/legacy/models/profile';
 import { SharedQuery } from '@pyroscope/legacy/flamegraph/FlameGraph/FlameGraphRenderer';
-import { diffFlamebearerToDataFrameDTO } from '@pyroscope/util/flamebearer';
+import { flamebearerToDataFrameDTO } from '@pyroscope/util/flamebearer';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
@@ -380,17 +380,19 @@ function FlamegraphWrapper(props: {
 
   if (isGrafanaFlamegraphEnabled) {
     const dataFrame = profile
-      ? diffFlamebearerToDataFrameDTO(
+      ? flamebearerToDataFrameDTO(
           profile.flamebearer.levels,
-          profile.flamebearer.names
+          profile.flamebearer.names,
+          false
         )
       : undefined;
     return (
       <>
         {timelineEl}
         <FlameGraph
-          getTheme={() => createTheme({ colors: { mode: 'dark' } })}
+          getTheme={() => createTheme({ colors: { mode: colorMode } })}
           data={dataFrame}
+          vertical={true}
           extraHeaderElements={
             profile && (
               <ExportData

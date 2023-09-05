@@ -1,4 +1,9 @@
 import React, { useEffect } from 'react';
+
+import { createTheme } from '@grafana/data';
+import { FlameGraph } from '@grafana/flamegraph';
+import { Button, Tooltip } from '@grafana/ui';
+
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import Box from '@pyroscope/ui/Box';
 import {
@@ -9,6 +14,7 @@ import {
   selectQueries,
   selectTimelineSides,
   selectAnnotationsOrDefault,
+  DiffView,
 } from '@pyroscope/redux/reducers/continuous';
 import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph/FlamegraphRenderer';
 import usePopulateLeftRightQuery from '@pyroscope/hooks/populateLeftRightQuery.hook';
@@ -28,15 +34,18 @@ import useExportToFlamegraphDotCom from '@pyroscope/components/exportToFlamegrap
 import { LoadingOverlay } from '@pyroscope/ui/LoadingOverlay';
 import ExportData from '@pyroscope/components/ExportData';
 import ChartTitle from '@pyroscope/components/ChartTitle';
-import { isExportToFlamegraphDotComEnabled } from '@pyroscope/util/features';
+import {
+  isExportToFlamegraphDotComEnabled,
+  isGrafanaFlamegraphEnabled,
+} from '@pyroscope/util/features';
 import PageTitle from '@pyroscope/components/PageTitle';
 import { formatTitle } from './formatTitle';
 import { isLoadingOrReloading } from './loading';
 import { PageContentWrapper } from './layout';
+import { flamebearerToDataFrameDTO } from '@pyroscope/util/flamebearer';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
-  const { colorMode } = useColorMode();
   const {
     diffView,
     refreshToken,
@@ -54,10 +63,6 @@ function ComparisonDiffApp() {
   const { leftTimeline, rightTimeline } = useTimelines();
 
   const timelines = useAppSelector(selectTimelineSides);
-  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(
-    diffView.profile
-  );
-
   const { offset } = useTimeZone();
   const timezone = offset === 0 ? 'utc' : 'browser';
 
@@ -94,18 +99,6 @@ function ComparisonDiffApp() {
     refreshToken,
     maxNodes,
   ]);
-
-  const exportData = diffView.profile && (
-    <ExportData
-      flamebearer={diffView.profile}
-      exportJSON
-      exportPNG
-      // disable this until we fix it
-      //      exportHTML
-      exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
-      exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
-    />
-  );
 
   return (
     <div>
@@ -243,17 +236,87 @@ function ComparisonDiffApp() {
         <Box>
           <LoadingOverlay active={isLoading} spinnerPosition="baseline">
             <ChartTitle titleKey="diff" />
-            <FlamegraphRenderer
-              showCredit={false}
-              profile={diffView.profile}
-              ExportData={exportData}
-              colorMode={colorMode}
-            />
+            <FlamegraphContainer diffView={diffView} />
           </LoadingOverlay>
         </Box>
       </PageContentWrapper>
     </div>
   );
+}
+
+function FlamegraphContainer({ diffView }: { diffView: DiffView }) {
+  const { colorMode } = useColorMode();
+  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(
+    diffView.profile
+  );
+
+  if (isGrafanaFlamegraphEnabled) {
+    const dataFrame = diffView.profile
+      ? flamebearerToDataFrameDTO(
+          diffView.profile.flamebearer.levels,
+          diffView.profile.flamebearer.names,
+          true
+        )
+      : undefined;
+
+    const exportData = diffView.profile && (
+      <ExportData
+        flamebearer={diffView.profile}
+        exportJSON
+        exportPNG
+        // disable this until we fix it
+        //      exportHTML
+        exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
+        exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
+        buttonEl={({ onClick }) => {
+          return (
+            <Tooltip content={'Export Data'}>
+              <Button
+                // Ugly hack to go around globally defined line height messing up sizing of the button.
+                // Not sure why it happens even if everything is display: Block. To override it would
+                // need changes in Flamegraph which would be weird so this seems relatively sensible.
+                style={{ marginTop: -7 }}
+                icon={'download-alt'}
+                size={'sm'}
+                variant={'secondary'}
+                fill={'outline'}
+                onClick={onClick}
+              />
+            </Tooltip>
+          );
+        }}
+      />
+    );
+
+    return (
+      <FlameGraph
+        getTheme={() => createTheme({ colors: { mode: colorMode } })}
+        data={dataFrame}
+        extraHeaderElements={exportData}
+      />
+    );
+  } else {
+    const exportData = diffView.profile && (
+      <ExportData
+        flamebearer={diffView.profile}
+        exportJSON
+        exportPNG
+        // disable this until we fix it
+        //      exportHTML
+        exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
+        exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
+      />
+    );
+
+    return (
+      <FlamegraphRenderer
+        showCredit={false}
+        profile={diffView.profile}
+        ExportData={exportData}
+        colorMode={colorMode}
+      />
+    );
+  }
 }
 
 export default ComparisonDiffApp;

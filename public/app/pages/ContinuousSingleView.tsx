@@ -47,7 +47,7 @@ import ContextMenu from './continuous/contextMenu/ContextMenu';
 import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
 import { isLoadingOrReloading } from './loading';
 import { PageContentWrapper } from './layout';
-import { diffFlamebearerToDataFrameDTO } from '@pyroscope/util/flamebearer';
+import { flamebearerToDataFrameDTO } from '@pyroscope/util/flamebearer';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -90,13 +90,14 @@ function ContinuousSingleView() {
       case 'loaded':
       case 'reloading': {
         if (isGrafanaFlamegraphEnabled) {
-          const dataFrame = diffFlamebearerToDataFrameDTO(
+          const dataFrame = flamebearerToDataFrameDTO(
             singleView.profile?.flamebearer.levels,
-            singleView.profile?.flamebearer.names
+            singleView.profile?.flamebearer.names,
+            false
           );
           return (
             <FlameGraph
-              getTheme={() => createTheme({ colors: { mode: 'dark' } })}
+              getTheme={() => createTheme({ colors: { mode: colorMode } })}
               data={dataFrame}
               extraHeaderElements={
                 <ExportData
