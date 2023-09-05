@@ -14,11 +14,12 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
+
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 

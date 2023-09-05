@@ -10,14 +10,15 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
+	"github.com/prometheus/prometheus/model/labels"
+	"google.golang.org/protobuf/proto"
+
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
-	"github.com/prometheus/prometheus/model/labels"
-	"google.golang.org/protobuf/proto"
 )
 
 type PushService interface {

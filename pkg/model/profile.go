@@ -7,11 +7,12 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/gogo/status"
 	"github.com/google/pprof/profile"
+	"github.com/prometheus/prometheus/model/labels"
+	"google.golang.org/grpc/codes"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/prometheus/prometheus/model/labels"
-	"google.golang.org/grpc/codes"
 )
 
 // CompareProfile compares the two profiles.
