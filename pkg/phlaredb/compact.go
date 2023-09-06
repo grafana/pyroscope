@@ -38,14 +38,14 @@ type BlockReader interface {
 }
 
 func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
-	metas, err := CompactWithShard(ctx, src, 1, dst)
+	metas, err := CompactWithSplitting(ctx, src, 1, dst)
 	if err != nil {
 		return block.Meta{}, err
 	}
 	return metas[0], nil
 }
 
-func CompactWithShard(ctx context.Context, src []BlockReader, shardsCount uint64, dst string) (
+func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount uint64, dst string) (
 	[]block.Meta, error,
 ) {
 	if shardsCount == 0 {
