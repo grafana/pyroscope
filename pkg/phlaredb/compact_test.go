@@ -6,6 +6,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -23,6 +25,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
@@ -83,6 +86,150 @@ func TestCompact(t *testing.T) {
 	expected := new(phlaremodel.Tree)
 	expected.InsertStack(3, "baz", "bar", "foo")
 	require.Equal(t, expected.String(), res.String())
+}
+
+func TestCompactWithSplitting(t *testing.T) {
+	ctx := context.Background()
+
+	b1 := newBlock(t, func() []*testhelper.ProfileBuilder {
+		return append(
+			profileSeriesGenerator(t, time.Unix(1, 0), time.Unix(10, 0), time.Second, "job", "a"),
+			profileSeriesGenerator(t, time.Unix(11, 0), time.Unix(20, 0), time.Second, "job", "b")...,
+		)
+	})
+	b2 := newBlock(t, func() []*testhelper.ProfileBuilder {
+		return append(
+			append(
+				append(
+					profileSeriesGenerator(t, time.Unix(1, 0), time.Unix(10, 0), time.Second, "job", "c"),
+					profileSeriesGenerator(t, time.Unix(11, 0), time.Unix(20, 0), time.Second, "job", "d")...,
+				), profileSeriesGenerator(t, time.Unix(1, 0), time.Unix(10, 0), time.Second, "job", "a")...,
+			),
+			profileSeriesGenerator(t, time.Unix(11, 0), time.Unix(20, 0), time.Second, "job", "b")...,
+		)
+	})
+	dst := t.TempDir()
+	compacted, err := CompactWithSplitting(ctx, []BlockReader{b1, b2, b2, b1}, 16, dst)
+	require.NoError(t, err)
+	// todo: fix and test min/max time from split blocks
+
+	// 4 shards one per series.
+	require.Equal(t, 4, len(compacted))
+	require.Equal(t, "1_of_16", compacted[0].Labels[sharding.CompactorShardIDLabel])
+	require.Equal(t, "6_of_16", compacted[1].Labels[sharding.CompactorShardIDLabel])
+	require.Equal(t, "7_of_16", compacted[2].Labels[sharding.CompactorShardIDLabel])
+	require.Equal(t, "14_of_16", compacted[3].Labels[sharding.CompactorShardIDLabel])
+
+	// We first verify we have all series and timestamps across querying all blocks.
+	queriers := make(Queriers, len(compacted))
+	for i, blk := range compacted {
+		queriers[i] = blockQuerierFromMeta(t, dst, blk)
+	}
+
+	err = queriers.Open(context.Background())
+	require.NoError(t, err)
+	matchAll := &ingesterv1.SelectProfilesRequest{
+		LabelSelector: "{}",
+		Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+		Start:         0,
+		End:           40000,
+	}
+	it, err := queriers.SelectMatchingProfiles(context.Background(), matchAll)
+	require.NoError(t, err)
+
+	seriesMap := make(map[model.Fingerprint]lo.Tuple2[phlaremodel.Labels, []model.Time])
+	for it.Next() {
+		r := it.At()
+		seriesMap[r.Fingerprint()] = lo.T2(r.Labels().WithoutPrivateLabels(), append(seriesMap[r.Fingerprint()].B, r.Timestamp()))
+	}
+	require.NoError(t, it.Err())
+	require.NoError(t, it.Close())
+	series := lo.Values(seriesMap)
+	sort.Slice(series, func(i, j int) bool {
+		return phlaremodel.CompareLabelPairs(series[i].A, series[j].A) < 0
+	})
+	require.Equal(t, []lo.Tuple2[phlaremodel.Labels, []model.Time]{
+		lo.T2(phlaremodel.LabelsFromStrings("job", "a"),
+			generateTimes(t, model.TimeFromUnix(1), model.TimeFromUnix(10)),
+		),
+		lo.T2(phlaremodel.LabelsFromStrings("job", "b"),
+			generateTimes(t, model.TimeFromUnix(11), model.TimeFromUnix(20)),
+		),
+		lo.T2(phlaremodel.LabelsFromStrings("job", "c"),
+			generateTimes(t, model.TimeFromUnix(1), model.TimeFromUnix(10)),
+		),
+		lo.T2(phlaremodel.LabelsFromStrings("job", "d"),
+			generateTimes(t, model.TimeFromUnix(11), model.TimeFromUnix(20)),
+		),
+	}, series)
+
+	// Then we query 2 different shards and verify we have a subset of series.
+	it, err = queriers[0].SelectMatchingProfiles(ctx, matchAll)
+	require.NoError(t, err)
+	seriesResult, err := queriers[0].MergeByLabels(context.Background(), it, "job")
+	require.NoError(t, err)
+	require.Equal(t,
+		[]*typesv1.Series{
+			{
+				Labels: phlaremodel.LabelsFromStrings("job", "a"),
+				Points: generatePoints(t, model.TimeFromUnix(1), model.TimeFromUnix(10)),
+			},
+		}, seriesResult)
+
+	it, err = queriers[1].SelectMatchingProfiles(ctx, matchAll)
+	require.NoError(t, err)
+	seriesResult, err = queriers[1].MergeByLabels(context.Background(), it, "job")
+	require.NoError(t, err)
+	require.Equal(t,
+		[]*typesv1.Series{
+			{
+				Labels: phlaremodel.LabelsFromStrings("job", "b"),
+				Points: generatePoints(t, model.TimeFromUnix(11), model.TimeFromUnix(20)),
+			},
+		}, seriesResult)
+
+	// Finally test some stacktraces resolution.
+	it, err = queriers[1].SelectMatchingProfiles(ctx, matchAll)
+	require.NoError(t, err)
+	res, err := queriers[1].MergeByStacktraces(ctx, it)
+	require.NoError(t, err)
+
+	expected := new(phlaremodel.Tree)
+	expected.InsertStack(10, "baz", "bar", "foo")
+	require.Equal(t, expected.String(), res.String())
+}
+
+// nolint:unparam
+func profileSeriesGenerator(t *testing.T, from, through time.Time, interval time.Duration, lbls ...string) []*testhelper.ProfileBuilder {
+	t.Helper()
+	var builders []*testhelper.ProfileBuilder
+	for ts := from; ts.Before(through) || ts.Equal(through); ts = ts.Add(interval) {
+		builders = append(builders,
+			testhelper.NewProfileBuilder(ts.UnixNano()).
+				CPUProfile().
+				WithLabels(
+					lbls...,
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1))
+	}
+	return builders
+}
+
+func generatePoints(t *testing.T, from, through model.Time) []*typesv1.Point {
+	t.Helper()
+	var points []*typesv1.Point
+	for ts := from; ts.Before(through) || ts.Equal(through); ts = ts.Add(time.Second) {
+		points = append(points, &typesv1.Point{Timestamp: int64(ts), Value: 1})
+	}
+	return points
+}
+
+func generateTimes(t *testing.T, from, through model.Time) []model.Time {
+	t.Helper()
+	var times []model.Time
+	for ts := from; ts.Before(through) || ts.Equal(through); ts = ts.Add(time.Second) {
+		times = append(times, ts)
+	}
+	return times
 }
 
 func TestProfileRowIterator(t *testing.T) {
