@@ -25,6 +25,7 @@ pyroscope:
   extraEnvFrom: []
 
   imagePullSecrets: []
+  initContainers: []
   nameOverride: ""
   fullnameOverride: ""
 

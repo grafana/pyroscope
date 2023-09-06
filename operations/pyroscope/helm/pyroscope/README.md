@@ -32,6 +32,7 @@
 | pyroscope.image.repository | string | `"grafana/pyroscope"` |  |
 | pyroscope.image.tag | string | `"1.0.0"` |  |
 | pyroscope.imagePullSecrets | list | `[]` |  |
+| pyroscope.initContainers | list | `[]` |  |
 | pyroscope.memberlist.port | int | `7946` |  |
 | pyroscope.memberlist.port_name | string | `"memberlist"` |  |
 | pyroscope.nameOverride | string | `""` |  |
