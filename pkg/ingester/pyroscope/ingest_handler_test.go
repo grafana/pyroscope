@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"mime/multipart"
 	"net/http/httptest"
 	"os"
@@ -64,7 +64,19 @@ type Dump struct {
 }
 
 func (m *MockPushService) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	return nil, fmt.Errorf("not implemented")
+	for _, series := range req.Msg.Series {
+		for _, sample := range series.Samples {
+			p, err := pprof.RawFromBytes(sample.RawProfile)
+			if err != nil {
+				return nil, err
+			}
+			m.reqPprof = append(m.reqPprof, &flatProfileSeries{
+				Labels:  series.Labels,
+				Profile: p.Profile,
+			})
+		}
+	}
+	return nil, nil
 }
 
 func (m *MockPushService) selectActualProfile(ls labels.Labels, st string) DumpProfile {
