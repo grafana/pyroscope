@@ -25,6 +25,7 @@ import (
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -105,8 +106,9 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount ui
 	}
 
 	out := make([]block.Meta, 0, len(writers))
-	for _, w := range writers {
+	for shard, w := range writers {
 		if w.meta.Stats.NumSamples > 0 {
+			w.meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(shard), shardsCount)
 			out = append(out, *w.meta)
 		}
 	}
