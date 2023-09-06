@@ -239,102 +239,96 @@ func TestMergeRowProfileIterator(t *testing.T) {
 	}
 }
 
-// func TestSeriesRewriter(t *testing.T) {
-// 	type profile struct {
-// 		timeNanos int64
-// 		labels    phlaremodel.Labels
-// 	}
+func TestSeriesRewriter(t *testing.T) {
+	type profile struct {
+		timeNanos int64
+		labels    phlaremodel.Labels
+	}
 
-// 	in := []profile{
-// 		{1, phlaremodel.LabelsFromStrings("job", "a")},
-// 		{2, phlaremodel.LabelsFromStrings("job", "a")},
-// 		{3, phlaremodel.LabelsFromStrings("job", "a")},
-// 		{2, phlaremodel.LabelsFromStrings("job", "b")},
-// 		{1, phlaremodel.LabelsFromStrings("job", "c")},
-// 		{2, phlaremodel.LabelsFromStrings("job", "c")},
-// 	}
+	in := []profile{
+		{1, phlaremodel.LabelsFromStrings("job", "a")},
+		{2, phlaremodel.LabelsFromStrings("job", "a")},
+		{3, phlaremodel.LabelsFromStrings("job", "a")},
+		{2, phlaremodel.LabelsFromStrings("job", "b")},
+		{1, phlaremodel.LabelsFromStrings("job", "c")},
+		{2, phlaremodel.LabelsFromStrings("job", "c")},
+	}
 
-// 	blk := newBlock(t, func() []*testhelper.ProfileBuilder {
-// 		var builders []*testhelper.ProfileBuilder
-// 		for _, p := range in {
-// 			prof := testhelper.NewProfileBuilder(p.timeNanos).
-// 				CPUProfile().ForStacktraceString("foo").AddSamples(1)
-// 			for _, l := range p.labels {
-// 				prof.WithLabels(l.Name, l.Value)
-// 			}
-// 			builders = append(builders, prof)
-// 		}
-// 		return builders
-// 	})
-// 	rows, err := newProfileRowIterator(blk)
-// 	require.NoError(t, err)
-// 	filePath := filepath.Join(t.TempDir(), block.IndexFilename)
-// 	idxw, err := prepareIndexWriter(context.Background(), filePath, []BlockReader{blk})
-// 	require.NoError(t, err)
-// 	it := newSeriesRewriter(rows, idxw)
-// 	// tests that all rows are written to the correct series index
-// 	require.True(t, it.Next())
-// 	require.Equal(t, uint32(0), it.At().row.SeriesIndex())
-// 	require.True(t, it.Next())
-// 	require.Equal(t, uint32(0), it.At().row.SeriesIndex())
-// 	require.True(t, it.Next())
-// 	require.Equal(t, uint32(0), it.At().row.SeriesIndex())
-// 	require.True(t, it.Next())
-// 	require.Equal(t, uint32(1), it.At().row.SeriesIndex())
-// 	require.True(t, it.Next())
-// 	require.Equal(t, uint32(2), it.At().row.SeriesIndex())
-// 	require.True(t, it.Next())
-// 	require.Equal(t, uint32(2), it.At().row.SeriesIndex())
-// 	require.False(t, it.Next())
+	blk := newBlock(t, func() []*testhelper.ProfileBuilder {
+		var builders []*testhelper.ProfileBuilder
+		for _, p := range in {
+			prof := testhelper.NewProfileBuilder(p.timeNanos).
+				CPUProfile().ForStacktraceString("foo").AddSamples(1)
+			for _, l := range p.labels {
+				prof.WithLabels(l.Name, l.Value)
+			}
+			builders = append(builders, prof)
+		}
+		return builders
+	})
+	rows, err := newProfileRowIterator(blk)
+	require.NoError(t, err)
+	path := t.TempDir()
+	filePath := filepath.Join(path, block.IndexFilename)
+	idxw := newIndexRewriter(path)
+	seriesIdx := []uint32{}
+	for rows.Next() {
+		r := rows.At()
+		require.NoError(t, idxw.ReWriteRow(r))
+		seriesIdx = append(seriesIdx, r.row.SeriesIndex())
+	}
+	require.NoError(t, rows.Err())
+	require.NoError(t, rows.Close())
 
-// 	require.NoError(t, it.Err())
-// 	require.NoError(t, it.Close())
-// 	require.NoError(t, idxw.Close())
+	require.Equal(t, []uint32{0, 0, 0, 1, 2, 2}, seriesIdx)
 
-// 	idxr, err := index.NewFileReader(filePath)
-// 	require.NoError(t, err)
-// 	defer idxr.Close()
+	err = idxw.Close(context.Background())
+	require.NoError(t, err)
 
-// 	k, v := index.AllPostingsKey()
-// 	p, err := idxr.Postings(k, nil, v)
-// 	require.NoError(t, err)
+	idxr, err := index.NewFileReader(filePath)
+	require.NoError(t, err)
+	defer idxr.Close()
 
-// 	chunks := make([]index.ChunkMeta, 1)
-// 	var lbs phlaremodel.Labels
+	k, v := index.AllPostingsKey()
+	p, err := idxr.Postings(k, nil, v)
+	require.NoError(t, err)
 
-// 	require.True(t, p.Next())
-// 	fp, err := idxr.Series(p.At(), &lbs, &chunks)
-// 	require.NoError(t, err)
-// 	require.Equal(t, model.Fingerprint(lbs.Hash()), model.Fingerprint(fp))
-// 	require.Equal(t, lbs.WithoutPrivateLabels(), phlaremodel.LabelsFromStrings("job", "a"))
-// 	require.Equal(t, []index.ChunkMeta{{
-// 		SeriesIndex: 0,
-// 		MinTime:     int64(1),
-// 		MaxTime:     int64(3),
-// 	}}, chunks)
+	chunks := make([]index.ChunkMeta, 1)
+	var lbs phlaremodel.Labels
 
-// 	require.True(t, p.Next())
-// 	fp, err = idxr.Series(p.At(), &lbs, &chunks)
-// 	require.NoError(t, err)
-// 	require.Equal(t, model.Fingerprint(lbs.Hash()), model.Fingerprint(fp))
-// 	require.Equal(t, lbs.WithoutPrivateLabels(), phlaremodel.LabelsFromStrings("job", "b"))
-// 	require.Equal(t, []index.ChunkMeta{{
-// 		SeriesIndex: 1,
-// 		MinTime:     int64(2),
-// 		MaxTime:     int64(2),
-// 	}}, chunks)
+	require.True(t, p.Next())
+	fp, err := idxr.Series(p.At(), &lbs, &chunks)
+	require.NoError(t, err)
+	require.Equal(t, model.Fingerprint(lbs.Hash()), model.Fingerprint(fp))
+	require.Equal(t, lbs.WithoutPrivateLabels(), phlaremodel.LabelsFromStrings("job", "a"))
+	require.Equal(t, []index.ChunkMeta{{
+		SeriesIndex: 0,
+		MinTime:     int64(1),
+		MaxTime:     int64(3),
+	}}, chunks)
 
-// 	require.True(t, p.Next())
-// 	fp, err = idxr.Series(p.At(), &lbs, &chunks)
-// 	require.NoError(t, err)
-// 	require.Equal(t, model.Fingerprint(lbs.Hash()), model.Fingerprint(fp))
-// 	require.Equal(t, lbs.WithoutPrivateLabels(), phlaremodel.LabelsFromStrings("job", "c"))
-// 	require.Equal(t, []index.ChunkMeta{{
-// 		SeriesIndex: 2,
-// 		MinTime:     int64(1),
-// 		MaxTime:     int64(2),
-// 	}}, chunks)
-// }
+	require.True(t, p.Next())
+	fp, err = idxr.Series(p.At(), &lbs, &chunks)
+	require.NoError(t, err)
+	require.Equal(t, model.Fingerprint(lbs.Hash()), model.Fingerprint(fp))
+	require.Equal(t, lbs.WithoutPrivateLabels(), phlaremodel.LabelsFromStrings("job", "b"))
+	require.Equal(t, []index.ChunkMeta{{
+		SeriesIndex: 1,
+		MinTime:     int64(2),
+		MaxTime:     int64(2),
+	}}, chunks)
+
+	require.True(t, p.Next())
+	fp, err = idxr.Series(p.At(), &lbs, &chunks)
+	require.NoError(t, err)
+	require.Equal(t, model.Fingerprint(lbs.Hash()), model.Fingerprint(fp))
+	require.Equal(t, lbs.WithoutPrivateLabels(), phlaremodel.LabelsFromStrings("job", "c"))
+	require.Equal(t, []index.ChunkMeta{{
+		SeriesIndex: 2,
+		MinTime:     int64(1),
+		MaxTime:     int64(2),
+	}}, chunks)
+}
 
 func TestFlushMeta(t *testing.T) {
 	b := newBlock(t, func() []*testhelper.ProfileBuilder {

@@ -19,6 +19,7 @@ import (
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
+
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
@@ -62,7 +63,6 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount ui
 	)
 	for i, b := range src {
 		srcMetas[i] = b.Meta()
-		// ulids[i] = b.Meta().ULID.String()
 	}
 
 	outBlocksTime := ulid.Now()
@@ -149,12 +149,12 @@ func newBlockWriter(dst string, meta *block.Meta) (*blockWriter, error) {
 	}, nil
 }
 
-func (bw *blockWriter) WriteRow(r profileRow) (err error) {
-	r, err = bw.indexRewriter.ReWriteRow(r)
+func (bw *blockWriter) WriteRow(r profileRow) error {
+	err := bw.indexRewriter.ReWriteRow(r)
 	if err != nil {
 		return err
 	}
-	r, err = bw.symbolsRewriter.ReWriteRow(r)
+	err = bw.symbolsRewriter.ReWriteRow(r)
 	if err != nil {
 		return err
 	}
@@ -248,7 +248,7 @@ type indexRewriter struct {
 	path string
 }
 
-func (idxRw *indexRewriter) ReWriteRow(r profileRow) (profileRow, error) {
+func (idxRw *indexRewriter) ReWriteRow(r profileRow) error {
 	if idxRw.previousFp != r.fp || len(idxRw.series) == 0 {
 		series := r.labels.Clone()
 		for _, l := range series {
@@ -271,7 +271,7 @@ func (idxRw *indexRewriter) ReWriteRow(r profileRow) (profileRow, error) {
 	}
 	idxRw.chunks[len(idxRw.chunks)-1].MaxTime = r.timeNanos
 	r.row.SetSeriesIndex(idxRw.chunks[len(idxRw.chunks)-1].SeriesIndex)
-	return r, nil
+	return nil
 }
 
 func (idxRw *indexRewriter) NumSeries() uint64 {
@@ -592,7 +592,7 @@ func newSymbolsRewriter(path string) *symbolsRewriter {
 
 func (s *symbolsRewriter) NumSamples() uint64 { return s.numSamples }
 
-func (s *symbolsRewriter) ReWriteRow(profile profileRow) (profileRow, error) {
+func (s *symbolsRewriter) ReWriteRow(profile profileRow) error {
 	var err error
 	profile.row.ForStacktraceIDsValues(func(values []parquet.Value) {
 		s.loadStacktracesID(values)
@@ -611,9 +611,9 @@ func (s *symbolsRewriter) ReWriteRow(profile profileRow) (profileRow, error) {
 		}
 	})
 	if err != nil {
-		return profile, err
+		return err
 	}
-	return profile, nil
+	return nil
 }
 
 func (s *symbolsRewriter) Close() error {
