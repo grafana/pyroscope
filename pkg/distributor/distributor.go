@@ -27,8 +27,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/atomic"
 
-	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
-
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -179,76 +177,26 @@ func (d *Distributor) stopping(_ error) error {
 	return services.StopManagerAndAwaitStopped(context.Background(), d.subservices)
 }
 
-func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
-	req := &distributormodel.PushRequest{
-		Series: make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
-	}
-	for _, grpcSeries := range grpcReq.Msg.Series {
-		series := &distributormodel.ProfileSeries{
-			Labels:  grpcSeries.Labels,
-			Samples: make([]*distributormodel.ProfileSample, 0, len(grpcSeries.Samples)),
-		}
-		for _, grpcSample := range grpcSeries.Samples {
-			profile, err := pprof.RawFromBytes(grpcSample.RawProfile)
-			if err != nil {
-				return nil, connect.NewError(connect.CodeInvalidArgument, err)
-			}
-			sample := &distributormodel.ProfileSample{
-				Profile:    profile,
-				RawProfile: grpcSample.RawProfile,
-				ID:         grpcSample.ID,
-			}
-			req.RawProfileSize += len(grpcSample.RawProfile)
-			series.Samples = append(series.Samples, sample)
-		}
-		req.Series = append(req.Series, series)
-	}
-	return d.pushImpl(ctx, req)
-}
-
-func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
-	if req.RawProfileSize == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("RawProfileSize == 0"))
-	}
-	if req.RawProfileType == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("RawProfileType == \"\""))
-	}
-	return d.pushImpl(ctx, req)
-}
-
-func (d *Distributor) pushImpl(ctx context.Context, req *distributormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
-	//todo defer close all profiles in case of error
+func (d *Distributor) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 	var (
-		keys                       = make([]uint32, 0, len(req.Series))
-		profiles                   = make([]*profileTracker, 0, len(req.Series))
+		keys                       = make([]uint32, 0, len(req.Msg.Series))
+		profiles                   = make([]*profileTracker, 0, len(req.Msg.Series))
 		totalPushUncompressedBytes int64
 		totalProfiles              int64
 	)
 
-	for _, series := range req.Series {
+	for _, series := range req.Msg.Series {
 		serviceName := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
 		if serviceName == "" {
 			series.Labels = append(series.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "unspecified"})
 			sort.Sort(phlaremodel.Labels(series.Labels))
 		}
 	}
-
-	haveRawPprof := req.RawProfileType == ""
-	d.bytesReceivedTotalStats.Inc(int64(req.RawProfileSize))
-	d.bytesReceivedStats.Record(float64(req.RawProfileSize))
-	if !haveRawPprof {
-		// if a single profile contains multiple profile types/names (e.g. jfr) then there is no such thing as
-		// compressed size per profile type as all profile types are compressed once together. So we can not count
-		// compressed bytes per profile type. Instead we count compressed bytes per profile.
-		profName := req.RawProfileType // use "jfr" as profile name
-		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(req.RawProfileSize))
-	}
-
-	for _, series := range req.Series {
+	for _, series := range req.Msg.Series {
 		// include the labels in the size calculation
 		for _, lbs := range series.Labels {
 			totalPushUncompressedBytes += int64(len(lbs.Name))
@@ -259,23 +207,19 @@ func (d *Distributor) pushImpl(ctx context.Context, req *distributormodel.PushRe
 		for _, raw := range series.Samples {
 			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 			d.profileReceivedStats.Inc(1)
-			if haveRawPprof {
-				d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(raw.RawProfile)))
-			}
+			d.bytesReceivedTotalStats.Inc(int64(len(raw.RawProfile)))
+			d.bytesReceivedStats.Record(float64(len(raw.RawProfile)))
 			totalProfiles++
-			p := raw.Profile
-			var decompressedSize int
-			if haveRawPprof {
-				decompressedSize = p.SizeBytes()
-			} else {
-				decompressedSize = p.SizeVT()
+			d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(raw.RawProfile)))
+			p, err := pprof.RawFromBytes(raw.RawProfile)
+			if err != nil {
+				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
-			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize))
+			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(p.SizeBytes()))
 			d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
-			totalPushUncompressedBytes += int64(decompressedSize)
+			totalPushUncompressedBytes += int64(p.SizeBytes())
 
-			if err := validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels); err != nil {
-				//todo this actually discards more if multiple Samples in a Series request
+			if err := validation.ValidateProfile(d.limits, tenantID, p.Profile, p.SizeBytes(), phlaremodel.Labels(series.Labels)); err != nil {
 				validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
 				validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
 				p.Close()
@@ -306,7 +250,7 @@ func (d *Distributor) pushImpl(ctx context.Context, req *distributormodel.PushRe
 	}
 
 	// validate the request
-	for _, series := range req.Series {
+	for _, series := range req.Msg.Series {
 		if err := validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
 			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
 			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
@@ -436,17 +380,7 @@ func (d *Distributor) sendProfilesErr(ctx context.Context, ingester ring.Instanc
 	})
 
 	for _, p := range profileTrackers {
-		series := &pushv1.RawProfileSeries{
-			Labels:  p.profile.Labels,
-			Samples: make([]*pushv1.RawSample, 0, len(p.profile.Samples)),
-		}
-		for _, sample := range p.profile.Samples {
-			series.Samples = append(series.Samples, &pushv1.RawSample{
-				RawProfile: sample.RawProfile,
-				ID:         sample.ID,
-			})
-		}
-		req.Msg.Series = append(req.Msg.Series, series)
+		req.Msg.Series = append(req.Msg.Series, p.profile)
 	}
 
 	_, err = c.(PushClient).Push(ctx, req)
@@ -483,7 +417,7 @@ func (d *Distributor) HealthyInstancesCount() int {
 }
 
 type profileTracker struct {
-	profile     *distributormodel.ProfileSeries
+	profile     *pushv1.RawProfileSeries
 	minSuccess  int
 	maxFailures int
 	succeeded   atomic.Int32

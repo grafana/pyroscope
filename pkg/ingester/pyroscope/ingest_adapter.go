@@ -1,13 +1,13 @@
 package pyroscope
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/grafana/pyroscope/pkg/distributor/model"
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/grafana/pyroscope/pkg/distributor/model"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
@@ -25,7 +25,6 @@ import (
 
 type PushService interface {
 	Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
-	PushParsed(ctx context.Context, req *model.PushRequest) (*connect.Response[pushv1.PushResponse], error)
 }
 
 func NewPyroscopeIngestHandler(svc PushService, logger log.Logger) http.Handler {
@@ -42,12 +41,7 @@ type pyroscopeIngesterAdapter struct {
 func (p *pyroscopeIngesterAdapter) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
 	pprofable, ok := in.Profile.(ingestion.ParseableToPprof)
 	if ok {
-		profiles, err := pprofable.ParseToPprof(ctx, in.Metadata)
-		if err != nil {
-			return err
-		}
-		_, err = p.svc.PushParsed(ctx, profiles)
-		return err
+		return p.parseToPprof(ctx, in, pprofable)
 	} else {
 		return in.Profile.Parse(ctx, p, p, in.Metadata)
 	}
@@ -162,6 +156,55 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 
 func (p *pyroscopeIngesterAdapter) Evaluate(input *storage.PutInput) (storage.SampleObserver, bool) {
 	return nil, false // noop
+}
+
+func (p *pyroscopeIngesterAdapter) parseToPprof(ctx context.Context, in *ingestion.IngestInput, pprofable ingestion.ParseableToPprof) error {
+	plainReq, err := pprofable.ParseToPprof(ctx, in.Metadata)
+	if err != nil {
+		return fmt.Errorf("parsing IngestInput-pprof failed %w", err)
+	}
+	grpcReq, err := p.convertToGRPC(plainReq)
+	if err != nil {
+		return fmt.Errorf("converting IngestInput-pprof failed %w", err)
+	}
+	_, err = p.svc.Push(ctx, grpcReq)
+	if err != nil {
+		return fmt.Errorf("pushing IngestInput-pprof failed")
+	}
+	return nil
+}
+
+func (p *pyroscopeIngesterAdapter) convertToGRPC(profiles *model.PushRequest) (*connect.Request[pushv1.PushRequest], error) {
+	defer func() {
+		for _, series := range profiles.Series {
+			for _, sample := range series.Samples {
+				sample.Profile.Close()
+			}
+		}
+	}()
+	req := &pushv1.PushRequest{
+		Series: make([]*pushv1.RawProfileSeries, len(profiles.Series)),
+	}
+	for i, series := range profiles.Series {
+		grpcSeries := &pushv1.RawProfileSeries{
+			Labels:  make([]*typesv1.LabelPair, len(series.Labels)),
+			Samples: make([]*pushv1.RawSample, len(series.Samples)),
+		}
+		copy(grpcSeries.Labels, series.Labels)
+
+		for j, sample := range series.Samples {
+			buf := bytes.NewBuffer(nil)
+			_, err := sample.Profile.WriteTo(buf)
+			if err != nil {
+				return nil, fmt.Errorf("failed to serialize pprof to bytes for distributor push %w", err)
+			}
+			grpcSeries.Samples[j] = &pushv1.RawSample{
+				RawProfile: buf.Bytes(),
+			}
+		}
+		req.Series[i] = grpcSeries
+	}
+	return connect.NewRequest(req), nil
 }
 
 func convertMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app string, err error) {
