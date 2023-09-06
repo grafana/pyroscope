@@ -49,6 +49,7 @@
 | pyroscope.podSecurityContext.fsGroup | int | `10001` |  |
 | pyroscope.podSecurityContext.runAsNonRoot | bool | `true` |  |
 | pyroscope.podSecurityContext.runAsUser | int | `10001` |  |
+| pyroscope.rbac.create | bool | `true` |  |
 | pyroscope.replicaCount | int | `1` |  |
 | pyroscope.resources | object | `{}` |  |
 | pyroscope.securityContext | object | `{}` |  |

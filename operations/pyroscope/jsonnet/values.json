@@ -99,6 +99,9 @@
       "runAsNonRoot": true,
       "runAsUser": 10001
     },
+    "rbac": {
+      "create": true
+    },
     "replicaCount": 1,
     "resources": {},
     "securityContext": {},
