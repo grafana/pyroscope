@@ -2,6 +2,8 @@ package phlaredb
 
 import (
 	"context"
+	"crypto/rand"
+	"fmt"
 	"io/fs"
 	"math"
 	"os"
@@ -9,13 +11,14 @@ import (
 	"sort"
 
 	"github.com/oklog/ulid"
-	"github.com/opentracing/opentracing-go"
 	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb"
 
+	"github.com/grafana/dskit/multierror"
+	"github.com/grafana/dskit/runutil"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
@@ -35,100 +38,275 @@ type BlockReader interface {
 }
 
 func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
-	srcMetas := make([]block.Meta, len(src))
-	ulids := make([]string, len(src))
+	metas, err := CompactWithShard(ctx, src, 1, dst)
+	if err != nil {
+		return block.Meta{}, err
+	}
+	return metas[0], nil
+}
 
+func CompactWithShard(ctx context.Context, src []BlockReader, shardsCount uint64, dst string) (
+	[]block.Meta, error,
+) {
+	if shardsCount == 0 {
+		shardsCount = 1
+	}
+	if len(src) <= 1 && shardsCount == 1 {
+		return nil, errors.New("not enough blocks to compact")
+	}
+	var (
+		writers  = make([]*blockWriter, shardsCount)
+		shardBy  = shardByFingerprint
+		srcMetas = make([]block.Meta, len(src))
+		err      error
+	)
 	for i, b := range src {
 		srcMetas[i] = b.Meta()
-		ulids[i] = b.Meta().ULID.String()
+		// ulids[i] = b.Meta().ULID.String()
 	}
-	meta = compactMetas(srcMetas...)
-	blockPath := filepath.Join(dst, meta.ULID.String())
-	indexPath := filepath.Join(blockPath, block.IndexFilename)
-	profilePath := filepath.Join(blockPath, (&schemav1.ProfilePersister{}).Name()+block.ParquetSuffix)
 
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "Compact")
-	defer func() {
-		// todo: context propagation is not working through objstore
-		// This is because the BlockReader has no context.
-		sp.SetTag("src", ulids)
-		sp.SetTag("block_id", meta.ULID.String())
+	outBlocksTime := ulid.Now()
+	outMeta := compactMetas(srcMetas...)
+
+	// create the shards writers
+	for i := range writers {
+		meta := outMeta.Clone()
+		meta.ULID = ulid.MustNew(outBlocksTime, rand.Reader)
+		writers[i], err = newBlockWriter(dst, meta)
 		if err != nil {
-			sp.SetTag("error", err)
+			return nil, fmt.Errorf("create block writer: %w", err)
 		}
-		sp.Finish()
-	}()
-
-	if len(src) <= 1 {
-		return block.Meta{}, errors.New("not enough blocks to compact")
-	}
-	if err := os.MkdirAll(blockPath, 0o777); err != nil {
-		return block.Meta{}, err
-	}
-
-	indexw, err := prepareIndexWriter(ctx, indexPath, src)
-	if err != nil {
-		return block.Meta{}, err
-	}
-
-	profileFile, err := os.OpenFile(profilePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
-	if err != nil {
-		return block.Meta{}, err
-	}
-
-	profileWriter := newProfileWriter(profileFile)
-	symw := symdb.NewSymDB(symdb.DefaultConfig().
-		WithDirectory(filepath.Join(blockPath, symdb.DefaultDirName)).
-		WithParquetConfig(symdb.ParquetConfig{
-			MaxBufferRowCount: defaultParquetConfig.MaxBufferRowCount,
-		}))
-
-	if err != nil {
-		return block.Meta{}, err
 	}
 
 	rowsIt, err := newMergeRowProfileIterator(src)
 	if err != nil {
-		return block.Meta{}, err
+		return nil, err
 	}
-	seriesRewriter := newSeriesRewriter(rowsIt, indexw)
-	symRewriter := newSymbolsRewriter(seriesRewriter, src, symw)
-	reader := phlareparquet.NewIteratorRowReader(newRowsIterator(symRewriter))
+	defer runutil.CloseWithLogOnErr(util.Logger, rowsIt, "close rows iterator")
 
-	total, _, err := phlareparquet.CopyAsRowGroups(profileWriter, reader, defaultParquetConfig.MaxBufferRowCount)
+	// iterate and splits the rows into series.
+	for rowsIt.Next() {
+		r := rowsIt.At()
+		shard := int(shardBy(r, shardsCount))
+		if err := writers[shard].WriteRow(r); err != nil {
+			return nil, err
+		}
+	}
+	if err := rowsIt.Err(); err != nil {
+		return nil, err
+	}
+
+	// Close all blocks
+	errs := multierror.New()
+	for _, w := range writers {
+		if err := w.Close(ctx); err != nil {
+			errs.Add(err)
+		}
+	}
+
+	out := make([]block.Meta, 0, len(writers))
+	for _, w := range writers {
+		if w.meta.Stats.NumSamples > 0 {
+			out = append(out, *w.meta)
+		}
+	}
+
+	// Returns all Metas
+	return out, errs.Err()
+}
+
+var shardByFingerprint = func(r profileRow, shardsCount uint64) uint64 {
+	return uint64(r.fp) % shardsCount
+}
+
+type blockWriter struct {
+	indexRewriter   *indexRewriter
+	symbolsRewriter *symbolsRewriter
+	profilesWriter  *profilesWriter
+	path            string
+	meta            *block.Meta
+	totalProfiles   uint64
+}
+
+func newBlockWriter(dst string, meta *block.Meta) (*blockWriter, error) {
+	blockPath := filepath.Join(dst, meta.ULID.String())
+
+	if err := os.MkdirAll(blockPath, 0o777); err != nil {
+		return nil, err
+	}
+
+	profileWriter, err := newProfileWriter(blockPath)
 	if err != nil {
-		return block.Meta{}, err
+		return nil, err
 	}
 
-	if err = symRewriter.Close(); err != nil {
-		return block.Meta{}, err
-	}
+	return &blockWriter{
+		indexRewriter:   newIndexRewriter(blockPath),
+		symbolsRewriter: newSymbolsRewriter(blockPath),
+		profilesWriter:  profileWriter,
+		path:            blockPath,
+		meta:            meta,
+	}, nil
+}
 
-	// flush the index file.
-	if err = indexw.Close(); err != nil {
-		return block.Meta{}, err
-	}
-
-	if err = profileWriter.Close(); err != nil {
-		return block.Meta{}, err
-	}
-	if err = symw.Flush(); err != nil {
-		return block.Meta{}, err
-	}
-
-	metaFiles, err := metaFilesFromDir(blockPath)
+func (bw *blockWriter) WriteRow(r profileRow) (err error) {
+	r, err = bw.indexRewriter.ReWriteRow(r)
 	if err != nil {
-		return block.Meta{}, err
+		return err
 	}
-	meta.Files = metaFiles
-	meta.Stats.NumProfiles = total
-	meta.Stats.NumSeries = seriesRewriter.NumSeries()
-	meta.Stats.NumSamples = symRewriter.NumSamples()
-	meta.Compaction.Deletable = meta.Stats.NumSamples == 0
-	if _, err := meta.WriteToFile(util.Logger, blockPath); err != nil {
-		return block.Meta{}, err
+	r, err = bw.symbolsRewriter.ReWriteRow(r)
+	if err != nil {
+		return err
 	}
-	return meta, nil
+
+	if err := bw.profilesWriter.WriteRow(r); err != nil {
+		return err
+	}
+	bw.totalProfiles++
+	return nil
+}
+
+func (bw *blockWriter) Close(ctx context.Context) error {
+	if err := bw.indexRewriter.Close(ctx); err != nil {
+		return err
+	}
+	if err := bw.symbolsRewriter.Close(); err != nil {
+		return err
+	}
+	if err := bw.profilesWriter.Close(); err != nil {
+		return err
+	}
+	metaFiles, err := metaFilesFromDir(bw.path)
+	if err != nil {
+		return err
+	}
+	bw.meta.Files = metaFiles
+	bw.meta.Stats.NumProfiles = bw.totalProfiles
+	bw.meta.Stats.NumSeries = bw.indexRewriter.NumSeries()
+	bw.meta.Stats.NumSamples = bw.symbolsRewriter.NumSamples()
+	bw.meta.Compaction.Deletable = bw.totalProfiles == 0
+	if _, err := bw.meta.WriteToFile(util.Logger, bw.path); err != nil {
+		return err
+	}
+	return nil
+}
+
+type profilesWriter struct {
+	*parquet.GenericWriter[*schemav1.Profile]
+	file *os.File
+
+	buf []parquet.Row
+}
+
+func newProfileWriter(path string) (*profilesWriter, error) {
+	profilePath := filepath.Join(path, (&schemav1.ProfilePersister{}).Name()+block.ParquetSuffix)
+	profileFile, err := os.OpenFile(profilePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return nil, err
+	}
+	return &profilesWriter{
+		GenericWriter: newParquetProfileWriter(profileFile, parquet.MaxRowsPerRowGroup(int64(defaultParquetConfig.MaxBufferRowCount))),
+		file:          profileFile,
+		buf:           make([]parquet.Row, 1),
+	}, nil
+}
+
+func (p *profilesWriter) WriteRow(r profileRow) error {
+	p.buf[0] = parquet.Row(r.row)
+	_, err := p.GenericWriter.WriteRows(p.buf)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *profilesWriter) Close() error {
+	err := p.GenericWriter.Close()
+	if err != nil {
+		return err
+	}
+	return p.file.Close()
+}
+
+func newIndexRewriter(path string) *indexRewriter {
+	return &indexRewriter{
+		symbols: make(map[string]struct{}),
+		path:    path,
+	}
+}
+
+type indexRewriter struct {
+	series []struct {
+		labels phlaremodel.Labels
+		fp     model.Fingerprint
+	}
+	symbols map[string]struct{}
+	chunks  []index.ChunkMeta // one chunk per series
+
+	previousFp model.Fingerprint
+
+	path string
+}
+
+func (idxRw *indexRewriter) ReWriteRow(r profileRow) (profileRow, error) {
+	if idxRw.previousFp != r.fp || len(idxRw.series) == 0 {
+		series := r.labels.Clone()
+		for _, l := range series {
+			idxRw.symbols[l.Name] = struct{}{}
+			idxRw.symbols[l.Value] = struct{}{}
+		}
+		idxRw.series = append(idxRw.series, struct {
+			labels phlaremodel.Labels
+			fp     model.Fingerprint
+		}{
+			labels: series,
+			fp:     r.fp,
+		})
+		idxRw.chunks = append(idxRw.chunks, index.ChunkMeta{
+			MinTime:     r.timeNanos,
+			MaxTime:     r.timeNanos,
+			SeriesIndex: uint32(len(idxRw.series) - 1),
+		})
+		idxRw.previousFp = r.fp
+	}
+	idxRw.chunks[len(idxRw.chunks)-1].MaxTime = r.timeNanos
+	r.row.SetSeriesIndex(idxRw.chunks[len(idxRw.chunks)-1].SeriesIndex)
+	return r, nil
+}
+
+func (idxRw *indexRewriter) NumSeries() uint64 {
+	return uint64(len(idxRw.series))
+}
+
+// Close writes the index to given folder.
+func (idxRw *indexRewriter) Close(ctx context.Context) error {
+	indexw, err := index.NewWriter(ctx, filepath.Join(idxRw.path, block.IndexFilename))
+	if err != nil {
+		return err
+	}
+
+	// Sort symbols
+	symbols := make([]string, 0, len(idxRw.symbols))
+	for s := range idxRw.symbols {
+		symbols = append(symbols, s)
+	}
+	sort.Strings(symbols)
+
+	// Add symbols
+	for _, symbol := range symbols {
+		if err := indexw.AddSymbol(symbol); err != nil {
+			return err
+		}
+	}
+
+	// Add Series
+	for i, series := range idxRw.series {
+		if err := indexw.AddSeries(storage.SeriesRef(i), series.labels, series.fp, idxRw.chunks[i]); err != nil {
+			return err
+		}
+	}
+
+	return indexw.Close()
 }
 
 // metaFilesFromDir returns a list of block files description from a directory.
@@ -370,82 +548,6 @@ func newMergeRowProfileIterator(src []BlockReader) (iter.Iterator[profileRow], e
 	}, nil
 }
 
-type seriesRewriter struct {
-	iter.Iterator[profileRow]
-
-	indexw *index.Writer
-
-	seriesRef        storage.SeriesRef
-	labels           phlaremodel.Labels
-	previousFp       model.Fingerprint
-	currentChunkMeta index.ChunkMeta
-	err              error
-
-	numSeries uint64
-	done      bool
-}
-
-func newSeriesRewriter(it iter.Iterator[profileRow], indexw *index.Writer) *seriesRewriter {
-	return &seriesRewriter{
-		Iterator: it,
-		indexw:   indexw,
-	}
-}
-
-func (s *seriesRewriter) NumSeries() uint64 {
-	return s.numSeries
-}
-
-func (s *seriesRewriter) Next() bool {
-	if !s.Iterator.Next() {
-		if s.done {
-			return false
-		}
-		s.done = true
-		if s.previousFp != 0 {
-			s.currentChunkMeta.SeriesIndex = uint32(s.seriesRef) - 1
-			if err := s.indexw.AddSeries(s.seriesRef-1, s.labels, s.previousFp, s.currentChunkMeta); err != nil {
-				s.err = err
-				return false
-			}
-			s.numSeries++
-		}
-		return false
-	}
-	currentProfile := s.Iterator.At()
-	if s.previousFp != currentProfile.fp {
-		if s.previousFp != 0 {
-			s.currentChunkMeta.SeriesIndex = uint32(s.seriesRef) - 1
-			if err := s.indexw.AddSeries(s.seriesRef-1, s.labels, s.previousFp, s.currentChunkMeta); err != nil {
-				s.err = err
-				return false
-			}
-			s.numSeries++
-		}
-		s.seriesRef++
-		s.labels = currentProfile.labels.Clone()
-		s.previousFp = currentProfile.fp
-		s.currentChunkMeta.MinTime = currentProfile.timeNanos
-	}
-	s.currentChunkMeta.MaxTime = currentProfile.timeNanos
-	currentProfile.row.SetSeriesIndex(uint32(s.seriesRef - 1))
-	return true
-}
-
-type rowsIterator struct {
-	iter.Iterator[profileRow]
-}
-
-func newRowsIterator(it iter.Iterator[profileRow]) *rowsIterator {
-	return &rowsIterator{
-		Iterator: it,
-	}
-}
-
-func (r *rowsIterator) At() parquet.Row {
-	return parquet.Row(r.Iterator.At().row)
-}
-
 type dedupeProfileRowIterator struct {
 	iter.Iterator[profileRow]
 
@@ -469,73 +571,36 @@ func (it *dedupeProfileRowIterator) Next() bool {
 	}
 }
 
-func prepareIndexWriter(ctx context.Context, path string, readers []BlockReader) (*index.Writer, error) {
-	var symbols index.StringIter
-	indexw, err := index.NewWriter(ctx, path)
-	if err != nil {
-		return nil, err
-	}
-	for i, r := range readers {
-		if i == 0 {
-			symbols = r.Index().Symbols()
-		}
-		symbols = tsdb.NewMergedStringIter(symbols, r.Index().Symbols())
-	}
-
-	for symbols.Next() {
-		if err := indexw.AddSymbol(symbols.At()); err != nil {
-			return nil, errors.Wrap(err, "add symbol")
-		}
-	}
-	if symbols.Err() != nil {
-		return nil, errors.Wrap(symbols.Err(), "next symbol")
-	}
-
-	return indexw, nil
-}
-
 type symbolsRewriter struct {
-	profiles    iter.Iterator[profileRow]
 	rewriters   map[BlockReader]*symdb.Rewriter
+	w           *symdb.SymDB
 	stacktraces []uint32
-	err         error
 
 	numSamples uint64
 }
 
-func newSymbolsRewriter(it iter.Iterator[profileRow], blocks []BlockReader, w *symdb.SymDB) *symbolsRewriter {
-	sr := symbolsRewriter{
-		profiles:  it,
-		rewriters: make(map[BlockReader]*symdb.Rewriter, len(blocks)),
+func newSymbolsRewriter(path string) *symbolsRewriter {
+	return &symbolsRewriter{
+		w: symdb.NewSymDB(symdb.DefaultConfig().
+			WithDirectory(filepath.Join(path, symdb.DefaultDirName)).
+			WithParquetConfig(symdb.ParquetConfig{
+				MaxBufferRowCount: defaultParquetConfig.MaxBufferRowCount,
+			})),
+		rewriters: make(map[BlockReader]*symdb.Rewriter),
 	}
-	for _, r := range blocks {
-		sr.rewriters[r] = symdb.NewRewriter(w, r.Symbols())
-	}
-	return &sr
 }
 
 func (s *symbolsRewriter) NumSamples() uint64 { return s.numSamples }
 
-func (s *symbolsRewriter) At() profileRow { return s.profiles.At() }
-
-func (s *symbolsRewriter) Close() error { return s.profiles.Close() }
-
-func (s *symbolsRewriter) Err() error {
-	if s.err != nil {
-		return s.err
-	}
-	return s.profiles.Err()
-}
-
-func (s *symbolsRewriter) Next() bool {
-	if !s.profiles.Next() {
-		return false
-	}
+func (s *symbolsRewriter) ReWriteRow(profile profileRow) (profileRow, error) {
 	var err error
-	profile := s.profiles.At()
 	profile.row.ForStacktraceIDsValues(func(values []parquet.Value) {
 		s.loadStacktracesID(values)
-		r := s.rewriters[profile.blockReader]
+		r, ok := s.rewriters[profile.blockReader]
+		if !ok {
+			r = symdb.NewRewriter(s.w, profile.blockReader.Symbols())
+			s.rewriters[profile.blockReader] = r
+		}
 		if err = r.Rewrite(profile.row.StacktracePartitionID(), s.stacktraces); err != nil {
 			return
 		}
@@ -546,10 +611,13 @@ func (s *symbolsRewriter) Next() bool {
 		}
 	})
 	if err != nil {
-		s.err = err
-		return false
+		return profile, err
 	}
-	return true
+	return profile, nil
+}
+
+func (s *symbolsRewriter) Close() error {
+	return s.w.Flush()
 }
 
 func (s *symbolsRewriter) loadStacktracesID(values []parquet.Value) {
