@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/grafana/pyroscope/pkg/distributor/model"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/grafana/pyroscope/pkg/distributor/model"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"

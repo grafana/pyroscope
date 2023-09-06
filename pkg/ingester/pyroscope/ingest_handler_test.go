@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/grafana/pyroscope/pkg/pprof"
 	"mime/multipart"
 	"net/http/httptest"
 	"os"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/grafana/pyroscope/pkg/pprof"
 
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 
