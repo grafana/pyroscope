@@ -13,8 +13,6 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
-//todo move out of testhelper and leave testhelper functions here
-
 type ProfileBuilder struct {
 	*profilev1.Profile
 	strings map[string]int

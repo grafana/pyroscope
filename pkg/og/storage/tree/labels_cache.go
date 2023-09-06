@@ -14,8 +14,8 @@ func NewLabelsCache[T any](factory func() *T) LabelsCache[T] {
 }
 
 type LabelsCacheEntry[T any] struct {
-	Labels //todo use the labels in the builder
-	Value  *T
+	Labels
+	Value *T
 }
 
 func NewCacheEntry[T any](l Labels) *LabelsCacheEntry[T] {
