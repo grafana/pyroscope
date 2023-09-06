@@ -1,8 +1,9 @@
 package jfr
 
 import (
-	"github.com/grafana/pyroscope/pkg/distributor/model"
 	"strings"
+
+	"github.com/grafana/pyroscope/pkg/distributor/model"
 
 	"github.com/grafana/jfr-parser/parser"
 	"github.com/grafana/jfr-parser/parser/types"
@@ -120,9 +121,6 @@ func (b *jfrPprofBuilders) addStacktrace(sampleType int64, contextID uint64, ref
 
 func (b *jfrPprofBuilders) addStacktraceImpl(sampleType int64, lwh labelsWithHash, ref types.StackTraceRef, values []int64) {
 	e := b.cache.GetOrCreateTreeByHash(sampleType, lwh.Labels, lwh.Hash)
-	if e.Value == nil {
-		e.Value = testhelper.NewProfileBuilderWithLabels(0, nil)
-	}
 	st := b.parser.GetStacktrace(ref)
 	if st == nil {
 		return

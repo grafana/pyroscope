@@ -18,23 +18,24 @@ type LabelsCacheEntry[T any] struct {
 	Value *T
 }
 
-func NewCacheEntry[T any](l Labels) *LabelsCacheEntry[T] {
+func (c *LabelsCache[T]) NewCacheEntry(l Labels) *LabelsCacheEntry[T] {
 	return &LabelsCacheEntry[T]{
 		Labels: CopyLabels(l),
+		Value:  c.Factory(),
 	}
 }
 
 func (c *LabelsCache[T]) GetOrCreateTree(sampleType int64, l Labels) *LabelsCacheEntry[T] {
 	p, ok := c.Map[sampleType]
 	if !ok {
-		e := NewCacheEntry[T](l)
+		e := c.NewCacheEntry(l)
 		c.Map[sampleType] = map[uint64]*LabelsCacheEntry[T]{l.Hash(): e}
 		return e
 	}
 	h := l.Hash()
 	e, found := p[h]
 	if !found {
-		e = NewCacheEntry[T](l)
+		e = c.NewCacheEntry(l)
 		p[h] = e
 	}
 	return e
@@ -43,13 +44,13 @@ func (c *LabelsCache[T]) GetOrCreateTree(sampleType int64, l Labels) *LabelsCach
 func (c *LabelsCache[T]) GetOrCreateTreeByHash(sampleType int64, l Labels, h uint64) *LabelsCacheEntry[T] {
 	p, ok := c.Map[sampleType]
 	if !ok {
-		e := NewCacheEntry[T](l)
+		e := c.NewCacheEntry(l)
 		c.Map[sampleType] = map[uint64]*LabelsCacheEntry[T]{h: e}
 		return e
 	}
 	e, found := p[h]
 	if !found {
-		e = NewCacheEntry[T](l)
+		e = c.NewCacheEntry(l)
 		p[h] = e
 	}
 	return e
