@@ -9,12 +9,9 @@ metadata:
   labels:
     {{- include "pyroscope.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
-    {{- if $cfg.labels }}
-      {{- toYaml $cfg.labels | nindent 4 }}
-    {{- end }}
-  {{- if $cfg.annotations }}
+  {{- if $cfg.serviceAnnotations }}
   annotations:
-    {{- toYaml $cfg.annotations | nindent 4 }}
+    {{- toYaml $cfg.serviceAnnotations | nindent 4 }}
   {{- end }}
 spec:
   type: {{ .Values.pyroscope.service.type }}
