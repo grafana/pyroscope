@@ -488,7 +488,7 @@ func (h *Head) flush(ctx context.Context) error {
 	// It must be guaranteed that no new inserts will happen
 	// after the call start.
 	h.inFlightProfiles.Wait()
-	if len(h.profiles.slice) == 0 {
+	if h.profiles.index.totalProfiles.Load() == 0 {
 		level.Info(h.logger).Log("msg", "head empty - no block written")
 		return os.RemoveAll(h.headPath)
 	}
