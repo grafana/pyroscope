@@ -5,12 +5,12 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	phlaremodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"io"
 	"mime/multipart"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/util/form"
@@ -23,7 +23,7 @@ type RawProfile struct {
 
 func (p *RawProfile) Bytes() ([]byte, error) { return p.RawData, nil }
 
-func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
+func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata) (*phlaremodel.PushRequest, error) {
 	input := storage.PutInput{
 		StartTime:       md.StartTime,
 		EndTime:         md.EndTime,
@@ -35,15 +35,26 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 	}
 
 	labels := new(LabelsSnapshot)
+	rawSize := len(p.RawData)
 	var r = p.RawData
 	var err error
 	if strings.Contains(p.FormDataContentType, "multipart/form-data") {
 		if r, labels, err = loadJFRFromForm(r, p.FormDataContentType); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return ParseJFR(ctx, putter, r, &input, labels)
+	res, err := ParseJFR(r, &input, labels)
+	if err != nil {
+		return nil, err
+	}
+	res.RawProfileSize = rawSize
+	res.RawProfileType = "jfr"
+	return res, err
+}
+
+func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
+	return fmt.Errorf("parsing to Tree/storage.Putter is no longer supported")
 }
 
 func (p *RawProfile) ContentType() string {

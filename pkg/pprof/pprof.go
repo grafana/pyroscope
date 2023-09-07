@@ -69,6 +69,11 @@ func (r *gzipReader) openBytes(input []byte) (io.Reader, error) {
 	return r.gzip, nil
 }
 
+func RawFromProto(pbp *profilev1.Profile) *Profile {
+	buf := bufPool.Get().(*bytes.Buffer)
+	return &Profile{Profile: pbp, buf: buf}
+}
+
 // Read RawProfile from bytes
 func RawFromBytes(input []byte) (_ *Profile, err error) {
 	gzipReader := gzipReaderPool.Get().(*gzipReader)

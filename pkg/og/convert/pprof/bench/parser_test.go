@@ -30,8 +30,8 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 )
 
-const benchmarkCorpus = "../../../../../pprof-testdata"
-const compareCorpus = "../../../../../pprof-testdata"
+const benchmarkCorpus = "../../../../../../pprof-testdata"
+const compareCorpus = "../../../../../../pprof-testdata"
 
 const pprofSmall = benchmarkCorpus +
 	"/2022-10-08T00:44:10Z-55903298-d296-4730-a28d-9dcc7c5e25d6.txt"
@@ -309,7 +309,7 @@ type testcase struct {
 func readCorpus(dir string, doDecompress bool) []*testcase {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
-		print(err)
+		fmt.Println(err)
 		return nil
 	}
 	var res []*testcase
