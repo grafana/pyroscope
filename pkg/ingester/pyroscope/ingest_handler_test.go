@@ -149,8 +149,6 @@ func TestIngestJFR(b *testing.T) {
 		td := jfr
 		b.Run(td.jfr, func(t *testing.T) {
 			src := testdataDir + "/" + td.jfr
-			dir, _ := os.Getwd()
-			_ = dir
 			jfr, err := bench.ReadGzipFile(src)
 			require.NoError(t, err)
 			var labels []byte
@@ -175,6 +173,28 @@ func TestIngestJFR(b *testing.T) {
 		})
 	}
 
+}
+
+func TestCorruptedJFR422(t *testing.T) {
+	l := log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr))
+
+	src := testdataDir + "/" + "cortex-dev-01__kafka-0__cpu__0.jfr.gz"
+	jfr, err := bench.ReadGzipFile(src)
+	require.NoError(t, err)
+
+	jfr[0] = 0 // corrupt jfr
+
+	svc := &MockPushService{Keep: true, T: t}
+	h := NewPyroscopeIngestHandler(svc, l)
+
+	res := httptest.NewRecorder()
+	body, ct := createRequestBody(t, jfr, nil)
+
+	req := httptest.NewRequest("POST", "/ingest?name=javaapp&format=jfr", bytes.NewReader(body))
+	req.Header.Set("Content-Type", ct)
+	h.ServeHTTP(res, req)
+
+	require.Equal(t, 422, res.Code)
 }
 
 func createRequestBody(t *testing.T, jfr, labels []byte) ([]byte, string) {
