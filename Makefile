@@ -365,10 +365,10 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm dependency update ./operations/pyroscope/helm/pyroscope/
 	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/
 	mkdir -p ./operations/pyroscope/helm/pyroscope/rendered/
-	$(BIN)/helm template --kube-version "1.22.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ \
+	$(BIN)/helm template -n default --kube-version "1.22.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.22.0
-	$(BIN)/helm template --kube-version "1.22.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
+	$(BIN)/helm template -n default --kube-version "1.22.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.22.0
 	cat operations/pyroscope/helm/pyroscope/values-micro-services.yaml \

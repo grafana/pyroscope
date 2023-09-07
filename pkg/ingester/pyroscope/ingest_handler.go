@@ -60,6 +60,7 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var connectErr *connect.Error
 		if ok := errors.As(err, &connectErr); ok {
 			w.WriteHeader(int(connectgrpc.CodeToHTTP(connectErr.Code())))
+			_, _ = w.Write([]byte(connectErr.Message()))
 			return
 		}
 

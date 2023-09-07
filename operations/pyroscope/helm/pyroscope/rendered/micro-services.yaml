@@ -45,10 +45,10 @@ kind: ServiceAccount
 metadata:
   name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: agent-0.22.0
+    helm.sh/chart: agent-0.23.0
     app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v0.36.0"
+    app.kubernetes.io/version: "v0.36.1"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: pyroscope/charts/minio/templates/serviceaccount.yaml
@@ -1110,10 +1110,10 @@ kind: ClusterRole
 metadata:
   name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: agent-0.22.0
+    helm.sh/chart: agent-0.23.0
     app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v0.36.0"
+    app.kubernetes.io/version: "v0.36.1"
     app.kubernetes.io/managed-by: Helm
 rules:
   # Rules which allow discovery.kubernetes to function.
@@ -1185,7 +1185,7 @@ rules:
       - list
       - watch
 ---
-# Source: pyroscope/templates/clusterrole.yaml
+# Source: pyroscope/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -1217,10 +1217,10 @@ kind: ClusterRoleBinding
 metadata:
   name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: agent-0.22.0
+    helm.sh/chart: agent-0.23.0
     app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v0.36.0"
+    app.kubernetes.io/version: "v0.36.1"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -1231,7 +1231,7 @@ subjects:
     name: pyroscope-dev-agent
     namespace: default
 ---
-# Source: pyroscope/templates/clusterrolebinding.yaml
+# Source: pyroscope/templates/rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -1247,9 +1247,9 @@ roleRef:
   kind: ClusterRole
   name: default-pyroscope-dev
 subjects:
-- kind: ServiceAccount
-  name: pyroscope-dev
-  namespace: default
+  - kind: ServiceAccount
+    name: pyroscope-dev
+    namespace: default
 ---
 # Source: pyroscope/charts/agent/templates/cluster_service.yaml
 apiVersion: v1
@@ -1257,10 +1257,10 @@ kind: Service
 metadata:
   name: pyroscope-dev-agent-cluster
   labels:
-    helm.sh/chart: agent-0.22.0
+    helm.sh/chart: agent-0.23.0
     app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v0.36.0"
+    app.kubernetes.io/version: "v0.36.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -1286,10 +1286,10 @@ kind: Service
 metadata:
   name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: agent-0.22.0
+    helm.sh/chart: agent-0.23.0
     app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v0.36.0"
+    app.kubernetes.io/version: "v0.36.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -2056,10 +2056,10 @@ kind: StatefulSet
 metadata:
   name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: agent-0.22.0
+    helm.sh/chart: agent-0.23.0
     app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "v0.36.0"
+    app.kubernetes.io/version: "v0.36.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
@@ -2085,7 +2085,7 @@ spec:
       serviceAccountName: pyroscope-dev-agent
       containers:
         - name: grafana-agent
-          image: docker.io/grafana/agent:v0.36.0
+          image: docker.io/grafana/agent:v0.36.1
           imagePullPolicy: IfNotPresent
           args:
             - run

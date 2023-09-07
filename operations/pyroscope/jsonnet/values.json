@@ -72,6 +72,7 @@
       "tag": "1.0.0"
     },
     "imagePullSecrets": [],
+    "initContainers": [],
     "memberlist": {
       "port": 7946,
       "port_name": "memberlist"
@@ -98,6 +99,9 @@
       "fsGroup": 10001,
       "runAsNonRoot": true,
       "runAsUser": 10001
+    },
+    "rbac": {
+      "create": true
     },
     "replicaCount": 1,
     "resources": {},
