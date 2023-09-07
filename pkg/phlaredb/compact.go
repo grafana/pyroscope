@@ -128,6 +128,7 @@ type blockWriter struct {
 	path            string
 	meta            *block.Meta
 	totalProfiles   uint64
+	min, max        int64
 }
 
 func newBlockWriter(dst string, meta *block.Meta) (*blockWriter, error) {
@@ -148,6 +149,8 @@ func newBlockWriter(dst string, meta *block.Meta) (*blockWriter, error) {
 		profilesWriter:  profileWriter,
 		path:            blockPath,
 		meta:            meta,
+		min:             math.MaxInt64,
+		max:             math.MinInt64,
 	}, nil
 }
 
@@ -165,6 +168,12 @@ func (bw *blockWriter) WriteRow(r profileRow) error {
 		return err
 	}
 	bw.totalProfiles++
+	if r.timeNanos < bw.min {
+		bw.min = r.timeNanos
+	}
+	if r.timeNanos > bw.max {
+		bw.max = r.timeNanos
+	}
 	return nil
 }
 
@@ -187,6 +196,8 @@ func (bw *blockWriter) Close(ctx context.Context) error {
 	bw.meta.Stats.NumSeries = bw.indexRewriter.NumSeries()
 	bw.meta.Stats.NumSamples = bw.symbolsRewriter.NumSamples()
 	bw.meta.Compaction.Deletable = bw.totalProfiles == 0
+	bw.meta.MinTime = model.TimeFromUnixNano(bw.min)
+	bw.meta.MaxTime = model.TimeFromUnixNano(bw.max)
 	if _, err := bw.meta.WriteToFile(util.Logger, bw.path); err != nil {
 		return err
 	}
@@ -219,6 +230,7 @@ func (p *profilesWriter) WriteRow(r profileRow) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 

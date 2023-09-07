@@ -119,7 +119,6 @@ func TestCompactWithSplitting(t *testing.T) {
 	require.Equal(t, "7_of_16", compacted[2].Labels[sharding.CompactorShardIDLabel])
 	require.Equal(t, "14_of_16", compacted[3].Labels[sharding.CompactorShardIDLabel])
 
-	// todo: fix and test min/max time from split blocks
 	// The series b should span from 11 to 20 and not 1 to 20.
 	require.Equal(t, model.TimeFromUnix(11), compacted[1].MinTime)
 	require.Equal(t, model.TimeFromUnix(20), compacted[1].MaxTime)
