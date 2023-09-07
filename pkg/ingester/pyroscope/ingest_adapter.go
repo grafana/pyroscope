@@ -170,7 +170,7 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(ctx context.Context, in *ingesti
 	}
 	_, err = p.svc.Push(ctx, grpcReq)
 	if err != nil {
-		return fmt.Errorf("pushing IngestInput-pprof failed")
+		return fmt.Errorf("pushing IngestInput-pprof failed %w", err)
 	}
 	return nil
 }
