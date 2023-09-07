@@ -13,13 +13,13 @@ github.com/go-logr/stdr v1.2.2/go.mod h1:mMo/vtBO5dYbehREoey6XUKy/eSumjCCveDpRre
 github.com/google/go-cmp v0.5.8/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/google/go-cmp v0.5.9 h1:O2Tfq5qg4qc4AmwVlvv0oLiVAGB7enBSJ2x2DqQFi38=
 github.com/google/go-cmp v0.5.9/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
-github.com/grafana/pyroscope-go v1.0.0 h1:uBK2kAxz3tl8AYJCzOPOZkqBt+m5g9I2YPWB8z2Ts4c=
-github.com/grafana/pyroscope-go v1.0.0/go.mod h1:ZfvwzkhpGG7i5PhUQBywNJ3BPHR7OqdsSt+mzY1ES24=
+github.com/grafana/pyroscope-go v1.0.2 h1:dEFgO9VbhYTwuwpCC5coTpuW0JjISEWDZtvRAW9v5Tw=
+github.com/grafana/pyroscope-go v1.0.2/go.mod h1:bShDKsVZdzxq+Ol6no0JKigU9y5FTWUcFditMXaH09o=
+github.com/grafana/pyroscope-go/godeltaprof v0.1.3 h1:eunWpv1B3Z7ZK9o4499EmQGlY+CsDmSZ4FbxjRx37uk=
+github.com/grafana/pyroscope-go/godeltaprof v0.1.3/go.mod h1:1HSPtjU8vLG0jE9JrTdzjgFqdJ/VgN7fvxBNq3luJko=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/pyroscope-io/godeltaprof v0.1.2 h1:MdlEmYELd5w+lvIzmZvXGNMVzW2Qc9jDMuJaPOR75g4=
-github.com/pyroscope-io/godeltaprof v0.1.2/go.mod h1:psMITXp90+8pFenXkKIpNhrfmI9saQnPbba27VIaiQE=
 github.com/pyroscope-io/otel-profiling-go v0.4.1-0.20220827003940-ddd28219c77e h1:gUdiXKQ2a6NehosBbAIZUHxBjEvzRDxjV4xn0QKcSrs=
 github.com/pyroscope-io/otel-profiling-go v0.4.1-0.20220827003940-ddd28219c77e/go.mod h1:y3pdNLRjeZi34yk7Fc1ema4SWtBEpE7Zd/rMdSfQTa8=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=

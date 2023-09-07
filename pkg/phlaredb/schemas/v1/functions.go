@@ -53,3 +53,8 @@ type InMemoryFunction struct {
 	// Line number in source file.
 	StartLine uint32
 }
+
+func (f *InMemoryFunction) Clone() *InMemoryFunction {
+	n := *f
+	return &n
+}

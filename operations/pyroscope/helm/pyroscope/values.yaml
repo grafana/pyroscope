@@ -25,8 +25,12 @@ pyroscope:
   extraEnvFrom: []
 
   imagePullSecrets: []
+  initContainers: []
   nameOverride: ""
   fullnameOverride: ""
+
+  rbac:
+    create: true
 
   serviceAccount:
     # Specifies whether a service account should be created

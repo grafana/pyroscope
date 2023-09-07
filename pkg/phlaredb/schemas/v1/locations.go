@@ -110,6 +110,13 @@ type InMemoryLocation struct {
 	Line []InMemoryLine
 }
 
+func (l *InMemoryLocation) Clone() *InMemoryLocation {
+	x := *l
+	x.Line = make([]InMemoryLine, len(l.Line))
+	copy(x.Line, l.Line)
+	return &x
+}
+
 type InMemoryLine struct {
 	// The id of the corresponding profile.Function for this line.
 	FunctionId uint32
