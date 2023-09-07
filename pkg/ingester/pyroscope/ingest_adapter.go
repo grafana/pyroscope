@@ -1,7 +1,6 @@
 package pyroscope
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -26,6 +25,7 @@ import (
 
 type PushService interface {
 	Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error)
+	PushParsed(ctx context.Context, req *model.PushRequest) (*connect.Response[pushv1.PushResponse], error)
 }
 
 func NewPyroscopeIngestHandler(svc PushService, logger log.Logger) http.Handler {
@@ -164,48 +164,11 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(ctx context.Context, in *ingesti
 	if err != nil {
 		return fmt.Errorf("parsing IngestInput-pprof failed %w", err)
 	}
-	grpcReq, err := p.convertToGRPC(plainReq)
-	if err != nil {
-		return fmt.Errorf("converting IngestInput-pprof failed %w", err)
-	}
-	_, err = p.svc.Push(ctx, grpcReq)
+	_, err = p.svc.PushParsed(ctx, plainReq)
 	if err != nil {
 		return fmt.Errorf("pushing IngestInput-pprof failed %w", err)
 	}
 	return nil
-}
-
-func (p *pyroscopeIngesterAdapter) convertToGRPC(profiles *model.PushRequest) (*connect.Request[pushv1.PushRequest], error) {
-	defer func() {
-		for _, series := range profiles.Series {
-			for _, sample := range series.Samples {
-				sample.Profile.Close()
-			}
-		}
-	}()
-	req := &pushv1.PushRequest{
-		Series: make([]*pushv1.RawProfileSeries, len(profiles.Series)),
-	}
-	for i, series := range profiles.Series {
-		grpcSeries := &pushv1.RawProfileSeries{
-			Labels:  make([]*typesv1.LabelPair, len(series.Labels)),
-			Samples: make([]*pushv1.RawSample, len(series.Samples)),
-		}
-		copy(grpcSeries.Labels, series.Labels)
-
-		for j, sample := range series.Samples {
-			buf := bytes.NewBuffer(nil)
-			_, err := sample.Profile.WriteTo(buf)
-			if err != nil {
-				return nil, fmt.Errorf("failed to serialize pprof to bytes for distributor push %w", err)
-			}
-			grpcSeries.Samples[j] = &pushv1.RawSample{
-				RawProfile: buf.Bytes(),
-			}
-		}
-		req.Series[i] = grpcSeries
-	}
-	return connect.NewRequest(req), nil
 }
 
 func convertMetadata(pi *storage.PutInput) (metricName, stType, stUnit, app string, err error) {
