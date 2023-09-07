@@ -41,6 +41,13 @@ spec:
       serviceAccountName: {{ include "pyroscope.serviceAccountName" . }}
       securityContext:
         {{- toYaml $values.podSecurityContext | nindent 8 }}
+      {{- if hasKey $values "hostNetwork" }}
+      hostNetwork: {{ $values.hostNetwork }}
+      {{- end }}
+      {{- with $values.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ if eq $component "all" }}"pyroscope"{{ else }}"{{ $component }}"{{ end }}
           securityContext:
