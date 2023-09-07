@@ -207,12 +207,6 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 
 func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
 	//todo defer close all profiles in case of error
-	if req.RawProfileSize == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("RawProfileSize == 0"))
-	}
-	if req.RawProfileType == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("RawProfileType == \"\""))
-	}
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
