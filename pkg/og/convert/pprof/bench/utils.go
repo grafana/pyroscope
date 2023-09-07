@@ -12,9 +12,11 @@ import (
 	"strings"
 	"time"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
+	"golang.org/x/exp/slices"
 )
 
 type PutInputCopy struct {
@@ -74,6 +76,9 @@ func (m *MockPutter) CompareWithJson(jsonFile string) error {
 	err = json.Unmarshal(goldBS, &m.Trees)
 	if err != nil {
 		return err
+	}
+	if len(m.Trees) != len(m.Puts) {
+		return fmt.Errorf("json mismatch %d %d", len(m.Trees), len(m.Puts))
 	}
 
 	for i := range m.Puts {
@@ -137,4 +142,63 @@ func WriteGzipFile(f string, data []byte) error {
 	}
 	return g.Close()
 
+}
+
+func StackCollapseProto(p *profilev1.Profile, valueIDX int, scale float64) []string {
+	type stack struct {
+		funcs string
+		value int64
+	}
+	locMap := make(map[int64]*profilev1.Location)
+	funcMap := make(map[int64]*profilev1.Function)
+	for _, l := range p.Location {
+		locMap[int64(l.Id)] = l
+	}
+	for _, f := range p.Function {
+		funcMap[int64(f.Id)] = f
+	}
+
+	var ret []stack
+	for _, s := range p.Sample {
+		var funcs []string
+		for i := range s.LocationId {
+			locID := s.LocationId[len(s.LocationId)-1-i]
+			loc := locMap[int64(locID)]
+			for _, line := range loc.Line {
+				f := funcMap[int64(line.FunctionId)]
+				fname := p.StringTable[f.Name]
+				funcs = append(funcs, fname)
+			}
+		}
+		v := s.Value[valueIDX]
+		if scale != 1 {
+			v = int64(float64(v) * scale)
+		}
+		ret = append(ret, stack{
+			funcs: strings.Join(funcs, ";"),
+			value: v,
+		})
+	}
+	slices.SortFunc(ret, func(i, j stack) bool {
+		return strings.Compare(i.funcs, j.funcs) < 0
+	})
+	var unique []stack
+	for _, s := range ret {
+		if len(unique) == 0 {
+			unique = append(unique, s)
+			continue
+		}
+		if unique[len(unique)-1].funcs == s.funcs {
+			unique[len(unique)-1].value += s.value
+			continue
+		}
+		unique = append(unique, s)
+
+	}
+
+	res := []string{}
+	for _, s := range unique {
+		res = append(res, fmt.Sprintf("%s %d", s.funcs, s.value))
+	}
+	return res
 }
