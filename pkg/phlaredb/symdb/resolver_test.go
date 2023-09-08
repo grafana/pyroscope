@@ -18,6 +18,24 @@ func Test_memory_Resolver_ResolveProfile(t *testing.T) {
 	require.Equal(t, expectedFingerprint, profileFingerprint(resolved, 0))
 }
 
+func Test_memory_Resolver_ResolveProfile_multiple_partitions(t *testing.T) {
+	s := newMemSuite(t, [][]string{
+		{"testdata/profile.pb.gz"},
+		{"testdata/profile.pb.gz"},
+	})
+	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
+	for i := range expectedFingerprint {
+		expectedFingerprint[i][1] *= 2
+	}
+	r := NewResolver(context.Background(), s.db)
+	defer r.Release()
+	r.AddSamples(0, s.indexed[0][0].Samples)
+	r.AddSamples(1, s.indexed[1][0].Samples)
+	resolved, err := r.Profile()
+	require.NoError(t, err)
+	require.Equal(t, expectedFingerprint, profileFingerprint(resolved, 0))
+}
+
 func Test_memory_Resolver_ResolveTree(t *testing.T) {
 	s := newMemSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
