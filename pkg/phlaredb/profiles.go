@@ -445,6 +445,9 @@ func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRange
 }
 
 func (pi *profilesIndex) cutRowGroup(rgProfiles []schemav1.InMemoryProfile) error {
+	pi.mutex.Lock()
+	defer pi.mutex.Unlock()
+
 	// adding rowGroup and rowNum information per fingerprint
 	rowRangePerFP := make(map[model.Fingerprint]*rowRange, len(pi.profilesPerFP))
 	countPerFP := make(map[model.Fingerprint]int, len(pi.profilesPerFP))
@@ -464,9 +467,6 @@ func (pi *profilesIndex) cutRowGroup(rgProfiles []schemav1.InMemoryProfile) erro
 			return fmt.Errorf("rowRange is not matching up, ensure that the ordering of the profile row group is ordered correctly, current row_num=%d, expect range %d-%d", rowNum, rowRange.rowNum, int(rowRange.rowNum)+rowRange.length)
 		}
 	}
-
-	pi.mutex.Lock()
-	defer pi.mutex.Unlock()
 
 	pi.rowGroupsOnDisk += 1
 
