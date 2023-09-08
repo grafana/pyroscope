@@ -149,9 +149,6 @@ func (p *RawProfile) metricName(profile *pprof.Profile) string {
 	if strings.Contains(st, "mutex_") {
 		return "mutex"
 	}
-	if strings.Contains(st, "mutex_") {
-		return "mutex"
-	}
 	if strings.Contains(st, "block_") {
 		return "block"
 	}
