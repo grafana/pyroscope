@@ -37,9 +37,9 @@ func (p *RawProfile) ContentType() string {
 }
 
 const (
-	formFieldProfile, formFileProfile                   = "profile", "profile.pprof"
-	formFieldPreviousProfile, formFilePreviousProfile   = "prev_profile", "profile.pprof"
-	formFieldSampleTypeConfig, formFileSampleTypeConfig = "sample_type_config", "sample_type_config.json"
+	formFieldProfile          = "profile"
+	formFieldPreviousProfile  = "prev_profile"
+	formFieldSampleTypeConfig = "sample_type_config"
 )
 
 func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res *distributormodel.PushRequest, err error) {

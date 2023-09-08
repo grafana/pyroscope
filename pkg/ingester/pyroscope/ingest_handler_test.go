@@ -347,7 +347,7 @@ func TestIngestPPROFFixtures(t *testing.T) {
 		},
 
 		//todo add pprof from dotnet,pyspy,rbspy,rust, node
-		//
+
 	}
 	for _, testdatum := range testdata {
 		t.Run(testdatum.profile, func(t *testing.T) {
@@ -417,29 +417,29 @@ func comparePPROF(t *testing.T, actual *profilev1.Profile, profile2 []byte) {
 
 func createPProfRequest(t *testing.T, profile, prevProfile, sampleTypeConfig []byte) ([]byte, string) {
 	const (
-		formFieldProfile, formFileProfile                   = "profile", "profile.pprof"
-		formFieldPreviousProfile, formFilePreviousProfile   = "prev_profile", "profile.pprof"
-		formFieldSampleTypeConfig, formFileSampleTypeConfig = "sample_type_config", "sample_type_config.json"
+		formFieldProfile          = "profile"
+		formFieldPreviousProfile  = "prev_profile"
+		formFieldSampleTypeConfig = "sample_type_config"
 	)
 
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 
-	profileW, err := w.CreateFormFile(formFieldProfile, formFileProfile)
+	profileW, err := w.CreateFormFile(formFieldProfile, "not used")
 	require.NoError(t, err)
 	_, err = profileW.Write(profile)
 	require.NoError(t, err)
 
 	if sampleTypeConfig != nil {
 
-		sampleTypeConfigW, err := w.CreateFormFile(formFieldSampleTypeConfig, formFileSampleTypeConfig)
+		sampleTypeConfigW, err := w.CreateFormFile(formFieldSampleTypeConfig, "not used")
 		require.NoError(t, err)
 		_, err = sampleTypeConfigW.Write(sampleTypeConfig)
 		require.NoError(t, err)
 	}
 
 	if prevProfile != nil {
-		prevProfileW, err := w.CreateFormFile(formFieldPreviousProfile, formFilePreviousProfile)
+		prevProfileW, err := w.CreateFormFile(formFieldPreviousProfile, "not used")
 		require.NoError(t, err)
 		_, err = prevProfileW.Write(prevProfile)
 		require.NoError(t, err)
