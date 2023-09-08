@@ -5,9 +5,14 @@ import (
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
+type RawProfileType string
+
+const RawProfileTypePPROF = RawProfileType("pprof")
+const RawProfileTypeJFR = RawProfileType("jfr")
+
 type PushRequest struct {
 	RawProfileSize int
-	RawProfileType string // should be set if not pprof, eg jfr
+	RawProfileType RawProfileType
 
 	Series []*ProfileSeries
 }

@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 
+import logging
 import os
-
 import pyroscope
 
+l = logging.getLogger()
+l.setLevel(logging.DEBUG)
+
+addr = os.getenv("PYROSCOPE_SERVER_ADDRESS") or "http://pyroscope:4040"
+print(addr)
+
 pyroscope.configure(
-	application_name       = "simple.python.app",
-	server_address = "http://pyroscope:4040",
+	application_name = "simple.python.app",
+	server_address = addr,
+	enable_logging = True,
 )
 
 def work(n):

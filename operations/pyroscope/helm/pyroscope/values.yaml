@@ -57,6 +57,10 @@ pyroscope:
     runAsUser: 10001
     runAsNonRoot: true
 
+  podDisruptionBudget:
+    enabled: true
+    maxUnavailable: 1
+
   securityContext:
     {}
     # capabilities:

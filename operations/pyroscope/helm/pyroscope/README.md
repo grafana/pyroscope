@@ -47,6 +47,8 @@
 | pyroscope.podAnnotations."profiles.grafana.com/goroutine.scrape" | string | `"true"` |  |
 | pyroscope.podAnnotations."profiles.grafana.com/memory.port_name" | string | `"http2"` |  |
 | pyroscope.podAnnotations."profiles.grafana.com/memory.scrape" | string | `"true"` |  |
+| pyroscope.podDisruptionBudget.enabled | bool | `true` |  |
+| pyroscope.podDisruptionBudget.maxUnavailable | int | `1` |  |
 | pyroscope.podSecurityContext.fsGroup | int | `10001` |  |
 | pyroscope.podSecurityContext.runAsNonRoot | bool | `true` |  |
 | pyroscope.podSecurityContext.runAsUser | int | `10001` |  |
