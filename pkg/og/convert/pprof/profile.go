@@ -114,8 +114,8 @@ func (p *RawProfile) loadPprofFromForm() error {
 		return err
 	}
 	if PreviousProfile != nil {
-		return fmt.Errorf("cumulative profile is nolonger supported. " +
-			"Update clients to the latest versions of pyroscope-golang/godeltaprof")
+		return fmt.Errorf("unsupported client version. " +
+			"Please update github.com/grafana/pyroscope-go to the latest version")
 	}
 
 	r, err := form.ReadField(f, formFieldSampleTypeConfig)
