@@ -20,9 +20,8 @@ import (
 )
 
 const (
-	IndexFilename        = "index.tsdb"
-	ParquetSuffix        = ".parquet"
-	DeletionMarkFilename = "deletion-mark.json"
+	IndexFilename = "index.tsdb"
+	ParquetSuffix = ".parquet"
 
 	HostnameLabel = "__hostname__"
 )
@@ -74,7 +73,7 @@ func upload(ctx context.Context, logger log.Logger, bkt objstore.Bucket, bdir st
 		return errors.Wrap(err, "not a block dir")
 	}
 
-	meta, err := ReadFromDir(bdir)
+	meta, err := ReadMetaFromDir(bdir)
 	if err != nil {
 		// No meta or broken meta file.
 		return errors.Wrap(err, "read meta")
