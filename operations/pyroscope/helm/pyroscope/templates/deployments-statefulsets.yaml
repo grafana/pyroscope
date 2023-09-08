@@ -159,7 +159,6 @@ spec:
         {{- toYaml $persistence.selector | nindent 8 }}
       {{- end }}
   {{- end }}
-{{- if eq $values.kind "StatefulSet" }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -174,6 +173,5 @@ spec:
     matchLabels:
       {{- include "pyroscope.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: {{ $component | quote }}
-{{- end }}
 {{- end }}
 {{- end }}
