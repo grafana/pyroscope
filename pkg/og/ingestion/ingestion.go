@@ -3,6 +3,7 @@ package ingestion
 import (
 	"context"
 	"errors"
+	phlaremodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"time"
 
 	"github.com/grafana/pyroscope/pkg/og/storage"
@@ -34,9 +35,10 @@ const (
 
 type RawProfile interface {
 	Parse(context.Context, storage.Putter, storage.MetricsExporter, Metadata) error
-	Bytes() ([]byte, error)
-	// ContentType denotes Bytes output type. Must be only called after Bytes.
-	ContentType() string
+}
+
+type ParseableToPprof interface {
+	ParseToPprof(context.Context, Metadata) (*phlaremodel.PushRequest, error)
 }
 
 type Metadata struct {
