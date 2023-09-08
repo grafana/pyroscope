@@ -172,8 +172,6 @@ func (h ingestHandler) ingestInputFromRequest(r *http.Request) (*ingestion.Inges
 		input.Profile = &pprof.RawProfile{
 			FormDataContentType: contentType,
 			RawData:             b,
-			StreamingParser:     true,
-			PoolStreamingParser: true,
 		}
 	}
 

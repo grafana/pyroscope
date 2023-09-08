@@ -5,10 +5,11 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	phlaremodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"io"
 	"mime/multipart"
 	"strings"
+
+	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
@@ -23,7 +24,7 @@ type RawProfile struct {
 
 func (p *RawProfile) Bytes() ([]byte, error) { return p.RawData, nil }
 
-func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata) (*phlaremodel.PushRequest, error) {
+func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (*distributormodel.PushRequest, error) {
 	input := storage.PutInput{
 		StartTime:       md.StartTime,
 		EndTime:         md.EndTime,
@@ -49,7 +50,7 @@ func (p *RawProfile) ParseToPprof(ctx context.Context, md ingestion.Metadata) (*
 		return nil, err
 	}
 	res.RawProfileSize = rawSize
-	res.RawProfileType = "jfr"
+	res.RawProfileType = distributormodel.RawProfileTypeJFR
 	return res, err
 }
 
