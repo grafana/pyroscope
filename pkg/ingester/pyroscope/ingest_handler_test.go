@@ -390,7 +390,6 @@ func TestIngestPPROFFixtures(t *testing.T) {
 				require.Equal(t, "false", ls.Get("__delta__"))
 				require.Equal(t, profile, actualReq.RawProfile)
 
-				//todo check all injected labels
 				comparePPROF(t, actualReq.Profile, actualReq.RawProfile)
 			} else {
 				assert.Equal(t, 0, len(svc.reqPprof))

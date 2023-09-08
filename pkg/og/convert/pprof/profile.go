@@ -42,6 +42,7 @@ const (
 	formFieldSampleTypeConfig = "sample_type_config"
 )
 
+// ParseToPprof is not doing much now. It parses the profile with no processing/splitting, adds labels.
 func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res *distributormodel.PushRequest, err error) {
 	defer func() {
 		r := recover()
