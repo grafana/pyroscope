@@ -13,6 +13,7 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
+	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -251,6 +252,7 @@ func TestIngestPPROFFixtures(t *testing.T) {
 		profile          string
 		prevProfile      string
 		sampleTypeConfig string
+		spyName          string
 
 		expectStatus int
 		expectMetric string
@@ -341,8 +343,16 @@ func TestIngestPPROFFixtures(t *testing.T) {
 			expectStatus:     200,
 			expectMetric:     "memory",
 		},
+		{
+			// this one have milliseconds in Profile.TimeNanos
+			// https://github.com/grafana/pyroscope/pull/2376/files
+			profile:      repoRoot + "pkg/og/convert/pprof/testdata/pyspy-1.pb.gz",
+			expectStatus: 200,
+			expectMetric: "process_cpu",
+			spyName:      pprof2.SpyNameForFunctionNameRewrite(),
+		},
 
-		//todo add pprof from dotnet,pyspy,rbspy,rust, node
+		//todo add pprof from dotnet
 
 	}
 	for _, testdatum := range testdata {
@@ -369,24 +379,29 @@ func TestIngestPPROFFixtures(t *testing.T) {
 			h := NewPyroscopeIngestHandler(svc, log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr)))
 
 			res := httptest.NewRecorder()
-
-			req := httptest.NewRequest("POST", "/ingest?name=pprof.test{qwe=asd}&spyName=foo239", bytes.NewReader(bs))
+			spyName := "foo239"
+			if testdatum.spyName != "" {
+				spyName = testdatum.spyName
+			}
+			req := httptest.NewRequest("POST", "/ingest?name=pprof.test{qwe=asd}&spyName="+spyName, bytes.NewReader(bs))
 			req.Header.Set("Content-Type", ct)
 			h.ServeHTTP(res, req)
 			assert.Equal(t, testdatum.expectStatus, res.Code)
 
 			if testdatum.expectStatus == 200 {
-				assert.Equal(t, 1, len(svc.reqPprof))
+				require.Equal(t, 1, len(svc.reqPprof))
 				actualReq := svc.reqPprof[0]
 				ls := phlaremodel.Labels(actualReq.Labels)
 				require.Equal(t, testdatum.expectMetric, ls.Get(labels.MetricName))
 				require.Equal(t, "asd", ls.Get("qwe"))
-				require.Equal(t, "foo239", ls.Get("pyroscope_spy"))
+				require.Equal(t, spyName, ls.Get("pyroscope_spy"))
 				require.Equal(t, "pprof.test", ls.Get("service_name"))
 				require.Equal(t, "false", ls.Get("__delta__"))
 				require.Equal(t, profile, actualReq.RawProfile)
 
-				comparePPROF(t, actualReq.Profile, actualReq.RawProfile)
+				if testdatum.spyName != pprof2.SpyNameForFunctionNameRewrite() {
+					comparePPROF(t, actualReq.Profile, actualReq.RawProfile)
+				}
 			} else {
 				assert.Equal(t, 0, len(svc.reqPprof))
 			}

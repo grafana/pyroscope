@@ -61,6 +61,7 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 	}
 
 	fixTime(profile, md)
+	fixFunctionNamesForScriptingLanguages(profile, md)
 
 	res = &distributormodel.PushRequest{
 		RawProfileSize: len(p.Profile),
@@ -208,4 +209,39 @@ func (p *RawProfile) getSampleTypes() map[string]*tree.SampleTypeConfig {
 		sampleTypes = p.SampleTypeConfig
 	}
 	return sampleTypes
+}
+
+func needFunctionNameRewrite(md ingestion.Metadata) bool {
+	return isScriptingSpy(md)
+}
+
+func SpyNameForFunctionNameRewrite() string {
+	return "scripting"
+}
+
+func isScriptingSpy(md ingestion.Metadata) bool {
+	return md.SpyName == "pyspy" || md.SpyName == "rbspy" || md.SpyName == "scripting"
+}
+
+func fixFunctionNamesForScriptingLanguages(p *pprof.Profile, md ingestion.Metadata) {
+	if !needFunctionNameRewrite(md) {
+		return
+	}
+	smap := map[string]int{}
+	for _, fn := range p.Function {
+		// obtaining correct line number will require rewriting functions and slices
+		// lets not do it and wait until we render line numbers on frontend
+		const lineNumber = -1
+		name := fmt.Sprintf("%s:%d - %s",
+			p.StringTable[fn.Filename],
+			lineNumber,
+			p.StringTable[fn.Name])
+		sid := smap[name]
+		if sid == 0 {
+			sid = len(p.StringTable)
+			p.StringTable = append(p.StringTable, name)
+			smap[name] = sid
+		}
+		fn.Name = int64(sid)
+	}
 }
