@@ -13,6 +13,11 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -20,10 +25,6 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 )
 
 type flatProfileSeries struct {
