@@ -60,6 +60,8 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	fixTime(profile, md)
+
 	res = &distributormodel.PushRequest{
 		RawProfileSize: len(p.Profile),
 		RawProfileType: distributormodel.RawProfileTypePPROF,
@@ -72,6 +74,13 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 		}},
 	}
 	return
+}
+
+func fixTime(profile *pprof.Profile, md ingestion.Metadata) {
+	// for old versions of pyspy, rbspy, pyroscope-rs
+	// https://github.com/grafana/pyroscope-rs/pull/134
+	profile.TimeNanos = md.StartTime.UnixNano()
+	profile.DurationNanos = md.EndTime.Sub(md.StartTime).Nanoseconds()
 }
 
 func (p *RawProfile) Parse(_ context.Context, _ storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
