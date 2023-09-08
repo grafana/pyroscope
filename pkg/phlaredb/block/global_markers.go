@@ -14,7 +14,8 @@ import (
 
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
-	"github.com/thanos-io/objstore"
+
+	"github.com/grafana/pyroscope/pkg/objstore"
 )
 
 const (

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	mimir_testutil "github.com/grafana/mimir/pkg/storage/tsdb/testutil"
+	"github.com/grafana/pyroscope/pkg/objstore/testutil"
 )
 
 func TestDeletionMarkFilepath(t *testing.T) {
@@ -72,7 +72,7 @@ func TestListBlockDeletionMarks(t *testing.T) {
 	)
 
 	t.Run("should return an empty map on empty bucket", func(t *testing.T) {
-		bkt, _ := mimir_testutil.PrepareFilesystemBucket(t)
+		bkt, _ := testutil.NewFilesystemBucket(t, ctx, t.TempDir())
 
 		actualMarks, actualErr := ListBlockDeletionMarks(ctx, bkt)
 		require.NoError(t, actualErr)
@@ -80,7 +80,7 @@ func TestListBlockDeletionMarks(t *testing.T) {
 	})
 
 	t.Run("should return a map with the locations of the block deletion marks found", func(t *testing.T) {
-		bkt, _ := mimir_testutil.PrepareFilesystemBucket(t)
+		bkt, _ := testutil.NewFilesystemBucket(t, ctx, t.TempDir())
 
 		require.NoError(t, bkt.Upload(ctx, DeletionMarkFilepath(block1), strings.NewReader("{}")))
 		require.NoError(t, bkt.Upload(ctx, NoCompactMarkFilepath(block2), strings.NewReader("{}")))

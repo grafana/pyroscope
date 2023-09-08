@@ -1,6 +1,7 @@
 package block
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -8,12 +9,14 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/runutil"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thanos-io/objstore"
 
 	"github.com/grafana/pyroscope/pkg/util/fnv32"
@@ -130,6 +133,36 @@ func cleanUp(logger log.Logger, bkt objstore.Bucket, id ulid.ULID, err error) er
 		return errors.Wrapf(err, "failed to clean block after upload issue. Partial block in system. Err: %s", err.Error())
 	}
 	return err
+}
+
+// MarkForDeletion creates a file which stores information about when the block was marked for deletion.
+func MarkForDeletion(ctx context.Context, logger log.Logger, bkt objstore.Bucket, id ulid.ULID, details string, markedForDeletion prometheus.Counter) error {
+	deletionMarkFile := path.Join(id.String(), DeletionMarkFilename)
+	deletionMarkExists, err := bkt.Exists(ctx, deletionMarkFile)
+	if err != nil {
+		return errors.Wrapf(err, "check exists %s in bucket", deletionMarkFile)
+	}
+	if deletionMarkExists {
+		level.Warn(logger).Log("msg", "requested to mark for deletion, but file already exists; this should not happen; investigate", "err", errors.Errorf("file %s already exists in bucket", deletionMarkFile))
+		return nil
+	}
+
+	deletionMark, err := json.Marshal(DeletionMark{
+		ID:           id,
+		DeletionTime: time.Now().Unix(),
+		Version:      DeletionMarkVersion1,
+		Details:      details,
+	})
+	if err != nil {
+		return errors.Wrap(err, "json encode deletion mark")
+	}
+
+	if err := bkt.Upload(ctx, deletionMarkFile, bytes.NewBuffer(deletionMark)); err != nil {
+		return errors.Wrapf(err, "upload file %s to bucket", deletionMarkFile)
+	}
+	markedForDeletion.Inc()
+	level.Info(logger).Log("msg", "block has been marked for deletion", "block", id)
+	return nil
 }
 
 // Delete removes directory that is meant to be block directory.
