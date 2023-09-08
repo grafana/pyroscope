@@ -15,9 +15,9 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/thanos-io/objstore"
 
-	"github.com/grafana/mimir/pkg/storage/tsdb/block"
+	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 // Job holds a compaction job, which consists of a group of blocks that should be compacted together.
@@ -60,10 +60,10 @@ func (job *Job) Key() string {
 
 // AppendMeta the block with the given meta to the job.
 func (job *Job) AppendMeta(meta *block.Meta) error {
-	if !labels.Equal(job.labels, labels.FromMap(meta.Thanos.Labels)) {
+	if !labels.Equal(job.labels, labels.FromMap(meta.Labels)) {
 		return errors.New("block and group labels do not match")
 	}
-	if job.resolution != meta.Thanos.Downsample.Resolution {
+	if job.resolution != meta.Downsample.Resolution {
 		return errors.New("block and group resolution do not match")
 	}
 
@@ -88,7 +88,7 @@ func (job *Job) IDs() (ids []ulid.ULID) {
 // MinTime returns the min time across all job's blocks.
 func (job *Job) MinTime() int64 {
 	if len(job.metasByMinTime) > 0 {
-		return job.metasByMinTime[0].MinTime
+		return int64(job.metasByMinTime[0].MinTime)
 	}
 	return math.MaxInt64
 }
@@ -97,8 +97,8 @@ func (job *Job) MinTime() int64 {
 func (job *Job) MaxTime() int64 {
 	max := int64(math.MinInt64)
 	for _, m := range job.metasByMinTime {
-		if m.MaxTime > max {
-			max = m.MaxTime
+		if int64(m.MaxTime) > max {
+			max = int64(m.MaxTime)
 		}
 	}
 	return max

@@ -10,7 +10,7 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/grafana/mimir/pkg/storage/tsdb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 type LabelRemoverFilter struct {
@@ -26,7 +26,7 @@ func NewLabelRemoverFilter(labels []string) *LabelRemoverFilter {
 func (f *LabelRemoverFilter) Filter(_ context.Context, metas map[ulid.ULID]*block.Meta, _ block.GaugeVec) error {
 	for _, meta := range metas {
 		for _, l := range f.labels {
-			delete(meta.Thanos.Labels, l)
+			delete(meta.Labels, l)
 		}
 	}
 
