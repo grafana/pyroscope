@@ -279,7 +279,8 @@ func (r *pprofSymbols) init(symbols *Symbols, samples schemav1.Samples) {
 	r.symbols = symbols
 	r.samples = &samples
 	r.profile = &profile.Profile{
-		Sample: make([]*profile.Sample, len(samples.StacktraceIDs)),
+		Sample:     make([]*profile.Sample, len(samples.StacktraceIDs)),
+		PeriodType: new(profile.ValueType),
 	}
 	r.locations = grow(r.locations, len(r.symbols.Locations))
 	r.mappings = grow(r.mappings, len(r.symbols.Mappings))

@@ -93,7 +93,7 @@ Pyroscope.Profiler.Instance.SetCPUTrackingEnabled(enabled);
 // If allocation profiling is not configured, this function will have no effect.
 Pyroscope.Profiler.Instance.SetAllocationTrackingEnabled(enabled);
 // Enables or disables contention profiling dynamically.
-// This function works in conjunction with the PYROSCOPE_PROFILING_CONTENTION_ENABLED environment variable.
+// This function works in conjunction with the PYROSCOPE_PROFILING_LOCK_ENABLED environment variable.
 // If contention profiling is not configured, this function will have no effect.
 Pyroscope.Profiler.Instance.SetContentionTrackingEnabled(enabled);
 // Enables or disables exception profiling dynamically.
