@@ -132,28 +132,35 @@ func (p *RawProfile) loadPprofFromForm() error {
 
 func (p *RawProfile) metricName(profile *pprof.Profile) string {
 	stConfigs := p.getSampleTypes()
-	st := profile.StringTable[profile.SampleType[0].Type]
-	stConfig, ok := stConfigs[st]
-	if !ok {
-		return st // should not happen
+	var st string
+	for _, ist := range profile.Profile.SampleType {
+		st = profile.StringTable[ist.Type]
+		if st == "wall" {
+			return st
+		}
 	}
-	if stConfig.DisplayName != "" {
-		st = stConfig.DisplayName
-	}
-	if strings.Contains(st, "cpu") {
-		return "process_cpu"
-	}
-	if strings.Contains(st, "alloc_") || strings.Contains(st, "inuse_") {
-		return "memory"
-	}
-	if strings.Contains(st, "mutex_") {
-		return "mutex"
-	}
-	if strings.Contains(st, "block_") {
-		return "block"
-	}
-	if strings.Contains(st, "goroutines") {
-		return "goroutines"
+	for _, ist := range profile.Profile.SampleType {
+		st = profile.StringTable[ist.Type]
+		stConfig := stConfigs[st]
+
+		if stConfig != nil && stConfig.DisplayName != "" {
+			st = stConfig.DisplayName
+		}
+		if strings.Contains(st, "cpu") {
+			return "process_cpu"
+		}
+		if strings.Contains(st, "alloc_") || strings.Contains(st, "inuse_") || st == "space" || st == "objects" {
+			return "memory"
+		}
+		if strings.Contains(st, "mutex_") {
+			return "mutex"
+		}
+		if strings.Contains(st, "block_") {
+			return "block"
+		}
+		if strings.Contains(st, "goroutines") {
+			return "goroutines"
+		}
 	}
 	return st // should not happen
 

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 
@@ -31,8 +32,9 @@ import (
 )
 
 type flatProfileSeries struct {
-	Labels  []*v1.LabelPair
-	Profile *profilev1.Profile
+	Labels     []*v1.LabelPair
+	Profile    *profilev1.Profile
+	RawProfile []byte
 }
 
 type MockPushService struct {
@@ -46,8 +48,9 @@ func (m *MockPushService) PushParsed(ctx context.Context, req *model.PushRequest
 		for _, series := range req.Series {
 			for _, sample := range series.Samples {
 				m.reqPprof = append(m.reqPprof, &flatProfileSeries{
-					Labels:  series.Labels,
-					Profile: sample.Profile.Profile,
+					Labels:     series.Labels,
+					Profile:    sample.Profile.Profile,
+					RawProfile: sample.RawProfile,
 				})
 			}
 		}
@@ -124,7 +127,8 @@ func (m *MockPushService) CompareDump(file string) {
 	}
 }
 
-const testdataDir = "../../../pkg/og/convert/jfr/testdata"
+const repoRoot = "../../../"
+const testdataDirJFR = repoRoot + "pkg/og/convert/jfr/testdata"
 
 func TestIngestJFR(b *testing.T) {
 	testdata := []struct {
@@ -148,23 +152,24 @@ func TestIngestJFR(b *testing.T) {
 	for _, jfr := range testdata {
 		td := jfr
 		b.Run(td.jfr, func(t *testing.T) {
-			src := testdataDir + "/" + td.jfr
+			src := testdataDirJFR + "/" + td.jfr
 			jfr, err := bench.ReadGzipFile(src)
 			require.NoError(t, err)
 			var labels []byte
 			if td.labels != "" {
-				labels, err = bench.ReadGzipFile(testdataDir + "/" + td.labels)
+				labels, err = bench.ReadGzipFile(testdataDirJFR + "/" + td.labels)
 			}
 			require.NoError(t, err)
 			svc := &MockPushService{Keep: true, T: t}
 			h := NewPyroscopeIngestHandler(svc, l)
 
 			res := httptest.NewRecorder()
-			body, ct := createRequestBody(t, jfr, labels)
+			body, ct := createJFRRequestBody(t, jfr, labels)
 
 			req := httptest.NewRequest("POST", "/ingest?name=javaapp&format=jfr", bytes.NewReader(body))
 			req.Header.Set("Content-Type", ct)
 			h.ServeHTTP(res, req)
+			assert.Equal(t, 200, res.Code)
 
 			dst := strings.ReplaceAll(src, ".jfr.gz", ".pprof.json.gz")
 			//svc.DumpTo(dst)
@@ -178,7 +183,7 @@ func TestIngestJFR(b *testing.T) {
 func TestCorruptedJFR422(t *testing.T) {
 	l := log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr))
 
-	src := testdataDir + "/" + "cortex-dev-01__kafka-0__cpu__0.jfr.gz"
+	src := testdataDirJFR + "/" + "cortex-dev-01__kafka-0__cpu__0.jfr.gz"
 	jfr, err := bench.ReadGzipFile(src)
 	require.NoError(t, err)
 
@@ -188,7 +193,7 @@ func TestCorruptedJFR422(t *testing.T) {
 	h := NewPyroscopeIngestHandler(svc, l)
 
 	res := httptest.NewRecorder()
-	body, ct := createRequestBody(t, jfr, nil)
+	body, ct := createJFRRequestBody(t, jfr, nil)
 
 	req := httptest.NewRequest("POST", "/ingest?name=javaapp&format=jfr", bytes.NewReader(body))
 	req.Header.Set("Content-Type", ct)
@@ -197,7 +202,7 @@ func TestCorruptedJFR422(t *testing.T) {
 	require.Equal(t, 422, res.Code)
 }
 
-func createRequestBody(t *testing.T, jfr, labels []byte) ([]byte, string) {
+func createJFRRequestBody(t *testing.T, jfr, labels []byte) ([]byte, string) {
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 	jfrw, err := w.CreateFormFile("jfr", "jfr")
@@ -232,7 +237,7 @@ func BenchmarkIngestJFR(b *testing.B) {
 
 	for _, jfr := range jfrs {
 		b.Run(jfr, func(b *testing.B) {
-			jfr, err := bench.ReadGzipFile(testdataDir + "/" + jfr)
+			jfr, err := bench.ReadGzipFile(testdataDirJFR + "/" + jfr)
 			require.NoError(b, err)
 			for i := 0; i < b.N; i++ {
 				res := httptest.NewRecorder()
@@ -242,5 +247,206 @@ func BenchmarkIngestJFR(b *testing.B) {
 			}
 		})
 	}
+
+}
+
+func TestIngestPPROFFixtures(t *testing.T) {
+	testdata := []struct {
+		profile          string
+		prevProfile      string
+		sampleTypeConfig string
+
+		expectStatus int
+		expectMetric string
+	}{
+		{
+			profile:      repoRoot + "pkg/pprof/testdata/heap",
+			expectStatus: 200,
+			expectMetric: "memory",
+		},
+		{
+			profile:      repoRoot + "pkg/pprof/testdata/profile_java",
+			expectStatus: 200,
+			expectMetric: "process_cpu",
+		},
+		{
+			profile:      repoRoot + "pkg/og/convert/testdata/cpu.pprof",
+			expectStatus: 200,
+			expectMetric: "process_cpu",
+		},
+		{
+			profile:      repoRoot + "pkg/og/convert/testdata/cpu.pprof",
+			prevProfile:  repoRoot + "pkg/og/convert/testdata/cpu.pprof",
+			expectStatus: 422,
+		},
+
+		{
+			profile:      repoRoot + "pkg/og/convert/pprof/testdata/cpu.pb.gz",
+			prevProfile:  "",
+			expectStatus: 200,
+			expectMetric: "process_cpu",
+		},
+		{
+			profile:      repoRoot + "pkg/og/convert/pprof/testdata/cpu-exemplars.pb.gz",
+			expectStatus: 200,
+			expectMetric: "process_cpu",
+		},
+		{
+			profile:      repoRoot + "pkg/og/convert/pprof/testdata/cpu-js.pb.gz",
+			expectStatus: 200,
+			expectMetric: "wall",
+		},
+		{
+			profile:      repoRoot + "pkg/og/convert/pprof/testdata/heap.pb",
+			expectStatus: 200,
+			expectMetric: "memory",
+		},
+		{
+			profile:      repoRoot + "pkg/og/convert/pprof/testdata/heap.pb.gz",
+			expectStatus: 200,
+			expectMetric: "memory",
+		},
+		{
+			profile:      repoRoot + "pkg/og/convert/pprof/testdata/heap-js.pprof",
+			expectStatus: 200,
+			expectMetric: "memory",
+		},
+		{
+			profile:      repoRoot + "pkg/og/convert/pprof/testdata/nodejs-heap.pb.gz",
+			expectStatus: 200,
+			expectMetric: "memory",
+		},
+		{
+			profile:      repoRoot + "pkg/og/convert/pprof/testdata/nodejs-wall.pb.gz",
+			expectStatus: 200,
+			expectMetric: "wall",
+		},
+		{
+			profile:          repoRoot + "pkg/og/convert/pprof/testdata/req_2.pprof",
+			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/req_2.st.json",
+			expectStatus:     200,
+			expectMetric:     "goroutines",
+		},
+		{
+			profile:          repoRoot + "pkg/og/convert/pprof/testdata/req_3.pprof",
+			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/req_3.st.json",
+			expectStatus:     200,
+			expectMetric:     "block",
+		},
+		{
+			profile:          repoRoot + "pkg/og/convert/pprof/testdata/req_4.pprof",
+			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/req_4.st.json",
+			expectStatus:     200,
+			expectMetric:     "mutex",
+		},
+		{
+			profile:          repoRoot + "pkg/og/convert/pprof/testdata/req_5.pprof",
+			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/req_5.st.json",
+			expectStatus:     200,
+			expectMetric:     "memory",
+		},
+
+		//todo add pprof from dotnet,pyspy,rbspy,rust, node
+		//
+	}
+	for _, testdatum := range testdata {
+		t.Run(testdatum.profile, func(t *testing.T) {
+
+			var (
+				profile, prevProfile, sampleTypeConfig []byte
+				err                                    error
+			)
+			profile, err = os.ReadFile(testdatum.profile)
+			require.NoError(t, err)
+			if testdatum.prevProfile != "" {
+				prevProfile, err = os.ReadFile(testdatum.prevProfile)
+				require.NoError(t, err)
+			}
+			if testdatum.sampleTypeConfig != "" {
+				sampleTypeConfig, err = os.ReadFile(testdatum.sampleTypeConfig)
+				require.NoError(t, err)
+			}
+
+			bs, ct := createPProfRequest(t, profile, prevProfile, sampleTypeConfig)
+
+			svc := &MockPushService{Keep: true, T: t}
+			h := NewPyroscopeIngestHandler(svc, log.NewSyncLogger(log.NewLogfmtLogger(os.Stderr)))
+
+			res := httptest.NewRecorder()
+
+			req := httptest.NewRequest("POST", "/ingest?name=pprof.test{qwe=asd}&spyName=foo239", bytes.NewReader(bs))
+			req.Header.Set("Content-Type", ct)
+			h.ServeHTTP(res, req)
+			assert.Equal(t, testdatum.expectStatus, res.Code)
+
+			if testdatum.expectStatus == 200 {
+				assert.Equal(t, 1, len(svc.reqPprof))
+				actualReq := svc.reqPprof[0]
+				ls := phlaremodel.Labels(actualReq.Labels)
+				require.Equal(t, testdatum.expectMetric, ls.Get(labels.MetricName))
+				require.Equal(t, "asd", ls.Get("qwe"))
+				require.Equal(t, "foo239", ls.Get("pyroscope_spy"))
+				require.Equal(t, "pprof.test", ls.Get("service_name"))
+				require.Equal(t, "false", ls.Get("__delta__"))
+				require.Equal(t, profile, actualReq.RawProfile)
+
+				//todo check all injected labels
+				comparePPROF(t, actualReq.Profile, actualReq.RawProfile)
+			} else {
+				assert.Equal(t, 0, len(svc.reqPprof))
+			}
+		})
+	}
+}
+
+func comparePPROF(t *testing.T, actual *profilev1.Profile, profile2 []byte) {
+	expected, err := pprof.RawFromBytes(profile2)
+	require.NoError(t, err)
+	defer expected.Close()
+
+	require.Equal(t, len(expected.SampleType), len(actual.SampleType))
+	for i := range actual.SampleType {
+		require.Equal(t, expected.StringTable[expected.SampleType[i].Type], actual.StringTable[actual.SampleType[i].Type])
+		require.Equal(t, expected.StringTable[expected.SampleType[i].Unit], actual.StringTable[actual.SampleType[i].Unit])
+
+		actualCollapsed := bench.StackCollapseProto(actual, i, 1.0)
+		expectedCollapsed := bench.StackCollapseProto(expected.Profile, i, 1.0)
+		require.Equal(t, expectedCollapsed, actualCollapsed)
+	}
+}
+
+func createPProfRequest(t *testing.T, profile, prevProfile, sampleTypeConfig []byte) ([]byte, string) {
+	const (
+		formFieldProfile, formFileProfile                   = "profile", "profile.pprof"
+		formFieldPreviousProfile, formFilePreviousProfile   = "prev_profile", "profile.pprof"
+		formFieldSampleTypeConfig, formFileSampleTypeConfig = "sample_type_config", "sample_type_config.json"
+	)
+
+	var b bytes.Buffer
+	w := multipart.NewWriter(&b)
+
+	profileW, err := w.CreateFormFile(formFieldProfile, formFileProfile)
+	require.NoError(t, err)
+	_, err = profileW.Write(profile)
+	require.NoError(t, err)
+
+	if sampleTypeConfig != nil {
+
+		sampleTypeConfigW, err := w.CreateFormFile(formFieldSampleTypeConfig, formFileSampleTypeConfig)
+		require.NoError(t, err)
+		_, err = sampleTypeConfigW.Write(sampleTypeConfig)
+		require.NoError(t, err)
+	}
+
+	if prevProfile != nil {
+		prevProfileW, err := w.CreateFormFile(formFieldPreviousProfile, formFilePreviousProfile)
+		require.NoError(t, err)
+		_, err = prevProfileW.Write(prevProfile)
+		require.NoError(t, err)
+	}
+	err = w.Close()
+	require.NoError(t, err)
+
+	return b.Bytes(), w.FormDataContentType()
 
 }
