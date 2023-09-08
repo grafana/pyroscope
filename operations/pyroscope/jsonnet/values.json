@@ -95,6 +95,10 @@
       "profiles.grafana.com/memory.port_name": "http2",
       "profiles.grafana.com/memory.scrape": "true"
     },
+    "podDisruptionBudget": {
+      "enabled": true,
+      "maxUnavailable": 1
+    },
     "podSecurityContext": {
       "fsGroup": 10001,
       "runAsNonRoot": true,

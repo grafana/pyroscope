@@ -160,6 +160,8 @@ spec:
       {{- end }}
   {{- end }}
 ---
+{{- $pdb := $values.podDisruptionBudget }}
+{{- if $pdb.enabled }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -168,10 +170,15 @@ metadata:
     {{- include "pyroscope.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 spec:
-  maxUnavailable: 1
+  {{- if hasKey $pdb "minAvailable" }}
+  minAvailable: {{ $pdb.minAvailable }}
+  {{- else }}
+  maxUnavailable: {{ $pdb.maxUnavailable }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "pyroscope.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: {{ $component | quote }}
+{{- end }}
 {{- end }}
 {{- end }}
