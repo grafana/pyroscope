@@ -11,24 +11,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/grafana/pyroscope/pkg/distributor/model"
-
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/distributor/model"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
-
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-
-	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 )
 
 type flatProfileSeries struct {
