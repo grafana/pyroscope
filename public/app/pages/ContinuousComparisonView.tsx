@@ -178,7 +178,16 @@ function ComparisonApp() {
       <PageTitle title={formatTitle('Comparison', leftQuery, rightQuery)} />
       <PageContentWrapper>
         <Toolbar onSelectedApp={handleSelectedApp} />
-        <Panel isLoading={isLoading}>
+        <Panel
+          isLoading={isLoading}
+          title={
+            <ChartTitle
+              titleKey={
+                isSidesHasSameUnits ? leftSide.metadata.units : undefined
+              }
+            />
+          }
+        >
           <TimelineChartWrapper
             data-testid="timeline-main"
             id="timeline-chart-double"
@@ -204,13 +213,6 @@ function ComparisonApp() {
               },
             }}
             timezone={timezone}
-            title={
-              <ChartTitle
-                titleKey={
-                  isSidesHasSameUnits ? leftSide.metadata.units : undefined
-                }
-              />
-            }
             selectionType="double"
           />
           <SyncTimelines

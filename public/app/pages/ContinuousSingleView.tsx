@@ -175,7 +175,15 @@ function ContinuousSingleView() {
           }}
         />
 
-        <Panel isLoading={isLoadingOrReloading([singleView.type])}>
+        <Panel
+          isLoading={isLoadingOrReloading([singleView.type])}
+          title={
+            <ChartTitle
+              className="singleView-timeline-title"
+              titleKey={singleView?.profile?.metadata.units}
+            />
+          }
+        >
           <TimelineChartWrapper
             timezone={offset === 0 ? 'utc' : 'browser'}
             data-testid="timeline-single"
@@ -183,12 +191,6 @@ function ContinuousSingleView() {
             timelineA={getTimeline()}
             onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
             height="125px"
-            title={
-              <ChartTitle
-                className="singleView-timeline-title"
-                titleKey={singleView?.profile?.metadata.units}
-              />
-            }
             annotations={annotations}
             selectionType="single"
             ContextMenu={contextMenu}

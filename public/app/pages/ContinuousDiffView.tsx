@@ -114,7 +114,10 @@ function ComparisonDiffApp() {
             dispatch(actions.setQuery(query));
           }}
         />
-        <Panel isLoading={isLoading}>
+        <Panel
+          isLoading={isLoading}
+          title={<ChartTitle titleKey={diffView.profile?.metadata.units} />}
+        >
           <TimelineChartWrapper
             data-testid="timeline-main"
             id="timeline-chart-diff"
@@ -143,7 +146,6 @@ function ComparisonDiffApp() {
             }}
             selectionType="double"
             timezone={timezone}
-            title={<ChartTitle titleKey={diffView.profile?.metadata.units} />}
           />
           <SyncTimelines
             isDataLoading={isLoading}
