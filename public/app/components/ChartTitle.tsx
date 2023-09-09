@@ -23,7 +23,7 @@ const chartTitleKeys = {
 
 type ChartTitleKey = keyof typeof chartTitleKeys;
 
-interface ChartTitleProps {
+export interface ChartTitleProps {
   children?: ReactNode;
   className?: string;
   color?: Color;
