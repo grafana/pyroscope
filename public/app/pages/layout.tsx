@@ -4,6 +4,8 @@ import Box from '@pyroscope/ui/Box';
 import { LoadingOverlay } from '@pyroscope/ui/LoadingOverlay';
 import React, { ReactNode } from 'react';
 
+import styles from './layout.module.css';
+
 export function PageContentWrapper({ children }: { children: ReactNode }) {
   return <div className="main-wrapper">{children}</div>;
 }
@@ -13,6 +15,7 @@ type PanelProps = {
   title?: ReactNode;
   children: ReactNode;
   className?: string;
+  headerActions?: ReactNode;
 };
 
 /** Common pattern which wraps a chart and optional title */
@@ -21,6 +24,7 @@ export function Panel({
   title,
   children,
   className = '',
+  headerActions,
 }: PanelProps) {
   // If there is a title, spinnerPosition is at the baseline
   // Otherwise, it is undeclared
@@ -30,8 +34,10 @@ export function Panel({
   return (
     <Box className={className}>
       <LoadingOverlay active={isLoading} spinnerPosition={spinnerPosition}>
-        <div style={{ background: 'magenta' }}>{title}</div>
-        <div style={{ background: 'cyan' }}>{children}</div>
+        <div className={styles.panelTitleWrapper}>
+          {title} {headerActions}
+        </div>
+        <div>{children}</div>
       </LoadingOverlay>
     </Box>
   );

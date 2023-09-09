@@ -21,6 +21,8 @@ const chartTitleKeys = {
   selection_excluded: 'Selection-excluded Exemplar Flamegraph',
 };
 
+type ChartTitleKey = keyof typeof chartTitleKeys;
+
 interface ChartTitleProps {
   children?: ReactNode;
   className?: string;
@@ -28,6 +30,10 @@ interface ChartTitleProps {
   icon?: ReactNode;
   postfix?: ReactNode;
   titleKey?: keyof typeof chartTitleKeys;
+}
+
+export function getChartTitle(key: ChartTitleKey) {
+  return chartTitleKeys[key];
 }
 
 export default function ChartTitle({
@@ -50,7 +56,7 @@ export default function ChartTitle({
           {icon}
         </span>
       )}
-      <p className={styles.title}>{children || chartTitleKeys[titleKey]}</p>
+      <p className={styles.title}>{children || getChartTitle(titleKey)}</p>
       {postfix}
     </div>
   );

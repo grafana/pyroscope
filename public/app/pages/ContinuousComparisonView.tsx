@@ -231,31 +231,29 @@ function ComparisonApp() {
           <Panel
             isLoading={isLoading}
             className={styles.comparisonPane}
-            title={
-              <div className={styles.timelineTitleWrapper}>
-                <ChartTitle titleKey="baseline" color={leftColor} />
-                <SideTimelineComparator
-                  setComparisonMode={setComparisonMode}
-                  comparisonMode={comparisonMode}
-                  onCompare={handleCompare}
-                  selection={{
-                    from,
-                    until,
-                    left: {
-                      from: leftFrom,
-                      to: leftUntil,
-                      color: leftColor,
-                      overlayColor: leftColor.alpha(0.3),
-                    },
-                    right: {
-                      from: rightFrom,
-                      to: rightUntil,
-                      color: rightColor,
-                      overlayColor: rightColor.alpha(0.3),
-                    },
-                  }}
-                />
-              </div>
+            title={<ChartTitle titleKey="baseline" color={leftColor} />}
+            headerActions={
+              <SideTimelineComparator
+                setComparisonMode={setComparisonMode}
+                comparisonMode={comparisonMode}
+                onCompare={handleCompare}
+                selection={{
+                  from,
+                  until,
+                  left: {
+                    from: leftFrom,
+                    to: leftUntil,
+                    color: leftColor,
+                    overlayColor: leftColor.alpha(0.3),
+                  },
+                  right: {
+                    from: rightFrom,
+                    to: rightUntil,
+                    color: rightColor,
+                    overlayColor: rightColor.alpha(0.3),
+                  },
+                }}
+              />
             }
           >
             <TagsBar
@@ -316,13 +314,7 @@ function ComparisonApp() {
           <Panel
             isLoading={isLoading}
             className={styles.comparisonPane}
-            title={
-              <>
-                <div className={styles.timelineTitleWrapper}>
-                  <ChartTitle titleKey="comparison" color={rightColor} />
-                </div>
-              </>
-            }
+            title={<ChartTitle titleKey="comparison" color={rightColor} />}
           >
             <TagsBar
               query={rightQuery}

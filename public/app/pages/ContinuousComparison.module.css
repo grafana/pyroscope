@@ -10,10 +10,3 @@
 .comparisonPane:last-child {
   margin-right: 0;
 }
-
-.timelineTitleWrapper {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 38px;
-}
