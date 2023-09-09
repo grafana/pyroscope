@@ -10,7 +10,7 @@ export function PageContentWrapper({ children }: { children: ReactNode }) {
   return <div className="main-wrapper">{children}</div>;
 }
 
-type PanelProps = {
+export type PanelProps = {
   isLoading: boolean;
   title?: ReactNode;
   children: ReactNode;
