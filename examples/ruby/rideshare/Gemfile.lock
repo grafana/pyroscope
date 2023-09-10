@@ -6,11 +6,11 @@ GEM
     ffi (1.15.5)
     mustermann (1.1.1)
       ruby2_keywords (~> 0.0.1)
-    pyroscope (0.5.2-aarch64-linux)
+    pyroscope (0.5.10-aarch64-linux)
       ffi
-    pyroscope (0.5.2-arm64-darwin)
+    pyroscope (0.5.10-arm64-darwin)
       ffi
-    pyroscope (0.5.2-x86_64-linux)
+    pyroscope (0.5.10-x86_64-linux)
       ffi
     rack (2.2.3)
     rack-protection (2.1.0)
@@ -33,9 +33,9 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  pyroscope (= 0.5.2)
+  pyroscope (= 0.5.10)
   sinatra (~> 2.1)
   thin (~> 1.8)
 
 BUNDLED WITH
-   2.2.22
+   2.4.6

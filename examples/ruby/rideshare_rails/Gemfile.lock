@@ -159,15 +159,15 @@ GEM
       opentelemetry-api (~> 1.0)
     puma (5.6.4)
       nio4r (~> 2.0)
-    pyroscope (0.5.2)
+    pyroscope (0.5.10)
       ffi
-    pyroscope (0.5.2-aarch64-linux)
+    pyroscope (0.5.10-aarch64-linux)
       ffi
-    pyroscope (0.5.2-arm64-darwin)
+    pyroscope (0.5.10-arm64-darwin)
       ffi
-    pyroscope (0.5.2-x86_64-darwin)
+    pyroscope (0.5.10-x86_64-darwin)
       ffi
-    pyroscope (0.5.2-x86_64-linux)
+    pyroscope (0.5.10-x86_64-linux)
       ffi
     pyroscope-otel (0.1.1)
       opentelemetry-api (~> 1.1.0)
@@ -238,7 +238,7 @@ DEPENDENCIES
   opentelemetry-instrumentation-rails
   opentelemetry-sdk (~> 1.2.0)
   puma (~> 5.0)
-  pyroscope (= 0.5.2)
+  pyroscope (= 0.5.10)
   pyroscope-otel (~> 0.1.1)
   rails (~> 7.0.2, >= 7.0.2.3)
   sprockets-rails

@@ -1,6 +1,6 @@
 FROM python:3.9
 
-RUN pip3 install fastapi pyroscope-io==0.7.1 uvicorn[standard]
+RUN pip3 install fastapi pyroscope-io==0.8.5 uvicorn[standard]
 
 ENV FLASK_ENV=development
 ENV PYTHONUNBUFFERED=1
