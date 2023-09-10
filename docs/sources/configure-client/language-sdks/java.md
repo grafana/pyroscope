@@ -40,7 +40,7 @@ First, add Pyroscope dependency
 
 ### Gradle
 ```shell
-implementation("io\.pyroscope:agent:0.12.0")
+implementation("io.pyroscope:agent:0.12.0")
 ```
 
 Then add the following code to your application:

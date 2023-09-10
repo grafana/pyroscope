@@ -97,7 +97,7 @@ func updateJava() {
 	replaceInplace(reJarURL, "examples/java/simple/Dockerfile", lastJarURL)
 
 	reGradelDep := regexp.MustCompile("implementation\\(\"io\\.pyroscope:agent:\\d+\\.\\d+\\.\\d+\"\\)")
-	lastGradleDep := fmt.Sprintf("implementation(\"io\\.pyroscope:agent:%s\")", last.version())
+	lastGradleDep := fmt.Sprintf("implementation(\"io.pyroscope:agent:%s\")", last.version())
 	replaceInplace(reGradelDep, "examples/java/rideshare/build.gradle.kts", lastGradleDep)
 	replaceInplace(reGradelDep, "docs/sources/configure-client/language-sdks/java.md", lastGradleDep)
 
