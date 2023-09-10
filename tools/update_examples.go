@@ -44,11 +44,16 @@ func udpateDotnet() {
 	replaceInplace(reDockerGlibc, "examples/dotnet/fast-slow/Dockerfile", replDockerGlibc)
 	replaceInplace(reDockerGlibc, "examples/dotnet/rideshare/Dockerfile", replDockerGlibc)
 	replaceInplace(reDockerGlibc, "examples/dotnet/web-new/Dockerfile", replDockerGlibc)
+	replaceInplace(reDockerGlibc, "docs/sources/configure-client/language-sdks/dotnet.md", replDockerGlibc)
 
 	reDockerMusl := regexp.MustCompile("COPY --from=pyroscope/pyroscope-dotnet:\\d+\\.\\d+\\.\\d+-musl")
 	replDockerMusl := fmt.Sprintf("COPY --from=pyroscope/pyroscope-dotnet:%s-musl", last.version())
 	replaceInplace(reDockerMusl, "examples/dotnet/fast-slow/musl.Dockerfile", replDockerMusl)
 	replaceInplace(reDockerMusl, "examples/dotnet/rideshare/musl.Dockerfile", replDockerMusl)
+
+	reUrl := regexp.MustCompile("https://github\\.com/grafana/pyroscope-dotnet/releases/download/v\\d+\\.\\d+\\.\\d+-pyroscope/pyroscope.\\d+\\.\\d+\\.\\d+-glibc-x86_64.tar.gz")
+	replUrl := fmt.Sprintf("https://github.com/grafana/pyroscope-dotnet/releases/download/v%s-pyroscope/pyroscope.%s-glibc-x86_64.tar.gz", last.version(), last.version())
+	replaceInplace(reUrl, "docs/sources/configure-client/language-sdks/dotnet.md", replUrl)
 }
 
 func updatePython() {
@@ -94,6 +99,12 @@ func updateJava() {
 	reGradelDep := regexp.MustCompile("implementation\\(\"io\\.pyroscope:agent:\\d+\\.\\d+\\.\\d+\"\\)")
 	lastGradleDep := fmt.Sprintf("implementation(\"io\\.pyroscope:agent:%s\")", last.version())
 	replaceInplace(reGradelDep, "examples/java/rideshare/build.gradle.kts", lastGradleDep)
+	replaceInplace(reGradelDep, "docs/sources/configure-client/language-sdks/java.md", lastGradleDep)
+
+	reMaven := regexp.MustCompile("<version>\\d+\\.\\d+\\.\\d+</version>")
+	replMaven := fmt.Sprintf("<version>%s</version>", last.version())
+	replaceInplace(reMaven, "docs/sources/configure-client/language-sdks/java.md", replMaven)
+
 }
 
 func replaceInplace(re *regexp.Regexp, file string, replacement string) {
