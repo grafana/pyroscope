@@ -75,7 +75,7 @@ type Head struct {
 
 const (
 	pathHead          = "head"
-	pathLocal         = "local"
+	PathLocal         = "local"
 	defaultFolderMode = 0o755
 )
 
@@ -95,7 +95,7 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 		limiter:       limiter,
 	}
 	h.headPath = filepath.Join(cfg.DataPath, pathHead, h.meta.ULID.String())
-	h.localPath = filepath.Join(cfg.DataPath, pathLocal, h.meta.ULID.String())
+	h.localPath = filepath.Join(cfg.DataPath, PathLocal, h.meta.ULID.String())
 
 	if cfg.Parquet != nil {
 		h.parquetConfig = cfg.Parquet

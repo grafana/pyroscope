@@ -33,6 +33,28 @@ func (b *ReaderAtBucket) ReaderAt(ctx context.Context, name string) (ReaderAtClo
 	}, nil
 }
 
+// ReaderWithExpectedErrs implements objstore.Bucket.
+func (b *ReaderAtBucket) ReaderWithExpectedErrs(fn IsOpFailureExpectedFunc) BucketReader {
+	return b.WithExpectedErrs(fn)
+}
+
+// WithExpectedErrs implements objstore.Bucket.
+func (b *ReaderAtBucket) WithExpectedErrs(fn IsOpFailureExpectedFunc) Bucket {
+	if ib, ok := b.Bucket.(InstrumentedBucket); ok {
+		return &ReaderAtBucket{
+			Bucket: ib.WithExpectedErrs(fn),
+		}
+	}
+
+	if ib, ok := b.Bucket.(objstore.InstrumentedBucket); ok {
+		return &ReaderAtBucket{
+			Bucket: ib.WithExpectedErrs(func(err error) bool { return fn(err) }),
+		}
+	}
+
+	return b
+}
+
 type GetRangeReader interface {
 	GetRange(ctx context.Context, name string, off, length int64) (io.ReadCloser, error)
 }

@@ -226,7 +226,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		}
 	}
 
-	haveRawPprof := req.RawProfileType == ""
+	haveRawPprof := req.RawProfileType == distributormodel.RawProfileTypePPROF
 	d.bytesReceivedTotalStats.Inc(int64(req.RawProfileSize))
 	d.bytesReceivedStats.Record(float64(req.RawProfileSize))
 	if !haveRawPprof {
@@ -234,7 +234,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		// compressed size per profile type as all profile types are compressed once together. So we can not count
 		// compressed bytes per profile type. Instead we count compressed bytes per profile.
 		profName := req.RawProfileType // use "jfr" as profile name
-		d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(req.RawProfileSize))
+		d.metrics.receivedCompressedBytes.WithLabelValues(string(profName), tenantID).Observe(float64(req.RawProfileSize))
 	}
 
 	for _, series := range req.Series {

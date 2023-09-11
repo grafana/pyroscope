@@ -2,36 +2,13 @@ package convert
 
 import (
 	"bytes"
-	"compress/gzip"
 	"fmt"
-	"os"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/grafana/pyroscope/pkg/og/agent/spy"
 )
 
 var _ = Describe("convert", func() {
-	Describe("ParsePprof", func() {
-		It("parses data correctly", func() {
-			result := []string{}
-
-			b, err := os.ReadFile("testdata/cpu.pprof")
-			Expect(err).ToNot(HaveOccurred())
-			r := bytes.NewReader(b)
-			g, err := gzip.NewReader(r)
-			Expect(err).ToNot(HaveOccurred())
-			p, err := ParsePprof(g)
-			Expect(err).ToNot(HaveOccurred())
-
-			p.Get("samples", func(labels *spy.Labels, name []byte, val int) error {
-				result = append(result, fmt.Sprintf("%s %d", name, val))
-				return nil
-			})
-			Expect(result).To(ContainElement("runtime.main;main.work 1"))
-		})
-	})
-
 	Describe("ParseGroups", func() {
 		It("parses data correctly", func() {
 			r := bytes.NewReader([]byte("foo;bar 10\nfoo;baz 20\n"))

@@ -555,7 +555,7 @@ func newBlock(t *testing.T, generator func() []*testhelper.ProfileBuilder) Block
 		StoragePrefix: "local",
 	}, "test")
 	require.NoError(t, err)
-	metaMap, err := block.ListBlocks(filepath.Join(dir, pathLocal), time.Time{})
+	metaMap, err := block.ListBlocks(filepath.Join(dir, PathLocal), time.Time{})
 	require.NoError(t, err)
 	require.Len(t, metaMap, 1)
 	var meta *block.Meta
