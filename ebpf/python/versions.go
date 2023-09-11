@@ -94,7 +94,7 @@ func rgrep(r io.Reader, re *regexp.Regexp) ([][]byte, error) {
 			if submatch != nil {
 				return submatch, nil
 			}
-			copy(buf[:lookBack], it[len(it)-lookBack:len(it)])
+			copy(buf[:lookBack], it[len(it)-lookBack:])
 		}
 		if err != nil {
 			if errors.Is(err, io.EOF) {
