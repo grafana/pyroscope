@@ -33,12 +33,12 @@ type TenantConfigProvider interface {
 // storage server-side encryption (SSE) for a given user.
 type SSEBucketClient struct {
 	userID      string
-	bucket      objstore.Bucket
+	bucket      Bucket
 	cfgProvider TenantConfigProvider
 }
 
 // NewSSEBucketClient makes a new SSEBucketClient. The cfgProvider can be nil.
-func NewSSEBucketClient(userID string, bucket objstore.Bucket, cfgProvider TenantConfigProvider) *SSEBucketClient {
+func NewSSEBucketClient(userID string, bucket Bucket, cfgProvider TenantConfigProvider) InstrumentedBucket {
 	return &SSEBucketClient{
 		userID:      userID,
 		bucket:      bucket,
@@ -49,6 +49,10 @@ func NewSSEBucketClient(userID string, bucket objstore.Bucket, cfgProvider Tenan
 // Close implements objstore.Bucket.
 func (b *SSEBucketClient) Close() error {
 	return b.bucket.Close()
+}
+
+func (b *SSEBucketClient) ReaderAt(ctx context.Context, name string) (ReaderAtCloser, error) {
+	return b.bucket.ReaderAt(ctx, name)
 }
 
 // Upload the contents of the reader as an object into the bucket.
@@ -134,13 +138,13 @@ func (b *SSEBucketClient) Attributes(ctx context.Context, name string) (objstore
 }
 
 // ReaderWithExpectedErrs implements objstore.Bucket.
-func (b *SSEBucketClient) ReaderWithExpectedErrs(fn objstore.IsOpFailureExpectedFunc) objstore.BucketReader {
+func (b *SSEBucketClient) ReaderWithExpectedErrs(fn IsOpFailureExpectedFunc) BucketReader {
 	return b.WithExpectedErrs(fn)
 }
 
 // WithExpectedErrs implements objstore.Bucket.
-func (b *SSEBucketClient) WithExpectedErrs(fn objstore.IsOpFailureExpectedFunc) objstore.Bucket {
-	if ib, ok := b.bucket.(objstore.InstrumentedBucket); ok {
+func (b *SSEBucketClient) WithExpectedErrs(fn IsOpFailureExpectedFunc) Bucket {
+	if ib, ok := b.bucket.(InstrumentedBucket); ok {
 		return &SSEBucketClient{
 			userID:      b.userID,
 			bucket:      ib.WithExpectedErrs(fn),

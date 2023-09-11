@@ -104,7 +104,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 
 			require.NoError(t, db.Flush(context.Background()))
 
-			b, err := filesystem.NewBucket(filepath.Join(contextDataDir(ctx), pathLocal))
+			b, err := filesystem.NewBucket(filepath.Join(contextDataDir(ctx), PathLocal))
 			require.NoError(t, err)
 
 			// open resulting block
@@ -319,7 +319,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 
 			require.NoError(t, db.Flush(context.Background()))
 
-			b, err := filesystem.NewBucket(filepath.Join(contextDataDir(ctx), pathLocal))
+			b, err := filesystem.NewBucket(filepath.Join(contextDataDir(ctx), PathLocal))
 			require.NoError(t, err)
 
 			// open resulting block
@@ -483,7 +483,7 @@ func TestMergePprof(t *testing.T) {
 
 	require.NoError(t, db.Flush(context.Background()))
 
-	b, err := filesystem.NewBucket(filepath.Join(contextDataDir(ctx), pathLocal))
+	b, err := filesystem.NewBucket(filepath.Join(contextDataDir(ctx), PathLocal))
 	require.NoError(t, err)
 
 	// open resulting block
