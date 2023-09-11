@@ -68,7 +68,7 @@ type Config struct {
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet, logger log.Logger) {
 	cfg.PoolConfig.RegisterFlagsWithPrefix("distributor", fs)
 	fs.DurationVar(&cfg.PushTimeout, "distributor.push.timeout", 5*time.Second, "Timeout when pushing data to ingester.")
-	cfg.DistributorRing.RegisterFlags("distributor.ring.", "collector", "distributors", fs, logger)
+	cfg.DistributorRing.RegisterFlags("distributor.ring.", "collectors/", "distributors", fs, logger)
 }
 
 // Distributor coordinates replicates and distribution of log streams.

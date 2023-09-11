@@ -53,7 +53,7 @@ func (cfg *CommonRingConfig) RegisterFlags(flagPrefix, kvStorePrefix, componentP
 	cfg.InstanceInterfaceNames = netutil.PrivateNetworkInterfacesWithFallback([]string{"eth0", "en0"}, logger)
 	f.Var((*flagext.StringSlice)(&cfg.InstanceInterfaceNames), flagPrefix+"instance-interface-names", "List of network interface names to look up when finding the instance IP address.")
 	f.StringVar(&cfg.InstanceAddr, flagPrefix+"instance-addr", "", "IP address to advertise in the ring. Default is auto-detected.")
-	f.IntVar(&cfg.InstancePort, flagPrefix+"instance-port", 0, "Port to advertise in the ring (defaults to -server.grpc-listen-port).")
+	f.IntVar(&cfg.InstancePort, flagPrefix+"instance-port", 0, "Port to advertise in the ring (defaults to -server.http-listen-port).")
 	f.StringVar(&cfg.InstanceID, flagPrefix+"instance-id", hostname, "Instance ID to register in the ring.")
 	f.BoolVar(&cfg.EnableIPv6, flagPrefix+"instance-enable-ipv6", false, "Enable using a IPv6 instance address. (default false)")
 }

@@ -164,6 +164,10 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 			_ = f.Value.Set("4040")
 		case "distributor.ring.instance-port":
 			_ = f.Value.Set("4040")
+		case "store-gateway.sharding-ring.instance-port":
+			_ = f.Value.Set("4040")
+		case "query-scheduler.ring.instance-port":
+			_ = f.Value.Set("4040")
 		case "overrides-exporter.ring.instance-port":
 			_ = f.Value.Set("4040")
 		case "distributor.replication-factor":
@@ -189,7 +193,7 @@ func (c *Config) ApplyDynamicConfig() cfg.Source {
 	c.Frontend.QuerySchedulerDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.Worker.QuerySchedulerDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.QueryScheduler.ServiceDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
-	c.StoreGateway.ShardingRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
+	c.StoreGateway.ShardingRing.Ring.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 
 	return func(dst cfg.Cloneable) error {
 		return nil

@@ -100,7 +100,7 @@ Usage of ./pyroscope:
   -distributor.ring.instance-interface-names string
     	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -distributor.ring.instance-port int
-    	Port to advertise in the ring (defaults to -server.grpc-listen-port). (default 4040)
+    	Port to advertise in the ring (defaults to -server.http-listen-port). (default 4040)
   -distributor.ring.multi.mirror-enabled
     	Mirror writes to secondary store.
   -distributor.ring.multi.mirror-timeout duration
@@ -110,7 +110,7 @@ Usage of ./pyroscope:
   -distributor.ring.multi.secondary string
     	Secondary backend storage used by multi-client.
   -distributor.ring.prefix string
-    	The prefix for the keys in the store. Should end with a /. (default "collector")
+    	The prefix for the keys in the store. Should end with a /. (default "collectors/")
   -distributor.ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -distributor.zone-awareness-enabled
@@ -322,7 +322,7 @@ Usage of ./pyroscope:
   -overrides-exporter.ring.instance-interface-names string
     	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -overrides-exporter.ring.instance-port int
-    	Port to advertise in the ring (defaults to -server.grpc-listen-port). (default 4040)
+    	Port to advertise in the ring (defaults to -server.http-listen-port). (default 4040)
   -overrides-exporter.ring.multi.mirror-enabled
     	Mirror writes to secondary store.
   -overrides-exporter.ring.multi.mirror-timeout duration
@@ -562,7 +562,7 @@ Usage of ./pyroscope:
   -query-scheduler.ring.instance-interface-names string
     	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -query-scheduler.ring.instance-port int
-    	Port to advertise in the ring (defaults to -server.grpc-listen-port).
+    	Port to advertise in the ring (defaults to -server.http-listen-port). (default 4040)
   -query-scheduler.ring.multi.mirror-enabled
     	Mirror writes to secondary store.
   -query-scheduler.ring.multi.mirror-timeout duration
@@ -838,7 +838,7 @@ Usage of ./pyroscope:
   -store-gateway.sharding-ring.heartbeat-period duration
     	Period at which to heartbeat to the ring. 0 = disabled. (default 15s)
   -store-gateway.sharding-ring.heartbeat-timeout duration
-    	The heartbeat timeout after which store gateways are considered unhealthy within the ring. 0 = never (timeout disabled). This option needs be set both on the store-gateway, querier and ruler when running in microservices mode. (default 1m0s)
+    	The heartbeat timeout after which store-gateways are considered unhealthy within the ring. 0 = never (timeout disabled). (default 1m0s)
   -store-gateway.sharding-ring.instance-addr string
     	IP address to advertise in the ring. Default is auto-detected.
   -store-gateway.sharding-ring.instance-availability-zone string
@@ -850,7 +850,7 @@ Usage of ./pyroscope:
   -store-gateway.sharding-ring.instance-interface-names string
     	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -store-gateway.sharding-ring.instance-port int
-    	Port to advertise in the ring (defaults to -server.grpc-listen-port).
+    	Port to advertise in the ring (defaults to -server.http-listen-port).
   -store-gateway.sharding-ring.multi.mirror-enabled
     	Mirror writes to secondary store.
   -store-gateway.sharding-ring.multi.mirror-timeout duration
