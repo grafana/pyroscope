@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/grafana/mimir/pkg/storage/tsdb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 type SplitAndMergePlanner struct {
@@ -39,7 +39,7 @@ func (c *SplitAndMergePlanner) Plan(_ context.Context, metasByMinTime []*block.M
 	rangeEnd := rangeStart + largestRange
 
 	for _, b := range metasByMinTime {
-		if b.MinTime < rangeStart || b.MaxTime > rangeEnd {
+		if int64(b.MinTime) < rangeStart || int64(b.MaxTime) > rangeEnd {
 			return nil, fmt.Errorf("block %s with time range %d:%d is outside the largest expected range %d:%d",
 				b.ULID.String(),
 				b.MinTime,

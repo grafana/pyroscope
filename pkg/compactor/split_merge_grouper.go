@@ -16,9 +16,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/model/labels"
 
-	"github.com/grafana/mimir/pkg/storage/sharding"
-	mimir_tsdb "github.com/grafana/mimir/pkg/storage/tsdb"
-	"github.com/grafana/mimir/pkg/storage/tsdb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 )
 
 type SplitAndMergeGrouper struct {
@@ -66,7 +65,7 @@ func (g *SplitAndMergeGrouper) Groups(blocks map[ulid.ULID]*block.Meta) (res []*
 		// The group key is used by the compactor as a unique identifier of the compaction job.
 		// Its content is not important for the compactor, but uniqueness must be guaranteed.
 		groupKey := fmt.Sprintf("%s-%s-%s-%d-%d",
-			defaultGroupKeyWithoutShardID(job.blocks[0].Thanos),
+			defaultGroupKeyWithoutShardID(job.blocks[0]),
 			job.stage,
 			job.shardID,
 			job.rangeStart,
@@ -74,8 +73,8 @@ func (g *SplitAndMergeGrouper) Groups(blocks map[ulid.ULID]*block.Meta) (res []*
 
 		// All the blocks within the same group have the same downsample
 		// resolution and external labels.
-		resolution := job.blocks[0].Thanos.Downsample.Resolution
-		externalLabels := labels.FromMap(job.blocks[0].Thanos.Labels)
+		resolution := job.blocks[0].Downsample.Resolution
+		externalLabels := labels.FromMap(job.blocks[0].Labels)
 
 		compactionJob := NewJob(
 			g.userID,
@@ -112,7 +111,7 @@ func planCompaction(userID string, blocks []*block.Meta, ranges []int64, shardCo
 	// considering the shard ID in the external labels (because will be checked later).
 	mainGroups := map[string][]*block.Meta{}
 	for _, b := range blocks {
-		key := defaultGroupKeyWithoutShardID(b.Thanos)
+		key := defaultGroupKeyWithoutShardID(b)
 		mainGroups[key] = append(mainGroups[key], b)
 	}
 
@@ -171,7 +170,7 @@ func planCompaction(userID string, blocks []*block.Meta, ranges []int64, shardCo
 		}
 
 		// The sharding key could be equal but external labels can still be different.
-		return defaultGroupKeyWithoutShardID(jobs[i].blocks[0].Thanos) < defaultGroupKeyWithoutShardID(jobs[j].blocks[0].Thanos)
+		return defaultGroupKeyWithoutShardID(jobs[i].blocks[0]) < defaultGroupKeyWithoutShardID(jobs[j].blocks[0])
 	})
 
 	return jobs
@@ -234,8 +233,8 @@ func planSplitting(userID string, group blocksGroup, splitGroups uint32) []*job 
 	// The number of source blocks could be very large so, to have a better horizontal scaling, we should group
 	// the source blocks into N groups (where N = number of shards) and create a job for each group of blocks to
 	// merge and split.
-	for _, block := range blocks {
-		splitGroup := mimir_tsdb.HashBlockID(block.ULID) % splitGroups
+	for _, blk := range blocks {
+		splitGroup := block.HashBlockID(blk.ULID) % splitGroups
 
 		if jobs[splitGroup] == nil {
 			jobs[splitGroup] = &job{
@@ -249,7 +248,7 @@ func planSplitting(userID string, group blocksGroup, splitGroups uint32) []*job 
 			}
 		}
 
-		jobs[splitGroup].blocks = append(jobs[splitGroup].blocks, block)
+		jobs[splitGroup].blocks = append(jobs[splitGroup].blocks, blk)
 	}
 
 	// Convert the output.
@@ -270,7 +269,7 @@ func groupBlocksByShardID(blocks []*block.Meta) map[string][]*block.Meta {
 	for _, block := range blocks {
 		// If the label doesn't exist, we'll group together such blocks using an
 		// empty string as shard ID.
-		shardID := block.Thanos.Labels[mimir_tsdb.CompactorShardIDExternalLabel]
+		shardID := block.Labels[sharding.CompactorShardIDLabel]
 		groups[shardID] = append(groups[shardID], block)
 	}
 
@@ -296,7 +295,7 @@ func groupBlocksByRange(blocks []*block.Meta, tr int64) []blocksGroup {
 
 		// Skip blocks that don't fall into the range. This can happen via mis-alignment or
 		// by being the multiple of the intended range.
-		if m.MaxTime > group.rangeEnd {
+		if int64(m.MaxTime) > group.rangeEnd {
 			i++
 			continue
 		}
@@ -305,13 +304,13 @@ func groupBlocksByRange(blocks []*block.Meta, tr int64) []blocksGroup {
 		for ; i < len(blocks); i++ {
 			// If the block does not start within this group, then we should break the iteration
 			// and move it to the next group.
-			if blocks[i].MinTime >= group.rangeEnd {
+			if int64(blocks[i].MinTime) >= group.rangeEnd {
 				break
 			}
 
 			// If the block doesn't fall into this group, but it started within this group then it
 			// means it spans across multiple ranges and we should skip it.
-			if blocks[i].MaxTime > group.rangeEnd {
+			if int64(blocks[i].MaxTime) > group.rangeEnd {
 				continue
 			}
 
@@ -328,21 +327,20 @@ func groupBlocksByRange(blocks []*block.Meta, tr int64) []blocksGroup {
 
 func getRangeStart(m *block.Meta, tr int64) int64 {
 	// Compute start of aligned time range of size tr closest to the current block's start.
-	// This code has been copied from TSDB.
 	if m.MinTime >= 0 {
-		return tr * (m.MinTime / tr)
+		return tr * (int64(m.MinTime) / tr)
 	}
-	return tr * ((m.MinTime - tr + 1) / tr)
+	return tr * ((int64(m.MinTime) - tr + 1) / tr)
 }
 
 func sortMetasByMinTime(metas []*block.Meta) []*block.Meta {
 	sort.Slice(metas, func(i, j int) bool {
-		if metas[i].BlockMeta.MinTime != metas[j].BlockMeta.MinTime {
-			return metas[i].BlockMeta.MinTime < metas[j].BlockMeta.MinTime
+		if metas[i].MinTime != metas[j].MinTime {
+			return metas[i].MinTime < metas[j].MinTime
 		}
 
 		// Compare labels in case of same MinTime to get stable results.
-		return labels.Compare(labels.FromMap(metas[i].Thanos.Labels), labels.FromMap(metas[j].Thanos.Labels)) < 0
+		return labels.Compare(labels.FromMap(metas[i].Labels), labels.FromMap(metas[j].Labels)) < 0
 	})
 
 	return metas
@@ -353,8 +351,8 @@ func getMaxTime(blocks []*block.Meta) int64 {
 	maxTime := int64(math.MinInt64)
 
 	for _, block := range blocks {
-		if block.MaxTime > maxTime {
-			maxTime = block.MaxTime
+		if int64(block.MaxTime) > maxTime {
+			maxTime = int64(block.MaxTime)
 		}
 	}
 
@@ -363,15 +361,15 @@ func getMaxTime(blocks []*block.Meta) int64 {
 
 // defaultGroupKeyWithoutShardID returns the default group key excluding ShardIDLabelName
 // when computing it.
-func defaultGroupKeyWithoutShardID(meta block.ThanosMeta) string {
+func defaultGroupKeyWithoutShardID(meta *block.Meta) string {
 	return defaultGroupKey(meta.Downsample.Resolution, labelsWithoutShard(meta.Labels))
 }
 
-// Return labels built from base, but without any label with name equal to mimir_tsdb.CompactorShardIDExternalLabel.
+// Return labels built from base, but without any label with name equal to sharding.CompactorShardIDExternalLabel.
 func labelsWithoutShard(base map[string]string) labels.Labels {
 	b := labels.NewScratchBuilder(len(base))
 	for k, v := range base {
-		if k != mimir_tsdb.CompactorShardIDExternalLabel {
+		if k != sharding.CompactorShardIDLabel {
 			b.Add(k, v)
 		}
 	}

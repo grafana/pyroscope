@@ -16,9 +16,9 @@ import (
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/stretchr/testify/require"
 
-	mimir_tsdb "github.com/grafana/mimir/pkg/storage/tsdb"
-	"github.com/grafana/mimir/pkg/storage/tsdb/block"
-	"github.com/grafana/mimir/pkg/util/extprom"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
+	"github.com/grafana/pyroscope/pkg/util/extprom"
 )
 
 func ULID(i int) ulid.ULID { return ulid.MustNew(uint64(i), nil) }
@@ -348,19 +348,16 @@ func TestShardAwareDeduplicateFilter_Filter(t *testing.T) {
 			inputLen := len(tcase.input)
 			for id, metaInfo := range tcase.input {
 				metas[id] = &block.Meta{
-					BlockMeta: tsdb.BlockMeta{
-						ULID: id,
-						Compaction: tsdb.BlockMetaCompaction{
-							Sources: metaInfo.sources,
-						},
+					ULID: id,
+					Compaction: tsdb.BlockMetaCompaction{
+						Sources: metaInfo.sources,
 					},
-					Thanos: block.ThanosMeta{
-						Downsample: block.ThanosDownsample{
-							Resolution: metaInfo.resolution,
-						},
-						Labels: map[string]string{
-							mimir_tsdb.CompactorShardIDExternalLabel: metaInfo.shardID,
-						},
+
+					Downsample: block.Downsample{
+						Resolution: metaInfo.resolution,
+					},
+					Labels: map[string]string{
+						sharding.CompactorShardIDLabel: metaInfo.shardID,
 					},
 				}
 			}
@@ -409,9 +406,7 @@ func BenchmarkDeduplicateFilter_Filter(b *testing.B) {
 			count++
 
 			cases[0][id] = &block.Meta{
-				BlockMeta: tsdb.BlockMeta{
-					ULID: id,
-				},
+				ULID: id,
 			}
 
 			for j := 0; j < 100; j++ {
@@ -430,12 +425,9 @@ func BenchmarkDeduplicateFilter_Filter(b *testing.B) {
 				id := ulid.MustNew(count, nil)
 				count++
 				cases[1][id] = &block.Meta{
-					BlockMeta: tsdb.BlockMeta{
-						ULID: id,
-					},
-					Thanos: block.ThanosMeta{
-						Downsample: block.ThanosDownsample{Resolution: res},
-					},
+					ULID: id,
+
+					Downsample: block.Downsample{Resolution: res},
 				}
 				for j := 0; j < 100; j++ {
 					cases[1][id].Compaction.Sources = append(cases[1][id].Compaction.Sources, ulid.MustNew(count, nil))

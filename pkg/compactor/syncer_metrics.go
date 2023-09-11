@@ -11,10 +11,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	util_log "github.com/grafana/mimir/pkg/util/log"
+	util_log "github.com/grafana/pyroscope/pkg/util"
 )
 
-// Copied from Thanos, pkg/compact/compact.go.
+// Copied from Mimir.
 // Here we aggregate metrics from all finished syncers.
 type aggregatedSyncerMetrics struct {
 	metaSync                  prometheus.Counter
@@ -25,34 +25,34 @@ type aggregatedSyncerMetrics struct {
 	garbageCollectionDuration *dskit_metrics.HistogramDataCollector // was prometheus.Histogram before
 }
 
-// Copied (and modified with Mimir prefix) from Thanos, pkg/compact/compact.go
+// Copied (and modified with Pyroscope prefix) from Mimir.
 // We also ignore "group" label, since we only use a single group.
 func newAggregatedSyncerMetrics(reg prometheus.Registerer) *aggregatedSyncerMetrics {
 	var m aggregatedSyncerMetrics
 
 	m.metaSync = promauto.With(reg).NewCounter(prometheus.CounterOpts{
-		Name: "cortex_compactor_meta_syncs_total",
+		Name: "pyroscope_compactor_meta_syncs_total",
 		Help: "Total blocks metadata synchronization attempts.",
 	})
 	m.metaSyncFailures = promauto.With(reg).NewCounter(prometheus.CounterOpts{
-		Name: "cortex_compactor_meta_sync_failures_total",
+		Name: "pyroscope_compactor_meta_sync_failures_total",
 		Help: "Total blocks metadata synchronization failures.",
 	})
 	m.metaSyncDuration = dskit_metrics.NewHistogramDataCollector(prometheus.NewDesc(
-		"cortex_compactor_meta_sync_duration_seconds",
+		"pyroscope_compactor_meta_sync_duration_seconds",
 		"Duration of the blocks metadata synchronization in seconds.",
 		nil, nil))
 
 	m.garbageCollections = promauto.With(reg).NewCounter(prometheus.CounterOpts{
-		Name: "cortex_compactor_garbage_collection_total",
+		Name: "pyroscope_compactor_garbage_collection_total",
 		Help: "Total number of garbage collection operations.",
 	})
 	m.garbageCollectionFailures = promauto.With(reg).NewCounter(prometheus.CounterOpts{
-		Name: "cortex_compactor_garbage_collection_failures_total",
+		Name: "pyroscope_compactor_garbage_collection_failures_total",
 		Help: "Total number of failed garbage collection operations.",
 	})
 	m.garbageCollectionDuration = dskit_metrics.NewHistogramDataCollector(prometheus.NewDesc(
-		"cortex_compactor_garbage_collection_duration_seconds",
+		"pyroscope_compactor_garbage_collection_duration_seconds",
 		"Time it took to perform garbage collection iteration.",
 		nil, nil))
 

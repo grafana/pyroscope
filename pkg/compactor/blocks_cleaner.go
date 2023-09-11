@@ -23,13 +23,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	thanos_objstore "github.com/thanos-io/objstore"
 
-	"github.com/grafana/mimir/pkg/storage/tsdb/bucketindex"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
+	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
 	"github.com/grafana/pyroscope/pkg/util"
-	util_log "github.com/grafana/pyroscope/pkg/util"
-	"github.com/grafana/pyroscope/pkg/util/validation"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 const (
@@ -84,27 +83,27 @@ func NewBlocksCleaner(cfg BlocksCleanerConfig, bucketClient objstore.Bucket, own
 		singleFlight:   concurrency.NewLimitedConcurrencySingleFlight(cfg.CleanupConcurrency),
 		logger:         log.With(logger, "component", "cleaner"),
 		runsStarted: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "cortex_compactor_block_cleanup_started_total",
+			Name: "pyroscope_compactor_block_cleanup_started_total",
 			Help: "Total number of blocks cleanup runs started.",
 		}),
 		runsCompleted: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "cortex_compactor_block_cleanup_completed_total",
+			Name: "pyroscope_compactor_block_cleanup_completed_total",
 			Help: "Total number of blocks cleanup runs successfully completed.",
 		}),
 		runsFailed: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "cortex_compactor_block_cleanup_failed_total",
+			Name: "pyroscope_compactor_block_cleanup_failed_total",
 			Help: "Total number of blocks cleanup runs failed.",
 		}),
 		runsLastSuccess: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "cortex_compactor_block_cleanup_last_successful_run_timestamp_seconds",
+			Name: "pyroscope_compactor_block_cleanup_last_successful_run_timestamp_seconds",
 			Help: "Unix timestamp of the last successful blocks cleanup run.",
 		}),
 		blocksCleanedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "cortex_compactor_blocks_cleaned_total",
+			Name: "pyroscope_compactor_blocks_cleaned_total",
 			Help: "Total number of blocks deleted.",
 		}),
 		blocksFailedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "cortex_compactor_block_cleanup_failures_total",
+			Name: "pyroscope_compactor_block_cleanup_failures_total",
 			Help: "Total number of blocks failed to be deleted.",
 		}),
 		blocksMarkedForDeletion: promauto.With(reg).NewCounter(prometheus.CounterOpts{
@@ -118,23 +117,23 @@ func NewBlocksCleaner(cfg BlocksCleanerConfig, bucketClient objstore.Bucket, own
 			ConstLabels: prometheus.Labels{"reason": "partial"},
 		}),
 
-		// The following metrics don't have the "cortex_compactor" prefix because not strictly related to
+		// The following metrics don't have the "pyroscope_compactor" prefix because not strictly related to
 		// the compactor. They're just tracked by the compactor because it's the most logical place where these
 		// metrics can be tracked.
 		tenantBlocks: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
-			Name: "cortex_bucket_blocks_count",
+			Name: "pyroscope_bucket_blocks_count",
 			Help: "Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.",
 		}, []string{"user"}),
 		tenantMarkedBlocks: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
-			Name: "cortex_bucket_blocks_marked_for_deletion_count",
+			Name: "pyroscope_bucket_blocks_marked_for_deletion_count",
 			Help: "Total number of blocks marked for deletion in the bucket.",
 		}, []string{"user"}),
 		tenantPartialBlocks: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
-			Name: "cortex_bucket_blocks_partials_count",
+			Name: "pyroscope_bucket_blocks_partials_count",
 			Help: "Total number of partial blocks.",
 		}, []string{"user"}),
 		tenantBucketIndexLastUpdate: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
-			Name: "cortex_bucket_index_last_successful_update_timestamp_seconds",
+			Name: "pyroscope_bucket_index_last_successful_update_timestamp_seconds",
 			Help: "Timestamp of the last successful update of a tenant's bucket index.",
 		}, []string{"user"}),
 	}
@@ -246,7 +245,7 @@ func (c *BlocksCleaner) cleanUsers(ctx context.Context, allUsers []string, isDel
 			return errors.Wrap(err, "check own user")
 		}
 
-		userLogger := util_log.WithUserID(userID, logger)
+		userLogger := util.LoggerWithUserID(userID, logger)
 		if isDeleted[userID] {
 			return errors.Wrapf(c.deleteUserMarkedForDeletion(ctx, userID, userLogger), "failed to delete user marked for deletion: %s", userID)
 		}
@@ -268,13 +267,6 @@ func (c *BlocksCleaner) deleteRemainingData(ctx context.Context, userBucket objs
 		return errors.Wrap(err, "failed to delete marker files")
 	} else if deleted > 0 {
 		level.Info(userLogger).Log("msg", "deleted marker files for tenant with no blocks remaining", "count", deleted)
-	}
-
-	// Delete debug folder
-	if deleted, err := objstore.DeletePrefix(ctx, userBucket, block.DebugMetas, userLogger); err != nil {
-		return errors.Wrap(err, "failed to delete "+block.DebugMetas)
-	} else if deleted > 0 {
-		level.Info(userLogger).Log("msg", "deleted files under "+block.DebugMetas+" for tenant with no blocks remaining", "count", deleted)
 	}
 
 	return nil
@@ -364,14 +356,7 @@ func (c *BlocksCleaner) deleteUserMarkedForDeletion(ctx context.Context, userID 
 
 	level.Info(userLogger).Log("msg", "cleaning up remaining blocks data for tenant marked for deletion")
 
-	// Let's do final cleanup of tenant.
-	if deleted, err := objstore.DeletePrefix(ctx, userBucket, block.DebugMetas, userLogger); err != nil {
-		return errors.Wrap(err, "failed to delete "+block.DebugMetas)
-	} else if deleted > 0 {
-		level.Info(userLogger).Log("msg", "deleted files under "+block.DebugMetas+" for tenant marked for deletion", "count", deleted)
-	}
-
-	// Tenant deletion mark file is inside Markers as well.
+	// Let's do final cleanup of markers.
 	if deleted, err := objstore.DeletePrefix(ctx, userBucket, block.MarkersPathname, userLogger); err != nil {
 		return errors.Wrap(err, "failed to delete marker files")
 	} else if deleted > 0 {
@@ -597,7 +582,7 @@ func listBlocksOutsideRetentionPeriod(idx *bucketindex.Index, threshold time.Tim
 	}
 
 	for _, b := range idx.Blocks {
-		maxTime := time.Unix(b.MaxTime/1000, 0)
+		maxTime := time.Unix(int64(b.MaxTime)/1000, 0)
 		if maxTime.Before(threshold) {
 			if _, isMarked := marked[b.ID]; !isMarked {
 				result = append(result, b)

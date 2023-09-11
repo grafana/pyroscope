@@ -13,7 +13,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/ring"
 
-	"github.com/grafana/mimir/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 const (

@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	"github.com/oklog/ulid"
-	"github.com/prometheus/prometheus/tsdb"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/grafana/mimir/pkg/storage/tsdb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 func TestSortJobsBySmallestRangeOldestBlocksFirst(t *testing.T) {
@@ -137,10 +137,8 @@ func TestSortJobsByNewestBlocksFirst(t *testing.T) {
 
 func mockMetaWithMinMax(id ulid.ULID, minTime, maxTime int64) *block.Meta {
 	return &block.Meta{
-		BlockMeta: tsdb.BlockMeta{
-			ULID:    id,
-			MinTime: minTime,
-			MaxTime: maxTime,
-		},
+		ULID:    id,
+		MinTime: model.Time(minTime),
+		MaxTime: model.Time(maxTime),
 	}
 }

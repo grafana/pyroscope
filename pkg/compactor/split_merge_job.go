@@ -8,13 +8,12 @@ package compactor
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/prometheus/prometheus/model/labels"
 	"golang.org/x/exp/slices"
 
-	"github.com/grafana/mimir/pkg/storage/tsdb"
-	"github.com/grafana/mimir/pkg/storage/tsdb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 )
 
 type compactionStage string
@@ -59,12 +58,12 @@ func (j *job) conflicts(other *job) bool {
 	// are never merged together, so they can't conflict. Since all blocks within the same job are expected to have the same
 	// downsample resolution and external labels, we just check the 1st block of each job.
 	if len(j.blocks) > 0 && len(other.blocks) > 0 {
-		myLabels := labelsWithoutShard(j.blocksGroup.blocks[0].Thanos.Labels)
-		otherLabels := labelsWithoutShard(other.blocksGroup.blocks[0].Thanos.Labels)
+		myLabels := labelsWithoutShard(j.blocksGroup.blocks[0].Labels)
+		otherLabels := labelsWithoutShard(other.blocksGroup.blocks[0].Labels)
 		if !labels.Equal(myLabels, otherLabels) {
 			return false
 		}
-		if j.blocksGroup.blocks[0].Thanos.Downsample != other.blocksGroup.blocks[0].Thanos.Downsample {
+		if j.blocksGroup.blocks[0].Downsample != other.blocksGroup.blocks[0].Downsample {
 			return false
 		}
 	}
@@ -83,8 +82,8 @@ func (j *job) conflicts(other *job) bool {
 func (j *job) String() string {
 	blocks := make([]string, 0, len(j.blocks))
 	for _, block := range j.blocks {
-		minT := time.Unix(0, block.MinTime*int64(time.Millisecond)).UTC()
-		maxT := time.Unix(0, block.MaxTime*int64(time.Millisecond)).UTC()
+		minT := block.MinTime.Time().UTC()
+		maxT := block.MaxTime.Time().UTC()
 		blocks = append(blocks, fmt.Sprintf("%s (min time: %s, max time: %s)", block.ULID.String(), minT.String(), maxT.String()))
 	}
 
@@ -118,7 +117,7 @@ func (g blocksGroup) rangeLength() int64 {
 // minTime returns the lowest MinTime across all blocks in the group.
 func (g blocksGroup) minTime() int64 {
 	// Blocks are expected to be sorted by MinTime.
-	return g.blocks[0].MinTime
+	return int64(g.blocks[0].MinTime)
 }
 
 // maxTime returns the highest MaxTime across all blocks in the group.
@@ -131,7 +130,7 @@ func (g blocksGroup) maxTime() int64 {
 		}
 	}
 
-	return max
+	return int64(max)
 }
 
 // getNonShardedBlocks returns the list of non-sharded blocks.
@@ -139,7 +138,7 @@ func (g blocksGroup) getNonShardedBlocks() []*block.Meta {
 	var out []*block.Meta
 
 	for _, b := range g.blocks {
-		if value, ok := b.Thanos.Labels[tsdb.CompactorShardIDExternalLabel]; !ok || value == "" {
+		if value, ok := b.Labels[sharding.CompactorShardIDLabel]; !ok || value == "" {
 			out = append(out, b)
 		}
 	}

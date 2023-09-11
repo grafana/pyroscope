@@ -11,9 +11,8 @@ import (
 
 	"github.com/oklog/ulid"
 
-	"github.com/grafana/mimir/pkg/storage/sharding"
-	"github.com/grafana/mimir/pkg/storage/tsdb"
-	"github.com/grafana/mimir/pkg/storage/tsdb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 )
 
 const duplicateMeta = "duplicate"
@@ -37,7 +36,7 @@ func (f *ShardAwareDeduplicateFilter) Filter(ctx context.Context, metas map[ulid
 
 	metasByResolution := make(map[int64][]*block.Meta)
 	for _, meta := range metas {
-		res := meta.Thanos.Downsample.Resolution
+		res := meta.Downsample.Resolution
 		metasByResolution[res] = append(metasByResolution[res], meta)
 	}
 
@@ -172,7 +171,7 @@ type blockWithSuccessors struct {
 func newBlockWithSuccessors(m *block.Meta) *blockWithSuccessors {
 	b := &blockWithSuccessors{meta: m}
 	if m != nil {
-		b.shardID = m.Thanos.Labels[tsdb.CompactorShardIDExternalLabel]
+		b.shardID = m.Labels[sharding.CompactorShardIDLabel]
 		b.sources = make(map[ulid.ULID]struct{}, len(m.Compaction.Sources))
 		for _, bid := range m.Compaction.Sources {
 			b.sources[bid] = struct{}{}

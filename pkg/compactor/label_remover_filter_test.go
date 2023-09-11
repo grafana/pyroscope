@@ -13,8 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	mimir_tsdb "github.com/grafana/mimir/pkg/storage/tsdb"
-	"github.com/grafana/mimir/pkg/storage/tsdb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 func TestLabelRemoverFilter(t *testing.T) {
@@ -28,25 +27,25 @@ func TestLabelRemoverFilter(t *testing.T) {
 		expected map[ulid.ULID]map[string]string
 	}{
 		"should remove configured labels": {
-			labels: []string{mimir_tsdb.DeprecatedIngesterIDExternalLabel},
+			labels: []string{block.HostnameLabel},
 			input: map[ulid.ULID]map[string]string{
-				block1: {mimir_tsdb.DeprecatedIngesterIDExternalLabel: "ingester-0", mimir_tsdb.DeprecatedTenantIDExternalLabel: "user-1"},
-				block2: {mimir_tsdb.DeprecatedIngesterIDExternalLabel: "ingester-0", mimir_tsdb.DeprecatedTenantIDExternalLabel: "user-1"},
-				block3: {mimir_tsdb.DeprecatedIngesterIDExternalLabel: "ingester-0", mimir_tsdb.DeprecatedTenantIDExternalLabel: "user-1"},
+				block1: {block.HostnameLabel: "ingester-0", "foo": "user-1"},
+				block2: {block.HostnameLabel: "ingester-0", "foo": "user-1"},
+				block3: {block.HostnameLabel: "ingester-0", "foo": "user-1"},
 			},
 			expected: map[ulid.ULID]map[string]string{
-				block1: {mimir_tsdb.DeprecatedTenantIDExternalLabel: "user-1"},
-				block2: {mimir_tsdb.DeprecatedTenantIDExternalLabel: "user-1"},
-				block3: {mimir_tsdb.DeprecatedTenantIDExternalLabel: "user-1"},
+				block1: {"foo": "user-1"},
+				block2: {"foo": "user-1"},
+				block3: {"foo": "user-1"},
 			},
 		},
 
 		"should remove configured labels 2": {
-			labels: []string{mimir_tsdb.DeprecatedIngesterIDExternalLabel, mimir_tsdb.DeprecatedTenantIDExternalLabel},
+			labels: []string{block.HostnameLabel, "foo"},
 			input: map[ulid.ULID]map[string]string{
-				block1: {mimir_tsdb.DeprecatedIngesterIDExternalLabel: "ingester-0", mimir_tsdb.DeprecatedTenantIDExternalLabel: "user-1"},
-				block2: {mimir_tsdb.DeprecatedIngesterIDExternalLabel: "ingester-0", mimir_tsdb.DeprecatedTenantIDExternalLabel: "user-1"},
-				block3: {mimir_tsdb.DeprecatedIngesterIDExternalLabel: "ingester-0", mimir_tsdb.DeprecatedTenantIDExternalLabel: "user-1"},
+				block1: {block.HostnameLabel: "ingester-0", "foo": "user-1"},
+				block2: {block.HostnameLabel: "ingester-0", "foo": "user-1"},
+				block3: {block.HostnameLabel: "ingester-0", "foo": "user-1"},
 			},
 			expected: map[ulid.ULID]map[string]string{
 				block1: {},
@@ -60,7 +59,7 @@ func TestLabelRemoverFilter(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			metas := map[ulid.ULID]*block.Meta{}
 			for id, lbls := range testData.input {
-				metas[id] = &block.Meta{Thanos: block.ThanosMeta{Labels: lbls}}
+				metas[id] = &block.Meta{Labels: lbls}
 			}
 
 			f := NewLabelRemoverFilter(testData.labels)
@@ -70,7 +69,7 @@ func TestLabelRemoverFilter(t *testing.T) {
 
 			for expectedID, expectedLbls := range testData.expected {
 				assert.NotNil(t, metas[expectedID])
-				assert.Equal(t, expectedLbls, metas[expectedID].Thanos.Labels)
+				assert.Equal(t, expectedLbls, metas[expectedID].Labels)
 			}
 		})
 	}
