@@ -98,6 +98,72 @@ func TestNormalizeProfile(t *testing.T) {
 	})
 }
 
+func TestNormalizeProfile_SampleLabels(t *testing.T) {
+	currentTime = func() time.Time {
+		t, _ := time.Parse(time.RFC3339, "2020-01-01T00:00:00Z")
+		return t
+	}
+	defer func() {
+		currentTime = time.Now
+	}()
+
+	p := &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{Type: 1, Unit: 2},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 10, Key: 1}, {Str: 11, Key: 2}}},
+			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 12, Key: 2}, {Str: 10, Key: 1}}},
+			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 11, Key: 2}, {Str: 10, Key: 1}}},
+		},
+		Mapping: []*profilev1.Mapping{{Id: 1, HasFunctions: true, MemoryStart: 100, MemoryLimit: 200, FileOffset: 200}},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Address: 5, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}}},
+			{Id: 2, MappingId: 1, Address: 2, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}}},
+		},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 3, SystemName: 3, Filename: 4, StartLine: 1},
+			{Id: 2, Name: 5, SystemName: 5, Filename: 4, StartLine: 1},
+		},
+		StringTable: []string{
+			"",
+			"cpu", "nanoseconds",
+			"main", "main.go",
+			"foo",
+		},
+		PeriodType: &profilev1.ValueType{Type: 1, Unit: 2},
+	}
+
+	pf := &Profile{Profile: p}
+	pf.Normalize()
+	require.Equal(t, pf.Profile, &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{Type: 1, Unit: 2},
+		},
+		Sample: []*profilev1.Sample{
+			{LocationId: []uint64{2, 1}, Value: []int64{10}, Label: []*profilev1.Label{{Str: 10, Key: 1}, {Str: 12, Key: 2}}},
+			{LocationId: []uint64{2, 1}, Value: []int64{20}, Label: []*profilev1.Label{{Str: 10, Key: 1}, {Str: 11, Key: 2}}},
+		},
+		Mapping: []*profilev1.Mapping{{Id: 1, HasFunctions: true}},
+		Location: []*profilev1.Location{
+			{Id: 1, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1, Line: 1}}},
+			{Id: 2, MappingId: 1, Line: []*profilev1.Line{{FunctionId: 2, Line: 1}}},
+		},
+		Function: []*profilev1.Function{
+			{Id: 1, Name: 3, SystemName: 3, Filename: 4, StartLine: 1},
+			{Id: 2, Name: 5, SystemName: 5, Filename: 4, StartLine: 1},
+		},
+		StringTable: []string{
+			"",
+			"cpu", "nanoseconds",
+			"main", "main.go",
+			"foo",
+		},
+		PeriodType: &profilev1.ValueType{Type: 1, Unit: 2},
+		TimeNanos:  1577836800000000000,
+	})
+}
+
 func TestFromProfile(t *testing.T) {
 	out, err := FromProfile(testhelper.FooBarProfile)
 	require.NoError(t, err)

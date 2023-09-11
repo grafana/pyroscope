@@ -5,9 +5,11 @@ import (
 	"encoding/binary"
 	"io"
 	"os"
+	"reflect"
 	"sort"
 	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/google/pprof/profile"
@@ -289,7 +291,7 @@ type Profile struct {
 	// raw []byte
 	buf *bytes.Buffer
 
-	hasher StacktracesHasher
+	hasher SampleHasher
 }
 
 func (p *Profile) Close() {
@@ -373,9 +375,8 @@ func (p *Profile) Normalize() {
 
 	p.ensureHasMapping()
 	p.clearAddresses()
-	// first we sort the samples location ids.
+	// first we sort the samples.
 	hashes := p.hasher.Hashes(p.Sample)
-
 	ss := &sortedSample{samples: p.Sample, hashes: hashes}
 	sort.Sort(ss)
 	p.Sample = ss.samples
@@ -385,7 +386,7 @@ func (p *Profile) Normalize() {
 	var removedSamples []*profilev1.Sample
 
 	p.Sample = slices.RemoveInPlace(p.Sample, func(s *profilev1.Sample, i int) bool {
-		// if the next sample has the same hashes, we can remove this sample but add the value to the next sample.
+		// if the next sample has the same hash and labels, we can remove this sample but add the value to the next sample.
 		if i < len(p.Sample)-1 && hashes[i] == hashes[i+1] {
 			// todo handle hashes collisions
 			for j := 0; j < len(s.Value); j++ {
@@ -396,15 +397,7 @@ func (p *Profile) Normalize() {
 		}
 		for j := 0; j < len(s.Value); j++ {
 			if s.Value[j] != 0 {
-				// we found a non-zero value, so we can keep this sample, but remove redundant labels.
-				s.Label = slices.RemoveInPlace(s.Label, func(l *profilev1.Label, _ int) bool {
-					// remove labels block "bytes" as it's redundant.
-					if l.Num != 0 && l.Key != 0 &&
-						p.StringTable[l.Key] == "bytes" {
-						return true
-					}
-					return false
-				})
+				// we found a non-zero value, so we can keep this sample.
 				return false
 			}
 		}
@@ -577,13 +570,12 @@ func (p *Profile) visitAllNameReferences(fn func(*int64)) {
 	}
 }
 
-type StacktracesHasher struct {
+type SampleHasher struct {
 	hash *xxhash.Digest
 	b    [8]byte
 }
 
-// todo we might want to reuse the results to avoid allocations
-func (h StacktracesHasher) Hashes(samples []*profilev1.Sample) []uint64 {
+func (h SampleHasher) Hashes(samples []*profilev1.Sample) []uint64 {
 	if h.hash == nil {
 		h.hash = xxhash.New()
 	} else {
@@ -592,10 +584,18 @@ func (h StacktracesHasher) Hashes(samples []*profilev1.Sample) []uint64 {
 
 	hashes := make([]uint64, len(samples))
 	for i, sample := range samples {
-		for _, locID := range sample.LocationId {
-			binary.LittleEndian.PutUint64(h.b[:], locID)
+		if _, err := h.hash.Write(locationBytes(sample)); err != nil {
+			panic("unable to write hash")
+		}
+		sortSampleLabels(sample)
+		slices.RemoveInPlace(sample.Label, func(label *profilev1.Label, i int) bool {
+			return label.Num != 0
+		})
+		for _, l := range sample.Label {
+			binary.LittleEndian.PutUint32(h.b[:4], uint32(l.Key))
+			binary.LittleEndian.PutUint32(h.b[4:], uint32(l.Str))
 			if _, err := h.hash.Write(h.b[:]); err != nil {
-				panic("unable to write hash")
+				panic("unable to write label hash")
 			}
 		}
 		hashes[i] = h.hash.Sum64()
@@ -603,4 +603,26 @@ func (h StacktracesHasher) Hashes(samples []*profilev1.Sample) []uint64 {
 	}
 
 	return hashes
+}
+
+func locationBytes(sample *profilev1.Sample) []byte {
+	if len(sample.LocationId) == 0 {
+		return nil
+	}
+	var bs []byte
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&bs))
+	hdr.Len = len(sample.LocationId) * 8
+	hdr.Cap = hdr.Len
+	hdr.Data = uintptr(unsafe.Pointer(&sample.LocationId[0]))
+	return bs
+}
+
+func sortSampleLabels(sample *profilev1.Sample) {
+	sort.Slice(sample.Label, func(i, j int) bool {
+		a, b := sample.Label[i], sample.Label[j]
+		if a.Key == b.Key {
+			return a.Str < b.Str
+		}
+		return a.Key < b.Key
+	})
 }
