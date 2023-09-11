@@ -26,7 +26,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/thanos-io/objstore"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/mimir/pkg/storage/bucket"
@@ -34,6 +33,8 @@ import (
 	"github.com/grafana/mimir/pkg/storage/tsdb/block"
 	"github.com/grafana/mimir/pkg/util"
 	util_log "github.com/grafana/mimir/pkg/util/log"
+
+	"github.com/grafana/pyroscope/pkg/objstore"
 )
 
 const (
@@ -184,7 +185,7 @@ func (cfg *Config) Validate() error {
 
 // ConfigProvider defines the per-tenant config provider for the MultitenantCompactor.
 type ConfigProvider interface {
-	bucket.TenantConfigProvider
+	objstore.TenantConfigProvider
 
 	// CompactorBlocksRetentionPeriod returns the retention period for a given user.
 	CompactorBlocksRetentionPeriod(user string) time.Duration

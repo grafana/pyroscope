@@ -21,15 +21,15 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/thanos-io/objstore"
+	thanos_objstore "github.com/thanos-io/objstore"
 
-	"github.com/grafana/mimir/pkg/storage/bucket"
-	mimir_tsdb "github.com/grafana/mimir/pkg/storage/tsdb"
-	"github.com/grafana/mimir/pkg/storage/tsdb/block"
 	"github.com/grafana/mimir/pkg/storage/tsdb/bucketindex"
-	"github.com/grafana/mimir/pkg/util"
-	util_log "github.com/grafana/mimir/pkg/util/log"
-	"github.com/grafana/mimir/pkg/util/validation"
+	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
+	"github.com/grafana/pyroscope/pkg/util"
+	util_log "github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/validation"
 )
 
 const (
@@ -48,13 +48,13 @@ type BlocksCleanerConfig struct {
 type BlocksCleaner struct {
 	services.Service
 
-	cfg          BlocksCleanerConfig
-	cfgProvider  ConfigProvider
-	logger       log.Logger
-	bucketClient objstore.Bucket
-	usersScanner *mimir_tsdb.UsersScanner
-	ownUser      func(userID string) (bool, error)
-	singleFlight *concurrency.LimitedConcurrencySingleFlight
+	cfg            BlocksCleanerConfig
+	cfgProvider    ConfigProvider
+	logger         log.Logger
+	bucketClient   objstore.Bucket
+	tenantsScanner *bucket.TenantsScanner
+	ownUser        func(userID string) (bool, error)
+	singleFlight   *concurrency.LimitedConcurrencySingleFlight
 
 	// Keep track of the last owned users.
 	lastOwnedUsers []string
@@ -76,13 +76,13 @@ type BlocksCleaner struct {
 
 func NewBlocksCleaner(cfg BlocksCleanerConfig, bucketClient objstore.Bucket, ownUser func(userID string) (bool, error), cfgProvider ConfigProvider, logger log.Logger, reg prometheus.Registerer) *BlocksCleaner {
 	c := &BlocksCleaner{
-		cfg:          cfg,
-		bucketClient: bucketClient,
-		usersScanner: mimir_tsdb.NewUsersScanner(bucketClient, ownUser, logger),
-		ownUser:      ownUser,
-		cfgProvider:  cfgProvider,
-		singleFlight: concurrency.NewLimitedConcurrencySingleFlight(cfg.CleanupConcurrency),
-		logger:       log.With(logger, "component", "cleaner"),
+		cfg:            cfg,
+		bucketClient:   bucketClient,
+		tenantsScanner: bucket.NewTenantsScanner(bucketClient, ownUser, logger),
+		ownUser:        ownUser,
+		cfgProvider:    cfgProvider,
+		singleFlight:   concurrency.NewLimitedConcurrencySingleFlight(cfg.CleanupConcurrency),
+		logger:         log.With(logger, "component", "cleaner"),
 		runsStarted: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "cortex_compactor_block_cleanup_started_total",
 			Help: "Total number of blocks cleanup runs started.",
@@ -213,7 +213,7 @@ func (c *BlocksCleaner) instrumentFinishedCleanupRun(err error, logger log.Logge
 // refreshOwnedUsers is not required to be concurrency safe, but a single instance of this function
 // could run concurrently with the cleanup job for any tenant.
 func (c *BlocksCleaner) refreshOwnedUsers(ctx context.Context) ([]string, map[string]bool, error) {
-	users, deleted, err := c.usersScanner.ScanUsers(ctx)
+	users, deleted, err := c.tenantsScanner.ScanTenants(ctx)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to discover users from bucket")
 	}
@@ -264,14 +264,14 @@ func (c *BlocksCleaner) deleteRemainingData(ctx context.Context, userBucket objs
 	level.Info(userLogger).Log("msg", "deleted bucket index for tenant with no blocks remaining")
 
 	// Delete markers folder
-	if deleted, err := bucket.DeletePrefix(ctx, userBucket, block.MarkersPathname, userLogger); err != nil {
+	if deleted, err := objstore.DeletePrefix(ctx, userBucket, block.MarkersPathname, userLogger); err != nil {
 		return errors.Wrap(err, "failed to delete marker files")
 	} else if deleted > 0 {
 		level.Info(userLogger).Log("msg", "deleted marker files for tenant with no blocks remaining", "count", deleted)
 	}
 
 	// Delete debug folder
-	if deleted, err := bucket.DeletePrefix(ctx, userBucket, block.DebugMetas, userLogger); err != nil {
+	if deleted, err := objstore.DeletePrefix(ctx, userBucket, block.DebugMetas, userLogger); err != nil {
 		return errors.Wrap(err, "failed to delete "+block.DebugMetas)
 	} else if deleted > 0 {
 		level.Info(userLogger).Log("msg", "deleted files under "+block.DebugMetas+" for tenant with no blocks remaining", "count", deleted)
@@ -282,7 +282,7 @@ func (c *BlocksCleaner) deleteRemainingData(ctx context.Context, userBucket objs
 
 // deleteUserMarkedForDeletion removes blocks and remaining data for tenant marked for deletion.
 func (c *BlocksCleaner) deleteUserMarkedForDeletion(ctx context.Context, userID string, userLogger log.Logger) error {
-	userBucket := bucket.NewUserBucketClient(userID, c.bucketClient, c.cfgProvider)
+	userBucket := objstore.NewUserBucketClient(userID, c.bucketClient, c.cfgProvider)
 
 	level.Info(userLogger).Log("msg", "deleting blocks for tenant marked for deletion")
 
@@ -341,7 +341,7 @@ func (c *BlocksCleaner) deleteUserMarkedForDeletion(ctx context.Context, userID 
 		level.Info(userLogger).Log("msg", "deleted blocks for tenant marked for deletion", "deletedBlocks", deletedBlocks)
 	}
 
-	mark, err := mimir_tsdb.ReadTenantDeletionMark(ctx, c.bucketClient, userID)
+	mark, err := bucket.ReadTenantDeletionMark(ctx, c.bucketClient, userID)
 	if err != nil {
 		return errors.Wrap(err, "failed to read tenant deletion mark")
 	}
@@ -355,7 +355,7 @@ func (c *BlocksCleaner) deleteUserMarkedForDeletion(ctx context.Context, userID 
 	if deletedBlocks > 0 || mark.FinishedTime == 0 {
 		level.Info(userLogger).Log("msg", "updating finished time in tenant deletion mark")
 		mark.FinishedTime = time.Now().Unix()
-		return errors.Wrap(mimir_tsdb.WriteTenantDeletionMark(ctx, c.bucketClient, userID, c.cfgProvider, mark), "failed to update tenant deletion mark")
+		return errors.Wrap(bucket.WriteTenantDeletionMark(ctx, c.bucketClient, userID, c.cfgProvider, mark), "failed to update tenant deletion mark")
 	}
 
 	if time.Since(time.Unix(mark.FinishedTime, 0)) < c.cfg.TenantCleanupDelay {
@@ -365,14 +365,14 @@ func (c *BlocksCleaner) deleteUserMarkedForDeletion(ctx context.Context, userID 
 	level.Info(userLogger).Log("msg", "cleaning up remaining blocks data for tenant marked for deletion")
 
 	// Let's do final cleanup of tenant.
-	if deleted, err := bucket.DeletePrefix(ctx, userBucket, block.DebugMetas, userLogger); err != nil {
+	if deleted, err := objstore.DeletePrefix(ctx, userBucket, block.DebugMetas, userLogger); err != nil {
 		return errors.Wrap(err, "failed to delete "+block.DebugMetas)
 	} else if deleted > 0 {
 		level.Info(userLogger).Log("msg", "deleted files under "+block.DebugMetas+" for tenant marked for deletion", "count", deleted)
 	}
 
 	// Tenant deletion mark file is inside Markers as well.
-	if deleted, err := bucket.DeletePrefix(ctx, userBucket, block.MarkersPathname, userLogger); err != nil {
+	if deleted, err := objstore.DeletePrefix(ctx, userBucket, block.MarkersPathname, userLogger); err != nil {
 		return errors.Wrap(err, "failed to delete marker files")
 	} else if deleted > 0 {
 		level.Info(userLogger).Log("msg", "deleted marker files for tenant marked for deletion", "count", deleted)
@@ -382,7 +382,7 @@ func (c *BlocksCleaner) deleteUserMarkedForDeletion(ctx context.Context, userID 
 }
 
 func (c *BlocksCleaner) cleanUser(ctx context.Context, userID string, userLogger log.Logger) (returnErr error) {
-	userBucket := bucket.NewUserBucketClient(userID, c.bucketClient, c.cfgProvider)
+	userBucket := objstore.NewUserBucketClient(userID, c.bucketClient, c.cfgProvider)
 	startTime := time.Now()
 
 	level.Info(userLogger).Log("msg", "started blocks cleanup and maintenance")
@@ -616,7 +616,7 @@ func stalePartialBlockLastModifiedTime(ctx context.Context, blockID ulid.ULID, u
 	err := userBucket.WithExpectedErrs(func(err error) bool {
 		return errors.Is(err, errStopIter) // sentinel error
 	}).Iter(ctx, blockID.String(), func(name string) error {
-		if strings.HasSuffix(name, objstore.DirDelim) {
+		if strings.HasSuffix(name, thanos_objstore.DirDelim) {
 			return nil
 		}
 		attrib, err := userBucket.Attributes(ctx, name)
@@ -630,7 +630,7 @@ func stalePartialBlockLastModifiedTime(ctx context.Context, blockID ulid.ULID, u
 			lastModified = attrib.LastModified
 		}
 		return nil
-	}, objstore.WithRecursiveIter)
+	}, thanos_objstore.WithRecursiveIter)
 
 	if errors.Is(err, errStopIter) {
 		return time.Time{}, nil
