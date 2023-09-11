@@ -2,12 +2,12 @@
 version: '3.9'
 services:
   pyroscope:
-    image: 'pyroscope/pyroscope:latest'
+    image: grafana/pyroscope
     ports:
       - '4040:4040'
-    command:
-      - 'server'
+
   app:
+    platform: linux/amd64
     environment:
       ASPNETCORE_URLS: http://*:5000
     ports:

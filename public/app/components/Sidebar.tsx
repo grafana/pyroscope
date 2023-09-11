@@ -4,6 +4,9 @@ import { faSearch } from '@fortawesome/free-solid-svg-icons/faSearch';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
+import { faInfoCircle } from '@fortawesome/free-solid-svg-icons/faInfoCircle';
+import { faFileAlt } from '@fortawesome/free-solid-svg-icons/faFileAlt';
+import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 
 import SidebarUI, {
   MenuItem,
@@ -11,22 +14,22 @@ import SidebarUI, {
   SidebarFooter,
   SidebarContent,
   Menu,
-} from '@webapp/ui/Sidebar';
-import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
+} from '@pyroscope/ui/Sidebar';
+import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
 import {
   selectSidebarCollapsed,
   collapseSidebar,
   uncollapseSidebar,
   recalculateSidebar,
-} from '@webapp/redux/reducers/ui';
+} from '@pyroscope/redux/reducers/ui';
 import { useLocation, NavLink } from 'react-router-dom';
-import Icon from '@webapp/ui/Icon';
+import Icon from '@pyroscope/ui/Icon';
 import clsx from 'clsx';
 import { useWindowWidth } from '@react-hook/window-size';
-import { isRouteActive, ROUTES } from '@phlare/pages/routes';
-import Logo from '@phlare/static/logo.svg';
-import styles from '@phlare/components/Sidebar.module.css';
-import { SidebarTenant } from '@phlare/components/SidebarTenant';
+import { isRouteActive, ROUTES } from '@pyroscope/pages/routes';
+import Logo from '@pyroscope/static/logo.svg';
+import styles from './Sidebar.module.css';
+import { SidebarTenant } from '@pyroscope/components/SidebarTenant';
 
 export function Sidebar() {
   const collapsed = useAppSelector(selectSidebarCollapsed);
@@ -61,6 +64,7 @@ export function Sidebar() {
       <SidebarContent>
         <Menu iconShape="square" popperArrow>
           <MenuItem
+            data-testid="sidebar-explore-page"
             active={isRouteActive(pathname, ROUTES.EXPLORE_VIEW)}
             icon={<Icon icon={faSearch} />}
           >
@@ -72,6 +76,7 @@ export function Sidebar() {
             />
           </MenuItem>
           <MenuItem
+            data-testid="sidebar-continuous-single"
             active={isRouteActive(pathname, ROUTES.SINGLE_VIEW)}
             icon={<Icon icon={faWindowMaximize} />}
           >
@@ -83,6 +88,7 @@ export function Sidebar() {
             />
           </MenuItem>
           <MenuItem
+            data-testid="sidebar-continuous-comparison"
             active={isRouteActive(pathname, ROUTES.COMPARISON_VIEW)}
             icon={<Icon icon={faColumns} />}
           >
@@ -90,6 +96,7 @@ export function Sidebar() {
             <NavLink to={{ pathname: ROUTES.COMPARISON_VIEW, search }} exact />
           </MenuItem>
           <MenuItem
+            data-testid="sidebar-continuous-diff"
             active={isRouteActive(pathname, ROUTES.COMPARISON_DIFF_VIEW)}
             icon={<Icon icon={faChartBar} />}
           >
@@ -104,6 +111,27 @@ export function Sidebar() {
       </SidebarContent>
       <SidebarFooter>
         <Menu iconShape="square">
+          <MenuItem icon={<Icon icon={faInfoCircle} />}>
+            <a href="/admin">Admin Page</a>
+          </MenuItem>
+          <MenuItem icon={<Icon icon={faFileAlt} />}>
+            <a
+              rel="noreferrer"
+              target="_blank"
+              href="https://grafana.com/docs/pyroscope"
+            >
+              Documentation
+            </a>
+          </MenuItem>
+          <MenuItem icon={<Icon icon={faGithub} />}>
+            <a
+              rel="noreferrer"
+              target="_blank"
+              href="https://github.com/grafana/pyroscope"
+            >
+              Github
+            </a>
+          </MenuItem>
           <MenuItem
             data-testid="collapse-sidebar"
             className={clsx(

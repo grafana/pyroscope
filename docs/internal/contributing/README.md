@@ -4,7 +4,7 @@ Welcome! We're excited that you're interested in contributing. Below are some ba
 
 ## Workflow
 
-Grafana Phlare follows a standard GitHub pull request workflow. If you're unfamiliar with this workflow, read the very helpful [Understanding the GitHub flow](https://guides.github.com/introduction/flow/) guide from GitHub.
+Grafana Pyroscope follows a standard GitHub pull request workflow. If you're unfamiliar with this workflow, read the very helpful [Understanding the GitHub flow](https://guides.github.com/introduction/flow/) guide from GitHub.
 
 You are welcome to create draft PRs at any stage of readiness - this
 can be helpful to ask for assistance or to develop an idea. But before
@@ -28,12 +28,12 @@ All other required tools will be automatically downloaded `$(pwd)/.tmp/bin`.
 
 ## Formatting
 
-Grafana Phlare uses [`golang-ci-lint`](https://github.com/golangci/golangci-lint) tool to format the Go files, and sort imports.
-We use goimports with `-local github.com/grafana/phlare` parameter, to put Grafana Phlare internal imports into a separate group. We try to keep imports sorted into three groups: imports from standard library, imports of 3rd party packages and internal Grafana Phlare imports. Goimports will fix the order, but will keep existing newlines between imports in the groups. Avoid introducing newlines there. 
+Grafana Pyroscope uses [`golang-ci-lint`](https://github.com/golangci/golangci-lint) tool to format the Go files, and sort imports.
+We use goimports with `-local github.com/grafana/pyroscope` parameter, to put Grafana Pyroscope internal imports into a separate group. We try to keep imports sorted into three groups: imports from standard library, imports of 3rd party packages and internal Grafana Pyroscope imports. Goimports will fix the order, but will keep existing newlines between imports in the groups. Avoid introducing newlines there.
 
 Use `make lint` to ensure formatting is correct.
 
-## Building Grafana Phlare
+## Building Grafana Pyroscope
 
 To build:
 
@@ -87,7 +87,7 @@ Commit the changes to `go.mod` and `go.sum` before submitting your pull request.
 
 ## Documentation
 
-The Grafana Phlare documentation is compiled into a website published at [grafana.com](https://grafana.com/).
+The Grafana Pyroscope documentation is compiled into a website published at [grafana.com](https://grafana.com/).
 
 To start the website locally you can use `make docs/docs` and follow console instructions to access the website.
 

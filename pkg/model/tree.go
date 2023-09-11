@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"sync"
 
 	dvarint "github.com/dennwc/varint"
-	"github.com/grafana/pyroscope/pkg/og/util/varint"
 	"github.com/xlab/treeprint"
+
+	"github.com/grafana/pyroscope/pkg/og/util/varint"
+	"github.com/grafana/pyroscope/pkg/slices"
 )
 
 type Tree struct {
@@ -55,6 +58,9 @@ func (t *Tree) Total() (v int64) {
 }
 
 func (t *Tree) InsertStack(v int64, stack ...string) {
+	if v <= 0 {
+		return
+	}
 	r := &node{children: t.root}
 	n := r
 	for j := range stack {
@@ -65,6 +71,35 @@ func (t *Tree) InsertStack(v int64, stack ...string) {
 	n.total += v
 	n.self += v
 	t.root = r.children
+}
+
+func (t *Tree) WriteCollapsed(dst io.Writer) {
+	t.IterateStacks(func(_ string, self int64, stack []string) {
+		slices.Reverse(stack)
+		_, _ = fmt.Fprintf(dst, "%s %d\n", strings.Join(stack, ";"), self)
+	})
+}
+
+func (t *Tree) IterateStacks(cb func(name string, self int64, stack []string)) {
+	nodes := make([]*node, len(t.root), 1024)
+	stack := make([]string, 0, 64)
+	copy(nodes, t.root)
+	for len(nodes) > 0 {
+		n := nodes[0]
+		self := n.self
+		label := n.name
+		if self > 0 {
+			current := n
+			stack = stack[:0]
+			for current != nil && current.parent != nil {
+				stack = append(stack, current.name)
+				current = current.parent
+			}
+			cb(label, self, stack)
+		}
+		nodes = nodes[1:]
+		nodes = append(nodes, n.children...)
+	}
 }
 
 // Default Depth First Search slice capacity. The value should be equal
@@ -102,6 +137,71 @@ func (t *Tree) Merge(src *Tree) {
 	t.root = dstRoot.children
 }
 
+func (t *Tree) FormatNodeNames(fn func(string) string) {
+	nodes := make([]*node, 0, defaultDFSSize)
+	nodes = append(nodes, &node{children: t.root})
+	var n *node
+	var fix bool
+	for len(nodes) > 0 {
+		n, nodes = nodes[len(nodes)-1], nodes[:len(nodes)-1]
+		m := n.name
+		n.name = fn(m)
+		if m != n.name {
+			fix = true
+		}
+		nodes = append(nodes, n.children...)
+	}
+	if !fix {
+		return
+	}
+	t.Fix()
+}
+
+// Fix re-establishes order of nodes and merges duplicates.
+func (t *Tree) Fix() {
+	if len(t.root) == 0 {
+		return
+	}
+	r := &node{children: t.root}
+	for _, n := range r.children {
+		n.parent = r
+	}
+	nodes := make([][]*node, 0, defaultDFSSize)
+	nodes = append(nodes, r.children)
+	var n []*node
+	for len(nodes) > 0 {
+		n, nodes = nodes[len(nodes)-1], nodes[:len(nodes)-1]
+		if len(n) == 0 {
+			continue
+		}
+		sort.Slice(n, func(i, j int) bool {
+			return n[i].name < n[j].name
+		})
+		p := n[0]
+		j := 1
+		for _, c := range n[1:] {
+			if p.name == c.name {
+				for _, x := range c.children {
+					x.parent = p
+				}
+				p.children = append(p.children, c.children...)
+				p.total += c.total
+				p.self += c.self
+				continue
+			}
+			p = c
+			n[j] = c
+			j++
+		}
+		n = n[:j]
+		for _, c := range n {
+			c.parent.children = n
+			nodes = append(nodes, c.children)
+		}
+	}
+	t.root = r.children
+}
+
 func (n *node) String() string {
 	return fmt.Sprintf("{%s: self %d total %d}", n.name, n.self, n.total)
 }
@@ -128,13 +228,16 @@ func (t *Tree) minValue(maxNodes int64) int64 {
 	if maxNodes < 1 {
 		return 0
 	}
+	nodes := make([]*node, 0, max(int64(len(t.root)), defaultDFSSize))
+	treeSize := t.size(nodes)
+	if treeSize <= maxNodes {
+		return 0
+	}
 
-	// We should not re-use t.root capacity for nodes.
-	nodes := make([]*node, len(t.root), max(int64(len(t.root)), defaultDFSSize))
-	copy(nodes, t.root)
 	s := make(minHeap, 0, maxNodes)
 	h := &s
 
+	nodes = append(nodes[:0], t.root...)
 	var n *node
 	for len(nodes) > 0 {
 		last := len(nodes) - 1
@@ -155,6 +258,21 @@ func (t *Tree) minValue(maxNodes int64) int64 {
 	}
 
 	return (*h)[0]
+}
+
+// size reports number of nodes the tree consists of.
+// Provided buffer used for DFS traversal.
+func (t *Tree) size(buf []*node) int64 {
+	nodes := append(buf, t.root...)
+	var s int64
+	var n *node
+	for len(nodes) > 0 {
+		last := len(nodes) - 1
+		n, nodes = nodes[last], nodes[:last]
+		nodes = append(nodes, n.children...)
+		s++
+	}
+	return s
 }
 
 // minHeap is a custom min-heap data structure that stores integers.
@@ -187,7 +305,7 @@ func (h *minHeap) Pop() interface{} {
 	return x
 }
 
-const lostDuringSerializationName = "other"
+const truncatedNodeName = "other"
 
 // MarshalTruncate writes tree byte representation to the writer provider,
 // the number of nodes is limited to maxNodes. The function modifies
@@ -219,7 +337,7 @@ func (t *Tree) MarshalTruncate(w io.Writer, maxNodes int64) (err error) {
 		var other int64
 		var j int
 		for _, cn := range n.children {
-			if cn.total >= minVal || cn.name == lostDuringSerializationName {
+			if cn.total >= minVal || cn.name == truncatedNodeName {
 				n.children[j] = cn
 				j++
 			} else {
@@ -229,7 +347,7 @@ func (t *Tree) MarshalTruncate(w io.Writer, maxNodes int64) (err error) {
 
 		n.children = n.children[:j]
 		if other > 0 {
-			o := n.insert(lostDuringSerializationName)
+			o := n.insert(truncatedNodeName)
 			o.total += other
 			o.self += other
 		}

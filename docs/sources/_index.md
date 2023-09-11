@@ -10,6 +10,7 @@ keywords:
   - profiles storage
   - profiles datastore
   - observability
+  - continuous profiling
 ---
 # Grafana Pyroscope documentation
 
@@ -28,8 +29,8 @@ Grafana Pyroscope is fully integrated with Grafana allowing you to **correlate**
 Core features of Grafana Pyroscope include:
 
 - **Easy to install:** Using its monolithic mode, you can get Grafana Pyroscope up and
-  running with just one binary and no additional dependencies. On Kubernetes a single helm chart
-  allows to deploy in different mode.
+  running with just one binary and no additional dependencies. On Kubernetes, a single helm chart
+  allows for deploying in different modes.
 - **Horizontal scalability:**  You can run Grafana Pyroscope
    across multiple machines, which makes it effortless for you to scale the database to handle the profiling volumes your workload generates.
 - **High availability:** Grafana Pyroscope replicates incoming profiles, ensuring that

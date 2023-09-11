@@ -1,0 +1,17 @@
+@use '../sass/mixins/outline' as *;
+
+.select {
+  @include outline;
+  display: inline-block;
+  position: relative;
+  border-radius: 4px;
+  border: 1px solid var(--ps-ui-border);
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  background: no-repeat right center / 1em;
+  background-color: var(--ps-ui-element-bg-primary);
+
+  &:not([multiple]):not([size]) {
+    background-image: var(--ps-dropdown-arrow);
+  }
+}

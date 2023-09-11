@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import ModalWithToggle from '@webapp/ui/Modals/ModalWithToggle';
-import { App, appFromQuery, appToQuery } from '@webapp/models/app';
-import { Query } from '@webapp/models/query';
+import ModalWithToggle from '@pyroscope/ui/Modals/ModalWithToggle';
+import { App, appFromQuery, appToQuery } from '@pyroscope/models/app';
+import { Query } from '@pyroscope/models/query';
 import cx from 'classnames';
-import { SelectButton } from '@phlare/components/AppSelector/SelectButton';
-import ogStyles from '@pyroscope/webapp/javascript/components/AppSelector/AppSelector.module.scss';
-import styles from '@phlare/components/AppSelector/AppSelector.module.css';
+import SelectButton from '@pyroscope/components/AppSelector/SelectButton';
+import ogStyles from './AppSelector.module.scss';
+import styles from './AppSelector.module.css';
 
-//type App = Omit<OgApp, 'name'>;
+// type App = Omit<OgApp, 'name'>;
 
 interface AppSelectorProps {
   /** Triggered when an app is selected */
@@ -223,5 +223,3 @@ export const SelectorModalWithToggler = ({
     />
   );
 };
-
-export default AppSelector;

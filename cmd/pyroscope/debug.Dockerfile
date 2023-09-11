@@ -1,7 +1,7 @@
 FROM golang as builder
 
 WORKDIR /app
-FROM alpine:3.17.4
+FROM alpine:3.18.3
 
 RUN apk add --no-cache ca-certificates
 
@@ -18,6 +18,6 @@ RUN mkdir -p /data && \
 VOLUME /data
 
 USER pyroscope
-EXPOSE 4100
+EXPOSE 4040
 ENTRYPOINT ["/usr/bin/dlv", "--listen=:40000", "--headless=true", "--log", "--continue", "--accept-multiclient" , "--api-version=2", "exec", "/usr/bin/pyroscope", "--"]
 CMD ["-config.file=/etc/pyroscope/config.yaml"]

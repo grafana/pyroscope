@@ -1,0 +1,23 @@
+.wrapper {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  left: -9px;
+  top: -7px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background-size: 14px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.message {
+  background-image: url('@pyroscope/images/comment.svg');
+}
+
+.form {
+  width: 180px;
+}

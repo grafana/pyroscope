@@ -21,7 +21,7 @@ The following languages SDKs provide support for sending profiles from your appl
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/java"><img src="https://user-images.githubusercontent.com/23323466/178160550-2b5a623a-0f4c-4911-923f-2c825784d45d.png" width="100px;" alt=""/><br />
         <b>Java</b></a><br />
           <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/java" title="Documentation">Documentation</a><br />
-          <a href="https://github.com/grafana/pyroscope/tree/main/examples/java-jfr/rideshare" title="java-examples">Examples</a>
+          <a href="https://github.com/grafana/pyroscope/tree/main/examples/java/rideshare" title="java-examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/python"><img src="https://user-images.githubusercontent.com/23323466/178160553-c78b8c15-99b4-43f3-a2a0-252b6c4862b1.png" width="100px;" alt=""/><br />
         <b>Python</b></a><br />
@@ -45,9 +45,9 @@ The following languages SDKs provide support for sending profiles from your appl
           <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/dotnet" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/dotnet" title="examples">Examples</a>
       </td>
-      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/ebpf"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
+      <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/ebpf/"><img src="https://user-images.githubusercontent.com/23323466/178160548-e974c080-808d-4c5d-be9b-c983a319b037.png" width="100px;" alt=""/><br />
         <b>eBPF</b></a><br />
-          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/ebpf" title="Documentation">Documentation</a><br />
+          <a href="https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/ebpf/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/ebpf" title="examples">Examples</a>
       </td>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/rust"><img src="https://user-images.githubusercontent.com/23323466/178160555-fb6aeee7-5d31-4bcb-9e3e-41e9f2f7d5b4.png" width="100px;" alt=""/><br />

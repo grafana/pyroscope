@@ -29,9 +29,10 @@ type ProcTable struct {
 }
 
 type ProcTableDebugInfo struct {
-	ElfTables map[string]elf.SymTabDebugInfo `river:"elfs,block,optional"`
-	Size      int                            `river:"size,attr,optional"`
-	Pid       int                            `river:"pid,attr,optional"`
+	ElfTables     map[string]elf.SymTabDebugInfo `river:"elfs,block,optional"`
+	Size          int                            `river:"size,attr,optional"`
+	Pid           int                            `river:"pid,attr,optional"`
+	LastUsedRound int                            `river:"last_used_round,attr,optional"`
 }
 
 func (p *ProcTable) Comm() string {
@@ -55,7 +56,7 @@ func (p *ProcTable) DebugInfo() ProcTableDebugInfo {
 
 type ProcTableOptions struct {
 	Pid int
-	*ElfTableOptions
+	ElfTableOptions
 }
 
 func NewProcTable(logger log.Logger, options ProcTableOptions) *ProcTable {

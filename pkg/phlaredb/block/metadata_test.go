@@ -16,7 +16,7 @@ func TestClone(t *testing.T) {
 		MinTime: model.Time(1),
 		MaxTime: model.Time(2),
 		Labels:  map[string]string{"a": "b"},
-		Version: MetaVersion2,
+		Version: MetaVersion3,
 		Stats: BlockStats{
 			NumSamples:  1,
 			NumSeries:   2,

@@ -13,7 +13,7 @@ func TestElf(t *testing.T) {
 	elfCache, _ := NewElfCache(testCacheOptions, testCacheOptions)
 	logger := util.TestLogger(t)
 	tab := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, ".", "elf/testdata/elfs/elf",
-		&ElfTableOptions{
+		ElfTableOptions{
 			ElfCache: elfCache,
 		})
 
@@ -48,9 +48,9 @@ func TestGoTableFallbackFiltering(t *testing.T) {
 		elfCache, _ := NewElfCache(testCacheOptions, testCacheOptions)
 		logger := util.TestLogger(t)
 		tab := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, ".", e.f,
-			&ElfTableOptions{
+			ElfTableOptions{
 				ElfCache:      elfCache,
-				SymbolOptions: SymbolOptions{GolangSymbolTableFallback: true},
+				SymbolOptions: &SymbolOptions{GoTableFallback: true},
 			})
 		tab.load()
 		require.NoError(t, tab.err)
@@ -86,9 +86,9 @@ func TestGoTableFallbackDisabled(t *testing.T) {
 		elfCache, _ := NewElfCache(testCacheOptions, testCacheOptions)
 		logger := util.TestLogger(t)
 		tab := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, ".", e.f,
-			&ElfTableOptions{
+			ElfTableOptions{
 				ElfCache:      elfCache,
-				SymbolOptions: SymbolOptions{GolangSymbolTableFallback: false},
+				SymbolOptions: &SymbolOptions{GoTableFallback: false},
 			})
 		tab.load()
 		require.NoError(t, tab.err)

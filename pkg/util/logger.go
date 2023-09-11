@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/tenant"
-	"github.com/weaveworks/common/tracing"
+	"github.com/grafana/dskit/tracing"
 )
 
 // Logger is a global logger to use only where you cannot inject a logger.

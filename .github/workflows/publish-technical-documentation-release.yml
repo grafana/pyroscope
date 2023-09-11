@@ -24,7 +24,7 @@ jobs:
     needs: "test"
     steps:
 
-    - name: "Checkout Phlare repo"
+    - name: "Checkout Pyroscope repo"
       uses: "actions/checkout@v3"
       with:
         fetch-depth: 0
@@ -68,7 +68,7 @@ jobs:
       id: "publish-release"
       with:
         repository: "grafana/website"
-        branch: "publish-to-pyroscope"
+        branch: "master"
         host: "github.com"
         # PUBLISH_TO_WEBSITE_TOKEN is a fine-grained GitHub Personal Access Token that expires.
         # It must be regenerated in the grafanabot GitHub account and requires a Grafana organization

@@ -18,21 +18,18 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/kv/memberlist"
+	"github.com/grafana/dskit/middleware"
+	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/weaveworks/common/middleware"
-	"github.com/weaveworks/common/server"
 
 	"github.com/grafana/pyroscope/public"
 
-	agentv1 "github.com/grafana/pyroscope/api/gen/proto/go/agent/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/agent/v1/agentv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	"github.com/grafana/pyroscope/api/openapiv2"
-	"github.com/grafana/pyroscope/pkg/agent"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb/frontendpbconnect"
@@ -120,10 +117,10 @@ func (a *API) newRoute(path string, handler http.Handler, isPrefix, auth, gzip b
 	return route
 }
 
-// RegisterAPI registers the standard endpoints associated with a running Mimir.
+// RegisterAPI registers the standard endpoints associated with a running Pyroscope.
 func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
-	// register index page
-	a.RegisterRoute("/", indexHandler("", a.indexPage), false, true, "GET")
+	// register admin page
+	a.RegisterRoute("/admin", indexHandler("", a.indexPage), false, true, "GET")
 	// expose openapiv2 definition
 	openapiv2Handler, err := openapiv2.Handler()
 	if err != nil {
@@ -145,21 +142,10 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 		return fmt.Errorf("unable to initialize the ui: %w", err)
 	}
 
-	uiIndexHandler, err := public.NewIndexHandler(a.cfg.BaseURL)
-	if err != nil {
-		return fmt.Errorf("unable to initialize the ui: %w", err)
-	}
-
+	// The UI used to be at /ui, but now it's at /.
+	a.RegisterRoutesWithPrefix("/ui", http.RedirectHandler("/", http.StatusFound), false, true, "GET")
 	// All assets are served as static files
-	a.RegisterRoutesWithPrefix("/ui/assets/", http.StripPrefix("/ui/", http.FileServer(uiAssets)), false, true, "GET")
-	// Serve index to all other pages
-	a.RegisterRoutesWithPrefix("/ui/", uiIndexHandler, false, true, "GET")
-	// Redirect `/ui` to `/ui/`.
-	// See more: https://github.com/grafana/pyroscope/pull/649#issuecomment-1522958157.
-	a.RegisterRoute("/ui", http.RedirectHandler("/ui/", http.StatusFound), false, true, "GET")
-	a.indexPage.AddLinks(defaultWeight, "User interface", []IndexPageLink{
-		{Desc: "User interface", Path: "/ui"},
-	})
+	a.RegisterRoutesWithPrefix("/assets/", http.FileServer(uiAssets), false, true, "GET")
 
 	// register status service providing config and buildinfo at grpc gateway
 	if err := statusv1.RegisterStatusServiceHandlerServer(context.Background(), a.grpcGatewayMux, statusService); err != nil {
@@ -173,6 +159,21 @@ func (a *API) RegisterAPI(statusService statusv1.StatusServiceServer) error {
 		{Desc: "Only values that differ from the defaults", Path: "/api/v1/status/config/diff"},
 		{Desc: "Default values", Path: "/api/v1/status/config/default"},
 	})
+	return nil
+}
+
+func (a *API) RegisterCatchAll() error {
+	uiIndexHandler, err := public.NewIndexHandler(a.cfg.BaseURL)
+	if err != nil {
+		return fmt.Errorf("unable to initialize the ui: %w", err)
+	}
+	// Serve index to all other pages
+	a.RegisterRoutesWithPrefix("/", uiIndexHandler, false, true, "GET")
+
+	a.indexPage.AddLinks(defaultWeight, "User interface", []IndexPageLink{
+		{Desc: "User interface", Path: "/"},
+	})
+
 	return nil
 }
 
@@ -232,17 +233,6 @@ func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceCl
 	a.RegisterRoute("/pyroscope/render", http.HandlerFunc(handlers.Render), true, true, "GET")
 	a.RegisterRoute("/pyroscope/render-diff", http.HandlerFunc(handlers.RenderDiff), true, true, "GET")
 	a.RegisterRoute("/pyroscope/label-values", http.HandlerFunc(handlers.LabelValues), true, true, "GET")
-}
-
-// RegisterAgent registers the endpoints associated with the agent.
-func (a *API) RegisterAgent(ag *agent.Agent) error {
-	// register endpoint at grpc gateway
-	if err := agentv1.RegisterAgentServiceHandlerServer(context.Background(), a.grpcGatewayMux, ag); err != nil {
-		return err
-	}
-	agentv1connect.RegisterAgentServiceHandler(a.server.HTTP, ag.ConnectHandler())
-
-	return nil
 }
 
 // RegisterIngester registers the endpoints associated with the ingester.

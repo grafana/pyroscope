@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - next
       - r[0-9]+ # Trigger builds after a push to weekly branches
   pull_request:
 
@@ -23,7 +22,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.19.12
+          go-version: 1.21.0
       - name: Format
         run: make fmt check/unstaged-changes
   test:
@@ -34,7 +33,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.19.12
+          go-version: 1.21.0
       - name: Go Mod
         run: make check/go/mod
       - name: Test
@@ -48,7 +47,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.19.12
+          go-version: 1.21.0
       - name: Run linter
         run: make lint
       - name: Check helm manifests
@@ -78,12 +77,12 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19.12
+          go-version: 1.21.0
       - uses: actions/setup-node@v3
         with:
           node-version: lts/hydrogen
           cache: yarn
-      - name: Build image Phlare
+      - name: Build image Pyroscope
         run: make docker-image/pyroscope/build "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"
 
   build-push:
@@ -100,7 +99,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.19.12
+          go-version: 1.21.0
       - uses: actions/setup-node@v3
         with:
           node-version: lts/hydrogen
@@ -111,7 +110,7 @@ jobs:
           registry: us.gcr.io
           username: _json_key
           password: ${{ secrets.GCR_JSON_KEY }}
-      - name: Phlare Build & push multi-arch image
+      - name: Pyroscope Build & push multi-arch image
         id: build-push
         run: |
           make docker-image/pyroscope/push "BUILDX_ARGS=--cache-from=type=gha --cache-to=type=gha"

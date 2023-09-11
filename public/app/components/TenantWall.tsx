@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
-import TextField from '@webapp/ui/Form/TextField';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import TextField from '@pyroscope/ui/Form/TextField';
 import {
   Dialog,
   DialogBody,
   DialogFooter,
   DialogHeader,
-} from '@webapp/ui/Dialog';
-import Button from '@webapp/ui/Button';
+} from '@pyroscope/ui/Dialog';
+import Button from '@pyroscope/ui/Button';
 import {
   checkTenancyIsRequired,
   selectTenancy,
   actions,
   selectTenantID,
-} from '@phlare/redux/reducers/tenant';
+} from '@pyroscope/redux/reducers/tenant';
 
 export function TenantWall({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();
@@ -61,6 +61,8 @@ export function TenantWall({ children }: { children: React.ReactNode }) {
       return <>{memoedChildren}</>;
     }
   }
+
+  return <></>;
 }
 
 function SelectTenantIDDialog({
@@ -102,7 +104,7 @@ function SelectTenantIDDialog({
                 </p>
                 <p>
                   Notice that if you migrated from a non-multitenant version,
-                  data can be found under Tenant ID {'"'}anonymous{'"'}.
+                  data can be found under Tenant ID {`"anonymous"`}.
                 </p>
 
                 <TextField

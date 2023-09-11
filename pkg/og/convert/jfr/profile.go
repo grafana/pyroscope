@@ -9,8 +9,9 @@ import (
 	"mime/multipart"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
+	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/util/form"
@@ -23,7 +24,7 @@ type RawProfile struct {
 
 func (p *RawProfile) Bytes() ([]byte, error) { return p.RawData, nil }
 
-func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
+func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (*distributormodel.PushRequest, error) {
 	input := storage.PutInput{
 		StartTime:       md.StartTime,
 		EndTime:         md.EndTime,
@@ -35,15 +36,26 @@ func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage
 	}
 
 	labels := new(LabelsSnapshot)
-	var r io.Reader = bytes.NewReader(p.RawData)
+	rawSize := len(p.RawData)
+	var r = p.RawData
 	var err error
 	if strings.Contains(p.FormDataContentType, "multipart/form-data") {
 		if r, labels, err = loadJFRFromForm(r, p.FormDataContentType); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return ParseJFR(ctx, putter, r, &input, labels)
+	res, err := ParseJFR(r, &input, labels)
+	if err != nil {
+		return nil, err
+	}
+	res.RawProfileSize = rawSize
+	res.RawProfileType = distributormodel.RawProfileTypeJFR
+	return res, err
+}
+
+func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
+	return fmt.Errorf("parsing to Tree/storage.Putter is no longer supported")
 }
 
 func (p *RawProfile) ContentType() string {
@@ -53,13 +65,13 @@ func (p *RawProfile) ContentType() string {
 	return p.FormDataContentType
 }
 
-func loadJFRFromForm(r io.Reader, contentType string) (io.Reader, *LabelsSnapshot, error) {
+func loadJFRFromForm(r []byte, contentType string) ([]byte, *LabelsSnapshot, error) {
 	boundary, err := form.ParseBoundary(contentType)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	f, err := multipart.NewReader(r, boundary).ReadForm(32 << 20)
+	f, err := multipart.NewReader(bytes.NewBuffer(r), boundary).ReadForm(32 << 20)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -95,7 +107,7 @@ func loadJFRFromForm(r io.Reader, contentType string) (io.Reader, *LabelsSnapsho
 		}
 	}
 
-	return bytes.NewReader(jfrField), &labels, nil
+	return jfrField, &labels, nil
 }
 
 func decompress(bs []byte) ([]byte, error) {

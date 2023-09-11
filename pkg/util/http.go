@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"html/template"
 	"io"
 	"net"
 	"net/http"
@@ -13,16 +14,18 @@ import (
 	"time"
 
 	"github.com/felixge/httpsnoop"
+	log "github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
+	"github.com/grafana/dskit/instrument"
+	dslog "github.com/grafana/dskit/log"
+	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/multierror"
+	"github.com/grafana/dskit/tracing"
+	"github.com/grafana/dskit/user"
 	"github.com/opentracing-contrib/go-stdlib/nethttp"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/weaveworks/common/instrument"
-	"github.com/weaveworks/common/logging"
-	"github.com/weaveworks/common/middleware"
-	"github.com/weaveworks/common/tracing"
-	"github.com/weaveworks/common/user"
 	"golang.org/x/net/http2"
 	"gopkg.in/yaml.v3"
 
@@ -86,24 +89,24 @@ const (
 
 // Log middleware logs http requests
 type Log struct {
-	Log                   logging.Interface
+	Log                   log.Logger
 	LogRequestHeaders     bool // LogRequestHeaders true -> dump http headers at debug log level
 	LogRequestAtInfoLevel bool // LogRequestAtInfoLevel true -> log requests at info log level
 	SourceIPs             *middleware.SourceIPExtractor
 }
 
 // logWithRequest information from the request and context as fields.
-func (l Log) logWithRequest(r *http.Request) logging.Interface {
+func (l Log) logWithRequest(r *http.Request) log.Logger {
 	localLog := l.Log
 	traceID, ok := tracing.ExtractTraceID(r.Context())
 	if ok {
-		localLog = localLog.WithField("traceID", traceID)
+		localLog = log.With(localLog, "traceID", traceID)
 	}
 
 	if l.SourceIPs != nil {
 		ips := l.SourceIPs.Get(r)
 		if ips != "" {
-			localLog = localLog.WithField("sourceIPs", ips)
+			localLog = log.With(localLog, "sourceIPs", ips)
 		}
 	}
 
@@ -120,7 +123,7 @@ func (l Log) Wrap(next http.Handler) http.Handler {
 		headers, err := dumpRequest(r)
 		if err != nil {
 			headers = nil
-			requestLog.Errorf("Could not dump request headers: %v", err)
+			level.Error(requestLog).Log("msg", "Could not dump request headers", "err", err)
 		}
 		var (
 			httpErr       multierror.MultiError
@@ -169,32 +172,32 @@ func (l Log) Wrap(next http.Handler) http.Handler {
 		if writeErr != nil {
 			if errors.Is(writeErr, context.Canceled) {
 				if l.LogRequestAtInfoLevel {
-					requestLog.Infof("%s %s %s, request cancelled: %s ws: %v; %s", r.Method, uri, time.Since(begin), writeErr, IsWSHandshakeRequest(r), headers)
+					level.Info(requestLog).Log("msg", dslog.LazySprintf("%s %s %s, request cancelled: %s ws: %v; %s", r.Method, uri, time.Since(begin), writeErr, IsWSHandshakeRequest(r), headers))
 				} else {
-					requestLog.Debugf("%s %s %s, request cancelled: %s ws: %v; %s", r.Method, uri, time.Since(begin), writeErr, IsWSHandshakeRequest(r), headers)
+					level.Debug(requestLog).Log("msg", dslog.LazySprintf("%s %s %s, request cancelled: %s ws: %v; %s", r.Method, uri, time.Since(begin), writeErr, IsWSHandshakeRequest(r), headers))
 				}
 			} else {
-				requestLog.Warnf("%s %s %s, error: %s ws: %v; %s", r.Method, uri, time.Since(begin), writeErr, IsWSHandshakeRequest(r), headers)
+				level.Warn(requestLog).Log("msg", dslog.LazySprintf("%s %s %s, error: %s ws: %v; %s", r.Method, uri, time.Since(begin), writeErr, IsWSHandshakeRequest(r), headers))
 			}
 
 			return
 		}
 		if 100 <= statusCode && statusCode < 500 || statusCode == http.StatusBadGateway || statusCode == http.StatusServiceUnavailable {
 			if l.LogRequestAtInfoLevel {
-				requestLog.Infof("%s %s (%d) %s", r.Method, uri, statusCode, time.Since(begin))
+				level.Info(requestLog).Log("msg", dslog.LazySprintf("%s %s (%d) %s", r.Method, uri, statusCode, time.Since(begin)))
 			} else {
-				requestLog.Debugf("%s %s (%d) %s", r.Method, uri, statusCode, time.Since(begin))
+				level.Debug(requestLog).Log("msg", dslog.LazySprintf("%s %s (%d) %s", r.Method, uri, statusCode, time.Since(begin)))
 			}
 			if l.LogRequestHeaders && headers != nil {
 				if l.LogRequestAtInfoLevel {
-					requestLog.Infof("ws: %v; %s", IsWSHandshakeRequest(r), string(headers))
+					level.Info(requestLog).Log("msg", dslog.LazySprintf("ws: %v; %s", IsWSHandshakeRequest(r), string(headers)))
 				} else {
-					requestLog.Debugf("ws: %v; %s", IsWSHandshakeRequest(r), string(headers))
+					level.Debug(requestLog).Log("msg", dslog.LazySprintf("ws: %v; %s", IsWSHandshakeRequest(r), string(headers)))
 				}
 			}
 		} else {
-			requestLog.Warnf("%s %s (%d) %s Response: %q ws: %v; %s",
-				r.Method, uri, statusCode, time.Since(begin), buf.Bytes(), IsWSHandshakeRequest(r), headers)
+			level.Warn(requestLog).Log("msg", dslog.LazySprintf("%s %s (%d) %s Response: %q ws: %v; %s",
+				r.Method, uri, statusCode, time.Since(begin), buf.Bytes(), IsWSHandshakeRequest(r), headers))
 		}
 	})
 }
@@ -333,6 +336,22 @@ func WriteTextResponse(w http.ResponseWriter, message string) {
 
 	// Ignore inactionable errors.
 	_, _ = w.Write([]byte(message))
+}
+
+// RenderHTTPResponse either responds with JSON or a rendered HTML page using the passed in template
+// by checking the Accepts header.
+func RenderHTTPResponse(w http.ResponseWriter, v interface{}, t *template.Template, r *http.Request) {
+	accept := r.Header.Get("Accept")
+	if strings.Contains(accept, "application/json") {
+		WriteJSONResponse(w, v)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	err := t.Execute(w, v)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // WriteJSONResponse writes some JSON as a HTTP response.

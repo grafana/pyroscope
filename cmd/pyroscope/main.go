@@ -10,6 +10,8 @@ import (
 	"github.com/grafana/dskit/flagext"
 	"github.com/prometheus/common/version"
 
+	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"
+
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/phlare"
 	"github.com/grafana/pyroscope/pkg/usage"
@@ -37,7 +39,7 @@ func (mf *mainFlags) PhlareConfig() *phlare.Config {
 
 func (mf *mainFlags) RegisterFlags(fs *flag.FlagSet) {
 	mf.Config.RegisterFlags(fs)
-	fs.BoolVar(&mf.PrintVersion, "version", false, "Show the version of phlare and exit")
+	fs.BoolVar(&mf.PrintVersion, "version", false, "Show the version of pyroscope and exit")
 	fs.BoolVar(&mf.PrintModules, "modules", false, "List available modules that can be used as target and exit.")
 	fs.BoolVar(&mf.PrintHelp, "h", false, "Print basic help.")
 	fs.BoolVar(&mf.PrintHelp, "help", false, "Print basic help.")
@@ -63,13 +65,13 @@ func main() {
 
 	f, err := phlare.New(flags.Config)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed creating phlare: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed creating pyroscope: %v\n", err)
 		errorHandler()
 		return
 	}
 
 	if flags.PrintVersion {
-		fmt.Println(version.Print("phlare"))
+		fmt.Println(version.Print("pyroscope"))
 		return
 	}
 
@@ -106,7 +108,7 @@ func main() {
 
 	err = f.Run()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed running phlare: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed running pyroscope: %v\n", err)
 		errorHandler()
 		return
 	}

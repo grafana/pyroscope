@@ -1,0 +1,220 @@
+# Default values for pyroscope.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+pyroscope:
+  replicaCount: 1
+
+  image:
+    repository: grafana/pyroscope
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "1.0.0"
+
+  extraArgs:
+    log.level: debug
+
+  extraLabels: {}
+
+  extraEnvVars:
+    {}
+    # The following environment variables are set by the Helm chart.
+    # JAEGER_AGENT_HOST: jaeger-agent.jaeger.svc.cluster.local.
+
+  # -- Environment variables from secrets or configmaps to add to the pods
+  extraEnvFrom: []
+
+  imagePullSecrets: []
+  initContainers: []
+  nameOverride: ""
+  fullnameOverride: ""
+
+  rbac:
+    create: true
+
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name: ""
+
+  podAnnotations:
+    # Scrapes itself see https://grafana.com/docs/phlare/latest/operators-guide/deploy-kubernetes/#optional-scrape-your-own-workloads-profiles
+    profiles.grafana.com/memory.scrape: "true"
+    profiles.grafana.com/memory.port_name: http2
+    profiles.grafana.com/cpu.scrape: "true"
+    profiles.grafana.com/cpu.port_name: http2
+    profiles.grafana.com/goroutine.scrape: "true"
+    profiles.grafana.com/goroutine.port_name: http2
+    # profiles.grafana.com/block.scrape: "true"
+    # profiles.grafana.com/mutex.scrape: "true"
+
+  podSecurityContext:
+    fsGroup: 10001
+    runAsUser: 10001
+    runAsNonRoot: true
+
+  podDisruptionBudget:
+    enabled: true
+    maxUnavailable: 1
+
+  securityContext:
+    {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+  service:
+    type: ClusterIP
+    port: 4040
+    port_name: http2
+
+  memberlist:
+    port: 7946
+    port_name: memberlist
+
+  resources:
+    {}
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources'.
+    #
+    # Note that if memory consumption is higher than you would like, you can decrease the interval
+    # that profiles are written into blocks by setting `pyroscopedb.max-block-duration` in the `extraArgs`
+    # stanza. By default, it is set to 3h - override it, for example, as below:
+    # ```
+    # extraArgs:
+    #   pyroscopedb.max-block-duration: 30m
+    # ```
+    #
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  nodeSelector: {}
+
+  ## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+  ## If you set enabled as "True", you need :
+  ## - create a pv which above 10Gi and has same namespace with phlare
+  ## - keep storageClassName same with below setting
+  persistence:
+    enabled: false
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+    annotations: {}
+    # selector:
+    #   matchLabels:
+    #     app.kubernetes.io/name: phlare
+    # subPath: ""
+    # existingClaim:
+
+  extraVolumes:
+    []
+    # - name: backup-volume
+    #   emptydir: {}
+
+  extraVolumeMounts:
+    []
+    # - name: testing
+    #   mountPath: /var/lib/testing
+    #   readOnly: false
+    # - name: test-volume
+    #   mountPath: /var/tmp/test-volume
+    #   existingClaim: test-volume
+    #   readOnly: false
+
+  tolerations: []
+
+  affinity: {}
+
+  # run specific components separately
+  components: {}
+
+  # -- Allows to override Phlare's configuration using structured format.
+  structuredConfig: {}
+
+  # -- Contains Phlare's configuration as a string.
+  # @default -- The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml)
+  config: |
+    {{- if .Values.minio.enabled }}
+    storage:
+      backend: s3
+      s3:
+        endpoint: "{{ include "pyroscope.fullname" . }}-minio:9000"
+        bucket_name: {{(index .Values.minio.buckets 0).name | quote }}
+        access_key_id: {{ .Values.minio.rootUser | quote }}
+        secret_access_key: {{ .Values.minio.rootPassword | quote }}
+        insecure: true
+    {{- end }}
+
+  # -- Allows to add tenant specific overrides to the default limit configuration.
+  tenantOverrides:
+    {}
+    # "foo":
+    #   ingestion_rate_mb: 1
+    #   ingestion_burst_size_mb: 2
+  # -- Grafana Agent Configuration.
+
+# -------------------------------------
+# Configuration for `grafana-agent` child chart
+# -------------------------------------
+agent:
+  enabled: true
+  controller:
+    type: "statefulset"
+    replicas: 1
+    podAnnotations:
+      profiles.grafana.com/memory.scrape: "true"
+      profiles.grafana.com/memory.port_name: "http-metrics"
+      profiles.grafana.com/cpu.scrape: "true"
+      profiles.grafana.com/cpu.port_name: "http-metrics"
+      profiles.grafana.com/goroutine.scrape: "true"
+      profiles.grafana.com/goroutine.port_name: "http-metrics"
+  agent:
+    configMap:
+      create: false
+      name: grafana-agent-config-pyroscope
+    clustering:
+      enabled: true
+
+# -------------------------------------
+# Configuration for `minio` child chart
+# -------------------------------------
+minio:
+  enabled: false
+  replicas: 1
+  # Minio requires 2 to 16 drives for erasure code (drivesPerNode * replicas)
+  # https://docs.min.io/docs/minio-erasure-code-quickstart-guide
+  # Since we only have 1 replica, that means 2 drives must be used.
+  drivesPerNode: 2
+  rootUser: grafana-pyroscope
+  rootPassword: supersecret
+  buckets:
+    - name: grafana-pyroscope-data
+      policy: none
+      purge: false
+  persistence:
+    size: 5Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  podAnnotations:
+    phlare.grafana.com/scrape: "true"
+    phlare.grafana.com/port: "9000"
+
+ingress:
+  enabled: false
+  # hosts:
+  #   - localhost

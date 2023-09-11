@@ -1,0 +1,274 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ProfileHeader should render toolbar correctly 1`] = `
+<DocumentFragment>
+  <div
+    role="toolbar"
+  >
+    <div
+      class="navbar"
+    >
+      <div>
+        <div
+          class="wrapper"
+          style="width: 175px;"
+        >
+          <input
+            class="input search "
+            data-testid="flamegraph-search"
+            name="flamegraph-search"
+            placeholder="Search…"
+            type="search"
+            value=""
+          />
+        </div>
+      </div>
+      <div>
+        <div
+          class="itemsContainer"
+        >
+          <div
+            class="item"
+            style="width: 93px;"
+          >
+            <button
+              aria-label="Head first"
+              class="button default fitModeButton selected noIcon"
+              data-mui-internal-clone-element="true"
+              type="button"
+            >
+              <svg
+                viewBox="0 0 64 64"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <g
+                  id="ab_shape"
+                >
+                  <g>
+                    <path
+                      d="M16.71,41l-.42-2.45h-.16c-1.63,1.95-4.06,2.95-6.91,2.95-4.8,0-7.86-3.45-7.86-7.45,0-6.4,6.01-9.3,14.13-9.3v-.4c0-1.5-.84-3.2-4.38-3.2-2.48,0-4.9,.75-6.54,1.7l-1.42-4.75c1.69-.9,5.01-2.1,9.44-2.1,8.33,0,10.65,4.95,10.65,10.45v8.7c0,2.25,.11,4.4,.37,5.85h-6.91Zm-.95-11.7c-3.64,0-6.91,.9-6.91,4,0,2.1,1.37,3,3,3s3.22-1.05,3.74-2.6c.11-.35,.16-.8,.16-1.2v-3.2Z"
+                    />
+                    <path
+                      d="M29.36,41c.11-1.79,.21-4.62,.21-7.25V6h7.7v13.46h.11c1.42-1.99,3.8-3.28,7.06-3.28,5.85,0,9.7,5.01,9.65,12.16,0,8.69-5.22,13.16-10.81,13.16-2.74,0-5.22-.99-6.91-3.72h-.11l-.37,3.23h-6.54Zm7.91-9.83c0,.55,.05,.99,.16,1.39,.58,1.94,2.16,3.18,4.01,3.18,3.11,0,4.9-2.53,4.9-7,0-3.92-1.58-6.8-4.9-6.8-1.85,0-3.53,1.39-3.95,3.28-.16,.4-.21,.94-.21,1.44v4.52Z"
+                    />
+                  </g>
+                </g>
+                <g
+                  id="arrows"
+                >
+                  <polygon
+                    points="62 54 52 45 52 51 35 51 35 57 52 57 52 63 62 54"
+                  />
+                </g>
+              </svg>
+            </button>
+            <button
+              aria-label="Tail first"
+              class="button default fitModeButton noIcon"
+              data-mui-internal-clone-element="true"
+              type="button"
+            >
+              <svg
+                viewBox="0 0 64 64"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <g
+                  id="yz_shape"
+                >
+                  <g>
+                    <path
+                      d="M22.75,13l3.43,12.39c.42,1.47,.84,3.2,1.16,4.52h.11c.32-1.32,.69-3.05,1-4.47l2.9-12.44h8.01l-5.8,17.16c-2.95,8.33-5.17,12.54-8.07,15.23-2.58,2.39-5.43,3.3-7.17,3.55l-1.85-6.3c1.11-.25,2.32-.76,3.48-1.52,1.16-.71,2.32-1.88,2.95-3.05,.26-.41,.42-.76,.42-1.12,0-.31-.05-.66-.26-1.17L14.32,13h8.43Z"
+                    />
+                    <path
+                      d="M41.62,33.46l7.59-10.16c1.27-1.57,2.37-2.95,3.58-4.27v-.15h-10.33v-5.89h19.45l-.05,4.57-7.28,9.8c-1.21,1.57-2.48,3.15-3.69,4.42v.1h11.33v5.94h-20.61v-4.37Z"
+                    />
+                  </g>
+                </g>
+                <g
+                  id="arrows"
+                >
+                  <polygon
+                    points="12 51 12 45 2 54 12 63 12 57 29 57 29 51 12 51"
+                  />
+                </g>
+              </svg>
+            </button>
+            <div
+              class="divider"
+            />
+          </div>
+          <div
+            class="item"
+            style="width: 44px;"
+          >
+            <span
+              aria-label="Reset View"
+              class=""
+              data-mui-internal-clone-element="true"
+            >
+              <button
+                aria-label="Reset View"
+                class="button default resetViewButton noIcon"
+                disabled=""
+                id="reset"
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="svg-inline--fa fa-undo fa-w-16 "
+                  data-icon="undo"
+                  data-prefix="fas"
+                  focusable="false"
+                  role="img"
+                  viewBox="0 0 512 512"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M212.333 224.333H12c-6.627 0-12-5.373-12-12V12C0 5.373 5.373 0 12 0h48c6.627 0 12 5.373 12 12v78.112C117.773 39.279 184.26 7.47 258.175 8.007c136.906.994 246.448 111.623 246.157 248.532C504.041 393.258 393.12 504 256.333 504c-64.089 0-122.496-24.313-166.51-64.215-5.099-4.622-5.334-12.554-.467-17.42l33.967-33.967c4.474-4.474 11.662-4.717 16.401-.525C170.76 415.336 211.58 432 256.333 432c97.268 0 176-78.716 176-176 0-97.267-78.716-176-176-176-58.496 0-110.28 28.476-142.274 72.333h98.274c6.627 0 12 5.373 12 12v48c0 6.627-5.373 12-12 12z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </button>
+            </span>
+          </div>
+          <div
+            class="item"
+            style="width: 49px;"
+          >
+            <div
+              aria-label="Collapse nodes above"
+              class=""
+              data-mui-internal-clone-element="true"
+            >
+              <button
+                aria-label="Collapse nodes above"
+                class="button default collapseNodeButton noIcon"
+                disabled=""
+                type="button"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="svg-inline--fa fa-compress-alt fa-w-14 "
+                  data-icon="compress-alt"
+                  data-prefix="fas"
+                  focusable="false"
+                  role="img"
+                  viewBox="0 0 448 512"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M4.686 427.314L104 328l-32.922-31.029C55.958 281.851 66.666 256 88.048 256h112C213.303 256 224 266.745 224 280v112c0 21.382-25.803 32.09-40.922 16.971L152 376l-99.314 99.314c-6.248 6.248-16.379 6.248-22.627 0L4.686 449.941c-6.248-6.248-6.248-16.379 0-22.627zM443.314 84.686L344 184l32.922 31.029c15.12 15.12 4.412 40.971-16.97 40.971h-112C234.697 256 224 245.255 224 232V120c0-21.382 25.803-32.09 40.922-16.971L296 136l99.314-99.314c6.248-6.248 16.379-6.248 22.627 0l25.373 25.373c6.248 6.248 6.248 16.379 0 22.627z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div
+              class="divider"
+            />
+          </div>
+          <div
+            class="item"
+            style="width: 176px;"
+          >
+            <div
+              class="viewType"
+            >
+              <button
+                aria-label="Table"
+                class="button default toggleViewButton noIcon"
+                data-mui-internal-clone-element="true"
+                data-testid="table"
+                type="button"
+              >
+                <svg
+                  viewBox="0 0 64 64"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g
+                    id="z9nPJj.tif"
+                  >
+                    <path
+                      d="M62,13.33V49.68c-.02,.05-.04,.11-.05,.16-.3,2.66-2.66,5.16-6.08,5.15-15.92,0-31.83,0-47.75-.01-.54,0-1.1-.06-1.62-.19-2.73-.69-4.52-3.09-4.52-5.88,0-12,.01-23.56,.01-34.9,0-.29,.01-.57,.05-.86,.35-2.3,1.62-3.91,3.84-4.75,.6-.23,1.27-.28,1.9-.41,16.13,0,32.27,0,48.4,0,.09,.01,.17,.04,.26,.04,2.66,.21,4.8,2.01,5.4,4.57,.06,.24,.1,.48,.14,.72ZM28.99,31.81c0-3.92-.01-7.91-.01-11.81H8c0,3.91,.01,7.9,.01,11.81H28.99Zm27,0c0-3.92-.01-7.92-.01-11.81h-20.97c0,3.92,.01,7.91,.01,11.81h20.97Zm-47.98,5.19c0,3.7,0,8,0,11.69v.31H29v-12m6.01,.04c0,3.93-.01,8.05-.01,11.96h20.99c0-.12,0-.22,0-.31,0-3.7,0-7.99,0-11.69"
+                    />
+                  </g>
+                </svg>
+              </button>
+              <button
+                aria-label="Table and Flamegraph"
+                class="button default toggleViewButton selected noIcon"
+                data-mui-internal-clone-element="true"
+                data-testid="both"
+                type="button"
+              >
+                <svg
+                  viewBox="0 0 64 64"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M31,8.04H7.62c-.61,.13-1.26,.18-1.84,.41-2.14,.84-3.37,2.45-3.71,4.75-.04,.28-.05,.57-.05,.86,0,11.32-.02,22.88-.01,34.87,0,2.79,1.73,5.18,4.37,5.88,.51,.13,1.04,.19,1.57,.19,7.69,0,15.38,0,23.07,0V8.04Zm-2.92,11.99c0,3.9,.01,7.89,.01,11.8H7.82c0-3.9-.01-7.89-.01-11.8H28.08ZM7.82,49.01v-.31c0-3.69,0-7.99,0-11.68H28.1v11.99H7.82Z"
+                  />
+                  <path
+                    d="M58.67,7.9h-25.67V55h2.9c1.84,0,2.9-1.55,2.9-3.45V27.14h11.6v6.37c0,1.91,1.49,3.45,3.33,3.45h4.94c1.84,0,3.33-1.55,3.33-3.45V11.35c0-1.91-1.49-3.45-3.33-3.45Z"
+                  />
+                </svg>
+              </button>
+              <button
+                aria-label="Flamegraph"
+                class="button default toggleViewButton noIcon"
+                data-mui-internal-clone-element="true"
+                data-testid="flamegraph"
+                type="button"
+              >
+                <svg
+                  viewBox="0 0 64 64"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M5.44,8H58.56c1.9,0,3.44,1.54,3.44,3.44v6.16s0,9.6,0,9.6v6.36c0,1.9-1.54,3.44-3.44,3.44h-5.11c-1.9,0-3.44-1.54-3.44-3.44v-6.36h-12s0,9.8,0,9.8v9s0,5.56,0,5.56c0,1.9-1.1,3.44-3,3.44h-6c-1.9,0-3-1.54-3-3.44v-5.56h-9c-1.99,0-3-1.52-3-3.4v-5.6H5.44c-1.9,0-3.44-1.74-3.44-3.64v-6.16s0-9.6,0-9.6v-6.16c0-1.9,1.54-3.44,3.44-3.44Z"
+                  />
+                </svg>
+              </button>
+              <button
+                aria-label="Sandwich"
+                class="button default toggleViewButton noIcon"
+                data-mui-internal-clone-element="true"
+                data-testid="sandwich"
+                type="button"
+              >
+                <svg
+                  viewBox="0 0 64 64"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <g
+                    id="shape_squiggle"
+                  >
+                    <path
+                      d="M60,38.42c-4.62,0-6.97-2.64-8.86-4.75-1.81-2.03-2.86-3.08-5.13-3.08s-3.32,1.06-5.13,3.08c-1.89,2.12-4.24,4.75-8.86,4.75s-6.97-2.64-8.87-4.75c-1.81-2.03-2.86-3.08-5.14-3.08s-3.33,1.06-5.14,3.08c-1.89,2.12-4.25,4.75-8.87,4.75-1.38,0-2.5-1.12-2.5-2.5s1.12-2.5,2.5-2.5c2.28,0,3.33-1.06,5.14-3.09,1.89-2.12,4.25-4.75,8.87-4.75s6.97,2.64,8.87,4.75c1.81,2.03,2.86,3.09,5.14,3.09s3.32-1.06,5.13-3.08c1.89-2.12,4.24-4.75,8.86-4.75s6.97,2.64,8.86,4.75c1.81,2.03,2.86,3.08,5.13,3.08,1.38,0,2.5,1.12,2.5,2.5s-1.12,2.5-2.5,2.5Z"
+                    />
+                  </g>
+                  <g
+                    id="Layer_4"
+                  >
+                    <rect
+                      height="14"
+                      rx="3.94"
+                      ry="3.94"
+                      width="60"
+                      x="2"
+                      y="8"
+                    />
+                    <path
+                      d="M58.06,41h-18.64c-1.58,0-3.14,.42-4.5,1.22l-6.88,4.02c-1.87,1.09-4.19,1.09-6.06,0l-6.88-4.02c-1.37-.8-2.92-1.22-4.5-1.22H5.94c-2.18,0-3.94,1.76-3.94,3.94v7.12c0,2.18,1.76,3.94,3.94,3.94H58.06c2.18,0,3.94-1.76,3.94-3.94v-7.12c0-2.18-1.76-3.94-3.94-3.94Z"
+                    />
+                  </g>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</DocumentFragment>
+`;

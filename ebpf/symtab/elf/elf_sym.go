@@ -32,13 +32,13 @@ type SymbolsOptions struct {
 }
 
 // todo consider using ReaderAt here, same as in gopcln
-func (f *MMapedElfFile) getSymbols(typ elf.SectionType, options *SymbolsOptions) ([]SymbolIndex, uint32, error) {
+func (f *MMapedElfFile) getSymbols(typ elf.SectionType, opt *SymbolsOptions) ([]SymbolIndex, uint32, error) {
 	switch f.Class {
 	case elf.ELFCLASS64:
-		return f.getSymbols64(typ, options)
+		return f.getSymbols64(typ, opt)
 
 	case elf.ELFCLASS32:
-		return f.getSymbols32(typ, options)
+		return f.getSymbols32(typ, opt)
 	}
 
 	return nil, 0, errors.New("not implemented")
@@ -48,7 +48,7 @@ func (f *MMapedElfFile) getSymbols(typ elf.SectionType, options *SymbolsOptions)
 // if there is no such section in the File.
 var ErrNoSymbols = errors.New("no symbol section")
 
-func (f *MMapedElfFile) getSymbols64(typ elf.SectionType, options *SymbolsOptions) ([]SymbolIndex, uint32, error) {
+func (f *MMapedElfFile) getSymbols64(typ elf.SectionType, opt *SymbolsOptions) ([]SymbolIndex, uint32, error) {
 	symtabSection := f.sectionByType(typ)
 	if symtabSection == nil {
 		return nil, 0, ErrNoSymbols
@@ -93,7 +93,7 @@ func (f *MMapedElfFile) getSymbols64(typ elf.SectionType, options *SymbolsOption
 				return nil, 0, fmt.Errorf("wrong sym name")
 			}
 			pc := sym.Value
-			if pc >= options.FilterFrom && pc < options.FilterTo {
+			if pc >= opt.FilterFrom && pc < opt.FilterTo {
 				continue
 			}
 			symbols[i].Value = pc
@@ -105,7 +105,7 @@ func (f *MMapedElfFile) getSymbols64(typ elf.SectionType, options *SymbolsOption
 	return symbols[:i], symtabSection.Link, nil
 }
 
-func (f *MMapedElfFile) getSymbols32(typ elf.SectionType, options *SymbolsOptions) ([]SymbolIndex, uint32, error) {
+func (f *MMapedElfFile) getSymbols32(typ elf.SectionType, opt *SymbolsOptions) ([]SymbolIndex, uint32, error) {
 	symtabSection := f.sectionByType(typ)
 	if symtabSection == nil {
 		return nil, 0, ErrNoSymbols
@@ -150,10 +150,9 @@ func (f *MMapedElfFile) getSymbols32(typ elf.SectionType, options *SymbolsOption
 				return nil, 0, fmt.Errorf("wrong sym name")
 			}
 			pc := uint64(sym.Value)
-			if pc >= options.FilterFrom && pc < options.FilterTo {
+			if pc >= opt.FilterFrom && pc < opt.FilterTo {
 				continue
 			}
-			symbols[i].Value = pc
 			symbols[i].Name = NewName(sym.Name, linkIndex)
 			i++
 		}

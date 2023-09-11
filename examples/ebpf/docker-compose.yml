@@ -2,23 +2,23 @@
 version: '3.9'
 services:
   pyroscope:
-    image: 'pyroscope/pyroscope:latest'
+    image: grafana/pyroscope
     ports:
       - '4040:4040'
-    command:
-      - 'server'
+
   app:
-    image: 'pyroscope/pyroscope:latest'
+    image: 'docker.io/grafana/agent:v0.35.2'
     user: root
     privileged: true
     pid: 'host'
+    environment:
+      - AGENT_MODE=flow
     volumes:
-      - /lib/modules:/lib/modules
+      - ./config.river:/config.river
+    ports:
+      - '12345:12345'
     command:
-      - 'connect'
-      - '--spy-name'
-      - 'ebpfspy'
-      - '--pid'
-      - '-1'
-      - '--server-address'
-      - 'http://pyroscope:4040'
+      - 'run'
+      - '/config.river'
+      - '--storage.path=/tmp/agent'
+      - '--server.http.listen-addr=0.0.0.0:12345'

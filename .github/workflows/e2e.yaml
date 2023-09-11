@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - next
   pull_request:
 
 concurrency:
@@ -26,14 +25,14 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.19.12"
-          cache: true         
+          go-version: "1.21.0"
+          cache: true
       - run: yarn --frozen-lockfile
       - run: make build
       - name: Cypress run
         uses: cypress-io/github-action@v5
         with:
-          wait-on: http://localhost:4100/ready
+          wait-on: http://localhost:4040/ready
           start: make run
           config-file: cypress/ci.ts
         env:
@@ -56,8 +55,8 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.19.12"
-          cache: true         
+          go-version: "1.21.0"
+          cache: true
       - run: yarn --frozen-lockfile
       - run: make build
       - name: run nginx with /foobar/

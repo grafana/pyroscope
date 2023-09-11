@@ -4,9 +4,10 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/samber/lo"
+
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
-	"github.com/samber/lo"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -120,6 +121,9 @@ func NewFlameGraph(t *Tree, maxNodes int64) *querierv1.FlameGraph {
 
 // ExportToFlamebearer exports the flamegraph to a Flamebearer struct.
 func ExportToFlamebearer(fg *querierv1.FlameGraph, profileType *typesv1.ProfileType) *flamebearer.FlamebearerProfile {
+	if fg == nil {
+		fg = &querierv1.FlameGraph{}
+	}
 	unit := metadata.Units(profileType.SampleUnit)
 	sampleRate := uint32(100)
 
@@ -128,7 +132,7 @@ func ExportToFlamebearer(fg *querierv1.FlameGraph, profileType *typesv1.ProfileT
 		unit = metadata.ObjectsUnits
 	case "cpu":
 		unit = metadata.SamplesUnits
-		sampleRate = uint32(100000000)
+		sampleRate = uint32(1_000_000_000)
 
 	}
 	levels := make([][]int, len(fg.Levels))

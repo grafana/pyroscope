@@ -7,9 +7,8 @@ import (
 
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/kv/memberlist"
-	"github.com/weaveworks/common/server"
+	"github.com/grafana/dskit/server"
 
-	"github.com/grafana/pyroscope/pkg/agent"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
@@ -26,11 +25,6 @@ import (
 // RootBlocks is an ordered list of root blocks. The order is the same order that will
 // follow the markdown generation.
 var RootBlocks = []RootBlock{
-	{
-		Name:       "agent",
-		StructType: reflect.TypeOf(agent.Config{}),
-		Desc:       "The agent block configures the pull-mode collection of profiles.",
-	},
 	{
 		Name:       "server",
 		StructType: reflect.TypeOf(server.Config{}),
@@ -69,7 +63,7 @@ var RootBlocks = []RootBlock{
 	{
 		Name:       "grpc_client",
 		StructType: reflect.TypeOf(grpcclient.Config{}),
-		Desc:       "The grpc_client block configures the gRPC client used to communicate between two Phlare components.",
+		Desc:       "The grpc_client block configures the gRPC client used to communicate between two Pyroscope components.",
 	},
 	{
 		Name:       "memberlist",

@@ -12,18 +12,18 @@ spec:
         app: hotrod-golang
         app.kubernetes.io/name: hotrod-golang
       annotations:
-        pyroscope.io/scrape: 'true'
-        pyroscope.io/application-name: 'hotrod'
-        pyroscope.io/spy-name: 'gospy'
-        pyroscope.io/profile-cpu-enabled: 'true'
-        pyroscope.io/profile-mem-enabled: 'true'
-        pyroscope.io/port: '6060'
+        profiles.grafana.com/memory.scrape: "true"
+        profiles.grafana.com/memory.port: "6060"
+        profiles.grafana.com/cpu.scrape: "true"
+        profiles.grafana.com/cpu.port: "6060"
+        profiles.grafana.com/goroutine.scrape: "true"
+        profiles.grafana.com/goroutine.port: "6060"
     spec:
       serviceAccountName: default
       terminationGracePeriodSeconds: 5
       containers:
         - name: hotrod-golang
-          image: public.ecr.aws/pyroscope/hotrod-golang:latest
+          image: pyroscope/hotrod-golang:latest
           args: ['all']
           ports:
             - containerPort: 8080

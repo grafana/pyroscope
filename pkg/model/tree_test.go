@@ -2,8 +2,10 @@ package model
 
 import (
 	"bytes"
+	"math"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -191,6 +193,33 @@ func Test_TreeMerge(t *testing.T) {
 	})
 }
 
+func Test_Tree_minValue(t *testing.T) {
+	x := newTree([]stacktraces{
+		{locations: []string{"c", "b", "a"}, value: 1},
+		{locations: []string{"c", "b", "a"}, value: 1},
+		{locations: []string{"c1", "b", "a"}, value: 1},
+		{locations: []string{"c", "b1", "a"}, value: 1},
+	})
+
+	type testCase struct {
+		desc     string
+		maxNodes int64
+		expected int64
+	}
+
+	testCases := []*testCase{
+		{desc: "tree greater than max nodes", maxNodes: 2, expected: 3},
+		{desc: "tree less than max nodes", maxNodes: math.MaxInt64, expected: 0},
+		{desc: "zero max nodes", maxNodes: 0, expected: 0},
+		{desc: "negative max nodes", maxNodes: -1, expected: 0},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			assert.Equal(t, tc.expected, x.minValue(tc.maxNodes))
+		})
+	}
+}
+
 func Test_Tree_MarshalUnmarshal(t *testing.T) {
 	t.Run("empty tree", func(t *testing.T) {
 		expected := new(Tree)
@@ -248,6 +277,30 @@ func Test_Tree_MarshalUnmarshal(t *testing.T) {
 
 		require.Equal(t, expected.String(), actual.String())
 	})
+}
+
+func Test_FormatNames(t *testing.T) {
+	x := newTree([]stacktraces{
+		{locations: []string{"c0", "b0", "a0"}, value: 3},
+		{locations: []string{"c1", "b0", "a0"}, value: 3},
+		{locations: []string{"d0", "b1", "a0"}, value: 2},
+		{locations: []string{"e1", "c1", "a1"}, value: 4},
+		{locations: []string{"e2", "c1", "a2"}, value: 4},
+	})
+	x.FormatNodeNames(func(n string) string {
+		if len(n) > 0 {
+			n = n[:1]
+		}
+		return n
+	})
+	expected := newTree([]stacktraces{
+		{locations: []string{"c", "b", "a"}, value: 3},
+		{locations: []string{"c", "b", "a"}, value: 3},
+		{locations: []string{"d", "b", "a"}, value: 2},
+		{locations: []string{"e", "c", "a"}, value: 4},
+		{locations: []string{"e", "c", "a"}, value: 4},
+	})
+	require.Equal(t, expected.String(), x.String())
 }
 
 func emptyTree() *Tree {

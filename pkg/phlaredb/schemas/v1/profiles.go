@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"sort"
+	"unsafe"
 
 	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
@@ -247,6 +248,28 @@ type Samples struct {
 	Values        []uint64
 }
 
+func NewSamples(size int) Samples {
+	return Samples{
+		StacktraceIDs: make([]uint32, 0, size),
+		Values:        make([]uint64, 0, size),
+	}
+}
+
+func NewSamplesFromMap(m map[uint32]int64) Samples {
+	s := Samples{
+		StacktraceIDs: make([]uint32, len(m)),
+		Values:        make([]uint64, len(m)),
+	}
+	var i int
+	for k, v := range m {
+		s.StacktraceIDs[i] = k
+		s.Values[i] = uint64(v)
+		i++
+	}
+	sort.Sort(s)
+	return s
+}
+
 // Compact zero samples and optionally duplicates.
 func (s Samples) Compact(dedupe bool) Samples {
 	if len(s.StacktraceIDs) == 0 {
@@ -255,7 +278,7 @@ func (s Samples) Compact(dedupe bool) Samples {
 	if dedupe {
 		s = trimDuplicateSamples(s)
 	}
-	s = trimZeroSamples(s)
+	s = trimZeroAndNegativeSamples(s)
 	return s
 }
 
@@ -281,10 +304,10 @@ func trimDuplicateSamples(samples Samples) Samples {
 	}
 }
 
-func trimZeroSamples(samples Samples) Samples {
+func trimZeroAndNegativeSamples(samples Samples) Samples {
 	n := 0
 	for j, v := range samples.Values {
-		if v != 0 {
+		if v > 0 {
 			samples.Values[n] = v
 			samples.StacktraceIDs[n] = samples.StacktraceIDs[j]
 			n++
@@ -322,6 +345,49 @@ func (s Samples) Sum() uint64 {
 		sum += v
 	}
 	return sum
+}
+
+// TODO(kolesnikovae): Consider map alternatives.
+
+// SampleMap is a map of partitioned samples structured
+// as follows: partition => stacktrace_id => value
+type SampleMap map[uint64]map[uint32]int64
+
+func (m SampleMap) Partition(p uint64) map[uint32]int64 {
+	s, ok := m[p]
+	if !ok {
+		s = make(map[uint32]int64, 128)
+		m[p] = s
+	}
+	return s
+}
+
+func (m SampleMap) AddSamples(partition uint64, samples Samples) {
+	p := m.Partition(partition)
+	for i, sid := range samples.StacktraceIDs {
+		p[sid] += int64(samples.Values[i])
+	}
+}
+
+func (m SampleMap) WriteSamples(partition uint64, dst *Samples) {
+	p, ok := m[partition]
+	if !ok {
+		return
+	}
+	dst.StacktraceIDs = dst.StacktraceIDs[:0]
+	dst.Values = dst.Values[:0]
+	for k, v := range p {
+		dst.StacktraceIDs = append(dst.StacktraceIDs, k)
+		dst.Values = append(dst.Values, uint64(v))
+	}
+}
+
+const profileSize = uint64(unsafe.Sizeof(InMemoryProfile{}))
+
+func (p InMemoryProfile) Size() uint64 {
+	size := profileSize + uint64(cap(p.Comments)*8)
+	// 4 bytes for stacktrace id and 8 bytes for each stacktrace value
+	return size + uint64(cap(p.Samples.StacktraceIDs)*(4+8))
 }
 
 func (p InMemoryProfile) Timestamp() model.Time {

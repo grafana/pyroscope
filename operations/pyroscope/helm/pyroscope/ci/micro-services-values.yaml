@@ -1,0 +1,36 @@
+# Default values for pyroscope.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+pyroscope:
+  components:
+    querier:
+      kind: Deployment
+      replicaCount: 3
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 32Mi
+          cpu: 10m
+    distributor:
+      kind: Deployment
+      replicaCount: 2
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 32Mi
+          cpu: 50m
+    ingester:
+      kind: StatefulSet
+      replicaCount: 3
+      resources:
+        limits:
+          memory: 12Gi
+        requests:
+          memory: 256Mi
+          cpu: 100m
+
+minio:
+  enabled: true

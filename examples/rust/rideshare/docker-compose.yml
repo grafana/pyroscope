@@ -1,5 +1,10 @@
 version: '3'
 services:
+  pyroscope:
+    image: grafana/pyroscope
+    ports:
+      - '4040:4040'
+
   us-east:
     ports:
       - 5000
@@ -27,15 +32,6 @@ services:
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
     build:
       context: .
-
-  pyroscope:
-    image: pyroscope/pyroscope:latest
-    environment:
-      - PYROSCOPE_LOG_LEVEL=debug
-    ports:
-      - '4040:4040'
-    command:
-      - 'server'
 
   load-generator:
     build:

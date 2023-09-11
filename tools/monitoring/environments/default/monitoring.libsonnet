@@ -140,7 +140,7 @@ prometheus {
       datasources: [
         prom_k_grafana.grafana_datasource(
           'Phlare',
-          'http://%s:4100' % fqdn.phlare,
+          'http://%s:4040' % fqdn.phlare,
           type='phlare'
         ),
       ],

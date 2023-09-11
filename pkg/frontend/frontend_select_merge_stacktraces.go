@@ -7,10 +7,12 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/grafana/dskit/tenant"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 	"golang.org/x/sync/errgroup"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	validationutil "github.com/grafana/pyroscope/pkg/util/validation"
@@ -21,6 +23,13 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (
 	*connect.Response[querierv1.SelectMergeStacktracesResponse], error,
 ) {
+	opentracing.SpanFromContext(ctx).
+		SetTag("start", model.Time(c.Msg.Start).Time().String()).
+		SetTag("end", model.Time(c.Msg.End).Time().String()).
+		SetTag("selector", c.Msg.LabelSelector).
+		SetTag("profile_type", c.Msg.ProfileTypeID)
+
+	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeStacktracesProcedure)
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
 		return nil, connect.NewError(http.StatusBadRequest, err)
@@ -70,7 +79,9 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 		return nil, err
 	}
 
+	t := m.Tree()
+	t.FormatNodeNames(phlaremodel.DropGoTypeParameters)
 	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
-		Flamegraph: m.FlameGraph(c.Msg.GetMaxNodes()),
+		Flamegraph: phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes()),
 	}), nil
 }

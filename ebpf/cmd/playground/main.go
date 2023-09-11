@@ -1,3 +1,5 @@
+//go:build linux
+
 package main
 
 import (
@@ -150,7 +152,7 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 			},
 			Metrics: ms,
 			SymbolOptions: symtab.SymbolOptions{
-				GolangSymbolTableFallback: true,
+				GoTableFallback: true,
 			},
 		},
 	}

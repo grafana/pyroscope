@@ -1,11 +1,8 @@
-import {
-  parseResponse,
-  RequestNotOkError,
-} from '@pyroscope/webapp/javascript/services/base';
+import { parseResponse, RequestNotOkError } from '@pyroscope/services/base';
 import { z, ZodError } from 'zod';
-import { Result } from '@webapp/util/fp';
-import type { RequestError } from '@webapp/services/base';
-import { Profile } from '@pyroscope/models/src';
+import { Result } from '@pyroscope/util/fp';
+import type { RequestError } from '@pyroscope/services/base';
+import { Profile } from '@pyroscope/legacy/models';
 
 export async function flameGraphUpload(
   name: string,
@@ -21,7 +18,7 @@ export async function flameGraphUpload(
         units: flamebearer.metadata.units,
         spyName: flamebearer.metadata.spyName,
       },
-      name: name,
+      name,
       profile: btoa(JSON.stringify(flamebearer)),
       type: 'json',
     }),

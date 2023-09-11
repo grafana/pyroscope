@@ -1,19 +1,74 @@
 package symdb
 
 import (
+	"context"
+	"fmt"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"time"
+
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
+
+// SymbolsReader provides access to a symdb partition.
+type SymbolsReader interface {
+	Partition(ctx context.Context, partition uint64) (PartitionReader, error)
+}
+
+type PartitionReader interface {
+	WriteStats(s *PartitionStats)
+	Symbols() *Symbols
+	Release()
+}
+
+type Symbols struct {
+	Stacktraces StacktraceResolver
+	Locations   []*schemav1.InMemoryLocation
+	Mappings    []*schemav1.InMemoryMapping
+	Functions   []*schemav1.InMemoryFunction
+	Strings     []string
+}
+
+type PartitionStats struct {
+	StacktracesTotal int
+	MaxStacktraceID  int
+	LocationsTotal   int
+	MappingsTotal    int
+	FunctionsTotal   int
+	StringsTotal     int
+}
+
+type StacktraceResolver interface {
+	// ResolveStacktraceLocations resolves locations for each stack
+	// trace and inserts it to the StacktraceInserter provided.
+	//
+	// The stacktraces must be ordered in the ascending order.
+	// If a stacktrace can't be resolved, dst receives an empty
+	// array of locations.
+	//
+	// Stacktraces slice might be modified during the call.
+	ResolveStacktraceLocations(ctx context.Context, dst StacktraceInserter, stacktraces []uint32) error
+}
+
+// StacktraceInserter accepts resolved locations for a given stack
+// trace. The leaf is at locations[0].
+//
+// Locations slice must not be retained by implementation.
+// It is guaranteed, that for a given stacktrace ID
+// InsertStacktrace is called not more than once.
+type StacktraceInserter interface {
+	InsertStacktrace(stacktraceID uint32, locations []int32)
+}
 
 type SymDB struct {
 	config *Config
-	writer *Writer
-	stats  stats
+	writer *writer
+	stats  MemoryStats
 
 	m          sync.RWMutex
-	partitions map[uint64]*inMemoryPartition
+	partitions map[uint64]*PartitionWriter
 
 	wg   sync.WaitGroup
 	stop chan struct{}
@@ -22,18 +77,34 @@ type SymDB struct {
 type Config struct {
 	Dir         string
 	Stacktraces StacktracesConfig
+	Parquet     ParquetConfig
 }
 
 type StacktracesConfig struct {
 	MaxNodesPerChunk uint32
 }
 
-const statsUpdateInterval = 10 * time.Second
-
-type stats struct {
-	memorySize atomic.Uint64
-	partitions atomic.Uint32
+type ParquetConfig struct {
+	MaxBufferRowCount int
 }
+
+type MemoryStats struct {
+	StacktracesSize uint64
+	LocationsSize   uint64
+	MappingsSize    uint64
+	FunctionsSize   uint64
+	StringsSize     uint64
+}
+
+func (m *MemoryStats) MemorySize() uint64 {
+	return m.StacktracesSize +
+		m.LocationsSize +
+		m.MappingsSize +
+		m.FunctionsSize +
+		m.StringsSize
+}
+
+const statsUpdateInterval = 5 * time.Second
 
 func DefaultConfig() *Config {
 	return &Config{
@@ -44,11 +115,19 @@ func DefaultConfig() *Config {
 			// small overhead.
 			MaxNodesPerChunk: 1 << 20,
 		},
+		Parquet: ParquetConfig{
+			MaxBufferRowCount: 100 << 10,
+		},
 	}
 }
 
 func (c *Config) WithDirectory(dir string) *Config {
 	c.Dir = dir
+	return c
+}
+
+func (c *Config) WithParquetConfig(pc ParquetConfig) *Config {
+	c.Parquet = pc
 	return c
 }
 
@@ -58,24 +137,55 @@ func NewSymDB(c *Config) *SymDB {
 	}
 	db := &SymDB{
 		config:     c,
-		writer:     NewWriter(c.Dir),
-		partitions: make(map[uint64]*inMemoryPartition),
+		writer:     newWriter(c),
+		partitions: make(map[uint64]*PartitionWriter),
 		stop:       make(chan struct{}),
 	}
 	db.wg.Add(1)
-	go db.updateStats()
+	go db.updateStatsLoop()
 	return db
 }
 
-func (s *SymDB) SymbolsAppender(partition uint64) SymbolsAppender {
-	return s.partition(partition)
+func (s *SymDB) PartitionWriter(partition uint64) *PartitionWriter {
+	p, ok := s.lookupPartition(partition)
+	if ok {
+		return p
+	}
+	s.m.Lock()
+	if p, ok = s.partitions[partition]; ok {
+		s.m.Unlock()
+		return p
+	}
+	p = s.newPartition(partition)
+	s.partitions[partition] = p
+	s.m.Unlock()
+	return p
 }
 
-func (s *SymDB) SymbolsResolver(partition uint64) (SymbolsResolver, bool) {
-	return s.lookupPartition(partition)
+func (s *SymDB) newPartition(partition uint64) *PartitionWriter {
+	p := PartitionWriter{
+		header:      PartitionHeader{Partition: partition},
+		stacktraces: newStacktracesPartition(s.config.Stacktraces.MaxNodesPerChunk),
+	}
+	p.strings.init()
+	p.mappings.init()
+	p.functions.init()
+	p.locations.init()
+	return &p
 }
 
-func (s *SymDB) lookupPartition(partition uint64) (*inMemoryPartition, bool) {
+func (s *SymDB) WriteProfileSymbols(partition uint64, profile *profilev1.Profile) []schemav1.InMemoryProfile {
+	return s.PartitionWriter(partition).WriteProfileSymbols(profile)
+}
+
+func (s *SymDB) Partition(_ context.Context, partition uint64) (PartitionReader, error) {
+	if p, ok := s.lookupPartition(partition); ok {
+		return p, nil
+	}
+	return nil, ErrPartitionNotFound
+}
+
+func (s *SymDB) lookupPartition(partition uint64) (*PartitionWriter, bool) {
 	s.m.RLock()
 	p, ok := s.partitions[partition]
 	if ok {
@@ -86,65 +196,27 @@ func (s *SymDB) lookupPartition(partition uint64) (*inMemoryPartition, bool) {
 	return nil, false
 }
 
-func (s *SymDB) partition(partition uint64) *inMemoryPartition {
-	p, ok := s.lookupPartition(partition)
-	if ok {
-		return p
-	}
-	s.m.Lock()
-	if p, ok = s.partitions[partition]; ok {
-		s.m.Unlock()
-		return p
-	}
-	p = &inMemoryPartition{
-		name:               partition,
-		maxNodesPerChunk:   s.config.Stacktraces.MaxNodesPerChunk,
-		stacktraceHashToID: make(map[uint64]uint32, defaultStacktraceTreeSize/2),
-	}
-	p.stacktraceChunks = append(p.stacktraceChunks, &stacktraceChunk{
-		tree:     newStacktraceTree(defaultStacktraceTreeSize),
-		parition: p,
-	})
-	s.partitions[partition] = p
-	s.m.Unlock()
-	return p
-}
-
-func (s *SymDB) Flush() error {
-	close(s.stop)
-	s.wg.Wait()
+func (s *SymDB) MemorySize() uint64 {
 	s.m.RLock()
-	m := make([]*inMemoryPartition, len(s.partitions))
-	var i int
-	for _, v := range s.partitions {
-		m[i] = v
-		i++
-	}
+	m := s.stats
 	s.m.RUnlock()
-	sort.Slice(m, func(i, j int) bool {
-		return m[i].name < m[j].name
-	})
-	for _, v := range m {
-		for ci, c := range v.stacktraceChunks {
-			if err := s.writer.writeStacktraceChunk(ci, c); err != nil {
-				return err
-			}
-		}
+	return m.MemorySize()
+}
+
+var emptyMemoryStats MemoryStats
+
+func (s *SymDB) WriteMemoryStats(m *MemoryStats) {
+	s.m.Lock()
+	c := s.stats
+	if c == emptyMemoryStats {
+		s.updateStats()
+		c = s.stats
 	}
-	return s.writer.Flush()
+	s.m.Unlock()
+	*m = c
 }
 
-func (s *SymDB) Name() string { return s.config.Dir }
-
-func (s *SymDB) Size() uint64 {
-	// NOTE(kolesnikovae): SymDB does not use disk until flushed.
-	//  This method should be implemented once the logic changes.
-	return 0
-}
-
-func (s *SymDB) MemorySize() uint64 { return s.stats.memorySize.Load() }
-
-func (s *SymDB) updateStats() {
+func (s *SymDB) updateStatsLoop() {
 	t := time.NewTicker(statsUpdateInterval)
 	defer func() {
 		t.Stop()
@@ -155,23 +227,46 @@ func (s *SymDB) updateStats() {
 		case <-s.stop:
 			return
 		case <-t.C:
-			s.m.RLock()
-			s.stats.partitions.Store(uint32(len(s.partitions)))
-			s.stats.memorySize.Store(uint64(s.calculateMemoryFootprint()))
-			s.m.RUnlock()
+			s.m.Lock()
+			s.updateStats()
+			s.m.Unlock()
 		}
 	}
 }
 
-// calculateMemoryFootprint estimates the memory footprint.
-func (s *SymDB) calculateMemoryFootprint() (v int) {
+func (s *SymDB) updateStats() {
+	s.stats = MemoryStats{}
 	for _, m := range s.partitions {
-		m.stacktraceMutex.RLock()
-		v += len(m.stacktraceChunkHeaders) * stacktraceChunkHeaderSize
-		for _, c := range m.stacktraceChunks {
-			v += stacktraceTreeNodeSize * cap(c.tree.nodes)
-		}
-		m.stacktraceMutex.RUnlock()
+		s.stats.StacktracesSize += m.stacktraces.size()
+		s.stats.MappingsSize += m.mappings.Size()
+		s.stats.FunctionsSize += m.functions.Size()
+		s.stats.LocationsSize += m.locations.Size()
+		s.stats.StringsSize += m.strings.Size()
 	}
-	return v
+}
+
+func (s *SymDB) Flush() error {
+	close(s.stop)
+	s.wg.Wait()
+	s.updateStats()
+	partitions := make([]*PartitionWriter, len(s.partitions))
+	var i int
+	for _, v := range s.partitions {
+		partitions[i] = v
+		i++
+	}
+	sort.Slice(partitions, func(i, j int) bool {
+		return partitions[i].header.Partition < partitions[j].header.Partition
+	})
+	if err := s.writer.createDir(); err != nil {
+		return err
+	}
+	if err := s.writer.writePartitions(partitions); err != nil {
+		return fmt.Errorf("writing partitions: %w", err)
+	}
+	return s.writer.Flush()
+}
+
+func (s *SymDB) Files() []block.File {
+	return s.writer.files
 }

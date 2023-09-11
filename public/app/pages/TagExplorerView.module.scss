@@ -1,0 +1,160 @@
+$pieChartWidth: 300px;
+
+.tagExplorerView {
+  .header {
+    display: flex;
+    align-items: center;
+    margin: 0 10px 10px;
+
+    .notSelectedTagDropdown {
+      border-color: var(--ps-selected-app);
+      color: var(--ps-selected-app);
+    }
+
+    .whereSelectButton {
+      flex-shrink: 1;
+      text-align: left;
+    }
+  }
+
+  .timelineWrapper,
+  .flamegraphWrapper {
+    min-height: 125px;
+
+    span[role='progressbar'] {
+      display: inline-block;
+      margin-top: 50px;
+    }
+  }
+
+  .loaderContainer {
+    text-align: center;
+  }
+
+  .tableDescription {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0 0 10px 10px;
+  }
+
+  .title {
+    display: inline-flex;
+    font-weight: 500;
+    font-size: 18px;
+    margin-right: 5px;
+    flex-shrink: 0;
+  }
+
+  .buttons {
+    position: relative;
+
+    a {
+      cursor: pointer;
+      padding: 8px 6px;
+      margin-left: 5px;
+      text-decoration: none;
+      border: 1px solid var(--ps-ui-border);
+      color: var(--ps-neutral-2);
+      background-color: var(--ps-ui-element-bg-primary);
+      border-radius: 4px;
+
+      &:hover {
+        background-color: var(--ps-ui-element-bg-highlight);
+      }
+    }
+  }
+
+  .queryGrouppedBy {
+    @extend .query;
+
+    flex-shrink: 0;
+  }
+
+  .selectName {
+    font-weight: 500;
+    color: var(--ps-right-click-info);
+    margin-right: 5px;
+    flex-shrink: 0;
+  }
+
+  .query {
+    display: flex;
+    align-items: center;
+  }
+
+  .tagExplorerTable {
+    width: 100%;
+    font-variant-numeric: lining-nums tabular-nums;
+
+    thead,
+    tbody tr:nth-child(2n):not(:hover) {
+      background-color: var(--ps-neutral-9);
+    }
+
+    tbody {
+      cursor: pointer;
+
+      td {
+        font-weight: initial;
+        text-align: left;
+        font-family: monospace;
+      }
+
+      tr.activeTagRow {
+        background-color: var(--ps-green-highlight);
+        color: var(--ps-tooltip-text);
+      }
+
+      .tagName {
+        display: flex;
+        align-items: center;
+        flex-wrap: nowrap;
+        flex-direction: row;
+
+        .tagColor {
+          flex-shrink: 0;
+          display: inline-block;
+          height: 10px;
+          width: 10px;
+          border-radius: 2px;
+          margin-right: 10px;
+        }
+
+        .label {
+          text-align: left;
+        }
+      }
+    }
+
+    td,
+    th {
+      border: 1px solid var(--ps-ui-border);
+      padding: 4px 10px;
+      width: 10%;
+      overflow: auto;
+
+      .bold {
+        font-weight: bold;
+        white-space: nowrap;
+      }
+    }
+  }
+}
+
+.statisticsBox {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.tableWrapper {
+  width: calc(100% - ($pieChartWidth + 10px));
+}
+
+.pieChartWrapper {
+  width: $pieChartWidth;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 47px;
+}

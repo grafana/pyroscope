@@ -2,6 +2,8 @@ package phlaredb
 
 import (
 	"context"
+	"crypto/rand"
+	"fmt"
 	"io/fs"
 	"math"
 	"os"
@@ -9,18 +11,21 @@ import (
 	"sort"
 
 	"github.com/oklog/ulid"
-	"github.com/opentracing/opentracing-go"
 	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb"
 
+	"github.com/grafana/dskit/multierror"
+	"github.com/grafana/dskit/runutil"
+
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -31,98 +36,291 @@ type BlockReader interface {
 	Meta() block.Meta
 	Profiles() []parquet.RowGroup
 	Index() IndexReader
-	Symbols() SymbolsReader
+	Symbols() symdb.SymbolsReader
 }
 
 func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
-	srcMetas := make([]block.Meta, len(src))
-	ulids := make([]string, len(src))
+	metas, err := CompactWithSplitting(ctx, src, 1, dst)
+	if err != nil {
+		return block.Meta{}, err
+	}
+	return metas[0], nil
+}
 
+func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount uint64, dst string) (
+	[]block.Meta, error,
+) {
+	if shardsCount == 0 {
+		shardsCount = 1
+	}
+	if len(src) <= 1 && shardsCount == 1 {
+		return nil, errors.New("not enough blocks to compact")
+	}
+	var (
+		writers  = make([]*blockWriter, shardsCount)
+		shardBy  = shardByFingerprint
+		srcMetas = make([]block.Meta, len(src))
+		err      error
+	)
 	for i, b := range src {
 		srcMetas[i] = b.Meta()
-		ulids[i] = b.Meta().ULID.String()
 	}
-	meta = compactMetas(srcMetas...)
-	blockPath := filepath.Join(dst, meta.ULID.String())
-	indexPath := filepath.Join(blockPath, block.IndexFilename)
-	profilePath := filepath.Join(blockPath, (&schemav1.ProfilePersister{}).Name()+block.ParquetSuffix)
 
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "Compact")
-	defer func() {
-		// todo: context propagation is not working through objstore
-		// This is because the BlockReader has no context.
-		sp.SetTag("src", ulids)
-		sp.SetTag("block_id", meta.ULID.String())
+	outBlocksTime := ulid.Now()
+	outMeta := compactMetas(srcMetas...)
+
+	// create the shards writers
+	for i := range writers {
+		meta := outMeta.Clone()
+		meta.ULID = ulid.MustNew(outBlocksTime, rand.Reader)
+		writers[i], err = newBlockWriter(dst, meta)
 		if err != nil {
-			sp.SetTag("error", err)
+			return nil, fmt.Errorf("create block writer: %w", err)
 		}
-		sp.Finish()
-	}()
-
-	if len(src) <= 1 {
-		return block.Meta{}, errors.New("not enough blocks to compact")
-	}
-	if err := os.MkdirAll(blockPath, 0o777); err != nil {
-		return block.Meta{}, err
-	}
-
-	indexw, err := prepareIndexWriter(ctx, indexPath, src)
-	if err != nil {
-		return block.Meta{}, err
-	}
-
-	profileFile, err := os.OpenFile(profilePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
-	if err != nil {
-		return block.Meta{}, err
-	}
-	profileWriter := newProfileWriter(profileFile)
-	symw, err := newSymbolsWriter(blockPath, defaultParquetConfig)
-	if err != nil {
-		return block.Meta{}, err
 	}
 
 	rowsIt, err := newMergeRowProfileIterator(src)
 	if err != nil {
-		return block.Meta{}, err
+		return nil, err
 	}
-	seriesRewriter := newSeriesRewriter(rowsIt, indexw)
-	symRewriter := newSymbolsRewriter(seriesRewriter, src, symw)
-	reader := phlareparquet.NewIteratorRowReader(newRowsIterator(symRewriter))
+	defer runutil.CloseWithLogOnErr(util.Logger, rowsIt, "close rows iterator")
 
-	total, _, err := phlareparquet.CopyAsRowGroups(profileWriter, reader, defaultParquetConfig.MaxBufferRowCount)
+	// iterate and splits the rows into series.
+	for rowsIt.Next() {
+		r := rowsIt.At()
+		shard := int(shardBy(r, shardsCount))
+		if err := writers[shard].WriteRow(r); err != nil {
+			return nil, err
+		}
+	}
+	if err := rowsIt.Err(); err != nil {
+		return nil, err
+	}
+
+	// Close all blocks
+	errs := multierror.New()
+	for _, w := range writers {
+		if err := w.Close(ctx); err != nil {
+			errs.Add(err)
+		}
+	}
+
+	out := make([]block.Meta, 0, len(writers))
+	for shard, w := range writers {
+		if w.meta.Stats.NumSamples > 0 {
+			w.meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(shard), shardsCount)
+			out = append(out, *w.meta)
+		}
+	}
+
+	// Returns all Metas
+	return out, errs.Err()
+}
+
+var shardByFingerprint = func(r profileRow, shardsCount uint64) uint64 {
+	return uint64(r.fp) % shardsCount
+}
+
+type blockWriter struct {
+	indexRewriter   *indexRewriter
+	symbolsRewriter *symbolsRewriter
+	profilesWriter  *profilesWriter
+	path            string
+	meta            *block.Meta
+	totalProfiles   uint64
+	min, max        int64
+}
+
+func newBlockWriter(dst string, meta *block.Meta) (*blockWriter, error) {
+	blockPath := filepath.Join(dst, meta.ULID.String())
+
+	if err := os.MkdirAll(blockPath, 0o777); err != nil {
+		return nil, err
+	}
+
+	profileWriter, err := newProfileWriter(blockPath)
 	if err != nil {
-		return block.Meta{}, err
+		return nil, err
 	}
 
-	if err = symRewriter.Close(); err != nil {
-		return block.Meta{}, err
-	}
-	if err = symw.Close(); err != nil {
-		return block.Meta{}, err
-	}
+	return &blockWriter{
+		indexRewriter:   newIndexRewriter(blockPath),
+		symbolsRewriter: newSymbolsRewriter(blockPath),
+		profilesWriter:  profileWriter,
+		path:            blockPath,
+		meta:            meta,
+		min:             math.MaxInt64,
+		max:             math.MinInt64,
+	}, nil
+}
 
-	// flush the index file.
-	if err = indexw.Close(); err != nil {
-		return block.Meta{}, err
-	}
-
-	if err = profileWriter.Close(); err != nil {
-		return block.Meta{}, err
-	}
-
-	metaFiles, err := metaFilesFromDir(blockPath)
+func (bw *blockWriter) WriteRow(r profileRow) error {
+	err := bw.indexRewriter.ReWriteRow(r)
 	if err != nil {
-		return block.Meta{}, err
+		return err
 	}
-	meta.Files = metaFiles
-	meta.Stats.NumProfiles = total
-	meta.Stats.NumSeries = seriesRewriter.NumSeries()
-	meta.Stats.NumSamples = symRewriter.NumSamples()
-	meta.Compaction.Deletable = meta.Stats.NumSamples == 0
-	if _, err := meta.WriteToFile(util.Logger, blockPath); err != nil {
-		return block.Meta{}, err
+	err = bw.symbolsRewriter.ReWriteRow(r)
+	if err != nil {
+		return err
 	}
-	return meta, nil
+
+	if err := bw.profilesWriter.WriteRow(r); err != nil {
+		return err
+	}
+	bw.totalProfiles++
+	if r.timeNanos < bw.min {
+		bw.min = r.timeNanos
+	}
+	if r.timeNanos > bw.max {
+		bw.max = r.timeNanos
+	}
+	return nil
+}
+
+func (bw *blockWriter) Close(ctx context.Context) error {
+	if err := bw.indexRewriter.Close(ctx); err != nil {
+		return err
+	}
+	if err := bw.symbolsRewriter.Close(); err != nil {
+		return err
+	}
+	if err := bw.profilesWriter.Close(); err != nil {
+		return err
+	}
+	metaFiles, err := metaFilesFromDir(bw.path)
+	if err != nil {
+		return err
+	}
+	bw.meta.Files = metaFiles
+	bw.meta.Stats.NumProfiles = bw.totalProfiles
+	bw.meta.Stats.NumSeries = bw.indexRewriter.NumSeries()
+	bw.meta.Stats.NumSamples = bw.symbolsRewriter.NumSamples()
+	bw.meta.Compaction.Deletable = bw.totalProfiles == 0
+	bw.meta.MinTime = model.TimeFromUnixNano(bw.min)
+	bw.meta.MaxTime = model.TimeFromUnixNano(bw.max)
+	if _, err := bw.meta.WriteToFile(util.Logger, bw.path); err != nil {
+		return err
+	}
+	return nil
+}
+
+type profilesWriter struct {
+	*parquet.GenericWriter[*schemav1.Profile]
+	file *os.File
+
+	buf []parquet.Row
+}
+
+func newProfileWriter(path string) (*profilesWriter, error) {
+	profilePath := filepath.Join(path, (&schemav1.ProfilePersister{}).Name()+block.ParquetSuffix)
+	profileFile, err := os.OpenFile(profilePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return nil, err
+	}
+	return &profilesWriter{
+		GenericWriter: newParquetProfileWriter(profileFile, parquet.MaxRowsPerRowGroup(int64(defaultParquetConfig.MaxBufferRowCount))),
+		file:          profileFile,
+		buf:           make([]parquet.Row, 1),
+	}, nil
+}
+
+func (p *profilesWriter) WriteRow(r profileRow) error {
+	p.buf[0] = parquet.Row(r.row)
+	_, err := p.GenericWriter.WriteRows(p.buf)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *profilesWriter) Close() error {
+	err := p.GenericWriter.Close()
+	if err != nil {
+		return err
+	}
+	return p.file.Close()
+}
+
+func newIndexRewriter(path string) *indexRewriter {
+	return &indexRewriter{
+		symbols: make(map[string]struct{}),
+		path:    path,
+	}
+}
+
+type indexRewriter struct {
+	series []struct {
+		labels phlaremodel.Labels
+		fp     model.Fingerprint
+	}
+	symbols map[string]struct{}
+	chunks  []index.ChunkMeta // one chunk per series
+
+	previousFp model.Fingerprint
+
+	path string
+}
+
+func (idxRw *indexRewriter) ReWriteRow(r profileRow) error {
+	if idxRw.previousFp != r.fp || len(idxRw.series) == 0 {
+		series := r.labels.Clone()
+		for _, l := range series {
+			idxRw.symbols[l.Name] = struct{}{}
+			idxRw.symbols[l.Value] = struct{}{}
+		}
+		idxRw.series = append(idxRw.series, struct {
+			labels phlaremodel.Labels
+			fp     model.Fingerprint
+		}{
+			labels: series,
+			fp:     r.fp,
+		})
+		idxRw.chunks = append(idxRw.chunks, index.ChunkMeta{
+			MinTime:     r.timeNanos,
+			MaxTime:     r.timeNanos,
+			SeriesIndex: uint32(len(idxRw.series) - 1),
+		})
+		idxRw.previousFp = r.fp
+	}
+	idxRw.chunks[len(idxRw.chunks)-1].MaxTime = r.timeNanos
+	r.row.SetSeriesIndex(idxRw.chunks[len(idxRw.chunks)-1].SeriesIndex)
+	return nil
+}
+
+func (idxRw *indexRewriter) NumSeries() uint64 {
+	return uint64(len(idxRw.series))
+}
+
+// Close writes the index to given folder.
+func (idxRw *indexRewriter) Close(ctx context.Context) error {
+	indexw, err := index.NewWriter(ctx, filepath.Join(idxRw.path, block.IndexFilename))
+	if err != nil {
+		return err
+	}
+
+	// Sort symbols
+	symbols := make([]string, 0, len(idxRw.symbols))
+	for s := range idxRw.symbols {
+		symbols = append(symbols, s)
+	}
+	sort.Strings(symbols)
+
+	// Add symbols
+	for _, symbol := range symbols {
+		if err := indexw.AddSymbol(symbol); err != nil {
+			return err
+		}
+	}
+
+	// Add Series
+	for i, series := range idxRw.series {
+		if err := indexw.AddSeries(storage.SeriesRef(i), series.labels, series.fp, idxRw.chunks[i]); err != nil {
+			return err
+		}
+	}
+
+	return indexw.Close()
 }
 
 // metaFilesFromDir returns a list of block files description from a directory.
@@ -364,82 +562,6 @@ func newMergeRowProfileIterator(src []BlockReader) (iter.Iterator[profileRow], e
 	}, nil
 }
 
-type seriesRewriter struct {
-	iter.Iterator[profileRow]
-
-	indexw *index.Writer
-
-	seriesRef        storage.SeriesRef
-	labels           phlaremodel.Labels
-	previousFp       model.Fingerprint
-	currentChunkMeta index.ChunkMeta
-	err              error
-
-	numSeries uint64
-	done      bool
-}
-
-func newSeriesRewriter(it iter.Iterator[profileRow], indexw *index.Writer) *seriesRewriter {
-	return &seriesRewriter{
-		Iterator: it,
-		indexw:   indexw,
-	}
-}
-
-func (s *seriesRewriter) NumSeries() uint64 {
-	return s.numSeries
-}
-
-func (s *seriesRewriter) Next() bool {
-	if !s.Iterator.Next() {
-		if s.done {
-			return false
-		}
-		s.done = true
-		if s.previousFp != 0 {
-			s.currentChunkMeta.SeriesIndex = uint32(s.seriesRef) - 1
-			if err := s.indexw.AddSeries(s.seriesRef-1, s.labels, s.previousFp, s.currentChunkMeta); err != nil {
-				s.err = err
-				return false
-			}
-			s.numSeries++
-		}
-		return false
-	}
-	currentProfile := s.Iterator.At()
-	if s.previousFp != currentProfile.fp {
-		if s.previousFp != 0 {
-			s.currentChunkMeta.SeriesIndex = uint32(s.seriesRef) - 1
-			if err := s.indexw.AddSeries(s.seriesRef-1, s.labels, s.previousFp, s.currentChunkMeta); err != nil {
-				s.err = err
-				return false
-			}
-			s.numSeries++
-		}
-		s.seriesRef++
-		s.labels = currentProfile.labels.Clone()
-		s.previousFp = currentProfile.fp
-		s.currentChunkMeta.MinTime = currentProfile.timeNanos
-	}
-	s.currentChunkMeta.MaxTime = currentProfile.timeNanos
-	currentProfile.row.SetSeriesIndex(uint32(s.seriesRef - 1))
-	return true
-}
-
-type rowsIterator struct {
-	iter.Iterator[profileRow]
-}
-
-func newRowsIterator(it iter.Iterator[profileRow]) *rowsIterator {
-	return &rowsIterator{
-		Iterator: it,
-	}
-}
-
-func (r *rowsIterator) At() parquet.Row {
-	return parquet.Row(r.Iterator.At().row)
-}
-
 type dedupeProfileRowIterator struct {
 	iter.Iterator[profileRow]
 
@@ -463,74 +585,37 @@ func (it *dedupeProfileRowIterator) Next() bool {
 	}
 }
 
-func prepareIndexWriter(ctx context.Context, path string, readers []BlockReader) (*index.Writer, error) {
-	var symbols index.StringIter
-	indexw, err := index.NewWriter(ctx, path)
-	if err != nil {
-		return nil, err
-	}
-	for i, r := range readers {
-		if i == 0 {
-			symbols = r.Index().Symbols()
-		}
-		symbols = tsdb.NewMergedStringIter(symbols, r.Index().Symbols())
-	}
-
-	for symbols.Next() {
-		if err := indexw.AddSymbol(symbols.At()); err != nil {
-			return nil, errors.Wrap(err, "add symbol")
-		}
-	}
-	if symbols.Err() != nil {
-		return nil, errors.Wrap(symbols.Err(), "next symbol")
-	}
-
-	return indexw, nil
-}
-
 type symbolsRewriter struct {
-	profiles    iter.Iterator[profileRow]
-	rewriters   map[BlockReader]*stacktraceRewriter
+	rewriters   map[BlockReader]*symdb.Rewriter
+	w           *symdb.SymDB
 	stacktraces []uint32
-	err         error
 
 	numSamples uint64
 }
 
-func newSymbolsRewriter(it iter.Iterator[profileRow], blocks []BlockReader, w SymbolsWriter) *symbolsRewriter {
-	sr := symbolsRewriter{
-		profiles:  it,
-		rewriters: make(map[BlockReader]*stacktraceRewriter, len(blocks)),
+func newSymbolsRewriter(path string) *symbolsRewriter {
+	return &symbolsRewriter{
+		w: symdb.NewSymDB(symdb.DefaultConfig().
+			WithDirectory(filepath.Join(path, symdb.DefaultDirName)).
+			WithParquetConfig(symdb.ParquetConfig{
+				MaxBufferRowCount: defaultParquetConfig.MaxBufferRowCount,
+			})),
+		rewriters: make(map[BlockReader]*symdb.Rewriter),
 	}
-	for _, r := range blocks {
-		sr.rewriters[r] = newStacktraceRewriter(r.Symbols(), w)
-	}
-	return &sr
 }
 
 func (s *symbolsRewriter) NumSamples() uint64 { return s.numSamples }
 
-func (s *symbolsRewriter) At() profileRow { return s.profiles.At() }
-
-func (s *symbolsRewriter) Close() error { return s.profiles.Close() }
-
-func (s *symbolsRewriter) Err() error {
-	if s.err != nil {
-		return s.err
-	}
-	return s.profiles.Err()
-}
-
-func (s *symbolsRewriter) Next() bool {
-	if !s.profiles.Next() {
-		return false
-	}
+func (s *symbolsRewriter) ReWriteRow(profile profileRow) error {
 	var err error
-	profile := s.profiles.At()
 	profile.row.ForStacktraceIDsValues(func(values []parquet.Value) {
 		s.loadStacktracesID(values)
-		r := s.rewriters[profile.blockReader]
-		if err = r.rewriteStacktraces(profile.row.StacktracePartitionID(), s.stacktraces); err != nil {
+		r, ok := s.rewriters[profile.blockReader]
+		if !ok {
+			r = symdb.NewRewriter(s.w, profile.blockReader.Symbols())
+			s.rewriters[profile.blockReader] = r
+		}
+		if err = r.Rewrite(profile.row.StacktracePartitionID(), s.stacktraces); err != nil {
 			return
 		}
 		s.numSamples += uint64(len(values))
@@ -540,10 +625,13 @@ func (s *symbolsRewriter) Next() bool {
 		}
 	})
 	if err != nil {
-		s.err = err
-		return false
+		return err
 	}
-	return true
+	return nil
+}
+
+func (s *symbolsRewriter) Close() error {
+	return s.w.Flush()
 }
 
 func (s *symbolsRewriter) loadStacktracesID(values []parquet.Value) {
@@ -551,399 +639,4 @@ func (s *symbolsRewriter) loadStacktracesID(values []parquet.Value) {
 	for i := range values {
 		s.stacktraces[i] = values[i].Uint32()
 	}
-}
-
-type stacktraceRewriter struct {
-	reader SymbolsReader
-	writer SymbolsWriter
-
-	partitions map[uint64]*symPartitionRewriter
-	inserter   *stacktraceInserter
-
-	// Objects below have global addressing.
-	// TODO(kolesnikovae): Move to partition.
-	locations *lookupTable[*schemav1.InMemoryLocation]
-	mappings  *lookupTable[*schemav1.InMemoryMapping]
-	functions *lookupTable[*schemav1.InMemoryFunction]
-	strings   *lookupTable[string]
-}
-
-type symPartitionRewriter struct {
-	name  uint64
-	stats symdb.Stats
-	// Stacktrace identifiers are only valid within the partition.
-	stacktraces *lookupTable[[]int32]
-	resolver    SymbolsResolver
-	appender    SymbolsAppender
-
-	r *stacktraceRewriter
-
-	// FIXME(kolesnikovae): schemav1.Stacktrace should be just a uint32 slice:
-	//   type Stacktrace []uint32
-	current []*schemav1.Stacktrace
-}
-
-func newStacktraceRewriter(r SymbolsReader, w SymbolsWriter) *stacktraceRewriter {
-	return &stacktraceRewriter{
-		reader: r,
-		writer: w,
-	}
-}
-
-func (r *stacktraceRewriter) init(partition uint64) (p *symPartitionRewriter, err error) {
-	if r.partitions == nil {
-		r.partitions = make(map[uint64]*symPartitionRewriter)
-	}
-	if p, err = r.getOrCreatePartition(partition); err != nil {
-		return nil, err
-	}
-
-	if r.locations == nil {
-		r.locations = newLookupTable[*schemav1.InMemoryLocation](p.stats.LocationsTotal)
-		r.mappings = newLookupTable[*schemav1.InMemoryMapping](p.stats.MappingsTotal)
-		r.functions = newLookupTable[*schemav1.InMemoryFunction](p.stats.FunctionsTotal)
-		r.strings = newLookupTable[string](p.stats.StringsTotal)
-	} else {
-		r.locations.reset()
-		r.mappings.reset()
-		r.functions.reset()
-		r.strings.reset()
-	}
-
-	r.inserter = &stacktraceInserter{
-		stacktraces: p.stacktraces,
-		locations:   r.locations,
-	}
-
-	return p, nil
-}
-
-func (r *stacktraceRewriter) getOrCreatePartition(partition uint64) (_ *symPartitionRewriter, err error) {
-	p, ok := r.partitions[partition]
-	if ok {
-		p.reset()
-		return p, nil
-	}
-	n := &symPartitionRewriter{r: r, name: partition}
-	if n.resolver, err = r.reader.SymbolsResolver(partition); err != nil {
-		return nil, err
-	}
-	if n.appender, err = r.writer.SymbolsAppender(partition); err != nil {
-		return nil, err
-	}
-	n.resolver.WriteStats(&n.stats)
-	n.stacktraces = newLookupTable[[]int32](n.stats.MaxStacktraceID)
-	r.partitions[partition] = n
-	return n, nil
-}
-
-func (r *stacktraceRewriter) rewriteStacktraces(partition uint64, stacktraces []uint32) error {
-	p, err := r.init(partition)
-	if err != nil {
-		return err
-	}
-	if err = p.populateUnresolved(stacktraces); err != nil {
-		return err
-	}
-	if p.hasUnresolved() {
-		return p.appendRewrite(stacktraces)
-	}
-	return nil
-}
-
-func (p *symPartitionRewriter) reset() {
-	p.stacktraces.reset()
-	p.current = p.current[:0]
-}
-
-func (p *symPartitionRewriter) hasUnresolved() bool {
-	return len(p.stacktraces.unresolved)+
-		len(p.r.locations.unresolved)+
-		len(p.r.mappings.unresolved)+
-		len(p.r.functions.unresolved)+
-		len(p.r.strings.unresolved) > 0
-}
-
-func (p *symPartitionRewriter) populateUnresolved(stacktraceIDs []uint32) error {
-	// Filter out all stack traces that have been already
-	// resolved and populate locations lookup table.
-	if err := p.resolveStacktraces(stacktraceIDs); err != nil {
-		return err
-	}
-	if len(p.r.locations.unresolved) == 0 {
-		return nil
-	}
-
-	// Resolve functions and mappings for new locations.
-	unresolvedLocs := p.r.locations.iter()
-	locations := p.resolver.Locations(unresolvedLocs)
-	for locations.Next() {
-		location := locations.At()
-		location.MappingId = p.r.mappings.tryLookup(location.MappingId)
-		for j, line := range location.Line {
-			location.Line[j].FunctionId = p.r.functions.tryLookup(line.FunctionId)
-		}
-		unresolvedLocs.setValue(location)
-	}
-	if err := locations.Err(); err != nil {
-		return err
-	}
-
-	// Resolve strings.
-	unresolvedMappings := p.r.mappings.iter()
-	mappings := p.resolver.Mappings(unresolvedMappings)
-	for mappings.Next() {
-		mapping := mappings.At()
-		mapping.BuildId = p.r.strings.tryLookup(mapping.BuildId)
-		mapping.Filename = p.r.strings.tryLookup(mapping.Filename)
-		unresolvedMappings.setValue(mapping)
-	}
-	if err := mappings.Err(); err != nil {
-		return err
-	}
-
-	unresolvedFunctions := p.r.functions.iter()
-	functions := p.resolver.Functions(unresolvedFunctions)
-	for functions.Next() {
-		function := functions.At()
-		function.Name = p.r.strings.tryLookup(function.Name)
-		function.Filename = p.r.strings.tryLookup(function.Filename)
-		function.SystemName = p.r.strings.tryLookup(function.SystemName)
-		unresolvedFunctions.setValue(function)
-	}
-	if err := functions.Err(); err != nil {
-		return err
-	}
-
-	unresolvedStrings := p.r.strings.iter()
-	strings := p.resolver.Strings(unresolvedStrings)
-	for strings.Next() {
-		unresolvedStrings.setValue(strings.At())
-	}
-	return strings.Err()
-}
-
-func (p *symPartitionRewriter) appendRewrite(stacktraces []uint32) error {
-	p.appender.AppendStrings(p.r.strings.buf, p.r.strings.values)
-	p.r.strings.updateResolved()
-
-	for _, v := range p.r.functions.values {
-		v.Name = p.r.strings.lookupResolved(v.Name)
-		v.Filename = p.r.strings.lookupResolved(v.Filename)
-		v.SystemName = p.r.strings.lookupResolved(v.SystemName)
-	}
-	p.appender.AppendFunctions(p.r.functions.buf, p.r.functions.values)
-	p.r.functions.updateResolved()
-
-	for _, v := range p.r.mappings.values {
-		v.BuildId = p.r.strings.lookupResolved(v.BuildId)
-		v.Filename = p.r.strings.lookupResolved(v.Filename)
-	}
-	p.appender.AppendMappings(p.r.mappings.buf, p.r.mappings.values)
-	p.r.mappings.updateResolved()
-
-	for _, v := range p.r.locations.values {
-		v.MappingId = p.r.mappings.lookupResolved(v.MappingId)
-		for j, line := range v.Line {
-			v.Line[j].FunctionId = p.r.functions.lookupResolved(line.FunctionId)
-		}
-	}
-	p.appender.AppendLocations(p.r.locations.buf, p.r.locations.values)
-	p.r.locations.updateResolved()
-
-	for _, v := range p.stacktraces.values {
-		for j, location := range v {
-			v[j] = int32(p.r.locations.lookupResolved(uint32(location)))
-		}
-	}
-	p.appender.AppendStacktraces(p.stacktraces.buf, p.stacktracesFromResolvedValues())
-	p.stacktraces.updateResolved()
-
-	for i, v := range stacktraces {
-		stacktraces[i] = p.stacktraces.lookupResolved(v)
-	}
-
-	return nil
-}
-
-func (p *symPartitionRewriter) resolveStacktraces(stacktraceIDs []uint32) error {
-	for i, v := range stacktraceIDs {
-		stacktraceIDs[i] = p.stacktraces.tryLookup(v)
-	}
-	if len(p.stacktraces.unresolved) == 0 {
-		return nil
-	}
-	p.stacktraces.initSorted()
-	return p.resolver.ResolveStacktraces(context.TODO(), p.r.inserter, p.stacktraces.buf)
-}
-
-func (p *symPartitionRewriter) stacktracesFromResolvedValues() []*schemav1.Stacktrace {
-	p.current = grow(p.current, len(p.stacktraces.values))
-	for i, v := range p.stacktraces.values {
-		s := p.current[i]
-		if s == nil {
-			s = &schemav1.Stacktrace{LocationIDs: make([]uint64, len(v))}
-			p.current[i] = s
-		}
-		s.LocationIDs = grow(s.LocationIDs, len(v))
-		for j, m := range v {
-			s.LocationIDs[j] = uint64(m)
-		}
-	}
-	return p.current
-}
-
-type stacktraceInserter struct {
-	stacktraces *lookupTable[[]int32]
-	locations   *lookupTable[*schemav1.InMemoryLocation]
-}
-
-func (i *stacktraceInserter) InsertStacktrace(stacktrace uint32, locations []int32) {
-	// Resolve locations for new stack traces.
-	for j, loc := range locations {
-		locations[j] = int32(i.locations.tryLookup(uint32(loc)))
-	}
-	// stacktrace points to resolved which should
-	// be a marked pointer to unresolved value.
-	idx := i.stacktraces.resolved[stacktrace] & markerMask
-	v := &i.stacktraces.values[idx]
-	n := grow(*v, len(locations))
-	copy(n, locations)
-	// Preserve allocated capacity.
-	i.stacktraces.values[idx] = n
-}
-
-const (
-	marker     = 1 << 31
-	markerMask = math.MaxUint32 >> 1
-)
-
-type lookupTable[T any] struct {
-	// Index is source ID, and the value is the destination ID.
-	// If destination ID is not known, the element is index to 'unresolved' (marked).
-	resolved   []uint32
-	unresolved []uint32 // Points to resolved. Index matches values.
-	values     []T      // Values are populated for unresolved items.
-	buf        []uint32 // Sorted unresolved values.
-}
-
-func newLookupTable[T any](size int) *lookupTable[T] {
-	var t lookupTable[T]
-	t.init(size)
-	return &t
-}
-
-func (t *lookupTable[T]) init(size int) {
-	if cap(t.resolved) < size {
-		t.resolved = make([]uint32, size)
-		return
-	}
-	t.resolved = t.resolved[:size]
-	for i := range t.resolved {
-		t.resolved[i] = 0
-	}
-}
-
-func (t *lookupTable[T]) reset() {
-	t.unresolved = t.unresolved[:0]
-	t.values = t.values[:0]
-	t.buf = t.buf[:0]
-}
-
-// tryLookup looks up the value at x in resolved.
-// If x is has not been resolved yet, the x is memorized
-// for future resolve, and returned values is the marked
-// index to unresolved.
-func (t *lookupTable[T]) tryLookup(x uint32) uint32 {
-	if v := t.resolved[x]; v != 0 {
-		if v&marker > 0 {
-			return v // Already marked for resolve.
-		}
-		return v - 1 // Already resolved.
-	}
-	u := t.newUnresolved(x) | marker
-	t.resolved[x] = u
-	return u
-}
-
-func (t *lookupTable[T]) newUnresolved(rid uint32) uint32 {
-	t.unresolved = append(t.unresolved, rid)
-	x := len(t.values)
-	if x < cap(t.values) {
-		// Try to reuse previously allocated value.
-		t.values = t.values[:x+1]
-	} else {
-		var v T
-		t.values = append(t.values, v)
-	}
-	return uint32(x)
-}
-
-func (t *lookupTable[T]) storeResolved(i int, rid uint32) {
-	// The index is incremented to avoid 0 because it is
-	// used as sentinel and indicates absence (resolved is
-	// a sparse slice initialized with the maximal expected
-	// size). Correspondingly, lookupResolved should
-	// decrement the index on read.
-	t.resolved[t.unresolved[i]] = rid + 1
-}
-
-func (t *lookupTable[T]) lookupResolved(x uint32) uint32 {
-	if x&marker > 0 {
-		return t.resolved[t.unresolved[x&markerMask]] - 1
-	}
-	return x // Already resolved.
-}
-
-// updateResolved loads indices from buf to resolved.
-// It is expected that the order matches values.
-func (t *lookupTable[T]) updateResolved() {
-	for i, rid := range t.unresolved {
-		t.resolved[rid] = t.buf[i] + 1
-	}
-}
-
-func (t *lookupTable[T]) initSorted() {
-	// Gather and sort references to unresolved values.
-	t.buf = grow(t.buf, len(t.unresolved))
-	copy(t.buf, t.unresolved)
-	sort.Slice(t.buf, func(i, j int) bool {
-		return t.buf[i] < t.buf[j]
-	})
-}
-
-func (t *lookupTable[T]) iter() *lookupTableIterator[T] {
-	t.initSorted()
-	return &lookupTableIterator[T]{table: t}
-}
-
-type lookupTableIterator[T any] struct {
-	table *lookupTable[T]
-	cur   uint32
-}
-
-func (t *lookupTableIterator[T]) Next() bool {
-	return t.cur < uint32(len(t.table.buf))
-}
-
-func (t *lookupTableIterator[T]) At() uint32 {
-	x := t.table.buf[t.cur]
-	t.cur++
-	return x
-}
-
-func (t *lookupTableIterator[T]) setValue(v T) {
-	u := t.table.resolved[t.table.buf[t.cur-1]]
-	t.table.values[u&markerMask] = v
-}
-
-func (t *lookupTableIterator[T]) Close() error { return nil }
-
-func (t *lookupTableIterator[T]) Err() error { return nil }
-
-func grow[T any](s []T, n int) []T {
-	if cap(s) < n {
-		return make([]T, n, 2*n)
-	}
-	return s[:n]
 }

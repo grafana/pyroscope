@@ -3,10 +3,12 @@ package tree
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/grafana/pyroscope/pkg/og/util/arenahelper"
 	"math/big"
 	"sort"
 	"sync"
+	"unsafe"
+
+	"github.com/grafana/pyroscope/pkg/og/util/arenahelper"
 
 	"github.com/grafana/pyroscope/pkg/og/structs/merge"
 )
@@ -328,17 +330,20 @@ func (t *Tree) IterateWithStackBuilder(sb StackBuilder, cb func(stackID uint64, 
 }
 
 func (t *Tree) IterateStacks(cb func(name string, self uint64, stack []string)) {
-	nodes := []*treeNode{t.root}
+	nodes := make([]*treeNode, 0, 1024)
+	nodes = append(nodes, t.root)
 	parents := make(map[*treeNode]*treeNode)
+	stack := make([]string, 0, 64)
+
 	for len(nodes) > 0 {
-		node := nodes[0]
+		node := nodes[0] // todo we need to chop off the last element, to avoid allocations
 		self := node.Self
-		label := string(node.Name)
+		label := node.nameAsStringUnsafe()
 		if self > 0 {
 			current := node
-			stack := []string{}
+			stack = stack[:0]
 			for current != nil && current != t.root {
-				stack = append(stack, string(current.Name))
+				stack = append(stack, current.nameAsStringUnsafe())
 				current = parents[current]
 			}
 			cb(label, self, stack)
@@ -349,6 +354,15 @@ func (t *Tree) IterateStacks(cb func(name string, self uint64, stack []string)) 
 			parents[child] = node
 		}
 	}
+}
+
+func (n *treeNode) nameAsStringUnsafe() string {
+	if len(n.Name) == 0 {
+		return ""
+	}
+	//return unsafe.String(&n.Name[0], len(n.Name))
+	res := *(*string)(unsafe.Pointer(&n.Name))
+	return res
 }
 
 func (t *Tree) iterateWithTotal(cb func(total uint64) bool) {
@@ -365,7 +379,8 @@ func (t *Tree) iterateWithTotal(cb func(total uint64) bool) {
 }
 
 func (t *Tree) Scale(s uint64) {
-	nodes := []*treeNode{t.root}
+	nodes := make([]*treeNode, 0, 1024)
+	nodes = append(nodes, t.root)
 
 	for len(nodes) > 0 {
 		node := nodes[len(nodes)-1]
@@ -374,7 +389,7 @@ func (t *Tree) Scale(s uint64) {
 		node.Self *= s
 		node.Total *= s
 
-		nodes = append(node.ChildrenNodes, nodes...)
+		nodes = append(nodes, node.ChildrenNodes...)
 	}
 }
 func (t *Tree) Samples() uint64 {

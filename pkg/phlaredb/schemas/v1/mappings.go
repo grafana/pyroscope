@@ -73,3 +73,8 @@ type InMemoryMapping struct {
 	HasLineNumbers  bool
 	HasInlineFrames bool
 }
+
+func (m *InMemoryMapping) Clone() *InMemoryMapping {
+	n := *m
+	return &n
+}

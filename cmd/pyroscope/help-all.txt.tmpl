@@ -11,10 +11,6 @@ Usage of ./pyroscope:
     	How frequently to scan the bucket, or to refresh the bucket index (if enabled), in order to look for changes (new blocks shipped by ingesters and blocks deleted by retention or compaction). (default 15m0s)
   -blocks-storage.bucket-store.tenant-sync-concurrency int
     	Maximum number of concurrent tenants synching blocks. (default 10)
-  -client.tenant-id string
-    	Tenant ID to use when pushing profiles to Phlare (default: anonymous). (default "anonymous")
-  -client.url string
-    	URL of log server.
   -config.expand-env
     	Expands ${var} in config according to the values of the environment variables.
   -config.file string
@@ -102,7 +98,7 @@ Usage of ./pyroscope:
   -distributor.ring.instance-interface-names string
     	Name of network interface to read address from. (default [<private network interfaces>])
   -distributor.ring.instance-port int
-    	Port to advertise in the ring (defaults to server.http-listen-port). (default 4100)
+    	Port to advertise in the ring (defaults to server.http-listen-port). (default 4040)
   -distributor.ring.multi.mirror-enabled
     	Mirror writes to secondary store.
   -distributor.ring.multi.mirror-timeout duration
@@ -185,8 +181,8 @@ Usage of ./pyroscope:
     	File path where tokens are stored. If empty, tokens are not stored at shutdown and restored at startup.
   -ingester.unregister-on-shutdown
     	Unregister from the ring upon clean shutdown. It can be useful to disable for rolling restarts with consistent naming in conjunction with -distributor.extend-writes=false. (default true)
-  -log.format value
-    	Output log messages in the given format. Valid formats: [logfmt, json] (default logfmt)
+  -log.format string
+    	Output log messages in the given format. Valid formats: [logfmt, json] (default "logfmt")
   -log.level value
     	Only log messages with the given severity or above. Valid levels: [debug, info, warn, error] (default info)
   -memberlist.abort-if-join-fails
@@ -322,7 +318,7 @@ Usage of ./pyroscope:
   -overrides-exporter.ring.instance-interface-names string
     	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -overrides-exporter.ring.instance-port int
-    	Port to advertise in the ring (defaults to -server.http-listen-port). (default 4100)
+    	Port to advertise in the ring (defaults to -server.http-listen-port). (default 4040)
   -overrides-exporter.ring.multi.mirror-enabled
     	Mirror writes to secondary store.
   -overrides-exporter.ring.multi.mirror-timeout duration
@@ -339,11 +335,11 @@ Usage of ./pyroscope:
     	Maximum time to wait for ring stability at startup. If the overrides-exporter ring keeps changing after this period of time, it will start anyway. (default 5m0s)
   -overrides-exporter.ring.wait-stability-min-duration duration
     	Minimum time to wait for ring stability at startup, if set to positive value. Set to 0 to disable.
-  -phlaredb.data-path string
+  -pyroscopedb.data-path string
     	Directory used for local storage. (default "./data")
-  -phlaredb.max-block-duration duration
-    	Upper limit to the duration of a Phlare block. (default 3h0m0s)
-  -phlaredb.row-group-target-size uint
+  -pyroscopedb.max-block-duration duration
+    	Upper limit to the duration of a Pyroscope block. (default 3h0m0s)
+  -pyroscopedb.row-group-target-size uint
     	How big should a single row group be uncompressed (default 1342177280)
   -querier.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
@@ -587,6 +583,8 @@ Usage of ./pyroscope:
     	How often to check runtime config files. (default 10s)
   -self-profiling.block-profile-rate int
     	 (default 5)
+  -self-profiling.disable-push
+    	When running in single binary (--target=all) Pyroscope will push (Go SDK) profiles to itself. Set to true to disable self-profiling.
   -self-profiling.mutex-profile-fraction int
     	 (default 5)
   -server.graceful-shutdown-timeout duration
@@ -636,7 +634,7 @@ Usage of ./pyroscope:
   -server.http-listen-network string
     	HTTP server listen network, default tcp (default "tcp")
   -server.http-listen-port int
-    	HTTP server listen port. (default 4100)
+    	HTTP server listen port. (default 4040)
   -server.http-read-timeout duration
     	Read timeout for HTTP server (default 30s)
   -server.http-tls-ca-path string
@@ -858,7 +856,7 @@ Usage of ./pyroscope:
   -store-gateway.sharding-ring.prefix string
     	The prefix for the keys in the store. Should end with a /. (default "collectors/")
   -store-gateway.sharding-ring.replication-factor int
-    	The replication factor to use when sharding blocks. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode. (default 3)
+    	The replication factor to use when sharding blocks. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode. (default 1)
   -store-gateway.sharding-ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -store-gateway.sharding-ring.tokens-file-path string
@@ -874,7 +872,7 @@ Usage of ./pyroscope:
   -store-gateway.tenant-shard-size int
     	The tenant's shard size, used when store-gateway sharding is enabled. Value of 0 disables shuffle sharding for the tenant, that is all tenant blocks are sharded across all store-gateway replicas.
   -target comma-separated-list-of-strings
-    	Comma-separated list of Phlare modules to load. The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode.  (default all)
+    	Comma-separated list of Pyroscope modules to load. The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode.  (default all)
   -tracing.enabled
     	Set to false to disable tracing. (default true)
   -usage-stats.enabled
@@ -892,8 +890,8 @@ Usage of ./pyroscope:
   -validation.max-profile-stacktrace-sample-labels int
     	Maximum number of labels in a profile sample. 0 to disable. (default 100)
   -validation.max-profile-stacktrace-samples int
-    	Maximum number of samples in a profile. 0 to disable. (default 4000)
+    	Maximum number of samples in a profile. 0 to disable. (default 16000)
   -validation.max-profile-symbol-value-length int
-    	Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable. (default 1024)
+    	Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable. (default 65535)
   -version
-    	Show the version of phlare and exit
+    	Show the version of pyroscope and exit

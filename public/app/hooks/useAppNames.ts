@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { useAppDispatch } from '@webapp/redux/hooks';
-import { setQuery, reloadAppNames } from '@webapp/redux/reducers/continuous';
-import { appToQuery } from '@webapp/models/app';
+import { useAppDispatch } from '@pyroscope/redux/hooks';
+import { setQuery, reloadAppNames } from '@pyroscope/redux/reducers/continuous';
+import { appToQuery } from '@pyroscope/models/app';
 
 /**
  * loads and select the first app/type (if available)

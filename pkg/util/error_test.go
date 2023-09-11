@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/grafana/dskit/httpgrpc"
 	"github.com/stretchr/testify/require"
-	"github.com/weaveworks/common/httpgrpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 

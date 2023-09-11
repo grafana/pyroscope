@@ -9,13 +9,13 @@ require (
 	github.com/go-kit/log v0.2.1
 	github.com/google/pprof v0.0.0-20230705174524-200ffdc848b8
 	github.com/grafana/pyroscope/api v0.2.0
-	github.com/hashicorp/golang-lru/v2 v2.0.3
+	github.com/hashicorp/golang-lru/v2 v2.0.5
 	github.com/klauspost/compress v1.16.7
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/common v0.44.0
-	github.com/prometheus/prometheus v1.8.2-0.20220620125440-d7e7b8e04b5e
-	github.com/samber/lo v1.37.0
+	github.com/prometheus/prometheus v0.47.0
+	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
 	golang.org/x/sys v0.10.0

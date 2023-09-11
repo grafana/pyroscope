@@ -1,5 +1,10 @@
 version: "3"
 services:
+  pyroscope:
+    image: grafana/pyroscope
+    ports:
+      - '4040:4040'
+
   us-east:
     ports:
       - 3000
@@ -25,15 +30,6 @@ services:
       - REGION=ap-south
     build:
       context: .
-
-  pyroscope:
-    image: pyroscope/pyroscope
-    environment:
-      - PYROSCOPE_LOG_LEVEL=debug
-    ports:
-      - '4040:4040'
-    command:
-      - 'server'
 
   load-generator:
     build:

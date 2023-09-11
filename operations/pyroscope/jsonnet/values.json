@@ -1,0 +1,127 @@
+{
+  "agent": {
+    "agent": {
+      "clustering": {
+        "enabled": true
+      },
+      "configMap": {
+        "create": false,
+        "name": "grafana-agent-config-pyroscope"
+      }
+    },
+    "controller": {
+      "podAnnotations": {
+        "profiles.grafana.com/cpu.port_name": "http-metrics",
+        "profiles.grafana.com/cpu.scrape": "true",
+        "profiles.grafana.com/goroutine.port_name": "http-metrics",
+        "profiles.grafana.com/goroutine.scrape": "true",
+        "profiles.grafana.com/memory.port_name": "http-metrics",
+        "profiles.grafana.com/memory.scrape": "true"
+      },
+      "replicas": 1,
+      "type": "statefulset"
+    },
+    "enabled": true
+  },
+  "ingress": {
+    "enabled": false
+  },
+  "minio": {
+    "buckets": [
+      {
+        "name": "grafana-pyroscope-data",
+        "policy": "none",
+        "purge": false
+      }
+    ],
+    "drivesPerNode": 2,
+    "enabled": false,
+    "persistence": {
+      "size": "5Gi"
+    },
+    "podAnnotations": {
+      "phlare.grafana.com/port": "9000",
+      "phlare.grafana.com/scrape": "true"
+    },
+    "replicas": 1,
+    "resources": {
+      "requests": {
+        "cpu": "100m",
+        "memory": "128Mi"
+      }
+    },
+    "rootPassword": "supersecret",
+    "rootUser": "grafana-pyroscope"
+  },
+  "pyroscope": {
+    "affinity": {},
+    "components": {},
+    "config": "{{- if .Values.minio.enabled }}\nstorage:\n  backend: s3\n  s3:\n    endpoint: \"{{ include \"pyroscope.fullname\" . }}-minio:9000\"\n    bucket_name: {{(index .Values.minio.buckets 0).name | quote }}\n    access_key_id: {{ .Values.minio.rootUser | quote }}\n    secret_access_key: {{ .Values.minio.rootPassword | quote }}\n    insecure: true\n{{- end }}\n",
+    "extraArgs": {
+      "log.level": "debug"
+    },
+    "extraEnvFrom": [],
+    "extraEnvVars": {},
+    "extraLabels": {},
+    "extraVolumeMounts": [],
+    "extraVolumes": [],
+    "fullnameOverride": "",
+    "image": {
+      "pullPolicy": "IfNotPresent",
+      "repository": "grafana/pyroscope",
+      "tag": "1.0.0"
+    },
+    "imagePullSecrets": [],
+    "initContainers": [],
+    "memberlist": {
+      "port": 7946,
+      "port_name": "memberlist"
+    },
+    "nameOverride": "",
+    "nodeSelector": {},
+    "persistence": {
+      "accessModes": [
+        "ReadWriteOnce"
+      ],
+      "annotations": {},
+      "enabled": false,
+      "size": "10Gi"
+    },
+    "podAnnotations": {
+      "profiles.grafana.com/cpu.port_name": "http2",
+      "profiles.grafana.com/cpu.scrape": "true",
+      "profiles.grafana.com/goroutine.port_name": "http2",
+      "profiles.grafana.com/goroutine.scrape": "true",
+      "profiles.grafana.com/memory.port_name": "http2",
+      "profiles.grafana.com/memory.scrape": "true"
+    },
+    "podDisruptionBudget": {
+      "enabled": true,
+      "maxUnavailable": 1
+    },
+    "podSecurityContext": {
+      "fsGroup": 10001,
+      "runAsNonRoot": true,
+      "runAsUser": 10001
+    },
+    "rbac": {
+      "create": true
+    },
+    "replicaCount": 1,
+    "resources": {},
+    "securityContext": {},
+    "service": {
+      "port": 4040,
+      "port_name": "http2",
+      "type": "ClusterIP"
+    },
+    "serviceAccount": {
+      "annotations": {},
+      "create": true,
+      "name": ""
+    },
+    "structuredConfig": {},
+    "tenantOverrides": {},
+    "tolerations": []
+  }
+}

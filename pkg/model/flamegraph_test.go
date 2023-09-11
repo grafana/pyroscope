@@ -4,14 +4,23 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 func Test_ExportToFlamebearer(t *testing.T) {
+	pType := &typesv1.ProfileType{
+		ID:         "memory:inuse_space:bytes:space:bytes",
+		Name:       "memory",
+		SampleType: "inuse_space",
+		SampleUnit: "bytes",
+		PeriodType: "space",
+		PeriodUnit: "bytes",
+	}
 	expected := &flamebearer.FlamebearerProfile{
 		Version: 1,
 		FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
@@ -51,15 +60,25 @@ func Test_ExportToFlamebearer(t *testing.T) {
 				},
 			}),
 			-1,
-		), &typesv1.ProfileType{
-			ID:         "memory:inuse_space:bytes:space:bytes",
-			Name:       "memory",
-			SampleType: "inuse_space",
-			SampleUnit: "bytes",
-			PeriodType: "space",
-			PeriodUnit: "bytes",
-		})
+		), pType)
 	require.Equal(t, expected, actual)
+
+	t.Run("nil", func(t *testing.T) {
+		require.Equal(t, &flamebearer.FlamebearerProfile{
+			Version: 1,
+			FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
+				Metadata: flamebearer.FlamebearerMetadataV1{
+					Format:     "single",
+					SampleRate: 100,
+					Units:      "bytes",
+					Name:       "inuse_space",
+				},
+				Flamebearer: flamebearer.FlamebearerV1{
+					Levels: [][]int{},
+				},
+			},
+		}, ExportToFlamebearer(nil, pType))
+	})
 }
 
 var f *querierv1.FlameGraph

@@ -4,38 +4,29 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/streaming"
-	"github.com/grafana/pyroscope/pkg/og/stackbuilder"
-	"io"
+	"fmt"
 	"mime/multipart"
-	"sync"
+	"strings"
 
+	"github.com/bufbuild/connect-go"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 	"github.com/grafana/pyroscope/pkg/og/util/form"
+	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/prometheus/prometheus/model/labels"
 )
 
 type RawProfile struct {
-	// parser is stateful: it holds parsed previous profile
-	// which is necessary for cumulative profiles that require
-	// two consecutive profiles.
-	parser ParserInterface
-	// References the next profile in the sequence (cumulative type only).
-	next *RawProfile
-
-	m sync.Mutex
-	// Initializes lazily on Bytes, if not present.
 	RawData             []byte // Represents raw request body as per ingestion API.
 	FormDataContentType string // Set optionally, if RawData is multipart form.
-	// Initializes lazily on Parse, if not present.
-	Profile             []byte // Represents raw pprof data.
-	PreviousProfile     []byte // Used for cumulative type only.
-	SkipExemplars       bool
-	StreamingParser     bool
-	PoolStreamingParser bool
-	ArenasEnabled       bool
-	SampleTypeConfig    map[string]*tree.SampleTypeConfig
+	// Initializes lazily on handleRawData, if not present.
+	Profile []byte // Represents raw pprof data.
+
+	SampleTypeConfig map[string]*tree.SampleTypeConfig
 }
 
 func (p *RawProfile) ContentType() string {
@@ -45,199 +36,70 @@ func (p *RawProfile) ContentType() string {
 	return p.FormDataContentType
 }
 
-// Push loads data from profile to RawProfile making it eligible for
-// Bytes and Parse calls.
-//
-// Returned RawProfile should be used at the next Push: the method
-// established relationship between these two RawProfiles in order
-// to propagate internal pprof parser state lazily on a successful
-// Parse call. This is necessary for cumulative profiles that require
-// two consecutive samples to calculate the diff. If parser is not
-// present due to a failure, or sequence violation, the profiles will
-// be re-parsed.
-func (p *RawProfile) Push(profile []byte, cumulative bool) *RawProfile {
-	p.m.Lock()
-	p.Profile = profile
-	p.RawData = nil
-	n := &RawProfile{
-		SampleTypeConfig: p.SampleTypeConfig,
-	}
-	if cumulative {
-		// N.B the parser state is only propagated
-		// after successful Parse call.
-		n.PreviousProfile = p.Profile
-		p.next = n
-	}
-	p.m.Unlock()
-	return p.next
-}
-
 const (
-	formFieldProfile, formFileProfile                   = "profile", "profile.pprof"
-	formFieldPreviousProfile, formFilePreviousProfile   = "prev_profile", "profile.pprof"
-	formFieldSampleTypeConfig, formFileSampleTypeConfig = "sample_type_config", "sample_type_config.json"
+	formFieldProfile          = "profile"
+	formFieldPreviousProfile  = "prev_profile"
+	formFieldSampleTypeConfig = "sample_type_config"
 )
 
-func (p *RawProfile) Bytes() ([]byte, error) {
-	p.m.Lock()
-	defer p.m.Unlock()
-	if p.RawData != nil {
-		// RawProfile was initialized with RawData or
-		// Bytes has been already called.
-		return p.RawData, nil
-	}
-	// Build multipart form.
-	if len(p.Profile) == 0 && len(p.PreviousProfile) == 0 {
-		return nil, nil
-	}
-	var b bytes.Buffer
-	mw := multipart.NewWriter(&b)
-	ff, err := mw.CreateFormFile(formFieldProfile, formFileProfile)
+// ParseToPprof is not doing much now. It parses the profile with no processing/splitting, adds labels.
+func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res *distributormodel.PushRequest, err error) {
+	defer func() {
+		r := recover()
+		if r != nil {
+			err = fmt.Errorf("/ingest pprof.(*RawProfile).ParseToPprof panic %v", r)
+		}
+	}()
+	err = p.handleRawData()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse pprof /ingest multipart form %w", err)
 	}
-	_, _ = io.Copy(ff, bytes.NewReader(p.Profile))
-	if len(p.PreviousProfile) > 0 {
-		if ff, err = mw.CreateFormFile(formFieldPreviousProfile, formFilePreviousProfile); err != nil {
-			return nil, err
-		}
-		_, _ = io.Copy(ff, bytes.NewReader(p.PreviousProfile))
+
+	profile, err := pprof.RawFromBytes(p.Profile)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	if len(p.SampleTypeConfig) > 0 {
-		if ff, err = mw.CreateFormFile(formFieldSampleTypeConfig, formFileSampleTypeConfig); err != nil {
-			return nil, err
-		}
-		_ = json.NewEncoder(ff).Encode(p.SampleTypeConfig)
+
+	fixTime(profile, md)
+	fixFunctionNamesForScriptingLanguages(profile, md)
+
+	res = &distributormodel.PushRequest{
+		RawProfileSize: len(p.Profile),
+		RawProfileType: distributormodel.RawProfileTypePPROF,
+		Series: []*distributormodel.ProfileSeries{{
+			Labels: p.createLabels(profile, md),
+			Samples: []*distributormodel.ProfileSample{{
+				Profile:    profile,
+				RawProfile: p.Profile,
+			}},
+		}},
 	}
-	_ = mw.Close()
-	p.RawData = b.Bytes()
-	p.FormDataContentType = mw.FormDataContentType()
-	return p.RawData, nil
+	return
 }
 
-func (p *RawProfile) Parse(ctx context.Context, putter storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
-	p.m.Lock()
-	defer p.m.Unlock()
-	cont, err := p.handleRawData()
-	if err != nil || !cont {
-		return err
-	}
+func fixTime(profile *pprof.Profile, md ingestion.Metadata) {
+	// for old versions of pyspy, rbspy, pyroscope-rs
+	// https://github.com/grafana/pyroscope-rs/pull/134
+	profile.TimeNanos = md.StartTime.UnixNano()
+	profile.DurationNanos = md.EndTime.Sub(md.StartTime).Nanoseconds()
+}
 
-	if p.parser == nil {
-		sampleTypes := p.getSampleTypes()
-		if p.StreamingParser {
-			config := streaming.ParserConfig{
-				SpyName:     md.SpyName,
-				Labels:      md.Key.Labels(),
-				Putter:      putter,
-				SampleTypes: sampleTypes,
-				Formatter:   streaming.StackFrameFormatterForSpyName(md.SpyName),
-			}
-			if p.PoolStreamingParser {
-				parser := streaming.VTStreamingParserFromPool(config)
-				p.parser = parser
-				defer func() {
-					parser.ResetCache()
-					parser.ReturnToPool()
-					p.parser = nil
-				}()
-			} else {
-				if p.ArenasEnabled {
-					config.ArenasEnabled = true
-				}
-				parser := streaming.NewStreamingParser(config)
-				p.parser = parser
-				if p.ArenasEnabled {
-					defer parser.FreeArena()
-				}
-			}
-		} else {
-			p.parser = NewParser(ParserConfig{
-				SpyName:             md.SpyName,
-				Labels:              md.Key.Labels(),
-				Putter:              putter,
-				SampleTypes:         sampleTypes,
-				SkipExemplars:       p.SkipExemplars,
-				StackFrameFormatter: StackFrameFormatterForSpyName(md.SpyName),
-			})
+func (p *RawProfile) Parse(_ context.Context, _ storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
+	return fmt.Errorf("parsing pprof to tree/storage.Putter is nolonger ")
+}
+
+func (p *RawProfile) handleRawData() (err error) {
+	if p.FormDataContentType != "" {
+		// The profile was ingested as a multipart form. Load parts to
+		// Profile, PreviousProfile, and SampleTypeConfig.
+		if err := p.loadPprofFromForm(); err != nil {
+			return err
 		}
-
-		if p.PreviousProfile != nil {
-			// Ignore non-cumulative samples from the PreviousProfile
-			// to avoid duplicates: although, presence of PreviousProfile
-			// tells that there are cumulative sample types, it may also
-			// include regular ones.
-			cumulativeOnly := true
-			if err := p.parser.ParsePprof(ctx, md.StartTime, md.EndTime, p.PreviousProfile, cumulativeOnly); err != nil {
-				return err
-			}
-		}
-	}
-
-	if err := p.parser.ParsePprof(ctx, md.StartTime, md.EndTime, p.Profile, false); err != nil {
-		return err
-	}
-
-	// Propagate parser to the next profile, if it is present.
-	if p.next != nil {
-		p.next.m.Lock()
-		p.next.parser = p.parser
-		p.next.m.Unlock()
+	} else {
+		p.Profile = p.RawData
 	}
 
 	return nil
-}
-
-func (p *RawProfile) ParseWithWriteBatch(c context.Context, wb stackbuilder.WriteBatchFactory, md ingestion.Metadata) error {
-	cont, err := p.handleRawData()
-	if err != nil || !cont {
-		return err
-	}
-	parser := streaming.NewStreamingParser(streaming.ParserConfig{
-		SpyName:       md.SpyName,
-		Labels:        md.Key.Labels(),
-		SampleTypes:   p.getSampleTypes(),
-		Formatter:     streaming.StackFrameFormatterForSpyName(md.SpyName),
-		ArenasEnabled: true,
-	})
-	defer parser.FreeArena()
-	return parser.ParseWithWriteBatch(streaming.ParseWriteBatchInput{
-		Context:   c,
-		StartTime: md.StartTime, EndTime: md.EndTime,
-		Profile: p.Profile, Previous: p.PreviousProfile,
-		WriteBatchFactory: wb,
-	})
-}
-
-func (p *RawProfile) getSampleTypes() map[string]*tree.SampleTypeConfig {
-	sampleTypes := tree.DefaultSampleTypeMapping
-	if p.SampleTypeConfig != nil {
-		sampleTypes = p.SampleTypeConfig
-	}
-	return sampleTypes
-}
-
-func (p *RawProfile) handleRawData() (cont bool, err error) {
-	if len(p.Profile) == 0 && len(p.PreviousProfile) == 0 {
-		// Check if RawProfile was initialized with RawData.
-		if p.RawData == nil {
-			// Zero profile, nothing to parse.
-			return false, nil
-		}
-		if p.FormDataContentType != "" {
-			// The profile was ingested as a multipart form. Load parts to
-			// Profile, PreviousProfile, and SampleTypeConfig.
-			if err := p.loadPprofFromForm(); err != nil {
-				return false, err
-			}
-		} else {
-			p.Profile = p.RawData
-		}
-	}
-	if len(p.Profile) == 0 {
-		return false, nil
-	}
-	return true, nil
 }
 
 func (p *RawProfile) loadPprofFromForm() error {
@@ -258,9 +120,13 @@ func (p *RawProfile) loadPprofFromForm() error {
 	if err != nil {
 		return err
 	}
-	p.PreviousProfile, err = form.ReadField(f, formFieldPreviousProfile)
+	PreviousProfile, err := form.ReadField(f, formFieldPreviousProfile)
 	if err != nil {
 		return err
+	}
+	if PreviousProfile != nil {
+		return fmt.Errorf("unsupported client version. " +
+			"Please update github.com/grafana/pyroscope-go to the latest version")
 	}
 
 	r, err := form.ReadField(f, formFieldSampleTypeConfig)
@@ -273,4 +139,109 @@ func (p *RawProfile) loadPprofFromForm() error {
 	}
 	p.SampleTypeConfig = config
 	return nil
+}
+
+func (p *RawProfile) metricName(profile *pprof.Profile) string {
+	stConfigs := p.getSampleTypes()
+	var st string
+	for _, ist := range profile.Profile.SampleType {
+		st = profile.StringTable[ist.Type]
+		if st == "wall" {
+			return st
+		}
+	}
+	for _, ist := range profile.Profile.SampleType {
+		st = profile.StringTable[ist.Type]
+		stConfig := stConfigs[st]
+
+		if stConfig != nil && stConfig.DisplayName != "" {
+			st = stConfig.DisplayName
+		}
+		if strings.Contains(st, "cpu") {
+			return "process_cpu"
+		}
+		if strings.Contains(st, "alloc_") || strings.Contains(st, "inuse_") || st == "space" || st == "objects" {
+			return "memory"
+		}
+		if strings.Contains(st, "mutex_") {
+			return "mutex"
+		}
+		if strings.Contains(st, "block_") {
+			return "block"
+		}
+		if strings.Contains(st, "goroutines") {
+			return "goroutines"
+		}
+	}
+	return st // should not happen
+
+}
+
+func (p *RawProfile) createLabels(profile *pprof.Profile, md ingestion.Metadata) []*v1.LabelPair {
+	ls := make([]*v1.LabelPair, 0, len(md.Key.Labels())+4)
+	ls = append(ls, &v1.LabelPair{
+		Name:  labels.MetricName,
+		Value: p.metricName(profile),
+	}, &v1.LabelPair{
+		Name:  phlaremodel.LabelNameDelta,
+		Value: "false",
+	}, &v1.LabelPair{
+		Name:  "service_name",
+		Value: md.Key.AppName(),
+	}, &v1.LabelPair{
+		Name:  "pyroscope_spy",
+		Value: md.SpyName,
+	})
+	for k, v := range md.Key.Labels() {
+		if strings.HasPrefix(k, "__") {
+			continue
+		}
+		ls = append(ls, &v1.LabelPair{
+			Name:  k,
+			Value: v,
+		})
+	}
+	return ls
+}
+func (p *RawProfile) getSampleTypes() map[string]*tree.SampleTypeConfig {
+	sampleTypes := tree.DefaultSampleTypeMapping
+	if p.SampleTypeConfig != nil {
+		sampleTypes = p.SampleTypeConfig
+	}
+	return sampleTypes
+}
+
+func needFunctionNameRewrite(md ingestion.Metadata) bool {
+	return isScriptingSpy(md)
+}
+
+func SpyNameForFunctionNameRewrite() string {
+	return "scripting"
+}
+
+func isScriptingSpy(md ingestion.Metadata) bool {
+	return md.SpyName == "pyspy" || md.SpyName == "rbspy" || md.SpyName == "scripting"
+}
+
+func fixFunctionNamesForScriptingLanguages(p *pprof.Profile, md ingestion.Metadata) {
+	if !needFunctionNameRewrite(md) {
+		return
+	}
+	smap := map[string]int{}
+	for _, fn := range p.Function {
+		// obtaining correct line number will require rewriting functions and slices
+		// lets not do it and wait until we render line numbers on frontend
+		const lineNumber = -1
+		name := fmt.Sprintf("%s:%d - %s",
+			p.StringTable[fn.Filename],
+			lineNumber,
+			p.StringTable[fn.Name])
+		sid := smap[name]
+		if sid == 0 {
+			sid = len(p.StringTable)
+			p.StringTable = append(p.StringTable, name)
+			smap[name] = sid
+		}
+		fn.Name = int64(sid)
+	}
 }

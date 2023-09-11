@@ -4,8 +4,6 @@ package symtab
 
 import (
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -19,17 +17,18 @@ type PidKey uint32
 type SymbolCache struct {
 	pidCache *GCache[PidKey, *ProcTable]
 
-	kallsyms SymbolTable
+	elfCache *ElfCache
+	kallsyms *SymbolTab
 	logger   log.Logger
 
-	elfOptions ElfTableOptions
+	options CacheOptions
 }
 type CacheOptions struct {
 	PidCacheOptions      GCacheOptions
 	BuildIDCacheOptions  GCacheOptions
 	SameFileCacheOptions GCacheOptions
-	Metrics              *Metrics      // may be nil for tests
-	SymbolOptions        SymbolOptions // this should be per target when we have per target options
+	Metrics              *Metrics // may be nil for tests
+	SymbolOptions        SymbolOptions
 }
 
 func NewSymbolCache(logger log.Logger, options CacheOptions) (*SymbolCache, error) {
@@ -46,84 +45,80 @@ func NewSymbolCache(logger log.Logger, options CacheOptions) (*SymbolCache, erro
 		logger:   logger,
 		pidCache: cache,
 		kallsyms: nil,
-		elfOptions: ElfTableOptions{
-			ElfCache:      elfCache,
-			Metrics:       options.Metrics,
-			SymbolOptions: options.SymbolOptions,
-		},
+		elfCache: elfCache,
+		options:  options,
 	}, nil
 }
 
 func (sc *SymbolCache) NextRound() {
 	sc.pidCache.NextRound()
-	sc.elfOptions.ElfCache.NextRound()
+	sc.elfCache.NextRound()
 }
 
 func (sc *SymbolCache) Cleanup() {
-	sc.elfOptions.ElfCache.Cleanup()
+	sc.elfCache.Cleanup()
 	sc.pidCache.Cleanup()
 }
 
-func (sc *SymbolCache) GetKallsyms() SymbolTable {
-	if sc.kallsyms != nil {
-		return sc.kallsyms
-	}
-
-	kallsyms, err := createKallsyms()
-	if err != nil || len(kallsyms.symbols) == 0 {
-		level.Error(sc.logger).Log("msg", "kallsyms is empty. check your permissions kptr_restrict==0 && sysctl_perf_event_paranoid <= 1 or kptr_restrict==1 &&  CAP_SYSLOG", "err", err)
-		kallsyms = NewSymbolTab(nil)
-	}
-	sc.kallsyms = kallsyms
-	return kallsyms
-}
-
-func createKallsyms() (*SymbolTab, error) {
-	kallsymsData, err := os.ReadFile("/proc/kallsyms")
-	if err != nil {
-		return nil, fmt.Errorf("read kallsyms %w", err)
-	}
-	kallsyms, err := NewKallsyms(kallsymsData)
-	if err != nil {
-		return nil, fmt.Errorf("create kallsyms %w ", err)
-	}
-	return kallsyms, err
-
-}
 func (sc *SymbolCache) GetProcTable(pid PidKey) *ProcTable {
 	cached := sc.pidCache.Get(pid)
 	if cached != nil {
-		if strings.HasPrefix(cached.Comm(), ".") {
-			fmt.Println("qwe")
-		}
 		return cached
 	}
 
 	level.Debug(sc.logger).Log("msg", "NewProcTable", "pid", pid)
 	fresh := NewProcTable(sc.logger, ProcTableOptions{
-		Pid:             int(pid),
-		ElfTableOptions: &sc.elfOptions,
+		Pid: int(pid),
+		ElfTableOptions: ElfTableOptions{
+			ElfCache:      sc.elfCache,
+			Metrics:       sc.options.Metrics,
+			SymbolOptions: &sc.options.SymbolOptions,
+		},
 	})
 
 	sc.pidCache.Cache(pid, fresh)
 	return fresh
 }
 
+func (sc *SymbolCache) GetKallsyms() SymbolTable {
+	if sc.kallsyms != nil {
+		return sc.kallsyms
+	}
+	return sc.initKallsyms()
+}
+
+func (sc *SymbolCache) initKallsyms() SymbolTable {
+	var err error
+	sc.kallsyms, err = NewKallsyms()
+	if err != nil {
+		level.Error(sc.logger).Log("msg", "kallsyms init fail", "err", err)
+		sc.kallsyms = NewSymbolTab(nil)
+	}
+	if len(sc.kallsyms.symbols) == 0 {
+		_ = level.Error(sc.logger).
+			Log("msg", "kallsyms is empty. check your permissions kptr_restrict==0 && sysctl_perf_event_paranoid <= 1 or kptr_restrict==1 &&  CAP_SYSLOG")
+	}
+
+	return sc.kallsyms
+}
+
 func (sc *SymbolCache) UpdateOptions(options CacheOptions) {
 	sc.pidCache.Update(options.PidCacheOptions)
-	sc.elfOptions.ElfCache.Update(options.BuildIDCacheOptions, options.SameFileCacheOptions)
+	sc.elfCache.Update(options.BuildIDCacheOptions, options.SameFileCacheOptions)
 }
 
 func (sc *SymbolCache) PidCacheDebugInfo() GCacheDebugInfo[ProcTableDebugInfo] {
 	return DebugInfo[PidKey, *ProcTable, ProcTableDebugInfo](
 		sc.pidCache,
-		func(k PidKey, v *ProcTable) ProcTableDebugInfo {
-			return v.DebugInfo()
+		func(k PidKey, v *ProcTable, round int) ProcTableDebugInfo {
+			res := v.DebugInfo()
+			res.LastUsedRound = round
+			return res
 		})
 }
 
 func (sc *SymbolCache) ElfCacheDebugInfo() ElfCacheDebugInfo {
-	return sc.elfOptions.ElfCache.DebugInfo()
+	return sc.elfCache.DebugInfo()
 }
 
 func (sc *SymbolCache) RemoveDead(proc *ProcTable) {
