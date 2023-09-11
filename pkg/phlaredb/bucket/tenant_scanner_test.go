@@ -54,7 +54,7 @@ func TestUsersScanner_ScanUsers_ShouldReturnUsersForWhichOwnerCheckOrTenantDelet
 	assert.Empty(t, deleted)
 }
 
-func TestUsersScanner_ScanUsers_ShouldNotReturnPrefixedUsedByMimirInternals(t *testing.T) {
+func TestUsersScanner_ScanUsers_ShouldNotReturnPrefixedUsedByPyroscopeInternals(t *testing.T) {
 	bucketClient := &objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1", "user-2", PyroscopeInternalsPrefix}, nil)
 	bucketClient.MockExists(path.Join("user-1", TenantDeletionMarkPath), false, nil)
