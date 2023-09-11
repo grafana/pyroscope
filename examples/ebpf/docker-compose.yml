@@ -7,7 +7,7 @@ services:
       - '4040:4040'
 
   app:
-    image: 'docker.io/grafana/agent:v0.35.2'
+    image: 'grafana/agent:latest'
     user: root
     privileged: true
     pid: 'host'

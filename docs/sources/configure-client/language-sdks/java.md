@@ -34,13 +34,13 @@ First, add Pyroscope dependency
 <dependency>
   <groupId>io.pyroscope</groupId>
   <artifactId>agent</artifactId>
-  <version>pyroscope_version</version>
+  <version>0.12.0</version>
 </dependency>
 ```
 
 ### Gradle
 ```shell
-implementation("io.pyroscope:agent:${pyroscope_version}")
+implementation("io.pyroscope:agent:0.12.0")
 ```
 
 Then add the following code to your application:
