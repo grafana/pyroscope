@@ -18,6 +18,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
+	parquetobj "github.com/grafana/pyroscope/pkg/objstore/parquet"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
@@ -428,7 +429,7 @@ func (f *parquetFile) open(ctx context.Context, b objstore.BucketReader, meta bl
 	}
 	var err error
 	// the same reader is used to serve all requests, so we pass context.Background() here
-	if f.reader, err = b.ReaderAt(context.Background(), f.path); err != nil {
+	if f.reader, err = parquetobj.OptimizedBucketReaderAt(b, context.Background(), f.path); err != nil {
 		return fmt.Errorf("creating reader: %w", err)
 	}
 

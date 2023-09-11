@@ -245,16 +245,15 @@ func (r *inMemoryparquetReader[M, P]) open(ctx context.Context, bucketReader phl
 		}
 		r.size = attrs.Size
 	}
-	ra, err := bucketReader.ReaderAt(ctx, filePath)
+
+	var err error
+	r.reader, err = parquetobj.OptimizedBucketReaderAt(bucketReader, ctx, filePath)
 	if err != nil {
 		return fmt.Errorf("create reader '%s': %w", filePath, err)
 	}
-	ra = parquetobj.NewOptimizedReader(ra)
-
-	r.reader = ra
 
 	// first try to open file, this is required otherwise OpenFile panics
-	parquetFile, err := parquet.OpenFile(ra, r.size, parquet.SkipPageIndex(true), parquet.SkipBloomFilters(true))
+	parquetFile, err := parquet.OpenFile(r.reader, r.size, parquet.SkipPageIndex(true), parquet.SkipBloomFilters(true))
 	if err != nil {
 		return fmt.Errorf("opening parquet file '%s': %w", filePath, err)
 	}
@@ -267,7 +266,7 @@ func (r *inMemoryparquetReader[M, P]) open(ctx context.Context, bucketReader phl
 		parquet.ReadBufferSize(parquetReadBufferSize),
 	}
 	// now open it for real
-	r.file, err = parquet.OpenFile(ra, r.size, opts...)
+	r.file, err = parquet.OpenFile(r.reader, r.size, opts...)
 	if err != nil {
 		return fmt.Errorf("opening parquet file '%s': %w", filePath, err)
 	}
