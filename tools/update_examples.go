@@ -17,6 +17,7 @@ import (
 
 var ghToken string
 
+// this program requires gh cli, bundle, go to be installed
 // todo run it by cron & create a PR if needed
 func main() {
 
