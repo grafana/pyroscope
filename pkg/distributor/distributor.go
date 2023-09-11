@@ -61,14 +61,14 @@ type Config struct {
 	PoolConfig  clientpool.PoolConfig `yaml:"pool_config,omitempty"`
 
 	// Distributors ring
-	DistributorRing RingConfig `yaml:"ring" doc:"hidden"`
+	DistributorRing util.CommonRingConfig `yaml:"ring" doc:"hidden"`
 }
 
 // RegisterFlags registers distributor-related flags.
-func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
+func (cfg *Config) RegisterFlags(fs *flag.FlagSet, logger log.Logger) {
 	cfg.PoolConfig.RegisterFlagsWithPrefix("distributor", fs)
 	fs.DurationVar(&cfg.PushTimeout, "distributor.push.timeout", 5*time.Second, "Timeout when pushing data to ingester.")
-	cfg.DistributorRing.RegisterFlags(fs)
+	cfg.DistributorRing.RegisterFlags("distributor.ring.", "collector", "distributors", fs, logger)
 }
 
 // Distributor coordinates replicates and distribution of log streams.
@@ -206,7 +206,7 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 }
 
 func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
-	//todo defer close all profiles in case of error
+	// todo defer close all profiles in case of error
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
@@ -264,7 +264,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			totalPushUncompressedBytes += int64(decompressedSize)
 
 			if err := validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels); err != nil {
-				//todo this actually discards more if multiple Samples in a Series request
+				// todo this actually discards more if multiple Samples in a Series request
 				validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
 				validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
 				p.Close()
@@ -511,14 +511,14 @@ func TokenFor(tenantID, labels string) uint32 {
 }
 
 // newRingAndLifecycler creates a new distributor ring and lifecycler with all required lifecycler delegates
-func newRingAndLifecycler(cfg RingConfig, instanceCount *atomic.Uint32, logger log.Logger, reg prometheus.Registerer) (*ring.Ring, *ring.BasicLifecycler, error) {
+func newRingAndLifecycler(cfg util.CommonRingConfig, instanceCount *atomic.Uint32, logger log.Logger, reg prometheus.Registerer) (*ring.Ring, *ring.BasicLifecycler, error) {
 	reg = prometheus.WrapRegistererWithPrefix("pyroscope_", reg)
 	kvStore, err := kv.NewClient(cfg.KVStore, ring.GetCodec(), kv.RegistererWithKVName(reg, "distributor-lifecycler"), logger)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to initialize distributors' KV store")
 	}
 
-	lifecyclerCfg, err := cfg.ToBasicLifecyclerConfig(logger)
+	lifecyclerCfg, err := toBasicLifecyclerConfig(cfg, logger)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to build distributors' lifecycler config")
 	}

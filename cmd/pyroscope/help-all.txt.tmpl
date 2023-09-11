@@ -88,17 +88,19 @@ Usage of ./pyroscope:
   -distributor.ring.etcd.username string
     	Etcd username.
   -distributor.ring.heartbeat-period duration
-    	Period at which to heartbeat to the ring. 0 = disabled. (default 5s)
+    	Period at which to heartbeat to the ring. 0 = disabled. (default 15s)
   -distributor.ring.heartbeat-timeout duration
     	The heartbeat timeout after which distributors are considered unhealthy within the ring. 0 = never (timeout disabled). (default 1m0s)
   -distributor.ring.instance-addr string
-    	IP address to advertise in the ring.
+    	IP address to advertise in the ring. Default is auto-detected.
+  -distributor.ring.instance-enable-ipv6
+    	Enable using a IPv6 instance address. (default false)
   -distributor.ring.instance-id string
     	Instance ID to register in the ring. (default "<hostname>")
   -distributor.ring.instance-interface-names string
-    	Name of network interface to read address from. (default [<private network interfaces>])
+    	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -distributor.ring.instance-port int
-    	Port to advertise in the ring (defaults to server.http-listen-port). (default 4040)
+    	Port to advertise in the ring (defaults to -server.grpc-listen-port). (default 4040)
   -distributor.ring.multi.mirror-enabled
     	Mirror writes to secondary store.
   -distributor.ring.multi.mirror-timeout duration
@@ -108,7 +110,7 @@ Usage of ./pyroscope:
   -distributor.ring.multi.secondary string
     	Secondary backend storage used by multi-client.
   -distributor.ring.prefix string
-    	The prefix for the keys in the store. Should end with a /. (default "collectors/")
+    	The prefix for the keys in the store. Should end with a /. (default "collector")
   -distributor.ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -distributor.zone-awareness-enabled
@@ -313,12 +315,14 @@ Usage of ./pyroscope:
     	The heartbeat timeout after which overrides-exporters are considered unhealthy within the ring. 0 = never (timeout disabled). (default 1m0s)
   -overrides-exporter.ring.instance-addr string
     	IP address to advertise in the ring. Default is auto-detected.
+  -overrides-exporter.ring.instance-enable-ipv6
+    	Enable using a IPv6 instance address. (default false)
   -overrides-exporter.ring.instance-id string
     	Instance ID to register in the ring. (default "<hostname>")
   -overrides-exporter.ring.instance-interface-names string
     	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
   -overrides-exporter.ring.instance-port int
-    	Port to advertise in the ring (defaults to -server.http-listen-port). (default 4040)
+    	Port to advertise in the ring (defaults to -server.grpc-listen-port). (default 4040)
   -overrides-exporter.ring.multi.mirror-enabled
     	Mirror writes to secondary store.
   -overrides-exporter.ring.multi.mirror-timeout duration
@@ -548,9 +552,11 @@ Usage of ./pyroscope:
   -query-scheduler.ring.heartbeat-period duration
     	Period at which to heartbeat to the ring. 0 = disabled. (default 15s)
   -query-scheduler.ring.heartbeat-timeout duration
-    	The heartbeat timeout after which query-schedulers are considered unhealthy within the ring. When query-scheduler ring-based service discovery is enabled, this option needs be set on query-schedulers, query-frontends and queriers. (default 1m0s)
+    	The heartbeat timeout after which query-scheduler are considered unhealthy within the ring. 0 = never (timeout disabled). (default 1m0s)
   -query-scheduler.ring.instance-addr string
     	IP address to advertise in the ring. Default is auto-detected.
+  -query-scheduler.ring.instance-enable-ipv6
+    	Enable using a IPv6 instance address. (default false)
   -query-scheduler.ring.instance-id string
     	Instance ID to register in the ring. (default "<hostname>")
   -query-scheduler.ring.instance-interface-names string

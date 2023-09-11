@@ -12,6 +12,10 @@ import (
 
 const (
 	bytesInMB = 1048576
+
+	// MinCompactorPartialBlockDeletionDelay is the minimum partial blocks deletion delay that can be configured in Mimir.
+	// Partial blocks are blocks that are not having meta file uploaded yet.
+	MinCompactorPartialBlockDeletionDelay = 4 * time.Hour
 )
 
 // Limits describe all the limits for tenants; can be used to describe global default
