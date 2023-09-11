@@ -125,7 +125,7 @@ kind: ServiceAccount
 metadata:
   name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: agent-0.23.0
+    helm.sh/chart: agent-0.24.0
     app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "v0.36.1"
@@ -1190,7 +1190,7 @@ kind: ClusterRole
 metadata:
   name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: agent-0.23.0
+    helm.sh/chart: agent-0.24.0
     app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "v0.36.1"
@@ -1297,7 +1297,7 @@ kind: ClusterRoleBinding
 metadata:
   name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: agent-0.23.0
+    helm.sh/chart: agent-0.24.0
     app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "v0.36.1"
@@ -1337,7 +1337,7 @@ kind: Service
 metadata:
   name: pyroscope-dev-agent-cluster
   labels:
-    helm.sh/chart: agent-0.23.0
+    helm.sh/chart: agent-0.24.0
     app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "v0.36.1"
@@ -1366,7 +1366,7 @@ kind: Service
 metadata:
   name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: agent-0.23.0
+    helm.sh/chart: agent-0.24.0
     app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "v0.36.1"
@@ -2136,13 +2136,14 @@ kind: StatefulSet
 metadata:
   name: pyroscope-dev-agent
   labels:
-    helm.sh/chart: agent-0.23.0
+    helm.sh/chart: agent-0.24.0
     app.kubernetes.io/name: agent
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "v0.36.1"
     app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
+  podManagementPolicy: Parallel
   minReadySeconds: 10
   serviceName: pyroscope-dev-agent
   selector:
