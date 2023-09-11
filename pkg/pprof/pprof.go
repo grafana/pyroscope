@@ -588,7 +588,7 @@ func (h SampleHasher) Hashes(samples []*profilev1.Sample) []uint64 {
 			panic("unable to write hash")
 		}
 		sortSampleLabels(sample)
-		slices.RemoveInPlace(sample.Label, func(label *profilev1.Label, i int) bool {
+		sample.Label = slices.RemoveInPlace(sample.Label, func(label *profilev1.Label, i int) bool {
 			return label.Num != 0
 		})
 		for _, l := range sample.Label {
