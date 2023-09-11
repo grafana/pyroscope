@@ -62,6 +62,16 @@ const (
 	MetaVersion3 = MetaVersion(3)
 )
 
+// IsValid returns true if the version is valid.
+func (v MetaVersion) IsValid() bool {
+	switch v {
+	case MetaVersion1, MetaVersion2, MetaVersion3:
+		return true
+	default:
+		return false
+	}
+}
+
 type BlockStats struct {
 	NumSamples  uint64 `json:"numSamples,omitempty"`
 	NumSeries   uint64 `json:"numSeries,omitempty"`
@@ -115,6 +125,13 @@ type Meta struct {
 
 	// Source is a real upload source of the block.
 	Source SourceType `json:"source,omitempty"`
+
+	// Downsample is a downsampling resolution of the block. 0 means no downsampling.
+	Downsample `json:"downsample"`
+}
+
+type Downsample struct {
+	Resolution int64 `json:"resolution"`
 }
 
 func (m *Meta) FileByRelPath(name string) *File {
@@ -212,6 +229,7 @@ func (meta *Meta) WriteTo(w io.Writer) (int64, error) {
 	return int64(wrapped.n), enc.Encode(meta)
 }
 
+// WriteToFile writes the encoded meta into <dir>/meta.json.
 func (meta *Meta) WriteToFile(logger log.Logger, dir string) (int64, error) {
 	// Make any changes to the file appear atomic.
 	path := filepath.Join(dir, MetaFilename)
@@ -255,8 +273,8 @@ func (meta *Meta) TSDBBlockMeta() tsdb.BlockMeta {
 	}
 }
 
-// ReadFromDir reads the given meta from <dir>/meta.json.
-func ReadFromDir(dir string) (*Meta, error) {
+// ReadMetaFromDir reads the given meta from <dir>/meta.json.
+func ReadMetaFromDir(dir string) (*Meta, error) {
 	f, err := os.Open(filepath.Join(dir, filepath.Clean(MetaFilename)))
 	if err != nil {
 		return nil, err
