@@ -39,7 +39,7 @@ func newSymbolsResolverV1(ctx context.Context, bucketReader phlareobj.Bucket, me
 	p := r.stacktraces.relPath()
 	for _, f := range meta.Files {
 		if f.RelPath == p {
-			r.stacktraces.size = int64(f.SizeBytes)
+			r.stacktraces.meta = f
 			break
 		}
 	}
@@ -196,13 +196,13 @@ func openInMemoryParquetTables(ctx context.Context, r phlareobj.BucketReader, me
 	for _, f := range meta.Files {
 		switch f.RelPath {
 		case t.locations.relPath():
-			t.locations.size = int64(f.SizeBytes)
+			t.locations.meta = f
 		case t.functions.relPath():
-			t.functions.size = int64(f.SizeBytes)
+			t.functions.meta = f
 		case t.mappings.relPath():
-			t.mappings.size = int64(f.SizeBytes)
+			t.mappings.meta = f
 		case t.strings.relPath():
-			t.strings.size = int64(f.SizeBytes)
+			t.strings.meta = f
 		}
 	}
 	g, ctx := errgroup.WithContext(ctx)
@@ -229,63 +229,35 @@ type ResultWithRowNum[M any] struct {
 
 type inMemoryparquetReader[M schemav1.Models, P schemav1.Persister[M]] struct {
 	persister P
-	file      *parquet.File
-	size      int64
-	reader    phlareobj.ReaderAtCloser
+	meta      block.File
 	cache     []M
 }
 
 func (r *inMemoryparquetReader[M, P]) open(ctx context.Context, bucketReader phlareobj.BucketReader) error {
-	filePath := r.persister.Name() + block.ParquetSuffix
-
-	if r.size == 0 {
-		attrs, err := bucketReader.Attributes(ctx, filePath)
-		if err != nil {
-			return fmt.Errorf("getting attributes for '%s': %w", filePath, err)
-		}
-		r.size = attrs.Size
-	}
-
-	var err error
-	r.reader, err = parquetobj.OptimizedBucketReaderAt(bucketReader, ctx, filePath)
-	if err != nil {
-		return fmt.Errorf("create reader '%s': %w", filePath, err)
-	}
-
-	// first try to open file, this is required otherwise OpenFile panics
-	parquetFile, err := parquet.OpenFile(r.reader, r.size, parquet.SkipPageIndex(true), parquet.SkipBloomFilters(true))
-	if err != nil {
-		return fmt.Errorf("opening parquet file '%s': %w", filePath, err)
-	}
-	if parquetFile.NumRows() == 0 {
-		return fmt.Errorf("error parquet file '%s' contains no rows: %w", filePath, err)
-	}
-	opts := []parquet.FileOption{
+	var file parquetobj.File
+	if err := file.Open(
+		ctx,
+		bucketReader,
+		r.meta,
 		parquet.SkipBloomFilters(true), // we don't use bloom filters
 		parquet.FileReadMode(parquet.ReadModeAsync),
 		parquet.ReadBufferSize(parquetReadBufferSize),
-	}
-	// now open it for real
-	r.file, err = parquet.OpenFile(r.reader, r.size, opts...)
-	if err != nil {
-		return fmt.Errorf("opening parquet file '%s': %w", filePath, err)
+	); err != nil {
+		return err
 	}
 
 	// read all rows into memory
-	r.cache = make([]M, r.file.NumRows())
+	r.cache = make([]M, file.NumRows())
 	var offset int64
-	for _, rg := range r.file.RowGroups() {
+	for _, rg := range file.RowGroups() {
 		rows := rg.NumRows()
 		dst := r.cache[offset : offset+rows]
 		offset += rows
-		if err = r.readRG(dst, rg); err != nil {
-			return fmt.Errorf("reading row group from parquet file '%s': %w", filePath, err)
+		if err := r.readRG(dst, rg); err != nil {
+			return fmt.Errorf("reading row group from parquet file '%s': %w", file.Path(), err)
 		}
 	}
-	err = r.reader.Close()
-	r.reader = nil
-	r.file = nil
-	return err
+	return file.Close()
 }
 
 // parquet.CopyRows uses hardcoded buffer size:
@@ -319,11 +291,6 @@ func (r *inMemoryparquetReader[M, P]) readRG(dst []M, rg parquet.RowGroup) (err 
 }
 
 func (r *inMemoryparquetReader[M, P]) Close() error {
-	if r.reader != nil {
-		return r.reader.Close()
-	}
-	r.reader = nil
-	r.file = nil
 	r.cache = nil
 	return nil
 }
