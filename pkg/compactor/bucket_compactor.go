@@ -28,6 +28,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -296,13 +297,8 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 		}
 
 		// Ensure all source blocks are valid.
-		stats, err := block.GatherBlockHealthStats(jobLogger, bdir, meta.MinTime, meta.MaxTime, false)
-		if err != nil {
-			return errors.Wrapf(err, "gather index issues for block %s", bdir)
-		}
-
-		if err := stats.CriticalErr(); err != nil {
-			return errors.Wrapf(err, "block with not healthy index found %s; Compaction level %v; Labels: %v", bdir, meta.Compaction.Level, meta.Labels)
+		if err := phlaredb.ValidateLocalBlock(ctx, bdir); err != nil {
+			return errors.Wrapf(err, "invalid block %s", bdir)
 		}
 
 		return nil
@@ -375,8 +371,7 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 		}
 
 		// Ensure the compacted block is valid.
-		// todo validate blocks by opening.
-		if err := block.VerifyBlock(jobLogger, bdir, newMeta.MinTime, newMeta.MaxTime, false); err != nil {
+		if err := phlaredb.ValidateLocalBlock(ctx, bdir); err != nil {
 			return errors.Wrapf(err, "invalid result block %s", bdir)
 		}
 
@@ -386,7 +381,7 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 		}
 
 		elapsed := time.Since(begin)
-		level.Info(jobLogger).Log("msg", "uploaded block", "result_block", blockToUpload.ulid, "duration", elapsed, "duration_ms", elapsed.Milliseconds(), "external_labels", labels.FromMap(newLabels))
+		level.Info(jobLogger).Log("msg", "uploaded block", "result_block", blockToUpload.ulid, "duration", elapsed, "duration_ms", elapsed.Milliseconds(), "labels", labels.FromMap(newMeta.Labels))
 		return nil
 	})
 	if err != nil {
