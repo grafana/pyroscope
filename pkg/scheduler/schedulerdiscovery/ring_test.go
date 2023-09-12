@@ -15,36 +15,36 @@ import (
 )
 
 func TestRingConfig_DefaultConfigToBasicLifecyclerConfig(t *testing.T) {
-	cfg := RingConfig{}
+	cfg := Config{}
 	flagext.DefaultValues(&cfg)
-	cfg.InstanceAddr = "127.0.0.1"
-	cfg.InstancePort = 9095
+	cfg.SchedulerRing.InstanceAddr = "127.0.0.1"
+	cfg.SchedulerRing.InstancePort = 9095
 
 	expected := ring.BasicLifecyclerConfig{
-		ID:                              cfg.InstanceID,
-		Addr:                            fmt.Sprintf("%s:%d", cfg.InstanceAddr, cfg.InstancePort),
-		HeartbeatPeriod:                 cfg.HeartbeatPeriod,
-		HeartbeatTimeout:                cfg.HeartbeatTimeout,
+		ID:                              cfg.SchedulerRing.InstanceID,
+		Addr:                            fmt.Sprintf("%s:%d", cfg.SchedulerRing.InstanceAddr, cfg.SchedulerRing.InstancePort),
+		HeartbeatPeriod:                 cfg.SchedulerRing.HeartbeatPeriod,
+		HeartbeatTimeout:                cfg.SchedulerRing.HeartbeatTimeout,
 		TokensObservePeriod:             0,
 		NumTokens:                       1,
 		KeepInstanceInTheRingOnShutdown: false,
 	}
 
-	actual, err := cfg.ToBasicLifecyclerConfig(log.NewNopLogger())
+	actual, err := toBasicLifecyclerConfig(cfg.SchedulerRing, log.NewNopLogger())
 	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
 }
 
 func TestRingConfig_CustomConfigToBasicLifecyclerConfig(t *testing.T) {
 	// Customize the query-scheduler ring config
-	cfg := RingConfig{}
+	cfg := Config{}
 	flagext.DefaultValues(&cfg)
-	cfg.HeartbeatPeriod = 1 * time.Second
-	cfg.HeartbeatTimeout = 10 * time.Second
-	cfg.InstanceID = "test"
-	cfg.InstancePort = 10
-	cfg.InstanceAddr = "1.2.3.4"
-	cfg.ListenPort = 10
+	cfg.SchedulerRing.HeartbeatPeriod = 1 * time.Second
+	cfg.SchedulerRing.HeartbeatTimeout = 10 * time.Second
+	cfg.SchedulerRing.InstanceID = "test"
+	cfg.SchedulerRing.InstancePort = 10
+	cfg.SchedulerRing.InstanceAddr = "1.2.3.4"
+	cfg.SchedulerRing.ListenPort = 10
 
 	// The lifecycler config should be generated based upon the query-scheduler
 	// ring config
@@ -58,7 +58,7 @@ func TestRingConfig_CustomConfigToBasicLifecyclerConfig(t *testing.T) {
 		KeepInstanceInTheRingOnShutdown: false,
 	}
 
-	actual, err := cfg.ToBasicLifecyclerConfig(log.NewNopLogger())
+	actual, err := toBasicLifecyclerConfig(cfg.SchedulerRing, log.NewNopLogger())
 	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
 }
