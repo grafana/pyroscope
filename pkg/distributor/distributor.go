@@ -212,8 +212,6 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 	var (
-		keys                       = make([]uint32, 0, len(req.Series))
-		profiles                   = make([]*profileTracker, 0, len(req.Series))
 		totalPushUncompressedBytes int64
 		totalProfiles              int64
 	)
@@ -222,7 +220,6 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		serviceName := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
 		if serviceName == "" {
 			series.Labels = append(series.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "unspecified"})
-			sort.Sort(phlaremodel.Labels(series.Labels))
 		}
 	}
 
@@ -243,7 +240,6 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			totalPushUncompressedBytes += int64(len(lbs.Name))
 			totalPushUncompressedBytes += int64(len(lbs.Value))
 		}
-		keys = append(keys, TokenFor(tenantID, labelsString(series.Labels)))
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
 		for _, raw := range series.Samples {
 			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
@@ -271,36 +267,14 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
 
-			p.Normalize()
 			symbolsSize, samplesSize := profileSizeBytes(p.Profile)
 			d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(samplesSize))
 			d.metrics.receivedSymbolsBytes.WithLabelValues(profName, tenantID).Observe(float64(symbolsSize))
-
-			// zip the data back into the buffer
-			bw := bytes.NewBuffer(raw.RawProfile[:0])
-			if _, err := p.WriteTo(bw); err != nil {
-				p.Close()
-				return nil, err
-			}
-			p.Close()
-			raw.RawProfile = bw.Bytes()
-			// generate a unique profile ID before pushing.
-			raw.ID = uuid.NewString()
 		}
-		profiles = append(profiles, &profileTracker{profile: series})
 	}
 
 	if totalProfiles == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no profiles received"))
-	}
-
-	// validate the request
-	for _, series := range req.Series {
-		if err := validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
-			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
-			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		}
 	}
 
 	// rate limit the request
@@ -310,6 +284,43 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		return nil, connect.NewError(connect.CodeResourceExhausted,
 			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.IBytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.IBytes(uint64(totalPushUncompressedBytes))),
 		)
+	}
+
+	derivedSeries := make([]*distributormodel.ProfileSeries, 0, len(req.Series))
+	for _, series := range req.Series {
+		for _, raw := range series.Samples {
+			raw.Profile.Normalize()
+			// TODO: Split profile.
+		}
+	}
+
+	// Validate the labels again and generate tokens for shuffle sharding.
+	keys := make([]uint32, 0, len(derivedSeries))
+	for _, series := range derivedSeries {
+		sort.Sort(phlaremodel.Labels(series.Labels))
+		if err = validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
+			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
+			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		keys = append(keys, TokenFor(tenantID, labelsString(series.Labels)))
+	}
+
+	profiles := make([]*profileTracker, 0, len(derivedSeries))
+	for _, series := range derivedSeries {
+		for _, raw := range series.Samples {
+			p := raw.Profile
+			// zip the data back into the buffer
+			bw := bytes.NewBuffer(raw.RawProfile[:0])
+			if _, err := p.WriteTo(bw); err != nil {
+				p.Close()
+				return nil, err
+			}
+			p.Close()
+			raw.ID = uuid.NewString()
+			raw.RawProfile = bw.Bytes()
+		}
+		profiles = append(profiles, &profileTracker{profile: series})
 	}
 
 	const maxExpectedReplicationSet = 5 // typical replication factor 3 plus one for inactive plus one for luck
