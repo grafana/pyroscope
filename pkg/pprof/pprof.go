@@ -587,7 +587,7 @@ func (h SampleHasher) Hashes(samples []*profilev1.Sample) []uint64 {
 		if _, err := h.hash.Write(locationBytes(sample)); err != nil {
 			panic("unable to write hash")
 		}
-		sortSampleLabels(sample)
+		sort.Sort(LabelsByKeyValue(sample.Label))
 		sample.Label = slices.RemoveInPlace(sample.Label, func(label *profilev1.Label, i int) bool {
 			return label.Num != 0
 		})
@@ -617,12 +617,357 @@ func locationBytes(sample *profilev1.Sample) []byte {
 	return bs
 }
 
-func sortSampleLabels(sample *profilev1.Sample) {
-	sort.Slice(sample.Label, func(i, j int) bool {
-		a, b := sample.Label[i], sample.Label[j]
-		if a.Key == b.Key {
-			return a.Str < b.Str
+type SamplesByLabels []*profilev1.Sample
+
+func (s SamplesByLabels) Len() int {
+	return len(s)
+}
+
+func (s SamplesByLabels) Less(i, j int) bool {
+	return CompareSampleLabels(s[i].Label, s[j].Label) < 0
+}
+
+func (s SamplesByLabels) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+type LabelsByKeyValue []*profilev1.Label
+
+func (l LabelsByKeyValue) Len() int {
+	return len(l)
+}
+
+func (l LabelsByKeyValue) Less(i, j int) bool {
+	a, b := l[i], l[j]
+	if a.Key == b.Key {
+		return a.Str < b.Str
+	}
+	return a.Key < b.Key
+}
+
+func (l LabelsByKeyValue) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}
+
+type SampleGroup struct {
+	Labels  []*profilev1.Label
+	Samples []*profilev1.Sample
+}
+
+// GroupSamplesByLabels splits samples into groups by labels.
+// It's expected that sample labels are sorted.
+func GroupSamplesByLabels(p *profilev1.Profile) []SampleGroup {
+	if len(p.Sample) < 1 {
+		return nil
+	}
+	var result []SampleGroup
+	var start int
+	labels := p.Sample[start].Label
+	for i := 1; i < len(p.Sample); i++ {
+		if CompareSampleLabels(p.Sample[i].Label, labels) != 0 {
+			result = append(result, SampleGroup{
+				Labels:  labels,
+				Samples: p.Sample[start:i],
+			})
+			start = i
+			labels = p.Sample[i].Label
 		}
-		return a.Key < b.Key
+	}
+	return append(result, SampleGroup{
+		Labels:  labels,
+		Samples: p.Sample[start:],
 	})
+}
+
+func GroupSamplesWithout(p *profilev1.Profile, keys []int64) []SampleGroup {
+	if len(p.Sample) == 0 {
+		return nil
+	}
+	for _, s := range p.Sample {
+		sort.Sort(LabelsByKeyValue(s.Label))
+		// We hide labels matching the keys to the end
+		// of the slice, after len() boundary.
+		s.Label = LabelsWithout(s.Label, keys)
+	}
+	// Sorting and grouping accounts only for labels kept.
+	sort.Sort(SamplesByLabels(p.Sample))
+	groups := GroupSamplesByLabels(p)
+	for _, s := range p.Sample {
+		// Replace the labels (that match the group name)
+		// with hidden labels matching the keys.
+		s.Label = restoreRemovedLabels(s.Label)
+	}
+	return groups
+}
+
+func restoreRemovedLabels(labels []*profilev1.Label) []*profilev1.Label {
+	labels = labels[len(labels):cap(labels)]
+	for i, l := range labels {
+		if l == nil {
+			labels = labels[:i]
+			break
+		}
+	}
+	return labels
+}
+
+// CompareSampleLabels compares sample label pairs.
+// It's expected that sample labels are sorted.
+// The result will be 0 if a == b, < 0 if a < b, and > 0 if a > b.
+func CompareSampleLabels(a, b []*profilev1.Label) int {
+	l := len(a)
+	if len(b) < l {
+		l = len(b)
+	}
+	for i := 0; i < l; i++ {
+		if a[i].Key != b[i].Key {
+			if a[i].Key < b[i].Key {
+				return -1
+			}
+			return 1
+		}
+		if a[i].Str != b[i].Str {
+			if a[i].Str < b[i].Str {
+				return -1
+			}
+			return 1
+		}
+	}
+	return len(a) - len(b)
+}
+
+func LabelsWithout(labels []*profilev1.Label, keys []int64) []*profilev1.Label {
+	n := FilterLabelsInPlace(labels, keys)
+	slices.Reverse(labels) // TODO: Find a way to avoid this.
+	return labels[:len(labels)-n]
+}
+
+func FilterLabelsInPlace(labels []*profilev1.Label, keys []int64) int {
+	boundaryIdx := 0
+	i := 0 // Pointer to labels
+	j := 0 // Pointer to keys
+	for i < len(labels) && j < len(keys) {
+		if labels[i].Key == keys[j] {
+			// If label key matches a key in keys, swap and increment both pointers
+			labels[i], labels[boundaryIdx] = labels[boundaryIdx], labels[i]
+			boundaryIdx++
+			i++
+		} else if labels[i].Key < keys[j] {
+			i++ // Advance label pointer.
+		} else {
+			j++ // Advance key pointer.
+		}
+	}
+	return boundaryIdx
+}
+
+func LabelKeysByString(p *profilev1.Profile, keys ...string) []int64 {
+	m := LabelKeysMapByString(p, keys...)
+	s := make([]int64, len(keys))
+	for i, k := range keys {
+		s[i] = m[k]
+	}
+	sort.Slice(s, func(i, j int) bool {
+		return s[i] < s[j]
+	})
+	return s
+}
+
+func LabelKeysMapByString(p *profilev1.Profile, keys ...string) map[string]int64 {
+	m := make(map[string]int64, len(keys))
+	for _, k := range keys {
+		m[k] = 0
+	}
+	for i, v := range p.StringTable {
+		if _, ok := m[v]; ok {
+			m[v] = int64(i)
+		}
+	}
+	return m
+}
+
+type SampleExporter struct {
+	profile *profilev1.Profile
+
+	locations lookupTable
+	functions lookupTable
+	mappings  lookupTable
+	strings   lookupTable
+}
+
+type lookupTable struct {
+	indices  []int32
+	resolved int32
+}
+
+func (t *lookupTable) lookupString(idx int64) int64 {
+	if idx != 0 {
+		return int64(t.lookup(idx))
+	}
+	return 0
+}
+
+func (t *lookupTable) lookup(idx int64) int32 {
+	x := t.indices[idx]
+	if x != 0 {
+		return x
+	}
+	t.resolved++
+	t.indices[idx] = t.resolved
+	return t.resolved
+}
+
+func (t *lookupTable) reset() {
+	t.resolved = 0
+	for i := 0; i < len(t.indices); i++ {
+		t.indices[i] = 0
+	}
+}
+
+func NewSampleExporter(p *profilev1.Profile) *SampleExporter {
+	return &SampleExporter{
+		profile:   p,
+		locations: lookupTable{indices: make([]int32, len(p.Location))},
+		functions: lookupTable{indices: make([]int32, len(p.Function))},
+		mappings:  lookupTable{indices: make([]int32, len(p.Mapping))},
+		strings:   lookupTable{indices: make([]int32, len(p.StringTable))},
+	}
+}
+
+// ExportSamples creates a new complete profile with the subset
+// of samples provided. It is assumed that those are part of the
+// source profile. Provided samples are modified in place.
+//
+// The same exporter instance can be used to export non-overlapping
+// sample sets from a single profile.
+func (e *SampleExporter) ExportSamples(samples []*profilev1.Sample) *profilev1.Profile {
+	e.reset()
+
+	p := &profilev1.Profile{
+		Sample:            samples,
+		TimeNanos:         e.profile.TimeNanos,
+		DurationNanos:     e.profile.DurationNanos,
+		Period:            e.profile.Period,
+		DefaultSampleType: e.profile.DefaultSampleType,
+	}
+
+	p.SampleType = make([]*profilev1.ValueType, len(e.profile.SampleType))
+	for i, v := range e.profile.SampleType {
+		p.SampleType[i] = &profilev1.ValueType{
+			Type: e.strings.lookupString(v.Type),
+			Unit: e.strings.lookupString(v.Unit),
+		}
+	}
+	p.DropFrames = e.strings.lookupString(e.profile.DropFrames)
+	p.KeepFrames = e.strings.lookupString(e.profile.KeepFrames)
+	if c := len(e.profile.Comment); c > 0 {
+		p.Comment = make([]int64, c)
+		for i, comment := range e.profile.Comment {
+			p.Comment[i] = e.strings.lookupString(comment)
+		}
+	}
+
+	// Rewrite sample stack traces and labels.
+	// Note that the provided samples are modified in-place.
+	for _, sample := range p.Sample {
+		for i, location := range sample.LocationId {
+			sample.LocationId[i] = uint64(e.locations.lookup(int64(location - 1)))
+		}
+		for _, label := range sample.Label {
+			label.Key = e.strings.lookupString(label.Key)
+			if label.Str != 0 {
+				label.Str = e.strings.lookupString(label.Str)
+			} else {
+				label.NumUnit = e.strings.lookupString(label.NumUnit)
+			}
+		}
+	}
+
+	// Copy locations.
+	p.Location = make([]*profilev1.Location, e.locations.resolved)
+	for i, j := range e.locations.indices {
+		// i points to the location in the source profile.
+		// j point to the location in the new profile.
+		if j == 0 {
+			// The location is not referenced by any of the samples.
+			continue
+		}
+		loc := e.profile.Location[i]
+		newLoc := &profilev1.Location{
+			Id:        uint64(j),
+			MappingId: uint64(e.mappings.lookup(int64(loc.MappingId - 1))),
+			Address:   loc.Address,
+			Line:      make([]*profilev1.Line, len(loc.Line)),
+			IsFolded:  loc.IsFolded,
+		}
+		p.Location[j-1] = newLoc
+		for l, line := range loc.Line {
+			newLoc.Line[l] = &profilev1.Line{
+				FunctionId: uint64(e.functions.lookup(int64(line.FunctionId - 1))),
+				Line:       line.Line,
+			}
+		}
+	}
+
+	// Copy mappings.
+	p.Mapping = make([]*profilev1.Mapping, e.mappings.resolved)
+	for i, j := range e.mappings.indices {
+		if j == 0 {
+			continue
+		}
+		m := e.profile.Mapping[i]
+		p.Mapping[j-1] = &profilev1.Mapping{
+			Id:              uint64(j),
+			MemoryStart:     m.MemoryStart,
+			MemoryLimit:     m.MemoryLimit,
+			FileOffset:      m.FileOffset,
+			Filename:        e.strings.lookupString(m.Filename),
+			BuildId:         e.strings.lookupString(m.BuildId),
+			HasFunctions:    m.HasFunctions,
+			HasFilenames:    m.HasFilenames,
+			HasLineNumbers:  m.HasLineNumbers,
+			HasInlineFrames: m.HasInlineFrames,
+		}
+	}
+
+	// Copy functions.
+	p.Function = make([]*profilev1.Function, e.functions.resolved)
+	for i, j := range e.functions.indices {
+		if j == 0 {
+			continue
+		}
+		fn := e.profile.Function[i]
+		p.Function[j-1] = &profilev1.Function{
+			Id:         uint64(j),
+			Name:       e.strings.lookupString(fn.Name),
+			SystemName: e.strings.lookupString(fn.SystemName),
+			Filename:   e.strings.lookupString(fn.Filename),
+			StartLine:  fn.StartLine,
+		}
+	}
+
+	if e.profile.PeriodType != nil {
+		p.PeriodType = &profilev1.ValueType{
+			Type: e.strings.lookupString(e.profile.PeriodType.Type),
+			Unit: e.strings.lookupString(e.profile.PeriodType.Unit),
+		}
+	}
+
+	// Copy strings.
+	p.StringTable = make([]string, e.strings.resolved+1)
+	for i, j := range e.strings.indices {
+		if j == 0 {
+			continue
+		}
+		p.StringTable[j] = e.profile.StringTable[i]
+	}
+
+	return p
+}
+
+func (e *SampleExporter) reset() {
+	e.locations.reset()
+	e.functions.reset()
+	e.mappings.reset()
+	e.strings.reset()
 }
