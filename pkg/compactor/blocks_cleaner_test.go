@@ -191,22 +191,22 @@ func testBlocksCleanerWithOptions(t *testing.T, options testBlocksCleanerOptions
 	}
 
 	assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-		# HELP cortex_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
-		# TYPE cortex_bucket_blocks_count gauge
-		cortex_bucket_blocks_count{user="user-1"} 2
-		cortex_bucket_blocks_count{user="user-2"} 1
-		# HELP cortex_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
-		# TYPE cortex_bucket_blocks_marked_for_deletion_count gauge
-		cortex_bucket_blocks_marked_for_deletion_count{user="user-1"} 1
-		cortex_bucket_blocks_marked_for_deletion_count{user="user-2"} 0
-		# HELP cortex_bucket_blocks_partials_count Total number of partial blocks.
-		# TYPE cortex_bucket_blocks_partials_count gauge
-		cortex_bucket_blocks_partials_count{user="user-1"} 2
-		cortex_bucket_blocks_partials_count{user="user-2"} 0
+		# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
+		# TYPE pyroscope_bucket_blocks_count gauge
+		pyroscope_bucket_blocks_count{user="user-1"} 2
+		pyroscope_bucket_blocks_count{user="user-2"} 1
+		# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
+		# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
+		pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 1
+		pyroscope_bucket_blocks_marked_for_deletion_count{user="user-2"} 0
+		# HELP pyroscope_bucket_blocks_partials_count Total number of partial blocks.
+		# TYPE pyroscope_bucket_blocks_partials_count gauge
+		pyroscope_bucket_blocks_partials_count{user="user-1"} 2
+		pyroscope_bucket_blocks_partials_count{user="user-2"} 0
 	`),
-		"cortex_bucket_blocks_count",
-		"cortex_bucket_blocks_marked_for_deletion_count",
-		"cortex_bucket_blocks_partials_count",
+		"pyroscope_bucket_blocks_count",
+		"pyroscope_bucket_blocks_marked_for_deletion_count",
+		"pyroscope_bucket_blocks_partials_count",
 	))
 }
 
@@ -359,22 +359,22 @@ func TestBlocksCleaner_ShouldRemoveMetricsForTenantsNotBelongingAnymoreToTheShar
 	require.NoError(t, cleaner.runCleanupWithErr(ctx))
 
 	assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-		# HELP cortex_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
-		# TYPE cortex_bucket_blocks_count gauge
-		cortex_bucket_blocks_count{user="user-1"} 2
-		cortex_bucket_blocks_count{user="user-2"} 1
-		# HELP cortex_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
-		# TYPE cortex_bucket_blocks_marked_for_deletion_count gauge
-		cortex_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
-		cortex_bucket_blocks_marked_for_deletion_count{user="user-2"} 0
-		# HELP cortex_bucket_blocks_partials_count Total number of partial blocks.
-		# TYPE cortex_bucket_blocks_partials_count gauge
-		cortex_bucket_blocks_partials_count{user="user-1"} 0
-		cortex_bucket_blocks_partials_count{user="user-2"} 0
+		# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
+		# TYPE pyroscope_bucket_blocks_count gauge
+		pyroscope_bucket_blocks_count{user="user-1"} 2
+		pyroscope_bucket_blocks_count{user="user-2"} 1
+		# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
+		# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
+		pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
+		pyroscope_bucket_blocks_marked_for_deletion_count{user="user-2"} 0
+		# HELP pyroscope_bucket_blocks_partials_count Total number of partial blocks.
+		# TYPE pyroscope_bucket_blocks_partials_count gauge
+		pyroscope_bucket_blocks_partials_count{user="user-1"} 0
+		pyroscope_bucket_blocks_partials_count{user="user-2"} 0
 	`),
-		"cortex_bucket_blocks_count",
-		"cortex_bucket_blocks_marked_for_deletion_count",
-		"cortex_bucket_blocks_partials_count",
+		"pyroscope_bucket_blocks_count",
+		"pyroscope_bucket_blocks_marked_for_deletion_count",
+		"pyroscope_bucket_blocks_partials_count",
 	))
 
 	// Override the users scanner to reconfigure it to only return a subset of users.
@@ -387,19 +387,19 @@ func TestBlocksCleaner_ShouldRemoveMetricsForTenantsNotBelongingAnymoreToTheShar
 	require.NoError(t, cleaner.runCleanupWithErr(ctx))
 
 	assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-		# HELP cortex_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
-		# TYPE cortex_bucket_blocks_count gauge
-		cortex_bucket_blocks_count{user="user-1"} 3
-		# HELP cortex_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
-		# TYPE cortex_bucket_blocks_marked_for_deletion_count gauge
-		cortex_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
-		# HELP cortex_bucket_blocks_partials_count Total number of partial blocks.
-		# TYPE cortex_bucket_blocks_partials_count gauge
-		cortex_bucket_blocks_partials_count{user="user-1"} 0
+		# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
+		# TYPE pyroscope_bucket_blocks_count gauge
+		pyroscope_bucket_blocks_count{user="user-1"} 3
+		# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
+		# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
+		pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
+		# HELP pyroscope_bucket_blocks_partials_count Total number of partial blocks.
+		# TYPE pyroscope_bucket_blocks_partials_count gauge
+		pyroscope_bucket_blocks_partials_count{user="user-1"} 0
 	`),
-		"cortex_bucket_blocks_count",
-		"cortex_bucket_blocks_marked_for_deletion_count",
-		"cortex_bucket_blocks_partials_count",
+		"pyroscope_bucket_blocks_count",
+		"pyroscope_bucket_blocks_marked_for_deletion_count",
+		"pyroscope_bucket_blocks_partials_count",
 	))
 }
 
@@ -443,10 +443,10 @@ func TestBlocksCleaner_ShouldNotCleanupUserThatDoesntBelongToShardAnymore(t *tes
 
 	// But there are no metrics for any user, because we did not in fact clean them.
 	assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-		# HELP cortex_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
-		# TYPE cortex_bucket_blocks_count gauge
+		# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
+		# TYPE pyroscope_bucket_blocks_count gauge
 	`),
-		"cortex_bucket_blocks_count",
+		"pyroscope_bucket_blocks_count",
 	))
 
 	// Running cleanUsers again will see that users are no longer owned.
@@ -557,22 +557,22 @@ func TestBlocksCleaner_ShouldRemoveBlocksOutsideRetentionPeriod(t *testing.T) {
 		assertBlockExists("user-2", block4, true)
 
 		assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-			# HELP cortex_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
-			# TYPE cortex_bucket_blocks_count gauge
-			cortex_bucket_blocks_count{user="user-1"} 2
-			cortex_bucket_blocks_count{user="user-2"} 2
-			# HELP cortex_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
-			# TYPE cortex_bucket_blocks_marked_for_deletion_count gauge
-			cortex_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
-			cortex_bucket_blocks_marked_for_deletion_count{user="user-2"} 0
-			# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-			# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-			cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-			cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
+			# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
+			# TYPE pyroscope_bucket_blocks_count gauge
+			pyroscope_bucket_blocks_count{user="user-1"} 2
+			pyroscope_bucket_blocks_count{user="user-2"} 2
+			# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
+			# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
+			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
+			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-2"} 0
+			# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+			# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+			pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+			pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
 			`),
-			"cortex_bucket_blocks_count",
-			"cortex_bucket_blocks_marked_for_deletion_count",
-			"cortex_compactor_blocks_marked_for_deletion_total",
+			"pyroscope_bucket_blocks_count",
+			"pyroscope_bucket_blocks_marked_for_deletion_count",
+			"pyroscope_compactor_blocks_marked_for_deletion_total",
 		))
 	}
 
@@ -599,22 +599,22 @@ func TestBlocksCleaner_ShouldRemoveBlocksOutsideRetentionPeriod(t *testing.T) {
 		assertBlockExists("user-2", block4, true)
 
 		assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-			# HELP cortex_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
-			# TYPE cortex_bucket_blocks_count gauge
-			cortex_bucket_blocks_count{user="user-1"} 2
-			cortex_bucket_blocks_count{user="user-2"} 2
-			# HELP cortex_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
-			# TYPE cortex_bucket_blocks_marked_for_deletion_count gauge
-			cortex_bucket_blocks_marked_for_deletion_count{user="user-1"} 1
-			cortex_bucket_blocks_marked_for_deletion_count{user="user-2"} 0
-			# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-			# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-			cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-			cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 1
+			# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
+			# TYPE pyroscope_bucket_blocks_count gauge
+			pyroscope_bucket_blocks_count{user="user-1"} 2
+			pyroscope_bucket_blocks_count{user="user-2"} 2
+			# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
+			# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
+			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 1
+			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-2"} 0
+			# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+			# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+			pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+			pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 1
 			`),
-			"cortex_bucket_blocks_count",
-			"cortex_bucket_blocks_marked_for_deletion_count",
-			"cortex_compactor_blocks_marked_for_deletion_total",
+			"pyroscope_bucket_blocks_count",
+			"pyroscope_bucket_blocks_marked_for_deletion_count",
+			"pyroscope_compactor_blocks_marked_for_deletion_total",
 		))
 	}
 
@@ -638,22 +638,22 @@ func TestBlocksCleaner_ShouldRemoveBlocksOutsideRetentionPeriod(t *testing.T) {
 		assertBlockExists("user-2", block4, true)
 
 		assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-			# HELP cortex_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
-			# TYPE cortex_bucket_blocks_count gauge
-			cortex_bucket_blocks_count{user="user-1"} 1
-			cortex_bucket_blocks_count{user="user-2"} 2
-			# HELP cortex_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
-			# TYPE cortex_bucket_blocks_marked_for_deletion_count gauge
-			cortex_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
-			cortex_bucket_blocks_marked_for_deletion_count{user="user-2"} 0
-			# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-			# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-			cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-			cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 1
+			# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
+			# TYPE pyroscope_bucket_blocks_count gauge
+			pyroscope_bucket_blocks_count{user="user-1"} 1
+			pyroscope_bucket_blocks_count{user="user-2"} 2
+			# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
+			# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
+			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
+			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-2"} 0
+			# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+			# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+			pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+			pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 1
 			`),
-			"cortex_bucket_blocks_count",
-			"cortex_bucket_blocks_marked_for_deletion_count",
-			"cortex_compactor_blocks_marked_for_deletion_total",
+			"pyroscope_bucket_blocks_count",
+			"pyroscope_bucket_blocks_marked_for_deletion_count",
+			"pyroscope_compactor_blocks_marked_for_deletion_total",
 		))
 	}
 
@@ -668,22 +668,22 @@ func TestBlocksCleaner_ShouldRemoveBlocksOutsideRetentionPeriod(t *testing.T) {
 		assertBlockExists("user-2", block4, false)
 
 		assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-			# HELP cortex_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
-			# TYPE cortex_bucket_blocks_count gauge
-			cortex_bucket_blocks_count{user="user-1"} 1
-			cortex_bucket_blocks_count{user="user-2"} 0
-			# HELP cortex_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
-			# TYPE cortex_bucket_blocks_marked_for_deletion_count gauge
-			cortex_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
-			cortex_bucket_blocks_marked_for_deletion_count{user="user-2"} 0
-			# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-			# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-			cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-			cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 3
+			# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
+			# TYPE pyroscope_bucket_blocks_count gauge
+			pyroscope_bucket_blocks_count{user="user-1"} 1
+			pyroscope_bucket_blocks_count{user="user-2"} 0
+			# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
+			# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
+			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
+			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-2"} 0
+			# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+			# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+			pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+			pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 3
 			`),
-			"cortex_bucket_blocks_count",
-			"cortex_bucket_blocks_marked_for_deletion_count",
-			"cortex_compactor_blocks_marked_for_deletion_total",
+			"pyroscope_bucket_blocks_count",
+			"pyroscope_bucket_blocks_marked_for_deletion_count",
+			"pyroscope_compactor_blocks_marked_for_deletion_total",
 		))
 	}
 }
@@ -810,20 +810,20 @@ func TestBlocksCleaner_ShouldRemovePartialBlocksOutsideDelayPeriod(t *testing.T)
 	checkBlock(t, "user-1", bucketClient, block2, true, false)
 
 	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-			# HELP cortex_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
-			# TYPE cortex_bucket_blocks_count gauge
-			cortex_bucket_blocks_count{user="user-1"} 1
-			# HELP cortex_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
-			# TYPE cortex_bucket_blocks_marked_for_deletion_count gauge
-			cortex_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
-			# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-			# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-			cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 1
-			cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
+			# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
+			# TYPE pyroscope_bucket_blocks_count gauge
+			pyroscope_bucket_blocks_count{user="user-1"} 1
+			# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
+			# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
+			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
+			# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+			# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+			pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 1
+			pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
 			`),
-		"cortex_bucket_blocks_count",
-		"cortex_bucket_blocks_marked_for_deletion_count",
-		"cortex_compactor_blocks_marked_for_deletion_total",
+		"pyroscope_bucket_blocks_count",
+		"pyroscope_bucket_blocks_marked_for_deletion_count",
+		"pyroscope_compactor_blocks_marked_for_deletion_total",
 	))
 }
 
@@ -885,26 +885,26 @@ func TestBlocksCleaner_ShouldNotRemovePartialBlocksInsideDelayPeriod(t *testing.
 	checkBlock(t, "user-1", bucketClient, block1, false, false) // No change for user-1
 	checkBlock(t, "user-2", bucketClient, block2, true, false)  // Block with corrupted meta is NOT marked for deletion.
 
-	// The cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} counter should be zero since for user-1
+	// The pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} counter should be zero since for user-1
 	// the time since modification is shorter than the delay, and for user-2, the metadata is corrupted but the file
 	// is still present in the bucket so the block is not partial
 	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-			# HELP cortex_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
-			# TYPE cortex_bucket_blocks_count gauge
-			cortex_bucket_blocks_count{user="user-1"} 0
-			cortex_bucket_blocks_count{user="user-2"} 0
-			# HELP cortex_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
-			# TYPE cortex_bucket_blocks_marked_for_deletion_count gauge
-			cortex_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
-			cortex_bucket_blocks_marked_for_deletion_count{user="user-2"} 0
-			# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-			# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-			cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-			cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
+			# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
+			# TYPE pyroscope_bucket_blocks_count gauge
+			pyroscope_bucket_blocks_count{user="user-1"} 0
+			pyroscope_bucket_blocks_count{user="user-2"} 0
+			# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
+			# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
+			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
+			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-2"} 0
+			# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+			# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+			pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+			pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
 			`),
-		"cortex_bucket_blocks_count",
-		"cortex_bucket_blocks_marked_for_deletion_count",
-		"cortex_compactor_blocks_marked_for_deletion_total",
+		"pyroscope_bucket_blocks_count",
+		"pyroscope_bucket_blocks_marked_for_deletion_count",
+		"pyroscope_compactor_blocks_marked_for_deletion_total",
 	))
 }
 
@@ -950,20 +950,20 @@ func TestBlocksCleaner_ShouldNotRemovePartialBlocksIfConfiguredDelayIsInvalid(t 
 	assert.Contains(t, logs.String(), "partial blocks deletion has been disabled for tenant because the delay has been set lower than the minimum value allowed")
 
 	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-			# HELP cortex_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
-			# TYPE cortex_bucket_blocks_count gauge
-			cortex_bucket_blocks_count{user="user-1"} 0
-			# HELP cortex_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
-			# TYPE cortex_bucket_blocks_marked_for_deletion_count gauge
-			cortex_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
-			# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-			# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-			cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-			cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
+			# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
+			# TYPE pyroscope_bucket_blocks_count gauge
+			pyroscope_bucket_blocks_count{user="user-1"} 0
+			# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
+			# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
+			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
+			# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+			# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+			pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+			pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
 			`),
-		"cortex_bucket_blocks_count",
-		"cortex_bucket_blocks_marked_for_deletion_count",
-		"cortex_compactor_blocks_marked_for_deletion_total",
+		"pyroscope_bucket_blocks_count",
+		"pyroscope_bucket_blocks_marked_for_deletion_count",
+		"pyroscope_compactor_blocks_marked_for_deletion_total",
 	))
 }
 

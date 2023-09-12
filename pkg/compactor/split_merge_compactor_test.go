@@ -714,10 +714,10 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 			// Wait until the first compaction run completed.
 			test.Poll(t, 15*time.Second, nil, func() interface{} {
 				return testutil.GatherAndCompare(reg, strings.NewReader(`
-					# HELP cortex_compactor_runs_completed_total Total number of compaction runs successfully completed.
-					# TYPE cortex_compactor_runs_completed_total counter
-					cortex_compactor_runs_completed_total 1
-				`), "cortex_compactor_runs_completed_total")
+					# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
+					# TYPE pyroscope_compactor_runs_completed_total counter
+					pyroscope_compactor_runs_completed_total 1
+				`), "pyroscope_compactor_runs_completed_total")
 			})
 
 			// List back any (non deleted) block from the storage.
@@ -805,10 +805,10 @@ func TestMultitenantCompactor_ShouldGuaranteeSeriesShardingConsistencyOverTheTim
 	// Wait until the first compaction run completed.
 	test.Poll(t, 15*time.Second, nil, func() interface{} {
 		return testutil.GatherAndCompare(reg, strings.NewReader(`
-					# HELP cortex_compactor_runs_completed_total Total number of compaction runs successfully completed.
-					# TYPE cortex_compactor_runs_completed_total counter
-					cortex_compactor_runs_completed_total 1
-				`), "cortex_compactor_runs_completed_total")
+					# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
+					# TYPE pyroscope_compactor_runs_completed_total counter
+					pyroscope_compactor_runs_completed_total 1
+				`), "pyroscope_compactor_runs_completed_total")
 	})
 
 	// List back any (non deleted) block from the storage.

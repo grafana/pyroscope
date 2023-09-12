@@ -45,7 +45,7 @@ const (
 )
 
 const (
-	blocksMarkedForDeletionName = "cortex_compactor_blocks_marked_for_deletion_total"
+	blocksMarkedForDeletionName = "gitcompactor_blocks_marked_for_deletion_total"
 	blocksMarkedForDeletionHelp = "Total number of blocks marked for deletion in compactor."
 )
 
@@ -315,45 +315,45 @@ func newMultitenantCompactor(
 		blocksCompactorFactory: blocksCompactorFactory,
 
 		compactionRunsStarted: promauto.With(registerer).NewCounter(prometheus.CounterOpts{
-			Name: "cortex_compactor_runs_started_total",
+			Name: "pyroscope_compactor_runs_started_total",
 			Help: "Total number of compaction runs started.",
 		}),
 		compactionRunsCompleted: promauto.With(registerer).NewCounter(prometheus.CounterOpts{
-			Name: "cortex_compactor_runs_completed_total",
+			Name: "pyroscope_compactor_runs_completed_total",
 			Help: "Total number of compaction runs successfully completed.",
 		}),
 		compactionRunsErred: promauto.With(registerer).NewCounter(prometheus.CounterOpts{
-			Name:        "cortex_compactor_runs_failed_total",
+			Name:        "pyroscope_compactor_runs_failed_total",
 			Help:        "Total number of compaction runs failed.",
 			ConstLabels: map[string]string{"reason": "error"},
 		}),
 		compactionRunsShutdown: promauto.With(registerer).NewCounter(prometheus.CounterOpts{
-			Name:        "cortex_compactor_runs_failed_total",
+			Name:        "pyroscope_compactor_runs_failed_total",
 			Help:        "Total number of compaction runs failed.",
 			ConstLabels: map[string]string{"reason": "shutdown"},
 		}),
 		compactionRunsLastSuccess: promauto.With(registerer).NewGauge(prometheus.GaugeOpts{
-			Name: "cortex_compactor_last_successful_run_timestamp_seconds",
+			Name: "pyroscope_compactor_last_successful_run_timestamp_seconds",
 			Help: "Unix timestamp of the last successful compaction run.",
 		}),
 		compactionRunDiscoveredTenants: promauto.With(registerer).NewGauge(prometheus.GaugeOpts{
-			Name: "cortex_compactor_tenants_discovered",
+			Name: "pyroscope_compactor_tenants_discovered",
 			Help: "Number of tenants discovered during the current compaction run. Reset to 0 when compactor is idle.",
 		}),
 		compactionRunSkippedTenants: promauto.With(registerer).NewGauge(prometheus.GaugeOpts{
-			Name: "cortex_compactor_tenants_skipped",
+			Name: "pyroscope_compactor_tenants_skipped",
 			Help: "Number of tenants skipped during the current compaction run. Reset to 0 when compactor is idle.",
 		}),
 		compactionRunSucceededTenants: promauto.With(registerer).NewGauge(prometheus.GaugeOpts{
-			Name: "cortex_compactor_tenants_processing_succeeded",
+			Name: "pyroscope_compactor_tenants_processing_succeeded",
 			Help: "Number of tenants successfully processed during the current compaction run. Reset to 0 when compactor is idle.",
 		}),
 		compactionRunFailedTenants: promauto.With(registerer).NewGauge(prometheus.GaugeOpts{
-			Name: "cortex_compactor_tenants_processing_failed",
+			Name: "pyroscope_compactor_tenants_processing_failed",
 			Help: "Number of tenants failed processing during the current compaction run. Reset to 0 when compactor is idle.",
 		}),
 		compactionRunInterval: promauto.With(registerer).NewGauge(prometheus.GaugeOpts{
-			Name: "cortex_compactor_compaction_interval_seconds",
+			Name: "pyroscope_compactor_compaction_interval_seconds",
 			Help: "The configured interval on which compaction is run in seconds. Useful when compared to the last successful run metric to accurately detect multiple failed compaction runs.",
 		}),
 		blocksMarkedForDeletion: promauto.With(registerer).NewCounter(prometheus.CounterOpts{
@@ -362,21 +362,21 @@ func newMultitenantCompactor(
 			ConstLabels: prometheus.Labels{"reason": "compaction"},
 		}),
 		blockUploadBlocks: promauto.With(registerer).NewGaugeVec(prometheus.GaugeOpts{
-			Name: "cortex_block_upload_api_blocks_total",
+			Name: "pyroscope_block_upload_api_blocks_total",
 			Help: "Total number of blocks successfully uploaded and validated using the block upload API.",
 		}, []string{"user"}),
 		blockUploadBytes: promauto.With(registerer).NewGaugeVec(prometheus.GaugeOpts{
-			Name: "cortex_block_upload_api_bytes_total",
+			Name: "pyroscope_block_upload_api_bytes_total",
 			Help: "Total number of bytes from successfully uploaded and validated blocks using block upload API.",
 		}, []string{"user"}),
 		blockUploadFiles: promauto.With(registerer).NewGaugeVec(prometheus.GaugeOpts{
-			Name: "cortex_block_upload_api_files_total",
+			Name: "pyroscope_block_upload_api_files_total",
 			Help: "Total number of files from successfully uploaded and validated blocks using block upload API.",
 		}, []string{"user"}),
 	}
 
 	promauto.With(registerer).NewGaugeFunc(prometheus.GaugeOpts{
-		Name: "cortex_block_upload_validations_in_progress",
+		Name: "pyroscope_block_upload_validations_in_progress",
 		Help: "Number of block upload validations currently running.",
 	}, func() float64 {
 		return float64(c.blockUploadValidations.Load())
@@ -489,7 +489,7 @@ func (c *MultitenantCompactor) starting(ctx context.Context) error {
 }
 
 func newRingAndLifecycler(cfg RingConfig, logger log.Logger, reg prometheus.Registerer) (*ring.Ring, *ring.BasicLifecycler, error) {
-	reg = prometheus.WrapRegistererWithPrefix("cortex_", reg)
+	reg = prometheus.WrapRegistererWithPrefix("pyroscope_", reg)
 	kvStore, err := kv.NewClient(cfg.Common.KVStore, ring.GetCodec(), kv.RegistererWithKVName(reg, "compactor-lifecycler"), logger)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to initialize compactors' KV store")

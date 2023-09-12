@@ -25,68 +25,68 @@ func TestSyncerMetrics(t *testing.T) {
 	// total base = 111110
 
 	err := testutil.GatherAndCompare(reg, bytes.NewBufferString(`
-			# HELP cortex_compactor_meta_syncs_total Total blocks metadata synchronization attempts.
-			# TYPE cortex_compactor_meta_syncs_total counter
-			cortex_compactor_meta_syncs_total 111110
+			# HELP pyroscope_compactor_meta_syncs_total Total blocks metadata synchronization attempts.
+			# TYPE pyroscope_compactor_meta_syncs_total counter
+			pyroscope_compactor_meta_syncs_total 111110
 
-			# HELP cortex_compactor_meta_sync_failures_total Total blocks metadata synchronization failures.
-			# TYPE cortex_compactor_meta_sync_failures_total counter
-			cortex_compactor_meta_sync_failures_total 222220
+			# HELP pyroscope_compactor_meta_sync_failures_total Total blocks metadata synchronization failures.
+			# TYPE pyroscope_compactor_meta_sync_failures_total counter
+			pyroscope_compactor_meta_sync_failures_total 222220
 
-			# HELP cortex_compactor_meta_sync_duration_seconds Duration of the blocks metadata synchronization in seconds.
-			# TYPE cortex_compactor_meta_sync_duration_seconds histogram
+			# HELP pyroscope_compactor_meta_sync_duration_seconds Duration of the blocks metadata synchronization in seconds.
+			# TYPE pyroscope_compactor_meta_sync_duration_seconds histogram
 			# Observed values: 3.7035, 22.9629, 6.6666 (seconds)
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="0.01"} 0
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="0.1"} 0
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="0.3"} 0
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="0.6"} 0
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="1"} 0
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="3"} 0
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="6"} 1
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="9"} 2
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="20"} 2
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="30"} 3
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="60"} 3
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="90"} 3
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="120"} 3
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="240"} 3
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="360"} 3
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="720"} 3
-			cortex_compactor_meta_sync_duration_seconds_bucket{le="+Inf"} 3
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="0.01"} 0
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="0.1"} 0
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="0.3"} 0
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="0.6"} 0
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="1"} 0
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="3"} 0
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="6"} 1
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="9"} 2
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="20"} 2
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="30"} 3
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="60"} 3
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="90"} 3
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="120"} 3
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="240"} 3
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="360"} 3
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="720"} 3
+			pyroscope_compactor_meta_sync_duration_seconds_bucket{le="+Inf"} 3
 			# rounding error
-			cortex_compactor_meta_sync_duration_seconds_sum 33.333000000000006
-			cortex_compactor_meta_sync_duration_seconds_count 3
+			pyroscope_compactor_meta_sync_duration_seconds_sum 33.333000000000006
+			pyroscope_compactor_meta_sync_duration_seconds_count 3
 
-			# HELP cortex_compactor_garbage_collection_total Total number of garbage collection operations.
-			# TYPE cortex_compactor_garbage_collection_total counter
-			cortex_compactor_garbage_collection_total 555550
+			# HELP pyroscope_compactor_garbage_collection_total Total number of garbage collection operations.
+			# TYPE pyroscope_compactor_garbage_collection_total counter
+			pyroscope_compactor_garbage_collection_total 555550
 
-			# HELP cortex_compactor_garbage_collection_failures_total Total number of failed garbage collection operations.
-			# TYPE cortex_compactor_garbage_collection_failures_total counter
-			cortex_compactor_garbage_collection_failures_total 666660
+			# HELP pyroscope_compactor_garbage_collection_failures_total Total number of failed garbage collection operations.
+			# TYPE pyroscope_compactor_garbage_collection_failures_total counter
+			pyroscope_compactor_garbage_collection_failures_total 666660
 
-			# HELP cortex_compactor_garbage_collection_duration_seconds Time it took to perform garbage collection iteration.
-			# TYPE cortex_compactor_garbage_collection_duration_seconds histogram
+			# HELP pyroscope_compactor_garbage_collection_duration_seconds Time it took to perform garbage collection iteration.
+			# TYPE pyroscope_compactor_garbage_collection_duration_seconds histogram
 			# Observed values: 8.6415, 53.5801, 15.5554
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="0.01"} 0
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="0.1"} 0
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="0.3"} 0
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="0.6"} 0
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="1"} 0
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="3"} 0
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="6"} 0
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="9"} 1
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="20"} 2
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="30"} 2
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="60"} 3
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="90"} 3
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="120"} 3
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="240"} 3
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="360"} 3
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="720"} 3
-			cortex_compactor_garbage_collection_duration_seconds_bucket{le="+Inf"} 3
-			cortex_compactor_garbage_collection_duration_seconds_sum 77.777
-			cortex_compactor_garbage_collection_duration_seconds_count 3
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="0.01"} 0
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="0.1"} 0
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="0.3"} 0
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="0.6"} 0
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="1"} 0
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="3"} 0
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="6"} 0
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="9"} 1
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="20"} 2
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="30"} 2
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="60"} 3
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="90"} 3
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="120"} 3
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="240"} 3
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="360"} 3
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="720"} 3
+			pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="+Inf"} 3
+			pyroscope_compactor_garbage_collection_duration_seconds_sum 77.777
+			pyroscope_compactor_garbage_collection_duration_seconds_count 3
 	`))
 	require.NoError(t, err)
 }
