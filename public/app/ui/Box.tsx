@@ -3,6 +3,7 @@ import classNames from 'classnames/bind';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons/faChevronDown';
 import styles from './Box.module.scss';
+import { LoadingOverlay } from './LoadingOverlay';
 
 const cx = classNames.bind(styles);
 /**
@@ -16,15 +17,16 @@ export interface BoxProps {
 
   // Additional classnames
   className?: string;
+  isLoading?: boolean;
 }
 export default function Box(props: BoxProps) {
-  const { children, noPadding, className = '' } = props;
+  const { children, noPadding, className = '', isLoading = false } = props;
 
   const paddingClass = noPadding ? '' : styles.padding;
 
   return (
     <div className={`${styles.box} ${paddingClass} ${className}`}>
-      {children}
+      <LoadingOverlay active={isLoading}>{children}</LoadingOverlay>
     </div>
   );
 }
@@ -33,9 +35,10 @@ export interface CollapseBoxProps {
   /** must be non empty */
   title: string;
   children: React.ReactNode;
+  isLoading?: boolean;
 }
 
-export function CollapseBox({ title, children }: CollapseBoxProps) {
+export function CollapseBox({ title, children, isLoading }: CollapseBoxProps) {
   const [collapsed, toggleCollapse] = useState(false);
 
   return (
@@ -58,6 +61,7 @@ export function CollapseBox({ title, children }: CollapseBoxProps) {
         className={cx({
           [styles.collapsedContent]: collapsed,
         })}
+        isLoading={isLoading}
       >
         {children}
       </Box>

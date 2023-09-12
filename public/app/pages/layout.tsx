@@ -34,9 +34,11 @@ export function Panel({
   return (
     <Box className={className}>
       <LoadingOverlay active={isLoading} spinnerPosition={spinnerPosition}>
-        <div className={styles.panelTitleWrapper}>
-          {title} {headerActions}
-        </div>
+        {(title || headerActions) && (
+          <div className={styles.panelTitleWrapper}>
+            {title} {headerActions}
+          </div>
+        )}
         <div>{children}</div>
       </LoadingOverlay>
     </Box>

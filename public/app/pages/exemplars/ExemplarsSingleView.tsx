@@ -42,7 +42,7 @@ import { HeatmapSelectionIcon, HeatmapNoSelectionIcon } from './HeatmapIcons';
 
 import styles from './ExemplarsSingleView.module.scss';
 import { filterNonCPU } from './filterNonCPU';
-import { PageContentWrapper } from '../layout';
+import { PageContentWrapper, Panel } from '@pyroscope/pages/layout';
 
 function ExemplarsSingleView() {
   const [tabIndex, setTabIndex] = useState(0);
@@ -211,27 +211,22 @@ interface TabProps {
 
 function SingleTab({ colorMode, type, selectionProfile }: TabProps) {
   return (
-    <Box>
-      <LoadingOverlay
-        active={isLoadingOrReloading([type])}
-        spinnerPosition="baseline"
-      >
-        <FlamegraphRenderer
-          showCredit={false}
-          profile={selectionProfile}
-          colorMode={colorMode}
-          ExportData={
-            <ExportData
-              flamebearer={selectionProfile}
-              exportPNG
-              exportJSON
-              exportPprof
-              exportHTML
-            />
-          }
-        />
-      </LoadingOverlay>
-    </Box>
+    <Panel isLoading={isLoadingOrReloading([type])}>
+      <FlamegraphRenderer
+        showCredit={false}
+        profile={selectionProfile}
+        colorMode={colorMode}
+        ExportData={
+          <ExportData
+            flamebearer={selectionProfile}
+            exportPNG
+            exportJSON
+            exportPprof
+            exportHTML
+          />
+        }
+      />
+    </Panel>
   );
 }
 
@@ -243,11 +238,10 @@ function ComparisonTab({
 }: TabProps & { differenceProfile: Profile }) {
   return (
     <div className={styles.comparisonTab}>
-      <Box className={styles.comparisonTabHalf}>
-        <LoadingOverlay
-          active={isLoadingOrReloading([type])}
-          spinnerPosition="baseline"
-        >
+      <Panel
+        className={styles.comparisonTabHalf}
+        isLoading={isLoadingOrReloading([type])}
+        title={
           <ChartTitle
             titleKey="selection_included"
             icon={<HeatmapSelectionIcon />}
@@ -265,28 +259,28 @@ function ComparisonTab({
               </Tooltip>
             }
           />
-          <FlamegraphRenderer
-            showCredit={false}
-            profile={selectionProfile}
-            colorMode={colorMode}
-            panesOrientation="vertical"
-            ExportData={
-              <ExportData
-                flamebearer={selectionProfile}
-                exportPNG
-                exportJSON
-                exportPprof
-                exportHTML
-              />
-            }
-          />
-        </LoadingOverlay>
-      </Box>
-      <Box className={styles.comparisonTabHalf}>
-        <LoadingOverlay
-          active={isLoadingOrReloading([type])}
-          spinnerPosition="baseline"
-        >
+        }
+      >
+        <FlamegraphRenderer
+          showCredit={false}
+          profile={selectionProfile}
+          colorMode={colorMode}
+          panesOrientation="vertical"
+          ExportData={
+            <ExportData
+              flamebearer={selectionProfile}
+              exportPNG
+              exportJSON
+              exportPprof
+              exportHTML
+            />
+          }
+        />
+      </Panel>
+      <Panel
+        className={styles.comparisonTabHalf}
+        isLoading={isLoadingOrReloading([type])}
+        title={
           <ChartTitle
             titleKey="selection_excluded"
             icon={<HeatmapNoSelectionIcon />}
@@ -304,23 +298,24 @@ function ComparisonTab({
               </Tooltip>
             }
           />
-          <FlamegraphRenderer
-            showCredit={false}
-            profile={differenceProfile}
-            colorMode={colorMode}
-            panesOrientation="vertical"
-            ExportData={
-              <ExportData
-                flamebearer={differenceProfile}
-                exportPNG
-                exportJSON
-                exportPprof
-                exportHTML
-              />
-            }
-          />
-        </LoadingOverlay>
-      </Box>
+        }
+      >
+        <FlamegraphRenderer
+          showCredit={false}
+          profile={differenceProfile}
+          colorMode={colorMode}
+          panesOrientation="vertical"
+          ExportData={
+            <ExportData
+              flamebearer={differenceProfile}
+              exportPNG
+              exportJSON
+              exportPprof
+              exportHTML
+            />
+          }
+        />
+      </Panel>
     </div>
   );
 }

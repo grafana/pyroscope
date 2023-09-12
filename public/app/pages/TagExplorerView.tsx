@@ -382,6 +382,7 @@ function TagExplorerView() {
           </div>
         </Box>
         <CollapseBox
+          isLoading={dataLoading}
           title={appName
             .map((a) => `${a} Tag Breakdown`)
             .unwrapOr('Tag Breakdown')}
@@ -408,28 +409,26 @@ function TagExplorerView() {
             />
           </div>
         </CollapseBox>
-        <Box>
+        <Box isLoading={dataLoading}>
           <div className={styles.flamegraphWrapper}>
-            <LoadingOverlay active={dataLoading}>
-              <FlamegraphRenderer
-                showCredit={false}
-                profile={activeTagProfile}
-                colorMode={colorMode}
-                ExportData={
-                  activeTagProfile && (
-                    <ExportData
-                      flamebearer={activeTagProfile}
-                      exportPNG
-                      exportJSON
-                      exportPprof
-                      exportHTML
-                      exportFlamegraphDotCom
-                      exportFlamegraphDotComFn={exportFlamegraphDotComFn}
-                    />
-                  )
-                }
-              />
-            </LoadingOverlay>
+            <FlamegraphRenderer
+              showCredit={false}
+              profile={activeTagProfile}
+              colorMode={colorMode}
+              ExportData={
+                activeTagProfile && (
+                  <ExportData
+                    flamebearer={activeTagProfile}
+                    exportPNG
+                    exportJSON
+                    exportPprof
+                    exportHTML
+                    exportFlamegraphDotCom
+                    exportFlamegraphDotComFn={exportFlamegraphDotComFn}
+                  />
+                )
+              }
+            />
           </div>
         </Box>
       </div>
