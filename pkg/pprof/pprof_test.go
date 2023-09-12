@@ -1024,14 +1024,4 @@ func Test_GroupSamplesWithout_Go_CPU_profile(t *testing.T) {
 
 	assert.Equal(t, groups[2].Labels, []*profilev1.Label{{Key: 22, Str: 27}, {Key: 18, Str: 19}})
 	assert.Equal(t, len(groups[2].Samples), 150)
-
-	// TODO: Remove
-	//	e := NewSampleExporter(p.Profile)
-	//	for i, g := range groups {
-	//		n := e.ExportSamples(g.Samples)
-	//		x := Profile{Profile: n, buf: bytes.NewBuffer(nil)}
-	//		var buf bytes.Buffer
-	//		x.WriteTo(&buf)
-	//		os.WriteFile("testdata/out-"+strconv.Itoa(i)+".pprof", buf.Bytes(), 0o777)
-	//	}
 }
