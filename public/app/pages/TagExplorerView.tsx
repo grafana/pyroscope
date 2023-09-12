@@ -339,7 +339,7 @@ function TagExplorerView() {
             dispatch(setQuery(query));
           }}
         />
-        <Box>
+        <Box isLoading={dataLoading}>
           <ExploreHeader
             appName={appName}
             tags={tags}
@@ -350,35 +350,31 @@ function TagExplorerView() {
             handleGroupByTagValueChange={handleGroupByTagValueChange}
           />
           <div id={TIMELINE_WRAPPER_ID} className={styles.timelineWrapper}>
-            <LoadingOverlay active={dataLoading}>
-              <TimelineChartWrapper
-                selectionType="double"
-                mode="multiple"
-                timezone={offset === 0 ? 'utc' : 'browser'}
-                data-testid="timeline-explore-page"
-                id="timeline-chart-explore-page"
-                annotations={annotations}
-                timelineGroups={groups}
-                // to not "dim" timelines when "All" option is selected
-                activeGroup={
-                  groupByTagValue !== ALL_TAGS ? groupByTagValue : ''
-                }
-                showTagsLegend={groups.length > 1}
-                handleGroupByTagValueChange={handleGroupByTagValueChange}
-                onSelect={(from, until) =>
-                  dispatch(setDateRange({ from, until }))
-                }
-                height="125px"
-                format="lines"
-                onHoverDisplayTooltip={(data) => (
-                  <ExploreTooltip
-                    values={data.values}
-                    timeLabel={data.timeLabel}
-                    profile={activeTagProfile}
-                  />
-                )}
-              />
-            </LoadingOverlay>
+            <TimelineChartWrapper
+              selectionType="double"
+              mode="multiple"
+              timezone={offset === 0 ? 'utc' : 'browser'}
+              data-testid="timeline-explore-page"
+              id="timeline-chart-explore-page"
+              annotations={annotations}
+              timelineGroups={groups}
+              // to not "dim" timelines when "All" option is selected
+              activeGroup={groupByTagValue !== ALL_TAGS ? groupByTagValue : ''}
+              showTagsLegend={groups.length > 1}
+              handleGroupByTagValueChange={handleGroupByTagValueChange}
+              onSelect={(from, until) =>
+                dispatch(setDateRange({ from, until }))
+              }
+              height="125px"
+              format="lines"
+              onHoverDisplayTooltip={(data) => (
+                <ExploreTooltip
+                  values={data.values}
+                  timeLabel={data.timeLabel}
+                  profile={activeTagProfile}
+                />
+              )}
+            />
           </div>
         </Box>
         <CollapseBox
