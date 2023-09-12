@@ -52,6 +52,24 @@ func DownloadMeta(ctx context.Context, logger log.Logger, bkt objstore.Bucket, i
 	return m, nil
 }
 
+// Download downloads directory that is meant to be block directory. If a block file exists locally we won't download it. However we always re-download the meta file.
+func Download(ctx context.Context, logger log.Logger, bucket objstore.Bucket, id ulid.ULID, dst string, options ...objstore.DownloadOption) error {
+	if err := os.MkdirAll(dst, 0o750); err != nil {
+		return errors.Wrap(err, "create dir")
+	}
+
+	if err := objstore.DownloadFile(ctx, logger, bucket, path.Join(id.String(), MetaFilename), filepath.Join(dst, MetaFilename)); err != nil {
+		return err
+	}
+
+	ignoredPaths := []string{MetaFilename}
+	if err := objstore.DownloadDir(ctx, logger, bucket, id.String(), id.String(), dst, append(options, objstore.WithDownloadIgnoredPaths(ignoredPaths...))...); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func IsBlockDir(path string) (id ulid.ULID, ok bool) {
 	id, err := ulid.Parse(filepath.Base(path))
 	return id, err == nil
@@ -231,6 +249,38 @@ func deleteDirRec(ctx context.Context, logger log.Logger, bkt objstore.Bucket, d
 		level.Debug(logger).Log("msg", "deleted file", "file", name, "bucket", bkt.Name())
 		return nil
 	})
+}
+
+// MarkForNoCompact creates a file which marks block to be not compacted.
+func MarkForNoCompact(ctx context.Context, logger log.Logger, bkt objstore.Bucket, id ulid.ULID, reason NoCompactReason, details string, markedForNoCompact prometheus.Counter) error {
+	m := path.Join(id.String(), NoCompactMarkFilename)
+	noCompactMarkExists, err := bkt.Exists(ctx, m)
+	if err != nil {
+		return errors.Wrapf(err, "check exists %s in bucket", m)
+	}
+	if noCompactMarkExists {
+		level.Warn(logger).Log("msg", "requested to mark for no compaction, but file already exists; this should not happen; investigate", "err", errors.Errorf("file %s already exists in bucket", m))
+		return nil
+	}
+
+	noCompactMark, err := json.Marshal(NoCompactMark{
+		ID:      id,
+		Version: NoCompactMarkVersion1,
+
+		NoCompactTime: time.Now().Unix(),
+		Reason:        reason,
+		Details:       details,
+	})
+	if err != nil {
+		return errors.Wrap(err, "json encode no compact mark")
+	}
+
+	if err := bkt.Upload(ctx, m, bytes.NewBuffer(noCompactMark)); err != nil {
+		return errors.Wrapf(err, "upload file %s to bucket", m)
+	}
+	markedForNoCompact.Inc()
+	level.Info(logger).Log("msg", "block has been marked for no compaction", "block", id)
+	return nil
 }
 
 // HashBlockID returns a 32-bit hash of the block ID useful for

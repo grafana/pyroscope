@@ -1,6 +1,8 @@
 package parquet
 
 import (
+	"context"
+
 	phlareobjstore "github.com/grafana/pyroscope/pkg/objstore"
 )
 
@@ -11,6 +13,7 @@ type optimizedReaderAt struct {
 	// footerSize uint32
 }
 
+// NewOptimizedReader returns a reader that optimizes the reading of the parquet file.
 func NewOptimizedReader(r phlareobjstore.ReaderAtCloser) phlareobjstore.ReaderAtCloser {
 	return &optimizedReaderAt{
 		ReaderAtCloser: r,
@@ -50,6 +53,11 @@ func (r *optimizedReaderAt) ReadAt(p []byte, off int64) (int, error) {
 	return r.ReaderAtCloser.ReadAt(p, off)
 }
 
-func (r *optimizedReaderAt) Close() error {
-	return r.ReaderAtCloser.Close()
+// OptimizedBucketReaderAt uses a bucket reader and wraps the optimized reader. Must not be used with non-parquet files.
+func OptimizedBucketReaderAt(bucketReader phlareobjstore.BucketReader, ctx context.Context, filename string) (phlareobjstore.ReaderAtCloser, error) {
+	rc, err := bucketReader.ReaderAt(ctx, filename)
+	if err != nil {
+		return nil, err
+	}
+	return NewOptimizedReader(rc), nil
 }
