@@ -28,13 +28,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/atomic"
 
-	"github.com/grafana/mimir/pkg/storage/bucket"
-	mimir_tsdb "github.com/grafana/mimir/pkg/storage/tsdb"
-	"github.com/grafana/mimir/pkg/storage/tsdb/block"
-	"github.com/grafana/mimir/pkg/util"
-	util_log "github.com/grafana/mimir/pkg/util/log"
-
 	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
+	"github.com/grafana/pyroscope/pkg/tenant"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 const (
@@ -81,20 +79,20 @@ type BlocksCompactorFactory func(
 
 // Config holds the MultitenantCompactor config.
 type Config struct {
-	BlockRanges                mimir_tsdb.DurationList `yaml:"block_ranges" category:"advanced"`
-	BlockSyncConcurrency       int                     `yaml:"block_sync_concurrency" category:"advanced"`
-	MetaSyncConcurrency        int                     `yaml:"meta_sync_concurrency" category:"advanced"`
-	DataDir                    string                  `yaml:"data_dir"`
-	CompactionInterval         time.Duration           `yaml:"compaction_interval" category:"advanced"`
-	CompactionRetries          int                     `yaml:"compaction_retries" category:"advanced"`
-	CompactionConcurrency      int                     `yaml:"compaction_concurrency" category:"advanced"`
-	CompactionWaitPeriod       time.Duration           `yaml:"first_level_compaction_wait_period"`
-	CleanupInterval            time.Duration           `yaml:"cleanup_interval" category:"advanced"`
-	CleanupConcurrency         int                     `yaml:"cleanup_concurrency" category:"advanced"`
-	DeletionDelay              time.Duration           `yaml:"deletion_delay" category:"advanced"`
-	TenantCleanupDelay         time.Duration           `yaml:"tenant_cleanup_delay" category:"advanced"`
-	MaxCompactionTime          time.Duration           `yaml:"max_compaction_time" category:"advanced"`
-	NoBlocksFileCleanupEnabled bool                    `yaml:"no_blocks_file_cleanup_enabled" category:"experimental"`
+	BlockRanges                DurationList  `yaml:"block_ranges" category:"advanced"`
+	BlockSyncConcurrency       int           `yaml:"block_sync_concurrency" category:"advanced"`
+	MetaSyncConcurrency        int           `yaml:"meta_sync_concurrency" category:"advanced"`
+	DataDir                    string        `yaml:"data_dir"`
+	CompactionInterval         time.Duration `yaml:"compaction_interval" category:"advanced"`
+	CompactionRetries          int           `yaml:"compaction_retries" category:"advanced"`
+	CompactionConcurrency      int           `yaml:"compaction_concurrency" category:"advanced"`
+	CompactionWaitPeriod       time.Duration `yaml:"first_level_compaction_wait_period"`
+	CleanupInterval            time.Duration `yaml:"cleanup_interval" category:"advanced"`
+	CleanupConcurrency         int           `yaml:"cleanup_concurrency" category:"advanced"`
+	DeletionDelay              time.Duration `yaml:"deletion_delay" category:"advanced"`
+	TenantCleanupDelay         time.Duration `yaml:"tenant_cleanup_delay" category:"advanced"`
+	MaxCompactionTime          time.Duration `yaml:"max_compaction_time" category:"advanced"`
+	NoBlocksFileCleanupEnabled bool          `yaml:"no_blocks_file_cleanup_enabled" category:"experimental"`
 
 	// Compactor concurrency options
 	MaxOpeningBlocksConcurrency         int `yaml:"max_opening_blocks_concurrency" category:"advanced"`          // Number of goroutines opening blocks before compaction.
@@ -125,7 +123,7 @@ type Config struct {
 func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	cfg.ShardingRing.RegisterFlags(f, logger)
 
-	cfg.BlockRanges = mimir_tsdb.DurationList{2 * time.Hour, 12 * time.Hour, 24 * time.Hour}
+	cfg.BlockRanges = DurationList{2 * time.Hour, 12 * time.Hour, 24 * time.Hour}
 	cfg.retryMinBackoff = 10 * time.Second
 	cfg.retryMaxBackoff = time.Minute
 
@@ -223,7 +221,6 @@ type MultitenantCompactor struct {
 	services.Service
 
 	compactorCfg Config
-	storageCfg   mimir_tsdb.BlocksStorageConfig
 	cfgProvider  ConfigProvider
 	logger       log.Logger
 	parentLogger log.Logger
@@ -231,7 +228,6 @@ type MultitenantCompactor struct {
 
 	// Functions that creates bucket client, grouper, planner and compactor using the context.
 	// Useful for injecting mock objects from tests.
-	bucketClientFactory    func(ctx context.Context) (objstore.Bucket, error)
 	blocksGrouperFactory   BlocksGrouperFactory
 	blocksCompactorFactory BlocksCompactorFactory
 
@@ -281,11 +277,7 @@ type MultitenantCompactor struct {
 }
 
 // NewMultitenantCompactor makes a new MultitenantCompactor.
-func NewMultitenantCompactor(compactorCfg Config, storageCfg mimir_tsdb.BlocksStorageConfig, cfgProvider ConfigProvider, logger log.Logger, registerer prometheus.Registerer) (*MultitenantCompactor, error) {
-	bucketClientFactory := func(ctx context.Context) (objstore.Bucket, error) {
-		return bucket.NewClient(ctx, storageCfg.Bucket, "compactor", logger, registerer)
-	}
-
+func NewMultitenantCompactor(compactorCfg Config, bucketClient objstore.Bucket, cfgProvider ConfigProvider, logger log.Logger, registerer prometheus.Registerer) (*MultitenantCompactor, error) {
 	// Configure the compactor and grouper factories only if they weren't already set by a downstream project.
 	if compactorCfg.BlocksGrouperFactory == nil || compactorCfg.BlocksCompactorFactory == nil {
 		configureSplitAndMergeCompactor(&compactorCfg)
@@ -294,7 +286,7 @@ func NewMultitenantCompactor(compactorCfg Config, storageCfg mimir_tsdb.BlocksSt
 	blocksGrouperFactory := compactorCfg.BlocksGrouperFactory
 	blocksCompactorFactory := compactorCfg.BlocksCompactorFactory
 
-	mimirCompactor, err := newMultitenantCompactor(compactorCfg, storageCfg, cfgProvider, logger, registerer, bucketClientFactory, blocksGrouperFactory, blocksCompactorFactory)
+	mimirCompactor, err := newMultitenantCompactor(compactorCfg, bucketClient, cfgProvider, logger, registerer, blocksGrouperFactory, blocksCompactorFactory)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create blocks compactor")
 	}
@@ -304,23 +296,21 @@ func NewMultitenantCompactor(compactorCfg Config, storageCfg mimir_tsdb.BlocksSt
 
 func newMultitenantCompactor(
 	compactorCfg Config,
-	storageCfg mimir_tsdb.BlocksStorageConfig,
+	bucketClient objstore.Bucket,
 	cfgProvider ConfigProvider,
 	logger log.Logger,
 	registerer prometheus.Registerer,
-	bucketClientFactory func(ctx context.Context) (objstore.Bucket, error),
 	blocksGrouperFactory BlocksGrouperFactory,
 	blocksCompactorFactory BlocksCompactorFactory,
 ) (*MultitenantCompactor, error) {
 	c := &MultitenantCompactor{
 		compactorCfg:           compactorCfg,
-		storageCfg:             storageCfg,
 		cfgProvider:            cfgProvider,
 		parentLogger:           logger,
 		logger:                 log.With(logger, "component", "compactor"),
 		registerer:             registerer,
 		syncerMetrics:          newAggregatedSyncerMetrics(registerer),
-		bucketClientFactory:    bucketClientFactory,
+		bucketClient:           bucketClient,
 		blocksGrouperFactory:   blocksGrouperFactory,
 		blocksCompactorFactory: blocksCompactorFactory,
 
@@ -418,12 +408,6 @@ func newMultitenantCompactor(
 func (c *MultitenantCompactor) starting(ctx context.Context) error {
 	var err error
 
-	// Create bucket client.
-	c.bucketClient, err = c.bucketClientFactory(ctx)
-	if err != nil {
-		return errors.Wrap(err, "failed to create bucket client")
-	}
-
 	// Create blocks compactor dependencies.
 	c.blocksCompactor, c.blocksPlanner, err = c.blocksCompactorFactory(ctx, c.compactorCfg, c.logger, c.registerer)
 	if err != nil {
@@ -482,7 +466,7 @@ func (c *MultitenantCompactor) starting(ctx context.Context) error {
 		}
 	}
 
-	allowedTenants := util.NewAllowedTenants(c.compactorCfg.EnabledTenants, c.compactorCfg.DisabledTenants)
+	allowedTenants := tenant.NewAllowedTenants(c.compactorCfg.EnabledTenants, c.compactorCfg.DisabledTenants)
 	c.shardingStrategy = newSplitAndMergeShardingStrategy(allowedTenants, c.ring, c.ringLifecycler, c.cfgProvider)
 
 	// Create the blocks cleaner (service).
@@ -628,7 +612,7 @@ func (c *MultitenantCompactor) compactUsers(ctx context.Context) {
 
 		ownedUsers[userID] = struct{}{}
 
-		if markedForDeletion, err := mimir_tsdb.TenantDeletionMarkExists(ctx, c.bucketClient, userID); err != nil {
+		if markedForDeletion, err := bucket.TenantDeletionMarkExists(ctx, c.bucketClient, userID); err != nil {
 			c.compactionRunSkippedTenants.Inc()
 			level.Warn(c.logger).Log("msg", "unable to check if user is marked for deletion", "user", userID, "err", err)
 			continue
@@ -710,11 +694,11 @@ func (c *MultitenantCompactor) compactUserWithRetries(ctx context.Context, userI
 }
 
 func (c *MultitenantCompactor) compactUser(ctx context.Context, userID string) error {
-	userBucket := bucket.NewUserBucketClient(userID, c.bucketClient, c.cfgProvider)
+	userBucket := objstore.NewUserBucketClient(userID, c.bucketClient, c.cfgProvider)
 	reg := prometheus.NewRegistry()
 	defer c.syncerMetrics.gatherThanosSyncerMetrics(reg)
 
-	userLogger := util_log.WithUserID(userID, c.logger)
+	userLogger := util.LoggerWithUserID(userID, c.logger)
 
 	// Filters out duplicate blocks that can be formed from two or more overlapping
 	// blocks that fully submatches the source blocks of the older blocks.
@@ -722,14 +706,6 @@ func (c *MultitenantCompactor) compactUser(ctx context.Context, userID string) e
 
 	// List of filters to apply (order matters).
 	fetcherFilters := []block.MetadataFilter{
-		// Remove the ingester ID because we don't shard blocks anymore, while still
-		// honoring the shard ID if sharding was done in the past.
-		// Remove TenantID external label to make sure that we compact blocks with and without the label
-		// together.
-		NewLabelRemoverFilter([]string{
-			mimir_tsdb.DeprecatedTenantIDExternalLabel,
-			mimir_tsdb.DeprecatedIngesterIDExternalLabel,
-		}),
 		deduplicateBlocksFilter,
 		// removes blocks that should not be compacted due to being marked so.
 		NewNoCompactionMarkFilter(userBucket, true),
@@ -768,7 +744,6 @@ func (c *MultitenantCompactor) compactUser(ctx context.Context, userID string) e
 		path.Join(c.compactorCfg.DataDir, "compact"),
 		userBucket,
 		c.compactorCfg.CompactionConcurrency,
-		true, // Skip blocks with out of order chunks, and mark them for no-compaction.
 		c.shardingStrategy.ownJob,
 		c.jobsOrder,
 		c.compactorCfg.CompactionWaitPeriod,
@@ -810,7 +785,7 @@ func (c *MultitenantCompactor) discoverUsersWithRetries(ctx context.Context) ([]
 }
 
 func (c *MultitenantCompactor) discoverUsers(ctx context.Context) ([]string, error) {
-	return mimir_tsdb.ListUsers(ctx, c.bucketClient)
+	return bucket.ListUsers(ctx, c.bucketClient)
 }
 
 // shardingStrategy describes whether compactor "owns" given user or job.
@@ -826,13 +801,13 @@ type shardingStrategy interface {
 // Each job is only owned and executed by single compactor.
 // Only one of compactors from user's shard will do cleanup.
 type splitAndMergeShardingStrategy struct {
-	allowedTenants *util.AllowedTenants
+	allowedTenants *tenant.AllowedTenants
 	ring           *ring.Ring
 	ringLifecycler *ring.BasicLifecycler
 	configProvider ConfigProvider
 }
 
-func newSplitAndMergeShardingStrategy(allowedTenants *util.AllowedTenants, ring *ring.Ring, ringLifecycler *ring.BasicLifecycler, configProvider ConfigProvider) *splitAndMergeShardingStrategy {
+func newSplitAndMergeShardingStrategy(allowedTenants *tenant.AllowedTenants, ring *ring.Ring, ringLifecycler *ring.BasicLifecycler, configProvider ConfigProvider) *splitAndMergeShardingStrategy {
 	return &splitAndMergeShardingStrategy{
 		allowedTenants: allowedTenants,
 		ring:           ring,
