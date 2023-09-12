@@ -24,10 +24,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/tsdb"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/objstore/client"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
@@ -216,30 +217,6 @@ type Planner interface {
 	Plan(ctx context.Context, metasByMinTime []*block.Meta) ([]*block.Meta, error)
 }
 
-// Compactor provides compaction against an underlying storage of time series data.
-// This is similar to tsdb.Compactor just without Plan method.
-// TODO(bwplotka): Split the Planner from Compactor on upstream as well, so we can import it.
-type Compactor interface {
-	// Write persists a Block into a directory.
-	// No Block is written when resulting Block has 0 samples, and returns empty ulid.ULID{}.
-	Write(dest string, b tsdb.BlockReader, mint, maxt int64, parent *tsdb.BlockMeta) (ulid.ULID, error)
-
-	// Compact runs compaction against the provided directories. Must
-	// only be called concurrently with results of Plan().
-	// Can optionally pass a list of already open blocks,
-	// to avoid having to reopen them.
-	// When resulting Block has 0 samples
-	//  * No block is written.
-	//  * The source dirs are marked Deletable.
-	//  * Returns empty ulid.ULID{}.
-	Compact(dest string, dirs []string, open []*tsdb.Block) (ulid.ULID, error)
-
-	// CompactWithSplitting merges and splits the source blocks into shardCount number of compacted blocks,
-	// and returns slice of block IDs. Position of returned block ID in the result slice corresponds to the shard index.
-	// If given compacted block has no series, corresponding block ID will be zero ULID value.
-	CompactWithSplitting(dest string, dirs []string, open []*tsdb.Block, shardCount uint64) (result []ulid.ULID, _ error)
-}
-
 // runCompactionJob plans and runs a single compaction against the provided job. The compacted result
 // is uploaded into the bucket the blocks were retrieved from.
 func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shouldRerun bool, compIDs []ulid.ULID, rerr error) {
@@ -296,11 +273,6 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 			return errors.Wrapf(err, "download block %s", meta.ULID)
 		}
 
-		// Ensure all source blocks are valid.
-		if err := phlaredb.ValidateLocalBlock(ctx, bdir); err != nil {
-			return errors.Wrapf(err, "invalid block %s", bdir)
-		}
-
 		return nil
 	})
 	if err != nil {
@@ -312,20 +284,56 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 		blocksToCompactDirs[ix] = filepath.Join(subDir, meta.ULID.String())
 	}
 
+	compactionBegin := time.Now()
+
+	// todo: move this to a separate function.
+	localBucket, err := client.NewBucket(ctx, client.Config{
+		StorageBackendConfig: client.StorageBackendConfig{
+			Backend:    client.Filesystem,
+			Filesystem: filesystem.Config{Directory: subDir},
+		},
+	}, "local-compactor")
+	if err != nil {
+		return false, nil, errors.Wrap(err, "create local bucket")
+	}
+	defer localBucket.Close()
+
+	src := make([]phlaredb.BlockReader, len(toCompact))
+	defer func() {
+		for _, b := range src {
+			if b != nil {
+				if err := b.Close(); err != nil {
+					level.Warn(jobLogger).Log("msg", "failed to close block", "err", err)
+				}
+			}
+		}
+	}()
+	err = concurrency.ForEachJob(ctx, len(src), c.blockOpenConcurrency, func(ctx context.Context, idx int) error {
+		meta := toCompact[idx]
+		b := phlaredb.NewSingleBlockQuerierFromMeta(ctx, localBucket, meta)
+		if err := b.Open(ctx); err != nil {
+			return errors.Wrapf(err, "open block %s", meta.ULID)
+		}
+		src[idx] = b
+		return nil
+	})
+	if err != nil {
+		return false, nil, err
+	}
 	elapsed := time.Since(downloadBegin)
 	level.Info(jobLogger).Log("msg", "downloaded and verified blocks; compacting blocks", "blocks", len(blocksToCompactDirs), "plan", fmt.Sprintf("%v", blocksToCompactDirs), "duration", elapsed, "duration_ms", elapsed.Milliseconds())
 
-	compactionBegin := time.Now()
-
+	var out []block.Meta
 	if job.UseSplitting() {
-		compIDs, err = c.comp.CompactWithSplitting(subDir, blocksToCompactDirs, nil, uint64(job.SplittingShards()))
+		out, err = phlaredb.CompactWithSplitting(ctx, src, uint64(job.SplittingShards()), subDir)
 	} else {
-		var compID ulid.ULID
-		compID, err = c.comp.Compact(subDir, blocksToCompactDirs, nil)
-		compIDs = append(compIDs, compID)
+		out, err = phlaredb.CompactWithSplitting(ctx, src, 1, subDir)
 	}
 	if err != nil {
 		return false, nil, errors.Wrapf(err, "compact blocks %v", blocksToCompactDirs)
+	}
+	for _, o := range out {
+		compIDs = append(compIDs, o.ULID)
 	}
 
 	if !hasNonZeroULIDs(compIDs) {
@@ -550,7 +558,6 @@ type BucketCompactor struct {
 	logger               log.Logger
 	sy                   *Syncer
 	grouper              Grouper
-	comp                 Compactor
 	planner              Planner
 	compactDir           string
 	bkt                  objstore.Bucket
@@ -559,6 +566,7 @@ type BucketCompactor struct {
 	sortJobs             JobsOrderFunc
 	waitPeriod           time.Duration
 	blockSyncConcurrency int
+	blockOpenConcurrency int
 	metrics              *BucketCompactorMetrics
 }
 
@@ -568,7 +576,6 @@ func NewBucketCompactor(
 	sy *Syncer,
 	grouper Grouper,
 	planner Planner,
-	comp Compactor,
 	compactDir string,
 	bkt objstore.Bucket,
 	concurrency int,
@@ -576,6 +583,7 @@ func NewBucketCompactor(
 	sortJobs JobsOrderFunc,
 	waitPeriod time.Duration,
 	blockSyncConcurrency int,
+	blockOpenConcurrency int,
 	metrics *BucketCompactorMetrics,
 ) (*BucketCompactor, error) {
 	if concurrency <= 0 {
@@ -586,7 +594,6 @@ func NewBucketCompactor(
 		sy:                   sy,
 		grouper:              grouper,
 		planner:              planner,
-		comp:                 comp,
 		compactDir:           compactDir,
 		bkt:                  bkt,
 		concurrency:          concurrency,
@@ -594,6 +601,7 @@ func NewBucketCompactor(
 		sortJobs:             sortJobs,
 		waitPeriod:           waitPeriod,
 		blockSyncConcurrency: blockSyncConcurrency,
+		blockOpenConcurrency: blockOpenConcurrency,
 		metrics:              metrics,
 	}, nil
 }

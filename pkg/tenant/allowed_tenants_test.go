@@ -43,7 +43,7 @@ func TestAllowedTenants_Combination(t *testing.T) {
 }
 
 func TestAllowedTenants_Nil(t *testing.T) {
-	var a *Allowed
+	var a *AllowedTenants
 
 	// All tenants are allowed when using nil as allowed tenants.
 	require.True(t, a.IsAllowed("A"))

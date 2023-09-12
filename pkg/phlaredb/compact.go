@@ -37,6 +37,7 @@ type BlockReader interface {
 	Profiles() []parquet.RowGroup
 	Index() IndexReader
 	Symbols() symdb.SymbolsReader
+	Close() error
 }
 
 func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
@@ -108,7 +109,9 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount ui
 	out := make([]block.Meta, 0, len(writers))
 	for shard, w := range writers {
 		if w.meta.Stats.NumSamples > 0 {
-			w.meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(shard), shardsCount)
+			if shardsCount > 1 {
+				w.meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(shard), shardsCount)
+			}
 			out = append(out, *w.meta)
 		}
 	}

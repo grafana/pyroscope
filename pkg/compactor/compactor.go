@@ -69,14 +69,6 @@ type BlocksGrouperFactory func(
 	reg prometheus.Registerer,
 ) Grouper
 
-// BlocksCompactorFactory builds and returns the compactor and planner to use to compact a tenant's blocks.
-type BlocksCompactorFactory func(
-	ctx context.Context,
-	cfg Config,
-	logger log.Logger,
-	reg prometheus.Registerer,
-) (Compactor, Planner, error)
-
 // Config holds the MultitenantCompactor config.
 type Config struct {
 	BlockRanges                DurationList  `yaml:"block_ranges" category:"advanced"`
@@ -115,8 +107,7 @@ type Config struct {
 	retryMaxBackoff time.Duration `yaml:"-"`
 
 	// Allow downstream projects to customise the blocks compactor.
-	BlocksGrouperFactory   BlocksGrouperFactory   `yaml:"-"`
-	BlocksCompactorFactory BlocksCompactorFactory `yaml:"-"`
+	BlocksGrouperFactory BlocksGrouperFactory `yaml:"-"`
 }
 
 // RegisterFlags registers the MultitenantCompactor flags.
@@ -228,15 +219,13 @@ type MultitenantCompactor struct {
 
 	// Functions that creates bucket client, grouper, planner and compactor using the context.
 	// Useful for injecting mock objects from tests.
-	blocksGrouperFactory   BlocksGrouperFactory
-	blocksCompactorFactory BlocksCompactorFactory
+	blocksGrouperFactory BlocksGrouperFactory
 
 	// Blocks cleaner is responsible to hard delete blocks marked for deletion.
 	blocksCleaner *BlocksCleaner
 
 	// Underlying compactor and planner used to compact TSDB blocks.
-	blocksCompactor Compactor
-	blocksPlanner   Planner
+	blocksPlanner Planner
 
 	// Client used to run operations on the bucket storing blocks.
 	bucketClient objstore.Bucket
@@ -279,14 +268,13 @@ type MultitenantCompactor struct {
 // NewMultitenantCompactor makes a new MultitenantCompactor.
 func NewMultitenantCompactor(compactorCfg Config, bucketClient objstore.Bucket, cfgProvider ConfigProvider, logger log.Logger, registerer prometheus.Registerer) (*MultitenantCompactor, error) {
 	// Configure the compactor and grouper factories only if they weren't already set by a downstream project.
-	if compactorCfg.BlocksGrouperFactory == nil || compactorCfg.BlocksCompactorFactory == nil {
+	if compactorCfg.BlocksGrouperFactory == nil {
 		configureSplitAndMergeCompactor(&compactorCfg)
 	}
 
 	blocksGrouperFactory := compactorCfg.BlocksGrouperFactory
-	blocksCompactorFactory := compactorCfg.BlocksCompactorFactory
 
-	mimirCompactor, err := newMultitenantCompactor(compactorCfg, bucketClient, cfgProvider, logger, registerer, blocksGrouperFactory, blocksCompactorFactory)
+	mimirCompactor, err := newMultitenantCompactor(compactorCfg, bucketClient, cfgProvider, logger, registerer, blocksGrouperFactory)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create blocks compactor")
 	}
@@ -301,18 +289,17 @@ func newMultitenantCompactor(
 	logger log.Logger,
 	registerer prometheus.Registerer,
 	blocksGrouperFactory BlocksGrouperFactory,
-	blocksCompactorFactory BlocksCompactorFactory,
 ) (*MultitenantCompactor, error) {
 	c := &MultitenantCompactor{
-		compactorCfg:           compactorCfg,
-		cfgProvider:            cfgProvider,
-		parentLogger:           logger,
-		logger:                 log.With(logger, "component", "compactor"),
-		registerer:             registerer,
-		syncerMetrics:          newAggregatedSyncerMetrics(registerer),
-		bucketClient:           bucketClient,
-		blocksGrouperFactory:   blocksGrouperFactory,
-		blocksCompactorFactory: blocksCompactorFactory,
+		compactorCfg:         compactorCfg,
+		cfgProvider:          cfgProvider,
+		parentLogger:         logger,
+		logger:               log.With(logger, "component", "compactor"),
+		registerer:           registerer,
+		syncerMetrics:        newAggregatedSyncerMetrics(registerer),
+		bucketClient:         bucketClient,
+		blocksGrouperFactory: blocksGrouperFactory,
+		blocksPlanner:        NewSplitAndMergePlanner(compactorCfg.BlockRanges.ToMilliseconds()),
 
 		compactionRunsStarted: promauto.With(registerer).NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_compactor_runs_started_total",
@@ -407,12 +394,6 @@ func newMultitenantCompactor(
 // Start the compactor.
 func (c *MultitenantCompactor) starting(ctx context.Context) error {
 	var err error
-
-	// Create blocks compactor dependencies.
-	c.blocksCompactor, c.blocksPlanner, err = c.blocksCompactorFactory(ctx, c.compactorCfg, c.logger, c.registerer)
-	if err != nil {
-		return errors.Wrap(err, "failed to initialize compactor dependencies")
-	}
 
 	// Wrap the bucket client to write block deletion marks in the global location too.
 	c.bucketClient = block.BucketWithGlobalMarkers(c.bucketClient)
@@ -740,7 +721,6 @@ func (c *MultitenantCompactor) compactUser(ctx context.Context, userID string) e
 		syncer,
 		c.blocksGrouperFactory(ctx, c.compactorCfg, c.cfgProvider, userID, userLogger, reg),
 		c.blocksPlanner,
-		c.blocksCompactor,
 		path.Join(c.compactorCfg.DataDir, "compact"),
 		userBucket,
 		c.compactorCfg.CompactionConcurrency,
@@ -748,6 +728,7 @@ func (c *MultitenantCompactor) compactUser(ctx context.Context, userID string) e
 		c.jobsOrder,
 		c.compactorCfg.CompactionWaitPeriod,
 		c.compactorCfg.BlockSyncConcurrency,
+		c.compactorCfg.MaxOpeningBlocksConcurrency,
 		c.bucketCompactorMetrics,
 	)
 	if err != nil {
