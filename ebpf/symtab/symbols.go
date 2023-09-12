@@ -4,6 +4,7 @@ package symtab
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -22,6 +23,8 @@ type SymbolCache struct {
 	logger   log.Logger
 
 	options CacheOptions
+
+	sync sync.Mutex
 }
 type CacheOptions struct {
 	PidCacheOptions      GCacheOptions
@@ -76,7 +79,7 @@ func (sc *SymbolCache) GetProcTable(pid PidKey) *ProcTable {
 		},
 	})
 
-	sc.pidCache.Cache(pid, fresh)
+	sc.pidCache.Cache(pid, fresh) //todo this should not do refresh if it is not our target
 	return fresh
 }
 

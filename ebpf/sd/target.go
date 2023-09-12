@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"strings"
+	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -14,7 +15,6 @@ import (
 
 type DiscoveryTarget map[string]string
 
-// DebugString return unsorted labels as a string.
 func (t *DiscoveryTarget) DebugString() string {
 	var b strings.Builder
 	b.WriteByte('{')
@@ -123,9 +123,13 @@ type targetFinder struct {
 	containerIDCache *lru.Cache[uint32, containerID]
 	defaultTarget    *Target
 	fs               fs.FS
+
+	sync sync.Mutex
 }
 
 func (tf *targetFinder) Update(args TargetsOptions) {
+	tf.sync.Lock()
+	defer tf.sync.Unlock()
 	tf.setTargets(args)
 	tf.resizeContainerIDCache(args.ContainerCacheSize)
 }
@@ -185,6 +189,8 @@ func (tf *targetFinder) setTargets(opts TargetsOptions) {
 }
 
 func (tf *targetFinder) FindTarget(pid uint32) *Target {
+	tf.sync.Lock()
+	defer tf.sync.Unlock()
 	res := tf.findTarget(pid)
 	if res != nil {
 		return res
@@ -208,6 +214,9 @@ func (tf *targetFinder) resizeContainerIDCache(size int) {
 }
 
 func (tf *targetFinder) DebugInfo() []string {
+	tf.sync.Lock()
+	defer tf.sync.Unlock()
+
 	debugTargets := make([]string, 0, len(tf.cid2target))
 	for _, target := range tf.cid2target {
 		_, ls := target.Labels()
@@ -217,6 +226,9 @@ func (tf *targetFinder) DebugInfo() []string {
 }
 
 func (tf *targetFinder) Targets() []*Target {
+	tf.sync.Lock()
+	defer tf.sync.Unlock()
+
 	res := make([]*Target, 0, len(tf.cid2target))
 	for _, target := range tf.cid2target {
 		res = append(res, target)

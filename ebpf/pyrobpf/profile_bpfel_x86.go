@@ -12,9 +12,16 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type ProfileBssArg struct {
+type ProfilePidConfig struct {
+	Type          uint8
 	CollectUser   uint8
 	CollectKernel uint8
+	Padding       uint8
+}
+
+type ProfilePidEvent struct {
+	Op  uint32
+	Pid uint32
 }
 
 type ProfilePyEvent struct {
@@ -136,8 +143,9 @@ type ProfileProgramSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type ProfileMapSpecs struct {
-	Args        *ebpf.MapSpec `ebpf:"args"`
 	Counts      *ebpf.MapSpec `ebpf:"counts"`
+	Events      *ebpf.MapSpec `ebpf:"events"`
+	Pids        *ebpf.MapSpec `ebpf:"pids"`
 	PyEvents    *ebpf.MapSpec `ebpf:"py_events"`
 	PyPidConfig *ebpf.MapSpec `ebpf:"py_pid_config"`
 	PyProgs     *ebpf.MapSpec `ebpf:"py_progs"`
@@ -165,8 +173,9 @@ func (o *ProfileObjects) Close() error {
 //
 // It can be passed to LoadProfileObjects or ebpf.CollectionSpec.LoadAndAssign.
 type ProfileMaps struct {
-	Args        *ebpf.Map `ebpf:"args"`
 	Counts      *ebpf.Map `ebpf:"counts"`
+	Events      *ebpf.Map `ebpf:"events"`
+	Pids        *ebpf.Map `ebpf:"pids"`
 	PyEvents    *ebpf.Map `ebpf:"py_events"`
 	PyPidConfig *ebpf.Map `ebpf:"py_pid_config"`
 	PyProgs     *ebpf.Map `ebpf:"py_progs"`
@@ -177,8 +186,9 @@ type ProfileMaps struct {
 
 func (m *ProfileMaps) Close() error {
 	return _ProfileClose(
-		m.Args,
 		m.Counts,
+		m.Events,
+		m.Pids,
 		m.PyEvents,
 		m.PyPidConfig,
 		m.PyProgs,
