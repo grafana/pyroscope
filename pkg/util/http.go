@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/felixge/httpsnoop"
-	log "github.com/go-kit/log"
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/instrument"
@@ -109,8 +109,11 @@ func (l Log) logWithRequest(r *http.Request) log.Logger {
 			localLog = log.With(localLog, "sourceIPs", ips)
 		}
 	}
-
-	return user.LogWith(r.Context(), localLog)
+	orgID := r.Header.Get(user.OrgIDHeaderName)
+	if orgID == "" {
+		orgID = "anonymous"
+	}
+	return log.With(localLog, "tenant", orgID)
 }
 
 // Wrap implements Middleware
