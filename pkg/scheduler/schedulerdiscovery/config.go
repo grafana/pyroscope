@@ -23,15 +23,15 @@ const (
 var modes = []string{ModeDNS, ModeRing}
 
 type Config struct {
-	Mode             string     `yaml:"service_discovery_mode" category:"experimental" doc:"hidden"`
-	SchedulerRing    RingConfig `yaml:"ring" doc:"hidden"`
-	MaxUsedInstances int        `yaml:"max_used_instances" category:"experimental"`
+	Mode             string                `yaml:"service_discovery_mode" category:"experimental" doc:"hidden"`
+	SchedulerRing    util.CommonRingConfig `yaml:"ring" doc:"hidden"`
+	MaxUsedInstances int                   `yaml:"max_used_instances" category:"experimental"`
 }
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	f.StringVar(&cfg.Mode, ModeFlagName, ModeDNS, fmt.Sprintf("Service discovery mode that query-frontends and queriers use to find query-scheduler instances.%s Supported values are: %s.", sharedOptionWithRingClient, strings.Join(modes, ", ")))
 	f.IntVar(&cfg.MaxUsedInstances, "query-scheduler.max-used-instances", 0, fmt.Sprintf("The maximum number of query-scheduler instances to use, regardless how many replicas are running. This option can be set only when -%s is set to '%s'. 0 to use all available query-scheduler instances.", ModeFlagName, ModeRing))
-	cfg.SchedulerRing.RegisterFlags(f, logger)
+	cfg.SchedulerRing.RegisterFlags("query-scheduler.ring.", "collectors/", ringKey, f, logger)
 }
 
 func (cfg *Config) Validate() error {
