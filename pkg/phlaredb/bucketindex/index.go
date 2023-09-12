@@ -23,11 +23,6 @@ const (
 	IndexCompressedFilename = IndexFilename + ".gz"
 	IndexVersion1           = 1
 	IndexVersion2           = 2 // Added CompactorShardID field.
-	SegmentsFormatUnknown   = ""
-
-	// SegmentsFormat1Based6Digits defined segments numbered with 6 digits numbers in a sequence starting from number 1
-	// eg. (000001, 000002, 000003).
-	SegmentsFormat1Based6Digits = "1b6d"
 )
 
 // Index contains all known blocks and markers of a tenant.
@@ -61,6 +56,10 @@ func (idx *Index) RemoveBlock(id ulid.ULID) {
 
 	for i := 0; i < len(idx.BlockDeletionMarks); i++ {
 		if idx.BlockDeletionMarks[i].ID == id {
+<<<<<<< HEAD
+=======
+			idx.BlockDeletionMarks[i] = nil
+>>>>>>> feat/validateblock2
 			idx.BlockDeletionMarks = append(idx.BlockDeletionMarks[:i], idx.BlockDeletionMarks[i+1:]...)
 			break
 		}

@@ -27,10 +27,10 @@ func TestOverridesExporter_emptyRing(t *testing.T) {
 	}))
 
 	cfg := RingConfig{}
-	cfg.KVStore.Mock = ringStore
+	cfg.Ring.KVStore.Mock = ringStore
 
-	cfg.InstanceID = "instance-1"
-	cfg.InstanceAddr = "127.0.0.1"
+	cfg.Ring.InstanceID = "instance-1"
+	cfg.Ring.InstanceAddr = "127.0.0.1"
 	i1, err := newRing(cfg, log.NewNopLogger(), nil)
 	require.NoError(t, err)
 	require.NoError(t, services.StartAndAwaitRunning(ctx, i1.client))
@@ -47,19 +47,19 @@ func TestOverridesExporterRing_scaleDown(t *testing.T) {
 	t.Cleanup(func() { assert.NoError(t, closer.Close()) })
 
 	cfg1 := RingConfig{}
-	cfg1.KVStore.Mock = ringStore
-	cfg1.HeartbeatPeriod = 1 * time.Second
-	cfg1.HeartbeatTimeout = 15 * time.Second
+	cfg1.Ring.KVStore.Mock = ringStore
+	cfg1.Ring.HeartbeatPeriod = 1 * time.Second
+	cfg1.Ring.HeartbeatTimeout = 15 * time.Second
 
-	cfg1.InstanceID = "instance-1"
-	cfg1.InstanceAddr = "127.0.0.1"
+	cfg1.Ring.InstanceID = "instance-1"
+	cfg1.Ring.InstanceAddr = "127.0.0.1"
 	i1, err := newRing(cfg1, log.NewNopLogger(), nil)
 	require.NoError(t, err)
 	l1 := i1.lifecycler
 
 	cfg2 := cfg1
-	cfg2.InstanceID = "instance-2"
-	cfg2.InstanceAddr = "127.0.0.2"
+	cfg2.Ring.InstanceID = "instance-2"
+	cfg2.Ring.InstanceAddr = "127.0.0.2"
 	i2, err := newRing(cfg2, log.NewNopLogger(), nil)
 	require.NoError(t, err)
 	l2 := i2.lifecycler
@@ -125,7 +125,7 @@ func TestOverridesExporterRing_scaleDown(t *testing.T) {
 	require.NoError(t, ringStore.CAS(ctx, ringKey, func(in interface{}) (out interface{}, retry bool, err error) {
 		desc := in.(*ring.Desc)
 		instance := desc.Ingesters[l1.GetInstanceID()]
-		instance.Timestamp = time.Now().Add(-ringAutoForgetUnhealthyPeriods * cfg1.HeartbeatTimeout).Unix()
+		instance.Timestamp = time.Now().Add(-ringAutoForgetUnhealthyPeriods * cfg1.Ring.HeartbeatTimeout).Unix()
 		desc.Ingesters[l1.GetInstanceID()] = instance
 		return desc, true, nil
 	}))

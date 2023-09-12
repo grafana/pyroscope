@@ -44,10 +44,10 @@ func TestOverridesExporter_withConfig(t *testing.T) {
 	t.Cleanup(func() { assert.NoError(t, closer.Close()) })
 
 	cfg1 := Config{RingConfig{}}
-	cfg1.Ring.KVStore.Mock = ringStore
-	cfg1.Ring.InstancePort = 1234
-	cfg1.Ring.HeartbeatPeriod = 15 * time.Second
-	cfg1.Ring.HeartbeatTimeout = 1 * time.Minute
+	cfg1.Ring.Ring.KVStore.Mock = ringStore
+	cfg1.Ring.Ring.InstancePort = 1234
+	cfg1.Ring.Ring.HeartbeatPeriod = 15 * time.Second
+	cfg1.Ring.Ring.HeartbeatTimeout = 1 * time.Minute
 
 	// Create an empty ring.
 	ctx := context.Background()
@@ -56,8 +56,8 @@ func TestOverridesExporter_withConfig(t *testing.T) {
 	}))
 
 	// Create an overrides-exporter.
-	cfg1.Ring.InstanceID = "overrides-exporter-1"
-	cfg1.Ring.InstanceAddr = "1.2.3.1"
+	cfg1.Ring.Ring.InstanceID = "overrides-exporter-1"
+	cfg1.Ring.Ring.InstanceAddr = "1.2.3.1"
 	exporter, err := NewOverridesExporter(cfg1, &validation.Limits{
 		IngestionRateMB:          20,
 		IngestionBurstSizeMB:     21,
@@ -146,10 +146,10 @@ func TestOverridesExporter_withRing(t *testing.T) {
 	t.Cleanup(func() { assert.NoError(t, closer.Close()) })
 
 	cfg1 := Config{RingConfig{}}
-	cfg1.Ring.KVStore.Mock = ringStore
-	cfg1.Ring.InstancePort = 1234
-	cfg1.Ring.HeartbeatPeriod = 15 * time.Second
-	cfg1.Ring.HeartbeatTimeout = 1 * time.Minute
+	cfg1.Ring.Ring.KVStore.Mock = ringStore
+	cfg1.Ring.Ring.InstancePort = 1234
+	cfg1.Ring.Ring.HeartbeatPeriod = 15 * time.Second
+	cfg1.Ring.Ring.HeartbeatTimeout = 1 * time.Minute
 
 	// Create an empty ring.
 	ctx := context.Background()
@@ -158,8 +158,8 @@ func TestOverridesExporter_withRing(t *testing.T) {
 	}))
 
 	// Create an overrides-exporter.
-	cfg1.Ring.InstanceID = "overrides-exporter-1"
-	cfg1.Ring.InstanceAddr = "1.2.3.1"
+	cfg1.Ring.Ring.InstanceID = "overrides-exporter-1"
+	cfg1.Ring.Ring.InstanceAddr = "1.2.3.1"
 	e1, err := NewOverridesExporter(cfg1, &validation.Limits{}, validation.NewMockTenantLimits(tenantLimits), log.NewNopLogger(), nil)
 	l1 := e1.ring.lifecycler
 	require.NoError(t, err)
@@ -192,8 +192,8 @@ func TestOverridesExporter_withRing(t *testing.T) {
 
 	// Register a second instance.
 	cfg2 := cfg1
-	cfg2.Ring.InstanceID = "overrides-exporter-2"
-	cfg2.Ring.InstanceAddr = "1.2.3.2"
+	cfg2.Ring.Ring.InstanceID = "overrides-exporter-2"
+	cfg2.Ring.Ring.InstanceAddr = "1.2.3.2"
 	e2, err := NewOverridesExporter(cfg2, &validation.Limits{}, validation.NewMockTenantLimits(tenantLimits), log.NewNopLogger(), nil)
 	require.NoError(t, err)
 	require.NoError(t, services.StartAndAwaitRunning(ctx, e2))
