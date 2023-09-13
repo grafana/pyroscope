@@ -149,7 +149,7 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 	// but we can take values from throwaway flag set and reregister into supplied flags with new default values.
 	c.Server.RegisterFlags(throwaway)
 	c.Ingester.RegisterFlags(throwaway)
-	c.Distributor.RegisterFlags(throwaway)
+	c.Distributor.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
 	c.Frontend.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
 	c.QueryScheduler.RegisterFlags(throwaway, log.NewLogfmtLogger(os.Stderr))
 	c.Worker.RegisterFlags(throwaway)
@@ -159,12 +159,6 @@ func (c *Config) registerServerFlagsWithChangedDefaultValues(fs *flag.FlagSet) {
 		// Ignore errors when setting new values. We have a test to verify that it works.
 		switch f.Name {
 		case "server.http-listen-port":
-			_ = f.Value.Set("4040")
-		case "query-frontend.instance-port":
-			_ = f.Value.Set("4040")
-		case "distributor.ring.instance-port":
-			_ = f.Value.Set("4040")
-		case "overrides-exporter.ring.instance-port":
 			_ = f.Value.Set("4040")
 		case "distributor.replication-factor":
 			_ = f.Value.Set("1")
@@ -185,11 +179,11 @@ func (c *Config) Validate() error {
 func (c *Config) ApplyDynamicConfig() cfg.Source {
 	c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store = "memberlist"
 	c.Distributor.DistributorRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
-	c.OverridesExporter.Ring.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
+	c.OverridesExporter.Ring.Ring.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.Frontend.QuerySchedulerDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.Worker.QuerySchedulerDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.QueryScheduler.ServiceDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
-	c.StoreGateway.ShardingRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
+	c.StoreGateway.ShardingRing.Ring.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 
 	return func(dst cfg.Cloneable) error {
 		return nil

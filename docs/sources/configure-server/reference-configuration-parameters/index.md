@@ -190,8 +190,6 @@ store_gateway:
   # The hash ring configuration.
   sharding_ring:
     # The key-value store used to share the hash ring across multiple instances.
-    # This option needs be set both on the store-gateway, querier and ruler when
-    # running in microservices mode.
     kvstore:
       # Backend storage to use for the ring. Supported values are: consul, etcd,
       # inmemory, memberlist, multi.
@@ -341,12 +339,31 @@ store_gateway:
     # CLI flag: -store-gateway.sharding-ring.heartbeat-period
     [heartbeat_period: <duration> | default = 15s]
 
-    # The heartbeat timeout after which store gateways are considered unhealthy
-    # within the ring. 0 = never (timeout disabled). This option needs be set
-    # both on the store-gateway, querier and ruler when running in microservices
-    # mode.
+    # The heartbeat timeout after which store-gateways are considered unhealthy
+    # within the ring. 0 = never (timeout disabled).
     # CLI flag: -store-gateway.sharding-ring.heartbeat-timeout
     [heartbeat_timeout: <duration> | default = 1m]
+
+    # Instance ID to register in the ring.
+    # CLI flag: -store-gateway.sharding-ring.instance-id
+    [instance_id: <string> | default = "<hostname>"]
+
+    # List of network interface names to look up when finding the instance IP
+    # address.
+    # CLI flag: -store-gateway.sharding-ring.instance-interface-names
+    [instance_interface_names: <list of strings> | default = [<private network interfaces>]]
+
+    # Port to advertise in the ring (defaults to -server.http-listen-port).
+    # CLI flag: -store-gateway.sharding-ring.instance-port
+    [instance_port: <int> | default = 0]
+
+    # IP address to advertise in the ring. Default is auto-detected.
+    # CLI flag: -store-gateway.sharding-ring.instance-addr
+    [instance_addr: <string> | default = ""]
+
+    # Enable using a IPv6 instance address. (default false)
+    # CLI flag: -store-gateway.sharding-ring.instance-enable-ipv6
+    [instance_enable_ipv6: <boolean> | default = false]
 
     # The replication factor to use when sharding blocks. This option needs be
     # set both on the store-gateway, querier and ruler when running in
@@ -375,27 +392,6 @@ store_gateway:
     # start anyway.
     # CLI flag: -store-gateway.sharding-ring.wait-stability-max-duration
     [wait_stability_max_duration: <duration> | default = 5m]
-
-    # Instance ID to register in the ring.
-    # CLI flag: -store-gateway.sharding-ring.instance-id
-    [instance_id: <string> | default = "<hostname>"]
-
-    # List of network interface names to look up when finding the instance IP
-    # address.
-    # CLI flag: -store-gateway.sharding-ring.instance-interface-names
-    [instance_interface_names: <list of strings> | default = [<private network interfaces>]]
-
-    # Port to advertise in the ring (defaults to -server.grpc-listen-port).
-    # CLI flag: -store-gateway.sharding-ring.instance-port
-    [instance_port: <int> | default = 0]
-
-    # IP address to advertise in the ring. Default is auto-detected.
-    # CLI flag: -store-gateway.sharding-ring.instance-addr
-    [instance_addr: <string> | default = ""]
-
-    # Enable using a IPv6 instance address. (default false)
-    # CLI flag: -store-gateway.sharding-ring.instance-enable-ipv6
-    [instance_enable_ipv6: <boolean> | default = false]
 
     # The availability zone where this instance is running. Required if
     # zone-awareness is enabled.
