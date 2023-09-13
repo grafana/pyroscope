@@ -21,7 +21,7 @@ import { Tabs, Tab, TabPanel } from '@pyroscope/ui/Tabs';
 import adhocStyles from './Adhoc.module.scss';
 import adhocComparisonStyles from './AdhocComparison.module.scss';
 import FileUploader from './components/FileUploader';
-import { PageContentWrapper } from '../PageContentWrapper';
+import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
 
 function AdhocComparison() {
   const dispatch = useAppDispatch();

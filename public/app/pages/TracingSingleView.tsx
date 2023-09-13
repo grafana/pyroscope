@@ -13,7 +13,7 @@ import { isExportToFlamegraphDotComEnabled } from '@pyroscope/util/features';
 import { formatTitle } from './formatTitle';
 
 import styles from './TracingSingleView.module.scss';
-import { PageContentWrapper } from '@pyroscope/pages/layout';
+import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
 
 function formatTime(t: string | undefined): string {
   return format(new Date(1000 * parseInt(t || '0', 10)), 'yyyy-MM-dd HH:mm:ss');
