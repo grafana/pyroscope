@@ -8,30 +8,29 @@ package compactor
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/test"
 	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
-	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thanos-io/objstore"
 
-	"github.com/grafana/mimir/pkg/storage/bucket"
-	"github.com/grafana/mimir/pkg/storage/sharding"
-	mimir_tsdb "github.com/grafana/mimir/pkg/storage/tsdb"
-	"github.com/grafana/mimir/pkg/storage/tsdb/block"
-	util_test "github.com/grafana/mimir/pkg/util/test"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/objstore/client"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 )
 
 func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) {
@@ -43,21 +42,21 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 
 	var (
 		blockRangeMillis = blockRange.Milliseconds()
-		compactionRanges = mimir_tsdb.DurationList{blockRange, 2 * blockRange, 4 * blockRange}
+		compactionRanges = DurationList{blockRange, 2 * blockRange, 4 * blockRange}
 	)
 
 	externalLabels := func(shardID string) map[string]string {
 		labels := map[string]string{}
 
 		if shardID != "" {
-			labels[mimir_tsdb.CompactorShardIDExternalLabel] = shardID
+			labels[sharding.CompactorShardIDLabel] = shardID
 		}
 		return labels
 	}
 
 	externalLabelsWithTenantID := func(shardID string) map[string]string {
 		labels := externalLabels(shardID)
-		labels[mimir_tsdb.DeprecatedTenantIDExternalLabel] = userID
+		labels["__org_id__"] = userID
 		return labels
 	}
 
@@ -73,30 +72,24 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 
 				return []block.Meta{
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 1 * blockRangeMillis,
-							MaxTime: 2 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2},
-							},
+						MinTime: model.Time(1 * blockRangeMillis),
+						MaxTime: model.Time(2 * blockRangeMillis),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "1_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "1_of_2",
 						},
 					}, {
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 1 * blockRangeMillis,
-							MaxTime: 2 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2},
-							},
+						MinTime: model.Time(1 * blockRangeMillis),
+						MaxTime: model.Time(2 * blockRangeMillis),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "2_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "2_of_2",
 						},
 					},
 				}
@@ -110,30 +103,24 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 
 				return []block.Meta{
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 1 * blockRangeMillis,
-							MaxTime: 2 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2},
-							},
+						MinTime: model.Time(1 * blockRangeMillis),
+						MaxTime: model.Time(2 * blockRangeMillis),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "1_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "1_of_2",
 						},
 					}, {
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 1 * blockRangeMillis,
-							MaxTime: 2 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2},
-							},
+						MinTime: model.Time(1 * blockRangeMillis),
+						MaxTime: model.Time(2 * blockRangeMillis),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "2_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "2_of_2",
 						},
 					},
 				}
@@ -151,43 +138,34 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 
 				return []block.Meta{
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 0,
-							MaxTime: (7 * time.Minute).Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2},
-							},
+						MinTime: 0,
+						MaxTime: model.Time((7 * time.Minute).Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "1_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "1_of_2",
 						},
 					}, {
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 0,
-							MaxTime: (7 * time.Minute).Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2},
-							},
+						MinTime: 0,
+						MaxTime: model.Time((7 * time.Minute).Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "2_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "2_of_2",
 						},
 					}, {
 						// Not compacted.
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: blockRangeMillis,
-							MaxTime: blockRangeMillis + time.Minute.Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block3},
-							},
+						MinTime: model.Time(blockRangeMillis),
+						MaxTime: model.Time(blockRangeMillis + time.Minute.Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block3},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{},
-						},
+
+						Labels: map[string]string{},
 					},
 				}
 			},
@@ -204,43 +182,34 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 
 				return []block.Meta{
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 0,
-							MaxTime: (10 * time.Minute).Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2},
-							},
+						MinTime: 0,
+						MaxTime: model.Time((10 * time.Minute).Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "1_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "1_of_2",
 						},
 					}, {
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 0,
-							MaxTime: (10 * time.Minute).Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2},
-							},
+						MinTime: 0,
+						MaxTime: model.Time((10 * time.Minute).Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "2_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "2_of_2",
 						},
 					}, {
 						// Not compacted.
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: blockRangeMillis,
-							MaxTime: blockRangeMillis + time.Minute.Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block3},
-							},
+						MinTime: model.Time(blockRangeMillis),
+						MaxTime: model.Time(blockRangeMillis + time.Minute.Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block3},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{},
-						},
+
+						Labels: map[string]string{},
 					},
 				}
 			},
@@ -257,43 +226,34 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 
 				return []block.Meta{
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 0,
-							MaxTime: (10 * time.Minute).Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2},
-							},
+						MinTime: 0,
+						MaxTime: model.Time((10 * time.Minute).Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "1_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "1_of_2",
 						},
 					}, {
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 0,
-							MaxTime: (10 * time.Minute).Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2},
-							},
+						MinTime: 0,
+						MaxTime: model.Time((10 * time.Minute).Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "2_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "2_of_2",
 						},
 					}, {
 						// Not compacted.
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: blockRangeMillis,
-							MaxTime: blockRangeMillis + time.Minute.Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block3},
-							},
+						MinTime: model.Time(blockRangeMillis),
+						MaxTime: model.Time(blockRangeMillis + time.Minute.Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block3},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{},
-						},
+
+						Labels: map[string]string{},
 					},
 				}
 			},
@@ -324,61 +284,49 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					// and then compacted with block1 in 2nd range. Finally, they've been compacted with
 					// block4 and block5 in the 3rd range compaction (total levels: 4).
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 1,
-							MaxTime: 4 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1a, block2, block3, block4a, block5a},
-							},
+						MinTime: 1,
+						MaxTime: model.Time(4 * blockRangeMillis),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1a, block2, block3, block4a, block5a},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "1_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "1_of_2",
 						},
 					},
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 1,
-							MaxTime: 4 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1b, block2, block3, block4b, block5b},
-							},
+						MinTime: 1,
+						MaxTime: model.Time(4 * blockRangeMillis),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1b, block2, block3, block4b, block5b},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "2_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "2_of_2",
 						},
 					},
 					// The two non-adjacent blocks block6 and block7 are split individually first and then merged
 					// together in the 3rd range.
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 4 * blockRangeMillis,
-							MaxTime: 8 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block6, block7},
-							},
+						MinTime: model.Time(4 * blockRangeMillis),
+						MaxTime: model.Time(8 * blockRangeMillis),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block6, block7},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "1_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "1_of_2",
 						},
 					},
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 4 * blockRangeMillis,
-							MaxTime: 8 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block6, block7},
-							},
+						MinTime: model.Time(4 * blockRangeMillis),
+						MaxTime: model.Time(8 * blockRangeMillis),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block6, block7},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "2_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "2_of_2",
 						},
 					},
 				}
@@ -396,30 +344,24 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 
 				return []block.Meta{
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 0,
-							MaxTime: (2 * time.Hour).Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2, block3},
-							},
+						MinTime: 0,
+						MaxTime: model.Time((2 * time.Hour).Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2, block3},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "1_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "1_of_2",
 						},
 					}, {
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 0,
-							MaxTime: (2 * time.Hour).Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2, block3},
-							},
+						MinTime: 0,
+						MaxTime: model.Time((2 * time.Hour).Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2, block3},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "2_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "2_of_2",
 						},
 					},
 				}
@@ -437,30 +379,24 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 
 				return []block.Meta{
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 0,
-							MaxTime: (2 * time.Hour).Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2, block3},
-							},
+						MinTime: 0,
+						MaxTime: model.Time((2 * time.Hour).Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2, block3},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "1_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "1_of_2",
 						},
 					}, {
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 0,
-							MaxTime: (2 * time.Hour).Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2, block3},
-							},
+						MinTime: 0,
+						MaxTime: model.Time((2 * time.Hour).Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2, block3},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "2_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "2_of_2",
 						},
 					},
 				}
@@ -475,17 +411,14 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 
 				return []block.Meta{
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: (2 * blockRangeMillis) - 1, // Because there's only 1 sample with timestamp=maxT-1
-							MaxTime: 2 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1},
-							},
+						MinTime: model.Time((2 * blockRangeMillis) - 1), // Because there's only 1 sample with timestamp=maxT-1
+						MaxTime: model.Time(2 * blockRangeMillis),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "1_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "1_of_2",
 						},
 					},
 				}
@@ -504,28 +437,22 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 				return []block.Meta{
 					// Compacted but not split.
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 0,
-							MaxTime: (10 * time.Minute).Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2},
-							},
+						MinTime: 0,
+						MaxTime: model.Time((10 * time.Minute).Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1, block2},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{},
-						},
+
+						Labels: map[string]string{},
 					}, {
 						// Not compacted.
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: blockRangeMillis,
-							MaxTime: blockRangeMillis + time.Minute.Milliseconds(),
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block3},
-							},
+						MinTime: model.Time(blockRangeMillis),
+						MaxTime: model.Time(blockRangeMillis + time.Minute.Milliseconds()),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block3},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{},
-						},
+
+						Labels: map[string]string{},
 					},
 				}
 			},
@@ -554,123 +481,46 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 				return []block.Meta{
 					// Block1 have been compacted with block4 and block5 in the 3rd range compaction.
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 1,
-							MaxTime: 4 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1a, block4a, block5a},
-							},
+						MinTime: 1,
+						MaxTime: model.Time(4 * blockRangeMillis),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1a, block4a, block5a},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "1_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "1_of_2",
 						},
 					},
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 1,
-							MaxTime: 4 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1b, block4b, block5b},
-							},
+						MinTime: 1,
+						MaxTime: model.Time(4 * blockRangeMillis),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block1b, block4b, block5b},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "2_of_2",
-							},
+
+						Labels: map[string]string{
+							sharding.CompactorShardIDLabel: "2_of_2",
 						},
 					},
 					// The two overlapping blocks (block2, block3) have been merged in the 1st range.
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: blockRangeMillis,
-							MaxTime: 2 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block2, block3},
-							},
+						MinTime: model.Time(blockRangeMillis),
+						MaxTime: model.Time(2 * blockRangeMillis),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block2, block3},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{},
-						},
+
+						Labels: map[string]string{},
 					},
 					// The two non-adjacent blocks block6 and block7 are merged together in the 3rd range.
 					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 4 * blockRangeMillis,
-							MaxTime: 8 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block6, block7},
-							},
+						MinTime: model.Time(4 * blockRangeMillis),
+						MaxTime: model.Time(8 * blockRangeMillis),
+						Compaction: tsdb.BlockMetaCompaction{
+							Sources: []ulid.ULID{block6, block7},
 						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{},
-						},
-					},
-				}
-			},
-		},
-		"compaction on blocks containing native histograms": {
-			numShards: 2,
-			setup: func(t *testing.T, bkt objstore.Bucket) []block.Meta {
-				minT := blockRangeMillis
-				maxT := 2 * blockRangeMillis
 
-				seriesID := 0
-
-				appendHistograms := func(db *tsdb.DB) {
-					db.EnableNativeHistograms()
-
-					appendHistogram := func(seriesID int, ts int64) {
-						lbls := labels.FromStrings("series_id", strconv.Itoa(seriesID))
-
-						app := db.Appender(context.Background())
-						_, err := app.AppendHistogram(0, lbls, ts, util_test.GenerateTestHistogram(seriesID), nil)
-						require.NoError(t, err)
-
-						err = app.Commit()
-						require.NoError(t, err)
-					}
-
-					for ts := minT; ts < maxT; ts += (maxT - minT) / int64(numSeries-1) {
-						appendHistogram(seriesID, ts)
-						seriesID++
-					}
-
-					appendHistogram(seriesID, maxT-1)
-				}
-
-				block1 := createCustomTSDBBlock(t, bkt, userID, externalLabels(""), appendHistograms)
-				block2 := createCustomTSDBBlock(t, bkt, userID, externalLabels(""), appendHistograms)
-
-				return []block.Meta{
-					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 1 * blockRangeMillis,
-							MaxTime: 2 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2},
-							},
-						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "1_of_2",
-							},
-						},
-					},
-					{
-						BlockMeta: tsdb.BlockMeta{
-							MinTime: 1 * blockRangeMillis,
-							MaxTime: 2 * blockRangeMillis,
-							Compaction: tsdb.BlockMetaCompaction{
-								Sources: []ulid.ULID{block1, block2},
-							},
-						},
-						Thanos: block.ThanosMeta{
-							Labels: map[string]string{
-								mimir_tsdb.CompactorShardIDExternalLabel: "2_of_2",
-							},
-						},
+						Labels: map[string]string{},
 					},
 				}
 			},
@@ -683,10 +533,14 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 			storageDir := t.TempDir()
 			fetcherDir := t.TempDir()
 
-			storageCfg := mimir_tsdb.BlocksStorageConfig{}
-			flagext.DefaultValues(&storageCfg)
-			storageCfg.Bucket.Backend = bucket.Filesystem
-			storageCfg.Bucket.Filesystem.Directory = storageDir
+			storageCfg := client.Config{
+				StorageBackendConfig: client.StorageBackendConfig{
+					Backend: client.Filesystem,
+					Filesystem: filesystem.Config{
+						Directory: storageDir,
+					},
+				},
+			}
 
 			compactorCfg := prepareConfig(t)
 			compactorCfg.DataDir = workDir
@@ -700,11 +554,13 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 			ctx := context.Background()
 
 			// Create TSDB blocks in the storage and get the expected blocks.
-			bucketClient, err := bucket.NewClient(ctx, storageCfg.Bucket, "test", logger, nil)
+			bkt, err := client.NewBucket(context.Background(), storageCfg, "test")
 			require.NoError(t, err)
-			expected := testData.setup(t, bucketClient)
 
-			c, err := NewMultitenantCompactor(compactorCfg, storageCfg, cfgProvider, logger, reg)
+			defer bkt.Close()
+			expected := testData.setup(t, bkt)
+
+			c, err := NewMultitenantCompactor(compactorCfg, bkt, cfgProvider, logger, reg)
 			require.NoError(t, err)
 			require.NoError(t, services.StartAndAwaitRunning(context.Background(), c))
 			t.Cleanup(func() {
@@ -721,7 +577,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 			})
 
 			// List back any (non deleted) block from the storage.
-			userBucket := bucket.NewUserBucketClient(userID, bucketClient, nil)
+			userBucket := objstore.NewUserBucketClient(userID, bkt, nil)
 			fetcher, err := block.NewMetaFetcher(logger,
 				1,
 				userBucket,
@@ -743,7 +599,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 				assert.Equal(t, e.MinTime, actual[i].MinTime)
 				assert.Equal(t, e.MaxTime, actual[i].MaxTime)
 				assert.Equal(t, e.Compaction.Sources, actual[i].Compaction.Sources)
-				assert.Equal(t, e.Thanos.Labels, actual[i].Thanos.Labels)
+				assert.Equal(t, e.Labels, actual[i].Labels)
 			}
 		})
 	}
@@ -759,7 +615,7 @@ func TestMultitenantCompactor_ShouldGuaranteeSeriesShardingConsistencyOverTheTim
 
 	var (
 		blockRangeMillis = blockRange.Milliseconds()
-		compactionRanges = mimir_tsdb.DurationList{blockRange}
+		compactionRanges = DurationList{blockRange}
 
 		// You should NEVER CHANGE the expected series here, otherwise it means you're introducing
 		// a backward incompatible change.
@@ -773,10 +629,14 @@ func TestMultitenantCompactor_ShouldGuaranteeSeriesShardingConsistencyOverTheTim
 	storageDir := t.TempDir()
 	fetcherDir := t.TempDir()
 
-	storageCfg := mimir_tsdb.BlocksStorageConfig{}
-	flagext.DefaultValues(&storageCfg)
-	storageCfg.Bucket.Backend = bucket.Filesystem
-	storageCfg.Bucket.Filesystem.Directory = storageDir
+	storageCfg := client.Config{
+		StorageBackendConfig: client.StorageBackendConfig{
+			Backend: client.Filesystem,
+			Filesystem: filesystem.Config{
+				Directory: storageDir,
+			},
+		},
+	}
 
 	compactorCfg := prepareConfig(t)
 	compactorCfg.DataDir = workDir
@@ -789,13 +649,13 @@ func TestMultitenantCompactor_ShouldGuaranteeSeriesShardingConsistencyOverTheTim
 	reg := prometheus.NewPedanticRegistry()
 	ctx := context.Background()
 
-	bucketClient, err := bucket.NewClient(ctx, storageCfg.Bucket, "test", logger, nil)
+	bucketClient, err := client.NewBucket(ctx, storageCfg, "test")
 	require.NoError(t, err)
 
 	// Create a TSDB block in the storage.
 	blockID := createTSDBBlock(t, bucketClient, userID, blockRangeMillis, 2*blockRangeMillis, numSeries, nil)
 
-	c, err := NewMultitenantCompactor(compactorCfg, storageCfg, cfgProvider, logger, reg)
+	c, err := NewMultitenantCompactor(compactorCfg, bucketClient, cfgProvider, logger, reg)
 	require.NoError(t, err)
 	require.NoError(t, services.StartAndAwaitRunning(context.Background(), c))
 	t.Cleanup(func() {
@@ -812,7 +672,7 @@ func TestMultitenantCompactor_ShouldGuaranteeSeriesShardingConsistencyOverTheTim
 	})
 
 	// List back any (non deleted) block from the storage.
-	userBucket := bucket.NewUserBucketClient(userID, bucketClient, nil)
+	userBucket := objstore.NewUserBucketClient(userID, bucketClient, nil)
 	fetcher, err := block.NewMetaFetcher(logger,
 		1,
 		userBucket,
@@ -834,34 +694,34 @@ func TestMultitenantCompactor_ShouldGuaranteeSeriesShardingConsistencyOverTheTim
 		assert.Equal(t, blockRangeMillis, actualMeta.MinTime)
 		assert.Equal(t, 2*blockRangeMillis, actualMeta.MaxTime)
 		assert.Equal(t, []ulid.ULID{blockID}, actualMeta.Compaction.Sources)
-		assert.Equal(t, sharding.FormatShardIDLabelValue(uint64(idx), numShards), actualMeta.Thanos.Labels[mimir_tsdb.CompactorShardIDExternalLabel])
+		assert.Equal(t, sharding.FormatShardIDLabelValue(uint64(idx), numShards), actualMeta.Labels[sharding.CompactorShardIDLabel])
 	}
 
 	// Ensure each split block contains the right series, based on a series labels
 	// hashing function which doesn't change over time.
 	for _, actualMeta := range actualMetas {
-		expectedSeriesIDs := expectedSeriesIDByShard[actualMeta.Thanos.Labels[mimir_tsdb.CompactorShardIDExternalLabel]]
+		expectedSeriesIDs := expectedSeriesIDByShard[actualMeta.Labels[sharding.CompactorShardIDLabel]]
 
-		b, err := tsdb.OpenBlock(logger, filepath.Join(storageDir, userID, actualMeta.ULID.String()), nil)
-		require.NoError(t, err)
-
-		indexReader, err := b.Index()
-		require.NoError(t, err)
+		b := phlaredb.NewSingleBlockQuerierFromMeta(ctx, bucketClient, actualMeta)
+		require.NoError(t, b.Open(ctx))
+		indexReader := b.Index()
 
 		// Find all series in the block.
-		postings, err := indexReader.PostingsForMatchers(false, labels.MustNewMatcher(labels.MatchRegexp, "series_id", ".+"))
+		postings, err := indexReader.Postings("series_id", nil)
 		require.NoError(t, err)
 
-		builder := labels.NewScratchBuilder(1)
+		lbls := make(phlaremodel.Labels, 0, 6)
+
 		for postings.Next() {
+			_, err := indexReader.Series(postings.At(), &lbls, nil)
 			// Symbolize the series labels.
-			require.NoError(t, indexReader.Series(postings.At(), &builder, nil))
+			require.NoError(t, err)
 
 			// Ensure the series below to the right shard.
-			seriesLabels := builder.Labels()
+			seriesLabels := lbls.Clone()
 			seriesID, err := strconv.Atoi(seriesLabels.Get("series_id"))
 			require.NoError(t, err)
-			assert.Contains(t, expectedSeriesIDs, seriesID, "series:", seriesLabels.String())
+			assert.Contains(t, expectedSeriesIDs, seriesID, "series:", seriesLabels.ToPrometheusLabels().String())
 		}
 
 		require.NoError(t, postings.Err())
