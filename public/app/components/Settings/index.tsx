@@ -21,7 +21,7 @@ import ApiKeys from './APIKeys';
 import styles from './Settings.module.css';
 import UserAddForm from './Users/UserAddForm';
 import APIKeyAddForm from './APIKeys/APIKeyAddForm';
-import { PageContentWrapper } from '@pyroscope/pages/layout';
+import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
 
 function Settings() {
   const { path, url } = useRouteMatch();
