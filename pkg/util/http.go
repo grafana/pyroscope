@@ -111,9 +111,11 @@ func (l Log) logWithRequest(r *http.Request) log.Logger {
 	}
 	orgID := r.Header.Get(user.OrgIDHeaderName)
 	if orgID == "" {
-		orgID = "anonymous"
+		localLog = user.LogWith(r.Context(), localLog)
+	} else {
+		localLog = log.With(localLog, "orgID", orgID)
 	}
-	return log.With(localLog, "tenant", orgID)
+	return localLog
 }
 
 // Wrap implements Middleware
