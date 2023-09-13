@@ -42,7 +42,8 @@ import { HeatmapSelectionIcon, HeatmapNoSelectionIcon } from './HeatmapIcons';
 
 import styles from './ExemplarsSingleView.module.scss';
 import { filterNonCPU } from './filterNonCPU';
-import { PageContentWrapper, Panel } from '@pyroscope/pages/layout';
+import { Panel } from '@pyroscope/components/Panel';
+import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
 
 function ExemplarsSingleView() {
   const [tabIndex, setTabIndex] = useState(0);

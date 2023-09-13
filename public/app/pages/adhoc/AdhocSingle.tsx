@@ -18,7 +18,7 @@ import useColorMode from '@pyroscope/hooks/colorMode.hook';
 import { Tabs, Tab, TabPanel } from '@pyroscope/ui/Tabs';
 import FileUploader from './components/FileUploader';
 import adhocStyles from './Adhoc.module.scss';
-import { PageContentWrapper } from '../layout';
+import { PageContentWrapper } from '../PageContentWrapper';
 
 function AdhocSingle() {
   const dispatch = useAppDispatch();

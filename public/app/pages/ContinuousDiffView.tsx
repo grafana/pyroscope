@@ -30,7 +30,8 @@ import { isExportToFlamegraphDotComEnabled } from '@pyroscope/util/features';
 import PageTitle from '@pyroscope/components/PageTitle';
 import { formatTitle } from './formatTitle';
 import { isLoadingOrReloading } from './loading';
-import { PageContentWrapper, Panel } from '@pyroscope/pages/layout';
+import { Panel } from '@pyroscope/components/Panel';
+import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();

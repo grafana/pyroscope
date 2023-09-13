@@ -1,14 +1,8 @@
-// Layout wrapper components that will allow us to override these layout components with alternative styling
-
 import Box from '@pyroscope/ui/Box';
 import { LoadingOverlay } from '@pyroscope/ui/LoadingOverlay';
 import React, { ReactNode } from 'react';
 
-import styles from './layout.module.css';
-
-export function PageContentWrapper({ children }: { children: ReactNode }) {
-  return <div className="main-wrapper">{children}</div>;
-}
+import styles from './Panel.module.css';
 
 export type PanelProps = {
   isLoading: boolean;

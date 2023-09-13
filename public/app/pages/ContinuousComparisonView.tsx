@@ -37,7 +37,8 @@ import useTimelines, {
 import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 import useFlamegraphSharedQuery from '../hooks/flamegraphSharedQuery.hook';
 import { formatTitle } from './formatTitle';
-import { PageContentWrapper, Panel } from '@pyroscope/pages/layout';
+import { Panel } from '@pyroscope/components/Panel';
+import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();

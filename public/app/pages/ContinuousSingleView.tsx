@@ -39,7 +39,8 @@ import { formatTitle } from './formatTitle';
 import ContextMenu from './continuous/contextMenu/ContextMenu';
 import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
 import { isLoadingOrReloading } from './loading';
-import { PageContentWrapper, Panel } from '@pyroscope/pages/layout';
+import { Panel } from '@pyroscope/components/Panel';
+import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
