@@ -29,7 +29,7 @@ export interface ChartTitleProps {
   color?: Color;
   icon?: ReactNode;
   postfix?: ReactNode;
-  titleKey?: keyof typeof chartTitleKeys;
+  titleKey?: ChartTitleKey;
 }
 
 export function getChartTitle(key: ChartTitleKey) {
