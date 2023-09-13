@@ -272,16 +272,6 @@ func TestNoCompactionMarkFilter(t *testing.T) {
 	}
 }
 
-func TestConvertCompactionResultToForEachJobs(t *testing.T) {
-	ulid1 := ulid.MustNew(1, nil)
-	ulid2 := ulid.MustNew(2, nil)
-
-	res := convertCompactionResultToForEachJobs([]ulid.ULID{{}, ulid1, {}, ulid2, {}}, true, log.NewNopLogger())
-	require.Len(t, res, 2)
-	require.Equal(t, ulidWithShardIndex{ulid: ulid1, shardIndex: 1}, res[0])
-	require.Equal(t, ulidWithShardIndex{ulid: ulid2, shardIndex: 3}, res[1])
-}
-
 func TestCompactedBlocksTimeRangeVerification(t *testing.T) {
 	const (
 		sourceMinTime = 1000

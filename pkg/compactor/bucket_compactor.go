@@ -24,6 +24,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/tsdb"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
@@ -31,7 +32,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
@@ -217,6 +217,14 @@ type Planner interface {
 	Plan(ctx context.Context, metasByMinTime []*block.Meta) ([]*block.Meta, error)
 }
 
+// Compactor provides compaction against an underlying storage of profiling data.
+type Compactor interface {
+	// CompactWithSplitting merges and splits the source blocks into shardCount number of compacted blocks,
+	// and returns slice of block IDs. Position of returned block ID in the result slice corresponds to the shard index.
+	// If given compacted block has no series, corresponding block ID will be zero ULID value.
+	CompactWithSplitting(dest string, dirs []string, open []*tsdb.Block, shardCount uint64) (result []ulid.ULID, _ error)
+}
+
 // runCompactionJob plans and runs a single compaction against the provided job. The compacted result
 // is uploaded into the bucket the blocks were retrieved from.
 func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shouldRerun bool, compIDs []ulid.ULID, rerr error) {
@@ -287,6 +295,7 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 	compactionBegin := time.Now()
 
 	// todo: move this to a separate function.
+	//
 	localBucket, err := client.NewBucket(ctx, client.Config{
 		StorageBackendConfig: client.StorageBackendConfig{
 			Backend:    client.Filesystem,
@@ -361,13 +370,12 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 		c.metrics.compactionBlocksVerificationFailed.Inc()
 	}
 
-	blocksToUpload := convertCompactionResultToForEachJobs(compIDs, job.UseSplitting(), jobLogger)
-	err = concurrency.ForEachJob(ctx, len(blocksToUpload), c.blockSyncConcurrency, func(ctx context.Context, idx int) error {
-		blockToUpload := blocksToUpload[idx]
+	err = concurrency.ForEachJob(ctx, len(compIDs), c.blockSyncConcurrency, func(ctx context.Context, idx int) error {
+		ulidToUpload := compIDs[idx]
 
 		uploadedBlocks.Inc()
 
-		bdir := filepath.Join(subDir, blockToUpload.ulid.String())
+		bdir := filepath.Join(subDir, ulidToUpload.String())
 
 		newMeta, err := block.ReadMetaFromDir(bdir)
 		if err != nil {
@@ -385,11 +393,11 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 
 		begin := time.Now()
 		if err := block.Upload(ctx, jobLogger, c.bkt, bdir); err != nil {
-			return errors.Wrapf(err, "upload of %s failed", blockToUpload.ulid)
+			return errors.Wrapf(err, "upload of %s failed", ulidToUpload)
 		}
 
 		elapsed := time.Since(begin)
-		level.Info(jobLogger).Log("msg", "uploaded block", "result_block", blockToUpload.ulid, "duration", elapsed, "duration_ms", elapsed.Milliseconds(), "labels", labels.FromMap(newMeta.Labels))
+		level.Info(jobLogger).Log("msg", "uploaded block", "result_block", ulidToUpload, "duration", elapsed, "duration_ms", elapsed.Milliseconds(), "labels", labels.FromMap(newMeta.Labels))
 		return nil
 	})
 	if err != nil {
@@ -456,27 +464,6 @@ func verifyCompactedBlocksTimeRanges(compIDs []ulid.ULID, sourceBlocksMinTime, s
 	return nil
 }
 
-// convertCompactionResultToForEachJobs filters out empty ULIDs.
-// When handling result of split compactions, shard index is index in the slice returned by compaction.
-func convertCompactionResultToForEachJobs(compactedBlocks []ulid.ULID, splitJob bool, jobLogger log.Logger) []ulidWithShardIndex {
-	result := make([]ulidWithShardIndex, 0, len(compactedBlocks))
-
-	for ix, id := range compactedBlocks {
-		// Skip if it's an empty block.
-		if id == (ulid.ULID{}) {
-			if splitJob {
-				level.Info(jobLogger).Log("msg", "compaction produced an empty block", "shard_id", sharding.FormatShardIDLabelValue(uint64(ix), uint64(len(compactedBlocks))))
-			} else {
-				level.Info(jobLogger).Log("msg", "compaction produced an empty block")
-			}
-			continue
-		}
-
-		result = append(result, ulidWithShardIndex{shardIndex: ix, ulid: id})
-	}
-	return result
-}
-
 func deleteBlock(bkt objstore.Bucket, id ulid.ULID, bdir string, logger log.Logger, blocksMarkedForDeletion prometheus.Counter) error {
 	if err := os.RemoveAll(bdir); err != nil {
 		return errors.Wrapf(err, "remove old block dir %s", id)
@@ -490,11 +477,6 @@ func deleteBlock(bkt objstore.Bucket, id ulid.ULID, bdir string, logger log.Logg
 		return errors.Wrapf(err, "mark block %s for deletion from bucket", id)
 	}
 	return nil
-}
-
-type ulidWithShardIndex struct {
-	ulid       ulid.ULID
-	shardIndex int
 }
 
 // BucketCompactorMetrics holds the metrics tracked by BucketCompactor.
@@ -559,6 +541,7 @@ type BucketCompactor struct {
 	sy                   *Syncer
 	grouper              Grouper
 	planner              Planner
+	comp                 Compactor
 	compactDir           string
 	bkt                  objstore.Bucket
 	concurrency          int

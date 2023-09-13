@@ -1755,15 +1755,11 @@ func prepareWithConfigProvider(t *testing.T, compactorCfg Config, bucketClient o
 	logger := &componentLogger{component: "compactor", log: log.NewLogfmtLogger(logs)}
 	registry := prometheus.NewRegistry()
 
-	bucketClientFactory := func(ctx context.Context) (objstore.Bucket, error) {
-		return bucketClient, nil
-	}
-
 	blocksCompactorFactory := func(ctx context.Context, cfg Config, logger log.Logger, reg prometheus.Registerer) (Compactor, Planner, error) {
 		return tsdbCompactor, tsdbPlanner, nil
 	}
 
-	c, err := newMultitenantCompactor(compactorCfg, storageCfg, limits, logger, registry, bucketClientFactory, splitAndMergeGrouperFactory, blocksCompactorFactory)
+	c, err := newMultitenantCompactor(compactorCfg, bucketClient, limits, logger, registry, splitAndMergeGrouperFactory, blocksCompactorFactory)
 	require.NoError(t, err)
 
 	return c, tsdbCompactor, tsdbPlanner, logs, registry
