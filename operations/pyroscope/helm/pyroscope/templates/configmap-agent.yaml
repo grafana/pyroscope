@@ -167,7 +167,7 @@ data:
     		profile.{{if eq . "cpu"}}process_cpu{{else}}{{.}}{{end}} {
     			enabled = {{if eq . $currentType}}true{{else}}false{{end}}
     		}
-        {{- if ne . "mutex" }}{{ printf "\n" }}{{ end }}
+        {{- if ne . (last $profileTypes) }}{{ printf "\n" }}{{ end }}
         {{- end }}
     	}
     }

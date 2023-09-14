@@ -228,10 +228,10 @@ data:
     		profile.mutex {
     			enabled = false
     		}
+
     		profile.fgprof {
     			enabled = false
     		}
-
     	}
     }
 
@@ -349,10 +349,10 @@ data:
     		profile.mutex {
     			enabled = false
     		}
+
     		profile.fgprof {
     			enabled = false
     		}
-
     	}
     }
 
@@ -470,10 +470,10 @@ data:
     		profile.mutex {
     			enabled = false
     		}
+
     		profile.fgprof {
     			enabled = false
     		}
-
     	}
     }
 
@@ -591,10 +591,10 @@ data:
     		profile.mutex {
     			enabled = false
     		}
+
     		profile.fgprof {
     			enabled = false
     		}
-
     	}
     }
 
@@ -712,10 +712,10 @@ data:
     		profile.mutex {
     			enabled = true
     		}
+
     		profile.fgprof {
     			enabled = false
     		}
-
     	}
     }
 
@@ -833,10 +833,10 @@ data:
     		profile.mutex {
     			enabled = false
     		}
+
     		profile.fgprof {
     			enabled = true
     		}
-
     	}
     }
 
