@@ -3,6 +3,7 @@ package integration
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -45,8 +46,8 @@ func (p *PyroscopeTest) Start(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	require.Eventually(t, func() bool {
-		return p.ringActive()
-	}, 5*time.Second, 100*time.Millisecond)
+		return p.ringActive() && p.ready()
+	}, 30*time.Second, 100*time.Millisecond)
 }
 
 func (p *PyroscopeTest) Stop(t *testing.T) {
@@ -57,8 +58,16 @@ func (p *PyroscopeTest) Stop(t *testing.T) {
 	p.wg.Wait()
 }
 
+func (p *PyroscopeTest) ready() bool {
+	return httpBodyContains("http://localhost:4040/ready", "ready")
+}
 func (p *PyroscopeTest) ringActive() bool {
-	res, err := http.Get("http://localhost:4040/ring")
+	return httpBodyContains("http://localhost:4040/ring", "ACTIVE")
+}
+
+func httpBodyContains(url string, needle string) bool {
+	fmt.Println("httpBodyContains", url, needle)
+	res, err := http.Get(url)
 	if err != nil {
 		return false
 	}
@@ -70,8 +79,6 @@ func (p *PyroscopeTest) ringActive() bool {
 	if err != nil {
 		return false
 	}
-	if strings.Contains(body.String(), "ACTIVE") {
-		return true
-	}
-	return false
+
+	return strings.Contains(body.String(), needle)
 }
