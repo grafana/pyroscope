@@ -395,10 +395,6 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 			return errors.Wrapf(err, "failed to read meta the block dir %s", bdir)
 		}
 
-		if err = os.Remove(filepath.Join(bdir, "tombstones")); err != nil {
-			return errors.Wrap(err, "remove tombstones")
-		}
-
 		// Ensure the compacted block is valid.
 		if err := phlaredb.ValidateLocalBlock(ctx, bdir); err != nil {
 			return errors.Wrapf(err, "invalid result block %s", bdir)
