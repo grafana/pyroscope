@@ -231,7 +231,7 @@ func TestIngestPPROF(t *testing.T) {
 			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.st.json",
 			expectStatus:     200,
 			metrics: []string{
-				"rocess_cpu:cpu:nanoseconds::nanoseconds",
+				"process_cpu:cpu:nanoseconds::nanoseconds",
 			},
 		},
 		{
@@ -248,15 +248,17 @@ func TestIngestPPROF(t *testing.T) {
 				"process_cpu:alloc_size:bytes::nanoseconds",    // this was rewriten by ingest handler to replace -
 			},
 		},
-		//{
-		//	// this is a fixed dotnet pprof
-		//	profile:          repoRoot + "TODO",
-		//	sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/TODO",
-		//	expectStatus:     200,
-		//	metrics: []string{
-		//		"fail",
-		//	},
-		//},
+		{
+			// this is a fixed dotnet pprof
+			profile:          repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-211.pb.gz",
+			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-211.st.json",
+			expectStatus:     200,
+			metrics: []string{
+				"process_cpu:cpu:nanoseconds::nanoseconds",
+				"process_cpu:alloc_samples:count::nanoseconds",
+				"process_cpu:alloc_size:bytes::nanoseconds",
+			},
+		},
 	}
 	for _, testdatum := range testdata {
 		t.Run(testdatum.profile, func(t *testing.T) {
@@ -297,8 +299,10 @@ func TestIngestPPROF(t *testing.T) {
 
 			if testdatum.expectStatus == 200 {
 				for _, metric := range testdatum.metrics {
+					fmt.Println(metric)
 					// todo use not only /render
 					queryURL := "http://localhost:4040/pyroscope/render?query=" + metric + "{service_name=\"" + appName + "\"}&from=now-1h&until=now&format=collapsed"
+					fmt.Println(queryURL)
 					queryRes, err := http.Get(queryURL)
 					require.NoError(t, err)
 					body := bytes.NewBuffer(nil)
@@ -314,8 +318,6 @@ func TestIngestPPROF(t *testing.T) {
 			}
 		})
 	}
-
-	time.Sleep(time.Hour)
 }
 
 func createPProfRequest(t *testing.T, profile, prevProfile, sampleTypeConfig []byte) ([]byte, string) {
