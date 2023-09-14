@@ -54,7 +54,7 @@ func (b *Bucket) Iter(ctx context.Context, dir string, f func(string) error, opt
 		if dir != "" {
 			dir = strings.TrimSuffix(dir, objstore.DirDelim) + objstore.DirDelim
 		}
-		return b.iterPrefix(ctx, filepath.Join(b.rootDir, dir), dir, "", f, options...)
+		return b.Bucket.Iter(ctx, dir, f, options...)
 	}
 	relDir := filepath.Dir(dir)
 	prefix := dir
