@@ -294,7 +294,6 @@ type pprofTestData struct {
 	expectStatusPush   int
 	expectedError      string
 	metrics            []expectedMetric
-	needFunctionIDFix  bool
 }
 
 type expectedMetric struct {
