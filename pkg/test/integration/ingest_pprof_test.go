@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -21,6 +22,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -85,6 +87,7 @@ var (
 		{
 			profile:            repoRoot + "pkg/og/convert/pprof/testdata/cpu-exemplars.pb.gz",
 			expectStatusIngest: 200,
+			expectStatusPush:   200,
 			metrics:            golangCPU,
 		},
 		{
@@ -219,6 +222,7 @@ var (
 			profile:            repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-211.pb.gz",
 			sampleTypeConfig:   repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-211.st.json",
 			expectStatusIngest: 200,
+			expectStatusPush:   200,
 			metrics: []expectedMetric{
 				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
 				{"process_cpu:alloc_samples:count::nanoseconds", 2},
@@ -370,6 +374,14 @@ func push(t *testing.T, testdatum pprofTestData) string {
 		require.NoError(t, err)
 	} else {
 		require.Error(t, err)
+		var connectErr *connect.Error
+
+		if ok := errors.As(err, &connectErr); ok {
+			toHTTP := connectgrpc.CodeToHTTP(connectErr.Code())
+			require.Equal(t, testdatum.expectStatusPush, int(toHTTP))
+		} else {
+			require.Fail(t, "unexpected error type", err.Error())
+		}
 	}
 
 	return appName
