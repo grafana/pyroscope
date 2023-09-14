@@ -234,6 +234,26 @@ func TestIngestPPROF(t *testing.T) {
 				"rocess_cpu:cpu:nanoseconds::nanoseconds",
 			},
 		},
+		{
+			// this one is broken dotnet pprof
+			// it has function.id == 0 for every function
+			// it also has "-" in sample type name
+			profile:          repoRoot + "TODO",
+			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.st.json",
+			expectStatus:     200,
+			metrics: []string{
+				"fail",
+			},
+		},
+		{
+			// this is a fixed dotnet pprof
+			profile:          repoRoot + "TODO",
+			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/TODO",
+			expectStatus:     200,
+			metrics: []string{
+				"fail",
+			},
+		},
 	}
 	for _, testdatum := range testdata {
 		var (
@@ -281,14 +301,14 @@ func TestIngestPPROF(t *testing.T) {
 				assert.NoError(t, err)
 				fb := new(flamebearer.FlamebearerProfile)
 				err = json.Unmarshal(body.Bytes(), fb)
-				assert.NoError(t, err)
+				assert.NoError(t, err, testdatum.profile)
 				assert.Greater(t, len(fb.Flamebearer.Names), 0, testdatum.profile)
 				// todo check actual stacktrace contents
 			}
 		}
 	}
 
-	//time.Sleep(time.Hour)
+	time.Sleep(time.Hour)
 }
 
 func createPProfRequest(t *testing.T, profile, prevProfile, sampleTypeConfig []byte) ([]byte, string) {
