@@ -24,7 +24,7 @@ func TenantLimitsHandler(defaultLimits Limits, tenantLimits TenantLimits) http.H
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := tenant.TenantID(r.Context())
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusUnauthorized)
+			util.WriteErrorWithStatus(err, w, http.StatusUnauthorized)
 			return
 		}
 

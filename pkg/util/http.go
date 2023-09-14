@@ -73,7 +73,7 @@ func WriteYAMLResponse(w http.ResponseWriter, v interface{}) {
 
 	data, err := yaml.Marshal(v)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		WriteError(err, w)
 		return
 	}
 
@@ -355,7 +355,7 @@ func RenderHTTPResponse(w http.ResponseWriter, v interface{}, t *template.Templa
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err := t.Execute(w, v)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		WriteError(err, w)
 	}
 }
 
@@ -365,7 +365,7 @@ func WriteJSONResponse(w http.ResponseWriter, v interface{}) {
 
 	data, err := json.Marshal(v)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		WriteError(err, w)
 		return
 	}
 
@@ -386,7 +386,7 @@ func AuthenticateUser(on bool) middleware.Interface {
 			}
 			_, ctx, err := user.ExtractOrgIDFromHTTPRequest(r)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusUnauthorized)
+				WriteErrorWithStatus(err, w, http.StatusUnauthorized)
 				return
 			}
 			next.ServeHTTP(w, r.WithContext(ctx))

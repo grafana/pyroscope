@@ -12,6 +12,8 @@ import (
 	"path"
 	"sort"
 	"sync"
+
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 // List of weights to order link groups in the same order as weights are ordered here.
@@ -93,7 +95,7 @@ func indexHandler(httpPathPrefix string, content *IndexPageContent) http.Handler
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := templ.Execute(w, indexPageContents{LinkGroups: content.GetContent()})
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			util.WriteError(err, w)
 		}
 	}
 }

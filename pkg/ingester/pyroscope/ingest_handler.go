@@ -9,11 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bufbuild/connect-go"
-	"github.com/pkg/errors"
-
 	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
+	"github.com/grafana/pyroscope/pkg/util"
 
 	"github.com/grafana/pyroscope/pkg/og/convert/speedscope"
 
@@ -49,7 +46,7 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	input, err := h.ingestInputFromRequest(r)
 	if err != nil {
 		_ = h.log.Log("msg", "bad request", "err", err)
-		w.WriteHeader(http.StatusBadRequest)
+		util.WriteErrorWithStatus(err, w, http.StatusBadRequest)
 		return
 	}
 
@@ -57,17 +54,11 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err = h.ingester.Ingest(r.Context(), input)
 	if err != nil {
 		_ = h.log.Log("msg", "pyroscope ingest", "err", err, "tenant_id", tenantID)
-		var connectErr *connect.Error
-		if ok := errors.As(err, &connectErr); ok {
-			w.WriteHeader(int(connectgrpc.CodeToHTTP(connectErr.Code())))
-			_, _ = w.Write([]byte(connectErr.Message()))
-			return
-		}
 
 		if ingestion.IsIngestionError(err) {
-			w.WriteHeader(http.StatusInternalServerError)
+			util.WriteError(err, w)
 		} else {
-			w.WriteHeader(http.StatusUnprocessableEntity)
+			util.WriteErrorWithStatus(err, w, http.StatusUnprocessableEntity)
 		}
 	}
 }

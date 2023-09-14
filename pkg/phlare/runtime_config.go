@@ -98,19 +98,19 @@ func runtimeConfigHandler(runtimeCfgManager *runtimeconfig.Manager, defaultLimit
 
 			cfgYaml, err := util.YAMLMarshalUnmarshal(cfg)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				util.WriteError(err, w)
 				return
 			}
 
 			defaultCfgYaml, err := util.YAMLMarshalUnmarshal(defaultCfg)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				util.WriteError(err, w)
 				return
 			}
 
 			output, err = util.DiffConfig(defaultCfgYaml, cfgYaml)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				util.WriteError(err, w)
 				return
 			}
 
