@@ -184,7 +184,7 @@ func ValidateProfile(limits ProfileValidationLimits, userID string, prof *google
 		if strings.Contains(stt, "-") {
 			return NewErrorf(MalformedProfile, "sample type contains -")
 		}
-		//todo check if sample type is valid promql label
+		//todo check if sample type is valid from the promql parser persepective
 	}
 	return nil
 }
