@@ -8,6 +8,7 @@ package compactor
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -18,42 +19,43 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/tsdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
 
-	"github.com/grafana/mimir/pkg/storage/tsdb/block"
-	"github.com/grafana/mimir/pkg/util/extprom"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	objstore_testutil "github.com/grafana/pyroscope/pkg/objstore/testutil"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/util/extprom"
 )
 
 func TestGroupKey(t *testing.T) {
 	for _, tcase := range []struct {
-		input    block.ThanosMeta
+		input    block.Meta
 		expected string
 	}{
 		{
-			input:    block.ThanosMeta{},
+			input:    block.Meta{},
 			expected: "0@17241709254077376921",
 		},
 		{
-			input: block.ThanosMeta{
+			input: block.Meta{
 				Labels:     map[string]string{},
-				Downsample: block.ThanosDownsample{Resolution: 0},
+				Downsample: block.Downsample{Resolution: 0},
 			},
 			expected: "0@17241709254077376921",
 		},
 		{
-			input: block.ThanosMeta{
+			input: block.Meta{
 				Labels:     map[string]string{"foo": "bar", "foo1": "bar2"},
-				Downsample: block.ThanosDownsample{Resolution: 0},
+				Downsample: block.Downsample{Resolution: 0},
 			},
 			expected: "0@2124638872457683483",
 		},
 		{
-			input: block.ThanosMeta{
+			input: block.Meta{
 				Labels:     map[string]string{`foo/some..thing/some.thing/../`: `a_b_c/bar-something-a\metric/a\x`},
-				Downsample: block.ThanosDownsample{Resolution: 0},
+				Downsample: block.Downsample{Resolution: 0},
 			},
 			expected: "0@16590761456214576373",
 		},
@@ -69,9 +71,9 @@ func TestGroupKey(t *testing.T) {
 func TestGroupMaxMinTime(t *testing.T) {
 	g := &Job{
 		metasByMinTime: []*block.Meta{
-			{BlockMeta: tsdb.BlockMeta{MinTime: 0, MaxTime: 10}},
-			{BlockMeta: tsdb.BlockMeta{MinTime: 1, MaxTime: 20}},
-			{BlockMeta: tsdb.BlockMeta{MinTime: 2, MaxTime: 30}},
+			{MinTime: 0, MaxTime: 10},
+			{MinTime: 1, MaxTime: 20},
+			{MinTime: 2, MaxTime: 30},
 		},
 	}
 
@@ -120,7 +122,7 @@ func TestBucketCompactor_FilterOwnJobs(t *testing.T) {
 	m := NewBucketCompactorMetrics(promauto.With(nil).NewCounter(prometheus.CounterOpts{}), nil)
 	for testName, testCase := range tests {
 		t.Run(testName, func(t *testing.T) {
-			bc, err := NewBucketCompactor(log.NewNopLogger(), nil, nil, nil, nil, "", nil, 2, false, testCase.ownJob, nil, 0, 4, m)
+			bc, err := NewBucketCompactor(log.NewNopLogger(), nil, nil, nil, "", nil, 2, testCase.ownJob, nil, 0, 1, 4, m)
 			require.NoError(t, err)
 
 			res, err := bc.filterOwnJobs(jobsFn())
@@ -134,29 +136,23 @@ func TestBucketCompactor_FilterOwnJobs(t *testing.T) {
 func TestBlockMaxTimeDeltas(t *testing.T) {
 	j1 := NewJob("user", "key1", labels.EmptyLabels(), 0, false, 0, "")
 	require.NoError(t, j1.AppendMeta(&block.Meta{
-		BlockMeta: tsdb.BlockMeta{
-			MinTime: 1500002700159,
-			MaxTime: 1500002800159,
-		},
+		MinTime: 1500002700159,
+		MaxTime: 1500002800159,
 	}))
 
 	j2 := NewJob("user", "key2", labels.EmptyLabels(), 0, false, 0, "")
 	require.NoError(t, j2.AppendMeta(&block.Meta{
-		BlockMeta: tsdb.BlockMeta{
-			MinTime: 1500002600159,
-			MaxTime: 1500002700159,
-		},
+		MinTime: 1500002600159,
+		MaxTime: 1500002700159,
 	}))
 	require.NoError(t, j2.AppendMeta(&block.Meta{
-		BlockMeta: tsdb.BlockMeta{
-			MinTime: 1500002700159,
-			MaxTime: 1500002800159,
-		},
+		MinTime: 1500002700159,
+		MaxTime: 1500002800159,
 	}))
 
 	metrics := NewBucketCompactorMetrics(promauto.With(nil).NewCounter(prometheus.CounterOpts{}), nil)
 	now := time.UnixMilli(1500002900159)
-	bc, err := NewBucketCompactor(log.NewNopLogger(), nil, nil, nil, nil, "", nil, 2, false, nil, nil, 0, 4, metrics)
+	bc, err := NewBucketCompactor(log.NewNopLogger(), nil, nil, nil, "", nil, 2, nil, nil, 0, 0, 4, metrics)
 	require.NoError(t, err)
 
 	deltas := bc.blockMaxTimeDeltas(now, []*Job{j1, j2})
@@ -165,8 +161,9 @@ func TestBlockMaxTimeDeltas(t *testing.T) {
 
 func TestNoCompactionMarkFilter(t *testing.T) {
 	ctx := context.Background()
+
 	// Use bucket with global markers to make sure that our custom filters work correctly.
-	bkt := block.BucketWithGlobalMarkers(objstore.NewInMemBucket())
+	bkt := block.BucketWithGlobalMarkers(phlareobj.NewBucket(objstore.NewInMemBucket()))
 
 	block1 := ulid.MustParse("01DTVP434PA9VFXSW2JK000001") // No mark file.
 	block2 := ulid.MustParse("01DTVP434PA9VFXSW2JK000002") // Marked for no-compaction
@@ -183,7 +180,7 @@ func TestNoCompactionMarkFilter(t *testing.T) {
 				block5: blockMeta(block5.String(), 500, 600, nil),
 			}
 
-			f := NewNoCompactionMarkFilter(objstore.WithNoopInstr(bkt), false)
+			f := NewNoCompactionMarkFilter(phlareobj.NewBucket(objstore.WithNoopInstr(bkt)), false)
 			require.NoError(t, f.Filter(ctx, metas, synced))
 
 			require.Contains(t, metas, block1)
@@ -204,7 +201,7 @@ func TestNoCompactionMarkFilter(t *testing.T) {
 				block5: blockMeta(block5.String(), 500, 600, nil),
 			}
 
-			f := NewNoCompactionMarkFilter(objstore.WithNoopInstr(bkt), true)
+			f := NewNoCompactionMarkFilter(phlareobj.NewBucket(objstore.WithNoopInstr(bkt)), true)
 			require.NoError(t, f.Filter(ctx, metas, synced))
 
 			require.Contains(t, metas, block1)
@@ -230,7 +227,7 @@ func TestNoCompactionMarkFilter(t *testing.T) {
 			canceledCtx, cancel := context.WithCancel(context.Background())
 			cancel()
 
-			f := NewNoCompactionMarkFilter(objstore.WithNoopInstr(bkt), true)
+			f := NewNoCompactionMarkFilter(phlareobj.NewBucket(objstore.WithNoopInstr(bkt)), true)
 			require.Error(t, f.Filter(canceledCtx, metas, synced))
 
 			require.Contains(t, metas, block1)
@@ -247,7 +244,7 @@ func TestNoCompactionMarkFilter(t *testing.T) {
 				block3: blockMeta(block3.String(), 300, 300, nil), // Has compaction marker with invalid version, but Filter doesn't check for that.
 			}
 
-			f := NewNoCompactionMarkFilter(objstore.WithNoopInstr(bkt), true)
+			f := NewNoCompactionMarkFilter(phlareobj.NewBucket(objstore.WithNoopInstr(bkt)), true)
 			err := f.Filter(ctx, metas, synced)
 			require.NoError(t, err)
 			require.Empty(t, metas)
@@ -313,28 +310,13 @@ func TestCompactedBlocksTimeRangeVerification(t *testing.T) {
 		testData := testData // Prevent loop variable being captured by func literal
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
+			bucketClient, _ := objstore_testutil.NewFilesystemBucket(t, context.Background(), t.TempDir())
 
 			tempDir := t.TempDir()
+			compactedBlock1 := createDBBlock(t, bucketClient, "foo", testData.compactedBlockMinTime, testData.compactedBlockMinTime+500, 10, nil)
+			compactedBlock2 := createDBBlock(t, bucketClient, "foo", testData.compactedBlockMaxTime-500, testData.compactedBlockMaxTime, 10, nil)
 
-			compactedBlock1, err := block.CreateBlock(
-				context.Background(), tempDir,
-				[]labels.Labels{
-					labels.FromStrings("test", "foo", "a", "1"),
-					labels.FromStrings("test", "foo", "a", "2"),
-					labels.FromStrings("test", "foo", "a", "3"),
-				}, 10, testData.compactedBlockMinTime, testData.compactedBlockMinTime+500, labels.EmptyLabels())
-			require.NoError(t, err)
-
-			compactedBlock2, err := block.CreateBlock(
-				context.Background(), tempDir,
-				[]labels.Labels{
-					labels.FromStrings("test", "foo", "a", "1"),
-					labels.FromStrings("test", "foo", "a", "2"),
-					labels.FromStrings("test", "foo", "a", "3"),
-				}, 10, testData.compactedBlockMaxTime-500, testData.compactedBlockMaxTime, labels.EmptyLabels())
-			require.NoError(t, err)
-
-			err = verifyCompactedBlocksTimeRanges([]ulid.ULID{compactedBlock1, compactedBlock2}, sourceMinTime, sourceMaxTime, tempDir)
+			err := verifyCompactedBlocksTimeRanges([]ulid.ULID{compactedBlock1, compactedBlock2}, sourceMinTime, sourceMaxTime,filepath.Join(tempDir,"foo"))
 			if testData.shouldErr {
 				require.ErrorContains(t, err, testData.expectedErrMsg)
 			} else {

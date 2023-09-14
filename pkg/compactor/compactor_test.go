@@ -1596,7 +1596,7 @@ func createCustomBlock(t *testing.T, bkt objstore.Bucket, userID string, externa
 	return meta.ULID
 }
 
-func createTSDBBlock(t *testing.T, bkt objstore.Bucket, userID string, minT, maxT int64, numSeries int, externalLabels map[string]string) ulid.ULID {
+func createDBBlock(t *testing.T, bkt objstore.Bucket, userID string, minT, maxT int64, numSeries int, externalLabels map[string]string) ulid.ULID {
 	return createCustomBlock(t, bkt, userID, externalLabels, func() []*testhelper.ProfileBuilder {
 		result := []*testhelper.ProfileBuilder{}
 		appendSample := func(seriesID int, ts int64, value float64) {

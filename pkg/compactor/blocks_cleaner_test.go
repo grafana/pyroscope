@@ -70,14 +70,14 @@ func testBlocksCleanerWithOptions(t *testing.T, options testBlocksCleanerOptions
 	ctx := context.Background()
 	now := time.Now()
 	deletionDelay := 12 * time.Hour
-	block1 := createTSDBBlock(t, bucketClient, "user-1", 10, 20, 2, nil)
-	block2 := createTSDBBlock(t, bucketClient, "user-1", 20, 30, 2, nil)
-	block3 := createTSDBBlock(t, bucketClient, "user-1", 30, 40, 2, nil)
+	block1 := createDBBlock(t, bucketClient, "user-1", 10, 20, 2, nil)
+	block2 := createDBBlock(t, bucketClient, "user-1", 20, 30, 2, nil)
+	block3 := createDBBlock(t, bucketClient, "user-1", 30, 40, 2, nil)
 	block4 := ulid.MustNew(4, rand.Reader)
 	block5 := ulid.MustNew(5, rand.Reader)
-	block6 := createTSDBBlock(t, bucketClient, "user-1", 40, 50, 2, nil)
-	block7 := createTSDBBlock(t, bucketClient, "user-2", 10, 20, 2, nil)
-	block8 := createTSDBBlock(t, bucketClient, "user-2", 40, 50, 2, nil)
+	block6 := createDBBlock(t, bucketClient, "user-1", 40, 50, 2, nil)
+	block7 := createDBBlock(t, bucketClient, "user-2", 10, 20, 2, nil)
+	block8 := createDBBlock(t, bucketClient, "user-2", 40, 50, 2, nil)
 	createDeletionMark(t, bucketClient, "user-1", block2, now.Add(-deletionDelay).Add(time.Hour))          // Block hasn't reached the deletion threshold yet.
 	createDeletionMark(t, bucketClient, "user-1", block3, now.Add(-deletionDelay).Add(-time.Hour))         // Block reached the deletion threshold.
 	createDeletionMark(t, bucketClient, "user-1", block4, now.Add(-deletionDelay).Add(time.Hour))          // Partial block hasn't reached the deletion threshold yet.
@@ -87,8 +87,8 @@ func testBlocksCleanerWithOptions(t *testing.T, options testBlocksCleanerOptions
 
 	// Blocks for user-3, marked for deletion.
 	require.NoError(t, bucket.WriteTenantDeletionMark(context.Background(), bucketClient, "user-3", nil, bucket.NewTenantDeletionMark(time.Now())))
-	block9 := createTSDBBlock(t, bucketClient, "user-3", 10, 30, 2, nil)
-	block10 := createTSDBBlock(t, bucketClient, "user-3", 30, 50, 2, nil)
+	block9 := createDBBlock(t, bucketClient, "user-3", 10, 30, 2, nil)
+	block10 := createDBBlock(t, bucketClient, "user-3", 30, 50, 2, nil)
 
 	// User-4 with no more blocks, but couple of mark and debug files. Should be fully deleted.
 	user4Mark := bucket.NewTenantDeletionMark(time.Now())
@@ -216,10 +216,10 @@ func TestBlocksCleaner_ShouldContinueOnBlockDeletionFailure(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 	deletionDelay := 12 * time.Hour
-	block1 := createTSDBBlock(t, bucketClient, userID, 10, 20, 2, nil)
-	block2 := createTSDBBlock(t, bucketClient, userID, 20, 30, 2, nil)
-	block3 := createTSDBBlock(t, bucketClient, userID, 30, 40, 2, nil)
-	block4 := createTSDBBlock(t, bucketClient, userID, 40, 50, 2, nil)
+	block1 := createDBBlock(t, bucketClient, userID, 10, 20, 2, nil)
+	block2 := createDBBlock(t, bucketClient, userID, 20, 30, 2, nil)
+	block3 := createDBBlock(t, bucketClient, userID, 30, 40, 2, nil)
+	block4 := createDBBlock(t, bucketClient, userID, 40, 50, 2, nil)
 	createDeletionMark(t, bucketClient, userID, block2, now.Add(-deletionDelay).Add(-time.Hour))
 	createDeletionMark(t, bucketClient, userID, block3, now.Add(-deletionDelay).Add(-time.Hour))
 	createDeletionMark(t, bucketClient, userID, block4, now.Add(-deletionDelay).Add(-time.Hour))
@@ -281,9 +281,9 @@ func TestBlocksCleaner_ShouldRebuildBucketIndexOnCorruptedOne(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 	deletionDelay := 12 * time.Hour
-	block1 := createTSDBBlock(t, bucketClient, userID, 10, 20, 2, nil)
-	block2 := createTSDBBlock(t, bucketClient, userID, 20, 30, 2, nil)
-	block3 := createTSDBBlock(t, bucketClient, userID, 30, 40, 2, nil)
+	block1 := createDBBlock(t, bucketClient, userID, 10, 20, 2, nil)
+	block2 := createDBBlock(t, bucketClient, userID, 20, 30, 2, nil)
+	block3 := createDBBlock(t, bucketClient, userID, 30, 40, 2, nil)
 	createDeletionMark(t, bucketClient, userID, block2, now.Add(-deletionDelay).Add(-time.Hour))
 	createDeletionMark(t, bucketClient, userID, block3, now.Add(-deletionDelay).Add(time.Hour))
 
@@ -335,9 +335,9 @@ func TestBlocksCleaner_ShouldRemoveMetricsForTenantsNotBelongingAnymoreToTheShar
 	bucketClient = block.BucketWithGlobalMarkers(bucketClient)
 
 	// Create blocks.
-	createTSDBBlock(t, bucketClient, "user-1", 10, 20, 2, nil)
-	createTSDBBlock(t, bucketClient, "user-1", 20, 30, 2, nil)
-	createTSDBBlock(t, bucketClient, "user-2", 30, 40, 2, nil)
+	createDBBlock(t, bucketClient, "user-1", 10, 20, 2, nil)
+	createDBBlock(t, bucketClient, "user-1", 20, 30, 2, nil)
+	createDBBlock(t, bucketClient, "user-2", 30, 40, 2, nil)
 
 	cfg := BlocksCleanerConfig{
 		DeletionDelay:           time.Hour,
@@ -377,8 +377,8 @@ func TestBlocksCleaner_ShouldRemoveMetricsForTenantsNotBelongingAnymoreToTheShar
 	cleaner.tenantsScanner = bucket.NewTenantsScanner(bucketClient, func(userID string) (bool, error) { return userID == "user-1", nil }, logger)
 
 	// Create new blocks, to double check expected metrics have changed.
-	createTSDBBlock(t, bucketClient, "user-1", 40, 50, 2, nil)
-	createTSDBBlock(t, bucketClient, "user-2", 50, 60, 2, nil)
+	createDBBlock(t, bucketClient, "user-1", 40, 50, 2, nil)
+	createDBBlock(t, bucketClient, "user-2", 50, 60, 2, nil)
 
 	require.NoError(t, cleaner.runCleanupWithErr(ctx))
 
@@ -404,8 +404,8 @@ func TestBlocksCleaner_ShouldNotCleanupUserThatDoesntBelongToShardAnymore(t *tes
 	bucketClient = block.BucketWithGlobalMarkers(bucketClient)
 
 	// Create blocks.
-	createTSDBBlock(t, bucketClient, "user-1", 10, 20, 2, nil)
-	createTSDBBlock(t, bucketClient, "user-2", 20, 30, 2, nil)
+	createDBBlock(t, bucketClient, "user-1", 10, 20, 2, nil)
+	createDBBlock(t, bucketClient, "user-2", 20, 30, 2, nil)
 
 	cfg := BlocksCleanerConfig{
 		DeletionDelay:           time.Hour,
@@ -456,9 +456,9 @@ func TestBlocksCleaner_ListBlocksOutsideRetentionPeriod(t *testing.T) {
 	ctx := context.Background()
 	logger := log.NewNopLogger()
 
-	id1 := createTSDBBlock(t, bucketClient, "user-1", 5000, 6000, 2, nil)
-	id2 := createTSDBBlock(t, bucketClient, "user-1", 6000, 7000, 2, nil)
-	id3 := createTSDBBlock(t, bucketClient, "user-1", 7000, 8000, 2, nil)
+	id1 := createDBBlock(t, bucketClient, "user-1", 5000, 6000, 2, nil)
+	id2 := createDBBlock(t, bucketClient, "user-1", 6000, 7000, 2, nil)
+	id3 := createDBBlock(t, bucketClient, "user-1", 7000, 8000, 2, nil)
 
 	w := bucketindex.NewUpdater(bucketClient, "user-1", nil, logger)
 	idx, _, err := w.UpdateIndex(ctx, nil)
@@ -516,10 +516,10 @@ func TestBlocksCleaner_ShouldRemoveBlocksOutsideRetentionPeriod(t *testing.T) {
 		return time.Now().Add(time.Duration(hours)*time.Hour).Unix() * 1000
 	}
 
-	block1 := createTSDBBlock(t, bucketClient, "user-1", ts(-10), ts(-8), 2, nil)
-	block2 := createTSDBBlock(t, bucketClient, "user-1", ts(-8), ts(-6), 2, nil)
-	block3 := createTSDBBlock(t, bucketClient, "user-2", ts(-10), ts(-8), 2, nil)
-	block4 := createTSDBBlock(t, bucketClient, "user-2", ts(-8), ts(-6), 2, nil)
+	block1 := createDBBlock(t, bucketClient, "user-1", ts(-10), ts(-8), 2, nil)
+	block2 := createDBBlock(t, bucketClient, "user-1", ts(-8), ts(-6), 2, nil)
+	block3 := createDBBlock(t, bucketClient, "user-2", ts(-10), ts(-8), 2, nil)
+	block4 := createDBBlock(t, bucketClient, "user-2", ts(-8), ts(-6), 2, nil)
 
 	cfg := BlocksCleanerConfig{
 		DeletionDelay:           time.Hour,
@@ -704,8 +704,8 @@ func TestBlocksCleaner_ShouldCleanUpFilesWhenNoMoreBlocksRemain(t *testing.T) {
 	deletionDelay := 12 * time.Hour
 
 	// Create two blocks and mark them for deletion at a time before the deletionDelay
-	block1 := createTSDBBlock(t, bucketClient, userID, 10, 20, 2, nil)
-	block2 := createTSDBBlock(t, bucketClient, userID, 20, 30, 2, nil)
+	block1 := createDBBlock(t, bucketClient, userID, 10, 20, 2, nil)
+	block2 := createDBBlock(t, bucketClient, userID, 20, 30, 2, nil)
 
 	createDeletionMark(t, bucketClient, userID, block1, now.Add(-deletionDelay).Add(-time.Hour))
 	createDeletionMark(t, bucketClient, userID, block2, now.Add(-deletionDelay).Add(-time.Hour))
@@ -753,8 +753,8 @@ func TestBlocksCleaner_ShouldRemovePartialBlocksOutsideDelayPeriod(t *testing.T)
 		return time.Now().Add(time.Duration(hours)*time.Hour).Unix() * 1000
 	}
 
-	block1 := createTSDBBlock(t, bucketClient, "user-1", ts(-10), ts(-8), 2, nil)
-	block2 := createTSDBBlock(t, bucketClient, "user-1", ts(-8), ts(-6), 2, nil)
+	block1 := createDBBlock(t, bucketClient, "user-1", ts(-10), ts(-8), 2, nil)
+	block2 := createDBBlock(t, bucketClient, "user-1", ts(-8), ts(-6), 2, nil)
 
 	cfg := BlocksCleanerConfig{
 		DeletionDelay:           time.Hour,
@@ -823,8 +823,8 @@ func TestBlocksCleaner_ShouldNotRemovePartialBlocksInsideDelayPeriod(t *testing.
 		return time.Now().Add(time.Duration(hours)*time.Hour).Unix() * 1000
 	}
 
-	block1 := createTSDBBlock(t, bucketClient, "user-1", ts(-10), ts(-8), 2, nil)
-	block2 := createTSDBBlock(t, bucketClient, "user-2", ts(-8), ts(-6), 2, nil)
+	block1 := createDBBlock(t, bucketClient, "user-1", ts(-10), ts(-8), 2, nil)
+	block2 := createDBBlock(t, bucketClient, "user-2", ts(-8), ts(-6), 2, nil)
 
 	cfg := BlocksCleanerConfig{
 		DeletionDelay:           time.Hour,
@@ -910,7 +910,7 @@ func TestBlocksCleaner_ShouldNotRemovePartialBlocksIfConfiguredDelayIsInvalid(t 
 	}
 
 	// Create a partial block.
-	block1 := createTSDBBlock(t, bucketClient, "user-1", ts(-10), ts(-8), 2, nil)
+	block1 := createDBBlock(t, bucketClient, "user-1", ts(-10), ts(-8), 2, nil)
 	err := bucketClient.Delete(ctx, path.Join("user-1", block1.String(), block.MetaFilename))
 	require.NoError(t, err)
 
@@ -962,7 +962,7 @@ func TestStalePartialBlockLastModifiedTime(t *testing.T) {
 	const tenantId = "user"
 
 	objectTime := time.Now().Add(-1 * time.Hour).Truncate(time.Second) // ignore milliseconds, as not all filesystems store them.
-	blockID := createTSDBBlock(t, b, tenantId, objectTime.UnixMilli(), time.Now().UnixMilli(), 2, nil)
+	blockID := createDBBlock(t, b, tenantId, objectTime.UnixMilli(), time.Now().UnixMilli(), 2, nil)
 	for _, f := range []string{"meta.json", "index", "chunks/000001", "tombstones"} {
 		require.NoError(t, os.Chtimes(filepath.Join(dir, tenantId, blockID.String(), filepath.FromSlash(f)), objectTime, objectTime))
 	}

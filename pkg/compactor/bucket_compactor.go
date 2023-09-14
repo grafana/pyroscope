@@ -295,7 +295,7 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 	compactionBegin := time.Now()
 
 	// todo: move this to a separate function.
-	//
+	// Move to a compactor interface
 	localBucket, err := client.NewBucket(ctx, client.Config{
 		StorageBackendConfig: client.StorageBackendConfig{
 			Backend:    client.Filesystem,
