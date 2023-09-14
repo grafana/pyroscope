@@ -20,6 +20,7 @@ import (
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	"github.com/stretchr/testify/assert"
@@ -247,7 +248,7 @@ func TestIngest(t *testing.T) {
 			if testdatum.expectStatusIngest == 200 {
 				for _, metric := range testdatum.metrics {
 					render(t, metric, appName, testdatum)
-					selectMerge(t, metric, appName, testdatum)
+					selectMerge(t, metric, appName, testdatum, true)
 				}
 			}
 		})
@@ -270,7 +271,7 @@ func TestPush(t *testing.T) {
 			if testdatum.expectStatusPush == 200 {
 				for _, metric := range testdatum.metrics {
 					render(t, metric, appName, testdatum)
-					selectMerge(t, metric, appName, testdatum)
+					selectMerge(t, metric, appName, testdatum, false)
 				}
 			}
 		})
@@ -278,7 +279,7 @@ func TestPush(t *testing.T) {
 	//time.Sleep(10 * time.Hour)
 }
 
-func selectMerge(t *testing.T, metric expectedMetric, name string, testdatum pprofTestData) {
+func selectMerge(t *testing.T, metric expectedMetric, name string, testdatum pprofTestData, fixes bool) {
 	qc := queryClient()
 	resp, err := qc.SelectMergeProfile(context.Background(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{
 		ProfileTypeID: metric.name,
@@ -296,19 +297,20 @@ func selectMerge(t *testing.T, metric expectedMetric, name string, testdatum ppr
 	require.NoError(t, err)
 
 	actualStacktraces := bench.StackCollapseProto(resp.Msg, 0, 1)
-	if testdatum.needFunctionIDFix {
-		pprof2.FixFunctionIDForBrokenDotnet(expectedProfile.Profile)
+	if fixes {
+		if testdatum.needFunctionIDFix {
+			pprof2.FixFunctionIDForBrokenDotnet(expectedProfile.Profile)
+		}
+		if testdatum.spyName == pprof2.SpyNameForFunctionNameRewrite() {
+			pprof2.FixFunctionNamesForScriptingLanguages(expectedProfile, ingestion.Metadata{SpyName: testdatum.spyName})
+		}
 	}
 	expectedStacktraces := bench.StackCollapseProto(expectedProfile.Profile, metric.valueIDX, 1)
 
 	for i, valueType := range expectedProfile.SampleType {
 		fmt.Println(i, expectedProfile.StringTable[valueType.Type])
 	}
-	if testdatum.spyName == pprof2.SpyNameForFunctionNameRewrite() {
-		fmt.Println("warning skipping scripting stacktrace check") // TODO
-	} else {
-		require.Equal(t, expectedStacktraces, actualStacktraces)
-	}
+	require.Equal(t, expectedStacktraces, actualStacktraces)
 }
 
 func render(t *testing.T, metric expectedMetric, appName string, testdatum pprofTestData) {

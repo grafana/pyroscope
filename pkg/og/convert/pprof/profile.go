@@ -62,7 +62,7 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 	}
 
 	fixTime(profile, md)
-	fixFunctionNamesForScriptingLanguages(profile, md)
+	FixFunctionNamesForScriptingLanguages(profile, md)
 	if md.SpyName == "dotnetspy" {
 		FixFunctionIDForBrokenDotnet(profile.Profile)
 	}
@@ -252,7 +252,7 @@ func isScriptingSpy(md ingestion.Metadata) bool {
 	return md.SpyName == "pyspy" || md.SpyName == "rbspy" || md.SpyName == "scripting"
 }
 
-func fixFunctionNamesForScriptingLanguages(p *pprof.Profile, md ingestion.Metadata) {
+func FixFunctionNamesForScriptingLanguages(p *pprof.Profile, md ingestion.Metadata) {
 	if !needFunctionNameRewrite(md) {
 		return
 	}
