@@ -1,6 +1,10 @@
 import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import { setQuery, reloadAppNames, selectQueries } from '@pyroscope/redux/reducers/continuous';
+import {
+  setQuery,
+  reloadAppNames,
+  selectQueries,
+} from '@pyroscope/redux/reducers/continuous';
 import { appToQuery } from '@pyroscope/models/app';
 
 /**
@@ -22,5 +26,5 @@ export function useSelectFirstApp() {
     }
 
     run();
-  }, [dispatch]);
+  }, [dispatch, query]);
 }
