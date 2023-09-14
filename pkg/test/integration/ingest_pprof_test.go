@@ -17,13 +17,13 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 
@@ -189,53 +189,6 @@ var (
 			},
 			spyName: pprof2.SpyNameForFunctionNameRewrite(),
 		},
-
-		{
-			// this one is broken dotnet pprof
-			// it has function.id == 0 for every function
-			profile:            repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.pb.gz",
-			sampleTypeConfig:   repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.st.json",
-			expectStatusIngest: 200,
-			expectStatusPush:   400,
-			expectedError:      "function id is 0",
-			metrics: []expectedMetric{
-				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
-			},
-			needFunctionIDFix: true,
-			spyName:           "dotnetspy",
-		},
-		{
-			// this one is broken dotnet pprof
-			// it has function.id == 0 for every function
-			// it also has "-" in sample type name
-			profile:            repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-73.pb.gz",
-			sampleTypeConfig:   repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.st.json",
-			expectStatusIngest: 200,
-			expectStatusPush:   400,
-			expectedError:      "function id is 0",
-			metrics: []expectedMetric{
-				// notice how they all use process_cpu metric
-				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
-				{"process_cpu:alloc_samples:count::nanoseconds", 2}, // this was rewriten by ingest handler to replace -
-				{"process_cpu:alloc_size:bytes::nanoseconds", 3},    // this was rewriten by ingest handler to replace -
-			},
-			needFunctionIDFix: true,
-			spyName:           "dotnetspy",
-		},
-		{
-			// this is a fixed dotnet pprof
-			profile:            repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-211.pb.gz",
-			sampleTypeConfig:   repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-211.st.json",
-			expectStatusIngest: 200,
-			expectStatusPush:   200,
-			metrics: []expectedMetric{
-				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
-				{"process_cpu:alloc_samples:count::nanoseconds", 2},
-				{"process_cpu:alloc_size:bytes::nanoseconds", 3},
-				{"process_cpu:alloc_size:bytes::nanoseconds", 3},
-			},
-			spyName: "dotnetspy",
-		},
 	}
 )
 
@@ -300,15 +253,12 @@ func selectMerge(t *testing.T, metric expectedMetric, name string, testdatum ppr
 	expectedProfile, err := pprof.RawFromBytes(profileBytes)
 	require.NoError(t, err)
 
-	actualStacktraces := bench.StackCollapseProto(resp.Msg, 0, 1)
 	if fixes {
-		if testdatum.needFunctionIDFix {
-			pprof2.FixFunctionIDForBrokenDotnet(expectedProfile.Profile)
-		}
 		if testdatum.spyName == pprof2.SpyNameForFunctionNameRewrite() {
 			pprof2.FixFunctionNamesForScriptingLanguages(expectedProfile, ingestion.Metadata{SpyName: testdatum.spyName})
 		}
 	}
+	actualStacktraces := bench.StackCollapseProto(resp.Msg, 0, 1)
 	expectedStacktraces := bench.StackCollapseProto(expectedProfile.Profile, metric.valueIDX, 1)
 
 	for i, valueType := range expectedProfile.SampleType {

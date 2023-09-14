@@ -48,7 +48,6 @@ const (
 	SamplesLimit      Reason = "samples_limit"
 	ProfileSizeLimit  Reason = "profile_size_limit"
 	SampleLabelsLimit Reason = "sample_labels_limit"
-	MalformedProfile  Reason = "malformed_profile"
 
 	SeriesLimitErrorMsg                = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
 	MissingLabelsErrorMsg              = "error at least one label pair is required per profile"
@@ -168,23 +167,6 @@ func ValidateProfile(limits ProfileValidationLimits, userID string, prof *google
 				prof.StringTable[i] = prof.StringTable[i][len(prof.StringTable[i])-symbolLengthLimit:]
 			}
 		}
-	}
-	for _, location := range prof.Location {
-		if location.Id == 0 {
-			return NewErrorf(MalformedProfile, "location id is 0")
-		}
-	}
-	for _, function := range prof.Function {
-		if function.Id == 0 {
-			return NewErrorf(MalformedProfile, "function id is 0")
-		}
-	}
-	for _, valueType := range prof.SampleType {
-		stt := prof.StringTable[valueType.Type]
-		if strings.Contains(stt, "-") {
-			return NewErrorf(MalformedProfile, "sample type contains -")
-		}
-		//todo check if sample type is valid from the promql parser persepective
 	}
 	return nil
 }

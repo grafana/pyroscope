@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/bufbuild/connect-go"
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -63,10 +62,6 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 
 	fixTime(profile, md)
 	FixFunctionNamesForScriptingLanguages(profile, md)
-	if md.SpyName == "dotnetspy" {
-		FixFunctionIDForBrokenDotnet(profile.Profile)
-	}
-	fixSampleTypes(profile)
 
 	res = &distributormodel.PushRequest{
 		RawProfileSize: len(p.Profile),
@@ -80,30 +75,6 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 		}},
 	}
 	return
-}
-
-func fixSampleTypes(profile *pprof.Profile) {
-	for _, st := range profile.SampleType {
-		sts := profile.StringTable[st.Type]
-		if strings.Contains(sts, "-") {
-			sts = strings.ReplaceAll(sts, "-", "_")
-			profile.StringTable[st.Type] = sts
-		}
-	}
-}
-
-func FixFunctionIDForBrokenDotnet(profile *profilev1.Profile) {
-	for _, function := range profile.Function {
-		if function.Id != 0 {
-			return
-		}
-	}
-	if len(profile.Function) != len(profile.Location) {
-		return
-	}
-	for i := range profile.Location {
-		profile.Function[i].Id = profile.Location[i].Id
-	}
 }
 
 func fixTime(profile *pprof.Profile, md ingestion.Metadata) {
