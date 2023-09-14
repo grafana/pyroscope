@@ -195,7 +195,8 @@ var (
 			profile:            repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.pb.gz",
 			sampleTypeConfig:   repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.st.json",
 			expectStatusIngest: 200,
-			expectStatusPush:   422,
+			expectStatusPush:   400,
+			expectedError:      "function id is 0",
 			metrics: []expectedMetric{
 				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
 			},
@@ -208,7 +209,8 @@ var (
 			profile:            repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-73.pb.gz",
 			sampleTypeConfig:   repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.st.json",
 			expectStatusIngest: 200,
-			expectStatusPush:   422,
+			expectStatusPush:   400,
+			expectedError:      "function id is 0",
 			metrics: []expectedMetric{
 				// notice how they all use process_cpu metric
 				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
@@ -340,6 +342,7 @@ type pprofTestData struct {
 	spyName            string
 	expectStatusIngest int
 	expectStatusPush   int
+	expectedError      string
 	metrics            []expectedMetric
 	needFunctionIDFix  bool
 }
@@ -375,10 +378,12 @@ func push(t *testing.T, testdatum pprofTestData) string {
 	} else {
 		require.Error(t, err)
 		var connectErr *connect.Error
-
 		if ok := errors.As(err, &connectErr); ok {
 			toHTTP := connectgrpc.CodeToHTTP(connectErr.Code())
 			require.Equal(t, testdatum.expectStatusPush, int(toHTTP))
+			if testdatum.expectedError != "" {
+				require.Contains(t, connectErr.Error(), testdatum.expectedError)
+			}
 		} else {
 			require.Fail(t, "unexpected error type", err.Error())
 		}
