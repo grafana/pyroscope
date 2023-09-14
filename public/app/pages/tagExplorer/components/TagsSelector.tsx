@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { Redirect, useLocation } from 'react-router-dom';
 import cl from 'classnames';
 
-import { useAppDispatch } from '@pyroscope/redux/hooks';
-import { actions } from '@pyroscope/redux/reducers/continuous';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import { actions, selectQueries } from '@pyroscope/redux/reducers/continuous';
 import { appendLabelToQuery } from '@pyroscope/util/query';
-import { brandQuery } from '@pyroscope/models/query';
+import { brandQuery, parse } from '@pyroscope/models/query';
 import { PAGES } from '@pyroscope/pages/urls';
 import ModalWithToggle from '@pyroscope/ui/Modals/ModalWithToggle';
 import styles from './TagsSelector.module.scss';
@@ -36,6 +36,7 @@ function TagSelector({
     useState(defaultSelectedTags);
   const dispatch = useAppDispatch();
   const { search } = useLocation();
+  const { query } = useAppSelector(selectQueries);
 
   if (shouldRedirect) {
     return (
@@ -55,9 +56,12 @@ function TagSelector({
   const getNewSearch = () => {
     const newSearch = { leftQuery: '', rightQuery: '' };
 
+    const serviceName = parse(brandQuery(query))?.tags?.service_name;
+    const commonQuery = `${appName}{service_name="${serviceName}"}`;
+
     if (baselineTag) {
       newSearch.leftQuery = appendLabelToQuery(
-        `${appName}{}`,
+        commonQuery,
         groupByTag,
         baselineTag
       );
@@ -65,7 +69,7 @@ function TagSelector({
 
     if (comparisonTag) {
       newSearch.rightQuery = appendLabelToQuery(
-        `${appName}{}`,
+        commonQuery,
         groupByTag,
         comparisonTag
       );
