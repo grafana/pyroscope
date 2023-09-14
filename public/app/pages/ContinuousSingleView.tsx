@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import 'react-dom';
 
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import Box from '@pyroscope/ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph/FlamegraphRenderer';
 import {
   fetchSingleView,
@@ -25,7 +24,6 @@ import useTimeZone from '@pyroscope/hooks/timeZone.hook';
 import PageTitle from '@pyroscope/components/PageTitle';
 import { ContextMenuProps } from '@pyroscope/components/TimelineChart/ContextMenu.plugin';
 import { getFormatter } from '@pyroscope/legacy/flamegraph/format/format';
-import { LoadingOverlay } from '@pyroscope/ui/LoadingOverlay';
 import { TooltipCallbackProps } from '@pyroscope/components/TimelineChart/Tooltip.plugin';
 import { Profile } from '@pyroscope/legacy/models';
 import {
@@ -41,7 +39,8 @@ import { formatTitle } from './formatTitle';
 import ContextMenu from './continuous/contextMenu/ContextMenu';
 import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuitem';
 import { isLoadingOrReloading } from './loading';
-import { PageContentWrapper } from './layout';
+import { Panel } from '@pyroscope/components/Panel';
+import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -177,40 +176,33 @@ function ContinuousSingleView() {
           }}
         />
 
-        <Box>
-          <LoadingOverlay active={isLoadingOrReloading([singleView.type])}>
-            <TimelineChartWrapper
-              timezone={offset === 0 ? 'utc' : 'browser'}
-              data-testid="timeline-single"
-              id="timeline-chart-single"
-              timelineA={getTimeline()}
-              onSelect={(from, until) =>
-                dispatch(setDateRange({ from, until }))
-              }
-              height="125px"
-              title={
-                <ChartTitle
-                  className="singleView-timeline-title"
-                  titleKey={singleView?.profile?.metadata.units}
-                />
-              }
-              annotations={annotations}
-              selectionType="single"
-              ContextMenu={contextMenu}
-              onHoverDisplayTooltip={(data) =>
-                createTooltip(query, data, singleView.profile)
-              }
+        <Panel
+          isLoading={isLoadingOrReloading([singleView.type])}
+          title={
+            <ChartTitle
+              className="singleView-timeline-title"
+              titleKey={singleView?.profile?.metadata.units}
             />
-          </LoadingOverlay>
-        </Box>
-        <Box>
-          <LoadingOverlay
-            spinnerPosition="baseline"
-            active={isLoadingOrReloading([singleView.type])}
-          >
-            {flamegraphRenderer}
-          </LoadingOverlay>
-        </Box>
+          }
+        >
+          <TimelineChartWrapper
+            timezone={offset === 0 ? 'utc' : 'browser'}
+            data-testid="timeline-single"
+            id="timeline-chart-single"
+            timelineA={getTimeline()}
+            onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
+            height="125px"
+            annotations={annotations}
+            selectionType="single"
+            ContextMenu={contextMenu}
+            onHoverDisplayTooltip={(data) =>
+              createTooltip(query, data, singleView.profile)
+            }
+          />
+        </Panel>
+        <Panel isLoading={isLoadingOrReloading([singleView.type])}>
+          {flamegraphRenderer}
+        </Panel>
       </PageContentWrapper>
     </div>
   );
