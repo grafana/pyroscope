@@ -16,12 +16,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/pyroscope/pkg/cfg"
 	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/pkg/phlare"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type PyroscopeTest struct {
@@ -46,8 +47,8 @@ func (p *PyroscopeTest) Start(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	require.Eventually(t, func() bool {
-		return p.ringActive(t)
-	}, 10005*time.Second, 100*time.Millisecond)
+		return p.ringActive()
+	}, 5*time.Second, 100*time.Millisecond)
 }
 
 func (p *PyroscopeTest) Stop(t *testing.T) {
@@ -55,7 +56,7 @@ func (p *PyroscopeTest) Stop(t *testing.T) {
 	p.wg.Wait()
 }
 
-func (p *PyroscopeTest) ringActive(t *testing.T) bool {
+func (p *PyroscopeTest) ringActive() bool {
 	res, err := http.Get("http://localhost:4040/ring")
 	if err != nil {
 		return false
