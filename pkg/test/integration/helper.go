@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/pkg/cfg"
@@ -20,13 +21,19 @@ type PyroscopeTest struct {
 	config phlare.Config
 	it     *phlare.Phlare
 	wg     sync.WaitGroup
+	reg    prometheus.Registerer
 }
 
 func (p *PyroscopeTest) Start(t *testing.T) {
 
+	p.reg = prometheus.DefaultRegisterer
+	prometheus.DefaultRegisterer = prometheus.NewRegistry()
+
 	err := cfg.DynamicUnmarshal(&p.config, []string{"pyroscope"}, flag.NewFlagSet("pyroscope", flag.ContinueOnError))
 	require.NoError(t, err)
 	p.config.SelfProfiling.DisablePush = true
+	p.config.Analytics.Enabled = false // usage-stats terminating slow as hell
+	_ = p.config.Server.LogLevel.Set("debug")
 	p.it, err = phlare.New(p.config)
 
 	require.NoError(t, err)
@@ -43,6 +50,9 @@ func (p *PyroscopeTest) Start(t *testing.T) {
 }
 
 func (p *PyroscopeTest) Stop(t *testing.T) {
+	defer func() {
+		prometheus.DefaultRegisterer = p.reg
+	}()
 	p.it.SignalHandler.Stop()
 	p.wg.Wait()
 }
