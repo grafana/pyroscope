@@ -76,7 +76,36 @@ replace `image: grafana/pyroscope` with the local tag name you got from docker-i
       - '4040:4040'
 ```
 
+#### Front end development
 
+The front end code is all located in the `public/app` directory, although its `plugin.json`
+file exists at the repository root.
+
+To run the local front end source code:
+```sh
+yarn 
+yarn dev
+```
+
+This will install / update front end dependencies and launch a process that will build
+the front end code, launch a pyroscope web app service at `http://localhost:4041`,
+and keep that web app updated any time you save the front end source code.
+The resulting web app will not initially be connected to a pyroscope server,
+so all attempts to fetch data will fail.
+
+To launch a pyroscope server for development purposes:
+```sh
+yarn backend:dev
+```
+
+This yarn script actually runs the following:
+```sh
+make build run 'PARAMS=--config.file ./cmd/pyroscope/pyroscope.yaml'
+```
+
+It will take a while for this process to build and start serving pyroscope data, but
+once it is fully active, the pyroscope web app service at `http://localhost:4041`
+will be able to interact with it.
 
 ### Dependency management
 
