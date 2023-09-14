@@ -57,7 +57,8 @@ function TagSelector({
     const newSearch = { leftQuery: '', rightQuery: '' };
 
     const serviceName = parse(brandQuery(query))?.tags?.service_name;
-    const commonQuery = `${appName}{service_name="${serviceName}"}`;
+    const tags = serviceName ? `service_name="${serviceName}"` : '';
+    const commonQuery = `${appName}{${tags}}`;
 
     if (baselineTag) {
       newSearch.leftQuery = appendLabelToQuery(
