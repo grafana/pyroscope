@@ -236,6 +236,7 @@ var (
 			},
 			spyName: "dotnetspy",
 		},
+
 	}
 )
 
@@ -304,9 +305,11 @@ func selectMerge(t *testing.T, metric expectedMetric, name string, testdatum ppr
 		if testdatum.spyName == pprof2.SpyNameForFunctionNameRewrite() {
 			pprof2.FixFunctionNamesForScriptingLanguages(expectedProfile, ingestion.Metadata{SpyName: testdatum.spyName})
 		}
+
 		if testdatum.needFunctionIDFix {
 			pprof2.FixFunctionIDForBrokenDotnet(expectedProfile.Profile)
 		}
+
 	}
 	actualStacktraces := bench.StackCollapseProto(resp.Msg, 0, 1)
 	expectedStacktraces := bench.StackCollapseProto(expectedProfile.Profile, metric.valueIDX, 1)
