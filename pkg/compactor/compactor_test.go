@@ -1744,9 +1744,6 @@ func prepare(t *testing.T, compactorCfg Config, bucketClient objstore.Bucket) (*
 }
 
 func prepareWithConfigProvider(t *testing.T, compactorCfg Config, bucketClient objstore.Bucket, limits ConfigProvider) (*MultitenantCompactor, *tsdbCompactorMock, *tsdbPlannerMock, *concurrency.SyncBuffer, prometheus.Gatherer) {
-	storageCfg := mimir_tsdb.BlocksStorageConfig{}
-	flagext.DefaultValues(&storageCfg)
-
 	// Create a temporary directory for compactor data.
 	dataDir := t.TempDir()
 

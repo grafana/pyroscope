@@ -193,18 +193,6 @@ type ConfigProvider interface {
 	// and whether the configured value was valid. If the value wasn't valid, the returned delay is the default one
 	// and the caller is responsible to warn the Mimir operator about it.
 	CompactorPartialBlockDeletionDelay(userID string) (delay time.Duration, valid bool)
-
-	// CompactorBlockUploadEnabled returns whether block upload is enabled for a given tenant.
-	CompactorBlockUploadEnabled(tenantID string) bool
-
-	// CompactorBlockUploadValidationEnabled returns whether block upload validation is enabled for a given tenant.
-	CompactorBlockUploadValidationEnabled(tenantID string) bool
-
-	// CompactorBlockUploadVerifyChunks returns whether chunk verification is enabled for a given tenant.
-	CompactorBlockUploadVerifyChunks(tenantID string) bool
-
-	// CompactorBlockUploadMaxBlockSizeBytes returns the maximum size in bytes of a block that is allowed to be uploaded or validated for a given user.
-	CompactorBlockUploadMaxBlockSizeBytes(userID string) int64
 }
 
 // MultitenantCompactor is a multi-tenant TSDB blocks compactor based on Thanos.
