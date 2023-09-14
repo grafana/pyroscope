@@ -63,6 +63,7 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 	fixTime(profile, md)
 	fixFunctionNamesForScriptingLanguages(profile, md)
 	fixFunctionIDForBrokenDotnet(profile, md)
+	fixSampleTypes(profile)
 
 	res = &distributormodel.PushRequest{
 		RawProfileSize: len(p.Profile),
@@ -76,6 +77,16 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 		}},
 	}
 	return
+}
+
+func fixSampleTypes(profile *pprof.Profile) {
+	for _, st := range profile.SampleType {
+		sts := profile.StringTable[st.Type]
+		if strings.Contains(sts, "-") {
+			sts = strings.ReplaceAll(sts, "-", "_")
+			profile.StringTable[st.Type] = sts
+		}
+	}
 }
 
 func fixFunctionIDForBrokenDotnet(profile *pprof.Profile, md ingestion.Metadata) {

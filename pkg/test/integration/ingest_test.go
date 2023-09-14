@@ -238,74 +238,81 @@ func TestIngestPPROF(t *testing.T) {
 			// this one is broken dotnet pprof
 			// it has function.id == 0 for every function
 			// it also has "-" in sample type name
-			profile:          repoRoot + "TODO",
+			profile:          repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-73.pb.gz",
 			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.st.json",
 			expectStatus:     200,
 			metrics: []string{
-				"fail",
+				// notice how they all use process_cpu metric
+				"process_cpu:cpu:nanoseconds::nanoseconds",
+				"process_cpu:alloc_samples:count::nanoseconds", // this was rewriten by ingest handler to replace -
+				"process_cpu:alloc_size:bytes::nanoseconds",    // this was rewriten by ingest handler to replace -
 			},
 		},
-		{
-			// this is a fixed dotnet pprof
-			profile:          repoRoot + "TODO",
-			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/TODO",
-			expectStatus:     200,
-			metrics: []string{
-				"fail",
-			},
-		},
+		//{
+		//	// this is a fixed dotnet pprof
+		//	profile:          repoRoot + "TODO",
+		//	sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/TODO",
+		//	expectStatus:     200,
+		//	metrics: []string{
+		//		"fail",
+		//	},
+		//},
 	}
 	for _, testdatum := range testdata {
-		var (
-			profile, prevProfile, sampleTypeConfig []byte
-			err                                    error
-		)
-		profile, err = os.ReadFile(testdatum.profile)
-		assert.NoError(t, err)
-		if testdatum.prevProfile != "" {
-			prevProfile, err = os.ReadFile(testdatum.prevProfile)
+		t.Run(testdatum.profile, func(t *testing.T) {
+
+			var (
+				profile, prevProfile, sampleTypeConfig []byte
+				err                                    error
+			)
+			profile, err = os.ReadFile(testdatum.profile)
 			assert.NoError(t, err)
-		}
-		if testdatum.sampleTypeConfig != "" {
-			sampleTypeConfig, err = os.ReadFile(testdatum.sampleTypeConfig)
-			assert.NoError(t, err)
-		}
-		bs, ct := createPProfRequest(t, profile, prevProfile, sampleTypeConfig)
-
-		spyName := "foo239"
-		if testdatum.spyName != "" {
-			spyName = testdatum.spyName
-		}
-
-		appName := fmt.Sprintf("pprof.integration.%s.%d",
-			strings.ReplaceAll(filepath.Base(testdatum.profile), "-", "_"),
-			rand.Uint64())
-		url := "http://localhost:4040/ingest?name=" + appName + "&spyName=" + spyName
-		req, err := http.NewRequest("POST", url, bytes.NewReader(bs))
-		require.NoError(t, err)
-		req.Header.Set("Content-Type", ct)
-
-		res, err := http.DefaultClient.Do(req)
-		require.NoError(t, err)
-		assert.Equal(t, testdatum.expectStatus, res.StatusCode, testdatum.profile)
-		fmt.Printf("%+v %+v\n", testdatum, res)
-
-		if testdatum.expectStatus == 200 {
-			for _, metric := range testdatum.metrics {
-				// todo use not only /render
-				queryURL := "http://localhost:4040/pyroscope/render?query=" + metric + "{service_name=\"" + appName + "\"}&from=now-1h&until=now&format=collapsed"
-				queryRes, err := http.Get(queryURL)
-				require.NoError(t, err)
-				body := bytes.NewBuffer(nil)
-				_, err = io.Copy(body, queryRes.Body)
+			if testdatum.prevProfile != "" {
+				prevProfile, err = os.ReadFile(testdatum.prevProfile)
 				assert.NoError(t, err)
-				fb := new(flamebearer.FlamebearerProfile)
-				err = json.Unmarshal(body.Bytes(), fb)
-				assert.NoError(t, err, testdatum.profile)
-				assert.Greater(t, len(fb.Flamebearer.Names), 0, testdatum.profile)
-				// todo check actual stacktrace contents
 			}
-		}
+			if testdatum.sampleTypeConfig != "" {
+				sampleTypeConfig, err = os.ReadFile(testdatum.sampleTypeConfig)
+				assert.NoError(t, err)
+			}
+			bs, ct := createPProfRequest(t, profile, prevProfile, sampleTypeConfig)
+
+			spyName := "foo239"
+			if testdatum.spyName != "" {
+				spyName = testdatum.spyName
+			}
+
+			appName := fmt.Sprintf("pprof.integration.%s.%d",
+				strings.ReplaceAll(filepath.Base(testdatum.profile), "-", "_"),
+				rand.Uint64())
+			url := "http://localhost:4040/ingest?name=" + appName + "&spyName=" + spyName
+			req, err := http.NewRequest("POST", url, bytes.NewReader(bs))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", ct)
+
+			res, err := http.DefaultClient.Do(req)
+			require.NoError(t, err)
+			assert.Equal(t, testdatum.expectStatus, res.StatusCode, testdatum.profile)
+			fmt.Printf("%+v %+v\n", testdatum, res)
+
+			if testdatum.expectStatus == 200 {
+				for _, metric := range testdatum.metrics {
+					// todo use not only /render
+					queryURL := "http://localhost:4040/pyroscope/render?query=" + metric + "{service_name=\"" + appName + "\"}&from=now-1h&until=now&format=collapsed"
+					queryRes, err := http.Get(queryURL)
+					require.NoError(t, err)
+					body := bytes.NewBuffer(nil)
+					_, err = io.Copy(body, queryRes.Body)
+					assert.NoError(t, err)
+					fb := new(flamebearer.FlamebearerProfile)
+					err = json.Unmarshal(body.Bytes(), fb)
+					assert.NoError(t, err, testdatum.profile, body.String(), queryURL)
+					assert.Greater(t, len(fb.Flamebearer.Names), 1, testdatum.profile, body.String(), queryRes)
+					assert.Greater(t, fb.Flamebearer.NumTicks, 1, testdatum.profile, body.String(), queryRes)
+					// todo check actual stacktrace contents
+				}
+			}
+		})
 	}
 
 	time.Sleep(time.Hour)
