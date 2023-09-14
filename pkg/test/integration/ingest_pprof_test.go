@@ -17,9 +17,10 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/pyroscope/pkg/og/ingestion"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
