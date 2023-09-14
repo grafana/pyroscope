@@ -62,6 +62,7 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 
 	fixTime(profile, md)
 	fixFunctionNamesForScriptingLanguages(profile, md)
+	fixFunctionIDForBrokenDotnet(profile, md)
 
 	res = &distributormodel.PushRequest{
 		RawProfileSize: len(p.Profile),
@@ -75,6 +76,20 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 		}},
 	}
 	return
+}
+
+func fixFunctionIDForBrokenDotnet(profile *pprof.Profile, md ingestion.Metadata) {
+	for _, function := range profile.Function {
+		if function.Id != 0 {
+			return
+		}
+	}
+	if len(profile.Function) != len(profile.Location) {
+		return
+	}
+	for i := range profile.Location {
+		profile.Function[i].Id = profile.Location[i].Id
+	}
 }
 
 func fixTime(profile *pprof.Profile, md ingestion.Metadata) {
