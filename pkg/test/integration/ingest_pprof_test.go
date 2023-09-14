@@ -17,14 +17,15 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 
