@@ -201,6 +201,7 @@ var (
 				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
 			},
 			needFunctionIDFix: true,
+			spyName:           "dotnetspy",
 		},
 		{
 			// this one is broken dotnet pprof
@@ -218,6 +219,7 @@ var (
 				{"process_cpu:alloc_size:bytes::nanoseconds", 3},    // this was rewriten by ingest handler to replace -
 			},
 			needFunctionIDFix: true,
+			spyName:           "dotnetspy",
 		},
 		{
 			// this is a fixed dotnet pprof
@@ -231,6 +233,7 @@ var (
 				{"process_cpu:alloc_size:bytes::nanoseconds", 3},
 				{"process_cpu:alloc_size:bytes::nanoseconds", 3},
 			},
+			spyName: "dotnetspy",
 		},
 	}
 )
