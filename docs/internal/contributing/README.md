@@ -66,7 +66,7 @@ GOOS=linux GOARCH=amd64 make docker-image/pyroscope/build
 GOOS=linux GOARCH=arm64 make docker-image/pyroscope/build
 ```
 
-#### Running build locally
+#### Running examples locally
 replace 
 ```
 image: grafana/pyroscope
