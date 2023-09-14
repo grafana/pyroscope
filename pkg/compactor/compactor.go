@@ -69,6 +69,14 @@ type BlocksGrouperFactory func(
 	reg prometheus.Registerer,
 ) Grouper
 
+// BlocksCompactorFactory builds and returns the compactor and planner to use to compact a tenant's blocks.
+type BlocksCompactorFactory func(
+	ctx context.Context,
+	cfg Config,
+	logger log.Logger,
+	reg prometheus.Registerer,
+) (Compactor, Planner, error)
+
 // Config holds the MultitenantCompactor config.
 type Config struct {
 	BlockRanges                DurationList  `yaml:"block_ranges" category:"advanced"`
@@ -87,10 +95,8 @@ type Config struct {
 	NoBlocksFileCleanupEnabled bool          `yaml:"no_blocks_file_cleanup_enabled" category:"experimental"`
 
 	// Compactor concurrency options
-	MaxOpeningBlocksConcurrency         int `yaml:"max_opening_blocks_concurrency" category:"advanced"`          // Number of goroutines opening blocks before compaction.
-	MaxClosingBlocksConcurrency         int `yaml:"max_closing_blocks_concurrency" category:"advanced"`          // Max number of blocks that can be closed concurrently during split compaction. Note that closing of newly compacted block uses a lot of memory for writing index.
-	SymbolsFlushersConcurrency          int `yaml:"symbols_flushers_concurrency" category:"advanced"`            // Number of symbols flushers used when doing split compaction.
-	MaxBlockUploadValidationConcurrency int `yaml:"max_block_upload_validation_concurrency" category:"advanced"` // Max number of uploaded blocks that can be validated concurrently.
+	MaxOpeningBlocksConcurrency int `yaml:"max_opening_blocks_concurrency" category:"advanced"` // Number of goroutines opening blocks before compaction.
+	// MaxClosingBlocksConcurrency int `yaml:"max_closing_blocks_concurrency" category:"advanced"` // Max number of blocks that can be closed concurrently during split compaction. Note that closing of newly compacted block uses a lot of memory for writing index.
 
 	EnabledTenants  flagext.StringSliceCSV `yaml:"enabled_tenants" category:"advanced"`
 	DisabledTenants flagext.StringSliceCSV `yaml:"disabled_tenants" category:"advanced"`
@@ -107,7 +113,8 @@ type Config struct {
 	retryMaxBackoff time.Duration `yaml:"-"`
 
 	// Allow downstream projects to customise the blocks compactor.
-	BlocksGrouperFactory BlocksGrouperFactory `yaml:"-"`
+	BlocksGrouperFactory   BlocksGrouperFactory   `yaml:"-"`
+	BlocksCompactorFactory BlocksCompactorFactory `yaml:"-"`
 }
 
 // RegisterFlags registers the MultitenantCompactor flags.
@@ -137,9 +144,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	f.BoolVar(&cfg.NoBlocksFileCleanupEnabled, "compactor.no-blocks-file-cleanup-enabled", false, "If enabled, will delete the bucket-index, markers and debug files in the tenant bucket when there are no blocks left in the index.")
 	// compactor concurrency options
 	f.IntVar(&cfg.MaxOpeningBlocksConcurrency, "compactor.max-opening-blocks-concurrency", 1, "Number of goroutines opening blocks before compaction.")
-	f.IntVar(&cfg.MaxClosingBlocksConcurrency, "compactor.max-closing-blocks-concurrency", 1, "Max number of blocks that can be closed concurrently during split compaction. Note that closing of newly compacted block uses a lot of memory for writing index.")
-	f.IntVar(&cfg.SymbolsFlushersConcurrency, "compactor.symbols-flushers-concurrency", 1, "Number of symbols flushers used when doing split compaction.")
-	f.IntVar(&cfg.MaxBlockUploadValidationConcurrency, "compactor.max-block-upload-validation-concurrency", 1, "Max number of uploaded blocks that can be validated concurrently. 0 = no limit.")
+	// f.IntVar(&cfg.MaxClosingBlocksConcurrency, "compactor.max-closing-blocks-concurrency", 1, "Max number of blocks that can be closed concurrently during split compaction. Note that closing of newly compacted block uses a lot of memory for writing index.")
 
 	f.Var(&cfg.EnabledTenants, "compactor.enabled-tenants", "Comma separated list of tenants that can be compacted. If specified, only these tenants will be compacted by compactor, otherwise all tenants can be compacted. Subject to sharding.")
 	f.Var(&cfg.DisabledTenants, "compactor.disabled-tenants", "Comma separated list of tenants that cannot be compacted by this compactor. If specified, and compactor would normally pick given tenant for compaction (via -compactor.enabled-tenants or sharding), it will be ignored instead.")
@@ -156,15 +161,9 @@ func (cfg *Config) Validate() error {
 	if cfg.MaxOpeningBlocksConcurrency < 1 {
 		return errInvalidMaxOpeningBlocksConcurrency
 	}
-	if cfg.MaxClosingBlocksConcurrency < 1 {
-		return errInvalidMaxClosingBlocksConcurrency
-	}
-	if cfg.SymbolsFlushersConcurrency < 1 {
-		return errInvalidSymbolFlushersConcurrency
-	}
-	if cfg.MaxBlockUploadValidationConcurrency < 0 {
-		return errInvalidMaxBlockUploadValidationConcurrency
-	}
+	// if cfg.MaxClosingBlocksConcurrency < 1 {
+	// 	return errInvalidMaxClosingBlocksConcurrency
+	// }
 	if !util.StringsContain(CompactionOrders, cfg.CompactionJobsOrder) {
 		return errInvalidCompactionOrder
 	}
@@ -207,13 +206,15 @@ type MultitenantCompactor struct {
 
 	// Functions that creates bucket client, grouper, planner and compactor using the context.
 	// Useful for injecting mock objects from tests.
-	blocksGrouperFactory BlocksGrouperFactory
+	blocksGrouperFactory   BlocksGrouperFactory
+	blocksCompactorFactory BlocksCompactorFactory
 
 	// Blocks cleaner is responsible to hard delete blocks marked for deletion.
 	blocksCleaner *BlocksCleaner
 
 	// Underlying compactor and planner used to compact TSDB blocks.
-	blocksPlanner Planner
+	blocksPlanner   Planner
+	blocksCompactor Compactor
 
 	// Client used to run operations on the bucket storing blocks.
 	bucketClient objstore.Bucket
@@ -256,13 +257,14 @@ type MultitenantCompactor struct {
 // NewMultitenantCompactor makes a new MultitenantCompactor.
 func NewMultitenantCompactor(compactorCfg Config, bucketClient objstore.Bucket, cfgProvider ConfigProvider, logger log.Logger, registerer prometheus.Registerer) (*MultitenantCompactor, error) {
 	// Configure the compactor and grouper factories only if they weren't already set by a downstream project.
-	if compactorCfg.BlocksGrouperFactory == nil {
+	if compactorCfg.BlocksGrouperFactory == nil || compactorCfg.BlocksCompactorFactory == nil {
 		configureSplitAndMergeCompactor(&compactorCfg)
 	}
 
 	blocksGrouperFactory := compactorCfg.BlocksGrouperFactory
+	blocksCompactorFactory := compactorCfg.BlocksCompactorFactory
 
-	mimirCompactor, err := newMultitenantCompactor(compactorCfg, bucketClient, cfgProvider, logger, registerer, blocksGrouperFactory)
+	mimirCompactor, err := newMultitenantCompactor(compactorCfg, bucketClient, cfgProvider, logger, registerer, blocksGrouperFactory, blocksCompactorFactory)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create blocks compactor")
 	}
@@ -277,18 +279,18 @@ func newMultitenantCompactor(
 	logger log.Logger,
 	registerer prometheus.Registerer,
 	blocksGrouperFactory BlocksGrouperFactory,
+	blocksCompactorFactory BlocksCompactorFactory,
 ) (*MultitenantCompactor, error) {
 	c := &MultitenantCompactor{
-		compactorCfg:         compactorCfg,
-		cfgProvider:          cfgProvider,
-		parentLogger:         logger,
-		logger:               log.With(logger, "component", "compactor"),
-		registerer:           registerer,
-		syncerMetrics:        newAggregatedSyncerMetrics(registerer),
-		bucketClient:         bucketClient,
-		blocksGrouperFactory: blocksGrouperFactory,
-		blocksPlanner:        NewSplitAndMergePlanner(compactorCfg.BlockRanges.ToMilliseconds()),
-
+		compactorCfg:           compactorCfg,
+		cfgProvider:            cfgProvider,
+		parentLogger:           logger,
+		logger:                 log.With(logger, "component", "compactor"),
+		registerer:             registerer,
+		syncerMetrics:          newAggregatedSyncerMetrics(registerer),
+		bucketClient:           bucketClient,
+		blocksGrouperFactory:   blocksGrouperFactory,
+		blocksCompactorFactory: blocksCompactorFactory,
 		compactionRunsStarted: promauto.With(registerer).NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_compactor_runs_started_total",
 			Help: "Total number of compaction runs started.",
@@ -382,6 +384,12 @@ func newMultitenantCompactor(
 // Start the compactor.
 func (c *MultitenantCompactor) starting(ctx context.Context) error {
 	var err error
+
+	// Create blocks compactor dependencies.
+	c.blocksCompactor, c.blocksPlanner, err = c.blocksCompactorFactory(ctx, c.compactorCfg, c.logger, c.registerer)
+	if err != nil {
+		return errors.Wrap(err, "failed to initialize compactor dependencies")
+	}
 
 	// Wrap the bucket client to write block deletion marks in the global location too.
 	c.bucketClient = block.BucketWithGlobalMarkers(c.bucketClient)
@@ -709,6 +717,7 @@ func (c *MultitenantCompactor) compactUser(ctx context.Context, userID string) e
 		syncer,
 		c.blocksGrouperFactory(ctx, c.compactorCfg, c.cfgProvider, userID, userLogger, reg),
 		c.blocksPlanner,
+		c.blocksCompactor,
 		path.Join(c.compactorCfg.DataDir, "compact"),
 		userBucket,
 		c.compactorCfg.CompactionConcurrency,
@@ -716,7 +725,6 @@ func (c *MultitenantCompactor) compactUser(ctx context.Context, userID string) e
 		c.jobsOrder,
 		c.compactorCfg.CompactionWaitPeriod,
 		c.compactorCfg.BlockSyncConcurrency,
-		c.compactorCfg.MaxOpeningBlocksConcurrency,
 		c.bucketCompactorMetrics,
 	)
 	if err != nil {

@@ -24,7 +24,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/tsdb"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
@@ -220,9 +219,63 @@ type Planner interface {
 // Compactor provides compaction against an underlying storage of profiling data.
 type Compactor interface {
 	// CompactWithSplitting merges and splits the source blocks into shardCount number of compacted blocks,
-	// and returns slice of block IDs. Position of returned block ID in the result slice corresponds to the shard index.
-	// If given compacted block has no series, corresponding block ID will be zero ULID value.
-	CompactWithSplitting(dest string, dirs []string, open []*tsdb.Block, shardCount uint64) (result []ulid.ULID, _ error)
+	// and returns slice of block IDs.
+	// If given compacted block has no series, corresponding block ID will not be returned.
+	CompactWithSplitting(ctx context.Context, dst string, dirs []string, shardCount uint64) (result []ulid.ULID, _ error)
+}
+
+type BlockCompactor struct {
+	blockOpenConcurrency int
+	logger               log.Logger
+}
+
+func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, dirs []string, shardCount uint64) ([]ulid.ULID, error) {
+	localBucket, err := client.NewBucket(ctx, client.Config{
+		StorageBackendConfig: client.StorageBackendConfig{
+			Backend:    client.Filesystem,
+			Filesystem: filesystem.Config{Directory: dest},
+		},
+	}, "local-compactor")
+	if err != nil {
+		return nil, errors.Wrap(err, "create local bucket")
+	}
+	defer localBucket.Close()
+
+	readers := make([]phlaredb.BlockReader, len(dirs))
+	defer func() {
+		for _, b := range readers {
+			if b != nil {
+				if err := b.Close(); err != nil {
+					level.Warn(c.logger).Log("msg", "failed to close block", "err", err)
+				}
+			}
+		}
+	}()
+	err = concurrency.ForEachJob(ctx, len(readers), c.blockOpenConcurrency, func(ctx context.Context, idx int) error {
+		dir := dirs[idx]
+		meta, err := block.ReadMetaFromDir(dir)
+		if err != nil {
+			return errors.Wrapf(err, "failed to read meta the block dir %s", dir)
+		}
+		b := phlaredb.NewSingleBlockQuerierFromMeta(ctx, localBucket, meta)
+		if err := b.Open(ctx); err != nil {
+			return errors.Wrapf(err, "open block %s", meta.ULID)
+		}
+		readers[idx] = b
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	metas, err := phlaredb.CompactWithSplitting(ctx, readers, shardCount, dest)
+	if err != nil {
+		return nil, errors.Wrapf(err, "compact blocks %v", dirs)
+	}
+	result := make([]ulid.ULID, len(metas))
+	for i := range metas {
+		result[i] = metas[i].ULID
+	}
+	return result, nil
 }
 
 // runCompactionJob plans and runs a single compaction against the provided job. The compacted result
@@ -291,58 +344,18 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 	for ix, meta := range toCompact {
 		blocksToCompactDirs[ix] = filepath.Join(subDir, meta.ULID.String())
 	}
-
-	compactionBegin := time.Now()
-
-	// todo: move this to a separate function.
-	// Move to a compactor interface
-	localBucket, err := client.NewBucket(ctx, client.Config{
-		StorageBackendConfig: client.StorageBackendConfig{
-			Backend:    client.Filesystem,
-			Filesystem: filesystem.Config{Directory: subDir},
-		},
-	}, "local-compactor")
-	if err != nil {
-		return false, nil, errors.Wrap(err, "create local bucket")
-	}
-	defer localBucket.Close()
-
-	src := make([]phlaredb.BlockReader, len(toCompact))
-	defer func() {
-		for _, b := range src {
-			if b != nil {
-				if err := b.Close(); err != nil {
-					level.Warn(jobLogger).Log("msg", "failed to close block", "err", err)
-				}
-			}
-		}
-	}()
-	err = concurrency.ForEachJob(ctx, len(src), c.blockOpenConcurrency, func(ctx context.Context, idx int) error {
-		meta := toCompact[idx]
-		b := phlaredb.NewSingleBlockQuerierFromMeta(ctx, localBucket, meta)
-		if err := b.Open(ctx); err != nil {
-			return errors.Wrapf(err, "open block %s", meta.ULID)
-		}
-		src[idx] = b
-		return nil
-	})
-	if err != nil {
-		return false, nil, err
-	}
 	elapsed := time.Since(downloadBegin)
 	level.Info(jobLogger).Log("msg", "downloaded and verified blocks; compacting blocks", "blocks", len(blocksToCompactDirs), "plan", fmt.Sprintf("%v", blocksToCompactDirs), "duration", elapsed, "duration_ms", elapsed.Milliseconds())
 
-	var out []block.Meta
+	compactionBegin := time.Now()
+
 	if job.UseSplitting() {
-		out, err = phlaredb.CompactWithSplitting(ctx, src, uint64(job.SplittingShards()), subDir)
+		compIDs, err = c.comp.CompactWithSplitting(ctx, subDir, blocksToCompactDirs, uint64(job.SplittingShards()))
 	} else {
-		out, err = phlaredb.CompactWithSplitting(ctx, src, 1, subDir)
+		compIDs, err = c.comp.CompactWithSplitting(ctx, subDir, blocksToCompactDirs, 1)
 	}
 	if err != nil {
 		return false, nil, errors.Wrapf(err, "compact blocks %v", blocksToCompactDirs)
-	}
-	for _, o := range out {
-		compIDs = append(compIDs, o.ULID)
 	}
 
 	if !hasNonZeroULIDs(compIDs) {
@@ -559,6 +572,7 @@ func NewBucketCompactor(
 	sy *Syncer,
 	grouper Grouper,
 	planner Planner,
+	comp Compactor,
 	compactDir string,
 	bkt objstore.Bucket,
 	concurrency int,
@@ -566,7 +580,6 @@ func NewBucketCompactor(
 	sortJobs JobsOrderFunc,
 	waitPeriod time.Duration,
 	blockSyncConcurrency int,
-	blockOpenConcurrency int,
 	metrics *BucketCompactorMetrics,
 ) (*BucketCompactor, error) {
 	if concurrency <= 0 {
@@ -577,6 +590,7 @@ func NewBucketCompactor(
 		sy:                   sy,
 		grouper:              grouper,
 		planner:              planner,
+		comp:                 comp,
 		compactDir:           compactDir,
 		bkt:                  bkt,
 		concurrency:          concurrency,
@@ -584,7 +598,6 @@ func NewBucketCompactor(
 		sortJobs:             sortJobs,
 		waitPeriod:           waitPeriod,
 		blockSyncConcurrency: blockSyncConcurrency,
-		blockOpenConcurrency: blockOpenConcurrency,
 		metrics:              metrics,
 	}, nil
 }

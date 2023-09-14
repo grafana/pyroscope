@@ -122,7 +122,7 @@ func TestBucketCompactor_FilterOwnJobs(t *testing.T) {
 	m := NewBucketCompactorMetrics(promauto.With(nil).NewCounter(prometheus.CounterOpts{}), nil)
 	for testName, testCase := range tests {
 		t.Run(testName, func(t *testing.T) {
-			bc, err := NewBucketCompactor(log.NewNopLogger(), nil, nil, nil, "", nil, 2, testCase.ownJob, nil, 0, 1, 4, m)
+			bc, err := NewBucketCompactor(log.NewNopLogger(), nil, nil, nil, nil, "", nil, 0, nil, nil, 0, 4, m)
 			require.NoError(t, err)
 
 			res, err := bc.filterOwnJobs(jobsFn())
@@ -152,7 +152,7 @@ func TestBlockMaxTimeDeltas(t *testing.T) {
 
 	metrics := NewBucketCompactorMetrics(promauto.With(nil).NewCounter(prometheus.CounterOpts{}), nil)
 	now := time.UnixMilli(1500002900159)
-	bc, err := NewBucketCompactor(log.NewNopLogger(), nil, nil, nil, "", nil, 2, nil, nil, 0, 0, 4, metrics)
+	bc, err := NewBucketCompactor(log.NewNopLogger(), nil, nil, nil, nil, "", nil, 2, nil, nil, 0, 4, metrics)
 	require.NoError(t, err)
 
 	deltas := bc.blockMaxTimeDeltas(now, []*Job{j1, j2})
@@ -316,7 +316,7 @@ func TestCompactedBlocksTimeRangeVerification(t *testing.T) {
 			compactedBlock1 := createDBBlock(t, bucketClient, "foo", testData.compactedBlockMinTime, testData.compactedBlockMinTime+500, 10, nil)
 			compactedBlock2 := createDBBlock(t, bucketClient, "foo", testData.compactedBlockMaxTime-500, testData.compactedBlockMaxTime, 10, nil)
 
-			err := verifyCompactedBlocksTimeRanges([]ulid.ULID{compactedBlock1, compactedBlock2}, sourceMinTime, sourceMaxTime,filepath.Join(tempDir,"foo"))
+			err := verifyCompactedBlocksTimeRanges([]ulid.ULID{compactedBlock1, compactedBlock2}, sourceMinTime, sourceMaxTime, filepath.Join(tempDir, "foo"))
 			if testData.shouldErr {
 				require.ErrorContains(t, err, testData.expectedErrMsg)
 			} else {

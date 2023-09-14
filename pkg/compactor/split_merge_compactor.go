@@ -20,8 +20,15 @@ func splitAndMergeGrouperFactory(_ context.Context, cfg Config, cfgProvider Conf
 		logger)
 }
 
+func splitAndMergeCompactorFactory(ctx context.Context, cfg Config, logger log.Logger, reg prometheus.Registerer) (Compactor, Planner, error) {
+	return &BlockCompactor{
+		blockOpenConcurrency: cfg.MaxOpeningBlocksConcurrency,
+		logger:               logger,
+	}, NewSplitAndMergePlanner(cfg.BlockRanges.ToMilliseconds()), nil
+}
 
 // configureSplitAndMergeCompactor updates the provided configuration injecting the split-and-merge compactor.
 func configureSplitAndMergeCompactor(cfg *Config) {
 	cfg.BlocksGrouperFactory = splitAndMergeGrouperFactory
+	cfg.BlocksCompactorFactory = splitAndMergeCompactorFactory
 }

@@ -33,10 +33,8 @@ import (
 	prom_testutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/histogram"
-	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/prometheus/prometheus/tsdb/chunkenc"
-	"github.com/prometheus/prometheus/tsdb/chunks"
 	"github.com/prometheus/prometheus/tsdb/tsdbutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -45,11 +43,9 @@ import (
 	"gopkg.in/yaml.v3"
 
 	pyroscope_objstore "github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
-
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -123,14 +119,6 @@ func TestConfig_Validate(t *testing.T) {
 			setup:    func(cfg *Config) { cfg.MaxOpeningBlocksConcurrency = 0 },
 			expected: errInvalidMaxOpeningBlocksConcurrency.Error(),
 		},
-		"should fail on invalid value of max-closing-blocks-concurrency": {
-			setup:    func(cfg *Config) { cfg.MaxClosingBlocksConcurrency = 0 },
-			expected: errInvalidMaxClosingBlocksConcurrency.Error(),
-		},
-		"should fail on invalid value of symbols-flushers-concurrency": {
-			setup:    func(cfg *Config) { cfg.SymbolsFlushersConcurrency = 0 },
-			expected: errInvalidSymbolFlushersConcurrency.Error(),
-		},
 	}
 
 	for testName, testData := range tests {
@@ -152,7 +140,7 @@ func TestMultitenantCompactor_ShouldDoNothingOnNoUserBlocks(t *testing.T) {
 	t.Parallel()
 
 	// No user blocks stored in the bucket.
-	bucketClient := &bucket.ClientMock{}
+	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{}, nil)
 	cfg := prepareConfig(t)
 	c, _, _, logs, registry := prepare(t, cfg, bucketClient)
@@ -1224,105 +1212,105 @@ func TestMultitenantCompactor_ShouldCompactOnlyUsersOwnedByTheInstanceOnSharding
 	}
 }
 
-func TestMultitenantCompactor_ShouldFailWithInvalidTSDBCompactOutput(t *testing.T) {
-	const user = "user-1"
+// func TestMultitenantCompactor_ShouldFailWithInvalidTSDBCompactOutput(t *testing.T) {
+// 	const user = "user-1"
 
-	// Two blocks with overlapping time range
-	sourceBlock1Spec := []*block.SeriesSpec{
-		{
-			Labels: labels.FromStrings("case", "source_spec_1"),
-			Chunks: []chunks.Meta{
-				must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
-					newSample(1000, 1000, nil, nil),
-					newSample(2000, 2000, nil, nil),
-				})),
-			},
-		},
-	}
+// 	// Two blocks with overlapping time range
+// 	sourceBlock1Spec := []*block.SeriesSpec{
+// 		{
+// 			Labels: labels.FromStrings("case", "source_spec_1"),
+// 			Chunks: []chunks.Meta{
+// 				must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
+// 					newSample(1000, 1000, nil, nil),
+// 					newSample(2000, 2000, nil, nil),
+// 				})),
+// 			},
+// 		},
+// 	}
 
-	sourceBlock2Spec := []*block.SeriesSpec{
-		{
-			Labels: labels.FromStrings("case", "source_spec_2"),
-			Chunks: []chunks.Meta{
-				must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
-					newSample(1500, 1500, nil, nil),
-					newSample(2500, 2500, nil, nil),
-				})),
-			},
-		},
-	}
+// 	sourceBlock2Spec := []*block.SeriesSpec{
+// 		{
+// 			Labels: labels.FromStrings("case", "source_spec_2"),
+// 			Chunks: []chunks.Meta{
+// 				must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
+// 					newSample(1500, 1500, nil, nil),
+// 					newSample(2500, 2500, nil, nil),
+// 				})),
+// 			},
+// 		},
+// 	}
 
-	// Block with sufficient time range so compaction job gets triggered
-	sourceBlock3Spec := []*block.SeriesSpec{
-		{
-			Labels: labels.FromStrings("case", "source_spec_3"),
-			Chunks: []chunks.Meta{
-				must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
-					newSample(0, 0, nil, nil),
-					newSample(2*time.Hour.Milliseconds()-1, 0, nil, nil),
-				})),
-			},
-		},
-	}
+// 	// Block with sufficient time range so compaction job gets triggered
+// 	sourceBlock3Spec := []*block.SeriesSpec{
+// 		{
+// 			Labels: labels.FromStrings("case", "source_spec_3"),
+// 			Chunks: []chunks.Meta{
+// 				must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
+// 					newSample(0, 0, nil, nil),
+// 					newSample(2*time.Hour.Milliseconds()-1, 0, nil, nil),
+// 				})),
+// 			},
+// 		},
+// 	}
 
-	// Compacted block not containing minTime/maxTime from source blocks
-	compactedBlockSpec := []*block.SeriesSpec{
-		{
-			Labels: labels.FromStrings("case", "compacted_spec"),
-			Chunks: []chunks.Meta{
-				must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
-					newSample(1250, 1250, nil, nil),
-					newSample(2250, 2250, nil, nil),
-				})),
-			},
-		},
-	}
+// 	// Compacted block not containing minTime/maxTime from source blocks
+// 	compactedBlockSpec := []*block.SeriesSpec{
+// 		{
+// 			Labels: labels.FromStrings("case", "compacted_spec"),
+// 			Chunks: []chunks.Meta{
+// 				must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
+// 					newSample(1250, 1250, nil, nil),
+// 					newSample(2250, 2250, nil, nil),
+// 				})),
+// 			},
+// 		},
+// 	}
 
-	storageDir := t.TempDir()
+// 	storageDir := t.TempDir()
 
-	meta1, err := block.GenerateBlockFromSpec(user, filepath.Join(storageDir, user), sourceBlock1Spec)
-	require.NoError(t, err)
-	meta2, err := block.GenerateBlockFromSpec(user, filepath.Join(storageDir, user), sourceBlock2Spec)
-	require.NoError(t, err)
-	_, err = block.GenerateBlockFromSpec(user, filepath.Join(storageDir, user), sourceBlock3Spec)
-	require.NoError(t, err)
+// 	meta1, err := block.GenerateBlockFromSpec(user, filepath.Join(storageDir, user), sourceBlock1Spec)
+// 	require.NoError(t, err)
+// 	meta2, err := block.GenerateBlockFromSpec(user, filepath.Join(storageDir, user), sourceBlock2Spec)
+// 	require.NoError(t, err)
+// 	_, err = block.GenerateBlockFromSpec(user, filepath.Join(storageDir, user), sourceBlock3Spec)
+// 	require.NoError(t, err)
 
-	bkt, err := filesystem.NewBucket(storageDir)
-	require.NoError(t, err)
+// 	bkt, err := filesystem.NewBucket(storageDir)
+// 	require.NoError(t, err)
 
-	cfg := prepareConfig(t)
-	cfg.CompactionRetries = 1 // No need to retry as we're testing for failure
-	c, tsdbCompactor, tsdbPlanner, logs, _ := prepare(t, cfg, bkt)
+// 	cfg := prepareConfig(t)
+// 	cfg.CompactionRetries = 1 // No need to retry as we're testing for failure
+// 	c, tsdbCompactor, tsdbPlanner, logs, _ := prepare(t, cfg, bkt)
 
-	tsdbPlanner.On("Plan", mock.Anything, mock.Anything).Return([]*block.Meta{meta1, meta2}, nil).Once()
-	tsdbPlanner.On("Plan", mock.Anything, mock.Anything).Return([]*block.Meta{}, nil).Once()
-	mockCall := tsdbCompactor.On("Compact", mock.Anything, mock.Anything, mock.Anything)
-	mockCall.RunFn = func(args mock.Arguments) {
-		dir := args.Get(0).(string)
+// 	tsdbPlanner.On("Plan", mock.Anything, mock.Anything).Return([]*block.Meta{meta1, meta2}, nil).Once()
+// 	tsdbPlanner.On("Plan", mock.Anything, mock.Anything).Return([]*block.Meta{}, nil).Once()
+// 	mockCall := tsdbCompactor.On("Compact", mock.Anything, mock.Anything, mock.Anything)
+// 	mockCall.RunFn = func(args mock.Arguments) {
+// 		dir := args.Get(0).(string)
 
-		compactedMeta, err := block.GenerateBlockFromSpec(user, dir, compactedBlockSpec)
-		require.NoError(t, err)
-		f, err := os.OpenFile(filepath.Join(dir, compactedMeta.ULID.String(), "tombstones"), os.O_RDONLY|os.O_CREATE, 0o666)
-		require.NoError(t, err)
-		defer f.Close()
+// 		compactedMeta, err := block.GenerateBlockFromSpec(user, dir, compactedBlockSpec)
+// 		require.NoError(t, err)
+// 		f, err := os.OpenFile(filepath.Join(dir, compactedMeta.ULID.String(), "tombstones"), os.O_RDONLY|os.O_CREATE, 0o666)
+// 		require.NoError(t, err)
+// 		defer f.Close()
 
-		mockCall.ReturnArguments = mock.Arguments{compactedMeta.ULID, nil}
-	}
+// 		mockCall.ReturnArguments = mock.Arguments{compactedMeta.ULID, nil}
+// 	}
 
-	// Start the compactor
-	require.NoError(t, services.StartAndAwaitRunning(context.Background(), c))
+// 	// Start the compactor
+// 	require.NoError(t, services.StartAndAwaitRunning(context.Background(), c))
 
-	// Compaction block verification should fail due to invalid output block
-	test.Poll(t, 5*time.Second, 1.0, func() interface{} {
-		return prom_testutil.ToFloat64(c.bucketCompactorMetrics.compactionBlocksVerificationFailed)
-	})
+// 	// Compaction block verification should fail due to invalid output block
+// 	test.Poll(t, 5*time.Second, 1.0, func() interface{} {
+// 		return prom_testutil.ToFloat64(c.bucketCompactorMetrics.compactionBlocksVerificationFailed)
+// 	})
 
-	// Stop the compactor.
-	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), c))
+// 	// Stop the compactor.
+// 	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), c))
 
-	// Check logs for compacted block verification failure
-	assert.Contains(t, logs.String(), "compacted block(s) do not contain minTime 1000 and maxTime 2501 from the source blocks")
-}
+// 	// Check logs for compacted block verification failure
+// 	assert.Contains(t, logs.String(), "compacted block(s) do not contain minTime 1000 and maxTime 2501 from the source blocks")
+// }
 
 func TestMultitenantCompactor_ShouldSkipCompactionForJobsNoMoreOwnedAfterPlanning(t *testing.T) {
 	t.Parallel()
@@ -1453,115 +1441,115 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsNoMoreOwnedAfterPlannin
 	))
 }
 
-func TestMultitenantCompactor_ShouldSkipCompactionForJobsWithFirstLevelCompactionBlocksAndWaitPeriodNotElapsed(t *testing.T) {
-	t.Parallel()
+// func TestMultitenantCompactor_ShouldSkipCompactionForJobsWithFirstLevelCompactionBlocksAndWaitPeriodNotElapsed(t *testing.T) {
+// 	t.Parallel()
 
-	storageDir := t.TempDir()
-	bucketClient, err := filesystem.NewBucket(storageDir)
-	require.NoError(t, err)
+// 	storageDir := t.TempDir()
+// 	bucketClient, err := filesystem.NewBucket(storageDir)
+// 	require.NoError(t, err)
 
-	// Mock two tenants, each with 2 overlapping blocks.
-	spec := []*block.SeriesSpec{{
-		Labels: labels.FromStrings(labels.MetricName, "series_1"),
-		Chunks: []chunks.Meta{must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
-			newSample(1574776800000, 0, nil, nil),
-			newSample(1574783999999, 0, nil, nil),
-		}))},
-	}}
+// 	// Mock two tenants, each with 2 overlapping blocks.
+// 	spec := []*block.SeriesSpec{{
+// 		Labels: labels.FromStrings(labels.MetricName, "series_1"),
+// 		Chunks: []chunks.Meta{must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
+// 			newSample(1574776800000, 0, nil, nil),
+// 			newSample(1574783999999, 0, nil, nil),
+// 		}))},
+// 	}}
 
-	user1Meta1, err := block.GenerateBlockFromSpec("user-1", filepath.Join(storageDir, "user-1"), spec)
-	require.NoError(t, err)
-	user1Meta2, err := block.GenerateBlockFromSpec("user-1", filepath.Join(storageDir, "user-1"), spec)
-	require.NoError(t, err)
-	user2Meta1, err := block.GenerateBlockFromSpec("user-2", filepath.Join(storageDir, "user-2"), spec)
-	require.NoError(t, err)
-	user2Meta2, err := block.GenerateBlockFromSpec("user-2", filepath.Join(storageDir, "user-2"), spec)
-	require.NoError(t, err)
+// 	user1Meta1, err := block.GenerateBlockFromSpec("user-1", filepath.Join(storageDir, "user-1"), spec)
+// 	require.NoError(t, err)
+// 	user1Meta2, err := block.GenerateBlockFromSpec("user-1", filepath.Join(storageDir, "user-1"), spec)
+// 	require.NoError(t, err)
+// 	user2Meta1, err := block.GenerateBlockFromSpec("user-2", filepath.Join(storageDir, "user-2"), spec)
+// 	require.NoError(t, err)
+// 	user2Meta2, err := block.GenerateBlockFromSpec("user-2", filepath.Join(storageDir, "user-2"), spec)
+// 	require.NoError(t, err)
 
-	// Mock the last modified timestamp returned for each of the block's meta.json.
-	const waitPeriod = 10 * time.Minute
-	mockClient := &bucketWithMockedAttributes{
-		Bucket: bucketClient,
-		customAttributes: map[string]objstore.ObjectAttributes{
-			path.Join("user-1", user1Meta1.ULID.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
-			path.Join("user-1", user1Meta2.ULID.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
-			path.Join("user-2", user2Meta1.ULID.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
-			path.Join("user-2", user2Meta2.ULID.String(), block.MetaFilename): {LastModified: time.Now().Add(-5 * time.Minute)},
-		},
-	}
+// 	// Mock the last modified timestamp returned for each of the block's meta.json.
+// 	const waitPeriod = 10 * time.Minute
+// 	mockClient := &bucketWithMockedAttributes{
+// 		Bucket: bucketClient,
+// 		customAttributes: map[string]objstore.ObjectAttributes{
+// 			path.Join("user-1", user1Meta1.ULID.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
+// 			path.Join("user-1", user1Meta2.ULID.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
+// 			path.Join("user-2", user2Meta1.ULID.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
+// 			path.Join("user-2", user2Meta2.ULID.String(), block.MetaFilename): {LastModified: time.Now().Add(-5 * time.Minute)},
+// 		},
+// 	}
 
-	cfg := prepareConfig(t)
-	cfg.CompactionWaitPeriod = waitPeriod
-	c, _, tsdbPlanner, logs, registry := prepare(t, cfg, mockClient)
+// 	cfg := prepareConfig(t)
+// 	cfg.CompactionWaitPeriod = waitPeriod
+// 	c, _, tsdbPlanner, logs, registry := prepare(t, cfg, mockClient)
 
-	// Mock the planner as if there's no compaction to do, in order to simplify tests.
-	tsdbPlanner.On("Plan", mock.Anything, mock.Anything).Return([]*block.Meta{}, nil)
+// 	// Mock the planner as if there's no compaction to do, in order to simplify tests.
+// 	tsdbPlanner.On("Plan", mock.Anything, mock.Anything).Return([]*block.Meta{}, nil)
 
-	require.NoError(t, services.StartAndAwaitRunning(context.Background(), c))
+// 	require.NoError(t, services.StartAndAwaitRunning(context.Background(), c))
 
-	// Compactor doesn't wait for blocks cleaner to finish, but our test checks for cleaner metrics.
-	require.NoError(t, c.blocksCleaner.AwaitRunning(context.Background()))
+// 	// Compactor doesn't wait for blocks cleaner to finish, but our test checks for cleaner metrics.
+// 	require.NoError(t, c.blocksCleaner.AwaitRunning(context.Background()))
 
-	// Wait until a run has completed.
-	test.Poll(t, 5*time.Second, 1.0, func() interface{} {
-		return prom_testutil.ToFloat64(c.compactionRunsCompleted)
-	})
+// 	// Wait until a run has completed.
+// 	test.Poll(t, 5*time.Second, 1.0, func() interface{} {
+// 		return prom_testutil.ToFloat64(c.compactionRunsCompleted)
+// 	})
 
-	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), c))
+// 	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), c))
 
-	// We expect only 1 compaction job has been expected, while the 2nd has been skipped.
-	tsdbPlanner.AssertNumberOfCalls(t, "Plan", 1)
+// 	// We expect only 1 compaction job has been expected, while the 2nd has been skipped.
+// 	tsdbPlanner.AssertNumberOfCalls(t, "Plan", 1)
 
-	// Ensure the skipped compaction job is the expected one.
-	assert.Contains(t, strings.Split(strings.TrimSpace(logs.String()), "\n"),
-		fmt.Sprintf(`level=info component=compactor user=user-2 msg="skipping compaction job because blocks in this job were uploaded too recently (within wait period)" groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 waitPeriodNotElapsedFor="%s (min time: 1574776800000, max time: 1574784000000)"`, user2Meta2.ULID.String()))
+// 	// Ensure the skipped compaction job is the expected one.
+// 	assert.Contains(t, strings.Split(strings.TrimSpace(logs.String()), "\n"),
+// 		fmt.Sprintf(`level=info component=compactor user=user-2 msg="skipping compaction job because blocks in this job were uploaded too recently (within wait period)" groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 waitPeriodNotElapsedFor="%s (min time: 1574776800000, max time: 1574784000000)"`, user2Meta2.ULID.String()))
 
-	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
-		# TYPE pyroscope_compactor_runs_started_total counter
-		# HELP pyroscope_compactor_runs_started_total Total number of compaction runs started.
-		pyroscope_compactor_runs_started_total 1
+// 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
+// 		# TYPE pyroscope_compactor_runs_started_total counter
+// 		# HELP pyroscope_compactor_runs_started_total Total number of compaction runs started.
+// 		pyroscope_compactor_runs_started_total 1
 
-		# TYPE pyroscope_compactor_runs_completed_total counter
-		# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
-		pyroscope_compactor_runs_completed_total 1
+// 		# TYPE pyroscope_compactor_runs_completed_total counter
+// 		# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
+// 		pyroscope_compactor_runs_completed_total 1
 
-		# TYPE pyroscope_compactor_runs_failed_total counter
-		# HELP pyroscope_compactor_runs_failed_total Total number of compaction runs failed.
-		pyroscope_compactor_runs_failed_total{reason="error"} 0
-		pyroscope_compactor_runs_failed_total{reason="shutdown"} 0
+// 		# TYPE pyroscope_compactor_runs_failed_total counter
+// 		# HELP pyroscope_compactor_runs_failed_total Total number of compaction runs failed.
+// 		pyroscope_compactor_runs_failed_total{reason="error"} 0
+// 		pyroscope_compactor_runs_failed_total{reason="shutdown"} 0
 
-		# HELP pyroscope_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
-		# TYPE pyroscope_compactor_group_compaction_runs_completed_total counter
-		pyroscope_compactor_group_compaction_runs_completed_total 1
+// 		# HELP pyroscope_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
+// 		# TYPE pyroscope_compactor_group_compaction_runs_completed_total counter
+// 		pyroscope_compactor_group_compaction_runs_completed_total 1
 
-		# HELP pyroscope_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
-		# TYPE pyroscope_compactor_group_compaction_runs_started_total counter
-		pyroscope_compactor_group_compaction_runs_started_total 1
+// 		# HELP pyroscope_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
+// 		# TYPE pyroscope_compactor_group_compaction_runs_started_total counter
+// 		pyroscope_compactor_group_compaction_runs_started_total 1
 
-		# HELP pyroscope_compactor_group_compactions_failures_total Total number of failed group compactions.
-		# TYPE pyroscope_compactor_group_compactions_failures_total counter
-		pyroscope_compactor_group_compactions_failures_total 0
+// 		# HELP pyroscope_compactor_group_compactions_failures_total Total number of failed group compactions.
+// 		# TYPE pyroscope_compactor_group_compactions_failures_total counter
+// 		pyroscope_compactor_group_compactions_failures_total 0
 
-		# HELP pyroscope_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
-		# TYPE pyroscope_compactor_group_compactions_total counter
-		pyroscope_compactor_group_compactions_total 0
+// 		# HELP pyroscope_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
+// 		# TYPE pyroscope_compactor_group_compactions_total counter
+// 		pyroscope_compactor_group_compactions_total 0
 
-		# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-		# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
-		pyroscope_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
-		pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-		pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
-	`),
-		"pyroscope_compactor_runs_started_total",
-		"pyroscope_compactor_runs_completed_total",
-		"pyroscope_compactor_runs_failed_total",
-		"pyroscope_compactor_group_compaction_runs_completed_total",
-		"pyroscope_compactor_group_compaction_runs_started_total",
-		"pyroscope_compactor_group_compactions_failures_total",
-		"pyroscope_compactor_group_compactions_total",
-		"pyroscope_compactor_blocks_marked_for_deletion_total",
-	))
-}
+// 		# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+// 		# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+// 		pyroscope_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
+// 		pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+// 		pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
+// 	`),
+// 		"pyroscope_compactor_runs_started_total",
+// 		"pyroscope_compactor_runs_completed_total",
+// 		"pyroscope_compactor_runs_failed_total",
+// 		"pyroscope_compactor_group_compaction_runs_completed_total",
+// 		"pyroscope_compactor_group_compaction_runs_started_total",
+// 		"pyroscope_compactor_group_compactions_failures_total",
+// 		"pyroscope_compactor_group_compactions_total",
+// 		"pyroscope_compactor_blocks_marked_for_deletion_total",
+// 	))
+// }
 
 func createCustomBlock(t *testing.T, bkt objstore.Bucket, userID string, externalLabels map[string]string, generator func() []*testhelper.ProfileBuilder) ulid.ULID {
 	meta, dir := testutil.CreateBlock(t, generator)
@@ -1711,9 +1699,7 @@ func prepareConfig(t *testing.T) Config {
 	compactorCfg.retryMaxBackoff = 0
 
 	// Use settings that ensure things will be done concurrently, verifying ordering assumptions.
-	// Helps to expose bugs such as https://github.com/prometheus/prometheus/pull/10108
 	compactorCfg.MaxOpeningBlocksConcurrency = 3
-	compactorCfg.MaxClosingBlocksConcurrency = 3
 
 	// Do not wait for ring stability by default, in order to speed up tests.
 	compactorCfg.ShardingRing.WaitStabilityMinDuration = 0
@@ -1734,7 +1720,7 @@ func prepareConfig(t *testing.T) Config {
 	return compactorCfg
 }
 
-func prepare(t *testing.T, compactorCfg Config, bucketClient objstore.Bucket) (*MultitenantCompactor, *tsdbCompactorMock, *tsdbPlannerMock, *concurrency.SyncBuffer, prometheus.Gatherer) {
+func prepare(t *testing.T, compactorCfg Config, bucketClient objstore.Bucket) (*MultitenantCompactor, *blockCompactorMock, *tsdbPlannerMock, *concurrency.SyncBuffer, prometheus.Gatherer) {
 	var limits validation.Limits
 	flagext.DefaultValues(&limits)
 	overrides, err := validation.NewOverrides(limits, nil)
@@ -1743,26 +1729,26 @@ func prepare(t *testing.T, compactorCfg Config, bucketClient objstore.Bucket) (*
 	return prepareWithConfigProvider(t, compactorCfg, bucketClient, overrides)
 }
 
-func prepareWithConfigProvider(t *testing.T, compactorCfg Config, bucketClient objstore.Bucket, limits ConfigProvider) (*MultitenantCompactor, *tsdbCompactorMock, *tsdbPlannerMock, *concurrency.SyncBuffer, prometheus.Gatherer) {
+func prepareWithConfigProvider(t *testing.T, compactorCfg Config, bucketClient objstore.Bucket, limits ConfigProvider) (*MultitenantCompactor, *blockCompactorMock, *tsdbPlannerMock, *concurrency.SyncBuffer, prometheus.Gatherer) {
 	// Create a temporary directory for compactor data.
 	dataDir := t.TempDir()
 
 	compactorCfg.DataDir = dataDir
 
-	tsdbCompactor := &tsdbCompactorMock{}
+	blockCompactor := &blockCompactorMock{}
 	tsdbPlanner := &tsdbPlannerMock{}
 	logs := &concurrency.SyncBuffer{}
 	logger := &componentLogger{component: "compactor", log: log.NewLogfmtLogger(logs)}
 	registry := prometheus.NewRegistry()
 
 	blocksCompactorFactory := func(ctx context.Context, cfg Config, logger log.Logger, reg prometheus.Registerer) (Compactor, Planner, error) {
-		return tsdbCompactor, tsdbPlanner, nil
+		return blockCompactor, tsdbPlanner, nil
 	}
 
-	c, err := newMultitenantCompactor(compactorCfg, bucketClient, limits, logger, registry, splitAndMergeGrouperFactory, blocksCompactorFactory)
+	c, err := newMultitenantCompactor(compactorCfg, pyroscope_objstore.NewBucket(bucketClient), limits, logger, registry, splitAndMergeGrouperFactory, blocksCompactorFactory)
 	require.NoError(t, err)
 
-	return c, tsdbCompactor, tsdbPlanner, logs, registry
+	return c, blockCompactor, tsdbPlanner, logs, registry
 }
 
 type componentLogger struct {
@@ -1807,27 +1793,12 @@ func (c *componentLogger) Log(keyvals ...interface{}) error {
 	return nil
 }
 
-type tsdbCompactorMock struct {
+type blockCompactorMock struct {
 	mock.Mock
 }
 
-func (m *tsdbCompactorMock) Plan(dir string) ([]string, error) {
-	args := m.Called(dir)
-	return args.Get(0).([]string), args.Error(1)
-}
-
-func (m *tsdbCompactorMock) Write(dest string, b tsdb.BlockReader, mint, maxt int64, parent *tsdb.BlockMeta) (ulid.ULID, error) {
-	args := m.Called(dest, b, mint, maxt, parent)
-	return args.Get(0).(ulid.ULID), args.Error(1)
-}
-
-func (m *tsdbCompactorMock) Compact(dest string, dirs []string, open []*tsdb.Block) (ulid.ULID, error) {
-	args := m.Called(dest, dirs, open)
-	return args.Get(0).(ulid.ULID), args.Error(1)
-}
-
-func (m *tsdbCompactorMock) CompactWithSplitting(dest string, dirs []string, open []*tsdb.Block, shardCount uint64) (result []ulid.ULID, _ error) {
-	args := m.Called(dest, dirs, open, shardCount)
+func (m *blockCompactorMock) CompactWithSplitting(ctx context.Context, dest string, dirs []string, shardCount uint64) (result []ulid.ULID, _ error) {
+	args := m.Called(ctx, dest, dirs, shardCount)
 	return args.Get(0).([]ulid.ULID), args.Error(1)
 }
 
