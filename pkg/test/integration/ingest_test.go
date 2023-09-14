@@ -224,8 +224,18 @@ func TestIngestPPROF(t *testing.T) {
 			spyName: pprof2.SpyNameForFunctionNameRewrite(),
 		},
 
-		//todo add pprof from dotnet
-
+		{
+			// this one is broken dotnet pprof
+			// it has function.id == 0 for every function
+			// it also have "-" in sample type names which promql does not like
+			// https://github.com/grafana/pyroscope/pull/2376/files
+			profile:          repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.pb.gz",
+			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.st.json",
+			expectStatus:     200,
+			metrics: []string{
+				"fail",
+			},
+		},
 	}
 	for _, testdatum := range testdata {
 		var (

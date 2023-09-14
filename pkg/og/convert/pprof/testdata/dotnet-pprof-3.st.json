@@ -1,0 +1,40 @@
+{
+  "alloc-samples": {
+    "units": "objects",
+    "display-name": "alloc_objects"
+  },
+  "alloc-size": {
+    "units": "bytes",
+    "display-name": "alloc_space"
+  },
+  "cpu": {
+    "units": "samples",
+    "sampled": true
+  },
+  "exception": {
+    "units": "exceptions",
+    "display-name": "exceptions"
+  },
+  "lock-count": {
+    "units": "lock_samples",
+    "display-name": "mutex_count"
+  },
+  "lock-time": {
+    "units": "lock_nanoseconds",
+    "display-name": "mutex_duration"
+  },
+  "wall": {
+    "units": "samples",
+    "sampled": true
+  },
+  "inuse-objects": {
+    "units": "objects",
+    "display-name": "inuse_objects",
+    "aggregation": "average"
+  },
+  "inuse-space": {
+    "units": "bytes",
+    "display-name": "inuse_space",
+    "aggregation": "average"
+  }
+}
