@@ -67,11 +67,7 @@ GOOS=linux GOARCH=arm64 make docker-image/pyroscope/build
 ```
 
 #### Running examples locally
-replace 
-```
-image: grafana/pyroscope
-
-with the local tag name you got from docker-image/pyroscope/build (i.e):
+replace `image: grafana/pyroscope` with the local tag name you got from docker-image/pyroscope/build (i.e):
 
 ```
   pyroscope:
