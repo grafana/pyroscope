@@ -2,6 +2,7 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,9 +11,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/bufbuild/connect-go"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -25,10 +32,10 @@ const repoRoot = "../../../"
 
 var (
 	golangHeap = []expectedMetric{
-		{"memory:inuse_space:bytes:space:bytes", 2},
-		{"memory:inuse_objects:count:space:bytes", 3},
-		{"memory:alloc_space:bytes:space:bytes", 0},
-		{"memory:alloc_objects:count:space:bytes", 1},
+		{"memory:alloc_objects:count:space:bytes", 0},
+		{"memory:alloc_space:bytes:space:bytes", 1},
+		{"memory:inuse_objects:count:space:bytes", 2},
+		{"memory:inuse_space:bytes:space:bytes", 3},
 	}
 	golangCPU = []expectedMetric{
 		{"process_cpu:samples:count:cpu:nanoseconds", 0},
@@ -93,16 +100,16 @@ var (
 			profile:      repoRoot + "pkg/og/convert/pprof/testdata/heap-js.pprof",
 			expectStatus: 200,
 			metrics: []expectedMetric{
-				{"memory:space:bytes:space:bytes", 0},
-				{"memory:objects:count:space:bytes", 1},
+				{"memory:space:bytes:space:bytes", 1},
+				{"memory:objects:count:space:bytes", 0},
 			},
 		},
 		{
 			profile:      repoRoot + "pkg/og/convert/pprof/testdata/nodejs-heap.pb.gz",
 			expectStatus: 200,
 			metrics: []expectedMetric{
-				{"memory:inuse_space:bytes:inuse_space:bytes", 0},
-				{"memory:inuse_objects:count:inuse_space:bytes", 1},
+				{"memory:inuse_space:bytes:inuse_space:bytes", 1},
+				{"memory:inuse_objects:count:inuse_space:bytes", 0},
 			},
 		},
 		{
@@ -126,8 +133,8 @@ var (
 			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/req_3.st.json",
 			expectStatus:     200,
 			metrics: []expectedMetric{
-				{"block:delay:nanoseconds:contentions:count", 0},
-				{"block:contentions:count:contentions:count", 1},
+				{"block:delay:nanoseconds:contentions:count", 1},
+				{"block:contentions:count:contentions:count", 0},
 			},
 		},
 		{
@@ -135,8 +142,8 @@ var (
 			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/req_4.st.json",
 			expectStatus:     200,
 			metrics: []expectedMetric{
-				{"mutex:delay:nanoseconds:contentions:count", 0},
-				{"mutex:contentions:count:contentions:count", 1},
+				{"mutex:contentions:count:contentions:count", 0},
+				{"mutex:delay:nanoseconds:contentions:count", 1},
 			},
 		},
 		{
@@ -168,6 +175,7 @@ var (
 			metrics: []expectedMetric{
 				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
 			},
+			needFunctionIDFix: true,
 		},
 		{
 			// this one is broken dotnet pprof
@@ -179,9 +187,10 @@ var (
 			metrics: []expectedMetric{
 				// notice how they all use process_cpu metric
 				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
-				{"process_cpu:alloc_samples:count::nanoseconds", 0}, // this was rewriten by ingest handler to replace -
-				{"process_cpu:alloc_size:bytes::nanoseconds", 0},    // this was rewriten by ingest handler to replace -
+				{"process_cpu:alloc_samples:count::nanoseconds", 2}, // this was rewriten by ingest handler to replace -
+				{"process_cpu:alloc_size:bytes::nanoseconds", 3},    // this was rewriten by ingest handler to replace -
 			},
+			needFunctionIDFix: true,
 		},
 		{
 			// this is a fixed dotnet pprof
@@ -190,8 +199,8 @@ var (
 			expectStatus:     200,
 			metrics: []expectedMetric{
 				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
-				{"process_cpu:alloc_samples:count::nanoseconds", 0},
-				{"process_cpu:alloc_size:bytes::nanoseconds", 0},
+				{"process_cpu:alloc_samples:count::nanoseconds", 2},
+				{"process_cpu:alloc_size:bytes::nanoseconds", 3},
 			},
 		},
 	}
@@ -210,10 +219,8 @@ func TestIngest(t *testing.T) {
 
 			if testdatum.expectStatus == 200 {
 				for _, metric := range testdatum.metrics {
-					// todo use not only /render
 					render(t, metric, appName, testdatum)
 					selectMerge(t, metric, appName, testdatum)
-
 				}
 			}
 		})
@@ -221,7 +228,41 @@ func TestIngest(t *testing.T) {
 }
 
 func selectMerge(t *testing.T, metric expectedMetric, name string, testdatum pprofTestData) {
-	//todo
+	qc := queryClient()
+	resp, err := qc.SelectMergeProfile(context.Background(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+		ProfileTypeID: metric.name,
+		Start:         time.Now().Add(-time.Hour).UnixMilli(),
+		End:           time.Now().UnixMilli(),
+		LabelSelector: fmt.Sprintf("{service_name=\"%s\"}", name),
+	}))
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, len(resp.Msg.SampleType))
+
+	profileBytes, err := os.ReadFile(testdatum.profile)
+	require.NoError(t, err)
+	expectedProfile, err := pprof.RawFromBytes(profileBytes)
+	require.NoError(t, err)
+
+	actualStacktraces := bench.StackCollapseProto(resp.Msg, 0, 1)
+	if testdatum.needFunctionIDFix {
+		pprof2.FixFunctionIDForBrokenDotnet(expectedProfile.Profile)
+	}
+	expectedStacktraces := bench.StackCollapseProto(expectedProfile.Profile, metric.valueIDX, 1)
+
+	for i, valueType := range expectedProfile.SampleType {
+		fmt.Println(i, expectedProfile.StringTable[valueType.Type])
+	}
+	if testdatum.spyName == pprof2.SpyNameForFunctionNameRewrite() {
+		fmt.Println("warning skipping scripting stacktrace check") // TODO
+	} else {
+		if !reflect.DeepEqual(expectedStacktraces, actualStacktraces) {
+			name := filepath.Base(testdatum.profile)
+			os.WriteFile(fmt.Sprintf("%s_%s_expected.txt", name, metric.name), []byte(strings.Join(expectedStacktraces, "\n")), 0666)
+			os.WriteFile(fmt.Sprintf("%s_%s_actual.txt", name, metric.name), []byte(strings.Join(actualStacktraces, "\n")), 0666)
+		}
+		require.Equal(t, expectedStacktraces, actualStacktraces)
+	}
 }
 
 func render(t *testing.T, metric expectedMetric, appName string, testdatum pprofTestData) {
@@ -243,12 +284,13 @@ func render(t *testing.T, metric expectedMetric, appName string, testdatum pprof
 }
 
 type pprofTestData struct {
-	profile          string
-	prevProfile      string
-	sampleTypeConfig string
-	spyName          string
-	expectStatus     int
-	metrics          []expectedMetric
+	profile           string
+	prevProfile       string
+	sampleTypeConfig  string
+	spyName           string
+	expectStatus      int
+	metrics           []expectedMetric
+	needFunctionIDFix bool
 }
 
 type expectedMetric struct {

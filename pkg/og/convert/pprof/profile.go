@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/bufbuild/connect-go"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -62,7 +63,9 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 
 	fixTime(profile, md)
 	fixFunctionNamesForScriptingLanguages(profile, md)
-	fixFunctionIDForBrokenDotnet(profile, md)
+	if md.SpyName == "dotnetspy" {
+		FixFunctionIDForBrokenDotnet(profile.Profile)
+	}
 	fixSampleTypes(profile)
 
 	res = &distributormodel.PushRequest{
@@ -89,7 +92,7 @@ func fixSampleTypes(profile *pprof.Profile) {
 	}
 }
 
-func fixFunctionIDForBrokenDotnet(profile *pprof.Profile, md ingestion.Metadata) {
+func FixFunctionIDForBrokenDotnet(profile *profilev1.Profile) {
 	for _, function := range profile.Function {
 		if function.Id != 0 {
 			return
