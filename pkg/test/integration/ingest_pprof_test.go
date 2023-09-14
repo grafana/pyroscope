@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -308,11 +307,6 @@ func selectMerge(t *testing.T, metric expectedMetric, name string, testdatum ppr
 	if testdatum.spyName == pprof2.SpyNameForFunctionNameRewrite() {
 		fmt.Println("warning skipping scripting stacktrace check") // TODO
 	} else {
-		if !reflect.DeepEqual(expectedStacktraces, actualStacktraces) {
-			name := filepath.Base(testdatum.profile)
-			os.WriteFile(fmt.Sprintf("%s_%s_expected.txt", name, metric.name), []byte(strings.Join(expectedStacktraces, "\n")), 0666)
-			os.WriteFile(fmt.Sprintf("%s_%s_actual.txt", name, metric.name), []byte(strings.Join(actualStacktraces, "\n")), 0666)
-		}
 		require.Equal(t, expectedStacktraces, actualStacktraces)
 	}
 }
