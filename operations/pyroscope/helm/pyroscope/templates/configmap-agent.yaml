@@ -64,7 +64,7 @@ data:
     		target_label  = "container"
     	}
     }
-  {{- $profileTypes := list "memory" "cpu" "goroutine" "block" "mutex"  }}
+  {{- $profileTypes := list "memory" "cpu" "goroutine" "block" "mutex" "fgprof" }}
   {{- range $profileTypes }}
 
     discovery.relabel "kubernetes_pods_{{.}}_default_name" {
