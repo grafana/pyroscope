@@ -27,13 +27,11 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/test"
-	"github.com/grafana/loki/pkg/storage/bucket/filesystem"
-	"github.com/grafana/mimir/pkg/storage/bucket"
-	"github.com/grafana/mimir/pkg/storage/tsdb/block"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	prom_testutil "github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/tsdb"
@@ -46,7 +44,12 @@ import (
 	"github.com/thanos-io/objstore"
 	"gopkg.in/yaml.v3"
 
+	pyroscope_objstore "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
+	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
+
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -100,13 +103,13 @@ func TestConfig_Validate(t *testing.T) {
 		},
 		"should pass with only 1 block range period": {
 			setup: func(cfg *Config) {
-				cfg.BlockRanges = mimir_tsdb.DurationList{time.Hour}
+				cfg.BlockRanges = DurationList{time.Hour}
 			},
 			expected: "",
 		},
 		"should fail with non divisible block range periods": {
 			setup: func(cfg *Config) {
-				cfg.BlockRanges = mimir_tsdb.DurationList{2 * time.Hour, 12 * time.Hour, 24 * time.Hour, 30 * time.Hour}
+				cfg.BlockRanges = DurationList{2 * time.Hour, 12 * time.Hour, 24 * time.Hour, 30 * time.Hour}
 			},
 			expected: errors.Errorf(errInvalidBlockRanges, 30*time.Hour, 24*time.Hour).Error(),
 		},
@@ -175,108 +178,108 @@ func TestMultitenantCompactor_ShouldDoNothingOnNoUserBlocks(t *testing.T) {
 	}, removeIgnoredLogs(strings.Split(strings.TrimSpace(logs.String()), "\n")))
 
 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
-		# TYPE cortex_compactor_runs_started_total counter
-		# HELP cortex_compactor_runs_started_total Total number of compaction runs started.
-		cortex_compactor_runs_started_total 1
+		# TYPE pyroscope_compactor_runs_started_total counter
+		# HELP pyroscope_compactor_runs_started_total Total number of compaction runs started.
+		pyroscope_compactor_runs_started_total 1
 
-		# TYPE cortex_compactor_runs_completed_total counter
-		# HELP cortex_compactor_runs_completed_total Total number of compaction runs successfully completed.
-		cortex_compactor_runs_completed_total 1
+		# TYPE pyroscope_compactor_runs_completed_total counter
+		# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
+		pyroscope_compactor_runs_completed_total 1
 
-		# TYPE cortex_compactor_runs_failed_total counter
-		# HELP cortex_compactor_runs_failed_total Total number of compaction runs failed.
-		cortex_compactor_runs_failed_total{reason="error"} 0
-		cortex_compactor_runs_failed_total{reason="shutdown"} 0
+		# TYPE pyroscope_compactor_runs_failed_total counter
+		# HELP pyroscope_compactor_runs_failed_total Total number of compaction runs failed.
+		pyroscope_compactor_runs_failed_total{reason="error"} 0
+		pyroscope_compactor_runs_failed_total{reason="shutdown"} 0
 
-		# HELP cortex_compactor_garbage_collection_duration_seconds Time it took to perform garbage collection iteration.
-		# TYPE cortex_compactor_garbage_collection_duration_seconds histogram
-		cortex_compactor_garbage_collection_duration_seconds_bucket{le="+Inf"} 0
-		cortex_compactor_garbage_collection_duration_seconds_sum 0
-		cortex_compactor_garbage_collection_duration_seconds_count 0
+		# HELP pyroscope_compactor_garbage_collection_duration_seconds Time it took to perform garbage collection iteration.
+		# TYPE pyroscope_compactor_garbage_collection_duration_seconds histogram
+		pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="+Inf"} 0
+		pyroscope_compactor_garbage_collection_duration_seconds_sum 0
+		pyroscope_compactor_garbage_collection_duration_seconds_count 0
 
-		# HELP cortex_compactor_garbage_collection_failures_total Total number of failed garbage collection operations.
-		# TYPE cortex_compactor_garbage_collection_failures_total counter
-		cortex_compactor_garbage_collection_failures_total 0
+		# HELP pyroscope_compactor_garbage_collection_failures_total Total number of failed garbage collection operations.
+		# TYPE pyroscope_compactor_garbage_collection_failures_total counter
+		pyroscope_compactor_garbage_collection_failures_total 0
 
-		# HELP cortex_compactor_garbage_collection_total Total number of garbage collection operations.
-		# TYPE cortex_compactor_garbage_collection_total counter
-		cortex_compactor_garbage_collection_total 0
+		# HELP pyroscope_compactor_garbage_collection_total Total number of garbage collection operations.
+		# TYPE pyroscope_compactor_garbage_collection_total counter
+		pyroscope_compactor_garbage_collection_total 0
 
-		# HELP cortex_compactor_meta_sync_duration_seconds Duration of the blocks metadata synchronization in seconds.
-		# TYPE cortex_compactor_meta_sync_duration_seconds histogram
-		cortex_compactor_meta_sync_duration_seconds_bucket{le="+Inf"} 0
-		cortex_compactor_meta_sync_duration_seconds_sum 0
-		cortex_compactor_meta_sync_duration_seconds_count 0
+		# HELP pyroscope_compactor_meta_sync_duration_seconds Duration of the blocks metadata synchronization in seconds.
+		# TYPE pyroscope_compactor_meta_sync_duration_seconds histogram
+		pyroscope_compactor_meta_sync_duration_seconds_bucket{le="+Inf"} 0
+		pyroscope_compactor_meta_sync_duration_seconds_sum 0
+		pyroscope_compactor_meta_sync_duration_seconds_count 0
 
-		# HELP cortex_compactor_meta_sync_failures_total Total blocks metadata synchronization failures.
-		# TYPE cortex_compactor_meta_sync_failures_total counter
-		cortex_compactor_meta_sync_failures_total 0
+		# HELP pyroscope_compactor_meta_sync_failures_total Total blocks metadata synchronization failures.
+		# TYPE pyroscope_compactor_meta_sync_failures_total counter
+		pyroscope_compactor_meta_sync_failures_total 0
 
-		# HELP cortex_compactor_meta_syncs_total Total blocks metadata synchronization attempts.
-		# TYPE cortex_compactor_meta_syncs_total counter
-		cortex_compactor_meta_syncs_total 0
+		# HELP pyroscope_compactor_meta_syncs_total Total blocks metadata synchronization attempts.
+		# TYPE pyroscope_compactor_meta_syncs_total counter
+		pyroscope_compactor_meta_syncs_total 0
 
-		# HELP cortex_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
-		# TYPE cortex_compactor_group_compaction_runs_completed_total counter
-		cortex_compactor_group_compaction_runs_completed_total 0
+		# HELP pyroscope_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
+		# TYPE pyroscope_compactor_group_compaction_runs_completed_total counter
+		pyroscope_compactor_group_compaction_runs_completed_total 0
 
-		# HELP cortex_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
-		# TYPE cortex_compactor_group_compaction_runs_started_total counter
-		cortex_compactor_group_compaction_runs_started_total 0
+		# HELP pyroscope_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
+		# TYPE pyroscope_compactor_group_compaction_runs_started_total counter
+		pyroscope_compactor_group_compaction_runs_started_total 0
 
-		# HELP cortex_compactor_group_compactions_failures_total Total number of failed group compactions.
-		# TYPE cortex_compactor_group_compactions_failures_total counter
-		cortex_compactor_group_compactions_failures_total 0
+		# HELP pyroscope_compactor_group_compactions_failures_total Total number of failed group compactions.
+		# TYPE pyroscope_compactor_group_compactions_failures_total counter
+		pyroscope_compactor_group_compactions_failures_total 0
 
-		# HELP cortex_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
-		# TYPE cortex_compactor_group_compactions_total counter
-		cortex_compactor_group_compactions_total 0
+		# HELP pyroscope_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
+		# TYPE pyroscope_compactor_group_compactions_total counter
+		pyroscope_compactor_group_compactions_total 0
 
-		# TYPE cortex_compactor_block_cleanup_failures_total counter
-		# HELP cortex_compactor_block_cleanup_failures_total Total number of blocks failed to be deleted.
-		cortex_compactor_block_cleanup_failures_total 0
+		# TYPE pyroscope_compactor_block_cleanup_failures_total counter
+		# HELP pyroscope_compactor_block_cleanup_failures_total Total number of blocks failed to be deleted.
+		pyroscope_compactor_block_cleanup_failures_total 0
 
-		# HELP cortex_compactor_blocks_cleaned_total Total number of blocks deleted.
-		# TYPE cortex_compactor_blocks_cleaned_total counter
-		cortex_compactor_blocks_cleaned_total 0
+		# HELP pyroscope_compactor_blocks_cleaned_total Total number of blocks deleted.
+		# TYPE pyroscope_compactor_blocks_cleaned_total counter
+		pyroscope_compactor_blocks_cleaned_total 0
 
-		# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-		# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-		cortex_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
+		# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+		# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
 
-		# TYPE cortex_compactor_block_cleanup_started_total counter
-		# HELP cortex_compactor_block_cleanup_started_total Total number of blocks cleanup runs started.
-		cortex_compactor_block_cleanup_started_total 1
+		# TYPE pyroscope_compactor_block_cleanup_started_total counter
+		# HELP pyroscope_compactor_block_cleanup_started_total Total number of blocks cleanup runs started.
+		pyroscope_compactor_block_cleanup_started_total 1
 
-		# TYPE cortex_compactor_block_cleanup_completed_total counter
-		# HELP cortex_compactor_block_cleanup_completed_total Total number of blocks cleanup runs successfully completed.
-		cortex_compactor_block_cleanup_completed_total 1
+		# TYPE pyroscope_compactor_block_cleanup_completed_total counter
+		# HELP pyroscope_compactor_block_cleanup_completed_total Total number of blocks cleanup runs successfully completed.
+		pyroscope_compactor_block_cleanup_completed_total 1
 
-		# TYPE cortex_compactor_block_cleanup_failed_total counter
-		# HELP cortex_compactor_block_cleanup_failed_total Total number of blocks cleanup runs failed.
-		cortex_compactor_block_cleanup_failed_total 0
+		# TYPE pyroscope_compactor_block_cleanup_failed_total counter
+		# HELP pyroscope_compactor_block_cleanup_failed_total Total number of blocks cleanup runs failed.
+		pyroscope_compactor_block_cleanup_failed_total 0
 	`),
-		"cortex_compactor_runs_started_total",
-		"cortex_compactor_runs_completed_total",
-		"cortex_compactor_runs_failed_total",
-		"cortex_compactor_garbage_collection_duration_seconds",
-		"cortex_compactor_garbage_collection_failures_total",
-		"cortex_compactor_garbage_collection_total",
-		"cortex_compactor_meta_sync_duration_seconds",
-		"cortex_compactor_meta_sync_failures_total",
-		"cortex_compactor_meta_syncs_total",
-		"cortex_compactor_group_compaction_runs_completed_total",
-		"cortex_compactor_group_compaction_runs_started_total",
-		"cortex_compactor_group_compactions_failures_total",
-		"cortex_compactor_group_compactions_total",
-		"cortex_compactor_block_cleanup_failures_total",
-		"cortex_compactor_blocks_cleaned_total",
-		"cortex_compactor_blocks_marked_for_deletion_total",
-		"cortex_compactor_block_cleanup_started_total",
-		"cortex_compactor_block_cleanup_completed_total",
-		"cortex_compactor_block_cleanup_failed_total",
+		"pyroscope_compactor_runs_started_total",
+		"pyroscope_compactor_runs_completed_total",
+		"pyroscope_compactor_runs_failed_total",
+		"pyroscope_compactor_garbage_collection_duration_seconds",
+		"pyroscope_compactor_garbage_collection_failures_total",
+		"pyroscope_compactor_garbage_collection_total",
+		"pyroscope_compactor_meta_sync_duration_seconds",
+		"pyroscope_compactor_meta_sync_failures_total",
+		"pyroscope_compactor_meta_syncs_total",
+		"pyroscope_compactor_group_compaction_runs_completed_total",
+		"pyroscope_compactor_group_compaction_runs_started_total",
+		"pyroscope_compactor_group_compactions_failures_total",
+		"pyroscope_compactor_group_compactions_total",
+		"pyroscope_compactor_block_cleanup_failures_total",
+		"pyroscope_compactor_blocks_cleaned_total",
+		"pyroscope_compactor_blocks_marked_for_deletion_total",
+		"pyroscope_compactor_block_cleanup_started_total",
+		"pyroscope_compactor_block_cleanup_completed_total",
+		"pyroscope_compactor_block_cleanup_failed_total",
 	))
 }
 
@@ -284,7 +287,7 @@ func TestMultitenantCompactor_ShouldRetryCompactionOnFailureWhileDiscoveringUser
 	t.Parallel()
 
 	// Fail to iterate over the bucket while discovering users.
-	bucketClient := &bucket.ClientMock{}
+	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", nil, errors.New("failed to iterate the bucket"))
 
 	c, _, _, logs, registry := prepare(t, prepareConfig(t), bucketClient)
@@ -314,108 +317,108 @@ func TestMultitenantCompactor_ShouldRetryCompactionOnFailureWhileDiscoveringUser
 	}, removeIgnoredLogs(strings.Split(strings.TrimSpace(logs.String()), "\n")))
 
 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
-		# TYPE cortex_compactor_runs_started_total counter
-		# HELP cortex_compactor_runs_started_total Total number of compaction runs started.
-		cortex_compactor_runs_started_total 1
+		# TYPE pyroscope_compactor_runs_started_total counter
+		# HELP pyroscope_compactor_runs_started_total Total number of compaction runs started.
+		pyroscope_compactor_runs_started_total 1
 
-		# TYPE cortex_compactor_runs_completed_total counter
-		# HELP cortex_compactor_runs_completed_total Total number of compaction runs successfully completed.
-		cortex_compactor_runs_completed_total 0
+		# TYPE pyroscope_compactor_runs_completed_total counter
+		# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
+		pyroscope_compactor_runs_completed_total 0
 
-		# TYPE cortex_compactor_runs_failed_total counter
-		# HELP cortex_compactor_runs_failed_total Total number of compaction runs failed.
-		cortex_compactor_runs_failed_total{reason="error"} 1
-		cortex_compactor_runs_failed_total{reason="shutdown"} 0
+		# TYPE pyroscope_compactor_runs_failed_total counter
+		# HELP pyroscope_compactor_runs_failed_total Total number of compaction runs failed.
+		pyroscope_compactor_runs_failed_total{reason="error"} 1
+		pyroscope_compactor_runs_failed_total{reason="shutdown"} 0
 
-		# HELP cortex_compactor_garbage_collection_duration_seconds Time it took to perform garbage collection iteration.
-		# TYPE cortex_compactor_garbage_collection_duration_seconds histogram
-		cortex_compactor_garbage_collection_duration_seconds_bucket{le="+Inf"} 0
-		cortex_compactor_garbage_collection_duration_seconds_sum 0
-		cortex_compactor_garbage_collection_duration_seconds_count 0
+		# HELP pyroscope_compactor_garbage_collection_duration_seconds Time it took to perform garbage collection iteration.
+		# TYPE pyroscope_compactor_garbage_collection_duration_seconds histogram
+		pyroscope_compactor_garbage_collection_duration_seconds_bucket{le="+Inf"} 0
+		pyroscope_compactor_garbage_collection_duration_seconds_sum 0
+		pyroscope_compactor_garbage_collection_duration_seconds_count 0
 
-		# HELP cortex_compactor_garbage_collection_failures_total Total number of failed garbage collection operations.
-		# TYPE cortex_compactor_garbage_collection_failures_total counter
-		cortex_compactor_garbage_collection_failures_total 0
+		# HELP pyroscope_compactor_garbage_collection_failures_total Total number of failed garbage collection operations.
+		# TYPE pyroscope_compactor_garbage_collection_failures_total counter
+		pyroscope_compactor_garbage_collection_failures_total 0
 
-		# HELP cortex_compactor_garbage_collection_total Total number of garbage collection operations.
-		# TYPE cortex_compactor_garbage_collection_total counter
-		cortex_compactor_garbage_collection_total 0
+		# HELP pyroscope_compactor_garbage_collection_total Total number of garbage collection operations.
+		# TYPE pyroscope_compactor_garbage_collection_total counter
+		pyroscope_compactor_garbage_collection_total 0
 
-		# HELP cortex_compactor_meta_sync_duration_seconds Duration of the blocks metadata synchronization in seconds.
-		# TYPE cortex_compactor_meta_sync_duration_seconds histogram
-		cortex_compactor_meta_sync_duration_seconds_bucket{le="+Inf"} 0
-		cortex_compactor_meta_sync_duration_seconds_sum 0
-		cortex_compactor_meta_sync_duration_seconds_count 0
+		# HELP pyroscope_compactor_meta_sync_duration_seconds Duration of the blocks metadata synchronization in seconds.
+		# TYPE pyroscope_compactor_meta_sync_duration_seconds histogram
+		pyroscope_compactor_meta_sync_duration_seconds_bucket{le="+Inf"} 0
+		pyroscope_compactor_meta_sync_duration_seconds_sum 0
+		pyroscope_compactor_meta_sync_duration_seconds_count 0
 
-		# HELP cortex_compactor_meta_sync_failures_total Total blocks metadata synchronization failures.
-		# TYPE cortex_compactor_meta_sync_failures_total counter
-		cortex_compactor_meta_sync_failures_total 0
+		# HELP pyroscope_compactor_meta_sync_failures_total Total blocks metadata synchronization failures.
+		# TYPE pyroscope_compactor_meta_sync_failures_total counter
+		pyroscope_compactor_meta_sync_failures_total 0
 
-		# HELP cortex_compactor_meta_syncs_total Total blocks metadata synchronization attempts.
-		# TYPE cortex_compactor_meta_syncs_total counter
-		cortex_compactor_meta_syncs_total 0
+		# HELP pyroscope_compactor_meta_syncs_total Total blocks metadata synchronization attempts.
+		# TYPE pyroscope_compactor_meta_syncs_total counter
+		pyroscope_compactor_meta_syncs_total 0
 
-		# HELP cortex_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
-		# TYPE cortex_compactor_group_compaction_runs_completed_total counter
-		cortex_compactor_group_compaction_runs_completed_total 0
+		# HELP pyroscope_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
+		# TYPE pyroscope_compactor_group_compaction_runs_completed_total counter
+		pyroscope_compactor_group_compaction_runs_completed_total 0
 
-		# HELP cortex_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
-		# TYPE cortex_compactor_group_compaction_runs_started_total counter
-		cortex_compactor_group_compaction_runs_started_total 0
+		# HELP pyroscope_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
+		# TYPE pyroscope_compactor_group_compaction_runs_started_total counter
+		pyroscope_compactor_group_compaction_runs_started_total 0
 
-		# HELP cortex_compactor_group_compactions_failures_total Total number of failed group compactions.
-		# TYPE cortex_compactor_group_compactions_failures_total counter
-		cortex_compactor_group_compactions_failures_total 0
+		# HELP pyroscope_compactor_group_compactions_failures_total Total number of failed group compactions.
+		# TYPE pyroscope_compactor_group_compactions_failures_total counter
+		pyroscope_compactor_group_compactions_failures_total 0
 
-		# HELP cortex_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
-		# TYPE cortex_compactor_group_compactions_total counter
-		cortex_compactor_group_compactions_total 0
+		# HELP pyroscope_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
+		# TYPE pyroscope_compactor_group_compactions_total counter
+		pyroscope_compactor_group_compactions_total 0
 
-		# TYPE cortex_compactor_block_cleanup_failures_total counter
-		# HELP cortex_compactor_block_cleanup_failures_total Total number of blocks failed to be deleted.
-		cortex_compactor_block_cleanup_failures_total 0
+		# TYPE pyroscope_compactor_block_cleanup_failures_total counter
+		# HELP pyroscope_compactor_block_cleanup_failures_total Total number of blocks failed to be deleted.
+		pyroscope_compactor_block_cleanup_failures_total 0
 
-		# HELP cortex_compactor_blocks_cleaned_total Total number of blocks deleted.
-		# TYPE cortex_compactor_blocks_cleaned_total counter
-		cortex_compactor_blocks_cleaned_total 0
+		# HELP pyroscope_compactor_blocks_cleaned_total Total number of blocks deleted.
+		# TYPE pyroscope_compactor_blocks_cleaned_total counter
+		pyroscope_compactor_blocks_cleaned_total 0
 
-		# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-		# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-		cortex_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
+		# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+		# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
 
-		# TYPE cortex_compactor_block_cleanup_started_total counter
-		# HELP cortex_compactor_block_cleanup_started_total Total number of blocks cleanup runs started.
-		cortex_compactor_block_cleanup_started_total 1
+		# TYPE pyroscope_compactor_block_cleanup_started_total counter
+		# HELP pyroscope_compactor_block_cleanup_started_total Total number of blocks cleanup runs started.
+		pyroscope_compactor_block_cleanup_started_total 1
 
-		# TYPE cortex_compactor_block_cleanup_completed_total counter
-		# HELP cortex_compactor_block_cleanup_completed_total Total number of blocks cleanup runs successfully completed.
-		cortex_compactor_block_cleanup_completed_total 0
+		# TYPE pyroscope_compactor_block_cleanup_completed_total counter
+		# HELP pyroscope_compactor_block_cleanup_completed_total Total number of blocks cleanup runs successfully completed.
+		pyroscope_compactor_block_cleanup_completed_total 0
 
-		# TYPE cortex_compactor_block_cleanup_failed_total counter
-		# HELP cortex_compactor_block_cleanup_failed_total Total number of blocks cleanup runs failed.
-		cortex_compactor_block_cleanup_failed_total 1
+		# TYPE pyroscope_compactor_block_cleanup_failed_total counter
+		# HELP pyroscope_compactor_block_cleanup_failed_total Total number of blocks cleanup runs failed.
+		pyroscope_compactor_block_cleanup_failed_total 1
 	`),
-		"cortex_compactor_runs_started_total",
-		"cortex_compactor_runs_completed_total",
-		"cortex_compactor_runs_failed_total",
-		"cortex_compactor_garbage_collection_duration_seconds",
-		"cortex_compactor_garbage_collection_failures_total",
-		"cortex_compactor_garbage_collection_total",
-		"cortex_compactor_meta_sync_duration_seconds",
-		"cortex_compactor_meta_sync_failures_total",
-		"cortex_compactor_meta_syncs_total",
-		"cortex_compactor_group_compaction_runs_completed_total",
-		"cortex_compactor_group_compaction_runs_started_total",
-		"cortex_compactor_group_compactions_failures_total",
-		"cortex_compactor_group_compactions_total",
-		"cortex_compactor_block_cleanup_failures_total",
-		"cortex_compactor_blocks_cleaned_total",
-		"cortex_compactor_blocks_marked_for_deletion_total",
-		"cortex_compactor_block_cleanup_started_total",
-		"cortex_compactor_block_cleanup_completed_total",
-		"cortex_compactor_block_cleanup_failed_total",
+		"pyroscope_compactor_runs_started_total",
+		"pyroscope_compactor_runs_completed_total",
+		"pyroscope_compactor_runs_failed_total",
+		"pyroscope_compactor_garbage_collection_duration_seconds",
+		"pyroscope_compactor_garbage_collection_failures_total",
+		"pyroscope_compactor_garbage_collection_total",
+		"pyroscope_compactor_meta_sync_duration_seconds",
+		"pyroscope_compactor_meta_sync_failures_total",
+		"pyroscope_compactor_meta_syncs_total",
+		"pyroscope_compactor_group_compaction_runs_completed_total",
+		"pyroscope_compactor_group_compaction_runs_started_total",
+		"pyroscope_compactor_group_compactions_failures_total",
+		"pyroscope_compactor_group_compactions_total",
+		"pyroscope_compactor_block_cleanup_failures_total",
+		"pyroscope_compactor_blocks_cleaned_total",
+		"pyroscope_compactor_blocks_marked_for_deletion_total",
+		"pyroscope_compactor_block_cleanup_started_total",
+		"pyroscope_compactor_block_cleanup_completed_total",
+		"pyroscope_compactor_block_cleanup_failed_total",
 	))
 }
 
@@ -423,7 +426,7 @@ func TestMultitenantCompactor_ShouldIncrementCompactionErrorIfFailedToCompactASi
 	t.Parallel()
 
 	userID := "test-user"
-	bucketClient := &bucket.ClientMock{}
+	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{userID}, nil)
 	bucketClient.MockIter(userID+"/", []string{userID + "/01DTVP434PA9VFXSW2JKB3392D", userID + "/01DTW0ZCPDDNV4BV83Q2SV4QAZ"}, nil)
 	bucketClient.MockIter(userID+"/markers/", nil, nil)
@@ -449,22 +452,22 @@ func TestMultitenantCompactor_ShouldIncrementCompactionErrorIfFailedToCompactASi
 	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), c))
 
 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
-		# TYPE cortex_compactor_runs_started_total counter
-		# HELP cortex_compactor_runs_started_total Total number of compaction runs started.
-		cortex_compactor_runs_started_total 1
+		# TYPE pyroscope_compactor_runs_started_total counter
+		# HELP pyroscope_compactor_runs_started_total Total number of compaction runs started.
+		pyroscope_compactor_runs_started_total 1
 
-		# TYPE cortex_compactor_runs_completed_total counter
-		# HELP cortex_compactor_runs_completed_total Total number of compaction runs successfully completed.
-		cortex_compactor_runs_completed_total 0
+		# TYPE pyroscope_compactor_runs_completed_total counter
+		# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
+		pyroscope_compactor_runs_completed_total 0
 
-		# TYPE cortex_compactor_runs_failed_total counter
-		# HELP cortex_compactor_runs_failed_total Total number of compaction runs failed.
-		cortex_compactor_runs_failed_total{reason="error"} 1
-		cortex_compactor_runs_failed_total{reason="shutdown"} 0
+		# TYPE pyroscope_compactor_runs_failed_total counter
+		# HELP pyroscope_compactor_runs_failed_total Total number of compaction runs failed.
+		pyroscope_compactor_runs_failed_total{reason="error"} 1
+		pyroscope_compactor_runs_failed_total{reason="shutdown"} 0
 	`),
-		"cortex_compactor_runs_started_total",
-		"cortex_compactor_runs_completed_total",
-		"cortex_compactor_runs_failed_total",
+		"pyroscope_compactor_runs_started_total",
+		"pyroscope_compactor_runs_completed_total",
+		"pyroscope_compactor_runs_failed_total",
 	))
 }
 
@@ -472,7 +475,7 @@ func TestMultitenantCompactor_ShouldIncrementCompactionShutdownIfTheContextIsCan
 	t.Parallel()
 
 	userID := "test-user"
-	bucketClient := &bucket.ClientMock{}
+	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{userID}, nil)
 	bucketClient.MockIter(userID+"/", []string{userID + "/01DTVP434PA9VFXSW2JKB3392D", userID + "/01DTW0ZCPDDNV4BV83Q2SV4QAZ"}, nil)
 	bucketClient.MockIter(userID+"/markers/", nil, nil)
@@ -502,22 +505,22 @@ func TestMultitenantCompactor_ShouldIncrementCompactionShutdownIfTheContextIsCan
 	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), c))
 
 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
-		# TYPE cortex_compactor_runs_started_total counter
-		# HELP cortex_compactor_runs_started_total Total number of compaction runs started.
-		cortex_compactor_runs_started_total 1
+		# TYPE pyroscope_compactor_runs_started_total counter
+		# HELP pyroscope_compactor_runs_started_total Total number of compaction runs started.
+		pyroscope_compactor_runs_started_total 1
 
-		# TYPE cortex_compactor_runs_completed_total counter
-		# HELP cortex_compactor_runs_completed_total Total number of compaction runs successfully completed.
-		cortex_compactor_runs_completed_total 0
+		# TYPE pyroscope_compactor_runs_completed_total counter
+		# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
+		pyroscope_compactor_runs_completed_total 0
 
-		# TYPE cortex_compactor_runs_failed_total counter
-		# HELP cortex_compactor_runs_failed_total Total number of compaction runs failed.
-		cortex_compactor_runs_failed_total{reason="error"} 0
-		cortex_compactor_runs_failed_total{reason="shutdown"} 1
+		# TYPE pyroscope_compactor_runs_failed_total counter
+		# HELP pyroscope_compactor_runs_failed_total Total number of compaction runs failed.
+		pyroscope_compactor_runs_failed_total{reason="error"} 0
+		pyroscope_compactor_runs_failed_total{reason="shutdown"} 1
 	`),
-		"cortex_compactor_runs_started_total",
-		"cortex_compactor_runs_completed_total",
-		"cortex_compactor_runs_failed_total",
+		"pyroscope_compactor_runs_started_total",
+		"pyroscope_compactor_runs_completed_total",
+		"pyroscope_compactor_runs_failed_total",
 	))
 }
 
@@ -525,7 +528,7 @@ func TestMultitenantCompactor_ShouldIterateOverUsersAndRunCompaction(t *testing.
 	t.Parallel()
 
 	// Mock the bucket to contain two users, each one with two blocks (to make sure that grouper doesn't skip them).
-	bucketClient := &bucket.ClientMock{}
+	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1", "user-2"}, nil)
 	bucketClient.MockExists(path.Join("user-1", bucket.TenantDeletionMarkPath), false, nil)
 	bucketClient.MockExists(path.Join("user-2", bucket.TenantDeletionMarkPath), false, nil)
@@ -600,68 +603,68 @@ func TestMultitenantCompactor_ShouldIterateOverUsersAndRunCompaction(t *testing.
 	// Instead of testing for shipper metrics, we only check our metrics here.
 	// Real shipper metrics are too variable to embed into a test.
 	testedMetrics := []string{
-		"cortex_compactor_runs_started_total", "cortex_compactor_runs_completed_total", "cortex_compactor_runs_failed_total",
-		"cortex_compactor_blocks_cleaned_total", "cortex_compactor_block_cleanup_failures_total", "cortex_compactor_blocks_marked_for_deletion_total",
-		"cortex_compactor_block_cleanup_started_total", "cortex_compactor_block_cleanup_completed_total", "cortex_compactor_block_cleanup_failed_total",
-		"cortex_compactor_group_compaction_runs_completed_total", "cortex_compactor_group_compaction_runs_started_total",
-		"cortex_compactor_group_compactions_failures_total", "cortex_compactor_group_compactions_total",
+		"pyroscope_compactor_runs_started_total", "pyroscope_compactor_runs_completed_total", "pyroscope_compactor_runs_failed_total",
+		"pyroscope_compactor_blocks_cleaned_total", "pyroscope_compactor_block_cleanup_failures_total", "pyroscope_compactor_blocks_marked_for_deletion_total",
+		"pyroscope_compactor_block_cleanup_started_total", "pyroscope_compactor_block_cleanup_completed_total", "pyroscope_compactor_block_cleanup_failed_total",
+		"pyroscope_compactor_group_compaction_runs_completed_total", "pyroscope_compactor_group_compaction_runs_started_total",
+		"pyroscope_compactor_group_compactions_failures_total", "pyroscope_compactor_group_compactions_total",
 	}
 
 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
-		# TYPE cortex_compactor_runs_started_total counter
-		# HELP cortex_compactor_runs_started_total Total number of compaction runs started.
-		cortex_compactor_runs_started_total 1
+		# TYPE pyroscope_compactor_runs_started_total counter
+		# HELP pyroscope_compactor_runs_started_total Total number of compaction runs started.
+		pyroscope_compactor_runs_started_total 1
 
-		# TYPE cortex_compactor_runs_completed_total counter
-		# HELP cortex_compactor_runs_completed_total Total number of compaction runs successfully completed.
-		cortex_compactor_runs_completed_total 1
+		# TYPE pyroscope_compactor_runs_completed_total counter
+		# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
+		pyroscope_compactor_runs_completed_total 1
 
-		# TYPE cortex_compactor_runs_failed_total counter
-		# HELP cortex_compactor_runs_failed_total Total number of compaction runs failed.
-		cortex_compactor_runs_failed_total{reason="error"} 0
-		cortex_compactor_runs_failed_total{reason="shutdown"} 0
+		# TYPE pyroscope_compactor_runs_failed_total counter
+		# HELP pyroscope_compactor_runs_failed_total Total number of compaction runs failed.
+		pyroscope_compactor_runs_failed_total{reason="error"} 0
+		pyroscope_compactor_runs_failed_total{reason="shutdown"} 0
 
-		# HELP cortex_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
-		# TYPE cortex_compactor_group_compaction_runs_completed_total counter
-		cortex_compactor_group_compaction_runs_completed_total 2
+		# HELP pyroscope_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
+		# TYPE pyroscope_compactor_group_compaction_runs_completed_total counter
+		pyroscope_compactor_group_compaction_runs_completed_total 2
 
-		# HELP cortex_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
-		# TYPE cortex_compactor_group_compaction_runs_started_total counter
-		cortex_compactor_group_compaction_runs_started_total 2
+		# HELP pyroscope_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
+		# TYPE pyroscope_compactor_group_compaction_runs_started_total counter
+		pyroscope_compactor_group_compaction_runs_started_total 2
 
-		# HELP cortex_compactor_group_compactions_failures_total Total number of failed group compactions.
-		# TYPE cortex_compactor_group_compactions_failures_total counter
-		cortex_compactor_group_compactions_failures_total 0
+		# HELP pyroscope_compactor_group_compactions_failures_total Total number of failed group compactions.
+		# TYPE pyroscope_compactor_group_compactions_failures_total counter
+		pyroscope_compactor_group_compactions_failures_total 0
 
-		# HELP cortex_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
-		# TYPE cortex_compactor_group_compactions_total counter
-		cortex_compactor_group_compactions_total 0
+		# HELP pyroscope_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
+		# TYPE pyroscope_compactor_group_compactions_total counter
+		pyroscope_compactor_group_compactions_total 0
 
-		# TYPE cortex_compactor_block_cleanup_failures_total counter
-		# HELP cortex_compactor_block_cleanup_failures_total Total number of blocks failed to be deleted.
-		cortex_compactor_block_cleanup_failures_total 0
+		# TYPE pyroscope_compactor_block_cleanup_failures_total counter
+		# HELP pyroscope_compactor_block_cleanup_failures_total Total number of blocks failed to be deleted.
+		pyroscope_compactor_block_cleanup_failures_total 0
 
-		# HELP cortex_compactor_blocks_cleaned_total Total number of blocks deleted.
-		# TYPE cortex_compactor_blocks_cleaned_total counter
-		cortex_compactor_blocks_cleaned_total 0
+		# HELP pyroscope_compactor_blocks_cleaned_total Total number of blocks deleted.
+		# TYPE pyroscope_compactor_blocks_cleaned_total counter
+		pyroscope_compactor_blocks_cleaned_total 0
 
-		# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-		# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-		cortex_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
+		# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+		# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
 
-		# TYPE cortex_compactor_block_cleanup_started_total counter
-		# HELP cortex_compactor_block_cleanup_started_total Total number of blocks cleanup runs started.
-		cortex_compactor_block_cleanup_started_total 1
+		# TYPE pyroscope_compactor_block_cleanup_started_total counter
+		# HELP pyroscope_compactor_block_cleanup_started_total Total number of blocks cleanup runs started.
+		pyroscope_compactor_block_cleanup_started_total 1
 
-		# TYPE cortex_compactor_block_cleanup_completed_total counter
-		# HELP cortex_compactor_block_cleanup_completed_total Total number of blocks cleanup runs successfully completed.
-		cortex_compactor_block_cleanup_completed_total 1
+		# TYPE pyroscope_compactor_block_cleanup_completed_total counter
+		# HELP pyroscope_compactor_block_cleanup_completed_total Total number of blocks cleanup runs successfully completed.
+		pyroscope_compactor_block_cleanup_completed_total 1
 
-		# TYPE cortex_compactor_block_cleanup_failed_total counter
-		# HELP cortex_compactor_block_cleanup_failed_total Total number of blocks cleanup runs failed.
-		cortex_compactor_block_cleanup_failed_total 0
+		# TYPE pyroscope_compactor_block_cleanup_failed_total counter
+		# HELP pyroscope_compactor_block_cleanup_failed_total Total number of blocks cleanup runs failed.
+		pyroscope_compactor_block_cleanup_failed_total 0
 	`), testedMetrics...))
 }
 
@@ -670,7 +673,7 @@ func TestMultitenantCompactor_ShouldStopCompactingTenantOnReachingMaxCompactionT
 
 	// By using blocks with different labels, we get two compaction jobs. Only one of these jobs will be started,
 	// and since its planning will take longer than maxCompactionTime, we stop compactions early.
-	bucketClient := &bucket.ClientMock{}
+	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1"}, nil)
 	bucketClient.MockExists(path.Join("user-1", bucket.TenantDeletionMarkPath), false, nil)
 	bucketClient.MockIter("user-1/", []string{"user-1/01DTVP434PA9VFXSW2JKB3392D", "user-1/01FN3VCQV5X342W2ZKMQQXAZRX", "user-1/01FS51A7GQ1RQWV35DBVYQM4KF", "user-1/01FRQGQB7RWQ2TS0VWA82QTPXE"}, nil)
@@ -740,7 +743,7 @@ func TestMultitenantCompactor_ShouldNotCompactBlocksMarkedForDeletion(t *testing
 	cfg.DeletionDelay = 10 * time.Minute // Delete block after 10 minutes
 
 	// Mock the bucket to contain two users, each one with one block.
-	bucketClient := &bucket.ClientMock{}
+	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1"}, nil)
 	bucketClient.MockIter("user-1/", []string{"user-1/01DTVP434PA9VFXSW2JKB3392D", "user-1/01DTW0ZCPDDNV4BV83Q2SV4QAZ"}, nil)
 	bucketClient.MockExists(path.Join("user-1", bucket.TenantDeletionMarkPath), false, nil)
@@ -805,49 +808,49 @@ func TestMultitenantCompactor_ShouldNotCompactBlocksMarkedForDeletion(t *testing
 	// Instead of testing for shipper metrics, we only check our metrics here.
 	// Real shipper metrics are too variable to embed into a test.
 	testedMetrics := []string{
-		"cortex_compactor_runs_started_total", "cortex_compactor_runs_completed_total", "cortex_compactor_runs_failed_total",
-		"cortex_compactor_blocks_cleaned_total", "cortex_compactor_block_cleanup_failures_total", "cortex_compactor_blocks_marked_for_deletion_total",
-		"cortex_compactor_block_cleanup_started_total", "cortex_compactor_block_cleanup_completed_total", "cortex_compactor_block_cleanup_failed_total",
+		"pyroscope_compactor_runs_started_total", "pyroscope_compactor_runs_completed_total", "pyroscope_compactor_runs_failed_total",
+		"pyroscope_compactor_blocks_cleaned_total", "pyroscope_compactor_block_cleanup_failures_total", "pyroscope_compactor_blocks_marked_for_deletion_total",
+		"pyroscope_compactor_block_cleanup_started_total", "pyroscope_compactor_block_cleanup_completed_total", "pyroscope_compactor_block_cleanup_failed_total",
 	}
 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
-		# TYPE cortex_compactor_runs_started_total counter
-		# HELP cortex_compactor_runs_started_total Total number of compaction runs started.
-		cortex_compactor_runs_started_total 1
+		# TYPE pyroscope_compactor_runs_started_total counter
+		# HELP pyroscope_compactor_runs_started_total Total number of compaction runs started.
+		pyroscope_compactor_runs_started_total 1
 
-		# TYPE cortex_compactor_runs_completed_total counter
-		# HELP cortex_compactor_runs_completed_total Total number of compaction runs successfully completed.
-		cortex_compactor_runs_completed_total 1
+		# TYPE pyroscope_compactor_runs_completed_total counter
+		# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
+		pyroscope_compactor_runs_completed_total 1
 
-		# TYPE cortex_compactor_runs_failed_total counter
-		# HELP cortex_compactor_runs_failed_total Total number of compaction runs failed.
-		cortex_compactor_runs_failed_total{reason="error"} 0
-		cortex_compactor_runs_failed_total{reason="shutdown"} 0
+		# TYPE pyroscope_compactor_runs_failed_total counter
+		# HELP pyroscope_compactor_runs_failed_total Total number of compaction runs failed.
+		pyroscope_compactor_runs_failed_total{reason="error"} 0
+		pyroscope_compactor_runs_failed_total{reason="shutdown"} 0
 
-		# TYPE cortex_compactor_block_cleanup_failures_total counter
-		# HELP cortex_compactor_block_cleanup_failures_total Total number of blocks failed to be deleted.
-		cortex_compactor_block_cleanup_failures_total 0
+		# TYPE pyroscope_compactor_block_cleanup_failures_total counter
+		# HELP pyroscope_compactor_block_cleanup_failures_total Total number of blocks failed to be deleted.
+		pyroscope_compactor_block_cleanup_failures_total 0
 
-		# HELP cortex_compactor_blocks_cleaned_total Total number of blocks deleted.
-		# TYPE cortex_compactor_blocks_cleaned_total counter
-		cortex_compactor_blocks_cleaned_total 1
+		# HELP pyroscope_compactor_blocks_cleaned_total Total number of blocks deleted.
+		# TYPE pyroscope_compactor_blocks_cleaned_total counter
+		pyroscope_compactor_blocks_cleaned_total 1
 
-		# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-		# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-		cortex_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
+		# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+		# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
 
-		# TYPE cortex_compactor_block_cleanup_started_total counter
-		# HELP cortex_compactor_block_cleanup_started_total Total number of blocks cleanup runs started.
-		cortex_compactor_block_cleanup_started_total 1
+		# TYPE pyroscope_compactor_block_cleanup_started_total counter
+		# HELP pyroscope_compactor_block_cleanup_started_total Total number of blocks cleanup runs started.
+		pyroscope_compactor_block_cleanup_started_total 1
 
-		# TYPE cortex_compactor_block_cleanup_completed_total counter
-		# HELP cortex_compactor_block_cleanup_completed_total Total number of blocks cleanup runs successfully completed.
-		cortex_compactor_block_cleanup_completed_total 1
+		# TYPE pyroscope_compactor_block_cleanup_completed_total counter
+		# HELP pyroscope_compactor_block_cleanup_completed_total Total number of blocks cleanup runs successfully completed.
+		pyroscope_compactor_block_cleanup_completed_total 1
 
-		# TYPE cortex_compactor_block_cleanup_failed_total counter
-		# HELP cortex_compactor_block_cleanup_failed_total Total number of blocks cleanup runs failed.
-		cortex_compactor_block_cleanup_failed_total 0
+		# TYPE pyroscope_compactor_block_cleanup_failed_total counter
+		# HELP pyroscope_compactor_block_cleanup_failed_total Total number of blocks cleanup runs failed.
+		pyroscope_compactor_block_cleanup_failed_total 0
 	`), testedMetrics...))
 }
 
@@ -858,7 +861,7 @@ func TestMultitenantCompactor_ShouldNotCompactBlocksMarkedForNoCompaction(t *tes
 	cfg.DeletionDelay = 10 * time.Minute // Delete block after 10 minutes
 
 	// Mock the bucket to contain one user with a block marked for no-compaction.
-	bucketClient := &bucket.ClientMock{}
+	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1"}, nil)
 	bucketClient.MockIter("user-1/", []string{"user-1/01DTVP434PA9VFXSW2JKB3392D"}, nil)
 	bucketClient.MockExists(path.Join("user-1", bucket.TenantDeletionMarkPath), false, nil)
@@ -912,7 +915,7 @@ func TestMultitenantCompactor_ShouldNotCompactBlocksForUsersMarkedForDeletion(t 
 	cfg.TenantCleanupDelay = 10 * time.Minute // To make sure it's not 0.
 
 	// Mock the bucket to contain two users, each one with one block.
-	bucketClient := &bucket.ClientMock{}
+	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1"}, nil)
 	bucketClient.MockIter("user-1/", []string{"user-1/01DTVP434PA9VFXSW2JKB3392D"}, nil)
 	bucketClient.MockGet(path.Join("user-1", bucket.TenantDeletionMarkPath), `{"deletion_time": 1}`, nil)
@@ -962,50 +965,50 @@ func TestMultitenantCompactor_ShouldNotCompactBlocksForUsersMarkedForDeletion(t 
 	// Instead of testing for shipper metrics, we only check our metrics here.
 	// Real shipper metrics are too variable to embed into a test.
 	testedMetrics := []string{
-		"cortex_compactor_runs_started_total", "cortex_compactor_runs_completed_total", "cortex_compactor_runs_failed_total",
-		"cortex_compactor_blocks_cleaned_total", "cortex_compactor_block_cleanup_failures_total", "cortex_compactor_blocks_marked_for_deletion_total",
-		"cortex_compactor_block_cleanup_started_total", "cortex_compactor_block_cleanup_completed_total", "cortex_compactor_block_cleanup_failed_total",
-		"cortex_bucket_blocks_count", "cortex_bucket_blocks_marked_for_deletion_count", "cortex_bucket_index_last_successful_update_timestamp_seconds",
+		"pyroscope_compactor_runs_started_total", "pyroscope_compactor_runs_completed_total", "pyroscope_compactor_runs_failed_total",
+		"pyroscope_compactor_blocks_cleaned_total", "pyroscope_compactor_block_cleanup_failures_total", "pyroscope_compactor_blocks_marked_for_deletion_total",
+		"pyroscope_compactor_block_cleanup_started_total", "pyroscope_compactor_block_cleanup_completed_total", "pyroscope_compactor_block_cleanup_failed_total",
+		"pyroscope_bucket_blocks_count", "pyroscope_bucket_blocks_marked_for_deletion_count", "pyroscope_bucket_index_last_successful_update_timestamp_seconds",
 	}
 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
-		# TYPE cortex_compactor_runs_started_total counter
-		# HELP cortex_compactor_runs_started_total Total number of compaction runs started.
-		cortex_compactor_runs_started_total 1
+		# TYPE pyroscope_compactor_runs_started_total counter
+		# HELP pyroscope_compactor_runs_started_total Total number of compaction runs started.
+		pyroscope_compactor_runs_started_total 1
 
-		# TYPE cortex_compactor_runs_completed_total counter
-		# HELP cortex_compactor_runs_completed_total Total number of compaction runs successfully completed.
-		cortex_compactor_runs_completed_total 1
+		# TYPE pyroscope_compactor_runs_completed_total counter
+		# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
+		pyroscope_compactor_runs_completed_total 1
 
-		# TYPE cortex_compactor_runs_failed_total counter
-		# HELP cortex_compactor_runs_failed_total Total number of compaction runs failed.
-		cortex_compactor_runs_failed_total{reason="error"} 0
-		cortex_compactor_runs_failed_total{reason="shutdown"} 0
+		# TYPE pyroscope_compactor_runs_failed_total counter
+		# HELP pyroscope_compactor_runs_failed_total Total number of compaction runs failed.
+		pyroscope_compactor_runs_failed_total{reason="error"} 0
+		pyroscope_compactor_runs_failed_total{reason="shutdown"} 0
 
-		# TYPE cortex_compactor_block_cleanup_failures_total counter
-		# HELP cortex_compactor_block_cleanup_failures_total Total number of blocks failed to be deleted.
-		cortex_compactor_block_cleanup_failures_total 0
+		# TYPE pyroscope_compactor_block_cleanup_failures_total counter
+		# HELP pyroscope_compactor_block_cleanup_failures_total Total number of blocks failed to be deleted.
+		pyroscope_compactor_block_cleanup_failures_total 0
 
-		# HELP cortex_compactor_blocks_cleaned_total Total number of blocks deleted.
-		# TYPE cortex_compactor_blocks_cleaned_total counter
-		cortex_compactor_blocks_cleaned_total 1
+		# HELP pyroscope_compactor_blocks_cleaned_total Total number of blocks deleted.
+		# TYPE pyroscope_compactor_blocks_cleaned_total counter
+		pyroscope_compactor_blocks_cleaned_total 1
 
-		# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-		# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-		cortex_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
+		# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+		# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
 
-		# TYPE cortex_compactor_block_cleanup_started_total counter
-		# HELP cortex_compactor_block_cleanup_started_total Total number of blocks cleanup runs started.
-		cortex_compactor_block_cleanup_started_total 1
+		# TYPE pyroscope_compactor_block_cleanup_started_total counter
+		# HELP pyroscope_compactor_block_cleanup_started_total Total number of blocks cleanup runs started.
+		pyroscope_compactor_block_cleanup_started_total 1
 
-		# TYPE cortex_compactor_block_cleanup_completed_total counter
-		# HELP cortex_compactor_block_cleanup_completed_total Total number of blocks cleanup runs successfully completed.
-		cortex_compactor_block_cleanup_completed_total 1
+		# TYPE pyroscope_compactor_block_cleanup_completed_total counter
+		# HELP pyroscope_compactor_block_cleanup_completed_total Total number of blocks cleanup runs successfully completed.
+		pyroscope_compactor_block_cleanup_completed_total 1
 
-		# TYPE cortex_compactor_block_cleanup_failed_total counter
-		# HELP cortex_compactor_block_cleanup_failed_total Total number of blocks cleanup runs failed.
-		cortex_compactor_block_cleanup_failed_total 0
+		# TYPE pyroscope_compactor_block_cleanup_failed_total counter
+		# HELP pyroscope_compactor_block_cleanup_failed_total Total number of blocks cleanup runs failed.
+		pyroscope_compactor_block_cleanup_failed_total 0
 	`), testedMetrics...))
 }
 
@@ -1013,7 +1016,7 @@ func TestMultitenantCompactor_ShouldCompactAllUsersOnShardingEnabledButOnlyOneIn
 	t.Parallel()
 
 	// Mock the bucket to contain two users, each one with one block.
-	bucketClient := &bucket.ClientMock{}
+	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1", "user-2"}, nil)
 	bucketClient.MockExists(path.Join("user-1", bucket.TenantDeletionMarkPath), false, nil)
 	bucketClient.MockExists(path.Join("user-2", bucket.TenantDeletionMarkPath), false, nil)
@@ -1092,49 +1095,49 @@ func TestMultitenantCompactor_ShouldCompactAllUsersOnShardingEnabledButOnlyOneIn
 	}, removeIgnoredLogs(strings.Split(strings.TrimSpace(logs.String()), "\n")))
 
 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
-		# TYPE cortex_compactor_runs_started_total counter
-		# HELP cortex_compactor_runs_started_total Total number of compaction runs started.
-		cortex_compactor_runs_started_total 1
+		# TYPE pyroscope_compactor_runs_started_total counter
+		# HELP pyroscope_compactor_runs_started_total Total number of compaction runs started.
+		pyroscope_compactor_runs_started_total 1
 
-		# TYPE cortex_compactor_runs_completed_total counter
-		# HELP cortex_compactor_runs_completed_total Total number of compaction runs successfully completed.
-		cortex_compactor_runs_completed_total 1
+		# TYPE pyroscope_compactor_runs_completed_total counter
+		# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
+		pyroscope_compactor_runs_completed_total 1
 
-		# TYPE cortex_compactor_runs_failed_total counter
-		# HELP cortex_compactor_runs_failed_total Total number of compaction runs failed.
-		cortex_compactor_runs_failed_total{reason="error"} 0
-		cortex_compactor_runs_failed_total{reason="shutdown"} 0
+		# TYPE pyroscope_compactor_runs_failed_total counter
+		# HELP pyroscope_compactor_runs_failed_total Total number of compaction runs failed.
+		pyroscope_compactor_runs_failed_total{reason="error"} 0
+		pyroscope_compactor_runs_failed_total{reason="shutdown"} 0
 
-		# HELP cortex_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
-		# TYPE cortex_compactor_group_compaction_runs_completed_total counter
-		cortex_compactor_group_compaction_runs_completed_total 2
+		# HELP pyroscope_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
+		# TYPE pyroscope_compactor_group_compaction_runs_completed_total counter
+		pyroscope_compactor_group_compaction_runs_completed_total 2
 
-		# HELP cortex_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
-		# TYPE cortex_compactor_group_compaction_runs_started_total counter
-		cortex_compactor_group_compaction_runs_started_total 2
+		# HELP pyroscope_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
+		# TYPE pyroscope_compactor_group_compaction_runs_started_total counter
+		pyroscope_compactor_group_compaction_runs_started_total 2
 
-		# HELP cortex_compactor_group_compactions_failures_total Total number of failed group compactions.
-		# TYPE cortex_compactor_group_compactions_failures_total counter
-		cortex_compactor_group_compactions_failures_total 0
+		# HELP pyroscope_compactor_group_compactions_failures_total Total number of failed group compactions.
+		# TYPE pyroscope_compactor_group_compactions_failures_total counter
+		pyroscope_compactor_group_compactions_failures_total 0
 
-		# HELP cortex_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
-		# TYPE cortex_compactor_group_compactions_total counter
-		cortex_compactor_group_compactions_total 0
+		# HELP pyroscope_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
+		# TYPE pyroscope_compactor_group_compactions_total counter
+		pyroscope_compactor_group_compactions_total 0
 
-		# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-		# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-		cortex_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
+		# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+		# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
 	`),
-		"cortex_compactor_runs_started_total",
-		"cortex_compactor_runs_completed_total",
-		"cortex_compactor_runs_failed_total",
-		"cortex_compactor_group_compaction_runs_completed_total",
-		"cortex_compactor_group_compaction_runs_started_total",
-		"cortex_compactor_group_compactions_failures_total",
-		"cortex_compactor_group_compactions_total",
-		"cortex_compactor_blocks_marked_for_deletion_total",
+		"pyroscope_compactor_runs_started_total",
+		"pyroscope_compactor_runs_completed_total",
+		"pyroscope_compactor_runs_failed_total",
+		"pyroscope_compactor_group_compaction_runs_completed_total",
+		"pyroscope_compactor_group_compaction_runs_started_total",
+		"pyroscope_compactor_group_compactions_failures_total",
+		"pyroscope_compactor_group_compactions_total",
+		"pyroscope_compactor_blocks_marked_for_deletion_total",
 	))
 }
 
@@ -1150,7 +1153,7 @@ func TestMultitenantCompactor_ShouldCompactOnlyUsersOwnedByTheInstanceOnSharding
 	}
 
 	// Mock the bucket to contain all users, each one with one block.
-	bucketClient := &bucket.ClientMock{}
+	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", userIDs, nil)
 	for _, userID := range userIDs {
 		bucketClient.MockIter(userID+"/", []string{userID + "/01DTVP434PA9VFXSW2JKB3392D"}, nil)
@@ -1284,7 +1287,7 @@ func TestMultitenantCompactor_ShouldFailWithInvalidTSDBCompactOutput(t *testing.
 	_, err = block.GenerateBlockFromSpec(user, filepath.Join(storageDir, user), sourceBlock3Spec)
 	require.NoError(t, err)
 
-	bkt, err := filesystem.NewBucketClient(filesystem.Config{Directory: storageDir})
+	bkt, err := filesystem.NewBucket(storageDir)
 	require.NoError(t, err)
 
 	cfg := prepareConfig(t)
@@ -1326,7 +1329,7 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsNoMoreOwnedAfterPlannin
 
 	// Mock the bucket to contain one user with two non-overlapping blocks (we expect two compaction jobs to be scheduled
 	// for the splitting stage).
-	bucketClient := &bucket.ClientMock{}
+	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1"}, nil)
 	bucketClient.MockExists(path.Join("user-1", bucket.TenantDeletionMarkPath), false, nil)
 	bucketClient.MockIter("user-1/", []string{"user-1/01DTVP434PA9VFXSW2JK000001", "user-1/01DTVP434PA9VFXSW2JK000002"}, nil)
@@ -1404,49 +1407,49 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsNoMoreOwnedAfterPlannin
 	}, removeIgnoredLogs(strings.Split(strings.TrimSpace(logs.String()), "\n")))
 
 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
-		# TYPE cortex_compactor_runs_started_total counter
-		# HELP cortex_compactor_runs_started_total Total number of compaction runs started.
-		cortex_compactor_runs_started_total 1
+		# TYPE pyroscope_compactor_runs_started_total counter
+		# HELP pyroscope_compactor_runs_started_total Total number of compaction runs started.
+		pyroscope_compactor_runs_started_total 1
 
-		# TYPE cortex_compactor_runs_completed_total counter
-		# HELP cortex_compactor_runs_completed_total Total number of compaction runs successfully completed.
-		cortex_compactor_runs_completed_total 1
+		# TYPE pyroscope_compactor_runs_completed_total counter
+		# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
+		pyroscope_compactor_runs_completed_total 1
 
-		# TYPE cortex_compactor_runs_failed_total counter
-		# HELP cortex_compactor_runs_failed_total Total number of compaction runs failed.
-		cortex_compactor_runs_failed_total{reason="error"} 0
-		cortex_compactor_runs_failed_total{reason="shutdown"} 0
+		# TYPE pyroscope_compactor_runs_failed_total counter
+		# HELP pyroscope_compactor_runs_failed_total Total number of compaction runs failed.
+		pyroscope_compactor_runs_failed_total{reason="error"} 0
+		pyroscope_compactor_runs_failed_total{reason="shutdown"} 0
 
-		# HELP cortex_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
-		# TYPE cortex_compactor_group_compaction_runs_completed_total counter
-		cortex_compactor_group_compaction_runs_completed_total 1
+		# HELP pyroscope_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
+		# TYPE pyroscope_compactor_group_compaction_runs_completed_total counter
+		pyroscope_compactor_group_compaction_runs_completed_total 1
 
-		# HELP cortex_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
-		# TYPE cortex_compactor_group_compaction_runs_started_total counter
-		cortex_compactor_group_compaction_runs_started_total 1
+		# HELP pyroscope_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
+		# TYPE pyroscope_compactor_group_compaction_runs_started_total counter
+		pyroscope_compactor_group_compaction_runs_started_total 1
 
-		# HELP cortex_compactor_group_compactions_failures_total Total number of failed group compactions.
-		# TYPE cortex_compactor_group_compactions_failures_total counter
-		cortex_compactor_group_compactions_failures_total 0
+		# HELP pyroscope_compactor_group_compactions_failures_total Total number of failed group compactions.
+		# TYPE pyroscope_compactor_group_compactions_failures_total counter
+		pyroscope_compactor_group_compactions_failures_total 0
 
-		# HELP cortex_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
-		# TYPE cortex_compactor_group_compactions_total counter
-		cortex_compactor_group_compactions_total 0
+		# HELP pyroscope_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
+		# TYPE pyroscope_compactor_group_compactions_total counter
+		pyroscope_compactor_group_compactions_total 0
 
-		# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-		# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-		cortex_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
+		# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+		# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
 	`),
-		"cortex_compactor_runs_started_total",
-		"cortex_compactor_runs_completed_total",
-		"cortex_compactor_runs_failed_total",
-		"cortex_compactor_group_compaction_runs_completed_total",
-		"cortex_compactor_group_compaction_runs_started_total",
-		"cortex_compactor_group_compactions_failures_total",
-		"cortex_compactor_group_compactions_total",
-		"cortex_compactor_blocks_marked_for_deletion_total",
+		"pyroscope_compactor_runs_started_total",
+		"pyroscope_compactor_runs_completed_total",
+		"pyroscope_compactor_runs_failed_total",
+		"pyroscope_compactor_group_compaction_runs_completed_total",
+		"pyroscope_compactor_group_compaction_runs_started_total",
+		"pyroscope_compactor_group_compactions_failures_total",
+		"pyroscope_compactor_group_compactions_total",
+		"pyroscope_compactor_blocks_marked_for_deletion_total",
 	))
 }
 
@@ -1454,7 +1457,7 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsWithFirstLevelCompactio
 	t.Parallel()
 
 	storageDir := t.TempDir()
-	bucketClient, err := filesystem.NewBucketClient(filesystem.Config{Directory: storageDir})
+	bucketClient, err := filesystem.NewBucket(storageDir)
 	require.NoError(t, err)
 
 	// Mock two tenants, each with 2 overlapping blocks.
@@ -1477,7 +1480,7 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsWithFirstLevelCompactio
 
 	// Mock the last modified timestamp returned for each of the block's meta.json.
 	const waitPeriod = 10 * time.Minute
-	bucketClient = &bucketWithMockedAttributes{
+	mockClient := &bucketWithMockedAttributes{
 		Bucket: bucketClient,
 		customAttributes: map[string]objstore.ObjectAttributes{
 			path.Join("user-1", user1Meta1.ULID.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
@@ -1489,7 +1492,7 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsWithFirstLevelCompactio
 
 	cfg := prepareConfig(t)
 	cfg.CompactionWaitPeriod = waitPeriod
-	c, _, tsdbPlanner, logs, registry := prepare(t, cfg, bucketClient)
+	c, _, tsdbPlanner, logs, registry := prepare(t, cfg, mockClient)
 
 	// Mock the planner as if there's no compaction to do, in order to simplify tests.
 	tsdbPlanner.On("Plan", mock.Anything, mock.Anything).Return([]*block.Meta{}, nil)
@@ -1514,49 +1517,49 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsWithFirstLevelCompactio
 		fmt.Sprintf(`level=info component=compactor user=user-2 msg="skipping compaction job because blocks in this job were uploaded too recently (within wait period)" groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 waitPeriodNotElapsedFor="%s (min time: 1574776800000, max time: 1574784000000)"`, user2Meta2.ULID.String()))
 
 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
-		# TYPE cortex_compactor_runs_started_total counter
-		# HELP cortex_compactor_runs_started_total Total number of compaction runs started.
-		cortex_compactor_runs_started_total 1
+		# TYPE pyroscope_compactor_runs_started_total counter
+		# HELP pyroscope_compactor_runs_started_total Total number of compaction runs started.
+		pyroscope_compactor_runs_started_total 1
 
-		# TYPE cortex_compactor_runs_completed_total counter
-		# HELP cortex_compactor_runs_completed_total Total number of compaction runs successfully completed.
-		cortex_compactor_runs_completed_total 1
+		# TYPE pyroscope_compactor_runs_completed_total counter
+		# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
+		pyroscope_compactor_runs_completed_total 1
 
-		# TYPE cortex_compactor_runs_failed_total counter
-		# HELP cortex_compactor_runs_failed_total Total number of compaction runs failed.
-		cortex_compactor_runs_failed_total{reason="error"} 0
-		cortex_compactor_runs_failed_total{reason="shutdown"} 0
+		# TYPE pyroscope_compactor_runs_failed_total counter
+		# HELP pyroscope_compactor_runs_failed_total Total number of compaction runs failed.
+		pyroscope_compactor_runs_failed_total{reason="error"} 0
+		pyroscope_compactor_runs_failed_total{reason="shutdown"} 0
 
-		# HELP cortex_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
-		# TYPE cortex_compactor_group_compaction_runs_completed_total counter
-		cortex_compactor_group_compaction_runs_completed_total 1
+		# HELP pyroscope_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
+		# TYPE pyroscope_compactor_group_compaction_runs_completed_total counter
+		pyroscope_compactor_group_compaction_runs_completed_total 1
 
-		# HELP cortex_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
-		# TYPE cortex_compactor_group_compaction_runs_started_total counter
-		cortex_compactor_group_compaction_runs_started_total 1
+		# HELP pyroscope_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
+		# TYPE pyroscope_compactor_group_compaction_runs_started_total counter
+		pyroscope_compactor_group_compaction_runs_started_total 1
 
-		# HELP cortex_compactor_group_compactions_failures_total Total number of failed group compactions.
-		# TYPE cortex_compactor_group_compactions_failures_total counter
-		cortex_compactor_group_compactions_failures_total 0
+		# HELP pyroscope_compactor_group_compactions_failures_total Total number of failed group compactions.
+		# TYPE pyroscope_compactor_group_compactions_failures_total counter
+		pyroscope_compactor_group_compactions_failures_total 0
 
-		# HELP cortex_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
-		# TYPE cortex_compactor_group_compactions_total counter
-		cortex_compactor_group_compactions_total 0
+		# HELP pyroscope_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
+		# TYPE pyroscope_compactor_group_compactions_total counter
+		pyroscope_compactor_group_compactions_total 0
 
-		# HELP cortex_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-		# TYPE cortex_compactor_blocks_marked_for_deletion_total counter
-		cortex_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-		cortex_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
+		# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+		# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
 	`),
-		"cortex_compactor_runs_started_total",
-		"cortex_compactor_runs_completed_total",
-		"cortex_compactor_runs_failed_total",
-		"cortex_compactor_group_compaction_runs_completed_total",
-		"cortex_compactor_group_compaction_runs_started_total",
-		"cortex_compactor_group_compactions_failures_total",
-		"cortex_compactor_group_compactions_total",
-		"cortex_compactor_blocks_marked_for_deletion_total",
+		"pyroscope_compactor_runs_started_total",
+		"pyroscope_compactor_runs_completed_total",
+		"pyroscope_compactor_runs_failed_total",
+		"pyroscope_compactor_group_compaction_runs_completed_total",
+		"pyroscope_compactor_group_compaction_runs_started_total",
+		"pyroscope_compactor_group_compactions_failures_total",
+		"pyroscope_compactor_group_compactions_total",
+		"pyroscope_compactor_blocks_marked_for_deletion_total",
 	))
 }
 
@@ -1858,19 +1861,16 @@ func mockBlockMetaJSONWithTimeRangeAndLabels(id string, mint, maxt int64, lbls m
 
 func blockMeta(id string, mint, maxt int64, lbls map[string]string) *block.Meta {
 	return &block.Meta{
-		BlockMeta: tsdb.BlockMeta{
-			Version: 1,
-			ULID:    ulid.MustParse(id),
-			MinTime: mint,
-			MaxTime: maxt,
-			Compaction: tsdb.BlockMetaCompaction{
-				Level:   1,
-				Sources: []ulid.ULID{ulid.MustParse(id)},
-			},
+		Version: 1,
+		ULID:    ulid.MustParse(id),
+		MinTime: model.Time(mint),
+		MaxTime: model.Time(maxt),
+		Compaction: tsdb.BlockMetaCompaction{
+			Level:   1,
+			Sources: []ulid.ULID{ulid.MustParse(id)},
 		},
-		Thanos: block.ThanosMeta{
-			Labels: lbls,
-		},
+
+		Labels: lbls,
 	}
 }
 
@@ -1983,7 +1983,7 @@ func TestMultitenantCompactor_ShouldFailCompactionOnTimeout(t *testing.T) {
 	t.Parallel()
 
 	// Mock the bucket
-	bucketClient := &bucket.ClientMock{}
+	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{}, nil)
 
 	ringStore, closer := consul.NewInMemoryClient(ring.GetCodec(), log.NewNopLogger(), nil)
