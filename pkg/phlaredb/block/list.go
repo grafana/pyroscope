@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"time"
@@ -49,7 +50,6 @@ func ListBlocks(path string, ulidMinTime time.Time) (map[ulid.ULID]*Meta, error)
 // It returns the first error returned by the function.
 // It returns nil if all calls succeed.
 // The function is called concurrently.
-// Currently doesn't work with filesystem bucket.
 func IterBlockMetas(ctx context.Context, bkt phlareobj.Bucket, from, to time.Time, fn func(*Meta)) error {
 	allIDs, err := listAllBlockByPrefixes(ctx, bkt, from, to)
 	if err != nil {
@@ -63,8 +63,12 @@ func IterBlockMetas(ctx context.Context, bkt phlareobj.Bucket, from, to time.Tim
 		for _, id := range ids {
 			id := id
 			g.Go(func() error {
-				r, err := bkt.Get(ctx, id+MetaFilename)
+				r, err := bkt.Get(ctx, path.Join(id, MetaFilename))
 				if err != nil {
+					if bkt.IsObjNotFoundErr(err) {
+						level.Info(util.Logger).Log("msg", "block meta.json not found while iterating", "id", id)
+						return nil
+					}
 					return err
 				}
 
