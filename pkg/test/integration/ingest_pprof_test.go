@@ -18,11 +18,15 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+
+	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
@@ -45,111 +49,126 @@ var (
 	_        = golangCPU
 	testdata = []pprofTestData{
 		{
-			profile:      repoRoot + "pkg/pprof/testdata/heap",
-			expectStatus: 200,
-			metrics:      golangHeap,
+			profile:            repoRoot + "pkg/pprof/testdata/heap",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
+			metrics:            golangHeap,
 		},
 		{
-			profile:      repoRoot + "pkg/pprof/testdata/profile_java",
-			expectStatus: 200,
+			profile:            repoRoot + "pkg/pprof/testdata/profile_java",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
 			metrics: []expectedMetric{
 				{"process_cpu:cpu:nanoseconds:cpu:nanoseconds", 0},
 			},
 		},
 		{
-			profile:      repoRoot + "pkg/og/convert/testdata/cpu.pprof",
-			expectStatus: 200,
-			metrics:      golangCPU,
+			profile:            repoRoot + "pkg/og/convert/testdata/cpu.pprof",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
+
+			metrics: golangCPU,
 		},
 		{
-			profile:      repoRoot + "pkg/og/convert/testdata/cpu.pprof",
-			prevProfile:  repoRoot + "pkg/og/convert/testdata/cpu.pprof",
-			expectStatus: 422,
+			profile:            repoRoot + "pkg/og/convert/testdata/cpu.pprof",
+			prevProfile:        repoRoot + "pkg/og/convert/testdata/cpu.pprof",
+			expectStatusIngest: 422,
 		},
 
 		{
-			profile:      repoRoot + "pkg/og/convert/pprof/testdata/cpu.pb.gz",
-			prevProfile:  "",
-			expectStatus: 200,
-			metrics:      golangCPU,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/cpu.pb.gz",
+			prevProfile:        "",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
+			metrics:            golangCPU,
 		},
 		{
-			profile:      repoRoot + "pkg/og/convert/pprof/testdata/cpu-exemplars.pb.gz",
-			expectStatus: 200,
-			metrics:      golangCPU,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/cpu-exemplars.pb.gz",
+			expectStatusIngest: 200,
+			metrics:            golangCPU,
 		},
 		{
-			profile:      repoRoot + "pkg/og/convert/pprof/testdata/cpu-js.pb.gz",
-			expectStatus: 200,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/cpu-js.pb.gz",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
 			metrics: []expectedMetric{
 				{"wall:sample:count:wall:microseconds", 0},
 				{"wall:wall:microseconds:wall:microseconds", 1},
 			},
 		},
 		{
-			profile:      repoRoot + "pkg/og/convert/pprof/testdata/heap.pb",
-			expectStatus: 200,
-			metrics:      golangHeap,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/heap.pb",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
+			metrics:            golangHeap,
 		},
 		{
-			profile:      repoRoot + "pkg/og/convert/pprof/testdata/heap.pb.gz",
-			expectStatus: 200,
-			metrics:      golangHeap,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/heap.pb.gz",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
+			metrics:            golangHeap,
 		},
 		{
-			profile:      repoRoot + "pkg/og/convert/pprof/testdata/heap-js.pprof",
-			expectStatus: 200,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/heap-js.pprof",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
 			metrics: []expectedMetric{
 				{"memory:space:bytes:space:bytes", 1},
 				{"memory:objects:count:space:bytes", 0},
 			},
 		},
 		{
-			profile:      repoRoot + "pkg/og/convert/pprof/testdata/nodejs-heap.pb.gz",
-			expectStatus: 200,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/nodejs-heap.pb.gz",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
 			metrics: []expectedMetric{
 				{"memory:inuse_space:bytes:inuse_space:bytes", 1},
 				{"memory:inuse_objects:count:inuse_space:bytes", 0},
 			},
 		},
 		{
-			profile:      repoRoot + "pkg/og/convert/pprof/testdata/nodejs-wall.pb.gz",
-			expectStatus: 200,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/nodejs-wall.pb.gz",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
 			metrics: []expectedMetric{
 				{"wall:samples:count:wall:microseconds", 0},
 				{"wall:wall:microseconds:wall:microseconds", 1},
 			},
 		},
 		{
-			profile:          repoRoot + "pkg/og/convert/pprof/testdata/req_2.pprof",
-			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/req_2.st.json",
-			expectStatus:     200,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/req_2.pprof",
+			sampleTypeConfig:   repoRoot + "pkg/og/convert/pprof/testdata/req_2.st.json",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
 			metrics: []expectedMetric{
 				{"goroutines:goroutine:count:goroutine:count", 0},
 			},
 		},
 		{
-			profile:          repoRoot + "pkg/og/convert/pprof/testdata/req_3.pprof",
-			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/req_3.st.json",
-			expectStatus:     200,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/req_3.pprof",
+			sampleTypeConfig:   repoRoot + "pkg/og/convert/pprof/testdata/req_3.st.json",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
 			metrics: []expectedMetric{
 				{"block:delay:nanoseconds:contentions:count", 1},
 				{"block:contentions:count:contentions:count", 0},
 			},
 		},
 		{
-			profile:          repoRoot + "pkg/og/convert/pprof/testdata/req_4.pprof",
-			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/req_4.st.json",
-			expectStatus:     200,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/req_4.pprof",
+			sampleTypeConfig:   repoRoot + "pkg/og/convert/pprof/testdata/req_4.st.json",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
 			metrics: []expectedMetric{
 				{"mutex:contentions:count:contentions:count", 0},
 				{"mutex:delay:nanoseconds:contentions:count", 1},
 			},
 		},
 		{
-			profile:          repoRoot + "pkg/og/convert/pprof/testdata/req_5.pprof",
-			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/req_5.st.json",
-			expectStatus:     200,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/req_5.pprof",
+			sampleTypeConfig:   repoRoot + "pkg/og/convert/pprof/testdata/req_5.st.json",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
 			metrics: []expectedMetric{
 				{"memory:alloc_objects:count:space:bytes", 0},
 				{"memory:alloc_space:bytes:space:bytes", 1},
@@ -158,8 +177,9 @@ var (
 		{
 			// this one have milliseconds in Profile.TimeNanos
 			// https://github.com/grafana/pyroscope/pull/2376/files
-			profile:      repoRoot + "pkg/og/convert/pprof/testdata/pyspy-1.pb.gz",
-			expectStatus: 200,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/pyspy-1.pb.gz",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
 			metrics: []expectedMetric{
 				{"process_cpu:samples:count::milliseconds", 0},
 			},
@@ -169,9 +189,10 @@ var (
 		{
 			// this one is broken dotnet pprof
 			// it has function.id == 0 for every function
-			profile:          repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.pb.gz",
-			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.st.json",
-			expectStatus:     200,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.pb.gz",
+			sampleTypeConfig:   repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.st.json",
+			expectStatusIngest: 200,
+			expectStatusPush:   422,
 			metrics: []expectedMetric{
 				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
 			},
@@ -181,9 +202,10 @@ var (
 			// this one is broken dotnet pprof
 			// it has function.id == 0 for every function
 			// it also has "-" in sample type name
-			profile:          repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-73.pb.gz",
-			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.st.json",
-			expectStatus:     200,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-73.pb.gz",
+			sampleTypeConfig:   repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-3.st.json",
+			expectStatusIngest: 200,
+			expectStatusPush:   422,
 			metrics: []expectedMetric{
 				// notice how they all use process_cpu metric
 				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
@@ -194,12 +216,13 @@ var (
 		},
 		{
 			// this is a fixed dotnet pprof
-			profile:          repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-211.pb.gz",
-			sampleTypeConfig: repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-211.st.json",
-			expectStatus:     200,
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-211.pb.gz",
+			sampleTypeConfig:   repoRoot + "pkg/og/convert/pprof/testdata/dotnet-pprof-211.st.json",
+			expectStatusIngest: 200,
 			metrics: []expectedMetric{
 				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
 				{"process_cpu:alloc_samples:count::nanoseconds", 2},
+				{"process_cpu:alloc_size:bytes::nanoseconds", 3},
 				{"process_cpu:alloc_size:bytes::nanoseconds", 3},
 			},
 		},
@@ -214,10 +237,9 @@ func TestIngest(t *testing.T) {
 	for _, testdatum := range testdata {
 		t.Run(testdatum.profile, func(t *testing.T) {
 
-			//todo do not only /ingest
 			appName := ingest(t, testdatum)
 
-			if testdatum.expectStatus == 200 {
+			if testdatum.expectStatusIngest == 200 {
 				for _, metric := range testdatum.metrics {
 					render(t, metric, appName, testdatum)
 					selectMerge(t, metric, appName, testdatum)
@@ -225,6 +247,30 @@ func TestIngest(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPush(t *testing.T) {
+	p := PyroscopeTest{}
+	p.Start(t)
+	defer p.Stop(t)
+
+	for _, testdatum := range testdata {
+		if testdatum.prevProfile != "" {
+			continue
+		}
+		t.Run(testdatum.profile, func(t *testing.T) {
+
+			appName := push(t, testdatum)
+
+			if testdatum.expectStatusPush == 200 {
+				for _, metric := range testdatum.metrics {
+					render(t, metric, appName, testdatum)
+					selectMerge(t, metric, appName, testdatum)
+				}
+			}
+		})
+	}
+	//time.Sleep(10 * time.Hour)
 }
 
 func selectMerge(t *testing.T, metric expectedMetric, name string, testdatum pprofTestData) {
@@ -284,18 +330,60 @@ func render(t *testing.T, metric expectedMetric, appName string, testdatum pprof
 }
 
 type pprofTestData struct {
-	profile           string
-	prevProfile       string
-	sampleTypeConfig  string
-	spyName           string
-	expectStatus      int
-	metrics           []expectedMetric
-	needFunctionIDFix bool
+	profile            string
+	prevProfile        string
+	sampleTypeConfig   string
+	spyName            string
+	expectStatusIngest int
+	expectStatusPush   int
+	metrics            []expectedMetric
+	needFunctionIDFix  bool
 }
 
 type expectedMetric struct {
 	name     string
 	valueIDX int
+}
+
+func push(t *testing.T, testdatum pprofTestData) string {
+	appName := createAppname(testdatum)
+	cl := pushClient()
+
+	rawProfile, err := os.ReadFile(testdatum.profile)
+	require.NoError(t, err)
+
+	rawProfile = updateTimestamp(t, rawProfile)
+
+	metricName := strings.Split(testdatum.metrics[0].name, ":")[0]
+
+	_, err = cl.Push(context.TODO(), connect.NewRequest(&pushv1.PushRequest{
+		Series: []*pushv1.RawProfileSeries{{
+			Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: metricName},
+				{Name: "__delta__", Value: "false"},
+				{Name: "service_name", Value: appName},
+			},
+			Samples: []*pushv1.RawSample{{RawProfile: rawProfile}},
+		}},
+	}))
+	if testdatum.expectStatusPush == 200 {
+		require.NoError(t, err)
+	} else {
+		require.Error(t, err)
+	}
+
+	return appName
+}
+
+func updateTimestamp(t *testing.T, rawProfile []byte) []byte {
+	expectedProfile, err := pprof.RawFromBytes(rawProfile)
+	require.NoError(t, err)
+	expectedProfile.Profile.TimeNanos = time.Now().Add(-time.Minute).UnixNano()
+	buf := bytes.NewBuffer(nil)
+	_, err = expectedProfile.WriteTo(buf)
+	require.NoError(t, err)
+	rawProfile = buf.Bytes()
+	return rawProfile
 }
 
 func ingest(t *testing.T, testdatum pprofTestData) string {
@@ -320,9 +408,7 @@ func ingest(t *testing.T, testdatum pprofTestData) string {
 		spyName = testdatum.spyName
 	}
 
-	appName := fmt.Sprintf("pprof.integration.%s.%d",
-		strings.ReplaceAll(filepath.Base(testdatum.profile), "-", "_"),
-		rand.Uint64())
+	appName := createAppname(testdatum)
 	url := "http://localhost:4040/ingest?name=" + appName + "&spyName=" + spyName
 	req, err := http.NewRequest("POST", url, bytes.NewReader(bs))
 	require.NoError(t, err)
@@ -330,9 +416,15 @@ func ingest(t *testing.T, testdatum pprofTestData) string {
 
 	res, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	assert.Equal(t, testdatum.expectStatus, res.StatusCode, testdatum.profile)
+	assert.Equal(t, testdatum.expectStatusIngest, res.StatusCode, testdatum.profile)
 	fmt.Printf("%+v %+v\n", testdatum, res)
 	return appName
+}
+
+func createAppname(testdatum pprofTestData) string {
+	return fmt.Sprintf("pprof.integration.%s.%d",
+		strings.ReplaceAll(filepath.Base(testdatum.profile), "-", "_"),
+		rand.Uint64())
 }
 
 func createPProfRequest(t *testing.T, profile, prevProfile, sampleTypeConfig []byte) ([]byte, string) {
@@ -372,6 +464,13 @@ func createPProfRequest(t *testing.T, profile, prevProfile, sampleTypeConfig []b
 
 func queryClient() querierv1connect.QuerierServiceClient {
 	return querierv1connect.NewQuerierServiceClient(
+		http.DefaultClient,
+		"http://localhost:4040",
+	)
+}
+
+func pushClient() pushv1connect.PusherServiceClient {
+	return pushv1connect.NewPusherServiceClient(
 		http.DefaultClient,
 		"http://localhost:4040",
 	)
