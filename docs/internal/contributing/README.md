@@ -56,11 +56,31 @@ make docker-image/pyroscope/build
 This target uses the `go/bin` target to first build binaries to include in the image.
 Make sure to pass the correct `GOOS` and `GOARCH` env variables.
 
-For example for `linux/amd64`:
-
+#### amd64 builds
 ```
 GOOS=linux GOARCH=amd64 make docker-image/pyroscope/build
 ```
+
+#### arm64 builds
+```
+GOOS=linux GOARCH=arm64 make docker-image/pyroscope/build
+```
+
+#### Running build locally
+replace 
+```
+image: grafana/pyroscope
+
+with the local tag name you got from docker-image/pyroscope/build (i.e):
+
+```
+  pyroscope:
+    image: us.gcr.io/kubernetes-dev/pyroscope:main-470125e1-WIP
+    ports:
+      - '4040:4040'
+```
+
+
 
 ### Dependency management
 
