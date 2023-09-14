@@ -138,13 +138,13 @@ func isDirEmpty(name string) (ok bool, err error) {
 }
 
 // ReaderWithExpectedErrs implements objstore.Bucket.
-func (b *Bucket) ReaderWithExpectedErrs(fn objstore.IsOpFailureExpectedFunc) objstore.BucketReader {
+func (b *Bucket) ReaderWithExpectedErrs(fn phlareobjstore.IsOpFailureExpectedFunc) phlareobjstore.BucketReader {
 	return b.WithExpectedErrs(fn)
 }
 
 // WithExpectedErrs implements objstore.Bucket.
-func (b *Bucket) WithExpectedErrs(fn objstore.IsOpFailureExpectedFunc) objstore.Bucket {
-	if ib, ok := b.Bucket.(objstore.InstrumentedBucket); ok {
+func (b *Bucket) WithExpectedErrs(fn phlareobjstore.IsOpFailureExpectedFunc) phlareobjstore.Bucket {
+	if ib, ok := b.Bucket.(phlareobjstore.InstrumentedBucket); ok {
 		return &Bucket{
 			rootDir: b.rootDir,
 			Bucket:  ib.WithExpectedErrs(fn),
