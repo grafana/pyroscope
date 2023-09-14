@@ -1604,7 +1604,7 @@ func createDBBlock(t *testing.T, bkt objstore.Bucket, userID string, minT, maxT 
 		// Append a sample for each series, spreading it between minT and maxT-1 (both included).
 		// Since we append one more series below, here we create N-1 series.
 		if numSeries > 1 {
-			for ts := minT; ts < maxT; ts += (maxT - minT) / int64(numSeries-1) {
+			for ts := minT; ts <= maxT; ts += (maxT - minT) / int64(numSeries-1) {
 				appendSample(seriesID, ts, float64(seriesID))
 				seriesID++
 			}

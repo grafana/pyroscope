@@ -131,12 +131,12 @@ func testBlocksCleanerWithOptions(t *testing.T, options testBlocksCleanerOptions
 		{path: path.Join("user-1", block5.String(), block.DeletionMarkFilename), expectedExists: false},
 		{path: path.Join("user-1", block.DeletionMarkFilepath(block5)), expectedExists: false},
 		// Should not delete a partial block without deletion mark.
-		{path: path.Join("user-1", block6.String(), "index"), expectedExists: true},
+		{path: path.Join("user-1", block6.String(), block.IndexFilename), expectedExists: true},
 		// Should completely delete blocks for user-3, marked for deletion
 		{path: path.Join("user-3", block9.String(), block.MetaFilename), expectedExists: false},
-		{path: path.Join("user-3", block9.String(), "index"), expectedExists: false},
+		{path: path.Join("user-3", block9.String(), block.IndexFilename), expectedExists: false},
 		{path: path.Join("user-3", block10.String(), block.MetaFilename), expectedExists: false},
-		{path: path.Join("user-3", block10.String(), "index"), expectedExists: false},
+		{path: path.Join("user-3", block10.String(), block.IndexFilename), expectedExists: false},
 		// Tenant deletion mark is not removed.
 		{path: path.Join("user-3", bucket.TenantDeletionMarkPath), expectedExists: true},
 		// User-4 is removed fully.
@@ -963,16 +963,19 @@ func TestStalePartialBlockLastModifiedTime(t *testing.T) {
 
 	objectTime := time.Now().Add(-1 * time.Hour).Truncate(time.Second) // ignore milliseconds, as not all filesystems store them.
 	blockID := createDBBlock(t, b, tenantId, objectTime.UnixMilli(), time.Now().UnixMilli(), 2, nil)
-	for _, f := range []string{"meta.json", "index", "chunks/000001", "tombstones"} {
-		require.NoError(t, os.Chtimes(filepath.Join(dir, tenantId, blockID.String(), filepath.FromSlash(f)), objectTime, objectTime))
-	}
+	err := filepath.Walk(filepath.Join(dir, tenantId, blockID.String()), func(path string, info os.FileInfo, err error) error {
+		require.NoError(t, err)
+		require.NoError(t, os.Chtimes(path, objectTime, objectTime))
+		return nil
+	})
+	require.NoError(t, err)
 
 	userBucket := objstore.NewUserBucketClient(tenantId, b, nil)
 
 	emptyBlockID := ulid.ULID{}
 	require.NotEqual(t, blockID, emptyBlockID)
 	empty := true
-	err := userBucket.Iter(context.Background(), emptyBlockID.String(), func(_ string) error {
+	err = userBucket.Iter(context.Background(), emptyBlockID.String(), func(_ string) error {
 		empty = false
 		return nil
 	})

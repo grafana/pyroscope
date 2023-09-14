@@ -45,18 +45,15 @@ const (
 )
 
 const (
-	blocksMarkedForDeletionName = "gitcompactor_blocks_marked_for_deletion_total"
+	blocksMarkedForDeletionName = "pyroscope_compactor_blocks_marked_for_deletion_total"
 	blocksMarkedForDeletionHelp = "Total number of blocks marked for deletion in compactor."
 )
 
 var (
-	errInvalidBlockRanges                         = "compactor block range periods should be divisible by the previous one, but %s is not divisible by %s"
-	errInvalidCompactionOrder                     = fmt.Errorf("unsupported compaction order (supported values: %s)", strings.Join(CompactionOrders, ", "))
-	errInvalidMaxOpeningBlocksConcurrency         = fmt.Errorf("invalid max-opening-blocks-concurrency value, must be positive")
-	errInvalidMaxClosingBlocksConcurrency         = fmt.Errorf("invalid max-closing-blocks-concurrency value, must be positive")
-	errInvalidSymbolFlushersConcurrency           = fmt.Errorf("invalid symbols-flushers-concurrency value, must be positive")
-	errInvalidMaxBlockUploadValidationConcurrency = fmt.Errorf("invalid max-block-upload-validation-concurrency value, can't be negative")
-	RingOp                                        = ring.NewOp([]ring.InstanceState{ring.ACTIVE}, nil)
+	errInvalidBlockRanges                 = "compactor block range periods should be divisible by the previous one, but %s is not divisible by %s"
+	errInvalidCompactionOrder             = fmt.Errorf("unsupported compaction order (supported values: %s)", strings.Join(CompactionOrders, ", "))
+	errInvalidMaxOpeningBlocksConcurrency = fmt.Errorf("invalid max-opening-blocks-concurrency value, must be positive")
+	RingOp                                = ring.NewOp([]ring.InstanceState{ring.ACTIVE}, nil)
 )
 
 // BlocksGrouperFactory builds and returns the grouper to use to compact a tenant's blocks.
