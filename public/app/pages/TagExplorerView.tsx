@@ -34,7 +34,7 @@ import {
   setQuery,
   selectAnnotationsOrDefault,
 } from '@pyroscope/redux/reducers/continuous';
-import { queryToAppName } from '@pyroscope/models/query';
+import { brandQuery, parse, queryToAppName } from '@pyroscope/models/query';
 import PageTitle from '@pyroscope/components/PageTitle';
 import ExploreTooltip from '@pyroscope/components/TimelineChart/ExploreTooltip';
 import { getFormatter } from '@pyroscope/legacy/flamegraph/format/format';
@@ -475,11 +475,18 @@ function Table({
     }
 
     const searchParams = new URLSearchParams(search);
-    searchParams.delete('query');
-    searchParams.set(
-      'query',
-      appendLabelToQuery(`${appName}{}`, groupByTag, groupByTagValue)
+    const originalQuery = searchParams.get('query');
+    const serviceName = originalQuery
+      ? parse(brandQuery(originalQuery))?.tags?.service_name
+      : '';
+    const newQuery = appendLabelToQuery(
+      `${appName}{service_name="${serviceName}"}`,
+      groupByTag,
+      groupByTagValue
     );
+
+    searchParams.delete('query');
+    searchParams.set('query', newQuery);
     return `?${searchParams.toString()}`;
   };
 
