@@ -31,7 +31,7 @@ class TimelineChart extends ReactFlot<TimelineChartProps> {
         return;
       }
 
-      const {from, to} = ranges.xaxis;
+      const { from, to } = ranges.xaxis;
 
       let fromSeconds = Math.round(from / 1000);
       let untilSeconds = Math.round(to / 1000);
@@ -45,16 +45,19 @@ class TimelineChart extends ReactFlot<TimelineChartProps> {
       let pointCount = 0;
 
       for (const dataRange of this.props.data) {
-
-        if (morePointsThanPixels || (dataRange.data.length > event.currentTarget.clientWidth)) {
+        if (
+          morePointsThanPixels ||
+          dataRange.data.length > event.currentTarget.clientWidth
+        ) {
           // We can assume there are some points in the selection, so we will short circuit out
           morePointsThanPixels = true;
           break;
         }
 
         dataRange.data.forEach(
-          (point: number[]) => pointCount += Number(point[0] > from && point[0] < to)
-        )
+          (point: number[]) =>
+            (pointCount += Number(point[0] > from && point[0] < to))
+        );
       }
 
       if (!morePointsThanPixels && pointCount < 3) {
