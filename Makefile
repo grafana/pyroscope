@@ -406,12 +406,13 @@ tools/update_examples:
 
 .phony: rideshare/docker/push
 rideshare/docker/push:
-	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-golang   -t $(IMAGE_PREFIX)pyroscope-rideshare-golang:$(IMAGE_TAG)  examples/golang-push/rideshare
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-golang   -t $(IMAGE_PREFIX)pyroscope-rideshare-golang:$(IMAGE_TAG)   examples/golang-push/rideshare
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-java     -t $(IMAGE_PREFIX)pyroscope-rideshare-java:$(IMAGE_TAG)     examples/java/rideshare
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-python   -t $(IMAGE_PREFIX)pyroscope-rideshare-python:$(IMAGE_TAG)   examples/python/rideshare/flask
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-ruby     -t $(IMAGE_PREFIX)pyroscope-rideshare-ruby:$(IMAGE_TAG)     examples/ruby/rideshare_rails
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-dotnet   -t $(IMAGE_PREFIX)pyroscope-rideshare-dotnet:$(IMAGE_TAG)   examples/dotnet/rideshare/Dockerfile
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-rust     -t $(IMAGE_PREFIX)pyroscope-rideshare-rust:$(IMAGE_TAG)     examples/rust/rideshare
 	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen  -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen:$(IMAGE_TAG) -f examples/golang-push/rideshare/Dockerfile.load-generator examples/golang-push/rideshare
-#	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-java     -t $(IMAGE_PREFIX)pyroscope-rideshare-java:$(IMAGE_TAG)    examples/java/rideshare
-#	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-python   -t $(IMAGE_PREFIX)pyroscope-rideshare-python:$(IMAGE_TAG)  examples/python/rideshare/flask
-#	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-ruby     -t $(IMAGE_PREFIX)pyroscope-rideshare-ruby:$(IMAGE_TAG)    examples/ruby/rideshare_rails
-#	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-rust     -t $(IMAGE_PREFIX)pyroscope-rideshare-rust:$(IMAGE_TAG)    examples/rust/rideshare
 
 .PHONY: docs/%
 docs/%:
