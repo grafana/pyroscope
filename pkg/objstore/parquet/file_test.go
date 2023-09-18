@@ -2,6 +2,8 @@ package parquet
 
 import (
 	"context"
+	"encoding/binary"
+	"fmt"
 	"os"
 	"testing"
 
@@ -13,6 +15,20 @@ import (
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
+
+func readFooterSize(f *os.File, size uint64) (uint32, error) {
+	b := make([]byte, 8)
+	_, err := f.ReadAt(b, int64(size-8))
+	if err != nil {
+		return 0, err
+	}
+
+	if footer := string(b[4:8]); footer != "PAR1" {
+		return 0, fmt.Errorf("invalid magic number: %q", footer)
+	}
+
+	return binary.LittleEndian.Uint32(b[:4]), nil
+}
 
 type readerAtCall struct {
 	offset int64
@@ -94,10 +110,15 @@ func newParquetFile(t *testing.T, rowCount int) (block.File, *bucketReadRangeLog
 	fi, err := output.Stat()
 	require.NoError(t, err)
 
+	footerSize, err := readFooterSize(output, uint64(fi.Size()))
+	require.NoError(t, err)
+
 	return block.File{
 		RelPath:   "test.parquet",
 		SizeBytes: uint64(fi.Size()),
-		Parquet:   &block.ParquetFile{},
+		Parquet: &block.ParquetFile{
+			FooterSize: footerSize,
+		},
 	}, newBucketReader(t, tempDir)
 }
 
