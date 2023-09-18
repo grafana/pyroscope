@@ -72,7 +72,7 @@ RUN CFLAGS=-I/build/libbpf/lib/include make -C /build/profile.bpf
 #  |___/                     |___/
 
 
-FROM golang:1.19-alpine3.16 AS go-builder
+FROM golang:1.21.1-alpine3.16 AS go-builder
 
 RUN apk update && apk upgrade && \
     apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash zlib-dev elfutils-dev libelf-static zlib-static \
