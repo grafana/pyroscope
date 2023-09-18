@@ -4,6 +4,7 @@
 # Documentation.
 /.github/workflows/publish-technical-documentation-next.yml     @jdbaldry
 /.github/workflows/publish-technical-documentation-release.yml  @jdbaldry
+/.github/workflows/update-make-docs.yml                         @jdbaldry
 /docs/                                                          @grafana/docs-profiles @grafana/pyroscope-team
 /docs/docs.mk                                                   @jdbaldry
 /docs/make-docs                                                 @jdbaldry
