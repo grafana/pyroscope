@@ -372,12 +372,19 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type QuerierServiceClient interface {
+	// ProfileType returns a list of the existing profile types.
 	ProfileTypes(ctx context.Context, in *ProfileTypesRequest, opts ...grpc.CallOption) (*ProfileTypesResponse, error)
+	// LabelValues returns the existing label values for the provided label names.
 	LabelValues(ctx context.Context, in *v1.LabelValuesRequest, opts ...grpc.CallOption) (*v1.LabelValuesResponse, error)
+	// LabelNames returns a list of the existing label names.
 	LabelNames(ctx context.Context, in *v1.LabelNamesRequest, opts ...grpc.CallOption) (*v1.LabelNamesResponse, error)
+	// Series returns profiles series matching the request. A series is a unique label set.
 	Series(ctx context.Context, in *SeriesRequest, opts ...grpc.CallOption) (*SeriesResponse, error)
+	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeStacktraces(ctx context.Context, in *SelectMergeStacktracesRequest, opts ...grpc.CallOption) (*SelectMergeStacktracesResponse, error)
+	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(ctx context.Context, in *SelectMergeProfileRequest, opts ...grpc.CallOption) (*v11.Profile, error)
+	// SelectSeries returns a time series for the total sum of the requested profiles.
 	SelectSeries(ctx context.Context, in *SelectSeriesRequest, opts ...grpc.CallOption) (*SelectSeriesResponse, error)
 	Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 }
@@ -466,12 +473,19 @@ func (c *querierServiceClient) Diff(ctx context.Context, in *DiffRequest, opts .
 // All implementations must embed UnimplementedQuerierServiceServer
 // for forward compatibility
 type QuerierServiceServer interface {
+	// ProfileType returns a list of the existing profile types.
 	ProfileTypes(context.Context, *ProfileTypesRequest) (*ProfileTypesResponse, error)
+	// LabelValues returns the existing label values for the provided label names.
 	LabelValues(context.Context, *v1.LabelValuesRequest) (*v1.LabelValuesResponse, error)
+	// LabelNames returns a list of the existing label names.
 	LabelNames(context.Context, *v1.LabelNamesRequest) (*v1.LabelNamesResponse, error)
+	// Series returns profiles series matching the request. A series is a unique label set.
 	Series(context.Context, *SeriesRequest) (*SeriesResponse, error)
+	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *SelectMergeStacktracesRequest) (*SelectMergeStacktracesResponse, error)
+	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(context.Context, *SelectMergeProfileRequest) (*v11.Profile, error)
+	// SelectSeries returns a time series for the total sum of the requested profiles.
 	SelectSeries(context.Context, *SelectSeriesRequest) (*SelectSeriesResponse, error)
 	Diff(context.Context, *DiffRequest) (*DiffResponse, error)
 	mustEmbedUnimplementedQuerierServiceServer()
