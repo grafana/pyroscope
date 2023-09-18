@@ -253,7 +253,7 @@ func newFrontendSchedulerWorker(conn *grpc.ClientConn, schedulerAddr string, fro
 		requestCh:                    requestCh,
 		cancelCh:                     make(chan uint64, schedulerWorkerCancelChanCapacity),
 		enqueuedRequests:             enqueuedRequests,
-		requestsForwardedFailedStats: usagestats.NewInt("pyroscope_query_frontend_requests_forwarded_failed"),
+		requestsForwardedFailedStats: usagestats.NewInt("query_frontend_forwarded_requests_failed"),
 		maxLoopDuration:              maxLoopDuration,
 	}
 	w.ctx, w.cancel = context.WithCancel(context.Background())
