@@ -238,7 +238,7 @@ type frontendSchedulerWorker struct {
 	enqueuedRequests prometheus.Counter
 
 	// Number of queries that failed to forward to the querier.
-	requestsForwardedFailedStats *expvar.Int
+	forwardedRequestsFailedStats *expvar.Int
 
 	maxLoopDuration time.Duration
 }
@@ -253,7 +253,7 @@ func newFrontendSchedulerWorker(conn *grpc.ClientConn, schedulerAddr string, fro
 		requestCh:                    requestCh,
 		cancelCh:                     make(chan uint64, schedulerWorkerCancelChanCapacity),
 		enqueuedRequests:             enqueuedRequests,
-		requestsForwardedFailedStats: usagestats.NewInt("query_frontend_forwarded_requests_failed"),
+		forwardedRequestsFailedStats: usagestats.NewInt("query_frontend_forwarded_requests_failed"),
 		maxLoopDuration:              maxLoopDuration,
 	}
 	w.ctx, w.cancel = context.WithCancel(context.Background())
@@ -315,10 +315,10 @@ func (w *frontendSchedulerWorker) runOne(ctx context.Context, client schedulerpb
 	backoff := backoff.New(ctx, backoffConfig)
 	for backoff.Ongoing() {
 		if !attemptLoop() {
-			w.requestsForwardedFailedStats.Add(1)
+			w.forwardedRequestsFailedStats.Add(1)
 			backoff.Wait()
 		} else {
-			w.requestsForwardedFailedStats.Set(0)
+			w.forwardedRequestsFailedStats.Set(0)
 			backoff.Reset()
 		}
 	}
