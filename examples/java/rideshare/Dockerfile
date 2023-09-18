@@ -4,7 +4,8 @@ WORKDIR /opt/app
 
 RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates && apt-get install -y git
 
-ADD https://github.com/pyroscope-io/pyroscope-java/releases/download/v0.8.0/pyroscope.jar /opt/app/pyroscope.jar
+#ADD https://github.com/pyroscope-io/pyroscope-java/releases/download/v0.8.0/pyroscope.jar /opt/app/pyroscope.jar
+ADD ./pyroscope.jar /opt/app/pyroscope.jar
 
 COPY gradlew .
 COPY gradle gradle
