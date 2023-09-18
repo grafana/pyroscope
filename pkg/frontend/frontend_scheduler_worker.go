@@ -7,6 +7,7 @@ package frontend
 
 import (
 	"context"
+	"expvar"
 	"io"
 	"math/rand"
 	"net/http"
@@ -25,6 +26,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb"
+	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 	"github.com/grafana/pyroscope/pkg/util/servicediscovery"
 )
@@ -235,20 +237,24 @@ type frontendSchedulerWorker struct {
 	// Number of queries sent to this scheduler.
 	enqueuedRequests prometheus.Counter
 
+	// Number of queries that failed to forward to the querier.
+	requestsForwardedFailedStats *expvar.Int
+
 	maxLoopDuration time.Duration
 }
 
 func newFrontendSchedulerWorker(conn *grpc.ClientConn, schedulerAddr string, frontendAddr string, requestCh <-chan *frontendRequest, concurrency int, enqueuedRequests prometheus.Counter, maxLoopDuration time.Duration, log log.Logger) *frontendSchedulerWorker {
 	w := &frontendSchedulerWorker{
-		log:              log,
-		conn:             conn,
-		concurrency:      concurrency,
-		schedulerAddr:    schedulerAddr,
-		frontendAddr:     frontendAddr,
-		requestCh:        requestCh,
-		cancelCh:         make(chan uint64, schedulerWorkerCancelChanCapacity),
-		enqueuedRequests: enqueuedRequests,
-		maxLoopDuration:  maxLoopDuration,
+		log:                          log,
+		conn:                         conn,
+		concurrency:                  concurrency,
+		schedulerAddr:                schedulerAddr,
+		frontendAddr:                 frontendAddr,
+		requestCh:                    requestCh,
+		cancelCh:                     make(chan uint64, schedulerWorkerCancelChanCapacity),
+		enqueuedRequests:             enqueuedRequests,
+		requestsForwardedFailedStats: usagestats.NewInt("pyroscope_query_frontend_requests_forwarded_failed"),
+		maxLoopDuration:              maxLoopDuration,
 	}
 	w.ctx, w.cancel = context.WithCancel(context.Background())
 
@@ -309,8 +315,10 @@ func (w *frontendSchedulerWorker) runOne(ctx context.Context, client schedulerpb
 	backoff := backoff.New(ctx, backoffConfig)
 	for backoff.Ongoing() {
 		if !attemptLoop() {
+			w.requestsForwardedFailedStats.Add(1)
 			backoff.Wait()
 		} else {
+			w.requestsForwardedFailedStats.Set(0)
 			backoff.Reset()
 		}
 	}
