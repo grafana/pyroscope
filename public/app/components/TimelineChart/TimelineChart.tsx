@@ -29,10 +29,17 @@ class TimelineChart extends ReactFlot<TimelineChartProps> {
 
       const xAxisPixelsInChart = event.currentTarget.clientWidth;
 
-      if (rangeIsAcceptableForZoom(ranges.xaxis, this.props.data, xAxisPixelsInChart)) {
-        const fromSeconds = Math.round(ranges.xaxis.from / 1000);
-        const untilSeconds = Math.round(ranges.xaxis.to / 1000);
-        this.props.onSelect(fromSeconds.toString(), untilSeconds.toString());
+      if (
+        rangeIsAcceptableForZoom(
+          ranges.xaxis,
+          this.props.data,
+          xAxisPixelsInChart
+        )
+      ) {
+        this.props.onSelect(
+          Math.round(ranges.xaxis.from / 1000).toString(),
+          Math.round(ranges.xaxis.to / 1000).toString()
+        );
       }
     });
   }

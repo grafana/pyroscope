@@ -1,31 +1,33 @@
-
 export type TimelineChartSelectionTimeRangeAxis = {
   from: number;
   to: number;
-
-}
+};
 
 export type TimelineAxisSelection = {
   from: number;
   to: number;
-}
+};
 
-export type TimelineVisibleData = {
+export type TimelineVisibleData = Array<{
   data: number[][];
-}[]
+}>;
 
 /**
  * Evaluates if a time range contains points suitable to zoom into.
  * The criteria is that there should be at least two points on the same data set.
  * If the number of xaxis pixels is smaller than number of points in a dataset,
  * we assume that no xaxisRange can be selected that won't contain at least two points.
- * 
+ *
  * @param xaxisRange mouse drag/drop selection range along the xaxis
- * @param datasets a collection of datasets that are currently visible on the chart 
+ * @param datasets a collection of datasets that are currently visible on the chart
  * @param xaxisPixels the width of the chart in pixels
- * @returns 
+ * @returns
  */
-export function rangeIsAcceptableForZoom(xaxisRange: TimelineAxisSelection, datasets: TimelineVisibleData, xaxisPixels: number) {
+export function rangeIsAcceptableForZoom(
+  xaxisRange: TimelineAxisSelection,
+  datasets: TimelineVisibleData,
+  xaxisPixels: number
+) {
   if (xaxisRange == null) {
     // Invalid range, do nothing.
     return false;
