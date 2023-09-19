@@ -27,6 +27,8 @@ message ProfileTypesResponse {
 message SeriesRequest {
   repeated string matchers = 1;
   repeated string label_names = 2;
+  int64 start = 3; // milliseconds since epoch
+  int64 end = 4; // milliseconds since epoch
 }
 
 message SeriesResponse {
