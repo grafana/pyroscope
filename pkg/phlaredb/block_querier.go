@@ -386,6 +386,7 @@ type Querier interface {
 	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error)
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
 	MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error)
+	Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error)
 	Open(ctx context.Context) error
 	// Sorts profiles for retrieval.
 	Sort([]Profile) []Profile
@@ -773,12 +774,19 @@ func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockG
 		return nil, err
 	}
 
+	// TODO(bryan) parallelize
+	var labelsSet []*typesv1.Labels
 	for _, q := range queriers {
-		var _ = q
-		// TODO(bryan) do something
+		labels, err := q.Series(ctx, req)
+		if err != nil {
+			// TODO(bryan) don't stop on first error
+			return nil, err
+		}
+		labelsSet = append(labelsSet, labels...)
 	}
 
-	panic("unimplemented") // TODO(bryan) implement
+	// TODO(bryan) dedupe here?
+	return &ingestv1.SeriesResponse{LabelsSet: labelsSet}, nil
 }
 
 var maxBlockProfile Profile = BlockProfile{
