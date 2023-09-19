@@ -307,7 +307,7 @@ func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlar
 	for _, f := range meta.Files {
 		switch f.RelPath {
 		case q.profiles.relPath():
-			q.profiles.size = int64(f.SizeBytes)
+			q.profiles.meta = f
 		}
 	}
 	q.tables = []tableReader{
@@ -1011,59 +1011,25 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 
 type parquetReader[M schemav1.Models, P schemav1.PersisterName] struct {
 	persister P
-	file      *parquet.File
-	reader    phlareobj.ReaderAtCloser
-	size      int64
+	file      parquetobj.File
+	meta      block.File
 	metrics   *blocksMetrics
 }
 
 func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader phlareobj.BucketReader) error {
 	r.metrics = contextBlockMetrics(ctx)
-	filePath := r.persister.Name() + block.ParquetSuffix
-
-	if r.size == 0 {
-		attrs, err := bucketReader.Attributes(ctx, filePath)
-		if err != nil {
-			return errors.Wrapf(err, "getting attributes for '%s'", filePath)
-		}
-		r.size = attrs.Size
-	}
-	// the same reader is used to serve all requests, so we pass context.Background() here
-	var err error
-	r.reader, err = parquetobj.OptimizedBucketReaderAt(bucketReader, context.Background(), filePath)
-	if err != nil {
-		return errors.Wrapf(err, "create reader '%s'", filePath)
-	}
-
-	// first try to open file, this is required otherwise OpenFile panics
-	parquetFile, err := parquet.OpenFile(r.reader, r.size, parquet.SkipPageIndex(true), parquet.SkipBloomFilters(true))
-	if err != nil {
-		return errors.Wrapf(err, "opening parquet file '%s'", filePath)
-	}
-	if parquetFile.NumRows() == 0 {
-		return fmt.Errorf("error parquet file '%s' contains no rows", filePath)
-	}
-	opts := []parquet.FileOption{
+	return r.file.Open(
+		ctx,
+		bucketReader,
+		r.meta,
 		parquet.SkipBloomFilters(true), // we don't use bloom filters
 		parquet.FileReadMode(parquet.ReadModeAsync),
 		parquet.ReadBufferSize(parquetReadBufferSize),
-	}
-	// now open it for real
-	r.file, err = parquet.OpenFile(r.reader, r.size, opts...)
-	if err != nil {
-		return errors.Wrapf(err, "opening parquet file '%s'", filePath)
-	}
-
-	return nil
+	)
 }
 
 func (r *parquetReader[M, P]) Close() error {
-	if r.reader != nil {
-		return r.reader.Close()
-	}
-	r.reader = nil
-	r.file = nil
-	return nil
+	return r.file.Close()
 }
 
 func (r *parquetReader[M, P]) relPath() string {
@@ -1071,7 +1037,7 @@ func (r *parquetReader[M, P]) relPath() string {
 }
 
 func (r *parquetReader[M, P]) columnIter(ctx context.Context, columnName string, predicate query.Predicate, alias string) query.Iterator {
-	index, _ := query.GetColumnIndexByPath(r.file, columnName)
+	index, _ := query.GetColumnIndexByPath(r.file.File, columnName)
 	if index == -1 {
 		return query.NewErrIterator(fmt.Errorf("column '%s' not found in parquet file '%s'", columnName, r.relPath()))
 	}
