@@ -217,42 +217,39 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		sp.LogFields(
 			otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
 			otlog.String("label_names", strings.Join(req.Msg.LabelNames, ",")),
+			otlog.Int64("start", req.Msg.Start),
+			otlog.Int64("end", req.Msg.End),
 		)
 		sp.Finish()
 	}()
 
-	// build up map of label names
-	labelNameMap := make(map[string]struct{}, len(req.Msg.LabelNames))
-	for _, labelName := range req.Msg.LabelNames {
-		labelNameMap[labelName] = struct{}{}
+	if req.Msg.Start > req.Msg.End {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start must be before end"))
 	}
 
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.Labels, error) {
-		res, err := ic.Series(childCtx, connect.NewRequest(&ingestv1.SeriesRequest{
+	if q.storeGatewayQuerier == nil {
+		responses, err := q.seriesFromIngesters(ctx, &ingestv1.SeriesRequest{
 			Matchers:   req.Msg.Matchers,
 			LabelNames: req.Msg.LabelNames,
-		}))
+			Start:      req.Msg.Start,
+			End:        req.Msg.End,
+		})
 		if err != nil {
 			return nil, err
 		}
-		// TODO: Remove this once we have the ingesters returning the filtered response, has been rolled out (f25).
-		filterSeriesByLabelNames(res.Msg.LabelsSet, labelNameMap)
 
-		return res.Msg.LabelsSet, nil
-	})
-	if err != nil {
-		return nil, err
+		return connect.NewResponse(&querierv1.SeriesResponse{
+			LabelsSet: lo.UniqBy(
+				lo.FlatMap(responses, func(r ResponseFromReplica[[]*typesv1.Labels], _ int) []*typesv1.Labels {
+					return r.response
+				}),
+				func(t *typesv1.Labels) uint64 {
+					return phlaremodel.Labels(t.Labels).Hash()
+				}),
+		}), nil
 	}
 
-	return connect.NewResponse(&querierv1.SeriesResponse{
-		LabelsSet: lo.UniqBy(
-			lo.FlatMap(responses, func(r ResponseFromReplica[[]*typesv1.Labels], _ int) []*typesv1.Labels {
-				return r.response
-			}),
-			func(t *typesv1.Labels) uint64 {
-				return phlaremodel.Labels(t.Labels).Hash()
-			}),
-	}), nil
+	panic("unimplemented")
 }
 
 func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
