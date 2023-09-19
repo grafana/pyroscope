@@ -43,6 +43,10 @@ func (s *StoreGateway) MergeProfilesPprof(ctx context.Context, stream *connect.B
 	return terminateStream(stream)
 }
 
+func (s *StoreGateway) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
+	panic("unimplemented") // TODO(bryan) implement
+}
+
 func terminateStream[Req, Resp any](stream *connect.BidiStream[Req, Resp]) (err error) {
 	if _, err = stream.Receive(); err != nil {
 		if errors.Is(err, io.EOF) {

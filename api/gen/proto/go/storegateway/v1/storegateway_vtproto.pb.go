@@ -32,6 +32,7 @@ type StoreGatewayServiceClient interface {
 	MergeProfilesStacktraces(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeProfilesStacktracesClient, error)
 	MergeProfilesLabels(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeProfilesLabelsClient, error)
 	MergeProfilesPprof(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeProfilesPprofClient, error)
+	Series(ctx context.Context, in *v1.SeriesRequest, opts ...grpc.CallOption) (*v1.SeriesResponse, error)
 }
 
 type storeGatewayServiceClient struct {
@@ -135,6 +136,15 @@ func (x *storeGatewayServiceMergeProfilesPprofClient) Recv() (*v1.MergeProfilesP
 	return m, nil
 }
 
+func (c *storeGatewayServiceClient) Series(ctx context.Context, in *v1.SeriesRequest, opts ...grpc.CallOption) (*v1.SeriesResponse, error) {
+	out := new(v1.SeriesResponse)
+	err := c.cc.Invoke(ctx, "/storegateway.v1.StoreGatewayService/Series", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StoreGatewayServiceServer is the server API for StoreGatewayService service.
 // All implementations must embed UnimplementedStoreGatewayServiceServer
 // for forward compatibility
@@ -142,6 +152,7 @@ type StoreGatewayServiceServer interface {
 	MergeProfilesStacktraces(StoreGatewayService_MergeProfilesStacktracesServer) error
 	MergeProfilesLabels(StoreGatewayService_MergeProfilesLabelsServer) error
 	MergeProfilesPprof(StoreGatewayService_MergeProfilesPprofServer) error
+	Series(context.Context, *v1.SeriesRequest) (*v1.SeriesResponse, error)
 	mustEmbedUnimplementedStoreGatewayServiceServer()
 }
 
@@ -157,6 +168,9 @@ func (UnimplementedStoreGatewayServiceServer) MergeProfilesLabels(StoreGatewaySe
 }
 func (UnimplementedStoreGatewayServiceServer) MergeProfilesPprof(StoreGatewayService_MergeProfilesPprofServer) error {
 	return status.Errorf(codes.Unimplemented, "method MergeProfilesPprof not implemented")
+}
+func (UnimplementedStoreGatewayServiceServer) Series(context.Context, *v1.SeriesRequest) (*v1.SeriesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Series not implemented")
 }
 func (UnimplementedStoreGatewayServiceServer) mustEmbedUnimplementedStoreGatewayServiceServer() {}
 
@@ -249,13 +263,36 @@ func (x *storeGatewayServiceMergeProfilesPprofServer) Recv() (*v1.MergeProfilesP
 	return m, nil
 }
 
+func _StoreGatewayService_Series_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.SeriesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoreGatewayServiceServer).Series(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/storegateway.v1.StoreGatewayService/Series",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoreGatewayServiceServer).Series(ctx, req.(*v1.SeriesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // StoreGatewayService_ServiceDesc is the grpc.ServiceDesc for StoreGatewayService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var StoreGatewayService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "storegateway.v1.StoreGatewayService",
 	HandlerType: (*StoreGatewayServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Series",
+			Handler:    _StoreGatewayService_Series_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "MergeProfilesStacktraces",
