@@ -21,9 +21,9 @@ COPY public /usr/src/app/public
 COPY Rakefile /usr/src/app/
 COPY config.ru /usr/src/app/
 
-EXPOSE 3000
+EXPOSE 5000
 
 RUN rm -f tmp/pids/server.pid
 
-CMD ["rails", "s", "-b", "0.0.0.0"] 
+CMD ["rails", "s", "-b", "0.0.0.0", "-p", "5000"]
 
