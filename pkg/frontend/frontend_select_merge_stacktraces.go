@@ -8,6 +8,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
+	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"golang.org/x/sync/errgroup"
 
@@ -18,6 +19,52 @@ import (
 	validationutil "github.com/grafana/pyroscope/pkg/util/validation"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
+
+type resultOrder[A any] struct {
+	idx    int
+	result A
+}
+
+func mergeResultInOrder[A any](ch <-chan resultOrder[A], merge func(A)) error {
+	var results []resultOrder[A]
+
+	nextIdx := 0
+	for {
+		// check if first element matches
+		if len(results) > 0 && results[0].idx == nextIdx {
+			merge(results[0].result)
+			results = results[1:]
+			nextIdx++
+			continue
+		}
+
+		// wait for incoming result or channel close
+		r, ok := <-ch
+		if !ok {
+			if len(results) > 0 {
+				return connect.NewError(http.StatusInternalServerError, errors.New("channel closed before all results were received"))
+			}
+			return nil
+		}
+
+		// result comes in at right order
+		if r.idx == nextIdx {
+			merge(r.result)
+			nextIdx++
+			continue
+		}
+
+		// add element to slice at the right position
+		i := 0
+		for ; i < len(results); i++ {
+			if results[i].idx > r.idx {
+				break
+			}
+		}
+		results = append(results[:i], append([]resultOrder[A]{r}, results[i:]...)...)
+
+	}
+}
 
 func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 	c *connect.Request[querierv1.SelectMergeStacktracesRequest]) (
@@ -52,8 +99,19 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 	interval := validationutil.MaxDurationOrZeroPerTenant(tenantIDs, f.limits.QuerySplitDuration)
 	intervals := NewTimeIntervalIterator(time.UnixMilli(int64(validated.Start)), time.UnixMilli(int64(validated.End)), interval)
 
+	// prepare the channel for the results
+	mergeCh := make(chan resultOrder[*querierv1.FlameGraph])
+
+	mergeErrCh := make(chan error)
+	go func() {
+		mergeErrCh <- mergeResultInOrder(mergeCh, m.MergeFlameGraph)
+	}()
+
+	idx := 0
 	for intervals.Next() {
 		r := intervals.At()
+		var midx = idx
+		idx++
 		g.Go(func() error {
 			req := connectgrpc.CloneRequest(c, &querierv1.SelectMergeStacktracesRequest{
 				ProfileTypeID: c.Msg.ProfileTypeID,
@@ -68,12 +126,20 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 			if err != nil {
 				return err
 			}
-			m.MergeFlameGraph(resp.Msg.Flamegraph)
+			mergeCh <- resultOrder[*querierv1.FlameGraph]{idx: midx, result: resp.Msg.Flamegraph}
 			return nil
 		})
 	}
 
 	if err = g.Wait(); err != nil {
+		close(mergeCh)
+		return nil, err
+	}
+
+	// signal to merge loop that all results have arrived
+	close(mergeCh)
+
+	if err = <-mergeErrCh; err != nil {
 		return nil, err
 	}
 
