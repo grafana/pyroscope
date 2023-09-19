@@ -927,6 +927,10 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	return iter.NewMergeIterator(maxBlockProfile, false, iters...), nil
 }
 
+func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
+	panic("unimplemented") // TODO(bryan) implement
+}
+
 func (b *singleBlockQuerier) Sort(in []Profile) []Profile {
 	// Sort by RowNumber to avoid seeking back and forth in the file.
 	sort.Slice(in, func(i, j int) bool {
