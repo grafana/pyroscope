@@ -11,6 +11,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/iter"
+	parquetobj "github.com/grafana/pyroscope/pkg/objstore/parquet"
 	pparquet "github.com/grafana/pyroscope/pkg/parquet"
 )
 
@@ -94,7 +95,7 @@ func loadStrings(p *partition, i iter.Iterator[parquet.Row]) error { return p.st
 
 type loader func(*partition, iter.Iterator[parquet.Row]) error
 
-func withRowIterator(f parquetFile, partitions []*partition, x loader) error {
+func withRowIterator(f parquetobj.File, partitions []*partition, x loader) error {
 	rows := parquet.MultiRowGroup(f.RowGroups()...).Rows()
 	defer func() {
 		_ = rows.Close()
