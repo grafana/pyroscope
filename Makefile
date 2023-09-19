@@ -421,3 +421,6 @@ docs/%:
 .PHONY: run
 run: ## Run the pyroscope binary (pass parameters with 'make run PARAMS=-myparam')
 	./pyroscope $(PARAMS)
+
+packages: build
+	@tools/packaging/nfpm.sh
