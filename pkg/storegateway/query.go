@@ -44,7 +44,21 @@ func (s *StoreGateway) MergeProfilesPprof(ctx context.Context, stream *connect.B
 }
 
 func (s *StoreGateway) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
-	panic("unimplemented") // TODO(bryan) implement
+	var res *ingestv1.SeriesResponse
+	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
+		var err error
+		res, err = phlaredb.Series(ctx, req.Msg, bs.openBlocksForReading)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		// TODO(bryan) do we need a better error?
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func terminateStream[Req, Resp any](stream *connect.BidiStream[Req, Resp]) (err error) {

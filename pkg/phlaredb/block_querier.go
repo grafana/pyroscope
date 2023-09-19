@@ -767,6 +767,20 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 	return nil
 }
 
+func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockGetter) (*ingestv1.SeriesResponse, error) {
+	queriers, err := blockGetter(ctx, model.Time(req.Start), model.Time(req.End))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, q := range queriers {
+		var _ = q
+		// TODO(bryan) do something
+	}
+
+	panic("unimplemented") // TODO(bryan) implement
+}
+
 var maxBlockProfile Profile = BlockProfile{
 	ts: model.Time(math.MaxInt64),
 }
