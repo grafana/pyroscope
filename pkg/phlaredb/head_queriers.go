@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 
+	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log/level"
 	"github.com/google/pprof/profile"
 	"github.com/opentracing/opentracing-go"
@@ -143,7 +144,11 @@ func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterato
 }
 
 func (q *headOnDiskQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
-	panic("unimplemented")
+	res, err := q.head.Series(ctx, connect.NewRequest(params))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg.LabelsSet, nil
 }
 
 func (q *headOnDiskQuerier) Sort(in []Profile) []Profile {
@@ -298,7 +303,11 @@ func (q *headInMemoryQuerier) MergeByLabels(ctx context.Context, rows iter.Itera
 }
 
 func (q *headInMemoryQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
-	panic("unimplemented") // TODO(bryan) implement
+	res, err := q.head.Series(ctx, connect.NewRequest(params))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg.LabelsSet, nil
 }
 
 func (q *headInMemoryQuerier) Sort(in []Profile) []Profile {
