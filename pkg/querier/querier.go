@@ -249,7 +249,49 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		}), nil
 	}
 
-	panic("unimplemented")
+	var responses []ResponseFromReplica[[]*typesv1.Labels]
+	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+
+	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
+	}
+
+	// todo in parallel
+	if storeQueries.ingester.shouldQuery {
+		ir, err := q.seriesFromIngesters(ctx, &ingestv1.SeriesRequest{
+			Matchers:   req.Msg.Matchers,
+			LabelNames: req.Msg.LabelNames,
+			Start:      req.Msg.Start,
+			End:        req.Msg.End,
+		})
+		if err != nil {
+			return nil, err
+		}
+		responses = append(responses, ir...)
+	}
+
+	if storeQueries.storeGateway.shouldQuery {
+		ir, err := q.seriesFromStoreGateway(ctx, &ingestv1.SeriesRequest{
+			Matchers:   req.Msg.Matchers,
+			LabelNames: req.Msg.LabelNames,
+			Start:      req.Msg.Start,
+			End:        req.Msg.End,
+		})
+		if err != nil {
+			return nil, err
+		}
+		responses = append(responses, ir...)
+	}
+
+	return connect.NewResponse(&querierv1.SeriesResponse{
+		LabelsSet: lo.UniqBy(
+			lo.FlatMap(responses, func(r ResponseFromReplica[[]*typesv1.Labels], _ int) []*typesv1.Labels {
+				return r.response
+			}),
+			func(t *typesv1.Labels) uint64 {
+				return phlaremodel.Labels(t.Labels).Hash()
+			}),
+	}), nil
 }
 
 func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {

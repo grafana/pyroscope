@@ -19,6 +19,7 @@ import (
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/storegateway"
@@ -224,4 +225,8 @@ func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingeste
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return responses, nil
+}
+
+func (q *Querier) seriesFromStoreGateway(ctx context.Context, req *ingestv1.SeriesRequest) ([]ResponseFromReplica[[]*typesv1.Labels], error) {
+	panic("unimplemented") // TODO(bryan) implement
 }
