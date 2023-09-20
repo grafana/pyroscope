@@ -36,7 +36,7 @@ Monolithic mode can be horizontally scaled out by deploying multiple Pyroscope b
 
 In microservices mode, components are deployed in distinct processes. Scaling is per component, which allows for greater flexibility in scaling and more granular failure domains. Microservices mode is the preferred method for a production deployment, but it is also the most complex.
 
-In microservices mode, each Pyroscope process is invoked with its `-target` parameter set to a specific Pyroscope component (for example, `-target=ingester` or `-target=distributor`). To get a working Pyroscope instance, you must deploy every required component. For more information about each of the Pyroscope components, refer to [Architecture]({{<relref "../_index.md" >}}).
+In microservices mode, each Pyroscope process is invoked with its `-target` parameter set to a specific Pyroscope component (for example, `-target=ingester` or `-target=distributor`). To get a working Pyroscope instance, you must deploy every required component. For more information about each of the Pyroscope components, refer to [Architecture]({{< relref ".." >}}).
 
 If you are interested in deploying Pyroscope in microservices mode, we recommend that you use [Kubernetes](https://kubernetes.io/).
 

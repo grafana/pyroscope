@@ -11,6 +11,8 @@ import (
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
 const maxStacksize = 8 * 1024
@@ -26,7 +28,7 @@ var (
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			defer func() {
 				if p := recover(); p != nil {
-					WriteError(httpgrpc.Errorf(http.StatusInternalServerError, "error while processing request: %v", panicError(p)), w)
+					httputil.Error(w, httpgrpc.Errorf(http.StatusInternalServerError, "error while processing request: %v", panicError(p)))
 				}
 			}()
 			next.ServeHTTP(w, req)
