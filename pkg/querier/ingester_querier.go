@@ -137,6 +137,8 @@ func (q *Querier) seriesFromIngesters(ctx context.Context, req *ingesterv1.Serie
 		res, err := ic.Series(childCtx, connect.NewRequest(&ingestv1.SeriesRequest{
 			Matchers:   req.Matchers,
 			LabelNames: req.LabelNames,
+			Start:      req.Start,
+			End:        req.End,
 		}))
 		if err != nil {
 			return nil, err
