@@ -193,24 +193,6 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 	}), nil
 }
 
-func filterSeriesByLabelNames(labelSets []*typesv1.Labels, labelNameMap map[string]struct{}) {
-	if len(labelNameMap) == 0 {
-		return
-	}
-
-	for _, ls := range labelSets {
-		labelCount := 0
-		for idx := range ls.Labels {
-			_, ok := labelNameMap[ls.Labels[idx].Name]
-			if ok {
-				ls.Labels[labelCount] = ls.Labels[idx]
-				labelCount++
-			}
-		}
-		ls.Labels = ls.Labels[:labelCount]
-	}
-}
-
 func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series")
 	defer func() {
