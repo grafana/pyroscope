@@ -62,7 +62,7 @@ jobs:
         run: make docs/test
 
   doc-validator:
-      runs-on: "ubuntu-latest"
+    runs-on: "ubuntu-latest"
     container:
       image: "grafana/doc-validator:v3.2.0"
     steps:
