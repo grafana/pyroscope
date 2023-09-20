@@ -60,8 +60,28 @@ jobs:
         uses: "actions/checkout@v3"
       - name: "Test docs"
         run: make docs/test
-      - name: "Validate docs"
-        run: make docs/validate
+
+  doc-validator:
+      runs-on: "ubuntu-latest"
+    container:
+      image: "grafana/doc-validator:v3.2.0"
+    steps:
+      - name: "Checkout code"
+        uses: "actions/checkout@v3"
+      - name: "Run doc-validator tool"
+        run: >
+          doc-validator
+          '--skip-checks=^image.+$'
+          docs/sources
+          /docs/writers-toolkit
+          | reviewdog
+          -f=rdjsonl
+          --fail-on-error
+          --filter-mode=nofilter
+          --name=doc-validator
+          --reporter=github-pr-review
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
   build-image:
     if: github.event_name != 'push'
