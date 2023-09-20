@@ -66,7 +66,7 @@ func IterBlockMetas(ctx context.Context, bkt phlareobj.Bucket, from, to time.Tim
 				r, err := bkt.Get(ctx, path.Join(id, MetaFilename))
 				if err != nil {
 					if bkt.IsObjNotFoundErr(err) {
-						level.Info(util.Logger).Log("msg", "block meta.json not found while iterating", "id", id)
+						level.Info(util.Logger).Log("msg", "skipping block as meta.json not found", "id", id)
 						return nil
 					}
 					return err
