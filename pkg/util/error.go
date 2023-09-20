@@ -42,7 +42,6 @@ func WriteError(err error, w http.ResponseWriter) {
 }
 
 func WriteErrorWithStatus(err error, w http.ResponseWriter, status int) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Type", "application/json")
 
