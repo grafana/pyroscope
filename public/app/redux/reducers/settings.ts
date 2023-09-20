@@ -88,7 +88,8 @@ export const reloadUsers = createAsyncThunk(
 export const reloadApps = createAsyncThunk(
   'newRoot/reloadApps',
   async (_, thunkAPI) => {
-    const res = await fetchApps();
+    // TODO(bryan) What is this?
+    const res = await fetchApps(0, 0);
 
     if (res.isOk) {
       return Promise.resolve(res.value);
