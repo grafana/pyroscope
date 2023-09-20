@@ -13,8 +13,6 @@ The [Helm](https://helm.sh/) chart allows you to configure, install, and upgrade
 
 The instructions that follow are common across any flavor of Kubernetes and assume that you know how to install, configure, and operate a Kubernetes cluster. And that you know how to use `kubectl`.
 
-> **Caution:** Do not use this getting started procedure in a production environment.
-
 Hardware requirements:
 
 - A single Kubernetes node with a minimum of 4 cores and 16GiB RAM
@@ -156,7 +154,7 @@ datasources:
    apiVersion: 1
    datasources:
    - name: Pyroscope
-     type: pyroscope
+     type: grafana-pyroscope-datasource
      uid: pyroscope-test
      url: http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4040/
 ```

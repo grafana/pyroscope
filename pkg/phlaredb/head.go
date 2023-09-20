@@ -75,7 +75,7 @@ type Head struct {
 
 const (
 	pathHead          = "head"
-	pathLocal         = "local"
+	PathLocal         = "local"
 	defaultFolderMode = 0o755
 )
 
@@ -95,7 +95,7 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 		limiter:       limiter,
 	}
 	h.headPath = filepath.Join(cfg.DataPath, pathHead, h.meta.ULID.String())
-	h.localPath = filepath.Join(cfg.DataPath, pathLocal, h.meta.ULID.String())
+	h.localPath = filepath.Join(cfg.DataPath, PathLocal, h.meta.ULID.String())
 
 	if cfg.Parquet != nil {
 		h.parquetConfig = cfg.Parquet
@@ -488,7 +488,7 @@ func (h *Head) flush(ctx context.Context) error {
 	// It must be guaranteed that no new inserts will happen
 	// after the call start.
 	h.inFlightProfiles.Wait()
-	if len(h.profiles.slice) == 0 {
+	if h.profiles.index.totalProfiles.Load() == 0 {
 		level.Info(h.logger).Log("msg", "head empty - no block written")
 		return os.RemoveAll(h.headPath)
 	}

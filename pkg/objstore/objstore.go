@@ -21,6 +21,21 @@ type BucketReader interface {
 	ReaderAt(ctx context.Context, filename string) (ReaderAtCloser, error)
 }
 
+// IsOpFailureExpectedFunc allows to mark certain errors as expected, so they will not increment objstore_bucket_operation_failures_total metric.
+type IsOpFailureExpectedFunc func(error) bool
+
+type InstrumentedBucket interface {
+	Bucket
+	// WithExpectedErrs allows to specify a filter that marks certain errors as expected, so it will not increment
+	// objstore_bucket_operation_failures_total metric.
+	WithExpectedErrs(IsOpFailureExpectedFunc) Bucket
+
+	// ReaderWithExpectedErrs allows to specify a filter that marks certain errors as expected, so it will not increment
+	// objstore_bucket_operation_failures_total metric.
+	// TODO(bwplotka): Remove this when moved to Go 1.14 and replace with InstrumentedBucketReader.
+	ReaderWithExpectedErrs(IsOpFailureExpectedFunc) BucketReader
+}
+
 type PrefixedBucket struct {
 	Bucket
 	prefix string
@@ -117,4 +132,21 @@ func (p *PrefixedBucket) Delete(ctx context.Context, name string) error {
 // Name returns the bucket name for the provider.
 func (p *PrefixedBucket) Name() string {
 	return p.Bucket.Name()
+}
+
+// ReaderWithExpectedErrs implements objstore.Bucket.
+func (p *PrefixedBucket) ReaderWithExpectedErrs(fn IsOpFailureExpectedFunc) BucketReader {
+	return p.WithExpectedErrs(fn)
+}
+
+// WithExpectedErrs implements objstore.Bucket.
+func (p *PrefixedBucket) WithExpectedErrs(fn IsOpFailureExpectedFunc) Bucket {
+	if ib, ok := p.Bucket.(InstrumentedBucket); ok {
+		return &PrefixedBucket{
+			Bucket: ib.WithExpectedErrs(fn),
+			prefix: p.prefix,
+		}
+	}
+
+	return p
 }

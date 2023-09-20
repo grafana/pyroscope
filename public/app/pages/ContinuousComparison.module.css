@@ -2,18 +2,11 @@
   flex: 1;
   width: calc(50% - 15px);
 
-  margin: 0 15px;
+  margin: 0 5px;
 }
 .comparisonPane:first-child {
   margin-left: 0;
 }
 .comparisonPane:last-child {
   margin-right: 0;
-}
-
-.timelineTitleWrapper {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 38px;
 }

@@ -10,6 +10,8 @@ import (
 	"github.com/grafana/dskit/flagext"
 	"github.com/prometheus/common/version"
 
+	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"
+
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/phlare"
 	"github.com/grafana/pyroscope/pkg/usage"
@@ -59,6 +61,23 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed parsing config: %v\n", err)
 		errorHandler()
 		return
+	}
+
+	if args := flag.Args(); len(args) > 0 {
+		switch args[0] {
+		// server mode is the pyroscope's only mode from 1.0
+		case "server":
+			break
+		case "agent", "ebpf":
+			fmt.Printf("%s mode is deprecated. Please use Grafana Agent instead.\n", args[0])
+			os.Exit(1)
+		case "connect", "exec":
+			fmt.Printf("%s mode is deprecated. Please use Pyroscope 0.37 or earlier.\n", args[0])
+			os.Exit(1)
+		default:
+			fmt.Printf("unknown mode: %s\n", args[0])
+			os.Exit(1)
+		}
 	}
 
 	f, err := phlare.New(flags.Config)

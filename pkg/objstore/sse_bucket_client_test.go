@@ -69,9 +69,9 @@ func TestSSEBucketClient_Upload_ShouldInjectCustomSSEConfig(t *testing.T) {
 
 			var sseBkt objstore.Bucket
 			if testData.withExpectedErrs {
-				sseBkt = NewSSEBucketClient("user-1", s3Client, cfgProvider).WithExpectedErrs(s3Client.IsObjNotFoundErr)
+				sseBkt = NewSSEBucketClient("user-1", NewBucket(s3Client), cfgProvider).WithExpectedErrs(s3Client.IsObjNotFoundErr)
 			} else {
-				sseBkt = NewSSEBucketClient("user-1", s3Client, cfgProvider)
+				sseBkt = NewSSEBucketClient("user-1", NewBucket(s3Client), cfgProvider)
 			}
 
 			err = sseBkt.Upload(context.Background(), "test", strings.NewReader("test"))

@@ -116,7 +116,7 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlare
 	f.wg.Add(1)
 	go f.loop()
 
-	f.blockQuerier = NewBlockQuerier(phlarectx, phlareobj.NewPrefixedBucket(fs, pathLocal))
+	f.blockQuerier = NewBlockQuerier(phlarectx, phlareobj.NewPrefixedBucket(fs, PathLocal))
 
 	// do an initial querier sync
 	ctx := context.Background()
@@ -127,7 +127,7 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlare
 }
 
 func (f *PhlareDB) LocalDataPath() string {
-	return filepath.Join(f.cfg.DataPath, pathLocal)
+	return filepath.Join(f.cfg.DataPath, PathLocal)
 }
 
 func (f *PhlareDB) BlockMetas(ctx context.Context) ([]*block.Meta, error) {

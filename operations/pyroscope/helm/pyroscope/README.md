@@ -1,6 +1,6 @@
 # pyroscope
 
-![Version: 1.0.1](https://img.shields.io/badge/Version-1.0.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
+![Version: 1.0.2](https://img.shields.io/badge/Version-1.0.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
 
 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
@@ -32,6 +32,7 @@
 | pyroscope.image.repository | string | `"grafana/pyroscope"` |  |
 | pyroscope.image.tag | string | `"1.0.0"` |  |
 | pyroscope.imagePullSecrets | list | `[]` |  |
+| pyroscope.initContainers | list | `[]` |  |
 | pyroscope.memberlist.port | int | `7946` |  |
 | pyroscope.memberlist.port_name | string | `"memberlist"` |  |
 | pyroscope.nameOverride | string | `""` |  |
@@ -46,9 +47,12 @@
 | pyroscope.podAnnotations."profiles.grafana.com/goroutine.scrape" | string | `"true"` |  |
 | pyroscope.podAnnotations."profiles.grafana.com/memory.port_name" | string | `"http2"` |  |
 | pyroscope.podAnnotations."profiles.grafana.com/memory.scrape" | string | `"true"` |  |
+| pyroscope.podDisruptionBudget.enabled | bool | `true` |  |
+| pyroscope.podDisruptionBudget.maxUnavailable | int | `1` |  |
 | pyroscope.podSecurityContext.fsGroup | int | `10001` |  |
 | pyroscope.podSecurityContext.runAsNonRoot | bool | `true` |  |
 | pyroscope.podSecurityContext.runAsUser | int | `10001` |  |
+| pyroscope.rbac.create | bool | `true` |  |
 | pyroscope.replicaCount | int | `1` |  |
 | pyroscope.resources | object | `{}` |  |
 | pyroscope.securityContext | object | `{}` |  |

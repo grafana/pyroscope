@@ -16,6 +16,10 @@ The query takes the tenant ID from the `X-Scope-OrgID` parameter that exists in 
 
 To push profiles to Grafana Pyroscope for a specific tenant, refer to [Configure the Agent]({{<relref "../configure-client/_index.md">}}).
 
+> By default multi-tenancy is disabled, the tenant ID is ignored and all profiles are stored and retrieved with the same tenant (`anonymous`).
+>
+>To enable multi-tenancy, add the `multitenancy_enabled` parameter to the Grafana Pyroscope configuration file and set it to `true`. Alternatively you can also use command line arguments to enable multi-tenancy, for example `--auth.multitenancy-enabled=true`.
+
 ## Restrictions
 
 Tenant IDs cannot be longer than 150 bytes or characters in length and can only include the following supported characters:

@@ -14,7 +14,7 @@ import {
   isInternalAuthEnabled,
   isSignupEnabled,
 } from '@pyroscope/util/features';
-import { PAGES } from '@pyroscope/pages/constants';
+import { PAGES } from '@pyroscope/pages/urls';
 import { GitlabIcon, GoogleIcon } from '../Icons';
 import Divider from '../Divider';
 import inputStyles from '../InputGroup.module.css';

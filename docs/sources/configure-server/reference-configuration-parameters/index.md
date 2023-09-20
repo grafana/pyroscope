@@ -132,7 +132,7 @@ limits:
   # filenames, etc...). Profiles are not rejected instead symbol values are
   # truncated. 0 to disable.
   # CLI flag: -validation.max-profile-symbol-value-length
-  [max_profile_symbol_value_length: <int> | default = 1024]
+  [max_profile_symbol_value_length: <int> | default = 65535]
 
   # The tenant's shard size used by shuffle-sharding. Must be set both on
   # ingesters and distributors. 0 disables shuffle sharding.
@@ -190,8 +190,6 @@ store_gateway:
   # The hash ring configuration.
   sharding_ring:
     # The key-value store used to share the hash ring across multiple instances.
-    # This option needs be set both on the store-gateway, querier and ruler when
-    # running in microservices mode.
     kvstore:
       # Backend storage to use for the ring. Supported values are: consul, etcd,
       # inmemory, memberlist, multi.
@@ -341,12 +339,31 @@ store_gateway:
     # CLI flag: -store-gateway.sharding-ring.heartbeat-period
     [heartbeat_period: <duration> | default = 15s]
 
-    # The heartbeat timeout after which store gateways are considered unhealthy
-    # within the ring. 0 = never (timeout disabled). This option needs be set
-    # both on the store-gateway, querier and ruler when running in microservices
-    # mode.
+    # The heartbeat timeout after which store-gateways are considered unhealthy
+    # within the ring. 0 = never (timeout disabled).
     # CLI flag: -store-gateway.sharding-ring.heartbeat-timeout
     [heartbeat_timeout: <duration> | default = 1m]
+
+    # Instance ID to register in the ring.
+    # CLI flag: -store-gateway.sharding-ring.instance-id
+    [instance_id: <string> | default = "<hostname>"]
+
+    # List of network interface names to look up when finding the instance IP
+    # address.
+    # CLI flag: -store-gateway.sharding-ring.instance-interface-names
+    [instance_interface_names: <list of strings> | default = [<private network interfaces>]]
+
+    # Port to advertise in the ring (defaults to -server.http-listen-port).
+    # CLI flag: -store-gateway.sharding-ring.instance-port
+    [instance_port: <int> | default = 0]
+
+    # IP address to advertise in the ring. Default is auto-detected.
+    # CLI flag: -store-gateway.sharding-ring.instance-addr
+    [instance_addr: <string> | default = ""]
+
+    # Enable using a IPv6 instance address. (default false)
+    # CLI flag: -store-gateway.sharding-ring.instance-enable-ipv6
+    [instance_enable_ipv6: <boolean> | default = false]
 
     # The replication factor to use when sharding blocks. This option needs be
     # set both on the store-gateway, querier and ruler when running in
@@ -375,27 +392,6 @@ store_gateway:
     # start anyway.
     # CLI flag: -store-gateway.sharding-ring.wait-stability-max-duration
     [wait_stability_max_duration: <duration> | default = 5m]
-
-    # Instance ID to register in the ring.
-    # CLI flag: -store-gateway.sharding-ring.instance-id
-    [instance_id: <string> | default = "<hostname>"]
-
-    # List of network interface names to look up when finding the instance IP
-    # address.
-    # CLI flag: -store-gateway.sharding-ring.instance-interface-names
-    [instance_interface_names: <list of strings> | default = [<private network interfaces>]]
-
-    # Port to advertise in the ring (defaults to -server.grpc-listen-port).
-    # CLI flag: -store-gateway.sharding-ring.instance-port
-    [instance_port: <int> | default = 0]
-
-    # IP address to advertise in the ring. Default is auto-detected.
-    # CLI flag: -store-gateway.sharding-ring.instance-addr
-    [instance_addr: <string> | default = ""]
-
-    # Enable using a IPv6 instance address. (default false)
-    # CLI flag: -store-gateway.sharding-ring.instance-enable-ipv6
-    [instance_enable_ipv6: <boolean> | default = false]
 
     # The availability zone where this instance is running. Required if
     # zone-awareness is enabled.
@@ -1754,111 +1750,4 @@ The `filesystem_storage_backend` block configures the usage of local file system
 [dir: <string> | default = ""]
 ```
 
-### Scrape configs
-
-The root block `scrape_configs` configure the list of scrape config used by the Agent to scrape and push profiles.
-
-The `scrape_config` block configures a single Agent scrape config.
-
-```yaml
-# The job name assigned to scraped profiles by default.
-[job_name: <string> | default = ""]
-
-# Optional HTTP URL parameters.
-params:
-  [ <string>: [<string>, ...] ]
-
-# How frequently to scrape targets from this job.
-[scrape_interval:  <duration> | default = 10s]
-
-# Per-scrape timeout when scraping this job.
-[scrape_timeout:  <duration> | default = 0s]
-
-# Configures the protocol scheme used for requests.
-[scheme: <string> | default = "http"]
-
-# Configures profile types and their path to scrape for this job.
-profiling_config:
-  pprof_config:
-     [ <string>: [<pprof_config>]
-  [path_prefix: <string> | default = ""]
-
-# List of target relabel configurations.
-relabel_configs:
-  [ - <relabel_config> ... ]
-
-# List of labeled statically configured targets for this job.
-static_configs:
-  [ - <static_config> ... ]
-
-# List of Kubernetes service discovery configurations.
-kubernetes_sd_configs:
-   [ - <kubernetes_sd_config> ... ]
-
-# List of HTTP service discovery configurations.
-http_sd_configs:
-   [ - <http_sd_config> ... ]
-
-# Sets the `Authorization` header on every scrape request with the
-# configured username and password.
-# password and password_file are mutually exclusive.
-basic_auth:
-  [ username: <string> ]
-  [ password: <secret> ]
-  [ password_file: <string> ]
-
-# Sets the `Authorization` header on every scrape request with
-# the configured credentials.
-authorization:
-  # Sets the authentication type of the request.
-  [ type: <string> | default: Bearer ]
-  # Sets the credentials of the request. It is mutually exclusive with
-  # `credentials_file`.
-  [ credentials: <secret> ]
-  # Sets the credentials of the request with the credentials read from the
-  # configured file. It is mutually exclusive with `credentials`.
-  [ credentials_file: <filename> ]
-
-# Optional OAuth 2.0 configuration.
-# Cannot be used at the same time as basic_auth or authorization.
-oauth2:
-  [ <oauth2> ]
-
-# Configure whether scrape requests follow HTTP 3xx redirects.
-[ follow_redirects: <boolean> | default = true ]
-
-# Whether to enable HTTP2.
-[ enable_http2: <bool> | default: true ]
-
-# Configures the scrape request's TLS settings.
-tls_config:
-  [ <tls_config> ]
-
-# Optional proxy URL.
-[ proxy_url: <string> ]
-```
-
-You can refer to the Prometheus documentation the following block:
-
-- [relabel_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config)
-- [static_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#static_config)
-- [kubernetes_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config)
-- [http_sd_config](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#http_sd_config)
-
-#### pprof_config
-
-The block `pprof_config` configure a single pprof scraping configuration.
-
-```yaml
-# Whether to enable this profile type scraping.
-[enabled: <bool | default: none>]
-
-# Configures the path to scrape this profile type.
-[path: <string | default: none>]
-
-# Whether this profile type is a delta.
-# A delta profile type means the profile data contains data only for the scraping period.
-# A seconds URL parameters will be added to all delta profile type scraping to notify the endpoint
-# the period of scraping.
-[delta:  <bool | default: false>]
 ```

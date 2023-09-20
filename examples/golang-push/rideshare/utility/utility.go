@@ -5,7 +5,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/pyroscope-io/client/pyroscope"
+	"github.com/grafana/pyroscope-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 const durationConstant = time.Duration(200 * time.Millisecond)
@@ -43,6 +45,10 @@ func checkDriverAvailability(n int64) {
 }
 
 func FindNearestVehicle(ctx context.Context, searchRadius int64, vehicle string) {
+	ctx, span := otel.GetTracerProvider().Tracer("").Start(ctx, "FindNearestVehicle")
+	span.SetAttributes(attribute.String("vehicle", vehicle))
+	defer span.End()
+
 	pyroscope.TagWrapper(ctx, pyroscope.Labels("vehicle", vehicle), func(ctx context.Context) {
 		var i int64 = 0
 

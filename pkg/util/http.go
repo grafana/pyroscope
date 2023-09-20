@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/felixge/httpsnoop"
-	log "github.com/go-kit/log"
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gorilla/mux"
 	"github.com/grafana/dskit/instrument"
@@ -30,6 +30,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/pyroscope/pkg/tenant"
+	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
 var defaultTransport http.RoundTripper = &http2.Transport{
@@ -73,7 +74,7 @@ func WriteYAMLResponse(w http.ResponseWriter, v interface{}) {
 
 	data, err := yaml.Marshal(v)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.Error(w, err)
 		return
 	}
 
@@ -109,8 +110,13 @@ func (l Log) logWithRequest(r *http.Request) log.Logger {
 			localLog = log.With(localLog, "sourceIPs", ips)
 		}
 	}
-
-	return user.LogWith(r.Context(), localLog)
+	orgID := r.Header.Get(user.OrgIDHeaderName)
+	if orgID == "" {
+		localLog = user.LogWith(r.Context(), localLog)
+	} else {
+		localLog = log.With(localLog, "orgID", orgID)
+	}
+	return localLog
 }
 
 // Wrap implements Middleware
@@ -350,7 +356,7 @@ func RenderHTTPResponse(w http.ResponseWriter, v interface{}, t *template.Templa
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	err := t.Execute(w, v)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.Error(w, err)
 	}
 }
 
@@ -360,7 +366,7 @@ func WriteJSONResponse(w http.ResponseWriter, v interface{}) {
 
 	data, err := json.Marshal(v)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.Error(w, err)
 		return
 	}
 
@@ -381,7 +387,7 @@ func AuthenticateUser(on bool) middleware.Interface {
 			}
 			_, ctx, err := user.ExtractOrgIDFromHTTPRequest(r)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusUnauthorized)
+				httputil.ErrorWithStatus(w, err, http.StatusUnauthorized)
 				return
 			}
 			next.ServeHTTP(w, r.WithContext(ctx))

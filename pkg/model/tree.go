@@ -137,6 +137,71 @@ func (t *Tree) Merge(src *Tree) {
 	t.root = dstRoot.children
 }
 
+func (t *Tree) FormatNodeNames(fn func(string) string) {
+	nodes := make([]*node, 0, defaultDFSSize)
+	nodes = append(nodes, &node{children: t.root})
+	var n *node
+	var fix bool
+	for len(nodes) > 0 {
+		n, nodes = nodes[len(nodes)-1], nodes[:len(nodes)-1]
+		m := n.name
+		n.name = fn(m)
+		if m != n.name {
+			fix = true
+		}
+		nodes = append(nodes, n.children...)
+	}
+	if !fix {
+		return
+	}
+	t.Fix()
+}
+
+// Fix re-establishes order of nodes and merges duplicates.
+func (t *Tree) Fix() {
+	if len(t.root) == 0 {
+		return
+	}
+	r := &node{children: t.root}
+	for _, n := range r.children {
+		n.parent = r
+	}
+	nodes := make([][]*node, 0, defaultDFSSize)
+	nodes = append(nodes, r.children)
+	var n []*node
+	for len(nodes) > 0 {
+		n, nodes = nodes[len(nodes)-1], nodes[:len(nodes)-1]
+		if len(n) == 0 {
+			continue
+		}
+		sort.Slice(n, func(i, j int) bool {
+			return n[i].name < n[j].name
+		})
+		p := n[0]
+		j := 1
+		for _, c := range n[1:] {
+			if p.name == c.name {
+				for _, x := range c.children {
+					x.parent = p
+				}
+				p.children = append(p.children, c.children...)
+				p.total += c.total
+				p.self += c.self
+				continue
+			}
+			p = c
+			n[j] = c
+			j++
+		}
+		n = n[:j]
+		for _, c := range n {
+			c.parent.children = n
+			nodes = append(nodes, c.children)
+		}
+	}
+	t.root = r.children
+}
+
 func (n *node) String() string {
 	return fmt.Sprintf("{%s: self %d total %d}", n.name, n.self, n.total)
 }

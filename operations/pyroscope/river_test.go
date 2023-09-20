@@ -51,7 +51,7 @@ func Test_FormatAgentRiverConfig(t *testing.T) {
 	require.NoError(t, err)
 	if diff := cmp.Diff(string(fmtData), configString); diff != "" {
 		t.Errorf("Grafana Agent Helm River config file is not formatted mismatch (-want +got):\n%s", diff)
-		t.Log("You need to fixes formatting issues in operations/helm/pyroscope/templates/configmap-agent.yaml and run make helm/check.")
+		t.Log("You need to fixes formatting issues in operations/pyroscope/helm/pyroscope/templates/configmap-agent.yaml and run make helm/check.")
 	}
 }
 

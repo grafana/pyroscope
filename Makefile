@@ -134,6 +134,10 @@ go/mod:
 	cd api/ && GO111MODULE=on go mod tidy
 	cd ebpf/ && GO111MODULE=on go mod download
 	cd ebpf/ && GO111MODULE=on go mod tidy
+	cd examples/golang-push/rideshare/ && GO111MODULE=on go mod download
+	cd examples/golang-push/rideshare/ && GO111MODULE=on go mod tidy
+	cd examples/golang-push/simple/ && GO111MODULE=on go mod download
+	cd examples/golang-push/simple/ && GO111MODULE=on go mod tidy
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
@@ -361,10 +365,10 @@ helm/check: $(BIN)/kubeconform $(BIN)/helm
 	$(BIN)/helm dependency update ./operations/pyroscope/helm/pyroscope/
 	$(BIN)/helm dependency build ./operations/pyroscope/helm/pyroscope/
 	mkdir -p ./operations/pyroscope/helm/pyroscope/rendered/
-	$(BIN)/helm template --kube-version "1.22.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ \
+	$(BIN)/helm template -n default --kube-version "1.22.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/single-binary.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.22.0
-	$(BIN)/helm template --kube-version "1.22.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
+	$(BIN)/helm template -n default --kube-version "1.22.0" pyroscope-dev ./operations/pyroscope/helm/pyroscope/ --values operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
 		| tee ./operations/pyroscope/helm/pyroscope/rendered/micro-services.yaml \
 		| $(BIN)/kubeconform --summary --strict --kubernetes-version 1.22.0
 	cat operations/pyroscope/helm/pyroscope/values-micro-services.yaml \
@@ -396,11 +400,19 @@ tools/monitoring/environments/default/spec.json: $(BIN)/tk $(BIN)/kind
 	echo "import 'monitoring.libsonnet'" > tools/monitoring/environments/default/main.jsonnet
 	$(BIN)/tk env set tools/monitoring/environments/default --server=$(shell $(BIN)/kind get kubeconfig --name pyroscope-dev | grep server: | sed 's/server://g' | xargs) --namespace=monitoring
 
-.PHONY: deploy-demo
-deploy-demo: $(BIN)/kind
-	docker build -t cp-java-simple:0.1.0 ./tools/docker-compose/java/simple
-	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) cp-java-simple:0.1.0
-	kubectl  --context="kind-$(KIND_CLUSTER)" apply -f ./tools/kubernetes/java-simple-deployment.yaml
+.PHONY: tools/update_examples
+tools/update_examples:
+	go run tools/update_examples.go
+
+.phony: rideshare/docker/push
+rideshare/docker/push:
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-golang   -t $(IMAGE_PREFIX)pyroscope-rideshare-golang:$(IMAGE_TAG)   examples/golang-push/rideshare
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen  -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen:$(IMAGE_TAG) -f examples/golang-push/rideshare/Dockerfile.load-generator examples/golang-push/rideshare
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-python   -t $(IMAGE_PREFIX)pyroscope-rideshare-python:$(IMAGE_TAG)   examples/python/rideshare/flask
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-ruby     -t $(IMAGE_PREFIX)pyroscope-rideshare-ruby:$(IMAGE_TAG)     examples/ruby/rideshare_rails
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-dotnet   -t $(IMAGE_PREFIX)pyroscope-rideshare-dotnet:$(IMAGE_TAG)   examples/dotnet/rideshare/
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-java     -t $(IMAGE_PREFIX)pyroscope-rideshare-java:$(IMAGE_TAG)     examples/java/rideshare
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-rust     -t $(IMAGE_PREFIX)pyroscope-rideshare-rust:$(IMAGE_TAG)     examples/rust/rideshare
 
 .PHONY: docs/%
 docs/%:
