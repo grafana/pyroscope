@@ -6,7 +6,7 @@ package public
 import (
 	"net/http"
 
-	"github.com/grafana/pyroscope/pkg/util"
+	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
 var AssetsEmbedded = false
@@ -19,7 +19,7 @@ func NewIndexHandler(_ string) (http.HandlerFunc, error) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte("This route is not available in dev mode."))
 		if err != nil {
-			util.WriteError(err, w)
+			httputil.Error(w, err)
 		}
 	}, nil
 }

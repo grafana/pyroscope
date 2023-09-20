@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/dskit/tenant"
 
 	"github.com/grafana/pyroscope/pkg/util"
+	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
 type TenantLimitsResponse struct {
@@ -24,7 +25,7 @@ func TenantLimitsHandler(defaultLimits Limits, tenantLimits TenantLimits) http.H
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := tenant.TenantID(r.Context())
 		if err != nil {
-			util.WriteErrorWithStatus(err, w, http.StatusUnauthorized)
+			httputil.ErrorWithStatus(w, err, http.StatusUnauthorized)
 			return
 		}
 

@@ -23,7 +23,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/pkg/og/util/attime"
 	"github.com/grafana/pyroscope/pkg/querier/timeline"
-	"github.com/grafana/pyroscope/pkg/util"
+	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
 func NewHTTPHandlers(client querierv1connect.QuerierServiceClient) *QueryHandlers {
@@ -40,7 +40,7 @@ type QueryHandlers struct {
 func (q *QueryHandlers) LabelValues(w http.ResponseWriter, req *http.Request) {
 	label := req.URL.Query().Get("label")
 	if label == "" {
-		util.WriteError(connect.NewError(connect.CodeInvalidArgument, errors.New("label parameter is required")), w)
+		httputil.Error(w, connect.NewError(connect.CodeInvalidArgument, errors.New("label parameter is required")))
 		return
 	}
 	var res []string
@@ -48,7 +48,7 @@ func (q *QueryHandlers) LabelValues(w http.ResponseWriter, req *http.Request) {
 	if label == "__name__" {
 		response, err := q.client.ProfileTypes(req.Context(), connect.NewRequest(&querierv1.ProfileTypesRequest{}))
 		if err != nil {
-			util.WriteError(err, w)
+			httputil.Error(w, err)
 			return
 		}
 		for _, t := range response.Msg.ProfileTypes {
@@ -57,7 +57,7 @@ func (q *QueryHandlers) LabelValues(w http.ResponseWriter, req *http.Request) {
 	} else {
 		response, err := q.client.LabelValues(req.Context(), connect.NewRequest(&typesv1.LabelValuesRequest{}))
 		if err != nil {
-			util.WriteError(err, w)
+			httputil.Error(w, err)
 			return
 		}
 		res = response.Msg.Names
@@ -65,14 +65,14 @@ func (q *QueryHandlers) LabelValues(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Add("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(res); err != nil {
-		util.WriteError(err, w)
+		httputil.Error(w, err)
 		return
 	}
 }
 
 func (q *QueryHandlers) RenderDiff(w http.ResponseWriter, req *http.Request) {
 	if err := req.ParseForm(); err != nil {
-		util.WriteError(connect.NewError(connect.CodeInvalidArgument, err), w)
+		httputil.Error(w, connect.NewError(connect.CodeInvalidArgument, err))
 		return
 	}
 
@@ -83,7 +83,7 @@ func (q *QueryHandlers) RenderDiff(w http.ResponseWriter, req *http.Request) {
 		until: "leftUntil",
 	}, req)
 	if err != nil {
-		util.WriteError(connect.NewError(connect.CodeInvalidArgument, err), w)
+		httputil.Error(w, connect.NewError(connect.CodeInvalidArgument, err))
 		return
 	}
 
@@ -93,12 +93,12 @@ func (q *QueryHandlers) RenderDiff(w http.ResponseWriter, req *http.Request) {
 		until: "rightUntil",
 	}, req)
 	if err != nil {
-		util.WriteError(connect.NewError(connect.CodeInvalidArgument, err), w)
+		httputil.Error(w, connect.NewError(connect.CodeInvalidArgument, err))
 		return
 	}
 	// TODO: check profile types?
 	if leftProfileType.ID != rightProfileType.ID {
-		util.WriteError(connect.NewError(connect.CodeInvalidArgument, errors.New("profile types must match")), w)
+		httputil.Error(w, connect.NewError(connect.CodeInvalidArgument, errors.New("profile types must match")))
 		return
 	}
 
@@ -107,25 +107,25 @@ func (q *QueryHandlers) RenderDiff(w http.ResponseWriter, req *http.Request) {
 		Right: rightSelectParams,
 	}))
 	if err != nil {
-		util.WriteError(err, w)
+		httputil.Error(w, err)
 		return
 	}
 
 	w.Header().Add("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(phlaremodel.ExportDiffToFlamebearer(res.Msg.Flamegraph, leftProfileType)); err != nil {
-		util.WriteError(err, w)
+		httputil.Error(w, err)
 		return
 	}
 }
 
 func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 	if err := req.ParseForm(); err != nil {
-		util.WriteError(connect.NewError(connect.CodeInvalidArgument, err), w)
+		httputil.Error(w, connect.NewError(connect.CodeInvalidArgument, err))
 		return
 	}
 	selectParams, profileType, err := parseSelectProfilesRequest(renderRequestFieldNames{}, req)
 	if err != nil {
-		util.WriteError(connect.NewError(connect.CodeInvalidArgument, err), w)
+		httputil.Error(w, connect.NewError(connect.CodeInvalidArgument, err))
 		return
 	}
 
@@ -158,7 +158,7 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 
 	err = g.Wait()
 	if err != nil {
-		util.WriteError(err, w)
+		httputil.Error(w, err)
 		return
 	}
 
@@ -187,7 +187,7 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Add("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(fb); err != nil {
-		util.WriteError(err, w)
+		httputil.Error(w, err)
 		return
 	}
 }

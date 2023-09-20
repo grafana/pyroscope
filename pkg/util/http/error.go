@@ -1,4 +1,4 @@
-package util
+package http
 
 import (
 	"context"
@@ -25,8 +25,8 @@ const (
 	ErrDeadlineExceeded = "Request timed out, decrease the duration of the request or add more label matchers (prefer exact match over regex match) to reduce the amount of data processed."
 )
 
-// WriteError write a go error with the correct status code.
-func WriteError(err error, w http.ResponseWriter) {
+// Error write a go error with the correct status code.
+func Error(w http.ResponseWriter, err error) {
 	var connectErr *connect.Error
 	if ok := errors.As(err, &connectErr); ok {
 		writeErr := errorWriter.Write(w, &http.Request{
@@ -38,10 +38,10 @@ func WriteError(err error, w http.ResponseWriter) {
 		return
 	}
 	status, cerr := ClientHTTPStatusAndError(err)
-	WriteErrorWithStatus(cerr, w, status)
+	ErrorWithStatus(w, cerr, status)
 }
 
-func WriteErrorWithStatus(err error, w http.ResponseWriter, status int) {
+func ErrorWithStatus(w http.ResponseWriter, err error, status int) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Type", "application/json")
 

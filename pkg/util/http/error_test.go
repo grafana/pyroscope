@@ -1,4 +1,4 @@
-package util
+package http
 
 import (
 	"context"
@@ -41,7 +41,7 @@ func Test_writeError(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			WriteError(tt.err, rec)
+			Error(rec, tt.err)
 			require.Equal(t, tt.expectedStatus, rec.Result().StatusCode)
 			b, err := io.ReadAll(rec.Result().Body)
 			if err != nil {

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/util"
+	httputil "github.com/grafana/pyroscope/pkg/util/http"
 
 	"github.com/grafana/pyroscope/pkg/og/convert/speedscope"
 
@@ -46,7 +46,7 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	input, err := h.ingestInputFromRequest(r)
 	if err != nil {
 		_ = h.log.Log("msg", "bad request", "err", err)
-		util.WriteErrorWithStatus(err, w, http.StatusBadRequest)
+		httputil.ErrorWithStatus(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -56,9 +56,9 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = h.log.Log("msg", "pyroscope ingest", "err", err, "tenant_id", tenantID)
 
 		if ingestion.IsIngestionError(err) {
-			util.WriteError(err, w)
+			httputil.Error(w, err)
 		} else {
-			util.WriteErrorWithStatus(err, w, http.StatusUnprocessableEntity)
+			httputil.ErrorWithStatus(w, err, http.StatusUnprocessableEntity)
 		}
 	}
 }

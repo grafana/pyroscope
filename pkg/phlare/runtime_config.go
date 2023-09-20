@@ -10,6 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/pyroscope/pkg/util"
+	httputil "github.com/grafana/pyroscope/pkg/util/http"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -98,19 +99,19 @@ func runtimeConfigHandler(runtimeCfgManager *runtimeconfig.Manager, defaultLimit
 
 			cfgYaml, err := util.YAMLMarshalUnmarshal(cfg)
 			if err != nil {
-				util.WriteError(err, w)
+				httputil.Error(w, err)
 				return
 			}
 
 			defaultCfgYaml, err := util.YAMLMarshalUnmarshal(defaultCfg)
 			if err != nil {
-				util.WriteError(err, w)
+				httputil.Error(w, err)
 				return
 			}
 
 			output, err = util.DiffConfig(defaultCfgYaml, cfgYaml)
 			if err != nil {
-				util.WriteError(err, w)
+				httputil.Error(w, err)
 				return
 			}
 
