@@ -7,7 +7,7 @@ services:
 
   us-east:
     ports:
-      - 8080
+      - 5000
     environment:
       - REGION=us-east
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
@@ -16,7 +16,7 @@ services:
 
   eu-north:
     ports:
-      - 8080
+      - 5000
     environment:
       - REGION=eu-north
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
@@ -25,7 +25,7 @@ services:
 
   ap-south:
     ports:
-      - 8080
+      - 5000
     environment:
       - REGION=ap-south
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
