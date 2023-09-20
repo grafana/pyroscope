@@ -12,6 +12,8 @@ aliases:
 Pyroscope can use different object storage services to persist blocks containing the profiles data.
 Blocks are flushed by ingesters [on disk]({{<relref "./configure-disk-storage.md">}}) first then are uploaded to the object store.
 
+At the moment, querying from object storage only works in microservices mode and for labels being actively ingested. In the future, we plan to support querying from object storage in standalone mode as well.
+
 The supported backends are:
 
 - [Amazon S3](https://aws.amazon.com/s3/) (and compatible implementations like [MinIO](https://min.io/))
