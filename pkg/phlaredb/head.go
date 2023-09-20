@@ -446,7 +446,6 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 		if len(req.Msg.LabelNames) > 0 {
 			lbs = lbs.WithLabels(req.Msg.LabelNames...)
 			fp = model.Fingerprint(lbs.Hash())
-
 		}
 
 		if _, ok := uniqu[fp]; ok {

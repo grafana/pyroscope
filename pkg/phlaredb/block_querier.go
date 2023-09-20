@@ -774,15 +774,26 @@ func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockG
 		return nil, err
 	}
 
-	// TODO(bryan) parallelize
 	var labelsSet []*typesv1.Labels
+	var lock sync.Mutex
+	group, ctx := errgroup.WithContext(ctx)
+
 	for _, q := range queriers {
-		labels, err := q.Series(ctx, req)
-		if err != nil {
-			// TODO(bryan) don't stop on first error
-			return nil, err
-		}
-		labelsSet = append(labelsSet, labels...)
+		group.Go(util.RecoverPanic(func() error {
+			labels, err := q.Series(ctx, req)
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			labelsSet = append(labelsSet, labels...)
+			lock.Unlock()
+			return nil
+		}))
+	}
+	err = group.Wait()
+	if err != nil {
+		return nil, err
 	}
 
 	// TODO(bryan) dedupe here?
@@ -928,6 +939,17 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 }
 
 func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series Block")
+	defer sp.Finish()
+
+	// TODO(bryan) do we need to close this?
+	err := b.Open(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO(bryan) get labels from block and filter by matchers/label_names
+
 	panic("unimplemented") // TODO(bryan) implement
 }
 
