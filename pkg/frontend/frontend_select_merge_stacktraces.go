@@ -2,7 +2,6 @@ package frontend
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -32,12 +31,12 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeStacktracesProcedure)
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
-		return nil, connect.NewError(http.StatusBadRequest, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, model.Interval{Start: model.Time(c.Msg.Start), End: model.Time(c.Msg.End)}, model.Now())
 	if err != nil {
-		return nil, connect.NewError(http.StatusBadRequest, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if validated.IsEmpty {
 		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{}), nil
