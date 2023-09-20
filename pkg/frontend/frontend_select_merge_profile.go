@@ -2,7 +2,6 @@ package frontend
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/prometheus/common/model"
@@ -20,11 +19,11 @@ func (f *Frontend) SelectMergeProfile(ctx context.Context, c *connect.Request[qu
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeProfileProcedure)
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
-		return nil, connect.NewError(http.StatusBadRequest, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, model.Interval{Start: model.Time(c.Msg.Start), End: model.Time(c.Msg.End)}, model.Now())
 	if err != nil {
-		return nil, connect.NewError(http.StatusBadRequest, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if validated.IsEmpty {
 		return connect.NewResponse(&profilev1.Profile{}), nil
