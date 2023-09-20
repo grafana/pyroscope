@@ -953,16 +953,35 @@ func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.Series
 		return nil, err
 	}
 
+	selectors, err := parseSelectors(params.Matchers)
+	if err != nil {
+		return nil, err
+	}
+
 	labelNameMap := make(map[string]struct{}, len(params.LabelNames))
 	for _, name := range params.LabelNames {
 		labelNameMap[name] = struct{}{}
 	}
 
-	// TODO: This is only filtering by label names, also needs to filter by
-	// matchers.
 	names = lo.Filter(names, func(name string, index int) bool {
 		_, ok := labelNameMap[name]
-		return ok
+		if !ok {
+			return false
+		}
+
+		if selectors.matchesAll() {
+			return true
+		}
+
+		for _, selector := range selectors {
+			for _, matcher := range selector {
+				if !matcher.Matches(name) {
+					return false
+				}
+			}
+		}
+
+		return true
 	})
 
 	labelsSet := make([]*typesv1.Labels, 0, len(names))
