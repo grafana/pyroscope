@@ -748,7 +748,7 @@ func Test_GroupSamplesWithout(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.description, func(t *testing.T) {
-			require.Equal(t, tc.expected, GroupSamplesWithout(tc.input, tc.without))
+			require.Equal(t, tc.expected, GroupSamplesWithoutLabelsByKey(tc.input, tc.without))
 		})
 	}
 }
@@ -1013,7 +1013,7 @@ func Test_GroupSamplesWithout_Go_CPU_profile(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
 
-	groups := GroupSamplesWithout(p.Profile, LabelKeysByString(p.Profile, "profile_id"))
+	groups := GroupSamplesWithoutLabels(p.Profile, "profile_id")
 	require.Len(t, groups, 3)
 
 	assert.Equal(t, groups[0].Labels, []*profilev1.Label{{Key: 18, Str: 19}})

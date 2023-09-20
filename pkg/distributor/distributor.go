@@ -9,7 +9,6 @@ import (
 	"hash/fnv"
 	"net/http"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -53,6 +52,12 @@ const (
 	ringAutoForgetUnhealthyPeriods = 10
 
 	ProfileName = "__name__"
+)
+
+var (
+	unsupportedPprofLabels = []string{
+		"profile_id", //
+	}
 )
 
 // Config for a Distributor.
@@ -221,6 +226,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		if serviceName == "" {
 			series.Labels = append(series.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "unspecified"})
 		}
+		sort.Sort(phlaremodel.Labels(series.Labels))
 	}
 
 	haveRawPprof := req.RawProfileType == distributormodel.RawProfileTypePPROF
@@ -288,22 +294,43 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 	derivedSeries := make([]*distributormodel.ProfileSeries, 0, len(req.Series))
 	for _, series := range req.Series {
+		s := &distributormodel.ProfileSeries{
+			Labels:  series.Labels,
+			Samples: make([]*distributormodel.ProfileSample, 0, len(series.Samples)),
+		}
 		for _, raw := range series.Samples {
 			raw.Profile.Normalize()
-			// TODO: Split profile.
+			groups := pprof.GroupSamplesWithoutLabels(raw.Profile.Profile, unsupportedPprofLabels...)
+			if len(groups) < 2 {
+				s.Samples = append(s.Samples, raw)
+				continue
+			}
+			e := pprof.NewSampleExporter(raw.Profile.Profile)
+			for _, group := range groups {
+				p := e.ExportSamples(group.Samples)
+				labels := mergeSeriesAndSampleLabels(p, series.Labels, group.Labels)
+				derivedSeries = append(derivedSeries, &distributormodel.ProfileSeries{
+					Labels: labels,
+					Samples: []*distributormodel.ProfileSample{{
+						Profile: pprof.RawFromProto(p),
+					}},
+				})
+			}
+		}
+		if len(s.Samples) > 0 {
+			derivedSeries = append(derivedSeries, s)
 		}
 	}
 
 	// Validate the labels again and generate tokens for shuffle sharding.
-	keys := make([]uint32, 0, len(derivedSeries))
-	for _, series := range derivedSeries {
-		sort.Sort(phlaremodel.Labels(series.Labels))
+	keys := make([]uint32, len(derivedSeries))
+	for i, series := range derivedSeries {
 		if err = validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
 			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
 			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
-		keys = append(keys, TokenFor(tenantID, labelsString(series.Labels)))
+		keys[i] = TokenFor(tenantID, phlaremodel.LabelPairsString(series.Labels))
 	}
 
 	profiles := make([]*profileTracker, 0, len(derivedSeries))
@@ -482,6 +509,20 @@ func (d *Distributor) HealthyInstancesCount() int {
 	return int(d.healthyInstancesCount.Load())
 }
 
+// mergeSeriesAndSampleLabels merges sample labels with
+// series labels. Series labels take precedence.
+func mergeSeriesAndSampleLabels(p *googlev1.Profile, sl []*typesv1.LabelPair, pl []*googlev1.Label) []*typesv1.LabelPair {
+	m := phlaremodel.Labels(sl).Clone()
+	for _, l := range pl {
+		m = append(m, &typesv1.LabelPair{
+			Name:  p.StringTable[l.Key],
+			Value: p.StringTable[l.Str],
+		})
+	}
+	sort.Stable(m)
+	return m.Unique()
+}
+
 type profileTracker struct {
 	profile     *distributormodel.ProfileSeries
 	minSuccess  int
@@ -495,22 +536,6 @@ type pushTracker struct {
 	samplesFailed  atomic.Int32
 	done           chan struct{}
 	err            chan error
-}
-
-func labelsString(ls []*typesv1.LabelPair) string {
-	var b bytes.Buffer
-	b.WriteByte('{')
-	for i, l := range ls {
-		if i > 0 {
-			b.WriteByte(',')
-			b.WriteByte(' ')
-		}
-		b.WriteString(l.Name)
-		b.WriteByte('=')
-		b.WriteString(strconv.Quote(l.Value))
-	}
-	b.WriteByte('}')
-	return b.String()
 }
 
 // TokenFor generates a token used for finding ingesters from ring

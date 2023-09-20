@@ -375,6 +375,14 @@ func (p *Profile) Normalize() {
 
 	p.ensureHasMapping()
 	p.clearAddresses()
+
+	// Non-string labels are not supported.
+	for _, sample := range p.Sample {
+		sample.Label = slices.RemoveInPlace(sample.Label, func(label *profilev1.Label, i int) bool {
+			return label.Str == 0
+		})
+	}
+
 	// first we sort the samples.
 	hashes := p.hasher.Hashes(p.Sample)
 	ss := &sortedSample{samples: p.Sample, hashes: hashes}
@@ -396,7 +404,7 @@ func (p *Profile) Normalize() {
 			return true
 		}
 		for j := 0; j < len(s.Value); j++ {
-			if s.Value[j] != 0 {
+			if s.Value[j] > 0 {
 				// we found a non-zero value, so we can keep this sample.
 				return false
 			}
@@ -588,9 +596,6 @@ func (h SampleHasher) Hashes(samples []*profilev1.Sample) []uint64 {
 			panic("unable to write hash")
 		}
 		sort.Sort(LabelsByKeyValue(sample.Label))
-		sample.Label = slices.RemoveInPlace(sample.Label, func(label *profilev1.Label, i int) bool {
-			return label.Num != 0
-		})
 		for _, l := range sample.Label {
 			binary.LittleEndian.PutUint32(h.b[:4], uint32(l.Key))
 			binary.LittleEndian.PutUint32(h.b[4:], uint32(l.Str))
@@ -679,7 +684,14 @@ func GroupSamplesByLabels(p *profilev1.Profile) []SampleGroup {
 	})
 }
 
-func GroupSamplesWithout(p *profilev1.Profile, keys []int64) []SampleGroup {
+func GroupSamplesWithoutLabels(p *profilev1.Profile, labels ...string) []SampleGroup {
+	if len(labels) > 0 {
+		return GroupSamplesWithoutLabelsByKey(p, LabelKeysByString(p, labels...))
+	}
+	return GroupSamplesByLabels(p)
+}
+
+func GroupSamplesWithoutLabelsByKey(p *profilev1.Profile, keys []int64) []SampleGroup {
 	if len(p.Sample) == 0 {
 		return nil
 	}

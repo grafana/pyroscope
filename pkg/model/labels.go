@@ -191,6 +191,26 @@ func (ls Labels) Clone() Labels {
 	return result
 }
 
+// Unique returns a set labels with unique keys.
+// Labels expected to be sorted: underlying capacity
+// is reused and the original order is preserved:
+// the first key takes precedence over duplicates.
+// Method receiver should not be used after the call.
+func (ls Labels) Unique() Labels {
+	if len(ls) <= 1 {
+		return ls
+	}
+	var j int
+	for i := 1; i < len(ls); i++ {
+		if ls[i].Name == ls[j].Name {
+			continue
+		}
+		ls[j] = ls[i]
+		j++
+	}
+	return ls[:j+1]
+}
+
 // LabelPairsString returns a string representation of the label pairs.
 func LabelPairsString(lbs []*typesv1.LabelPair) string {
 	var b bytes.Buffer
