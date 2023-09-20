@@ -10,11 +10,4 @@ include docs.mk
 
 .PHONY: test
 test:
-
-.PHONY: test
-test:
 	docker run -v $(CURDIR)/sources:/hugo/content/docs/phlare/latest -e HUGO_REFLINKSERRORLEVEL=ERROR --rm grafana/docs-base:latest /bin/bash -c 'exec make hugo'
-
-.PHONY: validate
-validate:
-	docker run -v $(CURDIR)/sources:/docs/sources --rm grafana/doc-validator:v1.5.0 --skip-image-validation /docs/sources

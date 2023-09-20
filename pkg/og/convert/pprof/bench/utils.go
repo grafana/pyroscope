@@ -79,10 +79,14 @@ func StackCollapseProto(p *profilev1.Profile, valueIDX int, scale float64) []str
 	})
 	var unique []stack
 	for _, s := range ret {
+		if s.value == 0 {
+			continue
+		}
 		if len(unique) == 0 {
 			unique = append(unique, s)
 			continue
 		}
+
 		if unique[len(unique)-1].funcs == s.funcs {
 			unique[len(unique)-1].value += s.value
 			continue
