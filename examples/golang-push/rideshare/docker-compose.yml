@@ -1,10 +1,5 @@
-version: '3'
+version: "3"
 services:
-  pyroscope:
-    image: grafana/pyroscope
-    ports:
-      - '4040:4040'
-
   us-east:
     ports:
       - 5000
@@ -32,6 +27,11 @@ services:
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
     build:
       context: .
+
+  pyroscope:
+    image: grafana/pyroscope:latest
+    ports:
+      - '4040:4040'
 
   load-generator:
     build:

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/bufbuild/connect-go"
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -61,7 +62,11 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 	}
 
 	fixTime(profile, md)
-	fixFunctionNamesForScriptingLanguages(profile, md)
+	FixFunctionNamesForScriptingLanguages(profile, md)
+	if md.SpyName == "dotnetspy" {
+		FixFunctionIDForBrokenDotnet(profile.Profile)
+		fixSampleTypes(profile.Profile)
+	}
 
 	res = &distributormodel.PushRequest{
 		RawProfileSize: len(p.Profile),
@@ -223,7 +228,7 @@ func isScriptingSpy(md ingestion.Metadata) bool {
 	return md.SpyName == "pyspy" || md.SpyName == "rbspy" || md.SpyName == "scripting"
 }
 
-func fixFunctionNamesForScriptingLanguages(p *pprof.Profile, md ingestion.Metadata) {
+func FixFunctionNamesForScriptingLanguages(p *pprof.Profile, md ingestion.Metadata) {
 	if !needFunctionNameRewrite(md) {
 		return
 	}
@@ -243,5 +248,29 @@ func fixFunctionNamesForScriptingLanguages(p *pprof.Profile, md ingestion.Metada
 			smap[name] = sid
 		}
 		fn.Name = int64(sid)
+	}
+}
+
+func fixSampleTypes(profile *profilev1.Profile) {
+	for _, st := range profile.SampleType {
+		sts := profile.StringTable[st.Type]
+		if strings.Contains(sts, "-") {
+			sts = strings.ReplaceAll(sts, "-", "_")
+			profile.StringTable[st.Type] = sts
+		}
+	}
+}
+
+func FixFunctionIDForBrokenDotnet(profile *profilev1.Profile) {
+	for _, function := range profile.Function {
+		if function.Id != 0 {
+			return
+		}
+	}
+	if len(profile.Function) != len(profile.Location) {
+		return
+	}
+	for i := range profile.Location {
+		profile.Function[i].Id = profile.Location[i].Id
 	}
 }

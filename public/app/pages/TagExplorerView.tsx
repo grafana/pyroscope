@@ -34,7 +34,7 @@ import {
   setQuery,
   selectAnnotationsOrDefault,
 } from '@pyroscope/redux/reducers/continuous';
-import { queryToAppName } from '@pyroscope/models/query';
+import { brandQuery, parse, queryToAppName } from '@pyroscope/models/query';
 import PageTitle from '@pyroscope/components/PageTitle';
 import ExploreTooltip from '@pyroscope/components/TimelineChart/ExploreTooltip';
 import { getFormatter } from '@pyroscope/legacy/flamegraph/format/format';
@@ -339,7 +339,7 @@ function TagExplorerView() {
             dispatch(setQuery(query));
           }}
         />
-        <Box>
+        <Box isLoading={dataLoading}>
           <ExploreHeader
             appName={appName}
             tags={tags}
@@ -350,38 +350,35 @@ function TagExplorerView() {
             handleGroupByTagValueChange={handleGroupByTagValueChange}
           />
           <div id={TIMELINE_WRAPPER_ID} className={styles.timelineWrapper}>
-            <LoadingOverlay active={dataLoading}>
-              <TimelineChartWrapper
-                selectionType="double"
-                mode="multiple"
-                timezone={offset === 0 ? 'utc' : 'browser'}
-                data-testid="timeline-explore-page"
-                id="timeline-chart-explore-page"
-                annotations={annotations}
-                timelineGroups={groups}
-                // to not "dim" timelines when "All" option is selected
-                activeGroup={
-                  groupByTagValue !== ALL_TAGS ? groupByTagValue : ''
-                }
-                showTagsLegend={groups.length > 1}
-                handleGroupByTagValueChange={handleGroupByTagValueChange}
-                onSelect={(from, until) =>
-                  dispatch(setDateRange({ from, until }))
-                }
-                height="125px"
-                format="lines"
-                onHoverDisplayTooltip={(data) => (
-                  <ExploreTooltip
-                    values={data.values}
-                    timeLabel={data.timeLabel}
-                    profile={activeTagProfile}
-                  />
-                )}
-              />
-            </LoadingOverlay>
+            <TimelineChartWrapper
+              selectionType="double"
+              mode="multiple"
+              timezone={offset === 0 ? 'utc' : 'browser'}
+              data-testid="timeline-explore-page"
+              id="timeline-chart-explore-page"
+              annotations={annotations}
+              timelineGroups={groups}
+              // to not "dim" timelines when "All" option is selected
+              activeGroup={groupByTagValue !== ALL_TAGS ? groupByTagValue : ''}
+              showTagsLegend={groups.length > 1}
+              handleGroupByTagValueChange={handleGroupByTagValueChange}
+              onSelect={(from, until) =>
+                dispatch(setDateRange({ from, until }))
+              }
+              height="125px"
+              format="lines"
+              onHoverDisplayTooltip={(data) => (
+                <ExploreTooltip
+                  values={data.values}
+                  timeLabel={data.timeLabel}
+                  profile={activeTagProfile}
+                />
+              )}
+            />
           </div>
         </Box>
         <CollapseBox
+          isLoading={dataLoading}
           title={appName
             .map((a) => `${a} Tag Breakdown`)
             .unwrapOr('Tag Breakdown')}
@@ -408,28 +405,26 @@ function TagExplorerView() {
             />
           </div>
         </CollapseBox>
-        <Box>
+        <Box isLoading={dataLoading}>
           <div className={styles.flamegraphWrapper}>
-            <LoadingOverlay active={dataLoading}>
-              <FlamegraphRenderer
-                showCredit={false}
-                profile={activeTagProfile}
-                colorMode={colorMode}
-                ExportData={
-                  activeTagProfile && (
-                    <ExportData
-                      flamebearer={activeTagProfile}
-                      exportPNG
-                      exportJSON
-                      exportPprof
-                      exportHTML
-                      exportFlamegraphDotCom
-                      exportFlamegraphDotComFn={exportFlamegraphDotComFn}
-                    />
-                  )
-                }
-              />
-            </LoadingOverlay>
+            <FlamegraphRenderer
+              showCredit={false}
+              profile={activeTagProfile}
+              colorMode={colorMode}
+              ExportData={
+                activeTagProfile && (
+                  <ExportData
+                    flamebearer={activeTagProfile}
+                    exportPNG
+                    exportJSON
+                    exportPprof
+                    exportHTML
+                    exportFlamegraphDotCom
+                    exportFlamegraphDotComFn={exportFlamegraphDotComFn}
+                  />
+                )
+              }
+            />
           </div>
         </Box>
       </div>
@@ -480,11 +475,18 @@ function Table({
     }
 
     const searchParams = new URLSearchParams(search);
-    searchParams.delete('query');
-    searchParams.set(
-      'query',
-      appendLabelToQuery(`${appName}{}`, groupByTag, groupByTagValue)
+    const originalQuery = searchParams.get('query');
+    const serviceName = originalQuery
+      ? parse(brandQuery(originalQuery))?.tags?.service_name
+      : '';
+    const newQuery = appendLabelToQuery(
+      `${appName}{service_name="${serviceName}"}`,
+      groupByTag,
+      groupByTagValue
     );
+
+    searchParams.delete('query');
+    searchParams.set('query', newQuery);
     return `?${searchParams.toString()}`;
   };
 

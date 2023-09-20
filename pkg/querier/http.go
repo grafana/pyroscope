@@ -132,6 +132,7 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 	var resFlame *connect.Response[querierv1.SelectMergeStacktracesResponse]
 	g, ctx := errgroup.WithContext(req.Context())
 	g.Go(func() error {
+		var err error
 		resFlame, err = q.client.SelectMergeStacktraces(ctx, connect.NewRequest(selectParams))
 		return err
 	})
@@ -139,6 +140,7 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 	timelineStep := timeline.CalcPointInterval(selectParams.Start, selectParams.End)
 	var resSeries *connect.Response[querierv1.SelectSeriesResponse]
 	g.Go(func() error {
+		var err error
 		resSeries, err = q.client.SelectSeries(req.Context(),
 			connect.NewRequest(&querierv1.SelectSeriesRequest{
 				ProfileTypeID: selectParams.ProfileTypeID,
