@@ -948,9 +948,44 @@ func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.Series
 		return nil, err
 	}
 
-	// TODO(bryan) get labels from block and filter by matchers/label_names
+	names, err := b.index.LabelNames(nil)
+	if err != nil {
+		return nil, err
+	}
 
-	panic("unimplemented") // TODO(bryan) implement
+	labelNameMap := make(map[string]struct{}, len(params.LabelNames))
+	for _, name := range params.LabelNames {
+		labelNameMap[name] = struct{}{}
+	}
+
+	// TODO: This is only filtering by label names, also needs to filter by
+	// matchers.
+	names = lo.Filter(names, func(name string, index int) bool {
+		_, ok := labelNameMap[name]
+		return ok
+	})
+
+	labelsSet := make([]*typesv1.Labels, 0, len(names))
+	for _, name := range names {
+		values, err := b.index.LabelValues(name)
+		if err != nil {
+			// TODO(bryan) we probably can keep going even if we get an error.
+			// We may get some results back.
+			return nil, err
+		}
+
+		labels := &typesv1.Labels{
+			Labels: make([]*typesv1.LabelPair, 0, len(values)),
+		}
+		for _, value := range values {
+			labels.Labels = append(labels.Labels, &typesv1.LabelPair{
+				Name:  name,
+				Value: value,
+			})
+		}
+		labelsSet = append(labelsSet, labels)
+	}
+	return labelsSet, nil
 }
 
 func (b *singleBlockQuerier) Sort(in []Profile) []Profile {
