@@ -7,11 +7,9 @@ import TotalSamplesChart from '@pyroscope/pages/tagExplorer/components/TotalSamp
 import type { Profile } from '@pyroscope/legacy/models';
 import Box, { CollapseBox } from '@pyroscope/ui/Box';
 import Toolbar from '@pyroscope/components/Toolbar';
-import ExportData from '@pyroscope/components/ExportData';
 import TimelineChartWrapper, {
   TimelineGroupData,
 } from '@pyroscope/components/TimelineChart/TimelineChartWrapper';
-import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph';
 import Dropdown, { MenuItem } from '@pyroscope/ui/Dropdown';
 import TagsSelector from '@pyroscope/pages/tagExplorer/components/TagsSelector';
 import TableUI, { useTableSort, BodyRow } from '@pyroscope/ui/Table';
@@ -50,6 +48,7 @@ import {
 // eslint-disable-next-line
 import styles from './TagExplorerView.module.scss';
 import { formatTitle } from './formatTitle';
+import {FlameGraphWrapper} from "@pyroscope/components/FlameGraphWrapper";
 
 const TIMELINE_SERIES_COLORS = [
   Color.rgb(242, 204, 12),
@@ -407,24 +406,7 @@ function TagExplorerView() {
         </CollapseBox>
         <Box isLoading={dataLoading}>
           <div className={styles.flamegraphWrapper}>
-            <FlamegraphRenderer
-              showCredit={false}
-              profile={activeTagProfile}
-              colorMode={colorMode}
-              ExportData={
-                activeTagProfile && (
-                  <ExportData
-                    flamebearer={activeTagProfile}
-                    exportPNG
-                    exportJSON
-                    exportPprof
-                    exportHTML
-                    exportFlamegraphDotCom
-                    exportFlamegraphDotComFn={exportFlamegraphDotComFn}
-                  />
-                )
-              }
-            />
+            <FlameGraphWrapper profile={activeTagProfile} />
           </div>
         </Box>
       </div>

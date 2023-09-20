@@ -1,11 +1,6 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
 
-import { createTheme } from '@grafana/data';
-import { FlameGraph } from '@grafana/flamegraph';
-import { Button, Tooltip } from '@grafana/ui';
-
-import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph/FlamegraphRenderer';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   selectContinuousState,
@@ -23,16 +18,9 @@ import TimelineChartWrapper, {
 } from '@pyroscope/components/TimelineChart/TimelineChartWrapper';
 import SyncTimelines from '@pyroscope/components/TimelineChart/SyncTimelines';
 import Toolbar from '@pyroscope/components/Toolbar';
-import ExportData from '@pyroscope/components/ExportData';
-import useExportToFlamegraphDotCom from '@pyroscope/components/exportToFlamegraphDotCom.hook';
 import TagsBar from '@pyroscope/components/TagsBar';
 import ChartTitle from '@pyroscope/components/ChartTitle';
 import useTimeZone from '@pyroscope/hooks/timeZone.hook';
-import useColorMode from '@pyroscope/hooks/colorMode.hook';
-import {
-  isExportToFlamegraphDotComEnabled,
-  isGrafanaFlamegraphEnabled,
-} from '@pyroscope/util/features';
 import PageTitle from '@pyroscope/components/PageTitle';
 import { Query } from '@pyroscope/models/query';
 import { isLoadingOrReloading } from '@pyroscope/pages/loading';
@@ -50,7 +38,7 @@ import { Panel } from '@pyroscope/components/Panel';
 import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
 import { Profile } from '@pyroscope/legacy/models/profile';
 import { SharedQuery } from '@pyroscope/legacy/flamegraph/FlameGraph/FlameGraphRenderer';
-import { flamebearerToDataFrameDTO } from '@pyroscope/util/flamebearer';
+import { FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
@@ -65,7 +53,6 @@ function ComparisonApp() {
   } = useAppSelector(selectContinuousState);
   const { leftQuery, rightQuery } = useAppSelector(selectQueries);
   const { offset } = useTimeZone();
-  const { colorMode } = useColorMode();
   usePopulateLeftRightQuery();
   const {
     left: comparisonLeft,
@@ -277,7 +264,7 @@ function ComparisonApp() {
                 dispatch(fetchTagValues({ query, label }));
               }}
             />
-            <FlamegraphWrapper
+            <FlameGraphAndTimeline
               position={'left'}
               profile={leftSide}
               from={leftFrom}
@@ -286,7 +273,6 @@ function ComparisonApp() {
               handleSelect={handleSelectLeft}
               timezone={timezone}
               timeline={leftTimeline}
-              colorMode={colorMode}
             />
           </Panel>
 
@@ -304,7 +290,7 @@ function ComparisonApp() {
                 dispatch(fetchTagValues({ query, label }));
               }}
             />
-            <FlamegraphWrapper
+            <FlameGraphAndTimeline
               position={'right'}
               profile={rightSide}
               from={rightFrom}
@@ -313,7 +299,6 @@ function ComparisonApp() {
               handleSelect={handleSelectRight}
               timezone={timezone}
               timeline={rightTimeline}
-              colorMode={colorMode}
             />
           </Panel>
         </div>
@@ -322,7 +307,7 @@ function ComparisonApp() {
   );
 }
 
-function FlamegraphWrapper(props: {
+function FlameGraphAndTimeline(props: {
   profile: Profile | undefined;
   sharedQuery: SharedQuery;
   position: 'left' | 'right';
@@ -331,7 +316,6 @@ function FlamegraphWrapper(props: {
   handleSelect: (from: string, until: string) => void;
   timezone: 'browser' | 'utc';
   timeline: TimelineData;
-  colorMode: 'light' | 'dark';
 }) {
   const {
     profile,
@@ -341,10 +325,8 @@ function FlamegraphWrapper(props: {
     timezone,
     sharedQuery,
     timeline,
-    colorMode,
     position,
   } = props;
-  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(profile);
 
   const id =
     position === 'right' ? 'timeline-chart-right' : 'timeline-chart-left';
@@ -372,85 +354,19 @@ function FlamegraphWrapper(props: {
     />
   );
 
-  if (isGrafanaFlamegraphEnabled) {
-    const dataFrame = profile
-      ? flamebearerToDataFrameDTO(
-          profile.flamebearer.levels,
-          profile.flamebearer.names,
-          false
-        )
-      : undefined;
-    return (
-      <>
-        {timelineEl}
-        <FlameGraph
-          getTheme={() => createTheme({ colors: { mode: colorMode } })}
-          data={dataFrame}
-          vertical={true}
-          extraHeaderElements={
-            profile && (
-              <ExportData
-                flamebearer={profile}
-                exportJSON
-                exportPprof
-                exportHTML
-                exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
-                exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
-                buttonEl={({ onClick }) => {
-                  return (
-                    <Tooltip content={'Export Data'}>
-                      <Button
-                        // Ugly hack to go around globally defined line height messing up sizing of the button.
-                        // Not sure why it happens even if everything is display: Block. To override it would
-                        // need changes in Flamegraph which would be weird so this seems relatively sensible.
-                        style={{ marginTop: -7 }}
-                        icon={'download-alt'}
-                        size={'sm'}
-                        variant={'secondary'}
-                        fill={'outline'}
-                        onClick={onClick}
-                      />
-                    </Tooltip>
-                  );
-                }}
-              />
-            )
-          }
-        />
-      </>
-    );
-  } else {
-    return (
-      <>
-        {timelineEl}
-        <FlamegraphRenderer
-          showCredit={false}
-          profile={profile}
-          data-testid={
-            position === 'right'
-              ? 'flamegraph-renderer-right'
-              : 'flamegraph-renderer-left'
-          }
-          panesOrientation="vertical"
-          colorMode={colorMode}
-          sharedQuery={sharedQuery}
-          ExportData={
-            // Don't export PNG since the exportPng code is broken
-            profile && (
-              <ExportData
-                flamebearer={profile}
-                exportJSON
-                exportHTML
-                exportPprof
-                exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
-                exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
-              />
-            )
-          }
-        />
-      </>
-    );
-  }
+  return (
+    <FlameGraphWrapper
+      profile={profile}
+      vertical={true}
+      timelineEl={timelineEl}
+      sharedQuery={sharedQuery}
+      dataTestId={
+        position === 'right'
+          ? 'flamegraph-renderer-right'
+          : 'flamegraph-renderer-left'
+      }
+    />
+  );
 }
 
 export default ComparisonApp;
