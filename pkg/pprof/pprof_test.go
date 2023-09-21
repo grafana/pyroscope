@@ -757,7 +757,8 @@ func Test_SampleExporter_WholeProfile(t *testing.T) {
 	p, err := OpenFile("testdata/heap")
 	require.NoError(t, err)
 	e := NewSampleExporter(p.Profile)
-	n := e.ExportSamples(p.Sample)
+	n := new(profilev1.Profile)
+	e.ExportSamples(n, p.Sample)
 
 	// Samples are modified in-place, therefore
 	// we have to re-read the profile.
@@ -787,7 +788,8 @@ func Test_SampleExporter_Partial(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
 	e := NewSampleExporter(p.Profile)
-	n := e.ExportSamples(p.Sample[:2])
+	n := new(profilev1.Profile)
+	e.ExportSamples(n, p.Sample[:2])
 	expected := &profilev1.Profile{
 		SampleType: []*profilev1.ValueType{
 			{

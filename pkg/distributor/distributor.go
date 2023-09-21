@@ -33,6 +33,7 @@ import (
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -55,8 +56,9 @@ const (
 )
 
 var (
-	unsupportedPprofLabels = []string{
-		"profile_id", //
+	ignoredPprofLabels = []string{
+		"profile_id",          // For compatibility with the existing clients.
+		"span_id", "trace_id", // Will be supported in the future.
 	}
 )
 
@@ -187,6 +189,21 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	req := &distributormodel.PushRequest{
 		Series: make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
 	}
+
+	// All allocated pprof.Profile instances must be closed after use.
+	var n int
+	for i := 0; i < len(grpcReq.Msg.Series); i++ {
+		n += len(grpcReq.Msg.Series[i].Samples)
+	}
+	profiles := make([]*pprof.Profile, 0, n)
+	defer func() {
+		for _, p := range profiles {
+			if p.Profile != nil {
+				p.Close()
+			}
+		}
+	}()
+
 	for _, grpcSeries := range grpcReq.Msg.Series {
 		series := &distributormodel.ProfileSeries{
 			Labels:  grpcSeries.Labels,
@@ -197,6 +214,7 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
+			profiles = append(profiles, profile)
 			sample := &distributormodel.ProfileSample{
 				Profile:    profile,
 				RawProfile: grpcSample.RawProfile,
@@ -207,11 +225,11 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 		}
 		req.Series = append(req.Series, series)
 	}
+
 	return d.PushParsed(ctx, req)
 }
 
 func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
-	// todo defer close all profiles in case of error
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
@@ -269,7 +287,6 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 				// todo this actually discards more if multiple Samples in a Series request
 				validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
 				validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
-				p.Close()
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
 
@@ -292,7 +309,15 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		)
 	}
 
-	derivedSeries := make([]*distributormodel.ProfileSeries, 0, len(req.Series))
+	// Next we split profiles by labels. New profiles should be closed after use.
+	profileSeries := make([]*distributormodel.ProfileSeries, 0, len(req.Series))
+	newProfiles := make([]*pprof.Profile, 0, 2*len(req.Series))
+	defer func() {
+		for _, p := range newProfiles {
+			p.Close()
+		}
+	}()
+
 	for _, series := range req.Series {
 		s := &distributormodel.ProfileSeries{
 			Labels:  series.Labels,
@@ -300,31 +325,36 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		}
 		for _, raw := range series.Samples {
 			raw.Profile.Normalize()
-			groups := pprof.GroupSamplesWithoutLabels(raw.Profile.Profile, unsupportedPprofLabels...)
+			groups := pprof.GroupSamplesWithoutLabels(raw.Profile.Profile, ignoredPprofLabels...)
 			if len(groups) < 2 {
 				s.Samples = append(s.Samples, raw)
 				continue
 			}
 			e := pprof.NewSampleExporter(raw.Profile.Profile)
 			for _, group := range groups {
-				p := e.ExportSamples(group.Samples)
-				labels := mergeSeriesAndSampleLabels(p, series.Labels, group.Labels)
-				derivedSeries = append(derivedSeries, &distributormodel.ProfileSeries{
-					Labels: labels,
-					Samples: []*distributormodel.ProfileSample{{
-						Profile: pprof.RawFromProto(p),
-					}},
+				// exportSamples creates a new profile with the samples provided.
+				// The samples are obtained via GroupSamples call, which means
+				// the underlying capacity is referenced by the source profile.
+				// Therefore, the slice has to be copied and samples zeroed to
+				// avoid ownership issues.
+				profile := exportSamples(e, group.Samples)
+				newProfiles = append(newProfiles, profile)
+				// Note that group.Labels reference strings from the source profile.
+				labels := mergeSeriesAndSampleLabels(raw.Profile.Profile, series.Labels, group.Labels)
+				profileSeries = append(profileSeries, &distributormodel.ProfileSeries{
+					Labels:  labels,
+					Samples: []*distributormodel.ProfileSample{{Profile: profile}},
 				})
 			}
 		}
 		if len(s.Samples) > 0 {
-			derivedSeries = append(derivedSeries, s)
+			profileSeries = append(profileSeries, s)
 		}
 	}
 
 	// Validate the labels again and generate tokens for shuffle sharding.
-	keys := make([]uint32, len(derivedSeries))
-	for i, series := range derivedSeries {
+	keys := make([]uint32, len(profileSeries))
+	for i, series := range profileSeries {
 		if err = validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
 			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
 			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
@@ -333,17 +363,15 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		keys[i] = TokenFor(tenantID, phlaremodel.LabelPairsString(series.Labels))
 	}
 
-	profiles := make([]*profileTracker, 0, len(derivedSeries))
-	for _, series := range derivedSeries {
+	profiles := make([]*profileTracker, 0, len(profileSeries))
+	for _, series := range profileSeries {
 		for _, raw := range series.Samples {
 			p := raw.Profile
 			// zip the data back into the buffer
 			bw := bytes.NewBuffer(raw.RawProfile[:0])
 			if _, err := p.WriteTo(bw); err != nil {
-				p.Close()
 				return nil, err
 			}
-			p.Close()
 			raw.ID = uuid.NewString()
 			raw.RawProfile = bw.Bytes()
 		}
@@ -521,6 +549,15 @@ func mergeSeriesAndSampleLabels(p *googlev1.Profile, sl []*typesv1.LabelPair, pl
 	}
 	sort.Stable(m)
 	return m.Unique()
+}
+
+func exportSamples(e *pprof.SampleExporter, samples []*googlev1.Sample) *pprof.Profile {
+	samplesCopy := make([]*googlev1.Sample, len(samples))
+	copy(samplesCopy, samples)
+	slices.Clear(samples)
+	n := pprof.NewProfile()
+	e.ExportSamples(n.Profile, samplesCopy)
+	return n
 }
 
 type profileTracker struct {

@@ -71,6 +71,10 @@ func (r *gzipReader) openBytes(input []byte) (io.Reader, error) {
 	return r.gzip, nil
 }
 
+func NewProfile() *Profile {
+	return RawFromProto(profilev1.ProfileFromVTPool())
+}
+
 func RawFromProto(pbp *profilev1.Profile) *Profile {
 	buf := bufPool.Get().(*bytes.Buffer)
 	return &Profile{Profile: pbp, buf: buf}
@@ -684,6 +688,9 @@ func GroupSamplesByLabels(p *profilev1.Profile) []SampleGroup {
 	})
 }
 
+// GroupSamplesWithoutLabels splits samples into groups by labels
+// ignoring ones from the list: those are preserved as sample labels.
+// It's expected that sample labels are sorted.
 func GroupSamplesWithoutLabels(p *profilev1.Profile, labels ...string) []SampleGroup {
 	if len(labels) > 0 {
 		return GroupSamplesWithoutLabelsByKey(p, LabelKeysByString(p, labels...))
@@ -852,36 +859,34 @@ func NewSampleExporter(p *profilev1.Profile) *SampleExporter {
 //
 // The same exporter instance can be used to export non-overlapping
 // sample sets from a single profile.
-func (e *SampleExporter) ExportSamples(samples []*profilev1.Sample) *profilev1.Profile {
+func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profilev1.Sample) *profilev1.Profile {
 	e.reset()
 
-	p := &profilev1.Profile{
-		Sample:            samples,
-		TimeNanos:         e.profile.TimeNanos,
-		DurationNanos:     e.profile.DurationNanos,
-		Period:            e.profile.Period,
-		DefaultSampleType: e.profile.DefaultSampleType,
-	}
+	dst.Sample = samples
+	dst.TimeNanos = e.profile.TimeNanos
+	dst.DurationNanos = e.profile.DurationNanos
+	dst.Period = e.profile.Period
+	dst.DefaultSampleType = e.profile.DefaultSampleType
 
-	p.SampleType = make([]*profilev1.ValueType, len(e.profile.SampleType))
+	dst.SampleType = slices.Grow(dst.SampleType, len(e.profile.SampleType))
 	for i, v := range e.profile.SampleType {
-		p.SampleType[i] = &profilev1.ValueType{
+		dst.SampleType[i] = &profilev1.ValueType{
 			Type: e.strings.lookupString(v.Type),
 			Unit: e.strings.lookupString(v.Unit),
 		}
 	}
-	p.DropFrames = e.strings.lookupString(e.profile.DropFrames)
-	p.KeepFrames = e.strings.lookupString(e.profile.KeepFrames)
+	dst.DropFrames = e.strings.lookupString(e.profile.DropFrames)
+	dst.KeepFrames = e.strings.lookupString(e.profile.KeepFrames)
 	if c := len(e.profile.Comment); c > 0 {
-		p.Comment = make([]int64, c)
+		dst.Comment = slices.Grow(dst.Comment, c)
 		for i, comment := range e.profile.Comment {
-			p.Comment[i] = e.strings.lookupString(comment)
+			dst.Comment[i] = e.strings.lookupString(comment)
 		}
 	}
 
 	// Rewrite sample stack traces and labels.
 	// Note that the provided samples are modified in-place.
-	for _, sample := range p.Sample {
+	for _, sample := range dst.Sample {
 		for i, location := range sample.LocationId {
 			sample.LocationId[i] = uint64(e.locations.lookup(int64(location - 1)))
 		}
@@ -896,7 +901,7 @@ func (e *SampleExporter) ExportSamples(samples []*profilev1.Sample) *profilev1.P
 	}
 
 	// Copy locations.
-	p.Location = make([]*profilev1.Location, e.locations.resolved)
+	dst.Location = slices.Grow(dst.Location, int(e.locations.resolved))
 	for i, j := range e.locations.indices {
 		// i points to the location in the source profile.
 		// j point to the location in the new profile.
@@ -912,7 +917,7 @@ func (e *SampleExporter) ExportSamples(samples []*profilev1.Sample) *profilev1.P
 			Line:      make([]*profilev1.Line, len(loc.Line)),
 			IsFolded:  loc.IsFolded,
 		}
-		p.Location[j-1] = newLoc
+		dst.Location[j-1] = newLoc
 		for l, line := range loc.Line {
 			newLoc.Line[l] = &profilev1.Line{
 				FunctionId: uint64(e.functions.lookup(int64(line.FunctionId - 1))),
@@ -922,13 +927,13 @@ func (e *SampleExporter) ExportSamples(samples []*profilev1.Sample) *profilev1.P
 	}
 
 	// Copy mappings.
-	p.Mapping = make([]*profilev1.Mapping, e.mappings.resolved)
+	dst.Mapping = slices.Grow(dst.Mapping, int(e.mappings.resolved))
 	for i, j := range e.mappings.indices {
 		if j == 0 {
 			continue
 		}
 		m := e.profile.Mapping[i]
-		p.Mapping[j-1] = &profilev1.Mapping{
+		dst.Mapping[j-1] = &profilev1.Mapping{
 			Id:              uint64(j),
 			MemoryStart:     m.MemoryStart,
 			MemoryLimit:     m.MemoryLimit,
@@ -943,13 +948,13 @@ func (e *SampleExporter) ExportSamples(samples []*profilev1.Sample) *profilev1.P
 	}
 
 	// Copy functions.
-	p.Function = make([]*profilev1.Function, e.functions.resolved)
+	dst.Function = slices.Grow(dst.Function, int(e.functions.resolved))
 	for i, j := range e.functions.indices {
 		if j == 0 {
 			continue
 		}
 		fn := e.profile.Function[i]
-		p.Function[j-1] = &profilev1.Function{
+		dst.Function[j-1] = &profilev1.Function{
 			Id:         uint64(j),
 			Name:       e.strings.lookupString(fn.Name),
 			SystemName: e.strings.lookupString(fn.SystemName),
@@ -959,22 +964,22 @@ func (e *SampleExporter) ExportSamples(samples []*profilev1.Sample) *profilev1.P
 	}
 
 	if e.profile.PeriodType != nil {
-		p.PeriodType = &profilev1.ValueType{
+		dst.PeriodType = &profilev1.ValueType{
 			Type: e.strings.lookupString(e.profile.PeriodType.Type),
 			Unit: e.strings.lookupString(e.profile.PeriodType.Unit),
 		}
 	}
 
 	// Copy strings.
-	p.StringTable = make([]string, e.strings.resolved+1)
+	dst.StringTable = slices.Grow(dst.StringTable, int(e.strings.resolved)+1)
 	for i, j := range e.strings.indices {
 		if j == 0 {
 			continue
 		}
-		p.StringTable[j] = e.profile.StringTable[i]
+		dst.StringTable[j] = e.profile.StringTable[i]
 	}
 
-	return p
+	return dst
 }
 
 func (e *SampleExporter) reset() {
