@@ -58,7 +58,7 @@ Make sure to pass the correct `GOOS` and `GOARCH` env variables.
 
 #### amd64 builds
 ```
-GOOS=linux GOARCH=amd64 make docker-image/pyroscope/build
+make GOOS=linux GOARCH=amd64 docker-image/pyroscope/build
 ```
 
 #### arm64 builds
