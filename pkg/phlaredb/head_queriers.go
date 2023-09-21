@@ -144,11 +144,8 @@ func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterato
 }
 
 func (q *headOnDiskQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
-	res, err := q.head.Series(ctx, connect.NewRequest(params))
-	if err != nil {
-		return nil, err
-	}
-	return res.Msg.LabelsSet, nil
+	// The TSDB is kept in memory until the head block is flushed to disk.
+	return []*typesv1.Labels{}, nil
 }
 
 func (q *headOnDiskQuerier) Sort(in []Profile) []Profile {
