@@ -154,7 +154,7 @@ datasources:
    apiVersion: 1
    datasources:
    - name: Pyroscope
-     type: pyroscope
+     type: grafana-pyroscope-datasource
      uid: pyroscope-test
      url: http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4040/
 ```

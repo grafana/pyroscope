@@ -63,7 +63,7 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 
 	fixTime(profile, md)
 	FixFunctionNamesForScriptingLanguages(profile, md)
-	if md.SpyName == "dotnetspy" {
+	if p.isDotnetspy(md) {
 		FixFunctionIDForBrokenDotnet(profile.Profile)
 		fixSampleTypes(profile.Profile)
 	}
@@ -80,6 +80,14 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 		}},
 	}
 	return
+}
+
+func (p *RawProfile) isDotnetspy(md ingestion.Metadata) bool {
+	if md.SpyName == "dotnetspy" {
+		return true
+	}
+	stc := p.getSampleTypes()
+	return md.SpyName == "" && stc != nil && stc["inuse-space"] != nil
 }
 
 func fixTime(profile *pprof.Profile, md ingestion.Metadata) {

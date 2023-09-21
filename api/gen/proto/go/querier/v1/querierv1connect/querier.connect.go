@@ -61,12 +61,19 @@ const (
 
 // QuerierServiceClient is a client for the querier.v1.QuerierService service.
 type QuerierServiceClient interface {
+	// ProfileType returns a list of the existing profile types.
 	ProfileTypes(context.Context, *connect_go.Request[v1.ProfileTypesRequest]) (*connect_go.Response[v1.ProfileTypesResponse], error)
+	// LabelValues returns the existing label values for the provided label names.
 	LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error)
+	// LabelNames returns a list of the existing label names.
 	LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error)
+	// Series returns profiles series matching the request. A series is a unique label set.
 	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
+	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error)
+	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(context.Context, *connect_go.Request[v1.SelectMergeProfileRequest]) (*connect_go.Response[v12.Profile], error)
+	// SelectSeries returns a time series for the total sum of the requested profiles.
 	SelectSeries(context.Context, *connect_go.Request[v1.SelectSeriesRequest]) (*connect_go.Response[v1.SelectSeriesResponse], error)
 	Diff(context.Context, *connect_go.Request[v1.DiffRequest]) (*connect_go.Response[v1.DiffResponse], error)
 }
@@ -178,12 +185,19 @@ func (c *querierServiceClient) Diff(ctx context.Context, req *connect_go.Request
 
 // QuerierServiceHandler is an implementation of the querier.v1.QuerierService service.
 type QuerierServiceHandler interface {
+	// ProfileType returns a list of the existing profile types.
 	ProfileTypes(context.Context, *connect_go.Request[v1.ProfileTypesRequest]) (*connect_go.Response[v1.ProfileTypesResponse], error)
+	// LabelValues returns the existing label values for the provided label names.
 	LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error)
+	// LabelNames returns a list of the existing label names.
 	LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error)
+	// Series returns profiles series matching the request. A series is a unique label set.
 	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
+	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error)
+	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(context.Context, *connect_go.Request[v1.SelectMergeProfileRequest]) (*connect_go.Response[v12.Profile], error)
+	// SelectSeries returns a time series for the total sum of the requested profiles.
 	SelectSeries(context.Context, *connect_go.Request[v1.SelectSeriesRequest]) (*connect_go.Response[v1.SelectSeriesResponse], error)
 	Diff(context.Context, *connect_go.Request[v1.DiffRequest]) (*connect_go.Response[v1.DiffResponse], error)
 }

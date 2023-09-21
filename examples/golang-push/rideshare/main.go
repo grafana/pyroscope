@@ -8,16 +8,14 @@ import (
 
 	"rideshare/bike"
 	"rideshare/car"
+	"rideshare/rideshare"
 	"rideshare/scooter"
 
-	"github.com/grafana/pyroscope-go"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	otelpyroscope "github.com/pyroscope-io/otel-profiling-go"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
-
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
@@ -45,30 +43,21 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	serverAddress := os.Getenv("PYROSCOPE_SERVER_ADDRESS")
-	if serverAddress == "" {
-		serverAddress = "http://localhost:4040"
-	}
-	appName := os.Getenv("PYROSCOPE_APPLICATION_NAME")
-	if appName == "" {
-		appName = "ride-sharing-app"
-	}
+	config := rideshare.ReadConfig()
 
-	tp, _ := setupTracing()
+	tp, _ := setupTracing(config)
 	defer func() {
 		_ = tp.Shutdown(context.Background())
 	}()
 
-	_, err := pyroscope.Start(pyroscope.Config{
-		ApplicationName: appName,
-		ServerAddress:   serverAddress,
-		AuthToken:       os.Getenv("PYROSCOPE_AUTH_TOKEN"),
-		Logger:          pyroscope.StandardLogger,
-		Tags:            map[string]string{"region": os.Getenv("REGION")},
-	})
+	p, err := rideshare.Profiler(config)
+
 	if err != nil {
 		log.Fatalf("error starting pyroscope profiler: %v", err)
 	}
+	defer func() {
+		_ = p.Stop()
+	}()
 
 	http.Handle("/", otelhttp.NewHandler(http.HandlerFunc(index), "IndexHandler"))
 	http.Handle("/bike", otelhttp.NewHandler(http.HandlerFunc(bikeRoute), "BikeHandler"))
@@ -78,8 +67,9 @@ func main() {
 	log.Fatal(http.ListenAndServe(":5000", nil))
 }
 
-func setupTracing() (tp *sdktrace.TracerProvider, err error) {
-	tp, err = tracerProviderDebug()
+func setupTracing(c rideshare.Config) (tp *sdktrace.TracerProvider, err error) {
+	c.AppName = "ride-sharing-app"
+	tp, err = rideshare.TracerProvider(c)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +82,7 @@ func setupTracing() (tp *sdktrace.TracerProvider, err error) {
 		otelpyroscope.WithRootSpanOnly(true),
 		otelpyroscope.WithAddSpanName(true),
 		otelpyroscope.WithPyroscopeURL("http://localhost:4040"),
-		otelpyroscope.WithProfileBaselineLabels(map[string]string{"region": os.Getenv("REGION")}),
+		otelpyroscope.WithProfileBaselineLabels(c.Tags),
 		otelpyroscope.WithProfileBaselineURL(true),
 		otelpyroscope.WithProfileURL(true),
 	))
@@ -104,12 +94,4 @@ func setupTracing() (tp *sdktrace.TracerProvider, err error) {
 	))
 
 	return tp, err
-}
-
-func tracerProviderDebug() (*sdktrace.TracerProvider, error) {
-	exp, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
-	if err != nil {
-		return nil, err
-	}
-	return sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sdktrace.NewSimpleSpanProcessor(exp))), nil
 }
