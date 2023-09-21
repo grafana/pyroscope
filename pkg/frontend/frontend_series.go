@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/grafana/dskit/tenant"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/dskit/tenant"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
