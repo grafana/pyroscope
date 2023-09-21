@@ -46,17 +46,17 @@ func NewIngestHandler(l log.Logger, p ingestion.Ingester) http.Handler {
 }
 
 func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	tenantID, _ := tenant.ExtractTenantIDFromContext(r.Context())
 	input, err := h.ingestInputFromRequest(r)
 	if err != nil {
-		_ = h.log.Log("msg", "bad request", "err", err)
+		_ = h.log.Log("msg", "bad request", "err", err, "orgID", tenantID)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	tenantID, _ := tenant.ExtractTenantIDFromContext(r.Context())
 	err = h.ingester.Ingest(r.Context(), input)
 	if err != nil {
-		_ = h.log.Log("msg", "pyroscope ingest", "err", err, "tenant_id", tenantID)
+		_ = h.log.Log("msg", "pyroscope ingest", "err", err, "orgID", tenantID)
 		var connectErr *connect.Error
 		if ok := errors.As(err, &connectErr); ok {
 			w.WriteHeader(int(connectgrpc.CodeToHTTP(connectErr.Code())))
