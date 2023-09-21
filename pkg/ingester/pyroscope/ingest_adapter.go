@@ -170,7 +170,7 @@ func (p *pyroscopeIngesterAdapter) parseToPprof(ctx context.Context, in *ingesti
 	if len(plainReq.Series) == 0 {
 		tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
 		_ = level.Debug(p.log).Log("msg", "empty profile",
-			"app", in.Metadata.Key.AppName(),
+			"application", in.Metadata.Key.AppName(),
 			"orgID", tenantID)
 		return nil
 	}
