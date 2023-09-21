@@ -400,6 +400,19 @@ tools/monitoring/environments/default/spec.json: $(BIN)/tk $(BIN)/kind
 	echo "import 'monitoring.libsonnet'" > tools/monitoring/environments/default/main.jsonnet
 	$(BIN)/tk env set tools/monitoring/environments/default --server=$(shell $(BIN)/kind get kubeconfig --name pyroscope-dev | grep server: | sed 's/server://g' | xargs) --namespace=monitoring
 
+.PHONY: tools/update_examples
+tools/update_examples:
+	go run tools/update_examples.go
+
+.phony: rideshare/docker/push
+rideshare/docker/push:
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-golang   -t $(IMAGE_PREFIX)pyroscope-rideshare-golang:$(IMAGE_TAG)   examples/golang-push/rideshare
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen  -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen:$(IMAGE_TAG) -f examples/golang-push/rideshare/Dockerfile.load-generator examples/golang-push/rideshare
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-python   -t $(IMAGE_PREFIX)pyroscope-rideshare-python:$(IMAGE_TAG)   examples/python/rideshare/flask
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-ruby     -t $(IMAGE_PREFIX)pyroscope-rideshare-ruby:$(IMAGE_TAG)     examples/ruby/rideshare_rails
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-dotnet   -t $(IMAGE_PREFIX)pyroscope-rideshare-dotnet:$(IMAGE_TAG)   examples/dotnet/rideshare/
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-java     -t $(IMAGE_PREFIX)pyroscope-rideshare-java:$(IMAGE_TAG)     examples/java/rideshare
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-rust     -t $(IMAGE_PREFIX)pyroscope-rideshare-rust:$(IMAGE_TAG)     examples/rust/rideshare
 
 .PHONY: docs/%
 docs/%:

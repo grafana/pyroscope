@@ -301,16 +301,14 @@ func TestHeadFlush(t *testing.T) {
 					},
 				},
 				{
-					RelPath:   "profiles.parquet",
-					SizeBytes: 40728,
+					RelPath: "profiles.parquet",
 					Parquet: &block.ParquetFile{
 						NumRowGroups: 1,
 						NumRows:      11,
 					},
 				},
 				{
-					RelPath:   "symbols/functions.parquet",
-					SizeBytes: 57957,
+					RelPath: "symbols/functions.parquet",
 					Parquet: &block.ParquetFile{
 						NumRowGroups: 2,
 						NumRows:      1423,
@@ -321,16 +319,14 @@ func TestHeadFlush(t *testing.T) {
 					SizeBytes: 308,
 				},
 				{
-					RelPath:   "symbols/locations.parquet",
-					SizeBytes: 107486,
+					RelPath: "symbols/locations.parquet",
 					Parquet: &block.ParquetFile{
 						NumRowGroups: 2,
 						NumRows:      2469,
 					},
 				},
 				{
-					RelPath:   "symbols/mappings.parquet",
-					SizeBytes: 1866,
+					RelPath: "symbols/mappings.parquet",
 					Parquet: &block.ParquetFile{
 						NumRowGroups: 2,
 						NumRows:      3,
@@ -341,8 +337,7 @@ func TestHeadFlush(t *testing.T) {
 					SizeBytes: 60366,
 				},
 				{
-					RelPath:   "symbols/strings.parquet",
-					SizeBytes: 83838,
+					RelPath: "symbols/strings.parquet",
 					Parquet: &block.ParquetFile{
 						NumRowGroups: 2,
 						NumRows:      1723,
@@ -357,6 +352,16 @@ func TestHeadFlush(t *testing.T) {
 			},
 			Version: 3,
 		},
+	}
+
+	// Parquet files are not deterministic, their size can change for the same input so we don't check them.
+	for i := range metas {
+		for j := range metas[i].Files {
+			if metas[i].Files[j].Parquet != nil && metas[i].Files[j].Parquet.NumRows != 0 {
+				require.NotEmpty(t, metas[i].Files[j].SizeBytes)
+				metas[i].Files[j].SizeBytes = 0
+			}
+		}
 	}
 
 	require.Equal(t, expectedMeta, metas)

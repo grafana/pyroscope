@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/util"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -35,7 +36,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-var ringConfig = RingConfig{
+var ringConfig = util.CommonRingConfig{
 	KVStore:      kv.Config{Store: "inmemory"},
 	InstanceID:   "foo",
 	InstancePort: 8080,

@@ -1,4 +1,4 @@
-FROM openjdk:11-slim-bullseye
+FROM openjdk:17-slim-bullseye
 
 WORKDIR /opt/app
 
@@ -18,10 +18,11 @@ ENV PYROSCOPE_APPLICATION_NAME=rideshare.java.push.app
 ENV PYROSCOPE_FORMAT=jfr
 ENV PYROSCOPE_PROFILING_INTERVAL=10ms
 ENV PYROSCOPE_PROFILER_EVENT=itimer
-ENV PYROSCOPE_PROFILER_LOCK=1
-ENV PYROSCOPE_PROFILER_ALLOC=100k
-ENV PYROSCOPE_UPLOAD_INTERVAL=10s
+ENV PYROSCOPE_PROFILER_LOCK=10ms
+ENV PYROSCOPE_PROFILER_ALLOC=512k
+ENV PYROSCOPE_UPLOAD_INTERVAL=15s
 ENV PYROSCOPE_LOG_LEVEL=debug
 ENV PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
+EXPOSE 5000
 
-CMD ["java", "-javaagent:pyroscope.jar", "-jar", "./build/libs/rideshare-1.0-SNAPSHOT.jar"]
+CMD ["java", "-Dserver.port=5000",  "-javaagent:pyroscope.jar", "-jar", "./build/libs/rideshare-1.0-SNAPSHOT.jar" ]
