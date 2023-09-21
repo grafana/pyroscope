@@ -938,6 +938,10 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	return iter.NewMergeIterator(maxBlockProfile, false, iters...), nil
 }
 
+// Series selects the series labels from this block.
+//
+// Note: It will select ALL the labels in the block, not necessarily just the
+// subset in the time range SeriesRequest.Start to SeriesRequest.End.
 func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series Block")
 	defer sp.Finish()
