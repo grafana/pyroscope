@@ -70,7 +70,7 @@ func main() {
 
 ## How to add profiling labels to Golang applications
 
-It is possible to add tags (labels) to the profiling data. These tags can be used to filter the data in the UI. We have a custom API that's in line with our other integrations (e.g [Python]({{< relref "./python" >}}) or [Ruby]({{< relref "./ruby" >}})) as well as go-native pprof api:
+It is possible to add tags (labels) to the profiling data. These tags can be used to filter the data in the UI. We have a custom API that's in line with the go-native pprof api:
 
 ```go
 // these two ways of adding tags are equivalent:
