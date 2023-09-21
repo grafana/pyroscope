@@ -63,7 +63,7 @@ GOOS=linux GOARCH=amd64 make docker-image/pyroscope/build
 
 #### arm64 builds
 ```
-GOOS=linux GOARCH=arm64 make docker-image/pyroscope/build
+make IMAGE_PLATFORM=linux/arm64 GOOS=linux GOARCH=arm64 docker-image/pyroscope/build
 ```
 
 #### Running examples locally
