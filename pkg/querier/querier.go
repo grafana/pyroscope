@@ -209,7 +209,12 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start must be before end"))
 	}
 
-	if q.storeGatewayQuerier == nil {
+	// Some clients may not be sending us timestamps. If start or end are 0,
+	// (presumably empty) then mark this a legacy request. Legacy requests only
+	// query the ingesters.
+	legacyRequest := req.Msg.Start == 0 || req.Msg.End == 0
+
+	if q.storeGatewayQuerier == nil || legacyRequest {
 		responses, err := q.seriesFromIngesters(ctx, &ingestv1.SeriesRequest{
 			Matchers:   req.Msg.Matchers,
 			LabelNames: req.Msg.LabelNames,
