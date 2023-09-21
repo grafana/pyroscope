@@ -16,11 +16,8 @@ import {
 import { fetchDiffView } from './diffView.thunks';
 import { defaultcomparisonPeriod } from '@pyroscope/components/SideTimelineComparator/periods';
 import { fetchApps } from '@pyroscope/services/apps';
-import {
-  getUTCdate,
-  formatAsOBject,
-  toUnixTimestamp,
-} from '@pyroscope/util/formatDate';
+
+
 
 const initialState: ContinuousState = {
   from: 'now-1h',
