@@ -209,9 +209,6 @@ func (b *jfrPprofBuilders) build(event string) *model.PushRequest {
 				Name:  phlaremodel.LabelNameDelta,
 				Value: "false",
 			}, &v1.LabelPair{
-				Name:  "service_name",
-				Value: b.appName,
-			}, &v1.LabelPair{
 				Name:  "jfr_event",
 				Value: event,
 			}, &v1.LabelPair{
@@ -232,6 +229,17 @@ func (b *jfrPprofBuilders) build(event string) *model.PushRequest {
 					Value: vs,
 				})
 			}
+			serviceNameLabelName := "service_name"
+			for _, label := range ls {
+				if label.Name == serviceNameLabelName {
+					serviceNameLabelName = "app_name"
+					break
+				}
+			}
+			ls = append(ls, &v1.LabelPair{
+				Name:  serviceNameLabelName,
+				Value: b.appName,
+			})
 			profiles = append(profiles, &model.ProfileSeries{
 				Labels: ls,
 				Samples: []*model.ProfileSample{
