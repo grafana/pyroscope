@@ -492,7 +492,7 @@ func initLogger(logFormat string, logLevel dslog.Level) log.Logger {
 }
 
 func (f *Phlare) initAPI() (services.Service, error) {
-	a, err := api.New(f.Cfg.API, f.Server, f.grpcGatewayMux, util.Logger)
+	a, err := api.New(f.Cfg.API, f.Server, f.grpcGatewayMux, f.Server.Log)
 	if err != nil {
 		return nil, err
 	}
