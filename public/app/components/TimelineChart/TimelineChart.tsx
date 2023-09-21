@@ -11,6 +11,7 @@ import '@pyroscope/components/TimelineChart/Tooltip.plugin';
 import '@pyroscope/components/TimelineChart/Annotations.plugin';
 import '@pyroscope/components/TimelineChart/ContextMenu.plugin';
 import '@pyroscope/components/TimelineChart/CrosshairSync.plugin';
+import { rangeIsAcceptableForZoom } from './util';
 
 interface TimelineChartProps {
   onSelect: (from: string, until: string) => void;
@@ -24,10 +25,22 @@ class TimelineChart extends ReactFlot<TimelineChartProps> {
 
     // TODO: use ref
     $(`#${this.props.id}`).bind('plotselected', (event, ranges) => {
-      this.props.onSelect(
-        Math.round(ranges.xaxis.from / 1000).toString(),
-        Math.round(ranges.xaxis.to / 1000).toString()
-      );
+      // Before invoking the onselect, we ensure the selection is valid
+
+      const xAxisPixelsInChart = event.currentTarget.clientWidth;
+
+      if (
+        rangeIsAcceptableForZoom(
+          ranges.xaxis,
+          this.props.data,
+          xAxisPixelsInChart
+        )
+      ) {
+        this.props.onSelect(
+          Math.round(ranges.xaxis.from / 1000).toString(),
+          Math.round(ranges.xaxis.to / 1000).toString()
+        );
+      }
     });
   }
 

@@ -125,8 +125,10 @@ func (m *MockPushService) CompareDump(file string) {
 	}
 }
 
-const repoRoot = "../../../"
-const testdataDirJFR = repoRoot + "pkg/og/convert/jfr/testdata"
+const (
+	repoRoot       = "../../../"
+	testdataDirJFR = repoRoot + "pkg/og/convert/jfr/testdata"
+)
 
 func TestIngestJFR(b *testing.T) {
 	testdata := []struct {
@@ -170,12 +172,10 @@ func TestIngestJFR(b *testing.T) {
 			assert.Equal(t, 200, res.Code)
 
 			dst := strings.ReplaceAll(src, ".jfr.gz", ".pprof.json.gz")
-			//svc.DumpTo(dst)
+			// svc.DumpTo(dst)
 			svc.CompareDump(dst)
-
 		})
 	}
-
 }
 
 func TestCorruptedJFR422(t *testing.T) {
@@ -245,7 +245,6 @@ func BenchmarkIngestJFR(b *testing.B) {
 			}
 		})
 	}
-
 }
 
 func TestIngestPPROFFixtures(t *testing.T) {
@@ -353,12 +352,11 @@ func TestIngestPPROFFixtures(t *testing.T) {
 			spyName:      pprof2.SpyNameForFunctionNameRewrite(),
 		},
 
-		//todo add pprof from dotnet
+		// todo add pprof from dotnet
 
 	}
 	for _, testdatum := range testdata {
 		t.Run(testdatum.profile, func(t *testing.T) {
-
 			var (
 				profile, prevProfile, sampleTypeConfig []byte
 				err                                    error
@@ -459,5 +457,4 @@ func createPProfRequest(t *testing.T, profile, prevProfile, sampleTypeConfig []b
 	require.NoError(t, err)
 
 	return b.Bytes(), w.FormDataContentType()
-
 }
