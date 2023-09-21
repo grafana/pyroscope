@@ -87,7 +87,7 @@ func (p *RawProfile) isDotnetspy(md ingestion.Metadata) bool {
 		return true
 	}
 	stc := p.getSampleTypes()
-	return stc != nil && stc["inuse-space"] != nil
+	return md.SpyName == "" && stc != nil && stc["inuse-space"] != nil
 }
 
 func fixTime(profile *pprof.Profile, md ingestion.Metadata) {
