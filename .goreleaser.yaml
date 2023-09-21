@@ -142,6 +142,25 @@ docker_manifests:
       - grafana/{{ .ProjectName }}:latest-arm64v8
       - grafana/{{ .ProjectName }}:latest-armv6
       - grafana/{{ .ProjectName }}:latest-armv7
+nfpms:
+  - id: pyroscope
+    formats:
+      - deb
+      - rpm
+    section: default
+    maintainer: Grafana Labs <support@grafana.com>
+    vendor: Grafana Labs Inc
+    homepage: https://grafana.com/pyroscope
+    license: AGPL-3.0
+    contents:
+      - src: ./tools/packaging/pyroscope.service
+        dst: /etc/systemd/system/pyroscope.service
+      - src: ./cmd/pyroscope/pyroscope.yaml
+        dst: /etc/pyroscope/config.yml
+        type: config|noreplace
+    scripts:
+      postinstall: ./tools/packaging/postinstall.sh
+
 archives:
   - id: pyroscope
     builds:
