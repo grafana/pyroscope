@@ -946,7 +946,6 @@ func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.Series
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series Block")
 	defer sp.Finish()
 
-	// TODO(bryan) do we need to close this?
 	err := b.Open(ctx)
 	if err != nil {
 		return nil, err

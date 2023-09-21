@@ -54,7 +54,6 @@ func (s *StoreGateway) Series(ctx context.Context, req *connect.Request[ingestv1
 		return nil
 	})
 	if err != nil {
-		// TODO(bryan) do we need a better error?
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
