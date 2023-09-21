@@ -82,7 +82,9 @@ function removeDuplicateApps(app: App[]) {
   });
 }
 
-export async function fetchApps(): Promise<Result<App[], RequestError | ZodError>> {
+export async function fetchApps(): Promise<
+  Result<App[], RequestError | ZodError>
+> {
   let response = await requestWithOrgID('/querier.v1.QuerierService/Series', {
     method: 'POST',
     body: JSON.stringify({
