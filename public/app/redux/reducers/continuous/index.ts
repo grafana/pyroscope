@@ -80,20 +80,8 @@ const initialState: ContinuousState = {
 export const reloadAppNames = createAsyncThunk(
   'names/reloadAppNames',
   async (_, thunkAPI) => {
-    const start = getUTCdate(
-      formatAsOBject(thunkAPI.getState()['continuous'].from),
-      0
-    );
-    const end = getUTCdate(
-      formatAsOBject(thunkAPI.getState()['continuous'].until),
-      0
-    );
-
-    const startMs = toUnixTimestamp(start) * 1000;
-    const endMs = toUnixTimestamp(end) * 1000;
-
     // TODO, retries?
-    const res = await fetchApps(startMs, endMs);
+    const res = await fetchApps();
 
     if (res.isOk) {
       return Promise.resolve(res.value);

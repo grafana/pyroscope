@@ -88,8 +88,7 @@ export const reloadUsers = createAsyncThunk(
 export const reloadApps = createAsyncThunk(
   'newRoot/reloadApps',
   async (_, thunkAPI) => {
-    // TODO(bryan) figure out where to get start/end timestamps.
-    const res = await fetchApps(0, 0);
+    const res = await fetchApps();
 
     if (res.isOk) {
       return Promise.resolve(res.value);
