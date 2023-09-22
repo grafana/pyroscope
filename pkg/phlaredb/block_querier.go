@@ -796,7 +796,6 @@ func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockG
 		return nil, err
 	}
 
-	// TODO(bryan) dedupe here?
 	return &ingestv1.SeriesResponse{LabelsSet: labelsSet}, nil
 }
 
@@ -950,8 +949,7 @@ func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.Series
 	if err != nil {
 		return nil, err
 	}
-
-	names, err := b.index.LabelNames(nil)
+	names, err := b.index.LabelNames()
 	if err != nil {
 		return nil, err
 	}
@@ -971,19 +969,6 @@ func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.Series
 		if !ok {
 			return false
 		}
-
-		if selectors.matchesAll() {
-			return true
-		}
-
-		for _, selector := range selectors {
-			for _, matcher := range selector {
-				if !matcher.Matches(name) {
-					return false
-				}
-			}
-		}
-
 		return true
 	})
 
@@ -1005,6 +990,22 @@ func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.Series
 				Value: value,
 			})
 		}
+
+		labels.Labels = lo.Filter(labels.Labels, func(label *typesv1.LabelPair, _ int) bool {
+			if selectors.matchesAll() {
+				return true
+			}
+
+			for _, selector := range selectors {
+				for _, matcher := range selector {
+					if !matcher.Matches(label.Value) {
+						return false
+					}
+				}
+			}
+			return true
+		})
+
 		labelsSet = append(labelsSet, labels)
 	}
 	return labelsSet, nil

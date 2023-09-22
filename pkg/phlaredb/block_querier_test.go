@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/oklog/ulid"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 )
 
 func TestQuerierBlockEviction(t *testing.T) {
@@ -174,4 +176,127 @@ func TestSelectMatchingProfilesCleanUp(t *testing.T) {
 		&fakeQuerier{doErr: true},
 	})
 	require.Error(t, err)
+}
+
+func TestSeries(t *testing.T) {
+	ctx := context.Background()
+	reader, err := index.NewFileReader("testdata/01HA2V3CPSZ9E0HMQNNHH89WSS/index.tsdb")
+	assert.NoError(t, err)
+
+	q := &singleBlockQuerier{
+		metrics: newBlocksMetrics(nil),
+		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
+		opened:  true, // Skip trying to open the block.
+		index:   reader,
+	}
+
+	t.Run("get all names", func(t *testing.T) {
+		want := []string{
+			"__delta__",
+			"__name__",
+			"__period_type__",
+			"__period_unit__",
+			"__profile_type__",
+			"__service_name__",
+			"__type__",
+			"__unit__",
+			"foo",
+			"function",
+			"pyroscope_spy",
+			"service_name",
+			"target",
+			"version",
+		}
+		got, err := q.index.LabelNames()
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("get label", func(t *testing.T) {
+		want := []*typesv1.Labels{
+			{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "block"},
+					{Name: "__name__", Value: "goroutine"},
+					{Name: "__name__", Value: "memory"},
+					{Name: "__name__", Value: "mutex"},
+					{Name: "__name__", Value: "process_cpu"},
+				},
+			},
+		}
+		got, err := q.Series(ctx, &ingestv1.SeriesRequest{
+			LabelNames: []string{"__name__"},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("get label with matcher", func(t *testing.T) {
+		want := []*typesv1.Labels{
+			{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "block"},
+				},
+			},
+		}
+		got, err := q.Series(ctx, &ingestv1.SeriesRequest{
+			Matchers:   []string{`{__name__="block"}`},
+			LabelNames: []string{"__name__"},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("get multiple labels", func(t *testing.T) {
+		want := []*typesv1.Labels{
+			{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "block"},
+					{Name: "__name__", Value: "goroutine"},
+					{Name: "__name__", Value: "memory"},
+					{Name: "__name__", Value: "mutex"},
+					{Name: "__name__", Value: "process_cpu"},
+				},
+			},
+			{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__type__", Value: "alloc_objects"},
+					{Name: "__type__", Value: "alloc_space"},
+					{Name: "__type__", Value: "contentions"},
+					{Name: "__type__", Value: "cpu"},
+					{Name: "__type__", Value: "delay"},
+					{Name: "__type__", Value: "goroutines"},
+					{Name: "__type__", Value: "inuse_objects"},
+					{Name: "__type__", Value: "inuse_space"},
+				},
+			},
+		}
+		got, err := q.Series(ctx, &ingestv1.SeriesRequest{
+			LabelNames: []string{"__name__", "__type__"},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("get multiple labels with matcher", func(t *testing.T) {
+		t.Skip()
+		want := []*typesv1.Labels{
+			{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__name__", Value: "memory"},
+				},
+			},
+			{
+				Labels: []*typesv1.LabelPair{
+					{Name: "__type__", Value: "alloc_objects"},
+				},
+			},
+		}
+		got, err := q.Series(ctx, &ingestv1.SeriesRequest{
+			Matchers:   []string{`{__name__="memory",__type="alloc_objects"}`},
+			LabelNames: []string{"__name__", "__type__"},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
 }
