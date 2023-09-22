@@ -2,7 +2,7 @@
 description: Learn how to get started with Pyroscope using the Helm chart.
 menuTitle: Deploy with Helm
 title: Deploy Pyroscope using the Helm chart
-weight: 60
+weight: 50
 ---
 
 # Deploy Pyroscope using the Helm chart
