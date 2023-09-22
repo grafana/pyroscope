@@ -9,8 +9,8 @@ weight: 20
 
 You can deploy Pyroscope in one of two modes:
 
-- Monolithic mode
-- Microservices mode
+- Monolithic mode: In this mode all components run in a single process and multiple instances will not share information with each other
+- Microservices mode: In this mode in this mode as you scale out the number of instances, they will share a singular backend for storage and querying
 
 The deployment mode is determined by the `-target` parameter, which you can set via CLI flag or YAML configuration.
 
