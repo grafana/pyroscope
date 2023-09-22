@@ -35,11 +35,17 @@ const (
 func newJfrPprofBuilders(p *parser.Parser, jfrLabels *LabelsSnapshot, piOriginal *storage.PutInput) *jfrPprofBuilders {
 	st := piOriginal.StartTime.UnixNano()
 	et := piOriginal.EndTime.UnixNano()
+	var period int64
+	if piOriginal.SampleRate == 0 {
+		period = 0
+	} else {
+		period = 1e9 / int64(piOriginal.SampleRate)
+	}
 	res := &jfrPprofBuilders{
 		timeNanos:     st,
 		durationNanos: et - st,
 		labels:        make([]*v1.LabelPair, 0, len(piOriginal.Key.Labels())+5),
-		period:        1e9 / int64(piOriginal.SampleRate),
+		period:        period,
 		appName:       piOriginal.Key.AppName(),
 		spyName:       piOriginal.SpyName,
 
@@ -203,9 +209,6 @@ func (b *jfrPprofBuilders) build(event string) *model.PushRequest {
 				Name:  phlaremodel.LabelNameDelta,
 				Value: "false",
 			}, &v1.LabelPair{
-				Name:  "service_name",
-				Value: b.appName,
-			}, &v1.LabelPair{
 				Name:  "jfr_event",
 				Value: event,
 			}, &v1.LabelPair{
@@ -226,6 +229,17 @@ func (b *jfrPprofBuilders) build(event string) *model.PushRequest {
 					Value: vs,
 				})
 			}
+			serviceNameLabelName := "service_name"
+			for _, label := range ls {
+				if label.Name == serviceNameLabelName {
+					serviceNameLabelName = "app_name"
+					break
+				}
+			}
+			ls = append(ls, &v1.LabelPair{
+				Name:  serviceNameLabelName,
+				Value: b.appName,
+			})
 			profiles = append(profiles, &model.ProfileSeries{
 				Labels: ls,
 				Samples: []*model.ProfileSample{
