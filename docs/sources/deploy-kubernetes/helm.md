@@ -52,7 +52,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
 
 1. Install Pyroscope using the Helm chart using one of the following options:
 
-   - Option A: Install Pyroscope as single binary -- in this mode instances operate independently and do not share information with each other
+   - Option A: Install Pyroscope as single binary -- this mode is meant to be used when you _only need one pyroscope instance_ as multiple instances will not share information with each other
 
    ```bash
    helm -n pyroscope-test install pyroscope grafana/pyroscope
