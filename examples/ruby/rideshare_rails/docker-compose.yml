@@ -7,7 +7,7 @@ services:
 
   us-east:
     ports:
-      - 3000
+      - 5000
     environment:
       - REGION=us-east
     build:
@@ -17,7 +17,7 @@ services:
 
   eu-north:
     ports:
-      - 3000
+      - 5000
     environment:
       - REGION=eu-north
     build:
@@ -25,7 +25,7 @@ services:
 
   ap-south:
     ports:
-      - 3000
+      - 5000
     environment:
       - REGION=ap-south
     build:

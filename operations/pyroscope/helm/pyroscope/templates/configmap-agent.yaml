@@ -3,6 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ .Values.agent.agent.configMap.name }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "pyroscope.labels" . | nindent 4 }}
 data:
@@ -64,7 +65,7 @@ data:
     		target_label  = "container"
     	}
     }
-  {{- $profileTypes := list "memory" "cpu" "goroutine" "block" "mutex"  }}
+  {{- $profileTypes := list "memory" "cpu" "goroutine" "block" "mutex" "fgprof" }}
   {{- range $profileTypes }}
 
     discovery.relabel "kubernetes_pods_{{.}}_default_name" {
@@ -167,7 +168,7 @@ data:
     		profile.{{if eq . "cpu"}}process_cpu{{else}}{{.}}{{end}} {
     			enabled = {{if eq . $currentType}}true{{else}}false{{end}}
     		}
-        {{- if ne . "mutex" }}{{ printf "\n" }}{{ end }}
+        {{- if ne . (last $profileTypes) }}{{ printf "\n" }}{{ end }}
         {{- end }}
     	}
     }

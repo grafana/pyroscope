@@ -2,7 +2,6 @@ package frontend
 
 import (
 	"context"
-	"net/http"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -32,18 +31,16 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeStacktracesProcedure)
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {
-		return nil, connect.NewError(http.StatusBadRequest, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, model.Interval{Start: model.Time(c.Msg.Start), End: model.Time(c.Msg.End)}, model.Now())
 	if err != nil {
-		return nil, connect.NewError(http.StatusBadRequest, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if validated.IsEmpty {
 		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{}), nil
 	}
-	c.Msg.Start = int64(validated.Start)
-	c.Msg.End = int64(validated.End)
 
 	g, ctx := errgroup.WithContext(ctx)
 	if maxConcurrent := validationutil.SmallestPositiveNonZeroIntPerTenant(tenantIDs, f.limits.MaxQueryParallelism); maxConcurrent > 0 {
@@ -52,7 +49,7 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 
 	m := phlaremodel.NewFlameGraphMerger()
 	interval := validationutil.MaxDurationOrZeroPerTenant(tenantIDs, f.limits.QuerySplitDuration)
-	intervals := NewTimeIntervalIterator(time.UnixMilli(c.Msg.Start), time.UnixMilli(c.Msg.End), interval)
+	intervals := NewTimeIntervalIterator(time.UnixMilli(int64(validated.Start)), time.UnixMilli(int64(validated.End)), interval)
 
 	for intervals.Next() {
 		r := intervals.At()

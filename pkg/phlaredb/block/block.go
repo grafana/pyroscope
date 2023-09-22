@@ -52,7 +52,7 @@ func DownloadMeta(ctx context.Context, logger log.Logger, bkt objstore.Bucket, i
 	return m, nil
 }
 
-// Download downloads directory that is meant to be block directory. If a block file exists locally we won't download it. However we always re-download the meta file.
+// Download downloads directory that is meant to be block directory.
 func Download(ctx context.Context, logger log.Logger, bucket objstore.Bucket, id ulid.ULID, dst string, options ...objstore.DownloadOption) error {
 	if err := os.MkdirAll(dst, 0o750); err != nil {
 		return errors.Wrap(err, "create dir")
