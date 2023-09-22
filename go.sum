@@ -807,8 +807,8 @@ github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91 h1:/NipyHnOmv
 github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91/go.mod h1:MS2lj3INKhZjWNqd3N0m3J+Jxf3DAOnAH9VT3Sh9MUE=
 github.com/grafana/objstore v0.0.0-20230727114110-2394c72a3ec7 h1:UrHG0C+TawTkMxaONRYUdtaM2fzBsvzkdbrTt2cXCQM=
 github.com/grafana/objstore v0.0.0-20230727114110-2394c72a3ec7/go.mod h1:IS7Z25+0KaknyU2P5PTP/5hwY6Yr/FzbInF88Yd5auU=
-github.com/grafana/pyroscope-go v1.0.2 h1:dEFgO9VbhYTwuwpCC5coTpuW0JjISEWDZtvRAW9v5Tw=
-github.com/grafana/pyroscope-go v1.0.2/go.mod h1:bShDKsVZdzxq+Ol6no0JKigU9y5FTWUcFditMXaH09o=
+github.com/grafana/pyroscope-go v1.0.3 h1:8WWmItzLfg4m8G+j//ElSjMeMr88Y6Lvblar6qeTyKk=
+github.com/grafana/pyroscope-go v1.0.3/go.mod h1:0d7ftwSMBV/Awm7CCiYmHQEG8Y44Ma3YSjt+nWcWztY=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.4 h1:mDsJ3ngul7UfrHibGQpV66PbZ3q1T8glz/tK3bQKKEk=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.4/go.mod h1:1HSPtjU8vLG0jE9JrTdzjgFqdJ/VgN7fvxBNq3luJko=
 github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db h1:7aN5cccjIqCLTzedH7MZzRZt5/lsAHch6Z3L2ZGn5FA=

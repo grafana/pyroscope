@@ -27,7 +27,7 @@ require (
 	github.com/grafana/agent v0.35.4
 	github.com/grafana/dskit v0.0.0-20230817134647-90d7ee0bed7c
 	github.com/grafana/jfr-parser v0.7.2-0.20230831140626-08fa3a941bf8
-	github.com/grafana/pyroscope-go v1.0.2
+	github.com/grafana/pyroscope-go v1.0.3
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.4
 	github.com/grafana/pyroscope/api v0.0.0-00010101000000-000000000000
 	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
