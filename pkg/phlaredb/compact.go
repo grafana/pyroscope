@@ -74,6 +74,9 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount ui
 	for i := range writers {
 		meta := outMeta.Clone()
 		meta.ULID = ulid.MustNew(outBlocksTime, rand.Reader)
+		if shardsCount > 1 {
+			meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(i), shardsCount)
+		}
 		writers[i], err = newBlockWriter(dst, meta)
 		if err != nil {
 			return nil, fmt.Errorf("create block writer: %w", err)
@@ -107,11 +110,8 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount ui
 	}
 
 	out := make([]block.Meta, 0, len(writers))
-	for shard, w := range writers {
+	for _, w := range writers {
 		if w.meta.Stats.NumSamples > 0 {
-			if shardsCount > 1 {
-				w.meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(shard), shardsCount)
-			}
 			out = append(out, *w.meta)
 		}
 	}
