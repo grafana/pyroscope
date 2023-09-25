@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/promql/parser"
+	"github.com/prometheus/prometheus/storage"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
@@ -949,66 +950,76 @@ func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.Series
 	if err != nil {
 		return nil, err
 	}
-	names, err := b.index.LabelNames()
-	if err != nil {
-		return nil, err
-	}
 
 	selectors, err := parseSelectors(params.Matchers)
 	if err != nil {
 		return nil, err
 	}
 
-	labelNameMap := make(map[string]struct{}, len(params.LabelNames))
-	for _, name := range params.LabelNames {
-		labelNameMap[name] = struct{}{}
+	names, err := b.index.LabelNames()
+	if err != nil {
+		return nil, err
 	}
 
-	names = lo.Filter(names, func(name string, index int) bool {
-		_, ok := labelNameMap[name]
-		if !ok {
-			return false
-		}
-		return true
+	labelNamesFilter := make(map[string]struct{}, len(params.LabelNames))
+	for _, n := range params.LabelNames {
+		labelNamesFilter[n] = struct{}{}
+	}
+	names = lo.Filter(names, func(name string, _ int) bool {
+		_, ok := labelNamesFilter[name]
+		return ok
 	})
 
-	labelsSet := make([]*typesv1.Labels, 0, len(names))
-	for _, name := range names {
-		values, err := b.index.LabelValues(name)
-		if err != nil {
-			// TODO(bryan) we probably can keep going even if we get an error.
-			// We may get some results back.
-			return nil, err
-		}
+	var postingsIters []iter.SeekIterator[storage.SeriesRef, storage.SeriesRef]
+	if selectors.matchesAll() {
+		for _, name := range names {
+			values, err := b.index.LabelValues(name)
+			if err != nil {
+				return nil, err
+			}
 
-		labels := &typesv1.Labels{
-			Labels: make([]*typesv1.LabelPair, 0, len(values)),
+			iter, err := b.index.Postings(name, nil, values...)
+			if err != nil {
+				return nil, err
+			}
+			postingsIters = append(postingsIters, iter)
 		}
-		for _, value := range values {
-			labels.Labels = append(labels.Labels, &typesv1.LabelPair{
-				Name:  name,
-				Value: value,
+	} else {
+		for _, matchers := range selectors {
+			iter, err := PostingsForMatchers(b.index, nil, matchers...)
+			if err != nil {
+				return nil, err
+			}
+			postingsIters = append(postingsIters, iter)
+		}
+	}
+
+	var labelsSets []*typesv1.Labels
+	fingerprints := make(map[uint64]struct{})
+	for _, postings := range postingsIters {
+		for postings.Next() {
+			labels := phlaremodel.Labels{}
+			chunks := []index.ChunkMeta{} // Ignored.
+			_, err = b.index.Series(postings.At(), &labels, &chunks)
+			if err != nil {
+				return nil, err
+			}
+
+			matchedLabels := labels.WithLabels(names...)
+			fp := matchedLabels.Hash()
+			_, ok := fingerprints[fp]
+			if ok {
+				continue
+			}
+			fingerprints[fp] = struct{}{}
+
+			labelsSets = append(labelsSets, &typesv1.Labels{
+				Labels: matchedLabels,
 			})
 		}
-
-		labels.Labels = lo.Filter(labels.Labels, func(label *typesv1.LabelPair, _ int) bool {
-			if selectors.matchesAll() {
-				return true
-			}
-
-			for _, selector := range selectors {
-				for _, matcher := range selector {
-					if !matcher.Matches(label.Value) {
-						return false
-					}
-				}
-			}
-			return true
-		})
-
-		labelsSet = append(labelsSet, labels)
 	}
-	return labelsSet, nil
+
+	return labelsSets, nil
 }
 
 func (b *singleBlockQuerier) Sort(in []Profile) []Profile {

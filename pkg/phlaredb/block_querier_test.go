@@ -214,88 +214,110 @@ func TestSeries(t *testing.T) {
 
 	t.Run("get label", func(t *testing.T) {
 		want := []*typesv1.Labels{
-			{
-				Labels: []*typesv1.LabelPair{
-					{Name: "__name__", Value: "block"},
-					{Name: "__name__", Value: "goroutine"},
-					{Name: "__name__", Value: "memory"},
-					{Name: "__name__", Value: "mutex"},
-					{Name: "__name__", Value: "process_cpu"},
-				},
-			},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "block"},
+			}},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "goroutine"},
+			}},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "memory"},
+			}},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "mutex"},
+			}},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "process_cpu"},
+			}},
 		}
 		got, err := q.Series(ctx, &ingestv1.SeriesRequest{
-			LabelNames: []string{"__name__"},
+			LabelNames: []string{
+				"__name__",
+			},
 		})
+
 		assert.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
 
 	t.Run("get label with matcher", func(t *testing.T) {
 		want := []*typesv1.Labels{
-			{
-				Labels: []*typesv1.LabelPair{
-					{Name: "__name__", Value: "block"},
-				},
-			},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "block"},
+			}},
 		}
 		got, err := q.Series(ctx, &ingestv1.SeriesRequest{
 			Matchers:   []string{`{__name__="block"}`},
 			LabelNames: []string{"__name__"},
 		})
+
 		assert.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
 
 	t.Run("get multiple labels", func(t *testing.T) {
 		want := []*typesv1.Labels{
-			{
-				Labels: []*typesv1.LabelPair{
-					{Name: "__name__", Value: "block"},
-					{Name: "__name__", Value: "goroutine"},
-					{Name: "__name__", Value: "memory"},
-					{Name: "__name__", Value: "mutex"},
-					{Name: "__name__", Value: "process_cpu"},
-				},
-			},
-			{
-				Labels: []*typesv1.LabelPair{
-					{Name: "__type__", Value: "alloc_objects"},
-					{Name: "__type__", Value: "alloc_space"},
-					{Name: "__type__", Value: "contentions"},
-					{Name: "__type__", Value: "cpu"},
-					{Name: "__type__", Value: "delay"},
-					{Name: "__type__", Value: "goroutines"},
-					{Name: "__type__", Value: "inuse_objects"},
-					{Name: "__type__", Value: "inuse_space"},
-				},
-			},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "block"},
+				{Name: "__type__", Value: "contentions"},
+			}},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "block"},
+				{Name: "__type__", Value: "delay"},
+			}},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "goroutine"},
+				{Name: "__type__", Value: "goroutines"},
+			}},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "memory"},
+				{Name: "__type__", Value: "alloc_objects"},
+			}},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "memory"},
+				{Name: "__type__", Value: "alloc_space"},
+			}},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "memory"},
+				{Name: "__type__", Value: "inuse_objects"},
+			}},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "memory"},
+				{Name: "__type__", Value: "inuse_space"},
+			}},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "mutex"},
+				{Name: "__type__", Value: "contentions"},
+			}},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "mutex"},
+				{Name: "__type__", Value: "delay"},
+			}},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "process_cpu"},
+				{Name: "__type__", Value: "cpu"},
+			}},
 		}
 		got, err := q.Series(ctx, &ingestv1.SeriesRequest{
 			LabelNames: []string{"__name__", "__type__"},
 		})
+
 		assert.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
 
 	t.Run("get multiple labels with matcher", func(t *testing.T) {
-		t.Skip()
 		want := []*typesv1.Labels{
-			{
-				Labels: []*typesv1.LabelPair{
-					{Name: "__name__", Value: "memory"},
-				},
-			},
-			{
-				Labels: []*typesv1.LabelPair{
-					{Name: "__type__", Value: "alloc_objects"},
-				},
-			},
+			{Labels: []*typesv1.LabelPair{
+				{Name: "__name__", Value: "memory"},
+				{Name: "__type__", Value: "alloc_objects"},
+			}},
 		}
 		got, err := q.Series(ctx, &ingestv1.SeriesRequest{
-			Matchers:   []string{`{__name__="memory",__type="alloc_objects"}`},
+			Matchers:   []string{`{__name__="memory",__type__="alloc_objects"}`},
 			LabelNames: []string{"__name__", "__type__"},
 		})
+
 		assert.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
