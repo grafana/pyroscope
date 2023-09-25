@@ -188,64 +188,91 @@ func TestBuckets(t *testing.T) {
 }
 
 func Test_Limits(t *testing.T) {
-	mux := http.NewServeMux()
-	ing := newFakeIngester(t, false)
-	d, err := New(Config{
-		DistributorRing: ringConfig,
-	}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "foo"},
-	}, 3), func(addr string) (client.PoolClient, error) {
-		return ing, nil
-	}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	type testCase struct {
+		description  string
+		pushReq      *pushv1.PushRequest
+		overrides    *validation.Overrides
+		expectedCode connect.Code
+	}
 
-	require.NoError(t, err)
-	mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
-	s := httptest.NewServer(mux)
-	defer s.Close()
-
-	client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, connect.WithInterceptors(tenant.NewAuthInterceptor(true)))
-
-	t.Run("rate_limit", func(t *testing.T) {
-		resp, err := client.Push(tenant.InjectTenantID(context.Background(), "user-1"), connect.NewRequest(&pushv1.PushRequest{
-			Series: []*pushv1.RawProfileSeries{
-				{
-					Labels: []*typesv1.LabelPair{
-						{Name: "cluster", Value: "us-central1"},
-						{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
-						{Name: "__name__", Value: "cpu"},
-					},
-					Samples: []*pushv1.RawSample{
-						{
-							RawProfile: testProfile(t),
+	testCases := []testCase{
+		{
+			description: "rate_limit",
+			pushReq: &pushv1.PushRequest{
+				Series: []*pushv1.RawProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "cluster", Value: "us-central1"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+							{Name: "__name__", Value: "cpu"},
+						},
+						Samples: []*pushv1.RawSample{
+							{
+								RawProfile: testProfile(t),
+							},
 						},
 					},
 				},
 			},
-		}))
-		require.Error(t, err)
-		require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
-		require.Nil(t, resp)
-	})
-	t.Run("label limit", func(t *testing.T) {
-		resp, err := client.Push(tenant.InjectTenantID(context.Background(), "user-1"), connect.NewRequest(&pushv1.PushRequest{
-			Series: []*pushv1.RawProfileSeries{
-				{
-					Labels: []*typesv1.LabelPair{
-						{Name: "clusterdddwqdqdqdqdqdqw", Value: "us-central1"},
-						{Name: "__name__", Value: "cpu"},
-					},
-					Samples: []*pushv1.RawSample{
-						{
-							RawProfile: testProfile(t),
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionRateMB = 0.0150
+				l.IngestionBurstSizeMB = 0.0015
+				tenantLimits["user-1"] = l
+			}),
+			expectedCode: connect.CodeResourceExhausted,
+		},
+		{
+			description: "labels_limit",
+			pushReq: &pushv1.PushRequest{
+				Series: []*pushv1.RawProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "clusterdddwqdqdqdqdqdqw", Value: "us-central1"},
+							{Name: "__name__", Value: "cpu"},
+						},
+						Samples: []*pushv1.RawSample{
+							{
+								RawProfile: testProfile(t),
+							},
 						},
 					},
 				},
 			},
-		}))
-		require.Error(t, err)
-		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-		require.Nil(t, resp)
-	})
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.MaxLabelNameLength = 12
+				tenantLimits["user-1"] = l
+			}),
+			expectedCode: connect.CodeInvalidArgument,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.description, func(t *testing.T) {
+			mux := http.NewServeMux()
+			ing := newFakeIngester(t, false)
+			d, err := New(Config{
+				DistributorRing: ringConfig,
+			}, testhelper.NewMockRing([]ring.InstanceDesc{
+				{Addr: "foo"},
+			}, 3), func(addr string) (client.PoolClient, error) {
+				return ing, nil
+			}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout))
+
+			require.NoError(t, err)
+			mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
+			s := httptest.NewServer(mux)
+			defer s.Close()
+
+			client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, connect.WithInterceptors(tenant.NewAuthInterceptor(true)))
+			resp, err := client.Push(tenant.InjectTenantID(context.Background(), "user-1"), connect.NewRequest(tc.pushReq))
+			require.Error(t, err)
+			require.Equal(t, tc.expectedCode, connect.CodeOf(err))
+			require.Nil(t, resp)
+		})
+	}
 }
 
 func TestBadPushRequest(t *testing.T) {
