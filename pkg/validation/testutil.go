@@ -11,6 +11,9 @@ type MockLimits struct {
 	MaxLabelValueLengthValue    int
 	MaxLabelNamesPerSeriesValue int
 
+	RejectOlderThanValue time.Duration
+	RejectNewerThanValue time.Duration
+
 	MaxProfileSizeBytesValue              int
 	MaxProfileStacktraceSamplesValue      int
 	MaxProfileStacktraceDepthValue        int
@@ -40,4 +43,12 @@ func (m MockLimits) MaxProfileStacktraceSampleLabels(userID string) int {
 
 func (m MockLimits) MaxProfileSymbolValueLength(userID string) int {
 	return m.MaxProfileSymbolValueLengthValue
+}
+
+func (m MockLimits) RejectOlderThan(userID string) time.Duration {
+	return m.RejectOlderThanValue
+}
+
+func (m MockLimits) RejectNewerThan(userID string) time.Duration {
+	return m.RejectNewerThanValue
 }

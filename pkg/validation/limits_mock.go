@@ -45,6 +45,8 @@ func MockOverrides(customize func(defaults *Limits, tenantLimits map[string]*Lim
 func MockDefaultLimits() *Limits {
 	defaults := Limits{}
 	flagext.DefaultValues(&defaults)
+	defaults.RejectNewerThan = 0
+	defaults.RejectOlderThan = 0
 	return &defaults
 }
 
