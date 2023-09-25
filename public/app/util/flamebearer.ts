@@ -47,7 +47,7 @@ function getNodes(level: number[], names: string[], diff: boolean) {
   return nodes;
 }
 
-export function flamebearerToDataFrameDTO(levels: number[][], names: string[], diff: boolean) {
+export function flamebearerToDataFrameDTO(levels: number[][], names: string[], unit: string, diff: boolean) {
   const nodeLevels: any[][] = [];
   for (let i = 0; i < levels.length; i++) {
     nodeLevels[i] = [];
@@ -104,18 +104,32 @@ export function flamebearerToDataFrameDTO(levels: number[][], names: string[], d
     stack.unshift(...node.children);
   }
 
+  let valueUnit = 'short';
+
+  // See format.ts#getFormatter. We have to use Grafana unit string here though.
+  switch (unit) {
+    case 'samples':
+    case 'trace_samples':
+    case 'lock_nanoseconds':
+      valueUnit = 'ns';
+      break;
+    case 'bytes':
+      valueUnit = 'bytes';
+      break;
+  }
+
   const fields = [
     { name: 'level', values: levelValues },
     { name: 'label', values: labelValues, type: FieldType.string },
-    { name: 'self', values: selfValues },
-    { name: 'value', values: valueValues },
+    { name: 'self', values: selfValues, config: { unit: valueUnit } },
+    { name: 'value', values: valueValues, config: { unit: valueUnit } },
   ];
 
   if (diff) {
     fields.push(
       ...[
-        { name: 'selfRight', values: selfRightValues },
-        { name: 'valueRight', values: valueRightValues },
+        { name: 'selfRight', values: selfRightValues, config: { unit: valueUnit } },
+        { name: 'valueRight', values: valueRightValues, config: { unit: valueUnit } },
       ]
     );
   }

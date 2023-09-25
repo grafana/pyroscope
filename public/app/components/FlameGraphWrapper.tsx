@@ -35,6 +35,7 @@ export function FlameGraphWrapper(props: Props) {
       ? flamebearerToDataFrameDTO(
           props.profile.flamebearer.levels,
           props.profile.flamebearer.names,
+          props.profile.metadata.units,
           Boolean(props.diff)
         )
       : undefined;
