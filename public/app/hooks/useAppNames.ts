@@ -23,7 +23,9 @@ export function useSelectFirstApp() {
         // Select a reasonable default app automatically if there is no query selected
 
         // First, find a `cpu` type
-        const cpuApp = apps.find((app)=>app.__profile_type__.split(":")[1] === 'cpu')
+        const cpuApp = apps.find(
+          (app) => app.__profile_type__.split(':')[1] === 'cpu'
+        );
 
         // If we can't find a `cpu` type, just choose the top of the list
         const app = cpuApp ? cpuApp : apps[0];
