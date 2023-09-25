@@ -45,10 +45,12 @@ func (m *MockPushService) PushParsed(ctx context.Context, req *model.PushRequest
 	if m.Keep {
 		for _, series := range req.Series {
 			for _, sample := range series.Samples {
+				rawProfileCopy := make([]byte, len(sample.RawProfile))
+				copy(rawProfileCopy, sample.RawProfile)
 				m.reqPprof = append(m.reqPprof, &flatProfileSeries{
 					Labels:     series.Labels,
-					Profile:    sample.Profile.Profile,
-					RawProfile: sample.RawProfile,
+					Profile:    sample.Profile.Profile.CloneVT(),
+					RawProfile: rawProfileCopy,
 				})
 			}
 		}
@@ -74,7 +76,7 @@ func (m *MockPushService) Push(ctx context.Context, req *connect.Request[pushv1.
 			}
 			m.reqPprof = append(m.reqPprof, &flatProfileSeries{
 				Labels:  series.Labels,
-				Profile: p.Profile,
+				Profile: p.Profile.CloneVT(),
 			})
 		}
 	}
