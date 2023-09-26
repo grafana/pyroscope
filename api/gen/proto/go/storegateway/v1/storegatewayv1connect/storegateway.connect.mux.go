@@ -34,4 +34,9 @@ func RegisterStoreGatewayServiceHandler(mux *mux.Router, svc StoreGatewayService
 		svc.MergeProfilesPprof,
 		opts...,
 	))
+	mux.Handle("/storegateway.v1.StoreGatewayService/MergeSpanProfile", connect_go.NewBidiStreamHandler(
+		"/storegateway.v1.StoreGatewayService/MergeSpanProfile",
+		svc.MergeSpanProfile,
+		opts...,
+	))
 }

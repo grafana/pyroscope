@@ -54,3 +54,9 @@ func (i *Ingester) MergeProfilesPprof(ctx context.Context, stream *connect.BidiS
 		return instance.MergeProfilesPprof(ctx, stream)
 	})
 }
+
+func (i *Ingester) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
+	return i.forInstance(ctx, func(instance *instance) error {
+		return instance.MergeSpanProfile(ctx, stream)
+	})
+}

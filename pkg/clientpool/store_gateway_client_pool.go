@@ -62,3 +62,7 @@ func (c *storeGatewayPoolClient) MergeProfilesLabels(ctx context.Context) BidiCl
 func (c *storeGatewayPoolClient) MergeProfilesPprof(ctx context.Context) BidiClientMergeProfilesPprof {
 	return c.StoreGatewayServiceClient.MergeProfilesPprof(ctx)
 }
+
+func (c *storeGatewayPoolClient) MergeSpanProfile(ctx context.Context) BidiClientMergeSpanProfile {
+	return c.StoreGatewayServiceClient.MergeSpanProfile(ctx)
+}

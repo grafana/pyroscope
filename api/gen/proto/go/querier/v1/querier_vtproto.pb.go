@@ -166,6 +166,54 @@ func (m *SelectMergeStacktracesResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *SelectMergeSpanProfileRequest) CloneVT() *SelectMergeSpanProfileRequest {
+	if m == nil {
+		return (*SelectMergeSpanProfileRequest)(nil)
+	}
+	r := &SelectMergeSpanProfileRequest{
+		ProfileTypeID: m.ProfileTypeID,
+		LabelSelector: m.LabelSelector,
+		Start:         m.Start,
+		End:           m.End,
+	}
+	if rhs := m.SpanSelector; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.SpanSelector = tmpContainer
+	}
+	if rhs := m.MaxNodes; rhs != nil {
+		tmpVal := *rhs
+		r.MaxNodes = &tmpVal
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *SelectMergeSpanProfileRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *SelectMergeSpanProfileResponse) CloneVT() *SelectMergeSpanProfileResponse {
+	if m == nil {
+		return (*SelectMergeSpanProfileResponse)(nil)
+	}
+	r := &SelectMergeSpanProfileResponse{
+		Flamegraph: m.Flamegraph.CloneVT(),
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *SelectMergeSpanProfileResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *DiffRequest) CloneVT() *DiffRequest {
 	if m == nil {
 		return (*DiffRequest)(nil)
@@ -382,6 +430,8 @@ type QuerierServiceClient interface {
 	Series(ctx context.Context, in *SeriesRequest, opts ...grpc.CallOption) (*SeriesResponse, error)
 	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeStacktraces(ctx context.Context, in *SelectMergeStacktracesRequest, opts ...grpc.CallOption) (*SelectMergeStacktracesResponse, error)
+	// SelectMergeSpans returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	SelectMergeSpanProfile(ctx context.Context, in *SelectMergeSpanProfileRequest, opts ...grpc.CallOption) (*SelectMergeSpanProfileResponse, error)
 	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(ctx context.Context, in *SelectMergeProfileRequest, opts ...grpc.CallOption) (*v11.Profile, error)
 	// SelectSeries returns a time series for the total sum of the requested profiles.
@@ -442,6 +492,15 @@ func (c *querierServiceClient) SelectMergeStacktraces(ctx context.Context, in *S
 	return out, nil
 }
 
+func (c *querierServiceClient) SelectMergeSpanProfile(ctx context.Context, in *SelectMergeSpanProfileRequest, opts ...grpc.CallOption) (*SelectMergeSpanProfileResponse, error) {
+	out := new(SelectMergeSpanProfileResponse)
+	err := c.cc.Invoke(ctx, "/querier.v1.QuerierService/SelectMergeSpanProfile", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *querierServiceClient) SelectMergeProfile(ctx context.Context, in *SelectMergeProfileRequest, opts ...grpc.CallOption) (*v11.Profile, error) {
 	out := v11.ProfileFromVTPool()
 	err := c.cc.Invoke(ctx, "/querier.v1.QuerierService/SelectMergeProfile", in, out, opts...)
@@ -483,6 +542,8 @@ type QuerierServiceServer interface {
 	Series(context.Context, *SeriesRequest) (*SeriesResponse, error)
 	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *SelectMergeStacktracesRequest) (*SelectMergeStacktracesResponse, error)
+	// SelectMergeSpans returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	SelectMergeSpanProfile(context.Context, *SelectMergeSpanProfileRequest) (*SelectMergeSpanProfileResponse, error)
 	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(context.Context, *SelectMergeProfileRequest) (*v11.Profile, error)
 	// SelectSeries returns a time series for the total sum of the requested profiles.
@@ -509,6 +570,9 @@ func (UnimplementedQuerierServiceServer) Series(context.Context, *SeriesRequest)
 }
 func (UnimplementedQuerierServiceServer) SelectMergeStacktraces(context.Context, *SelectMergeStacktracesRequest) (*SelectMergeStacktracesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SelectMergeStacktraces not implemented")
+}
+func (UnimplementedQuerierServiceServer) SelectMergeSpanProfile(context.Context, *SelectMergeSpanProfileRequest) (*SelectMergeSpanProfileResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SelectMergeSpanProfile not implemented")
 }
 func (UnimplementedQuerierServiceServer) SelectMergeProfile(context.Context, *SelectMergeProfileRequest) (*v11.Profile, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SelectMergeProfile not implemented")
@@ -622,6 +686,24 @@ func _QuerierService_SelectMergeStacktraces_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _QuerierService_SelectMergeSpanProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SelectMergeSpanProfileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QuerierServiceServer).SelectMergeSpanProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/querier.v1.QuerierService/SelectMergeSpanProfile",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QuerierServiceServer).SelectMergeSpanProfile(ctx, req.(*SelectMergeSpanProfileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _QuerierService_SelectMergeProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SelectMergeProfileRequest)
 	if err := dec(in); err != nil {
@@ -702,6 +784,10 @@ var QuerierService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SelectMergeStacktraces",
 			Handler:    _QuerierService_SelectMergeStacktraces_Handler,
+		},
+		{
+			MethodName: "SelectMergeSpanProfile",
+			Handler:    _QuerierService_SelectMergeSpanProfile_Handler,
 		},
 		{
 			MethodName: "SelectMergeProfile",
@@ -999,6 +1085,120 @@ func (m *SelectMergeStacktracesResponse) MarshalToVT(dAtA []byte) (int, error) {
 }
 
 func (m *SelectMergeStacktracesResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Flamegraph != nil {
+		size, err := m.Flamegraph.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *SelectMergeSpanProfileRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SelectMergeSpanProfileRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SelectMergeSpanProfileRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.MaxNodes != nil {
+		i = encodeVarint(dAtA, i, uint64(*m.MaxNodes))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.End != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.End))
+		i--
+		dAtA[i] = 0x28
+	}
+	if m.Start != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.Start))
+		i--
+		dAtA[i] = 0x20
+	}
+	if len(m.SpanSelector) > 0 {
+		for iNdEx := len(m.SpanSelector) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.SpanSelector[iNdEx])
+			copy(dAtA[i:], m.SpanSelector[iNdEx])
+			i = encodeVarint(dAtA, i, uint64(len(m.SpanSelector[iNdEx])))
+			i--
+			dAtA[i] = 0x1a
+		}
+	}
+	if len(m.LabelSelector) > 0 {
+		i -= len(m.LabelSelector)
+		copy(dAtA[i:], m.LabelSelector)
+		i = encodeVarint(dAtA, i, uint64(len(m.LabelSelector)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.ProfileTypeID) > 0 {
+		i -= len(m.ProfileTypeID)
+		copy(dAtA[i:], m.ProfileTypeID)
+		i = encodeVarint(dAtA, i, uint64(len(m.ProfileTypeID)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *SelectMergeSpanProfileResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SelectMergeSpanProfileResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SelectMergeSpanProfileResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1612,6 +1812,53 @@ func (m *SelectMergeStacktracesRequest) SizeVT() (n int) {
 }
 
 func (m *SelectMergeStacktracesResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Flamegraph != nil {
+		l = m.Flamegraph.SizeVT()
+		n += 1 + l + sov(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *SelectMergeSpanProfileRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.ProfileTypeID)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
+	l = len(m.LabelSelector)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
+	if len(m.SpanSelector) > 0 {
+		for _, s := range m.SpanSelector {
+			l = len(s)
+			n += 1 + l + sov(uint64(l))
+		}
+	}
+	if m.Start != 0 {
+		n += 1 + sov(uint64(m.Start))
+	}
+	if m.End != 0 {
+		n += 1 + sov(uint64(m.End))
+	}
+	if m.MaxNodes != nil {
+		n += 1 + sov(uint64(*m.MaxNodes))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *SelectMergeSpanProfileResponse) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -2373,6 +2620,298 @@ func (m *SelectMergeStacktracesResponse) UnmarshalVT(dAtA []byte) error {
 		}
 		if fieldNum <= 0 {
 			return fmt.Errorf("proto: SelectMergeStacktracesResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Flamegraph", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Flamegraph == nil {
+				m.Flamegraph = &FlameGraph{}
+			}
+			if err := m.Flamegraph.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SelectMergeSpanProfileRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SelectMergeSpanProfileRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SelectMergeSpanProfileRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileTypeID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProfileTypeID = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LabelSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.LabelSelector = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SpanSelector", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SpanSelector = append(m.SpanSelector, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Start", wireType)
+			}
+			m.Start = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Start |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field End", wireType)
+			}
+			m.End = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.End |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxNodes", wireType)
+			}
+			var v int64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.MaxNodes = &v
+		default:
+			iNdEx = preIndex
+			skippy, err := skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SelectMergeSpanProfileResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SelectMergeSpanProfileResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SelectMergeSpanProfileResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:

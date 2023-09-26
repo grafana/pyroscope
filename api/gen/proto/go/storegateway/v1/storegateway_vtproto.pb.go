@@ -32,6 +32,7 @@ type StoreGatewayServiceClient interface {
 	MergeProfilesStacktraces(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeProfilesStacktracesClient, error)
 	MergeProfilesLabels(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeProfilesLabelsClient, error)
 	MergeProfilesPprof(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeProfilesPprofClient, error)
+	MergeSpanProfile(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeSpanProfileClient, error)
 }
 
 type storeGatewayServiceClient struct {
@@ -135,6 +136,37 @@ func (x *storeGatewayServiceMergeProfilesPprofClient) Recv() (*v1.MergeProfilesP
 	return m, nil
 }
 
+func (c *storeGatewayServiceClient) MergeSpanProfile(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeSpanProfileClient, error) {
+	stream, err := c.cc.NewStream(ctx, &StoreGatewayService_ServiceDesc.Streams[3], "/storegateway.v1.StoreGatewayService/MergeSpanProfile", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &storeGatewayServiceMergeSpanProfileClient{stream}
+	return x, nil
+}
+
+type StoreGatewayService_MergeSpanProfileClient interface {
+	Send(*v1.MergeSpanProfileRequest) error
+	Recv() (*v1.MergeSpanProfileResponse, error)
+	grpc.ClientStream
+}
+
+type storeGatewayServiceMergeSpanProfileClient struct {
+	grpc.ClientStream
+}
+
+func (x *storeGatewayServiceMergeSpanProfileClient) Send(m *v1.MergeSpanProfileRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *storeGatewayServiceMergeSpanProfileClient) Recv() (*v1.MergeSpanProfileResponse, error) {
+	m := new(v1.MergeSpanProfileResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // StoreGatewayServiceServer is the server API for StoreGatewayService service.
 // All implementations must embed UnimplementedStoreGatewayServiceServer
 // for forward compatibility
@@ -142,6 +174,7 @@ type StoreGatewayServiceServer interface {
 	MergeProfilesStacktraces(StoreGatewayService_MergeProfilesStacktracesServer) error
 	MergeProfilesLabels(StoreGatewayService_MergeProfilesLabelsServer) error
 	MergeProfilesPprof(StoreGatewayService_MergeProfilesPprofServer) error
+	MergeSpanProfile(StoreGatewayService_MergeSpanProfileServer) error
 	mustEmbedUnimplementedStoreGatewayServiceServer()
 }
 
@@ -157,6 +190,9 @@ func (UnimplementedStoreGatewayServiceServer) MergeProfilesLabels(StoreGatewaySe
 }
 func (UnimplementedStoreGatewayServiceServer) MergeProfilesPprof(StoreGatewayService_MergeProfilesPprofServer) error {
 	return status.Errorf(codes.Unimplemented, "method MergeProfilesPprof not implemented")
+}
+func (UnimplementedStoreGatewayServiceServer) MergeSpanProfile(StoreGatewayService_MergeSpanProfileServer) error {
+	return status.Errorf(codes.Unimplemented, "method MergeSpanProfile not implemented")
 }
 func (UnimplementedStoreGatewayServiceServer) mustEmbedUnimplementedStoreGatewayServiceServer() {}
 
@@ -249,6 +285,32 @@ func (x *storeGatewayServiceMergeProfilesPprofServer) Recv() (*v1.MergeProfilesP
 	return m, nil
 }
 
+func _StoreGatewayService_MergeSpanProfile_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(StoreGatewayServiceServer).MergeSpanProfile(&storeGatewayServiceMergeSpanProfileServer{stream})
+}
+
+type StoreGatewayService_MergeSpanProfileServer interface {
+	Send(*v1.MergeSpanProfileResponse) error
+	Recv() (*v1.MergeSpanProfileRequest, error)
+	grpc.ServerStream
+}
+
+type storeGatewayServiceMergeSpanProfileServer struct {
+	grpc.ServerStream
+}
+
+func (x *storeGatewayServiceMergeSpanProfileServer) Send(m *v1.MergeSpanProfileResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *storeGatewayServiceMergeSpanProfileServer) Recv() (*v1.MergeSpanProfileRequest, error) {
+	m := new(v1.MergeSpanProfileRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // StoreGatewayService_ServiceDesc is the grpc.ServiceDesc for StoreGatewayService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -272,6 +334,12 @@ var StoreGatewayService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "MergeProfilesPprof",
 			Handler:       _StoreGatewayService_MergeProfilesPprof_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "MergeSpanProfile",
+			Handler:       _StoreGatewayService_MergeSpanProfile_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},

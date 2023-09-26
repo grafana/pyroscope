@@ -54,6 +54,17 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 	return m.normalize(), nil
 }
 
+func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spans []byte) (*phlaremodel.Tree, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeBySpans - Block")
+	defer sp.Finish()
+	r := symdb.NewResolver(ctx, b.symbols)
+	defer r.Release()
+	if err := mergeBySpans(ctx, b.profiles.file, rows, r, spans); err != nil {
+		return nil, err
+	}
+	return r.Tree()
+}
+
 type Source interface {
 	Schema() *parquet.Schema
 	RowGroups() []parquet.RowGroup
@@ -61,6 +72,29 @@ type Source interface {
 
 func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeByStacktraces")
+	defer sp.Finish()
+	// clone the rows to be able to iterate over them twice
+	multiRows, err := iter.CloneN(rows, 2)
+	if err != nil {
+		return err
+	}
+	it := query.NewMultiRepeatedPageIterator(
+		repeatedColumnIter(ctx, profileSource, "Samples.list.element.StacktraceID", multiRows[0]),
+		repeatedColumnIter(ctx, profileSource, "Samples.list.element.Value", multiRows[1]),
+	)
+	defer it.Close()
+	for it.Next() {
+		values := it.At().Values
+		p := r.Partition(it.At().Row.StacktracePartition())
+		for i := 0; i < len(values[0]); i++ {
+			p[uint32(values[0][i].Int64())] += values[1][i].Int64()
+		}
+	}
+	return it.Err()
+}
+
+func mergeBySpans(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver, spans []byte) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeBySpans")
 	defer sp.Finish()
 	// clone the rows to be able to iterate over them twice
 	multiRows, err := iter.CloneN(rows, 2)

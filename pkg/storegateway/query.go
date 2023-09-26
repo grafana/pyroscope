@@ -43,6 +43,16 @@ func (s *StoreGateway) MergeProfilesPprof(ctx context.Context, stream *connect.B
 	return terminateStream(stream)
 }
 
+func (s *StoreGateway) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
+	found, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
+		return bs.MergeSpanProfile(ctx, stream)
+	})
+	if err != nil || found {
+		return err
+	}
+	return terminateStream(stream)
+}
+
 func terminateStream[Req, Resp any](stream *connect.BidiStream[Req, Resp]) (err error) {
 	if _, err = stream.Receive(); err != nil {
 		if errors.Is(err, io.EOF) {
@@ -91,4 +101,8 @@ func (store *BucketStore) MergeProfilesLabels(ctx context.Context, stream *conne
 
 func (store *BucketStore) MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error {
 	return phlaredb.MergeProfilesPprof(ctx, stream, store.openBlocksForReading)
+}
+
+func (store *BucketStore) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
+	return phlaredb.MergeSpanProfile(ctx, stream, store.openBlocksForReading)
 }
