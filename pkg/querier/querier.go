@@ -236,10 +236,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
-	sp.LogFields(
-		otlog.Bool("should_query_ingester", storeQueries.ingester.shouldQuery),
-		otlog.Bool("should_query_store_gateway", storeQueries.storeGateway.shouldQuery),
-	)
+	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
 
 	// todo in parallel
 	if storeQueries.ingester.shouldQuery {
