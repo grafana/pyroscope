@@ -21,21 +21,21 @@ func (f *Frontend) Series(ctx context.Context, c *connect.Request[querierv1.Seri
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	// TODO(bryan) we probably want to skip this validation of start/end are 0
-	// (indicating a legacy request).
-	interval := model.Interval{
-		Start: model.TimeFromUnix(c.Msg.Start),
-		End:   model.TimeFromUnix(c.Msg.End),
+	if c.Msg.Start != 0 && c.Msg.End != 0 {
+		interval := model.Interval{
+			Start: model.TimeFromUnix(c.Msg.Start),
+			End:   model.TimeFromUnix(c.Msg.End),
+		}
+		validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, interval, model.Now())
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		if validated.IsEmpty {
+			return connect.NewResponse(&querierv1.SeriesResponse{}), nil
+		}
+		c.Msg.Start = validated.Start.Unix()
+		c.Msg.End = validated.End.Unix()
 	}
-	validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, interval, model.Now())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	if validated.IsEmpty {
-		return connect.NewResponse(&querierv1.SeriesResponse{}), nil
-	}
-	c.Msg.Start = validated.Start.Unix()
-	c.Msg.End = validated.End.Unix()
 
 	return connectgrpc.RoundTripUnary[querierv1.SeriesRequest, querierv1.SeriesResponse](ctx, f, c)
 }
