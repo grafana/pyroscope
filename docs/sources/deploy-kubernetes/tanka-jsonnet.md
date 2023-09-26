@@ -7,7 +7,7 @@ keywords:
   - Tanka
 menuTitle: Deploy with Jsonnet and Tanka
 title: Deploy Pyroscope with Jsonnet and Tanka
-weight: 50
+weight: 60
 aliases:
   - /docs/phlare/latest/operators-guide/deploying-grafana-phlare/jsonnet/
   - /docs/phlare/latest/deploy-kubernetes/tanka-jsonnet/
