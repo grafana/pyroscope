@@ -461,6 +461,7 @@ func (h *Head) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesR
 	sort.Slice(response.LabelsSet, func(i, j int) bool {
 		return phlaremodel.CompareLabelPairs(response.LabelsSet[i].Labels, response.LabelsSet[j].Labels) < 0
 	})
+
 	return connect.NewResponse(response), nil
 }
 

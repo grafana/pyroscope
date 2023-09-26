@@ -770,7 +770,7 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 }
 
 func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockGetter) (*ingestv1.SeriesResponse, error) {
-	queriers, err := blockGetter(ctx, model.Time(req.Start), model.Time(req.End))
+	queriers, err := blockGetter(ctx, model.TimeFromUnix(req.Start), model.TimeFromUnix(req.End))
 	if err != nil {
 		return nil, err
 	}
