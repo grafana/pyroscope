@@ -5,6 +5,7 @@ import (
 	"flag"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -230,39 +231,52 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		}), nil
 	}
 
-	var responses []ResponseFromReplica[[]*typesv1.Labels]
 	storeQueries := splitQueryToStores(model.TimeFromUnix(req.Msg.Start), model.TimeFromUnix(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
-
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
 	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
 
-	// todo in parallel
+	var responses []ResponseFromReplica[[]*typesv1.Labels]
+	var lock sync.Mutex
+	group, ctx := errgroup.WithContext(ctx)
+
 	if storeQueries.ingester.shouldQuery {
-		ir, err := q.seriesFromIngesters(ctx, &ingestv1.SeriesRequest{
-			Matchers:   req.Msg.Matchers,
-			LabelNames: req.Msg.LabelNames,
-			Start:      req.Msg.Start,
-			End:        req.Msg.End,
+		group.Go(func() error {
+			ir, err := q.seriesFromIngesters(ctx, &ingestv1.SeriesRequest{
+				Matchers:   req.Msg.Matchers,
+				LabelNames: req.Msg.LabelNames,
+				Start:      req.Msg.Start,
+				End:        req.Msg.End,
+			})
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			responses = append(responses, ir...)
+			lock.Unlock()
+			return nil
 		})
-		if err != nil {
-			return nil, err
-		}
-		responses = append(responses, ir...)
 	}
 
 	if storeQueries.storeGateway.shouldQuery {
-		ir, err := q.seriesFromStoreGateway(ctx, &ingestv1.SeriesRequest{
-			Matchers:   req.Msg.Matchers,
-			LabelNames: req.Msg.LabelNames,
-			Start:      req.Msg.Start,
-			End:        req.Msg.End,
+		group.Go(func() error {
+			ir, err := q.seriesFromStoreGateway(ctx, &ingestv1.SeriesRequest{
+				Matchers:   req.Msg.Matchers,
+				LabelNames: req.Msg.LabelNames,
+				Start:      req.Msg.Start,
+				End:        req.Msg.End,
+			})
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			responses = append(responses, ir...)
+			lock.Unlock()
+			return nil
 		})
-		if err != nil {
-			return nil, err
-		}
-		responses = append(responses, ir...)
 	}
 
 	return connect.NewResponse(&querierv1.SeriesResponse{
