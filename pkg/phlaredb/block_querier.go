@@ -384,12 +384,36 @@ type Querier interface {
 	Bounds() (model.Time, model.Time)
 	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
 	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error)
-	MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spans []byte) (*phlaremodel.Tree, error)
+	MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spans SpanSelector) (*phlaremodel.Tree, error)
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
 	MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error)
 	Open(ctx context.Context) error
 	// Sorts profiles for retrieval.
 	Sort([]Profile) []Profile
+}
+
+type SpanSelector struct {
+	m   map[uint64]struct{}
+	tmp schemav1.Samples
+}
+
+func NewSpanSelector(spans []byte) SpanSelector {
+	m := make(map[uint64]struct{}, len(spans)/8)
+
+	return SpanSelector{m: m}
+}
+
+func (s *SpanSelector) FilterSpans(x schemav1.Samples) schemav1.Samples {
+	if len(x.Spans) == 0 {
+		return x
+	}
+	s.tmp = s.tmp.Reset(0)
+	for i, span := range x.Spans {
+		if _, ok := s.m[span]; ok {
+			s.tmp.AppendWithSpan(x.StacktraceIDs[i], x.Values[i], span)
+		}
+	}
+	return s.tmp
 }
 
 func InRange(q Querier, start, end model.Time) bool {

@@ -13,6 +13,7 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
+	"github.com/grafana/pyroscope/pkg/slices"
 )
 
 var (
@@ -246,6 +247,9 @@ type InMemoryProfile struct {
 type Samples struct {
 	StacktraceIDs []uint32
 	Values        []uint64
+	// Span associated with samples.
+	// Optional: Spans == nil, if not present.
+	Spans []uint64
 }
 
 func NewSamples(size int) Samples {
@@ -278,12 +282,24 @@ func (s Samples) Compact(dedupe bool) Samples {
 	if dedupe {
 		s = trimDuplicateSamples(s)
 	}
-	s = trimZeroAndNegativeSamples(s)
-	return s
+	return trimZeroAndNegativeSamples(s)
 }
 
 func (s Samples) Clone() Samples {
 	return cloneSamples(s)
+}
+
+func (s Samples) Reset(n int) Samples {
+	s.StacktraceIDs = slices.Grow(s.StacktraceIDs, n)
+	s.Values = slices.Grow(s.Values, n)
+	s.Spans = slices.Grow(s.Spans, n)
+	return s
+}
+
+func (s Samples) AppendWithSpan(stacktrace uint32, value uint64, span uint64) {
+	s.StacktraceIDs = append(s.StacktraceIDs, stacktrace)
+	s.Values = append(s.Values, value)
+	s.Spans = append(s.Spans, span)
 }
 
 func trimDuplicateSamples(samples Samples) Samples {
@@ -310,19 +326,27 @@ func trimZeroAndNegativeSamples(samples Samples) Samples {
 		if v > 0 {
 			samples.Values[n] = v
 			samples.StacktraceIDs[n] = samples.StacktraceIDs[j]
+			if len(samples.Spans) > 0 {
+				samples.Spans[n] = samples.Spans[j]
+			}
 			n++
 		}
 	}
-	return Samples{
+	s := Samples{
 		StacktraceIDs: samples.StacktraceIDs[:n],
 		Values:        samples.Values[:n],
 	}
+	if len(samples.Spans) > n {
+		samples.Spans = samples.Spans[:n]
+	}
+	return s
 }
 
 func cloneSamples(samples Samples) Samples {
 	return Samples{
 		StacktraceIDs: copySlice(samples.StacktraceIDs),
 		Values:        copySlice(samples.Values),
+		Spans:         copySlice(samples.Spans),
 	}
 }
 
@@ -333,6 +357,9 @@ func (s Samples) Less(i, j int) bool {
 func (s Samples) Swap(i, j int) {
 	s.StacktraceIDs[i], s.StacktraceIDs[j] = s.StacktraceIDs[j], s.StacktraceIDs[i]
 	s.Values[i], s.Values[j] = s.Values[j], s.Values[i]
+	if len(s.Spans) > 0 {
+		s.Spans[i], s.Spans[j] = s.Spans[j], s.Spans[i]
+	}
 }
 
 func (s Samples) Len() int {
@@ -403,6 +430,9 @@ func (p InMemoryProfile) Total() int64 {
 }
 
 func copySlice[T any](in []T) []T {
+	if len(in) == 0 {
+		return nil
+	}
 	out := make([]T, len(in))
 	copy(out, in)
 	return out
