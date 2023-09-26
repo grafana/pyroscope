@@ -195,20 +195,19 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 
 func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series")
-	defer func() {
-		sp.LogFields(
-			otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
-			otlog.String("label_names", strings.Join(req.Msg.LabelNames, ",")),
-			otlog.Int64("start", req.Msg.Start),
-			otlog.Int64("end", req.Msg.End),
-		)
-		sp.Finish()
-	}()
+	defer sp.Finish()
+
+	sp.LogFields(
+		otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
+		otlog.String("label_names", strings.Join(req.Msg.LabelNames, ",")),
+		otlog.Int64("start", req.Msg.Start),
+		otlog.Int64("end", req.Msg.End),
+	)
 
 	// Some clients may not be sending us timestamps. If start or end are 0, then
 	// mark this a legacy request. Legacy requests only query the ingesters.
 	legacyRequest := req.Msg.Start == 0 || req.Msg.End == 0
-
+	sp.LogFields(otlog.Bool("legacy_request", legacyRequest))
 	if q.storeGatewayQuerier == nil || legacyRequest {
 		responses, err := q.seriesFromIngesters(ctx, &ingestv1.SeriesRequest{
 			Matchers:   req.Msg.Matchers,
@@ -237,6 +236,10 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
+	sp.LogFields(
+		otlog.Bool("should_query_ingester", storeQueries.ingester.shouldQuery),
+		otlog.Bool("should_query_store_gateway", storeQueries.storeGateway.shouldQuery),
+	)
 
 	// todo in parallel
 	if storeQueries.ingester.shouldQuery {
