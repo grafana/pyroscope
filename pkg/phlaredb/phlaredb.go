@@ -329,8 +329,20 @@ func (f *PhlareDB) ProfileTypes(ctx context.Context, req *connect.Request[ingest
 	})
 }
 
+func (f *PhlareDB) LegacySeries(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhareDB LegacySeries")
+	defer sp.Finish()
+
+	return withHeadForQuery(f, func(head *Head) (*connect.Response[ingestv1.SeriesResponse], error) {
+		return head.Series(ctx, req)
+	})
+}
+
 // Series returns labels series for the given set of matchers.
 func (f *PhlareDB) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhareDB Series")
+	defer sp.Finish()
+
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
 
