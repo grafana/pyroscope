@@ -279,6 +279,11 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		})
 	}
 
+	err := group.Wait()
+	if err != nil {
+		return nil, err
+	}
+
 	return connect.NewResponse(&querierv1.SeriesResponse{
 		LabelsSet: lo.UniqBy(
 			lo.FlatMap(responses, func(r ResponseFromReplica[[]*typesv1.Labels], _ int) []*typesv1.Labels {
