@@ -12,7 +12,7 @@ aliases:
 
 [Hash rings]({{< relref "../reference-pyroscope-architecture/hash-ring/index.md" >}}) are a distributed consistent hashing scheme and are widely used by Pyroscope for sharding and replication.
 Pyroscope only supports hash ring via the memberlist protocol.
-You can configure memberlist by either the CLI flag or its respective YAML [config option]({{< relref "reference-configuration-parameters/index.md#memberlist" >}}).
+You can configure memberlist by either the CLI flag or its respective YAML [config option]({{< relref "./reference-configuration-parameters/index.md#memberlist" >}}).
 
 ## Memberlist
 
@@ -32,7 +32,7 @@ The `-memberlist.join` can be set to an address in the following formats:
 > **Note**: If you're running Pyroscope in Kubernetes, define a [headless Kubernetes Service](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services) which resolves to the IP addresses of all Pyroscope pods, then set `-memberlist.join` to `dnssrv+<service name>.<namespace>.svc.cluster.local:<port>`.
 
 Pyroscope supports TLS for memberlist connections between its components.
-To see all supported configuration parameters, refer to [memberlist]({{< relref "reference-configuration-parameters/index.md#memberlist" >}}).
+To see all supported configuration parameters, refer to [memberlist]({{< relref "./reference-configuration-parameters/index.md#memberlist" >}}).
 
 #### Configuring the memberlist address and port
 
@@ -66,7 +66,7 @@ If you experience a higher changes propagation latency, you can adjust the follo
 
 Some clients in Pyroscope support service discovery via DNS to locate the addresses of backend servers to connect to. The following clients support service discovery via DNS:
 
-- [Memberlist KV store]({{< relref "reference-configuration-parameters/index.md#memberlist" >}})
+- [Memberlist KV store]({{< relref "./reference-configuration-parameters/index.md#memberlist" >}})
   - `-memberlist.join`
 
 ## Supported discovery modes

@@ -191,6 +191,25 @@ func (ls Labels) Clone() Labels {
 	return result
 }
 
+// Unique returns a set labels with unique keys.
+// Labels expected to be sorted: underlying capacity
+// is reused and the original order is preserved:
+// the first key takes precedence over duplicates.
+// Method receiver should not be used after the call.
+func (ls Labels) Unique() Labels {
+	if len(ls) <= 1 {
+		return ls
+	}
+	var j int
+	for i := 1; i < len(ls); i++ {
+		if ls[i].Name != ls[j].Name {
+			j++
+			ls[j] = ls[i]
+		}
+	}
+	return ls[:j+1]
+}
+
 // LabelPairsString returns a string representation of the label pairs.
 func LabelPairsString(lbs []*typesv1.LabelPair) string {
 	var b bytes.Buffer
@@ -363,4 +382,31 @@ Outer:
 	sort.Sort(res)
 
 	return res
+}
+
+// StableHash is a labels hashing implementation which is guaranteed to not change over time.
+// This function should be used whenever labels hashing backward compatibility must be guaranteed.
+func StableHash(ls labels.Labels) uint64 {
+	// Use xxhash.Sum64(b) for fast path as it's faster.
+	b := make([]byte, 0, 1024)
+	for i, v := range ls {
+		if len(b)+len(v.Name)+len(v.Value)+2 >= cap(b) {
+			// If labels entry is 1KB+ do not allocate whole entry.
+			h := xxhash.New()
+			_, _ = h.Write(b)
+			for _, v := range ls[i:] {
+				_, _ = h.WriteString(v.Name)
+				_, _ = h.Write(seps)
+				_, _ = h.WriteString(v.Value)
+				_, _ = h.Write(seps)
+			}
+			return h.Sum64()
+		}
+
+		b = append(b, v.Name...)
+		b = append(b, seps[0])
+		b = append(b, v.Value...)
+		b = append(b, seps[0])
+	}
+	return xxhash.Sum64(b)
 }

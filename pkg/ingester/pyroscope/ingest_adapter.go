@@ -7,7 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-kit/log/level"
+
 	"github.com/grafana/pyroscope/pkg/distributor/model"
+	"github.com/grafana/pyroscope/pkg/tenant"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
@@ -31,12 +34,13 @@ type PushService interface {
 func NewPyroscopeIngestHandler(svc PushService, logger log.Logger) http.Handler {
 	return NewIngestHandler(
 		logger,
-		&pyroscopeIngesterAdapter{svc: svc},
+		&pyroscopeIngesterAdapter{svc: svc, log: logger},
 	)
 }
 
 type pyroscopeIngesterAdapter struct {
 	svc PushService
+	log log.Logger
 }
 
 func (p *pyroscopeIngesterAdapter) Ingest(ctx context.Context, in *ingestion.IngestInput) error {
@@ -161,8 +165,31 @@ func (p *pyroscopeIngesterAdapter) Evaluate(input *storage.PutInput) (storage.Sa
 
 func (p *pyroscopeIngesterAdapter) parseToPprof(ctx context.Context, in *ingestion.IngestInput, pprofable ingestion.ParseableToPprof) error {
 	plainReq, err := pprofable.ParseToPprof(ctx, in.Metadata)
+	// ParseToPprof allocates pprof.Profile that have to be closed after use.
+	defer func() {
+		if plainReq == nil {
+			return
+		}
+		for _, s := range plainReq.Series {
+			if s == nil {
+				continue
+			}
+			for _, x := range s.Samples {
+				if x != nil && x.Profile != nil {
+					x.Profile.Close()
+				}
+			}
+		}
+	}()
 	if err != nil {
 		return fmt.Errorf("parsing IngestInput-pprof failed %w", err)
+	}
+	if len(plainReq.Series) == 0 {
+		tenantID, _ := tenant.ExtractTenantIDFromContext(ctx)
+		_ = level.Debug(p.log).Log("msg", "empty profile",
+			"application", in.Metadata.Key.AppName(),
+			"orgID", tenantID)
+		return nil
 	}
 	_, err = p.svc.PushParsed(ctx, plainReq)
 	if err != nil {

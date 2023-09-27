@@ -18,3 +18,18 @@ func Reverse[S ~[]E, E any](s S) {
 		s[i], s[j] = s[j], s[i]
 	}
 }
+
+func Clear[S ~[]E, E any](s S) {
+	var zero E
+	for i := range s {
+		s[i] = zero
+	}
+}
+
+func Grow[S ~[]E, E any](s S, n int) S {
+	if cap(s) < n {
+		s = make([]E, n)
+	}
+	s = s[:n]
+	return s
+}
