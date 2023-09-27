@@ -778,6 +778,10 @@ func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockG
 	var lock sync.Mutex
 	group, ctx := errgroup.WithContext(ctx)
 
+	// TODO(bryan) Verify this limit is ok
+	const concurrentQueryLimit = 50
+	group.SetLimit(concurrentQueryLimit)
+
 	for _, q := range queriers {
 		group.Go(util.RecoverPanic(func() error {
 			labels, err := q.Series(ctx, req)
