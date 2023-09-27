@@ -337,7 +337,7 @@ func Benchmark_singleBlockQuerier_Series(b *testing.B) {
 
 	b.Run("multiple labels", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
-			q.Series(ctx, &ingestv1.SeriesRequest{
+			q.Series(ctx, &ingestv1.SeriesRequest{ //nolint:errcheck
 				Matchers:   []string{`{__name__="block"}`},
 				LabelNames: []string{"__name__"},
 			})
@@ -346,7 +346,7 @@ func Benchmark_singleBlockQuerier_Series(b *testing.B) {
 
 	b.Run("multiple labels with matcher", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
-			q.Series(ctx, &ingestv1.SeriesRequest{
+			q.Series(ctx, &ingestv1.SeriesRequest{ //nolint:errcheck
 				Matchers:   []string{`{__name__="memory",__type__="alloc_objects"}`},
 				LabelNames: []string{"__name__", "__type__"},
 			})
