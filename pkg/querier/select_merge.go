@@ -533,17 +533,6 @@ func selectMergeSpanProfile(ctx context.Context, responses []ResponseFromReplica
 	return m.Tree(), nil
 }
 
-func spanSelectorFromStrings(spans []string) []byte {
-	const spanIDSize = 8
-	n := make([]byte, len(spans)*spanIDSize)
-	for i, s := range spans {
-		if len(s) == spanIDSize {
-			copy(n[i*spanIDSize:], util.YoloBuf(s))
-		}
-	}
-	return n
-}
-
 type seriesIterator struct {
 	point []*typesv1.Point
 

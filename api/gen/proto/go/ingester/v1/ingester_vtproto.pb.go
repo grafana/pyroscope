@@ -278,9 +278,9 @@ func (m *SelectSpanProfileRequest) CloneVT() *SelectSpanProfileRequest {
 		}
 	}
 	if rhs := m.SpanSelector; rhs != nil {
-		tmpBytes := make([]byte, len(rhs))
-		copy(tmpBytes, rhs)
-		r.SpanSelector = tmpBytes
+		tmpContainer := make([]uint64, len(rhs))
+		copy(tmpContainer, rhs)
+		r.SpanSelector = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -1674,9 +1674,22 @@ func (m *SelectSpanProfileRequest) MarshalToSizedBufferVT(dAtA []byte) (int, err
 		copy(dAtA[i:], m.unknownFields)
 	}
 	if len(m.SpanSelector) > 0 {
-		i -= len(m.SpanSelector)
-		copy(dAtA[i:], m.SpanSelector)
-		i = encodeVarint(dAtA, i, uint64(len(m.SpanSelector)))
+		var pksize2 int
+		for _, num := range m.SpanSelector {
+			pksize2 += sov(uint64(num))
+		}
+		i -= pksize2
+		j1 := i
+		for _, num := range m.SpanSelector {
+			for num >= 1<<7 {
+				dAtA[j1] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j1++
+			}
+			dAtA[j1] = uint8(num)
+			j1++
+		}
+		i = encodeVarint(dAtA, i, uint64(pksize2))
 		i--
 		dAtA[i] = 0x2a
 	}
@@ -2618,9 +2631,12 @@ func (m *SelectSpanProfileRequest) SizeVT() (n int) {
 	if m.End != 0 {
 		n += 1 + sov(uint64(m.End))
 	}
-	l = len(m.SpanSelector)
-	if l > 0 {
-		n += 1 + l + sov(uint64(l))
+	if len(m.SpanSelector) > 0 {
+		l = 0
+		for _, e := range m.SpanSelector {
+			l += sov(uint64(e))
+		}
+		n += 1 + sov(uint64(l)) + l
 	}
 	n += len(m.unknownFields)
 	return n
@@ -4110,39 +4126,81 @@ func (m *SelectSpanProfileRequest) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SpanSelector", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
+			if wireType == 0 {
+				var v uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= uint64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
 				}
-				if iNdEx >= l {
+				m.SpanSelector = append(m.SpanSelector, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return ErrInvalidLength
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return ErrInvalidLength
+				}
+				if postIndex > l {
 					return io.ErrUnexpectedEOF
 				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
+				var elementCount int
+				var count int
+				for _, integer := range dAtA[iNdEx:postIndex] {
+					if integer < 128 {
+						count++
+					}
 				}
+				elementCount = count
+				if elementCount != 0 && len(m.SpanSelector) == 0 {
+					m.SpanSelector = make([]uint64, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflow
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= uint64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.SpanSelector = append(m.SpanSelector, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field SpanSelector", wireType)
 			}
-			if byteLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.SpanSelector = append(m.SpanSelector[:0], dAtA[iNdEx:postIndex]...)
-			if m.SpanSelector == nil {
-				m.SpanSelector = []byte{}
-			}
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

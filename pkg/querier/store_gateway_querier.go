@@ -262,7 +262,7 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 					Start:         req.Start,
 					End:           req.End,
 					Type:          profileType,
-					SpanSelector:  spanSelectorFromStrings(req.SpanSelector),
+					SpanSelector:  req.SpanSelector,
 				},
 				MaxNodes: req.MaxNodes,
 				// TODO(kolesnikovae): Max stacks.

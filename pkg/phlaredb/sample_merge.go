@@ -54,15 +54,16 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 	return m.normalize(), nil
 }
 
-func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spans SpanSelector) (*phlaremodel.Tree, error) {
+func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, _ iter.Iterator[Profile], _ SpanSelector) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeBySpans - Block")
 	defer sp.Finish()
-	r := symdb.NewResolver(ctx, b.symbols)
-	defer r.Release()
-	if err := mergeBySpans(ctx, b.profiles.file, rows, r, spans); err != nil {
-		return nil, err
-	}
-	return r.Tree()
+	// r := symdb.NewResolver(ctx, b.symbols)
+	// defer r.Release()
+	// if err := mergeBySpans(ctx, b.profiles.file, rows, r, spans); err != nil {
+	// 	return nil, err
+	// }
+	// return r.Tree()
+	return new(phlaremodel.Tree), nil
 }
 
 type Source interface {

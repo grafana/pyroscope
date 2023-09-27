@@ -940,8 +940,11 @@
           "format": "int64"
         },
         "spanSelector": {
-          "type": "string",
-          "format": "byte"
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          }
         }
       }
     },

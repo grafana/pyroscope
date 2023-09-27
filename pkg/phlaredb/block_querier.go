@@ -397,9 +397,11 @@ type SpanSelector struct {
 	tmp schemav1.Samples
 }
 
-func NewSpanSelector(spans []byte) SpanSelector {
-	m := make(map[uint64]struct{}, len(spans)/8)
-
+func NewSpanSelector(spans []uint64) SpanSelector {
+	m := make(map[uint64]struct{}, len(spans))
+	for _, s := range spans {
+		m[s] = struct{}{}
+	}
 	return SpanSelector{m: m}
 }
 
@@ -643,7 +645,7 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 	var m sync.Mutex
 	t := new(phlaremodel.Tree)
 	g, ctx := errgroup.WithContext(ctx)
-
+	spanSelector := NewSpanSelector(request.SpanSelector)
 	for i, querier := range queriers {
 		querier := querier
 		i := i
@@ -653,7 +655,7 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 		// Sort profiles for better read locality.
 		// Merge async the result so we can continue streaming profiles.
 		g.Go(util.RecoverPanic(func() error {
-			merge, err := querier.MergeBySpans(ctx, iter.NewSliceIterator(querier.Sort(selectedProfiles[i])), request.SpanSelector)
+			merge, err := querier.MergeBySpans(ctx, iter.NewSliceIterator(querier.Sort(selectedProfiles[i])), spanSelector)
 			if err != nil {
 				return err
 			}

@@ -161,7 +161,7 @@ func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *queri
 					Start:         req.Start,
 					End:           req.End,
 					Type:          profileType,
-					SpanSelector:  spanSelectorFromStrings(req.SpanSelector),
+					SpanSelector:  req.SpanSelector,
 				},
 				MaxNodes: req.MaxNodes,
 				// TODO(kolesnikovae): Max stacks.
