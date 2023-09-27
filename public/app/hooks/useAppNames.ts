@@ -26,9 +26,14 @@ export function useSelectFirstApp() {
         const cpuApp = apps.find(
           (app) => app.__profile_type__.split(':')[1] === 'cpu'
         );
+     
+        // If `cpu` type is not found, try to find an `.itimer` type for Java
+        const itimerApp = cpuApp ? null : apps.find(
+          (app) => app.__profile_type__.split(':')[1] === '.itimer'
+        );
 
-        // If we can't find a `cpu` type, just choose the top of the list
-        const app = cpuApp ? cpuApp : apps[0];
+        // If we can't find a `cpu` or `.itimer` type, just choose the top of the list
+        const app = cpuApp || itimerApp || apps[0];
 
         dispatch(setQuery(appToQuery(app)));
       }
