@@ -322,3 +322,34 @@ func Test_singleBlockQuerier_Series(t *testing.T) {
 		assert.Equal(t, want, got)
 	})
 }
+
+func Benchmark_singleBlockQuerier_Series(b *testing.B) {
+	ctx := context.Background()
+	reader, err := index.NewFileReader("testdata/01HA2V3CPSZ9E0HMQNNHH89WSS/index.tsdb")
+	assert.NoError(b, err)
+
+	q := &singleBlockQuerier{
+		metrics: newBlocksMetrics(nil),
+		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
+		opened:  true, // Skip trying to open the block.
+		index:   reader,
+	}
+
+	b.Run("multiple labels", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			q.Series(ctx, &ingestv1.SeriesRequest{
+				Matchers:   []string{`{__name__="block"}`},
+				LabelNames: []string{"__name__"},
+			})
+		}
+	})
+
+	b.Run("multiple labels with matcher", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			q.Series(ctx, &ingestv1.SeriesRequest{
+				Matchers:   []string{`{__name__="memory",__type__="alloc_objects"}`},
+				LabelNames: []string{"__name__", "__type__"},
+			})
+		}
+	})
+}
