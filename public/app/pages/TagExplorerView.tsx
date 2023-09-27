@@ -13,11 +13,9 @@ import TimelineChartWrapper, {
 import Dropdown, { MenuItem } from '@pyroscope/ui/Dropdown';
 import TagsSelector from '@pyroscope/pages/tagExplorer/components/TagsSelector';
 import TableUI, { useTableSort, BodyRow } from '@pyroscope/ui/Table';
-import useColorMode from '@pyroscope/hooks/colorMode.hook';
 import useTimeZone from '@pyroscope/hooks/timeZone.hook';
 import { appendLabelToQuery } from '@pyroscope/util/query';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import useExportToFlamegraphDotCom from '@pyroscope/components/exportToFlamegraphDotCom.hook';
 import {
   actions,
   setDateRange,
@@ -48,7 +46,7 @@ import {
 // eslint-disable-next-line
 import styles from './TagExplorerView.module.scss';
 import { formatTitle } from './formatTitle';
-import {FlameGraphWrapper} from "@pyroscope/components/FlameGraphWrapper";
+import { FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
 
 const TIMELINE_SERIES_COLORS = [
   Color.rgb(242, 204, 12),
@@ -163,7 +161,6 @@ const getTimelineColor = (index: number, palette: Color[]): Color =>
 
 function TagExplorerView() {
   const { offset } = useTimeZone();
-  const { colorMode } = useColorMode();
   const dispatch = useAppDispatch();
 
   const { from, until, tagExplorerView, refreshToken } = useAppSelector(
@@ -265,11 +262,6 @@ function TagExplorerView() {
     dispatch(actions.setTagExplorerViewGroupByTag(value));
   };
 
-  const exportFlamegraphDotComFn = useExportToFlamegraphDotCom(
-    activeTagProfile,
-    groupByTag,
-    groupByTagValue
-  );
   // when there's no groupByTag value backend returns groups with single "*" group,
   // which is "application without any tag" group. when backend returns multiple groups,
   // "*" group samples array is filled with zeros (not longer valid application data).

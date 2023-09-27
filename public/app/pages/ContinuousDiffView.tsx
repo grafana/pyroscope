@@ -28,7 +28,7 @@ import { formatTitle } from './formatTitle';
 import { isLoadingOrReloading } from './loading';
 import { Panel } from '@pyroscope/components/Panel';
 import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
-import {FlameGraphWrapper} from "@pyroscope/components/FlameGraphWrapper";
+import { FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();

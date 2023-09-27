@@ -35,7 +35,7 @@ import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuit
 import { isLoadingOrReloading } from './loading';
 import { Panel } from '@pyroscope/components/Panel';
 import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
-import {FlameGraphWrapper} from "@pyroscope/components/FlameGraphWrapper";
+import { FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();

@@ -47,7 +47,12 @@ function getNodes(level: number[], names: string[], diff: boolean) {
   return nodes;
 }
 
-export function flamebearerToDataFrameDTO(levels: number[][], names: string[], unit: string, diff: boolean) {
+export function flamebearerToDataFrameDTO(
+  levels: number[][],
+  names: string[],
+  unit: string,
+  diff: boolean
+) {
   const nodeLevels: any[][] = [];
   for (let i = 0; i < levels.length; i++) {
     nodeLevels[i] = [];
@@ -128,8 +133,16 @@ export function flamebearerToDataFrameDTO(levels: number[][], names: string[], u
   if (diff) {
     fields.push(
       ...[
-        { name: 'selfRight', values: selfRightValues, config: { unit: valueUnit } },
-        { name: 'valueRight', values: valueRightValues, config: { unit: valueUnit } },
+        {
+          name: 'selfRight',
+          values: selfRightValues,
+          config: { unit: valueUnit },
+        },
+        {
+          name: 'valueRight',
+          values: valueRightValues,
+          config: { unit: valueUnit },
+        },
       ]
     );
   }

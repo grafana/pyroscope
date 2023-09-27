@@ -41,7 +41,7 @@ export type SharedQuery = {
   syncEnabled: string | boolean;
   toggleSync: Dispatch<SetStateAction<boolean | string>>;
   id: string;
-}
+};
 
 export interface FlamegraphRendererProps {
   profile?: Profile;
