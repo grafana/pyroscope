@@ -122,7 +122,7 @@ func TestBucketCompactor_FilterOwnJobs(t *testing.T) {
 	m := NewBucketCompactorMetrics(promauto.With(nil).NewCounter(prometheus.CounterOpts{}), nil)
 	for testName, testCase := range tests {
 		t.Run(testName, func(t *testing.T) {
-			bc, err := NewBucketCompactor(log.NewNopLogger(), nil, nil, nil, nil, "", nil, 0, nil, nil, 0, 4, m)
+			bc, err := NewBucketCompactor(log.NewNopLogger(), nil, nil, nil, nil, "", nil, 2, testCase.ownJob, nil, 0, 4, m)
 			require.NoError(t, err)
 
 			res, err := bc.filterOwnJobs(jobsFn())
@@ -310,9 +310,10 @@ func TestCompactedBlocksTimeRangeVerification(t *testing.T) {
 		testData := testData // Prevent loop variable being captured by func literal
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
-			bucketClient, _ := objstore_testutil.NewFilesystemBucket(t, context.Background(), t.TempDir())
-
 			tempDir := t.TempDir()
+
+			bucketClient, _ := objstore_testutil.NewFilesystemBucket(t, context.Background(), tempDir)
+
 			compactedBlock1 := createDBBlock(t, bucketClient, "foo", testData.compactedBlockMinTime, testData.compactedBlockMinTime+500, 10, nil)
 			compactedBlock2 := createDBBlock(t, bucketClient, "foo", testData.compactedBlockMaxTime-500, testData.compactedBlockMaxTime, 10, nil)
 

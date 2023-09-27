@@ -107,8 +107,8 @@ func TestPlanCompaction(t *testing.T) {
 				{ULID: block1, MinTime: 0, MaxTime: 10},
 				{ULID: block2, MinTime: 0, MaxTime: 10},
 				// 1st level range [10, 20]
-				{ULID: block3, MinTime: 10, MaxTime: 20},
-				{ULID: block4, MinTime: 10, MaxTime: 20},
+				{ULID: block3, MinTime: 11, MaxTime: 20},
+				{ULID: block4, MinTime: 11, MaxTime: 20},
 			},
 			expected: []*job{
 				{userID: userID, stage: stageSplit, shardID: "1_of_1", blocksGroup: blocksGroup{
@@ -123,8 +123,8 @@ func TestPlanCompaction(t *testing.T) {
 					rangeStart: 10,
 					rangeEnd:   20,
 					blocks: []*block.Meta{
-						{ULID: block3, MinTime: 10, MaxTime: 20},
-						{ULID: block4, MinTime: 10, MaxTime: 20},
+						{ULID: block3, MinTime: 11, MaxTime: 20},
+						{ULID: block4, MinTime: 11, MaxTime: 20},
 					},
 				}},
 			},
@@ -138,8 +138,8 @@ func TestPlanCompaction(t *testing.T) {
 				{ULID: block1, MinTime: 0, MaxTime: 10},
 				{ULID: block2, MinTime: 0, MaxTime: 10},
 				// 1st level range [10, 20]
-				{ULID: block3, MinTime: 10, MaxTime: 20},
-				{ULID: block4, MinTime: 10, MaxTime: 20},
+				{ULID: block3, MinTime: 11, MaxTime: 20},
+				{ULID: block4, MinTime: 11, MaxTime: 20},
 			},
 			expected: []*job{
 				{userID: userID, stage: stageSplit, shardID: "1_of_1", blocksGroup: blocksGroup{
@@ -154,8 +154,8 @@ func TestPlanCompaction(t *testing.T) {
 					rangeStart: 10,
 					rangeEnd:   20,
 					blocks: []*block.Meta{
-						{ULID: block3, MinTime: 10, MaxTime: 20},
-						{ULID: block4, MinTime: 10, MaxTime: 20},
+						{ULID: block3, MinTime: 11, MaxTime: 20},
+						{ULID: block4, MinTime: 11, MaxTime: 20},
 					},
 				}},
 			},
@@ -169,8 +169,8 @@ func TestPlanCompaction(t *testing.T) {
 				{ULID: block1, MinTime: 0, MaxTime: 10},
 				{ULID: block2, MinTime: 0, MaxTime: 10},
 				// 1st level range [10, 20]
-				{ULID: block3, MinTime: 10, MaxTime: 20},
-				{ULID: block4, MinTime: 10, MaxTime: 20},
+				{ULID: block3, MinTime: 11, MaxTime: 20},
+				{ULID: block4, MinTime: 11, MaxTime: 20},
 			},
 			expected: []*job{
 				{userID: userID, stage: stageSplit, shardID: "1_of_2", blocksGroup: blocksGroup{
@@ -191,14 +191,14 @@ func TestPlanCompaction(t *testing.T) {
 					rangeStart: 10,
 					rangeEnd:   20,
 					blocks: []*block.Meta{
-						{ULID: block3, MinTime: 10, MaxTime: 20},
+						{ULID: block3, MinTime: 11, MaxTime: 20},
 					},
 				}},
 				{userID: userID, stage: stageSplit, shardID: "2_of_2", blocksGroup: blocksGroup{
 					rangeStart: 10,
 					rangeEnd:   20,
 					blocks: []*block.Meta{
-						{ULID: block4, MinTime: 10, MaxTime: 20},
+						{ULID: block4, MinTime: 11, MaxTime: 20},
 					},
 				}},
 			},
@@ -211,8 +211,8 @@ func TestPlanCompaction(t *testing.T) {
 				{ULID: block1, MinTime: 0, MaxTime: 10},
 				{ULID: block2, MinTime: 0, MaxTime: 10},
 				// 1st level range [10, 20]
-				{ULID: block3, MinTime: 10, MaxTime: 20},
-				{ULID: block4, MinTime: 10, MaxTime: 20},
+				{ULID: block3, MinTime: 11, MaxTime: 20},
+				{ULID: block4, MinTime: 11, MaxTime: 20},
 			},
 			expected: []*job{
 				{userID: userID, stage: stageMerge, blocksGroup: blocksGroup{
@@ -227,8 +227,8 @@ func TestPlanCompaction(t *testing.T) {
 					rangeStart: 10,
 					rangeEnd:   20,
 					blocks: []*block.Meta{
-						{ULID: block3, MinTime: 10, MaxTime: 20},
-						{ULID: block4, MinTime: 10, MaxTime: 20},
+						{ULID: block3, MinTime: 11, MaxTime: 20},
+						{ULID: block4, MinTime: 11, MaxTime: 20},
 					},
 				}},
 			},
@@ -243,7 +243,7 @@ func TestPlanCompaction(t *testing.T) {
 				{ULID: block3, MinTime: 0, MaxTime: 10, Labels: map[string]string{sharding.CompactorShardIDLabel: "2_of_2"}},
 				{ULID: block4, MinTime: 10, MaxTime: 20, Labels: map[string]string{sharding.CompactorShardIDLabel: "2_of_2"}},
 				// 2nd level range [20, 40]
-				{ULID: block5, MinTime: 20, MaxTime: 30, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_2"}},
+				{ULID: block5, MinTime: 21, MaxTime: 30, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_2"}},
 				{ULID: block6, MinTime: 30, MaxTime: 40, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_2"}},
 			},
 			expected: []*job{
@@ -267,7 +267,7 @@ func TestPlanCompaction(t *testing.T) {
 					rangeStart: 20,
 					rangeEnd:   40,
 					blocks: []*block.Meta{
-						{ULID: block5, MinTime: 20, MaxTime: 30, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_2"}},
+						{ULID: block5, MinTime: 21, MaxTime: 30, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_2"}},
 						{ULID: block6, MinTime: 30, MaxTime: 40, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_2"}},
 					},
 				}},
@@ -283,8 +283,8 @@ func TestPlanCompaction(t *testing.T) {
 				{ULID: block3, MinTime: 0, MaxTime: 10, Labels: map[string]string{sharding.CompactorShardIDLabel: "2_of_2"}},
 				{ULID: block4, MinTime: 10, MaxTime: 20, Labels: map[string]string{sharding.CompactorShardIDLabel: "2_of_2"}},
 				// 2nd level range [20, 40]
-				{ULID: block5, MinTime: 20, MaxTime: 40},
-				{ULID: block6, MinTime: 20, MaxTime: 40, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_2"}},
+				{ULID: block5, MinTime: 21, MaxTime: 40},
+				{ULID: block6, MinTime: 21, MaxTime: 40, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_2"}},
 			},
 			expected: []*job{
 				{userID: userID, stage: stageMerge, shardID: "1_of_2", blocksGroup: blocksGroup{
@@ -317,15 +317,15 @@ func TestPlanCompaction(t *testing.T) {
 				{ULID: block10, MinTime: 0, MaxTime: 10, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 				{ULID: block3, MinTime: 10, MaxTime: 20, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 				// To be compacted on 2nd level range [20, 40]
-				{ULID: block4, MinTime: 20, MaxTime: 30, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
+				{ULID: block4, MinTime: 21, MaxTime: 30, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 				{ULID: block5, MinTime: 30, MaxTime: 40, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 				// Already compacted on 2nd level range [40, 60]
-				{ULID: block6, MinTime: 40, MaxTime: 60, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
+				{ULID: block6, MinTime: 41, MaxTime: 60, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 				// Not compacted on 2nd level because the range [60, 80]
 				// has other 1st level range groups to be compacted first
-				{ULID: block7, MinTime: 60, MaxTime: 70, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
+				{ULID: block7, MinTime: 61, MaxTime: 70, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 				// To be compacted on 1st level range [70, 80]
-				{ULID: block8, MinTime: 70, MaxTime: 80, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
+				{ULID: block8, MinTime: 71, MaxTime: 80, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 				{ULID: block9, MinTime: 75, MaxTime: 80, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 			},
 			expected: []*job{
@@ -341,7 +341,7 @@ func TestPlanCompaction(t *testing.T) {
 					rangeStart: 70,
 					rangeEnd:   80,
 					blocks: []*block.Meta{
-						{ULID: block8, MinTime: 70, MaxTime: 80, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
+						{ULID: block8, MinTime: 71, MaxTime: 80, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 						{ULID: block9, MinTime: 75, MaxTime: 80, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 					},
 				}},
@@ -349,7 +349,7 @@ func TestPlanCompaction(t *testing.T) {
 					rangeStart: 20,
 					rangeEnd:   40,
 					blocks: []*block.Meta{
-						{ULID: block4, MinTime: 20, MaxTime: 30, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
+						{ULID: block4, MinTime: 21, MaxTime: 30, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 						{ULID: block5, MinTime: 30, MaxTime: 40, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 					},
 				}},
@@ -371,16 +371,16 @@ func TestPlanCompaction(t *testing.T) {
 			blocks: []*block.Meta{
 				{ULID: block1, MinTime: 0, MaxTime: 40, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 				{ULID: block2, MinTime: 40, MaxTime: 70, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
-				{ULID: block3, MinTime: 80, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
-				{ULID: block4, MinTime: 80, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
+				{ULID: block3, MinTime: 81, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
+				{ULID: block4, MinTime: 81, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 			},
 			expected: []*job{
 				{userID: userID, stage: stageMerge, shardID: "1_of_1", blocksGroup: blocksGroup{
 					rangeStart: 80,
 					rangeEnd:   120,
 					blocks: []*block.Meta{
-						{ULID: block3, MinTime: 80, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
-						{ULID: block4, MinTime: 80, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
+						{ULID: block3, MinTime: 81, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
+						{ULID: block4, MinTime: 81, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 					},
 				}},
 			},
@@ -391,7 +391,7 @@ func TestPlanCompaction(t *testing.T) {
 			blocks: []*block.Meta{
 				{ULID: block1, MinTime: 10, MaxTime: 20},
 				{ULID: block2, MinTime: 10, MaxTime: 30}, // This block spans across two 1st level ranges.
-				{ULID: block3, MinTime: 20, MaxTime: 30},
+				{ULID: block3, MinTime: 21, MaxTime: 30},
 				{ULID: block4, MinTime: 30, MaxTime: 40},
 			},
 			expected: []*job{
@@ -406,7 +406,7 @@ func TestPlanCompaction(t *testing.T) {
 					rangeStart: 20,
 					rangeEnd:   40,
 					blocks: []*block.Meta{
-						{ULID: block3, MinTime: 20, MaxTime: 30},
+						{ULID: block3, MinTime: 21, MaxTime: 30},
 						{ULID: block4, MinTime: 30, MaxTime: 40},
 					},
 				}},
@@ -439,16 +439,16 @@ func TestPlanCompaction(t *testing.T) {
 				{ULID: block1, MinTime: 0, MaxTime: 40, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 				{ULID: block2, MinTime: 30, MaxTime: 150, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}}, // This block is larger then the largest compaction range.
 				{ULID: block3, MinTime: 40, MaxTime: 70, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
-				{ULID: block4, MinTime: 80, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
-				{ULID: block5, MinTime: 80, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
+				{ULID: block4, MinTime: 81, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
+				{ULID: block5, MinTime: 81, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 			},
 			expected: []*job{
 				{userID: userID, stage: stageMerge, shardID: "1_of_1", blocksGroup: blocksGroup{
 					rangeStart: 80,
 					rangeEnd:   120,
 					blocks: []*block.Meta{
-						{ULID: block4, MinTime: 80, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
-						{ULID: block5, MinTime: 80, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
+						{ULID: block4, MinTime: 81, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
+						{ULID: block5, MinTime: 81, MaxTime: 120, Labels: map[string]string{sharding.CompactorShardIDLabel: "1_of_1"}},
 					},
 				}},
 			},
@@ -718,14 +718,18 @@ func TestGroupBlocksByRange(t *testing.T) {
 			timeRange: 20,
 			blocks: []*block.Meta{
 				{MinTime: 10, MaxTime: 15},
-				{MinTime: 40, MaxTime: 60},
+				{MinTime: 21, MaxTime: 40},
+				{MinTime: 41, MaxTime: 60},
 			},
 			expected: []blocksGroup{
 				{rangeStart: 0, rangeEnd: 20, blocks: []*block.Meta{
 					{MinTime: 10, MaxTime: 15},
 				}},
+				{rangeStart: 20, rangeEnd: 40, blocks: []*block.Meta{
+					{MinTime: 21, MaxTime: 40},
+				}},
 				{rangeStart: 40, rangeEnd: 60, blocks: []*block.Meta{
-					{MinTime: 40, MaxTime: 60},
+					{MinTime: 41, MaxTime: 60},
 				}},
 			},
 		},
@@ -754,7 +758,7 @@ func TestGroupBlocksByRange(t *testing.T) {
 				{MinTime: 0, MaxTime: 20},
 				{MinTime: 0, MaxTime: 40}, // This block is larger then the range.
 				{MinTime: 10, MaxTime: 20},
-				{MinTime: 20, MaxTime: 30},
+				{MinTime: 21, MaxTime: 30},
 			},
 			expected: []blocksGroup{
 				{rangeStart: 0, rangeEnd: 20, blocks: []*block.Meta{
@@ -762,7 +766,7 @@ func TestGroupBlocksByRange(t *testing.T) {
 					{MinTime: 10, MaxTime: 20},
 				}},
 				{rangeStart: 20, rangeEnd: 40, blocks: []*block.Meta{
-					{MinTime: 20, MaxTime: 30},
+					{MinTime: 21, MaxTime: 30},
 				}},
 			},
 		},
@@ -787,7 +791,8 @@ func TestGroupBlocksByRange(t *testing.T) {
 
 	for testName, testData := range tests {
 		t.Run(testName, func(t *testing.T) {
-			assert.Equal(t, testData.expected, groupBlocksByRange(testData.blocks, testData.timeRange))
+			actual := groupBlocksByRange(testData.blocks, testData.timeRange)
+			assert.Equal(t, testData.expected, actual)
 		})
 	}
 }

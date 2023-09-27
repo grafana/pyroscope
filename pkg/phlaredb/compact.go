@@ -75,6 +75,9 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount ui
 		meta := outMeta.Clone()
 		meta.ULID = ulid.MustNew(outBlocksTime, rand.Reader)
 		if shardsCount > 1 {
+			if meta.Labels == nil {
+				meta.Labels = make(map[string]string)
+			}
 			meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(i), shardsCount)
 		}
 		writers[i], err = newBlockWriter(dst, meta)
@@ -131,7 +134,6 @@ type blockWriter struct {
 	path            string
 	meta            *block.Meta
 	totalProfiles   uint64
-	min, max        int64
 }
 
 func newBlockWriter(dst string, meta *block.Meta) (*blockWriter, error) {
@@ -152,8 +154,6 @@ func newBlockWriter(dst string, meta *block.Meta) (*blockWriter, error) {
 		profilesWriter:  profileWriter,
 		path:            blockPath,
 		meta:            meta,
-		min:             math.MaxInt64,
-		max:             math.MinInt64,
 	}, nil
 }
 
@@ -171,12 +171,6 @@ func (bw *blockWriter) WriteRow(r profileRow) error {
 		return err
 	}
 	bw.totalProfiles++
-	if r.timeNanos < bw.min {
-		bw.min = r.timeNanos
-	}
-	if r.timeNanos > bw.max {
-		bw.max = r.timeNanos
-	}
 	return nil
 }
 
@@ -199,8 +193,6 @@ func (bw *blockWriter) Close(ctx context.Context) error {
 	bw.meta.Stats.NumSeries = bw.indexRewriter.NumSeries()
 	bw.meta.Stats.NumSamples = bw.symbolsRewriter.NumSamples()
 	bw.meta.Compaction.Deletable = bw.totalProfiles == 0
-	bw.meta.MinTime = model.TimeFromUnixNano(bw.min)
-	bw.meta.MaxTime = model.TimeFromUnixNano(bw.max)
 	if _, err := bw.meta.WriteToFile(util.Logger, bw.path); err != nil {
 		return err
 	}
@@ -419,9 +411,6 @@ func compactMetas(src ...block.Meta) block.Meta {
 			}
 			labels[k] = v
 		}
-	}
-	if hostname, err := os.Hostname(); err == nil {
-		labels[block.HostnameLabel] = hostname
 	}
 	meta.Source = block.CompactorSource
 	meta.Compaction = tsdb.BlockMetaCompaction{

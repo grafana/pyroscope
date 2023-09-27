@@ -79,7 +79,7 @@ func TestJob_conflicts(t *testing.T) {
 				stage:   stageMerge,
 				shardID: "1_of_2",
 				blocksGroup: blocksGroup{
-					rangeStart: 20,
+					rangeStart: 21,
 					rangeEnd:   30,
 					blocks:     []*block.Meta{withShardIDLabel(block3, "1_of_2"), withShardIDLabel(block4, "1_of_2")},
 				},
@@ -163,7 +163,7 @@ func TestJob_conflicts(t *testing.T) {
 				stage:   stageMerge,
 				shardID: "1_of_2",
 				blocksGroup: blocksGroup{
-					rangeStart: 20,
+					rangeStart: 21,
 					rangeEnd:   40,
 					blocks:     []*block.Meta{withShardIDLabel(block3, "1_of_2"), withShardIDLabel(block4, "1_of_2")},
 				},
@@ -189,6 +189,10 @@ func TestBlocksGroup_overlaps(t *testing.T) {
 		{
 			first:    blocksGroup{rangeStart: 10, rangeEnd: 20},
 			second:   blocksGroup{rangeStart: 20, rangeEnd: 30},
+			expected: false,
+		}, {
+			first:    blocksGroup{rangeStart: 10, rangeEnd: 20},
+			second:   blocksGroup{rangeStart: 21, rangeEnd: 30},
 			expected: false,
 		}, {
 			first:    blocksGroup{rangeStart: 10, rangeEnd: 20},

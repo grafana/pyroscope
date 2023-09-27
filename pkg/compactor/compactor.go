@@ -576,11 +576,11 @@ func (c *MultitenantCompactor) compactUsers(ctx context.Context) {
 		// Ensure the user ID belongs to our shard.
 		if owned, err := c.shardingStrategy.compactorOwnUser(userID); err != nil {
 			c.compactionRunSkippedTenants.Inc()
-			level.Warn(c.logger).Log("msg", "unable to check if user is owned by this shard", "user", userID, "err", err)
+			level.Warn(c.logger).Log("msg", "unable to check if user is owned by this shard", "tenant", userID, "err", err)
 			continue
 		} else if !owned {
 			c.compactionRunSkippedTenants.Inc()
-			level.Debug(c.logger).Log("msg", "skipping user because it is not owned by this shard", "user", userID)
+			level.Debug(c.logger).Log("msg", "skipping user because it is not owned by this shard", "tenant", userID)
 			continue
 		}
 
@@ -588,32 +588,32 @@ func (c *MultitenantCompactor) compactUsers(ctx context.Context) {
 
 		if markedForDeletion, err := bucket.TenantDeletionMarkExists(ctx, c.bucketClient, userID); err != nil {
 			c.compactionRunSkippedTenants.Inc()
-			level.Warn(c.logger).Log("msg", "unable to check if user is marked for deletion", "user", userID, "err", err)
+			level.Warn(c.logger).Log("msg", "unable to check if user is marked for deletion", "tenant", userID, "err", err)
 			continue
 		} else if markedForDeletion {
 			c.compactionRunSkippedTenants.Inc()
-			level.Debug(c.logger).Log("msg", "skipping user because it is marked for deletion", "user", userID)
+			level.Debug(c.logger).Log("msg", "skipping user because it is marked for deletion", "tenant", userID)
 			continue
 		}
 
-		level.Info(c.logger).Log("msg", "starting compaction of user blocks", "user", userID)
+		level.Info(c.logger).Log("msg", "starting compaction of user blocks", "tenant", userID)
 
 		if err = c.compactUserWithRetries(ctx, userID); err != nil {
 			switch {
 			case errors.Is(err, context.Canceled):
 				// We don't want to count shutdowns as failed compactions because we will pick up with the rest of the compaction after the restart.
-				level.Info(c.logger).Log("msg", "compaction for user was interrupted by a shutdown", "user", userID)
+				level.Info(c.logger).Log("msg", "compaction for user was interrupted by a shutdown", "tenant", userID)
 				return
 			default:
 				c.compactionRunFailedTenants.Inc()
 				compactionErrorCount++
-				level.Error(c.logger).Log("msg", "failed to compact user blocks", "user", userID, "err", err)
+				level.Error(c.logger).Log("msg", "failed to compact user blocks", "tenant", userID, "err", err)
 			}
 			continue
 		}
 
 		c.compactionRunSucceededTenants.Inc()
-		level.Info(c.logger).Log("msg", "successfully compacted user blocks", "user", userID)
+		level.Info(c.logger).Log("msg", "successfully compacted user blocks", "tenant", userID)
 	}
 
 	// Delete local files for unowned tenants, if there are any. This cleans up

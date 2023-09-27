@@ -292,6 +292,7 @@ func TestHeadFlush(t *testing.T) {
 				NumSeries:   8,
 				NumProfiles: 11,
 			},
+			Labels: map[string]string{},
 			Files: []block.File{
 				{
 					RelPath:   "index.tsdb",

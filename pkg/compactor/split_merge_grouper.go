@@ -304,7 +304,7 @@ func groupBlocksByRange(blocks []*block.Meta, tr int64) []blocksGroup {
 		for ; i < len(blocks); i++ {
 			// If the block does not start within this group, then we should break the iteration
 			// and move it to the next group.
-			if int64(blocks[i].MinTime) >= group.rangeEnd {
+			if int64(blocks[i].MinTime) > group.rangeEnd {
 				break
 			}
 

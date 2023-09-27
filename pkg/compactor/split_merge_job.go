@@ -97,7 +97,7 @@ func (j *job) String() string {
 // blocksGroup holds a group of blocks within the same time range.
 type blocksGroup struct {
 	rangeStart int64         // Included.
-	rangeEnd   int64         // Excluded.
+	rangeEnd   int64         // Included.
 	blocks     []*block.Meta // Sorted by MinTime.
 }
 

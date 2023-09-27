@@ -112,12 +112,12 @@ func (l *Loader) GetIndex(ctx context.Context, userID string) (*Index, error) {
 		l.cacheIndex(userID, nil, err)
 
 		if errors.Is(err, ErrIndexNotFound) {
-			level.Warn(l.logger).Log("msg", "bucket index not found", "user", userID)
+			level.Warn(l.logger).Log("msg", "bucket index not found", "tenant", userID)
 		} else {
 			// We don't track ErrIndexNotFound as failure because it's a legit case (eg. a tenant just
 			// started to remote write and its blocks haven't uploaded to storage yet).
 			l.loadFailures.Inc()
-			level.Error(l.logger).Log("msg", "unable to load bucket index", "user", userID, "err", err)
+			level.Error(l.logger).Log("msg", "unable to load bucket index", "tenant", userID, "err", err)
 		}
 
 		return nil, err
@@ -128,7 +128,7 @@ func (l *Loader) GetIndex(ctx context.Context, userID string) (*Index, error) {
 
 	elapsedTime := time.Since(startTime)
 	l.loadDuration.Observe(elapsedTime.Seconds())
-	level.Info(l.logger).Log("msg", "loaded bucket index", "user", userID, "duration", elapsedTime)
+	level.Info(l.logger).Log("msg", "loaded bucket index", "tenant", userID, "duration", elapsedTime)
 	return idx, nil
 }
 
@@ -193,7 +193,7 @@ func (l *Loader) updateCachedIndex(ctx context.Context, userID string) {
 	idx, err := ReadIndex(ctx, l.bkt, userID, l.cfgProvider, l.logger)
 	if err != nil && !errors.Is(err, ErrIndexNotFound) {
 		l.loadFailures.Inc()
-		level.Warn(l.logger).Log("msg", "unable to update bucket index", "user", userID, "err", err)
+		level.Warn(l.logger).Log("msg", "unable to update bucket index", "tenant", userID, "err", err)
 		return
 	}
 
@@ -214,7 +214,7 @@ func (l *Loader) deleteCachedIndex(userID string) {
 	delete(l.indexes, userID)
 	l.indexesMx.Unlock()
 
-	level.Info(l.logger).Log("msg", "unloaded bucket index", "user", userID, "reason", "idle")
+	level.Info(l.logger).Log("msg", "unloaded bucket index", "tenant", userID, "reason", "idle")
 }
 
 func (l *Loader) countLoadedIndexesMetric() float64 {

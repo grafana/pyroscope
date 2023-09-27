@@ -119,8 +119,7 @@ func TestCompactWithSplitting(t *testing.T) {
 	require.Equal(t, "7_of_16", compacted[2].Labels[sharding.CompactorShardIDLabel])
 	require.Equal(t, "14_of_16", compacted[3].Labels[sharding.CompactorShardIDLabel])
 
-	// The series b should span from 11 to 20 and not 1 to 20.
-	require.Equal(t, model.TimeFromUnix(11), compacted[1].MinTime)
+	require.Equal(t, model.TimeFromUnix(1), compacted[1].MinTime)
 	require.Equal(t, model.TimeFromUnix(20), compacted[1].MaxTime)
 
 	// We first verify we have all series and timestamps across querying all blocks.
@@ -620,9 +619,6 @@ func TestCompactMetas(t *testing.T) {
 		},
 	}...)
 	labels := map[string]string{"foo": "bar", "bar": "buzz"}
-	if hostname, err := os.Hostname(); err == nil {
-		labels[block.HostnameLabel] = hostname
-	}
 	require.Equal(t, model.TimeFromUnix(0), actual.MinTime)
 	require.Equal(t, model.TimeFromUnix(200), actual.MaxTime)
 	require.Equal(t, tsdb.BlockMetaCompaction{

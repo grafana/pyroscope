@@ -121,7 +121,7 @@ type Meta struct {
 	Version MetaVersion `json:"version"`
 
 	// Labels are the external labels identifying the producer as well as tenant.
-	Labels map[string]string `json:"labels,omitempty"`
+	Labels map[string]string `json:"labels"`
 
 	// Source is a real upload source of the block.
 	Source SourceType `json:"source,omitempty"`

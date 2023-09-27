@@ -354,9 +354,9 @@ func (bs *BucketStores) closeBucketStoreAndDeleteLocalFilesForExcludedTenants(in
 		case errors.Is(err, errBucketStoreNotFound):
 			// This is OK, nothing was closed.
 		case err == nil:
-			level.Info(bs.logger).Log("msg", "closed bucket store for user", "user", userID)
+			level.Info(bs.logger).Log("msg", "closed bucket store for user", "tenant", userID)
 		default:
-			level.Warn(bs.logger).Log("msg", "failed to close bucket store for user", "user", userID, "err", err)
+			level.Warn(bs.logger).Log("msg", "failed to close bucket store for user", "tenant", userID, "err", err)
 		}
 
 		userSyncDir := bs.syncDirForUser(userID)

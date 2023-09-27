@@ -54,12 +54,6 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 		return labels
 	}
 
-	externalLabelsWithTenantID := func(shardID string) map[string]string {
-		labels := externalLabels(shardID)
-		labels["__org_id__"] = userID
-		return labels
-	}
-
 	tests := map[string]struct {
 		numShards int
 		setup     func(t *testing.T, bkt objstore.Bucket) []block.Meta
@@ -69,37 +63,6 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 			setup: func(t *testing.T, bkt objstore.Bucket) []block.Meta {
 				block1 := createDBBlock(t, bkt, userID, blockRangeMillis, 2*blockRangeMillis, numSeries, externalLabels(""))
 				block2 := createDBBlock(t, bkt, userID, blockRangeMillis, 2*blockRangeMillis, numSeries, externalLabels(""))
-
-				return []block.Meta{
-					{
-						MinTime: model.Time(1 * blockRangeMillis),
-						MaxTime: model.Time(2 * blockRangeMillis),
-						Compaction: tsdb.BlockMetaCompaction{
-							Sources: []ulid.ULID{block1, block2},
-						},
-
-						Labels: map[string]string{
-							sharding.CompactorShardIDLabel: "1_of_2",
-						},
-					}, {
-						MinTime: model.Time(1 * blockRangeMillis),
-						MaxTime: model.Time(2 * blockRangeMillis),
-						Compaction: tsdb.BlockMetaCompaction{
-							Sources: []ulid.ULID{block1, block2},
-						},
-
-						Labels: map[string]string{
-							sharding.CompactorShardIDLabel: "2_of_2",
-						},
-					},
-				}
-			},
-		},
-		"overlapping blocks matching the 1st compaction range with mixed tenant ID labels should be merged and split": {
-			numShards: 2,
-			setup: func(t *testing.T, bkt objstore.Bucket) []block.Meta {
-				block1 := createDBBlock(t, bkt, userID, blockRangeMillis, 2*blockRangeMillis, numSeries, externalLabels(""))             // Doesn't have __org_id__ label
-				block2 := createDBBlock(t, bkt, userID, blockRangeMillis, 2*blockRangeMillis, numSeries, externalLabelsWithTenantID("")) // Has __org_id__ label
 
 				return []block.Meta{
 					{
@@ -276,7 +239,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 				block5b := createDBBlock(t, bkt, userID, 3*blockRangeMillis, 4*blockRangeMillis, numSeries, externalLabels("2_of_2"))
 
 				// Two non-adjacent non-split blocks in the 1st compaction range.
-				block6 := createDBBlock(t, bkt, userID, 4*blockRangeMillis, 5*blockRangeMillis, numSeries, externalLabels(""))
+				block6 := createDBBlock(t, bkt, userID, 4*blockRangeMillis+1, 5*blockRangeMillis, numSeries, externalLabels(""))
 				block7 := createDBBlock(t, bkt, userID, 7*blockRangeMillis, 8*blockRangeMillis, numSeries, externalLabels(""))
 
 				return []block.Meta{
@@ -308,7 +271,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					// The two non-adjacent blocks block6 and block7 are split individually first and then merged
 					// together in the 3rd range.
 					{
-						MinTime: model.Time(4 * blockRangeMillis),
+						MinTime: model.Time(4*blockRangeMillis + 1),
 						MaxTime: model.Time(8 * blockRangeMillis),
 						Compaction: tsdb.BlockMetaCompaction{
 							Sources: []ulid.ULID{block6, block7},
@@ -319,7 +282,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 						},
 					},
 					{
-						MinTime: model.Time(4 * blockRangeMillis),
+						MinTime: model.Time(4*blockRangeMillis + 1),
 						MaxTime: model.Time(8 * blockRangeMillis),
 						Compaction: tsdb.BlockMetaCompaction{
 							Sources: []ulid.ULID{block6, block7},
@@ -367,41 +330,6 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 				}
 			},
 		},
-		"overlapping and non-overlapping blocks within the same range and mixed tenant ID label should be split and compacted together": {
-			numShards: 2,
-			setup: func(t *testing.T, bkt objstore.Bucket) []block.Meta {
-				// Overlapping.
-				block1 := createDBBlock(t, bkt, userID, 0, (5 * time.Minute).Milliseconds(), numSeries, externalLabels(""))                                      // Without __org_id__ label
-				block2 := createDBBlock(t, bkt, userID, time.Minute.Milliseconds(), (7 * time.Minute).Milliseconds(), numSeries, externalLabelsWithTenantID("")) // With __org_id__ label
-
-				// Not overlapping.
-				block3 := createDBBlock(t, bkt, userID, time.Hour.Milliseconds(), (2 * time.Hour).Milliseconds(), numSeries, externalLabelsWithTenantID("")) // With __org_id__ label
-
-				return []block.Meta{
-					{
-						MinTime: 0,
-						MaxTime: model.Time((2 * time.Hour).Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
-							Sources: []ulid.ULID{block1, block2, block3},
-						},
-
-						Labels: map[string]string{
-							sharding.CompactorShardIDLabel: "1_of_2",
-						},
-					}, {
-						MinTime: 0,
-						MaxTime: model.Time((2 * time.Hour).Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
-							Sources: []ulid.ULID{block1, block2, block3},
-						},
-
-						Labels: map[string]string{
-							sharding.CompactorShardIDLabel: "2_of_2",
-						},
-					},
-				}
-			},
-		},
 		"should correctly handle empty blocks generated in the splitting stage": {
 			numShards: 2,
 			setup: func(t *testing.T, bkt objstore.Bucket) []block.Meta {
@@ -411,7 +339,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 
 				return []block.Meta{
 					{
-						MinTime: model.Time((2 * blockRangeMillis) - 1), // Because there's only 1 sample with timestamp=maxT-1
+						MinTime: model.Time(blockRangeMillis), // Because there's only 1 sample with timestamp=maxT-1
 						MaxTime: model.Time(2 * blockRangeMillis),
 						Compaction: tsdb.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1},
@@ -596,6 +524,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 			// Compare actual blocks with the expected ones.
 			require.Len(t, actual, len(expected))
 			for i, e := range expected {
+				delete(actual[i].Labels, block.HostnameLabel)
 				assert.Equal(t, e.MinTime, actual[i].MinTime)
 				assert.Equal(t, e.MaxTime, actual[i].MaxTime)
 				assert.Equal(t, e.Compaction.Sources, actual[i].Compaction.Sources)
@@ -691,8 +620,8 @@ func TestMultitenantCompactor_ShouldGuaranteeSeriesShardingConsistencyOverTheTim
 	// Ensure the input block has been split.
 	require.Len(t, actualMetas, numShards)
 	for idx, actualMeta := range actualMetas {
-		assert.Equal(t, blockRangeMillis, actualMeta.MinTime)
-		assert.Equal(t, 2*blockRangeMillis, actualMeta.MaxTime)
+		assert.Equal(t, model.Time(blockRangeMillis), actualMeta.MinTime)
+		assert.Equal(t, model.Time(2*blockRangeMillis), actualMeta.MaxTime)
 		assert.Equal(t, []ulid.ULID{blockID}, actualMeta.Compaction.Sources)
 		assert.Equal(t, sharding.FormatShardIDLabelValue(uint64(idx), numShards), actualMeta.Labels[sharding.CompactorShardIDLabel])
 	}
@@ -702,7 +631,7 @@ func TestMultitenantCompactor_ShouldGuaranteeSeriesShardingConsistencyOverTheTim
 	for _, actualMeta := range actualMetas {
 		expectedSeriesIDs := expectedSeriesIDByShard[actualMeta.Labels[sharding.CompactorShardIDLabel]]
 
-		b := phlaredb.NewSingleBlockQuerierFromMeta(ctx, bucketClient, actualMeta)
+		b := phlaredb.NewSingleBlockQuerierFromMeta(ctx, userBucket, actualMeta)
 		require.NoError(t, b.Open(ctx))
 		indexReader := b.Index()
 

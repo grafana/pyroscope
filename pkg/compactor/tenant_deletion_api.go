@@ -33,13 +33,13 @@ package compactor
 
 // 	err = mimir_tsdb.WriteTenantDeletionMark(r.Context(), c.bucketClient, userID, c.cfgProvider, mimir_tsdb.NewTenantDeletionMark(time.Now()))
 // 	if err != nil {
-// 		level.Error(c.logger).Log("msg", "failed to write tenant deletion mark", "user", userID, "err", err)
+// 		level.Error(c.logger).Log("msg", "failed to write tenant deletion mark", "tenant", userID, "err", err)
 
 // 		http.Error(w, err.Error(), http.StatusInternalServerError)
 // 		return
 // 	}
 
-// 	level.Info(c.logger).Log("msg", "tenant deletion mark in blocks storage created", "user", userID)
+// 	level.Info(c.logger).Log("msg", "tenant deletion mark in blocks storage created", "tenant", userID)
 
 // 	w.WriteHeader(http.StatusOK)
 // }

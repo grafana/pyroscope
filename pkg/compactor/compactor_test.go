@@ -43,6 +43,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	pyroscope_objstore "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
@@ -570,22 +571,22 @@ func TestMultitenantCompactor_ShouldIterateOverUsersAndRunCompaction(t *testing.
 		`level=info component=compactor msg="compactor is ACTIVE in the ring"`,
 		`level=info component=compactor msg="discovering users from bucket"`,
 		`level=info component=compactor msg="discovered users from bucket" users=2`,
-		`level=info component=compactor msg="starting compaction of user blocks" user=user-1`,
-		`level=info component=compactor user=user-1 msg="start sync of metas"`,
-		`level=info component=compactor user=user-1 msg="start of GC"`,
-		`level=debug component=compactor user=user-1 msg="grouper found a compactable blocks group" groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 job="stage: merge, range start: 1574776800000, range end: 1574784000000, shard: , blocks: 01DTVP434PA9VFXSW2JKB3392D (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC),01FS51A7GQ1RQWV35DBVYQM4KF (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC)"`,
-		`level=info component=compactor user=user-1 msg="start of compactions"`,
-		`level=info component=compactor user=user-1 groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 msg="compaction job succeeded"`,
-		`level=info component=compactor user=user-1 msg="compaction iterations done"`,
-		`level=info component=compactor msg="successfully compacted user blocks" user=user-1`,
-		`level=info component=compactor msg="starting compaction of user blocks" user=user-2`,
-		`level=info component=compactor user=user-2 msg="start sync of metas"`,
-		`level=info component=compactor user=user-2 msg="start of GC"`,
-		`level=debug component=compactor user=user-2 msg="grouper found a compactable blocks group" groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 job="stage: merge, range start: 1574776800000, range end: 1574784000000, shard: , blocks: 01DTW0ZCPDDNV4BV83Q2SV4QAZ (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC),01FRSF035J26D6CGX7STCSD1KG (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC)"`,
-		`level=info component=compactor user=user-2 msg="start of compactions"`,
-		`level=info component=compactor user=user-2 groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 msg="compaction job succeeded"`,
-		`level=info component=compactor user=user-2 msg="compaction iterations done"`,
-		`level=info component=compactor msg="successfully compacted user blocks" user=user-2`,
+		`level=info component=compactor msg="starting compaction of user blocks" tenant=user-1`,
+		`level=info component=compactor tenant=user-1 msg="start sync of metas"`,
+		`level=info component=compactor tenant=user-1 msg="start of GC"`,
+		`level=debug component=compactor tenant=user-1 msg="grouper found a compactable blocks group" groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 job="stage: merge, range start: 1574776800000, range end: 1574784000000, shard: , blocks: 01DTVP434PA9VFXSW2JKB3392D (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC),01FS51A7GQ1RQWV35DBVYQM4KF (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC)"`,
+		`level=info component=compactor tenant=user-1 msg="start of compactions"`,
+		`level=info component=compactor tenant=user-1 groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 msg="compaction job succeeded"`,
+		`level=info component=compactor tenant=user-1 msg="compaction iterations done"`,
+		`level=info component=compactor msg="successfully compacted user blocks" tenant=user-1`,
+		`level=info component=compactor msg="starting compaction of user blocks" tenant=user-2`,
+		`level=info component=compactor tenant=user-2 msg="start sync of metas"`,
+		`level=info component=compactor tenant=user-2 msg="start of GC"`,
+		`level=debug component=compactor tenant=user-2 msg="grouper found a compactable blocks group" groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 job="stage: merge, range start: 1574776800000, range end: 1574784000000, shard: , blocks: 01DTW0ZCPDDNV4BV83Q2SV4QAZ (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC),01FRSF035J26D6CGX7STCSD1KG (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC)"`,
+		`level=info component=compactor tenant=user-2 msg="start of compactions"`,
+		`level=info component=compactor tenant=user-2 groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 msg="compaction job succeeded"`,
+		`level=info component=compactor tenant=user-2 msg="compaction iterations done"`,
+		`level=info component=compactor msg="successfully compacted user blocks" tenant=user-2`,
 	}, removeIgnoredLogs(strings.Split(strings.TrimSpace(logs.String()), "\n")))
 
 	// Instead of testing for shipper metrics, we only check our metrics here.
@@ -711,16 +712,16 @@ func TestMultitenantCompactor_ShouldStopCompactingTenantOnReachingMaxCompactionT
 		`level=info component=compactor msg="compactor is ACTIVE in the ring"`,
 		`level=info component=compactor msg="discovering users from bucket"`,
 		`level=info component=compactor msg="discovered users from bucket" users=1`,
-		`level=info component=compactor msg="starting compaction of user blocks" user=user-1`,
-		`level=info component=compactor user=user-1 msg="start sync of metas"`,
-		`level=info component=compactor user=user-1 msg="start of GC"`,
-		`level=debug component=compactor user=user-1 msg="grouper found a compactable blocks group" groupKey=0@12695595599644216241-merge--1574776800000-1574784000000 job="stage: merge, range start: 1574776800000, range end: 1574784000000, shard: , blocks: 01FN3VCQV5X342W2ZKMQQXAZRX (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC),01FRQGQB7RWQ2TS0VWA82QTPXE (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC)"`,
-		`level=debug component=compactor user=user-1 msg="grouper found a compactable blocks group" groupKey=0@414047632870839233-merge--1574776800000-1574784000000 job="stage: merge, range start: 1574776800000, range end: 1574784000000, shard: , blocks: 01DTVP434PA9VFXSW2JKB3392D (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC),01FS51A7GQ1RQWV35DBVYQM4KF (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC)"`,
-		`level=info component=compactor user=user-1 msg="start of compactions"`,
-		`level=info component=compactor user=user-1 msg="max compaction time reached, no more compactions will be started"`,
-		`level=info component=compactor user=user-1 groupKey=0@12695595599644216241-merge--1574776800000-1574784000000 msg="compaction job succeeded"`,
-		`level=info component=compactor user=user-1 msg="compaction iterations done"`,
-		`level=info component=compactor msg="successfully compacted user blocks" user=user-1`,
+		`level=info component=compactor msg="starting compaction of user blocks" tenant=user-1`,
+		`level=info component=compactor tenant=user-1 msg="start sync of metas"`,
+		`level=info component=compactor tenant=user-1 msg="start of GC"`,
+		`level=debug component=compactor tenant=user-1 msg="grouper found a compactable blocks group" groupKey=0@12695595599644216241-merge--1574776800000-1574784000000 job="stage: merge, range start: 1574776800000, range end: 1574784000000, shard: , blocks: 01FN3VCQV5X342W2ZKMQQXAZRX (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC),01FRQGQB7RWQ2TS0VWA82QTPXE (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC)"`,
+		`level=debug component=compactor tenant=user-1 msg="grouper found a compactable blocks group" groupKey=0@414047632870839233-merge--1574776800000-1574784000000 job="stage: merge, range start: 1574776800000, range end: 1574784000000, shard: , blocks: 01DTVP434PA9VFXSW2JKB3392D (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC),01FS51A7GQ1RQWV35DBVYQM4KF (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC)"`,
+		`level=info component=compactor tenant=user-1 msg="start of compactions"`,
+		`level=info component=compactor tenant=user-1 msg="max compaction time reached, no more compactions will be started"`,
+		`level=info component=compactor tenant=user-1 groupKey=0@12695595599644216241-merge--1574776800000-1574784000000 msg="compaction job succeeded"`,
+		`level=info component=compactor tenant=user-1 msg="compaction iterations done"`,
+		`level=info component=compactor msg="successfully compacted user blocks" tenant=user-1`,
 	}, removeIgnoredLogs(strings.Split(strings.TrimSpace(logs.String()), "\n")))
 }
 
@@ -785,12 +786,12 @@ func TestMultitenantCompactor_ShouldNotCompactBlocksMarkedForDeletion(t *testing
 		`level=info component=compactor msg="compactor is ACTIVE in the ring"`,
 		`level=info component=compactor msg="discovering users from bucket"`,
 		`level=info component=compactor msg="discovered users from bucket" users=1`,
-		`level=info component=compactor msg="starting compaction of user blocks" user=user-1`,
-		`level=info component=compactor user=user-1 msg="start sync of metas"`,
-		`level=info component=compactor user=user-1 msg="start of GC"`,
-		`level=info component=compactor user=user-1 msg="start of compactions"`,
-		`level=info component=compactor user=user-1 msg="compaction iterations done"`,
-		`level=info component=compactor msg="successfully compacted user blocks" user=user-1`,
+		`level=info component=compactor msg="starting compaction of user blocks" tenant=user-1`,
+		`level=info component=compactor tenant=user-1 msg="start sync of metas"`,
+		`level=info component=compactor tenant=user-1 msg="start of GC"`,
+		`level=info component=compactor tenant=user-1 msg="start of compactions"`,
+		`level=info component=compactor tenant=user-1 msg="compaction iterations done"`,
+		`level=info component=compactor msg="successfully compacted user blocks" tenant=user-1`,
 	}, removeIgnoredLogs(strings.Split(strings.TrimSpace(logs.String()), "\n")))
 
 	// Instead of testing for shipper metrics, we only check our metrics here.
@@ -886,12 +887,12 @@ func TestMultitenantCompactor_ShouldNotCompactBlocksMarkedForNoCompaction(t *tes
 		`level=info component=compactor msg="compactor is ACTIVE in the ring"`,
 		`level=info component=compactor msg="discovering users from bucket"`,
 		`level=info component=compactor msg="discovered users from bucket" users=1`,
-		`level=info component=compactor msg="starting compaction of user blocks" user=user-1`,
-		`level=info component=compactor user=user-1 msg="start sync of metas"`,
-		`level=info component=compactor user=user-1 msg="start of GC"`,
-		`level=info component=compactor user=user-1 msg="start of compactions"`,
-		`level=info component=compactor user=user-1 msg="compaction iterations done"`,
-		`level=info component=compactor msg="successfully compacted user blocks" user=user-1`,
+		`level=info component=compactor msg="starting compaction of user blocks" tenant=user-1`,
+		`level=info component=compactor tenant=user-1 msg="start sync of metas"`,
+		`level=info component=compactor tenant=user-1 msg="start of GC"`,
+		`level=info component=compactor tenant=user-1 msg="start of compactions"`,
+		`level=info component=compactor tenant=user-1 msg="compaction iterations done"`,
+		`level=info component=compactor msg="successfully compacted user blocks" tenant=user-1`,
 	}, removeIgnoredLogs(strings.Split(strings.TrimSpace(logs.String()), "\n")))
 }
 
@@ -947,7 +948,7 @@ func TestMultitenantCompactor_ShouldNotCompactBlocksForUsersMarkedForDeletion(t 
 		`level=info component=compactor msg="compactor is ACTIVE in the ring"`,
 		`level=info component=compactor msg="discovering users from bucket"`,
 		`level=info component=compactor msg="discovered users from bucket" users=1`,
-		`level=debug component=compactor msg="skipping user because it is marked for deletion" user=user-1`,
+		`level=debug component=compactor msg="skipping user because it is marked for deletion" tenant=user-1`,
 	}, removeIgnoredLogs(strings.Split(strings.TrimSpace(logs.String()), "\n")))
 
 	// Instead of testing for shipper metrics, we only check our metrics here.
@@ -1064,22 +1065,22 @@ func TestMultitenantCompactor_ShouldCompactAllUsersOnShardingEnabledButOnlyOneIn
 		`level=info component=compactor msg="compactor is ACTIVE in the ring"`,
 		`level=info component=compactor msg="discovering users from bucket"`,
 		`level=info component=compactor msg="discovered users from bucket" users=2`,
-		`level=info component=compactor msg="starting compaction of user blocks" user=user-1`,
-		`level=info component=compactor user=user-1 msg="start sync of metas"`,
-		`level=info component=compactor user=user-1 msg="start of GC"`,
-		`level=debug component=compactor user=user-1 msg="grouper found a compactable blocks group" groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 job="stage: merge, range start: 1574776800000, range end: 1574784000000, shard: , blocks: 01DTVP434PA9VFXSW2JKB3392D (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC),01FSTQ95C8FS0ZAGTQS2EF1NEG (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC)"`,
-		`level=info component=compactor user=user-1 msg="start of compactions"`,
-		`level=info component=compactor user=user-1 groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 msg="compaction job succeeded"`,
-		`level=info component=compactor user=user-1 msg="compaction iterations done"`,
-		`level=info component=compactor msg="successfully compacted user blocks" user=user-1`,
-		`level=info component=compactor msg="starting compaction of user blocks" user=user-2`,
-		`level=info component=compactor user=user-2 msg="start sync of metas"`,
-		`level=info component=compactor user=user-2 msg="start of GC"`,
-		`level=debug component=compactor user=user-2 msg="grouper found a compactable blocks group" groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 job="stage: merge, range start: 1574776800000, range end: 1574784000000, shard: , blocks: 01DTW0ZCPDDNV4BV83Q2SV4QAZ (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC),01FSV54G6QFQH1G9QE93G3B9TB (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC)"`,
-		`level=info component=compactor user=user-2 msg="start of compactions"`,
-		`level=info component=compactor user=user-2 groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 msg="compaction job succeeded"`,
-		`level=info component=compactor user=user-2 msg="compaction iterations done"`,
-		`level=info component=compactor msg="successfully compacted user blocks" user=user-2`,
+		`level=info component=compactor msg="starting compaction of user blocks" tenant=user-1`,
+		`level=info component=compactor tenant=user-1 msg="start sync of metas"`,
+		`level=info component=compactor tenant=user-1 msg="start of GC"`,
+		`level=debug component=compactor tenant=user-1 msg="grouper found a compactable blocks group" groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 job="stage: merge, range start: 1574776800000, range end: 1574784000000, shard: , blocks: 01DTVP434PA9VFXSW2JKB3392D (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC),01FSTQ95C8FS0ZAGTQS2EF1NEG (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC)"`,
+		`level=info component=compactor tenant=user-1 msg="start of compactions"`,
+		`level=info component=compactor tenant=user-1 groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 msg="compaction job succeeded"`,
+		`level=info component=compactor tenant=user-1 msg="compaction iterations done"`,
+		`level=info component=compactor msg="successfully compacted user blocks" tenant=user-1`,
+		`level=info component=compactor msg="starting compaction of user blocks" tenant=user-2`,
+		`level=info component=compactor tenant=user-2 msg="start sync of metas"`,
+		`level=info component=compactor tenant=user-2 msg="start of GC"`,
+		`level=debug component=compactor tenant=user-2 msg="grouper found a compactable blocks group" groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 job="stage: merge, range start: 1574776800000, range end: 1574784000000, shard: , blocks: 01DTW0ZCPDDNV4BV83Q2SV4QAZ (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC),01FSV54G6QFQH1G9QE93G3B9TB (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC)"`,
+		`level=info component=compactor tenant=user-2 msg="start of compactions"`,
+		`level=info component=compactor tenant=user-2 groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 msg="compaction job succeeded"`,
+		`level=info component=compactor tenant=user-2 msg="compaction iterations done"`,
+		`level=info component=compactor msg="successfully compacted user blocks" tenant=user-2`,
 	}, removeIgnoredLogs(strings.Split(strings.TrimSpace(logs.String()), "\n")))
 
 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
@@ -1208,109 +1209,9 @@ func TestMultitenantCompactor_ShouldCompactOnlyUsersOwnedByTheInstanceOnSharding
 	for _, userID := range userIDs {
 		_, l, err := findCompactorByUserID(compactors, logs, userID)
 		require.NoError(t, err)
-		assert.Contains(t, l.String(), fmt.Sprintf(`level=info component=compactor msg="successfully compacted user blocks" user=%s`, userID))
+		assert.Contains(t, l.String(), fmt.Sprintf(`level=info component=compactor msg="successfully compacted user blocks" tenant=%s`, userID))
 	}
 }
-
-// func TestMultitenantCompactor_ShouldFailWithInvalidTSDBCompactOutput(t *testing.T) {
-// 	const user = "user-1"
-
-// 	// Two blocks with overlapping time range
-// 	sourceBlock1Spec := []*block.SeriesSpec{
-// 		{
-// 			Labels: labels.FromStrings("case", "source_spec_1"),
-// 			Chunks: []chunks.Meta{
-// 				must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
-// 					newSample(1000, 1000, nil, nil),
-// 					newSample(2000, 2000, nil, nil),
-// 				})),
-// 			},
-// 		},
-// 	}
-
-// 	sourceBlock2Spec := []*block.SeriesSpec{
-// 		{
-// 			Labels: labels.FromStrings("case", "source_spec_2"),
-// 			Chunks: []chunks.Meta{
-// 				must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
-// 					newSample(1500, 1500, nil, nil),
-// 					newSample(2500, 2500, nil, nil),
-// 				})),
-// 			},
-// 		},
-// 	}
-
-// 	// Block with sufficient time range so compaction job gets triggered
-// 	sourceBlock3Spec := []*block.SeriesSpec{
-// 		{
-// 			Labels: labels.FromStrings("case", "source_spec_3"),
-// 			Chunks: []chunks.Meta{
-// 				must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
-// 					newSample(0, 0, nil, nil),
-// 					newSample(2*time.Hour.Milliseconds()-1, 0, nil, nil),
-// 				})),
-// 			},
-// 		},
-// 	}
-
-// 	// Compacted block not containing minTime/maxTime from source blocks
-// 	compactedBlockSpec := []*block.SeriesSpec{
-// 		{
-// 			Labels: labels.FromStrings("case", "compacted_spec"),
-// 			Chunks: []chunks.Meta{
-// 				must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
-// 					newSample(1250, 1250, nil, nil),
-// 					newSample(2250, 2250, nil, nil),
-// 				})),
-// 			},
-// 		},
-// 	}
-
-// 	storageDir := t.TempDir()
-
-// 	meta1, err := block.GenerateBlockFromSpec(user, filepath.Join(storageDir, user), sourceBlock1Spec)
-// 	require.NoError(t, err)
-// 	meta2, err := block.GenerateBlockFromSpec(user, filepath.Join(storageDir, user), sourceBlock2Spec)
-// 	require.NoError(t, err)
-// 	_, err = block.GenerateBlockFromSpec(user, filepath.Join(storageDir, user), sourceBlock3Spec)
-// 	require.NoError(t, err)
-
-// 	bkt, err := filesystem.NewBucket(storageDir)
-// 	require.NoError(t, err)
-
-// 	cfg := prepareConfig(t)
-// 	cfg.CompactionRetries = 1 // No need to retry as we're testing for failure
-// 	c, tsdbCompactor, tsdbPlanner, logs, _ := prepare(t, cfg, bkt)
-
-// 	tsdbPlanner.On("Plan", mock.Anything, mock.Anything).Return([]*block.Meta{meta1, meta2}, nil).Once()
-// 	tsdbPlanner.On("Plan", mock.Anything, mock.Anything).Return([]*block.Meta{}, nil).Once()
-// 	mockCall := tsdbCompactor.On("Compact", mock.Anything, mock.Anything, mock.Anything)
-// 	mockCall.RunFn = func(args mock.Arguments) {
-// 		dir := args.Get(0).(string)
-
-// 		compactedMeta, err := block.GenerateBlockFromSpec(user, dir, compactedBlockSpec)
-// 		require.NoError(t, err)
-// 		f, err := os.OpenFile(filepath.Join(dir, compactedMeta.ULID.String(), "tombstones"), os.O_RDONLY|os.O_CREATE, 0o666)
-// 		require.NoError(t, err)
-// 		defer f.Close()
-
-// 		mockCall.ReturnArguments = mock.Arguments{compactedMeta.ULID, nil}
-// 	}
-
-// 	// Start the compactor
-// 	require.NoError(t, services.StartAndAwaitRunning(context.Background(), c))
-
-// 	// Compaction block verification should fail due to invalid output block
-// 	test.Poll(t, 5*time.Second, 1.0, func() interface{} {
-// 		return prom_testutil.ToFloat64(c.bucketCompactorMetrics.compactionBlocksVerificationFailed)
-// 	})
-
-// 	// Stop the compactor.
-// 	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), c))
-
-// 	// Check logs for compacted block verification failure
-// 	assert.Contains(t, logs.String(), "compacted block(s) do not contain minTime 1000 and maxTime 2501 from the source blocks")
-// }
 
 func TestMultitenantCompactor_ShouldSkipCompactionForJobsNoMoreOwnedAfterPlanning(t *testing.T) {
 	t.Parallel()
@@ -1380,18 +1281,18 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsNoMoreOwnedAfterPlannin
 		`level=info component=compactor msg="compactor is ACTIVE in the ring"`,
 		`level=info component=compactor msg="discovering users from bucket"`,
 		`level=info component=compactor msg="discovered users from bucket" users=1`,
-		`level=info component=compactor msg="starting compaction of user blocks" user=user-1`,
-		`level=info component=compactor user=user-1 msg="start sync of metas"`,
-		`level=info component=compactor user=user-1 msg="start of GC"`,
-		`level=info component=compactor user=user-1 msg="start of compactions"`,
-		`level=debug component=compactor user=user-1 msg="grouper found a compactable blocks group" groupKey=0@17241709254077376921-split-4_of_4-1574776800000-1574784000000 job="stage: split, range start: 1574776800000, range end: 1574784000000, shard: 4_of_4, blocks: 01DTVP434PA9VFXSW2JK000001 (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC)"`,
-		`level=debug component=compactor user=user-1 msg="grouper found a compactable blocks group" groupKey=0@17241709254077376921-split-1_of_4-1574863200000-1574870400000 job="stage: split, range start: 1574863200000, range end: 1574870400000, shard: 1_of_4, blocks: 01DTVP434PA9VFXSW2JK000002 (min time: 2019-11-27 14:00:00 +0000 UTC, max time: 2019-11-27 16:00:00 +0000 UTC)"`,
+		`level=info component=compactor msg="starting compaction of user blocks" tenant=user-1`,
+		`level=info component=compactor tenant=user-1 msg="start sync of metas"`,
+		`level=info component=compactor tenant=user-1 msg="start of GC"`,
+		`level=info component=compactor tenant=user-1 msg="start of compactions"`,
+		`level=debug component=compactor tenant=user-1 msg="grouper found a compactable blocks group" groupKey=0@17241709254077376921-split-4_of_4-1574776800000-1574784000000 job="stage: split, range start: 1574776800000, range end: 1574784000000, shard: 4_of_4, blocks: 01DTVP434PA9VFXSW2JK000001 (min time: 2019-11-26 14:00:00 +0000 UTC, max time: 2019-11-26 16:00:00 +0000 UTC)"`,
+		`level=debug component=compactor tenant=user-1 msg="grouper found a compactable blocks group" groupKey=0@17241709254077376921-split-1_of_4-1574863200000-1574870400000 job="stage: split, range start: 1574863200000, range end: 1574870400000, shard: 1_of_4, blocks: 01DTVP434PA9VFXSW2JK000002 (min time: 2019-11-27 14:00:00 +0000 UTC, max time: 2019-11-27 16:00:00 +0000 UTC)"`,
 		// The ownership check is failing because, to keep this test simple, we've just switched
 		// the instance state to LEAVING and there are no other instances in the ring.
-		`level=info component=compactor user=user-1 groupKey=0@17241709254077376921-split-4_of_4-1574776800000-1574784000000 msg="compaction job succeeded"`,
-		`level=info component=compactor user=user-1 msg="skipped compaction because unable to check whether the job is owned by the compactor instance" groupKey=0@17241709254077376921-split-1_of_4-1574863200000-1574870400000 err="at least 1 live replicas required, could only find 0 - unhealthy instances: 1.2.3.4:0"`,
-		`level=info component=compactor user=user-1 msg="compaction iterations done"`,
-		`level=info component=compactor msg="successfully compacted user blocks" user=user-1`,
+		`level=info component=compactor tenant=user-1 groupKey=0@17241709254077376921-split-4_of_4-1574776800000-1574784000000 msg="compaction job succeeded"`,
+		`level=info component=compactor tenant=user-1 msg="skipped compaction because unable to check whether the job is owned by the compactor instance" groupKey=0@17241709254077376921-split-1_of_4-1574863200000-1574870400000 err="at least 1 live replicas required, could only find 0 - unhealthy instances: 1.2.3.4:0"`,
+		`level=info component=compactor tenant=user-1 msg="compaction iterations done"`,
+		`level=info component=compactor msg="successfully compacted user blocks" tenant=user-1`,
 	}, removeIgnoredLogs(strings.Split(strings.TrimSpace(logs.String()), "\n")))
 
 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
@@ -1441,122 +1342,110 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsNoMoreOwnedAfterPlannin
 	))
 }
 
-// func TestMultitenantCompactor_ShouldSkipCompactionForJobsWithFirstLevelCompactionBlocksAndWaitPeriodNotElapsed(t *testing.T) {
-// 	t.Parallel()
+func TestMultitenantCompactor_ShouldSkipCompactionForJobsWithFirstLevelCompactionBlocksAndWaitPeriodNotElapsed(t *testing.T) {
+	t.Parallel()
 
-// 	storageDir := t.TempDir()
-// 	bucketClient, err := filesystem.NewBucket(storageDir)
-// 	require.NoError(t, err)
+	storageDir := t.TempDir()
+	bucketClient, err := filesystem.NewBucket(storageDir)
+	require.NoError(t, err)
+	user1Meta1 := createDBBlock(t, bucketClient, "user-1", 0, (2 * time.Hour).Milliseconds(), 10, nil)
+	user1Meta2 := createDBBlock(t, bucketClient, "user-1", 0, (2 * time.Hour).Milliseconds(), 10, nil)
+	user2Meta1 := createDBBlock(t, bucketClient, "user-2", 0, (2 * time.Hour).Milliseconds(), 10, nil)
+	user2Meta2 := createDBBlock(t, bucketClient, "user-2", 0, (2 * time.Hour).Milliseconds(), 10, nil)
 
-// 	// Mock two tenants, each with 2 overlapping blocks.
-// 	spec := []*block.SeriesSpec{{
-// 		Labels: labels.FromStrings(labels.MetricName, "series_1"),
-// 		Chunks: []chunks.Meta{must(tsdbutil.ChunkFromSamples([]tsdbutil.Sample{
-// 			newSample(1574776800000, 0, nil, nil),
-// 			newSample(1574783999999, 0, nil, nil),
-// 		}))},
-// 	}}
+	// Mock the last modified timestamp returned for each of the block's meta.json.
+	const waitPeriod = 10 * time.Minute
+	mockClient := &bucketWithMockedAttributes{
+		Bucket: bucketClient,
+		customAttributes: map[string]objstore.ObjectAttributes{
+			path.Join("user-1", user1Meta1.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
+			path.Join("user-1", user1Meta2.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
+			path.Join("user-2", user2Meta1.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
+			path.Join("user-2", user2Meta2.String(), block.MetaFilename): {LastModified: time.Now().Add(-5 * time.Minute)},
+		},
+	}
 
-// 	user1Meta1, err := block.GenerateBlockFromSpec("user-1", filepath.Join(storageDir, "user-1"), spec)
-// 	require.NoError(t, err)
-// 	user1Meta2, err := block.GenerateBlockFromSpec("user-1", filepath.Join(storageDir, "user-1"), spec)
-// 	require.NoError(t, err)
-// 	user2Meta1, err := block.GenerateBlockFromSpec("user-2", filepath.Join(storageDir, "user-2"), spec)
-// 	require.NoError(t, err)
-// 	user2Meta2, err := block.GenerateBlockFromSpec("user-2", filepath.Join(storageDir, "user-2"), spec)
-// 	require.NoError(t, err)
+	cfg := prepareConfig(t)
+	cfg.CompactionWaitPeriod = waitPeriod
+	c, _, tsdbPlanner, logs, registry := prepare(t, cfg, mockClient)
 
-// 	// Mock the last modified timestamp returned for each of the block's meta.json.
-// 	const waitPeriod = 10 * time.Minute
-// 	mockClient := &bucketWithMockedAttributes{
-// 		Bucket: bucketClient,
-// 		customAttributes: map[string]objstore.ObjectAttributes{
-// 			path.Join("user-1", user1Meta1.ULID.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
-// 			path.Join("user-1", user1Meta2.ULID.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
-// 			path.Join("user-2", user2Meta1.ULID.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
-// 			path.Join("user-2", user2Meta2.ULID.String(), block.MetaFilename): {LastModified: time.Now().Add(-5 * time.Minute)},
-// 		},
-// 	}
+	// Mock the planner as if there's no compaction to do, in order to simplify tests.
+	tsdbPlanner.On("Plan", mock.Anything, mock.Anything).Return([]*block.Meta{}, nil)
 
-// 	cfg := prepareConfig(t)
-// 	cfg.CompactionWaitPeriod = waitPeriod
-// 	c, _, tsdbPlanner, logs, registry := prepare(t, cfg, mockClient)
+	require.NoError(t, services.StartAndAwaitRunning(context.Background(), c))
 
-// 	// Mock the planner as if there's no compaction to do, in order to simplify tests.
-// 	tsdbPlanner.On("Plan", mock.Anything, mock.Anything).Return([]*block.Meta{}, nil)
+	// Compactor doesn't wait for blocks cleaner to finish, but our test checks for cleaner metrics.
+	require.NoError(t, c.blocksCleaner.AwaitRunning(context.Background()))
 
-// 	require.NoError(t, services.StartAndAwaitRunning(context.Background(), c))
+	// Wait until a run has completed.
+	test.Poll(t, 5*time.Second, 1.0, func() interface{} {
+		return prom_testutil.ToFloat64(c.compactionRunsCompleted)
+	})
 
-// 	// Compactor doesn't wait for blocks cleaner to finish, but our test checks for cleaner metrics.
-// 	require.NoError(t, c.blocksCleaner.AwaitRunning(context.Background()))
+	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), c))
 
-// 	// Wait until a run has completed.
-// 	test.Poll(t, 5*time.Second, 1.0, func() interface{} {
-// 		return prom_testutil.ToFloat64(c.compactionRunsCompleted)
-// 	})
+	// We expect only 1 compaction job has been expected, while the 2nd has been skipped.
+	tsdbPlanner.AssertNumberOfCalls(t, "Plan", 1)
 
-// 	require.NoError(t, services.StopAndAwaitTerminated(context.Background(), c))
+	// Ensure the skipped compaction job is the expected one.
+	assert.Contains(t, strings.Split(strings.TrimSpace(logs.String()), "\n"),
+		fmt.Sprintf(`level=info component=compactor tenant=user-2 msg="skipping compaction job because blocks in this job were uploaded too recently (within wait period)" groupKey=0@17241709254077376921-merge--0-7200000 waitPeriodNotElapsedFor="%s (min time: 1970-01-01T08:00:00+08:00, max time: 1970-01-01T10:00:00+08:00)"`, user2Meta2.String()))
 
-// 	// We expect only 1 compaction job has been expected, while the 2nd has been skipped.
-// 	tsdbPlanner.AssertNumberOfCalls(t, "Plan", 1)
+	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
+		# TYPE pyroscope_compactor_runs_started_total counter
+		# HELP pyroscope_compactor_runs_started_total Total number of compaction runs started.
+		pyroscope_compactor_runs_started_total 1
 
-// 	// Ensure the skipped compaction job is the expected one.
-// 	assert.Contains(t, strings.Split(strings.TrimSpace(logs.String()), "\n"),
-// 		fmt.Sprintf(`level=info component=compactor user=user-2 msg="skipping compaction job because blocks in this job were uploaded too recently (within wait period)" groupKey=0@17241709254077376921-merge--1574776800000-1574784000000 waitPeriodNotElapsedFor="%s (min time: 1574776800000, max time: 1574784000000)"`, user2Meta2.ULID.String()))
+		# TYPE pyroscope_compactor_runs_completed_total counter
+		# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
+		pyroscope_compactor_runs_completed_total 1
 
-// 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
-// 		# TYPE pyroscope_compactor_runs_started_total counter
-// 		# HELP pyroscope_compactor_runs_started_total Total number of compaction runs started.
-// 		pyroscope_compactor_runs_started_total 1
+		# TYPE pyroscope_compactor_runs_failed_total counter
+		# HELP pyroscope_compactor_runs_failed_total Total number of compaction runs failed.
+		pyroscope_compactor_runs_failed_total{reason="error"} 0
+		pyroscope_compactor_runs_failed_total{reason="shutdown"} 0
 
-// 		# TYPE pyroscope_compactor_runs_completed_total counter
-// 		# HELP pyroscope_compactor_runs_completed_total Total number of compaction runs successfully completed.
-// 		pyroscope_compactor_runs_completed_total 1
+		# HELP pyroscope_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
+		# TYPE pyroscope_compactor_group_compaction_runs_completed_total counter
+		pyroscope_compactor_group_compaction_runs_completed_total 1
 
-// 		# TYPE pyroscope_compactor_runs_failed_total counter
-// 		# HELP pyroscope_compactor_runs_failed_total Total number of compaction runs failed.
-// 		pyroscope_compactor_runs_failed_total{reason="error"} 0
-// 		pyroscope_compactor_runs_failed_total{reason="shutdown"} 0
+		# HELP pyroscope_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
+		# TYPE pyroscope_compactor_group_compaction_runs_started_total counter
+		pyroscope_compactor_group_compaction_runs_started_total 1
 
-// 		# HELP pyroscope_compactor_group_compaction_runs_completed_total Total number of group completed compaction runs. This also includes compactor group runs that resulted with no compaction.
-// 		# TYPE pyroscope_compactor_group_compaction_runs_completed_total counter
-// 		pyroscope_compactor_group_compaction_runs_completed_total 1
+		# HELP pyroscope_compactor_group_compactions_failures_total Total number of failed group compactions.
+		# TYPE pyroscope_compactor_group_compactions_failures_total counter
+		pyroscope_compactor_group_compactions_failures_total 0
 
-// 		# HELP pyroscope_compactor_group_compaction_runs_started_total Total number of group compaction attempts.
-// 		# TYPE pyroscope_compactor_group_compaction_runs_started_total counter
-// 		pyroscope_compactor_group_compaction_runs_started_total 1
+		# HELP pyroscope_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
+		# TYPE pyroscope_compactor_group_compactions_total counter
+		pyroscope_compactor_group_compactions_total 0
 
-// 		# HELP pyroscope_compactor_group_compactions_failures_total Total number of failed group compactions.
-// 		# TYPE pyroscope_compactor_group_compactions_failures_total counter
-// 		pyroscope_compactor_group_compactions_failures_total 0
-
-// 		# HELP pyroscope_compactor_group_compactions_total Total number of group compaction attempts that resulted in new block(s).
-// 		# TYPE pyroscope_compactor_group_compactions_total counter
-// 		pyroscope_compactor_group_compactions_total 0
-
-// 		# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
-// 		# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
-// 		pyroscope_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
-// 		pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
-// 		pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
-// 	`),
-// 		"pyroscope_compactor_runs_started_total",
-// 		"pyroscope_compactor_runs_completed_total",
-// 		"pyroscope_compactor_runs_failed_total",
-// 		"pyroscope_compactor_group_compaction_runs_completed_total",
-// 		"pyroscope_compactor_group_compaction_runs_started_total",
-// 		"pyroscope_compactor_group_compactions_failures_total",
-// 		"pyroscope_compactor_group_compactions_total",
-// 		"pyroscope_compactor_blocks_marked_for_deletion_total",
-// 	))
-// }
+		# HELP pyroscope_compactor_blocks_marked_for_deletion_total Total number of blocks marked for deletion in compactor.
+		# TYPE pyroscope_compactor_blocks_marked_for_deletion_total counter
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="compaction"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="partial"} 0
+		pyroscope_compactor_blocks_marked_for_deletion_total{reason="retention"} 0
+	`),
+		"pyroscope_compactor_runs_started_total",
+		"pyroscope_compactor_runs_completed_total",
+		"pyroscope_compactor_runs_failed_total",
+		"pyroscope_compactor_group_compaction_runs_completed_total",
+		"pyroscope_compactor_group_compaction_runs_started_total",
+		"pyroscope_compactor_group_compactions_failures_total",
+		"pyroscope_compactor_group_compactions_total",
+		"pyroscope_compactor_blocks_marked_for_deletion_total",
+	))
+}
 
 func createCustomBlock(t *testing.T, bkt objstore.Bucket, userID string, externalLabels map[string]string, generator func() []*testhelper.ProfileBuilder) ulid.ULID {
 	meta, dir := testutil.CreateBlock(t, generator)
 	blockLocalPath := filepath.Join(dir, meta.ULID.String())
 
 	meta.Source = "test"
-	meta.Labels = externalLabels
+	for k, v := range externalLabels {
+		meta.Labels[k] = v
+	}
 	_, err := meta.WriteToFile(log.NewNopLogger(), blockLocalPath)
 	require.NoError(t, err)
 
@@ -1608,10 +1497,11 @@ func createDBBlock(t *testing.T, bkt objstore.Bucket, userID string, minT, maxT 
 				appendSample(seriesID, ts, float64(seriesID))
 				seriesID++
 			}
+		} else {
+			appendSample(seriesID, minT, float64(seriesID))
 		}
-
-		// Guarantee a series with a sample at time maxT-1
-		appendSample(seriesID, maxT-1, float64(seriesID))
+		// Guarantee a series with a sample at time maxT
+		appendSample(seriesID, maxT, float64(seriesID))
 		return result
 	})
 }
