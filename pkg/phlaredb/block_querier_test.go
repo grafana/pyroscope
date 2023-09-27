@@ -178,7 +178,7 @@ func TestSelectMatchingProfilesCleanUp(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestSeries(t *testing.T) {
+func Test_singleBlockQuerier_Series(t *testing.T) {
 	ctx := context.Background()
 	reader, err := index.NewFileReader("testdata/01HA2V3CPSZ9E0HMQNNHH89WSS/index.tsdb")
 	assert.NoError(t, err)
