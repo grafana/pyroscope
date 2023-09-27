@@ -26,7 +26,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/promql/parser"
-	"github.com/prometheus/prometheus/storage"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
@@ -970,56 +969,63 @@ func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.Series
 		return ok
 	})
 
-	var postingsIters []iter.SeekIterator[storage.SeriesRef, storage.SeriesRef]
+	var labelsSets []*typesv1.Labels
+	fingerprints := make(map[uint64]struct{})
 	if selectors.matchesAll() {
-		for _, name := range names {
-			values, err := b.index.LabelValues(name)
-			if err != nil {
-				return nil, err
-			}
-
-			iter, err := b.index.Postings(name, nil, values...)
-			if err != nil {
-				return nil, err
-			}
-			postingsIters = append(postingsIters, iter)
+		k, v := index.AllPostingsKey()
+		iter, err := b.index.Postings(k, nil, v)
+		if err != nil {
+			return nil, err
 		}
+
+		sets, err := b.getUniqueLabelsSets(iter, names, &fingerprints)
+		if err != nil {
+			return nil, err
+		}
+		labelsSets = append(labelsSets, sets...)
 	} else {
 		for _, matchers := range selectors {
 			iter, err := PostingsForMatchers(b.index, nil, matchers...)
 			if err != nil {
 				return nil, err
 			}
-			postingsIters = append(postingsIters, iter)
-		}
-	}
 
-	var labelsSets []*typesv1.Labels
-	fingerprints := make(map[uint64]struct{})
-	labels := phlaremodel.Labels{}
-	chunks := []index.ChunkMeta{} // Ignored.
-
-	for _, postings := range postingsIters {
-		for postings.Next() {
-			_, err = b.index.Series(postings.At(), &labels, &chunks)
+			sets, err := b.getUniqueLabelsSets(iter, names, &fingerprints)
 			if err != nil {
 				return nil, err
 			}
-
-			matchedLabels := labels.WithLabels(names...)
-			fp := matchedLabels.Hash()
-			_, ok := fingerprints[fp]
-			if ok {
-				continue
-			}
-			fingerprints[fp] = struct{}{}
-
-			labelsSets = append(labelsSets, &typesv1.Labels{
-				Labels: matchedLabels,
-			})
+			labelsSets = append(labelsSets, sets...)
 		}
 	}
+	return labelsSets, nil
+}
 
+func (b *singleBlockQuerier) getUniqueLabelsSets(postings index.Postings, names []string, fingerprints *map[uint64]struct{}) ([]*typesv1.Labels, error) {
+	var labelsSets []*typesv1.Labels
+	for postings.Next() {
+		matchedLabels := make(phlaremodel.Labels, 0, len(names))
+		for _, name := range names {
+			value, err := b.index.LabelValueFor(postings.At(), name)
+			if err != nil {
+				return nil, err
+			}
+			matchedLabels = append(matchedLabels, &typesv1.LabelPair{
+				Name:  name,
+				Value: value,
+			})
+		}
+
+		fp := matchedLabels.Hash()
+		_, ok := (*fingerprints)[fp]
+		if ok {
+			continue
+		}
+		(*fingerprints)[fp] = struct{}{}
+
+		labelsSets = append(labelsSets, &typesv1.Labels{
+			Labels: matchedLabels,
+		})
+	}
 	return labelsSets, nil
 }
 
