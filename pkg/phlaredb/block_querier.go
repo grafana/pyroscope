@@ -996,10 +996,11 @@ func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.Series
 
 	var labelsSets []*typesv1.Labels
 	fingerprints := make(map[uint64]struct{})
+	labels := phlaremodel.Labels{}
+	chunks := []index.ChunkMeta{} // Ignored.
+
 	for _, postings := range postingsIters {
 		for postings.Next() {
-			labels := phlaremodel.Labels{}
-			chunks := []index.ChunkMeta{} // Ignored.
 			_, err = b.index.Series(postings.At(), &labels, &chunks)
 			if err != nil {
 				return nil, err
