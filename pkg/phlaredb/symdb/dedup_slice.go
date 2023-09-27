@@ -38,8 +38,8 @@ func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []sche
 	spanIDLabelIdx := spanIDLabel(profile)
 	if spanIDLabelIdx > 0 {
 		spans = profileSpans(spanIDLabelIdx, profile)
+		zeroLabelStrings(profile)
 	}
-	zeroLabelStrings(profile)
 
 	p.strings.ingest(profile.StringTable, rewrites)
 	mappings := make([]*schemav1.InMemoryMapping, len(profile.Mapping))
