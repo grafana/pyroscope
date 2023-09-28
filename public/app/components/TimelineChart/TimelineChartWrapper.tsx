@@ -30,7 +30,7 @@ export interface TimelineData {
   color?: string;
 }
 
-interface Selection {
+export interface Selection {
   from: string;
   to: string;
   color: Color;

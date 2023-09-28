@@ -107,6 +107,7 @@ func TracerProvider(c Config) (*sdktrace.TracerProvider, error) {
 		sdktrace.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String(c.AppName),
+			semconv.CloudRegionKey.String(os.Getenv("REGION")),
 		)),
 	)
 

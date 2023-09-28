@@ -92,7 +92,7 @@ type ComparisonView = {
   };
 };
 
-type DiffView =
+export type DiffView =
   | { type: 'pristine'; profile?: Profile }
   | { type: 'loading'; profile?: Profile }
   | { type: 'loaded'; profile: Profile }
