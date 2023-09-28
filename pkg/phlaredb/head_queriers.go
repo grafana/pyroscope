@@ -36,6 +36,10 @@ func (q *headOnDiskQuerier) Open(_ context.Context) error {
 	return nil
 }
 
+func (q *headOnDiskQuerier) BlockID() string {
+	return q.head.meta.ULID.String()
+}
+
 func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - HeadOnDisk")
 	defer sp.Finish()
@@ -192,6 +196,10 @@ type headInMemoryQuerier struct {
 
 func (q *headInMemoryQuerier) Open(_ context.Context) error {
 	return nil
+}
+
+func (q *headInMemoryQuerier) BlockID() string {
+	return q.head.meta.ULID.String()
 }
 
 func (q *headInMemoryQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {

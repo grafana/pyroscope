@@ -449,3 +449,27 @@ func (f *PhlareDB) Evict(blockID ulid.ULID, fn func() error) (bool, error) {
 	<-e.done
 	return e.evicted, e.err
 }
+
+func (f *PhlareDB) BlockMetadata(ctx context.Context, req *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error) {
+
+	var result ingestv1.BlockMetadataResponse
+
+	f.blockQuerier.queriersLock.RLock()
+	result.Blocks = make([]*typesv1.BlockInfo, 0, len(f.blockQuerier.queriers)+1)
+	for _, q := range f.blockQuerier.queriers {
+		var info typesv1.BlockInfo
+		q.meta.WriteBlockInfo(&info)
+		result.Blocks = append(result.Blocks, &info)
+	}
+	f.blockQuerier.queriersLock.RUnlock()
+
+	f.headLock.RLock()
+	for _, h := range f.heads {
+		var info typesv1.BlockInfo
+		h.meta.WriteBlockInfo(&info)
+		result.Blocks = append(result.Blocks, &info)
+	}
+	f.headLock.RUnlock()
+
+	return connect.NewResponse(&result), nil
+}

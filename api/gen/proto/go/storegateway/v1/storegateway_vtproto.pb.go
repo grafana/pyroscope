@@ -34,6 +34,7 @@ type StoreGatewayServiceClient interface {
 	MergeProfilesPprof(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeProfilesPprofClient, error)
 	MergeSpanProfile(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeSpanProfileClient, error)
 	Series(ctx context.Context, in *v1.SeriesRequest, opts ...grpc.CallOption) (*v1.SeriesResponse, error)
+	BlockMetadata(ctx context.Context, in *v1.BlockMetadataRequest, opts ...grpc.CallOption) (*v1.BlockMetadataResponse, error)
 }
 
 type storeGatewayServiceClient struct {
@@ -177,6 +178,15 @@ func (c *storeGatewayServiceClient) Series(ctx context.Context, in *v1.SeriesReq
 	return out, nil
 }
 
+func (c *storeGatewayServiceClient) BlockMetadata(ctx context.Context, in *v1.BlockMetadataRequest, opts ...grpc.CallOption) (*v1.BlockMetadataResponse, error) {
+	out := new(v1.BlockMetadataResponse)
+	err := c.cc.Invoke(ctx, "/storegateway.v1.StoreGatewayService/BlockMetadata", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StoreGatewayServiceServer is the server API for StoreGatewayService service.
 // All implementations must embed UnimplementedStoreGatewayServiceServer
 // for forward compatibility
@@ -186,6 +196,7 @@ type StoreGatewayServiceServer interface {
 	MergeProfilesPprof(StoreGatewayService_MergeProfilesPprofServer) error
 	MergeSpanProfile(StoreGatewayService_MergeSpanProfileServer) error
 	Series(context.Context, *v1.SeriesRequest) (*v1.SeriesResponse, error)
+	BlockMetadata(context.Context, *v1.BlockMetadataRequest) (*v1.BlockMetadataResponse, error)
 	mustEmbedUnimplementedStoreGatewayServiceServer()
 }
 
@@ -207,6 +218,9 @@ func (UnimplementedStoreGatewayServiceServer) MergeSpanProfile(StoreGatewayServi
 }
 func (UnimplementedStoreGatewayServiceServer) Series(context.Context, *v1.SeriesRequest) (*v1.SeriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Series not implemented")
+}
+func (UnimplementedStoreGatewayServiceServer) BlockMetadata(context.Context, *v1.BlockMetadataRequest) (*v1.BlockMetadataResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BlockMetadata not implemented")
 }
 func (UnimplementedStoreGatewayServiceServer) mustEmbedUnimplementedStoreGatewayServiceServer() {}
 
@@ -343,6 +357,24 @@ func _StoreGatewayService_Series_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StoreGatewayService_BlockMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.BlockMetadataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoreGatewayServiceServer).BlockMetadata(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/storegateway.v1.StoreGatewayService/BlockMetadata",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoreGatewayServiceServer).BlockMetadata(ctx, req.(*v1.BlockMetadataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // StoreGatewayService_ServiceDesc is the grpc.ServiceDesc for StoreGatewayService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -353,6 +385,10 @@ var StoreGatewayService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Series",
 			Handler:    _StoreGatewayService_Series_Handler,
+		},
+		{
+			MethodName: "BlockMetadata",
+			Handler:    _StoreGatewayService_BlockMetadata_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

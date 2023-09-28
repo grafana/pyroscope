@@ -33,6 +33,7 @@ type StoreGatewayQueryClient interface {
 	MergeProfilesPprof(ctx context.Context) clientpool.BidiClientMergeProfilesPprof
 	MergeSpanProfile(ctx context.Context) clientpool.BidiClientMergeSpanProfile
 	Series(context.Context, *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error)
+	BlockMetadata(ctx context.Context, req *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error)
 }
 
 type StoreGatewayLimits interface {
@@ -153,7 +154,7 @@ func GetShuffleShardingSubring(ring ring.ReadRing, userID string, limits StoreGa
 	return ring.ShuffleShard(userID, shardSize)
 }
 
-func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*phlaremodel.Tree, error) {
+func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan map[string]*ingestv1.BlockHints) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectTree StoreGateway")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
@@ -299,4 +300,26 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 
 	// merge all profiles
 	return selectMergeSpanProfile(gCtx, responses)
+}
+
+func (q *Querier) blockSelectFromStoreGateway(ctx context.Context, req *ingestv1.BlockMetadataRequest) ([]ResponseFromReplica[[]*typesv1.BlockInfo], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series StoreGateway")
+	defer sp.Finish()
+
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]*typesv1.BlockInfo, error) {
+		res, err := ic.BlockMetadata(ctx, connect.NewRequest(req))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.Blocks, nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return responses, nil
 }

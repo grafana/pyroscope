@@ -19,6 +19,8 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb"
 	"github.com/prometheus/prometheus/tsdb/fileutil"
+
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
 const (
@@ -166,6 +168,32 @@ func (m *Meta) Clone() *Meta {
 		panic(err)
 	}
 	return &clone
+}
+func (m *Meta) BlockInfo() *typesv1.BlockInfo {
+	info := &typesv1.BlockInfo{}
+	m.WriteBlockInfo(info)
+	return info
+}
+
+func (m *Meta) WriteBlockInfo(info *typesv1.BlockInfo) {
+	info.Ulid = m.ULID.String()
+	info.MinTime = int64(m.MinTime)
+	info.MaxTime = int64(m.MaxTime)
+	if info.Compaction == nil {
+		info.Compaction = &typesv1.BlockCompaction{}
+	}
+	info.Compaction.Level = int32(m.Compaction.Level)
+	info.Compaction.Sources = make([]string, len(m.Compaction.Parents))
+	for i, p := range m.Compaction.Parents {
+		info.Compaction.Sources[i] = p.ULID.String()
+	}
+	info.Labels = make([]*typesv1.LabelPair, 0, len(m.Labels))
+	for k, v := range m.Labels {
+		info.Labels = append(info.Labels, &typesv1.LabelPair{
+			Name:  k,
+			Value: v,
+		})
+	}
 }
 
 func generateULID() ulid.ULID {

@@ -351,6 +351,10 @@ func (b *singleBlockQuerier) LabelNames(ctx context.Context, req *connect.Reques
 	return connect.NewResponse(&typesv1.LabelNamesResponse{}), nil
 }
 
+func (b *singleBlockQuerier) BlockID() string {
+	return b.meta.ULID.String()
+}
+
 func (b *singleBlockQuerier) Close() error {
 	b.openLock.Lock()
 	defer func() {
@@ -398,6 +402,7 @@ type Profile interface {
 
 type Querier interface {
 	Bounds() (model.Time, model.Time)
+
 	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
 	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error)
 	MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spans phlaremodel.SpanSelector) (*phlaremodel.Tree, error)
@@ -410,6 +415,9 @@ type Querier interface {
 	Open(ctx context.Context) error
 	// Sorts profiles for retrieval.
 	Sort([]Profile) []Profile
+
+	// BlockID returns the block ID of the querier, when it is representing a single block.
+	BlockID() string
 }
 
 func InRange(q Querier, start, end model.Time) bool {
@@ -636,7 +644,26 @@ func SelectMatchingProfiles(ctx context.Context, request *ingestv1.SelectProfile
 	g, ctx := errgroup.WithContext(ctx)
 	iters := make([]iter.Iterator[Profile], len(queriers))
 
+	skipBlock := func(ulid string) bool {
+		return false
+	}
+
+	if request.Hints != nil && request.Hints.Block != nil {
+		m := make(map[string]struct{})
+		for _, blockID := range request.Hints.Block.Ulids {
+			m[blockID] = struct{}{}
+		}
+		skipBlock = func(ulid string) bool {
+			fmt.Printf("skipped block ulid=%s\n", ulid)
+			_, exists := m[ulid]
+			return !exists
+		}
+	}
+
 	for i, querier := range queriers {
+		if skipBlock(querier.BlockID()) {
+			continue
+		}
 		i := i
 		querier := querier
 		g.Go(util.RecoverPanic(func() error {
@@ -1065,6 +1092,11 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 	}
 
 	return nil
+}
+
+func BlockMetadata(ctx context.Context, req *ingestv1.BlockMetadataRequest, blockGetter BlockGetter) (*ingestv1.BlockMetadataResponse, error) {
+	return nil, nil
+
 }
 
 func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockGetter) (*ingestv1.SeriesResponse, error) {

@@ -2,6 +2,7 @@ package querier
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/grafana/dskit/ring"
@@ -28,6 +29,7 @@ type IngesterQueryClient interface {
 	MergeProfilesLabels(ctx context.Context) clientpool.BidiClientMergeProfilesLabels
 	MergeProfilesPprof(ctx context.Context) clientpool.BidiClientMergeProfilesPprof
 	MergeSpanProfile(ctx context.Context) clientpool.BidiClientMergeSpanProfile
+	BlockMetadata(ctx context.Context, req *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error)
 }
 
 // IngesterQuerier helps with querying the ingesters.
@@ -62,7 +64,23 @@ func forAllIngesters[T any](ctx context.Context, ingesterQuerier *IngesterQuerie
 	}, replicationSet, f)
 }
 
-func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*phlaremodel.Tree, error) {
+// forAllPlannedIngesters runs f, in parallel, for all ingesters part of the plan
+func forAllPlannedIngesters[T any](ctx context.Context, ingesterQuerier *IngesterQuerier, plan map[string]*ingestv1.BlockHints, f QueryReplicaWithHintsFn[T, IngesterQueryClient]) ([]ResponseFromReplica[T], error) {
+	replicationSet, err := ingesterQuerier.ring.GetReplicationSetForOperation(readNoExtend)
+	if err != nil {
+		return nil, err
+	}
+
+	return forGivenPlan(ctx, plan, func(addr string) (IngesterQueryClient, error) {
+		client, err := ingesterQuerier.pool.GetClientFor(addr)
+		if err != nil {
+			return nil, err
+		}
+		return client.(IngesterQueryClient), nil
+	}, replicationSet, f)
+}
+
+func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan map[string]*ingestv1.BlockHints) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectTree Ingesters")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
@@ -76,16 +94,27 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesStacktraces, error) {
-		return ic.MergeProfilesStacktraces(ctx), nil
-	})
+	var responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesStacktraces]
+	if plan != nil {
+		responses, err = forAllPlannedIngesters(ctx, q.ingesterQuerier, plan, func(ctx context.Context, ic IngesterQueryClient, hints *ingestv1.Hints) (clientpool.BidiClientMergeProfilesStacktraces, error) {
+			return ic.MergeProfilesStacktraces(ctx), nil
+		})
+	} else {
+		responses, err = forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesStacktraces, error) {
+			return ic.MergeProfilesStacktraces(ctx), nil
+		})
+	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	// send the first initial request to all ingesters.
 	g, gCtx := errgroup.WithContext(ctx)
 	for _, r := range responses {
-		r := r
+		hints, ok := plan[r.addr]
+		if !ok && plan != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		}
+
 		g.Go(util.RecoverPanic(func() error {
 			return r.response.Send(&ingestv1.MergeProfilesStacktracesRequest{
 				Request: &ingestv1.SelectProfilesRequest{
@@ -93,6 +122,7 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 					Start:         req.Start,
 					End:           req.End,
 					Type:          profileType,
+					Hints:         &ingestv1.Hints{Block: hints},
 				},
 				MaxNodes: req.MaxNodes,
 				// TODO(kolesnikovae): Max stacks.
@@ -196,4 +226,24 @@ func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *queri
 
 	// merge all profiles
 	return selectMergeSpanProfile(gCtx, responses)
+}
+
+func (q *Querier) blockSelectFromIngesters(ctx context.Context, req *ingestv1.BlockMetadataRequest) ([]ResponseFromReplica[[]*typesv1.BlockInfo], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "blockSelectFromIngesters")
+	defer sp.Finish()
+
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.BlockInfo, error) {
+		res, err := ic.BlockMetadata(childCtx, connect.NewRequest(&ingestv1.BlockMetadataRequest{
+			Start: req.Start,
+			End:   req.End,
+		}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.Blocks, nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return responses, nil
 }

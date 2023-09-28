@@ -110,6 +110,10 @@ limits:
   # CLI flag: -validation.max-label-names-per-series
   [max_label_names_per_series: <int> | default = 30]
 
+  # Maximum number of sessions per series. 0 to disable.
+  # CLI flag: -validation.max-sessions-per-series
+  [max_sessions_per_series: <int> | default = 0]
+
   # Maximum size of a profile in bytes. This is based off the uncompressed size.
   # 0 to disable.
   # CLI flag: -validation.max-profile-size-bytes
@@ -714,7 +718,8 @@ grpc_tls_config:
 # CLI flag: -server.grpc-max-send-msg-size-bytes
 [grpc_server_max_send_msg_size: <int> | default = 4194304]
 
-# Limit on the number of concurrent streams for gRPC calls (0 = unlimited)
+# Limit on the number of concurrent streams for gRPC calls per client connection
+# (0 = unlimited)
 # CLI flag: -server.grpc-max-concurrent-streams
 [grpc_server_max_concurrent_streams: <int> | default = 100]
 

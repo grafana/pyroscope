@@ -5,7 +5,9 @@ import (
 
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
+	"golang.org/x/sync/errgroup"
 
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
@@ -14,7 +16,9 @@ type ResponseFromReplica[T any] struct {
 	response T
 }
 
-type QueryReplicaFn[T any, Querier any] func(context.Context, Querier) (T, error)
+type QueryReplicaFn[T any, Querier any] func(ctx context.Context, q Querier) (T, error)
+
+type QueryReplicaWithHintsFn[T any, Querier any] func(ctx context.Context, q Querier, hint *ingestv1.Hints) (T, error)
 
 type Closer interface {
 	CloseRequest() error
@@ -68,4 +72,52 @@ func forGivenReplicationSet[Result any, Querier any](ctx context.Context, client
 	}
 
 	return results, err
+}
+
+// forGivenReplicationSet runs f, in parallel, for given replica set.
+// Under the hood it returns only enough responses to satisfy the quorum.
+// TODO: Implement cleanup
+func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]*ingestv1.BlockHints, clientFactory func(string) (Querier, error), replicationSet ring.ReplicationSet, f QueryReplicaWithHintsFn[Result, Querier]) ([]ResponseFromReplica[Result], error) {
+	g, gctx := errgroup.WithContext(ctx)
+
+	var (
+		idx    = 0
+		result = make([]ResponseFromReplica[Result], len(plan))
+	)
+
+	for replica, hints := range plan {
+		// skip replicas not in the replica set
+		if !replicationSet.Includes(replica) {
+			continue
+		}
+		var (
+			i = idx
+			r = replica
+			h = hints
+		)
+		idx++
+		g.Go(func() error {
+
+			client, err := clientFactory(r)
+			if err != nil {
+				return err
+			}
+
+			resp, err := f(gctx, client, &ingestv1.Hints{Block: h})
+			if err != nil {
+				return err
+			}
+
+			result[i] = ResponseFromReplica[Result]{r, resp}
+
+			return nil
+
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return result[:idx], nil
 }

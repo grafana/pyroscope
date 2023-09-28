@@ -374,6 +374,82 @@
         }
       }
     },
+    "v1BlockCompaction": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1BlockHints": {
+      "type": "object",
+      "properties": {
+        "ulids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "The ULID of blocks to query"
+        },
+        "deduplication": {
+          "type": "boolean",
+          "description": "When all blocks are compacted, there is no effect of the replication factor, hence we do not need to run deduplication."
+        }
+      }
+    },
+    "v1BlockInfo": {
+      "type": "object",
+      "properties": {
+        "ulid": {
+          "type": "string"
+        },
+        "minTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "maxTime": {
+          "type": "string",
+          "format": "int64"
+        },
+        "compaction": {
+          "$ref": "#/definitions/v1BlockCompaction"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LabelPair"
+          }
+        }
+      }
+    },
+    "v1BlockMetadataResponse": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1BlockInfo"
+          },
+          "title": "Blocks that are present on the instance for the start to end period"
+        }
+      }
+    },
     "v1DiffResponse": {
       "type": "object",
       "properties": {
@@ -508,6 +584,15 @@
           "$ref": "#/definitions/v1GetBuildInfoData"
         }
       }
+    },
+    "v1Hints": {
+      "type": "object",
+      "properties": {
+        "block": {
+          "$ref": "#/definitions/v1BlockHints"
+        }
+      },
+      "title": "Hints are used to propagate information about querying"
     },
     "v1LabelNamesResponse": {
       "type": "object",
@@ -664,6 +749,13 @@
     "v1MergeProfilesStacktracesResponse": {
       "type": "object",
       "properties": {
+        "selectedBlocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "The server replies with a batch of blocks"
+        },
         "selectedProfiles": {
           "$ref": "#/definitions/v1ProfileSets",
           "description": "The server replies batch of profiles.\nA last message without profiles signals the next message will be the result of the merge."
@@ -902,11 +994,17 @@
         },
         "start": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "Milliseconds since epoch."
         },
         "end": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "Milliseconds since epoch."
+        },
+        "hints": {
+          "$ref": "#/definitions/v1Hints",
+          "title": "Optional: Hints for querying"
         }
       }
     },

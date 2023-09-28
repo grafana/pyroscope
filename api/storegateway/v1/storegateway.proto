@@ -13,4 +13,5 @@ service StoreGatewayService {
   rpc MergeProfilesPprof(stream ingester.v1.MergeProfilesPprofRequest) returns (stream ingester.v1.MergeProfilesPprofResponse) {}
   rpc MergeSpanProfile(stream ingester.v1.MergeSpanProfileRequest) returns (stream ingester.v1.MergeSpanProfileResponse) {}
   rpc Series(ingester.v1.SeriesRequest) returns (ingester.v1.SeriesResponse) {}
+  rpc BlockMetadata(ingester.v1.BlockMetadataRequest) returns (ingester.v1.BlockMetadataResponse) {}
 }

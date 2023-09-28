@@ -17,6 +17,7 @@ service IngesterService {
   rpc MergeProfilesLabels(stream MergeProfilesLabelsRequest) returns (stream MergeProfilesLabelsResponse) {}
   rpc MergeProfilesPprof(stream MergeProfilesPprofRequest) returns (stream MergeProfilesPprofResponse) {}
   rpc MergeSpanProfile(stream MergeSpanProfileRequest) returns (stream MergeSpanProfileResponse) {}
+  rpc BlockMetadata(BlockMetadataRequest) returns (BlockMetadataResponse) {}
 }
 
 message ProfileTypesRequest {}
@@ -47,8 +48,12 @@ message FlushResponse {}
 message SelectProfilesRequest {
   string label_selector = 1;
   types.v1.ProfileType type = 2;
+  // Milliseconds since epoch.
   int64 start = 3;
+  // Milliseconds since epoch.
   int64 end = 4;
+  // Optional: Hints for querying
+  optional Hints hints = 5;
 }
 
 message MergeProfilesStacktracesRequest {
@@ -58,6 +63,8 @@ message MergeProfilesStacktracesRequest {
   optional int64 max_nodes = 3;
   // On a batch of profiles, the client sends the profiles to keep for merging.
   repeated bool profiles = 2;
+  // On a batch of blocks, the client sends the profiles to keep for merging.
+  repeated bool blocks = 4;
 }
 
 message MergeProfilesStacktracesResult {
@@ -76,9 +83,13 @@ enum StacktracesMergeFormat {
 }
 
 message MergeProfilesStacktracesResponse {
+  // The server replies with a batch of blocks
+  repeated string selectedBlocks = 4;
+
   // The server replies batch of profiles.
   // A last message without profiles signals the next message will be the result of the merge.
   ProfileSets selectedProfiles = 1;
+
   // The list of stracktraces for the profile with their respective value
   MergeProfilesStacktracesResult result = 3;
 }
@@ -177,3 +188,33 @@ message MergeProfilesPprofResponse {
   // The merge result in the pprof format.
   bytes result = 2;
 }
+
+message BlockMetadataRequest {
+  // Milliseconds since epoch. If missing or zero, only the ingesters will be
+  // queried.
+  int64 start = 1;
+  // Milliseconds since epoch. If missing or zero, only the ingesters will be
+  // queried.
+  int64 end = 2;
+}
+
+message BlockMetadataResponse {
+  // Blocks that are present on the instance for the start to end period
+  repeated types.v1.BlockInfo blocks = 1;
+}
+
+// Hints are used to propagate information about querying
+message Hints {
+BlockHints block = 1; 
+
+}
+
+message BlockHints {
+// The ULID of blocks to query
+  repeated string ulids = 1;
+  // When all blocks are compacted, there is no effect of the replication factor, hence we do not need to run deduplication.
+  bool deduplication = 2;
+
+}
+
+

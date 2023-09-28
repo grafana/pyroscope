@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
@@ -192,6 +193,177 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 	return connect.NewResponse(&typesv1.LabelNamesResponse{
 		Names: uniqueSortedStrings(responses),
 	}), nil
+}
+
+type instanceType uint8
+
+const (
+	unknownInstanceType instanceType = iota
+	ingesterInstance
+	storeGatewayInstance
+)
+
+// map of block ID to replicas containing the block, when empty replicas, the
+// block is already contained by a higher compaction level block in full.
+type replicasPerBlockID struct {
+	m            map[string][]string
+	meta         map[string]*typesv1.BlockInfo
+	instanceType map[string]instanceType
+}
+
+func newReplicasPerBlockID() *replicasPerBlockID {
+	return &replicasPerBlockID{
+		m:            make(map[string][]string),
+		meta:         make(map[string]*typesv1.BlockInfo),
+		instanceType: make(map[string]instanceType),
+	}
+}
+
+// this is called for source and parent blocks, to make sure we do not query any blocks that we have seen compacted anywhere else
+func (r *replicasPerBlockID) addSuperseededBlock(ulid string) {
+	v, exists := r.m[ulid]
+	if exists {
+		// remove replicas from map, if they exist
+		if len(v) > 0 {
+			r.m[ulid] = v[:0]
+		}
+	} else {
+		r.m[ulid] = nil
+	}
+}
+
+func (r *replicasPerBlockID) add(result []ResponseFromReplica[[]*typesv1.BlockInfo], t instanceType) {
+	for _, replica := range result {
+		// mark the replica's instance type
+		// TODO: Figure out if that breaks in single binary mode
+		r.instanceType[replica.addr] = t
+
+		for _, block := range replica.response {
+			// add block to map
+			v, exists := r.m[block.Ulid]
+			if exists && len(v) > 0 || !exists {
+				r.m[block.Ulid] = append(r.m[block.Ulid], replica.addr)
+			}
+
+			if block.Compaction == nil {
+				continue
+			}
+
+			for _, source := range block.Compaction.Sources {
+				// Ensure the block itself is not part of it (relevant for first level blocks)
+				if source == block.Ulid {
+					continue
+				}
+				r.addSuperseededBlock(source)
+			}
+			for _, parent := range block.Compaction.Parents {
+				r.addSuperseededBlock(parent)
+			}
+		}
+	}
+
+}
+
+func (r *replicasPerBlockID) blockPlan() map[string]*ingestv1.BlockHints {
+	var (
+		deduplicate = false
+		hash        = xxhash.New()
+		plan        = make(map[string]*ingestv1.BlockHints)
+	)
+
+	// now we go through all blocks and choose the replicas that we want to query
+	for blockID, replicas := range r.m {
+		// skip if we have no replicas, then block is already contained i an higher compaction level one
+		if len(replicas) == 0 {
+			continue
+		}
+
+		meta, ok := r.meta[blockID]
+		if !ok {
+			continue
+		}
+		// when we see a single ingester block, we want to dedudplicate
+		if meta.Compaction.Level == 1 {
+			deduplicate = true
+		}
+
+		// only get store gateways replicas
+		sgReplicas := lo.Filter(replicas, func(replica string, _ int) bool {
+			t, ok := r.instanceType[replica]
+			if !ok {
+				return false
+			}
+			return t == storeGatewayInstance
+		})
+
+		if len(sgReplicas) > 0 {
+			// if we have store gateway replicas, we want to query them
+			replicas = sgReplicas
+		}
+
+		// now select one replica, based on block id
+
+		_, _ = hash.Write([]byte(blockID))
+		selectedReplica := replicas[int(hash.Sum64())%len(replicas)]
+
+		// add block to plan
+		p, exists := plan[selectedReplica]
+		if !exists {
+			p = &ingestv1.BlockHints{}
+			plan[selectedReplica] = p
+		}
+		p.Ulids = append(p.Ulids, blockID)
+
+		// set the selected replica
+		r.m[blockID] = []string{selectedReplica}
+	}
+
+	// adapt the plan to make sure all replicas will deduplicate
+	if deduplicate {
+		for _, hints := range plan {
+			hints.Deduplication = deduplicate
+		}
+	}
+
+	return plan
+}
+
+func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (map[string]*ingestv1.BlockHints, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "blockSelect")
+	defer sp.Finish()
+
+	sp.LogFields(
+		otlog.String("start", start.Time().String()),
+		otlog.String("end", end.Time().String()),
+	)
+
+	ingesterReq := &ingestv1.BlockMetadataRequest{
+		Start: int64(start),
+		End:   int64(end),
+	}
+
+	results := newReplicasPerBlockID()
+
+	// get first all blocks from store gateways, as they should be querier with a priority and also aret the only ones containing duplicated blocks because of replication
+	if q.storeGatewayQuerier != nil {
+		res, err := q.blockSelectFromStoreGateway(ctx, ingesterReq)
+		if err != nil {
+			return nil, err
+		}
+
+		results.add(res, storeGatewayInstance)
+	}
+
+	if q.ingesterQuerier != nil {
+		res, err := q.blockSelectFromIngesters(ctx, ingesterReq)
+		if err != nil {
+			return nil, err
+		}
+		results.add(res, ingesterInstance)
+	}
+
+	return results.blockPlan(), nil
+
 }
 
 func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
@@ -400,9 +572,16 @@ func (q *Querier) SelectMergeSpanProfile(ctx context.Context, req *connect.Reque
 }
 
 func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*phlaremodel.Tree, error) {
+	// determine the block hints
+	plan, err := q.blockSelect(ctx, model.Time(req.Start), model.Time(req.End))
+	// TODO: This should only match the error from old ingesters
+	if err != nil {
+		plan = nil
+	}
+
 	// no store gateways configured so just query the ingesters
 	if q.storeGatewayQuerier == nil {
-		return q.selectTreeFromIngesters(ctx, req)
+		return q.selectTreeFromIngesters(ctx, req, plan)
 	}
 
 	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter)
@@ -413,17 +592,17 @@ func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStac
 	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
 
 	if !storeQueries.ingester.shouldQuery {
-		return q.selectTreeFromStoreGateway(ctx, storeQueries.storeGateway.MergeStacktracesRequest(req))
+		return q.selectTreeFromStoreGateway(ctx, storeQueries.storeGateway.MergeStacktracesRequest(req), plan)
 	}
 	if !storeQueries.storeGateway.shouldQuery {
-		return q.selectTreeFromIngesters(ctx, storeQueries.ingester.MergeStacktracesRequest(req))
+		return q.selectTreeFromIngesters(ctx, storeQueries.ingester.MergeStacktracesRequest(req), plan)
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
 	var ingesterTree, storegatewayTree *phlaremodel.Tree
 	g.Go(func() error {
 		var err error
-		ingesterTree, err = q.selectTreeFromIngesters(ctx, storeQueries.ingester.MergeStacktracesRequest(req))
+		ingesterTree, err = q.selectTreeFromIngesters(ctx, storeQueries.ingester.MergeStacktracesRequest(req), plan)
 		if err != nil {
 			return err
 		}
@@ -431,7 +610,7 @@ func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStac
 	})
 	g.Go(func() error {
 		var err error
-		storegatewayTree, err = q.selectTreeFromStoreGateway(ctx, storeQueries.storeGateway.MergeStacktracesRequest(req))
+		storegatewayTree, err = q.selectTreeFromStoreGateway(ctx, storeQueries.storeGateway.MergeStacktracesRequest(req), plan)
 		if err != nil {
 			return err
 		}
