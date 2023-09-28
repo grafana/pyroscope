@@ -181,12 +181,27 @@ func (pi *profilesIndex) Add(ps *schemav1.InMemoryProfile, lbs phlaremodel.Label
 		pi.metrics.seriesCreated.WithLabelValues(profileName).Inc()
 	}
 
-	profiles.profiles = append(profiles.profiles, ps)
+	// profile is latest in this series, use a shortcut
+	if ps.TimeNanos > profiles.maxTime {
+		// update max timeNanos
+		profiles.maxTime = ps.TimeNanos
+
+		// add profile to in memory slice
+		profiles.profiles = append(profiles.profiles, ps)
+	} else {
+		// use binary search to find position
+		i := sort.Search(len(profiles.profiles), func(i int) bool {
+			return profiles.profiles[i].TimeNanos > ps.TimeNanos
+		})
+
+		// insert into slice at correct position
+		profiles.profiles = append(profiles.profiles, &schemav1.InMemoryProfile{})
+		copy(profiles.profiles[i+1:], profiles.profiles[i:])
+		profiles.profiles[i] = ps
+	}
+
 	if ps.TimeNanos < profiles.minTime {
 		profiles.minTime = ps.TimeNanos
-	}
-	if ps.TimeNanos > profiles.maxTime {
-		profiles.maxTime = ps.TimeNanos
 	}
 
 	pi.metrics.profiles.Set(float64(pi.totalProfiles.Inc()))
