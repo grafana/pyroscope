@@ -78,6 +78,10 @@ replace `image: grafana/pyroscope` with the local tag name you got from docker-i
 
 #### Front end development
 
+**Versions for development tools**:
+- Node v18
+- Yarn v1.22
+
 The front end code is all located in the `public/app` directory, although its `plugin.json`
 file exists at the repository root.
 
