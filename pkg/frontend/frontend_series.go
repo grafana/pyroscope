@@ -2,7 +2,6 @@ package frontend
 
 import (
 	"context"
-	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/grafana/dskit/tenant"
@@ -22,12 +21,7 @@ func (f *Frontend) Series(ctx context.Context, c *connect.Request[querierv1.Seri
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if c.Msg.Start == 0 || c.Msg.End == 0 {
-		const defaultInterval = 4 * time.Hour
-		now := model.Now()
-		c.Msg.Start = now.Add(-defaultInterval).Unix()
-		c.Msg.End = now.Unix()
-	} else {
+	if c.Msg.Start != 0 && c.Msg.End != 0 {
 		interval := model.Interval{
 			Start: model.TimeFromUnix(c.Msg.Start),
 			End:   model.TimeFromUnix(c.Msg.End),
