@@ -340,7 +340,7 @@ func TestHeadFlush(t *testing.T) {
 					RelPath: "symbols/strings.parquet",
 					Parquet: &block.ParquetFile{
 						NumRowGroups: 2,
-						NumRows:      1723,
+						NumRows:      1722,
 					},
 				},
 			},

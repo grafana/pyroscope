@@ -296,12 +296,6 @@ func (s Samples) Reset(n int) Samples {
 	return s
 }
 
-func (s Samples) AppendWithSpan(stacktrace uint32, value uint64, span uint64) {
-	s.StacktraceIDs = append(s.StacktraceIDs, stacktrace)
-	s.Values = append(s.Values, value)
-	s.Spans = append(s.Spans, span)
-}
-
 func trimDuplicateSamples(samples Samples) Samples {
 	sort.Sort(samples)
 	n := 0
@@ -336,8 +330,8 @@ func trimZeroAndNegativeSamples(samples Samples) Samples {
 		StacktraceIDs: samples.StacktraceIDs[:n],
 		Values:        samples.Values[:n],
 	}
-	if len(samples.Spans) > n {
-		samples.Spans = samples.Spans[:n]
+	if len(samples.Spans) > 0 {
+		s.Spans = samples.Spans[:n]
 	}
 	return s
 }

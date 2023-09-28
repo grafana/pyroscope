@@ -65,6 +65,16 @@ func SetProfileMetadata(p *profile.Profile, ty *typesv1.ProfileType) {
 	}
 }
 
+type SpanSelector map[uint64]struct{}
+
+func NewSpanSelector(spans []uint64) SpanSelector {
+	m := make(map[uint64]struct{}, len(spans))
+	for _, s := range spans {
+		m[s] = struct{}{}
+	}
+	return m
+}
+
 func StacktracePartitionFromProfile(lbls []Labels, p *profilev1.Profile) uint64 {
 	return xxhash.Sum64String(stacktracePartitionKeyFromProfile(lbls, p))
 }

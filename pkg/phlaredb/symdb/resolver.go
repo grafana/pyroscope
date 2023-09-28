@@ -74,6 +74,15 @@ func (r *Resolver) AddSamples(partition uint64, s schemav1.Samples) {
 	}
 }
 
+func (r *Resolver) AddSamplesWithSpanSelector(partition uint64, s schemav1.Samples, spanSelector model.SpanSelector) {
+	p := r.Partition(partition)
+	for i, sid := range s.StacktraceIDs {
+		if _, ok := spanSelector[s.Spans[i]]; ok {
+			p[sid] += int64(s.Values[i])
+		}
+	}
+}
+
 // Partition returns map of samples corresponding to the partition.
 // The function initializes symbols of the partition on the first occurrence.
 // The call is thread-safe, but access to the returned map is not.

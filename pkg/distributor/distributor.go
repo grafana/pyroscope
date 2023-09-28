@@ -55,13 +55,6 @@ const (
 	ProfileName = "__name__"
 )
 
-var (
-	ignoredPprofLabels = []string{
-		"profile_id",          // For compatibility with the existing clients.
-		"span_id", "trace_id", // Will be supported in the future.
-	}
-)
-
 // Config for a Distributor.
 type Config struct {
 	PushTimeout time.Duration
@@ -325,7 +318,8 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		}
 		for _, raw := range series.Samples {
 			raw.Profile.Normalize()
-			groups := pprof.GroupSamplesWithoutLabels(raw.Profile.Profile, ignoredPprofLabels...)
+			pprof.RenameLabel(raw.Profile.Profile, pprof.ProfileIDLabelName, pprof.SpanIDLabelName)
+			groups := pprof.GroupSamplesWithoutLabels(raw.Profile.Profile, pprof.SpanIDLabelName)
 			if len(groups) < 2 {
 				s.Samples = append(s.Samples, raw)
 				continue

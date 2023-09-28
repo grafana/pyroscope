@@ -54,15 +54,15 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 	return m.normalize(), nil
 }
 
-func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, _ iter.Iterator[Profile], _ SpanSelector) (*phlaremodel.Tree, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeBySpans - Block")
-	defer sp.Finish()
-	// r := symdb.NewResolver(ctx, b.symbols)
-	// defer r.Release()
-	// if err := mergeBySpans(ctx, b.profiles.file, rows, r, spans); err != nil {
-	// 	return nil, err
-	// }
-	// return r.Tree()
+func (b *singleBlockQuerier) MergeBySpans(_ context.Context, _ iter.Iterator[Profile], _ phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
+	//	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeBySpans - Block")
+	//	defer sp.Finish()
+	//	r := symdb.NewResolver(ctx, b.symbols)
+	//	defer r.Release()
+	//	if err := mergeBySpans(ctx, b.profiles.file, rows, r, spanSelector); err != nil {
+	//		return nil, err
+	//	}
+	//	return r.Tree()
 	return new(phlaremodel.Tree), nil
 }
 
@@ -94,7 +94,7 @@ func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Ite
 	return it.Err()
 }
 
-func mergeBySpans(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver, spans SpanSelector) error {
+func mergeBySpans(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver, _ phlaremodel.SpanSelector) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeBySpans")
 	defer sp.Finish()
 	// clone the rows to be able to iterate over them twice

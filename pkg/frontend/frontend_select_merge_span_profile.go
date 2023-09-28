@@ -60,7 +60,8 @@ func (f *Frontend) SelectMergeSpanProfile(ctx context.Context,
 				Start:         r.Start.UnixMilli(),
 				End:           r.End.UnixMilli(),
 				MaxNodes:      c.Msg.MaxNodes,
-				SpanSelector:  c.Msg.SpanSelector,
+				// TODO: Make sure we don't need to copy it.
+				SpanSelector: c.Msg.SpanSelector,
 			})
 			resp, err := connectgrpc.RoundTripUnary[
 				querierv1.SelectMergeSpanProfileRequest,

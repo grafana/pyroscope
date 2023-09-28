@@ -2,7 +2,6 @@
 package symdb
 
 import (
-	"encoding/binary"
 	"fmt"
 	"hash/maphash"
 	"reflect"
@@ -15,8 +14,8 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/slices"
-	"github.com/grafana/pyroscope/pkg/util"
 )
 
 // Refactored as is from the phlaredb package.
@@ -34,12 +33,8 @@ func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []sche
 	// create a rewriter state
 	rewrites := &rewriter{}
 
-	var spans []uint64
-	spanIDLabelIdx := spanIDLabel(profile)
-	if spanIDLabelIdx > 0 {
-		spans = profileSpans(spanIDLabelIdx, profile)
-		zeroLabelStrings(profile)
-	}
+	spans := pprof.ProfileSpans(profile)
+	pprof.ZeroLabelStrings(profile)
 
 	p.strings.ingest(profile.StringTable, rewrites)
 	mappings := make([]*schemav1.InMemoryMapping, len(profile.Mapping))
@@ -160,69 +155,6 @@ func (p *PartitionWriter) convertSamples(r *rewriter, in []*profilev1.Sample, sp
 
 	uint32SlicePool.Put(stacktracesIds)
 	return samplesByType
-}
-
-func zeroLabelStrings(p *profilev1.Profile) {
-	// TODO: A true bitmap should be used instead.
-	st := slices.Grow(uint32SlicePool.Get(), len(p.StringTable))
-	slices.Clear(st)
-	defer uint32SlicePool.Put(st)
-	for _, t := range p.SampleType {
-		st[t.Type] = 1
-		st[t.Unit] = 1
-	}
-	for _, f := range p.Function {
-		st[f.Filename] = 1
-		st[f.SystemName] = 1
-		st[f.Name] = 1
-	}
-	for _, m := range p.Mapping {
-		st[m.Filename] = 1
-		st[m.BuildId] = 1
-	}
-	for _, c := range p.Comment {
-		st[c] = 1
-	}
-	st[p.KeepFrames] = 1
-	st[p.DropFrames] = 1
-	var zeroString string
-	for i, v := range st {
-		if v == 0 {
-			p.StringTable[i] = zeroString
-		}
-	}
-}
-
-func spanIDLabel(p *profilev1.Profile) int64 {
-	const spanIDLabel = "span_id"
-	spanIDLabelIdx := int64(-1)
-	for i, s := range p.StringTable {
-		if s == spanIDLabel {
-			spanIDLabelIdx = int64(i)
-			break
-		}
-	}
-	return spanIDLabelIdx
-}
-
-func profileSpans(spanIDLabelIdx int64, p *profilev1.Profile) []uint64 {
-	s := make([]uint64, len(p.Sample))
-	for i, sample := range p.Sample {
-		s[i] = spanIDFromLabels(spanIDLabelIdx, p.StringTable, sample.Label)
-	}
-	return s
-}
-
-func spanIDFromLabels(labelIdx int64, stringTable []string, labels []*profilev1.Label) uint64 {
-	for _, x := range labels {
-		if x.Key != labelIdx {
-			continue
-		}
-		if s := stringTable[x.Str]; len(s) == 8 {
-			return binary.LittleEndian.Uint64(util.YoloBuf(s))
-		}
-	}
-	return 0
 }
 
 func copySlice[T any](in []T) []T {

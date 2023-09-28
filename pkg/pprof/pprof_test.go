@@ -1015,7 +1015,7 @@ func Test_GroupSamplesWithout_Go_CPU_profile(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
 
-	groups := GroupSamplesWithoutLabels(p.Profile, "profile_id")
+	groups := GroupSamplesWithoutLabels(p.Profile, ProfileIDLabelName)
 	require.Len(t, groups, 3)
 
 	assert.Equal(t, groups[0].Labels, []*profilev1.Label{{Key: 18, Str: 19}})

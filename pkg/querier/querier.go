@@ -714,7 +714,7 @@ func uniqueSortedStrings(responses []ResponseFromReplica[[]string]) []string {
 func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.Tree, error) {
 	// no store gateways configured so just query the ingesters
 	if q.storeGatewayQuerier == nil {
-		return q.selectSpanProfileFromStoreGateway(ctx, req)
+		return q.selectSpanProfileFromIngesters(ctx, req)
 	}
 
 	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter)

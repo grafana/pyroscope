@@ -142,12 +142,12 @@ func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterato
 	return seriesByLabels.normalize(), nil
 }
 
-func (q *headOnDiskQuerier) MergeBySpans(ctx context.Context, _ iter.Iterator[Profile], _ SpanSelector) (*phlaremodel.Tree, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeBySpans")
-	defer sp.Finish()
+func (q *headOnDiskQuerier) MergeBySpans(_ context.Context, _ iter.Iterator[Profile], _ phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
+	//	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeBySpans")
+	//	defer sp.Finish()
 	//	r := symdb.NewResolver(ctx, q.head.symdb)
 	//	defer r.Release()
-	//	if err := mergeBySpans(ctx, q.rowGroup(), rows, r, spans); err != nil {
+	//	if err := mergeBySpans(ctx, q.rowGroup(), rows, r, spanSelector); err != nil {
 	//		return nil, err
 	//	}
 	//	return r.Tree()
@@ -305,7 +305,7 @@ func (q *headInMemoryQuerier) MergeByLabels(ctx context.Context, rows iter.Itera
 	return seriesByLabels.normalize(), nil
 }
 
-func (q *headInMemoryQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector SpanSelector) (*phlaremodel.Tree, error) {
+func (q *headInMemoryQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeBySpans - HeadInMemory")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb)
@@ -315,7 +315,10 @@ func (q *headInMemoryQuerier) MergeBySpans(ctx context.Context, rows iter.Iterat
 		if !ok {
 			return nil, errors.New("expected ProfileWithLabels")
 		}
-		r.AddSamples(p.StacktracePartition(), spanSelector.FilterSpans(p.Samples()))
+		samples := p.Samples()
+		if len(samples.Spans) > 0 {
+			r.AddSamplesWithSpanSelector(p.StacktracePartition(), samples, spanSelector)
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
