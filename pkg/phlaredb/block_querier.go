@@ -800,7 +800,11 @@ func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockG
 		return nil, err
 	}
 
-	return &ingestv1.SeriesResponse{LabelsSet: labelsSet}, nil
+	return &ingestv1.SeriesResponse{
+		LabelsSet: lo.UniqBy(labelsSet, func(set *typesv1.Labels) uint64 {
+			return phlaremodel.Labels(set.Labels).Hash()
+		}),
+	}, nil
 }
 
 var maxBlockProfile Profile = BlockProfile{
