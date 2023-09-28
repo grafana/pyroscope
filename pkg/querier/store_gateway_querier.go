@@ -36,6 +36,7 @@ type StoreGatewayQueryClient interface {
 	LabelValues(context.Context, *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error)
 	LabelNames(context.Context, *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error)
 	Series(context.Context, *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error)
+	BlockMetadata(ctx context.Context, req *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error)
 }
 
 type StoreGatewayLimits interface {
@@ -142,6 +143,17 @@ func forAllStoreGateways[T any](ctx context.Context, tenantID string, storegatew
 	}, replicationSet, f)
 }
 
+// forAllPlannedStoreGatway runs f, in parallel, for all store-gateways part of the plan
+func forAllPlannedStoreGateways[T any](ctx context.Context, _ string, storegatewayQuerier *StoreGatewayQuerier, plan map[string]*ingestv1.BlockHints, f QueryReplicaWithHintsFn[T, StoreGatewayQueryClient]) ([]ResponseFromReplica[T], error) {
+	return forGivenPlan(ctx, plan, func(addr string) (StoreGatewayQueryClient, error) {
+		client, err := storegatewayQuerier.pool.GetClientFor(addr)
+		if err != nil {
+			return nil, err
+		}
+		return client.(StoreGatewayQueryClient), nil
+	}, f)
+}
+
 // GetShuffleShardingSubring returns the subring to be used for a given user. This function
 // should be used both by store-gateway and querier in order to guarantee the same logic is used.
 func GetShuffleShardingSubring(ring ring.ReadRing, userID string, limits StoreGatewayLimits) ring.ReadRing {
@@ -156,7 +168,7 @@ func GetShuffleShardingSubring(ring ring.ReadRing, userID string, limits StoreGa
 	return ring.ShuffleShard(userID, shardSize)
 }
 
-func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*phlaremodel.Tree, error) {
+func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan map[string]*ingestv1.BlockHints) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectTree StoreGateway")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
@@ -174,9 +186,16 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeProfilesStacktraces, error) {
-		return ic.MergeProfilesStacktraces(ctx), nil
-	})
+	var responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesStacktraces]
+	if plan != nil {
+		responses, err = forAllPlannedStoreGateways(ctx, tenantID, q.storeGatewayQuerier, plan, func(ctx context.Context, ic StoreGatewayQueryClient, hints *ingestv1.Hints) (clientpool.BidiClientMergeProfilesStacktraces, error) {
+			return ic.MergeProfilesStacktraces(ctx), nil
+		})
+	} else {
+		responses, err = forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeProfilesStacktraces, error) {
+			return ic.MergeProfilesStacktraces(ctx), nil
+		})
+	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -368,4 +387,26 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 
 	// merge all profiles
 	return selectMergeSpanProfile(gCtx, responses)
+}
+
+func (q *Querier) blockSelectFromStoreGateway(ctx context.Context, req *ingestv1.BlockMetadataRequest) ([]ResponseFromReplica[[]*typesv1.BlockInfo], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series StoreGateway")
+	defer sp.Finish()
+
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]*typesv1.BlockInfo, error) {
+		res, err := ic.BlockMetadata(ctx, connect.NewRequest(req))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.Blocks, nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return responses, nil
 }

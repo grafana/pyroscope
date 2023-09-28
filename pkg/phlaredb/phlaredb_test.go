@@ -136,6 +136,10 @@ func (i *ingesterHandlerPhlareDB) Flush(context.Context, *connect.Request[ingest
 	return nil, errors.New("not implemented")
 }
 
+func (i *ingesterHandlerPhlareDB) BlockMetadata(context.Context, *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
 func TestMergeProfilesStacktraces(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 

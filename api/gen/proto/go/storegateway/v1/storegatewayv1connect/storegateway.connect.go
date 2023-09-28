@@ -59,6 +59,9 @@ const (
 	// StoreGatewayServiceSeriesProcedure is the fully-qualified name of the StoreGatewayService's
 	// Series RPC.
 	StoreGatewayServiceSeriesProcedure = "/storegateway.v1.StoreGatewayService/Series"
+	// StoreGatewayServiceBlockMetadataProcedure is the fully-qualified name of the
+	// StoreGatewayService's BlockMetadata RPC.
+	StoreGatewayServiceBlockMetadataProcedure = "/storegateway.v1.StoreGatewayService/BlockMetadata"
 )
 
 // StoreGatewayServiceClient is a client for the storegateway.v1.StoreGatewayService service.
@@ -71,6 +74,7 @@ type StoreGatewayServiceClient interface {
 	LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error)
 	LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error)
 	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
+	BlockMetadata(context.Context, *connect_go.Request[v1.BlockMetadataRequest]) (*connect_go.Response[v1.BlockMetadataResponse], error)
 }
 
 // NewStoreGatewayServiceClient constructs a client for the storegateway.v1.StoreGatewayService
@@ -123,6 +127,11 @@ func NewStoreGatewayServiceClient(httpClient connect_go.HTTPClient, baseURL stri
 			baseURL+StoreGatewayServiceSeriesProcedure,
 			opts...,
 		),
+		blockMetadata: connect_go.NewClient[v1.BlockMetadataRequest, v1.BlockMetadataResponse](
+			httpClient,
+			baseURL+StoreGatewayServiceBlockMetadataProcedure,
+			opts...,
+		),
 	}
 }
 
@@ -136,6 +145,7 @@ type storeGatewayServiceClient struct {
 	labelValues              *connect_go.Client[v11.LabelValuesRequest, v11.LabelValuesResponse]
 	labelNames               *connect_go.Client[v11.LabelNamesRequest, v11.LabelNamesResponse]
 	series                   *connect_go.Client[v1.SeriesRequest, v1.SeriesResponse]
+	blockMetadata            *connect_go.Client[v1.BlockMetadataRequest, v1.BlockMetadataResponse]
 }
 
 // MergeProfilesStacktraces calls storegateway.v1.StoreGatewayService.MergeProfilesStacktraces.
@@ -178,6 +188,11 @@ func (c *storeGatewayServiceClient) Series(ctx context.Context, req *connect_go.
 	return c.series.CallUnary(ctx, req)
 }
 
+// BlockMetadata calls storegateway.v1.StoreGatewayService.BlockMetadata.
+func (c *storeGatewayServiceClient) BlockMetadata(ctx context.Context, req *connect_go.Request[v1.BlockMetadataRequest]) (*connect_go.Response[v1.BlockMetadataResponse], error) {
+	return c.blockMetadata.CallUnary(ctx, req)
+}
+
 // StoreGatewayServiceHandler is an implementation of the storegateway.v1.StoreGatewayService
 // service.
 type StoreGatewayServiceHandler interface {
@@ -189,6 +204,7 @@ type StoreGatewayServiceHandler interface {
 	LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error)
 	LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error)
 	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
+	BlockMetadata(context.Context, *connect_go.Request[v1.BlockMetadataRequest]) (*connect_go.Response[v1.BlockMetadataResponse], error)
 }
 
 // NewStoreGatewayServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -237,6 +253,11 @@ func NewStoreGatewayServiceHandler(svc StoreGatewayServiceHandler, opts ...conne
 		svc.Series,
 		opts...,
 	)
+	storeGatewayServiceBlockMetadataHandler := connect_go.NewUnaryHandler(
+		StoreGatewayServiceBlockMetadataProcedure,
+		svc.BlockMetadata,
+		opts...,
+	)
 	return "/storegateway.v1.StoreGatewayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case StoreGatewayServiceMergeProfilesStacktracesProcedure:
@@ -255,6 +276,8 @@ func NewStoreGatewayServiceHandler(svc StoreGatewayServiceHandler, opts ...conne
 			storeGatewayServiceLabelNamesHandler.ServeHTTP(w, r)
 		case StoreGatewayServiceSeriesProcedure:
 			storeGatewayServiceSeriesHandler.ServeHTTP(w, r)
+		case StoreGatewayServiceBlockMetadataProcedure:
+			storeGatewayServiceBlockMetadataHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -294,4 +317,8 @@ func (UnimplementedStoreGatewayServiceHandler) LabelNames(context.Context, *conn
 
 func (UnimplementedStoreGatewayServiceHandler) Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.Series is not implemented"))
+}
+
+func (UnimplementedStoreGatewayServiceHandler) BlockMetadata(context.Context, *connect_go.Request[v1.BlockMetadataRequest]) (*connect_go.Response[v1.BlockMetadataResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.BlockMetadata is not implemented"))
 }

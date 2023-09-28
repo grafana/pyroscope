@@ -52,3 +52,17 @@ message LabelNamesRequest {
 message LabelNamesResponse {
   repeated string names = 1;
 }
+
+message BlockInfo {
+  string ulid = 1;
+  int64 min_time = 2;
+  int64 max_time = 3;
+  BlockCompaction compaction = 4;
+  repeated LabelPair labels = 5;
+}
+
+message BlockCompaction {
+  int32 level = 1;
+  repeated string sources = 2;
+  repeated string parents = 3;
+}

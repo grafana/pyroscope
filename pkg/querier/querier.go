@@ -3,6 +3,7 @@ package querier
 import (
 	"context"
 	"flag"
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -333,6 +334,46 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 	}), nil
 }
 
+func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (map[string]*ingestv1.BlockHints, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "blockSelect")
+	defer sp.Finish()
+
+	storeQueries := splitQueryToStores(start, end, model.Now(), q.cfg.QueryStoreAfter)
+
+	sp.LogFields(
+		otlog.String("start", start.Time().String()),
+		otlog.String("end", end.Time().String()),
+	)
+
+	ingesterReq := &ingestv1.BlockMetadataRequest{
+		Start: int64(start),
+		End:   int64(end),
+	}
+
+	results := newReplicasPerBlockID()
+
+	// get first all blocks from store gateways, as they should be querier with a priority and also aret the only ones containing duplicated blocks because of replication
+	if q.storeGatewayQuerier != nil && storeQueries.storeGateway.shouldQuery {
+		res, err := q.blockSelectFromStoreGateway(ctx, ingesterReq)
+		if err != nil {
+			return nil, err
+		}
+
+		results.add(res, storeGatewayInstance)
+	}
+
+	if q.ingesterQuerier != nil && storeQueries.ingester.shouldQuery {
+		res, err := q.blockSelectFromIngesters(ctx, ingesterReq)
+		if err != nil {
+			return nil, err
+		}
+		results.add(res, ingesterInstance)
+	}
+
+	return results.blockPlan(), nil
+
+}
+
 func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series")
 	defer sp.Finish()
@@ -536,10 +577,35 @@ func (q *Querier) SelectMergeSpanProfile(ctx context.Context, req *connect.Reque
 	}), nil
 }
 
+func isEndpointNotExistingErr(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var cerr *connect.Error
+	// unwrap all intermediate connect errors
+	for errors.As(err, &cerr) {
+		err = cerr.Unwrap()
+	}
+	return err.Error() == "405 Method Not Allowed"
+}
+
 func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*phlaremodel.Tree, error) {
+	// determine the block hints
+	plan, err := q.blockSelect(ctx, model.Time(req.Start), model.Time(req.End))
+	if isEndpointNotExistingErr(err) {
+		level.Warn(spanlogger.FromContext(ctx, q.logger)).Log(
+			"msg", "block select not supported on at least one component, fallback to use full dataset",
+			"err", err,
+		)
+		plan = nil
+	} else if err != nil {
+		return nil, fmt.Errorf("error during block select: %w", err)
+	}
+
 	// no store gateways configured so just query the ingesters
 	if q.storeGatewayQuerier == nil {
-		return q.selectTreeFromIngesters(ctx, req)
+		return q.selectTreeFromIngesters(ctx, req, plan)
 	}
 
 	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter)
@@ -550,17 +616,17 @@ func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStac
 	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
 
 	if !storeQueries.ingester.shouldQuery {
-		return q.selectTreeFromStoreGateway(ctx, storeQueries.storeGateway.MergeStacktracesRequest(req))
+		return q.selectTreeFromStoreGateway(ctx, storeQueries.storeGateway.MergeStacktracesRequest(req), plan)
 	}
 	if !storeQueries.storeGateway.shouldQuery {
-		return q.selectTreeFromIngesters(ctx, storeQueries.ingester.MergeStacktracesRequest(req))
+		return q.selectTreeFromIngesters(ctx, storeQueries.ingester.MergeStacktracesRequest(req), plan)
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
 	var ingesterTree, storegatewayTree *phlaremodel.Tree
 	g.Go(func() error {
 		var err error
-		ingesterTree, err = q.selectTreeFromIngesters(ctx, storeQueries.ingester.MergeStacktracesRequest(req))
+		ingesterTree, err = q.selectTreeFromIngesters(ctx, storeQueries.ingester.MergeStacktracesRequest(req), plan)
 		if err != nil {
 			return err
 		}
@@ -568,7 +634,7 @@ func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStac
 	})
 	g.Go(func() error {
 		var err error
-		storegatewayTree, err = q.selectTreeFromStoreGateway(ctx, storeQueries.storeGateway.MergeStacktracesRequest(req))
+		storegatewayTree, err = q.selectTreeFromStoreGateway(ctx, storeQueries.storeGateway.MergeStacktracesRequest(req), plan)
 		if err != nil {
 			return err
 		}
