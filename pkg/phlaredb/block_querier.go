@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/promql/parser"
+	"github.com/prometheus/prometheus/storage"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
@@ -968,14 +969,16 @@ func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.Series
 		return nil, err
 	}
 
-	labelNamesFilter := make(map[string]struct{}, len(params.LabelNames))
-	for _, n := range params.LabelNames {
-		labelNamesFilter[n] = struct{}{}
+	if len(params.LabelNames) > 0 {
+		labelNamesFilter := make(map[string]struct{}, len(params.LabelNames))
+		for _, n := range params.LabelNames {
+			labelNamesFilter[n] = struct{}{}
+		}
+		names = lo.Filter(names, func(name string, _ int) bool {
+			_, ok := labelNamesFilter[name]
+			return ok
+		})
 	}
-	names = lo.Filter(names, func(name string, _ int) bool {
-		_, ok := labelNamesFilter[name]
-		return ok
-	})
 
 	var labelsSets []*typesv1.Labels
 	fingerprints := make(map[uint64]struct{})
@@ -1015,6 +1018,9 @@ func (b *singleBlockQuerier) getUniqueLabelsSets(postings index.Postings, names 
 		for _, name := range names {
 			value, err := b.index.LabelValueFor(postings.At(), name)
 			if err != nil {
+				if err == storage.ErrNotFound {
+					continue
+				}
 				return nil, err
 			}
 			matchedLabels = append(matchedLabels, &typesv1.LabelPair{
