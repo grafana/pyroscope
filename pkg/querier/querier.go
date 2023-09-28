@@ -291,7 +291,8 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 			}),
 			func(t *typesv1.Labels) uint64 {
 				return phlaremodel.Labels(t.Labels).Hash()
-			}),
+			},
+		),
 	}), nil
 }
 
