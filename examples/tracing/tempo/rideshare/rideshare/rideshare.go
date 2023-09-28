@@ -10,11 +10,9 @@ import (
 
 	"github.com/grafana/pyroscope-go"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
-
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
@@ -94,7 +92,6 @@ func TracerProvider(c Config) (*sdktrace.TracerProvider, error) {
 	opts := []otlptracehttp.Option{
 		otlptracehttp.WithInsecure(),
 		otlptracehttp.WithEndpoint(c.OTLPUrl),
-		//	otlptracehttp.WithURLPath("/otlp/v1/traces"),
 	}
 	if c.OTLPBasicAuthUser != "" {
 		opts = append(opts, otlptracehttp.WithHeaders(map[string]string{
@@ -115,6 +112,7 @@ func TracerProvider(c Config) (*sdktrace.TracerProvider, error) {
 		sdktrace.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String(c.AppName),
+			semconv.CloudRegionKey.String(os.Getenv("REGION")),
 		)),
 	)
 
