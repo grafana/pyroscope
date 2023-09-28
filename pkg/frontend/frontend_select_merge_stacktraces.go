@@ -132,6 +132,10 @@ func extractSpansSelectorFromLabelSelector(labelSelector string) (ls string, ss 
 	if spanMatcher == nil {
 		return labelSelector, nil, nil
 	}
+	spanSelector, err := spansFromMatcherValue(spanMatcher.Value)
+	if err != nil {
+		return "", nil, fmt.Errorf("invalid span selector: %w", err)
+	}
 	var b strings.Builder
 	b.WriteRune('{')
 	for _, m := range matchers {
@@ -139,19 +143,20 @@ func extractSpansSelectorFromLabelSelector(labelSelector string) (ls string, ss 
 		b.WriteRune(',')
 	}
 	b.WriteRune('}')
-	return b.String(), spansFromMatcherValue(strings.Clone(spanMatcher.Value)), nil
+	return b.String(), spanSelector, nil
 }
 
-func spansFromMatcherValue(s string) []uint64 {
+func spansFromMatcherValue(s string) ([]uint64, error) {
 	tmp := make([]byte, 8)
 	spans := make([]uint64, 0, len(s)/17)
 	for _, x := range bytes.Split(util.YoloBuf(s), []byte(",")) {
 		if len(x) != 16 {
-			continue
+			return nil, fmt.Errorf("invalid span id lenth: %d", len(x))
 		}
-		if _, err := hex.Decode(tmp, x); err == nil {
-			spans = append(spans, binary.LittleEndian.Uint64(tmp))
+		if _, err := hex.Decode(tmp, x); err != nil {
+			return nil, err
 		}
+		spans = append(spans, binary.LittleEndian.Uint64(tmp))
 	}
-	return spans
+	return spans, nil
 }
