@@ -72,6 +72,10 @@ type Limits struct {
 	S3SSEType                 string `yaml:"s3_sse_type" json:"s3_sse_type" doc:"nocli|description=S3 server-side encryption type. Required to enable server-side encryption overrides for a specific tenant. If not set, the default S3 client settings are used."`
 	S3SSEKMSKeyID             string `yaml:"s3_sse_kms_key_id" json:"s3_sse_kms_key_id" doc:"nocli|description=S3 server-side encryption KMS Key ID. Ignored if the SSE type override is not set."`
 	S3SSEKMSEncryptionContext string `yaml:"s3_sse_kms_encryption_context" json:"s3_sse_kms_encryption_context" doc:"nocli|description=S3 server-side encryption KMS encryption context. If unset and the key ID override is set, the encryption context will not be provided to S3. Ignored if the SSE type override is not set."`
+
+	// Ensure profiles are dated within the IngestionWindow of the distributor.
+	RejectOlderThan model.Duration `yaml:"reject_older_than" json:"reject_older_than"`
+	RejectNewerThan model.Duration `yaml:"reject_newer_than" json:"reject_newer_than"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -120,6 +124,12 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.CompactorTenantShardSize, "compactor.compactor-tenant-shard-size", 0, "Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.")
 	_ = l.CompactorPartialBlockDeletionDelay.Set("1d")
 	f.Var(&l.CompactorPartialBlockDeletionDelay, "compactor.partial-block-deletion-delay", fmt.Sprintf("If a partial block (unfinished block without %s file) hasn't been modified for this time, it will be marked for deletion. The minimum accepted value is %s: a lower value will be ignored and the feature disabled. 0 to disable.", block.MetaFilename, MinCompactorPartialBlockDeletionDelay.String()))
+
+	_ = l.RejectNewerThan.Set("10m")
+	f.Var(&l.RejectNewerThan, "validation.reject-newer-than", "This limits how far into the future profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 10m.")
+
+	_ = l.RejectOlderThan.Set("1h")
+	f.Var(&l.RejectOlderThan, "validation.reject-older-than", "This limits how far into the past profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 1h.")
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -337,6 +347,16 @@ func (o *Overrides) S3SSEKMSEncryptionContext(user string) string {
 // Shuffle sharding will be used to distribute queries across queriers.
 // 0 means no limit. Currently disabled.
 func (o *Overrides) MaxQueriersPerTenant(tenant string) int { return 0 }
+
+// RejectNewerThan will ensure that profiles are further than the return value into the future are reject.
+func (o *Overrides) RejectNewerThan(tenantID string) time.Duration {
+	return time.Duration(o.getOverridesForTenant(tenantID).RejectNewerThan)
+}
+
+// RejectOlderThan will ensure that profiles that are older than the return value are rejected.
+func (o *Overrides) RejectOlderThan(tenantID string) time.Duration {
+	return time.Duration(o.getOverridesForTenant(tenantID).RejectOlderThan)
+}
 
 func (o *Overrides) DefaultLimits() *Limits {
 	return o.defaultLimits

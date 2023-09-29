@@ -18,6 +18,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
 func TestIndex(t *testing.T) {
@@ -244,4 +245,37 @@ func Test_rowRangesIter(t *testing.T) {
 			assert.Equal(t, tc.expFingerprints, fingerprints)
 		})
 	}
+}
+
+func TestProfileIndex_Add_OutOfOrder(t *testing.T) {
+	head := newTestHead(t)
+	ctx := context.Background()
+
+	for idx, ts := range []int64{100, 80, 20, 50, 110} {
+		p := testhelper.NewProfileBuilder(ts*1e9).
+			CPUProfile().
+			WithLabels(
+				"job", "a",
+			).ForStacktraceString("foo", "bar", "baz", fmt.Sprintf("iteration%d", idx)).AddSamples(1)
+
+		require.NoError(t, head.Ingest(ctx, p.Profile, uuid.New()))
+	}
+
+	index := head.profiles.index
+
+	// check that the profiles are in the correct order
+	var tsOrder []int64
+
+	require.Len(t, index.profilesPerFP, 1)
+	for _, profiles := range index.profilesPerFP {
+		for _, p := range profiles.profiles {
+			tsOrder = append(tsOrder, p.TimeNanos/1e9)
+		}
+
+		// check if min/max time is correct
+		require.Equal(t, int64(20e9), profiles.minTime)
+		require.Equal(t, int64(110e9), profiles.maxTime)
+	}
+	require.Equal(t, []int64{20, 50, 80, 100, 110}, tsOrder)
+
 }

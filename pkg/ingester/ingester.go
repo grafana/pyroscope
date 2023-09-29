@@ -248,8 +248,6 @@ func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushReq
 							validation.DiscardedProfiles.WithLabelValues(string(reason), instance.tenantID).Add(float64(1))
 							validation.DiscardedBytes.WithLabelValues(string(reason), instance.tenantID).Add(float64(size))
 							switch validation.ReasonOf(err) {
-							case validation.OutOfOrder:
-								return connect.NewError(connect.CodeInvalidArgument, err)
 							case validation.SeriesLimit:
 								return connect.NewError(connect.CodeResourceExhausted, err)
 							}
