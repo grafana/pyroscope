@@ -11,6 +11,124 @@ Usage of ./pyroscope:
     	How frequently to scan the bucket, or to refresh the bucket index (if enabled), in order to look for changes (new blocks shipped by ingesters and blocks deleted by retention or compaction). (default 15m0s)
   -blocks-storage.bucket-store.tenant-sync-concurrency int
     	Maximum number of concurrent tenants synching blocks. (default 10)
+  -compactor.block-ranges value
+    	List of compaction time ranges. (default 4h0m0s)
+  -compactor.block-sync-concurrency int
+    	Number of Go routines to use when downloading blocks for compaction and uploading resulting blocks. (default 8)
+  -compactor.blocks-retention-period duration
+    	Delete blocks containing samples older than the specified retention period. 0 to disable.
+  -compactor.cleanup-concurrency int
+    	Max number of tenants for which blocks cleanup and maintenance should run concurrently. (default 20)
+  -compactor.cleanup-interval duration
+    	How frequently compactor should run blocks cleanup and maintenance, as well as update the bucket index. (default 15m0s)
+  -compactor.compaction-concurrency int
+    	Max number of concurrent compactions running. (default 1)
+  -compactor.compaction-interval duration
+    	The frequency at which the compaction runs (default 1h0m0s)
+  -compactor.compaction-jobs-order string
+    	The sorting to use when deciding which compaction jobs should run first for a given tenant. Supported values are: smallest-range-oldest-blocks-first, newest-blocks-first. (default "smallest-range-oldest-blocks-first")
+  -compactor.compaction-retries int
+    	How many times to retry a failed compaction within a single compaction run. (default 3)
+  -compactor.compactor-tenant-shard-size int
+    	Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.
+  -compactor.data-dir string
+    	Directory to temporarily store blocks during compaction. This directory is not required to be persisted between restarts. (default "./data-compactor/")
+  -compactor.deletion-delay duration
+    	Time before a block marked for deletion is deleted from bucket. If not 0, blocks will be marked for deletion and compactor component will permanently delete blocks marked for deletion from the bucket. If 0, blocks will be deleted straight away. Note that deleting blocks immediately can cause query failures. (default 12h0m0s)
+  -compactor.disabled-tenants comma-separated-list-of-strings
+    	Comma separated list of tenants that cannot be compacted by this compactor. If specified, and compactor would normally pick given tenant for compaction (via -compactor.enabled-tenants or sharding), it will be ignored instead.
+  -compactor.enabled-tenants comma-separated-list-of-strings
+    	Comma separated list of tenants that can be compacted. If specified, only these tenants will be compacted by compactor, otherwise all tenants can be compacted. Subject to sharding.
+  -compactor.first-level-compaction-wait-period duration
+    	How long the compactor waits before compacting first-level blocks that are uploaded by the ingesters. This configuration option allows for the reduction of cases where the compactor begins to compact blocks before all ingesters have uploaded their blocks to the storage. (default 25m0s)
+  -compactor.max-compaction-time duration
+    	Max time for starting compactions for a single tenant. After this time no new compactions for the tenant are started before next compaction cycle. This can help in multi-tenant environments to avoid single tenant using all compaction time, but also in single-tenant environments to force new discovery of blocks more often. 0 = disabled. (default 1h0m0s)
+  -compactor.max-opening-blocks-concurrency int
+    	Number of goroutines opening blocks before compaction. (default 1)
+  -compactor.meta-sync-concurrency int
+    	Number of Go routines to use when syncing block meta files from the long term storage. (default 20)
+  -compactor.no-blocks-file-cleanup-enabled
+    	[experimental] If enabled, will delete the bucket-index, markers and debug files in the tenant bucket when there are no blocks left in the index.
+  -compactor.partial-block-deletion-delay duration
+    	If a partial block (unfinished block without meta.json file) hasn't been modified for this time, it will be marked for deletion. The minimum accepted value is 4h0m0s: a lower value will be ignored and the feature disabled. 0 to disable. (default 1d)
+  -compactor.ring.consul.acl-token string
+    	ACL Token used to interact with Consul.
+  -compactor.ring.consul.cas-retry-delay duration
+    	Maximum duration to wait before retrying a Compare And Swap (CAS) operation. (default 1s)
+  -compactor.ring.consul.client-timeout duration
+    	HTTP timeout when talking to Consul (default 20s)
+  -compactor.ring.consul.consistent-reads
+    	Enable consistent reads to Consul.
+  -compactor.ring.consul.hostname string
+    	Hostname and port of Consul. (default "localhost:8500")
+  -compactor.ring.consul.watch-burst-size int
+    	Burst size used in rate limit. Values less than 1 are treated as 1. (default 1)
+  -compactor.ring.consul.watch-rate-limit float
+    	Rate limit when watching key or prefix in Consul, in requests per second. 0 disables the rate limit. (default 1)
+  -compactor.ring.etcd.dial-timeout duration
+    	The dial timeout for the etcd connection. (default 10s)
+  -compactor.ring.etcd.endpoints string
+    	The etcd endpoints to connect to.
+  -compactor.ring.etcd.max-retries int
+    	The maximum number of retries to do for failed ops. (default 10)
+  -compactor.ring.etcd.password string
+    	Etcd password.
+  -compactor.ring.etcd.tls-ca-path string
+    	Path to the CA certificates to validate server certificate against. If not set, the host's root CA certificates are used.
+  -compactor.ring.etcd.tls-cert-path string
+    	Path to the client certificate, which will be used for authenticating with the server. Also requires the key path to be configured.
+  -compactor.ring.etcd.tls-cipher-suites string
+    	Override the default cipher suite list (separated by commas).
+  -compactor.ring.etcd.tls-enabled
+    	Enable TLS.
+  -compactor.ring.etcd.tls-insecure-skip-verify
+    	Skip validating server certificate.
+  -compactor.ring.etcd.tls-key-path string
+    	Path to the key for the client certificate. Also requires the client certificate to be configured.
+  -compactor.ring.etcd.tls-min-version string
+    	Override the default minimum TLS version. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
+  -compactor.ring.etcd.tls-server-name string
+    	Override the expected name on the server certificate.
+  -compactor.ring.etcd.username string
+    	Etcd username.
+  -compactor.ring.heartbeat-period duration
+    	Period at which to heartbeat to the ring. 0 = disabled. (default 15s)
+  -compactor.ring.heartbeat-timeout duration
+    	The heartbeat timeout after which compactors are considered unhealthy within the ring. 0 = never (timeout disabled). (default 1m0s)
+  -compactor.ring.instance-addr string
+    	IP address to advertise in the ring. Default is auto-detected.
+  -compactor.ring.instance-enable-ipv6
+    	Enable using a IPv6 instance address. (default false)
+  -compactor.ring.instance-id string
+    	Instance ID to register in the ring. (default "<hostname>")
+  -compactor.ring.instance-interface-names string
+    	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
+  -compactor.ring.instance-port int
+    	Port to advertise in the ring (defaults to -server.http-listen-port).
+  -compactor.ring.multi.mirror-enabled
+    	Mirror writes to secondary store.
+  -compactor.ring.multi.mirror-timeout duration
+    	Timeout for storing value to secondary store. (default 2s)
+  -compactor.ring.multi.primary string
+    	Primary backend storage used by multi-client.
+  -compactor.ring.multi.secondary string
+    	Secondary backend storage used by multi-client.
+  -compactor.ring.prefix string
+    	The prefix for the keys in the store. Should end with a /. (default "collectors/")
+  -compactor.ring.store string
+    	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -compactor.ring.wait-active-instance-timeout duration
+    	Timeout for waiting on compactor to become ACTIVE in the ring. (default 10m0s)
+  -compactor.ring.wait-stability-max-duration duration
+    	Maximum time to wait for ring stability at startup. If the compactor ring keeps changing after this period of time, the compactor will start anyway. (default 5m0s)
+  -compactor.ring.wait-stability-min-duration duration
+    	Minimum time to wait for ring stability at startup. 0 to disable.
+  -compactor.split-and-merge-shards int
+    	The number of shards to use when splitting blocks. 0 to disable splitting.
+  -compactor.split-groups int
+    	Number of groups that blocks for splitting should be grouped into. Each group of blocks is then split separately. Number of output split shards is controlled by -compactor.split-and-merge-shards. (default 1)
+  -compactor.tenant-cleanup-delay duration
+    	For tenants marked for deletion, this is time between deleting of last block, and doing final cleanup (marker files, debug files) of the tenant. (default 6h0m0s)
   -config.expand-env
     	Expands ${var} in config according to the values of the environment variables.
   -config.file string
