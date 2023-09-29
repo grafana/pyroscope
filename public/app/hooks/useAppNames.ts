@@ -20,8 +20,24 @@ export function useSelectFirstApp() {
       const apps = await dispatch(reloadAppNames()).unwrap();
 
       if (apps.length > 0 && query === '') {
-        // Select first app automatically if there is no query selected
-        dispatch(setQuery(appToQuery(apps[0])));
+        // Select a reasonable default app automatically if there is no query selected
+
+        // First, find a `cpu` type
+        const cpuApp = apps.find(
+          (app) => app.__profile_type__.split(':')[1] === 'cpu'
+        );
+
+        // If `cpu` type is not found, try to find an `.itimer` type for Java
+        const itimerApp = cpuApp
+          ? null
+          : apps.find(
+              (app) => app.__profile_type__.split(':')[1] === '.itimer'
+            );
+
+        // If we can't find a `cpu` or `.itimer` type, just choose the top of the list
+        const app = cpuApp || itimerApp || apps[0];
+
+        dispatch(setQuery(appToQuery(app)));
       }
     }
 
