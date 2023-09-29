@@ -50,7 +50,7 @@ generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/pr
 	find pkg/ \( -name \*.pb.go -o -name \*.connect\*.go \) -delete
 	cd api/ && PATH=$(BIN) $(BIN)/buf generate
 	cd pkg && PATH=$(BIN) $(BIN)/buf generate
-	PATH=$(BIN):$(PATH) ./tools/add-parquet-tags.sh
+	PATH="$(BIN):$(PATH)" ./tools/add-parquet-tags.sh
 	go run ./tools/doc-generator/ ./docs/sources/configure-server/reference-configuration-parameters/index.template > docs/sources/configure-server/reference-configuration-parameters/index.md
 
 .PHONY: buf/lint
