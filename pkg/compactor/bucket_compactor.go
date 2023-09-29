@@ -358,20 +358,6 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 		return false, nil, errors.Wrapf(err, "compact blocks %v", blocksToCompactDirs)
 	}
 
-	if !hasNonZeroULIDs(compIDs) {
-		// Prometheus compactor found that the compacted block would have no samples.
-		level.Info(jobLogger).Log("msg", "compacted block would have no samples, deleting source blocks", "blocks", fmt.Sprintf("%v", blocksToCompactDirs))
-		for _, meta := range toCompact {
-			if meta.Stats.NumSamples == 0 {
-				if err := deleteBlock(c.bkt, meta.ULID, filepath.Join(subDir, meta.ULID.String()), jobLogger, c.metrics.blocksMarkedForDeletion); err != nil {
-					level.Warn(jobLogger).Log("msg", "failed to mark for deletion an empty block found during compaction", "block", meta.ULID, "err", err)
-				}
-			}
-		}
-		// Even though this block was empty, there may be more work to do.
-		return true, nil, nil
-	}
-
 	elapsed = time.Since(compactionBegin)
 	level.Info(jobLogger).Log("msg", "compacted blocks", "new", fmt.Sprintf("%v", compIDs), "blocks", fmt.Sprintf("%v", blocksToCompactDirs), "duration", elapsed, "duration_ms", elapsed.Milliseconds())
 
@@ -558,7 +544,6 @@ type BucketCompactor struct {
 	sortJobs             JobsOrderFunc
 	waitPeriod           time.Duration
 	blockSyncConcurrency int
-	blockOpenConcurrency int
 	metrics              *BucketCompactorMetrics
 }
 
