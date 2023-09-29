@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v3"
+
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 const (

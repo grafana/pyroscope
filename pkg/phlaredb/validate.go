@@ -5,6 +5,7 @@ import (
 	"path"
 
 	"github.com/grafana/dskit/runutil"
+
 	"github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"

@@ -32,10 +32,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	prom_testutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/tsdb"
-	"github.com/prometheus/prometheus/tsdb/chunkenc"
-	"github.com/prometheus/prometheus/tsdb/tsdbutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -49,6 +46,11 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/pkg/validation"
+)
+
+const (
+	instanceID = "compactor-1"
+	addr       = "1.2.3.4"
 )
 
 func TestConfig_ShouldSupportYamlConfig(t *testing.T) {
@@ -1034,8 +1036,8 @@ func TestMultitenantCompactor_ShouldCompactAllUsersOnShardingEnabledButOnlyOneIn
 	t.Cleanup(func() { assert.NoError(t, closer.Close()) })
 
 	cfg := prepareConfig(t)
-	cfg.ShardingRing.Common.InstanceID = "compactor-1"
-	cfg.ShardingRing.Common.InstanceAddr = "1.2.3.4"
+	cfg.ShardingRing.Common.InstanceID = instanceID
+	cfg.ShardingRing.Common.InstanceAddr = addr
 	cfg.ShardingRing.Common.KVStore.Mock = ringStore
 	c, _, tsdbPlanner, logs, registry := prepare(t, cfg, bucketClient)
 
@@ -1237,8 +1239,8 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsNoMoreOwnedAfterPlannin
 
 	cfg := prepareConfig(t)
 	cfg.CompactionConcurrency = 1
-	cfg.ShardingRing.Common.InstanceID = "compactor-1"
-	cfg.ShardingRing.Common.InstanceAddr = "1.2.3.4"
+	cfg.ShardingRing.Common.InstanceID = instanceID
+	cfg.ShardingRing.Common.InstanceAddr = addr
 	cfg.ShardingRing.Common.KVStore.Mock = ringStore
 
 	limits := newMockConfigProvider()
@@ -1479,7 +1481,7 @@ func createCustomBlock(t *testing.T, bkt objstore.Bucket, userID string, externa
 func createDBBlock(t *testing.T, bkt objstore.Bucket, userID string, minT, maxT int64, numSeries int, externalLabels map[string]string) ulid.ULID {
 	return createCustomBlock(t, bkt, userID, externalLabels, func() []*testhelper.ProfileBuilder {
 		result := []*testhelper.ProfileBuilder{}
-		appendSample := func(seriesID int, ts int64, value float64) {
+		appendSample := func(seriesID int, ts int64) {
 			profile := testhelper.NewProfileBuilder(ts*int64(time.Millisecond)).
 				CPUProfile().
 				WithLabels(
@@ -1494,14 +1496,14 @@ func createDBBlock(t *testing.T, bkt objstore.Bucket, userID string, minT, maxT 
 		// Since we append one more series below, here we create N-1 series.
 		if numSeries > 1 {
 			for ts := minT; ts <= maxT; ts += (maxT - minT) / int64(numSeries-1) {
-				appendSample(seriesID, ts, float64(seriesID))
+				appendSample(seriesID, ts)
 				seriesID++
 			}
 		} else {
-			appendSample(seriesID, minT, float64(seriesID))
+			appendSample(seriesID, minT)
 		}
 		// Guarantee a series with a sample at time maxT
-		appendSample(seriesID, maxT, float64(seriesID))
+		appendSample(seriesID, maxT)
 		return result
 	})
 }
@@ -1848,8 +1850,8 @@ func TestMultitenantCompactor_ShouldFailCompactionOnTimeout(t *testing.T) {
 	t.Cleanup(func() { assert.NoError(t, closer.Close()) })
 
 	cfg := prepareConfig(t)
-	cfg.ShardingRing.Common.InstanceID = "compactor-1"
-	cfg.ShardingRing.Common.InstanceAddr = "1.2.3.4"
+	cfg.ShardingRing.Common.InstanceID = instanceID
+	cfg.ShardingRing.Common.InstanceAddr = addr
 	cfg.ShardingRing.Common.KVStore.Mock = ringStore
 
 	// Set ObservePeriod to longer than the timeout period to mock a timeout while waiting on ring to become ACTIVE
@@ -2008,32 +2010,6 @@ func stopServiceFn(t *testing.T, serv services.Service) func() {
 	}
 }
 
-type sample struct {
-	t  int64
-	v  float64
-	h  *histogram.Histogram
-	fh *histogram.FloatHistogram
-}
-
-func newSample(t int64, v float64, h *histogram.Histogram, fh *histogram.FloatHistogram) tsdbutil.Sample {
-	return sample{t, v, h, fh}
-}
-func (s sample) T() int64                      { return s.t }
-func (s sample) F() float64                    { return s.v }
-func (s sample) H() *histogram.Histogram       { return s.h }
-func (s sample) FH() *histogram.FloatHistogram { return s.fh }
-
-func (s sample) Type() chunkenc.ValueType {
-	switch {
-	case s.h != nil:
-		return chunkenc.ValHistogram
-	case s.fh != nil:
-		return chunkenc.ValFloatHistogram
-	default:
-		return chunkenc.ValFloat
-	}
-}
-
 type bucketWithMockedAttributes struct {
 	objstore.Bucket
 
@@ -2046,11 +2022,4 @@ func (b *bucketWithMockedAttributes) Attributes(ctx context.Context, name string
 	}
 
 	return b.Bucket.Attributes(ctx, name)
-}
-
-func must[T any](v T, err error) T {
-	if err != nil {
-		panic(err)
-	}
-	return v
 }
