@@ -1,11 +1,11 @@
 package block
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
@@ -168,10 +168,8 @@ func (m *Meta) Clone() *Meta {
 	return &clone
 }
 
-var ulidEntropy = rand.New(rand.NewSource(time.Now().UnixNano()))
-
 func generateULID() ulid.ULID {
-	return ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy)
+	return ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader)
 }
 
 func NewMeta() *Meta {
