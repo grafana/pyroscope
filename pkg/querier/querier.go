@@ -231,7 +231,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		}), nil
 	}
 
-	storeQueries := splitQueryToStores(model.TimeFromUnix(req.Msg.Start), model.TimeFromUnix(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}

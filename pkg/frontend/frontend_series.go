@@ -23,8 +23,8 @@ func (f *Frontend) Series(ctx context.Context, c *connect.Request[querierv1.Seri
 
 	if c.Msg.Start != 0 && c.Msg.End != 0 {
 		interval := model.Interval{
-			Start: model.TimeFromUnix(c.Msg.Start),
-			End:   model.TimeFromUnix(c.Msg.End),
+			Start: model.Time(c.Msg.Start),
+			End:   model.Time(c.Msg.End),
 		}
 		validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, interval, model.Now())
 		if err != nil {
@@ -33,8 +33,8 @@ func (f *Frontend) Series(ctx context.Context, c *connect.Request[querierv1.Seri
 		if validated.IsEmpty {
 			return connect.NewResponse(&querierv1.SeriesResponse{}), nil
 		}
-		c.Msg.Start = validated.Start.Unix()
-		c.Msg.End = validated.End.Unix()
+		c.Msg.Start = int64(validated.Start)
+		c.Msg.End = int64(validated.End)
 	}
 
 	return connectgrpc.RoundTripUnary[querierv1.SeriesRequest, querierv1.SeriesResponse](ctx, f, c)
