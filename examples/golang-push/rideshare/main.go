@@ -10,6 +10,7 @@ import (
 	"rideshare/car"
 	"rideshare/rideshare"
 	"rideshare/scooter"
+	"rideshare/utility"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
@@ -19,9 +20,11 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
-func bikeRoute(w http.ResponseWriter, r *http.Request) {
-	bike.OrderBike(r.Context(), 1)
-	w.Write([]byte("<h1>Bike ordered</h1>"))
+func bikeRouteHandler(pool *utility.LeakyPool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		bike.OrderBike(r.Context(), 1)
+		w.Write([]byte("<h1>Bike ordered</h1>"))
+	}
 }
 
 func scooterRoute(w http.ResponseWriter, r *http.Request) {
@@ -59,12 +62,14 @@ func main() {
 		_ = p.Stop()
 	}()
 
+	leakyPool := utility.NewLeakyPool(100_000)
+
 	http.Handle("/", otelhttp.NewHandler(http.HandlerFunc(index), "IndexHandler"))
-	http.Handle("/bike", otelhttp.NewHandler(http.HandlerFunc(bikeRoute), "BikeHandler"))
+	http.Handle("/bike", otelhttp.NewHandler(http.HandlerFunc(bikeRouteHandler(leakyPool)), "BikeHandler"))
 	http.Handle("/scooter", otelhttp.NewHandler(http.HandlerFunc(scooterRoute), "ScooterHandler"))
 	http.Handle("/car", otelhttp.NewHandler(http.HandlerFunc(carRoute), "CarHandler"))
 
-	log.Fatal(http.ListenAndServe(":5000", nil))
+	log.Fatal(http.ListenAndServe("localhost:5000", nil))
 }
 
 func setupTracing(c rideshare.Config) (tp *sdktrace.TracerProvider, err error) {
