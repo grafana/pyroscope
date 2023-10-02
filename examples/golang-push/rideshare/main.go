@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -20,11 +21,23 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
-func bikeRouteHandler(pool *utility.LeakyPool) http.HandlerFunc {
+func routeHandler(pool *utility.RequestPool, f http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		bike.OrderBike(r.Context(), 1)
-		w.Write([]byte("<h1>Bike ordered</h1>"))
+		if pool == nil {
+			f(w, r)
+			return
+		}
+
+		pool.Handle(func() error {
+			f(w, r)
+			return nil
+		})
 	}
+}
+
+func bikeRoute(w http.ResponseWriter, r *http.Request) {
+	bike.OrderBike(r.Context(), 1)
+	w.Write([]byte("<h1>Bike ordered</h1>"))
 }
 
 func scooterRoute(w http.ResponseWriter, r *http.Request) {
@@ -62,14 +75,26 @@ func main() {
 		_ = p.Stop()
 	}()
 
-	leakyPool := utility.NewLeakyPool(100_000)
+	var pool *utility.RequestPool
+	if os.Getenv("REGION") == "eu-north" {
+		pool = utility.NewRequestPool(5_000)
+	}
 
 	http.Handle("/", otelhttp.NewHandler(http.HandlerFunc(index), "IndexHandler"))
-	http.Handle("/bike", otelhttp.NewHandler(http.HandlerFunc(bikeRouteHandler(leakyPool)), "BikeHandler"))
-	http.Handle("/scooter", otelhttp.NewHandler(http.HandlerFunc(scooterRoute), "ScooterHandler"))
-	http.Handle("/car", otelhttp.NewHandler(http.HandlerFunc(carRoute), "CarHandler"))
+	http.Handle("/bike", otelhttp.NewHandler(routeHandler(pool, bikeRoute), "BikeHandler"))
+	http.Handle("/scooter", otelhttp.NewHandler(routeHandler(pool, scooterRoute), "ScooterHandler"))
+	http.Handle("/car", otelhttp.NewHandler(routeHandler(pool, carRoute), "CarHandler"))
 
-	log.Fatal(http.ListenAndServe("localhost:5000", nil))
+	http.Handle("/stats", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		stats := utility.Stats{}
+		if pool != nil {
+			stats = pool.Stats()
+		}
+		bytes, _ := json.MarshalIndent(stats, "", "  ")
+		w.Write(bytes)
+	}))
+
+	log.Fatal(http.ListenAndServe(":5000", nil))
 }
 
 func setupTracing(c rideshare.Config) (tp *sdktrace.TracerProvider, err error) {
