@@ -1,6 +1,9 @@
 package model
 
 import (
+	"encoding/binary"
+	"encoding/hex"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -13,6 +16,7 @@ import (
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 // CompareProfile compares the two profiles.
@@ -67,12 +71,19 @@ func SetProfileMetadata(p *profile.Profile, ty *typesv1.ProfileType) {
 
 type SpanSelector map[uint64]struct{}
 
-func NewSpanSelector(spans []uint64) SpanSelector {
+func NewSpanSelector(spans []string) (SpanSelector, error) {
 	m := make(map[uint64]struct{}, len(spans))
+	b := make([]byte, 8)
 	for _, s := range spans {
-		m[s] = struct{}{}
+		if len(s) != 16 {
+			return nil, fmt.Errorf("invalid span id length: %q", s)
+		}
+		if _, err := hex.Decode(b, util.YoloBuf(s)); err != nil {
+			return nil, err
+		}
+		m[binary.LittleEndian.Uint64(b)] = struct{}{}
 	}
-	return m
+	return m, nil
 }
 
 func StacktracePartitionFromProfile(lbls []Labels, p *profilev1.Profile) uint64 {

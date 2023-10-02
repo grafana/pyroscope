@@ -56,7 +56,7 @@ message SelectMergeStacktracesResponse {
 message SelectMergeSpanProfileRequest {
   string profile_typeID = 1;
   string label_selector = 2;
-  repeated uint64 span_selector = 3;
+  repeated string span_selector = 3;
   int64 start = 4; // milliseconds since epoch
   int64 end = 5; // milliseconds since epoch
   optional int64 max_nodes = 6; // Limit the nodes returned to only show the node with the max_node's biggest total

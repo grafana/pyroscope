@@ -592,6 +592,11 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 		otlog.String("profile_type_id", request.Type.ID),
 	)
 
+	spanSelector, err := phlaremodel.NewSpanSelector(request.SpanSelector)
+	if err != nil {
+		return err
+	}
+
 	queriers, err := blockGetter(ctx, model.Time(request.Start), model.Time(request.End))
 	if err != nil {
 		return err
@@ -619,7 +624,6 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 	var m sync.Mutex
 	t := new(phlaremodel.Tree)
 	g, ctx := errgroup.WithContext(ctx)
-	spanSelector := phlaremodel.NewSpanSelector(request.SpanSelector)
 	for i, querier := range queriers {
 		querier := querier
 		i := i

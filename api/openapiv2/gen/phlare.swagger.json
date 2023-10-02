@@ -942,8 +942,7 @@
         "spanSelector": {
           "type": "array",
           "items": {
-            "type": "string",
-            "format": "uint64"
+            "type": "string"
           }
         }
       }

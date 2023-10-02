@@ -82,7 +82,7 @@ message SelectSpanProfileRequest {
   types.v1.ProfileType type = 2;
   int64 start = 3;
   int64 end = 4;
-  repeated uint64 span_selector = 5;
+  repeated string span_selector = 5;
 }
 
 message MergeSpanProfileRequest {
