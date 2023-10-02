@@ -28,6 +28,7 @@ type Config struct {
 	OTLPUrl                    string
 	OTLPBasicAuthUser          string
 	OTLPBasicAuthPassword      string
+	OTLPVerbose                bool
 
 	UseDebugTracer bool
 	Tags           map[string]string
@@ -44,6 +45,7 @@ func ReadConfig() Config {
 		OTLPUrl:                    os.Getenv("OTLP_URL"),
 		OTLPBasicAuthUser:          os.Getenv("OTLP_BASIC_AUTH_USER"),
 		OTLPBasicAuthPassword:      os.Getenv("OTLP_BASIC_AUTH_PASSWORD"),
+		OTLPVerbose:                os.Getenv("OTLP_VERBOSE") == "1",
 
 		UseDebugTracer: os.Getenv("DEBUG_TRACER") == "1",
 		Tags: map[string]string{
@@ -86,7 +88,7 @@ func basicAuth(username, password string) string {
 
 func TracerProvider(c Config) (*sdktrace.TracerProvider, error) {
 	if c.OTLPUrl == "" {
-		return debugTracerProvider()
+		return debugTracerProvider(c.OTLPVerbose)
 	}
 	ctx := context.Background()
 	exp, err := otlptrace.New(ctx, otlptracehttp.NewClient(otlptracehttp.WithEndpoint(c.OTLPUrl),
@@ -114,12 +116,17 @@ func TracerProvider(c Config) (*sdktrace.TracerProvider, error) {
 	return tp2, nil
 }
 
-func debugTracerProvider() (*sdktrace.TracerProvider, error) {
-	exp, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
-	if err != nil {
-		return nil, err
+func debugTracerProvider(verbose bool) (*sdktrace.TracerProvider, error) {
+	opts := []sdktrace.TracerProviderOption{}
+	if verbose {
+		exp, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, sdktrace.WithSpanProcessor(sdktrace.NewSimpleSpanProcessor(exp)))
 	}
-	return sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sdktrace.NewSimpleSpanProcessor(exp))), nil
+
+	return sdktrace.NewTracerProvider(opts...), nil
 }
 
 func Profiler(c Config) (*pyroscope.Profiler, error) {
