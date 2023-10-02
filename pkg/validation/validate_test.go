@@ -315,6 +315,14 @@ func TestValidateProfile(t *testing.T) {
 				RejectNewerThanValue: 10 * time.Minute,
 			},
 		},
+		{
+			name:    "without timestamp",
+			profile: &googlev1.Profile{},
+			limits: MockLimits{
+				RejectOlderThanValue: time.Hour,
+				RejectNewerThanValue: 10 * time.Minute,
+			},
+		},
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
