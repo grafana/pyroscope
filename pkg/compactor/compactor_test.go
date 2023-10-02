@@ -1391,7 +1391,7 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsWithFirstLevelCompactio
 
 	// Ensure the skipped compaction job is the expected one.
 	assert.Contains(t, strings.Split(strings.TrimSpace(logs.String()), "\n"),
-		fmt.Sprintf(`level=info component=compactor tenant=user-2 msg="skipping compaction job because blocks in this job were uploaded too recently (within wait period)" groupKey=0@17241709254077376921-merge--0-7200000 waitPeriodNotElapsedFor="%s (min time: 1970-01-01T08:00:00+08:00, max time: 1970-01-01T10:00:00+08:00)"`, user2Meta2.String()))
+		fmt.Sprintf(`level=info component=compactor tenant=user-2 msg="skipping compaction job because blocks in this job were uploaded too recently (within wait period)" groupKey=0@17241709254077376921-merge--0-7200000 waitPeriodNotElapsedFor="%s (min time: 1970-01-01T01:00:00+01:00, max time: 1970-01-01T03:00:00+01:00)"`, user2Meta2.String()))
 
 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
 		# TYPE pyroscope_compactor_runs_started_total counter
@@ -1586,6 +1586,8 @@ func removeIgnoredLogs(input []string) []string {
 func prepareConfig(t *testing.T) Config {
 	compactorCfg := Config{}
 	flagext.DefaultValues(&compactorCfg)
+	// Use multiple range for testing.
+	compactorCfg.BlockRanges = DurationList{2 * time.Hour, 12 * time.Hour, 24 * time.Hour}
 
 	compactorCfg.retryMinBackoff = 0
 	compactorCfg.retryMaxBackoff = 0
