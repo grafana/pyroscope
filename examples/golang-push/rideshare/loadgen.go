@@ -57,7 +57,8 @@ func main() {
 	// that pprof would add corresponding labels to profiling samples.
 	otel.SetTracerProvider(tp)
 
-	// Register the trace c ontext and baggage propagators so data is propagated across services/processes.
+	// Register the trace context and baggage propagators so data is propagated
+	// across services/processes.
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
@@ -67,10 +68,21 @@ func main() {
 		_ = tp.Shutdown(context.Background())
 	}()
 
+	const poolSize = 100
+	pool := make(chan struct{}, poolSize)
+	for i := 0; i < poolSize; i++ {
+		pool <- struct{}{}
+	}
+
 	for {
-		if err = orderVehicle(context.Background()); err != nil {
-			fmt.Println(err)
-		}
+		<-pool
+		go func(pool chan<- struct{}) {
+			err := orderVehicle(context.Background())
+			if err != nil {
+				fmt.Println(err)
+			}
+			pool <- struct{}{}
+		}(pool)
 	}
 }
 
