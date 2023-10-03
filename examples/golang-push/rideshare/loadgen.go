@@ -66,15 +66,20 @@ func main() {
 	defer func() {
 		_ = tp.Shutdown(context.Background())
 	}()
-
-	for {
-		if err = orderVehicle(context.Background()); err != nil {
-			fmt.Println(err)
-		}
+	for i := 0; i < len(hosts); i++ {
+		host := hosts[i]
+		go func() {
+			for {
+				if err = orderVehicle(context.Background(), host); err != nil {
+					fmt.Println(err)
+				}
+			}
+		}()
 	}
+	select {}
 }
 
-func orderVehicle(ctx context.Context) error {
+func orderVehicle(ctx context.Context, host string) error {
 	ctx, span := otel.GetTracerProvider().Tracer("").Start(ctx, "OrderVehicle")
 	defer span.End()
 
@@ -87,7 +92,6 @@ func orderVehicle(ctx context.Context) error {
 		}
 	}
 
-	host := hosts[rand.Intn(len(hosts))]
 	vehicle := vehicles[rand.Intn(len(vehicles))]
 	span.SetAttributes(attribute.String("vehicle", vehicle))
 	url := fmt.Sprintf("http://%s:5000/%s", host, vehicle)
