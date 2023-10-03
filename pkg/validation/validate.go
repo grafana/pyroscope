@@ -30,9 +30,11 @@ const (
 	MissingLabels Reason = "missing_labels"
 	// RateLimited is one of the values for the reason to discard samples.
 	RateLimited Reason = "rate_limited"
-	// OutOfOrder is a reason for discarding profiles when Pyroscope doesn't accept out
-	// of order profiles.
-	OutOfOrder Reason = "out_of_order"
+
+	// NotInIngestionWindow is a reason for discarding profiles when Pyroscope doesn't accept profiles
+	// that are outside of the ingestion window.
+	NotInIngestionWindow Reason = "not_in_ingestion_window"
+
 	// MaxLabelNamesPerSeries is a reason for discarding a request which has too many label names
 	MaxLabelNamesPerSeries Reason = "max_label_names_per_series"
 	// LabelNameTooLong is a reason for discarding a request which has a label name too long
@@ -61,6 +63,7 @@ const (
 	ProfileTooBigErrorMsg              = "the profile with labels '%s' exceeds the size limit (max_profile_size_byte, actual: %d, limit: %d)"
 	ProfileTooManySamplesErrorMsg      = "the profile with labels '%s' exceeds the samples count limit (max_profile_stacktrace_samples, actual: %d, limit: %d)"
 	ProfileTooManySampleLabelsErrorMsg = "the profile with labels '%s' exceeds the sample labels limit (max_profile_stacktrace_sample_labels, actual: %d, limit: %d)"
+	NotInIngestionWindowErrorMsg       = "profile with labels '%s' is outside of ingestion window (profile timestamp: %s, %s)"
 )
 
 var (
@@ -86,19 +89,19 @@ var (
 )
 
 type LabelValidationLimits interface {
-	MaxLabelNameLength(userID string) int
-	MaxLabelValueLength(userID string) int
-	MaxLabelNamesPerSeries(userID string) int
+	MaxLabelNameLength(tenantID string) int
+	MaxLabelValueLength(tenantID string) int
+	MaxLabelNamesPerSeries(tenantID string) int
 }
 
 // ValidateLabels validates the labels of a profile.
-func ValidateLabels(limits LabelValidationLimits, userID string, ls []*typesv1.LabelPair) error {
+func ValidateLabels(limits LabelValidationLimits, tenantID string, ls []*typesv1.LabelPair) error {
 	if len(ls) == 0 {
 		return NewErrorf(MissingLabels, MissingLabelsErrorMsg)
 	}
 	sort.Sort(phlaremodel.Labels(ls))
 	numLabelNames := len(ls)
-	maxLabels := limits.MaxLabelNamesPerSeries(userID)
+	maxLabels := limits.MaxLabelNamesPerSeries(tenantID)
 	if numLabelNames > maxLabels {
 		return NewErrorf(MaxLabelNamesPerSeries, MaxLabelNamesPerSeriesErrorMsg, phlaremodel.LabelPairsString(ls), numLabelNames, maxLabels)
 	}
@@ -113,9 +116,9 @@ func ValidateLabels(limits LabelValidationLimits, userID string, ls []*typesv1.L
 	lastLabelName := ""
 
 	for _, l := range ls {
-		if len(l.Name) > limits.MaxLabelNameLength(userID) {
+		if len(l.Name) > limits.MaxLabelNameLength(tenantID) {
 			return NewErrorf(LabelNameTooLong, LabelNameTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Name)
-		} else if len(l.Value) > limits.MaxLabelValueLength(userID) {
+		} else if len(l.Value) > limits.MaxLabelValueLength(tenantID) {
 			return NewErrorf(LabelValueTooLong, LabelValueTooLongErrorMsg, phlaremodel.LabelPairsString(ls), l.Value)
 		} else if !model.LabelName(l.Name).IsValid() {
 			return NewErrorf(InvalidLabels, InvalidLabelsErrorMsg, phlaremodel.LabelPairsString(ls), "invalid label name '"+l.Name+"'")
@@ -131,27 +134,73 @@ func ValidateLabels(limits LabelValidationLimits, userID string, ls []*typesv1.L
 }
 
 type ProfileValidationLimits interface {
-	MaxProfileSizeBytes(userID string) int
-	MaxProfileStacktraceSamples(userID string) int
-	MaxProfileStacktraceSampleLabels(userID string) int
-	MaxProfileStacktraceDepth(userID string) int
-	MaxProfileSymbolValueLength(userID string) int
+	MaxProfileSizeBytes(tenantID string) int
+	MaxProfileStacktraceSamples(tenantID string) int
+	MaxProfileStacktraceSampleLabels(tenantID string) int
+	MaxProfileStacktraceDepth(tenantID string) int
+	MaxProfileSymbolValueLength(tenantID string) int
+	RejectNewerThan(tenantID string) time.Duration
+	RejectOlderThan(tenantID string) time.Duration
 }
 
-func ValidateProfile(limits ProfileValidationLimits, userID string, prof *googlev1.Profile, uncompressedSize int, ls phlaremodel.Labels) error {
+type ingestionWindow struct {
+	from, to model.Time
+}
+
+func newIngestionWindow(limits ProfileValidationLimits, tenantID string, now model.Time) *ingestionWindow {
+	var iw ingestionWindow
+	if d := limits.RejectNewerThan(tenantID); d != 0 {
+		iw.to = now.Add(d)
+	}
+	if d := limits.RejectOlderThan(tenantID); d != 0 {
+		iw.from = now.Add(-d)
+	}
+	return &iw
+}
+
+func (iw *ingestionWindow) errorDetail() string {
+	if iw.to == 0 {
+		return fmt.Sprintf("the ingestion window starts at %s", util.FormatTimeMillis(int64(iw.from)))
+	}
+	if iw.from == 0 {
+		return fmt.Sprintf("the ingestion window ends at %s", util.FormatTimeMillis(int64(iw.to)))
+	}
+	return fmt.Sprintf("the ingestion window starts at %s and ends at %s", util.FormatTimeMillis(int64(iw.from)), util.FormatTimeMillis(int64(iw.to)))
+
+}
+
+func (iw *ingestionWindow) valid(t model.Time, ls phlaremodel.Labels) error {
+	if (iw.from == 0 || t.After(iw.from)) && (iw.to == 0 || t.Before(iw.to)) {
+		return nil
+	}
+
+	return NewErrorf(NotInIngestionWindow, NotInIngestionWindowErrorMsg, phlaremodel.LabelPairsString(ls), util.FormatTimeMillis(int64(t)), iw.errorDetail())
+}
+
+func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *googlev1.Profile, uncompressedSize int, ls phlaremodel.Labels, now model.Time) error {
 	if prof == nil {
 		return nil
 	}
-	if limit := limits.MaxProfileSizeBytes(userID); limit != 0 && uncompressedSize > limit {
+
+	if prof.TimeNanos > 0 {
+		// check profile timestamp within ingestion window
+		if err := newIngestionWindow(limits, tenantID, now).valid(model.TimeFromUnixNano(prof.TimeNanos), ls); err != nil {
+			return err
+		}
+	} else {
+		prof.TimeNanos = now.UnixNano()
+	}
+
+	if limit := limits.MaxProfileSizeBytes(tenantID); limit != 0 && uncompressedSize > limit {
 		return NewErrorf(ProfileSizeLimit, ProfileTooBigErrorMsg, phlaremodel.LabelPairsString(ls), uncompressedSize, limit)
 	}
-	if limit, size := limits.MaxProfileStacktraceSamples(userID), len(prof.Sample); limit != 0 && size > limit {
+	if limit, size := limits.MaxProfileStacktraceSamples(tenantID), len(prof.Sample); limit != 0 && size > limit {
 		return NewErrorf(SamplesLimit, ProfileTooManySamplesErrorMsg, phlaremodel.LabelPairsString(ls), size, limit)
 	}
 	var (
-		depthLimit        = limits.MaxProfileStacktraceDepth(userID)
-		labelsLimit       = limits.MaxProfileStacktraceSampleLabels(userID)
-		symbolLengthLimit = limits.MaxProfileSymbolValueLength(userID)
+		depthLimit        = limits.MaxProfileStacktraceDepth(tenantID)
+		labelsLimit       = limits.MaxProfileStacktraceSampleLabels(tenantID)
+		symbolLengthLimit = limits.MaxProfileSymbolValueLength(tenantID)
 	)
 	for _, s := range prof.Sample {
 		if depthLimit != 0 && len(s.LocationId) > depthLimit {

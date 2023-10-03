@@ -49,9 +49,11 @@ func main() {
 	parquetInspectFiles := parquetInspectCmd.Arg("file", "parquet file path").Required().ExistingFiles()
 
 	queryCmd := app.Command("query", "Query profile store.")
-	queryParams := addQueryParams(queryCmd)
-	queryOutput := queryCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
 	queryMergeCmd := queryCmd.Command("merge", "Request merged profile.")
+	queryMergeOutput := queryMergeCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
+	queryMergeParams := addQueryMergeParams(queryMergeCmd)
+	querySeriesCmd := queryCmd.Command("series", "Request series labels.")
+	querySeriesParams := addQuerySeriesParams(querySeriesCmd)
 
 	uploadCmd := app.Command("upload", "Upload profile(s).")
 	uploadParams := addUploadParams(uploadCmd)
@@ -77,7 +79,11 @@ func main() {
 			}
 		}
 	case queryMergeCmd.FullCommand():
-		if err := queryMerge(ctx, queryParams, *queryOutput); err != nil {
+		if err := queryMerge(ctx, queryMergeParams, *queryMergeOutput); err != nil {
+			os.Exit(checkError(err))
+		}
+	case querySeriesCmd.FullCommand():
+		if err := querySeries(ctx, querySeriesParams); err != nil {
 			os.Exit(checkError(err))
 		}
 	case uploadCmd.FullCommand():

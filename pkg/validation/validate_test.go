@@ -201,6 +201,8 @@ func Test_ValidateRangeRequest(t *testing.T) {
 }
 
 func TestValidateProfile(t *testing.T) {
+	now := model.TimeFromUnixNano(1_676_635_994_000_000_000)
+
 	for _, tc := range []struct {
 		name        string
 		profile     *googlev1.Profile
@@ -277,10 +279,54 @@ func TestValidateProfile(t *testing.T) {
 				require.Equal(t, []uint64{4, 5}, profile.Sample[0].LocationId)
 			},
 		},
+		{
+			name: "newer than ingestion window",
+			profile: &googlev1.Profile{
+				TimeNanos: now.Add(1 * time.Hour).UnixNano(),
+			},
+			limits: MockLimits{
+				RejectNewerThanValue: 10 * time.Minute,
+			},
+			expectedErr: &Error{
+				Reason: NotInIngestionWindow,
+				msg:    "profile with labels '{foo=\"bar\"}' is outside of ingestion window (profile timestamp: 2023-02-17 13:13:14 +0000 UTC, the ingestion window ends at 2023-02-17 12:23:14 +0000 UTC)",
+			},
+		},
+		{
+			name: "older than ingestion window",
+			profile: &googlev1.Profile{
+				TimeNanos: now.Add(-61 * time.Minute).UnixNano(),
+			},
+			limits: MockLimits{
+				RejectOlderThanValue: time.Hour,
+			},
+			expectedErr: &Error{
+				Reason: NotInIngestionWindow,
+				msg:    "profile with labels '{foo=\"bar\"}' is outside of ingestion window (profile timestamp: 2023-02-17 11:12:14 +0000 UTC, the ingestion window starts at 2023-02-17 11:13:14 +0000 UTC)",
+			},
+		},
+		{
+			name: "just in the ingestion window",
+			profile: &googlev1.Profile{
+				TimeNanos: now.Add(-1 * time.Minute).UnixNano(),
+			},
+			limits: MockLimits{
+				RejectOlderThanValue: time.Hour,
+				RejectNewerThanValue: 10 * time.Minute,
+			},
+		},
+		{
+			name:    "without timestamp",
+			profile: &googlev1.Profile{},
+			limits: MockLimits{
+				RejectOlderThanValue: time.Hour,
+				RejectNewerThanValue: 10 * time.Minute,
+			},
+		},
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			err := ValidateProfile(tc.limits, "foo", tc.profile, tc.size, phlaremodel.LabelsFromStrings("foo", "bar"))
+			err := ValidateProfile(tc.limits, "foo", tc.profile, tc.size, phlaremodel.LabelsFromStrings("foo", "bar"), now)
 			if tc.expectedErr != nil {
 				require.Error(t, err)
 				require.Equal(t, tc.expectedErr, err)

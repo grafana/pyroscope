@@ -43,6 +43,23 @@ func (s *StoreGateway) MergeProfilesPprof(ctx context.Context, stream *connect.B
 	return terminateStream(stream)
 }
 
+func (s *StoreGateway) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
+	var res *ingestv1.SeriesResponse
+	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
+		var err error
+		res, err = phlaredb.Series(ctx, req.Msg, bs.openBlocksForReading)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(res), nil
+}
+
 func terminateStream[Req, Resp any](stream *connect.BidiStream[Req, Resp]) (err error) {
 	if _, err = stream.Receive(); err != nil {
 		if errors.Is(err, io.EOF) {

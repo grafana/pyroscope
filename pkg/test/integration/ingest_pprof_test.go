@@ -67,6 +67,12 @@ var (
 			},
 		},
 		{
+			profile:            repoRoot + "pkg/pprof/testdata/go.cpu.labels.pprof",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
+			metrics:            golangCPU,
+		},
+		{
 			profile:            repoRoot + "pkg/og/convert/testdata/cpu.pprof",
 			expectStatusIngest: 200,
 			expectStatusPush:   200,

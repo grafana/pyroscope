@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   fetchDiffView,
@@ -9,7 +10,6 @@ import {
   selectTimelineSides,
   selectAnnotationsOrDefault,
 } from '@pyroscope/redux/reducers/continuous';
-import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph/FlamegraphRenderer';
 import usePopulateLeftRightQuery from '@pyroscope/hooks/populateLeftRightQuery.hook';
 import useTimelines, {
   leftColor,
@@ -17,25 +17,21 @@ import useTimelines, {
   selectionColor,
 } from '@pyroscope/hooks/timeline.hook';
 import useTimeZone from '@pyroscope/hooks/timeZone.hook';
-import useColorMode from '@pyroscope/hooks/colorMode.hook';
 import useTags from '@pyroscope/hooks/tags.hook';
 import Toolbar from '@pyroscope/components/Toolbar';
 import TagsBar from '@pyroscope/components/TagsBar';
 import TimelineChartWrapper from '@pyroscope/components/TimelineChart/TimelineChartWrapper';
 import SyncTimelines from '@pyroscope/components/TimelineChart/SyncTimelines';
-import useExportToFlamegraphDotCom from '@pyroscope/components/exportToFlamegraphDotCom.hook';
-import ExportData from '@pyroscope/components/ExportData';
 import ChartTitle from '@pyroscope/components/ChartTitle';
-import { isExportToFlamegraphDotComEnabled } from '@pyroscope/util/features';
 import PageTitle from '@pyroscope/components/PageTitle';
 import { formatTitle } from './formatTitle';
 import { isLoadingOrReloading } from './loading';
 import { Panel } from '@pyroscope/components/Panel';
 import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
+import { FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
-  const { colorMode } = useColorMode();
   const {
     diffView,
     refreshToken,
@@ -53,10 +49,6 @@ function ComparisonDiffApp() {
   const { leftTimeline, rightTimeline } = useTimelines();
 
   const timelines = useAppSelector(selectTimelineSides);
-  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(
-    diffView.profile
-  );
-
   const { offset } = useTimeZone();
   const timezone = offset === 0 ? 'utc' : 'browser';
 
@@ -93,18 +85,6 @@ function ComparisonDiffApp() {
     refreshToken,
     maxNodes,
   ]);
-
-  const exportData = diffView.profile && (
-    <ExportData
-      flamebearer={diffView.profile}
-      exportJSON
-      exportPNG
-      // disable this until we fix it
-      //      exportHTML
-      exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
-      exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
-    />
-  );
 
   return (
     <div>
@@ -239,12 +219,7 @@ function ComparisonDiffApp() {
           </Panel>
         </div>
         <Panel isLoading={isLoading} title={<ChartTitle titleKey="diff" />}>
-          <FlamegraphRenderer
-            showCredit={false}
-            profile={diffView.profile}
-            ExportData={exportData}
-            colorMode={colorMode}
-          />
+          <FlameGraphWrapper profile={diffView.profile} diff={true} />
         </Panel>
       </PageContentWrapper>
     </div>
