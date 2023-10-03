@@ -16,6 +16,8 @@ import {
 import { fetchDiffView } from './diffView.thunks';
 import { defaultcomparisonPeriod } from '@pyroscope/components/SideTimelineComparator/periods';
 import { fetchApps } from '@pyroscope/services/apps';
+import { formatAsOBject } from '@pyroscope/util/formatDate';
+import { App } from '@pyroscope/models/app';
 
 const initialState: ContinuousState = {
   from: 'now-1h',
@@ -72,27 +74,34 @@ const initialState: ContinuousState = {
   },
 };
 
-export const reloadAppNames = createAsyncThunk(
-  'names/reloadAppNames',
-  async (_, thunkAPI) => {
-    // TODO, retries?
-    const res = await fetchApps();
+export const reloadAppNames = createAsyncThunk<
+  App[],
+  null,
+  { state: { continuous: ContinuousState } }
+>('names/reloadAppNames', async (_, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const start = formatAsOBject(state.continuous.from);
+  const end = formatAsOBject(state.continuous.until);
+  const startMs = start.getTime();
+  const endMs = end.getTime();
 
-    if (res.isOk) {
-      return Promise.resolve(res.value);
-    }
+  // TODO, retries?
+  const res = await fetchApps(startMs, endMs);
 
-    thunkAPI.dispatch(
-      addNotification({
-        type: 'danger',
-        title: 'Failed to load app names',
-        message: res.error.message,
-      })
-    );
-
-    return Promise.reject(res.error);
+  if (res.isOk) {
+    return Promise.resolve(res.value);
   }
-);
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: 'Failed to load app names',
+      message: res.error.message,
+    })
+  );
+
+  return Promise.reject(res.error);
+});
 
 export const continuousSlice = createSlice({
   name: 'continuous',
