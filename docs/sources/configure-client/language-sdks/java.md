@@ -39,7 +39,7 @@ First, add Pyroscope dependency
 </dependency>
 ```
 
-```shell
+```gradle
 implementation("io.pyroscope:agent:0.12.1")
 ```
 
