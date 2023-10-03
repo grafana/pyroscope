@@ -147,7 +147,7 @@ func (f *MMapedElfFile) getString(start int, demangleOptions []demangle.Option) 
 		if idx >= 0 {
 			sb.Write(tmpBuf[:idx])
 			s := sb.String()
-			if demangleOptions != nil {
+			if len(demangleOptions) > 0 {
 				s = demangle.Filter(s, demangleOptions...)
 			}
 			if f.stringCache == nil {
