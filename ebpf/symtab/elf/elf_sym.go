@@ -23,9 +23,12 @@ import (
 	"debug/elf"
 	"errors"
 	"fmt"
+
+	"github.com/ianlancetaylor/demangle"
 )
 
 type SymbolsOptions struct {
+	DemangleOptions []demangle.Option
 	// ignore symbols from FilterFrom to FilterTo
 	FilterFrom uint64
 	FilterTo   uint64
