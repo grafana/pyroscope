@@ -151,8 +151,8 @@ func (m *Meta) String() string {
 	return fmt.Sprintf(
 		"%s (min time: %s, max time: %s)",
 		m.ULID,
-		m.MinTime.Time().Format(time.RFC3339Nano),
-		m.MaxTime.Time().Format(time.RFC3339Nano),
+		m.MinTime.Time().UTC().Format(time.RFC3339Nano),
+		m.MaxTime.Time().UTC().Format(time.RFC3339Nano),
 	)
 }
 

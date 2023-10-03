@@ -1391,7 +1391,7 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsWithFirstLevelCompactio
 
 	// Ensure the skipped compaction job is the expected one.
 	assert.Contains(t, strings.Split(strings.TrimSpace(logs.String()), "\n"),
-		fmt.Sprintf(`level=info component=compactor tenant=user-2 msg="skipping compaction job because blocks in this job were uploaded too recently (within wait period)" groupKey=0@17241709254077376921-merge--0-7200000 waitPeriodNotElapsedFor="%s (min time: 1970-01-01T01:00:00+01:00, max time: 1970-01-01T03:00:00+01:00)"`, user2Meta2.String()))
+		fmt.Sprintf(`level=info component=compactor tenant=user-2 msg="skipping compaction job because blocks in this job were uploaded too recently (within wait period)" groupKey=0@17241709254077376921-merge--0-7200000 waitPeriodNotElapsedFor="%s (min time: 1970-01-01T00:00:00Z, max time: 1970-01-01T02:00:00Z)"`, user2Meta2.String()))
 
 	assert.NoError(t, prom_testutil.GatherAndCompare(registry, strings.NewReader(`
 		# TYPE pyroscope_compactor_runs_started_total counter

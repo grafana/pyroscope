@@ -85,7 +85,7 @@ func (j *job) String() string {
 	for _, block := range j.blocks {
 		minT := block.MinTime.Time().UTC()
 		maxT := block.MaxTime.Time().UTC()
-		blocks = append(blocks, fmt.Sprintf("%s (min time: %s, max time: %s)", block.ULID.String(), minT.Format(time.RFC3339), maxT.Format(time.RFC3339)))
+		blocks = append(blocks, fmt.Sprintf("%s (min time: %s, max time: %s)", block.ULID.String(), minT.Format(time.RFC3339Nano), maxT.Format(time.RFC3339Nano)))
 	}
 
 	// Keep the output stable for tests.
