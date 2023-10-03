@@ -476,7 +476,20 @@ store_gateway:
     # are usually many of them (depending on number of ingesters) and they are
     # not yet compacted. Negative values or 0 disable the filter.
     # CLI flag: -blocks-storage.bucket-store.ignore-blocks-within
-    [ignore_blocks_within: <duration> | default = 2h]
+    [ignore_blocks_within: <duration> | default = 10h]
+
+    # Number of Go routines to use when syncing block meta files from object
+    # storage per tenant.
+    # CLI flag: -blocks-storage.bucket-store.meta-sync-concurrency
+    [meta_sync_concurrency: <int> | default = 20]
+
+    # Duration after which the blocks marked for deletion will be filtered out
+    # while fetching blocks. The idea of ignore-deletion-marks-delay is to
+    # ignore blocks that are marked for deletion with some delay. This ensures
+    # store can still serve blocks that are meant to be deleted but do not have
+    # a replacement yet.
+    # CLI flag: -blocks-storage.bucket-store.ignore-deletion-marks-delay
+    [ignore_deletion_mark_delay: <duration> | default = 1h]
 
 # The memberlist block configures the Gossip memberlist.
 [memberlist: <memberlist>]
@@ -1424,7 +1437,7 @@ pool_config:
 # the time range of the query sent to the store-gateway will be manipulated to
 # ensure the query end is not more recent than 'now - query-store-after'.
 # CLI flag: -querier.query-store-after
-[query_store_after: <duration> | default = 4h]
+[query_store_after: <duration> | default = 12h]
 ```
 
 ### query_frontend

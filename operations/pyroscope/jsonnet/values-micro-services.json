@@ -6,6 +6,9 @@
     "components": {
       "compactor": {
         "kind": "StatefulSet",
+        "persistence": {
+          "enabled": false
+        },
         "replicaCount": 3,
         "resources": {
           "limits": {

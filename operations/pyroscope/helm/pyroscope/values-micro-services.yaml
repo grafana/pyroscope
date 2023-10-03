@@ -53,6 +53,8 @@ pyroscope:
     compactor:
       kind: StatefulSet
       replicaCount: 3
+      persistence:
+        enabled: false
       resources:
         limits:
           memory: 16Gi
