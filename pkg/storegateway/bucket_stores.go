@@ -17,6 +17,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -24,10 +25,12 @@ import (
 var errBucketStoreNotFound = errors.New("bucket store not found")
 
 type BucketStoreConfig struct {
-	SyncDir               string        `yaml:"sync_dir"`
-	SyncInterval          time.Duration `yaml:"sync_interval" category:"advanced"`
-	TenantSyncConcurrency int           `yaml:"tenant_sync_concurrency" category:"advanced"`
-	IgnoreBlocksWithin    time.Duration `yaml:"ignore_blocks_within" category:"advanced"`
+	SyncDir                  string        `yaml:"sync_dir"`
+	SyncInterval             time.Duration `yaml:"sync_interval" category:"advanced"`
+	TenantSyncConcurrency    int           `yaml:"tenant_sync_concurrency" category:"advanced"`
+	IgnoreBlocksWithin       time.Duration `yaml:"ignore_blocks_within" category:"advanced"`
+	MetaSyncConcurrency      int           `yaml:"meta_sync_concurrency" category:"advanced"`
+	IgnoreDeletionMarksDelay time.Duration `yaml:"ignore_deletion_mark_delay" category:"advanced"`
 }
 
 // RegisterFlags registers the BucketStore flags
@@ -41,7 +44,7 @@ func (cfg *BucketStoreConfig) RegisterFlags(f *flag.FlagSet, logger log.Logger) 
 	f.StringVar(&cfg.SyncDir, "blocks-storage.bucket-store.sync-dir", "./data/pyroscope-sync/", "Directory to store synchronized pyroscope block headers. This directory is not required to be persisted between restarts, but it's highly recommended in order to improve the store-gateway startup time.")
 	f.DurationVar(&cfg.SyncInterval, "blocks-storage.bucket-store.sync-interval", 15*time.Minute, "How frequently to scan the bucket, or to refresh the bucket index (if enabled), in order to look for changes (new blocks shipped by ingesters and blocks deleted by retention or compaction).")
 	f.IntVar(&cfg.TenantSyncConcurrency, "blocks-storage.bucket-store.tenant-sync-concurrency", 10, "Maximum number of concurrent tenants synching blocks.")
-	f.DurationVar(&cfg.IgnoreBlocksWithin, "blocks-storage.bucket-store.ignore-blocks-within", 2*time.Hour, "Blocks with minimum time within this duration are ignored, and not loaded by store-gateway. Useful when used together with -querier.query-store-after to prevent loading young blocks, because there are usually many of them (depending on number of ingesters) and they are not yet compacted. Negative values or 0 disable the filter.")
+	f.DurationVar(&cfg.IgnoreBlocksWithin, "blocks-storage.bucket-store.ignore-blocks-within", 10*time.Hour, "Blocks with minimum time within this duration are ignored, and not loaded by store-gateway. Useful when used together with -querier.query-store-after to prevent loading young blocks, because there are usually many of them (depending on number of ingesters) and they are not yet compacted. Negative values or 0 disable the filter.")
 
 	// f.Uint64Var(&cfg.MaxChunkPoolBytes, "blocks-storage.bucket-store.max-chunk-pool-bytes", uint64(2*units.Gibibyte), "Max size - in bytes - of a chunks pool, used to reduce memory allocations. The pool is shared across all tenants. 0 to disable the limit.")
 	// f.IntVar(&cfg.ChunkPoolMinBucketSizeBytes, "blocks-storage.bucket-store.chunk-pool-min-bucket-size-bytes", ChunkPoolDefaultMinBucketSize, "Size - in bytes - of the smallest chunks pool bucket.")
@@ -49,10 +52,10 @@ func (cfg *BucketStoreConfig) RegisterFlags(f *flag.FlagSet, logger log.Logger) 
 	// f.Uint64Var(&cfg.SeriesHashCacheMaxBytes, "blocks-storage.bucket-store.series-hash-cache-max-size-bytes", uint64(1*units.Gibibyte), "Max size - in bytes - of the in-memory series hash cache. The cache is shared across all tenants and it's used only when query sharding is enabled.")
 	// f.IntVar(&cfg.MaxConcurrent, "blocks-storage.bucket-store.max-concurrent", 100, "Max number of concurrent queries to execute against the long-term storage. The limit is shared across all tenants.")
 	// f.IntVar(&cfg.BlockSyncConcurrency, "blocks-storage.bucket-store.block-sync-concurrency", 20, "Maximum number of concurrent blocks synching per tenant.")
-	// f.IntVar(&cfg.MetaSyncConcurrency, "blocks-storage.bucket-store.meta-sync-concurrency", 20, "Number of Go routines to use when syncing block meta files from object storage per tenant.")
+	f.IntVar(&cfg.MetaSyncConcurrency, "blocks-storage.bucket-store.meta-sync-concurrency", 20, "Number of Go routines to use when syncing block meta files from object storage per tenant.")
 	// f.DurationVar(&cfg.DeprecatedConsistencyDelay, consistencyDelayFlag, 0, "Minimum age of a block before it's being read. Set it to safe value (e.g 30m) if your object storage is eventually consistent. GCS and S3 are (roughly) strongly consistent.")
-	// f.DurationVar(&cfg.IgnoreDeletionMarksDelay, "blocks-storage.bucket-store.ignore-deletion-marks-delay", time.Hour*1, "Duration after which the blocks marked for deletion will be filtered out while fetching blocks. "+
-	// 	"The idea of ignore-deletion-marks-delay is to ignore blocks that are marked for deletion with some delay. This ensures store can still serve blocks that are meant to be deleted but do not have a replacement yet.")
+	f.DurationVar(&cfg.IgnoreDeletionMarksDelay, "blocks-storage.bucket-store.ignore-deletion-marks-delay", time.Hour*1, "Duration after which the blocks marked for deletion will be filtered out while fetching blocks. "+
+		"The idea of ignore-deletion-marks-delay is to ignore blocks that are marked for deletion with some delay. This ensures store can still serve blocks that are meant to be deleted but do not have a replacement yet.")
 	// f.IntVar(&cfg.PostingOffsetsInMemSampling, "blocks-storage.bucket-store.posting-offsets-in-mem-sampling", DefaultPostingOffsetInMemorySampling, "Controls what is the ratio of postings offsets that the store will hold in memory.")
 	// f.BoolVar(&cfg.IndexHeaderLazyLoadingEnabled, "blocks-storage.bucket-store.index-header-lazy-loading-enabled", true, "If enabled, store-gateway will lazy load an index-header only once required by a query.")
 	// f.DurationVar(&cfg.IndexHeaderLazyLoadingIdleTimeout, "blocks-storage.bucket-store.index-header-lazy-loading-idle-timeout", 60*time.Minute, "If index-header lazy loading is enabled and this setting is > 0, the store-gateway will offload unused index-headers after 'idle timeout' inactivity.")
@@ -83,6 +86,18 @@ func (cfg *BucketStoreConfig) Validate(logger log.Logger) error {
 	// 	return errors.New("invalid series-selection-strategy, set one of " + strings.Join(validSeriesSelectionStrategies, ", "))
 	// }
 	return nil
+}
+
+type BucketIndexConfig struct {
+	UpdateOnErrorInterval time.Duration `yaml:"update_on_error_interval" category:"advanced"`
+	IdleTimeout           time.Duration `yaml:"idle_timeout" category:"advanced"`
+	MaxStalePeriod        time.Duration `yaml:"max_stale_period" category:"advanced"`
+}
+
+func (cfg *BucketIndexConfig) RegisterFlagsWithPrefix(f *flag.FlagSet, prefix string) {
+	f.DurationVar(&cfg.UpdateOnErrorInterval, prefix+"update-on-error-interval", time.Minute, "How frequently a bucket index, which previously failed to load, should be tried to load again. This option is used only by querier.")
+	f.DurationVar(&cfg.IdleTimeout, prefix+"idle-timeout", time.Hour, "How long a unused bucket index should be cached. Once this timeout expires, the unused bucket index is removed from the in-memory cache. This option is used only by querier.")
+	f.DurationVar(&cfg.MaxStalePeriod, prefix+"max-stale-period", time.Hour, "The maximum allowed age of a bucket index (last updated) before queries start failing because the bucket index is too old. The bucket index is periodically updated by the compactor, and this check is enforced in the querier (at query time).")
 }
 
 type BucketStores struct {
@@ -307,17 +322,27 @@ func (bs *BucketStores) getOrCreateStore(userID string) (*BucketStore, error) {
 	level.Info(userLogger).Log("msg", "creating user bucket store")
 
 	// The sharding strategy filter MUST be before the ones we create here (order matters).
-	filters := []BlockMetaFilter{
+	filters := []block.MetadataFilter{
 		NewShardingMetadataFilterAdapter(userID, bs.shardingStrategy),
-		// block.NewConsistencyDelayMetaFilter(userLogger, u.cfg.BucketStore.DeprecatedConsistencyDelay, fetcherReg),
 		newMinTimeMetaFilter(bs.cfg.IgnoreBlocksWithin),
+		NewIgnoreDeletionMarkFilter(userLogger, bs.storageBucket, bs.cfg.IgnoreDeletionMarksDelay, bs.cfg.MetaSyncConcurrency),
 	}
+	fetcherReg := prometheus.NewRegistry()
+
+	fetcher := NewBucketIndexMetadataFetcher(
+		userID,
+		bs.storageBucket,
+		bs.limits,
+		bs.logger,
+		fetcherReg,
+		filters,
+	)
 
 	s, err := NewBucketStore(
 		bs.storageBucket,
+		fetcher,
 		userID,
 		bs.syncDirForUser(userID),
-		filters,
 		userLogger,
 		bs.metrics,
 	)
