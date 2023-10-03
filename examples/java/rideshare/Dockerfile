@@ -2,9 +2,9 @@ FROM openjdk:17-slim-bullseye
 
 WORKDIR /opt/app
 
-RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates && apt-get install -y git
+RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates 
 
-ADD https://github.com/pyroscope-io/pyroscope-java/releases/download/v0.8.0/pyroscope.jar /opt/app/pyroscope.jar
+
 
 COPY gradlew .
 COPY gradle gradle
@@ -24,5 +24,7 @@ ENV PYROSCOPE_UPLOAD_INTERVAL=15s
 ENV PYROSCOPE_LOG_LEVEL=debug
 ENV PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
 EXPOSE 5000
+
+ADD https://github.com/pyroscope-io/pyroscope-java/releases/download/v0.8.0/pyroscope.jar /opt/app/pyroscope.jar
 
 CMD ["java", "-Dserver.port=5000",  "-javaagent:pyroscope.jar", "-jar", "./build/libs/rideshare-1.0-SNAPSHOT.jar" ]
