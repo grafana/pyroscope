@@ -1,4 +1,4 @@
-FROM openjdk:17-slim-bullseye
+FROM --platform=$BUILDPLATFORM openjdk:17-slim-bullseye as builder
 
 WORKDIR /opt/app
 
@@ -11,8 +11,15 @@ COPY gradle gradle
 RUN ./gradlew
 
 COPY build.gradle.kts settings.gradle.kts ./
+RUN ./gradlew dependencies --no-daemon
+
 COPY src src
 RUN ./gradlew assemble --no-daemon
+
+
+FROM  openjdk:17-slim-bullseye
+
+RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates
 
 ENV PYROSCOPE_APPLICATION_NAME=rideshare.java.push.app
 ENV PYROSCOPE_FORMAT=jfr
@@ -24,6 +31,8 @@ ENV PYROSCOPE_UPLOAD_INTERVAL=15s
 ENV PYROSCOPE_LOG_LEVEL=debug
 ENV PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
 EXPOSE 5000
+
+COPY --from=builder /opt/app/build/libs/rideshare-1.0-SNAPSHOT.jar /opt/app/build/libs/rideshare-1.0-SNAPSHOT.jar
 
 ADD https://github.com/pyroscope-io/pyroscope-java/releases/download/v0.8.0/pyroscope.jar /opt/app/pyroscope.jar
 
