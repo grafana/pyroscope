@@ -124,6 +124,9 @@ func (p *pyroscopeIngesterAdapter) Put(ctx context.Context, pi *storage.PutInput
 	}
 	hasServiceName := false
 	for k, v := range pi.Key.Labels() {
+		if !phlaremodel.IsLabelAllowedForIngestion(k) {
+			continue
+		}
 		if k == "service_name" {
 			hasServiceName = true
 		}

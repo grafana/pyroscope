@@ -1,6 +1,7 @@
 package model
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -61,5 +62,59 @@ func TestLabelsUnique(t *testing.T) {
 			result := test.input.Unique()
 			assert.Equal(t, test.expected, result)
 		})
+	}
+}
+
+func TestLabels_SessionID_Order(t *testing.T) {
+	const serviceNameLabel = "__service_name__"
+	input := []Labels{
+		{
+			{Name: LabelNameSessionID, Value: "session-a"},
+			{Name: LabelNameProfileType, Value: "cpu"},
+			{Name: serviceNameLabel, Value: "service-name"},
+		}, {
+			{Name: LabelNameSessionID, Value: "session-b"},
+			{Name: LabelNameProfileType, Value: "cpu"},
+			{Name: serviceNameLabel, Value: "service-name"},
+		},
+	}
+
+	for _, x := range input {
+		sort.Sort(x)
+	}
+	sort.Slice(input, func(i, j int) bool {
+		return CompareLabelPairs(input[i], input[j]) < 0
+	})
+
+	expectedOrder := []Labels{
+		{
+			{Name: LabelNameProfileType, Value: "cpu"},
+			{Name: serviceNameLabel, Value: "service-name"},
+			{Name: LabelNameSessionID, Value: "session-a"},
+		}, {
+			{Name: LabelNameProfileType, Value: "cpu"},
+			{Name: serviceNameLabel, Value: "service-name"},
+			{Name: LabelNameSessionID, Value: "session-b"},
+		},
+	}
+
+	assert.Equal(t, expectedOrder, input)
+}
+
+func TestLabels_IsAllowedForIngestion(t *testing.T) {
+	type testCase struct {
+		labelName string
+		allowed   bool
+	}
+
+	testCases := []testCase{
+		{labelName: LabelNameSessionID, allowed: true},
+		{labelName: "some_label", allowed: true},
+		{labelName: LabelNameProfileType},
+	}
+
+	for _, tc := range testCases {
+		allowed := IsLabelAllowedForIngestion(tc.labelName)
+		assert.Equalf(t, tc.allowed, allowed, "%q", tc.labelName)
 	}
 }

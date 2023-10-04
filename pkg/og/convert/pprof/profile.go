@@ -207,6 +207,9 @@ func (p *RawProfile) createLabels(profile *pprof.Profile, md ingestion.Metadata)
 		Value: md.SpyName,
 	})
 	for k, v := range md.Key.Labels() {
+		if !phlaremodel.IsLabelAllowedForIngestion(k) {
+			continue
+		}
 		ls = append(ls, &v1.LabelPair{
 			Name:  k,
 			Value: v,

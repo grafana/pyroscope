@@ -17,14 +17,16 @@ import (
 var seps = []byte{'\xff'}
 
 const (
-	LabelNameProfileType    = "__profile_type__"
-	LabelNameType           = "__type__"
-	LabelNameUnit           = "__unit__"
-	LabelNamePeriodType     = "__period_type__"
-	LabelNamePeriodUnit     = "__period_unit__"
-	LabelNameDelta          = "__delta__"
-	LabelNameProfileName    = pmodel.MetricNameLabel
-	LabelNameServiceName    = "service_name"
+	LabelNameProfileType = "__profile_type__"
+	LabelNameType        = "__type__"
+	LabelNameUnit        = "__unit__"
+	LabelNamePeriodType  = "__period_type__"
+	LabelNamePeriodUnit  = "__period_unit__"
+	LabelNameDelta       = "__delta__"
+	LabelNameProfileName = pmodel.MetricNameLabel
+	LabelNameServiceName = "service_name"
+	LabelNameSessionID   = "__session_id__"
+
 	LabelNameServiceNameK8s = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
 
 	labelSep = '\xfe'
@@ -149,6 +151,18 @@ func (ls Labels) WithoutPrivateLabels() Labels {
 		}
 	}
 	return res
+}
+
+var allowedPrivateLabels = map[string]struct{}{
+	LabelNameSessionID: {},
+}
+
+func IsLabelAllowedForIngestion(name string) bool {
+	if !strings.HasPrefix(name, "__") {
+		return true
+	}
+	_, allowed := allowedPrivateLabels[name]
+	return allowed
 }
 
 // WithLabels returns a subset of Labels that matches match with the provided label names.

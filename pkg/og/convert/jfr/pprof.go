@@ -57,6 +57,9 @@ func newJfrPprofBuilders(p *parser.Parser, jfrLabels *LabelsSnapshot, piOriginal
 		jfrLabels: jfrLabels,
 	}
 	for k, v := range piOriginal.Key.Labels() {
+		if !phlaremodel.IsLabelAllowedForIngestion(k) {
+			continue
+		}
 		res.labels = append(res.labels, &v1.LabelPair{
 			Name:  k,
 			Value: v,
