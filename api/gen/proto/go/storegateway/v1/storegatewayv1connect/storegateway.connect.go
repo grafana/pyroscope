@@ -46,6 +46,9 @@ const (
 	// StoreGatewayServiceMergeSpanProfileProcedure is the fully-qualified name of the
 	// StoreGatewayService's MergeSpanProfile RPC.
 	StoreGatewayServiceMergeSpanProfileProcedure = "/storegateway.v1.StoreGatewayService/MergeSpanProfile"
+	// StoreGatewayServiceSeriesProcedure is the fully-qualified name of the StoreGatewayService's
+	// Series RPC.
+	StoreGatewayServiceSeriesProcedure = "/storegateway.v1.StoreGatewayService/Series"
 )
 
 // StoreGatewayServiceClient is a client for the storegateway.v1.StoreGatewayService service.
@@ -54,6 +57,7 @@ type StoreGatewayServiceClient interface {
 	MergeProfilesLabels(context.Context) *connect_go.BidiStreamForClient[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse]
 	MergeProfilesPprof(context.Context) *connect_go.BidiStreamForClient[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]
 	MergeSpanProfile(context.Context) *connect_go.BidiStreamForClient[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]
+	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
 }
 
 // NewStoreGatewayServiceClient constructs a client for the storegateway.v1.StoreGatewayService
@@ -86,6 +90,11 @@ func NewStoreGatewayServiceClient(httpClient connect_go.HTTPClient, baseURL stri
 			baseURL+StoreGatewayServiceMergeSpanProfileProcedure,
 			opts...,
 		),
+		series: connect_go.NewClient[v1.SeriesRequest, v1.SeriesResponse](
+			httpClient,
+			baseURL+StoreGatewayServiceSeriesProcedure,
+			opts...,
+		),
 	}
 }
 
@@ -95,6 +104,7 @@ type storeGatewayServiceClient struct {
 	mergeProfilesLabels      *connect_go.Client[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse]
 	mergeProfilesPprof       *connect_go.Client[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]
 	mergeSpanProfile         *connect_go.Client[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]
+	series                   *connect_go.Client[v1.SeriesRequest, v1.SeriesResponse]
 }
 
 // MergeProfilesStacktraces calls storegateway.v1.StoreGatewayService.MergeProfilesStacktraces.
@@ -117,6 +127,11 @@ func (c *storeGatewayServiceClient) MergeSpanProfile(ctx context.Context) *conne
 	return c.mergeSpanProfile.CallBidiStream(ctx)
 }
 
+// Series calls storegateway.v1.StoreGatewayService.Series.
+func (c *storeGatewayServiceClient) Series(ctx context.Context, req *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error) {
+	return c.series.CallUnary(ctx, req)
+}
+
 // StoreGatewayServiceHandler is an implementation of the storegateway.v1.StoreGatewayService
 // service.
 type StoreGatewayServiceHandler interface {
@@ -124,6 +139,7 @@ type StoreGatewayServiceHandler interface {
 	MergeProfilesLabels(context.Context, *connect_go.BidiStream[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse]) error
 	MergeProfilesPprof(context.Context, *connect_go.BidiStream[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]) error
 	MergeSpanProfile(context.Context, *connect_go.BidiStream[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]) error
+	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
 }
 
 // NewStoreGatewayServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -152,6 +168,11 @@ func NewStoreGatewayServiceHandler(svc StoreGatewayServiceHandler, opts ...conne
 		svc.MergeSpanProfile,
 		opts...,
 	)
+	storeGatewayServiceSeriesHandler := connect_go.NewUnaryHandler(
+		StoreGatewayServiceSeriesProcedure,
+		svc.Series,
+		opts...,
+	)
 	return "/storegateway.v1.StoreGatewayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case StoreGatewayServiceMergeProfilesStacktracesProcedure:
@@ -162,6 +183,8 @@ func NewStoreGatewayServiceHandler(svc StoreGatewayServiceHandler, opts ...conne
 			storeGatewayServiceMergeProfilesPprofHandler.ServeHTTP(w, r)
 		case StoreGatewayServiceMergeSpanProfileProcedure:
 			storeGatewayServiceMergeSpanProfileHandler.ServeHTTP(w, r)
+		case StoreGatewayServiceSeriesProcedure:
+			storeGatewayServiceSeriesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -185,4 +208,8 @@ func (UnimplementedStoreGatewayServiceHandler) MergeProfilesPprof(context.Contex
 
 func (UnimplementedStoreGatewayServiceHandler) MergeSpanProfile(context.Context, *connect_go.BidiStream[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]) error {
 	return connect_go.NewError(connect_go.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.MergeSpanProfile is not implemented"))
+}
+
+func (UnimplementedStoreGatewayServiceHandler) Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.Series is not implemented"))
 }
