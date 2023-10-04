@@ -54,7 +54,7 @@ function Toolbar({
           <Button
             aria-label="Refresh Apps"
             icon={faSyncAlt}
-            onClick={() => dispatch(reloadAppNames(null))}
+            onClick={() => dispatch(reloadAppNames())}
             className={styles.refreshAppsButton}
           />
           {appNamesLoading}

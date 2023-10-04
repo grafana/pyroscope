@@ -17,7 +17,7 @@ export function useSelectFirstApp() {
 
   useEffect(() => {
     async function run() {
-      const apps = await dispatch(reloadAppNames(null)).unwrap();
+      const apps = await dispatch(reloadAppNames()).unwrap();
 
       if (apps.length > 0 && query === '') {
         // Select a reasonable default app automatically if there is no query selected
