@@ -88,9 +88,7 @@ export const reloadUsers = createAsyncThunk(
 export const reloadApps = createAsyncThunk(
   'newRoot/reloadApps',
   async (_, thunkAPI) => {
-    // Set start end to zero to force the legacy search behavior.
-    const [startMs, endMs] = [0, 0];
-    const res = await fetchApps(startMs, endMs);
+    const res = await fetchApps();
 
     if (res.isOk) {
       return Promise.resolve(res.value);
