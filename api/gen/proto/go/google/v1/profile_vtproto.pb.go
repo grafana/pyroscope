@@ -904,13 +904,13 @@ func (m *Profile) ResetVT() {
 	f0 := m.SampleType[:0]
 	for _, mm := range m.Sample[:cap(m.Sample)] {
 		if mm != nil {
-			mm.ResetVT()
+			mm.Reset()
 		}
 	}
 	f1 := m.Sample[:0]
 	for _, mm := range m.Mapping[:cap(m.Mapping)] {
 		if mm != nil {
-			mm.ResetVT()
+			mm.Reset()
 		}
 	}
 	f2 := m.Mapping[:0]
@@ -945,74 +945,6 @@ func (m *Profile) ReturnToVTPool() {
 }
 func ProfileFromVTPool() *Profile {
 	return vtprotoPool_Profile.Get().(*Profile)
-}
-
-var vtprotoPool_Sample = sync.Pool{
-	New: func() interface{} {
-		return &Sample{}
-	},
-}
-
-func (m *Sample) ResetVT() {
-	f0 := m.LocationId[:0]
-	f1 := m.Value[:0]
-	for _, mm := range m.Label[:cap(m.Label)] {
-		if mm != nil {
-			mm.ResetVT()
-		}
-	}
-	f2 := m.Label[:0]
-	m.Reset()
-	m.LocationId = f0
-	m.Value = f1
-	m.Label = f2
-}
-func (m *Sample) ReturnToVTPool() {
-	if m != nil {
-		m.ResetVT()
-		vtprotoPool_Sample.Put(m)
-	}
-}
-func SampleFromVTPool() *Sample {
-	return vtprotoPool_Sample.Get().(*Sample)
-}
-
-var vtprotoPool_Label = sync.Pool{
-	New: func() interface{} {
-		return &Label{}
-	},
-}
-
-func (m *Label) ResetVT() {
-	m.Reset()
-}
-func (m *Label) ReturnToVTPool() {
-	if m != nil {
-		m.ResetVT()
-		vtprotoPool_Label.Put(m)
-	}
-}
-func LabelFromVTPool() *Label {
-	return vtprotoPool_Label.Get().(*Label)
-}
-
-var vtprotoPool_Mapping = sync.Pool{
-	New: func() interface{} {
-		return &Mapping{}
-	},
-}
-
-func (m *Mapping) ResetVT() {
-	m.Reset()
-}
-func (m *Mapping) ReturnToVTPool() {
-	if m != nil {
-		m.ResetVT()
-		vtprotoPool_Mapping.Put(m)
-	}
-}
-func MappingFromVTPool() *Mapping {
-	return vtprotoPool_Mapping.Get().(*Mapping)
 }
 func (m *Profile) SizeVT() (n int) {
 	if m == nil {
@@ -1956,7 +1888,7 @@ func (m *Sample) UnmarshalVT(dAtA []byte) error {
 					}
 				}
 				elementCount = count
-				if elementCount != 0 && len(m.LocationId) == 0 && cap(m.LocationId) < elementCount {
+				if elementCount != 0 && len(m.LocationId) == 0 {
 					m.LocationId = make([]uint64, 0, elementCount)
 				}
 				for iNdEx < postIndex {
@@ -2032,7 +1964,7 @@ func (m *Sample) UnmarshalVT(dAtA []byte) error {
 					}
 				}
 				elementCount = count
-				if elementCount != 0 && len(m.Value) == 0 && cap(m.Value) < elementCount {
+				if elementCount != 0 && len(m.Value) == 0 {
 					m.Value = make([]int64, 0, elementCount)
 				}
 				for iNdEx < postIndex {
@@ -2085,14 +2017,7 @@ func (m *Sample) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if len(m.Label) == cap(m.Label) {
-				m.Label = append(m.Label, &Label{})
-			} else {
-				m.Label = m.Label[:len(m.Label)+1]
-				if m.Label[len(m.Label)-1] == nil {
-					m.Label[len(m.Label)-1] = &Label{}
-				}
-			}
+			m.Label = append(m.Label, &Label{})
 			if err := m.Label[len(m.Label)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}

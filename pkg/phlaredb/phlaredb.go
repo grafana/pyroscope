@@ -329,11 +329,28 @@ func (f *PhlareDB) ProfileTypes(ctx context.Context, req *connect.Request[ingest
 	})
 }
 
-// Series returns labels series for the given set of matchers.
-func (f *PhlareDB) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (resp *connect.Response[ingestv1.SeriesResponse], err error) {
+func (f *PhlareDB) LegacySeries(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhareDB LegacySeries")
+	defer sp.Finish()
+
 	return withHeadForQuery(f, func(head *Head) (*connect.Response[ingestv1.SeriesResponse], error) {
 		return head.Series(ctx, req)
 	})
+}
+
+// Series returns labels series for the given set of matchers.
+func (f *PhlareDB) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhareDB Series")
+	defer sp.Finish()
+
+	f.headLock.RLock()
+	defer f.headLock.RUnlock()
+
+	res, err := Series(ctx, req.Msg, f.queriers().ForTimeRange)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(res), nil
 }
 
 func (f *PhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {

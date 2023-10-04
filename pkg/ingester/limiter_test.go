@@ -39,22 +39,6 @@ func (f *fakeRingCount) HealthyInstancesCount() int {
 	return f.healthyInstancesCount
 }
 
-func TestOutOfOrder(t *testing.T) {
-	limiter := NewLimiter("foo", &fakeLimits{}, &fakeRingCount{1}, 1)
-	defer limiter.Stop()
-
-	// First push should be allowed.
-	err := limiter.AllowProfile(1, phlaremodel.LabelsFromStrings("foo", "bar"), 5)
-	require.NoError(t, err)
-
-	// different stream should be allowed.
-	err = limiter.AllowProfile(2, phlaremodel.LabelsFromStrings("foo", "baz"), 1)
-	require.NoError(t, err)
-
-	err = limiter.AllowProfile(1, phlaremodel.LabelsFromStrings("foo", "baz"), 1)
-	require.Error(t, err)
-}
-
 func TestGlobalMaxSeries(t *testing.T) {
 	// 5 series per user, 2 ingesters, replication factor 3.
 	// We should be able to push 7.5 series. (5 / 2 * 3 = 7.5)

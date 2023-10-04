@@ -41,8 +41,7 @@ type limiter struct {
 	replicationFactor int
 	tenantID          string
 
-	activeSeries  map[model.Fingerprint]int64
-	lastTimestamp map[model.Fingerprint]int64
+	activeSeries map[model.Fingerprint]int64
 
 	mtx sync.Mutex // todo: may be shard the lock to avoid latency spikes.
 
@@ -60,7 +59,6 @@ func NewLimiter(tenantID string, limits Limits, ring RingCount, replicationFacto
 		ring:              ring,
 		replicationFactor: replicationFactor,
 		activeSeries:      map[model.Fingerprint]int64{},
-		lastTimestamp:     map[model.Fingerprint]int64{},
 		cancel:            cancel,
 		ctx:               ctx,
 	}
@@ -108,24 +106,7 @@ func (l *limiter) cleanup() {
 func (l *limiter) AllowProfile(fp model.Fingerprint, lbs phlaremodel.Labels, tsNano int64) error {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
-	if err := l.allowNewProfile(fp, lbs, tsNano); err != nil {
-		return err
-	}
 	return l.allowNewSeries(fp)
-}
-
-func (l *limiter) allowNewProfile(fp model.Fingerprint, lbs phlaremodel.Labels, tsNano int64) error {
-	max, ok := l.lastTimestamp[fp]
-	if ok {
-		// profile is before the last timestamp
-		if tsNano < max {
-			return validation.NewErrorf(validation.OutOfOrder, "profile for series %s out of order (received %s last %s)", phlaremodel.LabelPairsString(lbs), time.Unix(0, tsNano), time.Unix(0, max))
-		}
-	}
-
-	// set the last timestamp
-	l.lastTimestamp[fp] = tsNano
-	return nil
 }
 
 func (l *limiter) allowNewSeries(fp model.Fingerprint) error {

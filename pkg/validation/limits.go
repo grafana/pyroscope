@@ -52,6 +52,10 @@ type Limits struct {
 
 	// Query frontend.
 	QuerySplitDuration model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
+
+	// Ensure profiles are dated within the IngestionWindow of the distributor.
+	RejectOlderThan model.Duration `yaml:"reject_older_than" json:"reject_older_than"`
+	RejectNewerThan model.Duration `yaml:"reject_newer_than" json:"reject_newer_than"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -93,6 +97,13 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxProfileStacktraceSampleLabels, "validation.max-profile-stacktrace-sample-labels", 100, "Maximum number of labels in a profile sample. 0 to disable.")
 	f.IntVar(&l.MaxProfileStacktraceDepth, "validation.max-profile-stacktrace-depth", 1000, "Maximum depth of a profile stacktrace. Profiles are not rejected instead stacktraces are truncated. 0 to disable.")
 	f.IntVar(&l.MaxProfileSymbolValueLength, "validation.max-profile-symbol-value-length", 65535, "Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable.")
+
+	_ = l.RejectNewerThan.Set("10m")
+	f.Var(&l.RejectNewerThan, "validation.reject-newer-than", "This limits how far into the future profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 10m.")
+
+	_ = l.RejectOlderThan.Set("1h")
+	f.Var(&l.RejectOlderThan, "validation.reject-older-than", "This limits how far into the past profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 1h.")
+
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -261,6 +272,16 @@ func (o *Overrides) QuerySplitDuration(tenantID string) time.Duration {
 // Shuffle sharding will be used to distribute queries across queriers.
 // 0 means no limit. Currently disabled.
 func (o *Overrides) MaxQueriersPerTenant(tenant string) int { return 0 }
+
+// RejectNewerThan will ensure that profiles are further than the return value into the future are reject.
+func (o *Overrides) RejectNewerThan(tenantID string) time.Duration {
+	return time.Duration(o.getOverridesForTenant(tenantID).RejectNewerThan)
+}
+
+// RejectOlderThan will ensure that profiles that are older than the return value are rejected.
+func (o *Overrides) RejectOlderThan(tenantID string) time.Duration {
+	return time.Duration(o.getOverridesForTenant(tenantID).RejectOlderThan)
+}
 
 func (o *Overrides) DefaultLimits() *Limits {
 	return o.defaultLimits

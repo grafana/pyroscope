@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/grafana/pyroscope/ebpf/symtab/gosym"
+	"github.com/ianlancetaylor/demangle"
 )
 
 // symbols from .symtab, .dynsym
@@ -43,6 +44,8 @@ type FlatSymbolIndex struct {
 type SymbolTable struct {
 	Index FlatSymbolIndex
 	File  *MMapedElfFile
+
+	demangleOptions []demangle.Option
 }
 
 func (st *SymbolTable) IsDead() bool {
@@ -117,7 +120,10 @@ func (f *MMapedElfFile) NewSymbolTable(opt *SymbolsOptions) (*SymbolTable, error
 		},
 		Names:  make([]Name, total),
 		Values: gosym.NewPCIndex(total),
-	}, File: f}
+	},
+		File:            f,
+		demangleOptions: opt.DemangleOptions,
+	}
 	for i := range all {
 		res.Index.Names[i] = all[i].Name
 		res.Index.Values.Set(i, all[i].Value)
@@ -129,7 +135,7 @@ func (st *SymbolTable) symbolName(idx int) (string, error) {
 	linkIndex := st.Index.Names[idx].LinkIndex()
 	SectionHeaderLink := &st.Index.Links[linkIndex]
 	NameIndex := st.Index.Names[idx].NameIndex()
-	s, b := st.File.getString(int(NameIndex) + int(SectionHeaderLink.Offset))
+	s, b := st.File.getString(int(NameIndex)+int(SectionHeaderLink.Offset), st.demangleOptions)
 	if !b {
 		return "", fmt.Errorf("elf getString")
 	}

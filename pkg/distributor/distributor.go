@@ -14,6 +14,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/limiter"
@@ -24,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -111,6 +113,7 @@ type Limits interface {
 	MaxProfileStacktraceSampleLabels(userID string) int
 	MaxProfileStacktraceDepth(userID string) int
 	MaxProfileSymbolValueLength(userID string) int
+	validation.ProfileValidationLimits
 }
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, limits Limits, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Distributor, error) {
@@ -223,6 +226,7 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 }
 
 func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
+	now := model.Now()
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
@@ -276,8 +280,9 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
 			totalPushUncompressedBytes += int64(decompressedSize)
 
-			if err := validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels); err != nil {
+			if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels, now); err != nil {
 				// todo this actually discards more if multiple Samples in a Series request
+				_ = level.Debug(d.logger).Log("msg", "invalid profile", "err", err)
 				validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
 				validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
