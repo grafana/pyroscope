@@ -8,7 +8,7 @@ services:
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
       - OTLP_URL=tempo:4318
     build:
-      context: rideshare
+      context: ../../golang-push/rideshare
 
   eu-north:
     ports:
@@ -18,7 +18,7 @@ services:
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
       - OTLP_URL=tempo:4318
     build:
-      context: rideshare
+      context: ../../golang-push/rideshare
 
   ap-south:
     ports:
@@ -28,14 +28,14 @@ services:
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
       - OTLP_URL=tempo:4318
     build:
-      context: rideshare
+      context: ../../golang-push/rideshare
 
   load-generator:
     environment:
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
       - OTLP_URL=tempo:4318
     build:
-      context: rideshare
+      context: ../../golang-push/rideshare
       dockerfile: Dockerfile.load-generator
 
   grafana:
@@ -66,9 +66,7 @@ services:
   pyroscope:
     ports:
       - '4040:4040'
-    platform: "linux/amd64"
-    environment:
-      - DOCKER_DEFAULT_PLATFORM=linux/amd64
+    platform: linux/amd64
     build:
       context: '../../../'
       dockerfile: cmd/pyroscope/Dockerfile

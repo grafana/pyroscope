@@ -180,6 +180,16 @@ limits:
   # CLI flag: -querier.split-queries-by-interval
   [split_queries_by_interval: <duration> | default = 0s]
 
+  # This limits how far into the past profiling data can be ingested. This limit
+  # is enforced in the distributor. 0 to disable, defaults to 1h.
+  # CLI flag: -validation.reject-older-than
+  [reject_older_than: <duration> | default = 1h]
+
+  # This limits how far into the future profiling data can be ingested. This
+  # limit is enforced in the distributor. 0 to disable, defaults to 10m.
+  # CLI flag: -validation.reject-newer-than
+  [reject_newer_than: <duration> | default = 10m]
+
 # The query_scheduler block configures the query-scheduler.
 [query_scheduler: <query_scheduler>]
 

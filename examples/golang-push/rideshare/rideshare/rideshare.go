@@ -3,7 +3,6 @@ package rideshare
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -89,12 +88,10 @@ func TracerProvider(c Config) (*sdktrace.TracerProvider, error) {
 	if c.OTLPUrl == "" {
 		return debugTracerProvider()
 	}
-	fmt.Println("XXX")
 	ctx := context.Background()
 	opts := []otlptracehttp.Option{
 		otlptracehttp.WithInsecure(),
 		otlptracehttp.WithEndpoint(c.OTLPUrl),
-		//	otlptracehttp.WithURLPath("/otlp/v1/traces"),
 	}
 	if c.OTLPBasicAuthUser != "" {
 		opts = append(opts, otlptracehttp.WithHeaders(map[string]string{
