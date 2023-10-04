@@ -176,17 +176,77 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.
 func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames")
 	defer sp.Finish()
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
-		res, err := ic.LabelNames(childCtx, connect.NewRequest(&typesv1.LabelNamesRequest{
+
+	sp.LogFields(
+		otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
+		otlog.Int64("start", req.Msg.Start),
+		otlog.Int64("end", req.Msg.End),
+	)
+
+	// Some clients may not be sending us timestamps. If start or end are 0,
+	// then mark this a legacy request. Legacy requests only query the
+	// ingesters.
+	legacyRequest := req.Msg.Start == 0 || req.Msg.End == 0
+	sp.LogFields(otlog.Bool("legacy_request", legacyRequest))
+
+	if q.storeGatewayQuerier == nil || legacyRequest {
+		responses, err := q.labelNamesFromIngesters(ctx, &typesv1.LabelNamesRequest{
 			Matchers: req.Msg.Matchers,
-		}))
+			Start:    req.Msg.Start,
+			End:      req.Msg.End,
+		})
 		if err != nil {
 			return nil, err
 		}
-		return res.Msg.Names, nil
-	})
-	if err != nil {
-		return nil, err
+		return connect.NewResponse(&typesv1.LabelNamesResponse{
+			Names: uniqueSortedStrings(responses),
+		}), nil
+	}
+
+	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
+	}
+	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
+
+	var responses []ResponseFromReplica[[]string]
+	var lock sync.Mutex
+	group, ctx := errgroup.WithContext(ctx)
+
+	if storeQueries.ingester.shouldQuery {
+		group.Go(func() error {
+			ir, err := q.labelNamesFromIngesters(ctx, &typesv1.LabelNamesRequest{
+				Matchers: req.Msg.Matchers,
+				Start:    req.Msg.Start,
+				End:      req.Msg.End,
+			})
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			responses = append(responses, ir...)
+			lock.Unlock()
+			return nil
+		})
+	}
+
+	if storeQueries.storeGateway.shouldQuery {
+		group.Go(func() error {
+			ir, err := q.labelNamesFromStoreGateway(ctx, &typesv1.LabelNamesRequest{
+				Matchers: req.Msg.Matchers,
+				Start:    req.Msg.Start,
+				End:      req.Msg.End,
+			})
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			responses = append(responses, ir...)
+			lock.Unlock()
+			return nil
+		})
 	}
 
 	return connect.NewResponse(&typesv1.LabelNamesResponse{
