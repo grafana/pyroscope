@@ -335,6 +335,8 @@ Usage of ./pyroscope:
     	Maximum number of samples in a profile. 0 to disable. (default 16000)
   -validation.max-profile-symbol-value-length int
     	Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable. (default 65535)
+  -validation.max-sessions-per-series int
+    	Maximum number of sessions per series. 0 to disable.
   -validation.reject-newer-than duration
     	This limits how far into the future profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 10m. (default 10m)
   -validation.reject-older-than duration
