@@ -1,6 +1,7 @@
 package model
 
 import (
+	"math/rand"
 	"sort"
 	"testing"
 
@@ -117,4 +118,18 @@ func TestLabels_IsAllowedForIngestion(t *testing.T) {
 		allowed := IsLabelAllowedForIngestion(tc.labelName)
 		assert.Equalf(t, tc.allowed, allowed, "%q", tc.labelName)
 	}
+}
+
+func Test_SessionID_Parse(t *testing.T) {
+	n := rand.Uint64()
+	s := SessionID(n)
+	p, err := ParseSessionID(s.String())
+	assert.NoError(t, err)
+	assert.Equal(t, SessionID(n), p)
+
+	_, err = ParseSessionID("not-a-session-id") // Matches expected length.
+	assert.NotNil(t, err)
+
+	_, err = ParseSessionID("not-a-session-id-either")
+	assert.NotNil(t, err)
 }

@@ -2,6 +2,9 @@ package model
 
 import (
 	"bytes"
+	"encoding/binary"
+	"encoding/hex"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,6 +15,8 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/slices"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 var seps = []byte{'\xff'}
@@ -192,6 +197,24 @@ func (ls Labels) Get(name string) string {
 		}
 	}
 	return ""
+}
+
+// GetLabel returns the label with the given name.
+func (ls Labels) GetLabel(name string) (*typesv1.LabelPair, bool) {
+	for _, l := range ls {
+		if l.Name == name {
+			return l, true
+		}
+	}
+	return nil, false
+}
+
+// Delete removes the first label encountered with the name given.
+// A copy of the label set without the label is returned.
+func (ls Labels) Delete(name string) Labels {
+	return slices.RemoveInPlace(ls, func(pair *typesv1.LabelPair, i int) bool {
+		return pair.Name == name
+	})
 }
 
 func (ls Labels) Clone() Labels {
@@ -423,4 +446,23 @@ func StableHash(ls labels.Labels) uint64 {
 		b = append(b, seps[0])
 	}
 	return xxhash.Sum64(b)
+}
+
+type SessionID uint64
+
+func (s SessionID) String() string {
+	var b [8]byte
+	binary.LittleEndian.PutUint64(b[:], uint64(s))
+	return hex.EncodeToString(b[:])
+}
+
+func ParseSessionID(s string) (SessionID, error) {
+	if len(s) != 16 {
+		return 0, fmt.Errorf("invalid session id length %d", len(s))
+	}
+	var b [8]byte
+	if _, err := hex.Decode(b[:], util.YoloBuf(s)); err != nil {
+		return 0, err
+	}
+	return SessionID(binary.LittleEndian.Uint64(b[:])), nil
 }

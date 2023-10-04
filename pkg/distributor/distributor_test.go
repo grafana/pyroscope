@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -271,6 +272,82 @@ func Test_Limits(t *testing.T) {
 			require.Error(t, err)
 			require.Equal(t, tc.expectedCode, connect.CodeOf(err))
 			require.Nil(t, resp)
+		})
+	}
+}
+
+func Test_Sessions_Limit(t *testing.T) {
+	type testCase struct {
+		description    string
+		seriesLabels   phlaremodel.Labels
+		expectedLabels phlaremodel.Labels
+		maxSessions    int
+	}
+
+	testCases := []testCase{
+		{
+			description: "session_disabled",
+			seriesLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: phlaremodel.LabelNameSessionID, Value: phlaremodel.SessionID(1).String()},
+				{Name: "__name__", Value: "cpu"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "__name__", Value: "cpu"},
+			},
+			maxSessions: 0,
+		},
+		{
+			description: "session_limited",
+			seriesLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: phlaremodel.LabelNameSessionID, Value: phlaremodel.SessionID(4).String()},
+				{Name: "__name__", Value: "cpu"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: phlaremodel.LabelNameSessionID, Value: phlaremodel.SessionID(1).String()},
+				{Name: "__name__", Value: "cpu"},
+			},
+			maxSessions: 3,
+		},
+		{
+			description: "session_not_specified",
+			seriesLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "__name__", Value: "cpu"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "__name__", Value: "cpu"},
+			},
+			maxSessions: 3,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.description, func(t *testing.T) {
+			ing := newFakeIngester(t, false)
+			d, err := New(
+				Config{DistributorRing: ringConfig},
+				testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+				func(addr string) (client.PoolClient, error) { return ing, nil },
+				validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+					l := validation.MockDefaultLimits()
+					l.MaxSessionsPerSeries = tc.maxSessions
+					tenantLimits["user-1"] = l
+				}), nil, log.NewLogfmtLogger(os.Stdout))
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedLabels, d.limitMaxSessionsPerSeries("user-1", tc.seriesLabels))
 		})
 	}
 }
