@@ -11,5 +11,6 @@ service StoreGatewayService {
   rpc MergeProfilesStacktraces(stream ingester.v1.MergeProfilesStacktracesRequest) returns (stream ingester.v1.MergeProfilesStacktracesResponse) {}
   rpc MergeProfilesLabels(stream ingester.v1.MergeProfilesLabelsRequest) returns (stream ingester.v1.MergeProfilesLabelsResponse) {}
   rpc MergeProfilesPprof(stream ingester.v1.MergeProfilesPprofRequest) returns (stream ingester.v1.MergeProfilesPprofResponse) {}
+  rpc LabelNames(types.v1.LabelNamesRequest) returns (types.v1.LabelNamesResponse) {}
   rpc Series(ingester.v1.SeriesRequest) returns (ingester.v1.SeriesResponse) {}
 }

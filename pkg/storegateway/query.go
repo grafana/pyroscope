@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/common/model"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/tenant"
 )
@@ -41,6 +42,10 @@ func (s *StoreGateway) MergeProfilesPprof(ctx context.Context, stream *connect.B
 		return err
 	}
 	return terminateStream(stream)
+}
+
+func (s *StoreGateway) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
+	panic("unimplemented") // TODO(bryan) implement
 }
 
 func (s *StoreGateway) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {

@@ -6,7 +6,8 @@ package storegatewayv1
 
 import (
 	context "context"
-	v1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	v11 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -32,7 +33,8 @@ type StoreGatewayServiceClient interface {
 	MergeProfilesStacktraces(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeProfilesStacktracesClient, error)
 	MergeProfilesLabels(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeProfilesLabelsClient, error)
 	MergeProfilesPprof(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeProfilesPprofClient, error)
-	Series(ctx context.Context, in *v1.SeriesRequest, opts ...grpc.CallOption) (*v1.SeriesResponse, error)
+	LabelNames(ctx context.Context, in *v1.LabelNamesRequest, opts ...grpc.CallOption) (*v1.LabelNamesResponse, error)
+	Series(ctx context.Context, in *v11.SeriesRequest, opts ...grpc.CallOption) (*v11.SeriesResponse, error)
 }
 
 type storeGatewayServiceClient struct {
@@ -53,8 +55,8 @@ func (c *storeGatewayServiceClient) MergeProfilesStacktraces(ctx context.Context
 }
 
 type StoreGatewayService_MergeProfilesStacktracesClient interface {
-	Send(*v1.MergeProfilesStacktracesRequest) error
-	Recv() (*v1.MergeProfilesStacktracesResponse, error)
+	Send(*v11.MergeProfilesStacktracesRequest) error
+	Recv() (*v11.MergeProfilesStacktracesResponse, error)
 	grpc.ClientStream
 }
 
@@ -62,12 +64,12 @@ type storeGatewayServiceMergeProfilesStacktracesClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeGatewayServiceMergeProfilesStacktracesClient) Send(m *v1.MergeProfilesStacktracesRequest) error {
+func (x *storeGatewayServiceMergeProfilesStacktracesClient) Send(m *v11.MergeProfilesStacktracesRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *storeGatewayServiceMergeProfilesStacktracesClient) Recv() (*v1.MergeProfilesStacktracesResponse, error) {
-	m := new(v1.MergeProfilesStacktracesResponse)
+func (x *storeGatewayServiceMergeProfilesStacktracesClient) Recv() (*v11.MergeProfilesStacktracesResponse, error) {
+	m := new(v11.MergeProfilesStacktracesResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -84,8 +86,8 @@ func (c *storeGatewayServiceClient) MergeProfilesLabels(ctx context.Context, opt
 }
 
 type StoreGatewayService_MergeProfilesLabelsClient interface {
-	Send(*v1.MergeProfilesLabelsRequest) error
-	Recv() (*v1.MergeProfilesLabelsResponse, error)
+	Send(*v11.MergeProfilesLabelsRequest) error
+	Recv() (*v11.MergeProfilesLabelsResponse, error)
 	grpc.ClientStream
 }
 
@@ -93,12 +95,12 @@ type storeGatewayServiceMergeProfilesLabelsClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeGatewayServiceMergeProfilesLabelsClient) Send(m *v1.MergeProfilesLabelsRequest) error {
+func (x *storeGatewayServiceMergeProfilesLabelsClient) Send(m *v11.MergeProfilesLabelsRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *storeGatewayServiceMergeProfilesLabelsClient) Recv() (*v1.MergeProfilesLabelsResponse, error) {
-	m := new(v1.MergeProfilesLabelsResponse)
+func (x *storeGatewayServiceMergeProfilesLabelsClient) Recv() (*v11.MergeProfilesLabelsResponse, error) {
+	m := new(v11.MergeProfilesLabelsResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -115,8 +117,8 @@ func (c *storeGatewayServiceClient) MergeProfilesPprof(ctx context.Context, opts
 }
 
 type StoreGatewayService_MergeProfilesPprofClient interface {
-	Send(*v1.MergeProfilesPprofRequest) error
-	Recv() (*v1.MergeProfilesPprofResponse, error)
+	Send(*v11.MergeProfilesPprofRequest) error
+	Recv() (*v11.MergeProfilesPprofResponse, error)
 	grpc.ClientStream
 }
 
@@ -124,20 +126,29 @@ type storeGatewayServiceMergeProfilesPprofClient struct {
 	grpc.ClientStream
 }
 
-func (x *storeGatewayServiceMergeProfilesPprofClient) Send(m *v1.MergeProfilesPprofRequest) error {
+func (x *storeGatewayServiceMergeProfilesPprofClient) Send(m *v11.MergeProfilesPprofRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *storeGatewayServiceMergeProfilesPprofClient) Recv() (*v1.MergeProfilesPprofResponse, error) {
-	m := new(v1.MergeProfilesPprofResponse)
+func (x *storeGatewayServiceMergeProfilesPprofClient) Recv() (*v11.MergeProfilesPprofResponse, error) {
+	m := new(v11.MergeProfilesPprofResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *storeGatewayServiceClient) Series(ctx context.Context, in *v1.SeriesRequest, opts ...grpc.CallOption) (*v1.SeriesResponse, error) {
-	out := new(v1.SeriesResponse)
+func (c *storeGatewayServiceClient) LabelNames(ctx context.Context, in *v1.LabelNamesRequest, opts ...grpc.CallOption) (*v1.LabelNamesResponse, error) {
+	out := new(v1.LabelNamesResponse)
+	err := c.cc.Invoke(ctx, "/storegateway.v1.StoreGatewayService/LabelNames", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *storeGatewayServiceClient) Series(ctx context.Context, in *v11.SeriesRequest, opts ...grpc.CallOption) (*v11.SeriesResponse, error) {
+	out := new(v11.SeriesResponse)
 	err := c.cc.Invoke(ctx, "/storegateway.v1.StoreGatewayService/Series", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -152,7 +163,8 @@ type StoreGatewayServiceServer interface {
 	MergeProfilesStacktraces(StoreGatewayService_MergeProfilesStacktracesServer) error
 	MergeProfilesLabels(StoreGatewayService_MergeProfilesLabelsServer) error
 	MergeProfilesPprof(StoreGatewayService_MergeProfilesPprofServer) error
-	Series(context.Context, *v1.SeriesRequest) (*v1.SeriesResponse, error)
+	LabelNames(context.Context, *v1.LabelNamesRequest) (*v1.LabelNamesResponse, error)
+	Series(context.Context, *v11.SeriesRequest) (*v11.SeriesResponse, error)
 	mustEmbedUnimplementedStoreGatewayServiceServer()
 }
 
@@ -169,7 +181,10 @@ func (UnimplementedStoreGatewayServiceServer) MergeProfilesLabels(StoreGatewaySe
 func (UnimplementedStoreGatewayServiceServer) MergeProfilesPprof(StoreGatewayService_MergeProfilesPprofServer) error {
 	return status.Errorf(codes.Unimplemented, "method MergeProfilesPprof not implemented")
 }
-func (UnimplementedStoreGatewayServiceServer) Series(context.Context, *v1.SeriesRequest) (*v1.SeriesResponse, error) {
+func (UnimplementedStoreGatewayServiceServer) LabelNames(context.Context, *v1.LabelNamesRequest) (*v1.LabelNamesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LabelNames not implemented")
+}
+func (UnimplementedStoreGatewayServiceServer) Series(context.Context, *v11.SeriesRequest) (*v11.SeriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Series not implemented")
 }
 func (UnimplementedStoreGatewayServiceServer) mustEmbedUnimplementedStoreGatewayServiceServer() {}
@@ -190,8 +205,8 @@ func _StoreGatewayService_MergeProfilesStacktraces_Handler(srv interface{}, stre
 }
 
 type StoreGatewayService_MergeProfilesStacktracesServer interface {
-	Send(*v1.MergeProfilesStacktracesResponse) error
-	Recv() (*v1.MergeProfilesStacktracesRequest, error)
+	Send(*v11.MergeProfilesStacktracesResponse) error
+	Recv() (*v11.MergeProfilesStacktracesRequest, error)
 	grpc.ServerStream
 }
 
@@ -199,12 +214,12 @@ type storeGatewayServiceMergeProfilesStacktracesServer struct {
 	grpc.ServerStream
 }
 
-func (x *storeGatewayServiceMergeProfilesStacktracesServer) Send(m *v1.MergeProfilesStacktracesResponse) error {
+func (x *storeGatewayServiceMergeProfilesStacktracesServer) Send(m *v11.MergeProfilesStacktracesResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *storeGatewayServiceMergeProfilesStacktracesServer) Recv() (*v1.MergeProfilesStacktracesRequest, error) {
-	m := new(v1.MergeProfilesStacktracesRequest)
+func (x *storeGatewayServiceMergeProfilesStacktracesServer) Recv() (*v11.MergeProfilesStacktracesRequest, error) {
+	m := new(v11.MergeProfilesStacktracesRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -216,8 +231,8 @@ func _StoreGatewayService_MergeProfilesLabels_Handler(srv interface{}, stream gr
 }
 
 type StoreGatewayService_MergeProfilesLabelsServer interface {
-	Send(*v1.MergeProfilesLabelsResponse) error
-	Recv() (*v1.MergeProfilesLabelsRequest, error)
+	Send(*v11.MergeProfilesLabelsResponse) error
+	Recv() (*v11.MergeProfilesLabelsRequest, error)
 	grpc.ServerStream
 }
 
@@ -225,12 +240,12 @@ type storeGatewayServiceMergeProfilesLabelsServer struct {
 	grpc.ServerStream
 }
 
-func (x *storeGatewayServiceMergeProfilesLabelsServer) Send(m *v1.MergeProfilesLabelsResponse) error {
+func (x *storeGatewayServiceMergeProfilesLabelsServer) Send(m *v11.MergeProfilesLabelsResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *storeGatewayServiceMergeProfilesLabelsServer) Recv() (*v1.MergeProfilesLabelsRequest, error) {
-	m := new(v1.MergeProfilesLabelsRequest)
+func (x *storeGatewayServiceMergeProfilesLabelsServer) Recv() (*v11.MergeProfilesLabelsRequest, error) {
+	m := new(v11.MergeProfilesLabelsRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -242,8 +257,8 @@ func _StoreGatewayService_MergeProfilesPprof_Handler(srv interface{}, stream grp
 }
 
 type StoreGatewayService_MergeProfilesPprofServer interface {
-	Send(*v1.MergeProfilesPprofResponse) error
-	Recv() (*v1.MergeProfilesPprofRequest, error)
+	Send(*v11.MergeProfilesPprofResponse) error
+	Recv() (*v11.MergeProfilesPprofRequest, error)
 	grpc.ServerStream
 }
 
@@ -251,20 +266,38 @@ type storeGatewayServiceMergeProfilesPprofServer struct {
 	grpc.ServerStream
 }
 
-func (x *storeGatewayServiceMergeProfilesPprofServer) Send(m *v1.MergeProfilesPprofResponse) error {
+func (x *storeGatewayServiceMergeProfilesPprofServer) Send(m *v11.MergeProfilesPprofResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *storeGatewayServiceMergeProfilesPprofServer) Recv() (*v1.MergeProfilesPprofRequest, error) {
-	m := new(v1.MergeProfilesPprofRequest)
+func (x *storeGatewayServiceMergeProfilesPprofServer) Recv() (*v11.MergeProfilesPprofRequest, error) {
+	m := new(v11.MergeProfilesPprofRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
+func _StoreGatewayService_LabelNames_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.LabelNamesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoreGatewayServiceServer).LabelNames(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/storegateway.v1.StoreGatewayService/LabelNames",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoreGatewayServiceServer).LabelNames(ctx, req.(*v1.LabelNamesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _StoreGatewayService_Series_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v1.SeriesRequest)
+	in := new(v11.SeriesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -276,7 +309,7 @@ func _StoreGatewayService_Series_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: "/storegateway.v1.StoreGatewayService/Series",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StoreGatewayServiceServer).Series(ctx, req.(*v1.SeriesRequest))
+		return srv.(StoreGatewayServiceServer).Series(ctx, req.(*v11.SeriesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -288,6 +321,10 @@ var StoreGatewayService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "storegateway.v1.StoreGatewayService",
 	HandlerType: (*StoreGatewayServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "LabelNames",
+			Handler:    _StoreGatewayService_LabelNames_Handler,
+		},
 		{
 			MethodName: "Series",
 			Handler:    _StoreGatewayService_Series_Handler,

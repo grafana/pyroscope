@@ -43,6 +43,8 @@ message LabelValuesResponse {
 
 message LabelNamesRequest {
   repeated string matchers = 1;
+  int64 start = 2;
+  int64 end = 3;
 }
 
 message LabelNamesResponse {

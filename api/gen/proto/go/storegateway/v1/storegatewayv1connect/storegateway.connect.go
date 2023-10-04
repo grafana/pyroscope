@@ -10,6 +10,7 @@ import (
 	connect_go "github.com/bufbuild/connect-go"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	_ "github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1"
+	v11 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	http "net/http"
 	strings "strings"
 )
@@ -43,6 +44,9 @@ const (
 	// StoreGatewayServiceMergeProfilesPprofProcedure is the fully-qualified name of the
 	// StoreGatewayService's MergeProfilesPprof RPC.
 	StoreGatewayServiceMergeProfilesPprofProcedure = "/storegateway.v1.StoreGatewayService/MergeProfilesPprof"
+	// StoreGatewayServiceLabelNamesProcedure is the fully-qualified name of the StoreGatewayService's
+	// LabelNames RPC.
+	StoreGatewayServiceLabelNamesProcedure = "/storegateway.v1.StoreGatewayService/LabelNames"
 	// StoreGatewayServiceSeriesProcedure is the fully-qualified name of the StoreGatewayService's
 	// Series RPC.
 	StoreGatewayServiceSeriesProcedure = "/storegateway.v1.StoreGatewayService/Series"
@@ -53,6 +57,7 @@ type StoreGatewayServiceClient interface {
 	MergeProfilesStacktraces(context.Context) *connect_go.BidiStreamForClient[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse]
 	MergeProfilesLabels(context.Context) *connect_go.BidiStreamForClient[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse]
 	MergeProfilesPprof(context.Context) *connect_go.BidiStreamForClient[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]
+	LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error)
 	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
 }
 
@@ -81,6 +86,11 @@ func NewStoreGatewayServiceClient(httpClient connect_go.HTTPClient, baseURL stri
 			baseURL+StoreGatewayServiceMergeProfilesPprofProcedure,
 			opts...,
 		),
+		labelNames: connect_go.NewClient[v11.LabelNamesRequest, v11.LabelNamesResponse](
+			httpClient,
+			baseURL+StoreGatewayServiceLabelNamesProcedure,
+			opts...,
+		),
 		series: connect_go.NewClient[v1.SeriesRequest, v1.SeriesResponse](
 			httpClient,
 			baseURL+StoreGatewayServiceSeriesProcedure,
@@ -94,6 +104,7 @@ type storeGatewayServiceClient struct {
 	mergeProfilesStacktraces *connect_go.Client[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse]
 	mergeProfilesLabels      *connect_go.Client[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse]
 	mergeProfilesPprof       *connect_go.Client[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]
+	labelNames               *connect_go.Client[v11.LabelNamesRequest, v11.LabelNamesResponse]
 	series                   *connect_go.Client[v1.SeriesRequest, v1.SeriesResponse]
 }
 
@@ -112,6 +123,11 @@ func (c *storeGatewayServiceClient) MergeProfilesPprof(ctx context.Context) *con
 	return c.mergeProfilesPprof.CallBidiStream(ctx)
 }
 
+// LabelNames calls storegateway.v1.StoreGatewayService.LabelNames.
+func (c *storeGatewayServiceClient) LabelNames(ctx context.Context, req *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error) {
+	return c.labelNames.CallUnary(ctx, req)
+}
+
 // Series calls storegateway.v1.StoreGatewayService.Series.
 func (c *storeGatewayServiceClient) Series(ctx context.Context, req *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error) {
 	return c.series.CallUnary(ctx, req)
@@ -123,6 +139,7 @@ type StoreGatewayServiceHandler interface {
 	MergeProfilesStacktraces(context.Context, *connect_go.BidiStream[v1.MergeProfilesStacktracesRequest, v1.MergeProfilesStacktracesResponse]) error
 	MergeProfilesLabels(context.Context, *connect_go.BidiStream[v1.MergeProfilesLabelsRequest, v1.MergeProfilesLabelsResponse]) error
 	MergeProfilesPprof(context.Context, *connect_go.BidiStream[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]) error
+	LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error)
 	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
 }
 
@@ -147,6 +164,11 @@ func NewStoreGatewayServiceHandler(svc StoreGatewayServiceHandler, opts ...conne
 		svc.MergeProfilesPprof,
 		opts...,
 	)
+	storeGatewayServiceLabelNamesHandler := connect_go.NewUnaryHandler(
+		StoreGatewayServiceLabelNamesProcedure,
+		svc.LabelNames,
+		opts...,
+	)
 	storeGatewayServiceSeriesHandler := connect_go.NewUnaryHandler(
 		StoreGatewayServiceSeriesProcedure,
 		svc.Series,
@@ -160,6 +182,8 @@ func NewStoreGatewayServiceHandler(svc StoreGatewayServiceHandler, opts ...conne
 			storeGatewayServiceMergeProfilesLabelsHandler.ServeHTTP(w, r)
 		case StoreGatewayServiceMergeProfilesPprofProcedure:
 			storeGatewayServiceMergeProfilesPprofHandler.ServeHTTP(w, r)
+		case StoreGatewayServiceLabelNamesProcedure:
+			storeGatewayServiceLabelNamesHandler.ServeHTTP(w, r)
 		case StoreGatewayServiceSeriesProcedure:
 			storeGatewayServiceSeriesHandler.ServeHTTP(w, r)
 		default:
@@ -181,6 +205,10 @@ func (UnimplementedStoreGatewayServiceHandler) MergeProfilesLabels(context.Conte
 
 func (UnimplementedStoreGatewayServiceHandler) MergeProfilesPprof(context.Context, *connect_go.BidiStream[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]) error {
 	return connect_go.NewError(connect_go.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.MergeProfilesPprof is not implemented"))
+}
+
+func (UnimplementedStoreGatewayServiceHandler) LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("storegateway.v1.StoreGatewayService.LabelNames is not implemented"))
 }
 
 func (UnimplementedStoreGatewayServiceHandler) Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error) {
