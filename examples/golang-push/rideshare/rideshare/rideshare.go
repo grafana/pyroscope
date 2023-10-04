@@ -3,8 +3,6 @@ package rideshare
 import (
 	"context"
 	"encoding/base64"
-	"log"
-	"net/url"
 	"os"
 
 	"github.com/grafana/pyroscope-go"
@@ -24,8 +22,8 @@ type Config struct {
 	PyroscopeAuthToken         string // for OG pyroscope and cloudstorage
 	PyroscopeBasicAuthUser     string // for grafana
 	PyroscopeBasicAuthPassword string // for grafana
-	PyroscopeProfileURL        string
 	OTLPUrl                    string
+	OTLPUrlPath                string
 	OTLPBasicAuthUser          string
 	OTLPBasicAuthPassword      string
 
@@ -40,8 +38,8 @@ func ReadConfig() Config {
 		PyroscopeAuthToken:         os.Getenv("PYROSCOPE_AUTH_TOKEN"),
 		PyroscopeBasicAuthUser:     os.Getenv("PYROSCOPE_BASIC_AUTH_USER"),
 		PyroscopeBasicAuthPassword: os.Getenv("PYROSCOPE_BASIC_AUTH_PASSWORD"),
-		PyroscopeProfileURL:        os.Getenv("PYROSCOPE_PROFILE_URL"),
 		OTLPUrl:                    os.Getenv("OTLP_URL"),
+		OTLPUrlPath:                os.Getenv("OTLP_URL_PATH"),
 		OTLPBasicAuthUser:          os.Getenv("OTLP_BASIC_AUTH_USER"),
 		OTLPBasicAuthPassword:      os.Getenv("OTLP_BASIC_AUTH_PASSWORD"),
 
@@ -53,29 +51,9 @@ func ReadConfig() Config {
 	if c.AppName == "" {
 		c.AppName = "ride-sharing-app"
 	}
-
 	if c.PyroscopeServerAddress == "" {
 		c.PyroscopeServerAddress = "http://localhost:4040"
-	} else {
-		u, err := url.Parse(c.PyroscopeServerAddress)
-		if err != nil {
-			log.Fatalf("Pyroscope server address is invalid: %v, must be a valid URL\n", err)
-		}
-		u.RawQuery = ""
-		c.PyroscopeServerAddress = u.String()
 	}
-
-	if c.PyroscopeProfileURL == "" {
-		c.PyroscopeProfileURL = c.PyroscopeServerAddress
-	} else {
-		u, err := url.Parse(c.PyroscopeProfileURL)
-		if err != nil {
-			log.Fatalf("Pyroscope profile URL is invalid: %v\n", err)
-		}
-		u.RawQuery = ""
-		c.PyroscopeProfileURL = u.String()
-	}
-
 	return c
 }
 
@@ -91,6 +69,7 @@ func TracerProvider(c Config) (*sdktrace.TracerProvider, error) {
 	ctx := context.Background()
 	opts := []otlptracehttp.Option{
 		otlptracehttp.WithInsecure(),
+		otlptracehttp.WithURLPath(c.OTLPUrlPath),
 		otlptracehttp.WithEndpoint(c.OTLPUrl),
 	}
 	if c.OTLPBasicAuthUser != "" {
