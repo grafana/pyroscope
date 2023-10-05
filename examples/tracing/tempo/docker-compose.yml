@@ -3,10 +3,12 @@ services:
   us-east:
     ports:
       - 5000
-    environment:
-      - REGION=us-east
-      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
-      - OTLP_URL=tempo:4318
+    environment: &env
+      PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
+      OTLP_URL: tempo:4318
+      OTLP_INSECURE: 1
+      DEBUG_LOGGER: 1
+      REGION: us-east
     build:
       context: ../../golang-push/rideshare
 
@@ -14,9 +16,8 @@ services:
     ports:
       - 5000
     environment:
-      - REGION=eu-north
-      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
-      - OTLP_URL=tempo:4318
+      <<: *env
+      REGION: eu-north
     build:
       context: ../../golang-push/rideshare
 
@@ -24,16 +25,13 @@ services:
     ports:
       - 5000
     environment:
-      - REGION=ap-south
-      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
-      - OTLP_URL=tempo:4318
+      <<: *env
+      REGION: ap-south
     build:
       context: ../../golang-push/rideshare
 
   load-generator:
-    environment:
-      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
-      - OTLP_URL=tempo:4318
+    environment: *env
     build:
       context: ../../golang-push/rideshare
       dockerfile: Dockerfile.load-generator
