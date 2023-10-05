@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -35,10 +36,9 @@ type SessionOptions struct {
 	CollectKernel             bool
 	UnknownSymbolModuleOffset bool // use libfoo.so+0xef instead of libfoo.so for unknown symbols
 	UnknownSymbolAddress      bool // use 0xcafebabe instead of [unknown]
-	//UnknownProcessPid         bool // use pid_%d as comm instead of "" if comm is unknown
-	//PythonEnabled             bool
-	CacheOptions symtab.CacheOptions
-	SampleRate   int
+	PythonEnabled             bool
+	CacheOptions              symtab.CacheOptions
+	SampleRate                int
 }
 
 type Session interface {
@@ -68,10 +68,23 @@ type session struct {
 	eventsReader    *perf.Reader
 	pidInfoRequests chan uint32
 
-	pyperf *python.Perf
+	pyperf      *python.Perf
+	pyperfBpf   python.PerfObjects
+	pyperfError error
 
 	options     SessionOptions
 	roundNumber int
+
+	// all the Session methods should be guarded by mutex
+	// all the goroutines accessing fields should be guarded by mutex and check for started field
+	mutex sync.Mutex
+	// We have 2 goroutines
+	// 1 - reading perf events from ebpf. this one does not touch Session fields including mutex
+	// 2 - processing pid info requests. this one Session fields to update pid info and python info, this should be done under mutex
+	// Accessing wg should be done with no Session.mutex held to avoid deadlock, therefore wg access (Start, Stop) should be
+	// synchronized outside
+	wg      sync.WaitGroup
+	started bool
 }
 
 func NewSession(
@@ -95,6 +108,8 @@ func NewSession(
 }
 
 func (s *session) Start() error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	var err error
 
 	if err = rlimit.RemoveMemlock(); err != nil {
@@ -104,40 +119,45 @@ func (s *session) Start() error {
 	opts := &ebpf.CollectionOptions{
 		Programs: ebpf.ProgramOptions{
 			LogDisabled: true,
-			//LogLevel: ebpf.LogLevelInstruction | ebpf.LogLevelStats,
-			//LogSize:  100 * 1024 * 1024,
 		},
 	}
 	if err := pyrobpf.LoadProfileObjects(&s.bpf, opts); err != nil {
+		s.stopLocked()
 		return fmt.Errorf("load bpf objects: %w", err)
 	}
-	pyperf, err := python.NewPerf(s.logger, s.bpf.ProfileMaps.PyEvents, s.bpf.ProfileMaps.PyPidConfig, s.bpf.PySymbols)
-	if err != nil {
-		return fmt.Errorf("pyperf creationg error %w", err)
-	}
-	s.pyperf = pyperf
 
-	btf.FlushKernelSpec() // save some memory, when  pyperf is made lazy, this should be called after pyperf is loaded
+	btf.FlushKernelSpec() // save some memory
 
 	s.perfEvents, err = attachPerfEvents(s.options.SampleRate, s.bpf.DoPerfEvent)
 	if err != nil {
-		s.Stop()
+		s.stopLocked()
 		return fmt.Errorf("attach perf events: %w", err)
 	}
 	eventsReader, err := perf.NewReader(s.bpf.ProfileMaps.Events, 4*os.Getpagesize())
 	if err != nil {
+		s.stopLocked()
 		return fmt.Errorf("perf new reader for events map: %w", err)
 	}
 	s.eventsReader = eventsReader
 	pidInfoRequests := make(chan uint32, 1024)
 	s.pidInfoRequests = pidInfoRequests
-	go s.readEvents(eventsReader, pidInfoRequests)
-	go s.processPidInfoRequests(pidInfoRequests)
-
+	s.wg.Add(2)
+	s.started = true
+	go func() {
+		defer s.wg.Done()
+		s.readEvents(eventsReader, pidInfoRequests)
+	}()
+	go func() {
+		defer s.wg.Done()
+		s.processPidInfoRequests(pidInfoRequests)
+	}()
 	return nil
 }
 
 func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	s.symCache.NextRound()
 	s.roundNumber++
 
@@ -146,10 +166,10 @@ func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value ui
 		return err
 	}
 
-	//err = s.collectRegularProfile(cb)
-	//if err != nil {
-	//	return err
-	//}
+	err = s.collectRegularProfile(cb)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -247,7 +267,9 @@ func (s *session) comm(proc *symtab.ProcTable) string {
 }
 
 func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
-
+	if s.pyperf == nil {
+		return nil
+	}
 	pyEvents := s.pyperf.ResetEvents()
 	if len(pyEvents) == 0 {
 		return nil
@@ -323,6 +345,18 @@ func (s *session) collectMetrics(labels *sd.Target, stats *StackResolveStats, sb
 }
 
 func (s *session) Stop() {
+	s.stopAndWait()
+}
+
+func (s *session) stopAndWait() {
+	s.mutex.Lock()
+	s.stopLocked()
+	s.mutex.Unlock()
+
+	s.wg.Wait()
+}
+
+func (s *session) stopLocked() {
 	for _, pe := range s.perfEvents {
 		_ = pe.Close()
 	}
@@ -332,25 +366,32 @@ func (s *session) Stop() {
 		s.pyperf.Close()
 	}
 	if s.eventsReader != nil {
-		s.eventsReader.Close()
+		err := s.eventsReader.Close()
+		if err != nil {
+			_ = level.Error(s.logger).Log("err", err, "msg", "closing events map reader")
+		}
+		s.eventsReader = nil
 	}
 	if s.pidInfoRequests != nil {
 		close(s.pidInfoRequests)
 		s.pidInfoRequests = nil
 	}
+	s.started = false
 }
 
 func (s *session) Update(options SessionOptions) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	s.symCache.UpdateOptions(options.CacheOptions)
-	err := s.updateSampleRate(options.SampleRate)
-	if err != nil {
-		return err
-	}
 	s.options = options
 	return nil
 }
 
 func (s *session) DebugInfo() interface{} {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	return SessionDebugInfo{
 		ElfCache: s.symCache.ElfCacheDebugInfo(),
 		PidCache: s.symCache.PidCacheDebugInfo(),
@@ -467,24 +508,6 @@ func (s *session) WalkStack(sb *stackBuilder, stack []byte, resolver symtab.Symb
 	}
 }
 
-func (s *session) updateSampleRate(sampleRate int) error {
-	if s.options.SampleRate == sampleRate {
-		return nil
-	}
-	_ = level.Debug(s.logger).Log(
-		"sample_rate_new", sampleRate,
-		"sample_rate_old", s.options.SampleRate,
-	)
-	s.Stop()
-	s.options.SampleRate = sampleRate
-	err := s.Start()
-	if err != nil {
-		return fmt.Errorf("ebpf restart: %w", err)
-	}
-
-	return nil
-}
-
 func (s *session) readEvents(events *perf.Reader, pidConfigRequest chan<- uint32) {
 	defer events.Close()
 	for {
@@ -500,11 +523,7 @@ func (s *session) readEvents(events *perf.Reader, pidConfigRequest chan<- uint32
 		if record.LostSamples != 0 {
 			// this should not happen
 			// maybe we should iterate over a map of pids and check for unknowns if this happens
-			_ = level.Debug(s.logger).Log("msg", "perf event ring buffer full, dropped samples", "n", record.LostSamples)
-			h, _ := os.Hostname()
-			if h == "korniltsev-5950x" {
-				panic("lost samples")
-			}
+			_ = level.Error(s.logger).Log("err", "perf event ring buffer full, dropped samples", "n", record.LostSamples)
 		}
 
 		if record.RawSample != nil {
@@ -533,9 +552,7 @@ func (s *session) readEvents(events *perf.Reader, pidConfigRequest chan<- uint32
 }
 
 func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
-
 	for pid := range pidInfoRequests {
-
 		_ = level.Debug(s.logger).Log("msg", "got pid info request", "pid", pid)
 		target := s.targetFinder.FindTarget(pid)
 
@@ -544,25 +561,90 @@ func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
 			_ = level.Debug(s.logger).Log("msg", "unknown target", "pid", pid)
 			continue
 		}
-
-		typ := s.selectProfilingType(pid, target)
-		if typ == pyrobpf.ProfilingTypePython {
-			err := s.pyperf.AddPythonPID(pid)
-			if err != nil {
-				_ = level.Error(s.logger).Log("err", err, "msg", "pyperf init failed", "pid", pid)
-				_ = s.setPidConfig(pid, pyrobpf.ProfilingTypeError, false, false)
-			}
-			continue
-		}
-		err := s.setPidConfig(pid, typ, s.options.CollectUser, s.options.CollectKernel)
-		if err != nil {
-			_ = level.Error(s.logger).Log("err", err, "msg", "set pid config failed", "pid", pid)
-		}
+		s.enableProfiling(pid, target)
 	}
 }
 
+func (s *session) enableProfiling(pid uint32, target *sd.Target) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if !s.started {
+		return
+	}
+	typ := s.selectProfilingType(pid, target)
+	if typ == pyrobpf.ProfilingTypePython {
+		pyPerf := s.getPyPerf()
+		if pyPerf == nil {
+			_ = level.Error(s.logger).Log("err", "pyperf process profiling init failed. pyperf == nil", "pid", pid)
+			_ = s.setPidConfig(pid, pyrobpf.ProfilingTypeError, false, false)
+			return
+		}
+		err := pyPerf.AddPythonPID(pid)
+		if err != nil {
+			_ = level.Error(s.logger).Log("err", err, "msg", "pyperf process profiling init failed", "pid", pid)
+			_ = s.setPidConfig(pid, pyrobpf.ProfilingTypeError, false, false)
+		}
+		return
+	}
+	err := s.setPidConfig(pid, typ, s.options.CollectUser, s.options.CollectKernel)
+	if err != nil {
+		_ = level.Error(s.logger).Log("err", err, "msg", "set pid config failed", "pid", pid)
+	}
+}
+
+// may return nil if loadPyPerf returns error
+func (s *session) getPyPerf() *python.Perf {
+	if s.pyperf != nil {
+		return s.pyperf
+	}
+	if s.pyperfError != nil {
+		return nil
+	}
+	pyperf, err := s.loadPyPerf()
+	if err != nil {
+		s.pyperfError = err
+		_ = level.Error(s.logger).Log("err", err, "msg", "load pyperf")
+		return nil
+	}
+	s.pyperf = pyperf
+	return s.pyperf
+}
+
+func (s *session) loadPyPerf() (*python.Perf, error) {
+	opts := &ebpf.CollectionOptions{
+		Programs: ebpf.ProgramOptions{
+			LogDisabled: true,
+		},
+		MapReplacements: map[string]*ebpf.Map{
+			"stacks": s.bpf.Stacks,
+		},
+	}
+	err := python.LoadPerfObjects(&s.pyperfBpf.PyperfCollect, opts)
+	if err != nil {
+		return nil, fmt.Errorf("pyperf load %w", err)
+	}
+	pyperf, err := python.NewPerf(s.logger, s.pyperfBpf.PerfMaps.PyEvents, s.pyperfBpf.PerfMaps.PyPidConfig, s.pyperfBpf.PerfMaps.PySymbols)
+	if err != nil {
+		return nil, fmt.Errorf("pyperf create %w", err)
+	}
+	err = s.bpf.ProfileMaps.Progs.Update(0, s.pyperfBpf.PerfPrograms.PyperfCollect, ebpf.UpdateAny)
+	if err != nil {
+		return nil, fmt.Errorf("pyperf link %w", err)
+	}
+	btf.FlushKernelSpec() // save some memory
+	return pyperf, nil
+}
+
 func (s *session) selectProfilingType(pid uint32, target *sd.Target) pyrobpf.ProfilingType {
-	exePath, _ := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
+	exePath, err := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
+	if err != nil {
+		dir, _ := os.Getwd()
+		_ = level.Error(s.logger).Log("wd", dir, "uid", os.Getuid())
+		_ = level.Error(s.logger).Log("err", err, "msg", "select profiling type failed", "pid", pid, "target", target.ServiceName())
+		return pyrobpf.ProfilingTypeError
+	}
+	s.logger.Log("exe", exePath, "pid", pid)
 	exe := filepath.Base(exePath)
 	if strings.HasPrefix(exe, "python") {
 		return pyrobpf.ProfilingTypePython

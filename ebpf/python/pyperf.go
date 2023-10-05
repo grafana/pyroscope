@@ -11,7 +11,6 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/pyroscope/ebpf/pyrobpf"
 	"github.com/grafana/pyroscope/ebpf/symtab"
 	lru "github.com/hashicorp/golang-lru/v2"
 )
@@ -22,10 +21,10 @@ type Perf struct {
 	pidDataHashMap *ebpf.Map
 	symbolsHashMp  *ebpf.Map
 
-	events     []*pyrobpf.ProfilePyEvent
+	events     []*PerfPyEvent
 	eventsLock sync.Mutex
 	sc         *symtab.SymbolCache
-	pidCache   *lru.Cache[uint32, *pyrobpf.ProfilePyPidData]
+	pidCache   *lru.Cache[uint32, *PerfPyPidData]
 }
 
 func NewPerf(logger log.Logger, perfEventMap *ebpf.Map, pidDataHasMap *ebpf.Map, symbolsHashMap *ebpf.Map) (*Perf, error) {
@@ -33,7 +32,7 @@ func NewPerf(logger log.Logger, perfEventMap *ebpf.Map, pidDataHasMap *ebpf.Map,
 	if err != nil {
 		return nil, fmt.Errorf("perf new reader: %w", err)
 	}
-	pidCache, err := lru.NewWithEvict[uint32, *pyrobpf.ProfilePyPidData](512, func(key uint32, value *pyrobpf.ProfilePyPidData) {
+	pidCache, err := lru.NewWithEvict[uint32, *PerfPyPidData](512, func(key uint32, value *PerfPyPidData) {
 		_ = pidDataHasMap.Delete(key)
 	})
 	if err != nil {
@@ -104,15 +103,16 @@ func (s *Perf) loop() {
 
 func (s *Perf) Close() {
 	_ = s.rd.Close()
+	//todo wait for loop gorotine
 }
 
-func (s *Perf) ResetEvents() []*pyrobpf.ProfilePyEvent {
+func (s *Perf) ResetEvents() []*PerfPyEvent {
 	s.eventsLock.Lock()
 	defer s.eventsLock.Unlock()
 	if len(s.events) == 0 {
 		return nil
 	}
-	eventsCopy := make([]*pyrobpf.ProfilePyEvent, len(s.events))
+	eventsCopy := make([]*PerfPyEvent, len(s.events))
 	copy(eventsCopy, s.events)
 	for i := range s.events {
 		s.events[i] = nil
@@ -122,15 +122,15 @@ func (s *Perf) ResetEvents() []*pyrobpf.ProfilePyEvent {
 	return eventsCopy
 }
 
-func (s *Perf) GetSymbols() (map[uint32]*pyrobpf.ProfilePySymbol, error) {
+func (s *Perf) GetSymbols() (map[uint32]*PerfPySymbol, error) {
 	var (
 		m       = s.symbolsHashMp
 		mapSize = m.MaxEntries()
-		nextKey = pyrobpf.ProfilePySymbol{}
+		nextKey = PerfPySymbol{}
 	)
-	keys := make([]pyrobpf.ProfilePySymbol, mapSize)
+	keys := make([]PerfPySymbol, mapSize)
 	values := make([]uint32, mapSize)
-	res := make(map[uint32]*pyrobpf.ProfilePySymbol)
+	res := make(map[uint32]*PerfPySymbol)
 	opts := &ebpf.BatchOptions{}
 	n, err := m.BatchLookup(nil, &nextKey, keys, values, opts)
 	if n > 0 {
@@ -138,7 +138,7 @@ func (s *Perf) GetSymbols() (map[uint32]*pyrobpf.ProfilePySymbol, error) {
 			"msg", "GetSymbols BatchLookup",
 			"count", n,
 		)
-		res := make(map[uint32]*pyrobpf.ProfilePySymbol, n)
+		res := make(map[uint32]*PerfPySymbol, n)
 		for i := 0; i < n; i++ {
 			k := values[i]
 			res[k] = &keys[i]
@@ -155,7 +155,7 @@ func (s *Perf) GetSymbols() (map[uint32]*pyrobpf.ProfilePySymbol, error) {
 
 	v := uint32(0)
 	for {
-		k := new(pyrobpf.ProfilePySymbol)
+		k := new(PerfPySymbol)
 		ok := it.Next(k, &v)
 		if !ok {
 			err := it.Err()
@@ -174,7 +174,7 @@ func (s *Perf) GetSymbols() (map[uint32]*pyrobpf.ProfilePySymbol, error) {
 	return res, nil
 }
 
-func ReadPyEvent(raw []byte) (*pyrobpf.ProfilePyEvent, error) {
+func ReadPyEvent(raw []byte) (*PerfPyEvent, error) {
 	if len(raw) < 1 {
 		return nil, fmt.Errorf("unexpected pyevent size %d", len(raw))
 	}
@@ -187,7 +187,7 @@ func ReadPyEvent(raw []byte) (*pyrobpf.ProfilePyEvent, error) {
 	if status == 1 && len(raw) < 16 || status != 1 && len(raw) < 320 {
 		return nil, fmt.Errorf("unexpected pyevent size %d", len(raw))
 	}
-	event := &pyrobpf.ProfilePyEvent{}
+	event := &PerfPyEvent{}
 	event.StackStatus = status
 	event.Err = raw[1]
 	event.Reserved2 = raw[2]

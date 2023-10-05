@@ -8,11 +8,10 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/pyroscope/ebpf/pyrobpf"
 	"github.com/grafana/pyroscope/ebpf/symtab"
 )
 
-func GetPyPerfPidData(l log.Logger, pid uint32) (*pyrobpf.ProfilePyPidData, error) {
+func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 	mapsFD, err := os.Open(fmt.Sprintf("/proc/%d/maps", pid))
 	if err != nil {
 		return nil, fmt.Errorf("reading proc maps %d: %w", pid, err)
@@ -59,7 +58,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*pyrobpf.ProfilePyPidData, erro
 		return nil, fmt.Errorf("reading symbols from elf %s: %w", pythonPath, err)
 	}
 
-	data := &pyrobpf.ProfilePyPidData{}
+	data := &PerfPyPidData{}
 	var (
 		autoTLSkeyAddr, pyRuntimeAddr uint64
 	)
@@ -106,7 +105,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*pyrobpf.ProfilePyPidData, erro
 		return nil, fmt.Errorf("broken offsets %+v %+v", offsets, version)
 	}
 
-	data.Offsets = pyrobpf.ProfilePyOffsetConfig{
+	data.Offsets = PerfPyOffsetConfig{
 		PyThreadStateFrame:            offsets.PyThreadState_frame,
 		PyThreadStateCframe:           offsets.PyThreadState_cframe,
 		PyCFrameCurrentFrame:          offsets.PyCFrame_current_frame,

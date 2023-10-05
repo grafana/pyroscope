@@ -5,6 +5,7 @@
 #include "bpf_helpers.h"
 
 #include "pthread.bpf.h"
+#include "stacks.h"
 
 
 #define PYTHON_STACK_FRAMES_PER_PROG 25

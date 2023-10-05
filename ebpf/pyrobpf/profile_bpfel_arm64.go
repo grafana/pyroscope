@@ -82,6 +82,7 @@ type ProfileMapSpecs struct {
 	Counts *ebpf.MapSpec `ebpf:"counts"`
 	Events *ebpf.MapSpec `ebpf:"events"`
 	Pids   *ebpf.MapSpec `ebpf:"pids"`
+	Progs  *ebpf.MapSpec `ebpf:"progs"`
 	Stacks *ebpf.MapSpec `ebpf:"stacks"`
 }
 
@@ -107,6 +108,7 @@ type ProfileMaps struct {
 	Counts *ebpf.Map `ebpf:"counts"`
 	Events *ebpf.Map `ebpf:"events"`
 	Pids   *ebpf.Map `ebpf:"pids"`
+	Progs  *ebpf.Map `ebpf:"progs"`
 	Stacks *ebpf.Map `ebpf:"stacks"`
 }
 
@@ -115,6 +117,7 @@ func (m *ProfileMaps) Close() error {
 		m.Counts,
 		m.Events,
 		m.Pids,
+		m.Progs,
 		m.Stacks,
 	)
 }
