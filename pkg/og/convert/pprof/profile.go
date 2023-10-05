@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"strings"
+	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/prometheus/prometheus/model/labels"
@@ -94,8 +95,11 @@ func (p *RawProfile) isDotnetspy(md ingestion.Metadata) bool {
 func fixTime(profile *pprof.Profile, md ingestion.Metadata) {
 	// for old versions of pyspy, rbspy, pyroscope-rs
 	// https://github.com/grafana/pyroscope-rs/pull/134
-	profile.TimeNanos = md.StartTime.UnixNano()
-	profile.DurationNanos = md.EndTime.Sub(md.StartTime).Nanoseconds()
+	// profile.TimeNanos can be in microseconds
+	x := time.Unix(0, profile.TimeNanos)
+	if x.IsZero() || x.Year() == 1970 {
+		profile.TimeNanos = md.StartTime.UnixNano()
+	}
 }
 
 func (p *RawProfile) Parse(_ context.Context, _ storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
