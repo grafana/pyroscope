@@ -8,10 +8,12 @@ package block
 import (
 	"bytes"
 	"context"
+	"os"
 	"path"
 	"strings"
 	"testing"
 
+	"github.com/go-kit/log"
 	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -335,4 +337,26 @@ func TestBucketWithGlobalMarkers_ShouldWorkCorrectlyWithBucketMetrics(t *testing
 		"objstore_bucket_operations_total",
 		"objstore_bucket_operation_failures_total",
 	))
+}
+
+func TestPhlareDBGlobalMarker(t *testing.T) {
+	// Create a mocked block deletion mark in the global location.
+	bkt, _ := objstore_testutil.NewFilesystemBucket(t, context.Background(), t.TempDir())
+	bkt = BucketWithGlobalMarkers(bkt)
+
+	bkt = objstore.NewTenantBucketClient("foo-1", bkt, nil)
+
+	id := generateULID()
+
+	err := MarkForDeletion(context.Background(), log.NewLogfmtLogger(os.Stderr), bkt, id, "foo", prometheus.NewCounter(prometheus.CounterOpts{}))
+	require.NoError(t, err)
+
+	ok, err := bkt.Exists(context.Background(), DeletionMarkFilepath(id))
+
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	ok, err = bkt.Exists(context.Background(), path.Join(id.String(), DeletionMarkFilename))
+	require.NoError(t, err)
+	require.True(t, ok)
 }

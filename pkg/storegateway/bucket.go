@@ -176,15 +176,7 @@ func (bs *BucketStore) addBlock(ctx context.Context, meta *block.Meta) (err erro
 	b, err := func() (*Block, error) {
 		bs.blocksMx.Lock()
 		defer bs.blocksMx.Unlock()
-		// fetch the meta from the bucket
-		r, err := bs.bucket.Get(ctx, path.Join(meta.ULID.String(), block.MetaFilename))
-		if err != nil {
-			return nil, errors.Wrap(err, "get meta")
-		}
-		meta, err := block.Read(r)
-		if err != nil {
-			return nil, errors.Wrap(err, "read meta")
-		}
+
 		b, err := bs.createBlock(ctx, meta)
 		if err != nil {
 			return nil, errors.Wrap(err, "load block from disk")
