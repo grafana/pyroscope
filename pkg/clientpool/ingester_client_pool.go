@@ -35,7 +35,7 @@ func (cfg *PoolConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 
 func NewIngesterPool(cfg PoolConfig, ring ring.ReadRing, factory ring_client.PoolFactory, clientsMetric prometheus.Gauge, logger log.Logger, options ...connect.ClientOption) *ring_client.Pool {
 	if factory == nil {
-		factory = IngesterPoolFactoryFn(options...)
+		factory = newIngesterPoolFactory(options...)
 	}
 	poolCfg := ring_client.PoolConfig{
 		CheckInterval:      cfg.ClientCleanupPeriod,
@@ -46,18 +46,24 @@ func NewIngesterPool(cfg PoolConfig, ring ring.ReadRing, factory ring_client.Poo
 	return ring_client.NewPool("ingester", poolCfg, ring_client.NewRingServiceDiscovery(ring), factory, clientsMetric, logger)
 }
 
-func IngesterPoolFactoryFn(options ...connect.ClientOption) ring_client.PoolFactory {
-	return func(addr string) (ring_client.PoolClient, error) {
-		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			return nil, err
-		}
-		return &ingesterPoolClient{
-			IngesterServiceClient: ingesterv1connect.NewIngesterServiceClient(util.InstrumentedHTTPClient(), "http://"+addr, options...),
-			HealthClient:          grpc_health_v1.NewHealthClient(conn),
-			Closer:                conn,
-		}, nil
+type ingesterPoolFactory struct {
+	options []connect.ClientOption
+}
+
+func newIngesterPoolFactory(options ...connect.ClientOption) ring_client.PoolFactory {
+	return &ingesterPoolFactory{options: options}
+}
+
+func (f *ingesterPoolFactory) FromInstance(inst ring.InstanceDesc) (ring_client.PoolClient, error) {
+	conn, err := grpc.Dial(inst.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
 	}
+	return &ingesterPoolClient{
+		IngesterServiceClient: ingesterv1connect.NewIngesterServiceClient(util.InstrumentedHTTPClient(), "http://"+inst.Addr, f.options...),
+		HealthClient:          grpc_health_v1.NewHealthClient(conn),
+		Closer:                conn,
+	}, nil
 }
 
 type ingesterPoolClient struct {
