@@ -115,7 +115,7 @@ func ingest(profiles chan *pushv1.PushRequest) {
 	if err != nil {
 		panic(err)
 	}
-	client := pushv1connect.NewPusherServiceClient(httpClient, "http://localhost:4100")
+	client := pushv1connect.NewPusherServiceClient(httpClient, "http://localhost:4040")
 
 	for {
 		it := <-profiles
@@ -156,9 +156,6 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 				KeepRounds: 3,
 			},
 			Metrics: ms,
-			SymbolOptions: symtab.SymbolOptions{
-				GoTableFallback: true,
-			},
 		},
 	}
 }

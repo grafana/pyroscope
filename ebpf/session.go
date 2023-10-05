@@ -146,10 +146,10 @@ func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value ui
 		return err
 	}
 
-	err = s.collectRegularProfile(cb)
-	if err != nil {
-		return err
-	}
+	//err = s.collectRegularProfile(cb)
+	//if err != nil {
+	//	return err
+	//}
 
 	return nil
 }

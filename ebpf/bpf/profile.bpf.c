@@ -4,7 +4,7 @@
 #include "bpf_helpers.h"
 #include "bpf_tracing.h"
 #include "profile.bpf.h"
-#include "pyperf.bpf.c"
+//#include "pyperf.bpf.c"
 
 
 SEC("perf_event")
@@ -40,7 +40,7 @@ int do_perf_event(struct bpf_perf_event_data *ctx) {
     }
 
     if (config->type == PROFILING_TYPE_PYTHON) {
-        pyperf_collect_impl(ctx, (pid_t) tgid, config->collect_kernel);
+        //pyperf_collect_impl(ctx, (pid_t) tgid, config->collect_kernel);
         return 0;
     }
 
