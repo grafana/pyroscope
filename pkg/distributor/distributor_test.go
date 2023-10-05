@@ -347,7 +347,7 @@ func Test_Sessions_Limit(t *testing.T) {
 			d, err := New(
 				Config{DistributorRing: ringConfig},
 				testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
-				func(addr string) (client.PoolClient, error) { return ing, nil },
+				&poolFactory{f: func(addr string) (client.PoolClient, error) { return ing, nil }},
 				validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
 					l := validation.MockDefaultLimits()
 					l.MaxSessionsPerSeries = tc.maxSessions
