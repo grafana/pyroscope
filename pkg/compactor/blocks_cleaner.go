@@ -274,7 +274,7 @@ func (c *BlocksCleaner) deleteRemainingData(ctx context.Context, userBucket objs
 
 // deleteUserMarkedForDeletion removes blocks and remaining data for tenant marked for deletion.
 func (c *BlocksCleaner) deleteUserMarkedForDeletion(ctx context.Context, userID string, userLogger log.Logger) error {
-	userBucket := objstore.NewUserBucketClient(userID, c.bucketClient, c.cfgProvider)
+	userBucket := objstore.NewTenantBucketClient(userID, c.bucketClient, c.cfgProvider)
 
 	level.Info(userLogger).Log("msg", "deleting blocks for tenant marked for deletion")
 
@@ -367,7 +367,7 @@ func (c *BlocksCleaner) deleteUserMarkedForDeletion(ctx context.Context, userID 
 }
 
 func (c *BlocksCleaner) cleanUser(ctx context.Context, userID string, userLogger log.Logger) (returnErr error) {
-	userBucket := objstore.NewUserBucketClient(userID, c.bucketClient, c.cfgProvider)
+	userBucket := objstore.NewTenantBucketClient(userID, c.bucketClient, c.cfgProvider)
 	startTime := time.Now()
 
 	level.Info(userLogger).Log("msg", "started blocks cleanup and maintenance")

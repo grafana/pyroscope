@@ -47,7 +47,7 @@ type BucketStore struct {
 func NewBucketStore(bucket phlareobj.Bucket, fetcher block.MetadataFetcher, tenantID string, syncDir string, logger log.Logger, Metrics *Metrics) (*BucketStore, error) {
 	s := &BucketStore{
 		fetcher:  fetcher,
-		bucket:   phlareobj.NewPrefixedBucket(bucket, tenantID+"/phlaredb"),
+		bucket:   phlareobj.NewTenantBucketClient(tenantID, bucket, nil),
 		tenantID: tenantID,
 		syncDir:  syncDir,
 		logger:   logger,

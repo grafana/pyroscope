@@ -274,7 +274,7 @@ func TestBucketWithGlobalMarkers_ShouldWorkCorrectlyWithBucketMetrics(t *testing
 	// user prefix.
 	bkt, _ := objstore_testutil.NewFilesystemBucket(t, ctx, t.TempDir())
 	bkt = BucketWithGlobalMarkers(bkt)
-	userBkt := objstore.NewUserBucketClient("user-1", bkt, nil)
+	userBkt := objstore.NewTenantBucketClient("user-1", bkt, nil)
 
 	reader, err := userBkt.Get(ctx, "does-not-exist")
 	require.Error(t, err)

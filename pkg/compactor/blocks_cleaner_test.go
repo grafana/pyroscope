@@ -78,12 +78,12 @@ func testBlocksCleanerWithOptions(t *testing.T, options testBlocksCleanerOptions
 	block6 := createDBBlock(t, bucketClient, "user-1", 40, 50, 2, nil)
 	block7 := createDBBlock(t, bucketClient, "user-2", 10, 20, 2, nil)
 	block8 := createDBBlock(t, bucketClient, "user-2", 40, 50, 2, nil)
-	createDeletionMark(t, bucketClient, "user-1", block2, now.Add(-deletionDelay).Add(time.Hour))          // Block hasn't reached the deletion threshold yet.
-	createDeletionMark(t, bucketClient, "user-1", block3, now.Add(-deletionDelay).Add(-time.Hour))         // Block reached the deletion threshold.
-	createDeletionMark(t, bucketClient, "user-1", block4, now.Add(-deletionDelay).Add(time.Hour))          // Partial block hasn't reached the deletion threshold yet.
-	createDeletionMark(t, bucketClient, "user-1", block5, now.Add(-deletionDelay).Add(-time.Hour))         // Partial block reached the deletion threshold.
-	require.NoError(t, bucketClient.Delete(ctx, path.Join("user-1", block6.String(), block.MetaFilename))) // Partial block without deletion mark.
-	createDeletionMark(t, bucketClient, "user-2", block7, now.Add(-deletionDelay).Add(-time.Hour))         // Block reached the deletion threshold.
+	createDeletionMark(t, bucketClient, "user-1", block2, now.Add(-deletionDelay).Add(time.Hour))                      // Block hasn't reached the deletion threshold yet.
+	createDeletionMark(t, bucketClient, "user-1", block3, now.Add(-deletionDelay).Add(-time.Hour))                     // Block reached the deletion threshold.
+	createDeletionMark(t, bucketClient, "user-1", block4, now.Add(-deletionDelay).Add(time.Hour))                      // Partial block hasn't reached the deletion threshold yet.
+	createDeletionMark(t, bucketClient, "user-1", block5, now.Add(-deletionDelay).Add(-time.Hour))                     // Partial block reached the deletion threshold.
+	require.NoError(t, bucketClient.Delete(ctx, path.Join("user-1", "phlaredb", block6.String(), block.MetaFilename))) // Partial block without deletion mark.
+	createDeletionMark(t, bucketClient, "user-2", block7, now.Add(-deletionDelay).Add(-time.Hour))                     // Block reached the deletion threshold.
 
 	// Blocks for user-3, marked for deletion.
 	require.NoError(t, bucket.WriteTenantDeletionMark(context.Background(), bucketClient, "user-3", nil, bucket.NewTenantDeletionMark(time.Now())))
@@ -117,30 +117,30 @@ func testBlocksCleanerWithOptions(t *testing.T, options testBlocksCleanerOptions
 	}{
 		// Check the storage to ensure only the block which has reached the deletion threshold
 		// has been effectively deleted.
-		{path: path.Join("user-1", block1.String(), block.MetaFilename), expectedExists: true},
-		{path: path.Join("user-1", block3.String(), block.MetaFilename), expectedExists: false},
-		{path: path.Join("user-2", block7.String(), block.MetaFilename), expectedExists: false},
-		{path: path.Join("user-2", block8.String(), block.MetaFilename), expectedExists: true},
+		{path: path.Join("user-1", "phlaredb/", block1.String(), block.MetaFilename), expectedExists: true},
+		{path: path.Join("user-1", "phlaredb/", block3.String(), block.MetaFilename), expectedExists: false},
+		{path: path.Join("user-2", "phlaredb/", block7.String(), block.MetaFilename), expectedExists: false},
+		{path: path.Join("user-2", "phlaredb/", block8.String(), block.MetaFilename), expectedExists: true},
 		// Should not delete a block with deletion mark who hasn't reached the deletion threshold yet.
-		{path: path.Join("user-1", block2.String(), block.MetaFilename), expectedExists: true},
-		{path: path.Join("user-1", block.DeletionMarkFilepath(block2)), expectedExists: true},
+		{path: path.Join("user-1", "phlaredb/", block2.String(), block.MetaFilename), expectedExists: true},
+		{path: path.Join("user-1", "phlaredb/", block.DeletionMarkFilepath(block2)), expectedExists: true},
 		// Should delete a partial block with deletion mark who hasn't reached the deletion threshold yet.
-		{path: path.Join("user-1", block4.String(), block.DeletionMarkFilename), expectedExists: false},
-		{path: path.Join("user-1", block.DeletionMarkFilepath(block4)), expectedExists: false},
+		{path: path.Join("user-1", "phlaredb/", block4.String(), block.DeletionMarkFilename), expectedExists: false},
+		{path: path.Join("user-1", "phlaredb/", block.DeletionMarkFilepath(block4)), expectedExists: false},
 		// Should delete a partial block with deletion mark who has reached the deletion threshold.
-		{path: path.Join("user-1", block5.String(), block.DeletionMarkFilename), expectedExists: false},
-		{path: path.Join("user-1", block.DeletionMarkFilepath(block5)), expectedExists: false},
+		{path: path.Join("user-1", "phlaredb/", block5.String(), block.DeletionMarkFilename), expectedExists: false},
+		{path: path.Join("user-1", "phlaredb/", block.DeletionMarkFilepath(block5)), expectedExists: false},
 		// Should not delete a partial block without deletion mark.
-		{path: path.Join("user-1", block6.String(), block.IndexFilename), expectedExists: true},
+		{path: path.Join("user-1", "phlaredb/", block6.String(), block.IndexFilename), expectedExists: true},
 		// Should completely delete blocks for user-3, marked for deletion
-		{path: path.Join("user-3", block9.String(), block.MetaFilename), expectedExists: false},
-		{path: path.Join("user-3", block9.String(), block.IndexFilename), expectedExists: false},
-		{path: path.Join("user-3", block10.String(), block.MetaFilename), expectedExists: false},
-		{path: path.Join("user-3", block10.String(), block.IndexFilename), expectedExists: false},
+		{path: path.Join("user-3", "phlaredb/", block9.String(), block.MetaFilename), expectedExists: false},
+		{path: path.Join("user-3", "phlaredb/", block9.String(), block.IndexFilename), expectedExists: false},
+		{path: path.Join("user-3", "phlaredb/", block10.String(), block.MetaFilename), expectedExists: false},
+		{path: path.Join("user-3", "phlaredb/", block10.String(), block.IndexFilename), expectedExists: false},
 		// Tenant deletion mark is not removed.
-		{path: path.Join("user-3", bucket.TenantDeletionMarkPath), expectedExists: true},
+		{path: path.Join("user-3", "phlaredb/", bucket.TenantDeletionMarkPath), expectedExists: true},
 		// User-4 is removed fully.
-		{path: path.Join("user-4", bucket.TenantDeletionMarkPath), expectedExists: options.user4FilesExist},
+		{path: path.Join("user-4", "phlaredb/", bucket.TenantDeletionMarkPath), expectedExists: options.user4FilesExist},
 	} {
 		exists, err := bucketClient.Exists(ctx, tc.path)
 		require.NoError(t, err)
@@ -227,7 +227,7 @@ func TestBlocksCleaner_ShouldContinueOnBlockDeletionFailure(t *testing.T) {
 	// To emulate a failure deleting a block, we wrap the bucket client in a mocked one.
 	bucketClient = &mockBucketFailure{
 		Bucket:         bucketClient,
-		DeleteFailures: []string{path.Join(userID, block3.String(), block.MetaFilename)},
+		DeleteFailures: []string{path.Join(userID, "phlaredb/", block3.String(), block.MetaFilename)},
 	}
 
 	cfg := BlocksCleanerConfig{
@@ -248,10 +248,10 @@ func TestBlocksCleaner_ShouldContinueOnBlockDeletionFailure(t *testing.T) {
 		path           string
 		expectedExists bool
 	}{
-		{path: path.Join(userID, block1.String(), block.MetaFilename), expectedExists: true},
-		{path: path.Join(userID, block2.String(), block.MetaFilename), expectedExists: false},
-		{path: path.Join(userID, block3.String(), block.MetaFilename), expectedExists: true},
-		{path: path.Join(userID, block4.String(), block.MetaFilename), expectedExists: false},
+		{path: path.Join(userID, "phlaredb/", block1.String(), block.MetaFilename), expectedExists: true},
+		{path: path.Join(userID, "phlaredb/", block2.String(), block.MetaFilename), expectedExists: false},
+		{path: path.Join(userID, "phlaredb/", block3.String(), block.MetaFilename), expectedExists: true},
+		{path: path.Join(userID, "phlaredb/", block4.String(), block.MetaFilename), expectedExists: false},
 	} {
 		exists, err := bucketClient.Exists(ctx, tc.path)
 		require.NoError(t, err)
@@ -288,7 +288,7 @@ func TestBlocksCleaner_ShouldRebuildBucketIndexOnCorruptedOne(t *testing.T) {
 	createDeletionMark(t, bucketClient, userID, block3, now.Add(-deletionDelay).Add(time.Hour))
 
 	// Write a corrupted bucket index.
-	require.NoError(t, bucketClient.Upload(ctx, path.Join(userID, bucketindex.IndexCompressedFilename), strings.NewReader("invalid!}")))
+	require.NoError(t, bucketClient.Upload(ctx, path.Join(userID, "phlaredb/", bucketindex.IndexCompressedFilename), strings.NewReader("invalid!}")))
 
 	cfg := BlocksCleanerConfig{
 		DeletionDelay:           deletionDelay,
@@ -308,9 +308,9 @@ func TestBlocksCleaner_ShouldRebuildBucketIndexOnCorruptedOne(t *testing.T) {
 		path           string
 		expectedExists bool
 	}{
-		{path: path.Join(userID, block1.String(), block.MetaFilename), expectedExists: true},
-		{path: path.Join(userID, block2.String(), block.MetaFilename), expectedExists: false},
-		{path: path.Join(userID, block3.String(), block.MetaFilename), expectedExists: true},
+		{path: path.Join(userID, "phlaredb/", block1.String(), block.MetaFilename), expectedExists: true},
+		{path: path.Join(userID, "phlaredb/", block2.String(), block.MetaFilename), expectedExists: false},
+		{path: path.Join(userID, "phlaredb/", block3.String(), block.MetaFilename), expectedExists: true},
 	} {
 		exists, err := bucketClient.Exists(ctx, tc.path)
 		require.NoError(t, err)
@@ -536,7 +536,7 @@ func TestBlocksCleaner_ShouldRemoveBlocksOutsideRetentionPeriod(t *testing.T) {
 	cleaner := NewBlocksCleaner(cfg, bucketClient, bucket.AllTenants, cfgProvider, logger, reg)
 
 	assertBlockExists := func(user string, blockID ulid.ULID, expectExists bool) {
-		exists, err := bucketClient.Exists(ctx, path.Join(user, blockID.String(), block.MetaFilename))
+		exists, err := bucketClient.Exists(ctx, path.Join(user, "phlaredb/", blockID.String(), block.MetaFilename))
 		require.NoError(t, err)
 		assert.Equal(t, expectExists, exists)
 	}
@@ -685,11 +685,11 @@ func TestBlocksCleaner_ShouldRemoveBlocksOutsideRetentionPeriod(t *testing.T) {
 }
 
 func checkBlock(t *testing.T, user string, bucketClient objstore.Bucket, blockID ulid.ULID, metaJSONExists bool, markedForDeletion bool) {
-	exists, err := bucketClient.Exists(context.Background(), path.Join(user, blockID.String(), block.MetaFilename))
+	exists, err := bucketClient.Exists(context.Background(), path.Join(user, "phlaredb/", blockID.String(), block.MetaFilename))
 	require.NoError(t, err)
 	require.Equal(t, metaJSONExists, exists)
 
-	exists, err = bucketClient.Exists(context.Background(), path.Join(user, blockID.String(), block.DeletionMarkFilename))
+	exists, err = bucketClient.Exists(context.Background(), path.Join(user, "phlaredb/", blockID.String(), block.DeletionMarkFilename))
 	require.NoError(t, err)
 	require.Equal(t, markedForDeletion, exists)
 }
@@ -716,7 +716,7 @@ func TestBlocksCleaner_ShouldCleanUpFilesWhenNoMoreBlocksRemain(t *testing.T) {
 	// Create a deletion mark within the deletionDelay period that won't correspond to any block
 	randomULID := ulid.MustNew(ulid.Now(), rand.Reader)
 	createDeletionMark(t, bucketClient, userID, randomULID, now.Add(-deletionDelay).Add(time.Hour))
-	blockDeletionMarkFile := path.Join(userID, block.DeletionMarkFilepath(randomULID))
+	blockDeletionMarkFile := path.Join(userID, "phlaredb/", block.DeletionMarkFilepath(randomULID))
 	exists, err := bucketClient.Exists(ctx, blockDeletionMarkFile)
 	require.NoError(t, err)
 	assert.True(t, exists)
@@ -771,7 +771,7 @@ func TestBlocksCleaner_ShouldRemovePartialBlocksOutsideDelayPeriod(t *testing.T)
 	cleaner := NewBlocksCleaner(cfg, bucketClient, bucket.AllTenants, cfgProvider, logger, reg)
 
 	makeBlockPartial := func(user string, blockID ulid.ULID) {
-		err := bucketClient.Delete(ctx, path.Join(user, blockID.String(), block.MetaFilename))
+		err := bucketClient.Delete(ctx, path.Join(user, "phlaredb/", blockID.String(), block.MetaFilename))
 		require.NoError(t, err)
 	}
 
@@ -841,12 +841,12 @@ func TestBlocksCleaner_ShouldNotRemovePartialBlocksInsideDelayPeriod(t *testing.
 	cleaner := NewBlocksCleaner(cfg, bucketClient, bucket.AllTenants, cfgProvider, logger, reg)
 
 	makeBlockPartial := func(user string, blockID ulid.ULID) {
-		err := bucketClient.Delete(ctx, path.Join(user, blockID.String(), block.MetaFilename))
+		err := bucketClient.Delete(ctx, path.Join(user, "phlaredb/", blockID.String(), block.MetaFilename))
 		require.NoError(t, err)
 	}
 
 	corruptMeta := func(user string, blockID ulid.ULID) {
-		err := bucketClient.Upload(ctx, path.Join(user, blockID.String(), block.MetaFilename), strings.NewReader("corrupted file contents"))
+		err := bucketClient.Upload(ctx, path.Join(user, "phlaredb/", blockID.String(), block.MetaFilename), strings.NewReader("corrupted file contents"))
 		require.NoError(t, err)
 	}
 
@@ -911,7 +911,7 @@ func TestBlocksCleaner_ShouldNotRemovePartialBlocksIfConfiguredDelayIsInvalid(t 
 
 	// Create a partial block.
 	block1 := createDBBlock(t, bucketClient, "user-1", ts(-10), ts(-8), 2, nil)
-	err := bucketClient.Delete(ctx, path.Join("user-1", block1.String(), block.MetaFilename))
+	err := bucketClient.Delete(ctx, path.Join("user-1", "phlaredb/", block1.String(), block.MetaFilename))
 	require.NoError(t, err)
 
 	cfg := BlocksCleanerConfig{
@@ -963,14 +963,14 @@ func TestStalePartialBlockLastModifiedTime(t *testing.T) {
 
 	objectTime := time.Now().Add(-1 * time.Hour).Truncate(time.Second) // ignore milliseconds, as not all filesystems store them.
 	blockID := createDBBlock(t, b, tenantId, objectTime.UnixMilli(), time.Now().UnixMilli(), 2, nil)
-	err := filepath.Walk(filepath.Join(dir, tenantId, blockID.String()), func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(filepath.Join(dir, tenantId, "phlaredb/", blockID.String()), func(path string, info os.FileInfo, err error) error {
 		require.NoError(t, err)
 		require.NoError(t, os.Chtimes(path, objectTime, objectTime))
 		return nil
 	})
 	require.NoError(t, err)
 
-	userBucket := objstore.NewUserBucketClient(tenantId, b, nil)
+	userBucket := objstore.NewTenantBucketClient(tenantId, b, nil)
 
 	emptyBlockID := ulid.ULID{}
 	require.NotEqual(t, blockID, emptyBlockID)

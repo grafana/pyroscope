@@ -419,17 +419,17 @@ func TestMultitenantCompactor_ShouldIncrementCompactionErrorIfFailedToCompactASi
 	userID := "test-user"
 	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{userID}, nil)
-	bucketClient.MockIter(userID+"/", []string{userID + "/01DTVP434PA9VFXSW2JKB3392D", userID + "/01DTW0ZCPDDNV4BV83Q2SV4QAZ"}, nil)
-	bucketClient.MockIter(userID+"/markers/", nil, nil)
-	bucketClient.MockExists(path.Join(userID, bucket.TenantDeletionMarkPath), false, nil)
-	bucketClient.MockGet(userID+"/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
-	bucketClient.MockGet(userID+"/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", "", nil)
-	bucketClient.MockGet(userID+"/01DTVP434PA9VFXSW2JKB3392D/no-compact-mark.json", "", nil)
-	bucketClient.MockGet(userID+"/01DTW0ZCPDDNV4BV83Q2SV4QAZ/meta.json", mockBlockMetaJSON("01DTW0ZCPDDNV4BV83Q2SV4QAZ"), nil)
-	bucketClient.MockGet(userID+"/01DTW0ZCPDDNV4BV83Q2SV4QAZ/deletion-mark.json", "", nil)
-	bucketClient.MockGet(userID+"/01DTW0ZCPDDNV4BV83Q2SV4QAZ/no-compact-mark.json", "", nil)
-	bucketClient.MockGet(userID+"/bucket-index.json.gz", "", nil)
-	bucketClient.MockUpload(userID+"/bucket-index.json.gz", nil)
+	bucketClient.MockIter(userID+"/phlaredb/", []string{userID + "/phlaredb/01DTVP434PA9VFXSW2JKB3392D", userID + "/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ"}, nil)
+	bucketClient.MockIter(userID+"/phlaredb/markers/", nil, nil)
+	bucketClient.MockExists(path.Join(userID, "phlaredb", bucket.TenantDeletionMarkPath), false, nil)
+	bucketClient.MockGet(userID+"/phlaredb/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
+	bucketClient.MockGet(userID+"/phlaredb/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", "", nil)
+	bucketClient.MockGet(userID+"/phlaredb/01DTVP434PA9VFXSW2JKB3392D/no-compact-mark.json", "", nil)
+	bucketClient.MockGet(userID+"/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/meta.json", mockBlockMetaJSON("01DTW0ZCPDDNV4BV83Q2SV4QAZ"), nil)
+	bucketClient.MockGet(userID+"/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/deletion-mark.json", "", nil)
+	bucketClient.MockGet(userID+"/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/no-compact-mark.json", "", nil)
+	bucketClient.MockGet(userID+"/phlaredb/bucket-index.json.gz", "", nil)
+	bucketClient.MockUpload(userID+"/phlaredb/bucket-index.json.gz", nil)
 
 	c, _, tsdbPlannerMock, _, registry := prepare(t, prepareConfig(t), bucketClient)
 	tsdbPlannerMock.On("Plan", mock.Anything, mock.Anything).Return([]*block.Meta{}, errors.New("Failed to plan"))
@@ -468,17 +468,17 @@ func TestMultitenantCompactor_ShouldIncrementCompactionShutdownIfTheContextIsCan
 	userID := "test-user"
 	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{userID}, nil)
-	bucketClient.MockIter(userID+"/", []string{userID + "/01DTVP434PA9VFXSW2JKB3392D", userID + "/01DTW0ZCPDDNV4BV83Q2SV4QAZ"}, nil)
-	bucketClient.MockIter(userID+"/markers/", nil, nil)
-	bucketClient.MockExists(path.Join(userID, bucket.TenantDeletionMarkPath), false, nil)
-	bucketClient.MockGet(userID+"/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
-	bucketClient.MockGet(userID+"/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", "", nil)
-	bucketClient.MockGet(userID+"/01DTVP434PA9VFXSW2JKB3392D/no-compact-mark.json", "", nil)
-	bucketClient.MockGet(userID+"/01DTW0ZCPDDNV4BV83Q2SV4QAZ/meta.json", mockBlockMetaJSON("01DTW0ZCPDDNV4BV83Q2SV4QAZ"), nil)
-	bucketClient.MockGet(userID+"/01DTW0ZCPDDNV4BV83Q2SV4QAZ/deletion-mark.json", "", nil)
-	bucketClient.MockGet(userID+"/01DTW0ZCPDDNV4BV83Q2SV4QAZ/no-compact-mark.json", "", nil)
-	bucketClient.MockGet(userID+"/bucket-index.json.gz", "", nil)
-	bucketClient.MockUpload(userID+"/bucket-index.json.gz", nil)
+	bucketClient.MockIter(userID+"/phlaredb/markers/", nil, nil)
+	bucketClient.MockIter(userID+"/phlaredb/", []string{userID + "/phlaredb/01DTVP434PA9VFXSW2JKB3392D", userID + "/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ"}, nil)
+	bucketClient.MockExists(path.Join(userID, "phlaredb/", bucket.TenantDeletionMarkPath), false, nil)
+	bucketClient.MockGet(userID+"/phlaredb/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
+	bucketClient.MockGet(userID+"/phlaredb/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", "", nil)
+	bucketClient.MockGet(userID+"/phlaredb/01DTVP434PA9VFXSW2JKB3392D/no-compact-mark.json", "", nil)
+	bucketClient.MockGet(userID+"/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/meta.json", mockBlockMetaJSON("01DTW0ZCPDDNV4BV83Q2SV4QAZ"), nil)
+	bucketClient.MockGet(userID+"/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/deletion-mark.json", "", nil)
+	bucketClient.MockGet(userID+"/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/no-compact-mark.json", "", nil)
+	bucketClient.MockGet(userID+"/phlaredb/bucket-index.json.gz", "", nil)
+	bucketClient.MockUpload(userID+"/phlaredb/bucket-index.json.gz", nil)
 
 	c, _, tsdbPlannerMock, logs, registry := prepare(t, prepareConfig(t), bucketClient)
 	t.Cleanup(func() {
@@ -521,29 +521,29 @@ func TestMultitenantCompactor_ShouldIterateOverUsersAndRunCompaction(t *testing.
 	// Mock the bucket to contain two users, each one with two blocks (to make sure that grouper doesn't skip them).
 	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1", "user-2"}, nil)
-	bucketClient.MockExists(path.Join("user-1", bucket.TenantDeletionMarkPath), false, nil)
-	bucketClient.MockExists(path.Join("user-2", bucket.TenantDeletionMarkPath), false, nil)
-	bucketClient.MockIter("user-1/", []string{"user-1/01DTVP434PA9VFXSW2JKB3392D", "user-1/01FS51A7GQ1RQWV35DBVYQM4KF"}, nil)
-	bucketClient.MockIter("user-2/", []string{"user-2/01DTW0ZCPDDNV4BV83Q2SV4QAZ", "user-2/01FRSF035J26D6CGX7STCSD1KG"}, nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/no-compact-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01FS51A7GQ1RQWV35DBVYQM4KF/meta.json", mockBlockMetaJSON("01FS51A7GQ1RQWV35DBVYQM4KF"), nil)
-	bucketClient.MockGet("user-1/01FS51A7GQ1RQWV35DBVYQM4KF/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01FS51A7GQ1RQWV35DBVYQM4KF/no-compact-mark.json", "", nil)
+	bucketClient.MockExists(path.Join("user-1", "phlaredb/", bucket.TenantDeletionMarkPath), false, nil)
+	bucketClient.MockExists(path.Join("user-2", "phlaredb/", bucket.TenantDeletionMarkPath), false, nil)
+	bucketClient.MockIter("user-1/phlaredb/", []string{"user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D", "user-1/phlaredb/01FS51A7GQ1RQWV35DBVYQM4KF"}, nil)
+	bucketClient.MockIter("user-2/phlaredb/", []string{"user-2/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ", "user-2/phlaredb/01FRSF035J26D6CGX7STCSD1KG"}, nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/no-compact-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01FS51A7GQ1RQWV35DBVYQM4KF/meta.json", mockBlockMetaJSON("01FS51A7GQ1RQWV35DBVYQM4KF"), nil)
+	bucketClient.MockGet("user-1/phlaredb/01FS51A7GQ1RQWV35DBVYQM4KF/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01FS51A7GQ1RQWV35DBVYQM4KF/no-compact-mark.json", "", nil)
 
-	bucketClient.MockGet("user-2/01DTW0ZCPDDNV4BV83Q2SV4QAZ/meta.json", mockBlockMetaJSON("01DTW0ZCPDDNV4BV83Q2SV4QAZ"), nil)
-	bucketClient.MockGet("user-2/01DTW0ZCPDDNV4BV83Q2SV4QAZ/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-2/01DTW0ZCPDDNV4BV83Q2SV4QAZ/no-compact-mark.json", "", nil)
-	bucketClient.MockGet("user-2/01FRSF035J26D6CGX7STCSD1KG/meta.json", mockBlockMetaJSON("01FRSF035J26D6CGX7STCSD1KG"), nil)
-	bucketClient.MockGet("user-2/01FRSF035J26D6CGX7STCSD1KG/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-2/01FRSF035J26D6CGX7STCSD1KG/no-compact-mark.json", "", nil)
-	bucketClient.MockGet("user-1/bucket-index.json.gz", "", nil)
-	bucketClient.MockGet("user-2/bucket-index.json.gz", "", nil)
-	bucketClient.MockIter("user-1/markers/", nil, nil)
-	bucketClient.MockIter("user-2/markers/", nil, nil)
-	bucketClient.MockUpload("user-1/bucket-index.json.gz", nil)
-	bucketClient.MockUpload("user-2/bucket-index.json.gz", nil)
+	bucketClient.MockGet("user-2/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/meta.json", mockBlockMetaJSON("01DTW0ZCPDDNV4BV83Q2SV4QAZ"), nil)
+	bucketClient.MockGet("user-2/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-2/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/no-compact-mark.json", "", nil)
+	bucketClient.MockGet("user-2/phlaredb/01FRSF035J26D6CGX7STCSD1KG/meta.json", mockBlockMetaJSON("01FRSF035J26D6CGX7STCSD1KG"), nil)
+	bucketClient.MockGet("user-2/phlaredb/01FRSF035J26D6CGX7STCSD1KG/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-2/phlaredb/01FRSF035J26D6CGX7STCSD1KG/no-compact-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/bucket-index.json.gz", "", nil)
+	bucketClient.MockGet("user-2/phlaredb/bucket-index.json.gz", "", nil)
+	bucketClient.MockIter("user-1/phlaredb/markers/", nil, nil)
+	bucketClient.MockIter("user-2/phlaredb/markers/", nil, nil)
+	bucketClient.MockUpload("user-1/phlaredb/bucket-index.json.gz", nil)
+	bucketClient.MockUpload("user-2/phlaredb/bucket-index.json.gz", nil)
 
 	c, _, tsdbPlanner, logs, registry := prepare(t, prepareConfig(t), bucketClient)
 
@@ -666,23 +666,23 @@ func TestMultitenantCompactor_ShouldStopCompactingTenantOnReachingMaxCompactionT
 	// and since its planning will take longer than maxCompactionTime, we stop compactions early.
 	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1"}, nil)
-	bucketClient.MockExists(path.Join("user-1", bucket.TenantDeletionMarkPath), false, nil)
-	bucketClient.MockIter("user-1/", []string{"user-1/01DTVP434PA9VFXSW2JKB3392D", "user-1/01FN3VCQV5X342W2ZKMQQXAZRX", "user-1/01FS51A7GQ1RQWV35DBVYQM4KF", "user-1/01FRQGQB7RWQ2TS0VWA82QTPXE"}, nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSONWithTimeRangeAndLabels("01DTVP434PA9VFXSW2JKB3392D", 1574776800000, 1574784000000, map[string]string{"A": "B"}), nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/no-compact-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01FS51A7GQ1RQWV35DBVYQM4KF/meta.json", mockBlockMetaJSONWithTimeRangeAndLabels("01FS51A7GQ1RQWV35DBVYQM4KF", 1574776800000, 1574784000000, map[string]string{"A": "B"}), nil)
-	bucketClient.MockGet("user-1/01FS51A7GQ1RQWV35DBVYQM4KF/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01FS51A7GQ1RQWV35DBVYQM4KF/no-compact-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01FN3VCQV5X342W2ZKMQQXAZRX/meta.json", mockBlockMetaJSONWithTimeRangeAndLabels("01FN3VCQV5X342W2ZKMQQXAZRX", 1574776800000, 1574784000000, map[string]string{"C": "D"}), nil)
-	bucketClient.MockGet("user-1/01FN3VCQV5X342W2ZKMQQXAZRX/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01FN3VCQV5X342W2ZKMQQXAZRX/no-compact-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01FRQGQB7RWQ2TS0VWA82QTPXE/meta.json", mockBlockMetaJSONWithTimeRangeAndLabels("01FRQGQB7RWQ2TS0VWA82QTPXE", 1574776800000, 1574784000000, map[string]string{"C": "D"}), nil)
-	bucketClient.MockGet("user-1/01FRQGQB7RWQ2TS0VWA82QTPXE/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01FRQGQB7RWQ2TS0VWA82QTPXE/no-compact-mark.json", "", nil)
-	bucketClient.MockGet("user-1/bucket-index.json.gz", "", nil)
-	bucketClient.MockIter("user-1/markers/", nil, nil)
-	bucketClient.MockUpload("user-1/bucket-index.json.gz", nil)
+	bucketClient.MockExists(path.Join("user-1", "phlaredb/", bucket.TenantDeletionMarkPath), false, nil)
+	bucketClient.MockIter("user-1/phlaredb/", []string{"user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D", "user-1/phlaredb/01FN3VCQV5X342W2ZKMQQXAZRX", "user-1/phlaredb/01FS51A7GQ1RQWV35DBVYQM4KF", "user-1/phlaredb/01FRQGQB7RWQ2TS0VWA82QTPXE"}, nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSONWithTimeRangeAndLabels("01DTVP434PA9VFXSW2JKB3392D", 1574776800000, 1574784000000, map[string]string{"A": "B"}), nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/no-compact-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01FS51A7GQ1RQWV35DBVYQM4KF/meta.json", mockBlockMetaJSONWithTimeRangeAndLabels("01FS51A7GQ1RQWV35DBVYQM4KF", 1574776800000, 1574784000000, map[string]string{"A": "B"}), nil)
+	bucketClient.MockGet("user-1/phlaredb/01FS51A7GQ1RQWV35DBVYQM4KF/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01FS51A7GQ1RQWV35DBVYQM4KF/no-compact-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01FN3VCQV5X342W2ZKMQQXAZRX/meta.json", mockBlockMetaJSONWithTimeRangeAndLabels("01FN3VCQV5X342W2ZKMQQXAZRX", 1574776800000, 1574784000000, map[string]string{"C": "D"}), nil)
+	bucketClient.MockGet("user-1/phlaredb/01FN3VCQV5X342W2ZKMQQXAZRX/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01FN3VCQV5X342W2ZKMQQXAZRX/no-compact-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01FRQGQB7RWQ2TS0VWA82QTPXE/meta.json", mockBlockMetaJSONWithTimeRangeAndLabels("01FRQGQB7RWQ2TS0VWA82QTPXE", 1574776800000, 1574784000000, map[string]string{"C": "D"}), nil)
+	bucketClient.MockGet("user-1/phlaredb/01FRQGQB7RWQ2TS0VWA82QTPXE/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01FRQGQB7RWQ2TS0VWA82QTPXE/no-compact-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/bucket-index.json.gz", "", nil)
+	bucketClient.MockIter("user-1/phlaredb/markers/", nil, nil)
+	bucketClient.MockUpload("user-1/phlaredb/bucket-index.json.gz", nil)
 
 	cfg := prepareConfig(t)
 	cfg.MaxCompactionTime = 500 * time.Millisecond // Enough time to start one compaction. We will make it last longer than this.
@@ -736,35 +736,35 @@ func TestMultitenantCompactor_ShouldNotCompactBlocksMarkedForDeletion(t *testing
 	// Mock the bucket to contain two users, each one with one block.
 	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1"}, nil)
-	bucketClient.MockIter("user-1/", []string{"user-1/01DTVP434PA9VFXSW2JKB3392D", "user-1/01DTW0ZCPDDNV4BV83Q2SV4QAZ"}, nil)
-	bucketClient.MockExists(path.Join("user-1", bucket.TenantDeletionMarkPath), false, nil)
+	bucketClient.MockIter("user-1/phlaredb/", []string{"user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D", "user-1/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ"}, nil)
+	bucketClient.MockExists(path.Join("user-1", "phlaredb/", bucket.TenantDeletionMarkPath), false, nil)
 
 	// Block that has just been marked for deletion. It will not be deleted just yet, and it also will not be compacted.
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", mockDeletionMarkJSON("01DTVP434PA9VFXSW2JKB3392D", time.Now()), nil)
-	bucketClient.MockGet("user-1/markers/01DTVP434PA9VFXSW2JKB3392D-deletion-mark.json", mockDeletionMarkJSON("01DTVP434PA9VFXSW2JKB3392D", time.Now()), nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", mockDeletionMarkJSON("01DTVP434PA9VFXSW2JKB3392D", time.Now()), nil)
+	bucketClient.MockGet("user-1/phlaredb/markers/01DTVP434PA9VFXSW2JKB3392D-deletion-mark.json", mockDeletionMarkJSON("01DTVP434PA9VFXSW2JKB3392D", time.Now()), nil)
 
 	// This block will be deleted by cleaner.
-	bucketClient.MockGet("user-1/01DTW0ZCPDDNV4BV83Q2SV4QAZ/meta.json", mockBlockMetaJSON("01DTW0ZCPDDNV4BV83Q2SV4QAZ"), nil)
-	bucketClient.MockGet("user-1/01DTW0ZCPDDNV4BV83Q2SV4QAZ/deletion-mark.json", mockDeletionMarkJSON("01DTW0ZCPDDNV4BV83Q2SV4QAZ", time.Now().Add(-cfg.DeletionDelay)), nil)
-	bucketClient.MockGet("user-1/markers/01DTW0ZCPDDNV4BV83Q2SV4QAZ-deletion-mark.json", mockDeletionMarkJSON("01DTW0ZCPDDNV4BV83Q2SV4QAZ", time.Now().Add(-cfg.DeletionDelay)), nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/meta.json", mockBlockMetaJSON("01DTW0ZCPDDNV4BV83Q2SV4QAZ"), nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/deletion-mark.json", mockDeletionMarkJSON("01DTW0ZCPDDNV4BV83Q2SV4QAZ", time.Now().Add(-cfg.DeletionDelay)), nil)
+	bucketClient.MockGet("user-1/phlaredb/markers/01DTW0ZCPDDNV4BV83Q2SV4QAZ-deletion-mark.json", mockDeletionMarkJSON("01DTW0ZCPDDNV4BV83Q2SV4QAZ", time.Now().Add(-cfg.DeletionDelay)), nil)
 
-	bucketClient.MockIter("user-1/01DTW0ZCPDDNV4BV83Q2SV4QAZ", []string{
-		"user-1/01DTW0ZCPDDNV4BV83Q2SV4QAZ/meta.json",
-		"user-1/01DTW0ZCPDDNV4BV83Q2SV4QAZ/deletion-mark.json",
+	bucketClient.MockIter("user-1/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ", []string{
+		"user-1/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/meta.json",
+		"user-1/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/deletion-mark.json",
 	}, nil)
 
-	bucketClient.MockIter("user-1/markers/", []string{
-		"user-1/markers/01DTVP434PA9VFXSW2JKB3392D-deletion-mark.json",
-		"user-1/markers/01DTW0ZCPDDNV4BV83Q2SV4QAZ-deletion-mark.json",
+	bucketClient.MockIter("user-1/phlaredb/markers/", []string{
+		"user-1/phlaredb/markers/01DTVP434PA9VFXSW2JKB3392D-deletion-mark.json",
+		"user-1/phlaredb/markers/01DTW0ZCPDDNV4BV83Q2SV4QAZ-deletion-mark.json",
 	}, nil)
 
-	bucketClient.MockDelete("user-1/01DTW0ZCPDDNV4BV83Q2SV4QAZ/meta.json", nil)
-	bucketClient.MockDelete("user-1/01DTW0ZCPDDNV4BV83Q2SV4QAZ/deletion-mark.json", nil)
-	bucketClient.MockDelete("user-1/markers/01DTW0ZCPDDNV4BV83Q2SV4QAZ-deletion-mark.json", nil)
-	bucketClient.MockDelete("user-1/01DTW0ZCPDDNV4BV83Q2SV4QAZ", nil)
-	bucketClient.MockGet("user-1/bucket-index.json.gz", "", nil)
-	bucketClient.MockUpload("user-1/bucket-index.json.gz", nil)
+	bucketClient.MockDelete("user-1/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/meta.json", nil)
+	bucketClient.MockDelete("user-1/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/deletion-mark.json", nil)
+	bucketClient.MockDelete("user-1/phlaredb/markers/01DTW0ZCPDDNV4BV83Q2SV4QAZ-deletion-mark.json", nil)
+	bucketClient.MockDelete("user-1/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ", nil)
+	bucketClient.MockGet("user-1/phlaredb/bucket-index.json.gz", "", nil)
+	bucketClient.MockUpload("user-1/phlaredb/bucket-index.json.gz", nil)
 
 	c, _, tsdbPlanner, logs, registry := prepare(t, cfg, bucketClient)
 
@@ -854,18 +854,18 @@ func TestMultitenantCompactor_ShouldNotCompactBlocksMarkedForNoCompaction(t *tes
 	// Mock the bucket to contain one user with a block marked for no-compaction.
 	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1"}, nil)
-	bucketClient.MockIter("user-1/", []string{"user-1/01DTVP434PA9VFXSW2JKB3392D"}, nil)
-	bucketClient.MockExists(path.Join("user-1", bucket.TenantDeletionMarkPath), false, nil)
+	bucketClient.MockIter("user-1/phlaredb/", []string{"user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D"}, nil)
+	bucketClient.MockExists(path.Join("user-1", "phlaredb/", bucket.TenantDeletionMarkPath), false, nil)
 
 	// Block that is marked for no compaction. It will be ignored.
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/no-compact-mark.json", `{"id":"01DTVP434PA9VFXSW2JKB3392D","version":1,"details":"details","no_compact_time":1637757932,"reason":"reason"}`, nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/no-compact-mark.json", `{"id":"01DTVP434PA9VFXSW2JKB3392D","version":1,"details":"details","no_compact_time":1637757932,"reason":"reason"}`, nil)
 
-	bucketClient.MockIter("user-1/markers/", []string{"user-1/markers/01DTVP434PA9VFXSW2JKB3392D-no-compact-mark.json"}, nil)
+	bucketClient.MockIter("user-1/phlaredb/markers/", []string{"user-1/markers/01DTVP434PA9VFXSW2JKB3392D-no-compact-mark.json"}, nil)
 
-	bucketClient.MockGet("user-1/bucket-index.json.gz", "", nil)
-	bucketClient.MockUpload("user-1/bucket-index.json.gz", nil)
+	bucketClient.MockGet("user-1/phlaredb/bucket-index.json.gz", "", nil)
+	bucketClient.MockUpload("user-1/phlaredb/bucket-index.json.gz", nil)
 
 	c, _, tsdbPlanner, logs, _ := prepare(t, cfg, bucketClient)
 
@@ -908,19 +908,19 @@ func TestMultitenantCompactor_ShouldNotCompactBlocksForUsersMarkedForDeletion(t 
 	// Mock the bucket to contain two users, each one with one block.
 	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1"}, nil)
-	bucketClient.MockIter("user-1/", []string{"user-1/01DTVP434PA9VFXSW2JKB3392D"}, nil)
-	bucketClient.MockGet(path.Join("user-1", bucket.TenantDeletionMarkPath), `{"deletion_time": 1}`, nil)
-	bucketClient.MockUpload(path.Join("user-1", bucket.TenantDeletionMarkPath), nil)
+	bucketClient.MockIter("user-1/phlaredb/", []string{"user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D"}, nil)
+	bucketClient.MockGet(path.Join("user-1", "phlaredb/", bucket.TenantDeletionMarkPath), `{"deletion_time": 1}`, nil)
+	bucketClient.MockUpload(path.Join("user-1", "phlaredb/", bucket.TenantDeletionMarkPath), nil)
 
-	bucketClient.MockIter("user-1/01DTVP434PA9VFXSW2JKB3392D", []string{"user-1/01DTVP434PA9VFXSW2JKB3392D/meta.json", "user-1/01DTVP434PA9VFXSW2JKB3392D/index"}, nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/index", "some index content", nil)
-	bucketClient.MockExists("user-1/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", false, nil)
-	bucketClient.MockExists("user-1/markers/01DTVP434PA9VFXSW2JKB3392D-deletion-mark.json", false, nil)
+	bucketClient.MockIter("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D", []string{"user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/meta.json", "user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/index"}, nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/index", "some index content", nil)
+	bucketClient.MockExists("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", false, nil)
+	bucketClient.MockExists("user-1/phlaredb/markers/01DTVP434PA9VFXSW2JKB3392D-deletion-mark.json", false, nil)
 
-	bucketClient.MockDelete("user-1/01DTVP434PA9VFXSW2JKB3392D/meta.json", nil)
-	bucketClient.MockDelete("user-1/01DTVP434PA9VFXSW2JKB3392D/index", nil)
-	bucketClient.MockDelete("user-1/bucket-index.json.gz", nil)
+	bucketClient.MockDelete("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/meta.json", nil)
+	bucketClient.MockDelete("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/index", nil)
+	bucketClient.MockDelete("user-1/phlaredb/bucket-index.json.gz", nil)
 
 	c, _, tsdbPlanner, logs, registry := prepare(t, cfg, bucketClient)
 
@@ -1009,28 +1009,28 @@ func TestMultitenantCompactor_ShouldCompactAllUsersOnShardingEnabledButOnlyOneIn
 	// Mock the bucket to contain two users, each one with one block.
 	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1", "user-2"}, nil)
-	bucketClient.MockExists(path.Join("user-1", bucket.TenantDeletionMarkPath), false, nil)
-	bucketClient.MockExists(path.Join("user-2", bucket.TenantDeletionMarkPath), false, nil)
-	bucketClient.MockIter("user-1/", []string{"user-1/01DTVP434PA9VFXSW2JKB3392D", "user-1/01FSTQ95C8FS0ZAGTQS2EF1NEG"}, nil)
-	bucketClient.MockIter("user-2/", []string{"user-2/01DTW0ZCPDDNV4BV83Q2SV4QAZ", "user-2/01FSV54G6QFQH1G9QE93G3B9TB"}, nil)
-	bucketClient.MockIter("user-1/markers/", nil, nil)
-	bucketClient.MockIter("user-2/markers/", nil, nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JKB3392D/no-compact-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01FSTQ95C8FS0ZAGTQS2EF1NEG/meta.json", mockBlockMetaJSON("01FSTQ95C8FS0ZAGTQS2EF1NEG"), nil)
-	bucketClient.MockGet("user-1/01FSTQ95C8FS0ZAGTQS2EF1NEG/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01FSTQ95C8FS0ZAGTQS2EF1NEG/no-compact-mark.json", "", nil)
-	bucketClient.MockGet("user-2/01DTW0ZCPDDNV4BV83Q2SV4QAZ/meta.json", mockBlockMetaJSON("01DTW0ZCPDDNV4BV83Q2SV4QAZ"), nil)
-	bucketClient.MockGet("user-2/01DTW0ZCPDDNV4BV83Q2SV4QAZ/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-2/01DTW0ZCPDDNV4BV83Q2SV4QAZ/no-compact-mark.json", "", nil)
-	bucketClient.MockGet("user-2/01FSV54G6QFQH1G9QE93G3B9TB/meta.json", mockBlockMetaJSON("01FSV54G6QFQH1G9QE93G3B9TB"), nil)
-	bucketClient.MockGet("user-2/01FSV54G6QFQH1G9QE93G3B9TB/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-2/01FSV54G6QFQH1G9QE93G3B9TB/no-compact-mark.json", "", nil)
-	bucketClient.MockGet("user-1/bucket-index.json.gz", "", nil)
-	bucketClient.MockGet("user-2/bucket-index.json.gz", "", nil)
-	bucketClient.MockUpload("user-1/bucket-index.json.gz", nil)
-	bucketClient.MockUpload("user-2/bucket-index.json.gz", nil)
+	bucketClient.MockExists(path.Join("user-1", "phlaredb", bucket.TenantDeletionMarkPath), false, nil)
+	bucketClient.MockExists(path.Join("user-2", "phlaredb", bucket.TenantDeletionMarkPath), false, nil)
+	bucketClient.MockIter("user-1/phlaredb/", []string{"user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D", "user-1/phlaredb/01FSTQ95C8FS0ZAGTQS2EF1NEG"}, nil)
+	bucketClient.MockIter("user-2/phlaredb/", []string{"user-2/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ", "user-2/phlaredb/01FSV54G6QFQH1G9QE93G3B9TB"}, nil)
+	bucketClient.MockIter("user-1/phlaredb/markers/", nil, nil)
+	bucketClient.MockIter("user-2/phlaredb/markers/", nil, nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JKB3392D/no-compact-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01FSTQ95C8FS0ZAGTQS2EF1NEG/meta.json", mockBlockMetaJSON("01FSTQ95C8FS0ZAGTQS2EF1NEG"), nil)
+	bucketClient.MockGet("user-1/phlaredb/01FSTQ95C8FS0ZAGTQS2EF1NEG/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01FSTQ95C8FS0ZAGTQS2EF1NEG/no-compact-mark.json", "", nil)
+	bucketClient.MockGet("user-2/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/meta.json", mockBlockMetaJSON("01DTW0ZCPDDNV4BV83Q2SV4QAZ"), nil)
+	bucketClient.MockGet("user-2/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-2/phlaredb/01DTW0ZCPDDNV4BV83Q2SV4QAZ/no-compact-mark.json", "", nil)
+	bucketClient.MockGet("user-2/phlaredb/01FSV54G6QFQH1G9QE93G3B9TB/meta.json", mockBlockMetaJSON("01FSV54G6QFQH1G9QE93G3B9TB"), nil)
+	bucketClient.MockGet("user-2/phlaredb/01FSV54G6QFQH1G9QE93G3B9TB/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-2/phlaredb/01FSV54G6QFQH1G9QE93G3B9TB/no-compact-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/bucket-index.json.gz", "", nil)
+	bucketClient.MockGet("user-2/phlaredb/bucket-index.json.gz", "", nil)
+	bucketClient.MockUpload("user-1/phlaredb/bucket-index.json.gz", nil)
+	bucketClient.MockUpload("user-2/phlaredb/bucket-index.json.gz", nil)
 
 	ringStore, closer := consul.NewInMemoryClient(ring.GetCodec(), log.NewNopLogger(), nil)
 	t.Cleanup(func() { assert.NoError(t, closer.Close()) })
@@ -1147,14 +1147,14 @@ func TestMultitenantCompactor_ShouldCompactOnlyUsersOwnedByTheInstanceOnSharding
 	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", userIDs, nil)
 	for _, userID := range userIDs {
-		bucketClient.MockIter(userID+"/", []string{userID + "/01DTVP434PA9VFXSW2JKB3392D"}, nil)
-		bucketClient.MockIter(userID+"/markers/", nil, nil)
-		bucketClient.MockExists(path.Join(userID, bucket.TenantDeletionMarkPath), false, nil)
-		bucketClient.MockGet(userID+"/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
-		bucketClient.MockGet(userID+"/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", "", nil)
-		bucketClient.MockGet(userID+"/01DTVP434PA9VFXSW2JKB3392D/no-compact-mark.json", "", nil)
-		bucketClient.MockGet(userID+"/bucket-index.json.gz", "", nil)
-		bucketClient.MockUpload(userID+"/bucket-index.json.gz", nil)
+		bucketClient.MockIter(userID+"/phlaredb/", []string{userID + "/phlaredb/01DTVP434PA9VFXSW2JKB3392D"}, nil)
+		bucketClient.MockIter(userID+"/phlaredb/markers/", nil, nil)
+		bucketClient.MockExists(path.Join(userID, "phlaredb/", bucket.TenantDeletionMarkPath), false, nil)
+		bucketClient.MockGet(userID+"/phlaredb/01DTVP434PA9VFXSW2JKB3392D/meta.json", mockBlockMetaJSON("01DTVP434PA9VFXSW2JKB3392D"), nil)
+		bucketClient.MockGet(userID+"/phlaredb/01DTVP434PA9VFXSW2JKB3392D/deletion-mark.json", "", nil)
+		bucketClient.MockGet(userID+"/phlaredb/01DTVP434PA9VFXSW2JKB3392D/no-compact-mark.json", "", nil)
+		bucketClient.MockGet(userID+"/phlaredb/bucket-index.json.gz", "", nil)
+		bucketClient.MockUpload(userID+"/phlaredb/bucket-index.json.gz", nil)
 	}
 
 	// Create a shared KV Store
@@ -1222,17 +1222,17 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsNoMoreOwnedAfterPlannin
 	// for the splitting stage).
 	bucketClient := &pyroscope_objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1"}, nil)
-	bucketClient.MockExists(path.Join("user-1", bucket.TenantDeletionMarkPath), false, nil)
-	bucketClient.MockIter("user-1/", []string{"user-1/01DTVP434PA9VFXSW2JK000001", "user-1/01DTVP434PA9VFXSW2JK000002"}, nil)
-	bucketClient.MockIter("user-1/markers/", nil, nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JK000001/meta.json", mockBlockMetaJSONWithTimeRange("01DTVP434PA9VFXSW2JK000001", 1574776800000, 1574784000000), nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JK000001/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JK000001/no-compact-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JK000002/meta.json", mockBlockMetaJSONWithTimeRange("01DTVP434PA9VFXSW2JK000002", 1574863200000, 1574870400000), nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JK000002/deletion-mark.json", "", nil)
-	bucketClient.MockGet("user-1/01DTVP434PA9VFXSW2JK000002/no-compact-mark.json", "", nil)
-	bucketClient.MockGet("user-1/bucket-index.json.gz", "", nil)
-	bucketClient.MockUpload("user-1/bucket-index.json.gz", nil)
+	bucketClient.MockExists(path.Join("user-1", "phlaredb", bucket.TenantDeletionMarkPath), false, nil)
+	bucketClient.MockIter("user-1/phlaredb/", []string{"user-1/phlaredb/01DTVP434PA9VFXSW2JK000001", "user-1/phlaredb/01DTVP434PA9VFXSW2JK000002"}, nil)
+	bucketClient.MockIter("user-1/phlaredb/markers/", nil, nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JK000001/meta.json", mockBlockMetaJSONWithTimeRange("01DTVP434PA9VFXSW2JK000001", 1574776800000, 1574784000000), nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JK000001/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JK000001/no-compact-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JK000002/meta.json", mockBlockMetaJSONWithTimeRange("01DTVP434PA9VFXSW2JK000002", 1574863200000, 1574870400000), nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JK000002/deletion-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/01DTVP434PA9VFXSW2JK000002/no-compact-mark.json", "", nil)
+	bucketClient.MockGet("user-1/phlaredb/bucket-index.json.gz", "", nil)
+	bucketClient.MockUpload("user-1/phlaredb/bucket-index.json.gz", nil)
 
 	ringStore, closer := consul.NewInMemoryClient(ring.GetCodec(), log.NewNopLogger(), nil)
 	t.Cleanup(func() { assert.NoError(t, closer.Close()) })
@@ -1360,10 +1360,10 @@ func TestMultitenantCompactor_ShouldSkipCompactionForJobsWithFirstLevelCompactio
 	mockClient := &bucketWithMockedAttributes{
 		Bucket: bucketClient,
 		customAttributes: map[string]objstore.ObjectAttributes{
-			path.Join("user-1", user1Meta1.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
-			path.Join("user-1", user1Meta2.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
-			path.Join("user-2", user2Meta1.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
-			path.Join("user-2", user2Meta2.String(), block.MetaFilename): {LastModified: time.Now().Add(-5 * time.Minute)},
+			path.Join("user-1", "phlaredb", user1Meta1.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
+			path.Join("user-1", "phlaredb", user1Meta2.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
+			path.Join("user-2", "phlaredb", user2Meta1.String(), block.MetaFilename): {LastModified: time.Now().Add(-20 * time.Minute)},
+			path.Join("user-2", "phlaredb", user2Meta2.String(), block.MetaFilename): {LastModified: time.Now().Add(-5 * time.Minute)},
 		},
 	}
 
@@ -1472,7 +1472,7 @@ func createCustomBlock(t *testing.T, bkt objstore.Bucket, userID string, externa
 			return err
 		}
 
-		return bkt.Upload(context.Background(), path.Join(userID, meta.ULID.String(), relPath), bytes.NewReader(content))
+		return bkt.Upload(context.Background(), path.Join(userID, "phlaredb/", meta.ULID.String(), relPath), bytes.NewReader(content))
 	}))
 
 	return meta.ULID
@@ -1510,7 +1510,7 @@ func createDBBlock(t *testing.T, bkt objstore.Bucket, userID string, minT, maxT 
 
 func createDeletionMark(t *testing.T, bkt objstore.Bucket, userID string, blockID ulid.ULID, deletionTime time.Time) {
 	content := mockDeletionMarkJSON(blockID.String(), deletionTime)
-	blockPath := path.Join(userID, blockID.String())
+	blockPath := path.Join(userID, "phlaredb/", blockID.String())
 	markPath := path.Join(blockPath, block.DeletionMarkFilename)
 
 	require.NoError(t, bkt.Upload(context.Background(), markPath, strings.NewReader(content)))

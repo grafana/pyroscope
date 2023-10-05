@@ -167,8 +167,9 @@ func TestSyncer_GarbageCollect_e2e(t *testing.T) {
 
 func TestGroupCompactE2E(t *testing.T) {
 	foreachStore(t, func(t *testing.T, bkt phlareobj.Bucket) {
+		userbkt := phlareobj.NewTenantBucketClient("user-1", bkt, nil).(phlareobj.Bucket)
 		// Use bucket with global markers to make sure that our custom filters work correctly.
-		bkt = block.BucketWithGlobalMarkers(bkt)
+		userbkt = block.BucketWithGlobalMarkers(userbkt)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
@@ -212,15 +213,15 @@ func TestGroupCompactE2E(t *testing.T) {
 		logger := log.NewLogfmtLogger(os.Stderr)
 
 		duplicateBlocksFilter := NewShardAwareDeduplicateFilter()
-		noCompactMarkerFilter := NewNoCompactionMarkFilter(bkt, true)
-		metaFetcher, err := block.NewMetaFetcher(nil, 32, bkt, "", nil, []block.MetadataFilter{
+		noCompactMarkerFilter := NewNoCompactionMarkFilter(userbkt, true)
+		metaFetcher, err := block.NewMetaFetcher(nil, 32, userbkt, "", nil, []block.MetadataFilter{
 			duplicateBlocksFilter,
 			noCompactMarkerFilter,
 		})
 		require.NoError(t, err)
 
 		blocksMarkedForDeletion := promauto.With(nil).NewCounter(prometheus.CounterOpts{})
-		sy, err := NewMetaSyncer(nil, nil, bkt, metaFetcher, duplicateBlocksFilter, blocksMarkedForDeletion)
+		sy, err := NewMetaSyncer(nil, nil, userbkt, metaFetcher, duplicateBlocksFilter, blocksMarkedForDeletion)
 		require.NoError(t, err)
 
 		planner := NewSplitAndMergePlanner([]int64{1000, 3000})
@@ -229,7 +230,7 @@ func TestGroupCompactE2E(t *testing.T) {
 		bComp, err := NewBucketCompactor(logger, sy, grouper, planner, &BlockCompactor{
 			blockOpenConcurrency: 100,
 			logger:               logger,
-		}, dir, bkt, 2, ownAllJobs, sortJobsByNewestBlocksFirst, 0, 4, metrics)
+		}, dir, userbkt, 2, ownAllJobs, sortJobsByNewestBlocksFirst, 0, 4, metrics)
 		require.NoError(t, err)
 
 		// Compaction on empty should not fail.
@@ -245,11 +246,11 @@ func TestGroupCompactE2E(t *testing.T) {
 		_, err = os.Stat(dir)
 		assert.True(t, os.IsNotExist(err), "dir %s should be remove after compaction.", dir)
 
-		m1 := createDBBlock(t, bkt, "", 500, 1000, 10, nil)
-		m2 := createDBBlock(t, bkt, "", 500, 1000, 10, nil)
+		m1 := createDBBlock(t, bkt, "user-1", 500, 1000, 10, nil)
+		m2 := createDBBlock(t, bkt, "user-1", 500, 1000, 10, nil)
 
-		m3 := createDBBlock(t, bkt, "", 1001, 2000, 10, nil)
-		m4 := createDBBlock(t, bkt, "", 1001, 3000, 10, nil)
+		m3 := createDBBlock(t, bkt, "user-1", 1001, 2000, 10, nil)
+		m4 := createDBBlock(t, bkt, "user-1", 1001, 3000, 10, nil)
 
 		require.NoError(t, bComp.Compact(ctx, 0), 0)
 		assert.Equal(t, 6.0, promtest.ToFloat64(sy.metrics.blocksMarkedForDeletion))

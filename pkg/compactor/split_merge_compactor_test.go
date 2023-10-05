@@ -505,7 +505,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 			})
 
 			// List back any (non deleted) block from the storage.
-			userBucket := objstore.NewUserBucketClient(userID, bkt, nil)
+			userBucket := objstore.NewTenantBucketClient(userID, bkt, nil)
 			fetcher, err := block.NewMetaFetcher(logger,
 				1,
 				userBucket,
@@ -601,7 +601,7 @@ func TestMultitenantCompactor_ShouldGuaranteeSeriesShardingConsistencyOverTheTim
 	})
 
 	// List back any (non deleted) block from the storage.
-	userBucket := objstore.NewUserBucketClient(userID, bucketClient, nil)
+	userBucket := objstore.NewTenantBucketClient(userID, bucketClient, nil)
 	fetcher, err := block.NewMetaFetcher(logger,
 		1,
 		userBucket,

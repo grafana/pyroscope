@@ -317,7 +317,7 @@ func TestCompactedBlocksTimeRangeVerification(t *testing.T) {
 			compactedBlock1 := createDBBlock(t, bucketClient, "foo", testData.compactedBlockMinTime, testData.compactedBlockMinTime+500, 10, nil)
 			compactedBlock2 := createDBBlock(t, bucketClient, "foo", testData.compactedBlockMaxTime-500, testData.compactedBlockMaxTime, 10, nil)
 
-			err := verifyCompactedBlocksTimeRanges([]ulid.ULID{compactedBlock1, compactedBlock2}, sourceMinTime, sourceMaxTime, filepath.Join(tempDir, "foo"))
+			err := verifyCompactedBlocksTimeRanges([]ulid.ULID{compactedBlock1, compactedBlock2}, sourceMinTime, sourceMaxTime, filepath.Join(tempDir, "foo", "phlaredb/"))
 			if testData.shouldErr {
 				require.ErrorContains(t, err, testData.expectedErrMsg)
 			} else {

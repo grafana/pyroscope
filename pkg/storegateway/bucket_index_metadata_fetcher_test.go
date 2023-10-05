@@ -57,7 +57,7 @@ func TestBucketIndexMetadataFetcher_Fetch(t *testing.T) {
 
 	// Create a metadata fetcher with filters.
 	filters := []block.MetadataFilter{
-		NewIgnoreDeletionMarkFilter(logger, objstore.NewUserBucketClient(userID, bkt, nil), 2*time.Hour, 1),
+		NewIgnoreDeletionMarkFilter(logger, objstore.NewTenantBucketClient(userID, bkt, nil), 2*time.Hour, 1),
 		newMinTimeMetaFilter(1 * time.Hour),
 	}
 
@@ -158,7 +158,7 @@ func TestBucketIndexMetadataFetcher_Fetch_CorruptedBucketIndex(t *testing.T) {
 	logger := log.NewLogfmtLogger(logs)
 
 	// Upload a corrupted bucket index.
-	require.NoError(t, bkt.Upload(ctx, path.Join(userID, bucketindex.IndexCompressedFilename), strings.NewReader("invalid}!")))
+	require.NoError(t, bkt.Upload(ctx, path.Join(userID, "phlaredb/", bucketindex.IndexCompressedFilename), strings.NewReader("invalid}!")))
 
 	fetcher := NewBucketIndexMetadataFetcher(userID, bkt, nil, logger, reg, nil)
 	metas, partials, err := fetcher.Fetch(ctx)

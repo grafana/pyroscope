@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -230,6 +231,12 @@ type BlockCompactor struct {
 }
 
 func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, dirs []string, shardCount uint64) ([]ulid.ULID, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			level.Error(c.logger).Log("msg", "panic during compaction", "err", err, "dirs", strings.Join(dirs, ","))
+			panic(err)
+		}
+	}()
 	localBucket, err := client.NewBucket(ctx, client.Config{
 		StorageBackendConfig: client.StorageBackendConfig{
 			Backend:    client.Filesystem,

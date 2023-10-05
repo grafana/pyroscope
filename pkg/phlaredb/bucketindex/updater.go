@@ -37,7 +37,7 @@ type Updater struct {
 
 func NewUpdater(bkt objstore.Bucket, userID string, cfgProvider objstore.TenantConfigProvider, logger log.Logger) *Updater {
 	return &Updater{
-		bkt:    objstore.NewUserBucketClient(userID, bkt, cfgProvider),
+		bkt:    objstore.NewTenantBucketClient(userID, bkt, cfgProvider),
 		logger: logger,
 	}
 }
