@@ -76,18 +76,6 @@ controller:
 ```
 Replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
 
-## Sending data to Pyroscope OSS or Grafana Cloud Profiles with eBPF integration
-
-Replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
-
-If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
-
-```shell
-helm install pyroscope-ebpf grafana/grafana-agent -f values.yaml
-```
-
-It will install pyroscope eBPF agent on all of your nodes and start profiling applications across your cluster.
-
 ## Configuration
 
 The component configures and starts a new ebpf profiling job to collect performance profiles from the current host.
@@ -108,6 +96,19 @@ values.
 | `container_id_cache_size` | `int`                    | The size of the pid -> container ID table LRU cache          | 1024    | no       |
 | `collect_user_profile`    | `bool`                   | A flag to enable/disable collection of userspace profiles    | true    | no       |
 | `collect_kernel_profile`  | `bool`                   | A flag to enable/disable collection of kernelspace profiles  | true    | no       |
+| `demangle`                | `string`                 | C++ demangle mode. Available options are: `none`, `simplified`, `templates`, `full` | `none` | no |
+
+## Sending data to Pyroscope OSS or Grafana Cloud Profiles with eBPF integration
+
+Replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
+
+If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
+
+```shell
+helm install pyroscope-ebpf grafana/grafana-agent -f values.yaml
+```
+
+It will install pyroscope eBPF agent on all of your nodes and start profiling applications across your cluster.
 
 ## Exported fields
 

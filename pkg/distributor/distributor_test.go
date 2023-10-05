@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -44,6 +45,14 @@ var ringConfig = util.CommonRingConfig{
 	ListenPort:   8080,
 }
 
+type poolFactory struct {
+	f func(addr string) (client.PoolClient, error)
+}
+
+func (pf *poolFactory) FromInstance(inst ring.InstanceDesc) (client.PoolClient, error) {
+	return pf.f(inst.Addr)
+}
+
 func Test_ConnectPush(t *testing.T) {
 	mux := http.NewServeMux()
 	ing := newFakeIngester(t, false)
@@ -51,9 +60,9 @@ func Test_ConnectPush(t *testing.T) {
 		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "foo"},
-	}, 3), func(addr string) (client.PoolClient, error) {
+	}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
@@ -110,9 +119,9 @@ func Test_Replication(t *testing.T) {
 		{Addr: "1"},
 		{Addr: "2"},
 		{Addr: "3"},
-	}, 3), func(addr string) (client.PoolClient, error) {
+	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ingesters[addr], nil
-	}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 	require.NoError(t, err)
 	// only 1 ingester failing should be fine.
 	resp, err := d.Push(ctx, req)
@@ -132,9 +141,9 @@ func Test_Subservices(t *testing.T) {
 		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "foo"},
-	}, 1), func(addr string) (client.PoolClient, error) {
+	}, 1), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	require.NoError(t, d.StartAsync(context.Background()))
@@ -257,9 +266,9 @@ func Test_Limits(t *testing.T) {
 				DistributorRing: ringConfig,
 			}, testhelper.NewMockRing([]ring.InstanceDesc{
 				{Addr: "foo"},
-			}, 3), func(addr string) (client.PoolClient, error) {
+			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 				return ing, nil
-			}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout))
+			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout))
 
 			require.NoError(t, err)
 			mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
@@ -275,6 +284,82 @@ func Test_Limits(t *testing.T) {
 	}
 }
 
+func Test_Sessions_Limit(t *testing.T) {
+	type testCase struct {
+		description    string
+		seriesLabels   phlaremodel.Labels
+		expectedLabels phlaremodel.Labels
+		maxSessions    int
+	}
+
+	testCases := []testCase{
+		{
+			description: "session_disabled",
+			seriesLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: phlaremodel.LabelNameSessionID, Value: phlaremodel.SessionID(1).String()},
+				{Name: "__name__", Value: "cpu"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "__name__", Value: "cpu"},
+			},
+			maxSessions: 0,
+		},
+		{
+			description: "session_limited",
+			seriesLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: phlaremodel.LabelNameSessionID, Value: phlaremodel.SessionID(4).String()},
+				{Name: "__name__", Value: "cpu"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: phlaremodel.LabelNameSessionID, Value: phlaremodel.SessionID(1).String()},
+				{Name: "__name__", Value: "cpu"},
+			},
+			maxSessions: 3,
+		},
+		{
+			description: "session_not_specified",
+			seriesLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "__name__", Value: "cpu"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "__name__", Value: "cpu"},
+			},
+			maxSessions: 3,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.description, func(t *testing.T) {
+			ing := newFakeIngester(t, false)
+			d, err := New(
+				Config{DistributorRing: ringConfig},
+				testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+				&poolFactory{f: func(addr string) (client.PoolClient, error) { return ing, nil }},
+				validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+					l := validation.MockDefaultLimits()
+					l.MaxSessionsPerSeries = tc.maxSessions
+					tenantLimits["user-1"] = l
+				}), nil, log.NewLogfmtLogger(os.Stdout))
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedLabels, d.limitMaxSessionsPerSeries("user-1", tc.seriesLabels))
+		})
+	}
+}
+
 func TestBadPushRequest(t *testing.T) {
 	mux := http.NewServeMux()
 	ing := newFakeIngester(t, false)
@@ -282,9 +367,9 @@ func TestBadPushRequest(t *testing.T) {
 		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "foo"},
-	}, 3), func(addr string) (client.PoolClient, error) {
+	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
@@ -363,9 +448,9 @@ func TestPush_ShuffleSharding(t *testing.T) {
 
 	// get distributor ready
 	d, err := New(Config{DistributorRing: ringConfig}, testhelper.NewMockRing(ringDesc, 3),
-		func(addr string) (client.PoolClient, error) {
+		&poolFactory{func(addr string) (client.PoolClient, error) {
 			return ingesters[addr], nil
-		},
+		}},
 		overrides,
 		nil,
 		log.NewLogfmtLogger(os.Stdout),

@@ -1,12 +1,12 @@
 package jfr
 
 import (
-	"strings"
-
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 
 	"github.com/grafana/jfr-parser/parser"
 	"github.com/grafana/jfr-parser/parser/types"
+	"github.com/prometheus/prometheus/model/labels"
+
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/storage"
@@ -14,7 +14,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
-	"github.com/prometheus/prometheus/model/labels"
 )
 
 const (
@@ -58,7 +57,7 @@ func newJfrPprofBuilders(p *parser.Parser, jfrLabels *LabelsSnapshot, piOriginal
 		jfrLabels: jfrLabels,
 	}
 	for k, v := range piOriginal.Key.Labels() {
-		if strings.HasPrefix(k, "__") {
+		if !phlaremodel.IsLabelAllowedForIngestion(k) {
 			continue
 		}
 		res.labels = append(res.labels, &v1.LabelPair{

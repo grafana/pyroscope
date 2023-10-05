@@ -20,7 +20,7 @@ import (
 
 func NeStoreGatewayPool(ring ring.ReadRing, factory ring_client.PoolFactory, clientsMetric prometheus.Gauge, logger log.Logger, options ...connect.ClientOption) *ring_client.Pool {
 	if factory == nil {
-		factory = StoreGatewayPoolFactoryFn(options...)
+		factory = newStoreGatewayPoolFactory(options...)
 	}
 	poolCfg := ring_client.PoolConfig{
 		CheckInterval:      10 * time.Second,
@@ -31,18 +31,25 @@ func NeStoreGatewayPool(ring ring.ReadRing, factory ring_client.PoolFactory, cli
 	return ring_client.NewPool("store-gateway", poolCfg, ring_client.NewRingServiceDiscovery(ring), factory, clientsMetric, logger)
 }
 
-func StoreGatewayPoolFactoryFn(options ...connect.ClientOption) ring_client.PoolFactory {
-	return func(addr string) (ring_client.PoolClient, error) {
-		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			return nil, err
-		}
-		return &storeGatewayPoolClient{
-			StoreGatewayServiceClient: storegatewayv1connect.NewStoreGatewayServiceClient(util.InstrumentedHTTPClient(), "http://"+addr, options...),
-			HealthClient:              grpc_health_v1.NewHealthClient(conn),
-			Closer:                    conn,
-		}, nil
+type storeGatewayPoolFactory struct {
+	options []connect.ClientOption
+}
+
+func newStoreGatewayPoolFactory(options ...connect.ClientOption) ring_client.PoolFactory {
+	return &storeGatewayPoolFactory{options: options}
+}
+
+func (f *storeGatewayPoolFactory) FromInstance(inst ring.InstanceDesc) (ring_client.PoolClient, error) {
+	conn, err := grpc.Dial(inst.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
 	}
+	return &storeGatewayPoolClient{
+		StoreGatewayServiceClient: storegatewayv1connect.NewStoreGatewayServiceClient(util.InstrumentedHTTPClient(), "http://"+inst.Addr, f.options...),
+		HealthClient:              grpc_health_v1.NewHealthClient(conn),
+		Closer:                    conn,
+	}, nil
+
 }
 
 type storeGatewayPoolClient struct {

@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/prometheus/prometheus/model/labels"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
@@ -18,7 +20,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 	"github.com/grafana/pyroscope/pkg/og/util/form"
 	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/prometheus/prometheus/model/labels"
 )
 
 type RawProfile struct {
@@ -206,7 +207,7 @@ func (p *RawProfile) createLabels(profile *pprof.Profile, md ingestion.Metadata)
 		Value: md.SpyName,
 	})
 	for k, v := range md.Key.Labels() {
-		if strings.HasPrefix(k, "__") {
+		if !phlaremodel.IsLabelAllowedForIngestion(k) {
 			continue
 		}
 		ls = append(ls, &v1.LabelPair{
