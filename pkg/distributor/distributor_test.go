@@ -45,6 +45,14 @@ var ringConfig = util.CommonRingConfig{
 	ListenPort:   8080,
 }
 
+type poolFactory struct {
+	f func(addr string) (client.PoolClient, error)
+}
+
+func (pf *poolFactory) FromInstance(inst ring.InstanceDesc) (client.PoolClient, error) {
+	return pf.f(inst.Addr)
+}
+
 func Test_ConnectPush(t *testing.T) {
 	mux := http.NewServeMux()
 	ing := newFakeIngester(t, false)
@@ -52,9 +60,9 @@ func Test_ConnectPush(t *testing.T) {
 		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "foo"},
-	}, 3), func(addr string) (client.PoolClient, error) {
+	}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
@@ -111,9 +119,9 @@ func Test_Replication(t *testing.T) {
 		{Addr: "1"},
 		{Addr: "2"},
 		{Addr: "3"},
-	}, 3), func(addr string) (client.PoolClient, error) {
+	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ingesters[addr], nil
-	}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 	require.NoError(t, err)
 	// only 1 ingester failing should be fine.
 	resp, err := d.Push(ctx, req)
@@ -133,9 +141,9 @@ func Test_Subservices(t *testing.T) {
 		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "foo"},
-	}, 1), func(addr string) (client.PoolClient, error) {
+	}, 1), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	require.NoError(t, d.StartAsync(context.Background()))
@@ -258,9 +266,9 @@ func Test_Limits(t *testing.T) {
 				DistributorRing: ringConfig,
 			}, testhelper.NewMockRing([]ring.InstanceDesc{
 				{Addr: "foo"},
-			}, 3), func(addr string) (client.PoolClient, error) {
+			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 				return ing, nil
-			}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout))
+			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout))
 
 			require.NoError(t, err)
 			mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
@@ -359,9 +367,9 @@ func TestBadPushRequest(t *testing.T) {
 		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "foo"},
-	}, 3), func(addr string) (client.PoolClient, error) {
+	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
@@ -440,9 +448,9 @@ func TestPush_ShuffleSharding(t *testing.T) {
 
 	// get distributor ready
 	d, err := New(Config{DistributorRing: ringConfig}, testhelper.NewMockRing(ringDesc, 3),
-		func(addr string) (client.PoolClient, error) {
+		&poolFactory{func(addr string) (client.PoolClient, error) {
 			return ingesters[addr], nil
-		},
+		}},
 		overrides,
 		nil,
 		log.NewLogfmtLogger(os.Stdout),
