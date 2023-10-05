@@ -4,6 +4,4 @@ use (
 	.
 	./api
 	./ebpf
-	./examples/golang-push/rideshare
-	./examples/golang-push/simple
 )

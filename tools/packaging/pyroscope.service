@@ -1,0 +1,16 @@
+[Unit]
+Description=Pyroscope service
+After=network.target
+
+[Service]
+Type=simple
+User=pyroscope
+WorkingDirectory=/var/lib/pyroscope
+ExecStart=/usr/bin/pyroscope -config.file /etc/pyroscope/config.yml
+# Give a reasonable amount of time for the server to start up/shut down
+TimeoutSec = 120
+Restart = on-failure
+RestartSec = 2
+
+[Install]
+WantedBy=multi-user.target

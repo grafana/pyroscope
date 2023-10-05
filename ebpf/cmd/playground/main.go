@@ -20,6 +20,7 @@ import (
 	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/sd"
 	"github.com/grafana/pyroscope/ebpf/symtab"
+	"github.com/grafana/pyroscope/ebpf/symtab/elf"
 	"github.com/prometheus/client_golang/prometheus"
 	commonconfig "github.com/prometheus/common/config"
 )
@@ -138,6 +139,10 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 		UnknownSymbolAddress:      true,
 		UnknownSymbolModuleOffset: true,
 		CacheOptions: symtab.CacheOptions{
+			SymbolOptions: symtab.SymbolOptions{
+				GoTableFallback: true,
+				DemangleOptions: elf.DemangleFull,
+			},
 			PidCacheOptions: symtab.GCacheOptions{
 				Size:       239,
 				KeepRounds: 3,

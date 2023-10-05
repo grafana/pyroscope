@@ -1,8 +1,6 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
 
-import Box from '@pyroscope/ui/Box';
-import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph/FlamegraphRenderer';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   selectContinuousState,
@@ -15,17 +13,14 @@ import {
   selectAnnotationsOrDefault,
 } from '@pyroscope/redux/reducers/continuous';
 import SideTimelineComparator from '@pyroscope/components/SideTimelineComparator';
-import TimelineChartWrapper from '@pyroscope/components/TimelineChart/TimelineChartWrapper';
+import TimelineChartWrapper, {
+  TimelineData,
+} from '@pyroscope/components/TimelineChart/TimelineChartWrapper';
 import SyncTimelines from '@pyroscope/components/TimelineChart/SyncTimelines';
 import Toolbar from '@pyroscope/components/Toolbar';
-import ExportData from '@pyroscope/components/ExportData';
-import useExportToFlamegraphDotCom from '@pyroscope/components/exportToFlamegraphDotCom.hook';
 import TagsBar from '@pyroscope/components/TagsBar';
 import ChartTitle from '@pyroscope/components/ChartTitle';
 import useTimeZone from '@pyroscope/hooks/timeZone.hook';
-import useColorMode from '@pyroscope/hooks/colorMode.hook';
-import { isExportToFlamegraphDotComEnabled } from '@pyroscope/util/features';
-import { LoadingOverlay } from '@pyroscope/ui/LoadingOverlay';
 import PageTitle from '@pyroscope/components/PageTitle';
 import { Query } from '@pyroscope/models/query';
 import { isLoadingOrReloading } from '@pyroscope/pages/loading';
@@ -39,7 +34,11 @@ import useTimelines, {
 import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 import useFlamegraphSharedQuery from '../hooks/flamegraphSharedQuery.hook';
 import { formatTitle } from './formatTitle';
-import { PageContentWrapper } from './layout';
+import { Panel } from '@pyroscope/components/Panel';
+import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
+import { Profile } from '@pyroscope/legacy/models/profile';
+import { SharedQuery } from '@pyroscope/legacy/flamegraph/FlameGraph/FlameGraphRenderer';
+import { FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
@@ -54,7 +53,6 @@ function ComparisonApp() {
   } = useAppSelector(selectContinuousState);
   const { leftQuery, rightQuery } = useAppSelector(selectQueries);
   const { offset } = useTimeZone();
-  const { colorMode } = useColorMode();
   usePopulateLeftRightQuery();
   const {
     left: comparisonLeft,
@@ -99,9 +97,6 @@ function ComparisonApp() {
 
   const leftSide = comparisonLeft.profile;
   const rightSide = comparisonRight.profile;
-  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(leftSide);
-  const exportToFlamegraphDotComRightFn =
-    useExportToFlamegraphDotCom(rightSide);
   const timezone = offset === 0 ? 'utc' : 'browser';
   const isSidesHasSameUnits =
     leftSide &&
@@ -180,207 +175,197 @@ function ComparisonApp() {
       <PageTitle title={formatTitle('Comparison', leftQuery, rightQuery)} />
       <PageContentWrapper>
         <Toolbar onSelectedApp={handleSelectedApp} />
-        <Box>
-          <LoadingOverlay active={isLoading}>
-            <TimelineChartWrapper
-              data-testid="timeline-main"
-              id="timeline-chart-double"
-              format="lines"
-              height="125px"
-              annotations={annotations}
-              timelineA={leftTimeline}
-              timelineB={rightTimeline}
-              onSelect={handleSelectMain}
-              syncCrosshairsWith={[
-                'timeline-chart-left',
-                'timeline-chart-right',
-              ]}
-              selection={{
-                left: {
-                  from: leftFrom,
-                  to: leftUntil,
-                  color: leftColor,
-                  overlayColor: leftColor.alpha(0.3),
-                },
-                right: {
-                  from: rightFrom,
-                  to: rightUntil,
-                  color: rightColor,
-                  overlayColor: rightColor.alpha(0.3),
-                },
-              }}
-              timezone={timezone}
-              title={
-                <ChartTitle
-                  titleKey={
-                    isSidesHasSameUnits ? leftSide.metadata.units : undefined
-                  }
-                />
+        <Panel
+          isLoading={isLoading}
+          title={
+            <ChartTitle
+              titleKey={
+                isSidesHasSameUnits ? leftSide.metadata.units : undefined
               }
-              selectionType="double"
             />
-            <SyncTimelines
-              isDataLoading={isLoading}
-              comparisonModeActive={comparisonMode.active}
-              timeline={leftTimeline}
-              leftSelection={{ from: leftFrom, to: leftUntil }}
-              rightSelection={{ from: rightFrom, to: rightUntil }}
-              onSync={(from, until) => {
-                dispatch(actions.setFromAndUntil({ from, until }));
-              }}
-            />
-          </LoadingOverlay>
-        </Box>
+          }
+        >
+          <TimelineChartWrapper
+            data-testid="timeline-main"
+            id="timeline-chart-double"
+            format="lines"
+            height="125px"
+            annotations={annotations}
+            timelineA={leftTimeline}
+            timelineB={rightTimeline}
+            onSelect={handleSelectMain}
+            syncCrosshairsWith={['timeline-chart-left', 'timeline-chart-right']}
+            selection={{
+              left: {
+                from: leftFrom,
+                to: leftUntil,
+                color: leftColor,
+                overlayColor: leftColor.alpha(0.3),
+              },
+              right: {
+                from: rightFrom,
+                to: rightUntil,
+                color: rightColor,
+                overlayColor: rightColor.alpha(0.3),
+              },
+            }}
+            timezone={timezone}
+            selectionType="double"
+          />
+          <SyncTimelines
+            isDataLoading={isLoading}
+            comparisonModeActive={comparisonMode.active}
+            timeline={leftTimeline}
+            leftSelection={{ from: leftFrom, to: leftUntil }}
+            rightSelection={{ from: rightFrom, to: rightUntil }}
+            onSync={(from, until) => {
+              dispatch(actions.setFromAndUntil({ from, until }));
+            }}
+          />
+        </Panel>
         <div
           className="comparison-container"
           data-testid="comparison-container"
         >
-          <Box className={styles.comparisonPane}>
-            <LoadingOverlay active={isLoading} spinnerPosition="baseline">
-              <div className={styles.timelineTitleWrapper}>
-                <ChartTitle titleKey="baseline" color={leftColor} />
-                <SideTimelineComparator
-                  setComparisonMode={setComparisonMode}
-                  comparisonMode={comparisonMode}
-                  onCompare={handleCompare}
-                  selection={{
-                    from,
-                    until,
-                    left: {
-                      from: leftFrom,
-                      to: leftUntil,
-                      color: leftColor,
-                      overlayColor: leftColor.alpha(0.3),
-                    },
-                    right: {
-                      from: rightFrom,
-                      to: rightUntil,
-                      color: rightColor,
-                      overlayColor: rightColor.alpha(0.3),
-                    },
-                  }}
-                />
-              </div>
-
-              <TagsBar
-                query={leftQuery}
-                tags={leftTags}
-                onRefresh={() => dispatch(actions.refresh())}
-                onSetQuery={(q) => dispatch(actions.setLeftQuery(q))}
-                onSelectedLabel={(label, query) => {
-                  dispatch(fetchTagValues({ query, label }));
+          <Panel
+            isLoading={isLoading}
+            className={styles.comparisonPane}
+            title={<ChartTitle titleKey="baseline" color={leftColor} />}
+            headerActions={
+              <SideTimelineComparator
+                setComparisonMode={setComparisonMode}
+                comparisonMode={comparisonMode}
+                onCompare={handleCompare}
+                selection={{
+                  from,
+                  until,
+                  left: {
+                    from: leftFrom,
+                    to: leftUntil,
+                    color: leftColor,
+                    overlayColor: leftColor.alpha(0.3),
+                  },
+                  right: {
+                    from: rightFrom,
+                    to: rightUntil,
+                    color: rightColor,
+                    overlayColor: rightColor.alpha(0.3),
+                  },
                 }}
               />
-              <FlamegraphRenderer
-                showCredit={false}
-                panesOrientation="vertical"
-                profile={leftSide}
-                data-testid="flamegraph-renderer-left"
-                colorMode={colorMode}
-                sharedQuery={{ ...sharedQuery, id: 'left' }}
-                ExportData={
-                  // Don't export PNG since the exportPng code is broken
-                  leftSide && (
-                    <ExportData
-                      flamebearer={leftSide}
-                      exportJSON
-                      exportHTML
-                      exportPprof
-                      exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
-                      exportFlamegraphDotComFn={exportToFlamegraphDotComLeftFn}
-                    />
-                  )
-                }
-              >
-                <TimelineChartWrapper
-                  key="timeline-chart-left"
-                  id="timeline-chart-left"
-                  data-testid="timeline-left"
-                  selectionWithHandler
-                  syncCrosshairsWith={[
-                    'timeline-chart-double',
-                    'timeline-chart-right',
-                  ]}
-                  timelineA={leftTimeline}
-                  selection={{
-                    left: {
-                      from: leftFrom,
-                      to: leftUntil,
-                      color: selectionColor,
-                      overlayColor: selectionColor.alpha(0.3),
-                    },
-                  }}
-                  selectionType="single"
-                  onSelect={handleSelectLeft}
-                  timezone={timezone}
-                />
-              </FlamegraphRenderer>
-            </LoadingOverlay>
-          </Box>
+            }
+          >
+            <TagsBar
+              query={leftQuery}
+              tags={leftTags}
+              onRefresh={() => dispatch(actions.refresh())}
+              onSetQuery={(q) => dispatch(actions.setLeftQuery(q))}
+              onSelectedLabel={(label, query) => {
+                dispatch(fetchTagValues({ query, label }));
+              }}
+            />
+            <FlameGraphAndTimeline
+              position={'left'}
+              profile={leftSide}
+              from={leftFrom}
+              to={leftUntil}
+              sharedQuery={{ ...sharedQuery, id: 'left' }}
+              handleSelect={handleSelectLeft}
+              timezone={timezone}
+              timeline={leftTimeline}
+            />
+          </Panel>
 
-          <Box className={styles.comparisonPane}>
-            <LoadingOverlay spinnerPosition="baseline" active={isLoading}>
-              <div className={styles.timelineTitleWrapper}>
-                <ChartTitle titleKey="comparison" color={rightColor} />
-              </div>
-              <TagsBar
-                query={rightQuery}
-                tags={rightTags}
-                onRefresh={() => dispatch(actions.refresh())}
-                onSetQuery={(q) => dispatch(actions.setRightQuery(q))}
-                onSelectedLabel={(label, query) => {
-                  dispatch(fetchTagValues({ query, label }));
-                }}
-              />
-              <FlamegraphRenderer
-                showCredit={false}
-                profile={rightSide}
-                data-testid="flamegraph-renderer-right"
-                panesOrientation="vertical"
-                colorMode={colorMode}
-                sharedQuery={{ ...sharedQuery, id: 'right' }}
-                ExportData={
-                  // Don't export PNG since the exportPng code is broken
-                  rightSide && (
-                    <ExportData
-                      flamebearer={rightSide}
-                      exportJSON
-                      exportHTML
-                      exportPprof
-                      exportFlamegraphDotCom={isExportToFlamegraphDotComEnabled}
-                      exportFlamegraphDotComFn={exportToFlamegraphDotComRightFn}
-                    />
-                  )
-                }
-              >
-                <TimelineChartWrapper
-                  key="timeline-chart-right"
-                  id="timeline-chart-right"
-                  data-testid="timeline-right"
-                  timelineA={rightTimeline}
-                  syncCrosshairsWith={[
-                    'timeline-chart-double',
-                    'timeline-chart-left',
-                  ]}
-                  selectionWithHandler
-                  selection={{
-                    right: {
-                      from: rightFrom,
-                      to: rightUntil,
-                      color: selectionColor,
-                      overlayColor: selectionColor.alpha(0.3),
-                    },
-                  }}
-                  selectionType="single"
-                  onSelect={handleSelectRight}
-                  timezone={timezone}
-                />
-              </FlamegraphRenderer>
-            </LoadingOverlay>
-          </Box>
+          <Panel
+            isLoading={isLoading}
+            className={styles.comparisonPane}
+            title={<ChartTitle titleKey="comparison" color={rightColor} />}
+          >
+            <TagsBar
+              query={rightQuery}
+              tags={rightTags}
+              onRefresh={() => dispatch(actions.refresh())}
+              onSetQuery={(q) => dispatch(actions.setRightQuery(q))}
+              onSelectedLabel={(label, query) => {
+                dispatch(fetchTagValues({ query, label }));
+              }}
+            />
+            <FlameGraphAndTimeline
+              position={'right'}
+              profile={rightSide}
+              from={rightFrom}
+              to={rightUntil}
+              sharedQuery={{ ...sharedQuery, id: 'right' }}
+              handleSelect={handleSelectRight}
+              timezone={timezone}
+              timeline={rightTimeline}
+            />
+          </Panel>
         </div>
       </PageContentWrapper>
     </div>
+  );
+}
+
+function FlameGraphAndTimeline(props: {
+  profile: Profile | undefined;
+  sharedQuery: SharedQuery;
+  position: 'left' | 'right';
+  from: string;
+  to: string;
+  handleSelect: (from: string, until: string) => void;
+  timezone: 'browser' | 'utc';
+  timeline: TimelineData;
+}) {
+  const {
+    profile,
+    to,
+    from,
+    handleSelect,
+    timezone,
+    sharedQuery,
+    timeline,
+    position,
+  } = props;
+
+  const id =
+    position === 'right' ? 'timeline-chart-right' : 'timeline-chart-left';
+  const testid = position === 'right' ? 'timeline-right' : 'timeline-left';
+
+  const timelineEl = (
+    <TimelineChartWrapper
+      key={id}
+      id={id}
+      data-testid={testid}
+      timelineA={timeline}
+      syncCrosshairsWith={['timeline-chart-double', id]}
+      selectionWithHandler
+      selection={{
+        right: {
+          from,
+          to,
+          color: selectionColor,
+          overlayColor: selectionColor.alpha(0.3),
+        },
+      }}
+      selectionType="single"
+      onSelect={handleSelect}
+      timezone={timezone}
+    />
+  );
+
+  return (
+    <FlameGraphWrapper
+      profile={profile}
+      vertical={true}
+      timelineEl={timelineEl}
+      sharedQuery={sharedQuery}
+      dataTestId={
+        position === 'right'
+          ? 'flamegraph-renderer-right'
+          : 'flamegraph-renderer-left'
+      }
+    />
   );
 }
 

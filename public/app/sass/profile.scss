@@ -17,6 +17,10 @@ html {
   width: 100vw;
 }
 
+a {
+  text-decoration: none;
+}
+
 body {
   font: 400 16px/1.7 -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica,
     Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
@@ -110,7 +114,7 @@ $pane-width: 6px;
 
 .diff-instructions-wrapper {
   display: flex;
-  gap: 15px;
+  gap: 10px;
 }
 
 .diff-instructions-wrapper-side {

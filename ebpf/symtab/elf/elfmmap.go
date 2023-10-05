@@ -7,7 +7,14 @@ import (
 	"os"
 	"runtime"
 	"strings"
+
+	"github.com/ianlancetaylor/demangle"
 )
+
+var DemangleNone []demangle.Option = nil
+var DemangleSimplified = []demangle.Option{demangle.NoParams, demangle.NoEnclosingParams, demangle.NoTemplateParams}
+var DemangleTemplates = []demangle.Option{demangle.NoParams, demangle.NoEnclosingParams}
+var DemangleFull = []demangle.Option{demangle.NoClones}
 
 type MMapedElfFile struct {
 	elf.FileHeader
@@ -121,7 +128,7 @@ func (f *MMapedElfFile) FilePath() string {
 }
 
 // getString extracts a string from an ELF string table.
-func (f *MMapedElfFile) getString(start int) (string, bool) {
+func (f *MMapedElfFile) getString(start int, demangleOptions []demangle.Option) (string, bool) {
 	if err := f.ensureOpen(); err != nil {
 		return "", false
 	}
@@ -140,6 +147,9 @@ func (f *MMapedElfFile) getString(start int) (string, bool) {
 		if idx >= 0 {
 			sb.Write(tmpBuf[:idx])
 			s := sb.String()
+			if len(demangleOptions) > 0 {
+				s = demangle.Filter(s, demangleOptions...)
+			}
 			if f.stringCache == nil {
 				f.stringCache = make(map[int]string)
 			}

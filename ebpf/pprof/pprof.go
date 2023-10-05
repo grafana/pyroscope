@@ -51,6 +51,7 @@ func (b ProfileBuilders) BuilderForTarget(hash uint64, labels labels.Labels) *Pr
 			SampleType: []*profile.ValueType{{Type: "cpu", Unit: "nanoseconds"}},
 			Period:     time.Second.Nanoseconds() / b.SampleRate,
 			PeriodType: &profile.ValueType{Type: "cpu", Unit: "nanoseconds"},
+			TimeNanos:  time.Now().UnixNano(),
 		},
 	}
 	res = builder

@@ -43,3 +43,5 @@ export const isExemplarsPageEnabled = features.exemplarsPageEnabled;
 
 // oss only features
 export const isAnnotationsEnabled = true;
+
+export const isGrafanaFlamegraphEnabled = true;

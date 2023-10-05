@@ -1,12 +1,12 @@
 package jfr
 
 import (
-	"strings"
-
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 
 	"github.com/grafana/jfr-parser/parser"
 	"github.com/grafana/jfr-parser/parser/types"
+	"github.com/prometheus/prometheus/model/labels"
+
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/storage"
@@ -14,7 +14,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
-	"github.com/prometheus/prometheus/model/labels"
 )
 
 const (
@@ -35,11 +34,17 @@ const (
 func newJfrPprofBuilders(p *parser.Parser, jfrLabels *LabelsSnapshot, piOriginal *storage.PutInput) *jfrPprofBuilders {
 	st := piOriginal.StartTime.UnixNano()
 	et := piOriginal.EndTime.UnixNano()
+	var period int64
+	if piOriginal.SampleRate == 0 {
+		period = 0
+	} else {
+		period = 1e9 / int64(piOriginal.SampleRate)
+	}
 	res := &jfrPprofBuilders{
 		timeNanos:     st,
 		durationNanos: et - st,
 		labels:        make([]*v1.LabelPair, 0, len(piOriginal.Key.Labels())+5),
-		period:        1e9 / int64(piOriginal.SampleRate),
+		period:        period,
 		appName:       piOriginal.Key.AppName(),
 		spyName:       piOriginal.SpyName,
 
@@ -52,7 +57,7 @@ func newJfrPprofBuilders(p *parser.Parser, jfrLabels *LabelsSnapshot, piOriginal
 		jfrLabels: jfrLabels,
 	}
 	for k, v := range piOriginal.Key.Labels() {
-		if strings.HasPrefix(k, "__") {
+		if !phlaremodel.IsLabelAllowedForIngestion(k) {
 			continue
 		}
 		res.labels = append(res.labels, &v1.LabelPair{
@@ -203,9 +208,6 @@ func (b *jfrPprofBuilders) build(event string) *model.PushRequest {
 				Name:  phlaremodel.LabelNameDelta,
 				Value: "false",
 			}, &v1.LabelPair{
-				Name:  "service_name",
-				Value: b.appName,
-			}, &v1.LabelPair{
 				Name:  "jfr_event",
 				Value: event,
 			}, &v1.LabelPair{
@@ -226,6 +228,17 @@ func (b *jfrPprofBuilders) build(event string) *model.PushRequest {
 					Value: vs,
 				})
 			}
+			serviceNameLabelName := "service_name"
+			for _, label := range ls {
+				if label.Name == serviceNameLabelName {
+					serviceNameLabelName = "app_name"
+					break
+				}
+			}
+			ls = append(ls, &v1.LabelPair{
+				Name:  serviceNameLabelName,
+				Value: b.appName,
+			})
 			profiles = append(profiles, &model.ProfileSeries{
 				Labels: ls,
 				Samples: []*model.ProfileSample{

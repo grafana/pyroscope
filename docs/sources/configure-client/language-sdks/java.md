@@ -29,21 +29,26 @@ You can start Pyroscope either from your apps's Java code or attach it as javaag
 ## Start Pyroscope from app's Java code
 First, add Pyroscope dependency
 
-### Maven
-```xml
+{{< code >}}
+
+```maven
 <dependency>
   <groupId>io.pyroscope</groupId>
   <artifactId>agent</artifactId>
-  <version>pyroscope_version</version>
+  <version>0.12.1</version>
 </dependency>
 ```
 
-### Gradle
-```shell
-implementation("io.pyroscope:agent:${pyroscope_version}")
+```gradle
+implementation("io.pyroscope:agent:0.12.1")
 ```
 
+{{< /code >}}
+
 Then add the following code to your application:
+
+{{< code >}}
+
 ```java
 PyroscopeAgent.start(
   new Config.Builder()
@@ -54,6 +59,33 @@ PyroscopeAgent.start(
     .build()
 );
 ```
+
+```spring
+import io.pyroscope.javaagent.PyroscopeAgent;
+import io.pyroscope.javaagent.config.Config;
+import io.pyroscope.javaagent.EventType;
+import io.pyroscope.http.Format;
+
+@PostConstruct
+public void init() {
+
+    PyroscopeAgent.start(
+    new Config.Builder()
+        .setApplicationName("ride-sharing-app-java")
+        .setProfilingEvent(EventType.ITIMER)
+        .setFormat(Format.JFR)
+        .setServerAddress("http://pyroscope-server:4040")
+        // Optionally, if authentication is enabled, specify the API key.
+        // .setAuthToken(System.getenv("PYROSCOPE_AUTH_TOKEN"))
+        // Optionally, if you'd like to set allocation threshold to register events, in bytes. '0' registers all events
+        // .setProfilingAlloc("0")
+        .build()
+    );
+}
+```
+  
+{{< /code >}}
+
 
 You can also optionally replace some Pyroscope components:
 ```java

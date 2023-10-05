@@ -74,7 +74,10 @@ func (m *SeriesRequest) CloneVT() *SeriesRequest {
 	if m == nil {
 		return (*SeriesRequest)(nil)
 	}
-	r := &SeriesRequest{}
+	r := &SeriesRequest{
+		Start: m.Start,
+		End:   m.End,
+	}
 	if rhs := m.Matchers; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
@@ -372,12 +375,19 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type QuerierServiceClient interface {
+	// ProfileType returns a list of the existing profile types.
 	ProfileTypes(ctx context.Context, in *ProfileTypesRequest, opts ...grpc.CallOption) (*ProfileTypesResponse, error)
+	// LabelValues returns the existing label values for the provided label names.
 	LabelValues(ctx context.Context, in *v1.LabelValuesRequest, opts ...grpc.CallOption) (*v1.LabelValuesResponse, error)
+	// LabelNames returns a list of the existing label names.
 	LabelNames(ctx context.Context, in *v1.LabelNamesRequest, opts ...grpc.CallOption) (*v1.LabelNamesResponse, error)
+	// Series returns profiles series matching the request. A series is a unique label set.
 	Series(ctx context.Context, in *SeriesRequest, opts ...grpc.CallOption) (*SeriesResponse, error)
+	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeStacktraces(ctx context.Context, in *SelectMergeStacktracesRequest, opts ...grpc.CallOption) (*SelectMergeStacktracesResponse, error)
+	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(ctx context.Context, in *SelectMergeProfileRequest, opts ...grpc.CallOption) (*v11.Profile, error)
+	// SelectSeries returns a time series for the total sum of the requested profiles.
 	SelectSeries(ctx context.Context, in *SelectSeriesRequest, opts ...grpc.CallOption) (*SelectSeriesResponse, error)
 	Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 }
@@ -466,12 +476,19 @@ func (c *querierServiceClient) Diff(ctx context.Context, in *DiffRequest, opts .
 // All implementations must embed UnimplementedQuerierServiceServer
 // for forward compatibility
 type QuerierServiceServer interface {
+	// ProfileType returns a list of the existing profile types.
 	ProfileTypes(context.Context, *ProfileTypesRequest) (*ProfileTypesResponse, error)
+	// LabelValues returns the existing label values for the provided label names.
 	LabelValues(context.Context, *v1.LabelValuesRequest) (*v1.LabelValuesResponse, error)
+	// LabelNames returns a list of the existing label names.
 	LabelNames(context.Context, *v1.LabelNamesRequest) (*v1.LabelNamesResponse, error)
+	// Series returns profiles series matching the request. A series is a unique label set.
 	Series(context.Context, *SeriesRequest) (*SeriesResponse, error)
+	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *SelectMergeStacktracesRequest) (*SelectMergeStacktracesResponse, error)
+	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(context.Context, *SelectMergeProfileRequest) (*v11.Profile, error)
+	// SelectSeries returns a time series for the total sum of the requested profiles.
 	SelectSeries(context.Context, *SelectSeriesRequest) (*SelectSeriesResponse, error)
 	Diff(context.Context, *DiffRequest) (*DiffResponse, error)
 	mustEmbedUnimplementedQuerierServiceServer()
@@ -825,6 +842,16 @@ func (m *SeriesRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.End != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.End))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.Start != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.Start))
+		i--
+		dAtA[i] = 0x18
 	}
 	if len(m.LabelNames) > 0 {
 		for iNdEx := len(m.LabelNames) - 1; iNdEx >= 0; iNdEx-- {
@@ -1544,6 +1571,12 @@ func (m *SeriesRequest) SizeVT() (n int) {
 			n += 1 + l + sov(uint64(l))
 		}
 	}
+	if m.Start != 0 {
+		n += 1 + sov(uint64(m.Start))
+	}
+	if m.End != 0 {
+		n += 1 + sov(uint64(m.End))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -2044,6 +2077,44 @@ func (m *SeriesRequest) UnmarshalVT(dAtA []byte) error {
 			}
 			m.LabelNames = append(m.LabelNames, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Start", wireType)
+			}
+			m.Start = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Start |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field End", wireType)
+			}
+			m.End = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.End |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

@@ -9,8 +9,8 @@ weight: 20
 
 You can deploy Pyroscope in one of two modes:
 
-- Monolithic mode
-- Microservices mode
+- Monolithic mode: In this mode all components run in a single process and is meant to be used when you _only need one pyroscope instance_ as multiple instances will not share information with each other
+- Microservices mode: In this mode in this mode as you scale out the number of instances, they will share a singular backend for storage and querying
 
 The deployment mode is determined by the `-target` parameter, which you can set via CLI flag or YAML configuration.
 
@@ -36,7 +36,7 @@ Monolithic mode can be horizontally scaled out by deploying multiple Pyroscope b
 
 In microservices mode, components are deployed in distinct processes. Scaling is per component, which allows for greater flexibility in scaling and more granular failure domains. Microservices mode is the preferred method for a production deployment, but it is also the most complex.
 
-In microservices mode, each Pyroscope process is invoked with its `-target` parameter set to a specific Pyroscope component (for example, `-target=ingester` or `-target=distributor`). To get a working Pyroscope instance, you must deploy every required component. For more information about each of the Pyroscope components, refer to [Architecture]({{<relref "../_index.md" >}}).
+In microservices mode, each Pyroscope process is invoked with its `-target` parameter set to a specific Pyroscope component (for example, `-target=ingester` or `-target=distributor`). To get a working Pyroscope instance, you must deploy every required component. For more information about each of the Pyroscope components, refer to [Architecture]({{< relref ".." >}}).
 
 If you are interested in deploying Pyroscope in microservices mode, we recommend that you use [Kubernetes](https://kubernetes.io/).
 

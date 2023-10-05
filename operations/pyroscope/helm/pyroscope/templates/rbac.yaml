@@ -4,6 +4,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: {{ .Release.Namespace }}-{{ include "pyroscope.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "pyroscope.labels" . | nindent 4 }}
 rules:
@@ -25,6 +26,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: {{ .Release.Namespace }}-{{ include "pyroscope.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "pyroscope.labels" . | nindent 4 }}
 roleRef:

@@ -25,6 +25,7 @@ type Limits struct {
 	MaxLabelNameLength     int     `yaml:"max_label_name_length" json:"max_label_name_length"`
 	MaxLabelValueLength    int     `yaml:"max_label_value_length" json:"max_label_value_length"`
 	MaxLabelNamesPerSeries int     `yaml:"max_label_names_per_series" json:"max_label_names_per_series"`
+	MaxSessionsPerSeries   int     `yaml:"max_sessions_per_series" json:"max_sessions_per_series"`
 
 	MaxProfileSizeBytes              int `yaml:"max_profile_size_bytes" json:"max_profile_size_bytes"`
 	MaxProfileStacktraceSamples      int `yaml:"max_profile_stacktrace_samples" json:"max_profile_stacktrace_samples"`
@@ -52,6 +53,10 @@ type Limits struct {
 
 	// Query frontend.
 	QuerySplitDuration model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
+
+	// Ensure profiles are dated within the IngestionWindow of the distributor.
+	RejectOlderThan model.Duration `yaml:"reject_older_than" json:"reject_older_than"`
+	RejectNewerThan model.Duration `yaml:"reject_newer_than" json:"reject_newer_than"`
 }
 
 // LimitError are errors that do not comply with the limits specified.
@@ -71,6 +76,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxLabelNameLength, "validation.max-length-label-name", 1024, "Maximum length accepted for label names.")
 	f.IntVar(&l.MaxLabelValueLength, "validation.max-length-label-value", 2048, "Maximum length accepted for label value. This setting also applies to the metric name.")
 	f.IntVar(&l.MaxLabelNamesPerSeries, "validation.max-label-names-per-series", 30, "Maximum number of label names per series.")
+	f.IntVar(&l.MaxSessionsPerSeries, "validation.max-sessions-per-series", 0, "Maximum number of sessions per series. 0 to disable.")
 
 	f.IntVar(&l.MaxLocalSeriesPerTenant, "ingester.max-local-series-per-tenant", 0, "Maximum number of active series of profiles per tenant, per ingester. 0 to disable.")
 	f.IntVar(&l.MaxGlobalSeriesPerTenant, "ingester.max-global-series-per-tenant", 5000, "Maximum number of active series of profiles per tenant, across the cluster. 0 to disable. When the global limit is enabled, each ingester is configured with a dynamic local limit based on the replication factor and the current number of healthy ingesters, and is kept updated whenever the number of ingesters change.")
@@ -93,6 +99,13 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxProfileStacktraceSampleLabels, "validation.max-profile-stacktrace-sample-labels", 100, "Maximum number of labels in a profile sample. 0 to disable.")
 	f.IntVar(&l.MaxProfileStacktraceDepth, "validation.max-profile-stacktrace-depth", 1000, "Maximum depth of a profile stacktrace. Profiles are not rejected instead stacktraces are truncated. 0 to disable.")
 	f.IntVar(&l.MaxProfileSymbolValueLength, "validation.max-profile-symbol-value-length", 65535, "Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable.")
+
+	_ = l.RejectNewerThan.Set("10m")
+	f.Var(&l.RejectNewerThan, "validation.reject-newer-than", "This limits how far into the future profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 10m.")
+
+	_ = l.RejectOlderThan.Set("1h")
+	f.Var(&l.RejectOlderThan, "validation.reject-older-than", "This limits how far into the past profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 1h.")
+
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -219,6 +232,11 @@ func (o *Overrides) MaxProfileSymbolValueLength(tenantID string) int {
 	return o.getOverridesForTenant(tenantID).MaxProfileSymbolValueLength
 }
 
+// MaxSessionsPerSeries returns the maximum number of sessions per single series.
+func (o *Overrides) MaxSessionsPerSeries(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).MaxSessionsPerSeries
+}
+
 // MaxLocalSeriesPerTenant returns the maximum number of series a tenant is allowed to store
 // in a single ingester.
 func (o *Overrides) MaxLocalSeriesPerTenant(tenantID string) int {
@@ -261,6 +279,16 @@ func (o *Overrides) QuerySplitDuration(tenantID string) time.Duration {
 // Shuffle sharding will be used to distribute queries across queriers.
 // 0 means no limit. Currently disabled.
 func (o *Overrides) MaxQueriersPerTenant(tenant string) int { return 0 }
+
+// RejectNewerThan will ensure that profiles are further than the return value into the future are reject.
+func (o *Overrides) RejectNewerThan(tenantID string) time.Duration {
+	return time.Duration(o.getOverridesForTenant(tenantID).RejectNewerThan)
+}
+
+// RejectOlderThan will ensure that profiles that are older than the return value are rejected.
+func (o *Overrides) RejectOlderThan(tenantID string) time.Duration {
+	return time.Duration(o.getOverridesForTenant(tenantID).RejectOlderThan)
+}
 
 func (o *Overrides) DefaultLimits() *Limits {
 	return o.defaultLimits

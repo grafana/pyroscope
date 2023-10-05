@@ -2,7 +2,7 @@ project_name: pyroscope
 before:
   hooks:
     # This hook ensures that goreleaser uses the correct go version for a Pyroscope release
-    - sh -euc "go version | grep "go version go1.21.0 " || { echo "Unexpected go version"; exit 1; }"
+    - sh -euc "go version | grep "go version go1.21.1 " || { echo "Unexpected go version"; exit 1; }"
 builds:
   - env:
       - CGO_ENABLED=0
@@ -142,6 +142,25 @@ docker_manifests:
       - grafana/{{ .ProjectName }}:latest-arm64v8
       - grafana/{{ .ProjectName }}:latest-armv6
       - grafana/{{ .ProjectName }}:latest-armv7
+nfpms:
+  - id: pyroscope
+    formats:
+      - deb
+      - rpm
+    section: default
+    maintainer: Grafana Labs <support@grafana.com>
+    vendor: Grafana Labs Inc
+    homepage: https://grafana.com/pyroscope
+    license: AGPL-3.0
+    contents:
+      - src: ./tools/packaging/pyroscope.service
+        dst: /etc/systemd/system/pyroscope.service
+      - src: ./cmd/pyroscope/pyroscope.yaml
+        dst: /etc/pyroscope/config.yml
+        type: config|noreplace
+    scripts:
+      postinstall: ./tools/packaging/postinstall.sh
+
 archives:
   - id: pyroscope
     builds:

@@ -18,6 +18,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
+	parquetobj "github.com/grafana/pyroscope/pkg/objstore/parquet"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
@@ -33,10 +34,10 @@ type Reader struct {
 	index      IndexFile
 	partitions map[uint64]*partition
 
-	locations parquetFile
-	mappings  parquetFile
-	functions parquetFile
-	strings   parquetFile
+	locations parquetobj.File
+	mappings  parquetobj.File
+	functions parquetobj.File
+	strings   parquetobj.File
 }
 
 const (
@@ -95,8 +96,16 @@ func (r *Reader) openIndexFile(ctx context.Context) error {
 	return err
 }
 
+const parquetReadBufferSize = 256 << 10 // 256KB
+
 func (r *Reader) openParquetFiles(ctx context.Context) error {
-	m := map[string]*parquetFile{
+	options := []parquet.FileOption{
+		parquet.SkipBloomFilters(true), // we don't use bloom filters
+		parquet.FileReadMode(parquet.ReadModeAsync),
+		parquet.ReadBufferSize(parquetReadBufferSize),
+	}
+
+	m := map[string]*parquetobj.File{
 		new(schemav1.LocationPersister).Name() + block.ParquetSuffix: &r.locations,
 		new(schemav1.MappingPersister).Name() + block.ParquetSuffix:  &r.mappings,
 		new(schemav1.FunctionPersister).Name() + block.ParquetSuffix: &r.functions,
@@ -111,7 +120,7 @@ func (r *Reader) openParquetFiles(ctx context.Context) error {
 			if err != nil {
 				return err
 			}
-			if err = fp.open(ctx, r.bucket, fm); err != nil {
+			if err = fp.Open(ctx, r.bucket, fm, options...); err != nil {
 				return fmt.Errorf("openning file %q: %w", n, err)
 			}
 			return nil
@@ -161,10 +170,10 @@ func (r *Reader) Close() error {
 		return nil
 	}
 	return multierror.New(
-		r.locations.close(),
-		r.mappings.close(),
-		r.functions.close(),
-		r.strings.close()).
+		r.locations.Close(),
+		r.mappings.Close(),
+		r.functions.Close(),
+		r.strings.Close()).
 		Err()
 }
 
@@ -407,60 +416,12 @@ func (c *stacktraceChunkReader) release() {
 	c.m.Unlock()
 }
 
-type parquetFile struct {
-	*parquet.File
-	reader objstore.ReaderAtCloser
-	path   string
-	size   int64
-}
-
-const parquetReadBufferSize = 256 << 10 // 256KB
-
-func (f *parquetFile) open(ctx context.Context, b objstore.BucketReader, meta block.File) error {
-	f.path = meta.RelPath
-	f.size = int64(meta.SizeBytes)
-	if f.size == 0 {
-		attrs, err := b.Attributes(ctx, f.path)
-		if err != nil {
-			return fmt.Errorf("getting attributes: %w", err)
-		}
-		f.size = attrs.Size
-	}
-	var err error
-	// the same reader is used to serve all requests, so we pass context.Background() here
-	if f.reader, err = b.ReaderAt(context.Background(), f.path); err != nil {
-		return fmt.Errorf("creating reader: %w", err)
-	}
-
-	// first try to open file, this is required otherwise OpenFile panics
-	f.File, err = parquet.OpenFile(f.reader, f.size,
-		parquet.SkipPageIndex(true),
-		parquet.SkipBloomFilters(true))
-	if err != nil {
-		return err
-	}
-
-	// now open it for real
-	f.File, err = parquet.OpenFile(f.reader, f.size,
-		parquet.SkipBloomFilters(true), // we don't use bloom filters
-		parquet.FileReadMode(parquet.ReadModeAsync),
-		parquet.ReadBufferSize(parquetReadBufferSize))
-	return err
-}
-
-func (f *parquetFile) close() (err error) {
-	if f.reader != nil {
-		return f.reader.Close()
-	}
-	return nil
-}
-
 type parquetTableRange[M schemav1.Models, P schemav1.Persister[M]] struct {
 	headers   []RowRangeReference
 	bucket    objstore.BucketReader
 	persister P
 
-	file *parquetFile
+	file *parquetobj.File
 
 	m sync.RWMutex
 	r int64
@@ -509,7 +470,7 @@ func (t *parquetTableRange[M, P]) fetch(ctx context.Context) (err error) {
 		}
 		dst := t.s[offset : offset+int(h.Rows)]
 		if err := t.readRows(dst, buf, rows); err != nil {
-			return fmt.Errorf("reading row group from parquet file %q: %w", t.file.path, err)
+			return fmt.Errorf("reading row group from parquet file %q: %w", t.file.Path(), err)
 		}
 		offset += int(h.Rows)
 	}

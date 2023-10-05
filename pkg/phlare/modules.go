@@ -282,8 +282,8 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 	f.Cfg.Distributor.DistributorRing.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 	f.Cfg.Ingester.LifecyclerConfig.RingConfig.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 	f.Cfg.QueryScheduler.ServiceDiscovery.SchedulerRing.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
-	f.Cfg.OverridesExporter.Ring.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
-	f.Cfg.StoreGateway.ShardingRing.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
+	f.Cfg.OverridesExporter.Ring.Ring.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
+	f.Cfg.StoreGateway.ShardingRing.Ring.KVStore.MemberlistKV = f.MemberlistKV.GetMemberlistKV
 
 	f.Cfg.Frontend.QuerySchedulerDiscovery = f.Cfg.QueryScheduler.ServiceDiscovery
 	f.Cfg.Worker.QuerySchedulerDiscovery = f.Cfg.QueryScheduler.ServiceDiscovery
@@ -345,7 +345,7 @@ func (f *Phlare) initIngester() (_ services.Service, err error) {
 }
 
 func (f *Phlare) initStoreGateway() (serv services.Service, err error) {
-	f.Cfg.StoreGateway.ShardingRing.ListenPort = f.Cfg.Server.HTTPListenPort
+	f.Cfg.StoreGateway.ShardingRing.Ring.ListenPort = f.Cfg.Server.HTTPListenPort
 	if f.storageBucket == nil {
 		return nil, nil
 	}
