@@ -1,19 +1,21 @@
 import { Query, queryToAppName } from '@pyroscope/models/query';
 import * as tagsService from '@pyroscope/services/tags';
 import { createBiggestInterval } from '@pyroscope/util/timerange';
-import { formatAsOBject, toUnixTimestamp } from '@pyroscope/util/formatDate';
+import { formatAsOBject } from '@pyroscope/util/formatDate';
 import { ContinuousState } from './state';
 import { addNotification } from '../notifications';
 import { createAsyncThunk } from '../../async-thunk';
 
 function biggestTimeRangeInUnix(state: ContinuousState) {
+  const getTime = (d: Date) => d.getTime()
+
   return createBiggestInterval({
     from: [state.from, state.leftFrom, state.rightFrom]
       .map(formatAsOBject)
-      .map(toUnixTimestamp),
+      .map(getTime),
     until: [state.until, state.leftUntil, state.leftUntil]
       .map(formatAsOBject)
-      .map(toUnixTimestamp),
+      .map(getTime),
   });
 }
 
