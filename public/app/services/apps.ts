@@ -86,13 +86,6 @@ export async function fetchApps(
   fromMs?: number,
   untilMs?: number
 ): Promise<Result<App[], RequestError | ZodError>> {
-  if (typeof fromMs === 'undefined') {
-    fromMs = 0;
-  }
-  if (typeof untilMs === 'undefined') {
-    untilMs = 0;
-  }
-
   let response = await requestWithOrgID('/querier.v1.QuerierService/Series', {
     method: 'POST',
     body: JSON.stringify({
@@ -104,8 +97,8 @@ export async function fetchApps(
         '__type__',
         '__name__',
       ],
-      start: fromMs,
-      end: untilMs,
+      start: fromMs || 0,
+      end: untilMs || 0,
     }),
     headers: {
       'content-type': 'application/json',
