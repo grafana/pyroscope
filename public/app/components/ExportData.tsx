@@ -83,7 +83,7 @@ export class PprofRequest extends Message<PprofRequest> {
   end: number;
 }
 
-type ExportDataProps = {
+export type ExportDataProps = {
   buttonEl?: React.ComponentType<{
     onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
   }>;
