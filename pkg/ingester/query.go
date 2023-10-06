@@ -19,7 +19,10 @@ func (i *Ingester) LabelValues(ctx context.Context, req *connect.Request[typesv1
 // LabelNames returns the possible label names.
 func (i *Ingester) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
 	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[typesv1.LabelNamesResponse], error) {
-		return instance.LabelNames(ctx, req)
+		if req.Msg.IsLegacy() {
+			return instance.LegacyLabelNames(ctx, req)
+		}
+		return instance.LegacyLabelNames(ctx, req)
 	})
 }
 

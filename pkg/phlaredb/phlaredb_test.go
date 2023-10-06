@@ -502,7 +502,7 @@ func Test_QueryNotInitializedHead(t *testing.T) {
 	})
 
 	t.Run("LabelNames", func(t *testing.T) {
-		resp, err := db.LabelNames(ctx, connect.NewRequest(new(typesv1.LabelNamesRequest)))
+		resp, err := db.LegacyLabelNames(ctx, connect.NewRequest(new(typesv1.LabelNamesRequest)))
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.NotNil(t, resp.Msg)
@@ -516,7 +516,7 @@ func Test_QueryNotInitializedHead(t *testing.T) {
 	})
 
 	t.Run("Series", func(t *testing.T) {
-		resp, err := db.Series(ctx, connect.NewRequest(&ingestv1.SeriesRequest{}))
+		resp, err := db.LegacySeries(ctx, connect.NewRequest(&ingestv1.SeriesRequest{}))
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.NotNil(t, resp.Msg)

@@ -315,11 +315,28 @@ func (f *PhlareDB) LabelValues(ctx context.Context, req *connect.Request[typesv1
 	})
 }
 
-// LabelNames returns the possible label names.
-func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (resp *connect.Response[typesv1.LabelNamesResponse], err error) {
+func (f *PhlareDB) LegacyLabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (resp *connect.Response[typesv1.LabelNamesResponse], err error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB LegacyLabelNames")
+	defer sp.Finish()
+
 	return withHeadForQuery(f, func(head *Head) (*connect.Response[typesv1.LabelNamesResponse], error) {
 		return head.LabelNames(ctx, req)
 	})
+}
+
+// LabelNames returns the possible label names.
+func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (resp *connect.Response[typesv1.LabelNamesResponse], err error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB LabelNames")
+	defer sp.Finish()
+
+	f.headLock.RLock()
+	defer f.headLock.RUnlock()
+
+	res, err := LabelNames(ctx, req.Msg, f.queriers().ForTimeRange)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(res), nil
 }
 
 // ProfileTypes returns the possible profile types.
@@ -330,7 +347,7 @@ func (f *PhlareDB) ProfileTypes(ctx context.Context, req *connect.Request[ingest
 }
 
 func (f *PhlareDB) LegacySeries(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhareDB LegacySeries")
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB LegacySeries")
 	defer sp.Finish()
 
 	return withHeadForQuery(f, func(head *Head) (*connect.Response[ingestv1.SeriesResponse], error) {
@@ -340,7 +357,7 @@ func (f *PhlareDB) LegacySeries(ctx context.Context, req *connect.Request[ingest
 
 // Series returns labels series for the given set of matchers.
 func (f *PhlareDB) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhareDB Series")
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB Series")
 	defer sp.Finish()
 
 	f.headLock.RLock()

@@ -45,7 +45,20 @@ func (s *StoreGateway) MergeProfilesPprof(ctx context.Context, stream *connect.B
 }
 
 func (s *StoreGateway) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
-	panic("unimplemented") // TODO(bryan) implement
+	var res *typesv1.LabelNamesResponse
+	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
+		var err error
+		res, err = phlaredb.LabelNames(ctx, req.Msg, bs.openBlocksForReading)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(res), nil
 }
 
 func (s *StoreGateway) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {

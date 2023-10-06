@@ -658,6 +658,138 @@ func Test_singleBlockQuerier_Series(t *testing.T) {
 	})
 }
 
+func Test_singleBlockQuerier_LabelNames(t *testing.T) {
+	ctx := context.Background()
+	reader, err := index.NewFileReader("testdata/01HA2V3CPSZ9E0HMQNNHH89WSS/index.tsdb")
+	assert.NoError(t, err)
+
+	q := &singleBlockQuerier{
+		metrics: newBlocksMetrics(nil),
+		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
+		opened:  true, // Skip trying to open the block.
+		index:   reader,
+	}
+
+	t.Run("no matchers", func(t *testing.T) {
+		want := []string{
+			"__delta__",
+			"__name__",
+			"__period_type__",
+			"__period_unit__",
+			"__profile_type__",
+			"__service_name__",
+			"__type__",
+			"__unit__",
+			"foo",
+			"function",
+			"pyroscope_spy",
+			"service_name",
+			"target",
+			"version",
+		}
+
+		got, err := q.LabelNames(ctx, &typesv1.LabelNamesRequest{
+			Matchers: []string{},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("empty matcher", func(t *testing.T) {
+		want := []string{
+			"__delta__",
+			"__name__",
+			"__period_type__",
+			"__period_unit__",
+			"__profile_type__",
+			"__service_name__",
+			"__type__",
+			"__unit__",
+			"foo",
+			"function",
+			"pyroscope_spy",
+			"service_name",
+			"target",
+			"version",
+		}
+
+		got, err := q.LabelNames(ctx, &typesv1.LabelNamesRequest{
+			Matchers: []string{`{}`},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("single matcher", func(t *testing.T) {
+		want := []string{
+			"__delta__",
+			"__name__",
+			"__period_type__",
+			"__period_unit__",
+			"__profile_type__",
+			"__service_name__",
+			"__type__",
+			"__unit__",
+			"foo",
+			"function",
+			"pyroscope_spy",
+			"service_name",
+			"target",
+			"version",
+		}
+
+		got, err := q.LabelNames(ctx, &typesv1.LabelNamesRequest{
+			Matchers: []string{`{__name__="process_cpu"}`},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("multiple matchers", func(t *testing.T) {
+		want := []string{
+			"__delta__",
+			"__name__",
+			"__profile_type__",
+			"__service_name__",
+			"__type__",
+			"__unit__",
+			"pyroscope_spy",
+			"service_name",
+			"target",
+			"version",
+		}
+
+		got, err := q.LabelNames(ctx, &typesv1.LabelNamesRequest{
+			Matchers: []string{`{__name__="memory",__type__="alloc_objects"}`},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("ui plugin", func(t *testing.T) {
+		want := []string{
+			"__delta__",
+			"__name__",
+			"__period_type__",
+			"__period_unit__",
+			"__profile_type__",
+			"__service_name__",
+			"__type__",
+			"__unit__",
+			"foo",
+			"function",
+			"pyroscope_spy",
+			"service_name",
+		}
+
+		got, err := q.LabelNames(ctx, &typesv1.LabelNamesRequest{
+			Matchers: []string{`{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds", service_name="simple.golang.app"}`},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+}
+
 func Benchmark_singleBlockQuerier_Series(b *testing.B) {
 	ctx := context.Background()
 	reader, err := index.NewFileReader("testdata/01HA2V3CPSZ9E0HMQNNHH89WSS/index.tsdb")

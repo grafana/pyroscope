@@ -387,6 +387,7 @@ type Querier interface {
 	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error)
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
 	MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error)
+	LabelNames(ctx context.Context, params *typesv1.LabelNamesRequest) ([]string, error)
 	Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error)
 	Open(ctx context.Context) error
 	// Sorts profiles for retrieval.
@@ -769,6 +770,43 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 	return nil
 }
 
+func LabelNames(ctx context.Context, req *typesv1.LabelNamesRequest, blockGetter BlockGetter) (*typesv1.LabelNamesResponse, error) {
+	queriers, err := blockGetter(ctx, model.Time(req.Start), model.Time(req.End))
+	if err != nil {
+		return nil, err
+	}
+
+	var labelNames []string
+	var lock sync.Mutex
+	group, ctx := errgroup.WithContext(ctx)
+
+	const concurrentQueryLimit = 50
+	group.SetLimit(concurrentQueryLimit)
+
+	for _, q := range queriers {
+		group.Go(util.RecoverPanic(func() error {
+			names, err := q.LabelNames(ctx, req)
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			labelNames = append(labelNames, names...)
+			lock.Unlock()
+			return nil
+		}))
+	}
+	err = group.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Sort(sort.StringSlice(labelNames))
+	return &typesv1.LabelNamesResponse{
+		Names: lo.Uniq(labelNames),
+	}, nil
+}
+
 func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockGetter) (*ingestv1.SeriesResponse, error) {
 	queriers, err := blockGetter(ctx, model.Time(req.Start), model.Time(req.End))
 	if err != nil {
@@ -947,6 +985,65 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	}
 
 	return iter.NewMergeIterator(maxBlockProfile, false, iters...), nil
+}
+
+func (b *singleBlockQuerier) LabelNames(ctx context.Context, params *typesv1.LabelNamesRequest) ([]string, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames Block")
+	defer sp.Finish()
+
+	err := b.Open(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	selectors, err := parseSelectors(params.Matchers)
+	if err != nil {
+		return nil, err
+	}
+
+	names, err := b.index.LabelNames()
+	if err != nil {
+		return nil, err
+	}
+
+	if !selectors.matchesAll() {
+		// Clear the names slice. We need to run the matchers to decide which
+		// names to keep. We want to keep this slice capacity, as there will
+		// never be more names than what index.LabelNames() returns.
+		names = names[:0]
+
+		for _, matchers := range selectors {
+			iter, err := PostingsForMatchers(b.index, nil, matchers...)
+			if err != nil {
+				return nil, err
+			}
+
+			for iter.Next() {
+				labelNames, err := b.index.LabelNamesFor(iter.At())
+				if err != nil {
+					if err == storage.ErrNotFound {
+						continue
+					}
+					return nil, err
+				}
+
+				// Select all the label names which we don't already have.
+				for _, name := range labelNames {
+					index := sort.SearchStrings(names, name)
+					switch {
+					case index == len(names): // Add name to the end of the slice.
+						names = append(names, name)
+					case names[index] != name: // Insert name into the middle of the slice.
+						names = append(names, name)
+						copy(names[index+1:], names[index:])
+						names[index] = name
+					}
+				}
+			}
+		}
+	}
+
+	return names, nil
 }
 
 // Series selects the series labels from this block.
