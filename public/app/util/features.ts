@@ -8,7 +8,7 @@ const featuresSchema = z.object({
   internalAuthEnabled: z.boolean().default(false),
   signupEnabled: z.boolean().default(false),
   isAuthRequired: z.boolean().default(false),
-  exportToFlamegraphDotComEnabled: z.boolean().default(false),
+  exportToFlamegraphDotComEnabled: z.boolean().default(true),
   exemplarsPageEnabled: z.boolean().default(false),
 });
 
