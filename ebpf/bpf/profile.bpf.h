@@ -53,10 +53,12 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_PROG_ARRAY);
-    __uint(max_entries, 1); // 0 - python
+    __uint(max_entries, 1);
     __type(key, int);
     __array(values, int (void *));
 } progs SEC(".maps");
+
+#define PROG_IDX_PYTHON 0
 
 #include "stacks.h"
 

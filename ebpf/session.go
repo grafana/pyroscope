@@ -584,8 +584,8 @@ func (s *session) enableProfiling(pid uint32, target *sd.Target) {
 		if err != nil {
 			_ = level.Error(s.logger).Log("err", err, "msg", "pyperf process profiling init failed", "pid", pid)
 			_ = s.setPidConfig(pid, pyrobpf.ProfilingTypeError, false, false)
+			return
 		}
-		return
 	}
 	err := s.setPidConfig(pid, typ, s.options.CollectUser, s.options.CollectKernel)
 	if err != nil {
@@ -614,21 +614,29 @@ func (s *session) getPyPerf() *python.Perf {
 func (s *session) loadPyPerf() (*python.Perf, error) {
 	opts := &ebpf.CollectionOptions{
 		Programs: ebpf.ProgramOptions{
-			LogDisabled: true,
+			LogDisabled: false,
+			LogSize:     1024 * 1024 * 100,
+			LogLevel:    ebpf.LogLevelInstruction | ebpf.LogLevelStats | ebpf.LogLevelBranch,
 		},
 		MapReplacements: map[string]*ebpf.Map{
 			"stacks": s.bpf.Stacks,
 		},
 	}
-	err := python.LoadPerfObjects(&s.pyperfBpf.PyperfCollect, opts)
+	err := python.LoadPerfObjects(&s.pyperfBpf, opts)
 	if err != nil {
+		var ve *ebpf.VerifierError
+		if !errors.As(err, &ve) {
+			for _, ss := range ve.Log {
+				fmt.Println(ss)
+			}
+		}
 		return nil, fmt.Errorf("pyperf load %w", err)
 	}
 	pyperf, err := python.NewPerf(s.logger, s.pyperfBpf.PerfMaps.PyEvents, s.pyperfBpf.PerfMaps.PyPidConfig, s.pyperfBpf.PerfMaps.PySymbols)
 	if err != nil {
 		return nil, fmt.Errorf("pyperf create %w", err)
 	}
-	err = s.bpf.ProfileMaps.Progs.Update(0, s.pyperfBpf.PerfPrograms.PyperfCollect, ebpf.UpdateAny)
+	err = s.bpf.ProfileMaps.Progs.Update(uint32(0), s.pyperfBpf.PerfPrograms.PyperfCollect, ebpf.UpdateAny)
 	if err != nil {
 		return nil, fmt.Errorf("pyperf link %w", err)
 	}

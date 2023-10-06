@@ -5,6 +5,7 @@
 #include "bpf_helpers.h"
 
 #include "pthread.bpf.h"
+#include "pid.h"
 #include "stacks.h"
 
 
@@ -173,21 +174,21 @@ struct {
     __uint(value_size, sizeof(u32));
 } py_events SEC(".maps");
 
-static inline __attribute__((__always_inline__)) int get_thread_state(
+static __always_inline int get_thread_state(
         void *tls_base,
         py_pid_data *pid_data,
         void **out_thread_state) {
     return pyro_pthread_getspecific(pid_data->musl, pid_data->tssKey, tls_base, out_thread_state);
 }
 
-static inline __attribute__((__always_inline__)) int submit_sample(
+static __always_inline int submit_sample(
         void *ctx,
         py_sample_state_t *state) {
     bpf_perf_event_output(ctx, &py_events, BPF_F_CURRENT_CPU, &state->event, sizeof(py_event));
     return 0;
 }
 
-static inline __attribute__((__always_inline__)) int submit_error_sample(
+static __always_inline int submit_error_sample(
         void *ctx,
         py_sample_state_t *state, uint8_t err) {
     state->event.stack_status = STACK_STATUS_ERROR;
@@ -200,7 +201,7 @@ static inline __attribute__((__always_inline__)) int submit_error_sample(
 // this function is trivial, but we need to do map lookup in separate function,
 // because BCC doesn't allow direct map calls (including lookups) from inside
 // a macro (which we want to do in GET_STATE() macro below)
-static inline __attribute__((__always_inline__)) py_sample_state_t *get_state() {
+static __always_inline py_sample_state_t *get_state() {
     int zero = 0;
     return bpf_map_lookup_elem(&py_state_heap, &zero);
 }
@@ -211,7 +212,7 @@ static inline __attribute__((__always_inline__)) py_sample_state_t *get_state() 
     return -1; /* should never happen */ \
   }
 
-int get_top_frame(py_pid_data *pid_data, py_sample_state_t *state, void *thread_state) {
+static __always_inline int get_top_frame(py_pid_data *pid_data, py_sample_state_t *state, void *thread_state) {
     if (pid_data->offsets.PyThreadState_frame == -1) {
         // py311
         void *cframe;
@@ -241,8 +242,7 @@ int get_top_frame(py_pid_data *pid_data, py_sample_state_t *state, void *thread_
     return 0;
 }
 
-static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid, bool collect_kern_stack) {
-
+static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid, bool collect_kern_stack) {
     py_pid_data *pid_data = bpf_map_lookup_elem(&py_pid_config, &pid);
     if (!pid_data) {
         return 0;
@@ -291,12 +291,16 @@ static inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid
 
 SEC("perf_event")
 int pyperf_collect(struct bpf_perf_event_data *ctx) {
-    uint64_t pid_tgid = bpf_get_current_pid_tgid();
-    pid_t pid = (pid_t) (pid_tgid >> 32);
-    return pyperf_collect_impl(ctx, pid, true);
+    u32 pid;
+    struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+    current_pid(task, &pid);
+    if (pid == 0) {
+        return 0;
+    }
+    return pyperf_collect_impl(ctx, (pid_t)pid, false); // todo allow configuring it
 }
 
-static inline __attribute__((__always_inline__)) int check_first_arg(void *code_ptr,
+static __always_inline int check_first_arg(void *code_ptr,
                                                                      py_offset_config *offsets,
                                                                      py_symbol *symbol,
                                                                      bool *out_first_self,
@@ -347,7 +351,7 @@ static inline __attribute__((__always_inline__)) int check_first_arg(void *code_
 }
 
 // return -PY_ERR_XX on error, 0 on success
-static inline __attribute__((__always_inline__)) int get_names(
+static __always_inline int get_names(
         void *cur_frame,
         void *code_ptr,
         py_offset_config *offsets,
@@ -417,7 +421,7 @@ static inline __attribute__((__always_inline__)) int get_names(
 // stack_info->frame_ptr with pointer to next PyFrameObject
 // since 311 frame_ptr is pointing to _PyInterpreterFrame
 // returns -PY_ERR_XXX on error, 1 on success, 0 if no more frames
-static inline __attribute__((__always_inline__)) int get_frame_data(
+static __always_inline int get_frame_data(
         void **frame_ptr,
         py_offset_config *offsets,
         py_symbol *symbol,
@@ -468,7 +472,7 @@ static inline __attribute__((__always_inline__)) int get_frame_data(
 // To avoid duplicate ids, every CPU needs to use different ids when inserting
 // into the hashmap. NUM_CPUS is defined at PyPerf backend side and passed
 // through CFlag.
-static inline __attribute__((__always_inline__)) int get_symbol_id(
+static __always_inline int get_symbol_id(
         py_sample_state_t *state,
         py_symbol *sym,
         py_symbol_id *out_symbol_id) {
@@ -542,3 +546,5 @@ int read_python_stack(struct bpf_perf_event_data *ctx) {
 }
 
 #endif // PYPERF_H
+
+char _license[] SEC("license") = "GPL";

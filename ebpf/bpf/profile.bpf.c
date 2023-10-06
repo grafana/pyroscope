@@ -4,18 +4,21 @@
 #include "bpf_helpers.h"
 #include "bpf_tracing.h"
 #include "profile.bpf.h"
-//#include "pyperf.bpf.c"
-
+#include "pid.h"
 
 SEC("perf_event")
 int do_perf_event(struct bpf_perf_event_data *ctx) {
-    u64 id = bpf_get_current_pid_tgid();
-    u32 tgid = id >> 32;
-    u32 pid = id;
+    struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+    if (task == 0) {
+        return 0;
+    }
+    u32 tgid = 0;
+    current_pid(task, &tgid);
+
     struct sample_key key = {};
     u32 *val, one = 1;
 
-    if (pid == 0 || tgid == 0) {
+    if (tgid == 0) {
         return 0;
     }
     struct pid_config *config = bpf_map_lookup_elem(&pids, &tgid);
@@ -40,7 +43,7 @@ int do_perf_event(struct bpf_perf_event_data *ctx) {
     }
 
     if (config->type == PROFILING_TYPE_PYTHON) {
-        //pyperf_collect_impl(ctx, (pid_t) tgid, config->collect_kernel);
+        bpf_tail_call(ctx, &progs, PROG_IDX_PYTHON);
         return 0;
     }
 
