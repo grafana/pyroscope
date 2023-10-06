@@ -7,7 +7,7 @@ import { addNotification } from '../notifications';
 import { createAsyncThunk } from '../../async-thunk';
 
 function biggestTimeRangeInUnix(state: ContinuousState) {
-  const getTime = (d: Date) => d.getTime()
+  const getTime = (d: Date) => d.getTime();
 
   return createBiggestInterval({
     from: [state.from, state.leftFrom, state.rightFrom]
