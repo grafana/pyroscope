@@ -66,6 +66,16 @@ make GOOS=linux GOARCH=amd64 docker-image/pyroscope/build
 make IMAGE_PLATFORM=linux/arm64 GOOS=linux GOARCH=arm64 docker-image/pyroscope/build
 ```
 
+#### Apple arm64 builds (M1/M2 chips)
+
+If you encounter errors during the installation of the node packages due to missing arm64 build of `canvas`:
+
+```
+brew install pkg-config cairo pango libpng jpeg giflib librsvg
+```
+
+See https://github.com/Automattic/node-canvas/issues/1662
+
 #### Running examples locally
 replace `image: grafana/pyroscope` with the local tag name you got from docker-image/pyroscope/build (i.e):
 
