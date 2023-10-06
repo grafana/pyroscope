@@ -1001,7 +1001,7 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 		case block.MetaVersion3:
 			q.symbols, err = symdb.Open(ctx, q.bucket, q.meta)
 		default:
-			panic(fmt.Errorf("unsupported block version %d", q.meta.Version))
+			panic(fmt.Errorf("unsupported block version %d id %s", q.meta.Version, q.meta.ULID.String()))
 		}
 		return err
 	}))
