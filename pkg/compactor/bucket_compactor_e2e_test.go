@@ -230,6 +230,7 @@ func TestGroupCompactE2E(t *testing.T) {
 		bComp, err := NewBucketCompactor(logger, sy, grouper, planner, &BlockCompactor{
 			blockOpenConcurrency: 100,
 			logger:               logger,
+			metrics:              newCompactorMetrics(nil),
 		}, dir, userbkt, 2, ownAllJobs, sortJobsByNewestBlocksFirst, 0, 4, metrics)
 		require.NoError(t, err)
 

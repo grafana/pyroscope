@@ -24,6 +24,7 @@ func splitAndMergeCompactorFactory(ctx context.Context, cfg Config, logger log.L
 	return &BlockCompactor{
 		blockOpenConcurrency: cfg.MaxOpeningBlocksConcurrency,
 		logger:               logger,
+		metrics:              newCompactorMetrics(reg),
 	}, NewSplitAndMergePlanner(cfg.BlockRanges.ToMilliseconds()), nil
 }
 

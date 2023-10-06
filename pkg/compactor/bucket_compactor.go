@@ -228,6 +228,73 @@ type Compactor interface {
 type BlockCompactor struct {
 	blockOpenConcurrency int
 	logger               log.Logger
+	metrics              *CompactorMetrics
+}
+
+type CompactorMetrics struct {
+	Ran               *prometheus.CounterVec
+	InProgress        *prometheus.GaugeVec
+	OverlappingBlocks prometheus.Counter
+	Duration          *prometheus.HistogramVec
+	Size              *prometheus.HistogramVec
+	Samples           *prometheus.HistogramVec
+	Range             *prometheus.HistogramVec
+	Split             *prometheus.HistogramVec
+}
+
+func newCompactorMetrics(r prometheus.Registerer) *CompactorMetrics {
+	m := &CompactorMetrics{}
+
+	m.Ran = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "pyroscope_compactions_total",
+		Help: "Total number of compactions that were executed per level.",
+	}, []string{"level"})
+	m.InProgress = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "pyroscope_compactions_current",
+		Help: "The amount of compaction in progress per level",
+	}, []string{"level"})
+	m.OverlappingBlocks = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "pyroscope_vertical_compactions_total",
+		Help: "Total number of compactions done on overlapping blocks.",
+	})
+	m.Duration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "pyroscope_compaction_duration_seconds",
+		Help:    "Duration of compaction runs",
+		Buckets: prometheus.ExponentialBuckets(1, 2, 14),
+	}, []string{"level"})
+	m.Size = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "pyroscope_compaction_size_bytes",
+		Help:    "Final block size after compaction by level",
+		Buckets: prometheus.ExponentialBuckets(32, 1.5, 12),
+	}, []string{"level"})
+	m.Samples = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "pyroscope_compaction_samples",
+		Help:    "Final number of samples after compaction by level",
+		Buckets: prometheus.ExponentialBuckets(4, 1.5, 12),
+	}, []string{"level"})
+	m.Range = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "pyroscope_compaction_range_seconds",
+		Help:    "Final time range after compaction by level.",
+		Buckets: prometheus.ExponentialBuckets(100, 4, 10),
+	}, []string{"level"})
+	m.Split = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "pyroscope_compaction_splits",
+		Help:    "Compaction split factor by level.",
+		Buckets: []float64{1, 2, 4, 8, 16, 32, 64},
+	}, []string{"level"})
+
+	if r != nil {
+		r.MustRegister(
+			m.Ran,
+			m.InProgress,
+			m.OverlappingBlocks,
+			m.Duration,
+			m.Range,
+			m.Samples,
+			m.Size,
+		)
+	}
+	return m
 }
 
 func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, dirs []string, shardCount uint64) ([]ulid.ULID, error) {
@@ -258,6 +325,25 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 			}
 		}
 	}()
+	currentLevel := 0
+	for _, r := range readers {
+		lvl := r.Meta().Compaction.Level
+		if lvl > currentLevel {
+			currentLevel = lvl
+		}
+	}
+	currentLevel++
+
+	start := time.Now()
+	defer func() {
+		c.metrics.Duration.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(time.Since(start).Seconds())
+		c.metrics.InProgress.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Dec()
+	}()
+	c.metrics.InProgress.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Inc()
+	c.metrics.Ran.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Inc()
+	c.metrics.Split.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(float64(shardCount))
+
+	// Open all blocks
 	err = concurrency.ForEachJob(ctx, len(readers), c.blockOpenConcurrency, func(ctx context.Context, idx int) error {
 		dir := dirs[idx]
 		meta, err := block.ReadMetaFromDir(dir)
@@ -277,6 +363,15 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 	metas, err := phlaredb.CompactWithSplitting(ctx, readers, shardCount, dest)
 	if err != nil {
 		return nil, errors.Wrapf(err, "compact blocks %v", dirs)
+	}
+	for _, m := range metas {
+		c.metrics.Range.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(float64(m.MaxTime-m.MinTime) / 1000)
+		c.metrics.Samples.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(float64(m.Stats.NumSamples))
+		size := float64(0)
+		for _, f := range m.Files {
+			size += float64(f.SizeBytes)
+		}
+		c.metrics.Size.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(size)
 	}
 	result := make([]ulid.ULID, len(metas))
 	for i := range metas {
