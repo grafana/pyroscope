@@ -84,13 +84,13 @@ function removeDuplicateApps(app: App[]) {
 
 export async function fetchApps(
   fromMs?: number,
-  toMs?: number
+  untilMs?: number
 ): Promise<Result<App[], RequestError | ZodError>> {
   if (typeof fromMs === 'undefined') {
     fromMs = 0;
   }
-  if (typeof toMs === 'undefined') {
-    toMs = 0;
+  if (typeof untilMs === 'undefined') {
+    untilMs = 0;
   }
 
   let response = await requestWithOrgID('/querier.v1.QuerierService/Series', {
@@ -105,7 +105,7 @@ export async function fetchApps(
         '__name__',
       ],
       start: fromMs,
-      end: toMs,
+      end: untilMs,
     }),
     headers: {
       'content-type': 'application/json',
@@ -122,7 +122,7 @@ export async function fetchApps(
     body: JSON.stringify({
       matchers: [],
       start: fromMs,
-      end: toMs,
+      end: untilMs,
     }),
     headers: {
       'content-type': 'application/json',

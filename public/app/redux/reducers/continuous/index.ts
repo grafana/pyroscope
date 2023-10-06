@@ -80,13 +80,11 @@ export const reloadAppNames = createAsyncThunk<
   { state: { continuous: ContinuousState } }
 >('names/reloadAppNames', async (_, thunkAPI) => {
   const state = thunkAPI.getState();
-  const from = formatAsOBject(state.continuous.from);
-  const to = formatAsOBject(state.continuous.until);
-  const fromMs = from.getTime();
-  const toMs = to.getTime();
+  const fromMs = formatAsOBject(state.continuous.from).getTime();
+  const untilMs = formatAsOBject(state.continuous.until).getTime();
 
   // TODO, retries?
-  const res = await fetchApps(fromMs, toMs);
+  const res = await fetchApps(fromMs, untilMs);
 
   if (res.isOk) {
     return Promise.resolve(res.value);
