@@ -2,6 +2,9 @@ package model
 
 import (
 	"bytes"
+	"encoding/binary"
+	"encoding/hex"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,19 +15,23 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/slices"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 var seps = []byte{'\xff'}
 
 const (
-	LabelNameProfileType    = "__profile_type__"
-	LabelNameType           = "__type__"
-	LabelNameUnit           = "__unit__"
-	LabelNamePeriodType     = "__period_type__"
-	LabelNamePeriodUnit     = "__period_unit__"
-	LabelNameDelta          = "__delta__"
-	LabelNameProfileName    = pmodel.MetricNameLabel
-	LabelNameServiceName    = "service_name"
+	LabelNameProfileType = "__profile_type__"
+	LabelNameType        = "__type__"
+	LabelNameUnit        = "__unit__"
+	LabelNamePeriodType  = "__period_type__"
+	LabelNamePeriodUnit  = "__period_unit__"
+	LabelNameDelta       = "__delta__"
+	LabelNameProfileName = pmodel.MetricNameLabel
+	LabelNameServiceName = "service_name"
+	LabelNameSessionID   = "__session_id__"
+
 	LabelNameServiceNameK8s = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
 
 	labelSep = '\xfe'
@@ -151,6 +158,18 @@ func (ls Labels) WithoutPrivateLabels() Labels {
 	return res
 }
 
+var allowedPrivateLabels = map[string]struct{}{
+	LabelNameSessionID: {},
+}
+
+func IsLabelAllowedForIngestion(name string) bool {
+	if !strings.HasPrefix(name, "__") {
+		return true
+	}
+	_, allowed := allowedPrivateLabels[name]
+	return allowed
+}
+
 // WithLabels returns a subset of Labels that matches match with the provided label names.
 func (ls Labels) WithLabels(names ...string) Labels {
 	matchedLabels := Labels{}
@@ -178,6 +197,24 @@ func (ls Labels) Get(name string) string {
 		}
 	}
 	return ""
+}
+
+// GetLabel returns the label with the given name.
+func (ls Labels) GetLabel(name string) (*typesv1.LabelPair, bool) {
+	for _, l := range ls {
+		if l.Name == name {
+			return l, true
+		}
+	}
+	return nil, false
+}
+
+// Delete removes the first label encountered with the name given.
+// A copy of the label set without the label is returned.
+func (ls Labels) Delete(name string) Labels {
+	return slices.RemoveInPlace(ls, func(pair *typesv1.LabelPair, i int) bool {
+		return pair.Name == name
+	})
 }
 
 func (ls Labels) Clone() Labels {
@@ -409,4 +446,23 @@ func StableHash(ls labels.Labels) uint64 {
 		b = append(b, seps[0])
 	}
 	return xxhash.Sum64(b)
+}
+
+type SessionID uint64
+
+func (s SessionID) String() string {
+	var b [8]byte
+	binary.LittleEndian.PutUint64(b[:], uint64(s))
+	return hex.EncodeToString(b[:])
+}
+
+func ParseSessionID(s string) (SessionID, error) {
+	if len(s) != 16 {
+		return 0, fmt.Errorf("invalid session id length %d", len(s))
+	}
+	var b [8]byte
+	if _, err := hex.Decode(b[:], util.YoloBuf(s)); err != nil {
+		return 0, err
+	}
+	return SessionID(binary.LittleEndian.Uint64(b[:])), nil
 }

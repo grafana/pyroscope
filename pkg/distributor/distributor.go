@@ -14,6 +14,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/limiter"
@@ -114,11 +115,12 @@ type Limits interface {
 	MaxLabelNameLength(tenantID string) int
 	MaxLabelValueLength(tenantID string) int
 	MaxLabelNamesPerSeries(tenantID string) int
-	MaxProfileSizeBytes(userID string) int
-	MaxProfileStacktraceSamples(userID string) int
-	MaxProfileStacktraceSampleLabels(userID string) int
-	MaxProfileStacktraceDepth(userID string) int
-	MaxProfileSymbolValueLength(userID string) int
+	MaxProfileSizeBytes(tenantID string) int
+	MaxProfileStacktraceSamples(tenantID string) int
+	MaxProfileStacktraceSampleLabels(tenantID string) int
+	MaxProfileStacktraceDepth(tenantID string) int
+	MaxProfileSymbolValueLength(tenantID string) int
+	MaxSessionsPerSeries(tenantID string) int
 	validation.ProfileValidationLimits
 }
 
@@ -268,6 +270,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			totalPushUncompressedBytes += int64(len(lbs.Value))
 		}
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
+		series.Labels = d.limitMaxSessionsPerSeries(tenantID, series.Labels)
 		for _, raw := range series.Samples {
 			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 			d.profileReceivedStats.Inc(1)
@@ -286,8 +289,9 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
 			totalPushUncompressedBytes += int64(decompressedSize)
 
-			if err := validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels, now); err != nil {
+			if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels, now); err != nil {
 				// todo this actually discards more if multiple Samples in a Series request
+				_ = level.Debug(d.logger).Log("msg", "invalid profile", "err", err)
 				validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
 				validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -538,6 +542,24 @@ func (d *Distributor) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // distributor. $EFFECTIVE_RATE_LIMIT = $GLOBAL_RATE_LIMIT / $NUM_INSTANCES
 func (d *Distributor) HealthyInstancesCount() int {
 	return int(d.healthyInstancesCount.Load())
+}
+
+func (d *Distributor) limitMaxSessionsPerSeries(tenantID string, labels phlaremodel.Labels) phlaremodel.Labels {
+	maxSessionsPerSeries := d.limits.MaxSessionsPerSeries(tenantID)
+	if maxSessionsPerSeries == 0 {
+		return labels.Delete(phlaremodel.LabelNameSessionID)
+	}
+	sessionIDLabel, ok := labels.GetLabel(phlaremodel.LabelNameSessionID)
+	if !ok {
+		return labels
+	}
+	sessionID, err := phlaremodel.ParseSessionID(sessionIDLabel.Value)
+	if err != nil {
+		_ = level.Debug(d.logger).Log("msg", "invalid session_id", "err", err)
+		return labels.Delete(phlaremodel.LabelNameSessionID)
+	}
+	sessionIDLabel.Value = phlaremodel.SessionID(int(sessionID) % maxSessionsPerSeries).String()
+	return labels
 }
 
 // mergeSeriesAndSampleLabels merges sample labels with

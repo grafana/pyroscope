@@ -27,6 +27,12 @@ message ProfileTypesResponse {
 message SeriesRequest {
   repeated string matchers = 1;
   repeated string label_names = 2;
+  // Milliseconds since epoch. If missing or zero, only the ingesters will be
+  // queried.
+  int64 start = 3;
+  // Milliseconds since epoch. If missing or zero, only the ingesters will be
+  // queried.
+  int64 end = 4;
 }
 
 message SeriesResponse {

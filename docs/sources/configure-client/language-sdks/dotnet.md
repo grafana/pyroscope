@@ -14,12 +14,12 @@ aliases:
 1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/pyroscope-io/pyroscope-dotnet/releases/):
 
 ```bash
-curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.8.8-pyroscope/pyroscope.0.8.8-glibc-x86_64.tar.gz  | tar xvz -C .
+curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.8.10-pyroscope/pyroscope.0.8.10-glibc-x86_64.tar.gz  | tar xvz -C .
 ```
 Or copy them from the [latest docker image](https://hub.docker.com/r/pyroscope/pyroscope-dotnet/tags):
 ```dockerfile
-COPY --from=pyroscope/pyroscope-dotnet:0.8.8-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
-COPY --from=pyroscope/pyroscope-dotnet:0.8.8-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
+COPY --from=pyroscope/pyroscope-dotnet:0.8.10-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
+COPY --from=pyroscope/pyroscope-dotnet:0.8.10-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
 ````
 
 2. Set the following required environment variables to enable profiler

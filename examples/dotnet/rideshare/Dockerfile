@@ -2,8 +2,8 @@ FROM mcr.microsoft.com/dotnet/sdk:6.0
 
 WORKDIR /dotnet
 
-COPY --from=pyroscope/pyroscope-dotnet:0.8.8-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
-COPY --from=pyroscope/pyroscope-dotnet:0.8.8-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
+COPY --from=pyroscope/pyroscope-dotnet:0.8.10-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
+COPY --from=pyroscope/pyroscope-dotnet:0.8.10-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
 
 
 ADD example .

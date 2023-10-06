@@ -25,10 +25,10 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grafana/agent v0.35.4
-	github.com/grafana/dskit v0.0.0-20230817134647-90d7ee0bed7c
+	github.com/grafana/dskit v0.0.0-20231003142331-80423d8864b9
 	github.com/grafana/jfr-parser v0.7.2-0.20230831140626-08fa3a941bf8
-	github.com/grafana/pyroscope-go v1.0.2
-	github.com/grafana/pyroscope-go/godeltaprof v0.1.3
+	github.com/grafana/pyroscope-go v1.0.3
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.4
 	github.com/grafana/pyroscope/api v0.0.0-00010101000000-000000000000
 	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -183,7 +183,7 @@ require (
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 // indirect
 	github.com/segmentio/encoding v0.3.6 // indirect
-	github.com/sercand/kuberesolver/v4 v4.0.0 // indirect
+	github.com/sercand/kuberesolver/v5 v5.1.1 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/tencentyun/cos-go-sdk-v5 v0.7.40 // indirect

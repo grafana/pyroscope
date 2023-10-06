@@ -3,7 +3,7 @@ GEM
   specs:
     daemons (1.4.1)
     eventmachine (1.2.7)
-    ffi (1.15.5)
+    ffi (1.16.3)
     mustermann (2.0.2)
       ruby2_keywords (~> 0.0.1)
     pyroscope (0.5.10-aarch64-linux)

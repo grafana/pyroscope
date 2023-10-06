@@ -17,9 +17,6 @@ plugins:
       - paths=source_relative
       - features=marshal+unmarshal+size+pool+grpc+pool+clone
       - pool=github.com/grafana/pyroscope/api/gen/proto/go/google/v1.Profile
-      - pool=github.com/grafana/pyroscope/api/gen/proto/go/google/v1.Sample
-      - pool=github.com/grafana/pyroscope/api/gen/proto/go/google/v1.Mapping
-      - pool=github.com/grafana/pyroscope/api/gen/proto/go/google/v1.Label
 
   - name: connect-go
     out: gen/proto/go

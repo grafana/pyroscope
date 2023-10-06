@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/promql/parser"
+	"github.com/prometheus/prometheus/storage"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
@@ -386,6 +387,7 @@ type Querier interface {
 	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error)
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
 	MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error)
+	Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error)
 	Open(ctx context.Context) error
 	// Sorts profiles for retrieval.
 	Sort([]Profile) []Profile
@@ -767,6 +769,48 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 	return nil
 }
 
+func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockGetter) (*ingestv1.SeriesResponse, error) {
+	queriers, err := blockGetter(ctx, model.Time(req.Start), model.Time(req.End))
+	if err != nil {
+		return nil, err
+	}
+
+	var labelsSet []*typesv1.Labels
+	var lock sync.Mutex
+	group, ctx := errgroup.WithContext(ctx)
+
+	// TODO(bryan) Verify this limit is ok
+	const concurrentQueryLimit = 50
+	group.SetLimit(concurrentQueryLimit)
+
+	for _, q := range queriers {
+		group.Go(util.RecoverPanic(func() error {
+			labels, err := q.Series(ctx, req)
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			labelsSet = append(labelsSet, labels...)
+			lock.Unlock()
+			return nil
+		}))
+	}
+	err = group.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(labelsSet, func(i, j int) bool {
+		return phlaremodel.CompareLabelPairs(labelsSet[i].Labels, labelsSet[j].Labels) < 0
+	})
+	return &ingestv1.SeriesResponse{
+		LabelsSet: lo.UniqBy(labelsSet, func(set *typesv1.Labels) uint64 {
+			return phlaremodel.Labels(set.Labels).Hash()
+		}),
+	}, nil
+}
+
 var maxBlockProfile Profile = BlockProfile{
 	ts: model.Time(math.MaxInt64),
 }
@@ -903,6 +947,103 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	}
 
 	return iter.NewMergeIterator(maxBlockProfile, false, iters...), nil
+}
+
+// Series selects the series labels from this block.
+//
+// Note: It will select ALL the labels in the block, not necessarily just the
+// subset in the time range SeriesRequest.Start to SeriesRequest.End.
+func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series Block")
+	defer sp.Finish()
+
+	err := b.Open(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	selectors, err := parseSelectors(params.Matchers)
+	if err != nil {
+		return nil, err
+	}
+
+	names, err := b.index.LabelNames()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(params.LabelNames) > 0 {
+		labelNamesFilter := make(map[string]struct{}, len(params.LabelNames))
+		for _, n := range params.LabelNames {
+			labelNamesFilter[n] = struct{}{}
+		}
+		names = lo.Filter(names, func(name string, _ int) bool {
+			_, ok := labelNamesFilter[name]
+			return ok
+		})
+	}
+
+	var labelsSets []*typesv1.Labels
+	fingerprints := make(map[uint64]struct{})
+	if selectors.matchesAll() {
+		k, v := index.AllPostingsKey()
+		iter, err := b.index.Postings(k, nil, v)
+		if err != nil {
+			return nil, err
+		}
+
+		sets, err := b.getUniqueLabelsSets(iter, names, &fingerprints)
+		if err != nil {
+			return nil, err
+		}
+		labelsSets = append(labelsSets, sets...)
+	} else {
+		for _, matchers := range selectors {
+			iter, err := PostingsForMatchers(b.index, nil, matchers...)
+			if err != nil {
+				return nil, err
+			}
+
+			sets, err := b.getUniqueLabelsSets(iter, names, &fingerprints)
+			if err != nil {
+				return nil, err
+			}
+			labelsSets = append(labelsSets, sets...)
+		}
+	}
+	return labelsSets, nil
+}
+
+func (b *singleBlockQuerier) getUniqueLabelsSets(postings index.Postings, names []string, fingerprints *map[uint64]struct{}) ([]*typesv1.Labels, error) {
+	var labelsSets []*typesv1.Labels
+	for postings.Next() {
+		matchedLabels := make(phlaremodel.Labels, 0, len(names))
+		for _, name := range names {
+			value, err := b.index.LabelValueFor(postings.At(), name)
+			if err != nil {
+				if err == storage.ErrNotFound {
+					continue
+				}
+				return nil, err
+			}
+			matchedLabels = append(matchedLabels, &typesv1.LabelPair{
+				Name:  name,
+				Value: value,
+			})
+		}
+
+		fp := matchedLabels.Hash()
+		_, ok := (*fingerprints)[fp]
+		if ok {
+			continue
+		}
+		(*fingerprints)[fp] = struct{}{}
+
+		labelsSets = append(labelsSets, &typesv1.Labels{
+			Labels: matchedLabels,
+		})
+	}
+	return labelsSets, nil
 }
 
 func (b *singleBlockQuerier) Sort(in []Profile) []Profile {
