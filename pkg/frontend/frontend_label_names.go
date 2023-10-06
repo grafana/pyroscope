@@ -21,7 +21,7 @@ func (f *Frontend) LabelNames(ctx context.Context, c *connect.Request[typesv1.La
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if c.Msg.IsLegacy() {
+	if !c.Msg.IsLegacy() {
 		interval := model.Interval{
 			Start: model.Time(c.Msg.Start),
 			End:   model.Time(c.Msg.End),
