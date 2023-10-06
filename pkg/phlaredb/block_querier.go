@@ -1006,38 +1006,40 @@ func (b *singleBlockQuerier) LabelNames(ctx context.Context, params *typesv1.Lab
 		return nil, err
 	}
 
-	if !selectors.matchesAll() {
-		// Clear the names slice. We need to run the matchers to decide which
-		// names to keep. We want to keep this slice capacity, as there will
-		// never be more names than what index.LabelNames() returns.
-		names = names[:0]
+	if selectors.matchesAll() {
+		return names, nil
+	}
 
-		for _, matchers := range selectors {
-			iter, err := PostingsForMatchers(b.index, nil, matchers...)
+	// Clear the names slice. We need to run the matchers to decide which
+	// names to keep. We want to keep this slice capacity, as there will
+	// never be more names than what index.LabelNames() returns.
+	names = names[:0]
+
+	for _, matchers := range selectors {
+		iter, err := PostingsForMatchers(b.index, nil, matchers...)
+		if err != nil {
+			return nil, err
+		}
+
+		for iter.Next() {
+			labelNames, err := b.index.LabelNamesFor(iter.At())
 			if err != nil {
+				if err == storage.ErrNotFound {
+					continue
+				}
 				return nil, err
 			}
 
-			for iter.Next() {
-				labelNames, err := b.index.LabelNamesFor(iter.At())
-				if err != nil {
-					if err == storage.ErrNotFound {
-						continue
-					}
-					return nil, err
-				}
-
-				// Select all the label names which we don't already have.
-				for _, name := range labelNames {
-					index := sort.SearchStrings(names, name)
-					switch {
-					case index == len(names): // Add name to the end of the slice.
-						names = append(names, name)
-					case names[index] != name: // Insert name into the middle of the slice.
-						names = append(names, name)
-						copy(names[index+1:], names[index:])
-						names[index] = name
-					}
+			// Select all the label names which we don't already have.
+			for _, name := range labelNames {
+				index := sort.SearchStrings(names, name)
+				switch {
+				case index == len(names): // Add name to the end of the slice.
+					names = append(names, name)
+				case names[index] != name: // Insert name into the middle of the slice.
+					names = append(names, name)
+					copy(names[index+1:], names[index:])
+					names[index] = name
 				}
 			}
 		}
