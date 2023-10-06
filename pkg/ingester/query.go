@@ -22,7 +22,7 @@ func (i *Ingester) LabelNames(ctx context.Context, req *connect.Request[typesv1.
 		if req.Msg.IsLegacy() {
 			return instance.LegacyLabelNames(ctx, req)
 		}
-		return instance.LegacyLabelNames(ctx, req)
+		return instance.LabelNames(ctx, req)
 	})
 }
 
