@@ -37,6 +37,7 @@ type SessionOptions struct {
 	UnknownSymbolModuleOffset bool // use libfoo.so+0xef instead of libfoo.so for unknown symbols
 	UnknownSymbolAddress      bool // use 0xcafebabe instead of [unknown]
 	PythonEnabled             bool
+	PythonFullFilePath        bool
 	CacheOptions              symtab.CacheOptions
 	SampleRate                int
 }
@@ -45,6 +46,7 @@ type Session interface {
 	Start() error
 	Stop()
 	Update(SessionOptions) error
+	UpdateTargets(args sd.TargetsOptions)
 	CollectProfiles(f func(target *sd.Target, stack []string, value uint64, pid uint32)) error
 	DebugInfo() interface{}
 }
@@ -58,6 +60,7 @@ type session struct {
 	logger log.Logger
 
 	targetFinder sd.TargetFinder
+	unknownPIDs  map[uint32]struct{}
 
 	perfEvents []*perfEvent
 
@@ -87,6 +90,22 @@ type session struct {
 	started bool
 }
 
+func (s *session) UpdateTargets(args sd.TargetsOptions) {
+	s.targetFinder.Update(args)
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	for pid := range s.unknownPIDs {
+		target := s.targetFinder.FindTarget(pid)
+		if target == nil {
+			continue
+		}
+		s.enableProfilingLocked(pid, target)
+		delete(s.unknownPIDs, pid)
+	}
+}
+
 func NewSession(
 	logger log.Logger,
 	targetFinder sd.TargetFinder,
@@ -104,6 +123,7 @@ func NewSession(
 
 		targetFinder: targetFinder,
 		options:      sessionOptions,
+		unknownPIDs:  make(map[uint32]struct{}),
 	}, nil
 }
 
@@ -301,6 +321,12 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 				sym, ok := pySymbols[event.Stack[i]]
 				if ok {
 					filename := cStringFromI8Unsafe(sym.File[:])
+					if !s.options.PythonFullFilePath {
+						iSep := strings.LastIndexByte(filename, '/')
+						if iSep != 1 {
+							filename = filename[iSep+1:]
+						}
+					}
 					classname := cStringFromI8Unsafe(sym.Classname[:])
 					name := cStringFromI8Unsafe(sym.Name[:])
 					if classname == "" {
@@ -556,18 +582,20 @@ func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
 		_ = level.Debug(s.logger).Log("msg", "got pid info request", "pid", pid)
 		target := s.targetFinder.FindTarget(pid)
 
-		if target == nil {
-			// todo keep track of unknown targets? maybe next time SD will know about it
-			_ = level.Debug(s.logger).Log("msg", "unknown target", "pid", pid)
-			continue
-		}
-		s.enableProfiling(pid, target)
+		func() {
+			s.mutex.Lock()
+			defer s.mutex.Unlock()
+
+			if target == nil {
+				s.saveUnknownPIDLocked(pid)
+			} else {
+				s.enableProfilingLocked(pid, target)
+			}
+		}()
 	}
 }
 
-func (s *session) enableProfiling(pid uint32, target *sd.Target) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+func (s *session) enableProfilingLocked(pid uint32, target *sd.Target) {
 
 	if !s.started {
 		return
@@ -658,6 +686,16 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) pyrobpf.Pro
 		return pyrobpf.ProfilingTypePython
 	}
 	return pyrobpf.ProfilingTypeFramepointers
+}
+
+// this is mostly needed for first discovery reset
+// we started receiving profiles before first sd completed
+// or a new process started in between sd runs
+// this may be not needed after process discovery implemented
+func (s *session) saveUnknownPIDLocked(pid uint32) {
+	_ = level.Debug(s.logger).Log("msg", "unknown target", "pid", pid)
+
+	s.unknownPIDs[pid] = struct{}{}
 }
 
 type stackBuilder struct {
