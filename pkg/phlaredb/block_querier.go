@@ -801,7 +801,7 @@ func LabelNames(ctx context.Context, req *typesv1.LabelNamesRequest, blockGetter
 		return nil, err
 	}
 
-	sort.Sort(sort.StringSlice(labelNames))
+	sort.Strings(labelNames)
 	return &typesv1.LabelNamesResponse{
 		Names: lo.Uniq(labelNames),
 	}, nil
