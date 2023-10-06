@@ -28,7 +28,6 @@ type Reader struct {
 	files  map[string]block.File
 	meta   *block.Meta
 
-	maxConcurrentChunks  int
 	chunkFetchBufferSize int
 
 	index      IndexFile
@@ -40,10 +39,7 @@ type Reader struct {
 	strings   parquetobj.File
 }
 
-const (
-	defaultMaxConcurrentChunks  = 1
-	defaultChunkFetchBufferSize = 4096
-)
+const defaultChunkFetchBufferSize = 4096
 
 func Open(ctx context.Context, b objstore.BucketReader, m *block.Meta) (*Reader, error) {
 	r := Reader{
@@ -51,7 +47,6 @@ func Open(ctx context.Context, b objstore.BucketReader, m *block.Meta) (*Reader,
 		meta:   m,
 		files:  make(map[string]block.File),
 
-		maxConcurrentChunks:  defaultMaxConcurrentChunks,
 		chunkFetchBufferSize: defaultChunkFetchBufferSize,
 	}
 	if err := r.open(ctx); err != nil {
@@ -265,25 +260,22 @@ func (p *partition) WriteStats(s *PartitionStats) {
 
 var ErrInvalidStacktraceRange = fmt.Errorf("invalid range: stack traces can't be resolved")
 
-func (p *partition) ResolveStacktraceLocations(ctx context.Context, dst StacktraceInserter, s []uint32) error {
+func (p *partition) ResolveStacktraceLocations(ctx context.Context, dst StacktraceInserter, s []uint32) (err error) {
 	if len(s) == 0 {
 		return nil
 	}
 	if len(p.stacktraceChunks) == 0 {
 		return ErrInvalidStacktraceRange
 	}
-
 	// First, we determine the chunks needed for the range.
 	// All chunks in a block must have the same StacktraceMaxNodes.
 	sr := SplitStacktraces(s, p.stacktraceChunks[0].header.StacktraceMaxNodes)
-
-	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(p.reader.maxConcurrentChunks)
 	for _, c := range sr {
-		g.Go(p.lookupStacktraces(ctx, dst, c).do)
+		if err = p.lookupStacktraces(ctx, dst, c).do(); err != nil {
+			return err
+		}
 	}
-
-	return g.Wait()
+	return nil
 }
 
 func (p *partition) setStacktracesChunks(chunks []StacktraceChunkHeader) {

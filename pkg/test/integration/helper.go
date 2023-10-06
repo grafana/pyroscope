@@ -34,6 +34,9 @@ func (p *PyroscopeTest) Start(t *testing.T) {
 	require.NoError(t, err)
 	p.config.SelfProfiling.DisablePush = true
 	p.config.Analytics.Enabled = false // usage-stats terminating slow as hell
+	p.config.LimitsConfig.MaxQueryLength = 0
+	p.config.LimitsConfig.MaxQueryLookback = 0
+	p.config.LimitsConfig.RejectOlderThan = 0
 	_ = p.config.Server.LogLevel.Set("debug")
 	p.it, err = phlare.New(p.config)
 
