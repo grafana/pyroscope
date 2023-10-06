@@ -19,6 +19,7 @@ import (
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/middleware"
+	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/user"
@@ -78,7 +79,7 @@ func newSchedulerProcessor(cfg Config, handler RequestHandler, log log.Logger, r
 		HealthCheckTimeout: 1 * time.Second,
 	}
 
-	p.frontendPool = client.NewPool("frontend", poolConfig, nil, p.createFrontendClient, frontendClientsGauge, log)
+	p.frontendPool = client.NewPool("frontend", poolConfig, nil, p.frontendClientFactory(), frontendClientsGauge, log)
 	return p, []services.Service{p.frontendPool}
 }
 
@@ -269,17 +270,21 @@ func (sp *schedulerProcessor) runRequest(ctx context.Context, logger log.Logger,
 	}
 }
 
-func (sp *schedulerProcessor) createFrontendClient(addr string) (client.PoolClient, error) {
-	opts, err := sp.grpcConfig.DialOption([]grpc.UnaryClientInterceptor{
-		otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer()),
-		middleware.ClientUserHeaderInterceptor,
-		middleware.UnaryClientInstrumentInterceptor(sp.frontendClientRequestDuration),
-	}, nil)
+type frontendClientFactory struct {
+	opts func() ([]grpc.DialOption, error)
+}
+
+func newFrontendClientFactory(opts func() ([]grpc.DialOption, error)) *frontendClientFactory {
+	return &frontendClientFactory{opts: opts}
+}
+
+func (f *frontendClientFactory) FromInstance(inst ring.InstanceDesc) (client.PoolClient, error) {
+	opts, err := f.opts()
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := grpc.Dial(addr, opts...)
+	conn, err := grpc.Dial(inst.Addr, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -289,6 +294,16 @@ func (sp *schedulerProcessor) createFrontendClient(addr string) (client.PoolClie
 		HealthClient:             grpc_health_v1.NewHealthClient(conn),
 		conn:                     conn,
 	}, nil
+}
+
+func (sp *schedulerProcessor) frontendClientFactory() client.PoolFactory {
+	return newFrontendClientFactory(func() ([]grpc.DialOption, error) {
+		return sp.grpcConfig.DialOption([]grpc.UnaryClientInterceptor{
+			otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer()),
+			middleware.ClientUserHeaderInterceptor,
+			middleware.UnaryClientInstrumentInterceptor(sp.frontendClientRequestDuration),
+		}, nil)
+	})
 }
 
 type frontendClient struct {

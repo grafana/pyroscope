@@ -34,6 +34,8 @@ EXPOSE 5000
 
 COPY --from=builder /opt/app/build/libs/rideshare-1.0-SNAPSHOT.jar /opt/app/build/libs/rideshare-1.0-SNAPSHOT.jar
 
+WORKDIR /opt/app
+
 ADD https://github.com/grafana/pyroscope-java/releases/download/v0.12.1/pyroscope.jar /opt/app/pyroscope.jar
 
 CMD ["java", "-Dserver.port=5000",  "-javaagent:pyroscope.jar", "-jar", "./build/libs/rideshare-1.0-SNAPSHOT.jar" ]

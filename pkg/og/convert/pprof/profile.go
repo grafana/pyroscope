@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"mime/multipart"
 	"strings"
+	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/prometheus/prometheus/model/labels"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
@@ -18,7 +21,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/storage/tree"
 	"github.com/grafana/pyroscope/pkg/og/util/form"
 	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/prometheus/prometheus/model/labels"
 )
 
 type RawProfile struct {
@@ -93,8 +95,11 @@ func (p *RawProfile) isDotnetspy(md ingestion.Metadata) bool {
 func fixTime(profile *pprof.Profile, md ingestion.Metadata) {
 	// for old versions of pyspy, rbspy, pyroscope-rs
 	// https://github.com/grafana/pyroscope-rs/pull/134
-	profile.TimeNanos = md.StartTime.UnixNano()
-	profile.DurationNanos = md.EndTime.Sub(md.StartTime).Nanoseconds()
+	// profile.TimeNanos can be in microseconds
+	x := time.Unix(0, profile.TimeNanos)
+	if x.IsZero() || x.Year() == 1970 {
+		profile.TimeNanos = md.StartTime.UnixNano()
+	}
 }
 
 func (p *RawProfile) Parse(_ context.Context, _ storage.Putter, _ storage.MetricsExporter, md ingestion.Metadata) error {
@@ -206,7 +211,7 @@ func (p *RawProfile) createLabels(profile *pprof.Profile, md ingestion.Metadata)
 		Value: md.SpyName,
 	})
 	for k, v := range md.Key.Labels() {
-		if strings.HasPrefix(k, "__") {
+		if !phlaremodel.IsLabelAllowedForIngestion(k) {
 			continue
 		}
 		ls = append(ls, &v1.LabelPair{
