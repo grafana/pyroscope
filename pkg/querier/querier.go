@@ -178,15 +178,11 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 	defer sp.Finish()
 
 	sp.LogFields(
+		otlog.Bool("legacy_request", req.Msg.IsLegacy()),
 		otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
 		otlog.Int64("start", req.Msg.Start),
 		otlog.Int64("end", req.Msg.End),
 	)
-
-	// Some clients may not be sending us timestamps. If start or end are 0,
-	// then mark this a legacy request. Legacy requests only query the
-	// ingesters.
-	sp.LogFields(otlog.Bool("legacy_request", req.Msg.IsLegacy()))
 
 	if q.storeGatewayQuerier == nil || req.Msg.IsLegacy() {
 		responses, err := q.labelNamesFromIngesters(ctx, &typesv1.LabelNamesRequest{
