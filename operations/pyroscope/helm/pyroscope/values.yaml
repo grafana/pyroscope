@@ -218,3 +218,5 @@ ingress:
   enabled: false
   # hosts:
   #   - localhost
+  # tls: 
+  #   - secretName: certificate
