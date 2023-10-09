@@ -1027,3 +1027,12 @@ func Test_GroupSamplesWithout_Go_CPU_profile(t *testing.T) {
 	assert.Equal(t, groups[2].Labels, []*profilev1.Label{{Key: 22, Str: 27}, {Key: 18, Str: 19}})
 	assert.Equal(t, len(groups[2].Samples), 150)
 }
+
+func Test_GroupSamplesWithout_dotnet_profile(t *testing.T) {
+	p, err := OpenFile("testdata/dotnet.labels.pprof")
+	require.NoError(t, err)
+
+	groups := GroupSamplesWithoutLabels(p.Profile, ProfileIDLabelName)
+	require.Len(t, groups, 1)
+	assert.Equal(t, groups[0].Labels, []*profilev1.Label{{Key: 66, Str: 67}, {Key: 64, Str: 65}})
+}

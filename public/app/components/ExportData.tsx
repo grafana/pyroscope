@@ -83,7 +83,7 @@ export class PprofRequest extends Message<PprofRequest> {
   end: number;
 }
 
-type ExportDataProps = {
+export type ExportDataProps = {
   buttonEl?: React.ComponentType<{
     onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
   }>;
@@ -114,9 +114,8 @@ function buildPprofQuery(state: ContinuousState) {
 }
 
 function ExportData(props: ExportDataProps) {
-  const { exportJSON = false } = props;
+  const { exportJSON = false, exportFlamegraphDotCom = true } = props;
   let { exportPprof } = props;
-  const exportFlamegraphDotCom = true;
   const exportPNG = true;
   const exportHTML = false;
   const { pathname } = useLocation();
