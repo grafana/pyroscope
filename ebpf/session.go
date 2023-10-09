@@ -24,6 +24,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/pyroscope/ebpf/cpuonline"
+	"github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/grafana/pyroscope/ebpf/pyrobpf"
 	"github.com/grafana/pyroscope/ebpf/python"
 	"github.com/grafana/pyroscope/ebpf/rlimit"
@@ -39,6 +40,7 @@ type SessionOptions struct {
 	UnknownSymbolAddress      bool // use 0xcafebabe instead of [unknown]
 	PythonEnabled             bool
 	CacheOptions              symtab.CacheOptions
+	Metrics                   *metrics.Metrics
 	SampleRate                int
 }
 
@@ -124,7 +126,7 @@ func NewSession(
 
 	sessionOptions SessionOptions,
 ) (Session, error) {
-	symCache, err := symtab.NewSymbolCache(logger, sessionOptions.CacheOptions)
+	symCache, err := symtab.NewSymbolCache(logger, sessionOptions.CacheOptions, sessionOptions.Metrics.Symtab)
 	if err != nil {
 		return nil, err
 	}
@@ -310,22 +312,26 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 	if len(pyEvents) == 0 {
 		return nil
 	}
-	pySymbols := s.pyperf.GetSymbolsLazy() // todo keep it between rounds and refresh only if symbol not found
+	pySymbols := s.pyperf.GetSymbolsLazy()
 
 	sb := &stackBuilder{}
+	stacktraceErrors := 0
+	unknownSymbols := 0
 	for _, event := range pyEvents {
 		stats := StackResolveStats{}
 		labels := s.targetFinder.FindTarget(event.Pid)
 		if labels == nil {
 			continue
 		}
-		proc := s.symCache.GetProcTable(symtab.PidKey(event.Pid))
+		svc := labels.ServiceName()
+		proc := s.symCache.GetProcTable(symtab.PidKey(event.Pid)) // todo do not use proce for comm retrieval
 		sb.reset()
 
 		sb.append(s.comm(proc))
 		var kStack []byte
 		if event.StackStatus == uint8(python.StackStatusError) {
-			//todo increase metric here or in pyperf
+			s.options.Metrics.Python.StacktraceError.Inc()
+			stacktraceErrors += 1
 		} else {
 			begin := len(sb.stack)
 			if event.StackStatus == uint8(python.StackStatusTruncated) {
@@ -350,12 +356,13 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 					}
 				} else {
 					sb.append("pyperf_unknown")
-					//todo metric
+					s.options.Metrics.Python.UnknownSymbols.WithLabelValues(svc).Inc()
+					unknownSymbols += 1
 				}
 			}
 
 			end := len(sb.stack)
-			lo.Reverse(sb.stack[begin:end]) //todo do not reverse, but put in place from the first run
+			lo.Reverse(sb.stack[begin:end])
 		}
 		if s.options.CollectKernel && event.KernStack != -1 {
 			kStack = s.GetStack(event.KernStack)
@@ -368,11 +375,17 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 		cb(labels, sb.stack, uint64(1), event.Pid)
 		s.collectMetrics(labels, &stats, sb)
 	}
+	if stacktraceErrors > 0 {
+		_ = level.Error(s.logger).Log("msg", "python stacktrace errors", "count", stacktraceErrors)
+	}
+	if unknownSymbols > 0 {
+		_ = level.Error(s.logger).Log("msg", "python unknown symbols", "count", unknownSymbols)
+	}
 	return nil
 }
 
 func (s *session) collectMetrics(labels *sd.Target, stats *StackResolveStats, sb *stackBuilder) {
-	m := s.options.CacheOptions.Metrics
+	m := s.options.Metrics.Symtab
 	serviceName := labels.ServiceName()
 	if m != nil {
 		m.KnownSymbols.WithLabelValues(serviceName).Add(float64(stats.known))
@@ -568,9 +581,8 @@ func (s *session) readEvents(events *perf.Reader,
 		}
 
 		if record.LostSamples != 0 {
-			// this should not happen
-			// maybe we should iterate over a map of pids and check for unknowns if this happens
-			//todo metric
+			// this should not happen, should implement a fallback at reset time
+			s.options.Metrics.UnexpectedErrors.Inc()
 			_ = level.Error(s.logger).Log("err", "perf event ring buffer full, dropped samples", "n", record.LostSamples)
 		}
 
@@ -587,17 +599,19 @@ func (s *session) readEvents(events *perf.Reader,
 				select {
 				case pidConfigRequest <- e.Pid:
 				default:
+					s.options.Metrics.UnexpectedErrors.Inc()
 					_ = level.Error(s.logger).Log("msg", "pid info request queue full, dropping request", "pid", e.Pid)
-					// this should not happen
-					// implement a fallback at reset time
+					// this should not happen, should implement a fallback at reset time
 				}
 			} else if e.Op == uint32(pyrobpf.PidOpDead) {
 				select {
 				case deadPIDsEvents <- e.Pid:
 				default:
+					s.options.Metrics.UnexpectedErrors.Inc()
 					_ = level.Error(s.logger).Log("msg", "dead pid info queue full, dropping event", "pid", e.Pid)
 				}
 			} else {
+				s.options.Metrics.UnexpectedErrors.Inc()
 				_ = level.Error(s.logger).Log("msg", "unknown perf event record", "op", e.Op, "pid", e.Pid)
 			}
 		}
@@ -635,12 +649,13 @@ func (s *session) enableProfilingLocked(pid uint32, target *sd.Target) {
 			_ = s.setPidConfig(pid, pyrobpf.ProfilingTypeError, false, false)
 			return
 		}
-		err := pyPerf.AddPythonPID(pid) //todo metrics
+		err := pyPerf.AddPythonPID(pid, target.ServiceName())
 		if err != nil {
 			_ = level.Error(s.logger).Log("err", err, "msg", "pyperf process profiling init failed", "pid", pid)
 			_ = s.setPidConfig(pid, pyrobpf.ProfilingTypeError, false, false)
 			return
 		}
+
 	}
 	err := s.setPidConfig(pid, typ, s.options.CollectUser, s.options.CollectKernel)
 	if err != nil {
@@ -656,9 +671,11 @@ func (s *session) getPyPerf() *python.Perf {
 	if s.pyperfError != nil {
 		return nil
 	}
-	pyperf, err := s.loadPyPerf() //todo metrics
+	s.options.Metrics.Python.Load.Inc()
+	pyperf, err := s.loadPyPerf()
 	if err != nil {
 		s.pyperfError = err
+		s.options.Metrics.Python.LoadError.Inc()
 		_ = level.Error(s.logger).Log("err", err, "msg", "load pyperf")
 		return nil
 	}
@@ -687,7 +704,7 @@ func (s *session) loadPyPerf() (*python.Perf, error) {
 		}
 		return nil, fmt.Errorf("pyperf load %w", err)
 	}
-	pyperf, err := python.NewPerf(s.logger, s.pyperfBpf.PerfMaps.PyEvents, s.pyperfBpf.PerfMaps.PyPidConfig, s.pyperfBpf.PerfMaps.PySymbols)
+	pyperf, err := python.NewPerf(s.logger, s.options.Metrics.Python, s.pyperfBpf.PerfMaps.PyEvents, s.pyperfBpf.PerfMaps.PyPidConfig, s.pyperfBpf.PerfMaps.PySymbols)
 	if err != nil {
 		return nil, fmt.Errorf("pyperf create %w", err)
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/grafana/pyroscope/ebpf/symtab"
 	lru "github.com/hashicorp/golang-lru/v2"
 )
@@ -20,15 +21,17 @@ type Perf struct {
 	logger         log.Logger
 	pidDataHashMap *ebpf.Map
 	symbolsHashMp  *ebpf.Map
+	metrics        *metrics.PythonMetrics
 
 	events      []*PerfPyEvent
 	eventsLock  sync.Mutex
 	sc          *symtab.SymbolCache
 	pidCache    *lru.Cache[uint32, *PerfPyPidData]
 	prevSymbols map[uint32]*PerfPySymbol
+	wg          sync.WaitGroup
 }
 
-func NewPerf(logger log.Logger, perfEventMap *ebpf.Map, pidDataHasMap *ebpf.Map, symbolsHashMap *ebpf.Map) (*Perf, error) {
+func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *ebpf.Map, pidDataHasMap *ebpf.Map, symbolsHashMap *ebpf.Map) (*Perf, error) {
 	rd, err := perf.NewReader(perfEventMap, 4*os.Getpagesize())
 	if err != nil {
 		return nil, fmt.Errorf("perf new reader: %w", err)
@@ -45,27 +48,33 @@ func NewPerf(logger log.Logger, perfEventMap *ebpf.Map, pidDataHasMap *ebpf.Map,
 		pidDataHashMap: pidDataHasMap,
 		symbolsHashMp:  symbolsHashMap,
 		pidCache:       pidCache,
+		metrics:        metrics,
 	}
+	res.wg.Add(1)
 	go func() {
+		defer res.wg.Done()
 		res.loop()
 	}()
 	return res, nil
 }
 
-func (s *Perf) AddPythonPID(pid uint32) error {
+func (s *Perf) AddPythonPID(pid uint32, serviceName string) error {
 	if s.pidCache.Contains(pid) {
 		return nil
 	}
 	data, err := GetPyPerfPidData(s.logger, pid)
 	if err != nil {
+		s.metrics.PidDataError.WithLabelValues(serviceName).Inc()
 		s.pidCache.Add(pid, nil) // to never try again
 		return fmt.Errorf("error collecting python data %w", err)
 	}
 	err = s.pidDataHashMap.Update(pid, data, ebpf.UpdateAny)
-	if err != nil {
+	if err != nil { // should never happen
+		s.metrics.PidDataError.WithLabelValues(serviceName).Inc()
 		s.pidCache.Add(pid, nil) // to never try again
 		return fmt.Errorf("updating pid data hash map: %w", err)
 	}
+	s.metrics.ProcessInitSuccess.WithLabelValues(serviceName).Inc()
 	s.pidCache.Add(pid, data)
 	return nil
 }
@@ -79,11 +88,13 @@ func (s *Perf) loop() {
 			if errors.Is(err, perf.ErrClosed) {
 				return
 			}
+			s.metrics.UnexpectedErrors.Inc()
 			_ = level.Error(s.logger).Log("msg", "[pyperf] reading from perf event reader", "err", err)
 			continue
 		}
 
 		if record.LostSamples != 0 {
+			s.metrics.LostSamples.Add(float64(record.LostSamples))
 			_ = level.Debug(s.logger).Log("msg", "[pyperf] perf event ring buffer full, dropped samples", "n", record.LostSamples)
 		}
 		//_ = level.Debug(s.logger).Log("msg", "[pyperf] perf event sample", "n", len(record.RawSample))
@@ -91,6 +102,7 @@ func (s *Perf) loop() {
 		if record.RawSample != nil {
 			event, err := ReadPyEvent(record.RawSample)
 			if err != nil {
+				s.metrics.UnexpectedErrors.Inc()
 				_ = level.Error(s.logger).Log("msg", "[pyperf] parsing perf event record", "err", err)
 				continue
 			}
@@ -104,7 +116,7 @@ func (s *Perf) loop() {
 
 func (s *Perf) Close() {
 	_ = s.rd.Close()
-	//todo wait for loop gorotine
+	s.wg.Wait()
 }
 
 func (s *Perf) ResetEvents() []*PerfPyEvent {

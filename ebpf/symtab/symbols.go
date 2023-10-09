@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/pyroscope/ebpf/metrics"
 )
 
 type PidKey uint32
@@ -24,17 +25,20 @@ type SymbolCache struct {
 
 	options CacheOptions
 
-	sync sync.Mutex
+	sync    sync.Mutex
+	metrics *metrics.SymtabMetrics
 }
 type CacheOptions struct {
 	PidCacheOptions      GCacheOptions
 	BuildIDCacheOptions  GCacheOptions
 	SameFileCacheOptions GCacheOptions
-	Metrics              *Metrics // may be nil for tests
 	SymbolOptions        SymbolOptions
 }
 
-func NewSymbolCache(logger log.Logger, options CacheOptions) (*SymbolCache, error) {
+func NewSymbolCache(logger log.Logger, options CacheOptions, metrics *metrics.SymtabMetrics) (*SymbolCache, error) {
+	if metrics == nil {
+		panic("metrics is nil")
+	}
 	elfCache, err := NewElfCache(options.BuildIDCacheOptions, options.SameFileCacheOptions)
 	if err != nil {
 		return nil, fmt.Errorf("create elf cache %w", err)
@@ -50,6 +54,7 @@ func NewSymbolCache(logger log.Logger, options CacheOptions) (*SymbolCache, erro
 		kallsyms: nil,
 		elfCache: elfCache,
 		options:  options,
+		metrics:  metrics,
 	}, nil
 }
 
@@ -74,7 +79,7 @@ func (sc *SymbolCache) GetProcTable(pid PidKey) *ProcTable {
 		Pid: int(pid),
 		ElfTableOptions: ElfTableOptions{
 			ElfCache:      sc.elfCache,
-			Metrics:       sc.options.Metrics,
+			Metrics:       sc.metrics,
 			SymbolOptions: &sc.options.SymbolOptions,
 		},
 	})

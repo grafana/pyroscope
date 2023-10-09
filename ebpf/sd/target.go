@@ -208,7 +208,6 @@ func (tf *targetFinder) findTarget(pid uint32) *Target {
 	}
 
 	cid = tf.getContainerIDFromPID(pid)
-	fmt.Printf("pid=%d cid=%s\n", pid, cid)
 	tf.containerIDCache.Add(pid, cid)
 	return tf.cid2target[cid]
 }

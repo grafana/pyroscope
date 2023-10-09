@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/pyroscope/ebpf/metrics"
 	elf2 "github.com/grafana/pyroscope/ebpf/symtab/elf"
 	"github.com/ianlancetaylor/demangle"
 )
@@ -43,13 +44,16 @@ var DefaultSymbolOptions = &SymbolOptions{
 
 type ElfTableOptions struct {
 	ElfCache      *ElfCache
-	Metrics       *Metrics // may be nil for tests
+	Metrics       *metrics.SymtabMetrics
 	SymbolOptions *SymbolOptions
 }
 
 func NewElfTable(logger log.Logger, procMap *ProcMap, fs string, elfFilePath string, options ElfTableOptions) *ElfTable {
 	if options.SymbolOptions == nil {
 		options.SymbolOptions = DefaultSymbolOptions
+	}
+	if options.Metrics == nil {
+		panic("metrics is nil")
 	}
 	res := &ElfTable{
 		procMap:     procMap,

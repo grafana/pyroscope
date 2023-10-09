@@ -11,6 +11,7 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
+	"github.com/grafana/pyroscope/ebpf/metrics"
 
 	"github.com/go-kit/log/level"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -131,7 +132,7 @@ func ingest(profiles chan *pushv1.PushRequest) {
 }
 
 func convertSessionOptions() ebpfspy.SessionOptions {
-	ms := symtab.NewMetrics(prometheus.DefaultRegisterer)
+	ms := metrics.New(prometheus.DefaultRegisterer)
 	return ebpfspy.SessionOptions{
 		CollectUser:               true,
 		CollectKernel:             true,
@@ -139,6 +140,7 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 		UnknownSymbolAddress:      true,
 		UnknownSymbolModuleOffset: true,
 		PythonEnabled:             true,
+		Metrics:                   ms,
 		CacheOptions: symtab.CacheOptions{
 			SymbolOptions: symtab.SymbolOptions{
 				GoTableFallback: true,
@@ -156,7 +158,6 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 				Size:       239,
 				KeepRounds: 3,
 			},
-			Metrics: ms,
 		},
 	}
 }
