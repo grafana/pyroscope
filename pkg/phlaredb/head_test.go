@@ -288,7 +288,7 @@ func TestHeadFlush(t *testing.T) {
 			MinTime: head.meta.MinTime,
 			MaxTime: head.meta.MaxTime,
 			Stats: block.BlockStats{
-				NumSamples:  9479,
+				NumSamples:  14192,
 				NumSeries:   8,
 				NumProfiles: 11,
 			},
@@ -340,7 +340,7 @@ func TestHeadFlush(t *testing.T) {
 					RelPath: "symbols/strings.parquet",
 					Parquet: &block.ParquetFile{
 						NumRowGroups: 2,
-						NumRows:      1723,
+						NumRows:      1722,
 					},
 				},
 			},
