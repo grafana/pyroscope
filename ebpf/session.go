@@ -712,7 +712,8 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) pyrobpf.Pro
 	if strings.HasPrefix(exe, "python") {
 		return pyrobpf.ProfilingTypePython
 	}
-	return pyrobpf.ProfilingTypeFramepointers
+	return pyrobpf.ProfilingTypeError // testing python-only. do not merge
+	//return pyrobpf.ProfilingTypeFramepointers
 }
 
 // this is mostly needed for first discovery reset
