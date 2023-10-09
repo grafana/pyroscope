@@ -71,6 +71,27 @@ describe('ExportData', () => {
       render(<ExportData exportHTML flamebearer={TestData} />);
       screen.getByRole('button', { name: /html/i });
     });
+
+    describe('the "flamegraph.com" export button', () => {
+      it('is enabled by default"', () => {
+        render(<ExportData flamebearer={TestData} />);
+        screen.getByRole('button', { name: /flamegraph\.com/i });
+      });
+
+      it('can be enabled"', () => {
+        render(<ExportData exportFlamegraphDotCom flamebearer={TestData} />);
+        screen.getByRole('button', { name: /flamegraph\.com/i });
+      });
+
+      it('can be disabled"', () => {
+        render(
+          <ExportData exportFlamegraphDotCom={false} flamebearer={TestData} />
+        );
+        expect(
+          screen.queryByRole('button', { name: /flamegraph\.com/i })
+        ).not.toBeInTheDocument();
+      });
+    });
   });
 
   describe('filename', () => {

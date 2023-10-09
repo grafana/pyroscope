@@ -701,6 +701,28 @@
         }
       }
     },
+    "v1MergeSpanProfileResponse": {
+      "type": "object",
+      "properties": {
+        "selectedProfiles": {
+          "$ref": "#/definitions/v1ProfileSets",
+          "description": "The server replies batch of profiles.\nA last message without profiles signals the next message will be the result of the merge."
+        },
+        "result": {
+          "$ref": "#/definitions/v1MergeSpanProfileResult",
+          "title": "The list of stracktraces for the profile with their respective value"
+        }
+      }
+    },
+    "v1MergeSpanProfileResult": {
+      "type": "object",
+      "properties": {
+        "treeBytes": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
     "v1Point": {
       "type": "object",
       "properties": {
@@ -827,6 +849,14 @@
       },
       "description": "Each Sample records values encountered in some program\ncontext. The program context is typically a stack trace, perhaps\naugmented with auxiliary information like the thread-id, some\nindicator of a higher level request being handled etc."
     },
+    "v1SelectMergeSpanProfileResponse": {
+      "type": "object",
+      "properties": {
+        "flamegraph": {
+          "$ref": "#/definitions/v1FlameGraph"
+        }
+      }
+    },
     "v1SelectMergeStacktracesRequest": {
       "type": "object",
       "properties": {
@@ -888,6 +918,31 @@
           "items": {
             "type": "object",
             "$ref": "#/definitions/v1Series"
+          }
+        }
+      }
+    },
+    "v1SelectSpanProfileRequest": {
+      "type": "object",
+      "properties": {
+        "labelSelector": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/v1ProfileType"
+        },
+        "start": {
+          "type": "string",
+          "format": "int64"
+        },
+        "end": {
+          "type": "string",
+          "format": "int64"
+        },
+        "spanSelector": {
+          "type": "array",
+          "items": {
+            "type": "string"
           }
         }
       }
