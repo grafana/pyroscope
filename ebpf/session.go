@@ -702,10 +702,16 @@ func (s *session) loadPyPerf() (*python.Perf, error) {
 func (s *session) selectProfilingType(pid uint32, target *sd.Target) pyrobpf.ProfilingType {
 	exePath, err := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
 	if err != nil {
-		_ = level.Error(s.logger).Log("err", err, "msg", "select profiling type failed", "pid", pid, "target", target.ServiceName())
+		logger := s.logger
+		if errors.Is(err, os.ErrNotExist) {
+			logger = level.Debug(s.logger)
+		} else {
+			logger = level.Error(s.logger)
+		}
+		_ = logger.Log("err", err, "msg", "select profiling type failed", "pid", pid, "target", target.ServiceName())
 		return pyrobpf.ProfilingTypeError
 	}
-	s.logger.Log("exe", exePath, "pid", pid)
+	_ = level.Debug(s.logger).Log("exe", exePath, "pid", pid)
 	exe := filepath.Base(exePath)
 	if strings.HasPrefix(exe, "python") || exe == "uwsgi" {
 		if s.options.PythonEnabled {
