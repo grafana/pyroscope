@@ -582,7 +582,7 @@ func (s *session) readEvents(events *perf.Reader,
 			e := pyrobpf.ProfilePidEvent{}
 			e.Op = binary.LittleEndian.Uint32(record.RawSample[0:4])
 			e.Pid = binary.LittleEndian.Uint32(record.RawSample[4:8])
-			_ = level.Debug(s.logger).Log("msg", "perf event record", "op", e.Op, "pid", e.Pid)
+			//_ = level.Debug(s.logger).Log("msg", "perf event record", "op", e.Op, "pid", e.Pid)
 			if e.Op == uint32(pyrobpf.PidOpRequestUnknownProcessInfo) {
 				select {
 				case pidConfigRequest <- e.Pid:
@@ -736,7 +736,7 @@ func (s *session) saveUnknownPIDLocked(pid uint32) {
 
 func (s *session) processDeadPIDsEvents(dead chan uint32) {
 	for pid := range dead {
-		_ = level.Debug(s.logger).Log("msg", "got pid dead", "pid", pid)
+		//_ = level.Debug(s.logger).Log("msg", "got pid dead", "pid", pid)
 		func() {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()
