@@ -7,6 +7,7 @@ Type=simple
 User=pyroscope
 WorkingDirectory=/var/lib/pyroscope
 ExecStart=/usr/bin/pyroscope -config.file /etc/pyroscope/config.yml
+ExecReload=/bin/kill -HUP $MAINPID
 # Give a reasonable amount of time for the server to start up/shut down
 TimeoutSec = 120
 Restart = on-failure
