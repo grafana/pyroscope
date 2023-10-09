@@ -720,8 +720,7 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) pyrobpf.Pro
 			return pyrobpf.ProfilingTypeUnknown
 		}
 	}
-	return pyrobpf.ProfilingTypeUnknown // testing python-only. do not merge
-	//return pyrobpf.ProfilingTypeFramepointers
+	return pyrobpf.ProfilingTypeFramepointers
 }
 
 // this is mostly needed for first discovery reset
