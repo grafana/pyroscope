@@ -57,13 +57,6 @@ const (
 	ProfileName = "__name__"
 )
 
-var (
-	ignoredPprofLabels = []string{
-		"profile_id",          // For compatibility with the existing clients.
-		"span_id", "trace_id", // Will be supported in the future.
-	}
-)
-
 // Config for a Distributor.
 type Config struct {
 	PushTimeout time.Duration
