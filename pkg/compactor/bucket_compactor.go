@@ -325,23 +325,6 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 			}
 		}
 	}()
-	currentLevel := 0
-	for _, r := range readers {
-		lvl := r.Meta().Compaction.Level
-		if lvl > currentLevel {
-			currentLevel = lvl
-		}
-	}
-	currentLevel++
-
-	start := time.Now()
-	defer func() {
-		c.metrics.Duration.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(time.Since(start).Seconds())
-		c.metrics.InProgress.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Dec()
-	}()
-	c.metrics.InProgress.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Inc()
-	c.metrics.Ran.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Inc()
-	c.metrics.Split.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(float64(shardCount))
 
 	// Open all blocks
 	err = concurrency.ForEachJob(ctx, len(readers), c.blockOpenConcurrency, func(ctx context.Context, idx int) error {
@@ -360,6 +343,24 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 	if err != nil {
 		return nil, err
 	}
+	currentLevel := 0
+	for _, r := range readers {
+		lvl := r.Meta().Compaction.Level
+		if lvl > currentLevel {
+			currentLevel = lvl
+		}
+	}
+	currentLevel++
+
+	start := time.Now()
+	defer func() {
+		c.metrics.Duration.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(time.Since(start).Seconds())
+		c.metrics.InProgress.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Dec()
+	}()
+	c.metrics.InProgress.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Inc()
+	c.metrics.Ran.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Inc()
+	c.metrics.Split.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(float64(shardCount))
+
 	metas, err := phlaredb.CompactWithSplitting(ctx, readers, shardCount, dest)
 	if err != nil {
 		return nil, errors.Wrapf(err, "compact blocks %v", dirs)
