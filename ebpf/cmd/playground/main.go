@@ -138,6 +138,7 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 		SampleRate:                sampleRate,
 		UnknownSymbolAddress:      true,
 		UnknownSymbolModuleOffset: true,
+		PythonEnabled:             true,
 		CacheOptions: symtab.CacheOptions{
 			SymbolOptions: symtab.SymbolOptions{
 				GoTableFallback: true,

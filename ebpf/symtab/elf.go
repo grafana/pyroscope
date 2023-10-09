@@ -32,8 +32,9 @@ type ElfTable struct {
 	procMap *ProcMap
 }
 type SymbolOptions struct {
-	GoTableFallback bool
-	DemangleOptions []demangle.Option
+	GoTableFallback    bool
+	PythonFullFilePath bool
+	DemangleOptions    []demangle.Option
 }
 
 var DefaultSymbolOptions = &SymbolOptions{

@@ -38,7 +38,6 @@ type SessionOptions struct {
 	UnknownSymbolModuleOffset bool // use libfoo.so+0xef instead of libfoo.so for unknown symbols
 	UnknownSymbolAddress      bool // use 0xcafebabe instead of [unknown]
 	PythonEnabled             bool
-	PythonFullFilePath        bool
 	CacheOptions              symtab.CacheOptions
 	SampleRate                int
 }
@@ -336,7 +335,7 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 				sym, err := pySymbols.GetSymbol(event.Stack[i])
 				if err == nil {
 					filename := cStringFromI8Unsafe(sym.File[:])
-					if !s.options.PythonFullFilePath {
+					if !s.options.CacheOptions.SymbolOptions.PythonFullFilePath {
 						iSep := strings.LastIndexByte(filename, '/')
 						if iSep != 1 {
 							filename = filename[iSep+1:]
@@ -710,9 +709,13 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) pyrobpf.Pro
 	s.logger.Log("exe", exePath, "pid", pid)
 	exe := filepath.Base(exePath)
 	if strings.HasPrefix(exe, "python") {
-		return pyrobpf.ProfilingTypePython
+		if s.options.PythonEnabled {
+			return pyrobpf.ProfilingTypePython
+		} else {
+			return pyrobpf.ProfilingTypeUnknown
+		}
 	}
-	return pyrobpf.ProfilingTypeError // testing python-only. do not merge
+	return pyrobpf.ProfilingTypeUnknown // testing python-only. do not merge
 	//return pyrobpf.ProfilingTypeFramepointers
 }
 
