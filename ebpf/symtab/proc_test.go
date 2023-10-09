@@ -53,7 +53,7 @@ func testProc(t *testing.T, maps string, data []procTestdata) {
 	logger := util.TestLogger(t)
 	m := NewProcTable(logger, ProcTableOptions{
 		Pid: 239,
-		ElfTableOptions: &ElfTableOptions{
+		ElfTableOptions: ElfTableOptions{
 			ElfCache: elfCache,
 		},
 	})
@@ -255,7 +255,7 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 	logger := util.TestLogger(t)
 	m := NewProcTable(logger, ProcTableOptions{
 		Pid: 239,
-		ElfTableOptions: &ElfTableOptions{
+		ElfTableOptions: ElfTableOptions{
 			ElfCache: elfCache,
 		},
 	})
@@ -338,7 +338,7 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 	logger := util.TestLogger(t)
 	m := NewProcTable(logger, ProcTableOptions{
 		Pid: 239,
-		ElfTableOptions: &ElfTableOptions{
+		ElfTableOptions: ElfTableOptions{
 			ElfCache: elfCache,
 		},
 	})
