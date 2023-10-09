@@ -767,6 +767,20 @@ func (s *session) cleanup() {
 			_ = level.Error(s.logger).Log("msg", "delete pid config", "pid", pid, "err", err)
 		}
 	}
+
+	for pid := range s.pids.unknown {
+		_, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				_ = level.Error(s.logger).Log("msg", "cleanup stat pid", "pid", pid, "err", err)
+			}
+			delete(s.pids.unknown, pid)
+			delete(s.pids.all, pid)
+			if err := s.bpf.Pids.Delete(pid); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
+				_ = level.Error(s.logger).Log("msg", "delete pid config", "pid", pid, "err", err)
+			}
+		}
+	}
 }
 
 type stackBuilder struct {
