@@ -60,7 +60,7 @@ func (job *Job) Key() string {
 
 // AppendMeta the block with the given meta to the job.
 func (job *Job) AppendMeta(meta *block.Meta) error {
-	if !labels.Equal(job.labels, labels.FromMap(meta.Labels)) {
+	if !labels.Equal(labelsWithout(job.labels.Map(), block.HostnameLabel), labelsWithout(meta.Labels, block.HostnameLabel)) {
 		return errors.New("block and group labels do not match")
 	}
 	if job.resolution != meta.Downsample.Resolution {

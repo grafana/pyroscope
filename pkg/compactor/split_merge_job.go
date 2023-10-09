@@ -59,8 +59,8 @@ func (j *job) conflicts(other *job) bool {
 	// are never merged together, so they can't conflict. Since all blocks within the same job are expected to have the same
 	// downsample resolution and external labels, we just check the 1st block of each job.
 	if len(j.blocks) > 0 && len(other.blocks) > 0 {
-		myLabels := labelsWithoutShard(j.blocksGroup.blocks[0].Labels)
-		otherLabels := labelsWithoutShard(other.blocksGroup.blocks[0].Labels)
+		myLabels := labelsWithout(j.blocksGroup.blocks[0].Labels, block.HostnameLabel, sharding.CompactorShardIDLabel)
+		otherLabels := labelsWithout(other.blocksGroup.blocks[0].Labels, block.HostnameLabel, sharding.CompactorShardIDLabel)
 		if !labels.Equal(myLabels, otherLabels) {
 			return false
 		}

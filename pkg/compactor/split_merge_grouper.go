@@ -362,16 +362,20 @@ func getMaxTime(blocks []*block.Meta) int64 {
 // defaultGroupKeyWithoutShardID returns the default group key excluding ShardIDLabelName
 // when computing it.
 func defaultGroupKeyWithoutShardID(meta *block.Meta) string {
-	return defaultGroupKey(meta.Downsample.Resolution, labelsWithoutShard(meta.Labels))
+	return defaultGroupKey(meta.Downsample.Resolution, labelsWithout(meta.Labels, sharding.CompactorShardIDLabel, block.HostnameLabel))
 }
 
-// Return labels built from base, but without any label with name equal to sharding.CompactorShardIDExternalLabel.
-func labelsWithoutShard(base map[string]string) labels.Labels {
+// labelsWithout returns a copy of the input labels without the given labels.
+func labelsWithout(base map[string]string, without ...string) labels.Labels {
 	b := labels.NewScratchBuilder(len(base))
+Outer:
 	for k, v := range base {
-		if k != sharding.CompactorShardIDLabel {
-			b.Add(k, v)
+		for _, w := range without {
+			if k == w {
+				continue Outer
+			}
 		}
+		b.Add(k, v)
 	}
 	b.Sort()
 	return b.Labels()
