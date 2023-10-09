@@ -7,8 +7,10 @@ package compactor
 
 import (
 	"testing"
+	"time"
 
 	"github.com/oklog/ulid"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
@@ -693,6 +695,7 @@ func TestGroupBlocksByShardID(t *testing.T) {
 }
 
 func TestGroupBlocksByRange(t *testing.T) {
+	blockRange := 2 * time.Hour.Milliseconds()
 	tests := map[string]struct {
 		timeRange int64
 		blocks    []*block.Meta
@@ -785,6 +788,31 @@ func TestGroupBlocksByRange(t *testing.T) {
 					{MinTime: 10, MaxTime: 20},
 					{MinTime: 20, MaxTime: 30},
 				}},
+			},
+		},
+		"2 different range": {
+			timeRange: 4 * blockRange,
+			blocks: []*block.Meta{
+				{MinTime: model.Time(blockRange), MaxTime: model.Time(2 * blockRange)},
+				{MinTime: model.Time(blockRange), MaxTime: model.Time(2 * blockRange)},
+				{MinTime: model.Time(4*blockRange) + 1, MaxTime: model.Time(5 * blockRange)},
+				{MinTime: model.Time(7 * blockRange), MaxTime: model.Time(8 * blockRange)},
+			},
+			expected: []blocksGroup{
+				{
+					rangeStart: 0, rangeEnd: 4 * blockRange,
+					blocks: []*block.Meta{
+						{MinTime: model.Time(blockRange), MaxTime: model.Time(2 * blockRange)},
+						{MinTime: model.Time(blockRange), MaxTime: model.Time(2 * blockRange)},
+					},
+				},
+				{
+					rangeStart: 4 * blockRange, rangeEnd: 8 * blockRange,
+					blocks: []*block.Meta{
+						{MinTime: model.Time(4*blockRange) + 1, MaxTime: model.Time(5 * blockRange)},
+						{MinTime: model.Time(7 * blockRange), MaxTime: model.Time(8 * blockRange)},
+					},
+				},
 			},
 		},
 	}

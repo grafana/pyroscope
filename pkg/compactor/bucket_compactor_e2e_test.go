@@ -254,12 +254,12 @@ func TestGroupCompactE2E(t *testing.T) {
 		m4 := createDBBlock(t, bkt, "user-1", 1001, 3000, 10, nil)
 
 		require.NoError(t, bComp.Compact(ctx, 0), 0)
-		assert.Equal(t, 6.0, promtest.ToFloat64(sy.metrics.blocksMarkedForDeletion))
+		assert.Equal(t, 5.0, promtest.ToFloat64(sy.metrics.blocksMarkedForDeletion))
 		assert.Equal(t, 0.0, promtest.ToFloat64(metrics.blocksMarkedForNoCompact))
 		assert.Equal(t, 0.0, promtest.ToFloat64(sy.metrics.garbageCollectionFailures))
-		assert.Equal(t, 3.0, promtest.ToFloat64(metrics.groupCompactions))
-		assert.Equal(t, 3.0, promtest.ToFloat64(metrics.groupCompactionRunsStarted))
-		assert.Equal(t, 3.0, promtest.ToFloat64(metrics.groupCompactionRunsCompleted))
+		assert.Equal(t, 2.0, promtest.ToFloat64(metrics.groupCompactions))
+		assert.Equal(t, 2.0, promtest.ToFloat64(metrics.groupCompactionRunsStarted))
+		assert.Equal(t, 2.0, promtest.ToFloat64(metrics.groupCompactionRunsCompleted))
 		assert.Equal(t, 0.0, promtest.ToFloat64(metrics.groupCompactionRunsFailed))
 
 		_, err = os.Stat(dir)

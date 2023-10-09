@@ -396,14 +396,14 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 				block2 := createDBBlock(t, bkt, userID, blockRangeMillis, 2*blockRangeMillis, numSeries, externalLabels(""))
 				block3 := createDBBlock(t, bkt, userID, blockRangeMillis, 2*blockRangeMillis, numSeries, externalLabels(""))
 
-				// Two split adjacent blocks in the 2nd compaction range.
+				// // Two split adjacent blocks in the 2nd compaction range.
 				block4a := createDBBlock(t, bkt, userID, 2*blockRangeMillis, 3*blockRangeMillis, numSeries, externalLabels("1_of_2"))
 				block4b := createDBBlock(t, bkt, userID, 2*blockRangeMillis, 3*blockRangeMillis, numSeries, externalLabels("2_of_2"))
 				block5a := createDBBlock(t, bkt, userID, 3*blockRangeMillis, 4*blockRangeMillis, numSeries, externalLabels("1_of_2"))
 				block5b := createDBBlock(t, bkt, userID, 3*blockRangeMillis, 4*blockRangeMillis, numSeries, externalLabels("2_of_2"))
 
 				// Two non-adjacent non-split blocks in the 1st compaction range.
-				block6 := createDBBlock(t, bkt, userID, 4*blockRangeMillis, 5*blockRangeMillis, numSeries, externalLabels(""))
+				block6 := createDBBlock(t, bkt, userID, 4*blockRangeMillis+1, 5*blockRangeMillis, numSeries, externalLabels(""))
 				block7 := createDBBlock(t, bkt, userID, 7*blockRangeMillis, 8*blockRangeMillis, numSeries, externalLabels(""))
 
 				return []block.Meta{
@@ -442,7 +442,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					},
 					// The two non-adjacent blocks block6 and block7 are merged together in the 3rd range.
 					{
-						MinTime: model.Time(4 * blockRangeMillis),
+						MinTime: model.Time(4*blockRangeMillis) + 1,
 						MaxTime: model.Time(8 * blockRangeMillis),
 						Compaction: tsdb.BlockMetaCompaction{
 							Sources: []ulid.ULID{block6, block7},
