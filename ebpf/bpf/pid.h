@@ -4,7 +4,7 @@
 
 // this should not be used in production, and always be disabled
 // but is useful for running in a privileged context outside host pid namespace, for example wsl2
-#define PYROSCOPE_PID_NAMESPACED
+//#define PYROSCOPE_PID_NAMESPACED
 
 #if defined(PYROSCOPE_PID_NAMESPACED)
 
