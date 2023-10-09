@@ -563,6 +563,7 @@ func (s *session) readEvents(events *perf.Reader,
 		if record.LostSamples != 0 {
 			// this should not happen
 			// maybe we should iterate over a map of pids and check for unknowns if this happens
+			//todo metric
 			_ = level.Error(s.logger).Log("err", "perf event ring buffer full, dropped samples", "n", record.LostSamples)
 		}
 
@@ -695,8 +696,6 @@ func (s *session) loadPyPerf() (*python.Perf, error) {
 func (s *session) selectProfilingType(pid uint32, target *sd.Target) pyrobpf.ProfilingType {
 	exePath, err := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
 	if err != nil {
-		dir, _ := os.Getwd()
-		_ = level.Error(s.logger).Log("wd", dir, "uid", os.Getuid())
 		_ = level.Error(s.logger).Log("err", err, "msg", "select profiling type failed", "pid", pid, "target", target.ServiceName())
 		return pyrobpf.ProfilingTypeError
 	}
