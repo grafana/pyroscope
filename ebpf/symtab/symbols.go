@@ -124,6 +124,6 @@ func (sc *SymbolCache) ElfCacheDebugInfo() ElfCacheDebugInfo {
 	return sc.elfCache.DebugInfo()
 }
 
-func (sc *SymbolCache) RemoveDead(proc *ProcTable) {
-	sc.pidCache.Remove(PidKey(proc.Pid()))
+func (sc *SymbolCache) RemoveDeadPID(pid PidKey) {
+	sc.pidCache.Remove(pid)
 }

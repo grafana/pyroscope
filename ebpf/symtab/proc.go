@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -23,9 +22,7 @@ type ProcTable struct {
 	options    ProcTableOptions
 	rootFS     string
 	comm       string
-	python     bool
 	err        error
-	seenAlive  bool
 }
 
 type ProcTableDebugInfo struct {
@@ -61,9 +58,6 @@ type ProcTableOptions struct {
 
 func NewProcTable(logger log.Logger, options ProcTableOptions) *ProcTable {
 	comm, _ := os.ReadFile(fmt.Sprintf("/proc/%d/comm", options.Pid))
-	exePath, _ := os.Readlink(fmt.Sprintf("/proc/%d/exe", options.Pid))
-	exe := filepath.Base(exePath)
-	python := strings.HasPrefix(exe, "python")
 
 	//fmt.Printf("%d %s %s\n", options.Pid, exePath, comm)
 	return &ProcTable{
@@ -72,7 +66,6 @@ func NewProcTable(logger log.Logger, options ProcTableOptions) *ProcTable {
 		options:    options,
 		rootFS:     path.Join("/proc", strconv.Itoa(options.Pid), "root"),
 		comm:       string(comm),
-		python:     python,
 	}
 }
 
@@ -83,9 +76,6 @@ type elfRange struct {
 }
 
 func (p *ProcTable) Refresh() {
-	if p.python {
-		return // we don't need modules for python until we implement collecting native python stacks
-	}
 	if p.err != nil {
 		return
 	}
@@ -104,12 +94,7 @@ func (p *ProcTable) Refresh() {
 	if p.err != nil {
 		_ = level.Error(p.logger).Log("err", p.err)
 	} else {
-		p.seenAlive = true
 	}
-}
-
-func (p *ProcTable) SeenAlive() bool {
-	return p.seenAlive
 }
 
 func (p *ProcTable) Error() error {
@@ -192,10 +177,6 @@ func (p *ProcTable) createElfTable(m *ProcMap) *ElfTable {
 	}
 	e := NewElfTable(p.logger, m, p.rootFS, m.Pathname, p.options.ElfTableOptions)
 	return e
-}
-
-func (p *ProcTable) Python() bool {
-	return p.python
 }
 
 func (p *ProcTable) Cleanup() {

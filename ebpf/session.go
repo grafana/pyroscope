@@ -57,11 +57,18 @@ type SessionDebugInfo struct {
 	PidCache symtab.GCacheDebugInfo[symtab.ProcTableDebugInfo] `river:"pid_cache,attr,optional"`
 }
 
+type pids struct {
+	// processes not selected for profiling by sd
+	unknown map[uint32]struct{}
+	// got a pid dead event or errored during refresh
+	dead map[uint32]struct{}
+	// userspace counterpart of pids map
+	all map[uint32]struct{}
+}
 type session struct {
 	logger log.Logger
 
 	targetFinder sd.TargetFinder
-	unknownPIDs  map[uint32]struct{}
 
 	perfEvents []*perfEvent
 
@@ -72,11 +79,6 @@ type session struct {
 	eventsReader    *perf.Reader
 	pidInfoRequests chan uint32
 	deadPIDEvents   chan uint32
-	deadPIDs        []uint32
-
-	pyperf      *python.Perf
-	pyperfBpf   python.PerfObjects
-	pyperfError error
 
 	options     SessionOptions
 	roundNumber int
@@ -93,6 +95,12 @@ type session struct {
 	wg      sync.WaitGroup
 	started bool
 	kprobes []link.Link
+
+	pyperf      *python.Perf
+	pyperfBpf   python.PerfObjects
+	pyperfError error
+
+	pids pids
 }
 
 func (s *session) UpdateTargets(args sd.TargetsOptions) {
@@ -101,13 +109,13 @@ func (s *session) UpdateTargets(args sd.TargetsOptions) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	for pid := range s.unknownPIDs {
+	for pid := range s.pids.unknown {
 		target := s.targetFinder.FindTarget(pid)
 		if target == nil {
 			continue
 		}
 		s.enableProfilingLocked(pid, target)
-		delete(s.unknownPIDs, pid)
+		delete(s.pids.unknown, pid)
 	}
 }
 
@@ -128,7 +136,11 @@ func NewSession(
 
 		targetFinder: targetFinder,
 		options:      sessionOptions,
-		unknownPIDs:  make(map[uint32]struct{}),
+		pids: pids{
+			unknown: make(map[uint32]struct{}),
+			dead:    make(map[uint32]struct{}),
+			all:     make(map[uint32]struct{}),
+		},
 	}, nil
 }
 
@@ -209,17 +221,13 @@ func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value ui
 		return err
 	}
 
+	s.cleanup()
+
 	return nil
 }
 
 func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
 	sb := &stackBuilder{}
-	errored := map[*symtab.ProcTable]struct{}{}
-	defer func() {
-		for p := range errored {
-			s.symCache.RemoveDead(p)
-		}
-	}()
 
 	keys, values, batch, err := s.getCountsMapValues()
 	if err != nil {
@@ -246,11 +254,10 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 
 		proc := s.symCache.GetProcTable(symtab.PidKey(ck.Pid))
 		if proc.Error() != nil {
-			errored[proc] = struct{}{}
-			if !proc.SeenAlive() {
-				//todo metric
-				continue
-			}
+			s.pids.dead[uint32(proc.Pid())] = struct{}{}
+			// in theory if we saw this process alive before, we could try resolving tack anyway
+			// it may succeed if we have same binary loaded in another process, not doing it for now
+			continue
 		}
 
 		var uStack []byte
@@ -437,6 +444,7 @@ func (s *session) DebugInfo() interface{} {
 }
 
 func (s *session) setPidConfig(pid uint32, typ pyrobpf.ProfilingType, collectUser bool, collectKernel bool) error {
+	s.pids.all[pid] = struct{}{}
 	_ = level.Debug(s.logger).Log("msg", "set pid config", "pid", pid, "type", typ, "collect_user", collectUser, "collect_kernel", collectKernel)
 	config := &pyrobpf.ProfilePidConfig{
 		Type:          uint8(typ),
@@ -629,7 +637,7 @@ func (s *session) enableProfilingLocked(pid uint32, target *sd.Target) {
 			_ = s.setPidConfig(pid, pyrobpf.ProfilingTypeError, false, false)
 			return
 		}
-		err := pyPerf.AddPythonPID(pid)
+		err := pyPerf.AddPythonPID(pid) //todo metrics
 		if err != nil {
 			_ = level.Error(s.logger).Log("err", err, "msg", "pyperf process profiling init failed", "pid", pid)
 			_ = s.setPidConfig(pid, pyrobpf.ProfilingTypeError, false, false)
@@ -650,7 +658,7 @@ func (s *session) getPyPerf() *python.Perf {
 	if s.pyperfError != nil {
 		return nil
 	}
-	pyperf, err := s.loadPyPerf()
+	pyperf, err := s.loadPyPerf() //todo metrics
 	if err != nil {
 		s.pyperfError = err
 		_ = level.Error(s.logger).Log("err", err, "msg", "load pyperf")
@@ -714,7 +722,7 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) pyrobpf.Pro
 func (s *session) saveUnknownPIDLocked(pid uint32) {
 	_ = level.Debug(s.logger).Log("msg", "unknown target", "pid", pid)
 
-	s.unknownPIDs[pid] = struct{}{}
+	s.pids.unknown[pid] = struct{}{}
 }
 
 func (s *session) processDeadPIDsEvents(dead chan uint32) {
@@ -724,7 +732,7 @@ func (s *session) processDeadPIDsEvents(dead chan uint32) {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()
 
-			s.deadPIDs = append(s.deadPIDs, pid) // keep them until next round
+			s.pids.dead[pid] = struct{}{} // keep them until next round
 		}()
 	}
 }
@@ -740,6 +748,24 @@ func (s *session) linkKProbes() error {
 	}
 	return nil
 
+}
+
+func (s *session) cleanup() {
+	s.symCache.Cleanup()
+
+	for pid := range s.pids.dead {
+		_ = level.Debug(s.logger).Log("msg", "cleanup dead pid", "pid", pid)
+		delete(s.pids.dead, pid)
+		delete(s.pids.unknown, pid)
+		delete(s.pids.all, pid)
+		s.symCache.RemoveDeadPID(symtab.PidKey(pid))
+		if s.pyperf != nil {
+			s.pyperf.RemoveDeadPID(pid)
+		}
+		if err := s.bpf.Pids.Delete(pid); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
+			_ = level.Error(s.logger).Log("msg", "delete pid config", "pid", pid, "err", err)
+		}
+	}
 }
 
 type stackBuilder struct {

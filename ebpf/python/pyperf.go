@@ -185,6 +185,14 @@ func (s *Perf) GetSymbols() (map[uint32]*PerfPySymbol, error) {
 	return res, nil
 }
 
+func (s *Perf) RemoveDeadPID(pid uint32) {
+	s.pidCache.Remove(pid)
+	err := s.pidDataHashMap.Delete(pid)
+	if err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
+		_ = level.Error(s.logger).Log("msg", "[pyperf] deleting pid data hash map", "err", err)
+	}
+}
+
 func ReadPyEvent(raw []byte) (*PerfPyEvent, error) {
 	if len(raw) < 1 {
 		return nil, fmt.Errorf("unexpected pyevent size %d", len(raw))
