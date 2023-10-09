@@ -988,3 +988,38 @@ func (e *SampleExporter) reset() {
 	e.mappings.reset()
 	e.strings.reset()
 }
+
+const (
+	ProfileIDLabelName = "profile_id" // For compatibility with the existing clients.
+	SpanIDLabelName    = "span_id"    // Will be supported in the future.
+)
+
+func RenameLabel(p *profilev1.Profile, oldName, newName string) {
+	var oi, ni int64
+	for i, s := range p.StringTable {
+		if s == oldName {
+			oi = int64(i)
+			break
+		}
+	}
+	if oi == 0 {
+		return
+	}
+	for i, s := range p.StringTable {
+		if s == newName {
+			ni = int64(i)
+			break
+		}
+	}
+	if ni == 0 {
+		ni = int64(len(p.StringTable))
+		p.StringTable = append(p.StringTable, newName)
+	}
+	for _, s := range p.Sample {
+		for _, l := range s.Label {
+			if l.Key == oi {
+				l.Key = ni
+			}
+		}
+	}
+}
