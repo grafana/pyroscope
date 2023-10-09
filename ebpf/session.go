@@ -324,10 +324,10 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 			continue
 		}
 		svc := labels.ServiceName()
-		proc := s.symCache.GetProcTable(symtab.PidKey(event.Pid)) // todo do not use proce for comm retrieval
+		
 		sb.reset()
 
-		sb.append(s.comm(proc))
+		sb.append("pythyon_comm_todo")
 		var kStack []byte
 		if event.StackStatus == uint8(python.StackStatusError) {
 			s.options.Metrics.Python.StacktraceError.Inc()
