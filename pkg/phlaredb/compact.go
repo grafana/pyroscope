@@ -4,21 +4,21 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"io"
 	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
 	"sort"
 
+	"github.com/grafana/dskit/multierror"
+	"github.com/grafana/dskit/runutil"
 	"github.com/oklog/ulid"
 	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/tsdb"
-
-	"github.com/grafana/dskit/multierror"
-	"github.com/grafana/dskit/runutil"
 
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -34,7 +34,7 @@ import (
 
 type BlockReader interface {
 	Meta() block.Meta
-	Profiles() []parquet.RowGroup
+	Profiles() parquet.Rows
 	Index() IndexReader
 	Symbols() symdb.SymbolsReader
 	Close() error
@@ -443,6 +443,7 @@ type profileRow struct {
 type profileRowIterator struct {
 	profiles    iter.Iterator[parquet.Row]
 	blockReader BlockReader
+	closer      io.Closer
 	index       IndexReader
 	allPostings index.Postings
 	err         error
@@ -459,10 +460,11 @@ func newProfileRowIterator(s BlockReader) (*profileRowIterator, error) {
 		return nil, err
 	}
 	// todo close once https://github.com/grafana/pyroscope/issues/2172 is done.
-	reader := parquet.MultiRowGroup(s.Profiles()...).Rows()
+	reader := s.Profiles()
 	return &profileRowIterator{
 		profiles:         phlareparquet.NewBufferedRowReaderIterator(reader, 1024),
 		blockReader:      s,
+		closer:           reader,
 		index:            s.Index(),
 		allPostings:      allPostings,
 		currentSeriesIdx: math.MaxUint32,
@@ -513,7 +515,13 @@ func (p *profileRowIterator) Err() error {
 }
 
 func (p *profileRowIterator) Close() error {
-	return p.profiles.Close()
+	err := p.profiles.Close()
+	if p.closer != nil {
+		if err := p.closer.Close(); err != nil {
+			return err
+		}
+	}
+	return err
 }
 
 func newMergeRowProfileIterator(src []BlockReader) (iter.Iterator[profileRow], error) {
