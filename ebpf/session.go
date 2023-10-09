@@ -592,7 +592,6 @@ func (s *session) readEvents(events *perf.Reader,
 					// implement a fallback at reset time
 				}
 			} else if e.Op == uint32(pyrobpf.PidOpDead) {
-				fmt.Printf("dead pid: %d\n", e.Pid)
 				select {
 				case deadPIDsEvents <- e.Pid:
 				default:
@@ -708,7 +707,7 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) pyrobpf.Pro
 	}
 	s.logger.Log("exe", exePath, "pid", pid)
 	exe := filepath.Base(exePath)
-	if strings.HasPrefix(exe, "python") {
+	if strings.HasPrefix(exe, "python") || exe == "uwsgi" {
 		if s.options.PythonEnabled {
 			return pyrobpf.ProfilingTypePython
 		} else {
