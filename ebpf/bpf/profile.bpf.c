@@ -8,12 +8,8 @@
 
 SEC("perf_event")
 int do_perf_event(struct bpf_perf_event_data *ctx) {
-    struct task_struct *task = (struct task_struct *)bpf_get_current_task();
-    if (task == 0) {
-        return 0;
-    }
     u32 tgid = 0;
-    current_pid(task, &tgid);
+    current_pid(&tgid);
 
     struct sample_key key = {};
     u32 *val, one = 1;
@@ -65,6 +61,23 @@ int do_perf_event(struct bpf_perf_event_data *ctx) {
         else
             bpf_map_update_elem(&counts, &key, &one, BPF_NOEXIST);
     }
+    return 0;
+}
+
+
+SEC("kprobe/do_group_exit")
+int BPF_KPROBE(kprobe_do_group_exit, int status) {
+    bpf_printk("do_group_exit");
+    u32 pid = 0;
+    current_pid(&pid);
+    if (pid == 0) {
+        return 0;
+    }
+    struct pid_event event = {
+        .op  = OP_PID_DEAD,
+        .pid = pid
+    };
+    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
     return 0;
 }
 

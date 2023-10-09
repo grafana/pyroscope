@@ -21,10 +21,11 @@ type Perf struct {
 	pidDataHashMap *ebpf.Map
 	symbolsHashMp  *ebpf.Map
 
-	events     []*PerfPyEvent
-	eventsLock sync.Mutex
-	sc         *symtab.SymbolCache
-	pidCache   *lru.Cache[uint32, *PerfPyPidData]
+	events      []*PerfPyEvent
+	eventsLock  sync.Mutex
+	sc          *symtab.SymbolCache
+	pidCache    *lru.Cache[uint32, *PerfPyPidData]
+	prevSymbols map[uint32]*PerfPySymbol
 }
 
 func NewPerf(logger log.Logger, perfEventMap *ebpf.Map, pidDataHasMap *ebpf.Map, symbolsHashMap *ebpf.Map) (*Perf, error) {
@@ -122,6 +123,14 @@ func (s *Perf) ResetEvents() []*PerfPyEvent {
 	return eventsCopy
 }
 
+func (s *Perf) GetSymbolsLazy() LazySymbols {
+	return LazySymbols{
+		symbols: s.prevSymbols,
+		fresh:   false,
+		perf:    s,
+	}
+}
+
 func (s *Perf) GetSymbols() (map[uint32]*PerfPySymbol, error) {
 	var (
 		m       = s.symbolsHashMp
@@ -143,6 +152,7 @@ func (s *Perf) GetSymbols() (map[uint32]*PerfPySymbol, error) {
 			k := values[i]
 			res[k] = &keys[i]
 		}
+		s.prevSymbols = res
 		return res, nil
 	}
 	if errors.Is(err, ebpf.ErrKeyNotExist) {
@@ -171,6 +181,7 @@ func (s *Perf) GetSymbols() (map[uint32]*PerfPySymbol, error) {
 		"msg", "GetSymbols iter",
 		"count", len(res),
 	)
+	s.prevSymbols = res
 	return res, nil
 }
 
@@ -202,4 +213,39 @@ func ReadPyEvent(raw []byte) (*PerfPyEvent, error) {
 		event.Stack[i] = binary.LittleEndian.Uint32(raw[20+i*4:])
 	}
 	return event, nil
+}
+
+// LazySymbols tries to reuse a map from previous profile collection.
+// If found a new symbols, then full dump ( GetSymbols ) is performed.
+type LazySymbols struct {
+	perf    *Perf
+	symbols map[uint32]*PerfPySymbol
+	fresh   bool
+}
+
+func (s *LazySymbols) GetSymbol(symID uint32) (*PerfPySymbol, error) {
+	symbol, ok := s.symbols[symID]
+	if ok {
+		return symbol, nil
+	}
+	return s.getSymbol(symID)
+
+}
+
+func (s *LazySymbols) getSymbol(id uint32) (*PerfPySymbol, error) {
+	if s.fresh {
+		return nil, fmt.Errorf("symbol %d not found", id)
+	}
+	// make it fresh
+	symbols, err := s.perf.GetSymbols()
+	if err != nil {
+		return nil, fmt.Errorf("symbols refresh failed: %w", err)
+	}
+	s.symbols = symbols
+	s.fresh = true
+	symbol, ok := symbols[id]
+	if ok {
+		return symbol, nil
+	}
+	return nil, fmt.Errorf("symbol %d not found", id)
 }

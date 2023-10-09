@@ -292,8 +292,7 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, 
 SEC("perf_event")
 int pyperf_collect(struct bpf_perf_event_data *ctx) {
     u32 pid;
-    struct task_struct *task = (struct task_struct *)bpf_get_current_task();
-    current_pid(task, &pid);
+    current_pid(&pid);
     if (pid == 0) {
         return 0;
     }

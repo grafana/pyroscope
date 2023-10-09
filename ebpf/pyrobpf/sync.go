@@ -20,4 +20,5 @@ type PidOp uint32
 
 var (
 	PidOpRequestUnknownProcessInfo PidOp = 1
+	PidOpDead                      PidOp = 2
 )

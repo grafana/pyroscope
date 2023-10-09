@@ -19,6 +19,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
+	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -70,6 +71,8 @@ type session struct {
 
 	eventsReader    *perf.Reader
 	pidInfoRequests chan uint32
+	deadPIDEvents   chan uint32
+	deadPIDs        []uint32
 
 	pyperf      *python.Perf
 	pyperfBpf   python.PerfObjects
@@ -81,13 +84,15 @@ type session struct {
 	// all the Session methods should be guarded by mutex
 	// all the goroutines accessing fields should be guarded by mutex and check for started field
 	mutex sync.Mutex
-	// We have 2 goroutines
+	// We have 3 goroutines
 	// 1 - reading perf events from ebpf. this one does not touch Session fields including mutex
 	// 2 - processing pid info requests. this one Session fields to update pid info and python info, this should be done under mutex
+	// 3 - processing pid dead events
 	// Accessing wg should be done with no Session.mutex held to avoid deadlock, therefore wg access (Start, Stop) should be
 	// synchronized outside
 	wg      sync.WaitGroup
 	started bool
+	kprobes []link.Link
 }
 
 func (s *session) UpdateTargets(args sd.TargetsOptions) {
@@ -158,18 +163,31 @@ func (s *session) Start() error {
 		s.stopLocked()
 		return fmt.Errorf("perf new reader for events map: %w", err)
 	}
+
+	err = s.linkKProbes()
+	if err != nil {
+		s.stopLocked()
+		return fmt.Errorf("link kprobes: %w", err)
+	}
+
 	s.eventsReader = eventsReader
 	pidInfoRequests := make(chan uint32, 1024)
+	deadPIDsEvents := make(chan uint32, 1024)
 	s.pidInfoRequests = pidInfoRequests
-	s.wg.Add(2)
+	s.deadPIDEvents = deadPIDsEvents
+	s.wg.Add(3)
 	s.started = true
 	go func() {
 		defer s.wg.Done()
-		s.readEvents(eventsReader, pidInfoRequests)
+		s.readEvents(eventsReader, pidInfoRequests, deadPIDsEvents)
 	}()
 	go func() {
 		defer s.wg.Done()
 		s.processPidInfoRequests(pidInfoRequests)
+	}()
+	go func() {
+		defer s.wg.Done()
+		s.processDeadPIDsEvents(deadPIDsEvents)
 	}()
 	return nil
 }
@@ -196,9 +214,9 @@ func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value ui
 
 func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
 	sb := &stackBuilder{}
-	dead := map[*symtab.ProcTable]bool{}
+	errored := map[*symtab.ProcTable]struct{}{}
 	defer func() {
-		for p := range dead {
+		for p := range errored {
 			s.symCache.RemoveDead(p)
 		}
 	}()
@@ -228,19 +246,11 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 
 		proc := s.symCache.GetProcTable(symtab.PidKey(ck.Pid))
 		if proc.Error() != nil {
-			dead[proc] = true
+			errored[proc] = struct{}{}
 			if !proc.SeenAlive() {
 				//todo metric
 				continue
 			}
-		}
-		if proc.Python() {
-			err := s.pyperf.AddPythonPID(ck.Pid)
-			if err != nil {
-				_ = level.Error(s.logger).Log("err", err, "msg", "pyperf init failed", "pid", ck.Pid)
-			}
-			//todo handle error, metric both cases
-			continue
 		}
 
 		var uStack []byte
@@ -294,10 +304,8 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 	if len(pyEvents) == 0 {
 		return nil
 	}
-	pySymbols, err := s.pyperf.GetSymbols() // todo keep it between rounds and refresh only if symbol not found
-	if err != nil {
-		return fmt.Errorf("pyperf symbols refresh failed %w", err)
-	}
+	pySymbols := s.pyperf.GetSymbolsLazy() // todo keep it between rounds and refresh only if symbol not found
+
 	sb := &stackBuilder{}
 	for _, event := range pyEvents {
 		stats := StackResolveStats{}
@@ -318,8 +326,8 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 				sb.append("pyperf_truncated")
 			}
 			for i := 0; i < int(event.StackLen); i++ {
-				sym, ok := pySymbols[event.Stack[i]]
-				if ok {
+				sym, err := pySymbols.GetSymbol(event.Stack[i])
+				if err == nil {
 					filename := cStringFromI8Unsafe(sym.File[:])
 					if !s.options.PythonFullFilePath {
 						iSep := strings.LastIndexByte(filename, '/')
@@ -387,6 +395,10 @@ func (s *session) stopLocked() {
 		_ = pe.Close()
 	}
 	s.perfEvents = nil
+	for _, kprobe := range s.kprobes {
+		_ = kprobe.Close()
+	}
+	s.kprobes = nil
 	_ = s.bpf.Close()
 	if s.pyperf != nil {
 		s.pyperf.Close()
@@ -534,7 +546,9 @@ func (s *session) WalkStack(sb *stackBuilder, stack []byte, resolver symtab.Symb
 	}
 }
 
-func (s *session) readEvents(events *perf.Reader, pidConfigRequest chan<- uint32) {
+func (s *session) readEvents(events *perf.Reader,
+	pidConfigRequest chan<- uint32,
+	deadPIDsEvents chan<- uint32) {
 	defer events.Close()
 	for {
 		record, err := events.Read()
@@ -569,7 +583,13 @@ func (s *session) readEvents(events *perf.Reader, pidConfigRequest chan<- uint32
 					// this should not happen
 					// implement a fallback at reset time
 				}
-
+			} else if e.Op == uint32(pyrobpf.PidOpDead) {
+				fmt.Printf("dead pid: %d\n", e.Pid)
+				select {
+				case deadPIDsEvents <- e.Pid:
+				default:
+					_ = level.Error(s.logger).Log("msg", "dead pid info queue full, dropping event", "pid", e.Pid)
+				}
 			} else {
 				_ = level.Error(s.logger).Log("msg", "unknown perf event record", "op", e.Op, "pid", e.Pid)
 			}
@@ -696,6 +716,31 @@ func (s *session) saveUnknownPIDLocked(pid uint32) {
 	_ = level.Debug(s.logger).Log("msg", "unknown target", "pid", pid)
 
 	s.unknownPIDs[pid] = struct{}{}
+}
+
+func (s *session) processDeadPIDsEvents(dead chan uint32) {
+	for pid := range dead {
+		_ = level.Debug(s.logger).Log("msg", "got pid dead", "pid", pid)
+		func() {
+			s.mutex.Lock()
+			defer s.mutex.Unlock()
+
+			s.deadPIDs = append(s.deadPIDs, pid) // keep them until next round
+		}()
+	}
+}
+
+func (s *session) linkKProbes() error {
+	hooks := []string{"do_group_exit"}
+	for _, hook := range hooks {
+		kp, err := link.Kprobe(hook, s.bpf.KprobeDoGroupExit, nil)
+		if err != nil {
+			return fmt.Errorf("link kprobe %s: %w", hook, err)
+		}
+		s.kprobes = append(s.kprobes, kp)
+	}
+	return nil
+
 }
 
 type stackBuilder struct {
