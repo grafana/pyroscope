@@ -457,7 +457,7 @@ func (s *session) DebugInfo() interface{} {
 
 func (s *session) setPidConfig(pid uint32, typ pyrobpf.ProfilingType, collectUser bool, collectKernel bool) error {
 	s.pids.all[pid] = struct{}{}
-	_ = level.Debug(s.logger).Log("msg", "set pid config", "pid", pid, "type", typ, "collect_user", collectUser, "collect_kernel", collectKernel)
+	//_ = level.Debug(s.logger).Log("msg", "set pid config", "pid", pid, "type", typ, "collect_user", collectUser, "collect_kernel", collectKernel)
 	config := &pyrobpf.ProfilePidConfig{
 		Type:          uint8(typ),
 		CollectUser:   uint8FromBool(collectUser),
@@ -616,7 +616,7 @@ func (s *session) readEvents(events *perf.Reader,
 
 func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
 	for pid := range pidInfoRequests {
-		_ = level.Debug(s.logger).Log("msg", "got pid info request", "pid", pid)
+		//_ = level.Debug(s.logger).Log("msg", "got pid info request", "pid", pid)
 		target := s.targetFinder.FindTarget(pid)
 
 		func() {
@@ -724,7 +724,7 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) pyrobpf.Pro
 		_ = logger.Log("err", err, "msg", "select profiling type failed", "pid", pid, "target", target.ServiceName())
 		return pyrobpf.ProfilingTypeError
 	}
-	_ = level.Debug(s.logger).Log("exe", exePath, "pid", pid)
+	//_ = level.Debug(s.logger).Log("exe", exePath, "pid", pid)
 	exe := filepath.Base(exePath)
 	if strings.HasPrefix(exe, "python") || exe == "uwsgi" {
 		if s.options.PythonEnabled {
@@ -741,7 +741,7 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) pyrobpf.Pro
 // or a new process started in between sd runs
 // this may be not needed after process discovery implemented
 func (s *session) saveUnknownPIDLocked(pid uint32) {
-	_ = level.Debug(s.logger).Log("msg", "unknown target", "pid", pid)
+	//_ = level.Debug(s.logger).Log("msg", "unknown target", "pid", pid)
 
 	s.pids.unknown[pid] = struct{}{}
 }
