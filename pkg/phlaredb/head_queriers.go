@@ -148,16 +148,15 @@ func (q *headOnDiskQuerier) Series(ctx context.Context, params *ingestv1.SeriesR
 	return []*typesv1.Labels{}, nil
 }
 
-func (q *headOnDiskQuerier) MergeBySpans(_ context.Context, _ iter.Iterator[Profile], _ phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
-	//	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeBySpans")
-	//	defer sp.Finish()
-	//	r := symdb.NewResolver(ctx, q.head.symdb)
-	//	defer r.Release()
-	//	if err := mergeBySpans(ctx, q.rowGroup(), rows, r, spanSelector); err != nil {
-	//		return nil, err
-	//	}
-	//	return r.Tree()
-	return new(phlaremodel.Tree), nil
+func (q *headOnDiskQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeBySpans")
+	defer sp.Finish()
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
+	if err := mergeBySpans(ctx, q.rowGroup(), rows, r, spanSelector); err != nil {
+		return nil, err
+	}
+	return r.Tree()
 }
 
 func (q *headOnDiskQuerier) Sort(in []Profile) []Profile {
