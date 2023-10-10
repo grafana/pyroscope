@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -18,15 +17,11 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/services"
 	"github.com/oklog/ulid"
-	"github.com/opentracing/opentracing-go"
-	otlog "github.com/opentracing/opentracing-go/log"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
@@ -73,9 +68,9 @@ type PhlareDB struct {
 	wg     sync.WaitGroup
 
 	headLock sync.RWMutex
-	// Head for ingest requests and reads. May not be present,
+	// Heads per max range interval for ingest requests and reads. May be empty,
 	// if no ingestion requests were handled.
-	head *Head
+	heads map[int64]*Head
 	// Read only head. On Flush, writes are directed to
 	// the new head, and queries can read the former head
 	// till it gets written to the disk and becomes available
@@ -103,6 +98,7 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlare
 		evictCh: make(chan *blockEviction),
 		metrics: newHeadMetrics(reg),
 		limiter: limiter,
+		heads:   make(map[int64]*Head),
 	}
 
 	f.forceFlush = time.NewTicker(f.maxBlockDuration())
@@ -199,8 +195,8 @@ func (f *PhlareDB) Close() error {
 	close(f.stopCh)
 	f.wg.Wait()
 	errs := multierror.New()
-	if f.head != nil {
-		errs.Add(f.head.Flush(f.phlarectx))
+	for _, h := range f.heads {
+		errs.Add(h.Flush(f.phlarectx))
 	}
 	close(f.evictCh)
 	if err := f.blockQuerier.Close(); err != nil {
@@ -228,46 +224,55 @@ func (f *PhlareDB) queriers() Queriers {
 }
 
 func (f *PhlareDB) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*typesv1.LabelPair) (err error) {
-	return f.withHeadForIngest(func(head *Head) error {
+	return f.headForIngest(p.TimeNanos, func(head *Head) error {
 		return head.Ingest(ctx, p, id, externalLabels...)
 	})
 }
 
-func (f *PhlareDB) withHeadForIngest(fn func(*Head) error) (err error) {
+func rangeForTimestamp(t, width int64) (maxt int64) {
+	return (t/width)*width + width
+}
+
+func (f *PhlareDB) headForIngest(sampleTimeNanos int64, fn func(*Head) error) (err error) {
+	maxT := rangeForTimestamp(sampleTimeNanos, f.cfg.MaxBlockDuration.Nanoseconds())
 	// We need to keep track of the in-flight ingestion requests to ensure that none
 	// of them will compete with Flush. Lock is acquired to avoid Add after Wait that
 	// is called in the very beginning of Flush.
 	f.headLock.RLock()
-	if h := f.head; h != nil {
+	if h := f.heads[maxT]; h != nil {
 		h.inFlightProfiles.Add(1)
 		f.headLock.RUnlock()
 		defer h.inFlightProfiles.Done()
 		return fn(h)
 	}
+
 	f.headLock.RUnlock()
 	f.headLock.Lock()
-	if f.head == nil {
-		if err = f.initHead(); err != nil {
+	head, ok := f.heads[maxT]
+	if !ok {
+		h, err := NewHead(f.phlarectx, f.cfg, f.limiter)
+		if err != nil {
 			f.headLock.Unlock()
 			return err
 		}
+		head = h
 	}
-	h := f.head
+	h := head
 	h.inFlightProfiles.Add(1)
 	f.headLock.Unlock()
 	defer h.inFlightProfiles.Done()
 	return fn(h)
 }
 
-// initHead initializes a new head and resets the flush timer.
-// Must only be called with headLock held for writes.
-func (f *PhlareDB) initHead() (err error) {
-	if f.head, err = NewHead(f.phlarectx, f.cfg, f.limiter); err != nil {
-		return err
-	}
-	f.forceFlush.Reset(f.maxBlockDuration())
-	return nil
-}
+// // initHead initializes a new head and resets the flush timer.
+// // Must only be called with headLock held for writes.
+// func (f *PhlareDB) initHead() (err error) {
+// 	if f.head, err = NewHead(f.phlarectx, f.cfg, f.limiter); err != nil {
+// 		return err
+// 	}
+// 	// f.forceFlush.Reset(f.maxBlockDuration())
+// 	return nil
+// }
 
 func withHeadForQuery[T any](f *PhlareDB, fn func(*Head) (*connect.Response[T], error)) (*connect.Response[T], error) {
 	f.headLock.RLock()
@@ -354,149 +359,10 @@ func (f *PhlareDB) MergeProfilesPprof(ctx context.Context, stream *connect.BidiS
 	return MergeProfilesPprof(ctx, stream, f.queriers().ForTimeRange)
 }
 
-type BidiServerMerge[Res any, Req any] interface {
-	Send(Res) error
-	Receive() (Req, error)
-}
-
-type labelWithIndex struct {
-	phlaremodel.Labels
-	index int
-}
-
-type ProfileWithIndex struct {
-	Profile
-	Index int
-}
-
-type indexedProfileIterator struct {
-	iter.Iterator[Profile]
-	querierIndex int
-}
-
-func (pqi *indexedProfileIterator) At() ProfileWithIndex {
-	return ProfileWithIndex{
-		Profile: pqi.Iterator.At(),
-		Index:   pqi.querierIndex,
-	}
-}
-
-// filterProfiles merges and dedupe profiles from different iterators and allow filtering via a bidi stream.
-func filterProfiles[B BidiServerMerge[Res, Req],
-	Res *ingestv1.MergeProfilesStacktracesResponse | *ingestv1.MergeProfilesLabelsResponse | *ingestv1.MergeProfilesPprofResponse,
-	Req *ingestv1.MergeProfilesStacktracesRequest | *ingestv1.MergeProfilesLabelsRequest | *ingestv1.MergeProfilesPprofRequest](
-	ctx context.Context, profiles []iter.Iterator[Profile], batchProfileSize int, stream B,
-) ([][]Profile, error) {
-	selection := make([][]Profile, len(profiles))
-	selectProfileResult := &ingestv1.ProfileSets{
-		Profiles:   make([]*ingestv1.SeriesProfile, 0, batchProfileSize),
-		LabelsSets: make([]*typesv1.Labels, 0, batchProfileSize),
-	}
-	its := make([]iter.Iterator[ProfileWithIndex], len(profiles))
-	for i, iter := range profiles {
-		iter := iter
-		its[i] = &indexedProfileIterator{
-			Iterator:     iter,
-			querierIndex: i,
-		}
-	}
-	if err := iter.ReadBatch(ctx, iter.NewMergeIterator(ProfileWithIndex{
-		Profile: maxBlockProfile,
-		Index:   0,
-	}, true, its...), batchProfileSize, func(ctx context.Context, batch []ProfileWithIndex) error {
-		sp, _ := opentracing.StartSpanFromContext(ctx, "filterProfiles - Filtering batch")
-		sp.LogFields(
-			otlog.Int("batch_len", len(batch)),
-			otlog.Int("batch_requested_size", batchProfileSize),
-		)
-		defer sp.Finish()
-
-		seriesByFP := map[model.Fingerprint]labelWithIndex{}
-		selectProfileResult.LabelsSets = selectProfileResult.LabelsSets[:0]
-		selectProfileResult.Profiles = selectProfileResult.Profiles[:0]
-
-		for _, profile := range batch {
-			var ok bool
-			var lblsIdx labelWithIndex
-			lblsIdx, ok = seriesByFP[profile.Fingerprint()]
-			if !ok {
-				lblsIdx = labelWithIndex{
-					Labels: profile.Labels(),
-					index:  len(selectProfileResult.LabelsSets),
-				}
-				seriesByFP[profile.Fingerprint()] = lblsIdx
-				selectProfileResult.LabelsSets = append(selectProfileResult.LabelsSets, &typesv1.Labels{Labels: profile.Labels()})
-			}
-			selectProfileResult.Profiles = append(selectProfileResult.Profiles, &ingestv1.SeriesProfile{
-				LabelIndex: int32(lblsIdx.index),
-				Timestamp:  int64(profile.Timestamp()),
-			})
-
-		}
-		sp.LogFields(otlog.String("msg", "sending batch to client"))
-		var err error
-		switch s := BidiServerMerge[Res, Req](stream).(type) {
-		case BidiServerMerge[*ingestv1.MergeProfilesStacktracesResponse, *ingestv1.MergeProfilesStacktracesRequest]:
-			err = s.Send(&ingestv1.MergeProfilesStacktracesResponse{
-				SelectedProfiles: selectProfileResult,
-			})
-		case BidiServerMerge[*ingestv1.MergeProfilesLabelsResponse, *ingestv1.MergeProfilesLabelsRequest]:
-			err = s.Send(&ingestv1.MergeProfilesLabelsResponse{
-				SelectedProfiles: selectProfileResult,
-			})
-		case BidiServerMerge[*ingestv1.MergeProfilesPprofResponse, *ingestv1.MergeProfilesPprofRequest]:
-			err = s.Send(&ingestv1.MergeProfilesPprofResponse{
-				SelectedProfiles: selectProfileResult,
-			})
-		}
-		// read a batch of profiles and sends it.
-
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
-			}
-			return err
-		}
-		sp.LogFields(otlog.String("msg", "batch sent to client"))
-
-		sp.LogFields(otlog.String("msg", "reading selection from client"))
-
-		// handle response for the batch.
-		var selected []bool
-		switch s := BidiServerMerge[Res, Req](stream).(type) {
-		case BidiServerMerge[*ingestv1.MergeProfilesStacktracesResponse, *ingestv1.MergeProfilesStacktracesRequest]:
-			selectionResponse, err := s.Receive()
-			if err == nil {
-				selected = selectionResponse.Profiles
-			}
-		case BidiServerMerge[*ingestv1.MergeProfilesLabelsResponse, *ingestv1.MergeProfilesLabelsRequest]:
-			selectionResponse, err := s.Receive()
-			if err == nil {
-				selected = selectionResponse.Profiles
-			}
-		case BidiServerMerge[*ingestv1.MergeProfilesPprofResponse, *ingestv1.MergeProfilesPprofRequest]:
-			selectionResponse, err := s.Receive()
-			if err == nil {
-				selected = selectionResponse.Profiles
-			}
-		}
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
-			}
-			return err
-		}
-		sp.LogFields(otlog.String("msg", "selection received"))
-		for i, k := range selected {
-			if k {
-				selection[batch[i].Index] = append(selection[batch[i].Index], batch[i].Profile)
-			}
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-	return selection, nil
+func (f *PhlareDB) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
+	f.headLock.RLock()
+	defer f.headLock.RUnlock()
+	return MergeSpanProfile(ctx, stream, f.queriers().ForTimeRange)
 }
 
 func (f *PhlareDB) Flush(ctx context.Context) (err error) {
