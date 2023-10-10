@@ -27,6 +27,7 @@ type IngesterQueryClient interface {
 	MergeProfilesStacktraces(context.Context) clientpool.BidiClientMergeProfilesStacktraces
 	MergeProfilesLabels(ctx context.Context) clientpool.BidiClientMergeProfilesLabels
 	MergeProfilesPprof(ctx context.Context) clientpool.BidiClientMergeProfilesPprof
+	MergeSpanProfile(ctx context.Context) clientpool.BidiClientMergeSpanProfile
 }
 
 // IngesterQuerier helps with querying the ingesters.
@@ -127,4 +128,72 @@ func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return responses, nil
+}
+
+func (q *Querier) seriesFromIngesters(ctx context.Context, req *ingesterv1.SeriesRequest) ([]ResponseFromReplica[[]*typesv1.Labels], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series Ingesters")
+	defer sp.Finish()
+
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.Labels, error) {
+		res, err := ic.Series(childCtx, connect.NewRequest(&ingestv1.SeriesRequest{
+			Matchers:   req.Matchers,
+			LabelNames: req.LabelNames,
+			Start:      req.Start,
+			End:        req.End,
+		}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.LabelsSet, nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return responses, nil
+}
+
+func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.Tree, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeSpanProfile Ingesters")
+	defer sp.Finish()
+	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	_, err = parser.ParseMetricSelector(req.LabelSelector)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeSpanProfile, error) {
+		return ic.MergeSpanProfile(ctx), nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	// send the first initial request to all ingesters.
+	g, gCtx := errgroup.WithContext(ctx)
+	for _, r := range responses {
+		r := r
+		g.Go(util.RecoverPanic(func() error {
+			return r.response.Send(&ingestv1.MergeSpanProfileRequest{
+				Request: &ingestv1.SelectSpanProfileRequest{
+					LabelSelector: req.LabelSelector,
+					Start:         req.Start,
+					End:           req.End,
+					Type:          profileType,
+					SpanSelector:  req.SpanSelector,
+				},
+				MaxNodes: req.MaxNodes,
+				// TODO(kolesnikovae): Max stacks.
+			})
+		}))
+	}
+	if err = g.Wait(); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	// merge all profiles
+	return selectMergeSpanProfile(gCtx, responses)
 }

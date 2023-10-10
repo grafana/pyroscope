@@ -14,7 +14,7 @@ Grafana Pyroscope is a multi-tenant system where tenants can query profiles that
 Within a Grafana Pyroscope cluster, the tenant ID is the unique identifier of a tenant.
 The query takes the tenant ID from the `X-Scope-OrgID` parameter that exists in the HTTP header of each request, for example `X-Scope-OrgID: <TENANT-ID>`.
 
-To push profiles to Grafana Pyroscope for a specific tenant, refer to [Configure the Agent]({{<relref "../configure-client/_index.md">}}).
+To push profiles to Grafana Pyroscope for a specific tenant, refer to [Configure the Agent]({{< relref "../configure-client" >}}).
 
 > By default multi-tenancy is disabled, the tenant ID is ignored and all profiles are stored and retrieved with the same tenant (`anonymous`).
 >

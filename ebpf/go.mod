@@ -8,11 +8,12 @@ require (
 	github.com/go-kit/log v0.2.1
 	github.com/google/pprof v0.0.0-20230705174524-200ffdc848b8
 	github.com/hashicorp/golang-lru/v2 v2.0.5
+	github.com/ianlancetaylor/demangle v0.0.0-20230524184225-eabc099b10ab
 	github.com/klauspost/compress v1.16.7
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/common v0.44.0
-	github.com/prometheus/prometheus v0.47.0
+	github.com/prometheus/prometheus v0.47.1
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1

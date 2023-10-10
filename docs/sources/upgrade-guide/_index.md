@@ -42,7 +42,7 @@ The new local storage format is entirely new, optimized for object storage. We d
 
 ### Configuration File Changes
 
-The configuration file parameters as well as the default location for the configuration file have changed. The old config file is usually located at `/etc/pyroscope/server.yml` and the new config file is at `/etc/pyroscope/config.yaml`. You can find detailed descriptions of all configuration parameters [here]({{< relref "../configure-server/reference-configuration-parameters/" >}}).
+The configuration file parameters as well as the default location for the configuration file have changed. The old config file is usually located at `/etc/pyroscope/server.yml` and the new config file is at `/etc/pyroscope/config.yaml`. You can find detailed descriptions of all configuration parameters [here]({{< relref "../configure-server/reference-configuration-parameters" >}}).
 
 ### Dropping Support for Certain Subcommands
 
@@ -52,7 +52,7 @@ We stripped the pyroscope CLI of all subcommands that were related to the client
 * `pyroscope connect`
 * `pyroscope agent`
 
-This strategic shift has been in the works for some time as we transition away from CLI-based profiling towards embracing native integrations. Moving forward, we encourage users to take advantage of native integrations tailored to specific programming languages, such as pip packages for Python, .NET packages for .NET applications, Ruby gems for Ruby applications, and so on. Our [eBPF integration]({{< relref "../configure-client/grafana-agent/ebpf/" >}}) is also a good way to get profiling data for your whole cluster.
+This strategic shift has been in the works for some time as we transition away from CLI-based profiling towards embracing native integrations. Moving forward, we encourage users to take advantage of native integrations tailored to specific programming languages, such as pip packages for Python, .NET packages for .NET applications, Ruby gems for Ruby applications, and so on. Our [eBPF integration]({{< relref "../configure-client/grafana-agent/ebpf" >}}) is also a good way to get profiling data for your whole cluster.
 
 By adopting native integrations, we aim to provide users with a more streamlined and efficient profiling experience, leveraging language-specific tools and libraries to deliver better performance, ease of use, and seamless integration with their respective applications.
 
@@ -78,7 +78,7 @@ We provide the following checklists to help you upgrade to v1.0:
 ### Upgrade Checklist for Docker deployments
 
 When upgrading to v1.0 we suggest that you follow this checklist:
-* Migrate your configuration from the old format to the new format (old config is usually located at `/etc/pyroscope/server.yml` and the new config is at `/etc/pyroscope/config.yaml`). There's a detailed description of all configuration parameters [here]({{< relref "../configure-server/reference-configuration-parameters/" >}}).
+* Migrate your configuration from the old format to the new format (old config is usually located at `/etc/pyroscope/server.yml` and the new config is at `/etc/pyroscope/config.yaml`). There's a detailed description of all configuration parameters [here]({{< relref "../configure-server/reference-configuration-parameters" >}}).
 * Upgrade docker image image from `pyroscope/pyroscope` to `grafana/pyroscope`. Link to the new docker image is [here](https://hub.docker.com/r/grafana/pyroscope).
 * Delete old data (typically found at `/var/lib/pyroscope`).
 
@@ -86,7 +86,7 @@ When upgrading to v1.0 we suggest that you follow this checklist:
 ### Upgrade Checklist for Helm deployments
 
 When upgrading to v1.0 we suggest that you follow this checklist:
-* Migrate your configuration from the old format to the new format (old config is usually located at `/etc/pyroscope/server.yml` and the new config is at `/etc/pyroscope/config.yaml`). There's a detailed description of all configuration parameters [here]({{< relref "../configure-server/reference-configuration-parameters/" >}}).
+* Migrate your configuration from the old format to the new format (old config is usually located at `/etc/pyroscope/server.yml` and the new config is at `/etc/pyroscope/config.yaml`). There's a detailed description of all configuration parameters [here]({{< relref "../configure-server/reference-configuration-parameters" >}}).
 * Delete the old helm chart:
   ```bash
   helm delete pyroscope # replace pyroscope with the name you used when installing the chart
@@ -98,4 +98,4 @@ When upgrading to v1.0 we suggest that you follow this checklist:
   helm repo update
   helm -n pyroscope install pyroscope grafana/pyroscope
   ```
-  For more information on how to install the Helm chart, see our Helm documentation [here]({{< relref "../deploy-kubernetes/" >}}).
+  For more information on how to install the Helm chart, see our Helm documentation [here]({{< relref "../deploy-kubernetes" >}}).

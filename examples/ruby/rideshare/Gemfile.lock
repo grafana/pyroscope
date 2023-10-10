@@ -3,8 +3,8 @@ GEM
   specs:
     daemons (1.4.1)
     eventmachine (1.2.7)
-    ffi (1.15.5)
-    mustermann (1.1.1)
+    ffi (1.16.3)
+    mustermann (2.0.2)
       ruby2_keywords (~> 0.0.1)
     pyroscope (0.5.10-aarch64-linux)
       ffi
@@ -12,20 +12,20 @@ GEM
       ffi
     pyroscope (0.5.10-x86_64-linux)
       ffi
-    rack (2.2.3)
-    rack-protection (2.1.0)
+    rack (2.2.8)
+    rack-protection (2.2.4)
       rack
     ruby2_keywords (0.0.5)
-    sinatra (2.1.0)
-      mustermann (~> 1.0)
+    sinatra (2.2.4)
+      mustermann (~> 2.0)
       rack (~> 2.2)
-      rack-protection (= 2.1.0)
+      rack-protection (= 2.2.4)
       tilt (~> 2.0)
-    thin (1.8.1)
+    thin (1.8.2)
       daemons (~> 1.0, >= 1.0.9)
       eventmachine (~> 1.0, >= 1.0.4)
       rack (>= 1, < 3)
-    tilt (2.0.10)
+    tilt (2.3.0)
 
 PLATFORMS
   aarch64-linux
@@ -38,4 +38,4 @@ DEPENDENCIES
   thin (~> 1.8)
 
 BUNDLED WITH
-   2.4.6
+   2.4.10

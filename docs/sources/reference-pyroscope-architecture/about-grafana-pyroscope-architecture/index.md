@@ -61,7 +61,7 @@ The [querier]({{< relref "../components/querier" >}}) act as workers, pulling qu
 
 ## Long-term storage
 
-The Pyroscope storage format is described in detail in on the [block format page]({{< relref "..//block-format/" >}}).
+The Pyroscope storage format is described in detail in on the [block format page]({{< relref "../block-format" >}}).
 The Pyroscope storage format stores each tenant's profiles into their own on-disk block. Each on-disk block directory contains an index file, a file containing metadata, and the Parquet tables.
 
 Pyroscope requires any of the following object stores for the block files:

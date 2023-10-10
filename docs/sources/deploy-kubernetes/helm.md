@@ -2,7 +2,7 @@
 description: Learn how to get started with Pyroscope using the Helm chart.
 menuTitle: Deploy with Helm
 title: Deploy Pyroscope using the Helm chart
-weight: 60
+weight: 50
 ---
 
 # Deploy Pyroscope using the Helm chart
@@ -52,13 +52,13 @@ Use a custom namespace so that you do not have to overwrite the default namespac
 
 1. Install Pyroscope using the Helm chart using one of the following options:
 
-   - Option A: Install Pyroscope as single binary
+   - Option A: Install Pyroscope as single binary -- this mode is meant to be used when you _only need one pyroscope instance_ as multiple instances will not share information with each other
 
    ```bash
    helm -n pyroscope-test install pyroscope grafana/pyroscope
    ```
 
-   - Option B: Install Pyroscope as micro-services
+   - Option B: Install Pyroscope as micro-services -- in this mode as you scale out the number of instances, they will share a singular backend for storage and querying
 
    ```bash
    # Gather the default config for micro-services
@@ -154,7 +154,7 @@ datasources:
    apiVersion: 1
    datasources:
    - name: Pyroscope
-     type: pyroscope
+     type: grafana-pyroscope-datasource
      uid: pyroscope-test
      url: http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4040/
 ```

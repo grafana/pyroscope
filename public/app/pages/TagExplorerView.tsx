@@ -7,19 +7,15 @@ import TotalSamplesChart from '@pyroscope/pages/tagExplorer/components/TotalSamp
 import type { Profile } from '@pyroscope/legacy/models';
 import Box, { CollapseBox } from '@pyroscope/ui/Box';
 import Toolbar from '@pyroscope/components/Toolbar';
-import ExportData from '@pyroscope/components/ExportData';
 import TimelineChartWrapper, {
   TimelineGroupData,
 } from '@pyroscope/components/TimelineChart/TimelineChartWrapper';
-import { FlamegraphRenderer } from '@pyroscope/legacy/flamegraph';
 import Dropdown, { MenuItem } from '@pyroscope/ui/Dropdown';
 import TagsSelector from '@pyroscope/pages/tagExplorer/components/TagsSelector';
 import TableUI, { useTableSort, BodyRow } from '@pyroscope/ui/Table';
-import useColorMode from '@pyroscope/hooks/colorMode.hook';
 import useTimeZone from '@pyroscope/hooks/timeZone.hook';
 import { appendLabelToQuery } from '@pyroscope/util/query';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import useExportToFlamegraphDotCom from '@pyroscope/components/exportToFlamegraphDotCom.hook';
 import {
   actions,
   setDateRange,
@@ -34,7 +30,7 @@ import {
   setQuery,
   selectAnnotationsOrDefault,
 } from '@pyroscope/redux/reducers/continuous';
-import { queryToAppName } from '@pyroscope/models/query';
+import { brandQuery, parse, queryToAppName } from '@pyroscope/models/query';
 import PageTitle from '@pyroscope/components/PageTitle';
 import ExploreTooltip from '@pyroscope/components/TimelineChart/ExploreTooltip';
 import { getFormatter } from '@pyroscope/legacy/flamegraph/format/format';
@@ -50,6 +46,7 @@ import {
 // eslint-disable-next-line
 import styles from './TagExplorerView.module.scss';
 import { formatTitle } from './formatTitle';
+import { FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
 
 const TIMELINE_SERIES_COLORS = [
   Color.rgb(242, 204, 12),
@@ -164,7 +161,6 @@ const getTimelineColor = (index: number, palette: Color[]): Color =>
 
 function TagExplorerView() {
   const { offset } = useTimeZone();
-  const { colorMode } = useColorMode();
   const dispatch = useAppDispatch();
 
   const { from, until, tagExplorerView, refreshToken } = useAppSelector(
@@ -266,11 +262,6 @@ function TagExplorerView() {
     dispatch(actions.setTagExplorerViewGroupByTag(value));
   };
 
-  const exportFlamegraphDotComFn = useExportToFlamegraphDotCom(
-    activeTagProfile,
-    groupByTag,
-    groupByTagValue
-  );
   // when there's no groupByTag value backend returns groups with single "*" group,
   // which is "application without any tag" group. when backend returns multiple groups,
   // "*" group samples array is filled with zeros (not longer valid application data).
@@ -407,24 +398,7 @@ function TagExplorerView() {
         </CollapseBox>
         <Box isLoading={dataLoading}>
           <div className={styles.flamegraphWrapper}>
-            <FlamegraphRenderer
-              showCredit={false}
-              profile={activeTagProfile}
-              colorMode={colorMode}
-              ExportData={
-                activeTagProfile && (
-                  <ExportData
-                    flamebearer={activeTagProfile}
-                    exportPNG
-                    exportJSON
-                    exportPprof
-                    exportHTML
-                    exportFlamegraphDotCom
-                    exportFlamegraphDotComFn={exportFlamegraphDotComFn}
-                  />
-                )
-              }
-            />
+            <FlameGraphWrapper profile={activeTagProfile} />
           </div>
         </Box>
       </div>
@@ -475,11 +449,18 @@ function Table({
     }
 
     const searchParams = new URLSearchParams(search);
-    searchParams.delete('query');
-    searchParams.set(
-      'query',
-      appendLabelToQuery(`${appName}{}`, groupByTag, groupByTagValue)
+    const originalQuery = searchParams.get('query');
+    const serviceName = originalQuery
+      ? parse(brandQuery(originalQuery))?.tags?.service_name
+      : '';
+    const newQuery = appendLabelToQuery(
+      `${appName}{service_name="${serviceName}"}`,
+      groupByTag,
+      groupByTagValue
     );
+
+    searchParams.delete('query');
+    searchParams.set('query', newQuery);
     return `?${searchParams.toString()}`;
   };
 

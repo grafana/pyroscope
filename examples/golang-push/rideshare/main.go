@@ -8,16 +8,15 @@ import (
 
 	"rideshare/bike"
 	"rideshare/car"
+	"rideshare/rideshare"
 	"rideshare/scooter"
 
-	"github.com/grafana/pyroscope-go"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
+	otellogs "github.com/agoda-com/opentelemetry-logs-go"
 	otelpyroscope "github.com/pyroscope-io/otel-profiling-go"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
-
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
@@ -37,6 +36,7 @@ func carRoute(w http.ResponseWriter, r *http.Request) {
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
+	rideshare.Log.Print(r.Context(), "showing index")
 	result := "<h1>environment vars:</h1>"
 	for _, env := range os.Environ() {
 		result += env + "<br>"
@@ -45,30 +45,24 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	serverAddress := os.Getenv("PYROSCOPE_SERVER_ADDRESS")
-	if serverAddress == "" {
-		serverAddress = "http://localhost:4040"
-	}
-	appName := os.Getenv("PYROSCOPE_APPLICATION_NAME")
-	if appName == "" {
-		appName = "ride-sharing-app"
-	}
+	config := rideshare.ReadConfig()
+	config.AppName = "ride-sharing-app"
 
-	tp, _ := setupTracing()
+	tp, _ := setupOTEL(config)
 	defer func() {
 		_ = tp.Shutdown(context.Background())
 	}()
 
-	_, err := pyroscope.Start(pyroscope.Config{
-		ApplicationName: appName,
-		ServerAddress:   serverAddress,
-		AuthToken:       os.Getenv("PYROSCOPE_AUTH_TOKEN"),
-		Logger:          pyroscope.StandardLogger,
-		Tags:            map[string]string{"region": os.Getenv("REGION")},
-	})
+	p, err := rideshare.Profiler(config)
+
 	if err != nil {
 		log.Fatalf("error starting pyroscope profiler: %v", err)
 	}
+	defer func() {
+		_ = p.Stop()
+	}()
+
+	rideshare.Log.Print(context.Background(), "started ride-sharing app")
 
 	http.Handle("/", otelhttp.NewHandler(http.HandlerFunc(index), "IndexHandler"))
 	http.Handle("/bike", otelhttp.NewHandler(http.HandlerFunc(bikeRoute), "BikeHandler"))
@@ -78,23 +72,31 @@ func main() {
 	log.Fatal(http.ListenAndServe(":5000", nil))
 }
 
-func setupTracing() (tp *sdktrace.TracerProvider, err error) {
-	tp, err = tracerProviderDebug()
+func setupOTEL(c rideshare.Config) (tp *sdktrace.TracerProvider, err error) {
+	tp, err = rideshare.TracerProvider(c)
 	if err != nil {
 		return nil, err
 	}
+
+	lp, err := rideshare.LoggerProvider(c)
+	if err != nil {
+		return nil, err
+	}
+	otellogs.SetLoggerProvider(lp)
+
+	const (
+		instrumentationName    = "otel/zap"
+		instrumentationVersion = "0.0.1"
+	)
 
 	// Set the Tracer Provider and the W3C Trace Context propagator as globals.
 	// We wrap the tracer provider to also annotate goroutines with Span ID so
 	// that pprof would add corresponding labels to profiling samples.
 	otel.SetTracerProvider(otelpyroscope.NewTracerProvider(tp,
-		otelpyroscope.WithAppName("ride-sharing-app"),
+		otelpyroscope.WithPyroscopeURL(c.PyroscopeServerAddress),
+		otelpyroscope.WithAppName(c.AppName),
 		otelpyroscope.WithRootSpanOnly(true),
 		otelpyroscope.WithAddSpanName(true),
-		otelpyroscope.WithPyroscopeURL("http://localhost:4040"),
-		otelpyroscope.WithProfileBaselineLabels(map[string]string{"region": os.Getenv("REGION")}),
-		otelpyroscope.WithProfileBaselineURL(true),
-		otelpyroscope.WithProfileURL(true),
 	))
 
 	// Register the trace context and baggage propagators so data is propagated across services/processes.
@@ -104,12 +106,4 @@ func setupTracing() (tp *sdktrace.TracerProvider, err error) {
 	))
 
 	return tp, err
-}
-
-func tracerProviderDebug() (*sdktrace.TracerProvider, error) {
-	exp, err := stdouttrace.New(stdouttrace.WithPrettyPrint())
-	if err != nil {
-		return nil, err
-	}
-	return sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sdktrace.NewSimpleSpanProcessor(exp))), nil
 }

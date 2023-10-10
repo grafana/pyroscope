@@ -33,6 +33,10 @@ func (i *Ingester) ProfileTypes(ctx context.Context, req *connect.Request[ingest
 // Series returns labels series for the given set of matchers.
 func (i *Ingester) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
 	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[ingestv1.SeriesResponse], error) {
+		legacyRequest := req.Msg.Start == 0 || req.Msg.End == 0
+		if legacyRequest {
+			return instance.LegacySeries(ctx, req)
+		}
 		return instance.Series(ctx, req)
 	})
 }
@@ -52,5 +56,11 @@ func (i *Ingester) MergeProfilesLabels(ctx context.Context, stream *connect.Bidi
 func (i *Ingester) MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error {
 	return i.forInstance(ctx, func(instance *instance) error {
 		return instance.MergeProfilesPprof(ctx, stream)
+	})
+}
+
+func (i *Ingester) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
+	return i.forInstance(ctx, func(instance *instance) error {
+		return instance.MergeSpanProfile(ctx, stream)
 	})
 }

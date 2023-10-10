@@ -67,6 +67,12 @@ var (
 			},
 		},
 		{
+			profile:            repoRoot + "pkg/pprof/testdata/go.cpu.labels.pprof",
+			expectStatusIngest: 200,
+			expectStatusPush:   200,
+			metrics:            golangCPU,
+		},
+		{
 			profile:            repoRoot + "pkg/og/convert/testdata/cpu.pprof",
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
@@ -287,7 +293,7 @@ func selectMerge(t *testing.T, metric expectedMetric, name string, testdatum ppr
 	qc := queryClient()
 	resp, err := qc.SelectMergeProfile(context.Background(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{
 		ProfileTypeID: metric.name,
-		Start:         time.Now().Add(-time.Hour).UnixMilli(),
+		Start:         time.Unix(0, 0).UnixMilli(),
 		End:           time.Now().UnixMilli(),
 		LabelSelector: fmt.Sprintf("{service_name=\"%s\"}", name),
 	}))
@@ -322,7 +328,7 @@ func selectMerge(t *testing.T, metric expectedMetric, name string, testdatum ppr
 func render(t *testing.T, metric expectedMetric, appName string, testdatum pprofTestData) {
 	fmt.Println(metric)
 
-	queryURL := "http://localhost:4040/pyroscope/render?query=" + metric.name + "{service_name=\"" + appName + "\"}&from=now-1h&until=now&format=collapsed"
+	queryURL := "http://localhost:4040/pyroscope/render?query=" + metric.name + "{service_name=\"" + appName + "\"}&from=946656000&until=now&format=collapsed"
 	fmt.Println(queryURL)
 	queryRes, err := http.Get(queryURL)
 	require.NoError(t, err)
@@ -435,7 +441,7 @@ func ingest(t *testing.T, testdatum pprofTestData) string {
 
 	res, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	assert.Equal(t, testdatum.expectStatusIngest, res.StatusCode, testdatum.profile)
+	require.Equal(t, testdatum.expectStatusIngest, res.StatusCode, testdatum.profile)
 	fmt.Printf("%+v %+v\n", testdatum, res)
 	return appName
 }

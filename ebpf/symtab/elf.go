@@ -10,6 +10,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	elf2 "github.com/grafana/pyroscope/ebpf/symtab/elf"
+	"github.com/ianlancetaylor/demangle"
 )
 
 var (
@@ -32,6 +33,7 @@ type ElfTable struct {
 }
 type SymbolOptions struct {
 	GoTableFallback bool
+	DemangleOptions []demangle.Option
 }
 
 var DefaultSymbolOptions = &SymbolOptions{
@@ -163,7 +165,9 @@ func (et *ElfTable) createSymbolTable(me *elf2.MMapedElfFile) (SymbolNameResolve
 	if !et.options.SymbolOptions.GoTableFallback && goErr == nil {
 		return goTable, nil
 	}
-	symbolOptions := elf2.SymbolsOptions{}
+	symbolOptions := elf2.SymbolsOptions{
+		DemangleOptions: et.options.SymbolOptions.DemangleOptions,
+	}
 	if goErr == nil && goTable.Index.Entry.Length() > 0 {
 		symbolOptions.FilterFrom = goTable.Index.Entry.Get(0)
 		symbolOptions.FilterTo = goTable.Index.End

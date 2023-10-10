@@ -19,6 +19,7 @@ import (
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/storegateway"
@@ -30,6 +31,8 @@ type StoreGatewayQueryClient interface {
 	MergeProfilesStacktraces(context.Context) clientpool.BidiClientMergeProfilesStacktraces
 	MergeProfilesLabels(ctx context.Context) clientpool.BidiClientMergeProfilesLabels
 	MergeProfilesPprof(ctx context.Context) clientpool.BidiClientMergeProfilesPprof
+	MergeSpanProfile(ctx context.Context) clientpool.BidiClientMergeSpanProfile
+	Series(context.Context, *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error)
 }
 
 type StoreGatewayLimits interface {
@@ -224,4 +227,76 @@ func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingeste
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return responses, nil
+}
+
+func (q *Querier) seriesFromStoreGateway(ctx context.Context, req *ingestv1.SeriesRequest) ([]ResponseFromReplica[[]*typesv1.Labels], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series StoreGateway")
+	defer sp.Finish()
+
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]*typesv1.Labels, error) {
+		res, err := ic.Series(ctx, connect.NewRequest(req))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.LabelsSet, nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return responses, nil
+}
+
+func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.Tree, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSpanProfile StoreGateway")
+	defer sp.Finish()
+	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	_, err = parser.ParseMetricSelector(req.LabelSelector)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeSpanProfile, error) {
+		return ic.MergeSpanProfile(ctx), nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	// send the first initial request to all ingesters.
+	g, gCtx := errgroup.WithContext(ctx)
+	for _, r := range responses {
+		r := r
+		g.Go(util.RecoverPanic(func() error {
+			return r.response.Send(&ingestv1.MergeSpanProfileRequest{
+				Request: &ingestv1.SelectSpanProfileRequest{
+					LabelSelector: req.LabelSelector,
+					Start:         req.Start,
+					End:           req.End,
+					Type:          profileType,
+					SpanSelector:  req.SpanSelector,
+				},
+				MaxNodes: req.MaxNodes,
+				// TODO(kolesnikovae): Max stacks.
+			})
+		}))
+	}
+	if err = g.Wait(); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	// merge all profiles
+	return selectMergeSpanProfile(gCtx, responses)
 }

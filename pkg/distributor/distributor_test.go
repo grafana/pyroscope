@@ -22,9 +22,13 @@ import (
 	"github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	pprof2 "github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/util"
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -44,6 +48,14 @@ var ringConfig = util.CommonRingConfig{
 	ListenPort:   8080,
 }
 
+type poolFactory struct {
+	f func(addr string) (client.PoolClient, error)
+}
+
+func (pf *poolFactory) FromInstance(inst ring.InstanceDesc) (client.PoolClient, error) {
+	return pf.f(inst.Addr)
+}
+
 func Test_ConnectPush(t *testing.T) {
 	mux := http.NewServeMux()
 	ing := newFakeIngester(t, false)
@@ -51,9 +63,9 @@ func Test_ConnectPush(t *testing.T) {
 		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "foo"},
-	}, 3), func(addr string) (client.PoolClient, error) {
+	}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
@@ -110,9 +122,9 @@ func Test_Replication(t *testing.T) {
 		{Addr: "1"},
 		{Addr: "2"},
 		{Addr: "3"},
-	}, 3), func(addr string) (client.PoolClient, error) {
+	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ingesters[addr], nil
-	}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 	require.NoError(t, err)
 	// only 1 ingester failing should be fine.
 	resp, err := d.Push(ctx, req)
@@ -132,9 +144,9 @@ func Test_Subservices(t *testing.T) {
 		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "foo"},
-	}, 1), func(addr string) (client.PoolClient, error) {
+	}, 1), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	require.NoError(t, d.StartAsync(context.Background()))
@@ -188,64 +200,422 @@ func TestBuckets(t *testing.T) {
 }
 
 func Test_Limits(t *testing.T) {
-	mux := http.NewServeMux()
-	ing := newFakeIngester(t, false)
-	d, err := New(Config{
-		DistributorRing: ringConfig,
-	}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "foo"},
-	}, 3), func(addr string) (client.PoolClient, error) {
-		return ing, nil
-	}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	type testCase struct {
+		description  string
+		pushReq      *pushv1.PushRequest
+		overrides    *validation.Overrides
+		expectedCode connect.Code
+	}
 
-	require.NoError(t, err)
-	mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
-	s := httptest.NewServer(mux)
-	defer s.Close()
-
-	client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, connect.WithInterceptors(tenant.NewAuthInterceptor(true)))
-
-	t.Run("rate_limit", func(t *testing.T) {
-		resp, err := client.Push(tenant.InjectTenantID(context.Background(), "user-1"), connect.NewRequest(&pushv1.PushRequest{
-			Series: []*pushv1.RawProfileSeries{
-				{
-					Labels: []*typesv1.LabelPair{
-						{Name: "cluster", Value: "us-central1"},
-						{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
-						{Name: "__name__", Value: "cpu"},
-					},
-					Samples: []*pushv1.RawSample{
-						{
-							RawProfile: testProfile(t),
+	testCases := []testCase{
+		{
+			description: "rate_limit",
+			pushReq: &pushv1.PushRequest{
+				Series: []*pushv1.RawProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "cluster", Value: "us-central1"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+							{Name: "__name__", Value: "cpu"},
+						},
+						Samples: []*pushv1.RawSample{
+							{
+								RawProfile: testProfile(t),
+							},
 						},
 					},
 				},
 			},
-		}))
-		require.Error(t, err)
-		require.Equal(t, connect.CodeResourceExhausted, connect.CodeOf(err))
-		require.Nil(t, resp)
-	})
-	t.Run("label limit", func(t *testing.T) {
-		resp, err := client.Push(tenant.InjectTenantID(context.Background(), "user-1"), connect.NewRequest(&pushv1.PushRequest{
-			Series: []*pushv1.RawProfileSeries{
-				{
-					Labels: []*typesv1.LabelPair{
-						{Name: "clusterdddwqdqdqdqdqdqw", Value: "us-central1"},
-						{Name: "__name__", Value: "cpu"},
-					},
-					Samples: []*pushv1.RawSample{
-						{
-							RawProfile: testProfile(t),
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionRateMB = 0.0150
+				l.IngestionBurstSizeMB = 0.0015
+				tenantLimits["user-1"] = l
+			}),
+			expectedCode: connect.CodeResourceExhausted,
+		},
+		{
+			description: "labels_limit",
+			pushReq: &pushv1.PushRequest{
+				Series: []*pushv1.RawProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "clusterdddwqdqdqdqdqdqw", Value: "us-central1"},
+							{Name: "__name__", Value: "cpu"},
+						},
+						Samples: []*pushv1.RawSample{
+							{
+								RawProfile: testProfile(t),
+							},
 						},
 					},
 				},
 			},
-		}))
-		require.Error(t, err)
-		require.Equal(t, connect.CodeInvalidArgument, connect.CodeOf(err))
-		require.Nil(t, resp)
-	})
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.MaxLabelNameLength = 12
+				tenantLimits["user-1"] = l
+			}),
+			expectedCode: connect.CodeInvalidArgument,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.description, func(t *testing.T) {
+			mux := http.NewServeMux()
+			ing := newFakeIngester(t, false)
+			d, err := New(Config{
+				DistributorRing: ringConfig,
+			}, testhelper.NewMockRing([]ring.InstanceDesc{
+				{Addr: "foo"},
+			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
+				return ing, nil
+			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout))
+
+			require.NoError(t, err)
+			mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
+			s := httptest.NewServer(mux)
+			defer s.Close()
+
+			client := pushv1connect.NewPusherServiceClient(http.DefaultClient, s.URL, connect.WithInterceptors(tenant.NewAuthInterceptor(true)))
+			resp, err := client.Push(tenant.InjectTenantID(context.Background(), "user-1"), connect.NewRequest(tc.pushReq))
+			require.Error(t, err)
+			require.Equal(t, tc.expectedCode, connect.CodeOf(err))
+			require.Nil(t, resp)
+		})
+	}
+}
+
+func Test_Sessions_Limit(t *testing.T) {
+	type testCase struct {
+		description    string
+		seriesLabels   phlaremodel.Labels
+		expectedLabels phlaremodel.Labels
+		maxSessions    int
+	}
+
+	testCases := []testCase{
+		{
+			description: "session_disabled",
+			seriesLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: phlaremodel.LabelNameSessionID, Value: phlaremodel.SessionID(1).String()},
+				{Name: "__name__", Value: "cpu"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "__name__", Value: "cpu"},
+			},
+			maxSessions: 0,
+		},
+		{
+			description: "session_limited",
+			seriesLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: phlaremodel.LabelNameSessionID, Value: phlaremodel.SessionID(4).String()},
+				{Name: "__name__", Value: "cpu"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: phlaremodel.LabelNameSessionID, Value: phlaremodel.SessionID(1).String()},
+				{Name: "__name__", Value: "cpu"},
+			},
+			maxSessions: 3,
+		},
+		{
+			description: "session_not_specified",
+			seriesLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "__name__", Value: "cpu"},
+			},
+			expectedLabels: []*typesv1.LabelPair{
+				{Name: "cluster", Value: "us-central1"},
+				{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+				{Name: "__name__", Value: "cpu"},
+			},
+			maxSessions: 3,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.description, func(t *testing.T) {
+			ing := newFakeIngester(t, false)
+			d, err := New(
+				Config{DistributorRing: ringConfig},
+				testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+				&poolFactory{f: func(addr string) (client.PoolClient, error) { return ing, nil }},
+				validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+					l := validation.MockDefaultLimits()
+					l.MaxSessionsPerSeries = tc.maxSessions
+					tenantLimits["user-1"] = l
+				}), nil, log.NewLogfmtLogger(os.Stdout))
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedLabels, d.limitMaxSessionsPerSeries("user-1", tc.seriesLabels))
+		})
+	}
+}
+
+func Test_SampleLabels(t *testing.T) {
+	type testCase struct {
+		description string
+		pushReq     *distributormodel.PushRequest
+		series      []*distributormodel.ProfileSeries
+	}
+
+	testCases := []testCase{
+		{
+			description: "no series labels, no sample labels",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+									}},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								Sample: []*profilev1.Sample{{
+									Value: []int64{1},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "has series labels, no sample labels",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "foo", Value: "bar"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+									}},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "foo", Value: "bar"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								Sample: []*profilev1.Sample{{
+									Value: []int64{1},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "no series labels, all samples have identical label set",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "foo", "bar"},
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+										Label: []*profilev1.Label{
+											{Key: 1, Str: 2},
+										},
+									}},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "foo", Value: "bar"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{"", "foo", "bar"},
+								Sample: []*profilev1.Sample{{
+									Value: []int64{1},
+									Label: []*profilev1.Label{},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "has series labels, all samples have identical label set",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "baz", Value: "qux"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "foo", "bar"},
+									Sample: []*profilev1.Sample{{
+										Value: []int64{1},
+										Label: []*profilev1.Label{
+											{Key: 1, Str: 2},
+										},
+									}},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "baz", Value: "qux"},
+						{Name: "foo", Value: "bar"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{"", "foo", "bar"},
+								Sample: []*profilev1.Sample{{
+									Value: []int64{1},
+									Label: []*profilev1.Label{},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "has series labels, samples have distinct label sets",
+			pushReq: &distributormodel.PushRequest{
+				Series: []*distributormodel.ProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "baz", Value: "qux"},
+						},
+						Samples: []*distributormodel.ProfileSample{
+							{
+								Profile: pprof2.RawFromProto(&profilev1.Profile{
+									StringTable: []string{"", "foo", "bar", "waldo", "fred"},
+									Sample: []*profilev1.Sample{
+										{
+											Value: []int64{1},
+											Label: []*profilev1.Label{
+												{Key: 1, Str: 2},
+											},
+										},
+										{
+											Value: []int64{1},
+											Label: []*profilev1.Label{
+												{Key: 3, Str: 4},
+											},
+										},
+										{
+											Value: []int64{1},
+											Label: []*profilev1.Label{
+												{Key: 3, Str: 4},
+											},
+										},
+									},
+								}),
+							},
+						},
+					},
+				},
+			},
+			series: []*distributormodel.ProfileSeries{
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "baz", Value: "qux"},
+						{Name: "foo", Value: "bar"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{""},
+								Sample: []*profilev1.Sample{{
+									Value: []int64{1},
+									Label: []*profilev1.Label{},
+								}},
+							}),
+						},
+					},
+				},
+				{
+					Labels: []*typesv1.LabelPair{
+						{Name: "baz", Value: "qux"},
+						{Name: "waldo", Value: "fred"},
+					},
+					Samples: []*distributormodel.ProfileSample{
+						{
+							Profile: pprof2.RawFromProto(&profilev1.Profile{
+								StringTable: []string{""},
+								Sample: []*profilev1.Sample{{
+									Value: []int64{2},
+									Label: []*profilev1.Label{},
+								}},
+							}),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.description, func(t *testing.T) {
+			series, _ := extractSampleSeries(tc.pushReq)
+			require.Len(t, series, len(tc.series))
+			for i, actualSeries := range series {
+				expectedSeries := tc.series[i]
+				assert.Equal(t, expectedSeries.Labels, actualSeries.Labels)
+				require.Len(t, actualSeries.Samples, len(expectedSeries.Samples))
+				for j, actualProfile := range actualSeries.Samples {
+					expectedProfile := expectedSeries.Samples[j]
+					assert.Equal(t, expectedProfile.Profile.Sample, actualProfile.Profile.Sample)
+				}
+			}
+		})
+	}
 }
 
 func TestBadPushRequest(t *testing.T) {
@@ -255,9 +625,9 @@ func TestBadPushRequest(t *testing.T) {
 		DistributorRing: ringConfig,
 	}, testhelper.NewMockRing([]ring.InstanceDesc{
 		{Addr: "foo"},
-	}, 3), func(addr string) (client.PoolClient, error) {
+	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
 		return ing, nil
-	}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
+	}}, newOverrides(t), nil, log.NewLogfmtLogger(os.Stdout))
 
 	require.NoError(t, err)
 	mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
@@ -336,9 +706,9 @@ func TestPush_ShuffleSharding(t *testing.T) {
 
 	// get distributor ready
 	d, err := New(Config{DistributorRing: ringConfig}, testhelper.NewMockRing(ringDesc, 3),
-		func(addr string) (client.PoolClient, error) {
+		&poolFactory{func(addr string) (client.PoolClient, error) {
 			return ingesters[addr], nil
-		},
+		}},
 		overrides,
 		nil,
 		log.NewLogfmtLogger(os.Stdout),

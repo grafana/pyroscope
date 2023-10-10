@@ -2,7 +2,6 @@ package frontend
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/bufbuild/connect-go"
 	"golang.org/x/sync/errgroup"
@@ -49,7 +48,7 @@ func (f *Frontend) Diff(ctx context.Context,
 	maxNodes := int(math.Max(c.Msg.Left.GetMaxNodes(), c.Msg.Right.GetMaxNodes()))
 	diff, err := phlaremodel.NewFlamegraphDiff(left, right, maxNodes)
 	if err != nil {
-		return nil, connect.NewError(http.StatusBadRequest, err)
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	return connect.NewResponse(&querierv1.DiffResponse{Flamegraph: diff}), nil

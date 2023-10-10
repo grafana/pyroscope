@@ -9,11 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bufbuild/connect-go"
-	"github.com/pkg/errors"
-
 	"github.com/grafana/pyroscope/pkg/tenant"
-	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
+	httputil "github.com/grafana/pyroscope/pkg/util/http"
 
 	"github.com/grafana/pyroscope/pkg/og/convert/speedscope"
 
@@ -46,28 +43,22 @@ func NewIngestHandler(l log.Logger, p ingestion.Ingester) http.Handler {
 }
 
 func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	tenantID, _ := tenant.ExtractTenantIDFromContext(r.Context())
 	input, err := h.ingestInputFromRequest(r)
 	if err != nil {
-		_ = h.log.Log("msg", "bad request", "err", err)
-		w.WriteHeader(http.StatusBadRequest)
+		_ = h.log.Log("msg", "bad request", "err", err, "orgID", tenantID)
+		httputil.ErrorWithStatus(w, err, http.StatusBadRequest)
 		return
 	}
 
-	tenantID, _ := tenant.ExtractTenantIDFromContext(r.Context())
 	err = h.ingester.Ingest(r.Context(), input)
 	if err != nil {
-		_ = h.log.Log("msg", "pyroscope ingest", "err", err, "tenant_id", tenantID)
-		var connectErr *connect.Error
-		if ok := errors.As(err, &connectErr); ok {
-			w.WriteHeader(int(connectgrpc.CodeToHTTP(connectErr.Code())))
-			_, _ = w.Write([]byte(connectErr.Message()))
-			return
-		}
+		_ = h.log.Log("msg", "pyroscope ingest", "err", err, "orgID", tenantID)
 
 		if ingestion.IsIngestionError(err) {
-			w.WriteHeader(http.StatusInternalServerError)
+			httputil.Error(w, err)
 		} else {
-			w.WriteHeader(http.StatusUnprocessableEntity)
+			httputil.ErrorWithStatus(w, err, http.StatusUnprocessableEntity)
 		}
 	}
 }

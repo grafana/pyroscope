@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 
+	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log/level"
 	"github.com/google/pprof/profile"
 	"github.com/opentracing/opentracing-go"
@@ -140,6 +141,23 @@ func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterato
 	}
 
 	return seriesByLabels.normalize(), nil
+}
+
+func (q *headOnDiskQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
+	// The TSDB is kept in memory until the head block is flushed to disk.
+	return []*typesv1.Labels{}, nil
+}
+
+func (q *headOnDiskQuerier) MergeBySpans(_ context.Context, _ iter.Iterator[Profile], _ phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
+	//	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeBySpans")
+	//	defer sp.Finish()
+	//	r := symdb.NewResolver(ctx, q.head.symdb)
+	//	defer r.Release()
+	//	if err := mergeBySpans(ctx, q.rowGroup(), rows, r, spanSelector); err != nil {
+	//		return nil, err
+	//	}
+	//	return r.Tree()
+	return new(phlaremodel.Tree), nil
 }
 
 func (q *headOnDiskQuerier) Sort(in []Profile) []Profile {
@@ -291,6 +309,35 @@ func (q *headInMemoryQuerier) MergeByLabels(ctx context.Context, rows iter.Itera
 	}
 
 	return seriesByLabels.normalize(), nil
+}
+
+func (q *headInMemoryQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
+	res, err := q.head.Series(ctx, connect.NewRequest(params))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg.LabelsSet, nil
+}
+
+func (q *headInMemoryQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeBySpans - HeadInMemory")
+	defer sp.Finish()
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
+	for rows.Next() {
+		p, ok := rows.At().(ProfileWithLabels)
+		if !ok {
+			return nil, errors.New("expected ProfileWithLabels")
+		}
+		samples := p.Samples()
+		if len(samples.Spans) > 0 {
+			r.AddSamplesWithSpanSelector(p.StacktracePartition(), samples, spanSelector)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return r.Tree()
 }
 
 func (q *headInMemoryQuerier) Sort(in []Profile) []Profile {

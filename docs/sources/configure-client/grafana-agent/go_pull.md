@@ -225,7 +225,7 @@ pyroscope.scrape "default_settings" {
     }
     profile.memory {
       enabled = false
-      path = "/debug/pprof/memory"
+      path = "/debug/pprof/heap"
       delta = false
     }
     profile.godeltaprof_mutex {

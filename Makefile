@@ -50,7 +50,7 @@ generate: $(BIN)/buf $(BIN)/protoc-gen-go $(BIN)/protoc-gen-go-vtproto $(BIN)/pr
 	find pkg/ \( -name \*.pb.go -o -name \*.connect\*.go \) -delete
 	cd api/ && PATH=$(BIN) $(BIN)/buf generate
 	cd pkg && PATH=$(BIN) $(BIN)/buf generate
-	PATH=$(BIN):$(PATH) ./tools/add-parquet-tags.sh
+	PATH="$(BIN):$(PATH)" ./tools/add-parquet-tags.sh
 	go run ./tools/doc-generator/ ./docs/sources/configure-server/reference-configuration-parameters/index.template > docs/sources/configure-server/reference-configuration-parameters/index.md
 
 .PHONY: buf/lint
@@ -312,7 +312,7 @@ $(BIN)/updater: Makefile
 
 $(BIN)/goreleaser: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser@v1.14.1
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/goreleaser/goreleaser@v1.20.0
 
 $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
@@ -403,6 +403,16 @@ tools/monitoring/environments/default/spec.json: $(BIN)/tk $(BIN)/kind
 .PHONY: tools/update_examples
 tools/update_examples:
 	go run tools/update_examples.go
+
+.phony: rideshare/docker/push
+rideshare/docker/push:
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-golang   -t $(IMAGE_PREFIX)pyroscope-rideshare-golang:$(IMAGE_TAG)   examples/golang-push/rideshare
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen  -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen:$(IMAGE_TAG) -f examples/golang-push/rideshare/Dockerfile.load-generator examples/golang-push/rideshare
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-python   -t $(IMAGE_PREFIX)pyroscope-rideshare-python:$(IMAGE_TAG)   examples/python/rideshare/flask
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-ruby     -t $(IMAGE_PREFIX)pyroscope-rideshare-ruby:$(IMAGE_TAG)     examples/ruby/rideshare_rails
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-dotnet   -t $(IMAGE_PREFIX)pyroscope-rideshare-dotnet:$(IMAGE_TAG)   examples/dotnet/rideshare/
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-java     -t $(IMAGE_PREFIX)pyroscope-rideshare-java:$(IMAGE_TAG)     examples/java/rideshare
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-rust     -t $(IMAGE_PREFIX)pyroscope-rideshare-rust:$(IMAGE_TAG)     examples/rust/rideshare
 
 .PHONY: docs/%
 docs/%:

@@ -96,6 +96,7 @@ func updateJava() {
 	//ADD https://github.com/grafana/pyroscope-java/releases/download/v0.11.5/pyroscope.jar /opt/app/pyroscope.jar
 	replaceInplace(reJarURL, "examples/java/fib/Dockerfile", lastJarURL)
 	replaceInplace(reJarURL, "examples/java/simple/Dockerfile", lastJarURL)
+	replaceInplace(reJarURL, "examples/java/rideshare/Dockerfile", lastJarURL)
 
 	reGradelDep := regexp.MustCompile("implementation\\(\"io\\.pyroscope:agent:\\d+\\.\\d+\\.\\d+\"\\)")
 	lastGradleDep := fmt.Sprintf("implementation(\"io.pyroscope:agent:%s\")", last.version())

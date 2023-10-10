@@ -3,6 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ .Values.agent.agent.configMap.name }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "pyroscope.labels" . | nindent 4 }}
 data:

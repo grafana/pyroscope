@@ -71,7 +71,7 @@ func newProfileSchema(p *profilev1.Profile, name string) ([]schemav1.InMemoryPro
 			Period:            p.Period,
 			DefaultSampleType: p.DefaultSampleType,
 		}
-		hashes := pprof.StacktracesHasher{}.Hashes(p.Sample)
+		hashes := pprof.SampleHasher{}.Hashes(p.Sample)
 		ps[idxType].Samples = schemav1.Samples{
 			StacktraceIDs: make([]uint32, len(p.Sample)),
 			Values:        make([]uint64, len(p.Sample)),

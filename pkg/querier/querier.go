@@ -5,6 +5,7 @@ import (
 	"flag"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -193,53 +194,92 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 	}), nil
 }
 
-func filterSeriesByLabelNames(labelSets []*typesv1.Labels, labelNameMap map[string]struct{}) {
-	if len(labelNameMap) == 0 {
-		return
-	}
-
-	for _, ls := range labelSets {
-		labelCount := 0
-		for idx := range ls.Labels {
-			_, ok := labelNameMap[ls.Labels[idx].Name]
-			if ok {
-				ls.Labels[labelCount] = ls.Labels[idx]
-				labelCount++
-			}
-		}
-		ls.Labels = ls.Labels[:labelCount]
-	}
-}
-
 func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series")
-	defer func() {
-		sp.LogFields(
-			otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
-			otlog.String("label_names", strings.Join(req.Msg.LabelNames, ",")),
-		)
-		sp.Finish()
-	}()
+	defer sp.Finish()
 
-	// build up map of label names
-	labelNameMap := make(map[string]struct{}, len(req.Msg.LabelNames))
-	for _, labelName := range req.Msg.LabelNames {
-		labelNameMap[labelName] = struct{}{}
-	}
+	sp.LogFields(
+		otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
+		otlog.String("label_names", strings.Join(req.Msg.LabelNames, ",")),
+		otlog.Int64("start", req.Msg.Start),
+		otlog.Int64("end", req.Msg.End),
+	)
 
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.Labels, error) {
-		res, err := ic.Series(childCtx, connect.NewRequest(&ingestv1.SeriesRequest{
+	// Some clients may not be sending us timestamps. If start or end are 0, then
+	// mark this a legacy request. Legacy requests only query the ingesters.
+	legacyRequest := req.Msg.Start == 0 || req.Msg.End == 0
+	sp.LogFields(otlog.Bool("legacy_request", legacyRequest))
+	if q.storeGatewayQuerier == nil || legacyRequest {
+		responses, err := q.seriesFromIngesters(ctx, &ingestv1.SeriesRequest{
 			Matchers:   req.Msg.Matchers,
 			LabelNames: req.Msg.LabelNames,
-		}))
+			Start:      req.Msg.Start,
+			End:        req.Msg.End,
+		})
 		if err != nil {
 			return nil, err
 		}
-		// TODO: Remove this once we have the ingesters returning the filtered response, has been rolled out (f25).
-		filterSeriesByLabelNames(res.Msg.LabelsSet, labelNameMap)
 
-		return res.Msg.LabelsSet, nil
-	})
+		return connect.NewResponse(&querierv1.SeriesResponse{
+			LabelsSet: lo.UniqBy(
+				lo.FlatMap(responses, func(r ResponseFromReplica[[]*typesv1.Labels], _ int) []*typesv1.Labels {
+					return r.response
+				}),
+				func(t *typesv1.Labels) uint64 {
+					return phlaremodel.Labels(t.Labels).Hash()
+				}),
+		}), nil
+	}
+
+	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
+	}
+	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
+
+	var responses []ResponseFromReplica[[]*typesv1.Labels]
+	var lock sync.Mutex
+	group, ctx := errgroup.WithContext(ctx)
+
+	if storeQueries.ingester.shouldQuery {
+		group.Go(func() error {
+			ir, err := q.seriesFromIngesters(ctx, &ingestv1.SeriesRequest{
+				Matchers:   req.Msg.Matchers,
+				LabelNames: req.Msg.LabelNames,
+				Start:      req.Msg.Start,
+				End:        req.Msg.End,
+			})
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			responses = append(responses, ir...)
+			lock.Unlock()
+			return nil
+		})
+	}
+
+	if storeQueries.storeGateway.shouldQuery {
+		group.Go(func() error {
+			ir, err := q.seriesFromStoreGateway(ctx, &ingestv1.SeriesRequest{
+				Matchers:   req.Msg.Matchers,
+				LabelNames: req.Msg.LabelNames,
+				Start:      req.Msg.Start,
+				End:        req.Msg.End,
+			})
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			responses = append(responses, ir...)
+			lock.Unlock()
+			return nil
+		})
+	}
+
+	err := group.Wait()
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +291,8 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 			}),
 			func(t *typesv1.Labels) uint64 {
 				return phlaremodel.Labels(t.Labels).Hash()
-			}),
+			},
+		),
 	}), nil
 }
 
@@ -331,6 +372,33 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	}), nil
 }
 
+func (q *Querier) SelectMergeSpanProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeSpanProfileRequest]) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeSpanProfile")
+	level.Info(spanlogger.FromContext(ctx, q.logger)).Log(
+		"start", model.Time(req.Msg.Start).Time().String(),
+		"end", model.Time(req.Msg.End).Time().String(),
+		"selector", req.Msg.LabelSelector,
+		"profile_id", req.Msg.ProfileTypeID,
+	)
+	defer func() {
+		sp.Finish()
+	}()
+
+	if req.Msg.MaxNodes == nil || *req.Msg.MaxNodes == 0 {
+		mn := maxNodesDefault
+		req.Msg.MaxNodes = &mn
+	}
+
+	t, err := q.selectSpanProfile(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&querierv1.SelectMergeSpanProfileResponse{
+		Flamegraph: phlaremodel.NewFlameGraph(t, req.Msg.GetMaxNodes()),
+	}), nil
+}
+
 func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*phlaremodel.Tree, error) {
 	// no store gateways configured so just query the ingesters
 	if q.storeGatewayQuerier == nil {
@@ -400,6 +468,17 @@ func (sq storeQuery) MergeSeriesRequest(req *querierv1.SelectSeriesRequest, prof
 			Start:         int64(sq.start),
 			End:           int64(sq.end),
 		},
+	}
+}
+
+func (sq storeQuery) MergeSpanProfileRequest(req *querierv1.SelectMergeSpanProfileRequest) *querierv1.SelectMergeSpanProfileRequest {
+	return &querierv1.SelectMergeSpanProfileRequest{
+		Start:         int64(sq.start),
+		End:           int64(sq.end),
+		ProfileTypeID: req.ProfileTypeID,
+		LabelSelector: req.LabelSelector,
+		SpanSelector:  req.SpanSelector,
+		MaxNodes:      req.MaxNodes,
 	}
 }
 
@@ -671,4 +750,49 @@ func uniqueSortedStrings(responses []ResponseFromReplica[[]string]) []string {
 	}
 	sort.Strings(result)
 	return result
+}
+
+func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.Tree, error) {
+	// no store gateways configured so just query the ingesters
+	if q.storeGatewayQuerier == nil {
+		return q.selectSpanProfileFromIngesters(ctx, req)
+	}
+
+	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter)
+	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
+	}
+
+	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
+
+	if !storeQueries.ingester.shouldQuery {
+		return q.selectSpanProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeSpanProfileRequest(req))
+	}
+	if !storeQueries.storeGateway.shouldQuery {
+		return q.selectSpanProfileFromIngesters(ctx, storeQueries.ingester.MergeSpanProfileRequest(req))
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+	var ingesterTree, storegatewayTree *phlaremodel.Tree
+	g.Go(func() error {
+		var err error
+		ingesterTree, err = q.selectSpanProfileFromIngesters(ctx, storeQueries.ingester.MergeSpanProfileRequest(req))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		storegatewayTree, err = q.selectSpanProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeSpanProfileRequest(req))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	storegatewayTree.Merge(ingesterTree)
+	return storegatewayTree, nil
 }

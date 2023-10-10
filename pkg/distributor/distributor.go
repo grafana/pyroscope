@@ -9,12 +9,12 @@ import (
 	"hash/fnv"
 	"net/http"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/limiter"
@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -34,6 +35,7 @@ import (
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -106,11 +108,13 @@ type Limits interface {
 	MaxLabelNameLength(tenantID string) int
 	MaxLabelValueLength(tenantID string) int
 	MaxLabelNamesPerSeries(tenantID string) int
-	MaxProfileSizeBytes(userID string) int
-	MaxProfileStacktraceSamples(userID string) int
-	MaxProfileStacktraceSampleLabels(userID string) int
-	MaxProfileStacktraceDepth(userID string) int
-	MaxProfileSymbolValueLength(userID string) int
+	MaxProfileSizeBytes(tenantID string) int
+	MaxProfileStacktraceSamples(tenantID string) int
+	MaxProfileStacktraceSampleLabels(tenantID string) int
+	MaxProfileStacktraceDepth(tenantID string) int
+	MaxProfileSymbolValueLength(tenantID string) int
+	MaxSessionsPerSeries(tenantID string) int
+	validation.ProfileValidationLimits
 }
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, limits Limits, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Distributor, error) {
@@ -182,6 +186,21 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	req := &distributormodel.PushRequest{
 		Series: make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
 	}
+
+	// All allocated pprof.Profile instances must be closed after use.
+	var n int
+	for i := 0; i < len(grpcReq.Msg.Series); i++ {
+		n += len(grpcReq.Msg.Series[i].Samples)
+	}
+	profiles := make([]*pprof.Profile, 0, n)
+	defer func() {
+		for _, p := range profiles {
+			if p.Profile != nil {
+				p.Close()
+			}
+		}
+	}()
+
 	for _, grpcSeries := range grpcReq.Msg.Series {
 		series := &distributormodel.ProfileSeries{
 			Labels:  grpcSeries.Labels,
@@ -192,6 +211,7 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
+			profiles = append(profiles, profile)
 			sample := &distributormodel.ProfileSample{
 				Profile:    profile,
 				RawProfile: grpcSample.RawProfile,
@@ -202,18 +222,17 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 		}
 		req.Series = append(req.Series, series)
 	}
+
 	return d.PushParsed(ctx, req)
 }
 
 func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
-	// todo defer close all profiles in case of error
+	now := model.Now()
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
 	var (
-		keys                       = make([]uint32, 0, len(req.Series))
-		profiles                   = make([]*profileTracker, 0, len(req.Series))
 		totalPushUncompressedBytes int64
 		totalProfiles              int64
 	)
@@ -222,8 +241,8 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		serviceName := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
 		if serviceName == "" {
 			series.Labels = append(series.Labels, &typesv1.LabelPair{Name: phlaremodel.LabelNameServiceName, Value: "unspecified"})
-			sort.Sort(phlaremodel.Labels(series.Labels))
 		}
+		sort.Sort(phlaremodel.Labels(series.Labels))
 	}
 
 	haveRawPprof := req.RawProfileType == distributormodel.RawProfileTypePPROF
@@ -243,8 +262,8 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			totalPushUncompressedBytes += int64(len(lbs.Name))
 			totalPushUncompressedBytes += int64(len(lbs.Value))
 		}
-		keys = append(keys, TokenFor(tenantID, labelsString(series.Labels)))
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
+		series.Labels = d.limitMaxSessionsPerSeries(tenantID, series.Labels)
 		for _, raw := range series.Samples {
 			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 			d.profileReceivedStats.Inc(1)
@@ -263,44 +282,22 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
 			totalPushUncompressedBytes += int64(decompressedSize)
 
-			if err := validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels); err != nil {
+			if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels, now); err != nil {
 				// todo this actually discards more if multiple Samples in a Series request
+				_ = level.Debug(d.logger).Log("msg", "invalid profile", "err", err)
 				validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
 				validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
-				p.Close()
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
 
-			p.Normalize()
 			symbolsSize, samplesSize := profileSizeBytes(p.Profile)
 			d.metrics.receivedSamplesBytes.WithLabelValues(profName, tenantID).Observe(float64(samplesSize))
 			d.metrics.receivedSymbolsBytes.WithLabelValues(profName, tenantID).Observe(float64(symbolsSize))
-
-			// zip the data back into the buffer
-			bw := bytes.NewBuffer(raw.RawProfile[:0])
-			if _, err := p.WriteTo(bw); err != nil {
-				p.Close()
-				return nil, err
-			}
-			p.Close()
-			raw.RawProfile = bw.Bytes()
-			// generate a unique profile ID before pushing.
-			raw.ID = uuid.NewString()
 		}
-		profiles = append(profiles, &profileTracker{profile: series})
 	}
 
 	if totalProfiles == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no profiles received"))
-	}
-
-	// validate the request
-	for _, series := range req.Series {
-		if err := validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
-			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
-			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
-			return nil, connect.NewError(connect.CodeInvalidArgument, err)
-		}
 	}
 
 	// rate limit the request
@@ -310,6 +307,40 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		return nil, connect.NewError(connect.CodeResourceExhausted,
 			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.IBytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.IBytes(uint64(totalPushUncompressedBytes))),
 		)
+	}
+
+	// Next we split profiles by labels. Newly allocated profiles should be closed after use.
+	profileSeries, newProfiles := extractSampleSeries(req)
+	defer func() {
+		for _, p := range newProfiles {
+			p.Close()
+		}
+	}()
+
+	// Validate the labels again and generate tokens for shuffle sharding.
+	keys := make([]uint32, len(profileSeries))
+	for i, series := range profileSeries {
+		if err = validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
+			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
+			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		keys[i] = TokenFor(tenantID, phlaremodel.LabelPairsString(series.Labels))
+	}
+
+	profiles := make([]*profileTracker, 0, len(profileSeries))
+	for _, series := range profileSeries {
+		for _, raw := range series.Samples {
+			p := raw.Profile
+			// zip the data back into the buffer
+			bw := bytes.NewBuffer(raw.RawProfile[:0])
+			if _, err := p.WriteTo(bw); err != nil {
+				return nil, err
+			}
+			raw.ID = uuid.NewString()
+			raw.RawProfile = bw.Bytes()
+		}
+		profiles = append(profiles, &profileTracker{profile: series})
 	}
 
 	const maxExpectedReplicationSet = 5 // typical replication factor 3 plus one for inactive plus one for luck
@@ -471,6 +502,89 @@ func (d *Distributor) HealthyInstancesCount() int {
 	return int(d.healthyInstancesCount.Load())
 }
 
+func extractSampleSeries(req *distributormodel.PushRequest) ([]*distributormodel.ProfileSeries, []*pprof.Profile) {
+	profileSeries := make([]*distributormodel.ProfileSeries, 0, len(req.Series))
+	newProfiles := make([]*pprof.Profile, 0, 2*len(req.Series))
+	for _, series := range req.Series {
+		s := &distributormodel.ProfileSeries{
+			Labels:  series.Labels,
+			Samples: make([]*distributormodel.ProfileSample, 0, len(series.Samples)),
+		}
+		for _, raw := range series.Samples {
+			raw.Profile.Normalize()
+			pprof.RenameLabel(raw.Profile.Profile, pprof.ProfileIDLabelName, pprof.SpanIDLabelName)
+			groups := pprof.GroupSamplesWithoutLabels(raw.Profile.Profile, pprof.SpanIDLabelName)
+			if len(groups) == 0 || (len(groups) == 1 && len(groups[0].Labels) == 0) {
+				// No sample labels in the profile.
+				// We do not modify the request.
+				s.Samples = append(s.Samples, raw)
+				continue
+			}
+			e := pprof.NewSampleExporter(raw.Profile.Profile)
+			for _, group := range groups {
+				// exportSamples creates a new profile with the samples provided.
+				// The samples are obtained via GroupSamples call, which means
+				// the underlying capacity is referenced by the source profile.
+				// Therefore, the slice has to be copied and samples zeroed to
+				// avoid ownership issues.
+				profile := exportSamples(e, group.Samples)
+				newProfiles = append(newProfiles, profile)
+				// Note that group.Labels reference strings from the source profile.
+				labels := mergeSeriesAndSampleLabels(raw.Profile.Profile, series.Labels, group.Labels)
+				profileSeries = append(profileSeries, &distributormodel.ProfileSeries{
+					Labels:  labels,
+					Samples: []*distributormodel.ProfileSample{{Profile: profile}},
+				})
+			}
+		}
+		if len(s.Samples) > 0 {
+			profileSeries = append(profileSeries, s)
+		}
+	}
+	return profileSeries, newProfiles
+}
+
+func (d *Distributor) limitMaxSessionsPerSeries(tenantID string, labels phlaremodel.Labels) phlaremodel.Labels {
+	maxSessionsPerSeries := d.limits.MaxSessionsPerSeries(tenantID)
+	if maxSessionsPerSeries == 0 {
+		return labels.Delete(phlaremodel.LabelNameSessionID)
+	}
+	sessionIDLabel, ok := labels.GetLabel(phlaremodel.LabelNameSessionID)
+	if !ok {
+		return labels
+	}
+	sessionID, err := phlaremodel.ParseSessionID(sessionIDLabel.Value)
+	if err != nil {
+		_ = level.Debug(d.logger).Log("msg", "invalid session_id", "err", err)
+		return labels.Delete(phlaremodel.LabelNameSessionID)
+	}
+	sessionIDLabel.Value = phlaremodel.SessionID(int(sessionID) % maxSessionsPerSeries).String()
+	return labels
+}
+
+// mergeSeriesAndSampleLabels merges sample labels with
+// series labels. Series labels take precedence.
+func mergeSeriesAndSampleLabels(p *googlev1.Profile, sl []*typesv1.LabelPair, pl []*googlev1.Label) []*typesv1.LabelPair {
+	m := phlaremodel.Labels(sl).Clone()
+	for _, l := range pl {
+		m = append(m, &typesv1.LabelPair{
+			Name:  p.StringTable[l.Key],
+			Value: p.StringTable[l.Str],
+		})
+	}
+	sort.Stable(m)
+	return m.Unique()
+}
+
+func exportSamples(e *pprof.SampleExporter, samples []*googlev1.Sample) *pprof.Profile {
+	samplesCopy := make([]*googlev1.Sample, len(samples))
+	copy(samplesCopy, samples)
+	slices.Clear(samples)
+	n := pprof.NewProfile()
+	e.ExportSamples(n.Profile, samplesCopy)
+	return n
+}
+
 type profileTracker struct {
 	profile     *distributormodel.ProfileSeries
 	minSuccess  int
@@ -484,22 +598,6 @@ type pushTracker struct {
 	samplesFailed  atomic.Int32
 	done           chan struct{}
 	err            chan error
-}
-
-func labelsString(ls []*typesv1.LabelPair) string {
-	var b bytes.Buffer
-	b.WriteByte('{')
-	for i, l := range ls {
-		if i > 0 {
-			b.WriteByte(',')
-			b.WriteByte(' ')
-		}
-		b.WriteString(l.Name)
-		b.WriteByte('=')
-		b.WriteString(strconv.Quote(l.Value))
-	}
-	b.WriteByte('}')
-	return b.String()
 }
 
 // TokenFor generates a token used for finding ingesters from ring

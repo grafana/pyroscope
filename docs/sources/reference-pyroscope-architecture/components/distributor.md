@@ -10,7 +10,7 @@ aliases:
 # Pyroscope distributor
 
 The distributor is a stateless component that receives profiling data from the agent.
-The distributor then divides the data into batches and sends it to multiple [ingesters]({{< relref "ingester.md" >}}) in parallel, shards the series among ingesters, and replicates each series by the configured replication factor. By default, the configured replication factor is three.
+The distributor then divides the data into batches and sends it to multiple [ingesters]({{< relref "./ingester.md" >}}) in parallel, shards the series among ingesters, and replicates each series by the configured replication factor. By default, the configured replication factor is three.
 
 ## Validation
 

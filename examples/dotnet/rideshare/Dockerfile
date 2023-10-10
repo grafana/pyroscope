@@ -2,8 +2,8 @@ FROM mcr.microsoft.com/dotnet/sdk:6.0
 
 WORKDIR /dotnet
 
-COPY --from=pyroscope/pyroscope-dotnet:0.8.8-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
-COPY --from=pyroscope/pyroscope-dotnet:0.8.8-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
+COPY --from=pyroscope/pyroscope-dotnet:0.8.10-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
+COPY --from=pyroscope/pyroscope-dotnet:0.8.10-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
 
 
 ADD example .
@@ -22,6 +22,7 @@ ENV PYROSCOPE_PROFILING_ENABLED=1
 ENV PYROSCOPE_PROFILING_ALLOCATION_ENABLED=true
 ENV PYROSCOPE_PROFILING_CONTENTION_ENABLED=true
 ENV PYROSCOPE_PROFILING_EXCEPTION_ENABLED=true
+ENV ASPNETCORE_URLS=http://*:5000
 
 
 CMD ["dotnet", "/dotnet/example.dll"]

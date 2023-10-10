@@ -83,7 +83,11 @@ export class PprofRequest extends Message<PprofRequest> {
   end: number;
 }
 
-type ExportDataProps = exportPprof &
+export type ExportDataProps = {
+  buttonEl?: React.ComponentType<{
+    onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  }>;
+} & exportPprof &
   exportHTML &
   exportFlamegraphDotCom &
   exportPNG &
@@ -110,9 +114,8 @@ function buildPprofQuery(state: ContinuousState) {
 }
 
 function ExportData(props: ExportDataProps) {
-  const { exportJSON = false } = props;
+  const { exportJSON = false, exportFlamegraphDotCom = true } = props;
   let { exportPprof } = props;
-  const exportFlamegraphDotCom = true;
   const exportPNG = true;
   const exportHTML = false;
   const { pathname } = useLocation();
@@ -292,14 +295,18 @@ function ExportData(props: ExportDataProps) {
   return (
     <div className={styles.dropdownContainer}>
       <OutsideClickHandler onOutsideClick={() => setToggleMenu(false)}>
-        <Tooltip placement="top" title="Export Data">
-          <Button
-            className={styles.toggleMenuButton}
-            onClick={handleToggleMenu}
-          >
-            <FontAwesomeIcon icon={faShareSquare} />
-          </Button>
-        </Tooltip>
+        {props.buttonEl ? (
+          <props.buttonEl onClick={handleToggleMenu} />
+        ) : (
+          <Tooltip placement="top" title="Export Data">
+            <Button
+              className={styles.toggleMenuButton}
+              onClick={handleToggleMenu}
+            >
+              <FontAwesomeIcon icon={faShareSquare} />
+            </Button>
+          </Tooltip>
+        )}
         <div className={toggleMenu ? styles.menuShow : styles.menuHide}>
           {exportPNG && (
             <button

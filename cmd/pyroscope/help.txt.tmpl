@@ -148,7 +148,7 @@ Usage of ./pyroscope:
   -server.grpc-listen-port int
     	gRPC server listen port. (default 9095)
   -server.grpc-max-concurrent-streams uint
-    	Limit on the number of concurrent streams for gRPC calls (0 = unlimited) (default 100)
+    	Limit on the number of concurrent streams for gRPC calls per client connection (0 = unlimited) (default 100)
   -server.grpc-max-recv-msg-size-bytes int
     	Limit on the size of a gRPC message this server can receive (bytes). (default 4194304)
   -server.grpc-max-send-msg-size-bytes int
@@ -335,6 +335,12 @@ Usage of ./pyroscope:
     	Maximum number of samples in a profile. 0 to disable. (default 16000)
   -validation.max-profile-symbol-value-length int
     	Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable. (default 65535)
+  -validation.max-sessions-per-series int
+    	Maximum number of sessions per series. 0 to disable.
+  -validation.reject-newer-than duration
+    	This limits how far into the future profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 10m. (default 10m)
+  -validation.reject-older-than duration
+    	This limits how far into the past profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 1h. (default 1h)
   -version
     	Show the version of pyroscope and exit
 
