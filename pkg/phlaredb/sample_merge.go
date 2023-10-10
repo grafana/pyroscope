@@ -3,6 +3,7 @@ package phlaredb
 import (
 	"context"
 	"sort"
+	"strings"
 
 	"github.com/google/pprof/profile"
 	"github.com/opentracing/opentracing-go"
@@ -96,6 +97,9 @@ func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Ite
 func mergeBySpans(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver, spanSelector phlaremodel.SpanSelector) error {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeBySpans")
 	defer sp.Finish()
+	if _, found := profileSource.Schema().Lookup(strings.Split("Samples.list.element.SpanID", ".")...); !found {
+		return nil
+	}
 	// clone the rows to be able to iterate over them twice
 	multiRows, err := iter.CloneN(rows, 3)
 	if err != nil {
@@ -112,8 +116,7 @@ func mergeBySpans(ctx context.Context, profileSource Source, rows iter.Iterator[
 		p := r.Partition(it.At().Row.StacktracePartition())
 		stacktraces := values[0]
 		sampleValues := values[1]
-		// 2, 3, 4, 5 - Labels
-		spans := values[6]
+		spans := values[2]
 		if len(spans) < len(stacktraces) {
 			continue
 		}

@@ -565,10 +565,114 @@ func TestHeadMergePprof(t *testing.T) {
 	compareProfile(t, expected.Compact(), result)
 }
 
+func TestMergeSpans(t *testing.T) {
+	ctx := testContext(t)
+	db, err := New(ctx, Config{
+		DataPath:         contextDataDir(ctx),
+		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
+	}, NoLimit, ctx.localBucketClient)
+	require.NoError(t, err)
+
+	require.NoError(t, db.Ingest(ctx, generateProfileWithSpans(t, 1000), uuid.New(), &typesv1.LabelPair{
+		Name:  model.MetricNameLabel,
+		Value: "process_cpu",
+	}))
+
+	require.NoError(t, db.Flush(context.Background()))
+
+	b, err := filesystem.NewBucket(filepath.Join(contextDataDir(ctx), PathLocal))
+	require.NoError(t, err)
+
+	// open resulting block
+	q := NewBlockQuerier(context.Background(), b)
+	require.NoError(t, q.Sync(context.Background()))
+
+	profileIt, err := q.queriers[0].SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
+		LabelSelector: `{}`,
+		Type: &typesv1.ProfileType{
+			Name:       "process_cpu",
+			SampleType: "cpu",
+			SampleUnit: "nanoseconds",
+			PeriodType: "cpu",
+			PeriodUnit: "nanoseconds",
+		},
+		Start: int64(model.TimeFromUnixNano(0)),
+		End:   int64(model.TimeFromUnixNano(int64(1 * time.Minute))),
+	})
+	require.NoError(t, err)
+	profiles, err := iter.Slice(profileIt)
+	require.NoError(t, err)
+
+	q.queriers[0].Sort(profiles)
+	spanSelector, err := phlaremodel.NewSpanSelector([]string{"badbadbadbadbadb"})
+	require.NoError(t, err)
+	result, err := q.queriers[0].MergeBySpans(ctx, iter.NewSliceIterator(profiles), spanSelector)
+	require.NoError(t, err)
+
+	expected := new(phlaremodel.Tree)
+	expected.InsertStack(1, "bar", "foo")
+	expected.InsertStack(2, "foo")
+
+	require.Equal(t, expected.String(), result.String())
+}
+
+func TestHeadMergeSpans(t *testing.T) {
+	ctx := testContext(t)
+	db, err := New(ctx, Config{
+		DataPath:         contextDataDir(ctx),
+		MaxBlockDuration: time.Duration(100000) * time.Minute, // we will manually flush
+	}, NoLimit, ctx.localBucketClient)
+	require.NoError(t, err)
+
+	require.NoError(t, db.Ingest(ctx, generateProfileWithSpans(t, 1000), uuid.New(), &typesv1.LabelPair{
+		Name:  model.MetricNameLabel,
+		Value: "process_cpu",
+	}))
+
+	profileIt, err := db.head.Queriers().SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
+		LabelSelector: `{}`,
+		Type: &typesv1.ProfileType{
+			Name:       "process_cpu",
+			SampleType: "cpu",
+			SampleUnit: "nanoseconds",
+			PeriodType: "cpu",
+			PeriodUnit: "nanoseconds",
+		},
+		Start: int64(model.TimeFromUnixNano(0)),
+		End:   int64(model.TimeFromUnixNano(int64(1 * time.Minute))),
+	})
+	require.NoError(t, err)
+	profiles, err := iter.Slice(profileIt)
+	require.NoError(t, err)
+
+	db.head.Sort(profiles)
+	spanSelector, err := phlaremodel.NewSpanSelector([]string{"badbadbadbadbadb"})
+	require.NoError(t, err)
+
+	result, err := db.head.Queriers()[0].MergeBySpans(ctx, iter.NewSliceIterator(profiles), spanSelector)
+	require.NoError(t, err)
+
+	expected := new(phlaremodel.Tree)
+	expected.InsertStack(1, "bar", "foo")
+	expected.InsertStack(2, "foo")
+
+	require.Equal(t, expected.String(), result.String())
+}
+
 func generateProfile(t *testing.T, ts int) *googlev1.Profile {
 	t.Helper()
 
 	prof, err := pprof.FromProfile(pprofth.FooBarProfile)
+
+	require.NoError(t, err)
+	prof.TimeNanos = int64(ts)
+	return prof
+}
+
+func generateProfileWithSpans(t *testing.T, ts int) *googlev1.Profile {
+	t.Helper()
+
+	prof, err := pprof.FromProfile(pprofth.FooBarProfileWithSpans)
 
 	require.NoError(t, err)
 	prof.TimeNanos = int64(ts)
