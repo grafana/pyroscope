@@ -605,8 +605,8 @@ github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b/go.mo
 github.com/oracle/oci-go-sdk/v65 v65.28.0 h1:FgBWmHzT1y9H9tRQYOiX22Z8ec5p6/M5sSYRGcbWAno=
 github.com/oracle/oci-go-sdk/v65 v65.28.0/go.mod h1:oyMrMa1vOzzKTmPN+kqrTR9y9kPA2tU1igN3NUSNTIE=
 github.com/ovh/go-ovh v1.4.1 h1:VBGa5wMyQtTP7Zb+w97zRCh9sLtM/2YKRyy+MEJmWaM=
-github.com/parquet-go/parquet-go v0.17.1-0.20230724165737-1e4f8bbc561c h1:AQWC+zMFqDWp/Pjn6SnJSYyF+zPDNYHU17PV+z4G+Dw=
-github.com/parquet-go/parquet-go v0.17.1-0.20230724165737-1e4f8bbc561c/go.mod h1:6pu/Ca02WRyWyF6jbY1KceESGBZMsRMSijjLbajXaG8=
+github.com/parquet-go/parquet-go v0.18.1-0.20231004061202-cde8189c4c26 h1:46gJLpBloArJ3oU2AZpeBQgZmgLzE+iDCOgxz78cwgk=
+github.com/parquet-go/parquet-go v0.18.1-0.20231004061202-cde8189c4c26/go.mod h1:6pu/Ca02WRyWyF6jbY1KceESGBZMsRMSijjLbajXaG8=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pascaldekloe/goe v0.1.0 h1:cBOtyMzM9HTpWjXfbbunk26uA6nG3a8n06Wieeh0MwY=
 github.com/pascaldekloe/goe v0.1.0/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
