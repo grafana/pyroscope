@@ -405,6 +405,8 @@ func InRange(q Querier, start, end model.Time) bool {
 	return true
 }
 
+var _ Querier = make(Queriers, 0, 0)
+
 type Queriers []Querier
 
 func (queriers Queriers) Open(ctx context.Context) error {
@@ -428,6 +430,18 @@ func (queriers Queriers) SelectMatchingProfiles(ctx context.Context, params *ing
 		return nil, err
 	}
 	return iter.NewMergeIterator(maxBlockProfile, true, iters...), nil
+}
+
+func (queriers Queriers) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
+	return nil, nil
+}
+
+func (queriers Queriers) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
+	return nil, nil
+}
+
+func (queriers Queriers) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
+	return nil, nil
 }
 
 func (queriers Queriers) ForTimeRange(_ context.Context, start, end model.Time) (Queriers, error) {

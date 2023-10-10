@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/services"
 	"github.com/oklog/ulid"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -75,7 +76,7 @@ type PhlareDB struct {
 	// the new head, and queries can read the former head
 	// till it gets written to the disk and becomes available
 	// to blockQuerier.
-	oldHead *Head
+	flushing []*Head
 
 	// The current head block, if present, is flushed
 	// when the ticker fires.
@@ -155,6 +156,7 @@ func (f *PhlareDB) loop() {
 			return
 		case <-blockScanTicker.C:
 			f.runBlockQuerierSync(ctx)
+		// todo change this
 		case <-headSizeCheck.C:
 			if f.headSize() > maxBlockBytes {
 				f.flushHead(ctx, flushReasonMaxBlockBytes)
@@ -208,18 +210,18 @@ func (f *PhlareDB) Close() error {
 
 func (f *PhlareDB) queriers() Queriers {
 	queriers := f.blockQuerier.Queriers()
-	var head Queriers
-	if f.head != nil {
-		head = f.head.Queriers()
+	head := f.headQueriers()
+	return append(queriers, head...)
+}
+
+func (f *PhlareDB) headQueriers() Queriers {
+	res := make(Queriers, 0, len(f.heads)+len(f.flushing))
+	for _, h := range f.heads {
+		res = append(res, h.Queriers()...)
 	}
-	var oldHead Queriers
-	if f.oldHead != nil {
-		oldHead = f.oldHead.Queriers()
+	for _, h := range f.flushing {
+		res = append(res, h.Queriers()...)
 	}
-	res := make(Queriers, 0, len(queriers)+len(head)+len(oldHead))
-	res = append(res, queriers...)
-	res = append(res, head...)
-	res = append(res, oldHead...)
 	return res
 }
 
@@ -274,23 +276,24 @@ func (f *PhlareDB) headForIngest(sampleTimeNanos int64, fn func(*Head) error) (e
 // 	return nil
 // }
 
-func withHeadForQuery[T any](f *PhlareDB, fn func(*Head) (*connect.Response[T], error)) (*connect.Response[T], error) {
+func withHeadQuerier[T any](f *PhlareDB, fn func(Queriers) (*connect.Response[T], error)) (*connect.Response[T], error) {
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
-	h := f.head
-	if h == nil {
+	hqs := f.headQueriers()
+	if len(hqs) == 0 {
 		return connect.NewResponse(new(T)), nil
 	}
-	return fn(h)
+	return fn(hqs)
 }
 
 func (f *PhlareDB) headSize() uint64 {
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
-	if h := f.head; h != nil {
-		return h.Size()
+	size := uint64(0)
+	for _, h := range f.heads {
+		size += h.Size()
 	}
-	return 0
+	return size
 }
 
 type flushReason string
@@ -315,33 +318,33 @@ func (f *PhlareDB) flushHead(ctx context.Context, reason flushReason) {
 
 // LabelValues returns the possible label values for a given label name.
 func (f *PhlareDB) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (resp *connect.Response[typesv1.LabelValuesResponse], err error) {
-	return withHeadForQuery(f, func(head *Head) (*connect.Response[typesv1.LabelValuesResponse], error) {
-		return head.LabelValues(ctx, req)
+	return withHeadQuerier(f, func(q Queriers) (*connect.Response[typesv1.LabelValuesResponse], error) {
+		return q.LabelValues(ctx, req)
 	})
 }
 
 // LabelNames returns the possible label names.
 func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (resp *connect.Response[typesv1.LabelNamesResponse], err error) {
-	return withHeadForQuery(f, func(head *Head) (*connect.Response[typesv1.LabelNamesResponse], error) {
-		return head.LabelNames(ctx, req)
+	return withHeadQuerier(f, func(q Queriers) (*connect.Response[typesv1.LabelNamesResponse], error) {
+		return q.LabelNames(ctx, req)
 	})
 }
 
 // ProfileTypes returns the possible profile types.
 func (f *PhlareDB) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (resp *connect.Response[ingestv1.ProfileTypesResponse], err error) {
-	return withHeadForQuery(f, func(head *Head) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-		return head.ProfileTypes(ctx, req)
+	return withHeadQuerier(f, func(q Queriers) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
+		return q.ProfileTypes(ctx, req)
 	})
 }
 
-func (f *PhlareDB) LegacySeries(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhareDB LegacySeries")
-	defer sp.Finish()
+// func (f *PhlareDB) LegacySeries(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
+// 	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhareDB LegacySeries")
+// 	defer sp.Finish()
 
-	return withHeadForQuery(f, func(head *Head) (*connect.Response[ingestv1.SeriesResponse], error) {
-		return head.Series(ctx, req)
-	})
-}
+// 	return withHeadForQuery(f, func(head *Head) (*connect.Response[ingestv1.SeriesResponse], error) {
+// 		return head.Series(ctx, req)
+// 	})
+// }
 
 // Series returns labels series for the given set of matchers.
 func (f *PhlareDB) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
@@ -351,11 +354,15 @@ func (f *PhlareDB) Series(ctx context.Context, req *connect.Request[ingestv1.Ser
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
 
-	res, err := Series(ctx, req.Msg, f.queriers().ForTimeRange)
-	if err != nil {
-		return nil, err
+	if req.Msg.Start == 0 || req.Msg.End == 0 {
+		return withHeadQuerier(f, func(q Queriers) (*connect.Response[ingestv1.SeriesResponse], error) {
+			return Series(ctx, req.Msg, q.ForTimeRange)
+		})
 	}
-	return connect.NewResponse(res), nil
+
+	return withQuerier(f, func(q Queriers) (*connect.Response[ingestv1.SeriesResponse], error) {
+		return Series(ctx, req.Msg, q.ForTimeRange)
+	})
 }
 
 func (f *PhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
