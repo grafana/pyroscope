@@ -117,11 +117,12 @@ func mergeBySpans(ctx context.Context, profileSource Source, rows iter.Iterator[
 		stacktraces := values[0]
 		sampleValues := values[1]
 		spans := values[2]
-		if len(spans) < len(stacktraces) {
-			continue
-		}
 		for i := 0; i < len(stacktraces); i++ {
-			if _, ok := spanSelector[spans[i].Uint64()]; ok {
+			spanID := spans[i].Uint64()
+			if spanID == 0 {
+				continue
+			}
+			if _, ok := spanSelector[spanID]; ok {
 				p[uint32(stacktraces[i].Int64())] += sampleValues[i].Int64()
 			}
 		}
