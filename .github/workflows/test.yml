@@ -22,7 +22,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.21.1
+          go-version: 1.21.2
       - name: Format
         run: make fmt check/unstaged-changes
   test:
@@ -33,7 +33,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.21.1
+          go-version: 1.21.2
       - name: Go Mod
         run: make check/go/mod
       - name: Test
@@ -47,7 +47,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.21.1
+          go-version: 1.21.2
       - name: Run linter
         run: make lint
       - name: Check helm manifests
@@ -97,7 +97,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.21.1
+          go-version: 1.21.2
       - uses: actions/setup-node@v3
         with:
           node-version: lts/hydrogen
@@ -119,7 +119,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.21.1
+          go-version: 1.21.2
       - uses: actions/setup-node@v3
         with:
           node-version: lts/hydrogen
