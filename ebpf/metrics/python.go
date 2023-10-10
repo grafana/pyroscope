@@ -4,7 +4,6 @@ import "github.com/prometheus/client_golang/prometheus"
 
 type PythonMetrics struct {
 	PidDataError       *prometheus.CounterVec
-	UnexpectedErrors   prometheus.Counter
 	LostSamples        prometheus.Counter
 	SymbolLookup       *prometheus.CounterVec
 	UnknownSymbols     *prometheus.CounterVec
@@ -20,10 +19,7 @@ func NewPythonMetrics(reg prometheus.Registerer) *PythonMetrics {
 			Name: "pyroscope_pyperf_pid_data_errors_total",
 			Help: "Total number of errors while trying to collect python data (offsets and memory values) from a running process",
 		}, []string{"service_name"}),
-		UnexpectedErrors: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "pyroscope_pyperf_unexpected_errors_total",
-			Help: "Total number of unexpected errors while trying to collect python data, these should be zeroes",
-		}),
+
 		LostSamples: prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_pyperf_lost_samples_total",
 			Help: "Total number of samples that were lost due to a buffer overflow",
@@ -58,7 +54,6 @@ func NewPythonMetrics(reg prometheus.Registerer) *PythonMetrics {
 		reg.MustRegister(
 			m.PidDataError,
 			m.LostSamples,
-			m.UnexpectedErrors,
 			m.SymbolLookup,
 			m.StacktraceError,
 			m.UnknownSymbols,

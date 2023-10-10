@@ -84,9 +84,8 @@ func (p *ProcTable) Refresh() {
 		if !errors.Is(err, os.ErrNotExist) {
 			level.Error(p.logger).Log("msg", "failed to read /proc/pid/maps", "err", err)
 		}
-		if p.options.Metrics != nil {
-			p.options.Metrics.ProcErrors.WithLabelValues(errorType(err)).Inc()
-		}
+		_ = level.Debug(p.logger).Log("msg", "failed to read /proc/pid/maps", "err", err, "pid", p.options.Pid)
+		p.options.Metrics.ProcErrors.WithLabelValues(errorType(err)).Inc()
 		p.err = err
 		return
 	}

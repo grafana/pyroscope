@@ -88,7 +88,6 @@ func (s *Perf) loop() {
 			if errors.Is(err, perf.ErrClosed) {
 				return
 			}
-			s.metrics.UnexpectedErrors.Inc()
 			_ = level.Error(s.logger).Log("msg", "[pyperf] reading from perf event reader", "err", err)
 			continue
 		}
@@ -102,7 +101,6 @@ func (s *Perf) loop() {
 		if record.RawSample != nil {
 			event, err := ReadPyEvent(record.RawSample)
 			if err != nil {
-				s.metrics.UnexpectedErrors.Inc()
 				_ = level.Error(s.logger).Log("msg", "[pyperf] parsing perf event record", "err", err)
 				continue
 			}

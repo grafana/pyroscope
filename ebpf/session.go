@@ -324,7 +324,7 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 			continue
 		}
 		svc := labels.ServiceName()
-		
+
 		sb.reset()
 
 		sb.append("pythyon_comm_todo")
@@ -582,7 +582,6 @@ func (s *session) readEvents(events *perf.Reader,
 
 		if record.LostSamples != 0 {
 			// this should not happen, should implement a fallback at reset time
-			s.options.Metrics.UnexpectedErrors.Inc()
 			_ = level.Error(s.logger).Log("err", "perf event ring buffer full, dropped samples", "n", record.LostSamples)
 		}
 
@@ -599,7 +598,6 @@ func (s *session) readEvents(events *perf.Reader,
 				select {
 				case pidConfigRequest <- e.Pid:
 				default:
-					s.options.Metrics.UnexpectedErrors.Inc()
 					_ = level.Error(s.logger).Log("msg", "pid info request queue full, dropping request", "pid", e.Pid)
 					// this should not happen, should implement a fallback at reset time
 				}
@@ -607,11 +605,9 @@ func (s *session) readEvents(events *perf.Reader,
 				select {
 				case deadPIDsEvents <- e.Pid:
 				default:
-					s.options.Metrics.UnexpectedErrors.Inc()
 					_ = level.Error(s.logger).Log("msg", "dead pid info queue full, dropping event", "pid", e.Pid)
 				}
 			} else {
-				s.options.Metrics.UnexpectedErrors.Inc()
 				_ = level.Error(s.logger).Log("msg", "unknown perf event record", "op", e.Op, "pid", e.Pid)
 			}
 		}
