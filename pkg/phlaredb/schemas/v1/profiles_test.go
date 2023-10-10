@@ -1,9 +1,11 @@
 package v1
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"math/rand"
+	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -42,7 +44,7 @@ func TestRoundtripProfile(t *testing.T) {
 	require.NoError(t, err)
 	expected, err := phlareparquet.ReadAll(NewProfilesRowReader(profiles))
 	require.NoError(t, err)
-	//	require.Equal(t, expected, actual)
+	require.Equal(t, expected, actual)
 	_ = expected
 	_ = actual
 
@@ -303,6 +305,40 @@ func BenchmarkProfileRows(b *testing.B) {
 		lessProfileRows(a, a)
 		lessProfileRows(a, a1)
 		lessProfileRows(a, a2)
+	}
+}
+
+func Benchmark_SpanID_Encoding(b *testing.B) {
+	inMemoryProfiles := generateMemoryProfiles(100)
+	spanIDs := make([]uint64, 1)
+	for i := range spanIDs {
+		spanIDs[i] = rand.Uint64()
+	}
+
+	for j := range inMemoryProfiles {
+		spans := make([]uint64, len(inMemoryProfiles[j].Samples.Values))
+		for o := range spans {
+			spans[o] = spanIDs[o%len(spanIDs)]
+		}
+		inMemoryProfiles[j].Samples.Spans = spans
+		sort.Sort(SamplesBySpanID(inMemoryProfiles[j].Samples))
+	}
+
+	var buf bytes.Buffer
+	w := parquet.NewGenericWriter[*Profile](&buf, ProfilesSchema)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		w.Reset(&buf)
+
+		n, err := parquet.CopyRows(w, NewInMemoryProfilesRowReader(inMemoryProfiles))
+		require.NoError(b, err)
+		require.Equal(b, len(inMemoryProfiles), int(n))
+		require.NoError(b, w.Close())
+		b.ReportMetric(float64(buf.Len()), "bytes")
 	}
 }
 

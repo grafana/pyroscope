@@ -362,6 +362,24 @@ func (s Samples) Len() int {
 	return len(s.StacktraceIDs)
 }
 
+type SamplesBySpanID Samples
+
+func (s SamplesBySpanID) Less(i, j int) bool {
+	return s.Spans[i] < s.Spans[j]
+}
+
+func (s SamplesBySpanID) Swap(i, j int) {
+	s.StacktraceIDs[i], s.StacktraceIDs[j] = s.StacktraceIDs[j], s.StacktraceIDs[i]
+	s.Values[i], s.Values[j] = s.Values[j], s.Values[i]
+	if len(s.Spans) > 0 {
+		s.Spans[i], s.Spans[j] = s.Spans[j], s.Spans[i]
+	}
+}
+
+func (s SamplesBySpanID) Len() int {
+	return len(s.Spans)
+}
+
 func (s Samples) Sum() uint64 {
 	var sum uint64
 	for _, v := range s.Values {
