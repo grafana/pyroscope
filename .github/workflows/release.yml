@@ -74,7 +74,7 @@ jobs:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
           repository: pyroscope-io/homebrew-brew
-      - name: Deploy to fire-dev-001
+      - name: Update homebrew formulas
         run: |
           git config --global url."https://x-access-token:$(echo "${GITHUB_TOKEN}" | xargs)@github.com/pyroscope-io/homebrew-brew".insteadOf "https://github.com/pyroscope-io/homebrew-brew"
           git clone https://github.com/pyroscope-io/homebrew-brew
