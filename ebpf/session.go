@@ -622,7 +622,7 @@ func (s *session) readEvents(events *perf.Reader,
 
 func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
 	for pid := range pidInfoRequests {
-		//_ = level.Debug(s.logger).Log("msg", "got pid info request", "pid", pid)
+		_ = level.Debug(s.logger).Log("msg", "got pid info request", "pid", pid)
 		target := s.targetFinder.FindTarget(pid)
 
 		func() {
@@ -754,7 +754,7 @@ func (s *session) saveUnknownPIDLocked(pid uint32) {
 
 func (s *session) processDeadPIDsEvents(dead chan uint32) {
 	for pid := range dead {
-		//_ = level.Debug(s.logger).Log("msg", "got pid dead", "pid", pid)
+		_ = level.Debug(s.logger).Log("msg", "got pid dead", "pid", pid)
 		func() {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()
