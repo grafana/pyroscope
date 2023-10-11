@@ -622,8 +622,14 @@ func (s *session) readEvents(events *perf.Reader,
 
 func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
 	for pid := range pidInfoRequests {
-		//_ = level.Debug(s.logger).Log("msg", "got pid info request", "pid", pid)
 		target := s.targetFinder.FindTarget(pid)
+		if extraVerbose {
+			ss := ""
+			if target != nil {
+				ss = target.DebugString()
+			}
+			_ = level.Debug(s.logger).Log("msg", "got pid info request", "pid", pid, "target", ss)
+		}
 
 		func() {
 			s.mutex.Lock()
@@ -730,8 +736,10 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) pyrobpf.Pro
 		_ = logger.Log("err", err, "msg", "select profiling type failed", "pid", pid, "target", target.ServiceName())
 		return pyrobpf.ProfilingTypeError
 	}
-	//_ = level.Debug(s.logger).Log("exe", exePath, "pid", pid)
 	exe := filepath.Base(exePath)
+	if extraVerbose {
+		_ = level.Debug(s.logger).Log("exe", exePath, "pid", pid, "target", target.DebugString())
+	}
 	if strings.HasPrefix(exe, "python") || exe == "uwsgi" {
 		if s.options.PythonEnabled {
 			return pyrobpf.ProfilingTypePython
@@ -754,7 +762,9 @@ func (s *session) saveUnknownPIDLocked(pid uint32) {
 
 func (s *session) processDeadPIDsEvents(dead chan uint32) {
 	for pid := range dead {
-		//_ = level.Debug(s.logger).Log("msg", "got pid dead", "pid", pid)
+		if extraVerbose {
+			_ = level.Debug(s.logger).Log("msg", "got pid dead", "pid", pid)
+		}
 		func() {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()
@@ -835,3 +845,5 @@ func cStringFromI8Unsafe(tok []int8) string {
 	sh.Len = i
 	return res
 }
+
+var extraVerbose = true
