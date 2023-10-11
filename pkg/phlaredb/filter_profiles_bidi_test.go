@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/pyroscope/pkg/testhelper"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -16,6 +15,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
 func TestFilterProfiles(t *testing.T) {

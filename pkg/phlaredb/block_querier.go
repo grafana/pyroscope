@@ -495,8 +495,11 @@ func (queriers Queriers) LabelValues(ctx context.Context, req *connect.Request[t
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
+
+	values := lo.Keys(uniqValues)
+	sort.Strings(values)
 	return connect.NewResponse(&typesv1.LabelValuesResponse{
-		Names: lo.Keys(uniqValues),
+		Names: values,
 	}), nil
 }
 
@@ -534,8 +537,10 @@ func (queriers Queriers) LabelNames(ctx context.Context, req *connect.Request[ty
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
+	names := lo.Keys(uniqNames)
+	sort.Strings(names)
 	return connect.NewResponse(&typesv1.LabelNamesResponse{
-		Names: lo.Keys(uniqNames),
+		Names: names,
 	}), nil
 }
 
@@ -573,8 +578,12 @@ func (queriers Queriers) ProfileTypes(ctx context.Context, req *connect.Request[
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
+	types := lo.Values(uniqTypes)
+	sort.Slice(types, func(i, j int) bool {
+		return types[i].ID < types[j].ID
+	})
 	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
-		ProfileTypes: lo.Values(uniqTypes),
+		ProfileTypes: types,
 	}), nil
 }
 
