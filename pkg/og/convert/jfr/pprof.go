@@ -183,21 +183,26 @@ func (b *jfrPprofBuilders) build(event string) *model.PushRequest {
 			case sampleTypeInTLAB:
 				e.Value.AddSampleType("alloc_in_new_tlab_objects", "count")
 				e.Value.AddSampleType("alloc_in_new_tlab_bytes", "bytes")
+				e.Value.PeriodType("space", "bytes")
 				metric = "memory"
 			case sampleTypeOutTLAB:
 				e.Value.AddSampleType("alloc_outside_tlab_objects", "count")
 				e.Value.AddSampleType("alloc_outside_tlab_bytes", "bytes")
+				e.Value.PeriodType("space", "bytes")
 				metric = "memory"
 			case sampleTypeLock:
 				e.Value.AddSampleType("contentions", "count")
 				e.Value.AddSampleType("delay", "nanoseconds")
+				e.Value.PeriodType("mutex", "count")
 				metric = "mutex"
 			case sampleTypeThreadPark:
 				e.Value.AddSampleType("contentions", "count")
 				e.Value.AddSampleType("delay", "nanoseconds")
+				e.Value.PeriodType("block", "count")
 				metric = "block"
 			case sampleTypeLiveObject:
 				e.Value.AddSampleType("live", "count")
+				e.Value.PeriodType("objects", "count")
 				metric = "memory"
 			}
 			ls := make([]*v1.LabelPair, 0, len(e.Labels)+len(b.labels)+5)

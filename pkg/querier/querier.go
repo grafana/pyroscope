@@ -177,14 +177,15 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames")
 	defer sp.Finish()
 
+	hasTimeRange := util.HasTimeRange(req.Msg)
 	sp.LogFields(
-		otlog.Bool("legacy_request", !req.Msg.HasTimeRange()),
+		otlog.Bool("legacy_request", !hasTimeRange),
 		otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
 		otlog.Int64("start", req.Msg.Start),
 		otlog.Int64("end", req.Msg.End),
 	)
 
-	if q.storeGatewayQuerier == nil || !req.Msg.HasTimeRange() {
+	if q.storeGatewayQuerier == nil || !hasTimeRange {
 		responses, err := q.labelNamesFromIngesters(ctx, &typesv1.LabelNamesRequest{
 			Matchers: req.Msg.Matchers,
 			Start:    req.Msg.Start,
@@ -427,6 +428,33 @@ func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Reque
 	}), nil
 }
 
+func (q *Querier) SelectMergeSpanProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeSpanProfileRequest]) (*connect.Response[querierv1.SelectMergeSpanProfileResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeSpanProfile")
+	level.Info(spanlogger.FromContext(ctx, q.logger)).Log(
+		"start", model.Time(req.Msg.Start).Time().String(),
+		"end", model.Time(req.Msg.End).Time().String(),
+		"selector", req.Msg.LabelSelector,
+		"profile_id", req.Msg.ProfileTypeID,
+	)
+	defer func() {
+		sp.Finish()
+	}()
+
+	if req.Msg.MaxNodes == nil || *req.Msg.MaxNodes == 0 {
+		mn := maxNodesDefault
+		req.Msg.MaxNodes = &mn
+	}
+
+	t, err := q.selectSpanProfile(ctx, req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&querierv1.SelectMergeSpanProfileResponse{
+		Flamegraph: phlaremodel.NewFlameGraph(t, req.Msg.GetMaxNodes()),
+	}), nil
+}
+
 func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest) (*phlaremodel.Tree, error) {
 	// no store gateways configured so just query the ingesters
 	if q.storeGatewayQuerier == nil {
@@ -496,6 +524,17 @@ func (sq storeQuery) MergeSeriesRequest(req *querierv1.SelectSeriesRequest, prof
 			Start:         int64(sq.start),
 			End:           int64(sq.end),
 		},
+	}
+}
+
+func (sq storeQuery) MergeSpanProfileRequest(req *querierv1.SelectMergeSpanProfileRequest) *querierv1.SelectMergeSpanProfileRequest {
+	return &querierv1.SelectMergeSpanProfileRequest{
+		Start:         int64(sq.start),
+		End:           int64(sq.end),
+		ProfileTypeID: req.ProfileTypeID,
+		LabelSelector: req.LabelSelector,
+		SpanSelector:  req.SpanSelector,
+		MaxNodes:      req.MaxNodes,
 	}
 }
 
@@ -767,4 +806,49 @@ func uniqueSortedStrings(responses []ResponseFromReplica[[]string]) []string {
 	}
 	sort.Strings(result)
 	return result
+}
+
+func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.Tree, error) {
+	// no store gateways configured so just query the ingesters
+	if q.storeGatewayQuerier == nil {
+		return q.selectSpanProfileFromIngesters(ctx, req)
+	}
+
+	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter)
+	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
+	}
+
+	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
+
+	if !storeQueries.ingester.shouldQuery {
+		return q.selectSpanProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeSpanProfileRequest(req))
+	}
+	if !storeQueries.storeGateway.shouldQuery {
+		return q.selectSpanProfileFromIngesters(ctx, storeQueries.ingester.MergeSpanProfileRequest(req))
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+	var ingesterTree, storegatewayTree *phlaremodel.Tree
+	g.Go(func() error {
+		var err error
+		ingesterTree, err = q.selectSpanProfileFromIngesters(ctx, storeQueries.ingester.MergeSpanProfileRequest(req))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		storegatewayTree, err = q.selectSpanProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeSpanProfileRequest(req))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	storegatewayTree.Merge(ingesterTree)
+	return storegatewayTree, nil
 }

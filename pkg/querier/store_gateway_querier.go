@@ -31,6 +31,7 @@ type StoreGatewayQueryClient interface {
 	MergeProfilesStacktraces(context.Context) clientpool.BidiClientMergeProfilesStacktraces
 	MergeProfilesLabels(ctx context.Context) clientpool.BidiClientMergeProfilesLabels
 	MergeProfilesPprof(ctx context.Context) clientpool.BidiClientMergeProfilesPprof
+	MergeSpanProfile(ctx context.Context) clientpool.BidiClientMergeSpanProfile
 	LabelNames(context.Context, *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error)
 	Series(context.Context, *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error)
 }
@@ -271,4 +272,54 @@ func (q *Querier) seriesFromStoreGateway(ctx context.Context, req *ingestv1.Seri
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return responses, nil
+}
+
+func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.Tree, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSpanProfile StoreGateway")
+	defer sp.Finish()
+	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	_, err = parser.ParseMetricSelector(req.LabelSelector)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeSpanProfile, error) {
+		return ic.MergeSpanProfile(ctx), nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	// send the first initial request to all ingesters.
+	g, gCtx := errgroup.WithContext(ctx)
+	for _, r := range responses {
+		r := r
+		g.Go(util.RecoverPanic(func() error {
+			return r.response.Send(&ingestv1.MergeSpanProfileRequest{
+				Request: &ingestv1.SelectSpanProfileRequest{
+					LabelSelector: req.LabelSelector,
+					Start:         req.Start,
+					End:           req.End,
+					Type:          profileType,
+					SpanSelector:  req.SpanSelector,
+				},
+				MaxNodes: req.MaxNodes,
+				// TODO(kolesnikovae): Max stacks.
+			})
+		}))
+	}
+	if err = g.Wait(); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	// merge all profiles
+	return selectMergeSpanProfile(gCtx, responses)
 }

@@ -112,6 +112,10 @@ func (i *ingesterHandlerPhlareDB) MergeProfilesPprof(ctx context.Context, stream
 	return MergeProfilesPprof(ctx, stream, i.ForTimeRange)
 }
 
+func (i *ingesterHandlerPhlareDB) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
+	return MergeSpanProfile(ctx, stream, i.ForTimeRange)
+}
+
 func (i *ingesterHandlerPhlareDB) Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	return nil, errors.New("not implemented")
 }
@@ -502,7 +506,7 @@ func Test_QueryNotInitializedHead(t *testing.T) {
 	})
 
 	t.Run("LabelNames", func(t *testing.T) {
-		resp, err := db.LegacyLabelNames(ctx, connect.NewRequest(new(typesv1.LabelNamesRequest)))
+		resp, err := db.LabelNames(ctx, connect.NewRequest(new(typesv1.LabelNamesRequest)))
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.NotNil(t, resp.Msg)

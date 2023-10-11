@@ -31,6 +31,7 @@ import (
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type Config struct {
@@ -320,7 +321,7 @@ func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB LabelNames")
 	defer sp.Finish()
 
-	if !req.Msg.HasTimeRange() {
+	if !util.HasTimeRange(req.Msg) {
 		return withHeadForQuery(f, func(head *Head) (*connect.Response[typesv1.LabelNamesResponse], error) {
 			return head.LabelNames(ctx, req)
 		})
@@ -385,6 +386,12 @@ func (f *PhlareDB) MergeProfilesPprof(ctx context.Context, stream *connect.BidiS
 	return MergeProfilesPprof(ctx, stream, f.queriers().ForTimeRange)
 }
 
+func (f *PhlareDB) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
+	f.headLock.RLock()
+	defer f.headLock.RUnlock()
+	return MergeSpanProfile(ctx, stream, f.queriers().ForTimeRange)
+}
+
 type BidiServerMerge[Res any, Req any] interface {
 	Send(Res) error
 	Receive() (Req, error)
@@ -412,10 +419,22 @@ func (pqi *indexedProfileIterator) At() ProfileWithIndex {
 	}
 }
 
+type filterRequest interface {
+	*ingestv1.MergeProfilesStacktracesRequest |
+		*ingestv1.MergeProfilesLabelsRequest |
+		*ingestv1.MergeProfilesPprofRequest |
+		*ingestv1.MergeSpanProfileRequest
+}
+
+type filterResponse interface {
+	*ingestv1.MergeProfilesStacktracesResponse |
+		*ingestv1.MergeProfilesLabelsResponse |
+		*ingestv1.MergeProfilesPprofResponse |
+		*ingestv1.MergeSpanProfileResponse
+}
+
 // filterProfiles merges and dedupe profiles from different iterators and allow filtering via a bidi stream.
-func filterProfiles[B BidiServerMerge[Res, Req],
-	Res *ingestv1.MergeProfilesStacktracesResponse | *ingestv1.MergeProfilesLabelsResponse | *ingestv1.MergeProfilesPprofResponse,
-	Req *ingestv1.MergeProfilesStacktracesRequest | *ingestv1.MergeProfilesLabelsRequest | *ingestv1.MergeProfilesPprofRequest](
+func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterRequest](
 	ctx context.Context, profiles []iter.Iterator[Profile], batchProfileSize int, stream B,
 ) ([][]Profile, error) {
 	selection := make([][]Profile, len(profiles))
@@ -479,6 +498,10 @@ func filterProfiles[B BidiServerMerge[Res, Req],
 			err = s.Send(&ingestv1.MergeProfilesPprofResponse{
 				SelectedProfiles: selectProfileResult,
 			})
+		case BidiServerMerge[*ingestv1.MergeSpanProfileResponse, *ingestv1.MergeSpanProfileRequest]:
+			err = s.Send(&ingestv1.MergeSpanProfileResponse{
+				SelectedProfiles: selectProfileResult,
+			})
 		}
 		// read a batch of profiles and sends it.
 
@@ -506,6 +529,11 @@ func filterProfiles[B BidiServerMerge[Res, Req],
 				selected = selectionResponse.Profiles
 			}
 		case BidiServerMerge[*ingestv1.MergeProfilesPprofResponse, *ingestv1.MergeProfilesPprofRequest]:
+			selectionResponse, err := s.Receive()
+			if err == nil {
+				selected = selectionResponse.Profiles
+			}
+		case BidiServerMerge[*ingestv1.MergeSpanProfileResponse, *ingestv1.MergeSpanProfileRequest]:
 			selectionResponse, err := s.Receive()
 			if err == nil {
 				selected = selectionResponse.Profiles

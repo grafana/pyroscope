@@ -9,6 +9,7 @@ import (
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -21,7 +22,7 @@ func (f *Frontend) LabelNames(ctx context.Context, c *connect.Request[typesv1.La
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if c.Msg.HasTimeRange() {
+	if util.HasTimeRange(c.Msg) {
 		interval := model.Interval{
 			Start: model.Time(c.Msg.Start),
 			End:   model.Time(c.Msg.End),

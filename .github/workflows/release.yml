@@ -28,7 +28,7 @@ jobs:
       - run: git fetch --force --tags
       - uses: actions/setup-go@v3
         with:
-          go-version: "1.21.1"
+          go-version: "1.21.3"
           cache: true
       - uses: actions/setup-node@v3
         with:
@@ -74,7 +74,7 @@ jobs:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
           repository: pyroscope-io/homebrew-brew
-      - name: Deploy to fire-dev-001
+      - name: Update homebrew formulas
         run: |
           git config --global url."https://x-access-token:$(echo "${GITHUB_TOKEN}" | xargs)@github.com/pyroscope-io/homebrew-brew".insteadOf "https://github.com/pyroscope-io/homebrew-brew"
           git clone https://github.com/pyroscope-io/homebrew-brew

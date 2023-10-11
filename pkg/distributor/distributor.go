@@ -57,13 +57,6 @@ const (
 	ProfileName = "__name__"
 )
 
-var (
-	ignoredPprofLabels = []string{
-		"profile_id",          // For compatibility with the existing clients.
-		"span_id", "trace_id", // Will be supported in the future.
-	}
-)
-
 // Config for a Distributor.
 type Config struct {
 	PushTimeout time.Duration
@@ -316,48 +309,13 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		)
 	}
 
-	// Next we split profiles by labels. New profiles should be closed after use.
-	profileSeries := make([]*distributormodel.ProfileSeries, 0, len(req.Series))
-	newProfiles := make([]*pprof.Profile, 0, 2*len(req.Series))
+	// Next we split profiles by labels. Newly allocated profiles should be closed after use.
+	profileSeries, newProfiles := extractSampleSeries(req)
 	defer func() {
 		for _, p := range newProfiles {
 			p.Close()
 		}
 	}()
-
-	for _, series := range req.Series {
-		s := &distributormodel.ProfileSeries{
-			Labels:  series.Labels,
-			Samples: make([]*distributormodel.ProfileSample, 0, len(series.Samples)),
-		}
-		for _, raw := range series.Samples {
-			raw.Profile.Normalize()
-			groups := pprof.GroupSamplesWithoutLabels(raw.Profile.Profile, ignoredPprofLabels...)
-			if len(groups) < 2 {
-				s.Samples = append(s.Samples, raw)
-				continue
-			}
-			e := pprof.NewSampleExporter(raw.Profile.Profile)
-			for _, group := range groups {
-				// exportSamples creates a new profile with the samples provided.
-				// The samples are obtained via GroupSamples call, which means
-				// the underlying capacity is referenced by the source profile.
-				// Therefore, the slice has to be copied and samples zeroed to
-				// avoid ownership issues.
-				profile := exportSamples(e, group.Samples)
-				newProfiles = append(newProfiles, profile)
-				// Note that group.Labels reference strings from the source profile.
-				labels := mergeSeriesAndSampleLabels(raw.Profile.Profile, series.Labels, group.Labels)
-				profileSeries = append(profileSeries, &distributormodel.ProfileSeries{
-					Labels:  labels,
-					Samples: []*distributormodel.ProfileSample{{Profile: profile}},
-				})
-			}
-		}
-		if len(s.Samples) > 0 {
-			profileSeries = append(profileSeries, s)
-		}
-	}
 
 	// Validate the labels again and generate tokens for shuffle sharding.
 	keys := make([]uint32, len(profileSeries))
@@ -542,6 +500,48 @@ func (d *Distributor) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // distributor. $EFFECTIVE_RATE_LIMIT = $GLOBAL_RATE_LIMIT / $NUM_INSTANCES
 func (d *Distributor) HealthyInstancesCount() int {
 	return int(d.healthyInstancesCount.Load())
+}
+
+func extractSampleSeries(req *distributormodel.PushRequest) ([]*distributormodel.ProfileSeries, []*pprof.Profile) {
+	profileSeries := make([]*distributormodel.ProfileSeries, 0, len(req.Series))
+	newProfiles := make([]*pprof.Profile, 0, 2*len(req.Series))
+	for _, series := range req.Series {
+		s := &distributormodel.ProfileSeries{
+			Labels:  series.Labels,
+			Samples: make([]*distributormodel.ProfileSample, 0, len(series.Samples)),
+		}
+		for _, raw := range series.Samples {
+			raw.Profile.Normalize()
+			pprof.RenameLabel(raw.Profile.Profile, pprof.ProfileIDLabelName, pprof.SpanIDLabelName)
+			groups := pprof.GroupSamplesWithoutLabels(raw.Profile.Profile, pprof.SpanIDLabelName)
+			if len(groups) == 0 || (len(groups) == 1 && len(groups[0].Labels) == 0) {
+				// No sample labels in the profile.
+				// We do not modify the request.
+				s.Samples = append(s.Samples, raw)
+				continue
+			}
+			e := pprof.NewSampleExporter(raw.Profile.Profile)
+			for _, group := range groups {
+				// exportSamples creates a new profile with the samples provided.
+				// The samples are obtained via GroupSamples call, which means
+				// the underlying capacity is referenced by the source profile.
+				// Therefore, the slice has to be copied and samples zeroed to
+				// avoid ownership issues.
+				profile := exportSamples(e, group.Samples)
+				newProfiles = append(newProfiles, profile)
+				// Note that group.Labels reference strings from the source profile.
+				labels := mergeSeriesAndSampleLabels(raw.Profile.Profile, series.Labels, group.Labels)
+				profileSeries = append(profileSeries, &distributormodel.ProfileSeries{
+					Labels:  labels,
+					Samples: []*distributormodel.ProfileSample{{Profile: profile}},
+				})
+			}
+		}
+		if len(s.Samples) > 0 {
+			profileSeries = append(profileSeries, s)
+		}
+	}
+	return profileSeries, newProfiles
 }
 
 func (d *Distributor) limitMaxSessionsPerSeries(tenantID string, labels phlaremodel.Labels) phlaremodel.Labels {

@@ -3,6 +3,7 @@ package pprof
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"io"
 	"os"
 	"reflect"
@@ -12,6 +13,7 @@ import (
 	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/colega/zeropool"
 	"github.com/google/pprof/profile"
 	"github.com/klauspost/compress/gzip"
 	"github.com/pkg/errors"
@@ -19,6 +21,7 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 var (
@@ -987,4 +990,117 @@ func (e *SampleExporter) reset() {
 	e.functions.reset()
 	e.mappings.reset()
 	e.strings.reset()
+}
+
+var uint32SlicePool zeropool.Pool[[]uint32]
+
+const (
+	ProfileIDLabelName = "profile_id" // For compatibility with the existing clients.
+	SpanIDLabelName    = "span_id"    // Will be supported in the future.
+)
+
+func LabelID(p *profilev1.Profile, name string) int64 {
+	for i, s := range p.StringTable {
+		if s == name {
+			return int64(i)
+		}
+	}
+	return -1
+}
+
+func ProfileSpans(p *profilev1.Profile) []uint64 {
+	if i := LabelID(p, SpanIDLabelName); i > 0 {
+		return profileSpans(i, p)
+	}
+	return nil
+}
+
+func profileSpans(spanIDLabelIdx int64, p *profilev1.Profile) []uint64 {
+	tmp := make([]byte, 8)
+	s := make([]uint64, len(p.Sample))
+	for i, sample := range p.Sample {
+		s[i] = spanIDFromLabels(tmp, spanIDLabelIdx, p.StringTable, sample.Label)
+	}
+	return s
+}
+
+func spanIDFromLabels(tmp []byte, labelIdx int64, stringTable []string, labels []*profilev1.Label) uint64 {
+	for _, x := range labels {
+		if x.Key != labelIdx {
+			continue
+		}
+		if s := stringTable[x.Str]; decodeSpanID(tmp, s) {
+			return binary.LittleEndian.Uint64(tmp)
+		}
+	}
+	return 0
+}
+
+func decodeSpanID(tmp []byte, s string) bool {
+	if len(s) != 16 {
+		return false
+	}
+	_, err := hex.Decode(tmp, util.YoloBuf(s))
+	return err == nil
+}
+
+func RenameLabel(p *profilev1.Profile, oldName, newName string) {
+	var oi, ni int64
+	for i, s := range p.StringTable {
+		if s == oldName {
+			oi = int64(i)
+			break
+		}
+	}
+	if oi == 0 {
+		return
+	}
+	for i, s := range p.StringTable {
+		if s == newName {
+			ni = int64(i)
+			break
+		}
+	}
+	if ni == 0 {
+		ni = int64(len(p.StringTable))
+		p.StringTable = append(p.StringTable, newName)
+	}
+	for _, s := range p.Sample {
+		for _, l := range s.Label {
+			if l.Key == oi {
+				l.Key = ni
+			}
+		}
+	}
+}
+
+func ZeroLabelStrings(p *profilev1.Profile) {
+	// TODO: A true bitmap should be used instead.
+	st := slices.Grow(uint32SlicePool.Get(), len(p.StringTable))
+	slices.Clear(st)
+	defer uint32SlicePool.Put(st)
+	for _, t := range p.SampleType {
+		st[t.Type] = 1
+		st[t.Unit] = 1
+	}
+	for _, f := range p.Function {
+		st[f.Filename] = 1
+		st[f.SystemName] = 1
+		st[f.Name] = 1
+	}
+	for _, m := range p.Mapping {
+		st[m.Filename] = 1
+		st[m.BuildId] = 1
+	}
+	for _, c := range p.Comment {
+		st[c] = 1
+	}
+	st[p.KeepFrames] = 1
+	st[p.DropFrames] = 1
+	var zeroString string
+	for i, v := range st {
+		if v == 0 {
+			p.StringTable[i] = zeroString
+		}
+	}
 }

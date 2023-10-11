@@ -98,3 +98,13 @@ func NewDisableableTicker(interval time.Duration) (func(), <-chan time.Time) {
 	tick := time.NewTicker(interval)
 	return func() { tick.Stop() }, tick.C
 }
+
+type TimeRangeRequest interface {
+	GetStart() int64
+	GetEnd() int64
+}
+
+// HasTimeRange is true if the request has a start and end set.
+func HasTimeRange(req TimeRangeRequest) bool {
+	return req.GetStart() == 0 || req.GetEnd() == 0
+}

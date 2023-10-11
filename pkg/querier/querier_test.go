@@ -750,6 +750,18 @@ func (f *fakeBidiClientSeries) Receive() (*ingestv1.MergeProfilesLabelsResponse,
 func (f *fakeBidiClientSeries) CloseRequest() error  { return nil }
 func (f *fakeBidiClientSeries) CloseResponse() error { return nil }
 
+func (f *fakeQuerierIngester) MergeSpanProfile(ctx context.Context) clientpool.BidiClientMergeSpanProfile {
+	var (
+		args = f.Called(ctx)
+		res  clientpool.BidiClientMergeSpanProfile
+	)
+	if args[0] != nil {
+		res = args[0].(clientpool.BidiClientMergeSpanProfile)
+	}
+
+	return res
+}
+
 func (f *fakeQuerierIngester) MergeProfilesStacktraces(ctx context.Context) clientpool.BidiClientMergeProfilesStacktraces {
 	var (
 		args = f.Called(ctx)
