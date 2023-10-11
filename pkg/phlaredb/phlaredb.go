@@ -310,10 +310,24 @@ func (f *PhlareDB) flushHead(ctx context.Context, reason flushReason) {
 }
 
 // LabelValues returns the possible label values for a given label name.
-func (f *PhlareDB) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (resp *connect.Response[typesv1.LabelValuesResponse], err error) {
-	return withHeadForQuery(f, func(head *Head) (*connect.Response[typesv1.LabelValuesResponse], error) {
-		return head.LabelValues(ctx, req)
-	})
+func (f *PhlareDB) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB LabelValues")
+	defer sp.Finish()
+
+	if !util.HasTimeRange(req.Msg) {
+		return withHeadForQuery(f, func(head *Head) (*connect.Response[typesv1.LabelValuesResponse], error) {
+			return head.LabelValues(ctx, req)
+		})
+	}
+
+	f.headLock.RLock()
+	defer f.headLock.RUnlock()
+
+	res, err := LabelValues(ctx, req.Msg, f.queriers().ForTimeRange)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(res), nil
 }
 
 // LabelNames returns the possible label names.

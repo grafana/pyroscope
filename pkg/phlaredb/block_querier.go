@@ -389,6 +389,7 @@ type Querier interface {
 	MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spans phlaremodel.SpanSelector) (*phlaremodel.Tree, error)
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
 	MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error)
+	LabelValues(ctx context.Context, params *typesv1.LabelValuesRequest) ([]string, error)
 	LabelNames(ctx context.Context, params *typesv1.LabelNamesRequest) ([]string, error)
 	Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error)
 	Open(ctx context.Context) error
@@ -880,6 +881,43 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 	return nil
 }
 
+func LabelValues(ctx context.Context, req *typesv1.LabelValuesRequest, blockGetter BlockGetter) (*typesv1.LabelValuesResponse, error) {
+	queriers, err := blockGetter(ctx, model.Time(req.Start), model.Time(req.End))
+	if err != nil {
+		return nil, err
+	}
+
+	var labelValues []string
+	var lock sync.Mutex
+	group, ctx := errgroup.WithContext(ctx)
+
+	const concurrentQueryLimit = 50
+	group.SetLimit(concurrentQueryLimit)
+
+	for _, q := range queriers {
+		group.Go(util.RecoverPanic(func() error {
+			names, err := q.LabelValues(ctx, req)
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			labelValues = append(labelValues, names...)
+			lock.Unlock()
+			return nil
+		}))
+	}
+	err = group.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	slices.Sort(labelValues)
+	return &typesv1.LabelValuesResponse{
+		Names: lo.Uniq(labelValues),
+	}, nil
+}
+
 func LabelNames(ctx context.Context, req *typesv1.LabelNamesRequest, blockGetter BlockGetter) (*typesv1.LabelNamesResponse, error) {
 	queriers, err := blockGetter(ctx, model.Time(req.Start), model.Time(req.End))
 	if err != nil {
@@ -1095,6 +1133,67 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	}
 
 	return iter.NewMergeIterator(maxBlockProfile, false, iters...), nil
+}
+
+func (b *singleBlockQuerier) LabelValues(ctx context.Context, params *typesv1.LabelValuesRequest) ([]string, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues Block")
+	defer sp.Finish()
+
+	err := b.Open(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	names, err := b.index.LabelNames()
+	if err != nil {
+		return nil, err
+	}
+	if !slices.Contains(names, params.Name) {
+		return []string{}, nil
+	}
+
+	selectors, err := parseSelectors(params.Matchers)
+	if err != nil {
+		return nil, err
+	}
+
+	iters := make([]index.Postings, 0, 1)
+	if selectors.matchesAll() {
+		k, v := index.AllPostingsKey()
+		iter, err := b.index.Postings(k, nil, v)
+		if err != nil {
+			return nil, err
+		}
+		iters = append(iters, iter)
+	} else {
+		for _, matchers := range selectors {
+			iter, err := PostingsForMatchers(b.index, nil, matchers...)
+			if err != nil {
+				return nil, err
+			}
+			iters = append(iters, iter)
+		}
+	}
+
+	valueSet := make(map[string]struct{})
+	iter := index.Intersect(iters...)
+	for iter.Next() {
+		value, err := b.index.LabelValueFor(iter.At(), params.Name)
+		if err != nil {
+			if err == storage.ErrNotFound {
+				continue
+			}
+			return nil, err
+		}
+		valueSet[value] = struct{}{}
+	}
+
+	values := make([]string, 0, len(valueSet))
+	for value := range valueSet {
+		values = append(values, value)
+	}
+	slices.Sort(values)
+	return values, nil
 }
 
 func (b *singleBlockQuerier) LabelNames(ctx context.Context, params *typesv1.LabelNamesRequest) ([]string, error) {

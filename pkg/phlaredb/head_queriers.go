@@ -143,6 +143,11 @@ func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterato
 	return seriesByLabels.normalize(), nil
 }
 
+func (q *headOnDiskQuerier) LabelValues(ctx context.Context, params *typesv1.LabelValuesRequest) ([]string, error) {
+	// The TSDB is kept in memory until the head block is flushed to disk.
+	return []string{}, nil
+}
+
 func (q *headOnDiskQuerier) LabelNames(ctx context.Context, params *typesv1.LabelNamesRequest) ([]string, error) {
 	// The TSDB is kept in memory until the head block is flushed to disk.
 	return []string{}, nil
@@ -314,6 +319,14 @@ func (q *headInMemoryQuerier) MergeByLabels(ctx context.Context, rows iter.Itera
 	}
 
 	return seriesByLabels.normalize(), nil
+}
+
+func (q *headInMemoryQuerier) LabelValues(ctx context.Context, params *typesv1.LabelValuesRequest) ([]string, error) {
+	res, err := q.head.LabelValues(ctx, connect.NewRequest(params))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg.Names, nil
 }
 
 func (q *headInMemoryQuerier) LabelNames(ctx context.Context, params *typesv1.LabelNamesRequest) ([]string, error) {

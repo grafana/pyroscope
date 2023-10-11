@@ -790,6 +790,78 @@ func Test_singleBlockQuerier_LabelNames(t *testing.T) {
 	})
 }
 
+func Test_singleBlockQuerier_LabelValues(t *testing.T) {
+	ctx := context.Background()
+	reader, err := index.NewFileReader("testdata/01HA2V3CPSZ9E0HMQNNHH89WSS/index.tsdb")
+	assert.NoError(t, err)
+
+	q := &singleBlockQuerier{
+		metrics: newBlocksMetrics(nil),
+		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
+		opened:  true, // Skip trying to open the block.
+		index:   reader,
+	}
+
+	t.Run("no matchers", func(t *testing.T) {
+		want := []string{
+			"fast",
+			"slow",
+		}
+
+		got, err := q.LabelValues(ctx, &typesv1.LabelValuesRequest{
+			Name:     "function",
+			Matchers: []string{},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("empty matcher", func(t *testing.T) {
+		want := []string{
+			"fast",
+			"slow",
+		}
+
+		got, err := q.LabelValues(ctx, &typesv1.LabelValuesRequest{
+			Name:     "function",
+			Matchers: []string{`{}`},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("multiple matchers", func(t *testing.T) {
+		want := []string{
+			"fast",
+			"slow",
+		}
+
+		got, err := q.LabelValues(ctx, &typesv1.LabelValuesRequest{
+			Name: "function",
+			Matchers: []string{
+				`{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`,
+				`{service_name="simple.golang.app"}`,
+			},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("ui plugin", func(t *testing.T) {
+		want := []string{
+			"fast",
+			"slow",
+		}
+
+		got, err := q.LabelValues(ctx, &typesv1.LabelValuesRequest{
+			Name:     "function",
+			Matchers: []string{`{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds", service_name="simple.golang.app"}`},
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+}
+
 func Benchmark_singleBlockQuerier_Series(b *testing.B) {
 	ctx := context.Background()
 	reader, err := index.NewFileReader("testdata/01HA2V3CPSZ9E0HMQNNHH89WSS/index.tsdb")
