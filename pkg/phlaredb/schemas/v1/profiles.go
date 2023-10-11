@@ -28,7 +28,7 @@ var (
 		phlareparquet.NewGroupField("StacktraceID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("Labels", pprofLabels),
-		phlareparquet.NewGroupField("SpanID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+		phlareparquet.NewGroupField("SpanID", parquet.Optional(parquet.Encoded(parquet.Uint(64), &parquet.Plain))),
 	}
 	ProfilesSchema = parquet.NewSchema("Profile", phlareparquet.Group{
 		phlareparquet.NewGroupField("ID", parquet.UUID()),
@@ -83,7 +83,7 @@ type Sample struct {
 	StacktraceID uint64             `parquet:",delta"`
 	Value        int64              `parquet:",delta"`
 	Labels       []*profilev1.Label `parquet:",list"`
-	SpanID       uint64             `parquet:",delta"`
+	SpanID       uint64             `parquet:",optional"`
 }
 
 type Profile struct {
@@ -526,14 +526,14 @@ func deconstructMemoryProfile(imp InMemoryProfile, row parquet.Row) parquet.Row 
 			if repetition < 1 {
 				repetition++
 			}
-			row = append(row, parquet.Int64Value(int64(0)).Level(repetition, 1, col))
+			row = append(row, parquet.Value{}.Level(repetition, 1, col))
 		}
 	} else {
 		for i := range imp.Samples.Spans {
 			if repetition < 1 {
 				repetition++
 			}
-			row = append(row, parquet.Int64Value(int64(imp.Samples.Spans[i])).Level(repetition, 1, col))
+			row = append(row, parquet.Int64Value(int64(imp.Samples.Spans[i])).Level(repetition, 2, col))
 		}
 	}
 

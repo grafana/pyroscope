@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -309,19 +308,13 @@ func BenchmarkProfileRows(b *testing.B) {
 }
 
 func Benchmark_SpanID_Encoding(b *testing.B) {
-	inMemoryProfiles := generateMemoryProfiles(100)
-	spanIDs := make([]uint64, 1)
-	for i := range spanIDs {
-		spanIDs[i] = rand.Uint64()
-	}
-
+	inMemoryProfiles := generateMemoryProfiles(1000)
 	for j := range inMemoryProfiles {
 		spans := make([]uint64, len(inMemoryProfiles[j].Samples.Values))
 		for o := range spans {
-			spans[o] = spanIDs[o%len(spanIDs)]
+			spans[o] = rand.Uint64()
 		}
 		inMemoryProfiles[j].Samples.Spans = spans
-		sort.Sort(SamplesBySpanID(inMemoryProfiles[j].Samples))
 	}
 
 	var buf bytes.Buffer
@@ -339,6 +332,11 @@ func Benchmark_SpanID_Encoding(b *testing.B) {
 		require.Equal(b, len(inMemoryProfiles), int(n))
 		require.NoError(b, w.Close())
 		b.ReportMetric(float64(buf.Len()), "bytes")
+
+		r := parquet.NewReader(bytes.NewReader(buf.Bytes()))
+		n, err = parquet.CopyRows(parquet.MultiRowWriter(), r)
+		require.NoError(b, err)
+		require.Equal(b, len(inMemoryProfiles), int(n))
 	}
 }
 
