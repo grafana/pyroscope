@@ -272,14 +272,14 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 		}
 		labels := s.targetFinder.FindTarget(ck.Pid)
 		if labels == nil {
-			_ = level.Debug(s.logger).Log("msg", "got a stacktrace for unknown target", "pid", ck.Pid)
+			continue
+		}
+		if _, ok := s.pids.dead[ck.Pid]; ok {
 			continue
 		}
 
 		proc := s.symCache.GetProcTable(symtab.PidKey(ck.Pid))
 		if proc.Error() != nil {
-			_, ls := labels.Labels()
-			_ = level.Debug(s.logger).Log("msg", "got a stacktrace for dead target", "pid", ck.Pid, "err", proc.Error().Error(), "ls", ls.String())
 			s.pids.dead[uint32(proc.Pid())] = struct{}{}
 			// in theory if we saw this process alive before, we could try resolving tack anyway
 			// it may succeed if we have same binary loaded in another process, not doing it for now
@@ -622,7 +622,7 @@ func (s *session) readEvents(events *perf.Reader,
 
 func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
 	for pid := range pidInfoRequests {
-		_ = level.Debug(s.logger).Log("msg", "got pid info request", "pid", pid)
+		//_ = level.Debug(s.logger).Log("msg", "got pid info request", "pid", pid)
 		target := s.targetFinder.FindTarget(pid)
 
 		func() {
@@ -754,7 +754,7 @@ func (s *session) saveUnknownPIDLocked(pid uint32) {
 
 func (s *session) processDeadPIDsEvents(dead chan uint32) {
 	for pid := range dead {
-		_ = level.Debug(s.logger).Log("msg", "got pid dead", "pid", pid)
+		//_ = level.Debug(s.logger).Log("msg", "got pid dead", "pid", pid)
 		func() {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()

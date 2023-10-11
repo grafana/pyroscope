@@ -101,6 +101,10 @@ func (t *Target) Labels() (uint64, labels.Labels) {
 	return t.fingerprint, t.labels
 }
 
+func (t *Target) DebugString() string {
+	return t.labels.String()
+}
+
 type containerID string
 
 type TargetFinder interface {
