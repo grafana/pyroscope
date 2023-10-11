@@ -104,22 +104,6 @@ type session struct {
 	pids pids
 }
 
-func (s *session) UpdateTargets(args sd.TargetsOptions) {
-	s.targetFinder.Update(args)
-
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	for pid := range s.pids.unknown {
-		target := s.targetFinder.FindTarget(pid)
-		if target == nil {
-			continue
-		}
-		s.enableProfilingLocked(pid, target)
-		delete(s.pids.unknown, pid)
-	}
-}
-
 func NewSession(
 	logger log.Logger,
 	targetFinder sd.TargetFinder,
@@ -205,6 +189,35 @@ func (s *session) Start() error {
 	return nil
 }
 
+func (s *session) Stop() {
+	s.stopAndWait()
+}
+
+func (s *session) Update(options SessionOptions) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.symCache.UpdateOptions(options.CacheOptions)
+	s.options = options
+	return nil
+}
+
+func (s *session) UpdateTargets(args sd.TargetsOptions) {
+	s.targetFinder.Update(args)
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	for pid := range s.pids.unknown {
+		target := s.targetFinder.FindTarget(pid)
+		if target == nil {
+			continue
+		}
+		s.enableProfilingLocked(pid, target)
+		delete(s.pids.unknown, pid)
+	}
+}
+
 func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -225,6 +238,16 @@ func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value ui
 	s.cleanup()
 
 	return nil
+}
+
+func (s *session) DebugInfo() interface{} {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	return SessionDebugInfo{
+		ElfCache: s.symCache.ElfCacheDebugInfo(),
+		PidCache: s.symCache.PidCacheDebugInfo(),
+	}
 }
 
 func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
@@ -397,10 +420,6 @@ func (s *session) collectMetrics(labels *sd.Target, stats *StackResolveStats, sb
 	}
 }
 
-func (s *session) Stop() {
-	s.stopAndWait()
-}
-
 func (s *session) stopAndWait() {
 	s.mutex.Lock()
 	s.stopLocked()
@@ -433,26 +452,11 @@ func (s *session) stopLocked() {
 		close(s.pidInfoRequests)
 		s.pidInfoRequests = nil
 	}
-	s.started = false
-}
-
-func (s *session) Update(options SessionOptions) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.symCache.UpdateOptions(options.CacheOptions)
-	s.options = options
-	return nil
-}
-
-func (s *session) DebugInfo() interface{} {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	return SessionDebugInfo{
-		ElfCache: s.symCache.ElfCacheDebugInfo(),
-		PidCache: s.symCache.PidCacheDebugInfo(),
+	if s.deadPIDEvents != nil {
+		close(s.deadPIDEvents)
+		s.deadPIDEvents = nil
 	}
+	s.started = false
 }
 
 func (s *session) setPidConfig(pid uint32, typ pyrobpf.ProfilingType, collectUser bool, collectKernel bool) error {

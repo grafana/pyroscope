@@ -164,9 +164,9 @@ func (tf *targetFinder) setTargets(opts TargetsOptions) {
 				continue
 			}
 			containerID2Target[cid] = t
-			_ = level.Debug(tf.l).Log("msg", "added target", "cid", cid, "target", target.DebugString())
+			//_ = level.Debug(tf.l).Log("msg", "added target", "cid", cid, "target", target.DebugString())
 		} else {
-			_ = level.Warn(tf.l).Log("msg", "target skipped", "target", target.DebugString())
+			//_ = level.Warn(tf.l).Log("msg", "target skipped", "target", target.DebugString())
 		}
 	}
 	if len(opts.Targets) > 0 && len(containerID2Target) == 0 {
