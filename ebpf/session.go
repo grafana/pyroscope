@@ -657,11 +657,14 @@ func (s *session) enableProfilingLocked(pid uint32, target *sd.Target) {
 			_ = s.setPidConfig(pid, pyrobpf.ProfilingTypeError, false, false)
 			return
 		}
-		err := pyPerf.AddPythonPID(pid, target.ServiceName())
+		err, pyData := pyPerf.AddPythonPID(pid, target.ServiceName())
 		if err != nil {
 			_ = level.Error(s.logger).Log("err", err, "msg", "pyperf process profiling init failed", "pid", pid)
 			_ = s.setPidConfig(pid, pyrobpf.ProfilingTypeError, false, false)
 			return
+		}
+		if extraVerbose {
+			_ = level.Debug(s.logger).Log("msg", "pyperf process profiling init success", "pid", pid, "pyData", fmt.Sprintf("%+v", pyData))
 		}
 
 	}

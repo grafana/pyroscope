@@ -58,25 +58,25 @@ func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *eb
 	return res, nil
 }
 
-func (s *Perf) AddPythonPID(pid uint32, serviceName string) error {
+func (s *Perf) AddPythonPID(pid uint32, serviceName string) (error, *PerfPyPidData) {
 	if s.pidCache.Contains(pid) {
-		return nil
+		return nil, nil
 	}
 	data, err := GetPyPerfPidData(s.logger, pid)
 	if err != nil {
 		s.metrics.PidDataError.WithLabelValues(serviceName).Inc()
 		s.pidCache.Add(pid, nil) // to never try again
-		return fmt.Errorf("error collecting python data %w", err)
+		return fmt.Errorf("error collecting python data %w", err), nil
 	}
 	err = s.pidDataHashMap.Update(pid, data, ebpf.UpdateAny)
 	if err != nil { // should never happen
 		s.metrics.PidDataError.WithLabelValues(serviceName).Inc()
 		s.pidCache.Add(pid, nil) // to never try again
-		return fmt.Errorf("updating pid data hash map: %w", err)
+		return fmt.Errorf("updating pid data hash map: %w", err), nil
 	}
 	s.metrics.ProcessInitSuccess.WithLabelValues(serviceName).Inc()
 	s.pidCache.Add(pid, data)
-	return nil
+	return nil, data
 }
 
 func (s *Perf) loop() {

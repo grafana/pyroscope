@@ -29,8 +29,8 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 	} else {
 		pythonMeat = info.LibPythonMaps
 	}
-	base := pythonMeat[0]
-	pythonPath := fmt.Sprintf("/proc/%d/root%s", pid, base.Pathname)
+	base_ := pythonMeat[0]
+	pythonPath := fmt.Sprintf("/proc/%d/root%s", pid, base_.Pathname)
 	pythonFD, err := os.Open(pythonPath)
 	if err != nil {
 		return nil, fmt.Errorf("could not get python patch version %s %w", pythonPath, err)
@@ -62,12 +62,16 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 	var (
 		autoTLSkeyAddr, pyRuntimeAddr uint64
 	)
+	baseAddr := base_.StartAddr
+	if ef.FileHeader.Type == elf.ET_EXEC {
+		baseAddr = 0
+	}
 	for _, symbol := range symbols {
 		switch symbol.Name {
 		case "autoTLSkey":
-			autoTLSkeyAddr = base.StartAddr + symbol.Value
+			autoTLSkeyAddr = baseAddr + symbol.Value
 		case "_PyRuntime":
-			pyRuntimeAddr = base.StartAddr + symbol.Value
+			pyRuntimeAddr = baseAddr + symbol.Value
 		default:
 			continue
 		}
