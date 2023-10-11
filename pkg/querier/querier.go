@@ -211,11 +211,7 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 
 	if storeQueries.ingester.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.labelNamesFromIngesters(ctx, &typesv1.LabelNamesRequest{
-				Matchers: req.Msg.Matchers,
-				Start:    req.Msg.Start,
-				End:      req.Msg.End,
-			})
+			ir, err := q.labelNamesFromIngesters(ctx, req.Msg)
 			if err != nil {
 				return err
 			}
@@ -229,11 +225,7 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 
 	if storeQueries.storeGateway.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.labelNamesFromStoreGateway(ctx, &typesv1.LabelNamesRequest{
-				Matchers: req.Msg.Matchers,
-				Start:    req.Msg.Start,
-				End:      req.Msg.End,
-			})
+			ir, err := q.labelNamesFromStoreGateway(ctx, req.Msg)
 			if err != nil {
 				return err
 			}
@@ -254,18 +246,15 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series")
 	defer sp.Finish()
 
+	hasTimeRange := util.HasTimeRange(req.Msg)
 	sp.LogFields(
+		otlog.Bool("legacy_request", !hasTimeRange),
 		otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
 		otlog.String("label_names", strings.Join(req.Msg.LabelNames, ",")),
 		otlog.Int64("start", req.Msg.Start),
 		otlog.Int64("end", req.Msg.End),
 	)
 
-	// Some clients may not be sending us timestamps. If start or end are 0, then
-	// mark this a legacy request. Legacy requests only query the ingesters.
-	hasTimeRange := util.HasTimeRange(req.Msg)
-
-	sp.LogFields(otlog.Bool("legacy_request", !hasTimeRange))
 	if q.storeGatewayQuerier == nil || !hasTimeRange {
 		responses, err := q.seriesFromIngesters(ctx, &ingestv1.SeriesRequest{
 			Matchers:   req.Msg.Matchers,
