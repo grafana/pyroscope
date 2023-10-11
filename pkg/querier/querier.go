@@ -186,11 +186,7 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 	)
 
 	if q.storeGatewayQuerier == nil || !hasTimeRange {
-		responses, err := q.labelNamesFromIngesters(ctx, &typesv1.LabelNamesRequest{
-			Matchers: req.Msg.Matchers,
-			Start:    req.Msg.Start,
-			End:      req.Msg.End,
-		})
+		responses, err := q.labelNamesFromIngesters(ctx, req.Msg)
 		if err != nil {
 			return nil, err
 		}
