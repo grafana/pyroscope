@@ -520,7 +520,7 @@ func Test_QueryNotInitializedHead(t *testing.T) {
 	})
 
 	t.Run("Series", func(t *testing.T) {
-		resp, err := db.LegacySeries(ctx, connect.NewRequest(&ingestv1.SeriesRequest{}))
+		resp, err := db.Series(ctx, connect.NewRequest(&ingestv1.SeriesRequest{}))
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.NotNil(t, resp.Msg)

@@ -9,6 +9,7 @@ import (
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -21,7 +22,7 @@ func (f *Frontend) Series(ctx context.Context, c *connect.Request[querierv1.Seri
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if c.Msg.Start != 0 && c.Msg.End != 0 {
+	if util.HasTimeRange(c.Msg) {
 		interval := model.Interval{
 			Start: model.Time(c.Msg.Start),
 			End:   model.Time(c.Msg.End),
