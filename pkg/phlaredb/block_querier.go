@@ -28,6 +28,7 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/samber/lo"
+	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
@@ -1001,50 +1002,44 @@ func (b *singleBlockQuerier) LabelNames(ctx context.Context, params *typesv1.Lab
 		return nil, err
 	}
 
-	names, err := b.index.LabelNames()
-	if err != nil {
-		return nil, err
-	}
-
 	if selectors.matchesAll() {
+		names, err := b.index.LabelNames()
+		if err != nil {
+			return nil, err
+		}
 		return names, nil
 	}
 
-	// Clear the names slice. We need to run the matchers to decide which
-	// names to keep. We want to keep this slice capacity, as there will
-	// never be more names than what index.LabelNames() returns.
-	names = names[:0]
-
+	var iters []index.Postings
 	for _, matchers := range selectors {
 		iter, err := PostingsForMatchers(b.index, nil, matchers...)
 		if err != nil {
 			return nil, err
 		}
+		iters = append(iters, iter)
+	}
 
-		for iter.Next() {
-			labelNames, err := b.index.LabelNamesFor(iter.At())
-			if err != nil {
-				if err == storage.ErrNotFound {
-					continue
-				}
-				return nil, err
+	nameSet := make(map[string]struct{})
+	iter := index.Intersect(iters...)
+	for iter.Next() {
+		names, err := b.index.LabelNamesFor(iter.At())
+		if err != nil {
+			if err == storage.ErrNotFound {
+				continue
 			}
+			return nil, err
+		}
 
-			// Select all the label names which we don't already have.
-			for _, name := range labelNames {
-				index := sort.SearchStrings(names, name)
-				switch {
-				case index == len(names): // Add name to the end of the slice.
-					names = append(names, name)
-				case names[index] != name: // Insert name into the middle of the slice.
-					names = append(names, name)
-					copy(names[index+1:], names[index:])
-					names[index] = name
-				}
-			}
+		for _, name := range names {
+			nameSet[name] = struct{}{}
 		}
 	}
 
+	names := make([]string, 0, len(nameSet))
+	for name := range nameSet {
+		names = append(names, name)
+	}
+	slices.Sort(names)
 	return names, nil
 }
 
