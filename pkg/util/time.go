@@ -106,5 +106,5 @@ type TimeRangeRequest interface {
 
 // HasTimeRange is true if the request has a start and end set.
 func HasTimeRange(req TimeRangeRequest) bool {
-	return req.GetStart() == 0 || req.GetEnd() == 0
+	return req.GetStart() != 0 && req.GetEnd() != 0
 }
