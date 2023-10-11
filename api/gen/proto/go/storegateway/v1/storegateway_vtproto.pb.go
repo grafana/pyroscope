@@ -34,6 +34,7 @@ type StoreGatewayServiceClient interface {
 	MergeProfilesLabels(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeProfilesLabelsClient, error)
 	MergeProfilesPprof(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeProfilesPprofClient, error)
 	MergeSpanProfile(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeSpanProfileClient, error)
+	LabelValues(ctx context.Context, in *v1.LabelValuesRequest, opts ...grpc.CallOption) (*v1.LabelValuesResponse, error)
 	LabelNames(ctx context.Context, in *v1.LabelNamesRequest, opts ...grpc.CallOption) (*v1.LabelNamesResponse, error)
 	Series(ctx context.Context, in *v11.SeriesRequest, opts ...grpc.CallOption) (*v11.SeriesResponse, error)
 }
@@ -170,6 +171,15 @@ func (x *storeGatewayServiceMergeSpanProfileClient) Recv() (*v11.MergeSpanProfil
 	return m, nil
 }
 
+func (c *storeGatewayServiceClient) LabelValues(ctx context.Context, in *v1.LabelValuesRequest, opts ...grpc.CallOption) (*v1.LabelValuesResponse, error) {
+	out := new(v1.LabelValuesResponse)
+	err := c.cc.Invoke(ctx, "/storegateway.v1.StoreGatewayService/LabelValues", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *storeGatewayServiceClient) LabelNames(ctx context.Context, in *v1.LabelNamesRequest, opts ...grpc.CallOption) (*v1.LabelNamesResponse, error) {
 	out := new(v1.LabelNamesResponse)
 	err := c.cc.Invoke(ctx, "/storegateway.v1.StoreGatewayService/LabelNames", in, out, opts...)
@@ -196,6 +206,7 @@ type StoreGatewayServiceServer interface {
 	MergeProfilesLabels(StoreGatewayService_MergeProfilesLabelsServer) error
 	MergeProfilesPprof(StoreGatewayService_MergeProfilesPprofServer) error
 	MergeSpanProfile(StoreGatewayService_MergeSpanProfileServer) error
+	LabelValues(context.Context, *v1.LabelValuesRequest) (*v1.LabelValuesResponse, error)
 	LabelNames(context.Context, *v1.LabelNamesRequest) (*v1.LabelNamesResponse, error)
 	Series(context.Context, *v11.SeriesRequest) (*v11.SeriesResponse, error)
 	mustEmbedUnimplementedStoreGatewayServiceServer()
@@ -216,6 +227,9 @@ func (UnimplementedStoreGatewayServiceServer) MergeProfilesPprof(StoreGatewaySer
 }
 func (UnimplementedStoreGatewayServiceServer) MergeSpanProfile(StoreGatewayService_MergeSpanProfileServer) error {
 	return status.Errorf(codes.Unimplemented, "method MergeSpanProfile not implemented")
+}
+func (UnimplementedStoreGatewayServiceServer) LabelValues(context.Context, *v1.LabelValuesRequest) (*v1.LabelValuesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LabelValues not implemented")
 }
 func (UnimplementedStoreGatewayServiceServer) LabelNames(context.Context, *v1.LabelNamesRequest) (*v1.LabelNamesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LabelNames not implemented")
@@ -340,6 +354,24 @@ func (x *storeGatewayServiceMergeSpanProfileServer) Recv() (*v11.MergeSpanProfil
 	return m, nil
 }
 
+func _StoreGatewayService_LabelValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.LabelValuesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoreGatewayServiceServer).LabelValues(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/storegateway.v1.StoreGatewayService/LabelValues",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoreGatewayServiceServer).LabelValues(ctx, req.(*v1.LabelValuesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _StoreGatewayService_LabelNames_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(v1.LabelNamesRequest)
 	if err := dec(in); err != nil {
@@ -383,6 +415,10 @@ var StoreGatewayService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "storegateway.v1.StoreGatewayService",
 	HandlerType: (*StoreGatewayServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "LabelValues",
+			Handler:    _StoreGatewayService_LabelValues_Handler,
+		},
 		{
 			MethodName: "LabelNames",
 			Handler:    _StoreGatewayService_LabelNames_Handler,
