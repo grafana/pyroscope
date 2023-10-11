@@ -278,6 +278,8 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 
 		proc := s.symCache.GetProcTable(symtab.PidKey(ck.Pid))
 		if proc.Error() != nil {
+			_, ls := labels.Labels()
+			_ = level.Debug(s.logger).Log("msg", "got a stacktrace for dead target", "pid", ck.Pid, "err", proc.Error().Error(), "ls", ls.String())
 			s.pids.dead[uint32(proc.Pid())] = struct{}{}
 			// in theory if we saw this process alive before, we could try resolving tack anyway
 			// it may succeed if we have same binary loaded in another process, not doing it for now
