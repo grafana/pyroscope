@@ -11,12 +11,15 @@ fi
 cleanInstall() {
     printf "\033[32m Post Install of a clean install\033[0m\n"
 
+    if ! getent group pyroscope >/dev/null 2>&1; then
+        groupadd --system pyroscope
+    fi
     # Create the user
     if ! id pyroscope > /dev/null 2>&1 ; then
-        adduser --system --home /var/lib/pyroscope --shell /bin/false "pyroscope"
+        adduser --system --home /var/lib/pyroscope --gid $(getent group pyroscope | awk -F ":" '{ print $3 }') --shell /bin/false "pyroscope"
     fi
     mkdir -p /var/lib/pyroscope
-    chown pyroscope /var/lib/pyroscope
+    chown pyroscope:pyroscope /var/lib/pyroscope
 
     # rhel/centos7 cannot use ExecStartPre=+ to specify the pre start should be run as root
     # even if you want your service to run as non root.
