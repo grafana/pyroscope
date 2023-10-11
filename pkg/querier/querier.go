@@ -178,13 +178,13 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 	defer sp.Finish()
 
 	sp.LogFields(
-		otlog.Bool("legacy_request", req.Msg.IsLegacy()),
+		otlog.Bool("legacy_request", !req.Msg.HasTimeRange()),
 		otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
 		otlog.Int64("start", req.Msg.Start),
 		otlog.Int64("end", req.Msg.End),
 	)
 
-	if q.storeGatewayQuerier == nil || req.Msg.IsLegacy() {
+	if q.storeGatewayQuerier == nil || !req.Msg.HasTimeRange() {
 		responses, err := q.labelNamesFromIngesters(ctx, &typesv1.LabelNamesRequest{
 			Matchers: req.Msg.Matchers,
 			Start:    req.Msg.Start,
