@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/pprof/profile"
 	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/pkg/model"
@@ -21,8 +22,9 @@ import (
 //
 // A new Resolver must be created for each profile.
 type Resolver struct {
-	ctx  context.Context
-	span opentracing.Span
+	ctx    context.Context
+	cancel context.CancelFunc
+	span   opentracing.Span
 
 	s SymbolsReader
 	g *errgroup.Group
@@ -44,6 +46,7 @@ func WithMaxConcurrent(n int) ResolverOption {
 type lazyPartition struct {
 	samples map[uint32]int64
 	c       chan *Symbols
+	err     chan error
 	done    chan struct{}
 }
 
@@ -54,11 +57,15 @@ func NewResolver(ctx context.Context, s SymbolsReader) *Resolver {
 		p: make(map[uint64]*lazyPartition),
 	}
 	r.span, r.ctx = opentracing.StartSpanFromContext(ctx, "NewResolver")
-	r.g, r.ctx = errgroup.WithContext(ctx)
+	r.ctx, r.cancel = context.WithCancel(r.ctx)
+	r.g, r.ctx = errgroup.WithContext(r.ctx)
 	return &r
 }
 
 func (r *Resolver) Release() {
+	r.cancel()
+	// The error is already sent to the caller.
+	_ = r.g.Wait()
 	r.span.Finish()
 }
 
@@ -95,6 +102,7 @@ func (r *Resolver) Partition(partition uint64) map[uint32]int64 {
 	}
 	p = &lazyPartition{
 		samples: make(map[uint32]int64),
+		err:     make(chan error),
 		done:    make(chan struct{}),
 		c:       make(chan *Symbols, 1),
 	}
@@ -103,16 +111,22 @@ func (r *Resolver) Partition(partition uint64) map[uint32]int64 {
 	r.g.Go(func() error {
 		pr, err := r.s.Partition(r.ctx, partition)
 		if err != nil {
-			return err
+			r.span.LogFields(log.String("err", err.Error()))
+			select {
+			case <-r.ctx.Done():
+				return r.ctx.Err()
+			case p.err <- err:
+				return err
+			}
 		}
 		defer pr.Release()
+		p.c <- pr.Symbols()
 		select {
 		case <-r.ctx.Done():
 			return r.ctx.Err()
-		case p.c <- pr.Symbols():
-			<-p.done
+		case <-p.done:
+			return nil
 		}
-		return nil
 	})
 	return p.samples
 }
@@ -134,6 +148,8 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
+			case err := <-p.err:
+				return err
 			case symbols := <-p.c:
 				samples := schemav1.NewSamplesFromMap(p.samples)
 				rt, err := symbols.Tree(ctx, samples)
@@ -171,6 +187,8 @@ func (r *Resolver) Profile() (*profile.Profile, error) {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
+			case err := <-p.err:
+				return err
 			case symbols := <-p.c:
 				samples := schemav1.NewSamplesFromMap(p.samples)
 				rp, err := symbols.Profile(ctx, samples)

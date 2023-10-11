@@ -184,6 +184,7 @@ func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, e
 		return nil, ErrPartitionNotFound
 	}
 	if err := p.init(ctx); err != nil {
+		p.Release()
 		return nil, err
 	}
 	return p, nil
@@ -350,12 +351,7 @@ func (c *stacktraceChunkReader) fetch(ctx context.Context) (err error) {
 	// it after it is fully loaded. Use of atomics here
 	// for reference counting is not sufficient.
 	c.m.Lock()
-	defer func() {
-		if err != nil {
-			c.r--
-		}
-		c.m.Unlock()
-	}()
+	defer c.m.Unlock()
 	if c.r++; c.r > 1 {
 		return nil
 	}
@@ -431,12 +427,7 @@ func (t *parquetTableRange[M, P]) fetch(ctx context.Context) (err error) {
 	})
 	defer span.Finish()
 	t.m.Lock()
-	defer func() {
-		if err != nil {
-			t.r--
-		}
-		t.m.Unlock()
-	}()
+	defer t.m.Unlock()
 	if t.r++; t.r > 1 {
 		return nil
 	}
