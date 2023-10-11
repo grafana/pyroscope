@@ -97,19 +97,19 @@ type ingesterHandlerPhlareDB struct {
 }
 
 func (i *ingesterHandlerPhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
-	return MergeProfilesStacktraces(ctx, stream, i.ForTimeRange)
+	return MergeProfilesStacktraces(ctx, stream, i.forTimeRange)
 }
 
 func (i *ingesterHandlerPhlareDB) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
-	return MergeProfilesLabels(ctx, stream, i.ForTimeRange)
+	return MergeProfilesLabels(ctx, stream, i.forTimeRange)
 }
 
 func (i *ingesterHandlerPhlareDB) MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error {
-	return MergeProfilesPprof(ctx, stream, i.ForTimeRange)
+	return MergeProfilesPprof(ctx, stream, i.forTimeRange)
 }
 
 func (i *ingesterHandlerPhlareDB) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
-	return MergeSpanProfile(ctx, stream, i.ForTimeRange)
+	return MergeSpanProfile(ctx, stream, i.forTimeRange)
 }
 
 func (i *ingesterHandlerPhlareDB) Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
@@ -494,7 +494,8 @@ func Test_FlushNotInitializedHead(t *testing.T) {
 	ctx := testContext(t)
 
 	db, err := New(ctx, Config{
-		DataPath: contextDataDir(ctx),
+		DataPath:         contextDataDir(ctx),
+		MaxBlockDuration: 1 * time.Hour,
 	}, NoLimit, ctx.localBucketClient)
 
 	var (
@@ -512,10 +513,10 @@ func Test_FlushNotInitializedHead(t *testing.T) {
 		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
 		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
 	)
-	require.NoError(t, db.Flush(ctx))
+	require.NoError(t, db.Flush(ctx, true, ""))
 	require.Zero(t, db.headSize())
 
-	require.NoError(t, db.Flush(ctx))
+	require.NoError(t, db.Flush(ctx, true, ""))
 	require.Zero(t, db.headSize())
 
 	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
@@ -524,5 +525,5 @@ func Test_FlushNotInitializedHead(t *testing.T) {
 	)
 
 	require.NotZero(t, db.headSize())
-	require.NoError(t, db.Flush(ctx))
+	require.NoError(t, db.Flush(ctx, true, ""))
 }

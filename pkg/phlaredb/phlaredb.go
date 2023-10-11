@@ -19,6 +19,7 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
+	"github.com/samber/lo"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
@@ -72,15 +73,12 @@ type PhlareDB struct {
 	// Heads per max range interval for ingest requests and reads. May be empty,
 	// if no ingestion requests were handled.
 	heads map[int64]*Head
-	// Read only head. On Flush, writes are directed to
+	// Read only heads. On Flush, writes are directed to
 	// the new head, and queries can read the former head
 	// till it gets written to the disk and becomes available
 	// to blockQuerier.
 	flushing []*Head
 
-	// The current head block, if present, is flushed
-	// when the ticker fires.
-	forceFlush *time.Ticker
 	// flushLock serializes flushes. Only one flush at a time
 	// is allowed.
 	flushLock sync.Mutex
@@ -102,7 +100,6 @@ func New(phlarectx context.Context, cfg Config, limiter TenantLimiter, fs phlare
 		heads:   make(map[int64]*Head),
 	}
 
-	f.forceFlush = time.NewTicker(f.maxBlockDuration())
 	if err := os.MkdirAll(f.LocalDataPath(), 0o777); err != nil {
 		return nil, fmt.Errorf("mkdir %s: %w", f.LocalDataPath(), err)
 	}
@@ -140,11 +137,12 @@ func (f *PhlareDB) runBlockQuerierSync(ctx context.Context) {
 func (f *PhlareDB) loop() {
 	blockScanTicker := time.NewTicker(5 * time.Minute)
 	headSizeCheck := time.NewTicker(5 * time.Second)
+	staleHeadTicker := time.NewTicker(1 * time.Minute)
 	maxBlockBytes := f.maxBlockBytes()
 	defer func() {
 		blockScanTicker.Stop()
 		headSizeCheck.Stop()
-		f.forceFlush.Stop()
+		staleHeadTicker.Stop()
 		f.wg.Done()
 	}()
 
@@ -156,17 +154,88 @@ func (f *PhlareDB) loop() {
 			return
 		case <-blockScanTicker.C:
 			f.runBlockQuerierSync(ctx)
-		// todo change this
 		case <-headSizeCheck.C:
 			if f.headSize() > maxBlockBytes {
-				f.flushHead(ctx, flushReasonMaxBlockBytes)
+				f.Flush(ctx, true, flushReasonMaxBlockBytes)
 			}
-		case <-f.forceFlush.C:
-			f.flushHead(ctx, flushReasonMaxDuration)
+		case <-staleHeadTicker.C:
+			f.Flush(ctx, false, flushReasonMaxDuration)
 		case e := <-f.evictCh:
 			f.evictBlock(e)
 		}
 	}
+}
+
+func (f *PhlareDB) Flush(ctx context.Context, force bool, reason string) (err error) {
+	// Ensure this is the only Flush running.
+	f.flushLock.Lock()
+	defer f.flushLock.Unlock()
+
+	currentSize := f.headSize()
+	// Create a new head and evict the old one. Reads and writes
+	// are blocked – after the lock is released, no new ingestion
+	// requests will be arriving to the old head.
+	f.headLock.Lock()
+	if len(f.heads) == 0 {
+		f.headLock.Unlock()
+		return nil
+	}
+
+	f.flushing = make([]*Head, 0, len(f.heads))
+	for maxT, h := range f.heads {
+		// Skip heads that are not stale.
+		if !force && !h.isStale(maxT, time.Now()) {
+			continue
+		}
+		f.flushing = append(f.flushing, h)
+		delete(f.heads, maxT)
+	}
+
+	if len(f.flushing) != 0 {
+		level.Debug(f.logger).Log(
+			"msg", "flushing heads to disk",
+			"reason", reason,
+			"max_size", humanize.Bytes(f.maxBlockBytes()),
+			"current_size", humanize.Bytes(currentSize),
+			"num_heads", len(f.flushing),
+		)
+	}
+
+	f.headLock.Unlock()
+	errs := multierror.New()
+
+	successful := lo.Filter(f.flushing, func(h *Head, index int) bool {
+		f.metrics.flushedBlocksReasons.WithLabelValues(string(reason)).Inc()
+		if err := h.Flush(ctx); err != nil {
+			errs.Add(err)
+			return false
+		}
+		return true
+	})
+
+	// At this point we ensure that the data has been flushed on disk.
+	// Now we need to make it "visible" to queries, and close the old
+	// head once in-flight queries finish.
+	// TODO(kolesnikovae): Although the head move is supposed to be a quick
+	//  operation, consider making the lock more selective and block only
+	//  queries that target the old head.
+	f.headLock.Lock()
+	// Now that there are no in-flight queries we can move the head.
+	successful = lo.Filter(successful, func(h *Head, index int) bool {
+		if err := h.Move(); err != nil {
+			errs.Add(err)
+			return false
+		}
+		return true
+	})
+	for _, h := range successful {
+		f.blockQuerier.AddBlockQuerierByMeta(h.meta)
+	}
+	// Propagate the new block to blockQuerier.
+	f.flushing = nil
+	f.headLock.Unlock()
+	// The old in-memory head is not available to queries from now on.
+	return err
 }
 
 func (f *PhlareDB) maxBlockDuration() time.Duration {
@@ -236,6 +305,7 @@ func rangeForTimestamp(t, width int64) (maxt int64) {
 }
 
 func (f *PhlareDB) headForIngest(sampleTimeNanos int64, fn func(*Head) error) (err error) {
+	// todo: add more tests
 	maxT := rangeForTimestamp(sampleTimeNanos, f.cfg.MaxBlockDuration.Nanoseconds())
 	// We need to keep track of the in-flight ingestion requests to ensure that none
 	// of them will compete with Flush. Lock is acquired to avoid Add after Wait that
@@ -258,32 +328,13 @@ func (f *PhlareDB) headForIngest(sampleTimeNanos int64, fn func(*Head) error) (e
 			return err
 		}
 		head = h
+		f.heads[maxT] = head
 	}
 	h := head
 	h.inFlightProfiles.Add(1)
 	f.headLock.Unlock()
 	defer h.inFlightProfiles.Done()
 	return fn(h)
-}
-
-// // initHead initializes a new head and resets the flush timer.
-// // Must only be called with headLock held for writes.
-// func (f *PhlareDB) initHead() (err error) {
-// 	if f.head, err = NewHead(f.phlarectx, f.cfg, f.limiter); err != nil {
-// 		return err
-// 	}
-// 	// f.forceFlush.Reset(f.maxBlockDuration())
-// 	return nil
-// }
-
-func withHeadQuerier[T any](f *PhlareDB, fn func(Queriers) (*connect.Response[T], error)) (*connect.Response[T], error) {
-	f.headLock.RLock()
-	defer f.headLock.RUnlock()
-	hqs := f.headQueriers()
-	if len(hqs) == 0 {
-		return connect.NewResponse(new(T)), nil
-	}
-	return fn(hqs)
 }
 
 func (f *PhlareDB) headSize() uint64 {
@@ -296,55 +347,34 @@ func (f *PhlareDB) headSize() uint64 {
 	return size
 }
 
-type flushReason string
-
 const (
 	flushReasonMaxDuration   = "max-duration"
 	flushReasonMaxBlockBytes = "max-block-bytes"
 )
 
-func (f *PhlareDB) flushHead(ctx context.Context, reason flushReason) {
-	f.metrics.flushedBlocksReasons.WithLabelValues(string(reason)).Inc()
-	level.Debug(f.logger).Log(
-		"msg", "flushing head to disk",
-		"reason", reason,
-		"max_size", humanize.Bytes(f.maxBlockBytes()),
-		"current_size", humanize.Bytes(f.headSize()),
-	)
-	if err := f.Flush(ctx); err != nil {
-		level.Error(f.logger).Log("msg", "flushing head block failed", "err", err)
-	}
-}
-
 // LabelValues returns the possible label values for a given label name.
 func (f *PhlareDB) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (resp *connect.Response[typesv1.LabelValuesResponse], err error) {
-	return withHeadQuerier(f, func(q Queriers) (*connect.Response[typesv1.LabelValuesResponse], error) {
-		return q.LabelValues(ctx, req)
-	})
+	f.headLock.RLock()
+	defer f.headLock.RUnlock()
+
+	return f.headQueriers().LabelValues(ctx, req)
 }
 
 // LabelNames returns the possible label names.
 func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (resp *connect.Response[typesv1.LabelNamesResponse], err error) {
-	return withHeadQuerier(f, func(q Queriers) (*connect.Response[typesv1.LabelNamesResponse], error) {
-		return q.LabelNames(ctx, req)
-	})
+	f.headLock.RLock()
+	defer f.headLock.RUnlock()
+
+	return f.headQueriers().LabelNames(ctx, req)
 }
 
 // ProfileTypes returns the possible profile types.
 func (f *PhlareDB) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (resp *connect.Response[ingestv1.ProfileTypesResponse], err error) {
-	return withHeadQuerier(f, func(q Queriers) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-		return q.ProfileTypes(ctx, req)
-	})
+	f.headLock.RLock()
+	defer f.headLock.RUnlock()
+
+	return f.headQueriers().ProfileTypes(ctx, req)
 }
-
-// func (f *PhlareDB) LegacySeries(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
-// 	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhareDB LegacySeries")
-// 	defer sp.Finish()
-
-// 	return withHeadForQuery(f, func(head *Head) (*connect.Response[ingestv1.SeriesResponse], error) {
-// 		return head.Series(ctx, req)
-// 	})
-// }
 
 // Series returns labels series for the given set of matchers.
 func (f *PhlareDB) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
@@ -355,73 +385,37 @@ func (f *PhlareDB) Series(ctx context.Context, req *connect.Request[ingestv1.Ser
 	defer f.headLock.RUnlock()
 
 	if req.Msg.Start == 0 || req.Msg.End == 0 {
-		return withHeadQuerier(f, func(q Queriers) (*connect.Response[ingestv1.SeriesResponse], error) {
-			return Series(ctx, req.Msg, q.ForTimeRange)
-		})
+		return f.headQueriers().Series(ctx, req)
 	}
-
-	return withQuerier(f, func(q Queriers) (*connect.Response[ingestv1.SeriesResponse], error) {
-		return Series(ctx, req.Msg, q.ForTimeRange)
-	})
+	return f.queriers().Series(ctx, req)
 }
 
 func (f *PhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
-	return MergeProfilesStacktraces(ctx, stream, f.queriers().ForTimeRange)
+
+	return f.queriers().MergeProfilesStacktraces(ctx, stream)
 }
 
 func (f *PhlareDB) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
-	return MergeProfilesLabels(ctx, stream, f.queriers().ForTimeRange)
+
+	return f.queriers().MergeProfilesLabels(ctx, stream)
 }
 
 func (f *PhlareDB) MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error {
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
-	return MergeProfilesPprof(ctx, stream, f.queriers().ForTimeRange)
+
+	return f.queriers().MergeProfilesPprof(ctx, stream)
 }
 
 func (f *PhlareDB) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
-	return MergeSpanProfile(ctx, stream, f.queriers().ForTimeRange)
-}
 
-func (f *PhlareDB) Flush(ctx context.Context) (err error) {
-	// Ensure this is the only Flush running.
-	f.flushLock.Lock()
-	defer f.flushLock.Unlock()
-	// Create a new head and evict the old one. Reads and writes
-	// are blocked – after the lock is released, no new ingestion
-	// requests will be arriving to the old head.
-	f.headLock.Lock()
-	if f.head == nil {
-		f.headLock.Unlock()
-		return nil
-	}
-	f.oldHead, f.head = f.head, nil
-	f.headLock.Unlock()
-	// Old head is available to readers during Flush.
-	if err = f.oldHead.Flush(ctx); err != nil {
-		return err
-	}
-	// At this point we ensure that the data has been flushed on disk.
-	// Now we need to make it "visible" to queries, and close the old
-	// head once in-flight queries finish.
-	// TODO(kolesnikovae): Although the head move is supposed to be a quick
-	//  operation, consider making the lock more selective and block only
-	//  queries that target the old head.
-	f.headLock.Lock()
-	// Now that there are no in-flight queries we can move the head.
-	err = f.oldHead.Move()
-	// Propagate the new block to blockQuerier.
-	f.blockQuerier.AddBlockQuerierByMeta(f.oldHead.meta)
-	f.oldHead = nil
-	f.headLock.Unlock()
-	// The old in-memory head is not available to queries from now on.
-	return err
+	return f.queriers().MergeSpanProfile(ctx, stream)
 }
 
 type blockEviction struct {

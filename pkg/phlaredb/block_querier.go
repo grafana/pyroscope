@@ -336,6 +336,21 @@ func (b *singleBlockQuerier) Meta() block.Meta {
 	return *b.meta
 }
 
+func (b *singleBlockQuerier) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
+	// todo
+	return connect.NewResponse(&ingestv1.ProfileTypesResponse{}), nil
+}
+
+func (b *singleBlockQuerier) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
+	// todo
+	return connect.NewResponse(&typesv1.LabelValuesResponse{}), nil
+}
+
+func (b *singleBlockQuerier) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
+	// todo
+	return connect.NewResponse(&typesv1.LabelNamesResponse{}), nil
+}
+
 func (b *singleBlockQuerier) Close() error {
 	b.openLock.Lock()
 	defer func() {
@@ -389,6 +404,9 @@ type Querier interface {
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
 	MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error)
 	Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error)
+	ProfileTypes(context.Context, *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error)
+	LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error)
+	LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error)
 	Open(ctx context.Context) error
 	// Sorts profiles for retrieval.
 	Sort([]Profile) []Profile
@@ -405,7 +423,18 @@ func InRange(q Querier, start, end model.Time) bool {
 	return true
 }
 
-var _ Querier = make(Queriers, 0, 0)
+type ReadAPI interface {
+	LabelValues(context.Context, *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error)
+	LabelNames(context.Context, *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error)
+	ProfileTypes(context.Context, *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error)
+	Series(context.Context, *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error)
+	MergeProfilesStacktraces(context.Context, *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error
+	MergeProfilesLabels(context.Context, *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error
+	MergeProfilesPprof(context.Context, *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error
+	MergeSpanProfile(context.Context, *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error
+}
+
+var _ ReadAPI = make(Queriers, 0)
 
 type Queriers []Querier
 
@@ -433,18 +462,157 @@ func (queriers Queriers) SelectMatchingProfiles(ctx context.Context, params *ing
 }
 
 func (queriers Queriers) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
-	return nil, nil
+	// todo: Add support start and end.
+	// if req.Msg.Start != 0 && req.Msg.End != 0 {
+	// 	var err error
+	// 	queriers, err = queriers.forTimeRange(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
+
+	g, ctx := errgroup.WithContext(ctx)
+	uniqValues := make(map[string]struct{})
+	mutex := sync.Mutex{}
+
+	for _, q := range queriers {
+		q := q
+		g.Go(func() error {
+			res, err := q.LabelValues(ctx, req)
+			if err != nil {
+				return err
+			}
+			mutex.Lock()
+			defer mutex.Unlock()
+			if res != nil {
+				for _, name := range res.Msg.Names {
+					uniqValues[name] = struct{}{}
+				}
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&typesv1.LabelValuesResponse{
+		Names: lo.Keys(uniqValues),
+	}), nil
 }
 
 func (queriers Queriers) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
-	return nil, nil
+	// todo: Add support start and end.
+	// if req.Msg.Start != 0 && req.Msg.End != 0 {
+	// 	var err error
+	// 	queriers, err = queriers.forTimeRange(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
+
+	uniqNames := make(map[string]struct{})
+	mutex := sync.Mutex{}
+	g, ctx := errgroup.WithContext(ctx)
+
+	for _, q := range queriers {
+		q := q
+		g.Go(func() error {
+			res, err := q.LabelNames(ctx, req)
+			if err != nil {
+				return err
+			}
+			mutex.Lock()
+			defer mutex.Unlock()
+			if res != nil {
+				for _, name := range res.Msg.Names {
+					uniqNames[name] = struct{}{}
+				}
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&typesv1.LabelNamesResponse{
+		Names: lo.Keys(uniqNames),
+	}), nil
 }
 
 func (queriers Queriers) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-	return nil, nil
+	// todo: Add support start and end.
+	// if req.Msg.Start != 0 && req.Msg.End != 0 {
+	// 	var err error
+	// 	queriers, err = queriers.forTimeRange(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
+
+	g, ctx := errgroup.WithContext(ctx)
+	uniqTypes := make(map[string]*typesv1.ProfileType)
+	mutex := sync.Mutex{}
+
+	for _, q := range queriers {
+		q := q
+		g.Go(func() error {
+			res, err := q.ProfileTypes(ctx, req)
+			if err != nil {
+				return err
+			}
+			mutex.Lock()
+			defer mutex.Unlock()
+			if res != nil {
+				for _, t := range res.Msg.ProfileTypes {
+					uniqTypes[t.ID] = t.CloneVT()
+				}
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
+		ProfileTypes: lo.Values(uniqTypes),
+	}), nil
 }
 
-func (queriers Queriers) ForTimeRange(_ context.Context, start, end model.Time) (Queriers, error) {
+func (queriers Queriers) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
+	// todo: verify empty timestamp request should return all series
+	blockGetter := queriers.forTimeRange
+	// Legacy Series queries without a range should return all series from all head blocks.
+	if req.Msg.Start == 0 || req.Msg.End == 0 {
+		blockGetter = func(_ context.Context, _, _ model.Time) (Queriers, error) {
+			return queriers, nil
+		}
+	}
+	res, err := Series(ctx, req.Msg, blockGetter)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(res), nil
+}
+
+func (queriers Queriers) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
+	return MergeProfilesStacktraces(ctx, stream, queriers.forTimeRange)
+}
+
+func (queriers Queriers) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
+	return MergeProfilesLabels(ctx, stream, queriers.forTimeRange)
+}
+
+func (queriers Queriers) MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error {
+	return MergeProfilesPprof(ctx, stream, queriers.forTimeRange)
+}
+
+func (queriers Queriers) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
+	return MergeSpanProfile(ctx, stream, queriers.forTimeRange)
+}
+
+type BlockGetter func(ctx context.Context, start, end model.Time) (Queriers, error)
+
+func (queriers Queriers) forTimeRange(_ context.Context, start, end model.Time) (Queriers, error) {
 	result := make(Queriers, 0, len(queriers))
 	for _, q := range queriers {
 		if InRange(q, start, end) {
@@ -453,8 +621,6 @@ func (queriers Queriers) ForTimeRange(_ context.Context, start, end model.Time) 
 	}
 	return result, nil
 }
-
-type BlockGetter func(ctx context.Context, start, end model.Time) (Queriers, error)
 
 // SelectMatchingProfiles returns a list iterator of profiles matching the given request.
 func SelectMatchingProfiles(ctx context.Context, request *ingestv1.SelectProfilesRequest, queriers Queriers) ([]iter.Iterator[Profile], error) {

@@ -70,7 +70,8 @@ type Head struct {
 	tables        []Table
 	delta         *deltaProfiles
 
-	limiter TenantLimiter
+	limiter   TenantLimiter
+	createdAt time.Time
 }
 
 const (
@@ -93,6 +94,7 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 
 		parquetConfig: &parquetConfig,
 		limiter:       limiter,
+		createdAt:     time.Now(),
 	}
 	h.headPath = filepath.Join(cfg.DataPath, pathHead, h.meta.ULID.String())
 	h.localPath = filepath.Join(cfg.DataPath, PathLocal, h.meta.ULID.String())
@@ -159,6 +161,16 @@ func (h *Head) loop() {
 			return
 		}
 	}
+}
+
+func (h *Head) isStale(maxT int64, now time.Time) bool {
+	// todo less aggressive this is just for testing.
+	// Newly blocks are not stale
+	if now.Sub(h.createdAt) <= 1*time.Minute {
+		return false
+	}
+	// Blocks that have pass their maxT range by 5min are stale
+	return now.Sub(time.Unix(0, maxT)) >= 1*time.Minute
 }
 
 func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*typesv1.LabelPair) error {
