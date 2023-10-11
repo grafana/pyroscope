@@ -783,7 +783,7 @@ func Test_singleBlockQuerier_LabelNames(t *testing.T) {
 		}
 
 		got, err := q.LabelNames(ctx, &typesv1.LabelNamesRequest{
-			Matchers: []string{`{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds", service_name="simple.golang.app"}`},
+			Matchers: []string{`{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`, `{service_name="simple.golang.app"}`},
 		})
 		assert.NoError(t, err)
 		assert.Equal(t, want, got)
@@ -816,6 +816,27 @@ func Benchmark_singleBlockQuerier_Series(b *testing.B) {
 			q.Series(ctx, &ingestv1.SeriesRequest{ //nolint:errcheck
 				Matchers:   []string{`{__name__="memory",__type__="alloc_objects"}`},
 				LabelNames: []string{"__name__", "__type__"},
+			})
+		}
+	})
+}
+
+func Benchmark_singleBlockQuerier_LabelNames(b *testing.B) {
+	ctx := context.Background()
+	reader, err := index.NewFileReader("testdata/01HA2V3CPSZ9E0HMQNNHH89WSS/index.tsdb")
+	assert.NoError(b, err)
+
+	q := &singleBlockQuerier{
+		metrics: newBlocksMetrics(nil),
+		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
+		opened:  true, // Skip trying to open the block.
+		index:   reader,
+	}
+
+	b.Run("multiple matchers", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			q.LabelNames(ctx, &typesv1.LabelNamesRequest{ //nolint:errcheck
+				Matchers: []string{`{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`, `{service_name="simple.golang.app"}`},
 			})
 		}
 	})
