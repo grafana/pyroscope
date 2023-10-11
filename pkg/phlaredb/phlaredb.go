@@ -315,19 +315,16 @@ func (f *PhlareDB) LabelValues(ctx context.Context, req *connect.Request[typesv1
 	})
 }
 
-func (f *PhlareDB) LegacyLabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (resp *connect.Response[typesv1.LabelNamesResponse], err error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB LegacyLabelNames")
-	defer sp.Finish()
-
-	return withHeadForQuery(f, func(head *Head) (*connect.Response[typesv1.LabelNamesResponse], error) {
-		return head.LabelNames(ctx, req)
-	})
-}
-
 // LabelNames returns the possible label names.
-func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (resp *connect.Response[typesv1.LabelNamesResponse], err error) {
+func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB LabelNames")
 	defer sp.Finish()
+
+	if !req.Msg.HasTimeRange() {
+		return withHeadForQuery(f, func(head *Head) (*connect.Response[typesv1.LabelNamesResponse], error) {
+			return head.LabelNames(ctx, req)
+		})
+	}
 
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
