@@ -148,24 +148,62 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 
 func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues")
-	defer func() {
-		sp.LogFields(
-			otlog.String("name", req.Msg.Name),
-		)
-		sp.Finish()
-	}()
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
-		res, err := ic.LabelValues(childCtx, connect.NewRequest(&typesv1.LabelValuesRequest{
-			Name:     req.Msg.Name,
-			Matchers: req.Msg.Matchers,
-		}))
+	defer sp.Finish()
+
+	hasTimeRange := util.HasTimeRange(req.Msg)
+	sp.LogFields(
+		otlog.Bool("legacy_request", !hasTimeRange),
+		otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
+		otlog.Int64("start", req.Msg.Start),
+		otlog.Int64("end", req.Msg.End),
+	)
+
+	if q.storeGatewayQuerier == nil || !hasTimeRange {
+		responses, err := q.labelValuesFromIngesters(ctx, req.Msg)
 		if err != nil {
 			return nil, err
 		}
-		return res.Msg.Names, nil
-	})
-	if err != nil {
-		return nil, err
+		return connect.NewResponse(&typesv1.LabelValuesResponse{
+			Names: uniqueSortedStrings(responses),
+		}), nil
+	}
+
+	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
+	}
+	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
+
+	var responses []ResponseFromReplica[[]string]
+	var lock sync.Mutex
+	group, ctx := errgroup.WithContext(ctx)
+
+	if storeQueries.ingester.shouldQuery {
+		group.Go(func() error {
+			ir, err := q.labelValuesFromIngesters(ctx, req.Msg)
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			responses = append(responses, ir...)
+			lock.Unlock()
+			return nil
+		})
+	}
+
+	if storeQueries.storeGateway.shouldQuery {
+		group.Go(func() error {
+			ir, err := q.labelValuesFromStoreGateway(ctx, req.Msg)
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			responses = append(responses, ir...)
+			lock.Unlock()
+			return nil
+		})
 	}
 
 	return connect.NewResponse(&typesv1.LabelValuesResponse{
