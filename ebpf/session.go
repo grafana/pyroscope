@@ -63,8 +63,8 @@ type pids struct {
 	unknown map[uint32]struct{}
 	// got a pid dead event or errored during refresh
 	dead map[uint32]struct{}
-	// userspace counterpart of pids map
-	all map[uint32]struct{}
+	// contains all known pids, same as ebpf pids map but without unknowns
+	all map[uint32]procInfoLite
 }
 type session struct {
 	logger log.Logger
@@ -124,7 +124,7 @@ func NewSession(
 		pids: pids{
 			unknown: make(map[uint32]struct{}),
 			dead:    make(map[uint32]struct{}),
-			all:     make(map[uint32]struct{}),
+			all:     make(map[uint32]procInfoLite),
 		},
 	}, nil
 }
@@ -297,7 +297,7 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 
 		stats := StackResolveStats{}
 		sb.reset()
-		sb.append(s.comm(proc))
+		sb.append(s.comm(ck.Pid))
 		if s.options.CollectUser {
 			s.WalkStack(sb, uStack, proc, &stats)
 		}
@@ -321,8 +321,8 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 	return nil
 }
 
-func (s *session) comm(proc *symtab.ProcTable) string {
-	comm := proc.Comm()
+func (s *session) comm(pid uint32) string {
+	comm := s.pids.all[pid].comm
 	if comm != "" {
 		return comm
 	}
@@ -352,7 +352,7 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 
 		sb.reset()
 
-		sb.append("pythyon_comm_todo")
+		sb.append(s.comm(event.Pid))
 		var kStack []byte
 		if event.StackStatus == uint8(python.StackStatusError) {
 			if extraVerbose {
@@ -464,11 +464,11 @@ func (s *session) stopLocked() {
 	s.started = false
 }
 
-func (s *session) setPidConfig(pid uint32, typ pyrobpf.ProfilingType, collectUser bool, collectKernel bool) error {
-	s.pids.all[pid] = struct{}{}
+func (s *session) setPidConfig(pid uint32, pi procInfoLite, collectUser bool, collectKernel bool) error {
+	s.pids.all[pid] = pi
 	//_ = level.Debug(s.logger).Log("msg", "set pid config", "pid", pid, "type", typ, "collect_user", collectUser, "collect_kernel", collectKernel)
 	config := &pyrobpf.ProfilePidConfig{
-		Type:          uint8(typ),
+		Type:          uint8(pi.typ),
 		CollectUser:   uint8FromBool(collectUser),
 		CollectKernel: uint8FromBool(collectKernel),
 	}
@@ -648,22 +648,23 @@ func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
 }
 
 func (s *session) enableProfilingLocked(pid uint32, target *sd.Target) {
-
 	if !s.started {
 		return
 	}
 	typ := s.selectProfilingType(pid, target)
-	if typ == pyrobpf.ProfilingTypePython {
+	if typ.typ == pyrobpf.ProfilingTypePython {
 		pyPerf := s.getPyPerf()
 		if pyPerf == nil {
 			_ = level.Error(s.logger).Log("err", "pyperf process profiling init failed. pyperf == nil", "pid", pid)
-			_ = s.setPidConfig(pid, pyrobpf.ProfilingTypeError, false, false)
+			typ.typ = pyrobpf.ProfilingTypeError
+			_ = s.setPidConfig(pid, typ, false, false)
 			return
 		}
 		err, pyData := pyPerf.AddPythonPID(pid, target.ServiceName())
 		if err != nil {
 			_ = level.Error(s.logger).Log("err", err, "msg", "pyperf process profiling init failed", "pid", pid)
-			_ = s.setPidConfig(pid, pyrobpf.ProfilingTypeError, false, false)
+			typ.typ = pyrobpf.ProfilingTypeError
+			_ = s.setPidConfig(pid, typ, false, false)
 			return
 		}
 		if extraVerbose {
@@ -735,30 +736,42 @@ func (s *session) loadPyPerf() (*python.Perf, error) {
 	return pyperf, nil
 }
 
-func (s *session) selectProfilingType(pid uint32, target *sd.Target) pyrobpf.ProfilingType {
+type procInfoLite struct {
+	pid  uint32
+	comm string
+	exe  string
+	typ  pyrobpf.ProfilingType
+}
+
+func (s *session) selectProfilingType(pid uint32, target *sd.Target) procInfoLite {
 	exePath, err := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
 	if err != nil {
-		logger := s.logger
-		if errors.Is(err, os.ErrNotExist) {
-			logger = level.Debug(s.logger)
-		} else {
-			logger = level.Error(s.logger)
-		}
-		_ = logger.Log("err", err, "msg", "select profiling type failed", "pid", pid, "target", target.ServiceName())
-		return pyrobpf.ProfilingTypeError
+		_ = s.procErrLogger(err).Log("err", err, "msg", "select profiling type failed", "pid", pid, "target", target.ServiceName())
+		return procInfoLite{pid: pid, typ: pyrobpf.ProfilingTypeError}
+	}
+	comm, err := os.ReadFile(fmt.Sprintf("/proc/%d/comm", pid))
+	if err != nil {
+		_ = s.procErrLogger(err).Log("err", err, "msg", "select profiling type failed", "pid", pid, "target", target.ServiceName())
+		return procInfoLite{pid: pid, typ: pyrobpf.ProfilingTypeError}
 	}
 	exe := filepath.Base(exePath)
 	if extraVerbose {
 		_ = level.Debug(s.logger).Log("exe", exePath, "pid", pid, "target", target.DebugString())
 	}
-	if strings.HasPrefix(exe, "python") || exe == "uwsgi" {
-		if s.options.PythonEnabled {
-			return pyrobpf.ProfilingTypePython
-		} else {
-			return pyrobpf.ProfilingTypeUnknown
-		}
+	if s.options.PythonEnabled && strings.HasPrefix(exe, "python") || exe == "uwsgi" {
+		return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypePython}
 	}
-	return pyrobpf.ProfilingTypeFramepointers
+	return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypeFramepointers}
+}
+
+func (s *session) procErrLogger(err error) log.Logger {
+	logger := s.logger
+	if errors.Is(err, os.ErrNotExist) {
+		logger = level.Debug(s.logger)
+	} else {
+		logger = level.Error(s.logger)
+	}
+	return logger
 }
 
 // this is mostly needed for first discovery reset
