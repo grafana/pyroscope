@@ -21,7 +21,6 @@ type ProcTable struct {
 	file2Table map[file]*ElfTable
 	options    ProcTableOptions
 	rootFS     string
-	comm       string
 	err        error
 }
 
@@ -30,10 +29,6 @@ type ProcTableDebugInfo struct {
 	Size          int                            `river:"size,attr,optional"`
 	Pid           int                            `river:"pid,attr,optional"`
 	LastUsedRound int                            `river:"last_used_round,attr,optional"`
-}
-
-func (p *ProcTable) Comm() string {
-	return p.comm
 }
 
 func (p *ProcTable) DebugInfo() ProcTableDebugInfo {
@@ -57,15 +52,11 @@ type ProcTableOptions struct {
 }
 
 func NewProcTable(logger log.Logger, options ProcTableOptions) *ProcTable {
-	comm, _ := os.ReadFile(fmt.Sprintf("/proc/%d/comm", options.Pid))
-
-	//fmt.Printf("%d %s %s\n", options.Pid, exePath, comm)
 	return &ProcTable{
 		logger:     logger,
 		file2Table: make(map[file]*ElfTable),
 		options:    options,
 		rootFS:     path.Join("/proc", strconv.Itoa(options.Pid), "root"),
-		comm:       string(comm),
 	}
 }
 
