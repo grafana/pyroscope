@@ -363,7 +363,7 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 		} else {
 			begin := len(sb.stack)
 			if event.StackStatus == uint8(python.StackStatusTruncated) {
-				sb.append("pyperf_truncated")
+
 			}
 			for i := 0; i < int(event.StackLen); i++ {
 				sym, err := pySymbols.GetSymbol(event.Stack[i], svc)

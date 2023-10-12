@@ -51,14 +51,7 @@ type PerfPyPidData struct {
 }
 
 type PerfPySampleStateT struct {
-	SymbolCounter int64
-	Metrics       struct {
-		ErrTlsBase         uint64
-		ErrThreadState     uint64
-		ErrThreadStateNull uint64
-		ErrTopFrame        uint64
-		ErrSymbolId        uint64
-	}
+	SymbolCounter          int64
 	Offsets                PerfPyOffsetConfig
 	_                      [2]byte
 	CurCpu                 uint32

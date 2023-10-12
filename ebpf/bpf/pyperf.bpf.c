@@ -107,18 +107,7 @@ typedef struct {
 FAIL_COMPILATION_IF(sizeof(py_symbol) == sizeof(struct bpf_perf_event_value))
 
 typedef struct {
-    uint64_t err_tls_base;
-    uint64_t err_thread_state;
-    uint64_t err_thread_state_null;
-    uint64_t err_top_frame;
-    uint64_t err_symbol_id;
-} py_metrics;
-
-
-typedef struct {
     int64_t symbol_counter;
-    py_metrics metrics;
-
     py_offset_config offsets;
     uint32_t cur_cpu;
     uint64_t frame_ptr;
@@ -400,7 +389,7 @@ static __always_inline int get_names(
             // this happens in rideshare flask example under 3.9.18
             // todo: we should be able to get the class name
             // https://github.com/fabioz/PyDev.Debugger/blob/2cf10e3fb2ace33b6ef36d66332c82b62815e856/_pydevd_bundle/pydevd_utils.py#L104
-            *((u64*)symbol->classname) = 0x736c436c6c754e; // NullCls
+            *((u64 *) symbol->classname) = 0x736c436c6c754e; // NullCls
         }
     }
 
