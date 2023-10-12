@@ -527,3 +527,37 @@ func Test_FlushNotInitializedHead(t *testing.T) {
 	require.NotZero(t, db.headSize())
 	require.NoError(t, db.Flush(ctx, true, ""))
 }
+
+func Test_endRangeForTimestamp(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		ts       int64
+		expected int64
+	}{
+		{
+			name:     "start of first range",
+			ts:       0,
+			expected: 1 * time.Hour.Nanoseconds(),
+		},
+		{
+			name:     "end of first range",
+			ts:       1*time.Hour.Nanoseconds() - 1,
+			expected: 1 * time.Hour.Nanoseconds(),
+		},
+		{
+			name:     "start of second range",
+			ts:       1 * time.Hour.Nanoseconds(),
+			expected: 2 * time.Hour.Nanoseconds(),
+		},
+		{
+			name:     "end of second range",
+			ts:       2*time.Hour.Nanoseconds() - 1,
+			expected: 2 * time.Hour.Nanoseconds(),
+		},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, endRangeForTimestamp(tt.ts, 1*time.Hour.Nanoseconds()))
+		})
+	}
+}

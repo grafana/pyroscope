@@ -28,6 +28,7 @@ import (
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type Config struct {
@@ -137,7 +138,7 @@ func (f *PhlareDB) runBlockQuerierSync(ctx context.Context) {
 func (f *PhlareDB) loop() {
 	blockScanTicker := time.NewTicker(5 * time.Minute)
 	headSizeCheck := time.NewTicker(5 * time.Second)
-	staleHeadTicker := time.NewTicker(1 * time.Minute)
+	staleHeadTicker := time.NewTicker(util.DurationWithJitter(1*time.Minute, 0.2))
 	maxBlockBytes := f.maxBlockBytes()
 	defer func() {
 		blockScanTicker.Stop()
@@ -166,21 +167,23 @@ func (f *PhlareDB) loop() {
 	}
 }
 
+// Flush start flushing heads to disk.
+// When force is true, all heads are flushed.
+// When force is false, only stale heads are flushed.
+// see Head.isStale for the definition of stale.
 func (f *PhlareDB) Flush(ctx context.Context, force bool, reason string) (err error) {
 	// Ensure this is the only Flush running.
 	f.flushLock.Lock()
 	defer f.flushLock.Unlock()
 
 	currentSize := f.headSize()
-	// Create a new head and evict the old one. Reads and writes
-	// are blocked – after the lock is released, no new ingestion
-	// requests will be arriving to the old head.
 	f.headLock.Lock()
 	if len(f.heads) == 0 {
 		f.headLock.Unlock()
 		return nil
 	}
 
+	// sweep heads for flushing
 	f.flushing = make([]*Head, 0, len(f.heads))
 	for maxT, h := range f.heads {
 		// Skip heads that are not stale.
@@ -202,10 +205,13 @@ func (f *PhlareDB) Flush(ctx context.Context, force bool, reason string) (err er
 	}
 
 	f.headLock.Unlock()
+	// lock is release flushing heads are available for queries in the flushing array.
+	// New heads can be created and written to while the flushing heads are being flushed.
 	errs := multierror.New()
 
+	// flush all heads and keep only successful ones
 	successful := lo.Filter(f.flushing, func(h *Head, index int) bool {
-		f.metrics.flushedBlocksReasons.WithLabelValues(string(reason)).Inc()
+		f.metrics.flushedBlocksReasons.WithLabelValues(reason).Inc()
 		if err := h.Flush(ctx); err != nil {
 			errs.Add(err)
 			return false
@@ -228,13 +234,12 @@ func (f *PhlareDB) Flush(ctx context.Context, force bool, reason string) (err er
 		}
 		return true
 	})
+	// Add heads that were flushed and moved to the blockQuerier.
 	for _, h := range successful {
 		f.blockQuerier.AddBlockQuerierByMeta(h.meta)
 	}
-	// Propagate the new block to blockQuerier.
 	f.flushing = nil
 	f.headLock.Unlock()
-	// The old in-memory head is not available to queries from now on.
 	return err
 }
 
@@ -300,13 +305,16 @@ func (f *PhlareDB) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUI
 	})
 }
 
-func rangeForTimestamp(t, width int64) (maxt int64) {
+func endRangeForTimestamp(t, width int64) (maxt int64) {
 	return (t/width)*width + width
 }
 
+// headForIngest returns the head assigned for the range where the given sampleTimeNanos falls.
+// We hold multiple heads and assign them a fixed range of timestamps.
+// This helps make block range fixed and predictable.
 func (f *PhlareDB) headForIngest(sampleTimeNanos int64, fn func(*Head) error) (err error) {
-	// todo: add more tests
-	maxT := rangeForTimestamp(sampleTimeNanos, f.cfg.MaxBlockDuration.Nanoseconds())
+	// we use the maxT of fixed interval as the key to the head map
+	maxT := endRangeForTimestamp(sampleTimeNanos, f.maxBlockDuration().Nanoseconds())
 	// We need to keep track of the in-flight ingestion requests to ensure that none
 	// of them will compete with Flush. Lock is acquired to avoid Add after Wait that
 	// is called in the very beginning of Flush.
