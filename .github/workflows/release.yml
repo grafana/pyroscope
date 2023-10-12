@@ -82,3 +82,4 @@ jobs:
           make generate-formulas && git add Formula && git commit -m "chore: update formulas to ${}" && git push origin main
         env:
           HOMEBREW_GITHUB_TOKEN: ${{ steps.brew-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-goreleaser.outputs.token }}
