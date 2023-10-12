@@ -67,7 +67,6 @@ int do_perf_event(struct bpf_perf_event_data *ctx) {
 
 SEC("kprobe/do_group_exit")
 int BPF_KPROBE(kprobe_do_group_exit, int status) {
-    bpf_printk("do_group_exit");
     u32 pid = 0;
     current_pid(&pid);
     if (pid == 0) {

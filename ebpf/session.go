@@ -355,6 +355,7 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 		sb.append("pythyon_comm_todo")
 		var kStack []byte
 		if event.StackStatus == uint8(python.StackStatusError) {
+			fmt.Printf("collect python %d %d err=%d\n", event.StackStatus, event.Pid, event.Err)
 			s.options.Metrics.Python.StacktraceError.Inc()
 			stacktraceErrors += 1
 		} else {
@@ -697,20 +698,25 @@ func (s *session) getPyPerf() *python.Perf {
 func (s *session) loadPyPerf() (*python.Perf, error) {
 	opts := &ebpf.CollectionOptions{
 		Programs: ebpf.ProgramOptions{
-			LogDisabled: false,
-			LogSize:     1024 * 1024 * 100,
-			LogLevel:    ebpf.LogLevelInstruction | ebpf.LogLevelStats | ebpf.LogLevelBranch,
+			LogDisabled: true,
 		},
 		MapReplacements: map[string]*ebpf.Map{
 			"stacks": s.bpf.Stacks,
 		},
 	}
+	if extraVerbose {
+		opts.Programs = ebpf.ProgramOptions{
+			LogDisabled: false,
+			LogSize:     1024 * 1024 * 100,
+			LogLevel:    ebpf.LogLevelInstruction | ebpf.LogLevelStats | ebpf.LogLevelBranch,
+		}
+	}
 	err := python.LoadPerfObjects(&s.pyperfBpf, opts)
 	if err != nil {
 		var ve *ebpf.VerifierError
-		if !errors.As(err, &ve) {
+		if extraVerbose && errors.As(err, &ve) {
 			for _, ss := range ve.Log {
-				fmt.Println(ss)
+				_ = s.logger.Log("err", err, "verifier", ss)
 			}
 		}
 		return nil, fmt.Errorf("pyperf load %w", err)

@@ -35,7 +35,6 @@ enum {
     PY_ERROR_CLASS_NAME = 10,
     PY_ERROR_FILE_NAME = 11,
     PY_ERROR_NAME = 12,
-    
 
 
 };
@@ -296,14 +295,14 @@ int pyperf_collect(struct bpf_perf_event_data *ctx) {
     if (pid == 0) {
         return 0;
     }
-    return pyperf_collect_impl(ctx, (pid_t)pid, false); // todo allow configuring it
+    return pyperf_collect_impl(ctx, (pid_t) pid, false); // todo allow configuring it
 }
 
 static __always_inline int check_first_arg(void *code_ptr,
-                                                                     py_offset_config *offsets,
-                                                                     py_symbol *symbol,
-                                                                     bool *out_first_self,
-                                                                     bool *out_first_cls) {
+                                           py_offset_config *offsets,
+                                           py_symbol *symbol,
+                                           bool *out_first_self,
+                                           bool *out_first_cls) {
     // Figure out if we want to parse class name, basically checking the name of
     // the first argument,
     //   ((PyTupleObject*)$frame->f_code->co_varnames)->ob_item[0]
@@ -378,19 +377,30 @@ static __always_inline int get_names(
         void *ptr;
         if (bpf_probe_read_user(
                 &ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_localsplus))) {
+            bpf_dbg_printk("failed to read f_localsplus at %x\n", cur_frame + offsets->VFrame_localsplus);
             return -PY_ERROR_CLASS_NAME;
         }
-        if (first_self) {
-            // we are working with an instance, first we need to get type
-            if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + PY_OFFSET_PyObject_ob_type)) {
+        if (ptr) {
+            if (first_self) {
+                // we are working with an instance, first we need to get type
+                if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + PY_OFFSET_PyObject_ob_type)) {
+                    bpf_dbg_printk("failed to read ob_type at %x\n", ptr + PY_OFFSET_PyObject_ob_type);
+                    return -PY_ERROR_CLASS_NAME;
+                }
+            }
+            if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + PY_OFFSET_PyTypeObject_tp_name)) {
+                bpf_dbg_printk("failed to read tp_name at %x\n", ptr + PY_OFFSET_PyTypeObject_tp_name);
                 return -PY_ERROR_CLASS_NAME;
             }
-        }
-        if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + PY_OFFSET_PyTypeObject_tp_name)) {
-            return -PY_ERROR_CLASS_NAME;
-        }
-        if (bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr) < 0) {
-            return -PY_ERROR_CLASS_NAME;
+            if (bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr) < 0) {
+                bpf_dbg_printk("failed to read class name at %x\n", ptr);
+                return -PY_ERROR_CLASS_NAME;
+            }
+        } else {
+            // this happens in rideshare flask example under 3.9.18
+            // todo: we should be able to get the class name
+            // https://github.com/fabioz/PyDev.Debugger/blob/2cf10e3fb2ace33b6ef36d66332c82b62815e856/_pydevd_bundle/pydevd_utils.py#L104
+            *((u64*)symbol->classname) = 0x736c436c6c754e; // NullCls
         }
     }
 
