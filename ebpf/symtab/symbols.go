@@ -4,7 +4,6 @@ package symtab
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -25,7 +24,6 @@ type SymbolCache struct {
 
 	options CacheOptions
 
-	sync    sync.Mutex
 	metrics *metrics.SymtabMetrics
 }
 type CacheOptions struct {
