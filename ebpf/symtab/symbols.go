@@ -82,7 +82,7 @@ func (sc *SymbolCache) GetProcTable(pid PidKey) *ProcTable {
 		},
 	})
 
-	sc.pidCache.Cache(pid, fresh) //todo this should not do refresh if it is not our target
+	sc.pidCache.Cache(pid, fresh)
 	return fresh
 }
 
