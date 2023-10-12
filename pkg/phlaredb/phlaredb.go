@@ -184,11 +184,10 @@ func (f *PhlareDB) Flush(ctx context.Context, force bool, reason string) (err er
 	f.flushing = make([]*Head, 0, len(f.heads))
 	for maxT, h := range f.heads {
 		// Skip heads that are not stale.
-		if !force && !h.isStale(maxT, time.Now()) {
-			continue
+		if h.isStale(maxT, time.Now()) || force {
+			f.flushing = append(f.flushing, h)
+			delete(f.heads, maxT)
 		}
-		f.flushing = append(f.flushing, h)
-		delete(f.heads, maxT)
 	}
 
 	if len(f.flushing) != 0 {
