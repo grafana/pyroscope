@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -308,35 +309,55 @@ func BenchmarkProfileRows(b *testing.B) {
 }
 
 func Benchmark_SpanID_Encoding(b *testing.B) {
-	inMemoryProfiles := generateMemoryProfiles(1000)
-	for j := range inMemoryProfiles {
-		spans := make([]uint64, len(inMemoryProfiles[j].Samples.Values))
-		for o := range spans {
-			spans[o] = rand.Uint64()
+	const profilesN = 1000
+
+	profiles := func(share float64) []InMemoryProfile {
+		randomSpanIDs := make([]uint64, int(samplesPerProfile*share))
+		inMemoryProfiles := generateMemoryProfiles(profilesN)
+		for j := range inMemoryProfiles {
+			for i := range randomSpanIDs {
+				randomSpanIDs[i] = rand.Uint64()
+			}
+			spans := make([]uint64, len(inMemoryProfiles[j].Samples.Values))
+			for o := range spans {
+				spans[o] = randomSpanIDs[o%len(randomSpanIDs)]
+			}
+			inMemoryProfiles[j].Samples.Spans = spans
+			// We only need this for RLE.
+			sort.Sort(SamplesBySpanID(inMemoryProfiles[j].Samples))
 		}
-		inMemoryProfiles[j].Samples.Spans = spans
+		return inMemoryProfiles
 	}
 
-	var buf bytes.Buffer
-	w := parquet.NewGenericWriter[*Profile](&buf, ProfilesSchema)
+	for _, share := range []float64{
+		1,
+		0.5,
+		0.25,
+		0.15,
+		0.05,
+	} {
+		share := share
+		b.Run(fmt.Sprintf("%v (%d/%d)", share, int(samplesPerProfile*share), samplesPerProfile), func(b *testing.B) {
+			inMemoryProfiles := profiles(share)
+			var buf bytes.Buffer
+			w := parquet.NewGenericWriter[*Profile](&buf, ProfilesSchema)
 
-	b.ResetTimer()
-	b.ReportAllocs()
+			n, err := parquet.CopyRows(w, NewInMemoryProfilesRowReader(inMemoryProfiles))
+			require.NoError(b, err)
+			require.Equal(b, len(inMemoryProfiles), int(n))
+			require.NoError(b, w.Close())
 
-	for i := 0; i < b.N; i++ {
-		buf.Reset()
-		w.Reset(&buf)
+			b.ResetTimer()
+			b.ReportAllocs()
 
-		n, err := parquet.CopyRows(w, NewInMemoryProfilesRowReader(inMemoryProfiles))
-		require.NoError(b, err)
-		require.Equal(b, len(inMemoryProfiles), int(n))
-		require.NoError(b, w.Close())
-		b.ReportMetric(float64(buf.Len()), "bytes")
-
-		r := parquet.NewReader(bytes.NewReader(buf.Bytes()))
-		n, err = parquet.CopyRows(parquet.MultiRowWriter(), r)
-		require.NoError(b, err)
-		require.Equal(b, len(inMemoryProfiles), int(n))
+			for i := 0; i < b.N; i++ {
+				b.ReportMetric(float64(buf.Len()), "bytes")
+				r := parquet.NewReader(bytes.NewReader(buf.Bytes()), ProfilesSchema)
+				n, err = parquet.CopyRows(parquet.MultiRowWriter(), r)
+				require.NoError(b, err)
+				require.Equal(b, len(inMemoryProfiles), int(n))
+			}
+		})
 	}
 }
 
