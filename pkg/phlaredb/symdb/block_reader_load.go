@@ -15,6 +15,13 @@ import (
 	pparquet "github.com/grafana/pyroscope/pkg/parquet"
 )
 
+// Load loads all the partitions into memory. Partitions are kept
+// in memory during the whole lifetime of the Reader object.
+//
+// The main user of the function is Rewriter: as far as is not
+// known which partitions will be fetched in advance, but it is
+// known that all of them or majority will be requested, preloading
+// all of them is more efficient yet consumes more memory.
 func (r *Reader) Load(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return r.loadStacktraces(ctx) })
@@ -110,9 +117,6 @@ func withRowIterator(f parquetobj.File, partitions []*partition, x loader) error
 }
 
 func (t *parquetTableRange[M, P]) loadFrom(iter iter.Iterator[parquet.Row]) error {
-	if t.r++; t.r > 1 {
-		return nil
-	}
 	var s uint32
 	for _, h := range t.headers {
 		s += h.Rows
