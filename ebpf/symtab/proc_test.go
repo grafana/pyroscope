@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/grafana/pyroscope/ebpf/util"
 
 	"github.com/stretchr/testify/require"
@@ -55,6 +56,7 @@ func testProc(t *testing.T, maps string, data []procTestdata) {
 		Pid: 239,
 		ElfTableOptions: ElfTableOptions{
 			ElfCache: elfCache,
+			Metrics:  metrics.NewSymtabMetrics(nil),
 		},
 	})
 	m.rootFS = path.Join(wd, "elf", "testdata")
@@ -257,6 +259,7 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 		Pid: 239,
 		ElfTableOptions: ElfTableOptions{
 			ElfCache: elfCache,
+			Metrics:  metrics.NewSymtabMetrics(nil),
 		},
 	})
 	m.rootFS = path.Join(wd, "elf", "testdata")
@@ -340,6 +343,7 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 		Pid: 239,
 		ElfTableOptions: ElfTableOptions{
 			ElfCache: elfCache,
+			Metrics:  metrics.NewSymtabMetrics(nil),
 		},
 	})
 	m.rootFS = path.Join(wd, "elf", "testdata")
