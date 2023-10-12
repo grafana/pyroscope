@@ -5,12 +5,11 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/grafana/pyroscope/ebpf/pyrobpf"
 	"github.com/stretchr/testify/require"
 )
 
 func TestReadEvent(t *testing.T) {
-	require.Equal(t, 320, int(unsafe.Sizeof(pyrobpf.ProfilePyEvent{})))
+	require.Equal(t, 320, int(unsafe.Sizeof(PerfPyEvent{})))
 	raw := make([]byte, 320)
 	raw[0] = 0x1f                                              //	StackStatus uint8
 	raw[1] = 42                                                //	Err         uint8

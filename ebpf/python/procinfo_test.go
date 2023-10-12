@@ -114,6 +114,18 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 	require.Equal(t, info.Version, Version{3, 11, 0})
 	require.NotNil(t, info.PythonMaps)
 	require.NotNil(t, info.LibPythonMaps)
+
+	maps = `00400000-006d8000 r-xp 00000000 08:01 2278062                            /opt/splunk/bin/python3.7m
+006d8000-006d9000 r--p 002d7000 08:01 2278062                            /opt/splunk/bin/python3.7m
+006d9000-00742000 rw-p 002d8000 08:01 2278062                            /opt/splunk/bin/python3.7m
+00742000-00762000 rw-p 00000000 00:00 0 
+02067000-02966000 rw-p 00000000 00:00 0                                  [heap]`
+	info, err = GetProcInfo(bufio.NewScanner(bytes.NewReader([]byte(maps))))
+	require.NoError(t, err)
+	require.Nil(t, info.Musl)
+	require.Equal(t, info.Version, Version{3, 7, 0})
+	require.NotNil(t, info.PythonMaps)
+	require.Nil(t, info.LibPythonMaps)
 }
 
 //func TestMusl(t *testing.T) {

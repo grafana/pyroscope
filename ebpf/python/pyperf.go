@@ -141,7 +141,8 @@ func (s *Perf) GetSymbolsLazy() LazySymbols {
 	}
 }
 
-func (s *Perf) GetSymbols() (map[uint32]*PerfPySymbol, error) {
+func (s *Perf) GetSymbols(svcReason string) (map[uint32]*PerfPySymbol, error) {
+	s.metrics.SymbolLookup.WithLabelValues(svcReason).Inc()
 	var (
 		m       = s.symbolsHashMp
 		mapSize = m.MaxEntries()
@@ -241,21 +242,21 @@ type LazySymbols struct {
 	fresh   bool
 }
 
-func (s *LazySymbols) GetSymbol(symID uint32) (*PerfPySymbol, error) {
+func (s *LazySymbols) GetSymbol(symID uint32, svc string) (*PerfPySymbol, error) {
 	symbol, ok := s.symbols[symID]
 	if ok {
 		return symbol, nil
 	}
-	return s.getSymbol(symID)
+	return s.getSymbol(symID, svc)
 
 }
 
-func (s *LazySymbols) getSymbol(id uint32) (*PerfPySymbol, error) {
+func (s *LazySymbols) getSymbol(id uint32, svc string) (*PerfPySymbol, error) {
 	if s.fresh {
 		return nil, fmt.Errorf("symbol %d not found", id)
 	}
 	// make it fresh
-	symbols, err := s.perf.GetSymbols()
+	symbols, err := s.perf.GetSymbols(svc)
 	if err != nil {
 		return nil, fmt.Errorf("symbols refresh failed: %w", err)
 	}

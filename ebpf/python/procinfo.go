@@ -17,7 +17,7 @@ type ProcInfo struct {
 	Musl          []*symtab.ProcMap
 }
 
-var rePython = regexp.MustCompile("/.*/((?:lib)?python)(\\d+)\\.(\\d+)(?:[mu]?\\.so)?(?:.1.0)?$")
+var rePython = regexp.MustCompile("/.*/((?:lib)?python)(\\d+)\\.(\\d+)(?:[mu]?(?:\\.so)?)?(?:.1.0)?$")
 
 // GetProcInfo parses /proc/pid/map of a python process.
 func GetProcInfo(s *bufio.Scanner) (ProcInfo, error) {

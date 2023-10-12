@@ -366,7 +366,7 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 				sb.append("pyperf_truncated")
 			}
 			for i := 0; i < int(event.StackLen); i++ {
-				sym, err := pySymbols.GetSymbol(event.Stack[i])
+				sym, err := pySymbols.GetSymbol(event.Stack[i], svc)
 				if err == nil {
 					filename := cStringFromI8Unsafe(sym.File[:])
 					if !s.options.CacheOptions.SymbolOptions.PythonFullFilePath {
