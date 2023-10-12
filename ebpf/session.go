@@ -355,7 +355,9 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 		sb.append("pythyon_comm_todo")
 		var kStack []byte
 		if event.StackStatus == uint8(python.StackStatusError) {
-			fmt.Printf("collect python %d %d err=%d\n", event.StackStatus, event.Pid, event.Err)
+			if extraVerbose {
+				s.logger.Log("msg", "collect python", "stack_status", event.StackStatus, "pid", event.Pid, "err", event.Err)
+			}
 			s.options.Metrics.Python.StacktraceError.Inc()
 			stacktraceErrors += 1
 		} else {
