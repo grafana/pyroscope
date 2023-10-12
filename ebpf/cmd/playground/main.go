@@ -35,10 +35,10 @@ func main() {
 	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), l, sd.TargetsOptions{
 		TargetsOnly: false,
 		Targets: []sd.DiscoveryTarget{
-			sd.DiscoveryTarget{
+			{
 				"__container_id__": "010cd203a1e8e7efff53ba49c65ccc5f705c50927264510528bd7145fa9fd8f5",
 				"service_name":     "loadgen",
-			}, sd.DiscoveryTarget{
+			}, {
 				"__container_id__": "163bc0de14003010ae8920549cdd6e65718188f5ad68fc45b0e9c143a6626d9d",
 				"service_name":     "rideshare",
 			},
