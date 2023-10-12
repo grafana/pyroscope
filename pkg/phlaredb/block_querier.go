@@ -385,6 +385,7 @@ type Querier interface {
 	Bounds() (model.Time, model.Time)
 	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
 	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error)
+	MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spans phlaremodel.SpanSelector) (*phlaremodel.Tree, error)
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
 	MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error)
 	Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error)
@@ -557,6 +558,114 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 	err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
 		Result: &ingestv1.MergeProfilesStacktracesResult{
 			Format:    ingestv1.StacktracesMergeFormat_MERGE_FORMAT_TREE,
+			TreeBytes: buf.Bytes(),
+		},
+	})
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+		}
+		return err
+	}
+
+	return nil
+}
+
+func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse], blockGetter BlockGetter) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeSpanProfile")
+	defer sp.Finish()
+
+	r, err := stream.Receive()
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))
+		}
+		return err
+	}
+
+	if r.Request == nil {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("missing initial select request"))
+	}
+	request := r.Request
+	sp.LogFields(
+		otlog.String("start", model.Time(request.Start).Time().String()),
+		otlog.String("end", model.Time(request.End).Time().String()),
+		otlog.String("selector", request.LabelSelector),
+		otlog.String("profile_type_id", request.Type.ID),
+	)
+
+	spanSelector, err := phlaremodel.NewSpanSelector(request.SpanSelector)
+	if err != nil {
+		return err
+	}
+
+	queriers, err := blockGetter(ctx, model.Time(request.Start), model.Time(request.End))
+	if err != nil {
+		return err
+	}
+
+	iters, err := SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
+		LabelSelector: request.LabelSelector,
+		Type:          request.Type,
+		Start:         request.Start,
+		End:           request.End,
+	}, queriers)
+	if err != nil {
+		return err
+	}
+
+	// send batches of profiles to client and filter via bidi stream.
+	selectedProfiles, err := filterProfiles[
+		BidiServerMerge[*ingestv1.MergeSpanProfileResponse, *ingestv1.MergeSpanProfileRequest],
+		*ingestv1.MergeSpanProfileResponse,
+		*ingestv1.MergeSpanProfileRequest](ctx, iters, defaultBatchSize, stream)
+	if err != nil {
+		return err
+	}
+
+	var m sync.Mutex
+	t := new(phlaremodel.Tree)
+	g, ctx := errgroup.WithContext(ctx)
+	for i, querier := range queriers {
+		querier := querier
+		i := i
+		if len(selectedProfiles[i]) == 0 {
+			continue
+		}
+		// Sort profiles for better read locality.
+		// Merge async the result so we can continue streaming profiles.
+		g.Go(util.RecoverPanic(func() error {
+			merge, err := querier.MergeBySpans(ctx, iter.NewSliceIterator(querier.Sort(selectedProfiles[i])), spanSelector)
+			if err != nil {
+				return err
+			}
+			m.Lock()
+			t.Merge(merge)
+			m.Unlock()
+			return nil
+		}))
+	}
+
+	// Signals the end of the profile streaming by sending an empty response.
+	// This allows the client to not block other streaming ingesters.
+	sp.LogFields(otlog.String("msg", "signaling the end of the profile streaming"))
+	if err = stream.Send(&ingestv1.MergeSpanProfileResponse{}); err != nil {
+		return err
+	}
+
+	if err = g.Wait(); err != nil {
+		return err
+	}
+
+	var buf bytes.Buffer
+	if err = t.MarshalTruncate(&buf, r.GetMaxNodes()); err != nil {
+		return err
+	}
+
+	// sends the final result to the client.
+	sp.LogFields(otlog.String("msg", "sending the final result to the client"))
+	err = stream.Send(&ingestv1.MergeSpanProfileResponse{
+		Result: &ingestv1.MergeSpanProfileResult{
 			TreeBytes: buf.Bytes(),
 		},
 	})

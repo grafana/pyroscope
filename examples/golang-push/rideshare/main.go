@@ -46,6 +46,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	config := rideshare.ReadConfig()
+	config.AppName = "ride-sharing-app"
 
 	tp, _ := setupOTEL(config)
 	defer func() {
@@ -72,7 +73,6 @@ func main() {
 }
 
 func setupOTEL(c rideshare.Config) (tp *sdktrace.TracerProvider, err error) {
-	c.AppName = "ride-sharing-app"
 	tp, err = rideshare.TracerProvider(c)
 	if err != nil {
 		return nil, err
@@ -93,13 +93,10 @@ func setupOTEL(c rideshare.Config) (tp *sdktrace.TracerProvider, err error) {
 	// We wrap the tracer provider to also annotate goroutines with Span ID so
 	// that pprof would add corresponding labels to profiling samples.
 	otel.SetTracerProvider(otelpyroscope.NewTracerProvider(tp,
-		otelpyroscope.WithAppName("ride-sharing-app"),
+		otelpyroscope.WithPyroscopeURL(c.PyroscopeServerAddress),
+		otelpyroscope.WithAppName(c.AppName),
 		otelpyroscope.WithRootSpanOnly(true),
 		otelpyroscope.WithAddSpanName(true),
-		otelpyroscope.WithPyroscopeURL("http://localhost:4040"),
-		otelpyroscope.WithProfileBaselineLabels(c.Tags),
-		otelpyroscope.WithProfileBaselineURL(true),
-		otelpyroscope.WithProfileURL(true),
 	))
 
 	// Register the trace context and baggage propagators so data is propagated across services/processes.

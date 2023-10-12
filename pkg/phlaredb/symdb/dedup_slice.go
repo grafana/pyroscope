@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hash/maphash"
 	"reflect"
+	"sort"
 	"sync"
 	"unsafe"
 
@@ -13,6 +14,8 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/slices"
 )
 
 // Refactored as is from the phlaredb package.
@@ -22,9 +25,16 @@ var (
 	uint32SlicePool zeropool.Pool[[]uint32]
 )
 
+// TODO(kolesnikovae):
+//   - PartitionWriter should only rewrite profile symbol indices;
+//   - InMemoryProfile should be created somewhere else on the call side.
+
 func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []schemav1.InMemoryProfile {
 	// create a rewriter state
 	rewrites := &rewriter{}
+
+	spans := pprof.ProfileSpans(profile)
+	pprof.ZeroLabelStrings(profile)
 
 	p.strings.ingest(profile.StringTable, rewrites)
 	mappings := make([]*schemav1.InMemoryMapping, len(profile.Mapping))
@@ -75,7 +85,7 @@ func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []sche
 	}
 
 	p.locations.ingest(locs, rewrites)
-	samplesPerType := p.convertSamples(rewrites, profile.Sample)
+	samplesPerType := p.convertSamples(rewrites, profile.Sample, spans)
 
 	profiles := make([]schemav1.InMemoryProfile, len(samplesPerType))
 	for idxType := range samplesPerType {
@@ -94,63 +104,57 @@ func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []sche
 	return profiles
 }
 
-func (p *PartitionWriter) convertSamples(r *rewriter, in []*profilev1.Sample) []schemav1.Samples {
+func (p *PartitionWriter) convertSamples(r *rewriter, in []*profilev1.Sample, spans []uint64) []schemav1.Samples {
 	if len(in) == 0 {
 		return nil
 	}
 
 	// populate output
 	var (
-		out            = make([]schemav1.Samples, len(in[0].Value))
-		stacktraces    = make([]*schemav1.Stacktrace, len(in))
-		stacktracesIds = uint32SlicePool.Get()
+		samplesByType = make([]schemav1.Samples, len(in[0].Value))
+		stacktraces   = make([]*schemav1.Stacktrace, len(in))
 	)
 
-	for idxType := range out {
-		out[idxType] = schemav1.Samples{
+	for i := range samplesByType {
+		s := schemav1.Samples{
 			Values:        make([]uint64, len(in)),
 			StacktraceIDs: make([]uint32, len(in)),
 		}
+		if len(spans) > 0 {
+			s.Spans = make([]uint64, len(spans))
+			copy(s.Spans, spans)
+		}
+		samplesByType[i] = s
 	}
 
 	for idxSample := range in {
 		// populate samples
-		for idxType := range out {
-			out[idxType].Values[idxSample] = uint64(in[idxSample].Value[idxType])
+		src := in[idxSample]
+		for idxType := range samplesByType {
+			samplesByType[idxType].Values[idxSample] = uint64(src.Value[idxType])
 		}
-
-		// build full stack traces
-		stacktraces[idxSample] = &schemav1.Stacktrace{
-			// no copySlice necessary at this point,stacktracesHelper.clone
-			// will copy it, if it is required to be retained.
-			LocationIDs: in[idxSample].LocationId,
-		}
+		stacktraces[idxSample] = &schemav1.Stacktrace{LocationIDs: src.LocationId}
 		for i := range stacktraces[idxSample].LocationIDs {
 			r.locations.rewriteUint64(&stacktraces[idxSample].LocationIDs[i])
 		}
 	}
 
-	if cap(stacktracesIds) < len(stacktraces) {
-		stacktracesIds = make([]uint32, len(stacktraces))
-	}
-	stacktracesIds = stacktracesIds[:len(stacktraces)]
-	defer uint32SlicePool.Put(stacktracesIds)
-
+	stacktracesIds := slices.Grow(uint32SlicePool.Get(), len(stacktraces))
 	p.stacktraces.append(stacktracesIds, stacktraces)
 
-	// reference stacktraces
-	for idxType := range out {
-		for idxSample := range out[idxType].StacktraceIDs {
-			out[idxType].StacktraceIDs[idxSample] = stacktracesIds[int64(idxSample)]
+	// Rewrite stacktraces
+	for idxType := range samplesByType {
+		samples := samplesByType[idxType]
+		for i := range samples.StacktraceIDs {
+			samples.StacktraceIDs[i] = stacktracesIds[i]
 		}
-		compacted := out[idxType].Compact(true)
-		if compacted.Len() != out[idxType].Len() {
-			compacted = compacted.Clone()
-		}
-		out[idxType] = compacted
+		samples = samples.Compact(false)
+		sort.Sort(samples)
+		samplesByType[idxType] = samples
 	}
 
-	return out
+	uint32SlicePool.Put(stacktracesIds)
+	return samplesByType
 }
 
 func copySlice[T any](in []T) []T {

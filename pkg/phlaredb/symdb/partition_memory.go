@@ -28,6 +28,9 @@ func (p *PartitionWriter) AppendStacktraces(dst []uint32, s []*schemav1.Stacktra
 func (p *PartitionWriter) ResolveStacktraceLocations(_ context.Context, dst StacktraceInserter, stacktraces []uint32) error {
 	// TODO(kolesnikovae): Add option to do resolve concurrently.
 	//   Depends on StacktraceInserter implementation.
+	if len(stacktraces) == 0 {
+		return nil
+	}
 	return p.stacktraces.resolve(dst, stacktraces)
 }
 

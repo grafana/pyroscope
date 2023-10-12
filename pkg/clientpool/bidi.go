@@ -22,3 +22,10 @@ type BidiClientMergeProfilesPprof interface {
 	CloseRequest() error
 	CloseResponse() error
 }
+
+type BidiClientMergeSpanProfile interface {
+	Send(request *ingestv1.MergeSpanProfileRequest) error
+	Receive() (*ingestv1.MergeSpanProfileResponse, error)
+	CloseRequest() error
+	CloseResponse() error
+}

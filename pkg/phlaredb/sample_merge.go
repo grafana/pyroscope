@@ -54,6 +54,18 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 	return m.normalize(), nil
 }
 
+func (b *singleBlockQuerier) MergeBySpans(_ context.Context, _ iter.Iterator[Profile], _ phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
+	//	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeBySpans - Block")
+	//	defer sp.Finish()
+	//	r := symdb.NewResolver(ctx, b.symbols)
+	//	defer r.Release()
+	//	if err := mergeBySpans(ctx, b.profiles.file, rows, r, spanSelector); err != nil {
+	//		return nil, err
+	//	}
+	//	return r.Tree()
+	return new(phlaremodel.Tree), nil
+}
+
 type Source interface {
 	Schema() *parquet.Schema
 	RowGroups() []parquet.RowGroup

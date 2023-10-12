@@ -83,3 +83,7 @@ func (c *ingesterPoolClient) MergeProfilesLabels(ctx context.Context) BidiClient
 func (c *ingesterPoolClient) MergeProfilesPprof(ctx context.Context) BidiClientMergeProfilesPprof {
 	return c.IngesterServiceClient.MergeProfilesPprof(ctx)
 }
+
+func (c *ingesterPoolClient) MergeSpanProfile(ctx context.Context) BidiClientMergeSpanProfile {
+	return c.IngesterServiceClient.MergeSpanProfile(ctx)
+}

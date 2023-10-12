@@ -1,0 +1,70 @@
+version: "3"
+
+services:
+  us-east:
+    ports:
+      - 5000
+    environment: &env
+      PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
+      OTLP_URL: tempo:4318
+      OTLP_INSECURE: 1
+      DEBUG_LOGGER: 1
+      REGION: us-east
+    build:
+      context: ../../golang-push/rideshare
+
+  eu-north:
+    ports:
+      - 5000
+    environment:
+      <<: *env
+      REGION: eu-north
+    build:
+      context: ../../golang-push/rideshare
+
+  ap-south:
+    ports:
+      - 5000
+    environment:
+      <<: *env
+      REGION: ap-south
+    build:
+      context: ../../golang-push/rideshare
+
+  load-generator:
+    environment: *env
+    build:
+      context: ../../golang-push/rideshare
+      dockerfile: Dockerfile.load-generator
+
+  grafana:
+    image: grafana/grafana:10.1.1
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_INSTALL_PLUGINS=pyroscope-panel
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - '3000:3000'
+
+  tempo:
+    image: grafana/tempo:latest
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "14268:14268"  # jaeger ingest
+      - "3200:3200"   # tempo
+      - "9095:9095" # tempo grpc
+      - "4317:4317"  # otlp grpc
+      - "4318:4318"  # otlp http
+      - "9411:9411"   # zipkin
+
+  pyroscope:
+    ports:
+      - '4040:4040'
+    build:
+      context: '../../../'
+      dockerfile: cmd/pyroscope/Dockerfile

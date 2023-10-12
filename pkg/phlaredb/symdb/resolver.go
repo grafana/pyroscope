@@ -68,7 +68,18 @@ func (r *Resolver) Release() {
 func (r *Resolver) AddSamples(partition uint64, s schemav1.Samples) {
 	p := r.Partition(partition)
 	for i, sid := range s.StacktraceIDs {
-		p[sid] += int64(s.Values[i])
+		if sid > 0 {
+			p[sid] += int64(s.Values[i])
+		}
+	}
+}
+
+func (r *Resolver) AddSamplesWithSpanSelector(partition uint64, s schemav1.Samples, spanSelector model.SpanSelector) {
+	p := r.Partition(partition)
+	for i, sid := range s.StacktraceIDs {
+		if _, ok := spanSelector[s.Spans[i]]; ok {
+			p[sid] += int64(s.Values[i])
+		}
 	}
 }
 
