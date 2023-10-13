@@ -101,7 +101,7 @@ func (t *Target) Labels() (uint64, labels.Labels) {
 	return t.fingerprint, t.labels
 }
 
-func (t *Target) DebugString() string {
+func (t *Target) String() string {
 	return t.labels.String()
 }
 
@@ -109,7 +109,7 @@ type containerID string
 
 type TargetFinder interface {
 	FindTarget(pid uint32) *Target
-	RemoveDead(pid uint32)
+	RemoveDeadPID(pid uint32)
 	DebugInfo() []string
 	Update(args TargetsOptions)
 }
@@ -156,7 +156,7 @@ func (tf *targetFinder) FindTarget(pid uint32) *Target {
 	return tf.defaultTarget
 }
 
-func (tf *targetFinder) RemoveDead(pid uint32) {
+func (tf *targetFinder) RemoveDeadPID(pid uint32) {
 	tf.sync.Lock()
 	defer tf.sync.Unlock()
 	tf.containerIDCache.Remove(pid)

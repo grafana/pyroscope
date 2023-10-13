@@ -355,9 +355,10 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 		sb.append(s.comm(event.Pid))
 		var kStack []byte
 		if event.StackStatus == uint8(python.StackStatusError) {
-			if extraVerbose {
-				s.logger.Log("msg", "collect python", "stack_status", event.StackStatus, "pid", event.Pid, "err", event.Err)
-			}
+			_ = level.Debug(s.logger).Log("msg", "collect python",
+				"stack_status", python.StackStatus(event.StackStatus),
+				"pid", event.Pid,
+				"err", python.PyError(event.Err))
 			s.options.Metrics.Python.StacktraceError.Inc()
 			stacktraceErrors += 1
 		} else {
@@ -626,17 +627,17 @@ func (s *session) readEvents(events *perf.Reader,
 func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
 	for pid := range pidInfoRequests {
 		target := s.targetFinder.FindTarget(pid)
-		if extraVerbose {
-			ss := ""
-			if target != nil {
-				ss = target.DebugString()
-			}
-			_ = level.Debug(s.logger).Log("msg", "got pid info request", "pid", pid, "target", ss)
-		}
+		_ = level.Debug(s.logger).Log("msg", "got pid info request", "pid", pid, "target", target)
 
 		func() {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()
+
+			_, alreadyDead := s.pids.dead[pid]
+			if alreadyDead {
+				_ = level.Debug(s.logger).Log("msg", "pid info request for dead pid", "pid", pid)
+				return
+			}
 
 			if target == nil {
 				s.saveUnknownPIDLocked(pid)
@@ -660,17 +661,15 @@ func (s *session) enableProfilingLocked(pid uint32, target *sd.Target) {
 			_ = s.setPidConfig(pid, typ, false, false)
 			return
 		}
-		err, pyData := pyPerf.AddPythonPID(pid, target.ServiceName())
+		err, alive, pyData := pyPerf.AddPythonPID(pid, target.ServiceName())
 		if err != nil {
-			_ = level.Error(s.logger).Log("err", err, "msg", "pyperf process profiling init failed", "pid", pid)
+			_ = s.procAliveLogger(alive).Log("err", err, "msg", "pyperf process profiling init failed", "pid", pid)
 			typ.typ = pyrobpf.ProfilingTypeError
 			_ = s.setPidConfig(pid, typ, false, false)
 			return
 		}
-		if extraVerbose {
-			_ = level.Debug(s.logger).Log("msg", "pyperf process profiling init success", "pid", pid, "pyData", fmt.Sprintf("%+v", pyData))
-		}
-
+		_ = level.Info(s.logger).Log("msg", "pyperf process profiling init success", "pid", pid,
+			"py_data", fmt.Sprintf("%+v", pyData))
 	}
 	err := s.setPidConfig(pid, typ, s.options.CollectUser, s.options.CollectKernel)
 	if err != nil {
@@ -699,6 +698,7 @@ func (s *session) getPyPerf() *python.Perf {
 }
 
 func (s *session) loadPyPerf() (*python.Perf, error) {
+	defer btf.FlushKernelSpec() // save some memory
 	opts := &ebpf.CollectionOptions{
 		Programs: ebpf.ProgramOptions{
 			LogDisabled: true,
@@ -707,21 +707,9 @@ func (s *session) loadPyPerf() (*python.Perf, error) {
 			"stacks": s.bpf.Stacks,
 		},
 	}
-	if extraVerbose {
-		opts.Programs = ebpf.ProgramOptions{
-			LogDisabled: false,
-			LogSize:     1024 * 1024 * 100,
-			LogLevel:    ebpf.LogLevelInstruction | ebpf.LogLevelStats | ebpf.LogLevelBranch,
-		}
-	}
+
 	err := python.LoadPerfObjects(&s.pyperfBpf, opts)
 	if err != nil {
-		var ve *ebpf.VerifierError
-		if extraVerbose && errors.As(err, &ve) {
-			for _, ss := range ve.Log {
-				_ = s.logger.Log("err", err, "verifier", ss)
-			}
-		}
 		return nil, fmt.Errorf("pyperf load %w", err)
 	}
 	pyperf, err := python.NewPerf(s.logger, s.options.Metrics.Python, s.pyperfBpf.PerfMaps.PyEvents, s.pyperfBpf.PerfMaps.PyPidConfig, s.pyperfBpf.PerfMaps.PySymbols)
@@ -732,7 +720,7 @@ func (s *session) loadPyPerf() (*python.Perf, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pyperf link %w", err)
 	}
-	btf.FlushKernelSpec() // save some memory
+	_ = level.Info(s.logger).Log("msg", "pyperf loaded")
 	return pyperf, nil
 }
 
@@ -746,18 +734,21 @@ type procInfoLite struct {
 func (s *session) selectProfilingType(pid uint32, target *sd.Target) procInfoLite {
 	exePath, err := os.Readlink(fmt.Sprintf("/proc/%d/exe", pid))
 	if err != nil {
-		_ = s.procErrLogger(err).Log("err", err, "msg", "select profiling type failed", "pid", pid, "target", target.ServiceName())
+		_ = s.procErrLogger(err).Log("err", err, "msg", "select profiling type failed", "pid", pid)
 		return procInfoLite{pid: pid, typ: pyrobpf.ProfilingTypeError}
 	}
 	comm, err := os.ReadFile(fmt.Sprintf("/proc/%d/comm", pid))
 	if err != nil {
-		_ = s.procErrLogger(err).Log("err", err, "msg", "select profiling type failed", "pid", pid, "target", target.ServiceName())
+		_ = s.procErrLogger(err).Log("err", err, "msg", "select profiling type failed", "pid", pid)
 		return procInfoLite{pid: pid, typ: pyrobpf.ProfilingTypeError}
 	}
-	exe := filepath.Base(exePath)
-	if extraVerbose {
-		_ = level.Debug(s.logger).Log("exe", exePath, "pid", pid, "target", target.DebugString())
+	if comm[len(comm)-1] == '\n' {
+		comm = comm[:len(comm)-1]
 	}
+	exe := filepath.Base(exePath)
+
+	_ = level.Debug(s.logger).Log("exe", exePath, "pid", pid)
+
 	if s.options.PythonEnabled && strings.HasPrefix(exe, "python") || exe == "uwsgi" {
 		return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypePython}
 	}
@@ -765,13 +756,19 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) procInfoLit
 }
 
 func (s *session) procErrLogger(err error) log.Logger {
-	logger := s.logger
 	if errors.Is(err, os.ErrNotExist) {
-		logger = level.Debug(s.logger)
+		return level.Debug(s.logger)
 	} else {
-		logger = level.Error(s.logger)
+		return level.Error(s.logger)
 	}
-	return logger
+}
+
+func (s *session) procAliveLogger(alive bool) log.Logger {
+	if alive {
+		return level.Error(s.logger)
+	} else {
+		return level.Debug(s.logger)
+	}
 }
 
 // this is mostly needed for first discovery reset
@@ -779,16 +776,12 @@ func (s *session) procErrLogger(err error) log.Logger {
 // or a new process started in between sd runs
 // this may be not needed after process discovery implemented
 func (s *session) saveUnknownPIDLocked(pid uint32) {
-	//_ = level.Debug(s.logger).Log("msg", "unknown target", "pid", pid)
-
 	s.pids.unknown[pid] = struct{}{}
 }
 
 func (s *session) processDeadPIDsEvents(dead chan uint32) {
 	for pid := range dead {
-		if extraVerbose {
-			_ = level.Debug(s.logger).Log("msg", "got pid dead", "pid", pid)
-		}
+		_ = level.Debug(s.logger).Log("msg", "got pid dead", "pid", pid)
 		func() {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()
@@ -826,7 +819,7 @@ func (s *session) cleanup() {
 		if err := s.bpf.Pids.Delete(pid); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
 			_ = level.Error(s.logger).Log("msg", "delete pid config", "pid", pid, "err", err)
 		}
-		s.targetFinder.RemoveDead(pid)
+		s.targetFinder.RemoveDeadPID(pid)
 	}
 
 	for pid := range s.pids.unknown {
@@ -870,5 +863,3 @@ func cStringFromI8Unsafe(tok []int8) string {
 	sh.Len = i
 	return res
 }
-
-var extraVerbose = true

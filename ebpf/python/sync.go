@@ -1,5 +1,7 @@
 package python
 
+import "fmt"
+
 /*
 enum {
     STACK_STATUS_COMPLETE = 0,
@@ -34,6 +36,19 @@ var (
 	StackStatusTruncated StackStatus = 2
 )
 
+func (s StackStatus) String() string {
+	switch s {
+	case StackStatusComplete:
+		return "StackStatusComplete"
+	case StackStatusError:
+		return "StackStatusError"
+	case StackStatusTruncated:
+		return "StackStatusTruncated"
+	default:
+		return fmt.Sprintf("StackStatus(%d)", s)
+	}
+}
+
 type PyError uint8
 
 var (
@@ -50,3 +65,34 @@ var (
 	PyErrorFileName        PyError = 11
 	PyErrorName            PyError = 12
 )
+
+func (e PyError) String() string {
+	switch e {
+	case PyErrorGeneric:
+		return "PyErrorGeneric"
+	case PyErrorThreadState:
+		return "PyErrorThreadState"
+	case PyErrorThreadStateNull:
+		return "PyErrorThreadStateNull"
+	case PyErrorTopFrame:
+		return "PyErrorTopFrame"
+	case PyErrorFrameCode:
+		return "PyErrorFrameCode"
+	case PyErrorFramePrev:
+		return "PyErrorFramePrev"
+	case PyErrorSymbol:
+		return "PyErrorSymbol"
+	case PyErrorTlsbase:
+		return "PyErrorTlsbase"
+	case PyErrorFirstArg:
+		return "PyErrorFirstArg"
+	case PyErrorClassName:
+		return "PyErrorClassName"
+	case PyErrorFileName:
+		return "PyErrorFileName"
+	case PyErrorName:
+		return "PyErrorName"
+	default:
+		return fmt.Sprintf("PyError(%d)", e)
+	}
+}

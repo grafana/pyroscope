@@ -58,25 +58,29 @@ func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *eb
 	return res, nil
 }
 
-func (s *Perf) AddPythonPID(pid uint32, serviceName string) (error, *PerfPyPidData) {
+// AddPythonPID return python init error, second return value is true if error occured and process is stil alive,
+// third return value - python process data
+func (s *Perf) AddPythonPID(pid uint32, serviceName string) (error, bool, *PerfPyPidData) {
 	if s.pidCache.Contains(pid) {
-		return nil, nil
+		return nil, false, nil
 	}
 	data, err := GetPyPerfPidData(s.logger, pid)
 	if err != nil {
-		s.metrics.PidDataError.WithLabelValues(serviceName).Inc()
+		alive := processAlive(pid)
+		if alive {
+			s.metrics.PidDataError.WithLabelValues(serviceName).Inc()
+		}
 		s.pidCache.Add(pid, nil) // to never try again
-		return fmt.Errorf("error collecting python data %w", err), nil
+		return fmt.Errorf("error collecting python data %w", err), alive, nil
 	}
 	err = s.pidDataHashMap.Update(pid, data, ebpf.UpdateAny)
 	if err != nil { // should never happen
-		s.metrics.PidDataError.WithLabelValues(serviceName).Inc()
 		s.pidCache.Add(pid, nil) // to never try again
-		return fmt.Errorf("updating pid data hash map: %w", err), nil
+		return fmt.Errorf("updating pid data hash map: %w", err), false, nil
 	}
 	s.metrics.ProcessInitSuccess.WithLabelValues(serviceName).Inc()
 	s.pidCache.Add(pid, data)
-	return nil, data
+	return nil, false, data
 }
 
 func (s *Perf) loop() {
@@ -267,4 +271,9 @@ func (s *LazySymbols) getSymbol(id uint32, svc string) (*PerfPySymbol, error) {
 		return symbol, nil
 	}
 	return nil, fmt.Errorf("symbol %d not found", id)
+}
+
+func processAlive(pid uint32) bool {
+	_, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
+	return err == nil || !errors.Is(err, os.ErrNotExist)
 }
