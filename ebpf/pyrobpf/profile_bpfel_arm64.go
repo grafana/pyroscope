@@ -72,8 +72,8 @@ type ProfileSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type ProfileProgramSpecs struct {
-	DoPerfEvent       *ebpf.ProgramSpec `ebpf:"do_perf_event"`
-	KprobeDoGroupExit *ebpf.ProgramSpec `ebpf:"kprobe_do_group_exit"`
+	DisassociateCtty *ebpf.ProgramSpec `ebpf:"disassociate_ctty"`
+	DoPerfEvent      *ebpf.ProgramSpec `ebpf:"do_perf_event"`
 }
 
 // ProfileMapSpecs contains maps before they are loaded into the kernel.
@@ -127,14 +127,14 @@ func (m *ProfileMaps) Close() error {
 //
 // It can be passed to LoadProfileObjects or ebpf.CollectionSpec.LoadAndAssign.
 type ProfilePrograms struct {
-	DoPerfEvent       *ebpf.Program `ebpf:"do_perf_event"`
-	KprobeDoGroupExit *ebpf.Program `ebpf:"kprobe_do_group_exit"`
+	DisassociateCtty *ebpf.Program `ebpf:"disassociate_ctty"`
+	DoPerfEvent      *ebpf.Program `ebpf:"do_perf_event"`
 }
 
 func (p *ProfilePrograms) Close() error {
 	return _ProfileClose(
+		p.DisassociateCtty,
 		p.DoPerfEvent,
-		p.KprobeDoGroupExit,
 	)
 }
 

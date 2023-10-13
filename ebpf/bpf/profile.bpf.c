@@ -65,8 +65,11 @@ int do_perf_event(struct bpf_perf_event_data *ctx) {
 }
 
 
-SEC("kprobe/do_group_exit")
-int BPF_KPROBE(kprobe_do_group_exit, int status) {
+SEC("kprobe/disassociate_ctty")
+int BPF_KPROBE(disassociate_ctty, int on_exit) {
+    if (!on_exit) {
+        return 0;
+    }
     u32 pid = 0;
     current_pid(&pid);
     if (pid == 0) {
