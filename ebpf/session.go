@@ -792,9 +792,9 @@ func (s *session) processDeadPIDsEvents(dead chan uint32) {
 }
 
 func (s *session) linkKProbes() error {
-	hooks := []string{"do_group_exit"}
+	hooks := []string{"disassociate_ctty"}
 	for _, hook := range hooks {
-		kp, err := link.Kprobe(hook, s.bpf.KprobeDoGroupExit, nil)
+		kp, err := link.Kprobe(hook, s.bpf.DisassociateCtty, nil)
 		if err != nil {
 			return fmt.Errorf("link kprobe %s: %w", hook, err)
 		}
