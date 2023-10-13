@@ -826,6 +826,7 @@ func (s *session) cleanup() {
 		if err := s.bpf.Pids.Delete(pid); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
 			_ = level.Error(s.logger).Log("msg", "delete pid config", "pid", pid, "err", err)
 		}
+		s.targetFinder.RemoveDead(pid)
 	}
 
 	for pid := range s.pids.unknown {

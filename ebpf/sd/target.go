@@ -109,6 +109,7 @@ type containerID string
 
 type TargetFinder interface {
 	FindTarget(pid uint32) *Target
+	RemoveDead(pid uint32)
 	DebugInfo() []string
 	Update(args TargetsOptions)
 }
@@ -131,13 +132,6 @@ type targetFinder struct {
 	sync sync.Mutex
 }
 
-func (tf *targetFinder) Update(args TargetsOptions) {
-	tf.sync.Lock()
-	defer tf.sync.Unlock()
-	tf.setTargets(args)
-	tf.resizeContainerIDCache(args.ContainerCacheSize)
-}
-
 func NewTargetFinder(fs fs.FS, l log.Logger, options TargetsOptions) (TargetFinder, error) {
 	containerIDCache, err := lru.New[uint32, containerID](options.ContainerCacheSize)
 	if err != nil {
@@ -150,6 +144,29 @@ func NewTargetFinder(fs fs.FS, l log.Logger, options TargetsOptions) (TargetFind
 	}
 	res.setTargets(options)
 	return res, nil
+}
+
+func (tf *targetFinder) FindTarget(pid uint32) *Target {
+	tf.sync.Lock()
+	defer tf.sync.Unlock()
+	res := tf.findTarget(pid)
+	if res != nil {
+		return res
+	}
+	return tf.defaultTarget
+}
+
+func (tf *targetFinder) RemoveDead(pid uint32) {
+	tf.sync.Lock()
+	defer tf.sync.Unlock()
+	tf.containerIDCache.Remove(pid)
+}
+
+func (tf *targetFinder) Update(args TargetsOptions) {
+	tf.sync.Lock()
+	defer tf.sync.Unlock()
+	tf.setTargets(args)
+	tf.resizeContainerIDCache(args.ContainerCacheSize)
 }
 
 func (tf *targetFinder) setTargets(opts TargetsOptions) {
@@ -193,16 +210,6 @@ func (tf *targetFinder) setTargets(opts TargetsOptions) {
 		}
 	}
 	_ = level.Debug(tf.l).Log("msg", "created targets", "count", len(tf.cid2target))
-}
-
-func (tf *targetFinder) FindTarget(pid uint32) *Target {
-	tf.sync.Lock()
-	defer tf.sync.Unlock()
-	res := tf.findTarget(pid)
-	if res != nil {
-		return res
-	}
-	return tf.defaultTarget
 }
 
 func (tf *targetFinder) findTarget(pid uint32) *Target {
