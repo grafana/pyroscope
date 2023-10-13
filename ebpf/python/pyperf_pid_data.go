@@ -2,6 +2,7 @@ package python
 
 import (
 	"bufio"
+	"bytes"
 	"debug/elf"
 	"fmt"
 	"os"
@@ -12,17 +13,17 @@ import (
 )
 
 func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
-	mapsFD, err := os.Open(fmt.Sprintf("/proc/%d/maps", pid))
+	maps, err := os.ReadFile(fmt.Sprintf("/proc/%d/maps", pid))
 	if err != nil {
 		return nil, fmt.Errorf("reading proc maps %d: %w", pid, err)
 	}
-	defer mapsFD.Close()
 
-	info, err := GetProcInfo(bufio.NewScanner(mapsFD))
-
+	fmt.Printf("pid=%d maps=%s\n", pid, string(maps))
+	info, err := GetProcInfo(bufio.NewScanner(bytes.NewBuffer(maps)))
 	if err != nil {
 		return nil, fmt.Errorf("GetPythonProcInfo error %s: %w", fmt.Sprintf("/proc/%d/maps", pid), err)
 	}
+	fmt.Printf("pid=%d info=%+v\n", pid, info)
 	var pythonMeat []*symtab.ProcMap
 	if info.LibPythonMaps == nil {
 		pythonMeat = info.PythonMaps
