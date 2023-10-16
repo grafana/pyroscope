@@ -1,11 +1,11 @@
 ---
-description: Learn about server api
-menuTitle: About server API
-title: About Grafana Pyroscope tenant IDs
+description: Learn about the Pyrocope server API
+menuTitle: Server API Overview
+title: Pyroscope Server HTTP API Reference
 weight: 20
 ---
 
-# HTTP API Reference
+# Pyroscope Server HTTP API Reference
 
 Pyroscope server exposes an HTTP API that can be used to query profiling data and to ingest profiling data from other sources.
 
