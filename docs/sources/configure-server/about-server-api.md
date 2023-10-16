@@ -9,6 +9,9 @@ weight: 20
 
 Pyroscope server exposes an HTTP API that can be used to query profiling data and to ingest profiling data from other sources.
 
+## Authentication
+TODO - how does authentication work with new Grafana cloud stuff?
+
 ## Ingestion
 
 Currently there's just one endpoint: `POST /ingest`. It takes profile data in request body and metadata as query params.
@@ -26,7 +29,7 @@ It takes multiple query parameters:
 | `units`            | name of the profiling data unit         | optional (default is `samples`  |
 | `aggregrationType` | type of aggregration to merge profiles  | optional (default is `sum`)     |
 
-* `name` specifies application name. It may be specified in the fully qualified application name notation as described in [the specification](/docs/flameql#notation). For example:
+* `name` specifies application name. For example:
 ```
 my.awesome.app.cpu{env=staging,region=us-west-1}
 ```
@@ -106,12 +109,7 @@ Here's a description of sample type configuration fields:
 
 ### JFR format
 
-:::info
-Support for `JFR` format is available starting with version `0.14.0`
-:::
-
-
-This is the [Java Flight Recorder](https://openjdk.java.net/jeps/328) format, typically used by JVM-based profilers, also supported by [our Java integration](https://github.com/pyroscope-io/pyroscope-java#jfr-format-and-multiple-event-support).
+This is the [Java Flight Recorder](https://openjdk.java.net/jeps/328) format, typically used by JVM-based profilers, also supported by our Java integration.
 
 When this format is used, some of the query parameters behave slightly different:
 * `format` should be set to `jfr`.
