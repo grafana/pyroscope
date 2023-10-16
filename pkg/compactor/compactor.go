@@ -120,7 +120,7 @@ type Config struct {
 func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	cfg.ShardingRing.RegisterFlags(f, logger)
 
-	cfg.BlockRanges = DurationList{4 * time.Hour, 8 * time.Hour}
+	cfg.BlockRanges = DurationList{3 * time.Hour, 6 * time.Hour, 12 * time.Hour}
 	cfg.retryMinBackoff = 10 * time.Second
 	cfg.retryMaxBackoff = time.Minute
 

@@ -37,9 +37,9 @@ brackets indicate that a parameter is optional.
 - `<prefix>`: a CLI flag prefix based on the context (look at the parent configuration block to see which CLI flags prefix should be used)
 - `<relabel_config>`: a [Prometheus relabeling configuration](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config)
 - `<time>`: a timestamp, with available formats:
-  - `2006-01-20` (midnight, local timezone)
-  - `2006-01-20T15:04` (local timezone)
-  - RFC 3339 formats: `2006-01-20T15:04:05Z` (UTC) or `2006-01-20T15:04:05+07:00` (explicit timezone)
+    - `2006-01-20` (midnight, local timezone)
+    - `2006-01-20T15:04` (local timezone)
+    - RFC 3339 formats: `2006-01-20T15:04:05Z` (UTC) or `2006-01-20T15:04:05+07:00` (explicit timezone)
 
 ## Use environment variables in the configuration
 
@@ -109,6 +109,10 @@ limits:
   # Maximum number of label names per series.
   # CLI flag: -validation.max-label-names-per-series
   [max_label_names_per_series: <int> | default = 30]
+
+  # Maximum number of sessions per series. 0 to disable.
+  # CLI flag: -validation.max-sessions-per-series
+  [max_sessions_per_series: <int> | default = 0]
 
   # Maximum size of a profile in bytes. This is based off the uncompressed size.
   # 0 to disable.
@@ -324,7 +328,7 @@ store_gateway:
 
         # Override the default cipher suite list (separated by commas). Allowed
         # values:
-        #
+        # 
         # Secure Ciphers:
         # - TLS_RSA_WITH_AES_128_CBC_SHA
         # - TLS_RSA_WITH_AES_256_CBC_SHA
@@ -343,7 +347,7 @@ store_gateway:
         # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
         # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
         # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-        #
+        # 
         # Insecure Ciphers:
         # - TLS_RSA_WITH_RC4_128_SHA
         # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -525,7 +529,7 @@ runtime_config:
 compactor:
   # List of compaction time ranges.
   # CLI flag: -compactor.block-ranges
-  [block_ranges: <list of durations> | default = 4h0m0s]
+  [block_ranges: <list of durations> | default = 4h0m0s,8h0m0s]
 
   # Number of Go routines to use when downloading blocks for compaction and
   # uploading resulting blocks.
@@ -540,7 +544,7 @@ compactor:
   # Directory to temporarily store blocks during compaction. This directory is
   # not required to be persisted between restarts.
   # CLI flag: -compactor.data-dir
-  [data_dir: <string> | default = "./data-compactor/"]
+  [data_dir: <string> | default = "/data"]
 
   # The frequency at which the compaction runs
   # CLI flag: -compactor.compaction-interval
@@ -698,7 +702,7 @@ compactor:
 
         # Override the default cipher suite list (separated by commas). Allowed
         # values:
-        #
+        # 
         # Secure Ciphers:
         # - TLS_RSA_WITH_AES_128_CBC_SHA
         # - TLS_RSA_WITH_AES_256_CBC_SHA
@@ -717,7 +721,7 @@ compactor:
         # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
         # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
         # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-        #
+        # 
         # Insecure Ciphers:
         # - TLS_RSA_WITH_RC4_128_SHA
         # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -808,6 +812,11 @@ compactor:
   # newest-blocks-first.
   # CLI flag: -compactor.compaction-jobs-order
   [compaction_jobs_order: <string> | default = "smallest-range-oldest-blocks-first"]
+
+  # The strategy to use when splitting blocks during compaction. Supported
+  # values are: fingerprint, stacktracePartition.
+  # CLI flag: -compactor.compaction-split-by
+  [compaction_split_by: <string> | default = "fingerprint"]
 
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
@@ -1055,7 +1064,8 @@ grpc_tls_config:
 # CLI flag: -server.grpc-max-send-msg-size-bytes
 [grpc_server_max_send_msg_size: <int> | default = 4194304]
 
-# Limit on the number of concurrent streams for gRPC calls (0 = unlimited)
+# Limit on the number of concurrent streams for gRPC calls per client connection
+# (0 = unlimited)
 # CLI flag: -server.grpc-max-concurrent-streams
 [grpc_server_max_concurrent_streams: <int> | default = 100]
 
@@ -1253,7 +1263,7 @@ lifecycler:
 
         # Override the default cipher suite list (separated by commas). Allowed
         # values:
-        #
+        # 
         # Secure Ciphers:
         # - TLS_RSA_WITH_AES_128_CBC_SHA
         # - TLS_RSA_WITH_AES_256_CBC_SHA
@@ -1272,7 +1282,7 @@ lifecycler:
         # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
         # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
         # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-        #
+        # 
         # Insecure Ciphers:
         # - TLS_RSA_WITH_RC4_128_SHA
         # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1610,7 +1620,7 @@ backoff_config:
 [tls_insecure_skip_verify: <boolean> | default = false]
 
 # Override the default cipher suite list (separated by commas). Allowed values:
-#
+# 
 # Secure Ciphers:
 # - TLS_RSA_WITH_AES_128_CBC_SHA
 # - TLS_RSA_WITH_AES_256_CBC_SHA
@@ -1629,7 +1639,7 @@ backoff_config:
 # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
 # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-#
+# 
 # Insecure Ciphers:
 # - TLS_RSA_WITH_RC4_128_SHA
 # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1823,7 +1833,7 @@ The `memberlist` block configures the Gossip memberlist.
 [tls_insecure_skip_verify: <boolean> | default = false]
 
 # Override the default cipher suite list (separated by commas). Allowed values:
-#
+# 
 # Secure Ciphers:
 # - TLS_RSA_WITH_AES_128_CBC_SHA
 # - TLS_RSA_WITH_AES_256_CBC_SHA
@@ -1842,7 +1852,7 @@ The `memberlist` block configures the Gossip memberlist.
 # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
 # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-#
+# 
 # Insecure Ciphers:
 # - TLS_RSA_WITH_RC4_128_SHA
 # - TLS_RSA_WITH_3DES_EDE_CBC_SHA

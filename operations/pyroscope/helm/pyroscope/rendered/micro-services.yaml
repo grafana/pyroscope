@@ -6,10 +6,10 @@ metadata:
   name: pyroscope-dev-compactor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.0.3
+    helm.sh/chart: pyroscope-1.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/version: "1.1.5"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "compactor"
 spec:
@@ -1658,10 +1658,10 @@ metadata:
   name: pyroscope-dev-compactor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.0.3
+    helm.sh/chart: pyroscope-1.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/version: "1.1.5"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "compactor"
 spec:
@@ -1683,10 +1683,10 @@ metadata:
   name: pyroscope-dev-compactor-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.0.3
+    helm.sh/chart: pyroscope-1.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/version: "1.1.5"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "compactor"
 spec:
@@ -2556,10 +2556,10 @@ metadata:
   name: pyroscope-dev-compactor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.0.3
+    helm.sh/chart: pyroscope-1.1.0
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/version: "1.1.5"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "compactor"
 spec:
@@ -2574,7 +2574,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 027360c7de6747514d4ecfafd152f3a01b26a673d9cce1ef8697a8c67d6d48d9
+        checksum/config: ce26697e53e0e4956784b9ff32702e2e4ec5090a573756ec37bcf002ce319865
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2596,7 +2596,7 @@ spec:
         - name: "compactor"
           securityContext:
             {}
-          image: "grafana/pyroscope:1.0.0"
+          image: "grafana/pyroscope:1.1.5"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=compactor"
