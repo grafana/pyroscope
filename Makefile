@@ -337,6 +337,10 @@ $(BIN)/trunk: Makefile
 	curl -L https://trunk.io/releases/trunk -o $(@D)/trunk
 	chmod +x $(@D)/trunk
 
+.PHONY: cve/check
+cve/check:
+	docker run -t -i --rm --volume "$(CURDIR)/:/repo" -u "$(shell id -u)" aquasec/trivy:0.45.1 filesystem --cache-dir /repo/.cache/trivy --scanners vuln --skip-dirs .tmp/ --skip-dirs node_modules/ --skip-dirs tools/monitoring/vendor/ /repo
+
 KIND_CLUSTER = pyroscope-dev
 
 .PHONY: helm/lint
