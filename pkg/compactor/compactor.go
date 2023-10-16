@@ -29,7 +29,6 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
 	"github.com/grafana/pyroscope/pkg/tenant"
@@ -229,7 +228,6 @@ type MultitenantCompactor struct {
 
 	shardingStrategy shardingStrategy
 	jobsOrder        JobsOrderFunc
-	splitBy          phlaredb.SplitByFunc
 
 	// Metrics.
 	compactionRunsStarted          prometheus.Counter
