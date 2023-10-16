@@ -216,7 +216,7 @@ minio:
 
 ingress:
   enabled: false
-  # className: ""
+  className: ""
   # hosts:
   #   - localhost
   # tls: 
