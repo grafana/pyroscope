@@ -29,6 +29,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
 	"github.com/grafana/pyroscope/pkg/tenant"
@@ -52,6 +53,7 @@ const (
 var (
 	errInvalidBlockRanges                 = "compactor block range periods should be divisible by the previous one, but %s is not divisible by %s"
 	errInvalidCompactionOrder             = fmt.Errorf("unsupported compaction order (supported values: %s)", strings.Join(CompactionOrders, ", "))
+	errInvalidCompactionSplitBy           = fmt.Errorf("unsupported compaction split by (supported values: %s)", strings.Join(CompactionSplitBys, ", "))
 	errInvalidMaxOpeningBlocksConcurrency = fmt.Errorf("invalid max-opening-blocks-concurrency value, must be positive")
 	RingOp                                = ring.NewOp([]ring.InstanceState{ring.ACTIVE}, nil)
 )
@@ -102,6 +104,7 @@ type Config struct {
 	ShardingRing RingConfig `yaml:"sharding_ring"`
 
 	CompactionJobsOrder string `yaml:"compaction_jobs_order" category:"advanced"`
+	CompactionSplitBy   string `yaml:"compaction_split_by" category:"advanced"`
 
 	// No need to add options to customize the retry backoff,
 	// given the defaults should be fine, but allow to override
@@ -134,6 +137,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	f.DurationVar(&cfg.CleanupInterval, "compactor.cleanup-interval", 15*time.Minute, "How frequently compactor should run blocks cleanup and maintenance, as well as update the bucket index.")
 	f.IntVar(&cfg.CleanupConcurrency, "compactor.cleanup-concurrency", 20, "Max number of tenants for which blocks cleanup and maintenance should run concurrently.")
 	f.StringVar(&cfg.CompactionJobsOrder, "compactor.compaction-jobs-order", CompactionOrderOldestFirst, fmt.Sprintf("The sorting to use when deciding which compaction jobs should run first for a given tenant. Supported values are: %s.", strings.Join(CompactionOrders, ", ")))
+	f.StringVar(&cfg.CompactionSplitBy, "compactor.compaction-split-by", CompactionSplitByFingerprint, fmt.Sprintf("The strategy to use when splitting blocks during compaction. Supported values are: %s.", strings.Join(CompactionSplitBys, ", ")))
 	f.DurationVar(&cfg.DeletionDelay, "compactor.deletion-delay", 12*time.Hour, "Time before a block marked for deletion is deleted from bucket. "+
 		"If not 0, blocks will be marked for deletion and compactor component will permanently delete blocks marked for deletion from the bucket. "+
 		"If 0, blocks will be deleted straight away. Note that deleting blocks immediately can cause query failures.")
@@ -141,7 +145,6 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	f.BoolVar(&cfg.NoBlocksFileCleanupEnabled, "compactor.no-blocks-file-cleanup-enabled", false, "If enabled, will delete the bucket-index, markers and debug files in the tenant bucket when there are no blocks left in the index.")
 	// compactor concurrency options
 	f.IntVar(&cfg.MaxOpeningBlocksConcurrency, "compactor.max-opening-blocks-concurrency", 1, "Number of goroutines opening blocks before compaction.")
-	// f.IntVar(&cfg.MaxClosingBlocksConcurrency, "compactor.max-closing-blocks-concurrency", 1, "Max number of blocks that can be closed concurrently during split compaction. Note that closing of newly compacted block uses a lot of memory for writing index.")
 
 	f.Var(&cfg.EnabledTenants, "compactor.enabled-tenants", "Comma separated list of tenants that can be compacted. If specified, only these tenants will be compacted by compactor, otherwise all tenants can be compacted. Subject to sharding.")
 	f.Var(&cfg.DisabledTenants, "compactor.disabled-tenants", "Comma separated list of tenants that cannot be compacted by this compactor. If specified, and compactor would normally pick given tenant for compaction (via -compactor.enabled-tenants or sharding), it will be ignored instead.")
@@ -158,11 +161,13 @@ func (cfg *Config) Validate() error {
 	if cfg.MaxOpeningBlocksConcurrency < 1 {
 		return errInvalidMaxOpeningBlocksConcurrency
 	}
-	// if cfg.MaxClosingBlocksConcurrency < 1 {
-	// 	return errInvalidMaxClosingBlocksConcurrency
-	// }
+
 	if !util.StringsContain(CompactionOrders, cfg.CompactionJobsOrder) {
 		return errInvalidCompactionOrder
+	}
+
+	if !util.StringsContain(CompactionSplitBys, cfg.CompactionSplitBy) {
+		return errInvalidCompactionSplitBy
 	}
 
 	return nil
@@ -224,6 +229,7 @@ type MultitenantCompactor struct {
 
 	shardingStrategy shardingStrategy
 	jobsOrder        JobsOrderFunc
+	splitBy          phlaredb.SplitByFunc
 
 	// Metrics.
 	compactionRunsStarted          prometheus.Counter

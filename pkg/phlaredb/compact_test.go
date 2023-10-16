@@ -109,7 +109,7 @@ func TestCompactWithSplitting(t *testing.T) {
 		)
 	})
 	dst := t.TempDir()
-	compacted, err := CompactWithSplitting(ctx, []BlockReader{b1, b2, b2, b1}, 16, dst)
+	compacted, err := CompactWithSplitting(ctx, []BlockReader{b1, b2, b2, b1}, 16, dst, SplitByFingerprint)
 	require.NoError(t, err)
 
 	// 4 shards one per series.

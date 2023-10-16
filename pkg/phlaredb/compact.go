@@ -41,25 +41,24 @@ type BlockReader interface {
 }
 
 func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
-	metas, err := CompactWithSplitting(ctx, src, 1, dst)
+	metas, err := CompactWithSplitting(ctx, src, 1, dst, SplitByFingerprint)
 	if err != nil {
 		return block.Meta{}, err
 	}
 	return metas[0], nil
 }
 
-func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount uint64, dst string) (
+func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount uint64, dst string, splitBy SplitByFunc) (
 	[]block.Meta, error,
 ) {
-	if shardsCount == 0 {
-		shardsCount = 1
+	if splitCount == 0 {
+		splitCount = 1
 	}
-	if len(src) <= 1 && shardsCount == 1 {
+	if len(src) <= 1 && splitCount == 1 {
 		return nil, errors.New("not enough blocks to compact")
 	}
 	var (
-		writers  = make([]*blockWriter, shardsCount)
-		shardBy  = shardByFingerprint
+		writers  = make([]*blockWriter, splitCount)
 		srcMetas = make([]block.Meta, len(src))
 		err      error
 	)
@@ -74,11 +73,11 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount ui
 	for i := range writers {
 		meta := outMeta.Clone()
 		meta.ULID = ulid.MustNew(outBlocksTime, rand.Reader)
-		if shardsCount > 1 {
+		if splitCount > 1 {
 			if meta.Labels == nil {
 				meta.Labels = make(map[string]string)
 			}
-			meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(i), shardsCount)
+			meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(i), splitCount)
 		}
 		writers[i], err = newBlockWriter(dst, meta)
 		if err != nil {
@@ -95,7 +94,7 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount ui
 	// iterate and splits the rows into series.
 	for rowsIt.Next() {
 		r := rowsIt.At()
-		shard := int(shardBy(r, shardsCount))
+		shard := int(splitBy(r, splitCount))
 		if err := writers[shard].WriteRow(r); err != nil {
 			return nil, err
 		}
@@ -123,8 +122,14 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount ui
 	return out, errs.Err()
 }
 
-var shardByFingerprint = func(r profileRow, shardsCount uint64) uint64 {
+type SplitByFunc func(r profileRow, shardsCount uint64) uint64
+
+var SplitByFingerprint = func(r profileRow, shardsCount uint64) uint64 {
 	return uint64(r.fp) % shardsCount
+}
+
+var SplitByStacktracePartition = func(r profileRow, shardsCount uint64) uint64 {
+	return r.row.StacktracePartitionID() % shardsCount
 }
 
 type blockWriter struct {

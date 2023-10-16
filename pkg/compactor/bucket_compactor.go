@@ -225,8 +225,27 @@ type Compactor interface {
 	CompactWithSplitting(ctx context.Context, dst string, dirs []string, shardCount uint64) (result []ulid.ULID, _ error)
 }
 
+const (
+	CompactionSplitByFingerprint         = "fingerprint"
+	CompactionSplitByStacktracePartition = "stacktracePartition"
+)
+
+var CompactionSplitBys = []string{CompactionSplitByFingerprint, CompactionSplitByStacktracePartition}
+
+func getCompactionSplitBy(name string) phlaredb.SplitByFunc {
+	switch name {
+	case CompactionSplitByFingerprint:
+		return phlaredb.SplitByFingerprint
+	case CompactionSplitByStacktracePartition:
+		return phlaredb.SplitByStacktracePartition
+	default:
+		return nil
+	}
+}
+
 type BlockCompactor struct {
 	blockOpenConcurrency int
+	splitBy              phlaredb.SplitByFunc
 	logger               log.Logger
 	metrics              *CompactorMetrics
 }
@@ -361,7 +380,7 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 	c.metrics.Ran.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Inc()
 	c.metrics.Split.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(float64(shardCount))
 
-	metas, err := phlaredb.CompactWithSplitting(ctx, readers, shardCount, dest)
+	metas, err := phlaredb.CompactWithSplitting(ctx, readers, shardCount, dest, c.splitBy)
 	if err != nil {
 		return nil, errors.Wrapf(err, "compact blocks %v", dirs)
 	}

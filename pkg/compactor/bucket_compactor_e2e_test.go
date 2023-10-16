@@ -29,6 +29,7 @@ import (
 
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
@@ -228,6 +229,7 @@ func TestGroupCompactE2E(t *testing.T) {
 		grouper := NewSplitAndMergeGrouper("user-1", []int64{1000, 3000}, 0, 0, logger)
 		metrics := NewBucketCompactorMetrics(blocksMarkedForDeletion, prometheus.NewPedanticRegistry())
 		bComp, err := NewBucketCompactor(logger, sy, grouper, planner, &BlockCompactor{
+			splitBy:              phlaredb.SplitByFingerprint,
 			blockOpenConcurrency: 100,
 			logger:               logger,
 			metrics:              newCompactorMetrics(nil),

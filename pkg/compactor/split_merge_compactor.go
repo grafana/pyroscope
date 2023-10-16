@@ -21,8 +21,14 @@ func splitAndMergeGrouperFactory(_ context.Context, cfg Config, cfgProvider Conf
 }
 
 func splitAndMergeCompactorFactory(ctx context.Context, cfg Config, logger log.Logger, reg prometheus.Registerer) (Compactor, Planner, error) {
+	splitBy := getCompactionSplitBy(cfg.CompactionSplitBy)
+	if splitBy == nil {
+		return nil, nil, errInvalidCompactionSplitBy
+	}
+
 	return &BlockCompactor{
 		blockOpenConcurrency: cfg.MaxOpeningBlocksConcurrency,
+		splitBy:              splitBy,
 		logger:               logger,
 		metrics:              newCompactorMetrics(reg),
 	}, NewSplitAndMergePlanner(cfg.BlockRanges.ToMilliseconds()), nil
