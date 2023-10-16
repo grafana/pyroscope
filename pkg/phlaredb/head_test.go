@@ -288,7 +288,7 @@ func TestHeadFlush(t *testing.T) {
 			MinTime: head.meta.MinTime,
 			MaxTime: head.meta.MaxTime,
 			Stats: block.BlockStats{
-				NumSamples:  9479,
+				NumSamples:  14192,
 				NumSeries:   8,
 				NumProfiles: 11,
 			},
@@ -340,7 +340,7 @@ func TestHeadFlush(t *testing.T) {
 					RelPath: "symbols/strings.parquet",
 					Parquet: &block.ParquetFile{
 						NumRowGroups: 2,
-						NumRows:      1723,
+						NumRows:      1722,
 					},
 				},
 			},
@@ -448,6 +448,19 @@ func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
 	// TODO: We need to test if flushing misses out on ingested profiles
 
 	wg.Wait()
+}
+
+func TestIsStale(t *testing.T) {
+	head := newTestHead(t)
+	now := time.Unix(0, time.Minute.Nanoseconds())
+
+	// should not be stale if have not past the stale grace period
+	head.updatedAt.Store(time.Unix(0, 0))
+	require.False(t, head.isStale(now.UnixNano(), now))
+	// should be stale as we have passed the stale grace period
+	require.True(t, head.isStale(now.UnixNano(), now.Add(2*StaleGracePeriod)))
+	// Should not be stale if maxT is not passed.
+	require.False(t, head.isStale(now.Add(2*StaleGracePeriod).UnixNano(), now.Add(2*StaleGracePeriod)))
 }
 
 func BenchmarkHeadIngestProfiles(t *testing.B) {

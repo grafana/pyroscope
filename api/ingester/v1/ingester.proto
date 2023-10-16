@@ -16,6 +16,7 @@ service IngesterService {
   rpc MergeProfilesStacktraces(stream MergeProfilesStacktracesRequest) returns (stream MergeProfilesStacktracesResponse) {}
   rpc MergeProfilesLabels(stream MergeProfilesLabelsRequest) returns (stream MergeProfilesLabelsResponse) {}
   rpc MergeProfilesPprof(stream MergeProfilesPprofRequest) returns (stream MergeProfilesPprofResponse) {}
+  rpc MergeSpanProfile(stream MergeSpanProfileRequest) returns (stream MergeSpanProfileResponse) {}
 }
 
 message ProfileTypesRequest {}
@@ -80,6 +81,35 @@ message MergeProfilesStacktracesResponse {
   ProfileSets selectedProfiles = 1;
   // The list of stracktraces for the profile with their respective value
   MergeProfilesStacktracesResult result = 3;
+}
+
+message SelectSpanProfileRequest {
+  string label_selector = 1;
+  types.v1.ProfileType type = 2;
+  int64 start = 3;
+  int64 end = 4;
+  repeated string span_selector = 5;
+}
+
+message MergeSpanProfileRequest {
+  // The client starts the stream with a request containing the profile type and the labels.
+  SelectSpanProfileRequest request = 1;
+  // Max nodes in the resulting tree.
+  optional int64 max_nodes = 2;
+  // On a batch of profiles, the client sends the profiles to keep for merging.
+  repeated bool profiles = 3;
+}
+
+message MergeSpanProfileResponse {
+  // The server replies batch of profiles.
+  // A last message without profiles signals the next message will be the result of the merge.
+  ProfileSets selectedProfiles = 1;
+  // The list of stracktraces for the profile with their respective value
+  MergeSpanProfileResult result = 2;
+}
+
+message MergeSpanProfileResult {
+  bytes tree_bytes = 1;
 }
 
 message ProfileSets {

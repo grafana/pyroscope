@@ -70,7 +70,8 @@ type Head struct {
 	tables        []Table
 	delta         *deltaProfiles
 
-	limiter TenantLimiter
+	limiter   TenantLimiter
+	updatedAt *atomic.Time
 }
 
 const (
@@ -93,6 +94,7 @@ func NewHead(phlarectx context.Context, cfg Config, limiter TenantLimiter) (*Hea
 
 		parquetConfig: &parquetConfig,
 		limiter:       limiter,
+		updatedAt:     atomic.NewTime(time.Now()),
 	}
 	h.headPath = filepath.Join(cfg.DataPath, pathHead, h.meta.ULID.String())
 	h.localPath = filepath.Join(cfg.DataPath, PathLocal, h.meta.ULID.String())
@@ -161,6 +163,20 @@ func (h *Head) loop() {
 	}
 }
 
+const StaleGracePeriod = 5 * time.Minute
+
+// isStale returns true if the head is stale and should be flushed.
+// The head is stale if it is older than the max time of the block provided as maxT.
+// And if the head has not been updated for 5 minutes.
+func (h *Head) isStale(maxT int64, now time.Time) bool {
+	// If we're still receiving data we'll wait 5 minutes before flushing.
+	if now.Sub(h.updatedAt.Load()) <= StaleGracePeriod {
+		return false
+	}
+	// Blocks that have pass their maxT range by 5min are stale
+	return now.After(time.Unix(0, maxT))
+}
+
 func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*typesv1.LabelPair) error {
 	labels, seriesFingerprints := labelsForProfile(p, externalLabels...)
 
@@ -210,6 +226,8 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		h.meta.MaxTime = v
 	}
 	h.metaLock.Unlock()
+
+	h.updatedAt.Store(time.Now())
 
 	return nil
 }

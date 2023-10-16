@@ -49,6 +49,9 @@ const (
 	// QuerierServiceSelectMergeStacktracesProcedure is the fully-qualified name of the QuerierService's
 	// SelectMergeStacktraces RPC.
 	QuerierServiceSelectMergeStacktracesProcedure = "/querier.v1.QuerierService/SelectMergeStacktraces"
+	// QuerierServiceSelectMergeSpanProfileProcedure is the fully-qualified name of the QuerierService's
+	// SelectMergeSpanProfile RPC.
+	QuerierServiceSelectMergeSpanProfileProcedure = "/querier.v1.QuerierService/SelectMergeSpanProfile"
 	// QuerierServiceSelectMergeProfileProcedure is the fully-qualified name of the QuerierService's
 	// SelectMergeProfile RPC.
 	QuerierServiceSelectMergeProfileProcedure = "/querier.v1.QuerierService/SelectMergeProfile"
@@ -71,6 +74,8 @@ type QuerierServiceClient interface {
 	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
 	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error)
+	// SelectMergeSpans returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	SelectMergeSpanProfile(context.Context, *connect_go.Request[v1.SelectMergeSpanProfileRequest]) (*connect_go.Response[v1.SelectMergeSpanProfileResponse], error)
 	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(context.Context, *connect_go.Request[v1.SelectMergeProfileRequest]) (*connect_go.Response[v12.Profile], error)
 	// SelectSeries returns a time series for the total sum of the requested profiles.
@@ -113,6 +118,11 @@ func NewQuerierServiceClient(httpClient connect_go.HTTPClient, baseURL string, o
 			baseURL+QuerierServiceSelectMergeStacktracesProcedure,
 			opts...,
 		),
+		selectMergeSpanProfile: connect_go.NewClient[v1.SelectMergeSpanProfileRequest, v1.SelectMergeSpanProfileResponse](
+			httpClient,
+			baseURL+QuerierServiceSelectMergeSpanProfileProcedure,
+			opts...,
+		),
 		selectMergeProfile: connect_go.NewClient[v1.SelectMergeProfileRequest, v12.Profile](
 			httpClient,
 			baseURL+QuerierServiceSelectMergeProfileProcedure,
@@ -138,6 +148,7 @@ type querierServiceClient struct {
 	labelNames             *connect_go.Client[v11.LabelNamesRequest, v11.LabelNamesResponse]
 	series                 *connect_go.Client[v1.SeriesRequest, v1.SeriesResponse]
 	selectMergeStacktraces *connect_go.Client[v1.SelectMergeStacktracesRequest, v1.SelectMergeStacktracesResponse]
+	selectMergeSpanProfile *connect_go.Client[v1.SelectMergeSpanProfileRequest, v1.SelectMergeSpanProfileResponse]
 	selectMergeProfile     *connect_go.Client[v1.SelectMergeProfileRequest, v12.Profile]
 	selectSeries           *connect_go.Client[v1.SelectSeriesRequest, v1.SelectSeriesResponse]
 	diff                   *connect_go.Client[v1.DiffRequest, v1.DiffResponse]
@@ -168,6 +179,11 @@ func (c *querierServiceClient) SelectMergeStacktraces(ctx context.Context, req *
 	return c.selectMergeStacktraces.CallUnary(ctx, req)
 }
 
+// SelectMergeSpanProfile calls querier.v1.QuerierService.SelectMergeSpanProfile.
+func (c *querierServiceClient) SelectMergeSpanProfile(ctx context.Context, req *connect_go.Request[v1.SelectMergeSpanProfileRequest]) (*connect_go.Response[v1.SelectMergeSpanProfileResponse], error) {
+	return c.selectMergeSpanProfile.CallUnary(ctx, req)
+}
+
 // SelectMergeProfile calls querier.v1.QuerierService.SelectMergeProfile.
 func (c *querierServiceClient) SelectMergeProfile(ctx context.Context, req *connect_go.Request[v1.SelectMergeProfileRequest]) (*connect_go.Response[v12.Profile], error) {
 	return c.selectMergeProfile.CallUnary(ctx, req)
@@ -195,6 +211,8 @@ type QuerierServiceHandler interface {
 	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
 	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error)
+	// SelectMergeSpans returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	SelectMergeSpanProfile(context.Context, *connect_go.Request[v1.SelectMergeSpanProfileRequest]) (*connect_go.Response[v1.SelectMergeSpanProfileResponse], error)
 	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(context.Context, *connect_go.Request[v1.SelectMergeProfileRequest]) (*connect_go.Response[v12.Profile], error)
 	// SelectSeries returns a time series for the total sum of the requested profiles.
@@ -233,6 +251,11 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect_go.Hand
 		svc.SelectMergeStacktraces,
 		opts...,
 	)
+	querierServiceSelectMergeSpanProfileHandler := connect_go.NewUnaryHandler(
+		QuerierServiceSelectMergeSpanProfileProcedure,
+		svc.SelectMergeSpanProfile,
+		opts...,
+	)
 	querierServiceSelectMergeProfileHandler := connect_go.NewUnaryHandler(
 		QuerierServiceSelectMergeProfileProcedure,
 		svc.SelectMergeProfile,
@@ -260,6 +283,8 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect_go.Hand
 			querierServiceSeriesHandler.ServeHTTP(w, r)
 		case QuerierServiceSelectMergeStacktracesProcedure:
 			querierServiceSelectMergeStacktracesHandler.ServeHTTP(w, r)
+		case QuerierServiceSelectMergeSpanProfileProcedure:
+			querierServiceSelectMergeSpanProfileHandler.ServeHTTP(w, r)
 		case QuerierServiceSelectMergeProfileProcedure:
 			querierServiceSelectMergeProfileHandler.ServeHTTP(w, r)
 		case QuerierServiceSelectSeriesProcedure:
@@ -293,6 +318,10 @@ func (UnimplementedQuerierServiceHandler) Series(context.Context, *connect_go.Re
 
 func (UnimplementedQuerierServiceHandler) SelectMergeStacktraces(context.Context, *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error) {
 	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectMergeStacktraces is not implemented"))
+}
+
+func (UnimplementedQuerierServiceHandler) SelectMergeSpanProfile(context.Context, *connect_go.Request[v1.SelectMergeSpanProfileRequest]) (*connect_go.Response[v1.SelectMergeSpanProfileResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectMergeSpanProfile is not implemented"))
 }
 
 func (UnimplementedQuerierServiceHandler) SelectMergeProfile(context.Context, *connect_go.Request[v1.SelectMergeProfileRequest]) (*connect_go.Response[v12.Profile], error) {

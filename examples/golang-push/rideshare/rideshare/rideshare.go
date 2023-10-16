@@ -4,28 +4,23 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"log"
-	"net/url"
 	"os"
 	"time"
-
-	"github.com/grafana/pyroscope-go"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-	"go.opentelemetry.io/otel/trace"
-
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
-
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	"github.com/agoda-com/opentelemetry-logs-go/exporters/otlp/otlplogs"
 	"github.com/agoda-com/opentelemetry-logs-go/exporters/otlp/otlplogs/otlplogshttp"
 	"github.com/agoda-com/opentelemetry-logs-go/exporters/stdout/stdoutlogs"
 	"github.com/agoda-com/opentelemetry-logs-go/logs"
 	sdklogs "github.com/agoda-com/opentelemetry-logs-go/sdk/logs"
+	"github.com/grafana/pyroscope-go"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type loggerAdapter struct {
@@ -64,12 +59,15 @@ type Config struct {
 	PyroscopeAuthToken         string // for OG pyroscope and cloudstorage
 	PyroscopeBasicAuthUser     string // for grafana
 	PyroscopeBasicAuthPassword string // for grafana
-	PyroscopeProfileURL        string
-	OTLPUrl                    string
-	OTLPBasicAuthUser          string
-	OTLPBasicAuthPassword      string
+
+	OTLPUrl               string
+	OTLPInsecure          bool
+	OTLPBasicAuthUser     string
+	OTLPBasicAuthPassword string
+	OTLPTracesUrlPath     string
 
 	UseDebugTracer bool
+	UseDebugLogger bool
 	Tags           map[string]string
 }
 
@@ -80,12 +78,15 @@ func ReadConfig() Config {
 		PyroscopeAuthToken:         os.Getenv("PYROSCOPE_AUTH_TOKEN"),
 		PyroscopeBasicAuthUser:     os.Getenv("PYROSCOPE_BASIC_AUTH_USER"),
 		PyroscopeBasicAuthPassword: os.Getenv("PYROSCOPE_BASIC_AUTH_PASSWORD"),
-		PyroscopeProfileURL:        os.Getenv("PYROSCOPE_PROFILE_URL"),
-		OTLPUrl:                    os.Getenv("OTLP_URL"),
-		OTLPBasicAuthUser:          os.Getenv("OTLP_BASIC_AUTH_USER"),
-		OTLPBasicAuthPassword:      os.Getenv("OTLP_BASIC_AUTH_PASSWORD"),
+
+		OTLPUrl:               os.Getenv("OTLP_URL"),
+		OTLPInsecure:          os.Getenv("OTLP_INSECURE") == "1",
+		OTLPBasicAuthUser:     os.Getenv("OTLP_BASIC_AUTH_USER"),
+		OTLPBasicAuthPassword: os.Getenv("OTLP_BASIC_AUTH_PASSWORD"),
+		OTLPTracesUrlPath:     os.Getenv("OTLP_TRACES_URL_PATH"),
 
 		UseDebugTracer: os.Getenv("DEBUG_TRACER") == "1",
+		UseDebugLogger: os.Getenv("DEBUG_LOGGER") == "1",
 		Tags: map[string]string{
 			"region": os.Getenv("REGION"),
 		},
@@ -93,29 +94,9 @@ func ReadConfig() Config {
 	if c.AppName == "" {
 		c.AppName = "ride-sharing-app"
 	}
-
 	if c.PyroscopeServerAddress == "" {
 		c.PyroscopeServerAddress = "http://localhost:4040"
-	} else {
-		u, err := url.Parse(c.PyroscopeServerAddress)
-		if err != nil {
-			log.Fatalf("Pyroscope server address is invalid: %v, must be a valid URL\n", err)
-		}
-		u.RawQuery = ""
-		c.PyroscopeServerAddress = u.String()
 	}
-
-	if c.PyroscopeProfileURL == "" {
-		c.PyroscopeProfileURL = c.PyroscopeServerAddress
-	} else {
-		u, err := url.Parse(c.PyroscopeProfileURL)
-		if err != nil {
-			log.Fatalf("Pyroscope profile URL is invalid: %v\n", err)
-		}
-		u.RawQuery = ""
-		c.PyroscopeProfileURL = u.String()
-	}
-
 	return c
 }
 
@@ -141,12 +122,11 @@ func newResource(c Config, extraAttrs ...attribute.KeyValue) *resource.Resource 
 }
 
 func LoggerProvider(c Config) (*sdklogs.LoggerProvider, error) {
-	consoleProvider, err := stdoutlogs.NewExporter(stdoutlogs.WithWriter(os.Stderr))
-	if err != nil {
-		return nil, err
-	}
-
-	if c.OTLPUrl == "" {
+	if c.UseDebugLogger || c.OTLPUrl == "" {
+		consoleProvider, err := stdoutlogs.NewExporter(stdoutlogs.WithWriter(os.Stderr))
+		if err != nil {
+			return nil, err
+		}
 		loggerProvider := sdklogs.NewLoggerProvider(
 			sdklogs.WithBatcher(consoleProvider),
 			sdklogs.WithResource(newResource(c)),
@@ -188,16 +168,24 @@ func LoggerProvider(c Config) (*sdklogs.LoggerProvider, error) {
 }
 
 func TracerProvider(c Config) (*sdktrace.TracerProvider, error) {
-	if c.OTLPUrl == "" {
+	if c.UseDebugTracer || c.OTLPUrl == "" {
 		return debugTracerProvider()
 	}
 	ctx := context.Background()
-	exp, err := otlptrace.New(ctx, otlptracehttp.NewClient(otlptracehttp.WithEndpoint(c.OTLPUrl),
-		otlptracehttp.WithURLPath("/otlp/v1/traces"),
-		otlptracehttp.WithHeaders(map[string]string{
+	opts := []otlptracehttp.Option{otlptracehttp.WithEndpoint(c.OTLPUrl)}
+	if c.OTLPTracesUrlPath != "" {
+		opts = append(opts, otlptracehttp.WithURLPath(c.OTLPTracesUrlPath))
+	}
+	if c.OTLPInsecure {
+		opts = append(opts, otlptracehttp.WithInsecure())
+	}
+	if c.OTLPBasicAuthUser != "" {
+		opts = append(opts, otlptracehttp.WithHeaders(map[string]string{
 			"Authorization": "Basic " + basicAuth(c.OTLPBasicAuthUser, c.OTLPBasicAuthPassword),
-		})),
-	)
+		}))
+	}
+
+	exp, err := otlptrace.New(ctx, otlptracehttp.NewClient(opts...))
 	if err != nil {
 		return nil, err
 	}

@@ -108,6 +108,18 @@ func (q *headOnDiskQuerier) Bounds() (model.Time, model.Time) {
 	return q.head.Bounds()
 }
 
+func (q *headOnDiskQuerier) ProfileTypes(context.Context, *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
+	return connect.NewResponse(&ingestv1.ProfileTypesResponse{}), nil
+}
+
+func (q *headOnDiskQuerier) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
+	return connect.NewResponse(&typesv1.LabelValuesResponse{}), nil
+}
+
+func (q *headOnDiskQuerier) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
+	return connect.NewResponse(&typesv1.LabelNamesResponse{}), nil
+}
+
 func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces")
 	defer sp.Finish()
@@ -146,6 +158,18 @@ func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterato
 func (q *headOnDiskQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
 	// The TSDB is kept in memory until the head block is flushed to disk.
 	return []*typesv1.Labels{}, nil
+}
+
+func (q *headOnDiskQuerier) MergeBySpans(_ context.Context, _ iter.Iterator[Profile], _ phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
+	//	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeBySpans")
+	//	defer sp.Finish()
+	//	r := symdb.NewResolver(ctx, q.head.symdb)
+	//	defer r.Release()
+	//	if err := mergeBySpans(ctx, q.rowGroup(), rows, r, spanSelector); err != nil {
+	//		return nil, err
+	//	}
+	//	return r.Tree()
+	return new(phlaremodel.Tree), nil
 }
 
 func (q *headOnDiskQuerier) Sort(in []Profile) []Profile {
@@ -215,6 +239,18 @@ func (q *headInMemoryQuerier) SelectMatchingProfiles(ctx context.Context, params
 func (q *headInMemoryQuerier) Bounds() (model.Time, model.Time) {
 	// TODO: Use per rowgroup information
 	return q.head.Bounds()
+}
+
+func (q *headInMemoryQuerier) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
+	return q.head.ProfileTypes(ctx, req)
+}
+
+func (q *headInMemoryQuerier) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
+	return q.head.LabelValues(ctx, req)
+}
+
+func (q *headInMemoryQuerier) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
+	return q.head.LabelNames(ctx, req)
 }
 
 func (q *headInMemoryQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error) {
@@ -305,6 +341,27 @@ func (q *headInMemoryQuerier) Series(ctx context.Context, params *ingestv1.Serie
 		return nil, err
 	}
 	return res.Msg.LabelsSet, nil
+}
+
+func (q *headInMemoryQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeBySpans - HeadInMemory")
+	defer sp.Finish()
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
+	for rows.Next() {
+		p, ok := rows.At().(ProfileWithLabels)
+		if !ok {
+			return nil, errors.New("expected ProfileWithLabels")
+		}
+		samples := p.Samples()
+		if len(samples.Spans) > 0 {
+			r.AddSamplesWithSpanSelector(p.StacktracePartition(), samples, spanSelector)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return r.Tree()
 }
 
 func (q *headInMemoryQuerier) Sort(in []Profile) []Profile {
