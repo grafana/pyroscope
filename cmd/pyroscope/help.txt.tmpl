@@ -10,7 +10,7 @@ Usage of ./pyroscope:
   -compactor.compactor-tenant-shard-size int
     	Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.
   -compactor.data-dir string
-    	Directory to temporarily store blocks during compaction. This directory is not required to be persisted between restarts. (default "/data")
+    	Directory to temporarily store blocks during compaction. This directory is not required to be persisted between restarts. (default "./data-compactor")
   -compactor.first-level-compaction-wait-period duration
     	How long the compactor waits before compacting first-level blocks that are uploaded by the ingesters. This configuration option allows for the reduction of cases where the compactor begins to compact blocks before all ingesters have uploaded their blocks to the storage. (default 25m0s)
   -compactor.partial-block-deletion-delay duration
