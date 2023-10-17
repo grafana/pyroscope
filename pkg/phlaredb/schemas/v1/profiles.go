@@ -28,7 +28,7 @@ var (
 		phlareparquet.NewGroupField("StacktraceID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("Labels", pprofLabels),
-		phlareparquet.NewGroupField("SpanID", parquet.Optional(parquet.Encoded(parquet.Uint(64), &parquet.Plain))),
+		phlareparquet.NewGroupField("SpanID", parquet.Optional(parquet.Encoded(parquet.Uint(64), &parquet.RLEDictionary))),
 	}
 	ProfilesSchema = parquet.NewSchema("Profile", phlareparquet.Group{
 		phlareparquet.NewGroupField("ID", parquet.UUID()),
