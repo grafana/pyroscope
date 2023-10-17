@@ -21,6 +21,7 @@
 | pyroscope.affinity | object | `{}` |  |
 | pyroscope.components | object | `{}` |  |
 | pyroscope.config | string | The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml) | Contains Phlare's configuration as a string. |
+| pyroscope.dnsPolicy | string | `"ClusterFirst"` |  |
 | pyroscope.extraArgs."log.level" | string | `"debug"` |  |
 | pyroscope.extraEnvFrom | list | `[]` | Environment variables from secrets or configmaps to add to the pods |
 | pyroscope.extraEnvVars | object | `{}` |  |

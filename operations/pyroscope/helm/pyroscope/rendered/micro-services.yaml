@@ -1977,6 +1977,7 @@ spec:
         fsGroup: 10001
         runAsNonRoot: true
         runAsUser: 10001
+      dnsPolicy: ClusterFirst
       containers:
         - name: "distributor"
           securityContext:
@@ -2068,6 +2069,7 @@ spec:
         fsGroup: 10001
         runAsNonRoot: true
         runAsUser: 10001
+      dnsPolicy: ClusterFirst
       containers:
         - name: "querier"
           securityContext:
@@ -2159,6 +2161,7 @@ spec:
         fsGroup: 10001
         runAsNonRoot: true
         runAsUser: 10001
+      dnsPolicy: ClusterFirst
       containers:
         - name: "query-frontend"
           securityContext:
@@ -2250,6 +2253,7 @@ spec:
         fsGroup: 10001
         runAsNonRoot: true
         runAsUser: 10001
+      dnsPolicy: ClusterFirst
       containers:
         - name: "query-scheduler"
           securityContext:
@@ -2520,6 +2524,7 @@ spec:
         fsGroup: 10001
         runAsNonRoot: true
         runAsUser: 10001
+      dnsPolicy: ClusterFirst
       containers:
         - name: "ingester"
           securityContext:
@@ -2614,6 +2619,7 @@ spec:
         fsGroup: 10001
         runAsNonRoot: true
         runAsUser: 10001
+      dnsPolicy: ClusterFirst
       containers:
         - name: "store-gateway"
           securityContext:

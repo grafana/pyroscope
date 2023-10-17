@@ -57,6 +57,7 @@
     "affinity": {},
     "components": {},
     "config": "{{- if .Values.minio.enabled }}\nstorage:\n  backend: s3\n  s3:\n    endpoint: \"{{ include \"pyroscope.fullname\" . }}-minio:9000\"\n    bucket_name: {{(index .Values.minio.buckets 0).name | quote }}\n    access_key_id: {{ .Values.minio.rootUser | quote }}\n    secret_access_key: {{ .Values.minio.rootPassword | quote }}\n    insecure: true\n{{- end }}\n",
+    "dnsPolicy": "ClusterFirst",
     "extraArgs": {
       "log.level": "debug"
     },
