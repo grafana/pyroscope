@@ -282,6 +282,8 @@ func (b *BlockQuerier) BlockInfo() []BlockInfo {
 	return result
 }
 
+var _ BlockReader = (*singleBlockQuerier)(nil)
+
 type singleBlockQuerier struct {
 	logger  log.Logger
 	metrics *blocksMetrics

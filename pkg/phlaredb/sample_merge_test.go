@@ -612,3 +612,57 @@ func compareProfileSlice[T any](t *testing.T, expected, actual []T) {
 		t.Errorf("result mismatch (-want +got):\n%s", diff)
 	}
 }
+
+func BenchmarkMergeByStacktraces(b *testing.B) {
+	ctx := context.Background()
+	var (
+		seriesCount int64 = 20
+		interval    int64 = 10
+		stacktraces int64 = 1000
+		ps                = make([]*pprofth.ProfileBuilder, 0, seriesCount*interval)
+	)
+	blk := newBlock(b, func() []*pprofth.ProfileBuilder {
+		for s := int64(0); s < seriesCount; s++ {
+			for i := int64(0); i < interval; i++ {
+				p := pprofth.NewProfileBuilder(i*int64(15*time.Second)).
+					CPUProfile().WithLabels("series", fmt.Sprintf("%d", s))
+				for st := int64(0); st < stacktraces; st++ {
+					fn := fmt.Sprintf("%d", st)
+					p.ForStacktraceString("my", fn).AddSamples(1)
+					p.ForStacktraceString("my", fn).AddSamples(3)
+					p.ForStacktraceString("my", fn, "stack").AddSamples(3)
+				}
+
+				ps = append(ps, p)
+			}
+		}
+		return ps
+	})
+
+	all, err := blk.SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
+		LabelSelector: "{}",
+		Type: &typesv1.ProfileType{
+			Name:       "process_cpu",
+			SampleType: "cpu",
+			SampleUnit: "nanoseconds",
+			PeriodType: "cpu",
+			PeriodUnit: "nanoseconds",
+		},
+		Start: int64(0),
+		End:   interval * int64(model.TimeFromUnixNano(15*int64(time.Second))),
+	})
+	require.NoError(b, err)
+
+	profiles, err := iter.Slice(all)
+	require.NoError(b, err)
+	require.Len(b, profiles, int(seriesCount*interval))
+	blk.Sort(profiles)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		tree, err := blk.MergeByStacktraces(ctx, iter.NewSliceIterator(profiles))
+		require.NoError(b, err)
+		require.Equal(b, seriesCount*interval*stacktraces*7, tree.Total())
+	}
+}

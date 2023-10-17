@@ -524,7 +524,7 @@ func TestFlushMeta(t *testing.T) {
 	require.Equal(t, "symbols/strings.parquet", b.Meta().Files[7].RelPath)
 }
 
-func newBlock(t *testing.T, generator func() []*testhelper.ProfileBuilder) BlockReader {
+func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) *singleBlockQuerier {
 	t.Helper()
 	dir := t.TempDir()
 	ctx := context.Background()
