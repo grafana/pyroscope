@@ -3,6 +3,7 @@ package spanprofiler
 import (
 	"context"
 	"runtime/pprof"
+	"unsafe"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/jaeger-client-go"
@@ -21,13 +22,17 @@ func NewTracer(tr opentracing.Tracer) opentracing.Tracer { return &tracer{tr} }
 
 func (t *tracer) StartSpan(operationName string, opts ...opentracing.StartSpanOption) opentracing.Span {
 	s := t.Tracer.StartSpan(operationName, opts...)
-	if _, ok := parentSpanContextFromRef(opts...); ok {
+	parent, ok := parentSpanContextFromRef(opts...)
+	if ok && !isRemoteSpan(parent) {
 		return s
 	}
-	spanID, sampled := getSampledSpanID(s.Context())
+	sc, ok := s.Context().(jaeger.SpanContext)
+	if !ok {
+		return s
+	}
 	labels := append(make([]string, 0, 4), spanNameLabelName, operationName)
-	if sampled {
-		labels = append(labels, spanIDLabelName, spanID)
+	if sc.IsSampled() {
+		labels = append(labels, spanIDLabelName, sc.SpanID().String())
 	}
 	w := rootSpanWrapper{
 		pprofCtx: pprof.WithLabels(context.Background(), pprof.Labels(labels...)),
@@ -38,24 +43,29 @@ func (t *tracer) StartSpan(operationName string, opts ...opentracing.StartSpanOp
 	return &w
 }
 
-func parentSpanContextFromRef(options ...opentracing.StartSpanOption) (opentracing.SpanContext, bool) {
+func parentSpanContextFromRef(options ...opentracing.StartSpanOption) (jaeger.SpanContext, bool) {
 	var sso opentracing.StartSpanOptions
 	for _, option := range options {
 		option.Apply(&sso)
 	}
 	for _, ref := range sso.References {
 		if ref.Type == opentracing.ChildOfRef && ref.ReferencedContext != nil {
-			return ref.ReferencedContext, true
+			c, ok := ref.ReferencedContext.(jaeger.SpanContext)
+			return c, ok
 		}
 	}
-	return nil, false
+	return jaeger.SpanContext{}, false
 }
 
-func getSampledSpanID(sc opentracing.SpanContext) (string, bool) {
-	if c, ok := sc.(jaeger.SpanContext); ok {
-		return c.SpanID().String(), c.IsSampled()
-	}
-	return "", false
+func isRemoteSpan(c jaeger.SpanContext) bool {
+	jaegerCtx := *(*jaegerSpanCtx)(unsafe.Pointer(&c))
+	return jaegerCtx.remote
+}
+
+type jaegerSpanCtx struct {
+	_ [64]byte
+	// remote indicates that span context represents a remote parent
+	remote bool
 }
 
 type rootSpanWrapper struct {
