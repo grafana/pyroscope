@@ -24,6 +24,7 @@
     "enabled": true
   },
   "ingress": {
+    "className": "",
     "enabled": false
   },
   "minio": {
