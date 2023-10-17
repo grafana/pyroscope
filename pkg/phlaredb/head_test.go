@@ -450,6 +450,19 @@ func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
 	wg.Wait()
 }
 
+func TestIsStale(t *testing.T) {
+	head := newTestHead(t)
+	now := time.Unix(0, time.Minute.Nanoseconds())
+
+	// should not be stale if have not past the stale grace period
+	head.updatedAt.Store(time.Unix(0, 0))
+	require.False(t, head.isStale(now.UnixNano(), now))
+	// should be stale as we have passed the stale grace period
+	require.True(t, head.isStale(now.UnixNano(), now.Add(2*StaleGracePeriod)))
+	// Should not be stale if maxT is not passed.
+	require.False(t, head.isStale(now.Add(2*StaleGracePeriod).UnixNano(), now.Add(2*StaleGracePeriod)))
+}
+
 func BenchmarkHeadIngestProfiles(t *testing.B) {
 	var (
 		profilePaths = []string{

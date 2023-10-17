@@ -80,7 +80,6 @@ func (i *ingesterFlusherCompat) Flush() {
 }
 
 func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits) (*Ingester, error) {
-
 	i := &Ingester{
 		cfg:           cfg,
 		phlarectx:     phlarectx,
@@ -268,7 +267,7 @@ func (i *Ingester) Flush(ctx context.Context, req *connect.Request[ingesterv1.Fl
 	i.instancesMtx.RLock()
 	defer i.instancesMtx.RUnlock()
 	for _, inst := range i.instances {
-		if err := inst.Flush(ctx); err != nil {
+		if err := inst.Flush(ctx, true, "api"); err != nil {
 			return nil, err
 		}
 	}
