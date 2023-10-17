@@ -578,7 +578,7 @@ func TestMergeSpans(t *testing.T) {
 		Value: "process_cpu",
 	}))
 
-	require.NoError(t, db.Flush(context.Background()))
+	require.NoError(t, db.Flush(context.Background(), true, ""))
 
 	b, err := filesystem.NewBucket(filepath.Join(contextDataDir(ctx), PathLocal))
 	require.NoError(t, err)
@@ -629,7 +629,7 @@ func TestHeadMergeSpans(t *testing.T) {
 		Value: "process_cpu",
 	}))
 
-	profileIt, err := db.head.Queriers().SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
+	profileIt, err := db.headQueriers().SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
 		LabelSelector: `{}`,
 		Type: &typesv1.ProfileType{
 			Name:       "process_cpu",
@@ -645,11 +645,11 @@ func TestHeadMergeSpans(t *testing.T) {
 	profiles, err := iter.Slice(profileIt)
 	require.NoError(t, err)
 
-	db.head.Sort(profiles)
+	db.headQueriers()[0].Sort(profiles)
 	spanSelector, err := phlaremodel.NewSpanSelector([]string{"badbadbadbadbadb"})
 	require.NoError(t, err)
 
-	result, err := db.head.Queriers()[0].MergeBySpans(ctx, iter.NewSliceIterator(profiles), spanSelector)
+	result, err := db.headQueriers()[0].MergeBySpans(ctx, iter.NewSliceIterator(profiles), spanSelector)
 	require.NoError(t, err)
 
 	expected := new(phlaremodel.Tree)
