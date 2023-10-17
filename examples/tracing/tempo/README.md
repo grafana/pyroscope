@@ -14,7 +14,7 @@ Pyroscope and Tempo datasources are provisioned automatically.
 The project can be run locally with the following commands:
 
 ```shell
-GOOS=linux GOARCH=amd64 make build -C ../../..
+GOOS=linux GOARCH=amd64 make build -C ../../../..
 docker-compose up --build
 ```
 
