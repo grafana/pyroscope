@@ -2596,6 +2596,7 @@ spec:
         fsGroup: 10001
         runAsNonRoot: true
         runAsUser: 10001
+      dnsPolicy: ClusterFirst
       containers:
         - name: "compactor"
           securityContext:
