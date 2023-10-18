@@ -66,13 +66,12 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount uin
 		srcMetas[i] = b.Meta()
 	}
 
-	outBlocksTime := ulid.Now()
 	outMeta := compactMetas(srcMetas...)
 
 	// create the shards writers
 	for i := range writers {
 		meta := outMeta.Clone()
-		meta.ULID = ulid.MustNew(outBlocksTime, rand.Reader)
+		meta.ULID = ulid.MustNew(meta.ULID.Time(), rand.Reader)
 		if splitCount > 1 {
 			if meta.Labels == nil {
 				meta.Labels = make(map[string]string)
@@ -432,6 +431,7 @@ func compactMetas(src ...block.Meta) block.Meta {
 	meta.MaxTime = maxTime
 	meta.MinTime = minTime
 	meta.Labels = labels
+	meta.ULID = ulid.MustNew(uint64(minTime), rand.Reader)
 	return *meta
 }
 
