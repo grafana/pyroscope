@@ -58,7 +58,7 @@ pyroscope:
         enabled: false
       resources:
         limits:
-          memory: 16Gi
+          memory: 4Gi
         requests:
           memory: 64Mi
           cpu: 20m
