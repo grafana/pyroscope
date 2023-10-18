@@ -11,6 +11,13 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- with .Values.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   rules:
   {{- range $.Values.ingress.hosts }}
   - host: {{ . | quote }}
@@ -30,6 +37,28 @@ spec:
       - backend:
           service:
             {{- if gt (len $.Values.pyroscope.components) 1}}
+            name: {{ include "pyroscope.fullname" $ }}-query-frontend
+            {{- else }}
+            name: {{ include "pyroscope.fullname" $ }}
+            {{- end }}
+            port:
+              number: {{ $.Values.pyroscope.service.port }}
+        path: /render
+        pathType: Prefix
+      - backend:
+          service:
+            {{- if gt (len $.Values.pyroscope.components) 1}}
+            name: {{ include "pyroscope.fullname" $ }}-query-frontend
+            {{- else }}
+            name: {{ include "pyroscope.fullname" $ }}
+            {{- end }}
+            port:
+              number: {{ $.Values.pyroscope.service.port }}
+        path: /render-diff
+        pathType: Prefix
+      - backend:
+          service:
+            {{- if gt (len $.Values.pyroscope.components) 1}}
             name: {{ include "pyroscope.fullname" $ }}-distributor
             {{- else }}
             name: {{ include "pyroscope.fullname" $ }}
@@ -37,6 +66,17 @@ spec:
             port:
               number: {{ $.Values.pyroscope.service.port }}
         path: /push.v1.PusherService/
+        pathType: Prefix
+      - backend:
+          service:
+            {{- if gt (len $.Values.pyroscope.components) 1}}
+            name: {{ include "pyroscope.fullname" $ }}-distributor
+            {{- else }}
+            name: {{ include "pyroscope.fullname" $ }}
+            {{- end }}
+            port:
+              number: {{ $.Values.pyroscope.service.port }}
+        path: /ingest
         pathType: Prefix
   {{- end }}
 {{- end }}
