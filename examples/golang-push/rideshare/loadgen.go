@@ -70,13 +70,33 @@ func main() {
 	defer func() {
 		_ = tp.Shutdown(context.Background())
 	}()
-	for {
-		host := hosts[rand.Intn(len(hosts))]
-		vehicle := vehicles[rand.Intn(len(vehicles))]
-		if err = orderVehicle(context.Background(), host, vehicle); err != nil {
-			fmt.Println(err)
-		}
+
+	groups := groupHosts(hosts, 3)
+	for _, group := range groups {
+		go func(group []string) {
+			for {
+				host := group[rand.Intn(len(group))]
+				vehicle := vehicles[rand.Intn(len(vehicles))]
+				if err = orderVehicle(context.Background(), host, vehicle); err != nil {
+					fmt.Println(err)
+				}
+			}
+		}(group)
 	}
+
+	select {}
+}
+
+func groupHosts(hosts []string, groupsOf int) [][]string {
+	var res [][]string
+	for i := 0; i < len(hosts); i += groupsOf {
+		upperBoundary := i + groupsOf
+		if upperBoundary > len(hosts) {
+			upperBoundary = len(hosts)
+		}
+		res = append(res, hosts[i:upperBoundary])
+	}
+	return res
 }
 
 func orderVehicle(ctx context.Context, host, vehicle string) error {
