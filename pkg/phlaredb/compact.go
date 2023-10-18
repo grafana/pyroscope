@@ -18,7 +18,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
-	"github.com/prometheus/prometheus/tsdb"
 
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -388,7 +387,7 @@ func compactMetas(src ...block.Meta) block.Meta {
 	meta := block.NewMeta()
 	highestCompactionLevel := 0
 	sources := map[ulid.ULID]struct{}{}
-	parents := make([]tsdb.BlockDesc, 0, len(src))
+	parents := make([]block.BlockDesc, 0, len(src))
 	minTime, maxTime := model.Latest, model.Earliest
 	labels := make(map[string]string)
 	for _, b := range src {
@@ -398,10 +397,10 @@ func compactMetas(src ...block.Meta) block.Meta {
 		for _, s := range b.Compaction.Sources {
 			sources[s] = struct{}{}
 		}
-		parents = append(parents, tsdb.BlockDesc{
+		parents = append(parents, block.BlockDesc{
 			ULID:    b.ULID,
-			MinTime: int64(b.MinTime),
-			MaxTime: int64(b.MaxTime),
+			MinTime: b.MinTime,
+			MaxTime: b.MaxTime,
 		})
 		if b.MinTime < minTime {
 			minTime = b.MinTime
@@ -417,7 +416,7 @@ func compactMetas(src ...block.Meta) block.Meta {
 		}
 	}
 	meta.Source = block.CompactorSource
-	meta.Compaction = tsdb.BlockMetaCompaction{
+	meta.Compaction = block.BlockMetaCompaction{
 		Deletable: false,
 		Level:     highestCompactionLevel + 1,
 		Parents:   parents,

@@ -13,7 +13,6 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	promtest "github.com/prometheus/client_golang/prometheus/testutil"
-	"github.com/prometheus/prometheus/tsdb"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
@@ -349,7 +348,7 @@ func TestShardAwareDeduplicateFilter_Filter(t *testing.T) {
 			for id, metaInfo := range tcase.input {
 				metas[id] = &block.Meta{
 					ULID: id,
-					Compaction: tsdb.BlockMetaCompaction{
+					Compaction: block.BlockMetaCompaction{
 						Sources: metaInfo.sources,
 					},
 

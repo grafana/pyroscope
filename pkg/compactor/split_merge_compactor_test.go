@@ -20,7 +20,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/tsdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -68,7 +67,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: model.Time(1 * blockRangeMillis),
 						MaxTime: model.Time(2 * blockRangeMillis),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1, block2},
 						},
 
@@ -78,7 +77,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					}, {
 						MinTime: model.Time(1 * blockRangeMillis),
 						MaxTime: model.Time(2 * blockRangeMillis),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1, block2},
 						},
 
@@ -103,7 +102,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: 0,
 						MaxTime: model.Time((7 * time.Minute).Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1, block2},
 						},
 
@@ -113,7 +112,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					}, {
 						MinTime: 0,
 						MaxTime: model.Time((7 * time.Minute).Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1, block2},
 						},
 
@@ -124,7 +123,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 						// Not compacted.
 						MinTime: model.Time(blockRangeMillis),
 						MaxTime: model.Time(blockRangeMillis + time.Minute.Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block3},
 						},
 
@@ -147,7 +146,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: 0,
 						MaxTime: model.Time((10 * time.Minute).Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1, block2},
 						},
 
@@ -157,7 +156,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					}, {
 						MinTime: 0,
 						MaxTime: model.Time((10 * time.Minute).Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1, block2},
 						},
 
@@ -168,7 +167,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 						// Not compacted.
 						MinTime: model.Time(blockRangeMillis),
 						MaxTime: model.Time(blockRangeMillis + time.Minute.Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block3},
 						},
 
@@ -191,7 +190,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: 0,
 						MaxTime: model.Time((10 * time.Minute).Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1, block2},
 						},
 
@@ -201,7 +200,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					}, {
 						MinTime: 0,
 						MaxTime: model.Time((10 * time.Minute).Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1, block2},
 						},
 
@@ -212,7 +211,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 						// Not compacted.
 						MinTime: model.Time(blockRangeMillis),
 						MaxTime: model.Time(blockRangeMillis + time.Minute.Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block3},
 						},
 
@@ -249,7 +248,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: 1,
 						MaxTime: model.Time(4 * blockRangeMillis),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1a, block2, block3, block4a, block5a},
 						},
 
@@ -260,7 +259,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: 1,
 						MaxTime: model.Time(4 * blockRangeMillis),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1b, block2, block3, block4b, block5b},
 						},
 
@@ -273,7 +272,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: model.Time(4*blockRangeMillis + 1),
 						MaxTime: model.Time(8 * blockRangeMillis),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block6, block7},
 						},
 
@@ -284,7 +283,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: model.Time(4*blockRangeMillis + 1),
 						MaxTime: model.Time(8 * blockRangeMillis),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block6, block7},
 						},
 
@@ -309,7 +308,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: 0,
 						MaxTime: model.Time((2 * time.Hour).Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1, block2, block3},
 						},
 
@@ -319,7 +318,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					}, {
 						MinTime: 0,
 						MaxTime: model.Time((2 * time.Hour).Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1, block2, block3},
 						},
 
@@ -341,7 +340,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: model.Time(blockRangeMillis), // Because there's only 1 sample with timestamp=maxT-1
 						MaxTime: model.Time(2 * blockRangeMillis),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1},
 						},
 
@@ -367,7 +366,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: 0,
 						MaxTime: model.Time((10 * time.Minute).Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1, block2},
 						},
 
@@ -376,7 +375,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 						// Not compacted.
 						MinTime: model.Time(blockRangeMillis),
 						MaxTime: model.Time(blockRangeMillis + time.Minute.Milliseconds()),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block3},
 						},
 
@@ -411,7 +410,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: 1,
 						MaxTime: model.Time(4 * blockRangeMillis),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1a, block4a, block5a},
 						},
 
@@ -422,7 +421,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: 1,
 						MaxTime: model.Time(4 * blockRangeMillis),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block1b, block4b, block5b},
 						},
 
@@ -434,7 +433,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: model.Time(blockRangeMillis),
 						MaxTime: model.Time(2 * blockRangeMillis),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block2, block3},
 						},
 
@@ -444,7 +443,7 @@ func TestMultitenantCompactor_ShouldSupportSplitAndMergeCompactor(t *testing.T) 
 					{
 						MinTime: model.Time(4*blockRangeMillis) + 1,
 						MaxTime: model.Time(8 * blockRangeMillis),
-						Compaction: tsdb.BlockMetaCompaction{
+						Compaction: block.BlockMetaCompaction{
 							Sources: []ulid.ULID{block6, block7},
 						},
 

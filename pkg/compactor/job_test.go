@@ -14,7 +14,6 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/tsdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
@@ -25,13 +24,13 @@ import (
 
 func TestJob_MinCompactionLevel(t *testing.T) {
 	job := NewJob("user-1", "group-1", labels.EmptyLabels(), 0, true, 2, "shard-1")
-	require.NoError(t, job.AppendMeta(&block.Meta{ULID: ulid.MustNew(1, nil), Compaction: tsdb.BlockMetaCompaction{Level: 2}}))
+	require.NoError(t, job.AppendMeta(&block.Meta{ULID: ulid.MustNew(1, nil), Compaction: block.BlockMetaCompaction{Level: 2}}))
 	assert.Equal(t, 2, job.MinCompactionLevel())
 
-	require.NoError(t, job.AppendMeta(&block.Meta{ULID: ulid.MustNew(2, nil), Compaction: tsdb.BlockMetaCompaction{Level: 3}}))
+	require.NoError(t, job.AppendMeta(&block.Meta{ULID: ulid.MustNew(2, nil), Compaction: block.BlockMetaCompaction{Level: 3}}))
 	assert.Equal(t, 2, job.MinCompactionLevel())
 
-	require.NoError(t, job.AppendMeta(&block.Meta{ULID: ulid.MustNew(3, nil), Compaction: tsdb.BlockMetaCompaction{Level: 1}}))
+	require.NoError(t, job.AppendMeta(&block.Meta{ULID: ulid.MustNew(3, nil), Compaction: block.BlockMetaCompaction{Level: 1}}))
 	assert.Equal(t, 1, job.MinCompactionLevel())
 }
 
@@ -43,12 +42,12 @@ func TestJobWaitPeriodElapsed(t *testing.T) {
 	}
 
 	// Blocks with compaction level 1.
-	meta1 := &block.Meta{ULID: ulid.MustNew(1, nil), Compaction: tsdb.BlockMetaCompaction{Level: 1}}
-	meta2 := &block.Meta{ULID: ulid.MustNew(2, nil), Compaction: tsdb.BlockMetaCompaction{Level: 1}}
+	meta1 := &block.Meta{ULID: ulid.MustNew(1, nil), Compaction: block.BlockMetaCompaction{Level: 1}}
+	meta2 := &block.Meta{ULID: ulid.MustNew(2, nil), Compaction: block.BlockMetaCompaction{Level: 1}}
 
 	// Blocks with compaction level 2.
-	meta3 := &block.Meta{ULID: ulid.MustNew(3, nil), Compaction: tsdb.BlockMetaCompaction{Level: 2}}
-	meta4 := &block.Meta{ULID: ulid.MustNew(4, nil), Compaction: tsdb.BlockMetaCompaction{Level: 2}}
+	meta3 := &block.Meta{ULID: ulid.MustNew(3, nil), Compaction: block.BlockMetaCompaction{Level: 2}}
+	meta4 := &block.Meta{ULID: ulid.MustNew(4, nil), Compaction: block.BlockMetaCompaction{Level: 2}}
 
 	tests := map[string]struct {
 		waitPeriod      time.Duration

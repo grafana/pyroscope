@@ -16,7 +16,6 @@ import (
 
 	"github.com/oklog/ulid"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/tsdb"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
@@ -37,7 +36,7 @@ func MockStorageBlockWithExtLabels(t testing.TB, bucket objstore.Bucket, userID 
 		ULID:    id,
 		MinTime: minT,
 		MaxTime: maxT,
-		Compaction: tsdb.BlockMetaCompaction{
+		Compaction: block.BlockMetaCompaction{
 			Level:   1,
 			Sources: []ulid.ULID{id},
 		},

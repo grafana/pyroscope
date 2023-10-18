@@ -32,7 +32,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	prom_testutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/tsdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -1727,7 +1726,7 @@ func blockMeta(id string, mint, maxt int64, lbls map[string]string) *block.Meta 
 		ULID:    ulid.MustParse(id),
 		MinTime: model.Time(mint),
 		MaxTime: model.Time(maxt),
-		Compaction: tsdb.BlockMetaCompaction{
+		Compaction: block.BlockMetaCompaction{
 			Level:   1,
 			Sources: []ulid.ULID{ulid.MustParse(id)},
 		},

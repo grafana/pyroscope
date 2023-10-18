@@ -592,7 +592,7 @@ func TestCompactMetas(t *testing.T) {
 			ULID:    ulid.MustParse("00000000000000000000000001"),
 			MinTime: model.TimeFromUnix(0),
 			MaxTime: model.TimeFromUnix(100),
-			Compaction: tsdb.BlockMetaCompaction{
+			Compaction: block.BlockMetaCompaction{
 				Level:   1,
 				Sources: []ulid.ULID{ulid.MustParse("00000000000000000000000001")},
 			},
@@ -602,7 +602,7 @@ func TestCompactMetas(t *testing.T) {
 			ULID:    ulid.MustParse("00000000000000000000000002"),
 			MinTime: model.TimeFromUnix(50),
 			MaxTime: model.TimeFromUnix(100),
-			Compaction: tsdb.BlockMetaCompaction{
+			Compaction: block.BlockMetaCompaction{
 				Level:   0,
 				Sources: []ulid.ULID{ulid.MustParse("00000000000000000000000002")},
 			},
@@ -612,7 +612,7 @@ func TestCompactMetas(t *testing.T) {
 			ULID:    ulid.MustParse("00000000000000000000000003"),
 			MinTime: model.TimeFromUnix(50),
 			MaxTime: model.TimeFromUnix(200),
-			Compaction: tsdb.BlockMetaCompaction{
+			Compaction: block.BlockMetaCompaction{
 				Level:   3,
 				Sources: []ulid.ULID{ulid.MustParse("00000000000000000000000003")},
 			},
