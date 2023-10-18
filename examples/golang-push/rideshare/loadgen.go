@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"rideshare/rideshare"
@@ -36,6 +37,15 @@ func main() {
 			"us-east",
 			"eu-north",
 			"ap-south",
+		}
+	}
+
+	groupByFactor := 3
+	if os.Getenv("LOADGEN_GROUP_BY_FACTOR") != "" {
+		var err error
+		groupByFactor, err = strconv.Atoi(os.Getenv("LOADGEN_GROUP_BY_FACTOR"))
+		if err != nil {
+			log.Fatalf("issue with LOADGEN_GROUP_BY_FACTOR: %v\n", err)
 		}
 	}
 
@@ -71,7 +81,7 @@ func main() {
 		_ = tp.Shutdown(context.Background())
 	}()
 
-	groups := groupHosts(hosts, 3)
+	groups := groupHosts(hosts, groupByFactor)
 	for _, group := range groups {
 		go func(group []string) {
 			for {
