@@ -505,7 +505,7 @@ func TestFlushMeta(t *testing.T) {
 	require.Equal(t, false, b.Meta().Compaction.Deletable)
 	require.Equal(t, false, b.Meta().Compaction.Failed)
 	require.Equal(t, []string(nil), b.Meta().Compaction.Hints)
-	require.Equal(t, []tsdb.BlockDesc(nil), b.Meta().Compaction.Parents)
+	require.Equal(t, []block.BlockDesc(nil), b.Meta().Compaction.Parents)
 	require.Equal(t, block.MetaVersion3, b.Meta().Version)
 	require.Equal(t, model.Time(1000), b.Meta().MinTime)
 	require.Equal(t, model.Time(3000), b.Meta().MaxTime)
