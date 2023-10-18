@@ -2,9 +2,13 @@ package symdb
 
 import (
 	"context"
+	"io"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 func Test_memory_Resolver_ResolveProfile(t *testing.T) {
@@ -114,4 +118,22 @@ func Test_Resolver_Unreleased_Failed_Partition(t *testing.T) {
 	_, err = r.Tree()
 	require.NoError(t, err)
 	r.Release()
+}
+
+func Test_Resolver_Error_Propagation(t *testing.T) {
+	m := new(mockSymbolsReader)
+	m.On("Partition", mock.Anything, mock.Anything).Return(nil, io.EOF).Once()
+	r := NewResolver(context.Background(), m)
+	r.AddSamples(0, schemav1.Samples{})
+	_, err := r.Tree()
+	require.ErrorIs(t, err, io.EOF)
+	r.Release()
+}
+
+type mockSymbolsReader struct{ mock.Mock }
+
+func (m *mockSymbolsReader) Partition(ctx context.Context, partition uint64) (PartitionReader, error) {
+	args := m.Called(ctx, partition)
+	r, _ := args.Get(0).(PartitionReader)
+	return r, args.Error(1)
 }

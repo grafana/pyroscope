@@ -12,10 +12,12 @@ The ci will automatically handle the build and create a draft github release.
 
 Once ready, you can edit and publish the draft release on Github. You will need to take the release notes and append them to the `CHANGELOG.md` file in the root of the repository.
 
+Please do not delete GitHub releases that were once public.
+
 To release a minor version simply merge fixes to the release branch then create and push a new tag. (e.g. `v0.x.1`)
 
 > For helm charts, you need to merge a PR that bumps the chart version in the main branch (no tagging required), the ci will automatically publish the chart to the [helm repository](https://grafana.github.io/helm-charts).
->
+
 ## Manual Release Process
 
 The release process uses [goreleaser](https://goreleaser.com/scm/github/?h=github#github) and can be configured

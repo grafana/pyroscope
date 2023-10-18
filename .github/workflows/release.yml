@@ -76,9 +76,12 @@ jobs:
           repository: pyroscope-io/homebrew-brew
       - name: Update homebrew formulas
         run: |
-          git config --global url."https://x-access-token:$(echo "${GITHUB_TOKEN}" | xargs)@github.com/pyroscope-io/homebrew-brew".insteadOf "https://github.com/pyroscope-io/homebrew-brew"
-          git clone https://github.com/pyroscope-io/homebrew-brew
-          cd homebrew-brew
-          make generate-formulas && git add Formula && git commit -m "chore: update formulas to ${}" && git push origin main
+          git config --global url."https://x-access-token:$(echo "${HOMEBREW_GITHUB_TOKEN}" | xargs)@github.com/pyroscope-io/homebrew-brew".insteadOf "https://github.com/pyroscope-io/homebrew-brew"
+          git config --global user.email "dmitry+bot@pyroscope.io"
+          git config --global user.name "Pyroscope Bot <dmitry+bot@pyroscope.io>"
+          git clone https://github.com/pyroscope-io/homebrew-brew ../homebrew-brew
+          cd ../homebrew-brew
+          make generate-formulas && git add Formula && git commit -m "chore: update formulas" && git push origin main
         env:
-          GITHUB_TOKEN: ${{ steps.brew-token.outputs.token }}
+          HOMEBREW_GITHUB_TOKEN: ${{ steps.brew-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-goreleaser.outputs.token }}
