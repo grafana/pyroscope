@@ -9,7 +9,7 @@ pyroscope:
     repository: grafana/pyroscope
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: "1.0.0"
+    tag: "1.1.5"
 
   extraArgs:
     log.level: debug
@@ -25,6 +25,7 @@ pyroscope:
   extraEnvFrom: []
 
   imagePullSecrets: []
+  dnsPolicy: ClusterFirst
   initContainers: []
   nameOverride: ""
   fullnameOverride: ""
@@ -216,5 +217,8 @@ minio:
 
 ingress:
   enabled: false
+  className: ""
   # hosts:
   #   - localhost
+  # tls: 
+  #   - secretName: certificate

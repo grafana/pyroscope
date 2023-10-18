@@ -24,6 +24,7 @@
     "enabled": true
   },
   "ingress": {
+    "className": "",
     "enabled": false
   },
   "minio": {
@@ -57,6 +58,7 @@
     "affinity": {},
     "components": {},
     "config": "{{- if .Values.minio.enabled }}\nstorage:\n  backend: s3\n  s3:\n    endpoint: \"{{ include \"pyroscope.fullname\" . }}-minio:9000\"\n    bucket_name: {{(index .Values.minio.buckets 0).name | quote }}\n    access_key_id: {{ .Values.minio.rootUser | quote }}\n    secret_access_key: {{ .Values.minio.rootPassword | quote }}\n    insecure: true\n{{- end }}\n",
+    "dnsPolicy": "ClusterFirst",
     "extraArgs": {
       "log.level": "debug"
     },
@@ -69,7 +71,7 @@
     "image": {
       "pullPolicy": "IfNotPresent",
       "repository": "grafana/pyroscope",
-      "tag": "1.0.0"
+      "tag": "1.1.5"
     },
     "imagePullSecrets": [],
     "initContainers": [],

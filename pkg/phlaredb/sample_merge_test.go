@@ -102,7 +102,7 @@ func TestMergeSampleByStacktraces(t *testing.T) {
 				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, p.Labels...))
 			}
 
-			require.NoError(t, db.Flush(context.Background()))
+			require.NoError(t, db.Flush(context.Background(), true, ""))
 
 			b, err := filesystem.NewBucket(filepath.Join(contextDataDir(ctx), PathLocal))
 			require.NoError(t, err)
@@ -207,7 +207,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 			for _, p := range input {
 				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, p.Labels...))
 			}
-			profiles, err := db.head.Queriers().SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
+			profiles, err := db.queriers().SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
 				LabelSelector: `{}`,
 				Type: &typesv1.ProfileType{
 					Name:       "process_cpu",
@@ -220,7 +220,7 @@ func TestHeadMergeSampleByStacktraces(t *testing.T) {
 				End:   int64(model.TimeFromUnixNano(int64(1 * time.Minute))),
 			})
 			require.NoError(t, err)
-			r, err := db.head.Queriers()[0].MergeByStacktraces(ctx, profiles)
+			r, err := db.queriers()[0].MergeByStacktraces(ctx, profiles)
 			require.NoError(t, err)
 			require.Equal(t, expected.String(), r.String())
 		})
@@ -317,7 +317,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, p.Labels...))
 			}
 
-			require.NoError(t, db.Flush(context.Background()))
+			require.NoError(t, db.Flush(context.Background(), true, ""))
 
 			b, err := filesystem.NewBucket(filepath.Join(contextDataDir(ctx), PathLocal))
 			require.NoError(t, err)
@@ -441,7 +441,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 				require.NoError(t, db.Ingest(ctx, p.Profile, p.UUID, p.Labels...))
 			}
 
-			profileIt, err := db.head.Queriers().SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
+			profileIt, err := db.queriers().SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
 				LabelSelector: `{}`,
 				Type: &typesv1.ProfileType{
 					Name:       "process_cpu",
@@ -457,8 +457,8 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			profiles, err := iter.Slice(profileIt)
 			require.NoError(t, err)
 
-			db.head.Sort(profiles)
-			series, err := db.head.Queriers()[0].MergeByLabels(ctx, iter.NewSliceIterator(profiles), tc.by...)
+			db.headQueriers()[0].Sort(profiles)
+			series, err := db.headQueriers()[0].MergeByLabels(ctx, iter.NewSliceIterator(profiles), tc.by...)
 			require.NoError(t, err)
 
 			testhelper.EqualProto(t, tc.expected, series)
@@ -481,7 +481,7 @@ func TestMergePprof(t *testing.T) {
 		}))
 	}
 
-	require.NoError(t, db.Flush(context.Background()))
+	require.NoError(t, db.Flush(context.Background(), true, ""))
 
 	b, err := filesystem.NewBucket(filepath.Join(contextDataDir(ctx), PathLocal))
 	require.NoError(t, err)
@@ -535,7 +535,7 @@ func TestHeadMergePprof(t *testing.T) {
 		}))
 	}
 
-	profileIt, err := db.head.Queriers().SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
+	profileIt, err := db.queriers().SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
 		LabelSelector: `{}`,
 		Type: &typesv1.ProfileType{
 			Name:       "process_cpu",
@@ -551,8 +551,8 @@ func TestHeadMergePprof(t *testing.T) {
 	profiles, err := iter.Slice(profileIt)
 	require.NoError(t, err)
 
-	db.head.Sort(profiles)
-	result, err := db.head.Queriers()[0].MergePprof(ctx, iter.NewSliceIterator(profiles))
+	db.headQueriers()[0].Sort(profiles)
+	result, err := db.headQueriers()[0].MergePprof(ctx, iter.NewSliceIterator(profiles))
 	require.NoError(t, err)
 
 	data, err := proto.Marshal(generateProfile(t, 1))
