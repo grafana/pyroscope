@@ -63,7 +63,12 @@ func isRemoteSpan(c jaeger.SpanContext) bool {
 }
 
 type jaegerSpanCtx struct {
-	_ [64]byte
+	traceID       [16]byte // TraceID
+	spanID        [8]byte  // SpanID
+	parentID      [8]byte  // SpanID
+	baggage       uint     // map[string]string
+	debugID       [2]uint  // string
+	samplingState uint     // *samplingState
 	// remote indicates that span context represents a remote parent
 	remote bool
 }
