@@ -45,6 +45,9 @@ spec:
       {{- if hasKey $values "hostNetwork" }}
       hostNetwork: {{ $values.hostNetwork }}
       {{- end }}
+      {{- if hasKey $values "dnsPolicy" }}
+      dnsPolicy: {{ $values.dnsPolicy }}
+      {{- end }}
       {{- with $values.initContainers }}
       initContainers:
         {{- toYaml . | nindent 8 }}
