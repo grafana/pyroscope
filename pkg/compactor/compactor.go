@@ -51,6 +51,7 @@ const (
 
 var (
 	errInvalidBlockRanges                 = "compactor block range periods should be divisible by the previous one, but %s is not divisible by %s"
+	errInvalidBlockDuration               = "compactor block range periods should be divisible by the max block duration, but %s is not divisible by %s"
 	errInvalidCompactionOrder             = fmt.Errorf("unsupported compaction order (supported values: %s)", strings.Join(CompactionOrders, ", "))
 	errInvalidCompactionSplitBy           = fmt.Errorf("unsupported compaction split by (supported values: %s)", strings.Join(CompactionSplitBys, ", "))
 	errInvalidMaxOpeningBlocksConcurrency = fmt.Errorf("invalid max-opening-blocks-concurrency value, must be positive")
@@ -149,7 +150,10 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	f.Var(&cfg.DisabledTenants, "compactor.disabled-tenants", "Comma separated list of tenants that cannot be compacted by this compactor. If specified, and compactor would normally pick given tenant for compaction (via -compactor.enabled-tenants or sharding), it will be ignored instead.")
 }
 
-func (cfg *Config) Validate() error {
+func (cfg *Config) Validate(maxBlockDuration time.Duration) error {
+	if len(cfg.BlockRanges) > 0 && cfg.BlockRanges[0]%maxBlockDuration != 0 {
+		return errors.Errorf(errInvalidBlockDuration, cfg.BlockRanges[0].String(), maxBlockDuration.String())
+	}
 	// Each block range period should be divisible by the previous one.
 	for i := 1; i < len(cfg.BlockRanges); i++ {
 		if cfg.BlockRanges[i]%cfg.BlockRanges[i-1] != 0 {

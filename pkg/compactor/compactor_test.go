@@ -94,32 +94,45 @@ func TestConfig_Validate(t *testing.T) {
 	tests := map[string]struct {
 		setup    func(cfg *Config)
 		expected string
+		maxBlock time.Duration
 	}{
 		"should pass with the default config": {
 			setup:    func(cfg *Config) {},
 			expected: "",
+			maxBlock: 3 * time.Hour,
 		},
 		"should pass with only 1 block range period": {
 			setup: func(cfg *Config) {
 				cfg.BlockRanges = DurationList{time.Hour}
 			},
 			expected: "",
+			maxBlock: 1 * time.Hour,
 		},
 		"should fail with non divisible block range periods": {
 			setup: func(cfg *Config) {
 				cfg.BlockRanges = DurationList{2 * time.Hour, 12 * time.Hour, 24 * time.Hour, 30 * time.Hour}
 			},
 			expected: errors.Errorf(errInvalidBlockRanges, 30*time.Hour, 24*time.Hour).Error(),
+			maxBlock: 2 * time.Hour,
 		},
 		"should fail on unknown compaction jobs order": {
 			setup: func(cfg *Config) {
 				cfg.CompactionJobsOrder = "everything-is-important"
 			},
 			expected: errInvalidCompactionOrder.Error(),
+			maxBlock: 3 * time.Hour,
 		},
 		"should fail on invalid value of max-opening-blocks-concurrency": {
 			setup:    func(cfg *Config) { cfg.MaxOpeningBlocksConcurrency = 0 },
 			expected: errInvalidMaxOpeningBlocksConcurrency.Error(),
+			maxBlock: 3 * time.Hour,
+		},
+		"should fail on first range not divisible by max block duration": {
+			setup: func(cfg *Config) {
+				cfg.BlockRanges = DurationList{2 * time.Hour, 12 * time.Hour, 24 * time.Hour}
+			},
+			expected: errors.Errorf(errInvalidBlockDuration, (2 * time.Hour).String(), (15 * time.Hour).String()).Error(),
+			maxBlock: 15 * time.Hour,
 		},
 	}
 
@@ -129,7 +142,7 @@ func TestConfig_Validate(t *testing.T) {
 			flagext.DefaultValues(cfg)
 			testData.setup(cfg)
 
-			if actualErr := cfg.Validate(); testData.expected != "" {
+			if actualErr := cfg.Validate(testData.maxBlock); testData.expected != "" {
 				assert.EqualError(t, actualErr, testData.expected)
 			} else {
 				assert.NoError(t, actualErr)

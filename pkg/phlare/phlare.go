@@ -176,7 +176,7 @@ func (c *Config) Validate() error {
 	if len(c.Target) == 0 {
 		return errors.New("no modules specified")
 	}
-	if err := c.Compactor.Validate(); err != nil {
+	if err := c.Compactor.Validate(c.PhlareDB.MaxBlockDuration); err != nil {
 		return err
 	}
 	return c.Ingester.Validate()
