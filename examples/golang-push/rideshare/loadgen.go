@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"rideshare/rideshare"
@@ -36,6 +37,15 @@ func main() {
 			"us-east",
 			"eu-north",
 			"ap-south",
+		}
+	}
+
+	groupByFactor := 3
+	if os.Getenv("LOADGEN_GROUP_BY_FACTOR") != "" {
+		var err error
+		groupByFactor, err = strconv.Atoi(os.Getenv("LOADGEN_GROUP_BY_FACTOR"))
+		if err != nil {
+			log.Fatalf("issue with LOADGEN_GROUP_BY_FACTOR: %v\n", err)
 		}
 	}
 
@@ -70,13 +80,33 @@ func main() {
 	defer func() {
 		_ = tp.Shutdown(context.Background())
 	}()
-	for {
-		host := hosts[rand.Intn(len(hosts))]
-		vehicle := vehicles[rand.Intn(len(vehicles))]
-		if err = orderVehicle(context.Background(), host, vehicle); err != nil {
-			fmt.Println(err)
-		}
+
+	groups := groupHosts(hosts, groupByFactor)
+	for _, group := range groups {
+		go func(group []string) {
+			for {
+				host := group[rand.Intn(len(group))]
+				vehicle := vehicles[rand.Intn(len(vehicles))]
+				if err = orderVehicle(context.Background(), host, vehicle); err != nil {
+					fmt.Println(err)
+				}
+			}
+		}(group)
 	}
+
+	select {}
+}
+
+func groupHosts(hosts []string, groupsOf int) [][]string {
+	var res [][]string
+	for i := 0; i < len(hosts); i += groupsOf {
+		upperBoundary := i + groupsOf
+		if upperBoundary > len(hosts) {
+			upperBoundary = len(hosts)
+		}
+		res = append(res, hosts[i:upperBoundary])
+	}
+	return res
 }
 
 func orderVehicle(ctx context.Context, host, vehicle string) error {
