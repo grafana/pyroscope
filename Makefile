@@ -31,6 +31,9 @@ EMBEDASSETS ?= embedassets
 VPREFIX := github.com/grafana/pyroscope/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
 
+# Add extra arguments to helm commands
+HELM_ARGS =
+
 .PHONY: help
 help: ## Describe useful make targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "%-30s %s\n", $$1, $$2}'
@@ -165,7 +168,7 @@ define deploy
 	# Load image into nodes
 	$(BIN)/kind load docker-image --name $(KIND_CLUSTER) $(IMAGE_PREFIX)pyroscope:$(IMAGE_TAG)
 	kubectl get pods
-	$(BIN)/helm upgrade --install $(1) ./operations/pyroscope/helm/pyroscope $(2) \
+	$(BIN)/helm upgrade --install $(1) ./operations/pyroscope/helm/pyroscope $(2) $(HELM_ARGS) \
 		--set pyroscope.image.tag=$(IMAGE_TAG) \
 		--set pyroscope.image.repository=$(IMAGE_PREFIX)pyroscope \
 		--set pyroscope.podAnnotations.image-id=$(shell cat .docker-image-id-pyroscope) \
