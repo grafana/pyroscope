@@ -318,7 +318,7 @@ func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlar
 }
 
 func (b *singleBlockQuerier) Profiles() parquet.Rows {
-	return parquet.NewReader(b.profiles.file.File)
+	return parquet.NewReader(b.profiles.file.File, schemav1.ProfilesSchema)
 }
 
 func (b *singleBlockQuerier) Index() IndexReader {

@@ -478,6 +478,28 @@ func TestSeriesRewriter(t *testing.T) {
 	}}, chunks)
 }
 
+func TestCompactOldBlock(t *testing.T) {
+	meta, err := block.ReadMetaFromDir("./testdata/01HD3X85G9BGAG4S3TKPNMFG4Z")
+	require.NoError(t, err)
+	dst := t.TempDir()
+	ctx := context.Background()
+	t.Log(meta)
+	bkt, err := client.NewBucket(ctx, client.Config{
+		StorageBackendConfig: client.StorageBackendConfig{
+			Backend: client.Filesystem,
+			Filesystem: filesystem.Config{
+				Directory: "./testdata/",
+			},
+		},
+	}, "test")
+	require.NoError(t, err)
+	br := NewSingleBlockQuerierFromMeta(context.Background(), bkt, meta)
+	require.NoError(t, br.Open(ctx))
+	_, err = CompactWithSplitting(ctx,
+		[]BlockReader{br}, 2, dst, SplitByFingerprint)
+	require.NoError(t, err)
+}
+
 func TestFlushMeta(t *testing.T) {
 	b := newBlock(t, func() []*testhelper.ProfileBuilder {
 		return []*testhelper.ProfileBuilder{
