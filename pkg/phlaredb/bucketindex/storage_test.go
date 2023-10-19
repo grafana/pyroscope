@@ -36,7 +36,7 @@ func TestReadIndex_ShouldReturnErrorIfIndexIsCorrupted(t *testing.T) {
 	bkt, _ := objstore_testutil.NewFilesystemBucket(t, ctx, t.TempDir())
 
 	// Write a corrupted index.
-	require.NoError(t, bkt.Upload(ctx, path.Join(userID, IndexCompressedFilename), strings.NewReader("invalid!}")))
+	require.NoError(t, bkt.Upload(ctx, path.Join(userID, "phlaredb/", IndexCompressedFilename), strings.NewReader("invalid!}")))
 
 	idx, err := ReadIndex(ctx, bkt, userID, nil, log.NewNopLogger())
 	require.Equal(t, ErrIndexCorrupted, err)

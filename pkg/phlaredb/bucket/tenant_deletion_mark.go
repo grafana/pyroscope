@@ -36,14 +36,14 @@ func NewTenantDeletionMark(deletionTime time.Time) *TenantDeletionMark {
 
 // Checks for deletion mark for tenant. Errors other than "object not found" are returned.
 func TenantDeletionMarkExists(ctx context.Context, bkt objstore.BucketReader, userID string) (bool, error) {
-	markerFile := path.Join(userID, TenantDeletionMarkPath)
+	markerFile := path.Join(userID, "phlaredb/", TenantDeletionMarkPath)
 
 	return bkt.Exists(ctx, markerFile)
 }
 
 // Uploads deletion mark to the tenant location in the bucket.
 func WriteTenantDeletionMark(ctx context.Context, bkt objstore.Bucket, userID string, cfgProvider objstore.TenantConfigProvider, mark *TenantDeletionMark) error {
-	bkt = objstore.NewUserBucketClient(userID, bkt, cfgProvider)
+	bkt = objstore.NewTenantBucketClient(userID, bkt, cfgProvider)
 
 	data, err := json.Marshal(mark)
 	if err != nil {
@@ -55,7 +55,7 @@ func WriteTenantDeletionMark(ctx context.Context, bkt objstore.Bucket, userID st
 
 // Returns tenant deletion mark for given user, if it exists. If it doesn't exist, returns nil mark, and no error.
 func ReadTenantDeletionMark(ctx context.Context, bkt objstore.BucketReader, userID string) (*TenantDeletionMark, error) {
-	markerFile := path.Join(userID, TenantDeletionMarkPath)
+	markerFile := path.Join(userID, "phlaredb/", TenantDeletionMarkPath)
 
 	r, err := bkt.Get(ctx, markerFile)
 	if err != nil {

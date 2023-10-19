@@ -25,7 +25,7 @@ func (n noLimit) Stop() {}
 
 // CreateBlock creates a block with the given profiles.
 // Returns the block metadata, the directory where the block is stored, and an error if any.
-func CreateBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) (block.Meta, string, error) {
+func CreateBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) (block.Meta, string) {
 	t.Helper()
 	dir := t.TempDir()
 	ctx := context.Background()
@@ -54,5 +54,5 @@ func CreateBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) (b
 		meta = m
 	}
 	require.NotNil(t, meta)
-	return *meta, localDir, nil
+	return *meta, localDir
 }

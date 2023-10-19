@@ -30,15 +30,15 @@ func TestTenantDeletionMarkExists(t *testing.T) {
 
 		"mark doesn't exist": {
 			objects: map[string][]byte{
-				"user/01EQK4QKFHVSZYVJ908Y7HH9E0/meta.json": []byte("data"),
+				"user/phlaredb/01EQK4QKFHVSZYVJ908Y7HH9E0/meta.json": []byte("data"),
 			},
 			exists: false,
 		},
 
 		"mark exists": {
 			objects: map[string][]byte{
-				"user/01EQK4QKFHVSZYVJ908Y7HH9E0/meta.json": []byte("data"),
-				"user/" + TenantDeletionMarkPath:            []byte("data"),
+				"user/phlaredb/01EQK4QKFHVSZYVJ908Y7HH9E0/meta.json": []byte("data"),
+				"user/phlaredb/" + TenantDeletionMarkPath:            []byte("data"),
 			},
 			exists: true,
 		},

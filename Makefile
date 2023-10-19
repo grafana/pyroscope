@@ -393,7 +393,7 @@ deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,pyroscope-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set pyroscope.components.querier.resources=null --set pyroscope.components.distributor.resources=null --set pyroscope.components.ingester.resources=null --set pyroscope.components.store-gateway.resources=null)
+	$(call deploy,pyroscope-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set pyroscope.components.querier.resources=null --set pyroscope.components.distributor.resources=null --set pyroscope.components.ingester.resources=null --set pyroscope.components.store-gateway.resources=null --set pyroscope.components.compactor.resources=null)
 
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json

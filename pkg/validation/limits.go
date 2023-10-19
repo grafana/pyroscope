@@ -3,15 +3,22 @@ package validation
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v3"
+
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 const (
 	bytesInMB = 1048576
+
+	// MinCompactorPartialBlockDeletionDelay is the minimum partial blocks deletion delay that can be configured in Mimir.
+	// Partial blocks are blocks that are not having meta file uploaded yet.
+	MinCompactorPartialBlockDeletionDelay = 4 * time.Hour
 )
 
 // Limits describe all the limits for tenants; can be used to describe global default
@@ -53,6 +60,19 @@ type Limits struct {
 
 	// Query frontend.
 	QuerySplitDuration model.Duration `yaml:"split_queries_by_interval" json:"split_queries_by_interval"`
+
+	// Compactor.
+	CompactorBlocksRetentionPeriod     model.Duration `yaml:"compactor_blocks_retention_period" json:"compactor_blocks_retention_period"`
+	CompactorSplitAndMergeShards       int            `yaml:"compactor_split_and_merge_shards" json:"compactor_split_and_merge_shards"`
+	CompactorSplitGroups               int            `yaml:"compactor_split_groups" json:"compactor_split_groups"`
+	CompactorTenantShardSize           int            `yaml:"compactor_tenant_shard_size" json:"compactor_tenant_shard_size"`
+	CompactorPartialBlockDeletionDelay model.Duration `yaml:"compactor_partial_block_deletion_delay" json:"compactor_partial_block_deletion_delay"`
+
+	// This config doesn't have a CLI flag registered here because they're registered in
+	// their own original config struct.
+	S3SSEType                 string `yaml:"s3_sse_type" json:"s3_sse_type" doc:"nocli|description=S3 server-side encryption type. Required to enable server-side encryption overrides for a specific tenant. If not set, the default S3 client settings are used."`
+	S3SSEKMSKeyID             string `yaml:"s3_sse_kms_key_id" json:"s3_sse_kms_key_id" doc:"nocli|description=S3 server-side encryption KMS Key ID. Ignored if the SSE type override is not set."`
+	S3SSEKMSEncryptionContext string `yaml:"s3_sse_kms_encryption_context" json:"s3_sse_kms_encryption_context" doc:"nocli|description=S3 server-side encryption KMS encryption context. If unset and the key ID override is set, the encryption context will not be provided to S3. Ignored if the SSE type override is not set."`
 
 	// Ensure profiles are dated within the IngestionWindow of the distributor.
 	RejectOlderThan model.Duration `yaml:"reject_older_than" json:"reject_older_than"`
@@ -100,12 +120,18 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxProfileStacktraceDepth, "validation.max-profile-stacktrace-depth", 1000, "Maximum depth of a profile stacktrace. Profiles are not rejected instead stacktraces are truncated. 0 to disable.")
 	f.IntVar(&l.MaxProfileSymbolValueLength, "validation.max-profile-symbol-value-length", 65535, "Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable.")
 
+	f.Var(&l.CompactorBlocksRetentionPeriod, "compactor.blocks-retention-period", "Delete blocks containing samples older than the specified retention period. 0 to disable.")
+	f.IntVar(&l.CompactorSplitAndMergeShards, "compactor.split-and-merge-shards", 0, "The number of shards to use when splitting blocks. 0 to disable splitting.")
+	f.IntVar(&l.CompactorSplitGroups, "compactor.split-groups", 1, "Number of groups that blocks for splitting should be grouped into. Each group of blocks is then split separately. Number of output split shards is controlled by -compactor.split-and-merge-shards.")
+	f.IntVar(&l.CompactorTenantShardSize, "compactor.compactor-tenant-shard-size", 0, "Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.")
+	_ = l.CompactorPartialBlockDeletionDelay.Set("1d")
+	f.Var(&l.CompactorPartialBlockDeletionDelay, "compactor.partial-block-deletion-delay", fmt.Sprintf("If a partial block (unfinished block without %s file) hasn't been modified for this time, it will be marked for deletion. The minimum accepted value is %s: a lower value will be ignored and the feature disabled. 0 to disable.", block.MetaFilename, MinCompactorPartialBlockDeletionDelay.String()))
+
 	_ = l.RejectNewerThan.Set("10m")
 	f.Var(&l.RejectNewerThan, "validation.reject-newer-than", "This limits how far into the future profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 10m.")
 
 	_ = l.RejectOlderThan.Set("1h")
 	f.Var(&l.RejectOlderThan, "validation.reject-older-than", "This limits how far into the past profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 1h.")
-
 }
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
@@ -273,6 +299,55 @@ func (o *Overrides) StoreGatewayTenantShardSize(userID string) int {
 // QuerySplitDuration returns the tenant specific split by interval applied in the query frontend.
 func (o *Overrides) QuerySplitDuration(tenantID string) time.Duration {
 	return time.Duration(o.getOverridesForTenant(tenantID).QuerySplitDuration)
+}
+
+// CompactorTenantShardSize returns number of compactors that this user can use. 0 = all compactors.
+func (o *Overrides) CompactorTenantShardSize(userID string) int {
+	return o.getOverridesForTenant(userID).CompactorTenantShardSize
+}
+
+// CompactorBlocksRetentionPeriod returns the retention period for a given user.
+func (o *Overrides) CompactorBlocksRetentionPeriod(userID string) time.Duration {
+	return time.Duration(o.getOverridesForTenant(userID).CompactorBlocksRetentionPeriod)
+}
+
+// CompactorSplitAndMergeShards returns the number of shards to use when splitting blocks.
+func (o *Overrides) CompactorSplitAndMergeShards(userID string) int {
+	return o.getOverridesForTenant(userID).CompactorSplitAndMergeShards
+}
+
+// CompactorSplitGroups returns the number of groups that blocks for splitting should be grouped into.
+func (o *Overrides) CompactorSplitGroups(userID string) int {
+	return o.getOverridesForTenant(userID).CompactorSplitGroups
+}
+
+// CompactorPartialBlockDeletionDelay returns the partial block deletion delay time period for a given user,
+// and whether the configured value was valid. If the value wasn't valid, the returned delay is the default one
+// and the caller is responsible to warn the Mimir operator about it.
+func (o *Overrides) CompactorPartialBlockDeletionDelay(userID string) (delay time.Duration, valid bool) {
+	delay = time.Duration(o.getOverridesForTenant(userID).CompactorPartialBlockDeletionDelay)
+
+	// Forcefully disable partial blocks deletion if the configured delay is too low.
+	if delay > 0 && delay < MinCompactorPartialBlockDeletionDelay {
+		return 0, false
+	}
+
+	return delay, true
+}
+
+// S3SSEType returns the per-tenant S3 SSE type.
+func (o *Overrides) S3SSEType(user string) string {
+	return o.getOverridesForTenant(user).S3SSEType
+}
+
+// S3SSEKMSKeyID returns the per-tenant S3 KMS-SSE key id.
+func (o *Overrides) S3SSEKMSKeyID(user string) string {
+	return o.getOverridesForTenant(user).S3SSEKMSKeyID
+}
+
+// S3SSEKMSEncryptionContext returns the per-tenant S3 KMS-SSE encryption context.
+func (o *Overrides) S3SSEKMSEncryptionContext(user string) string {
+	return o.getOverridesForTenant(user).S3SSEKMSEncryptionContext
 }
 
 // MaxQueriersPerTenant returns the limit to the number of queriers that can be used

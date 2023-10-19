@@ -15,7 +15,7 @@ import (
 )
 
 func Test_ValidateBlock(t *testing.T) {
-	meta, dir, err := testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
+	meta, dir := testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
 		return []*testhelper.ProfileBuilder{
 			testhelper.NewProfileBuilder(int64(1)).
 				CPUProfile().
@@ -24,9 +24,8 @@ func Test_ValidateBlock(t *testing.T) {
 				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
 		}
 	})
-	require.NoError(t, err)
 
-	err = phlaredb.ValidateLocalBlock(context.Background(), path.Join(dir, meta.ULID.String()))
+	err := phlaredb.ValidateLocalBlock(context.Background(), path.Join(dir, meta.ULID.String()))
 	require.NoError(t, err)
 	t.Run("should error when a file is missing", func(t *testing.T) {
 		os.Remove(path.Join(dir, meta.ULID.String(), block.IndexFilename))

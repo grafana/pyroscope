@@ -31,7 +31,7 @@ func ReadIndex(ctx context.Context, bkt objstore.Bucket, userID string, cfgProvi
 	ctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
-	userBkt := objstore.NewUserBucketClient(userID, bkt, cfgProvider)
+	userBkt := objstore.NewTenantBucketClient(userID, bkt, cfgProvider)
 
 	// Get the bucket index.
 	reader, err := userBkt.WithExpectedErrs(userBkt.IsObjNotFoundErr).Get(ctx, IndexCompressedFilename)
@@ -62,7 +62,7 @@ func ReadIndex(ctx context.Context, bkt objstore.Bucket, userID string, cfgProvi
 
 // WriteIndex uploads the provided index to the storage.
 func WriteIndex(ctx context.Context, bkt objstore.Bucket, userID string, cfgProvider objstore.TenantConfigProvider, idx *Index) error {
-	bkt = objstore.NewUserBucketClient(userID, bkt, cfgProvider)
+	bkt = objstore.NewTenantBucketClient(userID, bkt, cfgProvider)
 
 	// Marshal the index.
 	content, err := json.Marshal(idx)
@@ -93,7 +93,7 @@ func WriteIndex(ctx context.Context, bkt objstore.Bucket, userID string, cfgProv
 // DeleteIndex deletes the bucket index from the storage. No error is returned if the index
 // does not exist.
 func DeleteIndex(ctx context.Context, bkt objstore.Bucket, userID string, cfgProvider objstore.TenantConfigProvider) error {
-	bkt = objstore.NewUserBucketClient(userID, bkt, cfgProvider)
+	bkt = objstore.NewTenantBucketClient(userID, bkt, cfgProvider)
 
 	err := bkt.Delete(ctx, IndexCompressedFilename)
 	if err != nil && !bkt.IsObjNotFoundErr(err) {

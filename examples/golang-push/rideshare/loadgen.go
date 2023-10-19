@@ -10,12 +10,13 @@ import (
 	"strconv"
 	"time"
 
-	"rideshare/rideshare"
-
+	"github.com/grafana/pyroscope-go/otelpyroscope"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
+
+	"rideshare/rideshare"
 )
 
 var hosts = []string{}
@@ -67,7 +68,7 @@ func main() {
 	// Set the Tracer Provider and the W3C Trace Context propagator as globals.
 	// We wrap the tracer provider to also annotate goroutines with Span ID so
 	// that pprof would add corresponding labels to profiling samples.
-	otel.SetTracerProvider(tp)
+	otel.SetTracerProvider(otelpyroscope.NewTracerProvider(tp))
 
 	// Register the trace c ontext and baggage propagators so data is propagated across services/processes.
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
