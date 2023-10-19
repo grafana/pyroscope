@@ -88,4 +88,48 @@ var (
 		},
 		Period: 10000000,
 	}
+
+	FooBarProfileWithSpans = &profile.Profile{
+		SampleType: []*profile.ValueType{
+			{Type: "cpu", Unit: "nanoseconds"},
+		},
+		DefaultSampleType: "cpu",
+		Sample: []*profile.Sample{
+			{
+				Value:    []int64{1},
+				Location: []*profile.Location{FooLocation, BarLocation},
+				Label: map[string][]string{
+					"span_id": {"badbadbadbadbada"},
+				},
+			},
+			{
+				Value:    []int64{1},
+				Location: []*profile.Location{FooLocation, BarLocation},
+				Label: map[string][]string{
+					"span_id": {"badbadbadbadbadb"},
+				},
+			},
+			{
+				Value:    []int64{2},
+				Location: []*profile.Location{FooLocation},
+				Label: map[string][]string{
+					"span_id": {"badbadbadbadbadb"},
+				},
+			},
+			{
+				Value:    []int64{3},
+				Location: []*profile.Location{BarLocation},
+			},
+		},
+		TimeNanos:     1,
+		DurationNanos: int64(15 * time.Nanosecond),
+		Mapping:       []*profile.Mapping{FooMapping},
+		Location:      []*profile.Location{FooLocation, BarLocation},
+		Function:      []*profile.Function{FooFunction, BarFunction},
+		PeriodType: &profile.ValueType{
+			Type: "cpu",
+			Unit: "nanoseconds",
+		},
+		Period: 10000000,
+	}
 )

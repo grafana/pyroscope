@@ -16,6 +16,7 @@ import (
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
+	"github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
@@ -143,6 +144,59 @@ func TestBlockCompatability(t *testing.T) {
 			}
 
 			require.Equal(t, int(meta.Stats.NumProfiles), profileCount)
+		})
+	}
+}
+
+func TestBlockCompatability_SelectMergeSpans(t *testing.T) {
+	path := "./block/testdata/"
+	bucket, err := filesystem.NewBucket(path)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	metas, err := NewBlockQuerier(ctx, bucket).BlockMetas(ctx)
+	require.NoError(t, err)
+
+	for _, meta := range metas {
+		t.Run(fmt.Sprintf("block-v%d-%s", meta.Version, meta.ULID.String()), func(t *testing.T) {
+			q := NewSingleBlockQuerierFromMeta(ctx, bucket, meta)
+			require.NoError(t, q.Open(ctx))
+
+			profilesTypes, err := q.index.LabelValues("__profile_type__")
+			require.NoError(t, err)
+
+			profileCount := 0
+
+			for _, profileType := range profilesTypes {
+				t.Log(profileType)
+				profileTypeParts := strings.Split(profileType, ":")
+
+				it, err := q.SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
+					LabelSelector: "{}",
+					Start:         0,
+					End:           time.Now().UnixMilli(),
+					Type: &typesv1.ProfileType{
+						Name:       profileTypeParts[0],
+						SampleType: profileTypeParts[1],
+						SampleUnit: profileTypeParts[2],
+						PeriodType: profileTypeParts[3],
+						PeriodUnit: profileTypeParts[4],
+					},
+				})
+				require.NoError(t, err)
+
+				pcIt := &profileCounter{Iterator: it}
+
+				spanSelector, err := model.NewSpanSelector([]string{})
+				require.NoError(t, err)
+				resp, err := q.MergeBySpans(ctx, pcIt, spanSelector)
+				require.NoError(t, err)
+
+				require.Zero(t, resp.Total())
+				profileCount += pcIt.count
+			}
+
+			require.Zero(t, profileCount)
 		})
 	}
 }

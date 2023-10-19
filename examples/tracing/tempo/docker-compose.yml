@@ -51,9 +51,9 @@ services:
 
   tempo:
     image: grafana/tempo:latest
-    command: [ "-config.file=/etc/tempo.yaml" ]
+    command: [ "-config.file=/etc/tempo.yml" ]
     volumes:
-      - ./tempo/tempo.yaml:/etc/tempo.yaml
+      - ./tempo/tempo.yml:/etc/tempo.yml
     ports:
       - "14268:14268"  # jaeger ingest
       - "3200:3200"   # tempo
@@ -65,6 +65,13 @@ services:
   pyroscope:
     ports:
       - '4040:4040'
+    environment:
+      JAEGER_AGENT_HOST: tempo
+      JAEGER_SAMPLER_TYPE: const
+      JAEGER_SAMPLER_PARAM: 1
+    volumes:
+      - ./pyroscope/pyroscope.yml:/etc/pyroscope.yml
+    command: [ "-config.file=/etc/pyroscope.yml" ]
     build:
       context: '../../../'
       dockerfile: cmd/pyroscope/Dockerfile
