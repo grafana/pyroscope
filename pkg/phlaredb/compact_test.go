@@ -14,7 +14,6 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
-	"github.com/prometheus/prometheus/tsdb"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -621,14 +620,14 @@ func TestCompactMetas(t *testing.T) {
 	labels := map[string]string{"foo": "bar", "bar": "buzz"}
 	require.Equal(t, model.TimeFromUnix(0), actual.MinTime)
 	require.Equal(t, model.TimeFromUnix(200), actual.MaxTime)
-	require.Equal(t, tsdb.BlockMetaCompaction{
+	require.Equal(t, block.BlockMetaCompaction{
 		Level: 4,
 		Sources: []ulid.ULID{
 			ulid.MustParse("00000000000000000000000001"),
 			ulid.MustParse("00000000000000000000000002"),
 			ulid.MustParse("00000000000000000000000003"),
 		},
-		Parents: []tsdb.BlockDesc{
+		Parents: []block.BlockDesc{
 			{
 				ULID:    ulid.MustParse("00000000000000000000000001"),
 				MinTime: 0,
