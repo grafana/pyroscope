@@ -50,6 +50,17 @@ pyroscope:
         requests:
           memory: 8Gi
           cpu: 1
+    compactor:
+      kind: StatefulSet
+      replicaCount: 3
+      persistence:
+        enabled: false
+      resources:
+        limits:
+          memory: 16Gi
+        requests:
+          memory: 8Gi
+          cpu: 1
     store-gateway:
       kind: StatefulSet
       replicaCount: 3

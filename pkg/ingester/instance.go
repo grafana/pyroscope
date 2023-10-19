@@ -51,7 +51,7 @@ func newInstance(phlarectx context.Context, cfg phlaredb.Config, tenantID string
 			inst.logger,
 			inst.reg,
 			db,
-			phlareobj.NewPrefixedBucket(storageBucket, tenantID+"/phlaredb"),
+			phlareobj.NewTenantBucketClient(tenantID, storageBucket, nil),
 			block.IngesterSource,
 			false,
 			false,

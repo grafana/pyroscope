@@ -5,7 +5,6 @@ import (
 
 	"github.com/oklog/ulid"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/tsdb"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,11 +28,11 @@ func TestClone(t *testing.T) {
 			},
 		},
 		Source: IngesterSource,
-		Compaction: tsdb.BlockMetaCompaction{
+		Compaction: BlockMetaCompaction{
 			Level:     1,
 			Sources:   []ulid.ULID{generateULID()},
 			Deletable: true,
-			Parents: []tsdb.BlockDesc{
+			Parents: []BlockDesc{
 				{
 					ULID:    generateULID(),
 					MinTime: 1,

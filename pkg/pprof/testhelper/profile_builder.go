@@ -23,6 +23,7 @@ type ProfileBuilder struct {
 	externalFunctionID2LocationId map[uint32]uint64
 }
 
+// NewProfileBuilder creates a new ProfileBuilder with the given nanoseconds timestamp.
 func NewProfileBuilder(ts int64) *ProfileBuilder {
 	return NewProfileBuilderWithLabels(ts, []*typesv1.LabelPair{
 		{
@@ -32,6 +33,7 @@ func NewProfileBuilder(ts int64) *ProfileBuilder {
 	})
 }
 
+// NewProfileBuilderWithLabels creates a new ProfileBuilder with the given nanoseconds timestamp and labels.
 func NewProfileBuilderWithLabels(ts int64, labels []*typesv1.LabelPair) *ProfileBuilder {
 	profile := profilev1.ProfileFromVTPool()
 	profile.TimeNanos = ts
