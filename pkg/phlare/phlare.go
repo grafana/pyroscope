@@ -30,6 +30,7 @@ import (
 	wwtracing "github.com/grafana/dskit/tracing"
 	"github.com/grafana/pyroscope-go"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/samber/lo"
@@ -54,6 +55,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/cli"
+	"github.com/grafana/pyroscope/pkg/util/spanprofiler"
 	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
@@ -257,6 +259,9 @@ func New(cfg Config) (*Phlare, error) {
 		trace, err := wwtracing.NewFromEnv(fmt.Sprintf("pyroscope-%s", cfg.Target))
 		if err != nil {
 			level.Error(logger).Log("msg", "error in initializing tracing. tracing will not be enabled", "err", err)
+		}
+		if cfg.Tracing.ProfilingEnabled {
+			opentracing.SetGlobalTracer(spanprofiler.NewTracer(opentracing.GlobalTracer()))
 		}
 		phlare.tracer = trace
 	}

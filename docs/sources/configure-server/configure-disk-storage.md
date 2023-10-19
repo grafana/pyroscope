@@ -2,7 +2,7 @@
 title: "Configure Pyroscope disk storage"
 menuTitle: "Configure disk storage"
 description: ""
-weight: 20
+weight: 30
 aliases:
   - /docs/phlare/latest/configure-server/configure-disk-storage/
 ---
