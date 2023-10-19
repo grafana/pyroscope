@@ -150,7 +150,7 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues")
 	defer sp.Finish()
 
-	hasTimeRange := util.HasTimeRange(req.Msg)
+	_, hasTimeRange := phlaremodel.GetTimeRange(req.Msg)
 	sp.LogFields(
 		otlog.Bool("legacy_request", !hasTimeRange),
 		otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),

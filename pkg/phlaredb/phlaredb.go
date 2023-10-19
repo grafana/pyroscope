@@ -367,7 +367,8 @@ func (f *PhlareDB) LabelValues(ctx context.Context, req *connect.Request[typesv1
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
 
-	if !util.HasTimeRange(req.Msg) {
+	_, ok := phlaremodel.GetTimeRange(req.Msg)
+	if !ok {
 		return f.headQueriers().LabelValues(ctx, req)
 	}
 	return f.queriers().LabelValues(ctx, req)

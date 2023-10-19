@@ -9,7 +9,7 @@ import (
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/util"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
@@ -22,11 +22,8 @@ func (f *Frontend) LabelValues(ctx context.Context, c *connect.Request[typesv1.L
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	if util.HasTimeRange(c.Msg) {
-		interval := model.Interval{
-			Start: model.Time(c.Msg.Start),
-			End:   model.Time(c.Msg.End),
-		}
+	interval, ok := phlaremodel.GetTimeRange(c.Msg)
+	if ok {
 		validated, err := validation.ValidateRangeRequest(f.limits, tenantIDs, interval, model.Now())
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)

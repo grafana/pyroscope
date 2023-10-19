@@ -863,12 +863,12 @@ func Test_singleBlockQuerier_LabelValues(t *testing.T) {
 			"slow",
 		}
 
-		got, err := q.LabelValues(ctx, &typesv1.LabelValuesRequest{
+		got, err := q.LabelValues(ctx, connect.NewRequest(&typesv1.LabelValuesRequest{
 			Name:     "function",
 			Matchers: []string{},
-		})
+		}))
 		assert.NoError(t, err)
-		assert.Equal(t, want, got)
+		assert.Equal(t, want, got.Msg.Names)
 	})
 
 	t.Run("empty matcher", func(t *testing.T) {
@@ -877,12 +877,12 @@ func Test_singleBlockQuerier_LabelValues(t *testing.T) {
 			"slow",
 		}
 
-		got, err := q.LabelValues(ctx, &typesv1.LabelValuesRequest{
+		got, err := q.LabelValues(ctx, connect.NewRequest(&typesv1.LabelValuesRequest{
 			Name:     "function",
 			Matchers: []string{`{}`},
-		})
+		}))
 		assert.NoError(t, err)
-		assert.Equal(t, want, got)
+		assert.Equal(t, want, got.Msg.Names)
 	})
 
 	t.Run("multiple matchers", func(t *testing.T) {
@@ -891,15 +891,15 @@ func Test_singleBlockQuerier_LabelValues(t *testing.T) {
 			"slow",
 		}
 
-		got, err := q.LabelValues(ctx, &typesv1.LabelValuesRequest{
+		got, err := q.LabelValues(ctx, connect.NewRequest(&typesv1.LabelValuesRequest{
 			Name: "function",
 			Matchers: []string{
 				`{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`,
 				`{service_name="simple.golang.app"}`,
 			},
-		})
+		}))
 		assert.NoError(t, err)
-		assert.Equal(t, want, got)
+		assert.Equal(t, want, got.Msg.Names)
 	})
 
 	t.Run("ui plugin", func(t *testing.T) {
@@ -908,12 +908,12 @@ func Test_singleBlockQuerier_LabelValues(t *testing.T) {
 			"slow",
 		}
 
-		got, err := q.LabelValues(ctx, &typesv1.LabelValuesRequest{
+		got, err := q.LabelValues(ctx, connect.NewRequest(&typesv1.LabelValuesRequest{
 			Name:     "function",
 			Matchers: []string{`{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds", service_name="simple.golang.app"}`},
-		})
+		}))
 		assert.NoError(t, err)
-		assert.Equal(t, want, got)
+		assert.Equal(t, want, got.Msg.Names)
 	})
 }
 
