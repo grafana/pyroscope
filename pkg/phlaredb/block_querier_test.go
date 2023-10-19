@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bufbuild/connect-go"
 	"github.com/oklog/ulid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -688,11 +689,11 @@ func Test_singleBlockQuerier_LabelNames(t *testing.T) {
 			"version",
 		}
 
-		got, err := q.LabelNames(ctx, &typesv1.LabelNamesRequest{
+		got, err := q.LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
 			Matchers: []string{},
-		})
+		}))
 		assert.NoError(t, err)
-		assert.Equal(t, want, got)
+		assert.Equal(t, want, got.Msg.Names)
 	})
 
 	t.Run("empty matcher", func(t *testing.T) {
@@ -713,11 +714,11 @@ func Test_singleBlockQuerier_LabelNames(t *testing.T) {
 			"version",
 		}
 
-		got, err := q.LabelNames(ctx, &typesv1.LabelNamesRequest{
+		got, err := q.LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
 			Matchers: []string{`{}`},
-		})
+		}))
 		assert.NoError(t, err)
-		assert.Equal(t, want, got)
+		assert.Equal(t, want, got.Msg.Names)
 	})
 
 	t.Run("single matcher", func(t *testing.T) {
@@ -738,11 +739,11 @@ func Test_singleBlockQuerier_LabelNames(t *testing.T) {
 			"version",
 		}
 
-		got, err := q.LabelNames(ctx, &typesv1.LabelNamesRequest{
+		got, err := q.LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
 			Matchers: []string{`{__name__="process_cpu"}`},
-		})
+		}))
 		assert.NoError(t, err)
-		assert.Equal(t, want, got)
+		assert.Equal(t, want, got.Msg.Names)
 	})
 
 	t.Run("multiple matchers", func(t *testing.T) {
@@ -759,11 +760,11 @@ func Test_singleBlockQuerier_LabelNames(t *testing.T) {
 			"version",
 		}
 
-		got, err := q.LabelNames(ctx, &typesv1.LabelNamesRequest{
+		got, err := q.LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
 			Matchers: []string{`{__name__="memory",__type__="alloc_objects"}`},
-		})
+		}))
 		assert.NoError(t, err)
-		assert.Equal(t, want, got)
+		assert.Equal(t, want, got.Msg.Names)
 	})
 
 	t.Run("ui plugin", func(t *testing.T) {
@@ -782,11 +783,11 @@ func Test_singleBlockQuerier_LabelNames(t *testing.T) {
 			"service_name",
 		}
 
-		got, err := q.LabelNames(ctx, &typesv1.LabelNamesRequest{
+		got, err := q.LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
 			Matchers: []string{`{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`, `{service_name="simple.golang.app"}`},
-		})
+		}))
 		assert.NoError(t, err)
-		assert.Equal(t, want, got)
+		assert.Equal(t, want, got.Msg.Names)
 	})
 }
 
@@ -835,9 +836,9 @@ func Benchmark_singleBlockQuerier_LabelNames(b *testing.B) {
 
 	b.Run("multiple matchers", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
-			q.LabelNames(ctx, &typesv1.LabelNamesRequest{ //nolint:errcheck
+			q.LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{ //nolint:errcheck
 				Matchers: []string{`{__profile_type__="process_cpu:cpu:nanoseconds:cpu:nanoseconds"}`, `{service_name="simple.golang.app"}`},
-			})
+			}))
 		}
 	})
 }

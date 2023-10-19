@@ -48,7 +48,7 @@ func (s *StoreGateway) LabelNames(ctx context.Context, req *connect.Request[type
 	var res *typesv1.LabelNamesResponse
 	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
 		var err error
-		res, err = phlaredb.LabelNames(ctx, req.Msg, bs.openBlocksForReading)
+		res, err = phlaredb.LabelNames(ctx, req, bs.openBlocksForReading)
 		if err != nil {
 			return err
 		}
