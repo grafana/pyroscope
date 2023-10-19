@@ -4,21 +4,20 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"io"
 	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
 	"sort"
 
+	"github.com/grafana/dskit/multierror"
+	"github.com/grafana/dskit/runutil"
 	"github.com/oklog/ulid"
 	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
-	"github.com/prometheus/prometheus/tsdb"
-
-	"github.com/grafana/dskit/multierror"
-	"github.com/grafana/dskit/runutil"
 
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
@@ -34,31 +33,31 @@ import (
 
 type BlockReader interface {
 	Meta() block.Meta
-	Profiles() []parquet.RowGroup
+	Profiles() parquet.Rows
 	Index() IndexReader
 	Symbols() symdb.SymbolsReader
+	Close() error
 }
 
 func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
-	metas, err := CompactWithSplitting(ctx, src, 1, dst)
+	metas, err := CompactWithSplitting(ctx, src, 1, dst, SplitByFingerprint)
 	if err != nil {
 		return block.Meta{}, err
 	}
 	return metas[0], nil
 }
 
-func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount uint64, dst string) (
+func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount uint64, dst string, splitBy SplitByFunc) (
 	[]block.Meta, error,
 ) {
-	if shardsCount == 0 {
-		shardsCount = 1
+	if splitCount == 0 {
+		splitCount = 1
 	}
-	if len(src) <= 1 && shardsCount == 1 {
+	if len(src) <= 1 && splitCount == 1 {
 		return nil, errors.New("not enough blocks to compact")
 	}
 	var (
-		writers  = make([]*blockWriter, shardsCount)
-		shardBy  = shardByFingerprint
+		writers  = make([]*blockWriter, splitCount)
 		srcMetas = make([]block.Meta, len(src))
 		err      error
 	)
@@ -66,13 +65,18 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount ui
 		srcMetas[i] = b.Meta()
 	}
 
-	outBlocksTime := ulid.Now()
 	outMeta := compactMetas(srcMetas...)
 
 	// create the shards writers
 	for i := range writers {
 		meta := outMeta.Clone()
-		meta.ULID = ulid.MustNew(outBlocksTime, rand.Reader)
+		meta.ULID = ulid.MustNew(meta.ULID.Time(), rand.Reader)
+		if splitCount > 1 {
+			if meta.Labels == nil {
+				meta.Labels = make(map[string]string)
+			}
+			meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(i), splitCount)
+		}
 		writers[i], err = newBlockWriter(dst, meta)
 		if err != nil {
 			return nil, fmt.Errorf("create block writer: %w", err)
@@ -88,7 +92,7 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount ui
 	// iterate and splits the rows into series.
 	for rowsIt.Next() {
 		r := rowsIt.At()
-		shard := int(shardBy(r, shardsCount))
+		shard := int(splitBy(r, splitCount))
 		if err := writers[shard].WriteRow(r); err != nil {
 			return nil, err
 		}
@@ -106,9 +110,8 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount ui
 	}
 
 	out := make([]block.Meta, 0, len(writers))
-	for shard, w := range writers {
+	for _, w := range writers {
 		if w.meta.Stats.NumSamples > 0 {
-			w.meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(shard), shardsCount)
 			out = append(out, *w.meta)
 		}
 	}
@@ -117,8 +120,14 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, shardsCount ui
 	return out, errs.Err()
 }
 
-var shardByFingerprint = func(r profileRow, shardsCount uint64) uint64 {
+type SplitByFunc func(r profileRow, shardsCount uint64) uint64
+
+var SplitByFingerprint = func(r profileRow, shardsCount uint64) uint64 {
 	return uint64(r.fp) % shardsCount
+}
+
+var SplitByStacktracePartition = func(r profileRow, shardsCount uint64) uint64 {
+	return r.row.StacktracePartitionID() % shardsCount
 }
 
 type blockWriter struct {
@@ -128,7 +137,6 @@ type blockWriter struct {
 	path            string
 	meta            *block.Meta
 	totalProfiles   uint64
-	min, max        int64
 }
 
 func newBlockWriter(dst string, meta *block.Meta) (*blockWriter, error) {
@@ -149,8 +157,6 @@ func newBlockWriter(dst string, meta *block.Meta) (*blockWriter, error) {
 		profilesWriter:  profileWriter,
 		path:            blockPath,
 		meta:            meta,
-		min:             math.MaxInt64,
-		max:             math.MinInt64,
 	}, nil
 }
 
@@ -168,12 +174,6 @@ func (bw *blockWriter) WriteRow(r profileRow) error {
 		return err
 	}
 	bw.totalProfiles++
-	if r.timeNanos < bw.min {
-		bw.min = r.timeNanos
-	}
-	if r.timeNanos > bw.max {
-		bw.max = r.timeNanos
-	}
 	return nil
 }
 
@@ -196,8 +196,6 @@ func (bw *blockWriter) Close(ctx context.Context) error {
 	bw.meta.Stats.NumSeries = bw.indexRewriter.NumSeries()
 	bw.meta.Stats.NumSamples = bw.symbolsRewriter.NumSamples()
 	bw.meta.Compaction.Deletable = bw.totalProfiles == 0
-	bw.meta.MinTime = model.TimeFromUnixNano(bw.min)
-	bw.meta.MaxTime = model.TimeFromUnixNano(bw.max)
 	if _, err := bw.meta.WriteToFile(util.Logger, bw.path); err != nil {
 		return err
 	}
@@ -389,7 +387,7 @@ func compactMetas(src ...block.Meta) block.Meta {
 	meta := block.NewMeta()
 	highestCompactionLevel := 0
 	sources := map[ulid.ULID]struct{}{}
-	parents := make([]tsdb.BlockDesc, 0, len(src))
+	parents := make([]block.BlockDesc, 0, len(src))
 	minTime, maxTime := model.Latest, model.Earliest
 	labels := make(map[string]string)
 	for _, b := range src {
@@ -399,10 +397,10 @@ func compactMetas(src ...block.Meta) block.Meta {
 		for _, s := range b.Compaction.Sources {
 			sources[s] = struct{}{}
 		}
-		parents = append(parents, tsdb.BlockDesc{
+		parents = append(parents, block.BlockDesc{
 			ULID:    b.ULID,
-			MinTime: int64(b.MinTime),
-			MaxTime: int64(b.MaxTime),
+			MinTime: b.MinTime,
+			MaxTime: b.MaxTime,
 		})
 		if b.MinTime < minTime {
 			minTime = b.MinTime
@@ -417,11 +415,8 @@ func compactMetas(src ...block.Meta) block.Meta {
 			labels[k] = v
 		}
 	}
-	if hostname, err := os.Hostname(); err == nil {
-		labels[block.HostnameLabel] = hostname
-	}
 	meta.Source = block.CompactorSource
-	meta.Compaction = tsdb.BlockMetaCompaction{
+	meta.Compaction = block.BlockMetaCompaction{
 		Deletable: false,
 		Level:     highestCompactionLevel + 1,
 		Parents:   parents,
@@ -435,6 +430,7 @@ func compactMetas(src ...block.Meta) block.Meta {
 	meta.MaxTime = maxTime
 	meta.MinTime = minTime
 	meta.Labels = labels
+	meta.ULID = ulid.MustNew(uint64(minTime), rand.Reader)
 	return *meta
 }
 
@@ -451,6 +447,7 @@ type profileRow struct {
 type profileRowIterator struct {
 	profiles    iter.Iterator[parquet.Row]
 	blockReader BlockReader
+	closer      io.Closer
 	index       IndexReader
 	allPostings index.Postings
 	err         error
@@ -467,10 +464,11 @@ func newProfileRowIterator(s BlockReader) (*profileRowIterator, error) {
 		return nil, err
 	}
 	// todo close once https://github.com/grafana/pyroscope/issues/2172 is done.
-	reader := parquet.MultiRowGroup(s.Profiles()...).Rows()
+	reader := s.Profiles()
 	return &profileRowIterator{
 		profiles:         phlareparquet.NewBufferedRowReaderIterator(reader, 1024),
 		blockReader:      s,
+		closer:           reader,
 		index:            s.Index(),
 		allPostings:      allPostings,
 		currentSeriesIdx: math.MaxUint32,
@@ -521,7 +519,13 @@ func (p *profileRowIterator) Err() error {
 }
 
 func (p *profileRowIterator) Close() error {
-	return p.profiles.Close()
+	err := p.profiles.Close()
+	if p.closer != nil {
+		if err := p.closer.Close(); err != nil {
+			return err
+		}
+	}
+	return err
 }
 
 func newMergeRowProfileIterator(src []BlockReader) (iter.Iterator[profileRow], error) {

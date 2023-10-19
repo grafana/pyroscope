@@ -1,8 +1,11 @@
 package v1
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"math/rand"
+	"sort"
 	"testing"
 
 	"github.com/google/uuid"
@@ -42,6 +45,8 @@ func TestRoundtripProfile(t *testing.T) {
 	expected, err := phlareparquet.ReadAll(NewProfilesRowReader(profiles))
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)
+	_ = expected
+	_ = actual
 
 	t.Run("EmptyOptionalField", func(t *testing.T) {
 		profiles := generateProfiles(1)
@@ -88,6 +93,27 @@ func TestRoundtripProfile(t *testing.T) {
 		inMemoryProfiles := generateMemoryProfiles(1)
 		for i := range inMemoryProfiles {
 			inMemoryProfiles[i].Samples = Samples{}
+		}
+		expected, err := phlareparquet.ReadAll(NewProfilesRowReader(profiles))
+		require.NoError(t, err)
+		actual, err := phlareparquet.ReadAll(NewInMemoryProfilesRowReader(inMemoryProfiles))
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+	t.Run("SampleSpanID", func(t *testing.T) {
+		profiles := generateProfiles(1)
+		for _, p := range profiles {
+			for _, x := range p.Samples {
+				x.SpanID = rand.Uint64()
+			}
+		}
+		inMemoryProfiles := generateMemoryProfiles(1)
+		for i := range inMemoryProfiles {
+			spans := make([]uint64, len(inMemoryProfiles[i].Samples.Values))
+			for j := range spans {
+				spans[j] = profiles[i].Samples[j].SpanID
+			}
+			inMemoryProfiles[i].Samples.Spans = spans
 		}
 		expected, err := phlareparquet.ReadAll(NewProfilesRowReader(profiles))
 		require.NoError(t, err)
@@ -279,6 +305,59 @@ func BenchmarkProfileRows(b *testing.B) {
 		lessProfileRows(a, a)
 		lessProfileRows(a, a1)
 		lessProfileRows(a, a2)
+	}
+}
+
+func Benchmark_SpanID_Encoding(b *testing.B) {
+	const profilesN = 1000
+
+	profiles := func(share float64) []InMemoryProfile {
+		randomSpanIDs := make([]uint64, int(samplesPerProfile*share))
+		inMemoryProfiles := generateMemoryProfiles(profilesN)
+		for j := range inMemoryProfiles {
+			for i := range randomSpanIDs {
+				randomSpanIDs[i] = rand.Uint64()
+			}
+			spans := make([]uint64, len(inMemoryProfiles[j].Samples.Values))
+			for o := range spans {
+				spans[o] = randomSpanIDs[o%len(randomSpanIDs)]
+			}
+			inMemoryProfiles[j].Samples.Spans = spans
+			// We only need this for RLE.
+			sort.Sort(SamplesBySpanID(inMemoryProfiles[j].Samples))
+		}
+		return inMemoryProfiles
+	}
+
+	for _, share := range []float64{
+		1,
+		0.5,
+		0.25,
+		0.15,
+		0.05,
+	} {
+		share := share
+		b.Run(fmt.Sprintf("%v (%d/%d)", share, int(samplesPerProfile*share), samplesPerProfile), func(b *testing.B) {
+			inMemoryProfiles := profiles(share)
+			var buf bytes.Buffer
+			w := parquet.NewGenericWriter[*Profile](&buf, ProfilesSchema)
+
+			n, err := parquet.CopyRows(w, NewInMemoryProfilesRowReader(inMemoryProfiles))
+			require.NoError(b, err)
+			require.Equal(b, len(inMemoryProfiles), int(n))
+			require.NoError(b, w.Close())
+
+			b.ResetTimer()
+			b.ReportAllocs()
+
+			for i := 0; i < b.N; i++ {
+				b.ReportMetric(float64(buf.Len()), "bytes")
+				r := parquet.NewReader(bytes.NewReader(buf.Bytes()), ProfilesSchema)
+				n, err = parquet.CopyRows(parquet.MultiRowWriter(), r)
+				require.NoError(b, err)
+				require.Equal(b, len(inMemoryProfiles), int(n))
+			}
+		})
 	}
 }
 

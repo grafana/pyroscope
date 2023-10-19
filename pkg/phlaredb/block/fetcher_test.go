@@ -329,7 +329,7 @@ func TestMetaFetcher_ShouldNotIssueAnyAPICallToObjectStorageIfAllBlockMetasAreCa
 }
 
 func createTestBlock(t *testing.T) (blockID ulid.ULID, blockDir string) {
-	meta, dir, err := block_testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
+	meta, dir := block_testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
 		return []*testhelper.ProfileBuilder{
 			testhelper.NewProfileBuilder(int64(1)).
 				CPUProfile().
@@ -338,7 +338,6 @@ func createTestBlock(t *testing.T) (blockID ulid.ULID, blockDir string) {
 				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
 		}
 	})
-	require.NoError(t, err)
 	blockID = meta.ULID
 	blockDir = filepath.Join(dir, blockID.String())
 	return

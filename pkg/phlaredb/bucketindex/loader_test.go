@@ -103,7 +103,7 @@ func TestLoader_GetIndex_ShouldCacheError(t *testing.T) {
 	})
 
 	// Write a corrupted index.
-	require.NoError(t, bkt.Upload(ctx, path.Join("user-1", IndexCompressedFilename), strings.NewReader("invalid!}")))
+	require.NoError(t, bkt.Upload(ctx, path.Join("user-1", "phlaredb/", IndexCompressedFilename), strings.NewReader("invalid!}")))
 
 	// Request the index multiple times.
 	for i := 0; i < 10; i++ {
@@ -236,7 +236,7 @@ func TestLoader_ShouldUpdateIndexInBackgroundOnPreviousLoadFailure(t *testing.T)
 	bkt, _ := objstore_testutil.NewFilesystemBucket(t, ctx, t.TempDir())
 
 	// Write a corrupted index.
-	require.NoError(t, bkt.Upload(ctx, path.Join("user-1", IndexCompressedFilename), strings.NewReader("invalid!}")))
+	require.NoError(t, bkt.Upload(ctx, path.Join("user-1", "phlaredb/", IndexCompressedFilename), strings.NewReader("invalid!}")))
 
 	// Create the loader.
 	cfg := LoaderConfig{
@@ -374,7 +374,7 @@ func TestLoader_ShouldNotCacheCriticalErrorOnBackgroundUpdates(t *testing.T) {
 	assert.Equal(t, idx, actualIdx)
 
 	// Write a corrupted index.
-	require.NoError(t, bkt.Upload(ctx, path.Join("user-1", IndexCompressedFilename), strings.NewReader("invalid!}")))
+	require.NoError(t, bkt.Upload(ctx, path.Join("user-1", "phlaredb/", IndexCompressedFilename), strings.NewReader("invalid!}")))
 
 	// Wait until the first failure has been tracked.
 	test.Poll(t, 3*time.Second, true, func() interface{} {
