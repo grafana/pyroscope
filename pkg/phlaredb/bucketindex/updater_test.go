@@ -58,7 +58,7 @@ func TestUpdater_UpdateIndex(t *testing.T) {
 		[]*block.DeletionMark{block2Mark, block4Mark})
 
 	// Hard delete a block and update the index.
-	require.NoError(t, block.Delete(ctx, log.NewNopLogger(), objstore.NewUserBucketClient(userID, bkt, nil), block2.ULID))
+	require.NoError(t, block.Delete(ctx, log.NewNopLogger(), objstore.NewTenantBucketClient(userID, bkt, nil), block2.ULID))
 
 	returnedIdx, _, err = w.UpdateIndex(ctx, returnedIdx)
 	require.NoError(t, err)
@@ -86,7 +86,7 @@ func TestUpdater_UpdateIndex_ShouldSkipPartialBlocks(t *testing.T) {
 	block_testutil.MockNoCompactMark(t, bkt, userID, block3)
 
 	// Delete a block's meta.json to simulate a partial block.
-	require.NoError(t, bkt.Delete(ctx, path.Join(userID, block3.ULID.String(), block.MetaFilename)))
+	require.NoError(t, bkt.Delete(ctx, path.Join(userID, "phlaredb/", block3.ULID.String(), block.MetaFilename)))
 
 	w := NewUpdater(bkt, userID, nil, logger)
 	idx, partials, err := w.UpdateIndex(ctx, nil)
@@ -115,7 +115,7 @@ func TestUpdater_UpdateIndex_ShouldSkipBlocksWithCorruptedMeta(t *testing.T) {
 	block2Mark := block_testutil.MockStorageDeletionMark(t, bkt, userID, block2)
 
 	// Overwrite a block's meta.json with invalid data.
-	require.NoError(t, bkt.Upload(ctx, path.Join(userID, block3.ULID.String(), block.MetaFilename), bytes.NewReader([]byte("invalid!}"))))
+	require.NoError(t, bkt.Upload(ctx, path.Join(userID, "phlaredb/", block3.ULID.String(), block.MetaFilename), bytes.NewReader([]byte("invalid!}"))))
 
 	w := NewUpdater(bkt, userID, nil, logger)
 	idx, partials, err := w.UpdateIndex(ctx, nil)
@@ -144,7 +144,7 @@ func TestUpdater_UpdateIndex_ShouldSkipCorruptedDeletionMarks(t *testing.T) {
 	block2Mark := block_testutil.MockStorageDeletionMark(t, bkt, userID, block2)
 
 	// Overwrite a block's deletion-mark.json with invalid data.
-	require.NoError(t, bkt.Upload(ctx, path.Join(userID, block2Mark.ID.String(), block.DeletionMarkFilename), bytes.NewReader([]byte("invalid!}"))))
+	require.NoError(t, bkt.Upload(ctx, path.Join(userID, "phlaredb/", block2Mark.ID.String(), block.DeletionMarkFilename), bytes.NewReader([]byte("invalid!}"))))
 
 	w := NewUpdater(bkt, userID, nil, logger)
 	idx, partials, err := w.UpdateIndex(ctx, nil)
@@ -228,7 +228,7 @@ func TestUpdater_UpdateIndexFromVersion1ToVersion2(t *testing.T) {
 }
 
 func getBlockUploadedAt(t testing.TB, bkt objstore.Bucket, userID string, blockID ulid.ULID) int64 {
-	metaFile := path.Join(userID, blockID.String(), block.MetaFilename)
+	metaFile := path.Join(userID, "phlaredb/", blockID.String(), block.MetaFilename)
 
 	attrs, err := bkt.Attributes(context.Background(), metaFile)
 	require.NoError(t, err)

@@ -30,6 +30,7 @@ import (
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	"github.com/grafana/pyroscope/api/openapiv2"
+	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb/frontendpbconnect"
@@ -250,6 +251,14 @@ func (a *API) RegisterStoreGateway(svc *storegateway.StoreGateway) {
 	a.RegisterRoute("/store-gateway/ring", http.HandlerFunc(svc.RingHandler), false, true, "GET", "POST")
 	a.RegisterRoute("/store-gateway/tenants", http.HandlerFunc(svc.TenantsHandler), false, true, "GET")
 	a.RegisterRoute("/store-gateway/tenant/{tenant}/blocks", http.HandlerFunc(svc.BlocksHandler), false, true, "GET")
+}
+
+// RegisterCompactor registers routes associated with the compactor.
+func (a *API) RegisterCompactor(c *compactor.MultitenantCompactor) {
+	a.indexPage.AddLinks(defaultWeight, "Compactor", []IndexPageLink{
+		{Desc: "Ring status", Path: "/compactor/ring"},
+	})
+	a.RegisterRoute("/compactor/ring", http.HandlerFunc(c.RingHandler), false, true, "GET", "POST")
 }
 
 // RegisterQueryFrontend registers the endpoints associated with the query frontend.

@@ -30,12 +30,8 @@ Pyroscope and the demo application will be built from the current branch.  After
 4. Specify proper `start` and `end` timestamps (milliseconds).
 
 Please note that the pyroscope SDK is configured to only record root spans, therefore stack trace samples
-of child spans are included into the root span profile. This is controlled by [`WithRootSpanOnly`](../../golang-push/rideshare/main.go#L98) option.
-
-In the example we use our old SDK which also adds the `pyroscope.profile.id` attribute – although it
-might be convenient in some cases, we have no intent to maintain it. At the moment there is no reliable
-way to determine if any profiling data has been collected for a specific span, therefore this
-label may mislead.
+of child spans are included into the root span profile. These spans are marked with `pyroscope.profiling.enabled`
+attribute set to `true`.
 
 #### cURL
 

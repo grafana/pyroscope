@@ -292,7 +292,7 @@ func (f *Frontend) QueryResult(ctx context.Context, r *connect.Request[frontendp
 		case req.response <- qrReq:
 			// Should always be possible, unless QueryResult is called multiple times with the same queryID.
 		default:
-			level.Warn(f.log).Log("msg", "failed to write query result to the response channel", "queryID", qrReq.QueryID, "user", userID)
+			level.Warn(f.log).Log("msg", "failed to write query result to the response channel", "queryID", qrReq.QueryID, "tenant", userID)
 		}
 	}
 

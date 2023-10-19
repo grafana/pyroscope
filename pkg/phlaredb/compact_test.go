@@ -14,7 +14,6 @@ import (
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/storage"
-	"github.com/prometheus/prometheus/tsdb"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -109,7 +108,7 @@ func TestCompactWithSplitting(t *testing.T) {
 		)
 	})
 	dst := t.TempDir()
-	compacted, err := CompactWithSplitting(ctx, []BlockReader{b1, b2, b2, b1}, 16, dst)
+	compacted, err := CompactWithSplitting(ctx, []BlockReader{b1, b2, b2, b1}, 16, dst, SplitByFingerprint)
 	require.NoError(t, err)
 
 	// 4 shards one per series.
@@ -119,8 +118,7 @@ func TestCompactWithSplitting(t *testing.T) {
 	require.Equal(t, "7_of_16", compacted[2].Labels[sharding.CompactorShardIDLabel])
 	require.Equal(t, "14_of_16", compacted[3].Labels[sharding.CompactorShardIDLabel])
 
-	// The series b should span from 11 to 20 and not 1 to 20.
-	require.Equal(t, model.TimeFromUnix(11), compacted[1].MinTime)
+	require.Equal(t, model.TimeFromUnix(1), compacted[1].MinTime)
 	require.Equal(t, model.TimeFromUnix(20), compacted[1].MaxTime)
 
 	// We first verify we have all series and timestamps across querying all blocks.
@@ -480,6 +478,28 @@ func TestSeriesRewriter(t *testing.T) {
 	}}, chunks)
 }
 
+func TestCompactOldBlock(t *testing.T) {
+	meta, err := block.ReadMetaFromDir("./testdata/01HD3X85G9BGAG4S3TKPNMFG4Z")
+	require.NoError(t, err)
+	dst := t.TempDir()
+	ctx := context.Background()
+	t.Log(meta)
+	bkt, err := client.NewBucket(ctx, client.Config{
+		StorageBackendConfig: client.StorageBackendConfig{
+			Backend: client.Filesystem,
+			Filesystem: filesystem.Config{
+				Directory: "./testdata/",
+			},
+		},
+	}, "test")
+	require.NoError(t, err)
+	br := NewSingleBlockQuerierFromMeta(context.Background(), bkt, meta)
+	require.NoError(t, br.Open(ctx))
+	_, err = CompactWithSplitting(ctx,
+		[]BlockReader{br}, 2, dst, SplitByFingerprint)
+	require.NoError(t, err)
+}
+
 func TestFlushMeta(t *testing.T) {
 	b := newBlock(t, func() []*testhelper.ProfileBuilder {
 		return []*testhelper.ProfileBuilder{
@@ -506,7 +526,7 @@ func TestFlushMeta(t *testing.T) {
 	require.Equal(t, false, b.Meta().Compaction.Deletable)
 	require.Equal(t, false, b.Meta().Compaction.Failed)
 	require.Equal(t, []string(nil), b.Meta().Compaction.Hints)
-	require.Equal(t, []tsdb.BlockDesc(nil), b.Meta().Compaction.Parents)
+	require.Equal(t, []block.BlockDesc(nil), b.Meta().Compaction.Parents)
 	require.Equal(t, block.MetaVersion3, b.Meta().Version)
 	require.Equal(t, model.Time(1000), b.Meta().MinTime)
 	require.Equal(t, model.Time(3000), b.Meta().MaxTime)
@@ -593,7 +613,7 @@ func TestCompactMetas(t *testing.T) {
 			ULID:    ulid.MustParse("00000000000000000000000001"),
 			MinTime: model.TimeFromUnix(0),
 			MaxTime: model.TimeFromUnix(100),
-			Compaction: tsdb.BlockMetaCompaction{
+			Compaction: block.BlockMetaCompaction{
 				Level:   1,
 				Sources: []ulid.ULID{ulid.MustParse("00000000000000000000000001")},
 			},
@@ -603,7 +623,7 @@ func TestCompactMetas(t *testing.T) {
 			ULID:    ulid.MustParse("00000000000000000000000002"),
 			MinTime: model.TimeFromUnix(50),
 			MaxTime: model.TimeFromUnix(100),
-			Compaction: tsdb.BlockMetaCompaction{
+			Compaction: block.BlockMetaCompaction{
 				Level:   0,
 				Sources: []ulid.ULID{ulid.MustParse("00000000000000000000000002")},
 			},
@@ -613,26 +633,23 @@ func TestCompactMetas(t *testing.T) {
 			ULID:    ulid.MustParse("00000000000000000000000003"),
 			MinTime: model.TimeFromUnix(50),
 			MaxTime: model.TimeFromUnix(200),
-			Compaction: tsdb.BlockMetaCompaction{
+			Compaction: block.BlockMetaCompaction{
 				Level:   3,
 				Sources: []ulid.ULID{ulid.MustParse("00000000000000000000000003")},
 			},
 		},
 	}...)
 	labels := map[string]string{"foo": "bar", "bar": "buzz"}
-	if hostname, err := os.Hostname(); err == nil {
-		labels[block.HostnameLabel] = hostname
-	}
 	require.Equal(t, model.TimeFromUnix(0), actual.MinTime)
 	require.Equal(t, model.TimeFromUnix(200), actual.MaxTime)
-	require.Equal(t, tsdb.BlockMetaCompaction{
+	require.Equal(t, block.BlockMetaCompaction{
 		Level: 4,
 		Sources: []ulid.ULID{
 			ulid.MustParse("00000000000000000000000001"),
 			ulid.MustParse("00000000000000000000000002"),
 			ulid.MustParse("00000000000000000000000003"),
 		},
-		Parents: []tsdb.BlockDesc{
+		Parents: []block.BlockDesc{
 			{
 				ULID:    ulid.MustParse("00000000000000000000000001"),
 				MinTime: 0,

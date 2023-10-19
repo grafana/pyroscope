@@ -3,6 +3,7 @@ package storegateway
 import (
 	"context"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/go-kit/log"
@@ -32,24 +33,43 @@ func (bs *BucketStore) createBlock(ctx context.Context, meta *block.Meta) (*Bloc
 		}
 	}
 	metaPath := filepath.Join(blockLocalPath, block.MetaFilename)
+	var outMeta *block.Meta
 	if _, err := os.Stat(metaPath); errors.Is(err, os.ErrNotExist) {
+		// fetch the meta from the bucket
+		r, err := bs.bucket.Get(ctx, path.Join(meta.ULID.String(), block.MetaFilename))
+		if err != nil {
+			return nil, errors.Wrap(err, "get meta")
+		}
+		meta, err := block.Read(r)
+		if err != nil {
+			return nil, errors.Wrap(err, "read meta")
+		}
 		// add meta.json if it does not exist
 		if _, err := meta.WriteToFile(bs.logger, blockLocalPath); err != nil {
 			return nil, errors.Wrap(err, "write meta.json")
 		}
+		outMeta = meta.Clone()
 	} else {
 		// read meta.json if it exists and validate it
-		if diskMeta, _, err := block.MetaFromDir(blockLocalPath); err != nil {
-			if meta.String() != diskMeta.String() {
-				return nil, errors.Wrap(err, "meta.json does not match")
-			}
+		diskMeta, _, err := block.MetaFromDir(blockLocalPath)
+		if err != nil {
 			return nil, errors.Wrap(err, "read meta.json")
 		}
+
+		if meta.ULID.String() != diskMeta.ULID.String() {
+			return nil, errors.Wrap(err, "meta.json does not match")
+		}
+		outMeta = diskMeta.Clone()
+
+	}
+
+	if outMeta.Version == 0 || len(outMeta.Files) == 0 {
+		return nil, errors.New("meta.json is empty")
 	}
 
 	return &Block{
-		meta:        meta,
+		meta:        outMeta,
 		logger:      bs.logger,
-		BlockCloser: phlaredb.NewSingleBlockQuerierFromMeta(ctx, bs.bucket, meta),
+		BlockCloser: phlaredb.NewSingleBlockQuerierFromMeta(ctx, bs.bucket, outMeta),
 	}, nil
 }

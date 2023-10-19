@@ -25,6 +25,7 @@ pyroscope:
   extraEnvFrom: []
 
   imagePullSecrets: []
+  dnsPolicy: ClusterFirst
   initContainers: []
   nameOverride: ""
   fullnameOverride: ""
@@ -216,5 +217,8 @@ minio:
 
 ingress:
   enabled: false
+  className: ""
   # hosts:
   #   - localhost
+  # tls: 
+  #   - secretName: certificate

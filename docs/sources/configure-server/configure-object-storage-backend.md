@@ -2,7 +2,7 @@
 title: "Configure Pyroscope object storage backend"
 menuTitle: "Configure object storage"
 description: "Learn how to configure Pyroscope to use different object storage backend implementations."
-weight: 30
+weight: 40
 aliases:
   - /docs/phlare/latest/configure-server/configure-object-storage-backend/
 ---
