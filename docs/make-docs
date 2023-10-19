@@ -5,107 +5,134 @@
 # Updates should conform to the guidelines in https://keepachangelog.com/en/1.1.0/.
 # [Semantic versioning](https://semver.org/) is used to help the reader identify the significance of changes.
 # Changes are relevant to this script and the support docs.mk GNU Make interface.
-
+#
+# ## 5.0.0 (2023-10-18)
+#
+# ### Added
+#
+# - Improved support for website repository.
+#
+#   Mount more content and provide some feedback to users that the build can take time.
+#
+# - Ability to enter the `grafana/docs-base` container with a shell using the `ENTER` environment variable.
+#
+# ### Fixed
+#
+# - Correct key combination for interrupting the process.
+#
+#   Keyboards use capital letters so this more accurately reflects the exact key combination users are expected to press.
+#
+# ### Removed
+#
+# - Imperfect implementation of container name.
+#
+#   Faciliates running `make vale` and `make docs` at once.
+#   Container names are convenient for recognition in `docker ps` but the current implementation has more downsides than upsides.
+#
+# - Forced platform specification now that multiple architecture images exist.
+#
+#  Significantly speeds up build times on larger repositories.
+#
 # ## 4.2.2 (2023-10-05)
 
 # - Added support for Jira data source and MongoDB data source plugins repositories.
-
+#
 # ## 4.2.1 (2023-09-13)
 
 # ## Fixed
-
+#
 # - Improved consistency of the webserver request loop by polling the Hugo port rather than the proxy port.
-
+#
 # ## 4.2.0 (2023-09-01)
-
+#
 # ### Added
-
+#
 # - Retry the initial webserver request up to ten times to allow for the process to start.
 #   If it is still failing after ten seconds, an error message is logged.
-
+#
 # ## 4.1.1 (2023-07-20)
-
+#
 # ### Fixed
-
+#
 # - Replaced use of `realpath` with POSIX compatible alternative to determine default value for REPOS_PATH.
-
+#
 # ## 4.1.0 (2023-06-16)
-
+#
 # ### Added
-
+#
 # - Mounts of `layouts` and `config` directories for the `website` project.
 #   Ensures that local changes to mounts or shortcodes are reflected in the development server.
-
+#
 # ### Fixed
-
+#
 # - Version inference for versioned docs pages.
 #   Pages in versioned projects now have the `versioned: true` front matter set to ensure that "version" in $.Page.Scratch is set on builds.
-
+#
 # ## 4.0.0 (2023-06-06)
-
+#
 # ### Removed
-
+#
 # - `doc-validator/%` target.
 #   The behavior of the target was not as described.
 #   Instead, to limit `doc-validator` to only specific files, refer to https://grafana.com/docs/writers-toolkit/writing-guide/tooling-and-workflows/validate-technical-documentation/#run-on-specific-files.
-
+#
 # ## 3.0.0 (2023-05-18)
-
+#
 # ### Fixed
-
+#
 # - Compatibility with the updated Make targets in the `website` repository.
 #   `docs` now runs this script itself, `server-docs` builds the site with the `docs` Hugo environment.
-
+#
 # ## 2.0.0 (2023-05-18)
-
+#
 # ### Added
-
+#
 # - Support for the grafana-cloud/frontend-observability/faro-web-sdk project.
 # - Use of `doc-validator` v2.0.x which includes breaking changes to command line options.
-
+#
 # ### Fixed
-
+#
 # - Source grafana-cloud project from website repository.
-
+#
 # ### Added
-
+#
 # - Support for running the Vale linter with `make vale`.
-
+#
 # ## 1.2.1 (2023-05-05)
-
+#
 # ### Fixed
-
+#
 # - Use `latest` tag of `grafana/vale` image by default instead of hardcoded older version.
 # - Fix mounting multiple projects broken by the changes in 1.0.1
-
+#
 # ## 1.2.0 (2023-05-05)
-
+#
 # ### Added
-
+#
 # - Support for running the Vale linter with `make vale`.
-
+#
 # ### Fixed
-
+#
 # ## 1.1.0 (2023-05-05)
-
+#
 # ### Added
-
+#
 # - Rewrite error output so it can be followed by text editors.
-
+#
 # ### Fixed
-
+#
 # - Fix `docs-debug` container process port.
-
+#
 # ## 1.0.1 (2023-05-04)
-
+#
 # ### Fixed
-
+#
 # - Ensure complete section hierarchy so that all projects have a visible menu.
-
+#
 # ## 1.0.0 (2023-05-04)
-
+#
 # ### Added
-
+#
 # - Build multiple projects simultaneously if all projects are checked out locally.
 # - Run [`doc-validator`](https://github.com/grafana/technical-documentation/tree/main/tools/cmd/doc-validator) over projects.
 # - Redirect project root to mounted version.
@@ -135,7 +162,6 @@
 
 set -ef
 
-readonly DOCS_CONTAINER="${DOCS_CONTAINER:-make-docs}"
 readonly DOCS_HOST_PORT="${DOCS_HOST_PORT:-3002}"
 readonly DOCS_IMAGE="${DOCS_IMAGE:-grafana/docs-base:latest}"
 
@@ -238,7 +264,7 @@ PATHS_helm_charts_mimir_distributed='docs/sources/helm-charts/mimir-distributed'
 PATHS_helm_charts_tempo_distributed='docs/sources/helm-charts/tempo-distributed'
 PATHS_mimir='docs/sources/mimir'
 PATHS_tempo='docs/sources/tempo'
-PATHS_website='content/docs'
+PATHS_website='content'
 
 # identifier STR
 # Replace characters that are not valid in an identifier with underscores.
@@ -336,7 +362,7 @@ $1
 POSIX_HERESTRING
 
   if [ "${_project}" = 'website' ]; then
-    echo '/hugo/content/docs'
+    echo '/hugo/content'
 
     unset _project _version
     return
@@ -481,7 +507,7 @@ POSIX_HERESTRING
         fi
       done
       echo
-      echo 'Press Ctrl+c to stop the server'
+      echo 'Press Ctrl+C to stop the server'
 
       unset i max req url
       return
@@ -490,7 +516,7 @@ POSIX_HERESTRING
 
   echo
   errr 'The build was interrupted or a build error occurred, check the previous logs for possible causes.'
-  note 'You might need to use Ctrl+c to end the process.'
+  note 'You might need to use Ctrl+C to end the process.'
 
   unset i max req url
 }
@@ -519,10 +545,12 @@ for arg in "$@"; do
 ${arg}
 POSIX_HERESTRING
   if [ "${_project}" = website ]; then
+    note "Please be patient, building the website can take some time."
+
     _repo="$(repo_path website)"
     volumes="--volume=${_repo}/config:/hugo/config"
-    volumes="${volumes} --volume=${_repo}/layouts/partials:/hugo/layouts/partials"
-    volumes="${volumes} --volume=${_repo}/layouts/shortcodes:/hugo/layouts/shortcodes"
+    volumes="${volumes} --volume=${_repo}/layouts:/hugo/layouts"
+    volumes="${volumes} --volume=${_repo}/scripts:/hugo/scripts"
   fi
   unset _project _repo
 done
@@ -569,7 +597,6 @@ case "${image}" in
     "${PODMAN}" run \
                 --init \
                 --interactive \
-                --name "${DOCS_CONTAINER}" \
                 --platform linux/amd64 \
                 --rm \
                 --tty \
@@ -586,7 +613,6 @@ case "${image}" in
     "${PODMAN}" run \
                 --init \
                 --interactive \
-                --name "${DOCS_CONTAINER}" \
                 --platform linux/amd64 \
                 --rm \
                 --tty \
@@ -630,33 +656,36 @@ ${PODMAN} run \
   --env=HUGO_REFLINKSERRORLEVEL=${HUGO_REFLINKSERRORLEVEL} \
   --init \
   --interactive \
-  --name=${DOCS_CONTAINER} \
-  --platform=linux/amd64 \
   --publish=${DOCS_HOST_PORT}:3002 \
   --publish=3003:3003 \
   --rm \
   --tty \
   ${volumes} \
-  ${DOCS_IMAGE} \
-  /entrypoint
+  ${DOCS_IMAGE}
 EOF
-    await_build http://localhost:3003 &
 
-    if [ -n "${DEBUG}" ]; then
-      ${cmd}
+    if [ -n "${ENTER}" ]; then
+      ${cmd} /bin/bash
+    elif [ -n "${DEBUG}" ]; then
+      await_build http://localhost:3003 &
+
+      ${cmd} /entrypoint
     else
-      ${cmd} 2>&1| sed \
-                     -e '/Web Server is available at http:\/\/localhost:3003\/ (bind address 0.0.0.0)/ d' \
-                     -e '/^hugo server/ d' \
-                     -e '/fatal: not a git repository (or any parent up to mount point \/)/ d' \
-                     -e '/Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set)./ d' \
-                     -e "/Makefile:[0-9]*: warning: overriding recipe for target 'docs'/ d" \
-                     -e "/docs.mk:[0-9]*: warning: ignoring old recipe for target 'docs'/ d" \
-                     -e '/\/usr\/bin\/make -j 2 proxy hserver-docs HUGO_PORT=3003/ d' \
-                     -e '/website-proxy/ d' \
-                     -e '/rm -rf dist*/ d' \
-                     -e '/Press Ctrl+C to stop/ d' \
-                     -e '/make/ d' || echo
+      await_build http://localhost:3003 &
+
+      ${cmd} /entrypoint  2>&1\
+        | sed -u \
+              -e '/Web Server is available at http:\/\/localhost:3003\/ (bind address 0.0.0.0)/ d' \
+              -e '/^hugo server/ d' \
+              -e '/fatal: not a git repository (or any parent up to mount point \/)/ d' \
+              -e '/Stopping at filesystem boundary (GIT_DISCOVERY_ACROSS_FILESYSTEM not set)./ d' \
+              -e "/Makefile:[0-9]*: warning: overriding recipe for target 'docs'/ d" \
+              -e "/docs.mk:[0-9]*: warning: ignoring old recipe for target 'docs'/ d" \
+              -e '/\/usr\/bin\/make -j 2 proxy hserver-docs HUGO_PORT=3003/ d' \
+              -e '/website-proxy/ d' \
+              -e '/rm -rf dist*/ d' \
+              -e '/Press Ctrl+C to stop/ d' \
+              -e '/make/ d'
     fi
     ;;
 esac
