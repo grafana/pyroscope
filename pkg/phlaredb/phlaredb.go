@@ -381,7 +381,8 @@ func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
 
-	if !util.HasTimeRange(req.Msg) {
+	_, ok := phlaremodel.GetTimeRange(req.Msg)
+	if !ok {
 		return f.headQueriers().LabelNames(ctx, req)
 	}
 	return f.queriers().LabelNames(ctx, req)
@@ -403,7 +404,8 @@ func (f *PhlareDB) Series(ctx context.Context, req *connect.Request[ingestv1.Ser
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
 
-	if !util.HasTimeRange(req.Msg) {
+	_, ok := phlaremodel.GetTimeRange(req.Msg)
+	if !ok {
 		return f.headQueriers().Series(ctx, req)
 	}
 	return f.queriers().Series(ctx, req)

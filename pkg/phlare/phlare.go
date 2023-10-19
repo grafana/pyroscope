@@ -30,12 +30,14 @@ import (
 	wwtracing "github.com/grafana/dskit/tracing"
 	"github.com/grafana/pyroscope-go"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/version"
 	"github.com/samber/lo"
 
 	"github.com/grafana/pyroscope/pkg/api"
 	"github.com/grafana/pyroscope/pkg/cfg"
+	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
@@ -53,6 +55,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/cli"
+	"github.com/grafana/pyroscope/pkg/util/spanprofiler"
 	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
 )
@@ -74,6 +77,7 @@ type Config struct {
 	Tracing           tracing.Config         `yaml:"tracing"`
 	OverridesExporter exporter.Config        `yaml:"overrides_exporter" doc:"hidden"`
 	RuntimeConfig     runtimeconfig.Config   `yaml:"runtime_config"`
+	Compactor         compactor.Config       `yaml:"compactor"`
 
 	Storage       StorageConfig       `yaml:"storage"`
 	SelfProfiling SelfProfilingConfig `yaml:"self_profiling,omitempty"`
@@ -138,6 +142,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 	c.RuntimeConfig.RegisterFlags(f)
 	c.Analytics.RegisterFlags(f)
 	c.LimitsConfig.RegisterFlags(f)
+	c.Compactor.RegisterFlags(f, log.NewLogfmtLogger(os.Stderr))
 	c.API.RegisterFlags(f)
 }
 
@@ -173,6 +178,9 @@ func (c *Config) Validate() error {
 	if len(c.Target) == 0 {
 		return errors.New("no modules specified")
 	}
+	if err := c.Compactor.Validate(c.PhlareDB.MaxBlockDuration); err != nil {
+		return err
+	}
 	return c.Ingester.Validate()
 }
 
@@ -184,6 +192,7 @@ func (c *Config) ApplyDynamicConfig() cfg.Source {
 	c.Worker.QuerySchedulerDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.QueryScheduler.ServiceDiscovery.SchedulerRing.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 	c.StoreGateway.ShardingRing.Ring.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
+	c.Compactor.ShardingRing.Common.KVStore.Store = c.Ingester.LifecyclerConfig.RingConfig.KVStore.Store
 
 	return func(dst cfg.Cloneable) error {
 		return nil
@@ -214,6 +223,7 @@ type Phlare struct {
 	usageReport   *usagestats.Reporter
 	RuntimeConfig *runtimeconfig.Manager
 	Overrides     *validation.Overrides
+	Compactor     *compactor.MultitenantCompactor
 
 	TenantLimits validation.TenantLimits
 
@@ -250,6 +260,9 @@ func New(cfg Config) (*Phlare, error) {
 		if err != nil {
 			level.Error(logger).Log("msg", "error in initializing tracing. tracing will not be enabled", "err", err)
 		}
+		if cfg.Tracing.ProfilingEnabled {
+			opentracing.SetGlobalTracer(spanprofiler.NewTracer(opentracing.GlobalTracer()))
+		}
 		phlare.tracer = trace
 	}
 
@@ -279,21 +292,22 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(UsageReport, f.initUsageReport)
 	mm.RegisterModule(QueryFrontend, f.initQueryFrontend)
 	mm.RegisterModule(QueryScheduler, f.initQueryScheduler)
+	mm.RegisterModule(Compactor, f.initCompactor)
 	mm.RegisterModule(All, nil)
 
 	// Add dependencies
 	deps := map[string][]string{
 		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway},
 
-		Server:         {GRPCGateway},
-		API:            {Server},
-		Distributor:    {Overrides, Ring, API, UsageReport},
-		Querier:        {Overrides, API, MemberlistKV, Ring, UsageReport},
-		QueryFrontend:  {OverridesExporter, API, MemberlistKV, UsageReport},
-		QueryScheduler: {Overrides, API, MemberlistKV, UsageReport},
-		Ingester:       {Overrides, API, MemberlistKV, Storage, UsageReport},
-		StoreGateway:   {API, Storage, Overrides, MemberlistKV, UsageReport},
-
+		Server:            {GRPCGateway},
+		API:               {Server},
+		Distributor:       {Overrides, Ring, API, UsageReport},
+		Querier:           {Overrides, API, MemberlistKV, Ring, UsageReport},
+		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport},
+		QueryScheduler:    {Overrides, API, MemberlistKV, UsageReport},
+		Ingester:          {Overrides, API, MemberlistKV, Storage, UsageReport},
+		StoreGateway:      {API, Storage, Overrides, MemberlistKV, UsageReport},
+		Compactor:         {API, Storage, Overrides, MemberlistKV, UsageReport},
 		UsageReport:       {Storage, MemberlistKV},
 		Overrides:         {RuntimeConfig},
 		OverridesExporter: {Overrides, MemberlistKV},

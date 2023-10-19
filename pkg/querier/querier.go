@@ -215,7 +215,7 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames")
 	defer sp.Finish()
 
-	hasTimeRange := util.HasTimeRange(req.Msg)
+	_, hasTimeRange := phlaremodel.GetTimeRange(req.Msg)
 	sp.LogFields(
 		otlog.Bool("legacy_request", !hasTimeRange),
 		otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),
@@ -280,7 +280,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series")
 	defer sp.Finish()
 
-	hasTimeRange := util.HasTimeRange(req.Msg)
+	_, hasTimeRange := phlaremodel.GetTimeRange(req.Msg)
 	sp.LogFields(
 		otlog.Bool("legacy_request", !hasTimeRange),
 		otlog.String("matchers", strings.Join(req.Msg.Matchers, ",")),

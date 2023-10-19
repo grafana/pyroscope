@@ -5,6 +5,32 @@ Usage of ./pyroscope:
     	When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
   -blocks-storage.bucket-store.sync-dir string
     	Directory to store synchronized pyroscope block headers. This directory is not required to be persisted between restarts, but it's highly recommended in order to improve the store-gateway startup time. (default "./data/pyroscope-sync/")
+  -compactor.blocks-retention-period duration
+    	Delete blocks containing samples older than the specified retention period. 0 to disable.
+  -compactor.compactor-tenant-shard-size int
+    	Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.
+  -compactor.data-dir string
+    	Directory to temporarily store blocks during compaction. This directory is not required to be persisted between restarts. (default "./data-compactor")
+  -compactor.first-level-compaction-wait-period duration
+    	How long the compactor waits before compacting first-level blocks that are uploaded by the ingesters. This configuration option allows for the reduction of cases where the compactor begins to compact blocks before all ingesters have uploaded their blocks to the storage. (default 25m0s)
+  -compactor.partial-block-deletion-delay duration
+    	If a partial block (unfinished block without meta.json file) hasn't been modified for this time, it will be marked for deletion. The minimum accepted value is 4h0m0s: a lower value will be ignored and the feature disabled. 0 to disable. (default 1d)
+  -compactor.ring.consul.hostname string
+    	Hostname and port of Consul. (default "localhost:8500")
+  -compactor.ring.etcd.endpoints string
+    	The etcd endpoints to connect to.
+  -compactor.ring.etcd.password string
+    	Etcd password.
+  -compactor.ring.etcd.username string
+    	Etcd username.
+  -compactor.ring.instance-interface-names string
+    	List of network interface names to look up when finding the instance IP address. (default [<private network interfaces>])
+  -compactor.ring.store string
+    	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
+  -compactor.split-and-merge-shards int
+    	The number of shards to use when splitting blocks. 0 to disable splitting.
+  -compactor.split-groups int
+    	Number of groups that blocks for splitting should be grouped into. Each group of blocks is then split separately. Number of output split shards is controlled by -compactor.split-and-merge-shards. (default 1)
   -config.expand-env
     	Expands ${var} in config according to the values of the environment variables.
   -config.file string

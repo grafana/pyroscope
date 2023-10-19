@@ -155,31 +155,20 @@ func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterato
 	return seriesByLabels.normalize(), nil
 }
 
-func (q *headOnDiskQuerier) LabelValues(ctx context.Context, params *typesv1.LabelValuesRequest) ([]string, error) {
-	// The TSDB is kept in memory until the head block is flushed to disk.
-	return []string{}, nil
-}
-
-func (q *headOnDiskQuerier) LabelNames(ctx context.Context, params *typesv1.LabelNamesRequest) ([]string, error) {
-	// The TSDB is kept in memory until the head block is flushed to disk.
-	return []string{}, nil
-}
-
 func (q *headOnDiskQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
 	// The TSDB is kept in memory until the head block is flushed to disk.
 	return []*typesv1.Labels{}, nil
 }
 
-func (q *headOnDiskQuerier) MergeBySpans(_ context.Context, _ iter.Iterator[Profile], _ phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
-	//	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeBySpans")
-	//	defer sp.Finish()
-	//	r := symdb.NewResolver(ctx, q.head.symdb)
-	//	defer r.Release()
-	//	if err := mergeBySpans(ctx, q.rowGroup(), rows, r, spanSelector); err != nil {
-	//		return nil, err
-	//	}
-	//	return r.Tree()
-	return new(phlaremodel.Tree), nil
+func (q *headOnDiskQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeBySpans")
+	defer sp.Finish()
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
+	if err := mergeBySpans(ctx, q.rowGroup(), rows, r, spanSelector); err != nil {
+		return nil, err
+	}
+	return r.Tree()
 }
 
 func (q *headOnDiskQuerier) Sort(in []Profile) []Profile {
@@ -343,22 +332,6 @@ func (q *headInMemoryQuerier) MergeByLabels(ctx context.Context, rows iter.Itera
 	}
 
 	return seriesByLabels.normalize(), nil
-}
-
-func (q *headInMemoryQuerier) LabelValues(ctx context.Context, params *typesv1.LabelValuesRequest) ([]string, error) {
-	res, err := q.head.LabelValues(ctx, connect.NewRequest(params))
-	if err != nil {
-		return nil, err
-	}
-	return res.Msg.Names, nil
-}
-
-func (q *headInMemoryQuerier) LabelNames(ctx context.Context, params *typesv1.LabelNamesRequest) ([]string, error) {
-	res, err := q.head.LabelNames(ctx, connect.NewRequest(params))
-	if err != nil {
-		return nil, err
-	}
-	return res.Msg.Names, nil
 }
 
 func (q *headInMemoryQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {

@@ -52,7 +52,7 @@ func (s *TenantsScanner) ScanTenants(ctx context.Context) (users, markedForDelet
 		// Check if it's owned by this instance.
 		owned, err := s.isOwned(userID)
 		if err != nil {
-			level.Warn(s.logger).Log("msg", "unable to check if user is owned by this shard", "user", userID, "err", err)
+			level.Warn(s.logger).Log("msg", "unable to check if user is owned by this shard", "tenant", userID, "err", err)
 		} else if !owned {
 			users = append(users[:ix], users[ix+1:]...)
 			continue
@@ -60,7 +60,7 @@ func (s *TenantsScanner) ScanTenants(ctx context.Context) (users, markedForDelet
 
 		deletionMarkExists, err := TenantDeletionMarkExists(ctx, s.bucketClient, userID)
 		if err != nil {
-			level.Warn(s.logger).Log("msg", "unable to check if user is marked for deletion", "user", userID, "err", err)
+			level.Warn(s.logger).Log("msg", "unable to check if user is marked for deletion", "tenant", userID, "err", err)
 		} else if deletionMarkExists {
 			users = append(users[:ix], users[ix+1:]...)
 			markedForDeletion = append(markedForDeletion, userID)
