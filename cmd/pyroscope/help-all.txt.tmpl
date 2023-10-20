@@ -16,7 +16,7 @@ Usage of ./pyroscope:
   -blocks-storage.bucket-store.tenant-sync-concurrency int
     	Maximum number of concurrent tenants synching blocks. (default 10)
   -compactor.block-ranges value
-    	List of compaction time ranges. (default 3h0m0s,6h0m0s,12h0m0s)
+    	List of compaction time ranges. (default 1h0m0s,4h0m0s,8h0m0s)
   -compactor.block-sync-concurrency int
     	Number of Go routines to use when downloading blocks for compaction and uploading resulting blocks. (default 8)
   -compactor.blocks-retention-period duration
@@ -50,7 +50,7 @@ Usage of ./pyroscope:
   -compactor.max-compaction-time duration
     	Max time for starting compactions for a single tenant. After this time no new compactions for the tenant are started before next compaction cycle. This can help in multi-tenant environments to avoid single tenant using all compaction time, but also in single-tenant environments to force new discovery of blocks more often. 0 = disabled. (default 1h0m0s)
   -compactor.max-opening-blocks-concurrency int
-    	Number of goroutines opening blocks before compaction. (default 1)
+    	Number of goroutines opening blocks before compaction. (default 4)
   -compactor.meta-sync-concurrency int
     	Number of Go routines to use when syncing block meta files from the long term storage. (default 20)
   -compactor.no-blocks-file-cleanup-enabled
@@ -464,7 +464,7 @@ Usage of ./pyroscope:
   -pyroscopedb.data-path string
     	Directory used for local storage. (default "./data")
   -pyroscopedb.max-block-duration duration
-    	Upper limit to the duration of a Pyroscope block. (default 3h0m0s)
+    	Upper limit to the duration of a Pyroscope block. (default 1h0m0s)
   -pyroscopedb.row-group-target-size uint
     	How big should a single row group be uncompressed (default 1342177280)
   -querier.client-cleanup-period duration
