@@ -15,8 +15,8 @@ const chartTitleKeys = {
   exceptions: 'Total number of exceptions thrown',
   unknown: '',
 
-  baseline: 'Baseline',
-  comparison: 'Comparison',
+  baseline: 'Baseline Flamegraph',
+  comparison: 'Comparison Flamegraph',
   selection_included: 'Selection-included Exemplar Flamegraph',
   selection_excluded: 'Selection-excluded Exemplar Flamegraph',
 };
