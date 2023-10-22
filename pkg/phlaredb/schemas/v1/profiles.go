@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"sort"
+	"strings"
 	"unsafe"
 
 	"github.com/google/uuid"
@@ -76,6 +77,44 @@ func init() {
 		panic(fmt.Errorf("StacktracePartition column not found"))
 	}
 	stacktracePartitionColIndex = stacktracePartitionCol.ColumnIndex
+}
+
+var (
+	sampleStacktraceIDColumnPath = strings.Split("Samples.list.element.StacktraceID", ".")
+	sampleValueColumnPath        = strings.Split("Samples.list.element.Value", ".")
+	sampleSpanIDColumnPath       = strings.Split("Samples.list.element.SpanID", ".")
+)
+
+var ErrColumnNotFound = fmt.Errorf("column path not found")
+
+type SampleColumns struct {
+	StacktraceID parquet.LeafColumn
+	Value        parquet.LeafColumn
+	SpanID       parquet.LeafColumn
+}
+
+func (c *SampleColumns) Resolve(schema *parquet.Schema) error {
+	var err error
+	if c.StacktraceID, err = ResolveColumnByPath(schema, sampleStacktraceIDColumnPath); err != nil {
+		return err
+	}
+	if c.Value, err = ResolveColumnByPath(schema, sampleValueColumnPath); err != nil {
+		return err
+	}
+	// Optional.
+	c.SpanID, _ = ResolveColumnByPath(schema, sampleSpanIDColumnPath)
+	return nil
+}
+
+func (c *SampleColumns) HasSpanID() bool {
+	return c.SpanID.Node != nil
+}
+
+func ResolveColumnByPath(schema *parquet.Schema, path []string) (parquet.LeafColumn, error) {
+	if c, ok := schema.Lookup(path...); ok {
+		return c, nil
+	}
+	return parquet.LeafColumn{}, fmt.Errorf("%w: %v", ErrColumnNotFound, path)
 }
 
 type Sample struct {

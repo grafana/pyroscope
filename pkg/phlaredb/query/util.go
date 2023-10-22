@@ -3,10 +3,11 @@ package query
 import (
 	"strings"
 
-	pq "github.com/parquet-go/parquet-go"
+	"github.com/colega/zeropool"
+	"github.com/parquet-go/parquet-go"
 )
 
-func GetColumnIndexByPath(pf *pq.File, s string) (index, depth int) {
+func GetColumnIndexByPath(pf *parquet.File, s string) (index, depth int) {
 	colSelector := strings.Split(s, ".")
 	n := pf.Root()
 	for len(colSelector) > 0 {
@@ -22,7 +23,105 @@ func GetColumnIndexByPath(pf *pq.File, s string) (index, depth int) {
 	return n.Index(), depth
 }
 
-func HasColumn(pf *pq.File, s string) bool {
+func HasColumn(pf *parquet.File, s string) bool {
 	index, _ := GetColumnIndexByPath(pf, s)
 	return index >= 0
+}
+
+func RowGroupBoundaries(groups []parquet.RowGroup) []int64 {
+	b := make([]int64, len(groups))
+	var o int64
+	for i := range b {
+		o += groups[i].NumRows()
+		b[i] = o
+	}
+	return b
+}
+
+func SplitRows(rows, groups []int64) [][]int64 {
+	switch len(groups) {
+	case 0:
+		return nil
+	case 1:
+		return [][]int64{rows}
+	}
+	// Sanity check: max row must be less than
+	// the number of rows in the last group.
+	if rows[len(rows)-1] >= groups[len(groups)-1] {
+		panic(ErrSeekOutOfRange)
+	}
+	split := make([][]int64, len(groups))
+	var j, r int
+	maxRow := groups[j]
+	for i, rn := range rows {
+		if rn < maxRow {
+			continue
+		}
+		split[j], rows = rows[:i-r], rows[i-r:]
+		r = i
+		// Find matching group.
+		for x, v := range groups[j:] {
+			if rn >= v {
+				continue
+			}
+			j += x
+			break
+		}
+		maxRow = groups[j]
+	}
+	// Last bit.
+	split[j] = rows
+	// Subtract group offset from the row numbers,
+	// which makes them local to the group.
+	for i, g := range split[1:] {
+		offset := groups[i]
+		for n := range g {
+			g[n] -= offset
+		}
+	}
+	return split
+}
+
+var uint64valuesPool = zeropool.New(func() []uint64 { return nil })
+
+func CloneUint64ParquetValues(values []parquet.Value) []uint64 {
+	uint64s := uint64valuesPool.Get()
+	if l := len(values); cap(uint64s) < l {
+		uint64s = make([]uint64, 0, 2*l)
+	}
+	uint64s = uint64s[:len(values)]
+	for i, v := range values {
+		uint64s[i] = v.Uint64()
+	}
+	return uint64s
+}
+
+func ReleaseUint64Values(b [][]uint64) {
+	for _, s := range b {
+		if len(s) > 0 {
+			uint64valuesPool.Put(s)
+		}
+	}
+}
+
+var uint32valuesPool = zeropool.New(func() []uint32 { return nil })
+
+func CloneUint32ParquetValues(values []parquet.Value) []uint32 {
+	uint32s := uint32valuesPool.Get()
+	if l := len(values); cap(uint32s) < l {
+		uint32s = make([]uint32, 0, 2*l)
+	}
+	uint32s = uint32s[:len(values)]
+	for i, v := range values {
+		uint32s[i] = v.Uint32()
+	}
+	return uint32s
+}
+
+func ReleaseUint32Values(b [][]uint32) {
+	for _, s := range b {
+		if len(s) > 0 {
+			uint32valuesPool.Put(s)
+		}
+	}
 }

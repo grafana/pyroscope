@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/grafana/dskit/multierror"
@@ -345,4 +346,176 @@ func (it *multiRepeatedPageIterator[T]) Close() error {
 		errs.Add(i.Close())
 	}
 	return errs.Err()
+}
+
+var ErrSeekOutOfRange = fmt.Errorf("bug: south row is out of range")
+
+type RepeatedColumnIterator struct {
+	rowGroups []parquet.RowGroup
+}
+
+type RowGroupRepeatedColumnIterator struct {
+	rows  iter.Iterator[int64]
+	pages parquet.Pages
+	page  parquet.Page
+	err   error
+
+	vit  *RepeatedValuePageIterator
+	prev int64
+
+	maxPageNumRows int64
+}
+
+func NewRepeatedColumnChunkIterator(rows iter.Iterator[int64], c parquet.ColumnChunk) *RowGroupRepeatedColumnIterator {
+	return &RowGroupRepeatedColumnIterator{
+		vit:   getRepeatedValuePageIteratorFromPool(),
+		pages: c.Pages(),
+		rows:  rows,
+	}
+}
+
+func (x *RowGroupRepeatedColumnIterator) Next() bool {
+	if !x.rows.Next() || x.err != nil {
+		return false
+	}
+	rn := x.rows.At()
+	if x.page == nil || rn >= x.maxPageNumRows {
+		if !x.readPage(rn) {
+			return false
+		}
+		// readPage ensures that the first row in the
+		// page matches rn, therefore we don't need to
+		// skip anything.
+		x.prev = rn - 1
+	}
+	// Skip rows to the rn.
+	next := int(rn - x.prev)
+	x.prev = rn
+	for i := 0; i < next; i++ {
+		if !x.vit.Next() {
+			x.err = ErrSeekOutOfRange
+			return false
+		}
+	}
+	return true
+}
+
+func (x *RowGroupRepeatedColumnIterator) readPage(rn int64) bool {
+	if x.err = x.pages.SeekToRow(rn); x.err != nil {
+		return false
+	}
+	if x.page, x.err = x.pages.ReadPage(); x.err != nil {
+		if x.err != io.EOF {
+			return false
+		}
+		x.err = nil
+		// ReadPage should never return page along with EOF,
+		// however this is not a strict contract.
+		if x.page == nil {
+			return false
+		}
+	}
+	// NumRows return the number of row in the page
+	// not counting skipped ones (because of SeekToRow).
+	// The implementation is quite expensive, therefore
+	// we should call it once per page.
+	x.maxPageNumRows = rn + x.page.NumRows()
+	x.vit.Reset(x.page)
+	return true
+}
+
+func (x *RowGroupRepeatedColumnIterator) At() []parquet.Value { return x.vit.At() }
+func (x *RowGroupRepeatedColumnIterator) Err() error          { return x.err }
+func (x *RowGroupRepeatedColumnIterator) Close() error {
+	putRepeatedValuePageIteratorToPool(x.vit)
+	return x.pages.Close()
+}
+
+var repeatedValuePageIterator = sync.Pool{New: func() any { return new(RepeatedValuePageIterator) }}
+
+func getRepeatedValuePageIteratorFromPool() *RepeatedValuePageIterator {
+	return repeatedValuePageIterator.Get().(*RepeatedValuePageIterator)
+}
+
+func putRepeatedValuePageIteratorToPool(x *RepeatedValuePageIterator) {
+	repeatedValuePageIterator.Put(x)
+}
+
+// RepeatedValuePageIterator iterates over repeated fields.
+// FIXME(kolesnikovae): Definition level is completely ignored.
+type RepeatedValuePageIterator struct {
+	page         parquet.Page
+	pageValues   []parquet.Value
+	currentValue []parquet.Value
+	err          error
+}
+
+func NewRepeatedValuePageIterator(page parquet.Page) *RepeatedValuePageIterator {
+	var r RepeatedValuePageIterator
+	r.Reset(page)
+	return &r
+}
+
+func (x *RepeatedValuePageIterator) At() []parquet.Value { return x.currentValue }
+func (x *RepeatedValuePageIterator) Err() error          { return x.err }
+func (x *RepeatedValuePageIterator) Close() error        { return nil }
+
+func (x *RepeatedValuePageIterator) Reset(page parquet.Page) {
+	x.page = page
+	x.pageValues = x.pageValues[:0]
+	x.currentValue = x.currentValue[:0]
+	x.err = nil
+}
+
+func (x *RepeatedValuePageIterator) Next() bool {
+	if x.err != nil {
+		return false
+	}
+	x.currentValue = x.currentValue[:0]
+	if len(x.pageValues) == 0 && x.page != nil {
+		x.pageValues, x.err = readPage(x.pageValues, x.page)
+		switch x.err {
+		case nil:
+		case io.EOF:
+			x.err = nil
+			return len(x.currentValue) > 0
+		default:
+			return false
+		}
+	}
+	for i, v := range x.pageValues {
+		if v.RepetitionLevel() == 0 && i != 0 {
+			x.pageValues = x.pageValues[i:]
+			return true
+		}
+		x.currentValue = append(x.currentValue, v)
+	}
+	// It's expected that the last row
+	// ends at the page ends.
+	x.pageValues = x.pageValues[:0]
+	x.page = nil
+	return len(x.currentValue) > 0
+}
+
+func readPage(dst []parquet.Value, page parquet.Page) (_ []parquet.Value, err error) {
+	// Should never overflow.
+	values := int(page.NumValues())
+	if len(dst) < values {
+		// Replace with next power of two.
+		dst = make([]parquet.Value, values, 2*values)
+	}
+	r := page.Values()
+	var rn int
+	var n int
+	for rn < values {
+		n, err = r.ReadValues(dst[rn:])
+		rn += n
+		if err != nil {
+			if err == io.EOF {
+				return dst, nil
+			}
+			return dst, err
+		}
+	}
+	return dst, nil
 }
