@@ -72,7 +72,7 @@ func Test_AsyncBatchIter(t *testing.T) {
 		},
 		{
 			description: "iterator > buffer",
-			seqSize:     15,
+			seqSize:     25,
 			bufSize:     10,
 		},
 	}

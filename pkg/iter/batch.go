@@ -31,9 +31,10 @@ func ReadBatch[T any](ctx context.Context, iterator Iterator[T], batchSize int, 
 }
 
 type AsyncBatchIterator[T, N any] struct {
+	idx      int
 	batch    []N
 	buffered []N
-	at       N
+
 	close    chan struct{}
 	done     chan struct{}
 	c        chan batch[N]
@@ -60,6 +61,7 @@ func NewAsyncBatchIterator[T, N any](
 		size = minBatchSize
 	}
 	x := &AsyncBatchIterator[T, N]{
+		idx:      -1,
 		batch:    make([]N, 0, size),
 		buffered: make([]N, 0, size),
 		close:    make(chan struct{}),
@@ -74,16 +76,16 @@ func NewAsyncBatchIterator[T, N any](
 }
 
 func (x *AsyncBatchIterator[T, N]) Next() bool {
-	if len(x.batch) == 0 {
+	if x.idx < 0 || x.idx >= len(x.batch)-1 {
 		if !x.loadBatch() {
 			return false
 		}
 	}
-	x.at, x.batch = x.batch[0], x.batch[1:]
+	x.idx++
 	return true
 }
 
-func (x *AsyncBatchIterator[T, N]) At() N { return x.at }
+func (x *AsyncBatchIterator[T, N]) At() N { return x.batch[x.idx] }
 
 func (x *AsyncBatchIterator[T, N]) iterate() {
 	defer func() {
@@ -118,6 +120,7 @@ func (x *AsyncBatchIterator[T, N]) loadBatch() bool {
 	// that x.buffered can be used: it will
 	// immediately start filling the buffer.
 	x.buffered, x.batch = x.batch, b.buffered
+	x.idx = -1
 	close(b.done)
 	return true
 }

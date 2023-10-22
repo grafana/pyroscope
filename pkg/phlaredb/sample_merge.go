@@ -43,7 +43,7 @@ func SplitProfiles(profiles iter.Iterator[Profile], groups []parquet.RowGroup) (
 	var offset int
 	for i, v := range r {
 		x := &RowGroupProfiles{
-			Profiles: iter.NewSliceIterator(p[offset:len(v)]),
+			Profiles: iter.NewSliceIterator(p[offset : offset+len(v)]),
 			RowGroup: groups[i],
 			Rows:     v,
 		}
@@ -166,7 +166,7 @@ func NewProfileSamplesIterator(rowGroup parquet.RowGroup, rows []int64) iter.Ite
 		return iter.NewErrIterator[v1.Samples](err)
 	}
 	columns := rowGroup.ColumnChunks()
-	batchSize := 100 // FIXME: 10 << 10
+	batchSize := 100
 	return &ProfileSamplesIterator{
 		StacktraceID: iter.NewAsyncBatchIterator[[]parquet.Value, []uint32](
 			query.NewRepeatedColumnChunkIterator(iter.NewSliceIterator(rows), columns[sampleColumns.StacktraceID.ColumnIndex]),
