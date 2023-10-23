@@ -430,18 +430,6 @@ static __always_inline int get_frame_data(
     if (!cur_frame) {
         return 0;
     }
-
-    //        py311
-//        _PyInterpreterFrame *frame = tstate->cframe->current_frame
-//        if frame == NULL:
-//            return
-//        while True:
-//            yield frame
-//            frame = frame->previous
-//            if frame == NULL:
-//                break
-//            }
-//
     // read PyCodeObject first, if that fails, then no point reading next frame
     if (bpf_probe_read_user(
             &code_ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_code))) {
