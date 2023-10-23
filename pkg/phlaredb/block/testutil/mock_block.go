@@ -16,7 +16,6 @@ import (
 
 	"github.com/oklog/ulid"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/tsdb"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
@@ -37,7 +36,7 @@ func MockStorageBlockWithExtLabels(t testing.TB, bucket objstore.Bucket, userID 
 		ULID:    id,
 		MinTime: minT,
 		MaxTime: maxT,
-		Compaction: tsdb.BlockMetaCompaction{
+		Compaction: block.BlockMetaCompaction{
 			Level:   1,
 			Sources: []ulid.ULID{id},
 		},
@@ -48,11 +47,11 @@ func MockStorageBlockWithExtLabels(t testing.TB, bucket objstore.Bucket, userID 
 	require.NoError(t, err, "failed to marshal mocked block meta")
 
 	metaContentReader := strings.NewReader(string(metaContent))
-	metaPath := fmt.Sprintf("%s/%s/meta.json", userID, id.String())
+	metaPath := fmt.Sprintf("%s/phlaredb/%s/meta.json", userID, id.String())
 	require.NoError(t, bucket.Upload(context.Background(), metaPath, metaContentReader))
 
 	// Upload an empty index, just to make sure the meta.json is not the only object in the block location.
-	indexPath := fmt.Sprintf("%s/%s/index", userID, id.String())
+	indexPath := fmt.Sprintf("%s/phlaredb/%s/index", userID, id.String())
 	require.NoError(t, bucket.Upload(context.Background(), indexPath, strings.NewReader("")))
 
 	return meta
@@ -69,7 +68,7 @@ func MockStorageDeletionMark(t testing.TB, bucket objstore.Bucket, userID string
 	require.NoError(t, err, "failed to marshal mocked deletion mark")
 
 	markContentReader := strings.NewReader(string(markContent))
-	markPath := fmt.Sprintf("%s/%s/%s", userID, meta.ULID.String(), block.DeletionMarkFilename)
+	markPath := fmt.Sprintf("%s/phlaredb/%s/%s", userID, meta.ULID.String(), block.DeletionMarkFilename)
 	require.NoError(t, bucket.Upload(context.Background(), markPath, markContentReader))
 
 	return &mark
@@ -88,7 +87,7 @@ func MockNoCompactMark(t testing.TB, bucket objstore.Bucket, userID string, meta
 	require.NoError(t, err, "failed to marshal mocked no-compact mark")
 
 	markContentReader := strings.NewReader(string(markContent))
-	markPath := fmt.Sprintf("%s/%s/%s", userID, meta.ULID.String(), block.NoCompactMarkFilename)
+	markPath := fmt.Sprintf("%s/phlaredb/%s/%s", userID, meta.ULID.String(), block.NoCompactMarkFilename)
 	require.NoError(t, bucket.Upload(context.Background(), markPath, markContentReader))
 
 	return &mark

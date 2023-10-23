@@ -13,7 +13,6 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/tsdb"
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -292,6 +291,7 @@ func TestHeadFlush(t *testing.T) {
 				NumSeries:   8,
 				NumProfiles: 11,
 			},
+			Labels: map[string]string{},
 			Files: []block.File{
 				{
 					RelPath:   "index.tsdb",
@@ -344,7 +344,7 @@ func TestHeadFlush(t *testing.T) {
 					},
 				},
 			},
-			Compaction: tsdb.BlockMetaCompaction{
+			Compaction: block.BlockMetaCompaction{
 				Level: 1,
 				Sources: []ulid.ULID{
 					head.meta.ULID,

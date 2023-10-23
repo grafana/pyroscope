@@ -98,6 +98,31 @@ type TSDBFile struct {
 	NumSeries uint64 `json:"numSeries,omitempty"`
 }
 
+// BlockDesc describes a block by ULID and time range.
+type BlockDesc struct {
+	ULID    ulid.ULID  `json:"ulid"`
+	MinTime model.Time `json:"minTime"`
+	MaxTime model.Time `json:"maxTime"`
+}
+
+// BlockMetaCompaction holds information about compactions a block went through.
+type BlockMetaCompaction struct {
+	// Maximum number of compaction cycles any source block has
+	// gone through.
+	Level int `json:"level"`
+	// ULIDs of all source head blocks that went into the block.
+	Sources []ulid.ULID `json:"sources,omitempty"`
+	// Indicates that during compaction it resulted in a block without any samples
+	// so it should be deleted on the next reloadBlocks.
+	Deletable bool `json:"deletable,omitempty"`
+	// Short descriptions of the direct blocks that were used to create
+	// this block.
+	Parents []BlockDesc `json:"parents,omitempty"`
+	Failed  bool        `json:"failed,omitempty"`
+	// Additional information about the compaction, for example, block created from out-of-order chunks.
+	Hints []string `json:"hints,omitempty"`
+}
+
 type Meta struct {
 	// Unique identifier for the block and its contents. Changes on compaction.
 	ULID ulid.ULID `json:"ulid"`
@@ -115,13 +140,13 @@ type Meta struct {
 	Files []File `json:"files,omitempty"`
 
 	// Information on compactions the block was created from.
-	Compaction tsdb.BlockMetaCompaction `json:"compaction"`
+	Compaction BlockMetaCompaction `json:"compaction"`
 
 	// Version of the index format.
 	Version MetaVersion `json:"version"`
 
 	// Labels are the external labels identifying the producer as well as tenant.
-	Labels map[string]string `json:"labels,omitempty"`
+	Labels map[string]string `json:"labels"`
 
 	// Source is a real upload source of the block.
 	Source SourceType `json:"source,omitempty"`
@@ -151,8 +176,8 @@ func (m *Meta) String() string {
 	return fmt.Sprintf(
 		"%s (min time: %s, max time: %s)",
 		m.ULID,
-		m.MinTime.Time().Format(time.RFC3339Nano),
-		m.MaxTime.Time().Format(time.RFC3339Nano),
+		m.MinTime.Time().UTC().Format(time.RFC3339Nano),
+		m.MaxTime.Time().UTC().Format(time.RFC3339Nano),
 	)
 }
 

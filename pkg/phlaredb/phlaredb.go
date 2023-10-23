@@ -50,7 +50,7 @@ type ParquetConfig struct {
 
 func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.DataPath, "pyroscopedb.data-path", "./data", "Directory used for local storage.")
-	f.DurationVar(&cfg.MaxBlockDuration, "pyroscopedb.max-block-duration", 3*time.Hour, "Upper limit to the duration of a Pyroscope block.")
+	f.DurationVar(&cfg.MaxBlockDuration, "pyroscopedb.max-block-duration", 1*time.Hour, "Upper limit to the duration of a Pyroscope block.")
 	f.Uint64Var(&cfg.RowGroupTargetSize, "pyroscopedb.row-group-target-size", 10*128*1024*1024, "How big should a single row group be uncompressed") // This should roughly be 128MiB compressed
 }
 
@@ -138,7 +138,7 @@ func (f *PhlareDB) runBlockQuerierSync(ctx context.Context) {
 func (f *PhlareDB) loop() {
 	blockScanTicker := time.NewTicker(5 * time.Minute)
 	headSizeCheck := time.NewTicker(5 * time.Second)
-	staleHeadTicker := time.NewTicker(util.DurationWithJitter(1*time.Minute, 0.2))
+	staleHeadTicker := time.NewTimer(util.DurationWithJitter(10*time.Minute, 0.5))
 	maxBlockBytes := f.maxBlockBytes()
 	defer func() {
 		blockScanTicker.Stop()
@@ -161,6 +161,7 @@ func (f *PhlareDB) loop() {
 			}
 		case <-staleHeadTicker.C:
 			f.Flush(ctx, false, flushReasonMaxDuration)
+			staleHeadTicker.Reset(util.DurationWithJitter(10*time.Minute, 0.5))
 		case e := <-f.evictCh:
 			f.evictBlock(e)
 		}

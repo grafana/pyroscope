@@ -9,10 +9,11 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/timestamp"
 
+	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
 )
 
 const (
@@ -20,11 +21,6 @@ const (
 )
 
 var errStoreGatewayUnhealthy = errors.New("store-gateway is unhealthy in the ring")
-
-// GaugeVec hides something like a Prometheus GaugeVec or an extprom.TxGaugeVec.
-type GaugeVec interface {
-	WithLabelValues(lvs ...string) prometheus.Gauge
-}
 
 type ShardingStrategy interface {
 	// FilterUsers whose blocks should be loaded by the store-gateway. Returns the list of user IDs
@@ -34,11 +30,7 @@ type ShardingStrategy interface {
 	// FilterBlocks filters metas in-place keeping only blocks that should be loaded by the store-gateway.
 	// The provided loaded map contains blocks which have been previously returned by this function and
 	// are now loaded or loading in the store-gateway.
-	FilterBlocks(ctx context.Context, userID string, metas map[ulid.ULID]*block.Meta, loaded map[ulid.ULID]struct{}, synced GaugeVec) error
-}
-
-type BlockMetaFilter interface {
-	Filter(ctx context.Context, metas map[ulid.ULID]*block.Meta, synced GaugeVec) error
+	FilterBlocks(ctx context.Context, userID string, metas map[ulid.ULID]*block.Meta, loaded map[ulid.ULID]struct{}, synced block.GaugeVec) error
 }
 
 type shardingMetadataFilterAdapter struct {
@@ -96,7 +88,7 @@ func (s *ShuffleShardingStrategy) FilterUsers(_ context.Context, userIDs []strin
 }
 
 // FilterBlocks implements ShardingStrategy.
-func (s *ShuffleShardingStrategy) FilterBlocks(_ context.Context, userID string, metas map[ulid.ULID]*block.Meta, loaded map[ulid.ULID]struct{}, synced GaugeVec) error {
+func (s *ShuffleShardingStrategy) FilterBlocks(_ context.Context, userID string, metas map[ulid.ULID]*block.Meta, loaded map[ulid.ULID]struct{}, synced block.GaugeVec) error {
 	// As a protection, ensure the store-gateway instance is healthy in the ring. If it's unhealthy because it's failing
 	// to heartbeat or get updates from the ring, or even removed from the ring because of the auto-forget feature, then
 	// keep the previously loaded blocks.
@@ -179,7 +171,7 @@ func GetShuffleShardingSubring(ring *ring.Ring, userID string, limits ShardingLi
 	return ring.ShuffleShard(userID, shardSize)
 }
 
-func NewShardingMetadataFilterAdapter(userID string, strategy ShardingStrategy) BlockMetaFilter {
+func NewShardingMetadataFilterAdapter(userID string, strategy ShardingStrategy) block.MetadataFilter {
 	return &shardingMetadataFilterAdapter{
 		userID:     userID,
 		strategy:   strategy,
@@ -189,7 +181,7 @@ func NewShardingMetadataFilterAdapter(userID string, strategy ShardingStrategy) 
 
 // Filter implements block.MetadataFilter.
 // This function is NOT safe for use by multiple goroutines concurrently.
-func (a *shardingMetadataFilterAdapter) Filter(ctx context.Context, metas map[ulid.ULID]*block.Meta, synced GaugeVec) error {
+func (a *shardingMetadataFilterAdapter) Filter(ctx context.Context, metas map[ulid.ULID]*block.Meta, synced block.GaugeVec) error {
 	if err := a.strategy.FilterBlocks(ctx, a.userID, metas, a.lastBlocks, synced); err != nil {
 		return err
 	}
@@ -214,7 +206,7 @@ func newMinTimeMetaFilter(limit time.Duration) *minTimeMetaFilter {
 	return &minTimeMetaFilter{limit: limit}
 }
 
-func (f *minTimeMetaFilter) Filter(_ context.Context, metas map[ulid.ULID]*block.Meta, synced GaugeVec) error {
+func (f *minTimeMetaFilter) Filter(_ context.Context, metas map[ulid.ULID]*block.Meta, synced block.GaugeVec) error {
 	if f.limit <= 0 {
 		return nil
 	}
@@ -229,5 +221,68 @@ func (f *minTimeMetaFilter) Filter(_ context.Context, metas map[ulid.ULID]*block
 		synced.WithLabelValues(minTimeExcludedMeta).Inc()
 		delete(metas, id)
 	}
+	return nil
+}
+
+type MetadataFilterWithBucketIndex interface {
+	// FilterWithBucketIndex is like Thanos MetadataFilter.Filter() but it provides in input the bucket index too.
+	FilterWithBucketIndex(ctx context.Context, metas map[ulid.ULID]*block.Meta, idx *bucketindex.Index, synced block.GaugeVec) error
+}
+
+// IgnoreDeletionMarkFilter is like the Thanos IgnoreDeletionMarkFilter, but it also implements
+// the MetadataFilterWithBucketIndex interface.
+type IgnoreDeletionMarkFilter struct {
+	upstream *block.IgnoreDeletionMarkFilter
+
+	delay           time.Duration
+	deletionMarkMap map[ulid.ULID]*block.DeletionMark
+}
+
+// NewIgnoreDeletionMarkFilter creates IgnoreDeletionMarkFilter.
+func NewIgnoreDeletionMarkFilter(logger log.Logger, bkt objstore.BucketReader, delay time.Duration, concurrency int) *IgnoreDeletionMarkFilter {
+	return &IgnoreDeletionMarkFilter{
+		upstream: block.NewIgnoreDeletionMarkFilter(logger, bkt, delay, concurrency),
+		delay:    delay,
+	}
+}
+
+// DeletionMarkBlocks returns blocks that were marked for deletion.
+func (f *IgnoreDeletionMarkFilter) DeletionMarkBlocks() map[ulid.ULID]*block.DeletionMark {
+	// If the cached deletion marks exist it means the filter function was called with the bucket
+	// index, so it's safe to return it.
+	if f.deletionMarkMap != nil {
+		return f.deletionMarkMap
+	}
+
+	return f.upstream.DeletionMarkBlocks()
+}
+
+// Filter implements block.MetadataFilter.
+func (f *IgnoreDeletionMarkFilter) Filter(ctx context.Context, metas map[ulid.ULID]*block.Meta, synced block.GaugeVec) error {
+	return f.upstream.Filter(ctx, metas, synced)
+}
+
+// FilterWithBucketIndex implements MetadataFilterWithBucketIndex.
+func (f *IgnoreDeletionMarkFilter) FilterWithBucketIndex(_ context.Context, metas map[ulid.ULID]*block.Meta, idx *bucketindex.Index, synced block.GaugeVec) error {
+	// Build a map of block deletion marks
+	marks := make(map[ulid.ULID]*block.DeletionMark, len(idx.BlockDeletionMarks))
+	for _, mark := range idx.BlockDeletionMarks {
+		marks[mark.ID] = mark.BlockDeletionMark()
+	}
+
+	// Keep it cached.
+	f.deletionMarkMap = marks
+
+	for _, mark := range marks {
+		if _, ok := metas[mark.ID]; !ok {
+			continue
+		}
+
+		if time.Since(time.Unix(mark.DeletionTime, 0)).Seconds() > f.delay.Seconds() {
+			synced.WithLabelValues(block.MarkedForDeletionMeta).Inc()
+			delete(metas, mark.ID)
+		}
+	}
+
 	return nil
 }
