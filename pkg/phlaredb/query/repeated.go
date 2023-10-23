@@ -420,7 +420,9 @@ func (x *RowGroupRepeatedColumnIterator) readPage(rn int64) bool {
 	// The implementation is quite expensive, therefore
 	// we should call it once per page.
 	x.maxPageNumRows = rn + x.page.NumRows()
-	x.vit.Reset(x.page)
+	// Too big read size does not make much sense.
+	// How many values we expect per a row, the upper boundary?
+	x.vit.Reset(x.page, 256)
 	return true
 }
 
@@ -444,26 +446,32 @@ func putRepeatedValuePageIteratorToPool(x *RepeatedValuePageIterator) {
 // RepeatedValuePageIterator iterates over repeated fields.
 // FIXME(kolesnikovae): Definition level is completely ignored.
 type RepeatedValuePageIterator struct {
-	page         parquet.Page
-	pageValues   []parquet.Value
-	currentValue []parquet.Value
-	err          error
+	page parquet.ValueReader
+	buf  []parquet.Value
+	off  int
+	row  []parquet.Value
+	size int
+	err  error
 }
 
-func NewRepeatedValuePageIterator(page parquet.Page) *RepeatedValuePageIterator {
+func NewRepeatedValuePageIterator(page parquet.Page, readSize int) *RepeatedValuePageIterator {
 	var r RepeatedValuePageIterator
-	r.Reset(page)
+	r.Reset(page, readSize)
 	return &r
 }
 
-func (x *RepeatedValuePageIterator) At() []parquet.Value { return x.currentValue }
+func (x *RepeatedValuePageIterator) At() []parquet.Value { return x.row }
 func (x *RepeatedValuePageIterator) Err() error          { return x.err }
 func (x *RepeatedValuePageIterator) Close() error        { return nil }
 
-func (x *RepeatedValuePageIterator) Reset(page parquet.Page) {
-	x.page = page
-	x.pageValues = x.pageValues[:0]
-	x.currentValue = x.currentValue[:0]
+func (x *RepeatedValuePageIterator) Reset(page parquet.Page, readSize int) {
+	if cap(x.buf) < readSize {
+		x.buf = make([]parquet.Value, 0, readSize)
+	}
+	x.page = page.Values()
+	x.buf = x.buf[:0]
+	x.off = 0
+	x.row = x.row[:0]
 	x.err = nil
 }
 
@@ -471,51 +479,31 @@ func (x *RepeatedValuePageIterator) Next() bool {
 	if x.err != nil {
 		return false
 	}
-	x.currentValue = x.currentValue[:0]
-	if len(x.pageValues) == 0 && x.page != nil {
-		x.pageValues, x.err = readPage(x.pageValues, x.page)
-		switch x.err {
-		case nil:
-		case io.EOF:
-			x.err = nil
-			return len(x.currentValue) > 0
-		default:
-			return false
-		}
-	}
-	for i, v := range x.pageValues {
-		if v.RepetitionLevel() == 0 && i != 0 {
-			x.pageValues = x.pageValues[i:]
-			return true
-		}
-		x.currentValue = append(x.currentValue, v)
-	}
-	// It's expected that the last row
-	// ends at the page ends.
-	x.pageValues = x.pageValues[:0]
-	x.page = nil
-	return len(x.currentValue) > 0
-}
-
-func readPage(dst []parquet.Value, page parquet.Page) (_ []parquet.Value, err error) {
-	// Should never overflow.
-	values := int(page.NumValues())
-	if len(dst) < values {
-		// Replace with next power of two.
-		dst = make([]parquet.Value, values, 2*values)
-	}
-	r := page.Values()
-	var rn int
+	x.row = x.row[:0]
+	var err error
 	var n int
-	for rn < values {
-		n, err = r.ReadValues(dst[rn:])
-		rn += n
-		if err != nil {
-			if err == io.EOF {
-				return dst, nil
+loop:
+	for {
+		buf := x.buf[x.off:]
+		for _, v := range buf {
+			if v.RepetitionLevel() == 0 && len(x.row) > 0 {
+				// Found a new row.
+				break loop
 			}
-			return dst, err
+			x.row = append(x.row, v)
+			x.off++
+		}
+		// Refill the buffer.
+		x.buf = x.buf[:cap(x.buf)]
+		x.off = 0
+		n, err = x.page.ReadValues(x.buf)
+		x.buf = x.buf[:n]
+		if err != nil && err != io.EOF {
+			x.err = err
+		}
+		if n == 0 {
+			break
 		}
 	}
-	return dst, nil
+	return len(x.row) > 0
 }

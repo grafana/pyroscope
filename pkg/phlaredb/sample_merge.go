@@ -166,7 +166,7 @@ func NewProfileSamplesIterator(rowGroup parquet.RowGroup, rows []int64) iter.Ite
 		return iter.NewErrIterator[v1.Samples](err)
 	}
 	columns := rowGroup.ColumnChunks()
-	batchSize := 100
+	batchSize := 1 << 10
 	return &ProfileSamplesIterator{
 		StacktraceID: iter.NewAsyncBatchIterator[[]parquet.Value, []uint32](
 			query.NewRepeatedColumnChunkIterator(iter.NewSliceIterator(rows), columns[sampleColumns.StacktraceID.ColumnIndex]),
