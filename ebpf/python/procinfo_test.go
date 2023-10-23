@@ -130,15 +130,15 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 
 //func TestMusl(t *testing.T) {
 //	fs := []string{
-//		"/home/korniltsev/mygithub/dbudy/pyperfgranulate/musl/3.11/ld-musl-x86_64.so.1",
-//		"/home/korniltsev/mygithub/dbudy/pyperfgranulate/musl/3.12/ld-musl-x86_64.so.1",
-//		"/home/korniltsev/mygithub/dbudy/pyperfgranulate/musl/3.10/ld-musl-x86_64.so.1",
-//		"/home/korniltsev/mygithub/dbudy/pyperfgranulate/musl/3.15/ld-musl-x86_64.so.1",
-//		"/home/korniltsev/mygithub/dbudy/pyperfgranulate/musl/3.13/ld-musl-x86_64.so.1",
-//		"/home/korniltsev/mygithub/dbudy/pyperfgranulate/musl/3.17/ld-musl-x86_64.so.1",
-//		"/home/korniltsev/mygithub/dbudy/pyperfgranulate/musl/3.16/ld-musl-x86_64.so.1",
-//		"/home/korniltsev/mygithub/dbudy/pyperfgranulate/musl/3.18/ld-musl-x86_64.so.1",
-//		"/home/korniltsev/mygithub/dbudy/pyperfgranulate/musl/3.14/ld-musl-x86_64.so.1",
+//		"/home/korniltsev/mygithub/dbudy/musl/3.11/ld-musl-x86_64.so.1",
+//		"/home/korniltsev/mygithub/dbudy/musl/3.12/ld-musl-x86_64.so.1",
+//		"/home/korniltsev/mygithub/dbudy/musl/3.10/ld-musl-x86_64.so.1",
+//		"/home/korniltsev/mygithub/dbudy/musl/3.15/ld-musl-x86_64.so.1",
+//		"/home/korniltsev/mygithub/dbudy/musl/3.13/ld-musl-x86_64.so.1",
+//		"/home/korniltsev/mygithub/dbudy/musl/3.17/ld-musl-x86_64.so.1",
+//		"/home/korniltsev/mygithub/dbudy/musl/3.16/ld-musl-x86_64.so.1",
+//		"/home/korniltsev/mygithub/dbudy/musl/3.18/ld-musl-x86_64.so.1",
+//		"/home/korniltsev/mygithub/dbudy/musl/3.14/ld-musl-x86_64.so.1",
 //	}
 //	for _, f := range fs {
 //		version, err := GetMuslVersionFromFile(f)
