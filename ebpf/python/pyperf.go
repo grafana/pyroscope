@@ -100,7 +100,6 @@ func (s *Perf) loop() {
 			s.metrics.LostSamples.Add(float64(record.LostSamples))
 			_ = level.Debug(s.logger).Log("msg", "[pyperf] perf event ring buffer full, dropped samples", "n", record.LostSamples)
 		}
-		//_ = level.Debug(s.logger).Log("msg", "[pyperf] perf event sample", "n", len(record.RawSample))
 
 		if record.RawSample != nil {
 			event, err := ReadPyEvent(record.RawSample)
