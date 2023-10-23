@@ -14,7 +14,7 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
-	"github.com/grafana/pyroscope/ebpf/metrics"
+	ebpfmetrics "github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -37,23 +37,30 @@ const sampleRate = 99 // times per second
 
 var configFile = flag.String("config", "", "config file path")
 
+var (
+	config  *Config
+	logger  log.Logger
+	metrics *ebpfmetrics.Metrics
+	session ebpfspy.Session
+)
+
 func main() {
 
-	cfg := getConfig()
+	config = getConfig()
+	metrics = ebpfmetrics.New(prometheus.DefaultRegisterer)
 
-	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
+	logger = log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
 
-	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), l, targetOptions(cfg))
+	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), logger, convertTargetOptions())
 	if err != nil {
 		panic(fmt.Errorf("ebpf target finder create: %w", err))
 	}
 	options := convertSessionOptions()
-	session, err := ebpfspy.NewSession(
-		l,
+	session, err = ebpfspy.NewSession(
+		logger,
 		targetFinder,
 		options,
 	)
-	_ = session
 	err = session.Start()
 	if err != nil {
 		panic(err)
@@ -64,68 +71,54 @@ func main() {
 	for {
 		time.Sleep(5 * time.Second)
 
-		builders := pprof.NewProfileBuilders(sampleRate)
-		err := session.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32) {
-			labelsHash, labels := target.Labels()
-			builder := builders.BuilderForTarget(labelsHash, labels)
-			builder.AddSample(stack, value)
-			//fmt.Printf("%s %d\n", strings.Join(stack, ";"), value)
-		})
+		collectProfiles(profiles)
 
-		if err != nil {
-			panic(err)
-		}
-		level.Debug(l).Log("msg", "ebpf collectProfiles done", "profiles", len(builders.Builders))
-
-		for _, builder := range builders.Builders {
-
-			protoLabels := make([]*typesv1.LabelPair, 0, builder.Labels.Len())
-			for _, label := range builder.Labels {
-				protoLabels = append(protoLabels, &typesv1.LabelPair{
-					Name: label.Name, Value: label.Value,
-				})
-			}
-
-			buf := bytes.NewBuffer(nil)
-			_, err := builder.Write(buf)
-			if err != nil {
-				panic(err)
-			}
-			rawProfile := buf.Bytes()
-			req := &pushv1.PushRequest{
-				Series: []*pushv1.RawProfileSeries{
-					{
-						Labels: protoLabels,
-						Samples: []*pushv1.RawSample{
-							{
-								RawProfile: rawProfile,
-							},
-						},
-					},
-				},
-			}
-			select {
-			case profiles <- req:
-			default:
-				fmt.Println("dropping profile")
-			}
-
-		}
-
-		if err != nil {
-			panic(err)
-		}
-
-		session.UpdateTargets(targetOptions(cfg))
+		session.UpdateTargets(convertTargetOptions())
 	}
 }
 
-func targetOptions(cfg *Config) sd.TargetsOptions {
-	return sd.TargetsOptions{
-		TargetsOnly:        cfg.TargetsOnly,
-		Targets:            relabelProcessTargets(getProcessTargets(), cfg.RelabelConfig),
-		DefaultTarget:      cfg.DefaultTarget,
-		ContainerCacheSize: cfg.ContainerCacheSize,
+func collectProfiles(profiles chan *pushv1.PushRequest) {
+	builders := pprof.NewProfileBuilders(sampleRate)
+	err := session.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32) {
+		labelsHash, labels := target.Labels()
+		builder := builders.BuilderForTarget(labelsHash, labels)
+		builder.AddSample(stack, value)
+	})
+
+	if err != nil {
+		panic(err)
+	}
+	level.Debug(logger).Log("msg", "ebpf collectProfiles done", "profiles", len(builders.Builders))
+
+	for _, builder := range builders.Builders {
+		protoLabels := make([]*typesv1.LabelPair, 0, builder.Labels.Len())
+		for _, label := range builder.Labels {
+			protoLabels = append(protoLabels, &typesv1.LabelPair{
+				Name: label.Name, Value: label.Value,
+			})
+		}
+
+		buf := bytes.NewBuffer(nil)
+		_, err := builder.Write(buf)
+		if err != nil {
+			panic(err)
+		}
+		req := &pushv1.PushRequest{Series: []*pushv1.RawProfileSeries{{
+			Labels: protoLabels,
+			Samples: []*pushv1.RawSample{{
+				RawProfile: buf.Bytes(),
+			}},
+		}}}
+		select {
+		case profiles <- req:
+		default:
+			_ = level.Error(logger).Log("err", "dropping profile", "target", builder.Labels.String())
+		}
+
+	}
+
+	if err != nil {
+		panic(err)
 	}
 }
 
@@ -149,34 +142,25 @@ func ingest(profiles chan *pushv1.PushRequest) {
 
 }
 
+func convertTargetOptions() sd.TargetsOptions {
+	return sd.TargetsOptions{
+		TargetsOnly:        config.TargetsOnly,
+		Targets:            relabelProcessTargets(getProcessTargets(), config.RelabelConfig),
+		DefaultTarget:      config.DefaultTarget,
+		ContainerCacheSize: config.ContainerCacheSize,
+	}
+}
+
 func convertSessionOptions() ebpfspy.SessionOptions {
-	ms := metrics.New(prometheus.DefaultRegisterer)
 	return ebpfspy.SessionOptions{
-		CollectUser:               true,
-		CollectKernel:             true,
-		SampleRate:                sampleRate,
-		UnknownSymbolAddress:      true,
-		UnknownSymbolModuleOffset: true,
-		PythonEnabled:             true,
-		Metrics:                   ms,
-		CacheOptions: symtab.CacheOptions{
-			SymbolOptions: symtab.SymbolOptions{
-				GoTableFallback: true,
-				DemangleOptions: elf.DemangleFull,
-			},
-			PidCacheOptions: symtab.GCacheOptions{
-				Size:       239,
-				KeepRounds: 3,
-			},
-			BuildIDCacheOptions: symtab.GCacheOptions{
-				Size:       239,
-				KeepRounds: 3,
-			},
-			SameFileCacheOptions: symtab.GCacheOptions{
-				Size:       239,
-				KeepRounds: 3,
-			},
-		},
+		CollectUser:               config.CollectUser,
+		CollectKernel:             config.CollectKernel,
+		SampleRate:                config.SampleRate,
+		UnknownSymbolAddress:      config.UnknownSymbolAddress,
+		UnknownSymbolModuleOffset: config.UnknownSymbolModuleOffset,
+		PythonEnabled:             config.PythonEnabled,
+		Metrics:                   metrics,
+		CacheOptions:              config.CacheOptions,
 	}
 }
 
@@ -245,6 +229,20 @@ type Config struct {
 	RelabelConfig             []*RelabelConfig
 }
 
+type RelabelConfig struct {
+	SourceLabels []string
+
+	Separator string
+
+	Regex string
+
+	TargetLabel string `yaml:"target_label,omitempty"`
+
+	Replacement string `yaml:"replacement,omitempty"`
+
+	Action string
+}
+
 func getProcessTargets() []sd.DiscoveryTarget {
 	dir, err := os.ReadDir("/proc")
 	if err != nil {
@@ -258,7 +256,6 @@ func getProcessTargets() []sd.DiscoveryTarget {
 		spid := entry.Name()
 		pid, err := strconv.ParseUint(spid, 10, 32)
 		if err != nil {
-			fmt.Printf("invalid pid %s: %s\n", spid, err)
 			continue
 		}
 		if pid == 0 {
@@ -267,30 +264,37 @@ func getProcessTargets() []sd.DiscoveryTarget {
 		cwd, err := os.Readlink(fmt.Sprintf("/proc/%s/cwd", spid))
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
-				fmt.Printf("invalid cwd %s: %s\n", spid, err)
+				_ = level.Error(logger).Log("err", err, "msg", "reading cwd", "pid", spid)
 			}
 			continue
 		}
 		exe, err := os.Readlink(fmt.Sprintf("/proc/%s/exe", spid))
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
-				fmt.Printf("invalid exe %s: %s\n", spid, err)
+				_ = level.Error(logger).Log("err", err, "msg", "reading exe", "pid", spid)
 			}
 			continue
 		}
 		comm, err := os.ReadFile(fmt.Sprintf("/proc/%s/comm", spid))
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
-				fmt.Printf("invalid comm %s: %s\n", spid, err)
+				_ = level.Error(logger).Log("err", err, "msg", "reading comm", "pid", spid)
+			}
+		}
+		cgroup, err := os.ReadFile(fmt.Sprintf("/proc/%s/cgroup", spid))
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				_ = level.Error(logger).Log("err", err, "msg", "reading cgroup", "pid", spid)
 			}
 		}
 		target := sd.DiscoveryTarget{
-			"__process_pid__":     spid,
-			"__meta_process_cwd":  cwd,
-			"__meta_process_exe":  exe,
-			"__meta_process_comm": string(comm),
+			"__process_pid__":       spid,
+			"__meta_process_cwd":    cwd,
+			"__meta_process_exe":    exe,
+			"__meta_process_comm":   string(comm),
+			"__meta_process_cgroup": string(cgroup),
 		}
-		fmt.Printf("process target: %s\n", target)
+		_ = level.Debug(logger).Log("msg", "process target", "target", target.DebugString())
 		res = append(res, target)
 	}
 	return res
@@ -319,22 +323,9 @@ func relabelProcessTargets(targets []sd.DiscoveryTarget, cfg []*RelabelConfig) [
 		if !keep {
 			continue
 		}
-		fmt.Printf("relabelled process target: %s\n", lbls.Map())
-		res = append(res, lbls.Map())
+		tt := sd.DiscoveryTarget(lbls.Map())
+		_ = level.Debug(logger).Log("msg", "relabelled process", "target", tt.DebugString())
+		res = append(res, tt)
 	}
 	return res
-}
-
-type RelabelConfig struct {
-	SourceLabels []string
-
-	Separator string
-
-	Regex string
-
-	TargetLabel string `yaml:"target_label,omitempty"`
-
-	Replacement string `yaml:"replacement,omitempty"`
-
-	Action string
 }
