@@ -1,2 +1,4 @@
 server:
-  http_listen_port: 4040
+  http_listen_port: 4100
+pyroscopedb:
+  max_block_duration: 3h
