@@ -99,7 +99,8 @@ type session struct {
 	pyperfBpf   python.PerfObjects
 	pyperfError error
 
-	pids pids
+	pids            pids
+	pidExecRequests chan uint32
 }
 
 func NewSession(
@@ -170,6 +171,7 @@ func (s *session) Start() error {
 	pidExecRequests := make(chan uint32, 1024)
 	deadPIDsEvents := make(chan uint32, 1024)
 	s.pidInfoRequests = pidInfoRequests
+	s.pidExecRequests = pidExecRequests
 	s.deadPIDEvents = deadPIDsEvents
 	s.wg.Add(4)
 	s.started = true
@@ -380,6 +382,10 @@ func (s *session) stopLocked() {
 	if s.deadPIDEvents != nil {
 		close(s.deadPIDEvents)
 		s.deadPIDEvents = nil
+	}
+	if s.pidExecRequests != nil {
+		close(s.pidExecRequests)
+		s.pidExecRequests = nil
 	}
 	s.started = false
 }
