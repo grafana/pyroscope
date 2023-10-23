@@ -99,7 +99,7 @@ func TestConfig_Validate(t *testing.T) {
 		"should pass with the default config": {
 			setup:    func(cfg *Config) {},
 			expected: "",
-			maxBlock: 3 * time.Hour,
+			maxBlock: 1 * time.Hour,
 		},
 		"should pass with only 1 block range period": {
 			setup: func(cfg *Config) {
@@ -120,12 +120,12 @@ func TestConfig_Validate(t *testing.T) {
 				cfg.CompactionJobsOrder = "everything-is-important"
 			},
 			expected: errInvalidCompactionOrder.Error(),
-			maxBlock: 3 * time.Hour,
+			maxBlock: 1 * time.Hour,
 		},
 		"should fail on invalid value of max-opening-blocks-concurrency": {
 			setup:    func(cfg *Config) { cfg.MaxOpeningBlocksConcurrency = 0 },
 			expected: errInvalidMaxOpeningBlocksConcurrency.Error(),
-			maxBlock: 3 * time.Hour,
+			maxBlock: 1 * time.Hour,
 		},
 		"should fail on first range not divisible by max block duration": {
 			setup: func(cfg *Config) {
