@@ -5,13 +5,20 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
 	"github.com/grafana/pyroscope/ebpf/metrics"
+	"github.com/pkg/errors"
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
+	"github.com/prometheus/prometheus/model/relabel"
 
 	"github.com/go-kit/log/level"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -28,23 +35,15 @@ import (
 
 const sampleRate = 99 // times per second
 
+var configFile = flag.String("config", "", "config file path")
+
 func main() {
+
+	cfg := getConfig()
+
 	l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
 
-	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), l, sd.TargetsOptions{
-		TargetsOnly: false,
-		Targets: []sd.DiscoveryTarget{
-			{
-				"__container_id__": "010cd203a1e8e7efff53ba49c65ccc5f705c50927264510528bd7145fa9fd8f5",
-				"service_name":     "loadgen",
-			}, {
-				"__container_id__": "163bc0de14003010ae8920549cdd6e65718188f5ad68fc45b0e9c143a6626d9d",
-				"service_name":     "rideshare",
-			},
-		},
-		DefaultTarget:      map[string]string{"service_name": "playground7"},
-		ContainerCacheSize: 239,
-	})
+	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), l, targetOptions(cfg))
 	if err != nil {
 		panic(fmt.Errorf("ebpf target finder create: %w", err))
 	}
@@ -116,6 +115,17 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+
+		session.UpdateTargets(targetOptions(cfg))
+	}
+}
+
+func targetOptions(cfg *Config) sd.TargetsOptions {
+	return sd.TargetsOptions{
+		TargetsOnly:        cfg.TargetsOnly,
+		Targets:            relabelProcessTargets(getProcessTargets(), cfg.RelabelConfig),
+		DefaultTarget:      cfg.DefaultTarget,
+		ContainerCacheSize: cfg.ContainerCacheSize,
 	}
 }
 
@@ -168,4 +178,163 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 			},
 		},
 	}
+}
+
+func getConfig() *Config {
+	flag.Parse()
+
+	if *configFile == "" {
+		panic("config file not specified")
+	}
+	var config = new(Config)
+	*config = defaultConfig
+	configBytes, err := os.ReadFile(*configFile)
+	if err != nil {
+		panic(err)
+	}
+	err = json.Unmarshal(configBytes, config)
+	if err != nil {
+		panic(err)
+	}
+	return config
+}
+
+var defaultConfig = Config{
+	CollectUser:               true,
+	CollectKernel:             true,
+	UnknownSymbolModuleOffset: true,
+	UnknownSymbolAddress:      true,
+	PythonEnabled:             true,
+	CacheOptions: symtab.CacheOptions{
+		SymbolOptions: symtab.SymbolOptions{
+			GoTableFallback:    true,
+			PythonFullFilePath: false,
+			DemangleOptions:    elf.DemangleFull,
+		},
+		PidCacheOptions: symtab.GCacheOptions{
+			Size:       239,
+			KeepRounds: 8,
+		},
+		BuildIDCacheOptions: symtab.GCacheOptions{
+			Size:       239,
+			KeepRounds: 8,
+		},
+		SameFileCacheOptions: symtab.GCacheOptions{
+			Size:       239,
+			KeepRounds: 8,
+		},
+	},
+	SampleRate:         97,
+	TargetsOnly:        true,
+	DefaultTarget:      nil,
+	ContainerCacheSize: 1024,
+	RelabelConfig:      nil,
+}
+
+type Config struct {
+	CollectUser               bool
+	CollectKernel             bool
+	UnknownSymbolModuleOffset bool
+	UnknownSymbolAddress      bool
+	PythonEnabled             bool
+	CacheOptions              symtab.CacheOptions
+	SampleRate                int
+	TargetsOnly               bool
+	DefaultTarget             map[string]string
+	ContainerCacheSize        int
+	RelabelConfig             []*RelabelConfig
+}
+
+func getProcessTargets() []sd.DiscoveryTarget {
+	dir, err := os.ReadDir("/proc")
+	if err != nil {
+		panic(err)
+	}
+	var res []sd.DiscoveryTarget
+	for _, entry := range dir {
+		if !entry.IsDir() {
+			continue
+		}
+		spid := entry.Name()
+		pid, err := strconv.ParseUint(spid, 10, 32)
+		if err != nil {
+			fmt.Printf("invalid pid %s: %s\n", spid, err)
+			continue
+		}
+		if pid == 0 {
+			continue
+		}
+		cwd, err := os.Readlink(fmt.Sprintf("/proc/%s/cwd", spid))
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				fmt.Printf("invalid cwd %s: %s\n", spid, err)
+			}
+			continue
+		}
+		exe, err := os.Readlink(fmt.Sprintf("/proc/%s/exe", spid))
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				fmt.Printf("invalid exe %s: %s\n", spid, err)
+			}
+			continue
+		}
+		comm, err := os.ReadFile(fmt.Sprintf("/proc/%s/comm", spid))
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				fmt.Printf("invalid comm %s: %s\n", spid, err)
+			}
+		}
+		target := sd.DiscoveryTarget{
+			"__process_pid__":     spid,
+			"__meta_process_cwd":  cwd,
+			"__meta_process_exe":  exe,
+			"__meta_process_comm": string(comm),
+		}
+		fmt.Printf("process target: %s\n", target)
+		res = append(res, target)
+	}
+	return res
+}
+
+func relabelProcessTargets(targets []sd.DiscoveryTarget, cfg []*RelabelConfig) []sd.DiscoveryTarget {
+	var promConfig []*relabel.Config
+	for _, c := range cfg {
+		var srcLabels model.LabelNames
+		for _, label := range c.SourceLabels {
+			srcLabels = append(srcLabels, model.LabelName(label))
+		}
+		promConfig = append(promConfig, &relabel.Config{
+			SourceLabels: srcLabels,
+			Separator:    c.Separator,
+			Regex:        relabel.MustNewRegexp(c.Regex),
+			TargetLabel:  c.TargetLabel,
+			Replacement:  c.Replacement,
+			Action:       relabel.Action(c.Action),
+		})
+	}
+	var res []sd.DiscoveryTarget
+	for _, target := range targets {
+		lbls := labels.FromMap(target)
+		lbls, keep := relabel.Process(lbls, promConfig...)
+		if !keep {
+			continue
+		}
+		fmt.Printf("relabelled process target: %s\n", lbls.Map())
+		res = append(res, lbls.Map())
+	}
+	return res
+}
+
+type RelabelConfig struct {
+	SourceLabels []string
+
+	Separator string
+
+	Regex string
+
+	TargetLabel string `yaml:"target_label,omitempty"`
+
+	Replacement string `yaml:"replacement,omitempty"`
+
+	Action string
 }

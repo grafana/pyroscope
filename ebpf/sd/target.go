@@ -3,6 +3,7 @@ package sd
 import (
 	"fmt"
 	"io/fs"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -30,6 +31,7 @@ func (t *DiscoveryTarget) DebugString() string {
 
 const (
 	labelContainerID    = "__container_id__"
+	labelPID            = "__process_pid__"
 	labelServiceName    = "service_name"
 	labelServiceNameK8s = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
 	metricValue         = "process_cpu"
@@ -44,7 +46,7 @@ type Target struct {
 	fingerprintCalculated bool
 }
 
-func NewTarget(cid containerID, target DiscoveryTarget) (*Target, error) {
+func NewTarget(cid containerID, pid uint32, target DiscoveryTarget) *Target {
 	serviceName := target[labelServiceName]
 	if serviceName == "" {
 		serviceName = inferServiceName(target)
@@ -66,10 +68,13 @@ func NewTarget(cid containerID, target DiscoveryTarget) (*Target, error) {
 	if cid != "" {
 		lset[labelContainerID] = string(cid)
 	}
+	if pid != 0 {
+		lset[labelPID] = strconv.Itoa(int(pid))
+	}
 	return &Target{
 		labels:      labels.FromMap(lset),
 		serviceName: serviceName,
-	}, nil
+	}
 }
 
 func (t *Target) ServiceName() string {
@@ -123,6 +128,7 @@ type TargetsOptions struct {
 type targetFinder struct {
 	l          log.Logger
 	cid2target map[containerID]*Target
+	pid2target map[uint32]*Target
 
 	// todo make it never evict during a reset
 	containerIDCache *lru.Cache[uint32, containerID]
@@ -160,6 +166,7 @@ func (tf *targetFinder) RemoveDeadPID(pid uint32) {
 	tf.sync.Lock()
 	defer tf.sync.Unlock()
 	tf.containerIDCache.Remove(pid)
+	delete(tf.pid2target, pid)
 }
 
 func (tf *targetFinder) Update(args TargetsOptions) {
@@ -172,47 +179,34 @@ func (tf *targetFinder) Update(args TargetsOptions) {
 func (tf *targetFinder) setTargets(opts TargetsOptions) {
 	_ = level.Debug(tf.l).Log("msg", "set targets", "count", len(opts.Targets))
 	containerID2Target := make(map[containerID]*Target)
+	pid2Target := make(map[uint32]*Target)
 	for _, target := range opts.Targets {
-		cid := containerIDFromTarget(target)
-		if cid != "" {
-			t, err := NewTarget(cid, target)
-			if err != nil {
-				_ = level.Error(tf.l).Log(
-					"msg", "target skipped",
-					"target", target.DebugString(),
-					"err", err,
-				)
-				continue
-			}
+		if cid := containerIDFromTarget(target); cid != "" {
+			t := NewTarget(cid, 0, target)
 			containerID2Target[cid] = t
-			//_ = level.Debug(tf.l).Log("msg", "added target", "cid", cid, "target", target.DebugString())
-		} else {
-			//_ = level.Warn(tf.l).Log("msg", "target skipped", "target", target.DebugString())
+		} else if pid := pidFromTarget(target); pid != 0 {
+			t := NewTarget("", pid, target)
+			pid2Target[pid] = t
 		}
 	}
 	if len(opts.Targets) > 0 && len(containerID2Target) == 0 {
 		_ = level.Warn(tf.l).Log("msg", "No container IDs found in targets")
 	}
 	tf.cid2target = containerID2Target
+	tf.pid2target = pid2Target
 	if opts.TargetsOnly {
 		tf.defaultTarget = nil
 	} else {
-		t, err := NewTarget("", opts.DefaultTarget)
-		if err != nil {
-			_ = level.Error(tf.l).Log(
-				"msg", "default target skipped",
-				"target", opts.DefaultTarget.DebugString(),
-				"err", err,
-			)
-			tf.defaultTarget = nil
-		} else {
-			tf.defaultTarget = t
-		}
+		t := NewTarget("", 0, opts.DefaultTarget)
+		tf.defaultTarget = t
 	}
 	_ = level.Debug(tf.l).Log("msg", "created targets", "count", len(tf.cid2target))
 }
 
 func (tf *targetFinder) findTarget(pid uint32) *Target {
+	if target, ok := tf.pid2target[pid]; ok {
+		return target
+	}
 	cid, ok := tf.containerIDCache.Get(pid)
 	if ok {
 		return tf.cid2target[cid]
@@ -248,6 +242,20 @@ func (tf *targetFinder) Targets() []*Target {
 		res = append(res, target)
 	}
 	return res
+}
+
+func pidFromTarget(target DiscoveryTarget) uint32 {
+	t, ok := target[labelPID]
+	if !ok {
+		return 0
+	}
+	var pid uint64
+	var err error
+	pid, err = strconv.ParseUint(t, 10, 32)
+	if err != nil {
+		return 0
+	}
+	return uint32(pid)
 }
 
 func containerIDFromTarget(target DiscoveryTarget) containerID {
