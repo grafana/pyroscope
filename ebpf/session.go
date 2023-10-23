@@ -337,7 +337,7 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 	if len(pyEvents) == 0 {
 		return nil
 	}
-	pySymbols := s.pyperf.GetSymbolsLazy()
+	pySymbols := s.pyperf.GetLazySymbols()
 
 	sb := &stackBuilder{}
 	stacktraceErrors := 0
@@ -661,7 +661,7 @@ func (s *session) enableProfilingLocked(pid uint32, target *sd.Target) {
 			_ = s.setPidConfig(pid, typ, false, false)
 			return
 		}
-		err, alive, pyData := pyPerf.AddPythonPID(pid, target.ServiceName())
+		pyData, alive, err := pyPerf.StartPythonProfiling(pid, target.ServiceName())
 		if err != nil {
 			_ = s.procAliveLogger(alive).Log("err", err, "msg", "pyperf process profiling init failed", "pid", pid)
 			typ.typ = pyrobpf.ProfilingTypeError
