@@ -1,7 +1,6 @@
 package query
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -263,8 +262,7 @@ func Test_RepeatedIterator(t *testing.T) {
 					groups = append(groups, buffer)
 				}
 				actual := readPageIterator(t,
-					NewRepeatedPageIterator(
-						context.Background(), iter.NewSliceIterator(tc.rows), groups, 0, tc.readSize))
+					NewRowIterator(iter.NewSliceIterator(tc.rows), groups, 0))
 				if diff := cmp.Diff(tc.expected, actual, int64ParquetComparer()); diff != "" {
 					t.Errorf("result mismatch (-want +got):\n%s", diff)
 				}
@@ -373,12 +371,7 @@ func Test_MultiRepeatedPageIterator(t *testing.T) {
 				groups = append(groups, buffer)
 			}
 			actual := readMultiPageIterator(t,
-				NewMultiRepeatedPageIterator(
-					NewRepeatedPageIterator(
-						context.Background(), iter.NewSliceIterator(tc.rows), groups, 0, 1000),
-					NewRepeatedPageIterator(
-						context.Background(), iter.NewSliceIterator(tc.rows), groups, 1, 1000),
-				),
+				NewRowIterator(iter.NewSliceIterator(tc.rows), groups, 0, 1),
 			)
 			if diff := cmp.Diff(tc.expected, actual, int64ParquetComparer()); diff != "" {
 				t.Errorf("result mismatch (-want +got):\n%s", diff)
@@ -389,7 +382,7 @@ func Test_MultiRepeatedPageIterator(t *testing.T) {
 
 // readPageIterator reads all the values from the iterator and returns the result.
 // Result are copied to avoid keeping reference between next calls.
-func readPageIterator(t *testing.T, it iter.Iterator[*RepeatedRow[testRowGetter]]) []RepeatedRow[testRowGetter] {
+func readPageIterator(t *testing.T, it iter.Iterator[*MultiRepeatedRow[testRowGetter]]) []RepeatedRow[testRowGetter] {
 	defer func() {
 		require.NoError(t, it.Close())
 	}()
@@ -397,9 +390,9 @@ func readPageIterator(t *testing.T, it iter.Iterator[*RepeatedRow[testRowGetter]
 	for it.Next() {
 		current := RepeatedRow[testRowGetter]{
 			Row:    it.At().Row,
-			Values: make([]parquet.Value, len(it.At().Values)),
+			Values: make([]parquet.Value, len(it.At().Values[0])),
 		}
-		copy(current.Values, it.At().Values)
+		copy(current.Values, it.At().Values[0])
 		if len(result) > 0 && current.Row.RowNumber() == result[len(result)-1].Row.RowNumber() {
 			result[len(result)-1].Values = append(result[len(result)-1].Values, current.Values...)
 			continue

@@ -348,38 +348,180 @@ func (it *multiRepeatedPageIterator[T]) Close() error {
 	return errs.Err()
 }
 
-var ErrSeekOutOfRange = fmt.Errorf("bug: south row is out of range")
-
-type RepeatedColumnIterator struct {
-	rowGroups []parquet.RowGroup
+type rowIterator[T any] struct {
+	columns iter.Iterator[[][]parquet.Value]
+	rows    iter.Iterator[T]
 }
 
-type RowGroupRepeatedColumnIterator struct {
-	rows  iter.Iterator[int64]
-	pages parquet.Pages
-	page  parquet.Page
-	err   error
-
-	vit  *RepeatedValuePageIterator
-	prev int64
-
-	maxPageNumRows int64
-}
-
-func NewRepeatedColumnChunkIterator(rows iter.Iterator[int64], c parquet.ColumnChunk) *RowGroupRepeatedColumnIterator {
-	return &RowGroupRepeatedColumnIterator{
-		vit:   getRepeatedValuePageIteratorFromPool(),
-		pages: c.Pages(),
-		rows:  rows,
+func NewRowIterator[T any](
+	rows iter.Iterator[T],
+	rowGroups []parquet.RowGroup,
+	columns ...int,
+) iter.Iterator[*MultiRepeatedRow[T]] {
+	// FIXME(kolesnikovae): iter.Tee(iter.Iterator[T], n, bufSize) []iter.Iterator[T]
+	r, _ := iter.CloneN(rows, 2)
+	return &rowIterator[T]{
+		columns: NewMultiColumnIterator(WrapWithRowNumber(r[0]), 1<<10, rowGroups, columns...),
+		rows:    r[1],
 	}
 }
 
-func (x *RowGroupRepeatedColumnIterator) Next() bool {
+func (x *rowIterator[T]) Next() bool {
+	// TODO: Do not move rows, they owned by columns.
+	if !x.rows.Next() {
+		return false
+	}
+	return x.columns.Next()
+}
+
+func (x *rowIterator[T]) At() *MultiRepeatedRow[T] {
+	return &MultiRepeatedRow[T]{
+		Values: x.columns.At(),
+		Row:    x.rows.At(),
+	}
+}
+
+func (x *rowIterator[T]) Err() error {
+	return x.columns.Err()
+}
+
+func (x *rowIterator[T]) Close() error {
+	return x.columns.Close()
+}
+
+type rowNumberIterator[T any] struct{ it iter.Iterator[T] }
+
+func WrapWithRowNumber[T any](it iter.Iterator[T]) iter.Iterator[int64] {
+	return &rowNumberIterator[T]{it}
+}
+
+func (x *rowNumberIterator[T]) Next() bool   { return x.it.Next() }
+func (x *rowNumberIterator[T]) Err() error   { return x.it.Err() }
+func (x *rowNumberIterator[T]) Close() error { return x.it.Close() }
+
+func (x *rowNumberIterator[T]) At() int64 {
+	v := any(x.it.At())
+	switch r := v.(type) {
+	case RowGetter:
+		return r.RowNumber()
+	case int64:
+		return r
+	case uint32:
+		return int64(r)
+	default:
+		panic(fmt.Sprintf("unknown row type: %T", v))
+	}
+}
+
+type multiColumnIterator struct {
+	it []iter.Iterator[[]parquet.Value]
+	v  [][]parquet.Value
+}
+
+func NewMultiColumnIterator(
+	rows iter.Iterator[int64],
+	batchSize int,
+	rowGroups []parquet.RowGroup,
+	columns ...int,
+) iter.Iterator[[][]parquet.Value] {
+	m := multiColumnIterator{
+		it: make([]iter.Iterator[[]parquet.Value], len(columns)),
+		v:  make([][]parquet.Value, len(columns)),
+	}
+	// FIXME(kolesnikovae): iter.Tee(iter.Iterator[T], n, bufSize) []iter.Iterator[T]
+	r, err := iter.CloneN(rows, len(columns))
+	if err != nil {
+		return iter.NewErrIterator[[][]parquet.Value](err)
+	}
+	for i, column := range columns {
+		m.it[i] = iter.NewAsyncBatchIterator[[]parquet.Value](
+			NewRepeatedColumnIterator(r[i], rowGroups, column),
+			batchSize,
+			CloneParquetValues,
+			ReleaseParquetValues,
+		)
+	}
+	return &m
+}
+
+func (m *multiColumnIterator) Next() bool {
+	for i, x := range m.it {
+		if !x.Next() {
+			return false
+		}
+		m.v[i] = x.At()
+	}
+	return true
+}
+
+func (m *multiColumnIterator) At() [][]parquet.Value { return m.v }
+
+func (m *multiColumnIterator) Err() error {
+	var err multierror.MultiError
+	for _, x := range m.it {
+		err.Add(x.Err())
+	}
+	return err.Err()
+}
+
+func (m *multiColumnIterator) Close() error {
+	var err multierror.MultiError
+	for _, x := range m.it {
+		err.Add(x.Close())
+	}
+	return err.Err()
+}
+
+var ErrSeekOutOfRange = fmt.Errorf("bug: south row is out of range")
+
+type repeatedColumnIterator struct {
+	rows     iter.Iterator[int64]
+	rgs      []parquet.RowGroup
+	column   int
+	readSize int
+
+	pages parquet.Pages
+	page  parquet.Page
+
+	minRGRowNum   int64
+	maxRGRowNum   int64
+	maxPageRowNum int64
+
+	vit  *repeatedValuePageIterator
+	prev int64
+	err  error
+}
+
+// Too big read size does not make much sense: despite
+// the fact that this does not impact read amplification
+// as the page is already fully read, decoding of the
+// values is not free.
+//
+// How many values we expect per a row, the upper boundary?
+const repeatedColumnIteratorReadSize = 2 << 10
+
+func NewRepeatedColumnIterator(rows iter.Iterator[int64], rgs []parquet.RowGroup, column int) iter.Iterator[[]parquet.Value] {
+	return &repeatedColumnIterator{
+		rows:     rows,
+		rgs:      rgs,
+		column:   column,
+		vit:      getRepeatedValuePageIteratorFromPool(),
+		readSize: repeatedColumnIteratorReadSize,
+	}
+}
+
+func (x *repeatedColumnIterator) Next() bool {
 	if !x.rows.Next() || x.err != nil {
 		return false
 	}
 	rn := x.rows.At()
-	if x.page == nil || rn >= x.maxPageNumRows {
+	if rn >= x.maxRGRowNum {
+		if !x.seekRowGroup(rn) {
+			return false
+		}
+	}
+	rn -= x.minRGRowNum
+	if x.page == nil || rn >= x.maxPageRowNum {
 		if !x.readPage(rn) {
 			return false
 		}
@@ -400,7 +542,32 @@ func (x *RowGroupRepeatedColumnIterator) Next() bool {
 	return true
 }
 
-func (x *RowGroupRepeatedColumnIterator) readPage(rn int64) bool {
+func (x *repeatedColumnIterator) seekRowGroup(rn int64) bool {
+	for i, rg := range x.rgs {
+		x.minRGRowNum = x.maxRGRowNum
+		x.maxRGRowNum += rg.NumRows()
+		if rn >= x.maxRGRowNum {
+			continue
+		}
+		x.rgs = x.rgs[i+1:]
+		return x.openChunk(rg)
+	}
+	return false
+}
+
+func (x *repeatedColumnIterator) openChunk(rg parquet.RowGroup) bool {
+	x.page = nil
+	x.vit.reset(nil, 0)
+	if x.pages != nil {
+		if x.err = x.pages.Close(); x.err != nil {
+			return false
+		}
+	}
+	x.pages = rg.ColumnChunks()[x.column].Pages()
+	return true
+}
+
+func (x *repeatedColumnIterator) readPage(rn int64) bool {
 	if x.err = x.pages.SeekToRow(rn); x.err != nil {
 		return false
 	}
@@ -419,63 +586,64 @@ func (x *RowGroupRepeatedColumnIterator) readPage(rn int64) bool {
 	// not counting skipped ones (because of SeekToRow).
 	// The implementation is quite expensive, therefore
 	// we should call it once per page.
-	x.maxPageNumRows = rn + x.page.NumRows()
-	// Too big read size does not make much sense.
-	// How many values we expect per a row, the upper boundary?
-	x.vit.Reset(x.page, 2<<10)
+	x.maxPageRowNum = rn + x.page.NumRows()
+	x.vit.reset(x.page, x.readSize)
 	return true
 }
 
-func (x *RowGroupRepeatedColumnIterator) At() []parquet.Value { return x.vit.At() }
-func (x *RowGroupRepeatedColumnIterator) Err() error          { return x.err }
-func (x *RowGroupRepeatedColumnIterator) Close() error {
+func (x *repeatedColumnIterator) At() []parquet.Value { return x.vit.At() }
+func (x *repeatedColumnIterator) Err() error          { return x.err }
+func (x *repeatedColumnIterator) Close() error {
 	putRepeatedValuePageIteratorToPool(x.vit)
 	return x.pages.Close()
 }
 
-var repeatedValuePageIterator = sync.Pool{New: func() any { return new(RepeatedValuePageIterator) }}
+var repeatedValuePageIteratorPool = sync.Pool{New: func() any { return new(repeatedValuePageIterator) }}
 
-func getRepeatedValuePageIteratorFromPool() *RepeatedValuePageIterator {
-	return repeatedValuePageIterator.Get().(*RepeatedValuePageIterator)
+func getRepeatedValuePageIteratorFromPool() *repeatedValuePageIterator {
+	return repeatedValuePageIteratorPool.Get().(*repeatedValuePageIterator)
 }
 
-func putRepeatedValuePageIteratorToPool(x *RepeatedValuePageIterator) {
-	repeatedValuePageIterator.Put(x)
+func putRepeatedValuePageIteratorToPool(x *repeatedValuePageIterator) {
+	x.reset(nil, 0)
+	repeatedValuePageIteratorPool.Put(x)
 }
 
 // RepeatedValuePageIterator iterates over repeated fields.
 // FIXME(kolesnikovae): Definition level is ignored.
-type RepeatedValuePageIterator struct {
+type repeatedValuePageIterator struct {
 	page parquet.ValueReader
 	buf  []parquet.Value
 	off  int
 	row  []parquet.Value
-	size int
 	err  error
 }
 
-func NewRepeatedValuePageIterator(page parquet.Page, readSize int) *RepeatedValuePageIterator {
-	var r RepeatedValuePageIterator
-	r.Reset(page, readSize)
+func NewRepeatedValuePageIterator(page parquet.Page, readSize int) iter.Iterator[[]parquet.Value] {
+	var r repeatedValuePageIterator
+	r.reset(page, readSize)
 	return &r
 }
 
-func (x *RepeatedValuePageIterator) At() []parquet.Value { return x.row }
-func (x *RepeatedValuePageIterator) Err() error          { return x.err }
-func (x *RepeatedValuePageIterator) Close() error        { return nil }
+func (x *repeatedValuePageIterator) At() []parquet.Value { return x.row }
+func (x *repeatedValuePageIterator) Err() error          { return x.err }
+func (x *repeatedValuePageIterator) Close() error        { return nil }
 
-func (x *RepeatedValuePageIterator) Reset(page parquet.Page, readSize int) {
+func (x *repeatedValuePageIterator) reset(page parquet.Page, readSize int) {
 	if cap(x.buf) < readSize {
 		x.buf = make([]parquet.Value, 0, readSize)
 	}
-	x.page = page.Values()
+	x.page = nil
+	if page != nil {
+		x.page = page.Values()
+	}
 	x.buf = x.buf[:0]
 	x.row = x.row[:0]
 	x.err = nil
 	x.off = 0
 }
 
-func (x *RepeatedValuePageIterator) Next() bool {
+func (x *repeatedValuePageIterator) Next() bool {
 	if x.err != nil {
 		return false
 	}

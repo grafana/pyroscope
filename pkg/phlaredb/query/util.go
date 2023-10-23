@@ -82,6 +82,28 @@ func SplitRows(rows, groups []int64) [][]int64 {
 	return split
 }
 
+var parquetValuesPool = zeropool.New(func() []parquet.Value { return nil })
+
+func CloneParquetValues(values []parquet.Value) []parquet.Value {
+	p := parquetValuesPool.Get()
+	if l := len(values); cap(p) < l {
+		p = make([]parquet.Value, 0, 2*l)
+	}
+	p = p[:len(values)]
+	for i, v := range values {
+		p[i] = v.Clone()
+	}
+	return p
+}
+
+func ReleaseParquetValues(b [][]parquet.Value) {
+	for _, s := range b {
+		if len(s) > 0 {
+			parquetValuesPool.Put(s)
+		}
+	}
+}
+
 var uint64valuesPool = zeropool.New(func() []uint64 { return nil })
 
 func CloneUint64ParquetValues(values []parquet.Value) []uint64 {
