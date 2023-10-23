@@ -2,7 +2,6 @@ package phlaredb
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"testing"
@@ -13,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -23,9 +21,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
@@ -101,19 +97,19 @@ type ingesterHandlerPhlareDB struct {
 }
 
 func (i *ingesterHandlerPhlareDB) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
-	return MergeProfilesStacktraces(ctx, stream, i.ForTimeRange)
+	return MergeProfilesStacktraces(ctx, stream, i.forTimeRange)
 }
 
 func (i *ingesterHandlerPhlareDB) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
-	return MergeProfilesLabels(ctx, stream, i.ForTimeRange)
+	return MergeProfilesLabels(ctx, stream, i.forTimeRange)
 }
 
 func (i *ingesterHandlerPhlareDB) MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesPprofRequest, ingestv1.MergeProfilesPprofResponse]) error {
-	return MergeProfilesPprof(ctx, stream, i.ForTimeRange)
+	return MergeProfilesPprof(ctx, stream, i.forTimeRange)
 }
 
 func (i *ingesterHandlerPhlareDB) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
-	return MergeSpanProfile(ctx, stream, i.ForTimeRange)
+	return MergeSpanProfile(ctx, stream, i.forTimeRange)
 }
 
 func (i *ingesterHandlerPhlareDB) Push(context.Context, *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
@@ -419,68 +415,6 @@ func TestMergeProfilesPprof(t *testing.T) {
 	})
 }
 
-func TestFilterProfiles(t *testing.T) {
-	ctx := context.Background()
-	profiles := lo.Times(11, func(i int) Profile {
-		return ProfileWithLabels{
-			profile: &schemav1.InMemoryProfile{TimeNanos: int64(i * int(time.Minute))},
-			lbs:     phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i)),
-			fp:      model.Fingerprint(phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i)).Hash()),
-		}
-	})
-	in := iter.NewSliceIterator(profiles)
-	bidi := &fakeBidiServerMergeProfilesStacktraces{
-		keep: [][]bool{{}, {true}, {true}},
-		t:    t,
-	}
-	filtered, err := filterProfiles[
-		BidiServerMerge[*ingestv1.MergeProfilesStacktracesResponse, *ingestv1.MergeProfilesStacktracesRequest],
-		*ingestv1.MergeProfilesStacktracesResponse,
-		*ingestv1.MergeProfilesStacktracesRequest](ctx, []iter.Iterator[Profile]{in}, 5, bidi)
-	require.NoError(t, err)
-	require.Equal(t, 2, len(filtered[0]))
-	require.Equal(t, 3, len(bidi.profilesSent))
-	testhelper.EqualProto(t, []*ingestv1.ProfileSets{
-		{
-			LabelsSets: lo.Times(5, func(i int) *typesv1.Labels {
-				return &typesv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i))}
-			}),
-			Profiles: lo.Times(5, func(i int) *ingestv1.SeriesProfile {
-				return &ingestv1.SeriesProfile{Timestamp: int64(model.TimeFromUnixNano(int64(i * int(time.Minute)))), LabelIndex: int32(i)}
-			}),
-		},
-		{
-			LabelsSets: lo.Times(5, func(i int) *typesv1.Labels {
-				return &typesv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i+5))}
-			}),
-			Profiles: lo.Times(5, func(i int) *ingestv1.SeriesProfile {
-				return &ingestv1.SeriesProfile{Timestamp: int64(model.TimeFromUnixNano(int64((i + 5) * int(time.Minute)))), LabelIndex: int32(i)}
-			}),
-		},
-		{
-			LabelsSets: lo.Times(1, func(i int) *typesv1.Labels {
-				return &typesv1.Labels{Labels: phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", i+10))}
-			}),
-			Profiles: lo.Times(1, func(i int) *ingestv1.SeriesProfile {
-				return &ingestv1.SeriesProfile{Timestamp: int64(model.TimeFromUnixNano(int64((i + 10) * int(time.Minute)))), LabelIndex: int32(i)}
-			}),
-		},
-	}, bidi.profilesSent)
-
-	require.Equal(t, []Profile{
-		ProfileWithLabels{
-			profile: &schemav1.InMemoryProfile{TimeNanos: int64(5 * int(time.Minute))},
-			lbs:     phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 5)),
-			fp:      model.Fingerprint(phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 5)).Hash()),
-		},
-		ProfileWithLabels{
-			profile: &schemav1.InMemoryProfile{TimeNanos: int64(10 * int(time.Minute))},
-			lbs:     phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 10)),
-			fp:      model.Fingerprint(phlaremodel.LabelsFromStrings("foo", "bar", "i", fmt.Sprintf("%d", 10)).Hash()),
-		},
-	}, filtered[0])
-}
-
 func Test_QueryNotInitializedHead(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
@@ -560,7 +494,8 @@ func Test_FlushNotInitializedHead(t *testing.T) {
 	ctx := testContext(t)
 
 	db, err := New(ctx, Config{
-		DataPath: contextDataDir(ctx),
+		DataPath:         contextDataDir(ctx),
+		MaxBlockDuration: 1 * time.Hour,
 	}, NoLimit, ctx.localBucketClient)
 
 	var (
@@ -578,10 +513,10 @@ func Test_FlushNotInitializedHead(t *testing.T) {
 		&typesv1.LabelPair{Name: "namespace", Value: "my-namespace"},
 		&typesv1.LabelPair{Name: "pod", Value: "my-pod"},
 	)
-	require.NoError(t, db.Flush(ctx))
+	require.NoError(t, db.Flush(ctx, true, ""))
 	require.Zero(t, db.headSize())
 
-	require.NoError(t, db.Flush(ctx))
+	require.NoError(t, db.Flush(ctx, true, ""))
 	require.Zero(t, db.headSize())
 
 	ingestProfiles(t, db, cpuProfileGenerator, start.UnixNano(), end.UnixNano(), step,
@@ -590,5 +525,39 @@ func Test_FlushNotInitializedHead(t *testing.T) {
 	)
 
 	require.NotZero(t, db.headSize())
-	require.NoError(t, db.Flush(ctx))
+	require.NoError(t, db.Flush(ctx, true, ""))
+}
+
+func Test_endRangeForTimestamp(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		ts       int64
+		expected int64
+	}{
+		{
+			name:     "start of first range",
+			ts:       0,
+			expected: 1 * time.Hour.Nanoseconds(),
+		},
+		{
+			name:     "end of first range",
+			ts:       1*time.Hour.Nanoseconds() - 1,
+			expected: 1 * time.Hour.Nanoseconds(),
+		},
+		{
+			name:     "start of second range",
+			ts:       1 * time.Hour.Nanoseconds(),
+			expected: 2 * time.Hour.Nanoseconds(),
+		},
+		{
+			name:     "end of second range",
+			ts:       2*time.Hour.Nanoseconds() - 1,
+			expected: 2 * time.Hour.Nanoseconds(),
+		},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, endRangeForTimestamp(tt.ts, 1*time.Hour.Nanoseconds()))
+		})
+	}
 }

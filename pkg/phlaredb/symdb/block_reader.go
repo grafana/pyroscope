@@ -21,6 +21,7 @@ import (
 	parquetobj "github.com/grafana/pyroscope/pkg/objstore/parquet"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/util/refctr"
 )
 
 type Reader struct {
@@ -184,6 +185,7 @@ func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, e
 		return nil, ErrPartitionNotFound
 	}
 	if err := p.init(ctx); err != nil {
+		p.Release()
 		return nil, err
 	}
 	return p, nil
@@ -332,12 +334,11 @@ type stacktraceChunkReader struct {
 	reader *Reader
 	header StacktraceChunkHeader
 
-	m sync.Mutex
-	r int64
+	r refctr.Counter
 	t *parentPointerTree
 }
 
-func (c *stacktraceChunkReader) fetch(ctx context.Context) (err error) {
+func (c *stacktraceChunkReader) fetch(ctx context.Context) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "stacktraceChunkReader.fetch")
 	span.LogFields(
 		otlog.Int64("size", c.header.Size),
@@ -345,33 +346,21 @@ func (c *stacktraceChunkReader) fetch(ctx context.Context) (err error) {
 		otlog.Uint32("stacks", c.header.Stacktraces),
 	)
 	defer span.Finish()
-	// Mutex is acquired to serialize access to the tree,
-	// so that the consequent callers only have access to
-	// it after it is fully loaded. Use of atomics here
-	// for reference counting is not sufficient.
-	c.m.Lock()
-	defer func() {
+	return c.r.Inc(func() error {
+		f, err := c.reader.file(StacktracesFileName)
 		if err != nil {
-			c.r--
+			return err
 		}
-		c.m.Unlock()
-	}()
-	if c.r++; c.r > 1 {
-		return nil
-	}
-	f, err := c.reader.file(StacktracesFileName)
-	if err != nil {
-		return err
-	}
-	rc, err := c.reader.bucket.GetRange(ctx, f.RelPath, c.header.Offset, c.header.Size)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err = multierror.New(err, rc.Close()).Err()
-	}()
-	// Consider pooling the buffer.
-	return c.readFrom(bufio.NewReaderSize(rc, c.reader.chunkFetchBufferSize))
+		rc, err := c.reader.bucket.GetRange(ctx, f.RelPath, c.header.Offset, c.header.Size)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			err = multierror.New(err, rc.Close()).Err()
+		}()
+		// Consider pooling the buffer.
+		return c.readFrom(bufio.NewReaderSize(rc, c.reader.chunkFetchBufferSize))
+	})
 }
 
 func (c *stacktraceChunkReader) readFrom(r io.Reader) error {
@@ -388,7 +377,7 @@ func (c *stacktraceChunkReader) readFrom(r io.Reader) error {
 	crc := crc32.New(castagnoli)
 	tee := io.TeeReader(r, crc)
 	if _, err := t.ReadFrom(tee); err != nil {
-		return fmt.Errorf("failed to unmarshal stack treaces: %w", err)
+		return fmt.Errorf("failed to unmarshal stack traces: %w", err)
 	}
 	if c.header.CRC != crc.Sum32() {
 		return ErrInvalidCRC
@@ -398,14 +387,9 @@ func (c *stacktraceChunkReader) readFrom(r io.Reader) error {
 }
 
 func (c *stacktraceChunkReader) release() {
-	// To avoid race with "fetch" caller that could
-	// have started re-reading the tree right after
-	// the reference counter has decreased to 0.
-	c.m.Lock()
-	if c.r--; c.r < 1 {
+	c.r.Dec(func() {
 		c.t = nil
-	}
-	c.m.Unlock()
+	})
 }
 
 type parquetTableRange[M schemav1.Models, P schemav1.Persister[M]] struct {
@@ -415,8 +399,7 @@ type parquetTableRange[M schemav1.Models, P schemav1.Persister[M]] struct {
 
 	file *parquetobj.File
 
-	m sync.RWMutex
-	r int64
+	r refctr.Counter
 	s []M
 }
 
@@ -430,43 +413,35 @@ func (t *parquetTableRange[M, P]) fetch(ctx context.Context) (err error) {
 		"row_groups": len(t.headers),
 	})
 	defer span.Finish()
-	t.m.Lock()
-	defer func() {
-		if err != nil {
-			t.r--
+	return t.r.Inc(func() error {
+		var s uint32
+		for _, h := range t.headers {
+			s += h.Rows
 		}
-		t.m.Unlock()
-	}()
-	if t.r++; t.r > 1 {
+		buf := make([]parquet.Row, inMemoryReaderRowsBufSize)
+		t.s = make([]M, s)
+		var offset int
+		// TODO(kolesnikovae): Row groups could be fetched in parallel.
+		rgs := t.file.RowGroups()
+		for _, h := range t.headers {
+			span.LogFields(
+				otlog.Uint32("row_group", h.RowGroup),
+				otlog.Uint32("index_row", h.Index),
+				otlog.Uint32("rows", h.Rows),
+			)
+			rg := rgs[h.RowGroup]
+			rows := rg.Rows()
+			if err := rows.SeekToRow(int64(h.Index)); err != nil {
+				return err
+			}
+			dst := t.s[offset : offset+int(h.Rows)]
+			if err := t.readRows(dst, buf, rows); err != nil {
+				return fmt.Errorf("reading row group from parquet file %q: %w", t.file.Path(), err)
+			}
+			offset += int(h.Rows)
+		}
 		return nil
-	}
-	var s uint32
-	for _, h := range t.headers {
-		s += h.Rows
-	}
-	buf := make([]parquet.Row, inMemoryReaderRowsBufSize)
-	t.s = make([]M, s)
-	var offset int
-	// TODO(kolesnikovae): Row groups could be fetched in parallel.
-	rgs := t.file.RowGroups()
-	for _, h := range t.headers {
-		span.LogFields(
-			otlog.Uint32("row_group", h.RowGroup),
-			otlog.Uint32("index_row", h.Index),
-			otlog.Uint32("rows", h.Rows),
-		)
-		rg := rgs[h.RowGroup]
-		rows := rg.Rows()
-		if err := rows.SeekToRow(int64(h.Index)); err != nil {
-			return err
-		}
-		dst := t.s[offset : offset+int(h.Rows)]
-		if err := t.readRows(dst, buf, rows); err != nil {
-			return fmt.Errorf("reading row group from parquet file %q: %w", t.file.Path(), err)
-		}
-		offset += int(h.Rows)
-	}
-	return nil
+	})
 }
 
 func (t *parquetTableRange[M, P]) readRows(dst []M, buf []parquet.Row, rows parquet.Rows) (err error) {
@@ -499,9 +474,7 @@ func (t *parquetTableRange[M, P]) readRows(dst []M, buf []parquet.Row, rows parq
 }
 
 func (t *parquetTableRange[M, P]) release() {
-	t.m.Lock()
-	if t.r--; t.r < 1 {
+	t.r.Dec(func() {
 		t.s = nil
-	}
-	t.m.Unlock()
+	})
 }

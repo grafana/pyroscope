@@ -34,6 +34,7 @@ var errInvalidTenantShardSize = errors.New("invalid tenant shard size, the value
 
 type Limits interface {
 	ShardingLimits
+	phlareobj.TenantConfigProvider
 }
 
 // ShardingLimits is the interface that should be implemented by the limits provider,

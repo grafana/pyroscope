@@ -13,7 +13,6 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/tsdb"
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -292,6 +291,7 @@ func TestHeadFlush(t *testing.T) {
 				NumSeries:   8,
 				NumProfiles: 11,
 			},
+			Labels: map[string]string{},
 			Files: []block.File{
 				{
 					RelPath:   "index.tsdb",
@@ -344,7 +344,7 @@ func TestHeadFlush(t *testing.T) {
 					},
 				},
 			},
-			Compaction: tsdb.BlockMetaCompaction{
+			Compaction: block.BlockMetaCompaction{
 				Level: 1,
 				Sources: []ulid.ULID{
 					head.meta.ULID,
@@ -448,6 +448,19 @@ func TestHead_Concurrent_Ingest_Querying(t *testing.T) {
 	// TODO: We need to test if flushing misses out on ingested profiles
 
 	wg.Wait()
+}
+
+func TestIsStale(t *testing.T) {
+	head := newTestHead(t)
+	now := time.Unix(0, time.Minute.Nanoseconds())
+
+	// should not be stale if have not past the stale grace period
+	head.updatedAt.Store(time.Unix(0, 0))
+	require.False(t, head.isStale(now.UnixNano(), now))
+	// should be stale as we have passed the stale grace period
+	require.True(t, head.isStale(now.UnixNano(), now.Add(2*StaleGracePeriod)))
+	// Should not be stale if maxT is not passed.
+	require.False(t, head.isStale(now.Add(2*StaleGracePeriod).UnixNano(), now.Add(2*StaleGracePeriod)))
 }
 
 func BenchmarkHeadIngestProfiles(t *testing.B) {

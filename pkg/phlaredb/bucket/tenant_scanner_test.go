@@ -21,8 +21,8 @@ import (
 func TestUsersScanner_ScanUsers_ShouldReturnedOwnedUsersOnly(t *testing.T) {
 	bucketClient := &objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1", "user-2", "user-3", "user-4"}, nil)
-	bucketClient.MockExists(path.Join("user-1", TenantDeletionMarkPath), false, nil)
-	bucketClient.MockExists(path.Join("user-3", TenantDeletionMarkPath), true, nil)
+	bucketClient.MockExists(path.Join("user-1", "phlaredb/", TenantDeletionMarkPath), false, nil)
+	bucketClient.MockExists(path.Join("user-3", "phlaredb/", TenantDeletionMarkPath), true, nil)
 
 	isOwned := func(userID string) (bool, error) {
 		return userID == "user-1" || userID == "user-3", nil
@@ -40,8 +40,8 @@ func TestUsersScanner_ScanUsers_ShouldReturnUsersForWhichOwnerCheckOrTenantDelet
 
 	bucketClient := &objstore.ClientMock{}
 	bucketClient.MockIter("", expected, nil)
-	bucketClient.MockExists(path.Join("user-1", TenantDeletionMarkPath), false, nil)
-	bucketClient.MockExists(path.Join("user-2", TenantDeletionMarkPath), false, errors.New("fail"))
+	bucketClient.MockExists(path.Join("user-1", "phlaredb/", TenantDeletionMarkPath), false, nil)
+	bucketClient.MockExists(path.Join("user-2", "phlaredb/", TenantDeletionMarkPath), false, errors.New("fail"))
 
 	isOwned := func(userID string) (bool, error) {
 		return false, errors.New("failed to check if user is owned")
@@ -57,8 +57,8 @@ func TestUsersScanner_ScanUsers_ShouldReturnUsersForWhichOwnerCheckOrTenantDelet
 func TestUsersScanner_ScanUsers_ShouldNotReturnPrefixedUsedByPyroscopeInternals(t *testing.T) {
 	bucketClient := &objstore.ClientMock{}
 	bucketClient.MockIter("", []string{"user-1", "user-2", PyroscopeInternalsPrefix}, nil)
-	bucketClient.MockExists(path.Join("user-1", TenantDeletionMarkPath), false, nil)
-	bucketClient.MockExists(path.Join("user-2", TenantDeletionMarkPath), false, nil)
+	bucketClient.MockExists(path.Join("user-1", "phlaredb/", TenantDeletionMarkPath), false, nil)
+	bucketClient.MockExists(path.Join("user-2", "phlaredb/", TenantDeletionMarkPath), false, nil)
 
 	s := NewTenantsScanner(bucketClient, AllTenants, log.NewNopLogger())
 	actual, _, err := s.ScanTenants(context.Background())

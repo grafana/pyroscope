@@ -175,7 +175,7 @@
     "true-myth": "~5.2.0",
     "ts-custom-error": "^3.2.0",
     "ts-essentials": "^9.0.0",
-    "zod": "^3.21.4"
+    "zod": "^3.22.3"
   },
   "optionalDependencies": {
     "@pyroscope/nodejs": "^0.2.5"

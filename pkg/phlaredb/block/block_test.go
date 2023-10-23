@@ -26,6 +26,7 @@ import (
 	"github.com/thanos-io/objstore"
 	"go.uber.org/goleak"
 
+	objstore_testutil "github.com/grafana/pyroscope/pkg/objstore/testutil"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	block_testutil "github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
@@ -82,54 +83,77 @@ func TestDelete(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 	ctx := context.Background()
 
-	bkt := objstore.NewInMemBucket()
-	{
-		meta, dir, err := block_testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
-			return []*testhelper.ProfileBuilder{
-				testhelper.NewProfileBuilder(int64(1)).
-					CPUProfile().
-					WithLabels(
-						"job", "a",
-					).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
-			}
-		})
-		require.NoError(t, err)
-		require.NoError(t, block.Upload(ctx, log.NewNopLogger(), bkt, path.Join(dir, meta.ULID.String())))
-		require.Equal(t, 9, len(bkt.Objects()))
+	runTest := func(t *testing.T, bkt objstore.Bucket) {
+		{
+			meta, dir := block_testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
+				return []*testhelper.ProfileBuilder{
+					testhelper.NewProfileBuilder(int64(1)).
+						CPUProfile().
+						WithLabels(
+							"job", "a",
+						).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+				}
+			})
 
-		markedForDeletion := promauto.With(prometheus.NewRegistry()).NewCounter(prometheus.CounterOpts{Name: "test"})
-		require.NoError(t, block.MarkForDeletion(ctx, log.NewNopLogger(), bkt, meta.ULID, "", markedForDeletion))
+			require.NoError(t, block.Upload(ctx, log.NewNopLogger(), bkt, path.Join(dir, meta.ULID.String())))
+			require.Equal(t, 9, len(objects(t, bkt, meta.ULID)))
 
-		// Full delete.
-		require.NoError(t, block.Delete(ctx, log.NewNopLogger(), bkt, meta.ULID))
-		require.Equal(t, 0, len(bkt.Objects()))
+			markedForDeletion := promauto.With(prometheus.NewRegistry()).NewCounter(prometheus.CounterOpts{Name: "test"})
+			require.NoError(t, block.MarkForDeletion(ctx, log.NewNopLogger(), bkt, meta.ULID, "", markedForDeletion))
+
+			// Full delete.
+			require.NoError(t, block.Delete(ctx, log.NewNopLogger(), bkt, meta.ULID))
+			require.Equal(t, 0, len(objects(t, bkt, meta.ULID)))
+		}
+		{
+			b2, tmpDir := block_testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
+				return []*testhelper.ProfileBuilder{
+					testhelper.NewProfileBuilder(int64(1)).
+						CPUProfile().
+						WithLabels(
+							"job", "a",
+						).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+				}
+			})
+			require.NoError(t, block.Upload(ctx, log.NewNopLogger(), bkt, path.Join(tmpDir, b2.ULID.String())))
+			require.Equal(t, 9, len(objects(t, bkt, b2.ULID)))
+
+			// Remove meta.json and check if delete can delete it.
+			require.NoError(t, bkt.Delete(ctx, path.Join(b2.ULID.String(), block.MetaFilename)))
+			require.NoError(t, block.Delete(ctx, log.NewNopLogger(), bkt, b2.ULID))
+			require.Equal(t, 0, len(objects(t, bkt, b2.ULID)))
+		}
 	}
-	{
-		b2, tmpDir, err := block_testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
-			return []*testhelper.ProfileBuilder{
-				testhelper.NewProfileBuilder(int64(1)).
-					CPUProfile().
-					WithLabels(
-						"job", "a",
-					).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
-			}
-		})
-		require.NoError(t, err)
-		require.NoError(t, block.Upload(ctx, log.NewNopLogger(), bkt, path.Join(tmpDir, b2.ULID.String())))
-		require.Equal(t, 9, len(bkt.Objects()))
 
-		// Remove meta.json and check if delete can delete it.
-		require.NoError(t, bkt.Delete(ctx, path.Join(b2.ULID.String(), block.MetaFilename)))
-		require.NoError(t, block.Delete(ctx, log.NewNopLogger(), bkt, b2.ULID))
-		require.Equal(t, 0, len(bkt.Objects()))
-	}
+	t.Run(t.Name()+"_inmemory", func(t *testing.T) {
+		bkt := objstore.NewInMemBucket()
+		runTest(t, bkt)
+	})
+
+	t.Run(t.Name()+"_filesystem", func(t *testing.T) {
+		bkt, _ := objstore_testutil.NewFilesystemBucket(t, context.Background(), t.TempDir())
+		runTest(t, bkt)
+	})
+}
+
+func objects(t *testing.T, bkt objstore.Bucket, id ulid.ULID) (objects []string) {
+	t.Helper()
+	require.NoError(t,
+		bkt.Iter(context.Background(), id.String(), func(name string) error {
+			if strings.HasSuffix(name, objstore.DirDelim) {
+				return nil
+			}
+			objects = append(objects, name)
+			return nil
+		}, objstore.WithRecursiveIter))
+	return
 }
 
 func TestUpload(t *testing.T) {
 	ctx := context.Background()
 
 	bkt := objstore.NewInMemBucket()
-	b1, tmpDir, err := block_testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
+	b1, tmpDir := block_testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
 		return []*testhelper.ProfileBuilder{
 			testhelper.NewProfileBuilder(int64(1)).
 				CPUProfile().
@@ -139,7 +163,6 @@ func TestUpload(t *testing.T) {
 		}
 	})
 
-	require.NoError(t, err)
 	require.NoError(t, os.MkdirAll(path.Join(tmpDir, "test", b1.ULID.String()), os.ModePerm))
 
 	t.Run("wrong dir", func(t *testing.T) {
@@ -221,7 +244,7 @@ func TestMarkForDeletion(t *testing.T) {
 	} {
 		t.Run(tcase.name, func(t *testing.T) {
 			bkt := objstore.NewInMemBucket()
-			b1, tmpDir, err := block_testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
+			b1, tmpDir := block_testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
 				return []*testhelper.ProfileBuilder{
 					testhelper.NewProfileBuilder(int64(1)).
 						CPUProfile().
@@ -231,14 +254,13 @@ func TestMarkForDeletion(t *testing.T) {
 				}
 			})
 			id := b1.ULID
-			require.NoError(t, err)
 
 			tcase.preUpload(t, id, bkt)
 
 			require.NoError(t, block.Upload(ctx, log.NewNopLogger(), bkt, path.Join(tmpDir, id.String())))
 
 			c := promauto.With(nil).NewCounter(prometheus.CounterOpts{})
-			err = block.MarkForDeletion(ctx, log.NewNopLogger(), bkt, id, "", c)
+			err := block.MarkForDeletion(ctx, log.NewNopLogger(), bkt, id, "", c)
 			require.NoError(t, err)
 			require.Equal(t, float64(tcase.blocksMarked), promtest.ToFloat64(c))
 		})
@@ -276,7 +298,7 @@ func TestMarkForNoCompact(t *testing.T) {
 	} {
 		t.Run(tcase.name, func(t *testing.T) {
 			bkt := objstore.NewInMemBucket()
-			meta, tmpDir, err := block_testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
+			meta, tmpDir := block_testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
 				return []*testhelper.ProfileBuilder{
 					testhelper.NewProfileBuilder(int64(1)).
 						CPUProfile().
@@ -286,14 +308,13 @@ func TestMarkForNoCompact(t *testing.T) {
 				}
 			})
 			id := meta.ULID
-			require.NoError(t, err)
 
 			tcase.preUpload(t, id, bkt)
 
 			require.NoError(t, block.Upload(ctx, log.NewNopLogger(), bkt, path.Join(tmpDir, id.String())))
 
 			c := promauto.With(nil).NewCounter(prometheus.CounterOpts{})
-			err = block.MarkForNoCompact(ctx, log.NewNopLogger(), bkt, id, block.ManualNoCompactReason, "", c)
+			err := block.MarkForNoCompact(ctx, log.NewNopLogger(), bkt, id, block.ManualNoCompactReason, "", c)
 			require.NoError(t, err)
 			require.Equal(t, float64(tcase.blocksMarked), promtest.ToFloat64(c))
 		})
@@ -306,7 +327,7 @@ func TestUploadCleanup(t *testing.T) {
 	ctx := context.Background()
 
 	bkt := objstore.NewInMemBucket()
-	meta, tmpDir, err := block_testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
+	meta, tmpDir := block_testutil.CreateBlock(t, func() []*testhelper.ProfileBuilder {
 		return []*testhelper.ProfileBuilder{
 			testhelper.NewProfileBuilder(int64(1)).
 				CPUProfile().
@@ -316,7 +337,6 @@ func TestUploadCleanup(t *testing.T) {
 		}
 	})
 	b1 := meta.ULID
-	require.NoError(t, err)
 
 	{
 		errBkt := errBucket{Bucket: bkt, failSuffix: "/index.tsdb"}
