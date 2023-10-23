@@ -317,8 +317,8 @@ func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlar
 	return q
 }
 
-func (b *singleBlockQuerier) Profiles() []parquet.RowGroup {
-	return b.profiles.file.RowGroups()
+func (b *singleBlockQuerier) Profiles() parquet.Rows {
+	return parquet.NewReader(b.profiles.file.File, schemav1.ProfilesSchema)
 }
 
 func (b *singleBlockQuerier) Index() IndexReader {
@@ -1440,7 +1440,7 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 		case block.MetaVersion3:
 			q.symbols, err = symdb.Open(ctx, q.bucket, q.meta)
 		default:
-			panic(fmt.Errorf("unsupported block version %d", q.meta.Version))
+			panic(fmt.Errorf("unsupported block version %d id %s", q.meta.Version, q.meta.ULID.String()))
 		}
 		return err
 	}))

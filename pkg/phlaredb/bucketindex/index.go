@@ -102,6 +102,20 @@ func (m *Block) String() string {
 	return fmt.Sprintf("%s (min time: %s max time: %s, compactor shard: %s)", m.ID, minT.String(), maxT.String(), shard)
 }
 
+// Meta returns a block meta based on the known information in the index.
+// The returned meta doesn't include all original meta.json data but only a subset
+// of it.
+func (m *Block) Meta() *block.Meta {
+	return &block.Meta{
+		ULID:    m.ID,
+		MinTime: m.MinTime,
+		MaxTime: m.MaxTime,
+		Labels: map[string]string{
+			sharding.CompactorShardIDLabel: m.CompactorShardID,
+		},
+	}
+}
+
 func BlockFromMeta(meta block.Meta) *Block {
 	return &Block{
 		ID:               meta.ULID,

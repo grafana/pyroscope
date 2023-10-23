@@ -220,16 +220,15 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 	return m.normalize(), nil
 }
 
-func (b *singleBlockQuerier) MergeBySpans(_ context.Context, _ iter.Iterator[Profile], _ phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
-	//	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeBySpans - Block")
-	//	defer sp.Finish()
-	//	r := symdb.NewResolver(ctx, b.symbols)
-	//	defer r.Release()
-	//	if err := mergeBySpans(ctx, b.profiles.file, rows, r, spanSelector); err != nil {
-	//		return nil, err
-	//	}
-	//	return r.Tree()
-	return new(phlaremodel.Tree), nil
+func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeBySpans - Block")
+	defer sp.Finish()
+	r := symdb.NewResolver(ctx, b.symbols)
+	defer r.Release()
+	if err := mergeBySpans(ctx, b.profiles.file, rows, r, spanSelector); err != nil {
+		return nil, err
+	}
+	return r.Tree()
 }
 
 type Source interface {
@@ -262,6 +261,42 @@ func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Ite
 		}
 	}
 	return nil
+}
+
+func mergeBySpans(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver, spanSelector phlaremodel.SpanSelector) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeBySpans")
+	defer sp.Finish()
+	if _, found := profileSource.Schema().Lookup(strings.Split("Samples.list.element.SpanID", ".")...); !found {
+		return nil
+	}
+	// clone the rows to be able to iterate over them twice
+	multiRows, err := iter.CloneN(rows, 3)
+	if err != nil {
+		return err
+	}
+	it := query.NewMultiRepeatedPageIterator(
+		repeatedColumnIter(ctx, profileSource, "Samples.list.element.StacktraceID", multiRows[0]),
+		repeatedColumnIter(ctx, profileSource, "Samples.list.element.Value", multiRows[1]),
+		repeatedColumnIter(ctx, profileSource, "Samples.list.element.SpanID", multiRows[2]),
+	)
+	defer it.Close()
+	for it.Next() {
+		values := it.At().Values
+		p := r.Partition(it.At().Row.StacktracePartition())
+		stacktraces := values[0]
+		sampleValues := values[1]
+		spans := values[2]
+		for i := 0; i < len(stacktraces); i++ {
+			spanID := spans[i].Uint64()
+			if spanID == 0 {
+				continue
+			}
+			if _, ok := spanSelector[spanID]; ok {
+				p[uint32(stacktraces[i].Int64())] += sampleValues[i].Int64()
+			}
+		}
+	}
+	return it.Err()
 }
 
 type seriesByLabels map[string]*typesv1.Series

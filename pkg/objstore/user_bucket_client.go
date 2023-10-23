@@ -5,12 +5,12 @@
 
 package objstore
 
-// NewUserBucketClient returns a bucket client to use to access the storage on behalf of the provided user.
+// NewTenantBucketClient returns a bucket client to use to access the storage on behalf of the provided user.
 // The cfgProvider can be nil.
-func NewUserBucketClient(userID string, bucket Bucket, cfgProvider TenantConfigProvider) InstrumentedBucket {
+func NewTenantBucketClient(tenantID string, bucket Bucket, cfgProvider TenantConfigProvider) InstrumentedBucket {
 	// Inject the user/tenant prefix.
-	bucket = NewPrefixedBucket(bucket, userID)
+	bucket = NewPrefixedBucket(bucket, tenantID+"/phlaredb")
 
 	// Inject the SSE config.
-	return NewSSEBucketClient(userID, bucket, cfgProvider)
+	return NewSSEBucketClient(tenantID, bucket, cfgProvider)
 }

@@ -14,7 +14,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	otellogs "github.com/agoda-com/opentelemetry-logs-go"
-	otelpyroscope "github.com/pyroscope-io/otel-profiling-go"
+	"github.com/grafana/pyroscope-go/otelpyroscope"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -92,12 +92,7 @@ func setupOTEL(c rideshare.Config) (tp *sdktrace.TracerProvider, err error) {
 	// Set the Tracer Provider and the W3C Trace Context propagator as globals.
 	// We wrap the tracer provider to also annotate goroutines with Span ID so
 	// that pprof would add corresponding labels to profiling samples.
-	otel.SetTracerProvider(otelpyroscope.NewTracerProvider(tp,
-		otelpyroscope.WithPyroscopeURL(c.PyroscopeServerAddress),
-		otelpyroscope.WithAppName(c.AppName),
-		otelpyroscope.WithRootSpanOnly(true),
-		otelpyroscope.WithAddSpanName(true),
-	))
+	otel.SetTracerProvider(otelpyroscope.NewTracerProvider(tp))
 
 	// Register the trace context and baggage propagators so data is propagated across services/processes.
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(

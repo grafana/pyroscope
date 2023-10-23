@@ -7,14 +7,16 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
-	"rideshare/rideshare"
-
+	"github.com/grafana/pyroscope-go/otelpyroscope"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
+
+	"rideshare/rideshare"
 )
 
 var hosts = []string{}
@@ -39,6 +41,15 @@ func main() {
 		}
 	}
 
+	groupByFactor := 3
+	if os.Getenv("LOADGEN_GROUP_BY_FACTOR") != "" {
+		var err error
+		groupByFactor, err = strconv.Atoi(os.Getenv("LOADGEN_GROUP_BY_FACTOR"))
+		if err != nil {
+			log.Fatalf("issue with LOADGEN_GROUP_BY_FACTOR: %v\n", err)
+		}
+	}
+
 	// Configure profiler.
 	p, err := rideshare.Profiler(c)
 	if err != nil {
@@ -57,7 +68,7 @@ func main() {
 	// Set the Tracer Provider and the W3C Trace Context propagator as globals.
 	// We wrap the tracer provider to also annotate goroutines with Span ID so
 	// that pprof would add corresponding labels to profiling samples.
-	otel.SetTracerProvider(tp)
+	otel.SetTracerProvider(otelpyroscope.NewTracerProvider(tp))
 
 	// Register the trace c ontext and baggage propagators so data is propagated across services/processes.
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
@@ -70,13 +81,33 @@ func main() {
 	defer func() {
 		_ = tp.Shutdown(context.Background())
 	}()
-	for {
-		host := hosts[rand.Intn(len(hosts))]
-		vehicle := vehicles[rand.Intn(len(vehicles))]
-		if err = orderVehicle(context.Background(), host, vehicle); err != nil {
-			fmt.Println(err)
-		}
+
+	groups := groupHosts(hosts, groupByFactor)
+	for _, group := range groups {
+		go func(group []string) {
+			for {
+				host := group[rand.Intn(len(group))]
+				vehicle := vehicles[rand.Intn(len(vehicles))]
+				if err = orderVehicle(context.Background(), host, vehicle); err != nil {
+					fmt.Println(err)
+				}
+			}
+		}(group)
 	}
+
+	select {}
+}
+
+func groupHosts(hosts []string, groupsOf int) [][]string {
+	var res [][]string
+	for i := 0; i < len(hosts); i += groupsOf {
+		upperBoundary := i + groupsOf
+		if upperBoundary > len(hosts) {
+			upperBoundary = len(hosts)
+		}
+		res = append(res, hosts[i:upperBoundary])
+	}
+	return res
 }
 
 func orderVehicle(ctx context.Context, host, vehicle string) error {
