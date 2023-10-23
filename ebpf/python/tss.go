@@ -42,8 +42,11 @@ func getAutoTLSKey(pid uint32, version Version, autoTLSkeyAddr uint64, mem *os.F
 }
 
 func getPyTssKey(pid uint32, version Version, offsets *UserOffsets, pyRuntime uint64, mem *os.File) (int32, error) {
+	if offsets.PyTssT_is_initialized != 0 || offsets.PyTssT_key != 4 || offsets.PyTssTSize != 8 {
+		return 0, fmt.Errorf("unexpected _Py_tss_t offsets %+v %+v", offsets, version)
+	}
 	var pkey int64
-	var key [4]byte //todo read the whole pytss includinig initialized flag
+	var key [8]byte
 	if pyRuntime == 0 {
 		//should never happen
 		return 0, fmt.Errorf("python missing symbols pyRuntime %d %v", pid, version)
@@ -57,11 +60,12 @@ func getPyTssKey(pid uint32, version Version, offsets *UserOffsets, pyRuntime ui
 	if err != nil {
 		return 0, fmt.Errorf("python failed to read key %d %d %v %w", pid, pkey, version, err)
 	}
-	if n != 4 {
+	if n != 8 {
 		return 0, fmt.Errorf("python failed to read key %d %d %v %w", pid, pkey, version, err)
 	}
-	res := int32(binary.LittleEndian.Uint32(key[:]))
-	if res == -1 {
+	isInitialized := int32(binary.LittleEndian.Uint32(key[:4]))
+	res := int32(binary.LittleEndian.Uint32(key[4:8]))
+	if isInitialized == 0 || res == -1 {
 		return 0, fmt.Errorf("python not initialized %+v", version)
 	}
 	return res, nil

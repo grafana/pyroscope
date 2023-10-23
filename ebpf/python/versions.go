@@ -130,7 +130,9 @@ type UserOffsets struct {
 	PyRuntimeState_gilstate           int16
 	PyRuntimeState_autoTSSkey         int16
 	Gilstate_runtime_state_autoTSSkey int16
+	PyTssT_is_initialized             int16
 	PyTssT_key                        int16
+	PyTssTSize                        int16
 	StringSize                        int16
 }
 
