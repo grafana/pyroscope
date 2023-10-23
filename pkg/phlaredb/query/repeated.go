@@ -422,7 +422,7 @@ func (x *RowGroupRepeatedColumnIterator) readPage(rn int64) bool {
 	x.maxPageNumRows = rn + x.page.NumRows()
 	// Too big read size does not make much sense.
 	// How many values we expect per a row, the upper boundary?
-	x.vit.Reset(x.page, 256)
+	x.vit.Reset(x.page, 2<<10)
 	return true
 }
 
@@ -444,7 +444,7 @@ func putRepeatedValuePageIteratorToPool(x *RepeatedValuePageIterator) {
 }
 
 // RepeatedValuePageIterator iterates over repeated fields.
-// FIXME(kolesnikovae): Definition level is completely ignored.
+// FIXME(kolesnikovae): Definition level is ignored.
 type RepeatedValuePageIterator struct {
 	page parquet.ValueReader
 	buf  []parquet.Value
@@ -470,9 +470,9 @@ func (x *RepeatedValuePageIterator) Reset(page parquet.Page, readSize int) {
 	}
 	x.page = page.Values()
 	x.buf = x.buf[:0]
-	x.off = 0
 	x.row = x.row[:0]
 	x.err = nil
+	x.off = 0
 }
 
 func (x *RepeatedValuePageIterator) Next() bool {
