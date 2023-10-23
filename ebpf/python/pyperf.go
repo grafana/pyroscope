@@ -137,7 +137,7 @@ func (s *Perf) ResetEvents() []*PerfPyEvent {
 	return eventsCopy
 }
 
-func (s *Perf) GetSymbolsLazy() LazySymbols {
+func (s *Perf) GetLazySymbols() LazySymbols {
 	return LazySymbols{
 		symbols: s.prevSymbols,
 		fresh:   false,
