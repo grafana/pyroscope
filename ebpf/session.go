@@ -12,10 +12,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"sync"
-	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -213,7 +211,7 @@ func (s *session) UpdateTargets(args sd.TargetsOptions) {
 		if target == nil {
 			continue
 		}
-		s.enableProfilingLocked(pid, target)
+		s.startProfilingLocked(pid, target)
 		delete(s.pids.unknown, pid)
 	}
 }
@@ -329,90 +327,6 @@ func (s *session) comm(pid uint32) string {
 	return "pid_unknown"
 }
 
-func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
-	if s.pyperf == nil {
-		return nil
-	}
-	pyEvents := s.pyperf.ResetEvents()
-	if len(pyEvents) == 0 {
-		return nil
-	}
-	pySymbols := s.pyperf.GetLazySymbols()
-
-	sb := &stackBuilder{}
-	stacktraceErrors := 0
-	unknownSymbols := 0
-	for _, event := range pyEvents {
-		stats := StackResolveStats{}
-		labels := s.targetFinder.FindTarget(event.Pid)
-		if labels == nil {
-			continue
-		}
-		svc := labels.ServiceName()
-
-		sb.reset()
-
-		sb.append(s.comm(event.Pid))
-		var kStack []byte
-		if event.StackStatus == uint8(python.StackStatusError) {
-			_ = level.Debug(s.logger).Log("msg", "collect python",
-				"stack_status", python.StackStatus(event.StackStatus),
-				"pid", event.Pid,
-				"err", python.PyError(event.Err))
-			s.options.Metrics.Python.StacktraceError.Inc()
-			stacktraceErrors += 1
-		} else {
-			begin := len(sb.stack)
-			if event.StackStatus == uint8(python.StackStatusTruncated) {
-
-			}
-			for i := 0; i < int(event.StackLen); i++ {
-				sym, err := pySymbols.GetSymbol(event.Stack[i], svc)
-				if err == nil {
-					filename := cStringFromI8Unsafe(sym.File[:])
-					if !s.options.CacheOptions.SymbolOptions.PythonFullFilePath {
-						iSep := strings.LastIndexByte(filename, '/')
-						if iSep != 1 {
-							filename = filename[iSep+1:]
-						}
-					}
-					classname := cStringFromI8Unsafe(sym.Classname[:])
-					name := cStringFromI8Unsafe(sym.Name[:])
-					if classname == "" {
-						sb.append(fmt.Sprintf("%s %s", filename, name))
-					} else {
-						sb.append(fmt.Sprintf("%s %s.%s", filename, classname, name))
-					}
-				} else {
-					sb.append("pyperf_unknown")
-					s.options.Metrics.Python.UnknownSymbols.WithLabelValues(svc).Inc()
-					unknownSymbols += 1
-				}
-			}
-
-			end := len(sb.stack)
-			lo.Reverse(sb.stack[begin:end])
-		}
-		if s.options.CollectKernel && event.KernStack != -1 {
-			kStack = s.GetStack(event.KernStack)
-			s.WalkStack(sb, kStack, s.symCache.GetKallsyms(), &stats)
-		}
-		if len(sb.stack) == 1 {
-			continue // only comm .. todo skip with an option
-		}
-		lo.Reverse(sb.stack)
-		cb(labels, sb.stack, uint64(1), event.Pid)
-		s.collectMetrics(labels, &stats, sb)
-	}
-	if stacktraceErrors > 0 {
-		_ = level.Error(s.logger).Log("msg", "python stacktrace errors", "count", stacktraceErrors)
-	}
-	if unknownSymbols > 0 {
-		_ = level.Error(s.logger).Log("msg", "python unknown symbols", "count", unknownSymbols)
-	}
-	return nil
-}
-
 func (s *session) collectMetrics(labels *sd.Target, stats *StackResolveStats, sb *stackBuilder) {
 	m := s.options.Metrics.Symtab
 	serviceName := labels.ServiceName()
@@ -465,9 +379,8 @@ func (s *session) stopLocked() {
 	s.started = false
 }
 
-func (s *session) setPidConfig(pid uint32, pi procInfoLite, collectUser bool, collectKernel bool) error {
+func (s *session) setPidConfig(pid uint32, pi procInfoLite, collectUser bool, collectKernel bool) {
 	s.pids.all[pid] = pi
-	//_ = level.Debug(s.logger).Log("msg", "set pid config", "pid", pid, "type", typ, "collect_user", collectUser, "collect_kernel", collectKernel)
 	config := &pyrobpf.ProfilePidConfig{
 		Type:          uint8(pi.typ),
 		CollectUser:   uint8FromBool(collectUser),
@@ -475,9 +388,8 @@ func (s *session) setPidConfig(pid uint32, pi procInfoLite, collectUser bool, co
 	}
 
 	if err := s.bpf.Pids.Update(&pid, config, ebpf.UpdateAny); err != nil {
-		return fmt.Errorf("init args fail: %w", err)
+		_ = level.Error(s.logger).Log("msg", "updating pids map", "err", err)
 	}
-	return nil
 }
 
 func uint8FromBool(b bool) uint8 {
@@ -642,86 +554,22 @@ func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
 			if target == nil {
 				s.saveUnknownPIDLocked(pid)
 			} else {
-				s.enableProfilingLocked(pid, target)
+				s.startProfilingLocked(pid, target)
 			}
 		}()
 	}
 }
 
-func (s *session) enableProfilingLocked(pid uint32, target *sd.Target) {
+func (s *session) startProfilingLocked(pid uint32, target *sd.Target) {
 	if !s.started {
 		return
 	}
 	typ := s.selectProfilingType(pid, target)
 	if typ.typ == pyrobpf.ProfilingTypePython {
-		pyPerf := s.getPyPerf()
-		if pyPerf == nil {
-			_ = level.Error(s.logger).Log("err", "pyperf process profiling init failed. pyperf == nil", "pid", pid)
-			typ.typ = pyrobpf.ProfilingTypeError
-			_ = s.setPidConfig(pid, typ, false, false)
-			return
-		}
-		pyData, alive, err := pyPerf.StartPythonProfiling(pid, target.ServiceName())
-		if err != nil {
-			_ = s.procAliveLogger(alive).Log("err", err, "msg", "pyperf process profiling init failed", "pid", pid)
-			typ.typ = pyrobpf.ProfilingTypeError
-			_ = s.setPidConfig(pid, typ, false, false)
-			return
-		}
-		_ = level.Info(s.logger).Log("msg", "pyperf process profiling init success", "pid", pid,
-			"py_data", fmt.Sprintf("%+v", pyData))
+		go s.tryStartPythonProfiling(pid, target, typ)
+		return
 	}
-	err := s.setPidConfig(pid, typ, s.options.CollectUser, s.options.CollectKernel)
-	if err != nil {
-		_ = level.Error(s.logger).Log("err", err, "msg", "set pid config failed", "pid", pid)
-	}
-}
-
-// may return nil if loadPyPerf returns error
-func (s *session) getPyPerf() *python.Perf {
-	if s.pyperf != nil {
-		return s.pyperf
-	}
-	if s.pyperfError != nil {
-		return nil
-	}
-	s.options.Metrics.Python.Load.Inc()
-	pyperf, err := s.loadPyPerf()
-	if err != nil {
-		s.pyperfError = err
-		s.options.Metrics.Python.LoadError.Inc()
-		_ = level.Error(s.logger).Log("err", err, "msg", "load pyperf")
-		return nil
-	}
-	s.pyperf = pyperf
-	return s.pyperf
-}
-
-func (s *session) loadPyPerf() (*python.Perf, error) {
-	defer btf.FlushKernelSpec() // save some memory
-	opts := &ebpf.CollectionOptions{
-		Programs: ebpf.ProgramOptions{
-			LogDisabled: true,
-		},
-		MapReplacements: map[string]*ebpf.Map{
-			"stacks": s.bpf.Stacks,
-		},
-	}
-
-	err := python.LoadPerfObjects(&s.pyperfBpf, opts)
-	if err != nil {
-		return nil, fmt.Errorf("pyperf load %w", err)
-	}
-	pyperf, err := python.NewPerf(s.logger, s.options.Metrics.Python, s.pyperfBpf.PerfMaps.PyEvents, s.pyperfBpf.PerfMaps.PyPidConfig, s.pyperfBpf.PerfMaps.PySymbols)
-	if err != nil {
-		return nil, fmt.Errorf("pyperf create %w", err)
-	}
-	err = s.bpf.ProfileMaps.Progs.Update(uint32(0), s.pyperfBpf.PerfPrograms.PyperfCollect, ebpf.UpdateAny)
-	if err != nil {
-		return nil, fmt.Errorf("pyperf link %w", err)
-	}
-	_ = level.Info(s.logger).Log("msg", "pyperf loaded")
-	return pyperf, nil
+	s.setPidConfig(pid, typ, s.options.CollectUser, s.options.CollectKernel)
 }
 
 type procInfoLite struct {
@@ -847,19 +695,4 @@ func (s *stackBuilder) reset() {
 
 func (s *stackBuilder) append(sym string) {
 	s.stack = append(s.stack, sym)
-}
-
-func cStringFromI8Unsafe(tok []int8) string {
-	i := 0
-	for ; i < len(tok); i++ {
-		if tok[i] == 0 {
-			break
-		}
-	}
-
-	res := ""
-	sh := (*reflect.StringHeader)(unsafe.Pointer(&res))
-	sh.Data = uintptr(unsafe.Pointer(&tok[0]))
-	sh.Len = i
-	return res
 }
