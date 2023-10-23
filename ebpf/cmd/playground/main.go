@@ -33,8 +33,6 @@ import (
 	commonconfig "github.com/prometheus/common/config"
 )
 
-const sampleRate = 99 // times per second
-
 var configFile = flag.String("config", "", "config file path")
 
 var (
@@ -78,7 +76,7 @@ func main() {
 }
 
 func collectProfiles(profiles chan *pushv1.PushRequest) {
-	builders := pprof.NewProfileBuilders(sampleRate)
+	builders := pprof.NewProfileBuilders(int64(config.SampleRate))
 	err := session.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32) {
 		labelsHash, labels := target.Labels()
 		builder := builders.BuilderForTarget(labelsHash, labels)
