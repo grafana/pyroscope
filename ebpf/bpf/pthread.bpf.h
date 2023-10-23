@@ -1,6 +1,4 @@
-//
-// Created by korniltsev on 31/7/2566.
-//
+
 
 #ifndef PYROEBPF_PTHREAD_BPF_H
 #define PYROEBPF_PTHREAD_BPF_H
