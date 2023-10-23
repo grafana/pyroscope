@@ -159,6 +159,7 @@ func TestMusl(t *testing.T) {
 }
 
 func TestPython(t *testing.T) {
+	initSubmodule(t)
 	fs := []string{
 		testdataPath + "/python/3.7.12/lib/libpython3.7m.so.1.0",
 		testdataPath + "/python/3.9.15/lib/libpython3.9.so.1.0",
