@@ -3,6 +3,10 @@ package python
 import (
 	"bufio"
 	"bytes"
+	"os"
+	"os/exec"
+	"regexp"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -132,6 +136,7 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 const testdataPath = "../testdata/"
 
 func TestMusl(t *testing.T) {
+	initSubmodule(t)
 	testcases := []struct {
 		path    string
 		version int
@@ -153,111 +158,115 @@ func TestMusl(t *testing.T) {
 	}
 }
 
-//
-//func TestPython(t *testing.T) {
-//	fs := []string{
-//		"/home/korniltsev/.asdf/installs/python/3.7.12/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.15/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.0/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.0/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.2/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.9/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.10.6/lib/libpython3.10.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.0/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.17/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.12/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.9/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.15/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.11.0/lib/libpython3.11.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.7/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.4/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.15/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.9/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.11.3/lib/libpython3.11.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.3/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.4/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.5/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.7/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.11.2/lib/libpython3.11.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.2/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.15/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.17/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.14/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.4/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.4/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.10.4/lib/libpython3.10.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.10.3/lib/libpython3.10.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.10.10/lib/libpython3.10.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.13/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.10.12/lib/libpython3.10.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.6/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.7/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.11.1/lib/libpython3.11.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.10.1/lib/libpython3.10.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.6/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.8/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.10.8/lib/libpython3.10.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.14/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.11/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.5/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.13/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.10/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.17/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.9/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.14/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.12/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.10.5/lib/libpython3.10.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.10.7/lib/libpython3.10.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.8/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.13/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.10/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.5/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.16/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.12/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.10/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.10.11/lib/libpython3.10.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.2/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.1/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.10.9/lib/libpython3.10.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.10.2/lib/libpython3.10.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.16/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.13/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.8/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.14/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.3/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.3/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.1/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.1/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.6/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.0/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.5/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.1/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.11/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.8/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.2/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.7.16/lib/libpython3.7m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.7/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.11.4/lib/libpython3.11.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.9.11/lib/libpython3.9.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.10.0/lib/libpython3.10.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.6.6/lib/libpython3.6m.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.11/lib/libpython3.8.so.1.0",
-//		"/home/korniltsev/.asdf/installs/python/3.8.10/lib/libpython3.8.so.1.0",
-//	}
-//	for _, f := range fs {
-//		fd, err := os.Open(f)
-//		re := regexp.MustCompile("(\\d+)\\.(\\d+)\\.(\\d+)")
-//		m := re.FindStringSubmatch(f)
-//		require.NotNil(t, m)
-//		major, _ := strconv.Atoi(m[1])
-//		minor, _ := strconv.Atoi(m[2])
-//		patch, _ := strconv.Atoi(m[3])
-//
-//		require.NoError(t, err)
-//		version, err := GetPythonPatchVersion(fd, Version{major, minor, 0})
-//		require.NoError(t, err)
-//		fmt.Println(f)
-//		fmt.Println(version.Patch)
-//		require.Equal(t, version.Patch, patch)
-//	}
-//}
+func TestPython(t *testing.T) {
+	fs := []string{
+		testdataPath + "/python/3.7.12/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.9.15/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.8.0/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.7.0/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.8.2/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.8.9/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.10.6/lib/libpython3.10.so.1.0",
+		testdataPath + "/python/3.9.0/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.8.17/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.9.12/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.6.9/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.7.15/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.11.0/lib/libpython3.11.so.1.0",
+		testdataPath + "/python/3.6.7/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.7.4/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.8.15/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.7.9/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.11.3/lib/libpython3.11.so.1.0",
+		testdataPath + "/python/3.7.3/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.8.4/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.8.5/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.7.7/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.11.2/lib/libpython3.11.so.1.0",
+		testdataPath + "/python/3.9.2/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.6.15/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.7.17/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.7.14/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.9.4/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.6.4/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.10.4/lib/libpython3.10.so.1.0",
+		testdataPath + "/python/3.10.3/lib/libpython3.10.so.1.0",
+		testdataPath + "/python/3.10.10/lib/libpython3.10.so.1.0",
+		testdataPath + "/python/3.6.13/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.10.12/lib/libpython3.10.so.1.0",
+		testdataPath + "/python/3.9.6/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.9.7/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.11.1/lib/libpython3.11.so.1.0",
+		testdataPath + "/python/3.10.1/lib/libpython3.10.so.1.0",
+		testdataPath + "/python/3.8.6/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.9.8/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.10.8/lib/libpython3.10.so.1.0",
+		testdataPath + "/python/3.9.14/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.7.11/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.6.5/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.7.13/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.7.10/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.9.17/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.9.9/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.6.14/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.8.12/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.10.5/lib/libpython3.10.so.1.0",
+		testdataPath + "/python/3.10.7/lib/libpython3.10.so.1.0",
+		testdataPath + "/python/3.8.8/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.8.13/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.6.10/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.9.5/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.8.16/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.6.12/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.9.10/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.10.11/lib/libpython3.10.so.1.0",
+		testdataPath + "/python/3.7.2/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.7.1/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.10.9/lib/libpython3.10.so.1.0",
+		testdataPath + "/python/3.10.2/lib/libpython3.10.so.1.0",
+		testdataPath + "/python/3.9.16/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.9.13/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.6.8/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.8.14/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.8.3/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.6.3/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.9.1/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.6.1/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.7.6/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.6.0/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.7.5/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.8.1/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.6.11/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.7.8/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.6.2/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.7.16/lib/libpython3.7m.so.1.0",
+		testdataPath + "/python/3.8.7/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.11.4/lib/libpython3.11.so.1.0",
+		testdataPath + "/python/3.9.11/lib/libpython3.9.so.1.0",
+		testdataPath + "/python/3.10.0/lib/libpython3.10.so.1.0",
+		testdataPath + "/python/3.6.6/lib/libpython3.6m.so.1.0",
+		testdataPath + "/python/3.8.11/lib/libpython3.8.so.1.0",
+		testdataPath + "/python/3.8.10/lib/libpython3.8.so.1.0",
+	}
+	for _, f := range fs {
+		fd, err := os.Open(f)
+		re := regexp.MustCompile("(\\d+)\\.(\\d+)\\.(\\d+)")
+		m := re.FindStringSubmatch(f)
+		require.NotNil(t, m)
+		major, _ := strconv.Atoi(m[1])
+		minor, _ := strconv.Atoi(m[2])
+		patch, _ := strconv.Atoi(m[3])
+
+		require.NoError(t, err)
+		version, err := GetPythonPatchVersion(fd, Version{major, minor, 0})
+		require.NoError(t, err)
+		require.Equal(t, version.Patch, patch)
+	}
+}
+
+func initSubmodule(t *testing.T) {
+	cmd := exec.Command("git", "submodule", "update", "--init", "--recursive")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	require.NoError(t, cmd.Run())
+}
