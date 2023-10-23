@@ -83,4 +83,20 @@ int BPF_KPROBE(disassociate_ctty, int on_exit) {
     return 0;
 }
 
+// execve/execveat
+SEC("kprobe/exec")
+int BPF_KPROBE(exec, void *_) {
+    u32 pid = 0;
+    current_pid(&pid);
+    if (pid == 0) {
+        return 0;
+    }
+    struct pid_event event = {
+            .op  = OP_REQUEST_EXEC_PROCESS_INFO,
+            .pid = pid
+    };
+    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+    return 0;
+}
+
 char _license[] SEC("license") = "GPL";

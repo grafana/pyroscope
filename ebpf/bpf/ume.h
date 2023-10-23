@@ -20,7 +20,7 @@
 
 //#define BPF_DEBUG
 
-#ifdef BPF_DEBUG
+#if defined(BPF_DEBUG)
 #define bpf_dbg_printk(fmt, args...) bpf_printk(fmt, ##args)
 #else
 #define bpf_dbg_printk(fmt, args...)

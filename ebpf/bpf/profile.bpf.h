@@ -25,6 +25,7 @@ struct pid_config {
 
 #define OP_REQUEST_UNKNOWN_PROCESS_INFO 1
 #define OP_PID_DEAD 2
+#define OP_REQUEST_EXEC_PROCESS_INFO 3
 
 struct pid_event {
     uint32_t op;

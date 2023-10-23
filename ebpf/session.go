@@ -167,14 +167,15 @@ func (s *session) Start() error {
 
 	s.eventsReader = eventsReader
 	pidInfoRequests := make(chan uint32, 1024)
+	pidExecRequests := make(chan uint32, 1024)
 	deadPIDsEvents := make(chan uint32, 1024)
 	s.pidInfoRequests = pidInfoRequests
 	s.deadPIDEvents = deadPIDsEvents
-	s.wg.Add(3)
+	s.wg.Add(4)
 	s.started = true
 	go func() {
 		defer s.wg.Done()
-		s.readEvents(eventsReader, pidInfoRequests, deadPIDsEvents)
+		s.readEvents(eventsReader, pidInfoRequests, pidExecRequests, deadPIDsEvents)
 	}()
 	go func() {
 		defer s.wg.Done()
@@ -183,6 +184,10 @@ func (s *session) Start() error {
 	go func() {
 		defer s.wg.Done()
 		s.processDeadPIDsEvents(deadPIDsEvents)
+	}()
+	go func() {
+		defer s.wg.Done()
+		s.processPIDExecRequests(pidExecRequests)
 	}()
 	return nil
 }
@@ -490,6 +495,7 @@ func (s *session) WalkStack(sb *stackBuilder, stack []byte, resolver symtab.Symb
 
 func (s *session) readEvents(events *perf.Reader,
 	pidConfigRequest chan<- uint32,
+	pidExecRequest chan<- uint32,
 	deadPIDsEvents chan<- uint32) {
 	defer events.Close()
 	for {
@@ -528,6 +534,12 @@ func (s *session) readEvents(events *perf.Reader,
 				case deadPIDsEvents <- e.Pid:
 				default:
 					_ = level.Error(s.logger).Log("msg", "dead pid info queue full, dropping event", "pid", e.Pid)
+				}
+			} else if e.Op == uint32(pyrobpf.PidOpRequestExecProcessInfo) {
+				select {
+				case pidExecRequest <- e.Pid:
+				default:
+					_ = level.Error(s.logger).Log("msg", "pid exec request queue full, dropping event", "pid", e.Pid)
 				}
 			} else {
 				_ = level.Error(s.logger).Log("msg", "unknown perf event record", "op", e.Op, "pid", e.Pid)
@@ -639,12 +651,47 @@ func (s *session) processDeadPIDsEvents(dead chan uint32) {
 	}
 }
 
+func (s *session) processPIDExecRequests(requests chan uint32) {
+	for pid := range requests {
+		target := s.targetFinder.FindTarget(pid)
+		_ = level.Debug(s.logger).Log("msg", "got pid exec request", "pid", pid)
+		func() {
+			s.mutex.Lock()
+			defer s.mutex.Unlock()
+
+			_, alreadyDead := s.pids.dead[pid]
+			if alreadyDead {
+				_ = level.Debug(s.logger).Log("msg", "pid exec request for dead pid", "pid", pid)
+				return
+			}
+
+			if target == nil {
+				s.saveUnknownPIDLocked(pid)
+			} else {
+				s.startProfilingLocked(pid, target)
+			}
+		}()
+	}
+}
+
 func (s *session) linkKProbes() error {
-	hooks := []string{"disassociate_ctty"}
-	for _, hook := range hooks {
-		kp, err := link.Kprobe(hook, s.bpf.DisassociateCtty, nil)
+	type hook struct {
+		kprobe   string
+		prog     *ebpf.Program
+		required bool
+	}
+	var hooks = []hook{
+		{kprobe: "disassociate_ctty", prog: s.bpf.DisassociateCtty, required: true},
+		{kprobe: "__x64_sys_execve", prog: s.bpf.Exec, required: false},
+		{kprobe: "__x64_sys_execveat", prog: s.bpf.Exec, required: false},
+	}
+	for _, it := range hooks {
+		kp, err := link.Kprobe(it.kprobe, it.prog, nil)
 		if err != nil {
-			return fmt.Errorf("link kprobe %s: %w", hook, err)
+			if it.required {
+				return fmt.Errorf("link kprobe %s: %w", it.kprobe, err)
+			}
+			_ = level.Error(s.logger).Log("msg", "link kprobe", "kprobe", it.kprobe, "err", err)
 		}
 		s.kprobes = append(s.kprobes, kp)
 	}

@@ -15,10 +15,13 @@ var (
 )
 
 //#define OP_REQUEST_UNKNOWN_PROCESS_INFO 1
+//#define OP_PID_DEAD 2
+//#define OP_REQUEST_EXEC_PROCESS_INFO 3
 
 type PidOp uint32
 
 var (
 	PidOpRequestUnknownProcessInfo PidOp = 1
 	PidOpDead                      PidOp = 2
+	PidOpRequestExecProcessInfo    PidOp = 3
 )

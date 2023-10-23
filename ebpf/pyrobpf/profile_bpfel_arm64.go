@@ -74,6 +74,7 @@ type ProfileSpecs struct {
 type ProfileProgramSpecs struct {
 	DisassociateCtty *ebpf.ProgramSpec `ebpf:"disassociate_ctty"`
 	DoPerfEvent      *ebpf.ProgramSpec `ebpf:"do_perf_event"`
+	Exec             *ebpf.ProgramSpec `ebpf:"exec"`
 }
 
 // ProfileMapSpecs contains maps before they are loaded into the kernel.
@@ -129,12 +130,14 @@ func (m *ProfileMaps) Close() error {
 type ProfilePrograms struct {
 	DisassociateCtty *ebpf.Program `ebpf:"disassociate_ctty"`
 	DoPerfEvent      *ebpf.Program `ebpf:"do_perf_event"`
+	Exec             *ebpf.Program `ebpf:"exec"`
 }
 
 func (p *ProfilePrograms) Close() error {
 	return _ProfileClose(
 		p.DisassociateCtty,
 		p.DoPerfEvent,
+		p.Exec,
 	)
 }
 
