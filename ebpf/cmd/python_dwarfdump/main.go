@@ -1,4 +1,4 @@
-// based on https://sourcegraph.com/github.com/grafana/ebpf-autoinstrument/-/blob/pkg/goexec/structmembers.go
+// based on https://github.com/grafana/beyla/blob/6b46732da73f2f2cb84e41efdc74789509a7fa2b/pkg/internal/goexec/structmembers.go
 package main
 
 import (
