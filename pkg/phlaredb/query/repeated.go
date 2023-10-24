@@ -358,16 +358,14 @@ func NewRowIterator[T any](
 	rowGroups []parquet.RowGroup,
 	columns ...int,
 ) iter.Iterator[*MultiRepeatedRow[T]] {
-	// FIXME(kolesnikovae): iter.Tee(iter.Iterator[T], n, bufSize) []iter.Iterator[T]
-	r, _ := iter.CloneN(rows, 2)
+	rows, rowNumbers := iter.Tee(rows)
 	return &rowIterator[T]{
-		columns: NewMultiColumnIterator(WrapWithRowNumber(r[0]), 1<<10, rowGroups, columns...),
-		rows:    r[1],
+		columns: NewMultiColumnIterator(WrapWithRowNumber(rowNumbers), 1<<10, rowGroups, columns...),
+		rows:    rows,
 	}
 }
 
 func (x *rowIterator[T]) Next() bool {
-	// TODO: Do not move rows, they owned by columns.
 	if !x.rows.Next() {
 		return false
 	}
@@ -428,11 +426,7 @@ func NewMultiColumnIterator(
 		it: make([]iter.Iterator[[]parquet.Value], len(columns)),
 		v:  make([][]parquet.Value, len(columns)),
 	}
-	// FIXME(kolesnikovae): iter.Tee(iter.Iterator[T], n, bufSize) []iter.Iterator[T]
-	r, err := iter.CloneN(rows, len(columns))
-	if err != nil {
-		return iter.NewErrIterator[[][]parquet.Value](err)
-	}
+	r := iter.TeeN(rows, len(columns))
 	for i, column := range columns {
 		m.it[i] = iter.NewAsyncBatchIterator[[]parquet.Value](
 			NewRepeatedColumnIterator(r[i], rowGroups, column),

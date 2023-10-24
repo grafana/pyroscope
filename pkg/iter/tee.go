@@ -7,10 +7,11 @@ import (
 
 const defaultTeeBufferSize = 512
 
-// Tee returns n independent iterators from a single iterable.
+// Tee returns 2 independent iterators from a single iterable.
 //
 // The original iterator should not be used anywhere else, except that it's
-// caller responsibility to close it and handle the error.
+// caller responsibility to close it and handle the error, after all the
+// tee iterators finished.
 //
 // Tee buffers source objects, and frees them eventually: when an object
 // from the source iterator is consumed, the ownership is transferred to Tee.
@@ -20,13 +21,22 @@ const defaultTeeBufferSize = 512
 // Tee never blocks the leader iterator, instead, it grows the internal buffer:
 // if any of the returned iterators are abandoned, all source iterator objects
 // will be held in the buffer.
-func Tee[T any](iter Iterator[T], n int) []Iterator[T] {
+func Tee[T any](iter Iterator[T]) (a, b Iterator[T]) {
+	s := newTee[T](iter, 2, defaultTeeBufferSize)
+	return s[0], s[1]
+}
+
+func TeeN[T any](iter Iterator[T], n int) []Iterator[T] {
 	return newTee[T](iter, n, defaultTeeBufferSize)
 }
 
+// NOTE(kolesnikovae): The implementation design aims simplicity.
+// A more efficient tee can be implemented on top of a linked
+// list of small arrays.
+
 func newTee[T any](iter Iterator[T], n, bufSize int) []Iterator[T] {
-	if n < 2 {
-		return []Iterator[T]{iter}
+	if n < 0 {
+		return nil
 	}
 	s := &sharedIterator[T]{
 		s: int64(bufSize),
@@ -56,7 +66,7 @@ type sharedIterator[T any] struct {
 
 func (s *sharedIterator[T]) next(n int) bool {
 	s.m.RLock()
-	if p := s.t[n]; p < s.w {
+	if s.t[n] < s.w {
 		s.t[n]++
 		s.m.RUnlock()
 		return true
@@ -64,7 +74,7 @@ func (s *sharedIterator[T]) next(n int) bool {
 	s.m.RUnlock()
 	s.m.Lock()
 	defer s.m.Unlock()
-	if p := s.t[n]; p < s.w {
+	if s.t[n] < s.w {
 		s.t[n]++
 		return true
 	}
@@ -126,7 +136,7 @@ func (s *sharedIterator[T]) clean() {
 
 func (s *sharedIterator[T]) at(n int) T {
 	s.m.RLock()
-	v := s.v[s.t[n]]
+	v := s.v[s.t[n]-1]
 	s.m.RUnlock()
 	return v
 }
