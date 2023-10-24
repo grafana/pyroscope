@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
@@ -15,6 +16,7 @@ import (
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	parquetobj "github.com/grafana/pyroscope/pkg/objstore/parquet"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -87,14 +89,18 @@ func (r *symbolsResolverV1) Partition(_ context.Context, _ uint64) (symdb.Partit
 type stacktraceResolverV1 struct{ r *symbolsResolverV1 }
 
 func (r stacktraceResolverV1) ResolveStacktraceLocations(ctx context.Context, dst symdb.StacktraceInserter, stacktraces []uint32) error {
-	it := repeatedColumnIter(ctx, r.r.stacktraces.file, "LocationIDs.list.element", iter.NewSliceIterator(stacktraces))
-	defer it.Close()
+	column, err := schemav1.ResolveColumnByPath(r.r.stacktraces.file.Schema(), strings.Split("LocationIDs.list.element", "."))
+	if err != nil {
+		return err
+	}
+	it := query.NewRepeatedRowIterator(iter.NewSliceIterator(stacktraces), r.r.stacktraces.file.RowGroups(), column.ColumnIndex)
+	defer runutil.CloseWithErrCapture(&err, it, "failed to close stack trace stream")
 	t := make([]int32, 0, 64)
 	for it.Next() {
 		s := it.At()
 		t = grow(t, len(s.Values))
 		for i, v := range s.Values {
-			t[i] = v.Int32()
+			t[i] = v[0].Int32()
 		}
 		dst.InsertStacktrace(s.Row, t)
 	}

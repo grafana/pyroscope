@@ -3,6 +3,7 @@ package phlaredb
 import (
 	"context"
 	"sort"
+	"strings"
 
 	"github.com/google/pprof/profile"
 	"github.com/grafana/dskit/runutil"
@@ -44,7 +45,6 @@ func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[
 func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
-
 	m := make(seriesByLabels)
 	columnName := "TotalValue"
 	if b.meta.Version == 1 {
@@ -147,20 +147,23 @@ func (m seriesByLabels) normalize() []*typesv1.Series {
 	return result
 }
 
-func mergeByLabels(ctx context.Context, profileSource Source, columnName string, rows iter.Iterator[Profile], m seriesByLabels, by ...string) error {
-	it := repeatedColumnIter(ctx, profileSource, columnName, rows)
-
-	defer it.Close()
+func mergeByLabels(ctx context.Context, profileSource Source, columnName string, rows iter.Iterator[Profile], m seriesByLabels, by ...string) (err error) {
+	column, err := v1.ResolveColumnByPath(profileSource.Schema(), strings.Split(columnName, "."))
+	if err != nil {
+		return err
+	}
+	profiles := query.NewRepeatedRowIterator(rows, profileSource.RowGroups(), column.ColumnIndex)
+	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
 	labelsByFingerprint := map[model.Fingerprint]string{}
 	labelBuf := make([]byte, 0, 1024)
 
-	for it.Next() {
-		values := it.At()
+	for profiles.Next() {
+		values := profiles.At()
 		p := values.Row
 		var total int64
 		for _, e := range values.Values {
-			total += e.Int64()
+			total += e[0].Int64()
 		}
 		labelsByString, ok := labelsByFingerprint[p.Fingerprint()]
 		if !ok {
@@ -186,5 +189,5 @@ func mergeByLabels(ctx context.Context, profileSource Source, columnName string,
 			Value:     float64(total),
 		})
 	}
-	return it.Err()
+	return profiles.Err()
 }
