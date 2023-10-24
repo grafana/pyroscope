@@ -466,7 +466,7 @@ func newProfileRowIterator(s BlockReader) (*profileRowIterator, error) {
 	// todo close once https://github.com/grafana/pyroscope/issues/2172 is done.
 	reader := s.Profiles()
 	return &profileRowIterator{
-		profiles:         phlareparquet.NewBufferedRowReaderIterator(reader, 1024),
+		profiles:         phlareparquet.NewBufferedRowReaderIterator(reader, 32),
 		blockReader:      s,
 		closer:           reader,
 		index:            s.Index(),
