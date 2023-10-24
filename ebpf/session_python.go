@@ -136,9 +136,9 @@ func (s *session) startPythonProfiling(pid uint32, target *sd.Target, pi procInf
 		alive := processAlive(pid)
 		if alive && lastAttempt {
 			s.options.Metrics.Python.PidDataError.WithLabelValues(svc).Inc()
-			_ = level.Error(s.logger).Log("err", err, "msg", "pyperf get python process data failed", "pid", pid)
+			_ = level.Error(s.logger).Log("err", err, "msg", "pyperf get python process data failed", "pid", pid, "target", target.String())
 		} else {
-			_ = level.Debug(s.logger).Log("err", err, "msg", "pyperf get python process data failed", "pid", pid)
+			_ = level.Debug(s.logger).Log("err", err, "msg", "pyperf get python process data failed", "pid", pid, "target", target.String())
 		}
 		pi.typ = pyrobpf.ProfilingTypeError
 		s.setPidConfig(pid, pi, false, false)
@@ -153,7 +153,7 @@ func (s *session) startPythonProfiling(pid uint32, target *sd.Target, pi procInf
 		return false
 	}
 	_ = level.Info(s.logger).Log("msg", "pyperf process profiling init success", "pid", pid,
-		"py_data", fmt.Sprintf("%+v", pyData))
+		"py_data", fmt.Sprintf("%+v", pyData), "target", target.String())
 	s.setPidConfig(pid, pi, s.options.CollectUser, s.options.CollectKernel)
 	return false
 }
