@@ -28,7 +28,7 @@ Usage of ./pyroscope:
   -compactor.compaction-concurrency int
     	Max number of concurrent compactions running. (default 1)
   -compactor.compaction-interval duration
-    	The frequency at which the compaction runs (default 1h0m0s)
+    	The frequency at which the compaction runs (default 30m0s)
   -compactor.compaction-jobs-order string
     	The sorting to use when deciding which compaction jobs should run first for a given tenant. Supported values are: smallest-range-oldest-blocks-first, newest-blocks-first. (default "smallest-range-oldest-blocks-first")
   -compactor.compaction-retries int
@@ -50,7 +50,7 @@ Usage of ./pyroscope:
   -compactor.max-compaction-time duration
     	Max time for starting compactions for a single tenant. After this time no new compactions for the tenant are started before next compaction cycle. This can help in multi-tenant environments to avoid single tenant using all compaction time, but also in single-tenant environments to force new discovery of blocks more often. 0 = disabled. (default 1h0m0s)
   -compactor.max-opening-blocks-concurrency int
-    	Number of goroutines opening blocks before compaction. (default 4)
+    	Number of goroutines opening blocks before compaction. (default 16)
   -compactor.meta-sync-concurrency int
     	Number of Go routines to use when syncing block meta files from the long term storage. (default 20)
   -compactor.no-blocks-file-cleanup-enabled
