@@ -262,7 +262,7 @@ func Test_RepeatedIterator(t *testing.T) {
 					groups = append(groups, buffer)
 				}
 				actual := readPageIterator(t,
-					NewRowIterator(iter.NewSliceIterator(tc.rows), groups, 0))
+					NewRepeatedRowIterator(iter.NewSliceIterator(tc.rows), groups, 0))
 				if diff := cmp.Diff(tc.expected, actual, int64ParquetComparer()); diff != "" {
 					t.Errorf("result mismatch (-want +got):\n%s", diff)
 				}
@@ -371,7 +371,7 @@ func Test_MultiRepeatedPageIterator(t *testing.T) {
 				groups = append(groups, buffer)
 			}
 			actual := readMultiPageIterator(t,
-				NewRowIterator(iter.NewSliceIterator(tc.rows), groups, 0, 1),
+				NewRepeatedRowIterator(iter.NewSliceIterator(tc.rows), groups, 0, 1),
 			)
 			if diff := cmp.Diff(tc.expected, actual, int64ParquetComparer()); diff != "" {
 				t.Errorf("result mismatch (-want +got):\n%s", diff)

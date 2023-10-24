@@ -348,42 +348,43 @@ func (it *multiRepeatedPageIterator[T]) Close() error {
 	return errs.Err()
 }
 
-type rowIterator[T any] struct {
+type repeatedRowIterator[T any] struct {
 	columns iter.Iterator[[][]parquet.Value]
 	rows    iter.Iterator[T]
 }
 
-func NewRowIterator[T any](
+func NewRepeatedRowIterator[T any](
 	rows iter.Iterator[T],
 	rowGroups []parquet.RowGroup,
 	columns ...int,
 ) iter.Iterator[*MultiRepeatedRow[T]] {
 	rows, rowNumbers := iter.Tee(rows)
-	return &rowIterator[T]{
-		columns: NewMultiColumnIterator(WrapWithRowNumber(rowNumbers), 1<<10, rowGroups, columns...),
+	return &repeatedRowIterator[T]{
+		// Batch size is chosen empirically.
+		columns: NewMultiColumnIterator(WrapWithRowNumber(rowNumbers), 128, rowGroups, columns...),
 		rows:    rows,
 	}
 }
 
-func (x *rowIterator[T]) Next() bool {
+func (x *repeatedRowIterator[T]) Next() bool {
 	if !x.rows.Next() {
 		return false
 	}
 	return x.columns.Next()
 }
 
-func (x *rowIterator[T]) At() *MultiRepeatedRow[T] {
+func (x *repeatedRowIterator[T]) At() *MultiRepeatedRow[T] {
 	return &MultiRepeatedRow[T]{
 		Values: x.columns.At(),
 		Row:    x.rows.At(),
 	}
 }
 
-func (x *rowIterator[T]) Err() error {
+func (x *repeatedRowIterator[T]) Err() error {
 	return x.columns.Err()
 }
 
-func (x *rowIterator[T]) Close() error {
+func (x *repeatedRowIterator[T]) Close() error {
 	return x.columns.Close()
 }
 
@@ -426,7 +427,11 @@ func NewMultiColumnIterator(
 		it: make([]iter.Iterator[[]parquet.Value], len(columns)),
 		v:  make([][]parquet.Value, len(columns)),
 	}
-	r := iter.TeeN(rows, len(columns))
+	// FIXME(kolesnikovae): r := iter.TeeN(rows, len(columns))
+	r, err := iter.CloneN(rows, len(columns))
+	if err != nil {
+		return iter.NewErrIterator[[][]parquet.Value](err)
+	}
 	for i, column := range columns {
 		m.it[i] = iter.NewAsyncBatchIterator[[]parquet.Value](
 			NewRepeatedColumnIterator(r[i], rowGroups, column),
