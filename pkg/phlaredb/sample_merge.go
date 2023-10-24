@@ -79,7 +79,7 @@ func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Ite
 	if err = columns.Resolve(profileSource.Schema()); err != nil {
 		return err
 	}
-	profiles := query.NewRepeatedRowIterator(rows, profileSource.RowGroups(),
+	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(),
 		columns.StacktraceID.ColumnIndex,
 		columns.Value.ColumnIndex,
 	)
@@ -106,7 +106,7 @@ func mergeBySpans(ctx context.Context, profileSource Source, rows iter.Iterator[
 	if !columns.HasSpanID() {
 		return nil
 	}
-	profiles := query.NewRepeatedRowIterator(rows, profileSource.RowGroups(),
+	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(),
 		columns.StacktraceID.ColumnIndex,
 		columns.Value.ColumnIndex,
 		columns.SpanID.ColumnIndex,
@@ -152,7 +152,7 @@ func mergeByLabels(ctx context.Context, profileSource Source, columnName string,
 	if err != nil {
 		return err
 	}
-	profiles := query.NewRepeatedRowIterator(rows, profileSource.RowGroups(), column.ColumnIndex)
+	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(), column.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
 	labelsByFingerprint := map[model.Fingerprint]string{}

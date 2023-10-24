@@ -93,7 +93,7 @@ func (r stacktraceResolverV1) ResolveStacktraceLocations(ctx context.Context, ds
 	if err != nil {
 		return err
 	}
-	it := query.NewRepeatedRowIterator(iter.NewSliceIterator(stacktraces), r.r.stacktraces.file.RowGroups(), column.ColumnIndex)
+	it := query.NewRepeatedRowIterator(ctx, iter.NewSliceIterator(stacktraces), r.r.stacktraces.file.RowGroups(), column.ColumnIndex)
 	defer runutil.CloseWithErrCapture(&err, it, "failed to close stack trace stream")
 	t := make([]int32, 0, 64)
 	for it.Next() {

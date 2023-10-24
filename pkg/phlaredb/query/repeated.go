@@ -1,11 +1,15 @@
 package query
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/grafana/dskit/multierror"
+	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/parquet-go/parquet-go"
 
 	"github.com/grafana/pyroscope/pkg/iter"
@@ -21,10 +25,27 @@ type repeatedRowIterator[T any] struct {
 	rows    iter.Iterator[T]
 }
 
-// Batch size chosen empirically.
-const defaultRepeatedRowIteratorBatchSize = 128
+const (
+	// Batch size specifies how many rows to be read
+	// from a column at once. Note that the batched rows
+	// are buffered in-memory, but not reference pages
+	// they were read from.
+	defaultRepeatedRowIteratorBatchSize = 128
+
+	// The value specifies how many individual values to be
+	// read (decoded) from the page.
+	//
+	// Too big read size does not make much sense: despite
+	// the fact that this does not impact read amplification
+	// as the page is already fully read, decoding of the
+	// values is not free.
+	//
+	// How many values we expect per a row, the upper boundary?
+	repeatedRowColumnIteratorReadSize = 2 << 10
+)
 
 func NewRepeatedRowIterator[T any](
+	ctx context.Context,
 	rows iter.Iterator[T],
 	rowGroups []parquet.RowGroup,
 	columns ...int,
@@ -32,7 +53,7 @@ func NewRepeatedRowIterator[T any](
 	rows, rowNumbers := iter.Tee(rows)
 	return &repeatedRowIterator[T]{
 		rows: rows,
-		columns: NewMultiColumnIterator(
+		columns: NewMultiColumnIterator(ctx,
 			WrapWithRowNumber(rowNumbers),
 			defaultRepeatedRowIteratorBatchSize,
 			rowGroups, columns...),
@@ -91,6 +112,7 @@ type multiColumnIterator struct {
 }
 
 func NewMultiColumnIterator(
+	ctx context.Context,
 	rows iter.Iterator[int64],
 	batchSize int,
 	rowGroups []parquet.RowGroup,
@@ -107,7 +129,7 @@ func NewMultiColumnIterator(
 	}
 	for i, column := range columns {
 		m.it[i] = iter.NewAsyncBatchIterator[[]parquet.Value](
-			NewRepeatedColumnIterator(r[i], rowGroups, column),
+			NewRepeatedRowColumnIterator(ctx, r[i], rowGroups, column),
 			batchSize,
 			CloneParquetValues,
 			ReleaseParquetValues,
@@ -146,7 +168,10 @@ func (m *multiColumnIterator) Close() error {
 
 var ErrSeekOutOfRange = fmt.Errorf("bug: south row is out of range")
 
-type repeatedColumnIterator struct {
+type repeatedRowColumnIterator struct {
+	ctx  context.Context
+	span opentracing.Span
+
 	rows     iter.Iterator[int64]
 	rgs      []parquet.RowGroup
 	column   int
@@ -164,25 +189,19 @@ type repeatedColumnIterator struct {
 	err  error
 }
 
-// Too big read size does not make much sense: despite
-// the fact that this does not impact read amplification
-// as the page is already fully read, decoding of the
-// values is not free.
-//
-// How many values we expect per a row, the upper boundary?
-const repeatedColumnIteratorReadSize = 2 << 10
-
-func NewRepeatedColumnIterator(rows iter.Iterator[int64], rgs []parquet.RowGroup, column int) iter.Iterator[[]parquet.Value] {
-	return &repeatedColumnIterator{
+func NewRepeatedRowColumnIterator(ctx context.Context, rows iter.Iterator[int64], rgs []parquet.RowGroup, column int) iter.Iterator[[]parquet.Value] {
+	r := repeatedRowColumnIterator{
 		rows:     rows,
 		rgs:      rgs,
 		column:   column,
 		vit:      getRepeatedValuePageIteratorFromPool(),
-		readSize: repeatedColumnIteratorReadSize,
+		readSize: repeatedRowColumnIteratorReadSize,
 	}
+	r.span, r.ctx = opentracing.StartSpanFromContext(ctx, "RepeatedRowColumnIterator")
+	return &r
 }
 
-func (x *repeatedColumnIterator) Next() bool {
+func (x *repeatedRowColumnIterator) Next() bool {
 	if !x.rows.Next() || x.err != nil {
 		return false
 	}
@@ -214,7 +233,7 @@ func (x *repeatedColumnIterator) Next() bool {
 	return true
 }
 
-func (x *repeatedColumnIterator) seekRowGroup(rn int64) bool {
+func (x *repeatedRowColumnIterator) seekRowGroup(rn int64) bool {
 	for i, rg := range x.rgs {
 		x.minRGRowNum = x.maxRGRowNum
 		x.maxRGRowNum += rg.NumRows()
@@ -227,7 +246,7 @@ func (x *repeatedColumnIterator) seekRowGroup(rn int64) bool {
 	return false
 }
 
-func (x *repeatedColumnIterator) openChunk(rg parquet.RowGroup) bool {
+func (x *repeatedRowColumnIterator) openChunk(rg parquet.RowGroup) bool {
 	x.page = nil
 	x.vit.reset(nil, 0)
 	if x.pages != nil {
@@ -239,12 +258,14 @@ func (x *repeatedColumnIterator) openChunk(rg parquet.RowGroup) bool {
 	return true
 }
 
-func (x *repeatedColumnIterator) readPage(rn int64) bool {
+func (x *repeatedRowColumnIterator) readPage(rn int64) bool {
 	if x.err = x.pages.SeekToRow(rn); x.err != nil {
 		return false
 	}
+	readPageStart := time.Now()
 	if x.page, x.err = x.pages.ReadPage(); x.err != nil {
 		if x.err != io.EOF {
+			x.span.LogFields(otlog.Error(x.err))
 			return false
 		}
 		x.err = nil
@@ -260,14 +281,25 @@ func (x *repeatedColumnIterator) readPage(rn int64) bool {
 	// we should call it once per page.
 	x.maxPageRowNum = rn + x.page.NumRows()
 	x.vit.reset(x.page, x.readSize)
+	pageReadDurationMs := time.Since(readPageStart).Milliseconds()
+	x.span.LogFields(
+		otlog.String("msg", "Page read"),
+		otlog.Int64("min_rg_row", x.minRGRowNum),
+		otlog.Int64("max_rg_row", x.maxRGRowNum),
+		otlog.Int64("seek_row", rn),
+		otlog.Int64("page_read_ms", pageReadDurationMs),
+		otlog.Int64("page_rows_left", x.maxPageRowNum),
+	)
 	return true
 }
 
-func (x *repeatedColumnIterator) At() []parquet.Value { return x.vit.At() }
-func (x *repeatedColumnIterator) Err() error          { return x.err }
-func (x *repeatedColumnIterator) Close() error {
+func (x *repeatedRowColumnIterator) At() []parquet.Value { return x.vit.At() }
+func (x *repeatedRowColumnIterator) Err() error          { return x.err }
+func (x *repeatedRowColumnIterator) Close() error {
 	putRepeatedValuePageIteratorToPool(x.vit)
-	return x.pages.Close()
+	err := x.pages.Close()
+	x.span.Finish()
+	return err
 }
 
 var repeatedValuePageIteratorPool = sync.Pool{New: func() any { return new(repeatedValuePageIterator) }}

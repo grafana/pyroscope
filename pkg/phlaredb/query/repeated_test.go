@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -262,7 +263,8 @@ func Test_RepeatedIterator(t *testing.T) {
 					groups = append(groups, buffer)
 				}
 				actual := readRepeatedIterator(t,
-					NewRepeatedRowIterator(iter.NewSliceIterator(tc.rows), groups, 0))
+					NewRepeatedRowIterator(context.Background(),
+						iter.NewSliceIterator(tc.rows), groups, 0))
 				if diff := cmp.Diff(tc.expected, actual, int64ParquetComparer()); diff != "" {
 					t.Errorf("result mismatch (-want +got):\n%s", diff)
 				}
@@ -371,7 +373,8 @@ func Test_MultiRepeatedPageIterator_MultipleColumns(t *testing.T) {
 				groups = append(groups, buffer)
 			}
 			actual := readRepeatedIterator(t,
-				NewRepeatedRowIterator(iter.NewSliceIterator(tc.rows), groups, 0, 1),
+				NewRepeatedRowIterator(context.Background(),
+					iter.NewSliceIterator(tc.rows), groups, 0, 1),
 			)
 			if diff := cmp.Diff(tc.expected, actual, int64ParquetComparer()); diff != "" {
 				t.Errorf("result mismatch (-want +got):\n%s", diff)
