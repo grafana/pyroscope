@@ -14,5 +14,7 @@
     // Add the mixin with support for multiple cluster
     multi_cluster: true,
 
+    // Regex used to filter proposed datasources
+    datasource_regex: '',
   },
 }
