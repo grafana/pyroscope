@@ -3,6 +3,7 @@ package symtab
 import (
 	"testing"
 
+	"github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/grafana/pyroscope/ebpf/symtab/elf"
 	"github.com/grafana/pyroscope/ebpf/util"
 
@@ -15,6 +16,7 @@ func TestElf(t *testing.T) {
 	tab := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, ".", "elf/testdata/elfs/elf",
 		ElfTableOptions{
 			ElfCache: elfCache,
+			Metrics:  metrics.NewSymtabMetrics(nil),
 		})
 
 	syms := []struct {
@@ -51,6 +53,7 @@ func TestGoTableFallbackFiltering(t *testing.T) {
 			ElfTableOptions{
 				ElfCache:      elfCache,
 				SymbolOptions: &SymbolOptions{GoTableFallback: true},
+				Metrics:       metrics.NewSymtabMetrics(nil),
 			})
 		tab.load()
 		require.NoError(t, tab.err)
@@ -89,6 +92,7 @@ func TestGoTableFallbackDisabled(t *testing.T) {
 			ElfTableOptions{
 				ElfCache:      elfCache,
 				SymbolOptions: &SymbolOptions{GoTableFallback: false},
+				Metrics:       metrics.NewSymtabMetrics(nil),
 			})
 		tab.load()
 		require.NoError(t, tab.err)

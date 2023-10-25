@@ -328,7 +328,7 @@ store_gateway:
 
         # Override the default cipher suite list (separated by commas). Allowed
         # values:
-        #
+        # 
         # Secure Ciphers:
         # - TLS_RSA_WITH_AES_128_CBC_SHA
         # - TLS_RSA_WITH_AES_256_CBC_SHA
@@ -347,7 +347,7 @@ store_gateway:
         # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
         # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
         # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-        #
+        # 
         # Insecure Ciphers:
         # - TLS_RSA_WITH_RC4_128_SHA
         # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -480,7 +480,7 @@ store_gateway:
     # are usually many of them (depending on number of ingesters) and they are
     # not yet compacted. Negative values or 0 disable the filter.
     # CLI flag: -blocks-storage.bucket-store.ignore-blocks-within
-    [ignore_blocks_within: <duration> | default = 10h]
+    [ignore_blocks_within: <duration> | default = 3h]
 
     # Number of Go routines to use when syncing block meta files from object
     # storage per tenant.
@@ -493,7 +493,7 @@ store_gateway:
     # store can still serve blocks that are meant to be deleted but do not have
     # a replacement yet.
     # CLI flag: -blocks-storage.bucket-store.ignore-deletion-marks-delay
-    [ignore_deletion_mark_delay: <duration> | default = 1h]
+    [ignore_deletion_mark_delay: <duration> | default = 30m]
 
 # The memberlist block configures the Gossip memberlist.
 [memberlist: <memberlist>]
@@ -505,7 +505,7 @@ pyroscopedb:
 
   # Upper limit to the duration of a Pyroscope block.
   # CLI flag: -pyroscopedb.max-block-duration
-  [max_block_duration: <duration> | default = 3h]
+  [max_block_duration: <duration> | default = 1h]
 
   # How big should a single row group be uncompressed
   # CLI flag: -pyroscopedb.row-group-target-size
@@ -529,7 +529,7 @@ runtime_config:
 compactor:
   # List of compaction time ranges.
   # CLI flag: -compactor.block-ranges
-  [block_ranges: <list of durations> | default = 4h0m0s,8h0m0s]
+  [block_ranges: <list of durations> | default = 1h0m0s,2h0m0s,8h0m0s]
 
   # Number of Go routines to use when downloading blocks for compaction and
   # uploading resulting blocks.
@@ -544,11 +544,11 @@ compactor:
   # Directory to temporarily store blocks during compaction. This directory is
   # not required to be persisted between restarts.
   # CLI flag: -compactor.data-dir
-  [data_dir: <string> | default = "/data"]
+  [data_dir: <string> | default = "./data-compactor"]
 
   # The frequency at which the compaction runs
   # CLI flag: -compactor.compaction-interval
-  [compaction_interval: <duration> | default = 1h]
+  [compaction_interval: <duration> | default = 30m]
 
   # How many times to retry a failed compaction within a single compaction run.
   # CLI flag: -compactor.compaction-retries
@@ -583,10 +583,7 @@ compactor:
   # CLI flag: -compactor.deletion-delay
   [deletion_delay: <duration> | default = 12h]
 
-  # For tenants marked for deletion, this is time between deleting of last
-  # block, and doing final cleanup (marker files, debug files) of the tenant.
-  # CLI flag: -compactor.tenant-cleanup-delay
-  [tenant_cleanup_delay: <duration> | default = 6h]
+  [tenant_cleanup_delay: <duration> | default = ]
 
   # Max time for starting compactions for a single tenant. After this time no
   # new compactions for the tenant are started before next compaction cycle.
@@ -603,7 +600,7 @@ compactor:
 
   # Number of goroutines opening blocks before compaction.
   # CLI flag: -compactor.max-opening-blocks-concurrency
-  [max_opening_blocks_concurrency: <int> | default = 1]
+  [max_opening_blocks_concurrency: <int> | default = 16]
 
   # Comma separated list of tenants that can be compacted. If specified, only
   # these tenants will be compacted by compactor, otherwise all tenants can be
@@ -702,7 +699,7 @@ compactor:
 
         # Override the default cipher suite list (separated by commas). Allowed
         # values:
-        #
+        # 
         # Secure Ciphers:
         # - TLS_RSA_WITH_AES_128_CBC_SHA
         # - TLS_RSA_WITH_AES_256_CBC_SHA
@@ -721,7 +718,7 @@ compactor:
         # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
         # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
         # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-        #
+        # 
         # Insecure Ciphers:
         # - TLS_RSA_WITH_RC4_128_SHA
         # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -813,8 +810,8 @@ compactor:
   # CLI flag: -compactor.compaction-jobs-order
   [compaction_jobs_order: <string> | default = "smallest-range-oldest-blocks-first"]
 
-  # The strategy to use when splitting blocks during compaction. Supported
-  # values are: fingerprint, stacktracePartition.
+  # Experimental: The strategy to use when splitting blocks during compaction.
+  # Supported values are: fingerprint, stacktracePartition.
   # CLI flag: -compactor.compaction-split-by
   [compaction_split_by: <string> | default = "fingerprint"]
 
@@ -1263,7 +1260,7 @@ lifecycler:
 
         # Override the default cipher suite list (separated by commas). Allowed
         # values:
-        #
+        # 
         # Secure Ciphers:
         # - TLS_RSA_WITH_AES_128_CBC_SHA
         # - TLS_RSA_WITH_AES_256_CBC_SHA
@@ -1282,7 +1279,7 @@ lifecycler:
         # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
         # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
         # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-        #
+        # 
         # Insecure Ciphers:
         # - TLS_RSA_WITH_RC4_128_SHA
         # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1447,7 +1444,7 @@ pool_config:
 # the time range of the query sent to the store-gateway will be manipulated to
 # ensure the query end is not more recent than 'now - query-store-after'.
 # CLI flag: -querier.query-store-after
-[query_store_after: <duration> | default = 12h]
+[query_store_after: <duration> | default = 4h]
 ```
 
 ### query_frontend
@@ -1620,7 +1617,7 @@ backoff_config:
 [tls_insecure_skip_verify: <boolean> | default = false]
 
 # Override the default cipher suite list (separated by commas). Allowed values:
-#
+# 
 # Secure Ciphers:
 # - TLS_RSA_WITH_AES_128_CBC_SHA
 # - TLS_RSA_WITH_AES_256_CBC_SHA
@@ -1639,7 +1636,7 @@ backoff_config:
 # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
 # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-#
+# 
 # Insecure Ciphers:
 # - TLS_RSA_WITH_RC4_128_SHA
 # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
@@ -1833,7 +1830,7 @@ The `memberlist` block configures the Gossip memberlist.
 [tls_insecure_skip_verify: <boolean> | default = false]
 
 # Override the default cipher suite list (separated by commas). Allowed values:
-#
+# 
 # Secure Ciphers:
 # - TLS_RSA_WITH_AES_128_CBC_SHA
 # - TLS_RSA_WITH_AES_256_CBC_SHA
@@ -1852,7 +1849,7 @@ The `memberlist` block configures the Gossip memberlist.
 # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
 # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-#
+# 
 # Insecure Ciphers:
 # - TLS_RSA_WITH_RC4_128_SHA
 # - TLS_RSA_WITH_3DES_EDE_CBC_SHA

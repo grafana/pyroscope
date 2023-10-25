@@ -1,8 +1,8 @@
-package symtab
+package metrics
 
 import "github.com/prometheus/client_golang/prometheus"
 
-type Metrics struct {
+type SymtabMetrics struct {
 	ElfErrors      *prometheus.CounterVec
 	ProcErrors     *prometheus.CounterVec
 	KnownSymbols   *prometheus.CounterVec
@@ -11,8 +11,8 @@ type Metrics struct {
 	UnknownStacks  *prometheus.CounterVec
 }
 
-func NewMetrics(reg prometheus.Registerer) *Metrics {
-	m := &Metrics{
+func NewSymtabMetrics(reg prometheus.Registerer) *SymtabMetrics {
+	m := &SymtabMetrics{
 		ElfErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "pyroscope_symtab_elf_errors_total",
 			Help: "Total number of errors while trying to open an elf file",

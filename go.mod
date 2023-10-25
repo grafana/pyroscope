@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
-	github.com/bufbuild/connect-go v1.9.0
+	github.com/bufbuild/connect-go v1.10.0
 	github.com/bufbuild/connect-grpchealth-go v1.0.0
 	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/colega/zeropool v0.0.0-20230505084239-6fb4a4f75381

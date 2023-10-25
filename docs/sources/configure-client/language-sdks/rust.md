@@ -27,11 +27,11 @@ you can use [pprof-rs](https://github.com/pyroscope-io/pyroscope-rs/tree/main/py
 ```rust
 // Configure profiling backend
 let pprof_config = PprofConfig::new().sample_rate(100);
-let pprof_backend = Pprof::new(pprof_config);
+let backend_impl = pprof_backend(pprof_config);
 
 // Configure Pyroscope Agent
 let agent = PyroscopeAgent::builder("http://localhost:4040", "myapp")
-    .backend(pprof_backend)
+    .backend(backend_impl)
     .build()?;
 ```
 

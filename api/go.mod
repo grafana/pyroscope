@@ -3,7 +3,7 @@ module github.com/grafana/pyroscope/api
 go 1.19
 
 require (
-	github.com/bufbuild/connect-go v1.9.0
+	github.com/bufbuild/connect-go v1.10.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0
 	github.com/prometheus/common v0.44.0

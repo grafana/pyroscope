@@ -32,8 +32,8 @@ type StoreGatewayQueryClient interface {
 	MergeProfilesLabels(ctx context.Context) clientpool.BidiClientMergeProfilesLabels
 	MergeProfilesPprof(ctx context.Context) clientpool.BidiClientMergeProfilesPprof
 	MergeSpanProfile(ctx context.Context) clientpool.BidiClientMergeSpanProfile
-	LabelValues(context.Context, *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error)
 	LabelNames(context.Context, *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error)
+	LabelValues(context.Context, *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error)
 	Series(context.Context, *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error)
 }
 
@@ -231,28 +231,6 @@ func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingeste
 	return responses, nil
 }
 
-func (q *Querier) labelValuesFromStoreGateway(ctx context.Context, req *typesv1.LabelValuesRequest) ([]ResponseFromReplica[[]string], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues StoreGateway")
-	defer sp.Finish()
-
-	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-
-	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]string, error) {
-		res, err := ic.LabelValues(ctx, connect.NewRequest(req))
-		if err != nil {
-			return nil, err
-		}
-		return res.Msg.Names, nil
-	})
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	return responses, nil
-}
-
 func (q *Querier) labelNamesFromStoreGateway(ctx context.Context, req *typesv1.LabelNamesRequest) ([]ResponseFromReplica[[]string], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames StoreGateway")
 	defer sp.Finish()
@@ -264,6 +242,28 @@ func (q *Querier) labelNamesFromStoreGateway(ctx context.Context, req *typesv1.L
 
 	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]string, error) {
 		res, err := ic.LabelNames(ctx, connect.NewRequest(req))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.Names, nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return responses, nil
+}
+
+func (q *Querier) labelValuesFromStoreGateway(ctx context.Context, req *typesv1.LabelValuesRequest) ([]ResponseFromReplica[[]string], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues StoreGateway")
+	defer sp.Finish()
+
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) ([]string, error) {
+		res, err := ic.LabelValues(ctx, connect.NewRequest(req))
 		if err != nil {
 			return nil, err
 		}

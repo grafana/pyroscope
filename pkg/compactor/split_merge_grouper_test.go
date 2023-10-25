@@ -717,6 +717,21 @@ func TestGroupBlocksByRange(t *testing.T) {
 				}},
 			},
 		},
+		"block start at the end of the range": {
+			timeRange: 20,
+			blocks: []*block.Meta{
+				{MinTime: 10, MaxTime: 20},
+				{MinTime: 20, MaxTime: 40},
+			},
+			expected: []blocksGroup{
+				{rangeStart: 0, rangeEnd: 20, blocks: []*block.Meta{
+					{MinTime: 10, MaxTime: 20},
+				}},
+				{rangeStart: 20, rangeEnd: 40, blocks: []*block.Meta{
+					{MinTime: 20, MaxTime: 40},
+				}},
+			},
+		},
 		"only 1 block per range": {
 			timeRange: 20,
 			blocks: []*block.Meta{

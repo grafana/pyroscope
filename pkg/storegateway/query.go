@@ -44,11 +44,11 @@ func (s *StoreGateway) MergeProfilesPprof(ctx context.Context, stream *connect.B
 	return terminateStream(stream)
 }
 
-func (s *StoreGateway) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
-	var res *typesv1.LabelValuesResponse
+func (s *StoreGateway) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
+	var res *typesv1.LabelNamesResponse
 	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
 		var err error
-		res, err = phlaredb.LabelValues(ctx, req, bs.openBlocksForReading)
+		res, err = phlaredb.LabelNames(ctx, req, bs.openBlocksForReading)
 		if err != nil {
 			return err
 		}
@@ -61,11 +61,11 @@ func (s *StoreGateway) LabelValues(ctx context.Context, req *connect.Request[typ
 	return connect.NewResponse(res), nil
 }
 
-func (s *StoreGateway) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
-	var res *typesv1.LabelNamesResponse
+func (s *StoreGateway) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
+	var res *typesv1.LabelValuesResponse
 	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
 		var err error
-		res, err = phlaredb.LabelNames(ctx, req, bs.openBlocksForReading)
+		res, err = phlaredb.LabelValues(ctx, req, bs.openBlocksForReading)
 		if err != nil {
 			return err
 		}

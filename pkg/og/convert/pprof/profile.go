@@ -57,6 +57,14 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pprof /ingest multipart form %w", err)
 	}
+	res = &distributormodel.PushRequest{
+		RawProfileSize: len(p.Profile),
+		RawProfileType: distributormodel.RawProfileTypePPROF,
+		Series:         nil,
+	}
+	if len(p.Profile) == 0 {
+		return res, nil
+	}
 
 	profile, err := pprof.RawFromBytes(p.Profile)
 	if err != nil {
@@ -70,17 +78,13 @@ func (p *RawProfile) ParseToPprof(_ context.Context, md ingestion.Metadata) (res
 		fixSampleTypes(profile.Profile)
 	}
 
-	res = &distributormodel.PushRequest{
-		RawProfileSize: len(p.Profile),
-		RawProfileType: distributormodel.RawProfileTypePPROF,
-		Series: []*distributormodel.ProfileSeries{{
-			Labels: p.createLabels(profile, md),
-			Samples: []*distributormodel.ProfileSample{{
-				Profile:    profile,
-				RawProfile: p.Profile,
-			}},
+	res.Series = []*distributormodel.ProfileSeries{{
+		Labels: p.createLabels(profile, md),
+		Samples: []*distributormodel.ProfileSample{{
+			Profile:    profile,
+			RawProfile: p.Profile,
 		}},
-	}
+	}}
 	return
 }
 
