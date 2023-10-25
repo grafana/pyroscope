@@ -35,6 +35,8 @@ message Point {
 message LabelValuesRequest {
   string name = 1;
   repeated string matchers = 2;
+  int64 start = 3;
+  int64 end = 4;
 }
 
 message LabelValuesResponse {

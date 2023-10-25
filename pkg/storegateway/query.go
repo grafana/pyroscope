@@ -61,6 +61,10 @@ func (s *StoreGateway) LabelNames(ctx context.Context, req *connect.Request[type
 	return connect.NewResponse(res), nil
 }
 
+func (s *StoreGateway) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
+	panic("unimplemented") // TODO(bryan) implement
+}
+
 func (s *StoreGateway) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
 	var res *ingestv1.SeriesResponse
 	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
