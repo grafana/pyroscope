@@ -158,17 +158,6 @@ func GetUserOffsets(version Version) (*UserOffsets, bool, error) {
 		}
 		patchGuess = true
 	}
-	//#define PY_OFFSET_PyVarObject_ob_size 16
-	//#define PY_OFFSET_PyObject_ob_type 8
-	//#define PY_OFFSET_PyTypeObject_tp_name 24
-	if offsets.PyVarObject_ob_size != 16 {
-		return offsets, patchGuess, fmt.Errorf("python offsets.PyVarObject_ob_size != 16 %+v %+v", offsets, version)
-	}
-	if offsets.PyObject_ob_type != 8 {
-		return offsets, patchGuess, fmt.Errorf("python offsets.PyObject_ob_type !=  8 %+v %+v", offsets, version)
-	}
-	if offsets.PyTypeObject_tp_name != 24 {
-		return offsets, patchGuess, fmt.Errorf("python offsets.PyTypeObject_tp_name != 24 %+v %+v", offsets, version)
-	}
+
 	return offsets, patchGuess, nil
 }

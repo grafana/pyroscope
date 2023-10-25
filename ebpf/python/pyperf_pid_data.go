@@ -122,6 +122,9 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 		VFramePrevious:                vframeBack,
 		VFrameLocalsplus:              vframeLocalPlus,
 		StringSize:                    offsets.StringSize,
+		PyVarObjectObSize:             offsets.PyVarObject_ob_size,
+		PyObjectObType:                offsets.PyObject_ob_type,
+		PyTypeObjectTpName:            offsets.PyTypeObject_tp_name,
 	}
 	return data, nil
 }
