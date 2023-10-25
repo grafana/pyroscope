@@ -112,20 +112,25 @@ func (s *Perf) Close() {
 	s.wg.Wait()
 }
 
-func (s *Perf) CollectEvents() []*PerfPyEvent {
+func (s *Perf) CollectEvents(buf []*PerfPyEvent) []*PerfPyEvent {
+	buf = buf[:0]
 	s.eventsLock.Lock()
 	defer s.eventsLock.Unlock()
 	if len(s.events) == 0 {
-		return nil
+		return buf
 	}
-	eventsCopy := make([]*PerfPyEvent, len(s.events))
-	copy(eventsCopy, s.events)
+	if len(s.events) > cap(buf) {
+		buf = make([]*PerfPyEvent, len(s.events))
+	} else {
+		buf = buf[:len(s.events)]
+	}
+	copy(buf, s.events)
 	for i := range s.events {
 		s.events[i] = nil
 	}
 	s.events = s.events[:0]
 
-	return eventsCopy
+	return buf
 }
 
 func (s *Perf) GetLazySymbols() LazySymbols {

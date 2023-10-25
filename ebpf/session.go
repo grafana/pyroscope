@@ -95,9 +95,10 @@ type session struct {
 	started bool
 	kprobes []link.Link
 
-	pyperf      *python.Perf
-	pyperfBpf   python.PerfObjects
-	pyperfError error
+	pyperf       *python.Perf
+	pyperfEvents []*python.PerfPyEvent
+	pyperfBpf    python.PerfObjects
+	pyperfError  error
 
 	pids            pids
 	pidExecRequests chan uint32
