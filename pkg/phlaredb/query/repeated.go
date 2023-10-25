@@ -186,6 +186,10 @@ type repeatedRowColumnIterator struct {
 	maxRGRowNum   int64
 	maxPageRowNum int64
 
+	rowsRead    int64
+	rowsFetched int64
+	pageBytes   int64
+
 	vit  *repeatedValuePageIterator
 	prev int64
 	err  error
@@ -232,6 +236,7 @@ func (x *repeatedRowColumnIterator) Next() bool {
 			return false
 		}
 	}
+	x.rowsRead++
 	return true
 }
 
@@ -280,20 +285,23 @@ func (x *repeatedRowColumnIterator) readPage(rn int64) bool {
 			return false
 		}
 	}
+	pageReadDurationMs := time.Since(readPageStart).Milliseconds()
 	// NumRows return the number of row in the page
 	// not counting skipped ones (because of SeekToRow).
 	// The implementation is quite expensive, therefore
 	// we should call it once per page.
-	x.maxPageRowNum = rn + x.page.NumRows()
+	x.pageBytes += x.page.Size()
+	pageNumRows := x.page.NumRows()
+	x.maxPageRowNum = rn + pageNumRows
+	x.rowsFetched += pageNumRows
 	x.vit.reset(x.page, x.readSize)
-	pageReadDurationMs := time.Since(readPageStart).Milliseconds()
 	x.span.LogFields(
 		otlog.String("msg", "Page read"),
 		otlog.Int64("min_rg_row", x.minRGRowNum),
 		otlog.Int64("max_rg_row", x.maxRGRowNum),
-		otlog.Int64("seek_row", rn),
+		otlog.Int64("seek_row", x.minRGRowNum+rn),
 		otlog.Int64("page_read_ms", pageReadDurationMs),
-		otlog.Int64("page_rows_left", x.maxPageRowNum),
+		otlog.Int64("page_num_rows", pageNumRows),
 	)
 	return true
 }
@@ -303,6 +311,11 @@ func (x *repeatedRowColumnIterator) Err() error          { return x.err }
 func (x *repeatedRowColumnIterator) Close() error {
 	putRepeatedValuePageIteratorToPool(x.vit)
 	err := x.pages.Close()
+	x.span.LogFields(
+		otlog.Int64("page_bytes", x.pageBytes),
+		otlog.Int64("rows_fetched", x.rowsFetched),
+		otlog.Int64("rows_read", x.rowsRead),
+	)
 	x.span.Finish()
 	return err
 }
