@@ -21,6 +21,7 @@ type ProcTable struct {
 	file2Table map[file]*ElfTable
 	options    ProcTableOptions
 	rootFS     string
+	err        error
 }
 
 type ProcTableDebugInfo struct {
@@ -66,29 +67,39 @@ type elfRange struct {
 }
 
 func (p *ProcTable) Refresh() {
+	if p.err != nil {
+		return
+	}
 	procMaps, err := os.ReadFile(fmt.Sprintf("/proc/%d/maps", p.options.Pid))
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			level.Error(p.logger).Log("msg", "failed to read /proc/pid/maps", "err", err)
 		}
-		if p.options.Metrics != nil {
-			p.options.Metrics.ProcErrors.WithLabelValues(errorType(err)).Inc()
-		}
-		return // todo return err
+		p.options.Metrics.ProcErrors.WithLabelValues(errorType(err)).Inc()
+		p.err = err
+		return
 	}
-	p.refresh(procMaps)
+	p.err = p.refreshProcMap(procMaps)
+	if p.err != nil {
+		_ = level.Error(p.logger).Log("err", p.err)
+	} else {
+	}
 }
 
-func (p *ProcTable) refresh(procMaps []byte) {
+func (p *ProcTable) Error() error {
+	return p.err
+}
+
+func (p *ProcTable) refreshProcMap(procMaps []byte) error {
 	// todo support perf map files
 	for i := range p.ranges {
 		p.ranges[i].elfTable = nil
 	}
 	p.ranges = p.ranges[:0]
 	filesToKeep := make(map[file]struct{})
-	maps, err := parseProcMapsExecutableModules(procMaps)
+	maps, err := ParseProcMapsExecutableModules(procMaps, true)
 	if err != nil {
-		return
+		return err
 	}
 
 	for _, m := range maps {
@@ -112,6 +123,7 @@ func (p *ProcTable) refresh(procMaps []byte) {
 	for _, f := range filesToDelete {
 		delete(p.file2Table, f)
 	}
+	return nil
 }
 
 func (p *ProcTable) getElfTable(r *elfRange) *ElfTable {
@@ -160,6 +172,10 @@ func (p *ProcTable) Cleanup() {
 	for _, table := range p.file2Table {
 		table.Cleanup()
 	}
+}
+
+func (p *ProcTable) Pid() int {
+	return p.options.Pid
 }
 
 func binarySearchElfRange(e elfRange, pc uint64) int {

@@ -25,10 +25,10 @@ var (
 
 type ProfileBuilders struct {
 	Builders   map[uint64]*ProfileBuilder
-	SampleRate int
+	SampleRate int64
 }
 
-func NewProfileBuilders(sampleRate int) *ProfileBuilders {
+func NewProfileBuilders(sampleRate int64) *ProfileBuilders {
 	return &ProfileBuilders{Builders: make(map[uint64]*ProfileBuilder), SampleRate: sampleRate}
 }
 
@@ -49,7 +49,7 @@ func (b ProfileBuilders) BuilderForTarget(hash uint64, labels labels.Labels) *Pr
 				},
 			},
 			SampleType: []*profile.ValueType{{Type: "cpu", Unit: "nanoseconds"}},
-			Period:     time.Second.Nanoseconds() / int64(b.SampleRate),
+			Period:     time.Second.Nanoseconds() / b.SampleRate,
 			PeriodType: &profile.ValueType{Type: "cpu", Unit: "nanoseconds"},
 			TimeNanos:  time.Now().UnixNano(),
 		},
