@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/grafana/pyroscope/ebpf/util"
 	"github.com/stretchr/testify/require"
 )
@@ -20,8 +21,8 @@ func TestElfCacheStrippedEmpty(t *testing.T) {
 	fs := "." // make it unable to find debug file by buildID
 	stripped := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, fs, "elf/testdata/elfs/elf.stripped",
 		ElfTableOptions{
-
 			ElfCache: elfCache,
+			Metrics:  metrics.NewSymtabMetrics(nil),
 		})
 
 	syms := []struct {
@@ -44,11 +45,13 @@ func TestElfCacheBuildID(t *testing.T) {
 	debug := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, ".", "elf/testdata/elfs/elf",
 		ElfTableOptions{
 			ElfCache: elfCache,
+			Metrics:  metrics.NewSymtabMetrics(nil),
 		})
 
 	stripped := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, ".", "elf/testdata/elfs/elf.stripped",
 		ElfTableOptions{
 			ElfCache: elfCache,
+			Metrics:  metrics.NewSymtabMetrics(nil),
 		})
 
 	syms := []struct {
@@ -76,11 +79,13 @@ func TestElfCacheStat(t *testing.T) {
 	f1 := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, ".", "elf/testdata/elfs/elf.nobuildid",
 		ElfTableOptions{
 			ElfCache: elfCache,
+			Metrics:  metrics.NewSymtabMetrics(nil),
 		})
 
 	f2 := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, ".", "elf/testdata/elfs/elf.nobuildid",
 		ElfTableOptions{
 			ElfCache: elfCache,
+			Metrics:  metrics.NewSymtabMetrics(nil),
 		})
 
 	syms := []struct {
@@ -116,11 +121,13 @@ func TestElfCacheBuildIDProcessDeath(t *testing.T) {
 	f1 := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, root, "/elf1",
 		ElfTableOptions{
 			ElfCache: elfCache,
+			Metrics:  metrics.NewSymtabMetrics(nil),
 		})
 
 	f2 := NewElfTable(logger, &ProcMap{StartAddr: 0x1000, Offset: 0x1000}, root, "/elf2",
 		ElfTableOptions{
 			ElfCache: elfCache,
+			Metrics:  metrics.NewSymtabMetrics(nil),
 		})
 	require.Equal(t, "iter", f1.Resolve(0x1149))
 	require.Equal(t, "iter", f2.Resolve(0x1149))

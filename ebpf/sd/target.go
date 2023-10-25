@@ -3,7 +3,9 @@ package sd
 import (
 	"fmt"
 	"io/fs"
+	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -14,7 +16,6 @@ import (
 
 type DiscoveryTarget map[string]string
 
-// DebugString return unsorted labels as a string.
 func (t *DiscoveryTarget) DebugString() string {
 	var b strings.Builder
 	b.WriteByte('{')
@@ -30,6 +31,7 @@ func (t *DiscoveryTarget) DebugString() string {
 
 const (
 	labelContainerID    = "__container_id__"
+	labelPID            = "__process_pid__"
 	labelServiceName    = "service_name"
 	labelServiceNameK8s = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
 	metricValue         = "process_cpu"
@@ -44,7 +46,7 @@ type Target struct {
 	fingerprintCalculated bool
 }
 
-func NewTarget(cid containerID, target DiscoveryTarget) (*Target, error) {
+func NewTarget(cid containerID, pid uint32, target DiscoveryTarget) *Target {
 	serviceName := target[labelServiceName]
 	if serviceName == "" {
 		serviceName = inferServiceName(target)
@@ -66,10 +68,13 @@ func NewTarget(cid containerID, target DiscoveryTarget) (*Target, error) {
 	if cid != "" {
 		lset[labelContainerID] = string(cid)
 	}
+	if pid != 0 {
+		lset[labelPID] = strconv.Itoa(int(pid))
+	}
 	return &Target{
 		labels:      labels.FromMap(lset),
 		serviceName: serviceName,
-	}, nil
+	}
 }
 
 func (t *Target) ServiceName() string {
@@ -101,10 +106,15 @@ func (t *Target) Labels() (uint64, labels.Labels) {
 	return t.fingerprint, t.labels
 }
 
+func (t *Target) String() string {
+	return t.labels.String()
+}
+
 type containerID string
 
 type TargetFinder interface {
 	FindTarget(pid uint32) *Target
+	RemoveDeadPID(pid uint32)
 	DebugInfo() []string
 	Update(args TargetsOptions)
 }
@@ -118,16 +128,14 @@ type TargetsOptions struct {
 type targetFinder struct {
 	l          log.Logger
 	cid2target map[containerID]*Target
+	pid2target map[uint32]*Target
 
 	// todo make it never evict during a reset
 	containerIDCache *lru.Cache[uint32, containerID]
 	defaultTarget    *Target
 	fs               fs.FS
-}
 
-func (tf *targetFinder) Update(args TargetsOptions) {
-	tf.setTargets(args)
-	tf.resizeContainerIDCache(args.ContainerCacheSize)
+	sync sync.Mutex
 }
 
 func NewTargetFinder(fs fs.FS, l log.Logger, options TargetsOptions) (TargetFinder, error) {
@@ -144,47 +152,9 @@ func NewTargetFinder(fs fs.FS, l log.Logger, options TargetsOptions) (TargetFind
 	return res, nil
 }
 
-func (tf *targetFinder) setTargets(opts TargetsOptions) {
-	_ = level.Debug(tf.l).Log("msg", "set targets", "count", len(opts.Targets))
-	containerID2Target := make(map[containerID]*Target)
-	for _, target := range opts.Targets {
-		cid := containerIDFromTarget(target)
-		if cid != "" {
-			t, err := NewTarget(cid, target)
-			if err != nil {
-				_ = level.Error(tf.l).Log(
-					"msg", "target skipped",
-					"target", target.DebugString(),
-					"err", err,
-				)
-				continue
-			}
-			containerID2Target[cid] = t
-		}
-	}
-	if len(opts.Targets) > 0 && len(containerID2Target) == 0 {
-		_ = level.Warn(tf.l).Log("msg", "No container IDs found in targets")
-	}
-	tf.cid2target = containerID2Target
-	if opts.TargetsOnly {
-		tf.defaultTarget = nil
-	} else {
-		t, err := NewTarget("", opts.DefaultTarget)
-		if err != nil {
-			_ = level.Error(tf.l).Log(
-				"msg", "default target skipped",
-				"target", opts.DefaultTarget.DebugString(),
-				"err", err,
-			)
-			tf.defaultTarget = nil
-		} else {
-			tf.defaultTarget = t
-		}
-	}
-	_ = level.Debug(tf.l).Log("msg", "created targets", "count", len(tf.cid2target))
-}
-
 func (tf *targetFinder) FindTarget(pid uint32) *Target {
+	tf.sync.Lock()
+	defer tf.sync.Unlock()
 	res := tf.findTarget(pid)
 	if res != nil {
 		return res
@@ -192,7 +162,51 @@ func (tf *targetFinder) FindTarget(pid uint32) *Target {
 	return tf.defaultTarget
 }
 
+func (tf *targetFinder) RemoveDeadPID(pid uint32) {
+	tf.sync.Lock()
+	defer tf.sync.Unlock()
+	tf.containerIDCache.Remove(pid)
+	delete(tf.pid2target, pid)
+}
+
+func (tf *targetFinder) Update(args TargetsOptions) {
+	tf.sync.Lock()
+	defer tf.sync.Unlock()
+	tf.setTargets(args)
+	tf.resizeContainerIDCache(args.ContainerCacheSize)
+}
+
+func (tf *targetFinder) setTargets(opts TargetsOptions) {
+	_ = level.Debug(tf.l).Log("msg", "set targets", "count", len(opts.Targets))
+	containerID2Target := make(map[containerID]*Target)
+	pid2Target := make(map[uint32]*Target)
+	for _, target := range opts.Targets {
+		if cid := containerIDFromTarget(target); cid != "" {
+			t := NewTarget(cid, 0, target)
+			containerID2Target[cid] = t
+		} else if pid := pidFromTarget(target); pid != 0 {
+			t := NewTarget("", pid, target)
+			pid2Target[pid] = t
+		}
+	}
+	if len(opts.Targets) > 0 && len(containerID2Target) == 0 {
+		_ = level.Warn(tf.l).Log("msg", "No container IDs found in targets")
+	}
+	tf.cid2target = containerID2Target
+	tf.pid2target = pid2Target
+	if opts.TargetsOnly {
+		tf.defaultTarget = nil
+	} else {
+		t := NewTarget("", 0, opts.DefaultTarget)
+		tf.defaultTarget = t
+	}
+	_ = level.Debug(tf.l).Log("msg", "created targets", "count", len(tf.cid2target))
+}
+
 func (tf *targetFinder) findTarget(pid uint32) *Target {
+	if target, ok := tf.pid2target[pid]; ok {
+		return target
+	}
 	cid, ok := tf.containerIDCache.Get(pid)
 	if ok {
 		return tf.cid2target[cid]
@@ -208,6 +222,9 @@ func (tf *targetFinder) resizeContainerIDCache(size int) {
 }
 
 func (tf *targetFinder) DebugInfo() []string {
+	tf.sync.Lock()
+	defer tf.sync.Unlock()
+
 	debugTargets := make([]string, 0, len(tf.cid2target))
 	for _, target := range tf.cid2target {
 		_, ls := target.Labels()
@@ -217,11 +234,28 @@ func (tf *targetFinder) DebugInfo() []string {
 }
 
 func (tf *targetFinder) Targets() []*Target {
+	tf.sync.Lock()
+	defer tf.sync.Unlock()
+
 	res := make([]*Target, 0, len(tf.cid2target))
 	for _, target := range tf.cid2target {
 		res = append(res, target)
 	}
 	return res
+}
+
+func pidFromTarget(target DiscoveryTarget) uint32 {
+	t, ok := target[labelPID]
+	if !ok {
+		return 0
+	}
+	var pid uint64
+	var err error
+	pid, err = strconv.ParseUint(t, 10, 32)
+	if err != nil {
+		return 0
+	}
+	return uint32(pid)
 }
 
 func containerIDFromTarget(target DiscoveryTarget) containerID {

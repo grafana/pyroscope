@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/pyroscope/ebpf/metrics"
 )
 
 type PidKey uint32
@@ -22,16 +23,20 @@ type SymbolCache struct {
 	logger   log.Logger
 
 	options CacheOptions
+
+	metrics *metrics.SymtabMetrics
 }
 type CacheOptions struct {
 	PidCacheOptions      GCacheOptions
 	BuildIDCacheOptions  GCacheOptions
 	SameFileCacheOptions GCacheOptions
-	Metrics              *Metrics // may be nil for tests
 	SymbolOptions        SymbolOptions
 }
 
-func NewSymbolCache(logger log.Logger, options CacheOptions) (*SymbolCache, error) {
+func NewSymbolCache(logger log.Logger, options CacheOptions, metrics *metrics.SymtabMetrics) (*SymbolCache, error) {
+	if metrics == nil {
+		panic("metrics is nil")
+	}
 	elfCache, err := NewElfCache(options.BuildIDCacheOptions, options.SameFileCacheOptions)
 	if err != nil {
 		return nil, fmt.Errorf("create elf cache %w", err)
@@ -47,6 +52,7 @@ func NewSymbolCache(logger log.Logger, options CacheOptions) (*SymbolCache, erro
 		kallsyms: nil,
 		elfCache: elfCache,
 		options:  options,
+		metrics:  metrics,
 	}, nil
 }
 
@@ -55,20 +61,12 @@ func (sc *SymbolCache) NextRound() {
 	sc.elfCache.NextRound()
 }
 
-func (sc *SymbolCache) Resolve(pid uint32, addr uint64) Symbol {
-	e := sc.getOrCreateCacheEntry(PidKey(pid))
-	return e.Resolve(addr)
-}
-
 func (sc *SymbolCache) Cleanup() {
 	sc.elfCache.Cleanup()
 	sc.pidCache.Cleanup()
 }
 
-func (sc *SymbolCache) getOrCreateCacheEntry(pid PidKey) SymbolTable {
-	if pid == 0 {
-		return sc.Kallsyms()
-	}
+func (sc *SymbolCache) GetProcTable(pid PidKey) *ProcTable {
 	cached := sc.pidCache.Get(pid)
 	if cached != nil {
 		return cached
@@ -79,7 +77,7 @@ func (sc *SymbolCache) getOrCreateCacheEntry(pid PidKey) SymbolTable {
 		Pid: int(pid),
 		ElfTableOptions: ElfTableOptions{
 			ElfCache:      sc.elfCache,
-			Metrics:       sc.options.Metrics,
+			Metrics:       sc.metrics,
 			SymbolOptions: &sc.options.SymbolOptions,
 		},
 	})
@@ -88,7 +86,7 @@ func (sc *SymbolCache) getOrCreateCacheEntry(pid PidKey) SymbolTable {
 	return fresh
 }
 
-func (sc *SymbolCache) Kallsyms() SymbolTable {
+func (sc *SymbolCache) GetKallsyms() SymbolTable {
 	if sc.kallsyms != nil {
 		return sc.kallsyms
 	}
@@ -127,4 +125,8 @@ func (sc *SymbolCache) PidCacheDebugInfo() GCacheDebugInfo[ProcTableDebugInfo] {
 
 func (sc *SymbolCache) ElfCacheDebugInfo() ElfCacheDebugInfo {
 	return sc.elfCache.DebugInfo()
+}
+
+func (sc *SymbolCache) RemoveDeadPID(pid PidKey) {
+	sc.pidCache.Remove(pid)
 }

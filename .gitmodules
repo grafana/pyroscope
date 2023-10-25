@@ -1,0 +1,3 @@
+[submodule "ebpf/testdata"]
+	path = ebpf/testdata
+	url = https://github.com/pyroscope-io/pyroscope-ebpf-testdata.git

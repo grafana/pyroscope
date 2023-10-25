@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/grafana/pyroscope/ebpf/symtab/elf"
 	"github.com/grafana/pyroscope/ebpf/util"
 	"github.com/stretchr/testify/require"
@@ -21,6 +22,7 @@ func TestMallocResolve(t *testing.T) {
 		Pid: os.Getpid(),
 		ElfTableOptions: ElfTableOptions{
 			ElfCache: elfCache,
+			Metrics:  metrics.NewSymtabMetrics(nil),
 		},
 	})
 	gosym.Refresh()
