@@ -43,7 +43,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 
 	offsets, guess, err := GetUserOffsets(version)
 	if err != nil {
-		return nil, fmt.Errorf("unsupported python version %+v", version)
+		return nil, fmt.Errorf("unsupported python version %w %+v", err, version)
 	}
 	if guess {
 		level.Warn(l).Log("msg", "python offsets were not found, but guessed from the closest patch version")
@@ -121,6 +121,10 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 		VFrameCode:                    vframeCode,
 		VFramePrevious:                vframeBack,
 		VFrameLocalsplus:              vframeLocalPlus,
+		StringSize:                    offsets.StringSize,
+		PyVarObjectObSize:             offsets.PyVarObject_ob_size,
+		PyObjectObType:                offsets.PyObject_ob_type,
+		PyTypeObjectTpName:            offsets.PyTypeObject_tp_name,
 	}
 	return data, nil
 }

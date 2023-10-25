@@ -39,10 +39,7 @@ enum {
 
 };
 
-#define PY_OFFSET_String_size 48
-#define PY_OFFSET_PyVarObject_ob_size 16
-#define PY_OFFSET_PyObject_ob_type 8
-#define PY_OFFSET_PyTypeObject_tp_name 24
+
 
 typedef struct {
     int16_t PyThreadState_frame;
@@ -54,9 +51,14 @@ typedef struct {
     int16_t PyCodeObject_co_localsplusnames;
     int16_t PyTupleObject_ob_item;
 
+    int16_t PyVarObject_ob_size;
+    int16_t PyObject_ob_type;
+    int16_t PyTypeObject_tp_name;
+
     int16_t VFrame_code; // PyFrameObject_f_code pre 311 or PyInterpreterFrame_f_code post 311
     int16_t VFrame_previous; // PyFrameObject_f_back pre 311 or PyInterpreterFrame_previous post 311
     int16_t VFrame_localsplus; // PyFrameObject_localsplus pre 311 or PyInterpreterFrame_localsplus post 311
+    int16_t String_size; // sizeof(PyASCIIObject)
 
 } py_offset_config;
 
@@ -312,7 +314,7 @@ static __always_inline int check_first_arg(void *code_ptr,
         }
     }
     if (bpf_probe_read_user(
-            &args_size, sizeof(args_size), args_ptr + PY_OFFSET_PyVarObject_ob_size)) {
+            &args_size, sizeof(args_size), args_ptr + offsets->PyVarObject_ob_size)) {
         return -1;
     }
     if (args_size < 1) {
@@ -325,7 +327,7 @@ static __always_inline int check_first_arg(void *code_ptr,
         return -1;
     }
     if (bpf_probe_read_user_str(
-            &symbol->name, sizeof(symbol->name), args_ptr + PY_OFFSET_String_size) < 0) {
+            &symbol->name, sizeof(symbol->name), args_ptr + offsets->String_size) < 0) {
         return -1;
     }
     // compare strings as ints to save instructions
@@ -372,12 +374,12 @@ static __always_inline int get_names(
         if (ptr) {
             if (first_self) {
                 // we are working with an instance, first we need to get type
-                if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + PY_OFFSET_PyObject_ob_type)) {
+                if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyObject_ob_type)) {
                     bpf_dbg_printk("failed to read ob_type at %x\n", ptr + PY_OFFSET_PyObject_ob_type);
                     return -PY_ERROR_CLASS_NAME;
                 }
             }
-            if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + PY_OFFSET_PyTypeObject_tp_name)) {
+            if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyTypeObject_tp_name)) {
                 bpf_dbg_printk("failed to read tp_name at %x\n", ptr + PY_OFFSET_PyTypeObject_tp_name);
                 return -PY_ERROR_CLASS_NAME;
             }
@@ -400,7 +402,7 @@ static __always_inline int get_names(
         return -PY_ERROR_FILE_NAME;
     }
     if (bpf_probe_read_user_str(
-            &symbol->file, sizeof(symbol->file), pystr_ptr + PY_OFFSET_String_size) < 0) {
+            &symbol->file, sizeof(symbol->file), pystr_ptr + offsets->String_size) < 0) {
         return -PY_ERROR_FILE_NAME;
     }
     // read PyCodeObject's name into symbol
@@ -409,7 +411,7 @@ static __always_inline int get_names(
         return -PY_ERROR_NAME;
     }
     if (bpf_probe_read_user_str(
-            &symbol->name, sizeof(symbol->name), pystr_ptr + PY_OFFSET_String_size) < 0) {
+            &symbol->name, sizeof(symbol->name), pystr_ptr + offsets->String_size) < 0) {
         return -PY_ERROR_NAME;
     }
     return 0;
