@@ -33,7 +33,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 	pythonPath := fmt.Sprintf("/proc/%d/root%s", pid, base_.Pathname)
 	pythonFD, err := os.Open(pythonPath)
 	if err != nil {
-		return nil, fmt.Errorf("could not get python patch version %s %w", pythonPath, err)
+		return nil, fmt.Errorf("could not open python path %s %w", pythonPath, err)
 	}
 	defer pythonFD.Close()
 	version, err := GetPythonPatchVersion(pythonFD, info.Version)
