@@ -21,7 +21,7 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 	if s.pyperf == nil {
 		return nil
 	}
-	pyEvents := s.pyperf.ResetEvents()
+	pyEvents := s.pyperf.CollectEvents()
 	if len(pyEvents) == 0 {
 		return nil
 	}
