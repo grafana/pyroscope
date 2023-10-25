@@ -93,7 +93,8 @@ func (s *Perf) loop() {
 		}
 
 		if record.RawSample != nil {
-			event, err := ReadPyEvent(record.RawSample)
+			event := new(PerfPyEvent)
+			err := ReadPyEvent(record.RawSample, event)
 			if err != nil {
 				_ = level.Error(s.logger).Log("msg", "[pyperf] parsing perf event record", "err", err)
 				continue
@@ -198,34 +199,29 @@ func (s *Perf) RemoveDeadPID(pid uint32) {
 	}
 }
 
-func ReadPyEvent(raw []byte) (*PerfPyEvent, error) {
+func ReadPyEvent(raw []byte, event *PerfPyEvent) error {
 	if len(raw) < 1 {
-		return nil, fmt.Errorf("unexpected pyevent size %d", len(raw))
+		return fmt.Errorf("unexpected pyevent size %d", len(raw))
 	}
-	status := raw[0]
-	//enum {
-	//	STACK_STATUS_COMPLETE = 0,
-	//	STACK_STATUS_ERROR = 1,
-	//	STACK_STATUS_TRUNCATED = 2,
-	//};
-	if status == 1 && len(raw) < 16 || status != 1 && len(raw) < 320 {
-		return nil, fmt.Errorf("unexpected pyevent size %d", len(raw))
+	status := StackStatus(raw[0])
+
+	if status == StackStatusError && len(raw) < 16 || status != 1 && len(raw) < 320 {
+		return fmt.Errorf("unexpected pyevent size %d", len(raw))
 	}
-	event := &PerfPyEvent{}
-	event.StackStatus = status
+	event.StackStatus = uint8(status)
 	event.Err = raw[1]
 	event.Reserved2 = raw[2]
 	event.Reserved3 = raw[3]
 	event.Pid = binary.LittleEndian.Uint32(raw[4:])
 	event.KernStack = int64(binary.LittleEndian.Uint64(raw[8:]))
-	if status == 1 {
-		return event, nil
+	if status == StackStatusError {
+		return nil
 	}
 	event.StackLen = binary.LittleEndian.Uint32(raw[16:])
 	for i := 0; i < 75; i++ {
 		event.Stack[i] = binary.LittleEndian.Uint32(raw[20+i*4:])
 	}
-	return event, nil
+	return nil
 }
 
 // LazySymbols tries to reuse a map from previous profile collection.

@@ -21,7 +21,8 @@ func TestReadEvent(t *testing.T) {
 	for i := 0; i < 75; i++ {
 		binary.LittleEndian.PutUint32(raw[20+i*4:], 0xcafe000+uint32(i)) //	Stack       [75]uint32
 	}
-	event, err := ReadPyEvent(raw)
+	event := new(PerfPyEvent)
+	err := ReadPyEvent(raw, event)
 	require.NoError(t, err)
 	require.Equal(t, event.StackStatus, uint8(0x1f))
 	require.Equal(t, event.Err, uint8(42))
@@ -45,8 +46,8 @@ func TestReadEventError(t *testing.T) {
 	raw[3] = 0xfe                                              //	Reserved3   uint8
 	binary.LittleEndian.PutUint32(raw[4:], 0xcafebabe)         //	Pid         uint32
 	binary.LittleEndian.PutUint64(raw[8:], 0x7acecefadeadbeef) //	KernStack   int64
-
-	event, err := ReadPyEvent(raw)
+	event := new(PerfPyEvent)
+	err := ReadPyEvent(raw, event)
 	require.NoError(t, err)
 	require.Equal(t, event.StackStatus, uint8(0x1))
 	require.Equal(t, event.Err, uint8(42))
@@ -71,7 +72,8 @@ func TestReadEventErrorLarge(t *testing.T) {
 	binary.LittleEndian.PutUint32(raw[4:], 0xcafebabe)         //	Pid         uint32
 	binary.LittleEndian.PutUint64(raw[8:], 0x7acecefadeadbeef) //	KernStack   int64
 
-	event, err := ReadPyEvent(raw)
+	event := new(PerfPyEvent)
+	err := ReadPyEvent(raw, event)
 	require.NoError(t, err)
 	require.Equal(t, event.StackStatus, uint8(0x1))
 	require.Equal(t, event.Err, uint8(42))
