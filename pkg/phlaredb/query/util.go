@@ -98,7 +98,7 @@ func CloneParquetValues(values []parquet.Value) []parquet.Value {
 
 func ReleaseParquetValues(b [][]parquet.Value) {
 	for _, s := range b {
-		if len(s) > 0 {
+		if cap(s) > 0 {
 			parquetValuesPool.Put(s)
 		}
 	}

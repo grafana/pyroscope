@@ -122,11 +122,7 @@ func NewMultiColumnIterator(
 		it: make([]iter.Iterator[[]parquet.Value], len(columns)),
 		v:  make([][]parquet.Value, len(columns)),
 	}
-	// FIXME(kolesnikovae): r := iter.TeeN(rows, len(columns))
-	r, err := iter.CloneN(rows, len(columns))
-	if err != nil {
-		return iter.NewErrIterator[[][]parquet.Value](err)
-	}
+	r := iter.TeeN(rows, len(columns))
 	for i, column := range columns {
 		m.it[i] = iter.NewAsyncBatchIterator[[]parquet.Value](
 			NewRepeatedRowColumnIterator(ctx, r[i], rowGroups, column),

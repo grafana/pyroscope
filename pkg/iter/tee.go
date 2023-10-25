@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-const defaultTeeBufferSize = 512
+const defaultTeeBufferSize = 4096
 
 // Tee returns 2 independent iterators from a single iterable.
 //
@@ -79,7 +79,6 @@ func (s *sharedIterator[T]) next(n int) bool {
 		return true
 	}
 	// All the memoized items were consumed.
-	// If the source iterator has errored, stop here.
 	if s.e != nil {
 		return false
 	}
@@ -108,9 +107,6 @@ func (s *sharedIterator[T]) clean() {
 			lo = v
 		}
 	}
-	// There is no much sense to trim the
-	// buffer, if less than the initial
-	// capacity will be freed.
 	if lo < s.s {
 		return
 	}
@@ -118,14 +114,15 @@ func (s *sharedIterator[T]) clean() {
 		// All iterators have been closed.
 		return
 	}
-	// Clean values that will be removed.
+	// Clean values that will be removed, shift
+	// remaining values to the beginning and update
+	// iterator offsets accordingly.
+	lo--
 	var v T
 	for i := range s.v[:lo] {
 		s.v[i] = v
 	}
-	// Shift remaining values to the beginning.
 	s.v = s.v[:copy(s.v, s.v[lo:])]
-	// Update offsets accordingly.
 	s.w -= lo
 	for i := range s.t {
 		if s.t[i] != math.MaxInt64 {
