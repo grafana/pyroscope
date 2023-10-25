@@ -4,9 +4,9 @@ Usage of ./pyroscope:
   -auth.multitenancy-enabled
     	When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.
   -blocks-storage.bucket-store.ignore-blocks-within duration
-    	Blocks with minimum time within this duration are ignored, and not loaded by store-gateway. Useful when used together with -querier.query-store-after to prevent loading young blocks, because there are usually many of them (depending on number of ingesters) and they are not yet compacted. Negative values or 0 disable the filter. (default 2h0m0s)
+    	Blocks with minimum time within this duration are ignored, and not loaded by store-gateway. Useful when used together with -querier.query-store-after to prevent loading young blocks, because there are usually many of them (depending on number of ingesters) and they are not yet compacted. Negative values or 0 disable the filter. (default 3h0m0s)
   -blocks-storage.bucket-store.ignore-deletion-marks-delay duration
-    	Duration after which the blocks marked for deletion will be filtered out while fetching blocks. The idea of ignore-deletion-marks-delay is to ignore blocks that are marked for deletion with some delay. This ensures store can still serve blocks that are meant to be deleted but do not have a replacement yet. (default 1h0m0s)
+    	Duration after which the blocks marked for deletion will be filtered out while fetching blocks. The idea of ignore-deletion-marks-delay is to ignore blocks that are marked for deletion with some delay. This ensures store can still serve blocks that are meant to be deleted but do not have a replacement yet. (default 30m0s)
   -blocks-storage.bucket-store.meta-sync-concurrency int
     	Number of Go routines to use when syncing block meta files from object storage per tenant. (default 20)
   -blocks-storage.bucket-store.sync-dir string
@@ -16,7 +16,7 @@ Usage of ./pyroscope:
   -blocks-storage.bucket-store.tenant-sync-concurrency int
     	Maximum number of concurrent tenants synching blocks. (default 10)
   -compactor.block-ranges value
-    	List of compaction time ranges. (default 3h0m0s,6h0m0s,12h0m0s)
+    	List of compaction time ranges. (default 1h0m0s,2h0m0s,8h0m0s)
   -compactor.block-sync-concurrency int
     	Number of Go routines to use when downloading blocks for compaction and uploading resulting blocks. (default 8)
   -compactor.blocks-retention-period duration
@@ -28,7 +28,7 @@ Usage of ./pyroscope:
   -compactor.compaction-concurrency int
     	Max number of concurrent compactions running. (default 1)
   -compactor.compaction-interval duration
-    	The frequency at which the compaction runs (default 1h0m0s)
+    	The frequency at which the compaction runs (default 30m0s)
   -compactor.compaction-jobs-order string
     	The sorting to use when deciding which compaction jobs should run first for a given tenant. Supported values are: smallest-range-oldest-blocks-first, newest-blocks-first. (default "smallest-range-oldest-blocks-first")
   -compactor.compaction-retries int
@@ -50,7 +50,7 @@ Usage of ./pyroscope:
   -compactor.max-compaction-time duration
     	Max time for starting compactions for a single tenant. After this time no new compactions for the tenant are started before next compaction cycle. This can help in multi-tenant environments to avoid single tenant using all compaction time, but also in single-tenant environments to force new discovery of blocks more often. 0 = disabled. (default 1h0m0s)
   -compactor.max-opening-blocks-concurrency int
-    	Number of goroutines opening blocks before compaction. (default 1)
+    	Number of goroutines opening blocks before compaction. (default 16)
   -compactor.meta-sync-concurrency int
     	Number of Go routines to use when syncing block meta files from the long term storage. (default 20)
   -compactor.no-blocks-file-cleanup-enabled
@@ -464,7 +464,7 @@ Usage of ./pyroscope:
   -pyroscopedb.data-path string
     	Directory used for local storage. (default "./data")
   -pyroscopedb.max-block-duration duration
-    	Upper limit to the duration of a Pyroscope block. (default 3h0m0s)
+    	Upper limit to the duration of a Pyroscope block. (default 1h0m0s)
   -pyroscopedb.row-group-target-size uint
     	How big should a single row group be uncompressed (default 1342177280)
   -querier.client-cleanup-period duration
