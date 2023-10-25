@@ -32,9 +32,13 @@ type PerfPyOffsetConfig struct {
 	PyCodeObjectCoVarnames        int16
 	PyCodeObjectCoLocalsplusnames int16
 	PyTupleObjectObItem           int16
+	PyVarObjectObSize             int16
+	PyObjectObType                int16
+	PyTypeObjectTpName            int16
 	VFrameCode                    int16
 	VFramePrevious                int16
 	VFrameLocalsplus              int16
+	StringSize                    int16
 }
 
 type PerfPyPidData struct {
