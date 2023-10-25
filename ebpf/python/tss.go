@@ -51,11 +51,19 @@ func getPyTssKey(pid uint32, version Version, offsets *UserOffsets, pyRuntime ui
 		//should never happen
 		return 0, fmt.Errorf("python missing symbols pyRuntime %d %v", pid, version)
 	}
-	if offsets.PyRuntimeState_gilstate == -1 || offsets.Gilstate_runtime_state_autoTSSkey == -1 || offsets.PyTssT_key == -1 {
-		// should never happen
-		return 0, fmt.Errorf("python missing offsets PyRuntimeStateGilstate GilstateRuntimeStateAutoTSSkey PyTssT_key %d %v", pid, version)
+	if version.Compare(Py312) >= 0 {
+		if offsets.PyRuntimeState_autoTSSkey == -1 {
+			// should never happen
+			return 0, fmt.Errorf("python missing offsets PyRuntimeState_autoTSSkey %d %v", pid, version)
+		}
+		pkey = int64(pyRuntime) + int64(offsets.PyRuntimeState_autoTSSkey)
+	} else {
+		if offsets.PyRuntimeState_gilstate == -1 || offsets.Gilstate_runtime_state_autoTSSkey == -1 {
+			// should never happen
+			return 0, fmt.Errorf("python missing offsets PyRuntimeStateGilstate GilstateRuntimeStateAutoTSSkey PyTssT_key %d %v", pid, version)
+		}
+		pkey = int64(pyRuntime) + int64(offsets.PyRuntimeState_gilstate+offsets.Gilstate_runtime_state_autoTSSkey)
 	}
-	pkey = int64(pyRuntime) + int64(offsets.PyRuntimeState_gilstate+offsets.Gilstate_runtime_state_autoTSSkey)
 	n, err := mem.ReadAt(key[:], int64(pkey))
 	if err != nil {
 		return 0, fmt.Errorf("python failed to read key %d %d %v %w", pid, pkey, version, err)

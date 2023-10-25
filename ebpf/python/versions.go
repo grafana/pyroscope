@@ -14,6 +14,7 @@ type Version struct {
 	Major, Minor, Patch int
 }
 
+var Py312 = &Version{Major: 3, Minor: 12}
 var Py311 = &Version{Major: 3, Minor: 11}
 var Py37 = &Version{Major: 3, Minor: 7}
 
@@ -157,13 +158,9 @@ func GetUserOffsets(version Version) (*UserOffsets, bool, error) {
 		}
 		patchGuess = true
 	}
-	//#define PY_OFFSET_String_size 48
 	//#define PY_OFFSET_PyVarObject_ob_size 16
 	//#define PY_OFFSET_PyObject_ob_type 8
 	//#define PY_OFFSET_PyTypeObject_tp_name 24
-	if offsets.StringSize != 48 {
-		return offsets, patchGuess, fmt.Errorf("python offsets.StringSize != 48 %+v %+v", offsets, version)
-	}
 	if offsets.PyVarObject_ob_size != 16 {
 		return offsets, patchGuess, fmt.Errorf("python offsets.PyVarObject_ob_size != 16 %+v %+v", offsets, version)
 	}

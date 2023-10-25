@@ -39,7 +39,6 @@ enum {
 
 };
 
-#define PY_OFFSET_String_size 48
 #define PY_OFFSET_PyVarObject_ob_size 16
 #define PY_OFFSET_PyObject_ob_type 8
 #define PY_OFFSET_PyTypeObject_tp_name 24
@@ -57,6 +56,7 @@ typedef struct {
     int16_t VFrame_code; // PyFrameObject_f_code pre 311 or PyInterpreterFrame_f_code post 311
     int16_t VFrame_previous; // PyFrameObject_f_back pre 311 or PyInterpreterFrame_previous post 311
     int16_t VFrame_localsplus; // PyFrameObject_localsplus pre 311 or PyInterpreterFrame_localsplus post 311
+    int16_t String_size; // sizeof(PyASCIIObject)
 
 } py_offset_config;
 
@@ -325,7 +325,7 @@ static __always_inline int check_first_arg(void *code_ptr,
         return -1;
     }
     if (bpf_probe_read_user_str(
-            &symbol->name, sizeof(symbol->name), args_ptr + PY_OFFSET_String_size) < 0) {
+            &symbol->name, sizeof(symbol->name), args_ptr + offsets->String_size) < 0) {
         return -1;
     }
     // compare strings as ints to save instructions
@@ -400,7 +400,7 @@ static __always_inline int get_names(
         return -PY_ERROR_FILE_NAME;
     }
     if (bpf_probe_read_user_str(
-            &symbol->file, sizeof(symbol->file), pystr_ptr + PY_OFFSET_String_size) < 0) {
+            &symbol->file, sizeof(symbol->file), pystr_ptr + offsets->String_size) < 0) {
         return -PY_ERROR_FILE_NAME;
     }
     // read PyCodeObject's name into symbol
@@ -409,7 +409,7 @@ static __always_inline int get_names(
         return -PY_ERROR_NAME;
     }
     if (bpf_probe_read_user_str(
-            &symbol->name, sizeof(symbol->name), pystr_ptr + PY_OFFSET_String_size) < 0) {
+            &symbol->name, sizeof(symbol->name), pystr_ptr + offsets->String_size) < 0) {
         return -PY_ERROR_NAME;
     }
     return 0;
