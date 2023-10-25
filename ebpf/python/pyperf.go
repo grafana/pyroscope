@@ -111,7 +111,7 @@ func (s *Perf) Close() {
 	s.wg.Wait()
 }
 
-func (s *Perf) ResetEvents() []*PerfPyEvent {
+func (s *Perf) CollectEvents() []*PerfPyEvent {
 	s.eventsLock.Lock()
 	defer s.eventsLock.Unlock()
 	if len(s.events) == 0 {
