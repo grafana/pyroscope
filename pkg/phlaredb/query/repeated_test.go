@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/parquet-go/parquet-go"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/pyroscope/pkg/iter"
@@ -24,7 +25,7 @@ func (t testRowGetter) RowNumber() int64 {
 	return t.RowNum
 }
 
-func Test_RepeatedIterator(t *testing.T) {
+func Test_RepeatedRowIterator_SingleColumn(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		rows     []testRowGetter
@@ -262,7 +263,7 @@ func Test_RepeatedIterator(t *testing.T) {
 					}
 					groups = append(groups, buffer)
 				}
-				actual := readRepeatedIterator(t,
+				actual := readRepeatedRowIterator(t,
 					NewRepeatedRowIterator(context.Background(),
 						iter.NewSliceIterator(tc.rows), groups, 0))
 				if diff := cmp.Diff(tc.expected, actual, int64ParquetComparer()); diff != "" {
@@ -274,6 +275,31 @@ func Test_RepeatedIterator(t *testing.T) {
 	}
 }
 
+func Test_RepeatedRowIterator_Cancellation(t *testing.T) {
+	var groups []parquet.RowGroup
+	for _, rg := range [][]repeatedTestRow{
+		{
+			{[]int64{1, 1, 1, 1}},
+			{[]int64{2}},
+			{[]int64{3, 4}},
+		},
+	} {
+		buffer := parquet.NewBuffer()
+		for _, row := range rg {
+			require.NoError(t, buffer.Write(row))
+		}
+		groups = append(groups, buffer)
+	}
+
+	rows := iter.NewSliceIterator([]testRowGetter{{0}})
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	it := NewRepeatedRowIterator(ctx, rows, groups, 0)
+	assert.False(t, it.Next())
+	assert.Error(t, context.Canceled, it.Err())
+	assert.NoError(t, it.Close())
+}
+
 type multiColumnItem struct {
 	X int64
 	Y int64
@@ -283,7 +309,7 @@ type multiColumnRepeatedTestRow struct {
 	List []multiColumnItem
 }
 
-func Test_MultiRepeatedPageIterator_MultipleColumns(t *testing.T) {
+func Test_RepeatedRowPageIterator_MultipleColumns(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		rows     []testRowGetter
@@ -372,7 +398,7 @@ func Test_MultiRepeatedPageIterator_MultipleColumns(t *testing.T) {
 				}
 				groups = append(groups, buffer)
 			}
-			actual := readRepeatedIterator(t,
+			actual := readRepeatedRowIterator(t,
 				NewRepeatedRowIterator(context.Background(),
 					iter.NewSliceIterator(tc.rows), groups, 0, 1),
 			)
@@ -383,7 +409,7 @@ func Test_MultiRepeatedPageIterator_MultipleColumns(t *testing.T) {
 	}
 }
 
-func readRepeatedIterator(t *testing.T, it iter.Iterator[RepeatedRow[testRowGetter]]) []RepeatedRow[testRowGetter] {
+func readRepeatedRowIterator(t *testing.T, it iter.Iterator[RepeatedRow[testRowGetter]]) []RepeatedRow[testRowGetter] {
 	defer func() {
 		require.NoError(t, it.Close())
 	}()

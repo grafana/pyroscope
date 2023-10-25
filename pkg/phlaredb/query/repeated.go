@@ -107,8 +107,9 @@ func (x *rowNumberIterator[T]) At() int64 {
 }
 
 type multiColumnIterator struct {
-	it []iter.Iterator[[]parquet.Value]
-	v  [][]parquet.Value
+	r []iter.Iterator[int64]
+	c []iter.Iterator[[]parquet.Value]
+	v [][]parquet.Value
 }
 
 func NewMultiColumnIterator(
@@ -119,13 +120,16 @@ func NewMultiColumnIterator(
 	columns ...int,
 ) iter.Iterator[[][]parquet.Value] {
 	m := multiColumnIterator{
-		it: make([]iter.Iterator[[]parquet.Value], len(columns)),
-		v:  make([][]parquet.Value, len(columns)),
+		c: make([]iter.Iterator[[]parquet.Value], len(columns)),
+		v: make([][]parquet.Value, len(columns)),
+		// Even if there is just one column, we do need to tee it,
+		// as the source rows iterator is owned by caller, and we
+		// must never close it on our own.
+		r: iter.TeeN(rows, len(columns)),
 	}
-	r := iter.TeeN(rows, len(columns))
 	for i, column := range columns {
-		m.it[i] = iter.NewAsyncBatchIterator[[]parquet.Value](
-			NewRepeatedRowColumnIterator(ctx, r[i], rowGroups, column),
+		m.c[i] = iter.NewAsyncBatchIterator[[]parquet.Value](
+			NewRepeatedRowColumnIterator(ctx, m.r[i], rowGroups, column),
 			batchSize,
 			CloneParquetValues,
 			ReleaseParquetValues,
@@ -135,7 +139,7 @@ func NewMultiColumnIterator(
 }
 
 func (m *multiColumnIterator) Next() bool {
-	for i, x := range m.it {
+	for i, x := range m.c {
 		if !x.Next() {
 			return false
 		}
@@ -148,16 +152,18 @@ func (m *multiColumnIterator) At() [][]parquet.Value { return m.v }
 
 func (m *multiColumnIterator) Err() error {
 	var err multierror.MultiError
-	for _, x := range m.it {
-		err.Add(x.Err())
+	for i := range m.c {
+		err.Add(m.c[i].Err())
+		err.Add(m.r[i].Err())
 	}
 	return err.Err()
 }
 
 func (m *multiColumnIterator) Close() error {
 	var err multierror.MultiError
-	for _, x := range m.it {
-		err.Add(x.Close())
+	for i := range m.c {
+		err.Add(m.c[i].Close())
+		err.Add(m.r[i].Close())
 	}
 	return err.Err()
 }
@@ -255,6 +261,9 @@ func (x *repeatedRowColumnIterator) openChunk(rg parquet.RowGroup) bool {
 }
 
 func (x *repeatedRowColumnIterator) readPage(rn int64) bool {
+	if x.err = x.ctx.Err(); x.err != nil {
+		return false
+	}
 	if x.err = x.pages.SeekToRow(rn); x.err != nil {
 		return false
 	}
