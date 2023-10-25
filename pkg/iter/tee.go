@@ -30,11 +30,11 @@ func TeeN[T any](iter Iterator[T], n int) []Iterator[T] {
 	return newTee[T](iter, n, defaultTeeBufferSize)
 }
 
-// NOTE(kolesnikovae): The implementation design aims simplicity.
+// NOTE(kolesnikovae): The implementation design aims for simplicity.
 // A more efficient tee can be implemented on top of a linked
 // list of small arrays:
 //  - More efficient (de-)allocations (chunk pool).
-//  - Less/none mutex contention.
+//  - Less/no mutex contention.
 
 func newTee[T any](iter Iterator[T], n, bufSize int) []Iterator[T] {
 	if n < 0 {
