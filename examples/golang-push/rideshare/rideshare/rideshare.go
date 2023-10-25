@@ -149,8 +149,12 @@ func LoggerProvider(c Config) (*sdklogs.LoggerProvider, error) {
 
 	// tell loki to use host.name and cloud.region as labels
 	lokiHint := attribute.KeyValue{
-		Key:   attribute.Key("loki.resource.labels"),
-		Value: attribute.StringValue("cloud_region"), // TODO This should be with . instead of _. See https://github.com/grafana/otlp-gateway/issues/196
+		Key: attribute.Key("loki.resource.labels"),
+		Value: attribute.StringSliceValue([]string{
+			string(semconv.CloudRegionKey.String("").Key),
+			string(semconv.ServiceNameKey.String("").Key),
+			string(semconv.HostName("").Key),
+		}),
 	}
 
 	loggerProvider := sdklogs.NewLoggerProvider(
