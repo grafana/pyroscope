@@ -58,8 +58,6 @@ func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *eb
 	return res, nil
 }
 
-// StartPythonProfiling return python init error, second return value is true if process is still alive,
-// third return value - python process data
 func (s *Perf) StartPythonProfiling(pid uint32, data *PerfPyPidData, serviceName string) error {
 	if s.pidCache.Contains(pid) {
 		return nil
