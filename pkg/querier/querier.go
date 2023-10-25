@@ -233,6 +233,11 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 		})
 	}
 
+	err := group.Wait()
+	if err != nil {
+		return nil, err
+	}
+
 	return connect.NewResponse(&typesv1.LabelNamesResponse{
 		Names: uniqueSortedStrings(responses),
 	}), nil
