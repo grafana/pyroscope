@@ -275,7 +275,7 @@ PATHS_mimir='docs/sources/mimir'
 PATHS_plugins_grafana_jira_datasource='docs/sources'
 PATHS_plugins_grafana_mongodb_datasource='docs/sources'
 PATHS_plugins_grafana_splunk_datasource='docs/sources'
-Paths_tempo='docs/sources/tempo'
+PATHS_tempo='docs/sources/tempo'
 PATHS_website='content'
 
 # identifier STR
