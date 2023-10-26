@@ -581,45 +581,19 @@ func (queriers Queriers) SelectMatchingProfiles(ctx context.Context, params *ing
 }
 
 func (queriers Queriers) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
-	// todo: Add support start and end.
-	// if req.Msg.Start != 0 && req.Msg.End != 0 {
-	// 	var err error
-	// 	queriers, err = queriers.forTimeRange(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
-	g, ctx := errgroup.WithContext(ctx)
-	uniqValues := make(map[string]struct{})
-	mutex := sync.Mutex{}
-
-	for _, q := range queriers {
-		q := q
-		g.Go(func() error {
-			res, err := q.LabelValues(ctx, req)
-			if err != nil {
-				return err
-			}
-			mutex.Lock()
-			defer mutex.Unlock()
-			if res != nil {
-				for _, name := range res.Msg.Names {
-					uniqValues[name] = struct{}{}
-				}
-			}
-			return nil
-		})
+	// todo: verify empty timestamp request should return all series
+	blockGetter := queriers.forTimeRange
+	_, hasTimeRange := phlaremodel.GetTimeRange(req.Msg)
+	if !hasTimeRange {
+		blockGetter = func(_ context.Context, _, _ model.Time) (Queriers, error) {
+			return queriers, nil
+		}
 	}
-	if err := g.Wait(); err != nil {
+	res, err := LabelValues(ctx, req, blockGetter)
+	if err != nil {
 		return nil, err
 	}
-
-	values := lo.Keys(uniqValues)
-	sort.Strings(values)
-	return connect.NewResponse(&typesv1.LabelValuesResponse{
-		Names: values,
-	}), nil
+	return connect.NewResponse(res), nil
 }
 
 func (queriers Queriers) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {

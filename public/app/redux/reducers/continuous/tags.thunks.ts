@@ -9,6 +9,9 @@ import { createAsyncThunk } from '../../async-thunk';
 function biggestTimeRangeInUnix(state: ContinuousState) {
   const getTime = (d: Date) => d.getTime();
 
+  console.log('froms:', state.from, state.leftFrom, state.rightFrom); // DEBUG
+  console.log('untils:', state.until, state.leftUntil, state.leftUntil); // DEBUG
+
   return createBiggestInterval({
     from: [state.from, state.leftFrom, state.rightFrom]
       .map(formatAsOBject)
@@ -38,7 +41,11 @@ export const fetchTags = createAsyncThunk<
     const appName = assertIsValidAppName(query);
 
     const state = thunkAPI.getState().continuous;
-    const timerange = biggestTimeRangeInUnix(state);
+    // const timerange = biggestTimeRangeInUnix(state);
+    const timerange = {
+      from: [state.from].map(formatAsOBject).map((d) => d.getTime())[0],
+      until: [state.until].map(formatAsOBject).map((d) => d.getTime())[0],
+    };
     const res = await tagsService.fetchTags(
       query,
       timerange.from,
