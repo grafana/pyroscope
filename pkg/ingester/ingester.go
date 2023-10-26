@@ -233,7 +233,6 @@ func (i *Ingester) evictBlock(tenantID string, b ulid.ULID, fn func() error) (er
 
 func (i *Ingester) Push(ctx context.Context, req *connect.Request[pushv1.PushRequest]) (*connect.Response[pushv1.PushResponse], error) {
 	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[pushv1.PushResponse], error) {
-		level.Debug(instance.logger).Log("msg", "message received by ingester push")
 		for _, series := range req.Msg.Series {
 			for _, sample := range series.Samples {
 				err := pprof.FromBytes(sample.RawProfile, func(p *profilev1.Profile, size int) error {
