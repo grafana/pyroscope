@@ -35,7 +35,10 @@ function assertIsValidAppName(query: Query) {
  * @param includeLeftAndRight If true, include the left and right time ranges in the calculation
  * @returns The maximum time range possible
  */
-function getTimeRange(state: ContinuousState, includeLeftAndRight = false): { from: number, until: number } {
+function getTimeRange(
+  state: ContinuousState,
+  includeLeftAndRight = false
+): { from: number; until: number } {
   if (includeLeftAndRight) {
     return biggestTimeRangeInUnix(state);
   }
@@ -43,7 +46,7 @@ function getTimeRange(state: ContinuousState, includeLeftAndRight = false): { fr
   const [from, until] = [state.from, state.until]
     .map(formatAsOBject)
     .map((d) => d.getTime());
-  return { from, until }
+  return { from, until };
 }
 
 /**
@@ -53,9 +56,9 @@ function getTimeRange(state: ContinuousState, includeLeftAndRight = false): { fr
  * will use only the primary time range.
  */
 export type FetchTagsQuery = {
-  query: Query,
-  includeLeftAndRight: boolean,
-}
+  query: Query;
+  includeLeftAndRight: boolean;
+};
 
 /**
  * Fetch label names for a given time range. Use
@@ -63,10 +66,10 @@ export type FetchTagsQuery = {
  */
 export const fetchTags = createAsyncThunk<
   {
-    appName: string,
-    tags: string[],
-    from: number,
-    until: number,
+    appName: string;
+    tags: string[];
+    from: number;
+    until: number;
   },
   FetchTagsQuery,
   { state: { continuous: ContinuousState } }
@@ -76,13 +79,12 @@ export const fetchTags = createAsyncThunk<
     const { query, includeLeftAndRight } = fetchTagsQuery;
 
     const appName = assertIsValidAppName(query);
-    const { from, until } = getTimeRange(thunkAPI.getState().continuous, includeLeftAndRight);
-
-    const res = await tagsService.fetchTags(
-      query,
-      from,
-      until,
+    const { from, until } = getTimeRange(
+      thunkAPI.getState().continuous,
+      includeLeftAndRight
     );
+
+    const res = await tagsService.fetchTags(query, from, until);
 
     if (res.isOk) {
       return Promise.resolve({
@@ -135,8 +137,7 @@ export const fetchTags = createAsyncThunk<
         return target >= tagsState.from && target <= tagsState.until;
       };
 
-      const isSmallerThanLoaded =
-        isInRange(from) && isInRange(until);
+      const isSmallerThanLoaded = isInRange(from) && isInRange(until);
       return !isSmallerThanLoaded;
     },
   }
