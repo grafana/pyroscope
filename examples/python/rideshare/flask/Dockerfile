@@ -1,5 +1,4 @@
-ARG PYTHON_VERSION=3.9
-FROM python:${PYTHON_VERSION}
+FROM python:3.9
 
 RUN pip3 install flask pyroscope-io==0.8.5
 
