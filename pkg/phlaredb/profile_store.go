@@ -65,7 +65,7 @@ type profileStore struct {
 func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) *parquet.GenericWriter[*schemav1.Profile] {
 	options = append(options, parquet.PageBufferSize(3*1024*1024))
 	options = append(options, parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision))
-	options = append(options, parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "pyroscopedb-parquet-buffers*")))
+	// options = append(options, parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "pyroscopedb-parquet-buffers*")))
 	options = append(options, schemav1.ProfilesSchema)
 	return parquet.NewGenericWriter[*schemav1.Profile](
 		writer, options...,
@@ -224,26 +224,29 @@ func (s *profileStore) prepareFile(path string) (f *os.File, err error) {
 // profiles, including ones added since the start of the call, but only those
 // that were added before certain point (this call). The same for s.slice.
 func (s *profileStore) cutRowGroup(count int) (err error) {
+	path := filepath.Join(
+		s.path,
+		fmt.Sprintf("%s.%d%s", s.persister.Name(), s.rowsFlushed, block.ParquetSuffix),
+	)
 	// if cutRowGroup fails record it as failed segment
 	defer func() {
 		if err != nil {
 			s.metrics.writtenProfileSegments.WithLabelValues("failed").Inc()
 		}
 	}()
+	// Removes the file if it exists. This can happen if the previous
+	// ingestion attempt failed.
+	if err := os.Remove(path); err == nil {
+		level.Error(s.logger).Log("msg", "old rowgroup segment found", "path", path)
+	}
+	f, err := s.prepareFile(path)
+	if err != nil {
+		return err
+	}
 
 	size := s.loadProfilesToFlush(count)
 	if len(s.flushBuffer) == 0 {
 		return nil
-	}
-
-	path := filepath.Join(
-		s.path,
-		fmt.Sprintf("%s.%d%s", s.persister.Name(), s.rowsFlushed, block.ParquetSuffix),
-	)
-
-	f, err := s.prepareFile(path)
-	if err != nil {
-		return err
 	}
 
 	n, err := parquet.CopyRows(s.writer, schemav1.NewInMemoryProfilesRowReader(s.flushBuffer))

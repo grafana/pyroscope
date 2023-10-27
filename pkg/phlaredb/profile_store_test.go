@@ -595,3 +595,13 @@ func TestProfileStore_Querying(t *testing.T) {
 		)
 	})
 }
+
+func TestRemoveFailedSegment(t *testing.T) {
+	store := newProfileStore(testContext(t))
+	require.NoError(t, store.Init("", defaultParquetConfig, contextHeadMetrics(context.Background())))
+	// fake a failed segment
+	_, err := os.Create("profiles.0.parquet")
+	require.NoError(t, err)
+	err = store.cutRowGroup(0)
+	require.NoError(t, err)
+}
