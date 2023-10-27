@@ -369,11 +369,18 @@ func (f *PhlareDB) LabelValues(ctx context.Context, req *connect.Request[typesv1
 }
 
 // LabelNames returns the possible label names.
-func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (resp *connect.Response[typesv1.LabelNamesResponse], err error) {
+func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB LabelNames")
+	defer sp.Finish()
+
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
 
-	return f.headQueriers().LabelNames(ctx, req)
+	_, ok := phlaremodel.GetTimeRange(req.Msg)
+	if !ok {
+		return f.headQueriers().LabelNames(ctx, req)
+	}
+	return f.queriers().LabelNames(ctx, req)
 }
 
 // ProfileTypes returns the possible profile types.
@@ -386,13 +393,14 @@ func (f *PhlareDB) ProfileTypes(ctx context.Context, req *connect.Request[ingest
 
 // Series returns labels series for the given set of matchers.
 func (f *PhlareDB) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhareDB Series")
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB Series")
 	defer sp.Finish()
 
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
 
-	if req.Msg.Start == 0 || req.Msg.End == 0 {
+	_, ok := phlaremodel.GetTimeRange(req.Msg)
+	if !ok {
 		return f.headQueriers().Series(ctx, req)
 	}
 	return f.queriers().Series(ctx, req)

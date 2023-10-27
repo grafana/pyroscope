@@ -28,6 +28,7 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/samber/lo"
+	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
@@ -347,8 +348,64 @@ func (b *singleBlockQuerier) LabelValues(ctx context.Context, req *connect.Reque
 }
 
 func (b *singleBlockQuerier) LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error) {
-	// todo
-	return connect.NewResponse(&typesv1.LabelNamesResponse{}), nil
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames Block")
+	defer sp.Finish()
+
+	params := req.Msg
+
+	err := b.Open(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	selectors, err := parseSelectors(params.Matchers)
+	if err != nil {
+		return nil, err
+	}
+
+	if selectors.matchesAll() {
+		names, err := b.index.LabelNames()
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&typesv1.LabelNamesResponse{
+			Names: names,
+		}), nil
+	}
+
+	var iters []index.Postings
+	for _, matchers := range selectors {
+		iter, err := PostingsForMatchers(b.index, nil, matchers...)
+		if err != nil {
+			return nil, err
+		}
+		iters = append(iters, iter)
+	}
+
+	nameSet := make(map[string]struct{})
+	iter := index.Intersect(iters...)
+	for iter.Next() {
+		names, err := b.index.LabelNamesFor(iter.At())
+		if err != nil {
+			if err == storage.ErrNotFound {
+				continue
+			}
+			return nil, err
+		}
+
+		for _, name := range names {
+			nameSet[name] = struct{}{}
+		}
+	}
+
+	names := make([]string, 0, len(nameSet))
+	for name := range nameSet {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return connect.NewResponse(&typesv1.LabelNamesResponse{
+		Names: names,
+	}), nil
 }
 
 func (b *singleBlockQuerier) Close() error {
@@ -1067,6 +1124,43 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 	return nil
 }
 
+func LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest], blockGetter BlockGetter) (*typesv1.LabelNamesResponse, error) {
+	queriers, err := blockGetter(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
+	if err != nil {
+		return nil, err
+	}
+
+	var labelNames []string
+	var lock sync.Mutex
+	group, ctx := errgroup.WithContext(ctx)
+
+	const concurrentQueryLimit = 50
+	group.SetLimit(concurrentQueryLimit)
+
+	for _, q := range queriers {
+		group.Go(util.RecoverPanic(func() error {
+			res, err := q.LabelNames(ctx, req)
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			labelNames = append(labelNames, res.Msg.Names...)
+			lock.Unlock()
+			return nil
+		}))
+	}
+	err = group.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	slices.Sort(labelNames)
+	return &typesv1.LabelNamesResponse{
+		Names: lo.Uniq(labelNames),
+	}, nil
+}
+
 func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockGetter) (*ingestv1.SeriesResponse, error) {
 	queriers, err := blockGetter(ctx, model.Time(req.Start), model.Time(req.End))
 	if err != nil {
@@ -1482,14 +1576,4 @@ func (r *parquetReader[M, P]) columnIter(ctx context.Context, columnName string,
 	}
 	ctx = query.AddMetricsToContext(ctx, r.metrics.query)
 	return query.NewSyncIterator(ctx, r.file.RowGroups(), index, columnName, 1000, predicate, alias)
-}
-
-func repeatedColumnIter[T any](ctx context.Context, source Source, columnName string, rows iter.Iterator[T]) iter.Iterator[*query.RepeatedRow[T]] {
-	column, found := source.Schema().Lookup(strings.Split(columnName, ".")...)
-	if !found {
-		return iter.NewErrIterator[*query.RepeatedRow[T]](fmt.Errorf("column '%s' not found in parquet file", columnName))
-	}
-
-	opentracing.SpanFromContext(ctx).SetTag("columnName", columnName)
-	return query.NewRepeatedPageIterator(ctx, rows, source.RowGroups(), column.ColumnIndex, 1e4)
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/pprof/profile"
+	"github.com/grafana/dskit/runutil"
 	"github.com/opentracing/opentracing-go"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
@@ -15,6 +16,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
+	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
 
@@ -43,7 +45,6 @@ func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[
 func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
-
 	m := make(seriesByLabels)
 	columnName := "TotalValue"
 	if b.meta.Version == 1 {
@@ -71,63 +72,63 @@ type Source interface {
 	RowGroups() []parquet.RowGroup
 }
 
-func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver) error {
+func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver) (err error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeByStacktraces")
 	defer sp.Finish()
-	// clone the rows to be able to iterate over them twice
-	multiRows, err := iter.CloneN(rows, 2)
-	if err != nil {
+	var columns v1.SampleColumns
+	if err = columns.Resolve(profileSource.Schema()); err != nil {
 		return err
 	}
-	it := query.NewMultiRepeatedPageIterator(
-		repeatedColumnIter(ctx, profileSource, "Samples.list.element.StacktraceID", multiRows[0]),
-		repeatedColumnIter(ctx, profileSource, "Samples.list.element.Value", multiRows[1]),
+	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(),
+		columns.StacktraceID.ColumnIndex,
+		columns.Value.ColumnIndex,
 	)
-	defer it.Close()
-	for it.Next() {
-		values := it.At().Values
-		p := r.Partition(it.At().Row.StacktracePartition())
-		for i := 0; i < len(values[0]); i++ {
-			p[uint32(values[0][i].Int64())] += values[1][i].Int64()
+	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
+	for profiles.Next() {
+		p := profiles.At()
+		partition := r.Partition(p.Row.StacktracePartition())
+		stacktraces := p.Values[0]
+		values := p.Values[1]
+		for i, sid := range stacktraces {
+			partition[sid.Uint32()] += values[i].Int64()
 		}
 	}
-	return it.Err()
+	return profiles.Err()
 }
 
-func mergeBySpans(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver, spanSelector phlaremodel.SpanSelector) error {
+func mergeBySpans(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver, spanSelector phlaremodel.SpanSelector) (err error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeBySpans")
 	defer sp.Finish()
-	if _, found := profileSource.Schema().Lookup(strings.Split("Samples.list.element.SpanID", ".")...); !found {
-		return nil
-	}
-	// clone the rows to be able to iterate over them twice
-	multiRows, err := iter.CloneN(rows, 3)
-	if err != nil {
+	var columns v1.SampleColumns
+	if err = columns.Resolve(profileSource.Schema()); err != nil {
 		return err
 	}
-	it := query.NewMultiRepeatedPageIterator(
-		repeatedColumnIter(ctx, profileSource, "Samples.list.element.StacktraceID", multiRows[0]),
-		repeatedColumnIter(ctx, profileSource, "Samples.list.element.Value", multiRows[1]),
-		repeatedColumnIter(ctx, profileSource, "Samples.list.element.SpanID", multiRows[2]),
+	if !columns.HasSpanID() {
+		return nil
+	}
+	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(),
+		columns.StacktraceID.ColumnIndex,
+		columns.Value.ColumnIndex,
+		columns.SpanID.ColumnIndex,
 	)
-	defer it.Close()
-	for it.Next() {
-		values := it.At().Values
-		p := r.Partition(it.At().Row.StacktracePartition())
-		stacktraces := values[0]
-		sampleValues := values[1]
-		spans := values[2]
-		for i := 0; i < len(stacktraces); i++ {
+	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
+	for profiles.Next() {
+		p := profiles.At()
+		partition := r.Partition(p.Row.StacktracePartition())
+		stacktraces := p.Values[0]
+		values := p.Values[1]
+		spans := p.Values[2]
+		for i, sid := range stacktraces {
 			spanID := spans[i].Uint64()
 			if spanID == 0 {
 				continue
 			}
 			if _, ok := spanSelector[spanID]; ok {
-				p[uint32(stacktraces[i].Int64())] += sampleValues[i].Int64()
+				partition[sid.Uint32()] += values[i].Int64()
 			}
 		}
 	}
-	return it.Err()
+	return profiles.Err()
 }
 
 type seriesByLabels map[string]*typesv1.Series
@@ -146,20 +147,23 @@ func (m seriesByLabels) normalize() []*typesv1.Series {
 	return result
 }
 
-func mergeByLabels(ctx context.Context, profileSource Source, columnName string, rows iter.Iterator[Profile], m seriesByLabels, by ...string) error {
-	it := repeatedColumnIter(ctx, profileSource, columnName, rows)
-
-	defer it.Close()
+func mergeByLabels(ctx context.Context, profileSource Source, columnName string, rows iter.Iterator[Profile], m seriesByLabels, by ...string) (err error) {
+	column, err := v1.ResolveColumnByPath(profileSource.Schema(), strings.Split(columnName, "."))
+	if err != nil {
+		return err
+	}
+	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(), column.ColumnIndex)
+	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 
 	labelsByFingerprint := map[model.Fingerprint]string{}
 	labelBuf := make([]byte, 0, 1024)
 
-	for it.Next() {
-		values := it.At()
+	for profiles.Next() {
+		values := profiles.At()
 		p := values.Row
 		var total int64
 		for _, e := range values.Values {
-			total += e.Int64()
+			total += e[0].Int64()
 		}
 		labelsByString, ok := labelsByFingerprint[p.Fingerprint()]
 		if !ok {
@@ -185,5 +189,5 @@ func mergeByLabels(ctx context.Context, profileSource Source, columnName string,
 			Value:     float64(total),
 		})
 	}
-	return it.Err()
+	return profiles.Err()
 }
