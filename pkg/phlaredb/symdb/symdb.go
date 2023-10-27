@@ -15,6 +15,7 @@ import (
 // SymbolsReader provides access to a symdb partition.
 type SymbolsReader interface {
 	Partition(ctx context.Context, partition uint64) (PartitionReader, error)
+	Load(context.Context) error
 }
 
 type PartitionReader interface {
@@ -269,4 +270,9 @@ func (s *SymDB) Flush() error {
 
 func (s *SymDB) Files() []block.File {
 	return s.writer.files
+}
+
+func (s *SymDB) Load(context.Context) error {
+	// Already loaded into memory.
+	return nil
 }
