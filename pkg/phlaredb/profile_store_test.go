@@ -601,7 +601,8 @@ func TestRemoveFailedSegment(t *testing.T) {
 	require.NoError(t, store.Init("", defaultParquetConfig, contextHeadMetrics(context.Background())))
 	// fake a failed segment
 	_, err := os.Create("profiles.0.parquet")
+	require.NoError(t, store.ingest(context.Background(), []schemav1.InMemoryProfile{{}}, phlaremodel.LabelsFromStrings(), "memory"))
 	require.NoError(t, err)
-	err = store.cutRowGroup(0)
+	err = store.cutRowGroup(1)
 	require.NoError(t, err)
 }
