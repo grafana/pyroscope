@@ -11,16 +11,20 @@ bpf/gen:
 	go generate pyrobpf/gen.go
 	go generate python/gen.go
 
-RIDESHARE="../examples/python/rideshare/flask"
+RIDESHARE="testdata/rideshare-flask-no-pip"
+
 .phony: rideshare/gen
 rideshare/gen:
-	docker build -t ebpf-testdata-rideshare-glibc-3.8  --build-arg="PYTHON_VERSION=3.8-slim"  $(RIDESHARE)
-	docker build -t ebpf-testdata-rideshare-glibc-3.9  --build-arg="PYTHON_VERSION=3.9-slim"  $(RIDESHARE)
-	docker build -t ebpf-testdata-rideshare-glibc-3.10 --build-arg="PYTHON_VERSION=3.10-slim" $(RIDESHARE)
-	docker build -t ebpf-testdata-rideshare-glibc-3.11 --build-arg="PYTHON_VERSION=3.11-slim" $(RIDESHARE)
-	docker build -t ebpf-testdata-rideshare-glibc-3.12 --build-arg="PYTHON_VERSION=3.12-slim" $(RIDESHARE)
-	docker build -t ebpf-testdata-rideshare-glibc-3.8  --build-arg="PYTHON_VERSION=3.8-slim"  $(RIDESHARE)
-	docker build -t ebpf-testdata-rideshare-glibc-3.9  --build-arg="PYTHON_VERSION=3.9-slim"  $(RIDESHARE)
-	docker build -t ebpf-testdata-rideshare-glibc-3.10 --build-arg="PYTHON_VERSION=3.10-slim" $(RIDESHARE)
-	docker build -t ebpf-testdata-rideshare-glibc-3.11 --build-arg="PYTHON_VERSION=3.11-slim" $(RIDESHARE)
-	docker build -t ebpf-testdata-rideshare-glibc-3.12 --build-arg="PYTHON_VERSION=3.12-slim" $(RIDESHARE)
+	git submodule update --init --recursive
+	docker build -t ebpf-testdata-rideshare:3.8-slim        --build-arg="PYTHON_VERSION=3.8-slim"       $(RIDESHARE)
+	docker build -t ebpf-testdata-rideshare:3.9-slim        --build-arg="PYTHON_VERSION=3.9-slim"       $(RIDESHARE)
+	docker build -t ebpf-testdata-rideshare:3.10-slim       --build-arg="PYTHON_VERSION=3.10-slim"      $(RIDESHARE)
+	docker build -t ebpf-testdata-rideshare:3.11-slim       --build-arg="PYTHON_VERSION=3.11-slim"      $(RIDESHARE)
+	docker build -t ebpf-testdata-rideshare:3.12-slim       --build-arg="PYTHON_VERSION=3.12-slim"      $(RIDESHARE)
+	docker build -t ebpf-testdata-rideshare:3.13-rc-slim    --build-arg="PYTHON_VERSION=3.13-rc-slim"   $(RIDESHARE)
+	docker build -t ebpf-testdata-rideshare:3.8-alpine      --build-arg="PYTHON_VERSION=3.8-alpine"     $(RIDESHARE)
+	docker build -t ebpf-testdata-rideshare:3.9-alpine      --build-arg="PYTHON_VERSION=3.9-alpine"     $(RIDESHARE)
+	docker build -t ebpf-testdata-rideshare:3.10-alpine     --build-arg="PYTHON_VERSION=3.10-alpine"    $(RIDESHARE)
+	docker build -t ebpf-testdata-rideshare:3.11-alpine     --build-arg="PYTHON_VERSION=3.11-alpine"    $(RIDESHARE)
+	docker build -t ebpf-testdata-rideshare:3.12-alpine     --build-arg="PYTHON_VERSION=3.12-alpine"    $(RIDESHARE)
+	docker build -t ebpf-testdata-rideshare:3.13-rc-alpine  --build-arg="PYTHON_VERSION=3.13-rc-alpine" $(RIDESHARE)
