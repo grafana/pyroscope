@@ -141,3 +141,39 @@ func treeFingerprint(t *phlaremodel.Tree) [][2]uint64 {
 	sort.Slice(m, func(i, j int) bool { return m[i][0] < m[j][0] })
 	return m
 }
+
+func Test_Stats(t *testing.T) {
+	s := memSuite{
+		t:     t,
+		files: [][]string{{"testdata/profile.pb.gz"}},
+		config: &Config{
+			Dir: t.TempDir(),
+			Stacktraces: StacktracesConfig{
+				MaxNodesPerChunk: 4 << 20,
+			},
+			Parquet: ParquetConfig{
+				MaxBufferRowCount: 100 << 10,
+			},
+		},
+	}
+
+	s.init()
+	bs := blockSuite{memSuite: &s}
+	bs.flush()
+	defer bs.teardown()
+
+	p, err := bs.reader.Partition(context.Background(), 0)
+	require.NoError(t, err)
+
+	var actual PartitionStats
+	p.WriteStats(&actual)
+	expected := PartitionStats{
+		StacktracesTotal: 611,
+		MaxStacktraceID:  1793,
+		LocationsTotal:   762,
+		MappingsTotal:    3,
+		FunctionsTotal:   507,
+		StringsTotal:     700,
+	}
+	require.Equal(t, expected, actual)
+}
