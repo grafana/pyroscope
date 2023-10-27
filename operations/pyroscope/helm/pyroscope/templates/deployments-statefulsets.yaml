@@ -137,14 +137,17 @@ spec:
         - name: overrides-config
           configMap:
             name: {{ include "pyroscope.fullname" . }}-overrides-config
-  {{- if eq $component "compactor" }}
-        - name: data-compactor
-          emptyDir: {}
-  {{- end }}
   {{- $persistence := $values.persistence }}
   {{- if not $persistence.enabled }}
+    {{- if eq $component "compactor" }}
+        - name: data-compactor
+          emptyDir: {}
         - name: data
           emptyDir: {}
+    {{- else }}
+        - name: data
+          emptyDir: {}
+    {{- end }}
   {{- else if $persistence.existingClaim}}
         - name: data
           persistentVolumeClaim:
@@ -153,6 +156,25 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: {{ $cfg.name }}-data
+  {{- else if eq $component "compactor" }}
+        - name: data
+          emptyDir: {}
+  volumeClaimTemplates:
+  - metadata:
+      name: data-compactor
+      annotations:
+        {{- toYaml $persistence.annotations | nindent 8 }}
+    spec:
+      accessModes:
+        {{- toYaml $persistence.accessModes | nindent 8 }}
+      resources:
+        requests:
+          storage: {{ $persistence.size | quote }}
+      storageClassName: {{ $persistence.storageClassName }}
+      {{- if $persistence.selector }}
+      selector:
+        {{- toYaml $persistence.selector | nindent 8 }}
+      {{- end }}
   {{- else }}
   volumeClaimTemplates:
   - metadata:
@@ -170,6 +192,7 @@ spec:
       selector:
         {{- toYaml $persistence.selector | nindent 8 }}
       {{- end }}
+  {{- end }}
   {{- end }}
 ---
 {{- $pdb := $values.podDisruptionBudget }}
