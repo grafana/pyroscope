@@ -95,6 +95,7 @@ spec:
             httpGet:
               path: /ready
               port: {{ $values.service.port_name }}
+              scheme: {{ $values.service.scheme }}
           volumeMounts:
             - name: config
               mountPath: /etc/pyroscope/config.yaml
