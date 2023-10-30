@@ -581,7 +581,6 @@ func (queriers Queriers) SelectMatchingProfiles(ctx context.Context, params *ing
 }
 
 func (queriers Queriers) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
-	// todo: verify empty timestamp request should return all series
 	blockGetter := queriers.forTimeRange
 	_, hasTimeRange := phlaremodel.GetTimeRange(req.Msg)
 	if !hasTimeRange {
