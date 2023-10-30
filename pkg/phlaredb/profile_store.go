@@ -239,7 +239,11 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 		s.path,
 		fmt.Sprintf("%s.%d%s", s.persister.Name(), s.rowsFlushed, block.ParquetSuffix),
 	)
-
+	// Removes the file if it exists. This can happen if the previous
+	// cut attempt failed.
+	if err := os.Remove(path); err == nil {
+		level.Warn(s.logger).Log("msg", "deleting row group segment of a failed previous attempt", "path", path)
+	}
 	f, err := s.prepareFile(path)
 	if err != nil {
 		return err
