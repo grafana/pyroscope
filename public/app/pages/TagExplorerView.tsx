@@ -176,7 +176,7 @@ function TagExplorerView() {
 
   useEffect(() => {
     if (query) {
-      dispatch(fetchTags(query));
+      dispatch(fetchTags({ query, includeLeftAndRight: false }));
     }
   }, [query, dispatch]);
 

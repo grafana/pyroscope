@@ -22,19 +22,19 @@ export default function useTags() {
 
   useEffect(() => {
     if (leftQuery) {
-      dispatch(fetchTags(leftQuery));
+      dispatch(fetchTags({ query: leftQuery, includeLeftAndRight: true }));
     }
   }, [dispatch, leftQuery, ranges.left.from, ranges.right.until]);
 
   useEffect(() => {
     if (rightQuery) {
-      dispatch(fetchTags(rightQuery));
+      dispatch(fetchTags({ query: rightQuery, includeLeftAndRight: true }));
     }
   }, [dispatch, rightQuery, ranges.right.from, ranges.right.until]);
 
   useEffect(() => {
     if (query) {
-      dispatch(fetchTags(query));
+      dispatch(fetchTags({ query, includeLeftAndRight: false }));
     }
   }, [dispatch, query, ranges.regular.from, ranges.regular.until]);
 
