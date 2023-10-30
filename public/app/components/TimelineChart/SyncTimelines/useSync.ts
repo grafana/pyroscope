@@ -17,7 +17,6 @@ interface UseSyncParams {
   onSync: (from: string, until: string) => void;
 }
 
-const timeOffset = 5 * 60 * 1000;
 const selectionOffset = 5000;
 
 export const getTitle = (leftInRange: boolean, rightInRange: boolean) => {
@@ -36,6 +35,8 @@ const isInRange = (
   selectionFrom: number,
   selectionTo: number
 ) => {
+  const timeOffset = (to - from) * 0.1;
+
   return selectionFrom + timeOffset >= from && selectionTo - timeOffset <= to;
 };
 
