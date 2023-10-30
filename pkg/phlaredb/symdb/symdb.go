@@ -110,10 +110,10 @@ func DefaultConfig() *Config {
 	return &Config{
 		Dir: DefaultDirName,
 		Stacktraces: StacktracesConfig{
-			// A million of nodes ensures predictable
-			// memory consumption, although causes a
-			// small overhead.
-			MaxNodesPerChunk: 1 << 20,
+			// At the moment chunks are loaded in memory at once.
+			// Due to the fact that chunking causes some duplication,
+			// it's better to keep them large.
+			MaxNodesPerChunk: 4 << 20,
 		},
 		Parquet: ParquetConfig{
 			MaxBufferRowCount: 100 << 10,

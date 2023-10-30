@@ -188,7 +188,7 @@ func (l Log) Wrap(next http.Handler) http.Handler {
 
 			return
 		}
-		if 100 <= statusCode && statusCode < 500 || statusCode == http.StatusBadGateway || statusCode == http.StatusServiceUnavailable {
+		if 100 <= statusCode && statusCode < 500 {
 			if l.LogRequestAtInfoLevel {
 				level.Info(requestLog).Log("msg", dslog.LazySprintf("%s %s (%d) %s", r.Method, uri, statusCode, time.Since(begin)))
 			} else {
