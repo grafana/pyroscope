@@ -7,6 +7,7 @@ package storegateway
 
 import (
 	"context"
+	"path/filepath"
 	"time"
 
 	"github.com/go-kit/log"
@@ -21,8 +22,9 @@ import (
 )
 
 const (
-	corruptedBucketIndex = "corrupted-bucket-index"
-	noBucketIndex        = "no-bucket-index"
+	corruptedBucketIndex     = "corrupted-bucket-index"
+	noBucketIndex            = "no-bucket-index"
+	bucketIndexOlderThanHour = "bucket-index-older-than-hour"
 )
 
 // BucketIndexMetadataFetcher is a Thanos MetadataFetcher implementation leveraging on the Mimir bucket index.
@@ -33,6 +35,7 @@ type BucketIndexMetadataFetcher struct {
 	logger      log.Logger
 	filters     []block.MetadataFilter
 	metrics     *block.FetcherMetrics
+	fallback    block.MetadataFetcher
 }
 
 func NewBucketIndexMetadataFetcher(
@@ -53,11 +56,62 @@ func NewBucketIndexMetadataFetcher(
 	}
 }
 
+func (f *BucketIndexMetadataFetcher) fallbackFetch(ctx context.Context) (metas map[ulid.ULID]*block.Meta, partial map[ulid.ULID]error, err error) {
+	if f.fallback == nil {
+		userBucket := objstore.NewTenantBucketClient(f.userID, f.bkt, f.cfgProvider)
+		fetcher, err := block.NewMetaFetcherWithMetrics(f.logger, 16, userBucket, filepath.Join("./data-store-gateway", f.userID), f.metrics, f.filters)
+		if err != nil {
+			return nil, nil, err
+		}
+		f.fallback = fetcher
+	}
+
+	return f.fallback.Fetch(ctx)
+}
+
 // Fetch implements block.MetadataFetcher. Not goroutine-safe.
 func (f *BucketIndexMetadataFetcher) Fetch(ctx context.Context) (metas map[ulid.ULID]*block.Meta, partial map[ulid.ULID]error, err error) {
 	f.metrics.ResetTx()
 
 	start := time.Now()
+
+	// Fetch the bucket index.
+	idx, err := bucketindex.ReadIndex(ctx, f.bkt, f.userID, f.cfgProvider, f.logger)
+	if errors.Is(err, bucketindex.ErrIndexNotFound) {
+		// This is a legit case happening when the first blocks of a tenant have recently been uploaded by ingesters
+		// and their bucket index has not been created yet.
+		defer func() {
+			f.metrics.Synced.WithLabelValues(noBucketIndex).Set(1)
+			f.metrics.Submit()
+		}()
+
+		level.Warn(f.logger).Log("msg", "no bucket index found, falling back to fetching directly from bucket", "user", f.userID)
+		return f.fallbackFetch(ctx)
+	}
+	if errors.Is(err, bucketindex.ErrIndexCorrupted) {
+		// In case a single tenant bucket index is corrupted, we don't want the store-gateway to fail at startup
+		// because unable to fetch blocks metadata. We'll act as if the tenant has no bucket index, but the query
+		// will fail anyway in the querier (the querier fails in the querier if bucket index is corrupted).
+		level.Error(f.logger).Log("msg", "corrupted bucket index found, falling back to fetching directly from bucket", "user", f.userID, "err", err)
+		defer func() {
+			f.metrics.Synced.WithLabelValues(corruptedBucketIndex).Set(1)
+			f.metrics.Submit()
+		}()
+
+		return f.fallbackFetch(ctx)
+	}
+
+	// check if index is older than 1 hour, fallback to metafetcher
+	if time.Unix(idx.UpdatedAt, 0).Before(start.Add(-1 * time.Hour)) {
+		defer func() {
+			f.metrics.Synced.WithLabelValues(bucketIndexOlderThanHour).Set(1)
+			f.metrics.Submit()
+		}()
+
+		level.Warn(f.logger).Log("msg", "bucket index is older than 1 hour, falling back to fetching directly from bucket", "user", f.userID)
+		return f.fallbackFetch(ctx)
+	}
+
 	defer func() {
 		f.metrics.SyncDuration.Observe(time.Since(start).Seconds())
 		if err != nil {
@@ -66,26 +120,6 @@ func (f *BucketIndexMetadataFetcher) Fetch(ctx context.Context) (metas map[ulid.
 	}()
 	f.metrics.Syncs.Inc()
 
-	// Fetch the bucket index.
-	idx, err := bucketindex.ReadIndex(ctx, f.bkt, f.userID, f.cfgProvider, f.logger)
-	if errors.Is(err, bucketindex.ErrIndexNotFound) {
-		// This is a legit case happening when the first blocks of a tenant have recently been uploaded by ingesters
-		// and their bucket index has not been created yet.
-		f.metrics.Synced.WithLabelValues(noBucketIndex).Set(1)
-		f.metrics.Submit()
-
-		return nil, nil, nil
-	}
-	if errors.Is(err, bucketindex.ErrIndexCorrupted) {
-		// In case a single tenant bucket index is corrupted, we don't want the store-gateway to fail at startup
-		// because unable to fetch blocks metadata. We'll act as if the tenant has no bucket index, but the query
-		// will fail anyway in the querier (the querier fails in the querier if bucket index is corrupted).
-		level.Error(f.logger).Log("msg", "corrupted bucket index found", "user", f.userID, "err", err)
-		f.metrics.Synced.WithLabelValues(corruptedBucketIndex).Set(1)
-		f.metrics.Submit()
-
-		return nil, nil, nil
-	}
 	if err != nil {
 		f.metrics.Synced.WithLabelValues(block.FailedMeta).Set(1)
 		f.metrics.Submit()
