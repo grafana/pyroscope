@@ -71,6 +71,9 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 					}
 					classname := cStringFromI8Unsafe(sym.Classname[:])
 					name := cStringFromI8Unsafe(sym.Name[:])
+					if classname == "" && filename == "" && name == "" {
+						continue
+					}
 					if classname == "" {
 						sb.append(fmt.Sprintf("%s %s", filename, name))
 					} else {

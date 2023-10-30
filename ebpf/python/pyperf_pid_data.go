@@ -97,7 +97,11 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 	}
 	var vframeCode, vframeBack, vframeLocalPlus int16
 	if version.Compare(Py311) >= 0 {
-		vframeCode = offsets.PyInterpreterFrame_f_code
+		if version.Compare(Py313) >= 0 {
+			vframeCode = offsets.PyInterpreterFrame_f_executable
+		} else {
+			vframeCode = offsets.PyInterpreterFrame_f_code
+		}
 		vframeBack = offsets.PyInterpreterFrame_previous
 		vframeLocalPlus = offsets.PyInterpreterFrame_localsplus
 	} else {
@@ -109,10 +113,24 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 		return nil, fmt.Errorf("broken offsets %+v %+v", offsets, version)
 	}
 
+	cframe := offsets.PyThreadState_cframe
+	currentFrame := offsets.PyCFrame_current_frame
+	frame := offsets.PyThreadState_frame
+	if version.Compare(Py313) >= 0 {
+		if cframe != -1 || currentFrame != -1 || frame != -1 {
+			return nil, fmt.Errorf("broken offsets %+v %+v", offsets, version)
+		}
+		// PyCFrame was removed in 3.13, lets pretend it was never there and frame field was just renamed to current_frame
+		frame = offsets.PyThreadState_current_frame
+		if frame == -1 {
+			return nil, fmt.Errorf("broken offsets %+v %+v", offsets, version)
+		}
+	}
+
 	data.Offsets = PerfPyOffsetConfig{
-		PyThreadStateFrame:            offsets.PyThreadState_frame,
-		PyThreadStateCframe:           offsets.PyThreadState_cframe,
-		PyCFrameCurrentFrame:          offsets.PyCFrame_current_frame,
+		PyThreadStateFrame:            frame,
+		PyThreadStateCframe:           cframe,
+		PyCFrameCurrentFrame:          currentFrame,
 		PyCodeObjectCoFilename:        offsets.PyCodeObject_co_filename,
 		PyCodeObjectCoName:            offsets.PyCodeObject_co_name,
 		PyCodeObjectCoVarnames:        offsets.PyCodeObject_co_varnames,

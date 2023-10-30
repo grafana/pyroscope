@@ -14,6 +14,7 @@ type Version struct {
 	Major, Minor, Patch int
 }
 
+var Py313 = &Version{Major: 3, Minor: 13}
 var Py312 = &Version{Major: 3, Minor: 12}
 var Py311 = &Version{Major: 3, Minor: 11}
 var Py37 = &Version{Major: 3, Minor: 7}
@@ -116,6 +117,7 @@ type UserOffsets struct {
 	PyTypeObject_tp_name              int16
 	PyThreadState_frame               int16
 	PyThreadState_cframe              int16
+	PyThreadState_current_frame       int16
 	PyCFrame_current_frame            int16
 	PyFrameObject_f_back              int16
 	PyFrameObject_f_code              int16
@@ -126,6 +128,7 @@ type UserOffsets struct {
 	PyCodeObject_co_localsplusnames   int16
 	PyTupleObject_ob_item             int16
 	PyInterpreterFrame_f_code         int16
+	PyInterpreterFrame_f_executable   int16
 	PyInterpreterFrame_previous       int16
 	PyInterpreterFrame_localsplus     int16
 	PyRuntimeState_gilstate           int16

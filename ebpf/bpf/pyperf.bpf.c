@@ -204,7 +204,7 @@ static __always_inline py_sample_state_t *get_state() {
 
 static __always_inline int get_top_frame(py_pid_data *pid_data, py_sample_state_t *state, void *thread_state) {
     if (pid_data->offsets.PyThreadState_frame == -1) {
-        // py311
+        // >= py311 && <= py312
         void *cframe;
         if (bpf_probe_read_user(
                 &cframe,
@@ -223,6 +223,7 @@ static __always_inline int get_top_frame(py_pid_data *pid_data, py_sample_state_
         }
         return 0;
     }
+    // < py311 && >= py313
     if (bpf_probe_read_user(
             &state->frame_ptr,
             sizeof(void *),
@@ -313,6 +314,11 @@ static __always_inline int check_first_arg(void *code_ptr,
             return -1;
         }
     }
+    if (args_ptr == 0) {
+        *out_first_self = false;
+        *out_first_cls = false;
+        return 0;
+    }
     if (bpf_probe_read_user(
             &args_size, sizeof(args_size), args_ptr + offsets->PyVarObject_ob_size)) {
         return -1;
@@ -375,12 +381,12 @@ static __always_inline int get_names(
             if (first_self) {
                 // we are working with an instance, first we need to get type
                 if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyObject_ob_type)) {
-                    bpf_dbg_printk("failed to read ob_type at %x\n", ptr + PY_OFFSET_PyObject_ob_type);
+                    bpf_dbg_printk("failed to read ob_type at %x\n", ptr);
                     return -PY_ERROR_CLASS_NAME;
                 }
             }
             if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyTypeObject_tp_name)) {
-                bpf_dbg_printk("failed to read tp_name at %x\n", ptr + PY_OFFSET_PyTypeObject_tp_name);
+                bpf_dbg_printk("failed to read tp_name at %x\n", ptr);
                 return -PY_ERROR_CLASS_NAME;
             }
             if (bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr) < 0) {
@@ -401,8 +407,12 @@ static __always_inline int get_names(
             &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_filename)) {
         return -PY_ERROR_FILE_NAME;
     }
+    if (pystr_ptr == 0) {
+        return 0;
+    }
     if (bpf_probe_read_user_str(
             &symbol->file, sizeof(symbol->file), pystr_ptr + offsets->String_size) < 0) {
+        bpf_dbg_printk("failed to read file name at %x\n", pystr_ptr);
         return -PY_ERROR_FILE_NAME;
     }
     // read PyCodeObject's name into symbol
