@@ -30,8 +30,6 @@ import (
 
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 
-	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
-	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 )
@@ -253,12 +251,12 @@ func TestIngest(t *testing.T) {
 	for _, testdatum := range testdata {
 		t.Run(testdatum.profile, func(t *testing.T) {
 
-			appName := ingest(t, testdatum)
+			appName := ingest(t, &p, testdatum)
 
 			if testdatum.expectStatusIngest == 200 {
 				for _, metric := range testdatum.metrics {
-					render(t, metric, appName, testdatum)
-					selectMerge(t, metric, appName, testdatum, true)
+					render(t, &p, metric, appName, testdatum)
+					selectMerge(t, &p, metric, appName, testdatum, true)
 				}
 			}
 		})
@@ -276,12 +274,12 @@ func TestPush(t *testing.T) {
 		}
 		t.Run(testdatum.profile, func(t *testing.T) {
 
-			appName := push(t, testdatum)
+			appName := push(t, &p, testdatum)
 
 			if testdatum.expectStatusPush == 200 {
 				for _, metric := range testdatum.metrics {
-					render(t, metric, appName, testdatum)
-					selectMerge(t, metric, appName, testdatum, false)
+					render(t, &p, metric, appName, testdatum)
+					selectMerge(t, &p, metric, appName, testdatum, false)
 				}
 			}
 		})
@@ -289,8 +287,8 @@ func TestPush(t *testing.T) {
 	//time.Sleep(10 * time.Hour)
 }
 
-func selectMerge(t *testing.T, metric expectedMetric, name string, testdatum pprofTestData, fixes bool) {
-	qc := queryClient()
+func selectMerge(t *testing.T, p *PyroscopeTest, metric expectedMetric, name string, testdatum pprofTestData, fixes bool) {
+	qc := p.queryClient()
 	resp, err := qc.SelectMergeProfile(context.Background(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{
 		ProfileTypeID: metric.name,
 		Start:         time.Unix(0, 0).UnixMilli(),
@@ -325,10 +323,8 @@ func selectMerge(t *testing.T, metric expectedMetric, name string, testdatum ppr
 	require.Equal(t, expectedStacktraces, actualStacktraces)
 }
 
-func render(t *testing.T, metric expectedMetric, appName string, testdatum pprofTestData) {
-	fmt.Println(metric)
-
-	queryURL := "http://localhost:4040/pyroscope/render?query=" + metric.name + "{service_name=\"" + appName + "\"}&from=946656000&until=now&format=collapsed"
+func render(t *testing.T, p *PyroscopeTest, metric expectedMetric, appName string, testdatum pprofTestData) {
+	queryURL := p.URL() + "/pyroscope/render?query=" + metric.name + "{service_name=\"" + appName + "\"}&from=946656000&until=now&format=collapsed"
 	fmt.Println(queryURL)
 	queryRes, err := http.Get(queryURL)
 	require.NoError(t, err)
@@ -360,9 +356,9 @@ type expectedMetric struct {
 	valueIDX int
 }
 
-func push(t *testing.T, testdatum pprofTestData) string {
+func push(t *testing.T, p *PyroscopeTest, testdatum pprofTestData) string {
 	appName := createAppname(testdatum)
-	cl := pushClient()
+	cl := p.pushClient()
 
 	rawProfile, err := os.ReadFile(testdatum.profile)
 	require.NoError(t, err)
@@ -411,7 +407,7 @@ func updateTimestamp(t *testing.T, rawProfile []byte) []byte {
 	return rawProfile
 }
 
-func ingest(t *testing.T, testdatum pprofTestData) string {
+func ingest(t *testing.T, p *PyroscopeTest, testdatum pprofTestData) string {
 	var (
 		profile, prevProfile, sampleTypeConfig []byte
 		err                                    error
@@ -434,7 +430,7 @@ func ingest(t *testing.T, testdatum pprofTestData) string {
 	}
 
 	appName := createAppname(testdatum)
-	url := "http://localhost:4040/ingest?name=" + appName + "&spyName=" + spyName
+	url := p.URL() + "/ingest?name=" + appName + "&spyName=" + spyName
 	req, err := http.NewRequest("POST", url, bytes.NewReader(bs))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", ct)
@@ -485,18 +481,4 @@ func createPProfRequest(t *testing.T, profile, prevProfile, sampleTypeConfig []b
 	require.NoError(t, err)
 
 	return b.Bytes(), w.FormDataContentType()
-}
-
-func queryClient() querierv1connect.QuerierServiceClient {
-	return querierv1connect.NewQuerierServiceClient(
-		http.DefaultClient,
-		"http://localhost:4040",
-	)
-}
-
-func pushClient() pushv1connect.PusherServiceClient {
-	return pushv1connect.NewPusherServiceClient(
-		http.DefaultClient,
-		"http://localhost:4040",
-	)
 }
