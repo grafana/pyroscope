@@ -65,7 +65,7 @@ type profileStore struct {
 func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) *parquet.GenericWriter[*schemav1.Profile] {
 	options = append(options, parquet.PageBufferSize(3*1024*1024))
 	options = append(options, parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision))
-	// options = append(options, parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "pyroscopedb-parquet-buffers*")))
+	options = append(options, parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "pyroscopedb-parquet-buffers*")))
 	options = append(options, schemav1.ProfilesSchema)
 	return parquet.NewGenericWriter[*schemav1.Profile](
 		writer, options...,
@@ -241,7 +241,7 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 		fmt.Sprintf("%s.%d%s", s.persister.Name(), s.rowsFlushed, block.ParquetSuffix),
 	)
 	// Removes the file if it exists. This can happen if the previous
-	// ingestion attempt failed.
+	// cut attempt failed.
 	if err := os.Remove(path); err == nil {
 		level.Error(s.logger).Log("msg", "old rowgroup segment found", "path", path)
 	}
