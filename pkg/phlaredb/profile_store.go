@@ -65,7 +65,6 @@ type profileStore struct {
 func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) *parquet.GenericWriter[*schemav1.Profile] {
 	options = append(options, parquet.PageBufferSize(3*1024*1024))
 	options = append(options, parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision))
-	options = append(options, parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "pyroscopedb-parquet-buffers*")))
 	options = append(options, schemav1.ProfilesSchema)
 	return parquet.NewGenericWriter[*schemav1.Profile](
 		writer, options...,
