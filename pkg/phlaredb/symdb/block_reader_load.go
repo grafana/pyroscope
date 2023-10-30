@@ -81,9 +81,15 @@ func (r *Reader) loadParquetTables(g *errgroup.Group) {
 		i++
 	}
 	sort.Slice(partitions, func(i, j int) bool {
+		// Partitions are stored sorted by their name.
+		// We sort partitions by row order so that they
+		// are read sequentially.
 		a := partitions[i].locations.headers[0]
 		b := partitions[j].locations.headers[0]
-		return (a.RowGroup + a.Index) < (b.RowGroup + b.Index)
+		if a.RowGroup == b.RowGroup {
+			return a.Index < b.Index
+		}
+		return a.RowGroup < b.RowGroup
 	})
 
 	g.Go(func() error { return withRowIterator(r.locations, partitions, loadLocations) })

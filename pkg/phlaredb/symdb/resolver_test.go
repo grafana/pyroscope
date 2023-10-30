@@ -137,3 +137,8 @@ func (m *mockSymbolsReader) Partition(ctx context.Context, partition uint64) (Pa
 	r, _ := args.Get(0).(PartitionReader)
 	return r, args.Error(1)
 }
+
+func (m *mockSymbolsReader) Load(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
