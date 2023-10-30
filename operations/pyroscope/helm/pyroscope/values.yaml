@@ -75,7 +75,7 @@ pyroscope:
     type: ClusterIP
     port: 4040
     port_name: http2
-    scheme: http
+    scheme: HTTP
 
   memberlist:
     port: 7946
