@@ -26,7 +26,14 @@ service QuerierService {
   rpc Diff(DiffRequest) returns (DiffResponse) {}
 }
 
-message ProfileTypesRequest {}
+message ProfileTypesRequest {
+  // Milliseconds since epoch. If missing or zero, only the ingesters will be
+  // queried.
+  int64 start = 1;
+  // Milliseconds since epoch. If missing or zero, only the ingesters will be
+  // queried.
+  int64 end = 2;
+}
 
 message ProfileTypesResponse {
   repeated types.v1.ProfileType profile_types = 1;

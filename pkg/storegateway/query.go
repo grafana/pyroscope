@@ -44,6 +44,10 @@ func (s *StoreGateway) MergeProfilesPprof(ctx context.Context, stream *connect.B
 	return terminateStream(stream)
 }
 
+func (s *StoreGateway) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
+	panic("unimplemented")
+}
+
 func (s *StoreGateway) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
 	var res *typesv1.LabelValuesResponse
 	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
