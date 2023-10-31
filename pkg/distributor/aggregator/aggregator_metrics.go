@@ -27,12 +27,13 @@ func (a *aggregatorStatsCollector[T]) Describe(ch chan<- *prometheus.Desc) {
 
 // RegisterAggregatorCollector registers aggregator metrics collector.
 func RegisterAggregatorCollector[T any](aggregator *Aggregator[T], reg prometheus.Registerer) {
+	const prefix = "pyroscope_distributor_aggregation"
 	reg.MustRegister(&aggregatorStatsCollector[T]{
 		aggregator:       aggregator,
-		activeSeries:     prometheus.NewDesc("aggregator_active_series", "The number of series being aggregated.", nil, nil),
-		activeAggregates: prometheus.NewDesc("aggregator_active_aggregates", "The number of active aggregates.", nil, nil),
-		aggregatedTotal:  prometheus.NewDesc("aggregator_aggregated_total", "Total number of aggregated requests.", nil, nil),
-		windowDuration:   prometheus.NewDesc("aggregator_window_duration", "Aggregation window duration.", nil, nil),
-		periodDuration:   prometheus.NewDesc("aggregator_period_duration", "Aggregation period duration.", nil, nil),
+		activeSeries:     prometheus.NewDesc(prefix+"_active_series", "The number of series being aggregated.", nil, nil),
+		activeAggregates: prometheus.NewDesc(prefix+"_active_aggregates", "The number of active aggregates.", nil, nil),
+		aggregatedTotal:  prometheus.NewDesc(prefix+"_aggregated_total", "Total number of aggregated requests.", nil, nil),
+		windowDuration:   prometheus.NewDesc(prefix+"_window_duration", "Aggregation window duration.", nil, nil),
+		periodDuration:   prometheus.NewDesc(prefix+"_period_duration", "Aggregation period duration.", nil, nil),
 	})
 }

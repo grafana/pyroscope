@@ -59,14 +59,13 @@ func (a *Aggregator[T]) Start() {
 				return
 			case <-t.C:
 				a.prune(a.now())
-				a.stats.activeSeries.Store(uint64(a.tracker.len()))
 			}
 		}
 	}()
 }
 
 // Stop the aggregator. It does not wait for ongoing aggregations
-// to complete as it's expected that
+// to complete as no aggregation requests expected during shutdown.
 func (a *Aggregator[T]) Stop() {
 	close(a.close)
 	<-a.done
@@ -160,6 +159,7 @@ func (a *Aggregator[T]) prune(deadline int64) {
 	}
 	a.m.Unlock()
 	a.tracker.prune(deadline - a.period)
+	a.stats.activeSeries.Store(uint64(a.tracker.len()))
 }
 
 type aggregate[T any] struct {
