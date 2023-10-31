@@ -7,7 +7,10 @@ package compactor
 import (
 	"context"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -25,12 +28,18 @@ func splitAndMergeCompactorFactory(ctx context.Context, cfg Config, logger log.L
 	if splitBy == nil {
 		return nil, nil, errInvalidCompactionSplitBy
 	}
-
+	hash := xxhash.New()
 	return &BlockCompactor{
 		blockOpenConcurrency: cfg.MaxOpeningBlocksConcurrency,
-		splitBy:              splitBy,
-		logger:               logger,
-		metrics:              newCompactorMetrics(reg),
+		splitBy: func(r phlaredb.ProfileRow, shardsCount uint64) uint64 {
+			hash.Reset()
+			_, _ = hash.WriteString(r.Labels.Get(phlaremodel.LabelNameProfileType))
+			_, _ = hash.WriteString("_")
+			_, _ = hash.WriteString(r.Labels.Get(phlaremodel.LabelNameServiceName))
+			return hash.Sum64() % shardsCount
+		},
+		logger:  logger,
+		metrics: newCompactorMetrics(reg),
 	}, NewSplitAndMergePlanner(cfg.BlockRanges.ToMilliseconds()), nil
 }
 

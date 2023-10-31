@@ -120,14 +120,14 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount uin
 	return out, errs.Err()
 }
 
-type SplitByFunc func(r profileRow, shardsCount uint64) uint64
+type SplitByFunc func(r ProfileRow, shardsCount uint64) uint64
 
-var SplitByFingerprint = func(r profileRow, shardsCount uint64) uint64 {
+var SplitByFingerprint = func(r ProfileRow, shardsCount uint64) uint64 {
 	return uint64(r.fp) % shardsCount
 }
 
-var SplitByStacktracePartition = func(r profileRow, shardsCount uint64) uint64 {
-	return r.row.StacktracePartitionID() % shardsCount
+var SplitByStacktracePartition = func(r ProfileRow, shardsCount uint64) uint64 {
+	return r.Row.StacktracePartitionID() % shardsCount
 }
 
 type blockWriter struct {
@@ -160,7 +160,7 @@ func newBlockWriter(dst string, meta *block.Meta) (*blockWriter, error) {
 	}, nil
 }
 
-func (bw *blockWriter) WriteRow(r profileRow) error {
+func (bw *blockWriter) WriteRow(r ProfileRow) error {
 	err := bw.indexRewriter.ReWriteRow(r)
 	if err != nil {
 		return err
@@ -222,8 +222,8 @@ func newProfileWriter(path string) (*profilesWriter, error) {
 	}, nil
 }
 
-func (p *profilesWriter) WriteRow(r profileRow) error {
-	p.buf[0] = parquet.Row(r.row)
+func (p *profilesWriter) WriteRow(r ProfileRow) error {
+	p.buf[0] = parquet.Row(r.Row)
 	_, err := p.GenericWriter.WriteRows(p.buf)
 	if err != nil {
 		return err
@@ -260,9 +260,9 @@ type indexRewriter struct {
 	path string
 }
 
-func (idxRw *indexRewriter) ReWriteRow(r profileRow) error {
+func (idxRw *indexRewriter) ReWriteRow(r ProfileRow) error {
 	if idxRw.previousFp != r.fp || len(idxRw.series) == 0 {
-		series := r.labels.Clone()
+		series := r.Labels.Clone()
 		for _, l := range series {
 			idxRw.symbols[l.Name] = struct{}{}
 			idxRw.symbols[l.Value] = struct{}{}
@@ -282,7 +282,7 @@ func (idxRw *indexRewriter) ReWriteRow(r profileRow) error {
 		idxRw.previousFp = r.fp
 	}
 	idxRw.chunks[len(idxRw.chunks)-1].MaxTime = r.timeNanos
-	r.row.SetSeriesIndex(idxRw.chunks[len(idxRw.chunks)-1].SeriesIndex)
+	r.Row.SetSeriesIndex(idxRw.chunks[len(idxRw.chunks)-1].SeriesIndex)
 	return nil
 }
 
@@ -434,12 +434,12 @@ func compactMetas(src ...block.Meta) block.Meta {
 	return *meta
 }
 
-type profileRow struct {
+type ProfileRow struct {
 	timeNanos int64
 
-	labels phlaremodel.Labels
+	Labels phlaremodel.Labels
 	fp     model.Fingerprint
-	row    schemav1.ProfileRow
+	Row    schemav1.ProfileRow
 
 	blockReader BlockReader
 }
@@ -452,12 +452,12 @@ type profileRowIterator struct {
 	allPostings index.Postings
 	err         error
 
-	currentRow       profileRow
+	currentRow       ProfileRow
 	currentSeriesIdx uint32
 	chunks           []index.ChunkMeta
 }
 
-func newProfileRowIterator(s BlockReader) (*profileRowIterator, error) {
+func NewProfileRowIterator(s BlockReader) (*profileRowIterator, error) {
 	k, v := index.AllPostingsKey()
 	allPostings, err := s.Index().Postings(k, nil, v)
 	if err != nil {
@@ -476,7 +476,7 @@ func newProfileRowIterator(s BlockReader) (*profileRowIterator, error) {
 	}, nil
 }
 
-func (p *profileRowIterator) At() profileRow {
+func (p *profileRowIterator) At() ProfileRow {
 	return p.currentRow
 }
 
@@ -485,9 +485,9 @@ func (p *profileRowIterator) Next() bool {
 		return false
 	}
 	p.currentRow.blockReader = p.blockReader
-	p.currentRow.row = schemav1.ProfileRow(p.profiles.At())
-	seriesIndex := p.currentRow.row.SeriesIndex()
-	p.currentRow.timeNanos = p.currentRow.row.TimeNanos()
+	p.currentRow.Row = schemav1.ProfileRow(p.profiles.At())
+	seriesIndex := p.currentRow.Row.SeriesIndex()
+	p.currentRow.timeNanos = p.currentRow.Row.TimeNanos()
 	// do we have a new series?
 	if seriesIndex == p.currentSeriesIdx {
 		return true
@@ -502,7 +502,7 @@ func (p *profileRowIterator) Next() bool {
 		return false
 	}
 
-	fp, err := p.index.Series(p.allPostings.At(), &p.currentRow.labels, &p.chunks)
+	fp, err := p.index.Series(p.allPostings.At(), &p.currentRow.Labels, &p.chunks)
 	if err != nil {
 		p.err = err
 		return false
@@ -528,10 +528,10 @@ func (p *profileRowIterator) Close() error {
 	return err
 }
 
-func newMergeRowProfileIterator(src []BlockReader) (iter.Iterator[profileRow], error) {
-	its := make([]iter.Iterator[profileRow], len(src))
+func newMergeRowProfileIterator(src []BlockReader) (iter.Iterator[ProfileRow], error) {
+	its := make([]iter.Iterator[ProfileRow], len(src))
 	for i, s := range src {
-		it, err := newProfileRowIterator(s)
+		it, err := NewProfileRowIterator(s)
 		if err != nil {
 			return nil, err
 		}
@@ -543,11 +543,11 @@ func newMergeRowProfileIterator(src []BlockReader) (iter.Iterator[profileRow], e
 	return &dedupeProfileRowIterator{
 		Iterator: iter.NewTreeIterator(loser.New(
 			its,
-			profileRow{
+			ProfileRow{
 				timeNanos: math.MaxInt64,
 			},
-			func(it iter.Iterator[profileRow]) profileRow { return it.At() },
-			func(r1, r2 profileRow) bool {
+			func(it iter.Iterator[ProfileRow]) ProfileRow { return it.At() },
+			func(r1, r2 ProfileRow) bool {
 				// first handle max profileRow if it's either r1 or r2
 				if r1.timeNanos == math.MaxInt64 {
 					return false
@@ -556,18 +556,18 @@ func newMergeRowProfileIterator(src []BlockReader) (iter.Iterator[profileRow], e
 					return true
 				}
 				// then handle normal profileRows
-				if cmp := phlaremodel.CompareLabelPairs(r1.labels, r2.labels); cmp != 0 {
+				if cmp := phlaremodel.CompareLabelPairs(r1.Labels, r2.Labels); cmp != 0 {
 					return cmp < 0
 				}
 				return r1.timeNanos < r2.timeNanos
 			},
-			func(it iter.Iterator[profileRow]) { _ = it.Close() },
+			func(it iter.Iterator[ProfileRow]) { _ = it.Close() },
 		)),
 	}, nil
 }
 
 type dedupeProfileRowIterator struct {
-	iter.Iterator[profileRow]
+	iter.Iterator[ProfileRow]
 
 	prevFP        model.Fingerprint
 	prevTimeNanos int64
@@ -610,16 +610,16 @@ func newSymbolsRewriter(path string) *symbolsRewriter {
 
 func (s *symbolsRewriter) NumSamples() uint64 { return s.numSamples }
 
-func (s *symbolsRewriter) ReWriteRow(profile profileRow) error {
+func (s *symbolsRewriter) ReWriteRow(profile ProfileRow) error {
 	var err error
-	profile.row.ForStacktraceIDsValues(func(values []parquet.Value) {
+	profile.Row.ForStacktraceIDsValues(func(values []parquet.Value) {
 		s.loadStacktracesID(values)
 		r, ok := s.rewriters[profile.blockReader]
 		if !ok {
 			r = symdb.NewRewriter(s.w, profile.blockReader.Symbols())
 			s.rewriters[profile.blockReader] = r
 		}
-		if err = r.Rewrite(profile.row.StacktracePartitionID(), s.stacktraces); err != nil {
+		if err = r.Rewrite(profile.Row.StacktracePartitionID(), s.stacktraces); err != nil {
 			return
 		}
 		s.numSamples += uint64(len(values))

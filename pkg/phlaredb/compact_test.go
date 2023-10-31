@@ -254,23 +254,23 @@ func TestProfileRowIterator(t *testing.T) {
 		}
 	})
 
-	it, err := newProfileRowIterator(b)
+	it, err := NewProfileRowIterator(b)
 	require.NoError(t, err)
 
 	assert.True(t, it.Next())
-	require.Equal(t, it.At().labels.WithoutPrivateLabels(), phlaremodel.Labels{
+	require.Equal(t, it.At().Labels.WithoutPrivateLabels(), phlaremodel.Labels{
 		&typesv1.LabelPair{Name: "job", Value: "a"},
 	})
 	require.Equal(t, it.At().timeNanos, int64(1))
 
 	assert.True(t, it.Next())
-	require.Equal(t, it.At().labels.WithoutPrivateLabels(), phlaremodel.Labels{
+	require.Equal(t, it.At().Labels.WithoutPrivateLabels(), phlaremodel.Labels{
 		&typesv1.LabelPair{Name: "job", Value: "b"},
 	})
 	require.Equal(t, it.At().timeNanos, int64(2))
 
 	assert.True(t, it.Next())
-	require.Equal(t, it.At().labels.WithoutPrivateLabels(), phlaremodel.Labels{
+	require.Equal(t, it.At().Labels.WithoutPrivateLabels(), phlaremodel.Labels{
 		&typesv1.LabelPair{Name: "job", Value: "c"},
 	})
 	require.Equal(t, it.At().timeNanos, int64(3))
@@ -376,9 +376,9 @@ func TestMergeRowProfileIterator(t *testing.T) {
 			for it.Next() {
 				actual = append(actual, profile{
 					timeNanos: it.At().timeNanos,
-					labels:    it.At().labels.WithoutPrivateLabels(),
+					labels:    it.At().Labels.WithoutPrivateLabels(),
 				})
-				require.Equal(t, model.Fingerprint(it.At().labels.Hash()), it.At().fp)
+				require.Equal(t, model.Fingerprint(it.At().Labels.Hash()), it.At().fp)
 			}
 			require.NoError(t, it.Err())
 			require.NoError(t, it.Close())
@@ -414,7 +414,7 @@ func TestSeriesRewriter(t *testing.T) {
 		}
 		return builders
 	})
-	rows, err := newProfileRowIterator(blk)
+	rows, err := NewProfileRowIterator(blk)
 	require.NoError(t, err)
 	path := t.TempDir()
 	filePath := filepath.Join(path, block.IndexFilename)
@@ -423,7 +423,7 @@ func TestSeriesRewriter(t *testing.T) {
 	for rows.Next() {
 		r := rows.At()
 		require.NoError(t, idxw.ReWriteRow(r))
-		seriesIdx = append(seriesIdx, r.row.SeriesIndex())
+		seriesIdx = append(seriesIdx, r.Row.SeriesIndex())
 	}
 	require.NoError(t, rows.Err())
 	require.NoError(t, rows.Close())

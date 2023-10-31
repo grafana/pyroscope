@@ -15,11 +15,13 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/dskit/flagext"
@@ -32,14 +34,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	prom_testutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/thanos-io/objstore"
 	"gopkg.in/yaml.v3"
 
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	pyroscope_objstore "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
@@ -2036,4 +2042,140 @@ func (b *bucketWithMockedAttributes) Attributes(ctx context.Context, name string
 	}
 
 	return b.Bucket.Attributes(ctx, name)
+}
+
+var srcBlocks = []string{
+	"01HDXZ5VDA4PQ91SJ19NTNHQ5Q", "01HDXZ5VCGN1DP86H5VV17E45J", "01HDXZ5VCKK10V9G319GQ2ZN3V",
+}
+
+func TestCompactBlockProd(t *testing.T) {
+	ctx := context.Background()
+	bkt := localStore(t, "./")
+	readers := openBlocks(t, bkt, srcBlocks...)
+	hash := xxhash.New()
+
+	outMetas, err := phlaredb.CompactWithSplitting(ctx, readers, 16, "./compacted/", func(r phlaredb.ProfileRow, shardsCount uint64) uint64 {
+		hash.Reset()
+		_, _ = hash.WriteString(r.Labels.Get(phlaremodel.LabelNameProfileType))
+		_, _ = hash.WriteString("_")
+		_, _ = hash.WriteString(r.Labels.Get(phlaremodel.LabelNameServiceName))
+		return hash.Sum64() % shardsCount
+	})
+	require.NoError(t, err)
+	for _, m := range outMetas {
+		fmt.Println(m.ULID.String())
+	}
+
+	// printPartitionStats(t, srcBlocks...)
+}
+
+func localStore(t *testing.T, dir string) pyroscope_objstore.Bucket {
+	t.Helper()
+	bkt, err := client.NewBucket(context.Background(), client.Config{
+		StorageBackendConfig: client.StorageBackendConfig{
+			Backend: client.Filesystem,
+			Filesystem: filesystem.Config{
+				Directory: dir,
+			},
+		},
+	}, "")
+	require.NoError(t, err)
+	return bkt
+}
+
+func printPartitionStats(t *testing.T, blocks ...string) {
+	t.Helper()
+	// ctx := context.Background()
+	bkt := localStore(t, "./")
+	readers := openBlocks(t, bkt, blocks...)
+	type partitionStat struct {
+		partition      uint64
+		shard          uint64
+		profiles       uint64
+		maxStacktraces uint64
+		binaries       []string
+	}
+	total := uint64(0)
+	hash := xxhash.New()
+	profilesPerPartition := map[uint64]*partitionStat{}
+	for _, r := range readers {
+
+		rows, err := phlaredb.NewProfileRowIterator(r)
+		require.NoError(t, err)
+
+		defer rows.Close()
+		// sym := r.Symbols()
+		// err = sym.Load(context.Background())
+		// var stats symdb.PartitionStats
+
+		require.NoError(t, err)
+
+		for rows.Next() {
+			r := rows.At()
+			// partitionID := r.Row.StacktracePartitionID()
+			hash.Reset()
+			_, _ = hash.WriteString(r.Labels.Get(phlaremodel.LabelNameProfileType))
+			_, _ = hash.WriteString("_")
+			_, _ = hash.WriteString(r.Labels.Get(phlaremodel.LabelNameServiceName))
+			_, _ = hash.WriteString("_")
+			partitionID := hash.Sum64()
+			p, ok := profilesPerPartition[partitionID]
+			if !ok {
+				p = &partitionStat{
+					partition: partitionID,
+					shard:     partitionID % 16,
+				}
+				profilesPerPartition[partitionID] = p
+				// partition, err := sym.Partition(ctx, p.partition)
+				require.NoError(t, err)
+				// mapping := partition.Symbols().Mappings
+				// strings := partition.Symbols().Strings
+				// locations := partition.Symbols().Locations
+				// locByMapping := map[uint32]uint64{}
+				// for _, l := range locations {
+				// 	locByMapping[l.MappingId]++
+				// }
+				// for _, m := range mapping {
+				// 	if len(p.binaries) > 0 && p.binaries[len(p.binaries)-1] == strings[m.Filename] {
+				// 		continue
+				// 	}
+				// 	p.binaries = append(p.binaries, strings[m.Filename])
+				// }
+				// partition.WriteStats(&stats)
+				// p.maxStacktraces = uint64(stats.MaxStacktraceID)
+				// partition.Release()
+			}
+			p.profiles++
+			total++
+		}
+	}
+	profilePerShards := map[uint64]uint64{}
+	for _, p := range profilesPerPartition {
+		profilePerShards[p.shard] += p.profiles
+	}
+	partitions := lo.Values(profilesPerPartition)
+	sort.Slice(partitions, func(i, j int) bool {
+		return partitions[i].profiles > partitions[j].profiles
+	})
+	for _, p := range partitions {
+		fmt.Println(p.partition, "=>", p.profiles, "binaries: ", strings.Join(p.binaries, ","), "shard=>", p.shard)
+	}
+
+	for shard, profiles := range profilePerShards {
+		fmt.Println("shard", shard, "=>", profiles, "=>%", float64(profiles)/float64(total)*100)
+	}
+}
+
+func openBlocks(t *testing.T, bkt pyroscope_objstore.Bucket, blocks ...string) []phlaredb.BlockReader {
+	t.Helper()
+	res := make([]phlaredb.BlockReader, 0, len(blocks))
+	for _, id := range blocks {
+		meta, err := block.ReadMetaFromDir("./" + id)
+		require.NoError(t, err)
+		querier := phlaredb.NewSingleBlockQuerierFromMeta(context.Background(), bkt, meta)
+		err = querier.Open(context.Background())
+		require.NoError(t, err)
+		res = append(res, querier)
+	}
+	return res
 }
