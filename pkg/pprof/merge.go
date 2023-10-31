@@ -91,7 +91,11 @@ func (m *ProfileMerge) init(x *profilev1.Profile) {
 		factor*len(x.Location), GetLocationKey, cloneVT[*profilev1.Location])
 
 	m.sampleTable = NewRewriteTable[SampleKey, *profilev1.Sample, *profilev1.Sample](
-		factor*len(x.Sample), GetSampleKey, cloneVT[*profilev1.Sample])
+		factor*len(x.Sample), GetSampleKey, func(sample *profilev1.Sample) *profilev1.Sample {
+			c := sample.CloneVT()
+			slices.Clear(c.Value)
+			return c
+		})
 
 	m.profile = &profilev1.Profile{
 		SampleType:        make([]*profilev1.ValueType, len(x.SampleType)),
@@ -112,6 +116,13 @@ func (m *ProfileMerge) init(x *profilev1.Profile) {
 	m.functionTable.Append(x.Function)
 	m.mappingTable.Append(x.Mapping)
 	m.stringTable.Append(x.StringTable)
+
+	for i, s := range x.Sample {
+		dst := m.sampleTable.s[i].Value
+		for j, v := range s.Value {
+			dst[j] += v
+		}
+	}
 }
 
 func cloneVT[T interface{ CloneVT() T }](t T) T { return t.CloneVT() }
