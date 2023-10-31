@@ -1,6 +1,7 @@
 package pprof
 
 import (
+	"fmt"
 	"hash/maphash"
 	"sort"
 
@@ -21,44 +22,20 @@ type ProfileMerge struct {
 
 func NewProfileMerge() *ProfileMerge { return new(ProfileMerge) }
 
-func (m *ProfileMerge) init(x *profilev1.Profile) {
-	factor := 2
-	m.stringTable = NewRewriteTable(
-		factor*len(x.StringTable),
-		func(s string) string { return s },
-		func(s string) string { return s },
-	)
-
-	m.functionTable = NewRewriteTable[FunctionKey, *profilev1.Function, *profilev1.Function](
-		factor*len(x.Function), GetFunctionKey, cloneVT[*profilev1.Function])
-
-	m.mappingTable = NewRewriteTable[MappingKey, *profilev1.Mapping, *profilev1.Mapping](
-		factor*len(x.Mapping), GetMappingKey, cloneVT[*profilev1.Mapping])
-
-	m.locationTable = NewRewriteTable[LocationKey, *profilev1.Location, *profilev1.Location](
-		factor*len(x.Location), GetLocationKey, cloneVT[*profilev1.Location])
-
-	m.sampleTable = NewRewriteTable[SampleKey, *profilev1.Sample, *profilev1.Sample](
-		factor*len(x.Sample), GetSampleKey, cloneVT[*profilev1.Sample])
-
-	m.profile = new(profilev1.Profile)
-	// TODO: Set headers
-}
-
-func cloneVT[T interface{ CloneVT() T }](t T) T { return t.CloneVT() }
-
-func (m *ProfileMerge) Merge(p *profilev1.Profile) {
+func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 	if m.profile == nil {
 		m.init(p)
-	} else {
-		// TODO:
-		//  - validate compatibility.
-		//  - combine headers.
 	}
 
+	// We rewrite strings first in order to compare
+	// sample types and period type.
 	slices.GrowLen(m.tmp, len(p.StringTable))
 	m.stringTable.Index(m.tmp, p.StringTable)
 	RewriteStrings(p, m.tmp)
+
+	if err := combineHeaders(m.profile, p); err != nil {
+		return err
+	}
 
 	slices.GrowLen(m.tmp, len(p.Function))
 	m.functionTable.Index(m.tmp, p.Function)
@@ -81,6 +58,95 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile) {
 			values[j] += v
 		}
 	}
+
+	return nil
+}
+
+func (m *ProfileMerge) Profile() *profilev1.Profile {
+	return m.profile
+}
+
+func (m *ProfileMerge) init(x *profilev1.Profile) {
+	factor := 2
+	m.stringTable = NewRewriteTable(
+		factor*len(x.StringTable),
+		func(s string) string { return s },
+		func(s string) string { return s },
+	)
+
+	m.functionTable = NewRewriteTable[FunctionKey, *profilev1.Function, *profilev1.Function](
+		factor*len(x.Function), GetFunctionKey, cloneVT[*profilev1.Function])
+
+	m.mappingTable = NewRewriteTable[MappingKey, *profilev1.Mapping, *profilev1.Mapping](
+		factor*len(x.Mapping), GetMappingKey, cloneVT[*profilev1.Mapping])
+
+	m.locationTable = NewRewriteTable[LocationKey, *profilev1.Location, *profilev1.Location](
+		factor*len(x.Location), GetLocationKey, cloneVT[*profilev1.Location])
+
+	m.sampleTable = NewRewriteTable[SampleKey, *profilev1.Sample, *profilev1.Sample](
+		factor*len(x.Sample), GetSampleKey, cloneVT[*profilev1.Sample])
+
+	m.profile = &profilev1.Profile{
+		SampleType:        make([]*profilev1.ValueType, len(x.SampleType)),
+		DropFrames:        x.DropFrames,
+		KeepFrames:        x.KeepFrames,
+		TimeNanos:         x.TimeNanos,
+		DurationNanos:     x.DurationNanos,
+		PeriodType:        x.PeriodType.CloneVT(),
+		Period:            x.Period,
+		DefaultSampleType: x.DefaultSampleType,
+	}
+	for i, st := range x.SampleType {
+		m.profile.SampleType[i] = st.CloneVT()
+	}
+}
+
+func cloneVT[T interface{ CloneVT() T }](t T) T { return t.CloneVT() }
+
+// combineHeaders checks that all profiles can be merged and returns
+// their combined profile.
+func combineHeaders(a, b *profilev1.Profile) error {
+	if err := compatible(a, b); err != nil {
+		return err
+	}
+	// Smallest timestamp.
+	if a.TimeNanos == 0 || b.TimeNanos < a.TimeNanos {
+		a.TimeNanos = b.TimeNanos
+	}
+	// Summed up duration.
+	a.DurationNanos += b.DurationNanos
+	// Largest period.
+	if a.Period == 0 || a.Period < b.Period {
+		a.Period = b.Period
+	}
+	if a.DefaultSampleType == 0 {
+		a.DefaultSampleType = b.DefaultSampleType
+	}
+	return nil
+}
+
+// compatible determines if two profiles can be compared/merged.
+// returns nil if the profiles are compatible; otherwise an error with
+// details on the incompatibility.
+func compatible(a, b *profilev1.Profile) error {
+	if !equalValueType(a.PeriodType, b.PeriodType) {
+		return fmt.Errorf("incompatible period types %v and %v", a.PeriodType, b.PeriodType)
+	}
+	if len(b.SampleType) != len(a.SampleType) {
+		return fmt.Errorf("incompatible sample types %v and %v", a.SampleType, b.SampleType)
+	}
+	for i := range a.SampleType {
+		if !equalValueType(a.SampleType[i], b.SampleType[i]) {
+			return fmt.Errorf("incompatible sample types %v and %v", a.SampleType, b.SampleType)
+		}
+	}
+	return nil
+}
+
+// equalValueType returns true if the two value types are semantically
+// equal. It ignores the internal fields used during encode/decode.
+func equalValueType(st1, st2 *profilev1.ValueType) bool {
+	return st1.Type == st2.Type && st1.Unit == st2.Unit
 }
 
 func RewriteStrings(p *profilev1.Profile, n []uint32) {
@@ -109,7 +175,8 @@ func RewriteStrings(p *profilev1.Profile, n []uint32) {
 		p.Comment[i] = int64(n[x])
 	}
 	p.DropFrames = int64(n[p.DropFrames])
-	p.KeepFrames = int64(n[p.DropFrames])
+	p.KeepFrames = int64(n[p.KeepFrames])
+	p.DefaultSampleType = int64(n[p.DefaultSampleType])
 }
 
 func RewriteFuncs(p *profilev1.Profile, n []uint32) {
