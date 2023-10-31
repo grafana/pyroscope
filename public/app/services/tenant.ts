@@ -1,7 +1,7 @@
-import { RequestNotOkError, requestWithOrgID } from '@pyroscope/services/base';
+import { RequestNotOkError, request } from '@pyroscope/services/base';
 
 export async function isMultiTenancyEnabled() {
-  const res = await requestWithOrgID('/querier.v1.QuerierService/LabelNames', {
+  const res = await request('/querier.v1.QuerierService/LabelNames', {
     // Without this it would automatically add the OrgID
     // Which doesn't tell us whether multitenancy is enabled or not
     headers: {
@@ -22,7 +22,7 @@ export async function isMultiTenancyEnabled() {
   return isOrgRequiredError(res);
 }
 
-function isOrgRequiredError(res: Awaited<ReturnType<typeof requestWithOrgID>>) {
+function isOrgRequiredError(res: Awaited<ReturnType<typeof request>>) {
   // TODO: is 'no org id' a stable message?
   return (
     res.isErr &&

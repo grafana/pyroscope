@@ -8,11 +8,7 @@ import {
 import { Result } from '@pyroscope/util/fp';
 import { z, ZodError } from 'zod';
 import type { RequestError } from '@pyroscope/services/base';
-import {
-  parseResponse,
-  request,
-  requestWithOrgID,
-} from '@pyroscope/services/base';
+import { parseResponse, request } from '@pyroscope/services/base';
 
 // SeriesResponse refers to the response from the server, without any manipulation
 const SeriesResponseSchema = z.preprocess(
@@ -86,7 +82,7 @@ export async function fetchApps(
   fromMs?: number,
   untilMs?: number
 ): Promise<Result<App[], RequestError | ZodError>> {
-  let response = await requestWithOrgID('/querier.v1.QuerierService/Series', {
+  let response = await request('/querier.v1.QuerierService/Series', {
     method: 'POST',
     body: JSON.stringify({
       matchers: [],
@@ -110,7 +106,7 @@ export async function fetchApps(
   }
 
   // try without labelNames in case of an error since this has been added in a later version
-  response = await requestWithOrgID('/querier.v1.QuerierService/Series', {
+  response = await request('/querier.v1.QuerierService/Series', {
     method: 'POST',
     body: JSON.stringify({
       matchers: [],

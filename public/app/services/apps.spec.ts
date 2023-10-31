@@ -647,7 +647,7 @@ describe('appsService', () => {
     ])(
       `server returned='%s', should transform into %s`,
       async (response, expected) => {
-        const spy = jest.spyOn(base, 'requestWithOrgID');
+        const spy = jest.spyOn(base, 'request');
         spy.mockReturnValue(Promise.resolve(Result.ok(response)));
 
         const res = await fetchApps();
@@ -658,7 +658,7 @@ describe('appsService', () => {
   });
 
   it('works', async () => {
-    const spy = jest.spyOn(base, 'requestWithOrgID');
+    const spy = jest.spyOn(base, 'request');
     spy.mockReturnValue(Promise.resolve(Result.ok(mockData)));
 
     const res = await fetchApps();
@@ -750,7 +750,7 @@ describe('appsService', () => {
   });
 
   it('works with pyroscope_app or service_name', async () => {
-    const spy = jest.spyOn(base, 'requestWithOrgID');
+    const spy = jest.spyOn(base, 'request');
     const mockData = {
       labelsSet: [
         {
@@ -821,7 +821,7 @@ describe('appsService', () => {
   // The server will return with that level of granularity
   // Which is not required to build an "App"
   it('remove duplicates from same _profile_type__/name pair', async () => {
-    const spy = jest.spyOn(base, 'requestWithOrgID');
+    const spy = jest.spyOn(base, 'request');
     const mockData = {
       labelsSet: [
         {
@@ -889,7 +889,7 @@ describe('appsService', () => {
   });
 
   it('filters out flagSets without pyroscope_app nor service_name', async () => {
-    const spy = jest.spyOn(base, 'requestWithOrgID');
+    const spy = jest.spyOn(base, 'request');
     const mockData = {
       labelsSet: [
         {
