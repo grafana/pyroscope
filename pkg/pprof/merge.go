@@ -20,16 +20,17 @@ type ProfileMerge struct {
 	sampleTable   RewriteTable[SampleKey, *profilev1.Sample, *profilev1.Sample]
 }
 
-func NewProfileMerge() *ProfileMerge { return new(ProfileMerge) }
-
+// Merge adds p to the profile merge.
+// Profile is modified in place but not retained by the function.
 func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 	if m.profile == nil {
 		m.init(p)
+		return nil
 	}
 
 	// We rewrite strings first in order to compare
 	// sample types and period type.
-	slices.GrowLen(m.tmp, len(p.StringTable))
+	m.tmp = slices.GrowLen(m.tmp, len(p.StringTable))
 	m.stringTable.Index(m.tmp, p.StringTable)
 	RewriteStrings(p, m.tmp)
 
@@ -37,25 +38,26 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 		return err
 	}
 
-	slices.GrowLen(m.tmp, len(p.Function))
+	m.tmp = slices.GrowLen(m.tmp, len(p.Function))
 	m.functionTable.Index(m.tmp, p.Function)
 	RewriteFuncs(p, m.tmp)
 
-	slices.GrowLen(m.tmp, len(p.Mapping))
+	m.tmp = slices.GrowLen(m.tmp, len(p.Mapping))
 	m.mappingTable.Index(m.tmp, p.Mapping)
 	RewriteMappings(p, m.tmp)
 
-	slices.GrowLen(m.tmp, len(p.Location))
+	m.tmp = slices.GrowLen(m.tmp, len(p.Location))
 	m.locationTable.Index(m.tmp, p.Location)
 	RewriteLocations(p, m.tmp)
 
-	slices.GrowLen(m.tmp, len(p.Sample))
+	m.tmp = slices.GrowLen(m.tmp, len(p.Sample))
 	m.sampleTable.Index(m.tmp, p.Sample)
 
 	for i, idx := range m.tmp {
-		values := m.sampleTable.s[idx].Value
-		for j, v := range p.Sample[i].Value {
-			values[j] += v
+		dst := m.sampleTable.s[idx].Value
+		src := p.Sample[i].Value
+		for j, v := range src {
+			dst[j] += v
 		}
 	}
 
@@ -63,6 +65,11 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 }
 
 func (m *ProfileMerge) Profile() *profilev1.Profile {
+	m.profile.Sample = m.sampleTable.Values()
+	m.profile.Location = m.locationTable.Values()
+	m.profile.Function = m.functionTable.Values()
+	m.profile.Mapping = m.mappingTable.Values()
+	m.profile.StringTable = m.stringTable.Values()
 	return m.profile
 }
 
@@ -99,12 +106,19 @@ func (m *ProfileMerge) init(x *profilev1.Profile) {
 	for i, st := range x.SampleType {
 		m.profile.SampleType[i] = st.CloneVT()
 	}
+
+	m.sampleTable.Append(x.Sample)
+	m.locationTable.Append(x.Location)
+	m.functionTable.Append(x.Function)
+	m.mappingTable.Append(x.Mapping)
+	m.stringTable.Append(x.StringTable)
 }
 
 func cloneVT[T interface{ CloneVT() T }](t T) T { return t.CloneVT() }
 
 // combineHeaders checks that all profiles can be merged and returns
 // their combined profile.
+// NOTE(kolesnikovae): Copied from pprof.
 func combineHeaders(a, b *profilev1.Profile) error {
 	if err := compatible(a, b); err != nil {
 		return err
@@ -154,49 +168,49 @@ func RewriteStrings(p *profilev1.Profile, n []uint32) {
 		t.Unit = int64(n[t.Unit])
 		t.Type = int64(n[t.Type])
 	}
-	p.PeriodType.Type = int64(n[p.PeriodType.Type])
-	p.PeriodType.Unit = int64(n[p.PeriodType.Unit])
 	for _, s := range p.Sample {
 		for _, l := range s.Label {
 			l.Key = int64(n[l.Key])
 			l.Str = int64(n[l.Str])
 		}
 	}
+	for _, m := range p.Mapping {
+		m.Filename = int64(n[m.Filename])
+		m.BuildId = int64(n[m.BuildId])
+	}
 	for _, f := range p.Function {
 		f.Name = int64(n[f.Name])
 		f.Filename = int64(n[f.Filename])
 		f.SystemName = int64(n[f.SystemName])
 	}
-	for _, m := range p.Mapping {
-		m.Filename = int64(n[m.Filename])
-		m.BuildId = int64(n[m.BuildId])
-	}
+	p.DropFrames = int64(n[p.DropFrames])
+	p.KeepFrames = int64(n[p.KeepFrames])
+	p.PeriodType.Type = int64(n[p.PeriodType.Type])
+	p.PeriodType.Unit = int64(n[p.PeriodType.Unit])
 	for i, x := range p.Comment {
 		p.Comment[i] = int64(n[x])
 	}
-	p.DropFrames = int64(n[p.DropFrames])
-	p.KeepFrames = int64(n[p.KeepFrames])
 	p.DefaultSampleType = int64(n[p.DefaultSampleType])
 }
 
 func RewriteFuncs(p *profilev1.Profile, n []uint32) {
 	for _, loc := range p.Location {
 		for _, l := range loc.Line {
-			l.FunctionId = uint64(n[l.FunctionId])
+			l.FunctionId = uint64(n[l.FunctionId-1]) + 1
 		}
 	}
 }
 
 func RewriteMappings(p *profilev1.Profile, n []uint32) {
 	for _, loc := range p.Location {
-		loc.MappingId = uint64(n[loc.MappingId])
+		loc.MappingId = uint64(n[loc.MappingId-1]) + 1
 	}
 }
 
 func RewriteLocations(p *profilev1.Profile, n []uint32) {
 	for _, s := range p.Sample {
 		for i, loc := range s.LocationId {
-			s.LocationId[i] = uint64(n[loc])
+			s.LocationId[i] = uint64(n[loc-1]) + 1
 		}
 	}
 }
@@ -277,7 +291,8 @@ func GetSampleKey(s *profilev1.Sample) SampleKey {
 var mapHashSeed = maphash.MakeSeed()
 
 // NOTE(kolesnikovae):
-//  Probably we should use strings instead of hashes.
+//  Probably we should use strings instead of hashes
+//  to eliminate collisions.
 
 func hashLocations(s []uint64) uint64 {
 	return maphash.Bytes(mapHashSeed, uint64Bytes(s))
@@ -322,7 +337,7 @@ func NewRewriteTable[K comparable, V, M any](
 		k: k,
 		v: v,
 		t: make(map[K]uint32, size),
-		s: make([]M, size),
+		s: make([]M, 0, size),
 	}
 }
 
@@ -336,6 +351,15 @@ func (t *RewriteTable[K, V, M]) Index(dst []uint32, values []V) {
 			t.t[k] = n
 		}
 		dst[i] = n
+	}
+}
+
+func (t *RewriteTable[K, V, M]) Append(values []V) {
+	for _, value := range values {
+		k := t.k(value)
+		n := uint32(len(t.s))
+		t.s = append(t.s, t.v(value))
+		t.t[k] = n
 	}
 }
 
