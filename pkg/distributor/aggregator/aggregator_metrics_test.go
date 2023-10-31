@@ -14,8 +14,8 @@ func Test_Aggregation_Metrics(t *testing.T) {
 	w := time.Second * 15
 	d := time.Millisecond * 10
 
-	fn := func(i int) int {
-		return i + 1
+	fn := func(i int) (int, error) {
+		return i + 1, nil
 	}
 
 	a := NewAggregator[int](w, d)
@@ -28,9 +28,9 @@ func Test_Aggregation_Metrics(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	RegisterAggregatorCollector(a, registry)
 
-	r1 := a.Aggregate(0, 0, fn)
-	r2 := a.Aggregate(0, 1, fn)
-	r3 := a.Aggregate(0, 2, fn)
+	r1, _ := a.Aggregate(0, 0, fn)
+	r2, _ := a.Aggregate(0, 1, fn)
+	r3, _ := a.Aggregate(0, 2, fn)
 
 	assert.NoError(t, r1.Wait())
 	v, ok := r1.Value()
@@ -62,6 +62,9 @@ pyroscope_distributor_aggregation_active_series 1
 # HELP pyroscope_distributor_aggregation_aggregated_total Total number of aggregated requests.
 # TYPE pyroscope_distributor_aggregation_aggregated_total counter
 pyroscope_distributor_aggregation_aggregated_total 2
+# HELP pyroscope_distributor_aggregation_errors_total Total number of failed aggregations.
+# TYPE pyroscope_distributor_aggregation_errors_total counter
+pyroscope_distributor_aggregation_errors_total 0
 # HELP pyroscope_distributor_aggregation_period_duration Aggregation period duration.
 # TYPE pyroscope_distributor_aggregation_period_duration counter
 pyroscope_distributor_aggregation_period_duration 1e+07

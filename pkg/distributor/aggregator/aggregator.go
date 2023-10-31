@@ -15,7 +15,7 @@ type Aggregator[T any] struct {
 
 	m          sync.RWMutex
 	tracker    *tracker
-	aggregates map[aggregationKey]*aggregate[T]
+	aggregates map[aggregationKey]*aggregatedResult[T]
 
 	close chan struct{}
 	done  chan struct{}
@@ -26,6 +26,7 @@ type stats struct {
 	activeAggregates atomic.Int64
 	activeSeries     atomic.Uint64
 	aggregated       atomic.Uint64
+	errors           atomic.Uint64
 }
 
 func NewAggregator[T any](window, period time.Duration) *Aggregator[T] {
@@ -38,7 +39,7 @@ func NewAggregator[T any](window, period time.Duration) *Aggregator[T] {
 		now:     timeNow,
 		tracker: newTracker(8, 64),
 		// NOTE(kolesnikovae): probably should be sharded as well.
-		aggregates: make(map[aggregationKey]*aggregate[T], 256),
+		aggregates: make(map[aggregationKey]*aggregatedResult[T], 256),
 	}
 }
 
@@ -71,7 +72,7 @@ func (a *Aggregator[T]) Stop() {
 	<-a.done
 }
 
-type AggregateFn[T any] func(T) T
+type AggregateFn[T any] func(T) (T, error)
 
 type AggregationResult[T any] interface {
 	// Wait blocks until the aggregation finishes.
@@ -86,36 +87,48 @@ type AggregationResult[T any] interface {
 	Close(error)
 }
 
-func (a *Aggregator[T]) Aggregate(key uint64, timestamp int64, fn AggregateFn[T]) AggregationResult[T] {
+func (a *Aggregator[T]) Aggregate(key uint64, timestamp int64, fn AggregateFn[T]) (AggregationResult[T], error) {
 	now := a.now()
 	lastUpdated := a.tracker.update(key, now)
 	if lastUpdated <= 0 || now-lastUpdated > a.period {
 		// Event rate associated with the key is too low for aggregation.
 		var empty T
-		return resultWithoutAggregation[T]{fn(empty)}
+		v, err := fn(empty)
+		return resultWithoutAggregation[T]{v}, err
 	}
 	k := a.aggregationKey(key, timestamp)
 	a.m.Lock()
 	x, ok := a.aggregates[k]
 	if !ok {
-		x = newAggregate[T](now + a.period)
-		a.aggregates[k] = x
-	}
-	a.m.Unlock()
-	x.m.Lock()
-	if x.v == nil {
 		a.stats.activeAggregates.Add(1)
-		x.v = &aggregatedResult[T]{
+		x = &aggregatedResult[T]{
+			key:   k,
 			owner: make(chan struct{}, 1),
 			done:  make(chan struct{}),
 		}
+		a.aggregates[k] = x
 		go a.waitResult(x)
 	}
-	a.stats.aggregated.Add(1)
-	x.v.value = fn(x.v.value)
-	r := x.v
+	x.wg.Add(1)
+	defer x.wg.Done()
+	a.m.Unlock()
+	select {
+	default:
+	case <-x.done:
+		// Aggregation has failed.
+		return x, x.err
+	}
+	var err error
+	x.m.Lock()
+	x.value, err = fn(x.value)
 	x.m.Unlock()
-	return r
+	if err != nil {
+		a.stats.errors.Add(1)
+		x.Close(err)
+	} else {
+		a.stats.aggregated.Add(1)
+	}
+	return x, err
 }
 
 func (a *Aggregator[T]) aggregationKey(key uint64, timestamp int64) aggregationKey {
@@ -130,54 +143,42 @@ type aggregationKey struct {
 	timestamp int64
 }
 
-func (a *Aggregator[T]) waitResult(x *aggregate[T]) {
+func (a *Aggregator[T]) waitResult(x *aggregatedResult[T]) {
 	// The value life-time is limited to the aggregation
 	// window duration.
-	<-time.After(time.Duration(a.period))
-	// Invalidate the aggregate and release all the
-	// contributors. They retain a copy of the aggregate
-	// reference, therefore we can set it to nil.
-	x.m.Lock()
-	owner := x.v.owner
-	x.v = nil
-	x.m.Unlock()
-	// Notify the owner: it must handle the aggregate
-	// and close it, propagating any error occurred.
-	owner <- struct{}{}
+	var failed bool
+	select {
+	case <-time.After(time.Duration(a.period)):
+	case <-x.done:
+		failed = true
+	}
+	a.m.Lock()
+	delete(a.aggregates, x.key)
+	a.m.Unlock()
+	if !failed {
+		// Wait for ongoing aggregations to finish.
+		x.wg.Wait()
+		// Notify the owner: it must handle the aggregate
+		// and close it, propagating any error occurred.
+		x.owner <- struct{}{}
+	}
 }
 
-// prune removes stale aggregates that reached the deadline,
-// and also removes keys that have not been updating since
+// prune removes keys that have not been updating since
 // the beginning of the preceding aggregation period.
 func (a *Aggregator[T]) prune(deadline int64) {
-	a.m.Lock()
-	for k, v := range a.aggregates {
-		if v.deadline <= deadline {
-			delete(a.aggregates, k)
-			a.stats.activeAggregates.Add(-1)
-		}
-	}
-	a.m.Unlock()
 	a.tracker.prune(deadline - a.period)
 	a.stats.activeSeries.Store(uint64(a.tracker.len()))
 }
 
-type aggregate[T any] struct {
-	deadline int64
-
-	m sync.Mutex
-	v *aggregatedResult[T]
-}
-
-func newAggregate[T any](deadline int64) *aggregate[T] {
-	return &aggregate[T]{deadline: deadline}
-}
-
 type aggregatedResult[T any] struct {
+	key     aggregationKey
 	handled atomic.Bool
 	owner   chan struct{}
+	m       sync.Mutex
 	value   T
 
+	wg    sync.WaitGroup
 	close sync.Once
 	done  chan struct{}
 	err   error

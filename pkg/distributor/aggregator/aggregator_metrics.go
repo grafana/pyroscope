@@ -8,6 +8,7 @@ type aggregatorStatsCollector[T any] struct {
 	activeSeries     *prometheus.Desc
 	activeAggregates *prometheus.Desc
 	aggregatedTotal  *prometheus.Desc
+	errorsTotal      *prometheus.Desc
 
 	windowDuration *prometheus.Desc
 	periodDuration *prometheus.Desc
@@ -17,6 +18,7 @@ func (a *aggregatorStatsCollector[T]) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(a.activeSeries, prometheus.GaugeValue, float64(a.aggregator.stats.activeSeries.Load()))
 	ch <- prometheus.MustNewConstMetric(a.activeAggregates, prometheus.GaugeValue, float64(a.aggregator.stats.activeAggregates.Load()))
 	ch <- prometheus.MustNewConstMetric(a.aggregatedTotal, prometheus.CounterValue, float64(a.aggregator.stats.aggregated.Load()))
+	ch <- prometheus.MustNewConstMetric(a.errorsTotal, prometheus.CounterValue, float64(a.aggregator.stats.errors.Load()))
 	ch <- prometheus.MustNewConstMetric(a.windowDuration, prometheus.CounterValue, float64(a.aggregator.window))
 	ch <- prometheus.MustNewConstMetric(a.periodDuration, prometheus.CounterValue, float64(a.aggregator.period))
 }
@@ -33,6 +35,7 @@ func RegisterAggregatorCollector[T any](aggregator *Aggregator[T], reg prometheu
 		activeSeries:     prometheus.NewDesc(prefix+"_active_series", "The number of series being aggregated.", nil, nil),
 		activeAggregates: prometheus.NewDesc(prefix+"_active_aggregates", "The number of active aggregates.", nil, nil),
 		aggregatedTotal:  prometheus.NewDesc(prefix+"_aggregated_total", "Total number of aggregated requests.", nil, nil),
+		errorsTotal:      prometheus.NewDesc(prefix+"_errors_total", "Total number of failed aggregations.", nil, nil),
 		windowDuration:   prometheus.NewDesc(prefix+"_window_duration", "Aggregation window duration.", nil, nil),
 		periodDuration:   prometheus.NewDesc(prefix+"_period_duration", "Aggregation period duration.", nil, nil),
 	})
