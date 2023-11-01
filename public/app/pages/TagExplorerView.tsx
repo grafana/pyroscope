@@ -292,10 +292,10 @@ function TagExplorerView() {
     sortedGroupsByTotal.length
   );
 
-  const groups =
+  // These aggregates are for displaying stats on groups not in the top N
+  const aggregates =
     filteredGroupsData.length > TOP_N_ROWS
       ? [
-          ...topNGroups,
           {
             tagName: OTHER_TAG_NAME,
             color: Color('#888'),
@@ -306,7 +306,12 @@ function TagExplorerView() {
             },
           } as TimelineGroupData,
         ]
-      : filteredGroupsData;
+      : [];
+
+  // The timeline will only consider the top N groups.
+  const groupsForTimeline = topNGroups;
+  // The pie chart and table will also include aggregate groups (i.e., "Other")
+  const groupsAndAggregates = [...topNGroups, ...aggregates];
 
   const formatter =
     activeTagProfile &&
@@ -348,10 +353,10 @@ function TagExplorerView() {
               data-testid="timeline-explore-page"
               id="timeline-chart-explore-page"
               annotations={annotations}
-              timelineGroups={groups}
+              timelineGroups={groupsForTimeline}
               // to not "dim" timelines when "All" option is selected
               activeGroup={groupByTagValue !== ALL_TAGS ? groupByTagValue : ''}
-              showTagsLegend={groups.length > 1}
+              showTagsLegend={groupsForTimeline.length > 1}
               handleGroupByTagValueChange={handleGroupByTagValueChange}
               onSelect={(from, until) =>
                 dispatch(setDateRange({ from, until }))
@@ -378,7 +383,7 @@ function TagExplorerView() {
             <div className={styles.pieChartWrapper}>
               <TotalSamplesChart
                 formatter={formatter}
-                filteredGroupsData={groups}
+                filteredGroupsData={groupsAndAggregates}
                 profile={activeTagProfile}
                 isLoading={dataLoading}
               />
@@ -388,7 +393,7 @@ function TagExplorerView() {
               whereDropdownItems={whereDropdownItems}
               groupByTag={groupByTag}
               groupByTagValue={groupByTagValue}
-              groupsData={groups}
+              groupsData={groupsAndAggregates}
               handleGroupByTagValueChange={handleGroupByTagValueChange}
               isLoading={dataLoading}
               activeTagProfile={activeTagProfile}
