@@ -167,7 +167,7 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 
 	if storeQueries.storeGateway.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.profileTypesFromIngesters(ctx, &ingestv1.ProfileTypesRequest{
+			ir, err := q.profileTypesFromStoreGateway(ctx, &ingestv1.ProfileTypesRequest{
 				Start: req.Msg.Start,
 				End:   req.Msg.End,
 			})
