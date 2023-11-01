@@ -29,7 +29,7 @@ services:
       context: .
 
   pyroscope:
-    image: us.gcr.io/kubernetes-dev/pyroscope:main-f8a1a044-WIP
+    image: grafana/pyroscope:latest
     ports:
       - '4040:4040'
 
