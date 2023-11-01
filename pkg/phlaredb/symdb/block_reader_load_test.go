@@ -8,25 +8,28 @@ import (
 )
 
 func Test_Load(t *testing.T) {
-	s := newBlockSuite(t, [][]string{
-		{"testdata/profile.pb.gz"},
-		{"testdata/profile.pb.gz"},
-	})
-	defer s.teardown()
-	require.NoError(t, s.reader.Load(context.Background()))
+	s := newMemSuite(t, nil)
+	s.init()
+	s.writeProfileFromFile(0, "testdata/profile.pb.gz")
+	s.db.PartitionWriter(1) // Empty partition.
+	s.writeProfileFromFile(2, "testdata/profile.pb.gz")
+	b := blockSuite{memSuite: s}
+	b.flush()
+	defer b.teardown()
+	require.NoError(t, b.reader.Load(context.Background()))
 
 	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
-	r := NewResolver(context.Background(), s.reader)
+	r := NewResolver(context.Background(), b.reader)
 	defer r.Release()
 	r.AddSamples(0, s.indexed[0][0].Samples)
 	resolved, err := r.Profile()
 	require.NoError(t, err)
 	require.Equal(t, expectedFingerprint, profileFingerprint(resolved, 0))
 
-	expectedFingerprint = pprofFingerprint(s.profiles[1].Profile, 0)
-	r = NewResolver(context.Background(), s.reader)
+	expectedFingerprint = pprofFingerprint(s.profiles[2].Profile, 0)
+	r = NewResolver(context.Background(), b.reader)
 	defer r.Release()
-	r.AddSamples(1, s.indexed[1][0].Samples)
+	r.AddSamples(2, s.indexed[2][0].Samples)
 	resolved, err = r.Profile()
 	require.NoError(t, err)
 	require.Equal(t, expectedFingerprint, profileFingerprint(resolved, 0))
