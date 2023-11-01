@@ -945,6 +945,106 @@ func Test_singleBlockQuerier_LabelValues(t *testing.T) {
 	})
 }
 
+func Test_singleBlockQuerier_ProfileTypes(t *testing.T) {
+	ctx := context.Background()
+	reader, err := index.NewFileReader("testdata/01HA2V3CPSZ9E0HMQNNHH89WSS/index.tsdb")
+	assert.NoError(t, err)
+
+	q := &singleBlockQuerier{
+		metrics: newBlocksMetrics(nil),
+		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
+		opened:  true, // Skip trying to open the block.
+		index:   reader,
+	}
+
+	want := []*typesv1.ProfileType{
+		{
+			ID:         "block:contentions:count::",
+			Name:       "block",
+			SampleType: "contentions",
+			SampleUnit: "count",
+			PeriodType: "",
+			PeriodUnit: "",
+		},
+		{
+			ID:         "block:delay:nanoseconds::",
+			Name:       "block",
+			SampleType: "delay",
+			SampleUnit: "nanoseconds",
+			PeriodType: "",
+			PeriodUnit: "",
+		},
+		{
+			ID:         "goroutine:goroutines:count::",
+			Name:       "goroutine",
+			SampleType: "goroutines",
+			SampleUnit: "count",
+			PeriodType: "",
+			PeriodUnit: "",
+		},
+		{
+			ID:         "memory:alloc_objects:count::",
+			Name:       "memory",
+			SampleType: "alloc_objects",
+			SampleUnit: "count",
+			PeriodType: "",
+			PeriodUnit: "",
+		},
+		{
+			ID:         "memory:alloc_space:bytes::",
+			Name:       "memory",
+			SampleType: "alloc_space",
+			SampleUnit: "bytes",
+			PeriodType: "",
+			PeriodUnit: "",
+		},
+		{
+			ID:         "memory:inuse_objects:count::",
+			Name:       "memory",
+			SampleType: "inuse_objects",
+			SampleUnit: "count",
+			PeriodType: "",
+			PeriodUnit: "",
+		},
+		{
+			ID:         "memory:inuse_space:bytes::",
+			Name:       "memory",
+			SampleType: "inuse_space",
+			SampleUnit: "bytes",
+			PeriodType: "",
+			PeriodUnit: "",
+		},
+		{
+			ID:         "mutex:contentions:count::",
+			Name:       "mutex",
+			SampleType: "contentions",
+			SampleUnit: "count",
+			PeriodType: "",
+			PeriodUnit: "",
+		},
+		{
+			ID:         "mutex:delay:nanoseconds::",
+			Name:       "mutex",
+			SampleType: "delay",
+			SampleUnit: "nanoseconds",
+			PeriodType: "",
+			PeriodUnit: "",
+		},
+		{
+			ID:         "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+			Name:       "process_cpu",
+			SampleType: "cpu",
+			SampleUnit: "nanoseconds",
+			PeriodType: "cpu",
+			PeriodUnit: "nanoseconds",
+		},
+	}
+
+	got, err := q.ProfileTypes(ctx, &connect.Request[ingestv1.ProfileTypesRequest]{})
+	assert.NoError(t, err)
+	assert.Equal(t, want, got.Msg.ProfileTypes)
+}
+
 func Benchmark_singleBlockQuerier_Series(b *testing.B) {
 	ctx := context.Background()
 	reader, err := index.NewFileReader("testdata/01HA2V3CPSZ9E0HMQNNHH89WSS/index.tsdb")

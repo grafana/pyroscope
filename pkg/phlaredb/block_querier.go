@@ -338,8 +338,32 @@ func (b *singleBlockQuerier) Meta() block.Meta {
 }
 
 func (b *singleBlockQuerier) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-	// todo
-	return connect.NewResponse(&ingestv1.ProfileTypesResponse{}), nil
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "ProfileTypes Block")
+	defer sp.Finish()
+
+	err := b.Open(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	values, err := b.index.LabelValues(phlaremodel.LabelNameProfileType)
+	if err != nil {
+		return nil, err
+	}
+	slices.Sort(values)
+
+	types := make([]*typesv1.ProfileType, len(values))
+	for i, value := range values {
+		typ, err := phlaremodel.ParseProfileTypeSelector(value)
+		if err != nil {
+			return nil, err
+		}
+		types[i] = typ
+	}
+
+	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
+		ProfileTypes: types,
+	}), nil
 }
 
 func (b *singleBlockQuerier) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
@@ -637,46 +661,18 @@ func (queriers Queriers) LabelNames(ctx context.Context, req *connect.Request[ty
 }
 
 func (queriers Queriers) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-	// todo: Add support start and end.
-	// if req.Msg.Start != 0 && req.Msg.End != 0 {
-	// 	var err error
-	// 	queriers, err = queriers.forTimeRange(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
-
-	g, ctx := errgroup.WithContext(ctx)
-	uniqTypes := make(map[string]*typesv1.ProfileType)
-	mutex := sync.Mutex{}
-
-	for _, q := range queriers {
-		q := q
-		g.Go(func() error {
-			res, err := q.ProfileTypes(ctx, req)
-			if err != nil {
-				return err
-			}
-			mutex.Lock()
-			defer mutex.Unlock()
-			if res != nil {
-				for _, t := range res.Msg.ProfileTypes {
-					uniqTypes[t.ID] = t.CloneVT()
-				}
-			}
-			return nil
-		})
+	blockGetter := queriers.forTimeRange
+	_, hasTimeRange := phlaremodel.GetTimeRange(req.Msg)
+	if !hasTimeRange {
+		blockGetter = func(_ context.Context, _, _ model.Time) (Queriers, error) {
+			return queriers, nil
+		}
 	}
-	if err := g.Wait(); err != nil {
+	res, err := ProfileTypes(ctx, req, blockGetter)
+	if err != nil {
 		return nil, err
 	}
-	types := lo.Values(uniqTypes)
-	sort.Slice(types, func(i, j int) bool {
-		return types[i].ID < types[j].ID
-	})
-	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
-		ProfileTypes: types,
-	}), nil
+	return res, nil
 }
 
 func (queriers Queriers) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
@@ -1157,6 +1153,44 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 	}
 
 	return nil
+}
+
+func ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest], blockGetter BlockGetter) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
+	queriers, err := blockGetter(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
+	if err != nil {
+		return nil, err
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+	uniqTypes := make(map[string]*typesv1.ProfileType)
+	lock := sync.Mutex{}
+
+	for _, q := range queriers {
+		q := q
+		g.Go(func() error {
+			res, err := q.ProfileTypes(ctx, req)
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			defer lock.Unlock()
+			for _, t := range res.Msg.ProfileTypes {
+				uniqTypes[t.ID] = t.CloneVT()
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	types := lo.Values(uniqTypes)
+	sort.Slice(types, func(i, j int) bool {
+		return types[i].ID < types[j].ID
+	})
+	return connect.NewResponse(&ingestv1.ProfileTypesResponse{
+		ProfileTypes: types,
+	}), nil
 }
 
 func LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest], blockGetter BlockGetter) (*typesv1.LabelValuesResponse, error) {
