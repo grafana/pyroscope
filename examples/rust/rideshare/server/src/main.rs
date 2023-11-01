@@ -30,12 +30,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_name = std::env::var("PYROSCOPE_APPLICATION_NAME")
         .unwrap_or_else(|_| "rust-ride-sharing-app".to_string());
 
-    let auth_token = std::env::var("PYROSCOPE_AUTH_TOKEN")
+    let auth_user = std::env::var("PYROSCOPE_BASIC_AUTH_USER")
+        .unwrap_or_else(|_| "".to_string());
+
+    let auth_password = std::env::var("PYROSCOPE_BASIC_AUTH_PASSWORD")
         .unwrap_or_else(|_| "".to_string());
 
     // Configure Pyroscope client.
     let agent = PyroscopeAgent::builder(server_address, app_name.to_owned())
-        .auth_token(auth_token)
+        .auth_user(auth_user)
+        .auth_password(auth_password)
         .backend(pprof_backend(PprofConfig::new().sample_rate(100)))
         .tags(vec![("region", &region)])
         .build()
