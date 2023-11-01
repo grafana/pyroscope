@@ -2,6 +2,9 @@ import requests
 import json
 from requests.auth import HTTPBasicAuth
 
+# NOTE: For original docs visit information visit: 
+# https://grafana.com/docs/pyroscope/next/configure-server/about-server-api/ 
+
 # Specify the path to your pprof file, Pyroscope server URL, and application name
 pprof_file_path = 'path/to/your/pprof-file.pprof'
 
