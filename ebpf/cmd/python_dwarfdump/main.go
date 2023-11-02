@@ -265,7 +265,8 @@ var interesetd = []Need{
 		{"_is_initialized", "PyTssT_is_initialized"},
 		{"_key", "PyTssT_key"},
 	}},
-	{Name: "PyASCIIObject", PrettyName: "String", Size: true},
+	{Name: "PyASCIIObject", PrettyName: "PyASCIIObject", Size: true},
+	{Name: "PyCompactUnicodeObject", PrettyName: "PyCompactUnicodeObject", Size: true},
 
 	//{Name: "_is", PrettyName: "PyInterpreterState", Fields: []string{}},
 }

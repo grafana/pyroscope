@@ -137,7 +137,8 @@ type UserOffsets struct {
 	PyTssT_is_initialized             int16
 	PyTssT_key                        int16
 	PyTssTSize                        int16
-	StringSize                        int16
+	PyASCIIObjectSize                 int16
+	PyCompactUnicodeObjectSize        int16
 }
 
 func GetUserOffsets(version Version) (*UserOffsets, bool, error) {
