@@ -121,7 +121,9 @@ ReduxQuerySync({
     query: {
       defaultvalue: '',
       selector: (state: RootState) => {
-        const {continuous: {query}} = state;
+        const {
+          continuous: { query },
+        } = state;
         // Only sync the query URL parameter if it is actually set to something
         // Otherwise `?query=` will always be appended to the URL
         if (query !== '') {
