@@ -151,6 +151,10 @@ Usage of ./pyroscope:
     	Burst size used in rate limit. Values less than 1 are treated as 1. (default 1)
   -consul.watch-rate-limit float
     	Rate limit when watching key or prefix in Consul, in requests per second. 0 disables the rate limit. (default 1)
+  -distributor.aggregation-period duration
+    	Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.
+  -distributor.aggregation-window duration
+    	Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.
   -distributor.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
   -distributor.excluded-zones comma-separated-list-of-strings

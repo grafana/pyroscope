@@ -117,7 +117,7 @@ type Limits interface {
 	MaxProfileSymbolValueLength(tenantID string) int
 	MaxSessionsPerSeries(tenantID string) int
 	validation.ProfileValidationLimits
-	// aggregator.Limits
+	aggregator.Limits
 }
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, limits Limits, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Distributor, error) {

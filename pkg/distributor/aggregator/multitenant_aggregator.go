@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 )
 
@@ -17,8 +18,8 @@ type MultiTenantAggregator[T any] struct {
 }
 
 type Limits interface {
-	DistributorAggregationWindow(tenantID string) time.Duration
-	DistributorAggregationPeriod(tenantID string) time.Duration
+	DistributorAggregationWindow(tenantID string) model.Duration
+	DistributorAggregationPeriod(tenantID string) model.Duration
 }
 
 func NewMultiTenantAggregator[T any](limits Limits, registerer prometheus.Registerer) *MultiTenantAggregator[T] {
@@ -38,8 +39,8 @@ type tenantAggregator[T any] struct {
 
 type tenantKey struct {
 	tenantID string
-	window   time.Duration
-	period   time.Duration
+	window   model.Duration
+	period   model.Duration
 }
 
 // TODO(kolesnikovae): Shutdown inactive aggregators.
@@ -47,7 +48,7 @@ type tenantKey struct {
 func (m *MultiTenantAggregator[T]) AggregatorForTenant(tenantID string) (*Aggregator[T], bool) {
 	window := m.limits.DistributorAggregationWindow(tenantID)
 	period := m.limits.DistributorAggregationPeriod(tenantID)
-	if window == 0 || period == 0 {
+	if window <= 0 || period <= 0 {
 		return nil, false
 	}
 	k := tenantKey{
@@ -78,7 +79,7 @@ func (m *MultiTenantAggregator[T]) AggregatorForTenant(tenantID string) (*Aggreg
 	t = &tenantAggregator[T]{
 		key:        k,
 		registerer: prometheus.WrapRegistererWith(labels, m.registerer),
-		aggregator: NewAggregator[T](window, period),
+		aggregator: NewAggregator[T](time.Duration(window), time.Duration(period)),
 	}
 
 	RegisterAggregatorCollector(t.aggregator, t.registerer)
