@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"rideshare/rideshare"
+
 	"github.com/grafana/pyroscope-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -12,7 +14,13 @@ import (
 
 const durationConstant = time.Duration(200 * time.Millisecond)
 
-var pool = newPool(1_000)
+var pool *workerPool
+
+// InitWorkPool initializes the worker pool and returns a clean up function.
+func InitWorkerPool(c rideshare.Config) func() {
+	pool = newPool(c)
+	return pool.Close
+}
 
 func mutexLock(n int64) {
 	var i int64 = 0

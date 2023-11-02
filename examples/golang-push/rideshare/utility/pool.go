@@ -3,12 +3,15 @@ package utility
 import (
 	"os"
 	"sync"
+
+	"rideshare/rideshare"
 )
 
 type workerPool struct {
-	poolLock *sync.Mutex
-	pool     []chan struct{}
-	limit    int
+	poolLock   *sync.Mutex
+	pool       []chan struct{}
+	limit      int
+	bufferSize int
 }
 
 // Run a function using a pool.
@@ -27,18 +30,15 @@ func (c *workerPool) Run(fn func()) {
 	c.poolLock.Lock()
 	size := len(c.pool)
 	if c.limit != 0 && size >= c.limit {
-		// We're at max pool limit, release a resource.
-		last := c.pool[size-1]
-		last <- struct{}{}
-		close(last)
-		c.pool = c.pool[:size-1]
+		// We're at max pool limit, reset the pool.
+		c.resetWithoutLock()
 	}
 	c.pool = append(c.pool, stop)
 	c.poolLock.Unlock()
 
 	// Create a goroutine to run the function. It will write to done when the
 	// work is over, but won't clean up until it receives a signal from stop.
-	go doWork(fn, stop, done)
+	go c.doWork(fn, stop, done)
 
 	// Block until the worker signals it's done.
 	<-done
@@ -50,6 +50,10 @@ func (c *workerPool) Close() {
 	c.poolLock.Lock()
 	defer c.poolLock.Unlock()
 
+	c.resetWithoutLock()
+}
+
+func (c *workerPool) resetWithoutLock() {
 	for _, c := range c.pool {
 		c <- struct{}{}
 		close(c)
@@ -57,15 +61,14 @@ func (c *workerPool) Close() {
 	c.pool = c.pool[:]
 }
 
-func doWork(fn func(), stop <-chan struct{}, done chan<- struct{}) {
+func (c *workerPool) doWork(fn func(), stop <-chan struct{}, done chan<- struct{}) {
 	buf := make([]byte, 0)
 
 	// Do work.
 	fn()
 
 	// Simulate the work in fn requiring some data to be added to a buffer.
-	const mb = 1 << 20
-	for i := 0; i < mb; i++ {
+	for i := 0; i < c.bufferSize; i++ {
 		buf = append(buf, byte(i))
 	}
 
@@ -79,10 +82,11 @@ func doWork(fn func(), stop <-chan struct{}, done chan<- struct{}) {
 	<-stop
 }
 
-func newPool(n int) *workerPool {
+func newPool(c rideshare.Config) *workerPool {
 	return &workerPool{
-		poolLock: &sync.Mutex{},
-		pool:     make([]chan struct{}, 0, n),
-		limit:    n,
+		poolLock:   &sync.Mutex{},
+		pool:       make([]chan struct{}, 0, c.ParametersPoolSize),
+		limit:      c.ParametersPoolSize,
+		bufferSize: c.ParametersPoolBufferSize,
 	}
 }
