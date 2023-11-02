@@ -38,8 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Configure Pyroscope client.
     let agent = PyroscopeAgent::builder(server_address, app_name.to_owned())
-        .auth_user(auth_user)
-        .auth_password(auth_password)
+        .basic_auth(auth_user, auth_password)
         .backend(pprof_backend(PprofConfig::new().sample_rate(100)))
         .tags(vec![("region", &region)])
         .build()
