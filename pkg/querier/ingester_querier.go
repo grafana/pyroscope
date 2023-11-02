@@ -130,6 +130,23 @@ func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1
 	return responses, nil
 }
 
+func (q *Querier) profileTypesFromIngesters(ctx context.Context, req *ingesterv1.ProfileTypesRequest) ([]ResponseFromReplica[*ingesterv1.ProfileTypesResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "ProfileTypes Ingesters")
+	defer sp.Finish()
+
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) (*ingesterv1.ProfileTypesResponse, error) {
+		res, err := ic.ProfileTypes(childCtx, connect.NewRequest(req))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg, nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return responses, nil
+}
+
 func (q *Querier) labelValuesFromIngesters(ctx context.Context, req *typesv1.LabelValuesRequest) ([]ResponseFromReplica[[]string], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues Ingesters")
 	defer sp.Finish()

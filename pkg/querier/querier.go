@@ -22,6 +22,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/samber/lo"
+	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -116,34 +117,79 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "ProfileTypes")
 	defer sp.Finish()
 
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]*typesv1.ProfileType, error) {
-		res, err := ic.ProfileTypes(childCtx, connect.NewRequest(&ingestv1.ProfileTypesRequest{}))
+	_, hasTimeRange := phlaremodel.GetTimeRange(req.Msg)
+	sp.LogFields(
+		otlog.Bool("legacy_request", !hasTimeRange),
+		otlog.Int64("start", req.Msg.Start),
+		otlog.Int64("end", req.Msg.End),
+	)
+
+	if q.storeGatewayQuerier == nil || !hasTimeRange {
+		responses, err := q.profileTypesFromIngesters(ctx, &ingestv1.ProfileTypesRequest{
+			Start: req.Msg.Start,
+			End:   req.Msg.End,
+		})
 		if err != nil {
 			return nil, err
 		}
-		return res.Msg.ProfileTypes, nil
-	})
+
+		return connect.NewResponse(&querierv1.ProfileTypesResponse{
+			ProfileTypes: uniqueSortedProfileTypes(responses),
+		}), nil
+	}
+
+	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
+	}
+	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
+
+	var responses []ResponseFromReplica[*ingestv1.ProfileTypesResponse]
+	var lock sync.Mutex
+	group, ctx := errgroup.WithContext(ctx)
+
+	if storeQueries.ingester.shouldQuery {
+		group.Go(func() error {
+			ir, err := q.profileTypesFromIngesters(ctx, &ingestv1.ProfileTypesRequest{
+				Start: req.Msg.Start,
+				End:   req.Msg.End,
+			})
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			responses = append(responses, ir...)
+			lock.Unlock()
+			return nil
+		})
+	}
+
+	if storeQueries.storeGateway.shouldQuery {
+		group.Go(func() error {
+			ir, err := q.profileTypesFromStoreGateway(ctx, &ingestv1.ProfileTypesRequest{
+				Start: req.Msg.Start,
+				End:   req.Msg.End,
+			})
+			if err != nil {
+				return err
+			}
+
+			lock.Lock()
+			responses = append(responses, ir...)
+			lock.Unlock()
+			return nil
+		})
+	}
+
+	err := group.Wait()
 	if err != nil {
 		return nil, err
 	}
-	var profileTypeIDs []string
-	profileTypes := make(map[string]*typesv1.ProfileType)
-	for _, response := range responses {
-		for _, profileType := range response.response {
-			if _, ok := profileTypes[profileType.ID]; !ok {
-				profileTypeIDs = append(profileTypeIDs, profileType.ID)
-				profileTypes[profileType.ID] = profileType
-			}
-		}
-	}
-	sort.Strings(profileTypeIDs)
-	result := &querierv1.ProfileTypesResponse{
-		ProfileTypes: make([]*typesv1.ProfileType, 0, len(profileTypes)),
-	}
-	for _, id := range profileTypeIDs {
-		result.ProfileTypes = append(result.ProfileTypes, profileTypes[id])
-	}
-	return connect.NewResponse(result), nil
+
+	return connect.NewResponse(&querierv1.ProfileTypesResponse{
+		ProfileTypes: uniqueSortedProfileTypes(responses),
+	}), nil
 }
 
 func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
@@ -841,6 +887,27 @@ func uniqueSortedStrings(responses []ResponseFromReplica[[]string]) []string {
 	}
 	sort.Strings(result)
 	return result
+}
+
+func uniqueSortedProfileTypes(responses []ResponseFromReplica[*ingestv1.ProfileTypesResponse]) []*typesv1.ProfileType {
+	var ids []string
+	types := make(map[string]*typesv1.ProfileType)
+	for _, replica := range responses {
+		for _, typ := range replica.response.ProfileTypes {
+			_, ok := types[typ.ID]
+			if !ok {
+				ids = append(ids, typ.ID)
+				types[typ.ID] = typ
+			}
+		}
+	}
+
+	slices.Sort(ids)
+	profileTypes := make([]*typesv1.ProfileType, len(types))
+	for i, id := range ids {
+		profileTypes[i] = types[id]
+	}
+	return profileTypes
 }
 
 func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.Tree, error) {

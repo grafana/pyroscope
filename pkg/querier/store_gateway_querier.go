@@ -32,6 +32,7 @@ type StoreGatewayQueryClient interface {
 	MergeProfilesLabels(ctx context.Context) clientpool.BidiClientMergeProfilesLabels
 	MergeProfilesPprof(ctx context.Context) clientpool.BidiClientMergeProfilesPprof
 	MergeSpanProfile(ctx context.Context) clientpool.BidiClientMergeSpanProfile
+	ProfileTypes(context.Context, *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error)
 	LabelValues(context.Context, *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error)
 	LabelNames(context.Context, *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error)
 	Series(context.Context, *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error)
@@ -226,6 +227,28 @@ func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingeste
 		}))
 	}
 	if err := g.Wait(); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return responses, nil
+}
+
+func (q *Querier) profileTypesFromStoreGateway(ctx context.Context, req *ingesterv1.ProfileTypesRequest) ([]ResponseFromReplica[*ingesterv1.ProfileTypesResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "ProfileTypes StoreGateway")
+	defer sp.Finish()
+
+	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (*ingesterv1.ProfileTypesResponse, error) {
+		res, err := ic.ProfileTypes(ctx, connect.NewRequest(req))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg, nil
+	})
+	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	return responses, nil

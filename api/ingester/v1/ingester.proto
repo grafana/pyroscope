@@ -19,7 +19,12 @@ service IngesterService {
   rpc MergeSpanProfile(stream MergeSpanProfileRequest) returns (stream MergeSpanProfileResponse) {}
 }
 
-message ProfileTypesRequest {}
+message ProfileTypesRequest {
+  // Milliseconds since epoch.
+  int64 start = 1;
+  // Milliseconds since epoch.
+  int64 end = 2;
+}
 
 message ProfileTypesResponse {
   repeated types.v1.ProfileType profile_types = 1;
