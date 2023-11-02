@@ -369,6 +369,7 @@ static __always_inline int get_names(
                     return -PY_ERROR_CLASS_NAME;
                 }
             }
+            // https://github.com/python/cpython/blob/d73501602f863a54c872ce103cd3fa119e38bac9/Include/cpython/object.h#L106
             if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyTypeObject_tp_name)) {
                 bpf_dbg_printk("failed to read tp_name at %x\n", ptr);
                 return -PY_ERROR_CLASS_NAME;
