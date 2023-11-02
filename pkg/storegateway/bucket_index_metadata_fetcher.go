@@ -7,7 +7,6 @@ package storegateway
 
 import (
 	"context"
-	"path/filepath"
 	"time"
 
 	"github.com/go-kit/log"
@@ -59,7 +58,11 @@ func NewBucketIndexMetadataFetcher(
 func (f *BucketIndexMetadataFetcher) fallbackFetch(ctx context.Context) (metas map[ulid.ULID]*block.Meta, partial map[ulid.ULID]error, err error) {
 	if f.fallback == nil {
 		userBucket := objstore.NewTenantBucketClient(f.userID, f.bkt, f.cfgProvider)
-		fetcher, err := block.NewMetaFetcherWithMetrics(f.logger, 16, userBucket, filepath.Join("./data-store-gateway", f.userID), f.metrics, f.filters)
+		// Empty cache dir path disables on-disk cache.
+		// Provided that an in-memory cache is maintained,
+		// and store gateway does not have a persistent
+		// file system, on-disk cache is not helpful.
+		fetcher, err := block.NewMetaFetcherWithMetrics(f.logger, 16, userBucket, "", f.metrics, f.filters)
 		if err != nil {
 			return nil, nil, err
 		}
