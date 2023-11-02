@@ -96,3 +96,21 @@ func (e PyError) String() string {
 		return fmt.Sprintf("PyError(%d)", e)
 	}
 }
+
+//#define PYSTR_TYPE_1BYTE  1
+//#define PYSTR_TYPE_2BYTE  2
+//#define PYSTR_TYPE_4BYTE  4
+//#define PYSTR_TYPE_ASCII  8
+//#define PYSTR_TYPE_UTF8   16
+//#define PYSTR_TYPE_NOT_COMPACT  32
+
+type PyStrType uint8
+
+var (
+	PyStrType1Byte      PyStrType = 1
+	PyStrType2Byte      PyStrType = 2
+	PyStrType4Byte      PyStrType = 4
+	PyStrTypeAscii      PyStrType = 8
+	PyStrTypeUtf8       PyStrType = 16
+	PyStrTypeNotCompact PyStrType = 32
+)

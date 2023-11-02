@@ -7,7 +7,8 @@
 #include "pthread.bpf.h"
 #include "pid.h"
 #include "stacks.h"
-
+#include "pystr.h"
+#include "pyoffsets.h"
 
 #define PYTHON_STACK_FRAMES_PER_PROG 25
 #define PYTHON_STACK_PROG_CNT 3
@@ -39,29 +40,6 @@ enum {
 
 };
 
-
-
-typedef struct {
-    int16_t PyThreadState_frame;
-    int16_t PyThreadState_cframe;
-    int16_t PyCFrame_current_frame;
-    int16_t PyCodeObject_co_filename;
-    int16_t PyCodeObject_co_name;
-    int16_t PyCodeObject_co_varnames;
-    int16_t PyCodeObject_co_localsplusnames;
-    int16_t PyTupleObject_ob_item;
-
-    int16_t PyVarObject_ob_size;
-    int16_t PyObject_ob_type;
-    int16_t PyTypeObject_tp_name;
-
-    int16_t VFrame_code; // PyFrameObject_f_code pre 311 or PyInterpreterFrame_f_code post 311
-    int16_t VFrame_previous; // PyFrameObject_f_back pre 311 or PyInterpreterFrame_previous post 311
-    int16_t VFrame_localsplus; // PyFrameObject_localsplus pre 311 or PyInterpreterFrame_localsplus post 311
-    int16_t String_size; // sizeof(PyASCIIObject)
-
-} py_offset_config;
-
 typedef struct {
     uint32_t major;
     uint32_t minor;
@@ -79,6 +57,11 @@ typedef struct {
     char classname[PYTHON_CLASS_NAME_LEN];
     char name[PYTHON_FUNCTION_NAME_LEN];
     char file[PYTHON_FILE_NAME_LEN];
+
+    struct py_str_type classname_type;
+    struct py_str_type name_type;
+    struct py_str_type file_type;
+    struct py_str_type __padding;
 
     // NOTE: PyFrameObject also has line number but it is typically just the
     // first line of that function and PyCode_Addr2Line needs to be called
@@ -290,6 +273,8 @@ int pyperf_collect(struct bpf_perf_event_data *ctx) {
     return pyperf_collect_impl(ctx, (pid_t) pid, false); // todo allow configuring it
 }
 
+
+
 static __always_inline int check_first_arg(void *code_ptr,
                                            py_offset_config *offsets,
                                            py_symbol *symbol,
@@ -332,8 +317,7 @@ static __always_inline int check_first_arg(void *code_ptr,
             &args_ptr, sizeof(void *), args_ptr + offsets->PyTupleObject_ob_item)) {
         return -1;
     }
-    if (bpf_probe_read_user_str(
-            &symbol->name, sizeof(symbol->name), args_ptr + offsets->String_size) < 0) {
+    if (pystr_read(args_ptr, offsets, symbol->name, sizeof(symbol->name), &symbol->name_type)) {
         return -1;
     }
     // compare strings as ints to save instructions
@@ -389,15 +373,20 @@ static __always_inline int get_names(
                 bpf_dbg_printk("failed to read tp_name at %x\n", ptr);
                 return -PY_ERROR_CLASS_NAME;
             }
-            if (bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr) < 0) {
+            long len = bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr);
+            if (len < 0) {
                 bpf_dbg_printk("failed to read class name at %x\n", ptr);
                 return -PY_ERROR_CLASS_NAME;
             }
+            symbol->classname_type.type = PYSTR_TYPE_UTF8;
+            symbol->classname_type.size_codepoints = len-1;
         } else {
             // this happens in rideshare flask example under 3.9.18
             // todo: we should be able to get the class name
             // https://github.com/fabioz/PyDev.Debugger/blob/2cf10e3fb2ace33b6ef36d66332c82b62815e856/_pydevd_bundle/pydevd_utils.py#L104
             *((u64 *) symbol->classname) = 0x736c436c6c754e; // NullCls
+            symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+            symbol->classname_type.size_codepoints = 7;
         }
     }
 
@@ -410,8 +399,7 @@ static __always_inline int get_names(
     if (pystr_ptr == 0) {
         return 0;
     }
-    if (bpf_probe_read_user_str(
-            &symbol->file, sizeof(symbol->file), pystr_ptr + offsets->String_size) < 0) {
+    if (pystr_read(pystr_ptr, offsets, symbol->file, sizeof(symbol->file), &symbol->file_type)) {
         bpf_dbg_printk("failed to read file name at %x\n", pystr_ptr);
         return -PY_ERROR_FILE_NAME;
     }
@@ -420,8 +408,7 @@ static __always_inline int get_names(
             &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_name)) {
         return -PY_ERROR_NAME;
     }
-    if (bpf_probe_read_user_str(
-            &symbol->name, sizeof(symbol->name), pystr_ptr + offsets->String_size) < 0) {
+    if (pystr_read(pystr_ptr, offsets, symbol->name, sizeof(symbol->name), &symbol->name_type)) {
         return -PY_ERROR_NAME;
     }
     return 0;
