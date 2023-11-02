@@ -23,6 +23,7 @@ type ProfileMerge struct {
 // Merge adds p to the profile merge.
 // Profile is modified in place but not retained by the function.
 func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
+	ConvertIDsToIndices(p)
 	if m.profile == nil {
 		m.init(p)
 		return nil
@@ -40,7 +41,7 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 
 	m.tmp = slices.GrowLen(m.tmp, len(p.Function))
 	m.functionTable.Index(m.tmp, p.Function)
-	RewriteFuncs(p, m.tmp)
+	RewriteFunctions(p, m.tmp)
 
 	m.tmp = slices.GrowLen(m.tmp, len(p.Mapping))
 	m.mappingTable.Index(m.tmp, p.Mapping)
@@ -65,11 +66,23 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 }
 
 func (m *ProfileMerge) Profile() *profilev1.Profile {
+	if m.profile == nil {
+		return m.profile
+	}
 	m.profile.Sample = m.sampleTable.Values()
 	m.profile.Location = m.locationTable.Values()
 	m.profile.Function = m.functionTable.Values()
 	m.profile.Mapping = m.mappingTable.Values()
 	m.profile.StringTable = m.stringTable.Values()
+	for i := range m.profile.Location {
+		m.profile.Location[i].Id = uint64(i + 1)
+	}
+	for i := range m.profile.Function {
+		m.profile.Function[i].Id = uint64(i + 1)
+	}
+	for i := range m.profile.Mapping {
+		m.profile.Mapping[i].Id = uint64(i + 1)
+	}
 	return m.profile
 }
 
@@ -204,10 +217,10 @@ func RewriteStrings(p *profilev1.Profile, n []uint32) {
 	p.DefaultSampleType = int64(n[p.DefaultSampleType])
 }
 
-func RewriteFuncs(p *profilev1.Profile, n []uint32) {
+func RewriteFunctions(p *profilev1.Profile, n []uint32) {
 	for _, loc := range p.Location {
-		for _, l := range loc.Line {
-			l.FunctionId = uint64(n[l.FunctionId-1]) + 1
+		for _, line := range loc.Line {
+			line.FunctionId = uint64(n[line.FunctionId-1]) + 1
 		}
 	}
 }
@@ -375,3 +388,88 @@ func (t *RewriteTable[K, V, M]) Append(values []V) {
 }
 
 func (t *RewriteTable[K, V, M]) Values() []M { return t.s }
+
+func ConvertIDsToIndices(p *profilev1.Profile) {
+	denseMappings := hasDenseMappings(p)
+	denseLocations := hasDenseLocations(p)
+	denseFunctions := hasDenseFunctions(p)
+	if denseMappings && denseLocations && denseFunctions {
+		// In most cases IDs are dense (do match the element index),
+		// therefore the function does not change anything.
+		return
+	}
+	// NOTE(kolesnikovae):
+	// In some cases IDs is a non-monotonically increasing sequence,
+	// therefore the same map can be reused to avoid re-allocations.
+	t := make(map[uint64]uint64, len(p.Location))
+	if !denseMappings {
+		for i, x := range p.Mapping {
+			idx := uint64(i + 1)
+			x.Id, t[x.Id] = idx, idx
+		}
+		RewriteMappingsWithMap(p, t)
+	}
+	if !denseLocations {
+		for i, x := range p.Location {
+			idx := uint64(i + 1)
+			x.Id, t[x.Id] = idx, idx
+		}
+		RewriteLocationsWithMap(p, t)
+	}
+	if !denseFunctions {
+		for i, x := range p.Function {
+			idx := uint64(i + 1)
+			x.Id, t[x.Id] = idx, idx
+		}
+		RewriteFunctionsWithMap(p, t)
+	}
+}
+
+func hasDenseFunctions(p *profilev1.Profile) bool {
+	for i, f := range p.Function {
+		if f.Id != uint64(i+1) {
+			return false
+		}
+	}
+	return true
+}
+
+func hasDenseLocations(p *profilev1.Profile) bool {
+	for i, loc := range p.Location {
+		if loc.Id != uint64(i+1) {
+			return false
+		}
+	}
+	return true
+}
+
+func hasDenseMappings(p *profilev1.Profile) bool {
+	for i, m := range p.Mapping {
+		if m.Id != uint64(i+1) {
+			return false
+		}
+	}
+	return true
+}
+
+func RewriteFunctionsWithMap(p *profilev1.Profile, n map[uint64]uint64) {
+	for _, loc := range p.Location {
+		for _, line := range loc.Line {
+			line.FunctionId = n[line.FunctionId]
+		}
+	}
+}
+
+func RewriteMappingsWithMap(p *profilev1.Profile, n map[uint64]uint64) {
+	for _, loc := range p.Location {
+		loc.MappingId = n[loc.MappingId]
+	}
+}
+
+func RewriteLocationsWithMap(p *profilev1.Profile, n map[uint64]uint64) {
+	for _, s := range p.Sample {
+		for i, loc := range s.LocationId {
+			s.LocationId[i] = n[loc]
+		}
+	}
+}
