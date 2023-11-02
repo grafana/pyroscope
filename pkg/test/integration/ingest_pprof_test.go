@@ -240,6 +240,15 @@ var (
 			},
 			spyName: "dotnetspy",
 		},
+		{
+
+			profile:            repoRoot + "pkg/og/convert/pprof/testdata/invalid_utf8.pb.gz",
+			expectStatusPush:   400,
+			expectStatusIngest: 422,
+			metrics: []expectedMetric{
+				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
+			},
+		},
 	}
 )
 
@@ -378,18 +387,18 @@ func push(t *testing.T, p *PyroscopeTest, testdatum pprofTestData) string {
 		}},
 	}))
 	if testdatum.expectStatusPush == 200 {
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	} else {
-		require.Error(t, err)
+		assert.Error(t, err)
 		var connectErr *connect.Error
 		if ok := errors.As(err, &connectErr); ok {
 			toHTTP := connectgrpc.CodeToHTTP(connectErr.Code())
-			require.Equal(t, testdatum.expectStatusPush, int(toHTTP))
+			assert.Equal(t, testdatum.expectStatusPush, int(toHTTP))
 			if testdatum.expectedError != "" {
-				require.Contains(t, connectErr.Error(), testdatum.expectedError)
+				assert.Contains(t, connectErr.Error(), testdatum.expectedError)
 			}
 		} else {
-			require.Fail(t, "unexpected error type", err.Error())
+			assert.Fail(t, "unexpected error type", err)
 		}
 	}
 

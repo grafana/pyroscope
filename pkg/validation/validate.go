@@ -1,10 +1,12 @@
 package validation
 
 import (
+	"encoding/hex"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
@@ -234,6 +236,11 @@ func ValidateProfile(limits ProfileValidationLimits, tenantID string, prof *goog
 			return NewErrorf(MalformedProfile, "sample type contains -")
 		}
 		// todo check if sample type is valid from the promql parser perspective
+	}
+	for _, s := range prof.StringTable {
+		if !utf8.ValidString(s) {
+			return NewErrorf(MalformedProfile, "invalid utf8 string hex: %s", hex.EncodeToString([]byte(s)))
+		}
 	}
 	return nil
 }
