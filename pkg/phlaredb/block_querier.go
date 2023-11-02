@@ -1246,6 +1246,7 @@ func Series(ctx context.Context, req *ingestv1.SeriesRequest, blockGetter BlockG
 	group.SetLimit(concurrentQueryLimit)
 
 	for _, q := range queriers {
+		q := q
 		group.Go(util.RecoverPanic(func() error {
 			labels, err := q.Series(ctx, req)
 			if err != nil {
