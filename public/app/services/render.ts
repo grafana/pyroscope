@@ -14,11 +14,7 @@ import {
 import { Timeline, TimelineSchema } from '@pyroscope/models/timeline';
 import { Annotation, AnnotationSchema } from '@pyroscope/models/annotation';
 import type { RequestError } from '@pyroscope/services/base';
-import {
-  request,
-  parseResponse,
-  requestWithOrgID,
-} from '@pyroscope/services/base';
+import { request, parseResponse } from '@pyroscope/services/base';
 
 export interface RenderOutput {
   profile: Profile;
@@ -50,7 +46,7 @@ export async function renderSingle(
 ): Promise<Result<RenderOutput, RequestError | ZodError>> {
   const url = buildRenderURL(props);
   // TODO
-  const response = await requestWithOrgID(`/pyroscope${url}&format=json`, {
+  const response = await request(`/pyroscope${url}&format=json`, {
     signal: controller?.signal,
   });
 
@@ -110,7 +106,7 @@ export async function renderDiff(
     rightUntil: props.rightUntil,
   });
 
-  const response = await requestWithOrgID(`/pyroscope/render-diff?${params}`, {
+  const response = await request(`/pyroscope/render-diff?${params}`, {
     signal: controller?.signal,
   });
 
@@ -156,7 +152,7 @@ export async function renderExplore(
   }
 ): Promise<Result<RenderExploreOutput, RequestError | ZodError>> {
   const url = buildRenderURL(props);
-  const response = await requestWithOrgID(`/pyroscope/${url}&format=json`, {
+  const response = await request(`/pyroscope/${url}&format=json`, {
     signal: controller?.signal,
   });
   return parseResponse<RenderExploreOutput>(response, RenderExploreSchema);

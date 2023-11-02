@@ -1,4 +1,4 @@
-import { parseResponse, requestWithOrgID } from '@pyroscope/services/base';
+import { parseResponse, request } from '@pyroscope/services/base';
 import { z } from 'zod';
 
 const labelNamesSchema = z.preprocess(
@@ -33,20 +33,17 @@ export function queryToMatchers(query: string) {
 }
 
 export async function fetchTags(query: string, from: number, until: number) {
-  const response = await requestWithOrgID(
-    '/querier.v1.QuerierService/LabelNames',
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        matchers: queryToMatchers(query),
-        start: from,
-        end: until,
-      }),
-      headers: {
-        'content-type': 'application/json',
-      },
-    }
-  );
+  const response = await request('/querier.v1.QuerierService/LabelNames', {
+    method: 'POST',
+    body: JSON.stringify({
+      matchers: queryToMatchers(query),
+      start: from,
+      end: until,
+    }),
+    headers: {
+      'content-type': 'application/json',
+    },
+  });
   const isMetaTag = (tag: string) => tag.startsWith('__') && tag.endsWith('__');
 
   return parseResponse<string[]>(
@@ -63,21 +60,18 @@ export async function fetchLabelValues(
   from: number,
   until: number
 ) {
-  const response = await requestWithOrgID(
-    '/querier.v1.QuerierService/LabelValues',
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        matchers: queryToMatchers(query),
-        name: label,
-        start: from,
-        end: until,
-      }),
-      headers: {
-        'content-type': 'application/json',
-      },
-    }
-  );
+  const response = await request('/querier.v1.QuerierService/LabelValues', {
+    method: 'POST',
+    body: JSON.stringify({
+      matchers: queryToMatchers(query),
+      name: label,
+      start: from,
+      end: until,
+    }),
+    headers: {
+      'content-type': 'application/json',
+    },
+  });
 
   return parseResponse<string[]>(
     response,
