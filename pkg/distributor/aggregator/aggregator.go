@@ -155,6 +155,7 @@ func (a *Aggregator[T]) waitResult(x *aggregatedResult[T]) {
 	a.m.Lock()
 	delete(a.aggregates, x.key)
 	a.m.Unlock()
+	a.stats.activeAggregates.Add(-1)
 	if !failed {
 		// Wait for ongoing aggregations to finish.
 		x.wg.Wait()
@@ -223,10 +224,7 @@ func newTracker(shards int, shardSize uint32) *tracker {
 	return &t
 }
 
-// https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
-func reduce(k, n uint64) uint64 { return (k * n) >> 32 }
-
-func (t *tracker) shard(k uint64) *shard          { return t.shards[reduce(k, uint64(len(t.shards)))] }
+func (t *tracker) shard(k uint64) *shard          { return t.shards[k%uint64(len(t.shards))] }
 func (t *tracker) update(k uint64, n int64) int64 { return t.shard(k).update(k, n) }
 
 // prune removes keys with values less than n and

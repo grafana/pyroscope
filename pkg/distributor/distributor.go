@@ -32,6 +32,7 @@ import (
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/clientpool"
+	"github.com/grafana/pyroscope/pkg/distributor/aggregator"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -89,6 +90,7 @@ type Distributor struct {
 	distributorsRing       *ring.Ring
 	healthyInstancesCount  *atomic.Uint32
 	ingestionRateLimiter   *limiter.RateLimiter
+	aggregator             *aggregator.MultiTenantAggregator[*pprof.ProfileMerge]
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -115,6 +117,7 @@ type Limits interface {
 	MaxProfileSymbolValueLength(tenantID string) int
 	MaxSessionsPerSeries(tenantID string) int
 	validation.ProfileValidationLimits
+	// aggregator.Limits
 }
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, limits Limits, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Distributor, error) {
@@ -130,6 +133,7 @@ func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactor
 		pool:                    clientpool.NewIngesterPool(cfg.PoolConfig, ingestersRing, factory, clients, logger, clientsOptions...),
 		metrics:                 newMetrics(reg),
 		healthyInstancesCount:   atomic.NewUint32(0),
+		aggregator:              aggregator.NewMultiTenantAggregator[*pprof.ProfileMerge](limits, reg),
 		limits:                  limits,
 		rfStats:                 usagestats.NewInt("distributor_replication_factor"),
 		bytesReceivedStats:      usagestats.NewStatistics("distributor_bytes_received"),
@@ -226,7 +230,7 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	return d.PushParsed(ctx, req)
 }
 
-func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (*connect.Response[pushv1.PushResponse], error) {
+func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
 	now := model.Now()
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
@@ -309,6 +313,42 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		)
 	}
 
+	// Normalisation is quite an expensive operation,
+	// therefore it should be done after the rate limit check.
+	for _, series := range req.Series {
+		for _, sample := range series.Samples {
+			sample.Profile.Normalize()
+		}
+	}
+
+	if len(req.Series) == 1 && len(req.Series[0].Samples) == 1 {
+		series := req.Series[0]
+		// NOTE: Actually all profile series can be merged.
+		//  before aggregation. However, it's not expected
+		//  that a series has more than one profile.
+		profile := series.Samples[0].Profile.Profile
+		var aggregated aggregator.AggregationResult[*pprof.ProfileMerge]
+		if aggregated, err = d.maybeAggregate(tenantID, series.Labels, profile); err != nil {
+			return nil, err
+		}
+		// If aggregation is not enabled, processing continues as usual.
+		// Otherwise, we need to fetch the aggregated value, send it to
+		// the ingesters, and notify all the aggregation contributors.
+		if aggregated != nil {
+			y, ok := aggregated.Value()
+			if !ok {
+				// The value has been handled already.
+				return connect.NewResponse(&pushv1.PushResponse{}), nil
+			}
+			if k := y.Profile(); k != nil {
+				series.Samples[0].Profile.Profile = k
+			}
+			// Any error occurred during further processing will be
+			// propagated to all the aggregation contributors.
+			defer aggregated.Close(err)
+		}
+	}
+
 	// Next we split profiles by labels. Newly allocated profiles should be closed after use.
 	profileSeries, newProfiles := extractSampleSeries(req)
 	defer func() {
@@ -334,7 +374,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			p := raw.Profile
 			// zip the data back into the buffer
 			bw := bytes.NewBuffer(raw.RawProfile[:0])
-			if _, err := p.WriteTo(bw); err != nil {
+			if _, err = p.WriteTo(bw); err != nil {
 				return nil, err
 			}
 			raw.ID = uuid.NewString()
@@ -381,7 +421,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		}(ingesterDescs[ingester], samples)
 	}
 	select {
-	case err := <-tracker.err:
+	case err = <-tracker.err:
 		return nil, err
 	case <-tracker.done:
 		return connect.NewResponse(&pushv1.PushResponse{}), nil
@@ -413,6 +453,34 @@ func profileSizeBytes(p *googlev1.Profile) (symbols, samples int64) {
 	// restore samples
 	p.Sample = samplesSlice
 	return
+}
+
+func (d *Distributor) maybeAggregate(tenantID string, labels phlaremodel.Labels, profile *googlev1.Profile) (aggregator.AggregationResult[*pprof.ProfileMerge], error) {
+	a, ok := d.aggregator.AggregatorForTenant(tenantID)
+	if !ok {
+		return nil, nil
+	}
+	var err error
+	var r aggregator.AggregationResult[*pprof.ProfileMerge]
+	if r, err = a.Aggregate(labels.Hash(), profile.TimeNanos, mergeProfile(profile)); err != nil {
+		return nil, err
+	}
+	if err = r.Wait(); err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+func mergeProfile(profile *googlev1.Profile) aggregator.AggregateFn[*pprof.ProfileMerge] {
+	return func(m *pprof.ProfileMerge) (*pprof.ProfileMerge, error) {
+		if m == nil {
+			m = new(pprof.ProfileMerge)
+		}
+		if err := m.Merge(profile); err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		return m, nil
+	}
 }
 
 func (d *Distributor) sendProfiles(ctx context.Context, ingester ring.InstanceDesc, profileTrackers []*profileTracker, pushTracker *pushTracker) {
@@ -511,7 +579,6 @@ func extractSampleSeries(req *distributormodel.PushRequest) ([]*distributormodel
 			Samples: make([]*distributormodel.ProfileSample, 0, len(series.Samples)),
 		}
 		for _, raw := range series.Samples {
-			raw.Profile.Normalize()
 			pprof.RenameLabel(raw.Profile.Profile, pprof.ProfileIDLabelName, pprof.SpanIDLabelName)
 			groups := pprof.GroupSamplesWithoutLabels(raw.Profile.Profile, pprof.SpanIDLabelName)
 			if len(groups) == 0 || (len(groups) == 1 && len(groups[0].Labels) == 0) {
