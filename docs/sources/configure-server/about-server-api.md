@@ -7,18 +7,19 @@ weight: 20
 
 # Pyroscope Server HTTP API Reference
 
-Pyroscope server exposes an HTTP API that can be used to query profiling data and to ingest profiling data from other sources.
+Pyroscope server exposes an HTTP API for querying profiling data and ingesting profiling data from other sources.
 
 ## Authentication
-Grafana Pyroscope does not come with any included authentication layer. Operators are expected to run an authenticating reverse proxy in front of your services.
 
-Note that when using Pyroscope in multi-tenant mode, Pyroscope requires the HTTP header `X-Scope-OrgID` to be set to a string identifying the tenant; the responsibility of populating this value should be handled by the authenticating reverse proxy. Please refer to the [multi-tenancy documentation]({{< relref "./about-tenant-ids" >}}) for more information.
+Grafana Pyroscope does not include an authentication layer. Operators should use an authenticating reverse proxy for security.
+
+In multi-tenant mode, Pyroscope requires the X-Scope-OrgID HTTP header set to a string identifying the tenant. This responsibility should be handled by the authenticating reverse proxy. For more information, refer to the [multi-tenancy documentation]({{< relref "./about-tenant-ids" >}}).
 
 ## Ingestion
 
-Currently there's just one endpoint: `POST /ingest`. It takes profile data in request body and metadata as query params.
+There is one primary endpoint: POST /ingest. It accepts profile data in the request body and metadata as query parameters.
 
-It takes multiple query parameters:
+The following query parameters are accepted:
 
 | Name               | Description                             | Notes                           |
 |:-------------------|:----------------------------------------|:--------------------------------|
@@ -31,27 +32,29 @@ It takes multiple query parameters:
 | `units`            | name of the profiling data unit         | optional (default is `samples`  |
 | `aggregrationType` | type of aggregration to merge profiles  | optional (default is `sum`)     |
 
-* `name` specifies application name. For example:
+
+`name` specifies application name. For example:
 ```
 my.awesome.app.cpu{env=staging,region=us-west-1}
 ```
 
-Request body contains the profiling data, and request header `Content-Type` may also be alongside `format` to determine profiling data format.
+The request body contains profiling data, and the Content-Type header may be used alongside format to determine the data format.
 
 Some of the query parameters depend on the format of profiling data. Pyroscope currently supports three major ingestion formats.
 
 ### Text Formats
 
-Most simple ingestion formats send a single type of profiling data (for example, `cpu` samples) and don't usually support any metadata (e.g labels) within the format to indicate which kind of data they are sending.
-In these cases, all the metadata is taken from the query parameters, and the format itself is defined by `format` query parameter.
-The formats that work this way are:
+These formats handle simple ingestion of profiling data, such as `cpu` samples, and typically don't support metadata (e.g., labels) within the format. All necessary metadata is derived from query parameters, and the format is specified by the `format` query parameter.
 
-* `folded`. Some software also call this format `collapsed`. This is the default format. With this format you put one stacktrace per line with a number of samples you've captured for that particular stacktrace, for example:
+**Supported Formats:**
+
+- **Folded**: Also known as `collapsed`, this is the default format. Each line contains a stacktrace followed by the sample count for that stacktrace. For example:
 ```
 foo;bar 100
 foo;baz 200
 ```
-* `lines` — This format is similar to `folded`, except there's no number of samples per stacktrace but a single line per sample, for example:
+
+- **Lines**: Similar to `folded`, but it represents each sample as a separate line rather than aggregating samples per stacktrace. For example:
 ```
 foo;bar
 foo;bar
@@ -61,55 +64,119 @@ foo;bar
 
 ### pprof format
 
-`pprof` is a binary profiling data format popular in many languages, especially in the Go ecosystem.
+The `pprof` format is a widely used binary profiling data format, particularly prevalent in the Go ecosystem.
 
-When this format is used, some of the query parameters behave slightly different:
-* `format` should be set to `pprof`.
-* `name` contains the _prefix_ of the application name. Since a single request may contain multiple profile types, the final application name is created concatenating this prefix and the profile type. For example, if you send cpu profiling data and set `name` to `my-app{}`, it will appear in pyroscope as `my-app.cpu{}`.
-* `units`, `aggregationType` and `sampleRate` are ignored, and the actual values depends on the profile types available in the data (see the next section, "Sample Type Configuration").
+When using this format, certain query parameters have specific behaviors:
+
+- **format**: This should be set to `pprof`.
+- **name**: This parameter contains the _prefix_ of the application name. Since a single request might include multiple profile types, the complete application name is formed by concatenating this prefix with the profile type. For instance, if you send CPU profiling data and set `name` to `my-app{}`, it will be displayed in pyroscope as `my-app.cpu{}`.
+- **units**, **aggregationType**, and **sampleRate**: These parameters are ignored. The actual values are determined based on the profile types present in the data (refer to the "Sample Type Configuration" section for more details).
 
 #### Sample Type Configuration
 
-Out of the box Pyroscope server supports [default Go profile types](https://github.com/pyroscope-io/pyroscope/blob/main/pkg/storage/tree/pprof.go#L37-L75) (`cpu`, `inuse_objects`, `inuse_space`, `alloc_objects`, `alloc_space`). When working with other software that generates data in pprof format you may have to provide a custom sample type configuration for pyroscope to be able to parse the data properly.
+Pyroscope server inherently supports standard Go profile types such as `cpu`, `inuse_objects`, `inuse_space`, `alloc_objects`, and `alloc_space`. When dealing with software that generates data in pprof format, you may need to supply a custom sample type configuration for Pyroscope to interpret the data correctly.
 
-To see an example python script to ingest a pprof file with custom sample type configuration, see [this file](https://github.com/grafana/pyroscope/tree/main/examples/api/ingest_pprof.py).
+For an example Python script to ingest a pprof file with a custom sample type configuration, see **[this Python script](https://github.com/grafana/pyroscope/tree/main/examples/api/ingest_pprof.py).**
 
-In order to ingest pprof data with a custom sample type configuration, you have to make the following changes to your requests:
-* use an HTTP form (`multipart/form-data`) Content-Type.
-* send the profile data in a form file field called `profile`.
-* send the sample type configuration in a form file field called `sample_type_config`.
+To ingest pprof data with custom sample type configuration, modify your requests as follows:
+* Set Content-Type to `multipart/form-data`.
+* Upload the profile data in a form file field named `profile`.
+* Include the sample type configuration in a form file field named `sample_type_config`.
 
-Sample type configuration is a JSON object that looks like this:
+A sample type configuration is a JSON object formatted like this:
 
 ```json
 {
-  "inuse_space": { // "inuse_space" here is the internal pprof type name
+  "inuse_space": {
     "units": "bytes",
     "aggregation": "average",
     "display-name": "inuse_space_bytes",
-    "sampled": false,
+    "sampled": false
+  },
+  "alloc_objects": {
+    "units": "objects",
+    "aggregation": "sum",
+    "display-name": "alloc_objects_count",
+    "sampled": true
+  },
+  "cpu": {
+    "units": "samples",
+    "aggregation": "sum",
+    "display-name": "cpu_samples",
+    "sampled": true
   },
   // pprof supports multiple profiles types in one file,
   //   so there can be multiple of these objects
 }
 ```
 
+Explanation of sample type configuration fields:
 
-Here's a description of sample type configuration fields:
+- **units**
+  - Supported values: `samples`, `objects`, `bytes`
+  - Description: Changes the units displayed in the frontend. `samples` = CPU samples, `objects` = objects in RAM, `bytes` = bytes in RAM.
+- **display-name**
+  - Supported values: Any string.
+  - Description: This becomes a suffix of the app name, e.g., `my-app.inuse_space_bytes`.
+- **aggregation**
+  - Supported values: `sum`, `average`.
+  - Description: Alters how data is aggregated on the frontend. Use `sum` for data to be summed over time (e.g., CPU samples, memory allocations), and `average` for data to be averaged over time (e.g., memory in-use objects).
+- **sampled**
+  - Supported values: `true`, `false`.
+  - Description: Determines if the sample rate (specified in the pprof file) is considered. Set to `true` for sampled events (e.g., CPU samples), and `false` for memory profiles.
 
-* `units`
-  * Supported values: `samples`, `objects`, `bytes`
-  * Description: This will change the units shown on the frontend. `samples` = cpu samples, `objects` = objects in RAM, `bytes` = bytes in RAM
-* `display-name`
-  * Supported values: any string
-  * Description: this becomes a suffix of app name, for example `my-app.inuse_space_bytes`
-* `aggregation`
-  * Supported values: `sum`, `average`
-  * Description: This changes how data is aggregated when shown on the frontend. use `sum` for data that you want to sum over time (e.g cpu samples, memory allocations), use `average` for data that you want to average over time (e.g. memory memory in-use objects)
-* `sampled`
-  * Supported values: `true` / `false`
-  * Description: This parameter defines if sample rate (specified in pprof file) is going to be taken into account or not. Set this to `true` for sampled events (e.g CPU samples), set it to `false` for memory profiles.
+This configuration allows for customized visualization and analysis of various profile types within Pyroscope.
 
+### Uploading a pprof File to Pyroscope Server Using profilecli
+
+Using `profilecli`, you can easily upload your pprof files to the Pyroscope server. `profilecli` is a command-line utility that simplifies the process by allowing you to directly upload profiles with a single command. Below is a guide on how you can use `profilecli` for uploading a pprof file:
+
+#### Prerequisites
+- Ensure you have `profilecli` installed on your system.
+- Have the pprof file you want to upload ready.
+
+#### Steps to Upload
+
+1. **Identify the pprof file and Pyroscope server details.**
+
+   - Path to your pprof file: `path/to/your/pprof-file.pprof`
+   - Pyroscope server URL: If using Grafana Cloud, for example, `https://profiles-prod-001.grafana.net`. For local instances, it could be `http://localhost:4040`.
+
+2. **Determine Authentication Details (if applicable).**
+
+   - If using cloud or authentication is enabled on your Pyroscope server, you will need the following:
+     - Username: `<username>`
+     - Password: `<password>`
+
+3. **Specify any Extra Labels (Optional).**
+
+   - You can add additional labels to your uploaded profile using the `--extra-labels` flag.
+
+4. **Construct and Execute the Upload Command.**
+
+   - Here's a basic command template:
+     ```
+     ./profilecli upload --url=<pyroscope_server_url> --username=<username> --password=<password> path/to/your/pprof-file.pprof
+     ```
+
+   - Modify the placeholders (`<pyroscope_server_url>`, `<username>`, `<password>`, `path/to/your/pprof-file.pprof`) with your actual values.
+
+   - Example command:
+     ```
+     ./profilecli upload --url=https://profiles-prod-001.grafana.net --username=my_username --password=my_password path/to/my_application_name.pprof
+     ```
+
+5. **Check for Successful Upload.**
+
+   - After running the command, you should see a confirmation message indicating a successful upload. If there are any issues, `profilecli` will provide error messages to help you troubleshoot.
+
+#### Additional Tips
+
+- Use the `--verbose` flag if you need more detailed logs during the upload process.
+- The `--extra-labels` flag can be used multiple times to add several labels.
+- For help with `profilecli` commands, you can always use `./profilecli --help`.
+
+Using `profilecli` streamlines the process of uploading profiles to Pyroscope, making it a convenient alternative to manual HTTP requests.
 
 ### JFR format
 
