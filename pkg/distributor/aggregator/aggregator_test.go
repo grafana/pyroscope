@@ -46,7 +46,7 @@ func Test_Aggregation(t *testing.T) {
 	r2.Close(nil)
 
 	assert.NoError(t, r3.Wait())
-	v, ok = r3.Value()
+	_, ok = r3.Value()
 	assert.False(t, ok)
 	r3.Close(nil)
 }
@@ -69,10 +69,9 @@ func Test_Aggregation_Concurrency(t *testing.T) {
 	}
 
 	a := NewAggregator[int](w, d)
-	var start int64
+	var start atomic.Int64
 	a.now = func() int64 {
-		start += 10
-		return start
+		return start.Add(10)
 	}
 
 	wg.Add(N)

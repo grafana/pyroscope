@@ -46,11 +46,13 @@ func Test_Aggregation_Metrics(t *testing.T) {
 	r2.Close(nil)
 
 	assert.NoError(t, r3.Wait())
-	v, ok = r3.Value()
+	_, ok = r3.Value()
 	assert.False(t, ok)
 	r3.Close(nil)
 
 	a.prune(0)
+	// Create a new aggregate.
+	_, _ = a.Aggregate(0, 0, fn)
 
 	expected := `
 # HELP pyroscope_distributor_aggregation_active_aggregates The number of active aggregates.
@@ -61,7 +63,7 @@ pyroscope_distributor_aggregation_active_aggregates 1
 pyroscope_distributor_aggregation_active_series 1
 # HELP pyroscope_distributor_aggregation_aggregated_total Total number of aggregated requests.
 # TYPE pyroscope_distributor_aggregation_aggregated_total counter
-pyroscope_distributor_aggregation_aggregated_total 2
+pyroscope_distributor_aggregation_aggregated_total 3
 # HELP pyroscope_distributor_aggregation_errors_total Total number of failed aggregations.
 # TYPE pyroscope_distributor_aggregation_errors_total counter
 pyroscope_distributor_aggregation_errors_total 0

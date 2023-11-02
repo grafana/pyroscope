@@ -323,9 +323,8 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 	if len(req.Series) == 1 && len(req.Series[0].Samples) == 1 {
 		series := req.Series[0]
-		// NOTE: Actually all profile series can be merged.
-		//  before aggregation. However, it's not expected
-		//  that a series has more than one profile.
+		// Actually all series profiles can be merged before aggregation.
+		// However, it's not expected that a series has more than one profile.
 		profile := series.Samples[0].Profile.Profile
 		var aggregated aggregator.AggregationResult[*pprof.ProfileMerge]
 		if aggregated, err = d.maybeAggregate(tenantID, series.Labels, profile); err != nil {

@@ -543,13 +543,7 @@ func Test_SampleLabels(t *testing.T) {
 											},
 										},
 										{
-											Value: []int64{1},
-											Label: []*profilev1.Label{
-												{Key: 3, Str: 4},
-											},
-										},
-										{
-											Value: []int64{1},
+											Value: []int64{2},
 											Label: []*profilev1.Label{
 												{Key: 3, Str: 4},
 											},

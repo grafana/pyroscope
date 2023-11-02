@@ -266,7 +266,7 @@ func GetMappingKey(m *profilev1.Mapping) MappingKey {
 	// Normalize addresses to handle address space randomization.
 	// Round up to next 4K boundary to avoid minor discrepancies.
 	const mapsizeRounding = 0x1000
-	size := m.MemoryLimit - m.MemoryLimit
+	size := m.MemoryLimit - m.MemoryStart
 	size = size + mapsizeRounding - 1
 	size = size - (size % mapsizeRounding)
 	k := MappingKey{
