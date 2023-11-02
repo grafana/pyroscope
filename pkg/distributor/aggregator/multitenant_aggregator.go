@@ -59,7 +59,9 @@ func (m *MultiTenantAggregator[T]) AggregatorForTenant(tenantID string) (*Aggreg
 	m.m.RLock()
 	t, ok := m.tenants[k]
 	m.m.RUnlock()
-	defer t.lastSeen.Store(time.Now())
+	defer func() {
+		t.lastSeen.Store(time.Now())
+	}()
 	if ok {
 		return t.aggregator, true
 	}
