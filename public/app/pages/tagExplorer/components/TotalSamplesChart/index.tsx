@@ -3,8 +3,10 @@ import { TimelineGroupData } from '@pyroscope/components/TimelineChart/TimelineC
 import { getFormatter } from '@pyroscope/legacy/flamegraph/format/format';
 import { Profile } from '@pyroscope/legacy/models';
 import LoadingSpinner from '@pyroscope/ui/LoadingSpinner';
-import PieChart, { PieChartDataItem } from './PieChart';
-import PieChartTooltip from './PieChartTooltip';
+import PieChart, {
+  PieChartDataItem,
+} from '@pyroscope/pages/tagExplorer/components/TotalSamplesChart/PieChart';
+import PieChartTooltip from '@pyroscope/pages/tagExplorer/components/TotalSamplesChart/PieChartTooltip';
 import { calculateTotal } from '../../../math';
 import { formatValue } from '../../../formatTableData';
 import styles from './index.module.scss';
