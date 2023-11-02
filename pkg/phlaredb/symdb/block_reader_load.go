@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"io"
-	"sort"
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/parquet-go/parquet-go"
@@ -37,21 +36,13 @@ func (r *Reader) loadStacktraces(ctx context.Context) error {
 		return err
 	}
 
-	partitions := make([]*partition, len(r.partitions))
+	offset := r.partitions[0].stacktraceChunks[0].header.Offset
 	var size int64
-	var i int
 	for _, v := range r.partitions {
 		for _, c := range v.stacktraceChunks {
 			size += c.header.Size
 		}
-		partitions[i] = v
-		i++
 	}
-	sort.Slice(partitions, func(i, j int) bool {
-		return partitions[i].stacktraceChunks[0].header.Offset <
-			partitions[j].stacktraceChunks[0].header.Offset
-	})
-	offset := partitions[0].stacktraceChunks[0].header.Offset
 
 	rc, err := r.bucket.GetRange(ctx, f.RelPath, offset, size)
 	if err != nil {
@@ -62,7 +53,7 @@ func (r *Reader) loadStacktraces(ctx context.Context) error {
 	}()
 
 	buf := bufio.NewReaderSize(rc, r.chunkFetchBufferSize)
-	for _, p := range partitions {
+	for _, p := range r.partitions {
 		for _, c := range p.stacktraceChunks {
 			if err = c.readFrom(io.LimitReader(buf, c.header.Size)); err != nil {
 				return err
@@ -74,28 +65,10 @@ func (r *Reader) loadStacktraces(ctx context.Context) error {
 }
 
 func (r *Reader) loadParquetTables(g *errgroup.Group) {
-	partitions := make([]*partition, len(r.partitions))
-	var i int
-	for _, v := range r.partitions {
-		partitions[i] = v
-		i++
-	}
-	sort.Slice(partitions, func(i, j int) bool {
-		// Partitions are stored sorted by their name.
-		// We sort partitions by row order so that they
-		// are read sequentially.
-		a := partitions[i].locations.headers[0]
-		b := partitions[j].locations.headers[0]
-		if a.RowGroup == b.RowGroup {
-			return a.Index < b.Index
-		}
-		return a.RowGroup < b.RowGroup
-	})
-
-	g.Go(func() error { return withRowIterator(r.locations, partitions, loadLocations) })
-	g.Go(func() error { return withRowIterator(r.functions, partitions, loadFunctions) })
-	g.Go(func() error { return withRowIterator(r.mappings, partitions, loadMappings) })
-	g.Go(func() error { return withRowIterator(r.strings, partitions, loadStrings) })
+	g.Go(func() error { return withRowIterator(r.locations, r.partitions, loadLocations) })
+	g.Go(func() error { return withRowIterator(r.functions, r.partitions, loadFunctions) })
+	g.Go(func() error { return withRowIterator(r.mappings, r.partitions, loadMappings) })
+	g.Go(func() error { return withRowIterator(r.strings, r.partitions, loadStrings) })
 }
 
 func loadLocations(p *partition, i iter.Iterator[parquet.Row]) error { return p.locations.loadFrom(i) }
