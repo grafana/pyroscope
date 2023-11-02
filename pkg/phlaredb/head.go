@@ -178,6 +178,11 @@ func (h *Head) isStale(maxT int64, now time.Time) bool {
 }
 
 func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, externalLabels ...*typesv1.LabelPair) error {
+	if len(p.Sample) == 0 {
+		level.Debug(h.logger).Log("msg", "profile has no samples", "labels", externalLabels)
+		return nil
+	}
+
 	labels, seriesFingerprints := labelsForProfile(p, externalLabels...)
 
 	for i, fp := range seriesFingerprints {
