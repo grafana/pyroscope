@@ -17,7 +17,11 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "storybook": "start-storybook -p 6006",
-    "build-storybook": "build-storybook"
+    "build-storybook": "build-storybook",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,scss}": "yarn format:fix"
   },
   "devDependencies": {
     "@babel/core": "^7.22.9",
@@ -92,11 +96,13 @@
     "eslint-plugin-unused-imports": "^2.0.0",
     "expose-loader": "^4.1.0",
     "html-webpack-plugin": "^5.5.0",
+    "husky": "^8.0.3",
     "jest": "^27.5.1",
     "jest-canvas-mock": "^2.3.1",
     "jest-css-modules-transform": "^4.4.2",
     "jest-environment-jsdom": "^27.5.1",
     "jest-fetch-mock": "^3.0.3",
+    "lint-staged": "^15.0.2",
     "mini-css-extract-plugin": "^2.7.5",
     "msw": "^0.36.3",
     "optimize-css-assets-webpack-plugin": "^6.0.1",
