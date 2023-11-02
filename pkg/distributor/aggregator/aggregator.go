@@ -88,10 +88,13 @@ type AggregationResult[T any] interface {
 }
 
 func (a *Aggregator[T]) Aggregate(key uint64, timestamp int64, fn AggregateFn[T]) (AggregationResult[T], error) {
+	// Return early if the event rate is too low for aggregation.
 	now := a.now()
 	lastUpdated := a.tracker.update(key, now)
-	if lastUpdated <= 0 || now-lastUpdated > a.period {
-		// Event rate associated with the key is too low for aggregation.
+	delta := now - lastUpdated // Negative delta is possible.
+	// Distance between two updates is longer than the aggregation period.
+	lowRate := 0 < delta && delta > a.period
+	if lastUpdated == 0 || lowRate {
 		var empty T
 		v, err := fn(empty)
 		return resultWithoutAggregation[T]{v}, err
