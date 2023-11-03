@@ -58,7 +58,7 @@ func (c *workerPool) resetWithoutLock() {
 		c <- struct{}{}
 		close(c)
 	}
-	c.pool = c.pool[:]
+	c.pool = c.pool[:0]
 }
 
 func (c *workerPool) doWork(fn func(), stop <-chan struct{}, done chan<- struct{}) {
