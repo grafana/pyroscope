@@ -104,8 +104,10 @@ spec:
             - name: data
               mountPath: /data
             {{- if eq $component "compactor" }}
-            - name: data-compactor
+              subPath: default
+            - name: data
               mountPath: /data-compactor
+              subPath: compactor
             {{- end }}
             {{- with $values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
