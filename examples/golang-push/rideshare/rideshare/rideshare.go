@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/agoda-com/opentelemetry-logs-go/exporters/otlp/otlplogs"
@@ -69,6 +70,9 @@ type Config struct {
 	UseDebugTracer bool
 	UseDebugLogger bool
 	Tags           map[string]string
+
+	ParametersPoolSize       int
+	ParametersPoolBufferSize int
 }
 
 func ReadConfig() Config {
@@ -90,6 +94,13 @@ func ReadConfig() Config {
 		Tags: map[string]string{
 			"region": os.Getenv("REGION"),
 		},
+
+		ParametersPoolSize: envIntOrDefault("PARAMETERS_POOL_SIZE", 1000),
+
+		// Internally, we represent this as buffer size in bytes, but to make it
+		// more readable from as an env var, we represent the env var value in
+		// kb.
+		ParametersPoolBufferSize: envIntOrDefault("PARAMETERS_POOL_BUFFER_SIZE_KB", 1000) * 1000,
 	}
 	if c.AppName == "" {
 		c.AppName = "ride-sharing-app"
@@ -225,4 +236,20 @@ func Profiler(c Config) (*pyroscope.Profiler, error) {
 		config.BasicAuthPassword = c.PyroscopeBasicAuthPassword
 	}
 	return pyroscope.Start(config)
+}
+
+// envIntOrDefault looks up the environment variable key and returns the value
+// as an int.
+func envIntOrDefault(key string, fallback int) int {
+	s, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+
+	v, err := strconv.Atoi(s)
+	if err != nil {
+		return fallback
+	}
+
+	return v
 }

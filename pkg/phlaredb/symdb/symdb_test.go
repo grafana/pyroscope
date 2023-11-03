@@ -22,8 +22,8 @@ type memSuite struct {
 	config   *Config
 	db       *SymDB
 	files    [][]string
-	profiles []*pprof.Profile
-	indexed  [][]v1.InMemoryProfile
+	profiles map[uint64]*pprof.Profile
+	indexed  map[uint64][]v1.InMemoryProfile
 }
 
 type blockSuite struct {
@@ -58,15 +58,21 @@ func (s *memSuite) init() {
 	if s.db == nil {
 		s.db = NewSymDB(s.config)
 	}
+	s.profiles = make(map[uint64]*pprof.Profile)
+	s.indexed = make(map[uint64][]v1.InMemoryProfile)
 	for p, files := range s.files {
-		w := s.db.PartitionWriter(uint64(p))
 		for _, f := range files {
-			x, err := pprof.OpenFile(f)
-			require.NoError(s.t, err)
-			s.profiles = append(s.profiles, x)
-			s.indexed = append(s.indexed, w.WriteProfileSymbols(x.Profile))
+			s.writeProfileFromFile(uint64(p), f)
 		}
 	}
+}
+
+func (s *memSuite) writeProfileFromFile(p uint64, f string) {
+	w := s.db.PartitionWriter(p)
+	x, err := pprof.OpenFile(f)
+	require.NoError(s.t, err)
+	s.profiles[p] = x
+	s.indexed[p] = w.WriteProfileSymbols(x.Profile)
 }
 
 func (s *blockSuite) flush() {

@@ -115,7 +115,7 @@ func TestBucketIndexMetadataFetcher_Fetch_NoBucketIndex(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, metas)
 	assert.Empty(t, partials)
-	assert.Empty(t, logs)
+	assert.Contains(t, logs.String(), "no bucket index found, falling back to fetching directly from bucket")
 
 	assert.NoError(t, testutil.GatherAndCompare(reg, bytes.NewBufferString(`
 		# HELP blocks_meta_sync_failures_total Total blocks metadata synchronization failures

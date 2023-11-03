@@ -10,6 +10,7 @@ import (
 	"rideshare/car"
 	"rideshare/rideshare"
 	"rideshare/scooter"
+	"rideshare/utility"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
@@ -64,6 +65,9 @@ func main() {
 	defer func() {
 		_ = p.Stop()
 	}()
+
+	cleanup := utility.InitWorkerPool(config)
+	defer cleanup()
 
 	rideshare.Log.Print(context.Background(), "started ride-sharing app")
 

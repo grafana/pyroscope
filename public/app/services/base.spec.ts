@@ -1,4 +1,4 @@
-import { requestWithOrgID } from '@pyroscope/services/base';
+import { request } from '@pyroscope/services/base';
 import * as storageSvc from '@pyroscope/services/storage';
 
 jest.mock('@pyroscope/services/base', () => {
@@ -36,7 +36,7 @@ describe('base', () => {
   });
 
   it('uses X-Scope-OrgID if set manually', () => {
-    requestWithOrgID('/', {
+    request('/', {
       headers: {
         'X-Scope-OrgID': 'myID',
       },
@@ -54,7 +54,7 @@ describe('base', () => {
 
     tenantIdSpy.mockReturnValueOnce('');
 
-    requestWithOrgID('/');
+    request('/');
 
     expect(global.fetch).toHaveBeenCalledWith('http://localhost/', {
       headers: {},
@@ -66,7 +66,7 @@ describe('base', () => {
 
     tenantIdSpy.mockReturnValueOnce('myid');
 
-    requestWithOrgID('/');
+    request('/');
 
     expect(global.fetch).toHaveBeenCalledWith('http://localhost/', {
       headers: {

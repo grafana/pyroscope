@@ -146,6 +146,10 @@ type MetaFetcher struct {
 
 // NewMetaFetcher returns a MetaFetcher.
 func NewMetaFetcher(logger log.Logger, concurrency int, bkt objstore.BucketReader, dir string, reg prometheus.Registerer, filters []MetadataFilter) (*MetaFetcher, error) {
+	return NewMetaFetcherWithMetrics(logger, concurrency, bkt, dir, NewFetcherMetrics(reg, nil), filters)
+}
+
+func NewMetaFetcherWithMetrics(logger log.Logger, concurrency int, bkt objstore.BucketReader, dir string, metrics *FetcherMetrics, filters []MetadataFilter) (*MetaFetcher, error) {
 	if logger == nil {
 		logger = log.NewNopLogger()
 	}
@@ -164,7 +168,7 @@ func NewMetaFetcher(logger log.Logger, concurrency int, bkt objstore.BucketReade
 		bkt:         bkt,
 		cacheDir:    cacheDir,
 		cached:      map[ulid.ULID]*Meta{},
-		metrics:     NewFetcherMetrics(reg, nil),
+		metrics:     metrics,
 		filters:     filters,
 	}, nil
 }

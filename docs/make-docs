@@ -6,6 +6,12 @@
 # [Semantic versioning](https://semver.org/) is used to help the reader identify the significance of changes.
 # Changes are relevant to this script and the support docs.mk GNU Make interface.
 #
+# ## 5.1.1 (2023-10-30)
+#
+# ### Added
+#
+# - Support for Datadog and Oracle data source plugins repositories.
+#
 # ## 5.1.0 (2023-10-20)
 #
 # ### Added
@@ -249,8 +255,10 @@ SOURCES_grafana_cloud_frontend_observability_faro_web_sdk='faro-web-sdk'
 SOURCES_helm_charts_mimir_distributed='mimir'
 SOURCES_helm_charts_tempo_distributed='tempo'
 SOURCES_opentelemetry='opentelemetry-docs'
+SOURCES_plugins_grafana_datadog_datasource='datadog-datasource'
 SOURCES_plugins_grafana_jira_datasource='jira-datasource'
 SOURCES_plugins_grafana_mongodb_datasource='mongodb-datasource'
+SOURCES_plugins_grafana_oracle_datasource='oracle-datasource'
 SOURCES_plugins_grafana_splunk_datasource='splunk-datasource'
 
 VERSIONS_as_code='UNVERSIONED'
@@ -261,8 +269,10 @@ VERSIONS_grafana_cloud_k6='UNVERSIONED'
 VERSIONS_grafana_cloud_data_configuration_integrations='UNVERSIONED'
 VERSIONS_grafana_cloud_frontend_observability_faro_web_sdk='UNVERSIONED'
 VERSIONS_opentelemetry='UNVERSIONED'
+VERSIONS_plugins_grafana_datadog_datasource='latest'
 VERSIONS_plugins_grafana_jira_datasource='latest'
 VERSIONS_plugins_grafana_mongodb_datasource='latest'
+VERSIONS_plugins_grafana_oracle_datasource='latest'
 VERSIONS_plugins_grafana_splunk_datasource='latest'
 VERSIONS_technical_documentation='UNVERSIONED'
 VERSIONS_website='UNVERSIONED'
@@ -272,8 +282,10 @@ PATHS_grafana_cloud='content/docs/grafana-cloud'
 PATHS_helm_charts_mimir_distributed='docs/sources/helm-charts/mimir-distributed'
 PATHS_helm_charts_tempo_distributed='docs/sources/helm-charts/tempo-distributed'
 PATHS_mimir='docs/sources/mimir'
+PATHS_plugins_grafana_datadog_datasource='docs/sources'
 PATHS_plugins_grafana_jira_datasource='docs/sources'
 PATHS_plugins_grafana_mongodb_datasource='docs/sources'
+PATHS_plugins_grafana_oracle_datasource='docs/sources'
 PATHS_plugins_grafana_splunk_datasource='docs/sources'
 PATHS_tempo='docs/sources/tempo'
 PATHS_website='content'

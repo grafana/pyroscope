@@ -39,6 +39,16 @@ func RegisterStoreGatewayServiceHandler(mux *mux.Router, svc StoreGatewayService
 		svc.MergeSpanProfile,
 		opts...,
 	))
+	mux.Handle("/storegateway.v1.StoreGatewayService/ProfileTypes", connect_go.NewUnaryHandler(
+		"/storegateway.v1.StoreGatewayService/ProfileTypes",
+		svc.ProfileTypes,
+		opts...,
+	))
+	mux.Handle("/storegateway.v1.StoreGatewayService/LabelValues", connect_go.NewUnaryHandler(
+		"/storegateway.v1.StoreGatewayService/LabelValues",
+		svc.LabelValues,
+		opts...,
+	))
 	mux.Handle("/storegateway.v1.StoreGatewayService/LabelNames", connect_go.NewUnaryHandler(
 		"/storegateway.v1.StoreGatewayService/LabelNames",
 		svc.LabelNames,

@@ -72,6 +72,8 @@ When this format is used, some of the query parameters behave slightly different
 
 Out of the box Pyroscope server supports [default Go profile types](https://github.com/pyroscope-io/pyroscope/blob/main/pkg/storage/tree/pprof.go#L37-L75) (`cpu`, `inuse_objects`, `inuse_space`, `alloc_objects`, `alloc_space`). When working with other software that generates data in pprof format you may have to provide a custom sample type configuration for pyroscope to be able to parse the data properly.
 
+To see an example python script to ingest a pprof file with custom sample type configuration, see [this file](https://github.com/grafana/pyroscope/tree/main/examples/api/ingest_pprof.py).
+
 In order to ingest pprof data with a custom sample type configuration, you have to make the following changes to your requests:
 * use an HTTP form (`multipart/form-data`) Content-Type.
 * send the profile data in a form file field called `profile`.

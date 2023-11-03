@@ -362,10 +362,17 @@ const (
 
 // LabelValues returns the possible label values for a given label name.
 func (f *PhlareDB) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (resp *connect.Response[typesv1.LabelValuesResponse], err error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB LabelValues")
+	defer sp.Finish()
+
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
 
-	return f.headQueriers().LabelValues(ctx, req)
+	_, ok := phlaremodel.GetTimeRange(req.Msg)
+	if !ok {
+		return f.headQueriers().LabelValues(ctx, req)
+	}
+	return f.queriers().LabelValues(ctx, req)
 }
 
 // LabelNames returns the possible label names.
@@ -385,10 +392,17 @@ func (f *PhlareDB) LabelNames(ctx context.Context, req *connect.Request[typesv1.
 
 // ProfileTypes returns the possible profile types.
 func (f *PhlareDB) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (resp *connect.Response[ingestv1.ProfileTypesResponse], err error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "PhlareDB ProfileTypes")
+	defer sp.Finish()
+
 	f.headLock.RLock()
 	defer f.headLock.RUnlock()
 
-	return f.headQueriers().ProfileTypes(ctx, req)
+	_, ok := phlaremodel.GetTimeRange(req.Msg)
+	if !ok {
+		return f.headQueriers().ProfileTypes(ctx, req)
+	}
+	return f.queriers().ProfileTypes(ctx, req)
 }
 
 // Series returns labels series for the given set of matchers.
