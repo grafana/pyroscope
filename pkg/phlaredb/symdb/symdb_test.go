@@ -22,8 +22,8 @@ type memSuite struct {
 	config   *Config
 	db       *SymDB
 	files    [][]string
-	profiles []*pprof.Profile
-	indexed  [][]v1.InMemoryProfile
+	profiles map[uint64]*pprof.Profile
+	indexed  map[uint64][]v1.InMemoryProfile
 }
 
 type blockSuite struct {
@@ -58,15 +58,21 @@ func (s *memSuite) init() {
 	if s.db == nil {
 		s.db = NewSymDB(s.config)
 	}
+	s.profiles = make(map[uint64]*pprof.Profile)
+	s.indexed = make(map[uint64][]v1.InMemoryProfile)
 	for p, files := range s.files {
-		w := s.db.PartitionWriter(uint64(p))
 		for _, f := range files {
-			x, err := pprof.OpenFile(f)
-			require.NoError(s.t, err)
-			s.profiles = append(s.profiles, x)
-			s.indexed = append(s.indexed, w.WriteProfileSymbols(x.Profile))
+			s.writeProfileFromFile(uint64(p), f)
 		}
 	}
+}
+
+func (s *memSuite) writeProfileFromFile(p uint64, f string) {
+	w := s.db.PartitionWriter(p)
+	x, err := pprof.OpenFile(f)
+	require.NoError(s.t, err)
+	s.profiles[p] = x
+	s.indexed[p] = w.WriteProfileSymbols(x.Profile)
 }
 
 func (s *blockSuite) flush() {
@@ -140,4 +146,40 @@ func treeFingerprint(t *phlaremodel.Tree) [][2]uint64 {
 	})
 	sort.Slice(m, func(i, j int) bool { return m[i][0] < m[j][0] })
 	return m
+}
+
+func Test_Stats(t *testing.T) {
+	s := memSuite{
+		t:     t,
+		files: [][]string{{"testdata/profile.pb.gz"}},
+		config: &Config{
+			Dir: t.TempDir(),
+			Stacktraces: StacktracesConfig{
+				MaxNodesPerChunk: 4 << 20,
+			},
+			Parquet: ParquetConfig{
+				MaxBufferRowCount: 100 << 10,
+			},
+		},
+	}
+
+	s.init()
+	bs := blockSuite{memSuite: &s}
+	bs.flush()
+	defer bs.teardown()
+
+	p, err := bs.reader.Partition(context.Background(), 0)
+	require.NoError(t, err)
+
+	var actual PartitionStats
+	p.WriteStats(&actual)
+	expected := PartitionStats{
+		StacktracesTotal: 611,
+		MaxStacktraceID:  1793,
+		LocationsTotal:   762,
+		MappingsTotal:    3,
+		FunctionsTotal:   507,
+		StringsTotal:     700,
+	}
+	require.Equal(t, expected, actual)
 }

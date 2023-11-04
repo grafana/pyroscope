@@ -358,7 +358,7 @@ func (f *Phlare) Run() error {
 	if err != nil {
 		return err
 	}
-	f.Server.HTTP.Path("/ready").Methods("GET").Handler(f.readyHandler(sm))
+	f.API.RegisterRoute("/ready", f.readyHandler(sm), false, false, "GET")
 
 	RegisterHealthServer(f.Server.HTTP, grpcutil.WithManager(sm))
 	healthy := func() {

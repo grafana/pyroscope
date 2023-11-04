@@ -115,6 +115,7 @@
     "service": {
       "port": 4040,
       "port_name": "http2",
+      "scheme": "HTTP",
       "type": "ClusterIP"
     },
     "serviceAccount": {

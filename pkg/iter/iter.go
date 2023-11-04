@@ -152,6 +152,9 @@ func (i *sliceIterator[A]) Close() error {
 }
 
 func Slice[T any](it Iterator[T]) ([]T, error) {
+	if s, ok := it.(*sliceIterator[T]); ok {
+		return s.list, nil
+	}
 	var result []T
 	defer it.Close()
 	for it.Next() {

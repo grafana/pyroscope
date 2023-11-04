@@ -14,6 +14,8 @@ type Version struct {
 	Major, Minor, Patch int
 }
 
+var Py313 = &Version{Major: 3, Minor: 13}
+var Py312 = &Version{Major: 3, Minor: 12}
 var Py311 = &Version{Major: 3, Minor: 11}
 var Py37 = &Version{Major: 3, Minor: 7}
 
@@ -115,6 +117,7 @@ type UserOffsets struct {
 	PyTypeObject_tp_name              int16
 	PyThreadState_frame               int16
 	PyThreadState_cframe              int16
+	PyThreadState_current_frame       int16
 	PyCFrame_current_frame            int16
 	PyFrameObject_f_back              int16
 	PyFrameObject_f_code              int16
@@ -125,6 +128,7 @@ type UserOffsets struct {
 	PyCodeObject_co_localsplusnames   int16
 	PyTupleObject_ob_item             int16
 	PyInterpreterFrame_f_code         int16
+	PyInterpreterFrame_f_executable   int16
 	PyInterpreterFrame_previous       int16
 	PyInterpreterFrame_localsplus     int16
 	PyRuntimeState_gilstate           int16
@@ -133,7 +137,8 @@ type UserOffsets struct {
 	PyTssT_is_initialized             int16
 	PyTssT_key                        int16
 	PyTssTSize                        int16
-	StringSize                        int16
+	PyASCIIObjectSize                 int16
+	PyCompactUnicodeObjectSize        int16
 }
 
 func GetUserOffsets(version Version) (*UserOffsets, bool, error) {
@@ -157,21 +162,6 @@ func GetUserOffsets(version Version) (*UserOffsets, bool, error) {
 		}
 		patchGuess = true
 	}
-	//#define PY_OFFSET_String_size 48
-	//#define PY_OFFSET_PyVarObject_ob_size 16
-	//#define PY_OFFSET_PyObject_ob_type 8
-	//#define PY_OFFSET_PyTypeObject_tp_name 24
-	if offsets.StringSize != 48 {
-		return offsets, patchGuess, fmt.Errorf("python offsets.StringSize != 48 %+v %+v", offsets, version)
-	}
-	if offsets.PyVarObject_ob_size != 16 {
-		return offsets, patchGuess, fmt.Errorf("python offsets.PyVarObject_ob_size != 16 %+v %+v", offsets, version)
-	}
-	if offsets.PyObject_ob_type != 8 {
-		return offsets, patchGuess, fmt.Errorf("python offsets.PyObject_ob_type !=  8 %+v %+v", offsets, version)
-	}
-	if offsets.PyTypeObject_tp_name != 24 {
-		return offsets, patchGuess, fmt.Errorf("python offsets.PyTypeObject_tp_name != 24 %+v %+v", offsets, version)
-	}
+
 	return offsets, patchGuess, nil
 }

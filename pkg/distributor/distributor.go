@@ -356,6 +356,19 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		}
 	}()
 
+	// Filter our series and profiles without samples.
+	for _, series := range profileSeries {
+		series.Samples = slices.RemoveInPlace(series.Samples, func(sample *distributormodel.ProfileSample, _ int) bool {
+			return len(sample.Profile.Sample) == 0
+		})
+	}
+	profileSeries = slices.RemoveInPlace(profileSeries, func(series *distributormodel.ProfileSeries, i int) bool {
+		return len(series.Samples) == 0
+	})
+	if len(profileSeries) == 0 {
+		return connect.NewResponse(&pushv1.PushResponse{}), nil
+	}
+
 	// Validate the labels again and generate tokens for shuffle sharding.
 	keys := make([]uint32, len(profileSeries))
 	for i, series := range profileSeries {

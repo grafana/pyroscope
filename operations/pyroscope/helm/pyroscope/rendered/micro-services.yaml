@@ -2076,6 +2076,7 @@ spec:
             httpGet:
               path: /ready
               port: http2
+              scheme: HTTP
           volumeMounts:
             - name: config
               mountPath: /etc/pyroscope/config.yaml
@@ -2168,6 +2169,7 @@ spec:
             httpGet:
               path: /ready
               port: http2
+              scheme: HTTP
           volumeMounts:
             - name: config
               mountPath: /etc/pyroscope/config.yaml
@@ -2260,6 +2262,7 @@ spec:
             httpGet:
               path: /ready
               port: http2
+              scheme: HTTP
           volumeMounts:
             - name: config
               mountPath: /etc/pyroscope/config.yaml
@@ -2352,6 +2355,7 @@ spec:
             httpGet:
               path: /ready
               port: http2
+              scheme: HTTP
           volumeMounts:
             - name: config
               mountPath: /etc/pyroscope/config.yaml
@@ -2623,6 +2627,7 @@ spec:
             httpGet:
               path: /ready
               port: http2
+              scheme: HTTP
           volumeMounts:
             - name: config
               mountPath: /etc/pyroscope/config.yaml
@@ -2721,6 +2726,7 @@ spec:
             httpGet:
               path: /ready
               port: http2
+              scheme: HTTP
           volumeMounts:
             - name: config
               mountPath: /etc/pyroscope/config.yaml
@@ -2816,6 +2822,7 @@ spec:
             httpGet:
               path: /ready
               port: http2
+              scheme: HTTP
           volumeMounts:
             - name: config
               mountPath: /etc/pyroscope/config.yaml

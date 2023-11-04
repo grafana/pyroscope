@@ -130,6 +130,40 @@ func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1
 	return responses, nil
 }
 
+func (q *Querier) labelValuesFromIngesters(ctx context.Context, req *typesv1.LabelValuesRequest) ([]ResponseFromReplica[[]string], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelValues Ingesters")
+	defer sp.Finish()
+
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
+		res, err := ic.LabelValues(childCtx, connect.NewRequest(req))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.Names, nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return responses, nil
+}
+
+func (q *Querier) labelNamesFromIngesters(ctx context.Context, req *typesv1.LabelNamesRequest) ([]ResponseFromReplica[[]string], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "LabelNames Ingesters")
+	defer sp.Finish()
+
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) ([]string, error) {
+		res, err := ic.LabelNames(childCtx, connect.NewRequest(req))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.Names, nil
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	return responses, nil
+}
+
 func (q *Querier) seriesFromIngesters(ctx context.Context, req *ingesterv1.SeriesRequest) ([]ResponseFromReplica[[]*typesv1.Labels], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series Ingesters")
 	defer sp.Finish()

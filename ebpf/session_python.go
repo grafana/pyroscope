@@ -3,10 +3,8 @@ package ebpfspy
 import (
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 	"time"
-	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -62,15 +60,18 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 			for i := 0; i < int(event.StackLen); i++ {
 				sym, err := pySymbols.GetSymbol(event.Stack[i], svc)
 				if err == nil {
-					filename := cStringFromI8Unsafe(sym.File[:])
+					filename := python.PythonString(sym.File[:], &sym.FileType)
 					if !s.options.CacheOptions.SymbolOptions.PythonFullFilePath {
 						iSep := strings.LastIndexByte(filename, '/')
 						if iSep != 1 {
 							filename = filename[iSep+1:]
 						}
 					}
-					classname := cStringFromI8Unsafe(sym.Classname[:])
-					name := cStringFromI8Unsafe(sym.Name[:])
+					classname := python.PythonString(sym.Classname[:], &sym.ClassnameType)
+					name := python.PythonString(sym.Name[:], &sym.NameType)
+					if classname == "" && filename == "" && name == "" {
+						continue
+					}
 					if classname == "" {
 						sb.append(fmt.Sprintf("%s %s", filename, name))
 					} else {
@@ -208,21 +209,6 @@ func (s *session) loadPyPerf() (*python.Perf, error) {
 	}
 	_ = level.Info(s.logger).Log("msg", "pyperf loaded")
 	return pyperf, nil
-}
-
-func cStringFromI8Unsafe(tok []int8) string {
-	i := 0
-	for ; i < len(tok); i++ {
-		if tok[i] == 0 {
-			break
-		}
-	}
-
-	res := ""
-	sh := (*reflect.StringHeader)(unsafe.Pointer(&res))
-	sh.Data = uintptr(unsafe.Pointer(&tok[0]))
-	sh.Len = i
-	return res
 }
 
 func processAlive(pid uint32) bool {

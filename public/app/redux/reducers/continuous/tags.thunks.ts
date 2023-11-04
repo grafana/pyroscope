@@ -1,19 +1,21 @@
 import { Query, queryToAppName } from '@pyroscope/models/query';
 import * as tagsService from '@pyroscope/services/tags';
 import { createBiggestInterval } from '@pyroscope/util/timerange';
-import { formatAsOBject, toUnixTimestamp } from '@pyroscope/util/formatDate';
+import { formatAsOBject } from '@pyroscope/util/formatDate';
 import { ContinuousState } from './state';
 import { addNotification } from '../notifications';
 import { createAsyncThunk } from '../../async-thunk';
 
 function biggestTimeRangeInUnix(state: ContinuousState) {
+  const getTime = (d: Date) => d.getTime();
+
   return createBiggestInterval({
     from: [state.from, state.leftFrom, state.rightFrom]
       .map(formatAsOBject)
-      .map(toUnixTimestamp),
+      .map(getTime),
     until: [state.until, state.leftUntil, state.leftUntil]
       .map(formatAsOBject)
-      .map(toUnixTimestamp),
+      .map(getTime),
   });
 }
 
@@ -26,29 +28,70 @@ function assertIsValidAppName(query: Query) {
   return appName.value;
 }
 
+/**
+ * Calculates the oldest and most recent time ranges from `state`.
+ *
+ * @param state The redux state
+ * @param includeLeftAndRight If true, include the left and right time ranges in the calculation
+ * @returns The maximum time range possible
+ */
+function getTimeRange(
+  state: ContinuousState,
+  includeLeftAndRight = false
+): { from: number; until: number } {
+  if (includeLeftAndRight) {
+    return biggestTimeRangeInUnix(state);
+  }
+
+  const [from, until] = [state.from, state.until]
+    .map(formatAsOBject)
+    .map((d) => d.getTime());
+  return { from, until };
+}
+
+/**
+ * The `query` field is the query by which to filter the tags. The
+ * `includeLeftAndRight` field is true when the left and right time ranges
+ * should be used to calculate the final time range to query. If it's false, it
+ * will use only the primary time range.
+ */
+export type FetchTagsQuery = {
+  query: Query;
+  includeLeftAndRight: boolean;
+};
+
+/**
+ * Fetch label names for a given time range. Use
+ * `FetchTagsQuery.includeLeftAndRight` to customize the time range.
+ */
 export const fetchTags = createAsyncThunk<
-  { appName: string; tags: string[]; from: number; until: number },
-  Query,
+  {
+    appName: string;
+    tags: string[];
+    from: number;
+    until: number;
+  },
+  FetchTagsQuery,
   { state: { continuous: ContinuousState } }
 >(
   'continuous/fetchTags',
-  async (query: Query, thunkAPI) => {
-    const appName = assertIsValidAppName(query);
+  async (fetchTagsQuery: FetchTagsQuery, thunkAPI) => {
+    const { query, includeLeftAndRight } = fetchTagsQuery;
 
-    const state = thunkAPI.getState().continuous;
-    const timerange = biggestTimeRangeInUnix(state);
-    const res = await tagsService.fetchTags(
-      query,
-      timerange.from,
-      timerange.until
+    const appName = assertIsValidAppName(query);
+    const { from, until } = getTimeRange(
+      thunkAPI.getState().continuous,
+      includeLeftAndRight
     );
+
+    const res = await tagsService.fetchTags(query, from, until);
 
     if (res.isOk) {
       return Promise.resolve({
         appName,
         tags: res.value,
-        from: timerange.from,
-        until: timerange.until,
+        from,
+        until,
       });
     }
 
@@ -66,35 +109,35 @@ export const fetchTags = createAsyncThunk<
     // If we already loaded the tags for that application
     // And we are trying to load tags for a smaller range
     // Skip it, since we most likely already have that data
-    condition: (query, thunkAPI) => {
+    condition: (fetchTagsQuery, thunkAPI) => {
+      const { query } = fetchTagsQuery;
       const appName = assertIsValidAppName(query);
-      const state = thunkAPI.getState().continuous;
-      const timerange = biggestTimeRangeInUnix(state);
 
-      const s = state.tags[appName];
+      const state = thunkAPI.getState().continuous;
+      const { from, until } = getTimeRange(state, true);
+
+      const tagsState = state.tags[appName];
 
       // Haven't loaded yet
-      if (!s) {
+      if (!tagsState) {
         return true;
       }
 
       // Already loading that tag
-      if (s.type === 'loading') {
+      if (tagsState.type === 'loading') {
         return false;
       }
 
       // Any other state that's not loaded
-      if (s.type !== 'loaded') {
+      if (tagsState.type !== 'loaded') {
         return true;
       }
 
       const isInRange = (target: number) => {
-        return target >= s.from && target <= s.until;
+        return target >= tagsState.from && target <= tagsState.until;
       };
 
-      const isSmallerThanLoaded =
-        isInRange(timerange.from) && isInRange(timerange.until);
-
+      const isSmallerThanLoaded = isInRange(from) && isInRange(until);
       return !isSmallerThanLoaded;
     },
   }

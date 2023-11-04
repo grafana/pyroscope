@@ -136,13 +136,17 @@ func (w *writer) Flush() (err error) {
 
 func (w *writer) writeStacktraces(partition *PartitionWriter) (err error) {
 	for ci, c := range partition.stacktraces.chunks {
+		stacks := c.stacks
+		if stacks == 0 {
+			stacks = uint32(len(partition.stacktraces.hashToIdx))
+		}
 		h := StacktraceChunkHeader{
 			Offset:             w.stacktraces.w.offset,
 			Size:               0, // Set later.
 			Partition:          partition.header.Partition,
 			ChunkIndex:         uint16(ci),
 			ChunkEncoding:      ChunkEncodingGroupVarint,
-			Stacktraces:        c.stacks,
+			Stacktraces:        stacks,
 			StacktraceNodes:    c.tree.len(),
 			StacktraceMaxDepth: 0, // TODO
 			StacktraceMaxNodes: c.partition.maxNodesPerChunk,

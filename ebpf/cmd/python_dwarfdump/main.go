@@ -222,12 +222,13 @@ var interesetd = []Need{
 	{Name: "PyObject", Fields: []NeedField{
 		{"ob_type", "PyObject_ob_type"},
 	}},
-	{Name: "PyTypeObject", Fields: []NeedField{
+	{Name: "_typeobject", PrettyName: "PyTypeObject", Fields: []NeedField{
 		{"tp_name", "PyTypeObject_tp_name"},
 	}},
 	{Name: "PyThreadState", Fields: []NeedField{
 		{"frame", "PyThreadState_frame"},
 		{"cframe", "PyThreadState_cframe"},
+		{"current_frame", "PyThreadState_current_frame"},
 	}},
 	{Name: "_PyCFrame", Fields: []NeedField{
 		{"current_frame", "PyCFrame_current_frame"},
@@ -249,6 +250,7 @@ var interesetd = []Need{
 	}},
 	{Name: "_PyInterpreterFrame", Fields: []NeedField{
 		{"f_code", "PyInterpreterFrame_f_code"},
+		{"f_executable", "PyInterpreterFrame_f_executable"},
 		{"previous", "PyInterpreterFrame_previous"},
 		{"localsplus", "PyInterpreterFrame_localsplus"},
 	}},
@@ -263,7 +265,8 @@ var interesetd = []Need{
 		{"_is_initialized", "PyTssT_is_initialized"},
 		{"_key", "PyTssT_key"},
 	}},
-	{Name: "PyASCIIObject", PrettyName: "String", Size: true},
+	{Name: "PyASCIIObject", PrettyName: "PyASCIIObject", Size: true},
+	{Name: "PyCompactUnicodeObject", PrettyName: "PyCompactUnicodeObject", Size: true},
 
 	//{Name: "_is", PrettyName: "PyInterpreterState", Fields: []string{}},
 }
