@@ -68,7 +68,7 @@ func cacheVehicleLocations(fn func(), stop <-chan struct{}, done chan<- struct{}
 	// Simulate the work in fn requiring some data to be added to a buffer.
 	// Increase buffer size to leak more memory.
 	const mb = 1 << 20
-	for i := 0; i < 1*mb; i++ {
+	for i := 0; i < 0.5*mb; i++ {
 		buf = append(buf, byte(i%256))
 	}
 
@@ -83,6 +83,57 @@ func cacheVehicleLocations(fn func(), stop <-chan struct{}, done chan<- struct{}
 	// Block until we're told to clean up.
 	<-stop
 }
+
+// func cacheVehicleLocations(fn func(), stop <-chan struct{}, done chan<- struct{}, pool *workerPool) {
+// 	buf := make([]byte, 0)
+
+// 	// Do work.
+// 	fn()
+
+// 	// Use a ticker to check every minute.
+// 	ticker := time.NewTicker(1 * time.Minute)
+// 	defer ticker.Stop()
+
+// 	const mb = 1 << 20
+// 	leakSize := 0.5 * mb // Start with non-leaky behavior.
+// 	minutesLeaking := 0
+
+// 	for {
+// 		select {
+// 		case <-ticker.C:
+// 			// Calculate the elapsed minutes since the start time.
+// 			elapsed := time.Since(startTime).Minutes()
+
+// 			// Toggle behavior every 16 minutes.
+// 			if int(elapsed)%16 == 0 { // At the 0th, 16th, 32nd minute mark, etc.
+// 				leakSize = 0.5 * mb // Reset to non-leaky behavior.
+// 				minutesLeaking = 0
+// 			} else if minutesLeaking == 1 {
+// 				leakSize = 1.5 * mb // After 1 minute, start leaking.
+// 			}
+
+// 			minutesLeaking++
+
+// 		case <-stop:
+// 			// When told to stop, exit the function.
+// 			return
+// 		default:
+// 			// Simulate the work in fn requiring some data to be added to a buffer.
+// 			for i := 0; i < int(leakSize); i++ {
+// 				buf = append(buf, byte(i%256))
+// 			}
+
+// 			// Retain the buffer in the pool to prevent it from being garbage collected.
+// 			pool.poolLock.Lock()
+// 			pool.retainedData = append(pool.retainedData, buf)
+// 			pool.poolLock.Unlock()
+
+// 			// Signal we're done working.
+// 			done <- struct{}{}
+// 			return
+// 		}
+// 	}
+// }
 
 func newPool(n int) *workerPool {
 	return &workerPool{
