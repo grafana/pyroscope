@@ -22,21 +22,24 @@ type Container struct {
 }
 
 func RunContainerWithPort(t *testing.T, l log.Logger, image string, port string) *Container {
-	res := RunContainer(t, l, "docker", "run", "--rm", "-tid", "-p", port, "--pull", "missing", image)
-	res.ContainerPort = port
-	res.WaitForPort()
-	return res
-
-}
-func RunContainer(t *testing.T, l log.Logger, cmd ...string) *Container {
 	container := &Container{
 		T: t,
 		L: log.With(l, "component", "docker"),
 	}
-	out, err := container.execute(cmd...)
+	_, err := container.execute("docker", "pull", image)
 	require.NoError(t, err)
-	container.ContainerID = strings.TrimSpace(string(out))
+
+	container.Run("docker", "run", "--rm", "-tid", "-p", port, image)
+
+	container.ContainerPort = port
+	container.WaitForPort()
 	return container
+
+}
+func (c *Container) Run(cmd ...string) {
+	out, err := c.execute(cmd...)
+	require.NoError(c.T, err)
+	c.ContainerID = strings.TrimSpace(string(out))
 }
 
 func (c *Container) Kill() {
