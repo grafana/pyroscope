@@ -69,7 +69,7 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 					}
 					classname := python.PythonString(sym.Classname[:], &sym.ClassnameType)
 					name := python.PythonString(sym.Name[:], &sym.NameType)
-					if classname == "" && filename == "" && name == "" {
+					if classname == "" && filename == "<shim>" && name == "<interpreter trampoline>" {
 						continue
 					}
 					if classname == "" {

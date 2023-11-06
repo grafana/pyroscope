@@ -139,6 +139,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 		VFrameCode:                    vframeCode,
 		VFramePrevious:                vframeBack,
 		VFrameLocalsplus:              vframeLocalPlus,
+		PyInterpreterFrameOwner:       offsets.PyInterpreterFrame_owner,
 		PyASCIIObjectSize:             offsets.PyASCIIObjectSize,
 		PyCompactUnicodeObjectSize:    offsets.PyCompactUnicodeObjectSize,
 		PyVarObjectObSize:             offsets.PyVarObject_ob_size,
