@@ -2653,8 +2653,6 @@ spec:
         - name: overrides-config
           configMap:
             name: pyroscope-dev-overrides-config
-        - name: data-compactor
-          emptyDir: {}
         - name: data
           emptyDir: {}
 ---

@@ -140,10 +140,6 @@ spec:
         - name: overrides-config
           configMap:
             name: {{ include "pyroscope.fullname" . }}-overrides-config
-  {{- if eq $component "compactor" }}
-        - name: data-compactor
-          emptyDir: {}
-  {{- end }}
   {{- $persistence := $values.persistence }}
   {{- if not $persistence.enabled }}
         - name: data
