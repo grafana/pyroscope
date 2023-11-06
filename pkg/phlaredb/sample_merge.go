@@ -23,6 +23,8 @@ import (
 func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
+	sp.SetTag("block ULID", b.meta.ULID.String())
+
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
 	if err := mergeByStacktraces(ctx, b.profiles.file, rows, r); err != nil {
@@ -32,8 +34,10 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 }
 
 func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergePprof - Block")
 	defer sp.Finish()
+	sp.SetTag("block ULID", b.meta.ULID.String())
+
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
 	if err := mergeByStacktraces(ctx, b.profiles.file, rows, r); err != nil {
