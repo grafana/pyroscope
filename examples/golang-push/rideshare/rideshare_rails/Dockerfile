@@ -1,4 +1,18 @@
-FROM ruby:3.0.1
+FROM ruby:3.1.4
+
+# RUN apk add --no-cache --update \
+#     build-base \
+#     linux-headers \
+#     git \
+#     postgresql-dev \
+#     nodejs \
+#     yarn \
+#     tzdata \
+#     graphviz \
+#     gmp-dev
+
+# RUN apk add --no-cache --update \
+#     sqlite-dev
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
