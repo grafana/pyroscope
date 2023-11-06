@@ -2175,6 +2175,7 @@ func openBlocks(t *testing.T, bkt pyroscope_objstore.Bucket, blocks ...string) [
 		querier := phlaredb.NewSingleBlockQuerierFromMeta(context.Background(), bkt, meta)
 		err = querier.Open(context.Background())
 		require.NoError(t, err)
+		querier.Symbols().Load(context.Background())
 		res = append(res, querier)
 	}
 	return res

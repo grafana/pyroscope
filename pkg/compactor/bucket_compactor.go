@@ -356,9 +356,9 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 		if err := b.Open(ctx); err != nil {
 			return errors.Wrapf(err, "open block %s", meta.ULID)
 		}
-		if err = b.Symbols().Load(ctx); err != nil {
-			return errors.Wrapf(err, "error loading symbols")
-		}
+		// if err = b.Symbols().Load(ctx); err != nil {
+		// 	return errors.Wrapf(err, "error loading symbols")
+		// }
 		readers[idx] = b
 		return nil
 	})
