@@ -6,8 +6,8 @@ services:
     environment:
       - REGION=us-east
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
-      - PARAMETERS_POOL_SIZE=1000
-      - PARAMETERS_POOL_BUFFER_SIZE_KB=1000
+      - PARAMETERS_POOL_SIZE=10000
+      - PARAMETERS_POOL_BUFFER_SIZE_KB=10000
     build:
       context: .
 

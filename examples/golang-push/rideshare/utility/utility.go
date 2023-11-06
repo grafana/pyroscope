@@ -16,9 +16,10 @@ const durationConstant = time.Duration(200 * time.Millisecond)
 
 var pool *workerPool
 
-// InitWorkPool initializes the worker pool and returns a clean up function.
+// InitWorkerPool initializes the worker pool and returns a clean up function.
 func InitWorkerPool(c rideshare.Config) func() {
-	pool = newPool(c)
+	// Use the ParametersPoolSize from the config to initialize the pool.
+	pool = newPool(c.ParametersPoolSize)
 	return pool.Close
 }
 
