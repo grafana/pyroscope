@@ -17,6 +17,10 @@ datasources:
       httpMethod: GET
       serviceMap:
         datasourceUid: prometheus
+      tracesToProfiles:
+        customQuery: false
+        datasourceUid: "pyroscope"
+        profileTypeId: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
 
   - name: Pyroscope
     type: grafana-pyroscope-datasource
