@@ -27,13 +27,13 @@ func TestPythonEBPFProfiler(t *testing.T) {
 		{"korniltsev/ebpf-testdata-rideshare:3.10-slim", "python_ebpf_expected.txt"},
 		{"korniltsev/ebpf-testdata-rideshare:3.11-slim", "python_ebpf_expected_3.11.txt"},
 		{"korniltsev/ebpf-testdata-rideshare:3.12-slim", "python_ebpf_expected_3.11.txt"},
-		{"korniltsev/ebpf-testdata-rideshare:3.13-rc-slim", "python_ebpf_expected_3.13.txt"},
+		{"korniltsev/ebpf-testdata-rideshare:3.13-rc-slim", "python_ebpf_expected_3.11.txt"},
 		{"korniltsev/ebpf-testdata-rideshare:3.8-alpine", "python_ebpf_expected.txt"},
 		{"korniltsev/ebpf-testdata-rideshare:3.9-alpine", "python_ebpf_expected.txt"},
 		{"korniltsev/ebpf-testdata-rideshare:3.10-alpine", "python_ebpf_expected.txt"},
 		{"korniltsev/ebpf-testdata-rideshare:3.11-alpine", "python_ebpf_expected_3.11.txt"},
 		{"korniltsev/ebpf-testdata-rideshare:3.12-alpine", "python_ebpf_expected_3.11.txt"},
-		{"korniltsev/ebpf-testdata-rideshare:3.13-rc-alpine", "python_ebpf_expected_3.13.txt"},
+		{"korniltsev/ebpf-testdata-rideshare:3.13-rc-alpine", "python_ebpf_expected_3.11.txt"},
 	}
 
 	const ridesharePort = "5000"
@@ -133,8 +133,15 @@ func startPythonProfiler(t *testing.T, l log.Logger, containerID string) ebpfspy
 		options,
 	)
 	require.NoError(t, err)
+
 	err = session.Start()
-	require.NoError(t, err)
+	ci := os.Getenv("GITHUB_ACTIONS") == "true"
+	_ = l.Log("err", err, "ci", ci, "msg", "session.Start")
+	if ci {
+		require.NoError(t, err)
+	} else if err != nil {
+		t.Skip("Skipp because failed to start. Try running as privileged root user", err)
+	}
 	return session
 }
 

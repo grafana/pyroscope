@@ -468,9 +468,6 @@ static __always_inline int get_frame_data(
     if (res < 0) {
         return res;
     }
-    if (*((uint32_t *)symbol->name) == 0x6e695f5f) {
-        bpf_dbg_printk("0x6e695f5f 0x%lx\n", cur_frame);
-    }
 
     // read next PyFrameObject/PyInterpreterFrame pointer, update in place
     if (bpf_probe_read_user(

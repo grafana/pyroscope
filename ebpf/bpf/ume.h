@@ -18,7 +18,7 @@
 
 #endif
 
-#define BPF_DEBUG
+//#define BPF_DEBUG
 
 #if defined(BPF_DEBUG)
 #define bpf_dbg_printk(fmt, args...) bpf_printk(fmt, ##args)
