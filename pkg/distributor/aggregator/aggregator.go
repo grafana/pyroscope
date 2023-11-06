@@ -40,29 +40,27 @@ func NewAggregator[T any](window, period time.Duration) *Aggregator[T] {
 		tracker: newTracker(8, 64),
 		// NOTE(kolesnikovae): probably should be sharded as well.
 		aggregates: make(map[aggregationKey]*aggregatedResult[T], 256),
+		close:      make(chan struct{}),
+		done:       make(chan struct{}),
 	}
 }
 
 func timeNow() int64 { return time.Now().UnixNano() }
 
 func (a *Aggregator[T]) Start() {
-	a.close = make(chan struct{})
-	a.done = make(chan struct{})
-	go func() {
-		t := time.NewTicker(time.Duration(a.period))
-		defer func() {
-			t.Stop()
-			close(a.done)
-		}()
-		for {
-			select {
-			case <-a.close:
-				return
-			case <-t.C:
-				a.prune(a.now())
-			}
-		}
+	t := time.NewTicker(time.Duration(a.period))
+	defer func() {
+		t.Stop()
+		close(a.done)
 	}()
+	for {
+		select {
+		case <-a.close:
+			return
+		case <-t.C:
+			a.prune(a.now())
+		}
+	}
 }
 
 // Stop the aggregator. It does not wait for ongoing aggregations

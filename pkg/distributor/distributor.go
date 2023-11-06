@@ -150,7 +150,7 @@ func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactor
 		return nil, err
 	}
 
-	subservices = append(subservices, distributorsLifecycler, distributorsRing)
+	subservices = append(subservices, distributorsLifecycler, distributorsRing, d.aggregator)
 
 	d.ingestionRateLimiter = limiter.NewRateLimiter(newGlobalRateStrategy(newIngestionRateStrategy(limits), d), 10*time.Second)
 	d.distributorsLifecycler = distributorsLifecycler
