@@ -1,4 +1,4 @@
-package ebpf
+package ebpfspy
 
 import (
 	"fmt"
@@ -9,10 +9,10 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	ebpfspy "github.com/grafana/pyroscope/ebpf"
 	"github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/grafana/pyroscope/ebpf/sd"
 	"github.com/grafana/pyroscope/ebpf/symtab"
+	"github.com/grafana/pyroscope/ebpf/testutil"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 )
@@ -44,7 +44,7 @@ func TestPythonEBPFProfiler(t *testing.T) {
 			l := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
 			l = log.With(l, "test", t.Name())
 
-			rideshare := RunContainerWithPort(t, l, testdatum.image, ridesharePort)
+			rideshare := testutil.RunContainerWithPort(t, l, testdatum.image, ridesharePort)
 			defer rideshare.Kill()
 
 			profiler := startPythonProfiler(t, l, rideshare.ContainerID)
@@ -81,7 +81,7 @@ func compareProfiles(t *testing.T, l log.Logger, expected string, actual map[str
 	}
 }
 
-func collectProfiles(t *testing.T, l log.Logger, profiler ebpfspy.Session) map[string]struct{} {
+func collectProfiles(t *testing.T, l log.Logger, profiler Session) map[string]struct{} {
 	l = log.With(l, "component", "profiles")
 	profiles := map[string]struct{}{}
 	err := profiler.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32) {
@@ -96,7 +96,7 @@ func collectProfiles(t *testing.T, l log.Logger, profiler ebpfspy.Session) map[s
 	return profiles
 }
 
-func startPythonProfiler(t *testing.T, l log.Logger, containerID string) ebpfspy.Session {
+func startPythonProfiler(t *testing.T, l log.Logger, containerID string) Session {
 	l = log.With(l, "component", "ebpf-session")
 	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), l,
 		sd.TargetsOptions{
@@ -110,7 +110,7 @@ func startPythonProfiler(t *testing.T, l log.Logger, containerID string) ebpfspy
 			TargetsOnly:        true,
 		})
 	require.NoError(t, err)
-	options := ebpfspy.SessionOptions{
+	options := SessionOptions{
 		CollectUser:   true,
 		SampleRate:    97,
 		Metrics:       metrics.New(nil),
@@ -127,7 +127,7 @@ func startPythonProfiler(t *testing.T, l log.Logger, containerID string) ebpfspy
 			},
 		},
 	}
-	session, err := ebpfspy.NewSession(
+	session, err := NewSession(
 		l,
 		targetFinder,
 		options,
@@ -140,7 +140,7 @@ func startPythonProfiler(t *testing.T, l log.Logger, containerID string) ebpfspy
 	if ci {
 		require.NoError(t, err)
 	} else if err != nil {
-		t.Skip("Skipp because failed to start. Try running as privileged root user", err)
+		t.Skip("Skip because failed to start. Try running as privileged root user", err)
 	}
 	return session
 }

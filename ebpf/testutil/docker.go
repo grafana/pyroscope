@@ -1,4 +1,4 @@
-package ebpf
+package testutil
 
 import (
 	"fmt"
