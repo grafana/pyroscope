@@ -36,7 +36,7 @@ func addUploadParams(cmd commander) *uploadParams {
 	params.phlareClient = addPhlareClient(cmd)
 
 	cmd.Arg("path", "Path(s) to profile(s) to upload").Required().ExistingFilesVar(&params.paths)
-	cmd.Flag("extra-labels", "Add additional labels to the profile(s)").Default("job=profilecli-upload").StringMapVar(&params.extraLabels)
+	cmd.Flag("extra-labels", "Add additional labels to the profile(s)").StringMapVar(&params.extraLabels)
 	return params
 }
 
