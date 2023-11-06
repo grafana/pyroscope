@@ -36,22 +36,32 @@ services:
       - '4040:4040'
 
   us-east-ruby:
+    ports:
+      - 5000
     environment:
       - REGION=us-east
+      - COMPRESSION=low
     build:
-      context: ./rideshare-mem
+      context: ./rideshare_rails
+    links:
+      - 'pyroscope'
 
   eu-north-ruby:
+    ports:
+      - 5000
     environment:
       - REGION=eu-north
     build:
-      context: ./rideshare-mem
+      context: ./rideshare_rails
 
   ap-south-ruby:
+    ports:
+      - 5000
     environment:
       - REGION=ap-south
+      - COMPRESSION=high
     build:
-      context: ./rideshare-mem
+      context: ./rideshare_rails
 
 
   load-generator:
