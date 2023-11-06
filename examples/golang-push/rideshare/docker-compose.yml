@@ -36,21 +36,18 @@ services:
       - '4040:4040'
 
   us-east-ruby:
-    platform: linux/amd64
     environment:
       - REGION=us-east
     build:
       context: ./rideshare-mem
 
   eu-north-ruby:
-    platform: linux/amd64
     environment:
       - REGION=eu-north
     build:
       context: ./rideshare-mem
 
   ap-south-ruby:
-    platform: linux/amd64
     environment:
       - REGION=ap-south
     build:
