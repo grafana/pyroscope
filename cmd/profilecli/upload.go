@@ -85,6 +85,11 @@ func upload(ctx context.Context, params *uploadParams) (err error) {
 			lblBuilder.Set(model.LabelNameProfileName, name)
 		}
 
+		// set a default service_name label if one is not provided
+		if lbl.Get(model.LabelNameServiceName) == "" {
+			lblBuilder.Set(model.LabelNameServiceName, "profilecli-upload")
+		}
+
 		series[idx] = &pushv1.RawProfileSeries{
 			Labels: lblBuilder.Labels(),
 			Samples: []*pushv1.RawSample{{
