@@ -802,8 +802,9 @@ func TestPush_Aggregation(t *testing.T) {
 		}),
 		nil, log.NewLogfmtLogger(os.Stdout),
 	)
-
+	require.NoError(t, err)
 	ctx := tenant.InjectTenantID(context.Background(), "user-1")
+
 	const (
 		clients  = 10
 		requests = 10
@@ -816,7 +817,7 @@ func TestPush_Aggregation(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < requests; j++ {
-				_, err = d.PushParsed(ctx, &distributormodel.PushRequest{
+				_, err := d.PushParsed(ctx, &distributormodel.PushRequest{
 					Series: []*distributormodel.ProfileSeries{
 						{
 							Labels: []*typesv1.LabelPair{
