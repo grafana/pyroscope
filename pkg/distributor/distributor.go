@@ -9,6 +9,7 @@ import (
 	"hash/fnv"
 	"net/http"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -91,6 +92,7 @@ type Distributor struct {
 	healthyInstancesCount  *atomic.Uint32
 	ingestionRateLimiter   *limiter.RateLimiter
 	aggregator             *aggregator.MultiTenantAggregator[*pprof.ProfileMerge]
+	asyncRequests          sync.WaitGroup
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
@@ -183,6 +185,7 @@ func (d *Distributor) running(ctx context.Context) error {
 }
 
 func (d *Distributor) stopping(_ error) error {
+	d.asyncRequests.Wait()
 	return services.StopManagerAndAwaitStopped(context.Background(), d.subservices)
 }
 
@@ -236,10 +239,6 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
-	var (
-		totalPushUncompressedBytes int64
-		totalProfiles              int64
-	)
 
 	for _, series := range req.Series {
 		serviceName := phlaremodel.Labels(series.Labels).Get(phlaremodel.LabelNameServiceName)
@@ -263,8 +262,8 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	for _, series := range req.Series {
 		// include the labels in the size calculation
 		for _, lbs := range series.Labels {
-			totalPushUncompressedBytes += int64(len(lbs.Name))
-			totalPushUncompressedBytes += int64(len(lbs.Value))
+			req.TotalBytesUncompressed += int64(len(lbs.Name))
+			req.TotalBytesUncompressed += int64(len(lbs.Value))
 		}
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
 		series.Labels = d.limitMaxSessionsPerSeries(tenantID, series.Labels)
@@ -274,7 +273,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			if haveRawPprof {
 				d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(raw.RawProfile)))
 			}
-			totalProfiles++
+			req.TotalProfiles++
 			p := raw.Profile
 			var decompressedSize int
 			if haveRawPprof {
@@ -284,13 +283,13 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			}
 			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize))
 			d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
-			totalPushUncompressedBytes += int64(decompressedSize)
+			req.TotalBytesUncompressed += int64(decompressedSize)
 
 			if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels, now); err != nil {
 				// todo this actually discards more if multiple Samples in a Series request
 				_ = level.Debug(d.logger).Log("msg", "invalid profile", "err", err)
-				validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
-				validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
+				validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalProfiles))
+				validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalBytesUncompressed))
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
 
@@ -300,16 +299,16 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		}
 	}
 
-	if totalProfiles == 0 {
+	if req.TotalProfiles == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no profiles received"))
 	}
 
 	// rate limit the request
-	if !d.ingestionRateLimiter.AllowN(time.Now(), tenantID, int(totalPushUncompressedBytes)) {
-		validation.DiscardedProfiles.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(totalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(totalPushUncompressedBytes))
+	if !d.ingestionRateLimiter.AllowN(time.Now(), tenantID, int(req.TotalBytesUncompressed)) {
+		validation.DiscardedProfiles.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalBytesUncompressed))
 		return nil, connect.NewError(connect.CodeResourceExhausted,
-			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.IBytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.IBytes(uint64(totalPushUncompressedBytes))),
+			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.IBytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.IBytes(uint64(req.TotalBytesUncompressed))),
 		)
 	}
 
@@ -321,33 +320,62 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		}
 	}
 
+	// If aggregation is configured for the tenant, we try to determine
+	// whether the profile is eligible for aggregation based on the series
+	// profile rate, and handle it asynchronously, if this is the case.
+	//
+	// NOTE(kolesnikovae): aggregated profiles are handled on best-effort
+	// basis (at-most-once delivery semantics): any error occurred will
+	// not be returned to the client, and it must not retry sending.
+	//
+	// Aggregation is only meant to be used for cases, when clients do not
+	// form individual series (e.g., server-less workload), and typically
+	// are ephemeral in its nature, and therefore retrying is not possible
+	// or desirable, as it prolongs life-time duration of the clients.
 	if len(req.Series) == 1 && len(req.Series[0].Samples) == 1 {
-		series := req.Series[0]
 		// Actually all series profiles can be merged before aggregation.
 		// However, it's not expected that a series has more than one profile.
+		series := req.Series[0]
 		profile := series.Samples[0].Profile.Profile
-		var aggregated aggregator.AggregationResult[*pprof.ProfileMerge]
-		if aggregated, err = d.maybeAggregate(tenantID, series.Labels, profile); err != nil {
+		// maybeAggregate _may_ return a non-nil handler of the aggregated value,
+		// if the profile is aggregated indeed, and this is the first invocation.
+		var aggregateHandler func() (*pprof.ProfileMerge, error)
+		if aggregateHandler, err = d.maybeAggregate(tenantID, series.Labels, profile); err != nil {
 			return nil, err
 		}
-		// If aggregation is not enabled, processing continues as usual.
-		// Otherwise, we need to fetch the aggregated value, send it to
-		// the ingesters, and notify all the aggregation contributors.
-		if aggregated != nil {
-			y, ok := aggregated.Value()
-			if !ok {
-				// The value has been handled already.
-				return connect.NewResponse(&pushv1.PushResponse{}), nil
-			}
-			if k := y.Profile(); k != nil {
-				series.Samples[0].Profile.Profile = k
-			}
-			// Any error occurred during further processing will be
-			// propagated to all the aggregation contributors.
-			defer aggregated.Close(err)
+		if aggregateHandler != nil {
+			d.sendAggregatedProfile(ctx, req, tenantID, aggregateHandler)
+			return connect.NewResponse(&pushv1.PushResponse{}), nil
 		}
 	}
 
+	return d.sendRequests(ctx, req, tenantID)
+}
+
+func (d *Distributor) sendAggregatedProfile(ctx context.Context, req *distributormodel.PushRequest, tenantID string, handler func() (*pprof.ProfileMerge, error)) {
+	d.asyncRequests.Add(1)
+	go func() {
+		defer d.asyncRequests.Done()
+		localCtx, cancel := context.WithTimeout(context.Background(), d.cfg.PushTimeout)
+		defer cancel()
+		localCtx = tenant.InjectTenantID(localCtx, tenantID)
+		if sp := opentracing.SpanFromContext(ctx); sp != nil {
+			localCtx = opentracing.ContextWithSpan(localCtx, sp)
+		}
+		// Obtain the aggregated profile.
+		p, err := handler()
+		if err != nil {
+			_ = level.Error(d.logger).Log("msg", "failed to aggregate profiles", "tenant", tenantID)
+			return
+		}
+		req.Series[0].Samples[0].Profile.Profile = p.Profile()
+		if _, err = d.sendRequests(localCtx, req, tenantID); err != nil {
+			_ = level.Error(d.logger).Log("msg", "failed to ingest aggregated profile", "tenant", tenantID)
+		}
+	}()
+}
+
+func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.PushRequest, tenantID string) (resp *connect.Response[pushv1.PushResponse], err error) {
 	// Next we split profiles by labels. Newly allocated profiles should be closed after use.
 	profileSeries, newProfiles := extractSampleSeries(req)
 	defer func() {
@@ -373,8 +401,8 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 	keys := make([]uint32, len(profileSeries))
 	for i, series := range profileSeries {
 		if err = validation.ValidateLabels(d.limits, tenantID, series.Labels); err != nil {
-			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalProfiles))
-			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(totalPushUncompressedBytes))
+			validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalProfiles))
+			validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalBytesUncompressed))
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 		keys[i] = TokenFor(tenantID, phlaremodel.LabelPairsString(series.Labels))
@@ -467,20 +495,19 @@ func profileSizeBytes(p *googlev1.Profile) (symbols, samples int64) {
 	return
 }
 
-func (d *Distributor) maybeAggregate(tenantID string, labels phlaremodel.Labels, profile *googlev1.Profile) (aggregator.AggregationResult[*pprof.ProfileMerge], error) {
+func (d *Distributor) maybeAggregate(tenantID string, labels phlaremodel.Labels, profile *googlev1.Profile) (func() (*pprof.ProfileMerge, error), error) {
 	a, ok := d.aggregator.AggregatorForTenant(tenantID)
 	if !ok {
 		return nil, nil
 	}
-	var err error
-	var r aggregator.AggregationResult[*pprof.ProfileMerge]
-	if r, err = a.Aggregate(labels.Hash(), profile.TimeNanos, mergeProfile(profile)); err != nil {
+	r, ok, err := a.Aggregate(labels.Hash(), profile.TimeNanos, mergeProfile(profile))
+	if err != nil {
 		return nil, err
 	}
-	if err = r.Wait(); err != nil {
-		return nil, err
+	if !ok {
+		return nil, nil
 	}
-	return r, nil
+	return r.Handler(), nil
 }
 
 func mergeProfile(profile *googlev1.Profile) aggregator.AggregateFn[*pprof.ProfileMerge] {

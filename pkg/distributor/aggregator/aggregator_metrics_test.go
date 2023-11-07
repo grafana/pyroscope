@@ -28,19 +28,12 @@ func Test_Aggregation_Metrics(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	RegisterAggregatorCollector(a, registry)
 
-	r1, _ := a.Aggregate(0, 0, fn)
-	r2, _ := a.Aggregate(0, 1, fn)
-	r3, _ := a.Aggregate(0, 2, fn)
-
-	assert.NoError(t, r1.Wait())
-	v, ok := r1.Value()
-	// r1 owns the value as it was not aggregated.
-	assert.True(t, ok)
-	assert.Equal(t, 1, v)
-	r1.Close(nil)
+	_, _, _ = a.Aggregate(0, 0, fn)
+	r2, _, _ := a.Aggregate(0, 1, fn)
+	r3, _, _ := a.Aggregate(0, 2, fn)
 
 	assert.NoError(t, r2.Wait())
-	v, ok = r2.Value()
+	v, ok := r2.Value()
 	assert.Equal(t, 2, v)
 	assert.True(t, ok)
 	r2.Close(nil)
@@ -52,27 +45,27 @@ func Test_Aggregation_Metrics(t *testing.T) {
 
 	a.prune(0)
 	// Create a new aggregate.
-	_, _ = a.Aggregate(0, 0, fn)
+	_, _, _ = a.Aggregate(0, 0, fn)
 
 	expected := `
-# HELP pyroscope_distributor_aggregation_active_aggregates The number of active aggregates.
-# TYPE pyroscope_distributor_aggregation_active_aggregates gauge
-pyroscope_distributor_aggregation_active_aggregates 1
-# HELP pyroscope_distributor_aggregation_active_series The number of series being aggregated.
-# TYPE pyroscope_distributor_aggregation_active_series gauge
-pyroscope_distributor_aggregation_active_series 1
-# HELP pyroscope_distributor_aggregation_aggregated_total Total number of aggregated requests.
-# TYPE pyroscope_distributor_aggregation_aggregated_total counter
-pyroscope_distributor_aggregation_aggregated_total 3
-# HELP pyroscope_distributor_aggregation_errors_total Total number of failed aggregations.
-# TYPE pyroscope_distributor_aggregation_errors_total counter
-pyroscope_distributor_aggregation_errors_total 0
-# HELP pyroscope_distributor_aggregation_period_duration Aggregation period duration.
-# TYPE pyroscope_distributor_aggregation_period_duration counter
-pyroscope_distributor_aggregation_period_duration 1e+07
-# HELP pyroscope_distributor_aggregation_window_duration Aggregation window duration.
-# TYPE pyroscope_distributor_aggregation_window_duration counter
-pyroscope_distributor_aggregation_window_duration 1.5e+10
+# HELP active_aggregates The number of active aggregates.
+# TYPE active_aggregates gauge
+active_aggregates 1
+# HELP active_series The number of series being aggregated.
+# TYPE active_series gauge
+active_series 1
+# HELP aggregated_total Total number of aggregated requests.
+# TYPE aggregated_total counter
+aggregated_total 3
+# HELP errors_total Total number of failed aggregations.
+# TYPE errors_total counter
+errors_total 0
+# HELP period_duration Aggregation period duration.
+# TYPE period_duration counter
+period_duration 1e+07
+# HELP window_duration Aggregation window duration.
+# TYPE window_duration counter
+window_duration 1.5e+10
 `
 	assert.NoError(t, testutil.GatherAndCompare(registry, bytes.NewBufferString(expected)))
 }

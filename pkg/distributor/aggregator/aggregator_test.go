@@ -25,22 +25,18 @@ func Test_Aggregation(t *testing.T) {
 		return start
 	}
 
-	r1, err := a.Aggregate(0, 0, fn)
+	_, ok, err := a.Aggregate(0, 0, fn)
 	assert.NoError(t, err)
-	r2, err := a.Aggregate(0, 1, fn)
+	assert.False(t, ok)
+	r2, ok, err := a.Aggregate(0, 1, fn)
 	assert.NoError(t, err)
-	r3, err := a.Aggregate(0, 2, fn)
-	assert.NoError(t, err)
-
-	assert.NoError(t, r1.Wait())
-	v, ok := r1.Value()
-	// r1 owns the value as it was not aggregated.
 	assert.True(t, ok)
-	assert.Equal(t, 1, v)
-	r1.Close(nil)
+	r3, ok, err := a.Aggregate(0, 2, fn)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 
 	assert.NoError(t, r2.Wait())
-	v, ok = r2.Value()
+	v, ok := r2.Value()
 	assert.Equal(t, 2, v)
 	assert.True(t, ok)
 	r2.Close(nil)
@@ -79,7 +75,10 @@ func Test_Aggregation_Concurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := int64(0); j < M; j++ {
-				r, err := a.Aggregate(0, j, fn)
+				r, ok, err := a.Aggregate(0, j, fn)
+				if !ok {
+					continue
+				}
 				assert.NoError(t, err)
 				assert.NoError(t, r.Wait())
 				v, ok := r.Value()
@@ -96,7 +95,7 @@ func Test_Aggregation_Concurrency(t *testing.T) {
 	}
 
 	wg.Wait()
-	assert.Equal(t, int64(N*M), sum)
+	assert.Equal(t, int64(N*M)-1, sum)
 	// The number of aggregation is not deterministic.
 	// However, we can assess if they happen at all.
 	assert.Less(t, cnt, int64(M*N))
@@ -118,22 +117,20 @@ func Test_Aggregation_Error(t *testing.T) {
 			return start
 		}
 
-		r1, err := a.Aggregate(0, 0, fn)
+		_, ok, err := a.Aggregate(0, 0, fn)
 		assert.NoError(t, err)
-		r2, err := a.Aggregate(0, 1, fn)
-		assert.NoError(t, err)
-		r3, err := a.Aggregate(0, 2, fn)
-		assert.NoError(t, err)
+		assert.False(t, ok)
 
-		assert.NoError(t, r1.Wait())
-		v, ok := r1.Value()
-		// r1 owns the value as it was not aggregated.
+		r2, ok, err := a.Aggregate(0, 1, fn)
+		assert.NoError(t, err)
 		assert.True(t, ok)
-		assert.Equal(t, 1, v)
-		r1.Close(nil)
+
+		r3, ok, err := a.Aggregate(0, 2, fn)
+		assert.NoError(t, err)
+		assert.True(t, ok)
 
 		assert.NoError(t, r2.Wait())
-		v, ok = r2.Value()
+		v, ok := r2.Value()
 		assert.Equal(t, 2, v)
 		assert.True(t, ok)
 		r2.Close(context.Canceled)
@@ -149,14 +146,15 @@ func Test_Aggregation_Error(t *testing.T) {
 			return start
 		}
 
-		r1, err := a.Aggregate(0, 0, fn)
+		_, ok, err := a.Aggregate(0, 0, fn)
 		assert.NoError(t, err)
-		r3, err := a.Aggregate(0, 2, func(i int) (int, error) { return 0, context.Canceled })
+		assert.False(t, ok)
+
+		r3, _, err := a.Aggregate(0, 2, func(i int) (int, error) { return 0, context.Canceled })
 		assert.ErrorIs(t, err, context.Canceled)
-		r2, err := a.Aggregate(0, 1, fn)
+		r2, _, err := a.Aggregate(0, 1, fn)
 		assert.ErrorIs(t, err, context.Canceled)
 
-		assert.NoError(t, r1.Wait()) // Not aggregated.
 		// Caller does not have to wait, actually.
 		// Testing it to make sure it is not blocking.
 		assert.Error(t, r2.Wait(), context.Canceled)
@@ -173,14 +171,16 @@ func Test_Aggregation_Error(t *testing.T) {
 			return start
 		}
 
-		r1, err := a.Aggregate(0, 0, fn)
+		_, ok, err := a.Aggregate(0, 0, fn)
 		assert.NoError(t, err)
-		r2, err := a.Aggregate(0, 1, fn)
-		assert.NoError(t, err)
-		r3, err := a.Aggregate(0, 2, func(i int) (int, error) { return 0, context.Canceled })
-		assert.ErrorIs(t, err, context.Canceled)
+		assert.False(t, ok)
 
-		assert.NoError(t, r1.Wait()) // Not aggregated.
+		r2, ok, err := a.Aggregate(0, 1, fn)
+		assert.NoError(t, err)
+		assert.True(t, ok)
+
+		r3, _, err := a.Aggregate(0, 2, func(i int) (int, error) { return 0, context.Canceled })
+		assert.ErrorIs(t, err, context.Canceled)
 		assert.ErrorIs(t, r2.Wait(), context.Canceled)
 		assert.ErrorIs(t, r3.Wait(), context.Canceled)
 
@@ -203,18 +203,15 @@ func Test_Aggregation_Pruning(t *testing.T) {
 		return start
 	}
 
-	r1, err := a.Aggregate(0, 0, fn)
+	_, ok, err := a.Aggregate(0, 0, fn)
 	assert.NoError(t, err)
+	assert.False(t, ok)
+
 	// In order to create aggregate we need at least
 	// two requests within the aggregation window.
-	r2, err := a.Aggregate(0, 1, fn)
+	r2, ok, err := a.Aggregate(0, 1, fn)
 	assert.NoError(t, err)
-	assert.NoError(t, r1.Wait())
-	v, ok := r1.Value()
-	// r1 owns the value as it was not aggregated.
 	assert.True(t, ok)
-	assert.Equal(t, 1, v)
-	r1.Close(nil)
 
 	assert.NoError(t, r2.Wait())
 	// Evict stale aggregates and keys.

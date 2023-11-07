@@ -15,7 +15,7 @@ type Aggregator[T any] struct {
 
 	m          sync.RWMutex
 	tracker    *tracker
-	aggregates map[aggregationKey]*aggregatedResult[T]
+	aggregates map[aggregationKey]*AggregationResult[T]
 
 	close chan struct{}
 	done  chan struct{}
@@ -39,7 +39,7 @@ func NewAggregator[T any](window, period time.Duration) *Aggregator[T] {
 		now:     timeNow,
 		tracker: newTracker(8, 64),
 		// NOTE(kolesnikovae): probably should be sharded as well.
-		aggregates: make(map[aggregationKey]*aggregatedResult[T], 256),
+		aggregates: make(map[aggregationKey]*AggregationResult[T], 256),
 		close:      make(chan struct{}),
 		done:       make(chan struct{}),
 	}
@@ -72,20 +72,18 @@ func (a *Aggregator[T]) Stop() {
 
 type AggregateFn[T any] func(T) (T, error)
 
+/*
 type AggregationResult[T any] interface {
-	// Wait blocks until the aggregation finishes.
-	// The block duration never exceeds aggregation period.
+
 	Wait() error
-	// Value returns the aggregated value and indicates
-	// whether the caller owns it.
+
 	Value() (T, bool)
-	// Close notifies all the contributors about the error
-	// encountered. Owner of the aggregated result must
-	// propagate any processing error happened with the value.
+
 	Close(error)
 }
+*/
 
-func (a *Aggregator[T]) Aggregate(key uint64, timestamp int64, fn AggregateFn[T]) (AggregationResult[T], error) {
+func (a *Aggregator[T]) Aggregate(key uint64, timestamp int64, fn AggregateFn[T]) (*AggregationResult[T], bool, error) {
 	// Return early if the event rate is too low for aggregation.
 	now := a.now()
 	lastUpdated := a.tracker.update(key, now)
@@ -93,16 +91,14 @@ func (a *Aggregator[T]) Aggregate(key uint64, timestamp int64, fn AggregateFn[T]
 	// Distance between two updates is longer than the aggregation period.
 	lowRate := 0 < delta && delta > a.period
 	if lastUpdated == 0 || lowRate {
-		var empty T
-		v, err := fn(empty)
-		return resultWithoutAggregation[T]{v}, err
+		return nil, false, nil
 	}
 	k := a.aggregationKey(key, timestamp)
 	a.m.Lock()
 	x, ok := a.aggregates[k]
 	if !ok {
 		a.stats.activeAggregates.Add(1)
-		x = &aggregatedResult[T]{
+		x = &AggregationResult[T]{
 			key:   k,
 			owner: make(chan struct{}, 1),
 			done:  make(chan struct{}),
@@ -117,7 +113,7 @@ func (a *Aggregator[T]) Aggregate(key uint64, timestamp int64, fn AggregateFn[T]
 	default:
 	case <-x.done:
 		// Aggregation has failed.
-		return x, x.err
+		return x, true, x.err
 	}
 	var err error
 	x.m.Lock()
@@ -129,7 +125,7 @@ func (a *Aggregator[T]) Aggregate(key uint64, timestamp int64, fn AggregateFn[T]
 	} else {
 		a.stats.aggregated.Add(1)
 	}
-	return x, err
+	return x, true, err
 }
 
 func (a *Aggregator[T]) aggregationKey(key uint64, timestamp int64) aggregationKey {
@@ -144,7 +140,7 @@ type aggregationKey struct {
 	timestamp int64
 }
 
-func (a *Aggregator[T]) waitResult(x *aggregatedResult[T]) {
+func (a *Aggregator[T]) waitResult(x *AggregationResult[T]) {
 	// The value life-time is limited to the aggregation
 	// window duration.
 	var failed bool
@@ -173,7 +169,7 @@ func (a *Aggregator[T]) prune(deadline int64) {
 	a.stats.activeSeries.Store(uint64(a.tracker.len()))
 }
 
-type aggregatedResult[T any] struct {
+type AggregationResult[T any] struct {
 	key     aggregationKey
 	handled atomic.Bool
 	owner   chan struct{}
@@ -186,34 +182,50 @@ type aggregatedResult[T any] struct {
 	err   error
 }
 
-func (r *aggregatedResult[T]) Wait() error {
+// Wait blocks until the aggregation finishes.
+// The block duration never exceeds aggregation period.
+func (r *AggregationResult[T]) Wait() error {
 	select {
 	case <-r.owner:
-		// The first succeeded caller owns the aggregation
-		// result and will be the first who calls Close,
-		// therefore no error to be returned at this point.
-		return nil
 	case <-r.done:
-		return r.err
 	}
+	return r.err
 }
 
-func (r *aggregatedResult[T]) Close(err error) {
+// Close notifies all the contributors about the error
+// encountered. Owner of the aggregated result must
+// propagate any processing error happened with the value.
+func (r *AggregationResult[T]) Close(err error) {
 	r.close.Do(func() {
 		r.err = err
 		close(r.done)
 	})
 }
 
-func (r *aggregatedResult[T]) Value() (v T, ok bool) {
+// Value returns the aggregated value and indicates
+// whether the caller owns it.
+func (r *AggregationResult[T]) Value() (v T, ok bool) {
 	return r.value, !r.handled.Swap(true)
 }
 
-type resultWithoutAggregation[T any] struct{ value T }
+// Handler returns a handler of the aggregated result.
+// The handler is nil, if it has already been acquired.
+// The returned function is synchronous and blocks for
+// up to the aggregation period duration.
+func (r *AggregationResult[T]) Handler() func() (T, error) {
+	if !r.handled.Swap(true) {
+		return r.handle
+	}
+	return nil
+}
 
-func (n resultWithoutAggregation[T]) Wait() error      { return nil }
-func (n resultWithoutAggregation[T]) Value() (T, bool) { return n.value, true }
-func (n resultWithoutAggregation[T]) Close(error)      {}
+func (r *AggregationResult[T]) handle() (v T, err error) {
+	defer r.Close(err)
+	if err = r.Wait(); err != nil {
+		return v, err
+	}
+	return r.value, r.err
+}
 
 type tracker struct{ shards []*shard }
 

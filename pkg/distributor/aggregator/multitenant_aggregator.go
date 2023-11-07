@@ -101,11 +101,12 @@ func (m *MultiTenantAggregator[T]) aggregatorForTenant(tenantID string) (*tenant
 	}
 
 	a := NewAggregator[T](time.Duration(window), time.Duration(period))
+	const metricNamePrefix = "pyroscope_distributor_aggregation_"
 	t = &tenantAggregator[T]{
 		key:        k,
 		registerer: prometheus.WrapRegistererWith(labels, m.registerer),
 		aggregator: a,
-		collector:  NewAggregatorCollector(a),
+		collector:  NewAggregatorCollector(a, metricNamePrefix),
 	}
 
 	t.registerer.MustRegister(t.collector)
