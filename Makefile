@@ -7,7 +7,6 @@ MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 MAKEFLAGS += --no-print-directory
 BIN := $(CURDIR)/.tmp/bin
-TMP_EBPF := $(CURDIR)/.tmp/ebpf
 COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
 GO_TEST_FLAGS ?= -v -race -cover
