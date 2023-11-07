@@ -339,12 +339,14 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		profile := series.Samples[0].Profile.Profile
 		// maybeAggregate _may_ return a non-nil handler of the aggregated value,
 		// if the profile is aggregated indeed, and this is the first invocation.
-		var aggregateHandler func() (*pprof.ProfileMerge, error)
-		if aggregateHandler, err = d.maybeAggregate(tenantID, series.Labels, profile); err != nil {
+		aggregateHandler, ok, err := d.maybeAggregate(tenantID, series.Labels, profile)
+		if err != nil {
 			return nil, err
 		}
-		if aggregateHandler != nil {
-			d.sendAggregatedProfile(ctx, req, tenantID, aggregateHandler)
+		if ok {
+			if aggregateHandler != nil {
+				d.sendAggregatedProfile(ctx, req, tenantID, aggregateHandler)
+			}
 			return connect.NewResponse(&pushv1.PushResponse{}), nil
 		}
 	}
@@ -365,12 +367,12 @@ func (d *Distributor) sendAggregatedProfile(ctx context.Context, req *distributo
 		// Obtain the aggregated profile.
 		p, err := handler()
 		if err != nil {
-			_ = level.Error(d.logger).Log("msg", "failed to aggregate profiles", "tenant", tenantID)
+			_ = level.Error(d.logger).Log("msg", "failed to aggregate profiles", "tenant", tenantID, "err", err)
 			return
 		}
 		req.Series[0].Samples[0].Profile.Profile = p.Profile()
 		if _, err = d.sendRequests(localCtx, req, tenantID); err != nil {
-			_ = level.Error(d.logger).Log("msg", "failed to ingest aggregated profile", "tenant", tenantID)
+			_ = level.Error(d.logger).Log("msg", "failed to ingest aggregated profile", "tenant", tenantID, "err", err)
 		}
 	}()
 }
@@ -495,19 +497,19 @@ func profileSizeBytes(p *googlev1.Profile) (symbols, samples int64) {
 	return
 }
 
-func (d *Distributor) maybeAggregate(tenantID string, labels phlaremodel.Labels, profile *googlev1.Profile) (func() (*pprof.ProfileMerge, error), error) {
+func (d *Distributor) maybeAggregate(tenantID string, labels phlaremodel.Labels, profile *googlev1.Profile) (func() (*pprof.ProfileMerge, error), bool, error) {
 	a, ok := d.aggregator.AggregatorForTenant(tenantID)
 	if !ok {
-		return nil, nil
+		return nil, false, nil
 	}
 	r, ok, err := a.Aggregate(labels.Hash(), profile.TimeNanos, mergeProfile(profile))
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if !ok {
-		return nil, nil
+		return nil, false, nil
 	}
-	return r.Handler(), nil
+	return r.Handler(), true, nil
 }
 
 func mergeProfile(profile *googlev1.Profile) aggregator.AggregateFn[*pprof.ProfileMerge] {
