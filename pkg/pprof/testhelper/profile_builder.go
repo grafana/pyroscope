@@ -21,6 +21,7 @@ type ProfileBuilder struct {
 	Labels []*typesv1.LabelPair
 
 	externalFunctionID2LocationId map[uint32]uint64
+	externalSampleID2SampleIndex  map[uint32]uint32
 }
 
 // NewProfileBuilder creates a new ProfileBuilder with the given nanoseconds timestamp.
@@ -223,11 +224,25 @@ func (m *ProfileBuilder) AddExternalFunction(frame string, externalFunctionID ui
 	return locID
 }
 
-func (m *ProfileBuilder) AddSample(locs []uint64, values []int64) {
-	m.Profile.Sample = append(m.Profile.Sample, &profilev1.Sample{
+func (m *ProfileBuilder) AddExternalSample(locs []uint64, values []int64, externalSampleID uint32) {
+	sample := &profilev1.Sample{
 		LocationId: locs,
 		Value:      values,
-	})
+	}
+	if m.externalSampleID2SampleIndex == nil {
+		m.externalSampleID2SampleIndex = map[uint32]uint32{}
+	}
+	m.externalSampleID2SampleIndex[externalSampleID] = uint32(len(m.Profile.Sample))
+	m.Profile.Sample = append(m.Profile.Sample, sample)
+}
+
+func (m *ProfileBuilder) FindExternalSample(externalSampleID uint32) *profilev1.Sample {
+	sampleIndex, ok := m.externalSampleID2SampleIndex[externalSampleID]
+	if !ok {
+		return nil
+	}
+	sample := m.Profile.Sample[sampleIndex]
+	return sample
 }
 
 type StacktraceBuilder struct {
