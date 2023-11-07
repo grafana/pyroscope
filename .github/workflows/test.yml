@@ -50,7 +50,8 @@ jobs:
       - name: Install qemu
         run: sudo apt-get -y install qemu-system-x86
       - name: Test
-        run: make go/test_ebpf
+        run: sudo make -C ./ebpf go/test
+#        run: EBPF_RUN_IN_VM=1 make -C ./ebpf go/test_ebpf
   lint:
     runs-on: ubuntu-latest
     steps:

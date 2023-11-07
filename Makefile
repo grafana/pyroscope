@@ -68,12 +68,6 @@ EBPF_TESTS='^TestEBPF.*'
 go/test: $(BIN)/gotestsum
 	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS) ./... ./ebpf/...
 
-.PHONY: go/test_ebpf
-go/test_ebpf: $(TMP_EBPF)/vm_image
-	$(GO) test -c $(GO_TEST_FLAGS) ./ebpf/
-	bash ./tools/vmrun.sh $(TMP_EBPF)/vm_image ebpf.test
-
-
 .PHONY: build
 build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)
 
@@ -348,13 +342,6 @@ $(BIN)/trunk: Makefile
 	@mkdir -p $(@D)
 	curl -L https://trunk.io/releases/trunk -o $(@D)/trunk
 	chmod +x $(@D)/trunk
-
-$(TMP_EBPF)/vm_image: Makefile
-	mkdir -p $(TMP_EBPF)
-	docker run -v $(TMP_EBPF):/mnt/images \
-		quay.io/lvh-images/kind:6.0-main \
-		cp /data/images/kind_6.0.qcow2.zst /mnt/images/vm_image.zst
-	zstd -f -d $(TMP_EBPF)/vm_image.zst
 
 .PHONY: cve/check
 cve/check:

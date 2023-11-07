@@ -1,3 +1,18 @@
+GO ?= go
+RIDESHARE_REPO ?= korniltsev
+RIDESHARE="testdata/rideshare-flask-no-pip"
+TMP_EBPF := $(shell pwd)/.tmp/ebpf
+
+ifeq ($(shell uname -s),Linux)
+EBPF_GO_TEST_FLAGS = -v -race -cover
+EBPF_CGO_ENABLED = 1
+else
+EBPF_GO_TEST_FLAGS = -v
+EBPF_CGO_ENABLED = 0
+endif
+
+EBPF_RUN_IN_VM ?= 0
+
 
 .phony: python/dwarfdump
 python/dwarfdump:
@@ -12,8 +27,34 @@ bpf/gen:
 	go generate pyrobpf/gen.go
 	go generate python/gen.go
 
-RIDESHARE_REPO ?= korniltsev
-RIDESHARE="testdata/rideshare-flask-no-pip"
+.PHONY: ebpf.test
+ebpf.test:
+	CGO_ENABLED=$(EBPF_CGO_ENABLED) \
+		GOOS=linux GOARCH=amd64 \
+		$(GO) test -c $(EBPF_GO_TEST_FLAGS) ./
+
+ifeq ($(EBPF_RUN_IN_VM),1)
+
+$(TMP_EBPF)/vm_image: Makefile
+	mkdir -p $(TMP_EBPF)
+	docker run -v $(TMP_EBPF):/mnt/images \
+		quay.io/lvh-images/kind:6.0-main \
+		cp /data/images/kind_6.0.qcow2.zst /mnt/images/vm_image.zst
+	zstd -f -d $(TMP_EBPF)/vm_image.zst
+
+
+.PHONY: go/test
+go/test: $(TMP_EBPF)/vm_image ebpf.test
+	bash ../tools/vmrun.sh $(TMP_EBPF)/vm_image ebpf.test
+
+else
+
+.PHONY: go/test
+go/test: ebpf.test
+	whoami | grep root
+	./ebpf.test
+
+endif
 
 .phony: rideshare/gen
 rideshare/gen:
