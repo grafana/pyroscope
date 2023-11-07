@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPythonEBPFProfiler(t *testing.T) {
+func TestEBPFPythonProfiler(t *testing.T) {
 	var testdata = []struct {
 		image    string
 		expected string

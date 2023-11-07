@@ -38,7 +38,17 @@ jobs:
         run: make check/go/mod
       - name: Test
         run: make go/test
-
+  test_ebpf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21.3
+      - name: Test
+        run: sudo make go/test_ebpf
   lint:
     runs-on: ubuntu-latest
     steps:

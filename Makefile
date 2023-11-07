@@ -61,9 +61,17 @@ buf/lint: $(BIN)/buf
 	cd api/ && $(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 	cd pkg && $(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 
+EBPF_TESTS='^TestEBPF.*'
+
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
-	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) ./... ./ebpf/...
+	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS) ./... ./ebpf/...
+
+.PHONY: go/test_ebpf
+go/test_ebpf: $(BIN)/gotestsum
+	whoami | grep root
+	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) -run $(EBPF_TESTS) ./ebpf/...
+
 
 .PHONY: build
 build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)
