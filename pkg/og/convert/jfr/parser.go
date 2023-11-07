@@ -2,8 +2,9 @@ package jfr
 
 import (
 	"fmt"
-	phlaremodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	"io"
+
+	phlaremodel "github.com/grafana/pyroscope/pkg/distributor/model"
 
 	"github.com/grafana/jfr-parser/parser"
 	"github.com/grafana/pyroscope/pkg/og/storage"
@@ -69,6 +70,7 @@ func parse(parser *parser.Parser, piOriginal *storage.PutInput, jfrLabels *Label
 	}
 
 	req = builders.build(event)
+	//fmt.Printf("reused samples %d\n", builders.reusedSamples)
 
 	return req, err
 }

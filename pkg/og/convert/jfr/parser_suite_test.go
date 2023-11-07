@@ -3,7 +3,6 @@ package jfr
 import (
 	"encoding/json"
 	"fmt"
-	model2 "github.com/grafana/pyroscope/pkg/distributor/model"
 	"os"
 	"strings"
 	"testing"
@@ -11,6 +10,7 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	model2 "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/og/storage"
