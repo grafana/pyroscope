@@ -88,8 +88,6 @@ type jfrPprofBuilders struct {
 
 	jfrLabels *LabelsSnapshot
 	period    int64
-
-	reusedSamples int64
 }
 
 func (b *jfrPprofBuilders) getLabels(contextID uint64) labelsWithHash {
@@ -145,7 +143,6 @@ func (b *jfrPprofBuilders) addStacktraceImpl(sampleType int64, lwh labelsWithHas
 
 	sample := e.Value.FindExternalSample(uint32(ref))
 	if sample != nil {
-		b.reusedSamples += 1
 		addValues(sample.Value)
 		return
 	}
