@@ -2636,8 +2636,10 @@ spec:
               mountPath: /etc/pyroscope/overrides/
             - name: data
               mountPath: /data
-            - name: data-compactor
+              subPath: default
+            - name: data
               mountPath: /data-compactor
+              subPath: compactor
           resources:
             limits:
               memory: 16Gi
@@ -2651,8 +2653,6 @@ spec:
         - name: overrides-config
           configMap:
             name: pyroscope-dev-overrides-config
-        - name: data-compactor
-          emptyDir: {}
         - name: data
           emptyDir: {}
 ---

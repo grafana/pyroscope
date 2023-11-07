@@ -105,8 +105,10 @@ spec:
             - name: data
               mountPath: /data
             {{- if eq $component "compactor" }}
-            - name: data-compactor
+              subPath: default
+            - name: data
               mountPath: /data-compactor
+              subPath: compactor
             {{- end }}
             {{- with $values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
@@ -138,10 +140,6 @@ spec:
         - name: overrides-config
           configMap:
             name: {{ include "pyroscope.fullname" . }}-overrides-config
-  {{- if eq $component "compactor" }}
-        - name: data-compactor
-          emptyDir: {}
-  {{- end }}
   {{- $persistence := $values.persistence }}
   {{- if not $persistence.enabled }}
         - name: data

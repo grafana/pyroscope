@@ -10,11 +10,11 @@ import (
 )
 
 const (
+	profileIDTagKey = "pyroscope.profile.id"
+
 	spanIDLabelName   = "span_id"
 	spanNameLabelName = "span_name"
 )
-
-var profilingEnabledTag = opentracing.Tag{Key: "pyroscope.profiling.enabled", Value: true}
 
 type tracer struct{ opentracing.Tracer }
 
@@ -39,7 +39,8 @@ func (t *tracer) StartSpan(operationName string, opts ...opentracing.StartSpanOp
 		Span:     s,
 	}
 	pprof.SetGoroutineLabels(w.pprofCtx)
-	profilingEnabledTag.Set(s)
+	tag := opentracing.Tag{Key: profileIDTagKey, Value: sc.SpanID().String()}
+	tag.Set(s)
 	return &w
 }
 
