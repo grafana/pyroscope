@@ -17,8 +17,7 @@ if [ -z "${HOST_ROOT}/${BIN}" ]; then
   exit 1
 fi
 
-KVM_ARGS=""
-if [ -e /dev/kvm ]; then
+if [[ -z "${GITHUB_ACTIONS}" && -e "/dev/kvm" ]]; then
   KVM_ARGS="-enable-kvm -cpu kvm64"
 fi
 
