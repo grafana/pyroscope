@@ -39,7 +39,7 @@ run_vm() {
                   -serial mon:stdio \
                   -device virtio-serial-pci \
                   -fsdev local,id=host_id,path=${HOST_ROOT},security_model=none \
-                  -device virtio-9p-pci,fsdev=host_id,mount_tag=host_mount &>/dev/null 2>/dev/null &
+                  -device virtio-9p-pci,fsdev=host_id,mount_tag=host_mount  &
 }
 
 wait_for_ssh() {
