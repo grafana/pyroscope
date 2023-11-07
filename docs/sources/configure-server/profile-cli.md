@@ -16,15 +16,15 @@ weight: 80
 
 Hint: Use the `help` command (`profilecli help`) to get a full list of capabilities as well as additional help information.
 
-# Installation
+## Installation
 
-## MacOS
+### MacOS
 
 ```bash
 brew install pyroscope-io/brew/profilecli
 ```
 
-## Other
+### Other
 
 Download the `profilecli`` release asset from https://github.com/grafana/pyroscope/releases/latest for your operating system and architecture and make it executable.
 
@@ -36,14 +36,14 @@ curl -fL https://github.com/grafana/pyroscope/releases/download/v1.0.0/profilecl
 
 This command will place the `profilecli` executable in the current directory.
 
-## Build from source code
+### Build from source code
 
-### Prerequesites
+#### Prerequesites
 
 - Make sure you have Go installed (> 1.19).
 - Make sure either `$GOPATH` or `$GOBIN` is configured and added to your `PATH` environment variable.
 
-### Build and install
+#### Build and install
 
 1. **Clone the repository**
 
@@ -60,16 +60,16 @@ This command will place the `profilecli` executable in the current directory.
 
    The command will place the `profilecli` executable in `$GOPATH/bin/` (or `$GOBIN/`) and make it available to use.
 
-# Uploading a pprof File to a Pyroscope Server using profilecli
+## Uploading a pprof File to a Pyroscope Server using profilecli
 
 Using `profilecli` streamlines the process of uploading profiles to Pyroscope, making it a convenient alternative to manual HTTP requests.
 
-## Prerequisites
+### Prerequisites
 
 - Ensure you have `profilecli` installed on your system by following the installation steps above.
 - Have the pprof file you want to upload ready.
 
-## Upload steps
+### Upload steps
 
 1. **Identify the pprof file and Pyroscope server details.**
 
