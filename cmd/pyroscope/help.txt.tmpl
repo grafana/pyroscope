@@ -37,6 +37,10 @@ Usage of ./pyroscope:
     	yaml file to load
   -consul.hostname string
     	Hostname and port of Consul. (default "localhost:8500")
+  -distributor.aggregation-period duration
+    	Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.
+  -distributor.aggregation-window duration
+    	Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.
   -distributor.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
   -distributor.health-check-ingesters

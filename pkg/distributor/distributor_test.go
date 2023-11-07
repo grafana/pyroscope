@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -84,7 +85,7 @@ func Test_ConnectPush(t *testing.T) {
 				},
 				Samples: []*pushv1.RawSample{
 					{
-						RawProfile: testProfile(t),
+						RawProfile: collectTestProfileBytes(t),
 					},
 				},
 			},
@@ -112,7 +113,7 @@ func Test_Replication(t *testing.T) {
 				},
 				Samples: []*pushv1.RawSample{
 					{
-						RawProfile: testProfile(t),
+						RawProfile: collectTestProfileBytes(t),
 					},
 				},
 			},
@@ -161,7 +162,7 @@ func Test_Subservices(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond)
 }
 
-func testProfile(t *testing.T) []byte {
+func collectTestProfileBytes(t *testing.T) []byte {
 	t.Helper()
 
 	buf := bytes.NewBuffer(nil)
@@ -220,7 +221,7 @@ func Test_Limits(t *testing.T) {
 						},
 						Samples: []*pushv1.RawSample{
 							{
-								RawProfile: testProfile(t),
+								RawProfile: collectTestProfileBytes(t),
 							},
 						},
 					},
@@ -245,7 +246,7 @@ func Test_Limits(t *testing.T) {
 						},
 						Samples: []*pushv1.RawSample{
 							{
-								RawProfile: testProfile(t),
+								RawProfile: collectTestProfileBytes(t),
 							},
 						},
 					},
@@ -543,13 +544,7 @@ func Test_SampleLabels(t *testing.T) {
 											},
 										},
 										{
-											Value: []int64{1},
-											Label: []*profilev1.Label{
-												{Key: 3, Str: 4},
-											},
-										},
-										{
-											Value: []int64{1},
+											Value: []int64{2},
 											Label: []*profilev1.Label{
 												{Key: 3, Str: 4},
 											},
@@ -790,5 +785,179 @@ func TestPush_ShuffleSharding(t *testing.T) {
 			}
 			require.Equal(t, 150, series)
 		}
+	}
+}
+
+func TestPush_Aggregation(t *testing.T) {
+	ingesterClient := newFakeIngester(t, false)
+	d, err := New(
+		Config{DistributorRing: ringConfig, PushTimeout: time.Second * 10},
+		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+		&poolFactory{f: func(addr string) (client.PoolClient, error) { return ingesterClient, nil }},
+		validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+			l := validation.MockDefaultLimits()
+			l.DistributorAggregationPeriod = model.Duration(time.Second)
+			l.DistributorAggregationWindow = model.Duration(time.Second)
+			tenantLimits["user-1"] = l
+		}),
+		nil, log.NewLogfmtLogger(os.Stdout),
+	)
+	require.NoError(t, err)
+	ctx := tenant.InjectTenantID(context.Background(), "user-1")
+
+	const (
+		clients  = 10
+		requests = 10
+	)
+
+	var wg sync.WaitGroup
+	wg.Add(clients)
+	for i := 0; i < clients; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			for j := 0; j < requests; j++ {
+				_, err := d.PushParsed(ctx, &distributormodel.PushRequest{
+					Series: []*distributormodel.ProfileSeries{
+						{
+							Labels: []*typesv1.LabelPair{
+								{Name: "cluster", Value: "us-central1"},
+								{Name: "client", Value: strconv.Itoa(i)},
+								{Name: "__name__", Value: "cpu"},
+							},
+							Samples: []*distributormodel.ProfileSample{
+								{
+									Profile: &pprof2.Profile{
+										Profile: testProfile(0),
+									},
+								},
+							},
+						},
+					},
+				})
+				require.NoError(t, err)
+			}
+		}()
+	}
+
+	wg.Wait()
+	d.asyncRequests.Wait()
+
+	var sum int64
+	assert.GreaterOrEqual(t, len(ingesterClient.requests), 20)
+	assert.Less(t, len(ingesterClient.requests), 100)
+	for _, r := range ingesterClient.requests {
+		for _, s := range r.Series {
+			require.Len(t, s.Samples, 1)
+			p, err := pprof2.RawFromBytes(s.Samples[0].RawProfile)
+			require.NoError(t, err)
+			for _, x := range p.Sample {
+				sum += x.Value[0]
+			}
+		}
+	}
+
+	// RF * samples_per_profile * clients * requests
+	assert.Equal(t, int64(3*2*clients*requests), sum)
+}
+
+func testProfile(t int64) *profilev1.Profile {
+	return &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{
+				Type: 1,
+				Unit: 2,
+			},
+			{
+				Type: 3,
+				Unit: 4,
+			},
+		},
+		Sample: []*profilev1.Sample{
+			{
+				LocationId: []uint64{1, 2},
+				Value:      []int64{1, 10000000},
+				Label: []*profilev1.Label{
+					{Key: 5, Str: 6},
+				},
+			},
+			{
+				LocationId: []uint64{1, 2, 3},
+				Value:      []int64{1, 10000000},
+				Label: []*profilev1.Label{
+					{Key: 5, Str: 6},
+					{Key: 7, Str: 8},
+				},
+			},
+		},
+		Mapping: []*profilev1.Mapping{
+			{
+				Id:           1,
+				HasFunctions: true,
+			},
+		},
+		Location: []*profilev1.Location{
+			{
+				Id:        1,
+				MappingId: 1,
+				Line:      []*profilev1.Line{{FunctionId: 1}},
+			},
+			{
+				Id:        2,
+				MappingId: 1,
+				Line:      []*profilev1.Line{{FunctionId: 2}},
+			},
+			{
+				Id:        3,
+				MappingId: 1,
+				Line:      []*profilev1.Line{{FunctionId: 3}},
+			},
+		},
+		Function: []*profilev1.Function{
+			{
+				Id:         1,
+				Name:       9,
+				SystemName: 9,
+				Filename:   10,
+			},
+			{
+				Id:         2,
+				Name:       11,
+				SystemName: 11,
+				Filename:   12,
+			},
+			{
+				Id:         3,
+				Name:       13,
+				SystemName: 13,
+				Filename:   14,
+			},
+		},
+		StringTable: []string{
+			"",
+			"samples",
+			"count",
+			"cpu",
+			"nanoseconds",
+			// Labels
+			"foo",
+			"bar",
+			"function",
+			"slow",
+			// Functions
+			"func-foo",
+			"func-foo-path",
+			"func-bar",
+			"func-bar-path",
+			"func-baz",
+			"func-baz-path",
+		},
+		TimeNanos:     t,
+		DurationNanos: 10000000000,
+		PeriodType: &profilev1.ValueType{
+			Type: 3,
+			Unit: 4,
+		},
+		Period: 10000000,
 	}
 }

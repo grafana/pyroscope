@@ -1,6 +1,8 @@
 package validation
 
-import "time"
+import (
+	"time"
+)
 
 type MockLimits struct {
 	QuerySplitDurationValue     time.Duration
@@ -10,6 +12,9 @@ type MockLimits struct {
 	MaxLabelNameLengthValue     int
 	MaxLabelValueLengthValue    int
 	MaxLabelNamesPerSeriesValue int
+
+	DistributorAggregationWindowValue time.Duration
+	DistributorAggregationPeriodValue time.Duration
 
 	RejectOlderThanValue time.Duration
 	RejectNewerThanValue time.Duration
@@ -31,6 +36,13 @@ func (m MockLimits) MaxLabelNamesPerSeries(userID string) int       { return m.M
 func (m MockLimits) MaxProfileSizeBytes(userID string) int          { return m.MaxProfileSizeBytesValue }
 func (m MockLimits) MaxProfileStacktraceSamples(userID string) int {
 	return m.MaxProfileStacktraceSamplesValue
+}
+
+func (m MockLimits) DistributorAggregationWindow(userID string) time.Duration {
+	return m.DistributorAggregationWindowValue
+}
+func (m MockLimits) DistributorAggregationPeriod(userID string) time.Duration {
+	return m.DistributorAggregationPeriodValue
 }
 
 func (m MockLimits) MaxProfileStacktraceDepth(userID string) int {

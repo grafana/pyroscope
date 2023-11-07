@@ -139,7 +139,7 @@ func (p *PartitionWriter) convertSamples(r *rewriter, in []*profilev1.Sample, sp
 		}
 	}
 
-	stacktracesIds := slices.Grow(uint32SlicePool.Get(), len(stacktraces))
+	stacktracesIds := slices.GrowLen(uint32SlicePool.Get(), len(stacktraces))
 	p.stacktraces.append(stacktracesIds, stacktraces)
 
 	// Rewrite stacktraces
@@ -427,6 +427,18 @@ func hashLines(s []schemav1.InMemoryLine) uint64 {
 	var b []byte
 	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&b))
 	hdr.Len = len(s) * int(lineSize)
+	hdr.Cap = hdr.Len
+	hdr.Data = uintptr(unsafe.Pointer(&s[0]))
+	return maphash.Bytes(mapHashSeed, b)
+}
+
+func hashLocations(s []uint64) uint64 {
+	if len(s) == 0 {
+		return 0
+	}
+	var b []byte
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	hdr.Len = len(s) * 8
 	hdr.Cap = hdr.Len
 	hdr.Data = uintptr(unsafe.Pointer(&s[0]))
 	return maphash.Bytes(mapHashSeed, b)

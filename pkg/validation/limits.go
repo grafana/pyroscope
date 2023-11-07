@@ -40,6 +40,10 @@ type Limits struct {
 	MaxProfileStacktraceDepth        int `yaml:"max_profile_stacktrace_depth" json:"max_profile_stacktrace_depth"`
 	MaxProfileSymbolValueLength      int `yaml:"max_profile_symbol_value_length" json:"max_profile_symbol_value_length"`
 
+	// Distributor aggregation.
+	DistributorAggregationWindow model.Duration `yaml:"distributor_aggregation_window" json:"distributor_aggregation_window"`
+	DistributorAggregationPeriod model.Duration `yaml:"distributor_aggregation_period" json:"distributor_aggregation_period"`
+
 	// The tenant shard size determines the how many ingesters a particular
 	// tenant will be sharded to. Needs to be specified on distributors for
 	// correct distribution and on ingesters so that the local ingestion limit
@@ -119,6 +123,9 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxProfileStacktraceSampleLabels, "validation.max-profile-stacktrace-sample-labels", 100, "Maximum number of labels in a profile sample. 0 to disable.")
 	f.IntVar(&l.MaxProfileStacktraceDepth, "validation.max-profile-stacktrace-depth", 1000, "Maximum depth of a profile stacktrace. Profiles are not rejected instead stacktraces are truncated. 0 to disable.")
 	f.IntVar(&l.MaxProfileSymbolValueLength, "validation.max-profile-symbol-value-length", 65535, "Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable.")
+
+	f.Var(&l.DistributorAggregationWindow, "distributor.aggregation-window", "Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.")
+	f.Var(&l.DistributorAggregationPeriod, "distributor.aggregation-period", "Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.")
 
 	f.Var(&l.CompactorBlocksRetentionPeriod, "compactor.blocks-retention-period", "Delete blocks containing samples older than the specified retention period. 0 to disable.")
 	f.IntVar(&l.CompactorSplitAndMergeShards, "compactor.split-and-merge-shards", 0, "The number of shards to use when splitting blocks. 0 to disable splitting.")
@@ -261,6 +268,14 @@ func (o *Overrides) MaxProfileSymbolValueLength(tenantID string) int {
 // MaxSessionsPerSeries returns the maximum number of sessions per single series.
 func (o *Overrides) MaxSessionsPerSeries(tenantID string) int {
 	return o.getOverridesForTenant(tenantID).MaxSessionsPerSeries
+}
+
+func (o *Overrides) DistributorAggregationWindow(tenantID string) model.Duration {
+	return o.getOverridesForTenant(tenantID).DistributorAggregationWindow
+}
+
+func (o *Overrides) DistributorAggregationPeriod(tenantID string) model.Duration {
+	return o.getOverridesForTenant(tenantID).DistributorAggregationPeriod
 }
 
 // MaxLocalSeriesPerTenant returns the maximum number of series a tenant is allowed to store

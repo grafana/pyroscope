@@ -15,6 +15,9 @@ type PushRequest struct {
 	RawProfileType RawProfileType
 
 	Series []*ProfileSeries
+
+	TotalProfiles          int64
+	TotalBytesUncompressed int64
 }
 
 type ProfileSample struct {
