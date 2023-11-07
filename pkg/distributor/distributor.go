@@ -356,6 +356,8 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 func (d *Distributor) sendAggregatedProfile(ctx context.Context, req *distributormodel.PushRequest, tenantID string, handler func() (*pprof.ProfileMerge, error)) {
 	d.asyncRequests.Add(1)
+	// We must not reuse the request in goroutine.
+	labels := phlaremodel.Labels(req.Series[0].Labels).Clone()
 	go func() {
 		defer d.asyncRequests.Done()
 		localCtx, cancel := context.WithTimeout(context.Background(), d.cfg.PushTimeout)
@@ -370,7 +372,12 @@ func (d *Distributor) sendAggregatedProfile(ctx context.Context, req *distributo
 			_ = level.Error(d.logger).Log("msg", "failed to aggregate profiles", "tenant", tenantID, "err", err)
 			return
 		}
-		req.Series[0].Samples[0].Profile.Profile = p.Profile()
+		req := &distributormodel.PushRequest{
+			Series: []*distributormodel.ProfileSeries{{
+				Labels:  labels,
+				Samples: []*distributormodel.ProfileSample{{Profile: pprof.RawFromProto(p.Profile())}},
+			}},
+		}
 		if _, err = d.sendRequests(localCtx, req, tenantID); err != nil {
 			_ = level.Error(d.logger).Log("msg", "failed to ingest aggregated profile", "tenant", tenantID, "err", err)
 		}

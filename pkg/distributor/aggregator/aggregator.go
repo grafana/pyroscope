@@ -72,17 +72,6 @@ func (a *Aggregator[T]) Stop() {
 
 type AggregateFn[T any] func(T) (T, error)
 
-/*
-type AggregationResult[T any] interface {
-
-	Wait() error
-
-	Value() (T, bool)
-
-	Close(error)
-}
-*/
-
 func (a *Aggregator[T]) Aggregate(key uint64, timestamp int64, fn AggregateFn[T]) (*AggregationResult[T], bool, error) {
 	// Return early if the event rate is too low for aggregation.
 	now := a.now()
