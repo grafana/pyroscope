@@ -240,8 +240,7 @@ func newTracker(shards int, shardSize uint32) *tracker {
 func (t *tracker) shard(k uint64) *shard          { return t.shards[k%uint64(len(t.shards))] }
 func (t *tracker) update(k uint64, n int64) int64 { return t.shard(k).update(k, n) }
 
-// prune removes keys with values less than n and
-// reports the number of items remaining.
+// prune removes keys with values less than n.
 func (t *tracker) prune(n int64) {
 	for _, x := range t.shards {
 		x.prune(n)
