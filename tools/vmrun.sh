@@ -17,6 +17,11 @@ if [ -z "${HOST_ROOT}/${BIN}" ]; then
   exit 1
 fi
 
+KVM_ARGS=""
+if [ -e /dev/kvm ]; then
+  KVM_ARGS="-enable-kvm -cpu kvm64"
+fi
+
 connect="ssh -p 2222 -o StrictHostKeyChecking=no root@localhost"
 
 kill_vm() {
@@ -31,15 +36,14 @@ run_vm() {
                   -no-reboot \
                   -smp 2 \
                   -m 1G \
-                  -enable-kvm \
-                  -cpu kvm64 \
+                  ${KVM_ARGS} \
                   -hda ${IMG} \
                   -netdev user,id=user.0,hostfwd=tcp::2222-:22 \
                   -device virtio-net-pci,netdev=user.0 \
                   -serial mon:stdio \
                   -device virtio-serial-pci \
                   -fsdev local,id=host_id,path=${HOST_ROOT},security_model=none \
-                  -device virtio-9p-pci,fsdev=host_id,mount_tag=host_mount  &
+                  -device virtio-9p-pci,fsdev=host_id,mount_tag=host_mount >/dev/null 2>/dev/null &
 }
 
 wait_for_ssh() {
