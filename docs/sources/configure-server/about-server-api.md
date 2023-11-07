@@ -151,19 +151,40 @@ Using `profilecli`, you can easily upload your pprof files to the Pyroscope serv
 3. **Specify any Extra Labels (Optional).**
 
    - You can add additional labels to your uploaded profile using the `--extra-labels` flag.
+   - The name of the application that the profile was captured from can be provided via the `service_name` label (defaults to `profilecli-upload`).
 
 4. **Construct and Execute the Upload Command.**
 
    - Here's a basic command template:
      ```
-     ./profilecli upload --url=<pyroscope_server_url> --username=<username> --password=<password> path/to/your/pprof-file.pprof
+     ./profilecli upload \
+         --url=<pyroscope_server_url> \
+         --username=<username> \
+         --password=<password> \
+         --extra-labels=<label_name>=<label_value> \
+         <pprof_file_path>
      ```
 
-   - Modify the placeholders (`<pyroscope_server_url>`, `<username>`, `<password>`, `path/to/your/pprof-file.pprof`) with your actual values.
+   - Modify the placeholders (`<pyroscope_server_url>`, `<username>`, etc.) with your actual values.
 
    - Example command:
      ```
-     ./profilecli upload --url=https://profiles-prod-001.grafana.net --username=my_username --password=my_password path/to/my_application_name.pprof
+     ./profilecli upload \
+         --url=https://profiles-prod-001.grafana.net \
+         --username=my_username \
+         --password=my_password \
+         path/to/your/pprof-file.pprof
+     ```
+
+   - Example command with extra labels:
+     ```
+     ./profilecli upload \
+         --url=https://profiles-prod-001.grafana.net \
+         --username=my_username \
+         --password=my_password \
+         --extra-labels=service_name=my_application_name \
+         --extra-labels=cluster=us \
+         path/to/your/pprof-file.pprof
      ```
 
 5. **Check for Successful Upload.**
