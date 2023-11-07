@@ -136,7 +136,7 @@ func (s *session) startPythonProfiling(pid uint32, target *sd.Target, pi procInf
 	if dead {
 		return false
 	}
-	pyPerf := s.getPyPerf()
+	pyPerf := s.getPyPerfLocked()
 	if pyPerf == nil {
 		_ = level.Error(s.logger).Log("err", "pyperf process profiling init failed. pyperf == nil", "pid", pid)
 		pi.typ = pyrobpf.ProfilingTypeError
@@ -173,7 +173,7 @@ func (s *session) startPythonProfiling(pid uint32, target *sd.Target, pi procInf
 }
 
 // may return nil if loadPyPerf returns error
-func (s *session) getPyPerf() *python.Perf {
+func (s *session) getPyPerfLocked() *python.Perf {
 	if s.pyperf != nil {
 		return s.pyperf
 	}
@@ -190,6 +190,14 @@ func (s *session) getPyPerf() *python.Perf {
 	}
 	s.pyperf = pyperf
 	return s.pyperf
+}
+
+// getPyPerf is used for testing to wait for pyperf to load
+// it may take long time to load and verify, especially running in qemu with no kvm
+func (s *session) getPyPerf() *python.Perf {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.getPyPerfLocked()
 }
 
 func (s *session) loadPyPerf() (*python.Perf, error) {

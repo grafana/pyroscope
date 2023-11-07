@@ -33,8 +33,8 @@ run_vm() {
                   -nodefaults \
                   -display none \
                   -no-reboot \
-                  -smp 2 \
-                  -m 1G \
+                  -smp 4 \
+                  -m 2G \
                   ${KVM_ARGS} \
                   -hda ${IMG} \
                   -netdev user,id=user.0,hostfwd=tcp::2222-:22 \

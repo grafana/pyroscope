@@ -682,6 +682,10 @@ func (s *session) processPIDExecRequests(requests chan uint32) {
 }
 
 func (s *session) linkKProbes() error {
+	fmt.Println("linkKProbes")
+	defer func() {
+		fmt.Println("linkKProbes end")
+	}()
 	type hook struct {
 		kprobe   string
 		prog     *ebpf.Program

@@ -132,17 +132,22 @@ func startPythonProfiler(t *testing.T, l log.Logger, containerID string) Session
 			},
 		},
 	}
-	session, err := NewSession(
+	s, err := NewSession(
 		l,
 		targetFinder,
 		options,
 	)
 	require.NoError(t, err)
 
-	err = session.Start()
+	err = s.Start()
 	_ = l.Log("err", err, "msg", "session.Start")
 	require.NoError(t, err, "Try running as privileged root user")
-	return session
+
+	impl := s.(*session)
+	perf := impl.getPyPerf() // pyperf may take long time to load and verify, especially running in qemu with no kvm
+	require.NotNil(t, perf)
+
+	return s
 }
 
 func loadgen(t *testing.T, l log.Logger, url string, n int) {
