@@ -7,6 +7,7 @@ MAKEFLAGS += --warn-undefined-variables
 MAKEFLAGS += --no-builtin-rules
 MAKEFLAGS += --no-print-directory
 BIN := $(CURDIR)/.tmp/bin
+TMP_EBPF := $(CURDIR)/.tmp/ebpf
 COPYRIGHT_YEARS := 2021-2022
 LICENSE_IGNORE := -e /testdata/
 GO_TEST_FLAGS ?= -v -race -cover
@@ -68,9 +69,9 @@ go/test: $(BIN)/gotestsum
 	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS) ./... ./ebpf/...
 
 .PHONY: go/test_ebpf
-go/test_ebpf: $(BIN)/gotestsum
-	whoami | grep root
-	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) -run $(EBPF_TESTS) ./ebpf/...
+go/test_ebpf: $(TMP_EBPF)/vm_image
+	$(GO) test -c $(GO_TEST_FLAGS) ./ebpf/
+	bash ./tools/vmrun.sh $(TMP_EBPF)/vm_image ebpf.test
 
 
 .PHONY: build
@@ -347,6 +348,13 @@ $(BIN)/trunk: Makefile
 	@mkdir -p $(@D)
 	curl -L https://trunk.io/releases/trunk -o $(@D)/trunk
 	chmod +x $(@D)/trunk
+
+$(TMP_EBPF)/vm_image: Makefile
+	mkdir -p $(TMP_EBPF)
+	docker run -v $(TMP_EBPF):/mnt/images \
+		quay.io/lvh-images/kind:6.0-main \
+		cp /data/images/kind_6.0.qcow2.zst /mnt/images/vm_image.zst
+	zstd -f -d $(TMP_EBPF)/vm_image.zst
 
 .PHONY: cve/check
 cve/check:

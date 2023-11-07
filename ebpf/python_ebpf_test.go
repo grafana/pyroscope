@@ -1,6 +1,7 @@
 package ebpfspy
 
 import (
+	_ "embed"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,23 +18,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//go:embed python_ebpf_expected.txt
+var pythonEBPFExpected []byte
+
+//go:embed python_ebpf_expected_3.11.txt
+var pythonEBPFExpected311 []byte
+
 func TestEBPFPythonProfiler(t *testing.T) {
 	var testdata = []struct {
 		image    string
-		expected string
+		expected []byte
 	}{
-		{"korniltsev/ebpf-testdata-rideshare:3.8-slim", "python_ebpf_expected.txt"},
-		{"korniltsev/ebpf-testdata-rideshare:3.9-slim", "python_ebpf_expected.txt"},
-		{"korniltsev/ebpf-testdata-rideshare:3.10-slim", "python_ebpf_expected.txt"},
-		{"korniltsev/ebpf-testdata-rideshare:3.11-slim", "python_ebpf_expected_3.11.txt"},
-		{"korniltsev/ebpf-testdata-rideshare:3.12-slim", "python_ebpf_expected_3.11.txt"},
-		{"korniltsev/ebpf-testdata-rideshare:3.13-rc-slim", "python_ebpf_expected_3.11.txt"},
-		{"korniltsev/ebpf-testdata-rideshare:3.8-alpine", "python_ebpf_expected.txt"},
-		{"korniltsev/ebpf-testdata-rideshare:3.9-alpine", "python_ebpf_expected.txt"},
-		{"korniltsev/ebpf-testdata-rideshare:3.10-alpine", "python_ebpf_expected.txt"},
-		{"korniltsev/ebpf-testdata-rideshare:3.11-alpine", "python_ebpf_expected_3.11.txt"},
-		{"korniltsev/ebpf-testdata-rideshare:3.12-alpine", "python_ebpf_expected_3.11.txt"},
-		{"korniltsev/ebpf-testdata-rideshare:3.13-rc-alpine", "python_ebpf_expected_3.11.txt"},
+		{"korniltsev/ebpf-testdata-rideshare:3.8-slim", pythonEBPFExpected},
+		{"korniltsev/ebpf-testdata-rideshare:3.9-slim", pythonEBPFExpected},
+		{"korniltsev/ebpf-testdata-rideshare:3.10-slim", pythonEBPFExpected},
+		{"korniltsev/ebpf-testdata-rideshare:3.11-slim", pythonEBPFExpected311},
+		{"korniltsev/ebpf-testdata-rideshare:3.12-slim", pythonEBPFExpected311},
+		{"korniltsev/ebpf-testdata-rideshare:3.13-rc-slim", pythonEBPFExpected311},
+		{"korniltsev/ebpf-testdata-rideshare:3.8-alpine", pythonEBPFExpected},
+		{"korniltsev/ebpf-testdata-rideshare:3.9-alpine", pythonEBPFExpected},
+		{"korniltsev/ebpf-testdata-rideshare:3.10-alpine", pythonEBPFExpected},
+		{"korniltsev/ebpf-testdata-rideshare:3.11-alpine", pythonEBPFExpected311},
+		{"korniltsev/ebpf-testdata-rideshare:3.12-alpine", pythonEBPFExpected311},
+		{"korniltsev/ebpf-testdata-rideshare:3.13-rc-alpine", pythonEBPFExpected311},
 	}
 
 	const ridesharePort = "5000"
@@ -60,11 +67,9 @@ func TestEBPFPythonProfiler(t *testing.T) {
 
 }
 
-func compareProfiles(t *testing.T, l log.Logger, expected string, actual map[string]struct{}) {
-	file, err := os.ReadFile(expected)
-	require.NoError(t, err)
+func compareProfiles(t *testing.T, l log.Logger, expected []byte, actual map[string]struct{}) {
 	expectedProfiles := map[string]struct{}{}
-	for _, line := range strings.Split(string(file), "\n") {
+	for _, line := range strings.Split(string(expected), "\n") {
 		if line == "" {
 			continue
 		}
@@ -135,13 +140,8 @@ func startPythonProfiler(t *testing.T, l log.Logger, containerID string) Session
 	require.NoError(t, err)
 
 	err = session.Start()
-	ci := os.Getenv("GITHUB_ACTIONS") == "true"
-	_ = l.Log("err", err, "ci", ci, "msg", "session.Start")
-	if ci {
-		require.NoError(t, err)
-	} else if err != nil {
-		t.Skip("Skip because failed to start. Try running as privileged root user", err)
-	}
+	_ = l.Log("err", err, "msg", "session.Start")
+	require.NoError(t, err, "Try running as privileged root user")
 	return session
 }
 
