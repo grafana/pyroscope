@@ -477,8 +477,20 @@ func (f *PhlareDB) BlockMetadata(ctx context.Context, req *connect.Request[inges
 
 	var result ingestv1.BlockMetadataResponse
 
+	f.headLock.RLock()
+	for _, h := range f.heads {
+		var info typesv1.BlockInfo
+		h.meta.WriteBlockInfo(&info)
+		result.Blocks = append(result.Blocks, &info)
+	}
+	for _, h := range f.flushing {
+		var info typesv1.BlockInfo
+		h.meta.WriteBlockInfo(&info)
+		result.Blocks = append(result.Blocks, &info)
+	}
+	f.headLock.RUnlock()
+
 	f.blockQuerier.queriersLock.RLock()
-	result.Blocks = make([]*typesv1.BlockInfo, 0, len(f.blockQuerier.queriers)+1)
 	for _, q := range f.blockQuerier.queriers {
 		var info typesv1.BlockInfo
 		q.meta.WriteBlockInfo(&info)
@@ -486,13 +498,10 @@ func (f *PhlareDB) BlockMetadata(ctx context.Context, req *connect.Request[inges
 	}
 	f.blockQuerier.queriersLock.RUnlock()
 
-	f.headLock.RLock()
-	for _, h := range f.heads {
-		var info typesv1.BlockInfo
-		h.meta.WriteBlockInfo(&info)
-		result.Blocks = append(result.Blocks, &info)
-	}
-	f.headLock.RUnlock()
+	// blocks move from heads to flushing to blockQuerier, so we need to check if that might have happened and caused a duplicate
+	result.Blocks = lo.UniqBy(result.Blocks, func(b *typesv1.BlockInfo) string {
+		return b.Ulid
+	})
 
 	return connect.NewResponse(&result), nil
 }
