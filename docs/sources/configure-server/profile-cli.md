@@ -60,9 +60,9 @@ This command will place the `profilecli` executable in the current directory.
 
    The command will place the `profilecli` executable in `$GOPATH/bin/` (or `$GOBIN/`) and make it available to use.
 
-## Common flags
+## Common flags, environment variables.
 
-`profilecli` commands that interact with a Pyroscope server require a server URL and optionally authentication details.
+`profilecli` commands that interact with a Pyroscope server require a server URL and optionally authentication details. These can be provided as command line flags or environment variables.
 
 1. **Server URL**
 
@@ -70,7 +70,19 @@ This command will place the `profilecli` executable in the current directory.
 
 1. **Authentication details**
 
-   If using Grafana Cloud or authentication is enabled on your Pyroscope server, you will need to provide a username and password using the `--username` and `--password` flags respectively.
+   If using Grafana Cloud or authentication is enabled on your Pyroscope server, you will need to provide a username and password using the `--username` and `--password` flags respectively. For Grafana Cloud, the username will be the Stack ID and the password the generated API token.
+
+### Environment variable naming
+
+Environment variables are in uppercase and have the `PROFILECLI_` prefix. Here is an example of providing the server URL and credentials for the `profilecli` tool:
+
+```bash
+export PROFILECLI_USERNAME=<username>
+export PROFILECLI_PASSWORD=<password>
+export PROFILECLI_URL=<pyroscope_server_url>
+# now we can run a profilecli command without specifying the url or credentials:
+profilecli <command>
+```
 
 ## Uploading a pprof file to a Pyroscope server using `profilecli`
 
@@ -97,31 +109,31 @@ Using `profilecli` streamlines the process of uploading profiles to Pyroscope, m
 
    - Here's a basic command template:
      ```bash
-     profilecli upload \
-         --url=<pyroscope_server_url> \
-         --username=<username> \
-         --password=<password> \
-         --extra-labels=<label_name>=<label_value> \
-         <pprof_file_path>
+     export PROFILECLI_URL=<pyroscope_server_url>
+     export PROFILECLI_USERNAME=<username>
+     export PROFILECLI_PASSWORD=<password>
+
+     profilecli upload --extra-labels=<label_name>=<label_value> <pprof_file_path>
      ```
 
    - Modify the placeholders (`<pyroscope_server_url>`, `<username>`, etc.) with your actual values.
 
    - Example command:
      ```bash
-     profilecli upload \
-         --url=https://profiles-prod-001.grafana.net \
-         --username=my_username \
-         --password=my_password \
-         path/to/your/pprof-file.pprof
+     export PROFILECLI_URL=https://profiles-prod-001.grafana.net
+     export PROFILECLI_USERNAME=my_username
+     export PROFILECLI_PASSWORD=my_password
+
+     profilecli upload path/to/your/pprof-file.pprof
      ```
 
    - Example command with extra labels:
      ```bash
+     export PROFILECLI_URL=https://profiles-prod-001.grafana.net
+     export PROFILECLI_USERNAME=my_username
+     export PROFILECLI_PASSWORD=my_password
+
      profilecli upload \
-         --url=https://profiles-prod-001.grafana.net \
-         --username=my_username \
-         --password=my_password \
          --extra-labels=service_name=my_application_name \
          --extra-labels=cluster=us \
          path/to/your/pprof-file.pprof
@@ -150,29 +162,37 @@ You can use the `profilecli query series` command to look up the available profi
 
    - Here's a basic command template:
      ```bash
-     profilecli query series \
-         --url=<pyroscope_server_url> \
-         --username=<username> \
-         --password=<password> \
-         --query=<label_name>=<label_value> \
-         --from=<from> \
-         --to=<to>
+     export PROFILECLI_URL=<pyroscope_server_url>
+     export PROFILECLI_USERNAME=<username>
+     export PROFILECLI_PASSWORD=<password>
+
+     profilecli query series --query=<label_name>=<label_value>
      ```
 
    - Modify the placeholders (`<pyroscope_server_url>`, `<username>`, etc.) with your actual values.
 
    - Example command:
      ```bash
-     profilecli query series \
-         --url=https://profiles-prod-001.grafana.net \
-         --username=my_username \
-         --password=my_password \
-         --query='{service_name="my_application_name"}'
+     export PROFILECLI_URL=https://profiles-prod-001.grafana.net
+     export PROFILECLI_USERNAME=my_username
+     export PROFILECLI_PASSWORD=my_password
+
+     profilecli query series --query='{service_name="my_application_name"}'
      ```
 
    - Example output:
      ```json
-     {"__name__":"memory","__period_type__":"space","__period_unit__":"bytes","__profile_type__":"memory:inuse_objects:count:space:bytes","__service_name__":"my_application_name","__type__":"inuse_objects","__unit__":"count","cluster":"eu-west-1","service_name":"my_application_name"}
+     {
+         "__name__":"memory",
+         "__period_type__":"space",
+         "__period_unit__":"bytes",
+         "__profile_type__":"memory:inuse_objects:count:space:bytes",
+         "__service_name__":"my_application_name",
+         "__type__":"inuse_objects",
+         "__unit__":"count",
+         "cluster":"eu-west-1",
+         "service_name":"my_application_name"
+      }
      ```
 
 ### Reading a raw profile from a Pyroscope server
@@ -191,13 +211,12 @@ You can use the `profilecli query merge` command to retrieve a merged (aggregate
 
    - Here's a basic command template:
      ```bash
+     export PROFILECLI_URL=<pyroscope_server_url>
+     export PROFILECLI_USERNAME=<username>
+     export PROFILECLI_PASSWORD=<password>
+
      profilecli query merge \
-         --url=<pyroscope_server_url> \
-         --username=<username> \
-         --password=<password> \
-         --query=<label_name>=<label_value> \
-         --from=<from> \
-         --to=<to> \
+         --query=<label_name>=<label_value>
          --profile-type=<profile_type>
      ```
 
@@ -205,10 +224,11 @@ You can use the `profilecli query merge` command to retrieve a merged (aggregate
 
    - Example command:
      ```bash
+     export PROFILECLI_URL=https://profiles-prod-001.grafana.net
+     export PROFILECLI_USERNAME=my_username
+     export PROFILECLI_PASSWORD=my_password
+
      profilecli query merge \
-         --url=https://profiles-prod-001.grafana.net \
-         --username=my_username \
-         --password=my_password \
          --query='{service_name="my_application_name"}' \
          --profile-type=memory:inuse_space:bytes:space:bytes
      ```
