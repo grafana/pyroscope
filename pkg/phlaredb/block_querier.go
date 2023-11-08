@@ -841,11 +841,17 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 					return err
 				}
 
-				// TODO: To sort or not?
-				merge, err := querier.MergeByStacktraces(ctx, iters)
+				profiles, err := iter.Slice(iters)
 				if err != nil {
 					return err
 				}
+
+				// TODO(simonswine): Split profiles per row group and run the MergeByStacktraces in parallel.
+				merge, err := querier.MergeByStacktraces(ctx, iter.NewSliceIterator(querier.Sort(profiles)))
+				if err != nil {
+					return err
+				}
+
 				m.Lock()
 				t.Merge(merge)
 				m.Unlock()
