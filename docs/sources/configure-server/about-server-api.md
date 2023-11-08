@@ -212,3 +212,7 @@ curl -X POST \
 ```
 
 {{< /code >}}
+
+## Profile CLI
+
+The `profilecli` tool can also be used to interact with the Pyroscope server API. It supports operations such as ingesting profiles, querying for existing profiles and more. Refer to the [Profile CLI]({{< relref "./profile-cli" >}}) page for more information.
