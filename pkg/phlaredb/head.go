@@ -329,6 +329,10 @@ func (h *Head) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.P
 	}), nil
 }
 
+func (h *Head) BlockID() string {
+	return h.meta.ULID.String()
+}
+
 func (h *Head) Bounds() (mint, maxt model.Time) {
 	h.metaLock.RLock()
 	defer h.metaLock.RUnlock()

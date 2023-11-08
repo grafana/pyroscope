@@ -563,7 +563,11 @@ type Querier interface {
 	BlockID() string
 }
 
-func InRange(q Querier, start, end model.Time) bool {
+type TimeBounded interface {
+	Bounds() (model.Time, model.Time)
+}
+
+func InRange(q TimeBounded, start, end model.Time) bool {
 	min, max := q.Bounds()
 	if start > max {
 		return false

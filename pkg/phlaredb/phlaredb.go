@@ -477,24 +477,27 @@ func (f *PhlareDB) BlockMetadata(ctx context.Context, req *connect.Request[inges
 
 	var result ingestv1.BlockMetadataResponse
 
-	f.headLock.RLock()
-	for _, h := range f.heads {
+	appendInRange := func(q TimeBounded, meta *block.Meta) {
+		if !InRange(q, model.Time(req.Msg.Start), model.Time(req.Msg.End)) {
+			return
+		}
 		var info typesv1.BlockInfo
-		h.meta.WriteBlockInfo(&info)
+		meta.WriteBlockInfo(&info)
 		result.Blocks = append(result.Blocks, &info)
 	}
+
+	f.headLock.RLock()
+	for _, h := range f.heads {
+		appendInRange(h, h.meta)
+	}
 	for _, h := range f.flushing {
-		var info typesv1.BlockInfo
-		h.meta.WriteBlockInfo(&info)
-		result.Blocks = append(result.Blocks, &info)
+		appendInRange(h, h.meta)
 	}
 	f.headLock.RUnlock()
 
 	f.blockQuerier.queriersLock.RLock()
 	for _, q := range f.blockQuerier.queriers {
-		var info typesv1.BlockInfo
-		q.meta.WriteBlockInfo(&info)
-		result.Blocks = append(result.Blocks, &info)
+		appendInRange(q, q.meta)
 	}
 	f.blockQuerier.queriersLock.RUnlock()
 
