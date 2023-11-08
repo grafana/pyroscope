@@ -2,6 +2,7 @@ package querier
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
@@ -203,6 +204,10 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 	g, gCtx := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
+		hints, ok := plan[r.addr]
+		if !ok && plan != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		}
 		g.Go(util.RecoverPanic(func() error {
 			return r.response.Send(&ingestv1.MergeProfilesStacktracesRequest{
 				Request: &ingestv1.SelectProfilesRequest{
@@ -210,6 +215,7 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 					Start:         req.Start,
 					End:           req.End,
 					Type:          profileType,
+					Hints:         &ingestv1.Hints{Block: hints},
 				},
 				MaxNodes: req.MaxNodes,
 				// TODO(kolesnikovae): Max stacks.
