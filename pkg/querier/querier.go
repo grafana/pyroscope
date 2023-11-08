@@ -338,8 +338,6 @@ func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (map[s
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "blockSelect")
 	defer sp.Finish()
 
-	storeQueries := splitQueryToStores(start, end, model.Now(), q.cfg.QueryStoreAfter)
-
 	sp.LogFields(
 		otlog.String("start", start.Time().String()),
 		otlog.String("end", end.Time().String()),
@@ -353,7 +351,7 @@ func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (map[s
 	results := newReplicasPerBlockID()
 
 	// get first all blocks from store gateways, as they should be querier with a priority and also aret the only ones containing duplicated blocks because of replication
-	if q.storeGatewayQuerier != nil && storeQueries.storeGateway.shouldQuery {
+	if q.storeGatewayQuerier != nil {
 		res, err := q.blockSelectFromStoreGateway(ctx, ingesterReq)
 		if err != nil {
 			return nil, err
@@ -362,7 +360,7 @@ func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (map[s
 		results.add(res, storeGatewayInstance)
 	}
 
-	if q.ingesterQuerier != nil && storeQueries.ingester.shouldQuery {
+	if q.ingesterQuerier != nil {
 		res, err := q.blockSelectFromIngesters(ctx, ingesterReq)
 		if err != nil {
 			return nil, err
