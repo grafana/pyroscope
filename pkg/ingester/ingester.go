@@ -96,7 +96,7 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		localBucketCfg phlareobjclient.Config
 		err            error
 	)
-	localBucketCfg.Backend = "filesystem"
+	localBucketCfg.Backend = phlareobjclient.Filesystem
 	localBucketCfg.Filesystem.Directory = dbConfig.DataPath
 	i.localBucket, err = phlareobjclient.NewBucket(phlarectx, localBucketCfg, "local")
 	if err != nil {
