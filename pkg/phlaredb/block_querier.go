@@ -829,6 +829,11 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 		for _, querier := range queriers {
 			querier := querier
 			g.Go(util.RecoverPanic(func() error {
+				// signal the end of the profile streaming by sending an empty response.
+				sp.LogFields(otlog.String("msg", "no profile streaming as no deduplication needed"))
+				if err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{}); err != nil {
+					return err
+				}
 
 				iters, err := querier.SelectMatchingProfiles(ctx, request)
 				if err != nil {
