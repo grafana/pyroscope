@@ -7,6 +7,8 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
+	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 
@@ -299,11 +301,15 @@ func (r *replicasPerBlockID) pruneSupersededBlocks() {
 	}
 }
 
-func (r *replicasPerBlockID) blockPlan() map[string]*ingestv1.BlockHints {
+func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1.BlockHints {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "blockPlan")
+	defer sp.Finish()
+
 	var (
-		deduplicate = false
-		hash        = xxhash.New()
-		plan        = make(map[string]*ingestv1.BlockHints)
+		deduplicate             = false
+		hash                    = xxhash.New()
+		plan                    = make(map[string]*ingestv1.BlockHints)
+		smallestCompactionLevel = int32(0)
 	)
 
 	r.pruneIncompleteShardedBlocks()
@@ -323,6 +329,11 @@ func (r *replicasPerBlockID) blockPlan() map[string]*ingestv1.BlockHints {
 		// when we see a single ingester block, we want to deduplicate
 		if meta.Compaction != nil && meta.Compaction.Level == 1 {
 			deduplicate = true
+		}
+
+		// record the lowest compaction level
+		if meta.Compaction != nil && (smallestCompactionLevel == 0 || meta.Compaction.Level < smallestCompactionLevel) {
+			smallestCompactionLevel = meta.Compaction.Level
 		}
 
 		// only get store gateways replicas
@@ -367,6 +378,27 @@ func (r *replicasPerBlockID) blockPlan() map[string]*ingestv1.BlockHints {
 			hints.Deduplication = deduplicate
 		}
 	}
+
+	var plannedIngesterBlocks, plannedStoreGatwayBlocks int
+	for replica, blocks := range plan {
+		t, ok := r.instanceType[replica]
+		if !ok {
+			continue
+		}
+		if t == storeGatewayInstance {
+			plannedStoreGatwayBlocks += len(blocks.Ulids)
+		}
+		if t == ingesterInstance {
+			plannedIngesterBlocks += len(blocks.Ulids)
+		}
+	}
+
+	sp.LogFields(
+		otlog.Bool("deduplicate", deduplicate),
+		otlog.Int32("smallest_compaction_level", smallestCompactionLevel),
+		otlog.Int("planned_blocks_ingesters", plannedIngesterBlocks),
+		otlog.Int("planned_blocks_store_gateways", plannedStoreGatwayBlocks),
+	)
 
 	return plan
 }

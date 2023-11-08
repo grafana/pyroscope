@@ -807,6 +807,7 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 		otlog.String("end", model.Time(request.End).Time().String()),
 		otlog.String("selector", request.LabelSelector),
 		otlog.String("profile_id", request.Type.ID),
+		otlog.Object("hints", request.Hints),
 	)
 
 	queriers, err := blockGetter(ctx, model.Time(request.Start), model.Time(request.End), request.Hints)

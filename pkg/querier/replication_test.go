@@ -1,6 +1,7 @@
 package querier
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"testing"
@@ -238,7 +239,7 @@ func Test_replicasPerBlockID_blockPlan(t *testing.T) {
 			r := newReplicasPerBlockID()
 			tc.inputs(r)
 
-			plan := r.blockPlan()
+			plan := r.blockPlan(context.TODO())
 			for _, v := range tc.validators {
 				v(t, plan)
 			}

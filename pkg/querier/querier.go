@@ -370,7 +370,7 @@ func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (map[s
 		results.add(res, ingesterInstance)
 	}
 
-	return results.blockPlan(), nil
+	return results.blockPlan(ctx), nil
 
 }
 
