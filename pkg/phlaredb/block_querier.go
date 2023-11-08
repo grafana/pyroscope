@@ -845,10 +845,17 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 				if err != nil {
 					return err
 				}
+				defer func() {
+					iters.Close()
+				}()
 
 				profiles, err := iter.Slice(iters)
 				if err != nil {
 					return err
+				}
+
+				if len(profiles) == 0 {
+					return nil
 				}
 
 				// TODO(simonswine): Split profiles per row group and run the MergeByStacktraces in parallel.
