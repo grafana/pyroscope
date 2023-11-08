@@ -1398,7 +1398,10 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	}
 
 	var buf [][]parquet.Value
-
+	series := lo.Keys(lblsPerRef)
+	sort.Slice(series, func(i, j int) bool {
+		return series[i] < series[j]
+	})
 	pIt := query.NewBinaryJoinIterator(
 		0,
 		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
@@ -1421,8 +1424,18 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 
 	currSeriesIndex := int64(-1)
 	var currentSeriesSlice []Profile
+	start := int64(0)
+	end := int64(0)
+	countdiff := 0
 	for pIt.Next() {
 		res := pIt.At()
+		if start == 0 {
+			start = res.RowNumber[0]
+		}
+		if end != 0 && end != res.RowNumber[0]-1 {
+			countdiff++
+		}
+		end = res.RowNumber[0]
 		buf = res.Columns(buf, "SeriesIndex", "TimeNanos", "StacktracePartition")
 		seriesIndex := buf[0][0].Int64()
 		if seriesIndex != currSeriesIndex {
@@ -1441,6 +1454,7 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 			RowNum:              res.RowNumber[0],
 		})
 	}
+	fmt.Printf("start %d end %d diff %d", start, end, countdiff)
 	if len(currentSeriesSlice) > 0 {
 		iters = append(iters, iter.NewSliceIterator(currentSeriesSlice))
 	}

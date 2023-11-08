@@ -2,6 +2,7 @@ package phlaredb
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -88,15 +89,31 @@ func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Ite
 		columns.Value.ColumnIndex,
 	)
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
+	totalDupe := 0
+	total := 0
+	uniquePartition := map[uint64]struct{}{}
 	for profiles.Next() {
 		p := profiles.At()
-		partition := r.Partition(p.Row.StacktracePartition())
+		pID := p.Row.StacktracePartition()
+		partition := r.Partition(pID)
+		uniquePartition[pID] = struct{}{}
 		stacktraces := p.Values[0]
 		values := p.Values[1]
+		uniq := lo.Uniq(stacktraces)
+		totalDupe += len(stacktraces) - len(uniq)
+		total += len(stacktraces)
+
 		for i, sid := range stacktraces {
 			partition[sid.Uint32()] += values[i].Int64()
 		}
 	}
+	uniqueSt := 0
+	for pID := range uniquePartition {
+		uniqueSt += len(r.Partition(pID))
+	}
+	fmt.Println("stacktraces", total, " totalDupe ", totalDupe, "%", float64(totalDupe)/float64(total)*100)
+	fmt.Println("partition", len(uniquePartition), " uniqueSt ", uniqueSt, "%", float64(uniqueSt)/float64(total)*100)
+
 	return profiles.Err()
 }
 

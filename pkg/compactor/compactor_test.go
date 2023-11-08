@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -38,8 +39,12 @@ import (
 	"github.com/thanos-io/objstore"
 	"gopkg.in/yaml.v3"
 
+	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/iter"
 	pyroscope_objstore "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
@@ -2036,4 +2041,36 @@ func (b *bucketWithMockedAttributes) Attributes(ctx context.Context, name string
 	}
 
 	return b.Bucket.Attributes(ctx, name)
+}
+
+func TestLocalBlock(t *testing.T) {
+	ctx := context.Background()
+	bkt, err := filesystem.NewBucket("./")
+	require.NoError(t, err)
+	meta, err := block.ReadMetaFromDir("./01HEJWN680CTGYKGSNX4VJ9KAZ/")
+	require.NoError(t, err)
+	querier := phlaredb.NewSingleBlockQuerierFromMeta(ctx, bkt, meta)
+
+	err = querier.Open(ctx)
+	require.NoError(t, err)
+
+	it, err := querier.SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
+		LabelSelector: `{service_name="cortex-ops-01/ingester"}`,
+		Type: &typesv1.ProfileType{
+			ID:         "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+			Name:       "process_cpu",
+			SampleType: "cpu",
+			SampleUnit: "nanoseconds",
+			PeriodType: "cpu",
+			PeriodUnit: "nanoseconds",
+		},
+		Start: 0,
+		End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
+	})
+	require.NoError(t, err)
+	profiles, err := iter.Slice(it)
+	require.NoError(t, err)
+	querier.Sort(profiles)
+	_, err = querier.MergeByStacktraces(ctx, iter.NewSliceIterator(profiles))
+	require.NoError(t, err)
 }
