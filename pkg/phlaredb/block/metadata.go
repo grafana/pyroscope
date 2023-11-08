@@ -208,9 +208,13 @@ func (m *Meta) WriteBlockInfo(info *typesv1.BlockInfo) {
 		info.Compaction = &typesv1.BlockCompaction{}
 	}
 	info.Compaction.Level = int32(m.Compaction.Level)
-	info.Compaction.Sources = make([]string, len(m.Compaction.Parents))
+	info.Compaction.Parents = make([]string, len(m.Compaction.Parents))
 	for i, p := range m.Compaction.Parents {
-		info.Compaction.Sources[i] = p.ULID.String()
+		info.Compaction.Parents[i] = p.ULID.String()
+	}
+	info.Compaction.Sources = make([]string, len(m.Compaction.Sources))
+	for i, s := range m.Compaction.Sources {
+		info.Compaction.Sources[i] = s.String()
 	}
 	info.Labels = make([]*typesv1.LabelPair, 0, len(m.Labels))
 	for k, v := range m.Labels {
