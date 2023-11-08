@@ -203,11 +203,6 @@ func (m *MergeProfilesStacktracesRequest) CloneVT() *MergeProfilesStacktracesReq
 		copy(tmpContainer, rhs)
 		r.Profiles = tmpContainer
 	}
-	if rhs := m.Blocks; rhs != nil {
-		tmpContainer := make([]bool, len(rhs))
-		copy(tmpContainer, rhs)
-		r.Blocks = tmpContainer
-	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -1658,19 +1653,6 @@ func (m *MergeProfilesStacktracesRequest) MarshalToSizedBufferVT(dAtA []byte) (i
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.Blocks) > 0 {
-		for iNdEx := len(m.Blocks) - 1; iNdEx >= 0; iNdEx-- {
-			i--
-			if m.Blocks[iNdEx] {
-				dAtA[i] = 1
-			} else {
-				dAtA[i] = 0
-			}
-		}
-		i = encodeVarint(dAtA, i, uint64(len(m.Blocks)))
-		i--
-		dAtA[i] = 0x22
-	}
 	if m.MaxNodes != nil {
 		i = encodeVarint(dAtA, i, uint64(*m.MaxNodes))
 		i--
@@ -2931,9 +2913,6 @@ func (m *MergeProfilesStacktracesRequest) SizeVT() (n int) {
 	}
 	if m.MaxNodes != nil {
 		n += 1 + sov(uint64(*m.MaxNodes))
-	}
-	if len(m.Blocks) > 0 {
-		n += 1 + sov(uint64(len(m.Blocks))) + len(m.Blocks)*1
 	}
 	n += len(m.unknownFields)
 	return n
@@ -4230,76 +4209,6 @@ func (m *MergeProfilesStacktracesRequest) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.MaxNodes = &v
-		case 4:
-			if wireType == 0 {
-				var v int
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflow
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					v |= int(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				m.Blocks = append(m.Blocks, bool(v != 0))
-			} else if wireType == 2 {
-				var packedLen int
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflow
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					packedLen |= int(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				if packedLen < 0 {
-					return ErrInvalidLength
-				}
-				postIndex := iNdEx + packedLen
-				if postIndex < 0 {
-					return ErrInvalidLength
-				}
-				if postIndex > l {
-					return io.ErrUnexpectedEOF
-				}
-				var elementCount int
-				elementCount = packedLen
-				if elementCount != 0 && len(m.Blocks) == 0 {
-					m.Blocks = make([]bool, 0, elementCount)
-				}
-				for iNdEx < postIndex {
-					var v int
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflow
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						v |= int(b&0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					m.Blocks = append(m.Blocks, bool(v != 0))
-				}
-			} else {
-				return fmt.Errorf("proto: wrong wireType = %d for field Blocks", wireType)
-			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
