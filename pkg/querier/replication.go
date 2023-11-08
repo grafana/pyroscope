@@ -85,7 +85,7 @@ func forGivenReplicationSet[Result any, Querier any](ctx context.Context, client
 }
 
 // forGivenPlan runs f, in parallel, for given plan.
-func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]*ingestv1.BlockHints, clientFactory func(string) (Querier, error), f QueryReplicaWithHintsFn[Result, Querier]) ([]ResponseFromReplica[Result], error) {
+func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]*ingestv1.BlockHints, clientFactory func(string) (Querier, error), replicationSet ring.ReplicationSet, f QueryReplicaWithHintsFn[Result, Querier]) ([]ResponseFromReplica[Result], error) {
 	g, _ := errgroup.WithContext(ctx)
 
 	var (
@@ -94,6 +94,9 @@ func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]
 	)
 
 	for replica, hints := range plan {
+		if !replicationSet.Includes(replica) {
+			continue
+		}
 		var (
 			i = idx
 			r = replica

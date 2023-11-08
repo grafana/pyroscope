@@ -66,13 +66,18 @@ func forAllIngesters[T any](ctx context.Context, ingesterQuerier *IngesterQuerie
 
 // forAllPlannedIngesters runs f, in parallel, for all ingesters part of the plan
 func forAllPlannedIngesters[T any](ctx context.Context, ingesterQuerier *IngesterQuerier, plan map[string]*ingestv1.BlockHints, f QueryReplicaWithHintsFn[T, IngesterQueryClient]) ([]ResponseFromReplica[T], error) {
+	replicationSet, err := ingesterQuerier.ring.GetReplicationSetForOperation(readNoExtend)
+	if err != nil {
+		return nil, err
+	}
+
 	return forGivenPlan(ctx, plan, func(addr string) (IngesterQueryClient, error) {
 		client, err := ingesterQuerier.pool.GetClientFor(addr)
 		if err != nil {
 			return nil, err
 		}
 		return client.(IngesterQueryClient), nil
-	}, f)
+	}, replicationSet, f)
 }
 
 func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan map[string]*ingestv1.BlockHints) (*phlaremodel.Tree, error) {

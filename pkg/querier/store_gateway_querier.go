@@ -146,13 +146,18 @@ func forAllStoreGateways[T any](ctx context.Context, tenantID string, storegatew
 
 // forAllPlannedStoreGatway runs f, in parallel, for all store-gateways part of the plan
 func forAllPlannedStoreGateways[T any](ctx context.Context, _ string, storegatewayQuerier *StoreGatewayQuerier, plan map[string]*ingestv1.BlockHints, f QueryReplicaWithHintsFn[T, StoreGatewayQueryClient]) ([]ResponseFromReplica[T], error) {
+	replicationSet, err := storegatewayQuerier.ring.GetReplicationSetForOperation(readNoExtend)
+	if err != nil {
+		return nil, err
+	}
+
 	return forGivenPlan(ctx, plan, func(addr string) (StoreGatewayQueryClient, error) {
 		client, err := storegatewayQuerier.pool.GetClientFor(addr)
 		if err != nil {
 			return nil, err
 		}
 		return client.(StoreGatewayQueryClient), nil
-	}, f)
+	}, replicationSet, f)
 }
 
 // GetShuffleShardingSubring returns the subring to be used for a given user. This function
