@@ -71,14 +71,16 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 					}
 					classname := python.PythonString(sym.Classname[:], &sym.ClassnameType)
 					name := python.PythonString(sym.Name[:], &sym.NameType)
-					if classname == "" && filename == "" && name == "" {
+					if skipPythonFrame(classname, filename, name) {
 						continue
 					}
+					var frame string
 					if classname == "" {
-						sb.append(fmt.Sprintf("%s %s", filename, name))
+						frame = fmt.Sprintf("%s %s", filename, name)
 					} else {
-						sb.append(fmt.Sprintf("%s %s.%s", filename, classname, name))
+						frame = fmt.Sprintf("%s %s.%s", filename, classname, name)
 					}
+					sb.append(frame)
 				} else {
 					sb.append("pyperf_unknown")
 					s.options.Metrics.Python.UnknownSymbols.WithLabelValues(svc).Inc()
@@ -109,6 +111,12 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 	return nil
 }
 
+func skipPythonFrame(classname string, filename string, name string) bool {
+	// for now only skip _Py_InitCleanup frames in userspace
+	// https://github.com/python/cpython/blob/9eb2489266c4c1f115b8f72c0728db737cc8a815/Python/specialize.c#L2534
+	return classname == "" && filename == "__init__" && name == "__init__"
+}
+
 func (s *session) tryStartPythonProfiling(pid uint32, target *sd.Target, pi procInfoLite) {
 	const nTries = 4
 	for i := 0; i < nTries; i++ {
@@ -130,7 +138,7 @@ func (s *session) startPythonProfiling(pid uint32, target *sd.Target, pi procInf
 	if dead {
 		return false
 	}
-	pyPerf := s.getPyPerf()
+	pyPerf := s.getPyPerfLocked()
 	if pyPerf == nil {
 		_ = level.Error(s.logger).Log("err", "pyperf process profiling init failed. pyperf == nil", "pid", pid)
 		pi.typ = pyrobpf.ProfilingTypeError
@@ -167,7 +175,7 @@ func (s *session) startPythonProfiling(pid uint32, target *sd.Target, pi procInf
 }
 
 // may return nil if loadPyPerf returns error
-func (s *session) getPyPerf() *python.Perf {
+func (s *session) getPyPerfLocked() *python.Perf {
 	if s.pyperf != nil {
 		return s.pyperf
 	}
@@ -184,6 +192,14 @@ func (s *session) getPyPerf() *python.Perf {
 	}
 	s.pyperf = pyperf
 	return s.pyperf
+}
+
+// getPyPerf is used for testing to wait for pyperf to load
+// it may take long time to load and verify, especially running in qemu with no kvm
+func (s *session) getPyPerf() *python.Perf {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.getPyPerfLocked()
 }
 
 func (s *session) loadPyPerf() (*python.Perf, error) {

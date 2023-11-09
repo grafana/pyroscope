@@ -131,6 +131,7 @@ type UserOffsets struct {
 	PyInterpreterFrame_f_executable   int16
 	PyInterpreterFrame_previous       int16
 	PyInterpreterFrame_localsplus     int16
+	PyInterpreterFrame_owner          int16
 	PyRuntimeState_gilstate           int16
 	PyRuntimeState_autoTSSkey         int16
 	Gilstate_runtime_state_autoTSSkey int16

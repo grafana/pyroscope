@@ -253,6 +253,7 @@ var interesetd = []Need{
 		{"f_executable", "PyInterpreterFrame_f_executable"},
 		{"previous", "PyInterpreterFrame_previous"},
 		{"localsplus", "PyInterpreterFrame_localsplus"},
+		{"owner", "PyInterpreterFrame_owner"},
 	}},
 	{Name: "_PyRuntimeState", Fields: []NeedField{
 		{"gilstate", "PyRuntimeState_gilstate"},

@@ -36,9 +36,12 @@ enum {
     PY_ERROR_CLASS_NAME = 10,
     PY_ERROR_FILE_NAME = 11,
     PY_ERROR_NAME = 12,
+    PY_ERROR_FRAME_OWNER = 13,
+    PY_ERROR_FRAME_OWNER_INVALID = 14,
 
 
 };
+
 
 typedef struct {
     uint32_t major;
@@ -274,7 +277,6 @@ int pyperf_collect(struct bpf_perf_event_data *ctx) {
 }
 
 
-
 static __always_inline int check_first_arg(void *code_ptr,
                                            py_offset_config *offsets,
                                            py_symbol *symbol,
@@ -380,7 +382,7 @@ static __always_inline int get_names(
                 return -PY_ERROR_CLASS_NAME;
             }
             symbol->classname_type.type = PYSTR_TYPE_UTF8;
-            symbol->classname_type.size_codepoints = len-1;
+            symbol->classname_type.size_codepoints = len - 1;
         } else {
             // this happens in rideshare flask example under 3.9.18
             // todo: we should be able to get the class name
@@ -429,6 +431,29 @@ static __always_inline int get_frame_data(
     void *cur_frame = *frame_ptr;
     if (!cur_frame) {
         return 0;
+    }
+
+    if (offsets->PyInterpreterFrame_owner != -1) {
+        // https://github.com/python/cpython/blob/e7331365b488382d906ce6733ab1349ded49c928/Python/traceback.c#L991
+        char owner = 0;
+        if (bpf_probe_read_user(
+                &owner, sizeof(owner), (void *) (cur_frame + offsets->PyInterpreterFrame_owner))) {
+            return -PY_ERROR_FRAME_OWNER;
+        }
+        if (owner == FRAME_OWNED_BY_CSTACK) {
+            if (bpf_probe_read_user(
+                    frame_ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_previous))) {
+                return -PY_ERROR_FRAME_PREV;
+            }
+            cur_frame = *frame_ptr;
+            if (!cur_frame) {
+                return 0;
+            }
+        } else if (owner != FRAME_OWNED_BY_THREAD &&
+                   owner != FRAME_OWNED_BY_GENERATOR &&
+                   owner != FRAME_OWNED_BY_FRAME_OBJECT) {
+            return -PY_ERROR_FRAME_OWNER_INVALID;
+        }
     }
     // read PyCodeObject first, if that fails, then no point reading next frame
     if (bpf_probe_read_user(
