@@ -513,9 +513,10 @@ func (d *Distributor) maybeAggregate(tenantID string, labels phlaremodel.Labels,
 	if !ok {
 		return nil, false, nil
 	}
-
-	k, _ := labels.HashWithoutLabels(make([]byte, 0, 1024), phlaremodel.LabelNameSessionID)
-	r, ok, err := a.Aggregate(k, profile.TimeNanos, mergeProfile(profile))
+	if _, hasSessionID := labels.GetLabel(phlaremodel.LabelNameSessionID); hasSessionID {
+		labels = labels.Clone().Delete(phlaremodel.LabelNameSessionID)
+	}
+	r, ok, err := a.Aggregate(labels.Hash(), profile.TimeNanos, mergeProfile(profile))
 	if err != nil {
 		return nil, false, err
 	}
