@@ -266,7 +266,6 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			req.TotalBytesUncompressed += int64(len(lbs.Value))
 		}
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
-		series.Labels = d.limitMaxSessionsPerSeries(tenantID, series.Labels)
 		for _, raw := range series.Samples {
 			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 			d.profileReceivedStats.Inc(1)
@@ -385,6 +384,11 @@ func (d *Distributor) sendAggregatedProfile(ctx context.Context, req *distributo
 }
 
 func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.PushRequest, tenantID string) (resp *connect.Response[pushv1.PushResponse], err error) {
+	// Reduce cardinality of session_id label.
+	for _, series := range req.Series {
+		series.Labels = d.limitMaxSessionsPerSeries(tenantID, series.Labels)
+	}
+
 	// Next we split profiles by labels. Newly allocated profiles should be closed after use.
 	profileSeries, newProfiles := extractSampleSeries(req)
 	defer func() {
@@ -509,7 +513,9 @@ func (d *Distributor) maybeAggregate(tenantID string, labels phlaremodel.Labels,
 	if !ok {
 		return nil, false, nil
 	}
-	r, ok, err := a.Aggregate(labels.Hash(), profile.TimeNanos, mergeProfile(profile))
+
+	k, _ := labels.HashWithoutLabels(make([]byte, 0, 1024), phlaremodel.LabelNameSessionID)
+	r, ok, err := a.Aggregate(k, profile.TimeNanos, mergeProfile(profile))
 	if err != nil {
 		return nil, false, err
 	}
