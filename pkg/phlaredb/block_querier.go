@@ -1547,12 +1547,14 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 
 	var (
 		chks       = make([]index.ChunkMeta, 1)
+		lbls       = make(phlaremodel.Labels, 0, 6)
 		lblsPerRef = make(map[int64]struct{})
 	)
 
 	// get all relevant labels/fingerprints
 	for postings.Next() {
-		_, err := b.index.Series(postings.At(), nil, &chks)
+		// todo  Remove the need to read labels.
+		_, err := b.index.Series(postings.At(), &lbls, &chks)
 		if err != nil {
 			return nil, err
 		}
