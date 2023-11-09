@@ -22,11 +22,12 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
-	testhelper2 "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	testhelper2 "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
