@@ -117,6 +117,9 @@ func TestSelectMergeStacktraces(t *testing.T) {
 	requireFakeMergeProfilesStacktracesResultTree(t, res)
 }
 
+func TestSelectMergeStacktracesWithBlockDeduplication(t *testing.T) {
+}
+
 func TestSelectMergeByLabels(t *testing.T) {
 	resp1 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 		{

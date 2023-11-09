@@ -472,3 +472,39 @@ func (f *PhlareDB) Evict(blockID ulid.ULID, fn func() error) (bool, error) {
 	<-e.done
 	return e.evicted, e.err
 }
+
+func (f *PhlareDB) BlockMetadata(ctx context.Context, req *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error) {
+
+	var result ingestv1.BlockMetadataResponse
+
+	appendInRange := func(q TimeBounded, meta *block.Meta) {
+		if !InRange(q, model.Time(req.Msg.Start), model.Time(req.Msg.End)) {
+			return
+		}
+		var info typesv1.BlockInfo
+		meta.WriteBlockInfo(&info)
+		result.Blocks = append(result.Blocks, &info)
+	}
+
+	f.headLock.RLock()
+	for _, h := range f.heads {
+		appendInRange(h, h.meta)
+	}
+	for _, h := range f.flushing {
+		appendInRange(h, h.meta)
+	}
+	f.headLock.RUnlock()
+
+	f.blockQuerier.queriersLock.RLock()
+	for _, q := range f.blockQuerier.queriers {
+		appendInRange(q, q.meta)
+	}
+	f.blockQuerier.queriersLock.RUnlock()
+
+	// blocks move from heads to flushing to blockQuerier, so we need to check if that might have happened and caused a duplicate
+	result.Blocks = lo.UniqBy(result.Blocks, func(b *typesv1.BlockInfo) string {
+		return b.Ulid
+	})
+
+	return connect.NewResponse(&result), nil
+}

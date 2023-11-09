@@ -3,6 +3,7 @@ package querier
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"sort"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -174,112 +176,152 @@ func Test_Series(t *testing.T) {
 	}, out.Msg.LabelsSet)
 }
 
-func Test_SelectMergeStacktraces(t *testing.T) {
-	req := connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
-		LabelSelector: `{app="foo"}`,
-		ProfileTypeID: "memory:inuse_space:bytes:space:byte",
-		Start:         0,
-		End:           2,
-	})
-	bidi1 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
-		{
-			LabelsSets: []*typesv1.Labels{
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
-				},
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
-				},
-			},
-			Profiles: []*ingestv1.SeriesProfile{
-				{Timestamp: 1, LabelIndex: 0},
-				{Timestamp: 2, LabelIndex: 1},
-				{Timestamp: 2, LabelIndex: 0},
-			},
-		},
-	})
-	bidi2 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
-		{
-			LabelsSets: []*typesv1.Labels{
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
-				},
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
-				},
-			},
-			Profiles: []*ingestv1.SeriesProfile{
-				{Timestamp: 1, LabelIndex: 1},
-				{Timestamp: 1, LabelIndex: 0},
-				{Timestamp: 2, LabelIndex: 1},
-			},
-		},
-	})
-	bidi3 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
-		{
-			LabelsSets: []*typesv1.Labels{
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
-				},
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
-				},
-			},
-			Profiles: []*ingestv1.SeriesProfile{
-				{Timestamp: 1, LabelIndex: 1},
-				{Timestamp: 1, LabelIndex: 0},
-				{Timestamp: 2, LabelIndex: 0},
-			},
-		},
-	})
-	querier, err := New(Config{
-		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-	}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "1"},
-		{Addr: "2"},
-		{Addr: "3"},
-	}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
-		q := newFakeQuerier()
-		switch addr {
-		case "1":
-			q.On("MergeProfilesStacktraces", mock.Anything).Once().Return(bidi1)
-		case "2":
-			q.On("MergeProfilesStacktraces", mock.Anything).Once().Return(bidi2)
-		case "3":
-			q.On("MergeProfilesStacktraces", mock.Anything).Once().Return(bidi3)
-		}
-		return q, nil
-	}}, nil, nil, log.NewLogfmtLogger(os.Stdout))
-	require.NoError(t, err)
-	flame, err := querier.SelectMergeStacktraces(context.Background(), req)
-	require.NoError(t, err)
+func newBlockMeta(ulids ...string) *connect.Response[ingestv1.BlockMetadataResponse] {
+	resp := &ingestv1.BlockMetadataResponse{}
 
-	sort.Strings(flame.Msg.Flamegraph.Names)
-	require.Equal(t, []string{"bar", "buzz", "foo", "total"}, flame.Msg.Flamegraph.Names)
-	require.Equal(t, []int64{0, 2, 0, 0}, flame.Msg.Flamegraph.Levels[0].Values)
-	require.Equal(t, int64(2), flame.Msg.Flamegraph.Total)
-	require.Equal(t, int64(2), flame.Msg.Flamegraph.MaxSelf)
-	var selected []testProfile
-	selected = append(selected, bidi1.kept...)
-	selected = append(selected, bidi2.kept...)
-	selected = append(selected, bidi3.kept...)
-	sort.Slice(selected, func(i, j int) bool {
-		if selected[i].Ts == selected[j].Ts {
-			return phlaremodel.CompareLabelPairs(selected[i].Labels.Labels, selected[j].Labels.Labels) < 0
+	resp.Blocks = make([]*typesv1.BlockInfo, len(ulids))
+	for i, ulid := range ulids {
+		resp.Blocks[i] = &typesv1.BlockInfo{
+			Ulid: ulid,
 		}
-		return selected[i].Ts < selected[j].Ts
-	})
-	require.Len(t, selected, 4)
-	require.Equal(t,
-		[]testProfile{
-			{Ts: 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
-			{Ts: 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
-			{Ts: 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
-			{Ts: 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
-		}, selected)
+	}
+
+	return connect.NewResponse(resp)
 }
 
-func Test_SelectMergeProfile(t *testing.T) {
+var endpointNotExistingErr = connect.NewError(
+	connect.CodeInternal,
+	connect.NewError(
+		connect.CodeUnknown,
+		errors.New("405 Method Not Allowed"),
+	),
+)
+
+func Test_isEndpointNotExisting(t *testing.T) {
+	assert.False(t, isEndpointNotExistingErr(nil))
+	assert.False(t, isEndpointNotExistingErr(errors.New("my-error")))
+	assert.True(t, isEndpointNotExistingErr(endpointNotExistingErr))
+}
+
+func Test_SelectMergeStacktraces(t *testing.T) {
+	now := time.Now().UnixMilli()
+	for _, tc := range []struct {
+		blockSelect bool
+		name        string
+	}{
+		// This tests the interoberabitlity between older ingesters and new queriers
+		{false, "WithoutBlockHints"},
+		{true, "WithBlockHints"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+
+			req := connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
+				LabelSelector: `{app="foo"}`,
+				ProfileTypeID: "memory:inuse_space:bytes:space:byte",
+				Start:         now + 0,
+				End:           now + 2,
+			})
+			bidi1 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
+				{
+					LabelsSets: []*typesv1.Labels{
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
+						},
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
+						},
+					},
+					Profiles: []*ingestv1.SeriesProfile{
+						{Timestamp: now + 1, LabelIndex: 0},
+						{Timestamp: now + 2, LabelIndex: 1},
+						{Timestamp: now + 2, LabelIndex: 0},
+					},
+				},
+			})
+			bidi2 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
+				{
+					LabelsSets: []*typesv1.Labels{
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
+						},
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
+						},
+					},
+					Profiles: []*ingestv1.SeriesProfile{
+						{Timestamp: now + 1, LabelIndex: 1},
+						{Timestamp: now + 1, LabelIndex: 0},
+						{Timestamp: now + 2, LabelIndex: 1},
+					},
+				},
+			})
+			bidi3 := newFakeBidiClientStacktraces([]*ingestv1.ProfileSets{
+				{
+					LabelsSets: []*typesv1.Labels{
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
+						},
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
+						},
+					},
+					Profiles: []*ingestv1.SeriesProfile{
+						{Timestamp: now + 1, LabelIndex: 1},
+						{Timestamp: now + 1, LabelIndex: 0},
+						{Timestamp: now + 2, LabelIndex: 0},
+					},
+				},
+			})
+			querier, err := New(Config{
+				PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+			}, testhelper.NewMockRing([]ring.InstanceDesc{
+				{Addr: "1"},
+				{Addr: "2"},
+				{Addr: "3"},
+			}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
+				q := newFakeQuerier()
+				switch addr {
+				case "1":
+					q.mockMergeStacktraces(bidi1, []string{"a", "d"}, tc.blockSelect)
+				case "2":
+					q.mockMergeStacktraces(bidi2, []string{"b", "d"}, tc.blockSelect)
+				case "3":
+					q.mockMergeStacktraces(bidi3, []string{"c", "d"}, tc.blockSelect)
+				}
+				return q, nil
+			}}, nil, nil, log.NewLogfmtLogger(os.Stdout))
+			require.NoError(t, err)
+			flame, err := querier.SelectMergeStacktraces(context.Background(), req)
+			require.NoError(t, err)
+
+			sort.Strings(flame.Msg.Flamegraph.Names)
+			require.Equal(t, []string{"bar", "buzz", "foo", "total"}, flame.Msg.Flamegraph.Names)
+			require.Equal(t, []int64{0, 2, 0, 0}, flame.Msg.Flamegraph.Levels[0].Values)
+			require.Equal(t, int64(2), flame.Msg.Flamegraph.Total)
+			require.Equal(t, int64(2), flame.Msg.Flamegraph.MaxSelf)
+			var selected []testProfile
+			selected = append(selected, bidi1.kept...)
+			selected = append(selected, bidi2.kept...)
+			selected = append(selected, bidi3.kept...)
+			sort.Slice(selected, func(i, j int) bool {
+				if selected[i].Ts == selected[j].Ts {
+					return phlaremodel.CompareLabelPairs(selected[i].Labels.Labels, selected[j].Labels.Labels) < 0
+				}
+				return selected[i].Ts < selected[j].Ts
+			})
+			require.Len(t, selected, 4)
+			require.Equal(t,
+				[]testProfile{
+					{Ts: now + 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
+					{Ts: now + 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
+					{Ts: now + 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
+					{Ts: now + 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
+				}, selected)
+		})
+	}
+}
+
+func Test_SelectMergeProfiles(t *testing.T) {
 	req := connect.NewRequest(&querierv1.SelectMergeProfileRequest{
 		LabelSelector: `{app="foo"}`,
 		ProfileTypeID: "memory:inuse_space:bytes:space:byte",
@@ -505,6 +547,15 @@ func newFakeQuerier() *fakeQuerierIngester {
 	return &fakeQuerierIngester{}
 }
 
+func (f *fakeQuerierIngester) mockMergeStacktraces(bidi *fakeBidiClientStacktraces, blocks []string, blockSelect bool) {
+	if blockSelect {
+		f.On("BlockMetadata", mock.Anything, mock.Anything).Once().Return(newBlockMeta(blocks...), nil)
+	} else {
+		f.On("BlockMetadata", mock.Anything, mock.Anything).Once().Return(nil, endpointNotExistingErr)
+	}
+	f.On("MergeProfilesStacktraces", mock.Anything).Once().Return(bidi)
+}
+
 func (f *fakeQuerierIngester) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
 	var (
 		args = f.Called(ctx, req)
@@ -559,6 +610,22 @@ func (f *fakeQuerierIngester) Series(ctx context.Context, req *connect.Request[i
 	)
 	if args[0] != nil {
 		res = args[0].(*connect.Response[ingestv1.SeriesResponse])
+	}
+	if args[1] != nil {
+		err = args.Get(1).(error)
+	}
+
+	return res, err
+}
+
+func (f *fakeQuerierIngester) BlockMetadata(ctx context.Context, req *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error) {
+	var (
+		args = f.Called(ctx, req)
+		res  *connect.Response[ingestv1.BlockMetadataResponse]
+		err  error
+	)
+	if args[0] != nil {
+		res = args[0].(*connect.Response[ingestv1.BlockMetadataResponse])
 	}
 	if args[1] != nil {
 		err = args.Get(1).(error)

@@ -207,6 +207,10 @@ type fakeQuerier struct {
 	doErr bool
 }
 
+func (f *fakeQuerier) BlockID() string {
+	return "block-id"
+}
+
 func (f *fakeQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
 	// add some jitter
 	time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
