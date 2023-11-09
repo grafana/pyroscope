@@ -138,6 +138,16 @@ limits:
   # CLI flag: -validation.max-profile-symbol-value-length
   [max_profile_symbol_value_length: <int> | default = 65535]
 
+  # Duration of the distributor aggregation window. Requires aggregation period
+  # to be specified. 0 to disable.
+  # CLI flag: -distributor.aggregation-window
+  [distributor_aggregation_window: <duration> | default = 0s]
+
+  # Duration of the distributor aggregation period. Requires aggregation window
+  # to be specified. 0 to disable.
+  # CLI flag: -distributor.aggregation-period
+  [distributor_aggregation_period: <duration> | default = 0s]
+
   # The tenant's shard size used by shuffle-sharding. Must be set both on
   # ingesters and distributors. 0 disables shuffle sharding.
   # CLI flag: -distributor.ingestion-tenant-shard-size

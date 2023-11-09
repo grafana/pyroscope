@@ -59,4 +59,9 @@ func RegisterStoreGatewayServiceHandler(mux *mux.Router, svc StoreGatewayService
 		svc.Series,
 		opts...,
 	))
+	mux.Handle("/storegateway.v1.StoreGatewayService/BlockMetadata", connect_go.NewUnaryHandler(
+		"/storegateway.v1.StoreGatewayService/BlockMetadata",
+		svc.BlockMetadata,
+		opts...,
+	))
 }

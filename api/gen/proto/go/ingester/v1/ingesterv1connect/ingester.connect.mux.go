@@ -69,4 +69,9 @@ func RegisterIngesterServiceHandler(mux *mux.Router, svc IngesterServiceHandler,
 		svc.MergeSpanProfile,
 		opts...,
 	))
+	mux.Handle("/ingester.v1.IngesterService/BlockMetadata", connect_go.NewUnaryHandler(
+		"/ingester.v1.IngesterService/BlockMetadata",
+		svc.BlockMetadata,
+		opts...,
+	))
 }

@@ -62,6 +62,9 @@ const (
 	// IngesterServiceMergeSpanProfileProcedure is the fully-qualified name of the IngesterService's
 	// MergeSpanProfile RPC.
 	IngesterServiceMergeSpanProfileProcedure = "/ingester.v1.IngesterService/MergeSpanProfile"
+	// IngesterServiceBlockMetadataProcedure is the fully-qualified name of the IngesterService's
+	// BlockMetadata RPC.
+	IngesterServiceBlockMetadataProcedure = "/ingester.v1.IngesterService/BlockMetadata"
 )
 
 // IngesterServiceClient is a client for the ingester.v1.IngesterService service.
@@ -76,6 +79,7 @@ type IngesterServiceClient interface {
 	MergeProfilesLabels(context.Context) *connect_go.BidiStreamForClient[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse]
 	MergeProfilesPprof(context.Context) *connect_go.BidiStreamForClient[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse]
 	MergeSpanProfile(context.Context) *connect_go.BidiStreamForClient[v12.MergeSpanProfileRequest, v12.MergeSpanProfileResponse]
+	BlockMetadata(context.Context, *connect_go.Request[v12.BlockMetadataRequest]) (*connect_go.Response[v12.BlockMetadataResponse], error)
 }
 
 // NewIngesterServiceClient constructs a client for the ingester.v1.IngesterService service. By
@@ -138,6 +142,11 @@ func NewIngesterServiceClient(httpClient connect_go.HTTPClient, baseURL string, 
 			baseURL+IngesterServiceMergeSpanProfileProcedure,
 			opts...,
 		),
+		blockMetadata: connect_go.NewClient[v12.BlockMetadataRequest, v12.BlockMetadataResponse](
+			httpClient,
+			baseURL+IngesterServiceBlockMetadataProcedure,
+			opts...,
+		),
 	}
 }
 
@@ -153,6 +162,7 @@ type ingesterServiceClient struct {
 	mergeProfilesLabels      *connect_go.Client[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse]
 	mergeProfilesPprof       *connect_go.Client[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse]
 	mergeSpanProfile         *connect_go.Client[v12.MergeSpanProfileRequest, v12.MergeSpanProfileResponse]
+	blockMetadata            *connect_go.Client[v12.BlockMetadataRequest, v12.BlockMetadataResponse]
 }
 
 // Push calls ingester.v1.IngesterService.Push.
@@ -205,6 +215,11 @@ func (c *ingesterServiceClient) MergeSpanProfile(ctx context.Context) *connect_g
 	return c.mergeSpanProfile.CallBidiStream(ctx)
 }
 
+// BlockMetadata calls ingester.v1.IngesterService.BlockMetadata.
+func (c *ingesterServiceClient) BlockMetadata(ctx context.Context, req *connect_go.Request[v12.BlockMetadataRequest]) (*connect_go.Response[v12.BlockMetadataResponse], error) {
+	return c.blockMetadata.CallUnary(ctx, req)
+}
+
 // IngesterServiceHandler is an implementation of the ingester.v1.IngesterService service.
 type IngesterServiceHandler interface {
 	Push(context.Context, *connect_go.Request[v1.PushRequest]) (*connect_go.Response[v1.PushResponse], error)
@@ -217,6 +232,7 @@ type IngesterServiceHandler interface {
 	MergeProfilesLabels(context.Context, *connect_go.BidiStream[v12.MergeProfilesLabelsRequest, v12.MergeProfilesLabelsResponse]) error
 	MergeProfilesPprof(context.Context, *connect_go.BidiStream[v12.MergeProfilesPprofRequest, v12.MergeProfilesPprofResponse]) error
 	MergeSpanProfile(context.Context, *connect_go.BidiStream[v12.MergeSpanProfileRequest, v12.MergeSpanProfileResponse]) error
+	BlockMetadata(context.Context, *connect_go.Request[v12.BlockMetadataRequest]) (*connect_go.Response[v12.BlockMetadataResponse], error)
 }
 
 // NewIngesterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -275,6 +291,11 @@ func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect_go.Ha
 		svc.MergeSpanProfile,
 		opts...,
 	)
+	ingesterServiceBlockMetadataHandler := connect_go.NewUnaryHandler(
+		IngesterServiceBlockMetadataProcedure,
+		svc.BlockMetadata,
+		opts...,
+	)
 	return "/ingester.v1.IngesterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case IngesterServicePushProcedure:
@@ -297,6 +318,8 @@ func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect_go.Ha
 			ingesterServiceMergeProfilesPprofHandler.ServeHTTP(w, r)
 		case IngesterServiceMergeSpanProfileProcedure:
 			ingesterServiceMergeSpanProfileHandler.ServeHTTP(w, r)
+		case IngesterServiceBlockMetadataProcedure:
+			ingesterServiceBlockMetadataHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -344,4 +367,8 @@ func (UnimplementedIngesterServiceHandler) MergeProfilesPprof(context.Context, *
 
 func (UnimplementedIngesterServiceHandler) MergeSpanProfile(context.Context, *connect_go.BidiStream[v12.MergeSpanProfileRequest, v12.MergeSpanProfileResponse]) error {
 	return connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.MergeSpanProfile is not implemented"))
+}
+
+func (UnimplementedIngesterServiceHandler) BlockMetadata(context.Context, *connect_go.Request[v12.BlockMetadataRequest]) (*connect_go.Response[v12.BlockMetadataResponse], error) {
+	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("ingester.v1.IngesterService.BlockMetadata is not implemented"))
 }
