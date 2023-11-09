@@ -26,7 +26,7 @@ func Clear[S ~[]E, E any](s S) {
 	}
 }
 
-func Grow[S ~[]E, E any](s S, n int) S {
+func GrowLen[S ~[]E, E any](s S, n int) S {
 	if cap(s) < n {
 		s = make([]E, n)
 	}

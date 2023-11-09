@@ -36,7 +36,7 @@ func addUploadParams(cmd commander) *uploadParams {
 	params.phlareClient = addPhlareClient(cmd)
 
 	cmd.Arg("path", "Path(s) to profile(s) to upload").Required().ExistingFilesVar(&params.paths)
-	cmd.Flag("extra-labels", "Add additional labels to the profile(s)").Default("job=profilecli-upload").StringMapVar(&params.extraLabels)
+	cmd.Flag("extra-labels", "Add additional labels to the profile(s)").StringMapVar(&params.extraLabels)
 	return params
 }
 
@@ -83,6 +83,11 @@ func upload(ctx context.Context, params *uploadParams) (err error) {
 				}
 			}
 			lblBuilder.Set(model.LabelNameProfileName, name)
+		}
+
+		// set a default service_name label if one is not provided
+		if lbl.Get(model.LabelNameServiceName) == "" {
+			lblBuilder.Set(model.LabelNameServiceName, "profilecli-upload")
 		}
 
 		series[idx] = &pushv1.RawProfileSeries{

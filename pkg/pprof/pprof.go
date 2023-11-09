@@ -599,7 +599,7 @@ func (h SampleHasher) Hashes(samples []*profilev1.Sample) []uint64 {
 
 	hashes := make([]uint64, len(samples))
 	for i, sample := range samples {
-		if _, err := h.hash.Write(locationBytes(sample)); err != nil {
+		if _, err := h.hash.Write(uint64Bytes(sample.LocationId)); err != nil {
 			panic("unable to write hash")
 		}
 		sort.Sort(LabelsByKeyValue(sample.Label))
@@ -617,15 +617,15 @@ func (h SampleHasher) Hashes(samples []*profilev1.Sample) []uint64 {
 	return hashes
 }
 
-func locationBytes(sample *profilev1.Sample) []byte {
-	if len(sample.LocationId) == 0 {
+func uint64Bytes(s []uint64) []byte {
+	if len(s) == 0 {
 		return nil
 	}
 	var bs []byte
 	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&bs))
-	hdr.Len = len(sample.LocationId) * 8
+	hdr.Len = len(s) * 8
 	hdr.Cap = hdr.Len
-	hdr.Data = uintptr(unsafe.Pointer(&sample.LocationId[0]))
+	hdr.Data = uintptr(unsafe.Pointer(&s[0]))
 	return bs
 }
 
@@ -871,7 +871,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	dst.Period = e.profile.Period
 	dst.DefaultSampleType = e.profile.DefaultSampleType
 
-	dst.SampleType = slices.Grow(dst.SampleType, len(e.profile.SampleType))
+	dst.SampleType = slices.GrowLen(dst.SampleType, len(e.profile.SampleType))
 	for i, v := range e.profile.SampleType {
 		dst.SampleType[i] = &profilev1.ValueType{
 			Type: e.strings.lookupString(v.Type),
@@ -881,7 +881,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	dst.DropFrames = e.strings.lookupString(e.profile.DropFrames)
 	dst.KeepFrames = e.strings.lookupString(e.profile.KeepFrames)
 	if c := len(e.profile.Comment); c > 0 {
-		dst.Comment = slices.Grow(dst.Comment, c)
+		dst.Comment = slices.GrowLen(dst.Comment, c)
 		for i, comment := range e.profile.Comment {
 			dst.Comment[i] = e.strings.lookupString(comment)
 		}
@@ -904,7 +904,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	}
 
 	// Copy locations.
-	dst.Location = slices.Grow(dst.Location, int(e.locations.resolved))
+	dst.Location = slices.GrowLen(dst.Location, int(e.locations.resolved))
 	for i, j := range e.locations.indices {
 		// i points to the location in the source profile.
 		// j point to the location in the new profile.
@@ -930,7 +930,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	}
 
 	// Copy mappings.
-	dst.Mapping = slices.Grow(dst.Mapping, int(e.mappings.resolved))
+	dst.Mapping = slices.GrowLen(dst.Mapping, int(e.mappings.resolved))
 	for i, j := range e.mappings.indices {
 		if j == 0 {
 			continue
@@ -951,7 +951,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	}
 
 	// Copy functions.
-	dst.Function = slices.Grow(dst.Function, int(e.functions.resolved))
+	dst.Function = slices.GrowLen(dst.Function, int(e.functions.resolved))
 	for i, j := range e.functions.indices {
 		if j == 0 {
 			continue
@@ -974,7 +974,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	}
 
 	// Copy strings.
-	dst.StringTable = slices.Grow(dst.StringTable, int(e.strings.resolved)+1)
+	dst.StringTable = slices.GrowLen(dst.StringTable, int(e.strings.resolved)+1)
 	for i, j := range e.strings.indices {
 		if j == 0 {
 			continue
@@ -1076,7 +1076,7 @@ func RenameLabel(p *profilev1.Profile, oldName, newName string) {
 
 func ZeroLabelStrings(p *profilev1.Profile) {
 	// TODO: A true bitmap should be used instead.
-	st := slices.Grow(uint32SlicePool.Get(), len(p.StringTable))
+	st := slices.GrowLen(uint32SlicePool.Get(), len(p.StringTable))
 	slices.Clear(st)
 	defer uint32SlicePool.Put(st)
 	for _, t := range p.SampleType {

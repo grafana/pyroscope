@@ -14,7 +14,6 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
-	"github.com/grafana/pyroscope/pkg/slices"
 )
 
 var (
@@ -328,13 +327,6 @@ func (s Samples) Compact(dedupe bool) Samples {
 
 func (s Samples) Clone() Samples {
 	return cloneSamples(s)
-}
-
-func (s Samples) Reset(n int) Samples {
-	s.StacktraceIDs = slices.Grow(s.StacktraceIDs, n)
-	s.Values = slices.Grow(s.Values, n)
-	s.Spans = slices.Grow(s.Spans, n)
-	return s
 }
 
 func trimDuplicateSamples(samples Samples) Samples {

@@ -819,7 +819,7 @@ storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.
   # CLI flag: -storage.backend
-  [backend: <string> | default = "filesystem"]
+  [backend: <string> | default = ""]
 
   # The s3_backend block configures the connection to Amazon S3 object storage
   # backend.
@@ -2105,7 +2105,7 @@ The `filesystem_storage_backend` block configures the usage of local file system
 ```yaml
 # Local filesystem storage directory.
 # CLI flag: -storage.filesystem.dir
-[dir: <string> | default = ""]
+[dir: <string> | default = "./data-shared"]
 ```
 
 ```

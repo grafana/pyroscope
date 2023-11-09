@@ -131,6 +131,22 @@ func (b *jfrPprofBuilders) addStacktraceImpl(sampleType int64, lwh labelsWithHas
 		return
 	}
 
+	addValues := func(dst []int64) {
+		mul := 1
+		if sampleType == sampleTypeCPU || sampleType == sampleTypeWall {
+			mul = int(b.period)
+		}
+		for i, value := range values {
+			dst[i] += value * int64(mul)
+		}
+	}
+
+	sample := e.Value.FindExternalSample(uint32(ref))
+	if sample != nil {
+		addValues(sample.Value)
+		return
+	}
+
 	locations := make([]uint64, 0, len(st.Frames))
 	for i := 0; i < len(st.Frames); i++ {
 		f := st.Frames[i]
@@ -151,16 +167,11 @@ func (b *jfrPprofBuilders) addStacktraceImpl(sampleType int64, lwh labelsWithHas
 				locations = append(locations, loc)
 			}
 			//todo remove Scratch field from the Method
-
 		}
 	}
 	vs := make([]int64, len(values))
-	copy(vs, values)
-	if sampleType == sampleTypeCPU || sampleType == sampleTypeWall {
-		vs[0] *= b.period
-	}
-	e.Value.AddSample(locations, vs)
-
+	addValues(vs)
+	e.Value.AddExternalSample(locations, vs, uint32(ref))
 }
 
 func (b *jfrPprofBuilders) build(event string) *model.PushRequest {

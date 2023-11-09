@@ -37,6 +37,10 @@ Usage of ./pyroscope:
     	yaml file to load
   -consul.hostname string
     	Hostname and port of Consul. (default "localhost:8500")
+  -distributor.aggregation-period duration
+    	Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.
+  -distributor.aggregation-window duration
+    	Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.
   -distributor.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
   -distributor.health-check-ingesters
@@ -252,7 +256,7 @@ Usage of ./pyroscope:
   -storage.azure.endpoint-suffix string
     	Azure storage endpoint suffix without schema. The account name will be prefixed to this value to create the FQDN. If set to empty string, default endpoint suffix is used.
   -storage.backend string
-    	Backend storage to use. Supported backends are: s3, gcs, azure, swift, filesystem, cos. (default "filesystem")
+    	Backend storage to use. Supported backends are: s3, gcs, azure, swift, filesystem, cos.
   -storage.cos.app-id string
     	COS app id
   -storage.cos.bucket string
@@ -266,7 +270,7 @@ Usage of ./pyroscope:
   -storage.cos.secret-key string
     	COS secret key
   -storage.filesystem.dir string
-    	Local filesystem storage directory.
+    	Local filesystem storage directory. (default "./data-shared")
   -storage.gcs.bucket-name string
     	GCS bucket name
   -storage.gcs.service-account string
