@@ -6,6 +6,7 @@ HOSTS = [
     'us-east',
     'eu-north',
     'ap-south',
+    'ap-south-alpine',
 ]
 
 VEHICLES = [
