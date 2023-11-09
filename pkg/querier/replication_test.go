@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
@@ -236,7 +237,7 @@ func Test_replicasPerBlockID_blockPlan(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			r := newReplicasPerBlockID()
+			r := newReplicasPerBlockID(log.NewNopLogger())
 			tc.inputs(r)
 
 			plan := r.blockPlan(context.TODO())

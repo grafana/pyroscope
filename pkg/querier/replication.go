@@ -2,9 +2,11 @@ package querier
 
 import (
 	"context"
+	"encoding/json"
 	"sort"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
 	"github.com/opentracing/opentracing-go"
@@ -16,6 +18,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/spanlogger"
 )
 
 type ResponseFromReplica[T any] struct {
@@ -145,13 +148,15 @@ type replicasPerBlockID struct {
 	m            map[string][]string
 	meta         map[string]*typesv1.BlockInfo
 	instanceType map[string]instanceType
+	logger       log.Logger
 }
 
-func newReplicasPerBlockID() *replicasPerBlockID {
+func newReplicasPerBlockID(logger log.Logger) *replicasPerBlockID {
 	return &replicasPerBlockID{
 		m:            make(map[string][]string),
 		meta:         make(map[string]*typesv1.BlockInfo),
 		instanceType: make(map[string]instanceType),
+		logger:       logger,
 	}
 }
 
@@ -304,6 +309,13 @@ func (r *replicasPerBlockID) pruneSupersededBlocks() {
 	}
 }
 
+type jsonPlan map[string]*ingestv1.BlockHints
+
+func (p jsonPlan) String() string {
+	data, _ := json.Marshal(p)
+	return string(data)
+}
+
 func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1.BlockHints {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "blockPlan")
 	defer sp.Finish()
@@ -401,6 +413,15 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1
 		otlog.Int32("smallest_compaction_level", smallestCompactionLevel),
 		otlog.Int("planned_blocks_ingesters", plannedIngesterBlocks),
 		otlog.Int("planned_blocks_store_gateways", plannedStoreGatwayBlocks),
+	)
+
+	level.Debug(spanlogger.FromContext(ctx, r.logger)).Log(
+		"msg", "block plan created",
+		"deduplicate", deduplicate,
+		"smallest_compaction_level", smallestCompactionLevel,
+		"planned_blocks_ingesters", plannedIngesterBlocks,
+		"planned_blocks_store_gateways", plannedStoreGatwayBlocks,
+		"plan", jsonPlan(plan),
 	)
 
 	return plan

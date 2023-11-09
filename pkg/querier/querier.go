@@ -348,7 +348,7 @@ func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (map[s
 		End:   int64(end),
 	}
 
-	results := newReplicasPerBlockID()
+	results := newReplicasPerBlockID(q.logger)
 
 	// get first all blocks from store gateways, as they should be querier with a priority and also aret the only ones containing duplicated blocks because of replication
 	if q.storeGatewayQuerier != nil {
