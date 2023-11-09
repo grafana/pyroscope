@@ -107,6 +107,50 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 	return iter.NewSliceIterator(profiles), nil
 }
 
+func (q *headOnDiskQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest) (*phlaremodel.Tree, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByStacktraces - HeadOnDisk")
+	defer sp.Finish()
+
+	// query the index for rows
+	rowIter, _, err := q.head.profiles.index.selectMatchingRowRanges(ctx, params, q.rowGroupIdx)
+	if err != nil {
+		return nil, err
+	}
+
+	// get time nano information for profiles
+	var (
+		start = model.Time(params.Start)
+		end   = model.Time(params.End)
+	)
+	buf := make([][]parquet.Value, 1)
+	pIt := &profilePartitionIterator{
+		BinaryJoinIterator: query.NewBinaryJoinIterator(0,
+			query.NewBinaryJoinIterator(
+				0,
+				rowIter,
+				q.rowGroup().columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"),
+			),
+			q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
+		),
+		getPartition: func(ir *query.IteratorResult) uint64 {
+			buf = ir.Columns(buf, "StacktracePartition")
+			if len(buf) > 0 && len(buf[0]) == 1 {
+				return buf[0][0].Uint64()
+			}
+			return 0
+		},
+	}
+	defer pIt.Close()
+
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
+
+	if err := mergeByStacktraces[*profilePartition](ctx, q.rowGroup(), pIt, r); err != nil {
+		return nil, err
+	}
+	return r.Tree()
+}
+
 func (q *headOnDiskQuerier) Bounds() (model.Time, model.Time) {
 	// TODO: Use per rowgroup information
 	return q.head.Bounds()
@@ -241,6 +285,45 @@ func (q *headInMemoryQuerier) SelectMatchingProfiles(ctx context.Context, params
 	}
 
 	return iter.NewMergeIterator(maxBlockProfile, false, iters...), nil
+}
+
+func (q *headInMemoryQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest) (*phlaremodel.Tree, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByStacktraces - HeadInMemory")
+	defer sp.Finish()
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
+	index := q.head.profiles.index
+
+	ids, err := index.selectMatchingFPs(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	// get time nano information for profiles
+	var (
+		start = model.Time(params.Start)
+		end   = model.Time(params.End)
+	)
+
+	index.mutex.RLock()
+	defer index.mutex.RUnlock()
+
+	for _, fp := range ids {
+		profileSeries, ok := index.profilesPerFP[fp]
+		if !ok {
+			continue
+		}
+		for _, p := range profileSeries.profiles {
+			if p.Timestamp() < start {
+				continue
+			}
+			if p.Timestamp() > end {
+				break
+			}
+			r.AddSamples(p.StacktracePartition, p.Samples)
+		}
+	}
+	return r.Tree()
 }
 
 func (q *headInMemoryQuerier) Bounds() (model.Time, model.Time) {

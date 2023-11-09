@@ -76,7 +76,7 @@ type Source interface {
 	RowGroups() []parquet.RowGroup
 }
 
-func mergeByStacktraces(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver) (err error) {
+func mergeByStacktraces[T interface{ StacktracePartition() uint64 }](ctx context.Context, profileSource Source, rows iter.Iterator[T], r *symdb.Resolver) (err error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeByStacktraces")
 	defer sp.Finish()
 	var columns v1.SampleColumns
