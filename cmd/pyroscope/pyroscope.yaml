@@ -1,2 +1,6 @@
 server:
   http_listen_port: 4040
+storage:
+ backend: gcs
+ gcs:
+  bucket_name: ops-us-east-0-profiles-ops-001-data

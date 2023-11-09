@@ -2,17 +2,11 @@ package querier
 
 import (
 	"context"
-<<<<<<< HEAD
-	"sort"
-
-	"github.com/cespare/xxhash/v2"
-=======
 	"encoding/json"
 	"sort"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/go-kit/log"
->>>>>>> origin/main
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/ring"
 	"github.com/opentracing/opentracing-go"
@@ -113,7 +107,6 @@ func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]
 		)
 		idx++
 		g.Go(func() error {
-
 			client, err := clientFactory(r)
 			if err != nil {
 				return err
@@ -127,7 +120,6 @@ func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]
 			result[i] = ResponseFromReplica[Result]{r, resp}
 
 			return nil
-
 		})
 	}
 
