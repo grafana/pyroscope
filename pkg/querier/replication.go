@@ -341,8 +341,8 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1
 		if !ok {
 			continue
 		}
-		// when we see a single ingester block, we want to deduplicate
-		if meta.Compaction != nil && meta.Compaction.Level == 1 {
+		// when we see a block with CompactionLevel <=1 or a block without compaction section, we want the queriers to deduplicate
+		if meta.Compaction == nil || meta.Compaction.Level <= 1 {
 			deduplicate = true
 		}
 
