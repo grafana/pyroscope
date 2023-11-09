@@ -135,6 +135,10 @@ Usage of ./pyroscope:
     	Run a health check on each ingester client during periodic cleanup. (default true)
   -querier.health-check-timeout duration
     	Timeout for ingester client healthcheck RPCs. (default 5s)
+  -querier.max-flamegraph-nodes-default int
+    	Maximum number of flamegraph nodes by default. 0 to disable. (default 8192)
+  -querier.max-flamegraph-nodes-max int
+    	Maximum number of flamegraph nodes allowed. 0 to disable.
   -querier.max-query-length duration
     	The limit to length of queries. 0 to disable. (default 1d)
   -querier.max-query-lookback duration

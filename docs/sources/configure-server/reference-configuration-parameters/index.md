@@ -138,6 +138,16 @@ limits:
   # CLI flag: -validation.max-profile-symbol-value-length
   [max_profile_symbol_value_length: <int> | default = 65535]
 
+  # Duration of the distributor aggregation window. Requires aggregation period
+  # to be specified. 0 to disable.
+  # CLI flag: -distributor.aggregation-window
+  [distributor_aggregation_window: <duration> | default = 0s]
+
+  # Duration of the distributor aggregation period. Requires aggregation window
+  # to be specified. 0 to disable.
+  # CLI flag: -distributor.aggregation-period
+  [distributor_aggregation_period: <duration> | default = 0s]
+
   # The tenant's shard size used by shuffle-sharding. Must be set both on
   # ingesters and distributors. 0 disables shuffle sharding.
   # CLI flag: -distributor.ingestion-tenant-shard-size
@@ -172,6 +182,14 @@ limits:
   # frontend.
   # CLI flag: -querier.max-query-parallelism
   [max_query_parallelism: <int> | default = 0]
+
+  # Maximum number of flamegraph nodes by default. 0 to disable.
+  # CLI flag: -querier.max-flamegraph-nodes-default
+  [max_flamegraph_nodes_default: <int> | default = 8192]
+
+  # Maximum number of flamegraph nodes allowed. 0 to disable.
+  # CLI flag: -querier.max-flamegraph-nodes-max
+  [max_flamegraph_nodes_max: <int> | default = 0]
 
   # The tenant's shard size, used when store-gateway sharding is enabled. Value
   # of 0 disables shuffle sharding for the tenant, that is all tenant blocks are

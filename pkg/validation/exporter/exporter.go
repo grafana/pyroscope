@@ -114,6 +114,8 @@ func (oe *OverridesExporter) Collect(ch chan<- prometheus.Metric) {
 	ch <- prometheus.MustNewConstMetric(oe.defaultsDescription, prometheus.GaugeValue, float64(oe.defaultLimits.MaxQueryLength), "max_query_length")
 	ch <- prometheus.MustNewConstMetric(oe.defaultsDescription, prometheus.GaugeValue, float64(oe.defaultLimits.MaxQueryParallelism), "max_query_parallelism")
 	ch <- prometheus.MustNewConstMetric(oe.defaultsDescription, prometheus.GaugeValue, float64(oe.defaultLimits.QuerySplitDuration), "split_queries_by_interval")
+	ch <- prometheus.MustNewConstMetric(oe.defaultsDescription, prometheus.GaugeValue, float64(oe.defaultLimits.MaxFlameGraphNodesDefault), "max_flamegraph_nodes_default")
+	ch <- prometheus.MustNewConstMetric(oe.defaultsDescription, prometheus.GaugeValue, float64(oe.defaultLimits.MaxFlameGraphNodesMax), "max_flamegraph_nodes_max")
 
 	// Do not export per-tenant limits if they've not been configured at all.
 	if oe.tenantLimits == nil {
@@ -139,6 +141,8 @@ func (oe *OverridesExporter) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, float64(limits.MaxQueryLength), "max_query_length", tenant)
 		ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, float64(limits.MaxQueryParallelism), "max_query_parallelism", tenant)
 		ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, float64(limits.QuerySplitDuration), "split_queries_by_interval", tenant)
+		ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, float64(limits.MaxFlameGraphNodesDefault), "max_flamegraph_nodes_default", tenant)
+		ch <- prometheus.MustNewConstMetric(oe.overrideDescription, prometheus.GaugeValue, float64(limits.MaxFlameGraphNodesMax), "max_flamegraph_nodes_max", tenant)
 	}
 }
 

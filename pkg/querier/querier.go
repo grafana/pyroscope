@@ -60,6 +60,11 @@ type Querier struct {
 	storeGatewayQuerier *StoreGatewayQuerier
 }
 
+// TODO(kolesnikovae): For backwards compatibility.
+// Should be removed in the next release.
+//
+// The default value should never be used in practice:
+// querier frontend sets the limit.
 const maxNodesDefault = int64(2048)
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, storeGatewayQuerier *StoreGatewayQuerier, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Querier, error) {
@@ -433,6 +438,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 	}), nil
 }
 
+// FIXME(kolesnikovae): The method is never used and should be removed.
 func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffRequest]) (*connect.Response[querierv1.DiffResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Diff")
 	defer func() {
@@ -472,7 +478,7 @@ func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffR
 		return nil, err
 	}
 
-	fd, err := phlaremodel.NewFlamegraphDiff(leftTree, rightTree, phlaremodel.MaxNodes)
+	fd, err := phlaremodel.NewFlamegraphDiff(leftTree, rightTree, maxNodesDefault)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
