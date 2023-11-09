@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
+	testhelper2 "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -171,6 +172,18 @@ func collectTestProfileBytes(t *testing.T) []byte {
 	return buf.Bytes()
 }
 
+func hugeProfileBytes(t *testing.T) []byte {
+	t.Helper()
+	b := testhelper2.NewProfileBuilderWithLabels(time.Now().UnixNano(), nil)
+	p := b.CPUProfile()
+	for i := 0; i < 10_000; i++ {
+		p.ForStacktraceString(fmt.Sprintf("my_%d", i), "other").AddSamples(1)
+	}
+	bs, err := p.Profile.MarshalVT()
+	require.NoError(t, err)
+	return bs
+}
+
 type fakeIngester struct {
 	t        testing.TB
 	requests []*pushv1.PushRequest
@@ -235,6 +248,26 @@ func Test_Limits(t *testing.T) {
 				tenantLimits["user-1"] = l
 			}),
 			expectedCode: connect.CodeResourceExhausted,
+		},
+		{
+			description: "rate_limit_invalid_profile",
+			pushReq: &pushv1.PushRequest{
+				Series: []*pushv1.RawProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{{Name: "__name__", Value: "cpu"}},
+						Samples: []*pushv1.RawSample{{
+							RawProfile: hugeProfileBytes(t),
+						}},
+					},
+				},
+			},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionBurstSizeMB = 0.0015
+				l.MaxProfileStacktraceSamples = 100
+				tenantLimits["user-1"] = l
+			}),
+			expectedCode: connect.CodeResourceExhausted, // todo check actual bytes received/discarded metric
 		},
 		{
 			description: "labels_limit",
