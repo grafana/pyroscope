@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using Microsoft.AspNetCore.Http;
 
@@ -10,8 +11,13 @@ using Microsoft.AspNetCore.Builder;
 
 public static class Program
 {
+    private static readonly List<FileStream> Files = new();
     public static void Main(string[] args)
     {
+        for (int i = 0; i < 1024; i++)
+        {
+            Files.Add(File.Open("/dev/null", FileMode.Open, FileAccess.Read, FileShare.Read));
+        }
         object globalLock = new();
         var strings = new List<string>();
         var orderService = new OrderService();
