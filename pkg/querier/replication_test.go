@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
@@ -60,7 +61,6 @@ func (b *blockInfo) withLabelValue(k, v string) *blockInfo {
 }
 
 func (b *blockInfo) withCompactorShard(shard, shardsCount uint64) *blockInfo {
-
 	return b.withLabelValue(
 		sharding.CompactorShardIDLabel,
 		sharding.FormatShardIDLabelValue(shard, shardsCount),
@@ -95,7 +95,6 @@ func validatePlanBlocksOnReplica(replica string, blocks ...string) validatorFunc
 }
 
 func Test_replicasPerBlockID_blockPlan(t *testing.T) {
-
 	for _, tc := range []struct {
 		name       string
 		inputs     func(r *replicasPerBlockID)
@@ -236,7 +235,7 @@ func Test_replicasPerBlockID_blockPlan(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			r := newReplicasPerBlockID()
+			r := newReplicasPerBlockID(log.NewNopLogger())
 			tc.inputs(r)
 
 			plan := r.blockPlan(context.TODO())
@@ -245,5 +244,4 @@ func Test_replicasPerBlockID_blockPlan(t *testing.T) {
 			}
 		})
 	}
-
 }

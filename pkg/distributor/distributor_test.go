@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -789,6 +790,7 @@ func TestPush_ShuffleSharding(t *testing.T) {
 }
 
 func TestPush_Aggregation(t *testing.T) {
+	const maxSessions = 16
 	ingesterClient := newFakeIngester(t, false)
 	d, err := New(
 		Config{DistributorRing: ringConfig, PushTimeout: time.Second * 10},
@@ -798,6 +800,7 @@ func TestPush_Aggregation(t *testing.T) {
 			l := validation.MockDefaultLimits()
 			l.DistributorAggregationPeriod = model.Duration(time.Second)
 			l.DistributorAggregationWindow = model.Duration(time.Second)
+			l.MaxSessionsPerSeries = maxSessions
 			tenantLimits["user-1"] = l
 		}),
 		nil, log.NewLogfmtLogger(os.Stdout),
@@ -824,6 +827,10 @@ func TestPush_Aggregation(t *testing.T) {
 								{Name: "cluster", Value: "us-central1"},
 								{Name: "client", Value: strconv.Itoa(i)},
 								{Name: "__name__", Value: "cpu"},
+								{
+									Name:  phlaremodel.LabelNameSessionID,
+									Value: phlaremodel.SessionID(rand.Uint64()).String(),
+								},
 							},
 							Samples: []*distributormodel.ProfileSample{
 								{
@@ -844,11 +851,13 @@ func TestPush_Aggregation(t *testing.T) {
 	d.asyncRequests.Wait()
 
 	var sum int64
+	sessions := make(map[string]struct{})
 	assert.GreaterOrEqual(t, len(ingesterClient.requests), 20)
 	assert.Less(t, len(ingesterClient.requests), 100)
 	for _, r := range ingesterClient.requests {
 		for _, s := range r.Series {
-			require.Len(t, s.Samples, 1)
+			sessionID := phlaremodel.Labels(s.Labels).Get(phlaremodel.LabelNameSessionID)
+			sessions[sessionID] = struct{}{}
 			p, err := pprof2.RawFromBytes(s.Samples[0].RawProfile)
 			require.NoError(t, err)
 			for _, x := range p.Sample {
@@ -859,6 +868,8 @@ func TestPush_Aggregation(t *testing.T) {
 
 	// RF * samples_per_profile * clients * requests
 	assert.Equal(t, int64(3*2*clients*requests), sum)
+	assert.GreaterOrEqual(t, len(sessions), clients)
+	assert.LessOrEqual(t, len(sessions), maxSessions+1)
 }
 
 func testProfile(t int64) *profilev1.Profile {

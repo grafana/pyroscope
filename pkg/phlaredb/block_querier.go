@@ -723,6 +723,10 @@ func (queriers Queriers) MergeSpanProfile(ctx context.Context, stream *connect.B
 type BlockGetter func(ctx context.Context, start, end model.Time, hints *ingestv1.Hints) (Queriers, error)
 
 func (queriers Queriers) forTimeRange(_ context.Context, start, end model.Time, hints *ingestv1.Hints) (Queriers, error) {
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 	skipBlock := HintsToBlockSkipper(hints)
 
 	result := make(Queriers, 0, len(queriers))

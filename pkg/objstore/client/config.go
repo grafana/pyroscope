@@ -20,6 +20,9 @@ import (
 )
 
 const (
+	// None is the null value for the storage backends.
+	None = ""
+
 	// S3 is the value for the S3 storage backend.
 	S3 = "s3"
 
@@ -78,7 +81,7 @@ func (cfg *StorageBackendConfig) RegisterFlagsWithPrefixAndDefaultDirectory(pref
 	cfg.Swift.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Filesystem.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir, f)
 	cfg.COS.RegisterFlagsWithPrefix(prefix, f)
-	f.StringVar(&cfg.Backend, prefix+"backend", Filesystem, fmt.Sprintf("Backend storage to use. Supported backends are: %s.", strings.Join(cfg.supportedBackends(), ", ")))
+	f.StringVar(&cfg.Backend, prefix+"backend", None, fmt.Sprintf("Backend storage to use. Supported backends are: %s.", strings.Join(cfg.supportedBackends(), ", ")))
 }
 
 func (cfg *StorageBackendConfig) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet, logger log.Logger) {
@@ -122,7 +125,7 @@ func (cfg *Config) RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir string
 }
 
 func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet, logger log.Logger) {
-	cfg.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, "", f, logger)
+	cfg.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, "./data-shared", f, logger)
 }
 
 func (cfg *Config) Validate() error {

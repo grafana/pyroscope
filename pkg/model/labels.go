@@ -93,27 +93,6 @@ func (ls Labels) HashForLabels(b []byte, names ...string) (uint64, []byte) {
 	return xxhash.Sum64(b), b
 }
 
-// HashWithoutLabels returns a hash value for all labels except those matching
-// the provided names.
-// 'names' have to be sorted in ascending order.
-func (ls Labels) HashWithoutLabels(b []byte, names ...string) (uint64, []byte) {
-	b = b[:0]
-	j := 0
-	for i := range ls {
-		for j < len(names) && names[j] < ls[i].Name {
-			j++
-		}
-		if ls[i].Name == labels.MetricName || (j < len(names) && ls[i].Name == names[j]) {
-			continue
-		}
-		b = append(b, ls[i].Name...)
-		b = append(b, seps[0])
-		b = append(b, ls[i].Value...)
-		b = append(b, seps[0])
-	}
-	return xxhash.Sum64(b), b
-}
-
 // BytesWithLabels is just as Bytes(), but only for labels matching names.
 // 'names' have to be sorted in ascending order.
 // It uses an byte invalid character as a separator and so should not be used for printing.
