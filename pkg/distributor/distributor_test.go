@@ -1053,5 +1053,4 @@ func expectMetricsChange(t *testing.T, m1, m2, expectedChange map[prometheus.Col
 		delta := m2[counter] - m1[counter]
 		assert.Equal(t, expectedDelta, delta, "metric %s", counter)
 	}
-	return
 }
