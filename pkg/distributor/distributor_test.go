@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -217,10 +218,11 @@ func TestBuckets(t *testing.T) {
 
 func Test_Limits(t *testing.T) {
 	type testCase struct {
-		description  string
-		pushReq      *pushv1.PushRequest
-		overrides    *validation.Overrides
-		expectedCode connect.Code
+		description              string
+		pushReq                  *pushv1.PushRequest
+		overrides                *validation.Overrides
+		expectedCode             connect.Code
+		expectedValidationReason validation.Reason
 	}
 
 	testCases := []testCase{
@@ -248,14 +250,18 @@ func Test_Limits(t *testing.T) {
 				l.IngestionBurstSizeMB = 0.0015
 				tenantLimits["user-1"] = l
 			}),
-			expectedCode: connect.CodeResourceExhausted,
+			expectedCode:             connect.CodeResourceExhausted,
+			expectedValidationReason: validation.RateLimited,
 		},
 		{
 			description: "rate_limit_invalid_profile",
 			pushReq: &pushv1.PushRequest{
 				Series: []*pushv1.RawProfileSeries{
 					{
-						Labels: []*typesv1.LabelPair{{Name: "__name__", Value: "cpu"}},
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+						},
 						Samples: []*pushv1.RawSample{{
 							RawProfile: hugeProfileBytes(t),
 						}},
@@ -268,7 +274,8 @@ func Test_Limits(t *testing.T) {
 				l.MaxProfileStacktraceSamples = 100
 				tenantLimits["user-1"] = l
 			}),
-			expectedCode: connect.CodeResourceExhausted, // todo check actual bytes received/discarded metric
+			expectedCode:             connect.CodeResourceExhausted,
+			expectedValidationReason: validation.RateLimited,
 		},
 		{
 			description: "labels_limit",
@@ -278,6 +285,7 @@ func Test_Limits(t *testing.T) {
 						Labels: []*typesv1.LabelPair{
 							{Name: "clusterdddwqdqdqdqdqdqw", Value: "us-central1"},
 							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 						},
 						Samples: []*pushv1.RawSample{
 							{
@@ -292,13 +300,15 @@ func Test_Limits(t *testing.T) {
 				l.MaxLabelNameLength = 12
 				tenantLimits["user-1"] = l
 			}),
-			expectedCode: connect.CodeInvalidArgument,
+			expectedCode:             connect.CodeInvalidArgument,
+			expectedValidationReason: validation.LabelNameTooLong,
 		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.description, func(t *testing.T) {
+
 			mux := http.NewServeMux()
 			ing := newFakeIngester(t, false)
 			d, err := New(Config{
@@ -310,6 +320,13 @@ func Test_Limits(t *testing.T) {
 			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout))
 
 			require.NoError(t, err)
+
+			expectedMetricDelta := map[prometheus.Collector]float64{
+				validation.DiscardedBytes.WithLabelValues(string(tc.expectedValidationReason), "user-1"): float64(uncompressedProfileSize(t, tc.pushReq)),
+				//todo make sure pyroscope_distributor_received_decompressed_bytes_sum is not incremented
+			}
+			m1 := metricsDump(expectedMetricDelta)
+
 			mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
 			s := httptest.NewServer(mux)
 			defer s.Close()
@@ -319,6 +336,7 @@ func Test_Limits(t *testing.T) {
 			require.Error(t, err)
 			require.Equal(t, tc.expectedCode, connect.CodeOf(err))
 			require.Nil(t, resp)
+			expectMetricsChange(t, m1, metricsDump(expectedMetricDelta), expectedMetricDelta)
 		})
 	}
 }
@@ -1005,4 +1023,35 @@ func testProfile(t int64) *profilev1.Profile {
 		},
 		Period: 10000000,
 	}
+}
+
+func uncompressedProfileSize(t *testing.T, req *pushv1.PushRequest) int {
+	var size int
+	for _, s := range req.Series {
+		for _, label := range s.Labels {
+			size += len(label.Name) + len(label.Value)
+		}
+		for _, sample := range s.Samples {
+			p, err := pprof2.RawFromBytes(sample.RawProfile)
+			require.NoError(t, err)
+			size += p.SizeVT()
+		}
+	}
+	return size
+}
+
+func metricsDump(metrics map[prometheus.Collector]float64) map[prometheus.Collector]float64 {
+	res := make(map[prometheus.Collector]float64)
+	for m := range metrics {
+		res[m] = testutil.ToFloat64(m)
+	}
+	return res
+}
+
+func expectMetricsChange(t *testing.T, m1, m2, expectedChange map[prometheus.Collector]float64) {
+	for counter, expectedDelta := range expectedChange {
+		delta := m2[counter] - m1[counter]
+		assert.Equal(t, expectedDelta, delta, "metric %s", counter)
+	}
+	return
 }
