@@ -259,12 +259,11 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		d.metrics.receivedCompressedBytes.WithLabelValues(string(profName), tenantID).Observe(float64(req.RawProfileSize))
 	}
 
+	if err := d.rateLimit(tenantID, req); err != nil {
+		return nil, err
+	}
+
 	for _, series := range req.Series {
-		// include the labels in the size calculation
-		for _, lbs := range series.Labels {
-			req.TotalBytesUncompressed += int64(len(lbs.Name))
-			req.TotalBytesUncompressed += int64(len(lbs.Value))
-		}
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
 		for _, raw := range series.Samples {
 			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
@@ -272,20 +271,12 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			if haveRawPprof {
 				d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(raw.RawProfile)))
 			}
-			req.TotalProfiles++
 			p := raw.Profile
-			var decompressedSize int
-			if haveRawPprof {
-				decompressedSize = p.SizeBytes()
-			} else {
-				decompressedSize = p.SizeVT()
-			}
+			decompressedSize := p.SizeVT()
 			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize))
 			d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
-			req.TotalBytesUncompressed += int64(decompressedSize)
 
 			if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels, now); err != nil {
-				// todo this actually discards more if multiple Samples in a Series request
 				_ = level.Debug(d.logger).Log("msg", "invalid profile", "err", err)
 				validation.DiscardedProfiles.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalProfiles))
 				validation.DiscardedBytes.WithLabelValues(string(validation.ReasonOf(err)), tenantID).Add(float64(req.TotalBytesUncompressed))
@@ -300,15 +291,6 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 	if req.TotalProfiles == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no profiles received"))
-	}
-
-	// rate limit the request
-	if !d.ingestionRateLimiter.AllowN(time.Now(), tenantID, int(req.TotalBytesUncompressed)) {
-		validation.DiscardedProfiles.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalProfiles))
-		validation.DiscardedBytes.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalBytesUncompressed))
-		return nil, connect.NewError(connect.CodeResourceExhausted,
-			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.IBytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.IBytes(uint64(req.TotalBytesUncompressed))),
-		)
 	}
 
 	// Normalisation is quite an expensive operation,
@@ -682,6 +664,29 @@ func (d *Distributor) limitMaxSessionsPerSeries(tenantID string, labels phlaremo
 	}
 	sessionIDLabel.Value = phlaremodel.SessionID(int(sessionID) % maxSessionsPerSeries).String()
 	return labels
+}
+
+func (d *Distributor) rateLimit(tenantID string, req *distributormodel.PushRequest) error {
+	for _, series := range req.Series {
+		// include the labels in the size calculation
+		for _, lbs := range series.Labels {
+			req.TotalBytesUncompressed += int64(len(lbs.Name))
+			req.TotalBytesUncompressed += int64(len(lbs.Value))
+		}
+		for _, raw := range series.Samples {
+			req.TotalProfiles += 1
+			req.TotalBytesUncompressed += int64(raw.Profile.SizeVT())
+		}
+	}
+	// rate limit the request
+	if !d.ingestionRateLimiter.AllowN(time.Now(), tenantID, int(req.TotalBytesUncompressed)) {
+		validation.DiscardedProfiles.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalProfiles))
+		validation.DiscardedBytes.WithLabelValues(string(validation.RateLimited), tenantID).Add(float64(req.TotalBytesUncompressed))
+		return connect.NewError(connect.CodeResourceExhausted,
+			fmt.Errorf("push rate limit (%s) exceeded while adding %s", humanize.IBytes(uint64(d.limits.IngestionRateBytes(tenantID))), humanize.IBytes(uint64(req.TotalBytesUncompressed))),
+		)
+	}
+	return nil
 }
 
 // mergeSeriesAndSampleLabels merges sample labels with
