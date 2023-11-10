@@ -114,8 +114,24 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		return nil, err
 	}
 
-	rpEnforcer := newRetentionPolicyEnforcer(phlarecontext.Logger(phlarectx), i, defaultRetentionPolicy(), dbConfig)
-	i.subservices, err = services.NewManager(i.lifecycler, rpEnforcer)
+	retentionPolicy := defaultRetentionPolicy()
+
+	if dbConfig.EnforcementInterval > 0 {
+		retentionPolicy.EnforcementInterval = dbConfig.EnforcementInterval
+	}
+	if dbConfig.MinFreeDisk > 0 {
+		retentionPolicy.MinFreeDisk = dbConfig.MinFreeDisk
+	}
+	if dbConfig.MinDiskAvailablePercentage > 0 {
+		retentionPolicy.MinDiskAvailablePercentage = dbConfig.MinDiskAvailablePercentage
+	}
+
+	if dbConfig.DisableEnforcement {
+		i.subservices, err = services.NewManager(i.lifecycler)
+	} else {
+		rpEnforcer := newRetentionPolicyEnforcer(phlarecontext.Logger(phlarectx), i, retentionPolicy, dbConfig)
+		i.subservices, err = services.NewManager(i.lifecycler, rpEnforcer)
+	}
 	if err != nil {
 		return nil, errors.Wrap(err, "services manager")
 	}
