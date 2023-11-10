@@ -129,6 +129,10 @@ func buildMetrics() map[string]interface{} {
 			v.updateRate()
 			value = v.Value()
 			v.reset()
+		case *MultiCounter:
+			v.updateRate()
+			value = v.Value()
+			v.reset()
 		case *WordCounter:
 			value = v.Value()
 		default:
@@ -347,6 +351,11 @@ type Counter struct {
 	resetTime time.Time
 }
 
+type MultiCounter struct {
+	values  map[string]*Counter
+	keyName string
+}
+
 func createOrRetrieveExpvar[K any](check func() (*K, error), create func() *K) *K {
 	// check if string exists holding read lock
 	createLock.RLock()
@@ -399,6 +408,37 @@ func NewCounter(name string) *Counter {
 	)
 }
 
+// NewMultiCounter returns a new MultiCounter stats object.
+// If a NewMultiCounter stats object with the same name already exists it is returned.
+func NewMultiCounter(name string, keyName string) *MultiCounter {
+	return createOrRetrieveExpvar(
+		func() (*MultiCounter, error) { // check
+			existing := expvar.Get(statsPrefix + name)
+			if existing != nil {
+				if c, ok := existing.(*MultiCounter); ok {
+					return c, nil
+				}
+				return nil, fmt.Errorf("%v is set to a non-MultiCounter value", name)
+			}
+			return nil, nil
+		},
+		func() *MultiCounter { // create
+			c := &MultiCounter{
+				values: map[string]*Counter{
+					"__total__": {
+						total:     atomic.NewInt64(0),
+						rate:      atomic.NewFloat64(0),
+						resetTime: time.Now(),
+					},
+				},
+				keyName: keyName,
+			}
+			expvar.Publish(statsPrefix+name, c)
+			return c
+		},
+	)
+}
+
 func (c *Counter) updateRate() {
 	total := c.total.Load()
 	c.rate.Store(float64(total) / time.Since(c.resetTime).Seconds())
@@ -424,6 +464,57 @@ func (c *Counter) Value() map[string]interface{} {
 		"total": c.total.Load(),
 		"rate":  c.rate.Load(),
 	}
+}
+
+func (c *MultiCounter) updateRate() {
+	for _, v := range c.values {
+		total := v.total.Load()
+		v.rate.Store(float64(total) / time.Since(v.resetTime).Seconds())
+	}
+}
+
+func (c *MultiCounter) reset() {
+	for _, v := range c.values {
+		v.total.Store(0)
+		v.rate.Store(0)
+		v.resetTime = time.Now()
+	}
+}
+
+func (c *MultiCounter) Inc(i int64, key string) {
+	if v, ok := c.values[key]; ok {
+		v.Inc(i)
+	} else {
+		c.values[key] = &Counter{
+			total:     atomic.NewInt64(i),
+			rate:      atomic.NewFloat64(0),
+			resetTime: time.Now(),
+		}
+	}
+	c.values["__total__"].Inc(i)
+}
+
+func (c *MultiCounter) String() string {
+	b, _ := json.Marshal(c.Value())
+	return string(b)
+}
+
+func (c *MultiCounter) Value() map[string]interface{} {
+	value := make(map[string]interface{}, len(c.values))
+	perKey := make(map[string]interface{})
+	value[c.keyName] = perKey
+	for k, v := range c.values {
+		if k == "__total__" {
+			value["total"] = c.values["__total__"].total.Load()
+			value["rate"] = c.values["__total__"].rate.Load()
+		} else {
+			perKey[k] = map[string]interface{}{
+				"total": v.total.Load(),
+				"rate":  v.rate.Load(),
+			}
+		}
+	}
+	return value
 }
 
 type WordCounter struct {

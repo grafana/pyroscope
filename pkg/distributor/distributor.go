@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net/http"
+	"regexp"
 	"sort"
 	"sync"
 	"time"
@@ -102,7 +103,7 @@ type Distributor struct {
 	rfStats                 *expvar.Int
 	bytesReceivedStats      *usagestats.Statistics
 	bytesReceivedTotalStats *usagestats.Counter
-	profileReceivedStats    *usagestats.Counter
+	profileReceivedStats    *usagestats.MultiCounter
 }
 
 type Limits interface {
@@ -140,7 +141,7 @@ func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactor
 		rfStats:                 usagestats.NewInt("distributor_replication_factor"),
 		bytesReceivedStats:      usagestats.NewStatistics("distributor_bytes_received"),
 		bytesReceivedTotalStats: usagestats.NewCounter("distributor_bytes_received_total"),
-		profileReceivedStats:    usagestats.NewCounter("distributor_profiles_received"),
+		profileReceivedStats:    usagestats.NewMultiCounter("distributor_profiles_received", "lang"),
 	}
 	var err error
 
@@ -233,6 +234,31 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	return d.PushParsed(ctx, req)
 }
 
+var matchers = map[string]*regexp.Regexp{
+	"java":   regexp.MustCompile(`^java/|^jdk/|libjvm`),
+	"go":     regexp.MustCompile(`/usr/local/go/|\.go$`),
+	"python": regexp.MustCompile(`\.py$`),
+	"ruby":   regexp.MustCompile(`^gems/|\.rb$`),
+	"dotnet": regexp.MustCompile(`^Microsoft\.|^System\.`),
+	"js":     regexp.MustCompile(`\.js$|/node_modules/|\.js:`),
+	"rust":   regexp.MustCompile(`\.rs(:\d+)?`),
+}
+
+func (d *Distributor) FindLanguage(series *distributormodel.ProfileSeries) string {
+	if len(series.Samples) == 0 {
+		return "unknown"
+	}
+	sample := series.Samples[0]
+	for _, symbol := range sample.Profile.StringTable {
+		for lang, matcher := range matchers {
+			if matcher.MatchString(symbol) {
+				return lang
+			}
+		}
+	}
+	return "unknown"
+}
+
 func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
 	now := model.Now()
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
@@ -265,9 +291,10 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 	for _, series := range req.Series {
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
+		language := d.FindLanguage(series)
 		for _, raw := range series.Samples {
 			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
-			d.profileReceivedStats.Inc(1)
+			d.profileReceivedStats.Inc(1, language)
 			if haveRawPprof {
 				d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(raw.RawProfile)))
 			}
