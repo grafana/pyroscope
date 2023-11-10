@@ -41,6 +41,8 @@ func TestOverridesExporter_withConfig(t *testing.T) {
 			MaxSessionsPerSeries:         21,
 			DistributorAggregationWindow: 22,
 			DistributorAggregationPeriod: 23,
+			MaxFlameGraphNodesDefault:    24,
+			MaxFlameGraphNodesMax:        25,
 		},
 	}
 	ringStore, closer := consul.NewInMemoryClient(ring.GetCodec(), log.NewNopLogger(), nil)
@@ -76,6 +78,8 @@ func TestOverridesExporter_withConfig(t *testing.T) {
 		MaxSessionsPerSeries:         31,
 		DistributorAggregationWindow: 32,
 		DistributorAggregationPeriod: 33,
+		MaxFlameGraphNodesDefault:    34,
+		MaxFlameGraphNodesMax:        35,
 	}, validation.NewMockTenantLimits(tenantLimits), log.NewNopLogger(), nil)
 	require.NoError(t, err)
 
@@ -121,6 +125,8 @@ pyroscope_limits_overrides{limit_name="split_queries_by_interval",tenant="tenant
 pyroscope_limits_overrides{limit_name="max_sessions_per_series",tenant="tenant-a"} 21
 pyroscope_limits_overrides{limit_name="distributor_aggregation_window",tenant="tenant-a"} 22
 pyroscope_limits_overrides{limit_name="distributor_aggregation_period",tenant="tenant-a"} 23
+pyroscope_limits_overrides{limit_name="max_flamegraph_nodes_default",tenant="tenant-a"} 24
+pyroscope_limits_overrides{limit_name="max_flamegraph_nodes_max",tenant="tenant-a"} 25
 `
 
 	// Make sure each override matches the values from the supplied `Limit`
@@ -144,6 +150,8 @@ pyroscope_limits_defaults{limit_name="split_queries_by_interval"} 30
 pyroscope_limits_defaults{limit_name="max_sessions_per_series"} 31
 pyroscope_limits_defaults{limit_name="distributor_aggregation_window"} 32
 pyroscope_limits_defaults{limit_name="distributor_aggregation_period"} 33
+pyroscope_limits_defaults{limit_name="max_flamegraph_nodes_default"} 34
+pyroscope_limits_defaults{limit_name="max_flamegraph_nodes_max"} 35
 `
 	err = testutil.CollectAndCompare(exporter, bytes.NewBufferString(limitsMetrics), "pyroscope_limits_defaults")
 	assert.NoError(t, err)

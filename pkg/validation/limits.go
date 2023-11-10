@@ -59,6 +59,10 @@ type Limits struct {
 	MaxQueryLength      model.Duration `yaml:"max_query_length" json:"max_query_length"`
 	MaxQueryParallelism int            `yaml:"max_query_parallelism" json:"max_query_parallelism"`
 
+	// FlameGraph enforced limits.
+	MaxFlameGraphNodesDefault int `yaml:"max_flamegraph_nodes_default" json:"max_flamegraph_nodes_default"`
+	MaxFlameGraphNodesMax     int `yaml:"max_flamegraph_nodes_max" json:"max_flamegraph_nodes_max"`
+
 	// Store-gateway.
 	StoreGatewayTenantShardSize int `yaml:"store_gateway_tenant_shard_size" json:"store_gateway_tenant_shard_size"`
 
@@ -123,6 +127,9 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxProfileStacktraceSampleLabels, "validation.max-profile-stacktrace-sample-labels", 100, "Maximum number of labels in a profile sample. 0 to disable.")
 	f.IntVar(&l.MaxProfileStacktraceDepth, "validation.max-profile-stacktrace-depth", 1000, "Maximum depth of a profile stacktrace. Profiles are not rejected instead stacktraces are truncated. 0 to disable.")
 	f.IntVar(&l.MaxProfileSymbolValueLength, "validation.max-profile-symbol-value-length", 65535, "Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable.")
+
+	f.IntVar(&l.MaxFlameGraphNodesDefault, "querier.max-flamegraph-nodes-default", 8<<10, "Maximum number of flamegraph nodes by default. 0 to disable.")
+	f.IntVar(&l.MaxFlameGraphNodesMax, "querier.max-flamegraph-nodes-max", 0, "Maximum number of flamegraph nodes allowed. 0 to disable.")
 
 	f.Var(&l.DistributorAggregationWindow, "distributor.aggregation-window", "Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.")
 	f.Var(&l.DistributorAggregationPeriod, "distributor.aggregation-period", "Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.")
@@ -304,6 +311,16 @@ func (o *Overrides) MaxQueryParallelism(tenantID string) int {
 // MaxQueryLookback returns the max lookback period of queries.
 func (o *Overrides) MaxQueryLookback(tenantID string) time.Duration {
 	return time.Duration(o.getOverridesForTenant(tenantID).MaxQueryLookback)
+}
+
+// MaxFlameGraphNodesDefault returns the max flamegraph nodes used by default.
+func (o *Overrides) MaxFlameGraphNodesDefault(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).MaxFlameGraphNodesDefault
+}
+
+// MaxFlameGraphNodesMax returns the max flamegraph nodes allowed.
+func (o *Overrides) MaxFlameGraphNodesMax(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).MaxFlameGraphNodesMax
 }
 
 // StoreGatewayTenantShardSize returns the store-gateway shard size for a given user.
