@@ -576,6 +576,11 @@ compactor:
   # CLI flag: -compactor.compaction-concurrency
   [compaction_concurrency: <int> | default = 1]
 
+  # Number of stages split shards will be written to. Number of output split
+  # shards is controlled by -compactor.split-and-merge-shards.
+  # CLI flag: -compactor.stage-size
+  [compaction_stage_size: <int> | default = 0]
+
   # How long the compactor waits before compacting first-level blocks that are
   # uploaded by the ingesters. This configuration option allows for the
   # reduction of cases where the compactor begins to compact blocks before all

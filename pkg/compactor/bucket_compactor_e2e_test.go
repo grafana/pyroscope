@@ -229,8 +229,9 @@ func TestGroupCompactE2E(t *testing.T) {
 		grouper := NewSplitAndMergeGrouper("user-1", []int64{1000, 3000}, 0, 0, logger)
 		metrics := NewBucketCompactorMetrics(blocksMarkedForDeletion, prometheus.NewPedanticRegistry())
 		bComp, err := NewBucketCompactor(logger, sy, grouper, planner, &BlockCompactor{
-			splitBy:              phlaredb.SplitByFingerprint,
 			blockOpenConcurrency: 100,
+			stageSize:            4,
+			splitBy:              phlaredb.SplitByFingerprint,
 			logger:               logger,
 			metrics:              newCompactorMetrics(nil),
 		}, dir, userbkt, 2, ownAllJobs, sortJobsByNewestBlocksFirst, 0, 4, metrics)
