@@ -242,7 +242,7 @@ var matchers = map[string]*regexp.Regexp{
 	"python": regexp.MustCompile(`\.py$`),
 	"ruby":   regexp.MustCompile(`^gems/|\.rb$`),
 	"dotnet": regexp.MustCompile(`^Microsoft\.|^System\.`),
-	"js":     regexp.MustCompile(`\.jsx?:?|/node_modules/`),
+	"nodejs": regexp.MustCompile(`\.jsx?:?|/node_modules/`),
 	"rust":   regexp.MustCompile(`\.rs(:\d+)?`),
 }
 
