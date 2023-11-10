@@ -189,7 +189,6 @@ func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, e
 		return nil, ErrPartitionNotFound
 	}
 	if err := p.init(ctx); err != nil {
-		p.Release()
 		return nil, err
 	}
 	return p, nil
@@ -205,20 +204,22 @@ type partition struct {
 	strings          parquetTableRange[string, *schemav1.StringPersister]
 }
 
-func (p *partition) init(ctx context.Context) error {
-	g, ctx := errgroup.WithContext(ctx)
+func (p *partition) init(ctx context.Context) (err error) { return p.tx().fetch(ctx) }
+
+func (p *partition) Release() { p.tx().release() }
+
+func (p *partition) tx() *fetchTx {
+	tx := make(fetchTx, 0, len(p.stacktraceChunks)+4)
 	for _, c := range p.stacktraceChunks {
-		c := c
-		g.Go(func() error { return c.fetch(ctx) })
+		tx.append(c)
 	}
 	if p.reader.index.Header.Version > FormatV1 {
-		g.Go(func() error { return p.locations.fetch(ctx) })
-		g.Go(func() error { return p.mappings.fetch(ctx) })
-		g.Go(func() error { return p.functions.fetch(ctx) })
-		g.Go(func() error { return p.strings.fetch(ctx) })
+		tx.append(&p.locations)
+		tx.append(&p.mappings)
+		tx.append(&p.functions)
+		tx.append(&p.strings)
 	}
-	err := g.Wait()
-	return err
+	return &tx
 }
 
 func (p *partition) Symbols() *Symbols {
@@ -229,26 +230,6 @@ func (p *partition) Symbols() *Symbols {
 		Functions:   p.functions.s,
 		Strings:     p.strings.s,
 	}
-}
-
-func (p *partition) Release() {
-	var wg sync.WaitGroup
-	wg.Add(len(p.stacktraceChunks))
-	for _, c := range p.stacktraceChunks {
-		c := c
-		go func() {
-			c.release()
-			wg.Done()
-		}()
-	}
-	if p.reader.index.Header.Version > FormatV1 {
-		wg.Add(4)
-		go func() { p.locations.release(); wg.Done() }()
-		go func() { p.mappings.release(); wg.Done() }()
-		go func() { p.functions.release(); wg.Done() }()
-		go func() { p.strings.release(); wg.Done() }()
-	}
-	wg.Wait()
 }
 
 func (p *partition) WriteStats(s *PartitionStats) {
@@ -481,4 +462,51 @@ func (t *parquetTableRange[M, P]) release() {
 	t.r.Dec(func() {
 		t.s = nil
 	})
+}
+
+// fetchTx facilitates fetching multiple objects in a transactional manner:
+// if one of the objects has failed, all the remaining ones are released.
+type fetchTx []fetch
+
+type fetch interface {
+	fetch(context.Context) error
+	release()
+}
+
+func (tx *fetchTx) append(x fetch) { *tx = append(*tx, x) }
+
+func (tx *fetchTx) fetch(ctx context.Context) (err error) {
+	defer func() {
+		if err != nil {
+			tx.release()
+		}
+	}()
+	g, ctx := errgroup.WithContext(ctx)
+	for i, x := range *tx {
+		i := i
+		x := x
+		g.Go(func() error {
+			fErr := x.fetch(ctx)
+			if fErr != nil {
+				(*tx)[i] = nil
+			}
+			return fErr
+		})
+	}
+	return g.Wait()
+}
+
+func (tx *fetchTx) release() {
+	var wg sync.WaitGroup
+	wg.Add(len(*tx))
+	for _, x := range *tx {
+		x := x
+		go func() {
+			defer wg.Done()
+			if x != nil {
+				x.release()
+			}
+		}()
+	}
+	wg.Wait()
 }
