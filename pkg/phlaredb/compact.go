@@ -40,25 +40,29 @@ type BlockReader interface {
 }
 
 func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
-	metas, err := CompactWithSplitting(ctx, src, 1, dst, SplitByFingerprint)
+	metas, err := CompactWithSplitting(ctx, src, 1, dst, SplitByFingerprint, 0)
 	if err != nil {
 		return block.Meta{}, err
 	}
 	return metas[0], nil
 }
 
-func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount uint64, dst string, splitBy SplitByFunc) (
+func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount uint64, dst string, splitBy SplitByFunc, stageSize uint64) (
 	[]block.Meta, error,
 ) {
+	if len(src) <= 1 && splitCount == 1 {
+		return nil, errors.New("not enough blocks to compact")
+	}
 	if splitCount == 0 {
 		splitCount = 1
 	}
-	if len(src) <= 1 && splitCount == 1 {
-		return nil, errors.New("not enough blocks to compact")
+	if stageSize == 0 || stageSize > splitCount {
+		stageSize = splitCount
 	}
 	var (
 		writers  = make([]*blockWriter, splitCount)
 		srcMetas = make([]block.Meta, len(src))
+		outMetas = make([]block.Meta, 0, len(writers))
 		err      error
 	)
 	for i, b := range src {
@@ -66,51 +70,93 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount uin
 	}
 
 	outMeta := compactMetas(srcMetas...)
-
-	// create the shards writers
-	for i := range writers {
-		meta := outMeta.Clone()
-		meta.ULID = ulid.MustNew(meta.ULID.Time(), rand.Reader)
-		if splitCount > 1 {
-			if meta.Labels == nil {
-				meta.Labels = make(map[string]string)
+	for _, stage := range splitStages(len(writers), int(stageSize)) {
+		for _, idx := range stage {
+			if writers[idx], err = createBlockWriter(dst, outMeta, splitCount, idx); err != nil {
+				return nil, fmt.Errorf("create block writer: %w", err)
 			}
-			meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(i), splitCount)
 		}
-		writers[i], err = newBlockWriter(dst, meta)
-		if err != nil {
-			return nil, fmt.Errorf("create block writer: %w", err)
+		var metas []block.Meta
+		if metas, err = compact(ctx, writers, src, splitBy, splitCount); err != nil {
+			return nil, err
+		}
+		outMetas = append(outMetas, metas...)
+		// Writers are already closed, and must be GCed.
+		for j := range writers {
+			writers[j] = nil
 		}
 	}
 
-	rowsIt, err := newMergeRowProfileIterator(src)
+	return outMetas, nil
+}
+
+// splitStages splits n into sequences of size s:
+// For n=7, s=3: [[0 1 2] [3 4 5] [6]]
+func splitStages(n, s int) (stages [][]int) {
+	for i := 0; i < n; i += s {
+		end := i + s
+		if end > n {
+			end = n
+		}
+		b := make([]int, end-i)
+		for j := i; j < end; j++ {
+			b[j-i] = j
+		}
+		stages = append(stages, b)
+	}
+	return stages
+}
+
+func createBlockWriter(dst string, m block.Meta, splitCount uint64, shard int) (*blockWriter, error) {
+	meta := m.Clone()
+	meta.ULID = ulid.MustNew(meta.ULID.Time(), rand.Reader)
+	if splitCount > 1 {
+		if meta.Labels == nil {
+			meta.Labels = make(map[string]string)
+		}
+		meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(shard), splitCount)
+	}
+	return newBlockWriter(dst, meta)
+}
+
+func compact(ctx context.Context, writers []*blockWriter, readers []BlockReader, splitBy SplitByFunc, splitCount uint64) ([]block.Meta, error) {
+	rowsIt, err := newMergeRowProfileIterator(readers)
 	if err != nil {
 		return nil, err
 	}
 	defer runutil.CloseWithLogOnErr(util.Logger, rowsIt, "close rows iterator")
-
 	// iterate and splits the rows into series.
 	for rowsIt.Next() {
 		r := rowsIt.At()
 		shard := int(splitBy(r, splitCount))
-		if err := writers[shard].WriteRow(r); err != nil {
+		w := writers[shard]
+		if w == nil {
+			continue
+		}
+		if err = w.WriteRow(r); err != nil {
 			return nil, err
 		}
 	}
-	if err := rowsIt.Err(); err != nil {
+	if err = rowsIt.Err(); err != nil {
 		return nil, err
 	}
 
 	// Close all blocks
 	errs := multierror.New()
 	for _, w := range writers {
-		if err := w.Close(ctx); err != nil {
+		if w == nil {
+			continue
+		}
+		if err = w.Close(ctx); err != nil {
 			errs.Add(err)
 		}
 	}
 
 	out := make([]block.Meta, 0, len(writers))
 	for _, w := range writers {
+		if w == nil {
+			continue
+		}
 		if w.meta.Stats.NumSamples > 0 {
 			out = append(out, *w.meta)
 		}

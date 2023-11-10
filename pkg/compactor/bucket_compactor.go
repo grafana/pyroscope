@@ -383,7 +383,7 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 	c.metrics.Ran.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Inc()
 	c.metrics.Split.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(float64(shardCount))
 
-	metas, err := phlaredb.CompactWithSplitting(ctx, readers, shardCount, dest, c.splitBy)
+	metas, err := phlaredb.CompactWithSplitting(ctx, readers, shardCount, dest, c.splitBy, 0)
 	if err != nil {
 		return nil, errors.Wrapf(err, "compact blocks %v", dirs)
 	}
