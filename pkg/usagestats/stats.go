@@ -125,6 +125,8 @@ func buildMetrics() map[string]interface{} {
 			value = v.Value()
 		case *Statistics:
 			value = v.Value()
+		case *MultiStatistics:
+			value = v.Value()
 		case *Counter:
 			v.updateRate()
 			value = v.Value()
@@ -344,6 +346,92 @@ func (s *Statistics) Record(v float64) {
 	}
 }
 
+type MultiStatistics struct {
+	values  map[string]*Statistics
+	keyName string
+}
+
+// NewMultiStatistics returns a new MultiStatistics object.
+// MultiStatistics object is thread-safe and computes statistics on the fly based on recorded samples.
+// Available statistics are:
+// - min
+// - max
+// - avg
+// - count
+// - stddev
+// - stdvar
+// If a MultiStatistics object with the same name already exists it is returned.
+func NewMultiStatistics(name string, keyName string) *MultiStatistics {
+	return createOrRetrieveExpvar(
+		func() (*MultiStatistics, error) { // check
+			existing := expvar.Get(statsPrefix + name)
+			if existing != nil {
+				if s, ok := existing.(*MultiStatistics); ok {
+					return s, nil
+				}
+				return nil, fmt.Errorf("%v is set to a non-MultiStatistics value", name)
+			}
+			return nil, nil
+		},
+		func() *MultiStatistics { // create
+			s := &MultiStatistics{
+				values: map[string]*Statistics{
+					"__total__": {
+						min:   atomic.NewFloat64(math.Inf(0)),
+						max:   atomic.NewFloat64(math.Inf(-1)),
+						count: atomic.NewInt64(0),
+						avg:   atomic.NewFloat64(0),
+						mean:  atomic.NewFloat64(0),
+						value: atomic.NewFloat64(0),
+					},
+				},
+				keyName: keyName,
+			}
+			expvar.Publish(statsPrefix+name, s)
+			return s
+		},
+	)
+}
+
+func (s *MultiStatistics) String() string {
+	b, _ := json.Marshal(s.Value())
+	return string(b)
+}
+
+func (s *MultiStatistics) Value() map[string]interface{} {
+	var value map[string]interface{}
+	valuesPerKey := make([]interface{}, 0, len(s.values))
+	for k, v := range s.values {
+		if k == "__total__" {
+			value = v.Value()
+		} else {
+			valuesPerKey = append(valuesPerKey, map[string]interface{}{
+				s.keyName: k,
+				"data":    v.Value(),
+			})
+		}
+	}
+	value["drilldown"] = valuesPerKey
+	return value
+}
+
+func (s *MultiStatistics) Record(v float64, key string) {
+	keyStats, ok := s.values[key]
+	if !ok {
+		keyStats = &Statistics{
+			min:   atomic.NewFloat64(math.Inf(0)),
+			max:   atomic.NewFloat64(math.Inf(-1)),
+			count: atomic.NewInt64(0),
+			avg:   atomic.NewFloat64(0),
+			mean:  atomic.NewFloat64(0),
+			value: atomic.NewFloat64(0),
+		}
+		s.values[key] = keyStats
+	}
+	keyStats.Record(v)
+	s.values["__total__"].Record(v)
+}
+
 type Counter struct {
 	total *atomic.Int64
 	rate  *atomic.Float64
@@ -408,6 +496,33 @@ func NewCounter(name string) *Counter {
 	)
 }
 
+func (c *Counter) updateRate() {
+	total := c.total.Load()
+	c.rate.Store(float64(total) / time.Since(c.resetTime).Seconds())
+}
+
+func (c *Counter) reset() {
+	c.total.Store(0)
+	c.rate.Store(0)
+	c.resetTime = time.Now()
+}
+
+func (c *Counter) Inc(i int64) {
+	c.total.Add(i)
+}
+
+func (c *Counter) String() string {
+	b, _ := json.Marshal(c.Value())
+	return string(b)
+}
+
+func (c *Counter) Value() map[string]interface{} {
+	return map[string]interface{}{
+		"total": c.total.Load(),
+		"rate":  c.rate.Load(),
+	}
+}
+
 // NewMultiCounter returns a new MultiCounter stats object.
 // If a NewMultiCounter stats object with the same name already exists it is returned.
 func NewMultiCounter(name string, keyName string) *MultiCounter {
@@ -439,58 +554,29 @@ func NewMultiCounter(name string, keyName string) *MultiCounter {
 	)
 }
 
-func (c *Counter) updateRate() {
-	total := c.total.Load()
-	c.rate.Store(float64(total) / time.Since(c.resetTime).Seconds())
-}
-
-func (c *Counter) reset() {
-	c.total.Store(0)
-	c.rate.Store(0)
-	c.resetTime = time.Now()
-}
-
-func (c *Counter) Inc(i int64) {
-	c.total.Add(i)
-}
-
-func (c *Counter) String() string {
-	b, _ := json.Marshal(c.Value())
-	return string(b)
-}
-
-func (c *Counter) Value() map[string]interface{} {
-	return map[string]interface{}{
-		"total": c.total.Load(),
-		"rate":  c.rate.Load(),
-	}
-}
-
 func (c *MultiCounter) updateRate() {
 	for _, v := range c.values {
-		total := v.total.Load()
-		v.rate.Store(float64(total) / time.Since(v.resetTime).Seconds())
+		v.updateRate()
 	}
 }
 
 func (c *MultiCounter) reset() {
 	for _, v := range c.values {
-		v.total.Store(0)
-		v.rate.Store(0)
-		v.resetTime = time.Now()
+		v.reset()
 	}
 }
 
-func (c *MultiCounter) Inc(i int64, key string) {
-	if v, ok := c.values[key]; ok {
-		v.Inc(i)
-	} else {
-		c.values[key] = &Counter{
+func (c *MultiCounter) Inc(i int64, keyValue string) {
+	v, ok := c.values[keyValue]
+	if !ok {
+		v = &Counter{
 			total:     atomic.NewInt64(i),
 			rate:      atomic.NewFloat64(0),
 			resetTime: time.Now(),
 		}
+		c.values[keyValue] = v
 	}
+	v.Inc(i)
 	c.values["__total__"].Inc(i)
 }
 
@@ -500,20 +586,19 @@ func (c *MultiCounter) String() string {
 }
 
 func (c *MultiCounter) Value() map[string]interface{} {
-	value := make(map[string]interface{}, len(c.values))
-	perKey := make(map[string]interface{})
-	value[c.keyName] = perKey
+	var value map[string]interface{}
+	valuesPerKey := make([]interface{}, 0, len(c.values))
 	for k, v := range c.values {
 		if k == "__total__" {
-			value["total"] = c.values["__total__"].total.Load()
-			value["rate"] = c.values["__total__"].rate.Load()
+			value = v.Value()
 		} else {
-			perKey[k] = map[string]interface{}{
-				"total": v.total.Load(),
-				"rate":  v.rate.Load(),
-			}
+			valuesPerKey = append(valuesPerKey, map[string]interface{}{
+				c.keyName: k,
+				"data":    v.Value(),
+			})
 		}
 	}
+	value["drilldown"] = valuesPerKey
 	return value
 }
 

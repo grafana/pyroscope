@@ -104,6 +104,7 @@ type Distributor struct {
 	bytesReceivedStats      *usagestats.Statistics
 	bytesReceivedTotalStats *usagestats.Counter
 	profileReceivedStats    *usagestats.MultiCounter
+	profileSizeStats        *usagestats.MultiStatistics
 }
 
 type Limits interface {
@@ -142,6 +143,7 @@ func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactor
 		bytesReceivedStats:      usagestats.NewStatistics("distributor_bytes_received"),
 		bytesReceivedTotalStats: usagestats.NewCounter("distributor_bytes_received_total"),
 		profileReceivedStats:    usagestats.NewMultiCounter("distributor_profiles_received", "lang"),
+		profileSizeStats:        usagestats.NewMultiStatistics("distributor_profile_sizes", "lang"),
 	}
 	var err error
 
@@ -240,7 +242,7 @@ var matchers = map[string]*regexp.Regexp{
 	"python": regexp.MustCompile(`\.py$`),
 	"ruby":   regexp.MustCompile(`^gems/|\.rb$`),
 	"dotnet": regexp.MustCompile(`^Microsoft\.|^System\.`),
-	"js":     regexp.MustCompile(`\.js$|/node_modules/|\.js:`),
+	"js":     regexp.MustCompile(`\.jsx?:?|/node_modules/`),
 	"rust":   regexp.MustCompile(`\.rs(:\d+)?`),
 }
 
@@ -291,10 +293,10 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 	for _, series := range req.Series {
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
-		language := d.FindLanguage(series)
+		profLanguage := d.FindLanguage(series)
 		for _, raw := range series.Samples {
 			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
-			d.profileReceivedStats.Inc(1, language)
+			d.profileReceivedStats.Inc(1, profLanguage)
 			if haveRawPprof {
 				d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(raw.RawProfile)))
 			}
@@ -302,6 +304,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			decompressedSize := p.SizeVT()
 			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize))
 			d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
+			d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
 
 			if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels, now); err != nil {
 				_ = level.Debug(d.logger).Log("msg", "invalid profile", "err", err)
