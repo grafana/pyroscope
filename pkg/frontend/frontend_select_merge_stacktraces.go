@@ -41,6 +41,10 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 	if validated.IsEmpty {
 		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{}), nil
 	}
+	maxNodes, err := validation.ValidateMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
 
 	g, ctx := errgroup.WithContext(ctx)
 	if maxConcurrent := validationutil.SmallestPositiveNonZeroIntPerTenant(tenantIDs, f.limits.MaxQueryParallelism); maxConcurrent > 0 {
@@ -59,7 +63,7 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 				LabelSelector: c.Msg.LabelSelector,
 				Start:         r.Start.UnixMilli(),
 				End:           r.End.UnixMilli(),
-				MaxNodes:      c.Msg.MaxNodes,
+				MaxNodes:      &maxNodes,
 			})
 			resp, err := connectgrpc.RoundTripUnary[
 				querierv1.SelectMergeStacktracesRequest,

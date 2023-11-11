@@ -183,6 +183,14 @@ limits:
   # CLI flag: -querier.max-query-parallelism
   [max_query_parallelism: <int> | default = 0]
 
+  # Maximum number of flamegraph nodes by default. 0 to disable.
+  # CLI flag: -querier.max-flamegraph-nodes-default
+  [max_flamegraph_nodes_default: <int> | default = 8192]
+
+  # Maximum number of flamegraph nodes allowed. 0 to disable.
+  # CLI flag: -querier.max-flamegraph-nodes-max
+  [max_flamegraph_nodes_max: <int> | default = 0]
+
   # The tenant's shard size, used when store-gateway sharding is enabled. Value
   # of 0 disables shuffle sharding for the tenant, that is all tenant blocks are
   # sharded across all store-gateway replicas.

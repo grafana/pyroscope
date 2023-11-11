@@ -340,3 +340,63 @@ func TestValidateProfile(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateFlamegraphMaxNodes(t *testing.T) {
+	type testCase struct {
+		name      string
+		maxNodes  int64
+		validated int64
+		limits    FlameGraphLimits
+		err       error
+	}
+
+	testCases := []testCase{
+		{
+			name:      "default limit",
+			maxNodes:  0,
+			validated: 10,
+			limits: MockLimits{
+				MaxFlameGraphNodesDefaultValue: 10,
+			},
+		},
+		{
+			name:      "within limit",
+			maxNodes:  10,
+			validated: 10,
+			limits: MockLimits{
+				MaxFlameGraphNodesMaxValue: 10,
+			},
+		},
+		{
+			name:     "limit exceeded",
+			maxNodes: 10,
+			limits: MockLimits{
+				MaxFlameGraphNodesMaxValue: 5,
+			},
+			err: &Error{Reason: "flamegraph_limit", msg: "max flamegraph nodes limit 10 is greater than allowed 5"},
+		},
+		{
+			name:      "limit disabled",
+			maxNodes:  -1,
+			validated: -1,
+			limits:    MockLimits{},
+		},
+		{
+			name:     "limit disabled with max set",
+			maxNodes: -1,
+			limits: MockLimits{
+				MaxFlameGraphNodesMaxValue: 5,
+			},
+			err: &Error{Reason: "flamegraph_limit", msg: "max flamegraph nodes limit must be set (max allowed 5)"},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			v, err := ValidateMaxNodes(tc.limits, []string{"tenant"}, tc.maxNodes)
+			require.Equal(t, tc.err, err)
+			require.Equal(t, tc.validated, v)
+		})
+	}
+}

@@ -525,6 +525,10 @@ Usage of ./pyroscope:
     	Querier ID, sent to the query-frontend to identify requests from the same querier. Defaults to hostname.
   -querier.max-concurrent int
     	The maximum number of concurrent queries allowed. (default 4)
+  -querier.max-flamegraph-nodes-default int
+    	Maximum number of flamegraph nodes by default. 0 to disable. (default 8192)
+  -querier.max-flamegraph-nodes-max int
+    	Maximum number of flamegraph nodes allowed. 0 to disable.
   -querier.max-query-length duration
     	The limit to length of queries. 0 to disable. (default 1d)
   -querier.max-query-lookback duration

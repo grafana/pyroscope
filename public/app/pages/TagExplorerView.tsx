@@ -193,10 +193,10 @@ function TagExplorerView() {
       return () => fetchData.abort('cancel');
     }
     return undefined;
-  }, [from, until, query, groupByTagValue, dispatch]);
+  }, [from, until, query, groupByTagValue, refreshToken, dispatch]);
 
   useEffect(() => {
-    if (from && until && query) {
+    if (from && until && query && groupByTag) {
       const fetchData = dispatch(fetchTagExplorerView(null));
       return () => fetchData.abort('cancel');
     }
