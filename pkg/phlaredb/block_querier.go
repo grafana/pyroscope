@@ -1523,7 +1523,7 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	return iter.NewMergeIterator(maxBlockProfile, false, iters...), nil
 }
 
-func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest) (*phlaremodel.Tree, error) {
+func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest) (tree *phlaremodel.Tree, err error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByStacktraces - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
@@ -1561,21 +1561,19 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 		lblsPerRef[int64(chks[0].SeriesIndex)] = struct{}{}
 	}
 
-	pIt := query.NewBinaryJoinIterator(
-		0,
-		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
-		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
-	)
 	var it *profilePartitionIterator
 	if b.meta.Version >= 2 {
-		pIt = query.NewBinaryJoinIterator(
-			0,
-			pIt,
-			b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
-		)
 		buf := make([][]parquet.Value, 1)
 		it = &profilePartitionIterator{
-			BinaryJoinIterator: pIt,
+			BinaryJoinIterator: query.NewBinaryJoinIterator(
+				0,
+				query.NewBinaryJoinIterator(
+					0,
+					b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
+					b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
+				),
+				b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
+			),
 			getPartition: func(ir *query.IteratorResult) uint64 {
 				buf = ir.Columns(buf, "StacktracePartition")
 				if len(buf) > 0 && len(buf[0]) == 1 {
@@ -1586,7 +1584,11 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 		}
 	} else {
 		it = &profilePartitionIterator{
-			BinaryJoinIterator: pIt,
+			BinaryJoinIterator: query.NewBinaryJoinIterator(
+				0,
+				b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
+				b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
+			),
 			getPartition: func(ir *query.IteratorResult) uint64 {
 				return 0
 			},
@@ -1594,6 +1596,7 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 	}
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
+	defer runutil.CloseWithErrCapture(&err, it, "failed to close profile stream")
 
 	if err := mergeByStacktraces[*profilePartition](ctx, b.profiles.file, it, r); err != nil {
 		return nil, err
