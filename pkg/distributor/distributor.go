@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net/http"
-	"regexp"
 	"sort"
 	"sync"
 	"time"
@@ -236,29 +235,11 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	return d.PushParsed(ctx, req)
 }
 
-var matchers = map[string]*regexp.Regexp{
-	"java":   regexp.MustCompile(`^java/|^jdk/|libjvm`),
-	"go":     regexp.MustCompile(`/usr/local/go/|\.go$`),
-	"python": regexp.MustCompile(`\.py$`),
-	"ruby":   regexp.MustCompile(`^gems/|\.rb$`),
-	"dotnet": regexp.MustCompile(`^Microsoft\.|^System\.`),
-	"nodejs": regexp.MustCompile(`\.jsx?:?|/node_modules/`),
-	"rust":   regexp.MustCompile(`\.rs(:\d+)?`),
-}
-
-func (d *Distributor) FindLanguage(series *distributormodel.ProfileSeries) string {
+func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries) string {
 	if len(series.Samples) == 0 {
 		return "unknown"
 	}
-	sample := series.Samples[0]
-	for _, symbol := range sample.Profile.StringTable {
-		for lang, matcher := range matchers {
-			if matcher.MatchString(symbol) {
-				return lang
-			}
-		}
-	}
-	return "unknown"
+	return pprof.GetLanguage(series.Samples[0].Profile, d.logger)
 }
 
 func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
@@ -293,7 +274,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 	for _, series := range req.Series {
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
-		profLanguage := d.FindLanguage(series)
+		profLanguage := d.GetProfileLanguage(series)
 		for _, raw := range series.Samples {
 			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
 			d.profileReceivedStats.Inc(1, profLanguage)

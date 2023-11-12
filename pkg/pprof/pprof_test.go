@@ -1,6 +1,7 @@
 package pprof
 
 import (
+	"github.com/go-kit/log"
 	"math/rand"
 	"os"
 	"testing"
@@ -1035,4 +1036,68 @@ func Test_GroupSamplesWithout_dotnet_profile(t *testing.T) {
 	groups := GroupSamplesWithoutLabels(p.Profile, ProfileIDLabelName)
 	require.Len(t, groups, 1)
 	assert.Equal(t, groups[0].Labels, []*profilev1.Label{{Key: 66, Str: 67}, {Key: 64, Str: 65}})
+}
+
+func Test_GetProfileLanguage_go_cpu_profile(t *testing.T) {
+	p, err := OpenFile("testdata/go.cpu.labels.pprof")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "go", language)
+}
+
+func Test_GetProfileLanguage_go_heap_profile(t *testing.T) {
+	p, err := OpenFile("testdata/heap")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "go", language)
+}
+
+func Test_GetProfileLanguage_dotnet_profile(t *testing.T) {
+	p, err := OpenFile("testdata/dotnet.labels.pprof")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "dotnet", language)
+}
+
+func Test_GetProfileLanguage_java_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_java")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "java", language)
+}
+
+func Test_GetProfileLanguage_python_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_python")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "python", language)
+}
+
+func Test_GetProfileLanguage_ruby_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_ruby")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "ruby", language)
+}
+
+func Test_GetProfileLanguage_nodejs_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_nodejs")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "nodejs", language)
+}
+
+func Test_GetProfileLanguage_rust_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_rust")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "rust", language)
 }
