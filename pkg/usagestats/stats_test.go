@@ -110,6 +110,74 @@ func TestWordCounter(t *testing.T) {
 	require.Equal(t, int64(2), w.Value())
 }
 
+func TestMultiCounter(t *testing.T) {
+	mc := NewMultiCounter("test_multi_counter", "key_name")
+	mc.Inc(100, "key_value_a")
+	mc.Inc(200, "key_value_b")
+	mc.Inc(300, "key_value_a")
+	time.Sleep(1 * time.Second)
+	mc.updateRate()
+	v := mc.Value()
+	require.Equal(t, int64(600), v["total"])
+	require.GreaterOrEqual(t, v["rate"], float64(590))
+
+	drilldown := v["drilldown"].([]interface{})
+	require.Equal(t, 2, len(drilldown))
+	for _, entry := range drilldown {
+		entryMap := entry.(map[string]interface{})
+		data := entryMap["data"].(map[string]interface{})
+		if entryMap["key_name"] == "key_value_a" {
+			require.Equal(t, int64(400), data["total"])
+		} else if entryMap["key_name"] == "key_value_b" {
+			require.Equal(t, int64(200), data["total"])
+		} else {
+			t.FailNow()
+		}
+	}
+
+	mc.reset()
+	require.Equal(t, int64(0), mc.Value()["total"])
+	require.Equal(t, float64(0), mc.Value()["rate"])
+}
+
+func TestMultiStatistic(t *testing.T) {
+	ms := NewMultiStatistics("test_multi_stats", "key_name")
+	ms.Record(100, "key_value_a")
+	ms.Record(200, "key_value_b")
+	ms.Record(300, "key_value_a")
+	v := ms.Value()
+	require.Equal(t, float64(100), v["min"])
+	require.Equal(t, float64(300), v["max"])
+	require.Equal(t, int64(3), v["count"])
+	require.Equal(t, float64(200), v["avg"])
+	require.Equal(t, float64(81.64965809277261), v["stddev"])
+	require.Equal(t, float64(6666.666666666667), v["stdvar"])
+
+	drilldown := v["drilldown"].([]interface{})
+	require.Equal(t, 2, len(drilldown))
+	for _, entry := range drilldown {
+		entryMap := entry.(map[string]interface{})
+		data := entryMap["data"].(map[string]interface{})
+		if entryMap["key_name"] == "key_value_a" {
+			require.Equal(t, float64(100), data["min"])
+			require.Equal(t, float64(300), data["max"])
+			require.Equal(t, int64(2), data["count"])
+			require.Equal(t, float64(200), data["avg"])
+			require.Equal(t, float64(100), data["stddev"])
+			require.Equal(t, float64(10000), data["stdvar"])
+		} else if entryMap["key_name"] == "key_value_b" {
+			require.Equal(t, float64(200), data["min"])
+			require.Equal(t, float64(200), data["max"])
+			require.Equal(t, int64(1), data["count"])
+			require.Equal(t, float64(200), data["avg"])
+			require.Equal(t, float64(0), data["stddev"])
+			require.Equal(t, float64(0), data["stdvar"])
+		} else {
+			t.FailNow()
+		}
+	}
+}
+
 func TestPanics(t *testing.T) {
 	require.Panics(t, func() {
 		NewStatistics("panicstats")
