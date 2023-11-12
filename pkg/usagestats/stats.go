@@ -439,11 +439,6 @@ type Counter struct {
 	resetTime time.Time
 }
 
-type MultiCounter struct {
-	values  map[string]*Counter
-	keyName string
-}
-
 func createOrRetrieveExpvar[K any](check func() (*K, error), create func() *K) *K {
 	// check if string exists holding read lock
 	createLock.RLock()
@@ -523,6 +518,11 @@ func (c *Counter) Value() map[string]interface{} {
 	}
 }
 
+type MultiCounter struct {
+	values  map[string]*Counter
+	keyName string
+}
+
 // NewMultiCounter returns a new MultiCounter stats object.
 // If a NewMultiCounter stats object with the same name already exists it is returned.
 func NewMultiCounter(name string, keyName string) *MultiCounter {
@@ -570,7 +570,7 @@ func (c *MultiCounter) Inc(i int64, keyValue string) {
 	v, ok := c.values[keyValue]
 	if !ok {
 		v = &Counter{
-			total:     atomic.NewInt64(i),
+			total:     atomic.NewInt64(0),
 			rate:      atomic.NewFloat64(0),
 			resetTime: time.Now(),
 		}
