@@ -1959,7 +1959,9 @@ func (dec *Decoder) LabelValueFor(b []byte, label string) (string, error) {
 
 // Series decodes a series entry from the given byte slice into lset and chks.
 func (dec *Decoder) Series(b []byte, lbls *phlaremodel.Labels, chks *[]ChunkMeta) (uint64, error) {
-	*lbls = (*lbls)[:0]
+	if lbls != nil {
+		*lbls = (*lbls)[:0]
+	}
 	*chks = (*chks)[:0]
 
 	d := encoding.DecWrap(tsdb_enc.Decbuf{B: b})
@@ -1973,6 +1975,9 @@ func (dec *Decoder) Series(b []byte, lbls *phlaremodel.Labels, chks *[]ChunkMeta
 
 		if d.Err() != nil {
 			return 0, errors.Wrap(d.Err(), "read series label offsets")
+		}
+		if lbls == nil {
+			continue
 		}
 
 		ln, err := dec.LookupSymbol(lno)

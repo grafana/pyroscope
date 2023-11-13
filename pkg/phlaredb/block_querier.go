@@ -1547,85 +1547,107 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 
 	var (
 		chks       = make([]index.ChunkMeta, 1)
-		lbls       = make(phlaremodel.Labels, 0, 6)
 		lblsPerRef = make(map[int64]struct{})
 	)
 
 	// get all relevant labels/fingerprints
 	for postings.Next() {
-		// todo  Remove the need to read labels.
-		_, err := b.index.Series(postings.At(), &lbls, &chks)
+		_, err := b.index.Series(postings.At(), nil, &chks)
 		if err != nil {
 			return nil, err
 		}
 		lblsPerRef[int64(chks[0].SeriesIndex)] = struct{}{}
 	}
-
-	var it *profilePartitionIterator
-	if b.meta.Version >= 2 {
-		buf := make([][]parquet.Value, 1)
-		it = &profilePartitionIterator{
-			BinaryJoinIterator: query.NewBinaryJoinIterator(
-				0,
-				query.NewBinaryJoinIterator(
-					0,
-					b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
-					b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
-				),
-				b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
-			),
-			getPartition: func(ir *query.IteratorResult) uint64 {
-				buf = ir.Columns(buf, "StacktracePartition")
-				if len(buf) > 0 && len(buf[0]) == 1 {
-					return buf[0][0].Uint64()
-				}
-				return 0
-			},
-		}
-	} else {
-		it = &profilePartitionIterator{
-			BinaryJoinIterator: query.NewBinaryJoinIterator(
-				0,
-				b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
-				b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
-			),
-			getPartition: func(ir *query.IteratorResult) uint64 {
-				return 0
-			},
-		}
-	}
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
-	defer runutil.CloseWithErrCapture(&err, it, "failed to close profile stream")
 
-	if err := mergeByStacktraces[*profilePartition](ctx, b.profiles.file, it, r); err != nil {
+	it := query.NewBinaryJoinIterator(
+		0,
+		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
+		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
+	)
+
+	if b.meta.Version >= 2 {
+		it = query.NewBinaryJoinIterator(0,
+			it,
+			b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
+		)
+	}
+
+	pIt, err := newRowProfileIterator(b.meta.Version, it)
+	if err != nil {
+		return nil, err
+	}
+	defer pIt.Close()
+
+	if err := mergeByStacktraces(ctx, b.profiles.file, pIt, r); err != nil {
 		return nil, err
 	}
 	return r.Tree()
 }
 
-type profilePartitionIterator struct {
-	*query.BinaryJoinIterator
-	getPartition func(*query.IteratorResult) uint64
+type rowProfileIterator struct {
+	it                     query.Iterator
+	current                rowProfile
+	hasStacktracePartition bool
+
+	buf [][]parquet.Value
 }
 
-func (p *profilePartitionIterator) At() *profilePartition {
-	return &profilePartition{
-		rowNum:    p.BinaryJoinIterator.At().RowNumber[0],
-		partition: p.getPartition(p.BinaryJoinIterator.At()),
+// todo: newRowProfileIterator should be more flexible for filterating and selecting columns.
+func newRowProfileIterator(version block.MetaVersion, base query.Iterator) (iter.Iterator[rowProfile], error) {
+	it := &rowProfileIterator{
+		it:                     base,
+		hasStacktracePartition: version >= 2,
 	}
+	if it.hasStacktracePartition {
+		it.buf = make([][]parquet.Value, 1)
+	}
+	// todo: investigate why the BinaryJoinIterator is incompatible with the Tee iterator and remove the Slice iterator.
+	s, err := iter.Slice[rowProfile](it)
+	if err != nil {
+		return nil, err
+	}
+
+	return iter.NewSliceIterator(s), nil
 }
 
-type profilePartition struct {
+func (p *rowProfileIterator) Next() bool {
+	if p.it.Next() {
+		p.current.rowNum = p.it.At().RowNumber[0]
+		if p.hasStacktracePartition {
+			p.buf = p.it.At().Columns(p.buf, "StacktracePartition")
+			if len(p.buf) > 0 && len(p.buf[0]) == 1 {
+				p.current.partition = p.buf[0][0].Uint64()
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func (p *rowProfileIterator) Close() error {
+	return p.it.Close()
+}
+
+func (p *rowProfileIterator) Err() error {
+	return p.it.Err()
+}
+
+func (p *rowProfileIterator) At() rowProfile {
+	return p.current
+}
+
+type rowProfile struct {
 	rowNum    int64
 	partition uint64
 }
 
-func (p *profilePartition) StacktracePartition() uint64 {
+func (p rowProfile) StacktracePartition() uint64 {
 	return p.partition
 }
 
-func (p *profilePartition) RowNumber() int64 {
+func (p rowProfile) RowNumber() int64 {
 	return p.rowNum
 }
 

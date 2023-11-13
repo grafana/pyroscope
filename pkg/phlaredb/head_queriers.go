@@ -122,30 +122,24 @@ func (q *headOnDiskQuerier) SelectMergeByStacktraces(ctx context.Context, params
 		start = model.Time(params.Start)
 		end   = model.Time(params.End)
 	)
-	buf := make([][]parquet.Value, 1)
-	pIt := &profilePartitionIterator{
-		BinaryJoinIterator: query.NewBinaryJoinIterator(0,
+	pIt, err := newRowProfileIterator(q.head.meta.Version,
+		query.NewBinaryJoinIterator(0,
 			query.NewBinaryJoinIterator(
 				0,
 				rowIter,
 				q.rowGroup().columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"),
 			),
-			q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
-		),
-		getPartition: func(ir *query.IteratorResult) uint64 {
-			buf = ir.Columns(buf, "StacktracePartition")
-			if len(buf) > 0 && len(buf[0]) == 1 {
-				return buf[0][0].Uint64()
-			}
-			return 0
-		},
+			q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition")))
+	if err != nil {
+		return nil, err
 	}
+
 	defer pIt.Close()
 
 	r := symdb.NewResolver(ctx, q.head.symdb)
 	defer r.Release()
 
-	if err := mergeByStacktraces[*profilePartition](ctx, q.rowGroup(), pIt, r); err != nil {
+	if err := mergeByStacktraces[rowProfile](ctx, q.rowGroup(), pIt, r); err != nil {
 		return nil, err
 	}
 	return r.Tree()

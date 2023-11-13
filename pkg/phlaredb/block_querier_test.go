@@ -1106,6 +1106,55 @@ func Benchmark_singleBlockQuerier_LabelNames(b *testing.B) {
 	})
 }
 
+func TestSelectMergeStacktraces(t *testing.T) {
+	ctx := context.Background()
+
+	querier := newBlock(t, func() (res []*testhelper.ProfileBuilder) {
+		for i := int64(1); i < 1001; i++ {
+			res = append(res, testhelper.NewProfileBuilder(int64(time.Second)*i).
+				CPUProfile().
+				WithLabels(
+					"job", "a",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+				testhelper.NewProfileBuilder(int64(time.Second*2)*i).
+					CPUProfile().
+					WithLabels(
+						"job", "b",
+					).ForStacktraceString("foo", "bar", "buzz").AddSamples(1),
+				testhelper.NewProfileBuilder(int64(time.Second*3)*i).
+					CPUProfile().
+					WithLabels(
+						"job", "c",
+					).ForStacktraceString("foo", "bar").AddSamples(1))
+		}
+		return res
+	})
+
+	err := querier.Open(ctx)
+	require.NoError(t, err)
+
+	merge, err := querier.SelectMergeByStacktraces(ctx, &ingesterv1.SelectProfilesRequest{
+		LabelSelector: `{}`,
+		Type: &typesv1.ProfileType{
+			ID:         "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+			Name:       "process_cpu",
+			SampleType: "cpu",
+			SampleUnit: "nanoseconds",
+			PeriodType: "cpu",
+			PeriodUnit: "nanoseconds",
+		},
+		Start: 0,
+		End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
+	})
+	require.NoError(t, err)
+	expected := phlaremodel.Tree{}
+	expected.InsertStack(1000, "baz", "bar", "foo")
+	expected.InsertStack(1000, "buzz", "bar", "foo")
+	expected.InsertStack(1000, "bar", "foo")
+	require.Equal(t, expected.String(), merge.String())
+	require.NoError(t, querier.Close())
+}
+
 func TestSelectMergeByStacktracesRace(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
@@ -1185,6 +1234,5 @@ func TestSelectMergeByStacktracesRace(t *testing.T) {
 	}
 
 	require.NoError(t, g.Wait())
-	// t.Log(tree.String())
 	require.NoError(t, querier.Close())
 }
