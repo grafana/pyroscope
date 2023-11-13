@@ -188,6 +188,45 @@ func (t *StacktraceTree) Insert(locations []int32, value int64) {
 	t.Nodes[x].Value += value
 }
 
+func (t *StacktraceTree) Truncate(min int64) int {
+	if min < 1 {
+		return 0
+	}
+	var c int
+	for i := range t.Nodes[1:] {
+		if t.Nodes[i].Total < min {
+			// Make the node leaf.
+			n := &t.Nodes[i]
+			n.Location = sentinel
+			n.FirstChild = sentinel
+			n.Value = n.Total
+			c++
+		}
+	}
+	return c
+}
+
+func (t *StacktraceTree) Resolve(dst []int32, idx int32) []int32 {
+	dst = dst[:0]
+	if idx >= int32(len(t.Nodes)) {
+		return dst
+	}
+	n := t.Nodes[idx]
+	// If the stack trace is truncated,
+	// we only keep a single stub frame.
+	if n.Location == sentinel {
+		dst = append(dst, sentinel)
+	}
+	for i := idx; i > 0; i = n.Parent {
+		if n = t.Nodes[i]; n.Location > 0 {
+			if n.Location != sentinel {
+				dst = append(dst, n.Location)
+			}
+		}
+	}
+	return dst
+}
+
 // MinValue returns the minimum "total" value a node in a tree has to have.
 func (t *StacktraceTree) MinValue(maxNodes int64) int64 {
 	if maxNodes < 1 || maxNodes >= int64(len(t.Nodes)) {
@@ -226,13 +265,13 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 		current, nodes, children = nodes[len(nodes)-1], nodes[:len(nodes)-1], children[:0]
 		var truncated int64
 		n := &t.Nodes[current]
-		if n.Location == stacktraceTreeNodeTruncated {
+		if n.Location == sentinel {
 			goto call
 		}
 
 		for x := n.FirstChild; x > 0; {
 			child := &t.Nodes[x]
-			if child.Total >= min && child.Location != stacktraceTreeNodeTruncated {
+			if child.Total >= min && child.Location != sentinel {
 				children = append(children, x)
 			} else {
 				truncated += child.Total
@@ -244,7 +283,7 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 			// Create a stub for removed nodes.
 			i := len(t.Nodes)
 			t.Nodes = append(t.Nodes, StacktraceNode{
-				Location: stacktraceTreeNodeTruncated,
+				Location: sentinel,
 				Value:    truncated,
 			})
 			children = append(children, int32(i))
@@ -263,8 +302,6 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 	return nil
 }
 
-const stacktraceTreeNodeTruncated = -1
-
 var lostDuringSerializationNameBytes = []byte(truncatedNodeName)
 
 func (t *StacktraceTree) Bytes(dst io.Writer, maxNodes int64, funcs []string) {
@@ -280,7 +317,7 @@ func (t *StacktraceTree) Bytes(dst io.Writer, maxNodes int64, funcs []string) {
 			// It is guaranteed that funcs slice and its contents are immutable,
 			// and the byte slice backing capacity is managed by GC.
 			name = unsafeStringBytes(funcs[n.Location])
-		case stacktraceTreeNodeTruncated:
+		case sentinel:
 			name = lostDuringSerializationNameBytes
 		}
 

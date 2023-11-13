@@ -77,8 +77,33 @@ func Test_block_Resolver_ResolveTree(t *testing.T) {
 	require.Equal(t, expectedFingerprint, treeFingerprint(resolved))
 }
 
-func Benchmark_block_Resolver_ResolveProfile(t *testing.B) {
+func Test_block_Resolver_ResolvePprof(t *testing.T) {
 	s := newBlockSuite(t, [][]string{{"testdata/profile.pb.gz"}})
+	defer s.teardown()
+	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
+	r := NewResolver(context.Background(), s.reader)
+	defer r.Release()
+	r.AddSamples(0, s.indexed[0][0].Samples)
+	resolved, err := r.Pprof()
+	require.NoError(t, err)
+	require.Equal(t, expectedFingerprint, pprofFingerprint(resolved, 0))
+}
+
+func Benchmark_block_Resolver_ResolvePprof(t *testing.B) {
+	s := newBlockSuite(t, [][]string{{"testdata/big-profile.pb.gz"}})
+	defer s.teardown()
+	s.init()
+	t.ResetTimer()
+	t.ReportAllocs()
+	for i := 0; i < t.N; i++ {
+		r := NewResolver(context.Background(), s.db)
+		r.AddSamples(0, s.indexed[0][0].Samples)
+		_, _ = r.Pprof()
+	}
+}
+
+func Benchmark_block_Resolver_ResolveProfile(t *testing.B) {
+	s := newBlockSuite(t, [][]string{{"testdata/big-profile.pb.gz"}})
 	defer s.teardown()
 	t.ResetTimer()
 	t.ReportAllocs()
@@ -90,7 +115,7 @@ func Benchmark_block_Resolver_ResolveProfile(t *testing.B) {
 }
 
 func Benchmark_block_Resolver_ResolveTree(t *testing.B) {
-	s := newBlockSuite(t, [][]string{{"testdata/profile.pb.gz"}})
+	s := newBlockSuite(t, [][]string{{"testdata/big-profile.pb.gz"}})
 	defer s.teardown()
 	t.ResetTimer()
 	t.ReportAllocs()
