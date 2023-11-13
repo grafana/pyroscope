@@ -102,7 +102,8 @@ type Distributor struct {
 	rfStats                 *expvar.Int
 	bytesReceivedStats      *usagestats.Statistics
 	bytesReceivedTotalStats *usagestats.Counter
-	profileReceivedStats    *usagestats.Counter
+	profileReceivedStats    *usagestats.MultiCounter
+	profileSizeStats        *usagestats.MultiStatistics
 }
 
 type Limits interface {
@@ -140,7 +141,8 @@ func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactor
 		rfStats:                 usagestats.NewInt("distributor_replication_factor"),
 		bytesReceivedStats:      usagestats.NewStatistics("distributor_bytes_received"),
 		bytesReceivedTotalStats: usagestats.NewCounter("distributor_bytes_received_total"),
-		profileReceivedStats:    usagestats.NewCounter("distributor_profiles_received"),
+		profileReceivedStats:    usagestats.NewMultiCounter("distributor_profiles_received", "lang"),
+		profileSizeStats:        usagestats.NewMultiStatistics("distributor_profile_sizes", "lang"),
 	}
 	var err error
 
@@ -233,6 +235,13 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	return d.PushParsed(ctx, req)
 }
 
+func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries) string {
+	if len(series.Samples) == 0 {
+		return "unknown"
+	}
+	return pprof.GetLanguage(series.Samples[0].Profile, d.logger)
+}
+
 func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.PushRequest) (resp *connect.Response[pushv1.PushResponse], err error) {
 	now := model.Now()
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
@@ -265,9 +274,10 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 	for _, series := range req.Series {
 		profName := phlaremodel.Labels(series.Labels).Get(ProfileName)
+		profLanguage := d.GetProfileLanguage(series)
 		for _, raw := range series.Samples {
 			usagestats.NewCounter(fmt.Sprintf("distributor_profile_type_%s_received", profName)).Inc(1)
-			d.profileReceivedStats.Inc(1)
+			d.profileReceivedStats.Inc(1, profLanguage)
 			if haveRawPprof {
 				d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(raw.RawProfile)))
 			}
@@ -275,6 +285,7 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 			decompressedSize := p.SizeVT()
 			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize))
 			d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
+			d.profileSizeStats.Record(float64(decompressedSize), profLanguage)
 
 			if err = validation.ValidateProfile(d.limits, tenantID, p.Profile, decompressedSize, series.Labels, now); err != nil {
 				_ = level.Debug(d.logger).Log("msg", "invalid profile", "err", err)

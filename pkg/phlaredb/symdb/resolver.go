@@ -44,8 +44,9 @@ func WithMaxConcurrent(n int) ResolverOption {
 }
 
 type lazyPartition struct {
+	id      uint64
+	reader  chan PartitionReader
 	samples map[uint32]int64
-	c       chan *Symbols
 	err     chan error
 	done    chan struct{}
 }
@@ -101,112 +102,111 @@ func (r *Resolver) Partition(partition uint64) map[uint32]int64 {
 		return p.samples
 	}
 	p = &lazyPartition{
+		id:      partition,
 		samples: make(map[uint32]int64),
 		err:     make(chan error),
 		done:    make(chan struct{}),
-		c:       make(chan *Symbols, 1),
+		reader:  make(chan PartitionReader, 1),
 	}
 	r.p[partition] = p
 	r.m.Unlock()
 	r.g.Go(func() error {
-		pr, err := r.s.Partition(r.ctx, partition)
-		if err != nil {
-			r.span.LogFields(log.String("err", err.Error()))
-			select {
-			case <-r.ctx.Done():
-				return r.ctx.Err()
-			case p.err <- err:
-				return err
-			}
-		}
-		defer pr.Release()
-		p.c <- pr.Symbols()
+		return r.acquirePartition(p)
+	})
+	// r.g.Wait() is only called at Resolver.Release.
+	return p.samples
+}
+
+func (r *Resolver) acquirePartition(p *lazyPartition) error {
+	pr, err := r.s.Partition(r.ctx, p.id)
+	if err != nil {
+		r.span.LogFields(log.String("err", err.Error()))
 		select {
 		case <-r.ctx.Done():
 			return r.ctx.Err()
-		case <-p.done:
-			return nil
+		case p.err <- err:
+			// Signal the partition receiver
+			// about the failure, so it won't
+			// block and return early.
+			return err
 		}
-	})
-	return p.samples
+	}
+	// We've acquired the partition and must release it
+	// once resolution finished or canceled.
+	select {
+	case p.reader <- pr:
+		// We transferred ownership to the recipient,
+		// which is now responsible for releasing the
+		// partition.
+		<-p.done
+	case <-r.ctx.Done():
+		// We still own the partition and must release
+		// it on our own. It's guaranteed that p.c receiver
+		// has no access to the partition.
+		pr.Release()
+		return r.ctx.Err()
+	}
+	return nil
 }
 
 func (r *Resolver) Tree() (*model.Tree, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Tree")
 	defer span.Finish()
-
-	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(r.c)
-
-	var tm sync.Mutex
+	var lock sync.Mutex
 	tree := new(model.Tree)
-
-	for _, p := range r.p {
-		p := p
-		g.Go(func() error {
-			defer close(p.done)
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case err := <-p.err:
-				return err
-			case symbols := <-p.c:
-				samples := schemav1.NewSamplesFromMap(p.samples)
-				rt, err := symbols.Tree(ctx, samples)
-				if err != nil {
-					return err
-				}
-				tm.Lock()
-				tree.Merge(rt)
-				tm.Unlock()
-			}
-			return nil
-		})
-	}
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-
-	return tree, nil
+	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
+		resolved, err := symbols.Tree(ctx, samples)
+		if err != nil {
+			return err
+		}
+		lock.Lock()
+		tree.Merge(resolved)
+		lock.Unlock()
+		return nil
+	})
+	return tree, err
 }
 
 func (r *Resolver) Profile() (*profile.Profile, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Profile")
 	defer span.Finish()
+	var lock sync.Mutex
+	profiles := make([]*profile.Profile, 0, len(r.p))
+	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
+		resolved, err := symbols.Profile(ctx, samples)
+		if err != nil {
+			return err
+		}
+		lock.Lock()
+		profiles = append(profiles, resolved)
+		lock.Unlock()
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return profile.Merge(profiles)
+}
 
+func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, schemav1.Samples) error) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(r.c)
-
-	var rm sync.Mutex
-	profiles := make([]*profile.Profile, 0, len(r.p))
-
 	for _, p := range r.p {
 		p := p
 		g.Go(func() error {
 			defer close(p.done)
 			select {
-			case <-ctx.Done():
-				return ctx.Err()
 			case err := <-p.err:
 				return err
-			case symbols := <-p.c:
-				samples := schemav1.NewSamplesFromMap(p.samples)
-				rp, err := symbols.Profile(ctx, samples)
-				if err != nil {
-					return err
-				}
-				rm.Lock()
-				profiles = append(profiles, rp)
-				rm.Unlock()
+			case <-ctx.Done():
+				return ctx.Err()
+			case pr := <-p.reader:
+				defer pr.Release()
+				return fn(pr.Symbols(), schemav1.NewSamplesFromMap(p.samples))
 			}
-			return nil
 		})
 	}
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-
-	return profile.Merge(profiles)
+	return g.Wait()
 }
 
 func (r *Symbols) Tree(ctx context.Context, samples schemav1.Samples) (*model.Tree, error) {
