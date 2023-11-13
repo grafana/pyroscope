@@ -673,7 +673,8 @@ function ExploreHeader({
 
   useEffect(() => {
     if (tagKeys.length && !selectedTag) {
-      handleGroupByTagChange(tagKeys[0]);
+      const firstGoodTag = tagKeys.find((tag) => !tag.startsWith('__'));
+      handleGroupByTagChange(firstGoodTag || tagKeys[0]);
     }
   }, [tagKeys, selectedTag, handleGroupByTagChange]);
 
