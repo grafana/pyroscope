@@ -12,18 +12,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"math"
 	"os"
 	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
-
-	"go.uber.org/goleak"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/concurrency"
@@ -32,7 +27,6 @@ import (
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/test"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -44,11 +38,8 @@ import (
 	"github.com/thanos-io/objstore"
 	"gopkg.in/yaml.v3"
 
-	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	pyroscope_objstore "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
-	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block/testutil"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
@@ -2045,73 +2036,4 @@ func (b *bucketWithMockedAttributes) Attributes(ctx context.Context, name string
 	}
 
 	return b.Bucket.Attributes(ctx, name)
-}
-
-func TestSelectMergeByStacktraces(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
-
-	ctx := context.Background()
-	bkt, err := filesystem.NewBucket("./")
-	require.NoError(t, err)
-	// todo repro with local data.
-	meta, err := block.ReadMetaFromDir("./01HEVA5ET1X0VTPN6W9R6Q5P8A/")
-	require.NoError(t, err)
-	querier := phlaredb.NewSingleBlockQuerierFromMeta(ctx, bkt, meta)
-
-	err = querier.Open(ctx)
-	require.NoError(t, err)
-	g, ctx := errgroup.WithContext(ctx)
-	tree := new(phlaremodel.Tree)
-	var m sync.Mutex
-
-	for i := 0; i < 30; i++ {
-		g.Go(func() error {
-			it, err := querier.SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
-				LabelSelector: `{service_name="cortex-dev-01/ingester"}`,
-				Type: &typesv1.ProfileType{
-					ID:         "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-					Name:       "process_cpu",
-					SampleType: "cpu",
-					SampleUnit: "nanoseconds",
-					PeriodType: "cpu",
-					PeriodUnit: "nanoseconds",
-				},
-				Start: 0,
-				End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
-			})
-			if err != nil {
-				return err
-			}
-			defer it.Close()
-			for it.Next() {
-			}
-			return nil
-		})
-		g.Go(func() error {
-			merge, err := querier.SelectMergeByStacktraces(ctx, &ingesterv1.SelectProfilesRequest{
-				LabelSelector: `{service_name="cortex-dev-01/ingester"}`,
-				Type: &typesv1.ProfileType{
-					ID:         "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
-					Name:       "process_cpu",
-					SampleType: "cpu",
-					SampleUnit: "nanoseconds",
-					PeriodType: "cpu",
-					PeriodUnit: "nanoseconds",
-				},
-				Start: 0,
-				End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
-			})
-			if err != nil {
-				return err
-			}
-			m.Lock()
-			tree.Merge(merge)
-			m.Unlock()
-			return nil
-		})
-	}
-
-	require.NoError(t, g.Wait())
-	// t.Log(tree.String())
-	require.NoError(t, querier.Close())
 }

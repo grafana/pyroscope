@@ -3,24 +3,30 @@ package phlaredb
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/oklog/ulid"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+	"golang.org/x/sync/errgroup"
 
+	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
 func TestQuerierBlockEviction(t *testing.T) {
@@ -188,7 +194,7 @@ func TestBlockCompatability_SelectMergeSpans(t *testing.T) {
 
 				pcIt := &profileCounter{Iterator: it}
 
-				spanSelector, err := model.NewSpanSelector([]string{})
+				spanSelector, err := phlaremodel.NewSpanSelector([]string{})
 				require.NoError(t, err)
 				resp, err := q.MergeBySpans(ctx, pcIt, spanSelector)
 				require.NoError(t, err)
@@ -926,7 +932,6 @@ func Test_singleBlockQuerier_LabelValues(t *testing.T) {
 
 		// Memory profiles shouldn't have 'function' label values.
 		got, err = q.LabelValues(ctx, connect.NewRequest(&typesv1.LabelValuesRequest{
-
 			Matchers: []string{`{__profile_type__="memory:alloc_objects:count:space:bytes", service_name="simple.golang.app"}`},
 			Name:     "function",
 		}))
@@ -1099,4 +1104,87 @@ func Benchmark_singleBlockQuerier_LabelNames(b *testing.B) {
 			}))
 		}
 	})
+}
+
+func TestSelectMergeByStacktracesRace(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	ctx := context.Background()
+
+	querier := newBlock(t, func() []*testhelper.ProfileBuilder {
+		return []*testhelper.ProfileBuilder{
+			testhelper.NewProfileBuilder(int64(time.Second*1)).
+				CPUProfile().
+				WithLabels(
+					"job", "a",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+			testhelper.NewProfileBuilder(int64(time.Second*2)).
+				CPUProfile().
+				WithLabels(
+					"job", "b",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+			testhelper.NewProfileBuilder(int64(time.Second*3)).
+				CPUProfile().
+				WithLabels(
+					"job", "c",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+		}
+	})
+
+	err := querier.Open(ctx)
+	require.NoError(t, err)
+	g, ctx := errgroup.WithContext(ctx)
+	tree := new(phlaremodel.Tree)
+	var m sync.Mutex
+
+	for i := 0; i < 30; i++ {
+		g.Go(func() error {
+			it, err := querier.SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
+				LabelSelector: `{}`,
+				Type: &typesv1.ProfileType{
+					ID:         "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+					Name:       "process_cpu",
+					SampleType: "cpu",
+					SampleUnit: "nanoseconds",
+					PeriodType: "cpu",
+					PeriodUnit: "nanoseconds",
+				},
+				Start: 0,
+				End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
+			})
+			if err != nil {
+				return err
+			}
+			defer it.Close()
+			for it.Next() {
+			}
+			return nil
+		})
+		g.Go(func() error {
+			merge, err := querier.SelectMergeByStacktraces(ctx, &ingesterv1.SelectProfilesRequest{
+				LabelSelector: `{}`,
+				Type: &typesv1.ProfileType{
+					ID:         "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+					Name:       "process_cpu",
+					SampleType: "cpu",
+					SampleUnit: "nanoseconds",
+					PeriodType: "cpu",
+					PeriodUnit: "nanoseconds",
+				},
+				Start: 0,
+				End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
+			})
+			if err != nil {
+				return err
+			}
+			m.Lock()
+			tree.Merge(merge)
+			m.Unlock()
+			return nil
+		})
+	}
+
+	require.NoError(t, g.Wait())
+	// t.Log(tree.String())
+	require.NoError(t, querier.Close())
 }
