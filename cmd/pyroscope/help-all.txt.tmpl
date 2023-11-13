@@ -469,6 +469,14 @@ Usage of ./pyroscope:
     	Directory used for local storage. (default "./data")
   -pyroscopedb.max-block-duration duration
     	Upper limit to the duration of a Pyroscope block. (default 1h0m0s)
+  -pyroscopedb.retention-policy-disable
+    	Disable retention policy enforcement
+  -pyroscopedb.retention-policy-enforcement-interval duration
+    	How often to enforce disk retention (default 5m0s)
+  -pyroscopedb.retention-policy-min-disk-available-percentage float
+    	Which percentage of free disk space to keep (default 0.05)
+  -pyroscopedb.retention-policy-min-free-disk-gb uint
+    	How much available disk space to keep in GiB (default 10)
   -pyroscopedb.row-group-target-size uint
     	How big should a single row group be uncompressed (default 1342177280)
   -querier.client-cleanup-period duration
