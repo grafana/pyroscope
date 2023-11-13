@@ -31,7 +31,7 @@ Download the `profilecli`` release asset from https://github.com/grafana/pyrosco
 For example, for Linux with the AMD64 architecture:
 
 ```bash
-curl -fL https://github.com/grafana/pyroscope/releases/download/v1.0.0/profilecli_1.0.0_linux_amd64.tar.gz | tar xvz
+curl -fL https://github.com/grafana/pyroscope/releases/download/v1.1.5/profilecli_1.1.5_linux_amd64.tar.gz | tar xvz
 ```
 
 This command will place the `profilecli` executable in the current directory.
