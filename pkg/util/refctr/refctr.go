@@ -34,6 +34,9 @@ func (r *Counter) Inc(init func() error) (err error) {
 // if this is the last reference.
 func (r *Counter) Dec(release func()) {
 	r.m.Lock()
+	if r.c < 0 {
+		panic("bug: negative reference counter")
+	}
 	if r.c--; r.c < 1 {
 		release()
 	}
