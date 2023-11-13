@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"regexp"
 	"sort"
 	"sync"
 	"time"
@@ -14,6 +15,8 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/colega/zeropool"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/google/pprof/profile"
 	"github.com/klauspost/compress/gzip"
 	"github.com/pkg/errors"
@@ -1103,4 +1106,26 @@ func ZeroLabelStrings(p *profilev1.Profile) {
 			p.StringTable[i] = zeroString
 		}
 	}
+}
+
+var languageMatchers = map[string]*regexp.Regexp{
+	"java":   regexp.MustCompile(`^java/|^jdk/|libjvm`),
+	"go":     regexp.MustCompile(`/usr/local/go/|\.go$`),
+	"python": regexp.MustCompile(`\.py$`),
+	"ruby":   regexp.MustCompile(`^gems/|\.rb$`),
+	"dotnet": regexp.MustCompile(`^Microsoft\.|^System\.`),
+	"nodejs": regexp.MustCompile(`\.jsx?:?|/node_modules/`),
+	"rust":   regexp.MustCompile(`\.rs(:\d+)?`),
+}
+
+func GetLanguage(profile *Profile, logger log.Logger) string {
+	for _, symbol := range profile.StringTable {
+		for lang, matcher := range languageMatchers {
+			if matcher.MatchString(symbol) {
+				level.Debug(logger).Log("msg", "found profile language", "lang", lang, "symbol", symbol)
+				return lang
+			}
+		}
+	}
+	return "unknown"
 }
