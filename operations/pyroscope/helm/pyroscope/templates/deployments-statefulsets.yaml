@@ -64,7 +64,7 @@ spec:
             - "-self-profiling.disable-push=true"
             - "-server.http-listen-port={{ $values.service.port }}"
             - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "pyroscope.fullname" .}}"
-            - "-memberlist.join=dns+{{ include "pyroscope.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc:{{ .Values.pyroscope.memberlist.port }}"
+            - "-memberlist.join=dns+{{ include "pyroscope.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.{{ include "cluster.domain" . }}:{{ .Values.pyroscope.memberlist.port }}"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
           {{- range $key, $value := $extraArgs }}

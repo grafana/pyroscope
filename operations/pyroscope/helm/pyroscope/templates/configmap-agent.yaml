@@ -177,9 +177,9 @@ data:
     pyroscope.write "pyroscope_write" {
     	endpoint {
         {{- if hasKey .Values.pyroscope.components "distributor" }}
-    		url = "http://{{ include "pyroscope.fullname" . }}-distributor.{{ .Release.Namespace }}.svc:{{ (.Values.pyroscope.components.distributor.service).port | default .Values.pyroscope.service.port}}"
+    		url = "http://{{ include "pyroscope.fullname" . }}-distributor.{{ .Release.Namespace }}.svc.{{ include "cluster.domain" . }}:{{ (.Values.pyroscope.components.distributor.service).port | default .Values.pyroscope.service.port}}"
         {{- else }}
-    		url = "http://{{ include "pyroscope.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.pyroscope.service.port }}"
+    		url = "http://{{ include "pyroscope.fullname" . }}.{{ .Release.Namespace }}.svc.{{ include "cluster.domain" . }}:{{ .Values.pyroscope.service.port }}"
         {{- end }}
     	}
     }

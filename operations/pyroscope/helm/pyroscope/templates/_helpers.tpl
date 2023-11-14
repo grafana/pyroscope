@@ -91,3 +91,16 @@ If no components are defined fall back to single binary statefulset
 all: {kind: "StatefulSet", name: "{{$full_name}}"}
 {{- end }}
 {{- end }}
+
+
+{{- define "cluster.domain" }}
+{{- if .Values.cluster_domain  }}
+{{- if hasSuffix "." .Values.cluster_domain }}
+{{- .Values.cluster_domain | replace " " "" -}}
+{{- else }}
+{{- cat .Values.cluster_domain "." | replace " " "" -}}
+{{- end }}
+{{- else }}
+{{- printf "cluster.local." -}}
+{{- end }}
+{{- end }}

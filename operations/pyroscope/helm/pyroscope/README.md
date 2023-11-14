@@ -15,6 +15,7 @@
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| cluster_domain | string | `cluster.local.` | Override k8s cluster domain to internal DNS name resolution |
 | agent | object | `{"agent":{"clustering":{"enabled":true},"configMap":{"create":false,"name":"grafana-agent-config-pyroscope"}},"controller":{"podAnnotations":{"profiles.grafana.com/cpu.port_name":"http-metrics","profiles.grafana.com/cpu.scrape":"true","profiles.grafana.com/goroutine.port_name":"http-metrics","profiles.grafana.com/goroutine.scrape":"true","profiles.grafana.com/memory.port_name":"http-metrics","profiles.grafana.com/memory.scrape":"true"},"replicas":1,"type":"statefulset"},"enabled":true}` | ----------------------------------- |
 | ingress.className | string | `""` |  |
 | ingress.enabled | bool | `false` |  |
