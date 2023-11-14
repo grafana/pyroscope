@@ -57,9 +57,9 @@ Queries coming into Pyroscope arrive at [query-frontend]({{< relref "../componen
 
 The [query-scheduler]({{< relref "../components/query-scheduler" >}}) maintains a queue of queries and ensures that each tenant's queries are fairly executed.
 
-The [querier]({{< relref "../components/querier" >}}) act as workers, pulling queries from the queue in the query-scheduler. The queriers connect to the ingesters to fetch all the data needed to execute a query. For more information about how the query is executed, refer to [querier]({{< relref "../components/querier.md" >}}).
+The [queriers]({{< relref "../components/querier" >}}) act as workers, pulling queries from the queue in the query-scheduler. The queriers connect to the ingesters to fetch all the data needed to execute a query. For more information about how the query is executed, refer to [querier]({{< relref "../components/querier.md" >}}).
 
-Depending on what time window is select the querier involves [ingesters]({{< relref "../components/ingester" >}}) for recent data, and [store-gateways]({{< relref "../components/store-gateway" >}}) for data from long-term storage 
+Depending on the time window selected, the querier involves [ingesters]({{< relref "../components/ingester" >}}) for recent data and [store-gateways]({{< relref "../components/store-gateway" >}}) for data from long-term storage.
 
 
 ## Long-term storage
