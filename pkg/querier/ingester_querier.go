@@ -138,12 +138,21 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 	return selectMergeTree(gCtx, responses)
 }
 
-func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1.MergeProfilesLabelsRequest) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
+func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1.MergeProfilesLabelsRequest, plan map[string]*ingestv1.BlockHints) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSeries Ingesters")
 	defer sp.Finish()
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesLabels, error) {
-		return ic.MergeProfilesLabels(ctx), nil
-	})
+	var responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]
+	var err error
+
+	if plan != nil {
+		responses, err = forAllPlannedIngesters(ctx, q.ingesterQuerier, plan, func(ctx context.Context, q IngesterQueryClient, hint *ingestv1.Hints) (clientpool.BidiClientMergeProfilesLabels, error) {
+			return q.MergeProfilesLabels(ctx), nil
+		})
+	} else {
+		responses, err = forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesLabels, error) {
+			return ic.MergeProfilesLabels(ctx), nil
+		})
+	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -151,7 +160,13 @@ func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1
 	g, _ := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
+		hints, ok := plan[r.addr]
+		if !ok && plan != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		}
 		g.Go(util.RecoverPanic(func() error {
+			req := req.CloneVT()
+			req.Request.Hints = &ingestv1.Hints{Block: hints}
 			return r.response.Send(req.CloneVT())
 		}))
 	}
