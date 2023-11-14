@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import '@pyroscope/jquery-import';
 import { Provider } from 'react-redux';
 import store from '@pyroscope/redux/store';
+import {
+  cleanupReduxQuerySync,
+  setupReduxQuerySync,
+} from './redux/redux-query-sync';
 import './sass/profile.scss';
 import '@szhsin/react-menu/dist/index.css';
 import Notifications from '@pyroscope/ui/Notifications';
@@ -21,6 +25,14 @@ const container = document.getElementById('reactRoot') as HTMLElement;
 const root = ReactDOM.createRoot(container);
 
 function App() {
+  useEffect(() => {
+    setupReduxQuerySync(store);
+
+    return () => {
+      cleanupReduxQuerySync();
+    };
+  }, []);
+
   useSelectFirstApp();
 
   return (
