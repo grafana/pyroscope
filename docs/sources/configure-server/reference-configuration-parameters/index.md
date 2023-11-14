@@ -110,6 +110,10 @@ limits:
   # CLI flag: -validation.max-label-names-per-series
   [max_label_names_per_series: <int> | default = 30]
 
+  # Maximum number of sessions per series. 0 to disable.
+  # CLI flag: -validation.max-sessions-per-series
+  [max_sessions_per_series: <int> | default = 0]
+
   # Maximum size of a profile in bytes. This is based off the uncompressed size.
   # 0 to disable.
   # CLI flag: -validation.max-profile-size-bytes
@@ -180,252 +184,24 @@ limits:
   # CLI flag: -querier.split-queries-by-interval
   [split_queries_by_interval: <duration> | default = 0s]
 
+  # This limits how far into the past profiling data can be ingested. This limit
+  # is enforced in the distributor. 0 to disable, defaults to 1h.
+  # CLI flag: -validation.reject-older-than
+  [reject_older_than: <duration> | default = 1h]
+
+  # This limits how far into the future profiling data can be ingested. This
+  # limit is enforced in the distributor. 0 to disable, defaults to 10m.
+  # CLI flag: -validation.reject-newer-than
+  [reject_newer_than: <duration> | default = 10m]
+
 # The query_scheduler block configures the query-scheduler.
 [query_scheduler: <query_scheduler>]
 
 # The ingester block configures the ingester.
 [ingester: <ingester>]
 
-store_gateway:
-  # The hash ring configuration.
-  sharding_ring:
-    # The key-value store used to share the hash ring across multiple instances.
-    kvstore:
-      # Backend storage to use for the ring. Supported values are: consul, etcd,
-      # inmemory, memberlist, multi.
-      # CLI flag: -store-gateway.sharding-ring.store
-      [store: <string> | default = "memberlist"]
-
-      # The prefix for the keys in the store. Should end with a /.
-      # CLI flag: -store-gateway.sharding-ring.prefix
-      [prefix: <string> | default = "collectors/"]
-
-      consul:
-        # Hostname and port of Consul.
-        # CLI flag: -store-gateway.sharding-ring.consul.hostname
-        [host: <string> | default = "localhost:8500"]
-
-        # ACL Token used to interact with Consul.
-        # CLI flag: -store-gateway.sharding-ring.consul.acl-token
-        [acl_token: <string> | default = ""]
-
-        # HTTP timeout when talking to Consul
-        # CLI flag: -store-gateway.sharding-ring.consul.client-timeout
-        [http_client_timeout: <duration> | default = 20s]
-
-        # Enable consistent reads to Consul.
-        # CLI flag: -store-gateway.sharding-ring.consul.consistent-reads
-        [consistent_reads: <boolean> | default = false]
-
-        # Rate limit when watching key or prefix in Consul, in requests per
-        # second. 0 disables the rate limit.
-        # CLI flag: -store-gateway.sharding-ring.consul.watch-rate-limit
-        [watch_rate_limit: <float> | default = 1]
-
-        # Burst size used in rate limit. Values less than 1 are treated as 1.
-        # CLI flag: -store-gateway.sharding-ring.consul.watch-burst-size
-        [watch_burst_size: <int> | default = 1]
-
-        # Maximum duration to wait before retrying a Compare And Swap (CAS)
-        # operation.
-        # CLI flag: -store-gateway.sharding-ring.consul.cas-retry-delay
-        [cas_retry_delay: <duration> | default = 1s]
-
-      etcd:
-        # The etcd endpoints to connect to.
-        # CLI flag: -store-gateway.sharding-ring.etcd.endpoints
-        [endpoints: <list of strings> | default = []]
-
-        # The dial timeout for the etcd connection.
-        # CLI flag: -store-gateway.sharding-ring.etcd.dial-timeout
-        [dial_timeout: <duration> | default = 10s]
-
-        # The maximum number of retries to do for failed ops.
-        # CLI flag: -store-gateway.sharding-ring.etcd.max-retries
-        [max_retries: <int> | default = 10]
-
-        # Enable TLS.
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-enabled
-        [tls_enabled: <boolean> | default = false]
-
-        # Path to the client certificate, which will be used for authenticating
-        # with the server. Also requires the key path to be configured.
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-cert-path
-        [tls_cert_path: <string> | default = ""]
-
-        # Path to the key for the client certificate. Also requires the client
-        # certificate to be configured.
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-key-path
-        [tls_key_path: <string> | default = ""]
-
-        # Path to the CA certificates to validate server certificate against. If
-        # not set, the host's root CA certificates are used.
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-ca-path
-        [tls_ca_path: <string> | default = ""]
-
-        # Override the expected name on the server certificate.
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-server-name
-        [tls_server_name: <string> | default = ""]
-
-        # Skip validating server certificate.
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-insecure-skip-verify
-        [tls_insecure_skip_verify: <boolean> | default = false]
-
-        # Override the default cipher suite list (separated by commas). Allowed
-        # values:
-        # 
-        # Secure Ciphers:
-        # - TLS_RSA_WITH_AES_128_CBC_SHA
-        # - TLS_RSA_WITH_AES_256_CBC_SHA
-        # - TLS_RSA_WITH_AES_128_GCM_SHA256
-        # - TLS_RSA_WITH_AES_256_GCM_SHA384
-        # - TLS_AES_128_GCM_SHA256
-        # - TLS_AES_256_GCM_SHA384
-        # - TLS_CHACHA20_POLY1305_SHA256
-        # - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
-        # - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
-        # - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
-        # - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
-        # - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
-        # - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
-        # - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-        # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-        # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
-        # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-        # 
-        # Insecure Ciphers:
-        # - TLS_RSA_WITH_RC4_128_SHA
-        # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
-        # - TLS_RSA_WITH_AES_128_CBC_SHA256
-        # - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
-        # - TLS_ECDHE_RSA_WITH_RC4_128_SHA
-        # - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
-        # - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
-        # - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-cipher-suites
-        [tls_cipher_suites: <string> | default = ""]
-
-        # Override the default minimum TLS version. Allowed values:
-        # VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-min-version
-        [tls_min_version: <string> | default = ""]
-
-        # Etcd username.
-        # CLI flag: -store-gateway.sharding-ring.etcd.username
-        [username: <string> | default = ""]
-
-        # Etcd password.
-        # CLI flag: -store-gateway.sharding-ring.etcd.password
-        [password: <string> | default = ""]
-
-      multi:
-        # Primary backend storage used by multi-client.
-        # CLI flag: -store-gateway.sharding-ring.multi.primary
-        [primary: <string> | default = ""]
-
-        # Secondary backend storage used by multi-client.
-        # CLI flag: -store-gateway.sharding-ring.multi.secondary
-        [secondary: <string> | default = ""]
-
-        # Mirror writes to secondary store.
-        # CLI flag: -store-gateway.sharding-ring.multi.mirror-enabled
-        [mirror_enabled: <boolean> | default = false]
-
-        # Timeout for storing value to secondary store.
-        # CLI flag: -store-gateway.sharding-ring.multi.mirror-timeout
-        [mirror_timeout: <duration> | default = 2s]
-
-    # Period at which to heartbeat to the ring. 0 = disabled.
-    # CLI flag: -store-gateway.sharding-ring.heartbeat-period
-    [heartbeat_period: <duration> | default = 15s]
-
-    # The heartbeat timeout after which store-gateways are considered unhealthy
-    # within the ring. 0 = never (timeout disabled).
-    # CLI flag: -store-gateway.sharding-ring.heartbeat-timeout
-    [heartbeat_timeout: <duration> | default = 1m]
-
-    # Instance ID to register in the ring.
-    # CLI flag: -store-gateway.sharding-ring.instance-id
-    [instance_id: <string> | default = "<hostname>"]
-
-    # List of network interface names to look up when finding the instance IP
-    # address.
-    # CLI flag: -store-gateway.sharding-ring.instance-interface-names
-    [instance_interface_names: <list of strings> | default = [<private network interfaces>]]
-
-    # Port to advertise in the ring (defaults to -server.http-listen-port).
-    # CLI flag: -store-gateway.sharding-ring.instance-port
-    [instance_port: <int> | default = 0]
-
-    # IP address to advertise in the ring. Default is auto-detected.
-    # CLI flag: -store-gateway.sharding-ring.instance-addr
-    [instance_addr: <string> | default = ""]
-
-    # Enable using a IPv6 instance address. (default false)
-    # CLI flag: -store-gateway.sharding-ring.instance-enable-ipv6
-    [instance_enable_ipv6: <boolean> | default = false]
-
-    # The replication factor to use when sharding blocks. This option needs be
-    # set both on the store-gateway, querier and ruler when running in
-    # microservices mode.
-    # CLI flag: -store-gateway.sharding-ring.replication-factor
-    [replication_factor: <int> | default = 1]
-
-    # File path where tokens are stored. If empty, tokens are not stored at
-    # shutdown and restored at startup.
-    # CLI flag: -store-gateway.sharding-ring.tokens-file-path
-    [tokens_file_path: <string> | default = ""]
-
-    # True to enable zone-awareness and replicate blocks across different
-    # availability zones. This option needs be set both on the store-gateway,
-    # querier and ruler when running in microservices mode.
-    # CLI flag: -store-gateway.sharding-ring.zone-awareness-enabled
-    [zone_awareness_enabled: <boolean> | default = false]
-
-    # Minimum time to wait for ring stability at startup, if set to positive
-    # value.
-    # CLI flag: -store-gateway.sharding-ring.wait-stability-min-duration
-    [wait_stability_min_duration: <duration> | default = 0s]
-
-    # Maximum time to wait for ring stability at startup. If the store-gateway
-    # ring keeps changing after this period of time, the store-gateway will
-    # start anyway.
-    # CLI flag: -store-gateway.sharding-ring.wait-stability-max-duration
-    [wait_stability_max_duration: <duration> | default = 5m]
-
-    # The availability zone where this instance is running. Required if
-    # zone-awareness is enabled.
-    # CLI flag: -store-gateway.sharding-ring.instance-availability-zone
-    [instance_availability_zone: <string> | default = ""]
-
-    # Unregister from the ring upon clean shutdown.
-    # CLI flag: -store-gateway.sharding-ring.unregister-on-shutdown
-    [unregister_on_shutdown: <boolean> | default = true]
-
-  bucket_store:
-    # Directory to store synchronized pyroscope block headers. This directory is
-    # not required to be persisted between restarts, but it's highly recommended
-    # in order to improve the store-gateway startup time.
-    # CLI flag: -blocks-storage.bucket-store.sync-dir
-    [sync_dir: <string> | default = "./data/pyroscope-sync/"]
-
-    # How frequently to scan the bucket, or to refresh the bucket index (if
-    # enabled), in order to look for changes (new blocks shipped by ingesters
-    # and blocks deleted by retention or compaction).
-    # CLI flag: -blocks-storage.bucket-store.sync-interval
-    [sync_interval: <duration> | default = 15m]
-
-    # Maximum number of concurrent tenants synching blocks.
-    # CLI flag: -blocks-storage.bucket-store.tenant-sync-concurrency
-    [tenant_sync_concurrency: <int> | default = 10]
-
-    # Blocks with minimum time within this duration are ignored, and not loaded
-    # by store-gateway. Useful when used together with
-    # -querier.query-store-after to prevent loading young blocks, because there
-    # are usually many of them (depending on number of ingesters) and they are
-    # not yet compacted. Negative values or 0 disable the filter.
-    # CLI flag: -blocks-storage.bucket-store.ignore-blocks-within
-    [ignore_blocks_within: <duration> | default = 2h]
+# The store_gateway block configures the store-gateway.
+[store_gateway: <store_gateway>]
 
 # The memberlist block configures the Gossip memberlist.
 [memberlist: <memberlist>]
@@ -704,7 +480,8 @@ grpc_tls_config:
 # CLI flag: -server.grpc-max-send-msg-size-bytes
 [grpc_server_max_send_msg_size: <int> | default = 4194304]
 
-# Limit on the number of concurrent streams for gRPC calls (0 = unlimited)
+# Limit on the number of concurrent streams for gRPC calls per client connection
+# (0 = unlimited)
 # CLI flag: -server.grpc-max-concurrent-streams
 [grpc_server_max_concurrent_streams: <int> | default = 100]
 
@@ -1166,6 +943,252 @@ The `query_scheduler` block configures the query-scheduler.
 # available query-scheduler instances.
 # CLI flag: -query-scheduler.max-used-instances
 [max_used_instances: <int> | default = 0]
+```
+
+### store_gateway
+
+The `store_gateway` block configures the store-gateway.
+
+```yaml
+# The hash ring configuration.
+sharding_ring:
+  # The key-value store used to share the hash ring across multiple instances.
+  kvstore:
+    # Backend storage to use for the ring. Supported values are: consul, etcd,
+    # inmemory, memberlist, multi.
+    # CLI flag: -store-gateway.sharding-ring.store
+    [store: <string> | default = "memberlist"]
+
+    # The prefix for the keys in the store. Should end with a /.
+    # CLI flag: -store-gateway.sharding-ring.prefix
+    [prefix: <string> | default = "collectors/"]
+
+    consul:
+      # Hostname and port of Consul.
+      # CLI flag: -store-gateway.sharding-ring.consul.hostname
+      [host: <string> | default = "localhost:8500"]
+
+      # ACL Token used to interact with Consul.
+      # CLI flag: -store-gateway.sharding-ring.consul.acl-token
+      [acl_token: <string> | default = ""]
+
+      # HTTP timeout when talking to Consul
+      # CLI flag: -store-gateway.sharding-ring.consul.client-timeout
+      [http_client_timeout: <duration> | default = 20s]
+
+      # Enable consistent reads to Consul.
+      # CLI flag: -store-gateway.sharding-ring.consul.consistent-reads
+      [consistent_reads: <boolean> | default = false]
+
+      # Rate limit when watching key or prefix in Consul, in requests per
+      # second. 0 disables the rate limit.
+      # CLI flag: -store-gateway.sharding-ring.consul.watch-rate-limit
+      [watch_rate_limit: <float> | default = 1]
+
+      # Burst size used in rate limit. Values less than 1 are treated as 1.
+      # CLI flag: -store-gateway.sharding-ring.consul.watch-burst-size
+      [watch_burst_size: <int> | default = 1]
+
+      # Maximum duration to wait before retrying a Compare And Swap (CAS)
+      # operation.
+      # CLI flag: -store-gateway.sharding-ring.consul.cas-retry-delay
+      [cas_retry_delay: <duration> | default = 1s]
+
+    etcd:
+      # The etcd endpoints to connect to.
+      # CLI flag: -store-gateway.sharding-ring.etcd.endpoints
+      [endpoints: <list of strings> | default = []]
+
+      # The dial timeout for the etcd connection.
+      # CLI flag: -store-gateway.sharding-ring.etcd.dial-timeout
+      [dial_timeout: <duration> | default = 10s]
+
+      # The maximum number of retries to do for failed ops.
+      # CLI flag: -store-gateway.sharding-ring.etcd.max-retries
+      [max_retries: <int> | default = 10]
+
+      # Enable TLS.
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-enabled
+      [tls_enabled: <boolean> | default = false]
+
+      # Path to the client certificate, which will be used for authenticating
+      # with the server. Also requires the key path to be configured.
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-cert-path
+      [tls_cert_path: <string> | default = ""]
+
+      # Path to the key for the client certificate. Also requires the client
+      # certificate to be configured.
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-key-path
+      [tls_key_path: <string> | default = ""]
+
+      # Path to the CA certificates to validate server certificate against. If
+      # not set, the host's root CA certificates are used.
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-ca-path
+      [tls_ca_path: <string> | default = ""]
+
+      # Override the expected name on the server certificate.
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-server-name
+      [tls_server_name: <string> | default = ""]
+
+      # Skip validating server certificate.
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-insecure-skip-verify
+      [tls_insecure_skip_verify: <boolean> | default = false]
+
+      # Override the default cipher suite list (separated by commas). Allowed
+      # values:
+      # 
+      # Secure Ciphers:
+      # - TLS_RSA_WITH_AES_128_CBC_SHA
+      # - TLS_RSA_WITH_AES_256_CBC_SHA
+      # - TLS_RSA_WITH_AES_128_GCM_SHA256
+      # - TLS_RSA_WITH_AES_256_GCM_SHA384
+      # - TLS_AES_128_GCM_SHA256
+      # - TLS_AES_256_GCM_SHA384
+      # - TLS_CHACHA20_POLY1305_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+      # - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+      # - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+      # - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+      # - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+      # - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+      # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+      # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+      # 
+      # Insecure Ciphers:
+      # - TLS_RSA_WITH_RC4_128_SHA
+      # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
+      # - TLS_RSA_WITH_AES_128_CBC_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
+      # - TLS_ECDHE_RSA_WITH_RC4_128_SHA
+      # - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+      # - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+      # - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-cipher-suites
+      [tls_cipher_suites: <string> | default = ""]
+
+      # Override the default minimum TLS version. Allowed values: VersionTLS10,
+      # VersionTLS11, VersionTLS12, VersionTLS13
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-min-version
+      [tls_min_version: <string> | default = ""]
+
+      # Etcd username.
+      # CLI flag: -store-gateway.sharding-ring.etcd.username
+      [username: <string> | default = ""]
+
+      # Etcd password.
+      # CLI flag: -store-gateway.sharding-ring.etcd.password
+      [password: <string> | default = ""]
+
+    multi:
+      # Primary backend storage used by multi-client.
+      # CLI flag: -store-gateway.sharding-ring.multi.primary
+      [primary: <string> | default = ""]
+
+      # Secondary backend storage used by multi-client.
+      # CLI flag: -store-gateway.sharding-ring.multi.secondary
+      [secondary: <string> | default = ""]
+
+      # Mirror writes to secondary store.
+      # CLI flag: -store-gateway.sharding-ring.multi.mirror-enabled
+      [mirror_enabled: <boolean> | default = false]
+
+      # Timeout for storing value to secondary store.
+      # CLI flag: -store-gateway.sharding-ring.multi.mirror-timeout
+      [mirror_timeout: <duration> | default = 2s]
+
+  # Period at which to heartbeat to the ring. 0 = disabled.
+  # CLI flag: -store-gateway.sharding-ring.heartbeat-period
+  [heartbeat_period: <duration> | default = 15s]
+
+  # The heartbeat timeout after which store-gateways are considered unhealthy
+  # within the ring. 0 = never (timeout disabled).
+  # CLI flag: -store-gateway.sharding-ring.heartbeat-timeout
+  [heartbeat_timeout: <duration> | default = 1m]
+
+  # Instance ID to register in the ring.
+  # CLI flag: -store-gateway.sharding-ring.instance-id
+  [instance_id: <string> | default = "<hostname>"]
+
+  # List of network interface names to look up when finding the instance IP
+  # address.
+  # CLI flag: -store-gateway.sharding-ring.instance-interface-names
+  [instance_interface_names: <list of strings> | default = [<private network interfaces>]]
+
+  # Port to advertise in the ring (defaults to -server.http-listen-port).
+  # CLI flag: -store-gateway.sharding-ring.instance-port
+  [instance_port: <int> | default = 0]
+
+  # IP address to advertise in the ring. Default is auto-detected.
+  # CLI flag: -store-gateway.sharding-ring.instance-addr
+  [instance_addr: <string> | default = ""]
+
+  # Enable using a IPv6 instance address. (default false)
+  # CLI flag: -store-gateway.sharding-ring.instance-enable-ipv6
+  [instance_enable_ipv6: <boolean> | default = false]
+
+  # The replication factor to use when sharding blocks. This option needs be set
+  # both on the store-gateway, querier and ruler when running in microservices
+  # mode.
+  # CLI flag: -store-gateway.sharding-ring.replication-factor
+  [replication_factor: <int> | default = 1]
+
+  # File path where tokens are stored. If empty, tokens are not stored at
+  # shutdown and restored at startup.
+  # CLI flag: -store-gateway.sharding-ring.tokens-file-path
+  [tokens_file_path: <string> | default = ""]
+
+  # True to enable zone-awareness and replicate blocks across different
+  # availability zones. This option needs be set both on the store-gateway,
+  # querier and ruler when running in microservices mode.
+  # CLI flag: -store-gateway.sharding-ring.zone-awareness-enabled
+  [zone_awareness_enabled: <boolean> | default = false]
+
+  # Minimum time to wait for ring stability at startup, if set to positive
+  # value.
+  # CLI flag: -store-gateway.sharding-ring.wait-stability-min-duration
+  [wait_stability_min_duration: <duration> | default = 0s]
+
+  # Maximum time to wait for ring stability at startup. If the store-gateway
+  # ring keeps changing after this period of time, the store-gateway will start
+  # anyway.
+  # CLI flag: -store-gateway.sharding-ring.wait-stability-max-duration
+  [wait_stability_max_duration: <duration> | default = 5m]
+
+  # The availability zone where this instance is running. Required if
+  # zone-awareness is enabled.
+  # CLI flag: -store-gateway.sharding-ring.instance-availability-zone
+  [instance_availability_zone: <string> | default = ""]
+
+  # Unregister from the ring upon clean shutdown.
+  # CLI flag: -store-gateway.sharding-ring.unregister-on-shutdown
+  [unregister_on_shutdown: <boolean> | default = true]
+
+bucket_store:
+  # Directory to store synchronized pyroscope block headers. This directory is
+  # not required to be persisted between restarts, but it's highly recommended
+  # in order to improve the store-gateway startup time.
+  # CLI flag: -blocks-storage.bucket-store.sync-dir
+  [sync_dir: <string> | default = "./data/pyroscope-sync/"]
+
+  # How frequently to scan the bucket, or to refresh the bucket index (if
+  # enabled), in order to look for changes (new blocks shipped by ingesters and
+  # blocks deleted by retention or compaction).
+  # CLI flag: -blocks-storage.bucket-store.sync-interval
+  [sync_interval: <duration> | default = 15m]
+
+  # Maximum number of concurrent tenants synching blocks.
+  # CLI flag: -blocks-storage.bucket-store.tenant-sync-concurrency
+  [tenant_sync_concurrency: <int> | default = 10]
+
+  # Blocks with minimum time within this duration are ignored, and not loaded by
+  # store-gateway. Useful when used together with -querier.query-store-after to
+  # prevent loading young blocks, because there are usually many of them
+  # (depending on number of ingesters) and they are not yet compacted. Negative
+  # values or 0 disable the filter.
+  # CLI flag: -blocks-storage.bucket-store.ignore-blocks-within
+  [ignore_blocks_within: <duration> | default = 2h]
 ```
 
 ### grpc_client

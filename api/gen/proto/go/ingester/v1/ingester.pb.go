@@ -164,8 +164,12 @@ type SeriesRequest struct {
 
 	Matchers   []string `protobuf:"bytes,1,rep,name=matchers,proto3" json:"matchers,omitempty"`
 	LabelNames []string `protobuf:"bytes,2,rep,name=label_names,json=labelNames,proto3" json:"label_names,omitempty"`
-	Start      int64    `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"` // milliseconds since epoch
-	End        int64    `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`     // milliseconds since epoch
+	// Milliseconds since epoch. If missing or zero, only the ingesters will be
+	// queried.
+	Start int64 `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
+	// Milliseconds since epoch. If missing or zero, only the ingesters will be
+	// queried.
+	End int64 `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
 }
 
 func (x *SeriesRequest) Reset() {
