@@ -65,7 +65,7 @@ func forAllIngesters[T any](ctx context.Context, ingesterQuerier *IngesterQuerie
 }
 
 // forAllPlannedIngesters runs f, in parallel, for all ingesters part of the plan
-func forAllPlannedIngesters[T any](ctx context.Context, ingesterQuerier *IngesterQuerier, plan map[string]*ingestv1.BlockHints, f QueryReplicaWithHintsFn[T, IngesterQueryClient]) ([]ResponseFromReplica[T], error) {
+func forAllPlannedIngesters[T any](ctx context.Context, ingesterQuerier *IngesterQuerier, plan blockPlan, f QueryReplicaWithHintsFn[T, IngesterQueryClient]) ([]ResponseFromReplica[T], error) {
 	replicationSet, err := ingesterQuerier.ring.GetReplicationSetForOperation(readNoExtend)
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func forAllPlannedIngesters[T any](ctx context.Context, ingesterQuerier *Ingeste
 	}, replicationSet, f)
 }
 
-func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan map[string]*ingestv1.BlockHints) (*phlaremodel.Tree, error) {
+func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan blockPlan) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectTree Ingesters")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)

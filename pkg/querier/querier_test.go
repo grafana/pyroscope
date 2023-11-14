@@ -961,6 +961,7 @@ func Test_splitQueryToStores(t *testing.T) {
 		now             model.Time
 		start, end      model.Time
 		queryStoreAfter time.Duration
+		plan            blockPlan
 
 		expected storeQueries
 	}{
@@ -1152,6 +1153,28 @@ func Test_splitQueryToStores(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "with a plan we touch all stores at full time window and eleminate later based on the plan",
+			now:             model.TimeFromUnixNano(int64(4 * time.Hour)),
+			start:           model.TimeFromUnixNano(int64(30 * time.Minute)),
+			end:             model.TimeFromUnixNano(int64(45*time.Minute) + int64(3*time.Hour)),
+			queryStoreAfter: 30 * time.Minute,
+			plan:            blockPlan{"replica-a": &ingestv1.BlockHints{Ulids: []string{"block-a", "block-b"}}},
+
+			expected: storeQueries{
+				queryStoreAfter: 0,
+				storeGateway: storeQuery{
+					shouldQuery: true,
+					start:       model.TimeFromUnixNano(int64(30 * time.Minute)),
+					end:         model.TimeFromUnixNano(int64(45*time.Minute) + int64(3*time.Hour)),
+				},
+				ingester: storeQuery{
+					shouldQuery: true,
+					start:       model.TimeFromUnixNano(int64(30 * time.Minute)),
+					end:         model.TimeFromUnixNano(int64(45*time.Minute) + int64(3*time.Hour)),
+				},
+			},
+		},
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
@@ -1159,7 +1182,9 @@ func Test_splitQueryToStores(t *testing.T) {
 				tc.start,
 				tc.end,
 				tc.now,
-				tc.queryStoreAfter)
+				tc.queryStoreAfter,
+				tc.plan,
+			)
 			require.Equal(t, tc.expected, actual)
 		})
 	}
