@@ -31,6 +31,12 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
+const (
+	DefaultMinFreeDisk                        = 10
+	DefaultMinDiskAvailablePercentage         = 0.05
+	DefaultRetentionPolicyEnforcementInterval = 5 * time.Minute
+)
+
 type Config struct {
 	DataPath string `yaml:"data_path,omitempty"`
 	// Blocks are generally cut once they reach 1000M of memory size, this will setup an upper limit to the duration of data that a block has that is cut by the ingester.
@@ -40,6 +46,11 @@ type Config struct {
 	RowGroupTargetSize uint64 `yaml:"row_group_target_size"`
 
 	Parquet *ParquetConfig `yaml:"-"` // Those configs should not be exposed to the user, rather they should be determined by pyroscope itself. Currently, they are solely used for test cases.
+
+	MinFreeDisk                uint64        `yaml:"min_free_disk_gb"`
+	MinDiskAvailablePercentage float64       `yaml:"min_disk_available_percentage"`
+	EnforcementInterval        time.Duration `yaml:"enforcement_interval"`
+	DisableEnforcement         bool          `yaml:"disable_enforcement"`
 }
 
 type ParquetConfig struct {
@@ -52,6 +63,10 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.DataPath, "pyroscopedb.data-path", "./data", "Directory used for local storage.")
 	f.DurationVar(&cfg.MaxBlockDuration, "pyroscopedb.max-block-duration", 1*time.Hour, "Upper limit to the duration of a Pyroscope block.")
 	f.Uint64Var(&cfg.RowGroupTargetSize, "pyroscopedb.row-group-target-size", 10*128*1024*1024, "How big should a single row group be uncompressed") // This should roughly be 128MiB compressed
+	f.Uint64Var(&cfg.MinFreeDisk, "pyroscopedb.retention-policy-min-free-disk-gb", DefaultMinFreeDisk, "How much available disk space to keep in GiB")
+	f.Float64Var(&cfg.MinDiskAvailablePercentage, "pyroscopedb.retention-policy-min-disk-available-percentage", DefaultMinDiskAvailablePercentage, "Which percentage of free disk space to keep")
+	f.DurationVar(&cfg.EnforcementInterval, "pyroscopedb.retention-policy-enforcement-interval", DefaultRetentionPolicyEnforcementInterval, "How often to enforce disk retention")
+	f.BoolVar(&cfg.DisableEnforcement, "pyroscopedb.retention-policy-disable", false, "Disable retention policy enforcement")
 }
 
 type TenantLimiter interface {

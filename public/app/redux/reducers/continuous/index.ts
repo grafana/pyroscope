@@ -482,7 +482,7 @@ export const continuousSlice = createSlice({
 });
 
 export const { actions } = continuousSlice;
-export const { setDateRange, setQuery } = continuousSlice.actions;
+export const { setDateRange, setQuery, setMaxNodes } = continuousSlice.actions;
 
 function getNextStateFromPending(
   prevState: 'pristine' | 'loading' | 'reloading' | 'loaded'

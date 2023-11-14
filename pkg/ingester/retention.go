@@ -21,10 +21,6 @@ import (
 )
 
 const (
-	defaultMinFreeDisk                        = 10 * 1024 * 1024 * 1024 // 10Gi
-	defaultMinDiskAvailablePercentage         = 0.05
-	defaultRetentionPolicyEnforcementInterval = 5 * time.Minute
-
 	// TODO(kolesnikovae): Unify with pkg/phlaredb.
 	phlareDBLocalPath = "local"
 )
@@ -37,9 +33,9 @@ type retentionPolicy struct {
 
 func defaultRetentionPolicy() retentionPolicy {
 	return retentionPolicy{
-		MinFreeDisk:                defaultMinFreeDisk,
-		MinDiskAvailablePercentage: defaultMinDiskAvailablePercentage,
-		EnforcementInterval:        defaultRetentionPolicyEnforcementInterval,
+		MinFreeDisk:                phlaredb.DefaultMinFreeDisk,
+		MinDiskAvailablePercentage: phlaredb.DefaultMinDiskAvailablePercentage,
+		EnforcementInterval:        phlaredb.DefaultRetentionPolicyEnforcementInterval,
 	}
 }
 
@@ -91,7 +87,7 @@ func newRetentionPolicyEnforcer(logger log.Logger, blockEvicter blockEvicter, re
 		dbConfig:        dbConfig,
 		stopCh:          make(chan struct{}),
 		fileSystem:      new(realFileSystem),
-		volumeChecker:   diskutil.NewVolumeChecker(retentionPolicy.MinFreeDisk, retentionPolicy.MinDiskAvailablePercentage),
+		volumeChecker:   diskutil.NewVolumeChecker(retentionPolicy.MinFreeDisk*1024*1024*1024, retentionPolicy.MinDiskAvailablePercentage),
 	}
 	e.Service = services.NewBasicService(nil, e.running, e.stopping)
 	return &e
