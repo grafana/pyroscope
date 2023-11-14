@@ -876,7 +876,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 		}, plan)
 	}
 
-	storeQueries := splitQueryToStores(model.Time(start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, nil)
+	storeQueries := splitQueryToStores(model.Time(start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, plan)
 
 	var responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]
 
@@ -885,7 +885,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 	}
 
 	// todo in parallel
-	if storeQueries.ingester.shouldQuery {
+	if plan == nil && storeQueries.ingester.shouldQuery {
 		ir, err := q.selectSeriesFromIngesters(ctx, storeQueries.ingester.MergeSeriesRequest(req.Msg, profileType), plan)
 		if err != nil {
 			return nil, err
@@ -893,7 +893,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 		responses = append(responses, ir...)
 	}
 
-	if storeQueries.storeGateway.shouldQuery {
+	if plan == nil && storeQueries.storeGateway.shouldQuery {
 		ir, err := q.selectSeriesFromStoreGateway(ctx, storeQueries.storeGateway.MergeSeriesRequest(req.Msg, profileType), plan)
 		if err != nil {
 			return nil, err
