@@ -85,7 +85,6 @@ type Config struct {
 	CompactionInterval         time.Duration `yaml:"compaction_interval" category:"advanced"`
 	CompactionRetries          int           `yaml:"compaction_retries" category:"advanced"`
 	CompactionConcurrency      int           `yaml:"compaction_concurrency" category:"advanced"`
-	CompactionStageSize        int           `yaml:"compaction_stage_size" category:"advanced"`
 	CompactionWaitPeriod       time.Duration `yaml:"first_level_compaction_wait_period"`
 	CleanupInterval            time.Duration `yaml:"cleanup_interval" category:"advanced"`
 	CleanupConcurrency         int           `yaml:"cleanup_concurrency" category:"advanced"`
@@ -134,7 +133,6 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 	f.DurationVar(&cfg.MaxCompactionTime, "compactor.max-compaction-time", time.Hour, "Max time for starting compactions for a single tenant. After this time no new compactions for the tenant are started before next compaction cycle. This can help in multi-tenant environments to avoid single tenant using all compaction time, but also in single-tenant environments to force new discovery of blocks more often. 0 = disabled.")
 	f.IntVar(&cfg.CompactionRetries, "compactor.compaction-retries", 3, "How many times to retry a failed compaction within a single compaction run.")
 	f.IntVar(&cfg.CompactionConcurrency, "compactor.compaction-concurrency", 1, "Max number of concurrent compactions running.")
-	f.IntVar(&cfg.CompactionStageSize, "compactor.stage-size", 0, "Number of stages split shards will be written to. Number of output split shards is controlled by -compactor.split-and-merge-shards.")
 	f.DurationVar(&cfg.CompactionWaitPeriod, "compactor.first-level-compaction-wait-period", 25*time.Minute, "How long the compactor waits before compacting first-level blocks that are uploaded by the ingesters. This configuration option allows for the reduction of cases where the compactor begins to compact blocks before all ingesters have uploaded their blocks to the storage.")
 	f.DurationVar(&cfg.CleanupInterval, "compactor.cleanup-interval", 15*time.Minute, "How frequently compactor should run blocks cleanup and maintenance, as well as update the bucket index.")
 	f.IntVar(&cfg.CleanupConcurrency, "compactor.cleanup-concurrency", 20, "Max number of tenants for which blocks cleanup and maintenance should run concurrently.")
@@ -187,6 +185,9 @@ type ConfigProvider interface {
 
 	// CompactorSplitAndMergeShards returns the number of shards to use when splitting blocks.
 	CompactorSplitAndMergeShards(userID string) int
+
+	// CompactorSplitAndMergeStageSize returns the number of stages split shards will be written to.
+	CompactorSplitAndMergeStageSize(userID string) int
 
 	// CompactorSplitGroups returns the number of groups that blocks used for splitting should
 	// be grouped into. Different groups are then split by different jobs.

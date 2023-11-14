@@ -108,7 +108,7 @@ func TestCompactWithSplitting(t *testing.T) {
 		)
 	})
 	dst := t.TempDir()
-	compacted, err := CompactWithSplitting(ctx, []BlockReader{b1, b2, b2, b1}, 16, dst, SplitByFingerprint, 2)
+	compacted, err := CompactWithSplitting(ctx, []BlockReader{b1, b2, b2, b1}, 16, 8, dst, SplitByFingerprint)
 	require.NoError(t, err)
 
 	// 4 shards one per series.
@@ -496,7 +496,7 @@ func TestCompactOldBlock(t *testing.T) {
 	br := NewSingleBlockQuerierFromMeta(context.Background(), bkt, meta)
 	require.NoError(t, br.Open(ctx))
 	_, err = CompactWithSplitting(ctx,
-		[]BlockReader{br}, 2, dst, SplitByFingerprint, 0)
+		[]BlockReader{br}, 2, 0, dst, SplitByFingerprint)
 	require.NoError(t, err)
 }
 

@@ -40,14 +40,14 @@ type BlockReader interface {
 }
 
 func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
-	metas, err := CompactWithSplitting(ctx, src, 1, dst, SplitByFingerprint, 0)
+	metas, err := CompactWithSplitting(ctx, src, 1, 0, dst, SplitByFingerprint)
 	if err != nil {
 		return block.Meta{}, err
 	}
 	return metas[0], nil
 }
 
-func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount uint64, dst string, splitBy SplitByFunc, stageSize uint64) (
+func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount, stageSize uint64, dst string, splitBy SplitByFunc) (
 	[]block.Meta, error,
 ) {
 	if len(src) <= 1 && splitCount == 1 {

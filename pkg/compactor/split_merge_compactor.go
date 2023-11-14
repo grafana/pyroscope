@@ -16,6 +16,7 @@ func splitAndMergeGrouperFactory(_ context.Context, cfg Config, cfgProvider Conf
 		userID,
 		cfg.BlockRanges.ToMilliseconds(),
 		uint32(cfgProvider.CompactorSplitAndMergeShards(userID)),
+		uint32(cfgProvider.CompactorSplitAndMergeStageSize(userID)),
 		uint32(cfgProvider.CompactorSplitGroups(userID)),
 		logger)
 }
@@ -28,7 +29,6 @@ func splitAndMergeCompactorFactory(_ context.Context, cfg Config, logger log.Log
 
 	return &BlockCompactor{
 		blockOpenConcurrency: cfg.MaxOpeningBlocksConcurrency,
-		stageSize:            cfg.CompactionStageSize,
 		splitBy:              splitBy,
 		logger:               logger,
 		metrics:              newCompactorMetrics(reg),
