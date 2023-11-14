@@ -309,9 +309,9 @@ func (r *replicasPerBlockID) pruneSupersededBlocks() {
 	}
 }
 
-type jsonPlan map[string]*ingestv1.BlockHints
+type blockPlan map[string]*ingestv1.BlockHints
 
-func (p jsonPlan) String() string {
+func (p blockPlan) String() string {
 	data, _ := json.Marshal(p)
 	return string(data)
 }
@@ -421,7 +421,7 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1
 		"smallest_compaction_level", smallestCompactionLevel,
 		"planned_blocks_ingesters", plannedIngesterBlocks,
 		"planned_blocks_store_gateways", plannedStoreGatwayBlocks,
-		"plan", jsonPlan(plan),
+		"plan", blockPlan(plan),
 	)
 
 	return plan
