@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -691,10 +692,17 @@ func (s *session) linkKProbes() error {
 		prog     *ebpf.Program
 		required bool
 	}
-	var hooks = []hook{
+	var hooks []hook
+	archSys := ""
+	if "amd64" == runtime.GOARCH {
+		archSys = "__x64_"
+	} else {
+		archSys = "__arm64_"
+	}
+	hooks = []hook{
 		{kprobe: "disassociate_ctty", prog: s.bpf.DisassociateCtty, required: true},
-		{kprobe: "__x64_sys_execve", prog: s.bpf.Exec, required: false},
-		{kprobe: "__x64_sys_execveat", prog: s.bpf.Exec, required: false},
+		{kprobe: archSys + "sys_execve", prog: s.bpf.Exec, required: false},
+		{kprobe: archSys + "sys_execveat", prog: s.bpf.Exec, required: false},
 	}
 	for _, it := range hooks {
 		kp, err := link.Kprobe(it.kprobe, it.prog, nil)
