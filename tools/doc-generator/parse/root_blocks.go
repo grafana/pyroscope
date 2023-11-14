@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/server"
 
+	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
@@ -20,6 +21,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
 	"github.com/grafana/pyroscope/pkg/scheduler"
+	"github.com/grafana/pyroscope/pkg/storegateway"
 )
 
 // RootBlocks is an ordered list of root blocks. The order is the same order that will
@@ -59,6 +61,16 @@ var RootBlocks = []RootBlock{
 		Name:       "query_scheduler",
 		StructType: reflect.TypeOf(scheduler.Config{}),
 		Desc:       "The query_scheduler block configures the query-scheduler.",
+	},
+	{
+		Name:       "store_gateway",
+		StructType: reflect.TypeOf(storegateway.Config{}),
+		Desc:       "The store_gateway block configures the store-gateway.",
+	},
+	{
+		Name:       "compactor",
+		StructType: reflect.TypeOf(compactor.Config{}),
+		Desc:       "The compactor block configures the compactor.",
 	},
 	{
 		Name:       "grpc_client",
