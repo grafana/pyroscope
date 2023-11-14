@@ -144,7 +144,7 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 		}), nil
 	}
 
-	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, nil)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
@@ -221,7 +221,7 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.
 		}), nil
 	}
 
-	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, nil)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
@@ -291,7 +291,7 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 		}), nil
 	}
 
-	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, nil)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
@@ -339,7 +339,7 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 	}), nil
 }
 
-func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (map[string]*ingestv1.BlockHints, error) {
+func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (blockPlan, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "blockSelect")
 	defer sp.Finish()
 
@@ -412,7 +412,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		}), nil
 	}
 
-	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, nil)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
@@ -612,17 +612,17 @@ func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStac
 		return q.selectTreeFromIngesters(ctx, req, plan)
 	}
 
-	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter, plan)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
 
 	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
 
-	if !storeQueries.ingester.shouldQuery {
+	if plan == nil && !storeQueries.ingester.shouldQuery {
 		return q.selectTreeFromStoreGateway(ctx, storeQueries.storeGateway.MergeStacktracesRequest(req), plan)
 	}
-	if !storeQueries.storeGateway.shouldQuery {
+	if plan == nil && !storeQueries.storeGateway.shouldQuery {
 		return q.selectTreeFromIngesters(ctx, storeQueries.ingester.MergeStacktracesRequest(req), plan)
 	}
 
@@ -707,7 +707,15 @@ func (sq storeQueries) Log(logger log.Logger) {
 
 // splitQueryToStores splits the query into ingester and store gateway queries using the given cut off time.
 // todo(ctovena): Later we should try to deduplicate blocks between ingesters and store gateways (prefer) and simply query both
-func splitQueryToStores(start, end model.Time, now model.Time, queryStoreAfter time.Duration) (queries storeQueries) {
+func splitQueryToStores(start, end model.Time, now model.Time, queryStoreAfter time.Duration, plan blockPlan) (queries storeQueries) {
+	if plan != nil {
+		// if we have a plan we can use it to split the query, we retain the original start and end time as we want to query the full range for those particular blocks selected.
+		queries.queryStoreAfter = 0
+		queries.ingester = storeQuery{shouldQuery: true, start: start, end: end}
+		queries.storeGateway = storeQuery{shouldQuery: true, start: start, end: end}
+		return queries
+	}
+
 	queries.queryStoreAfter = queryStoreAfter
 	cutOff := now.Add(-queryStoreAfter)
 	if start.Before(cutOff) {
@@ -857,7 +865,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 		})
 	}
 
-	storeQueries := splitQueryToStores(model.Time(start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, nil)
 
 	var responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]
 
@@ -986,7 +994,7 @@ func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMe
 		return q.selectSpanProfileFromIngesters(ctx, req)
 	}
 
-	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter, nil)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
