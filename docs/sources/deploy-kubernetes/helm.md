@@ -11,7 +11,7 @@ The [Helm](https://helm.sh/) chart allows you to configure, install, and upgrade
 
 ## Before you begin
 
-The instructions that follow are common across any flavor of Kubernetes and assume that you know how to install, configure, and operate a Kubernetes cluster. And that you know how to use `kubectl`.
+These instructions are common across any flavor of Kubernetes and assume that you know how to install, configure, and operate a Kubernetes cluster as well as use `kubectl`.
 
 Hardware requirements:
 
@@ -31,7 +31,7 @@ Verify that you have:
 
 ## Install the Helm chart in a custom namespace
 
-Use a custom namespace so that you do not have to overwrite the default namespace later in the procedure.
+Use a custom namespace so that you don't have to overwrite the default namespace later in the procedure.
 
 1. Create a unique Kubernetes namespace, for example `pyroscope-test`:
 
@@ -48,17 +48,30 @@ Use a custom namespace so that you do not have to overwrite the default namespac
    helm repo update
    ```
 
-   > **Note:** The Helm chart at [https://grafana.github.io/helm-charts](https://grafana.github.io/helm-charts) is a publication of the source code at [**grafana/pyroscope**](https://github.com/grafana/pyroscope/tree/main/operations/pyroscope/helm/pyroscope).
+   {{% admonition type="note" %}}
+   The Helm chart at [https://grafana.github.io/helm-charts](https://grafana.github.io/helm-charts) is a publication of the source code at [**grafana/pyroscope**](https://github.com/grafana/pyroscope/tree/main/operations/pyroscope/helm/pyroscope).
+   {{% /admonition %}}
 
 1. Install Pyroscope using the Helm chart using one of the following options:
 
-   - Option A: Install Pyroscope as single binary -- this mode is meant to be used when you _only need one pyroscope instance_ as multiple instances will not share information with each other
+   - Option A: Install Pyroscope as single binary. Use this mode _only when you need one Pyroscope instance_ as multiple instances won't share information with each other.
 
    ```bash
    helm -n pyroscope-test install pyroscope grafana/pyroscope
    ```
 
-   - Option B: Install Pyroscope as micro-services -- in this mode as you scale out the number of instances, they will share a singular backend for storage and querying
+   {{% admonition type="note" %}}
+   The output of the command contains the query URLs necessary for the following steps, so for a single-binary setup, it will look like this:
+
+   ```
+   [...]
+   The in-cluster query URL is:
+   http://pyroscope.pyroscope-test.svc.cluster.local.:4040/
+   [...]
+   ```
+   {{% /admonition %}}
+
+   - Option B: Install Pyroscope as micro-services. In this mode, as you scale out the number of instances, they will share a singular backend for storage and querying.
 
    ```bash
    # Gather the default config for micro-services
@@ -66,7 +79,8 @@ Use a custom namespace so that you do not have to overwrite the default namespac
    helm -n pyroscope-test install pyroscope grafana/pyroscope --values values-micro-services.yaml
    ```
 
-   > **Note:** The output of the command contains the query URLs necessary for the following steps, so for a micro-service setup it will look like this:
+   {{% admonition type="note" %}}
+   The output of the command contains the query URLs necessary for the following steps, so for a micro-service setup, it will look like this:
 
    ```
    [...]
@@ -74,6 +88,7 @@ Use a custom namespace so that you do not have to overwrite the default namespac
    http://pyroscope-querier.pyroscope-test.svc.cluster.local.:4040
    [...]
    ```
+   {{% /admonition %}}
 
 1. Check the statuses of the Pyroscope pods:
 
@@ -211,6 +226,6 @@ The following table describes the annotations:
 | `profiles.grafana.com/<profile-type>.path` | The path to scrape the profile type from. | default golang path |
 
 By default, the port will be discovered using named port `http2` or ending with `-metrics` or `-profiles`.
-This means that if you don't have a named port the scraping target will be dropped.
+If you don't have a named port, the scraping target will be dropped.
 
-If you don't want to use the port name then you can use the `profiles.grafana.com/<profile-type>.port` annotation to statically specify the port number.
+If you don't want to use the port name, then you can use the `profiles.grafana.com/<profile-type>.port` annotation to statically specify the port number.
