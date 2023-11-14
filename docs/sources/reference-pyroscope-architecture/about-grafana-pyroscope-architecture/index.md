@@ -49,7 +49,7 @@ By default, each profile series is replicated to three ingesters, and each inges
 [//]: # "To edit open with https://mermaid.live/edit#pako{...}"
 
 <p align="center">
-  <img alt="Architecture of Pyroscope's read path" width="400px" src="https://mermaid.ink/svg/pako:eNqNkU1PwzAMQP9KlF02aV1ZC92WAwcEZyTgtu6QNU4bSJOSOIxq6n8nnfg-7eY8P1uOfaSVFUAZldoeqoY7JE83pSEkeHDT7QNw4XczkiTX5DWA6xPprEEwYnT-kl-SrxoQQYP7shS4c9LK1ODxPyeVbWOGeGvNSbN-FKyfbu_3z1Ah8Wgd7GYj9dhrOE1PpNKaTeRGzj06-wJskuf5Z5wclMCGZd37T5H1Z5fQOW3BtVyJuLrj2KKk2EALJWUxFCB50FjS0gxR5QHtY28qytAFmNPQCY5wq3jteEuZ5Np_0zuh4me-obZcQHweKfbdeKdaeYwtK2ukqkcenI64Qew8S9MxvagVNmG_iGtLvRLjUZu3TZEWWbHmWQ7FKudXeS6q_XKzltnlUorVxTLjdBiGD-Nas38" />
+  <img alt="Architecture of Pyroscope's read path" width="400px" src="https://mermaid.ink/svg/pako:eNqNkT1PwzAQhv9K5C6t1DQ0gX54YEAwIwFb08G1z4nBiYN9pkRV_jt2gQJi6XZ-7rmTXt-BcCOAUCK12fOaWUyebso2SbwDO948ABNuO0nS9Dp59WD7VFrTIrQiOn_JL8nxGoTXYL8tBfactmorcPifOzQW0ooh7Fl_JMZFx7jx5n73DBw_le0kUoe9hmOARCqt6Uiu5dShNS9AR0VRfNXpXgmsad69_wwZd_YImZIGbMOUCL93iCtKgjU0UBIaSgGSeY0lKdshqMyjeexbTihaD1PiOxHS3CpWWdYQKpl2J3onVAhzgtowAeF5INh38VSVchhWctNKVUXurQ64RuwczbLYnlUKa7-bcdNkTol41_ptvcgW-WLF8gIWy4JdFYXgu_l6JfPLuRTLi3nOyDAMHzzctK0" />
   </a>
 </p>
 
@@ -57,7 +57,10 @@ Queries coming into Pyroscope arrive at [query-frontend]({{< relref "../componen
 
 The [query-scheduler]({{< relref "../components/query-scheduler" >}}) maintains a queue of queries and ensures that each tenant's queries are fairly executed.
 
-The [querier]({{< relref "../components/querier" >}}) act as workers, pulling queries from the queue in the query-scheduler. The queriers connect to the ingesters to fetch all the data needed to execute a query. For more information about how the query is executed, refer to [querier]({{< relref "../components/querier.md" >}}).
+The [queriers]({{< relref "../components/querier" >}}) act as workers, pulling queries from the queue in the query-scheduler. The queriers connect to the ingesters to fetch all the data needed to execute a query. For more information about how the query is executed, refer to [querier]({{< relref "../components/querier.md" >}}).
+
+Depending on the time window selected, the querier involves [ingesters]({{< relref "../components/ingester" >}}) for recent data and [store-gateways]({{< relref "../components/store-gateway" >}}) for data from long-term storage.
+
 
 ## Long-term storage
 
