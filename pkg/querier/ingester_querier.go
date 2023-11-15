@@ -167,7 +167,7 @@ func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1
 		g.Go(util.RecoverPanic(func() error {
 			req := req.CloneVT()
 			req.Request.Hints = &ingestv1.Hints{Block: hints}
-			return r.response.Send(req.CloneVT())
+			return r.response.Send(req)
 		}))
 	}
 	if err := g.Wait(); err != nil {
