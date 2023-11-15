@@ -885,7 +885,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 	}
 
 	// todo in parallel
-	if plan == nil && storeQueries.ingester.shouldQuery {
+	if storeQueries.ingester.shouldQuery {
 		ir, err := q.selectSeriesFromIngesters(ctx, storeQueries.ingester.MergeSeriesRequest(req.Msg, profileType), plan)
 		if err != nil {
 			return nil, err
@@ -893,7 +893,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 		responses = append(responses, ir...)
 	}
 
-	if plan == nil && storeQueries.storeGateway.shouldQuery {
+	if storeQueries.storeGateway.shouldQuery {
 		ir, err := q.selectSeriesFromStoreGateway(ctx, storeQueries.storeGateway.MergeSeriesRequest(req.Msg, profileType), plan)
 		if err != nil {
 			return nil, err
