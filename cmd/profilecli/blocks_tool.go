@@ -14,6 +14,11 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/grafana/dskit/server"
+	"github.com/oklog/ulid"
+	"github.com/pkg/errors"
+	"github.com/prometheus/common/model"
+	"golang.org/x/exp/slices"
+
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/gcs"
@@ -21,10 +26,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucket"
 	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
-	"github.com/oklog/ulid"
-	"github.com/pkg/errors"
-	"github.com/prometheus/common/model"
-	"golang.org/x/exp/slices"
 )
 
 //go:embed tool/blocks/tool.blocks.index.gohtml
@@ -210,6 +211,10 @@ func newBlocksWebTool(params *blocksWebToolParams) *blocksWebTool {
 				Block: blockDetails,
 				Now:   time.Now().UTC().Format(time.RFC3339),
 			})
+			if err != nil {
+				httputil.Error(w, err)
+				return
+			}
 		} else {
 			httputil.Error(w, errors.New("Could not find block"))
 			return
