@@ -17,9 +17,16 @@ EBPF_RUN_IN_VM ?= 0
 .phony: python/dwarfdump
 python/dwarfdump:
 	git submodule update --init --recursive
-	go run cmd/python_dwarfdump/main.go $(shell find testdata -name libpy\*.so\*) \
-	 	$(shell find .  | grep python/ | grep -E "/python3\\.[0-9]+") > python/versions_gen.go
-	go fmt python/versions_gen.go
+
+	echo "//go:build amd64 && linux" > python/versions_gen_amd64.go
+	go run cmd/python_dwarfdump/main.go $(shell find testdata/python-x64 -name libpy\*.so\*) \
+	 	$(shell find testdata/python-x64  | grep -E "/python3\\.[0-9]+") >> python/versions_gen_amd64.go
+	go fmt python/versions_gen_amd64.go
+
+	echo "//go:build arm64 && linux" > python/versions_gen_arm64.go
+	go run cmd/python_dwarfdump/main.go $(shell find testdata/python-arm64 -name libpy\*.so\*) \
+	 	$(shell find testdata/python-arm64  | grep -E "/python3\\.[0-9]+") >> python/versions_gen_arm64.go
+	go fmt python/versions_gen_arm64.go
 
 
 .phony: bpf/gen
