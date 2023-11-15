@@ -20,7 +20,7 @@
                 <h2>Blocks Tool: Grafana Pyroscope</h2>
             </div>
             <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
-                <a href="/tenants">
+                <a href="/blocks/index">
                     <img alt="Pyroscope logo" class="pyroscope-brand" src="/tool/static/pyroscope-logo.png">
                 </a>
             </div>
@@ -39,7 +39,7 @@
                     {{ range $i, $ := .Users }}
                         <tr>
                             <td class="align-middle font-monospace small">
-                                <a href='/blocks?tenantId={{ . }}'>{{ . }}</a>
+                                <a href='/blocks/list?tenantId={{ . }}'>{{ . }}</a>
                             </td>
                         </tr>
                     {{ end }}

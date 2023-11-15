@@ -139,7 +139,7 @@ func newBlocksWebTool(params *blocksWebToolParams) *blocksWebTool {
 	indexTemplate := template.New("index")
 	template.Must(indexTemplate.Parse(indexPageHtml))
 
-	s.HTTP.Path("/tenants").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.HTTP.Path("/blocks/index").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		users, _ := bucket.ListUsers(ctx, b)
 		err := indexTemplate.Execute(w, indexPageContent{
 			Users: users,
@@ -153,7 +153,7 @@ func newBlocksWebTool(params *blocksWebToolParams) *blocksWebTool {
 	blocksTemplate := template.New("blocks")
 	template.Must(blocksTemplate.Parse(blocksPageHtml))
 
-	s.HTTP.Path("/blocks").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.HTTP.Path("/blocks/list").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tenantId := r.URL.Query().Get("tenantId")
 		index, err := bucketindex.ReadIndex(ctx, tool.bucket, tenantId, nil, logger)
 		if err != nil {
@@ -177,7 +177,7 @@ func newBlocksWebTool(params *blocksWebToolParams) *blocksWebTool {
 	blockDetailsTemplate := template.New("block-details")
 	template.Must(blockDetailsTemplate.Parse(blockDetailsPageHtml))
 
-	s.HTTP.Path("/block-details").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.HTTP.Path("/blocks/details").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tenantId := r.URL.Query().Get("tenantId")
 		if tenantId == "" {
 			httputil.Error(w, errors.New("No tenant id provided"))
@@ -331,7 +331,7 @@ func getBlockDetails(ctx context.Context, id ulid.ULID, fetcher *block.MetaFetch
 func (t *blocksWebTool) run(ctx context.Context) error {
 	out := output(ctx)
 
-	fmt.Fprintln(out, "Blocks web tool listening at", t.params.httpListenPort)
+	fmt.Fprintf(out, "The blocks web tool is available at http://localhost:%d/blocks/index\n", t.params.httpListenPort)
 
 	if err := t.server.Run(); err != nil {
 		return err

@@ -20,14 +20,14 @@
                 <h2>Blocks Tool: Tenant {{ .User }}</h2>
             </div>
             <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
-                <a href="/tenants">
+                <a href="/blocks/index">
                     <img alt="Pyroscope logo" class="pyroscope-brand" src="/tool/static/pyroscope-logo.png">
                 </a>
             </div>
         </div>
         <div class="row my-3">
             <div class="col-md-6">
-                <form class="card p-2" action="/blocks" method="get">
+                <form class="card p-2" action="/blocks/list" method="get">
                     <div class="input-group">
                         <div class="form-check">
                             <input type="checkbox" class="form-check-input" id="include-deleted" name="includeDeleted" value="true" {{ if .Query.IncludeDeleted }} checked {{ end }}>
@@ -74,7 +74,7 @@
                                     {{ range $, $v := $blockGroup.Blocks }}
                                         <tr>
                                             <td class="font-monospace small">
-                                                <a href="/block-details?tenantId={{ $user }}&blockId={{ $v.ID }}">
+                                                <a href="/blocks/details?tenantId={{ $user }}&blockId={{ $v.ID }}">
                                                     {{ $v.ID }}
                                                 </a>
                                             </td>
