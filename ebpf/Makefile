@@ -16,7 +16,7 @@ EBPF_RUN_IN_VM ?= 0
 
 .phony: python/dwarfdump
 python/dwarfdump:
-	#git submodule update --init --recursive
+	git submodule update --init --recursive
 
 	echo "//go:build amd64 && linux" > python/python_offsets_gen_amd64.go
 	go run cmd/python_dwarfdump/main.go $(shell find testdata/python-x64 -name libpy\*.so\*) \
@@ -31,7 +31,7 @@ python/dwarfdump:
 
 .phony: glibc/dwarfdump
 glibc/dwarfdump:
-	#git submodule update --init --recursive
+	git submodule update --init --recursive
 
 	echo "//go:build amd64 && linux" > python/glibc_offsets_gen_amd64.go
 	go run cmd/glibc_dwarfdump/main.go $(shell find testdata/glibc-x64 -name libc.so.6 ) >> python/glibc_offsets_gen_amd64.go
