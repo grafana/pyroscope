@@ -16,18 +16,30 @@ EBPF_RUN_IN_VM ?= 0
 
 .phony: python/dwarfdump
 python/dwarfdump:
-	git submodule update --init --recursive
+	#git submodule update --init --recursive
 
-	echo "//go:build amd64 && linux" > python/versions_gen_amd64.go
+	echo "//go:build amd64 && linux" > python/python_offsets_gen_amd64.go
 	go run cmd/python_dwarfdump/main.go $(shell find testdata/python-x64 -name libpy\*.so\*) \
-	 	$(shell find testdata/python-x64  | grep -E "/python3\\.[0-9]+") >> python/versions_gen_amd64.go
-	go fmt python/versions_gen_amd64.go
+	 	$(shell find testdata/python-x64  | grep -E "/python3\\.[0-9]+") >> python/python_offsets_gen_amd64.go
+	go fmt python/python_offsets_gen_amd64.go
 
-	echo "//go:build arm64 && linux" > python/versions_gen_arm64.go
+	echo "//go:build arm64 && linux" > python/python_offsets_gen_arm64.go
 	go run cmd/python_dwarfdump/main.go $(shell find testdata/python-arm64 -name libpy\*.so\*) \
-	 	$(shell find testdata/python-arm64  | grep -E "/python3\\.[0-9]+") >> python/versions_gen_arm64.go
-	go fmt python/versions_gen_arm64.go
+	 	$(shell find testdata/python-arm64  | grep -E "/python3\\.[0-9]+") >> python/python_offsets_gen_arm64.go
+	go fmt python/python_offsets_gen_arm64.go
 
+
+.phony: glibc/dwarfdump
+glibc/dwarfdump:
+	#git submodule update --init --recursive
+
+	echo "//go:build amd64 && linux" > python/glibc_offsets_gen_amd64.go
+	go run cmd/glibc_dwarfdump/main.go $(shell find testdata/glibc-x64 -name libc.so.6 ) >> python/glibc_offsets_gen_amd64.go
+	go fmt python/glibc_offsets_gen_amd64.go
+
+	echo "//go:build arm64 && linux" > python/glibc_offsets_gen_arm64.go
+	go run cmd/glibc_dwarfdump/main.go $(shell find testdata/glibc-arm64 -name libc.so.6 ) >> python/glibc_offsets_gen_arm64.go
+	go fmt python/glibc_offsets_gen_arm64.go
 
 .phony: bpf/gen
 bpf/gen:

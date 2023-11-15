@@ -142,6 +142,11 @@ type UserOffsets struct {
 	PyCompactUnicodeObjectSize        int16
 }
 
+type GlibcOffsets struct {
+	PthreadSpecific1stblock int
+	PthreadSize             int
+}
+
 func GetUserOffsets(version Version) (*UserOffsets, bool, error) {
 	offsets, ok := pyVersions[version]
 	patchGuess := false
