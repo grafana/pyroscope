@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html class="h-100">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Blocks Tool - {{ .User }}</title>
+
+    <link rel="stylesheet" href="/tool/static/bootstrap-5.1.3.min.css">
+    <link rel="stylesheet" href="/tool/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/tool/static/pyroscope-styles.css">
+    <script src="/tool/static/bootstrap-5.1.3.bundle.min.js"></script>
+</head>
+<body class="d-flex flex-column h-100">
+<main class="flex-shrink-0">
+    <div class="container">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h2>Blocks Tool: Tenant {{ .User }}</h2>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="/tenants">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/tool/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+        <div class="row my-3">
+            <div class="col-md-6">
+                <form class="card p-2" action="/blocks" method="get">
+                    <div class="input-group">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="include-deleted" name="includeDeleted" value="true" {{ if .Query.IncludeDeleted }} checked {{ end }}>
+                            <label class="form-check-label" for="include-deleted">Include deleted blocks</label>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="From" name="queryFrom"
+                               value="{{ .Query.From }}">
+                        <input type="text" class="form-control" placeholder="To" name="queryTo" value="{{ .Query.To }}">
+                        <input type="hidden" name="tenantId" value="{{ .User }}">
+                        <button type="submit" class="btn btn-secondary">Reload</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="row my-3">
+            <h3>{{ len $.SelectedBlocks }} block groups found</h3>
+            <div class="accordion">
+                {{ $user := .User }}
+                {{ range $i, $blockGroup := .SelectedBlocks }}
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#group-{{ $i }}" aria-expanded="true" aria-controls="collapseOne">
+                            {{ $blockGroup.MinTime }}: {{ len $blockGroup.Blocks }} blocks
+                        </button>
+                    </h2>
+                    <div class="accordion-collapse collapse" id="group-{{ $i }}">
+                        <div class="accordion-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover table-striped">
+                                    <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Upload Time</th>
+                                        <th>Min Time</th>
+                                        <th>Max Time</th>
+                                        <th>Duration</th>
+                                        <th>Compactor Shard ID</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {{ range $, $v := $blockGroup.Blocks }}
+                                        <tr>
+                                            <td class="font-monospace small">
+                                                <a href="/block-details?tenantId={{ $user }}&blockId={{ $v.ID }}">
+                                                    {{ $v.ID }}
+                                                </a>
+                                            </td>
+                                            <td class="font-monospace small">{{ $v.UploadedAt }}</td>
+                                            <td class="font-monospace small">{{ $v.MinTime }}</td>
+                                            <td class="font-monospace small">{{ $v.MaxTime }}</td>
+                                            <td class="font-monospace small">{{ $v.Duration }}</td>
+                                            <td class="font-monospace small">{{ $v.CompactorShardID }}</td>
+                                        </tr>
+                                    {{ end }}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{ end }}
+            </div>
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3 bg-light">
+    <div class="container">
+        <small class="text-muted">Status @ {{ .Now }}</small>
+    </div>
+</footer>
+</body>
+</html>

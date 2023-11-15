@@ -61,6 +61,11 @@ func main() {
 	canaryExporterCmd := app.Command("canary-exporter", "Run the canary exporter.")
 	canaryExporterParams := addCanaryExporterParams(canaryExporterCmd)
 
+	toolCmd := app.Command("tool", "Run one of the available tools.")
+	toolBlocksCmd := toolCmd.Command("blocks", "Run the blocks tool.")
+	toolBlocksWebCmd := toolBlocksCmd.Command("web", "Web interface for block management.")
+	toolBlocksWebParams := addBlocksWebToolParams(toolBlocksWebCmd)
+
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -92,6 +97,10 @@ func main() {
 		}
 	case canaryExporterCmd.FullCommand():
 		if err := newCanaryExporter(canaryExporterParams).run(ctx); err != nil {
+			os.Exit(checkError(err))
+		}
+	case toolBlocksWebCmd.FullCommand():
+		if err := newBlocksWebTool(toolBlocksWebParams).run(ctx); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:
