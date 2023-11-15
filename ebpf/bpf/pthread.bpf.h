@@ -56,6 +56,11 @@ static inline int pyro_pthread_getspecific(struct libc *libc, int32_t key, void 
     void *res;
     // This assumes autoTLSkey < 32, which means that the TLS is stored in
     //   pthread->specific_1stblock[autoTLSkey]
+#if defined(__TARGET_ARCH_arm64)
+    // # define THREAD_SELF \
+    // ((struct pthread *)__builtin_thread_pointer () - 1)
+    tls_base -= libc->glibc.pthread_size;
+#endif
     if (bpf_probe_read_user(
             &res,
             sizeof(res),
