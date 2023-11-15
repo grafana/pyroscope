@@ -58,4 +58,7 @@ var pythonFields = []dwarfdump.Need{
 	{Name: "pthread", Fields: []dwarfdump.NeedField{
 		{"specific_1stblock", ""},
 	}, Size: true},
+	{Name: "pthread_key_data", Fields: []dwarfdump.NeedField{
+		{"data", ""},
+	}, Size: true},
 }

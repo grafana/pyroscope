@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -30,6 +31,10 @@ func (p *Version) Compare(other *Version) int {
 		return minor
 	}
 	return p.Patch - other.Patch
+}
+
+func (p *Version) String() string {
+	return fmt.Sprintf("%d.%d.%d", p.Major, p.Minor, p.Patch)
 }
 
 // GetPythonPatchVersion searches for a patch version given a major + minor version with regexp
@@ -82,6 +87,54 @@ func GetMuslVersionFromReader(r io.Reader) (int, error) {
 		return 2, nil
 	}
 	return 2, nil // let's hope it won't change in patch fix
+}
+
+var reGlibcVersion = regexp.MustCompile("glibc 2\\.(\\d+)\\D")
+
+func GetGlibcVersionFromFile(f string) (Version, error) {
+	muslFD, err := os.Open(f)
+	if err != nil {
+		return Version{}, fmt.Errorf("couldnot determine glibc version %s %w", f, err)
+	}
+	defer muslFD.Close()
+	return GetGlibcVersionFromReader(muslFD)
+}
+
+func GetGlibcVersionFromReader(r io.Reader) (Version, error) {
+	m, err := rgrep(r, reGlibcVersion)
+	if err != nil {
+		return Version{}, fmt.Errorf("rgrep python version  %w", err)
+	}
+	minor, err := strconv.Atoi(string(m[1]))
+	if err != nil {
+		return Version{}, fmt.Errorf("error trying to grep musl minor version %s, %w", string(m[0]), err)
+	}
+
+	return Version{Major: 2, Minor: minor}, nil
+}
+
+func GetGlibcOffsets(version Version) (PerfGlibc, bool, error) {
+	offsets, ok := glibcOffsets[version]
+	if ok {
+		return PerfGlibc{
+			PthreadSize:             offsets.PthreadSize,
+			PthreadSpecific1stblock: offsets.PthreadSpecific1stblock,
+		}, false, nil
+	}
+	versions := make([]Version, 0, len(glibcOffsets))
+	for v := range glibcOffsets {
+		versions = append(versions, v)
+	}
+	sort.Slice(versions, func(i, j int) bool {
+		return versions[i].Compare(&versions[j]) < 0
+	})
+	if version.Compare(&versions[len(versions)-1]) > 0 {
+		return PerfGlibc{
+			PthreadSize:             glibcOffsets[versions[len(versions)-1]].PthreadSize,
+			PthreadSpecific1stblock: glibcOffsets[versions[len(versions)-1]].PthreadSpecific1stblock,
+		}, true, nil
+	}
+	return PerfGlibc{}, false, fmt.Errorf("unsupported glibc version %v", version)
 }
 
 func rgrep(r io.Reader, re *regexp.Regexp) ([][]byte, error) {
@@ -143,8 +196,10 @@ type UserOffsets struct {
 }
 
 type GlibcOffsets struct {
-	PthreadSpecific1stblock int
-	PthreadSize             int
+	PthreadSpecific1stblock int16
+	PthreadSize             int16
+	PthreadKeyDataData      int16
+	PthreadKeyDataSize      int16
 }
 
 func GetUserOffsets(version Version) (*UserOffsets, bool, error) {

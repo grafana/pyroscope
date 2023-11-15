@@ -15,6 +15,7 @@ type ProcInfo struct {
 	PythonMaps    []*symtab.ProcMap
 	LibPythonMaps []*symtab.ProcMap
 	Musl          []*symtab.ProcMap
+	Glibc         []*symtab.ProcMap
 }
 
 var rePython = regexp.MustCompile("/.*/((?:lib)?python)(\\d+)\\.(\\d+)(?:[mu]?(?:\\.so)?)?(?:.1.0)?$")
@@ -55,6 +56,9 @@ func GetProcInfo(s *bufio.Scanner) (ProcInfo, error) {
 			}
 			if strings.Contains(m.Pathname, "/lib/ld-musl-x86_64.so.1") {
 				res.Musl = append(res.Musl, m)
+			}
+			if strings.HasSuffix(m.Pathname, "/libc.so.6") {
+				res.Glibc = append(res.Glibc, m)
 			}
 		}
 	}

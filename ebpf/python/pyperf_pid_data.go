@@ -93,7 +93,21 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 		if err != nil {
 			return nil, fmt.Errorf("couldnot determine musl version %s %w", muslPath, err)
 		}
-		data.Musl = uint8(muslVersion)
+		data.Libc.Musl = int16(muslVersion)
+	}
+	if info.Glibc != nil {
+		glibcPath := fmt.Sprintf("/proc/%d/root%s", pid, info.Glibc[0].Pathname)
+		glibcVersion, err := GetGlibcVersionFromFile(glibcPath)
+		if err != nil {
+			return nil, fmt.Errorf("couldnot determine glibc version %s %w", glibcPath, err)
+		}
+		data.Libc.Glibc, guess, err = GetGlibcOffsets(glibcVersion)
+		if err != nil {
+			return nil, fmt.Errorf("unsupported glibc version %w %+v", err, glibcVersion)
+		}
+		if guess {
+			level.Warn(l).Log("msg", "glibc offsets were not found, but guessed from the closest version")
+		}
 	}
 	var vframeCode, vframeBack, vframeLocalPlus int16
 	if version.Compare(Py311) >= 0 {

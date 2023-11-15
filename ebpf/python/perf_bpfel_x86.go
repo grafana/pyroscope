@@ -12,6 +12,11 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type PerfGlibc struct {
+	PthreadSize             int16
+	PthreadSpecific1stblock int16
+}
+
 type PerfPyEvent struct {
 	StackStatus uint8
 	Err         uint8
@@ -51,8 +56,11 @@ type PerfPyPidData struct {
 		Minor uint32
 		Patch uint32
 	}
-	Musl   uint8
-	_      [3]byte
+	Libc struct {
+		Musl  int16
+		Glibc PerfGlibc
+	}
+	_      [2]byte
 	TssKey int32
 }
 

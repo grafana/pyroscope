@@ -6,8 +6,15 @@
 #include "vmlinux.h"
 #include "bpf_helpers.h"
 #include "ume.h"
+#include "pyoffsets.h"
 
-static inline int pyro_get_tlsbase(void **out) {
+
+
+
+static inline int pyro_pthread_getspecific(struct libc *libc, int32_t key, void **out) {
+    if (key == -1) {
+        return -1;
+    }
     struct task_struct *task = (struct task_struct *) bpf_get_current_task();
     if (task == NULL) {
         return -1;
@@ -19,25 +26,14 @@ static inline int pyro_get_tlsbase(void **out) {
         return -1;
     }
 #elif defined(__TARGET_ARCH_arm64)
-//todo test arm64
-    if (pyro_bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.uw.tp_value)) { // todo what is tp_value2??
+    if (pyro_bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.uw.tp_value)) {
         return -1;
     }
 #else
 #error "Unknown architecture"
 #endif
-    *out = tls_base;
-    return 0;
-}
 
-// musl 0 means glibc
-// musl 1 means musl 1.1.xx
-// musl 2 means musl 1.2.xx
-static inline int pyro_pthread_getspecific(uint8_t musl, int32_t key, void *tls_base, void **out) {
-    if (key == -1) {
-        return -1;
-    }
-    if (musl) {
+    if (libc->musl) {
 //        0x7fd5a3c0c3be <tss_get>       mov    rax, qword ptr fs:[0]
 //        0x7fd5a3c0c3c7 <tss_get+9>     mov    rax, qword ptr [rax + 0x80]
 //        0x7fd5a3c0c3ce <tss_get+16>    mov    edi, edi
@@ -47,7 +43,7 @@ static inline int pyro_pthread_getspecific(uint8_t musl, int32_t key, void *tls_
         if (bpf_probe_read_user(&tmp,sizeof(tmp), tls_base)) {
             return -1;
         }
-        int tsd = musl == 2 ? 0x80 : 0x88;
+        int tsd = libc->musl == 2 ? 0x80 : 0x88;
         if (bpf_probe_read_user(&tmp, sizeof(tmp), tmp + tsd)) {
             return -1;
         }
@@ -60,15 +56,10 @@ static inline int pyro_pthread_getspecific(uint8_t musl, int32_t key, void *tls_
     void *res;
     // This assumes autoTLSkey < 32, which means that the TLS is stored in
     //   pthread->specific_1stblock[autoTLSkey]
-    // 0x310 is offsetof(struct pthread, specific_1stblock),
-    // 0x10 is sizeof(pthread_key_data)
-    // 0x8 is offsetof(struct pthread_key_data, data)
-    // 'struct pthread' is not in the public API so we have to hardcode
-    // the offsets here
     if (bpf_probe_read_user(
             &res,
             sizeof(res),
-            tls_base + 0x310 + key * 0x10 + 0x08)) {
+            tls_base + libc->glibc.pthread_specific1stblock + key * 0x10 + 0x08)) {
         return -1;
     }
     *out = res;
