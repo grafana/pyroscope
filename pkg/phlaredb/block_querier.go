@@ -732,23 +732,23 @@ func HintsToBlockSkipper(hints *ingestv1.Hints) func(ulid string) bool {
 // SelectMatchingProfiles returns a list iterator of profiles matching the given request.
 func SelectMatchingProfiles(ctx context.Context, request *ingestv1.SelectProfilesRequest, queriers Queriers) ([]iter.Iterator[Profile], error) {
 	g, ctx := errgroup.WithContext(ctx)
-	iters := make([]iter.Iterator[Profile], 0, len(queriers))
+	iters := make([]iter.Iterator[Profile], len(queriers))
 
 	skipBlock := HintsToBlockSkipper(request.Hints)
-	var mu sync.Mutex
-	for _, querier := range queriers {
+
+	for i, querier := range queriers {
 		if skipBlock(querier.BlockID()) {
+			iters[i] = iter.NewEmptyIterator[Profile]()
 			continue
 		}
+		i := i
 		querier := querier
 		g.Go(util.RecoverPanic(func() error {
 			profiles, err := querier.SelectMatchingProfiles(ctx, request)
 			if err != nil {
 				return err
 			}
-			mu.Lock()
-			iters = append(iters, iter.NewBufferedIterator(profiles, 1024))
-			mu.Unlock()
+			iters[i] = iter.NewBufferedIterator(profiles, 1024)
 			return nil
 		}))
 	}
