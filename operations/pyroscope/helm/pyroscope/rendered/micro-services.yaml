@@ -2065,6 +2065,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           ports:
             - name: http2
               containerPort: 4040
@@ -2158,6 +2159,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           ports:
             - name: http2
               containerPort: 4040
@@ -2251,6 +2253,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           ports:
             - name: http2
               containerPort: 4040
@@ -2344,6 +2347,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           ports:
             - name: http2
               containerPort: 4040
@@ -2616,6 +2620,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           ports:
             - name: http2
               containerPort: 4040
@@ -2715,6 +2720,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           ports:
             - name: http2
               containerPort: 4040
@@ -2811,6 +2817,7 @@ spec:
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
             - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
           ports:
             - name: http2
               containerPort: 4040

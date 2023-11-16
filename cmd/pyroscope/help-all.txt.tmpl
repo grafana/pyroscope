@@ -1000,7 +1000,7 @@ Usage of ./pyroscope:
   -store-gateway.sharding-ring.prefix string
     	The prefix for the keys in the store. Should end with a /. (default "collectors/")
   -store-gateway.sharding-ring.replication-factor int
-    	The replication factor to use when sharding blocks. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode. (default 1)
+    	The replication factor to use when sharding blocks. This option needs be set both on the store-gateway and querier when running in microservices mode. (default 1)
   -store-gateway.sharding-ring.store string
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -store-gateway.sharding-ring.tokens-file-path string
@@ -1012,7 +1012,7 @@ Usage of ./pyroscope:
   -store-gateway.sharding-ring.wait-stability-min-duration duration
     	Minimum time to wait for ring stability at startup, if set to positive value.
   -store-gateway.sharding-ring.zone-awareness-enabled
-    	True to enable zone-awareness and replicate blocks across different availability zones. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode.
+    	True to enable zone-awareness and replicate blocks across different availability zones. This option needs be set both on the store-gateway and querier when running in microservices mode.
   -store-gateway.tenant-shard-size int
     	The tenant's shard size, used when store-gateway sharding is enabled. Value of 0 disables shuffle sharding for the tenant, that is all tenant blocks are sharded across all store-gateway replicas.
   -target comma-separated-list-of-strings

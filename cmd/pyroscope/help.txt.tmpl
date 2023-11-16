@@ -352,7 +352,7 @@ Usage of ./pyroscope:
   -store-gateway.sharding-ring.unregister-on-shutdown
     	Unregister from the ring upon clean shutdown. (default true)
   -store-gateway.sharding-ring.zone-awareness-enabled
-    	True to enable zone-awareness and replicate blocks across different availability zones. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode.
+    	True to enable zone-awareness and replicate blocks across different availability zones. This option needs be set both on the store-gateway and querier when running in microservices mode.
   -store-gateway.tenant-shard-size int
     	The tenant's shard size, used when store-gateway sharding is enabled. Value of 0 disables shuffle sharding for the tenant, that is all tenant blocks are sharded across all store-gateway replicas.
   -target comma-separated-list-of-strings
