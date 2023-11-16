@@ -46,32 +46,42 @@ bpf/gen:
 	go generate pyrobpf/gen.go
 	go generate python/gen.go
 
-.PHONY: ebpf.test
-ebpf.test:
-	CGO_ENABLED=$(EBPF_CGO_ENABLED) \
-		GOOS=linux GOARCH=amd64 \
-		$(GO) test -c $(EBPF_GO_TEST_FLAGS) ./
+.PHONY: ebpf.amd64.test
+ebpf.amd64.test:
+	CGO_ENABLED=$(EBPF_CGO_ENABLED) GOOS=linux GOARCH=amd64 \
+		$(GO) test -c $(EBPF_GO_TEST_FLAGS) -o ebpf.amd64.test ./
+
+.PHONY: ebpf.arm64.test
+ebpf.arm64.test:
+	CGO_ENABLED=$(EBPF_CGO_ENABLED) GOOS=linux GOARCH=arm64 \
+		$(GO) test -c $(EBPF_GO_TEST_FLAGS) -o ebpf.arm64.test ./
 
 ifeq ($(EBPF_RUN_IN_VM),1)
 
-$(TMP_EBPF)/vm_image: Makefile
+$(TMP_EBPF)/vm_image_amd64: Makefile
 	mkdir -p $(TMP_EBPF)
 	docker run -v $(TMP_EBPF):/mnt/images \
 		quay.io/lvh-images/kind:6.0-main \
-		cp /data/images/kind_6.0.qcow2.zst /mnt/images/vm_image.zst
-	zstd -f -d $(TMP_EBPF)/vm_image.zst
+		cp /data/images/kind_6.0.qcow2.zst /mnt/images/vm_image_amd64.zst
+	zstd -f -d $(TMP_EBPF)/vm_image_amd64.zst
 
 
-.PHONY: go/test
-go/test: $(TMP_EBPF)/vm_image ebpf.test
-	bash ../tools/vmrun.sh $(TMP_EBPF)/vm_image ebpf.test
+.PHONY: go/test/amd64
+go/test/amd64: $(TMP_EBPF)/vm_image_amd64 ebpf.amd64.test
+	bash ../tools/vmrun_amd64.sh $(TMP_EBPF)/vm_image_amd64 ebpf.amd64.test
 
 else
 
-.PHONY: go/test
-go/test: ebpf.test
+.PHONY: go/test/amd64
+go/test/amd64: ebpf.amd64.test
 	whoami | grep root
-	./ebpf.test
+	./ebpf.test.amd64
+
+
+.PHONY: go/test/arm64
+go/test/arm64: ebpf.arm64.test
+	whoami | grep root
+	./ebpf.test.arm64
 
 endif
 
