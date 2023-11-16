@@ -72,6 +72,7 @@ type Limits struct {
 	// Compactor.
 	CompactorBlocksRetentionPeriod     model.Duration `yaml:"compactor_blocks_retention_period" json:"compactor_blocks_retention_period"`
 	CompactorSplitAndMergeShards       int            `yaml:"compactor_split_and_merge_shards" json:"compactor_split_and_merge_shards"`
+	CompactorSplitAndMergeStageSize    int            `yaml:"compactor_split_and_merge_stage_size" json:"compactor_split_and_merge_stage_size"`
 	CompactorSplitGroups               int            `yaml:"compactor_split_groups" json:"compactor_split_groups"`
 	CompactorTenantShardSize           int            `yaml:"compactor_tenant_shard_size" json:"compactor_tenant_shard_size"`
 	CompactorPartialBlockDeletionDelay model.Duration `yaml:"compactor_partial_block_deletion_delay" json:"compactor_partial_block_deletion_delay"`
@@ -136,6 +137,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 
 	f.Var(&l.CompactorBlocksRetentionPeriod, "compactor.blocks-retention-period", "Delete blocks containing samples older than the specified retention period. 0 to disable.")
 	f.IntVar(&l.CompactorSplitAndMergeShards, "compactor.split-and-merge-shards", 0, "The number of shards to use when splitting blocks. 0 to disable splitting.")
+	f.IntVar(&l.CompactorSplitAndMergeStageSize, "compactor.split-and-merge-stage-size", 0, "Number of stages split shards will be written to. Number of output split shards is controlled by -compactor.split-and-merge-shards.")
 	f.IntVar(&l.CompactorSplitGroups, "compactor.split-groups", 1, "Number of groups that blocks for splitting should be grouped into. Each group of blocks is then split separately. Number of output split shards is controlled by -compactor.split-and-merge-shards.")
 	f.IntVar(&l.CompactorTenantShardSize, "compactor.compactor-tenant-shard-size", 0, "Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.")
 	_ = l.CompactorPartialBlockDeletionDelay.Set("1d")
@@ -346,6 +348,11 @@ func (o *Overrides) CompactorBlocksRetentionPeriod(userID string) time.Duration 
 // CompactorSplitAndMergeShards returns the number of shards to use when splitting blocks.
 func (o *Overrides) CompactorSplitAndMergeShards(userID string) int {
 	return o.getOverridesForTenant(userID).CompactorSplitAndMergeShards
+}
+
+// CompactorSplitAndMergeStageSize returns the number of stages split shards will be written to.
+func (o *Overrides) CompactorSplitAndMergeStageSize(userID string) int {
+	return o.getOverridesForTenant(userID).CompactorSplitAndMergeStageSize
 }
 
 // CompactorSplitGroups returns the number of groups that blocks for splitting should be grouped into.

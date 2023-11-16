@@ -16,11 +16,12 @@ func splitAndMergeGrouperFactory(_ context.Context, cfg Config, cfgProvider Conf
 		userID,
 		cfg.BlockRanges.ToMilliseconds(),
 		uint32(cfgProvider.CompactorSplitAndMergeShards(userID)),
+		uint32(cfgProvider.CompactorSplitAndMergeStageSize(userID)),
 		uint32(cfgProvider.CompactorSplitGroups(userID)),
 		logger)
 }
 
-func splitAndMergeCompactorFactory(ctx context.Context, cfg Config, logger log.Logger, reg prometheus.Registerer) (Compactor, Planner, error) {
+func splitAndMergeCompactorFactory(_ context.Context, cfg Config, logger log.Logger, reg prometheus.Registerer) (Compactor, Planner, error) {
 	splitBy := getCompactionSplitBy(cfg.CompactionSplitBy)
 	if splitBy == nil {
 		return nil, nil, errInvalidCompactionSplitBy

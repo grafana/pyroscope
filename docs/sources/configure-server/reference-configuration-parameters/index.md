@@ -211,6 +211,11 @@ limits:
   # CLI flag: -compactor.split-and-merge-shards
   [compactor_split_and_merge_shards: <int> | default = 0]
 
+  # Number of stages split shards will be written to. Number of output split
+  # shards is controlled by -compactor.split-and-merge-shards.
+  # CLI flag: -compactor.split-and-merge-stage-size
+  [compactor_split_and_merge_stage_size: <int> | default = 0]
+
   # Number of groups that blocks for splitting should be grouped into. Each
   # group of blocks is then split separately. Number of output split shards is
   # controlled by -compactor.split-and-merge-shards.
