@@ -20,12 +20,14 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
@@ -809,6 +811,16 @@ func (f *fakeBidiClientProfiles) Receive() (*ingestv1.MergeProfilesPprofResponse
 }
 func (f *fakeBidiClientProfiles) CloseRequest() error  { return nil }
 func (f *fakeBidiClientProfiles) CloseResponse() error { return nil }
+
+func requireFakeMergeProfilesPprof(t *testing.T, n int64, r *profilev1.Profile) {
+	x, err := pprof.FromProfile(pprofth.FooBarProfile)
+	for _, s := range x.Sample {
+		s.Value[0] *= n
+	}
+	x.DurationNanos *= n
+	require.NoError(t, err)
+	require.Equal(t, x, r)
+}
 
 type fakeBidiClientSeries struct {
 	profiles chan *ingestv1.ProfileSets
