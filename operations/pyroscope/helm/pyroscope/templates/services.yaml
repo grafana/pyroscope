@@ -1,6 +1,7 @@
 {{- $global := . }}
 {{- range $component, $cfg := (fromYaml (include "pyroscope.components" .)) }}
 {{- with $global }}
+{{-  $values := mustMergeOverwrite (deepCopy .Values.pyroscope ) ($cfg | default dict)}}
 ---
 apiVersion: v1
 kind: Service
@@ -10,17 +11,17 @@ metadata:
   labels:
     {{- include "pyroscope.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
-  {{- if $cfg.serviceAnnotations }}
+  {{- if $values.service.annotations }}
   annotations:
-    {{- toYaml $cfg.serviceAnnotations | nindent 4 }}
+    {{- toYaml $values.service.annotations | nindent 4 }}
   {{- end }}
 spec:
-  type: {{ .Values.pyroscope.service.type }}
+  type: {{ $values.service.type }}
   ports:
-    - port: {{ .Values.pyroscope.service.port }}
-      targetPort: {{ .Values.pyroscope.service.port_name }}
+    - port: {{ $values.service.port }}
+      targetPort: {{ $values.service.port_name }}
       protocol: TCP
-      name: {{ .Values.pyroscope.service.port_name }}
+      name: {{ $values.service.port_name }}
   selector:
     {{- include "pyroscope.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
@@ -34,13 +35,13 @@ metadata:
     {{- include "pyroscope.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 spec:
-  type: {{ .Values.pyroscope.service.type }}
+  type: ClusterIP
   clusterIP: None
   ports:
-    - port: {{ .Values.pyroscope.service.port }}
-      targetPort: {{ .Values.pyroscope.service.port_name }}
+    - port: {{ $values.service.port }}
+      targetPort: {{ $values.service.port_name }}
       protocol: TCP
-      name: {{ .Values.pyroscope.service.port_name }}
+      name: {{ $values.service.port_name }}
   selector:
     {{- include "pyroscope.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
