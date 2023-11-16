@@ -29,6 +29,10 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/servicediscovery"
 )
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 const (
 	schedulerAddressLabel = "scheduler_address"
 	// schedulerWorkerCancelChanCapacity should be at least as big as the number of sub-queries issued by a single query
