@@ -20,7 +20,7 @@ func (f *Frontend) Series(ctx context.Context, c *connect.Request[querierv1.Seri
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).
 		SetTag("matchers", c.Msg.Matchers).
-		SetTag("matchers", c.Msg.LabelNames)
+		SetTag("label_names", c.Msg.LabelNames)
 
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSeriesProcedure)
 
