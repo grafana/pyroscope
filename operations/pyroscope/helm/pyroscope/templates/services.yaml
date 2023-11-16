@@ -35,7 +35,7 @@ metadata:
     {{- include "pyroscope.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
 spec:
-  type: {{ $values.service.type }}
+  type: ClusterIP
   clusterIP: None
   ports:
     - port: {{ $values.service.port }}
