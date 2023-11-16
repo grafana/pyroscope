@@ -33,7 +33,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/util/math"
 	"github.com/grafana/pyroscope/pkg/util/spanlogger"
 )
@@ -678,6 +678,15 @@ func (sq storeQuery) MergeSpanProfileRequest(req *querierv1.SelectMergeSpanProfi
 	}
 }
 
+func (sq storeQuery) MergeProfileRequest(req *querierv1.SelectMergeProfileRequest) *querierv1.SelectMergeProfileRequest {
+	return &querierv1.SelectMergeProfileRequest{
+		ProfileTypeID: req.ProfileTypeID,
+		LabelSelector: req.LabelSelector,
+		Start:         int64(sq.start),
+		End:           int64(sq.end),
+	}
+}
+
 func (sq storeQuery) SeriesRequest(req *querierv1.SeriesRequest) *ingestv1.SeriesRequest {
 	return &ingestv1.SeriesRequest{
 		Start:      int64(sq.start),
@@ -741,50 +750,75 @@ func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[q
 		sp.Finish()
 	}()
 
-	profileType, err := phlaremodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	_, err = parser.ParseMetricSelector(req.Msg.LabelSelector)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesPprof, error) {
-		return ic.MergeProfilesPprof(ctx), nil
-	})
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	// send the first initial request to all ingesters.
-	g, gCtx := errgroup.WithContext(ctx)
-	for _, r := range responses {
-		r := r
-		g.Go(util.RecoverPanic(func() error {
-			return r.response.Send(&ingestv1.MergeProfilesPprofRequest{
-				Request: &ingestv1.SelectProfilesRequest{
-					LabelSelector: req.Msg.LabelSelector,
-					Start:         req.Msg.Start,
-					End:           req.Msg.End,
-					Type:          profileType,
-				},
-			})
-		}))
-	}
-	if err := g.Wait(); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	// merge all profiles
-	profile, err := selectMergePprofProfile(gCtx, profileType, responses)
+	profile, err := q.selectProfile(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
 	profile.DurationNanos = model.Time(req.Msg.End).UnixNano() - model.Time(req.Msg.Start).UnixNano()
 	profile.TimeNanos = model.Time(req.Msg.End).UnixNano()
 	return connect.NewResponse(profile), nil
+}
+
+func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeProfileRequest) (*googlev1.Profile, error) {
+	// determine the block hints
+	plan, err := q.blockSelect(ctx, model.Time(req.Start), model.Time(req.End))
+	if isEndpointNotExistingErr(err) {
+		level.Warn(spanlogger.FromContext(ctx, q.logger)).Log(
+			"msg", "block select not supported on at least one component, fallback to use full dataset",
+			"err", err,
+		)
+		plan = nil
+	} else if err != nil {
+		return nil, fmt.Errorf("error during block select: %w", err)
+	}
+
+	// no store gateways configured so just query the ingesters
+	if q.storeGatewayQuerier == nil {
+		return q.selectProfileFromIngesters(ctx, req, plan)
+	}
+
+	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter, plan)
+	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
+	}
+
+	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
+
+	if plan == nil && !storeQueries.ingester.shouldQuery {
+		return q.selectProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeProfileRequest(req), plan)
+	}
+	if plan == nil && !storeQueries.storeGateway.shouldQuery {
+		return q.selectProfileFromIngesters(ctx, storeQueries.ingester.MergeProfileRequest(req), plan)
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+	var lock sync.Mutex
+	var merge pprof.ProfileMerge
+	g.Go(func() error {
+		ingesterProfile, err := q.selectProfileFromIngesters(ctx, storeQueries.ingester.MergeProfileRequest(req), plan)
+		if err != nil {
+			return err
+		}
+		lock.Lock()
+		err = merge.Merge(ingesterProfile)
+		lock.Unlock()
+		return err
+	})
+	g.Go(func() error {
+		storegatewayProfile, err := q.selectProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeProfileRequest(req), plan)
+		if err != nil {
+			return err
+		}
+		lock.Lock()
+		err = merge.Merge(storegatewayProfile)
+		lock.Unlock()
+		return err
+	})
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return merge.Profile(), nil
 }
 
 func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
