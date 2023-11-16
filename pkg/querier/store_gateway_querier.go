@@ -235,16 +235,24 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 	return selectMergeTree(gCtx, responses)
 }
 
-func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingesterv1.MergeProfilesLabelsRequest) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
+func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingesterv1.MergeProfilesLabelsRequest, plan map[string]*ingestv1.BlockHints) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSeries StoreGateway")
 	defer sp.Finish()
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeProfilesLabels, error) {
-		return ic.MergeProfilesLabels(ctx), nil
-	})
+	var responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]
+	if plan != nil {
+		responses, err = forAllPlannedStoreGateways(ctx, tenantID, q.storeGatewayQuerier, plan, func(ctx context.Context, ic StoreGatewayQueryClient, hints *ingestv1.Hints) (clientpool.BidiClientMergeProfilesLabels, error) {
+			return ic.MergeProfilesLabels(ctx), nil
+		})
+	} else {
+		responses, err = forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeProfilesLabels, error) {
+			return ic.MergeProfilesLabels(ctx), nil
+		})
+	}
+
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -252,8 +260,14 @@ func (q *Querier) selectSeriesFromStoreGateway(ctx context.Context, req *ingeste
 	g, _ := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
+		hints, ok := plan[r.addr]
+		if !ok && plan != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		}
 		g.Go(util.RecoverPanic(func() error {
-			return r.response.Send(req.CloneVT())
+			req := req.CloneVT()
+			req.Request.Hints = &ingestv1.Hints{Block: hints}
+			return r.response.Send(req)
 		}))
 	}
 	if err := g.Wait(); err != nil {
