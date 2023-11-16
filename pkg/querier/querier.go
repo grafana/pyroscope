@@ -374,7 +374,6 @@ func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (block
 	}
 
 	return results.blockPlan(ctx), nil
-
 }
 
 func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
@@ -854,7 +853,19 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	responses, err := q.selectSeries(ctx, req)
+	// determine the block hints
+	plan, err := q.blockSelect(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
+	if isEndpointNotExistingErr(err) {
+		level.Warn(spanlogger.FromContext(ctx, q.logger)).Log(
+			"msg", "block select not supported on at least one component, fallback to use full dataset",
+			"err", err,
+		)
+		plan = nil
+	} else if err != nil {
+		return nil, fmt.Errorf("error during block select: %w", err)
+	}
+
+	responses, err := q.selectSeries(ctx, req, plan)
 	if err != nil {
 		return nil, err
 	}
@@ -874,7 +885,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	}), nil
 }
 
-func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
+func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest], plan map[string]*ingestv1.BlockHints) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
 	stepMs := time.Duration(req.Msg.Step * float64(time.Second)).Milliseconds()
 	sort.Strings(req.Msg.GroupBy)
 
@@ -896,10 +907,10 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 				Type:          profileType,
 			},
 			By: req.Msg.GroupBy,
-		})
+		}, plan)
 	}
 
-	storeQueries := splitQueryToStores(model.Time(start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, nil)
+	storeQueries := splitQueryToStores(model.Time(start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, plan)
 
 	var responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]
 
@@ -909,7 +920,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 
 	// todo in parallel
 	if storeQueries.ingester.shouldQuery {
-		ir, err := q.selectSeriesFromIngesters(ctx, storeQueries.ingester.MergeSeriesRequest(req.Msg, profileType))
+		ir, err := q.selectSeriesFromIngesters(ctx, storeQueries.ingester.MergeSeriesRequest(req.Msg, profileType), plan)
 		if err != nil {
 			return nil, err
 		}
@@ -917,7 +928,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 	}
 
 	if storeQueries.storeGateway.shouldQuery {
-		ir, err := q.selectSeriesFromStoreGateway(ctx, storeQueries.storeGateway.MergeSeriesRequest(req.Msg, profileType))
+		ir, err := q.selectSeriesFromStoreGateway(ctx, storeQueries.storeGateway.MergeSeriesRequest(req.Msg, profileType), plan)
 		if err != nil {
 			return nil, err
 		}
