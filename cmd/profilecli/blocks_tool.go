@@ -283,7 +283,7 @@ func filterAndGroupBlocks(index *bucketindex.Index, query *blockQuery) []*blockG
 			minTime := blk.MinTime.Time().UTC().Format(time.RFC3339)
 			blkGroup, ok := blockGroupMap[minTime]
 			if !ok {
-				minTimeAge := int(math.Round(time.Now().Sub(blk.MinTime.Time()).Minutes()))
+				minTimeAge := int(math.Round(time.Since(blk.MinTime.Time()).Minutes()))
 				blkGroup = &blockGroup{
 					MinTime:    minTime,
 					Blocks:     make([]*blockDetails, 0),
