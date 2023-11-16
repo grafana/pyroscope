@@ -27,6 +27,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	"github.com/grafana/pyroscope/api/openapiv2"
@@ -229,11 +230,12 @@ func (a *API) RegisterQuerier(svc querierv1connect.QuerierServiceHandler) {
 	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware, a.grpcLogMiddleware)
 }
 
-func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceClient) {
-	handlers := querier.NewHTTPHandlers(client)
+func (a *API) RegisterPyroscopeHandlers(qc querierv1connect.QuerierServiceClient, sc settingsv1connect.SettingsServiceClient) {
+	handlers := querier.NewHTTPHandlers(qc, sc)
 	a.RegisterRoute("/pyroscope/render", http.HandlerFunc(handlers.Render), true, true, "GET")
 	a.RegisterRoute("/pyroscope/render-diff", http.HandlerFunc(handlers.RenderDiff), true, true, "GET")
 	a.RegisterRoute("/pyroscope/label-values", http.HandlerFunc(handlers.LabelValues), true, true, "GET")
+	a.RegisterRoute("/pyroscope/settings", http.HandlerFunc(handlers.Settings), true, true, "GET", "POST")
 }
 
 // RegisterIngester registers the endpoints associated with the ingester.

@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package settings.v1;
+
+service SettingsService {
+    rpc All(AllSettingsRequest) returns (AllSettingsResponse) {}
+    rpc Set(SetSettingsRequest) returns (SetSettingsResponse) {}
+}
+
+message AllSettingsRequest {}
+
+message AllSettingsResponse {
+    repeated Setting settings = 1;
+}
+
+message SetSettingsRequest {
+    Setting setting = 1;
+}
+
+message SetSettingsResponse {
+    Setting setting = 1;
+}
+
+message Setting {
+    string name = 1;
+    string value = 2;
+}

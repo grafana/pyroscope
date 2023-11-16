@@ -29,9 +29,11 @@ import (
 
 	"github.com/grafana/dskit/tenant"
 
+	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb"
 	"github.com/grafana/pyroscope/pkg/querier/stats"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerdiscovery"
+	"github.com/grafana/pyroscope/pkg/settings"
 	"github.com/grafana/pyroscope/pkg/util/httpgrpc"
 	"github.com/grafana/pyroscope/pkg/util/httpgrpcutil"
 	"github.com/grafana/pyroscope/pkg/validation"
@@ -78,6 +80,7 @@ func (cfg *Config) Validate() error {
 // dispatches them to backends via gRPC, and handles retries for requests which failed.
 type Frontend struct {
 	services.Service
+	settingsv1connect.SettingsServiceClient
 
 	cfg Config
 	log log.Logger
@@ -139,7 +142,18 @@ func NewFrontend(cfg Config, limits Limits, log log.Logger, reg prometheus.Regis
 		return nil, err
 	}
 
+	settingsStore, err := settings.NewMemoryStore()
+	if err != nil {
+		return nil, err
+	}
+
+	settingsSvc, err := settings.New(settingsStore)
+	if err != nil {
+		return nil, err
+	}
+
 	f := &Frontend{
+		SettingsServiceClient:   settingsSvc,
 		cfg:                     cfg,
 		log:                     log,
 		limits:                  limits,

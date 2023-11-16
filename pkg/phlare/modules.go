@@ -41,6 +41,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
 	"github.com/grafana/pyroscope/pkg/scheduler"
+	"github.com/grafana/pyroscope/pkg/settings"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -96,7 +97,7 @@ func (f *Phlare) initQueryFrontend() (services.Service, error) {
 		return nil, err
 	}
 
-	f.API.RegisterPyroscopeHandlers(frontendSvc)
+	f.API.RegisterPyroscopeHandlers(frontendSvc, frontendSvc)
 	f.API.RegisterQueryFrontend(frontendSvc)
 	f.API.RegisterQuerier(frontendSvc)
 
@@ -215,8 +216,19 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	settingsStore, err := settings.NewMemoryStore()
+	if err != nil {
+		return nil, err
+	}
+
+	settingsSvc, err := settings.New(settingsStore)
+	if err != nil {
+		return nil, err
+	}
+
 	if !f.isModuleActive(QueryFrontend) {
-		f.API.RegisterPyroscopeHandlers(querierSvc)
+		f.API.RegisterPyroscopeHandlers(querierSvc, settingsSvc)
 		f.API.RegisterQuerier(querierSvc)
 	}
 	worker, err := worker.NewQuerierWorker(f.Cfg.Worker, querier.NewGRPCHandler(querierSvc), log.With(f.logger, "component", "querier-worker"), f.reg)
