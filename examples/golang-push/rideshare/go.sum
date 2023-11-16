@@ -1239,8 +1239,8 @@ github.com/grafana/pyroscope-go v1.0.4 h1:oyQX0BOkL+iARXzHuCdIF5TQ7/sRSel1YFViMH
 github.com/grafana/pyroscope-go v1.0.4/go.mod h1:0d7ftwSMBV/Awm7CCiYmHQEG8Y44Ma3YSjt+nWcWztY=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.4 h1:mDsJ3ngul7UfrHibGQpV66PbZ3q1T8glz/tK3bQKKEk=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.4/go.mod h1:1HSPtjU8vLG0jE9JrTdzjgFqdJ/VgN7fvxBNq3luJko=
-github.com/grafana/pyroscope-go/otelpyroscope v0.0.0-20231116025501-2d4f5c04dd1c h1:Op6gPWXk8BNccDVajADtVOxR+uqwZkDEX6TvcRKmP6Q=
-github.com/grafana/pyroscope-go/otelpyroscope v0.0.0-20231116025501-2d4f5c04dd1c/go.mod h1:2NKK3NYL9NisTOJZ3L5u2uMrXoDZwHgjC31hr8mbg/Q=
+github.com/grafana/pyroscope-go/otelpyroscope v0.0.0-20231116035534-3da513e04f3f h1:yosfdQQcydjmUfR1Rcw23iH4q4MWXrBMRh7P7+BhY7E=
+github.com/grafana/pyroscope-go/otelpyroscope v0.0.0-20231116035534-3da513e04f3f/go.mod h1:2NKK3NYL9NisTOJZ3L5u2uMrXoDZwHgjC31hr8mbg/Q=
 github.com/grpc-ecosystem/grpc-gateway v1.16.0 h1:gmcG1KaJ57LophUzW0Hy8NmPhnMZb4M0+kPpLofRdBo=
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0/go.mod h1:hgWBS7lorOAVIJEQMi4ZsPv9hVvWI6+ch50m39Pf2Ks=
