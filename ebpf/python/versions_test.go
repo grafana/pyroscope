@@ -3,10 +3,12 @@ package python
 import (
 	"testing"
 
+	"github.com/grafana/pyroscope/ebpf/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGlibcVersions(t *testing.T) {
+	testutil.InitGitSubmodule(t)
 	testdata := []struct {
 		path    string
 		version Version

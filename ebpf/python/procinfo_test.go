@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"os"
-	"os/exec"
 	"regexp"
 	"strconv"
 	"testing"
 
+	"github.com/grafana/pyroscope/ebpf/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -136,7 +136,7 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 const testdataPath = "../testdata/"
 
 func TestMusl(t *testing.T) {
-	initSubmodule(t)
+	testutil.InitGitSubmodule(t)
 	testcases := []struct {
 		path    string
 		version int
@@ -159,7 +159,7 @@ func TestMusl(t *testing.T) {
 }
 
 func TestPython(t *testing.T) {
-	initSubmodule(t)
+	testutil.InitGitSubmodule(t)
 	fs := []string{
 		testdataPath + "/python/3.7.12/lib/libpython3.7m.so.1.0",
 		testdataPath + "/python/3.9.15/lib/libpython3.9.so.1.0",
@@ -263,11 +263,4 @@ func TestPython(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, version.Patch, patch)
 	}
-}
-
-func initSubmodule(t *testing.T) {
-	cmd := exec.Command("git", "submodule", "update", "--init", "--recursive")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	require.NoError(t, cmd.Run())
 }
