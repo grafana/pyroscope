@@ -58,8 +58,10 @@
 | pyroscope.replicaCount | int | `1` |  |
 | pyroscope.resources | object | `{}` |  |
 | pyroscope.securityContext | object | `{}` |  |
+| pyroscope.service.annotations | object | `{}` |  |
 | pyroscope.service.port | int | `4040` |  |
 | pyroscope.service.port_name | string | `"http2"` |  |
+| pyroscope.service.scheme | string | `"HTTP"` |  |
 | pyroscope.service.type | string | `"ClusterIP"` |  |
 | pyroscope.serviceAccount.annotations | object | `{}` |  |
 | pyroscope.serviceAccount.create | bool | `true` |  |
