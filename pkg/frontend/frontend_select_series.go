@@ -26,6 +26,8 @@ func (f *Frontend) SelectSeries(ctx context.Context,
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).
 		SetTag("selector", c.Msg.LabelSelector).
+		SetTag("step", c.Msg.Step).
+		SetTag("by", c.Msg.GroupBy).
 		SetTag("profile_type", c.Msg.ProfileTypeID)
 
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectSeriesProcedure)

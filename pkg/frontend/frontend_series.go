@@ -5,6 +5,7 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/grafana/dskit/tenant"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -15,6 +16,12 @@ import (
 )
 
 func (f *Frontend) Series(ctx context.Context, c *connect.Request[querierv1.SeriesRequest]) (*connect.Response[querierv1.SeriesResponse], error) {
+	opentracing.SpanFromContext(ctx).
+		SetTag("start", model.Time(c.Msg.Start).Time().String()).
+		SetTag("end", model.Time(c.Msg.End).Time().String()).
+		SetTag("matchers", c.Msg.Matchers).
+		SetTag("label_names", c.Msg.LabelNames)
+
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSeriesProcedure)
 
 	tenantIDs, err := tenant.TenantIDs(ctx)

@@ -321,7 +321,7 @@ func (f *Phlare) initRing() (_ services.Service, err error) {
 func (f *Phlare) initStorage() (_ services.Service, err error) {
 	objectStoreTypeStats.Set(f.Cfg.Storage.Bucket.Backend)
 	if cfg := f.Cfg.Storage.Bucket; cfg.Backend != objstoreclient.None {
-		if cfg.Backend != objstoreclient.Filesystem {
+		if cfg.Backend == objstoreclient.Filesystem {
 			level.Warn(f.logger).Log("msg", "when running with storage.backend 'filesystem' it is important that all replicas/components share the same filesystem")
 		}
 		b, err := objstoreclient.NewBucket(
