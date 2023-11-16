@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -86,8 +88,9 @@ type blockQuery struct {
 }
 
 type blockGroup struct {
-	MinTime string
-	Blocks  []*blockDetails
+	MinTime    string
+	Blocks     []*blockDetails
+	MinTimeAge string
 }
 
 type blockDetails struct {
@@ -280,9 +283,11 @@ func filterAndGroupBlocks(index *bucketindex.Index, query *blockQuery) []*blockG
 			minTime := blk.MinTime.Time().UTC().Format(time.RFC3339)
 			blkGroup, ok := blockGroupMap[minTime]
 			if !ok {
+				minTimeAge := int(math.Round(time.Now().Sub(blk.MinTime.Time()).Minutes()))
 				blkGroup = &blockGroup{
-					MinTime: minTime,
-					Blocks:  make([]*blockDetails, 0),
+					MinTime:    minTime,
+					Blocks:     make([]*blockDetails, 0),
+					MinTimeAge: fmt.Sprintf("%d minutes ago", minTimeAge),
 				}
 				blockGroups = append(blockGroups, blkGroup)
 			}
@@ -302,13 +307,29 @@ func filterAndGroupBlocks(index *bucketindex.Index, query *blockQuery) []*blockG
 		return a.MinTime > b.MinTime
 	})
 
-	for _, blockGroup := range blockGroups {
+	return postProcessBlockGroups(blockGroups)
+}
+
+func postProcessBlockGroups(blockGroups []*blockGroup) []*blockGroup {
+	for i := 0; i < len(blockGroups)-1; i += 1 {
+		blockGroup := blockGroups[i]
+		if !strings.Contains(blockGroup.MinTime, "0:00Z") {
+			nextGroup := blockGroups[i+1]
+			nextGroup.Blocks = append(nextGroup.Blocks, blockGroup.Blocks...)
+			blockGroup.Blocks = make([]*blockDetails, 0)
+		}
 		slices.SortFunc(blockGroup.Blocks, func(a, b *blockDetails) bool {
-			return a.UploadedAt > b.UploadedAt
+			return a.MinTime > b.MinTime
 		})
 	}
 
-	return blockGroups
+	finalBlockGroups := make([]*blockGroup, 0)
+	for _, blockGroup := range blockGroups {
+		if len(blockGroup.Blocks) > 0 {
+			finalBlockGroups = append(finalBlockGroups, blockGroup)
+		}
+	}
+	return finalBlockGroups
 }
 
 func getBlockDetails(ctx context.Context, id ulid.ULID, fetcher *block.MetaFetcher) *blockDetails {

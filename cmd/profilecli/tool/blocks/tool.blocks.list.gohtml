@@ -51,9 +51,14 @@
                 {{ range $i, $blockGroup := .SelectedBlocks }}
                 <div class="accordion-item">
                     <h2 class="accordion-header">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        <button class="accordion-button collapsed acc-btn" type="button" data-bs-toggle="collapse"
                                 data-bs-target="#group-{{ $i }}" aria-expanded="true" aria-controls="collapseOne">
-                            {{ $blockGroup.MinTime }}: {{ len $blockGroup.Blocks }} blocks
+                            <span class="title">
+                                {{ $blockGroup.MinTime }}: {{ len $blockGroup.Blocks }} blocks
+                            </span>
+                            <span class="time">
+                                 {{ $blockGroup.MinTimeAge }}
+                            </span>
                         </button>
                     </h2>
                     <div class="accordion-collapse collapse" id="group-{{ $i }}">
