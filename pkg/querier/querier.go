@@ -388,7 +388,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		otlog.Int64("start", req.Msg.Start),
 		otlog.Int64("end", req.Msg.End),
 	)
-
+	// no store gateways configured so just query the ingesters
 	if q.storeGatewayQuerier == nil || !hasTimeRange {
 		responses, err := q.seriesFromIngesters(ctx, &ingestv1.SeriesRequest{
 			Matchers:   req.Msg.Matchers,
@@ -423,12 +423,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 
 	if storeQueries.ingester.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.seriesFromIngesters(ctx, &ingestv1.SeriesRequest{
-				Matchers:   req.Msg.Matchers,
-				LabelNames: req.Msg.LabelNames,
-				Start:      req.Msg.Start,
-				End:        req.Msg.End,
-			})
+			ir, err := q.seriesFromIngesters(ctx, storeQueries.ingester.SeriesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -442,12 +437,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 
 	if storeQueries.storeGateway.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.seriesFromStoreGateway(ctx, &ingestv1.SeriesRequest{
-				Matchers:   req.Msg.Matchers,
-				LabelNames: req.Msg.LabelNames,
-				Start:      req.Msg.Start,
-				End:        req.Msg.End,
-			})
+			ir, err := q.seriesFromStoreGateway(ctx, storeQueries.storeGateway.SeriesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -685,6 +675,15 @@ func (sq storeQuery) MergeSpanProfileRequest(req *querierv1.SelectMergeSpanProfi
 		LabelSelector: req.LabelSelector,
 		SpanSelector:  req.SpanSelector,
 		MaxNodes:      req.MaxNodes,
+	}
+}
+
+func (sq storeQuery) SeriesRequest(req *querierv1.SeriesRequest) *ingestv1.SeriesRequest {
+	return &ingestv1.SeriesRequest{
+		Start:      int64(sq.start),
+		End:        int64(sq.end),
+		Matchers:   req.Matchers,
+		LabelNames: req.LabelNames,
 	}
 }
 
