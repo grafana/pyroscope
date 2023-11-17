@@ -36,6 +36,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb/frontendpbconnect"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	"github.com/grafana/pyroscope/pkg/ingester/pyroscope"
+	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
@@ -275,4 +276,10 @@ func (a *API) RegisterQueryScheduler(s *scheduler.Scheduler) {
 // RegisterFlags registers api-related flags.
 func (cfg *Config) RegisterFlags(fs *flag.FlagSet) {
 	fs.StringVar(&cfg.BaseURL, "api.base-url", "", "base URL for when the server is behind a reverse proxy with a different path")
+}
+
+func (a *API) RegisterAdmin(ad *operations.Admin) {
+	a.RegisterRoute("/ops/object-store/tenants", http.HandlerFunc(ad.TenantsHandler), false, true, "GET")
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks", http.HandlerFunc(ad.BlocksHandler), false, true, "GET")
+	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}", http.HandlerFunc(ad.BlockHandler), false, true, "GET")
 }

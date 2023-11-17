@@ -7,10 +7,17 @@
 
     <title>Bucket Blocks Tool - {{ .User }}</title>
 
-    <link rel="stylesheet" href="/tool/static/bootstrap-5.1.3.min.css">
-    <link rel="stylesheet" href="/tool/static/bootstrap-icons-1.8.1.css">
-    <link rel="stylesheet" href="/tool/static/pyroscope-styles.css">
-    <script src="/tool/static/bootstrap-5.1.3.bundle.min.js"></script>
+    <link rel="stylesheet" href="/static/bootstrap-5.1.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.1.3.bundle.min.js"></script>
+    <style>
+        button.acc-btn {
+            display: grid;
+            grid-template-columns: 1fr max-content max-content;
+            grid-gap: 10px;
+        }
+    </style>
 </head>
 <body class="d-flex flex-column h-100">
 <main class="flex-shrink-0">
@@ -20,14 +27,14 @@
                 <h3>Bucket Blocks Explorer: Tenant {{ .User }}</h3>
             </div>
             <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
-                <a href="/blocks/index">
-                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/tool/static/pyroscope-logo.png">
+                <a href="/ops/object-store/tenants">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
                 </a>
             </div>
         </div>
         <div class="row my-3">
             <div class="col-md-6">
-                <form class="card p-2" action="/blocks/list" method="get">
+                <form class="card p-2" action="/ops/object-store/tenants/{{ .User }}/blocks" method="get">
                     <div class="input-group">
                         <div class="form-check">
                             <input type="checkbox" class="form-check-input" id="include-deleted" name="includeDeleted" value="true" {{ if .Query.IncludeDeleted }} checked {{ end }}>
@@ -38,7 +45,6 @@
                         <input type="text" class="form-control" placeholder="From" name="queryFrom"
                                value="{{ .Query.From }}">
                         <input type="text" class="form-control" placeholder="To" name="queryTo" value="{{ .Query.To }}">
-                        <input type="hidden" name="tenantId" value="{{ .User }}">
                         <button type="submit" class="btn btn-secondary">Reload</button>
                     </div>
                 </form>
@@ -79,7 +85,7 @@
                                     {{ range $, $v := $blockGroup.Blocks }}
                                         <tr>
                                             <td class="font-monospace small">
-                                                <a href="/blocks/details?tenantId={{ $user }}&blockId={{ $v.ID }}">
+                                                <a href="/ops/object-store/tenants/{{ $user }}/blocks/{{ $v.ID }}">
                                                     {{ $v.ID }}
                                                 </a>
                                             </td>

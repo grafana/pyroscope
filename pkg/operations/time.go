@@ -1,4 +1,4 @@
-package main
+package operations
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-func parseTime(s string) (time.Time, error) {
+func ParseTime(s string) (time.Time, error) {
 	if s == "" {
 		return time.Time{}, fmt.Errorf("empty time")
 	}

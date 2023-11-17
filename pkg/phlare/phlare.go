@@ -43,6 +43,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/ingester"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
+	"github.com/grafana/pyroscope/pkg/operations"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/querier"
@@ -224,6 +225,7 @@ type Phlare struct {
 	RuntimeConfig *runtimeconfig.Manager
 	Overrides     *validation.Overrides
 	Compactor     *compactor.MultitenantCompactor
+	admin         *operations.Admin
 
 	TenantLimits validation.TenantLimits
 
@@ -293,11 +295,12 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(QueryFrontend, f.initQueryFrontend)
 	mm.RegisterModule(QueryScheduler, f.initQueryScheduler)
 	mm.RegisterModule(Compactor, f.initCompactor)
+	mm.RegisterModule(Admin, f.initAdmin)
 	mm.RegisterModule(All, nil)
 
 	// Add dependencies
 	deps := map[string][]string{
-		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway},
+		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, Admin},
 
 		Server:            {GRPCGateway},
 		API:               {Server},
@@ -314,6 +317,7 @@ func (f *Phlare) setupModuleManager() error {
 		RuntimeConfig:     {API},
 		Ring:              {API, MemberlistKV},
 		MemberlistKV:      {API},
+		Admin:             {API, Storage},
 	}
 
 	for mod, targets := range deps {
