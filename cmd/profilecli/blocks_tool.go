@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html/template"
 	"log"
-	"math"
 	"net/http"
 	"os"
 	"path"
@@ -283,11 +282,10 @@ func filterAndGroupBlocks(index *bucketindex.Index, query *blockQuery) []*blockG
 			minTime := blk.MinTime.Time().UTC().Format(time.RFC3339)
 			blkGroup, ok := blockGroupMap[minTime]
 			if !ok {
-				minTimeAge := int(math.Round(time.Since(blk.MinTime.Time()).Minutes()))
 				blkGroup = &blockGroup{
 					MinTime:    minTime,
 					Blocks:     make([]*blockDetails, 0),
-					MinTimeAge: fmt.Sprintf("%d minutes ago", minTimeAge),
+					MinTimeAge: humanize.RelTime(blk.MinTime.Time(), time.Now(), "ago", ""),
 				}
 				blockGroups = append(blockGroups, blkGroup)
 			}
