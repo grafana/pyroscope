@@ -27,7 +27,7 @@ Most components are stateless and do not require any data persisted between proc
 [//]: # "To edit open with https://mermaid.live/edit#pako{...}"
 
 <p align="center">
-  <img alt="Architecture of Pyroscope's write path" width="200px" src="https://mermaid.ink/svg/pako:eNqNUc9PwyAU_lcavGzJtrqi3cbBg9GzB008rDtQeLQoLQ08nMvS_11onHr09vH9gvc4E2ElEEaUsUfRcofZy33VZ1nw4Gb7V6cR_GGeLZd3mdQena4DWpccf46TrPsGPMKkXfAkWJ8o62f7p_oNBGY-RuAwT6zHk4HpskxpY9iV2qlF7LXvwK4opd94edQSW1YMn78h6_8dIQvSgeu4lnHSc6qoCLbQQUVYhBIUDwYrUvVjtIZBcoRHqeMzCVPceFgQHud8PvWCMHQBLqYHzRvHux-XsVxCDJ0Jnoa01iYuKVYK2yvdJD44E-kWcfAsz5O8ajS2oV4J2-Vey_QH7ceuzMui3PKCQrmh_JZSKer1bquKm7WSm-t1wck4jl9KVZdq" />
+  <img alt="Architecture of Pyroscope's write path" width="200px" src="https://mermaid.ink/svg/pako:eNqNkT1PwzAQhv9K5C6t1DY0hrT1wIBgZgCJoeng2OfE4MSRfaFUVf47dkoLI9vd896H7_WJCCuBMKKMPYiaO0xeH4o2SXoPbrp7cxrB72fJYnGfSO3R6bJH62LFn3SUdVuBRxi1SzwK1kckbNNxcSk-M-vH5Cqd2XT3XL6DwMQHBPtZpB6PBsZHJUobwyZqq-Zhv_0ANqGU_sSLg5ZYs6z7-m0KS_7bQuakAddwLYMjpziiIFhDAwVhIZSgeG-wIEU7hFIeTn85toIwdD3MSd9JjvCoeeV4Q5jixl_pk9ThmCs0lksI6YngsYv2V8HMMFLYVukq8t6ZgGvEzrM0jfKy0lj35TK4lXot41_Vn9s8zbN8wzMK-ZryO0qlKFfbjcpuV0qub1YZJ8MwfAN3mqSC" />
   </a>
 </p>
 
@@ -42,7 +42,8 @@ For more information, refer to [Ingester]({{< relref "../components/ingester.md"
 
 #### Series sharding and replication
 
-By default, each profile series is replicated to three ingesters, and each ingester writes its own block to the long-term storage.
+By default, each profile series is replicated to three ingesters, and each ingester writes its own block to the long-term storage. The [Compactor]({{< relref "../components/compactor" >}}) merges blocks from multiple ingesters into a single block, and removes duplicate samples. Blocks compaction significantly reduces storage utilization.
+
 
 ### The read path
 
