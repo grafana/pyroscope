@@ -191,14 +191,7 @@ func (a *API) RegisterRuntimeConfig(runtimeConfigHandler http.HandlerFunc, userL
 }
 
 func (a *API) RegisterTenantSettings(ts *settings.TenantSettings) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte("OK!\n"))
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	a.RegisterRoute("/settings", http.HandlerFunc(handler), true, true, "GET")
+	settingsv1connect.RegisterSettingsServiceHandler(a.server.HTTP, ts, a.grpcAuthMiddleware)
 }
 
 // RegisterOverridesExporter registers the endpoints associated with the overrides exporter.
@@ -242,12 +235,11 @@ func (a *API) RegisterQuerier(svc querierv1connect.QuerierServiceHandler) {
 	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware, a.grpcLogMiddleware)
 }
 
-func (a *API) RegisterPyroscopeHandlers(qc querierv1connect.QuerierServiceClient, sc settingsv1connect.SettingsServiceClient) {
-	handlers := querier.NewHTTPHandlers(qc, sc)
+func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceClient) {
+	handlers := querier.NewHTTPHandlers(client)
 	a.RegisterRoute("/pyroscope/render", http.HandlerFunc(handlers.Render), true, true, "GET")
 	a.RegisterRoute("/pyroscope/render-diff", http.HandlerFunc(handlers.RenderDiff), true, true, "GET")
 	a.RegisterRoute("/pyroscope/label-values", http.HandlerFunc(handlers.LabelValues), true, true, "GET")
-	a.RegisterRoute("/pyroscope/settings", http.HandlerFunc(handlers.Settings), true, true, "GET", "POST")
 }
 
 // RegisterIngester registers the endpoints associated with the ingester.

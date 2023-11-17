@@ -18,8 +18,6 @@ import (
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
@@ -28,16 +26,12 @@ import (
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
-func NewHTTPHandlers(qc querierv1connect.QuerierServiceClient, sc settingsv1connect.SettingsServiceClient) *QueryHandlers {
-	return &QueryHandlers{
-		queryClient:    qc,
-		settingsClient: sc,
-	}
+func NewHTTPHandlers(client querierv1connect.QuerierServiceClient) *QueryHandlers {
+	return &QueryHandlers{client}
 }
 
 type QueryHandlers struct {
-	queryClient    querierv1connect.QuerierServiceClient
-	settingsClient settingsv1connect.SettingsServiceClient
+	client querierv1connect.QuerierServiceClient
 }
 
 // LabelValues only returns the label values for the given label name.
@@ -52,7 +46,7 @@ func (q *QueryHandlers) LabelValues(w http.ResponseWriter, req *http.Request) {
 	var res []string
 
 	if label == "__name__" {
-		response, err := q.queryClient.ProfileTypes(req.Context(), connect.NewRequest(&querierv1.ProfileTypesRequest{}))
+		response, err := q.client.ProfileTypes(req.Context(), connect.NewRequest(&querierv1.ProfileTypesRequest{}))
 		if err != nil {
 			httputil.Error(w, err)
 			return
@@ -61,7 +55,7 @@ func (q *QueryHandlers) LabelValues(w http.ResponseWriter, req *http.Request) {
 			res = append(res, t.ID)
 		}
 	} else {
-		response, err := q.queryClient.LabelValues(req.Context(), connect.NewRequest(&typesv1.LabelValuesRequest{}))
+		response, err := q.client.LabelValues(req.Context(), connect.NewRequest(&typesv1.LabelValuesRequest{}))
 		if err != nil {
 			httputil.Error(w, err)
 			return
@@ -108,7 +102,7 @@ func (q *QueryHandlers) RenderDiff(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	res, err := q.queryClient.Diff(req.Context(), connect.NewRequest(&querierv1.DiffRequest{
+	res, err := q.client.Diff(req.Context(), connect.NewRequest(&querierv1.DiffRequest{
 		Left:  leftSelectParams,
 		Right: rightSelectParams,
 	}))
@@ -142,7 +136,7 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 	selectParamsClone := selectParams.CloneVT()
 	g.Go(func() error {
 		var err error
-		resFlame, err = q.queryClient.SelectMergeStacktraces(ctx, connect.NewRequest(selectParamsClone))
+		resFlame, err = q.client.SelectMergeStacktraces(ctx, connect.NewRequest(selectParamsClone))
 		return err
 	})
 
@@ -150,7 +144,7 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 	var resSeries *connect.Response[querierv1.SelectSeriesResponse]
 	g.Go(func() error {
 		var err error
-		resSeries, err = q.queryClient.SelectSeries(req.Context(),
+		resSeries, err = q.client.SelectSeries(req.Context(),
 			connect.NewRequest(&querierv1.SelectSeriesRequest{
 				ProfileTypeID: selectParams.ProfileTypeID,
 				LabelSelector: selectParams.LabelSelector,
@@ -195,49 +189,6 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(fb); err != nil {
 		httputil.Error(w, err)
-		return
-	}
-}
-
-func (q *QueryHandlers) Settings(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	switch r.Method {
-	case "GET":
-		res, err := q.settingsClient.All(ctx, connect.NewRequest(&settingsv1.AllSettingsRequest{}))
-		if err != nil {
-			httputil.Error(w, err)
-			return
-		}
-
-		err = json.NewEncoder(w).Encode(res.Msg)
-		if err != nil {
-			httputil.Error(w, err)
-			return
-		}
-	case "POST":
-		var setting settingsv1.Setting
-		err := json.NewDecoder(r.Body).Decode(&setting)
-		if err != nil {
-			httputil.Error(w, err)
-			return
-		}
-
-		res, err := q.settingsClient.Set(ctx, connect.NewRequest(&settingsv1.SetSettingsRequest{
-			Setting: &setting,
-		}))
-		if err != nil {
-			httputil.Error(w, err)
-			return
-		}
-
-		err = json.NewEncoder(w).Encode(res.Msg)
-		if err != nil {
-			httputil.Error(w, err)
-			return
-		}
-	default:
-		httputil.Error(w, errors.New(fmt.Sprintf("unknown method: %s", r.Method)))
 		return
 	}
 }

@@ -377,18 +377,6 @@
         }
       }
     },
-    "v1AllSettingsResponse": {
-      "type": "object",
-      "properties": {
-        "settings": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1Setting"
-          }
-        }
-      }
-    },
     "v1BlockCompaction": {
       "type": "object",
       "properties": {
@@ -597,6 +585,18 @@
         },
         "data": {
           "$ref": "#/definitions/v1GetBuildInfoData"
+        }
+      }
+    },
+    "v1GetSettingsResponse": {
+      "type": "object",
+      "properties": {
+        "settings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Setting"
+          }
         }
       }
     },
@@ -1103,6 +1103,10 @@
         },
         "value": {
           "type": "string"
+        },
+        "modifiedAt": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },
