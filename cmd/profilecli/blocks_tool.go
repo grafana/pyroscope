@@ -41,18 +41,18 @@ var blockDetailsPageHtml string
 //go:embed tool/static
 var staticFiles embed.FS
 
-type blocksWebToolParams struct {
+type bucketWebToolParams struct {
 	httpListenPort  int
 	objectStoreType string
 	bucketName      string
 }
 
-func addBlocksWebToolParams(blocksWebToolCmd commander) *blocksWebToolParams {
+func addBucketWebToolParams(blocksWebToolCmd commander) *bucketWebToolParams {
 	var (
-		params = &blocksWebToolParams{}
+		params = &bucketWebToolParams{}
 	)
 	blocksWebToolCmd.Flag("object-store-type", "The type of the object storage (e.g., gcs).").Default("gcs").StringVar(&params.objectStoreType)
-	blocksWebToolCmd.Flag("bucket-name", "The name of the object storage bucket.").StringVar(&params.bucketName)
+	blocksWebToolCmd.Flag("bucket-name", "The name of the object storage bucket.").Required().StringVar(&params.bucketName)
 	blocksWebToolCmd.Flag("http-listen-port", "The port to run the HTTP server on.").Default("4201").IntVar(&params.httpListenPort)
 	return params
 }
@@ -105,13 +105,13 @@ type blockDetails struct {
 	Labels           map[string]string
 }
 
-type blocksWebTool struct {
-	params *blocksWebToolParams
+type bucketWebTool struct {
+	params *bucketWebToolParams
 	server *server.Server
 	bucket phlareobj.Bucket
 }
 
-func newBlocksWebTool(params *blocksWebToolParams) *blocksWebTool {
+func newBucketWebTool(params *bucketWebToolParams) *bucketWebTool {
 	ctx := context.Background()
 	var (
 		serverCfg = server.Config{
@@ -133,7 +133,7 @@ func newBlocksWebTool(params *blocksWebToolParams) *blocksWebTool {
 		return nil
 	}
 
-	tool := &blocksWebTool{
+	tool := &bucketWebTool{
 		params: params,
 		server: s,
 		bucket: b,
@@ -226,7 +226,7 @@ func newBlocksWebTool(params *blocksWebToolParams) *blocksWebTool {
 	return tool
 }
 
-func initObjectStoreBucket(params *blocksWebToolParams) (phlareobj.Bucket, error) {
+func initObjectStoreBucket(params *bucketWebToolParams) (phlareobj.Bucket, error) {
 	objectStoreConfig := objstoreclient.Config{
 		StoragePrefix: "",
 		StorageBackendConfig: objstoreclient.StorageBackendConfig{
@@ -352,10 +352,10 @@ func getBlockDetails(ctx context.Context, id ulid.ULID, fetcher *block.MetaFetch
 	}
 }
 
-func (t *blocksWebTool) run(ctx context.Context) error {
+func (t *bucketWebTool) run(ctx context.Context) error {
 	out := output(ctx)
 
-	fmt.Fprintf(out, "The blocks web tool is available at http://localhost:%d/blocks/index\n", t.params.httpListenPort)
+	fmt.Fprintf(out, "The bucket web tool is available at http://localhost:%d/blocks/index\n", t.params.httpListenPort)
 
 	if err := t.server.Run(); err != nil {
 		return err
