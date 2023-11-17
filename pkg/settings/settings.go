@@ -6,6 +6,7 @@ import (
 	"github.com/bufbuild/connect-go"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
+	"github.com/pkg/errors"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 )
@@ -63,6 +64,9 @@ func (ts *TenantSettings) Set(ctx context.Context, req *connect.Request[settings
 
 	setting, err := ts.store.Set(ctx, tenantID, req.Msg.Setting)
 	if err != nil {
+		if errors.Is(err, oldSettingErr) {
+			return nil, connect.NewError(connect.CodeAlreadyExists, err)
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 

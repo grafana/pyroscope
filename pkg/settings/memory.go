@@ -2,13 +2,15 @@ package settings
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
+	"github.com/pkg/errors"
 	"golang.org/x/exp/slices"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 )
+
+var oldSettingErr = errors.New("newer update already written")
 
 func NewMemoryStore() (Store, error) {
 	store := &memoryStore{
@@ -52,7 +54,7 @@ func (s *memoryStore) Set(ctx context.Context, tenantID string, setting *setting
 
 	oldSetting, ok := s.store[tenantID][setting.Name]
 	if ok && oldSetting.ModifiedAt > setting.ModifiedAt {
-		return nil, fmt.Errorf("failed to update %s: newer update already written", setting.Name)
+		return nil, errors.Wrapf(oldSettingErr, "failed to update %s", setting.Name)
 	}
 	s.store[tenantID][setting.Name] = setting
 
