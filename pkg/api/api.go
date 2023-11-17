@@ -40,6 +40,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
+	"github.com/grafana/pyroscope/pkg/settings"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/gziphandler"
@@ -187,6 +188,17 @@ func (a *API) RegisterRuntimeConfig(runtimeConfigHandler http.HandlerFunc, userL
 		{Desc: "Entire runtime config (including overrides)", Path: "/runtime_config"},
 		{Desc: "Only values that differ from the defaults", Path: "/runtime_config?mode=diff"},
 	})
+}
+
+func (a *API) RegisterTenantSettings(ts *settings.TenantSettings) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte("OK!\n"))
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	a.RegisterRoute("/settings", http.HandlerFunc(handler), true, true, "GET")
 }
 
 // RegisterOverridesExporter registers the endpoints associated with the overrides exporter.

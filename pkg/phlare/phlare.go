@@ -294,10 +294,11 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(QueryScheduler, f.initQueryScheduler)
 	mm.RegisterModule(Compactor, f.initCompactor)
 	mm.RegisterModule(All, nil)
+	mm.RegisterModule(TenantSettings, f.initTenantSettings)
 
 	// Add dependencies
 	deps := map[string][]string{
-		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway},
+		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, TenantSettings},
 
 		Server:            {GRPCGateway},
 		API:               {Server},
@@ -314,6 +315,7 @@ func (f *Phlare) setupModuleManager() error {
 		RuntimeConfig:     {API},
 		Ring:              {API, MemberlistKV},
 		MemberlistKV:      {API},
+		TenantSettings:    {API},
 	}
 
 	for mod, targets := range deps {

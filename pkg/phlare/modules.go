@@ -70,6 +70,7 @@ const (
 	Overrides         string = "overrides"
 	OverridesExporter string = "overrides-exporter"
 	Compactor         string = "compactor"
+	TenantSettings    string = "tenant-settings"
 
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
 	// IndexGateway             string = "index-gateway"
@@ -127,6 +128,16 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 	f.API.RegisterRuntimeConfig(runtimeConfigHandler(f.RuntimeConfig, f.Cfg.LimitsConfig), validation.TenantLimitsHandler(f.Cfg.LimitsConfig, f.TenantLimits))
 
 	return serv, err
+}
+
+func (f *Phlare) initTenantSettings() (services.Service, error) {
+	settings, err := settings.New()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to init %s", TenantSettings)
+	}
+
+	f.API.RegisterTenantSettings(settings)
+	return settings, nil
 }
 
 func (f *Phlare) initOverrides() (serv services.Service, err error) {
