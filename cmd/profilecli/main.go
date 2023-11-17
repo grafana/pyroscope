@@ -38,13 +38,15 @@ func main() {
 	app.HelpFlag.Short('h')
 	app.Flag("verbose", "Enable verbose logging.").Short('v').Default("0").BoolVar(&cfg.verbose)
 
-	blocksCmd := app.Command("blocks", "Operate on Grafana Pyroscope's blocks.")
+	adminCmd := app.Command("admin", "Administrative tasks for Pyroscope cluster operators.")
+
+	blocksCmd := adminCmd.Command("blocks", "Operate on Grafana Pyroscope's blocks.")
 	blocksCmd.Flag("path", "Path to blocks directory").Default("./data/local").StringVar(&cfg.blocks.path)
 
 	blocksListCmd := blocksCmd.Command("list", "List blocks.")
 	blocksListCmd.Flag("restore-missing-meta", "").Default("false").BoolVar(&cfg.blocks.restoreMissingMeta)
 
-	parquetCmd := app.Command("parquet", "Operate on a Parquet file.")
+	parquetCmd := adminCmd.Command("parquet", "Operate on a Parquet file.")
 	parquetInspectCmd := parquetCmd.Command("inspect", "Inspect a parquet file's structure.")
 	parquetInspectFiles := parquetInspectCmd.Arg("file", "parquet file path").Required().ExistingFiles()
 
@@ -60,6 +62,10 @@ func main() {
 
 	canaryExporterCmd := app.Command("canary-exporter", "Run the canary exporter.")
 	canaryExporterParams := addCanaryExporterParams(canaryExporterCmd)
+
+	bucketCmd := adminCmd.Command("bucket", "Run the bucket visualization tool.")
+	bucketWebCmd := bucketCmd.Command("web", "Run the web tool for visualizing blocks in object-store buckets.")
+	bucketWebParams := addBucketWebToolParams(bucketWebCmd)
 
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
@@ -92,6 +98,10 @@ func main() {
 		}
 	case canaryExporterCmd.FullCommand():
 		if err := newCanaryExporter(canaryExporterParams).run(ctx); err != nil {
+			os.Exit(checkError(err))
+		}
+	case bucketWebCmd.FullCommand():
+		if err := newBucketWebTool(bucketWebParams).run(ctx); err != nil {
 			os.Exit(checkError(err))
 		}
 	default:
