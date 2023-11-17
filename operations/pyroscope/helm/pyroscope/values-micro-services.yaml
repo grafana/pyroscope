@@ -3,8 +3,6 @@
 # Declare variables to be passed into your templates.
 
 pyroscope:
-  extraArgs:
-    store-gateway.sharding-ring.replication-factor: "3"
   components:
     querier:
       kind: Deployment

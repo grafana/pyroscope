@@ -1212,7 +1212,8 @@ sharding_ring:
   [instance_enable_ipv6: <boolean> | default = false]
 
   # The replication factor to use when sharding blocks. This option needs be set
-  # both on the store-gateway and querier when running in microservices mode.
+  # both on the store-gateway, querier and ruler when running in microservices
+  # mode.
   # CLI flag: -store-gateway.sharding-ring.replication-factor
   [replication_factor: <int> | default = 1]
 
@@ -1222,8 +1223,8 @@ sharding_ring:
   [tokens_file_path: <string> | default = ""]
 
   # True to enable zone-awareness and replicate blocks across different
-  # availability zones. This option needs be set both on the store-gateway and
-  # querier when running in microservices mode.
+  # availability zones. This option needs be set both on the store-gateway,
+  # querier and ruler when running in microservices mode.
   # CLI flag: -store-gateway.sharding-ring.zone-awareness-enabled
   [zone_awareness_enabled: <boolean> | default = false]
 

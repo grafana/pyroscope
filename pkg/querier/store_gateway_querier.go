@@ -64,7 +64,7 @@ func NewStoreGatewayQuerier(
 	reg prometheus.Registerer,
 	clientsOptions ...connect.ClientOption,
 ) (*StoreGatewayQuerier, error) {
-	storesRingCfg := gatewayCfg.ShardingRing.ToRingConfig()
+	storesRingCfg := gatewayCfg.ShardingRing.Ring.ToRingConfig()
 	storesRingBackend, err := kv.NewClient(
 		storesRingCfg.KVStore,
 		ring.GetCodec(),
