@@ -99,6 +99,8 @@ function setupReduxQuerySync() {
   });
 }
 
+const unsubscribe = setupReduxQuerySync();
+
 export function useReduxQuerySync() {
-  useEffect(setupReduxQuerySync, []);
+  useEffect(() => unsubscribe, []);
 }
