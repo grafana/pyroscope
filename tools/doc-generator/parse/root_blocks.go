@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/querier/worker"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/storegateway"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 // RootBlocks is an ordered list of root blocks. The order is the same order that will
@@ -81,6 +82,11 @@ var RootBlocks = []RootBlock{
 		Name:       "memberlist",
 		StructType: reflect.TypeOf(memberlist.KVConfig{}),
 		Desc:       "The memberlist block configures the Gossip memberlist.",
+	},
+	{
+		Name:       "limits",
+		StructType: reflect.TypeOf(validation.Limits{}),
+		Desc:       "The limits block configures default and per-tenant limits imposed by components.",
 	},
 	{
 		Name:       "s3_storage_backend",
