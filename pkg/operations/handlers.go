@@ -98,6 +98,7 @@ func filterAndGroupBlocks(index *bucketindex.Index, query *blockQuery) []*blockG
 				MaxTime:          blk.MaxTime.Time().UTC().Format(time.RFC3339),
 				Duration:         blk.MaxTime.Sub(blk.MinTime).String(),
 				UploadedAt:       blk.GetUploadedAt().UTC().Format(time.RFC3339),
+				CompactionLevel:  blk.CompactionLevel,
 				CompactorShardID: blk.CompactorShardID,
 			})
 			blockGroupMap[minTime] = blkGroup

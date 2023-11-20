@@ -78,6 +78,7 @@
                                         <th>Min Time</th>
                                         <th>Max Time</th>
                                         <th>Duration</th>
+                                        <th>Compaction Level</th>
                                         <th>Compactor Shard ID</th>
                                     </tr>
                                     </thead>
@@ -93,6 +94,7 @@
                                             <td class="font-monospace small">{{ $v.MinTime }}</td>
                                             <td class="font-monospace small">{{ $v.MaxTime }}</td>
                                             <td class="font-monospace small">{{ $v.Duration }}</td>
+                                            <td class="font-monospace small">{{ $v.CompactionLevel }}</td>
                                             <td class="font-monospace small">{{ $v.CompactorShardID }}</td>
                                         </tr>
                                     {{ end }}
