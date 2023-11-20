@@ -1290,7 +1290,7 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 	}
 
 	mergedProfile := result.Profile()
-	pprof.SetProfileMetadata(mergedProfile, request.Type)
+	pprof.SetProfileMetadata(mergedProfile, request.Type, model.Time(r.Request.End).UnixNano(), 0)
 
 	// connect go already handles compression.
 	pprofBytes, err := proto.Marshal(mergedProfile)

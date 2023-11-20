@@ -405,7 +405,7 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 
 	p := pprofMere.Profile()
 	if len(p.Sample) == 0 {
-		pprof.SetProfileMetadata(p, ty)
+		pprof.SetProfileMetadata(p, ty, 0, 0)
 	}
 	return p, nil
 }

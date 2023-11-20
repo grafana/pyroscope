@@ -1132,7 +1132,7 @@ func GetLanguage(profile *Profile, logger log.Logger) string {
 }
 
 // SetProfileMetadata sets the metadata on the profile.
-func SetProfileMetadata(p *profilev1.Profile, ty *typesv1.ProfileType) {
+func SetProfileMetadata(p *profilev1.Profile, ty *typesv1.ProfileType, timeNanos int64, period int64) {
 	m := map[string]int64{
 		ty.SampleUnit: 0,
 		ty.SampleType: 0,
@@ -1153,10 +1153,18 @@ func SetProfileMetadata(p *profilev1.Profile, ty *typesv1.ProfileType) {
 	}
 
 	p.SampleType = []*profilev1.ValueType{{Type: m[ty.SampleType], Unit: m[ty.SampleUnit]}}
-	p.DefaultSampleType = 0
+	p.DefaultSampleType = m[ty.SampleType]
 	p.PeriodType = &profilev1.ValueType{Type: m[ty.PeriodType], Unit: m[ty.PeriodUnit]}
+	p.TimeNanos = timeNanos
+
+	if period != 0 {
+		p.Period = period
+	}
+
+	// Try to guess period based on the profile type.
+	// TODO: This should be encoded into the profile type.
 	switch ty.Name {
-	case "process_cpu": // todo: this should support other types of cpu profiles
+	case "process_cpu":
 		p.Period = 1000000000
 	case "memory":
 		p.Period = 512 * 1024
