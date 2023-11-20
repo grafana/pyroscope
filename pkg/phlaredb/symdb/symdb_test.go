@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/cespare/xxhash/v2"
-	"github.com/google/pprof/profile"
 	"github.com/stretchr/testify/require"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -109,27 +108,6 @@ func pprofFingerprint(p *googlev1.Profile, typ int) [][2]uint64 {
 			}
 		}
 		m[h.Sum64()] += v
-	}
-	s := make([][2]uint64, 0, len(p.Sample))
-	for k, v := range m {
-		s = append(s, [2]uint64{k, v})
-	}
-	sort.Slice(s, func(i, j int) bool { return s[i][0] < s[j][0] })
-	return s
-}
-
-//nolint:unparam
-func profileFingerprint(p *profile.Profile, typ int) [][2]uint64 {
-	m := make(map[uint64]uint64, len(p.Sample))
-	h := xxhash.New()
-	for _, s := range p.Sample {
-		h.Reset()
-		for _, loc := range s.Location {
-			for _, line := range loc.Line {
-				_, _ = h.WriteString(line.Function.Name)
-			}
-		}
-		m[h.Sum64()] += uint64(s.Value[typ])
 	}
 	s := make([][2]uint64, 0, len(p.Sample))
 	for k, v := range m {

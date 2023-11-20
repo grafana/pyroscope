@@ -5,7 +5,6 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/google/pprof/profile"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	"golang.org/x/sync/errgroup"
@@ -169,27 +168,6 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 	return tree, err
 }
 
-func (r *Resolver) Profile() (*profile.Profile, error) {
-	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Profile")
-	defer span.Finish()
-	var lock sync.Mutex
-	profiles := make([]*profile.Profile, 0, len(r.p))
-	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
-		resolved, err := symbols.Profile(ctx, samples)
-		if err != nil {
-			return err
-		}
-		lock.Lock()
-		profiles = append(profiles, resolved)
-		lock.Unlock()
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return profile.Merge(profiles)
-}
-
 func (r *Resolver) Pprof(maxNodes int64) (*googlev1.Profile, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Pprof")
 	defer span.Finish()
@@ -246,15 +224,4 @@ func (r *Symbols) Tree(ctx context.Context, samples schemav1.Samples) (*model.Tr
 		return nil, err
 	}
 	return t.tree, nil
-}
-
-func (r *Symbols) Profile(ctx context.Context, samples schemav1.Samples) (*profile.Profile, error) {
-	t := profileSymbolsFromPool()
-	defer t.reset()
-	t.init(r, samples)
-	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
-		return nil, err
-	}
-	t.incrementIDs()
-	return t.profile, nil
 }
