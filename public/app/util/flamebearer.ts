@@ -116,6 +116,7 @@ export function flamebearerToDataFrameDTO(
     case 'samples':
     case 'trace_samples':
     case 'lock_nanoseconds':
+    case 'nanoseconds':
       valueUnit = 'ns';
       break;
     case 'bytes':

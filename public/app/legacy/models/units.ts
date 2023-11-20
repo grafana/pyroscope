@@ -9,16 +9,13 @@ export const units = [
   'lock_nanoseconds',
   'trace_samples',
   'exceptions',
-];
+  'nanoseconds',
+] as const;
 
-export const UnitsSchema = z.preprocess((u) => {
-  if (typeof u === 'string') {
-    if (units.includes(u)) {
-      return u;
-    }
-  }
-  return 'unknown';
-}, z.enum(['samples', 'objects', 'goroutines', 'bytes', 'lock_samples', 'lock_nanoseconds', 'trace_samples', 'exceptions', 'unknown']));
+export const UnitsSchema = z.preprocess(
+  (u) => units.find((knownUnit) => u === knownUnit) || 'unknown',
+  z.enum([...units, 'unknown'])
+);
 
 export type UnitsType = (typeof units)[number];
 export type Units = z.infer<typeof UnitsSchema>;
