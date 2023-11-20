@@ -2,11 +2,9 @@ package testhelper
 
 import (
 	"fmt"
-	"math/rand"
 	"sort"
 
 	"github.com/google/uuid"
-	googlev1 "github.com/grafana/phlare/api/gen/proto/go/google/v1"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 
@@ -261,18 +259,4 @@ func (s *StacktraceBuilder) AddSamples(samples ...int64) *ProfileBuilder {
 		Value:      samples,
 	})
 	return s.ProfileBuilder
-}
-
-func ObfuscateProfile(p *googlev1.Profile) {
-	for i := 1; i < len(p.StringTable); i++ {
-		p.StringTable[i] = RandASCIIString(len(p.StringTable[i]))
-	}
-}
-
-func RandASCIIString(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = rune(rand.Intn(255))
-	}
-	return string(b)
 }
