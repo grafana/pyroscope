@@ -447,12 +447,7 @@ func (c *BlocksCleaner) cleanUser(ctx context.Context, userID string, userLogger
 func (c *BlocksCleaner) updateBlockCountMetrics(userID string, idx *bucketindex.Index) {
 	blocksPerCompactionLevel := make(map[int]int)
 	for _, blk := range idx.Blocks {
-		count, ok := blocksPerCompactionLevel[blk.CompactionLevel]
-		if !ok {
-			blocksPerCompactionLevel[blk.CompactionLevel] = 1
-		} else {
-			blocksPerCompactionLevel[blk.CompactionLevel] = count + 1
-		}
+		blocksPerCompactionLevel[blk.CompactionLevel]++
 	}
 	c.tenantBlocks.DeletePartialMatch(map[string]string{"user": userID})
 	for compactionLevel, count := range blocksPerCompactionLevel {
