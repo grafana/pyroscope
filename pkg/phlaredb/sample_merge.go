@@ -49,6 +49,8 @@ func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[
 func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
+	sp.SetTag("block ULID", b.meta.ULID.String())
+
 	m := make(seriesByLabels)
 	columnName := "TotalValue"
 	if b.meta.Version == 1 {
@@ -63,6 +65,8 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeBySpans - Block")
 	defer sp.Finish()
+	sp.SetTag("block ULID", b.meta.ULID.String())
+
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
 	if err := mergeBySpans(ctx, b.profiles.file, rows, r, spanSelector); err != nil {

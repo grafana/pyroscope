@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/dskit/tenant"
@@ -16,6 +17,12 @@ import (
 )
 
 func (f *Frontend) SelectMergeProfile(ctx context.Context, c *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[profilev1.Profile], error) {
+	opentracing.SpanFromContext(ctx).
+		SetTag("start", model.Time(c.Msg.Start).Time().String()).
+		SetTag("end", model.Time(c.Msg.End).Time().String()).
+		SetTag("selector", c.Msg.LabelSelector).
+		SetTag("profile_type", c.Msg.ProfileTypeID)
+
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeProfileProcedure)
 	tenantIDs, err := tenant.TenantIDs(ctx)
 	if err != nil {

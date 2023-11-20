@@ -189,8 +189,8 @@ func testBlocksCleanerWithOptions(t *testing.T, options testBlocksCleanerOptions
 	assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
 		# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
 		# TYPE pyroscope_bucket_blocks_count gauge
-		pyroscope_bucket_blocks_count{user="user-1"} 2
-		pyroscope_bucket_blocks_count{user="user-2"} 1
+		pyroscope_bucket_blocks_count{compaction_level="1", user="user-1"} 2
+		pyroscope_bucket_blocks_count{compaction_level="1", user="user-2"} 1
 		# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
 		# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
 		pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 1
@@ -357,8 +357,8 @@ func TestBlocksCleaner_ShouldRemoveMetricsForTenantsNotBelongingAnymoreToTheShar
 	assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
 		# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
 		# TYPE pyroscope_bucket_blocks_count gauge
-		pyroscope_bucket_blocks_count{user="user-1"} 2
-		pyroscope_bucket_blocks_count{user="user-2"} 1
+		pyroscope_bucket_blocks_count{compaction_level="1", user="user-1"} 2
+		pyroscope_bucket_blocks_count{compaction_level="1", user="user-2"} 1
 		# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
 		# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
 		pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
@@ -385,7 +385,8 @@ func TestBlocksCleaner_ShouldRemoveMetricsForTenantsNotBelongingAnymoreToTheShar
 	assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
 		# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
 		# TYPE pyroscope_bucket_blocks_count gauge
-		pyroscope_bucket_blocks_count{user="user-1"} 3
+		pyroscope_bucket_blocks_count{compaction_level="1", user="user-1"} 3
+		pyroscope_bucket_blocks_count{compaction_level="1", user="user-2"} 1
 		# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
 		# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
 		pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
@@ -555,8 +556,8 @@ func TestBlocksCleaner_ShouldRemoveBlocksOutsideRetentionPeriod(t *testing.T) {
 		assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
 			# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
 			# TYPE pyroscope_bucket_blocks_count gauge
-			pyroscope_bucket_blocks_count{user="user-1"} 2
-			pyroscope_bucket_blocks_count{user="user-2"} 2
+			pyroscope_bucket_blocks_count{compaction_level="1", user="user-1"} 2
+			pyroscope_bucket_blocks_count{compaction_level="1", user="user-2"} 2
 			# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
 			# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
 			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
@@ -597,8 +598,8 @@ func TestBlocksCleaner_ShouldRemoveBlocksOutsideRetentionPeriod(t *testing.T) {
 		assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
 			# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
 			# TYPE pyroscope_bucket_blocks_count gauge
-			pyroscope_bucket_blocks_count{user="user-1"} 2
-			pyroscope_bucket_blocks_count{user="user-2"} 2
+			pyroscope_bucket_blocks_count{compaction_level="1", user="user-1"} 2
+			pyroscope_bucket_blocks_count{compaction_level="1", user="user-2"} 2
 			# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
 			# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
 			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 1
@@ -636,8 +637,8 @@ func TestBlocksCleaner_ShouldRemoveBlocksOutsideRetentionPeriod(t *testing.T) {
 		assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
 			# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
 			# TYPE pyroscope_bucket_blocks_count gauge
-			pyroscope_bucket_blocks_count{user="user-1"} 1
-			pyroscope_bucket_blocks_count{user="user-2"} 2
+			pyroscope_bucket_blocks_count{compaction_level="1", user="user-1"} 1
+			pyroscope_bucket_blocks_count{compaction_level="1", user="user-2"} 2
 			# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
 			# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
 			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
@@ -666,8 +667,7 @@ func TestBlocksCleaner_ShouldRemoveBlocksOutsideRetentionPeriod(t *testing.T) {
 		assert.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
 			# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
 			# TYPE pyroscope_bucket_blocks_count gauge
-			pyroscope_bucket_blocks_count{user="user-1"} 1
-			pyroscope_bucket_blocks_count{user="user-2"} 0
+			pyroscope_bucket_blocks_count{compaction_level="1", user="user-1"} 1
 			# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
 			# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
 			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
@@ -800,7 +800,7 @@ func TestBlocksCleaner_ShouldRemovePartialBlocksOutsideDelayPeriod(t *testing.T)
 	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
 			# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
 			# TYPE pyroscope_bucket_blocks_count gauge
-			pyroscope_bucket_blocks_count{user="user-1"} 1
+			pyroscope_bucket_blocks_count{compaction_level="1", user="user-1"} 1
 			# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
 			# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
 			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
@@ -877,10 +877,6 @@ func TestBlocksCleaner_ShouldNotRemovePartialBlocksInsideDelayPeriod(t *testing.
 	// the time since modification is shorter than the delay, and for user-2, the metadata is corrupted but the file
 	// is still present in the bucket so the block is not partial
 	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-			# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
-			# TYPE pyroscope_bucket_blocks_count gauge
-			pyroscope_bucket_blocks_count{user="user-1"} 0
-			pyroscope_bucket_blocks_count{user="user-2"} 0
 			# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
 			# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
 			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
@@ -938,9 +934,6 @@ func TestBlocksCleaner_ShouldNotRemovePartialBlocksIfConfiguredDelayIsInvalid(t 
 	assert.Contains(t, logs.String(), "partial blocks deletion has been disabled for tenant because the delay has been set lower than the minimum value allowed")
 
 	require.NoError(t, testutil.GatherAndCompare(reg, strings.NewReader(`
-			# HELP pyroscope_bucket_blocks_count Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.
-			# TYPE pyroscope_bucket_blocks_count gauge
-			pyroscope_bucket_blocks_count{user="user-1"} 0
 			# HELP pyroscope_bucket_blocks_marked_for_deletion_count Total number of blocks marked for deletion in the bucket.
 			# TYPE pyroscope_bucket_blocks_marked_for_deletion_count gauge
 			pyroscope_bucket_blocks_marked_for_deletion_count{user="user-1"} 0
@@ -1021,6 +1014,7 @@ type mockConfigProvider struct {
 	splitAndMergeShards          map[string]int
 	instancesShardSize           map[string]int
 	splitGroups                  map[string]int
+	splitAndMergeStageSize       map[string]int
 	blockUploadEnabled           map[string]bool
 	blockUploadValidationEnabled map[string]bool
 	blockUploadMaxBlockSizeBytes map[string]int64
@@ -1034,6 +1028,7 @@ func newMockConfigProvider() *mockConfigProvider {
 		userRetentionPeriods:         make(map[string]time.Duration),
 		splitAndMergeShards:          make(map[string]int),
 		splitGroups:                  make(map[string]int),
+		splitAndMergeStageSize:       make(map[string]int),
 		blockUploadEnabled:           make(map[string]bool),
 		blockUploadValidationEnabled: make(map[string]bool),
 		blockUploadMaxBlockSizeBytes: make(map[string]int64),
@@ -1052,6 +1047,13 @@ func (m *mockConfigProvider) CompactorBlocksRetentionPeriod(user string) time.Du
 
 func (m *mockConfigProvider) CompactorSplitAndMergeShards(user string) int {
 	if result, ok := m.splitAndMergeShards[user]; ok {
+		return result
+	}
+	return 0
+}
+
+func (m *mockConfigProvider) CompactorSplitAndMergeStageSize(user string) int {
+	if result, ok := m.splitAndMergeStageSize[user]; ok {
 		return result
 	}
 	return 0

@@ -17,3 +17,4 @@ setupAfterEnv.ts
 globalSetup.js
 globalTeardown.js
 jest-css-modules-transform-config.js
+cmd/profilecli/**

@@ -29,6 +29,21 @@ For the eBPF integration to work you'll need:
 * A Pyroscope server where the agent will send profiling data
 * A Linux machine with the kernel version >= 4.9 (due to [BPF_PROG_TYPE_PERF_EVENT](https://lkml.org/lkml/2016/9/1/831))
 
+## Running eBPF profiler on localhost (Linux)
+### river configuration
+```yaml
+pyroscope.ebpf "instance" {
+  forward_to = [ pyroscope.write.endpoint.receiver ]
+  targets_only = false
+  default_target = {"service_name" = "SERVICE_NAME"}
+}
+pyroscope.write "endpoint" {
+  endpoint {
+    url = "URL_TO_PYROSCOPE:PYROSCOPE_PORT"
+  }
+}
+```
+
 ## Running eBPF profiler on Kubernetes
 ### Step 1: Add the helm repo
 

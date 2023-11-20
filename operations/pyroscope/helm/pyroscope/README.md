@@ -1,6 +1,6 @@
 # pyroscope
 
-![Version: 1.1.0](https://img.shields.io/badge/Version-1.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.1.5](https://img.shields.io/badge/AppVersion-1.1.5-informational?style=flat-square)
+![Version: 1.3.0](https://img.shields.io/badge/Version-1.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.2.0](https://img.shields.io/badge/AppVersion-1.2.0-informational?style=flat-square)
 
 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
@@ -32,7 +32,7 @@
 | pyroscope.fullnameOverride | string | `""` |  |
 | pyroscope.image.pullPolicy | string | `"IfNotPresent"` |  |
 | pyroscope.image.repository | string | `"grafana/pyroscope"` |  |
-| pyroscope.image.tag | string | `"1.1.5"` |  |
+| pyroscope.image.tag | string | `"1.2.0"` |  |
 | pyroscope.imagePullSecrets | list | `[]` |  |
 | pyroscope.initContainers | list | `[]` |  |
 | pyroscope.memberlist.port | int | `7946` |  |
@@ -58,8 +58,10 @@
 | pyroscope.replicaCount | int | `1` |  |
 | pyroscope.resources | object | `{}` |  |
 | pyroscope.securityContext | object | `{}` |  |
+| pyroscope.service.annotations | object | `{}` |  |
 | pyroscope.service.port | int | `4040` |  |
 | pyroscope.service.port_name | string | `"http2"` |  |
+| pyroscope.service.scheme | string | `"HTTP"` |  |
 | pyroscope.service.type | string | `"ClusterIP"` |  |
 | pyroscope.serviceAccount.annotations | object | `{}` |  |
 | pyroscope.serviceAccount.create | bool | `true` |  |

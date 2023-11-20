@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -842,7 +841,7 @@ func TestPush_ShuffleSharding(t *testing.T) {
 }
 
 func TestPush_Aggregation(t *testing.T) {
-	const maxSessions = 16
+	const maxSessions = 8
 	ingesterClient := newFakeIngester(t, false)
 	d, err := New(
 		Config{DistributorRing: ringConfig, PushTimeout: time.Second * 10},
@@ -881,7 +880,7 @@ func TestPush_Aggregation(t *testing.T) {
 								{Name: "__name__", Value: "cpu"},
 								{
 									Name:  phlaremodel.LabelNameSessionID,
-									Value: phlaremodel.SessionID(rand.Uint64()).String(),
+									Value: phlaremodel.SessionID(i*j + i).String(),
 								},
 							},
 							Samples: []*distributormodel.ProfileSample{
@@ -920,8 +919,7 @@ func TestPush_Aggregation(t *testing.T) {
 
 	// RF * samples_per_profile * clients * requests
 	assert.Equal(t, int64(3*2*clients*requests), sum)
-	assert.GreaterOrEqual(t, len(sessions), clients)
-	assert.LessOrEqual(t, len(sessions), maxSessions+1)
+	assert.Equal(t, len(sessions), maxSessions)
 }
 
 func testProfile(t int64) *profilev1.Profile {

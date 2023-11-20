@@ -33,7 +33,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
-	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/util/math"
 	"github.com/grafana/pyroscope/pkg/util/spanlogger"
 )
@@ -144,7 +144,7 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 		}), nil
 	}
 
-	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, nil)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
@@ -221,7 +221,7 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.
 		}), nil
 	}
 
-	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, nil)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
@@ -291,7 +291,7 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 		}), nil
 	}
 
-	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, nil)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
@@ -339,7 +339,7 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 	}), nil
 }
 
-func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (map[string]*ingestv1.BlockHints, error) {
+func (q *Querier) blockSelect(ctx context.Context, start, end model.Time) (blockPlan, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "blockSelect")
 	defer sp.Finish()
 
@@ -388,7 +388,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		otlog.Int64("start", req.Msg.Start),
 		otlog.Int64("end", req.Msg.End),
 	)
-
+	// no store gateways configured so just query the ingesters
 	if q.storeGatewayQuerier == nil || !hasTimeRange {
 		responses, err := q.seriesFromIngesters(ctx, &ingestv1.SeriesRequest{
 			Matchers:   req.Msg.Matchers,
@@ -411,7 +411,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 		}), nil
 	}
 
-	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(req.Msg.Start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, nil)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
@@ -423,12 +423,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 
 	if storeQueries.ingester.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.seriesFromIngesters(ctx, &ingestv1.SeriesRequest{
-				Matchers:   req.Msg.Matchers,
-				LabelNames: req.Msg.LabelNames,
-				Start:      req.Msg.Start,
-				End:        req.Msg.End,
-			})
+			ir, err := q.seriesFromIngesters(ctx, storeQueries.ingester.SeriesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -442,12 +437,7 @@ func (q *Querier) Series(ctx context.Context, req *connect.Request[querierv1.Ser
 
 	if storeQueries.storeGateway.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.seriesFromStoreGateway(ctx, &ingestv1.SeriesRequest{
-				Matchers:   req.Msg.Matchers,
-				LabelNames: req.Msg.LabelNames,
-				Start:      req.Msg.Start,
-				End:        req.Msg.End,
-			})
+			ir, err := q.seriesFromStoreGateway(ctx, storeQueries.storeGateway.SeriesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -611,17 +601,17 @@ func (q *Querier) selectTree(ctx context.Context, req *querierv1.SelectMergeStac
 		return q.selectTreeFromIngesters(ctx, req, plan)
 	}
 
-	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter, plan)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
 
 	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
 
-	if !storeQueries.ingester.shouldQuery {
+	if plan == nil && !storeQueries.ingester.shouldQuery {
 		return q.selectTreeFromStoreGateway(ctx, storeQueries.storeGateway.MergeStacktracesRequest(req), plan)
 	}
-	if !storeQueries.storeGateway.shouldQuery {
+	if plan == nil && !storeQueries.storeGateway.shouldQuery {
 		return q.selectTreeFromIngesters(ctx, storeQueries.ingester.MergeStacktracesRequest(req), plan)
 	}
 
@@ -688,6 +678,24 @@ func (sq storeQuery) MergeSpanProfileRequest(req *querierv1.SelectMergeSpanProfi
 	}
 }
 
+func (sq storeQuery) MergeProfileRequest(req *querierv1.SelectMergeProfileRequest) *querierv1.SelectMergeProfileRequest {
+	return &querierv1.SelectMergeProfileRequest{
+		ProfileTypeID: req.ProfileTypeID,
+		LabelSelector: req.LabelSelector,
+		Start:         int64(sq.start),
+		End:           int64(sq.end),
+	}
+}
+
+func (sq storeQuery) SeriesRequest(req *querierv1.SeriesRequest) *ingestv1.SeriesRequest {
+	return &ingestv1.SeriesRequest{
+		Start:      int64(sq.start),
+		End:        int64(sq.end),
+		Matchers:   req.Matchers,
+		LabelNames: req.LabelNames,
+	}
+}
+
 type storeQueries struct {
 	ingester, storeGateway storeQuery
 	queryStoreAfter        time.Duration
@@ -706,7 +714,15 @@ func (sq storeQueries) Log(logger log.Logger) {
 
 // splitQueryToStores splits the query into ingester and store gateway queries using the given cut off time.
 // todo(ctovena): Later we should try to deduplicate blocks between ingesters and store gateways (prefer) and simply query both
-func splitQueryToStores(start, end model.Time, now model.Time, queryStoreAfter time.Duration) (queries storeQueries) {
+func splitQueryToStores(start, end model.Time, now model.Time, queryStoreAfter time.Duration, plan blockPlan) (queries storeQueries) {
+	if plan != nil {
+		// if we have a plan we can use it to split the query, we retain the original start and end time as we want to query the full range for those particular blocks selected.
+		queries.queryStoreAfter = 0
+		queries.ingester = storeQuery{shouldQuery: true, start: start, end: end}
+		queries.storeGateway = storeQuery{shouldQuery: true, start: start, end: end}
+		return queries
+	}
+
 	queries.queryStoreAfter = queryStoreAfter
 	cutOff := now.Add(-queryStoreAfter)
 	if start.Before(cutOff) {
@@ -734,50 +750,75 @@ func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[q
 		sp.Finish()
 	}()
 
-	profileType, err := phlaremodel.ParseProfileTypeSelector(req.Msg.ProfileTypeID)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	_, err = parser.ParseMetricSelector(req.Msg.LabelSelector)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, err)
-	}
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesPprof, error) {
-		return ic.MergeProfilesPprof(ctx), nil
-	})
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-	// send the first initial request to all ingesters.
-	g, gCtx := errgroup.WithContext(ctx)
-	for _, r := range responses {
-		r := r
-		g.Go(util.RecoverPanic(func() error {
-			return r.response.Send(&ingestv1.MergeProfilesPprofRequest{
-				Request: &ingestv1.SelectProfilesRequest{
-					LabelSelector: req.Msg.LabelSelector,
-					Start:         req.Msg.Start,
-					End:           req.Msg.End,
-					Type:          profileType,
-				},
-			})
-		}))
-	}
-	if err := g.Wait(); err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	// merge all profiles
-	profile, err := selectMergePprofProfile(gCtx, profileType, responses)
+	profile, err := q.selectProfile(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
 	profile.DurationNanos = model.Time(req.Msg.End).UnixNano() - model.Time(req.Msg.Start).UnixNano()
 	profile.TimeNanos = model.Time(req.Msg.End).UnixNano()
 	return connect.NewResponse(profile), nil
+}
+
+func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeProfileRequest) (*googlev1.Profile, error) {
+	// determine the block hints
+	plan, err := q.blockSelect(ctx, model.Time(req.Start), model.Time(req.End))
+	if isEndpointNotExistingErr(err) {
+		level.Warn(spanlogger.FromContext(ctx, q.logger)).Log(
+			"msg", "block select not supported on at least one component, fallback to use full dataset",
+			"err", err,
+		)
+		plan = nil
+	} else if err != nil {
+		return nil, fmt.Errorf("error during block select: %w", err)
+	}
+
+	// no store gateways configured so just query the ingesters
+	if q.storeGatewayQuerier == nil {
+		return q.selectProfileFromIngesters(ctx, req, plan)
+	}
+
+	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter, plan)
+	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
+	}
+
+	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
+
+	if plan == nil && !storeQueries.ingester.shouldQuery {
+		return q.selectProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeProfileRequest(req), plan)
+	}
+	if plan == nil && !storeQueries.storeGateway.shouldQuery {
+		return q.selectProfileFromIngesters(ctx, storeQueries.ingester.MergeProfileRequest(req), plan)
+	}
+
+	g, ctx := errgroup.WithContext(ctx)
+	var lock sync.Mutex
+	var merge pprof.ProfileMerge
+	g.Go(func() error {
+		ingesterProfile, err := q.selectProfileFromIngesters(ctx, storeQueries.ingester.MergeProfileRequest(req), plan)
+		if err != nil {
+			return err
+		}
+		lock.Lock()
+		err = merge.Merge(ingesterProfile)
+		lock.Unlock()
+		return err
+	})
+	g.Go(func() error {
+		storegatewayProfile, err := q.selectProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeProfileRequest(req), plan)
+		if err != nil {
+			return err
+		}
+		lock.Lock()
+		err = merge.Merge(storegatewayProfile)
+		lock.Unlock()
+		return err
+	})
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return merge.Profile(), nil
 }
 
 func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) (*connect.Response[querierv1.SelectSeriesResponse], error) {
@@ -811,7 +852,19 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	responses, err := q.selectSeries(ctx, req)
+	// determine the block hints
+	plan, err := q.blockSelect(ctx, model.Time(req.Msg.Start), model.Time(req.Msg.End))
+	if isEndpointNotExistingErr(err) {
+		level.Warn(spanlogger.FromContext(ctx, q.logger)).Log(
+			"msg", "block select not supported on at least one component, fallback to use full dataset",
+			"err", err,
+		)
+		plan = nil
+	} else if err != nil {
+		return nil, fmt.Errorf("error during block select: %w", err)
+	}
+
+	responses, err := q.selectSeries(ctx, req, plan)
 	if err != nil {
 		return nil, err
 	}
@@ -831,7 +884,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 	}), nil
 }
 
-func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest]) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
+func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querierv1.SelectSeriesRequest], plan map[string]*ingestv1.BlockHints) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
 	stepMs := time.Duration(req.Msg.Step * float64(time.Second)).Milliseconds()
 	sort.Strings(req.Msg.GroupBy)
 
@@ -853,10 +906,10 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 				Type:          profileType,
 			},
 			By: req.Msg.GroupBy,
-		})
+		}, plan)
 	}
 
-	storeQueries := splitQueryToStores(model.Time(start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, plan)
 
 	var responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]
 
@@ -866,7 +919,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 
 	// todo in parallel
 	if storeQueries.ingester.shouldQuery {
-		ir, err := q.selectSeriesFromIngesters(ctx, storeQueries.ingester.MergeSeriesRequest(req.Msg, profileType))
+		ir, err := q.selectSeriesFromIngesters(ctx, storeQueries.ingester.MergeSeriesRequest(req.Msg, profileType), plan)
 		if err != nil {
 			return nil, err
 		}
@@ -874,7 +927,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 	}
 
 	if storeQueries.storeGateway.shouldQuery {
-		ir, err := q.selectSeriesFromStoreGateway(ctx, storeQueries.storeGateway.MergeSeriesRequest(req.Msg, profileType))
+		ir, err := q.selectSeriesFromStoreGateway(ctx, storeQueries.storeGateway.MergeSeriesRequest(req.Msg, profileType), plan)
 		if err != nil {
 			return nil, err
 		}
@@ -985,7 +1038,7 @@ func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMe
 		return q.selectSpanProfileFromIngesters(ctx, req)
 	}
 
-	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter)
+	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter, nil)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}

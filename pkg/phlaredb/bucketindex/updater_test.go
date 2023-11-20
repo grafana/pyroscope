@@ -166,7 +166,7 @@ func TestUpdater_UpdateIndex_NoTenantInTheBucket(t *testing.T) {
 		idx, partials, err := w.UpdateIndex(ctx, oldIdx)
 
 		require.NoError(t, err)
-		assert.Equal(t, IndexVersion2, idx.Version)
+		assert.Equal(t, IndexVersion3, idx.Version)
 		assert.InDelta(t, time.Now().Unix(), idx.UpdatedAt, 2)
 		assert.Len(t, idx.Blocks, 0)
 		assert.Len(t, idx.BlockDeletionMarks, 0)
@@ -227,6 +227,59 @@ func TestUpdater_UpdateIndexFromVersion1ToVersion2(t *testing.T) {
 		[]*block.DeletionMark{})
 }
 
+func TestUpdater_UpdateIndexFromVersion2ToVersion3(t *testing.T) {
+	const userID = "user-2"
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	bkt, _ := objstore_testutil.NewFilesystemBucket(t, ctx, t.TempDir())
+
+	// Generate blocks with compactor shard ID.
+	bkt = block.BucketWithGlobalMarkers(bkt)
+	block1 := block_testutil.MockStorageBlockWithExtLabels(t, bkt, userID, 10, 20, map[string]string{sharding.CompactorShardIDLabel: "1_of_4"})
+	block2 := block_testutil.MockStorageBlockWithExtLabels(t, bkt, userID, 20, 30, map[string]string{sharding.CompactorShardIDLabel: "3_of_4"})
+
+	block1WithoutCompactionLevel := block1
+	block1WithoutCompactionLevel.Compaction.Level = 0
+
+	block2WithoutCompactionLevel := block2
+	block2WithoutCompactionLevel.Compaction.Level = 0
+
+	// Double check that original block1 and block2 still have compactor shards set.
+	require.Equal(t, 1, block1.Compaction.Level)
+	require.Equal(t, 1, block2.Compaction.Level)
+
+	// Generate index (this produces V3 index, with compaction levels).
+	w := NewUpdater(bkt, userID, nil, logger)
+	returnedIdx, _, err := w.UpdateIndex(ctx, nil)
+	require.NoError(t, err)
+	assertBucketIndexEqual(t, returnedIdx, bkt, userID,
+		[]block.Meta{block1, block2},
+		[]*block.DeletionMark{})
+
+	// Now remove compaction levels from index.
+	for _, b := range returnedIdx.Blocks {
+		b.CompactionLevel = 0
+	}
+
+	// Try to update existing index. Since we didn't change the version, updater will reuse the index, and not update compaction levels.
+	returnedIdx, _, err = w.UpdateIndex(ctx, returnedIdx)
+	require.NoError(t, err)
+	assertBucketIndexEqual(t, returnedIdx, bkt, userID,
+		[]block.Meta{block1WithoutCompactionLevel, block2WithoutCompactionLevel}, // No compactor shards in bucket index.
+		[]*block.DeletionMark{})
+
+	// Now set index version to old version 2. Rerunning updater should rebuild index from scratch.
+	returnedIdx.Version = IndexVersion2
+
+	returnedIdx, _, err = w.UpdateIndex(ctx, returnedIdx)
+	require.NoError(t, err)
+	assertBucketIndexEqual(t, returnedIdx, bkt, userID,
+		[]block.Meta{block1, block2}, // Compaction levels are back.
+		[]*block.DeletionMark{})
+}
+
 func getBlockUploadedAt(t testing.TB, bkt objstore.Bucket, userID string, blockID ulid.ULID) int64 {
 	metaFile := path.Join(userID, "phlaredb/", blockID.String(), block.MetaFilename)
 
@@ -237,7 +290,7 @@ func getBlockUploadedAt(t testing.TB, bkt objstore.Bucket, userID string, blockI
 }
 
 func assertBucketIndexEqual(t testing.TB, idx *Index, bkt objstore.Bucket, userID string, expectedBlocks []block.Meta, expectedDeletionMarks []*block.DeletionMark) {
-	assert.Equal(t, IndexVersion2, idx.Version)
+	assert.Equal(t, IndexVersion3, idx.Version)
 	assert.InDelta(t, time.Now().Unix(), idx.UpdatedAt, 2)
 
 	// Build the list of expected block index entries.
@@ -249,6 +302,7 @@ func assertBucketIndexEqual(t testing.TB, idx *Index, bkt objstore.Bucket, userI
 			MaxTime:          b.MaxTime,
 			UploadedAt:       getBlockUploadedAt(t, bkt, userID, b.ULID),
 			CompactorShardID: b.Labels[sharding.CompactorShardIDLabel],
+			CompactionLevel:  b.Compaction.Level,
 		})
 	}
 

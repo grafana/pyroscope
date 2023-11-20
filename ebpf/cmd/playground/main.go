@@ -34,6 +34,7 @@ import (
 )
 
 var configFile = flag.String("config", "", "config file path")
+var server = flag.String("server", "http://localhost:4040", "")
 
 var (
 	config  *Config
@@ -125,7 +126,7 @@ func ingest(profiles chan *pushv1.PushRequest) {
 	if err != nil {
 		panic(err)
 	}
-	client := pushv1connect.NewPusherServiceClient(httpClient, "http://localhost:4040")
+	client := pushv1connect.NewPusherServiceClient(httpClient, *server)
 
 	for {
 		it := <-profiles
