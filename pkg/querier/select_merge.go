@@ -6,12 +6,12 @@ import (
 	"math"
 	"sync"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/protobuf/proto"
 
 	otlog "github.com/opentracing/opentracing-go/log"
 
