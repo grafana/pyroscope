@@ -65,11 +65,22 @@ $(TMP_EBPF)/vm_image_amd64: Makefile
 		cp /data/images/kind_6.0.qcow2.zst /mnt/images/vm_image_amd64.zst
 	zstd -f -d $(TMP_EBPF)/vm_image_amd64.zst
 
+$(TMP_EBPF)/vm_image_arm64: Makefile
+	mkdir -p $(TMP_EBPF)
+	docker run -v $(TMP_EBPF):/mnt/images \
+		pyroscope/ebpf-test-vm-image:debian-5.10-aarch64 \
+		cp debian-aarch64.qcow2.zst vmlinuz-5.10.0-26-arm64 initrd.img-5.10.0-26-arm64 /mnt/images
+	zstd -f -d $(TMP_EBPF)/debian-aarch64.qcow2.zst
+	mv $(TMP_EBPF)/debian-aarch64.qcow2.zst $(TMP_EBPF)/vm_image_arm64
+
 
 .PHONY: go/test/amd64
 go/test/amd64: $(TMP_EBPF)/vm_image_amd64 ebpf.amd64.test
 	bash ../tools/vmrun_amd64.sh $(TMP_EBPF)/vm_image_amd64 ebpf.amd64.test
 
+.PHONY: go/test/arm64
+go/test/arm64: $(TMP_EBPF)/vm_image_arm64 ebpf.arm64.test
+	bash ../tools/vmrun_arm64.sh $(TMP_EBPF)/vm_image_amd64 ebpf.arm64.test
 else
 
 .PHONY: go/test/amd64
@@ -88,15 +99,15 @@ endif
 .phony: rideshare/gen
 rideshare/gen:
 	git submodule update --init --recursive
-	docker build --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.8-slim        --build-arg="PYTHON_VERSION=3.8-slim"       $(RIDESHARE)
-	docker build --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.9-slim        --build-arg="PYTHON_VERSION=3.9-slim"       $(RIDESHARE)
-	docker build --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.10-slim       --build-arg="PYTHON_VERSION=3.10-slim"      $(RIDESHARE)
-	docker build --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.11-slim       --build-arg="PYTHON_VERSION=3.11-slim"      $(RIDESHARE)
-	docker build --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.12-slim       --build-arg="PYTHON_VERSION=3.12-slim"      $(RIDESHARE)
-	docker build --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.13-rc-slim    --build-arg="PYTHON_VERSION=3.13-rc-slim"   $(RIDESHARE)
-	docker build --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.8-alpine      --build-arg="PYTHON_VERSION=3.8-alpine"     $(RIDESHARE)
-	docker build --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.9-alpine      --build-arg="PYTHON_VERSION=3.9-alpine"     $(RIDESHARE)
-	docker build --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.10-alpine     --build-arg="PYTHON_VERSION=3.10-alpine"    $(RIDESHARE)
-	docker build --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.11-alpine     --build-arg="PYTHON_VERSION=3.11-alpine"    $(RIDESHARE)
-	docker build --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.12-alpine     --build-arg="PYTHON_VERSION=3.12-alpine"    $(RIDESHARE)
-	docker build --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.13-rc-alpine  --build-arg="PYTHON_VERSION=3.13-rc-alpine" $(RIDESHARE)
+	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.8-slim        --build-arg="PYTHON_VERSION=3.8-slim"       $(RIDESHARE)
+	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.9-slim        --build-arg="PYTHON_VERSION=3.9-slim"       $(RIDESHARE)
+	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.10-slim       --build-arg="PYTHON_VERSION=3.10-slim"      $(RIDESHARE)
+	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.11-slim       --build-arg="PYTHON_VERSION=3.11-slim"      $(RIDESHARE)
+	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.12-slim       --build-arg="PYTHON_VERSION=3.12-slim"      $(RIDESHARE)
+	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.13-rc-slim    --build-arg="PYTHON_VERSION=3.13-rc-slim"   $(RIDESHARE)
+	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.8-alpine      --build-arg="PYTHON_VERSION=3.8-alpine"     $(RIDESHARE)
+	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.9-alpine      --build-arg="PYTHON_VERSION=3.9-alpine"     $(RIDESHARE)
+	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.10-alpine     --build-arg="PYTHON_VERSION=3.10-alpine"    $(RIDESHARE)
+	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.11-alpine     --build-arg="PYTHON_VERSION=3.11-alpine"    $(RIDESHARE)
+	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.12-alpine     --build-arg="PYTHON_VERSION=3.12-alpine"    $(RIDESHARE)
+	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.13-rc-alpine  --build-arg="PYTHON_VERSION=3.13-rc-alpine" $(RIDESHARE)
