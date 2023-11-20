@@ -220,7 +220,7 @@ function ComparisonDiffApp() {
             />
           </Panel>
         </div>
-        <Panel isLoading={isLoading} title={<ChartTitle titleKey="diff" />}>
+        <Panel isLoading={isLoading}>
           <FlameGraphWrapper profile={diffView.profile} diff={true} />
         </Panel>
       </PageContentWrapper>
