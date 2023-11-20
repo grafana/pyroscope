@@ -5,7 +5,7 @@ import ReduxQuerySync from 'redux-query-sync';
 import { actions as continuousActions } from './reducers/continuous';
 import store, { RootState } from './store';
 
-function setupReduxQuerySync() {
+export function setupReduxQuerySync() {
   // This is a bi-directional sync between the query parameters and the redux store
   // It works as follows:
   // * When URL query changes, It will dispatch the action
@@ -99,8 +99,7 @@ function setupReduxQuerySync() {
   });
 }
 
-const unsubscribe = setupReduxQuerySync();
-
+// setup & unsubscribe on unmount
 export function useReduxQuerySync() {
-  useEffect(() => unsubscribe, []);
+  useEffect(setupReduxQuerySync, []);
 }
