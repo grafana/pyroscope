@@ -86,177 +86,9 @@ api:
 # The frontend_worker block configures the frontend-worker.
 [frontend_worker: <frontend_worker>]
 
-limits:
-  # Per-tenant ingestion rate limit in sample size per second. Units in MB.
-  # CLI flag: -distributor.ingestion-rate-limit-mb
-  [ingestion_rate_mb: <float> | default = 4]
-
-  # Per-tenant allowed ingestion burst size (in sample size). Units in MB. The
-  # burst size refers to the per-distributor local rate limiter, and should be
-  # set at least to the maximum profile size expected in a single push request.
-  # CLI flag: -distributor.ingestion-burst-size-mb
-  [ingestion_burst_size_mb: <float> | default = 2]
-
-  # Maximum length accepted for label names.
-  # CLI flag: -validation.max-length-label-name
-  [max_label_name_length: <int> | default = 1024]
-
-  # Maximum length accepted for label value. This setting also applies to the
-  # metric name.
-  # CLI flag: -validation.max-length-label-value
-  [max_label_value_length: <int> | default = 2048]
-
-  # Maximum number of label names per series.
-  # CLI flag: -validation.max-label-names-per-series
-  [max_label_names_per_series: <int> | default = 30]
-
-  # Maximum number of sessions per series. 0 to disable.
-  # CLI flag: -validation.max-sessions-per-series
-  [max_sessions_per_series: <int> | default = 0]
-
-  # Maximum size of a profile in bytes. This is based off the uncompressed size.
-  # 0 to disable.
-  # CLI flag: -validation.max-profile-size-bytes
-  [max_profile_size_bytes: <int> | default = 4194304]
-
-  # Maximum number of samples in a profile. 0 to disable.
-  # CLI flag: -validation.max-profile-stacktrace-samples
-  [max_profile_stacktrace_samples: <int> | default = 16000]
-
-  # Maximum number of labels in a profile sample. 0 to disable.
-  # CLI flag: -validation.max-profile-stacktrace-sample-labels
-  [max_profile_stacktrace_sample_labels: <int> | default = 100]
-
-  # Maximum depth of a profile stacktrace. Profiles are not rejected instead
-  # stacktraces are truncated. 0 to disable.
-  # CLI flag: -validation.max-profile-stacktrace-depth
-  [max_profile_stacktrace_depth: <int> | default = 1000]
-
-  # Maximum length of a profile symbol value (labels, function names and
-  # filenames, etc...). Profiles are not rejected instead symbol values are
-  # truncated. 0 to disable.
-  # CLI flag: -validation.max-profile-symbol-value-length
-  [max_profile_symbol_value_length: <int> | default = 65535]
-
-  # Duration of the distributor aggregation window. Requires aggregation period
-  # to be specified. 0 to disable.
-  # CLI flag: -distributor.aggregation-window
-  [distributor_aggregation_window: <duration> | default = 0s]
-
-  # Duration of the distributor aggregation period. Requires aggregation window
-  # to be specified. 0 to disable.
-  # CLI flag: -distributor.aggregation-period
-  [distributor_aggregation_period: <duration> | default = 0s]
-
-  # The tenant's shard size used by shuffle-sharding. Must be set both on
-  # ingesters and distributors. 0 disables shuffle sharding.
-  # CLI flag: -distributor.ingestion-tenant-shard-size
-  [ingestion_tenant_shard_size: <int> | default = 0]
-
-  # Maximum number of active series of profiles per tenant, per ingester. 0 to
-  # disable.
-  # CLI flag: -ingester.max-local-series-per-tenant
-  [max_local_series_per_tenant: <int> | default = 0]
-
-  # Maximum number of active series of profiles per tenant, across the cluster.
-  # 0 to disable. When the global limit is enabled, each ingester is configured
-  # with a dynamic local limit based on the replication factor and the current
-  # number of healthy ingesters, and is kept updated whenever the number of
-  # ingesters change.
-  # CLI flag: -ingester.max-global-series-per-tenant
-  [max_global_series_per_tenant: <int> | default = 5000]
-
-  # Limit how far back in profiling data can be queried, up until lookback
-  # duration ago. This limit is enforced in the query frontend. If the requested
-  # time range is outside the allowed range, the request will not fail, but will
-  # be modified to only query data within the allowed time range. 0 to disable,
-  # default to 7d.
-  # CLI flag: -querier.max-query-lookback
-  [max_query_lookback: <duration> | default = 1w]
-
-  # The limit to length of queries. 0 to disable.
-  # CLI flag: -querier.max-query-length
-  [max_query_length: <duration> | default = 1d]
-
-  # Maximum number of queries that will be scheduled in parallel by the
-  # frontend.
-  # CLI flag: -querier.max-query-parallelism
-  [max_query_parallelism: <int> | default = 0]
-
-  # Maximum number of flamegraph nodes by default. 0 to disable.
-  # CLI flag: -querier.max-flamegraph-nodes-default
-  [max_flamegraph_nodes_default: <int> | default = 8192]
-
-  # Maximum number of flamegraph nodes allowed. 0 to disable.
-  # CLI flag: -querier.max-flamegraph-nodes-max
-  [max_flamegraph_nodes_max: <int> | default = 0]
-
-  # The tenant's shard size, used when store-gateway sharding is enabled. Value
-  # of 0 disables shuffle sharding for the tenant, that is all tenant blocks are
-  # sharded across all store-gateway replicas.
-  # CLI flag: -store-gateway.tenant-shard-size
-  [store_gateway_tenant_shard_size: <int> | default = 0]
-
-  # Split queries by a time interval and execute in parallel. The value 0
-  # disables splitting by time
-  # CLI flag: -querier.split-queries-by-interval
-  [split_queries_by_interval: <duration> | default = 0s]
-
-  # Delete blocks containing samples older than the specified retention period.
-  # 0 to disable.
-  # CLI flag: -compactor.blocks-retention-period
-  [compactor_blocks_retention_period: <duration> | default = 0s]
-
-  # The number of shards to use when splitting blocks. 0 to disable splitting.
-  # CLI flag: -compactor.split-and-merge-shards
-  [compactor_split_and_merge_shards: <int> | default = 0]
-
-  # Number of stages split shards will be written to. Number of output split
-  # shards is controlled by -compactor.split-and-merge-shards.
-  # CLI flag: -compactor.split-and-merge-stage-size
-  [compactor_split_and_merge_stage_size: <int> | default = 0]
-
-  # Number of groups that blocks for splitting should be grouped into. Each
-  # group of blocks is then split separately. Number of output split shards is
-  # controlled by -compactor.split-and-merge-shards.
-  # CLI flag: -compactor.split-groups
-  [compactor_split_groups: <int> | default = 1]
-
-  # Max number of compactors that can compact blocks for single tenant. 0 to
-  # disable the limit and use all compactors.
-  # CLI flag: -compactor.compactor-tenant-shard-size
-  [compactor_tenant_shard_size: <int> | default = 0]
-
-  # If a partial block (unfinished block without meta.json file) hasn't been
-  # modified for this time, it will be marked for deletion. The minimum accepted
-  # value is 4h0m0s: a lower value will be ignored and the feature disabled. 0
-  # to disable.
-  # CLI flag: -compactor.partial-block-deletion-delay
-  [compactor_partial_block_deletion_delay: <duration> | default = 1d]
-
-  # S3 server-side encryption type. Required to enable server-side encryption
-  # overrides for a specific tenant. If not set, the default S3 client settings
-  # are used.
-  [s3_sse_type: <string> | default = ""]
-
-  # S3 server-side encryption KMS Key ID. Ignored if the SSE type override is
-  # not set.
-  [s3_sse_kms_key_id: <string> | default = ""]
-
-  # S3 server-side encryption KMS encryption context. If unset and the key ID
-  # override is set, the encryption context will not be provided to S3. Ignored
-  # if the SSE type override is not set.
-  [s3_sse_kms_encryption_context: <string> | default = ""]
-
-  # This limits how far into the past profiling data can be ingested. This limit
-  # is enforced in the distributor. 0 to disable, defaults to 1h.
-  # CLI flag: -validation.reject-older-than
-  [reject_older_than: <duration> | default = 1h]
-
-  # This limits how far into the future profiling data can be ingested. This
-  # limit is enforced in the distributor. 0 to disable, defaults to 10m.
-  # CLI flag: -validation.reject-newer-than
-  [reject_newer_than: <duration> | default = 10m]
+# The limits block configures default and per-tenant limits imposed by
+# components.
+[limits: <limits>]
 
 # The query_scheduler block configures the query-scheduler.
 [query_scheduler: <query_scheduler>]
@@ -1920,6 +1752,182 @@ The `memberlist` block configures the Gossip memberlist.
 # VersionTLS11, VersionTLS12, VersionTLS13
 # CLI flag: -memberlist.tls-min-version
 [tls_min_version: <string> | default = ""]
+```
+
+### limits
+
+The `limits` block configures default and per-tenant limits imposed by components.
+
+```yaml
+# Per-tenant ingestion rate limit in sample size per second. Units in MB.
+# CLI flag: -distributor.ingestion-rate-limit-mb
+[ingestion_rate_mb: <float> | default = 4]
+
+# Per-tenant allowed ingestion burst size (in sample size). Units in MB. The
+# burst size refers to the per-distributor local rate limiter, and should be set
+# at least to the maximum profile size expected in a single push request.
+# CLI flag: -distributor.ingestion-burst-size-mb
+[ingestion_burst_size_mb: <float> | default = 2]
+
+# Maximum length accepted for label names.
+# CLI flag: -validation.max-length-label-name
+[max_label_name_length: <int> | default = 1024]
+
+# Maximum length accepted for label value. This setting also applies to the
+# metric name.
+# CLI flag: -validation.max-length-label-value
+[max_label_value_length: <int> | default = 2048]
+
+# Maximum number of label names per series.
+# CLI flag: -validation.max-label-names-per-series
+[max_label_names_per_series: <int> | default = 30]
+
+# Maximum number of sessions per series. 0 to disable.
+# CLI flag: -validation.max-sessions-per-series
+[max_sessions_per_series: <int> | default = 0]
+
+# Maximum size of a profile in bytes. This is based off the uncompressed size. 0
+# to disable.
+# CLI flag: -validation.max-profile-size-bytes
+[max_profile_size_bytes: <int> | default = 4194304]
+
+# Maximum number of samples in a profile. 0 to disable.
+# CLI flag: -validation.max-profile-stacktrace-samples
+[max_profile_stacktrace_samples: <int> | default = 16000]
+
+# Maximum number of labels in a profile sample. 0 to disable.
+# CLI flag: -validation.max-profile-stacktrace-sample-labels
+[max_profile_stacktrace_sample_labels: <int> | default = 100]
+
+# Maximum depth of a profile stacktrace. Profiles are not rejected instead
+# stacktraces are truncated. 0 to disable.
+# CLI flag: -validation.max-profile-stacktrace-depth
+[max_profile_stacktrace_depth: <int> | default = 1000]
+
+# Maximum length of a profile symbol value (labels, function names and
+# filenames, etc...). Profiles are not rejected instead symbol values are
+# truncated. 0 to disable.
+# CLI flag: -validation.max-profile-symbol-value-length
+[max_profile_symbol_value_length: <int> | default = 65535]
+
+# Duration of the distributor aggregation window. Requires aggregation period to
+# be specified. 0 to disable.
+# CLI flag: -distributor.aggregation-window
+[distributor_aggregation_window: <duration> | default = 0s]
+
+# Duration of the distributor aggregation period. Requires aggregation window to
+# be specified. 0 to disable.
+# CLI flag: -distributor.aggregation-period
+[distributor_aggregation_period: <duration> | default = 0s]
+
+# The tenant's shard size used by shuffle-sharding. Must be set both on
+# ingesters and distributors. 0 disables shuffle sharding.
+# CLI flag: -distributor.ingestion-tenant-shard-size
+[ingestion_tenant_shard_size: <int> | default = 0]
+
+# Maximum number of active series of profiles per tenant, per ingester. 0 to
+# disable.
+# CLI flag: -ingester.max-local-series-per-tenant
+[max_local_series_per_tenant: <int> | default = 0]
+
+# Maximum number of active series of profiles per tenant, across the cluster. 0
+# to disable. When the global limit is enabled, each ingester is configured with
+# a dynamic local limit based on the replication factor and the current number
+# of healthy ingesters, and is kept updated whenever the number of ingesters
+# change.
+# CLI flag: -ingester.max-global-series-per-tenant
+[max_global_series_per_tenant: <int> | default = 5000]
+
+# Limit how far back in profiling data can be queried, up until lookback
+# duration ago. This limit is enforced in the query frontend. If the requested
+# time range is outside the allowed range, the request will not fail, but will
+# be modified to only query data within the allowed time range. 0 to disable,
+# default to 7d.
+# CLI flag: -querier.max-query-lookback
+[max_query_lookback: <duration> | default = 1w]
+
+# The limit to length of queries. 0 to disable.
+# CLI flag: -querier.max-query-length
+[max_query_length: <duration> | default = 1d]
+
+# Maximum number of queries that will be scheduled in parallel by the frontend.
+# CLI flag: -querier.max-query-parallelism
+[max_query_parallelism: <int> | default = 0]
+
+# Maximum number of flamegraph nodes by default. 0 to disable.
+# CLI flag: -querier.max-flamegraph-nodes-default
+[max_flamegraph_nodes_default: <int> | default = 8192]
+
+# Maximum number of flamegraph nodes allowed. 0 to disable.
+# CLI flag: -querier.max-flamegraph-nodes-max
+[max_flamegraph_nodes_max: <int> | default = 0]
+
+# The tenant's shard size, used when store-gateway sharding is enabled. Value of
+# 0 disables shuffle sharding for the tenant, that is all tenant blocks are
+# sharded across all store-gateway replicas.
+# CLI flag: -store-gateway.tenant-shard-size
+[store_gateway_tenant_shard_size: <int> | default = 0]
+
+# Split queries by a time interval and execute in parallel. The value 0 disables
+# splitting by time
+# CLI flag: -querier.split-queries-by-interval
+[split_queries_by_interval: <duration> | default = 0s]
+
+# Delete blocks containing samples older than the specified retention period. 0
+# to disable.
+# CLI flag: -compactor.blocks-retention-period
+[compactor_blocks_retention_period: <duration> | default = 0s]
+
+# The number of shards to use when splitting blocks. 0 to disable splitting.
+# CLI flag: -compactor.split-and-merge-shards
+[compactor_split_and_merge_shards: <int> | default = 0]
+
+# Number of stages split shards will be written to. Number of output split
+# shards is controlled by -compactor.split-and-merge-shards.
+# CLI flag: -compactor.split-and-merge-stage-size
+[compactor_split_and_merge_stage_size: <int> | default = 0]
+
+# Number of groups that blocks for splitting should be grouped into. Each group
+# of blocks is then split separately. Number of output split shards is
+# controlled by -compactor.split-and-merge-shards.
+# CLI flag: -compactor.split-groups
+[compactor_split_groups: <int> | default = 1]
+
+# Max number of compactors that can compact blocks for single tenant. 0 to
+# disable the limit and use all compactors.
+# CLI flag: -compactor.compactor-tenant-shard-size
+[compactor_tenant_shard_size: <int> | default = 0]
+
+# If a partial block (unfinished block without meta.json file) hasn't been
+# modified for this time, it will be marked for deletion. The minimum accepted
+# value is 4h0m0s: a lower value will be ignored and the feature disabled. 0 to
+# disable.
+# CLI flag: -compactor.partial-block-deletion-delay
+[compactor_partial_block_deletion_delay: <duration> | default = 1d]
+
+# S3 server-side encryption type. Required to enable server-side encryption
+# overrides for a specific tenant. If not set, the default S3 client settings
+# are used.
+[s3_sse_type: <string> | default = ""]
+
+# S3 server-side encryption KMS Key ID. Ignored if the SSE type override is not
+# set.
+[s3_sse_kms_key_id: <string> | default = ""]
+
+# S3 server-side encryption KMS encryption context. If unset and the key ID
+# override is set, the encryption context will not be provided to S3. Ignored if
+# the SSE type override is not set.
+[s3_sse_kms_encryption_context: <string> | default = ""]
+
+# This limits how far into the past profiling data can be ingested. This limit
+# is enforced in the distributor. 0 to disable, defaults to 1h.
+# CLI flag: -validation.reject-older-than
+[reject_older_than: <duration> | default = 1h]
+
+# This limits how far into the future profiling data can be ingested. This limit
+# is enforced in the distributor. 0 to disable, defaults to 10m.
+# CLI flag: -validation.reject-newer-than
+[reject_newer_than: <duration> | default = 10m]
 ```
 
 ### s3_storage_backend

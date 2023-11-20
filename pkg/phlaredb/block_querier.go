@@ -1181,59 +1181,112 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 		otlog.String("end", model.Time(request.End).Time().String()),
 		otlog.String("selector", request.LabelSelector),
 		otlog.String("profile_id", request.Type.ID),
+		otlog.Object("hints", request.Hints),
 	)
 
-	queriers, err := blockGetter(ctx, model.Time(request.Start), model.Time(request.End), nil)
+	queriers, err := blockGetter(ctx, model.Time(request.Start), model.Time(request.End), request.Hints)
 	if err != nil {
 		return err
 	}
 
-	iters, err := SelectMatchingProfiles(ctx, request, queriers)
-	if err != nil {
-		return err
+	deduplicationNeeded := true
+	if request.Hints != nil && request.Hints.Block != nil {
+		deduplicationNeeded = request.Hints.Block.Deduplication
 	}
 
-	// send batches of profiles to client and filter via bidi stream.
-	selectedProfiles, err := filterProfiles[
-		BidiServerMerge[*ingestv1.MergeProfilesPprofResponse, *ingestv1.MergeProfilesPprofRequest],
-		*ingestv1.MergeProfilesPprofResponse,
-		*ingestv1.MergeProfilesPprofRequest](ctx, iters, defaultBatchSize, stream)
-	if err != nil {
-		return err
-	}
-
-	result := make([]*profile.Profile, 0, len(queriers))
 	var lock sync.Mutex
+	result := make([]*profile.Profile, 0, len(queriers))
 	g, ctx := errgroup.WithContext(ctx)
-	for i, querier := range queriers {
-		i := i
-		querier := querier
-		if len(selectedProfiles[i]) == 0 {
-			continue
+
+	// depending on if new need deduplication or not there are two different code paths.
+	if !deduplicationNeeded {
+		// signal the end of the profile streaming by sending an empty response.
+		sp.LogFields(otlog.String("msg", "no profile streaming as no deduplication needed"))
+		if err = stream.Send(&ingestv1.MergeProfilesPprofResponse{}); err != nil {
+			return err
 		}
-		// Sort profiles for better read locality.
-		// Merge async the result so we can continue streaming profiles.
-		g.Go(util.RecoverPanic(func() error {
-			merge, err := querier.MergePprof(ctx, iter.NewSliceIterator(querier.Sort(selectedProfiles[i])))
-			if err != nil {
-				return err
+
+		// in this path we can just merge the profiles from each block and send the result to the client.
+		for _, querier := range queriers {
+			querier := querier
+			g.Go(util.RecoverPanic(func() error {
+
+				iters, err := querier.SelectMatchingProfiles(ctx, request)
+				if err != nil {
+					return err
+				}
+				defer func() {
+					iters.Close()
+				}()
+
+				profiles, err := iter.Slice(iters)
+				if err != nil {
+					return err
+				}
+
+				if len(profiles) == 0 {
+					return nil
+				}
+
+				merge, err := querier.MergePprof(ctx, iter.NewSliceIterator(querier.Sort(profiles)))
+				if err != nil {
+					return err
+				}
+
+				lock.Lock()
+				result = append(result, merge)
+				lock.Unlock()
+				return nil
+			}))
+		}
+	} else {
+		// in this path we have to go thorugh every profile and deduplicate them.
+		iters, err := SelectMatchingProfiles(ctx, request, queriers)
+		if err != nil {
+			return err
+		}
+
+		// send batches of profiles to client and filter via bidi stream.
+		selectedProfiles, err := filterProfiles[
+			BidiServerMerge[*ingestv1.MergeProfilesPprofResponse, *ingestv1.MergeProfilesPprofRequest],
+			*ingestv1.MergeProfilesPprofResponse,
+			*ingestv1.MergeProfilesPprofRequest](ctx, iters, defaultBatchSize, stream)
+		if err != nil {
+			return err
+		}
+
+		for i, querier := range queriers {
+			querier := querier
+			i := i
+			if len(selectedProfiles[i]) == 0 {
+				continue
 			}
-			lock.Lock()
-			defer lock.Unlock()
-			result = append(result, merge)
-			return nil
-		}))
+			// Sort profiles for better read locality.
+			// Merge async the result so we can continue streaming profiles.
+			g.Go(util.RecoverPanic(func() error {
+				merge, err := querier.MergePprof(ctx, iter.NewSliceIterator(querier.Sort(selectedProfiles[i])))
+				if err != nil {
+					return err
+				}
+				lock.Lock()
+				result = append(result, merge)
+				lock.Unlock()
+				return nil
+			}))
+		}
+
+		// Signals the end of the profile streaming by sending an empty response.
+		// This allows the client to not block other streaming ingesters.
+		sp.LogFields(otlog.String("msg", "signaling the end of the profile streaming"))
+		if err = stream.Send(&ingestv1.MergeProfilesPprofResponse{}); err != nil {
+			return err
+		}
 	}
 
-	// Signals the end of the profile streaming by sending an empty response.
-	// This allows the client to not block other streaming ingesters.
-	if err := stream.Send(&ingestv1.MergeProfilesPprofResponse{}); err != nil {
+	if err = g.Wait(); err != nil {
 		return err
 	}
 
-	if err := g.Wait(); err != nil {
-		return err
-	}
 	if len(result) == 0 {
 		result = append(result, &profile.Profile{})
 	}
