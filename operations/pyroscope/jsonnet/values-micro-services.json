@@ -102,6 +102,9 @@
           }
         }
       }
+    },
+    "extraArgs": {
+      "store-gateway.sharding-ring.replication-factor": "3"
     }
   }
 }

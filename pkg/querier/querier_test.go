@@ -20,12 +20,14 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
@@ -214,7 +216,6 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 		{true, "WithBlockHints"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-
 			req := connect.NewRequest(&querierv1.SelectMergeStacktracesRequest{
 				LabelSelector: `{app="foo"}`,
 				ProfileTypeID: "memory:inuse_space:bytes:space:byte",
@@ -322,220 +323,252 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 }
 
 func Test_SelectMergeProfiles(t *testing.T) {
-	req := connect.NewRequest(&querierv1.SelectMergeProfileRequest{
-		LabelSelector: `{app="foo"}`,
-		ProfileTypeID: "memory:inuse_space:bytes:space:byte",
-		Start:         0,
-		End:           2,
-	})
-	bidi1 := newFakeBidiClientProfiles([]*ingestv1.ProfileSets{
-		{
-			LabelsSets: []*typesv1.Labels{
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
-				},
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
-				},
-			},
-			Profiles: []*ingestv1.SeriesProfile{
-				{Timestamp: 1, LabelIndex: 0},
-				{Timestamp: 2, LabelIndex: 1},
-				{Timestamp: 2, LabelIndex: 0},
-			},
-		},
-	})
-	bidi2 := newFakeBidiClientProfiles([]*ingestv1.ProfileSets{
-		{
-			LabelsSets: []*typesv1.Labels{
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
-				},
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
-				},
-			},
-			Profiles: []*ingestv1.SeriesProfile{
-				{Timestamp: 1, LabelIndex: 1},
-				{Timestamp: 1, LabelIndex: 0},
-				{Timestamp: 2, LabelIndex: 1},
-			},
-		},
-	})
-	bidi3 := newFakeBidiClientProfiles([]*ingestv1.ProfileSets{
-		{
-			LabelsSets: []*typesv1.Labels{
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
-				},
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
-				},
-			},
-			Profiles: []*ingestv1.SeriesProfile{
-				{Timestamp: 1, LabelIndex: 1},
-				{Timestamp: 1, LabelIndex: 0},
-				{Timestamp: 2, LabelIndex: 0},
-			},
-		},
-	})
-	querier, err := New(Config{
-		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-	}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "1"},
-		{Addr: "2"},
-		{Addr: "3"},
-	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
-		q := newFakeQuerier()
-		switch addr {
-		case "1":
-			q.On("MergeProfilesPprof", mock.Anything).Once().Return(bidi1)
-		case "2":
-			q.On("MergeProfilesPprof", mock.Anything).Once().Return(bidi2)
-		case "3":
-			q.On("MergeProfilesPprof", mock.Anything).Once().Return(bidi3)
-		}
-		return q, nil
-	}}, nil, nil, log.NewLogfmtLogger(os.Stdout))
-	require.NoError(t, err)
-	res, err := querier.SelectMergeProfile(context.Background(), req)
-	require.NoError(t, err)
-	require.NotNil(t, res)
-	data, err := proto.Marshal(res.Msg)
-	require.NoError(t, err)
-	actual, err := profile.ParseUncompressed(data)
-	require.NoError(t, err)
+	for _, tc := range []struct {
+		blockSelect bool
+		name        string
+	}{
+		// This tests the interoberabitlity between older ingesters and new queriers
+		{false, "WithoutBlockHints"},
+		{true, "WithBlockHints"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 
-	expected := pprofth.FooBarProfile.Copy()
-	expected.DurationNanos = model.Time(req.Msg.End).UnixNano() - model.Time(req.Msg.Start).UnixNano()
-	expected.TimeNanos = model.Time(req.Msg.End).UnixNano()
-	for _, s := range expected.Sample {
-		s.Value[0] = s.Value[0] * 2
+			req := connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+				LabelSelector: `{app="foo"}`,
+				ProfileTypeID: "memory:inuse_space:bytes:space:byte",
+				Start:         0,
+				End:           2,
+			})
+			bidi1 := newFakeBidiClientProfiles([]*ingestv1.ProfileSets{
+				{
+					LabelsSets: []*typesv1.Labels{
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
+						},
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
+						},
+					},
+					Profiles: []*ingestv1.SeriesProfile{
+						{Timestamp: 1, LabelIndex: 0},
+						{Timestamp: 2, LabelIndex: 1},
+						{Timestamp: 2, LabelIndex: 0},
+					},
+				},
+			})
+			bidi2 := newFakeBidiClientProfiles([]*ingestv1.ProfileSets{
+				{
+					LabelsSets: []*typesv1.Labels{
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
+						},
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
+						},
+					},
+					Profiles: []*ingestv1.SeriesProfile{
+						{Timestamp: 1, LabelIndex: 1},
+						{Timestamp: 1, LabelIndex: 0},
+						{Timestamp: 2, LabelIndex: 1},
+					},
+				},
+			})
+			bidi3 := newFakeBidiClientProfiles([]*ingestv1.ProfileSets{
+				{
+					LabelsSets: []*typesv1.Labels{
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
+						},
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
+						},
+					},
+					Profiles: []*ingestv1.SeriesProfile{
+						{Timestamp: 1, LabelIndex: 1},
+						{Timestamp: 1, LabelIndex: 0},
+						{Timestamp: 2, LabelIndex: 0},
+					},
+				},
+			})
+			querier, err := New(Config{
+				PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+			}, testhelper.NewMockRing([]ring.InstanceDesc{
+				{Addr: "1"},
+				{Addr: "2"},
+				{Addr: "3"},
+			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
+				q := newFakeQuerier()
+				switch addr {
+				case "1":
+					q.mockMergeProfile(bidi1, []string{"a", "d"}, tc.blockSelect)
+				case "2":
+					q.mockMergeProfile(bidi2, []string{"b", "d"}, tc.blockSelect)
+				case "3":
+					q.mockMergeProfile(bidi3, []string{"c", "d"}, tc.blockSelect)
+				}
+				switch addr {
+				case "1":
+					q.On("MergeProfilesPprof", mock.Anything).Once().Return(bidi1)
+				case "2":
+					q.On("MergeProfilesPprof", mock.Anything).Once().Return(bidi2)
+				case "3":
+					q.On("MergeProfilesPprof", mock.Anything).Once().Return(bidi3)
+				}
+				return q, nil
+			}}, nil, nil, log.NewLogfmtLogger(os.Stdout))
+			require.NoError(t, err)
+			res, err := querier.SelectMergeProfile(context.Background(), req)
+			require.NoError(t, err)
+			require.NotNil(t, res)
+			data, err := proto.Marshal(res.Msg)
+			require.NoError(t, err)
+			actual, err := profile.ParseUncompressed(data)
+			require.NoError(t, err)
+
+			expected := pprofth.FooBarProfile.Copy()
+			expected.DurationNanos = model.Time(req.Msg.End).UnixNano() - model.Time(req.Msg.Start).UnixNano()
+			expected.TimeNanos = model.Time(req.Msg.End).UnixNano()
+			for _, s := range expected.Sample {
+				s.Value[0] = s.Value[0] * 2
+			}
+			require.Equal(t, actual, expected)
+
+			var selected []testProfile
+			selected = append(selected, bidi1.kept...)
+			selected = append(selected, bidi2.kept...)
+			selected = append(selected, bidi3.kept...)
+			sort.Slice(selected, func(i, j int) bool {
+				if selected[i].Ts == selected[j].Ts {
+					return phlaremodel.CompareLabelPairs(selected[i].Labels.Labels, selected[j].Labels.Labels) < 0
+				}
+				return selected[i].Ts < selected[j].Ts
+			})
+			require.Len(t, selected, 4)
+			require.Equal(t,
+				[]testProfile{
+					{Ts: 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
+					{Ts: 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
+					{Ts: 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
+					{Ts: 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
+				}, selected)
+		})
 	}
-	require.Equal(t, actual, expected)
-
-	var selected []testProfile
-	selected = append(selected, bidi1.kept...)
-	selected = append(selected, bidi2.kept...)
-	selected = append(selected, bidi3.kept...)
-	sort.Slice(selected, func(i, j int) bool {
-		if selected[i].Ts == selected[j].Ts {
-			return phlaremodel.CompareLabelPairs(selected[i].Labels.Labels, selected[j].Labels.Labels) < 0
-		}
-		return selected[i].Ts < selected[j].Ts
-	})
-	require.Len(t, selected, 4)
-	require.Equal(t,
-		[]testProfile{
-			{Ts: 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
-			{Ts: 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
-			{Ts: 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
-			{Ts: 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
-		}, selected)
 }
 
 func TestSelectSeries(t *testing.T) {
-	req := connect.NewRequest(&querierv1.SelectSeriesRequest{
-		LabelSelector: `{app="foo"}`,
-		ProfileTypeID: "memory:inuse_space:bytes:space:byte",
-		Start:         0,
-		End:           2,
-		Step:          0.001,
-	})
-	bidi1 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
-		{
-			LabelsSets: []*typesv1.Labels{
+	// now := time.Now().UnixMilli()
+	for _, tc := range []struct {
+		blockSelect bool
+		name        string
+	}{
+		// This tests the interoberabitlity between older ingesters and new queriers
+		{false, "WithoutBlockHints"},
+		{true, "WithBlockHints"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := connect.NewRequest(&querierv1.SelectSeriesRequest{
+				LabelSelector: `{app="foo"}`,
+				ProfileTypeID: "memory:inuse_space:bytes:space:byte",
+				Start:         0,
+				End:           2,
+				Step:          0.001,
+			})
+			bidi1 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
+					LabelsSets: []*typesv1.Labels{
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
+						},
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
+						},
+					},
+					Profiles: []*ingestv1.SeriesProfile{
+						{Timestamp: 1, LabelIndex: 0},
+						{Timestamp: 2, LabelIndex: 1},
+						{Timestamp: 2, LabelIndex: 0},
+					},
 				},
+			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+			bidi2 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
+					LabelsSets: []*typesv1.Labels{
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
+						},
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
+						},
+					},
+					Profiles: []*ingestv1.SeriesProfile{
+						{Timestamp: 1, LabelIndex: 1},
+						{Timestamp: 1, LabelIndex: 0},
+						{Timestamp: 2, LabelIndex: 1},
+					},
 				},
-			},
-			Profiles: []*ingestv1.SeriesProfile{
-				{Timestamp: 1, LabelIndex: 0},
-				{Timestamp: 2, LabelIndex: 1},
-				{Timestamp: 2, LabelIndex: 0},
-			},
-		},
-	}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
-	bidi2 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
-		{
-			LabelsSets: []*typesv1.Labels{
+			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+			bidi3 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
+					LabelsSets: []*typesv1.Labels{
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
+						},
+						{
+							Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
+						},
+					},
+					Profiles: []*ingestv1.SeriesProfile{
+						{Timestamp: 1, LabelIndex: 1},
+						{Timestamp: 1, LabelIndex: 0},
+						{Timestamp: 2, LabelIndex: 0},
+					},
 				},
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
-				},
-			},
-			Profiles: []*ingestv1.SeriesProfile{
-				{Timestamp: 1, LabelIndex: 1},
-				{Timestamp: 1, LabelIndex: 0},
-				{Timestamp: 2, LabelIndex: 1},
-			},
-		},
-	}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
-	bidi3 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
-		{
-			LabelsSets: []*typesv1.Labels{
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}},
-				},
-				{
-					Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}},
-				},
-			},
-			Profiles: []*ingestv1.SeriesProfile{
-				{Timestamp: 1, LabelIndex: 1},
-				{Timestamp: 1, LabelIndex: 0},
-				{Timestamp: 2, LabelIndex: 0},
-			},
-		},
-	}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
-	querier, err := New(Config{
-		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-	}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "1"},
-		{Addr: "2"},
-		{Addr: "3"},
-	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
-		q := newFakeQuerier()
-		switch addr {
-		case "1":
-			q.On("MergeProfilesLabels", mock.Anything).Once().Return(bidi1)
-		case "2":
-			q.On("MergeProfilesLabels", mock.Anything).Once().Return(bidi2)
-		case "3":
-			q.On("MergeProfilesLabels", mock.Anything).Once().Return(bidi3)
-		}
-		return q, nil
-	}}, nil, nil, log.NewLogfmtLogger(os.Stdout))
-	require.NoError(t, err)
-	res, err := querier.SelectSeries(context.Background(), req)
-	require.NoError(t, err)
-	// Only 2 results are used since the 3rd not required because of replication.
-	testhelper.EqualProto(t, []*typesv1.Series{
-		{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 2, Timestamp: 1}, {Value: 4, Timestamp: 2}}},
-	}, res.Msg.Series)
-	var selected []testProfile
-	selected = append(selected, bidi1.kept...)
-	selected = append(selected, bidi2.kept...)
-	selected = append(selected, bidi3.kept...)
-	sort.Slice(selected, func(i, j int) bool {
-		if selected[i].Ts == selected[j].Ts {
-			return phlaremodel.CompareLabelPairs(selected[i].Labels.Labels, selected[j].Labels.Labels) < 0
-		}
-		return selected[i].Ts < selected[j].Ts
-	})
-	require.Len(t, selected, 4)
-	require.Equal(t,
-		[]testProfile{
-			{Ts: 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
-			{Ts: 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
-			{Ts: 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
-			{Ts: 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
-		}, selected)
+			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
+			querier, err := New(Config{
+				PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+			}, testhelper.NewMockRing([]ring.InstanceDesc{
+				{Addr: "1"},
+				{Addr: "2"},
+				{Addr: "3"},
+			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
+				q := newFakeQuerier()
+				switch addr {
+				case "1":
+					q.mockMergeLabels(bidi1, []string{"a", "d"}, tc.blockSelect)
+				case "2":
+					q.mockMergeLabels(bidi2, []string{"b", "d"}, tc.blockSelect)
+				case "3":
+					q.mockMergeLabels(bidi3, []string{"c", "d"}, tc.blockSelect)
+				}
+				return q, nil
+			}}, nil, nil, log.NewLogfmtLogger(os.Stdout))
+			require.NoError(t, err)
+			res, err := querier.SelectSeries(context.Background(), req)
+			require.NoError(t, err)
+			// Only 2 results are used since the 3rd not required because of replication.
+			testhelper.EqualProto(t, []*typesv1.Series{
+				{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 2, Timestamp: 1}, {Value: 4, Timestamp: 2}}},
+			}, res.Msg.Series)
+			var selected []testProfile
+			selected = append(selected, bidi1.kept...)
+			selected = append(selected, bidi2.kept...)
+			selected = append(selected, bidi3.kept...)
+			sort.Slice(selected, func(i, j int) bool {
+				if selected[i].Ts == selected[j].Ts {
+					return phlaremodel.CompareLabelPairs(selected[i].Labels.Labels, selected[j].Labels.Labels) < 0
+				}
+				return selected[i].Ts < selected[j].Ts
+			})
+			require.Len(t, selected, 4)
+			require.Equal(t,
+				[]testProfile{
+					{Ts: 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
+					{Ts: 1, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
+					{Ts: 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "bar"}}}},
+					{Ts: 2, Labels: &typesv1.Labels{Labels: []*typesv1.LabelPair{{Name: "app", Value: "foo"}}}},
+				}, selected)
+		})
+	}
 }
 
 type fakeQuerierIngester struct {
@@ -554,6 +587,24 @@ func (f *fakeQuerierIngester) mockMergeStacktraces(bidi *fakeBidiClientStacktrac
 		f.On("BlockMetadata", mock.Anything, mock.Anything).Once().Return(nil, endpointNotExistingErr)
 	}
 	f.On("MergeProfilesStacktraces", mock.Anything).Once().Return(bidi)
+}
+
+func (f *fakeQuerierIngester) mockMergeLabels(bidi *fakeBidiClientSeries, blocks []string, blockSelect bool) {
+	if blockSelect {
+		f.On("BlockMetadata", mock.Anything, mock.Anything).Once().Return(newBlockMeta(blocks...), nil)
+	} else {
+		f.On("BlockMetadata", mock.Anything, mock.Anything).Once().Return(nil, endpointNotExistingErr)
+	}
+	f.On("MergeProfilesLabels", mock.Anything).Once().Return(bidi)
+}
+
+func (f *fakeQuerierIngester) mockMergeProfile(bidi *fakeBidiClientProfiles, blocks []string, blockSelect bool) {
+	if blockSelect {
+		f.On("BlockMetadata", mock.Anything, mock.Anything).Once().Return(newBlockMeta(blocks...), nil)
+	} else {
+		f.On("BlockMetadata", mock.Anything, mock.Anything).Once().Return(nil, endpointNotExistingErr)
+	}
+	f.On("MergeProfilesPprof", mock.Anything).Once().Return(bidi)
 }
 
 func (f *fakeQuerierIngester) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
@@ -761,6 +812,16 @@ func (f *fakeBidiClientProfiles) Receive() (*ingestv1.MergeProfilesPprofResponse
 func (f *fakeBidiClientProfiles) CloseRequest() error  { return nil }
 func (f *fakeBidiClientProfiles) CloseResponse() error { return nil }
 
+func requireFakeMergeProfilesPprof(t *testing.T, n int64, r *profilev1.Profile) {
+	x, err := pprof.FromProfile(pprofth.FooBarProfile)
+	for _, s := range x.Sample {
+		s.Value[0] *= n
+	}
+	x.DurationNanos *= n
+	require.NoError(t, err)
+	require.Equal(t, x, r)
+}
+
 type fakeBidiClientSeries struct {
 	profiles chan *ingestv1.ProfileSets
 	batches  []*ingestv1.ProfileSets
@@ -941,6 +1002,7 @@ func Test_splitQueryToStores(t *testing.T) {
 		now             model.Time
 		start, end      model.Time
 		queryStoreAfter time.Duration
+		plan            blockPlan
 
 		expected storeQueries
 	}{
@@ -1132,6 +1194,28 @@ func Test_splitQueryToStores(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "with a plan we touch all stores at full time window and eleminate later based on the plan",
+			now:             model.TimeFromUnixNano(int64(4 * time.Hour)),
+			start:           model.TimeFromUnixNano(int64(30 * time.Minute)),
+			end:             model.TimeFromUnixNano(int64(45*time.Minute) + int64(3*time.Hour)),
+			queryStoreAfter: 30 * time.Minute,
+			plan:            blockPlan{"replica-a": &ingestv1.BlockHints{Ulids: []string{"block-a", "block-b"}}},
+
+			expected: storeQueries{
+				queryStoreAfter: 0,
+				storeGateway: storeQuery{
+					shouldQuery: true,
+					start:       model.TimeFromUnixNano(int64(30 * time.Minute)),
+					end:         model.TimeFromUnixNano(int64(45*time.Minute) + int64(3*time.Hour)),
+				},
+				ingester: storeQuery{
+					shouldQuery: true,
+					start:       model.TimeFromUnixNano(int64(30 * time.Minute)),
+					end:         model.TimeFromUnixNano(int64(45*time.Minute) + int64(3*time.Hour)),
+				},
+			},
+		},
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
@@ -1139,7 +1223,9 @@ func Test_splitQueryToStores(t *testing.T) {
 				tc.start,
 				tc.end,
 				tc.now,
-				tc.queryStoreAfter)
+				tc.queryStoreAfter,
+				tc.plan,
+			)
 			require.Equal(t, tc.expected, actual)
 		})
 	}

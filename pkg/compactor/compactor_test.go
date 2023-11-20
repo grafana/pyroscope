@@ -1703,8 +1703,8 @@ type blockCompactorMock struct {
 	mock.Mock
 }
 
-func (m *blockCompactorMock) CompactWithSplitting(ctx context.Context, dest string, dirs []string, shardCount uint64) (result []ulid.ULID, _ error) {
-	args := m.Called(ctx, dest, dirs, shardCount)
+func (m *blockCompactorMock) CompactWithSplitting(ctx context.Context, dest string, dirs []string, shardCount, stageSize uint64) (result []ulid.ULID, _ error) {
+	args := m.Called(ctx, dest, dirs, shardCount, stageSize)
 	return args.Get(0).([]ulid.ULID), args.Error(1)
 }
 

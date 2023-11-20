@@ -389,6 +389,7 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 			if err != nil || result == nil {
 				return err
 			}
+			// TODO(kolesnikovae): Use pprof proto.
 			p, err := profile.ParseUncompressed(result)
 			if err != nil {
 				return err

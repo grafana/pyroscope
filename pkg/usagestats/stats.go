@@ -347,6 +347,7 @@ func (s *Statistics) Record(v float64) {
 }
 
 type MultiStatistics struct {
+	m       sync.RWMutex
 	values  map[string]*Statistics
 	keyName string
 }
@@ -399,6 +400,8 @@ func (s *MultiStatistics) String() string {
 }
 
 func (s *MultiStatistics) Value() map[string]interface{} {
+	s.m.RLock()
+	defer s.m.RUnlock()
 	var value map[string]interface{}
 	valuesPerKey := make([]interface{}, 0, len(s.values))
 	for k, v := range s.values {
@@ -416,20 +419,34 @@ func (s *MultiStatistics) Value() map[string]interface{} {
 }
 
 func (s *MultiStatistics) Record(v float64, key string) {
-	keyStats, ok := s.values[key]
-	if !ok {
-		keyStats = &Statistics{
-			min:   atomic.NewFloat64(math.Inf(0)),
-			max:   atomic.NewFloat64(math.Inf(-1)),
-			count: atomic.NewInt64(0),
-			avg:   atomic.NewFloat64(0),
-			mean:  atomic.NewFloat64(0),
-			value: atomic.NewFloat64(0),
-		}
-		s.values[key] = keyStats
-	}
+	keyStats := s.getOrCreateStatistics(key)
 	keyStats.Record(v)
 	s.values["__total__"].Record(v)
+}
+
+func (s *MultiStatistics) getOrCreateStatistics(key string) *Statistics {
+	s.m.RLock()
+	keyStats, ok := s.values[key]
+	s.m.RUnlock()
+	if ok {
+		return keyStats
+	}
+	s.m.Lock()
+	defer s.m.Unlock()
+	keyStats, ok = s.values[key]
+	if ok {
+		return keyStats
+	}
+	keyStats = &Statistics{
+		min:   atomic.NewFloat64(math.Inf(0)),
+		max:   atomic.NewFloat64(math.Inf(-1)),
+		count: atomic.NewInt64(0),
+		avg:   atomic.NewFloat64(0),
+		mean:  atomic.NewFloat64(0),
+		value: atomic.NewFloat64(0),
+	}
+	s.values[key] = keyStats
+	return keyStats
 }
 
 type Counter struct {
@@ -519,6 +536,7 @@ func (c *Counter) Value() map[string]interface{} {
 }
 
 type MultiCounter struct {
+	m       sync.RWMutex
 	values  map[string]*Counter
 	keyName string
 }
@@ -555,29 +573,47 @@ func NewMultiCounter(name string, keyName string) *MultiCounter {
 }
 
 func (c *MultiCounter) updateRate() {
+	c.m.RLock()
+	defer c.m.RUnlock()
 	for _, v := range c.values {
 		v.updateRate()
 	}
 }
 
 func (c *MultiCounter) reset() {
+	c.m.RLock()
+	defer c.m.RUnlock()
 	for _, v := range c.values {
 		v.reset()
 	}
 }
 
 func (c *MultiCounter) Inc(i int64, keyValue string) {
-	v, ok := c.values[keyValue]
-	if !ok {
-		v = &Counter{
-			total:     atomic.NewInt64(0),
-			rate:      atomic.NewFloat64(0),
-			resetTime: time.Now(),
-		}
-		c.values[keyValue] = v
-	}
+	v := c.getOrCreateCounter(keyValue)
 	v.Inc(i)
 	c.values["__total__"].Inc(i)
+}
+
+func (c *MultiCounter) getOrCreateCounter(keyValue string) *Counter {
+	c.m.RLock()
+	v, ok := c.values[keyValue]
+	c.m.RUnlock()
+	if ok {
+		return v
+	}
+	c.m.Lock()
+	defer c.m.Unlock()
+	v, ok = c.values[keyValue]
+	if ok {
+		return v
+	}
+	v = &Counter{
+		total:     atomic.NewInt64(0),
+		rate:      atomic.NewFloat64(0),
+		resetTime: time.Now(),
+	}
+	c.values[keyValue] = v
+	return v
 }
 
 func (c *MultiCounter) String() string {
@@ -586,6 +622,8 @@ func (c *MultiCounter) String() string {
 }
 
 func (c *MultiCounter) Value() map[string]interface{} {
+	c.m.RLock()
+	defer c.m.RUnlock()
 	var value map[string]interface{}
 	valuesPerKey := make([]interface{}, 0, len(c.values))
 	for k, v := range c.values {

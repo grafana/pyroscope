@@ -11,6 +11,7 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 	"golang.org/x/sync/errgroup"
 
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
@@ -65,7 +66,7 @@ func forAllIngesters[T any](ctx context.Context, ingesterQuerier *IngesterQuerie
 }
 
 // forAllPlannedIngesters runs f, in parallel, for all ingesters part of the plan
-func forAllPlannedIngesters[T any](ctx context.Context, ingesterQuerier *IngesterQuerier, plan map[string]*ingestv1.BlockHints, f QueryReplicaWithHintsFn[T, IngesterQueryClient]) ([]ResponseFromReplica[T], error) {
+func forAllPlannedIngesters[T any](ctx context.Context, ingesterQuerier *IngesterQuerier, plan blockPlan, f QueryReplicaWithHintsFn[T, IngesterQueryClient]) ([]ResponseFromReplica[T], error) {
 	replicationSet, err := ingesterQuerier.ring.GetReplicationSetForOperation(readNoExtend)
 	if err != nil {
 		return nil, err
@@ -80,7 +81,7 @@ func forAllPlannedIngesters[T any](ctx context.Context, ingesterQuerier *Ingeste
 	}, replicationSet, f)
 }
 
-func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan map[string]*ingestv1.BlockHints) (*phlaremodel.Tree, error) {
+func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.SelectMergeStacktracesRequest, plan blockPlan) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectTree Ingesters")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
@@ -138,12 +139,77 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 	return selectMergeTree(gCtx, responses)
 }
 
-func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1.MergeProfilesLabelsRequest) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
+func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1.SelectMergeProfileRequest, plan blockPlan) (*googlev1.Profile, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectProfile Ingesters")
+	defer sp.Finish()
+	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	_, err = parser.ParseMetricSelector(req.LabelSelector)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesPprof]
+	if plan != nil {
+		responses, err = forAllPlannedIngesters(ctx, q.ingesterQuerier, plan, func(ctx context.Context, ic IngesterQueryClient, hints *ingestv1.Hints) (clientpool.BidiClientMergeProfilesPprof, error) {
+			return ic.MergeProfilesPprof(ctx), nil
+		})
+	} else {
+		responses, err = forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesPprof, error) {
+			return ic.MergeProfilesPprof(ctx), nil
+		})
+	}
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	// send the first initial request to all ingesters.
+	g, gCtx := errgroup.WithContext(ctx)
+	for idx := range responses {
+		r := responses[idx]
+		hints, ok := plan[r.addr]
+		if !ok && plan != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		}
+
+		g.Go(util.RecoverPanic(func() error {
+			return r.response.Send(&ingestv1.MergeProfilesPprofRequest{
+				Request: &ingestv1.SelectProfilesRequest{
+					LabelSelector: req.LabelSelector,
+					Start:         req.Start,
+					End:           req.End,
+					Type:          profileType,
+					Hints:         &ingestv1.Hints{Block: hints},
+				},
+			})
+		}))
+	}
+	if err = g.Wait(); err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	// merge all profiles
+	return selectMergePprofProfile(gCtx, profileType, responses)
+}
+
+func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1.MergeProfilesLabelsRequest, plan map[string]*ingestv1.BlockHints) ([]ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSeries Ingesters")
 	defer sp.Finish()
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesLabels, error) {
-		return ic.MergeProfilesLabels(ctx), nil
-	})
+	var responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]
+	var err error
+
+	if plan != nil {
+		responses, err = forAllPlannedIngesters(ctx, q.ingesterQuerier, plan, func(ctx context.Context, q IngesterQueryClient, hint *ingestv1.Hints) (clientpool.BidiClientMergeProfilesLabels, error) {
+			return q.MergeProfilesLabels(ctx), nil
+		})
+	} else {
+		responses, err = forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeProfilesLabels, error) {
+			return ic.MergeProfilesLabels(ctx), nil
+		})
+	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -151,8 +217,14 @@ func (q *Querier) selectSeriesFromIngesters(ctx context.Context, req *ingesterv1
 	g, _ := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
+		hints, ok := plan[r.addr]
+		if !ok && plan != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		}
 		g.Go(util.RecoverPanic(func() error {
-			return r.response.Send(req.CloneVT())
+			req := req.CloneVT()
+			req.Request.Hints = &ingestv1.Hints{Block: hints}
+			return r.response.Send(req)
 		}))
 	}
 	if err := g.Wait(); err != nil {

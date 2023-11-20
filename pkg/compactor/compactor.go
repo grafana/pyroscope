@@ -186,6 +186,9 @@ type ConfigProvider interface {
 	// CompactorSplitAndMergeShards returns the number of shards to use when splitting blocks.
 	CompactorSplitAndMergeShards(userID string) int
 
+	// CompactorSplitAndMergeStageSize returns the number of stages split shards will be written to.
+	CompactorSplitAndMergeStageSize(userID string) int
+
 	// CompactorSplitGroups returns the number of groups that blocks used for splitting should
 	// be grouped into. Different groups are then split by different jobs.
 	CompactorSplitGroups(userID string) int

@@ -1021,6 +1021,7 @@ type mockConfigProvider struct {
 	splitAndMergeShards          map[string]int
 	instancesShardSize           map[string]int
 	splitGroups                  map[string]int
+	splitAndMergeStageSize       map[string]int
 	blockUploadEnabled           map[string]bool
 	blockUploadValidationEnabled map[string]bool
 	blockUploadMaxBlockSizeBytes map[string]int64
@@ -1034,6 +1035,7 @@ func newMockConfigProvider() *mockConfigProvider {
 		userRetentionPeriods:         make(map[string]time.Duration),
 		splitAndMergeShards:          make(map[string]int),
 		splitGroups:                  make(map[string]int),
+		splitAndMergeStageSize:       make(map[string]int),
 		blockUploadEnabled:           make(map[string]bool),
 		blockUploadValidationEnabled: make(map[string]bool),
 		blockUploadMaxBlockSizeBytes: make(map[string]int64),
@@ -1052,6 +1054,13 @@ func (m *mockConfigProvider) CompactorBlocksRetentionPeriod(user string) time.Du
 
 func (m *mockConfigProvider) CompactorSplitAndMergeShards(user string) int {
 	if result, ok := m.splitAndMergeShards[user]; ok {
+		return result
+	}
+	return 0
+}
+
+func (m *mockConfigProvider) CompactorSplitAndMergeStageSize(user string) int {
+	if result, ok := m.splitAndMergeStageSize[user]; ok {
 		return result
 	}
 	return 0
