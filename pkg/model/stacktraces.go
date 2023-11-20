@@ -212,7 +212,7 @@ func (t *StacktraceTree) Resolve(dst []int32, id int32) []int32 {
 	if id >= int32(len(t.Nodes)) {
 		return dst
 	}
-	for i := int32(id); i > 0; i = t.Nodes[i].Parent {
+	for i := id; i > 0; i = t.Nodes[i].Parent {
 		n := t.Nodes[i]
 		// If the stack trace is truncated,
 		// we only keep a single stub frame.

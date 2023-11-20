@@ -6,7 +6,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/google/pprof/profile"
+	"github.com/golang/protobuf/proto"
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
@@ -379,8 +379,8 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 	}
 
 	// Collects the results in parallel.
-	results := make([]*profile.Profile, 0, len(iters))
-	s := lo.Synchronize()
+	var lock sync.Mutex
+	var pprofMere pprof.ProfileMerge
 	g, _ := errgroup.WithContext(ctx)
 	for _, iter := range mergeResults {
 		iter := iter
@@ -389,31 +389,25 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 			if err != nil || result == nil {
 				return err
 			}
-			// TODO(kolesnikovae): Use pprof proto.
-			p, err := profile.ParseUncompressed(result)
-			if err != nil {
+			var p googlev1.Profile
+			if err = proto.Unmarshal(result, &p); err != nil {
 				return err
 			}
-			s.Do(func() {
-				results = append(results, p)
-			})
-			return nil
+			lock.Lock()
+			err = pprofMere.Merge(&p)
+			lock.Unlock()
+			return err
 		}))
 	}
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
-	if len(results) == 0 {
-		empty := &profile.Profile{}
-		phlaremodel.SetProfileMetadata(empty, ty)
-		return pprof.FromProfile(empty)
+	p := pprofMere.Profile()
+	if len(p.Sample) == 0 {
+		pprof.SetProfileMetadata(p, ty)
 	}
-	p, err := profile.Merge(results)
-	if err != nil {
-		return nil, err
-	}
-	return pprof.FromProfile(p)
+	return p, nil
 }
 
 type ProfileValue struct {
