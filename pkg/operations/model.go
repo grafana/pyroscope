@@ -8,9 +8,10 @@ import (
 )
 
 type blockQuery struct {
-	From           string `json:"from,omitempty"`
-	To             string `json:"to,omitempty"`
-	IncludeDeleted bool   `json:"includeDeleted,omitempty"`
+	From           string
+	To             string
+	IncludeDeleted bool
+	View           string
 
 	parsedFrom time.Time
 	parsedTo   time.Time
@@ -28,30 +29,42 @@ func readQuery(r *http.Request) *blockQuery {
 	}
 	parsedTo, _ := ParseTime(queryTo)
 	includeDeleted := r.URL.Query().Get("includeDeleted")
+	view := r.URL.Query().Get("view")
+	if view == "" {
+		view = "table"
+	}
 	return &blockQuery{
 		From:           queryFrom,
 		To:             queryTo,
 		IncludeDeleted: includeDeleted != "",
+		View:           view,
 		parsedFrom:     parsedFrom,
 		parsedTo:       parsedTo,
 	}
 }
 
 type blockDetails struct {
-	ID               string            `json:"id,omitempty"`
-	MinTime          string            `json:"minTime,omitempty"`
-	MaxTime          string            `json:"maxTime,omitempty"`
-	Duration         string            `json:"duration,omitempty"`
-	UploadedAt       string            `json:"uploadedAt,omitempty"`
-	CompactorShardID string            `json:"compactorShardID,omitempty"`
-	CompactionLevel  int               `json:"compactionLevel,omitempty"`
-	Size             string            `json:"size,omitempty"`
-	Stats            block.BlockStats  `json:"stats,omitempty"`
-	Labels           map[string]string `json:"labels,omitempty"`
+	ID               string
+	MinTime          string
+	MaxTime          string
+	Duration         int
+	UploadedAt       string
+	CompactorShardID string
+	CompactionLevel  int
+	Size             string
+	Stats            block.BlockStats
+	Labels           map[string]string
 }
 
 type blockGroup struct {
-	MinTime    string          `json:"minTime,omitempty"`
-	Blocks     []*blockDetails `json:"blocks,omitempty"`
-	MinTimeAge string          `json:"minTimeAge,omitempty"`
+	MinTime          time.Time
+	FormattedMinTime string
+	Blocks           []*blockDetails
+	MinTimeAge       string
+}
+
+type blockListResult struct {
+	BlockGroups       []*blockGroup
+	MaxBlocksPerGroup int
+	GroupDuration     int
 }

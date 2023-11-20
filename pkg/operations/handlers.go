@@ -2,6 +2,7 @@ package operations
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"os"
 	"path"
@@ -67,7 +68,7 @@ func (h *Handlers) CreateBlocksHandler() func(http.ResponseWriter, *http.Request
 	}
 }
 
-func filterAndGroupBlocks(index *bucketindex.Index, query *blockQuery) []*blockGroup {
+func filterAndGroupBlocks(index *bucketindex.Index, query *blockQuery) *blockListResult {
 	queryFrom := model.TimeFromUnix(query.parsedFrom.UnixMilli() / 1000)
 	queryTo := model.TimeFromUnix(query.parsedTo.UnixMilli() / 1000)
 	blockGroupMap := make(map[string]*blockGroup)
@@ -82,40 +83,43 @@ func filterAndGroupBlocks(index *bucketindex.Index, query *blockQuery) []*blockG
 
 	for _, blk := range index.Blocks {
 		if _, deleted := deletedBlocks[blk.ID]; !deleted && blk.Within(queryFrom, queryTo) {
-			minTime := blk.MinTime.Time().UTC().Format(time.RFC3339)
-			blkGroup, ok := blockGroupMap[minTime]
+			minTime := blk.MinTime.Time().UTC()
+			formattedMinTime := minTime.Format(time.RFC3339)
+			blkGroup, ok := blockGroupMap[formattedMinTime]
 			if !ok {
 				blkGroup = &blockGroup{
-					MinTime:    minTime,
-					Blocks:     make([]*blockDetails, 0),
-					MinTimeAge: humanize.RelTime(blk.MinTime.Time(), time.Now(), "ago", ""),
+					MinTime:          minTime,
+					FormattedMinTime: formattedMinTime,
+					Blocks:           make([]*blockDetails, 0),
+					MinTimeAge:       humanize.RelTime(blk.MinTime.Time(), time.Now(), "ago", ""),
 				}
 				blockGroups = append(blockGroups, blkGroup)
 			}
 			blkGroup.Blocks = append(blkGroup.Blocks, &blockDetails{
 				ID:               blk.ID.String(),
-				MinTime:          minTime,
+				MinTime:          formattedMinTime,
 				MaxTime:          blk.MaxTime.Time().UTC().Format(time.RFC3339),
-				Duration:         blk.MaxTime.Sub(blk.MinTime).String(),
+				Duration:         int(math.Round(blk.MaxTime.Sub(blk.MinTime).Minutes())),
 				UploadedAt:       blk.GetUploadedAt().UTC().Format(time.RFC3339),
 				CompactionLevel:  blk.CompactionLevel,
 				CompactorShardID: blk.CompactorShardID,
 			})
-			blockGroupMap[minTime] = blkGroup
+			blockGroupMap[formattedMinTime] = blkGroup
 		}
 	}
 
 	slices.SortFunc(blockGroups, func(a, b *blockGroup) bool {
-		return a.MinTime > b.MinTime
+		return a.MinTime.After(b.MinTime)
 	})
 
 	return postProcessBlockGroups(blockGroups)
 }
 
-func postProcessBlockGroups(blockGroups []*blockGroup) []*blockGroup {
-	for i := 0; i < len(blockGroups)-1; i += 1 {
+func postProcessBlockGroups(blockGroups []*blockGroup) *blockListResult {
+	maxBlocksPerGroup := 0
+	for i := 0; i < len(blockGroups); i += 1 {
 		blockGroup := blockGroups[i]
-		if !strings.Contains(blockGroup.MinTime, "0:00Z") {
+		if i < len(blockGroups)-1 && !strings.Contains(blockGroup.FormattedMinTime, "0:00Z") {
 			nextGroup := blockGroups[i+1]
 			nextGroup.Blocks = append(nextGroup.Blocks, blockGroup.Blocks...)
 			blockGroup.Blocks = make([]*blockDetails, 0)
@@ -123,6 +127,9 @@ func postProcessBlockGroups(blockGroups []*blockGroup) []*blockGroup {
 		slices.SortFunc(blockGroup.Blocks, func(a, b *blockDetails) bool {
 			return a.MinTime > b.MinTime
 		})
+		if len(blockGroup.Blocks) > maxBlocksPerGroup {
+			maxBlocksPerGroup = len(blockGroup.Blocks)
+		}
 	}
 
 	finalBlockGroups := make([]*blockGroup, 0)
@@ -131,7 +138,17 @@ func postProcessBlockGroups(blockGroups []*blockGroup) []*blockGroup {
 			finalBlockGroups = append(finalBlockGroups, blockGroup)
 		}
 	}
-	return finalBlockGroups
+	groupDuration := 60
+	if len(finalBlockGroups) > 1 {
+		groupOne := finalBlockGroups[len(finalBlockGroups)-2]
+		groupTwo := finalBlockGroups[len(finalBlockGroups)-1]
+		groupDuration = int(math.Round(groupOne.MinTime.Sub(groupTwo.MinTime).Minutes()))
+	}
+	return &blockListResult{
+		BlockGroups:       finalBlockGroups,
+		MaxBlocksPerGroup: maxBlocksPerGroup,
+		GroupDuration:     groupDuration,
+	}
 }
 
 func (h *Handlers) CreateBlockDetailsHandler() func(http.ResponseWriter, *http.Request) {
@@ -194,7 +211,7 @@ func getBlockDetails(ctx context.Context, id ulid.ULID, fetcher *block.MetaFetch
 		ID:              meta.ULID.String(),
 		MinTime:         meta.MinTime.Time().UTC().Format(time.RFC3339),
 		MaxTime:         meta.MaxTime.Time().UTC().Format(time.RFC3339),
-		Duration:        meta.MaxTime.Sub(meta.MinTime).String(),
+		Duration:        int(math.Round(meta.MaxTime.Sub(meta.MinTime).Minutes())),
 		CompactionLevel: meta.Compaction.Level,
 		Size:            humanize.Bytes(blockSize),
 		Stats:           meta.Stats,

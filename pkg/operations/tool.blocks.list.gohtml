@@ -41,6 +41,20 @@
                             <label class="form-check-label" for="include-deleted">Include deleted blocks</label>
                         </div>
                     </div>
+                    <hr/>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="view" id="view-table" value="table" {{ if eq .Query.View "table" }} checked {{ end }}>
+                        <label class="form-check-label" for="view">
+                            Table
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="view" id="view-grid" value="grid" {{ if eq .Query.View "grid" }} checked {{ end }}>
+                        <label class="form-check-label" for="view-grid">
+                            Grid
+                        </label>
+                    </div>
+                    <hr/>
                     <div class="input-group">
                         <input type="text" class="form-control" placeholder="From" name="queryFrom"
                                value="{{ .Query.From }}">
@@ -51,16 +65,17 @@
             </div>
         </div>
         <div class="row my-3">
-            <h5>{{ len $.SelectedBlocks }} block groups found</h5>
+            <h5>{{ len $.SelectedBlocks.BlockGroups }} block groups found</h5>
+            {{ $user := .User }}
+            {{ if eq .Query.View "table"}}
             <div class="accordion">
-                {{ $user := .User }}
-                {{ range $i, $blockGroup := .SelectedBlocks }}
+                {{ range $i, $blockGroup := .SelectedBlocks.BlockGroups }}
                 <div class="accordion-item">
                     <h2 class="accordion-header">
                         <button class="accordion-button collapsed acc-btn" type="button" data-bs-toggle="collapse"
                                 data-bs-target="#group-{{ $i }}" aria-expanded="true" aria-controls="collapseOne">
                             <span class="title">
-                                {{ $blockGroup.MinTime }}: {{ len $blockGroup.Blocks }} blocks
+                                {{ $blockGroup.FormattedMinTime }}: {{ len $blockGroup.Blocks }} blocks
                             </span>
                             <span class="time">
                                  {{ $blockGroup.MinTimeAge }}
@@ -106,13 +121,48 @@
                 </div>
                 {{ end }}
             </div>
+            {{ else }}
+                <hr/>
+                {{ $groupDuration := .SelectedBlocks.GroupDuration}}
+                {{ $blockWidth := 20 }}
+                {{ $blockSpacing := 2 }}
+                {{ if gt .SelectedBlocks.MaxBlocksPerGroup 32 }}
+                    {{ $blockWidth = 10 }}
+                    {{ $blockSpacing = 1 }}
+                {{ end }}
+                <div>
+                    <div style="position: relative">
+                        {{ range $i, $blockGroup := .SelectedBlocks.BlockGroups }}
+                            {{ range $j, $block := $blockGroup.Blocks }}
+                                {{ if lt $j 80 }}
+                                    {{ $height := mulf 5 (divf $block.Duration $groupDuration) }}
+                                    {{ $heightEm := format "%.1f" $height }}
+                                    {{ $top := addf (mulf (float $i) 5.0) (subf 5.0 $height) }}
+                                    {{ $topEm := format "%.1f" $top }}
+                                    {{ $color := "#d3d3d3" }}
+                                    {{ if eq 2 $block.CompactionLevel }}
+                                        {{ $color = "#ffa500"}}
+                                    {{ else if eq 3 $block.CompactionLevel }}
+                                        {{ $color = "#9acd32"}}
+                                    {{ else if gt $block.CompactionLevel 3 }}
+                                        {{ $color = "#008000"}}
+                                    {{ end }}
+                                <a href="/ops/object-store/tenants/{{ $user }}/blocks/{{ $block.ID }}">
+                                    <button  style="position: absolute; background-color: {{ $color }}; top: {{ $topEm }}em; padding: 0; left: {{ add 20 (mul $j $blockSpacing)}}%; width: {{ $blockWidth }}px; height: {{ $heightEm }}em;"></button>
+                                </a>
+                                {{ end}}
+                            {{ end }}
+                        {{ end }}
+                    </div>
+                </div>
+                {{ range $i, $blockGroup := .SelectedBlocks.BlockGroups }}
+                <div style="position: relative; left: 0; top: {{ add (mul (add 1 $i) 5) -1 }}em; height: 0">
+                    <small>{{ $blockGroup.FormattedMinTime }}: {{ len $blockGroup.Blocks }} blocks</small>
+                </div>
+                {{ end }}
+            {{ end }}
         </div>
     </div>
 </main>
-<footer class="footer mt-auto py-3 bg-light">
-    <div class="container">
-        <small class="text-muted">Status @ {{ .Now }}</small>
-    </div>
-</footer>
 </body>
 </html>
