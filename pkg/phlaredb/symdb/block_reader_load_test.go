@@ -18,7 +18,7 @@ func Test_Load(t *testing.T) {
 	defer b.teardown()
 	require.NoError(t, b.reader.Load(context.Background()))
 
-	expectedFingerprint := pprofFingerprint(s.profiles[0].Profile, 0)
+	expectedFingerprint := pprofFingerprint(s.profiles[0], 0)
 	r := NewResolver(context.Background(), b.reader)
 	defer r.Release()
 	r.AddSamples(0, s.indexed[0][0].Samples)
@@ -26,7 +26,7 @@ func Test_Load(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expectedFingerprint, profileFingerprint(resolved, 0))
 
-	expectedFingerprint = pprofFingerprint(s.profiles[2].Profile, 0)
+	expectedFingerprint = pprofFingerprint(s.profiles[2], 0)
 	r = NewResolver(context.Background(), b.reader)
 	defer r.Release()
 	r.AddSamples(2, s.indexed[2][0].Samples)

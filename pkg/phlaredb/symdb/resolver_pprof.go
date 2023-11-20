@@ -25,8 +25,9 @@ type pprofProtoSymbols struct {
 func (r *pprofProtoSymbols) init(symbols *Symbols, samples schemav1.Samples) {
 	r.symbols = symbols
 	r.samples = &samples
-	r.maxNodes = 16 << 10
-	r.tree = model.NewStacktraceTree(samples.Len() * 4)
+	// We optimistically assume that each stacktrace has only
+	// 2 unique nodes. For pathological cases it may exceed 10.
+	r.tree = model.NewStacktraceTree(samples.Len() * 2)
 }
 
 func (r *pprofProtoSymbols) InsertStacktrace(_ uint32, locations []int32) {
@@ -44,10 +45,9 @@ func (r *pprofProtoSymbols) buildPprof() *googlev1.Profile {
 	// if some of the branches were truncated.
 	r.profile.Sample = make([]*googlev1.Sample, 0, r.cur)
 	tmp := make([]int32, 64)
-	// Now we resolve each and every stack trace in the tree:
-	// a leaf node indicates the stack trace tip.
-	for i, n := range r.tree.Nodes[1:] {
-		if n.FirstChild > 0 {
+	// Now we resolve each and every stack trace in the tree.
+	for i, n := range r.tree.Nodes {
+		if n.Value == 0 {
 			// Not a leaf.
 			continue
 		}
@@ -68,8 +68,7 @@ func (r *pprofProtoSymbols) buildPprof() *googlev1.Profile {
 		for l, v := range tmp {
 			if v < 0 {
 				// Truncated location reference (-1)
-				// needs to be replaced with the stub
-				// we created.
+				// needs to be replaced with a stub.
 				s.LocationId[l] = math.MaxUint64
 			} else {
 				s.LocationId[l] = uint64(v)
@@ -89,23 +88,35 @@ func (r *pprofProtoSymbols) buildPprof() *googlev1.Profile {
 		// therefore need a stub location.
 		r.createStub()
 	}
+	// Create stub sample and period types
+	r.profile.PeriodType = new(googlev1.ValueType)
+	r.profile.SampleType = []*googlev1.ValueType{new(googlev1.ValueType)}
 	return &r.profile
 }
 
 const truncatedNodeName = "other"
 
 func (r *pprofProtoSymbols) createStub() {
-	name := int64(len(r.profile.StringTable))
-	r.profile.StringTable = append(r.profile.StringTable, truncatedNodeName)
-	fn := &googlev1.Function{
-		Id:         uint64(len(r.profile.Function) + 1),
-		Name:       name,
-		SystemName: name,
+	var stubNodeNameIdx int64
+	for i, s := range r.profile.StringTable {
+		if s == truncatedNodeName {
+			stubNodeNameIdx = int64(i)
+			break
+		}
 	}
-	r.profile.Function = append(r.profile.Function, fn)
+	if stubNodeNameIdx == 0 {
+		stubNodeNameIdx = int64(len(r.profile.StringTable))
+		r.profile.StringTable = append(r.profile.StringTable, truncatedNodeName)
+	}
+	stubFn := &googlev1.Function{
+		Id:         uint64(len(r.profile.Function) + 1),
+		Name:       stubNodeNameIdx,
+		SystemName: stubNodeNameIdx,
+	}
+	r.profile.Function = append(r.profile.Function, stubFn)
 	stubLoc := &googlev1.Location{
 		Id:        uint64(len(r.profile.Location) + 1),
-		Line:      []*googlev1.Line{{FunctionId: fn.Id}},
+		Line:      []*googlev1.Line{{FunctionId: stubFn.Id}},
 		MappingId: 1,
 	}
 	r.profile.Location = append(r.profile.Location, stubLoc)
@@ -120,27 +131,43 @@ func (r *pprofProtoSymbols) createStub() {
 
 func (r *pprofProtoSymbols) copyLocations() {
 	r.profile.Location = make([]*googlev1.Location, len(r.symbols.Locations))
-	for _, n := range r.tree.Nodes[1:] {
-		if n.Location >= 0 && r.profile.Location[n.Location] == nil {
-			src := r.symbols.Locations[n.Location]
-			loc := &googlev1.Location{
-				Id:        src.Id,
-				MappingId: uint64(src.MappingId),
-				Address:   src.Address,
-				Line:      make([]*googlev1.Line, len(src.Line)),
-				IsFolded:  src.IsFolded,
-			}
-			for i, line := range src.Line {
-				loc.Line[i] = &googlev1.Line{
-					FunctionId: uint64(line.FunctionId),
-					Line:       int64(line.Line),
-				}
-			}
-			r.profile.Location[n.Location] = loc
+	// Copy locations referenced by nodes.
+	for _, n := range r.tree.Nodes {
+		if n.Location < 0 {
+			// Negative location is a stub for
+			// truncated nodes, which we ignore.
+			continue
 		}
+		if r.profile.Location[n.Location] != nil {
+			// Already copied: it's expected that
+			// the same location is referenced by
+			// multiple nodes.
+			continue
+		}
+		src := r.symbols.Locations[n.Location]
+		// The location identifier is its index
+		// in symbols.Locations, therefore it
+		// matches the node location reference.
+		loc := &googlev1.Location{
+			Id:        uint64(n.Location),
+			MappingId: uint64(src.MappingId),
+			Address:   src.Address,
+			Line:      make([]*googlev1.Line, len(src.Line)),
+			IsFolded:  src.IsFolded,
+		}
+		for i, line := range src.Line {
+			loc.Line[i] = &googlev1.Line{
+				FunctionId: uint64(line.FunctionId),
+				Line:       int64(line.Line),
+			}
+		}
+		r.profile.Location[n.Location] = loc
 	}
+	// Now profile.Location contains copies of locations.
+	// The slice also has nil items, therefore we need to
+	// filter them out.
 	n := len(r.profile.Location)
-	r.rewriteTable = slices.GrowLen(r.rewriteTable, n+1)
+	r.rewriteTable = slices.GrowLen(r.rewriteTable, n)
 	var j int
 	for i := 0; i < len(r.profile.Location); i++ {
 		loc := r.profile.Location[i]
@@ -154,6 +181,9 @@ func (r *pprofProtoSymbols) copyLocations() {
 		j++
 	}
 	r.profile.Location = r.profile.Location[:j]
+	// Next we need to restore references, as the
+	// Sample.LocationId identifiers/indices are
+	// pointing to the old places.
 	for _, s := range r.profile.Sample {
 		for i, loc := range s.LocationId {
 			if loc != math.MaxUint64 {
@@ -170,7 +200,7 @@ func (r *pprofProtoSymbols) copyFunctions() {
 			if r.profile.Function[line.FunctionId] == nil {
 				src := r.symbols.Functions[line.FunctionId]
 				r.profile.Function[line.FunctionId] = &googlev1.Function{
-					Id:         src.Id,
+					Id:         line.FunctionId,
 					Name:       int64(src.Name),
 					SystemName: int64(src.SystemName),
 					Filename:   int64(src.Filename),
@@ -180,7 +210,7 @@ func (r *pprofProtoSymbols) copyFunctions() {
 		}
 	}
 	n := len(r.profile.Function)
-	r.rewriteTable = slices.GrowLen(r.rewriteTable, n+1)
+	r.rewriteTable = slices.GrowLen(r.rewriteTable, n)
 	var j int
 	for i := 0; i < len(r.profile.Function); i++ {
 		fn := r.profile.Function[i]
@@ -207,7 +237,7 @@ func (r *pprofProtoSymbols) copyMappings() {
 		if r.profile.Mapping[loc.MappingId] == nil {
 			src := r.symbols.Mappings[loc.MappingId]
 			r.profile.Mapping[loc.MappingId] = &googlev1.Mapping{
-				Id:              src.Id,
+				Id:              loc.MappingId,
 				MemoryStart:     src.MemoryStart,
 				MemoryLimit:     src.MemoryLimit,
 				FileOffset:      src.FileOffset,
@@ -221,7 +251,7 @@ func (r *pprofProtoSymbols) copyMappings() {
 		}
 	}
 	n := len(r.profile.Mapping)
-	r.rewriteTable = slices.GrowLen(r.rewriteTable, n+1)
+	r.rewriteTable = slices.GrowLen(r.rewriteTable, n)
 	var j int
 	for i := 0; i < len(r.profile.Mapping); i++ {
 		m := r.profile.Mapping[i]
@@ -241,33 +271,22 @@ func (r *pprofProtoSymbols) copyMappings() {
 }
 
 func (r *pprofProtoSymbols) copyStrings() {
-	r.profile.StringTable = make([]string, len(r.symbols.Strings), len(r.symbols.Strings)+1)
-	r.profile.StringTable[0] = ""
+	r.profile.StringTable = make([]string, len(r.symbols.Strings))
 	for _, m := range r.profile.Mapping {
-		if m.Filename != 0 && r.profile.StringTable[m.Filename] == "" {
-			r.profile.StringTable[m.Filename] = r.symbols.Strings[m.Filename]
-		}
-		if m.BuildId != 0 && r.profile.StringTable[m.BuildId] == "" {
-			r.profile.StringTable[m.BuildId] = r.symbols.Strings[m.BuildId]
-		}
+		r.profile.StringTable[m.Filename] = r.symbols.Strings[m.Filename]
+		r.profile.StringTable[m.BuildId] = r.symbols.Strings[m.BuildId]
 	}
 	for _, f := range r.profile.Function {
-		if f.Name != 0 && r.profile.StringTable[f.Name] == "" {
-			r.profile.StringTable[f.Name] = r.symbols.Strings[f.Name]
-		}
-		if f.Filename != 0 && r.profile.StringTable[f.Filename] == "" {
-			r.profile.StringTable[f.Filename] = r.symbols.Strings[f.Filename]
-		}
-		if f.SystemName != 0 && r.profile.StringTable[f.SystemName] == "" {
-			r.profile.StringTable[f.SystemName] = r.symbols.Strings[f.SystemName]
-		}
+		r.profile.StringTable[f.Name] = r.symbols.Strings[f.Name]
+		r.profile.StringTable[f.Filename] = r.symbols.Strings[f.Filename]
+		r.profile.StringTable[f.SystemName] = r.symbols.Strings[f.SystemName]
 	}
 	n := len(r.profile.StringTable)
-	r.rewriteTable = slices.GrowLen(r.rewriteTable, n+1)
+	r.rewriteTable = slices.GrowLen(r.rewriteTable, n)
 	var j int
 	for i := 0; i < len(r.profile.StringTable); i++ {
 		s := r.profile.StringTable[i]
-		if s == "" {
+		if s == "" && i > 0 {
 			continue
 		}
 		r.rewriteTable[i] = uint32(j)

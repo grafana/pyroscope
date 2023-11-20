@@ -143,33 +143,33 @@ func NewStacktraceTree(size int) *StacktraceTree {
 
 const sentinel = -1
 
-func (t *StacktraceTree) Insert(locations []int32, value int64) {
+func (t *StacktraceTree) Insert(locations []int32, value int64) int32 {
 	var (
-		n = &t.Nodes[0]
-		i = n.FirstChild
-		x int32
+		n    = &t.Nodes[0]
+		next = n.FirstChild
+		cur  int32
 	)
 
 	for j := len(locations) - 1; j >= 0; {
 		r := locations[j]
-		if i == sentinel {
+		if next == sentinel {
 			ni := int32(len(t.Nodes))
 			n.FirstChild = ni
 			t.Nodes = append(t.Nodes, StacktraceNode{
-				Parent:      x,
+				Parent:      cur,
 				FirstChild:  sentinel,
 				NextSibling: sentinel,
 				Location:    r,
 			})
-			x = ni
+			cur = ni
 			n = &t.Nodes[ni]
 		} else {
-			x = i
-			n = &t.Nodes[i]
+			cur = next
+			n = &t.Nodes[next]
 		}
 		if n.Location == r {
 			n.Total += value
-			i = n.FirstChild
+			next = n.FirstChild
 			j--
 			continue
 		}
@@ -182,10 +182,11 @@ func (t *StacktraceTree) Insert(locations []int32, value int64) {
 				Location:    r,
 			})
 		}
-		i = n.NextSibling
+		next = n.NextSibling
 	}
 
-	t.Nodes[x].Value += value
+	t.Nodes[cur].Value += value
+	return cur
 }
 
 func (t *StacktraceTree) Truncate(min int64) int {
@@ -206,23 +207,19 @@ func (t *StacktraceTree) Truncate(min int64) int {
 	return c
 }
 
-func (t *StacktraceTree) Resolve(dst []int32, idx int32) []int32 {
+func (t *StacktraceTree) Resolve(dst []int32, id int32) []int32 {
 	dst = dst[:0]
-	if idx >= int32(len(t.Nodes)) {
+	if id >= int32(len(t.Nodes)) {
 		return dst
 	}
-	n := t.Nodes[idx]
-	// If the stack trace is truncated,
-	// we only keep a single stub frame.
-	if n.Location == sentinel {
-		dst = append(dst, sentinel)
-	}
-	for i := idx; i > 0; i = n.Parent {
-		if n = t.Nodes[i]; n.Location > 0 {
-			if n.Location != sentinel {
-				dst = append(dst, n.Location)
-			}
+	for i := int32(id); i > 0; i = t.Nodes[i].Parent {
+		n := t.Nodes[i]
+		// If the stack trace is truncated,
+		// we only keep a single stub frame.
+		if n.Location == sentinel && len(dst) > 0 {
+			continue
 		}
+		dst = append(dst, n.Location)
 	}
 	return dst
 }

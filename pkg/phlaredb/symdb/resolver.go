@@ -190,13 +190,13 @@ func (r *Resolver) Profile() (*profile.Profile, error) {
 	return profile.Merge(profiles)
 }
 
-func (r *Resolver) Pprof() (*googlev1.Profile, error) {
+func (r *Resolver) Pprof(maxNodes int64) (*googlev1.Profile, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Pprof")
 	defer span.Finish()
 	var lock sync.Mutex
 	var p pprof.ProfileMerge
 	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
-		resolved, err := symbols.Pprof(ctx, samples)
+		resolved, err := symbols.Pprof(ctx, samples, maxNodes)
 		if err != nil {
 			return err
 		}
@@ -229,8 +229,8 @@ func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, schemav1.S
 	return g.Wait()
 }
 
-func (r *Symbols) Pprof(ctx context.Context, samples schemav1.Samples) (*googlev1.Profile, error) {
-	var t pprofProtoSymbols
+func (r *Symbols) Pprof(ctx context.Context, samples schemav1.Samples, maxNodes int64) (*googlev1.Profile, error) {
+	t := pprofProtoSymbols{maxNodes: maxNodes}
 	t.init(r, samples)
 	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, &t, samples.StacktraceIDs); err != nil {
 		return nil, err
