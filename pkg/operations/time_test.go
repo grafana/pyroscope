@@ -23,10 +23,10 @@ func TestParseTime(t *testing.T) {
 		{name: "absolute time utc with positive offset", args: "2006-01-02T15:04:05+04:00", want: time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC).Add(-4 * time.Hour)},
 		{name: "absolute time utc with negative offset", args: "2006-01-02T15:04:05-04:00", want: time.Date(2006, 1, 2, 15, 4, 5, 0, time.UTC).Add(4 * time.Hour)},
 		{name: "absolute time wrong format", args: "2006-01-02", wantErr: true},
-		{name: "timestamp seconds", args: "1689341454", want: time.Date(2023, 7, 14, 10, 30, 54, 0, time.Local)},
-		{name: "timestamp milli", args: "1689341454046", want: time.Date(2023, 7, 14, 10, 30, 54, 0, time.Local)},
-		{name: "timestamp micro", args: "1689341454046908", want: time.Date(2023, 7, 14, 10, 30, 54, 0, time.Local)},
-		{name: "timestamp nano", args: "1689341454046908187", want: time.Date(2023, 7, 14, 10, 30, 54, 0, time.Local)},
+		{name: "timestamp seconds", args: "1689341454", want: time.Date(2023, 7, 14, 13, 30, 54, 0, time.UTC)},
+		{name: "timestamp milli", args: "1689341454046", want: time.Date(2023, 7, 14, 13, 30, 54, 0, time.UTC)},
+		{name: "timestamp micro", args: "1689341454046908", want: time.Date(2023, 7, 14, 13, 30, 54, 0, time.UTC)},
+		{name: "timestamp nano", args: "1689341454046908187", want: time.Date(2023, 7, 14, 13, 30, 54, 0, time.UTC)},
 		{name: "timestamp wrong format", args: "16893", wantErr: true},
 	}
 	for _, tt := range tests {
