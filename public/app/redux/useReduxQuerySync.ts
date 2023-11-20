@@ -101,6 +101,5 @@ export function setupReduxQuerySync() {
 
 // setup & unsubscribe on unmount
 export function useReduxQuerySync() {
-  console.log('*** useReduxQuerySync');
   useEffect(setupReduxQuerySync, []);
 }
