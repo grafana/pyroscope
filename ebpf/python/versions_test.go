@@ -54,7 +54,7 @@ func TestGlibcGuess(t *testing.T) {
 	glibcOffsets = map[Version]*GlibcOffsets{}
 	v30 := Version{2, 30, 0}
 	glibcOffsets[v30] = orig[v30]
-	expected := PerfGlibc{
+	expected := PerfLibc{
 		PthreadSize:             orig[v30].PthreadSize,
 		PthreadSpecific1stblock: orig[v30].PthreadSpecific1stblock,
 	}

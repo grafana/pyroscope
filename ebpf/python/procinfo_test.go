@@ -139,17 +139,30 @@ func TestMusl(t *testing.T) {
 	testutil.InitGitSubmodule(t)
 	testcases := []struct {
 		path    string
-		version int
+		version Version
 	}{
-		{testdataPath + "alpine/3.10/ld-musl-x86_64.so.1", 1},
-		{testdataPath + "alpine/3.11/ld-musl-x86_64.so.1", 1},
-		{testdataPath + "alpine/3.12/ld-musl-x86_64.so.1", 1},
-		{testdataPath + "alpine/3.13/ld-musl-x86_64.so.1", 2},
-		{testdataPath + "alpine/3.14/ld-musl-x86_64.so.1", 2},
-		{testdataPath + "alpine/3.15/ld-musl-x86_64.so.1", 2},
-		{testdataPath + "alpine/3.16/ld-musl-x86_64.so.1", 2},
-		{testdataPath + "alpine/3.17/ld-musl-x86_64.so.1", 2},
-		{testdataPath + "alpine/3.18/ld-musl-x86_64.so.1", 2},
+		{testdataPath + "./alpine-arm64/3.8/lib/ld-musl-aarch64.so.1", Version{1, 1, 19}},
+		{testdataPath + "./alpine-arm64/3.11/lib/ld-musl-aarch64.so.1", Version{1, 1, 24}},
+		{testdataPath + "./alpine-arm64/3.9/lib/ld-musl-aarch64.so.1", Version{1, 1, 20}},
+		{testdataPath + "./alpine-arm64/3.12/lib/ld-musl-aarch64.so.1", Version{1, 1, 24}},
+		{testdataPath + "./alpine-arm64/3.10/lib/ld-musl-aarch64.so.1", Version{1, 1, 22}},
+		{testdataPath + "./alpine-arm64/3.15/lib/ld-musl-aarch64.so.1", Version{1, 2, 2}},
+		{testdataPath + "./alpine-arm64/3.13/lib/ld-musl-aarch64.so.1", Version{1, 2, 2}},
+		{testdataPath + "./alpine-arm64/3.17/lib/ld-musl-aarch64.so.1", Version{1, 2, 3}},
+		{testdataPath + "./alpine-arm64/3.16/lib/ld-musl-aarch64.so.1", Version{1, 2, 3}},
+		{testdataPath + "./alpine-arm64/3.18/lib/ld-musl-aarch64.so.1", Version{1, 2, 4}},
+		{testdataPath + "./alpine-arm64/3.14/lib/ld-musl-aarch64.so.1", Version{1, 2, 2}},
+		{testdataPath + "./alpine-amd64/3.8/lib/ld-musl-x86_64.so.1", Version{1, 1, 19}},
+		{testdataPath + "./alpine-amd64/3.11/lib/ld-musl-x86_64.so.1", Version{1, 1, 24}},
+		{testdataPath + "./alpine-amd64/3.9/lib/ld-musl-x86_64.so.1", Version{1, 1, 20}},
+		{testdataPath + "./alpine-amd64/3.12/lib/ld-musl-x86_64.so.1", Version{1, 1, 24}},
+		{testdataPath + "./alpine-amd64/3.10/lib/ld-musl-x86_64.so.1", Version{1, 1, 22}},
+		{testdataPath + "./alpine-amd64/3.15/lib/ld-musl-x86_64.so.1", Version{1, 2, 2}},
+		{testdataPath + "./alpine-amd64/3.13/lib/ld-musl-x86_64.so.1", Version{1, 2, 2}},
+		{testdataPath + "./alpine-amd64/3.17/lib/ld-musl-x86_64.so.1", Version{1, 2, 3}},
+		{testdataPath + "./alpine-amd64/3.16/lib/ld-musl-x86_64.so.1", Version{1, 2, 3}},
+		{testdataPath + "./alpine-amd64/3.18/lib/ld-musl-x86_64.so.1", Version{1, 2, 4}},
+		{testdataPath + "./alpine-amd64/3.14/lib/ld-musl-x86_64.so.1", Version{1, 2, 2}},
 	}
 	for _, td := range testcases {
 		version, err := GetMuslVersionFromFile(td.path)
