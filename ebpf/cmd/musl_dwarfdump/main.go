@@ -75,5 +75,4 @@ var fields = []dwarfdump.Need{
 	{Name: "__pthread", Fields: []dwarfdump.NeedField{
 		{"tsd", ""},
 	}, Size: true},
-	{Name: "pthread_mutex_t", Size: true},
 }

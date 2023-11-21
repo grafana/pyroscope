@@ -124,9 +124,6 @@ type MuslOffsets struct {
 	PthreadMutexTSize int16
 }
 
-const mutexSizeMusl = 40
-const mutexSizeGlibc = 48
-
 func GetUserOffsets(version Version) (*UserOffsets, bool, error) {
 	return getVersionGuessing(version, pyVersions)
 }
