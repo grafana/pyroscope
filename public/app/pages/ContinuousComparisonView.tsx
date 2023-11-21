@@ -180,7 +180,9 @@ function ComparisonApp() {
           title={
             <ChartTitle
               titleKey={
-                isSidesHasSameUnits ? leftSide.metadata.units : undefined
+                isSidesHasSameUnits
+                  ? (leftSide.metadata.name as any)
+                  : undefined
               }
             />
           }
