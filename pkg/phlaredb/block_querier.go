@@ -318,8 +318,8 @@ func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlar
 	return q
 }
 
-func (b *singleBlockQuerier) Profiles() parquet.Rows {
-	return parquet.NewReader(b.profiles.file.File, schemav1.ProfilesSchema)
+func (b *singleBlockQuerier) Profiles() ProfileReader {
+	return b.profiles.file
 }
 
 func (b *singleBlockQuerier) Index() IndexReader {
@@ -1951,7 +1951,7 @@ func (r *parquetReader[M, P]) relPath() string {
 }
 
 func (r *parquetReader[M, P]) columnIter(ctx context.Context, columnName string, predicate query.Predicate, alias string) query.Iterator {
-	index, _ := query.GetColumnIndexByPath(r.file.File, columnName)
+	index, _ := query.GetColumnIndexByPath(r.file.File.Root(), columnName)
 	if index == -1 {
 		return query.NewErrIterator(fmt.Errorf("column '%s' not found in parquet file '%s'", columnName, r.relPath()))
 	}
