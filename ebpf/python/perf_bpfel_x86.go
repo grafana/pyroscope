@@ -12,7 +12,9 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-type PerfGlibc struct {
+type PerfLibc struct {
+	Musl                    bool
+	_                       [1]byte
 	PthreadSize             int16
 	PthreadSpecific1stblock int16
 }
@@ -56,10 +58,7 @@ type PerfPyPidData struct {
 		Minor uint32
 		Patch uint32
 	}
-	Libc struct {
-		Musl  int16
-		Glibc PerfGlibc
-	}
+	Libc   PerfLibc
 	_      [2]byte
 	TssKey int32
 }

@@ -3,9 +3,7 @@ package python
 import (
 	"fmt"
 	"io"
-	"os"
 	"regexp"
-	"sort"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -53,88 +51,6 @@ func GetPythonPatchVersion(r io.Reader, v Version) (Version, error) {
 	}
 	res.Patch = patch
 	return res, nil
-}
-
-var reMuslVersion = regexp.MustCompile("1\\.([12])\\.(\\d+)\\D")
-
-func GetMuslVersionFromFile(f string) (int, error) {
-	muslFD, err := os.Open(f)
-	if err != nil {
-		return 0, fmt.Errorf("couldnot determine musl version %s %w", f, err)
-	}
-	defer muslFD.Close()
-	return GetMuslVersionFromReader(muslFD)
-}
-
-// GetMuslVersionFromReader return minor musl version. For example 1 for 1.1.44 and 2 for 1.2.4
-func GetMuslVersionFromReader(r io.Reader) (int, error) {
-	m, err := rgrep(r, reMuslVersion)
-	if err != nil {
-		return 0, fmt.Errorf("rgrep python version  %w", err)
-	}
-	minor, err := strconv.Atoi(string(m[1]))
-	if err != nil {
-		return 0, fmt.Errorf("error trying to grep musl minor version %s, %w", string(m[0]), err)
-	}
-	patch, err := strconv.Atoi(string(m[2]))
-	if err != nil {
-		return 0, fmt.Errorf("error trying to grep musl patch version %s, %w", string(m[0]), err)
-	}
-	if minor == 1 {
-		return 1, nil
-	}
-	if patch <= 4 {
-		return 2, nil
-	}
-	return 2, nil // let's hope it won't change in patch fix
-}
-
-var reGlibcVersion = regexp.MustCompile("glibc 2\\.(\\d+)\\D")
-
-func GetGlibcVersionFromFile(f string) (Version, error) {
-	muslFD, err := os.Open(f)
-	if err != nil {
-		return Version{}, fmt.Errorf("couldnot determine glibc version %s %w", f, err)
-	}
-	defer muslFD.Close()
-	return GetGlibcVersionFromReader(muslFD)
-}
-
-func GetGlibcVersionFromReader(r io.Reader) (Version, error) {
-	m, err := rgrep(r, reGlibcVersion)
-	if err != nil {
-		return Version{}, fmt.Errorf("rgrep python version  %w", err)
-	}
-	minor, err := strconv.Atoi(string(m[1]))
-	if err != nil {
-		return Version{}, fmt.Errorf("error trying to grep musl minor version %s, %w", string(m[0]), err)
-	}
-
-	return Version{Major: 2, Minor: minor}, nil
-}
-
-func GetGlibcOffsets(version Version) (PerfGlibc, bool, error) {
-	offsets, ok := glibcOffsets[version]
-	if ok {
-		return PerfGlibc{
-			PthreadSize:             offsets.PthreadSize,
-			PthreadSpecific1stblock: offsets.PthreadSpecific1stblock,
-		}, false, nil
-	}
-	versions := make([]Version, 0, len(glibcOffsets))
-	for v := range glibcOffsets {
-		versions = append(versions, v)
-	}
-	sort.Slice(versions, func(i, j int) bool {
-		return versions[i].Compare(&versions[j]) < 0
-	})
-	if version.Compare(&versions[len(versions)-1]) > 0 {
-		return PerfGlibc{
-			PthreadSize:             glibcOffsets[versions[len(versions)-1]].PthreadSize,
-			PthreadSpecific1stblock: glibcOffsets[versions[len(versions)-1]].PthreadSpecific1stblock,
-		}, true, nil
-	}
-	return PerfGlibc{}, false, fmt.Errorf("unsupported glibc version %v", version)
 }
 
 func rgrep(r io.Reader, re *regexp.Regexp) ([][]byte, error) {
@@ -203,16 +119,26 @@ type GlibcOffsets struct {
 }
 
 type MuslOffsets struct {
-	PthreadTsd  int16
-	PthreadSize int16
+	PthreadTsd        int16
+	PthreadSize       int16
+	PthreadMutexTSize int16
 }
 
+const mutexSizeMusl = 40
+const mutexSizeGlibc = 48
+
 func GetUserOffsets(version Version) (*UserOffsets, bool, error) {
-	offsets, ok := pyVersions[version]
+	return getVersionGuessing(version, pyVersions)
+}
+
+// getVersionGuessing returns offsets for a given version. If version is not found, it tries to guess the closest one
+// within the same major.minor version. If that fails, it returns an error.
+func getVersionGuessing[T any](version Version, m map[Version]*T) (*T, bool, error) {
+	offsets, ok := m[version]
 	patchGuess := false
 	if !ok {
 		foundVersion := Version{}
-		for v, o := range pyVersions {
+		for v, o := range m {
 			if v.Major == version.Major && v.Minor == version.Minor {
 				if offsets == nil {
 					offsets = o
@@ -224,7 +150,7 @@ func GetUserOffsets(version Version) (*UserOffsets, bool, error) {
 			}
 		}
 		if offsets == nil {
-			return nil, false, fmt.Errorf("unsupported python version %v ", version)
+			return nil, false, fmt.Errorf("unsupported version %v ", version)
 		}
 		patchGuess = true
 	}

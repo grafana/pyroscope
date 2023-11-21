@@ -257,6 +257,7 @@ func typeName(need Need) string {
 	n = strings.TrimSuffix(n, "_")
 	n = strings.TrimSuffix(n, "__")
 	n = strings.TrimPrefix(n, "__")
+	n = strings.TrimPrefix(n, "_")
 	parts := strings.Split(n, "_")
 	for i := range parts {
 		p1 := parts[i][:1]

@@ -27,7 +27,7 @@ EBPF_RUN_IN_VM ?= 0
 
 .phony: python/dwarfdump
 python/dwarfdump:
-	git submodule update --init --recursive
+	#git submodule update --init --recursive
 
 	echo "//go:build amd64 && linux" > python/python_offsets_gen_amd64.go
 	go run cmd/python_dwarfdump/main.go $(shell find testdata/python-x64 -name libpy\*.so\*) \
@@ -94,7 +94,7 @@ $(TMP_EBPF)/vm_image_arm64: Makefile
 		pyroscope/ebpf-test-vm-image:debian-5.10-aarch64 \
 		cp debian-5.10-aarch64.qcow2.zst vmlinuz-5.10.0-26-arm64 initrd.img-5.10.0-26-arm64 /mnt/images
 	zstd -f -d $(TMP_EBPF)/debian-5.10-aarch64.qcow2.zst
-	mv $(TMP_EBPF)/debian-5.10-aarch64.qcow2.zst $(TMP_EBPF)/vm_image_arm64
+	mv -f $(TMP_EBPF)/debian-5.10-aarch64.qcow2.zst $(TMP_EBPF)/vm_image_arm64
 
 
 .PHONY: go/test/amd64

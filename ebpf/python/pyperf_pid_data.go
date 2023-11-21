@@ -83,32 +83,15 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 	data.Version.Major = uint32(version.Major)
 	data.Version.Minor = uint32(version.Minor)
 	data.Version.Patch = uint32(version.Patch)
-	data.TssKey, err = GetTSSKey(pid, version, offsets, autoTLSkeyAddr, pyRuntimeAddr)
+	data.Libc, err = GetLibc(l, pid, info)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get python process libc %w", err)
+	}
+	data.TssKey, err = GetTSSKey(pid, version, offsets, autoTLSkeyAddr, pyRuntimeAddr, &data.Libc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get python tss key %w", err)
 	}
-	if info.Musl != nil {
-		muslPath := fmt.Sprintf("/proc/%d/root%s", pid, info.Musl[0].Pathname)
-		muslVersion, err := GetMuslVersionFromFile(muslPath)
-		if err != nil {
-			return nil, fmt.Errorf("couldnot determine musl version %s %w", muslPath, err)
-		}
-		data.Libc.Musl = int16(muslVersion)
-	}
-	if info.Glibc != nil {
-		glibcPath := fmt.Sprintf("/proc/%d/root%s", pid, info.Glibc[0].Pathname)
-		glibcVersion, err := GetGlibcVersionFromFile(glibcPath)
-		if err != nil {
-			return nil, fmt.Errorf("couldnot determine glibc version %s %w", glibcPath, err)
-		}
-		data.Libc.Glibc, guess, err = GetGlibcOffsets(glibcVersion)
-		if err != nil {
-			return nil, fmt.Errorf("unsupported glibc version %w %+v", err, glibcVersion)
-		}
-		if guess {
-			level.Warn(l).Log("msg", "glibc offsets were not found, but guessed from the closest version")
-		}
-	}
+
 	var vframeCode, vframeBack, vframeLocalPlus int16
 	if version.Compare(Py311) >= 0 {
 		if version.Compare(Py313) >= 0 {

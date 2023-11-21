@@ -54,7 +54,8 @@ func GetProcInfo(s *bufio.Scanner) (ProcInfo, error) {
 
 				i += 1
 			}
-			if strings.Contains(m.Pathname, "/lib/ld-musl-x86_64.so.1") {
+			if strings.Contains(m.Pathname, "/lib/ld-musl-x86_64.so.1") ||
+				strings.Contains(m.Pathname, "/lib/ld-musl-aarch64.so.1") {
 				res.Musl = append(res.Musl, m)
 			}
 			if strings.HasSuffix(m.Pathname, "/libc.so.6") {
