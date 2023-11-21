@@ -44,3 +44,21 @@ jobs:
         run: sudo apt-get -y install qemu-system-aarch64
       - name: Test
         run: EBPF_RUN_IN_VM=1 make -C ./ebpf go/test/arm64
+
+# just check if custom runners are faster
+#  ubuntu-latest-16-cores
+  test_ebpf_arm64_qemu_grafana_runners:
+    runs-on: ubuntu-latest-16-cores
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21.3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Install qemu
+        run: sudo apt-get -y install qemu-system-aarch64
+      - name: Test
+        run: EBPF_RUN_IN_VM=1 make -C ./ebpf go/test/arm64
