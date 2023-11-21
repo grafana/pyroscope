@@ -26,6 +26,9 @@ func newBucketClient(cfg Config, name string, logger log.Logger, factory func(lo
 	bucketConfig.MaxRetries = cfg.MaxRetries
 	bucketConfig.UserAssignedID = cfg.UserAssignedID
 
+	// do not delay retries
+	bucketConfig.PipelineConfig.RetryDelay = -1
+
 	if cfg.Endpoint != "" {
 		// azure.DefaultConfig has the default Endpoint, overwrite it only if a different one was explicitly provided.
 		bucketConfig.Endpoint = cfg.Endpoint

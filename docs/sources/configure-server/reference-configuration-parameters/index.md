@@ -2078,7 +2078,7 @@ The `azure_storage_backend` block configures the connection to Azure object stor
 
 # Number of retries for recoverable errors
 # CLI flag: -storage.azure.max-retries
-[max_retries: <int> | default = 20]
+[max_retries: <int> | default = 3]
 
 # User assigned managed identity. If empty, then System assigned identity is
 # used.
