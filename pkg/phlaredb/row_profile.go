@@ -13,7 +13,7 @@ import (
 )
 
 type RowProfile struct {
-	Timestamp int64
+	// Timestamp int64
 
 	Labels      phlaremodel.Labels
 	Fingerprint model.Fingerprint
@@ -24,22 +24,19 @@ func (r RowProfile) RowNumber() int64 {
 	return r.IteratorResult.RowNumber[0]
 }
 
-type LabelGrouper interface {
-	ForSeries()
-}
-
 type RowProfileIterator struct {
 	rows iter.SeekIterator[*query.IteratorResult, query.RowNumberWithDefinitionLevel]
 
+	includeLbls     bool
 	currSeriesIndex int64
-	series          map[int64]struct {
-		labels phlaremodel.Labels
-		fp     model.Fingerprint
-	}
+	series          map[int64]labelsInfo
 }
 
 func (it *RowProfileIterator) Next() bool {
-	return it.rows.Next()
+	if it.rows.Next() {
+		return true
+	}
+	return false
 }
 
 func (it *RowProfileIterator) At() RowProfile {
@@ -54,25 +51,51 @@ func (it *RowProfileIterator) Close() error {
 	return it.rows.Close()
 }
 
+type LabelFilter func(name string) bool
+
+var AllLabel = func(name string) bool { return false }
+
+type labelsInfo struct {
+	fp  model.Fingerprint
+	lbs phlaremodel.Labels
+}
+
 // . todo custom parsing of labels  and grouping and skipping
-func SelectProfiles(ctx context.Context, b BlockReader, matchers []*labels.Matcher, start, end model.Time, columns []string) (iter.Iterator[RowProfile], error) {
+func SelectProfiles(ctx context.Context, b BlockReader, matchers []*labels.Matcher, start, end model.Time, f LabelFilter) (iter.Iterator[RowProfile], error) {
 	postings, err := PostingsForMatchers(b.Index(), nil, matchers...)
 	if err != nil {
 		return nil, err
 	}
 
 	var (
-		chks       = make([]index.ChunkMeta, 1)
-		lblsPerRef = make(map[int64]struct{})
+		chks        = make([]index.ChunkMeta, 1)
+		lblsPerRef  = make(map[int64]labelsInfo)
+		lbls        = make(phlaremodel.Labels, 0, 6)
+		includeLbls = f != nil
+		fp          uint64
 	)
 
 	// get all relevant labels/fingerprints
 	for postings.Next() {
-		_, err := b.Index().Series(postings.At(), nil, &chks)
+		if includeLbls {
+			// todo: include filter in index's Series call
+			fp, err = b.Index().Series(postings.At(), &lbls, &chks)
+		} else {
+			fp, err = b.Index().Series(postings.At(), nil, &chks)
+		}
 		if err != nil {
 			return nil, err
 		}
-		lblsPerRef[int64(chks[0].SeriesIndex)] = struct{}{}
+		_, ok := lblsPerRef[int64(chks[0].SeriesIndex)]
+		if !ok {
+			info := labelsInfo{}
+			if includeLbls {
+				info.lbs = make(phlaremodel.Labels, len(lbls))
+				copy(info.lbs, lbls)
+			}
+			info.fp = model.Fingerprint(fp)
+			lblsPerRef[int64(chks[0].SeriesIndex)] = info
+		}
 	}
 
 	lhs, err := columnIter(ctx, b.Profiles(), "SeriesIndex", query.NewMapPredicate(lblsPerRef))
@@ -90,6 +113,9 @@ func SelectProfiles(ctx context.Context, b BlockReader, matchers []*labels.Match
 			lhs,
 			rhs,
 		),
+		includeLbls:     includeLbls,
+		currSeriesIndex: -1,
+		series:          lblsPerRef,
 	}, nil
 }
 
@@ -104,13 +130,4 @@ func columnIter(ctx context.Context, reader ProfileReader, columnName string, pr
 // func (ps *ProfileSelector) WithColumn(, new func(v parquet.Value)) *ProfileSelector {
 // 	ps.column = append(ps.column, column)
 // 	return ps
-// }
-
-// func (r *parquetReader[M, P]) columnIter(ctx context.Context, columnName string, predicate query.Predicate, alias string) query.Iterator {
-// 	index, _ := query.GetColumnIndexByPath(r.file.File, columnName)
-// 	if index == -1 {
-// 		return query.NewErrIterator(fmt.Errorf("column '%s' not found in parquet file '%s'", columnName, r.relPath()))
-// 	}
-// 	ctx = query.AddMetricsToContext(ctx, r.metrics.query)
-// 	return query.NewSyncIterator(ctx, r.file.RowGroups(), index, columnName, 1000, predicate, alias)
 // }

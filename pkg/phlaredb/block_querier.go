@@ -531,11 +531,6 @@ func (b *singleBlockQuerier) Bounds() (model.Time, model.Time) {
 	return b.meta.MinTime, b.meta.MaxTime
 }
 
-type labelsInfo struct {
-	fp  model.Fingerprint
-	lbs phlaremodel.Labels
-}
-
 type Profile interface {
 	StacktracePartition() uint64
 	Timestamp() model.Time
