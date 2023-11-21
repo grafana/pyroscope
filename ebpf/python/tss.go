@@ -65,6 +65,8 @@ func getPyTssKey(pid uint32, version Version, offsets *UserOffsets, pyRuntime ui
 		pkey = int64(pyRuntime) + int64(offsets.PyRuntimeState_gilstate+offsets.Gilstate_runtime_state_autoTSSkey)
 		if libc.Musl {
 			// _gil_runtime_state has two fields of type  pthread_mutex_t which are different sizes in musl and glibc
+			// for now try to fix it as this is the only difference, in the future we may need to generate separate offsets
+			// for musl/glibc pythons
 			pkey -= 2 * (mutexSizeGlibc - mutexSizeMusl)
 		}
 	}
