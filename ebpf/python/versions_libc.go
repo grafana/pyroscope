@@ -102,9 +102,6 @@ func GetLibc(l log2.Logger, pid uint32, info ProcInfo) (PerfLibc, error) {
 		if guess {
 			_ = level.Warn(l).Log("msg", "musl offsets were not found, but guessed from the closest version")
 		}
-		if mo.PthreadMutexTSize != 40 {
-			return PerfLibc{}, fmt.Errorf("unexpected musl pthread_mutex_t size %d", mo.PthreadMutexTSize)
-		}
 		res.PthreadSize = mo.PthreadSize
 		res.PthreadSpecific1stblock = mo.PthreadTsd
 		_ = level.Debug(l).Log("msg", "musl offsets", "offsets", fmt.Sprintf("%+v", res))

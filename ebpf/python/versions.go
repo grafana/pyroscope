@@ -119,9 +119,8 @@ type GlibcOffsets struct {
 }
 
 type MuslOffsets struct {
-	PthreadTsd        int16
-	PthreadSize       int16
-	PthreadMutexTSize int16
+	PthreadTsd  int16
+	PthreadSize int16
 }
 
 func GetUserOffsets(version Version) (*UserOffsets, bool, error) {
