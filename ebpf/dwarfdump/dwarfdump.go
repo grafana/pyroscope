@@ -254,7 +254,9 @@ func typeName(need Need) string {
 	if need.PrettyName != "" {
 		n = need.PrettyName
 	}
-	n = strings.TrimPrefix(n, "_")
+	n = strings.TrimSuffix(n, "_")
+	n = strings.TrimSuffix(n, "__")
+	n = strings.TrimPrefix(n, "__")
 	parts := strings.Split(n, "_")
 	for i := range parts {
 		p1 := parts[i][:1]

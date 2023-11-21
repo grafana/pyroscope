@@ -52,6 +52,18 @@ glibc/dwarfdump:
 	go run cmd/glibc_dwarfdump/main.go $(shell find testdata/glibc-arm64 -name libc.so.6 ) >> python/glibc_offsets_gen_arm64.go
 	go fmt python/glibc_offsets_gen_arm64.go
 
+.phony: musl/dwarfdump
+musl/dwarfdump:
+	git submodule update --init --recursive
+
+	echo "//go:build amd64 && linux" > python/musl_offsets_gen_amd64.go
+	go run cmd/musl_dwarfdump/main.go $(shell find testdata/alpine-amd64 -name ld-musl-x86_64.so.1.debug ) >> python/musl_offsets_gen_amd64.go
+	go fmt python/musl_offsets_gen_amd64.go
+
+	echo "//go:build arm64 && linux" > python/musl_offsets_gen_arm64.go
+	go run cmd/musl_dwarfdump/main.go $(shell find testdata/alpine-arm64 -name ld-musl-aarch64.so.1.debug) >> python/musl_offsets_gen_arm64.go
+	go fmt python/musl_offsets_gen_arm64.go
+
 .phony: bpf/gen
 bpf/gen:
 	go generate pyrobpf/gen.go
@@ -87,11 +99,11 @@ $(TMP_EBPF)/vm_image_arm64: Makefile
 
 .PHONY: go/test/amd64
 go/test/amd64: $(TMP_EBPF)/vm_image_amd64 ebpf.amd64.test
-	bash ../tools/ebpf_vmrun_amd64.sh $(TMP_EBPF)/vm_image_amd64 ebpf.amd64.test
+	bash vmrun_amd64.sh $(TMP_EBPF)/vm_image_amd64 ebpf.amd64.test
 
 .PHONY: go/test/arm64
 go/test/arm64: $(TMP_EBPF)/vm_image_arm64 ebpf.arm64.test
-	bash ../tools/ebpf_vmrun_arm64.sh \
+	bash vmrun_arm64.sh \
 		$(TMP_EBPF)/vmlinuz-5.10.0-26-arm64 \
 		$(TMP_EBPF)/initrd.img-5.10.0-26-arm64  \
 		$(TMP_EBPF)/debian-5.10-aarch64.qcow2 \

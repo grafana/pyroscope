@@ -32,7 +32,7 @@ fi
 connect="ssh -p 2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@localhost"
 
 kill_vm() {
-  pkill qemu-system-aarch64 || true
+  pkill qemu-system || true
 }
 
 run_vm() {

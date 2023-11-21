@@ -202,6 +202,11 @@ type GlibcOffsets struct {
 	PthreadKeyDataSize      int16
 }
 
+type MuslOffsets struct {
+	PthreadTsd  int16
+	PthreadSize int16
+}
+
 func GetUserOffsets(version Version) (*UserOffsets, bool, error) {
 	offsets, ok := pyVersions[version]
 	patchGuess := false
