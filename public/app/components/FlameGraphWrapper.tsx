@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {createTheme, DataFrame, GrafanaTheme2} from '@grafana/data';
 import { FlameGraph } from '@grafana/flamegraph';
 import { Button, Tooltip } from '@grafana/ui';
@@ -141,6 +141,15 @@ type MemoGraphProps = {
 }
 
 const MemoGraph = React.memo(function MemoGraph(props: MemoGraphProps) {
+  const prevGetTheme = usePrevious(props.getTheme)
+  console.log('prevGetTheme', prevGetTheme === props.getTheme);
+  const prevData = usePrevious(props.data)
+  console.log('prevData', prevData === props.data);
+  const prevExtraHeaderElements = usePrevious(props.extraHeaderElements)
+  console.log('prevExtraHeader', prevExtraHeaderElements === props.extraHeaderElements);
+  const prevVertical = usePrevious(props.vertical);
+  console.log('prevVertical', prevVertical === props.vertical);
+
 
   console.log('render memoGraph');
   return (
@@ -152,3 +161,13 @@ const MemoGraph = React.memo(function MemoGraph(props: MemoGraphProps) {
     />
   );
 });
+
+function usePrevious<T>(state: T): T | undefined {
+  const ref = useRef<T>();
+
+  useEffect(() => {
+    ref.current = state;
+  });
+
+  return ref.current;
+}
