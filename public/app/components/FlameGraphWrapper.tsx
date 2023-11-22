@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { createTheme } from '@grafana/data';
 import { FlameGraph } from '@grafana/flamegraph';
 import { Button, Tooltip } from '@grafana/ui';
@@ -29,6 +29,15 @@ type Props = {
 export function FlameGraphWrapper(props: Props) {
   const { colorMode } = useColorMode();
   const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(props.profile);
+
+  const theme = useMemo(() => {
+    return createTheme({ colors: { mode: colorMode } });
+  }, [colorMode]);
+
+  const getTheme = useCallback(() => {
+    return theme;
+  }, [theme]);
+
 
   if (isGrafanaFlamegraphEnabled) {
     const dataFrame = props.profile
@@ -79,7 +88,7 @@ export function FlameGraphWrapper(props: Props) {
       <>
         {props.timelineEl}
         <FlameGraph
-          getTheme={() => createTheme({ colors: { mode: colorMode } })}
+          getTheme={getTheme}
           data={dataFrame}
           extraHeaderElements={extraEl}
           vertical={props.vertical}
