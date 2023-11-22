@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import {createTheme, DataFrame, GrafanaTheme2} from '@grafana/data';
+import { createTheme, DataFrame, GrafanaTheme2 } from '@grafana/data';
 import { FlameGraph } from '@grafana/flamegraph';
 import { Button, Tooltip } from '@grafana/ui';
 
@@ -25,6 +25,8 @@ type Props = {
   timelineEl?: React.ReactNode;
   diff?: boolean;
 };
+
+
 
 export function FlameGraphWrapper(props: Props) {
   const { colorMode } = useColorMode();
@@ -54,13 +56,9 @@ export function FlameGraphWrapper(props: Props) {
     return undefined;
   }, [props.profile, props.diff]);
 
-  if (isGrafanaFlamegraphEnabled) {
-    let extraEl = <></>;
-
-    // This is a bit weird but the typing is not great. It seems like flamegraph assumed profile can be undefined
-    // but then ExportData won't work so not sure if the profile === undefined could actually happen.
+  const extraEl = useMemo(() => {
     if (props.profile) {
-      extraEl = (
+      return (
         <ExportData
           flamebearer={props.profile}
           exportPNG
@@ -88,6 +86,15 @@ export function FlameGraphWrapper(props: Props) {
           }}
         />
       );
+    } else {
+      return undefined;
+    }
+  }, [props.profile, exportToFlamegraphDotComFn]);
+
+  if (isGrafanaFlamegraphEnabled) {
+    // This is a bit weird but the typing is not great. It seems like flamegraph assumed profile can be undefined
+    // but then ExportData won't work so not sure if the profile === undefined could actually happen.
+    if (props.profile) {
     }
 
     console.log('render flamegraphWrapper');
@@ -138,18 +145,20 @@ type MemoGraphProps = {
   data?: DataFrame;
   extraHeaderElements?: React.ReactNode;
   vertical?: boolean;
-}
+};
 
 const MemoGraph = React.memo(function MemoGraph(props: MemoGraphProps) {
-  const prevGetTheme = usePrevious(props.getTheme)
+  const prevGetTheme = usePrevious(props.getTheme);
   console.log('prevGetTheme', prevGetTheme === props.getTheme);
-  const prevData = usePrevious(props.data)
+  const prevData = usePrevious(props.data);
   console.log('prevData', prevData === props.data);
-  const prevExtraHeaderElements = usePrevious(props.extraHeaderElements)
-  console.log('prevExtraHeader', prevExtraHeaderElements === props.extraHeaderElements);
+  const prevExtraHeaderElements = usePrevious(props.extraHeaderElements);
+  console.log(
+    'prevExtraHeader',
+    prevExtraHeaderElements === props.extraHeaderElements
+  );
   const prevVertical = usePrevious(props.vertical);
   console.log('prevVertical', prevVertical === props.vertical);
-
 
   console.log('render memoGraph');
   return (

@@ -1,3 +1,5 @@
+import { useCallback } from 'react';
+
 import { Profile } from '@pyroscope/legacy/models';
 import { shareWithFlamegraphDotcom } from '@pyroscope/services/share';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
@@ -10,24 +12,27 @@ export default function useExportToFlamegraphDotCom(
 ) {
   const dispatch = useAppDispatch();
 
-  return async (name?: string) => {
-    if (!flamebearer) {
-      return '';
-    }
+  return useCallback(
+    async (name?: string) => {
+      if (!flamebearer) {
+        return '';
+      }
 
-    const res = await shareWithFlamegraphDotcom({
-      flamebearer,
-      name,
-      // or we should add this to name ?
-      groupByTag,
-      groupByTagValue,
-    });
+      const res = await shareWithFlamegraphDotcom({
+        flamebearer,
+        name,
+        // or we should add this to name ?
+        groupByTag,
+        groupByTagValue,
+      });
 
-    if (res.isErr) {
-      handleError(dispatch, 'Failed to export to flamegraph.com', res.error);
-      return null;
-    }
+      if (res.isErr) {
+        handleError(dispatch, 'Failed to export to flamegraph.com', res.error);
+        return null;
+      }
 
-    return res.value.url;
-  };
+      return res.value.url;
+    },
+    [flamebearer, groupByTag, groupByTagValue, dispatch]
+  );
 }
