@@ -28,7 +28,7 @@ Traditionally, profiling has been used more as an ad-hoc debugging tool. While u
 
 Continuous profiling is a much more modern approach which is safer and more scalable for production environments. It makes use of low overhead sampling to collect profiles from production systems and stores them in a database for later analysis. This allows you to get a much more holistic view of your application and how it behaves in production.
 
-### The Core Benefits of Continuous Profiling
+## The Core Benefits of Continuous Profiling
 
 ![Diagram showing 3 benefits of continuous profiling](#)
 
@@ -37,7 +37,7 @@ Why prioritize continuous profiling? Here are the key reasons:
 2. **Complements Other Observability Tools:** Continuous profiling fills critical gaps left by metrics, logs, and tracing, creating a more comprehensive observability strategy.
 3. **Proactive Performance Optimization:** Regular profiling enables teams to proactively identify and resolve performance bottlenecks, leading to more efficient and reliable applications.
 
-### Business Impact of Continuous Profiling
+## Business Impact of Continuous Profiling
 
 ![Infographic illustrating key business benefits](#)
 
@@ -46,7 +46,7 @@ Adopting continuous profiling with tools like Pyroscope can lead to significant 
 2. **Latency reduction:** Identifying and addressing performance bottlenecks leads to faster and more efficient applications
 3. **Enhanced Incident Management:** Faster problem identification and resolution, reducing Mean Time to Resolution (MTTR) and improving end-user experience
 
-### Flamegraphs: Visualizing Performance Data
+## Flamegraphs: Visualizing Performance Data
 
 ![Example of a flamegraph](#)
 
@@ -60,19 +60,19 @@ Vertically, the nodes in the flamegraph represent the heirarchy of which functio
 
 This is a cpu profile, but profiles can represent many other types of resource such as memory, network, disk, etc. To understand more about how to read a flamegraph, what the different colors mean, and what other types of profiles exist and when to use them see our [flamegraph 101 documention] or [when to use which profile type documentation].
 
-### Pyroscope: Continuous Profiling in Action
+## Pyroscope: Continuous Profiling in Action
 
 ![Screenshots of Pyroscope's UI](#)
 
 Explore Pyroscope's capabilities through a hands-on demonstration. This section highlights the powerful user interface of Pyroscope and the various modes available for comprehensive profiling data analysis.
 
-### Seamless Integration with Observability Tools
+## Seamless Integration with Observability Tools
 
 ![Flowchart showing Pyroscope integration with other tools](#)
 
 Pyroscope enhances its value through seamless integration with leading observability tools like Grafana, Prometheus, and Loki. This integration facilitates deeper insights into application performance and aids in addressing issues identified through other monitoring methods.
 
-### Getting Started with Pyroscope
+## Getting Started with Pyroscope
 
 ![Guide for instrumenting an application with Pyroscope](#)
 
