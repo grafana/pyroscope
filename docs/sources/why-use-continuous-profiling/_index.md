@@ -82,6 +82,7 @@ Pyroscope's UI is designed to make it easy to visualize and analyze profiling da
 
 With traditional profiling getting any of this information is much more difficult to organize, properly label, share, or store for later analysis. With Pyroscope, all of this is just a matter of writing the two queries you'd like to compare and clicking a button.
 
+This UI will also expand over time to better help _surface_ issues that you otherwise may not have noticed. For now, the tag explorer page does a great job at giving a high level overview of particular tags/labels which you may want to drill into. 
 
 ## Seamless Integration with Observability Tools
 
