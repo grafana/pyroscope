@@ -84,6 +84,7 @@ export function FlameGraphWrapper(props: Props) {
       );
     }
 
+    console.log('render flamegraphWrapper');
     return (
       <>
         {props.timelineEl}
