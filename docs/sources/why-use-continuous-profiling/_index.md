@@ -73,7 +73,15 @@ This is a cpu profile, but profiles can represent many other types of resource s
 
 ![Screenshots of Pyroscope's UI](#)
 
-Explore Pyroscope's capabilities through a hands-on demonstration. This section highlights the powerful user interface of Pyroscope and the various modes available for comprehensive profiling data analysis.
+Pyroscope's UI is designed to make it easy to visualize and analyze profiling data. There are several different modes for viewing, analyzing, uploading, and comparing profiling data. We will go into more detail about these modes in the [Pyroscope UI documentation]. For now, it is important to note that one of the major benefits of continuous profiling is the ability to compare and diff profiling data from two different queries:
+- Comparing two different git commits before and after a code change
+- Comparing Staging vs production environments to identify differences in performance
+- Comparing performance between two different a/b tests or feature flag experiments
+- Comparing memory allocations between two different time periods before and after a memory leak
+- etc 
+
+With traditional profiling getting any of this information is much more difficult to organize, properly label, share, or store for later analysis. With Pyroscope, all of this is just a matter of writing the two queries you'd like to compare and clicking a button.
+
 
 ## Seamless Integration with Observability Tools
 
