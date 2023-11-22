@@ -14,11 +14,19 @@ keywords:
 
 ![Visual comparison between traditional and continuous profiling](#)
 
-Continuous profiling is more than just a performance analysis tool; it's a crucial component in modern software development and operations. It transcends traditional profiling techniques by providing ongoing, in-depth insights into application performance. This evolution from the ephemeral, localized nature of traditional profiling (similar to "console.log debugging") to a structured, centralized approach allows for effective use in production environments. Pyroscope stands out in this field, offering both traditional and continuous profiling capabilities.
+Continuous profiling is more than just a performance analysis tool; it's a crucial component in modern software development and operations. It goes past traditional profiling techniques by providing ongoing, in-depth insights into application performance. 
+
+Continuous profiling goes past the ephemeral, localized nature of traditional profiling (which historically has been more similar to "console.log" or "print statement" debugging) to a structured, centralized approach allows for effective use in production environments. Put more simply, Pyroscope takes you from a bunch of flamegraph files on your desktop to a database where you can query and analyze production data in a structured way.
+
+Pyroscope in particular, offers you the flexibility to either visualize more "traditional" adhoc data or evolve your applications observability tooling to include more "modern" continuous profiling capabilities.
 
 ## What is Continuous Profiling?
 
-Continuous profiling is a systematic method of collecting and analyzing performance data from production systems. Unlike traditional profiling, which is often ad-hoc and manual, continuous profiling automates the collection of performance data, making it an integral part of the production environment. This approach facilitates ongoing monitoring and analysis, enabling teams to proactively identify and address performance issues.
+Continuous profiling is a systematic method of collecting and analyzing performance data from production systems.
+
+Traditionally, profiling has been used more as an ad-hoc debugging tool. While used in many languages, particularly in Go and Java many are used to running a benchmark tool locally and getting a pprof file in go or maybe ssh'ing into a misbehaving prod instance and pulling a flamegraph from a JFR file in Java. This is great for debugging but not so great for production.
+
+Continuous profiling is a much more modern approach which is safer and more scalable for production environments. It makes use of low overhead sampling to collect profiles from production systems and stores them in a database for later analysis. This allows you to get a much more holistic view of your application and how it behaves in production.
 
 ### The Core Benefits of Continuous Profiling
 
