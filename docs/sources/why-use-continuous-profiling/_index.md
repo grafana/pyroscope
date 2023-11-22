@@ -35,16 +35,16 @@ Continuous profiling is a much more modern approach which is safer and more scal
 Why prioritize continuous profiling? Here are the key reasons:
 1. **In-Depth Code Insights:** It provides granular, line-level insights into how application code utilizes resources, offering the most detailed view of application performance.
 2. **Complements Other Observability Tools:** Continuous profiling fills critical gaps left by metrics, logs, and tracing, creating a more comprehensive observability strategy.
-3. **Proactive Performance Optimization:** Regular profiling enables teams to preemptively identify and resolve performance bottlenecks, leading to more efficient and reliable applications.
+3. **Proactive Performance Optimization:** Regular profiling enables teams to proactively identify and resolve performance bottlenecks, leading to more efficient and reliable applications.
 
 ### Business Impact of Continuous Profiling
 
 ![Infographic illustrating key business benefits](#)
 
 Adopting continuous profiling with tools like Pyroscope can lead to significant business advantages:
-1. **Reduced Operational Costs:** Optimization of resource usage can significantly cut down cloud and infrastructure expenses.
-2. **Improved Application Performance:** Identifying and addressing performance bottlenecks leads to faster and more efficient applications.
-3. **Enhanced Incident Management:** Faster problem identification and resolution, reducing Mean Time to Resolution (MTTR).
+1. **Reduced Operational Costs:** Optimization of resource usage can significantly cut down cloud and infrastructure expenses
+2. **Latency reduction:** Identifying and addressing performance bottlenecks leads to faster and more efficient applications
+3. **Enhanced Incident Management:** Faster problem identification and resolution, reducing Mean Time to Resolution (MTTR) and improving end-user experience
 
 ### Flamegraphs: Visualizing Performance Data
 
