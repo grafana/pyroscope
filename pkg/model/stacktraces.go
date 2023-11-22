@@ -194,7 +194,7 @@ func (t *StacktraceTree) Truncate(min int64) int {
 		return 0
 	}
 	var c int
-	for i := range t.Nodes[1:] {
+	for i := range t.Nodes {
 		if t.Nodes[i].Total < min {
 			// Make the node leaf.
 			n := &t.Nodes[i]

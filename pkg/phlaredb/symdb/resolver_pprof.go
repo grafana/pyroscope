@@ -38,7 +38,7 @@ func (r *pprofProtoSymbols) InsertStacktrace(_ uint32, locations []int32) {
 func (r *pprofProtoSymbols) buildPprof() *googlev1.Profile {
 	r.truncated = r.tree.Truncate(r.tree.MinValue(r.maxNodes))
 	truncatedRoot := &googlev1.Sample{
-		LocationId: []uint64{0},
+		LocationId: []uint64{math.MaxUint64},
 		Value:      []int64{0},
 	}
 	// The actual number of samples is not know in advance,
@@ -51,7 +51,7 @@ func (r *pprofProtoSymbols) buildPprof() *googlev1.Profile {
 			// Not a leaf.
 			continue
 		}
-		if r.tree.Nodes[n.Parent].Location < 0 {
+		if n.Parent != 0 && r.tree.Nodes[n.Parent].Location < 0 && n.FirstChild < 0 {
 			// Truncated.
 			continue
 		}
