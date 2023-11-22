@@ -46,6 +46,15 @@ Adopting continuous profiling with tools like Pyroscope can lead to significant 
 2. **Latency reduction:** Identifying and addressing performance bottlenecks leads to faster and more efficient applications
 3. **Enhanced Incident Management:** Faster problem identification and resolution, reducing Mean Time to Resolution (MTTR) and improving end-user experience
 
+### How Pyroscope helps cut costs
+Pyroscope's low-overhead profiling enables precise optimization of resource usage, directly impacting various cost centers in technology infrastructure. By providing in-depth insights into application performance, Pyroscope allows teams to identify and eliminate inefficiencies, leading to significant savings in areas like observability, incident management, messaging/queuing, deployment tools, and infrastructure.
+
+### How Pyroscope helps reduce latency
+Pyroscope plays a pivotal role in reducing application latency by identifying performance bottlenecks at the code level. This granular insight allows for targeted optimization, leading to faster application response times, improved user experience, and consequently, better business outcomes like increased customer satisfaction and revenue.
+
+### How Pyroscope helps with incident management
+Pyroscope streamlines incident management by offering immediate, actionable insights into application performance issues. With continuous profiling, teams can quickly pinpoint the root cause of an incident, reducing the mean time to resolution (MTTR) and enhancing overall system reliability and user satisfaction.
+
 ## Flamegraphs: Visualizing Performance Data
 
 ![Example of a flamegraph](#)
