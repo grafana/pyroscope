@@ -546,6 +546,7 @@ type Querier interface {
 	SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest) (*phlaremodel.Tree, error)
 	MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spans phlaremodel.SpanSelector) (*phlaremodel.Tree, error)
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
+	SelectMergeByLabels(ctx context.Context, params *ingestv1.SelectProfilesRequest, by ...string) ([]*typesv1.Series, error)
 	MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error)
 	Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error)
 	ProfileTypes(context.Context, *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error)
@@ -1050,24 +1051,7 @@ func MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv
 		for _, querier := range queriers {
 			querier := querier
 			g.Go(util.RecoverPanic(func() error {
-				iters, err := querier.SelectMatchingProfiles(ctx, request)
-				if err != nil {
-					return err
-				}
-				defer func() {
-					iters.Close()
-				}()
-
-				profiles, err := iter.Slice(iters)
-				if err != nil {
-					return err
-				}
-
-				if len(profiles) == 0 {
-					return nil
-				}
-
-				merge, err := querier.MergeByLabels(ctx, iter.NewSliceIterator(querier.Sort(profiles)), by...)
+				merge, err := querier.SelectMergeByLabels(ctx, request, by...)
 				if err != nil {
 					return err
 				}
@@ -1589,6 +1573,90 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	return iter.NewMergeIterator(maxBlockProfile, false, iters...), nil
 }
 
+func (b *singleBlockQuerier) SelectMergeByLabels(ctx context.Context, params *ingestv1.SelectProfilesRequest, by ...string) ([]*typesv1.Series, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByLabels - Block")
+	defer sp.Finish()
+	sp.SetTag("block ULID", b.meta.ULID.String())
+
+	if err := b.Open(ctx); err != nil {
+		return nil, err
+	}
+	matchers, err := parser.ParseMetricSelector(params.LabelSelector)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
+	}
+	if params.Type == nil {
+		return nil, errors.New("no profileType given")
+	}
+	matchers = append(matchers, phlaremodel.SelectorFromProfileType(params.Type))
+
+	postings, err := PostingsForMatchers(b.index, nil, matchers...)
+	if err != nil {
+		return nil, err
+	}
+	var (
+		chks       = make([]index.ChunkMeta, 1)
+		lblsPerRef = make(map[int64]labelsInfo)
+		lbls       = make(phlaremodel.Labels, 0, 6)
+	)
+	// get all relevant labels/fingerprints
+	for postings.Next() {
+		fp, err := b.index.SeriesBy(postings.At(), &lbls, &chks, by...)
+		if err != nil {
+			return nil, err
+		}
+
+		_, ok := lblsPerRef[int64(chks[0].SeriesIndex)]
+		if !ok {
+			info := labelsInfo{
+				fp:  model.Fingerprint(fp),
+				lbs: make(phlaremodel.Labels, len(lbls)),
+			}
+			copy(info.lbs, lbls)
+			lblsPerRef[int64(chks[0].SeriesIndex)] = info
+		}
+	}
+	it := query.NewBinaryJoinIterator(
+		0,
+		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
+		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
+	)
+
+	currSeriesIndex := int64(-1)
+	currSeriesInfo := labelsInfo{}
+	buf := make([][]parquet.Value, 2)
+
+	// todo: we should stream profile to merge instead of loading all in memory.
+	// This is a temporary solution for now since there's a memory corruption happening.
+	rows, err := iter.Slice[Profile](
+		&RowsIterator[Profile]{
+			rows: it,
+			at: func(ir *query.IteratorResult) Profile {
+				buf = ir.Columns(buf, "SeriesIndex", "TimeNanos")
+				seriesIndex := buf[0][0].Int64()
+				if seriesIndex != currSeriesIndex {
+					currSeriesIndex = seriesIndex
+					currSeriesInfo = lblsPerRef[seriesIndex]
+				}
+				return BlockProfile{
+					labels: currSeriesInfo.lbs,
+					fp:     currSeriesInfo.fp,
+					ts:     model.TimeFromUnixNano(buf[1][0].Int64()),
+					RowNum: ir.RowNumber[0],
+				}
+			},
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	columnName := "TotalValue"
+	if b.meta.Version == 1 {
+		columnName = "Samples.list.element.Value"
+	}
+	return mergeByLabels[Profile](ctx, b.profiles.file, columnName, iter.NewSliceIterator(rows), by...)
+}
+
 func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest) (tree *phlaremodel.Tree, err error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByStacktraces - Block")
 	defer sp.Finish()
@@ -1629,8 +1697,8 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 
 	it := query.NewBinaryJoinIterator(
 		0,
-		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
-		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
+		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
+		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), ""),
 	)
 
 	if b.meta.Version >= 2 {
@@ -1639,82 +1707,33 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 			b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
 		)
 	}
+	buf := make([][]parquet.Value, 1)
 
-	pIt, err := newRowProfileIterator(b.meta.Version, it)
+	// todo: we should stream profile to merge instead of loading all in memory.
+	// This is a temporary solution for now since there's a memory corruption happening.
+	rows, err := iter.Slice[rowProfile](
+		&RowsIterator[rowProfile]{
+			rows: it,
+			at: func(ir *query.IteratorResult) rowProfile {
+				buf = ir.Columns(buf, "StacktracePartition")
+				if len(buf[0]) == 0 {
+					return rowProfile{
+						rowNum: ir.RowNumber[0],
+					}
+				}
+				return rowProfile{
+					rowNum:    ir.RowNumber[0],
+					partition: buf[0][0].Uint64(),
+				}
+			},
+		})
 	if err != nil {
 		return nil, err
 	}
-	defer pIt.Close()
-
-	if err := mergeByStacktraces(ctx, b.profiles.file, pIt, r); err != nil {
+	if err := mergeByStacktraces[rowProfile](ctx, b.profiles.file, iter.NewSliceIterator(rows), r); err != nil {
 		return nil, err
 	}
 	return r.Tree()
-}
-
-type rowProfileIterator struct {
-	it                     query.Iterator
-	current                rowProfile
-	hasStacktracePartition bool
-
-	buf [][]parquet.Value
-}
-
-// todo: newRowProfileIterator should be more flexible for filterating and selecting columns.
-func newRowProfileIterator(version block.MetaVersion, base query.Iterator) (iter.Iterator[rowProfile], error) {
-	it := &rowProfileIterator{
-		it:                     base,
-		hasStacktracePartition: version >= 2,
-	}
-	if it.hasStacktracePartition {
-		it.buf = make([][]parquet.Value, 1)
-	}
-	// todo: investigate why the BinaryJoinIterator is incompatible with the Tee iterator and remove the Slice iterator.
-	s, err := iter.Slice[rowProfile](it)
-	if err != nil {
-		return nil, err
-	}
-
-	return iter.NewSliceIterator(s), nil
-}
-
-func (p *rowProfileIterator) Next() bool {
-	if p.it.Next() {
-		p.current.rowNum = p.it.At().RowNumber[0]
-		if p.hasStacktracePartition {
-			p.buf = p.it.At().Columns(p.buf, "StacktracePartition")
-			if len(p.buf) > 0 && len(p.buf[0]) == 1 {
-				p.current.partition = p.buf[0][0].Uint64()
-			}
-		}
-		return true
-	}
-	return false
-}
-
-func (p *rowProfileIterator) Close() error {
-	return p.it.Close()
-}
-
-func (p *rowProfileIterator) Err() error {
-	return p.it.Err()
-}
-
-func (p *rowProfileIterator) At() rowProfile {
-	return p.current
-}
-
-type rowProfile struct {
-	rowNum    int64
-	partition uint64
-}
-
-func (p rowProfile) StacktracePartition() uint64 {
-	return p.partition
-}
-
-func (p rowProfile) RowNumber() int64 {
-	return p.rowNum
 }
 
 // Series selects the series labels from this block.

@@ -122,24 +122,42 @@ func (q *headOnDiskQuerier) SelectMergeByStacktraces(ctx context.Context, params
 		start = model.Time(params.Start)
 		end   = model.Time(params.End)
 	)
-	pIt, err := newRowProfileIterator(q.head.meta.Version,
-		query.NewBinaryJoinIterator(0,
-			query.NewBinaryJoinIterator(
-				0,
-				rowIter,
-				q.rowGroup().columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"),
-			),
-			q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition")))
+	it := query.NewBinaryJoinIterator(0,
+		query.NewBinaryJoinIterator(
+			0,
+			rowIter,
+			q.rowGroup().columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), ""),
+		),
+		q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"))
+
+	buf := make([][]parquet.Value, 1)
+
+	// todo: we should stream profile to merge instead of loading all in memory.
+	// This is a temporary solution for now since there's a memory corruption happening.
+	rows, err := iter.Slice[rowProfile](
+		&RowsIterator[rowProfile]{
+			rows: it,
+			at: func(ir *query.IteratorResult) rowProfile {
+				buf = ir.Columns(buf, "StacktracePartition")
+				if len(buf[0]) == 0 {
+					return rowProfile{
+						rowNum: ir.RowNumber[0],
+					}
+				}
+				return rowProfile{
+					rowNum:    ir.RowNumber[0],
+					partition: buf[0][0].Uint64(),
+				}
+			},
+		})
 	if err != nil {
 		return nil, err
 	}
 
-	defer pIt.Close()
-
 	r := symdb.NewResolver(ctx, q.head.symdb)
 	defer r.Release()
 
-	if err := mergeByStacktraces[rowProfile](ctx, q.rowGroup(), pIt, r); err != nil {
+	if err := mergeByStacktraces[rowProfile](ctx, q.rowGroup(), iter.NewSliceIterator(rows), r); err != nil {
 		return nil, err
 	}
 	return r.Tree()
@@ -188,13 +206,60 @@ func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterato
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - HeadOnDisk")
 	defer sp.Finish()
 
-	seriesByLabels := make(seriesByLabels)
+	return mergeByLabels(ctx, q.rowGroup(), "TotalValue", rows, by...)
+}
 
-	if err := mergeByLabels(ctx, q.rowGroup(), "TotalValue", rows, seriesByLabels, by...); err != nil {
+func (q *headOnDiskQuerier) SelectMergeByLabels(ctx context.Context, params *ingestv1.SelectProfilesRequest, by ...string) ([]*typesv1.Series, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByLabels - HeadOnDisk")
+	defer sp.Finish()
+
+	// query the index for rows
+	rowIter, labelsPerFP, err := q.head.profiles.index.selectMatchingRowRanges(ctx, params, q.rowGroupIdx)
+	if err != nil {
 		return nil, err
 	}
 
-	return seriesByLabels.normalize(), nil
+	// get time nano information for profiles
+	var (
+		start = model.Time(params.Start)
+		end   = model.Time(params.End)
+	)
+	it := query.NewBinaryJoinIterator(
+		0,
+		rowIter,
+		q.rowGroup().columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"),
+	)
+	buf := make([][]parquet.Value, 1)
+
+	// todo: we should stream profile to merge instead of loading all in memory.
+	// This is a temporary solution for now since there's a memory corruption happening.
+	rows, err := iter.Slice[Profile](
+		&RowsIterator[Profile]{
+			rows: it,
+			at: func(ir *query.IteratorResult) Profile {
+				v, ok := ir.Entries[0].RowValue.(fingerprintWithRowNum)
+				if !ok {
+					panic("no fingerprint information found")
+				}
+
+				lbls, ok := labelsPerFP[v.fp]
+				if !ok {
+					panic("no profile series labels with matching fingerprint found")
+				}
+
+				buf = ir.Columns(buf, "TimeNanos")
+				return BlockProfile{
+					labels: lbls,
+					fp:     v.fp,
+					ts:     model.TimeFromUnixNano(buf[1][0].Int64()),
+					RowNum: ir.RowNumber[0],
+				}
+			},
+		})
+	if err != nil {
+		return nil, err
+	}
+	return mergeByLabels[Profile](ctx, q.rowGroup(), "TotalValue", iter.NewSliceIterator(rows), by...)
 }
 
 func (q *headOnDiskQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
@@ -377,46 +442,61 @@ func (q *headInMemoryQuerier) MergeByLabels(ctx context.Context, rows iter.Itera
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByLabels - HeadInMemory")
 	defer sp.Finish()
 
-	labelsByFingerprint := map[model.Fingerprint]string{}
-	seriesByLabels := make(seriesByLabels)
-	labelBuf := make([]byte, 0, 1024)
+	seriesBuilder := seriesBuilder{}
+	seriesBuilder.init(by...)
 
 	for rows.Next() {
 		p, ok := rows.At().(ProfileWithLabels)
 		if !ok {
 			return nil, errors.New("expected ProfileWithLabels")
 		}
-
-		labelsByString, ok := labelsByFingerprint[p.fp]
-		if !ok {
-			labelBuf = p.Labels().BytesWithLabels(labelBuf, by...)
-			labelsByString = string(labelBuf)
-			labelsByFingerprint[p.fp] = labelsByString
-			if _, ok := seriesByLabels[labelsByString]; !ok {
-				seriesByLabels[labelsByString] = &typesv1.Series{
-					Labels: p.Labels().WithLabels(by...),
-					Points: []*typesv1.Point{
-						{
-							Timestamp: int64(p.Timestamp()),
-							Value:     float64(p.Total()),
-						},
-					},
-				}
-				continue
-			}
-		}
-		series := seriesByLabels[labelsByString]
-		series.Points = append(series.Points, &typesv1.Point{
-			Timestamp: int64(p.Timestamp()),
-			Value:     float64(p.Total()),
-		})
-
+		seriesBuilder.add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(p.Total()))
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return seriesByLabels.normalize(), nil
+	return seriesBuilder.build(), nil
+}
+
+func (q *headInMemoryQuerier) SelectMergeByLabels(ctx context.Context, params *ingestv1.SelectProfilesRequest, by ...string) ([]*typesv1.Series, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByLabels - HeadInMemory")
+	defer sp.Finish()
+
+	index := q.head.profiles.index
+
+	ids, err := index.selectMatchingFPs(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	// get time nano information for profiles
+	var (
+		start = model.Time(params.Start)
+		end   = model.Time(params.End)
+	)
+	seriesBuilder := seriesBuilder{}
+	seriesBuilder.init(by...)
+
+	index.mutex.RLock()
+	defer index.mutex.RUnlock()
+
+	for _, fp := range ids {
+		profileSeries, ok := index.profilesPerFP[fp]
+		if !ok {
+			continue
+		}
+		for _, p := range profileSeries.profiles {
+			if p.Timestamp() < start {
+				continue
+			}
+			if p.Timestamp() > end {
+				break
+			}
+			seriesBuilder.add(fp, profileSeries.lbs, int64(p.Timestamp()), float64(p.Total()))
+		}
+	}
+	return seriesBuilder.build(), nil
 }
 
 func (q *headInMemoryQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {

@@ -1747,7 +1747,27 @@ func (r *Reader) Series(id storage.SeriesRef, lbls *phlaremodel.Labels, chks *[]
 		return 0, d.Err()
 	}
 
-	fprint, err := r.dec.Series(d.Get(), lbls, chks)
+	fprint, err := r.dec.Series(d.Get(), lbls, chks, false)
+	if err != nil {
+		return 0, errors.Wrap(err, "read series")
+	}
+	return fprint, nil
+}
+
+// SeriesBy is like Series but allows to group labels by name. This avoid looking up all label symbols for requested series.
+func (r *Reader) SeriesBy(id storage.SeriesRef, lbls *phlaremodel.Labels, chks *[]ChunkMeta, by ...string) (uint64, error) {
+	offset := id
+	// In version 2 series IDs are no longer exact references but series are 16-byte padded
+	// and the ID is the multiple of 16 of the actual position.
+	if r.version == FormatV2 {
+		offset = id * 16
+	}
+	d := encoding.DecWrap(tsdb_enc.NewDecbufUvarintAt(r.b, int(offset), castagnoliTable))
+	if d.Err() != nil {
+		return 0, d.Err()
+	}
+
+	fprint, err := r.dec.Series(d.Get(), lbls, chks, true, by...)
 	if err != nil {
 		return 0, errors.Wrap(err, "read series")
 	}
@@ -1958,7 +1978,7 @@ func (dec *Decoder) LabelValueFor(b []byte, label string) (string, error) {
 }
 
 // Series decodes a series entry from the given byte slice into lset and chks.
-func (dec *Decoder) Series(b []byte, lbls *phlaremodel.Labels, chks *[]ChunkMeta) (uint64, error) {
+func (dec *Decoder) Series(b []byte, lbls *phlaremodel.Labels, chks *[]ChunkMeta, group bool, by ...string) (uint64, error) {
 	if lbls != nil {
 		*lbls = (*lbls)[:0]
 	}
@@ -1979,10 +1999,25 @@ func (dec *Decoder) Series(b []byte, lbls *phlaremodel.Labels, chks *[]ChunkMeta
 		if lbls == nil {
 			continue
 		}
-
+		if group && len(by) == 0 {
+			// If we're grouping by all labels, we don't need to decode them.
+			continue
+		}
 		ln, err := dec.LookupSymbol(lno)
 		if err != nil {
 			return 0, errors.Wrap(err, "lookup label name")
+		}
+		if group {
+			var found bool
+			for _, b := range by {
+				if b == ln {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
 		}
 		lv, err := dec.LookupSymbol(lvo)
 		if err != nil {
