@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { createTheme } from '@grafana/data';
+import {createTheme, DataFrame, GrafanaTheme2} from '@grafana/data';
 import { FlameGraph } from '@grafana/flamegraph';
 import { Button, Tooltip } from '@grafana/ui';
 
@@ -42,18 +42,17 @@ export function FlameGraphWrapper(props: Props) {
     if (isGrafanaFlamegraphEnabled) {
       const dataFrame = props.profile
         ? flamebearerToDataFrameDTO(
-          props.profile.flamebearer.levels,
-          props.profile.flamebearer.names,
-          props.profile.metadata.units,
-          Boolean(props.diff)
-        )
+            props.profile.flamebearer.levels,
+            props.profile.flamebearer.names,
+            props.profile.metadata.units,
+            Boolean(props.diff)
+          )
         : undefined;
       return dataFrame;
     }
 
     return undefined;
-  }, [props.profile, props.diff])
-
+  }, [props.profile, props.diff]);
 
   if (isGrafanaFlamegraphEnabled) {
     let extraEl = <></>;
@@ -95,7 +94,7 @@ export function FlameGraphWrapper(props: Props) {
     return (
       <>
         {props.timelineEl}
-        <FlameGraph
+        <MemoGraph
           getTheme={getTheme}
           data={dataFrame}
           extraHeaderElements={extraEl}
@@ -133,3 +132,23 @@ export function FlameGraphWrapper(props: Props) {
     </FlamegraphRenderer>
   );
 }
+
+type MemoGraphProps = {
+  getTheme: () => GrafanaTheme2;
+  data?: DataFrame;
+  extraHeaderElements?: React.ReactNode;
+  vertical?: boolean;
+}
+
+const MemoGraph = React.memo(function MemoGraph(props: MemoGraphProps) {
+
+  console.log('render memoGraph');
+  return (
+    <FlameGraph
+      getTheme={props.getTheme}
+      data={props.data}
+      extraHeaderElements={props.extraHeaderElements}
+      vertical={props.vertical}
+    />
+  );
+});
