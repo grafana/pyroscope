@@ -38,17 +38,24 @@ export function FlameGraphWrapper(props: Props) {
     return theme;
   }, [theme]);
 
-
-  if (isGrafanaFlamegraphEnabled) {
-    const dataFrame = props.profile
-      ? flamebearerToDataFrameDTO(
+  const dataFrame = useMemo(() => {
+    if (isGrafanaFlamegraphEnabled) {
+      const dataFrame = props.profile
+        ? flamebearerToDataFrameDTO(
           props.profile.flamebearer.levels,
           props.profile.flamebearer.names,
           props.profile.metadata.units,
           Boolean(props.diff)
         )
-      : undefined;
+        : undefined;
+      return dataFrame;
+    }
 
+    return undefined;
+  }, [props.profile, props.diff])
+
+
+  if (isGrafanaFlamegraphEnabled) {
     let extraEl = <></>;
 
     // This is a bit weird but the typing is not great. It seems like flamegraph assumed profile can be undefined
