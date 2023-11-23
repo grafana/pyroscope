@@ -2,6 +2,7 @@
 {{- range $component, $cfg := (fromYaml (include "pyroscope.components" .)) }}
 {{- with $global }}
 {{-  $values := mustMergeOverwrite (deepCopy .Values.pyroscope ) ($cfg | default dict)}}
+{{-  $extraArgs := mustMergeOverwrite (deepCopy .Values.pyroscope.extraArgs ) ($cfg.extraArgs | default dict)}}
 ---
 apiVersion: apps/v1
 kind: {{ $cfg.kind }}
@@ -66,7 +67,7 @@ spec:
             - "-memberlist.join=dns+{{ include "pyroscope.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.memberlist.port }}"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
-          {{- range $key, $value := $values.extraArgs }}
+          {{- range $key, $value := $extraArgs }}
             - "-{{ $key }}={{ $value }}"
           {{- end }}
           {{- with $values.extraEnvVars }}
