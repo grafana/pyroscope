@@ -130,6 +130,7 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 	}
 
 	groupBy := req.URL.Query()["groupBy"]
+	mergeFunction := req.URL.Query().Get("mergeFunction")
 
 	var resFlame *connect.Response[querierv1.SelectMergeStacktracesResponse]
 	g, ctx := errgroup.WithContext(req.Context())
@@ -152,6 +153,7 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 				End:           selectParams.End,
 				Step:          timelineStep,
 				GroupBy:       groupBy,
+				MergeFunction: mergeFunction,
 			}))
 
 		return err

@@ -377,6 +377,7 @@ func (m *SelectSeriesRequest) CloneVT() *SelectSeriesRequest {
 		Start:         m.Start,
 		End:           m.End,
 		Step:          m.Step,
+		MergeFunction: m.MergeFunction,
 	}
 	if rhs := m.GroupBy; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
@@ -852,6 +853,9 @@ func (this *SelectMergeProfileRequest) EqualVT(that *SelectMergeProfileRequest) 
 	if this.End != that.End {
 		return false
 	}
+	if p, q := this.MaxNodes, that.MaxNodes; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -890,6 +894,9 @@ func (this *SelectSeriesRequest) EqualVT(that *SelectSeriesRequest) bool {
 		}
 	}
 	if this.Step != that.Step {
+		return false
+	}
+	if this.MergeFunction != that.MergeFunction {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2152,6 +2159,13 @@ func (m *SelectSeriesRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if len(m.MergeFunction) > 0 {
+		i -= len(m.MergeFunction)
+		copy(dAtA[i:], m.MergeFunction)
+		i = encodeVarint(dAtA, i, uint64(len(m.MergeFunction)))
+		i--
+		dAtA[i] = 0x3a
+	}
 	if m.Step != 0 {
 		i -= 8
 		binary.LittleEndian.PutUint64(dAtA[i:], uint64(math.Float64bits(float64(m.Step))))
@@ -2604,6 +2618,10 @@ func (m *SelectSeriesRequest) SizeVT() (n int) {
 	}
 	if m.Step != 0 {
 		n += 9
+	}
+	l = len(m.MergeFunction)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -4649,6 +4667,38 @@ func (m *SelectSeriesRequest) UnmarshalVT(dAtA []byte) error {
 			v = uint64(binary.LittleEndian.Uint64(dAtA[iNdEx:]))
 			iNdEx += 8
 			m.Step = float64(math.Float64frombits(v))
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MergeFunction", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.MergeFunction = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

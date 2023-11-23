@@ -1001,6 +1001,10 @@
         "hints": {
           "$ref": "#/definitions/v1Hints",
           "title": "Optional: Hints for querying"
+        },
+        "mergeFunction": {
+          "type": "string",
+          "title": "Optional: Merge function"
         }
       }
     },
