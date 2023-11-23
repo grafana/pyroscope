@@ -112,7 +112,7 @@ func testColumnIterator(t *testing.T, makeIter makeTestIterFn) {
 	count := 100_000
 	pf := createTestFile(t, count)
 
-	idx, _ := GetColumnIndexByPath(pf, "A")
+	idx, _ := GetColumnIndexByPath(pf.Root(), "A")
 	iter := makeIter(pf, idx, nil, "A")
 	defer iter.Close()
 
@@ -140,7 +140,7 @@ func testColumnIteratorSeek(t *testing.T, makeIter makeTestIterFn) {
 	count := 10_000
 	pf := createTestFile(t, count)
 
-	idx, _ := GetColumnIndexByPath(pf, "A")
+	idx, _ := GetColumnIndexByPath(pf.Root(), "A")
 	iter := makeIter(pf, idx, nil, "A")
 	defer iter.Close()
 
@@ -177,7 +177,7 @@ func testColumnIteratorPredicate(t *testing.T, makeIter makeTestIterFn) {
 
 	pred := NewIntBetweenPredicate(7001, 7003)
 
-	idx, _ := GetColumnIndexByPath(pf, "A")
+	idx, _ := GetColumnIndexByPath(pf.Root(), "A")
 	iter := makeIter(pf, idx, pred, "A")
 	defer iter.Close()
 
@@ -206,7 +206,7 @@ func TestColumnIteratorExitEarly(t *testing.T) {
 	}
 
 	pf := createFileWith(t, rows, 2)
-	idx, _ := GetColumnIndexByPath(pf, "A")
+	idx, _ := GetColumnIndexByPath(pf.Root(), "A")
 	readSize := 1000
 
 	readIter := func(iter Iterator) (int, error) {
@@ -279,7 +279,7 @@ func benchmarkColumnIterator(b *testing.B, makeIter makeTestIterFn) {
 	count := 100_000
 	pf := createTestFile(b, count)
 
-	idx, _ := GetColumnIndexByPath(pf, "A")
+	idx, _ := GetColumnIndexByPath(pf.Root(), "A")
 
 	b.ResetTimer()
 
@@ -291,7 +291,7 @@ func benchmarkColumnIterator(b *testing.B, makeIter makeTestIterFn) {
 		}
 		iter.Close()
 		require.Equal(b, count, actualCount)
-		//fmt.Println(actualCount)
+		// fmt.Println(actualCount)
 	}
 }
 
@@ -335,7 +335,6 @@ func createProfileLikeFile(t testing.TB, count int) *parquet.File {
 	}
 
 	return createFileWith[T](t, rows, rowGroups)
-
 }
 
 func createFileWith[T any](t testing.TB, rows []T, rowGroups int) *parquet.File {
@@ -464,7 +463,6 @@ func TestBinaryJoinIterator(t *testing.T) {
         pyroscopedb_page_reads_total{column="SeriesId",table="ts"} %d
         pyroscopedb_page_reads_total{column="TimeNanos",table="ts"} %d
         `, tc.seriesPageReads, tc.timePageReads))), "pyroscopedb_page_reads_total"))
-
 		})
 	}
 }
