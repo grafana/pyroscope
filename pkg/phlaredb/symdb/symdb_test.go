@@ -2,11 +2,11 @@ package symdb
 
 import (
 	"context"
+	"math/rand"
 	"sort"
 	"testing"
 
 	"github.com/cespare/xxhash/v2"
-	"github.com/google/pprof/profile"
 	"github.com/stretchr/testify/require"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -22,7 +22,7 @@ type memSuite struct {
 	config   *Config
 	db       *SymDB
 	files    [][]string
-	profiles map[uint64]*pprof.Profile
+	profiles map[uint64]*googlev1.Profile
 	indexed  map[uint64][]v1.InMemoryProfile
 }
 
@@ -58,7 +58,7 @@ func (s *memSuite) init() {
 	if s.db == nil {
 		s.db = NewSymDB(s.config)
 	}
-	s.profiles = make(map[uint64]*pprof.Profile)
+	s.profiles = make(map[uint64]*googlev1.Profile)
 	s.indexed = make(map[uint64][]v1.InMemoryProfile)
 	for p, files := range s.files {
 		for _, f := range files {
@@ -68,11 +68,15 @@ func (s *memSuite) init() {
 }
 
 func (s *memSuite) writeProfileFromFile(p uint64, f string) {
-	w := s.db.PartitionWriter(p)
 	x, err := pprof.OpenFile(f)
 	require.NoError(s.t, err)
-	s.profiles[p] = x
-	s.indexed[p] = w.WriteProfileSymbols(x.Profile)
+	s.profiles[p] = x.Profile
+	w := s.db.PartitionWriter(p)
+	pc := x.Profile.CloneVT()
+	rand.Shuffle(len(pc.Sample), func(i, j int) {
+		pc.Sample[i], pc.Sample[j] = pc.Sample[j], pc.Sample[i]
+	})
+	s.indexed[p] = w.WriteProfileSymbols(pc)
 }
 
 func (s *blockSuite) flush() {
@@ -98,33 +102,12 @@ func pprofFingerprint(p *googlev1.Profile, typ int) [][2]uint64 {
 		}
 		h.Reset()
 		for _, loc := range s.LocationId {
-			for _, line := range p.Location[loc].Line {
-				f := p.Function[line.FunctionId-1].Name
-				_, _ = h.WriteString(p.StringTable[f])
+			for _, line := range p.Location[loc-1].Line {
+				f := p.Function[line.FunctionId-1]
+				_, _ = h.WriteString(p.StringTable[f.Name])
 			}
 		}
 		m[h.Sum64()] += v
-	}
-	s := make([][2]uint64, 0, len(p.Sample))
-	for k, v := range m {
-		s = append(s, [2]uint64{k, v})
-	}
-	sort.Slice(s, func(i, j int) bool { return s[i][0] < s[j][0] })
-	return s
-}
-
-//nolint:unparam
-func profileFingerprint(p *profile.Profile, typ int) [][2]uint64 {
-	m := make(map[uint64]uint64, len(p.Sample))
-	h := xxhash.New()
-	for _, s := range p.Sample {
-		h.Reset()
-		for _, loc := range s.Location {
-			for _, line := range loc.Line {
-				_, _ = h.WriteString(line.Function.Name)
-			}
-		}
-		m[h.Sum64()] += uint64(s.Value[typ])
 	}
 	s := make([][2]uint64, 0, len(p.Sample))
 	for k, v := range m {

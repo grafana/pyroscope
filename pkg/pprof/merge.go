@@ -67,7 +67,11 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 
 func (m *ProfileMerge) Profile() *profilev1.Profile {
 	if m.profile == nil {
-		return m.profile
+		return &profilev1.Profile{
+			SampleType:  []*profilev1.ValueType{new(profilev1.ValueType)},
+			PeriodType:  new(profilev1.ValueType),
+			StringTable: []string{""},
+		}
 	}
 	m.profile.Sample = m.sampleTable.Values()
 	m.profile.Location = m.locationTable.Values()

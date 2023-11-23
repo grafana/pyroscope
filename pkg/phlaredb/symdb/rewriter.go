@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/slices"
 )
 
 type Rewriter struct {
@@ -213,14 +214,14 @@ func (p *partitionRewriter) resolveStacktraces(stacktraceIDs []uint32) error {
 }
 
 func (p *partitionRewriter) stacktracesFromResolvedValues() []*schemav1.Stacktrace {
-	p.current = grow(p.current, len(p.stacktraces.values))
+	p.current = slices.GrowLen(p.current, len(p.stacktraces.values))
 	for i, v := range p.stacktraces.values {
 		s := p.current[i]
 		if s == nil {
 			s = &schemav1.Stacktrace{LocationIDs: make([]uint64, len(v))}
 			p.current[i] = s
 		}
-		s.LocationIDs = grow(s.LocationIDs, len(v))
+		s.LocationIDs = slices.GrowLen(s.LocationIDs, len(v))
 		for j, m := range v {
 			s.LocationIDs[j] = uint64(m)
 		}
@@ -237,7 +238,7 @@ func (p *partitionRewriter) InsertStacktrace(stacktrace uint32, locations []int3
 	// be a marked pointer to unresolved value.
 	idx := p.stacktraces.resolved[stacktrace] & markerMask
 	v := &p.stacktraces.values[idx]
-	n := grow(*v, len(locations))
+	n := slices.GrowLen(*v, len(locations))
 	copy(n, locations)
 	// Preserve allocated capacity.
 	p.stacktraces.values[idx] = n
@@ -360,7 +361,7 @@ func (t *lookupTable[T]) updateResolved() {
 
 func (t *lookupTable[T]) initSorted() {
 	// Gather and sort references to unresolved values.
-	t.buf = grow(t.buf, len(t.unresolved))
+	t.buf = slices.GrowLen(t.buf, len(t.unresolved))
 	copy(t.buf, t.unresolved)
 	sort.Slice(t.buf, func(i, j int) bool {
 		return t.buf[i] < t.buf[j]

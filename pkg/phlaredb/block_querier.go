@@ -16,7 +16,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/gogo/status"
-	"github.com/google/pprof/profile"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
 	"github.com/oklog/ulid"
@@ -31,7 +30,9 @@ import (
 	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
@@ -44,6 +45,7 @@ import (
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
@@ -547,7 +549,7 @@ type Querier interface {
 	MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spans phlaremodel.SpanSelector) (*phlaremodel.Tree, error)
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
 	SelectMergeByLabels(ctx context.Context, params *ingestv1.SelectProfilesRequest, by ...string) ([]*typesv1.Series, error)
-	MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error)
+	MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profilev1.Profile, error)
 	Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error)
 	ProfileTypes(context.Context, *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error)
 	LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error)
@@ -1158,7 +1160,7 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 	}
 
 	var lock sync.Mutex
-	result := make([]*profile.Profile, 0, len(queriers))
+	var result pprof.ProfileMerge
 	g, ctx := errgroup.WithContext(ctx)
 
 	// depending on if new need deduplication or not there are two different code paths.
@@ -1190,15 +1192,15 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 					return nil
 				}
 
-				merge, err := querier.MergePprof(ctx, iter.NewSliceIterator(querier.Sort(profiles)))
+				p, err := querier.MergePprof(ctx, iter.NewSliceIterator(querier.Sort(profiles)))
 				if err != nil {
 					return err
 				}
 
 				lock.Lock()
-				result = append(result, merge)
+				err = result.Merge(p)
 				lock.Unlock()
-				return nil
+				return err
 			}))
 		}
 	} else {
@@ -1226,14 +1228,14 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 			// Sort profiles for better read locality.
 			// Merge async the result so we can continue streaming profiles.
 			g.Go(util.RecoverPanic(func() error {
-				merge, err := querier.MergePprof(ctx, iter.NewSliceIterator(querier.Sort(selectedProfiles[i])))
+				p, err := querier.MergePprof(ctx, iter.NewSliceIterator(querier.Sort(selectedProfiles[i])))
 				if err != nil {
 					return err
 				}
 				lock.Lock()
-				result = append(result, merge)
+				err = result.Merge(p)
 				lock.Unlock()
-				return nil
+				return err
 			}))
 		}
 
@@ -1249,27 +1251,16 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 		return err
 	}
 
-	if len(result) == 0 {
-		result = append(result, &profile.Profile{})
-	}
-	for _, p := range result {
-		phlaremodel.SetProfileMetadata(p, request.Type)
-		p.TimeNanos = model.Time(r.Request.End).UnixNano()
-	}
-	p, err := profile.Merge(result)
+	mergedProfile := result.Profile()
+	pprof.SetProfileMetadata(mergedProfile, request.Type, model.Time(r.Request.End).UnixNano(), 0)
+
+	// connect go already handles compression.
+	pprofBytes, err := proto.Marshal(mergedProfile)
 	if err != nil {
 		return err
 	}
-
-	// connect go already handles compression.
-	var buf bytes.Buffer
-	if err := p.WriteUncompressed(&buf); err != nil {
-		return err
-	}
 	// sends the final result to the client.
-	err = stream.Send(&ingestv1.MergeProfilesPprofResponse{
-		Result: buf.Bytes(),
-	})
+	err = stream.Send(&ingestv1.MergeProfilesPprofResponse{Result: pprofBytes})
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			return connect.NewError(connect.CodeCanceled, errors.New("client closed stream"))

@@ -6,12 +6,12 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log/level"
-	"github.com/google/pprof/profile"
 	"github.com/opentracing/opentracing-go"
 	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
@@ -191,7 +191,7 @@ func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.It
 	return r.Tree()
 }
 
-func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
+func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profilev1.Profile, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergePprof")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb)
@@ -199,7 +199,7 @@ func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[P
 	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, r); err != nil {
 		return nil, err
 	}
-	return r.Profile()
+	return r.Pprof(0)
 }
 
 func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
@@ -420,7 +420,7 @@ func (q *headInMemoryQuerier) MergeByStacktraces(ctx context.Context, rows iter.
 	return r.Tree()
 }
 
-func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profile.Profile, error) {
+func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profilev1.Profile, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergePprof - HeadInMemory")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb)
@@ -435,7 +435,7 @@ func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	return r.Profile()
+	return r.Pprof(0)
 }
 
 func (q *headInMemoryQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
