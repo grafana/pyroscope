@@ -20,6 +20,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/operations"
 	"github.com/k0kubun/pp/v3"
 	"github.com/klauspost/compress/gzip"
 	"github.com/mattn/go-isatty"
@@ -61,11 +62,11 @@ type queryParams struct {
 }
 
 func (p *queryParams) parseFromTo() (from time.Time, to time.Time, err error) {
-	from, err = parseTime(p.From)
+	from, err = operations.ParseTime(p.From)
 	if err != nil {
 		return time.Time{}, time.Time{}, errors.Wrap(err, "failed to parse from")
 	}
-	to, err = parseTime(p.To)
+	to, err = operations.ParseTime(p.To)
 	if err != nil {
 		return time.Time{}, time.Time{}, errors.Wrap(err, "failed to parse to")
 	}
