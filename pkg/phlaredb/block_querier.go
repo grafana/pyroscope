@@ -1513,18 +1513,16 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 		if err != nil {
 			return nil, err
 		}
-		if lblsExisting, exists := lblsPerRef[int64(chks[0].SeriesIndex)]; exists {
-			// Compare to check if there is a clash
-			if phlaremodel.CompareLabelPairs(lbls, lblsExisting.lbs) != 0 {
-				panic("label hash conflict")
-			}
-		} else {
-			lblsPerRef[int64(chks[0].SeriesIndex)] = labelsInfo{
-				fp:  model.Fingerprint(fp),
-				lbs: lbls,
-			}
-			lbls = make(phlaremodel.Labels, 0, 6)
+		if _, exists := lblsPerRef[int64(chks[0].SeriesIndex)]; exists {
+			continue
 		}
+		info := labelsInfo{
+			fp:  model.Fingerprint(fp),
+			lbs: make(phlaremodel.Labels, len(lbls)),
+		}
+		copy(info.lbs, lbls)
+		lblsPerRef[int64(chks[0].SeriesIndex)] = info
+
 	}
 
 	var buf [][]parquet.Value
