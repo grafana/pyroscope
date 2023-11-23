@@ -282,4 +282,9 @@ func (a *API) RegisterAdmin(ad *operations.Admin) {
 	a.RegisterRoute("/ops/object-store/tenants", http.HandlerFunc(ad.TenantsHandler), false, true, "GET")
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks", http.HandlerFunc(ad.BlocksHandler), false, true, "GET")
 	a.RegisterRoute("/ops/object-store/tenants/{tenant}/blocks/{block}", http.HandlerFunc(ad.BlockHandler), false, true, "GET")
+
+	a.indexPage.AddLinks(defaultWeight, "Admin", []IndexPageLink{
+		{Desc: "Object Storage Tenants & Blocks", Path: "/ops/object-store/tenants"},
+	})
+
 }
