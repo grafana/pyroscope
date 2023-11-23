@@ -48,6 +48,10 @@ func (h *Handlers) CreateBlocksHandler() func(http.ResponseWriter, *http.Request
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		tenantId := vars["tenant"]
+		if tenantId == "" {
+			httputil.Error(w, errors.New("No tenant id provided"))
+			return
+		}
 		index, err := bucketindex.ReadIndex(h.Context, h.Bucket, tenantId, nil, h.Logger)
 		if err != nil {
 			httputil.Error(w, err)
