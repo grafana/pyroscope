@@ -41,7 +41,7 @@ Various languages support different profiling types. Pyroscope supports the foll
 | Heap               |       |       |       |       |        |       | Yes     |           |              |
 
 
-## CPU Profiling
+## CPU Profiling (note we can link to each of these from within the Pyroscope UI in the little (i) icon)
 
 CPU profiling measures the amount of CPU time consumed by different parts of your application code. High CPU usage can indicate inefficient code, leading to poor performance and increased operational costs. It's used to identify and optimize CPU-intensive functions in your application.
 
