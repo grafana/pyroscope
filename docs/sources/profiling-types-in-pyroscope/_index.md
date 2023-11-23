@@ -90,12 +90,4 @@ Block profiling measures the frequency and duration of blocking operations, wher
 - **When to Use**: To identify and reduce blocking delays
 - **Flamegraph Insight**: Identifies where and how long threads are being blocked
 
-## Best Practices for Using Profiling Types
-
-1. **Start with CPU Profiling**: Often the first step in performance optimization
-2. **Combine Profiling Types**: Use multiple types for comprehensive analysis
-3. **Regular Monitoring**: Continuously monitor performance to proactively manage issues
-4. **Integrate with Other Tools**: Use profiling data with other observability tools for enhanced insights
-
-
 # Next Steps: Exploring Pyroscope's UI(link to ui analysis docs)
