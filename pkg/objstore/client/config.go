@@ -77,7 +77,7 @@ func (cfg *StorageBackendConfig) RegisterFlags(f *flag.FlagSet, logger log.Logge
 func (cfg *StorageBackendConfig) RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir string, f *flag.FlagSet, logger log.Logger) {
 	cfg.S3.RegisterFlagsWithPrefix(prefix, f)
 	cfg.GCS.RegisterFlagsWithPrefix(prefix, f)
-	cfg.Azure.RegisterFlagsWithPrefix(prefix, f, logger)
+	cfg.Azure.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Swift.RegisterFlagsWithPrefix(prefix, f)
 	cfg.Filesystem.RegisterFlagsWithPrefixAndDefaultDirectory(prefix, dir, f)
 	cfg.COS.RegisterFlagsWithPrefix(prefix, f)
