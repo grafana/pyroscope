@@ -7,9 +7,9 @@ import (
 	"github.com/parquet-go/parquet-go"
 )
 
-func GetColumnIndexByPath(pf *parquet.File, s string) (index, depth int) {
+func GetColumnIndexByPath(root *parquet.Column, s string) (index, depth int) {
 	colSelector := strings.Split(s, ".")
-	n := pf.Root()
+	n := root
 	for len(colSelector) > 0 {
 		n = n.Column(colSelector[0])
 		if n == nil {
@@ -23,8 +23,8 @@ func GetColumnIndexByPath(pf *parquet.File, s string) (index, depth int) {
 	return n.Index(), depth
 }
 
-func HasColumn(pf *parquet.File, s string) bool {
-	index, _ := GetColumnIndexByPath(pf, s)
+func HasColumn(root *parquet.Column, s string) bool {
+	index, _ := GetColumnIndexByPath(root, s)
 	return index >= 0
 }
 

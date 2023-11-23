@@ -160,7 +160,7 @@ func (m *ClientMock) IsObjNotFoundErr(err error) bool {
 	return errors.Is(err, ErrObjectDoesNotExist)
 }
 
-func (m *ClientMock) IsCustomerManagedKeyError(_ error) bool {
+func (m *ClientMock) IsAccessDeniedErr(_ error) bool {
 	return false
 }
 

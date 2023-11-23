@@ -3,6 +3,7 @@ package querier
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
 
 	"github.com/cespare/xxhash/v2"
@@ -107,7 +108,6 @@ func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]
 		)
 		idx++
 		g.Go(func() error {
-
 			client, err := clientFactory(r)
 			if err != nil {
 				return err
@@ -121,7 +121,6 @@ func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]
 			result[i] = ResponseFromReplica[Result]{r, resp}
 
 			return nil
-
 		})
 	}
 
@@ -201,7 +200,7 @@ func (r *replicasPerBlockID) removeBlock(ulid string) {
 }
 
 // this step removes sharded blocks that don't have all the shards present for a time window
-func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() {
+func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() error {
 	type compactionKey struct {
 		level int32
 		minT  int64
@@ -212,7 +211,7 @@ func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() {
 	for blockID := range r.m {
 		meta, ok := r.meta[blockID]
 		if !ok {
-			panic("meta missing")
+			return fmt.Errorf("meta missing for block id %s", blockID)
 		}
 		if !ok {
 			continue
@@ -240,7 +239,7 @@ func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() {
 		for _, block := range blocks {
 			meta, ok := r.meta[block]
 			if !ok {
-				panic("meta is missing")
+				return fmt.Errorf("meta missing for block id %s", block)
 			}
 
 			shardIdx, shards, ok := shardFromBlock(meta)
@@ -262,7 +261,7 @@ func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() {
 			}
 
 			if len(shardsSeen) != int(shards) {
-				panic("shard length mismatch")
+				return fmt.Errorf("shard length mismatch, shards seen: %d, shards as per label: %d", len(shardsSeen), shards)
 			}
 
 			shardsSeen[shardIdx] = true
@@ -285,14 +284,18 @@ func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() {
 			r.removeBlock(block)
 		}
 	}
+
+	return nil
 }
 
 // prunes blocks that are contained by a higher compaction level block
-func (r *replicasPerBlockID) pruneSupersededBlocks() {
+func (r *replicasPerBlockID) pruneSupersededBlocks() error {
 	for blockID := range r.m {
 		meta, ok := r.meta[blockID]
 		if !ok {
-			panic("meta missing")
+			if !ok {
+				return fmt.Errorf("meta missing for block id %s", blockID)
+			}
 		}
 		if meta.Compaction == nil {
 			continue
@@ -307,6 +310,7 @@ func (r *replicasPerBlockID) pruneSupersededBlocks() {
 			r.removeBlock(blockID)
 		}
 	}
+	return nil
 }
 
 type blockPlan map[string]*ingestv1.BlockHints
@@ -327,8 +331,14 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1
 		smallestCompactionLevel = int32(0)
 	)
 
-	r.pruneIncompleteShardedBlocks()
-	r.pruneSupersededBlocks()
+	if err := r.pruneIncompleteShardedBlocks(); err != nil {
+		level.Warn(r.logger).Log("msg", "block planning failed to prune incomplete sharded blocks", "err", err)
+		return nil
+	}
+	if err := r.pruneSupersededBlocks(); err != nil {
+		level.Warn(r.logger).Log("msg", "block planning failed to prune superseded blocks", "err", err)
+		return nil
+	}
 
 	// now we go through all blocks and choose the replicas that we want to query
 	for blockID, replicas := range r.m {

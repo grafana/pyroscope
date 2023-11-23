@@ -97,7 +97,9 @@ function ComparisonDiffApp() {
         />
         <Panel
           isLoading={isLoading}
-          title={<ChartTitle titleKey={diffView.profile?.metadata.units} />}
+          title={
+            <ChartTitle titleKey={diffView.profile?.metadata.name as any} />
+          }
         >
           <TimelineChartWrapper
             data-testid="timeline-main"
@@ -218,7 +220,7 @@ function ComparisonDiffApp() {
             />
           </Panel>
         </div>
-        <Panel isLoading={isLoading} title={<ChartTitle titleKey="diff" />}>
+        <Panel isLoading={isLoading}>
           <FlameGraphWrapper profile={diffView.profile} diff={true} />
         </Panel>
       </PageContentWrapper>

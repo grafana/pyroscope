@@ -15,15 +15,15 @@ import '@szhsin/react-menu/dist/index.css';
 import ReactDOM from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { Route, Router, Switch } from 'react-router-dom';
-import { useReduxQuerySync } from './redux/useReduxQuerySync';
+import { setupReduxQuerySync } from './redux/useReduxQuerySync';
 import './sass/profile.scss';
 
 const container = document.getElementById('reactRoot') as HTMLElement;
 const root = ReactDOM.createRoot(container);
 
-function App() {
-  useReduxQuerySync();
+setupReduxQuerySync();
 
+function App() {
   useSelectFirstApp();
 
   return (

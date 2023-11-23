@@ -81,8 +81,9 @@ func (m *DelayedBucketClient) IsObjNotFoundErr(err error) bool {
 	return m.wrapped.IsObjNotFoundErr(err)
 }
 
-func (m *DelayedBucketClient) IsCustomerManagedKeyError(err error) bool {
-	return m.wrapped.IsCustomerManagedKeyError(err)
+// IsAccessDeniedErr returns true if acces to object is denied.
+func (m *DelayedBucketClient) IsAccessDeniedErr(err error) bool {
+	return m.wrapped.IsAccessDeniedErr(err)
 }
 
 func (m *DelayedBucketClient) Attributes(ctx context.Context, name string) (objstore.ObjectAttributes, error) {
