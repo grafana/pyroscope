@@ -21,10 +21,10 @@ if [[ -z "${GITHUB_ACTIONS}" && -e "/dev/kvm" ]]; then
   KVM_ARGS="-enable-kvm -cpu kvm64"
 fi
 
-connect="ssh -p 2222 -o StrictHostKeyChecking=no root@localhost"
+connect="ssh -p 2222 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@localhost"
 
 kill_vm() {
-  pkill qemu-system-x86 || true
+  pkill qemu-system || true
 }
 
 run_vm() {
@@ -34,7 +34,7 @@ run_vm() {
                   -display none \
                   -no-reboot \
                   -smp 4 \
-                  -m 2G \
+                  -m 4G \
                   ${KVM_ARGS} \
                   -hda ${IMG} \
                   -netdev user,id=user.0,hostfwd=tcp::2222-:22 \
