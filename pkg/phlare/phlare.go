@@ -309,7 +309,7 @@ func (f *Phlare) setupModuleManager() error {
 		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport},
 		QueryScheduler:    {Overrides, API, MemberlistKV, UsageReport},
 		Ingester:          {Overrides, API, MemberlistKV, Storage, UsageReport},
-		StoreGateway:      {API, Storage, Overrides, MemberlistKV, UsageReport},
+		StoreGateway:      {API, Storage, Overrides, MemberlistKV, UsageReport, Admin},
 		Compactor:         {API, Storage, Overrides, MemberlistKV, UsageReport},
 		UsageReport:       {Storage, MemberlistKV},
 		Overrides:         {RuntimeConfig},
