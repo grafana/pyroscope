@@ -1,15 +1,8 @@
 package phlaredb
 
 import (
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
-	"github.com/prometheus/common/model"
 )
-
-type labelsInfo struct {
-	fp  model.Fingerprint
-	lbs phlaremodel.Labels
-}
 
 type rowProfile struct {
 	rowNum    int64
@@ -24,6 +17,8 @@ func (p rowProfile) RowNumber() int64 {
 	return p.rowNum
 }
 
+// RowsIterator is an iterator over rows of a parquet table.
+// It is a wrapper over query.Iterator to transform its results into a desired type.
 type RowsIterator[T any] struct {
 	rows    query.Iterator
 	current T

@@ -1474,6 +1474,11 @@ func retrieveStacktracePartition(buf [][]parquet.Value, pos int) uint64 {
 	return uint64(0)
 }
 
+type labelsInfo struct {
+	fp  model.Fingerprint
+	lbs phlaremodel.Labels
+}
+
 func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMatchingProfiles - Block")
 	defer sp.Finish()

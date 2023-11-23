@@ -1155,6 +1155,76 @@ func TestSelectMergeStacktraces(t *testing.T) {
 	require.NoError(t, querier.Close())
 }
 
+func TestSelectMergeLabels(t *testing.T) {
+	ctx := context.Background()
+
+	querier := newBlock(t, func() (res []*testhelper.ProfileBuilder) {
+		for i := int64(1); i < 6; i++ {
+			res = append(res, testhelper.NewProfileBuilder(int64(time.Second)*i).
+				CPUProfile().
+				WithLabels(
+					"job", "a",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+				testhelper.NewProfileBuilder(int64(time.Second)*i).
+					CPUProfile().
+					WithLabels(
+						"job", "b",
+					).ForStacktraceString("foo", "bar", "buzz").AddSamples(1),
+				testhelper.NewProfileBuilder(int64(time.Second)*i).
+					CPUProfile().
+					WithLabels(
+						"job", "c",
+					).ForStacktraceString("foo", "bar").AddSamples(1))
+		}
+		return res
+	})
+
+	err := querier.Open(ctx)
+	require.NoError(t, err)
+
+	merge, err := querier.SelectMergeByLabels(ctx, &ingesterv1.SelectProfilesRequest{
+		LabelSelector: `{}`,
+		Type: &typesv1.ProfileType{
+			ID:         "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+			Name:       "process_cpu",
+			SampleType: "cpu",
+			SampleUnit: "nanoseconds",
+			PeriodType: "cpu",
+			PeriodUnit: "nanoseconds",
+		},
+		Start: 0,
+		End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
+	}, "job")
+	require.NoError(t, err)
+	expected := []*typesv1.Series{
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "a"),
+			Points: genPoints(5),
+		},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "b"),
+			Points: genPoints(5),
+		},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "c"),
+			Points: genPoints(5),
+		},
+	}
+	require.Equal(t, expected, merge)
+	require.NoError(t, querier.Close())
+}
+
+func genPoints(count int) []*typesv1.Point {
+	points := make([]*typesv1.Point, 0, count)
+	for i := 1; i < count+1; i++ {
+		points = append(points, &typesv1.Point{
+			Timestamp: int64(model.TimeFromUnixNano(int64(time.Second * time.Duration(i)))),
+			Value:     1,
+		})
+	}
+	return points
+}
+
 func TestSelectMergeByStacktracesRace(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
