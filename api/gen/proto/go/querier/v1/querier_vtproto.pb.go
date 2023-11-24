@@ -377,12 +377,15 @@ func (m *SelectSeriesRequest) CloneVT() *SelectSeriesRequest {
 		Start:         m.Start,
 		End:           m.End,
 		Step:          m.Step,
-		MergeFunction: m.MergeFunction,
 	}
 	if rhs := m.GroupBy; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
 		r.GroupBy = tmpContainer
+	}
+	if rhs := m.Aggregation; rhs != nil {
+		tmpVal := *rhs
+		r.Aggregation = &tmpVal
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -896,7 +899,7 @@ func (this *SelectSeriesRequest) EqualVT(that *SelectSeriesRequest) bool {
 	if this.Step != that.Step {
 		return false
 	}
-	if this.MergeFunction != that.MergeFunction {
+	if p, q := this.Aggregation, that.Aggregation; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2159,10 +2162,10 @@ func (m *SelectSeriesRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.MergeFunction) > 0 {
-		i -= len(m.MergeFunction)
-		copy(dAtA[i:], m.MergeFunction)
-		i = encodeVarint(dAtA, i, uint64(len(m.MergeFunction)))
+	if m.Aggregation != nil {
+		i -= len(*m.Aggregation)
+		copy(dAtA[i:], *m.Aggregation)
+		i = encodeVarint(dAtA, i, uint64(len(*m.Aggregation)))
 		i--
 		dAtA[i] = 0x3a
 	}
@@ -2619,8 +2622,8 @@ func (m *SelectSeriesRequest) SizeVT() (n int) {
 	if m.Step != 0 {
 		n += 9
 	}
-	l = len(m.MergeFunction)
-	if l > 0 {
+	if m.Aggregation != nil {
+		l = len(*m.Aggregation)
 		n += 1 + l + sov(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -4669,7 +4672,7 @@ func (m *SelectSeriesRequest) UnmarshalVT(dAtA []byte) error {
 			m.Step = float64(math.Float64frombits(v))
 		case 7:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MergeFunction", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Aggregation", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -4697,7 +4700,8 @@ func (m *SelectSeriesRequest) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.MergeFunction = string(dAtA[iNdEx:postIndex])
+			s := string(dAtA[iNdEx:postIndex])
+			m.Aggregation = &s
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

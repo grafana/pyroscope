@@ -168,7 +168,6 @@ func (m *SelectProfilesRequest) CloneVT() *SelectProfilesRequest {
 		Start:         m.Start,
 		End:           m.End,
 		Hints:         m.Hints.CloneVT(),
-		MergeFunction: m.MergeFunction,
 	}
 	if rhs := m.Type; rhs != nil {
 		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.ProfileType }); ok {
@@ -176,6 +175,10 @@ func (m *SelectProfilesRequest) CloneVT() *SelectProfilesRequest {
 		} else {
 			r.Type = proto.Clone(rhs).(*v1.ProfileType)
 		}
+	}
+	if rhs := m.Aggregation; rhs != nil {
+		tmpVal := *rhs
+		r.Aggregation = &tmpVal
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -875,7 +878,7 @@ func (this *SelectProfilesRequest) EqualVT(that *SelectProfilesRequest) bool {
 	if !this.Hints.EqualVT(that.Hints) {
 		return false
 	}
-	if this.MergeFunction != that.MergeFunction {
+	if p, q := this.Aggregation, that.Aggregation; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2404,10 +2407,10 @@ func (m *SelectProfilesRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error)
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.MergeFunction) > 0 {
-		i -= len(m.MergeFunction)
-		copy(dAtA[i:], m.MergeFunction)
-		i = encodeVarint(dAtA, i, uint64(len(m.MergeFunction)))
+	if m.Aggregation != nil {
+		i -= len(*m.Aggregation)
+		copy(dAtA[i:], *m.Aggregation)
+		i = encodeVarint(dAtA, i, uint64(len(*m.Aggregation)))
 		i--
 		dAtA[i] = 0x32
 	}
@@ -3739,8 +3742,8 @@ func (m *SelectProfilesRequest) SizeVT() (n int) {
 		l = m.Hints.SizeVT()
 		n += 1 + l + sov(uint64(l))
 	}
-	l = len(m.MergeFunction)
-	if l > 0 {
+	if m.Aggregation != nil {
+		l = len(*m.Aggregation)
 		n += 1 + l + sov(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -4886,7 +4889,7 @@ func (m *SelectProfilesRequest) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 6:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MergeFunction", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Aggregation", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -4914,7 +4917,8 @@ func (m *SelectProfilesRequest) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.MergeFunction = string(dAtA[iNdEx:postIndex])
+			s := string(dAtA[iNdEx:postIndex])
+			m.Aggregation = &s
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

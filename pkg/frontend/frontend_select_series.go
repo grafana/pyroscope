@@ -66,7 +66,7 @@ func (f *Frontend) SelectSeries(ctx context.Context,
 				End:           r.End.UnixMilli(),
 				GroupBy:       c.Msg.GroupBy,
 				Step:          c.Msg.Step,
-				MergeFunction: c.Msg.MergeFunction,
+				Aggregation:   c.Msg.Aggregation,
 			})
 			resp, err := connectgrpc.RoundTripUnary[
 				querierv1.SelectSeriesRequest,

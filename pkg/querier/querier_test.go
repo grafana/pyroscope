@@ -990,13 +990,14 @@ func Test_RangeSeriesSum(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			in := iter.NewSliceIterator(tc.in)
-			out := rangeSeries(in, 1, 5, 1, "")
+			out := rangeSeries(in, 1, 5, 1, nil)
 			testhelper.EqualProto(t, tc.out, out)
 		})
 	}
 }
 
 func Test_RangeSeriesAvg(t *testing.T) {
+	aggregation := "avg"
 	for _, tc := range []struct {
 		name string
 		in   []ProfileValue
@@ -1060,7 +1061,7 @@ func Test_RangeSeriesAvg(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			in := iter.NewSliceIterator(tc.in)
-			out := rangeSeries(in, 1, 5, 1, "avg")
+			out := rangeSeries(in, 1, 5, 1, &aggregation)
 			testhelper.EqualProto(t, tc.out, out)
 		})
 	}

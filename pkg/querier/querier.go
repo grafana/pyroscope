@@ -662,7 +662,7 @@ func (sq storeQuery) MergeSeriesRequest(req *querierv1.SelectSeriesRequest, prof
 			LabelSelector: req.LabelSelector,
 			Start:         int64(sq.start),
 			End:           int64(sq.end),
-			MergeFunction: req.MergeFunction,
+			Aggregation:   req.Aggregation,
 		},
 	}
 }
@@ -870,7 +870,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	result := rangeSeries(it, req.Msg.Start, req.Msg.End, stepMs, req.Msg.MergeFunction)
+	result := rangeSeries(it, req.Msg.Start, req.Msg.End, stepMs, req.Msg.Aggregation)
 	if it.Err() != nil {
 		return nil, connect.NewError(connect.CodeInternal, it.Err())
 	}
@@ -900,7 +900,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 				Start:         start,
 				End:           req.Msg.End,
 				Type:          profileType,
-				MergeFunction: req.Msg.MergeFunction,
+				Aggregation:   req.Msg.Aggregation,
 			},
 			By: req.Msg.GroupBy,
 		}, plan)
@@ -936,7 +936,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 // rangeSeries aggregates profiles into series.
 // Series contains points spaced by step from start to end.
 // Profiles from the same step are aggregated into one point.
-func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64, mergeFunction string) []*typesv1.Series {
+func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64, aggregation *string) []*typesv1.Series {
 	defer it.Close()
 	seriesMap := make(map[uint64]*typesv1.Series)
 	accumulators := make(map[uint64]accumulator)
@@ -951,7 +951,7 @@ Outer:
 		for {
 			accumulator, ok := accumulators[it.At().LabelsHash]
 			if !ok {
-				accumulator = newAccumulator(mergeFunction)
+				accumulator = newAccumulator(aggregation)
 				accumulators[it.At().LabelsHash] = accumulator
 			}
 			if it.At().Ts > currentStep {
@@ -1157,8 +1157,8 @@ func (a *avgAccumulator) getTimestamp() int64 {
 	return a.ts
 }
 
-func newAccumulator(mergeFunction string) accumulator {
-	if mergeFunction == "avg" {
+func newAccumulator(aggregation *string) accumulator {
+	if aggregation != nil && *aggregation == "avg" {
 		return &avgAccumulator{}
 	} else {
 		return &sumAccumulator{}

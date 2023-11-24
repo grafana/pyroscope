@@ -130,7 +130,10 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 	}
 
 	groupBy := req.URL.Query()["groupBy"]
-	mergeFunction := req.URL.Query().Get("mergeFunction")
+	var aggregation string
+	if req.URL.Query().Has("aggregation") {
+		aggregation = req.URL.Query().Get("aggregation")
+	}
 
 	var resFlame *connect.Response[querierv1.SelectMergeStacktracesResponse]
 	g, ctx := errgroup.WithContext(req.Context())
@@ -153,7 +156,7 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 				End:           selectParams.End,
 				Step:          timelineStep,
 				GroupBy:       groupBy,
-				MergeFunction: mergeFunction,
+				Aggregation:   &aggregation,
 			}))
 
 		return err

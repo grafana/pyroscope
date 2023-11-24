@@ -1002,9 +1002,9 @@
           "$ref": "#/definitions/v1Hints",
           "title": "Optional: Hints for querying"
         },
-        "mergeFunction": {
+        "aggregation": {
           "type": "string",
-          "title": "Optional: Merge function"
+          "title": "Optional: Aggregation"
         }
       }
     },
