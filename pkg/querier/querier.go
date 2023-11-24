@@ -939,7 +939,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64, aggregation *string) []*typesv1.Series {
 	defer it.Close()
 	seriesMap := make(map[uint64]*typesv1.Series)
-	accumulators := make(map[uint64]accumulator)
+	aggregators := make(map[uint64]stepAggregator)
 
 	if !it.Next() {
 		return nil
@@ -949,15 +949,15 @@ func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64, aggrega
 Outer:
 	for currentStep := start; currentStep <= end; currentStep += step {
 		for {
-			accumulator, ok := accumulators[it.At().LabelsHash]
+			aggregator, ok := aggregators[it.At().LabelsHash]
 			if !ok {
-				accumulator = newAccumulator(aggregation)
-				accumulators[it.At().LabelsHash] = accumulator
+				aggregator = newStepAggregator(aggregation)
+				aggregators[it.At().LabelsHash] = aggregator
 			}
 			if it.At().Ts > currentStep {
-				if !accumulator.isEmpty() {
+				if !aggregator.isEmpty() {
 					series := seriesMap[it.At().LabelsHash]
-					series.Points = append(series.Points, accumulator.getAndReset())
+					series.Points = append(series.Points, aggregator.getAndReset())
 				}
 				break // no more profiles for the currentStep
 			}
@@ -968,33 +968,33 @@ Outer:
 					Labels: it.At().Lbs,
 					Points: []*typesv1.Point{},
 				}
-				accumulator.add(currentStep, it.At().Value)
+				aggregator.add(currentStep, it.At().Value)
 				if !it.Next() {
 					break Outer
 				}
 				continue
 			}
 			// Aggregate point if it is in the current step.
-			if accumulator.getTimestamp() == currentStep {
-				accumulator.add(currentStep, it.At().Value)
+			if aggregator.getTimestamp() == currentStep {
+				aggregator.add(currentStep, it.At().Value)
 				if !it.Next() {
 					break Outer
 				}
 				continue
 			}
 			// Next step is missing
-			if !accumulator.isEmpty() {
-				series.Points = append(series.Points, accumulator.getAndReset())
+			if !aggregator.isEmpty() {
+				series.Points = append(series.Points, aggregator.getAndReset())
 			}
-			accumulator.add(currentStep, it.At().Value)
+			aggregator.add(currentStep, it.At().Value)
 			if !it.Next() {
 				break Outer
 			}
 		}
 	}
-	for lblHash, accumulator := range accumulators {
-		if !accumulator.isEmpty() {
-			seriesMap[lblHash].Points = append(seriesMap[lblHash].Points, accumulator.getAndReset())
+	for lblHash, aggregator := range aggregators {
+		if !aggregator.isEmpty() {
+			seriesMap[lblHash].Points = append(seriesMap[lblHash].Points, aggregator.getAndReset())
 		}
 	}
 	series := lo.Values(seriesMap)
@@ -1089,24 +1089,32 @@ func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMe
 	return storegatewayTree, nil
 }
 
-type accumulator interface {
+type stepAggregator interface {
 	add(ts int64, value float64)
 	getAndReset() *typesv1.Point
 	isEmpty() bool
 	getTimestamp() int64
 }
 
-type sumAccumulator struct {
+func newStepAggregator(aggregation *string) stepAggregator {
+	if aggregation != nil && *aggregation == "avg" {
+		return &avgAggregator{}
+	} else {
+		return &sumAggregator{}
+	}
+}
+
+type sumAggregator struct {
 	ts  int64
 	sum float64
 }
 
-func (a *sumAccumulator) add(ts int64, value float64) {
+func (a *sumAggregator) add(ts int64, value float64) {
 	a.ts = ts
 	a.sum += value
 }
 
-func (a *sumAccumulator) getAndReset() *typesv1.Point {
+func (a *sumAggregator) getAndReset() *typesv1.Point {
 	tsCopy := a.ts
 	sumCopy := a.sum
 	a.ts = 0
@@ -1117,27 +1125,27 @@ func (a *sumAccumulator) getAndReset() *typesv1.Point {
 	}
 }
 
-func (a *sumAccumulator) isEmpty() bool {
+func (a *sumAggregator) isEmpty() bool {
 	return a.ts == 0
 }
 
-func (a *sumAccumulator) getTimestamp() int64 {
+func (a *sumAggregator) getTimestamp() int64 {
 	return a.ts
 }
 
-type avgAccumulator struct {
+type avgAggregator struct {
 	ts    int64
 	sum   float64
 	count int64
 }
 
-func (a *avgAccumulator) add(ts int64, value float64) {
+func (a *avgAggregator) add(ts int64, value float64) {
 	a.ts = ts
 	a.sum += value
 	a.count++
 }
 
-func (a *avgAccumulator) getAndReset() *typesv1.Point {
+func (a *avgAggregator) getAndReset() *typesv1.Point {
 	avg := a.sum / float64(a.count)
 	tsCopy := a.ts
 	a.ts = 0
@@ -1149,18 +1157,10 @@ func (a *avgAccumulator) getAndReset() *typesv1.Point {
 	}
 }
 
-func (a *avgAccumulator) isEmpty() bool {
+func (a *avgAggregator) isEmpty() bool {
 	return a.ts == 0
 }
 
-func (a *avgAccumulator) getTimestamp() int64 {
+func (a *avgAggregator) getTimestamp() int64 {
 	return a.ts
-}
-
-func newAccumulator(aggregation *string) accumulator {
-	if aggregation != nil && *aggregation == "avg" {
-		return &avgAccumulator{}
-	} else {
-		return &sumAccumulator{}
-	}
 }
