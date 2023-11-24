@@ -207,13 +207,22 @@ func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, schemav1.S
 	return g.Wait()
 }
 
+type pprofBuilder interface {
+	StacktraceInserter
+	init(*Symbols, schemav1.Samples)
+	buildPprof() *googlev1.Profile
+}
+
 func (r *Symbols) Pprof(ctx context.Context, samples schemav1.Samples, maxNodes int64) (*googlev1.Profile, error) {
-	t := pprofProtoSymbols{maxNodes: maxNodes}
-	t.init(r, samples)
-	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, &t, samples.StacktraceIDs); err != nil {
+	var b pprofBuilder = new(pprofProtoSymbols)
+	if maxNodes > 0 {
+		b = &pprofProtoTruncatedSymbols{maxNodes: maxNodes}
+	}
+	b.init(r, samples)
+	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, b, samples.StacktraceIDs); err != nil {
 		return nil, err
 	}
-	return t.buildPprof(), nil
+	return b.buildPprof(), nil
 }
 
 func (r *Symbols) Tree(ctx context.Context, samples schemav1.Samples) (*model.Tree, error) {

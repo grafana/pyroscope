@@ -30,13 +30,25 @@ func Test_block_Resolver_ResolveTree(t *testing.T) {
 	require.Equal(t, expectedFingerprint, treeFingerprint(resolved))
 }
 
-func Benchmark_block_Resolver_ResolveTree(t *testing.B) {
-	s := newBlockSuite(t, [][]string{{"testdata/big-profile.pb.gz"}})
-	defer s.teardown()
+func Benchmark_block_Resolver_ResolveTree_Small(t *testing.B) {
+	s := newMemSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	t.ResetTimer()
 	t.ReportAllocs()
 	for i := 0; i < t.N; i++ {
-		r := NewResolver(context.Background(), s.reader)
+		r := NewResolver(context.Background(), s.db)
+		r.AddSamples(0, s.indexed[0][0].Samples)
+		_, _ = r.Tree()
+	}
+}
+
+func Benchmark_block_Resolver_ResolveTree_Big(b *testing.B) {
+	s := memSuite{t: b, files: [][]string{{"testdata/big-profile.pb.gz"}}}
+	s.config = DefaultConfig().WithDirectory(b.TempDir())
+	s.init()
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		r := NewResolver(context.Background(), s.db)
 		r.AddSamples(0, s.indexed[0][0].Samples)
 		_, _ = r.Tree()
 	}

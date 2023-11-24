@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
 func Test_memory_Resolver_ResolvePprof(t *testing.T) {
@@ -37,14 +39,34 @@ func Test_block_Resolver_ResolvePprof_multiple_partitions(t *testing.T) {
 	require.Equal(t, expectedFingerprint, pprofFingerprint(resolved, 0))
 }
 
-func Benchmark_block_Resolver_ResolvePprof(t *testing.B) {
-	s := newBlockSuite(t, [][]string{{"testdata/big-profile.pb.gz"}})
-	defer s.teardown()
-	t.ResetTimer()
-	t.ReportAllocs()
-	for i := 0; i < t.N; i++ {
-		r := NewResolver(context.Background(), s.db)
-		r.AddSamples(0, s.indexed[0][0].Samples)
-		_, _ = r.Pprof(64 << 10)
+func Benchmark_block_Resolver_ResolvePprof_Small(b *testing.B) {
+	s := newMemSuite(b, [][]string{{"testdata/profile.pb.gz"}})
+	samples := s.indexed[0][0].Samples
+	b.Run("0", benchmarkResolverResolvePprof(s.db, samples, 0))
+	b.Run("1K", benchmarkResolverResolvePprof(s.db, samples, 1<<10))
+	b.Run("8K", benchmarkResolverResolvePprof(s.db, samples, 8<<10))
+}
+
+func Benchmark_block_Resolver_ResolvePprof_Big(b *testing.B) {
+	s := memSuite{t: b, files: [][]string{{"testdata/big-profile.pb.gz"}}}
+	s.config = DefaultConfig().WithDirectory(b.TempDir())
+	s.init()
+	samples := s.indexed[0][0].Samples
+	b.Run("0", benchmarkResolverResolvePprof(s.db, samples, 0))
+	b.Run("8K", benchmarkResolverResolvePprof(s.db, samples, 8<<10))
+	b.Run("16K", benchmarkResolverResolvePprof(s.db, samples, 16<<10))
+	b.Run("32K", benchmarkResolverResolvePprof(s.db, samples, 32<<10))
+	b.Run("64K", benchmarkResolverResolvePprof(s.db, samples, 64<<10))
+}
+
+func benchmarkResolverResolvePprof(sym SymbolsReader, samples v1.Samples, n int64) func(b *testing.B) {
+	return func(b *testing.B) {
+		b.ResetTimer()
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			r := NewResolver(context.Background(), sym)
+			r.AddSamples(0, samples)
+			_, _ = r.Pprof(n)
+		}
 	}
 }

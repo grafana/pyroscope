@@ -51,6 +51,7 @@ type StacktraceResolver interface {
 	//
 	// Stacktraces slice might be modified during the call.
 	ResolveStacktraceLocations(ctx context.Context, dst StacktraceInserter, stacktraces []uint32) error
+	LookupLocations(dst []uint64, stacktraceID uint32) []uint64
 }
 
 // StacktraceInserter accepts resolved locations for a given stack

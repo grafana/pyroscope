@@ -189,37 +189,13 @@ func (t *StacktraceTree) Insert(locations []int32, value int64) int32 {
 	return cur
 }
 
-func (t *StacktraceTree) Truncate(min int64) int {
-	if min < 1 {
-		return 0
-	}
-	var c int
-	for i := range t.Nodes {
-		if t.Nodes[i].Total < min {
-			// Make the node leaf.
-			n := &t.Nodes[i]
-			n.Location = sentinel
-			n.FirstChild = sentinel
-			n.Value = n.Total
-			c++
-		}
-	}
-	return c
-}
-
-func (t *StacktraceTree) Resolve(dst []int32, id int32) []int32 {
+func (t *StacktraceTree) LookupLocations(dst []uint64, idx int32) []uint64 {
 	dst = dst[:0]
-	if id >= int32(len(t.Nodes)) {
+	if idx >= int32(len(t.Nodes)) {
 		return dst
 	}
-	for i := id; i > 0; i = t.Nodes[i].Parent {
-		n := t.Nodes[i]
-		// If the stack trace is truncated,
-		// we only keep a single stub frame.
-		if n.Location == sentinel && len(dst) > 0 {
-			continue
-		}
-		dst = append(dst, n.Location)
+	for i := idx; i > 0; i = t.Nodes[i].Parent {
+		dst = append(dst, uint64(t.Nodes[i].Location))
 	}
 	return dst
 }
