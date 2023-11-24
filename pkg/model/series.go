@@ -7,8 +7,25 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
+const (
+	AverageAggregationType    = "avg"
+	sumAggregationType        = "sum"
+	firstValueAggregationType = "first"
+)
+
+// SumSeries combines (merges) multiple series into one. Samples with matching timestamps will be summed up.
 func SumSeries(series ...[]*typesv1.Series) []*typesv1.Series {
-	m := NewSeriesMerger(true)
+	m := NewSumSeriesMerger()
+	for _, s := range series {
+		m.MergeSeries(s)
+	}
+	return m.Series()
+}
+
+// MergeSeries combines (merges) multiple series into one.
+// Depending on the aggregation type, it will either sum up, average or discard samples with matching timestamps.
+func MergeSeries(aggregation *string, series ...[]*typesv1.Series) []*typesv1.Series {
+	m := newSeriesMerger(aggregation)
 	for _, s := range series {
 		m.MergeSeries(s)
 	}
@@ -16,17 +33,33 @@ func SumSeries(series ...[]*typesv1.Series) []*typesv1.Series {
 }
 
 type SeriesMerger struct {
-	mu     sync.Mutex
-	series map[uint64]*typesv1.Series
-	sum    bool
+	mu         sync.Mutex
+	series     map[uint64]*typesv1.Series
+	aggregator TimeSeriesAggregator
 }
 
-// NewSeriesMerger creates a new series merger. If sum is set, samples
-// with matching timestamps are summed, otherwise duplicates are discarded.
-func NewSeriesMerger(sum bool) *SeriesMerger {
+// NewFirstValueSeriesMerger creates a merger that discards samples with matching timestamps
+func NewFirstValueSeriesMerger() *SeriesMerger {
+	aggregation := firstValueAggregationType
+	return newSeriesMerger(&aggregation)
+}
+
+// NewSumSeriesMerger creates a merger that sums up samples with matching timestamps
+func NewSumSeriesMerger() *SeriesMerger {
+	aggregation := sumAggregationType
+	return newSeriesMerger(&aggregation)
+}
+
+// NewAvgSeriesMerger creates a merger that averages samples with matching timestamps
+func NewAvgSeriesMerger() *SeriesMerger {
+	aggregation := AverageAggregationType
+	return newSeriesMerger(&aggregation)
+}
+
+func newSeriesMerger(aggregation *string) *SeriesMerger {
 	return &SeriesMerger{
-		series: make(map[uint64]*typesv1.Series),
-		sum:    sum,
+		series:     make(map[uint64]*typesv1.Series),
+		aggregator: NewTimeSeriesAggregator(aggregation),
 	}
 }
 
@@ -70,15 +103,141 @@ func (m *SeriesMerger) mergePoints(points []*typesv1.Point) int {
 		return points[i].Timestamp < points[j].Timestamp
 	})
 	var j int
-	for i := 1; i < l; i++ {
-		if points[j].Timestamp != points[i].Timestamp {
-			j++
-			points[j] = points[i]
+	for i := 0; i < l; i++ {
+		if m.aggregator.IsEmpty() {
+			m.aggregator.Add(points[i].Timestamp, points[i].Value)
 			continue
 		}
-		if m.sum {
-			points[j].Value += points[i].Value
+		if m.aggregator.GetTimestamp() != points[i].Timestamp {
+			points[j] = m.aggregator.GetAndReset()
+			j++
+			m.aggregator.Add(points[i].Timestamp, points[i].Value)
+			continue
 		}
+		m.aggregator.Add(points[i].Timestamp, points[i].Value)
+	}
+	if !m.aggregator.IsEmpty() {
+		points[j] = m.aggregator.GetAndReset()
 	}
 	return j + 1
+}
+
+type TimeSeriesAggregator interface {
+	Add(ts int64, value float64)
+	GetAndReset() *typesv1.Point
+	IsEmpty() bool
+	GetTimestamp() int64
+}
+
+func NewTimeSeriesAggregator(aggregation *string) TimeSeriesAggregator {
+	if aggregation == nil || *aggregation == sumAggregationType {
+		return &sumTimeSeriesAggregator{
+			ts: -1,
+		}
+	}
+	if *aggregation == AverageAggregationType {
+		return &avgTimeSeriesAggregator{
+			ts: -1,
+		}
+	} else if *aggregation == firstValueAggregationType {
+		return &firstValueTimeSeriesAggregator{
+			ts: -1,
+		}
+	} else {
+		return &sumTimeSeriesAggregator{
+			ts: -1,
+		}
+	}
+}
+
+type sumTimeSeriesAggregator struct {
+	ts  int64
+	sum float64
+}
+
+func (a *sumTimeSeriesAggregator) Add(ts int64, value float64) {
+	a.ts = ts
+	a.sum += value
+}
+
+func (a *sumTimeSeriesAggregator) GetAndReset() *typesv1.Point {
+	tsCopy := a.ts
+	sumCopy := a.sum
+	a.ts = -1
+	a.sum = 0
+	return &typesv1.Point{
+		Timestamp: tsCopy,
+		Value:     sumCopy,
+	}
+}
+
+func (a *sumTimeSeriesAggregator) IsEmpty() bool {
+	return a.ts == -1
+}
+
+func (a *sumTimeSeriesAggregator) GetTimestamp() int64 {
+	return a.ts
+}
+
+type avgTimeSeriesAggregator struct {
+	ts    int64
+	sum   float64
+	count int64
+}
+
+func (a *avgTimeSeriesAggregator) Add(ts int64, value float64) {
+	a.ts = ts
+	a.sum += value
+	a.count++
+}
+
+func (a *avgTimeSeriesAggregator) GetAndReset() *typesv1.Point {
+	avg := a.sum / float64(a.count)
+	tsCopy := a.ts
+	a.ts = -1
+	a.sum = 0
+	a.count = 0
+	return &typesv1.Point{
+		Timestamp: tsCopy,
+		Value:     avg,
+	}
+}
+
+func (a *avgTimeSeriesAggregator) IsEmpty() bool {
+	return a.ts == -1
+}
+
+func (a *avgTimeSeriesAggregator) GetTimestamp() int64 {
+	return a.ts
+}
+
+type firstValueTimeSeriesAggregator struct {
+	ts    int64
+	value float64
+}
+
+func (a *firstValueTimeSeriesAggregator) Add(ts int64, value float64) {
+	if a.IsEmpty() {
+		a.ts = ts
+		a.value = value
+	}
+}
+
+func (a *firstValueTimeSeriesAggregator) GetAndReset() *typesv1.Point {
+	tsCopy := a.ts
+	valueCopy := a.value
+	a.ts = -1
+	a.value = 0
+	return &typesv1.Point{
+		Timestamp: tsCopy,
+		Value:     valueCopy,
+	}
+}
+
+func (a *firstValueTimeSeriesAggregator) IsEmpty() bool {
+	return a.ts == -1
+}
+
+func (a *firstValueTimeSeriesAggregator) GetTimestamp() int64 {
+	return a.ts
 }

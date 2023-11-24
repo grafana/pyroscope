@@ -865,7 +865,7 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 		return nil, err
 	}
 
-	it, err := selectMergeSeries(ctx, responses)
+	it, err := selectMergeSeries(ctx, req.Msg.Aggregation, responses)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -939,7 +939,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64, aggregation *string) []*typesv1.Series {
 	defer it.Close()
 	seriesMap := make(map[uint64]*typesv1.Series)
-	aggregators := make(map[uint64]stepAggregator)
+	aggregators := make(map[uint64]phlaremodel.TimeSeriesAggregator)
 
 	if !it.Next() {
 		return nil
@@ -951,13 +951,13 @@ Outer:
 		for {
 			aggregator, ok := aggregators[it.At().LabelsHash]
 			if !ok {
-				aggregator = newStepAggregator(aggregation)
+				aggregator = phlaremodel.NewTimeSeriesAggregator(aggregation)
 				aggregators[it.At().LabelsHash] = aggregator
 			}
 			if it.At().Ts > currentStep {
-				if !aggregator.isEmpty() {
+				if !aggregator.IsEmpty() {
 					series := seriesMap[it.At().LabelsHash]
-					series.Points = append(series.Points, aggregator.getAndReset())
+					series.Points = append(series.Points, aggregator.GetAndReset())
 				}
 				break // no more profiles for the currentStep
 			}
@@ -968,33 +968,33 @@ Outer:
 					Labels: it.At().Lbs,
 					Points: []*typesv1.Point{},
 				}
-				aggregator.add(currentStep, it.At().Value)
+				aggregator.Add(currentStep, it.At().Value)
 				if !it.Next() {
 					break Outer
 				}
 				continue
 			}
 			// Aggregate point if it is in the current step.
-			if aggregator.getTimestamp() == currentStep {
-				aggregator.add(currentStep, it.At().Value)
+			if aggregator.GetTimestamp() == currentStep {
+				aggregator.Add(currentStep, it.At().Value)
 				if !it.Next() {
 					break Outer
 				}
 				continue
 			}
 			// Next step is missing
-			if !aggregator.isEmpty() {
-				series.Points = append(series.Points, aggregator.getAndReset())
+			if !aggregator.IsEmpty() {
+				series.Points = append(series.Points, aggregator.GetAndReset())
 			}
-			aggregator.add(currentStep, it.At().Value)
+			aggregator.Add(currentStep, it.At().Value)
 			if !it.Next() {
 				break Outer
 			}
 		}
 	}
 	for lblHash, aggregator := range aggregators {
-		if !aggregator.isEmpty() {
-			seriesMap[lblHash].Points = append(seriesMap[lblHash].Points, aggregator.getAndReset())
+		if !aggregator.IsEmpty() {
+			seriesMap[lblHash].Points = append(seriesMap[lblHash].Points, aggregator.GetAndReset())
 		}
 	}
 	series := lo.Values(seriesMap)
@@ -1087,80 +1087,4 @@ func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMe
 	}
 	storegatewayTree.Merge(ingesterTree)
 	return storegatewayTree, nil
-}
-
-type stepAggregator interface {
-	add(ts int64, value float64)
-	getAndReset() *typesv1.Point
-	isEmpty() bool
-	getTimestamp() int64
-}
-
-func newStepAggregator(aggregation *string) stepAggregator {
-	if aggregation != nil && *aggregation == "avg" {
-		return &avgAggregator{}
-	} else {
-		return &sumAggregator{}
-	}
-}
-
-type sumAggregator struct {
-	ts  int64
-	sum float64
-}
-
-func (a *sumAggregator) add(ts int64, value float64) {
-	a.ts = ts
-	a.sum += value
-}
-
-func (a *sumAggregator) getAndReset() *typesv1.Point {
-	tsCopy := a.ts
-	sumCopy := a.sum
-	a.ts = 0
-	a.sum = 0
-	return &typesv1.Point{
-		Timestamp: tsCopy,
-		Value:     sumCopy,
-	}
-}
-
-func (a *sumAggregator) isEmpty() bool {
-	return a.ts == 0
-}
-
-func (a *sumAggregator) getTimestamp() int64 {
-	return a.ts
-}
-
-type avgAggregator struct {
-	ts    int64
-	sum   float64
-	count int64
-}
-
-func (a *avgAggregator) add(ts int64, value float64) {
-	a.ts = ts
-	a.sum += value
-	a.count++
-}
-
-func (a *avgAggregator) getAndReset() *typesv1.Point {
-	avg := a.sum / float64(a.count)
-	tsCopy := a.ts
-	a.ts = 0
-	a.sum = 0
-	a.count = 0
-	return &typesv1.Point{
-		Timestamp: tsCopy,
-		Value:     avg,
-	}
-}
-
-func (a *avgAggregator) isEmpty() bool {
-	return a.ts == 0
-}
-
-func (a *avgAggregator) getTimestamp() int64 {
-	return a.ts
 }

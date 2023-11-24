@@ -997,7 +997,6 @@ func Test_RangeSeriesSum(t *testing.T) {
 }
 
 func Test_RangeSeriesAvg(t *testing.T) {
-	aggregation := "avg"
 	for _, tc := range []struct {
 		name string
 		in   []ProfileValue
@@ -1061,6 +1060,7 @@ func Test_RangeSeriesAvg(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			in := iter.NewSliceIterator(tc.in)
+			aggregation := phlaremodel.AverageAggregationType
 			out := rangeSeries(in, 1, 5, 1, &aggregation)
 			testhelper.EqualProto(t, tc.out, out)
 		})
