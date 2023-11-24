@@ -50,8 +50,8 @@ func (r *pprofProtoTruncatedSymbols) init(symbols *Symbols, samples schemav1.Sam
 	r.symbols = symbols
 	r.samples = &samples
 	// We optimistically assume that each stacktrace has only
-	// 4 unique nodes. For pathological cases it may exceed 10.
-	r.functionTree = model.NewStacktraceTree(samples.Len() * 4)
+	// 2 unique nodes. For pathological cases it may exceed 10.
+	r.functionTree = model.NewStacktraceTree(samples.Len() * 2)
 	r.stacktraces = make([]truncatedStacktraceSample, samples.Len())
 	r.sampleMap = make(map[string]*googlev1.Sample, samples.Len())
 }
