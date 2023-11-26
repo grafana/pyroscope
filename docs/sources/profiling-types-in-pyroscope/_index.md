@@ -52,6 +52,9 @@ CPU profiling measures the amount of CPU time consumed by different parts of you
 
 As you can see here the UI is showing a spike in CPU along with the flamegraph associated with that spike. Often times without profiling you may get similar insights from metrics, but with profiling you have more details into the specific cause of a spike in CPU usage at the line level
 
+## FGprof (for go)
+[todo add a link to the docs for fgprof] 
+
 ## Memory Allocation Profiling
 
 Memory allocation profiling tracks the amount and frequency of memory allocations by the application. Excessive or inefficient memory allocation can lead to memory leaks and high garbage collection overhead, impacting application efficiency.
