@@ -27,14 +27,14 @@
                 <h3>Bucket Blocks Explorer: Tenant {{ .User }}</h3>
             </div>
             <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
-                <a href="/ops/object-store/tenants">
+                <a href="../../tenants">
                     <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
                 </a>
             </div>
         </div>
         <div class="row my-3">
             <div class="col-md-6">
-                <form class="card p-2" action="/ops/object-store/tenants/{{ .User }}/blocks" method="get">
+                <form class="card p-2" action="blocks" method="get">
                     <div class="input-group">
                         <div class="form-check">
                             <input type="checkbox" class="form-check-input" id="include-deleted" name="includeDeleted" value="true" {{ if .Query.IncludeDeleted }} checked {{ end }}>
@@ -101,7 +101,7 @@
                                     {{ range $, $v := $blockGroup.Blocks }}
                                         <tr>
                                             <td class="font-monospace small">
-                                                <a href="/ops/object-store/tenants/{{ $user }}/blocks/{{ $v.ID }}">
+                                                <a href="blocks/{{ $v.ID }}">
                                                     {{ $v.ID }}
                                                 </a>
                                             </td>
@@ -147,7 +147,7 @@
                                     {{ else if gt $block.CompactionLevel 3 }}
                                         {{ $color = "#008000"}}
                                     {{ end }}
-                                <a href="/ops/object-store/tenants/{{ $user }}/blocks/{{ $block.ID }}">
+                                <a href="blocks/{{ $block.ID }}">
                                     <button  style="position: absolute; background-color: {{ $color }}; top: {{ $topEm }}em; padding: 0; left: {{ add 20 (mul $j $blockSpacing)}}%; width: {{ $blockWidth }}px; height: {{ $heightEm }}em;"></button>
                                 </a>
                                 {{ end}}
