@@ -35,6 +35,19 @@ func (p *PartitionWriter) ResolveChunk(dst StacktraceInserter, sr StacktracesRan
 	return p.stacktraces.ResolveChunk(dst, sr)
 }
 
+func (p *PartitionWriter) LookupLocations(dst []uint64, stacktraceID uint32) []uint64 {
+	dst = dst[:0]
+	if len(p.stacktraces.chunks) == 0 {
+		return dst
+	}
+	chunkID := stacktraceID / p.stacktraces.maxNodesPerChunk
+	localSID := stacktraceID % p.stacktraces.maxNodesPerChunk
+	if localSID == 0 || int(chunkID) > len(p.stacktraces.chunks) {
+		return dst
+	}
+	return p.stacktraces.chunks[chunkID].tree.resolveUint64(dst, localSID)
+}
+
 type stacktracesPartition struct {
 	maxNodesPerChunk uint32
 

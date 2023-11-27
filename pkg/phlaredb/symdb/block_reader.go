@@ -247,6 +247,20 @@ func (p *partition) WriteStats(s *PartitionStats) {
 
 var ErrInvalidStacktraceRange = fmt.Errorf("invalid range: stack traces can't be resolved")
 
+func (p *partition) LookupLocations(dst []uint64, stacktraceID uint32) []uint64 {
+	dst = dst[:0]
+	if len(p.stacktraceChunks) == 0 {
+		return dst
+	}
+	nodesPerChunk := p.stacktraceChunks[0].header.StacktraceMaxNodes
+	chunkID := stacktraceID / nodesPerChunk
+	localSID := stacktraceID % nodesPerChunk
+	if localSID == 0 || int(chunkID) > len(p.stacktraceChunks) {
+		return dst
+	}
+	return p.stacktraceChunks[chunkID].t.resolveUint64(dst, localSID)
+}
+
 func (p *partition) ResolveStacktraceLocations(ctx context.Context, dst StacktraceInserter, s []uint32) (err error) {
 	if len(s) == 0 {
 		return nil
