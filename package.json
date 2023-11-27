@@ -28,7 +28,7 @@
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
     "@fortawesome/fontawesome-common-types": "~0.2.36",
-    "@grafana/eslint-config": "^6.0.1",
+    "@grafana/eslint-config": "^5.1.0",
     "@size-limit/file": "^6.0.3",
     "@size-limit/time": "^6.0.3",
     "@storybook/addon-actions": "~6.5.0",
