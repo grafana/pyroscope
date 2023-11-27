@@ -122,9 +122,7 @@ func (r *pprofProtoTruncatedSymbols) addSample(n truncatedStacktraceSample) {
 	if off > 0 {
 		// Some functions were truncated.
 		r.locationsBuf = truncateLocations(r.locationsBuf, r.functionsBuf, off, r.symbols)
-		// Otherwise, if the offset is zero, the very first function
-		// is the stack does not have the truncation mark, and the
-		// stack can be taken as is.
+		// Otherwise, if the offset is zero, the stack can be taken as is.
 	}
 	// Truncation may result in vast duplication of stack traces.
 	// Even if a particular stack trace is not truncated, we still
