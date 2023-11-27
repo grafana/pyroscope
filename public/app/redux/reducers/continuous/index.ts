@@ -27,6 +27,7 @@ const initialState: ContinuousState = {
   rightFrom: 'now-30m',
   rightUntil: 'now',
   maxNodes: '1024',
+  aggregation: 'sum',
 
   singleView: { type: 'pristine' },
   diffView: { type: 'pristine' },
@@ -160,6 +161,9 @@ export const continuousSlice = createSlice({
     },
     setMaxNodes(state, action: PayloadAction<string>) {
       state.maxNodes = action.payload;
+    },
+    setAggregation(state, action: PayloadAction<string>) {
+      state.aggregation = action.payload;
     },
 
     setDateRange(

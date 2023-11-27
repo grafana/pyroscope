@@ -9,6 +9,7 @@ export function buildRenderURL(
     maxNodes?: string | number;
     groupBy?: string;
     groupByValue?: string;
+    aggregation?: string;
   },
   fromOverride?: string,
   untilOverride?: string
@@ -23,6 +24,7 @@ export function buildRenderURL(
   }
   state.groupBy && params.set('groupBy', state.groupBy);
   state.groupByValue && params.set('groupByValue', state.groupByValue);
+  state.aggregation && params.set("aggregation", state.aggregation);
 
   return `/render?${params}`;
 }
@@ -31,6 +33,7 @@ export function buildMergeURLWithQueryID(state: {
   queryID: string;
   refreshToken?: string;
   maxNodes?: string | number;
+  aggregation?: string;
 }) {
   const params = new URLSearchParams();
   params.set('queryID', state.queryID);
@@ -38,6 +41,7 @@ export function buildMergeURLWithQueryID(state: {
   if (state.maxNodes && state.maxNodes !== '0') {
     params.set('max-nodes', String(state.maxNodes));
   }
+  state.aggregation && params.set("aggregation", state.aggregation);
 
   return `/merge?${params}`;
 }
