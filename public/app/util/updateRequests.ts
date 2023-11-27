@@ -24,7 +24,7 @@ export function buildRenderURL(
   }
   state.groupBy && params.set('groupBy', state.groupBy);
   state.groupByValue && params.set('groupByValue', state.groupByValue);
-  state.aggregation && params.set("aggregation", state.aggregation);
+  state.aggregation && params.set('aggregation', state.aggregation);
 
   return `/render?${params}`;
 }
@@ -41,7 +41,7 @@ export function buildMergeURLWithQueryID(state: {
   if (state.maxNodes && state.maxNodes !== '0') {
     params.set('max-nodes', String(state.maxNodes));
   }
-  state.aggregation && params.set("aggregation", state.aggregation);
+  state.aggregation && params.set('aggregation', state.aggregation);
 
   return `/merge?${params}`;
 }
