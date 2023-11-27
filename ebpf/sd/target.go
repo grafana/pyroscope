@@ -181,16 +181,16 @@ func (tf *targetFinder) setTargets(opts TargetsOptions) {
 	containerID2Target := make(map[containerID]*Target)
 	pid2Target := make(map[uint32]*Target)
 	for _, target := range opts.Targets {
-		if cid := containerIDFromTarget(target); cid != "" {
-			t := NewTarget(cid, 0, target)
-			containerID2Target[cid] = t
-		} else if pid := pidFromTarget(target); pid != 0 {
+		if pid := pidFromTarget(target); pid != 0 {
 			t := NewTarget("", pid, target)
 			pid2Target[pid] = t
+		} else if cid := containerIDFromTarget(target); cid != "" {
+			t := NewTarget(cid, 0, target)
+			containerID2Target[cid] = t
 		}
 	}
-	if len(opts.Targets) > 0 && len(containerID2Target) == 0 {
-		_ = level.Warn(tf.l).Log("msg", "No container IDs found in targets")
+	if len(opts.Targets) > 0 && len(containerID2Target) == 0 && len(pid2Target) == 0 {
+		_ = level.Warn(tf.l).Log("msg", "No targets found")
 	}
 	tf.cid2target = containerID2Target
 	tf.pid2target = pid2Target

@@ -2,11 +2,12 @@ package sd
 
 import (
 	"fmt"
-	"github.com/grafana/pyroscope/ebpf/util"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/grafana/pyroscope/ebpf/util"
 
 	"github.com/stretchr/testify/require"
 )
@@ -48,6 +49,11 @@ func TestCGroupMatching(t *testing.T) {
 			cgroup: "11:devices:/kubepods/besteffort/pod85adbef3-622f-4ef2-8f60-a8bdf3eb6c72/" +
 				"7edda1de1e0d1d366351e478359cf5fa16bb8ab53063a99bb119e56971bfb7e2",
 			expectedID: "7edda1de1e0d1d366351e478359cf5fa16bb8ab53063a99bb119e56971bfb7e2",
+		},
+		{
+			containerID: "",
+			cgroup:      "0::/../../user.slice/user-501.slice/session-3.scope",
+			expectedID:  "",
 		},
 	}
 	for i, tc := range testcases {
