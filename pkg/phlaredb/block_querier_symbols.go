@@ -107,6 +107,16 @@ func (r stacktraceResolverV1) ResolveStacktraceLocations(ctx context.Context, ds
 	return it.Err()
 }
 
+func (r stacktraceResolverV1) LookupLocations(_ []uint64, _ uint32) []uint64 {
+	// NOTE(kolesnikovae): This API is not supported.
+	// Despite the fact that this could be implemented,
+	// practically this is not viable.
+	//
+	// The method is only implemented to satisfy the
+	// StacktraceResolver interface and must not be used.
+	return nil
+}
+
 func grow[T any](s []T, n int) []T {
 	if cap(s) < n {
 		return make([]T, n, 2*n)

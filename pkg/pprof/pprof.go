@@ -23,6 +23,7 @@ import (
 	"github.com/samber/lo"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -1128,4 +1129,46 @@ func GetLanguage(profile *Profile, logger log.Logger) string {
 		}
 	}
 	return "unknown"
+}
+
+// SetProfileMetadata sets the metadata on the profile.
+func SetProfileMetadata(p *profilev1.Profile, ty *typesv1.ProfileType, timeNanos int64, period int64) {
+	m := map[string]int64{
+		ty.SampleUnit: 0,
+		ty.SampleType: 0,
+		ty.PeriodType: 0,
+		ty.PeriodUnit: 0,
+	}
+	for i, s := range p.StringTable {
+		if _, ok := m[s]; !ok {
+			m[s] = int64(i)
+		}
+	}
+	for k, v := range m {
+		if v == 0 {
+			i := int64(len(p.StringTable))
+			p.StringTable = append(p.StringTable, k)
+			m[k] = i
+		}
+	}
+
+	p.SampleType = []*profilev1.ValueType{{Type: m[ty.SampleType], Unit: m[ty.SampleUnit]}}
+	p.DefaultSampleType = m[ty.SampleType]
+	p.PeriodType = &profilev1.ValueType{Type: m[ty.PeriodType], Unit: m[ty.PeriodUnit]}
+	p.TimeNanos = timeNanos
+
+	if period != 0 {
+		p.Period = period
+	}
+
+	// Try to guess period based on the profile type.
+	// TODO: This should be encoded into the profile type.
+	switch ty.Name {
+	case "process_cpu":
+		p.Period = 1000000000
+	case "memory":
+		p.Period = 512 * 1024
+	default:
+		p.Period = 1
+	}
 }

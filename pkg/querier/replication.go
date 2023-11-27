@@ -108,7 +108,6 @@ func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]
 		)
 		idx++
 		g.Go(func() error {
-
 			client, err := clientFactory(r)
 			if err != nil {
 				return err
@@ -122,7 +121,6 @@ func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]
 			result[i] = ResponseFromReplica[Result]{r, resp}
 
 			return nil
-
 		})
 	}
 

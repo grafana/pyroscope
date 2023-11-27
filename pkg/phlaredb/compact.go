@@ -33,10 +33,17 @@ import (
 
 type BlockReader interface {
 	Meta() block.Meta
-	Profiles() parquet.Rows
+	Profiles() ProfileReader
 	Index() IndexReader
 	Symbols() symdb.SymbolsReader
 	Close() error
+}
+
+type ProfileReader interface {
+	io.ReaderAt
+	Schema() *parquet.Schema
+	Root() *parquet.Column
+	RowGroups() []parquet.RowGroup
 }
 
 func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
@@ -510,7 +517,7 @@ func newProfileRowIterator(s BlockReader) (*profileRowIterator, error) {
 		return nil, err
 	}
 	// todo close once https://github.com/grafana/pyroscope/issues/2172 is done.
-	reader := s.Profiles()
+	reader := parquet.NewReader(s.Profiles(), schemav1.ProfilesSchema)
 	return &profileRowIterator{
 		profiles:         phlareparquet.NewBufferedRowReaderIterator(reader, 32),
 		blockReader:      s,

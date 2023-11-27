@@ -52,7 +52,7 @@ typedef struct {
 typedef struct {
     py_offset_config offsets;
     py_version version;
-    uint8_t musl;// 1,2 if musl libc is used, 0 otherwise
+    struct libc libc;
     int32_t tssKey;
 } py_pid_data;
 
@@ -151,10 +151,9 @@ struct {
 } py_events SEC(".maps");
 
 static __always_inline int get_thread_state(
-        void *tls_base,
         py_pid_data *pid_data,
         void **out_thread_state) {
-    return pyro_pthread_getspecific(pid_data->musl, pid_data->tssKey, tls_base, out_thread_state);
+    return pyro_pthread_getspecific(&pid_data->libc, pid_data->tssKey, out_thread_state);
 }
 
 static __always_inline int submit_sample(
@@ -240,14 +239,9 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, 
     }
 
 
-    void *tls_base = NULL;
-    if (pyro_get_tlsbase(&tls_base)) {
-        return submit_error_sample(ctx, state, PY_ERROR_TLSBASE);
-    }
-
     // Read PyThreadState of this Thread from TLS
     void *thread_state;
-    if (get_thread_state(tls_base, pid_data, &thread_state)) {
+    if (get_thread_state(pid_data, &thread_state)) {
         return submit_error_sample(ctx, state, PY_ERROR_THREAD_STATE);
     }
 

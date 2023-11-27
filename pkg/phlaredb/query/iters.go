@@ -873,7 +873,6 @@ func syncIteratorPoolPut(b []parquet.Value) {
 }
 
 func NewSyncIterator(ctx context.Context, rgs []parquet.RowGroup, column int, columnName string, readSize int, filter Predicate, selectAs string) *SyncIterator {
-
 	// Assign row group bounds.
 	// Lower bound is inclusive
 	// Upper bound is exclusive, points at the first row of the next group
@@ -935,7 +934,6 @@ func (c *SyncIterator) Next() bool {
 // SeekTo moves this iterator to the next result that is greater than
 // or equal to the given row number (and based on the given definition level)
 func (c *SyncIterator) Seek(to RowNumberWithDefinitionLevel) bool {
-
 	if c.seekRowGroup(to.RowNumber, to.DefinitionLevel) {
 		c.res = nil
 		c.err = nil
@@ -1033,7 +1031,6 @@ func (c *SyncIterator) seekPages(seekTo RowNumber, definitionLevel int) (done bo
 	}
 
 	if c.currPage == nil {
-
 		// TODO (mdisibio)   :((((((((
 		//    pages.SeekToRow is more costly than expected.  It doesn't reuse existing i/o
 		// so it can't be called naively every time we swap pages. We need to figure out
@@ -1196,7 +1193,6 @@ func (c *SyncIterator) setRowGroup(rg parquet.RowGroup, min, max RowNumber) {
 }
 
 func (c *SyncIterator) setPage(pg parquet.Page) {
-
 	// Handle an outgoing page
 	if c.currPage != nil {
 		c.curr = c.currPageMax.Preceding() // Reposition current row number to end of this page.
