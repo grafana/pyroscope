@@ -142,3 +142,44 @@ func TestTargetFinder(t *testing.T) {
 	target = tf.FindTarget(239)
 	require.Nil(t, target)
 }
+
+func TestPreferPIDOverContainerID(t *testing.T) {
+	fs, err := newMockFS()
+	require.NoError(t, err)
+	defer fs.rm()
+
+	options := TargetsOptions{
+		Targets: []DiscoveryTarget{
+			map[string]string{
+				"__meta_kubernetes_pod_container_id":   "containerd://9a7c72f122922fe3445ba85ce72c507c8976c0f3d919403fda7c22dfe516f66f",
+				"__meta_kubernetes_namespace":          "foo",
+				"__meta_kubernetes_pod_container_name": "bar",
+				"__process_pid__":                      "1801264",
+				"exe":                                  "/bin/bash",
+			},
+			map[string]string{
+				"__meta_kubernetes_pod_container_id":   "containerd://9a7c72f122922fe3445ba85ce72c507c8976c0f3d919403fda7c22dfe516f66f",
+				"__meta_kubernetes_namespace":          "foo",
+				"__meta_kubernetes_pod_container_name": "bar",
+				"__process_pid__":                      "1801265",
+				"exe":                                  "/bin/dash",
+			},
+		},
+		TargetsOnly:        true,
+		DefaultTarget:      nil,
+		ContainerCacheSize: 1024,
+	}
+
+	tf, err := NewTargetFinder(fs.root, util.TestLogger(t), options)
+	require.NoError(t, err)
+
+	target := tf.FindTarget(1801264)
+	require.NotNil(t, target)
+	require.Equal(t, "ebpf/foo/bar", target.labels.Get("service_name"))
+	require.Equal(t, "/bin/bash", target.labels.Get("exe"))
+
+	target = tf.FindTarget(1801265)
+	require.NotNil(t, target)
+	require.Equal(t, "ebpf/foo/bar", target.labels.Get("service_name"))
+	require.Equal(t, "/bin/dash", target.labels.Get("exe"))
+}
