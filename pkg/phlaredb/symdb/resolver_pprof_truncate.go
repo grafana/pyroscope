@@ -111,8 +111,7 @@ func (r *pprofProtoTruncatedSymbols) markNodesForTruncation() {
 
 func (r *pprofProtoTruncatedSymbols) addSample(n truncatedStacktraceSample) {
 	// Find the original stack trace and remove truncated
-	// locations based on truncated functions.
-	// Trim locations based on the truncated functions.
+	// locations based on the truncated functions.
 	off := r.buildFunctionsStack(n.functionNodeIdx)
 	if off < 0 {
 		// The stack has no functions without the truncation mark.
