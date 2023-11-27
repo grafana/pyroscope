@@ -174,7 +174,7 @@ func TestSelectMergeByLabels(t *testing.T) {
 		Points: []*typesv1.Point{{Timestamp: 5, Value: 5.0}, {Timestamp: 6, Value: 6.0}},
 	})
 
-	aggregation := "sum"
+	aggregation := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
 	res, err := selectMergeSeries(context.Background(), &aggregation, []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]{
 		{
 			response: resp1,

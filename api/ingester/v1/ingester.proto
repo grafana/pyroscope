@@ -60,7 +60,7 @@ message SelectProfilesRequest {
   // Optional: Hints for querying
   optional Hints hints = 5;
   // Optional: Aggregation
-  optional string aggregation = 6;
+  optional types.v1.TimeSeriesAggregationType aggregation = 6;
 }
 
 message MergeProfilesStacktracesRequest {

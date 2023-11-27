@@ -432,7 +432,7 @@ func (p ProfileValue) Timestamp() model.Time {
 }
 
 // selectMergeSeries selects the  profile from each ingester by deduping them and request merges of total values.
-func selectMergeSeries(ctx context.Context, aggregation *string, responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]) (iter.Iterator[ProfileValue], error) {
+func selectMergeSeries(ctx context.Context, aggregation *typesv1.TimeSeriesAggregationType, responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]) (iter.Iterator[ProfileValue], error) {
 	mergeResults := make([]MergeResult[[]*typesv1.Series], len(responses))
 	iters := make([]MergeIterator, len(responses))
 	var wg sync.WaitGroup

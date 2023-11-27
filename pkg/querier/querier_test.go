@@ -1060,7 +1060,7 @@ func Test_RangeSeriesAvg(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			in := iter.NewSliceIterator(tc.in)
-			aggregation := phlaremodel.AverageAggregationType
+			aggregation := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE
 			out := rangeSeries(in, 1, 5, 1, &aggregation)
 			testhelper.EqualProto(t, tc.out, out)
 		})

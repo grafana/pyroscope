@@ -936,7 +936,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 // rangeSeries aggregates profiles into series.
 // Series contains points spaced by step from start to end.
 // Profiles from the same step are aggregated into one point.
-func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64, aggregation *string) []*typesv1.Series {
+func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64, aggregation *typesv1.TimeSeriesAggregationType) []*typesv1.Series {
 	defer it.Close()
 	seriesMap := make(map[uint64]*typesv1.Series)
 	aggregators := make(map[uint64]phlaremodel.TimeSeriesAggregator)

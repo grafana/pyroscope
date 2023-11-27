@@ -7,12 +7,6 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
-const (
-	AverageAggregationType    = "avg"
-	sumAggregationType        = "sum"
-	firstValueAggregationType = "first"
-)
-
 // SumSeries combines (merges) multiple series into one. Samples with matching timestamps will be summed up.
 func SumSeries(series ...[]*typesv1.Series) []*typesv1.Series {
 	m := NewSumSeriesMerger()
@@ -24,7 +18,7 @@ func SumSeries(series ...[]*typesv1.Series) []*typesv1.Series {
 
 // MergeSeries combines (merges) multiple series into one.
 // Depending on the aggregation type, it will either sum up, average or discard samples with matching timestamps.
-func MergeSeries(aggregation *string, series ...[]*typesv1.Series) []*typesv1.Series {
+func MergeSeries(aggregation *typesv1.TimeSeriesAggregationType, series ...[]*typesv1.Series) []*typesv1.Series {
 	m := newSeriesMerger(aggregation)
 	for _, s := range series {
 		m.MergeSeries(s)
@@ -40,23 +34,23 @@ type SeriesMerger struct {
 
 // NewFirstValueSeriesMerger creates a merger that discards samples with matching timestamps
 func NewFirstValueSeriesMerger() *SeriesMerger {
-	aggregation := firstValueAggregationType
+	aggregation := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_FIRST_VALUE
 	return newSeriesMerger(&aggregation)
 }
 
 // NewSumSeriesMerger creates a merger that sums up samples with matching timestamps
 func NewSumSeriesMerger() *SeriesMerger {
-	aggregation := sumAggregationType
+	aggregation := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
 	return newSeriesMerger(&aggregation)
 }
 
 // NewAvgSeriesMerger creates a merger that averages samples with matching timestamps
 func NewAvgSeriesMerger() *SeriesMerger {
-	aggregation := AverageAggregationType
+	aggregation := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE
 	return newSeriesMerger(&aggregation)
 }
 
-func newSeriesMerger(aggregation *string) *SeriesMerger {
+func newSeriesMerger(aggregation *typesv1.TimeSeriesAggregationType) *SeriesMerger {
 	return &SeriesMerger{
 		series:     make(map[uint64]*typesv1.Series),
 		aggregator: NewTimeSeriesAggregator(aggregation),
@@ -129,17 +123,17 @@ type TimeSeriesAggregator interface {
 	GetTimestamp() int64
 }
 
-func NewTimeSeriesAggregator(aggregation *string) TimeSeriesAggregator {
-	if aggregation == nil || *aggregation == sumAggregationType {
+func NewTimeSeriesAggregator(aggregation *typesv1.TimeSeriesAggregationType) TimeSeriesAggregator {
+	if aggregation == nil || *aggregation == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM {
 		return &sumTimeSeriesAggregator{
 			ts: -1,
 		}
 	}
-	if *aggregation == AverageAggregationType {
+	if *aggregation == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE {
 		return &avgTimeSeriesAggregator{
 			ts: -1,
 		}
-	} else if *aggregation == firstValueAggregationType {
+	} else if *aggregation == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_FIRST_VALUE {
 		return &firstValueTimeSeriesAggregator{
 			ts: -1,
 		}

@@ -130,9 +130,17 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 	}
 
 	groupBy := req.URL.Query()["groupBy"]
-	var aggregation string
+	var aggregation typesv1.TimeSeriesAggregationType
 	if req.URL.Query().Has("aggregation") {
-		aggregation = req.URL.Query().Get("aggregation")
+		aggregationParam := req.URL.Query().Get("aggregation")
+		switch aggregationParam {
+		case "sum":
+			aggregation = typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
+		case "avg":
+			aggregation = typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE
+		case "first":
+			aggregation = typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_FIRST_VALUE
+		}
 	}
 
 	var resFlame *connect.Response[querierv1.SelectMergeStacktracesResponse]

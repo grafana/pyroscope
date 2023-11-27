@@ -2163,11 +2163,9 @@ func (m *SelectSeriesRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		copy(dAtA[i:], m.unknownFields)
 	}
 	if m.Aggregation != nil {
-		i -= len(*m.Aggregation)
-		copy(dAtA[i:], *m.Aggregation)
-		i = encodeVarint(dAtA, i, uint64(len(*m.Aggregation)))
+		i = encodeVarint(dAtA, i, uint64(*m.Aggregation))
 		i--
-		dAtA[i] = 0x3a
+		dAtA[i] = 0x38
 	}
 	if m.Step != 0 {
 		i -= 8
@@ -2623,8 +2621,7 @@ func (m *SelectSeriesRequest) SizeVT() (n int) {
 		n += 9
 	}
 	if m.Aggregation != nil {
-		l = len(*m.Aggregation)
-		n += 1 + l + sov(uint64(l))
+		n += 1 + sov(uint64(*m.Aggregation))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -4671,10 +4668,10 @@ func (m *SelectSeriesRequest) UnmarshalVT(dAtA []byte) error {
 			iNdEx += 8
 			m.Step = float64(math.Float64frombits(v))
 		case 7:
-			if wireType != 2 {
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Aggregation", wireType)
 			}
-			var stringLen uint64
+			var v v1.TimeSeriesAggregationType
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -4684,25 +4681,12 @@ func (m *SelectSeriesRequest) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
+				v |= v1.TimeSeriesAggregationType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			s := string(dAtA[iNdEx:postIndex])
-			m.Aggregation = &s
-			iNdEx = postIndex
+			m.Aggregation = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

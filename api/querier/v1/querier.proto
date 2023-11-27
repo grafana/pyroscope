@@ -124,7 +124,7 @@ message SelectSeriesRequest {
   int64 end = 4; // milliseconds since epoch
   repeated string group_by = 5;
   double step = 6; // Query resolution step width in seconds
-  optional string aggregation = 7; // The type of aggregation to be applied (e.g., sum, avg)
+  optional types.v1.TimeSeriesAggregationType aggregation = 7;
 }
 
 message SelectSeriesResponse {

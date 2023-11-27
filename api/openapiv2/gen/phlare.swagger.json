@@ -1003,7 +1003,7 @@
           "title": "Optional: Hints for querying"
         },
         "aggregation": {
-          "type": "string",
+          "$ref": "#/definitions/v1TimeSeriesAggregationType",
           "title": "Optional: Aggregation"
         }
       }
@@ -1103,6 +1103,15 @@
         "MERGE_FORMAT_TREE"
       ],
       "default": "MERGE_FORMAT_UNSPECIFIED"
+    },
+    "v1TimeSeriesAggregationType": {
+      "type": "string",
+      "enum": [
+        "TIME_SERIES_AGGREGATION_TYPE_SUM",
+        "TIME_SERIES_AGGREGATION_TYPE_AVERAGE",
+        "TIME_SERIES_AGGREGATION_TYPE_FIRST_VALUE"
+      ],
+      "default": "TIME_SERIES_AGGREGATION_TYPE_SUM"
     },
     "v1ValueType": {
       "type": "object",
