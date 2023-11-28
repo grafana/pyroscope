@@ -19,6 +19,9 @@
     },
     {
       "name": "StoreGatewayService"
+    },
+    {
+      "name": "Version"
     }
   ],
   "consumes": [
@@ -1112,6 +1115,15 @@
         }
       },
       "description": "ValueType describes the semantics and measurement units of a value."
+    },
+    "v1VersionResponse": {
+      "type": "object",
+      "properties": {
+        "QuerierAPI": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
     }
   }
 }
