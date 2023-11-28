@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"time"
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
@@ -376,6 +377,7 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 		return nil, err
 	}
 
+	span := opentracing.SpanFromContext(ctx)
 	// Collects the results in parallel.
 	var lock sync.Mutex
 	var pprofMerge pprof.ProfileMerge
@@ -383,10 +385,15 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 	for _, iter := range mergeResults {
 		iter := iter
 		g.Go(util.RecoverPanic(func() error {
+			start := time.Now()
 			result, err := iter.Result()
 			if err != nil || result == nil {
 				return err
 			}
+			span.LogFields(
+				otlog.Int("profile_size", len(result)),
+				otlog.Int64("took_ms", time.Since(start).Milliseconds()),
+			)
 			var p googlev1.Profile
 			if err = pprof.Unmarshal(result, &p); err != nil {
 				return err
