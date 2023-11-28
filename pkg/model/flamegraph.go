@@ -6,6 +6,7 @@ import (
 
 	"github.com/samber/lo"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/pkg/og/storage/metadata"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 
@@ -243,6 +244,28 @@ func buildStack(dst []string, f *querierv1.FlameGraph, level, idx int) []string 
 		j := sort.Search(len(f.Levels[i].Values)/4, func(j int) bool { return f.Levels[i].Values[j*4] > x }) - 1
 		dst[i-1] = f.Names[f.Levels[i].Values[j*4+3]]
 		x = f.Levels[i].Values[j*4]
+	}
+	return dst
+}
+
+func TreeFromPprof(profile *profilev1.Profile, sampleIdx int) *Tree {
+	s := make([]string, 0, 64)
+	t := new(Tree)
+	for _, sample := range profile.Sample {
+		s = buildFunctionStackFromLocations(s[:0], profile, sample)
+		t.InsertStack(sample.Value[sampleIdx], s...)
+	}
+	return t
+}
+
+func buildFunctionStackFromLocations(dst []string, p *profilev1.Profile, sample *profilev1.Sample) []string {
+	for i := len(sample.LocationId) - 1; i >= 0; i-- {
+		locID := sample.LocationId[i]
+		lines := p.Location[locID-1].Line
+		for j := len(lines) - 1; j >= 0; j-- {
+			fnName := p.Function[lines[j].FunctionId-1].Name
+			dst = append(dst, p.StringTable[fnName])
+		}
 	}
 	return dst
 }

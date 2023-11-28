@@ -177,6 +177,9 @@ message MergeProfilesPprofRequest {
   // The client starts the stream with a request containing the profile type and the labels.
   SelectProfilesRequest request = 1;
 
+  // Max nodes in the resulting profile.
+  optional int64 max_nodes = 3;
+
   // On a batch of profiles, the client sends the profiles to keep for merging.
   repeated bool profiles = 2;
 }
