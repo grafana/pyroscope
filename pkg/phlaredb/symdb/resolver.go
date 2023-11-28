@@ -179,9 +179,8 @@ func (r *Resolver) Pprof(maxNodes int64) (*googlev1.Profile, error) {
 			return err
 		}
 		lock.Lock()
-		err = p.Merge(resolved)
-		lock.Unlock()
-		return err
+		defer lock.Unlock()
+		return p.Merge(resolved)
 	})
 	return p.Profile(), err
 }

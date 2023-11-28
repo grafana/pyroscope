@@ -802,9 +802,8 @@ func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeP
 			return err
 		}
 		lock.Lock()
-		err = merge.Merge(ingesterProfile)
-		lock.Unlock()
-		return err
+		defer lock.Unlock()
+		return merge.Merge(ingesterProfile)
 	})
 	g.Go(func() error {
 		storegatewayProfile, err := q.selectProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeProfileRequest(req), plan)
@@ -812,9 +811,8 @@ func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeP
 			return err
 		}
 		lock.Lock()
-		err = merge.Merge(storegatewayProfile)
-		lock.Unlock()
-		return err
+		defer lock.Unlock()
+		return merge.Merge(storegatewayProfile)
 	})
 	if err := g.Wait(); err != nil {
 		return nil, err

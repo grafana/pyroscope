@@ -1172,3 +1172,47 @@ func SetProfileMetadata(p *profilev1.Profile, ty *typesv1.ProfileType, timeNanos
 		p.Period = 1
 	}
 }
+
+func Marshal(p *profilev1.Profile) ([]byte, error) {
+	b, err := p.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	buf.Grow(len(b) / 2)
+	gw := gzipWriterPool.Get().(*gzip.Writer)
+	gw.Reset(&buf)
+	defer func() {
+		gw.Reset(io.Discard)
+		gzipWriterPool.Put(gw)
+	}()
+	if _, err = gw.Write(b); err != nil {
+		return nil, err
+	}
+	if err = gw.Flush(); err != nil {
+		return nil, err
+	}
+	if err = gw.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func Unmarshal(data []byte, p *profilev1.Profile) error {
+	gr := gzipReaderPool.Get().(*gzipReader)
+	defer gzipReaderPool.Put(gr)
+	r, err := gr.openBytes(data)
+	if err != nil {
+		return err
+	}
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufPool.Put(buf)
+	}()
+	buf.Grow(len(data) * 2)
+	if _, err = io.Copy(buf, r); err != nil {
+		return err
+	}
+	return p.UnmarshalVT(buf.Bytes())
+}

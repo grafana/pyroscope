@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/prometheus/promql/parser"
 	"golang.org/x/sync/errgroup"
 
@@ -140,8 +141,8 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 }
 
 func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1.SelectMergeProfileRequest, plan blockPlan) (*googlev1.Profile, error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectProfile Ingesters")
-	defer sp.Finish()
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SelectProfile Ingesters")
+	defer span.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -193,6 +194,7 @@ func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1
 	}
 
 	// merge all profiles
+	span.LogFields(otlog.String("msg", "selectMergePprofProfile"))
 	return selectMergePprofProfile(gCtx, profileType, responses)
 }
 

@@ -30,7 +30,6 @@ import (
 	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/protobuf/proto"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
@@ -1182,9 +1181,8 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 				}
 
 				lock.Lock()
-				err = result.Merge(p)
-				lock.Unlock()
-				return err
+				defer lock.Unlock()
+				return result.Merge(p)
 			}))
 		}
 	} else {
@@ -1217,9 +1215,8 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 					return err
 				}
 				lock.Lock()
-				err = result.Merge(p)
-				lock.Unlock()
-				return err
+				defer lock.Unlock()
+				return result.Merge(p)
 			}))
 		}
 
@@ -1235,15 +1232,15 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 		return err
 	}
 
+	sp.LogFields(otlog.String("msg", "building pprof bytes"))
 	mergedProfile := result.Profile()
 	pprof.SetProfileMetadata(mergedProfile, request.Type, model.Time(r.Request.End).UnixNano(), 0)
-
-	// connect go already handles compression.
-	pprofBytes, err := proto.Marshal(mergedProfile)
+	pprofBytes, err := pprof.Marshal(mergedProfile)
 	if err != nil {
 		return err
 	}
 	// sends the final result to the client.
+	sp.LogFields(otlog.Int("pprof bytes", len(pprofBytes)))
 	err = stream.Send(&ingestv1.MergeProfilesPprofResponse{Result: pprofBytes})
 	if err != nil {
 		if errors.Is(err, io.EOF) {

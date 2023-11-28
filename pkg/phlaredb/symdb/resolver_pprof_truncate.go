@@ -90,7 +90,7 @@ func (r *pprofProtoTruncatedSymbols) buildPprof() *googlev1.Profile {
 	copyFunctions(&r.profile, r.symbols, r.lut)
 	copyMappings(&r.profile, r.symbols, r.lut)
 	copyStrings(&r.profile, r.symbols, r.lut)
-	if r.truncated > 0 {
+	if r.truncated > 0 || r.fullyTruncated > 0 {
 		createLocationStub(&r.profile)
 	}
 	return &r.profile

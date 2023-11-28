@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 func Test_memory_Resolver_ResolvePprof(t *testing.T) {
@@ -69,4 +70,28 @@ func benchmarkResolverResolvePprof(sym SymbolsReader, samples v1.Samples, n int6
 			_, _ = r.Pprof(n)
 		}
 	}
+}
+
+func Test_merge(t *testing.T) {
+	s := memSuite{t: t, files: [][]string{{"testdata/big-profile.pb.gz"}}}
+	s.config = DefaultConfig().WithDirectory(t.TempDir())
+	s.init()
+
+	var m pprof.ProfileMerge
+
+	r := NewResolver(context.Background(), s.db)
+	r.AddSamples(0, s.indexed[0][0].Samples)
+	resolved, err := r.Pprof(0) // 8 << 10)
+	require.NoError(t, err)
+	require.NoError(t, m.Merge(resolved))
+	r.Release()
+
+	r = NewResolver(context.Background(), s.db)
+	r.AddSamples(0, s.indexed[0][0].Samples)
+	resolved, err = r.Pprof(0)
+	require.NoError(t, err)
+	require.NoError(t, m.Merge(resolved))
+	r.Release()
+
+	_ = m.Profile()
 }
