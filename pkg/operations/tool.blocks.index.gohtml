@@ -20,7 +20,7 @@
                 <h3>Bucket Blocks Explorer: Grafana Pyroscope</h3>
             </div>
             <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
-                <a href="/ops/object-store/tenants">
+                <a href="tenants">
                     <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
                 </a>
             </div>
@@ -39,7 +39,7 @@
                     {{ range $i, $ := .Users }}
                         <tr>
                             <td class="align-middle font-monospace small">
-                                <a href='/ops/object-store/tenants/{{ . }}/blocks'>{{ . }}</a>
+                                <a href='tenants/{{ . }}/blocks'>{{ . }}</a>
                             </td>
                         </tr>
                     {{ end }}
