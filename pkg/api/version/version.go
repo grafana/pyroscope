@@ -46,35 +46,50 @@ type Versions struct {
 	*versionv1.Versions
 }
 
-func (v *Versions) Merge(incoming memberlist.Mergeable, localCAS bool) (change memberlist.Mergeable, error error) {
-	// todo
-	return nil, nil
-	// if mergeable == nil {
-	// 	return nil, nil
-	// }
-	// other, ok := mergeable.(*Versions)
-	// if !ok {
-	// 	return nil, fmt.Errorf("expected *Versions, got %T", mergeable)
-	// }
-	// if other == nil {
-	// 	return nil, nil
-	// }
-	// // if we already have (c) the oldest key, then should not request change.
-	// if c.CreatedAt.Before(other.CreatedAt) {
-	// 	return nil, nil
-	// }
-	// if c.CreatedAt == other.CreatedAt {
-	// 	// if we have the exact same creation date but the key is different
-	// 	// we take the smallest UID using string alphabetical comparison to ensure stability.
-	// 	if c.UID > other.UID {
-	// 		*c = *other
-	// 		return other, nil
-	// 	}
-	// 	return nil, nil
-	// }
-	// // if our seed is not the oldest, then we should request a change.
-	// *c = *other
-	// return other, nil
+func (v *Versions) Merge(incoming memberlist.Mergeable, localCAS bool) (memberlist.Mergeable, error) {
+	if incoming == nil {
+		return nil, nil
+	}
+	other, ok := incoming.(*Versions)
+	if !ok {
+		return nil, fmt.Errorf("expected *Versions, got %T", incoming)
+	}
+	if other == nil {
+		return nil, nil
+	}
+	if proto.Equal(other.Versions, v.Versions) {
+		return nil, nil
+	}
+	if v == nil {
+		return other, nil
+	}
+	out := v.Clone().(*Versions)
+	if out.Instances == nil {
+		out.Instances = make(map[string]*versionv1.InstanceVersion)
+	}
+	change := false
+	// todo should properly merge missing keys from other.
+	// test this
+	// copy over all the instances with newer timestamps.
+	for k, v := range v.Instances {
+		other, ok := other.Instances[k]
+		if !ok {
+			out.Instances[k] = v
+			change = true
+			continue
+		}
+		if proto.Equal(v, other) {
+			continue
+		}
+		if other.Timestamp > v.Timestamp {
+			out.Instances[k] = v
+			change = true
+		}
+	}
+	if !change {
+		return nil, nil
+	}
+	return out, nil
 }
 
 // MergeContent describes content of this Mergeable.
@@ -135,7 +150,7 @@ func New(cfg util.CommonRingConfig, logger log.Logger, reg prometheus.Registerer
 		ctx:    ctx,
 	}
 	// The service is simple only has a running function.
-	// Stopping in handle in manually by using .
+	// Stopping is manual to ensure we stop as part of the shutdown process.
 	svc.BasicService = services.NewBasicService(
 		func(_ context.Context) error { return nil },
 		svc.running,
