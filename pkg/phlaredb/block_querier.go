@@ -30,6 +30,7 @@ import (
 	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
@@ -1235,7 +1236,9 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 	sp.LogFields(otlog.String("msg", "building pprof bytes"))
 	mergedProfile := result.Profile()
 	pprof.SetProfileMetadata(mergedProfile, request.Type, model.Time(r.Request.End).UnixNano(), 0)
-	pprofBytes, err := pprof.Marshal(mergedProfile)
+
+	// connect go already handles compression.
+	pprofBytes, err := proto.Marshal(mergedProfile)
 	if err != nil {
 		return err
 	}
