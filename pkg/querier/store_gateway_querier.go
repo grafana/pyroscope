@@ -284,6 +284,7 @@ func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querie
 					Type:          profileType,
 					Hints:         &ingestv1.Hints{Block: hints},
 				},
+				MaxNodes: req.MaxNodes,
 			})
 		}))
 	}

@@ -29,7 +29,7 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).
 		SetTag("selector", c.Msg.LabelSelector).
-		SetTag("max_nodes", c.Msg.MaxNodes).
+		SetTag("max_nodes", c.Msg.GetMaxNodes()).
 		SetTag("profile_type", c.Msg.ProfileTypeID)
 
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeProfileProcedure)

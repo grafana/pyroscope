@@ -684,6 +684,7 @@ func (sq storeQuery) MergeProfileRequest(req *querierv1.SelectMergeProfileReques
 		LabelSelector: req.LabelSelector,
 		Start:         int64(sq.start),
 		End:           int64(sq.end),
+		MaxNodes:      req.MaxNodes,
 	}
 }
 
@@ -746,6 +747,7 @@ func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[q
 			otlog.String("end", model.Time(req.Msg.End).Time().String()),
 			otlog.String("selector", req.Msg.LabelSelector),
 			otlog.String("profile_id", req.Msg.ProfileTypeID),
+			otlog.Int64("max_nodes", req.Msg.GetMaxNodes()),
 		)
 		sp.Finish()
 	}()
