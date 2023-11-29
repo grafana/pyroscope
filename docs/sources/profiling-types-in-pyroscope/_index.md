@@ -10,7 +10,7 @@ keywords:
   - flamegraphs
 ---
 
-# Understanding Profiling Types and Their Uses in Pyroscope
+# Understanding profiling types and their uses in Pyroscope
 
 Profiling is an essential tool for understanding and optimizing application performance. In Pyroscope, various profiling types allow for an in-depth analysis of different aspects of your application. This guide will explore these types and explain their impact on your program.
 
