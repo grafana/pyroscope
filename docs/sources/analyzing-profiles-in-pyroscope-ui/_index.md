@@ -14,7 +14,7 @@ keywords:
 
 ## Introduction
 
-**Understanding Continuous Profiling and Metadata in Pyroscope**
+##  Continuous profiling and metadata 
 
 While code profiling has been a long-standing practice, Continuous Profiling represents a modern and more advanced approach to performance monitoring. This technique adds two critical dimensions to traditional profiles:
 
