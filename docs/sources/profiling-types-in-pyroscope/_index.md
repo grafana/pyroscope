@@ -1,7 +1,7 @@
 ---
-title: "Understanding Profiling Types and Their Uses in Pyroscope"
-menuTitle: "Understanding Profiling Types in Pyroscope"
-description: "Learn about the different profiling types available in Pyroscope and how to effectively use them in your application performance analysis."
+title: Understanding profiling types and their uses in Pyroscope
+menuTitle: Understanding profiling types
+description: Learn about the different profiling types available in Pyroscope and how to effectively use them in your application performance analysis.
 weight: 30
 keywords:
   - pyroscope
