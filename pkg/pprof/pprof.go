@@ -1173,10 +1173,13 @@ func SetProfileMetadata(p *profilev1.Profile, ty *typesv1.ProfileType, timeNanos
 	}
 }
 
-func Marshal(p *profilev1.Profile) ([]byte, error) {
+func Marshal(p *profilev1.Profile, compress bool) ([]byte, error) {
 	b, err := p.MarshalVT()
 	if err != nil {
 		return nil, err
+	}
+	if !compress {
+		return b, nil
 	}
 	var buf bytes.Buffer
 	buf.Grow(len(b) / 2)

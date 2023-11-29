@@ -13,7 +13,6 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
-	"google.golang.org/protobuf/proto"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
@@ -398,7 +397,7 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 				)
 			}
 			var p googlev1.Profile
-			if err = proto.Unmarshal(result, &p); err != nil {
+			if err = pprof.Unmarshal(result, &p); err != nil {
 				return err
 			}
 			lock.Lock()
