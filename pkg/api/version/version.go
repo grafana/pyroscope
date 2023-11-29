@@ -3,6 +3,7 @@ package version
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -46,6 +47,9 @@ type Versions struct {
 	*versionv1.Versions
 }
 
+// Merge merges two versions. This is used when CASing or merging versions from other nodes.
+// v is the local version and should be mutated to include the changes from incoming.
+// The returned value is the change to broadcast, in our case they are similar.
 func (v *Versions) Merge(incoming memberlist.Mergeable, localCAS bool) (memberlist.Mergeable, error) {
 	if incoming == nil {
 		return nil, nil
@@ -63,33 +67,42 @@ func (v *Versions) Merge(incoming memberlist.Mergeable, localCAS bool) (memberli
 	if v == nil {
 		return other, nil
 	}
-	out := v.Clone().(*Versions)
-	if out.Instances == nil {
-		out.Instances = make(map[string]*versionv1.InstanceVersion)
+	if v.Instances == nil {
+		v.Instances = make(map[string]*versionv1.InstanceVersion)
 	}
 	change := false
-	// todo should properly merge missing keys from other.
-	// test this
-	// copy over all the instances with newer timestamps.
-	for k, v := range v.Instances {
-		other, ok := other.Instances[k]
+	// Delete all the instances that are not in the other.
+	missing := []string{}
+	for k := range other.Instances {
+		if _, ok := v.Instances[k]; !ok {
+			missing = append(missing, k)
+		}
+	}
+	for _, k := range missing {
+		change = true
+		delete(v.Instances, k)
+	}
+
+	// Copy over all the instances with newer timestamps.
+	for k, new := range other.Instances {
+		current, ok := v.Instances[k]
 		if !ok {
-			out.Instances[k] = v
+			v.Instances[k] = new.CloneVT()
 			change = true
 			continue
 		}
-		if proto.Equal(v, other) {
+		if proto.Equal(current, new) {
 			continue
 		}
-		if other.Timestamp > v.Timestamp {
-			out.Instances[k] = v
+		if new.Timestamp > current.Timestamp {
+			v.Instances[k] = new.CloneVT()
 			change = true
 		}
 	}
 	if !change {
 		return nil, nil
 	}
-	return out, nil
+	return v, nil
 }
 
 // MergeContent describes content of this Mergeable.
@@ -226,7 +239,7 @@ func (svc *Service) Version(ctx context.Context, req *connect.Request[versionv1.
 		return connect.NewResponse(&versionv1.VersionResponse{}), nil
 	}
 	// collect the minimum querier version.
-	minQuerierVersion := uint64(0)
+	minQuerierVersion := uint64(math.MaxUint64)
 	for _, instance := range versions.Instances {
 		if instance.QuerierAPI < minQuerierVersion {
 			minQuerierVersion = instance.QuerierAPI
