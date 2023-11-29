@@ -1,7 +1,7 @@
 ---
-title: "How to use the Pyroscope UI for performance analysis"
-menuTitle: "How to use the Pyroscope UI"
-description: "How to use the Pyroscope UI to analyze performance of your applications."
+title: Analyze app performance using Pyroscope  
+menuTitle: Analyze app performance
+description: How to use the Pyroscope UI to analyze performance of your applications.
 weight: 30
 keywords:
   - pyroscope
