@@ -10,7 +10,7 @@ keywords:
   - flamegraphs
 ---
 
-# How to use the Pyroscope UI for performance analysis
+# Analyze app performance using Pyroscope
 
 ## Introduction
 
