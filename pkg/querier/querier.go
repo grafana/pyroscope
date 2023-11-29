@@ -70,7 +70,6 @@ const maxNodesDefault = int64(2048)
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, storeGatewayQuerier *StoreGatewayQuerier, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Querier, error) {
 	// disable gzip compression for querier-ingester communication as most of payload are not benefit from it.
-	clientsOptions = append(clientsOptions, connect.WithAcceptCompression("gzip", nil, nil))
 	clientsMetrics := promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 		Namespace: "pyroscope",
 		Name:      "querier_ingester_clients",
