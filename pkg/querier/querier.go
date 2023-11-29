@@ -740,16 +740,12 @@ func splitQueryToStores(start, end model.Time, now model.Time, queryStoreAfter t
 
 func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[googlev1.Profile], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeProfile")
-	defer func() {
-		sp.LogFields(
-			otlog.String("start", model.Time(req.Msg.Start).Time().String()),
-			otlog.String("end", model.Time(req.Msg.End).Time().String()),
-			otlog.String("selector", req.Msg.LabelSelector),
-			otlog.String("profile_id", req.Msg.ProfileTypeID),
-			otlog.Int64("max_nodes", req.Msg.GetMaxNodes()),
-		)
-		sp.Finish()
-	}()
+	sp.SetTag("start", model.Time(req.Msg.Start).Time().String()).
+		SetTag("end", model.Time(req.Msg.End).Time().String()).
+		SetTag("selector", req.Msg.LabelSelector).
+		SetTag("max_nodes", req.Msg.GetMaxNodes()).
+		SetTag("profile_type", req.Msg.ProfileTypeID)
+	defer sp.Finish()
 
 	profile, err := q.selectProfile(ctx, req.Msg)
 	if err != nil {

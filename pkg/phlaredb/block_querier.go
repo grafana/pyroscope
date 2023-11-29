@@ -880,11 +880,15 @@ func MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[in
 	}
 
 	// sends the final result to the client.
-	sp.LogFields(otlog.String("msg", "sending the final result to the client"))
+	treeBytes := buf.Bytes()
+	sp.LogFields(
+		otlog.String("msg", "sending the final result to the client"),
+		otlog.Int("tree_bytes", len(treeBytes)),
+	)
 	err = stream.Send(&ingestv1.MergeProfilesStacktracesResponse{
 		Result: &ingestv1.MergeProfilesStacktracesResult{
 			Format:    ingestv1.StacktracesMergeFormat_MERGE_FORMAT_TREE,
-			TreeBytes: buf.Bytes(),
+			TreeBytes: treeBytes,
 		},
 	})
 	if err != nil {
@@ -1141,14 +1145,14 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 	if r.Request == nil {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("missing initial select request"))
 	}
+
 	request := r.Request
-	sp.LogFields(
-		otlog.String("start", model.Time(request.Start).Time().String()),
-		otlog.String("end", model.Time(request.End).Time().String()),
-		otlog.String("selector", request.LabelSelector),
-		otlog.String("profile_id", request.Type.ID),
-		otlog.Object("hints", request.Hints),
-	)
+	sp.SetTag("start", model.Time(request.Start).Time().String()).
+		SetTag("end", model.Time(request.End).Time().String()).
+		SetTag("selector", request.LabelSelector).
+		SetTag("profile_type", request.Type.ID).
+		SetTag("max_nodes", r.GetMaxNodes())
+	sp.LogFields(otlog.Object("hints", request.Hints))
 
 	queriers, err := blockGetter(ctx, model.Time(request.Start), model.Time(request.End), request.Hints)
 	if err != nil {
@@ -1243,7 +1247,10 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 		return err
 	}
 	// sends the final result to the client.
-	sp.LogFields(otlog.Int("pprof bytes", len(pprofBytes)))
+	sp.LogFields(
+		otlog.String("msg", "sending the final result to the client"),
+		otlog.Int("tree_bytes", len(pprofBytes)),
+	)
 	err = stream.Send(&ingestv1.MergeProfilesPprofResponse{Result: pprofBytes})
 	if err != nil {
 		if errors.Is(err, io.EOF) {
