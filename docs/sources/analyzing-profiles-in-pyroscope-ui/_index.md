@@ -33,7 +33,7 @@ In this walkthrough, we'll show how Pyroscope parallels these other modern obser
 
 The Tag Explorer page is a vital part of Pyroscope's UI, allowing users to navigate and analyze performance data through tags/labels. This feature is crucial for identifying performance anomalies and understanding the behavior of different application segments under various conditions. We intentionally don't include a query language on this page as we built this page to be as intuitive as possible for users to use the UI to navigate and drill down into which tags are most interesting to them.
 
-**How to Use the Tag Explorer:**
+To use the Tag Explorer:
 1. Select a tag to view the corresponding profiling data
 2. Analyze the pie chart and the table of descriptive statsitcs to determine which tags if any are behaving abnormally
 3. Select a tag to view the corresponding profiling data
