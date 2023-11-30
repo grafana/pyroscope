@@ -258,6 +258,391 @@ func (m *Function) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (this *Profile) EqualVT(that *Profile) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.SampleType) != len(that.SampleType) {
+		return false
+	}
+	for i, vx := range this.SampleType {
+		vy := that.SampleType[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &ValueType{}
+			}
+			if q == nil {
+				q = &ValueType{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	if len(this.Sample) != len(that.Sample) {
+		return false
+	}
+	for i, vx := range this.Sample {
+		vy := that.Sample[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &Sample{}
+			}
+			if q == nil {
+				q = &Sample{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	if len(this.Mapping) != len(that.Mapping) {
+		return false
+	}
+	for i, vx := range this.Mapping {
+		vy := that.Mapping[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &Mapping{}
+			}
+			if q == nil {
+				q = &Mapping{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	if len(this.Location) != len(that.Location) {
+		return false
+	}
+	for i, vx := range this.Location {
+		vy := that.Location[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &Location{}
+			}
+			if q == nil {
+				q = &Location{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	if len(this.Function) != len(that.Function) {
+		return false
+	}
+	for i, vx := range this.Function {
+		vy := that.Function[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &Function{}
+			}
+			if q == nil {
+				q = &Function{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	if len(this.StringTable) != len(that.StringTable) {
+		return false
+	}
+	for i, vx := range this.StringTable {
+		vy := that.StringTable[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.DropFrames != that.DropFrames {
+		return false
+	}
+	if this.KeepFrames != that.KeepFrames {
+		return false
+	}
+	if this.TimeNanos != that.TimeNanos {
+		return false
+	}
+	if this.DurationNanos != that.DurationNanos {
+		return false
+	}
+	if !this.PeriodType.EqualVT(that.PeriodType) {
+		return false
+	}
+	if this.Period != that.Period {
+		return false
+	}
+	if len(this.Comment) != len(that.Comment) {
+		return false
+	}
+	for i, vx := range this.Comment {
+		vy := that.Comment[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.DefaultSampleType != that.DefaultSampleType {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Profile) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Profile)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ValueType) EqualVT(that *ValueType) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Type != that.Type {
+		return false
+	}
+	if this.Unit != that.Unit {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ValueType) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ValueType)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *Sample) EqualVT(that *Sample) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.LocationId) != len(that.LocationId) {
+		return false
+	}
+	for i, vx := range this.LocationId {
+		vy := that.LocationId[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.Value) != len(that.Value) {
+		return false
+	}
+	for i, vx := range this.Value {
+		vy := that.Value[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.Label) != len(that.Label) {
+		return false
+	}
+	for i, vx := range this.Label {
+		vy := that.Label[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &Label{}
+			}
+			if q == nil {
+				q = &Label{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Sample) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Sample)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *Label) EqualVT(that *Label) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Key != that.Key {
+		return false
+	}
+	if this.Str != that.Str {
+		return false
+	}
+	if this.Num != that.Num {
+		return false
+	}
+	if this.NumUnit != that.NumUnit {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Label) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Label)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *Mapping) EqualVT(that *Mapping) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Id != that.Id {
+		return false
+	}
+	if this.MemoryStart != that.MemoryStart {
+		return false
+	}
+	if this.MemoryLimit != that.MemoryLimit {
+		return false
+	}
+	if this.FileOffset != that.FileOffset {
+		return false
+	}
+	if this.Filename != that.Filename {
+		return false
+	}
+	if this.BuildId != that.BuildId {
+		return false
+	}
+	if this.HasFunctions != that.HasFunctions {
+		return false
+	}
+	if this.HasFilenames != that.HasFilenames {
+		return false
+	}
+	if this.HasLineNumbers != that.HasLineNumbers {
+		return false
+	}
+	if this.HasInlineFrames != that.HasInlineFrames {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Mapping) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Mapping)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *Location) EqualVT(that *Location) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Id != that.Id {
+		return false
+	}
+	if this.MappingId != that.MappingId {
+		return false
+	}
+	if this.Address != that.Address {
+		return false
+	}
+	if len(this.Line) != len(that.Line) {
+		return false
+	}
+	for i, vx := range this.Line {
+		vy := that.Line[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &Line{}
+			}
+			if q == nil {
+				q = &Line{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	if this.IsFolded != that.IsFolded {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Location) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Location)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *Line) EqualVT(that *Line) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.FunctionId != that.FunctionId {
+		return false
+	}
+	if this.Line != that.Line {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Line) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Line)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *Function) EqualVT(that *Function) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Id != that.Id {
+		return false
+	}
+	if this.Name != that.Name {
+		return false
+	}
+	if this.SystemName != that.SystemName {
+		return false
+	}
+	if this.Filename != that.Filename {
+		return false
+	}
+	if this.StartLine != that.StartLine {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Function) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Function)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 func (m *Profile) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil

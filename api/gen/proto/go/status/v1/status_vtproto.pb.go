@@ -114,6 +114,111 @@ func (m *GetConfigResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (this *GetBuildInfoRequest) EqualVT(that *GetBuildInfoRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetBuildInfoRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetBuildInfoRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *GetBuildInfoResponse) EqualVT(that *GetBuildInfoResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Status != that.Status {
+		return false
+	}
+	if !this.Data.EqualVT(that.Data) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetBuildInfoResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetBuildInfoResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *GetBuildInfoData) EqualVT(that *GetBuildInfoData) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Version != that.Version {
+		return false
+	}
+	if this.Revision != that.Revision {
+		return false
+	}
+	if this.Branch != that.Branch {
+		return false
+	}
+	if this.BuildUser != that.BuildUser {
+		return false
+	}
+	if this.BuildDate != that.BuildDate {
+		return false
+	}
+	if this.GoVersion != that.GoVersion {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetBuildInfoData) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetBuildInfoData)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *GetConfigRequest) EqualVT(that *GetConfigRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetConfigRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetConfigRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *GetConfigResponse) EqualVT(that *GetConfigResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetConfigResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetConfigResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
 // Requires gRPC-Go v1.32.0 or later.

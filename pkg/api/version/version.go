@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -27,9 +28,12 @@ import (
 // Increase this number when a new API change is introduced.
 const currentQuerierVersion = uint64(1)
 
-func MergeVersionResponses(responses ...*connect.Response[versionv1.VersionResponse]) *connect.Response[versionv1.VersionResponse] {
-	return nil
-}
+var (
+	heartbeatInterval                      = 15 * time.Second
+	instanceTimeout                        = 1 * time.Minute
+	_                 memberlist.Mergeable = (*Versions)(nil)
+	_                 services.Service     = (*Service)(nil)
+)
 
 func GetCodec() codec.Codec {
 	return codec.NewProtoCodec("versions", newVersions)
@@ -47,6 +51,11 @@ type Versions struct {
 	*versionv1.Versions
 }
 
+// Implements proto.Unmarshaler.
+func (v *Versions) Unmarshal(in []byte) error {
+	return v.UnmarshalVT(in)
+}
+
 // Merge merges two versions. This is used when CASing or merging versions from other nodes.
 // v is the local version and should be mutated to include the changes from incoming.
 // The returned value is the change to broadcast, in our case they are similar.
@@ -61,27 +70,30 @@ func (v *Versions) Merge(incoming memberlist.Mergeable, localCAS bool) (memberli
 	if other == nil {
 		return nil, nil
 	}
-	if proto.Equal(other.Versions, v.Versions) {
-		return nil, nil
-	}
 	if v == nil {
+		v = &Versions{
+			Versions: other.CloneVT(),
+		}
 		return other, nil
+	}
+	if other.EqualVT(v.Versions) {
+		return nil, nil
 	}
 	if v.Instances == nil {
 		v.Instances = make(map[string]*versionv1.InstanceVersion)
 	}
 	change := false
-	// Delete all the instances that are not in the other.
-	missing := []string{}
-	for k := range other.Instances {
-		if _, ok := v.Instances[k]; !ok {
-			missing = append(missing, k)
-		}
-	}
-	for _, k := range missing {
-		change = true
-		delete(v.Instances, k)
-	}
+	// // Delete all the instances that are not in the other.
+	// missing := []string{}
+	// for k := range v.Instances {
+	// 	if _, ok := other.Instances[k]; !ok {
+	// 		missing = append(missing, k)
+	// 	}
+	// }
+	// for _, k := range missing {
+	// 	change = true
+	// 	delete(v.Instances, k)
+	// }
 
 	// Copy over all the instances with newer timestamps.
 	for k, new := range other.Instances {
@@ -91,7 +103,7 @@ func (v *Versions) Merge(incoming memberlist.Mergeable, localCAS bool) (memberli
 			change = true
 			continue
 		}
-		if proto.Equal(current, new) {
+		if current.EqualVT(new) {
 			continue
 		}
 		if new.Timestamp > current.Timestamp {
@@ -120,16 +132,12 @@ func (c *Versions) RemoveTombstones(limit time.Time) (total, removed int) {
 	return 0, 0
 }
 
+// Implements memberlist.Mergeable.
 func (c *Versions) Clone() memberlist.Mergeable {
 	return &Versions{
 		Versions: c.CloneVT(),
 	}
 }
-
-var (
-	_ memberlist.Mergeable = (*Versions)(nil)
-	_ services.Service     = (*Service)(nil)
-)
 
 type Service struct {
 	*services.BasicService
@@ -138,9 +146,13 @@ type Service struct {
 	logger   log.Logger
 	cancel   context.CancelFunc
 	ctx      context.Context
+	wg       sync.WaitGroup
 	addr, id string
+
+	version uint64
 }
 
+// New creates a new version service.
 func New(cfg util.CommonRingConfig, logger log.Logger, reg prometheus.Registerer) (*Service, error) {
 	client, err := kv.NewClient(cfg.KVStore, GetCodec(), kv.RegistererWithKVName(reg, "versions"), logger)
 	if err != nil {
@@ -154,13 +166,14 @@ func New(cfg util.CommonRingConfig, logger log.Logger, reg prometheus.Registerer
 	ctx, cancel := context.WithCancel(context.Background())
 	instancePort := ring.GetInstancePort(cfg.InstancePort, cfg.ListenPort)
 	svc := &Service{
-		store:  client,
-		id:     cfg.InstanceID,
-		addr:   fmt.Sprintf("%s:%d", instanceAddr, instancePort),
-		cfg:    cfg,
-		logger: log.With(logger, "component", "versions"),
-		cancel: cancel,
-		ctx:    ctx,
+		store:   client,
+		id:      cfg.InstanceID,
+		addr:    fmt.Sprintf("%s:%d", instanceAddr, instancePort),
+		cfg:     cfg,
+		logger:  log.With(logger, "component", "versions"),
+		cancel:  cancel,
+		ctx:     ctx,
+		version: currentQuerierVersion,
 	}
 	// The service is simple only has a running function.
 	// Stopping is manual to ensure we stop as part of the shutdown process.
@@ -179,8 +192,12 @@ func (svc *Service) running(ctx context.Context) error {
 }
 
 func (svc *Service) loop() {
-	ticker := time.NewTicker(15 * time.Second)
-	defer ticker.Stop()
+	svc.wg.Add(1)
+	ticker := time.NewTicker(heartbeatInterval)
+	defer func() {
+		ticker.Stop()
+		svc.wg.Done()
+	}()
 
 	for {
 		select {
@@ -211,13 +228,12 @@ func (svc *Service) heartbeat(ctx context.Context) error {
 		}
 		current.Addr = svc.addr
 		current.ID = svc.id
-		current.Timestamp = time.Now().Unix()
-		current.QuerierAPI = currentQuerierVersion
+		current.Timestamp = time.Now().UnixNano()
+		current.QuerierAPI = svc.version
 		// Now prune old instances.
 		for id, instance := range versions.Instances {
-			lastHeartbeat := time.Unix(instance.GetTimestamp(), 0)
-
-			if time.Since(lastHeartbeat) > 1*time.Minute {
+			lastHeartbeat := time.Unix(0, instance.GetTimestamp())
+			if time.Since(lastHeartbeat) > instanceTimeout {
 				level.Warn(svc.logger).Log("msg", "auto-forgetting instance from the ring because it is unhealthy for a long time", "instance", id, "last_heartbeat", lastHeartbeat.String())
 				delete(versions.Instances, id)
 			}
@@ -254,4 +270,5 @@ func (svc *Service) Version(ctx context.Context, req *connect.Request[versionv1.
 // This should only be called when the service is fully shutting down.
 func (svc *Service) Shutdown() {
 	svc.cancel()
+	svc.wg.Wait()
 }

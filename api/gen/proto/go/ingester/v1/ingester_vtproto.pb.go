@@ -677,6 +677,828 @@ func (m *BlockHints) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (this *ProfileTypesRequest) EqualVT(that *ProfileTypesRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Start != that.Start {
+		return false
+	}
+	if this.End != that.End {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ProfileTypesRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ProfileTypesRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ProfileTypesResponse) EqualVT(that *ProfileTypesResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.ProfileTypes) != len(that.ProfileTypes) {
+		return false
+	}
+	for i, vx := range this.ProfileTypes {
+		vy := that.ProfileTypes[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &v1.ProfileType{}
+			}
+			if q == nil {
+				q = &v1.ProfileType{}
+			}
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v1.ProfileType) bool }); ok {
+				if !equal.EqualVT(q) {
+					return false
+				}
+			} else if !proto.Equal(p, q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ProfileTypesResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ProfileTypesResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SeriesRequest) EqualVT(that *SeriesRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Matchers) != len(that.Matchers) {
+		return false
+	}
+	for i, vx := range this.Matchers {
+		vy := that.Matchers[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.LabelNames) != len(that.LabelNames) {
+		return false
+	}
+	for i, vx := range this.LabelNames {
+		vy := that.LabelNames[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.Start != that.Start {
+		return false
+	}
+	if this.End != that.End {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SeriesRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SeriesRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SeriesResponse) EqualVT(that *SeriesResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.LabelsSet) != len(that.LabelsSet) {
+		return false
+	}
+	for i, vx := range this.LabelsSet {
+		vy := that.LabelsSet[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &v1.Labels{}
+			}
+			if q == nil {
+				q = &v1.Labels{}
+			}
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v1.Labels) bool }); ok {
+				if !equal.EqualVT(q) {
+					return false
+				}
+			} else if !proto.Equal(p, q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SeriesResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SeriesResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *FlushRequest) EqualVT(that *FlushRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *FlushRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*FlushRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *FlushResponse) EqualVT(that *FlushResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *FlushResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*FlushResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SelectProfilesRequest) EqualVT(that *SelectProfilesRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.LabelSelector != that.LabelSelector {
+		return false
+	}
+	if equal, ok := interface{}(this.Type).(interface{ EqualVT(*v1.ProfileType) bool }); ok {
+		if !equal.EqualVT(that.Type) {
+			return false
+		}
+	} else if !proto.Equal(this.Type, that.Type) {
+		return false
+	}
+	if this.Start != that.Start {
+		return false
+	}
+	if this.End != that.End {
+		return false
+	}
+	if !this.Hints.EqualVT(that.Hints) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SelectProfilesRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SelectProfilesRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *MergeProfilesStacktracesRequest) EqualVT(that *MergeProfilesStacktracesRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Request.EqualVT(that.Request) {
+		return false
+	}
+	if len(this.Profiles) != len(that.Profiles) {
+		return false
+	}
+	for i, vx := range this.Profiles {
+		vy := that.Profiles[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if p, q := this.MaxNodes, that.MaxNodes; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *MergeProfilesStacktracesRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*MergeProfilesStacktracesRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *MergeProfilesStacktracesResult) EqualVT(that *MergeProfilesStacktracesResult) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Stacktraces) != len(that.Stacktraces) {
+		return false
+	}
+	for i, vx := range this.Stacktraces {
+		vy := that.Stacktraces[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &StacktraceSample{}
+			}
+			if q == nil {
+				q = &StacktraceSample{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	if len(this.FunctionNames) != len(that.FunctionNames) {
+		return false
+	}
+	for i, vx := range this.FunctionNames {
+		vy := that.FunctionNames[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.Format != that.Format {
+		return false
+	}
+	if string(this.TreeBytes) != string(that.TreeBytes) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *MergeProfilesStacktracesResult) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*MergeProfilesStacktracesResult)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *MergeProfilesStacktracesResponse) EqualVT(that *MergeProfilesStacktracesResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.SelectedProfiles.EqualVT(that.SelectedProfiles) {
+		return false
+	}
+	if !this.Result.EqualVT(that.Result) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *MergeProfilesStacktracesResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*MergeProfilesStacktracesResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SelectSpanProfileRequest) EqualVT(that *SelectSpanProfileRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.LabelSelector != that.LabelSelector {
+		return false
+	}
+	if equal, ok := interface{}(this.Type).(interface{ EqualVT(*v1.ProfileType) bool }); ok {
+		if !equal.EqualVT(that.Type) {
+			return false
+		}
+	} else if !proto.Equal(this.Type, that.Type) {
+		return false
+	}
+	if this.Start != that.Start {
+		return false
+	}
+	if this.End != that.End {
+		return false
+	}
+	if len(this.SpanSelector) != len(that.SpanSelector) {
+		return false
+	}
+	for i, vx := range this.SpanSelector {
+		vy := that.SpanSelector[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SelectSpanProfileRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SelectSpanProfileRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *MergeSpanProfileRequest) EqualVT(that *MergeSpanProfileRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Request.EqualVT(that.Request) {
+		return false
+	}
+	if p, q := this.MaxNodes, that.MaxNodes; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
+	if len(this.Profiles) != len(that.Profiles) {
+		return false
+	}
+	for i, vx := range this.Profiles {
+		vy := that.Profiles[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *MergeSpanProfileRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*MergeSpanProfileRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *MergeSpanProfileResponse) EqualVT(that *MergeSpanProfileResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.SelectedProfiles.EqualVT(that.SelectedProfiles) {
+		return false
+	}
+	if !this.Result.EqualVT(that.Result) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *MergeSpanProfileResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*MergeSpanProfileResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *MergeSpanProfileResult) EqualVT(that *MergeSpanProfileResult) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if string(this.TreeBytes) != string(that.TreeBytes) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *MergeSpanProfileResult) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*MergeSpanProfileResult)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ProfileSets) EqualVT(that *ProfileSets) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.LabelsSets) != len(that.LabelsSets) {
+		return false
+	}
+	for i, vx := range this.LabelsSets {
+		vy := that.LabelsSets[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &v1.Labels{}
+			}
+			if q == nil {
+				q = &v1.Labels{}
+			}
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v1.Labels) bool }); ok {
+				if !equal.EqualVT(q) {
+					return false
+				}
+			} else if !proto.Equal(p, q) {
+				return false
+			}
+		}
+	}
+	if len(this.Profiles) != len(that.Profiles) {
+		return false
+	}
+	for i, vx := range this.Profiles {
+		vy := that.Profiles[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &SeriesProfile{}
+			}
+			if q == nil {
+				q = &SeriesProfile{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ProfileSets) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ProfileSets)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SeriesProfile) EqualVT(that *SeriesProfile) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.LabelIndex != that.LabelIndex {
+		return false
+	}
+	if this.Timestamp != that.Timestamp {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SeriesProfile) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SeriesProfile)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *Profile) EqualVT(that *Profile) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.ID != that.ID {
+		return false
+	}
+	if equal, ok := interface{}(this.Type).(interface{ EqualVT(*v1.ProfileType) bool }); ok {
+		if !equal.EqualVT(that.Type) {
+			return false
+		}
+	} else if !proto.Equal(this.Type, that.Type) {
+		return false
+	}
+	if len(this.Labels) != len(that.Labels) {
+		return false
+	}
+	for i, vx := range this.Labels {
+		vy := that.Labels[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &v1.LabelPair{}
+			}
+			if q == nil {
+				q = &v1.LabelPair{}
+			}
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v1.LabelPair) bool }); ok {
+				if !equal.EqualVT(q) {
+					return false
+				}
+			} else if !proto.Equal(p, q) {
+				return false
+			}
+		}
+	}
+	if this.Timestamp != that.Timestamp {
+		return false
+	}
+	if len(this.Stacktraces) != len(that.Stacktraces) {
+		return false
+	}
+	for i, vx := range this.Stacktraces {
+		vy := that.Stacktraces[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &StacktraceSample{}
+			}
+			if q == nil {
+				q = &StacktraceSample{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Profile) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Profile)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *StacktraceSample) EqualVT(that *StacktraceSample) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.FunctionIds) != len(that.FunctionIds) {
+		return false
+	}
+	for i, vx := range this.FunctionIds {
+		vy := that.FunctionIds[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.Value != that.Value {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *StacktraceSample) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*StacktraceSample)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *MergeProfilesLabelsRequest) EqualVT(that *MergeProfilesLabelsRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Request.EqualVT(that.Request) {
+		return false
+	}
+	if len(this.By) != len(that.By) {
+		return false
+	}
+	for i, vx := range this.By {
+		vy := that.By[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.Profiles) != len(that.Profiles) {
+		return false
+	}
+	for i, vx := range this.Profiles {
+		vy := that.Profiles[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *MergeProfilesLabelsRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*MergeProfilesLabelsRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *MergeProfilesLabelsResponse) EqualVT(that *MergeProfilesLabelsResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.SelectedProfiles.EqualVT(that.SelectedProfiles) {
+		return false
+	}
+	if len(this.Series) != len(that.Series) {
+		return false
+	}
+	for i, vx := range this.Series {
+		vy := that.Series[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &v1.Series{}
+			}
+			if q == nil {
+				q = &v1.Series{}
+			}
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v1.Series) bool }); ok {
+				if !equal.EqualVT(q) {
+					return false
+				}
+			} else if !proto.Equal(p, q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *MergeProfilesLabelsResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*MergeProfilesLabelsResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *MergeProfilesPprofRequest) EqualVT(that *MergeProfilesPprofRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Request.EqualVT(that.Request) {
+		return false
+	}
+	if len(this.Profiles) != len(that.Profiles) {
+		return false
+	}
+	for i, vx := range this.Profiles {
+		vy := that.Profiles[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *MergeProfilesPprofRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*MergeProfilesPprofRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *MergeProfilesPprofResponse) EqualVT(that *MergeProfilesPprofResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.SelectedProfiles.EqualVT(that.SelectedProfiles) {
+		return false
+	}
+	if string(this.Result) != string(that.Result) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *MergeProfilesPprofResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*MergeProfilesPprofResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *BlockMetadataRequest) EqualVT(that *BlockMetadataRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Start != that.Start {
+		return false
+	}
+	if this.End != that.End {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *BlockMetadataRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*BlockMetadataRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *BlockMetadataResponse) EqualVT(that *BlockMetadataResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Blocks) != len(that.Blocks) {
+		return false
+	}
+	for i, vx := range this.Blocks {
+		vy := that.Blocks[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &v1.BlockInfo{}
+			}
+			if q == nil {
+				q = &v1.BlockInfo{}
+			}
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v1.BlockInfo) bool }); ok {
+				if !equal.EqualVT(q) {
+					return false
+				}
+			} else if !proto.Equal(p, q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *BlockMetadataResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*BlockMetadataResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *Hints) EqualVT(that *Hints) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Block.EqualVT(that.Block) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Hints) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Hints)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *BlockHints) EqualVT(that *BlockHints) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Ulids) != len(that.Ulids) {
+		return false
+	}
+	for i, vx := range this.Ulids {
+		vy := that.Ulids[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.Deduplication != that.Deduplication {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *BlockHints) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*BlockHints)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
 // Requires gRPC-Go v1.32.0 or later.

@@ -112,7 +112,7 @@ type InstanceVersion struct {
 
 	ID   string `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	Addr string `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`
-	// Unix timestamp (with seconds precision) of the last heartbeat sent
+	// Unix timestamp (with nanoseconds precision) of the last heartbeat sent
 	// by this instance.
 	Timestamp int64 `protobuf:"varint,3,opt,name=Timestamp,proto3" json:"Timestamp,omitempty"`
 	// Querier Service API version

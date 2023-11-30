@@ -22,6 +22,8 @@ import (
 	"github.com/grafana/dskit/server"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
+	"github.com/grafana/pyroscope/public"
+
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
@@ -43,7 +45,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/gziphandler"
 	"github.com/grafana/pyroscope/pkg/validation/exporter"
-	"github.com/grafana/pyroscope/public"
 )
 
 type Config struct {

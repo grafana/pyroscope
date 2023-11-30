@@ -282,6 +282,364 @@ func (m *BlockCompaction) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (this *LabelPair) EqualVT(that *LabelPair) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Name != that.Name {
+		return false
+	}
+	if this.Value != that.Value {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *LabelPair) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*LabelPair)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *ProfileType) EqualVT(that *ProfileType) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.ID != that.ID {
+		return false
+	}
+	if this.Name != that.Name {
+		return false
+	}
+	if this.SampleType != that.SampleType {
+		return false
+	}
+	if this.SampleUnit != that.SampleUnit {
+		return false
+	}
+	if this.PeriodType != that.PeriodType {
+		return false
+	}
+	if this.PeriodUnit != that.PeriodUnit {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *ProfileType) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*ProfileType)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *Labels) EqualVT(that *Labels) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Labels) != len(that.Labels) {
+		return false
+	}
+	for i, vx := range this.Labels {
+		vy := that.Labels[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &LabelPair{}
+			}
+			if q == nil {
+				q = &LabelPair{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Labels) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Labels)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *Series) EqualVT(that *Series) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Labels) != len(that.Labels) {
+		return false
+	}
+	for i, vx := range this.Labels {
+		vy := that.Labels[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &LabelPair{}
+			}
+			if q == nil {
+				q = &LabelPair{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	if len(this.Points) != len(that.Points) {
+		return false
+	}
+	for i, vx := range this.Points {
+		vy := that.Points[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &Point{}
+			}
+			if q == nil {
+				q = &Point{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Series) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Series)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *Point) EqualVT(that *Point) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Value != that.Value {
+		return false
+	}
+	if this.Timestamp != that.Timestamp {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Point) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Point)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *LabelValuesRequest) EqualVT(that *LabelValuesRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Name != that.Name {
+		return false
+	}
+	if len(this.Matchers) != len(that.Matchers) {
+		return false
+	}
+	for i, vx := range this.Matchers {
+		vy := that.Matchers[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.Start != that.Start {
+		return false
+	}
+	if this.End != that.End {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *LabelValuesRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*LabelValuesRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *LabelValuesResponse) EqualVT(that *LabelValuesResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Names) != len(that.Names) {
+		return false
+	}
+	for i, vx := range this.Names {
+		vy := that.Names[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *LabelValuesResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*LabelValuesResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *LabelNamesRequest) EqualVT(that *LabelNamesRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Matchers) != len(that.Matchers) {
+		return false
+	}
+	for i, vx := range this.Matchers {
+		vy := that.Matchers[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.Start != that.Start {
+		return false
+	}
+	if this.End != that.End {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *LabelNamesRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*LabelNamesRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *LabelNamesResponse) EqualVT(that *LabelNamesResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Names) != len(that.Names) {
+		return false
+	}
+	for i, vx := range this.Names {
+		vy := that.Names[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *LabelNamesResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*LabelNamesResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *BlockInfo) EqualVT(that *BlockInfo) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Ulid != that.Ulid {
+		return false
+	}
+	if this.MinTime != that.MinTime {
+		return false
+	}
+	if this.MaxTime != that.MaxTime {
+		return false
+	}
+	if !this.Compaction.EqualVT(that.Compaction) {
+		return false
+	}
+	if len(this.Labels) != len(that.Labels) {
+		return false
+	}
+	for i, vx := range this.Labels {
+		vy := that.Labels[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &LabelPair{}
+			}
+			if q == nil {
+				q = &LabelPair{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *BlockInfo) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*BlockInfo)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *BlockCompaction) EqualVT(that *BlockCompaction) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Level != that.Level {
+		return false
+	}
+	if len(this.Sources) != len(that.Sources) {
+		return false
+	}
+	for i, vx := range this.Sources {
+		vy := that.Sources[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.Parents) != len(that.Parents) {
+		return false
+	}
+	for i, vx := range this.Parents {
+		vy := that.Parents[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *BlockCompaction) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*BlockCompaction)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 func (m *LabelPair) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil

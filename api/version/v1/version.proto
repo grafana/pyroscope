@@ -15,8 +15,8 @@ message VersionResponse {
 message InstanceVersion {
   string ID = 1;
   string addr = 2;
-  // Unix timestamp (with seconds precision) of the last heartbeat sent
-	// by this instance.
+  // Unix timestamp (with nanoseconds precision) of the last heartbeat sent
+  // by this instance.
   int64 Timestamp = 3;
 
   // Querier Service API version
@@ -25,5 +25,5 @@ message InstanceVersion {
 
 // Versions is the top-level type used to model version for all instances, containing information for individual instances.
 message Versions {
-	map<string,InstanceVersion> instances = 1;
+  map<string, InstanceVersion> instances = 1;
 }

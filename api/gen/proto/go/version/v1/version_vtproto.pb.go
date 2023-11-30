@@ -101,6 +101,106 @@ func (m *Versions) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (this *VersionRequest) EqualVT(that *VersionRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *VersionRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*VersionRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *VersionResponse) EqualVT(that *VersionResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.QuerierAPI != that.QuerierAPI {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *VersionResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*VersionResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *InstanceVersion) EqualVT(that *InstanceVersion) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.ID != that.ID {
+		return false
+	}
+	if this.Addr != that.Addr {
+		return false
+	}
+	if this.Timestamp != that.Timestamp {
+		return false
+	}
+	if this.QuerierAPI != that.QuerierAPI {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *InstanceVersion) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*InstanceVersion)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *Versions) EqualVT(that *Versions) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Instances) != len(that.Instances) {
+		return false
+	}
+	for i, vx := range this.Instances {
+		vy, ok := that.Instances[i]
+		if !ok {
+			return false
+		}
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &InstanceVersion{}
+			}
+			if q == nil {
+				q = &InstanceVersion{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Versions) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Versions)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
 // Requires gRPC-Go v1.32.0 or later.
