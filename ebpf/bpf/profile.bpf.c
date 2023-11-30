@@ -39,7 +39,10 @@ int do_perf_event(struct bpf_perf_event_data *ctx) {
                 .collect_user = 0,
                 .padding_ = 0
         };
-        bpf_map_update_elem(&pids, &tgid, &unknown, BPF_NOEXIST);
+        if (bpf_map_update_elem(&pids, &tgid, &unknown, BPF_NOEXIST)) {
+            bpf_dbg_printk("failed to update pids map. probably concurrent update\n");
+            return 0;
+        }
         struct pid_event event = {
                 .op  = OP_REQUEST_UNKNOWN_PROCESS_INFO,
                 .pid = tgid
