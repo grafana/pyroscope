@@ -28,14 +28,14 @@ require (
 	github.com/grafana/dskit v0.0.0-20231003142331-80423d8864b9
 	github.com/grafana/jfr-parser v0.7.2-0.20230831140626-08fa3a941bf8
 	github.com/grafana/pyroscope-go v1.0.3
-	github.com/grafana/pyroscope-go/godeltaprof v0.1.5
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.6-0.20231130084046-2eb5d49453c0
 	github.com/grafana/pyroscope/api v0.2.0
 	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0
 	github.com/json-iterator/go v1.1.12
 	github.com/k0kubun/pp/v3 v3.2.0
-	github.com/klauspost/compress v1.17.1
+	github.com/klauspost/compress v1.17.3
 	github.com/mattn/go-isatty v0.0.19
 	github.com/minio/minio-go/v7 v7.0.61
 	github.com/mitchellh/go-wordwrap v1.0.1
