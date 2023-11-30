@@ -324,9 +324,9 @@ func (et *ElfTable) onLoadError(err error) {
 	et.err = err
 	var l log.Logger
 	if errors.Is(err, os.ErrNotExist) {
-		l = level.Debug(l)
+		l = level.Debug(et.logger)
 	} else {
-		l = level.Error(l)
+		l = level.Error(et.logger)
 	}
 	l.Log(
 		"msg", "failed to load elf table",
