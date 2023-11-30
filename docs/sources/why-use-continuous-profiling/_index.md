@@ -12,7 +12,7 @@ keywords:
 
 # Why Use Continuous Profiling?
 
-![Visual comparison between traditional and continuous profiling](#)
+<!-- ![Visual comparison between traditional and continuous profiling](#) -->
 
 Continuous profiling is more than just a performance analysis tool; it's a crucial component in modern software development and operations. It goes past traditional profiling techniques by providing ongoing, in-depth insights into application performance. 
 
@@ -26,11 +26,13 @@ Continuous profiling is a systematic method of collecting and analyzing performa
 
 Traditionally, profiling has been used more as an ad-hoc debugging tool. While used in many languages, particularly in Go and Java many are used to running a benchmark tool locally and getting a pprof file in go or maybe ssh'ing into a misbehaving prod instance and pulling a flamegraph from a JFR file in Java. This is great for debugging but not so great for production.
 
+![example flamegraph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
+
 Continuous profiling is a much more modern approach which is safer and more scalable for production environments. It makes use of low overhead sampling to collect profiles from production systems and stores them in a database for later analysis. This allows you to get a much more holistic view of your application and how it behaves in production.
 
 ## The Core Benefits of Continuous Profiling
 
-![Diagram showing 3 benefits of continuous profiling](#)
+![Diagram showing 3 benefits of continuous profiling](https://grafana.com/static/img/pyroscope/profiling-use-cases-diagram.png)
 
 Why prioritize continuous profiling? Here are the key reasons:
 1. **In-Depth Code Insights:** It provides granular, line-level insights into how application code utilizes resources, offering the most detailed view of application performance.
@@ -39,7 +41,7 @@ Why prioritize continuous profiling? Here are the key reasons:
 
 ## Business Impact of Continuous Profiling
 
-![Infographic illustrating key business benefits](#)
+![Infographic illustrating key business benefits](https://grafana.com/static/img/pyroscope/cost-cutting-diagram.png)
 
 Adopting continuous profiling with tools like Pyroscope can lead to significant business advantages:
 1. **Reduced Operational Costs:** Optimization of resource usage can significantly cut down cloud and infrastructure expenses
@@ -57,11 +59,13 @@ Pyroscope streamlines incident management by offering immediate, actionable insi
 
 ## Flamegraphs: Visualizing Performance Data
 
-![Example of a flamegraph](#)
+A fundamental aspect of continuous profiling is the flamegraph, a convenient way to visualize performance data. These graphs provide a clear, intuitive understanding of resource allocation and bottlenecks within the application. Pyroscope extends this functionality with additional visualization formats like tree graphs and top lists.
 
-A fundamental aspect of continuous profiling is the flamegraph, an innovative way to visualize performance data. These graphs provide a clear, intuitive understanding of resource allocation and bottlenecks within the application. Pyroscope extends this functionality with additional visualization formats like tree graphs and top lists.
+![code to flamegraph diagram](https://grafana.com/static/img/pyroscope/code-to-flamegraph-animation.gif)
 
 This diagram shows how code is turned into a flamegraph. In this case Pyroscope would sample the stacktrace of your application to understand how many CPU cycles are being spent in each function. It would then aggregate this data and turn it into a flamegraph. This is a very simplified example but it gives you an idea of how Pyroscope works.
+
+![flamegraph](https://grafana.com/static/img/pyroscope/pyroscope-flamegraph-2023-11-30.png)
 
 Horizontally, the flamegraph represents 100% of the time that this application was running. The width of each node represents the amount of time spent in that function. The wider the node, the more time spent in that function. The narrower the node, the less time spent in that function.
 
@@ -71,7 +75,7 @@ This is a cpu profile, but profiles can represent many other types of resource s
 
 ## Pyroscope: Continuous Profiling in Action
 
-![Screenshots of Pyroscope's UI](#)
+![Screenshots of Pyroscope's UI](https://grafana.com/static/img/pyroscope/pyroscope-ui-diff-2023-11-30.png)
 
 Pyroscope's UI is designed to make it easy to visualize and analyze profiling data. There are several different modes for viewing, analyzing, uploading, and comparing profiling data. We will go into more detail about these modes in the [Pyroscope UI documentation]. For now, it is important to note that one of the major benefits of continuous profiling is the ability to compare and diff profiling data from two different queries:
 - Comparing two different git commits before and after a code change
@@ -82,16 +86,14 @@ Pyroscope's UI is designed to make it easy to visualize and analyze profiling da
 
 With traditional profiling getting any of this information is much more difficult to organize, properly label, share, or store for later analysis. With Pyroscope, all of this is just a matter of writing the two queries you'd like to compare and clicking a button.
 
-This UI will also expand over time to better help _surface_ issues that you otherwise may not have noticed. For now, the tag explorer page does a great job at giving a high level overview of particular tags/labels which you may want to drill into. 
+This UI will also expand over time to better help dig deeper into the data and provide more insights into your application.
 
 ## Seamless Integration with Observability Tools
 
-![Flowchart showing Pyroscope integration with other tools](#)
+![Flowchart showing Pyroscope integration with other tools](https://grafana.com/static/img/pyroscope/grafana-pyroscope-dashboard-2023-11-30.png)
 
 Pyroscope enhances its value through seamless integration with leading observability tools like Grafana, Prometheus, and Loki. This integration facilitates deeper insights into application performance and aids in addressing issues identified through other monitoring methods.
 
 ## Getting Started with Pyroscope
 
-![Guide for instrumenting an application with Pyroscope](#)
-
-Begin your journey with Pyroscope. Visit our [Getting Started Guide](link-to-getting-started) to learn about the different ways to instrument your application with Pyroscope. Join our [community](link-to-community) and contribute to the evolving world of continuous profiling.
+Begin your journey with Pyroscope. Visit our [Getting Started Guide](/docs/pyroscope/latest/get-started/) to learn about the different ways to instrument your application with Pyroscope. Join our [slack community](https://grafana.slack.com/archives/C049PLMV8TB) and contribute to the evolving world of continuous profiling.
