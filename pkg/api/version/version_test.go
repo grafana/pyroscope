@@ -43,8 +43,8 @@ func createMemberlist(t *testing.T, port, memberID int) *memberlist.KV {
 		BindPort:  0,
 	}
 	cfg.GossipInterval = 10 * time.Millisecond
-	cfg.GossipNodes = 3
-	cfg.PushPullInterval = 5 * time.Second
+	cfg.GossipNodes = 4
+	cfg.PushPullInterval = 10 * time.Millisecond
 	cfg.NodeName = fmt.Sprintf("Member-%d", memberID)
 	cfg.Codecs = []codec.Codec{GetCodec()}
 
@@ -64,7 +64,7 @@ func setupTests(t *testing.T) int {
 	t.Helper()
 	heartbeatInterval = 100 * time.Millisecond
 	instanceTimeout = 500 * time.Millisecond
-	initMKV := createMemberlist(t, 0, -1)
+	initMKV := createMemberlist(t, 0, 0)
 	return initMKV.GetListeningPort()
 }
 
@@ -118,22 +118,22 @@ func TestVersionsMultiple(t *testing.T) {
 	svcs := make([]*Service, 0, 3)
 	for i := 0; i < 3; i++ {
 		svc, err := New(util.CommonRingConfig{
-			InstanceID:   fmt.Sprintf("%d", i),
-			InstanceAddr: "0.0.0.0",
-			InstancePort: 1,
+			InstanceID: fmt.Sprintf("%d", i),
 			KVStore: kv.Config{
 				Store: "memberlist",
 				StoreConfig: kv.StoreConfig{
 					MemberlistKV: func() (*memberlist.KV, error) {
-						return createMemberlist(t, port, 1), nil
+						return createMemberlist(t, port, i), nil
 					},
 				},
 			},
 		}, log.NewNopLogger(), prometheus.NewRegistry())
 		require.NoError(t, err)
-		svc.version = uint64(i) + 1
 		svcs = append(svcs, svc)
 	}
+	svcs[0].version = 1
+	svcs[1].version = 2
+	svcs[2].version = 2
 
 	expectVersion := func(t *testing.T, expected uint64) {
 		t.Helper()
@@ -141,7 +141,7 @@ func TestVersionsMultiple(t *testing.T) {
 			resp, err := svcs[0].Version(ctx, req)
 			assert.NoError(t, err)
 			assert.Equal(t, expected, resp.Msg.QuerierAPI)
-		}, 3*time.Second, 500*time.Millisecond)
+		}, 3*time.Second, 100*time.Millisecond)
 	}
 
 	expectVersion(t, 0)
@@ -149,11 +149,10 @@ func TestVersionsMultiple(t *testing.T) {
 	require.NoError(t, services.StartAndAwaitRunning(ctx, svcs[0]))
 	expectVersion(t, 1)
 	require.NoError(t, services.StartAndAwaitRunning(ctx, svcs[1]))
-	expectVersion(t, 2)
+	expectVersion(t, 1)
 	require.NoError(t, services.StartAndAwaitRunning(ctx, svcs[2]))
-	expectVersion(t, 3)
-	svcs[2].Shutdown()
-	expectVersion(t, 2)
+	expectVersion(t, 1)
+	// wait for the version to be propagated
 	svcs[0].Shutdown()
 	expectVersion(t, 2)
 }

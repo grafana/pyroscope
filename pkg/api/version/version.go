@@ -56,6 +56,11 @@ func (v *Versions) Unmarshal(in []byte) error {
 	return v.UnmarshalVT(in)
 }
 
+// Implements proto.Marshaler.
+func (v *Versions) Marshal() ([]byte, error) {
+	return v.MarshalVT()
+}
+
 // Merge merges two versions. This is used when CASing or merging versions from other nodes.
 // v is the local version and should be mutated to include the changes from incoming.
 // The returned value is the change to broadcast, in our case they are similar.
@@ -83,17 +88,17 @@ func (v *Versions) Merge(incoming memberlist.Mergeable, localCAS bool) (memberli
 		v.Instances = make(map[string]*versionv1.InstanceVersion)
 	}
 	change := false
-	// // Delete all the instances that are not in the other.
-	// missing := []string{}
-	// for k := range v.Instances {
-	// 	if _, ok := other.Instances[k]; !ok {
-	// 		missing = append(missing, k)
-	// 	}
-	// }
-	// for _, k := range missing {
-	// 	change = true
-	// 	delete(v.Instances, k)
-	// }
+	// Delete all the instances that are not in the other.
+	missing := []string{}
+	for k := range v.Instances {
+		if _, ok := other.Instances[k]; !ok {
+			missing = append(missing, k)
+		}
+	}
+	for _, k := range missing {
+		change = true
+		delete(v.Instances, k)
+	}
 
 	// Copy over all the instances with newer timestamps.
 	for k, new := range other.Instances {
