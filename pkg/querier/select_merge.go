@@ -475,7 +475,8 @@ func selectMergeSeries(ctx context.Context, aggregation *typesv1.TimeSeriesAggre
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
-	series := phlaremodel.MergeSeries(aggregation, results...)
+	var series = phlaremodel.MergeSeries(aggregation, results...)
+
 	seriesIters := make([]iter.Iterator[ProfileValue], 0, len(series))
 	for _, s := range series {
 		s := s

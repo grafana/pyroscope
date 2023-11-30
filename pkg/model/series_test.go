@@ -51,7 +51,7 @@ func Test_SeriesMerger(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			testhelper.EqualProto(t, tc.out, SumSeries(tc.in...))
+			testhelper.EqualProto(t, tc.out, MergeSeries(nil, tc.in...))
 		})
 	}
 }
@@ -81,45 +81,7 @@ func Test_SeriesMerger_Overlap_Sum(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m := NewSumSeriesMerger()
-			for _, s := range tc.in {
-				m.MergeSeries(s)
-			}
-			testhelper.EqualProto(t, tc.out, m.Series())
-		})
-	}
-}
-
-func Test_SeriesMerger_Overlap_Avg(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		in   [][]*typesv1.Series
-		out  []*typesv1.Series
-	}{
-		{
-			name: "merge deduplicate overlapping series",
-			in: [][]*typesv1.Series{
-				{
-					{Labels: LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 2, Value: 1}, {Timestamp: 3, Value: 1}}},
-					{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}}},
-				},
-				{
-					{Labels: LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2}}},
-					{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 2, Value: 3}, {Timestamp: 3, Value: 1}}},
-				},
-			},
-			out: []*typesv1.Series{
-				{Labels: LabelsFromStrings("foo", "bar"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 1.5}, {Timestamp: 3, Value: 1}}},
-				{Labels: LabelsFromStrings("foo", "baz"), Points: []*typesv1.Point{{Timestamp: 1, Value: 1}, {Timestamp: 2, Value: 2.5}, {Timestamp: 3, Value: 1}}},
-			},
-		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			m := NewAvgSeriesMerger()
-			for _, s := range tc.in {
-				m.MergeSeries(s)
-			}
-			testhelper.EqualProto(t, tc.out, m.Series())
+			testhelper.EqualProto(t, tc.out, MergeSeries(nil, tc.in...))
 		})
 	}
 }

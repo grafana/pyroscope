@@ -939,7 +939,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64, aggregation *typesv1.TimeSeriesAggregationType) []*typesv1.Series {
 	defer it.Close()
 	seriesMap := make(map[uint64]*typesv1.Series)
-	aggregators := make(map[uint64]phlaremodel.TimeSeriesAggregator)
+	aggregators := make(map[uint64]TimeSeriesAggregator)
 
 	if !it.Next() {
 		return nil
@@ -951,7 +951,7 @@ Outer:
 		for {
 			aggregator, ok := aggregators[it.At().LabelsHash]
 			if !ok {
-				aggregator = phlaremodel.NewTimeSeriesAggregator(aggregation)
+				aggregator = NewTimeSeriesAggregator(aggregation)
 				aggregators[it.At().LabelsHash] = aggregator
 			}
 			if it.At().Ts > currentStep {
@@ -1087,4 +1087,88 @@ func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMe
 	}
 	storegatewayTree.Merge(ingesterTree)
 	return storegatewayTree, nil
+}
+
+type TimeSeriesAggregator interface {
+	Add(ts int64, value float64)
+	GetAndReset() *typesv1.Point
+	IsEmpty() bool
+	GetTimestamp() int64
+}
+
+func NewTimeSeriesAggregator(aggregation *typesv1.TimeSeriesAggregationType) TimeSeriesAggregator {
+	if aggregation == nil {
+		return &sumTimeSeriesAggregator{
+			ts: -1,
+		}
+	}
+	if *aggregation == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE {
+		return &avgTimeSeriesAggregator{
+			ts: -1,
+		}
+	}
+	return &sumTimeSeriesAggregator{
+		ts: -1,
+	}
+}
+
+type sumTimeSeriesAggregator struct {
+	ts  int64
+	sum float64
+}
+
+func (a *sumTimeSeriesAggregator) Add(ts int64, value float64) {
+	a.ts = ts
+	a.sum += value
+}
+
+func (a *sumTimeSeriesAggregator) GetAndReset() *typesv1.Point {
+	tsCopy := a.ts
+	sumCopy := a.sum
+	a.ts = -1
+	a.sum = 0
+	return &typesv1.Point{
+		Timestamp: tsCopy,
+		Value:     sumCopy,
+	}
+}
+
+func (a *sumTimeSeriesAggregator) IsEmpty() bool {
+	return a.ts == -1
+}
+
+func (a *sumTimeSeriesAggregator) GetTimestamp() int64 {
+	return a.ts
+}
+
+type avgTimeSeriesAggregator struct {
+	ts    int64
+	sum   float64
+	count int64
+}
+
+func (a *avgTimeSeriesAggregator) Add(ts int64, value float64) {
+	a.ts = ts
+	a.sum += value
+	a.count++
+}
+
+func (a *avgTimeSeriesAggregator) GetAndReset() *typesv1.Point {
+	avg := a.sum / float64(a.count)
+	tsCopy := a.ts
+	a.ts = -1
+	a.sum = 0
+	a.count = 0
+	return &typesv1.Point{
+		Timestamp: tsCopy,
+		Value:     avg,
+	}
+}
+
+func (a *avgTimeSeriesAggregator) IsEmpty() bool {
+	return a.ts == -1
+}
+
+func (a *avgTimeSeriesAggregator) GetTimestamp() int64 {
+	return a.ts
 }
