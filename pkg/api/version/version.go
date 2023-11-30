@@ -239,7 +239,7 @@ func (svc *Service) heartbeat(ctx context.Context) error {
 		for id, instance := range versions.Instances {
 			lastHeartbeat := time.Unix(0, instance.GetTimestamp())
 			if time.Since(lastHeartbeat) > instanceTimeout {
-				level.Warn(svc.logger).Log("msg", "auto-forgetting instance from the ring because it is unhealthy for a long time", "instance", id, "last_heartbeat", lastHeartbeat.String())
+				level.Warn(svc.logger).Log("msg", "auto-forgetting instance from the versions because it is unhealthy for a long time", "instance", id, "last_heartbeat", lastHeartbeat.String())
 				delete(versions.Instances, id)
 			}
 		}
