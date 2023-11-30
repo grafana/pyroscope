@@ -48,12 +48,12 @@ CPU profiling measures the amount of CPU time consumed by different parts of you
 - **When to Use**: To identify and optimize CPU-intensive functions
 - **Flamegraph Insight**: The width of blocks indicates the CPU time consumed by each function
 
-[ flamegraph or screenshot showing cpu spike]
+![example flamegraph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
 
 As you can see here the UI is showing a spike in CPU along with the flamegraph associated with that spike. Often times without profiling you may get similar insights from metrics, but with profiling you have more details into the specific cause of a spike in CPU usage at the line level
 
-## FGprof (for go)
-[todo add a link to the docs for fgprof] 
+<!-- ## FGprof (for go)
+[todo add a link to the docs for fgprof]  -->
 
 ## Memory Allocation Profiling
 
@@ -63,8 +63,7 @@ Memory allocation profiling tracks the amount and frequency of memory allocation
 - **When to Use**: For identifying and optimizing memory usage patterns
 - **Flamegraph Insight**: Highlights functions where memory allocation is high
 
-
-[ flamegraph or screenshot showing memory allocations -- ideally showing a memory leak]
+![memory leak example](https://grafana.com/static/img/pyroscope/pyroscope-memory-leak-2023-11-30.png)
 
 The timeline shows memory allocations over time and is great for debugging memory related issues. A common example is when a memory leak is created due to improper handling of memory in a function. This can be identified by looking at the timeline and seeing a gradual increase in memory allocations that never goes down. This is a clear indicator of a memory leak. 
 
@@ -93,4 +92,4 @@ Block profiling measures the frequency and duration of blocking operations, wher
 - **When to Use**: To identify and reduce blocking delays
 - **Flamegraph Insight**: Identifies where and how long threads are being blocked
 
-# Next Steps: Exploring Pyroscope's UI(link to ui analysis docs)
+<!-- # Next Steps: Exploring Pyroscope's UI(link to ui analysis docs) -->
