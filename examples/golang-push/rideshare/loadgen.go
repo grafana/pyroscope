@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/grafana/pyroscope-go/otelpyroscope"
+	otelpyroscope "github.com/grafana/otel-profiling-go"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
