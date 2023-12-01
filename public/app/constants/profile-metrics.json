@@ -20,6 +20,13 @@
     "group": "goroutine",
     "unit": "short"
   },
+  "goroutines:goroutine:count:goroutine:count": {
+    "id": "goroutine:goroutine:count:goroutine:count",
+    "description": "Current number of goroutines",
+    "type": "goroutine",
+    "group": "goroutine",
+    "unit": "short"
+  },
   "memory:alloc_in_new_tlab_bytes:bytes::": {
     "id": "memory:alloc_in_new_tlab_bytes:bytes::",
     "description": "Total bytes allocated inside Thread-Local Allocation Buffers (TLAB)",
