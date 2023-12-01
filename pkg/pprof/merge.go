@@ -23,6 +23,9 @@ type ProfileMerge struct {
 // Merge adds p to the profile merge.
 // Profile is modified in place but not retained by the function.
 func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
+	if p == nil || len(p.StringTable) < 2 {
+		return nil
+	}
 	ConvertIDsToIndices(p)
 	if m.profile == nil {
 		m.init(p)

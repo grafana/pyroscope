@@ -163,6 +163,62 @@ func (q *headOnDiskQuerier) SelectMergeByStacktraces(ctx context.Context, params
 	return r.Tree()
 }
 
+func (q *headOnDiskQuerier) SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (*profilev1.Profile, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergePprof - HeadOnDisk")
+	defer sp.Finish()
+
+	// query the index for rows
+	rowIter, _, err := q.head.profiles.index.selectMatchingRowRanges(ctx, params, q.rowGroupIdx)
+	if err != nil {
+		return nil, err
+	}
+
+	// get time nano information for profiles
+	var (
+		start = model.Time(params.Start)
+		end   = model.Time(params.End)
+	)
+	it := query.NewBinaryJoinIterator(0,
+		query.NewBinaryJoinIterator(
+			0,
+			rowIter,
+			q.rowGroup().columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), ""),
+		),
+		q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"))
+
+	buf := make([][]parquet.Value, 1)
+
+	// todo: we should stream profile to merge instead of loading all in memory.
+	// This is a temporary solution for now since there's a memory corruption happening.
+	rows, err := iter.Slice[rowProfile](
+		&RowsIterator[rowProfile]{
+			rows: it,
+			at: func(ir *query.IteratorResult) rowProfile {
+				buf = ir.Columns(buf, "StacktracePartition")
+				if len(buf[0]) == 0 {
+					return rowProfile{
+						rowNum: ir.RowNumber[0],
+					}
+				}
+				return rowProfile{
+					rowNum:    ir.RowNumber[0],
+					partition: buf[0][0].Uint64(),
+				}
+			},
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
+
+	if err := mergeByStacktraces[rowProfile](ctx, q.rowGroup(), iter.NewSliceIterator(rows), r); err != nil {
+		return nil, err
+	}
+	return r.Pprof(maxNodes)
+}
+
 func (q *headOnDiskQuerier) Bounds() (model.Time, model.Time) {
 	// TODO: Use per rowgroup information
 	return q.head.Bounds()
@@ -191,7 +247,7 @@ func (q *headOnDiskQuerier) MergeByStacktraces(ctx context.Context, rows iter.It
 	return r.Tree()
 }
 
-func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profilev1.Profile, error) {
+func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64) (*profilev1.Profile, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergePprof")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb)
@@ -199,7 +255,7 @@ func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[P
 	if err := mergeByStacktraces(ctx, q.rowGroup(), rows, r); err != nil {
 		return nil, err
 	}
-	return r.Pprof(0)
+	return r.Pprof(maxNodes)
 }
 
 func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
@@ -385,6 +441,45 @@ func (q *headInMemoryQuerier) SelectMergeByStacktraces(ctx context.Context, para
 	return r.Tree()
 }
 
+func (q *headInMemoryQuerier) SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (*profilev1.Profile, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergePprof - HeadInMemory")
+	defer sp.Finish()
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
+	index := q.head.profiles.index
+
+	ids, err := index.selectMatchingFPs(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	// get time nano information for profiles
+	var (
+		start = model.Time(params.Start)
+		end   = model.Time(params.End)
+	)
+
+	index.mutex.RLock()
+	defer index.mutex.RUnlock()
+
+	for _, fp := range ids {
+		profileSeries, ok := index.profilesPerFP[fp]
+		if !ok {
+			continue
+		}
+		for _, p := range profileSeries.profiles {
+			if p.Timestamp() < start {
+				continue
+			}
+			if p.Timestamp() > end {
+				break
+			}
+			r.AddSamples(p.StacktracePartition, p.Samples)
+		}
+	}
+	return r.Pprof(maxNodes)
+}
+
 func (q *headInMemoryQuerier) Bounds() (model.Time, model.Time) {
 	// TODO: Use per rowgroup information
 	return q.head.Bounds()
@@ -420,7 +515,7 @@ func (q *headInMemoryQuerier) MergeByStacktraces(ctx context.Context, rows iter.
 	return r.Tree()
 }
 
-func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile]) (*profilev1.Profile, error) {
+func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64) (*profilev1.Profile, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergePprof - HeadInMemory")
 	defer sp.Finish()
 	r := symdb.NewResolver(ctx, q.head.symdb)
@@ -435,7 +530,7 @@ func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	return r.Pprof(0)
+	return r.Pprof(maxNodes)
 }
 
 func (q *headInMemoryQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {

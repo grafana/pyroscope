@@ -70,7 +70,6 @@ const maxNodesDefault = int64(2048)
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, storeGatewayQuerier *StoreGatewayQuerier, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Querier, error) {
 	// disable gzip compression for querier-ingester communication as most of payload are not benefit from it.
-	clientsOptions = append(clientsOptions, connect.WithAcceptCompression("gzip", nil, nil))
 	clientsMetrics := promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 		Namespace: "pyroscope",
 		Name:      "querier_ingester_clients",
@@ -684,6 +683,7 @@ func (sq storeQuery) MergeProfileRequest(req *querierv1.SelectMergeProfileReques
 		LabelSelector: req.LabelSelector,
 		Start:         int64(sq.start),
 		End:           int64(sq.end),
+		MaxNodes:      req.MaxNodes,
 	}
 }
 
@@ -740,15 +740,12 @@ func splitQueryToStores(start, end model.Time, now model.Time, queryStoreAfter t
 
 func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[googlev1.Profile], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeProfile")
-	defer func() {
-		sp.LogFields(
-			otlog.String("start", model.Time(req.Msg.Start).Time().String()),
-			otlog.String("end", model.Time(req.Msg.End).Time().String()),
-			otlog.String("selector", req.Msg.LabelSelector),
-			otlog.String("profile_id", req.Msg.ProfileTypeID),
-		)
-		sp.Finish()
-	}()
+	sp.SetTag("start", model.Time(req.Msg.Start).Time().String()).
+		SetTag("end", model.Time(req.Msg.End).Time().String()).
+		SetTag("selector", req.Msg.LabelSelector).
+		SetTag("max_nodes", req.Msg.GetMaxNodes()).
+		SetTag("profile_type", req.Msg.ProfileTypeID)
+	defer sp.Finish()
 
 	profile, err := q.selectProfile(ctx, req.Msg)
 	if err != nil {
@@ -800,9 +797,8 @@ func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeP
 			return err
 		}
 		lock.Lock()
-		err = merge.Merge(ingesterProfile)
-		lock.Unlock()
-		return err
+		defer lock.Unlock()
+		return merge.Merge(ingesterProfile)
 	})
 	g.Go(func() error {
 		storegatewayProfile, err := q.selectProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeProfileRequest(req), plan)
@@ -810,9 +806,8 @@ func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeP
 			return err
 		}
 		lock.Lock()
-		err = merge.Merge(storegatewayProfile)
-		lock.Unlock()
-		return err
+		defer lock.Unlock()
+		return merge.Merge(storegatewayProfile)
 	})
 	if err := g.Wait(); err != nil {
 		return nil, err
