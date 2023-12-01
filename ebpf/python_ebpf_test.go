@@ -89,7 +89,7 @@ func compareProfiles(t *testing.T, l log.Logger, expected []byte, actual map[str
 func collectProfiles(t *testing.T, l log.Logger, profiler Session) map[string]struct{} {
 	l = log.With(l, "component", "profiles")
 	profiles := map[string]struct{}{}
-	err := profiler.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32) {
+	err := profiler.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32, _ SampleAggregation) {
 		lo.Reverse(stack)
 		sample := strings.Join(stack, ";")
 		profiles[sample] = struct{}{}
