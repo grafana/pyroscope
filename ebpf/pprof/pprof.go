@@ -57,8 +57,8 @@ func (b ProfileBuilders) BuilderForTarget(hash uint64, labels labels.Labels) *Pr
 			PeriodType: &profile.ValueType{Type: "cpu", Unit: "nanoseconds"},
 			TimeNanos:  time.Now().UnixNano(),
 		},
-		hash:           xxhash.New(),
 		tmpLocationIDs: make([]uint64, 0, 128),
+		tmpLocations:   make([]*profile.Location, 0, 128),
 	}
 	res = builder
 	b.Builders[hash] = res
@@ -72,8 +72,6 @@ type ProfileBuilder struct {
 	Profile            *profile.Profile
 	Labels             labels.Labels
 
-	hash           *xxhash.Digest
-	b              [8]byte
 	tmpLocations   []*profile.Location
 	tmpLocationIDs []uint64
 }
@@ -91,37 +89,25 @@ func (p *ProfileBuilder) CreateSample(stacktrace []string, value uint64) {
 
 func (p *ProfileBuilder) CreateSampleOrAddValue(stacktrace []string, value uint64) {
 	scaledValue := int64(value) * p.Profile.Period
-	if cap(p.tmpLocations) < len(stacktrace) {
-		p.tmpLocations = make([]*profile.Location, 0, len(stacktrace))
-	} else {
-		p.tmpLocations = p.tmpLocations[:0]
-	}
-	if cap(p.tmpLocationIDs) < len(stacktrace) {
-		p.tmpLocationIDs = make([]uint64, 0, len(stacktrace))
-	} else {
-		p.tmpLocationIDs = p.tmpLocationIDs[:0]
-	}
+	p.tmpLocations = p.tmpLocations[:0]
+	p.tmpLocationIDs = p.tmpLocationIDs[:0]
 	for _, s := range stacktrace {
 		loc := p.addLocation(s)
 		p.tmpLocations = append(p.tmpLocations, loc)
 		p.tmpLocationIDs = append(p.tmpLocationIDs, loc.ID)
 	}
-	p.hash.Reset()
-	if _, err := p.hash.Write(uint64Bytes(p.tmpLocationIDs)); err != nil {
-		panic(err)
-	}
-	h := p.hash.Sum64()
+	h := xxhash.Sum64(uint64Bytes(p.tmpLocationIDs))
 	sample := p.sampleHashToSample[h]
 	if sample != nil {
 		sample.Value[0] += scaledValue
 		return
 	}
 	sample = &profile.Sample{
-		Location: p.tmpLocations,
+		Location: make([]*profile.Location, len(p.tmpLocations)),
 		Value:    []int64{scaledValue},
 	}
+	copy(sample.Location, p.tmpLocations)
 	p.sampleHashToSample[h] = sample
-	p.tmpLocations = nil
 	p.Profile.Sample = append(p.Profile.Sample, sample)
 }
 
