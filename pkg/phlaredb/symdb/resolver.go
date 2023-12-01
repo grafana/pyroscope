@@ -5,13 +5,14 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/google/pprof/profile"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	"golang.org/x/sync/errgroup"
 
+	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 // Resolver converts stack trace samples to one of the profile
@@ -167,25 +168,21 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 	return tree, err
 }
 
-func (r *Resolver) Profile() (*profile.Profile, error) {
-	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Profile")
+func (r *Resolver) Pprof(maxNodes int64) (*googlev1.Profile, error) {
+	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Pprof")
 	defer span.Finish()
 	var lock sync.Mutex
-	profiles := make([]*profile.Profile, 0, len(r.p))
+	var p pprof.ProfileMerge
 	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
-		resolved, err := symbols.Profile(ctx, samples)
+		resolved, err := symbols.Pprof(ctx, samples, maxNodes)
 		if err != nil {
 			return err
 		}
 		lock.Lock()
-		profiles = append(profiles, resolved)
-		lock.Unlock()
-		return nil
+		defer lock.Unlock()
+		return p.Merge(resolved)
 	})
-	if err != nil {
-		return nil, err
-	}
-	return profile.Merge(profiles)
+	return p.Profile(), err
 }
 
 func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, schemav1.Samples) error) error {
@@ -209,6 +206,24 @@ func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, schemav1.S
 	return g.Wait()
 }
 
+type pprofBuilder interface {
+	StacktraceInserter
+	init(*Symbols, schemav1.Samples)
+	buildPprof() *googlev1.Profile
+}
+
+func (r *Symbols) Pprof(ctx context.Context, samples schemav1.Samples, maxNodes int64) (*googlev1.Profile, error) {
+	var b pprofBuilder = new(pprofProtoSymbols)
+	if maxNodes > 0 {
+		b = &pprofProtoTruncatedSymbols{maxNodes: maxNodes}
+	}
+	b.init(r, samples)
+	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, b, samples.StacktraceIDs); err != nil {
+		return nil, err
+	}
+	return b.buildPprof(), nil
+}
+
 func (r *Symbols) Tree(ctx context.Context, samples schemav1.Samples) (*model.Tree, error) {
 	t := treeSymbolsFromPool()
 	defer t.reset()
@@ -217,212 +232,4 @@ func (r *Symbols) Tree(ctx context.Context, samples schemav1.Samples) (*model.Tr
 		return nil, err
 	}
 	return t.tree, nil
-}
-
-type treeSymbols struct {
-	symbols *Symbols
-	samples *schemav1.Samples
-	tree    *model.Tree
-	lines   []string
-	cur     int
-}
-
-var treeSymbolsPool = sync.Pool{
-	New: func() any { return new(treeSymbols) },
-}
-
-func treeSymbolsFromPool() *treeSymbols {
-	return treeSymbolsPool.Get().(*treeSymbols)
-}
-
-func (r *treeSymbols) reset() {
-	r.symbols = nil
-	r.samples = nil
-	r.tree = nil
-	r.lines = r.lines[:0]
-	r.cur = 0
-	treeSymbolsPool.Put(r)
-}
-
-func (r *treeSymbols) init(symbols *Symbols, samples schemav1.Samples) {
-	r.symbols = symbols
-	r.samples = &samples
-	r.tree = new(model.Tree)
-}
-
-func (r *treeSymbols) InsertStacktrace(_ uint32, locations []int32) {
-	r.lines = r.lines[:0]
-	for i := len(locations) - 1; i >= 0; i-- {
-		lines := r.symbols.Locations[locations[i]].Line
-		for j := len(lines) - 1; j >= 0; j-- {
-			f := r.symbols.Functions[lines[j].FunctionId]
-			r.lines = append(r.lines, r.symbols.Strings[f.Name])
-		}
-	}
-	r.tree.InsertStack(int64(r.samples.Values[r.cur]), r.lines...)
-	r.cur++
-}
-
-func (r *Symbols) Profile(ctx context.Context, samples schemav1.Samples) (*profile.Profile, error) {
-	t := pprofResolveFromPool()
-	defer t.reset()
-	t.init(r, samples)
-	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, t, samples.StacktraceIDs); err != nil {
-		return nil, err
-	}
-	t.incrementIDs()
-	return t.profile, nil
-}
-
-type pprofSymbols struct {
-	profile *profile.Profile
-	symbols *Symbols
-	samples *schemav1.Samples
-	cur     int
-
-	locations []*profile.Location
-	mappings  []*profile.Mapping
-	functions []*profile.Function
-}
-
-var pprofSymbolsPool = sync.Pool{
-	New: func() any { return new(pprofSymbols) },
-}
-
-func pprofResolveFromPool() *pprofSymbols {
-	return pprofSymbolsPool.Get().(*pprofSymbols)
-}
-
-func (r *pprofSymbols) reset() {
-	r.profile = nil
-	r.symbols = nil
-	r.samples = nil
-	r.cur = 0
-	clear(r.locations)
-	clear(r.mappings)
-	clear(r.functions)
-	pprofSymbolsPool.Put(r)
-}
-
-func (r *pprofSymbols) init(symbols *Symbols, samples schemav1.Samples) {
-	r.symbols = symbols
-	r.samples = &samples
-	r.profile = &profile.Profile{
-		Sample:     make([]*profile.Sample, len(samples.StacktraceIDs)),
-		PeriodType: new(profile.ValueType),
-	}
-	r.locations = grow(r.locations, len(r.symbols.Locations))
-	r.mappings = grow(r.mappings, len(r.symbols.Mappings))
-	r.functions = grow(r.functions, len(r.symbols.Functions))
-}
-
-func grow[T any](s []T, n int) []T {
-	if cap(s) < n {
-		s = make([]T, n)
-	}
-	s = s[:n]
-	return s
-}
-
-func clear[T any](s []T) {
-	var zero T
-	for i := range s {
-		s[i] = zero
-	}
-}
-
-func (r *pprofSymbols) InsertStacktrace(_ uint32, locations []int32) {
-	sample := &profile.Sample{
-		Location: make([]*profile.Location, len(locations)),
-		Value:    []int64{int64(r.samples.Values[r.cur])},
-	}
-	for j, loc := range locations {
-		sample.Location[j] = r.location(loc)
-	}
-	r.profile.Sample[r.cur] = sample
-	r.cur++
-}
-
-func (r *pprofSymbols) location(i int32) *profile.Location {
-	if x := r.locations[i]; x != nil {
-		return x
-	}
-	loc := r.inMemoryLocationToPprof(r.symbols.Locations[i])
-	r.profile.Location = append(r.profile.Location, loc)
-	r.locations[i] = loc
-	return loc
-}
-
-func (r *pprofSymbols) mapping(i uint32) *profile.Mapping {
-	if x := r.mappings[i]; x != nil {
-		return x
-	}
-	m := r.inMemoryMappingToPprof(r.symbols.Mappings[i])
-	r.profile.Mapping = append(r.profile.Mapping, m)
-	r.mappings[i] = m
-	return m
-}
-
-func (r *pprofSymbols) function(i uint32) *profile.Function {
-	if x := r.functions[i]; x != nil {
-		return x
-	}
-	f := r.inMemoryFunctionToPprof(r.symbols.Functions[i])
-	r.profile.Function = append(r.profile.Function, f)
-	r.functions[i] = f
-	return f
-}
-
-func (r *pprofSymbols) inMemoryLocationToPprof(m *schemav1.InMemoryLocation) *profile.Location {
-	x := &profile.Location{
-		ID:       m.Id,
-		Mapping:  r.mapping(m.MappingId),
-		Address:  m.Address,
-		IsFolded: m.IsFolded,
-	}
-	x.Line = make([]profile.Line, len(m.Line))
-	for i, line := range m.Line {
-		x.Line[i] = profile.Line{
-			Function: r.function(line.FunctionId),
-			Line:     int64(line.Line),
-		}
-	}
-	return x
-}
-
-func (r *pprofSymbols) inMemoryMappingToPprof(m *schemav1.InMemoryMapping) *profile.Mapping {
-	return &profile.Mapping{
-		ID:              m.Id,
-		Start:           m.MemoryStart,
-		Limit:           m.MemoryLimit,
-		Offset:          m.FileOffset,
-		File:            r.symbols.Strings[m.Filename],
-		BuildID:         r.symbols.Strings[m.BuildId],
-		HasFunctions:    m.HasFunctions,
-		HasFilenames:    m.HasFilenames,
-		HasLineNumbers:  m.HasLineNumbers,
-		HasInlineFrames: m.HasInlineFrames,
-	}
-}
-
-func (r *pprofSymbols) inMemoryFunctionToPprof(m *schemav1.InMemoryFunction) *profile.Function {
-	return &profile.Function{
-		ID:         m.Id,
-		Name:       r.symbols.Strings[m.Name],
-		SystemName: r.symbols.Strings[m.SystemName],
-		Filename:   r.symbols.Strings[m.Filename],
-		StartLine:  int64(m.StartLine),
-	}
-}
-
-func (r *pprofSymbols) incrementIDs() {
-	for i, l := range r.profile.Location {
-		l.ID = uint64(i) + 1
-	}
-	for i, f := range r.profile.Function {
-		f.ID = uint64(i) + 1
-	}
-	for i, m := range r.profile.Mapping {
-		m.ID = uint64(i) + 1
-	}
 }

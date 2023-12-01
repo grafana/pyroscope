@@ -683,10 +683,6 @@ func (s *session) processPIDExecRequests(requests chan uint32) {
 }
 
 func (s *session) linkKProbes() error {
-	fmt.Println("linkKProbes")
-	defer func() {
-		fmt.Println("linkKProbes end")
-	}()
 	type hook struct {
 		kprobe   string
 		prog     *ebpf.Program
@@ -747,6 +743,44 @@ func (s *session) cleanup() {
 			if err := s.bpf.Pids.Delete(pid); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
 				_ = level.Error(s.logger).Log("msg", "delete pid config", "pid", pid, "err", err)
 			}
+		}
+	}
+
+	if s.roundNumber%10 == 0 {
+		s.checkStalePids()
+	}
+}
+
+// iterate over all pids and check if they are alive
+// it is only needed in case disassociate_ctty hook somehow mises a process death
+func (s *session) checkStalePids() {
+	var (
+		m       = s.bpf.Pids
+		mapSize = m.MaxEntries()
+		nextKey = uint32(0)
+	)
+	keys := make([]uint32, mapSize)
+	values := make([]pyrobpf.ProfilePidConfig, mapSize)
+	n, err := m.BatchLookup(nil, &nextKey, keys, values, new(ebpf.BatchOptions))
+	_ = level.Debug(s.logger).Log("msg", "check stale pids", "count", n)
+	for i := 0; i < n; i++ {
+		_, err := os.Stat(fmt.Sprintf("/proc/%d/status", keys[i]))
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				_ = level.Error(s.logger).Log("msg", "check stale pids", "err", err)
+			}
+			if err := m.Delete(keys[i]); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
+				_ = level.Error(s.logger).Log("msg", "delete stale pid", "pid", keys[i], "err", err)
+			}
+			_ = level.Debug(s.logger).Log("msg", "stale pid deleted", "pid", keys[i])
+			continue
+		} else {
+			_ = level.Debug(s.logger).Log("msg", "stale pid check : alive", "pid", keys[i], "config", fmt.Sprintf("%+v", values[i]))
+		}
+	}
+	if err != nil {
+		if !errors.Is(err, ebpf.ErrKeyNotExist) {
+			_ = level.Error(s.logger).Log("msg", "check stale pids", "err", err)
 		}
 	}
 }

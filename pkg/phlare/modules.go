@@ -37,6 +37,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/ingester"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/operations"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
@@ -69,6 +70,7 @@ const (
 	Overrides         string = "overrides"
 	OverridesExporter string = "overrides-exporter"
 	Compactor         string = "compactor"
+	Admin             string = "admin"
 
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
 	// IndexGateway             string = "index-gateway"
@@ -483,6 +485,22 @@ func (f *Phlare) initUsageReport() (services.Service, error) {
 	}
 	f.usageReport = ur
 	return ur, nil
+}
+
+func (f *Phlare) initAdmin() (services.Service, error) {
+	if f.storageBucket == nil {
+		level.Warn(f.logger).Log("msg", "no storage bucket configured, the admin component will not be loaded")
+		return nil, nil
+	}
+
+	a, err := operations.NewAdmin(f.storageBucket, f.logger)
+	if err != nil {
+		level.Info(f.logger).Log("msg", "failed to initialize admin", "err", err)
+		return nil, nil
+	}
+	f.admin = a
+	f.API.RegisterAdmin(a)
+	return a, nil
 }
 
 type statusService struct {

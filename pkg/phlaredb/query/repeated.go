@@ -308,9 +308,11 @@ func (x *repeatedRowColumnIterator) readPage(rn int64) bool {
 
 func (x *repeatedRowColumnIterator) At() []parquet.Value { return x.vit.At() }
 func (x *repeatedRowColumnIterator) Err() error          { return x.err }
-func (x *repeatedRowColumnIterator) Close() error {
+func (x *repeatedRowColumnIterator) Close() (err error) {
 	putRepeatedValuePageIteratorToPool(x.vit)
-	err := x.pages.Close()
+	if x.pages != nil {
+		err = x.pages.Close()
+	}
 	x.span.LogFields(
 		otlog.Int64("page_bytes", x.pageBytes),
 		otlog.Int64("rows_fetched", x.rowsFetched),

@@ -16,6 +16,12 @@ import (
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
 )
 
+const (
+	SeriesIndexColumnName         = "SeriesIndex"
+	TimeNanosColumnName           = "TimeNanos"
+	StacktracePartitionColumnName = "StacktracePartition"
+)
+
 var (
 	stringRef   = parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)
 	pprofLabels = parquet.List(phlareparquet.Group{
@@ -32,24 +38,30 @@ var (
 	}
 	ProfilesSchema = parquet.NewSchema("Profile", phlareparquet.Group{
 		phlareparquet.NewGroupField("ID", parquet.UUID()),
-		phlareparquet.NewGroupField("SeriesIndex", parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
-		phlareparquet.NewGroupField("StacktracePartition", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+		phlareparquet.NewGroupField(SeriesIndexColumnName, parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
+		phlareparquet.NewGroupField(StacktracePartitionColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("TotalValue", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField("Samples", parquet.List(sampleField)),
 		phlareparquet.NewGroupField("DropFrames", parquet.Optional(stringRef)),
 		phlareparquet.NewGroupField("KeepFrames", parquet.Optional(stringRef)),
-		phlareparquet.NewGroupField("TimeNanos", parquet.Timestamp(parquet.Nanosecond)),
+		phlareparquet.NewGroupField(TimeNanosColumnName, parquet.Timestamp(parquet.Nanosecond)),
 		phlareparquet.NewGroupField("DurationNanos", parquet.Optional(parquet.Int(64))),
 		phlareparquet.NewGroupField("Period", parquet.Optional(parquet.Int(64))),
 		phlareparquet.NewGroupField("Comments", parquet.List(stringRef)),
 		phlareparquet.NewGroupField("DefaultSampleType", parquet.Optional(parquet.Int(64))),
 	})
 
+	sampleStacktraceIDColumnPath = strings.Split("Samples.list.element.StacktraceID", ".")
+	sampleValueColumnPath        = strings.Split("Samples.list.element.Value", ".")
+	sampleSpanIDColumnPath       = strings.Split("Samples.list.element.SpanID", ".")
+
 	maxProfileRow               parquet.Row
 	seriesIndexColIndex         int
 	stacktraceIDColIndex        int
 	timeNanoColIndex            int
 	stacktracePartitionColIndex int
+
+	ErrColumnNotFound = fmt.Errorf("column path not found")
 )
 
 func init() {
@@ -57,35 +69,27 @@ func init() {
 		SeriesIndex: math.MaxUint32,
 		TimeNanos:   math.MaxInt64,
 	}, maxProfileRow)
-	seriesCol, ok := ProfilesSchema.Lookup("SeriesIndex")
+	seriesCol, ok := ProfilesSchema.Lookup(SeriesIndexColumnName)
 	if !ok {
 		panic(fmt.Errorf("SeriesIndex index column not found"))
 	}
 	seriesIndexColIndex = seriesCol.ColumnIndex
-	timeCol, ok := ProfilesSchema.Lookup("TimeNanos")
+	timeCol, ok := ProfilesSchema.Lookup(TimeNanosColumnName)
 	if !ok {
 		panic(fmt.Errorf("TimeNanos column not found"))
 	}
 	timeNanoColIndex = timeCol.ColumnIndex
-	stacktraceIDCol, ok := ProfilesSchema.Lookup("Samples", "list", "element", "StacktraceID")
+	stacktraceIDCol, ok := ProfilesSchema.Lookup(sampleStacktraceIDColumnPath...)
 	if !ok {
 		panic(fmt.Errorf("StacktraceID column not found"))
 	}
 	stacktraceIDColIndex = stacktraceIDCol.ColumnIndex
-	stacktracePartitionCol, ok := ProfilesSchema.Lookup("StacktracePartition")
+	stacktracePartitionCol, ok := ProfilesSchema.Lookup(StacktracePartitionColumnName)
 	if !ok {
 		panic(fmt.Errorf("StacktracePartition column not found"))
 	}
 	stacktracePartitionColIndex = stacktracePartitionCol.ColumnIndex
 }
-
-var (
-	sampleStacktraceIDColumnPath = strings.Split("Samples.list.element.StacktraceID", ".")
-	sampleValueColumnPath        = strings.Split("Samples.list.element.Value", ".")
-	sampleSpanIDColumnPath       = strings.Split("Samples.list.element.SpanID", ".")
-)
-
-var ErrColumnNotFound = fmt.Errorf("column path not found")
 
 type SampleColumns struct {
 	StacktraceID parquet.LeafColumn

@@ -79,7 +79,6 @@ func NewStoreGatewayQuerier(
 		return nil, errors.Wrap(err, "failed to create store-gateway ring client")
 	}
 	// Disable compression for querier -> store-gateway connections
-	clientsOptions = append(clientsOptions, connect.WithAcceptCompression("gzip", nil, nil))
 	clientsMetrics := promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 		Namespace:   "pyroscope",
 		Name:        "storegateway_clients",
@@ -284,6 +283,7 @@ func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querie
 					Type:          profileType,
 					Hints:         &ingestv1.Hints{Block: hints},
 				},
+				MaxNodes: req.MaxNodes,
 			})
 		}))
 	}

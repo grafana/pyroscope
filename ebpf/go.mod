@@ -11,7 +11,7 @@ require (
 	github.com/grafana/pyroscope/api v0.2.0
 	github.com/hashicorp/golang-lru/v2 v2.0.5
 	github.com/ianlancetaylor/demangle v0.0.0-20230524184225-eabc099b10ab
-	github.com/klauspost/compress v1.17.1
+	github.com/klauspost/compress v1.17.3
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.17.0
 	github.com/prometheus/common v0.44.0

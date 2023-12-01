@@ -23,6 +23,9 @@ type ProfileMerge struct {
 // Merge adds p to the profile merge.
 // Profile is modified in place but not retained by the function.
 func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
+	if p == nil || len(p.StringTable) < 2 {
+		return nil
+	}
 	ConvertIDsToIndices(p)
 	if m.profile == nil {
 		m.init(p)
@@ -67,7 +70,11 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 
 func (m *ProfileMerge) Profile() *profilev1.Profile {
 	if m.profile == nil {
-		return m.profile
+		return &profilev1.Profile{
+			SampleType:  []*profilev1.ValueType{new(profilev1.ValueType)},
+			PeriodType:  new(profilev1.ValueType),
+			StringTable: []string{""},
+		}
 	}
 	m.profile.Sample = m.sampleTable.Values()
 	m.profile.Location = m.locationTable.Values()

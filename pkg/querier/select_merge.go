@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"time"
 
-	"github.com/google/pprof/profile"
 	"github.com/grafana/dskit/multierror"
 	"github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/prometheus/common/model"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
-
-	otlog "github.com/opentracing/opentracing-go/log"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
@@ -378,42 +377,43 @@ func selectMergePprofProfile(ctx context.Context, ty *typesv1.ProfileType, respo
 		return nil, err
 	}
 
+	span := opentracing.SpanFromContext(ctx)
 	// Collects the results in parallel.
-	results := make([]*profile.Profile, 0, len(iters))
-	s := lo.Synchronize()
+	var lock sync.Mutex
+	var pprofMerge pprof.ProfileMerge
 	g, _ := errgroup.WithContext(ctx)
 	for _, iter := range mergeResults {
 		iter := iter
 		g.Go(util.RecoverPanic(func() error {
+			start := time.Now()
 			result, err := iter.Result()
 			if err != nil || result == nil {
 				return err
 			}
-			// TODO(kolesnikovae): Use pprof proto.
-			p, err := profile.ParseUncompressed(result)
-			if err != nil {
+			if span != nil {
+				span.LogFields(
+					otlog.Int("profile_size", len(result)),
+					otlog.Int64("took_ms", time.Since(start).Milliseconds()),
+				)
+			}
+			var p googlev1.Profile
+			if err = pprof.Unmarshal(result, &p); err != nil {
 				return err
 			}
-			s.Do(func() {
-				results = append(results, p)
-			})
-			return nil
+			lock.Lock()
+			defer lock.Unlock()
+			return pprofMerge.Merge(&p)
 		}))
 	}
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
-	if len(results) == 0 {
-		empty := &profile.Profile{}
-		phlaremodel.SetProfileMetadata(empty, ty)
-		return pprof.FromProfile(empty)
+	p := pprofMerge.Profile()
+	if len(p.Sample) == 0 {
+		pprof.SetProfileMetadata(p, ty, 0, 0)
 	}
-	p, err := profile.Merge(results)
-	if err != nil {
-		return nil, err
-	}
-	return pprof.FromProfile(p)
+	return p, nil
 }
 
 type ProfileValue struct {

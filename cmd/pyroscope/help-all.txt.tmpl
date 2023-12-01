@@ -814,17 +814,19 @@ Usage of ./pyroscope:
   -server.tls-min-version string
     	Minimum TLS version to use. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13. If blank, the Go TLS minimum version is used.
   -storage.azure.account-key string
-    	Azure storage account key
+    	Azure storage account key. If unset, Azure managed identities will be used for authentication instead.
   -storage.azure.account-name string
     	Azure storage account name
+  -storage.azure.connection-string string
+    	If `connection-string` is set, the value of `endpoint-suffix` will not be used. Use this method over `account-key` if you need to authenticate via a SAS token. Or if you use the Azurite emulator.
   -storage.azure.container-name string
     	Azure storage container name
   -storage.azure.endpoint-suffix string
     	Azure storage endpoint suffix without schema. The account name will be prefixed to this value to create the FQDN. If set to empty string, default endpoint suffix is used.
   -storage.azure.max-retries int
-    	Number of retries for recoverable errors (default 20)
+    	Number of retries for recoverable errors (default 3)
   -storage.azure.user-assigned-id string
-    	User assigned identity. If empty, then System assigned identity is used.
+    	User assigned managed identity. If empty, then System assigned identity is used.
   -storage.backend string
     	Backend storage to use. Supported backends are: s3, gcs, azure, swift, filesystem, cos.
   -storage.cos.app-id string

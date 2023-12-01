@@ -143,33 +143,33 @@ func NewStacktraceTree(size int) *StacktraceTree {
 
 const sentinel = -1
 
-func (t *StacktraceTree) Insert(locations []int32, value int64) {
+func (t *StacktraceTree) Insert(locations []int32, value int64) int32 {
 	var (
-		n = &t.Nodes[0]
-		i = n.FirstChild
-		x int32
+		n    = &t.Nodes[0]
+		next = n.FirstChild
+		cur  int32
 	)
 
 	for j := len(locations) - 1; j >= 0; {
 		r := locations[j]
-		if i == sentinel {
+		if next == sentinel {
 			ni := int32(len(t.Nodes))
 			n.FirstChild = ni
 			t.Nodes = append(t.Nodes, StacktraceNode{
-				Parent:      x,
+				Parent:      cur,
 				FirstChild:  sentinel,
 				NextSibling: sentinel,
 				Location:    r,
 			})
-			x = ni
+			cur = ni
 			n = &t.Nodes[ni]
 		} else {
-			x = i
-			n = &t.Nodes[i]
+			cur = next
+			n = &t.Nodes[next]
 		}
 		if n.Location == r {
 			n.Total += value
-			i = n.FirstChild
+			next = n.FirstChild
 			j--
 			continue
 		}
@@ -182,10 +182,22 @@ func (t *StacktraceTree) Insert(locations []int32, value int64) {
 				Location:    r,
 			})
 		}
-		i = n.NextSibling
+		next = n.NextSibling
 	}
 
-	t.Nodes[x].Value += value
+	t.Nodes[cur].Value += value
+	return cur
+}
+
+func (t *StacktraceTree) LookupLocations(dst []uint64, idx int32) []uint64 {
+	dst = dst[:0]
+	if idx >= int32(len(t.Nodes)) {
+		return dst
+	}
+	for i := idx; i > 0; i = t.Nodes[i].Parent {
+		dst = append(dst, uint64(t.Nodes[i].Location))
+	}
+	return dst
 }
 
 // MinValue returns the minimum "total" value a node in a tree has to have.
@@ -226,13 +238,13 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 		current, nodes, children = nodes[len(nodes)-1], nodes[:len(nodes)-1], children[:0]
 		var truncated int64
 		n := &t.Nodes[current]
-		if n.Location == stacktraceTreeNodeTruncated {
+		if n.Location == sentinel {
 			goto call
 		}
 
 		for x := n.FirstChild; x > 0; {
 			child := &t.Nodes[x]
-			if child.Total >= min && child.Location != stacktraceTreeNodeTruncated {
+			if child.Total >= min && child.Location != sentinel {
 				children = append(children, x)
 			} else {
 				truncated += child.Total
@@ -244,7 +256,7 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 			// Create a stub for removed nodes.
 			i := len(t.Nodes)
 			t.Nodes = append(t.Nodes, StacktraceNode{
-				Location: stacktraceTreeNodeTruncated,
+				Location: sentinel,
 				Value:    truncated,
 			})
 			children = append(children, int32(i))
@@ -263,8 +275,6 @@ func (t *StacktraceTree) Traverse(maxNodes int64, fn StacktraceTreeTraverseFn) e
 	return nil
 }
 
-const stacktraceTreeNodeTruncated = -1
-
 var lostDuringSerializationNameBytes = []byte(truncatedNodeName)
 
 func (t *StacktraceTree) Bytes(dst io.Writer, maxNodes int64, funcs []string) {
@@ -280,7 +290,7 @@ func (t *StacktraceTree) Bytes(dst io.Writer, maxNodes int64, funcs []string) {
 			// It is guaranteed that funcs slice and its contents are immutable,
 			// and the byte slice backing capacity is managed by GC.
 			name = unsafeStringBytes(funcs[n.Location])
-		case stacktraceTreeNodeTruncated:
+		case sentinel:
 			name = lostDuringSerializationNameBytes
 		}
 

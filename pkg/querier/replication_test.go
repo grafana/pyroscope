@@ -61,7 +61,6 @@ func (b *blockInfo) withLabelValue(k, v string) *blockInfo {
 }
 
 func (b *blockInfo) withCompactorShard(shard, shardsCount uint64) *blockInfo {
-
 	return b.withLabelValue(
 		sharding.CompactorShardIDLabel,
 		sharding.FormatShardIDLabelValue(shard, shardsCount),
@@ -96,7 +95,6 @@ func validatePlanBlocksOnReplica(replica string, blocks ...string) validatorFunc
 }
 
 func Test_replicasPerBlockID_blockPlan(t *testing.T) {
-
 	for _, tc := range []struct {
 		name       string
 		inputs     func(r *replicasPerBlockID)
@@ -246,5 +244,4 @@ func Test_replicasPerBlockID_blockPlan(t *testing.T) {
 			}
 		})
 	}
-
 }
