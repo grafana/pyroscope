@@ -12,7 +12,6 @@ keywords:
 
 # Analyze app performance using Pyroscope
 
-## Introduction
 
 ##  Continuous profiling and metadata 
 
