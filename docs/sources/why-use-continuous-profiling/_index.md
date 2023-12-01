@@ -71,7 +71,7 @@ Horizontally, the flamegraph represents 100% of the time that this application w
 
 Vertically, the nodes in the flamegraph represent the heirarchy of which functions were called and how much time was spent in each function. The top node is the root node and represents the total amount of time spent in the application. The nodes below it represent the functions that were called and how much time was spent in each function. The nodes below those represent the functions that were called from those functions and how much time was spent in each function. This continues until you reach the bottom of the flamegraph.
 
-This is a cpu profile, but profiles can represent many other types of resource such as memory, network, disk, etc. To understand more about how to read a flamegraph, what the different colors mean, and what other types of profiles exist and when to use them see our [flamegraph 101 documention] or [when to use which profile type documentation].
+This is a cpu profile, but profiles can represent many other types of resource such as memory, network, disk, etc. To understand more about how to read a flamegraph, what the different colors mean, and what other types of profiles exist and when to use them see our flamegraph documentation or ![profile types documentation](/docs/pyroscope/next/analyzing-profiles-in-pyroscope-ui/).
 
 ## Pyroscope: Continuous Profiling in Action
 

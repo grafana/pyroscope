@@ -22,9 +22,7 @@ While code profiling has been a long-standing practice, Continuous Profiling rep
 
 These dimensions, coupled with the detailed nature of performance profiles, make Continuous Profiling a uniquely valuable tool. Pyroscope's UI enhances this further by offering a convenient platform to analyze profiles and get insights that are impossible to get from using other traditional signals like logs, metrics, or tracing. 
 
-In this walkthrough, we'll show how Pyroscope parallels these other modern observability tools by providing a Prometheus-like querying experience. More importantly, you'll learn how to use Pyroscope's extensive UI features for a deeper insight into your application's performance.
-
-[ TODO ] Add graphic (gif?) showing profiles enriched with of continuous profiling with time and metadata integration
+In this UI reference, we'll show how Pyroscope parallels these other modern observability tools by providing a Prometheus-like querying experience. More importantly, you'll learn how to use Pyroscope's extensive UI features for a deeper insight into your application's performance.
 
 ## Key Features of the Pyroscope UI
 
@@ -37,8 +35,8 @@ To use the Tag Explorer:
 2. Analyze the pie chart and the table of descriptive statsitcs to determine which tags if any are behaving abnormally
 3. Select a tag to view the corresponding profiling data
 4. Make use of the shortcuts to the single, comparison, and diff pages to further identify the root cause of the performance issue
+![tag-explorer-page](https://grafana.com/static/img/pyroscope/pyroscope-tag-explorer-cpu-2023-11-30.png)
 
-[TODO] A screenshot or GIF of the tag explorer page, possibly labeled with numbers to show the steps above
 
 ### Single View Page
 
@@ -53,11 +51,11 @@ The Single View page in Pyroscope's UI is built for in-depth profile analysis. H
 
 In the picture above we see a spike in CPU usage. Without profiling we would go from a memory spike to digging through code or guessing what the cause of it is. However, with profiling we can use the flamegraph and table to see exactly which function is most responsible for the spike. Often this will show up as a single node taking up a noticeably disproportionate width in the flamegraph as seen below with the "checkDriverAvailability" function.
 
-[ picture ]
+![example-flamegraph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
 
-However, in some instances it may be a function that is called many times and is taking up a large amount of space in the flamegraph. In this case we can use the sandwich view to see that a logging function called throughout many functions in the codebase is the culprit. To learn more about how to read the sandwich view check out or [flamegraph 101 documentation].
+However, in some instances it may be a function that is called many times and is taking up a large amount of space in the flamegraph. In this case we can use the sandwich view to see that a logging function called throughout many functions in the codebase is the culprit.
 
-[ picture ]
+![example-sandwich-view](https://grafana.com/static/img/pyroscope/sandwich-view-2023-11-30.png)
 
 ### Comparison Page
 
@@ -76,13 +74,12 @@ We see many practical use cases for comparison for companies using Pyroscope. So
 - **Release Analysis:** Examine `commit:release-1` vs. `commit:release-2`
 - **Region:** Compare `region:us-east-1` vs. `region:us-west-1`
 
-[Image showing the comparison of two different label sets]
 
 Another example whre time is more important than labels is when you want to compare two different time periods. For example, in investigating the cause of a memory leak you would see something like the following where the timeline shows an steadily increasing amount of memory allocations over time. This is a clear indicator of a memory leak. 
 
 You can then use the comparison page to compare the memory allocations between two different time periods where allocations were low and where allocations were high which would allow you to identify the function that is causing the memory leak.
 
-[ picture ]
+![comparison-ui](https://grafana.com/static/img/pyroscope/pyroscope-ui-comparison-2023-11-30.png)
 
 ### Diff Page
 
@@ -93,10 +90,10 @@ The Diff page is realy an extension of the comparison page, crucial for more eas
 Similar to a git diff it takes the flamegraphs from the comparison page and highlights the differences between the two flamegraphs where red represents an increase in cpu usage from the baseline to the comparison and green represents a decrease.
 
 Using the same examples from above here is a diff between two label sets:
-[Image showing the comparison __diff__ of two different label sets]
+![diff-ui](https://grafana.com/static/img/pyroscope/pyroscope-ui-diff-2023-11-30.png)
 
-and a diff between two time periods during a introduction of a memory leak:
-[Image showing the comparison __diff__ of two different time periods]
+<!-- and a diff between two time periods during a introduction of a memory leak:
+![memory leak](https://grafana.com/static/img/pyroscope/pyroscope-memory-leak-2023-11-30.png) -->
 
 ### Using Pyroscope within Grafana
 
@@ -106,8 +103,8 @@ You can use Pyroscope within Grafana by using the Pyroscope datasource plugin. T
 
 For example here is a screenshot of the explore page where we've combined traces and profiles to be able to see granular line-level detail when available for a trace span. This allows you to see the exact function that is causing a bottleneck in your application as well as a specific request.
 
-[ picture ]
+![trace-profiler-view](https://grafana.com/static/img/pyroscope/pyroscope-trace-profiler-view-2023-11-30.png)
 
 And here is an example of how you can integrate profiles into your dashboards. In this case we showing memory profiles alongside panels for logs and metrics to be able to debug OOM errors alongside the associated logs and metrics.
 
-[ picture ]
+![dashboard](https://grafana.com/static/img/pyroscope/grafana-pyroscope-dashboard-2023-11-30.png)
