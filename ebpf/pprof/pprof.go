@@ -3,9 +3,12 @@ package pprof
 import (
 	"fmt"
 	"io"
+	"reflect"
 	"sync"
 	"time"
+	"unsafe"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/google/pprof/profile"
 	"github.com/klauspost/compress/gzip"
 	"github.com/prometheus/prometheus/model/labels"
@@ -39,9 +42,10 @@ func (b ProfileBuilders) BuilderForTarget(hash uint64, labels labels.Labels) *Pr
 	}
 
 	builder := &ProfileBuilder{
-		locations: make(map[string]*profile.Location),
-		functions: make(map[string]*profile.Function),
-		Labels:    labels,
+		locations:          make(map[string]*profile.Location),
+		functions:          make(map[string]*profile.Function),
+		sampleHashToSample: make(map[uint64]*profile.Sample),
+		Labels:             labels,
 		Profile: &profile.Profile{
 			Mapping: []*profile.Mapping{
 				{
@@ -53,6 +57,8 @@ func (b ProfileBuilders) BuilderForTarget(hash uint64, labels labels.Labels) *Pr
 			PeriodType: &profile.ValueType{Type: "cpu", Unit: "nanoseconds"},
 			TimeNanos:  time.Now().UnixNano(),
 		},
+		hash:           xxhash.New(),
+		tmpLocationIDs: make([]uint64, 0, 128),
 	}
 	res = builder
 	b.Builders[hash] = res
@@ -60,13 +66,19 @@ func (b ProfileBuilders) BuilderForTarget(hash uint64, labels labels.Labels) *Pr
 }
 
 type ProfileBuilder struct {
-	locations map[string]*profile.Location
-	functions map[string]*profile.Function
-	Profile   *profile.Profile
-	Labels    labels.Labels
+	locations          map[string]*profile.Location
+	functions          map[string]*profile.Function
+	sampleHashToSample map[uint64]*profile.Sample
+	Profile            *profile.Profile
+	Labels             labels.Labels
+
+	hash           *xxhash.Digest
+	b              [8]byte
+	tmpLocations   []*profile.Location
+	tmpLocationIDs []uint64
 }
 
-func (p *ProfileBuilder) AddSample(stacktrace []string, value uint64) {
+func (p *ProfileBuilder) CreateSample(stacktrace []string, value uint64) {
 	sample := &profile.Sample{
 		Value: []int64{int64(value) * p.Profile.Period},
 	}
@@ -74,6 +86,42 @@ func (p *ProfileBuilder) AddSample(stacktrace []string, value uint64) {
 		loc := p.addLocation(s)
 		sample.Location = append(sample.Location, loc)
 	}
+	p.Profile.Sample = append(p.Profile.Sample, sample)
+}
+
+func (p *ProfileBuilder) CreateSampleOrAddValue(stacktrace []string, value uint64) {
+	scaledValue := int64(value) * p.Profile.Period
+	if cap(p.tmpLocations) < len(stacktrace) {
+		p.tmpLocations = make([]*profile.Location, 0, len(stacktrace))
+	} else {
+		p.tmpLocations = p.tmpLocations[:0]
+	}
+	if cap(p.tmpLocationIDs) < len(stacktrace) {
+		p.tmpLocationIDs = make([]uint64, 0, len(stacktrace))
+	} else {
+		p.tmpLocationIDs = p.tmpLocationIDs[:0]
+	}
+	for _, s := range stacktrace {
+		loc := p.addLocation(s)
+		p.tmpLocations = append(p.tmpLocations, loc)
+		p.tmpLocationIDs = append(p.tmpLocationIDs, loc.ID)
+	}
+	p.hash.Reset()
+	if _, err := p.hash.Write(uint64Bytes(p.tmpLocationIDs)); err != nil {
+		panic(err)
+	}
+	h := p.hash.Sum64()
+	sample := p.sampleHashToSample[h]
+	if sample != nil {
+		sample.Value[0] += scaledValue
+		return
+	}
+	sample = &profile.Sample{
+		Location: p.tmpLocations,
+		Value:    []int64{scaledValue},
+	}
+	p.sampleHashToSample[h] = sample
+	p.tmpLocations = nil
 	p.Profile.Sample = append(p.Profile.Sample, sample)
 }
 
@@ -130,4 +178,16 @@ func (p *ProfileBuilder) Write(dst io.Writer) (int64, error) {
 		return 0, fmt.Errorf("ebpf profile encode %w", err)
 	}
 	return 0, nil
+}
+
+func uint64Bytes(s []uint64) []byte {
+	if len(s) == 0 {
+		return nil
+	}
+	var bs []byte
+	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&bs))
+	hdr.Len = len(s) * 8
+	hdr.Cap = hdr.Len
+	hdr.Data = uintptr(unsafe.Pointer(&s[0]))
+	return bs
 }
