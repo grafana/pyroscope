@@ -1574,7 +1574,7 @@ func (m *SelectMergeProfileRequest) MarshalToSizedBufferVT(dAtA []byte) (int, er
 	if m.MaxNodes != nil {
 		i = encodeVarint(dAtA, i, uint64(*m.MaxNodes))
 		i--
-		dAtA[i] = 0x30
+		dAtA[i] = 0x28
 	}
 	if m.End != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.End))
@@ -3914,7 +3914,7 @@ func (m *SelectMergeProfileRequest) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
-		case 6:
+		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field MaxNodes", wireType)
 			}
