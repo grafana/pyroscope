@@ -44,7 +44,6 @@ var (
 )
 
 func main() {
-
 	config = getConfig()
 	metrics = ebpfmetrics.New(prometheus.DefaultRegisterer)
 
@@ -78,10 +77,14 @@ func main() {
 
 func collectProfiles(profiles chan *pushv1.PushRequest) {
 	builders := pprof.NewProfileBuilders(int64(config.SampleRate))
-	err := session.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32) {
+	err := session.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32, aggregation ebpfspy.SampleAggregation) {
 		labelsHash, labels := target.Labels()
 		builder := builders.BuilderForTarget(labelsHash, labels)
-		builder.AddSample(stack, value)
+		if aggregation == ebpfspy.SampleAggregated {
+			builder.CreateSample(stack, value)
+		} else {
+			builder.CreateSampleOrAddValue(stack, value)
+		}
 	})
 
 	if err != nil {

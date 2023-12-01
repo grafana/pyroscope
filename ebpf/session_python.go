@@ -17,7 +17,7 @@ import (
 	"github.com/samber/lo"
 )
 
-func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
+func (s *session) collectPythonProfile(cb CollectProfilesCallback) error {
 	if s.pyperf == nil {
 		return nil
 	}
@@ -99,7 +99,7 @@ func (s *session) collectPythonProfile(cb func(t *sd.Target, stack []string, val
 			continue // only comm .. todo skip with an option
 		}
 		lo.Reverse(sb.stack)
-		cb(labels, sb.stack, uint64(1), event.Pid)
+		cb(labels, sb.stack, uint64(1), event.Pid, SampleNotAggregated)
 		s.collectMetrics(labels, &stats, sb)
 	}
 	if stacktraceErrors > 0 {

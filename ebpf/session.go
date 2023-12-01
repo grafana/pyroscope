@@ -43,12 +43,24 @@ type SessionOptions struct {
 	SampleRate                int
 }
 
+type SampleAggregation bool
+
+var (
+	// SampleAggregated mean samples are accumulated in ebpf, no need to dedup these
+	SampleAggregated = SampleAggregation(true)
+	// SampleNotAggregated mean values are not accumulated in ebpf, but streamed to userspace with value=1
+	// TODO make consider aggregating python in ebpf as well
+	SampleNotAggregated = SampleAggregation(false)
+)
+
+type CollectProfilesCallback func(target *sd.Target, stack []string, value uint64, pid uint32, aggregation SampleAggregation)
+
 type Session interface {
 	Start() error
 	Stop()
 	Update(SessionOptions) error
 	UpdateTargets(args sd.TargetsOptions)
-	CollectProfiles(f func(target *sd.Target, stack []string, value uint64, pid uint32)) error
+	CollectProfiles(f CollectProfilesCallback) error
 	DebugInfo() interface{}
 }
 
@@ -225,7 +237,7 @@ func (s *session) UpdateTargets(args sd.TargetsOptions) {
 	}
 }
 
-func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
+func (s *session) CollectProfiles(cb CollectProfilesCallback) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -257,7 +269,7 @@ func (s *session) DebugInfo() interface{} {
 	}
 }
 
-func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
+func (s *session) collectRegularProfile(cb CollectProfilesCallback) error {
 	sb := &stackBuilder{}
 
 	keys, values, batch, err := s.getCountsMapValues()
@@ -315,7 +327,7 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 			continue // only comm
 		}
 		lo.Reverse(sb.stack)
-		cb(labels, sb.stack, uint64(value), ck.Pid)
+		cb(labels, sb.stack, uint64(value), ck.Pid, SampleAggregated)
 		s.collectMetrics(labels, &stats, sb)
 	}
 
