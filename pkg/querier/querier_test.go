@@ -926,7 +926,7 @@ func (f *fakeQuerierIngester) MergeProfilesPprof(ctx context.Context) clientpool
 	return res
 }
 
-func TestRangeSeries(t *testing.T) {
+func Test_RangeSeriesSum(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		in   []ProfileValue
@@ -990,7 +990,78 @@ func TestRangeSeries(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			in := iter.NewSliceIterator(tc.in)
-			out := rangeSeries(in, 1, 5, 1)
+			out := rangeSeries(in, 1, 5, 1, nil)
+			testhelper.EqualProto(t, tc.out, out)
+		})
+	}
+}
+
+func Test_RangeSeriesAvg(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   []ProfileValue
+		out  []*typesv1.Series
+	}{
+		{
+			name: "single series",
+			in: []ProfileValue{
+				{Ts: 1, Value: 1},
+				{Ts: 1, Value: 2},
+				{Ts: 2, Value: 2},
+				{Ts: 2, Value: 3},
+				{Ts: 3, Value: 4},
+				{Ts: 4, Value: 5},
+			},
+			out: []*typesv1.Series{
+				{
+					Points: []*typesv1.Point{
+						{Timestamp: 1, Value: 1.5}, // avg of 1 and 2
+						{Timestamp: 2, Value: 2.5}, // avg of 2 and 3
+						{Timestamp: 3, Value: 4},
+						{Timestamp: 4, Value: 5},
+					},
+				},
+			},
+		},
+		{
+			name: "multiple series",
+			in: []ProfileValue{
+				{Ts: 1, Value: 1, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
+				{Ts: 1, Value: 1, Lbs: foobuzzlabels, LabelsHash: foobuzzlabels.Hash()},
+				{Ts: 2, Value: 1, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
+				{Ts: 2, Value: 2, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
+				{Ts: 3, Value: 1, Lbs: foobuzzlabels, LabelsHash: foobuzzlabels.Hash()},
+				{Ts: 3, Value: 2, Lbs: foobuzzlabels, LabelsHash: foobuzzlabels.Hash()},
+				{Ts: 4, Value: 4, Lbs: foobuzzlabels, LabelsHash: foobuzzlabels.Hash()},
+				{Ts: 4, Value: 6, Lbs: foobuzzlabels, LabelsHash: foobuzzlabels.Hash()},
+				{Ts: 4, Value: 4, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
+				{Ts: 5, Value: 5, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
+			},
+			out: []*typesv1.Series{
+				{
+					Labels: foobarlabels,
+					Points: []*typesv1.Point{
+						{Timestamp: 1, Value: 1},
+						{Timestamp: 2, Value: 1.5}, // avg of 1 and 2
+						{Timestamp: 4, Value: 4},
+						{Timestamp: 5, Value: 5},
+					},
+				},
+				{
+					Labels: foobuzzlabels,
+					Points: []*typesv1.Point{
+						{Timestamp: 1, Value: 1},
+						{Timestamp: 3, Value: 1.5}, // avg of 1 and 2
+						{Timestamp: 4, Value: 5},   // avg of 4 and 6
+					},
+				},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			in := iter.NewSliceIterator(tc.in)
+			aggregation := typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE
+			out := rangeSeries(in, 1, 5, 1, &aggregation)
 			testhelper.EqualProto(t, tc.out, out)
 		})
 	}

@@ -59,6 +59,8 @@ message SelectProfilesRequest {
   int64 end = 4;
   // Optional: Hints for querying
   optional Hints hints = 5;
+  // Optional: Aggregation
+  optional types.v1.TimeSeriesAggregationType aggregation = 6;
 }
 
 message MergeProfilesStacktracesRequest {

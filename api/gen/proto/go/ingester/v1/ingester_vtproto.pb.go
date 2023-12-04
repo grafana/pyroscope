@@ -176,6 +176,10 @@ func (m *SelectProfilesRequest) CloneVT() *SelectProfilesRequest {
 			r.Type = proto.Clone(rhs).(*v1.ProfileType)
 		}
 	}
+	if rhs := m.Aggregation; rhs != nil {
+		tmpVal := *rhs
+		r.Aggregation = &tmpVal
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -874,6 +878,9 @@ func (this *SelectProfilesRequest) EqualVT(that *SelectProfilesRequest) bool {
 	if !this.Hints.EqualVT(that.Hints) {
 		return false
 	}
+	if p, q := this.Aggregation, that.Aggregation; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -1363,6 +1370,9 @@ func (this *MergeProfilesPprofRequest) EqualVT(that *MergeProfilesPprofRequest) 
 		if vx != vy {
 			return false
 		}
+	}
+	if p, q := this.MaxNodes, that.MaxNodes; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -2396,6 +2406,11 @@ func (m *SelectProfilesRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error)
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Aggregation != nil {
+		i = encodeVarint(dAtA, i, uint64(*m.Aggregation))
+		i--
+		dAtA[i] = 0x30
 	}
 	if m.Hints != nil {
 		size, err := m.Hints.MarshalToSizedBufferVT(dAtA[:i])
@@ -3725,6 +3740,9 @@ func (m *SelectProfilesRequest) SizeVT() (n int) {
 		l = m.Hints.SizeVT()
 		n += 1 + l + sov(uint64(l))
 	}
+	if m.Aggregation != nil {
+		n += 1 + sov(uint64(*m.Aggregation))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -4866,6 +4884,26 @@ func (m *SelectProfilesRequest) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Aggregation", wireType)
+			}
+			var v v1.TimeSeriesAggregationType
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= v1.TimeSeriesAggregationType(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Aggregation = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

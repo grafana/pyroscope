@@ -66,3 +66,8 @@ message BlockCompaction {
   repeated string sources = 2;
   repeated string parents = 3;
 }
+
+enum TimeSeriesAggregationType {
+  TIME_SERIES_AGGREGATION_TYPE_SUM = 0;
+  TIME_SERIES_AGGREGATION_TYPE_AVERAGE = 1;
+}

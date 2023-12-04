@@ -80,6 +80,11 @@ export function setupReduxQuerySync() {
         selector: (state: RootState) => state.continuous.maxNodes,
         action: continuousActions.setMaxNodes,
       },
+      aggregation: {
+        defaultValue: 'sum',
+        selector: (state: RootState) => state.continuous.aggregation,
+        action: continuousActions.setAggregation,
+      },
       groupBy: {
         defaultValue: '',
         selector: (state: RootState) =>
