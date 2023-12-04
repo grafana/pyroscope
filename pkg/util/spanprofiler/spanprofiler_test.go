@@ -90,7 +90,7 @@ func Test_tracer(t *testing.T) {
 }
 
 func forSpanPprofLabels(span opentracing.Span, fn func(key, value string) bool) {
-	w, ok := span.(*rootSpanWrapper)
+	w, ok := span.(*spanWrapper)
 	if !ok {
 		return
 	}
