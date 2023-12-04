@@ -220,6 +220,24 @@ func (m *SelectMergeSpanProfileResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *SelectMergeDotProfileResponse) CloneVT() *SelectMergeDotProfileResponse {
+	if m == nil {
+		return (*SelectMergeDotProfileResponse)(nil)
+	}
+	r := &SelectMergeDotProfileResponse{
+		Profile: m.Profile,
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *SelectMergeDotProfileResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *DiffRequest) CloneVT() *DiffRequest {
 	if m == nil {
 		return (*DiffRequest)(nil)
@@ -670,6 +688,25 @@ func (this *SelectMergeSpanProfileResponse) EqualMessageVT(thatMsg proto.Message
 	}
 	return this.EqualVT(that)
 }
+func (this *SelectMergeDotProfileResponse) EqualVT(that *SelectMergeDotProfileResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Profile != that.Profile {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SelectMergeDotProfileResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SelectMergeDotProfileResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 func (this *DiffRequest) EqualVT(that *DiffRequest) bool {
 	if this == that {
 		return true
@@ -973,6 +1010,8 @@ type QuerierServiceClient interface {
 	SelectMergeSpanProfile(ctx context.Context, in *SelectMergeSpanProfileRequest, opts ...grpc.CallOption) (*SelectMergeSpanProfileResponse, error)
 	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(ctx context.Context, in *SelectMergeProfileRequest, opts ...grpc.CallOption) (*v11.Profile, error)
+	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
+	SelectMergeDotProfile(ctx context.Context, in *SelectMergeProfileRequest, opts ...grpc.CallOption) (*SelectMergeDotProfileResponse, error)
 	// SelectSeries returns a time series for the total sum of the requested profiles.
 	SelectSeries(ctx context.Context, in *SelectSeriesRequest, opts ...grpc.CallOption) (*SelectSeriesResponse, error)
 	Diff(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
@@ -1049,6 +1088,15 @@ func (c *querierServiceClient) SelectMergeProfile(ctx context.Context, in *Selec
 	return out, nil
 }
 
+func (c *querierServiceClient) SelectMergeDotProfile(ctx context.Context, in *SelectMergeProfileRequest, opts ...grpc.CallOption) (*SelectMergeDotProfileResponse, error) {
+	out := new(SelectMergeDotProfileResponse)
+	err := c.cc.Invoke(ctx, "/querier.v1.QuerierService/SelectMergeDotProfile", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *querierServiceClient) SelectSeries(ctx context.Context, in *SelectSeriesRequest, opts ...grpc.CallOption) (*SelectSeriesResponse, error) {
 	out := new(SelectSeriesResponse)
 	err := c.cc.Invoke(ctx, "/querier.v1.QuerierService/SelectSeries", in, out, opts...)
@@ -1085,6 +1133,8 @@ type QuerierServiceServer interface {
 	SelectMergeSpanProfile(context.Context, *SelectMergeSpanProfileRequest) (*SelectMergeSpanProfileResponse, error)
 	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(context.Context, *SelectMergeProfileRequest) (*v11.Profile, error)
+	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
+	SelectMergeDotProfile(context.Context, *SelectMergeProfileRequest) (*SelectMergeDotProfileResponse, error)
 	// SelectSeries returns a time series for the total sum of the requested profiles.
 	SelectSeries(context.Context, *SelectSeriesRequest) (*SelectSeriesResponse, error)
 	Diff(context.Context, *DiffRequest) (*DiffResponse, error)
@@ -1115,6 +1165,9 @@ func (UnimplementedQuerierServiceServer) SelectMergeSpanProfile(context.Context,
 }
 func (UnimplementedQuerierServiceServer) SelectMergeProfile(context.Context, *SelectMergeProfileRequest) (*v11.Profile, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SelectMergeProfile not implemented")
+}
+func (UnimplementedQuerierServiceServer) SelectMergeDotProfile(context.Context, *SelectMergeProfileRequest) (*SelectMergeDotProfileResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SelectMergeDotProfile not implemented")
 }
 func (UnimplementedQuerierServiceServer) SelectSeries(context.Context, *SelectSeriesRequest) (*SelectSeriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SelectSeries not implemented")
@@ -1261,6 +1314,24 @@ func _QuerierService_SelectMergeProfile_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _QuerierService_SelectMergeDotProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SelectMergeProfileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QuerierServiceServer).SelectMergeDotProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/querier.v1.QuerierService/SelectMergeDotProfile",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QuerierServiceServer).SelectMergeDotProfile(ctx, req.(*SelectMergeProfileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _QuerierService_SelectSeries_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SelectSeriesRequest)
 	if err := dec(in); err != nil {
@@ -1331,6 +1402,10 @@ var QuerierService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SelectMergeProfile",
 			Handler:    _QuerierService_SelectMergeProfile_Handler,
+		},
+		{
+			MethodName: "SelectMergeDotProfile",
+			Handler:    _QuerierService_SelectMergeDotProfile_Handler,
 		},
 		{
 			MethodName: "SelectSeries",
@@ -1776,6 +1851,46 @@ func (m *SelectMergeSpanProfileResponse) MarshalToSizedBufferVT(dAtA []byte) (in
 		}
 		i -= size
 		i = encodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *SelectMergeDotProfileResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SelectMergeDotProfileResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *SelectMergeDotProfileResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Profile) > 0 {
+		i -= len(m.Profile)
+		copy(dAtA[i:], m.Profile)
+		i = encodeVarint(dAtA, i, uint64(len(m.Profile)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -2447,6 +2562,20 @@ func (m *SelectMergeSpanProfileResponse) SizeVT() (n int) {
 	_ = l
 	if m.Flamegraph != nil {
 		l = m.Flamegraph.SizeVT()
+		n += 1 + l + sov(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *SelectMergeDotProfileResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Profile)
+	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -3612,6 +3741,89 @@ func (m *SelectMergeSpanProfileResponse) UnmarshalVT(dAtA []byte) error {
 			if err := m.Flamegraph.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SelectMergeDotProfileResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SelectMergeDotProfileResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SelectMergeDotProfileResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Profile", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Profile = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

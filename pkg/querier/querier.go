@@ -757,6 +757,10 @@ func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[q
 	return connect.NewResponse(profile), nil
 }
 
+func (q *Querier) SelectMergeDotProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[querierv1.SelectMergeDotProfileResponse], error) {
+	return nil, nil
+}
+
 func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeProfileRequest) (*googlev1.Profile, error) {
 	// determine the block hints
 	plan, err := q.blockSelect(ctx, model.Time(req.Start), model.Time(req.End))

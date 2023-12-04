@@ -54,6 +54,11 @@ func RegisterQuerierServiceHandler(mux *mux.Router, svc QuerierServiceHandler, o
 		svc.SelectMergeProfile,
 		opts...,
 	))
+	mux.Handle("/querier.v1.QuerierService/SelectMergeDotProfile", connect_go.NewUnaryHandler(
+		"/querier.v1.QuerierService/SelectMergeDotProfile",
+		svc.SelectMergeDotProfile,
+		opts...,
+	))
 	mux.Handle("/querier.v1.QuerierService/SelectSeries", connect_go.NewUnaryHandler(
 		"/querier.v1.QuerierService/SelectSeries",
 		svc.SelectSeries,

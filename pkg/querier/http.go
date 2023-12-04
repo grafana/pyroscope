@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -138,6 +139,26 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 			aggregation = typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
 		case "avg":
 			aggregation = typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE
+		}
+	}
+
+	format := req.URL.Query().Get("format")
+	if format == "dot" {
+		resDot, err := q.client.SelectMergeDotProfile(req.Context(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+			Start:         selectParams.Start,
+			End:           selectParams.End,
+			ProfileTypeID: selectParams.ProfileTypeID,
+			LabelSelector: selectParams.LabelSelector,
+			MaxNodes:      selectParams.MaxNodes,
+		}))
+		if err != nil {
+			httputil.Error(w, connect.NewError(connect.CodeInternal, err))
+			return
+		}
+		_, err = io.WriteString(w, resDot.Msg.Profile)
+		if err != nil {
+			httputil.Error(w, connect.NewError(connect.CodeInternal, err))
+			return
 		}
 	}
 
