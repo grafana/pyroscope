@@ -29,6 +29,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/version/v1/versionv1connect"
 	"github.com/grafana/pyroscope/api/openapiv2"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
@@ -267,6 +268,11 @@ func (a *API) RegisterQueryFrontend(frontendSvc *frontend.Frontend) {
 	frontendpbconnect.RegisterFrontendForQuerierHandler(a.server.HTTP, frontendSvc, a.grpcAuthMiddleware)
 }
 
+// RegisterVersion registers the endpoints associated with the versions service.
+func (a *API) RegisterVersion(svc versionv1connect.VersionHandler) {
+	versionv1connect.RegisterVersionHandler(a.server.HTTP, svc)
+}
+
 // RegisterQueryScheduler registers the endpoints associated with the query scheduler.
 func (a *API) RegisterQueryScheduler(s *scheduler.Scheduler) {
 	schedulerpbconnect.RegisterSchedulerForFrontendHandler(a.server.HTTP, s)
@@ -286,5 +292,4 @@ func (a *API) RegisterAdmin(ad *operations.Admin) {
 	a.indexPage.AddLinks(defaultWeight, "Admin", []IndexPageLink{
 		{Desc: "Object Storage Tenants & Blocks", Path: "/ops/object-store/tenants"},
 	})
-
 }

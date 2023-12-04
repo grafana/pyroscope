@@ -36,6 +36,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/grafana/pyroscope/pkg/api"
+	apiversion "github.com/grafana/pyroscope/pkg/api/version"
 	"github.com/grafana/pyroscope/pkg/cfg"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
@@ -226,6 +227,7 @@ type Phlare struct {
 	Overrides     *validation.Overrides
 	Compactor     *compactor.MultitenantCompactor
 	admin         *operations.Admin
+	versions      *apiversion.Service
 
 	TenantLimits validation.TenantLimits
 
@@ -288,6 +290,7 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(Ingester, f.initIngester)
 	mm.RegisterModule(Server, f.initServer, modules.UserInvisibleModule)
 	mm.RegisterModule(API, f.initAPI, modules.UserInvisibleModule)
+	mm.RegisterModule(Version, f.initVersion, modules.UserInvisibleModule)
 	mm.RegisterModule(Distributor, f.initDistributor)
 	mm.RegisterModule(Querier, f.initQuerier)
 	mm.RegisterModule(StoreGateway, f.initStoreGateway)
@@ -305,11 +308,11 @@ func (f *Phlare) setupModuleManager() error {
 		Server:            {GRPCGateway},
 		API:               {Server},
 		Distributor:       {Overrides, Ring, API, UsageReport},
-		Querier:           {Overrides, API, MemberlistKV, Ring, UsageReport},
-		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport},
+		Querier:           {Overrides, API, MemberlistKV, Ring, UsageReport, Version},
+		QueryFrontend:     {OverridesExporter, API, MemberlistKV, UsageReport, Version},
 		QueryScheduler:    {Overrides, API, MemberlistKV, UsageReport},
-		Ingester:          {Overrides, API, MemberlistKV, Storage, UsageReport},
-		StoreGateway:      {API, Storage, Overrides, MemberlistKV, UsageReport, Admin},
+		Ingester:          {Overrides, API, MemberlistKV, Storage, UsageReport, Version},
+		StoreGateway:      {API, Storage, Overrides, MemberlistKV, UsageReport, Admin, Version},
 		Compactor:         {API, Storage, Overrides, MemberlistKV, UsageReport},
 		UsageReport:       {Storage, MemberlistKV},
 		Overrides:         {RuntimeConfig},
@@ -318,6 +321,7 @@ func (f *Phlare) setupModuleManager() error {
 		Ring:              {API, MemberlistKV},
 		MemberlistKV:      {API},
 		Admin:             {API, Storage},
+		Version:           {API, MemberlistKV},
 	}
 
 	for mod, targets := range deps {
@@ -441,7 +445,9 @@ func (f *Phlare) Run() error {
 		// 2) Any service fails.
 		err = sm.AwaitStopped(context.Background())
 	}
-
+	if f.versions != nil {
+		f.versions.Shutdown()
+	}
 	// If there is no error yet (= service manager started and then stopped without problems),
 	// but any service failed, report that failure as an error to caller.
 	if err == nil {
@@ -521,6 +527,16 @@ func (f *Phlare) initAPI() (services.Service, error) {
 	}
 
 	return nil, nil
+}
+
+func (f *Phlare) initVersion() (services.Service, error) {
+	var err error
+	f.versions, err = apiversion.New(f.Cfg.Distributor.DistributorRing, f.logger, f.reg)
+	if err != nil {
+		return nil, err
+	}
+	f.API.RegisterVersion(f.versions)
+	return f.versions, nil
 }
 
 func printRoutes(r *mux.Router) {
