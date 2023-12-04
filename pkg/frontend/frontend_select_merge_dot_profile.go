@@ -104,15 +104,14 @@ func (f *Frontend) SelectMergeDotProfile(ctx context.Context, c *connect.Request
 	if c.Msg.MaxNodes != nil {
 		nodes = int(*c.Msg.MaxNodes)
 	}
+
 	rpt := report.NewDefault(pr, report.Options{
 		NodeCount: nodes,
 	})
+
 	gr, cfg := report.GetDOT(rpt)
 
-	// Create a byte slice to hold the written data
 	var buf bytes.Buffer
-
-	// Create a writer backed by the byte slice
 	writer := io.Writer(&buf)
 	graph.ComposeDot(writer, gr, &graph.DotAttributes{}, cfg)
 
