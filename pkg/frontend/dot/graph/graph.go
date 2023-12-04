@@ -813,11 +813,11 @@ func (g *Graph) SortNodes(cum bool, visualMode bool) {
 	switch {
 	case visualMode:
 		// Specialized sort to produce a more visually-interesting graph
-		g.Nodes.Sort(EntropyOrder)
+		_ = g.Nodes.Sort(EntropyOrder)
 	case cum:
-		g.Nodes.Sort(CumNameOrder)
+		_ = g.Nodes.Sort(CumNameOrder)
 	default:
-		g.Nodes.Sort(FlatNameOrder)
+		_ = g.Nodes.Sort(FlatNameOrder)
 	}
 }
 
@@ -1061,13 +1061,13 @@ func entropyScore(n *Node) int64 {
 	if len(n.In) == 0 {
 		score++ // Favor entry nodes
 	} else {
-		score += edgeEntropyScore(n, n.In, 0)
+		score += edgeEntropyScore(n.In, 0)
 	}
 
 	if len(n.Out) == 0 {
 		score++ // Favor leaf nodes
 	} else {
-		score += edgeEntropyScore(n, n.Out, n.Flat)
+		score += edgeEntropyScore(n.Out, n.Flat)
 	}
 
 	return int64(score*float64(n.Cum)) + n.Flat
@@ -1078,7 +1078,7 @@ func entropyScore(n *Node) int64 {
 // theory) refers to the amount of information encoded by the set of
 // edges. A set of edges that have a more interesting distribution of
 // samples gets a higher score.
-func edgeEntropyScore(n *Node, edges EdgeMap, self int64) float64 {
+func edgeEntropyScore(edges EdgeMap, self int64) float64 {
 	score := float64(0)
 	total := self
 	for _, e := range edges {
