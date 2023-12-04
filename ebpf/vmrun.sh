@@ -9,10 +9,24 @@ if [ -z $ARCH ]; then
   ARCH=amd64
 fi
 
+if [ ${ARCH} == "amd64" ]; then
+  QEMU=qemu-system-x86_64
+elif [ ${ARCH} == "arm64" ]; then
+  QEMU=qemu-system-aarch64
+else
+  echo "Unsupported architecture: ${ARCH}"
+  exit 1
+fi
+
+
 if [ -z $KERNEL ]; then
   ARG_KERNEL=""
 else
-  ARG_KERNEL="-kernel ${KERNEL}"
+  if [ ${ARCH} == "amd64" ]; then
+    ARG_KERNEL="-kernel ${KERNEL} -append \"root=/dev/sda2 console=ttyS0\""
+  else
+    ARG_KERNEL="-kernel ${KERNEL} -append \"root=/dev/vda2 console=ttyAMA0\""
+  fi
 fi
 
 if [ -z $INITRD ]; then
@@ -28,7 +42,7 @@ else
 fi
 
 if [[ -z "${GITHUB_ACTIONS}" && -e "/dev/kvm" ]]; then
-  KVM_ARGS="-enable-kvm -cpu kvm64"
+  ARG_KVM="-enable-kvm -cpu kvm64"
 fi
 
 
@@ -40,41 +54,27 @@ kill_vm() {
 
 run_vm() {
   kill_vm
-  if [[ "${ARCH}" -eq "amd64" ]] ; then
-    qemu-system-x86_64 \
-      -nodefaults \
-      -nographic \
-      -no-reboot \
-      -smp 4 \
-      -m 4G \
-      ${ARG_INITRD} \
-      ${ARG_KERNEL} \
-      ${ARG_IMG} \
-      ${KVM_ARGS} \
-      -netdev user,id=user.0,hostfwd=tcp::2222-:22 \
-      -device virtio-net-pci,netdev=user.0 \
-      -append "root=/dev/sda console=ttyS0" \
-      -serial mon:stdio
-  else
-    qemu-system-aarch64 \
-      -nodefaults \
-      -nographic \
-      -no-reboot \
-      -M virt -cpu cortex-a57 -smp 4  -m 4G \
-      ${ARG_INITRD} \
-      ${ARG_KERNEL} \
-      ${ARG_IMG} \
-      -append "root=/dev/vda2 console=ttyAMA0" \
-      -net user,hostfwd=tcp::2222-:22 -net nic \
-      -device intel-hda -device hda-duplex \
-      sleep 15
+  ${QEMU} \
+    -nodefaults \
+    -nographic \
+    -no-reboot \
+    -smp 4 -m 4G \
+    ${ARG_INITRD} \
+    ${ARG_KERNEL} \
+    ${ARG_IMG} \
+    ${ARG_KVM} \
+    -net user,hostfwd=tcp::2222-:22 \
+    -net nic \
+    -serial mon:stdio &
+  if [${ARCH} == "arm64" ] ; then
+    sleep 15
   fi
 }
 
 wait_for_ssh() {
   local retries=0
   while ! (${connect} true); do
-    if [[ "${retries}" -gt 30 ]]; then
+    if [[ "${retries}" -gt 60 ]]; then
       echo "SSH connection failed after 30 retries"
       kill_vm
       exit 1
