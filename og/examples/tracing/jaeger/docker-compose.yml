@@ -50,7 +50,7 @@ services:
       - REGION=us-east
     build:
       context: 'go/rideshare'
-      dockerfile: Dockerfile
+      dockerfile: go/rideshare/Dockerfile
     logging:
       driver: loki
       options:
@@ -63,7 +63,7 @@ services:
       - REGION=eu-north
     build:
       context: 'go/rideshare'
-      dockerfile: Dockerfile
+      dockerfile: go/rideshare/Dockerfile
     logging:
       driver: loki
       options:
@@ -76,7 +76,7 @@ services:
       - REGION=ap-south
     build:
       context: 'go/rideshare'
-      dockerfile: Dockerfile
+      dockerfile: go/rideshare/Dockerfile
     logging:
       driver: loki
       options:
@@ -89,7 +89,7 @@ services:
       - REGION=us-east
     build:
       context: 'java/rideshare'
-      dockerfile: Dockerfile
+      dockerfile: java/rideshare/Dockerfile
     logging:
       driver: loki
       options:
@@ -102,7 +102,7 @@ services:
       - REGION=eu-north
     build:
       context: 'java/rideshare'
-      dockerfile: Dockerfile
+      dockerfile: java/rideshare/Dockerfile
     logging:
       driver: loki
       options:
@@ -115,7 +115,7 @@ services:
       - REGION=ap-south
     build:
       context: 'java/rideshare'
-      dockerfile: Dockerfile
+      dockerfile: java/rideshare/Dockerfile
     logging:
       driver: loki
       options:
@@ -128,7 +128,7 @@ services:
       - REGION=eu-north
     build:
       context: 'java-instrumentation/rideshare'
-      dockerfile: Dockerfile
+      dockerfile: java-instrumentation/rideshare/Dockerfile
     logging:
       driver: loki
       options:
@@ -142,7 +142,7 @@ services:
       - SERVER_HOST=eu-north-ruby
     build:
       context: 'ruby/rideshare'
-      dockerfile: Dockerfile
+      dockerfile: ruby/rideshare/Dockerfile
     logging:
       driver: loki
       options:
@@ -153,7 +153,7 @@ services:
       - config.env
     build:
       context: 'go/rideshare'
-      dockerfile: Dockerfile.loadgen
+      dockerfile: go/rideshare/Dockerfile.loadgen
     depends_on:
       - ap-south
       - eu-north
