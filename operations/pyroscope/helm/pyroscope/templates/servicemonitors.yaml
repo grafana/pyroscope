@@ -17,6 +17,11 @@ spec:
     matchLabels:
       {{- include "pyroscope.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: {{ $component | quote }}
+    matchExpressions:
+      - key: prometheus.io/service-monitor
+        operator: NotIn
+        values:
+          - "false"
 {{- end }}
 {{- end }}
 {{- end }}
