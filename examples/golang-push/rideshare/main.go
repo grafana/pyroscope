@@ -51,6 +51,12 @@ func main() {
 	if config.AppName == "" {
 		config.AppName = "ride-sharing-app"
 	}
+	hostname, err := os.Hostname()
+	if err == nil {
+		config.Tags = map[string]string{
+			"hostname": hostname,
+		}
+	}
 
 	tp, _ := setupOTEL(config)
 	defer func() {
