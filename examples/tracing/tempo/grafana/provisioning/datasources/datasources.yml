@@ -21,6 +21,9 @@ datasources:
         customQuery: false
         datasourceUid: "pyroscope"
         profileTypeId: "process_cpu:cpu:nanoseconds:cpu:nanoseconds"
+        tags:
+          - key: "host.name"
+            value: "hostname"
 
   - name: Pyroscope
     type: grafana-pyroscope-datasource

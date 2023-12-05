@@ -54,7 +54,6 @@ func isRemoteSpan(c jaeger.SpanContext) bool {
 	// This is ugly and unsafe, but is the only reliable way to get to know which
 	// spans should be profiled. The opentracing-go package and Jaeger client
 	// are not meant to change as both are deprecated.
-	defer func() { recover() }()
 	jaegerCtx := *(*jaegerSpanCtx)(unsafe.Pointer(&c))
 	return jaegerCtx.remote
 }

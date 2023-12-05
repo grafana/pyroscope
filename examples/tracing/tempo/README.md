@@ -1,7 +1,7 @@
 ### This is a pre-release demo project for internal use only
 
 The docker compose consists of:
- - `rideshare` demo application instrumented with OpenTelemetry and [Pyroscope SDK](https://github.com/grafana/otel-profiling-go)
+ - Ride share demo application
  - Tempo
  - Pyroscope
  - Grafana
@@ -22,7 +22,31 @@ that have a linked profile:
 
 ![image](https://github.com/grafana/otel-profiling-go/assets/12090599/31e33cd1-818b-4116-b952-c9ec7b1fb593)
 
-By default, only the root span gets labeled (the first span created locally): such spans are marked with the
-`pyroscope.profile.id` attribute set to the span ID. Please note that presence of the attribute does not necessarily
+By default, only the root span gets labeled (the first span created locally): such spans are marked with the _link_ icon
+and have `pyroscope.profile.id` attribute set to the corresponding span ID.
+Please note that presence of the attribute does not necessarily
 indicate that the span has a profile: stack trace samples might not be collected, if the utilized CPU time is
 less than the sample interval (10ms).
+
+### Instrumentation
+
+ - `rideshare` demo application instrumented with OpenTelemetry and [Pyroscope SDK](https://github.com/grafana/otel-profiling-go)
+ - `pyroscope` itself is instrumented with `opentracing-go` SDK and [`spanprofiler`](../../../pkg/util/spanprofiler) for profiling integration.
+
+### Grafana Tempo configuration
+
+In order to correlate trace spans with profiling data, Tempo datasource should be configured:
+ - Data source of the profiling data.
+ - Tags to use in the query.
+ - Profile type: as of now, only CPU time profile is fully supported.
+ - Query override.
+
+![image](https://github.com/grafana/pyroscope/assets/12090599/380ac574-a298-440d-acfb-7bc0935a3a7c)
+
+While tags are optional, configuring them is highly recommended for optimizing query performance.
+In our example, we configured the `host.name` tag for use in Pyroscope queries as the `hostname` label.
+This configuration restricts the data set for lookup to a specific host, ensuring that queries remain
+consistently fast. Note that the tags you configure must be present in the spans attributes or resources
+for a trace to profiles span link to appear.
+
+Please refer to our [documentation](https://grafana.com/docs/grafana/next/datasources/tempo/configure-tempo-data-source/#trace-to-profiles) for more details.
