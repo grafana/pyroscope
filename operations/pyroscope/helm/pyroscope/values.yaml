@@ -224,3 +224,6 @@ ingress:
   #   - localhost
   # tls:
   #   - secretName: certificate
+
+serviceMonitor:
+  enabled: false

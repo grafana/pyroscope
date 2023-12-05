@@ -1,0 +1,22 @@
+{{- if .Values.serviceMonitor }}
+{{- $global := . }}
+{{- range $component, $cfg := (fromYaml (include "pyroscope.components" .)) }}
+{{- with $global }}
+{{-  $values := mustMergeOverwrite (deepCopy .Values.pyroscope ) ($cfg | default dict)}}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $cfg.name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  endpoints:
+    - port: http2
+      scheme: http
+  selector:
+    matchLabels:
+      {{- include "pyroscope.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
