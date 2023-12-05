@@ -3,83 +3,95 @@ package spanprofiler
 import (
 	"context"
 	"runtime/pprof"
-	"unsafe"
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/jaeger-client-go"
 )
 
-const (
-	profileIDTagKey = "pyroscope.profile.id"
+// StartSpanFromContext starts and returns a Span with `operationName`, using
+// any Span found within `ctx` as a ChildOfRef. If no such parent could be
+// found, StartSpanFromContext creates a root (parentless) Span.
+//
+// The second return value is a context.Context object built around the
+// returned Span.
+//
+// Example usage:
+//
+//	SomeFunction(ctx context.Context, ...) {
+//	    sp, ctx := opentracing.StartSpanFromContext(ctx, "SomeFunction")
+//	    defer sp.Finish()
+//	    ...
+//	}
+func StartSpanFromContext(ctx context.Context, operationName string, opts ...opentracing.StartSpanOption) (opentracing.Span, context.Context) {
+	return StartSpanFromContextWithTracer(ctx, opentracing.GlobalTracer(), operationName, opts...)
+}
 
-	spanIDLabelName   = "span_id"
-	spanNameLabelName = "span_name"
-)
+// StartSpanFromContextWithTracer starts and returns a span with `operationName`
+// using  a span found within the context as a ChildOfRef. If that doesn't exist
+// it creates a root span. It also returns a context.Context object built
+// around the returned span.
+//
+// It's behavior is identical to StartSpanFromContext except that it takes an explicit
+// tracer as opposed to using the global tracer.
+func StartSpanFromContextWithTracer(ctx context.Context, tracer opentracing.Tracer, operationName string, opts ...opentracing.StartSpanOption) (opentracing.Span, context.Context) {
+	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, tracer, operationName, opts...)
+	spanCtx, ok := span.Context().(jaeger.SpanContext)
+	if ok {
+		span = wrapJaegerSpanWithGoroutineLabels(ctx, span, operationName, sampledSpanID(spanCtx))
+	}
+	return span, ctx
+}
 
-type tracer struct{ opentracing.Tracer }
-
-func NewTracer(tr opentracing.Tracer) opentracing.Tracer { return &tracer{tr} }
-
-func (t *tracer) StartSpan(operationName string, opts ...opentracing.StartSpanOption) opentracing.Span {
-	s := t.Tracer.StartSpan(operationName, opts...)
-	parent, ok := parentSpanContextFromRef(opts...)
-	if ok && !isRemoteSpan(parent) {
-		return s
+func wrapJaegerSpanWithGoroutineLabels(
+	parentCtx context.Context,
+	span opentracing.Span,
+	operationName string,
+	spanID string,
+) *spanWrapper {
+	// Note that pprof labels are propagated through the goroutine's local
+	// storage and are always copied to child goroutines. This way, stack
+	// trace samples collected during execution of child spans will be taken
+	// into account at the root.
+	var labels []string
+	if spanID != "" {
+		labels = []string{spanNameLabelName, operationName, spanIDLabelName, spanID}
+	} else {
+		// Even if the trace has not been sampled, we still need to keep track
+		// of samples that belong to the span (all spans with the given name).
+		labels = []string{spanNameLabelName, operationName}
 	}
-	sc, ok := s.Context().(jaeger.SpanContext)
-	if !ok {
-		return s
+	// We create a span wrapper to ensure we remove the newly attached pprof
+	// labels when span finishes. The need of this wrapper is questioned:
+	// as we do not have the original context, we could leave the goroutine
+	// labels – normally, span is finished at the very end of the goroutine's
+	// lifetime, so no significant side effects should take place.
+	w := spanWrapper{
+		parentPprofCtx:  parentCtx,
+		currentPprofCtx: pprof.WithLabels(parentCtx, pprof.Labels(labels...)),
+		Span:            span,
 	}
-	labels := append(make([]string, 0, 4), spanNameLabelName, operationName)
-	if sc.IsSampled() {
-		labels = append(labels, spanIDLabelName, sc.SpanID().String())
-	}
-	w := rootSpanWrapper{
-		pprofCtx: pprof.WithLabels(context.Background(), pprof.Labels(labels...)),
-		Span:     s,
-	}
-	pprof.SetGoroutineLabels(w.pprofCtx)
-	tag := opentracing.Tag{Key: profileIDTagKey, Value: sc.SpanID().String()}
-	tag.Set(s)
+	pprof.SetGoroutineLabels(w.currentPprofCtx)
+	opentracing.Tag{Key: profileIDTagKey, Value: spanID}.Set(span)
 	return &w
 }
 
-func parentSpanContextFromRef(options ...opentracing.StartSpanOption) (jaeger.SpanContext, bool) {
-	var sso opentracing.StartSpanOptions
-	for _, option := range options {
-		option.Apply(&sso)
-	}
-	for _, ref := range sso.References {
-		if ref.Type == opentracing.ChildOfRef && ref.ReferencedContext != nil {
-			c, ok := ref.ReferencedContext.(jaeger.SpanContext)
-			return c, ok
-		}
-	}
-	return jaeger.SpanContext{}, false
-}
-
-func isRemoteSpan(c jaeger.SpanContext) bool {
-	jaegerCtx := *(*jaegerSpanCtx)(unsafe.Pointer(&c))
-	return jaegerCtx.remote
-}
-
-type jaegerSpanCtx struct {
-	traceID       [16]byte // TraceID
-	spanID        [8]byte  // SpanID
-	parentID      [8]byte  // SpanID
-	baggage       uint     // map[string]string
-	debugID       [2]uint  // string
-	samplingState uint     // *samplingState
-	// remote indicates that span context represents a remote parent
-	remote bool
-}
-
-type rootSpanWrapper struct {
-	pprofCtx context.Context
+type spanWrapper struct {
+	parentPprofCtx  context.Context
+	currentPprofCtx context.Context
 	opentracing.Span
 }
 
-func (s *rootSpanWrapper) Finish() {
+func (s *spanWrapper) Finish() {
 	s.Span.Finish()
-	pprof.SetGoroutineLabels(context.Background())
+	pprof.SetGoroutineLabels(s.parentPprofCtx)
+	s.currentPprofCtx = s.parentPprofCtx
+}
+
+// sampledSpanID returns the span ID, if the span is sampled,
+// otherwise an empty string is returned.
+func sampledSpanID(spanCtx jaeger.SpanContext) string {
+	if spanCtx.IsSampled() {
+		return spanCtx.SpanID().String()
+	}
+	return ""
 }

@@ -2,97 +2,34 @@ package spanprofiler
 
 import (
 	"context"
-	"runtime/pprof"
 	"testing"
 
-	"github.com/opentracing/opentracing-go"
+	"github.com/stretchr/testify/require"
 	"github.com/uber/jaeger-client-go"
-	jaegercfg "github.com/uber/jaeger-client-go/config"
 )
 
-func Test_tracer(t *testing.T) {
-	c := &jaegercfg.Configuration{
-		ServiceName: "test",
-		Sampler: &jaegercfg.SamplerConfig{
-			Type:  jaeger.SamplerTypeConst,
-			Param: 1,
-		},
-		Reporter: &jaegercfg.ReporterConfig{
-			LocalAgentHostPort: "127.0.0.100:16686",
-		},
-	}
-	tr, closer, err := c.NewTracer()
-	if err != nil {
-		t.Fatalf("failed to initialize tracer: %v", err)
-	}
-	defer closer.Close()
+func TestSpanProfiler_pprof_labels_propagation(t *testing.T) {
+	tt := initTestTracer(t)
+	defer func() { require.NoError(t, tt.Close()) }()
 
-	opentracing.SetGlobalTracer(NewTracer(tr))
-	const (
-		spanIDLabelName   = "span_id"
-		spanNameLabelName = "span_name"
-	)
+	t.Run("pprof labels are not propagated to child spans", func(t *testing.T) {
+		spanR, ctx := StartSpanFromContext(context.Background(), "RootSpan")
+		defer spanR.Finish()
+		rootLabels := spanPprofLabels(spanR)
+		require.Equal(t, rootLabels["span_name"], "RootSpan")
+		rootSpanID, err := jaeger.SpanIDFromString(rootLabels["span_id"])
+		require.NoError(t, err)
 
-	labels := make(map[string]string)
+		// Regardless of anything, pprof labels are attached to the current
+		// goroutine, and the "pyroscope.profile.id" tag is set.
+		spanA, _ := StartSpanFromContext(ctx, "ChildSpan")
+		defer spanA.Finish()
+		childLabels := spanPprofLabels(spanA)
+		require.Equal(t, childLabels["span_name"], "ChildSpan")
+		childSpanID, err := jaeger.SpanIDFromString(childLabels["span_id"])
+		require.NoError(t, err)
 
-	spanR, ctx := opentracing.StartSpanFromContext(context.Background(), "RootSpan")
-
-	forSpanPprofLabels(spanR, func(key, value string) bool {
-		labels[key] = value
-		return true
+		require.NotEqual(t, rootSpanID, childSpanID)
+		require.Equal(t, childLabels["span_id"], spanTags(spanA)["pyroscope.profile.id"])
 	})
-	spanID, ok := labels[spanIDLabelName]
-	if !ok {
-		t.Fatal("span ID label not found")
-	}
-	if len(spanID) != 16 {
-		t.Fatalf("invalid span ID: %q", spanID)
-	}
-	name, ok := labels[spanNameLabelName]
-	if !ok {
-		t.Fatal("span name label not found")
-	}
-	if name != "RootSpan" {
-		t.Fatalf("invalid span name: %q", name)
-	}
-
-	// Nested child span has the same labels.
-	spanA, ctx := opentracing.StartSpanFromContext(ctx, "SpanA")
-	forSpanPprofLabels(spanA, func(key, value string) bool {
-		if v, ok := labels[key]; !ok || v != value {
-			t.Fatalf("nested span labels mismatch: %q=%q; expected %q=%q", key, value, key, labels[key])
-		}
-		return true
-	})
-
-	spanA.Finish()
-	spanR.Finish()
-
-	// Child span created after the root span end using its context.
-	spanB, _ := opentracing.StartSpanFromContext(ctx, "SpanB")
-	forSpanPprofLabels(spanB, func(key, value string) bool {
-		if v, ok := labels[key]; !ok || v != value {
-			t.Fatalf("nested span labels mismatch: %q=%q", key, value)
-		}
-		return true
-	})
-	spanB.Finish()
-
-	// A new root span.
-	spanC, _ := opentracing.StartSpanFromContext(context.Background(), "SpanC")
-	forSpanPprofLabels(spanC, func(key, value string) bool {
-		if v, ok := labels[key]; !ok || v == value {
-			t.Fatalf("unexpected match: %q=%q", key, value)
-		}
-		return true
-	})
-	spanC.Finish()
-}
-
-func forSpanPprofLabels(span opentracing.Span, fn func(key, value string) bool) {
-	w, ok := span.(*rootSpanWrapper)
-	if !ok {
-		return
-	}
-	pprof.ForLabels(w.pprofCtx, fn)
 }
