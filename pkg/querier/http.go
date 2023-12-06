@@ -150,7 +150,7 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 	if format == "dot" {
 		// We should distinguish max nodes of the source pprof profile
 		// and max nodes value for the output profile in dot format.
-		sourceProfileMaxNodes := int64(1 << 10)
+		sourceProfileMaxNodes := int64(256)
 		dotProfileMaxNodes := int64(100)
 		if selectParams.MaxNodes != nil {
 			if v := *selectParams.MaxNodes; v > 0 {
