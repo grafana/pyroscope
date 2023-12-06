@@ -1,15 +1,13 @@
-
-
 ---
-id: integration-aws-lambda
-title: AWS Lambda
-sidebar_label: AWS Lambda Extension
-slug: /aws-lambda
-description: Pyroscope AWS Lambda profiling
-keywords: [ pyroscope, aws, lambda, profiling ]
+title: "AWS Lambda Profiling Extension"
+menuTitle: "AWS Lambda Profiling Extension"
+description: "Profiling AWS Lambda functions with Pyroscope"
+weight: 100
 ---
 
-## What is Pyroscope Lambda Extension?
+# AWS Lambda Profiling Extension
+
+## What is the Pyroscope Lambda Extension?
 The [Pyroscope AWS Lambda Extension (github)](https://github.com/grafana/pyroscope-lambda-extension) allows profiling [lambda functions](https://aws.amazon.com/lambda/) with very little latency overhead over your existing code.
 
 ## How it works
