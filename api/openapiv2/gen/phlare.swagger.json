@@ -937,14 +937,6 @@
       },
       "description": "Each Sample records values encountered in some program\ncontext. The program context is typically a stack trace, perhaps\naugmented with auxiliary information like the thread-id, some\nindicator of a higher level request being handled etc."
     },
-    "v1SelectMergeDotProfileResponse": {
-      "type": "object",
-      "properties": {
-        "profile": {
-          "type": "string"
-        }
-      }
-    },
     "v1SelectMergeSpanProfileResponse": {
       "type": "object",
       "properties": {

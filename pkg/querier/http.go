@@ -11,15 +11,19 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/gogo/status"
+	"github.com/google/pprof/profile"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/frontend/dot/graph"
+	"github.com/grafana/pyroscope/pkg/frontend/dot/report"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/pkg/og/util/attime"
@@ -144,22 +148,33 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 
 	format := req.URL.Query().Get("format")
 	if format == "dot" {
-		resDot, err := q.client.SelectMergeDotProfile(req.Context(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+		// We should distinguish max nodes of the source pprof profile
+		// and max nodes value for the output profile in dot format.
+		sourceProfileMaxNodes := int64(1 << 10)
+		dotProfileMaxNodes := int64(100)
+		if selectParams.MaxNodes != nil {
+			if v := *selectParams.MaxNodes; v > 0 {
+				dotProfileMaxNodes = v
+			}
+			if dotProfileMaxNodes > sourceProfileMaxNodes {
+				sourceProfileMaxNodes = dotProfileMaxNodes
+			}
+		}
+		resp, err := q.client.SelectMergeProfile(req.Context(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{
 			Start:         selectParams.Start,
 			End:           selectParams.End,
 			ProfileTypeID: selectParams.ProfileTypeID,
 			LabelSelector: selectParams.LabelSelector,
-			MaxNodes:      selectParams.MaxNodes,
+			MaxNodes:      &sourceProfileMaxNodes,
 		}))
 		if err != nil {
 			httputil.Error(w, connect.NewError(connect.CodeInternal, err))
 			return
 		}
-		_, err = io.WriteString(w, resDot.Msg.Profile)
-		if err != nil {
+		if err = pprofToDotProfile(w, resp.Msg, int(dotProfileMaxNodes)); err != nil {
 			httputil.Error(w, connect.NewError(connect.CodeInternal, err))
-			return
 		}
+		return
 	}
 
 	var resFlame *connect.Response[querierv1.SelectMergeStacktracesResponse]
@@ -223,6 +238,21 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 		httputil.Error(w, err)
 		return
 	}
+}
+
+func pprofToDotProfile(w io.Writer, p *profilev1.Profile, maxNodes int) error {
+	data, err := p.MarshalVT()
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	pr, err := profile.ParseData(data)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	rpt := report.NewDefault(pr, report.Options{NodeCount: maxNodes})
+	gr, cfg := report.GetDOT(rpt)
+	graph.ComposeDot(w, gr, &graph.DotAttributes{}, cfg)
+	return nil
 }
 
 type renderRequestFieldNames struct {
