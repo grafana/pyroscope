@@ -7,71 +7,85 @@ weight: 100
 
 # AWS Lambda Profiling Extension
 
-## What is the Pyroscope Lambda Extension?
-The [Pyroscope AWS Lambda Extension (github)](https://github.com/grafana/pyroscope-lambda-extension) allows profiling [lambda functions](https://aws.amazon.com/lambda/) with very little latency overhead over your existing code.
+## Introduction to Pyroscope Lambda Extension
 
-## How it works
-The Pyroscope Lambda Extension runs a relay server on port `4040` in the same network namespace as the lambda function. This allows the Pyroscope clients to run as normal and send data to the relay server while adding minimal latency in the lambda handling.
-![lambda_image_04-01](https://user-images.githubusercontent.com/23323466/186037668-44de7caa-6576-422a-b3f7-8416325f4a98.png)
+The Pyroscope AWS Lambda Extension is a robust tool for profiling AWS Lambda functions, ensuring minimal latency impact. This profiling is essential for optimizing your functions.
 
-For more information on how AWS Lambda Extensions work, check the [Building Extensions for AWS Lambda blogpost](https://aws.amazon.com/blogs/compute/building-extensions-for-aws-lambda-in-preview/).
+## Why Profile AWS Lambda Functions?
 
-## Basic example
-### Step 1: Configure your lambda function
-In order to use the extension you'll first need to [configure your Lambda function](https://docs.aws.amazon.com/lambda/latest/dg/invocation-layers.html) to use the extension.
+AWS Lambda functions, while powerful and flexible, can lead to significant costs if not managed efficiently. One of the primary challenges with serverless architectures like AWS Lambda is that they can mask performance issues. Since Lambda functions are billed based on execution time and allocated memory, inefficiencies in code can lead to higher costs. Often, these costs accumulate unnoticed because of the following reasons:
 
-You can find the most recent release on our [releases page](https://github.com/grafana/pyroscope-lambda-extension/releases).
+1. **Granular Billing**: Lambda functions are billed in milliseconds, which can make small inefficiencies seem insignificant at first. However, when scaled to thousands or millions of invocations, these inefficiencies can lead to substantial costs.
 
-### Step 2: Set up remote address 
-Next, set up a remote address via environment variables where the extension will send data to:
+2. **Complex Performance Profile**: Lambda functions may interact with various services and resources, making it challenging to pinpoint performance bottlenecks.
 
-The extension is configured via Environment Variables:
+3. **Variable Load**: The serverless nature of AWS Lambda means that functions might handle variable loads at different times, making it hard to optimize for every scenario.
 
-| env var                         | default                          | description                                    |
-| ------------------------------- | -------------------------------- | ---------------------------------------------- |
-| `PYROSCOPE_REMOTE_ADDRESS`      | `https://profiles-prod-001.grafana.net` | the pyroscope instance data will be relayed to |
-| `PYROSCOPE_BASIC_AUTH_USER`     | `""`                             | HTTP Basic authentication user |
-| `PYROSCOPE_BASIC_AUTH_PASSWORD` | `""`                             | HTTP Basic authentication password |
-| `PYROSCOPE_AUTH_TOKEN`          | `""`                             | authorization key (token authentication)       |
-| `PYROSCOPE_SELF_PROFILING`      | `false`                          | whether to profile the extension itself or not |
-| `PYROSCOPE_LOG_LEVEL`           | `info`                           | `error` or `info` or `debug` or `trace`        |
-| `PYROSCOPE_TIMEOUT`             | `10s`                            | http client timeout ([go duration format](https://pkg.go.dev/time#Duration))      |
-| `PYROSCOPE_NUM_WORKERS`         | `5`                              | num of relay workers, pick based on the number of profile types |
-| `PYROSCOPE_TENANT_ID`           | `""`                             | Pyroscope tenant ID, passed as X-Scope-OrgID http header (only needed for multi-tenancy)                                      |
+Profiling Lambda functions helps in identifying these hidden performance bottlenecks, enabling developers to optimize their code for both performance and cost. Effective profiling can reveal inefficient code paths, unnecessary memory usage, and areas where the execution time can be reduced. By addressing these issues, organizations can significantly reduce their AWS bill, improve application responsiveness, and ensure a more efficient use of resources.
 
-### Step 3: Add the pyroscope agent to your code
-Finally, add the Pyroscope sdk to the function. While this example shows configuration for a golang application, you can use the same configuration for any language.
+## How the Pyroscope Lambda Extension Works
+
+This extension runs a relay server on the same network namespace as the Lambda function, ensuring minimal added latency.
+
+![Lambda Extension Architecture](https://user-images.githubusercontent.com/23323466/186037668-44de7caa-6576-422a-b3f7-8416325f4a98.png)
+
+For more details, refer to the [Building Extensions for AWS Lambda blog post](https://aws.amazon.com/blogs/compute/building-extensions-for-aws-lambda-in-preview/).
+
+## Setting Up the Pyroscope Lambda Extension
+
+### Step 1: Configure Your Lambda Function
+
+Configure your Lambda function to use the extension. Find the latest release on our [releases page](https://github.com/grafana/pyroscope-lambda-extension/releases).
+
+### Step 2: Environment Variable Setup
+
+Configure the extension with the following environment variables:
+
+| Environment Variable           | Default Value                           | Description                                  |
+| ------------------------------ | --------------------------------------- | -------------------------------------------- |
+| `PYROSCOPE_REMOTE_ADDRESS`     | `https://profiles-prod-001.grafana.net` | Destination for relayed Pyroscope data       |
+| `PYROSCOPE_BASIC_AUTH_USER`    | `""`                                    | HTTP Basic authentication user               |
+| `PYROSCOPE_BASIC_AUTH_PASSWORD`| `""`                                    | HTTP Basic authentication password           |
+| `PYROSCOPE_AUTH_TOKEN`         | `""`                                    | Authorization key (token authentication)     |
+| `PYROSCOPE_SELF_PROFILING`     | `false`                                 | Whether to profile the extension itself      |
+| `PYROSCOPE_LOG_LEVEL`          | `info`                                  | Log level (`error`, `info`, `debug`, `trace`)|
+| `PYROSCOPE_TIMEOUT`            | `10s`                                   | HTTP client timeout (in Go duration format)  |
+| `PYROSCOPE_NUM_WORKERS`        | `5`                                     | Number of relay workers                      |
+| `PYROSCOPE_TENANT_ID`          | `""`                                    | Pyroscope tenant ID (for multi-tenancy)      |
+
+### Step 3: Integrate Pyroscope SDK
+
+For a Golang Lambda function, integrate the Pyroscope SDK as follows:
+
 ```go
 func HandleRequest(ctx context.Context) (string, error) {
-	return fmt.Sprintf("Hello world!"), nil
+    return "Hello world!", nil
 }
 
 func main() {
-	// start the pyroscope agent before handling requests
-	pyroscope.Start(pyroscope.Config{
-		ApplicationName: "simple.golang.lambda", // YOUR APP NAME
-		ServerAddress:   "http://localhost:4040", // MUST BE localhost:4040
-	})
-
-	lambda.Start(HandleRequest)
+    pyroscope.Start(pyroscope.Config{
+        ApplicationName: "simple.golang.lambda",
+        ServerAddress:   "http://localhost:4040",
+    })
+    lambda.Start(HandleRequest)
 }
 ```
 
-## What are the use cases?
-Once you've completed the above steps, you'll be able to use the Pyroscope UI to analyze data surrounding your lambda function and make optimizations accordingly.
-To learn more about the use case for the extension, check out the [Pyroscope AWS Lambda Extension blogpost](/blog/profile-aws-lambda-functions).
+Replace `simple.golang.lambda` with your application name. The `ServerAddress` must be `http://localhost:4040`.
 
-## Sending data to Pyroscope with Pyroscope AWS Lambda Extension
+## Use Cases
+
+Once set up, you can use the Pyroscope UI to analyze your Lambda function's data, facilitating performance optimizations. For more on this, visit our [Pyroscope AWS Lambda Extension blog post](http://pyroscope.io/blog/profile-aws-lambda-functions).
+
+## Sending Data to Pyroscope
+
+To configure the extension for data transmission:
 
 ```bash
 PYROSCOPE_REMOTE_ADDRESS="<URL>"
 PYROSCOPE_BASIC_AUTH_USER="<User>"
 PYROSCOPE_BASIC_AUTH_PASSWORD="<Password>"
-# PYROSCOPE_TENANT_ID="<TenantID>" # Only needed in multi-tenant mode
+# PYROSCOPE_TENANT_ID="<TenantID>" # For multi-tenant mode
 ```
 
-To configure AWS Lambda Extension to send data to Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the grafana.com Pyroscope URL or your own custom Pyroscope server URL.
-
-If you need to send data to grafana.com, you'll have to configure HTTP Basic authentication. Replace `<User>` with your grafana.com stack user and `<Password>` with your grafana.com API key.
-
-If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
+Replace placeholders accordingly. For sending data to Grafana, use your Grafana stack user and API key for authentication.
