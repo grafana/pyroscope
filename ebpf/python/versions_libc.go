@@ -84,7 +84,7 @@ func GetGlibcOffsets(version Version) (PerfLibc, bool, error) {
 	return PerfLibc{}, false, fmt.Errorf("unsupported glibc version %v", version)
 }
 
-func GetLibc(l log2.Logger, pid uint32, info ProcInfo) (PerfLibc, error) {
+func GetLibc(l log2.Logger, pid uint32, info *ProcInfo) (PerfLibc, error) {
 	if info.Glibc == nil && info.Musl == nil {
 		return PerfLibc{}, fmt.Errorf("could not determine libc version %d, no libc found", pid)
 	}

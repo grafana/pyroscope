@@ -1,7 +1,6 @@
 package python
 
 import (
-	"bufio"
 	"debug/elf"
 	"fmt"
 	"os"
@@ -11,18 +10,80 @@ import (
 	"github.com/grafana/pyroscope/ebpf/symtab"
 )
 
-func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
-	mapsFD, err := os.Open(fmt.Sprintf("/proc/%d/maps", pid))
-	if err != nil {
-		return nil, fmt.Errorf("reading proc maps %d: %w", pid, err)
-	}
-	defer mapsFD.Close()
+type PySymbols struct {
+	autoTLSkeyAddr uint64
+	pyRuntimeAddr  uint64
 
-	info, err := GetProcInfo(bufio.NewScanner(mapsFD))
+	PyObject_Malloc_Impl, PyObject_Calloc_Impl, PyObject_Realloc_Impl, PyObject_Free_Impl uint64
+	PyObject_Free                                                                         uint64
+}
 
+func getSymbols(pythonFD *os.File, base *symtab.ProcMap, flags Flags) (*PySymbols, error) {
+	ef, err := elf.NewFile(pythonFD)
 	if err != nil {
-		return nil, fmt.Errorf("GetPythonProcInfo error %s: %w", fmt.Sprintf("/proc/%d/maps", pid), err)
+		return nil, fmt.Errorf("opening elf %w", err)
 	}
+	res := new(PySymbols)
+	baseAddr := base.StartAddr
+	if ef.FileHeader.Type == elf.ET_EXEC {
+		baseAddr = 0
+	}
+	symbols, err := ef.DynamicSymbols()
+	if err != nil {
+		return nil, fmt.Errorf("reading symbols from elf %w", err)
+	}
+	for _, symbol := range symbols {
+		switch symbol.Name {
+		case "autoTLSkey":
+			res.autoTLSkeyAddr = baseAddr + symbol.Value
+		case "_PyRuntime":
+			res.pyRuntimeAddr = baseAddr + symbol.Value
+		case "PyObject_Free":
+			res.PyObject_Free = baseAddr + symbol.Value
+		default:
+			continue
+		}
+	}
+	if res.pyRuntimeAddr == 0 && res.autoTLSkeyAddr == 0 {
+		return nil, fmt.Errorf("missing symbols %+v ", symbols)
+	}
+	needMem := flags&FlagWithMem != 0
+	if needMem {
+		symbols, err = ef.Symbols()
+		_ = err // Ignore. The memory sampling just will not work, but cpu still will
+		for _, symbol := range symbols {
+			switch symbol.Name {
+			case "_PyObject_Malloc":
+				res.PyObject_Malloc_Impl = baseAddr + symbol.Value
+			case "_PyObject_Calloc":
+				res.PyObject_Calloc_Impl = baseAddr + symbol.Value
+			case "_PyObject_Realloc":
+				res.PyObject_Realloc_Impl = baseAddr + symbol.Value
+			case "_PyObject_Free":
+				res.PyObject_Free_Impl = baseAddr + symbol.Value
+			}
+		}
+	}
+
+	return res, nil
+}
+
+type Flags int
+
+var (
+	FlagWithMem = Flags(1)
+)
+
+type ProcData struct {
+	ProcInfo *ProcInfo
+	// data passed to ebpf program
+	PerfPyPidData *PerfPyPidData
+	// addresses in VM of the process
+	PySymbols *PySymbols
+}
+
+func GetProcData(l log.Logger, info *ProcInfo, pid uint32, flags Flags) (*ProcData, error) {
+
 	var pythonMeat []*symtab.ProcMap
 	if info.LibPythonMaps == nil {
 		pythonMeat = info.PythonMaps
@@ -49,36 +110,12 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 		level.Warn(l).Log("msg", "python offsets were not found, but guessed from the closest patch version")
 	}
 
-	ef, err := elf.NewFile(pythonFD)
+	symbols, err := getSymbols(pythonFD, base_, flags)
 	if err != nil {
-		return nil, fmt.Errorf("opening elf %s: %w", pythonPath, err)
-	}
-	symbols, err := ef.DynamicSymbols()
-	if err != nil {
-		return nil, fmt.Errorf("reading symbols from elf %s: %w", pythonPath, err)
+		return nil, fmt.Errorf("could not get python symbols %s %w", pythonPath, err)
 	}
 
 	data := &PerfPyPidData{}
-	var (
-		autoTLSkeyAddr, pyRuntimeAddr uint64
-	)
-	baseAddr := base_.StartAddr
-	if ef.FileHeader.Type == elf.ET_EXEC {
-		baseAddr = 0
-	}
-	for _, symbol := range symbols {
-		switch symbol.Name {
-		case "autoTLSkey":
-			autoTLSkeyAddr = baseAddr + symbol.Value
-		case "_PyRuntime":
-			pyRuntimeAddr = baseAddr + symbol.Value
-		default:
-			continue
-		}
-	}
-	if pyRuntimeAddr == 0 && autoTLSkeyAddr == 0 {
-		return nil, fmt.Errorf("missing symbols pyRuntimeAddr autoTLSkeyAddr %s %v", pythonPath, version)
-	}
 
 	data.Version.Major = uint32(version.Major)
 	data.Version.Minor = uint32(version.Minor)
@@ -87,7 +124,7 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get python process libc %w", err)
 	}
-	data.TssKey, err = GetTSSKey(pid, version, offsets, autoTLSkeyAddr, pyRuntimeAddr, &data.Libc)
+	data.TssKey, err = GetTSSKey(pid, version, offsets, symbols, &data.Libc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get python tss key %w", err)
 	}
@@ -143,5 +180,9 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 		PyObjectObType:                offsets.PyObject_ob_type,
 		PyTypeObjectTpName:            offsets.PyTypeObject_tp_name,
 	}
-	return data, nil
+	return &ProcData{
+		PerfPyPidData: data,
+		PySymbols:     symbols,
+		ProcInfo:      info,
+	}, nil
 }

@@ -6,16 +6,16 @@ import (
 	"os"
 )
 
-func GetTSSKey(pid uint32, version Version, offsets *UserOffsets, autoTLSkeyAddr, pyRuntime uint64, libc *PerfLibc) (int32, error) {
+func GetTSSKey(pid uint32, version Version, offsets *UserOffsets, symbols *PySymbols, libc *PerfLibc) (int32, error) {
 	fd, err := os.Open(fmt.Sprintf("/proc/%d/mem", pid))
 	if err != nil {
 		return 0, fmt.Errorf("python memory open failed   %w", err)
 	}
 	defer fd.Close()
 	if version.Compare(Py37) < 0 {
-		return getAutoTLSKey(pid, version, autoTLSkeyAddr, fd)
+		return getAutoTLSKey(pid, version, symbols.autoTLSkeyAddr, fd)
 	} else {
-		return getPyTssKey(pid, version, offsets, pyRuntime, fd, libc)
+		return getPyTssKey(pid, version, offsets, symbols.pyRuntimeAddr, fd, libc)
 	}
 }
 

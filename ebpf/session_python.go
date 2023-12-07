@@ -145,10 +145,8 @@ func (s *session) startPythonProfiling(pid uint32, target *sd.Target, pi procInf
 		s.setPidConfig(pid, pi, false, false)
 		return false
 	}
-
-	pyData, err := python.GetPyPerfPidData(s.logger, pid)
 	svc := target.ServiceName()
-	if err != nil {
+	startProfilingError := func(err error) bool {
 		alive := processAlive(pid)
 		if alive && lastAttempt {
 			s.options.Metrics.Python.PidDataError.WithLabelValues(svc).Inc()
@@ -160,6 +158,18 @@ func (s *session) startPythonProfiling(pid uint32, target *sd.Target, pi procInf
 		s.setPidConfig(pid, pi, false, false)
 		return alive
 	}
+	info, err := python.GetProcInfoFromPID(int(pid))
+	if err != nil {
+		return startProfilingError(err)
+	}
+	flags := python.Flags(0)
+	if target.PythonMemProfiling() {
+		flags |= python.FlagWithMem
+	}
+	pyData, err := python.GetProcData(s.logger, info, pid, flags)
+	if err != nil {
+		return startProfilingError(err)
+	}
 
 	err = pyPerf.StartPythonProfiling(pid, pyData, svc)
 	if err != nil {
@@ -167,6 +177,12 @@ func (s *session) startPythonProfiling(pid uint32, target *sd.Target, pi procInf
 		pi.typ = pyrobpf.ProfilingTypeError
 		s.setPidConfig(pid, pi, false, false)
 		return false
+	}
+	if target.PythonMemProfiling() {
+		err = pyPerf.InitMemSampling(pyData)
+		if err != nil { // this is experimental and optional
+			_ = level.Debug(s.logger).Log("err", err, "msg", "pyperf process profiling init mem sampling failed", "pid", pid)
+		}
 	}
 	_ = level.Info(s.logger).Log("msg", "pyperf process profiling init success", "pid", pid,
 		"py_data", fmt.Sprintf("%+v", pyData), "target", target.String())

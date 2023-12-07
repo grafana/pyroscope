@@ -41,6 +41,7 @@ type Target struct {
 
 	// todo make keep it a map until Append happens
 	labels                labels.Labels
+	pythonMemProfiling    bool
 	serviceName           string
 	fingerprint           uint64
 	fingerprintCalculated bool
@@ -51,10 +52,13 @@ func NewTarget(cid containerID, pid uint32, target DiscoveryTarget) *Target {
 	if serviceName == "" {
 		serviceName = inferServiceName(target)
 	}
-
+	pythonMemProfiling := false
 	lset := make(map[string]string, len(target))
 	for k, v := range target {
 		if strings.HasPrefix(k, model.ReservedLabelPrefix) && k != labels.MetricName {
+			if k == "__pyroscope_ebpf_experimental_mem_profiling" {
+				pythonMemProfiling = v == "true"
+			}
 			continue
 		}
 		lset[k] = v
@@ -72,8 +76,9 @@ func NewTarget(cid containerID, pid uint32, target DiscoveryTarget) *Target {
 		lset[labelPID] = strconv.Itoa(int(pid))
 	}
 	return &Target{
-		labels:      labels.FromMap(lset),
-		serviceName: serviceName,
+		labels:             labels.FromMap(lset),
+		serviceName:        serviceName,
+		pythonMemProfiling: pythonMemProfiling,
 	}
 }
 
@@ -108,6 +113,10 @@ func (t *Target) Labels() (uint64, labels.Labels) {
 
 func (t *Target) String() string {
 	return t.labels.String()
+}
+
+func (t *Target) PythonMemProfiling() bool {
+	return t.pythonMemProfiling
 }
 
 type containerID string

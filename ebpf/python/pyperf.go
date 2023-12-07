@@ -58,17 +58,18 @@ func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *eb
 	return res, nil
 }
 
-func (s *Perf) StartPythonProfiling(pid uint32, data *PerfPyPidData, serviceName string) error {
+func (s *Perf) StartPythonProfiling(pid uint32, data *ProcData, serviceName string) error {
 	if s.pidCache.Contains(pid) {
 		return nil
 	}
 
-	err := s.pidDataHashMap.Update(pid, data, ebpf.UpdateAny)
+	pidData := data.PerfPyPidData
+	err := s.pidDataHashMap.Update(pid, pidData, ebpf.UpdateAny)
 	if err != nil { // should never happen
 		return fmt.Errorf("updating pid data hash map: %w", err)
 	}
 	s.metrics.ProcessInitSuccess.WithLabelValues(serviceName).Inc()
-	s.pidCache.Add(pid, data)
+	s.pidCache.Add(pid, pidData)
 	return nil
 }
 
