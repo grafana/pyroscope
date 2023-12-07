@@ -163,15 +163,15 @@ func (s *session) Start() error {
 
 	btf.FlushKernelSpec() // save some memory
 
-	s.perfEvents, err = attachPerfEvents(s.options.SampleRate, s.bpf.DoPerfEvent)
-	if err != nil {
-		s.stopLocked()
-		return fmt.Errorf("attach perf events: %w", err)
-	}
 	eventsReader, err := perf.NewReader(s.bpf.ProfileMaps.Events, 4*os.Getpagesize())
 	if err != nil {
 		s.stopLocked()
 		return fmt.Errorf("perf new reader for events map: %w", err)
+	}
+	s.perfEvents, err = attachPerfEvents(s.options.SampleRate, s.bpf.DoPerfEvent)
+	if err != nil {
+		s.stopLocked()
+		return fmt.Errorf("attach perf events: %w", err)
 	}
 
 	err = s.linkKProbes()
