@@ -163,6 +163,72 @@ func (q *headOnDiskQuerier) SelectMergeByStacktraces(ctx context.Context, params
 	return r.Tree()
 }
 
+func (q *headOnDiskQuerier) SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.Tree, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeBySpans - HeadOnDisk")
+	defer sp.Finish()
+
+	// query the index for rows
+	rowIter, _, err := q.head.profiles.index.selectMatchingRowRanges(ctx, &ingestv1.SelectProfilesRequest{
+		LabelSelector: params.LabelSelector,
+		Type:          params.Type,
+		Start:         params.Start,
+		End:           params.End,
+		Hints:         params.Hints,
+	}, q.rowGroupIdx)
+	if err != nil {
+		return nil, err
+	}
+	spans, err := phlaremodel.NewSpanSelector(params.SpanSelector)
+	if err != nil {
+		return nil, err
+	}
+
+	// get time nano information for profiles
+	var (
+		start = model.Time(params.Start)
+		end   = model.Time(params.End)
+	)
+	it := query.NewBinaryJoinIterator(0,
+		query.NewBinaryJoinIterator(
+			0,
+			rowIter,
+			q.rowGroup().columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), ""),
+		),
+		q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"))
+
+	buf := make([][]parquet.Value, 1)
+
+	// todo: we should stream profile to merge instead of loading all in memory.
+	// This is a temporary solution for now since there's a memory corruption happening.
+	rows, err := iter.Slice[rowProfile](
+		&RowsIterator[rowProfile]{
+			rows: it,
+			at: func(ir *query.IteratorResult) rowProfile {
+				buf = ir.Columns(buf, "StacktracePartition")
+				if len(buf[0]) == 0 {
+					return rowProfile{
+						rowNum: ir.RowNumber[0],
+					}
+				}
+				return rowProfile{
+					rowNum:    ir.RowNumber[0],
+					partition: buf[0][0].Uint64(),
+				}
+			},
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
+
+	if err := mergeBySpans[rowProfile](ctx, q.rowGroup(), iter.NewSliceIterator(rows), r, spans); err != nil {
+		return nil, err
+	}
+	return r.Tree()
+}
+
 func (q *headOnDiskQuerier) SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (*profilev1.Profile, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergePprof - HeadOnDisk")
 	defer sp.Finish()
@@ -436,6 +502,57 @@ func (q *headInMemoryQuerier) SelectMergeByStacktraces(ctx context.Context, para
 				break
 			}
 			r.AddSamples(p.StacktracePartition, p.Samples)
+		}
+	}
+	return r.Tree()
+}
+
+func (q *headInMemoryQuerier) SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.Tree, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeBySpans - HeadInMemory")
+	defer sp.Finish()
+	r := symdb.NewResolver(ctx, q.head.symdb)
+	defer r.Release()
+	index := q.head.profiles.index
+
+	ids, err := index.selectMatchingFPs(ctx, &ingestv1.SelectProfilesRequest{
+		LabelSelector: params.LabelSelector,
+		Type:          params.Type,
+		Start:         params.Start,
+		End:           params.End,
+		Hints:         params.Hints,
+	})
+	if err != nil {
+		return nil, err
+	}
+	spans, err := phlaremodel.NewSpanSelector(params.SpanSelector)
+	if err != nil {
+		return nil, err
+	}
+
+	// get time nano information for profiles
+	var (
+		start = model.Time(params.Start)
+		end   = model.Time(params.End)
+	)
+
+	index.mutex.RLock()
+	defer index.mutex.RUnlock()
+
+	for _, fp := range ids {
+		profileSeries, ok := index.profilesPerFP[fp]
+		if !ok {
+			continue
+		}
+		for _, p := range profileSeries.profiles {
+			if p.Timestamp() < start {
+				continue
+			}
+			if p.Timestamp() > end {
+				break
+			}
+			if len(p.Samples.Spans) > 0 {
+				r.AddSamplesWithSpanSelector(p.StacktracePartition, p.Samples, spans)
+			}
 		}
 	}
 	return r.Tree()
