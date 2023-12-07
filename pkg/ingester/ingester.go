@@ -129,8 +129,8 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 	if dbConfig.DisableEnforcement {
 		i.subservices, err = services.NewManager(i.lifecycler)
 	} else {
-		rpEnforcer := newRetentionPolicyEnforcer(phlarecontext.Logger(phlarectx), i, retentionPolicy, dbConfig)
-		i.subservices, err = services.NewManager(i.lifecycler, rpEnforcer)
+		dc := newDiskCleaner(phlarecontext.Logger(phlarectx), i, retentionPolicy, dbConfig)
+		i.subservices, err = services.NewManager(i.lifecycler, dc)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "services manager")
