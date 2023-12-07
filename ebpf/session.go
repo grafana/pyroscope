@@ -41,6 +41,7 @@ type SessionOptions struct {
 	CacheOptions              symtab.CacheOptions
 	Metrics                   *metrics.Metrics
 	SampleRate                int
+	VerifierLogSize           int
 }
 
 type SampleAggregation bool
@@ -152,11 +153,10 @@ func (s *session) Start() error {
 	}
 
 	opts := &ebpf.CollectionOptions{
-		Programs: ebpf.ProgramOptions{
-			LogDisabled: true,
-		},
+		Programs: s.progOptions(),
 	}
 	if err := pyrobpf.LoadProfileObjects(&s.bpf, opts); err != nil {
+		s.logVerifierError(err)
 		s.stopLocked()
 		return fmt.Errorf("load bpf objects: %w", err)
 	}
@@ -793,6 +793,32 @@ func (s *session) checkStalePids() {
 	if err != nil {
 		if !errors.Is(err, ebpf.ErrKeyNotExist) {
 			_ = level.Error(s.logger).Log("msg", "check stale pids", "err", err)
+		}
+	}
+}
+
+func (s *session) logVerifierError(err error) {
+	if s.options.VerifierLogSize < 0 {
+		return
+	}
+	var e *ebpf.VerifierError
+	if errors.As(err, &e) {
+		for _, l := range e.Log {
+			level.Error(s.logger).Log("verifier", l)
+		}
+	}
+}
+
+func (s *session) progOptions() ebpf.ProgramOptions {
+	if s.options.VerifierLogSize > 0 {
+		return ebpf.ProgramOptions{
+			LogDisabled: false,
+			LogSize:     s.options.VerifierLogSize,
+			LogLevel:    ebpf.LogLevelInstruction | ebpf.LogLevelBranch | ebpf.LogLevelStats,
+		}
+	} else {
+		return ebpf.ProgramOptions{
+			LogDisabled: true,
 		}
 	}
 }

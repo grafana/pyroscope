@@ -37,7 +37,7 @@ func (s *session) collectPythonProfile(cb CollectProfilesCallback) error {
 	unknownSymbols := 0
 	for _, event := range s.pyperfEvents {
 		stats := StackResolveStats{}
-		labels := s.targetFinder.FindTarget(event.Pid)
+		labels := s.targetFinder.FindTarget(event.Hdr.Pid)
 		if labels == nil {
 			continue
 		}
@@ -45,18 +45,18 @@ func (s *session) collectPythonProfile(cb CollectProfilesCallback) error {
 
 		sb.reset()
 
-		sb.append(s.comm(event.Pid))
+		sb.append(s.comm(event.Hdr.Pid))
 		var kStack []byte
-		if event.StackStatus == uint8(python.StackStatusError) {
+		if event.Hdr.StackStatus == uint8(python.StackStatusError) {
 			_ = level.Debug(s.logger).Log("msg", "collect python",
-				"stack_status", python.StackStatus(event.StackStatus),
-				"pid", event.Pid,
-				"err", python.PyError(event.Err))
+				"stack_status", python.StackStatus(event.Hdr.StackStatus),
+				"pid", event.Hdr.Pid,
+				"err", python.PyError(event.Hdr.Err))
 			s.options.Metrics.Python.StacktraceError.Inc()
 			stacktraceErrors += 1
 		} else {
 			begin := len(sb.stack)
-			if event.StackStatus == uint8(python.StackStatusTruncated) {
+			if event.Hdr.StackStatus == uint8(python.StackStatusTruncated) {
 
 			}
 			for i := 0; i < int(event.StackLen); i++ {
@@ -91,15 +91,15 @@ func (s *session) collectPythonProfile(cb CollectProfilesCallback) error {
 			end := len(sb.stack)
 			lo.Reverse(sb.stack[begin:end])
 		}
-		if s.options.CollectKernel && event.KernStack != -1 {
-			kStack = s.GetStack(event.KernStack)
+		if s.options.CollectKernel && event.Hdr.KernStack != -1 {
+			kStack = s.GetStack(event.Hdr.KernStack)
 			s.WalkStack(sb, kStack, s.symCache.GetKallsyms(), &stats)
 		}
 		if len(sb.stack) == 1 {
 			continue // only comm .. todo skip with an option
 		}
 		lo.Reverse(sb.stack)
-		cb(labels, sb.stack, uint64(1), event.Pid, SampleNotAggregated)
+		cb(labels, sb.stack, uint64(1), event.Hdr.Pid, SampleNotAggregated)
 		s.collectMetrics(labels, &stats, sb)
 	}
 	if stacktraceErrors > 0 {
@@ -220,23 +220,31 @@ func (s *session) getPyPerf() *python.Perf {
 
 func (s *session) loadPyPerf() (*python.Perf, error) {
 	defer btf.FlushKernelSpec() // save some memory
+
 	opts := &ebpf.CollectionOptions{
-		Programs: ebpf.ProgramOptions{
-			LogDisabled: true,
-		},
-		MapReplacements: map[string]*ebpf.Map{
-			"stacks": s.bpf.Stacks,
-		},
+		Programs: s.progOptions(),
+		//MapReplacements: map[string]*ebpf.Map{
+		//	"stacks": s.bpf.Stacks,
+		//},
 	}
 
 	err := python.LoadPerfObjects(&s.pyperfBpf, opts)
 	if err != nil {
+		s.logVerifierError(err)
 		return nil, fmt.Errorf("pyperf load %w", err)
 	}
-	pyperf, err := python.NewPerf(s.logger, s.options.Metrics.Python, s.pyperfBpf.PerfMaps.PyEvents, s.pyperfBpf.PerfMaps.PyPidConfig, s.pyperfBpf.PerfMaps.PySymbols)
+	pyperf, err := python.NewPerf(s.logger,
+		s.options.Metrics.Python,
+		s.pyperfBpf.PerfMaps.PyEvents,
+		s.pyperfBpf.PerfMaps.PyPidConfig,
+		s.pyperfBpf.PerfMaps.PySymbols,
+		//s.pyperfBpf.PerfPrograms.UprobeCollectMemorySample,
+		nil,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("pyperf create %w", err)
 	}
+
 	err = s.bpf.ProfileMaps.Progs.Update(uint32(0), s.pyperfBpf.PerfPrograms.PyperfCollect, ebpf.UpdateAny)
 	if err != nil {
 		return nil, fmt.Errorf("pyperf link %w", err)

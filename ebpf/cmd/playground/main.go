@@ -43,11 +43,35 @@ var (
 	session ebpfspy.Session
 )
 
+type splitLog struct {
+	err  log.Logger
+	rest log.Logger
+}
+
+func (s splitLog) Log(keyvals ...interface{}) error {
+	if len(keyvals)%2 != 0 {
+		return s.err.Log(keyvals...)
+	}
+	for i := 0; i < len(keyvals); i += 2 {
+		if keyvals[i] == "level" {
+			vv := keyvals[i+1]
+			vvs, ok := vv.(fmt.Stringer)
+			if ok && vvs.String() == "error" {
+				return s.err.Log(keyvals...)
+			}
+		}
+	}
+	return s.rest.Log(keyvals...)
+}
+
 func main() {
 	config = getConfig()
 	metrics = ebpfmetrics.New(prometheus.DefaultRegisterer)
 
-	logger = log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
+	logger = &splitLog{
+		err:  log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr)),
+		rest: log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
+	}
 
 	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), logger, convertTargetOptions())
 	if err != nil {
@@ -163,6 +187,7 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 		PythonEnabled:             config.PythonEnabled,
 		Metrics:                   metrics,
 		CacheOptions:              config.CacheOptions,
+		VerifierLogSize:           1024 * 1024 * 20,
 	}
 }
 

@@ -6,7 +6,7 @@
 
 #include "pthread.bpf.h"
 #include "pid.h"
-#include "stacks.h"
+//#include "stacks.h"
 #include "pystr.h"
 #include "pyoffsets.h"
 
@@ -71,14 +71,20 @@ typedef struct {
     // to get the actual line
 } py_symbol;
 
+#define FLAG_IS_MEM 1
+#define FLAG_IS_CPU 2
 
 typedef struct {
     uint8_t stack_status;
     uint8_t err;
-    uint8_t reserved2;
+    uint8_t flags;
     uint8_t reserved3;
     uint32_t pid;
     int64_t kern_stack;
+} py_event_header ;
+
+typedef struct {
+    py_event_header hdr;
     // instead of storing symbol name here directly, we add it to another
     // hashmap with Symbols and only store the ids here
     uint32_t stack_len;
@@ -145,9 +151,8 @@ struct {
 
 
 struct {
-    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-    __uint(key_size, sizeof(u32));
-    __uint(value_size, sizeof(u32));
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 1 << 24);
 } py_events SEC(".maps");
 
 static __always_inline int get_thread_state(
@@ -159,17 +164,19 @@ static __always_inline int get_thread_state(
 static __always_inline int submit_sample(
         void *ctx,
         py_sample_state_t *state) {
-    bpf_perf_event_output(ctx, &py_events, BPF_F_CURRENT_CPU, &state->event, sizeof(py_event));
+    if (bpf_ringbuf_output(&py_events, state, sizeof(*state), 0)){
+        bpf_dbg_printk("failed to submit sample\n");
+        return -1;
+    };
     return 0;
 }
 
 static __always_inline int submit_error_sample(
         void *ctx,
         py_sample_state_t *state, uint8_t err) {
-    state->event.stack_status = STACK_STATUS_ERROR;
-    state->event.err = err;
-    bpf_perf_event_output(ctx, &py_events, BPF_F_CURRENT_CPU, &state->event,
-                          offsetof(py_event, kern_stack) + sizeof(state->event.kern_stack));
+    state->event.hdr.stack_status = STACK_STATUS_ERROR;
+    state->event.hdr.err = err;
+    submit_sample(ctx, state);
     return -1;
 }
 
@@ -218,7 +225,7 @@ static __always_inline int get_top_frame(py_pid_data *pid_data, py_sample_state_
     return 0;
 }
 
-static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, pid_t pid, bool collect_kern_stack) {
+static __always_inline int pyperf_collect_impl(void *ctx, pid_t pid, bool collect_kern_stack, uint8_t flags) {
     py_pid_data *pid_data = bpf_map_lookup_elem(&py_pid_config, &pid);
     if (!pid_data) {
         return 0;
@@ -231,13 +238,13 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, 
     state->python_stack_prog_call_cnt = 0;
 
     py_event *event = &state->event;
-    event->pid = pid;
-    if (collect_kern_stack) {
-        event->kern_stack = bpf_get_stackid(ctx, &stacks, KERN_STACKID_FLAGS);
-    } else {
-        event->kern_stack = -1;
-    }
-
+    event->hdr.pid = pid;
+    event->hdr.flags = flags;
+//    if (collect_kern_stack) {
+//        event->hdr.kern_stack = bpf_get_stackid(ctx, &stacks, KERN_STACKID_FLAGS);
+//    } else {
+        event->hdr.kern_stack = -1;
+//    }
 
     // Read PyThreadState of this Thread from TLS
     void *thread_state;
@@ -246,7 +253,7 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data *ctx, 
     }
 
     // pre-initialize event struct in case any subprogram below fails
-    event->stack_status = STACK_STATUS_COMPLETE;
+    event->hdr.stack_status = STACK_STATUS_COMPLETE;
     event->stack_len = 0;
 
     if (thread_state != 0) {
@@ -267,7 +274,24 @@ int pyperf_collect(struct bpf_perf_event_data *ctx) {
     if (pid == 0) {
         return 0;
     }
-    return pyperf_collect_impl(ctx, (pid_t) pid, false); // todo allow configuring it
+    return pyperf_collect_impl(ctx, (pid_t) pid,
+                               /* collect_kern_stack */ false, // todo allow configuring it
+                               FLAG_IS_CPU
+    );
+}
+
+
+SEC("uprobe/collect_memory_sample")
+int uprobe_collect_memory_sample(struct pt_regs *ctx) {
+    u32 pid;
+    current_pid(&pid);
+    if (pid == 0) {
+        return 0;
+    }
+    return pyperf_collect_impl(ctx, (pid_t) pid,
+            /* collect_kern_stack */ false, // todo allow configuring it
+                               FLAG_IS_MEM
+    );
 }
 
 
@@ -535,12 +559,12 @@ int read_python_stack(struct bpf_perf_event_data *ctx) {
     }
 
     if (last_res == 0) {
-        sample->stack_status = STACK_STATUS_COMPLETE;
+        sample->hdr.stack_status = STACK_STATUS_COMPLETE;
     } else {
-        sample->stack_status = STACK_STATUS_TRUNCATED;
+        sample->hdr.stack_status = STACK_STATUS_TRUNCATED;
     }
 
-    if (sample->stack_status == STACK_STATUS_TRUNCATED &&
+    if (sample->hdr.stack_status == STACK_STATUS_TRUNCATED &&
         state->python_stack_prog_call_cnt < PYTHON_STACK_PROG_CNT) {
         // read next batch of frames
         bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);

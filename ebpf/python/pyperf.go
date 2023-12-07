@@ -4,11 +4,13 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/perf"
+	"github.com/cilium/ebpf/ringbuf"
+
+	//"github.com/cilium/ebpf/perf"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/pyroscope/ebpf/metrics"
@@ -17,7 +19,7 @@ import (
 )
 
 type Perf struct {
-	rd             *perf.Reader
+	rd             *ringbuf.Reader
 	logger         log.Logger
 	pidDataHashMap *ebpf.Map
 	symbolsHashMp  *ebpf.Map
@@ -29,10 +31,11 @@ type Perf struct {
 	pidCache    *lru.Cache[uint32, *PerfPyPidData]
 	prevSymbols map[uint32]*PerfPySymbol
 	wg          sync.WaitGroup
+	memProg     *ebpf.Program
 }
 
-func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *ebpf.Map, pidDataHasMap *ebpf.Map, symbolsHashMap *ebpf.Map) (*Perf, error) {
-	rd, err := perf.NewReader(perfEventMap, 4*os.Getpagesize())
+func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *ebpf.Map, pidDataHasMap *ebpf.Map, symbolsHashMap *ebpf.Map, memProg *ebpf.Program) (*Perf, error) {
+	rd, err := ringbuf.NewReader(perfEventMap)
 	if err != nil {
 		return nil, fmt.Errorf("perf new reader: %w", err)
 	}
@@ -49,6 +52,7 @@ func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *eb
 		symbolsHashMp:  symbolsHashMap,
 		pidCache:       pidCache,
 		metrics:        metrics,
+		memProg:        memProg,
 	}
 	res.wg.Add(1)
 	go func() {
@@ -86,10 +90,10 @@ func (s *Perf) loop() {
 			continue
 		}
 
-		if record.LostSamples != 0 {
-			s.metrics.LostSamples.Add(float64(record.LostSamples))
-			_ = level.Debug(s.logger).Log("msg", "[pyperf] perf event ring buffer full, dropped samples", "n", record.LostSamples)
-		}
+		//if record.LostSamples != 0 {
+		//	s.metrics.LostSamples.Add(float64(record.LostSamples))
+		//	_ = level.Debug(s.logger).Log("msg", "[pyperf] perf event ring buffer full, dropped samples", "n", record.LostSamples)
+		//}
 
 		if record.RawSample != nil {
 			event := new(PerfPyEvent)
@@ -212,12 +216,12 @@ func ReadPyEvent(raw []byte, event *PerfPyEvent) error {
 	if status == StackStatusError && len(raw) < 16 || status != 1 && len(raw) < 320 {
 		return fmt.Errorf("unexpected pyevent size %d", len(raw))
 	}
-	event.StackStatus = uint8(status)
-	event.Err = raw[1]
-	event.Reserved2 = raw[2]
-	event.Reserved3 = raw[3]
-	event.Pid = binary.LittleEndian.Uint32(raw[4:])
-	event.KernStack = int64(binary.LittleEndian.Uint64(raw[8:]))
+	event.Hdr.StackStatus = uint8(status)
+	event.Hdr.Err = raw[1]
+	event.Hdr.Flags = raw[2]
+	event.Hdr.Reserved3 = raw[3]
+	event.Hdr.Pid = binary.LittleEndian.Uint32(raw[4:])
+	event.Hdr.KernStack = int64(binary.LittleEndian.Uint64(raw[8:]))
 	if status == StackStatusError {
 		return nil
 	}

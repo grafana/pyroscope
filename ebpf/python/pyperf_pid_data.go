@@ -75,11 +75,14 @@ var (
 )
 
 type ProcData struct {
+	PID      int
 	ProcInfo *ProcInfo
 	// data passed to ebpf program
 	PerfPyPidData *PerfPyPidData
 	// addresses in VM of the process
 	PySymbols *PySymbols
+
+	Base *symtab.ProcMap
 }
 
 func GetProcData(l log.Logger, info *ProcInfo, pid uint32, flags Flags) (*ProcData, error) {
@@ -181,8 +184,10 @@ func GetProcData(l log.Logger, info *ProcInfo, pid uint32, flags Flags) (*ProcDa
 		PyTypeObjectTpName:            offsets.PyTypeObject_tp_name,
 	}
 	return &ProcData{
+		PID:           int(pid),
 		PerfPyPidData: data,
 		PySymbols:     symbols,
 		ProcInfo:      info,
+		Base:          base_,
 	}, nil
 }
