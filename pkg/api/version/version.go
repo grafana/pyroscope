@@ -33,6 +33,7 @@ var (
 	instanceTimeout                        = 1 * time.Minute
 	_                 memberlist.Mergeable = (*Versions)(nil)
 	_                 services.Service     = (*Service)(nil)
+	now                                    = time.Now
 )
 
 func GetCodec() codec.Codec {
@@ -63,7 +64,7 @@ func (v *Versions) Marshal() ([]byte, error) {
 
 // Merge merges two versions. This is used when CASing or merging versions from other nodes.
 // v is the local version and should be mutated to include the changes from incoming.
-// The returned value is the change to broadcast.
+// The function should only returned changed instances.
 func (v *Versions) Merge(incoming memberlist.Mergeable, localCAS bool) (memberlist.Mergeable, error) {
 	if incoming == nil {
 		return nil, nil
@@ -107,7 +108,7 @@ func (v *Versions) Merge(incoming memberlist.Mergeable, localCAS bool) (memberli
 		for k, current := range v.Instances {
 			if _, ok := other.Instances[k]; !ok && !current.Left {
 				current.Left = true
-				current.Timestamp = time.Now().UnixNano()
+				current.Timestamp = now().UnixNano()
 				updated = append(updated, k)
 			}
 		}
@@ -138,7 +139,7 @@ func (d *Versions) MergeContent() []string {
 func (v *Versions) RemoveTombstones(limit time.Time) (total, removed int) {
 	for n, inst := range v.Instances {
 		if inst.Left {
-			if limit.IsZero() || time.Unix(inst.Timestamp, 0).Before(limit) {
+			if limit.IsZero() || time.Unix(0, inst.Timestamp).Before(limit) {
 				// remove it
 				delete(v.Instances, n)
 				removed++
@@ -246,7 +247,7 @@ func (svc *Service) heartbeat(ctx context.Context) error {
 		}
 		current.Addr = svc.addr
 		current.ID = svc.id
-		current.Timestamp = time.Now().UnixNano()
+		current.Timestamp = now().UnixNano()
 		current.QuerierAPI = svc.version
 		// Now prune old instances.
 		for id, instance := range versions.Instances {
