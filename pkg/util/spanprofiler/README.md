@@ -21,11 +21,14 @@ You can wrap the global tracer using `spanprofiler.NewTracer`:
 ```go
 func main() {
     // Initialize your OpenTracing tracer
-    tracer := // Your opentracing tracer initialization
-    wrappedTracer := spanprofiler.NewTracer(tracer) // Wrap the global tracer
-
+    tracer := opentracing.GlobalTracer()
+    // Wrap it with the tracer-profiler 
+    wrappedTracer := spanprofiler.NewTracer(tracer)
     // Use the wrapped tracer in your application
     opentracing.SetGlobalTracer(wrappedTracer)
+
+	// Or, as an oneliner:
+	// opentracing.SetGlobalTracer(spanprofiler.NewTracer(opentracing.GlobalTracer()))
 
     // Your application logic here
 }
@@ -49,7 +52,7 @@ The `spanprofiler.StartSpanFromContext` function allows you to granularly contro
 
 func main() {
     // Start a span and enable profiling for it
-    span, ctx := spanprofiler.StartSpanFromContext(context.Background(), "YourSpanOperation", tracer)
+    span, ctx := spanprofiler.StartSpanFromContext(context.Background(), "YourOperationName", tracer)
     defer span.Finish() // Finish the span when done
 
     // Use the span in your application logic
@@ -63,7 +66,7 @@ seamless integration, reserving explicit span profiling only for cases where spa
 
 ## Implementation details
 
-When a new trace span is created, and is eligible for profiling, the tracer sets a `span_id` and `span_name` [pprof labels](https://github.com/google/pprof/blob/master/doc/README.md#tag-filtering)
+When a new trace span is created, and is eligible for profiling, the tracer sets `span_id` and `span_name` [pprof labels](https://github.com/google/pprof/blob/master/doc/README.md#tag-filtering)
 that point to the respective span. These labels are stored in the goroutine's local storage and inherited by any
 subsequent child goroutines.
 
@@ -79,8 +82,8 @@ This allows to find such spans in the trace view (in the screenshot) and fetch p
 It's important to note that the presence of this attribute does not guarantee profile availability; stack trace samples
 might not be collected if the CPU time utilized falls below the sample interval (10ms).
 
-It is crucial to understand that this module doesn't directly control the pprof profiler; its initiation is still
-necessary for profile collection. This initiation can be achieved through the `runtime/pprof` package, or using the
+It is crucial to understand that this module doesn't directly control the pprof profiler; its initialization is still
+necessary for profile collection. This initialization can be achieved through the `runtime/pprof` package, or using the
 [Pyroscope client](https://github.com/grafana/pyroscope-go).
 
 Limitations:
