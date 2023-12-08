@@ -35,9 +35,15 @@ This extension runs a relay server on the same network namespace as the Lambda f
 
 For more details, refer to the [Building Extensions for AWS Lambda blog post](https://aws.amazon.com/blogs/compute/building-extensions-for-aws-lambda-in-preview/).
 
-## Setting Up the Pyroscope Lambda Extension
+## Set up the Pyroscope Lambda extension
 
-### Step 1: Configure Your Lambda Function
+To set up the Pyroscope Lamnda extension, you need to: 
+
+1. Configure your Lamda function
+1. Set up your environment variables 
+1. Integrate the Pyroscope SDK
+
+### Configure your Lambda function
 
 Configure your Lambda function to use the extension. Find the latest release on our [releases page](https://github.com/grafana/pyroscope-lambda-extension/releases).
 
