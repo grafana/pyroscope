@@ -20,9 +20,8 @@ func NewAdmin(bucketClient objstore.Bucket, logger log.Logger) (*Admin, error) {
 	a := &Admin{
 		logger: logger,
 		handlers: &Handlers{
-			Context: context.Background(),
-			Logger:  logger,
-			Bucket:  bucketClient,
+			Logger: logger,
+			Bucket: bucketClient,
 		},
 	}
 	a.Service = services.NewBasicService(nil, a.running, nil)

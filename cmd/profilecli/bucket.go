@@ -41,7 +41,6 @@ type bucketWebTool struct {
 }
 
 func newBucketWebTool(params *bucketWebToolParams) *bucketWebTool {
-	ctx := context.Background()
 	var (
 		serverCfg = server.Config{
 			HTTPListenPort: params.httpListenPort,
@@ -67,9 +66,8 @@ func newBucketWebTool(params *bucketWebToolParams) *bucketWebTool {
 	}
 
 	handlers := operations.Handlers{
-		Context: ctx,
-		Logger:  logger,
-		Bucket:  b,
+		Logger: logger,
+		Bucket: b,
 	}
 
 	s.HTTP.PathPrefix("/static").Handler(http.FileServer(http.FS(staticFiles)))
