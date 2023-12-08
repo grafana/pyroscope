@@ -1062,17 +1062,17 @@ func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMe
 		return q.selectSpanProfileFromIngesters(ctx, req, plan)
 	}
 
-	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter, nil)
+	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter, plan)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
 
 	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
 
-	if !storeQueries.ingester.shouldQuery {
+	if plan == nil && !storeQueries.ingester.shouldQuery {
 		return q.selectSpanProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeSpanProfileRequest(req), plan)
 	}
-	if !storeQueries.storeGateway.shouldQuery {
+	if plan == nil && !storeQueries.storeGateway.shouldQuery {
 		return q.selectSpanProfileFromIngesters(ctx, storeQueries.ingester.MergeSpanProfileRequest(req), plan)
 	}
 

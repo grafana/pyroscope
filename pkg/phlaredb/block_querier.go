@@ -975,6 +975,7 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 			Type:          request.Type,
 			Start:         request.Start,
 			End:           request.End,
+			Hints:         request.Hints,
 		}, queriers)
 		if err != nil {
 			return err
@@ -1008,13 +1009,13 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 				return nil
 			}))
 		}
-	}
 
-	// Signals the end of the profile streaming by sending an empty response.
-	// This allows the client to not block other streaming ingesters.
-	sp.LogFields(otlog.String("msg", "signaling the end of the profile streaming"))
-	if err = stream.Send(&ingestv1.MergeSpanProfileResponse{}); err != nil {
-		return err
+		// Signals the end of the profile streaming by sending an empty response.
+		// This allows the client to not block other streaming ingesters.
+		sp.LogFields(otlog.String("msg", "signaling the end of the profile streaming"))
+		if err = stream.Send(&ingestv1.MergeSpanProfileResponse{}); err != nil {
+			return err
+		}
 	}
 
 	if err = g.Wait(); err != nil {
@@ -1032,11 +1033,9 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 		otlog.String("msg", "sending the final result to the client"),
 		otlog.Int("tree_bytes", len(treeBytes)),
 	)
-
-	sp.LogFields(otlog.String("msg", "sending the final result to the client"))
 	err = stream.Send(&ingestv1.MergeSpanProfileResponse{
 		Result: &ingestv1.MergeSpanProfileResult{
-			TreeBytes: buf.Bytes(),
+			TreeBytes: treeBytes,
 		},
 	})
 	if err != nil {
