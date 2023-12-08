@@ -13,15 +13,19 @@ The Pyroscope AWS Lambda Extension is a robust tool for profiling AWS Lambda fun
 
 ## Why Profile AWS Lambda Functions?
 
-AWS Lambda functions, while powerful and flexible, can lead to significant costs if not managed efficiently. One of the primary challenges with serverless architectures like AWS Lambda is that they can mask performance issues. Since Lambda functions are billed based on execution time and allocated memory, inefficiencies in code can lead to higher costs. Often, these costs accumulate unnoticed because of the following reasons:
+AWS Lambda functions, while powerful and flexible, can lead to significant costs if not managed efficiently.
+Serverless architectures, like AWS Lambda, can mask performance issues.
+Since Lambda functions are billed based on execution time and allocated memory, code inefficiencies can lead to higher costs. Often, these costs accumulate unnoticed because of the following reasons:
 
-1. **Granular Billing**: Lambda functions are billed in milliseconds, which can make small inefficiencies seem insignificant at first. However, when scaled to thousands or millions of invocations, these inefficiencies can lead to substantial costs.
+* **Granular billing**: Lambda functions are billed in milliseconds, which can make small inefficiencies seem insignificant at first. However, when scaled to thousands or millions of invocations, these inefficiencies can lead to substantial costs.
 
-2. **Complex Performance Profile**: Lambda functions may interact with various services and resources, making it challenging to pinpoint performance bottlenecks.
+* **Complex performance profile**: Lambda functions may interact with various services and resources, making it challenging to pinpoint performance bottlenecks.
 
-3. **Variable Load**: The serverless nature of AWS Lambda means that functions might handle variable loads at different times, making it hard to optimize for every scenario.
+* **Variable load**: The serverless nature of AWS Lambda means that functions might handle variable loads at different times, making it hard to optimize for every scenario.
 
-Profiling Lambda functions helps in identifying these hidden performance bottlenecks, enabling developers to optimize their code for both performance and cost. Effective profiling can reveal inefficient code paths, unnecessary memory usage, and areas where the execution time can be reduced. By addressing these issues, organizations can significantly reduce their AWS bill, improve application responsiveness, and ensure a more efficient use of resources.
+Profiling Lambda functions helps identify these hidden performance bottlenecks, enabling developers to optimize their code for both performance and cost.
+Effective profiling can reveal inefficient code paths, unnecessary memory usage, and areas where the execution time can be reduced.
+By addressing these issues, organizations can significantly reduce their AWS bill, improve application responsiveness, and ensure a more efficient use of resources.
 
 ## How the Pyroscope Lambda Extension Works
 
