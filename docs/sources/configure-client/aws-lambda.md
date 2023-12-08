@@ -41,7 +41,7 @@ For more details, refer to the [Building Extensions for AWS Lambda blog post](ht
 
 Configure your Lambda function to use the extension. Find the latest release on our [releases page](https://github.com/grafana/pyroscope-lambda-extension/releases).
 
-### Step 2: Environment Variable Setup
+### Set up the environment variables 
 
 Configure the extension with the following environment variables:
 
