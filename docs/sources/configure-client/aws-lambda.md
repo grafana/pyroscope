@@ -27,7 +27,7 @@ Profiling Lambda functions helps identify these hidden performance bottlenecks, 
 Effective profiling can reveal inefficient code paths, unnecessary memory usage, and areas where the execution time can be reduced.
 By addressing these issues, organizations can significantly reduce their AWS bill, improve application responsiveness, and ensure a more efficient use of resources.
 
-## How the Pyroscope Lambda Extension Works
+## Architecture
 
 This extension runs a relay server on the same network namespace as the Lambda function, ensuring minimal added latency.
 
