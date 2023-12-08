@@ -21,6 +21,9 @@ message InstanceVersion {
 
   // Querier Service API version
   uint64 QuerierAPI = 4;
+
+  // Tells if the instance is running or has left cluster.
+  bool left = 5;
 }
 
 // Versions is the top-level type used to model version for all instances, containing information for individual instances.

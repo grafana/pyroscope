@@ -157,7 +157,16 @@ func TestVersionsMultiple(t *testing.T) {
 	expectVersion(t, 2)
 }
 
+var nowTs = time.Now().UnixNano()
+
 func TestMerge(t *testing.T) {
+	now = func() time.Time {
+		return time.Unix(0, nowTs)
+	}
+	t.Cleanup(func() {
+		now = time.Now
+	})
+
 	for name, tc := range map[string]struct {
 		base     *Versions
 		incoming memberlist.Mergeable
@@ -200,7 +209,6 @@ func TestMerge(t *testing.T) {
 				createVersion(t, "2", 3),
 			),
 			expected: createVersions(t,
-				createVersion(t, "1", 1),
 				createVersion(t, "2", 3),
 			),
 		},
@@ -213,7 +221,6 @@ func TestMerge(t *testing.T) {
 				createVersion(t, "2", 2),
 			),
 			expected: createVersions(t,
-				createVersion(t, "1", 1),
 				createVersion(t, "2", 2),
 			),
 		},
@@ -226,7 +233,7 @@ func TestMerge(t *testing.T) {
 				createVersion(t, "1", 1),
 			),
 			expected: createVersions(t,
-				createVersion(t, "1", 1),
+				createLeftVersion(t, "2", nowTs),
 			),
 		},
 		"instance removed and added": {
@@ -240,7 +247,7 @@ func TestMerge(t *testing.T) {
 			),
 			expected: createVersions(t,
 				createVersion(t, "3", 3),
-				createVersion(t, "2", 2),
+				createLeftVersion(t, "1", nowTs),
 			),
 		},
 	} {
@@ -251,6 +258,15 @@ func TestMerge(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tc.expected, change)
 		})
+	}
+}
+
+func createLeftVersion(t *testing.T, id string, ts int64) *versionv1.InstanceVersion {
+	t.Helper()
+	return &versionv1.InstanceVersion{
+		ID:        id,
+		Timestamp: ts,
+		Left:      true,
 	}
 }
 
