@@ -57,7 +57,7 @@ Configure the extension with the following environment variables:
 | `PYROSCOPE_NUM_WORKERS`        | `5`                                     | Number of relay workers                      |
 | `PYROSCOPE_TENANT_ID`          | `""`                                    | Pyroscope tenant ID (for multi-tenancy)      |
 
-### Step 3: Integrate Pyroscope SDK
+### Integrate the Pyroscope SDK
 
 For a Golang Lambda function, integrate the Pyroscope SDK as follows:
 
