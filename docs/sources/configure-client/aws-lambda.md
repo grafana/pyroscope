@@ -77,9 +77,9 @@ func main() {
 
 Replace `simple.golang.lambda` with your application name. The `ServerAddress` must be `http://localhost:4040`.
 
-## Use Cases
+## Use cases
 
-Once set up, you can use the Pyroscope UI to analyze your Lambda function's data, facilitating performance optimizations. For more on this, visit our [Pyroscope AWS Lambda Extension blog post](http://pyroscope.io/blog/profile-aws-lambda-functions).
+Once set up, you can use the Pyroscope UI to analyze your Lambda function's data to facilitate performance optimizations. For more on this, visit our [Pyroscope AWS Lambda Extension blog post](http://pyroscope.io/blog/profile-aws-lambda-functions).
 
 ## Sending Data to Pyroscope
 
