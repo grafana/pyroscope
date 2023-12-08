@@ -33,6 +33,7 @@ func newDiskCleaner(logger log.Logger, evictor blockEvictor, policy retentionPol
 	dc := &diskCleaner{
 		logger:        logger,
 		policy:        policy,
+		config:        cfg,
 		blockManager:  newFSBlockManager(cfg.DataPath, evictor, newFS()),
 		volumeChecker: diskutil.NewVolumeChecker(policy.MinFreeDisk*1024*1024*1024, policy.MinDiskAvailablePercentage),
 		stop:          make(chan struct{}),
@@ -149,8 +150,13 @@ func (dc *diskCleaner) DeleteUploadedBlocks(ctx context.Context) int {
 			continue
 		}
 
+		expiryTs := time.Now().Add(-dc.config.BlockExpiry)
 		for _, block := range blocks {
 			if !block.Uploaded {
+				continue
+			}
+
+			if ulid.Time(block.ID.Time()).After(expiryTs) {
 				continue
 			}
 
@@ -222,33 +228,31 @@ func (dc *diskCleaner) EnforceHighDiskUtilization(ctx context.Context) (int, int
 	}
 
 	// Sort by uploaded, then age (oldest first).
-	sort.Slice(blocks, func(i, j int) bool {
-		switch {
-		case blocks[i].Uploaded == blocks[j].Uploaded:
-			return blocks[i].ID.Compare(blocks[j].ID) < 0
-		case blocks[i].Uploaded:
-			return !blocks[j].Uploaded
-		case blocks[j].Uploaded:
-			fallthrough
-		default:
-			return blocks[i].Uploaded
-		}
-	})
+	sort.Sort(blocksByUploadAndAge(blocks))
 
 	var prevVolumeStats *diskutil.VolumeStats
 	filesDeleted := 0
 	for _, block := range blocks {
 		// Delete a block.
 		err = dc.blockManager.DeleteBlock(ctx, block)
-		if err != nil {
+		switch {
+		case os.IsNotExist(err):
+			level.Warn(dc.logger).Log(
+				"msg", "failed to delete uploaded block, does not exist",
+				"err", err,
+				"path", block.Path,
+			)
+			continue
+		case err != nil:
 			level.Error(dc.logger).Log(
 				"msg", "failed run high disk cleanup, could not delete block",
 				"path", block.Path,
 				"err", err,
 			)
 			break
+		default:
+			filesDeleted++
 		}
-		filesDeleted++
 
 		// Recheck volume stats.
 		prevVolumeStats = volumeStats
@@ -269,6 +273,25 @@ func (dc *diskCleaner) EnforceHighDiskUtilization(ctx context.Context) (int, int
 	}
 
 	return filesDeleted, int(volumeStats.BytesAvailable - prevVolumeStats.BytesAvailable), true
+}
+
+// blocksByUploadAndAge implements sorting tenantBlock by uploaded then by age
+// in ascending order.
+type blocksByUploadAndAge []*tenantBlock
+
+func (b blocksByUploadAndAge) Len() int      { return len(b) }
+func (b blocksByUploadAndAge) Swap(i, j int) { b[i], b[j] = b[j], b[i] }
+func (b blocksByUploadAndAge) Less(i, j int) bool {
+	switch {
+	case b[i].Uploaded == b[j].Uploaded:
+		return b[i].ID.Compare(b[j].ID) < 0
+	case b[i].Uploaded:
+		return !b[j].Uploaded
+	case b[j].Uploaded:
+		fallthrough
+	default:
+		return b[i].Uploaded
+	}
 }
 
 // blockEvictor unloads blocks from tenant instance.
@@ -296,6 +319,10 @@ type tenantBlock struct {
 	TenantID string
 	Path     string
 	Uploaded bool
+}
+
+func (t *tenantBlock) String() string {
+	return t.ID.String()
 }
 
 type fsBlockManager interface {

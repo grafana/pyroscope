@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/oklog/ulid"
@@ -56,7 +59,54 @@ func TestDiskCleaner_DeleteUploadedBlocks(t *testing.T) {
 
 		want := 1
 		got := dc.DeleteUploadedBlocks(context.Background())
+		require.Equal(t, want, got)
+	})
 
+	t.Run("delete_blocks_past_expiry", func(t *testing.T) {
+		// Two blocks are created and marked as "uploaded", but only one is past
+		// the expiry window. Only the expired one should be deleted.
+
+		const anonTenantID = "anonymous"
+		entropy := rand.New(rand.NewSource(0))
+		expiry := 10 * time.Minute
+
+		nowMS := ulid.Timestamp(time.Now())
+		nowID := ulid.MustNew(nowMS, entropy)
+
+		expiredMS := ulid.Timestamp(time.Now().Add(-(2 * expiry))) // Twice as long ago as the expiry.
+		expiredID := ulid.MustNew(expiredMS, entropy)
+
+		e := &mockBlockEvictor{}
+
+		bm := &mockBlockManager{}
+		bm.On("GetTenantIDs", mock.Anything).
+			Return([]string{anonTenantID}, nil)
+		bm.On("GetBlocksForTenant", mock.Anything, anonTenantID).
+			Return([]*tenantBlock{
+				{
+					ID:       nowID,
+					TenantID: anonTenantID,
+					Path:     fmt.Sprintf("./data/%s/%s", anonTenantID, nowID.String()),
+					Uploaded: true,
+				},
+				{
+					ID:       expiredID,
+					TenantID: anonTenantID,
+					Path:     fmt.Sprintf("./data/%s/%s", anonTenantID, expiredID.String()),
+					Uploaded: true,
+				},
+			}, nil)
+		bm.On("DeleteBlock", mock.Anything, mock.Anything).
+			Return(nil)
+
+		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
+			DataPath:    "./data",
+			BlockExpiry: 10 * time.Minute,
+		})
+		dc.blockManager = bm
+
+		want := 1
+		got := dc.DeleteUploadedBlocks(context.Background())
 		require.Equal(t, want, got)
 	})
 
@@ -74,7 +124,6 @@ func TestDiskCleaner_DeleteUploadedBlocks(t *testing.T) {
 
 		want := 0
 		got := dc.DeleteUploadedBlocks(context.Background())
-
 		require.Equal(t, want, got)
 	})
 
@@ -96,7 +145,6 @@ func TestDiskCleaner_DeleteUploadedBlocks(t *testing.T) {
 
 		want := 0
 		got := dc.DeleteUploadedBlocks(context.Background())
-
 		require.Equal(t, want, got)
 	})
 }
@@ -168,12 +216,19 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 
 		vc := &mockVolumeChecker{}
 		vc.On("HasHighDiskUtilization", mock.Anything).
-			Twice().
 			Return(&diskutil.VolumeStats{
 				HighDiskUtilization: true,
 				BytesAvailable:      100,
 				BytesTotal:          200,
-			}, nil)
+			}, nil).
+			Once()
+		vc.On("HasHighDiskUtilization", mock.Anything).
+			Return(&diskutil.VolumeStats{
+				HighDiskUtilization: false,
+				BytesAvailable:      150,
+				BytesTotal:          200,
+			}, nil).
+			Once()
 
 		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
 			DataPath: "./data",
@@ -273,6 +328,61 @@ func TestFSBlockManager(t *testing.T) {
 			require.NoError(t, err)
 		}
 	})
+}
+
+func TestSortBlocks(t *testing.T) {
+	createAnonymousBlock := func(t *testing.T, blockID string, uploaded bool) *tenantBlock {
+		t.Helper()
+
+		return &tenantBlock{
+			ID:       ulid.MustParse(blockID),
+			TenantID: "anonymous",
+			Path:     fmt.Sprintf("/data/anonymous/local/%s", blockID),
+			Uploaded: uploaded,
+		}
+	}
+
+	tests := []struct {
+		Name   string
+		Blocks []*tenantBlock
+		Want   []*tenantBlock
+	}{
+		{
+			Name: "uploaded_and_non_uploaded",
+			Blocks: []*tenantBlock{
+				createAnonymousBlock(t, "01HH5BVHA006AFVGQT5ZYC0GEK", true),  // unix ms: 1702061000000
+				createAnonymousBlock(t, "01HH5CT1W0ZW908PVKS1Q4ZYAZ", false), // unix ms: 1702062000000
+				createAnonymousBlock(t, "01HH5DRJE0YSHABVQ85AYZ8JHD", true),  // unix ms: 1702063000000
+				createAnonymousBlock(t, "01HH5EQ3001DTZP60DNX4AF7Q0", false), // unix ms: 1702064000000
+				createAnonymousBlock(t, "01HH5FNKJ0P46KJHJHGM7X98BR", true),  // unix ms: 1702065000000
+			},
+			Want: []*tenantBlock{
+				createAnonymousBlock(t, "01HH5BVHA006AFVGQT5ZYC0GEK", true),  // unix ms: 1702061000000
+				createAnonymousBlock(t, "01HH5DRJE0YSHABVQ85AYZ8JHD", true),  // unix ms: 1702063000000
+				createAnonymousBlock(t, "01HH5FNKJ0P46KJHJHGM7X98BR", true),  // unix ms: 1702065000000
+				createAnonymousBlock(t, "01HH5CT1W0ZW908PVKS1Q4ZYAZ", false), // unix ms: 1702062000000
+				createAnonymousBlock(t, "01HH5EQ3001DTZP60DNX4AF7Q0", false), // unix ms: 1702064000000
+			},
+		},
+		{
+			Name: "uploaded_and_non_uploaded_at_same_timestamp",
+			Blocks: []*tenantBlock{
+				createAnonymousBlock(t, "01HH5BVHA006AFVGQT5ZYC0GEK", false), // unix ms: 1702061000000
+				createAnonymousBlock(t, "01HH5BVHA0ZW908PVKS1Q4ZYAZ", true),  // unix ms: 1702061000000
+			},
+			Want: []*tenantBlock{
+				createAnonymousBlock(t, "01HH5BVHA0ZW908PVKS1Q4ZYAZ", true),  // unix ms: 1702061000000
+				createAnonymousBlock(t, "01HH5BVHA006AFVGQT5ZYC0GEK", false), // unix ms: 1702061000000
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			sort.Sort(blocksByUploadAndAge(tt.Blocks))
+			require.Equal(t, tt.Want, tt.Blocks)
+		})
+	}
 }
 
 type mockFS struct {

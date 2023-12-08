@@ -123,6 +123,11 @@ pyroscopedb:
   # CLI flag: -pyroscopedb.retention-policy-min-disk-available-percentage
   [min_disk_available_percentage: <float> | default = 0.05]
 
+  # How long a block that has been uploaded to bucket storage should remain on
+  # disk
+  # CLI flag: -pyroscopedb.retention-policy-block-expiry
+  [block_expiry: <duration> | default = 10m]
+
   # How often to enforce disk retention
   # CLI flag: -pyroscopedb.retention-policy-enforcement-interval
   [enforcement_interval: <duration> | default = 5m]
