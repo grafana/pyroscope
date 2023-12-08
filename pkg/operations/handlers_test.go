@@ -47,9 +47,8 @@ func TestHandlers_CreateBlockDetailsHandler(t *testing.T) {
 	}))
 
 	handlers := Handlers{
-		Bucket:  bkt,
-		Logger:  logger,
-		Context: ctx,
+		Bucket: bkt,
+		Logger: logger,
 	}
 
 	m := mux.NewRouter()
@@ -89,9 +88,8 @@ func TestHandlers_CreateBlocksHandler(t *testing.T) {
 	}))
 
 	handlers := Handlers{
-		Bucket:  bkt,
-		Logger:  logger,
-		Context: ctx,
+		Bucket: bkt,
+		Logger: logger,
 	}
 
 	m := mux.NewRouter()
@@ -126,9 +124,8 @@ func TestHandlers_CreateIndexHandler(t *testing.T) {
 	}))
 
 	handlers := Handlers{
-		Bucket:  bkt,
-		Logger:  logger,
-		Context: ctx,
+		Bucket: bkt,
+		Logger: logger,
 	}
 
 	h := handlers.CreateIndexHandler()
