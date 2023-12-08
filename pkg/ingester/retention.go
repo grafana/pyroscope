@@ -230,7 +230,7 @@ func (dc *diskCleaner) EnforceHighDiskUtilization(ctx context.Context) (int, int
 	// Sort by uploaded, then age (oldest first).
 	sort.Sort(blocksByUploadAndAge(blocks))
 
-	var prevVolumeStats *diskutil.VolumeStats
+	prevVolumeStats := &diskutil.VolumeStats{}
 	filesDeleted := 0
 	for _, block := range blocks {
 		// Delete a block.
@@ -242,14 +242,14 @@ func (dc *diskCleaner) EnforceHighDiskUtilization(ctx context.Context) (int, int
 				"err", err,
 				"path", block.Path,
 			)
-			continue
+			return filesDeleted, int(volumeStats.BytesAvailable - prevVolumeStats.BytesAvailable), true
 		case err != nil:
 			level.Error(dc.logger).Log(
 				"msg", "failed run high disk cleanup, could not delete block",
 				"path", block.Path,
 				"err", err,
 			)
-			break
+			return filesDeleted, int(volumeStats.BytesAvailable - prevVolumeStats.BytesAvailable), true
 		default:
 			filesDeleted++
 		}
