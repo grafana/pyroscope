@@ -11,7 +11,7 @@ weight: 100
 
 The Pyroscope AWS Lambda Extension is a robust tool for profiling AWS Lambda functions, ensuring minimal latency impact. This profiling is essential for optimizing your functions.
 
-## Why Profile AWS Lambda Functions?
+## Why profile AWS Lambda functions?
 
 AWS Lambda functions, while powerful and flexible, can lead to significant costs if not managed efficiently.
 Serverless architectures, like AWS Lambda, can mask performance issues.
