@@ -33,6 +33,7 @@ var (
 	instanceTimeout                        = 1 * time.Minute
 	_                 memberlist.Mergeable = (*Versions)(nil)
 	_                 services.Service     = (*Service)(nil)
+	now                                    = time.Now
 )
 
 func GetCodec() codec.Codec {
@@ -63,7 +64,7 @@ func (v *Versions) Marshal() ([]byte, error) {
 
 // Merge merges two versions. This is used when CASing or merging versions from other nodes.
 // v is the local version and should be mutated to include the changes from incoming.
-// The returned value is the change to broadcast, in our case they are similar.
+// The function should only returned changed instances.
 func (v *Versions) Merge(incoming memberlist.Mergeable, localCAS bool) (memberlist.Mergeable, error) {
 	if incoming == nil {
 		return nil, nil
@@ -87,39 +88,41 @@ func (v *Versions) Merge(incoming memberlist.Mergeable, localCAS bool) (memberli
 	if v.Instances == nil {
 		v.Instances = make(map[string]*versionv1.InstanceVersion)
 	}
-	change := false
-	// Delete all the instances that are not in the other.
-	missing := []string{}
-	for k := range v.Instances {
-		if _, ok := other.Instances[k]; !ok {
-			missing = append(missing, k)
-		}
-	}
-	for _, k := range missing {
-		change = true
-		delete(v.Instances, k)
-	}
+	var updated []string
 
 	// Copy over all the instances with newer timestamps.
 	for k, new := range other.Instances {
 		current, ok := v.Instances[k]
-		if !ok {
+		if !ok || new.Timestamp > current.Timestamp {
 			v.Instances[k] = new.CloneVT()
-			change = true
-			continue
-		}
-		if current.EqualVT(new) {
-			continue
-		}
-		if new.Timestamp > current.Timestamp {
+			updated = append(updated, k)
+		} else if new.Timestamp == current.Timestamp && !current.Left && new.Left {
 			v.Instances[k] = new.CloneVT()
-			change = true
+			updated = append(updated, k)
+		}
+
+	}
+
+	if localCAS {
+		// Mark left all the instances that are not in the other.
+		for k, current := range v.Instances {
+			if _, ok := other.Instances[k]; !ok && !current.Left {
+				current.Left = true
+				current.Timestamp = now().UnixNano()
+				updated = append(updated, k)
+			}
 		}
 	}
-	if !change {
+	// No updated members, no need to broadcast.
+	if len(updated) == 0 {
 		return nil, nil
 	}
-	return v, nil
+	// Return the changes to broadcast.
+	changes := newVersions().(*Versions)
+	for _, k := range updated {
+		changes.Instances[k] = v.Instances[k].CloneVT()
+	}
+	return changes, nil
 }
 
 // MergeContent describes content of this Mergeable.
@@ -133,14 +136,25 @@ func (d *Versions) MergeContent() []string {
 }
 
 // RemoveTombstones is not required for version keys.
-func (c *Versions) RemoveTombstones(limit time.Time) (total, removed int) {
-	return 0, 0
+func (v *Versions) RemoveTombstones(limit time.Time) (total, removed int) {
+	for n, inst := range v.Instances {
+		if inst.Left {
+			if limit.IsZero() || time.Unix(0, inst.Timestamp).Before(limit) {
+				// remove it
+				delete(v.Instances, n)
+				removed++
+			} else {
+				total++
+			}
+		}
+	}
+	return
 }
 
 // Implements memberlist.Mergeable.
-func (c *Versions) Clone() memberlist.Mergeable {
+func (v *Versions) Clone() memberlist.Mergeable {
 	return &Versions{
-		Versions: c.CloneVT(),
+		Versions: v.CloneVT(),
 	}
 }
 
@@ -233,7 +247,7 @@ func (svc *Service) heartbeat(ctx context.Context) error {
 		}
 		current.Addr = svc.addr
 		current.ID = svc.id
-		current.Timestamp = time.Now().UnixNano()
+		current.Timestamp = now().UnixNano()
 		current.QuerierAPI = svc.version
 		// Now prune old instances.
 		for id, instance := range versions.Instances {

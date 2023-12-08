@@ -1031,17 +1031,24 @@
         },
         "start": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "Milliseconds since epoch."
         },
         "end": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "Milliseconds since epoch."
         },
         "spanSelector": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "List of span identifiers."
+        },
+        "hints": {
+          "$ref": "#/definitions/v1Hints",
+          "title": "Optional: Hints for querying"
         }
       }
     },

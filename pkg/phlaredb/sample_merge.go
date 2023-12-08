@@ -101,7 +101,7 @@ func mergeByStacktraces[T interface{ StacktracePartition() uint64 }](ctx context
 	return profiles.Err()
 }
 
-func mergeBySpans(ctx context.Context, profileSource Source, rows iter.Iterator[Profile], r *symdb.Resolver, spanSelector phlaremodel.SpanSelector) (err error) {
+func mergeBySpans[T interface{ StacktracePartition() uint64 }](ctx context.Context, profileSource Source, rows iter.Iterator[T], r *symdb.Resolver, spanSelector phlaremodel.SpanSelector) (err error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "mergeBySpans")
 	defer sp.Finish()
 	var columns v1.SampleColumns

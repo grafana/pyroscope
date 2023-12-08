@@ -128,7 +128,6 @@ func (q *Querier) selectTreeFromIngesters(ctx context.Context, req *querierv1.Se
 					Hints:         &ingestv1.Hints{Block: hints},
 				},
 				MaxNodes: req.MaxNodes,
-				// TODO(kolesnikovae): Max stacks.
 			})
 		}))
 	}
@@ -309,7 +308,7 @@ func (q *Querier) seriesFromIngesters(ctx context.Context, req *ingesterv1.Serie
 	return responses, nil
 }
 
-func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.Tree, error) {
+func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest, plan map[string]*ingestv1.BlockHints) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeSpanProfile Ingesters")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
@@ -323,16 +322,28 @@ func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *queri
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeSpanProfile, error) {
-		return ic.MergeSpanProfile(ctx), nil
-	})
+	var responses []ResponseFromReplica[clientpool.BidiClientMergeSpanProfile]
+	if plan != nil {
+		responses, err = forAllPlannedIngesters(ctx, q.ingesterQuerier, plan, func(ctx context.Context, ic IngesterQueryClient, hints *ingestv1.Hints) (clientpool.BidiClientMergeSpanProfile, error) {
+			return ic.MergeSpanProfile(ctx), nil
+		})
+	} else {
+		responses, err = forAllIngesters(ctx, q.ingesterQuerier, func(ctx context.Context, ic IngesterQueryClient) (clientpool.BidiClientMergeSpanProfile, error) {
+			return ic.MergeSpanProfile(ctx), nil
+		})
+	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 	// send the first initial request to all ingesters.
 	g, gCtx := errgroup.WithContext(ctx)
-	for _, r := range responses {
-		r := r
+	for idx := range responses {
+		r := responses[idx]
+		hints, ok := plan[r.addr]
+		if !ok && plan != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		}
+
 		g.Go(util.RecoverPanic(func() error {
 			return r.response.Send(&ingestv1.MergeSpanProfileRequest{
 				Request: &ingestv1.SelectSpanProfileRequest{
@@ -341,9 +352,9 @@ func (q *Querier) selectSpanProfileFromIngesters(ctx context.Context, req *queri
 					End:           req.End,
 					Type:          profileType,
 					SpanSelector:  req.SpanSelector,
+					Hints:         &ingestv1.Hints{Block: hints},
 				},
 				MaxNodes: req.MaxNodes,
-				// TODO(kolesnikovae): Max stacks.
 			})
 		}))
 	}
