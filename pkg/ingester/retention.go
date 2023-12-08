@@ -155,16 +155,22 @@ func (dc *diskCleaner) DeleteUploadedBlocks(ctx context.Context) int {
 			}
 
 			err = dc.blockManager.DeleteBlock(ctx, block)
-			if err != nil {
+			switch {
+			case os.IsNotExist(err):
+				level.Warn(dc.logger).Log(
+					"msg", "failed to delete uploaded block, does not exist",
+					"err", err,
+					"path", block.Path,
+				)
+			case err != nil:
 				level.Error(dc.logger).Log(
 					"msg", "failed to delete uploaded block",
 					"err", err,
 					"path", block.Path,
 				)
-				continue
+			default:
+				deleted++
 			}
-
-			deleted++
 		}
 	}
 	return deleted
@@ -327,7 +333,6 @@ func (bm *realFSBlockManager) GetBlocksForTenant(ctx context.Context, tenantID s
 		return nil, err
 	}
 
-	// TODO(bryan) manually read shipper file because of abstracted FS.
 	shipperPath := filepath.Join(localDirPath, shipper.MetaFilename)
 	bytes, err := fs.ReadFile(bm.FS, shipperPath)
 	if err != nil {
@@ -372,8 +377,6 @@ func (bm *realFSBlockManager) GetBlocksForTenant(ctx context.Context, tenantID s
 }
 
 func (bm *realFSBlockManager) DeleteBlock(ctx context.Context, block *tenantBlock) error {
-	// TODO(bryan) Don't evict block if it's not marked as uploaded?
-
 	return bm.Evictor.evictBlock(block.TenantID, block.ID, func() error {
 		err := bm.FS.RemoveAll(block.Path)
 		switch {
