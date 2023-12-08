@@ -29,7 +29,7 @@ const (
 
 // newDiskCleaner creates a service that will intermittently clean blocks from
 // disk.
-func newDiskCleaner(logger log.Logger, evictor blockEvicter, policy retentionPolicy, cfg phlaredb.Config) *diskCleaner {
+func newDiskCleaner(logger log.Logger, evictor blockEvictor, policy retentionPolicy, cfg phlaredb.Config) *diskCleaner {
 	dc := &diskCleaner{
 		logger:        logger,
 		policy:        policy,
@@ -43,7 +43,7 @@ func newDiskCleaner(logger log.Logger, evictor blockEvicter, policy retentionPol
 }
 
 // newFSBlockManager creates a component that can manage blocks on a file system.
-func newFSBlockManager(root string, evictor blockEvicter, fs fileSystem) fsBlockManager {
+func newFSBlockManager(root string, evictor blockEvictor, fs fileSystem) fsBlockManager {
 	return &realFSBlockManager{
 		Root:    root,
 		Evictor: evictor,
@@ -271,8 +271,8 @@ func (dc *diskCleaner) EnforceHighDiskUtilization(ctx context.Context) (int, int
 	return filesDeleted, int(volumeStats.BytesAvailable - prevVolumeStats.BytesAvailable), true
 }
 
-// blockEvicter unloads blocks from tenant instance.
-type blockEvicter interface {
+// blockEvictor unloads blocks from tenant instance.
+type blockEvictor interface {
 	// evictBlock evicts the block by its ID from the memory and
 	// invokes fn callback, regardless of if the tenant is found.
 	// The call is thread-safe: tenant can't be added or removed
@@ -306,7 +306,7 @@ type fsBlockManager interface {
 
 type realFSBlockManager struct {
 	Root    string
-	Evictor blockEvicter
+	Evictor blockEvictor
 	FS      fileSystem
 }
 
