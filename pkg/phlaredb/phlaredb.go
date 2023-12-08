@@ -35,7 +35,7 @@ const (
 	DefaultMinFreeDisk                        = 10
 	DefaultMinDiskAvailablePercentage         = 0.05
 	DefaultRetentionPolicyEnforcementInterval = 5 * time.Minute
-	DefaultBlockExpiry                        = DefaultRetentionPolicyEnforcementInterval * 2
+	DefaultBlockExpiry                        = 15 * time.Minute * 2 // Twice the bucketstore.SyncInterval default interval
 )
 
 type Config struct {
