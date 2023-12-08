@@ -32,6 +32,17 @@ spec:
             {{- end }}
             port:
               number: {{ $.Values.pyroscope.service.port }}
+        path: /
+        pathType: Prefix
+      - backend:
+          service:
+            {{- if gt (len $.Values.pyroscope.components) 1}}
+            name: {{ include "pyroscope.fullname" $ }}-query-frontend
+            {{- else }}
+            name: {{ include "pyroscope.fullname" $ }}
+            {{- end }}
+            port:
+              number: {{ $.Values.pyroscope.service.port }}
         path: /querier.v1.QuerierService/
         pathType: Prefix
       - backend:

@@ -540,26 +540,27 @@ type Profile interface {
 }
 
 type Querier interface {
+	// BlockID returns the block ID of the querier, when it is representing a single block.
+	BlockID() string
 	Bounds() (model.Time, model.Time)
+	Open(ctx context.Context) error
+	Sort([]Profile) []Profile
 
-	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
 	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error)
-	SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest) (*phlaremodel.Tree, error)
 	MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spans phlaremodel.SpanSelector) (*phlaremodel.Tree, error)
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
-	SelectMergeByLabels(ctx context.Context, params *ingestv1.SelectProfilesRequest, by ...string) ([]*typesv1.Series, error)
 	MergePprof(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64) (*profilev1.Profile, error)
-	SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (*profilev1.Profile, error)
 	Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error)
+
+	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
+	SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest) (*phlaremodel.Tree, error)
+	SelectMergeByLabels(ctx context.Context, params *ingestv1.SelectProfilesRequest, by ...string) ([]*typesv1.Series, error)
+	SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.Tree, error)
+	SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64) (*profilev1.Profile, error)
+
 	ProfileTypes(context.Context, *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error)
 	LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error)
 	LabelNames(ctx context.Context, req *connect.Request[typesv1.LabelNamesRequest]) (*connect.Response[typesv1.LabelNamesResponse], error)
-	Open(ctx context.Context) error
-	// Sorts profiles for retrieval.
-	Sort([]Profile) []Profile
-
-	// BlockID returns the block ID of the querier, when it is representing a single block.
-	BlockID() string
 }
 
 type TimeBounded interface {
@@ -921,6 +922,7 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 		otlog.String("end", model.Time(request.End).Time().String()),
 		otlog.String("selector", request.LabelSelector),
 		otlog.String("profile_type_id", request.Type.ID),
+		otlog.Object("hints", request.Hints),
 	)
 
 	spanSelector, err := phlaremodel.NewSpanSelector(request.SpanSelector)
@@ -928,58 +930,92 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 		return err
 	}
 
-	queriers, err := blockGetter(ctx, model.Time(request.Start), model.Time(request.End), nil)
+	queriers, err := blockGetter(ctx, model.Time(request.Start), model.Time(request.End), request.Hints)
 	if err != nil {
 		return err
 	}
 
-	iters, err := SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
-		LabelSelector: request.LabelSelector,
-		Type:          request.Type,
-		Start:         request.Start,
-		End:           request.End,
-	}, queriers)
-	if err != nil {
-		return err
-	}
-
-	// send batches of profiles to client and filter via bidi stream.
-	selectedProfiles, err := filterProfiles[
-		BidiServerMerge[*ingestv1.MergeSpanProfileResponse, *ingestv1.MergeSpanProfileRequest],
-		*ingestv1.MergeSpanProfileResponse,
-		*ingestv1.MergeSpanProfileRequest](ctx, iters, defaultBatchSize, stream)
-	if err != nil {
-		return err
+	deduplicationNeeded := true
+	if request.Hints != nil && request.Hints.Block != nil {
+		deduplicationNeeded = request.Hints.Block.Deduplication
 	}
 
 	var m sync.Mutex
 	t := new(phlaremodel.Tree)
 	g, ctx := errgroup.WithContext(ctx)
-	for i, querier := range queriers {
-		querier := querier
-		i := i
-		if len(selectedProfiles[i]) == 0 {
-			continue
-		}
-		// Sort profiles for better read locality.
-		// Merge async the result so we can continue streaming profiles.
-		g.Go(util.RecoverPanic(func() error {
-			merge, err := querier.MergeBySpans(ctx, iter.NewSliceIterator(querier.Sort(selectedProfiles[i])), spanSelector)
-			if err != nil {
-				return err
-			}
-			m.Lock()
-			t.Merge(merge)
-			m.Unlock()
-			return nil
-		}))
-	}
 
-	// Signals the end of the profile streaming by sending an empty response.
-	// This allows the client to not block other streaming ingesters.
-	sp.LogFields(otlog.String("msg", "signaling the end of the profile streaming"))
-	if err = stream.Send(&ingestv1.MergeSpanProfileResponse{}); err != nil {
-		return err
+	// depending on if new need deduplication or not there are two different code paths.
+	if !deduplicationNeeded {
+		// signal the end of the profile streaming by sending an empty response.
+		sp.LogFields(otlog.String("msg", "no profile streaming as no deduplication needed"))
+		if err = stream.Send(&ingestv1.MergeSpanProfileResponse{}); err != nil {
+			return err
+		}
+
+		// in this path we can just merge the profiles from each block and send the result to the client.
+		for _, querier := range queriers {
+			querier := querier
+			g.Go(util.RecoverPanic(func() error {
+				// TODO(simonswine): Split profiles per row group and run the MergeByStacktraces in parallel.
+				merge, err := querier.SelectMergeBySpans(ctx, request)
+				if err != nil {
+					return err
+				}
+
+				m.Lock()
+				t.Merge(merge)
+				m.Unlock()
+				return nil
+			}))
+		}
+	} else {
+		// in this path we have to go thorugh every profile and deduplicate them.
+		iters, err := SelectMatchingProfiles(ctx, &ingestv1.SelectProfilesRequest{
+			LabelSelector: request.LabelSelector,
+			Type:          request.Type,
+			Start:         request.Start,
+			End:           request.End,
+			Hints:         request.Hints,
+		}, queriers)
+		if err != nil {
+			return err
+		}
+
+		// send batches of profiles to client and filter via bidi stream.
+		selectedProfiles, err := filterProfiles[
+			BidiServerMerge[*ingestv1.MergeSpanProfileResponse, *ingestv1.MergeSpanProfileRequest],
+			*ingestv1.MergeSpanProfileResponse,
+			*ingestv1.MergeSpanProfileRequest](ctx, iters, defaultBatchSize, stream)
+		if err != nil {
+			return err
+		}
+
+		for i, querier := range queriers {
+			querier := querier
+			i := i
+			if len(selectedProfiles[i]) == 0 {
+				continue
+			}
+			// Sort profiles for better read locality.
+			// Merge async the result so we can continue streaming profiles.
+			g.Go(util.RecoverPanic(func() error {
+				merge, err := querier.MergeBySpans(ctx, iter.NewSliceIterator(querier.Sort(selectedProfiles[i])), spanSelector)
+				if err != nil {
+					return err
+				}
+				m.Lock()
+				t.Merge(merge)
+				m.Unlock()
+				return nil
+			}))
+		}
+
+		// Signals the end of the profile streaming by sending an empty response.
+		// This allows the client to not block other streaming ingesters.
+		sp.LogFields(otlog.String("msg", "signaling the end of the profile streaming"))
+		if err = stream.Send(&ingestv1.MergeSpanProfileResponse{}); err != nil {
+			return err
+		}
 	}
 
 	if err = g.Wait(); err != nil {
@@ -992,10 +1028,14 @@ func MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.M
 	}
 
 	// sends the final result to the client.
-	sp.LogFields(otlog.String("msg", "sending the final result to the client"))
+	treeBytes := buf.Bytes()
+	sp.LogFields(
+		otlog.String("msg", "sending the final result to the client"),
+		otlog.Int("tree_bytes", len(treeBytes)),
+	)
 	err = stream.Send(&ingestv1.MergeSpanProfileResponse{
 		Result: &ingestv1.MergeSpanProfileResult{
-			TreeBytes: buf.Bytes(),
+			TreeBytes: treeBytes,
 		},
 	})
 	if err != nil {
@@ -1715,6 +1755,89 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 		return nil, err
 	}
 	if err := mergeByStacktraces[rowProfile](ctx, b.profiles.file, iter.NewSliceIterator(rows), r); err != nil {
+		return nil, err
+	}
+	return r.Tree()
+}
+
+func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.Tree, error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeBySpans - Block")
+	defer sp.Finish()
+	sp.SetTag("block ULID", b.meta.ULID.String())
+
+	if err := b.Open(ctx); err != nil {
+		return nil, err
+	}
+	matchers, err := parser.ParseMetricSelector(params.LabelSelector)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
+	}
+	if params.Type == nil {
+		return nil, errors.New("no profileType given")
+	}
+	spans, err := phlaremodel.NewSpanSelector(params.SpanSelector)
+	if err != nil {
+		return nil, err
+	}
+	matchers = append(matchers, phlaremodel.SelectorFromProfileType(params.Type))
+
+	postings, err := PostingsForMatchers(b.index, nil, matchers...)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		chks       = make([]index.ChunkMeta, 1)
+		lblsPerRef = make(map[int64]struct{})
+	)
+
+	// get all relevant labels/fingerprints
+	for postings.Next() {
+		_, err := b.index.Series(postings.At(), nil, &chks)
+		if err != nil {
+			return nil, err
+		}
+		lblsPerRef[int64(chks[0].SeriesIndex)] = struct{}{}
+	}
+	r := symdb.NewResolver(ctx, b.symbols)
+	defer r.Release()
+
+	it := query.NewBinaryJoinIterator(
+		0,
+		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
+		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), ""),
+	)
+
+	if b.meta.Version >= 2 {
+		it = query.NewBinaryJoinIterator(0,
+			it,
+			b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
+		)
+	}
+	buf := make([][]parquet.Value, 1)
+
+	// todo: we should stream profile to merge instead of loading all in memory.
+	// This is a temporary solution for now since there's a memory corruption happening.
+	rows, err := iter.Slice[rowProfile](
+		&RowsIterator[rowProfile]{
+			rows: it,
+			at: func(ir *query.IteratorResult) rowProfile {
+				buf = ir.Columns(buf, "StacktracePartition")
+				if len(buf[0]) == 0 {
+					return rowProfile{
+						rowNum: ir.RowNumber[0],
+					}
+				}
+				return rowProfile{
+					rowNum:    ir.RowNumber[0],
+					partition: buf[0][0].Uint64(),
+				}
+			},
+		})
+	if err != nil {
+		return nil, err
+	}
+	if err := mergeBySpans[rowProfile](ctx, b.profiles.file, iter.NewSliceIterator(rows), r, spans); err != nil {
 		return nil, err
 	}
 	return r.Tree()
