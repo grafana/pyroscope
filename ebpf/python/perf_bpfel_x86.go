@@ -131,9 +131,8 @@ type PerfSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type PerfProgramSpecs struct {
-	PyperfCollect             *ebpf.ProgramSpec `ebpf:"pyperf_collect"`
-	ReadPythonStack           *ebpf.ProgramSpec `ebpf:"read_python_stack"`
-	UprobeCollectMemorySample *ebpf.ProgramSpec `ebpf:"uprobe_collect_memory_sample"`
+	PyperfCollect   *ebpf.ProgramSpec `ebpf:"pyperf_collect"`
+	ReadPythonStack *ebpf.ProgramSpec `ebpf:"read_python_stack"`
 }
 
 // PerfMapSpecs contains maps before they are loaded into the kernel.
@@ -190,16 +189,14 @@ func (m *PerfMaps) Close() error {
 //
 // It can be passed to LoadPerfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type PerfPrograms struct {
-	PyperfCollect             *ebpf.Program `ebpf:"pyperf_collect"`
-	ReadPythonStack           *ebpf.Program `ebpf:"read_python_stack"`
-	UprobeCollectMemorySample *ebpf.Program `ebpf:"uprobe_collect_memory_sample"`
+	PyperfCollect   *ebpf.Program `ebpf:"pyperf_collect"`
+	ReadPythonStack *ebpf.Program `ebpf:"read_python_stack"`
 }
 
 func (p *PerfPrograms) Close() error {
 	return _PerfClose(
 		p.PyperfCollect,
 		p.ReadPythonStack,
-		p.UprobeCollectMemorySample,
 	)
 }
 
