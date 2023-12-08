@@ -87,11 +87,10 @@ type ProcData struct {
 
 func GetProcData(l log.Logger, info *ProcInfo, pid uint32, flags Flags) (*ProcData, error) {
 
-	var pythonMeat []*symtab.ProcMap
-	if info.LibPythonMaps == nil {
-		pythonMeat = info.PythonMaps
-	} else {
-		pythonMeat = info.LibPythonMaps
+	pythonMeat := getPythonMaps(info)
+	readable := findReadableMap(pythonMeat)
+	if readable == nil {
+		return nil, fmt.Errorf("no readable python map entry %+v", pythonMeat)
 	}
 	base_ := pythonMeat[0]
 	pythonPath := fmt.Sprintf("/proc/%d/root%s", pid, base_.Pathname)
@@ -182,6 +181,7 @@ func GetProcData(l log.Logger, info *ProcInfo, pid uint32, flags Flags) (*ProcDa
 		PyVarObjectObSize:             offsets.PyVarObject_ob_size,
 		PyObjectObType:                offsets.PyObject_ob_type,
 		PyTypeObjectTpName:            offsets.PyTypeObject_tp_name,
+		AddressZeroSymbol:             readable.StartAddr,
 	}
 	return &ProcData{
 		PID:           int(pid),
@@ -190,4 +190,23 @@ func GetProcData(l log.Logger, info *ProcInfo, pid uint32, flags Flags) (*ProcDa
 		ProcInfo:      info,
 		Base:          base_,
 	}, nil
+}
+
+// return a map entry that is readable and not writable
+func findReadableMap(pythonMeat []*symtab.ProcMap) *symtab.ProcMap {
+	var readable *symtab.ProcMap
+	for _, m := range pythonMeat {
+		if m.Perms.Read && !m.Perms.Write {
+			readable = m
+			break
+		}
+	}
+	return readable
+}
+
+func getPythonMaps(info *ProcInfo) []*symtab.ProcMap {
+	if info.LibPythonMaps == nil {
+		return info.PythonMaps
+	}
+	return info.LibPythonMaps
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"unsafe"
 )
 
@@ -20,6 +21,36 @@ type ProcMapPermissions struct {
 	Shared bool
 	// mapping is marked as [P]rivate (copy on write)
 	Private bool
+}
+
+func (p *ProcMapPermissions) String() string {
+	var res string
+	if p.Read {
+		res += "r"
+	} else {
+		res += "-"
+	}
+	if p.Write {
+		res += "w"
+	} else {
+		res += "-"
+	}
+	if p.Execute {
+		res += "x"
+	} else {
+		res += "-"
+	}
+	if p.Shared {
+		res += "s"
+	} else {
+		res += "-"
+	}
+	if p.Private {
+		res += "p"
+	} else {
+		res += "-"
+	}
+	return res
 }
 
 // ProcMap contains the process memory-mappings of the process
@@ -39,6 +70,22 @@ type ProcMap struct {
 	Inode uint64
 	// The file or psuedofile (or empty==anonymous)
 	Pathname string
+}
+
+func (p *ProcMap) String() string {
+	return fmt.Sprintf("%x-%x %s %x %x:%x %s",
+		p.StartAddr, p.EndAddr, p.Perms.String(), p.Offset, p.Dev, p.Inode, p.Pathname)
+}
+
+type ProcMaps []*ProcMap
+
+func (p ProcMaps) String() string {
+	var sb strings.Builder
+	for _, m := range p {
+		sb.WriteString(m.String())
+		sb.WriteString("\n")
+	}
+	return sb.String()
 }
 
 type file struct {

@@ -238,14 +238,13 @@ func (s *session) loadPyPerf() (*python.Perf, error) {
 		s.pyperfBpf.PerfMaps.PyEvents,
 		s.pyperfBpf.PerfMaps.PyPidConfig,
 		s.pyperfBpf.PerfMaps.PySymbols,
-		//s.pyperfBpf.PerfPrograms.UprobeCollectMemorySample,
-		nil,
+		s.pyperfBpf.PerfPrograms.CollectMem,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("pyperf create %w", err)
 	}
 
-	err = s.bpf.ProfileMaps.Progs.Update(uint32(0), s.pyperfBpf.PerfPrograms.PyperfCollect, ebpf.UpdateAny)
+	err = s.bpf.ProfileMaps.Progs.Update(uint32(0), s.pyperfBpf.PerfPrograms.CollectPerf, ebpf.UpdateAny)
 	if err != nil {
 		return nil, fmt.Errorf("pyperf link %w", err)
 	}

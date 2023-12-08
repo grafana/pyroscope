@@ -22,8 +22,9 @@ enum {
     PY_ERROR_CLASS_NAME = 10,
     PY_ERROR_FILE_NAME = 11,
     PY_ERROR_NAME = 12,
-
-
+    PY_ERROR_FRAME_OWNER = 13,
+    PY_ERROR_FRAME_OWNER_INVALID = 14,
+    PY_ERROR_ZERO_SYMBOL = 15,
 
 };
 */
@@ -52,18 +53,21 @@ func (s StackStatus) String() string {
 type PyError uint8
 
 var (
-	PyErrorGeneric         PyError = 1
-	PyErrorThreadState     PyError = 2
-	PyErrorThreadStateNull PyError = 3
-	PyErrorTopFrame        PyError = 4
-	PyErrorFrameCode       PyError = 5
-	PyErrorFramePrev       PyError = 6
-	PyErrorSymbol          PyError = 7
-	PyErrorTlsbase         PyError = 8
-	PyErrorFirstArg        PyError = 9
-	PyErrorClassName       PyError = 10
-	PyErrorFileName        PyError = 11
-	PyErrorName            PyError = 12
+	PyErrorGeneric           PyError = 1
+	PyErrorThreadState       PyError = 2
+	PyErrorThreadStateNull   PyError = 3
+	PyErrorTopFrame          PyError = 4
+	PyErrorFrameCode         PyError = 5
+	PyErrorFramePrev         PyError = 6
+	PyErrorSymbol            PyError = 7
+	PyErrorTlsbase           PyError = 8
+	PyErrorFirstArg          PyError = 9
+	PyErrorClassName         PyError = 10
+	PyErrorFileName          PyError = 11
+	PyErrorName              PyError = 12
+	PyErrorFrameOwner        PyError = 13
+	PyErrorFrameOwnerInvalid PyError = 14
+	PyErrorZeroSymbol        PyError = 15
 )
 
 func (e PyError) String() string {
@@ -92,6 +96,12 @@ func (e PyError) String() string {
 		return "PyErrorFileName"
 	case PyErrorName:
 		return "PyErrorName"
+	case PyErrorFrameOwner:
+		return "PyErrorFrameOwner"
+	case PyErrorFrameOwnerInvalid:
+		return "PyErrorFrameOwnerInvalid"
+	case PyErrorZeroSymbol:
+		return "PyErrorZeroSymbol"
 	default:
 		return fmt.Sprintf("PyError(%d)", e)
 	}

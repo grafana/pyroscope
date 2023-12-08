@@ -41,6 +41,9 @@ typedef struct {
     int16_t PyASCIIObject_size; // sizeof(PyASCIIObject)
     int16_t PyCompactUnicodeObject_size; // sizeof(PyCompactUnicodeObject)
 
+    // a pointer to a readonly memory, used instead of memset(event, 0, sizeof(event))
+    // does not have to be zero, just readonly
+    uint64_t AddressZeroSymbol;
 } py_offset_config;
 
 #endif //PYROEBPF_PYOFFSETS_H

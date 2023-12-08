@@ -50,11 +50,12 @@ type PerfPyOffsetConfig struct {
 	PyInterpreterFrameOwner       int16
 	PyASCIIObjectSize             int16
 	PyCompactUnicodeObjectSize    int16
+	_                             [6]byte
+	AddressZeroSymbol             uint64
 }
 
 type PerfPyPidData struct {
 	Offsets PerfPyOffsetConfig
-	_       [2]byte
 	Version struct {
 		Major uint32
 		Minor uint32
@@ -68,8 +69,8 @@ type PerfPyPidData struct {
 type PerfPySampleStateT struct {
 	SymbolCounter          int64
 	Offsets                PerfPyOffsetConfig
-	_                      [2]byte
 	CurCpu                 uint32
+	_                      [4]byte
 	FramePtr               uint64
 	PythonStackProgCallCnt int64
 	Event                  PerfPyEvent
@@ -131,8 +132,10 @@ type PerfSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type PerfProgramSpecs struct {
-	PyperfCollect   *ebpf.ProgramSpec `ebpf:"pyperf_collect"`
-	ReadPythonStack *ebpf.ProgramSpec `ebpf:"read_python_stack"`
+	CollectMem          *ebpf.ProgramSpec `ebpf:"collect__mem"`
+	CollectPerf         *ebpf.ProgramSpec `ebpf:"collect__perf"`
+	ReadPythonStackMem  *ebpf.ProgramSpec `ebpf:"read_python_stack__mem"`
+	ReadPythonStackPerf *ebpf.ProgramSpec `ebpf:"read_python_stack__perf"`
 }
 
 // PerfMapSpecs contains maps before they are loaded into the kernel.
@@ -141,7 +144,8 @@ type PerfProgramSpecs struct {
 type PerfMapSpecs struct {
 	PyEvents    *ebpf.MapSpec `ebpf:"py_events"`
 	PyPidConfig *ebpf.MapSpec `ebpf:"py_pid_config"`
-	PyProgs     *ebpf.MapSpec `ebpf:"py_progs"`
+	PyProgsMem  *ebpf.MapSpec `ebpf:"py_progs__mem"`
+	PyProgsPerf *ebpf.MapSpec `ebpf:"py_progs__perf"`
 	PyStateHeap *ebpf.MapSpec `ebpf:"py_state_heap"`
 	PySymbols   *ebpf.MapSpec `ebpf:"py_symbols"`
 	Stacks      *ebpf.MapSpec `ebpf:"stacks"`
@@ -168,7 +172,8 @@ func (o *PerfObjects) Close() error {
 type PerfMaps struct {
 	PyEvents    *ebpf.Map `ebpf:"py_events"`
 	PyPidConfig *ebpf.Map `ebpf:"py_pid_config"`
-	PyProgs     *ebpf.Map `ebpf:"py_progs"`
+	PyProgsMem  *ebpf.Map `ebpf:"py_progs__mem"`
+	PyProgsPerf *ebpf.Map `ebpf:"py_progs__perf"`
 	PyStateHeap *ebpf.Map `ebpf:"py_state_heap"`
 	PySymbols   *ebpf.Map `ebpf:"py_symbols"`
 	Stacks      *ebpf.Map `ebpf:"stacks"`
@@ -178,7 +183,8 @@ func (m *PerfMaps) Close() error {
 	return _PerfClose(
 		m.PyEvents,
 		m.PyPidConfig,
-		m.PyProgs,
+		m.PyProgsMem,
+		m.PyProgsPerf,
 		m.PyStateHeap,
 		m.PySymbols,
 		m.Stacks,
@@ -189,14 +195,18 @@ func (m *PerfMaps) Close() error {
 //
 // It can be passed to LoadPerfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type PerfPrograms struct {
-	PyperfCollect   *ebpf.Program `ebpf:"pyperf_collect"`
-	ReadPythonStack *ebpf.Program `ebpf:"read_python_stack"`
+	CollectMem          *ebpf.Program `ebpf:"collect__mem"`
+	CollectPerf         *ebpf.Program `ebpf:"collect__perf"`
+	ReadPythonStackMem  *ebpf.Program `ebpf:"read_python_stack__mem"`
+	ReadPythonStackPerf *ebpf.Program `ebpf:"read_python_stack__perf"`
 }
 
 func (p *PerfPrograms) Close() error {
 	return _PerfClose(
-		p.PyperfCollect,
-		p.ReadPythonStack,
+		p.CollectMem,
+		p.CollectPerf,
+		p.ReadPythonStackMem,
+		p.ReadPythonStackPerf,
 	)
 }
 

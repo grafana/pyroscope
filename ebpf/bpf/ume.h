@@ -2,6 +2,11 @@
 #define UME_H
 
 
+
+#define CONCAT(a, b)   CONCAT_INNER(a, b)
+#define CONCAT_INNER(a, b) a ## b
+
+
 #if defined(PYROSCOPE_UME)
 
 #define pyro_bpf_core_read(dst, sz, src)					    \

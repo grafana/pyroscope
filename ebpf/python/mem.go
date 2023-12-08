@@ -31,6 +31,9 @@ type PyMemAllocatorEx struct {
 	free    uint64
 }
 
+func (p *PyMemAllocatorEx) String() string {
+	return fmt.Sprintf("ctx %x malloc %x calloc %x realloc %x free %x", p.ctx, p.malloc, p.calloc, p.realloc, p.free)
+}
 func (p *PyMemAllocatorEx) slice() []byte {
 	return (*[unsafe.Sizeof(*p)]byte)(unsafe.Pointer(p))[:]
 }
@@ -104,23 +107,27 @@ func (s *Perf) InitMemSampling(data *ProcData) error {
 	if !pointsTo(uint64(ebpf_assist_trap), pi.PyMemSampler) {
 		return fmt.Errorf("ebpf_assist_trap points to unknown memory %x %+v", ebpf_assist_trap, pi.PyMemSampler)
 	}
+	var offsetAssistTrap = uint64(ebpf_assist_trap) - pi.PyMemSampler[0].StartAddr
 	// hardcoded, TODO find it dynamically
 	var offsetPyObjectALlocator = int64(0x7f7c5a070280 - 0x7f7c59c00000)
 	var addrPyObjectALlocator = int64(data.Base.StartAddr) + offsetPyObjectALlocator
 	var addrAssistDelegateAllocator = samplerAddr(ebpf_assist_delegate_allocator)
 	var addrAssistSamplingAllocator = samplerAddr(ebpf_assist_sampling_allocator)
 
+	s.logger.Log("op", "pymem sampling", "offsetAssistTrap", fmt.Sprintf("0x%x", offsetAssistTrap))
 	s.logger.Log("op", "pymem sampling", "base", fmt.Sprintf("0x%x", data.Base.StartAddr))
 	s.logger.Log("op", "pymem sampling", "alloc", fmt.Sprintf("0x%x", addrPyObjectALlocator))
 	s.logger.Log("op", "pymem sampling", "assist delegate allocator ", fmt.Sprintf("0x%x", addrAssistDelegateAllocator))
 	s.logger.Log("op", "pymem sampling", "trap  ", fmt.Sprintf("0x%x 0x%x", ebpf_assist_trap_ptr, ebpf_assist_trap))
+	s.logger.Log("op", "pymem sampling", "pymemsampler  ", symtab.ProcMaps(pi.PyMemSampler).String())
 
 	allocator := new(PyMemAllocatorEx)
 
 	if err = readVM(vm, allocator, addrPyObjectALlocator); err != nil {
 		return fmt.Errorf("read current allocator %w", err)
 	}
-	if allocatorPointsTo(allocator, pi.PythonMaps) {
+	s.logger.Log("op", "pymem sampling", "allocator", allocator.String())
+	if allocatorPointsTo(allocator, getPythonMaps(pi)) {
 		//TODO  stop app while writing
 		if err = writeVM(vm, allocator, addrAssistDelegateAllocator); err != nil {
 			return fmt.Errorf("write current allocator to pysampler %w", err)
@@ -134,18 +141,19 @@ func (s *Perf) InitMemSampling(data *ProcData) error {
 	} else if allocatorPointsTo(allocator, pi.PyMemSampler) {
 		// profiler restart
 	} else {
-		return fmt.Errorf("allocator points to unknown memory %+v", allocator)
+		return fmt.Errorf("allocator points to unknown memory %s expected %s", allocator.String(),
+			symtab.ProcMaps(pi.PyMemSampler).String())
 	}
 	//kp, err := link.Kprobe(it.kprobe, it.prog, nil)
 	exe, err := link.OpenExecutable(pi.PyMemSampler[0].Pathname)
 	if err != nil {
-		return fmt.Errorf("opening %q executable file: %w")
+		return fmt.Errorf("opening %q executable file: %w", pi.PyMemSampler[0].Pathname, err)
 	}
 	if s.memProg == nil {
 		return fmt.Errorf("no mem prog")
 	}
 	up, err := exe.Uprobe("", s.memProg, &link.UprobeOptions{
-		Address: uint64(ebpf_assist_trap),
+		Address: offsetAssistTrap,
 		PID:     data.PID,
 	})
 	if err != nil {

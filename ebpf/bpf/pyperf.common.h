@@ -43,8 +43,7 @@ enum {
     PY_ERROR_NAME = 12,
     PY_ERROR_FRAME_OWNER = 13,
     PY_ERROR_FRAME_OWNER_INVALID = 14,
-
-
+    PY_ERROR_ZERO_SYMBOL = 15,
 };
 
 
@@ -138,7 +137,6 @@ struct {
     __uint(max_entries, 10240);
 } py_pid_config SEC(".maps");
 
-#define PYTHON_PROG_IDX_READ_PYTHON_STACK 0
 
 
 
@@ -179,11 +177,7 @@ static __always_inline py_sample_state_t *get_state() {
     return bpf_map_lookup_elem(&py_state_heap, &zero);
 }
 
-#define GET_STATE()                     \
-  py_sample_state_t* state = get_state();  \
-  if (!state) {                         \
-    return -1; /* should never happen */ \
-  }
+
 
 static __always_inline int get_top_frame(py_pid_data *pid_data, py_sample_state_t *state, void *thread_state) {
     if (pid_data->offsets.PyThreadState_frame == -1) {
@@ -340,7 +334,11 @@ static __always_inline int get_names(
     // (ab)use this behavior to clear the memory. It requires the size of py_symbol
     // to be different from struct bpf_perf_event_value, which we check at
     // compilation time using the FAIL_COMPILATION_IF macro.
-    bpf_perf_prog_read_value(ctx, (struct bpf_perf_event_value *) symbol, sizeof(py_symbol));
+//    bpf_perf_prog_read_value(ctx, (struct bpf_perf_event_value *) symbol, sizeof(py_symbol));
+    if (bpf_probe_read_user(
+            symbol, sizeof(py_symbol), (void *)offsets->AddressZeroSymbol)) {
+        return -PY_ERROR_ZERO_SYMBOL;
+    }
 
     // Read class name from $frame->f_localsplus[0]->ob_type->tp_name.
     if (first_self || first_cls) {
