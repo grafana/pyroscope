@@ -54,7 +54,6 @@ Configure the extension with the following environment variables:
 | `PYROSCOPE_REMOTE_ADDRESS`     | `https://profiles-prod-001.grafana.net` | Destination for relayed Pyroscope data       |
 | `PYROSCOPE_BASIC_AUTH_USER`    | `""`                                    | HTTP Basic authentication user               |
 | `PYROSCOPE_BASIC_AUTH_PASSWORD`| `""`                                    | HTTP Basic authentication password           |
-| `PYROSCOPE_AUTH_TOKEN`         | `""`                                    | Authorization key (token authentication)     |
 | `PYROSCOPE_SELF_PROFILING`     | `false`                                 | Whether to profile the extension itself      |
 | `PYROSCOPE_LOG_LEVEL`          | `info`                                  | Log level (`error`, `info`, `debug`, `trace`)|
 | `PYROSCOPE_TIMEOUT`            | `10s`                                   | HTTP client timeout (in Go duration format)  |
