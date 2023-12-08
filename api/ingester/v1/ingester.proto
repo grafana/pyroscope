@@ -99,9 +99,14 @@ message MergeProfilesStacktracesResponse {
 message SelectSpanProfileRequest {
   string label_selector = 1;
   types.v1.ProfileType type = 2;
+  // Milliseconds since epoch.
   int64 start = 3;
+  // Milliseconds since epoch.
   int64 end = 4;
+  // List of span identifiers.
   repeated string span_selector = 5;
+  // Optional: Hints for querying
+  optional Hints hints = 6;
 }
 
 message MergeSpanProfileRequest {
