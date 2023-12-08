@@ -84,7 +84,7 @@ func newCanaryExporterMetrics(reg prometheus.Registerer) *canaryExporterMetrics 
 	return &canaryExporterMetrics{
 		success: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
 			Name: "probe_success",
-			Help: "Duration of http request by phase, summed over all redirects",
+			Help: "Displays whether or not the probe was a success",
 		}, []string{"name"}),
 		duration: promauto.With(reg).NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "probe_http_duration_seconds",
