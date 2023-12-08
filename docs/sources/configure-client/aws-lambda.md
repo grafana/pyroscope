@@ -81,7 +81,7 @@ Replace `simple.golang.lambda` with your application name. The `ServerAddress` m
 
 Once set up, you can use the Pyroscope UI to analyze your Lambda function's data to facilitate performance optimizations. For more on this, visit our [Pyroscope AWS Lambda Extension blog post](http://pyroscope.io/blog/profile-aws-lambda-functions).
 
-## Sending Data to Pyroscope
+## Send data to Pyroscope
 
 To configure the extension for data transmission:
 
