@@ -12,6 +12,9 @@ import (
 // any Span found within `ctx` as a ChildOfRef. If no such parent could be
 // found, StartSpanFromContext creates a root (parentless) Span.
 //
+// The call sets `operationName` as `span_name` pprof label, and the new span
+// identifier as `span_id` pprof label, if the trace is sampled.
+//
 // The second return value is a context.Context object built around the
 // returned Span.
 //
@@ -30,6 +33,9 @@ func StartSpanFromContext(ctx context.Context, operationName string, opts ...ope
 // using  a span found within the context as a ChildOfRef. If that doesn't exist
 // it creates a root span. It also returns a context.Context object built
 // around the returned span.
+//
+// The call sets `operationName` as `span_name` pprof label, and the new span
+// identifier as `span_id` pprof label, if the trace is sampled.
 //
 // It's behavior is identical to StartSpanFromContext except that it takes an explicit
 // tracer as opposed to using the global tracer.
@@ -52,14 +58,20 @@ func wrapJaegerSpanWithGoroutineLabels(
 	// storage and are always copied to child goroutines. This way, stack
 	// trace samples collected during execution of child spans will be taken
 	// into account at the root.
-	var labels []string
+	var ctx context.Context
 	if spanID != "" {
-		labels = []string{spanNameLabelName, operationName, spanIDLabelName, spanID}
+		ctx = pprof.WithLabels(parentCtx, pprof.Labels(
+			spanNameLabelName, operationName,
+			spanIDLabelName, spanID))
 	} else {
 		// Even if the trace has not been sampled, we still need to keep track
 		// of samples that belong to the span (all spans with the given name).
-		labels = []string{spanNameLabelName, operationName}
+		ctx = pprof.WithLabels(parentCtx, pprof.Labels(
+			spanNameLabelName, operationName))
 	}
+	// Goroutine labels should be set as early as possible,
+	// in order to capture the overhead of the function call.
+	pprof.SetGoroutineLabels(ctx)
 	// We create a span wrapper to ensure we remove the newly attached pprof
 	// labels when span finishes. The need of this wrapper is questioned:
 	// as we do not have the original context, we could leave the goroutine
@@ -67,11 +79,9 @@ func wrapJaegerSpanWithGoroutineLabels(
 	// lifetime, so no significant side effects should take place.
 	w := spanWrapper{
 		parentPprofCtx:  parentCtx,
-		currentPprofCtx: pprof.WithLabels(parentCtx, pprof.Labels(labels...)),
-		Span:            span,
+		currentPprofCtx: ctx,
 	}
-	pprof.SetGoroutineLabels(w.currentPprofCtx)
-	opentracing.Tag{Key: profileIDTagKey, Value: spanID}.Set(span)
+	w.Span = span.SetTag(profileIDTagKey, spanID)
 	return &w
 }
 

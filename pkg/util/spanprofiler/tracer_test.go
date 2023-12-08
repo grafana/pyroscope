@@ -17,63 +17,63 @@ func TestTracer_pprof_labels_propagation(t *testing.T) {
 	defer func() { require.NoError(t, tt.Close()) }()
 
 	t.Run("root span name and ID are propagated as pprof labels", func(t *testing.T) {
-		spanR, _ := opentracing.StartSpanFromContext(context.Background(), "RootSpan")
-		defer spanR.Finish()
-		pprofLabels := spanPprofLabels(spanR)
+		rootSpan, _ := opentracing.StartSpanFromContext(context.Background(), "RootSpan")
+		defer rootSpan.Finish()
+		pprofLabels := spanPprofLabels(rootSpan)
 		// Label / tag names should be specified explicitly.
 		require.Equal(t, pprofLabels["span_name"], "RootSpan")
 		_, err := jaeger.SpanIDFromString(pprofLabels["span_id"])
 		require.NoError(t, err)
 		// Make sure the root span has "pyroscope.profile.id" attribute,
 		// and it matches the corresponding pprof label.
-		require.Equal(t, pprofLabels["span_id"], spanTags(spanR)["pyroscope.profile.id"])
+		require.Equal(t, pprofLabels["span_id"], spanTags(rootSpan)["pyroscope.profile.id"])
 	})
 
 	t.Run("pprof labels are propagated to child spans", func(t *testing.T) {
-		spanR, ctx := opentracing.StartSpanFromContext(context.Background(), "RootSpan")
-		defer spanR.Finish()
-		// Nested child span has the same labels, but
-		spanA, _ := opentracing.StartSpanFromContext(ctx, "SpanA")
-		defer spanA.Finish()
+		rootSpan, ctx := opentracing.StartSpanFromContext(context.Background(), "RootSpan")
+		defer rootSpan.Finish()
+		childSpan, _ := opentracing.StartSpanFromContext(ctx, "ChildSpan")
+		defer childSpan.Finish()
 		// Goroutine labels are inherited from the parent,
 		// we do not set them repeatedly for the child spans.
-		require.Empty(t, spanPprofLabels(spanA))
+		require.Empty(t, spanPprofLabels(childSpan))
 		// Only the root span is annotated with the profile ID tag.
-		require.Nil(t, spanTags(spanA)["pyroscope.profile.id"])
+		require.Nil(t, spanTags(childSpan)["pyroscope.profile.id"])
 	})
 
 	t.Run("pprof labels are not propagated to child spans after parent is finished", func(t *testing.T) {
-		spanR, ctx := opentracing.StartSpanFromContext(context.Background(), "RootSpan")
-		rootLabels := spanPprofLabels(spanR)
-		// Finalize the span, which removes the labels from the goroutine's
-		// storage. Note that we can't access them (Go runtime does not provide
-		// public methods) but we rely on SetGoroutineLabels implementation:
+		rootSpan, ctx := opentracing.StartSpanFromContext(context.Background(), "RootSpan")
+		rootLabels := spanPprofLabels(rootSpan)
+		require.NotEmpty(t, rootLabels)
+		// This removes the labels from the goroutine's storage.
+		// Note that we can't access them (Go runtime does not provide public
+		// methods) but we rely on SetGoroutineLabels implementation:
 		// tracer alters currentPprofCtx, so that it actually points to the
 		// parentPprofCtx – the state prior StartSpanFromContext call.
-		spanR.Finish()
-		spanA, _ := opentracing.StartSpanFromContext(ctx, "SpanA")
-		defer spanA.Finish()
-		childLabels := spanPprofLabels(spanA)
-		require.NotEqual(t, rootLabels, childLabels)
+		rootSpan.Finish()
+		childSpan, _ := opentracing.StartSpanFromContext(ctx, "ChildSpan")
+		defer childSpan.Finish()
+		childLabels := spanPprofLabels(childSpan)
+		require.Empty(t, childLabels)
 	})
 
-	t.Run("pprof labels are not propagated to child spans if those are spawn in a separate goroutine hierarchy", func(t *testing.T) {
+	t.Run("pprof labels are not propagated to child spans if they are created in a separate goroutine hierarchy", func(t *testing.T) {
 		c := make(chan opentracing.SpanContext)
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
 			// Normally, we assume that pprof labels are propagated to child
 			// goroutines, and we do not have to set pprof labels for each nested
-			// span repeatedly. However, if the child span is created in e.g.,
-			// sibling goroutine, no pprof labels will be attached.
-			// The exact relation (child of / follows from) does not matter.
-			span := opentracing.StartSpan("Detached", opentracing.ChildOf(<-c))
+			// span repeatedly. However, if the child span is created in a sibling
+			// goroutine, no pprof labels will be attached.
+			// The exact span relation (child of / follows from) does not matter.
+			span := opentracing.StartSpan("ChildSpan", opentracing.ChildOf(<-c))
 			require.Empty(t, spanPprofLabels(span))
 			span.Finish()
 		}()
-		spanR, _ := opentracing.StartSpanFromContext(context.Background(), "RootSpan")
-		defer spanR.Finish()
-		c <- spanR.Context()
+		rootSpan, _ := opentracing.StartSpanFromContext(context.Background(), "RootSpan")
+		defer rootSpan.Finish()
+		c <- rootSpan.Context()
 		<-done
 	})
 }
