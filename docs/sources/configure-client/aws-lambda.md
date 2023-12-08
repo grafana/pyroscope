@@ -5,7 +5,7 @@ description: "Profiling AWS Lambda functions with Pyroscope"
 weight: 100
 ---
 
-# AWS Lambda Profiling Extension
+# AWS Lambda profiling extension
 
 ## Introduction to Pyroscope Lambda Extension
 
