@@ -208,6 +208,7 @@ func (s *Perf) RemoveDeadPID(pid uint32) {
 }
 
 func ReadPyEvent(raw []byte, event *PerfPyEvent) error {
+
 	if len(raw) < 1 {
 		return fmt.Errorf("unexpected pyevent size %d", len(raw))
 	}

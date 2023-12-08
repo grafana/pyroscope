@@ -156,7 +156,7 @@ static __always_inline int get_thread_state(
 
 static __always_inline int submit_sample(
         py_sample_state_t *state) {
-    if (bpf_ringbuf_output(&py_events, state, sizeof(*state), 0)) {
+    if (bpf_ringbuf_output(&py_events, &state->event, sizeof(state->event), 0)) {
         bpf_dbg_printk("failed to submit sample\n");
         return -1;
     };

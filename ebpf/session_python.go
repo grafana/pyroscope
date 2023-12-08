@@ -223,9 +223,9 @@ func (s *session) loadPyPerf() (*python.Perf, error) {
 
 	opts := &ebpf.CollectionOptions{
 		Programs: s.progOptions(),
-		//MapReplacements: map[string]*ebpf.Map{
-		//	"stacks": s.bpf.Stacks,
-		//},
+		MapReplacements: map[string]*ebpf.Map{
+			"stacks": s.bpf.Stacks,
+		},
 	}
 
 	err := python.LoadPerfObjects(&s.pyperfBpf, opts)
