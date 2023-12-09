@@ -30,6 +30,7 @@ type PerfPyEvent struct {
 	}
 	StackLen uint32
 	Stack    [75]uint32
+	Value    uint64
 }
 
 type PerfPyOffsetConfig struct {

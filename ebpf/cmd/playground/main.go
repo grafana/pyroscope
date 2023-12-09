@@ -100,16 +100,11 @@ func main() {
 }
 
 func collectProfiles(profiles chan *pushv1.PushRequest) {
-	builders := pprof.NewProfileBuilders(int64(config.SampleRate))
-	err := session.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32, aggregation ebpfspy.SampleAggregation) {
-		labelsHash, labels := target.Labels()
-		builder := builders.BuilderForTarget(labelsHash, labels)
-		if aggregation == ebpfspy.SampleAggregated {
-			builder.CreateSample(stack, value)
-		} else {
-			builder.CreateSampleOrAddValue(stack, value)
-		}
+	builders := pprof.NewProfileBuilders(pprof.BuildersOptions{
+		SampleRate:    int64(config.SampleRate),
+		PerPIDProfile: true,
 	})
+	err := pprof.Collect(builders, session)
 
 	if err != nil {
 		panic(err)

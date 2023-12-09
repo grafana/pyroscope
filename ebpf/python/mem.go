@@ -57,6 +57,11 @@ func (p *PyMemAllocatorEx) write(fd *os.File, at int64) error {
 }
 
 func (s *Perf) InitMemSampling(data *ProcData) error {
+	process := s.pids[uint32(data.PID)]
+	if process == nil {
+		return fmt.Errorf("no process %d", data.PID)
+	}
+
 	pi := data.ProcInfo
 	if pi.PyMemSampler == nil {
 		return nil
@@ -144,7 +149,13 @@ func (s *Perf) InitMemSampling(data *ProcData) error {
 		return fmt.Errorf("allocator points to unknown memory %s expected %s", allocator.String(),
 			symtab.ProcMaps(pi.PyMemSampler).String())
 	}
-	//kp, err := link.Kprobe(it.kprobe, it.prog, nil)
+	var trapInstructions uint64
+	if err = readVM(vm, &trapInstructions, ebpf_assist_trap); err != nil {
+		return fmt.Errorf("read trap instruction %w", err)
+	}
+	//if (trapInstructions & 0xff) != 0xc3 { // sanity check
+	//	return fmt.Errorf("wrong trap instruction %x", trapInstructions)
+	//}
 	exe, err := link.OpenExecutable(pi.PyMemSampler[0].Pathname)
 	if err != nil {
 		return fmt.Errorf("opening %q executable file: %w", pi.PyMemSampler[0].Pathname, err)
@@ -159,8 +170,7 @@ func (s *Perf) InitMemSampling(data *ProcData) error {
 	if err != nil {
 		return fmt.Errorf("setting uprobe: %w", err)
 	}
-	_ = up
-
+	process.memSamplingLink = up
 	return nil
 }
 

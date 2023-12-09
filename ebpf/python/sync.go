@@ -124,3 +124,13 @@ var (
 	PyStrTypeUtf8       PyStrType = 16
 	PyStrTypeNotCompact PyStrType = 32
 )
+
+//#define FLAG_IS_MEM 1
+//#define FLAG_IS_CPU 2
+
+type PyEventFlag uint8
+
+var (
+	FlagIsMem PyEventFlag = 1
+	FlagIsCpu PyEventFlag = 2
+)

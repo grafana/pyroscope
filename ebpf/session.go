@@ -24,6 +24,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/pyroscope/ebpf/cpuonline"
 	"github.com/grafana/pyroscope/ebpf/metrics"
+	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/pyrobpf"
 	"github.com/grafana/pyroscope/ebpf/python"
 	"github.com/grafana/pyroscope/ebpf/rlimit"
@@ -44,24 +45,12 @@ type SessionOptions struct {
 	VerifierLogSize           int
 }
 
-type SampleAggregation bool
-
-var (
-	// SampleAggregated mean samples are accumulated in ebpf, no need to dedup these
-	SampleAggregated = SampleAggregation(true)
-	// SampleNotAggregated mean values are not accumulated in ebpf, but streamed to userspace with value=1
-	// TODO make consider aggregating python in ebpf as well
-	SampleNotAggregated = SampleAggregation(false)
-)
-
-type CollectProfilesCallback func(target *sd.Target, stack []string, value uint64, pid uint32, aggregation SampleAggregation)
-
 type Session interface {
+	pprof.SamplesCollector
 	Start() error
 	Stop()
 	Update(SessionOptions) error
 	UpdateTargets(args sd.TargetsOptions)
-	CollectProfiles(f CollectProfilesCallback) error
 	DebugInfo() interface{}
 }
 
@@ -237,7 +226,7 @@ func (s *session) UpdateTargets(args sd.TargetsOptions) {
 	}
 }
 
-func (s *session) CollectProfiles(cb CollectProfilesCallback) error {
+func (s *session) CollectProfiles(cb pprof.CollectProfilesCallback) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -269,7 +258,7 @@ func (s *session) DebugInfo() interface{} {
 	}
 }
 
-func (s *session) collectRegularProfile(cb CollectProfilesCallback) error {
+func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error {
 	sb := &stackBuilder{}
 
 	keys, values, batch, err := s.getCountsMapValues()
@@ -327,7 +316,14 @@ func (s *session) collectRegularProfile(cb CollectProfilesCallback) error {
 			continue // only comm
 		}
 		lo.Reverse(sb.stack)
-		cb(labels, sb.stack, uint64(value), ck.Pid, SampleAggregated)
+		cb(pprof.ProfileSample{
+			Target:      labels,
+			Pid:         ck.Pid,
+			Aggregation: pprof.SampleAggregated,
+			SampleType:  pprof.SampleTypeCpu,
+			Stack:       sb.stack,
+			Value:       uint64(value),
+		})
 		s.collectMetrics(labels, &stats, sb)
 	}
 

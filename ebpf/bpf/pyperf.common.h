@@ -89,10 +89,9 @@ typedef struct {
 
 typedef struct {
     py_event_header hdr;
-    // instead of storing symbol name here directly, we add it to another
-    // hashmap with Symbols and only store the ids here
     uint32_t stack_len;
     uint32_t stack[PYTHON_STACK_MAX_LEN];
+    uint64_t value;
 } py_event;
 
 #define _STR_CONCAT(str1, str2) str1##str2
@@ -210,7 +209,7 @@ static __always_inline int get_top_frame(py_pid_data *pid_data, py_sample_state_
     return 0;
 }
 
-static __always_inline py_event *pyperf_collect_impl(void *ctx, pid_t pid, bool collect_kern_stack, uint8_t flags) {
+static __always_inline py_event *pyperf_collect_impl(void *ctx, pid_t pid, bool collect_kern_stack) {
     py_pid_data *pid_data = bpf_map_lookup_elem(&py_pid_config, &pid);
     if (!pid_data) {
         return NULL;
@@ -227,7 +226,6 @@ static __always_inline py_event *pyperf_collect_impl(void *ctx, pid_t pid, bool 
 
     py_event *event = &state->event;
     event->hdr.pid = pid;
-    event->hdr.flags = flags;
     if (collect_kern_stack) {
         event->hdr.kern_stack = bpf_get_stackid(ctx, &stacks, KERN_STACKID_FLAGS);
     } else {

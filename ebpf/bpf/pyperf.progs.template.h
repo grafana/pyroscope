@@ -15,7 +15,14 @@
 #define sym_collect   CONCAT(collect__, PYPERF_TEMPLATE_SUFFIX)
 #define sym_read_python_stack   CONCAT(read_python_stack__, PYPERF_TEMPLATE_SUFFIX)
 
-int sym_read_python_stack(struct bpf_perf_event_data *ctx);
+#if PYPERF_TEMPLATE_COLLECT_FLAGS == FLAG_IS_CPU
+#define prog_ctx struct bpf_perf_event_data
+#else
+#define prog_ctx struct pt_regs
+#endif
+
+
+int sym_read_python_stack( prog_ctx *ctx);
 
 #define PYTHON_PROG_IDX_READ_PYTHON_STACK 0
 
@@ -31,19 +38,33 @@ struct {
 };
 
 SEC(PYPERF_TEMPLATE_SECTION)
-int sym_collect(struct bpf_perf_event_data *ctx) {
+int sym_collect( prog_ctx *ctx) {
     u32 pid;
     current_pid(&pid);
     if (pid == 0) {
         return 0;
     }
-    py_event *e = pyperf_collect_impl(ctx, (pid_t) pid,
-            /* collect_kern_stack */ false, // todo allow configuring it
-                                      PYPERF_TEMPLATE_COLLECT_FLAGS
-    );
+    uint64_t val;
+//todo extract to function or macro
+    uint64_t pc = 239;
+#if PYPERF_TEMPLATE_COLLECT_FLAGS == FLAG_IS_MEM
+#if defined(__TARGET_ARCH_x86)
+    val = ctx->di;
+    pc = ctx->ip;
+#elif defined(__TARGET_ARCH_arm64)
+    val = ctx->regs[0];
+#endif
+    bpf_dbg_printk("collect %d %d %d at %lx\n", pid, PYPERF_TEMPLATE_COLLECT_FLAGS,  val, pc);
+#else
+    val = 1;
+#endif
+    py_event *e = pyperf_collect_impl(ctx, (pid_t) pid, /* collect_kern_stack */ false); // todo allow configuring it
+
     if (e == NULL) {
         return 0;
     }
+    e->value = val;
+    e->hdr.flags = PYPERF_TEMPLATE_COLLECT_FLAGS;
     // jump to reading first set of Python frames
     bpf_tail_call(ctx, &sym_py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
     // we won't ever get here
@@ -54,7 +75,7 @@ int sym_collect(struct bpf_perf_event_data *ctx) {
 
 
 SEC(PYPERF_TEMPLATE_SECTION)
-int sym_read_python_stack(struct bpf_perf_event_data *ctx) {
+int sym_read_python_stack( prog_ctx *ctx) {
     py_sample_state_t *state = get_state();
     if (!state) {
         return 0;
@@ -106,3 +127,4 @@ int sym_read_python_stack(struct bpf_perf_event_data *ctx) {
 #undef sym_py_progs
 #undef sym_collect
 #undef sym_read_python_stack
+#undef prog_ctx

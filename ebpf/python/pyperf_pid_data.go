@@ -18,7 +18,7 @@ type PySymbols struct {
 	PyObject_Free                                                                         uint64
 }
 
-func getSymbols(pythonFD *os.File, base *symtab.ProcMap, flags Flags) (*PySymbols, error) {
+func getSymbols(pythonFD *os.File, base *symtab.ProcMap, flags GetProcDataFlags) (*PySymbols, error) {
 	ef, err := elf.NewFile(pythonFD)
 	if err != nil {
 		return nil, fmt.Errorf("opening elf %w", err)
@@ -47,7 +47,7 @@ func getSymbols(pythonFD *os.File, base *symtab.ProcMap, flags Flags) (*PySymbol
 	if res.pyRuntimeAddr == 0 && res.autoTLSkeyAddr == 0 {
 		return nil, fmt.Errorf("missing symbols %+v ", symbols)
 	}
-	needMem := flags&FlagWithMem != 0
+	needMem := flags&GetProcDataFlagWithMem != 0
 	if needMem {
 		symbols, err = ef.Symbols()
 		_ = err // Ignore. The memory sampling just will not work, but cpu still will
@@ -68,10 +68,10 @@ func getSymbols(pythonFD *os.File, base *symtab.ProcMap, flags Flags) (*PySymbol
 	return res, nil
 }
 
-type Flags int
+type GetProcDataFlags int
 
 var (
-	FlagWithMem = Flags(1)
+	GetProcDataFlagWithMem = GetProcDataFlags(1)
 )
 
 type ProcData struct {
@@ -85,7 +85,7 @@ type ProcData struct {
 	Base *symtab.ProcMap
 }
 
-func GetProcData(l log.Logger, info *ProcInfo, pid uint32, flags Flags) (*ProcData, error) {
+func GetProcData(l log.Logger, info *ProcInfo, pid uint32, flags GetProcDataFlags) (*ProcData, error) {
 
 	pythonMeat := getPythonMaps(info)
 	readable := findReadableMap(pythonMeat)

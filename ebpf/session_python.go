@@ -11,17 +11,19 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/pyrobpf"
 	"github.com/grafana/pyroscope/ebpf/python"
 	"github.com/grafana/pyroscope/ebpf/sd"
 	"github.com/samber/lo"
 )
 
-func (s *session) collectPythonProfile(cb CollectProfilesCallback) error {
+func (s *session) collectPythonProfile(cb pprof.CollectProfilesCallback) error {
 	if s.pyperf == nil {
 		return nil
 	}
 	s.pyperfEvents = s.pyperf.CollectEvents(s.pyperfEvents)
+	level.Debug(s.logger).Log("msg", "collect python", "count", len(s.pyperfEvents))
 	if len(s.pyperfEvents) == 0 {
 		return nil
 	}
@@ -54,6 +56,7 @@ func (s *session) collectPythonProfile(cb CollectProfilesCallback) error {
 				"err", python.PyError(event.Hdr.Err))
 			s.options.Metrics.Python.StacktraceError.Inc()
 			stacktraceErrors += 1
+			continue
 		} else {
 			begin := len(sb.stack)
 			if event.Hdr.StackStatus == uint8(python.StackStatusTruncated) {
@@ -99,7 +102,29 @@ func (s *session) collectPythonProfile(cb CollectProfilesCallback) error {
 			continue // only comm .. todo skip with an option
 		}
 		lo.Reverse(sb.stack)
-		cb(labels, sb.stack, uint64(1), event.Hdr.Pid, SampleNotAggregated)
+		var v1, v2 uint64
+		var st pprof.SampleType
+		if event.Hdr.Flags&uint8(python.FlagIsCpu) != 0 {
+			v1 = 1
+			v2 = 0
+			st = pprof.SampleTypeCpu
+		} else if event.Hdr.Flags&uint8(python.FlagIsMem) != 0 {
+			v1 = 1
+			v2 = event.Value
+			st = pprof.SampleTypeMem
+		} else {
+			level.Error(s.logger).Log("msg", "unknown python sample type", "event", fmt.Sprintf("%+v", event))
+			continue
+		}
+		cb(pprof.ProfileSample{
+			Target:      labels,
+			Stack:       sb.stack,
+			Value:       v1,
+			Value2:      v2,
+			Pid:         event.Hdr.Pid,
+			Aggregation: pprof.SampleNotAggregated,
+			SampleType:  st,
+		})
 		s.collectMetrics(labels, &stats, sb)
 	}
 	if stacktraceErrors > 0 {
@@ -162,9 +187,9 @@ func (s *session) startPythonProfiling(pid uint32, target *sd.Target, pi procInf
 	if err != nil {
 		return startProfilingError(err)
 	}
-	flags := python.Flags(0)
+	flags := python.GetProcDataFlags(0)
 	if target.PythonMemProfiling() {
-		flags |= python.FlagWithMem
+		flags |= python.GetProcDataFlagWithMem
 	}
 	pyData, err := python.GetProcData(s.logger, info, pid, flags)
 	if err != nil {

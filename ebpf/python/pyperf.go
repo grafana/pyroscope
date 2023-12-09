@@ -2,11 +2,13 @@ package python
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/ringbuf"
 
@@ -14,9 +16,20 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/pyroscope/ebpf/metrics"
-	"github.com/grafana/pyroscope/ebpf/symtab"
-	lru "github.com/hashicorp/golang-lru/v2"
 )
+
+type pythonProcess struct {
+	pid  uint32
+	data *ProcData
+
+	memSamplingLink link.Link
+}
+
+func (p *pythonProcess) Close() {
+	if p.memSamplingLink != nil {
+		_ = p.memSamplingLink.Close()
+	}
+}
 
 type Perf struct {
 	rd             *ringbuf.Reader
@@ -27,8 +40,7 @@ type Perf struct {
 
 	events      []*PerfPyEvent
 	eventsLock  sync.Mutex
-	sc          *symtab.SymbolCache
-	pidCache    *lru.Cache[uint32, *PerfPyPidData]
+	pids        map[uint32]*pythonProcess
 	prevSymbols map[uint32]*PerfPySymbol
 	wg          sync.WaitGroup
 	memProg     *ebpf.Program
@@ -39,9 +51,6 @@ func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *eb
 	if err != nil {
 		return nil, fmt.Errorf("perf new reader: %w", err)
 	}
-	pidCache, err := lru.NewWithEvict[uint32, *PerfPyPidData](512, func(key uint32, value *PerfPyPidData) {
-		_ = pidDataHasMap.Delete(key)
-	})
 	if err != nil {
 		return nil, fmt.Errorf("pyperf pid cache %w", err)
 	}
@@ -50,7 +59,7 @@ func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *eb
 		logger:         logger,
 		pidDataHashMap: pidDataHasMap,
 		symbolsHashMp:  symbolsHashMap,
-		pidCache:       pidCache,
+		pids:           make(map[uint32]*pythonProcess),
 		metrics:        metrics,
 		memProg:        memProg,
 	}
@@ -63,8 +72,13 @@ func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *eb
 }
 
 func (s *Perf) StartPythonProfiling(pid uint32, data *ProcData, serviceName string) error {
-	if s.pidCache.Contains(pid) {
+	prev := s.pids[pid]
+	if prev != nil {
 		return nil
+	}
+	prev = &pythonProcess{
+		pid:  pid,
+		data: data,
 	}
 
 	pidData := data.PerfPyPidData
@@ -73,7 +87,7 @@ func (s *Perf) StartPythonProfiling(pid uint32, data *ProcData, serviceName stri
 		return fmt.Errorf("updating pid data hash map: %w", err)
 	}
 	s.metrics.ProcessInitSuccess.WithLabelValues(serviceName).Inc()
-	s.pidCache.Add(pid, pidData)
+	s.pids[pid] = prev
 	return nil
 }
 
@@ -89,11 +103,6 @@ func (s *Perf) loop() {
 			_ = level.Error(s.logger).Log("msg", "[pyperf] reading from perf event reader", "err", err)
 			continue
 		}
-
-		//if record.LostSamples != 0 {
-		//	s.metrics.LostSamples.Add(float64(record.LostSamples))
-		//	_ = level.Debug(s.logger).Log("msg", "[pyperf] perf event ring buffer full, dropped samples", "n", record.LostSamples)
-		//}
 
 		if record.RawSample != nil {
 			event := new(PerfPyEvent)
@@ -111,6 +120,10 @@ func (s *Perf) loop() {
 }
 
 func (s *Perf) Close() {
+	for k, process := range s.pids {
+		process.Close()
+		delete(s.pids, k)
+	}
 	_ = s.rd.Close()
 	s.wg.Wait()
 }
@@ -200,7 +213,11 @@ func (s *Perf) GetSymbols(svcReason string) (map[uint32]*PerfPySymbol, error) {
 }
 
 func (s *Perf) RemoveDeadPID(pid uint32) {
-	s.pidCache.Remove(pid)
+	prev := s.pids[pid]
+	delete(s.pids, pid)
+	if prev != nil {
+		prev.Close()
+	}
 	err := s.pidDataHashMap.Delete(pid)
 	if err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
 		_ = level.Error(s.logger).Log("msg", "[pyperf] deleting pid data hash map", "err", err)
@@ -208,14 +225,13 @@ func (s *Perf) RemoveDeadPID(pid uint32) {
 }
 
 func ReadPyEvent(raw []byte, event *PerfPyEvent) error {
-
 	if len(raw) < 1 {
 		return fmt.Errorf("unexpected pyevent size %d", len(raw))
 	}
 	status := StackStatus(raw[0])
 
-	if status == StackStatusError && len(raw) < 16 || status != 1 && len(raw) < 320 {
-		return fmt.Errorf("unexpected pyevent size %d", len(raw))
+	if len(raw) < 328 {
+		return fmt.Errorf("unexpected pyevent size %d %s", len(raw), hex.EncodeToString(raw))
 	}
 	event.Hdr.StackStatus = uint8(status)
 	event.Hdr.Err = raw[1]
@@ -230,6 +246,7 @@ func ReadPyEvent(raw []byte, event *PerfPyEvent) error {
 	for i := 0; i < 75; i++ {
 		event.Stack[i] = binary.LittleEndian.Uint32(raw[20+i*4:])
 	}
+	event.Value = binary.LittleEndian.Uint64(raw[320:])
 	return nil
 }
 
