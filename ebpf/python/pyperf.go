@@ -243,10 +243,15 @@ func ReadPyEvent(raw []byte, event *PerfPyEvent) error {
 		return nil
 	}
 	event.StackLen = binary.LittleEndian.Uint32(raw[16:])
-	for i := 0; i < 75; i++ {
-		event.Stack[i] = binary.LittleEndian.Uint32(raw[20+i*4:])
+	_ = binary.LittleEndian.Uint32(raw[20:]) // padding
+
+	event.Value = binary.LittleEndian.Uint64(raw[24:])
+	const stackSize = 75
+	for i := 0; i < stackSize; i++ {
+		event.Stack[i].SymbolId = binary.LittleEndian.Uint32(raw[32+i*8:])
+		event.Stack[i].Lineno = binary.LittleEndian.Uint32(raw[32+i*8+4:])
 	}
-	event.Value = binary.LittleEndian.Uint64(raw[320:])
+
 	return nil
 }
 

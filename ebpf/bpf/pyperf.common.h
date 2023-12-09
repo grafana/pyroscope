@@ -88,10 +88,16 @@ typedef struct {
 } py_event_header;
 
 typedef struct {
+    uint32_t symbol_id;
+    uint32_t lineno;
+} frame;
+
+typedef struct {
     py_event_header hdr;
     uint32_t stack_len;
-    uint32_t stack[PYTHON_STACK_MAX_LEN];
+    uint32_t padding;
     uint64_t value;
+    frame stack[PYTHON_STACK_MAX_LEN];
 } py_event;
 
 #define _STR_CONCAT(str1, str2) str1##str2

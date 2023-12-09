@@ -102,7 +102,7 @@ int sym_read_python_stack( prog_ctx *ctx) {
             }
             uint32_t cur_len = sample->stack_len;
             if (cur_len < PYTHON_STACK_MAX_LEN) {
-                sample->stack[cur_len] = symbol_id;
+                sample->stack[cur_len].symbol_id = symbol_id;
                 sample->stack_len++;
             }
         }

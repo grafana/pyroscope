@@ -63,7 +63,7 @@ func (s *session) collectPythonProfile(cb pprof.CollectProfilesCallback) error {
 
 			}
 			for i := 0; i < int(event.StackLen); i++ {
-				sym, err := pySymbols.GetSymbol(event.Stack[i], svc)
+				sym, err := pySymbols.GetSymbol(event.Stack[i].SymbolId, svc)
 				if err == nil {
 					filename := python.PythonString(sym.File[:], &sym.FileType)
 					if !s.options.CacheOptions.SymbolOptions.PythonFullFilePath {

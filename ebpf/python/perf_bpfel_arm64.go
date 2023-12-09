@@ -29,8 +29,12 @@ type PerfPyEvent struct {
 		KernStack   int64
 	}
 	StackLen uint32
-	Stack    [75]uint32
+	Padding  uint32
 	Value    uint64
+	Stack    [75]struct {
+		SymbolId uint32
+		Lineno   uint32
+	}
 }
 
 type PerfPyOffsetConfig struct {
