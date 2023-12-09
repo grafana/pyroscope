@@ -338,6 +338,10 @@ type realFSBlockManager struct {
 }
 
 func (bm *realFSBlockManager) GetTenantIDs(ctx context.Context) ([]string, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	tenantDirs, err := fs.ReadDir(bm.FS, bm.Root)
 	if err != nil {
 		return nil, err
@@ -354,6 +358,10 @@ func (bm *realFSBlockManager) GetTenantIDs(ctx context.Context) ([]string, error
 }
 
 func (bm *realFSBlockManager) GetBlocksForTenant(ctx context.Context, tenantID string) ([]*tenantBlock, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	localDirPath := filepath.Join(bm.Root, tenantID, phlareDBLocalPath)
 	blockDirs, err := fs.ReadDir(bm.FS, localDirPath)
 	if err != nil {
@@ -404,6 +412,10 @@ func (bm *realFSBlockManager) GetBlocksForTenant(ctx context.Context, tenantID s
 }
 
 func (bm *realFSBlockManager) DeleteBlock(ctx context.Context, block *tenantBlock) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	return bm.Evictor.evictBlock(block.TenantID, block.ID, func() error {
 		err := bm.FS.RemoveAll(block.Path)
 		switch {
