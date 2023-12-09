@@ -27,7 +27,7 @@ int do_perf_event(struct bpf_perf_event_data *ctx) {
         return 0;
     }
     if (flags & PF_KTHREAD) {
-        bpf_dbg_printk("skipping kthread %d\n", tgid);
+//        bpf_dbg_printk("skipping kthread %d\n", tgid);
         return 0;
     }
 
