@@ -5,6 +5,7 @@ package ebpfspy
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -101,6 +102,8 @@ func (s *session) collectPythonProfile(cb pprof.CollectProfilesCallback) error {
 		if len(sb.stack) == 1 {
 			continue // only comm .. todo skip with an option
 		}
+		ss := strings.Join(sb.stack, ";")
+		fmt.Println(ss)
 		lo.Reverse(sb.stack)
 		var v1, v2 uint64
 		var st pprof.SampleType
@@ -263,7 +266,7 @@ func (s *session) loadPyPerf() (*python.Perf, error) {
 		s.pyperfBpf.PerfMaps.PyEvents,
 		s.pyperfBpf.PerfMaps.PyPidConfig,
 		s.pyperfBpf.PerfMaps.PySymbols,
-		s.pyperfBpf.PerfPrograms.CollectMem,
+		s.getPythonCollectMemProgram(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("pyperf create %w", err)
@@ -275,6 +278,19 @@ func (s *session) loadPyPerf() (*python.Perf, error) {
 	}
 	_ = level.Info(s.logger).Log("msg", "pyperf loaded")
 	return pyperf, nil
+}
+
+func (s *session) getPythonCollectMemProgram() *ebpf.Program {
+	progs := reflect.ValueOf(s.pyperfBpf.PerfPrograms)
+	field := progs.FieldByName("CollectMem")
+	if !field.IsValid() {
+		return nil
+	}
+	memProgPointer := field.UnsafePointer()
+	if memProgPointer == nil {
+		return nil
+	}
+	return (*ebpf.Program)(memProgPointer)
 }
 
 func processAlive(pid uint32) bool {

@@ -71,16 +71,6 @@ type PerfPyPidData struct {
 	TssKey int32
 }
 
-type PerfPySampleStateT struct {
-	SymbolCounter          int64
-	Offsets                PerfPyOffsetConfig
-	CurCpu                 uint32
-	_                      [4]byte
-	FramePtr               uint64
-	PythonStackProgCallCnt int64
-	Event                  PerfPyEvent
-}
-
 type PerfPyStrType struct {
 	Type           uint8
 	SizeCodepoints uint8
@@ -94,6 +84,18 @@ type PerfPySymbol struct {
 	NameType      PerfPyStrType
 	FileType      PerfPyStrType
 	Padding       PerfPyStrType
+}
+
+type PerfScratch struct {
+	States [2]struct {
+		Offsets                PerfPyOffsetConfig
+		CurCpu                 uint32
+		_                      [4]byte
+		FramePtr               uint64
+		PythonStackProgCallCnt int64
+		Event                  PerfPyEvent
+	}
+	SymbolCounter int64
 }
 
 // LoadPerf returns the embedded CollectionSpec for Perf.
@@ -151,8 +153,8 @@ type PerfMapSpecs struct {
 	PyPidConfig *ebpf.MapSpec `ebpf:"py_pid_config"`
 	PyProgsMem  *ebpf.MapSpec `ebpf:"py_progs__mem"`
 	PyProgsPerf *ebpf.MapSpec `ebpf:"py_progs__perf"`
-	PyStateHeap *ebpf.MapSpec `ebpf:"py_state_heap"`
 	PySymbols   *ebpf.MapSpec `ebpf:"py_symbols"`
+	Scratches   *ebpf.MapSpec `ebpf:"scratches"`
 	Stacks      *ebpf.MapSpec `ebpf:"stacks"`
 }
 
@@ -179,8 +181,8 @@ type PerfMaps struct {
 	PyPidConfig *ebpf.Map `ebpf:"py_pid_config"`
 	PyProgsMem  *ebpf.Map `ebpf:"py_progs__mem"`
 	PyProgsPerf *ebpf.Map `ebpf:"py_progs__perf"`
-	PyStateHeap *ebpf.Map `ebpf:"py_state_heap"`
 	PySymbols   *ebpf.Map `ebpf:"py_symbols"`
+	Scratches   *ebpf.Map `ebpf:"scratches"`
 	Stacks      *ebpf.Map `ebpf:"stacks"`
 }
 
@@ -190,8 +192,8 @@ func (m *PerfMaps) Close() error {
 		m.PyPidConfig,
 		m.PyProgsMem,
 		m.PyProgsPerf,
-		m.PyStateHeap,
 		m.PySymbols,
+		m.Scratches,
 		m.Stacks,
 	)
 }

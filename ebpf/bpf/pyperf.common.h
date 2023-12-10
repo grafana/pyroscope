@@ -110,7 +110,7 @@ typedef struct {
 FAIL_COMPILATION_IF(sizeof(py_symbol) == sizeof(struct bpf_perf_event_value))
 
 typedef struct {
-    int64_t symbol_counter;
+//    int64_t symbol_counter;
     py_offset_config offsets;
     uint32_t cur_cpu;
     uint64_t frame_ptr;
@@ -118,12 +118,17 @@ typedef struct {
     py_event event;
 } py_sample_state_t;
 
+typedef struct {
+    py_sample_state_t states[2];
+    int64_t symbol_counter;
+} scratch;
+
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
     __type(key, u32);
-    __type(value, py_sample_state_t);
+    __type(value, scratch);
     __uint(max_entries, 1);
-} py_state_heap SEC(".maps");
+} scratches SEC(".maps");
 
 typedef uint32_t py_symbol_id;
 
@@ -151,6 +156,7 @@ struct {
     __uint(max_entries, 1 << 24);
 } py_events SEC(".maps");
 
+
 static __always_inline int get_thread_state(
         py_pid_data *pid_data,
         void **out_thread_state) {
@@ -177,9 +183,9 @@ static __always_inline int submit_error_sample(
 // this function is trivial, but we need to do map lookup in separate function,
 // because BCC doesn't allow direct map calls (including lookups) from inside
 // a macro (which we want to do in GET_STATE() macro below)
-static __always_inline py_sample_state_t *get_state() {
+static __always_inline scratch *get_scratch() {
     int zero = 0;
-    return bpf_map_lookup_elem(&py_state_heap, &zero);
+    return bpf_map_lookup_elem(&scratches, &zero);
 }
 
 
@@ -215,16 +221,29 @@ static __always_inline int get_top_frame(py_pid_data *pid_data, py_sample_state_
     return 0;
 }
 
-static __always_inline py_event *pyperf_collect_impl(void *ctx, pid_t pid, bool collect_kern_stack) {
+static __always_inline py_sample_state_t *get_sample_state(int type,  scratch *s) {
+    py_sample_state_t *state;
+    if (type == FLAG_IS_CPU) {//todo
+        state = &s->states[0];
+    } else {
+        state = &s->states[1];
+    }
+    return state;
+}
+
+
+//todo inline this function
+static __always_inline py_event *pyperf_collect_impl(void *ctx, pid_t pid, bool collect_kern_stack, int type) {
     py_pid_data *pid_data = bpf_map_lookup_elem(&py_pid_config, &pid);
     if (!pid_data) {
         return NULL;
     }
 
-    py_sample_state_t *state = get_state();
-    if (!state) {
+    scratch *s = get_scratch();
+    if (!s) {
         return NULL;
     }
+    py_sample_state_t *state = get_sample_state(type, s);
 
     state->offsets = pid_data->offsets;
     state->cur_cpu = bpf_get_smp_processor_id();
@@ -260,6 +279,7 @@ static __always_inline py_event *pyperf_collect_impl(void *ctx, pid_t pid, bool 
     submit_error_sample(state, PY_ERROR_THREAD_STATE_NULL);
     return NULL;
 }
+
 
 
 static __always_inline int check_first_arg(void *code_ptr,
@@ -473,6 +493,7 @@ static __always_inline int get_frame_data(
 // into the hashmap. NUM_CPUS is defined at PyPerf backend side and passed
 // through CFlag.
 static __always_inline int get_symbol_id(
+        scratch *s,
         py_sample_state_t *state,
         py_symbol *sym,
         py_symbol_id *out_symbol_id) {
@@ -483,8 +504,8 @@ static __always_inline int get_symbol_id(
         return 0;
     }
     // the symbol is new, bump the counter
-    state->symbol_counter++;
-    py_symbol_id symbol_id = state->symbol_counter * PY_NUM_CPU + state->cur_cpu;
+    s->symbol_counter++;
+    py_symbol_id symbol_id = s->symbol_counter * PY_NUM_CPU + state->cur_cpu;
     if (bpf_map_update_elem(&py_symbols, sym, &symbol_id, BPF_NOEXIST) == 0) {
         *out_symbol_id = symbol_id;
         return 0;

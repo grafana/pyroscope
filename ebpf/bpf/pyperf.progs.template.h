@@ -58,7 +58,7 @@ int sym_collect( prog_ctx *ctx) {
 #else
     val = 1;
 #endif
-    py_event *e = pyperf_collect_impl(ctx, (pid_t) pid, /* collect_kern_stack */ false); // todo allow configuring it
+    py_event *e = pyperf_collect_impl(ctx, (pid_t) pid, /* collect_kern_stack */ false, PYPERF_TEMPLATE_COLLECT_FLAGS); // todo allow configuring it
 
     if (e == NULL) {
         return 0;
@@ -76,10 +76,11 @@ int sym_collect( prog_ctx *ctx) {
 
 SEC(PYPERF_TEMPLATE_SECTION)
 int sym_read_python_stack( prog_ctx *ctx) {
-    py_sample_state_t *state = get_state();
-    if (!state) {
+    scratch *s = get_scratch();
+    if (!s) {
         return 0;
     }
+    py_sample_state_t *state = get_sample_state(PYPERF_TEMPLATE_COLLECT_FLAGS, s);
 
     state->python_stack_prog_call_cnt++;
     py_event *sample = &state->event;
@@ -97,7 +98,7 @@ int sym_read_python_stack( prog_ctx *ctx) {
         }
         if (last_res == 1) {
             py_symbol_id symbol_id;
-            if (get_symbol_id(state, &sym, &symbol_id)) {
+            if (get_symbol_id(s, state, &sym, &symbol_id)) {
                 return submit_error_sample(state, PY_ERROR_SYMBOL);
             }
             uint32_t cur_len = sample->stack_len;

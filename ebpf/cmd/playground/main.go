@@ -316,7 +316,7 @@ func getProcessTargets() []sd.DiscoveryTarget {
 			"__meta_process_comm":   string(comm),
 			"__meta_process_cgroup": string(cgroup),
 		}
-		_ = level.Debug(logger).Log("msg", "process target", "target", target.DebugString())
+		//_ = level.Debug(logger).Log("msg", "process target", "target", target.DebugString())
 		res = append(res, target)
 	}
 	return res
@@ -346,7 +346,7 @@ func relabelProcessTargets(targets []sd.DiscoveryTarget, cfg []*RelabelConfig) [
 			continue
 		}
 		tt := sd.DiscoveryTarget(lbls.Map())
-		_ = level.Debug(logger).Log("msg", "relabelled process", "target", tt.DebugString())
+		//_ = level.Debug(logger).Log("msg", "relabelled process", "target", tt.DebugString())
 		res = append(res, tt)
 	}
 	return res
