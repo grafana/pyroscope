@@ -26,7 +26,7 @@ In the post-pyroscope code, to leverage the advanced features of Pyroscope, we m
    - Profile types to be captured.
 4. Consider using [godeltaprof](https://pkg.go.dev/github.com/grafana/pyroscope-go/godeltaprof) -- which is an optimized way to do memory profiling more efficiently
 
-## Benefits of Using Pyroscope
+## Benefits of using Pyroscope
 
 - **Continuous Profiling:** Pyroscope offers continuous, always-on profiling, allowing real-time performance analysis.
 - **Enhanced Insights:** With Pyroscope, you gain deeper insights into your application's performance, helping to identify and resolve issues more effectively.
