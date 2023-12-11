@@ -7,8 +7,8 @@ import (
 	"io"
 	"os"
 	"reflect"
-	"regexp"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 	"unsafe"
@@ -1109,22 +1109,24 @@ func ZeroLabelStrings(p *profilev1.Profile) {
 	}
 }
 
-var languageMatchers = map[string]*regexp.Regexp{
-	"java":   regexp.MustCompile(`^java/|^jdk/|libjvm`),
-	"go":     regexp.MustCompile(`/usr/local/go/|\.go$`),
-	"python": regexp.MustCompile(`\.py$`),
-	"ruby":   regexp.MustCompile(`^gems/|\.rb$`),
-	"dotnet": regexp.MustCompile(`^Microsoft\.|^System\.`),
-	"nodejs": regexp.MustCompile(`\.jsx?:?|/node_modules/`),
-	"rust":   regexp.MustCompile(`\.rs(:\d+)?`),
+var languageMatchers = map[string][]string{
+	"go":     {".go", "/usr/local/go/"},
+	"java":   {"java/", "sun/"},
+	"ruby":   {".rb", "gems/"},
+	"nodejs": {"./node_modules/", ".js"},
+	"dotnet": {"System.", "Microsoft."},
+	"python": {".py"},
+	"rust":   {"main.rs", "core.rs"},
 }
 
 func GetLanguage(profile *Profile, logger log.Logger) string {
 	for _, symbol := range profile.StringTable {
-		for lang, matcher := range languageMatchers {
-			if matcher.MatchString(symbol) {
-				level.Debug(logger).Log("msg", "found profile language", "lang", lang, "symbol", symbol)
-				return lang
+		for lang, matcherPatterns := range languageMatchers {
+			for _, pattern := range matcherPatterns {
+				if strings.HasPrefix(symbol, pattern) || strings.HasSuffix(symbol, pattern) {
+					level.Debug(logger).Log("msg", "found profile language", "lang", lang, "symbol", symbol)
+					return lang
+				}
 			}
 		}
 	}
