@@ -6,7 +6,7 @@ This README provides a comprehensive guide on migrating from the standard pprof 
 
 ### Pre-Pyroscope setup
 
-Originally, our `main.go` file used the standard `net/http/pprof` package for profiling. This setup is common and straightforward but lacks continuous profiling and real-time analysis capabilities.
+Originally, the `main.go` file used the standard `net/http/pprof` package for profiling. This setup is common and straightforward but lacks continuous profiling and real-time analysis capabilities.
 
 The functions `gatherClues`, `analyzeEvidence`, `interviewWitnesses`, `chaseSuspect`, and `solveMystery` were designed to simulate different CPU loads using busy loops. This approach provided a clear representation of various workloads in the pprof profiler.
 
