@@ -1,23 +1,24 @@
 BITS 64
 
 ;    void (*free)(void *ctx, void *ptr);
-  push 0xdead00
-  ret
+  db 0xcc
+
   push rdi
   push rsi
 
 
 
-  mov rax, qword [free_ptr]
-  mov qword [free_ptr_ptr], rax
+  mov rax, qword [rel free_ptr]
+  mov rbx, qword [rel free_ptr_ptr]
+  mov [rbx], rax
 
 
   lea rdi, [rel fpath]
   mov rsi, 2 ; RTLD_NOW
-  call qword [dlopen_ptr]
+  call qword [rel dlopen_ptr]
   pop rsi
   pop rdi
-  call qword [free_ptr]
+  call qword [rel free_ptr]
   ret
 
   align 16

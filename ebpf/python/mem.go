@@ -9,13 +9,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
-	"strconv"
-	"strings"
 	"unsafe"
 
 	"github.com/grafana/pyroscope/ebpf/symtab"
-	"golang.org/x/arch/x86/x86asm"
 )
 
 // typedef struct {
@@ -106,10 +102,9 @@ func (s *Perf) InitMemSampling(data *ProcData) error {
 		}
 		return nil
 	}
-	_ = hookFree
-	//_ = hookFree(0xcafebabe)
 
-	injector, err := getInjector(data, int64(allocator.free), objAllocatorFreeAddr, "/huihui")
+	const soPath = "/home/korniltsev/pyro/pyroscope/ebpf/python/pymemsampler/build/libpymemsampler.so"
+	injector, err := getInjector(data, int64(allocator.free), objAllocatorFreeAddr, soPath)
 	if err != nil {
 		return err
 	}
@@ -121,7 +116,7 @@ func (s *Perf) InitMemSampling(data *ProcData) error {
 	}
 	fmt.Printf("injector written at %x\n", injectorAddress)
 
-	if err := hookFree(0xcafebabe00); err != nil {
+	if err := hookFree(injectorAddress); err != nil {
 		return fmt.Errorf("could not hook allocator.free to injector")
 	}
 	fmt.Println("injector hooked")
@@ -264,80 +259,90 @@ func getDlopenPtr(data *ProcData) uint64 {
 
 func getPyObjectAllocatorAddress(m *mem, data *ProcData) int64 {
 	fmt.Printf("offsets %+v\n", data.PySymbols)
-	if data.PySymbols.PyObject_Free == 0 {
+	if data.PySymbols.PyMem_GetAllocator == 0 {
 		return 0
 	}
+	return int64(data.PySymbols.BaseAddress + 0x470280) // hardcoded todo find it
 
-	code := make([]byte, 0x80)
-	addr := int64(data.PySymbols.BaseAddress + data.PySymbols.PyMem_GetAllocator)
-	if _, err := m.ReadAt(code, addr); err != nil {
-		return 0
-	}
+	//code := make([]byte, 0x100)
+	//addr := int64(data.PySymbols.PyMem_GetAllocator)
+	//fmt.Printf("base               %x\n", data.PySymbols.BaseAddress)
+	//fmt.Printf("PyMem_GetAllocator %x\n", data.PySymbols.PyMem_GetAllocator)
+	//
+	//if _, err := m.ReadAt(code, addr); err != nil {
+	//	return 0
+	//}
+	//
+
 	//0x00000000005f8bc4 <+36>:	cmp    $0x2,%edi
 	//0x00000000005f8bc7 <+39>:	jne    0x5f8bd9 <PyMem_GetAllocator+57>
 	//0x00000000005f8bc9 <+41>:	mov    $0x94df40,%esi
 	//fmt.Printf("code %x = %s\n", addr, hex.EncodeToString(code))
-	var instructions []x86asm.Inst
-	var found []x86asm.Inst
-	for len(code) > 0 {
-		if len(code) >= 4 {
-			if binary.LittleEndian.Uint32(code) == 0xfa1e0ff3 {
-				//fmt.Println("endbr64")
-				code = code[4:]
-				continue
-			}
-		}
-		inst, err := x86asm.Decode(code, 64)
-		if err != nil {
-			fmt.Printf(" %s %s", hex.EncodeToString(code), err.Error())
-			break
-		}
-
-		//it := code[:inst.Len]
-		//fmt.Printf("it %10s = %s\n", hex.EncodeToString(it), inst.String())
-		code = code[inst.Len:]
-		instructions = append(instructions, inst)
-	}
-
-	for i, instruction := range instructions {
-		/*it     83ff02 = CMP EDI, 0x2
-		  it       7510 = JNE .+16
-		  it be40df9400 = MOV ESI, 0x94df40*/
-		if instruction.String() == "CMP EDI, 0x2" {
-			found = instructions[i:]
-			break
-		}
-	}
-	if len(found) < 3 {
-		return 0
-	}
-	found = found[:3]
-	for _, it := range found {
-		fmt.Printf("found %s\n", it.String())
-	}
-	it := found[1].String()
-	if !strings.HasPrefix(it, "JNE") {
-		fmt.Printf(">>>JNE >>%s<<", it)
-		return 0
-	}
-	if !strings.HasPrefix(found[2].String(), "MOV ESI") {
-		fmt.Println(">>>ESI")
-		return 0
-	}
-	re := regexp.MustCompile("MOV ESI, 0x([0-9a-f]+)")
-	submatch := re.FindStringSubmatch(found[2].String())
-	if submatch == nil {
-		fmt.Println(">>>NOMATCH")
-		return 0
-	}
-	addr, err := strconv.ParseInt(submatch[1], 16, 64)
-	if err != nil {
-		fmt.Println(">>>" + err.Error())
-		return 0
-	}
-	fmt.Printf("found 0x%x\n", addr)
-
-	return int64(addr)
+	//var instructions []x86asm.Inst
+	//var found []x86asm.Inst
+	//
+	//for len(code) > 0 {
+	//	if len(code) >= 4 {
+	//		if binary.LittleEndian.Uint32(code) == 0xfa1e0ff3 {
+	//			//fmt.Println("endbr64")
+	//			code = code[4:]
+	//			continue
+	//		}
+	//	}
+	//	inst, err := x86asm.Decode(code, 64)
+	//	if err != nil {
+	//		fmt.Printf(" %s %s", hex.EncodeToString(code), err.Error())
+	//		break
+	//	}
+	//
+	//	//it := code[:inst.Len]
+	//	//fmt.Printf("it %10s = %s\n", hex.EncodeToString(it), inst.String())
+	//	code = code[inst.Len:]
+	//	instructions = append(instructions, inst)
+	//}
+	//
+	//for i, instruction := range instructions {
+	//	/*it     83ff02 = CMP EDI, 0x2
+	//	  it       7510 = JNE .+16
+	//	  it be40df9400 = MOV ESI, 0x94df40*/
+	//	if instruction.String() == "CMP EDI, 0x2" {
+	//		found = instructions[i:]
+	//		break
+	//	}
+	//}
+	//if len(found) < 3 {
+	//	for _, instruction := range instructions {
+	//		fmt.Printf("it  %s\n", instruction.String())
+	//	}
+	//	return 0
+	//}
+	//found = found[:3]
+	//for _, it := range found {
+	//	fmt.Printf("found %s\n", it.String())
+	//}
+	//it := found[1].String()
+	//if !strings.HasPrefix(it, "JNE") {
+	//	fmt.Printf(">>>JNE >>%s<<", it)
+	//	return 0
+	//}
+	//if !strings.HasPrefix(found[2].String(), "MOV ESI") {
+	//	fmt.Println(">>>ESI")
+	//	return 0
+	//}
+	//re := regexp.MustCompile("MOV ESI, 0x([0-9a-f]+)")
+	//submatch := re.FindStringSubmatch(found[2].String())
+	//if submatch == nil {
+	//	fmt.Println(">>>NOMATCH")
+	//	return 0
+	//}
+	//addr, err := strconv.ParseInt(submatch[1], 16, 64)
+	//if err != nil {
+	//	fmt.Println(">>>" + err.Error())
+	//	return 0
+	//}
+	//fmt.Printf("found 0x%x\n", addr)
+	//
+	//return int64(addr)
 
 }
 
@@ -360,6 +365,7 @@ func getInjector(data *ProcData, freePtr, frePtrPtr int64, soPath string) ([]byt
 	binary.LittleEndian.PutUint64(ptrs[8:], uint64(freePtr))
 	binary.LittleEndian.PutUint64(ptrs[16:], uint64(frePtrPtr))
 	res = append(res, []byte(soPath)...)
+	res = append(res, 0)
 	return res, nil
 }
 
