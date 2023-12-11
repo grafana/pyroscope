@@ -74,6 +74,9 @@ func main() {
 		case "connect", "exec":
 			fmt.Printf("%s mode is deprecated. Please use Pyroscope 0.37 or earlier.\n", args[0])
 			os.Exit(1)
+		case "godeltaprofbench":
+			runTestsAndBenchmarks(os.Stderr, args[1:])
+			os.Exit(0)
 		default:
 			fmt.Printf("unknown mode: %s\n", args[0])
 			os.Exit(1)

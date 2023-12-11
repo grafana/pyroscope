@@ -27,8 +27,8 @@ require (
 	github.com/grafana/agent v0.35.4
 	github.com/grafana/dskit v0.0.0-20231003142331-80423d8864b9
 	github.com/grafana/jfr-parser v0.7.2-0.20230831140626-08fa3a941bf8
-	github.com/grafana/pyroscope-go v1.0.3
-	github.com/grafana/pyroscope-go/godeltaprof v0.1.6-0.20231130084046-2eb5d49453c0
+	github.com/grafana/pyroscope-go v1.0.5-0.20231211082648-54dc5b1fd077
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.6-0.20231211101012-b819ba6cc506
 	github.com/grafana/pyroscope/api v0.2.0
 	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -51,8 +51,10 @@ require (
 	github.com/prometheus/client_golang v1.17.0
 	github.com/prometheus/common v0.44.0
 	github.com/prometheus/prometheus v1.99.0
+	github.com/richardartoul/molecule v1.0.1-0.20221107223329-32cfee06a052
 	github.com/samber/lo v1.38.1
 	github.com/sirupsen/logrus v1.9.3
+	github.com/spaolacci/murmur3 v1.1.0
 	github.com/stretchr/testify v1.8.4
 	github.com/thanos-io/objstore v0.0.0-20230727115635-d0c43443ecda
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
