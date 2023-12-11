@@ -31,9 +31,10 @@ type Reader struct {
 
 	chunkFetchBufferSize int
 
-	index         IndexFile
-	partitions    []*partition
-	partitionsMap map[uint64]*partition
+	index            IndexFile
+	partitions       []*partition
+	partitionsMap    map[uint64]*partition
+	partitionsLoaded bool
 
 	locations parquetobj.File
 	mappings  parquetobj.File
@@ -188,8 +189,10 @@ func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, e
 	if !ok {
 		return nil, ErrPartitionNotFound
 	}
-	if err := p.init(ctx); err != nil {
-		return nil, err
+	if !r.partitionsLoaded {
+		if err := p.init(ctx); err != nil {
+			return nil, err
+		}
 	}
 	return p, nil
 }
