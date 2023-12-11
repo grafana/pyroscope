@@ -1,44 +1,56 @@
 ---
 aliases:
   - /docs/phlare/latest/operators-guide/configuring/profile-cli/
-  - /docs/phlare/latest/configure-server/profile-cli/
+  - /docs/phlare/latest/profile-cli/
 description: Getting started with the profile CLI tool.
 menuTitle: Profile CLI
 title: Profile CLI
-weight: 80
+weight: 50
 ---
 
 # Profile CLI
 
 `profilecli` is a command-line utility that enables various productivity flows such as:
-- interacting with a running Pyroscope server to upload profiles manually, run queries, etc.
+- interacting with a running Pyroscope server to upload profiles, query data, etc.
 - inspecting [Parquet](https://parquet.apache.org/docs/) files.
 
 > Hint: Use the `help` command (`profilecli help`) to get a full list of capabilities as well as additional help information.
 
 ## Installation
 
-### MacOS
+### Homebrew (MacOS)
 
 ```bash
 brew install pyroscope-io/brew/profilecli
 ```
 
-### Other
+### Manual Download (all supported platforms)
 
 Download the `profilecli`` release asset from https://github.com/grafana/pyroscope/releases/latest for your operating system and architecture and make it executable.
 
 For example, for Linux with the AMD64 architecture:
 
-```bash
-curl -fL https://github.com/grafana/pyroscope/releases/download/v1.1.5/profilecli_1.1.5_linux_amd64.tar.gz | tar xvz
-```
+1. **Download and extract the package (archive)**
 
-This command will place the `profilecli` executable in the current directory.
+    ```bash
+    curl -fL https://github.com/grafana/pyroscope/releases/download/v1.1.5/profilecli_1.1.5_linux_amd64.tar.gz | tar xvz
+    ```
 
-### Build from source code
+1. **Make it executable**
 
-#### Prerequesites
+    ```bash
+    chmod +x profilecli
+    ```
+
+1. **Make it reachable from anywhere (optional)**
+
+    ```bash
+    sudo mv profilecli /usr/local/bin
+    ```
+
+### Build from source code (all supported platforms)
+
+#### Prerequisites
 
 - Make sure you have Go installed (> 1.19).
 - Make sure either `$GOPATH` or `$GOBIN` is configured and added to your `PATH` environment variable.
@@ -60,38 +72,50 @@ This command will place the `profilecli` executable in the current directory.
 
    The command will place the `profilecli` executable in `$GOPATH/bin/` (or `$GOBIN/`) and make it available to use.
 
+<br/>
+
 ## Common flags, environment variables.
 
 `profilecli` commands that interact with a Pyroscope server require a server URL and optionally authentication details. These can be provided as command line flags or environment variables.
 
 1. **Server URL**
 
-   The `--url` flag specifies the server against which the command will run. If using Grafana Cloud, an example URL could be `https://profiles-prod-001.grafana.net`. For local instances, the URL could look like `http://localhost:4040` (this the default URL used if the `--url` flag is omitted).
+   `default: http://localhost:4040`
+
+   The `--url` flag specifies the server against which the command will run.
+   If using Grafana Cloud, an example URL could be `https://profiles-prod-001.grafana.net`.
+   For local instances, the URL could look like `http://localhost:4040`.
 
 1. **Authentication details**
 
-   If using Grafana Cloud or authentication is enabled on your Pyroscope server, you will need to provide a username and password using the `--username` and `--password` flags respectively. For Grafana Cloud, the username will be the Stack ID and the password the generated API token.
+   `default: <empty>`
+
+   If using Grafana Cloud or authentication is enabled on your Pyroscope server, you will need to provide a username and password using the `--username` and `--password` flags respectively.
+   For Grafana Cloud, the username will be the Stack ID and the password the generated API token.
 
 ### Environment variable naming
 
-Environment variables are in uppercase and have the `PROFILECLI_` prefix. Here is an example of providing the server URL and credentials for the `profilecli` tool:
+You can use environment variables to avoid passing flags to the command every time you use it, or to protect sensitive information. 
+Environment variables have a `PROFILECLI_` prefix. Here is an example of providing the server URL and credentials for the `profilecli` tool:
 
 ```bash
+export PROFILECLI_URL=<pyroscope_server_url>
 export PROFILECLI_USERNAME=<username>
 export PROFILECLI_PASSWORD=<password>
-export PROFILECLI_URL=<pyroscope_server_url>
 # now we can run a profilecli command without specifying the url or credentials:
 profilecli <command>
 ```
 
-## Uploading a pprof file to a Pyroscope server using `profilecli`
+<br/>
+
+## Uploading a profile to a Pyroscope server using `profilecli`
 
 Using `profilecli` streamlines the process of uploading profiles to Pyroscope, making it a convenient alternative to manual HTTP requests.
 
 ### Prerequisites
 
-- Ensure you have `profilecli` installed on your system by following the installation steps above.
-- Have the pprof file you want to upload ready.
+- Ensure you have `profilecli` installed on your system by following the [installation](#installation) steps above.
+- Have a profile file ready for upload. Note that you can only upload pprof files at this time.
 
 ### Upload steps
 
@@ -116,8 +140,6 @@ Using `profilecli` streamlines the process of uploading profiles to Pyroscope, m
      profilecli upload --extra-labels=<label_name>=<label_value> <pprof_file_path>
      ```
 
-   - Modify the placeholders (`<pyroscope_server_url>`, `<username>`, etc.) with your actual values.
-
    - Example command:
      ```bash
      export PROFILECLI_URL=https://profiles-prod-001.grafana.net
@@ -135,7 +157,7 @@ Using `profilecli` streamlines the process of uploading profiles to Pyroscope, m
 
      profilecli upload \
          --extra-labels=service_name=my_application_name \
-         --extra-labels=cluster=us \
+         --extra-labels=cluster=us-east \
          path/to/your/pprof-file.pprof
      ```
 
@@ -143,9 +165,11 @@ Using `profilecli` streamlines the process of uploading profiles to Pyroscope, m
 
    - After running the command, you should see a confirmation message indicating a successful upload. If there are any issues, `profilecli` will provide error messages to help you troubleshoot.
 
+<br/>
+
 ## Querying a Pyroscope server using `profilecli`
 
-You can use the `profilecli query` command to look up the available profiles on a Pyroscope server and read actual profile data. This can be useful for debugging purposes or for integrating profiling in CI pipelines (for example to facilitate [Profile-guided Optimization](https://go.dev/doc/pgo)).
+You can use the `profilecli query` command to look up the available profiles on a Pyroscope server and read actual profile data. This can be useful for debugging purposes or for integrating profiling in CI pipelines (for example to facilitate [profile-guided optimization](https://go.dev/doc/pgo)).
 
 ### Looking up available profiles on a Pyroscope server
 
@@ -166,10 +190,8 @@ You can use the `profilecli query series` command to look up the available profi
      export PROFILECLI_USERNAME=<username>
      export PROFILECLI_PASSWORD=<password>
 
-     profilecli query series --query=<label_name>=<label_value>
+     profilecli query series --query='{<label_name>="<label_value>"}'
      ```
-
-   - Modify the placeholders (`<pyroscope_server_url>`, `<username>`, etc.) with your actual values.
 
    - Example command:
      ```bash
@@ -194,10 +216,13 @@ You can use the `profilecli query series` command to look up the available profi
          "service_name":"my_application_name"
       }
      ```
+<br/>
 
 ### Reading a raw profile from a Pyroscope server
 
-You can use the `profilecli query merge` command to retrieve a merged (aggregated) profile from a Pyroscope server. The command merges all samples found in the profile store for the specified query time range. By default it looks for samples within the last hour, though this can be controlled with the `--from` and `--to` flags. The source data can be narrowed down with the `--query` flag, in the same way as with the `series` command.
+You can use the `profilecli query merge` command to retrieve a merged (aggregated) profile from a Pyroscope server.
+The command merges all samples found in the profile store for the specified query and time range.
+By default it looks for samples within the last hour, though this can be controlled with the `--from` and `--to` flags. The source data can be narrowed down with the `--query` flag in the same way as with the `series` command.
 
 #### Query Merge Steps
 
@@ -216,11 +241,9 @@ You can use the `profilecli query merge` command to retrieve a merged (aggregate
      export PROFILECLI_PASSWORD=<password>
 
      profilecli query merge \
-         --query=<label_name>=<label_value>
          --profile-type=<profile_type>
+         --query='{<label_name>="<label_value>"'
      ```
-
-   - Modify the placeholders (`<pyroscope_server_url>`, `<username>`, etc.) with your actual values.
 
    - Example command:
      ```bash
@@ -229,6 +252,19 @@ You can use the `profilecli query merge` command to retrieve a merged (aggregate
      export PROFILECLI_PASSWORD=my_password
 
      profilecli query merge \
-         --query='{service_name="my_application_name"}' \
          --profile-type=memory:inuse_space:bytes:space:bytes
+         --query='{service_name="my_application_name"}' \
+     ```
+
+   - Example output:
+     ```bash
+     level=info msg="query aggregated profile from profile store" url=http://localhost:4040 from=2023-12-11T13:38:33.115683-04:00 to=2023-12-11T14:38:33.115684-04:00 query={} type=memory:inuse_space:bytes:space:bytes
+     PeriodType: space bytes
+     Period: 524288
+     Time: 2023-12-11 13:59:59.999 -0400 AST
+     Duration: 59m5
+     Samples:
+     inuse_space/bytes[dflt]
+       115366240: 107 13 14 15 16 17 1 2 3
+     ...
      ```
