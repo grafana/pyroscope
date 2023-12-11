@@ -3,6 +3,7 @@ BITS 64
 ;    void (*free)(void *ctx, void *ptr);
   db 0xcc
 
+  push rdi ; align stack to 16 ; todo make it proper
   push rdi
   push rsi
 
@@ -19,6 +20,7 @@ BITS 64
   pop rsi
   pop rdi
   call qword [rel free_ptr]
+  pop rdi ; unalign stack to 16 ; todo make it proper
   ret
 
   align 16
