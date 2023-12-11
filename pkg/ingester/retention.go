@@ -127,7 +127,7 @@ func (dc *diskCleaner) stopping(_ error) error {
 }
 
 // DeleteUploadedBlocks scans and deletes blocks on all tenants that have
-// already been deleted. It returns the number of blocks deleted.
+// already been uploaded. It returns the number of blocks deleted.
 func (dc *diskCleaner) DeleteUploadedBlocks(ctx context.Context) int {
 	tenantIDs, err := dc.blockManager.GetTenantIDs(ctx)
 	if err != nil {
