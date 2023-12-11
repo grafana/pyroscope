@@ -76,6 +76,15 @@ pyroscope:
         requests:
           memory: 8Gi
           cpu: 1
+    tenant-settings:
+      kind: Deployment
+      replicaCount: 1
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 1
 
 minio:
   enabled: true

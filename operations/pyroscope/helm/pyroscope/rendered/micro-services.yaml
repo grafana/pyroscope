@@ -146,6 +146,27 @@ spec:
       app.kubernetes.io/instance: pyroscope-dev
       app.kubernetes.io/component: "store-gateway"
 ---
+# Source: pyroscope/templates/deployments-statefulsets.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pyroscope-dev-tenant-settings
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.2.0
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.2.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "tenant-settings"
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pyroscope
+      app.kubernetes.io/instance: pyroscope-dev
+      app.kubernetes.io/component: "tenant-settings"
+---
 # Source: pyroscope/charts/agent/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -2008,6 +2029,57 @@ spec:
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/component: "store-gateway"
 ---
+# Source: pyroscope/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-tenant-settings
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.2.0
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.2.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "tenant-settings"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4040
+      targetPort: http2
+      protocol: TCP
+      name: http2
+  selector:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/component: "tenant-settings"
+---
+# Source: pyroscope/templates/services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope-dev-tenant-settings-headless
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.2.0
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.2.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "tenant-settings"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 4040
+      targetPort: http2
+      protocol: TCP
+      name: http2
+  selector:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/component: "tenant-settings"
+---
 # Source: pyroscope/templates/deployments-statefulsets.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -2373,6 +2445,100 @@ spec:
               memory: 1Gi
             requests:
               cpu: 100m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: pyroscope-dev-config
+        - name: overrides-config
+          configMap:
+            name: pyroscope-dev-overrides-config
+        - name: data
+          emptyDir: {}
+---
+# Source: pyroscope/templates/deployments-statefulsets.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pyroscope-dev-tenant-settings
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.2.0
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.2.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "tenant-settings"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pyroscope
+      app.kubernetes.io/instance: pyroscope-dev
+      app.kubernetes.io/component: "tenant-settings"
+  template:
+    metadata:
+      annotations:
+        checksum/config: 3eae50abab41c3f756439f3a8414aad70f465296cf43072dfd38469f8fc2d100
+        profiles.grafana.com/cpu.port_name: http2
+        profiles.grafana.com/cpu.scrape: "true"
+        profiles.grafana.com/goroutine.port_name: http2
+        profiles.grafana.com/goroutine.scrape: "true"
+        profiles.grafana.com/memory.port_name: http2
+        profiles.grafana.com/memory.scrape: "true"
+      labels:
+        app.kubernetes.io/name: pyroscope
+        app.kubernetes.io/instance: pyroscope-dev
+        app.kubernetes.io/component: "tenant-settings"
+        name: "tenant-settings"
+    spec:
+      serviceAccountName: pyroscope-dev
+      securityContext:
+        fsGroup: 10001
+        runAsNonRoot: true
+        runAsUser: 10001
+      dnsPolicy: ClusterFirst
+      containers:
+        - name: "tenant-settings"
+          securityContext:
+            {}
+          image: "grafana/pyroscope:1.2.0"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-target=tenant-settings"
+            - "-self-profiling.disable-push=true"
+            - "-server.http-listen-port=4040"
+            - "-memberlist.cluster-label=default-pyroscope-dev"
+            - "-memberlist.join=dns+pyroscope-dev-memberlist.default.svc.cluster.local.:7946"
+            - "-config.file=/etc/pyroscope/config.yaml"
+            - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
+            - "-log.level=debug"
+            - "-store-gateway.sharding-ring.replication-factor=3"
+          ports:
+            - name: http2
+              containerPort: 4040
+              protocol: TCP
+            - name: memberlist
+              containerPort: 7946
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http2
+              scheme: HTTP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/pyroscope/config.yaml
+              subPath: config.yaml
+            - name: overrides-config
+              mountPath: /etc/pyroscope/overrides/
+            - name: data
+              mountPath: /data
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 1
               memory: 256Mi
       volumes:
         - name: config
