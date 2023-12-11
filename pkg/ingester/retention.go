@@ -200,6 +200,7 @@ func (dc *diskCleaner) HighDiskUtilizationCleanup(ctx context.Context) (int, int
 	if !volumeStats.HighDiskUtilization {
 		return 0, 0, false
 	}
+	originalBytesAvailable := volumeStats.BytesAvailable
 
 	tenantIDs, err := dc.blockManager.GetTenantIDs(ctx)
 	if err != nil {
@@ -242,14 +243,14 @@ func (dc *diskCleaner) HighDiskUtilizationCleanup(ctx context.Context) (int, int
 				"err", err,
 				"path", block.Path,
 			)
-			return filesDeleted, int(volumeStats.BytesAvailable - prevVolumeStats.BytesAvailable), true
+			return filesDeleted, int(volumeStats.BytesAvailable - originalBytesAvailable), true
 		case err != nil:
 			level.Error(dc.logger).Log(
 				"msg", "failed run high disk cleanup, could not delete block",
 				"path", block.Path,
 				"err", err,
 			)
-			return filesDeleted, int(volumeStats.BytesAvailable - prevVolumeStats.BytesAvailable), true
+			return filesDeleted, int(volumeStats.BytesAvailable - originalBytesAvailable), true
 		default:
 			filesDeleted++
 		}
@@ -265,14 +266,23 @@ func (dc *diskCleaner) HighDiskUtilizationCleanup(ctx context.Context) (int, int
 			break
 		}
 
-		// Check if deletion should stop.
-		if !volumeStats.HighDiskUtilization || prevVolumeStats.BytesAvailable >= volumeStats.BytesAvailable {
+		if !volumeStats.HighDiskUtilization {
+			// No longer in high disk utilization.
+			break
+		}
+
+		if prevVolumeStats.BytesAvailable >= volumeStats.BytesAvailable {
+			// Disk utilization has not been lowered since the last block was
+			// deleted. There may be a delay in VolumeChecker reporting disk
+			// utilization. In an effort to be conservative when deleting
+			// blocks, stop the clean up now and wait for the next cycle to let
+			// VolumeChecker catch up on the current state of the disk.
 			level.Warn(dc.logger).Log("msg", "disk utilization is not lowered by deletion of a block, pausing until next cycle")
 			break
 		}
 	}
 
-	return filesDeleted, int(volumeStats.BytesAvailable - prevVolumeStats.BytesAvailable), true
+	return filesDeleted, int(volumeStats.BytesAvailable - originalBytesAvailable), true
 }
 
 // blocksByUploadAndAge implements sorting tenantBlock by uploaded then by age

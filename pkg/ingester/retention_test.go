@@ -164,7 +164,7 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 					ID:       ulid.MustParse(generateBlockID(t, "01AC")),
 					TenantID: anonTenantID,
 					Path:     fmt.Sprintf("/data/%s/local/%s", anonTenantID, generateBlockID(t, "01AC")),
-					Uploaded: false,
+					Uploaded: true,
 				},
 			}, nil).
 			Once()
@@ -192,7 +192,7 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 		require.False(t, hadHighDisk)
 	})
 
-	t.Run("has_high_disk_with_non_uploaded_block", func(t *testing.T) {
+	t.Run("has_high_disk", func(t *testing.T) {
 		const anonTenantID = "anonymous"
 
 		e := &mockBlockEvictor{}
@@ -207,6 +207,18 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 					ID:       ulid.MustParse(generateBlockID(t, "01AC")),
 					TenantID: anonTenantID,
 					Path:     fmt.Sprintf("/data/%s/local/%s", anonTenantID, generateBlockID(t, "01AC")),
+					Uploaded: true,
+				},
+				{
+					ID:       ulid.MustParse(generateBlockID(t, "01AD")),
+					TenantID: anonTenantID,
+					Path:     fmt.Sprintf("/data/%s/local/%s", anonTenantID, generateBlockID(t, "01AD")),
+					Uploaded: false,
+				},
+				{
+					ID:       ulid.MustParse(generateBlockID(t, "01AE")),
+					TenantID: anonTenantID,
+					Path:     fmt.Sprintf("/data/%s/local/%s", anonTenantID, generateBlockID(t, "01AE")),
 					Uploaded: false,
 				},
 			}, nil).
@@ -215,6 +227,13 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 			Return(nil)
 
 		vc := &mockVolumeChecker{}
+		vc.On("HasHighDiskUtilization", mock.Anything).
+			Return(&diskutil.VolumeStats{
+				HighDiskUtilization: true,
+				BytesAvailable:      0,
+				BytesTotal:          200,
+			}, nil).
+			Once()
 		vc.On("HasHighDiskUtilization", mock.Anything).
 			Return(&diskutil.VolumeStats{
 				HighDiskUtilization: true,
@@ -237,8 +256,57 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 		dc.volumeChecker = vc
 
 		deleted, bytesFreed, hadHighDisk := dc.HighDiskUtilizationCleanup(context.Background())
+		require.Equal(t, 2, deleted)
+		require.Equal(t, 150, bytesFreed)
+		require.True(t, hadHighDisk)
+	})
+
+	t.Run("has_high_disk_with_delayed_volume_checker_stats", func(t *testing.T) {
+		const anonTenantID = "anonymous"
+
+		e := &mockBlockEvictor{}
+
+		bm := &mockBlockManager{}
+		bm.On("GetTenantIDs", mock.Anything).
+			Return([]string{anonTenantID}, nil).
+			Once()
+		bm.On("GetBlocksForTenant", mock.Anything, anonTenantID).
+			Return([]*tenantBlock{
+				{
+					ID:       ulid.MustParse(generateBlockID(t, "01AC")),
+					TenantID: anonTenantID,
+					Path:     fmt.Sprintf("/data/%s/local/%s", anonTenantID, generateBlockID(t, "01AC")),
+					Uploaded: true,
+				},
+				{
+					ID:       ulid.MustParse(generateBlockID(t, "01AD")),
+					TenantID: anonTenantID,
+					Path:     fmt.Sprintf("/data/%s/local/%s", anonTenantID, generateBlockID(t, "01AD")),
+					Uploaded: false,
+				},
+			}, nil).
+			Once()
+		bm.On("DeleteBlock", mock.Anything, mock.Anything).
+			Return(nil)
+
+		vc := &mockVolumeChecker{}
+		vc.On("HasHighDiskUtilization", mock.Anything).
+			Return(&diskutil.VolumeStats{
+				HighDiskUtilization: true,
+				BytesAvailable:      100,
+				BytesTotal:          200,
+			}, nil).
+			Twice() // Report the same result twice, causing the loop to break.
+
+		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
+			DataPath: "./data",
+		})
+		dc.blockManager = bm
+		dc.volumeChecker = vc
+
+		deleted, bytesFreed, hadHighDisk := dc.HighDiskUtilizationCleanup(context.Background())
 		require.Equal(t, 1, deleted)
-		require.Equal(t, 50, bytesFreed)
+		require.Equal(t, 0, bytesFreed)
 		require.True(t, hadHighDisk)
 	})
 }
