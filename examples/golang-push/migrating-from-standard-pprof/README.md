@@ -33,7 +33,7 @@ In the post-pyroscope code, to leverage the advanced features of Pyroscope, we m
 - **Easy Integration:** Migrating to Pyroscope requires minimal changes and provides a more robust profiling solution with little overhead.
 - **Customizable Profiling:** Pyroscope enables more granular control over what gets profiled, offering a range of profiling types.
 
-## Migration Guide
+## Migration guide
 
 To view the exact changes made during the migration, refer to our [pull request](https://github.com/grafana/pyroscope/pull/2830). This PR clearly illustrates the differences and necessary steps to transition from standard pprof to Pyroscope.
 
