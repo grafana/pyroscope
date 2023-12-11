@@ -1,18 +1,21 @@
 # Migrating from standard pprof to Pyroscope in a Go application
 
-This README provides a comprehensive guide on migrating from the standard pprof library to Pyroscope in a Go application. The example demonstrates the transition within a detective-themed Go application, enhancing the process of profiling with Pyroscope's advanced capabilities.
+This README provides a comprehensive guide on migrating from the standard pprof library to Pyroscope in a Go application. The example demonstrates the transition within a detective-themed Go application, enhancing the process of profiling with Pyroscope's advanced capabilities. The actual changes needed to migrate from standard `pprof` to using the Pyroscope SDK is very simple (it extends the standard pprof library with extra functionality and performance improvements).
+
+See link to [source PR here](https://github.com/grafana/pyroscope/pull/2830)
+<img width="1426" alt="image" src="https://github.com/grafana/pyroscope/assets/23323466/f094399a-4a4d-4b47-9f03-5a15b4085fab">
 
 ## Changes made
 
 ### Pre-Pyroscope setup
 
-Originally, the `main.go` file used the standard `net/http/pprof` package for profiling. This setup is common and straightforward but lacks continuous profiling and real-time analysis capabilities.
+Originally in the pre-pyroscope code, the `main.go` file used the standard `net/http/pprof` package for profiling. This setup is common and straightforward but lacks continuous profiling and real-time analysis capabilities.
 
 The functions `gatherClues`, `analyzeEvidence`, `interviewWitnesses`, `chaseSuspect`, and `solveMystery` were designed to simulate different CPU loads using busy loops. This approach provided a clear representation of various workloads in the pprof profiler.
 
 ### Post-Pyroscope migration
 
-To leverage the advanced features of Pyroscope, we made the following changes:
+In the post-pyroscope code, to leverage the advanced features of Pyroscope, we made the following changes:
 
 1. **Removed Standard pprof Import:** The `_ "net/http/pprof"` import was removed, as Pyroscope replaces its functionality.
 
@@ -35,7 +38,7 @@ To leverage the advanced features of Pyroscope, we made the following changes:
 
 ## Migration Guide
 
-To view the exact changes made during the migration, refer to our pull request: [Placeholder for PR Link]. This PR clearly illustrates the differences and necessary steps to transition from standard pprof to Pyroscope.
+To view the exact changes made during the migration, refer to our [pull request](https://github.com/grafana/pyroscope/pull/2830). This PR clearly illustrates the differences and necessary steps to transition from standard pprof to Pyroscope.
 
 ## Conclusion
 
