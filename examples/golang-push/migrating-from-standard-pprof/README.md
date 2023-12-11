@@ -10,7 +10,7 @@ Originally, our `main.go` file used the standard `net/http/pprof` package for pr
 
 The functions `gatherClues`, `analyzeEvidence`, `interviewWitnesses`, `chaseSuspect`, and `solveMystery` were designed to simulate different CPU loads using busy loops. This approach provided a clear representation of various workloads in the pprof profiler.
 
-### Post-Pyroscope Migration
+### Post-Pyroscope migration
 
 To leverage the advanced features of Pyroscope, we made the following changes:
 
