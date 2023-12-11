@@ -3,7 +3,6 @@ package jfr
 import (
 	"encoding/json"
 	"fmt"
-	model2 "github.com/grafana/pyroscope/pkg/distributor/model"
 	"os"
 	"strings"
 	"testing"
@@ -11,6 +10,7 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/og/storage"
@@ -84,7 +84,7 @@ func TestParseCompareExpectedData(t *testing.T) {
 	}
 }
 
-func compareWithJson(t *testing.T, req *model2.PushRequest, file string) error {
+func compareWithJson(t *testing.T, req *distributormodel.PushRequest, file string) error {
 	type flatProfileSeries struct {
 		Labels  []*v1.LabelPair
 		Profile *profilev1.Profile
@@ -181,7 +181,7 @@ func compareWithJson(t *testing.T, req *model2.PushRequest, file string) error {
 				return err
 			}
 			for _, label := range profile.Labels {
-				if strings.HasPrefix(label.Name, "__") || label.Name == "service_name" || label.Name == "jfr_event" || label.Name == "pyroscope_spy" {
+				if strings.HasPrefix(label.Name, "__") || label.Name == phlaremodel.LabelNameServiceName || label.Name == "jfr_event" || label.Name == phlaremodel.LabelNamePyroscopeSpy {
 					continue
 				}
 				parseKey.Add(label.Name, label.Value)

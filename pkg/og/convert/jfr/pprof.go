@@ -227,7 +227,7 @@ func (b *jfrPprofBuilders) build(event string) *model.PushRequest {
 				Name:  "jfr_event",
 				Value: event,
 			}, &v1.LabelPair{
-				Name:  "pyroscope_spy",
+				Name:  phlaremodel.LabelNamePyroscopeSpy,
 				Value: b.spyName,
 			})
 			for _, v := range b.labels {

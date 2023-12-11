@@ -395,7 +395,7 @@ func TestIngestPPROFFixtures(t *testing.T) {
 				ls := phlaremodel.Labels(actualReq.Labels)
 				require.Equal(t, testdatum.expectMetric, ls.Get(labels.MetricName))
 				require.Equal(t, "asd", ls.Get("qwe"))
-				require.Equal(t, spyName, ls.Get("pyroscope_spy"))
+				require.Equal(t, spyName, ls.Get(phlaremodel.LabelNamePyroscopeSpy))
 				require.Equal(t, "pprof.test", ls.Get("service_name"))
 				require.Equal(t, "false", ls.Get("__delta__"))
 				require.Equal(t, profile, actualReq.RawProfile)
