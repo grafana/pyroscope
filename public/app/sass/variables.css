@@ -17,7 +17,7 @@
   --ps-ui-element-bg-highlight: #47474e; /* table and dropdown background highlight, disabled button background-color, dark button color, table borders, selected sidebar item highlight background */
 
   --ps-ui-background: #0e0e13; /* background furthest back color */
-  --ps-ui-border: #3b3b44; /* Note: same as --ps-grey-primary */
+  --ps-ui-border: #42444A; /* Note: same as --ps-grey-primary */
   --ps-disabled-button-text: #404047; /* disabled button text */
   --ps-ui-foreground: #212124; /* sidebar background and "panel"/"box" background */
   --ps-ui-foreground-text: #d8d8d8; /* sidebar text and date picker text */
@@ -57,7 +57,7 @@
   --ps-red-highlight: #e4606d; /* highlight (hover) red */
   --ps-red-disabled: #eb8c95; /* disabled red */
 
-  --ps-grey-primary: #3b3b44;
+  --ps-grey-primary: #42444A;
   --ps-grey-highlight: #47474e;
   --ps-grey-disabled: #404047;
 
@@ -66,7 +66,7 @@
   --ps-immutable-google-button-hover: #e53825; /* sign up with google hover */
   --ps-immutable-gitlab-button: #fc6d26; /* sign up with gitlab button */
   --ps-immutable-gitlab-button-hover: #fc5c0d; /* sign up with gitlab hover */
-  --ps-immutable-gitlab-button: #3b3b44;
+  --ps-immutable-gitlab-button: #42444A;
   --ps-immutable-gitlab-button-hover: #47474e;
   --ps-immutable-gradient-0: #d1283980; /* used for gradient */
   --ps-immutable-gradient-1: #3dc1d3cc; /* used for gradient */
@@ -86,7 +86,7 @@
   --ps-fl-toolbar-btn-bg: #3c7150;
   --ps-toolbar-icon-color: #ffffff;
 
-  --ps-mui-tooltip-background: #3b3b44;
+  --ps-mui-tooltip-background: #42444A;
 }
 
 [data-theme='light'],
