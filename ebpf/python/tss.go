@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func GetTSSKey(pid uint32, version Version, offsets *UserOffsets, autoTLSkeyAddr, pyRuntime uint64) (int32, error) {
+func GetTSSKey(pid uint32, version Version, offsets *UserOffsets, autoTLSkeyAddr, pyRuntime uint64, libc *PerfLibc) (int32, error) {
 	fd, err := os.Open(fmt.Sprintf("/proc/%d/mem", pid))
 	if err != nil {
 		return 0, fmt.Errorf("python memory open failed   %w", err)
@@ -15,7 +15,7 @@ func GetTSSKey(pid uint32, version Version, offsets *UserOffsets, autoTLSkeyAddr
 	if version.Compare(Py37) < 0 {
 		return getAutoTLSKey(pid, version, autoTLSkeyAddr, fd)
 	} else {
-		return getPyTssKey(pid, version, offsets, pyRuntime, fd)
+		return getPyTssKey(pid, version, offsets, pyRuntime, fd, libc)
 	}
 }
 
@@ -41,7 +41,7 @@ func getAutoTLSKey(pid uint32, version Version, autoTLSkeyAddr uint64, mem *os.F
 	return res, nil
 }
 
-func getPyTssKey(pid uint32, version Version, offsets *UserOffsets, pyRuntime uint64, mem *os.File) (int32, error) {
+func getPyTssKey(pid uint32, version Version, offsets *UserOffsets, pyRuntime uint64, mem *os.File, libc *PerfLibc) (int32, error) {
 	if offsets.PyTssT_is_initialized != 0 || offsets.PyTssT_key != 4 || offsets.PyTssTSize != 8 {
 		return 0, fmt.Errorf("unexpected _Py_tss_t offsets %+v %+v", offsets, version)
 	}
@@ -63,6 +63,12 @@ func getPyTssKey(pid uint32, version Version, offsets *UserOffsets, pyRuntime ui
 			return 0, fmt.Errorf("python missing offsets PyRuntimeStateGilstate GilstateRuntimeStateAutoTSSkey PyTssT_key %d %v", pid, version)
 		}
 		pkey = int64(pyRuntime) + int64(offsets.PyRuntimeState_gilstate+offsets.Gilstate_runtime_state_autoTSSkey)
+		if libc.Musl {
+			// _gil_runtime_state has two fields of type  pthread_mutex_t which are different sizes in musl and glibc
+			// for now try to fix it as this is the only difference, in the future we may need to generate separate offsets
+			// for musl/glibc pythons
+			pkey -= 2 * (mutexSizeGlibc - mutexSizeMusl)
+		}
 	}
 	n, err := mem.ReadAt(key[:], int64(pkey))
 	if err != nil {

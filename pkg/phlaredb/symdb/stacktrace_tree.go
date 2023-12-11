@@ -102,6 +102,20 @@ func (t *stacktraceTree) resolve(dst []int32, id uint32) []int32 {
 	return dst
 }
 
+func (t *stacktraceTree) resolveUint64(dst []uint64, id uint32) []uint64 {
+	dst = dst[:0]
+	if id >= uint32(len(t.nodes)) {
+		return dst
+	}
+	// Only node members are accessed, in order to avoid
+	// race condition with insert: r and p are written once,
+	// when the node is created.
+	for i := int32(id); i > 0; i = t.nodes[i].p {
+		dst = append(dst, uint64(t.nodes[i].r))
+	}
+	return dst
+}
+
 const (
 	maxGroupSize = 17 // 4 * uint32 + control byte
 	// minGroupSize = 5  // 4 * byte + control byte
@@ -138,6 +152,19 @@ func (t *parentPointerTree) resolve(dst []int32, id uint32) []int32 {
 	n := t.nodes[id]
 	for n.p >= 0 {
 		dst = append(dst, n.r)
+		n = t.nodes[n.p]
+	}
+	return dst
+}
+
+func (t *parentPointerTree) resolveUint64(dst []uint64, id uint32) []uint64 {
+	if id >= uint32(len(t.nodes)) {
+		return dst
+	}
+	dst = dst[:0]
+	n := t.nodes[id]
+	for n.p >= 0 {
+		dst = append(dst, uint64(n.r))
 		n = t.nodes[n.p]
 	}
 	return dst

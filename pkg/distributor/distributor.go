@@ -239,6 +239,10 @@ func (d *Distributor) GetProfileLanguage(series *distributormodel.ProfileSeries)
 	if len(series.Samples) == 0 {
 		return "unknown"
 	}
+	lang := series.GetLanguage()
+	if lang != "" {
+		return lang
+	}
 	return pprof.GetLanguage(series.Samples[0].Profile, d.logger)
 }
 

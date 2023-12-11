@@ -12,10 +12,9 @@ interface HeaderProps {
   setPalette: (p: FlamegraphPalette) => void;
   toolbarVisible?: boolean;
 }
-export default function Header(props: HeaderProps) {
-  const { format, units, palette, setPalette, toolbarVisible } = props;
 
-  const unitsToFlamegraphTitle = {
+const unitsToFlamegraphTitle = new Map(
+  Object.entries({
     objects: 'number of objects in RAM per function',
     goroutines: 'number of goroutines',
     bytes: 'amount of RAM per function',
@@ -25,7 +24,11 @@ export default function Header(props: HeaderProps) {
     trace_samples: 'aggregated span duration',
     exceptions: 'number of exceptions thrown',
     unknown: '',
-  };
+  })
+);
+
+export default function Header(props: HeaderProps) {
+  const { format, units, palette, setPalette, toolbarVisible } = props;
 
   const getTitle = () => {
     switch (format) {
@@ -37,8 +40,8 @@ export default function Header(props: HeaderProps) {
               role="heading"
               aria-level={2}
             >
-              {unitsToFlamegraphTitle[units] && (
-                <>Frame width represents {unitsToFlamegraphTitle[units]}</>
+              {unitsToFlamegraphTitle.has(units) && (
+                <>Frame width represents {unitsToFlamegraphTitle.get(units)}</>
               )}
             </div>
           </div>

@@ -121,6 +121,7 @@ function ContinuousSingleView() {
       </ContextMenu>
     );
   };
+
   return (
     <div>
       <PageTitle title={formatTitle('Single', query)} />
@@ -145,7 +146,7 @@ function ContinuousSingleView() {
           title={
             <ChartTitle
               className="singleView-timeline-title"
-              titleKey={singleView?.profile?.metadata.units}
+              titleKey={singleView?.profile?.metadata.name as any}
             />
           }
         >

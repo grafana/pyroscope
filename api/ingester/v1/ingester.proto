@@ -59,6 +59,8 @@ message SelectProfilesRequest {
   int64 end = 4;
   // Optional: Hints for querying
   optional Hints hints = 5;
+  // Optional: Aggregation
+  optional types.v1.TimeSeriesAggregationType aggregation = 6;
 }
 
 message MergeProfilesStacktracesRequest {
@@ -97,9 +99,14 @@ message MergeProfilesStacktracesResponse {
 message SelectSpanProfileRequest {
   string label_selector = 1;
   types.v1.ProfileType type = 2;
+  // Milliseconds since epoch.
   int64 start = 3;
+  // Milliseconds since epoch.
   int64 end = 4;
+  // List of span identifiers.
   repeated string span_selector = 5;
+  // Optional: Hints for querying
+  optional Hints hints = 6;
 }
 
 message MergeSpanProfileRequest {
@@ -176,7 +183,8 @@ message MergeProfilesLabelsResponse {
 message MergeProfilesPprofRequest {
   // The client starts the stream with a request containing the profile type and the labels.
   SelectProfilesRequest request = 1;
-
+  // Max nodes in the resulting profile.
+  optional int64 max_nodes = 3;
   // On a batch of profiles, the client sends the profiles to keep for merging.
   repeated bool profiles = 2;
 }

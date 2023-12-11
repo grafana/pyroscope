@@ -79,7 +79,6 @@ func NewStoreGatewayQuerier(
 		return nil, errors.Wrap(err, "failed to create store-gateway ring client")
 	}
 	// Disable compression for querier -> store-gateway connections
-	clientsOptions = append(clientsOptions, connect.WithAcceptCompression("gzip", nil, nil))
 	clientsMetrics := promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 		Namespace:   "pyroscope",
 		Name:        "storegateway_clients",
@@ -284,6 +283,7 @@ func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querie
 					Type:          profileType,
 					Hints:         &ingestv1.Hints{Block: hints},
 				},
+				MaxNodes: req.MaxNodes,
 			})
 		}))
 	}
@@ -424,7 +424,7 @@ func (q *Querier) seriesFromStoreGateway(ctx context.Context, req *ingestv1.Seri
 	return responses, nil
 }
 
-func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.Tree, error) {
+func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest, plan map[string]*ingestv1.BlockHints) (*phlaremodel.Tree, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectSpanProfile StoreGateway")
 	defer sp.Finish()
 	profileType, err := phlaremodel.ParseProfileTypeSelector(req.ProfileTypeID)
@@ -442,9 +442,16 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	responses, err := forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeSpanProfile, error) {
-		return ic.MergeSpanProfile(ctx), nil
-	})
+	var responses []ResponseFromReplica[clientpool.BidiClientMergeSpanProfile]
+	if plan != nil {
+		responses, err = forAllPlannedStoreGateways(ctx, tenantID, q.storeGatewayQuerier, plan, func(ctx context.Context, ic StoreGatewayQueryClient, hints *ingestv1.Hints) (clientpool.BidiClientMergeSpanProfile, error) {
+			return ic.MergeSpanProfile(ctx), nil
+		})
+	} else {
+		responses, err = forAllStoreGateways(ctx, tenantID, q.storeGatewayQuerier, func(ctx context.Context, ic StoreGatewayQueryClient) (clientpool.BidiClientMergeSpanProfile, error) {
+			return ic.MergeSpanProfile(ctx), nil
+		})
+	}
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
@@ -452,6 +459,10 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 	g, gCtx := errgroup.WithContext(ctx)
 	for _, r := range responses {
 		r := r
+		hints, ok := plan[r.addr]
+		if !ok && plan != nil {
+			return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("no hints found for replica %s", r.addr))
+		}
 		g.Go(util.RecoverPanic(func() error {
 			return r.response.Send(&ingestv1.MergeSpanProfileRequest{
 				Request: &ingestv1.SelectSpanProfileRequest{
@@ -460,6 +471,7 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 					End:           req.End,
 					Type:          profileType,
 					SpanSelector:  req.SpanSelector,
+					Hints:         &ingestv1.Hints{Block: hints},
 				},
 				MaxNodes: req.MaxNodes,
 				// TODO(kolesnikovae): Max stacks.

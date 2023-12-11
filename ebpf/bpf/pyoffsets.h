@@ -14,6 +14,12 @@ enum frame_owner {
     FRAME_OWNED_BY_CSTACK = 3,
 };
 
+struct libc {
+    bool musl; //
+    int16_t pthread_size;
+    int16_t pthread_specific1stblock; // tsd for musl, specific_1stblock for glibc
+};
+
 typedef struct {
     int16_t PyThreadState_frame;
     int16_t PyThreadState_cframe;

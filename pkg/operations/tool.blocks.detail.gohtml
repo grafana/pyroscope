@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html class="h-100">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Bucket Blocks Explorer: Tenant {{ .User }}, Block {{ .Block.ID }}</title>
+
+    <link rel="stylesheet" href="/static/bootstrap-5.1.3.min.css">
+    <link rel="stylesheet" href="/static/bootstrap-icons-1.8.1.css">
+    <link rel="stylesheet" href="/static/pyroscope-styles.css">
+    <script src="/static/bootstrap-5.1.3.bundle.min.js"></script>
+</head>
+<body class="d-flex flex-column h-100">
+<main class="flex-shrink-0">
+    <div class="container">
+        <div class="header row border-bottom py-3 flex-column-reverse flex-sm-row">
+            <div class="col-12 col-sm-9 text-center text-sm-start">
+                <h3>Bucket Blocks Explorer: Block Details</h3>
+            </div>
+            <div class="col-12 col-sm-3 text-center text-sm-end mb-3 mb-sm-0">
+                <a href="../../../tenants">
+                    <img alt="Pyroscope logo" class="pyroscope-brand" src="/static/pyroscope-logo.png">
+                </a>
+            </div>
+        </div>
+        <div class="row my-3">
+            <p>
+                <a href="../../../tenants/{{ .User }}/blocks">Back to tenant</a>
+            </p>
+            <table class="table">
+                <tr>
+                    <td>Tenant</td>
+                    <td>{{ .User }}</td>
+                </tr>
+                <tr>
+                    <td>ID</td>
+                    <td>{{ .Block.ID }}</td>
+                </tr>
+                <tr>
+                    <td>Min Time</td>
+                    <td>{{ .Block.MinTime }}</td>
+                </tr>
+                <tr>
+                    <td>Max Time</td>
+                    <td>{{ .Block.MaxTime }}</td>
+                </tr>
+                <tr>
+                    <td>Duration</td>
+                    <td>{{ .Block.Duration }}</td>
+                </tr>
+                <tr>
+                    <td>Compaction Level</td>
+                    <td>{{ .Block.CompactionLevel }}</td>
+                </tr>
+                <tr>
+                    <td>Size</td>
+                    <td>{{ .Block.Size }}</td>
+                </tr>
+                <tr>
+                    <td>Number of Series</td>
+                    <td>{{ .Block.Stats.NumSeries }}</td>
+                </tr>
+                <tr>
+                    <td>Number of Profiles</td>
+                    <td>{{ .Block.Stats.NumProfiles }}</td>
+                </tr>
+                <tr>
+                    <td>Number of Samples</td>
+                    <td>{{ .Block.Stats.NumSamples }}</td>
+                </tr>
+                <tr>
+                    <td>Labels</td>
+                    <td>
+                        {{ range $k, $v := .Block.Labels }}
+                            <p>{{ $k }}: {{ $v }}</p>
+                        {{ end }}
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</main>
+<footer class="footer mt-auto py-3 bg-light">
+    <div class="container">
+        <small class="text-muted">Status @ {{ .Now }}</small>
+    </div>
+</footer>
+</body>
+</html>

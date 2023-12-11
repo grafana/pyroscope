@@ -2055,9 +2055,16 @@ The `azure_storage_backend` block configures the connection to Azure object stor
 # CLI flag: -storage.azure.account-name
 [account_name: <string> | default = ""]
 
-# Azure storage account key
+# Azure storage account key. If unset, Azure managed identities will be used for
+# authentication instead.
 # CLI flag: -storage.azure.account-key
 [account_key: <string> | default = ""]
+
+# If `connection-string` is set, the value of `endpoint-suffix` will not be
+# used. Use this method over `account-key` if you need to authenticate via a SAS
+# token. Or if you use the Azurite emulator.
+# CLI flag: -storage.azure.connection-string
+[connection_string: <string> | default = ""]
 
 # Azure storage container name
 # CLI flag: -storage.azure.container-name
@@ -2071,9 +2078,10 @@ The `azure_storage_backend` block configures the connection to Azure object stor
 
 # Number of retries for recoverable errors
 # CLI flag: -storage.azure.max-retries
-[max_retries: <int> | default = 20]
+[max_retries: <int> | default = 3]
 
-# User assigned identity. If empty, then System assigned identity is used.
+# User assigned managed identity. If empty, then System assigned identity is
+# used.
 # CLI flag: -storage.azure.user-assigned-id
 [user_assigned_id: <string> | default = ""]
 ```

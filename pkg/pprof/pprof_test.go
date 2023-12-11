@@ -1101,3 +1101,32 @@ func Test_GetProfileLanguage_rust_profile(t *testing.T) {
 	language := GetLanguage(p, log.NewNopLogger())
 	assert.Equal(t, "rust", language)
 }
+
+func Benchmark_GetProfileLanguage(b *testing.B) {
+	tests := []string{
+		"testdata/go.cpu.labels.pprof",
+		"testdata/heap",
+		"testdata/dotnet.labels.pprof",
+		"testdata/profile_java",
+		"testdata/profile_nodejs",
+		"testdata/profile_python",
+		"testdata/profile_ruby",
+		"testdata/profile_rust",
+	}
+
+	for _, testdata := range tests {
+		f := testdata
+		b.Run(testdata, func(b *testing.B) {
+			p, err := OpenFile(f)
+			require.NoError(b, err)
+			b.ResetTimer()
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				language := GetLanguage(p, log.NewNopLogger())
+				if language == "unknown" {
+					b.Fatal()
+				}
+			}
+		})
+	}
+}

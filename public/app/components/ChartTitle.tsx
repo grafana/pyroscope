@@ -3,16 +3,15 @@ import Color from 'color';
 import clsx from 'clsx';
 import styles from './ChartTitle.module.scss';
 
+import profileMetrics from '../constants/profile-metrics.json';
+
+const typeToDescriptionMap: Record<string, string> = Object.values(
+  profileMetrics
+).reduce((acc, { type, description }) => ({ ...acc, [type]: description }), {});
+
 const chartTitleKeys = {
-  objects: 'Total number of objects in RAM',
-  goroutines: 'Total number of goroutines',
-  bytes: 'Total amount of RAM',
-  samples: 'Total CPU time',
-  lock_nanoseconds: 'Total time spent waiting on locks',
-  lock_samples: 'Total number of contended locks',
-  diff: 'Baseline vs. Comparison Diff',
-  trace_samples: 'Total aggregated span duration',
-  exceptions: 'Total number of exceptions thrown',
+  ...typeToDescriptionMap,
+  exception: typeToDescriptionMap.exceptions, // alias
   unknown: '',
 
   baseline: 'Baseline time range',

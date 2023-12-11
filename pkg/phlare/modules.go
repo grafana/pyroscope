@@ -31,12 +31,14 @@ import (
 	"gopkg.in/yaml.v3"
 
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
+	apiversion "github.com/grafana/pyroscope/pkg/api/version"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/operations"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
@@ -54,6 +56,7 @@ import (
 const (
 	All               string = "all"
 	API               string = "api"
+	Version           string = "version"
 	Distributor       string = "distributor"
 	Server            string = "server"
 	Ring              string = "ring"
@@ -70,6 +73,7 @@ const (
 	Overrides         string = "overrides"
 	OverridesExporter string = "overrides-exporter"
 	Compactor         string = "compactor"
+	Admin             string = "admin"
 	TenantSettings    string = "tenant-settings"
 
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
@@ -298,6 +302,7 @@ func (f *Phlare) initMemberlistKV() (services.Service, error) {
 	f.Cfg.MemberlistKV.Codecs = []codec.Codec{
 		ring.GetCodec(),
 		usagestats.JSONCodec,
+		apiversion.GetCodec(),
 	}
 
 	dnsProviderReg := prometheus.WrapRegistererWithPrefix(
@@ -501,6 +506,22 @@ func (f *Phlare) initUsageReport() (services.Service, error) {
 	}
 	f.usageReport = ur
 	return ur, nil
+}
+
+func (f *Phlare) initAdmin() (services.Service, error) {
+	if f.storageBucket == nil {
+		level.Warn(f.logger).Log("msg", "no storage bucket configured, the admin component will not be loaded")
+		return nil, nil
+	}
+
+	a, err := operations.NewAdmin(f.storageBucket, f.logger)
+	if err != nil {
+		level.Info(f.logger).Log("msg", "failed to initialize admin", "err", err)
+		return nil, nil
+	}
+	f.admin = a
+	f.API.RegisterAdmin(a)
+	return a, nil
 }
 
 type statusService struct {

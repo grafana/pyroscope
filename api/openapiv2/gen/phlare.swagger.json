@@ -22,6 +22,9 @@
     },
     {
       "name": "StoreGatewayService"
+    },
+    {
+      "name": "Version"
     }
   ],
   "consumes": [
@@ -1013,6 +1016,10 @@
         "hints": {
           "$ref": "#/definitions/v1Hints",
           "title": "Optional: Hints for querying"
+        },
+        "aggregation": {
+          "$ref": "#/definitions/v1TimeSeriesAggregationType",
+          "title": "Optional: Aggregation"
         }
       }
     },
@@ -1039,17 +1046,24 @@
         },
         "start": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "Milliseconds since epoch."
         },
         "end": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "Milliseconds since epoch."
         },
         "spanSelector": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "List of span identifiers."
+        },
+        "hints": {
+          "$ref": "#/definitions/v1Hints",
+          "title": "Optional: Hints for querying"
         }
       }
     },
@@ -1135,6 +1149,14 @@
       ],
       "default": "MERGE_FORMAT_UNSPECIFIED"
     },
+    "v1TimeSeriesAggregationType": {
+      "type": "string",
+      "enum": [
+        "TIME_SERIES_AGGREGATION_TYPE_SUM",
+        "TIME_SERIES_AGGREGATION_TYPE_AVERAGE"
+      ],
+      "default": "TIME_SERIES_AGGREGATION_TYPE_SUM"
+    },
     "v1ValueType": {
       "type": "object",
       "properties": {
@@ -1150,6 +1172,15 @@
         }
       },
       "description": "ValueType describes the semantics and measurement units of a value."
+    },
+    "v1VersionResponse": {
+      "type": "object",
+      "properties": {
+        "QuerierAPI": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
     }
   }
 }

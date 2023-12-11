@@ -1,0 +1,142 @@
+{
+  "block:contentions:count:contentions:count": {
+    "id": "block:contentions:count:contentions:count",
+    "description": "Total count of blocking contentions",
+    "type": "contentions",
+    "group": "block",
+    "unit": "short"
+  },
+  "block:delay:nanoseconds:contentions:count": {
+    "id": "block:delay:nanoseconds:contentions:count",
+    "description": "Total nanoseconds spent in blocking delays",
+    "type": "delay",
+    "group": "block",
+    "unit": "ns"
+  },
+  "goroutine:goroutine:count:goroutine:count": {
+    "id": "goroutine:goroutine:count:goroutine:count",
+    "description": "Current number of goroutines",
+    "type": "goroutine",
+    "group": "goroutine",
+    "unit": "short"
+  },
+  "goroutines:goroutine:count:goroutine:count": {
+    "id": "goroutine:goroutine:count:goroutine:count",
+    "description": "Current number of goroutines",
+    "type": "goroutine",
+    "group": "goroutine",
+    "unit": "short"
+  },
+  "memory:alloc_in_new_tlab_bytes:bytes::": {
+    "id": "memory:alloc_in_new_tlab_bytes:bytes::",
+    "description": "Total bytes allocated inside Thread-Local Allocation Buffers (TLAB)",
+    "type": "alloc_in_new_tlab_bytes",
+    "group": "memory",
+    "unit": "bytes"
+  },
+  "memory:alloc_in_new_tlab_objects:count::": {
+    "id": "memory:alloc_in_new_tlab_objects:count::",
+    "description": "Number of objects allocated inside Thread-Local Allocation Buffers (TLAB)",
+    "type": "alloc_in_new_tlab_objects",
+    "group": "memory",
+    "unit": "short"
+  },
+  "memory:alloc_objects:count:space:bytes": {
+    "id": "memory:alloc_objects:count:space:bytes",
+    "description": "Total count of objects allocated",
+    "type": "alloc_objects",
+    "group": "memory",
+    "unit": "count"
+  },
+  "memory:alloc_space:bytes:space:bytes": {
+    "id": "memory:alloc_space:bytes:space:bytes",
+    "description": "Total bytes allocated in the heap",
+    "type": "alloc_space",
+    "group": "memory",
+    "unit": "bytes"
+  },
+  "memory:inuse_objects:count:space:bytes": {
+    "id": "memory:inuse_objects:count:space:bytes",
+    "description": "Count of objects currently in use",
+    "type": "inuse_objects",
+    "group": "memory",
+    "unit": "short"
+  },
+  "memory:inuse_space:bytes:space:bytes": {
+    "id": "memory:inuse_space:bytes:space:bytes",
+    "description": "Total bytes of memory currently in use",
+    "type": "inuse_space",
+    "group": "memory",
+    "unit": "bytes"
+  },
+  "mutex:contentions:count:contentions:count": {
+    "id": "mutex:contentions:count:contentions:count",
+    "description": "Number of observed mutex contentions",
+    "type": "contentions",
+    "group": "mutex",
+    "unit": "short"
+  },
+  "mutex:delay:nanoseconds:contentions:count": {
+    "id": "mutex:delay:nanoseconds:contentions:count",
+    "description": "Total time spent waiting due to mutex contentions",
+    "type": "delay",
+    "group": "mutex",
+    "unit": "ns"
+  },
+  "process_cpu:alloc_samples:count:cpu:nanoseconds": {
+    "id": "process_cpu:alloc_samples:count:cpu:nanoseconds",
+    "description": "Count of memory allocation samples during CPU time",
+    "type": "alloc_samples",
+    "group": "memory",
+    "unit": "short"
+  },
+  "process_cpu:alloc_size:bytes:cpu:nanoseconds": {
+    "id": "process_cpu:alloc_size:bytes:cpu:nanoseconds",
+    "description": "Total bytes allocated during CPU time",
+    "type": "alloc_size",
+    "group": "alloc_size",
+    "unit": "bytes"
+  },
+  "process_cpu:cpu:nanoseconds:cpu:nanoseconds": {
+    "id": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+    "description": "Total nanoseconds of CPU time consumed",
+    "type": "cpu",
+    "group": "process_cpu",
+    "unit": "ns"
+  },
+  "process_cpu:exception:count:cpu:nanoseconds": {
+    "id": "process_cpu:exception:count:cpu:nanoseconds",
+    "description": "Number of exceptions within the sampled CPU time",
+    "type": "exceptions",
+    "group": "exceptions",
+    "unit": "short"
+  },
+  "process_cpu:lock_count:count:cpu:nanoseconds": {
+    "id": "process_cpu:lock_count:count:cpu:nanoseconds",
+    "description": "Count of lock acquisitions attempted during CPU time",
+    "type": "lock_count",
+    "group": "locks",
+    "unit": "short"
+  },
+  "process_cpu:lock_time:nanoseconds:cpu:nanoseconds": {
+    "id": "process_cpu:lock_time:nanoseconds:cpu:nanoseconds",
+    "description": "Cumulative time spent acquiring locks, in nanoseconds",
+    "type": "lock_time",
+    "group": "locks",
+    "unit": "ns"
+  },
+  "process_cpu:samples:count::milliseconds": {
+    "id": "process_cpu:samples:count::milliseconds",
+    "description": "Total number of process samples collected",
+    "type": "samples",
+    "group": "process_cpu",
+    "unit": "short"
+  },
+  "process_cpu:samples:count:cpu:nanoseconds": {
+    "id": "process_cpu:samples:count:cpu:nanoseconds",
+    "description": "Count of samples collected over CPU time",
+    "type": "samples",
+    "group": "process_cpu",
+    "unit": "short"
+  }
+}

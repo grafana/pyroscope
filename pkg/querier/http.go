@@ -4,21 +4,26 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/gogo/status"
+	"github.com/google/pprof/profile"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/promql/parser"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/frontend/dot/graph"
+	"github.com/grafana/pyroscope/pkg/frontend/dot/report"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/pkg/og/util/attime"
@@ -130,6 +135,47 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 	}
 
 	groupBy := req.URL.Query()["groupBy"]
+	var aggregation typesv1.TimeSeriesAggregationType
+	if req.URL.Query().Has("aggregation") {
+		aggregationParam := req.URL.Query().Get("aggregation")
+		switch aggregationParam {
+		case "sum":
+			aggregation = typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM
+		case "avg":
+			aggregation = typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE
+		}
+	}
+
+	format := req.URL.Query().Get("format")
+	if format == "dot" {
+		// We probably should distinguish max nodes of the source pprof
+		// profile and max nodes value for the output profile in dot format.
+		sourceProfileMaxNodes := int64(512)
+		dotProfileMaxNodes := int64(100)
+		if selectParams.MaxNodes != nil {
+			if v := *selectParams.MaxNodes; v > 0 {
+				dotProfileMaxNodes = v
+			}
+			if dotProfileMaxNodes > sourceProfileMaxNodes {
+				sourceProfileMaxNodes = dotProfileMaxNodes
+			}
+		}
+		resp, err := q.client.SelectMergeProfile(req.Context(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{
+			Start:         selectParams.Start,
+			End:           selectParams.End,
+			ProfileTypeID: selectParams.ProfileTypeID,
+			LabelSelector: selectParams.LabelSelector,
+			MaxNodes:      &sourceProfileMaxNodes,
+		}))
+		if err != nil {
+			httputil.Error(w, connect.NewError(connect.CodeInternal, err))
+			return
+		}
+		if err = pprofToDotProfile(w, resp.Msg, int(dotProfileMaxNodes)); err != nil {
+			httputil.Error(w, connect.NewError(connect.CodeInternal, err))
+		}
+		return
+	}
 
 	var resFlame *connect.Response[querierv1.SelectMergeStacktracesResponse]
 	g, ctx := errgroup.WithContext(req.Context())
@@ -152,6 +198,7 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 				End:           selectParams.End,
 				Step:          timelineStep,
 				GroupBy:       groupBy,
+				Aggregation:   &aggregation,
 			}))
 
 		return err
@@ -191,6 +238,21 @@ func (q *QueryHandlers) Render(w http.ResponseWriter, req *http.Request) {
 		httputil.Error(w, err)
 		return
 	}
+}
+
+func pprofToDotProfile(w io.Writer, p *profilev1.Profile, maxNodes int) error {
+	data, err := p.MarshalVT()
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	pr, err := profile.ParseData(data)
+	if err != nil {
+		return connect.NewError(connect.CodeInternal, err)
+	}
+	rpt := report.NewDefault(pr, report.Options{NodeCount: maxNodes})
+	gr, cfg := report.GetDOT(rpt)
+	graph.ComposeDot(w, gr, &graph.DotAttributes{}, cfg)
+	return nil
 }
 
 type renderRequestFieldNames struct {

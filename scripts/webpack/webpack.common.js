@@ -34,6 +34,9 @@ module.exports = {
     // Would end up ignoring b)
     alias: {
       '@pyroscope': path.resolve(__dirname, '../../public/app'),
+      // some sub-dependencies use a different version of @emotion/react and generate warnings
+      // in the browser about @emotion/react loaded twice. We want to only load it once
+      '@emotion/react': require.resolve('@emotion/react'),
       // Dependencies
       //...deps,
     },

@@ -70,7 +70,6 @@ const maxNodesDefault = int64(2048)
 
 func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, storeGatewayQuerier *StoreGatewayQuerier, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Querier, error) {
 	// disable gzip compression for querier-ingester communication as most of payload are not benefit from it.
-	clientsOptions = append(clientsOptions, connect.WithAcceptCompression("gzip", nil, nil))
 	clientsMetrics := promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 		Namespace: "pyroscope",
 		Name:      "querier_ingester_clients",
@@ -663,6 +662,7 @@ func (sq storeQuery) MergeSeriesRequest(req *querierv1.SelectSeriesRequest, prof
 			LabelSelector: req.LabelSelector,
 			Start:         int64(sq.start),
 			End:           int64(sq.end),
+			Aggregation:   req.Aggregation,
 		},
 	}
 }
@@ -684,6 +684,7 @@ func (sq storeQuery) MergeProfileRequest(req *querierv1.SelectMergeProfileReques
 		LabelSelector: req.LabelSelector,
 		Start:         int64(sq.start),
 		End:           int64(sq.end),
+		MaxNodes:      req.MaxNodes,
 	}
 }
 
@@ -740,15 +741,12 @@ func splitQueryToStores(start, end model.Time, now model.Time, queryStoreAfter t
 
 func (q *Querier) SelectMergeProfile(ctx context.Context, req *connect.Request[querierv1.SelectMergeProfileRequest]) (*connect.Response[googlev1.Profile], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeProfile")
-	defer func() {
-		sp.LogFields(
-			otlog.String("start", model.Time(req.Msg.Start).Time().String()),
-			otlog.String("end", model.Time(req.Msg.End).Time().String()),
-			otlog.String("selector", req.Msg.LabelSelector),
-			otlog.String("profile_id", req.Msg.ProfileTypeID),
-		)
-		sp.Finish()
-	}()
+	sp.SetTag("start", model.Time(req.Msg.Start).Time().String()).
+		SetTag("end", model.Time(req.Msg.End).Time().String()).
+		SetTag("selector", req.Msg.LabelSelector).
+		SetTag("max_nodes", req.Msg.GetMaxNodes()).
+		SetTag("profile_type", req.Msg.ProfileTypeID)
+	defer sp.Finish()
 
 	profile, err := q.selectProfile(ctx, req.Msg)
 	if err != nil {
@@ -800,9 +798,8 @@ func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeP
 			return err
 		}
 		lock.Lock()
-		err = merge.Merge(ingesterProfile)
-		lock.Unlock()
-		return err
+		defer lock.Unlock()
+		return merge.Merge(ingesterProfile)
 	})
 	g.Go(func() error {
 		storegatewayProfile, err := q.selectProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeProfileRequest(req), plan)
@@ -810,9 +807,8 @@ func (q *Querier) selectProfile(ctx context.Context, req *querierv1.SelectMergeP
 			return err
 		}
 		lock.Lock()
-		err = merge.Merge(storegatewayProfile)
-		lock.Unlock()
-		return err
+		defer lock.Unlock()
+		return merge.Merge(storegatewayProfile)
 	})
 	if err := g.Wait(); err != nil {
 		return nil, err
@@ -869,12 +865,12 @@ func (q *Querier) SelectSeries(ctx context.Context, req *connect.Request[querier
 		return nil, err
 	}
 
-	it, err := selectMergeSeries(ctx, responses)
+	it, err := selectMergeSeries(ctx, req.Msg.Aggregation, responses)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	result := rangeSeries(it, req.Msg.Start, req.Msg.End, stepMs)
+	result := rangeSeries(it, req.Msg.Start, req.Msg.End, stepMs, req.Msg.Aggregation)
 	if it.Err() != nil {
 		return nil, connect.NewError(connect.CodeInternal, it.Err())
 	}
@@ -904,6 +900,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 				Start:         start,
 				End:           req.Msg.End,
 				Type:          profileType,
+				Aggregation:   req.Msg.Aggregation,
 			},
 			By: req.Msg.GroupBy,
 		}, plan)
@@ -939,18 +936,29 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 // rangeSeries aggregates profiles into series.
 // Series contains points spaced by step from start to end.
 // Profiles from the same step are aggregated into one point.
-func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64) []*typesv1.Series {
+func rangeSeries(it iter.Iterator[ProfileValue], start, end, step int64, aggregation *typesv1.TimeSeriesAggregationType) []*typesv1.Series {
 	defer it.Close()
 	seriesMap := make(map[uint64]*typesv1.Series)
+	aggregators := make(map[uint64]TimeSeriesAggregator)
 
 	if !it.Next() {
 		return nil
 	}
+
 	// advance from the start to the end, adding each step results to the map.
 Outer:
 	for currentStep := start; currentStep <= end; currentStep += step {
 		for {
+			aggregator, ok := aggregators[it.At().LabelsHash]
+			if !ok {
+				aggregator = NewTimeSeriesAggregator(aggregation)
+				aggregators[it.At().LabelsHash] = aggregator
+			}
 			if it.At().Ts > currentStep {
+				if !aggregator.IsEmpty() {
+					series := seriesMap[it.At().LabelsHash]
+					series.Points = append(series.Points, aggregator.GetAndReset())
+				}
 				break // no more profiles for the currentStep
 			}
 			// find or create series
@@ -958,31 +966,35 @@ Outer:
 			if !ok {
 				seriesMap[it.At().LabelsHash] = &typesv1.Series{
 					Labels: it.At().Lbs,
-					Points: []*typesv1.Point{
-						{Value: it.At().Value, Timestamp: currentStep},
-					},
+					Points: []*typesv1.Point{},
 				}
+				aggregator.Add(currentStep, it.At().Value)
 				if !it.Next() {
 					break Outer
 				}
 				continue
 			}
 			// Aggregate point if it is in the current step.
-			if series.Points[len(series.Points)-1].Timestamp == currentStep {
-				series.Points[len(series.Points)-1].Value += it.At().Value
+			if aggregator.GetTimestamp() == currentStep {
+				aggregator.Add(currentStep, it.At().Value)
 				if !it.Next() {
 					break Outer
 				}
 				continue
 			}
 			// Next step is missing
-			series.Points = append(series.Points, &typesv1.Point{
-				Value:     it.At().Value,
-				Timestamp: currentStep,
-			})
+			if !aggregator.IsEmpty() {
+				series.Points = append(series.Points, aggregator.GetAndReset())
+			}
+			aggregator.Add(currentStep, it.At().Value)
 			if !it.Next() {
 				break Outer
 			}
+		}
+	}
+	for lblHash, aggregator := range aggregators {
+		if !aggregator.IsEmpty() {
+			seriesMap[lblHash].Points = append(seriesMap[lblHash].Points, aggregator.GetAndReset())
 		}
 	}
 	series := lo.Values(seriesMap)
@@ -1033,30 +1045,42 @@ func uniqueSortedProfileTypes(responses []ResponseFromReplica[*ingestv1.ProfileT
 }
 
 func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMergeSpanProfileRequest) (*phlaremodel.Tree, error) {
-	// no store gateways configured so just query the ingesters
-	if q.storeGatewayQuerier == nil {
-		return q.selectSpanProfileFromIngesters(ctx, req)
+	// determine the block hints
+	plan, err := q.blockSelect(ctx, model.Time(req.Start), model.Time(req.End))
+	if isEndpointNotExistingErr(err) {
+		level.Warn(spanlogger.FromContext(ctx, q.logger)).Log(
+			"msg", "block select not supported on at least one component, fallback to use full dataset",
+			"err", err,
+		)
+		plan = nil
+	} else if err != nil {
+		return nil, fmt.Errorf("error during block select: %w", err)
 	}
 
-	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter, nil)
+	// no store gateways configured so just query the ingesters
+	if q.storeGatewayQuerier == nil {
+		return q.selectSpanProfileFromIngesters(ctx, req, plan)
+	}
+
+	storeQueries := splitQueryToStores(model.Time(req.Start), model.Time(req.End), model.Now(), q.cfg.QueryStoreAfter, plan)
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
 
 	storeQueries.Log(level.Debug(spanlogger.FromContext(ctx, q.logger)))
 
-	if !storeQueries.ingester.shouldQuery {
-		return q.selectSpanProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeSpanProfileRequest(req))
+	if plan == nil && !storeQueries.ingester.shouldQuery {
+		return q.selectSpanProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeSpanProfileRequest(req), plan)
 	}
-	if !storeQueries.storeGateway.shouldQuery {
-		return q.selectSpanProfileFromIngesters(ctx, storeQueries.ingester.MergeSpanProfileRequest(req))
+	if plan == nil && !storeQueries.storeGateway.shouldQuery {
+		return q.selectSpanProfileFromIngesters(ctx, storeQueries.ingester.MergeSpanProfileRequest(req), plan)
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
 	var ingesterTree, storegatewayTree *phlaremodel.Tree
 	g.Go(func() error {
 		var err error
-		ingesterTree, err = q.selectSpanProfileFromIngesters(ctx, storeQueries.ingester.MergeSpanProfileRequest(req))
+		ingesterTree, err = q.selectSpanProfileFromIngesters(ctx, storeQueries.ingester.MergeSpanProfileRequest(req), plan)
 		if err != nil {
 			return err
 		}
@@ -1064,7 +1088,7 @@ func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMe
 	})
 	g.Go(func() error {
 		var err error
-		storegatewayTree, err = q.selectSpanProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeSpanProfileRequest(req))
+		storegatewayTree, err = q.selectSpanProfileFromStoreGateway(ctx, storeQueries.storeGateway.MergeSpanProfileRequest(req), plan)
 		if err != nil {
 			return err
 		}
@@ -1075,4 +1099,88 @@ func (q *Querier) selectSpanProfile(ctx context.Context, req *querierv1.SelectMe
 	}
 	storegatewayTree.Merge(ingesterTree)
 	return storegatewayTree, nil
+}
+
+type TimeSeriesAggregator interface {
+	Add(ts int64, value float64)
+	GetAndReset() *typesv1.Point
+	IsEmpty() bool
+	GetTimestamp() int64
+}
+
+func NewTimeSeriesAggregator(aggregation *typesv1.TimeSeriesAggregationType) TimeSeriesAggregator {
+	if aggregation == nil {
+		return &sumTimeSeriesAggregator{
+			ts: -1,
+		}
+	}
+	if *aggregation == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE {
+		return &avgTimeSeriesAggregator{
+			ts: -1,
+		}
+	}
+	return &sumTimeSeriesAggregator{
+		ts: -1,
+	}
+}
+
+type sumTimeSeriesAggregator struct {
+	ts  int64
+	sum float64
+}
+
+func (a *sumTimeSeriesAggregator) Add(ts int64, value float64) {
+	a.ts = ts
+	a.sum += value
+}
+
+func (a *sumTimeSeriesAggregator) GetAndReset() *typesv1.Point {
+	tsCopy := a.ts
+	sumCopy := a.sum
+	a.ts = -1
+	a.sum = 0
+	return &typesv1.Point{
+		Timestamp: tsCopy,
+		Value:     sumCopy,
+	}
+}
+
+func (a *sumTimeSeriesAggregator) IsEmpty() bool {
+	return a.ts == -1
+}
+
+func (a *sumTimeSeriesAggregator) GetTimestamp() int64 {
+	return a.ts
+}
+
+type avgTimeSeriesAggregator struct {
+	ts    int64
+	sum   float64
+	count int64
+}
+
+func (a *avgTimeSeriesAggregator) Add(ts int64, value float64) {
+	a.ts = ts
+	a.sum += value
+	a.count++
+}
+
+func (a *avgTimeSeriesAggregator) GetAndReset() *typesv1.Point {
+	avg := a.sum / float64(a.count)
+	tsCopy := a.ts
+	a.ts = -1
+	a.sum = 0
+	a.count = 0
+	return &typesv1.Point{
+		Timestamp: tsCopy,
+		Value:     avg,
+	}
+}
+
+func (a *avgTimeSeriesAggregator) IsEmpty() bool {
+	return a.ts == -1
+}
+
+func (a *avgTimeSeriesAggregator) GetTimestamp() int64 {
+	return a.ts
 }

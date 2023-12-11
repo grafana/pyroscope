@@ -9,26 +9,30 @@ import (
 	"github.com/go-kit/log"
 	"github.com/thanos-io/objstore"
 	"github.com/thanos-io/objstore/providers/azure"
-	"gopkg.in/yaml.v3"
 )
 
 func NewBucketClient(cfg Config, name string, logger log.Logger) (objstore.Bucket, error) {
+	return newBucketClient(cfg, name, logger, azure.NewBucketWithConfig)
+}
+
+func newBucketClient(cfg Config, name string, logger log.Logger, factory func(log.Logger, azure.Config, string) (*azure.Bucket, error)) (objstore.Bucket, error) {
 	// Start with default config to make sure that all parameters are set to sensible values, especially
 	// HTTP Config field.
 	bucketConfig := azure.DefaultConfig
 	bucketConfig.StorageAccountName = cfg.StorageAccountName
 	bucketConfig.StorageAccountKey = cfg.StorageAccountKey.String()
+	bucketConfig.StorageConnectionString = cfg.StorageConnectionString.String()
 	bucketConfig.ContainerName = cfg.ContainerName
-	bucketConfig.Endpoint = cfg.Endpoint
 	bucketConfig.MaxRetries = cfg.MaxRetries
 	bucketConfig.UserAssignedID = cfg.UserAssignedID
 
-	// Thanos currently doesn't support passing the config as is, but expects a YAML,
-	// so we're going to serialize it.
-	serialized, err := yaml.Marshal(bucketConfig)
-	if err != nil {
-		return nil, err
+	// do not delay retries
+	bucketConfig.PipelineConfig.RetryDelay = -1
+
+	if cfg.Endpoint != "" {
+		// azure.DefaultConfig has the default Endpoint, overwrite it only if a different one was explicitly provided.
+		bucketConfig.Endpoint = cfg.Endpoint
 	}
 
-	return azure.NewBucket(logger, serialized, name)
+	return factory(logger, bucketConfig, name)
 }

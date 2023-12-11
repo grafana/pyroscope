@@ -292,7 +292,6 @@ func (s *parquetWriter[M, P]) init(dir string, c ParquetConfig) (err error) {
 	s.rowsBatch = make([]parquet.Row, 0, 128)
 	s.buffer = parquet.NewBuffer(s.persister.Schema(), parquet.ColumnBufferCapacity(s.config.MaxBufferRowCount))
 	s.writer = parquet.NewGenericWriter[P](s.file, s.persister.Schema(),
-		parquet.ColumnPageBuffers(parquet.NewFileBufferPool(os.TempDir(), "phlaredb-parquet-buffers*")),
 		parquet.CreatedBy("github.com/grafana/pyroscope/", build.Version, build.Revision),
 		parquet.PageBufferSize(3*1024*1024),
 	)
