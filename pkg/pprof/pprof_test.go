@@ -1120,6 +1120,7 @@ func Benchmark_GetProfileLanguage(b *testing.B) {
 			p, err := OpenFile(f)
 			require.NoError(b, err)
 			b.ResetTimer()
+			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
 				language := GetLanguage(p, log.NewNopLogger())
 				if language == "unknown" {
