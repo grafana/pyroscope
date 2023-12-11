@@ -56,11 +56,11 @@ func main() {
 	pyroscope.Start(pyroscope.Config{
 		ApplicationName: "detective.mystery.app",
 		ServerAddress:   "https://profiles-prod-001.grafana.net", // if OSS then http://localhost:4040
-    // Optional HTTP Basic authentication
-    BasicAuthUser:     "<User>", // 900009 
-    BasicAuthPassword: "<Password>", // glc_SAMPLEAPIKEY0000000000==
-		Logger:          pyroscope.StandardLogger,
-		Tags:            map[string]string{"hostname": os.Getenv("HOSTNAME")},
+		// Optional HTTP Basic authentication
+		BasicAuthUser:     "<User>",     // 900009
+		BasicAuthPassword: "<Password>", // glc_SAMPLEAPIKEY0000000000==
+		Logger:            pyroscope.StandardLogger,
+		Tags:              map[string]string{"hostname": os.Getenv("HOSTNAME")},
 		ProfileTypes: []pyroscope.ProfileType{
 			pyroscope.ProfileCPU,
 			pyroscope.ProfileAllocObjects,
