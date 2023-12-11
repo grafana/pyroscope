@@ -186,7 +186,7 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 		dc.blockManager = bm
 		dc.volumeChecker = vc
 
-		deleted, bytesFreed, hadHighDisk := dc.EnforceHighDiskUtilization(context.Background())
+		deleted, bytesFreed, hadHighDisk := dc.HighDiskUtilizationCleanup(context.Background())
 		require.Equal(t, 0, deleted)
 		require.Equal(t, 0, bytesFreed)
 		require.False(t, hadHighDisk)
@@ -236,7 +236,7 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 		dc.blockManager = bm
 		dc.volumeChecker = vc
 
-		deleted, bytesFreed, hadHighDisk := dc.EnforceHighDiskUtilization(context.Background())
+		deleted, bytesFreed, hadHighDisk := dc.HighDiskUtilizationCleanup(context.Background())
 		require.Equal(t, 1, deleted)
 		require.Equal(t, 50, bytesFreed)
 		require.True(t, hadHighDisk)

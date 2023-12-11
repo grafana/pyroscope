@@ -101,7 +101,7 @@ func (dc *diskCleaner) running(ctx context.Context) error {
 		deleted = dc.DeleteUploadedBlocks(ctx)
 		level.Debug(dc.logger).Log("msg", "cleaned uploaded blocks", "count", deleted)
 
-		deleted, bytesDeleted, hasHighDiskUtilization = dc.EnforceHighDiskUtilization(ctx)
+		deleted, bytesDeleted, hasHighDiskUtilization = dc.HighDiskUtilizationCleanup(ctx)
 		if hasHighDiskUtilization {
 			level.Debug(dc.logger).Log(
 				"msg", "cleaned files after high disk utilization",
@@ -182,11 +182,11 @@ func (dc *diskCleaner) DeleteUploadedBlocks(ctx context.Context) int {
 	return deleted
 }
 
-// EnforceHighDiskUtilization will run more aggressive disk cleaning if high
+// HighDiskUtilizationCleanup will run more aggressive disk cleaning if high
 // disk utilization is detected. It returns true if high disk utilization was
 // detected, along with the number of files deleted and the estimated bytes
 // recovered. If no high disk utilization was detected, false is returned.
-func (dc *diskCleaner) EnforceHighDiskUtilization(ctx context.Context) (int, int, bool) {
+func (dc *diskCleaner) HighDiskUtilizationCleanup(ctx context.Context) (int, int, bool) {
 	volumeStats, err := dc.volumeChecker.HasHighDiskUtilization(dc.config.DataPath)
 	if err != nil {
 		level.Error(dc.logger).Log(
