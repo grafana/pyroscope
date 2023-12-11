@@ -79,7 +79,6 @@ func ReadConfig() Config {
 	c := Config{
 		AppName:                    os.Getenv("PYROSCOPE_APPLICATION_NAME"),
 		PyroscopeServerAddress:     os.Getenv("PYROSCOPE_SERVER_ADDRESS"),
-		PyroscopeAuthToken:         os.Getenv("PYROSCOPE_AUTH_TOKEN"),
 		PyroscopeBasicAuthUser:     os.Getenv("PYROSCOPE_BASIC_AUTH_USER"),
 		PyroscopeBasicAuthPassword: os.Getenv("PYROSCOPE_BASIC_AUTH_PASSWORD"),
 
