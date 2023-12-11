@@ -26,14 +26,13 @@ import (
 )
 
 type Handlers struct {
-	Bucket  objstore.Bucket
-	Logger  log.Logger
-	Context context.Context
+	Bucket objstore.Bucket
+	Logger log.Logger
 }
 
 func (h *Handlers) CreateIndexHandler() func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		users, _ := bucket.ListUsers(h.Context, h.Bucket)
+		users, _ := bucket.ListUsers(r.Context(), h.Bucket)
 		err := pageTemplates.indexTemplate.Execute(w, indexPageContent{
 			Users: users,
 			Now:   time.Now().UTC().Format(time.RFC3339),
@@ -52,7 +51,7 @@ func (h *Handlers) CreateBlocksHandler() func(http.ResponseWriter, *http.Request
 			httputil.Error(w, errors.New("No tenant id provided"))
 			return
 		}
-		index, err := bucketindex.ReadIndex(h.Context, h.Bucket, tenantId, nil, h.Logger)
+		index, err := bucketindex.ReadIndex(r.Context(), h.Bucket, tenantId, nil, h.Logger)
 		if err != nil {
 			httputil.Error(w, err)
 			return
@@ -183,7 +182,7 @@ func (h *Handlers) CreateBlockDetailsHandler() func(http.ResponseWriter, *http.R
 			return
 		}
 
-		blockDetails := getBlockDetails(h.Context, bId, fetcher)
+		blockDetails := getBlockDetails(r.Context(), bId, fetcher)
 		if blockDetails != nil {
 			err = pageTemplates.blockDetailsTemplate.Execute(w, blockDetailsPageContent{
 				User:  tenantId,
