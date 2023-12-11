@@ -1,4 +1,4 @@
-# Migrating from Standard pprof to Pyroscope in a Go Application
+# Migrating from standard pprof to Pyroscope in a Go application
 
 This README provides a comprehensive guide on migrating from the standard pprof library to Pyroscope in a Go application. The example demonstrates the transition within a detective-themed Go application, enhancing the process of profiling with Pyroscope's advanced capabilities.
 
