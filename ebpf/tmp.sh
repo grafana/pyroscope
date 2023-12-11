@@ -7,6 +7,7 @@ set -ex
 
 
 export IMG=/home/korniltsev/pyro/pyroscope/ebpf/.tmp/ebpf/vm_image_amd64
+export IMG=/Users/korniltsev/pyro/pyroscope/ebpf/.tmp/ebpf/vm_image_amd64
 
 
 if [ -z $ARCH ]; then
@@ -56,14 +57,16 @@ kill_vm() {
   pkill qemu-system || true
 }
 #KERNEL=/home/korniltsev/github/linus/bzImageNoModules
-KERNEL=/home/korniltsev/github/linus/linux/arch/x86/boot/bzImage
+#KERNEL=/home/korniltsev/github/linus/linux/arch/x86/boot/bzImage
+
+#    -kernel ${KERNEL} \
+#    -append 'root=/dev/sda console=ttyS0 nokaslr' \
+
 run_vm() {
-  kill_vm
+  #kill_vm
   ${QEMU} \
     -nodefaults \
     -nographic \
-    -kernel ${KERNEL} \
-    -append 'root=/dev/sda console=ttyS0 nokaslr' \
     -no-reboot \
     -s \
     -smp 4 -m 4G \

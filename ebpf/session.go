@@ -593,6 +593,7 @@ func (s *session) startProfilingLocked(pid uint32, target *sd.Target) {
 		return
 	}
 	typ := s.selectProfilingType(pid, target)
+	fmt.Printf("pt %d  %+v %s\n", pid, typ, target.String())
 	if typ.typ == pyrobpf.ProfilingTypePython {
 		go s.tryStartPythonProfiling(pid, target, typ)
 		return

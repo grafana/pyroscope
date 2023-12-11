@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"unsafe"
+	//"github.com/grafana/phlare/ebpf/symtab"
 )
 
 // ProcMapPermissions contains permission settings read from `/proc/[pid]/maps`.
@@ -314,4 +315,26 @@ func tokenToStringUnsafe(tok []byte) string {
 	sh.Data = uintptr(unsafe.Pointer(&tok[0]))
 	sh.Len = len(tok)
 	return res
+}
+
+func FindLastRXMap(maps []*ProcMap) *ProcMap {
+	for i := len(maps) - 1; i >= 0; i-- {
+		m := maps[i]
+		if m.Perms.Read && m.Perms.Execute {
+			return m
+		}
+	}
+	return nil
+}
+
+// FindReadableMap return a map entry that is readable and not writable or nil
+func FindReadableMap(maps []*ProcMap) *ProcMap {
+	var readable *ProcMap
+	for _, m := range maps {
+		if m.Perms.Read && !m.Perms.Write {
+			readable = m
+			break
+		}
+	}
+	return readable
 }

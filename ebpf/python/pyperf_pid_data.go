@@ -11,11 +11,15 @@ import (
 )
 
 type PySymbols struct {
+	//base address of libpython or python elf
+	// zero if elf.FileHeader.Type == elf.ET_EXEC
+	BaseAddress    uint64
 	autoTLSkeyAddr uint64
 	pyRuntimeAddr  uint64
 
-	PyObject_Malloc_Impl, PyObject_Calloc_Impl, PyObject_Realloc_Impl, PyObject_Free_Impl uint64
-	PyObject_Free                                                                         uint64
+	//PyObject_Malloc_Impl, PyObject_Calloc_Impl, PyObject_Realloc_Impl, PyObject_Free_Impl uint64
+	PyObject_Free      uint64
+	PyMem_GetAllocator uint64
 }
 
 func getSymbols(pythonFD *os.File, base *symtab.ProcMap, flags GetProcDataFlags) (*PySymbols, error) {
@@ -24,10 +28,7 @@ func getSymbols(pythonFD *os.File, base *symtab.ProcMap, flags GetProcDataFlags)
 		return nil, fmt.Errorf("opening elf %w", err)
 	}
 	res := new(PySymbols)
-	baseAddr := base.StartAddr
-	if ef.FileHeader.Type == elf.ET_EXEC {
-		baseAddr = 0
-	}
+	res.BaseAddress = getBaseAddr(base, ef)
 	symbols, err := ef.DynamicSymbols()
 	if err != nil {
 		return nil, fmt.Errorf("reading symbols from elf %w", err)
@@ -35,11 +36,13 @@ func getSymbols(pythonFD *os.File, base *symtab.ProcMap, flags GetProcDataFlags)
 	for _, symbol := range symbols {
 		switch symbol.Name {
 		case "autoTLSkey":
-			res.autoTLSkeyAddr = baseAddr + symbol.Value
+			res.autoTLSkeyAddr = res.BaseAddress + symbol.Value
 		case "_PyRuntime":
-			res.pyRuntimeAddr = baseAddr + symbol.Value
+			res.pyRuntimeAddr = res.BaseAddress + symbol.Value
 		case "PyObject_Free":
-			res.PyObject_Free = baseAddr + symbol.Value
+			res.PyObject_Free = res.BaseAddress + symbol.Value
+		case "PyMem_GetAllocator":
+			res.PyMem_GetAllocator = res.BaseAddress + symbol.Value
 		default:
 			continue
 		}
@@ -49,23 +52,31 @@ func getSymbols(pythonFD *os.File, base *symtab.ProcMap, flags GetProcDataFlags)
 	}
 	needMem := flags&GetProcDataFlagWithMem != 0
 	if needMem {
-		symbols, err = ef.Symbols()
-		_ = err // Ignore. The memory sampling just will not work, but cpu still will
-		for _, symbol := range symbols {
-			switch symbol.Name {
-			case "_PyObject_Malloc":
-				res.PyObject_Malloc_Impl = baseAddr + symbol.Value
-			case "_PyObject_Calloc":
-				res.PyObject_Calloc_Impl = baseAddr + symbol.Value
-			case "_PyObject_Realloc":
-				res.PyObject_Realloc_Impl = baseAddr + symbol.Value
-			case "_PyObject_Free":
-				res.PyObject_Free_Impl = baseAddr + symbol.Value
-			}
-		}
+		//symbols, err = ef.Symbols()
+		//_ = err // Ignore. The memory sampling just will not work, but cpu still will
+		//for _, symbol := range symbols {
+		//	switch symbol.Name {
+		//	case "_PyObject_Malloc":
+		//		res.PyObject_Malloc_Impl = baseAddr + symbol.Value
+		//	case "_PyObject_Calloc":
+		//		res.PyObject_Calloc_Impl = baseAddr + symbol.Value
+		//	case "_PyObject_Realloc":
+		//		res.PyObject_Realloc_Impl = baseAddr + symbol.Value
+		//	case "_PyObject_Free":
+		//		res.PyObject_Free_Impl = baseAddr + symbol.Value
+		//	}
+		//}
 	}
 
 	return res, nil
+}
+
+func getBaseAddr(base *symtab.ProcMap, ef *elf.File) uint64 {
+	baseAddr := base.StartAddr
+	if ef.FileHeader.Type == elf.ET_EXEC {
+		baseAddr = 0
+	}
+	return baseAddr
 }
 
 type GetProcDataFlags int
@@ -82,13 +93,14 @@ type ProcData struct {
 	// addresses in VM of the process
 	PySymbols *PySymbols
 
+	// libpython.so or python elf
 	Base *symtab.ProcMap
 }
 
 func GetProcData(l log.Logger, info *ProcInfo, pid uint32, flags GetProcDataFlags) (*ProcData, error) {
 
 	pythonMeat := getPythonMaps(info)
-	readable := findReadableMap(pythonMeat)
+	readable := symtab.FindReadableMap(pythonMeat)
 	if readable == nil {
 		return nil, fmt.Errorf("no readable python map entry %+v", pythonMeat)
 	}
@@ -190,18 +202,6 @@ func GetProcData(l log.Logger, info *ProcInfo, pid uint32, flags GetProcDataFlag
 		ProcInfo:      info,
 		Base:          base_,
 	}, nil
-}
-
-// return a map entry that is readable and not writable
-func findReadableMap(pythonMeat []*symtab.ProcMap) *symtab.ProcMap {
-	var readable *symtab.ProcMap
-	for _, m := range pythonMeat {
-		if m.Perms.Read && !m.Perms.Write {
-			readable = m
-			break
-		}
-	}
-	return readable
 }
 
 func getPythonMaps(info *ProcInfo) []*symtab.ProcMap {

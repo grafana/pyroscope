@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 typedef struct {
     void *ctx;
@@ -15,18 +16,12 @@ typedef struct {
 
 
 static bool inc(volatile unsigned long long *counter, unsigned long long value, unsigned long long interval) {
-    while (true) {
-        unsigned long long prev = *counter;
-        unsigned long long next = prev + value;
-        if (next < interval) {
-            if (__sync_bool_compare_and_swap(counter, prev, next)) {
-                return false;
-            }
-        } else {
-            if (__sync_bool_compare_and_swap(counter, prev, next % interval)) {
-                return true;
-            }
-        }
+    unsigned long long prev = *counter;
+    unsigned long long next = prev + value;
+    if (next < interval) {
+        *counter = next;
+    } else {
+        *counter = next % interval;
     }
 }
 
