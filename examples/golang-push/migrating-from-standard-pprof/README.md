@@ -18,16 +18,13 @@ The functions `gatherClues`, `analyzeEvidence`, `interviewWitnesses`, `chaseSusp
 In the post-pyroscope code, to leverage the advanced features of Pyroscope, we made the following changes:
 
 1. **Removed Standard pprof Import:** The `_ "net/http/pprof"` import was removed, as Pyroscope replaces its functionality.
-
 2. **Added Pyroscope SDK:** We installed the Pyroscope module using `go get github.com/grafana/pyroscope-go` and imported it in our `main.go`.
-
 3. **Configured Pyroscope:** Inside the `main()` function, we set up Pyroscope using the `pyroscope.Start()` method with the following configuration:
    - Application name and server address.
    - Logger configuration.
    - Tags for additional metadata.
    - Profile types to be captured.
-
-4. **Removed pprof Server:** The goroutine for the pprof HTTP server (`http.ListenAndServe`) was removed, as Pyroscope handles profiling internally.
+4. Consider using [godeltaprof](https://pkg.go.dev/github.com/grafana/pyroscope-go/godeltaprof) -- which is an optimized way to do memory profiling more efficiently
 
 ## Benefits of Using Pyroscope
 
