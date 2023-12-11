@@ -11,8 +11,6 @@ See link to [source PR here](https://github.com/grafana/pyroscope/pull/2830)
 
 Originally in the pre-pyroscope code, the `main.go` file used the standard `net/http/pprof` package for profiling. This setup is common and straightforward but lacks continuous profiling and real-time analysis capabilities.
 
-The functions `gatherClues`, `analyzeEvidence`, `interviewWitnesses`, `chaseSuspect`, and `solveMystery` were designed to simulate different CPU loads using busy loops. This approach provided a clear representation of various workloads in the pprof profiler.
-
 ### Post-Pyroscope migration
 
 In the post-pyroscope code, to leverage the advanced features of Pyroscope, we made the following changes:
