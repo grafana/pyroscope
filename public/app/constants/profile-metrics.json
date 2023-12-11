@@ -43,7 +43,7 @@
   },
   "memory:alloc_objects:count:space:bytes": {
     "id": "memory:alloc_objects:count:space:bytes",
-    "description": "Total objects allocated, represented in bytes",
+    "description": "Total count of objects allocated",
     "type": "alloc_objects",
     "group": "memory",
     "unit": "count"
