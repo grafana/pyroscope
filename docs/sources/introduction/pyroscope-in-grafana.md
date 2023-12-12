@@ -2,7 +2,6 @@
 title: Pyroscope and profiling in Grafana
 menuTitle: Pyroscope in Grafana
 description: Learn about how you can use profile data in Grafana.
-aliases:
 weight: 200
 draft: true
 keywords:
@@ -33,5 +32,3 @@ Introduce the concept.
 ## Useful links
 
 <!-- Link out to task or reference topics related to the concept. -->
-
-- [Link example](https://grafana.com)

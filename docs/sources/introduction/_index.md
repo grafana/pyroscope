@@ -2,7 +2,6 @@
 title: What is Pyroscope?
 menuTitle: What is Pyroscope?
 description: Learn about Pyrsocope and profiling.
-aliases:
 weight: 10
 draft: true
 keywords:
@@ -32,5 +31,3 @@ Introduce the concept.
 ## Useful links
 
 <!-- Link out to task or reference topics related to the concept. -->
-
-- [Link example](https://grafana.com)

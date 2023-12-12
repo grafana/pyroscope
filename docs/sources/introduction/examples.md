@@ -2,7 +2,6 @@
 title: Profiling examples
 menuTitle: Profiling examples
 description: What can you do with profiling data to resolve real-world problems?
-aliases:
 weight: 100
 draft: true
 keywords:
@@ -32,5 +31,3 @@ Introduce the concept.
 ## Useful links
 
 <!-- Link out to task or reference topics related to the concept. -->
-
-- [Link example](https://grafana.com)
