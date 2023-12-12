@@ -23,6 +23,7 @@ import (
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -233,6 +234,7 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	}
 	resp, err := d.PushParsed(ctx, req)
 	if err != nil && validation.ReasonOf(err) != validation.Unknown {
+		ext.LogError(opentracing.SpanFromContext(ctx), err)
 		level.Debug(util.LoggerWithContext(ctx, d.logger)).Log("msg", "failed to validate profile", "err", err)
 		return resp, err
 	}
