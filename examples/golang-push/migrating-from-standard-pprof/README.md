@@ -27,6 +27,8 @@ In the post-pyroscope code, to leverage the advanced features of Pyroscope, we m
 ## Benefits of using Pyroscope
 
 - **Continuous Profiling:** Pyroscope offers continuous, always-on profiling, allowing real-time performance analysis.
+- **Advanced support:** Support for advanced features such as trace-span profiling, tags/labels, and controlling profiling with code.
+- **Higher efficiency:** Less ressource consumed by sending delta instead of cumulative profiles.
 - **Enhanced Insights:** With Pyroscope, you gain deeper insights into your application's performance, helping to identify and resolve issues more effectively.
 - **Easy Integration:** Migrating to Pyroscope requires minimal changes and provides a more robust profiling solution with little overhead.
 - **Customizable Profiling:** Pyroscope enables more granular control over what gets profiled, offering a range of profiling types.
