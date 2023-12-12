@@ -1,6 +1,6 @@
 ---
-title: Understanding profiling types and their uses in Pyroscope
-menuTitle: Understanding profiling types
+title: Understand profiling types and their uses in Pyroscope
+menuTitle: Understand profiling types
 description: Learn about the different profiling types available in Pyroscope and how to effectively use them in your application performance analysis.
 weight: 30
 keywords:
@@ -10,15 +10,15 @@ keywords:
   - flamegraphs
 ---
 
-# Understanding profiling types and their uses in Pyroscope
+# Understand profiling types and their uses in Pyroscope
 
 Profiling is an essential tool for understanding and optimizing application performance. In Pyroscope, various profiling types allow for an in-depth analysis of different aspects of your application. This guide will explore these types and explain their impact on your program.
 
-## What Are Profiling Types?
+## Profiling types
 
 In Pyroscope, profiling types refer to different dimensions of application performance analysis, focusing on specific aspects like CPU usage, memory allocation, or thread synchronization.
 
-## Which Profiling Types Are Available in Pyroscope?
+## Available profile types
 
 Various languages support different profiling types. Pyroscope supports the following profiling types as of `v1.2.0`:
 
@@ -40,8 +40,9 @@ Various languages support different profiling types. Pyroscope supports the foll
 | Wall               |       |       | Yes   |       |        |       |         |           |              |
 | Heap               |       |       |       |       |        |       | Yes     |           |              |
 
+## CPU profiling
 
-## CPU Profiling (note we can link to each of these from within the Pyroscope UI in the little (i) icon)
+<!-- We can link to each of these from within the Pyroscope UI in the little (i) icon. -->
 
 CPU profiling measures the amount of CPU time consumed by different parts of your application code. High CPU usage can indicate inefficient code, leading to poor performance and increased operational costs. It's used to identify and optimize CPU-intensive functions in your application.
 
@@ -55,7 +56,7 @@ As you can see here the UI is showing a spike in CPU along with the flamegraph a
 <!-- ## FGprof (for go)
 [todo add a link to the docs for fgprof]  -->
 
-## Memory Allocation Profiling
+## Memory allocation profiling
 
 Memory allocation profiling tracks the amount and frequency of memory allocations by the application. Excessive or inefficient memory allocation can lead to memory leaks and high garbage collection overhead, impacting application efficiency.
 
@@ -65,18 +66,18 @@ Memory allocation profiling tracks the amount and frequency of memory allocation
 
 ![memory leak example](https://grafana.com/static/img/pyroscope/pyroscope-memory-leak-2023-11-30.png)
 
-The timeline shows memory allocations over time and is great for debugging memory related issues. A common example is when a memory leak is created due to improper handling of memory in a function. This can be identified by looking at the timeline and seeing a gradual increase in memory allocations that never goes down. This is a clear indicator of a memory leak. 
+The timeline shows memory allocations over time and is great for debugging memory related issues. A common example is when a memory leak is created due to improper handling of memory in a function. This can be identified by looking at the timeline and seeing a gradual increase in memory allocations that never goes down. This is a clear indicator of a memory leak.
 
 Without profiling this is may be something that is exhibited in metrics or OOM logs but with profiling you have more details into the specific function that is allocating the memory which is causiing the leak at the line level.
 
-## Goroutine Profiling
+## Goroutine profiling
 
 Goroutines are lightweight threads in Go, used for concurrent operations. Goroutine profiling measures the usage and performance of these threads. Poor management can lead to issues like deadlocks and excessive resource usage.
 
 - **When to Use**: Especially useful in Go applications for concurrency management
 - **Flamegraph Insight**: Provides a view of goroutine distribution and issues
 
-## Mutex Profiling
+## Mutex profiling
 
 Mutex profiling involves analyzing mutex (mutual exclusion) locks, used to prevent simultaneous access to shared resources. Excessive or long-duration mutex locks can cause delays and reduced application throughput.
 
@@ -84,7 +85,7 @@ Mutex profiling involves analyzing mutex (mutual exclusion) locks, used to preve
 - **When to Use**: To optimize thread synchronization and reduce lock contention
 - **Flamegraph Insight**: Shows frequency and duration of mutex operations
 
-## Block Profiling
+## Block profiling
 
 Block profiling measures the frequency and duration of blocking operations, where a thread is paused or delayed. Blocking can significantly slow down application processes, leading to performance bottlenecks.
 

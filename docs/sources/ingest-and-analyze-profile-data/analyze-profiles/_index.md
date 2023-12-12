@@ -1,5 +1,5 @@
 ---
-title: Analyze app performance using Pyroscope  
+title: Analyze app performance using Pyroscope
 menuTitle: Analyze app performance
 description: How to use the Pyroscope UI to analyze performance of your applications.
 weight: 40
@@ -13,20 +13,20 @@ keywords:
 # Analyze app performance using Pyroscope
 
 
-##  Continuous profiling and metadata 
+## Continuous profiling and metadata
 
 While code profiling has been a long-standing practice, Continuous Profiling represents a modern and more advanced approach to performance monitoring. This technique adds two critical dimensions to traditional profiles:
 
 - **Time:** Profiling data is collected _continuously_, providing a time-centric view that allows querying performance data from any point in the past
 - **Metadata:** Profiles are enriched with metadata, adding contextual depth to the performance data
 
-These dimensions, coupled with the detailed nature of performance profiles, make Continuous Profiling a uniquely valuable tool. Pyroscope's UI enhances this further by offering a convenient platform to analyze profiles and get insights that are impossible to get from using other traditional signals like logs, metrics, or tracing. 
+These dimensions, coupled with the detailed nature of performance profiles, make Continuous Profiling a uniquely valuable tool. Pyroscope's UI enhances this further by offering a convenient platform to analyze profiles and get insights that are impossible to get from using other traditional signals like logs, metrics, or tracing.
 
 In this UI reference, we'll show how Pyroscope parallels these other modern observability tools by providing a Prometheus-like querying experience. More importantly, you'll learn how to use Pyroscope's extensive UI features for a deeper insight into your application's performance.
 
-## Key Features of the Pyroscope UI
+## Key features of the Pyroscope UI
 
-### Tag Explorer Page
+### Tag Explorer
 
 The Tag Explorer page is a vital part of Pyroscope's UI, allowing users to navigate and analyze performance data through tags/labels. This feature is crucial for identifying performance anomalies and understanding the behavior of different application segments under various conditions. We intentionally don't include a query language on this page as we built this page to be as intuitive as possible for users to use the UI to navigate and drill down into which tags are most interesting to them.
 
@@ -38,7 +38,7 @@ To use the Tag Explorer:
 ![tag-explorer-page](https://grafana.com/static/img/pyroscope/pyroscope-tag-explorer-cpu-2023-11-30.png)
 
 
-### Single View Page
+### Single view
 
 The Single View page in Pyroscope's UI is built for in-depth profile analysis. Here, you can explore a single flamegraph with multiple viewing options and functionalities:
 
@@ -49,7 +49,8 @@ The Single View page in Pyroscope's UI is built for in-depth profile analysis. H
 
 **Visual Placeholder:** *Screenshots demonstrating each view option in the Single View page.*
 
-In the picture above we see a spike in CPU usage. Without profiling we would go from a memory spike to digging through code or guessing what the cause of it is. However, with profiling we can use the flamegraph and table to see exactly which function is most responsible for the spike. Often this will show up as a single node taking up a noticeably disproportionate width in the flamegraph as seen below with the "checkDriverAvailability" function.
+The screenshot above shows a spike in CPU usage.
+Without profiling, we would go from a memory spike to digging through code or guessing what the cause of it is. However, with profiling we can use the flamegraph and table to see exactly which function is most responsible for the spike. Often this will show up as a single node taking up a noticeably disproportionate width in the flamegraph as seen below with the "checkDriverAvailability" function.
 
 ![example-flamegraph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
 
@@ -61,7 +62,7 @@ However, in some instances it may be a function that is called many times and is
 
 **Conducting Comparative Analysis with Label Sets**
 
-The Comparison page facilitates side-by-side comparison of profiles either based on different label sets, different time periods, or both. This feature is extremely valuable for understanding the impact of changes or differences between do distinct queries of your application. 
+The Comparison page facilitates side-by-side comparison of profiles either based on different label sets, different time periods, or both. This feature is extremely valuable for understanding the impact of changes or differences between do distinct queries of your application.
 
 **How to Compare:**
 1. Select two different sets of labels (e.g., `env:production` vs. `env:development`) and or time periods, reflected by the sub-timelines above each flamegraph
@@ -75,7 +76,7 @@ We see many practical use cases for comparison for companies using Pyroscope. So
 - **Region:** Compare `region:us-east-1` vs. `region:us-west-1`
 
 
-Another example whre time is more important than labels is when you want to compare two different time periods. For example, in investigating the cause of a memory leak you would see something like the following where the timeline shows an steadily increasing amount of memory allocations over time. This is a clear indicator of a memory leak. 
+Another example whre time is more important than labels is when you want to compare two different time periods. For example, in investigating the cause of a memory leak you would see something like the following where the timeline shows an steadily increasing amount of memory allocations over time. This is a clear indicator of a memory leak.
 
 You can then use the comparison page to compare the memory allocations between two different time periods where allocations were low and where allocations were high which would allow you to identify the function that is causing the memory leak.
 
@@ -99,7 +100,7 @@ Using the same examples from above here is a diff between two label sets:
 
 One of the major benefits of Pyroscope is that it can be used alongside the other Grafana tools such as Loki, Tempo, Mimir, and k6. This allows you to use Pyroscope to get the most granular insight into your application and how you can use it to fix issues that you may have identified via metrics, logs, traces, or anything else.
 
-You can use Pyroscope within Grafana by using the Pyroscope datasource plugin. This plugin allows you to query Pyroscope data from within Grafana and visualize it alongside your other Grafana data. 
+You can use Pyroscope within Grafana by using the Pyroscope datasource plugin. This plugin allows you to query Pyroscope data from within Grafana and visualize it alongside your other Grafana data.
 
 For example here is a screenshot of the explore page where we've combined traces and profiles to be able to see granular line-level detail when available for a trace span. This allows you to see the exact function that is causing a bottleneck in your application as well as a specific request.
 
