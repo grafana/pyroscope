@@ -184,7 +184,7 @@ func (r *Reader) Partition(ctx context.Context, partition uint64) (PartitionRead
 	return r.partition(ctx, partition)
 }
 
-func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, error) {
+func (r *Reader) partition(ctx context.Context, partition uint64) (PartitionReader, error) {
 	p, ok := r.partitionsMap[partition]
 	if !ok {
 		return nil, ErrPartitionNotFound
@@ -193,8 +193,19 @@ func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, e
 		if err := p.init(ctx); err != nil {
 			return nil, err
 		}
+		return p, nil
 	}
-	return p, nil
+	return &loadedPartition{p}, nil
+}
+
+// loadedPartition is a wrapper around partition that does not
+// release the resources on Release.
+// This is used in combination with `Load` at compaction time where all partition are loaded in memory once and not released.
+type loadedPartition struct {
+	*partition
+}
+
+func (l *loadedPartition) Release() {
 }
 
 type partition struct {
