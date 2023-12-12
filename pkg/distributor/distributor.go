@@ -234,7 +234,9 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	}
 	resp, err := d.PushParsed(ctx, req)
 	if err != nil && validation.ReasonOf(err) != validation.Unknown {
-		ext.LogError(opentracing.SpanFromContext(ctx), err)
+		if sp := opentracing.SpanFromContext(ctx); sp != nil {
+			ext.LogError(sp, err)
+		}
 		level.Debug(util.LoggerWithContext(ctx, d.logger)).Log("msg", "failed to validate profile", "err", err)
 		return resp, err
 	}
