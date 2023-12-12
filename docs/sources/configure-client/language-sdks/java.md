@@ -76,7 +76,8 @@ public void init() {
         .setFormat(Format.JFR)
         .setServerAddress("http://pyroscope-server:4040")
         // Optionally, if authentication is enabled, specify the API key.
-        // .setAuthToken(System.getenv("PYROSCOPE_AUTH_TOKEN"))
+        // .setBasicAuthUser("<User>")
+        // .setBasicAuthPassword("<Password>")
         // Optionally, if you'd like to set allocation threshold to register events, in bytes. '0' registers all events
         // .setProfilingAlloc("0")
         .build()
