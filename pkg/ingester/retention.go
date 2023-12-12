@@ -183,10 +183,11 @@ func (dc *diskCleaner) DeleteUploadedBlocks(ctx context.Context) int {
 }
 
 // CleanupBlocksWhenHighDiskUtilization will run more aggressive disk cleaning
-// if high disk utilization is detected. It returns true if high disk
-// utilization was detected, along with the number of files deleted and the
-// estimated bytes recovered. If no high disk utilization was detected, false is
-// returned.
+// if high disk utilization is detected by deleting blocks that have been
+// uploaded but may not necessarily have been synced with the store gateway. It
+// returns true if high disk utilization was detected, along with the number of
+// files deleted and the estimated bytes recovered. If no high disk utilization
+// was detected, false is returned.
 func (dc *diskCleaner) CleanupBlocksWhenHighDiskUtilization(ctx context.Context) (int, int, bool) {
 	volumeStats, err := dc.volumeChecker.HasHighDiskUtilization(dc.config.DataPath)
 	if err != nil {
@@ -235,12 +236,17 @@ func (dc *diskCleaner) CleanupBlocksWhenHighDiskUtilization(ctx context.Context)
 	prevVolumeStats := &diskutil.VolumeStats{}
 	filesDeleted := 0
 	for _, block := range blocks {
+		// Skip blocks that haven't been uploaded.
+		if !block.Uploaded {
+			continue
+		}
+
 		// Delete a block.
 		err = dc.blockManager.DeleteBlock(ctx, block)
 		switch {
 		case os.IsNotExist(err):
 			level.Warn(dc.logger).Log(
-				"msg", "failed to delete uploaded block, does not exist",
+				"msg", "failed to delete block, does not exist",
 				"err", err,
 				"path", block.Path,
 			)
