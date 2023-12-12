@@ -233,7 +233,7 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 	}
 	resp, err := d.PushParsed(ctx, req)
 	if err != nil && validation.ReasonOf(err) != validation.Unknown {
-		level.Warn(util.LoggerWithContext(ctx, d.logger)).Log("msg", "failed to validate profile", "err", err)
+		level.Debug(util.LoggerWithContext(ctx, d.logger)).Log("msg", "failed to validate profile", "err", err)
 		return resp, err
 	}
 	return resp, err
