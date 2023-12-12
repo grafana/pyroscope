@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"runtime"
 	"sync"
 	"time"
 
-	_ "net/http/pprof" // Standard way of adding pprof to your server
+	"github.com/grafana/pyroscope-go" // replace "net/http/pprof" with Pyroscope SDK
 )
 
 func busyWork(d time.Duration) {
@@ -47,6 +49,32 @@ func solveMystery(wg *sync.WaitGroup) {
 }
 
 func main() {
+	// Pyroscope configuration
+	runtime.SetMutexProfileFraction(5)
+	runtime.SetBlockProfileRate(5)
+
+	pyroscope.Start(pyroscope.Config{
+		ApplicationName: "detective.mystery.app",
+		ServerAddress:   "https://profiles-prod-001.grafana.net", // if OSS then http://localhost:4040
+		// Optional HTTP Basic authentication
+		BasicAuthUser:     "<User>",     // 900009
+		BasicAuthPassword: "<Password>", // glc_SAMPLEAPIKEY0000000000==
+		Logger:            pyroscope.StandardLogger,
+		Tags:              map[string]string{"hostname": os.Getenv("HOSTNAME")},
+		ProfileTypes: []pyroscope.ProfileType{
+			pyroscope.ProfileCPU,
+			pyroscope.ProfileAllocObjects,
+			pyroscope.ProfileAllocSpace,
+			pyroscope.ProfileInuseObjects,
+			pyroscope.ProfileInuseSpace,
+			pyroscope.ProfileGoroutines,
+			pyroscope.ProfileMutexCount,
+			pyroscope.ProfileMutexDuration,
+			pyroscope.ProfileBlockCount,
+			pyroscope.ProfileBlockDuration,
+		},
+	})
+
 	var wg sync.WaitGroup
 
 	// Server for pprof
