@@ -241,8 +241,9 @@ By default it looks for samples within the last hour, though this can be control
      export PROFILECLI_PASSWORD=<password>
 
      profilecli query merge \
-         --profile-type=<profile_type>
-         --query='{<label_name>="<label_value>"'
+         --profile-type=<profile_type> \
+         --query='{<label_name>="<label_value>"' \
+         --from="<from>" --to="<to>"
      ```
 
    - Example command:
@@ -252,8 +253,9 @@ By default it looks for samples within the last hour, though this can be control
      export PROFILECLI_PASSWORD=my_password
 
      profilecli query merge \
-         --profile-type=memory:inuse_space:bytes:space:bytes
+         --profile-type=memory:inuse_space:bytes:space:bytes \
          --query='{service_name="my_application_name"}' \
+         --from="now-1h" --to="now"
      ```
 
    - Example output:
