@@ -230,6 +230,21 @@ func (f *fakeQuerier) SelectMatchingProfiles(ctx context.Context, params *ingest
 	return iter.NewSliceIterator(profiles), nil
 }
 
+func openSingleBlockQuerierIndex(t *testing.T, blockID string) *singleBlockQuerier {
+	t.Helper()
+
+	reader, err := index.NewFileReader(fmt.Sprintf("testdata/%s/index.tsdb", blockID))
+	require.NoError(t, err)
+
+	q := &singleBlockQuerier{
+		metrics: newBlocksMetrics(nil),
+		meta:    &block.Meta{ULID: ulid.MustParse(blockID)},
+		opened:  true, // Skip trying to open the block.
+		index:   reader,
+	}
+	return q
+}
+
 func TestSelectMatchingProfilesCleanUp(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
@@ -245,15 +260,7 @@ func TestSelectMatchingProfilesCleanUp(t *testing.T) {
 
 func Test_singleBlockQuerier_Series(t *testing.T) {
 	ctx := context.Background()
-	reader, err := index.NewFileReader("testdata/01HA2V3CPSZ9E0HMQNNHH89WSS/index.tsdb")
-	assert.NoError(t, err)
-
-	q := &singleBlockQuerier{
-		metrics: newBlocksMetrics(nil),
-		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
-		opened:  true, // Skip trying to open the block.
-		index:   reader,
-	}
+	q := openSingleBlockQuerierIndex(t, "01HA2V3CPSZ9E0HMQNNHH89WSS")
 
 	t.Run("get all names", func(t *testing.T) {
 		want := []string{
@@ -1055,13 +1062,15 @@ func Test_singleBlockQuerier_ProfileTypes(t *testing.T) {
 }
 
 func Benchmark_singleBlockQuerier_Series(b *testing.B) {
+	const id = "01HA2V3CPSZ9E0HMQNNHH89WSS"
+
 	ctx := context.Background()
-	reader, err := index.NewFileReader("testdata/01HA2V3CPSZ9E0HMQNNHH89WSS/index.tsdb")
+	reader, err := index.NewFileReader(fmt.Sprintf("testdata/%s/index.tsdb", id))
 	assert.NoError(b, err)
 
 	q := &singleBlockQuerier{
 		metrics: newBlocksMetrics(nil),
-		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
+		meta:    &block.Meta{ULID: ulid.MustParse(id)},
 		opened:  true, // Skip trying to open the block.
 		index:   reader,
 	}
@@ -1080,6 +1089,15 @@ func Benchmark_singleBlockQuerier_Series(b *testing.B) {
 			q.Series(ctx, &ingestv1.SeriesRequest{ //nolint:errcheck
 				Matchers:   []string{`{__name__="memory",__type__="alloc_objects"}`},
 				LabelNames: []string{"__name__", "__type__"},
+			})
+		}
+	})
+
+	b.Run("UI request", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			q.Series(ctx, &ingestv1.SeriesRequest{ //nolint:errcheck
+				Matchers:   []string{},
+				LabelNames: []string{"pyroscope_app", "service_name", "__profile_type__", "__type__", "__name__"},
 			})
 		}
 	})
