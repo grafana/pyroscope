@@ -5,7 +5,7 @@ aliases:
 title: "Sending profiles from your application"
 menuTitle: "Configure the Client"
 description: ""
-weight: 30
+weight: 35
 ---
 
 # Sending profiles from your application
