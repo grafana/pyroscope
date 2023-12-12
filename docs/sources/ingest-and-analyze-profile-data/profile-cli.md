@@ -115,7 +115,7 @@ Using `profilecli` streamlines the process of uploading profiles to Pyroscope, m
 
 ### Prerequisites
 
-- Ensure you have `profilecli` installed on your system by following the [installation](#installation) steps above.
+- Ensure you have `profilecli` installed on your system by following the [installation](#install-profile-cli) steps above.
 - Have a profile file ready for upload. Note that you can only upload pprof files at this time.
 
 ### Upload steps
