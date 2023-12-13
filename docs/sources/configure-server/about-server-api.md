@@ -249,7 +249,7 @@ In a Kubernetes environment, a query could also look like:
 `process_cpu:cpu:nanoseconds:cpu:nanoseconds{namespace="dev", container="my_application_name"}`
 
 {{% admonition type="note" %}}
-Refer to the [profiling types documentation]({{< relref "../ingest-and-analyze-profile-data/profiling-types" >}}) for more information.
+Refer to the [profiling types documentation]({{< relref "../ingest-and-analyze-profile-data/profiling-types" >}}) for more information and [profile-metrics.json](https://github.com/grafana/pyroscope/blob/main/public/app/constants/profile-metrics.json) for a list of valid profile types.
 {{% /admonition %}}
 
 #### `from` and `until`
@@ -284,9 +284,9 @@ Note that a single offset has to be provided, values such as `now-3h30m` will no
 
 **Validation**
 
-The `from` and `until` parameters are subject to these validation rules:
+The `from` and `until` parameters are subject to validation rules related to `max_query_lookback` and `max_query_length` server parameters.
+You can find more details on these parameters in the [limits section]({{< relref "./reference-configuration-parameters#limits" >}}) of the server configuration docs.
 
-- `from` should be before `until`.
 - If `max_query_lookback` is configured and`from` is before `now - max_query_lookback`, `from` will be set to `now - max_query_lookback`.
 - If `max_query_lookback` is configured and `until` is before `now - max_query_lookback` the query will not be executed.
 - If `max_query_length` is configured and the query interval is longer than this configuration, the query will no tbe executed.
@@ -297,7 +297,7 @@ The format can either be:
 - `json`, in which case the response will contain a JSON object
 - `dot`, in which case the response will be text containing a DOT representation of the profile
 
-See the [Query Output](#query-output) section for more information on the response structure.
+See the [Query output](#query-output) section for more information on the response structure.
 
 #### `maxNodes`
 
