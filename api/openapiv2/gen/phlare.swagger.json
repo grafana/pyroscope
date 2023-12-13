@@ -15,6 +15,9 @@
       "name": "QuerierService"
     },
     {
+      "name": "SettingsService"
+    },
+    {
       "name": "StatusService"
     },
     {
@@ -588,6 +591,18 @@
         }
       }
     },
+    "v1GetSettingsResponse": {
+      "type": "object",
+      "properties": {
+        "settings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1Setting"
+          }
+        }
+      }
+    },
     "v1Hints": {
       "type": "object",
       "properties": {
@@ -1083,6 +1098,29 @@
           "type": "string",
           "format": "int64",
           "title": "timestamp in milliseconds"
+        }
+      }
+    },
+    "v1SetSettingsResponse": {
+      "type": "object",
+      "properties": {
+        "setting": {
+          "$ref": "#/definitions/v1Setting"
+        }
+      }
+    },
+    "v1Setting": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "modifiedAt": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },

@@ -300,10 +300,11 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(Compactor, f.initCompactor)
 	mm.RegisterModule(Admin, f.initAdmin)
 	mm.RegisterModule(All, nil)
+	mm.RegisterModule(TenantSettings, f.initTenantSettings)
 
 	// Add dependencies
 	deps := map[string][]string{
-		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, Admin},
+		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, Admin, TenantSettings},
 
 		Server:            {GRPCGateway},
 		API:               {Server},
@@ -322,6 +323,7 @@ func (f *Phlare) setupModuleManager() error {
 		MemberlistKV:      {API},
 		Admin:             {API, Storage},
 		Version:           {API, MemberlistKV},
+		TenantSettings:    {API},
 	}
 
 	for mod, targets := range deps {
