@@ -2029,10 +2029,7 @@ func (b *singleBlockQuerier) getUniqueLabelsSets(postings index.Postings, names 
 			Labels: make([]*typesv1.LabelPair, 0, len(matchedLabelsPool)),
 		}
 		for _, label := range matchedLabelsPool {
-			labels.Labels = append(labels.Labels, &typesv1.LabelPair{
-				Name:  label.Name,
-				Value: label.Value,
-			})
+			labels.Labels = append(labels.Labels, label.CloneVT())
 		}
 		labelsSets = append(labelsSets, labels)
 	}
