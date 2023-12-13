@@ -31,7 +31,7 @@ Continuous profiling goes past the ephemeral, localized nature of traditional pr
 Put more simply, Pyroscope takes you from a bunch of flamegraph files on your desktop to a database where you can query and analyze production data in a structured way.
 
 {{% admonition type="tip" %}}
-To learn more about continuous profiling, read [the Introduction section]({{< relref "introduction" >}}).
+To learn more about continuous profiling, read [the Introduction section]({{< relref "./introduction" >}}).
 {{% /admonition %}}
 
 Pyroscope, in particular, offers the flexibility to either visualize more traditional adhoc data or evolve your applications observability tooling to include more modern continuous profiling capabilities.

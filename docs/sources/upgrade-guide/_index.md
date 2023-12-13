@@ -1,5 +1,5 @@
 ---
-title: Upgrade your Pyroscope installation
+title: Upgrade your Grafana Pyroscope installation
 menuTitle: Upgrade
 description: Upgrade your Pyroscope installation to the latest version.
 weight: 10
