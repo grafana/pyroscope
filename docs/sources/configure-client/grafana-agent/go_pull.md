@@ -68,7 +68,7 @@ Ensure your Golang application exposes pprof endpoints.
 
 [//]: # (TODO&#40;korniltsev&#41; What should go here?)
 
-https://grafana.com/docs/agent/latest/flow/setup/install/
+[flow mode](/docs/agent/latest/flow/setup/install/)
 
 ### Prepare Grafana Agent Flow configuration file
 
@@ -164,9 +164,11 @@ and `pyroscope.scrape`.
 3. Go to http://localhost:4040 and you should see profiles there.
 
 ## Examples
+
 ### Send data to Grafana Cloud
 
-Your Grafana Cloud URL, username, and password can be found on the "Details Page" for Pyroscope from your stack on grafana.com. On this same page, create a token and use it as the Basic authentication password.
+Your Grafana Cloud URL, username, and password can be found on the "Details Page" for Pyroscope from your stack on
+grafana.com. On this same page, create a token and use it as the Basic authentication password.
 
 ```river
 pyroscope.write "write_job_name" {
@@ -179,75 +181,83 @@ pyroscope.write "write_job_name" {
         }
 }
 ```
+
 ### Discover Kubernetes targets
-```river
-discovery.kubernetes "all_pods" {
-        role = "pod"
-}
 
-discovery.relabel "specific_pods" {
-        targets = discovery.kubernetes.all_pods.targets
-
-        rule {
-                action        = "drop"
-                regex         = "Succeeded|Failed"
-                source_labels = ["__meta_kubernetes_pod_phase"]
-        }
-
-        rule {
-                action        = "replace"
-                source_labels = ["__meta_kubernetes_namespace"]
-                target_label  = "namespace"
-        }
-
-        rule {
-                action        = "replace"
-                source_labels = ["__meta_kubernetes_pod_name"]
-                target_label  = "pod"
-        }
-
-        rule {
-                action        = "replace"
-                source_labels = ["__meta_kubernetes_node_name"]
-                target_label  = "node"
-        }
-
-        rule {
-                action        = "replace"
-                source_labels = ["__meta_kubernetes_pod_container_name"]
-                target_label  = "container"
-        }
-
-        rule {
-                action        = "replace"
-                regex         = "(.*)@(.*)"
-                replacement   = "${1}/${2}"
-                separator     = "@"
-                source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
-                target_label  = "service_name"
-        }
-        
-        rule {
-                action        = "keep"
-                regex         = "(ns1|ns2)/(container1|container2-.*0)"
-                source_labels = ["service_name"]
-        }
-}
-```
-
-And then use `discovery.relabel.specific_pods.targets` as a target for `pyroscope.scrape` block.
-
-```river
-    pyroscope.scrape "scrape_job_name" {
-            targets    = discovery.relabel.specific_pods.output
-            ...
+1. Select all pods 
+  ```river
+  discovery.kubernetes "all_pods" {
+          role = "pod"
+  }
+  ```
+2. Drop not running pods, create `namespace`, `pod`, `node` and `container` labels. 
+  Compose `service_name` label based on `namespace` and `container` labels.
+  Select only services matching regex pattern `(ns1/.*)|(ns2/container-.*0)`.
+    ```river
+    
+    discovery.relabel "specific_pods" {
+            targets = discovery.kubernetes.all_pods.targets
+    
+            rule {
+                    action        = "drop"
+                    regex         = "Succeeded|Failed|Completed"
+                    source_labels = ["__meta_kubernetes_pod_phase"]
+            }
+    
+            rule {
+                    action        = "replace"
+                    source_labels = ["__meta_kubernetes_namespace"]
+                    target_label  = "namespace"
+            }
+    
+            rule {
+                    action        = "replace"
+                    source_labels = ["__meta_kubernetes_pod_name"]
+                    target_label  = "pod"
+            }
+    
+            rule {
+                    action        = "replace"
+                    source_labels = ["__meta_kubernetes_node_name"]
+                    target_label  = "node"
+            }
+    
+            rule {
+                    action        = "replace"
+                    source_labels = ["__meta_kubernetes_pod_container_name"]
+                    target_label  = "container"
+            }
+    
+            rule {
+                    action        = "replace"
+                    regex         = "(.*)@(.*)"
+                    replacement   = "${1}/${2}"
+                    separator     = "@"
+                    source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+                    target_label  = "service_name"
+            }
+            
+            rule { 
+                    action        = "keep"
+                    regex         = "(ns1/.*)|(ns2/container-.*0)"
+                    source_labels = ["service_name"]
+            }
     }
-```
+    ```
 
+3. And then use `discovery.relabel.specific_pods.targets` as a target for `pyroscope.scrape` block.
+
+    ```river
+        pyroscope.scrape "scrape_job_name" {
+                targets    = discovery.relabel.specific_pods.output
+                ...
+        }
+    ```
 
 ## References
-[pyroscope.scrape]()
-[pyroscope.write]()
-[discovery.kubernetes]()
-[discovery.docker]()
-[discovery.relabel]()
+
+[pyroscope.scrape](/docs/agent/latest/flow/reference/components/pyroscope.scrape/)
+[pyroscope.write](/docs/agent/latest/flow/reference/components/pyroscope.write/)
+[discovery.kubernetes](/docs/agent/latest/flow/reference/components/discovery.kubernetes/)
+[discovery.docker](/docs/agent/latest/flow/reference/components/discovery.docker/)
+[discovery.relabel](/docs/agent/latest/flow/reference/components/discovery.relabel/)
