@@ -2010,8 +2010,8 @@ func (b *singleBlockQuerier) getUniqueLabelsSets(postings index.Postings, names 
 				return nil, err
 			}
 
-			// Manually expand the pool's length and add this label to the end.
-			// The pool will always have enough capacity for all the labels.
+			// Expand the pool's length and add this label to the end. The pool
+			// will always have enough capacity for all the labels.
 			matchedLabelsPool = matchedLabelsPool[:len(matchedLabelsPool)+1]
 			matchedLabelsPool[len(matchedLabelsPool)-1].Name = name
 			matchedLabelsPool[len(matchedLabelsPool)-1].Value = value
@@ -2024,7 +2024,7 @@ func (b *singleBlockQuerier) getUniqueLabelsSets(postings index.Postings, names 
 		}
 		(*fingerprints)[fp] = struct{}{}
 
-		// Manually copy every element from the pool to a new slice.
+		// Copy every element from the pool to a new slice.
 		labels := &typesv1.Labels{
 			Labels: make([]*typesv1.LabelPair, 0, len(matchedLabelsPool)),
 		}
