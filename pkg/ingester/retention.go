@@ -63,6 +63,7 @@ func defaultRetentionPolicy() retentionPolicy {
 		MinFreeDisk:                phlaredb.DefaultMinFreeDisk,
 		MinDiskAvailablePercentage: phlaredb.DefaultMinDiskAvailablePercentage,
 		EnforcementInterval:        phlaredb.DefaultRetentionPolicyEnforcementInterval,
+		Expiry:                     phlaredb.DefaultRetentionExpiry,
 	}
 }
 
@@ -70,6 +71,7 @@ type retentionPolicy struct {
 	MinFreeDisk                uint64
 	MinDiskAvailablePercentage float64
 	EnforcementInterval        time.Duration
+	Expiry                     time.Duration
 }
 
 // diskCleaner monitors disk usage and cleans unused data.
@@ -150,13 +152,8 @@ func (dc *diskCleaner) DeleteUploadedBlocks(ctx context.Context) int {
 			continue
 		}
 
-		expiryTs := time.Now().Add(-dc.config.BlockExpiry)
 		for _, block := range blocks {
-			if !block.Uploaded {
-				continue
-			}
-
-			if ulid.Time(block.ID.Time()).After(expiryTs) {
+			if !dc.isBlockDeletable(block) {
 				continue
 			}
 
@@ -236,8 +233,7 @@ func (dc *diskCleaner) CleanupBlocksWhenHighDiskUtilization(ctx context.Context)
 	prevVolumeStats := &diskutil.VolumeStats{}
 	filesDeleted := 0
 	for _, block := range blocks {
-		// Skip blocks that haven't been uploaded.
-		if !block.Uploaded {
+		if !dc.isBlockDeletable(block) {
 			continue
 		}
 
@@ -290,6 +286,12 @@ func (dc *diskCleaner) CleanupBlocksWhenHighDiskUtilization(ctx context.Context)
 	}
 
 	return filesDeleted, int(volumeStats.BytesAvailable - originalBytesAvailable), true
+}
+
+// isBlockDeletable returns true if this block can be deleted.
+func (dc *diskCleaner) isBlockDeletable(block *tenantBlock) bool {
+	expiryTs := time.Now().Add(-dc.policy.Expiry)
+	return block.Uploaded && ulid.Time(block.ID.Time()).Before(expiryTs)
 }
 
 // blocksByUploadAndAge implements sorting tenantBlock by uploaded then by age

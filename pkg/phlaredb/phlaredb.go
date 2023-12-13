@@ -35,7 +35,7 @@ const (
 	DefaultMinFreeDisk                        = 10
 	DefaultMinDiskAvailablePercentage         = 0.05
 	DefaultRetentionPolicyEnforcementInterval = 5 * time.Minute
-	DefaultBlockExpiry                        = 15 * time.Minute * 2 // Twice the bucketstore.SyncInterval default interval
+	DefaultRetentionExpiry                    = 4 * time.Hour // Same as default `querier.query_store_after`.
 )
 
 type Config struct {
@@ -50,7 +50,6 @@ type Config struct {
 
 	MinFreeDisk                uint64        `yaml:"min_free_disk_gb"`
 	MinDiskAvailablePercentage float64       `yaml:"min_disk_available_percentage"`
-	BlockExpiry                time.Duration `yaml:"block_expiry"`
 	EnforcementInterval        time.Duration `yaml:"enforcement_interval"`
 	DisableEnforcement         bool          `yaml:"disable_enforcement"`
 }
@@ -67,7 +66,6 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.Uint64Var(&cfg.RowGroupTargetSize, "pyroscopedb.row-group-target-size", 10*128*1024*1024, "How big should a single row group be uncompressed") // This should roughly be 128MiB compressed
 	f.Uint64Var(&cfg.MinFreeDisk, "pyroscopedb.retention-policy-min-free-disk-gb", DefaultMinFreeDisk, "How much available disk space to keep in GiB")
 	f.Float64Var(&cfg.MinDiskAvailablePercentage, "pyroscopedb.retention-policy-min-disk-available-percentage", DefaultMinDiskAvailablePercentage, "Which percentage of free disk space to keep")
-	f.DurationVar(&cfg.BlockExpiry, "pyroscopedb.retention-policy-block-expiry", DefaultBlockExpiry, "How long a block that has been uploaded to bucket storage should remain on disk")
 	f.DurationVar(&cfg.EnforcementInterval, "pyroscopedb.retention-policy-enforcement-interval", DefaultRetentionPolicyEnforcementInterval, "How often to enforce disk retention")
 	f.BoolVar(&cfg.DisableEnforcement, "pyroscopedb.retention-policy-disable", false, "Disable retention policy enforcement")
 }

@@ -34,14 +34,16 @@ func TestDiskCleaner_DeleteUploadedBlocks(t *testing.T) {
 
 		bm := &mockBlockManager{}
 		bm.On("GetTenantIDs", mock.Anything).
-			Return([]string{anonTenantID, tenantID}, nil)
+			Return([]string{anonTenantID, tenantID}, nil).
+			Once()
 		bm.On("GetBlocksForTenant", mock.Anything, anonTenantID).
 			Return([]*tenantBlock{{
 				ID:       ulid.MustParse(generateBlockID(t, "01AC")),
 				TenantID: anonTenantID,
 				Path:     fmt.Sprintf("./data/%s/%s", anonTenantID, generateBlockID(t, "01AC")),
 				Uploaded: true,
-			}}, nil)
+			}}, nil).
+			Once()
 		bm.On("GetBlocksForTenant", mock.Anything, tenantID).
 			Return([]*tenantBlock{{
 				ID:       ulid.MustParse(generateBlockID(t, "01AB")),
@@ -50,7 +52,8 @@ func TestDiskCleaner_DeleteUploadedBlocks(t *testing.T) {
 				Uploaded: false,
 			}}, nil)
 		bm.On("DeleteBlock", mock.Anything, mock.Anything).
-			Return(nil)
+			Return(nil).
+			Once()
 
 		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
 			DataPath: "./data",
@@ -80,7 +83,8 @@ func TestDiskCleaner_DeleteUploadedBlocks(t *testing.T) {
 
 		bm := &mockBlockManager{}
 		bm.On("GetTenantIDs", mock.Anything).
-			Return([]string{anonTenantID}, nil)
+			Return([]string{anonTenantID}, nil).
+			Once()
 		bm.On("GetBlocksForTenant", mock.Anything, anonTenantID).
 			Return([]*tenantBlock{
 				{
@@ -95,13 +99,17 @@ func TestDiskCleaner_DeleteUploadedBlocks(t *testing.T) {
 					Path:     fmt.Sprintf("./data/%s/%s", anonTenantID, expiredID.String()),
 					Uploaded: true,
 				},
-			}, nil)
+			}, nil).
+			Once()
 		bm.On("DeleteBlock", mock.Anything, mock.Anything).
-			Return(nil)
+			Return(nil).
+			Once()
 
-		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
-			DataPath:    "./data",
-			BlockExpiry: 10 * time.Minute,
+		policy := defaultRetentionPolicy()
+		policy.Expiry = expiry
+
+		dc := newDiskCleaner(log.NewNopLogger(), e, policy, phlaredb.Config{
+			DataPath: "./data",
 		})
 		dc.blockManager = bm
 
@@ -115,7 +123,8 @@ func TestDiskCleaner_DeleteUploadedBlocks(t *testing.T) {
 
 		bm := &mockBlockManager{}
 		bm.On("GetTenantIDs", mock.Anything).
-			Return([]string{}, nil)
+			Return([]string{}, nil).
+			Once()
 
 		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
 			DataPath: "./data",
@@ -134,9 +143,11 @@ func TestDiskCleaner_DeleteUploadedBlocks(t *testing.T) {
 
 		bm := &mockBlockManager{}
 		bm.On("GetTenantIDs", mock.Anything).
-			Return([]string{tenantID}, nil)
+			Return([]string{tenantID}, nil).
+			Once()
 		bm.On("GetBlocksForTenant", mock.Anything, tenantID).
-			Return([]*tenantBlock{}, nil)
+			Return([]*tenantBlock{}, nil).
+			Once()
 
 		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
 			DataPath: "./data",
@@ -302,6 +313,65 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 		require.Equal(t, 0, bytesFreed)
 		require.True(t, hadHighDisk)
 	})
+}
+
+func TestDiskCleaner_isBlockDeletable(t *testing.T) {
+	tests := []struct {
+		Name   string
+		Expiry time.Duration
+		Block  *tenantBlock
+		Want   bool
+	}{
+		{
+			Name:   "uploaded_and_expired",
+			Expiry: 10 * time.Minute,
+			Block: &tenantBlock{
+				ID:       generateBlockIDFromTS(t, time.Now().Add(-(11 * time.Minute))),
+				Uploaded: true,
+			},
+			Want: true,
+		},
+		{
+			Name:   "not_uploaded",
+			Expiry: 10 * time.Minute,
+			Block: &tenantBlock{
+				ID:       generateBlockIDFromTS(t, time.Now().Add(-(11 * time.Minute))),
+				Uploaded: false,
+			},
+			Want: false,
+		},
+		{
+			Name:   "not_expired",
+			Expiry: 10 * time.Minute,
+			Block: &tenantBlock{
+				ID:       generateBlockIDFromTS(t, time.Now().Add(-(9 * time.Minute))),
+				Uploaded: true,
+			},
+			Want: false,
+		},
+		{
+			Name:   "not_uploaded_and_not_expired",
+			Expiry: 10 * time.Minute,
+			Block: &tenantBlock{
+				ID:       generateBlockIDFromTS(t, time.Now().Add(-(9 * time.Minute))),
+				Uploaded: false,
+			},
+			Want: false,
+		},
+	}
+
+	dc := &diskCleaner{
+		policy: defaultRetentionPolicy(),
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			dc.policy.Expiry = tt.Expiry
+
+			got := dc.isBlockDeletable(tt.Block)
+			require.Equal(t, tt.Want, got)
+		})
+	}
 }
 
 func TestFSBlockManager(t *testing.T) {
@@ -570,4 +640,11 @@ func generateBlockID(t *testing.T, prefix string) string {
 	const maxLen = 26
 	const padding = "0"
 	return fmt.Sprintf("%s%s", prefix, strings.Repeat(padding, maxLen-len(prefix)))
+}
+
+func generateBlockIDFromTS(t *testing.T, ts time.Time) ulid.ULID {
+	t.Helper()
+
+	entropy := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return ulid.MustNew(ulid.Timestamp(ts), entropy)
 }
