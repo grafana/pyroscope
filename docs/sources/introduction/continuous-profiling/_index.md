@@ -1,6 +1,6 @@
 ---
-title: What is continuous profiling?
-menuTitle: What is continuous profiling?
+title: When to use continuous profiling
+menuTitle: When to use continuous profiling
 description: Discover the benefits of continuous profiling and its role in modern application performance analysis.
 weight: 20
 keywords:
@@ -10,7 +10,7 @@ keywords:
   - flamegraphs
 ---
 
-## What is continuous profiling?
+## When to use continuous profiling
 
 **Continuous profiling** is a systematic method of collecting and analyzing performance data from production systems.
 
@@ -34,7 +34,7 @@ Why prioritize continuous profiling?
 2. **Complements Other Observability Tools:** Continuous profiling fills critical gaps left by metrics, logs, and tracing, creating a more comprehensive observability strategy.
 3. **Proactive Performance Optimization:** Regular profiling enables teams to proactively identify and resolve performance bottlenecks, leading to more efficient and reliable applications.
 
-## Business impacts
+## Use cases
 
 ![Infographic illustrating key business benefits](https://grafana.com/static/img/pyroscope/cost-cutting-diagram.png)
 
