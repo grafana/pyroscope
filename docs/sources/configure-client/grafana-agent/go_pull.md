@@ -8,7 +8,7 @@ weight: 10
 # Go (pull mode)
 
 In pull mode, the Grafana Agent periodically retrieves profiles from Golang applications, specifically targeting the
-pprof endpoints.
+`/debug/pprof/*` endpoints.
 
 ## Set up Go profiling in pull mode
 
@@ -36,34 +36,6 @@ Ensure your Golang application exposes pprof endpoints.
     import _ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof"
     ```
 
-[//]: # (3. Optionally if you don't use `http.DefaultServeMux` you can register `pprof` handlers to your own `http.ServeMux`)
-
-[//]: # (   instance. TODO&#40;korniltsev&#41;: not sure if its worth including, or we should let the users figure it out themselves)
-
-[//]: # ()
-
-[//]: # (    ```go)
-
-[//]: # (    var mux *http.ServeMux)
-
-[//]: # (    mux.Handle&#40;"/debug/pprof/", http.DefaultServeMux&#41;)
-
-[//]: # (    ```)
-
-[//]: # ()
-
-[//]: # (   Or if you use gorilla/mux:)
-
-[//]: # ()
-
-[//]: # (    ```go)
-
-[//]: # (    var router *mux.Router)
-
-[//]: # (    router.PathPrefix&#40;"/debug/pprof"&#41;.Handler&#40;http.DefaultServeMux&#41;)
-
-[//]: # (    ```)
-
 ### Install Grafana Agent
 
 [//]: # (TODO&#40;korniltsev&#41; What should go here?)
@@ -83,30 +55,6 @@ and `pyroscope.scrape`.
             }
     }
     ```
-
-[//]: # (    To send data to Grafana Cloud you'll need to provide username, password and URL. You can get them from the "Details Page" for Pyroscope from your stack on grafana.com. On this same page, create a token and use it as the Basic authentication password.)
-
-[//]: # (    ```river)
-
-[//]: # (    pyroscope.write "write_job_name" {)
-
-[//]: # (            endpoint {)
-
-[//]: # (                    url = "<Grafana Cloud URL>" )
-
-[//]: # (            })
-
-[//]: # (            basic_auth {)
-
-[//]: # (                    username = "<Grafana Cloud User>")
-
-[//]: # (                    password = "<Grafana Cloud Password>")
-
-[//]: # (            })
-
-[//]: # (    })
-
-[//]: # (   ```)
 
 2. Add `pyroscope.scrape` block.
     ```river
@@ -254,8 +202,21 @@ pyroscope.write "write_job_name" {
         }
     ```
 
-## References
+### Exposing pprof endpoints
 
+If you don't use `http.DefaultServeMux` you can register `/debug/pprof/*` handlers to your own `http.ServeMux`
+```go
+var mux *http.ServeMux
+mux.Handle("/debug/pprof/", http.DefaultServeMux)
+```
+Or if you use gorilla/mux:
+```go
+var router *mux.Router
+router.PathPrefix("/debug/pprof").Handler(http.DefaultServeMux)
+```
+
+## References
+[Example using grafana-agent](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent).
 [pyroscope.scrape](/docs/agent/latest/flow/reference/components/pyroscope.scrape/)
 [pyroscope.write](/docs/agent/latest/flow/reference/components/pyroscope.write/)
 [discovery.kubernetes](/docs/agent/latest/flow/reference/components/discovery.kubernetes/)
