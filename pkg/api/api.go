@@ -27,6 +27,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/version/v1/versionv1connect"
@@ -41,6 +42,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
+	"github.com/grafana/pyroscope/pkg/settings"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/gziphandler"
@@ -188,6 +190,10 @@ func (a *API) RegisterRuntimeConfig(runtimeConfigHandler http.HandlerFunc, userL
 		{Desc: "Entire runtime config (including overrides)", Path: "/runtime_config"},
 		{Desc: "Only values that differ from the defaults", Path: "/runtime_config?mode=diff"},
 	})
+}
+
+func (a *API) RegisterTenantSettings(ts *settings.TenantSettings) {
+	settingsv1connect.RegisterSettingsServiceHandler(a.server.HTTP, ts, a.grpcAuthMiddleware)
 }
 
 // RegisterOverridesExporter registers the endpoints associated with the overrides exporter.
