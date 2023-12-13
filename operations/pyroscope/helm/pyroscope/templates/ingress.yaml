@@ -89,5 +89,16 @@ spec:
               number: {{ $.Values.pyroscope.service.port }}
         path: /ingest
         pathType: Prefix
+      - backend:
+          service:
+            {{- if gt (len $.Values.pyroscope.components) 1}}
+            name: {{ include "pyroscope.fullname" $ }}-tenant-settings
+            {{- else }}
+            name: {{ include "pyroscope.fullname" $ }}
+            {{- end }}
+            port:
+              number: {{ $.Values.pyroscope.service.port }}
+        path: /settings.v1.SettingsService/
+        pathType: Prefix
   {{- end }}
 {{- end }}
