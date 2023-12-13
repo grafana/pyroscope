@@ -487,7 +487,7 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 }
 
 func (q *Querier) blockSelectFromStoreGateway(ctx context.Context, req *ingestv1.BlockMetadataRequest) ([]ResponseFromReplica[[]*typesv1.BlockInfo], error) {
-	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series StoreGateway")
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "blockSelect StoreGateway")
 	defer sp.Finish()
 
 	tenantID, err := tenant.ExtractTenantIDFromContext(ctx)
