@@ -43,6 +43,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/querier"
 	"github.com/grafana/pyroscope/pkg/querier/worker"
 	"github.com/grafana/pyroscope/pkg/scheduler"
+	"github.com/grafana/pyroscope/pkg/settings"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -73,6 +74,7 @@ const (
 	OverridesExporter string = "overrides-exporter"
 	Compactor         string = "compactor"
 	Admin             string = "admin"
+	TenantSettings    string = "tenant-settings"
 
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
 	// IndexGateway             string = "index-gateway"
@@ -130,6 +132,21 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 	f.API.RegisterRuntimeConfig(runtimeConfigHandler(f.RuntimeConfig, f.Cfg.LimitsConfig), validation.TenantLimitsHandler(f.Cfg.LimitsConfig, f.TenantLimits))
 
 	return serv, err
+}
+
+func (f *Phlare) initTenantSettings() (services.Service, error) {
+	mem, err := settings.NewMemoryStore()
+	if err != nil {
+		return nil, err
+	}
+
+	settings, err := settings.New(mem)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to init %s", TenantSettings)
+	}
+
+	f.API.RegisterTenantSettings(settings)
+	return settings, nil
 }
 
 func (f *Phlare) initOverrides() (serv services.Service, err error) {
@@ -219,6 +236,7 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if !f.isModuleActive(QueryFrontend) {
 		f.API.RegisterPyroscopeHandlers(querierSvc)
 		f.API.RegisterQuerier(querierSvc)
