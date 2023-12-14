@@ -205,7 +205,7 @@ pyroscope.write "write_job_name" {
 
 ### Exposing pprof endpoints
 
-If you don't use `http.DefaultServeMux` you can register `/debug/pprof/*` handlers to your own `http.ServeMux`
+If you don't use `http.DefaultServeMux`, you can register `/debug/pprof/*` handlers to your own `http.ServeMux`
 ```go
 var mux *http.ServeMux
 mux.Handle("/debug/pprof/", http.DefaultServeMux)
