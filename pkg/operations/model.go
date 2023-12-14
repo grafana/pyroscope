@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"golang.org/x/exp/slices"
 )
 
 type blockQuery struct {
@@ -67,4 +68,18 @@ type blockListResult struct {
 	BlockGroups       []*blockGroup
 	MaxBlocksPerGroup int
 	GroupDuration     int
+}
+
+// Sorts a slice of block groups by MinTime in descending order.
+func sortBlockGroupsByMinTimeDec(bg []*blockGroup) {
+	slices.SortFunc(bg, func(a, b *blockGroup) bool {
+		return a.MinTime.After(b.MinTime)
+	})
+}
+
+// Sorts a slice of block details by MinTime in descending order.
+func sortBlockDetailsByMinTimeDec(bd []*blockDetails) {
+	slices.SortFunc(bd, func(a, b *blockDetails) bool {
+		return a.MinTime > b.MinTime
+	})
 }
