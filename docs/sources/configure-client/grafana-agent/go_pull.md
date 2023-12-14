@@ -210,7 +210,7 @@ If you don't use `http.DefaultServeMux` you can register `/debug/pprof/*` handle
 var mux *http.ServeMux
 mux.Handle("/debug/pprof/", http.DefaultServeMux)
 ```
-Or if you use gorilla/mux:
+Or, if you use gorilla/mux:
 ```go
 var router *mux.Router
 router.PathPrefix("/debug/pprof").Handler(http.DefaultServeMux)
