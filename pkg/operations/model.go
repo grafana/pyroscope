@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"golang.org/x/exp/slices"
+
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )
 
 type blockQuery struct {
