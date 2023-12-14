@@ -5,7 +5,7 @@ description: "Set up Go profiling in pull mode"
 weight: 10
 ---
 
-# Go (pull mode)
+# Set up Go profiling in pull mode
 
 In pull mode, the Grafana Agent periodically retrieves profiles from Golang applications, specifically targeting the
 `/debug/pprof/*` endpoints.
