@@ -7,11 +7,15 @@ weight: 30
 
 # Sampling scrape targets
 
-It's not uncommon for an application to have many instances deployed. While Pyroscope is designed specifically to handle large amounts of profiling data, other considerations may demand that only a subset of the application's instances should be scraped. For example, the sheer volume of profiling data may make it unreasonable to profile every instance or cost-reduction may be a factor. Whatever the case may be, the Grafana Agent can be configured to only scrape a subset of an application's instances.
+It's not uncommon for an application to have many instances deployed. While Pyroscope is designed specifically to handle large amounts of profiling data, you may have other considerations which demand that only a subset of the application's instances should be scraped. For example, the sheer volume of profiling data your application generates may make it unreasonable to profile every instance or you might be targeting cost-reduction. Whatever the case may be, it's possible to sample scrape targets through configuration of the Grafana Agent.
 
-## Strategy (?)
+## Prerequisites
 
-The `hashmod` action and the `modulus` argument are used in conjunction to enable sampling behavior. To read further on these concepts, see [rule block documentation](https://grafana.com/docs/agent/latest/flow/reference/components/discovery.relabel/#rule-block). In short, `hashmod` will perform an MD5 hash on the source labels and `modulus` will perform a modulus operation on the output.
+Before you begin, make sure you understand how to [configure the Grafana Agent]({{< relref "./" >}}) to scrape targets and are familiar with the Grafana Agent [component configuration language]({{< relref "/docs/agent/latest/flow/config-language/components/" >}}).
+
+## Configuration
+
+The `hashmod` action and the `modulus` argument are used in conjunction to enable sampling behavior. To read further on these concepts, see [rule block documentation]({{< relref "/docs/agent/latest/flow/reference/components/discovery.relabel/#rule-block" >}}). In short, `hashmod` will perform an MD5 hash on the source labels and `modulus` will perform a modulus operation on the output.
 
 Together, these can be leveraged to shard targets into shards. One or more shards can be selected to be the sampled targets to be scraped. Here is an example:
 
@@ -65,6 +69,8 @@ discovery.relabel "profile_pods" {
 }
 ```
 
-## Gotchas (?)
+## Considerations
 
-This strategy does not guarantee precise sampling. Due to its reliance on an MD5 hash, there is not a perfectly uniform distribution of targets into shards. As the target count gets larger, the shard distribution will become more accurate. If the target count is low, some shards may not get any targets hashed into them.
+This strategy does not guarantee precise sampling. Due to its reliance on an MD5 hash, there is not a perfectly uniform distribution of scrape targets into shards. Larger numbers of scrape targets will yield increasingly accurate sampling.
+
+Keep in mind, if the label being hashed is deterministic, you will see deterministic sharding and thereby deterministic sampling of scrape targets. Similarly, if the the label being hashed is non-deterministic, you will see scrape targets being sampled in a non-deterministic fashion.
