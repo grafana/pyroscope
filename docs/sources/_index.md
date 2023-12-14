@@ -16,15 +16,32 @@ keywords:
 
 ![Grafana Pyroscope](logo.png)
 
-
-<p align="center">Grafana Pyroscope is an open source software project for aggregating continuous profiling data. Continuous profiling is an
-observability signal that allows you to understand your workload's resources (CPU, memory, etc...) usage down to the line number.</p>
+Grafana Pyroscope is an open source software project for aggregating continuous profiling data.
+Continuous profiling is an observability signal that allows you to understand your workload's resources (CPU, memory, etc.) usage down to the line number.
 
 Grafana Pyroscope is fully integrated with Grafana allowing you to **correlate** with other observability signals, like metrics, logs, and traces.
+
+## Continuous profiling
+
+Continuous profiling is more than just a performance analysis tool.
+It's a crucial component in modern software development and operations.
+It goes past traditional profiling techniques by providing ongoing, in-depth insights into application performance.
+
+Continuous profiling goes past the ephemeral, localized nature of traditional profiling (which historically has been more similar to `console.log` or `print statement` debugging) to a structured, centralized approach allows for effective use in production environments.
+Put more simply, Pyroscope takes you from a bunch of flamegraph files on your desktop to a database where you can query and analyze production data in a structured way.
+
+{{% admonition type="tip" %}}
+To learn more about continuous profiling, read [the Introduction section]({{< relref "./introduction" >}}).
+{{% /admonition %}}
+
+Pyroscope, in particular, offers the flexibility to either visualize more traditional adhoc data or evolve your applications observability tooling to include more modern continuous profiling capabilities.
+
 
 <video style="border-radius: 1%" autoplay loop>
   <source src="ui.webm" type="video/webm">
 </video>
+
+## Features
 
 Core features of Grafana Pyroscope include:
 
@@ -43,3 +60,7 @@ Core features of Grafana Pyroscope include:
 - **Natively multi-tenant:** Grafana Pyroscope's multi-tenant architecture enables you
   to isolate data and queries from independent teams or business units, making it
   possible for these groups to share the same database.
+
+## Get started with Pyroscope
+
+Begin your journey with Pyroscope. Visit our [Getting Started Guide](/docs/pyroscope/latest/get-started/) to learn about the different ways to instrument your application with Pyroscope. Join our [Slack community](https://grafana.slack.com/archives/C049PLMV8TB) and contribute to the evolving world of continuous profiling.
