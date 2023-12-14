@@ -40,7 +40,8 @@ Ensure your Golang application exposes pprof endpoints.
 
 [//]: # (TODO&#40;korniltsev&#41; What should go here?)
 
-[flow mode](/docs/agent/latest/flow/setup/install/)
+This procedure uses Grafana Agent to send data to Pyroscope using an example River configuration file for the Grafana Agent in Flow mode. 
+Make sure you have [Grafana Agent in Flow mode](/docs/agent/latest/flow/setup/install/) installed. 
 
 ### Prepare Grafana Agent Flow configuration file
 
