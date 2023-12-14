@@ -11,11 +11,11 @@ It's not uncommon for an application to have many instances deployed. While Pyro
 
 ## Prerequisites
 
-Before you begin, make sure you understand how to [configure the Grafana Agent]({{< relref "./" >}}) to scrape targets and are familiar with the Grafana Agent [component configuration language]({{< relref "/docs/agent/latest/flow/config-language/components/" >}}).
+Before you begin, make sure you understand how to [configure the Grafana Agent]({{< relref "." >}}) to scrape targets and are familiar with the Grafana Agent [component configuration language]({{< relref "/docs/agent/latest/flow/config-language/components" >}}).
 
 ## Configuration
 
-The `hashmod` action and the `modulus` argument are used in conjunction to enable sampling behavior. To read further on these concepts, see [rule block documentation]({{< relref "/docs/agent/latest/flow/reference/components/discovery.relabel/#rule-block" >}}). In short, `hashmod` will perform an MD5 hash on the source labels and `modulus` will perform a modulus operation on the output.
+The `hashmod` action and the `modulus` argument are used in conjunction to enable sampling behavior. To read further on these concepts, see [rule block documentation]({{< relref "/docs/agent/latest/flow/reference/components/discovery.relabel#rule-block" >}}). In short, `hashmod` will perform an MD5 hash on the source labels and `modulus` will perform a modulus operation on the output.
 
 Together, these can be leveraged to shard targets into shards. One or more shards can be selected to be the sampled targets to be scraped. Here is an example:
 
