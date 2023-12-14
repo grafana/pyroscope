@@ -1,5 +1,5 @@
 ---
-title: "Set up Go profiling in pull mode
+title: Set up Go profiling in pull mode
 menuTitle: Set up Go profiling in pull mode
 description: Learn how to set up Go profiling in pull mode.
 weight: 10
