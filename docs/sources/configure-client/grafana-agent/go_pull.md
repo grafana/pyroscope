@@ -110,7 +110,7 @@ and `pyroscope.scrape`.
     ```bash
     grafana-agent-flow run conifguration.river
     ```
-3. Go to http://localhost:4040 and you should see profiles there.
+3. Open a browser to http://localhost:4040. The page should list profiles. 
 
 ## Examples
 
