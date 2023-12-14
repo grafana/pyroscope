@@ -1,6 +1,6 @@
 ---
-title: "Go (pull mode)"
-menuTitle: "Go (pull mode)"
+title: "Set up Go profiling in pull mode
+menuTitle: Set up Go profiling in pull mode
 description: "Set up Go profiling in pull mode"
 weight: 10
 ---
