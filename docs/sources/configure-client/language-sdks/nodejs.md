@@ -9,7 +9,7 @@ aliases:
 
 # NodeJS
 
-## How to add NodeJS profiling to your application
+## Add NodeJS profiling to your application
 
 To start profiling a NodeJS application, you need to include the npm module in your app:
 

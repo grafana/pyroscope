@@ -9,7 +9,7 @@ aliases:
 
 # Rust
 
-## How to add Rust profiling to your application
+## Add Rust profiling to your application
 
 Add the `pyroscope` and `pyroscope_pprofrs` crates to your Cargo.toml:
 

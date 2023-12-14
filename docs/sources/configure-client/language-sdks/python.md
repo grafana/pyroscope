@@ -9,7 +9,7 @@ aliases:
 
 # Python
 
-## How to add Python profiling to your application
+## Add Python profiling to your application
 
 Install the `pyroscope-io` pip package:
 

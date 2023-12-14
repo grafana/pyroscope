@@ -9,7 +9,7 @@ aliases:
 
 # Java
 
-## How to add Java profiling to your application
+## Add Java profiling to your application
 
 Java integration is distributed as a single jar file: `pyroscope.jar`. It contains native `async-profiler` libraries for:
 
@@ -84,7 +84,7 @@ public void init() {
     );
 }
 ```
-  
+
 {{< /code >}}
 
 
@@ -166,7 +166,7 @@ The Java integration supports JFR format to be able to support multiple events (
 | `PYROSCOPE_PUSH_QUEUE_CAPACITY`             | specifies the size of the ingestion queue that temporarily stores profiling data in memory during network outages. The default value is set to 8.                                                                                                                                                                                                                                                                              |
 | `PYROSCOPE_INGEST_MAX_TRIES`                | sets the maximum number of times to retry an ingestion API call in the event of failure. A value of -1 indicates that the retries will continue indefinitely. The default value is set to 8.                                                                                                                                                                                                                                   |
 | `PYROSCOPE_EXPORT_COMPRESSION_LEVEL_JFR`    | sets the level of GZIP compression applied to uploaded JFR files. This option accepts values of `NO_COMPRESSION`, `BEST_SPEED`, `BEST_COMPRESSION`, and `DEFAULT_COMPRESSION`.                                                                                                                                                                                                                                                 |
-| `PYROSCOPE_EXPORT_COMPRESSION_LEVEL_LABELS` | operates similarly to `PYROSCOPE_EXPORT_COMPRESSION_LEVEL_JFR`, but applies to the dynamic labels part. The default value is set to `BEST_SPEED`.                                                                                                                                                                                                                                                                              |                
+| `PYROSCOPE_EXPORT_COMPRESSION_LEVEL_LABELS` | operates similarly to `PYROSCOPE_EXPORT_COMPRESSION_LEVEL_JFR`, but applies to the dynamic labels part. The default value is set to `BEST_SPEED`.                                                                                                                                                                                                                                                                              |
 | `PYROSCOPE_GC_BEFORE_DUMP`                  | is a boolean value that executes a `System.gc()` command before dumping the profile when set to true. This option may be useful for live profiling, but is disabled by default.                                                                                                                                                                                                                                                |
 
 ## Sending data to Pyroscope OSS or Grafana Cloud Profiles with Pyroscope java SDK

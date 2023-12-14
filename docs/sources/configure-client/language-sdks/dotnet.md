@@ -19,7 +19,7 @@ aliases:
  - .NET 6.0
  - .NET 7.0
 
-## How to add .NET profiling to your application
+## Add .NET profiling to your application
 
 1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/pyroscope-io/pyroscope-dotnet/releases/):
 

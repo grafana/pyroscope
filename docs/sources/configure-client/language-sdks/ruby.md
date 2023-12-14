@@ -9,7 +9,7 @@ aliases:
 
 # Ruby
 
-## How to add Ruby profiling to your application
+## Add Ruby profiling to your application
 
 Add the `pyroscope` gem to your Gemfile:
 

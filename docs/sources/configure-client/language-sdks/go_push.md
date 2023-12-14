@@ -12,7 +12,7 @@ aliases:
 Pyroscope uses the standard `runtime/pprof` package to collect profiling data. Refer to
 [the official documentation](https://golang.org/doc/diagnostics#profiling) for details.
 
-## How to add Golang profiling to your application
+## Add Golang profiling to your application
 
 To start profiling a Go application, you need to include our go module in your app:
 
