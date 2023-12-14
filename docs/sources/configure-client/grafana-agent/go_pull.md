@@ -102,7 +102,7 @@ and `pyroscope.scrape`.
 3. Save the changes to the file. 
 ### Start Grafana Agent Flow
 
-1. Start a local pyroscope instance for testing purposes
+1. Start a local Pyroscope instance for testing purposes
     ```bash
     docker run -p 4040:4040 grafana/pyroscope 
     ```
