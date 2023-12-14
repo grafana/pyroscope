@@ -2,6 +2,7 @@ package operations
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
@@ -72,14 +73,14 @@ type blockListResult struct {
 
 // Sorts a slice of block groups by MinTime in descending order.
 func sortBlockGroupsByMinTimeDec(bg []*blockGroup) {
-	slices.SortFunc(bg, func(a, b *blockGroup) bool {
-		return a.MinTime.After(b.MinTime)
+	slices.SortFunc(bg, func(a, b *blockGroup) int {
+		return b.MinTime.Compare(a.MinTime)
 	})
 }
 
 // Sorts a slice of block details by MinTime in descending order.
 func sortBlockDetailsByMinTimeDec(bd []*blockDetails) {
-	slices.SortFunc(bd, func(a, b *blockDetails) bool {
-		return a.MinTime > b.MinTime
+	slices.SortFunc(bd, func(a, b *blockDetails) int {
+		return strings.Compare(b.MinTime, a.MinTime)
 	})
 }
