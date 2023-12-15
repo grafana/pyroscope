@@ -1,7 +1,7 @@
 ---
 title: "Flamegraphs: Visualizing performance data"
 menuTitle: Flamegraphs
-description: Learn about flamegraphs to help visualize performance data
+description: Learn about flamegraphs to help visualize performance data.
 weight: 100
 keywords:
   - Pyroscope
@@ -34,4 +34,5 @@ The nodes below those represent the functions that were called from those functi
 This continues until you reach the bottom of the flamegraph.
 
 This is a CPU profile, but profiles can represent many other types of resource such as memory, network, disk, etc.
-To understand more about how to read a flamegraph, what the different colors mean, and what other types of profiles exist and when to use them see our flamegraph documentation or [profile types documentation](/docs/pyroscope/next/analyzing-profiles-in-pyroscope-ui/)
+
+To understand more about how to read a flamegraph, what the different colors mean, and what other types of profiles exist and when to use them see the flamegraph documentation or [profile types documentation]({{< relref "../ingest-and-analyze-profile-data/analyze-profiles" >}}).
