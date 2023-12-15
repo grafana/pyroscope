@@ -118,7 +118,7 @@ Once configured, the Agent will start collecting eBPF profiles and send them to 
 
 ## Verify profiles are received
 
-To verify that the profiles are received by the Pyroscope server, go to the Pyroscope UI or [Grafana Pyroscope datasource][pyroscope-ds]. Then select a profile type and a service from the dropdown menu.
+To verify that the profiles are received by the Pyroscope server, go to the Pyroscope UI or [Grafana Pyroscope datasource][pyroscope-ds]. Select a profile type and a service from the drop-down menu.
 
 [gcloud]: /products/cloud/
 [helm]: https://helm.sh/docs/intro/install/
