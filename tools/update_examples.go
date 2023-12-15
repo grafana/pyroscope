@@ -229,14 +229,28 @@ func (v *version) version() string {
 	return fmt.Sprintf("%d.%d.%d", v.major, v.minor, v.patch)
 }
 
-func compareVersion(a, b version) bool {
-	if a.major != b.major {
-		return a.major < b.major
+func compareVersion(a, b version) int {
+	cmp := func(a, b int) int {
+		if a < b {
+			return -1
+		}
+		if a > b {
+			return 1
+		}
+		return 0
 	}
-	if a.minor != b.minor {
-		return a.minor < b.minor
+
+	if c := cmp(a.major, b.major); c != 0 {
+		return c
 	}
-	return a.patch < b.patch
+	if c := cmp(a.minor, b.minor); c != 0 {
+		return c
+	}
+	if c := cmp(a.patch, b.patch); c != 0 {
+		return c
+	}
+
+	return 0
 }
 
 func getTags(repo string) []Tag {
