@@ -9,6 +9,27 @@ aliases:
 
 # Rust
 
+Optimize your Rust applications with our advanced Rust Profiler. In collaboration with Pyroscope, it offers real-time profiling capabilities, shedding light on the intricacies of your Rust codebase. This integration is invaluable for developers seeking to enhance performance, reduce resource usage, and achieve efficient code execution in Rust applications.
+
+## Before you Begin
+
+### Set Up a Pyroscope Server
+
+To capture and analyze profiling data, set up a Pyroscope server. This can be:
+
+* A **local server** for development, or
+* A **remote server** for production use.
+
+For installation instructions, see our [Get Started](../../../get-started/) guide.
+
+
+### Using Grafana Cloud Profiles
+
+Grafana Cloud Profiles is a hosted Pyroscope service. It provides a fully managed Pyroscope server, so you don't have to worry about installing and maintaining your own server. It also provides a hosted Grafana instance for visualizing your profiling data. For more information, see [Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/).
+
+<!-- TODO: add a section like "Learn more about reading flamegraphs and using our product" once it's ready -->
+
+
 ## Add Rust profiling to your application
 
 Add the `pyroscope` and `pyroscope_pprofrs` crates to your Cargo.toml:
@@ -18,7 +39,7 @@ cargo add pyroscope
 cargo add pyroscope_pprofrs
 ```
 
-### Rust client configuration
+## Configure the Rust client
 
 At a minimum, you need to provide the URL of the Pyroscope server and the name
 of your application. You also need to configure a profiling backend. For Rust,

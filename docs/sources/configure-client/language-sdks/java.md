@@ -9,9 +9,31 @@ aliases:
 
 # Java
 
+The Java Profiler, integrated with Pyroscope, offers a comprehensive solution for performance analysis in Java applications. It provides real-time insights, enabling developers to understand and optimize their Java codebase effectively. This tool is crucial for improving application responsiveness, reducing resource consumption, and ensuring top-notch performance in Java environments.
+
+
+## Before you Begin
+
+### Set Up a Pyroscope Server
+
+To capture and analyze profiling data, set up a Pyroscope server. This can be:
+
+* A **local server** for development, or
+* A **remote server** for production use.
+
+For installation instructions, see our [Get Started](../../../get-started/) guide.
+
+
+### Using Grafana Cloud Profiles
+
+Grafana Cloud Profiles is a hosted Pyroscope service. It provides a fully managed Pyroscope server, so you don't have to worry about installing and maintaining your own server. It also provides a hosted Grafana instance for visualizing your profiling data. For more information, see [Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/).
+
+<!-- TODO: add a section like "Learn more about reading flamegraphs and using our product" once it's ready -->
+
+
 ## Add Java profiling to your application
 
-Java integration is distributed as a single jar file: `pyroscope.jar`. It contains native `async-profiler` libraries for:
+Java integration is distributed as a single jar file (`pyroscope.jar`) or a Maven package. Here's a list of supported platforms:
 
 * Linux on x64;
 * Linux on ARM64;
@@ -22,11 +44,12 @@ Visit our GitHub [releases](https://github.com/pyroscope-io/pyroscope-java/relea
 
 The latest release is also available on [Maven Central](https://search.maven.org/artifact/io.pyroscope/agent).
 
-## Profiling Java applications
+## Configure the Java client
 
 You can start Pyroscope either from your apps's Java code or attach it as javaagent.
 
-## Start Pyroscope from app's Java code
+### Start Pyroscope from app's Java code
+
 First, add Pyroscope dependency
 
 {{< code >}}
@@ -109,7 +132,8 @@ PyroscopeAgent.start(
 );
 ```
 
-## Start Pyroscope as javaagent
+### Start Pyroscope as javaagent
+
 To start profiling a Java application, run your application with `pyroscope.jar` javaagent:
 
 ```shell
@@ -119,7 +143,7 @@ export PYROSCOPE_SERVER_ADDRESS=http://pyroscope-server:4040
 java -javaagent:pyroscope.jar -jar app.jar
 ```
 
-## How to add profiling labels to Java applications
+### Add profiling labels to Java applications
 
 It is possible to add dynamic tags (labels) to the profiling data. These tags can be used to filter the data in the UI.
 
@@ -142,7 +166,7 @@ PyroscopeAgent.start(new Config.Builder()
 );
 ```
 
-## Java client configuration options
+### Configuration Options
 
 When you start Pyroscope as javaagent or obtain configuration by `Config.build()` Pyroscope searches
 for configuration in multiple sources: system properties, environment variables, and `pyroscope.properties`. Property keys have same name as environment variables, but are lowercased and replace `_` with `.`. For example, `PYROSCOPE_FORMAT` becomes `pyroscope.format`
@@ -169,7 +193,7 @@ The Java integration supports JFR format to be able to support multiple events (
 | `PYROSCOPE_EXPORT_COMPRESSION_LEVEL_LABELS` | operates similarly to `PYROSCOPE_EXPORT_COMPRESSION_LEVEL_JFR`, but applies to the dynamic labels part. The default value is set to `BEST_SPEED`.                                                                                                                                                                                                                                                                              |
 | `PYROSCOPE_GC_BEFORE_DUMP`                  | is a boolean value that executes a `System.gc()` command before dumping the profile when set to true. This option may be useful for live profiling, but is disabled by default.                                                                                                                                                                                                                                                |
 
-## Sending data to Pyroscope OSS or Grafana Cloud Profiles with Pyroscope java SDK
+## Send data to Pyroscope OSS or Grafana Cloud Profiles
 
 Add the following code to your application:
 ```java
@@ -179,6 +203,7 @@ PyroscopeAgent.start(
         .setProfilingEvent(EventType.ITIMER)
         .setFormat(Format.JFR)
         .setServerAddress("<URL>")
+        // Set these if using Grafana Cloud:
         .setBasicAuthUser("<User>")
         .setBasicAuthPassword("<Password>")
         // Optional Pyroscope tenant ID (only needed if using multi-tenancy). Not needed for Grafana cloud.
@@ -193,7 +218,7 @@ If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic a
 
 If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
 
-## Java profiling examples
+## Java Profiling Examples
 
 Check out the following resources to learn more about Java profiling:
 - [Java examples](https://github.com/grafana/pyroscope/tree/main/examples/java/rideshare)

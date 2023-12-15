@@ -9,6 +9,27 @@ aliases:
 
 # Python
 
+Our Python Profiler, when integrated with Pyroscope, transforms the way you analyze and optimize Python applications. This combination provides unparalleled real-time insights into your Python codebase, allowing for precise identification of performance issues. It is an essential tool for Python developers focused on enhancing code efficiency and application speed.
+
+## Before you Begin
+
+### Set Up a Pyroscope Server
+
+To capture and analyze profiling data, set up a Pyroscope server. This can be:
+
+* A **local server** for development, or
+* A **remote server** for production use.
+
+For installation instructions, see our [Get Started](../../../get-started/) guide.
+
+
+### Using Grafana Cloud Profiles
+
+Grafana Cloud Profiles is a hosted Pyroscope service. It provides a fully managed Pyroscope server, so you don't have to worry about installing and maintaining your own server. It also provides a hosted Grafana instance for visualizing your profiling data. For more information, see [Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/).
+
+<!-- TODO: add a section like "Learn more about reading flamegraphs and using our product" once it's ready -->
+
+
 ## Add Python profiling to your application
 
 Install the `pyroscope-io` pip package:
@@ -17,7 +38,8 @@ Install the `pyroscope-io` pip package:
 pip install pyroscope-io
 ```
 
-## Pyroscope Python pip package configuration
+
+## Configure the Python client
 
 Add the following code to your application. This code will initialize the Pyroscope profiler and start profiling:
 

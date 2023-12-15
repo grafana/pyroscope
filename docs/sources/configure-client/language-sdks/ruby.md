@@ -9,6 +9,27 @@ aliases:
 
 # Ruby
 
+The Ruby Profiler revolutionizes performance tuning in Ruby applications. Integrated with Pyroscope, it offers real-time performance data, allowing developers to delve deep into their Ruby codebase. This tool is essential for identifying performance issues, optimizing code efficiency, and enhancing the overall speed and reliability of Ruby applications.
+
+## Before you Begin
+
+### Set Up a Pyroscope Server
+
+To capture and analyze profiling data, set up a Pyroscope server. This can be:
+
+* A **local server** for development, or
+* A **remote server** for production use.
+
+For installation instructions, see our [Get Started](../../../get-started/) guide.
+
+
+### Using Grafana Cloud Profiles
+
+Grafana Cloud Profiles is a hosted Pyroscope service. It provides a fully managed Pyroscope server, so you don't have to worry about installing and maintaining your own server. It also provides a hosted Grafana instance for visualizing your profiling data. For more information, see [Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/).
+
+<!-- TODO: add a section like "Learn more about reading flamegraphs and using our product" once it's ready -->
+
+
 ## Add Ruby profiling to your application
 
 Add the `pyroscope` gem to your Gemfile:
@@ -18,8 +39,8 @@ Add the `pyroscope` gem to your Gemfile:
 bundle add pyroscope
 ```
 
-## Pyroscope Ruby gem configuration
 
+## Configure the Ruby client
 
 Add the following code to your application. If you're using Rails, put this into `config/initializers` directory. This code will initialize the Pyroscope profiler and start profiling:
 
