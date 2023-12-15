@@ -23,6 +23,8 @@ The `hashmod` action and the `modulus` argument are used in conjunction to enabl
 
 The sample size can be modified by changing the value of `modulus` in the `hashmod` action and the `regex` argument in the `keep` action. The `modulus` value defines the number of shards, while the `regex` value will select a subset of the shards.
 
+![Workflow for sampling scrape targets](../sample.svg)
+
 > **Note:**
 > Choose your source label(s) for the `hashmod` action carefully. They must uniquely define each scrape target or `hashmod` will not be able to shard the targets uniformly.
 
