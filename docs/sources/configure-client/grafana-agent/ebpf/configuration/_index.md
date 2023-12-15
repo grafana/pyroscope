@@ -44,7 +44,7 @@ The `pyroscope.ebpf` component supports the following languages:
 - C/C++ with frame pointers enabled
 - Python
 
-## Sending data Grafana Cloud Profiles
+## Send data Grafana Cloud Profiles
 
 When sending to Grafana Cloud Profiles, you can use the following `pyroscope.write` component configuration which makes uses of environment variables:
 
