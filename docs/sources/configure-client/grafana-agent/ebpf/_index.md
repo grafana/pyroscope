@@ -21,9 +21,9 @@ When it comes to application profiling, eBPF shines due to its high efficiency a
 However, eBPF is not a silver bullet. It has some limitations that make it unsuitable for certain use cases:
 
 - For example, eBPF is not a good fit for profiling applications that are not written in a supported language.
-- It also cannot be used to profile applications that are not running on Linux.
+- It cannot be used to profile applications that are not running on Linux.
 - It does not support all profile types such as memory and contention/lock profiling.
-- Finally, setting up eBPF requires root access to the host machine, which can be a problem in some environments.
+- eBPF requires root access to the host machine, which can be a problem in some environments.
 
 ## eBPF via the Grafana Agent
 
