@@ -1,11 +1,11 @@
 ---
-title: "Setting up eBPF Profiling on Linux"
-menuTitle: "Setting up on Linux"
-description: "Setting up eBPF Profiling with Grafana Agent on Linux machines"
+title: "Set up eBPF profiling on Linux"
+menuTitle: "Set up on Linux"
+description: "Set up eBPF profiling with Grafana Agent on Linux machines."
 weight: 20
 ---
 
-# Setting up eBPF Profiling on Linux
+# Set up eBPF profiling on Linux
 
 To set up eBPF profiling with Grafana Agent on Linux, you need to:
 
