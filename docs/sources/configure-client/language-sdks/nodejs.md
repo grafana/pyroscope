@@ -1,7 +1,7 @@
 ---
 title: "NodeJS"
 menuTitle: "NodeJS"
-description: "Instrumenting nodeJS applications for continuous profiling"
+description: "Instrumenting nodeJS applications for continuous profiling."
 weight: 80
 aliases:
   - /docs/phlare/latest/configure-client/language-sdks/nodejs
@@ -11,24 +11,11 @@ aliases:
 
 Enhance your Node.js application's performance with our Node.js Profiler. Seamlessly integrated with Pyroscope, it provides real-time insights into your application’s operation, helping you identify and resolve performance bottlenecks. This integration is key for Node.js developers aiming to boost efficiency, reduce latency, and maintain optimal application performance.
 
-## Before you Begin
+## Before you begin
 
-### Set Up a Pyroscope Server
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
 
-To capture and analyze profiling data, set up a Pyroscope server. This can be:
-
-* A **local server** for development, or
-* A **remote server** for production use.
-
-For installation instructions, see our [Get Started]({{< relref "../../get-started" >}}) guide.
-
-
-### Using Grafana Cloud Profiles
-
-Grafana Cloud Profiles is a hosted Pyroscope service. It provides a fully managed Pyroscope server, so you don't have to worry about installing and maintaining your own server. It also provides a hosted Grafana instance for visualizing your profiling data. For more information, see [Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/).
-
-<!-- TODO: add a section like "Learn more about reading flamegraphs and using our product" once it's ready -->
-
+The Pyroscope server can be a local server for development or a remote server for production use.
 
 ## Add NodeJS profiling to your application
 
@@ -98,9 +85,9 @@ If you need to send data to Grafana Cloud, you’ll have to configure HTTP Basic
 
 If your Pyroscope server has multi-tenancy enabled, you’ll need to configure a tenant ID. Replace `tenantID` with your Pyroscope tenant ID.
 
-## Troubleshooting
+## Troubleshoot
 
-Setting `DEBUG` env to `pyroscope` will provide additionally debugging information.
+Setting `DEBUG` env to `pyroscope` provides additional debugging information.
 
 ```bash
 DEBUG=pyroscope node index.js

@@ -1,7 +1,7 @@
 ---
 title: "Java"
 menuTitle: "Java"
-description: "Instrumenting Java applications for continuous profiling"
+description: "Instrumenting Java applications for continuous profiling."
 weight: 30
 aliases:
   - /docs/phlare/latest/configure-client/language-sdks/java
@@ -12,33 +12,21 @@ aliases:
 The Java Profiler, integrated with Pyroscope, offers a comprehensive solution for performance analysis in Java applications. It provides real-time insights, enabling developers to understand and optimize their Java codebase effectively. This tool is crucial for improving application responsiveness, reducing resource consumption, and ensuring top-notch performance in Java environments.
 
 
-## Before you Begin
+## Before you begin
 
-### Set Up a Pyroscope Server
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
 
-To capture and analyze profiling data, set up a Pyroscope server. This can be:
-
-* A **local server** for development, or
-* A **remote server** for production use.
-
-For installation instructions, see our [Get Started]({{< relref "../../get-started" >}}) guide.
-
-
-### Using Grafana Cloud Profiles
-
-Grafana Cloud Profiles is a hosted Pyroscope service. It provides a fully managed Pyroscope server, so you don't have to worry about installing and maintaining your own server. It also provides a hosted Grafana instance for visualizing your profiling data. For more information, see [Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/).
-
-<!-- TODO: add a section like "Learn more about reading flamegraphs and using our product" once it's ready -->
-
+The Pyroscope server can be a local server for development or a remote server for production use.
 
 ## Add Java profiling to your application
 
-Java integration is distributed as a single jar file (`pyroscope.jar`) or a Maven package. Here's a list of supported platforms:
+Java integration is distributed as a single jar file (`pyroscope.jar`) or a Maven package.
+Supported platforms include:
 
-* Linux on x64;
-* Linux on ARM64;
-* MacOS on x64.
-* MacOS on ARM64.
+* Linux on x64
+* Linux on ARM64
+* MacOS on x64
+* MacOS on ARM64
 
 Visit our GitHub [releases](https://github.com/pyroscope-io/pyroscope-java/releases) page to download the latest version of `pyroscope.jar`.
 
@@ -50,7 +38,7 @@ You can start Pyroscope either from your apps's Java code or attach it as javaag
 
 ### Start Pyroscope from app's Java code
 
-First, add Pyroscope dependency
+First, add the Pyroscope dependency:
 
 {{< code >}}
 
@@ -68,7 +56,7 @@ implementation("io.pyroscope:agent:0.12.2")
 
 {{< /code >}}
 
-Then add the following code to your application:
+Add the following code to your application:
 
 {{< code >}}
 
@@ -132,9 +120,9 @@ PyroscopeAgent.start(
 );
 ```
 
-### Start Pyroscope as javaagent
+### Start Pyroscope as `javaagent`
 
-To start profiling a Java application, run your application with `pyroscope.jar` javaagent:
+To start profiling a Java application, run your application with `pyroscope.jar` `javaagent`:
 
 ```shell
 export PYROSCOPE_APPLICATION_NAME=my.java.app
@@ -145,7 +133,7 @@ java -javaagent:pyroscope.jar -jar app.jar
 
 ### Add profiling labels to Java applications
 
-It is possible to add dynamic tags (labels) to the profiling data. These tags can be used to filter the data in the UI.
+You can add dynamic tags (labels) to the profiling data. These tags can filter the data in the UI.
 
 Add labels dynamically:
 ```java
@@ -154,7 +142,7 @@ Pyroscope.LabelsWrapper.run(new LabelsSet("controller", "slow_controller"), () -
 });
 ```
 
-It is also possible to possible to add static tags (labels) to the profiling data:
+You can also add static tags (labels) to the profiling data:
 
 ```java
 Pyroscope.setStaticLabels(Map.of("region", System.getenv("REGION")));
@@ -166,10 +154,11 @@ PyroscopeAgent.start(new Config.Builder()
 );
 ```
 
-### Configuration Options
+### Configuration options
 
-When you start Pyroscope as javaagent or obtain configuration by `Config.build()` Pyroscope searches
-for configuration in multiple sources: system properties, environment variables, and `pyroscope.properties`. Property keys have same name as environment variables, but are lowercased and replace `_` with `.`. For example, `PYROSCOPE_FORMAT` becomes `pyroscope.format`
+When you start Pyroscope as `javaagent` or obtain configuration by `Config.build()`, Pyroscope searches
+for configuration in multiple sources: system properties, environment variables, and `pyroscope.properties`.
+Property keys have same name as environment variables, but are lower-cased and replace `_` with `.`. For example, `PYROSCOPE_FORMAT` becomes `pyroscope.format`
 
 The Java integration supports JFR format to be able to support multiple events (JFR is the only output format that supports [multiple events in `async-profiler`](https://github.com/jvm-profiling-tools/async-profiler#multiple-events)). There are several environment variables that define how multiple event configuration works:
 
@@ -218,7 +207,7 @@ If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic a
 
 If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
 
-## Java Profiling Examples
+## Java profiling examples
 
 Check out the following resources to learn more about Java profiling:
 - [Java examples](https://github.com/grafana/pyroscope/tree/main/examples/java/rideshare)

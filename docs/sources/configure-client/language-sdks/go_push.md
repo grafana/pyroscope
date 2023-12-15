@@ -1,7 +1,7 @@
 ---
 title: "Go (push mode)"
 menuTitle: "Go (push mode)"
-description: "Instrumenting Golang applications for continuous profiling"
+description: "Instrumenting Golang applications for continuous profiling."
 weight: 10
 aliases:
   - /docs/phlare/latest/configure-client/language-sdks/go_push
@@ -15,35 +15,24 @@ This powerful tool is crucial for pinpointing inefficiencies, streamlining code 
 
 Pyroscope uses the standard `runtime/pprof` package to collect profiling data. Refer to [the official documentation](https://golang.org/doc/diagnostics#profiling) for details.
 
+## Before you begin
 
-## Before you Begin
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
 
-### Set Up a Pyroscope Server
-
-To capture and analyze profiling data, set up a Pyroscope server. This can be:
-
-* A **local server** for development, or
-* A **remote server** for production use.
-
-For installation instructions, see our [Get Started]({{< relref "../../get-started" >}}) guide.
-
-
-### Using Grafana Cloud Profiles
-
-Grafana Cloud Profiles is a hosted Pyroscope service. It provides a fully managed Pyroscope server, so you don't have to worry about installing and maintaining your own server. It also provides a hosted Grafana instance for visualizing your profiling data. For more information, see [Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/).
-
-To learn more about using the Pyroscope UI and flamegraphs, refer to [Ingest and analyze profile data]({{< relref "../../ingest-and-analyze-profile-data/pyroscope-ui" >}}).
+The Pyroscope server can be a local server for development or a remote server for production use.
 
 
 ## Configure the Go client
 
-To start profiling a Go application, you need to include our go module in your app:
+To start profiling a Go application, you need to include the Go module in your app:
 
 ```
 go get github.com/grafana/pyroscope-go
 ```
 
-Note: If you'd prefer to use Pull mode you can do so using the [Grafana Agent]({{< relref "../grafana-agent" >}}).
+{{% admonition type="note" %}}
+If you'd prefer to use Pull mode you can do so using the [Grafana Agent]({{< relref "../grafana-agent" >}}).
+{{% /admonition %}}
 
 Then add the following code to your application:
 
@@ -93,7 +82,7 @@ func main() {
 
 ### Add profiling labels to your application
 
-It is possible to add tags (labels) to the profiling data. These tags can be used to filter the data in the UI. We have a custom API that's in line with the go-native pprof api:
+You can add tags (labels) to the profiling data. These tags can be used to filter the data in the UI. There is a custom API that's in line with the go-native pprof API:
 
 ```go
 // these two ways of adding tags are equivalent:
@@ -106,7 +95,7 @@ pprof.Do(context.Background(), pprof.Labels("controller", "slow_controller"), fu
 })
 ```
 
-### Mutex Profiling
+### Mutex profiling
 
 Mutex profiling is useful for finding sources of contention within your application. It helps you to find out which mutexes are being held by which goroutines.
 

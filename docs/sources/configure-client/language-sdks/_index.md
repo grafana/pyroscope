@@ -1,13 +1,13 @@
 ---
-title: "Pyroscope Language SDKs"
+title: "Pyroscope language SDKs"
 menuTitle: "Language SDKs"
-description: "Send data from your application"
+description: "Send data from your application using language SDKs."
 weight: 20
 aliases:
   - /docs/phlare/latest/configure-client/language-sdks/
 ---
 
-# Pyroscope Language SDKs
+# Pyroscope language SDKs
 
 The following languages SDKs provide support for sending profiles from your application:
 

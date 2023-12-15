@@ -1,7 +1,7 @@
 ---
 title: ".NET"
 menuTitle: ".NET"
-description: "Instrumenting .NET applications for continuous profiling"
+description: "Instrumenting .NET applications for continuous profiling."
 weight: 40
 aliases:
   - /docs/phlare/latest/configure-client/language-sdks/dotnet/
@@ -29,23 +29,11 @@ Our .NET profiler works with the following .NET versions:
 * .NET 8
 
 
-## Before you Begin
+## Before you begin
 
-### Set Up a Pyroscope Server
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
 
-To capture and analyze profiling data, set up a Pyroscope server. This can be:
-
-* A **local server** for development, or
-* A **remote server** for production use.
-
-For installation instructions, see our [Get Started]({{< relref "../../get-started" >}}) guide.
-
-
-### Using Grafana Cloud Profiles
-
-Grafana Cloud Profiles is a hosted Pyroscope service. It provides a fully managed Pyroscope server, so you don't have to worry about installing and maintaining your own server. It also provides a hosted Grafana instance for visualizing your profiling data. For more information, see [Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/).
-
-<!-- TODO: add a section like "Learn more about reading flamegraphs and using our product" once it's ready -->
+The Pyroscope server can be a local server for development or a remote server for production use.
 
 ## Configure the Dotnet client
 
