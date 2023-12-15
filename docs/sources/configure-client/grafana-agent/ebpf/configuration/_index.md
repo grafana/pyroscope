@@ -8,7 +8,7 @@ weight: 30
 
 ## Configuration
 
-Grafana Agent supports eBPF profiling in [Flow mode](/docs/agent/latest/flow/). The configuration file is written in the [River](docs/agent/latest/flow/config-language/) language and is composed of components that are used to collect, transform, and send data.
+Grafana Agent supports eBPF profiling in [Flow mode](/docs/agent/latest/flow/). The configuration file is written in the [River](/docs/agent/latest/flow/config-language/) language and is composed of components that are used to collect, transform, and send data.
 
 The `pyroscope.ebpf` component is used to collect application performance profiles via eBPF.
 
