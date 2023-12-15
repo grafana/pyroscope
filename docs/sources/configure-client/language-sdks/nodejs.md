@@ -56,6 +56,8 @@ Pyroscope.init({
 Pyroscope.start()
 ```
 
+Note: If you'd prefer to use Pull mode you can do so using the [Grafana Agent]({{< relref "../grafana-agent" >}}).
+
 ### Add profiling labels to NodeJS applications
 
 It is possible to add tags (labels) to the profiling data. These tags can be used to filter the data in the UI. Dynamic tagging isn't supported yet.

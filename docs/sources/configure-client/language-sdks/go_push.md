@@ -41,7 +41,7 @@ To start profiling a Go application, you need to include our go module in your a
 go get github.com/grafana/pyroscope-go
 ```
 
-Note: If you'd prefer to use Pull mode you can do so using the [Grafana Agent](../grafana-agent/).
+Note: If you'd prefer to use Pull mode you can do so using the [Grafana Agent]({{< relref "../grafana-agent" >}}).
 
 Then add the following code to your application:
 
