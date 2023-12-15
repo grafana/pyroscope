@@ -1,7 +1,7 @@
 ---
 title: "Python"
 menuTitle: "Python"
-description: "Instrumenting Python applications for continuous profiling"
+description: "Instrumenting Python applications for continuous profiling."
 weight: 40
 aliases:
   - /docs/phlare/latest/configure-client/language-sdks/python
@@ -9,7 +9,15 @@ aliases:
 
 # Python
 
-## How to add Python profiling to your application
+Our Python Profiler, when integrated with Pyroscope, transforms the way you analyze and optimize Python applications. This combination provides unparalleled real-time insights into your Python codebase, allowing for precise identification of performance issues. It is an essential tool for Python developers focused on enhancing code efficiency and application speed.
+
+## Before you begin
+
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+
+The Pyroscope server can be a local server for development or a remote server for production use.
+
+## Add Python profiling to your application
 
 Install the `pyroscope-io` pip package:
 
@@ -17,7 +25,7 @@ Install the `pyroscope-io` pip package:
 pip install pyroscope-io
 ```
 
-## Pyroscope Python pip package configuration
+## Configure the Python client
 
 Add the following code to your application. This code will initialize the Pyroscope profiler and start profiling:
 
@@ -49,7 +57,7 @@ pyroscope.configure(
 )
 ```
 
-## How to add profiling labels to Python applications
+## Add profiling labels to Python applications
 
 You can add tags to certain parts of your code:
 

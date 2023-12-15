@@ -6,12 +6,12 @@ aliases:
 description: This section provides links to Pyroscope server configuration topics.
 keywords:
   - Pyroscope server configuration
-menuTitle: Configure the Server
-title: Configure Pyroscope Server
+menuTitle: Configure the server
+title: Configure the Pyroscope server
 weight: 40
 ---
 
-# Configure Pyroscope Server
+# Configure the Pyroscope server
 
 Pyroscope's server is built to be horizontally scalable and to support organizations of all sizes.
 
