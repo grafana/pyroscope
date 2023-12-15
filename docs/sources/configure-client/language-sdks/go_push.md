@@ -30,7 +30,7 @@ For installation instructions, see our [Get Started]({{< relref "../../get-start
 
 Grafana Cloud Profiles is a hosted Pyroscope service. It provides a fully managed Pyroscope server, so you don't have to worry about installing and maintaining your own server. It also provides a hosted Grafana instance for visualizing your profiling data. For more information, see [Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/).
 
-<!-- TODO: add a section like "Learn more about reading flamegraphs and using our product" once it's ready -->
+To learn more about using the Pyroscope UI and flamegraphs, refer to [Ingest and analyze profile data]({{< relref "../../../ingest-and-analyze-profile-data" >}}).
 
 
 ## Configure the Go client
