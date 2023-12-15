@@ -1,15 +1,16 @@
 ---
-title: "eBPF"
-menuTitle: "eBPF"
-description: "Understanding eBPF: Continuous Profiling for Performance Optimization"
+title: "Profiling with eBPF with Grafana Agent"
+menuTitle: "Profiling with eBPF"
+description: "Learn about using eBPF for continuous profiling for performance optimization."
 weight: 20
 aliases:
   - /docs/phlare/latest/configure-client/language-sdks/ebpf/
   - /docs/pyroscope/next/configure-client/language-sdks/ebpf
 ---
 
+# Profiling with eBPF
 
-# Profiling with <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/EBPF_logo.png/240px-EBPF_logo.png" width="100px;" alt="eBPF"/>
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/EBPF_logo.png/240px-EBPF_logo.png" width="100px;" alt="eBPF"/>
 
 eBPF is an advanced technology embedded into the Linux kernel. It stands for enhanced [Berkeley Packet Filter](https://en.wikipedia.org/wiki/EBPF) and revolutionizes the capability to run sandboxed code safely within the kernel space. This technology serves multiple use cases, such as networking, security, and performance monitoring without the need to alter kernel code or load additional modules.
 
@@ -24,12 +25,7 @@ However, eBPF is not a silver bullet. It has some limitations that make it unsui
 - It does not support all profile types such as memory and contention/lock profiling.
 - Finally, setting up eBPF requires root access to the host machine, which can be a problem in some environments.
 
-We recommend an hybrid approach for better results: eBPF to profile the node and specific language instrumentation per application.
-
-> We added a blog post "[The pros and cons of eBPF profiling](https://pyroscope.io/blog/ebpf-profiling-pros-cons)" which more deeply
-explores this topic and provides some examples of eBPF profiles. If you're interested in some of the more granular details you can find them there!
-
-## Grafana Agent
+## eBPF via the Grafana Agent
 
 The Grafana Agent is a lightweight, all-in-one agent that can collect, transform, and ship observability data. For profiling, the Grafana Agent can be configured to collect eBPF profiles and send them to Pyroscope.
 
