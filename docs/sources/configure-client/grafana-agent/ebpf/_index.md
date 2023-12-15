@@ -16,12 +16,15 @@ eBPF is an advanced technology embedded into the Linux kernel. It stands for enh
 
 ## Benefits and tradeoffs of using eBPF for continuous profiling
 
-When it comes to application profiling, eBPF shines due to its high efficiency and minimal performance overhead. It enables the dynamic insertion of powerful monitoring code into live production systems. By leveraging eBPF, developers can gain insights into application behavior, track resource usage, and detect bottlenecks in a way that traditional profiling tools cannot match. eBPF's low overhead and fine-grained data collection make it an ideal choice for continuous, real-time profiling in performance-sensitive environments.
+When it comes to application profiling, eBPF shines due to its high efficiency and minimal performance overhead.
+eBPF enables the dynamic insertion of powerful monitoring code into live production systems.
+By leveraging eBPF, developers can gain insights into application behavior, track resource usage, and detect bottlenecks in a way that traditional profiling tools cannot match.
+eBPF's low overhead and fine-grained data collection make it an ideal choice for continuous, real-time profiling in performance-sensitive environments.
 
-However, eBPF is not a silver bullet. It has some limitations that make it unsuitable for certain use cases:
+However, eBPF has some limitations that make it unsuitable for certain use cases:
 
-- For example, eBPF is not a good fit for profiling applications that are not written in a supported language.
-- It cannot be used to profile applications that are not running on Linux.
+- It isn't a good fit for profiling applications that are not written in a supported language.
+- It can't be used to profile applications that are not running on Linux.
 - It does not support all profile types such as memory and contention/lock profiling.
 - eBPF requires root access to the host machine, which can be a problem in some environments.
 
