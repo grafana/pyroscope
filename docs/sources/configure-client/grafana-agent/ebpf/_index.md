@@ -8,7 +8,7 @@ aliases:
   - /docs/pyroscope/next/configure-client/language-sdks/ebpf
 ---
 
-# Profiling with eBPF
+# Profiling with eBPF with Grafana Agent
 
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/EBPF_logo.png/240px-EBPF_logo.png" width="100px;" alt="eBPF"/>
 
