@@ -60,30 +60,6 @@ pyroscope.write "endpoint" {
 
 Ensure that you have appropriately configured the `GC_URL`, `GC_USER`, and `GC_PASSWORD` environment variables.
 
-## Exported fields
-
-`pyroscope.ebpf` does not export any fields that can be referenced by other
-components.
-
-## Component health
-
-`pyroscope.ebpf` is only reported as unhealthy if given an invalid
-configuration.
-
-## Debug information
-
-- `targets` currently tracked active targets.
-- `pid_cache` per process elf symbol tables and their sizes in symbols count.
-- `elf_cache` per build id and per same file symbol tables and their sizes in symbols count.
-
-## Debug metrics
-
-- `pyroscope_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
-- `pyroscope_ebpf_active_targets` (gauge): Number of active targets the component tracks.
-- `pyroscope_ebpf_profiling_sessions_total` (counter): Number of profiling sessions completed.
-- `pyroscope_ebpf_profiling_sessions_failing_total` (counter): Number of profiling sessions failed.
-- `pyroscope_ebpf_pprofs_total` (counter): Number of pprof profiles collected by the ebpf component.
-
 ## Profile collecting behavior
 
 The `pyroscope.ebpf` component collects stack traces associated with a process running on the current host.
@@ -124,6 +100,16 @@ attempted to be inferred from multiple sources:
 - `__meta_dockerswarm_container_label_service_name` and `__meta_dockerswarm_service_name`
 
 If `service_name` is not specified and could not be inferred, it is set to `unspecified`.
+
+## Exposed Prometheus metrics
+
+The `pyroscope.ebpf` component exposes the following Prometheus metrics:
+
+- `pyroscope_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
+- `pyroscope_ebpf_active_targets` (gauge): Number of active targets the component tracks.
+- `pyroscope_ebpf_profiling_sessions_total` (counter): Number of profiling sessions completed.
+- `pyroscope_ebpf_profiling_sessions_failing_total` (counter): Number of profiling sessions failed.
+- `pyroscope_ebpf_pprofs_total` (counter): Number of pprof profiles collected by the ebpf component.
 
 ## More information
 
