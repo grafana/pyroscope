@@ -1,11 +1,11 @@
 ---
-title: "Setup eBPF Profiling with Grafana Agent"
+title: "Setup eBPF Profiling on Kubernetes"
 menuTitle: "Setting up on Kubernetes"
 description: "Setting up eBPF Profiling with Grafana Agent on Kubernetes"
 weight: 10
 ---
 
-# Setting up eBPF Profiling with Grafana Agent on Kubernetes
+# Setup eBPF Profiling on Kubernetes
 
 To set up eBPF profiling with Grafana Agent on Kubernetes, you need to:
 

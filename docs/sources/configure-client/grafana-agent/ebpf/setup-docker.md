@@ -1,16 +1,15 @@
 ---
-title: "Setting up eBPF Profiling on Linux"
-menuTitle: "Setting up on Linux"
-description: "Setting up eBPF Profiling with Grafana Agent on Linux machines"
+title: "Setup eBPF Profiling on Docker"
+menuTitle: "Setting up on Docker"
+description: "Setting up eBPF Profiling with Grafana Agent on Docker"
 weight: 20
 ---
 
-# Setting up eBPF Profiling on Linux
+# Setup eBPF Profiling on Docker
 
 To set up eBPF profiling with Grafana Agent on Linux, you need to:
 
 - Verify that your system meets the requirements.
-- Install the Grafana Agent Flow mode.
 - Create a Grafana Agent configuration file. For more information, see [Configuration reference][config-reference].
 - Run the Grafana Agent.
 - Finally, verify that profiles are received.
@@ -21,6 +20,7 @@ Before you begin, you need:
 
 - A Pyroscope server where the agent will send profiling data.
 - Access to Grafana with the [Grafana Pyroscope datasource][pyroscope-ds] provisioned.
+- [Docker Engine](https://docs.docker.com/engine/install/) installed.
 
 > Note: If you don't have a Grafana and/or a Pyroscope server, you can use the [Grafana Cloud][gcloud] free plan to get started.
 
@@ -30,46 +30,30 @@ The eBPF profiler requires a Linux kernel version >= 4.9 (due to [BPF_PROG_TYPE_
 
 `BPF_PROG_TYPE_PERF_EVENT` is a type of eBPF program that can be attached to hardware or software events, such as performance monitoring counters or tracepoints, in the Linux kernel.
 
-To print the kernel version of machine, run:
+To print the kernel version of your docker host, run:
 
 ```shell
-uname -r
+docker info | grep Kernel
 ```
 
 Make sure you have a kernel version >= 4.9.
 
-## Install the Grafana Agent
-
-Follow the [installation instructions][agent-install] to download and install the Grafana Agent for your current Linux distribution.
-
-Verify that the agent is correctly installed by running:
-
-```shell
-grafana-agent-flow --version
-```
-
 ## Configure the Grafana Agent
 
-To configure the Grafana Agent eBPF profiler to profile local processes, you'll need to set the `targets_only` flag to `false` and add a default target in the `pyroscope.ebpf` component.
-All processes will be profiled and grouped under the default target.
-
-> Note: We're [working on a more flexible configuration](https://github.com/grafana/agent/pull/5858) that will allow you to specify which processes to profile.
+We'll configure the Grafana Agent eBPF profiler to profile local containers. To do so we'll use the `discovery.docker` component to discover local containers and the `pyroscope.ebpf` component to profile them.
 
 Create a file named `agent.river` with the following content:
 
 ```river
-pyroscope.ebpf "instance" {
- forward_to     = [pyroscope.write.endpoint.receiver]
- targets_only   = false
- default_target = {"service_name" = "local"}
+discovery.docker "local_containers" {
+ host = "unix:///var/run/docker.sock"
 }
 
-pyroscope.scrape "local" {
-  forward_to     = [pyroscope.write.endpoint.receiver]
-  targets    = [
-    {"__address__" = "localhost:12345", "service_name"="grafana/agent"},
-  ]
+pyroscope.ebpf "instance" {
+ forward_to     = [pyroscope.write.endpoint.receiver]
+ targets = discovery.docker.local_containers.targets
 }
+
 
 pyroscope.write "endpoint" {
  endpoint {
@@ -80,7 +64,7 @@ pyroscope.write "endpoint" {
   url = "<URL>"
  }
  external_labels = {
-  "env"      = "prod",
+  "env"      = "testing",
   "instance" = env("HOSTNAME"),
  }
 }
@@ -94,25 +78,26 @@ If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic a
 
 ## Start the Grafana Agent
 
-To start the Grafana Agent, run:
+To start the Grafana Agent with docker, run:
 
 ```shell
-grafana-agent-flow run agent.river
+docker run \
+  -e AGENT_MODE=flow \
+  -v $PWD/agent.river:/etc/agent/config.river \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  --pid=host \
+  --privileged \
+  -p 12345:12345 \
+  grafana/agent:latest \
+    run --server.http.listen-addr=0.0.0.0:12345 /etc/agent/config.river
 ```
 
-If you see the following error:
-
-```shell
-level=error msg="component exited with error" component=pyroscope.ebpf.local_pods err="ebpf profiling session start: load bpf objects: field DisassociateCtty: program disassociate_ctty: map events: map create: operation not permitted (MEMLOCK may be too low, consider rlimit.RemoveMemlock)"
-```
-
-Make sure you're running the agent with root privileges which are required for the eBPF profiler to work.
+> Note: The `--pid=host` and `--privileged` flags are required to profile local containers with ebpf.
 
 ## Verify profiles are received
 
 To verify that the profiles are received by the Pyroscope server, go to the Pyroscope UI or [Grafana Pyroscope datasource][pyroscope-ds]. Then select a profile type and a service from the dropdown menu.
 
-[agent-install]: https://grafana.com/docs/agent/latest/flow/setup/install/linux/
 [pyroscope-ds]: https://grafana.com/docs/grafana/latest/datasources/grafana-pyroscope/
 [config-reference]: ../configuration/
 [gcloud]: https://grafana.com/products/cloud/
