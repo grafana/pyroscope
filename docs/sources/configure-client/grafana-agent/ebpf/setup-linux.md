@@ -53,7 +53,9 @@ grafana-agent-flow --version
 To configure the Grafana Agent eBPF profiler to profile local processes, you'll need to set the `targets_only` flag to `false` and add a default target in the `pyroscope.ebpf` component.
 All processes will be profiled and grouped under the default target.
 
-> Note: We're [working on a more flexible configuration](https://github.com/grafana/agent/pull/5858) that will allow you to specify which processes to profile.
+{{% admonition type="note" %}}
+We're [working on a more flexible configuration](https://github.com/grafana/agent/pull/5858) that will allow you to specify which processes to profile.
+{{% /admonition %}}
 
 Create a file named `agent.river` with the following content:
 
