@@ -22,7 +22,9 @@ Before you begin, you need:
 - Access to Grafana with the [Grafana Pyroscope datasource][pyroscope-ds] provisioned.
 - [Docker Engine](https://docs.docker.com/engine/install/) installed.
 
-> Note: If you don't have a Grafana and/or a Pyroscope server, you can use the [Grafana Cloud][gcloud] free plan to get started.
+{{% admonition type="note" %}}
+If you don't have a Grafana and/or a Pyroscope server, you can use the [Grafana Cloud][gcloud] free plan to get started.
+{{% /admonition %}}
 
 ## Verify system meets the requirements
 
