@@ -112,7 +112,7 @@ Make sure you're running the agent with root privileges which are required for t
 
 ## Verify profiles are received
 
-To verify that the profiles are received by the Pyroscope server, go to the Pyroscope UI or [Grafana Pyroscope datasource][pyroscope-ds]. Then select a profile type and a service from the dropdown menu.
+To verify that the profiles are received by the Pyroscope server, go to the Pyroscope UI or [Grafana Pyroscope datasource][pyroscope-ds]. Select a profile type and a service from the drop-down menu.
 
 [agent-install]: /docs/agent/latest/flow/setup/install/linux/
 [pyroscope-ds]: /docs/grafana/latest/datasources/grafana-pyroscope/
