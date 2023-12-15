@@ -1,13 +1,15 @@
 ---
-title: "Troubleshooting eBPF installation"
-menuTitle: "Troubleshooting"
-description: "Troubleshooting Grafana eBPF installation"
+title: "Troubleshoot eBPF installation"
+menuTitle: "Troubleshoot"
+description: "Troubleshoot Grafana eBPF installation."
 weight: 40
 ---
 
-# Troubleshooting eBPF installation
+# Troubleshoot eBPF installation
 
-## Profiling interpreted languages
+Learn how to troubleshoot and resolve eBPF installation issues.
+
+## Profile interpreted languages
 
 Profiling interpreted languages like Ruby, JavaScript, etc., is not ideal using this implementation.
 The JIT-compiled methods in these languages are typically not in ELF file format, demanding additional steps for
