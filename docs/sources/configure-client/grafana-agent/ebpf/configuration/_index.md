@@ -72,7 +72,7 @@ can help you pin down a profiling target.
 
 | Label              | Description                                                                                                                      |
 |--------------------|----------------------------------------------------------------------------------------------------------------------------------|
-| `service_name`     | Pyroscope service name. It's automatically selected from discovery meta labels if possible. Otherwise defaults to `unspecified`. |
+| `service_name`     | Pyroscope service name. It's automatically selected from discovery meta labels, if possible. Otherwise, it defaults to `unspecified`. |
 | `__name__`         | pyroscope metric name. Defaults to `process_cpu`.                                                                                |
 | `__container_id__` | The container ID derived from target.                                                                                            |
 
