@@ -11,7 +11,7 @@ aliases:
 
 Our .NET Profiler is a powerful tool designed to enhance the performance analysis and optimization of .NET applications. It seamlessly integrates with Pyroscope, offering real-time insights into the resource usage and bottlenecks within your .NET codebase. This integration empowers developers to pinpoint inefficiencies, improve application speed, and ensure resource-efficient operation.
 
-### Supported Profiling Types
+### Supported profiling types
 
 The .NET Profiler supports the following profiling types:
 
@@ -88,7 +88,7 @@ dotnet add package Pyroscope
 
 ### Add profiling labels to your application
 
-It is possible to add labels to the profiling data. These labels can be used to filter the data in the UI. Common labels include things like:
+You can add labels to the profiling data to filter the data in the UI. Common labels include:
 * `hostname`
 * `region`
 * `team`
@@ -157,7 +157,7 @@ Pyroscope.Profiler.Instance.SetBasicAuth(basicAuthUser, BasicAuthPassword);
 
 Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/examples/dotnet/rideshare/example/Program.cs) exposing this APIs as an http endpoint.
 
-### Configuration Options
+### Configuration options
 
 | ENVIRONMENT VARIABLE                   | Type         | DESCRIPTION                                                                                                                       |
 |----------------------------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------|

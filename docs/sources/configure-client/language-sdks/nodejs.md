@@ -74,7 +74,7 @@ Pyroscope.init({
 Pyroscope.start()
 ```
 
-## Sending data to Pyroscope OSS or Grafana Cloud
+## Send data to Pyroscope OSS or Grafana Cloud
 
 ```javascript
 Pyroscope.init({

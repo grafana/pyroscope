@@ -9,7 +9,9 @@ aliases:
 
 # Go (push mode)
 
-Our Go Profiler is a cutting-edge tool designed to optimize Golang applications. By integrating with Pyroscope, it offers developers an in-depth view of their Go codebase, enabling real-time performance analysis. This powerful tool is crucial for pinpointing inefficiencies, streamlining code execution, and ensuring peak performance in Go applications.
+Our Go Profiler is a cutting-edge tool designed to optimize Golang applications.
+By integrating with Pyroscope, the profiler offers developers an in-depth view of their Go codebase, enabling real-time performance analysis.
+This powerful tool is crucial for pinpointing inefficiencies, streamlining code execution, and ensuring peak performance in Go applications.
 
 Pyroscope uses the standard `runtime/pprof` package to collect profiling data. Refer to [the official documentation](https://golang.org/doc/diagnostics#profiling) for details.
 
@@ -116,7 +118,7 @@ runtime.SetMutexProfileFraction(rate)
 
 `rate` parameter controls the fraction of mutex contention events that are reported in the mutex profile. On average 1/rate events are reported.
 
-### Block Profiling
+### Block profiling
 
 Block profiling lets you analyze how much time your program spends waiting on the blocking operations such as:
 
