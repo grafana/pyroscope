@@ -12,17 +12,21 @@ keywords:
 
 ## When to use continuous profiling
 
-**Continuous profiling** is a systematic method of collecting and analyzing performance data from production systems.
+Continuous profiling is a systematic method of collecting and analyzing performance data from production systems.
 
-Traditionally, profiling has been used more as an ad-hoc debugging tool in languages like Go and Java.
+Traditionally, profiling is used as an ad-hoc debugging tool in languages like Go and Java.
 You are probably used to running a benchmark tool locally and getting a pprof file in Go or maybe connecting into a misbehaving prod instance and pulling a flamegraph from a JFR file in Java.
 This is great for debugging but not so great for production.
 
 ![example flamegraph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
 
-Continuous profiling is a  modern approach which is safer and more scalable for production environments.
-It makes use of low overhead sampling to collect profiles from production systems and stores them in a database for later analysis.
-You can get a more holistic view of your application and how it behaves in production.
+{{% admonition type="note" %}}
+To learn more about flamegraphs, refer to [Flamegraphs: Visualizing performance data]({{< relref "../flamegraphs" >}}).
+{{% /admonition %}}
+
+Continuous profiling is a modern approach which is safer and more scalable for production environments.
+It uses low-overhead sampling to collect profiles from production systems and stores the profiles in a database for later analysis.
+Using continuous profiling gives you a more holistic view of your application and how it behaves in production.
 
 ## Benefits
 
@@ -30,9 +34,9 @@ You can get a more holistic view of your application and how it behaves in produ
 
 Why prioritize continuous profiling?
 
-1. **In-Depth Code Insights:** It provides granular, line-level insights into how application code utilizes resources, offering the most detailed view of application performance.
-2. **Complements Other Observability Tools:** Continuous profiling fills critical gaps left by metrics, logs, and tracing, creating a more comprehensive observability strategy.
-3. **Proactive Performance Optimization:** Regular profiling enables teams to proactively identify and resolve performance bottlenecks, leading to more efficient and reliable applications.
+1. **In-depth code insights:** It provides granular, line-level insights into how application code utilizes resources, offering the most detailed view of application performance.
+2. **Complements other observability tools:** Continuous profiling fills critical gaps left by metrics, logs, and tracing, creating a more comprehensive observability strategy.
+3. **Proactive performance optimization:** Regular profiling enables teams to proactively identify and resolve performance bottlenecks, leading to more efficient and reliable applications.
 
 ## Use cases
 
@@ -48,6 +52,14 @@ Adopting continuous profiling with tools like Pyroscope can lead to significant 
 
 Pyroscope's low-overhead profiling enables precise optimization of resource usage, directly impacting various cost centers in technology infrastructure.
 By providing in-depth insights into application performance, Pyroscope allows teams to identify and eliminate inefficiencies, leading to significant savings in areas like observability, incident management, messaging/queuing, deployment tools, and infrastructure.
+
+By using sampling profilers, Pyroscope is able to collect data with minimal overhead (~2-5% depending on a few factors).
+The [custom storage engine](https://pyroscope.io/docs/storage-design/) compresses and stores the data efficiently.
+Some advantages of this are:
+
+- Low CPU overhead thanks to sampling profiler technology
+- Control over profiling data granularity (10s to multiple years)
+- Efficient compression, low disk space requirements and cost
 
 ### Reduced latency
 
