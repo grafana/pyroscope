@@ -98,6 +98,6 @@ docker run \
 
 To verify that the profiles are received by the Pyroscope server, go to the Pyroscope UI or [Grafana Pyroscope datasource][pyroscope-ds]. Then select a profile type and a service from the dropdown menu.
 
-[pyroscope-ds]: https://grafana.com/docs/grafana/latest/datasources/grafana-pyroscope/
+[pyroscope-ds]: /docs/grafana/latest/datasources/grafana-pyroscope/
 [config-reference]: ../configuration/
-[gcloud]: https://grafana.com/products/cloud/
+[gcloud]: /products/cloud/

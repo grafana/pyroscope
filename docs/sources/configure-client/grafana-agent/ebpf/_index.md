@@ -29,4 +29,4 @@ However, eBPF is not a silver bullet. It has some limitations that make it unsui
 
 The Grafana Agent is a lightweight, all-in-one agent that can collect, transform, and ship observability data. For profiling, the Grafana Agent can be configured to collect eBPF profiles and send them to Pyroscope.
 
-This section contains instructions for installing and configuring the Grafana Agent to collect eBPF profiles. For more information about the Grafana Agent itself, see the [Grafana Agent documentation](https://grafana.com/docs/agent/latest/flow/).
+This section contains instructions for installing and configuring the Grafana Agent to collect eBPF profiles. For more information about the Grafana Agent itself, see the [Grafana Agent documentation](/docs/agent/latest/flow/).
