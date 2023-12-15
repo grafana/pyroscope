@@ -35,4 +35,5 @@ This continues until you reach the bottom of the flamegraph.
 
 This is a CPU profile, but profiles can represent many other types of resource such as memory, network, disk, etc.
 
-To understand more about how to read a flamegraph, what the different colors mean, and what other types of profiles exist and when to use them see the flamegraph documentation or [profile types documentation]({{< relref "../ingest-and-analyze-profile-data/analyze-profiles" >}}).
+<!-- Commenting this out until the analyze profiles content is completed
+To understand more about how to read a flamegraph, what the different colors mean, and what other types of profiles exist and when to use them see the flamegraph documentation or [profile types documentation]({{< relref "../ingest-and-analyze-profile-data/analyze-profiles" >}}). -->
