@@ -10,7 +10,7 @@ aliases:
 
 # Profiling with eBPF with Grafana Agent
 
-<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/EBPF_logo.png/240px-EBPF_logo.png" width="100px;" alt="eBPF"/>
+<img src="/media/docs/pyroscope/ebpf_logo_color_on_white.png" width="100px;" alt="eBPF"/>
 
 eBPF is an advanced technology embedded into the Linux kernel. It stands for enhanced [Berkeley Packet Filter](https://en.wikipedia.org/wiki/EBPF) and revolutionizes the capability to run sandboxed code safely within the kernel space. This technology serves multiple use cases, such as networking, security, and performance monitoring without the need to alter kernel code or load additional modules.
 
