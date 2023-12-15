@@ -74,8 +74,8 @@ func StackCollapseProto(p *profilev1.Profile, valueIDX int, scale float64) []str
 			value: v,
 		})
 	}
-	slices.SortFunc(ret, func(i, j stack) bool {
-		return strings.Compare(i.funcs, j.funcs) < 0
+	slices.SortFunc(ret, func(i, j stack) int {
+		return strings.Compare(i.funcs, j.funcs)
 	})
 	var unique []stack
 	for _, s := range ret {

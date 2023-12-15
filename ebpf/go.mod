@@ -49,10 +49,6 @@ require (
 )
 
 replace (
-	// Changed slices.SortFunc signature, which breaks dependencies:
-	// https://github.com/golang/exp/commit/302865e7556b4ae5de27248ce625d443ef4ad3ed
-	golang.org/x/exp => golang.org/x/exp v0.0.0-20230713183714-613f0c0eb8a1
-
 	// x/sys: v0.14.0 removes definition of BPF_F_KPROBE_MULTI_RETURN in unix/zerrors_linux.go
 	// https://github.com/golang/go/issues/63969
 	golang.org/x/sys => golang.org/x/sys v0.13.0
