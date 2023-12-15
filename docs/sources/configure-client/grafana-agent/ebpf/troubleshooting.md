@@ -15,7 +15,7 @@ profiling. For instance, using perf-map-agent and enabling frame pointers for Ja
 
 Interpreted methods will display the interpreter function’s name rather than the actual function.
 
-## Troubleshooting unknown symbols
+## Troubleshoot unknown symbols
 
 Symbols are extracted from various sources, including:
 
