@@ -15,7 +15,6 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
-	"golang.org/x/exp/slices"
 
 	"github.com/grafana/pyroscope/pkg/objstore"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
@@ -111,9 +110,7 @@ func filterAndGroupBlocks(index *bucketindex.Index, query *blockQuery) *blockLis
 		}
 	}
 
-	slices.SortFunc(blockGroups, func(a, b *blockGroup) bool {
-		return a.MinTime.After(b.MinTime)
-	})
+	sortBlockGroupsByMinTimeDec(blockGroups)
 
 	return postProcessBlockGroups(blockGroups)
 }
@@ -127,9 +124,9 @@ func postProcessBlockGroups(blockGroups []*blockGroup) *blockListResult {
 			nextGroup.Blocks = append(nextGroup.Blocks, blockGroup.Blocks...)
 			blockGroup.Blocks = make([]*blockDetails, 0)
 		}
-		slices.SortFunc(blockGroup.Blocks, func(a, b *blockDetails) bool {
-			return a.MinTime > b.MinTime
-		})
+
+		sortBlockDetailsByMinTimeDec(blockGroup.Blocks)
+
 		if len(blockGroup.Blocks) > maxBlocksPerGroup {
 			maxBlocksPerGroup = len(blockGroup.Blocks)
 		}
