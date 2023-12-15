@@ -87,10 +87,10 @@ To run a comparison:
 There are many practical use cases for comparison for companies using Pyroscope.
 Some examples of labels below expressed as `label:value` are:
 
-Feature Flags
+Feature flags
 : Compare application performance with `feature_flag:a` vs. `feature_flag:b`
 
-Deployment Environments
+Deployment environments
 : Contrast `env:production` vs. `env:development`
 
 Release analysis
