@@ -92,7 +92,11 @@ Replace the `<URL>` placeholder with the appropriate server URL. This could be t
 
 If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
 
-> If you're using your own Pyroscope server, you can remove the `basic_auth` section altogether.
+{{% admonition type="note" %}}
+If you're using your own Pyroscope server, you can remove the `basic_auth` section altogether.
+{{% /admonition %}}
+
+For more information, refer to the [Configure the Grafana Pyroscope data source documentation](/docs/grafana-cloud/connect-externally-hosted/data-sources/grafana-pyroscope#configure-the-grafana-pyroscope-data-source).
 
 ## Start the Grafana Agent
 
