@@ -1,5 +1,5 @@
 ---
-title: Use Pyroscope UI to explore profiling data
+title: Use the Pyroscope UI to explore profiling data
 menuTitle: Use the Pyroscope UI
 description: How to use the Pyroscope UI to explore profile data.
 weight: 40
