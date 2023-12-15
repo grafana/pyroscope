@@ -39,9 +39,9 @@ kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.n
 
 Make sure all nodes have a kernel version >= 4.9.
 
-## Add the Grafana helm repository
+## Add the Grafana Helm repository
 
-We recommend using [helm][helm] to install the Grafana Agent. To add the Grafana helm repository, run:
+We recommend using [Helm][helm] to install the Grafana Agent. To add the Grafana Helm repository, run:
 
 ```shell
 helm repo add grafana https://grafana.github.io/helm-charts
