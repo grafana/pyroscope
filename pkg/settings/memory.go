@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -37,8 +38,8 @@ func (s *memoryStore) Get(ctx context.Context, tenantID string) ([]*settingsv1.S
 		settings = append(settings, setting)
 	}
 
-	slices.SortFunc(settings, func(a, b *settingsv1.Setting) bool {
-		return a.Name < b.Name
+	slices.SortFunc(settings, func(a, b *settingsv1.Setting) int {
+		return strings.Compare(a.Name, b.Name)
 	})
 	return settings, nil
 }

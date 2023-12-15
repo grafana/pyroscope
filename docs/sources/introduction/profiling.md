@@ -11,7 +11,11 @@ keywords:
 
 # Profiling fundamentals
 
-**Profiling** is a technique used in software development to measure and analyze the runtime behavior of a program. By profiling a program, developers can identify which parts of the program consume the most resources, such as CPU time, memory, or I/O operations. This information can then be used to optimize the program, making it run faster or use fewer resources.
+Profiling is a technique used in software development to measure and analyze the runtime behavior of a program.
+By profiling a program, developers can identify which parts of the program consume the most resources, such as CPU time, memory, or I/O operations.
+This information can then be used to optimize the program, making it run faster or use fewer resources.
+
+Pyroscope can be used for both traditional and continuous profiling.
 
 ## Traditional profiling (non-continuous)
 
@@ -27,13 +31,13 @@ Traditional profiling provides:
 
 - **Precision**: Offers a deep dive into specific sections of the code.
 - **Control**: Developers can initiate profiling sessions at their discretion, allowing for targeted optimization efforts.
-- **Detailed Reports**: Provides granular data about program execution, making it easier to pinpoint bottlenecks.
+- **Detailed reports**: Provides granular data about program execution, making it easier to pinpoint bottlenecks.
 
 ## Continuous profiling
 
-As software systems grew in complexity and scale, the limitations of traditional profiling became evident. Issues could arise in production that were not apparent during limited profiling sessions in the development or staging environments.
+As software systems grew in complexity and scale, the limitations of traditional profiling became evident. Issues could arise in production that weren't apparent during limited profiling sessions in the development or staging environments.
 
-This led to the development of **continuous profiling**, a method where the profiling data is continuously collected in the background with minimal overhead. By doing so, developers gain a more comprehensive view of a program's behavior over time, helping to identify sporadic or long-term performance issues.
+This led to the development of continuous profiling, a method where the profiling data is continuously collected in the background with minimal overhead. By doing so, developers gain a more comprehensive view of a program's behavior over time, helping to identify sporadic or long-term performance issues.
 
 ### Benefits
 
