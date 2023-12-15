@@ -7,7 +7,11 @@ weight: 30
 
 # Sampling scrape targets
 
-It's not uncommon for an application to have many instances deployed. While Pyroscope is designed specifically to handle large amounts of profiling data, you may have other considerations which demand that only a subset of the application's instances should be scraped. For example, the sheer volume of profiling data your application generates may make it unreasonable to profile every instance or you might be targeting cost-reduction. Whatever the case may be, it's possible to sample scrape targets through configuration of the Grafana Agent.
+Applications often have many instances deployed. While Pyroscope is designed to handle large amounts of profiling data, you may want only a subset of the application's instances to be scraped.
+
+For example, the volume of profiling data your application generates may make it unreasonable to profile every instance or you might be targeting cost-reduction.
+
+Through configuration of the Grafana Agent, Pyroscope can sample scrape targets.
 
 ## Prerequisites
 
@@ -15,32 +19,14 @@ Before you begin, make sure you understand how to [configure the Grafana Agent](
 
 ## Configuration
 
-The `hashmod` action and the `modulus` argument are used in conjunction to enable sampling behavior. To read further on these concepts, see [rule block documentation](/docs/agent/latest/flow/reference/components/discovery.relabel#rule-block). In short, `hashmod` will perform an MD5 hash on the source labels and `modulus` will perform a modulus operation on the output.
+The `hashmod` action and the `modulus` argument are used in conjunction to enable sampling behavior by sharding one or more labels. To read further on these concepts, see [rule block documentation](/docs/agent/latest/flow/reference/components/discovery.relabel#rule-block). In short, `hashmod` will perform an MD5 hash on the source labels and `modulus` will perform a modulus operation on the output.
 
-Together, these can be leveraged to shard targets into shards. One or more shards can be selected to be the sampled targets to be scraped. Here is an example:
+The sample size can be modified by changing the value of `modulus` in the `hashmod` action and the `regex` argument in the `keep` action. The `modulus` value defines the number of shards, while the `regex` value will select a subset of the shards.
 
-```river
-discovery.relabel "sampled_targets" {
-  targets = concat(<targets>)
+> **Note:**
+> Choose your source label(s) for the `hashmod` action carefully. They must uniquely define each scrape target or `hashmod` will not be able to shard the targets uniformly.
 
-  // Other rule blocks ...
-
-  rule {
-    action        = "hashmod"
-    source_labels = [<label>]
-    modulus       = 10
-    target_label  = "__tmp_hashmod"
-  }
-
-  rule {
-    action        = "keep"
-    source_labels = ["__tmp_hashmod"]
-    regex         = "0"
-  }
-}
-```
-
-The sample size can be modified by changing the value of `modulus` and the `regex` field of the `keep` action. For example, consider an application deployed on Kubernetes with 100 pod replicas, all uniquely identified by the label `pod_hash`. The following configuration is set to sample 15% of the pods:
+For example, consider an application deployed on Kubernetes with 100 pod replicas, all uniquely identified by the label `pod_hash`. The following configuration is set to sample 15% of the pods:
 
 ```river
 discovery.kubernetes "profile_pods" {
