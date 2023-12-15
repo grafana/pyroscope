@@ -18,6 +18,7 @@ import (
 
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 )
 
 // Job holds a compaction job, which consists of a group of blocks that should be compacted together.
@@ -33,11 +34,24 @@ type Job struct {
 
 	// The number of shards to split compacted block into. Not used if splitting is disabled.
 	splitNumShards uint32
-	splitStageSize uint32
+	stageIndex     uint64
+	stageSize      uint64
 }
 
 // NewJob returns a new compaction Job.
-func NewJob(userID string, key string, lset labels.Labels, resolution int64, useSplitting bool, splitNumShards, splitStageSize uint32, shardingKey string) *Job {
+func NewJob(userID string, key string, lset labels.Labels, resolution int64, useSplitting bool, splitNumShards uint32, stageID string, shardingKey string) *Job {
+	var (
+		stageIndex uint64
+		stageSize  uint64
+		err        error
+	)
+	if stageID != "" {
+		stageIndex, stageSize, err = sharding.ParseShardIDLabelValue(stageID)
+		if err != nil {
+			panic(fmt.Sprintf("invalid stage ID %q: %s", stageID, err))
+		}
+	}
+
 	return &Job{
 		userID:         userID,
 		key:            key,
@@ -45,7 +59,8 @@ func NewJob(userID string, key string, lset labels.Labels, resolution int64, use
 		resolution:     resolution,
 		useSplitting:   useSplitting,
 		splitNumShards: splitNumShards,
-		splitStageSize: splitStageSize,
+		stageIndex:     stageIndex,
+		stageSize:      stageSize,
 		shardingKey:    shardingKey,
 	}
 }
@@ -147,9 +162,14 @@ func (job *Job) SplittingShards() uint32 {
 	return job.splitNumShards
 }
 
-// SplitStageSize returns the number of stages split shards will be written to.
+// SplitStageSize returns the size of each stage.
 func (job *Job) SplitStageSize() uint32 {
-	return job.splitStageSize
+	return uint32(job.stageSize)
+}
+
+// SplitStageIndex returns the index of stages split shards this job belongs to.
+func (job *Job) SplitStageIndex() uint32 {
+	return uint32(job.stageIndex)
 }
 
 // ShardingKey returns the key used to shard this job across multiple instances.

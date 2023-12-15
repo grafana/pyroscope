@@ -35,6 +35,7 @@ func TestPlanCompaction(t *testing.T) {
 		ranges      []int64
 		shardCount  uint32
 		splitGroups uint32
+		stageSize   uint32
 		blocks      []*block.Meta
 		expected    []*job
 	}{
@@ -513,7 +514,7 @@ func TestPlanCompaction(t *testing.T) {
 
 	for testName, testData := range tests {
 		t.Run(testName, func(t *testing.T) {
-			actual := planCompaction(userID, testData.blocks, testData.ranges, testData.shardCount, testData.splitGroups)
+			actual := planCompaction(userID, testData.blocks, testData.ranges, testData.shardCount, testData.splitGroups, testData.stageSize)
 
 			// Print the actual jobs (useful for debugging if tests fail).
 			t.Logf("got %d jobs:", len(actual))
@@ -538,6 +539,7 @@ func TestPlanSplitting(t *testing.T) {
 	tests := map[string]struct {
 		blocks      blocksGroup
 		splitGroups uint32
+		stageID     string
 		expected    []*job
 	}{
 		"should return nil if the input group is empty": {
@@ -595,6 +597,7 @@ func TestPlanSplitting(t *testing.T) {
 				},
 			},
 			splitGroups: 2,
+			stageID:     "1_of_2",
 			expected: []*job{
 				{
 					blocksGroup: blocksGroup{
@@ -607,6 +610,7 @@ func TestPlanSplitting(t *testing.T) {
 					userID:  userID,
 					stage:   stageSplit,
 					shardID: "1_of_2",
+					stageID: "1_of_2",
 				}, {
 					blocksGroup: blocksGroup{
 						rangeStart: 10,
@@ -619,6 +623,7 @@ func TestPlanSplitting(t *testing.T) {
 					userID:  userID,
 					stage:   stageSplit,
 					shardID: "2_of_2",
+					stageID: "1_of_2",
 				},
 			},
 		},
@@ -626,7 +631,7 @@ func TestPlanSplitting(t *testing.T) {
 
 	for testName, testData := range tests {
 		t.Run(testName, func(t *testing.T) {
-			assert.ElementsMatch(t, testData.expected, planSplitting(userID, testData.blocks, testData.splitGroups))
+			assert.ElementsMatch(t, testData.expected, planSplitting(userID, testData.blocks, testData.splitGroups, testData.stageID))
 		})
 	}
 }

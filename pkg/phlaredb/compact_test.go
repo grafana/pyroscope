@@ -108,9 +108,14 @@ func TestCompactWithSplitting(t *testing.T) {
 		)
 	})
 	dst := t.TempDir()
-	compacted, err := CompactWithSplitting(ctx, []BlockReader{b1, b2, b2, b1}, 16, 8, dst, SplitByFingerprint)
+
+	stage1, err := CompactWithSplitting(ctx, []BlockReader{b1, b2, b2, b1}, 16, 0, 8, dst, SplitByFingerprint)
 	require.NoError(t, err)
 
+	stage2, err := CompactWithSplitting(ctx, []BlockReader{b1, b2, b2, b1}, 16, 1, 8, dst, SplitByFingerprint)
+	require.NoError(t, err)
+
+	compacted := append(stage1, stage2...)
 	// 4 shards one per series.
 	require.Equal(t, 4, len(compacted))
 	require.Equal(t, "1_of_16", compacted[0].Labels[sharding.CompactorShardIDLabel])
@@ -496,7 +501,7 @@ func TestCompactOldBlock(t *testing.T) {
 	br := NewSingleBlockQuerierFromMeta(context.Background(), bkt, meta)
 	require.NoError(t, br.Open(ctx))
 	_, err = CompactWithSplitting(ctx,
-		[]BlockReader{br}, 2, 0, dst, SplitByFingerprint)
+		[]BlockReader{br}, 2, 0, 0, dst, SplitByFingerprint)
 	require.NoError(t, err)
 }
 
@@ -775,7 +780,7 @@ func generateParquetFile(t *testing.T, path string) {
 	}
 }
 
-func Test_SplitStages(t *testing.T) {
+func Test_SplitShardStages(t *testing.T) {
 	tests := []struct {
 		n, s   int
 		result [][]int
@@ -787,6 +792,6 @@ func Test_SplitStages(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.result, splitStages(test.n, test.s))
+		assert.Equal(t, test.result, SplitShardStages(test.n, test.s))
 	}
 }

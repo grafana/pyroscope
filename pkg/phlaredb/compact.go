@@ -47,14 +47,14 @@ type ProfileReader interface {
 }
 
 func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
-	metas, err := CompactWithSplitting(ctx, src, 1, 0, dst, SplitByFingerprint)
+	metas, err := CompactWithSplitting(ctx, src, 1, 0, 0, dst, SplitByFingerprint)
 	if err != nil {
 		return block.Meta{}, err
 	}
 	return metas[0], nil
 }
 
-func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount, stageSize uint64, dst string, splitBy SplitByFunc) (
+func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount, stageIndex uint64, stageSize uint64, dst string, splitBy SplitByFunc) (
 	[]block.Meta, error,
 ) {
 	if len(src) <= 1 && splitCount == 1 {
@@ -65,6 +65,7 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount, st
 	}
 	if stageSize == 0 || stageSize > splitCount {
 		stageSize = splitCount
+		stageIndex = 0
 	}
 	var (
 		writers  = make([]*blockWriter, splitCount)
@@ -75,35 +76,38 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount, st
 	for i, b := range src {
 		srcMetas[i] = b.Meta()
 	}
-
+	stages := SplitShardStages(len(writers), int(stageSize))
+	if stageIndex >= uint64(len(stages)) {
+		return nil, fmt.Errorf("invalid stage index %d", stageIndex)
+	}
+	stage := stages[stageIndex]
 	outMeta := compactMetas(srcMetas...)
-	for _, stage := range splitStages(len(writers), int(stageSize)) {
-		for _, idx := range stage {
-			if writers[idx], err = createBlockWriter(dst, outMeta, splitCount, idx); err != nil {
-				return nil, fmt.Errorf("create block writer: %w", err)
-			}
+
+	for _, idx := range stage {
+		if writers[idx], err = createBlockWriter(dst, outMeta, splitCount, idx); err != nil {
+			return nil, fmt.Errorf("create block writer: %w", err)
 		}
-		var metas []block.Meta
-		if metas, err = compact(ctx, writers, src, splitBy, splitCount); err != nil {
-			return nil, err
-		}
-		outMetas = append(outMetas, metas...)
-		// Writers are already closed, and must be GCed.
-		for j := range writers {
-			writers[j] = nil
-		}
+	}
+	var metas []block.Meta
+	if metas, err = compact(ctx, writers, src, splitBy, splitCount); err != nil {
+		return nil, err
+	}
+	outMetas = append(outMetas, metas...)
+	// Writers are already closed, and must be GCed.
+	for j := range writers {
+		writers[j] = nil
 	}
 
 	return outMetas, nil
 }
 
-// splitStages splits n into sequences of size s:
+// SplitShardStages splits shardCount into sequences of size stageSize stages:
 // For n=7, s=3: [[0 1 2] [3 4 5] [6]]
-func splitStages(n, s int) (stages [][]int) {
-	for i := 0; i < n; i += s {
-		end := i + s
-		if end > n {
-			end = n
+func SplitShardStages(shardCount, stageSize int) (stages [][]int) {
+	for i := 0; i < shardCount; i += stageSize {
+		end := i + stageSize
+		if end > shardCount {
+			end = shardCount
 		}
 		b := make([]int, end-i)
 		for j := i; j < end; j++ {

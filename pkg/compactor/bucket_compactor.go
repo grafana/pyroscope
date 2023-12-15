@@ -222,7 +222,7 @@ type Compactor interface {
 	// CompactWithSplitting merges and splits the source blocks into shardCount number of compacted blocks,
 	// and returns slice of block IDs.
 	// If given compacted block has no series, corresponding block ID will not be returned.
-	CompactWithSplitting(ctx context.Context, dst string, dirs []string, shardCount, stageSize uint64) (result []ulid.ULID, _ error)
+	CompactWithSplitting(ctx context.Context, dst string, dirs []string, shardCount, stageIndex, stageSize uint64) (result []ulid.ULID, _ error)
 }
 
 const (
@@ -316,7 +316,7 @@ func newCompactorMetrics(r prometheus.Registerer) *CompactorMetrics {
 	return m
 }
 
-func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, dirs []string, shardCount, stageSize uint64) ([]ulid.ULID, error) {
+func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, dirs []string, shardCount, stageIndex, stageSize uint64) ([]ulid.ULID, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			level.Error(c.logger).Log("msg", "panic during compaction", "err", err, "dirs", strings.Join(dirs, ","))
@@ -383,7 +383,7 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 	c.metrics.Ran.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Inc()
 	c.metrics.Split.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(float64(shardCount))
 
-	metas, err := phlaredb.CompactWithSplitting(ctx, readers, shardCount, stageSize, dest, c.splitBy)
+	metas, err := phlaredb.CompactWithSplitting(ctx, readers, shardCount, stageIndex, stageSize, dest, c.splitBy)
 	if err != nil {
 		return nil, errors.Wrapf(err, "compact blocks %v", dirs)
 	}
@@ -475,9 +475,9 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 	compactionBegin := time.Now()
 
 	if job.UseSplitting() {
-		compIDs, err = c.comp.CompactWithSplitting(ctx, subDir, blocksToCompactDirs, uint64(job.SplittingShards()), uint64(job.SplitStageSize()))
+		compIDs, err = c.comp.CompactWithSplitting(ctx, subDir, blocksToCompactDirs, uint64(job.SplittingShards()), uint64(job.SplitStageIndex()), uint64(job.SplitStageSize()))
 	} else {
-		compIDs, err = c.comp.CompactWithSplitting(ctx, subDir, blocksToCompactDirs, 1, 0)
+		compIDs, err = c.comp.CompactWithSplitting(ctx, subDir, blocksToCompactDirs, 1, 0, 0)
 	}
 	if err != nil {
 		return false, nil, errors.Wrapf(err, "compact blocks %v", blocksToCompactDirs)

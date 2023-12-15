@@ -42,10 +42,15 @@ type job struct {
 	// - merge: value of the ShardIDLabelName of all blocks in this job (all blocks in
 	// the job share the same label value).
 	shardID string
+
+	// The shard stage this job belongs to.
+	// Splitting blocks by shard is done in parallel using stages.
+	// The stage id is in form of <stage index>/<stage size>.
+	stageID string
 }
 
 func (j *job) shardingKey() string {
-	return fmt.Sprintf("%s-%s-%d-%d-%s", j.userID, j.stage, j.rangeStart, j.rangeEnd, j.shardID)
+	return fmt.Sprintf("%s-%s-%d-%d-%s-%s", j.userID, j.stage, j.rangeStart, j.rangeEnd, j.shardID, j.stageID)
 }
 
 // conflicts returns true if the two jobs cannot be planned at the same time.
@@ -77,7 +82,7 @@ func (j *job) conflicts(other *job) bool {
 
 	// At this point we have two overlapping jobs for the same stage. They conflict if
 	// belonging to the same shard.
-	return j.shardID == other.shardID
+	return j.shardID == other.shardID && j.stageID == other.stageID
 }
 
 func (j *job) String() string {
@@ -91,8 +96,8 @@ func (j *job) String() string {
 	// Keep the output stable for tests.
 	slices.Sort(blocks)
 
-	return fmt.Sprintf("stage: %s, range start: %d, range end: %d, shard: %s, blocks: %s",
-		j.stage, j.rangeStart, j.rangeEnd, j.shardID, strings.Join(blocks, ","))
+	return fmt.Sprintf("stage: %s, range start: %d, range end: %d, shard: %s, stage: %s, blocks: %s",
+		j.stage, j.rangeStart, j.rangeEnd, j.shardID, j.stageID, strings.Join(blocks, ","))
 }
 
 // blocksGroup holds a group of blocks within the same time range.

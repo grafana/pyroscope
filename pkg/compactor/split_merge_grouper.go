@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/prometheus/model/labels"
 
+	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 )
@@ -61,7 +62,7 @@ func (g *SplitAndMergeGrouper) Groups(blocks map[ulid.ULID]*block.Meta) (res []*
 		flatBlocks = append(flatBlocks, b)
 	}
 
-	for _, job := range planCompaction(g.userID, flatBlocks, g.ranges, g.shardCount, g.splitGroupsCount) {
+	for _, job := range planCompaction(g.userID, flatBlocks, g.ranges, g.shardCount, g.splitGroupsCount, g.splitStageSize) {
 		// Sanity check: if splitting is disabled, we don't expect any job for the split stage.
 		if g.shardCount <= 0 && job.stage == stageSplit {
 			return nil, errors.Errorf("unexpected split stage job because splitting is disabled: %s", job.String())
@@ -69,10 +70,11 @@ func (g *SplitAndMergeGrouper) Groups(blocks map[ulid.ULID]*block.Meta) (res []*
 
 		// The group key is used by the compactor as a unique identifier of the compaction job.
 		// Its content is not important for the compactor, but uniqueness must be guaranteed.
-		groupKey := fmt.Sprintf("%s-%s-%s-%d-%d",
+		groupKey := fmt.Sprintf("%s-%s-%s-%s-%d-%d",
 			defaultGroupKeyWithoutShardID(job.blocks[0]),
 			job.stage,
 			job.shardID,
+			job.stageID,
 			job.rangeStart,
 			job.rangeEnd)
 
@@ -88,7 +90,7 @@ func (g *SplitAndMergeGrouper) Groups(blocks map[ulid.ULID]*block.Meta) (res []*
 			resolution,
 			job.stage == stageSplit,
 			g.shardCount,
-			g.splitStageSize,
+			job.stageID,
 			job.shardingKey(),
 		)
 
@@ -108,7 +110,7 @@ func (g *SplitAndMergeGrouper) Groups(blocks map[ulid.ULID]*block.Meta) (res []*
 // planCompaction analyzes the input blocks and returns a list of compaction jobs that can be
 // run concurrently. Each returned job may belong either to this compactor instance or another one
 // in the cluster, so the caller should check if they belong to their instance before running them.
-func planCompaction(userID string, blocks []*block.Meta, ranges []int64, shardCount, splitGroups uint32) (jobs []*job) {
+func planCompaction(userID string, blocks []*block.Meta, ranges []int64, shardCount, splitGroups, stageSize uint32) (jobs []*job) {
 	if len(blocks) == 0 || len(ranges) == 0 {
 		return nil
 	}
@@ -127,7 +129,7 @@ func planCompaction(userID string, blocks []*block.Meta, ranges []int64, shardCo
 
 		for _, tr := range ranges {
 		nextJob:
-			for _, job := range planCompactionByRange(userID, mainBlocks, tr, tr == ranges[0], shardCount, splitGroups) {
+			for _, job := range planCompactionByRange(userID, mainBlocks, tr, tr == ranges[0], shardCount, splitGroups, stageSize) {
 				// We can plan a job only if it doesn't conflict with other jobs already planned.
 				// Since we run the planning for each compaction range in increasing order, we guarantee
 				// that a job for the current time range is planned only if there's no other job for the
@@ -184,17 +186,25 @@ func planCompaction(userID string, blocks []*block.Meta, ranges []int64, shardCo
 
 // planCompactionByRange analyze the input blocks and returns a list of compaction jobs to
 // compact blocks for the given compaction time range. Input blocks MUST be sorted by MinTime.
-func planCompactionByRange(userID string, blocks []*block.Meta, tr int64, isSmallestRange bool, shardCount, splitGroups uint32) (jobs []*job) {
+func planCompactionByRange(userID string, blocks []*block.Meta, tr int64, isSmallestRange bool, shardCount, splitGroups, stageSize uint32) (jobs []*job) {
 	groups := groupBlocksByRange(blocks, tr)
 
 	for _, group := range groups {
 		// If this is the smallest time range and there's any non-split block,
 		// then we should plan a job to split blocks.
 		if shardCount > 0 && isSmallestRange {
-			if splitJobs := planSplitting(userID, group, splitGroups); len(splitJobs) > 0 {
-				jobs = append(jobs, splitJobs...)
-				continue
+
+			if stageSize == 0 || stageSize > shardCount {
+				stageSize = shardCount
 			}
+			// Stages shards allow to run splitting in parallel on different job. Each stage will split a subset of shards.
+			shardStages := phlaredb.SplitShardStages(int(shardCount), int(stageSize))
+			for stageIndex := range shardStages {
+				if splitJobs := planSplitting(userID, group, splitGroups, sharding.FormatShardIDLabelValue(uint64(stageIndex), uint64(stageSize))); len(splitJobs) > 0 {
+					jobs = append(jobs, splitJobs...)
+				}
+			}
+			continue
 		}
 
 		// If we reach this point, all blocks for this time range have already been split
@@ -224,7 +234,7 @@ func planCompactionByRange(userID string, blocks []*block.Meta, tr int64, isSmal
 
 // planSplitting returns a job to split the blocks in the input group or nil if there's nothing to do because
 // all blocks in the group have already been split.
-func planSplitting(userID string, group blocksGroup, splitGroups uint32) []*job {
+func planSplitting(userID string, group blocksGroup, splitGroups uint32, stageID string) []*job {
 	blocks := group.getNonShardedBlocks()
 	if len(blocks) == 0 {
 		return nil
@@ -247,6 +257,7 @@ func planSplitting(userID string, group blocksGroup, splitGroups uint32) []*job 
 				userID:  userID,
 				stage:   stageSplit,
 				shardID: sharding.FormatShardIDLabelValue(uint64(splitGroup), uint64(splitGroups)),
+				stageID: stageID,
 				blocksGroup: blocksGroup{
 					rangeStart: group.rangeStart,
 					rangeEnd:   group.rangeEnd,
