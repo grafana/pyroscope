@@ -38,7 +38,7 @@ To capture and analyze profiling data, set up a Pyroscope server. This can be:
 * A **local server** for development, or
 * A **remote server** for production use.
 
-For installation instructions, see our [Get Started]({{< relref "../../get-started/" >}}) guide.
+For installation instructions, see our [Get Started]({{< relref "../../get-started" >}}) guide.
 
 
 ### Using Grafana Cloud Profiles
