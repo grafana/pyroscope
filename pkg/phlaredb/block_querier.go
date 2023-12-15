@@ -1989,8 +1989,18 @@ func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.Series
 
 func (b *singleBlockQuerier) getUniqueLabelsSets(postings index.Postings, names []string, fingerprints *map[uint64]struct{}) ([]*typesv1.Labels, error) {
 	var labelsSets []*typesv1.Labels
+
+	// This memory will be re-used between posting iterations to avoid
+	// re-allocating many *typesv1.LabelPair objects.
+	matchedLabelsPool := make(phlaremodel.Labels, len(names))
+	for i := range matchedLabelsPool {
+		matchedLabelsPool[i] = &typesv1.LabelPair{}
+	}
+
 	for postings.Next() {
-		matchedLabels := make(phlaremodel.Labels, 0, len(names))
+		// Reset the pool.
+		matchedLabelsPool = matchedLabelsPool[:0]
+
 		for _, name := range names {
 			value, err := b.index.LabelValueFor(postings.At(), name)
 			if err != nil {
@@ -1999,22 +2009,29 @@ func (b *singleBlockQuerier) getUniqueLabelsSets(postings index.Postings, names 
 				}
 				return nil, err
 			}
-			matchedLabels = append(matchedLabels, &typesv1.LabelPair{
-				Name:  name,
-				Value: value,
-			})
+
+			// Expand the pool's length and add this label to the end. The pool
+			// will always have enough capacity for all the labels.
+			matchedLabelsPool = matchedLabelsPool[:len(matchedLabelsPool)+1]
+			matchedLabelsPool[len(matchedLabelsPool)-1].Name = name
+			matchedLabelsPool[len(matchedLabelsPool)-1].Value = value
 		}
 
-		fp := matchedLabels.Hash()
+		fp := matchedLabelsPool.Hash()
 		_, ok := (*fingerprints)[fp]
 		if ok {
 			continue
 		}
 		(*fingerprints)[fp] = struct{}{}
 
-		labelsSets = append(labelsSets, &typesv1.Labels{
-			Labels: matchedLabels,
-		})
+		// Copy every element from the pool to a new slice.
+		labels := &typesv1.Labels{
+			Labels: make([]*typesv1.LabelPair, 0, len(matchedLabelsPool)),
+		}
+		for _, label := range matchedLabelsPool {
+			labels.Labels = append(labels.Labels, label.CloneVT())
+		}
+		labelsSets = append(labelsSets, labels)
 	}
 	return labelsSets, nil
 }
