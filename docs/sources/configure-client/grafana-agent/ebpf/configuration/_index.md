@@ -8,16 +8,18 @@ weight: 30
 
 ## Configuration
 
-The component configures and starts a new ebpf profiling job to collect performance profiles from the current host.
+Grafana Agent supports eBPF profiling in [Flow mode](/docs/agent/latest/flow/). The configuration file is written in the [River](docs/agent/latest/flow/config-language/) language and is composed of components that are used to collect, transform, and send data.
 
-You can use the following arguments to configure a `pyroscope.ebpf`. Only the
-`forward_to` and `targets` fields are required. Omitted fields take their default
-values.
+The `pyroscope.ebpf` component is used to collect application performance profiles via eBPF.
 
-The `targets` can be from discovery components such as `dicovery.kubernetes`, `discovery.docker` and `discovery.dockerswarm`.
-To relabel discovered targets, you can use the `discovery.relabel` component. For more information, see [Components](/docs/agent/latest/flow/concepts/components/).
+![Pyroscope ebpf diagram](ebpf.png)
 
-The `forward_to` parameter should point to a `pyroscope.write` component to send the collected profiles to.
+The `pyroscope.ebpf` runs on the host machine and collects stack traces associated with a process running on the current host.
+
+Using the `targets` argument, you can specify which processes and containers to profile on the machine. The `targets` can be from discovery components such as `dicovery.kubernetes`, `discovery.docker` and `discovery.dockerswarm`.
+To relabel discovered targets and set your own labels you can use the `discovery.relabel` component. For more information, see [Components](/docs/agent/latest/flow/concepts/components/).
+
+The `forward_to` parameter should point to a `pyroscope.write` component to send the collected profiles to your Pyroscope Server or [Grafana Cloud](/products/cloud/).
 
 | Name                      | Type                     | Description                                                  | Default | Required |
 |---------------------------|--------------------------|--------------------------------------------------------------|---------|----------|
