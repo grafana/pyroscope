@@ -1,7 +1,7 @@
 ---
 title: "Ruby"
 menuTitle: "Ruby"
-description: "Instrumenting Ruby applications for continuous profiling"
+description: "Instrumenting Ruby applications for continuous profiling."
 weight: 50
 aliases:
   - /docs/phlare/latest/configure-client/language-sdks/ruby
@@ -9,17 +9,23 @@ aliases:
 
 # Ruby
 
-## How to add Ruby profiling to your application
+The Ruby Profiler revolutionizes performance tuning in Ruby applications. Integrated with Pyroscope, it offers real-time performance data, allowing developers to delve deep into their Ruby codebase. This tool is essential for identifying performance issues, optimizing code efficiency, and enhancing the overall speed and reliability of Ruby applications.
+
+## Before you begin
+
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+
+The Pyroscope server can be a local server for development or a remote server for production use.
+
+## Add Ruby profiling to your application
 
 Add the `pyroscope` gem to your Gemfile:
-
 
 ```bash
 bundle add pyroscope
 ```
 
-## Pyroscope Ruby gem configuration
-
+## Configure the Ruby client
 
 Add the following code to your application. If you're using Rails, put this into `config/initializers` directory. This code will initialize the Pyroscope profiler and start profiling:
 

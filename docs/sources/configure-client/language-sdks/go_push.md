@@ -1,7 +1,7 @@
 ---
 title: "Go (push mode)"
 menuTitle: "Go (push mode)"
-description: "Instrumenting Golang applications for continuous profiling"
+description: "Instrumenting Golang applications for continuous profiling."
 weight: 10
 aliases:
   - /docs/phlare/latest/configure-client/language-sdks/go_push
@@ -9,18 +9,30 @@ aliases:
 
 # Go (push mode)
 
-Pyroscope uses the standard `runtime/pprof` package to collect profiling data. Refer to
-[the official documentation](https://golang.org/doc/diagnostics#profiling) for details.
+Our Go Profiler is a cutting-edge tool designed to optimize Golang applications.
+By integrating with Pyroscope, the profiler offers developers an in-depth view of their Go codebase, enabling real-time performance analysis.
+This powerful tool is crucial for pinpointing inefficiencies, streamlining code execution, and ensuring peak performance in Go applications.
 
-## How to add Golang profiling to your application
+Pyroscope uses the standard `runtime/pprof` package to collect profiling data. Refer to [the official documentation](https://golang.org/doc/diagnostics#profiling) for details.
 
-To start profiling a Go application, you need to include our go module in your app:
+## Before you begin
+
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+
+The Pyroscope server can be a local server for development or a remote server for production use.
+
+
+## Configure the Go client
+
+To start profiling a Go application, you need to include the Go module in your app:
 
 ```
 go get github.com/grafana/pyroscope-go
 ```
 
-Note: If you'd prefer to use Pull mode you can do so using the Grafana Agent.
+{{% admonition type="note" %}}
+If you'd prefer to use Pull mode you can do so using the [Grafana Agent]({{< relref "../grafana-agent" >}}).
+{{% /admonition %}}
 
 Then add the following code to your application:
 
@@ -68,9 +80,9 @@ func main() {
 }
 ```
 
-## How to add profiling labels to Golang applications
+### Add profiling labels to your application
 
-It is possible to add tags (labels) to the profiling data. These tags can be used to filter the data in the UI. We have a custom API that's in line with the go-native pprof api:
+You can add tags (labels) to the profiling data. These tags can be used to filter the data in the UI. There is a custom API that's in line with the go-native pprof API:
 
 ```go
 // these two ways of adding tags are equivalent:
@@ -83,7 +95,7 @@ pprof.Do(context.Background(), pprof.Labels("controller", "slow_controller"), fu
 })
 ```
 
-## Mutex Profiling
+### Mutex profiling
 
 Mutex profiling is useful for finding sources of contention within your application. It helps you to find out which mutexes are being held by which goroutines.
 
@@ -95,7 +107,7 @@ runtime.SetMutexProfileFraction(rate)
 
 `rate` parameter controls the fraction of mutex contention events that are reported in the mutex profile. On average 1/rate events are reported.
 
-## Block Profiling
+### Block profiling
 
 Block profiling lets you analyze how much time your program spends waiting on the blocking operations such as:
 
@@ -112,7 +124,7 @@ runtime.SetBlockProfileRate(rate)
 
 `rate` parameter controls the fraction of goroutine blocking events that are reported in the blocking profile. The profiler aims to sample an average of one blocking event per rate nanoseconds spent blocked.
 
-## Sending data to Pyroscope OSS or Grafana Cloud Profiles using Golang SDK
+## Send data to Pyroscope OSS or Grafana Cloud Profiles
 
 ```go
 pyroscope.Start(pyroscope.Config{
