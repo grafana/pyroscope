@@ -31,9 +31,10 @@ type Reader struct {
 
 	chunkFetchBufferSize int
 
-	index         IndexFile
-	partitions    []*partition
-	partitionsMap map[uint64]*partition
+	index            IndexFile
+	partitions       []*partition
+	partitionsMap    map[uint64]*partition
+	partitionsLoaded bool
 
 	locations parquetobj.File
 	mappings  parquetobj.File
@@ -188,14 +189,18 @@ func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, e
 	if !ok {
 		return nil, ErrPartitionNotFound
 	}
-	if err := p.init(ctx); err != nil {
-		return nil, err
+	if !r.partitionsLoaded {
+		if err := p.init(ctx); err != nil {
+			return nil, err
+		}
+		return p, nil
 	}
 	return p, nil
 }
 
 type partition struct {
 	reader *Reader
+	loaded bool // true if the partition is loaded and should not be released
 
 	stacktraceChunks []*stacktraceChunkReader
 	locations        parquetTableRange[*schemav1.InMemoryLocation, *schemav1.LocationPersister]
@@ -204,9 +209,15 @@ type partition struct {
 	strings          parquetTableRange[string, *schemav1.StringPersister]
 }
 
-func (p *partition) init(ctx context.Context) (err error) { return p.tx().fetch(ctx) }
+func (p *partition) init(ctx context.Context) (err error) {
+	return p.tx().fetch(ctx)
+}
 
-func (p *partition) Release() { p.tx().release() }
+func (p *partition) Release() {
+	if !p.loaded {
+		p.tx().release()
+	}
+}
 
 func (p *partition) tx() *fetchTx {
 	tx := make(fetchTx, 0, len(p.stacktraceChunks)+4)
