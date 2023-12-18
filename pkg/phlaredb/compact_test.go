@@ -794,36 +794,29 @@ func Test_SplitStages(t *testing.T) {
 }
 
 func Benchmark_CompactSplit(b *testing.B) {
-	block := newBlock(b, func() []*testhelper.ProfileBuilder {
-		return generateProfileBuilders(1000, 200, 30, 10)
-	})
 	ctx := phlarecontext.WithLogger(context.Background(), log.NewNopLogger())
+
+	bkt, err := client.NewBucket(ctx, client.Config{
+		StorageBackendConfig: client.StorageBackendConfig{
+			Backend: client.Filesystem,
+			Filesystem: filesystem.Config{
+				Directory: "./testdata/",
+			},
+		},
+		StoragePrefix: "",
+	}, "test")
+	require.NoError(b, err)
+	meta, err := block.ReadMetaFromDir("./testdata/01HHYG6245NWHZWVP27V8WJRT7")
+	require.NoError(b, err)
+	bl := NewSingleBlockQuerierFromMeta(ctx, bkt, meta)
+	require.NoError(b, bl.Open(ctx))
+	require.NoError(b, bl.Symbols().Load(ctx))
+	dst := b.TempDir()
 
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		_, err := CompactWithSplitting(ctx, []BlockReader{block, block, block}, 32, 0, b.TempDir(), SplitByFingerprint)
+		_, err = CompactWithSplitting(ctx, []BlockReader{bl}, 32, 32, dst, SplitByFingerprint)
 		require.NoError(b, err)
 	}
-}
-
-func generateProfileBuilders(numSeries, numStacktraces, depth, profilesPerSeries int) []*testhelper.ProfileBuilder {
-	stacktraces := make([]string, depth)
-	for k := 0; k < depth; k++ {
-		stacktraces[k] = fmt.Sprintf("stacktrace%d", k)
-	}
-
-	var builders []*testhelper.ProfileBuilder
-	for i := int64(0); i < int64(profilesPerSeries); i++ {
-		for j := 0; j < numSeries; j++ {
-
-			builder := testhelper.NewProfileBuilder(i * int64(time.Second*1)).CPUProfile()
-			for k := 0; k < numStacktraces; k++ {
-				builder.ForStacktraceString(append(stacktraces, fmt.Sprintf("%d", k))...).AddSamples(1)
-			}
-			builder.WithLabels("foo", "bar", "num", fmt.Sprintf("label%d", j))
-			builders = append(builders, builder)
-		}
-	}
-	return builders
 }

@@ -22,10 +22,11 @@
  */
 
 // CopyFile copies the contents of the file named src to the file named
-// by dst. The file will be created if it does not already exist. If the
-// destination file exists, all it's contents will be replaced by the contents
-// of the source file. The file mode will be copied from the source and
+// by dst. The file will be created if it does not already exist.
+// Attempt to do a symlink first if it fails. The file mode will be copied from the source and
 // the copied data is synced/flushed to stable storage.
+// If the destination file exists, all it's contents will be replaced by the contents
+// of the source file.
 package util
 
 import (
@@ -37,6 +38,10 @@ import (
 )
 
 func CopyFile(src, dst string) (err error) {
+	// Attempt to create hard link first.
+	if err = os.Link(src, dst); err == nil {
+		return
+	}
 	in, err := os.Open(src)
 	if err != nil {
 		return
