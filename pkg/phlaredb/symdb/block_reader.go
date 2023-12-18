@@ -200,7 +200,7 @@ func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, e
 
 type partition struct {
 	reader *Reader
-	loaded bool
+	loaded bool // true if the partition is loaded and should not be released
 
 	stacktraceChunks []*stacktraceChunkReader
 	locations        parquetTableRange[*schemav1.InMemoryLocation, *schemav1.LocationPersister]
@@ -214,7 +214,7 @@ func (p *partition) init(ctx context.Context) (err error) {
 }
 
 func (p *partition) Release() {
-	if p.loaded {
+	if !p.loaded {
 		p.tx().release()
 	}
 }
