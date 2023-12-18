@@ -97,6 +97,9 @@ spec:
               path: /ready
               port: {{ $values.service.port_name }}
               scheme: {{ $values.service.scheme }}
+          {{- if and (hasKey $values "readinessProbe") (hasKey $values.readinessProbe "initialDelaySeconds") }}
+            initialDelaySeconds: {{ $values.readinessProbe.initialDelaySeconds }}
+          {{- end }}
           volumeMounts:
             - name: config
               mountPath: /etc/pyroscope/config.yaml
