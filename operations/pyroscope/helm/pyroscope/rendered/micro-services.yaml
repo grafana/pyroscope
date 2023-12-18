@@ -2996,6 +2996,7 @@ spec:
               path: /ready
               port: http2
               scheme: HTTP
+            initialDelaySeconds: 60
           volumeMounts:
             - name: config
               mountPath: /etc/pyroscope/config.yaml
