@@ -184,7 +184,7 @@ func (r *Reader) Partition(ctx context.Context, partition uint64) (PartitionRead
 	return r.partition(ctx, partition)
 }
 
-func (r *Reader) partition(ctx context.Context, partition uint64) (PartitionReader, error) {
+func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, error) {
 	p, ok := r.partitionsMap[partition]
 	if !ok {
 		return nil, ErrPartitionNotFound

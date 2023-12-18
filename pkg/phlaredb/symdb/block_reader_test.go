@@ -70,7 +70,7 @@ func Test_Reader_Open_v1(t *testing.T) {
 	dst.On("InsertStacktrace", uint32(16), []int32{3, 1})
 	dst.On("InsertStacktrace", uint32(18), []int32{5, 2, 1})
 
-	err = (r.(*partition)).ResolveStacktraceLocations(context.Background(), dst, []uint32{3, 2, 11, 16, 18})
+	err = r.ResolveStacktraceLocations(context.Background(), dst, []uint32{3, 2, 11, 16, 18})
 	require.NoError(t, err)
 }
 
