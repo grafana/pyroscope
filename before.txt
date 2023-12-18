@@ -1,0 +1,18 @@
+level=debug msg="cut row group segment" path=/var/folders/6r/0_fmjlmd55b4gtg5fc9pb31c0000gn/T/Test_ValidateBlock4201387212/001/head/01HHYA190JR9XTSZCRA76ZG9VV/profiles.0.parquet numProfiles=1
+level=info msg="head successfully written to block" block_path=/var/folders/6r/0_fmjlmd55b4gtg5fc9pb31c0000gn/T/Test_ValidateBlock4201387212/001/local/01HHYA190JR9XTSZCRA76ZG9VV
+level=debug msg="cut row group segment" path=/var/folders/6r/0_fmjlmd55b4gtg5fc9pb31c0000gn/T/Test_ValidateBlock2901223858/001/head/01HHYA1KPMRTVVW7T8JVEBBW4P/profiles.0.parquet numProfiles=1
+level=info msg="head successfully written to block" block_path=/var/folders/6r/0_fmjlmd55b4gtg5fc9pb31c0000gn/T/Test_ValidateBlock2901223858/001/local/01HHYA1KPMRTVVW7T8JVEBBW4P
+level=debug msg="cut row group segment" path=/var/folders/6r/0_fmjlmd55b4gtg5fc9pb31c0000gn/T/Test_ValidateBlock1697977086/001/head/01HHYA1XX592Z8RF5MFX0WCABW/profiles.0.parquet numProfiles=1
+level=info msg="head successfully written to block" block_path=/var/folders/6r/0_fmjlmd55b4gtg5fc9pb31c0000gn/T/Test_ValidateBlock1697977086/001/local/01HHYA1XX592Z8RF5MFX0WCABW
+level=debug msg="cut row group segment" path=/var/folders/6r/0_fmjlmd55b4gtg5fc9pb31c0000gn/T/Test_ValidateBlock1709204246/001/head/01HHYA27DMQVEG2X0PYG6EVWBJ/profiles.0.parquet numProfiles=1
+level=info msg="head successfully written to block" block_path=/var/folders/6r/0_fmjlmd55b4gtg5fc9pb31c0000gn/T/Test_ValidateBlock1709204246/001/local/01HHYA27DMQVEG2X0PYG6EVWBJ
+goos: darwin
+goarch: amd64
+pkg: github.com/grafana/pyroscope/pkg/phlaredb
+cpu: Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz
+Benchmark_CompactSplit-16    	       1	5118391577 ns/op	6031366168 B/op	 2327397 allocs/op
+Benchmark_CompactSplit-16    	       1	5002619958 ns/op	6031317344 B/op	 2327323 allocs/op
+Benchmark_CompactSplit-16    	       1	4803520285 ns/op	6031072752 B/op	 2327454 allocs/op
+Benchmark_CompactSplit-16    	       1	4731113153 ns/op	6031238376 B/op	 2327314 allocs/op
+PASS
+ok  	github.com/grafana/pyroscope/pkg/phlaredb	94.022s

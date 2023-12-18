@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/oklog/ulid"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
@@ -23,6 +24,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
@@ -544,10 +546,10 @@ func TestFlushMeta(t *testing.T) {
 	require.Equal(t, "symbols/strings.parquet", b.Meta().Files[7].RelPath)
 }
 
-func newBlock(t *testing.T, generator func() []*testhelper.ProfileBuilder) *singleBlockQuerier {
+func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) *singleBlockQuerier {
 	t.Helper()
 	dir := t.TempDir()
-	ctx := context.Background()
+	ctx := phlarecontext.WithLogger(context.Background(), log.NewNopLogger())
 	h, err := NewHead(ctx, Config{
 		DataPath:         dir,
 		MaxBlockDuration: 24 * time.Hour,
@@ -789,4 +791,39 @@ func Test_SplitStages(t *testing.T) {
 	for _, test := range tests {
 		assert.Equal(t, test.result, splitStages(test.n, test.s))
 	}
+}
+
+func Benchmark_CompactSplit(b *testing.B) {
+	block := newBlock(b, func() []*testhelper.ProfileBuilder {
+		return generateProfileBuilders(1000, 200, 30, 10)
+	})
+	ctx := phlarecontext.WithLogger(context.Background(), log.NewNopLogger())
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, err := CompactWithSplitting(ctx, []BlockReader{block, block, block}, 32, 0, b.TempDir(), SplitByFingerprint)
+		require.NoError(b, err)
+	}
+}
+
+func generateProfileBuilders(numSeries, numStacktraces, depth, profilesPerSeries int) []*testhelper.ProfileBuilder {
+	stacktraces := make([]string, depth)
+	for k := 0; k < depth; k++ {
+		stacktraces[k] = fmt.Sprintf("stacktrace%d", k)
+	}
+
+	var builders []*testhelper.ProfileBuilder
+	for i := int64(0); i < int64(profilesPerSeries); i++ {
+		for j := 0; j < numSeries; j++ {
+
+			builder := testhelper.NewProfileBuilder(i * int64(time.Second*1)).CPUProfile()
+			for k := 0; k < numStacktraces; k++ {
+				builder.ForStacktraceString(append(stacktraces, fmt.Sprintf("%d", k))...).AddSamples(1)
+			}
+			builder.WithLabels("foo", "bar", "num", fmt.Sprintf("label%d", j))
+			builders = append(builders, builder)
+		}
+	}
+	return builders
 }
