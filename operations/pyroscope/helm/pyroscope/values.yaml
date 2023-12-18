@@ -104,6 +104,9 @@ pyroscope:
     #   cpu: 100m
     #   memory: 128Mi
 
+  readinessProbe:
+    initialDelaySeconds: 0
+
   nodeSelector: {}
 
   ## ref: https://kubernetes.io/docs/concepts/storage/persistent-volumes/
