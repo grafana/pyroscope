@@ -195,21 +195,12 @@ func (r *Reader) partition(ctx context.Context, partition uint64) (PartitionRead
 		}
 		return p, nil
 	}
-	return &loadedPartition{p}, nil
-}
-
-// loadedPartition is a wrapper around partition that does not
-// release the resources on Release.
-// This is used in combination with `Load` at compaction time where all partition are loaded in memory once and not released.
-type loadedPartition struct {
-	*partition
-}
-
-func (l *loadedPartition) Release() {
+	return p, nil
 }
 
 type partition struct {
 	reader *Reader
+	loaded bool
 
 	stacktraceChunks []*stacktraceChunkReader
 	locations        parquetTableRange[*schemav1.InMemoryLocation, *schemav1.LocationPersister]
@@ -218,9 +209,17 @@ type partition struct {
 	strings          parquetTableRange[string, *schemav1.StringPersister]
 }
 
-func (p *partition) init(ctx context.Context) (err error) { return p.tx().fetch(ctx) }
+func (p *partition) init(ctx context.Context) (err error) {
+	p.loaded = true
+	return p.tx().fetch(ctx)
+}
 
-func (p *partition) Release() { p.tx().release() }
+func (p *partition) Release() {
+	if p.loaded {
+		p.tx().release()
+		p.loaded = false
+	}
+}
 
 func (p *partition) tx() *fetchTx {
 	tx := make(fetchTx, 0, len(p.stacktraceChunks)+4)
