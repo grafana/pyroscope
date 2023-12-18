@@ -210,14 +210,12 @@ type partition struct {
 }
 
 func (p *partition) init(ctx context.Context) (err error) {
-	p.loaded = true
 	return p.tx().fetch(ctx)
 }
 
 func (p *partition) Release() {
 	if p.loaded {
 		p.tx().release()
-		p.loaded = false
 	}
 }
 

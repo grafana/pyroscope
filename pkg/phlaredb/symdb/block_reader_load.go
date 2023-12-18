@@ -31,6 +31,9 @@ func (r *Reader) Load(ctx context.Context) error {
 		return err
 	}
 	r.partitionsLoaded = true
+	for _, p := range r.partitions {
+		p.loaded = true
+	}
 	return nil
 }
 
