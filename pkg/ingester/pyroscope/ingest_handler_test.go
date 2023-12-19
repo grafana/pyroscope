@@ -18,13 +18,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 
-	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
-
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
@@ -47,10 +46,12 @@ func (m *MockPushService) PushParsed(ctx context.Context, req *model.PushRequest
 			for _, sample := range series.Samples {
 				rawProfileCopy := make([]byte, len(sample.RawProfile))
 				copy(rawProfileCopy, sample.RawProfile)
-				m.reqPprof = append(m.reqPprof, &flatProfileSeries{
-					Labels:     series.Labels,
-					Profile:    sample.Profile.Profile.CloneVT(),
-					RawProfile: rawProfileCopy,
+				sample.Profile.Normalize()
+				iterateProfileSeries(sample.Profile.Profile.CloneVT(), series.Labels, func(p *profilev1.Profile, ls phlaremodel.Labels) {
+					m.reqPprof = append(m.reqPprof, &flatProfileSeries{
+						Labels:  ls,
+						Profile: p,
+					})
 				})
 			}
 		}
@@ -459,4 +460,30 @@ func createPProfRequest(t *testing.T, profile, prevProfile, sampleTypeConfig []b
 	require.NoError(t, err)
 
 	return b.Bytes(), w.FormDataContentType()
+}
+
+func iterateProfileSeries(p *profilev1.Profile, seriesLabels phlaremodel.Labels, fn func(*profilev1.Profile, phlaremodel.Labels)) {
+	for _, x := range p.Sample {
+		sort.Sort(pprof.LabelsByKeyValue(x.Label))
+	}
+	sort.Sort(pprof.SamplesByLabels(p.Sample))
+	groups := pprof.GroupSamplesByLabels(p)
+	e := pprof.NewSampleExporter(p)
+	for _, g := range groups {
+		ls := mergeSeriesAndSampleLabels(p, seriesLabels, g.Labels)
+		ps := e.ExportSamples(new(profilev1.Profile), g.Samples)
+		fn(ps, ls)
+	}
+}
+
+func mergeSeriesAndSampleLabels(p *profilev1.Profile, sl []*v1.LabelPair, pl []*profilev1.Label) []*v1.LabelPair {
+	m := phlaremodel.Labels(sl).Clone()
+	for _, l := range pl {
+		m = append(m, &v1.LabelPair{
+			Name:  p.StringTable[l.Key],
+			Value: p.StringTable[l.Str],
+		})
+	}
+	sort.Stable(m)
+	return m.Unique()
 }

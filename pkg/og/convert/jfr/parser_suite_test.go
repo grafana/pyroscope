@@ -33,12 +33,6 @@ func TestParser(t *testing.T) {
 }
 
 func TestParseCompareExpectedData(t *testing.T) {
-	b, err := bench.ReadGzipFile("/Users/kolesnikovae/src/grafana/pyroscope/pkg/og/convert/jfr/testdata/dump2.json.gz")
-	if err != nil {
-		panic(err)
-	}
-	os.WriteFile("/Users/kolesnikovae/src/grafana/pyroscope/pkg/og/convert/jfr/testdata/dump2.json", b, 0o644)
-
 	testdata := []struct {
 		jfr    string
 		labels string
@@ -92,18 +86,6 @@ func TestParseCompareExpectedData(t *testing.T) {
 	}
 }
 
-func mergeSeriesAndSampleLabels(p *profilev1.Profile, sl []*v1.LabelPair, pl []*profilev1.Label) []*v1.LabelPair {
-	m := phlaremodel.Labels(sl).Clone()
-	for _, l := range pl {
-		m = append(m, &v1.LabelPair{
-			Name:  p.StringTable[l.Key],
-			Value: p.StringTable[l.Str],
-		})
-	}
-	sort.Stable(m)
-	return m.Unique()
-}
-
 func compareWithJson(t *testing.T, req *distributormodel.PushRequest, file string) error {
 	type flatProfileSeries struct {
 		Labels  []*v1.LabelPair
@@ -114,18 +96,12 @@ func compareWithJson(t *testing.T, req *distributormodel.PushRequest, file strin
 	for _, s := range req.Series {
 		for _, sample := range s.Samples {
 			sample.Profile.Normalize()
-			for _, x := range sample.Profile.Sample {
-				sort.Sort(pprof.LabelsByKeyValue(x.Label))
-			}
-			sort.Sort(pprof.SamplesByLabels(sample.Profile.Sample))
-			e := pprof.NewSampleExporter(sample.Profile.Profile)
-			for _, g := range pprof.GroupSamplesByLabels(sample.Profile.Profile) {
-				p := &flatProfileSeries{
-					Labels:  mergeSeriesAndSampleLabels(sample.Profile.Profile, s.Labels, g.Labels),
-					Profile: e.ExportSamples(new(profilev1.Profile), g.Samples),
-				}
-				profiles = append(profiles, p)
-			}
+			iterateProfileSeries(sample.Profile.Profile.CloneVT(), s.Labels, func(p *profilev1.Profile, l phlaremodel.Labels) {
+				profiles = append(profiles, &flatProfileSeries{
+					Labels:  l,
+					Profile: p,
+				})
+			})
 		}
 	}
 
@@ -307,4 +283,30 @@ func BenchmarkParser(b *testing.B) {
 			}
 		})
 	}
+}
+
+func iterateProfileSeries(p *profilev1.Profile, seriesLabels phlaremodel.Labels, fn func(*profilev1.Profile, phlaremodel.Labels)) {
+	for _, x := range p.Sample {
+		sort.Sort(pprof.LabelsByKeyValue(x.Label))
+	}
+	sort.Sort(pprof.SamplesByLabels(p.Sample))
+	groups := pprof.GroupSamplesByLabels(p)
+	e := pprof.NewSampleExporter(p)
+	for _, g := range groups {
+		ls := mergeSeriesAndSampleLabels(p, seriesLabels, g.Labels)
+		ps := e.ExportSamples(new(profilev1.Profile), g.Samples)
+		fn(ps, ls)
+	}
+}
+
+func mergeSeriesAndSampleLabels(p *profilev1.Profile, sl []*v1.LabelPair, pl []*profilev1.Label) []*v1.LabelPair {
+	m := phlaremodel.Labels(sl).Clone()
+	for _, l := range pl {
+		m = append(m, &v1.LabelPair{
+			Name:  p.StringTable[l.Key],
+			Value: p.StringTable[l.Str],
+		})
+	}
+	sort.Stable(m)
+	return m.Unique()
 }
