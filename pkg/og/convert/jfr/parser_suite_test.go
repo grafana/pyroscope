@@ -4,9 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/proto"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -16,13 +25,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/segment"
 	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestParser(t *testing.T) {
@@ -31,6 +33,12 @@ func TestParser(t *testing.T) {
 }
 
 func TestParseCompareExpectedData(t *testing.T) {
+	b, err := bench.ReadGzipFile("/Users/kolesnikovae/src/grafana/pyroscope/pkg/og/convert/jfr/testdata/dump2.json.gz")
+	if err != nil {
+		panic(err)
+	}
+	os.WriteFile("/Users/kolesnikovae/src/grafana/pyroscope/pkg/og/convert/jfr/testdata/dump2.json", b, 0o644)
+
 	testdata := []struct {
 		jfr    string
 		labels string
@@ -84,6 +92,18 @@ func TestParseCompareExpectedData(t *testing.T) {
 	}
 }
 
+func mergeSeriesAndSampleLabels(p *profilev1.Profile, sl []*v1.LabelPair, pl []*profilev1.Label) []*v1.LabelPair {
+	m := phlaremodel.Labels(sl).Clone()
+	for _, l := range pl {
+		m = append(m, &v1.LabelPair{
+			Name:  p.StringTable[l.Key],
+			Value: p.StringTable[l.Str],
+		})
+	}
+	sort.Stable(m)
+	return m.Unique()
+}
+
 func compareWithJson(t *testing.T, req *distributormodel.PushRequest, file string) error {
 	type flatProfileSeries struct {
 		Labels  []*v1.LabelPair
@@ -93,12 +113,22 @@ func compareWithJson(t *testing.T, req *distributormodel.PushRequest, file strin
 	var profiles []*flatProfileSeries
 	for _, s := range req.Series {
 		for _, sample := range s.Samples {
-			profiles = append(profiles, &flatProfileSeries{
-				Labels:  s.Labels,
-				Profile: sample.Profile.Profile,
-			})
+			sample.Profile.Normalize()
+			for _, x := range sample.Profile.Sample {
+				sort.Sort(pprof.LabelsByKeyValue(x.Label))
+			}
+			sort.Sort(pprof.SamplesByLabels(sample.Profile.Sample))
+			e := pprof.NewSampleExporter(sample.Profile.Profile)
+			for _, g := range pprof.GroupSamplesByLabels(sample.Profile.Profile) {
+				p := &flatProfileSeries{
+					Labels:  mergeSeriesAndSampleLabels(sample.Profile.Profile, s.Labels, g.Labels),
+					Profile: e.ExportSamples(new(profilev1.Profile), g.Samples),
+				}
+				profiles = append(profiles, p)
+			}
 		}
 	}
+
 	goldBS, err := bench.ReadGzipFile(file)
 	if err != nil {
 		return err
@@ -186,6 +216,15 @@ func compareWithJson(t *testing.T, req *distributormodel.PushRequest, file strin
 				}
 				parseKey.Add(label.Name, label.Value)
 			}
+
+			// We used to duplicate samples with profile ID.
+			// Now we don't do it anymore, but have it in fixtures.
+			if _, ok := parseKey.ProfileID(); ok {
+				k := parseKey.Clone()
+				k.Add("profile_id", "")
+				delete(trees, k.Normalized())
+			}
+
 			key = parseKey.Normalized()
 			expectedTree := trees[key]
 			if expectedTree == "" {
@@ -217,6 +256,12 @@ func compareWithJson(t *testing.T, req *distributormodel.PushRequest, file strin
 		_ = v
 		if _, ok := checkedSeries[k]; !ok {
 			assert.Failf(t, "no profile found for ", "key=%s", k)
+		}
+	}
+	for k, v := range checkedSeries {
+		_ = v
+		if _, ok := trees[k]; !ok {
+			assert.Failf(t, "no tree found for ", "key=%s", k)
 		}
 	}
 	return nil
