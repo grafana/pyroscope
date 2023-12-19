@@ -59,7 +59,7 @@ func getProfileLanguageFromSpy(spyName string) string {
 		return "ruby"
 	case "nodespy":
 		return "nodejs"
-	case "javaspy":
+	case "javaspy", "grafana-agent.java":
 		return "java"
 	case "pyroscope-rs":
 		return "rust"
