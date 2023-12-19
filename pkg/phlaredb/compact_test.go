@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/oklog/ulid"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
@@ -23,6 +24,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
@@ -544,10 +546,10 @@ func TestFlushMeta(t *testing.T) {
 	require.Equal(t, "symbols/strings.parquet", b.Meta().Files[7].RelPath)
 }
 
-func newBlock(t *testing.T, generator func() []*testhelper.ProfileBuilder) *singleBlockQuerier {
+func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) *singleBlockQuerier {
 	t.Helper()
 	dir := t.TempDir()
-	ctx := context.Background()
+	ctx := phlarecontext.WithLogger(context.Background(), log.NewNopLogger())
 	h, err := NewHead(ctx, Config{
 		DataPath:         dir,
 		MaxBlockDuration: 24 * time.Hour,
@@ -788,5 +790,33 @@ func Test_SplitStages(t *testing.T) {
 
 	for _, test := range tests {
 		assert.Equal(t, test.result, splitStages(test.n, test.s))
+	}
+}
+
+func Benchmark_CompactSplit(b *testing.B) {
+	ctx := phlarecontext.WithLogger(context.Background(), log.NewNopLogger())
+
+	bkt, err := client.NewBucket(ctx, client.Config{
+		StorageBackendConfig: client.StorageBackendConfig{
+			Backend: client.Filesystem,
+			Filesystem: filesystem.Config{
+				Directory: "./testdata/",
+			},
+		},
+		StoragePrefix: "",
+	}, "test")
+	require.NoError(b, err)
+	meta, err := block.ReadMetaFromDir("./testdata/01HHYG6245NWHZWVP27V8WJRT7")
+	require.NoError(b, err)
+	bl := NewSingleBlockQuerierFromMeta(ctx, bkt, meta)
+	require.NoError(b, bl.Open(ctx))
+	require.NoError(b, bl.Symbols().Load(ctx))
+	dst := b.TempDir()
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, err = CompactWithSplitting(ctx, []BlockReader{bl}, 32, 32, dst, SplitByFingerprint)
+		require.NoError(b, err)
 	}
 }
