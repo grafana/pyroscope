@@ -107,6 +107,7 @@ func compact(ctx context.Context, src, dst string, metas []*block.Meta, shards i
 	}
 
 	s.Stop()
+	fmt.Fprintln(output(ctx), "Output blocks:")
 	printMeta(ctx, out)
 	return nil
 }
