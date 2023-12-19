@@ -46,12 +46,10 @@ func (m *MockPushService) PushParsed(ctx context.Context, req *model.PushRequest
 			for _, sample := range series.Samples {
 				rawProfileCopy := make([]byte, len(sample.RawProfile))
 				copy(rawProfileCopy, sample.RawProfile)
-				sample.Profile.Normalize()
-				iterateProfileSeries(sample.Profile.Profile.CloneVT(), series.Labels, func(p *profilev1.Profile, ls phlaremodel.Labels) {
-					m.reqPprof = append(m.reqPprof, &flatProfileSeries{
-						Labels:  ls,
-						Profile: p,
-					})
+				m.reqPprof = append(m.reqPprof, &flatProfileSeries{
+					Labels:     series.Labels,
+					Profile:    sample.Profile.Profile.CloneVT(),
+					RawProfile: rawProfileCopy,
 				})
 			}
 		}
@@ -117,6 +115,17 @@ func (m *MockPushService) CompareDump(file string) {
 	expected := Dump{}
 	err = json.Unmarshal(bs, &expected)
 	require.NoError(m.T, err)
+
+	var req []*flatProfileSeries
+	for _, x := range m.reqPprof {
+		iterateProfileSeries(x.Profile.CloneVT(), x.Labels, func(p *profilev1.Profile, ls phlaremodel.Labels) {
+			req = append(req, &flatProfileSeries{
+				Labels:  ls,
+				Profile: p,
+			})
+		})
+	}
+	m.reqPprof = req
 
 	for i := range expected.Profiles {
 		expectedLabels := labels.Labels{}
@@ -467,7 +476,7 @@ func iterateProfileSeries(p *profilev1.Profile, seriesLabels phlaremodel.Labels,
 		sort.Sort(pprof.LabelsByKeyValue(x.Label))
 	}
 	sort.Sort(pprof.SamplesByLabels(p.Sample))
-	groups := pprof.GroupSamplesByLabels(p)
+	groups := pprof.GroupSamplesWithoutLabels(p, "profile_id")
 	e := pprof.NewSampleExporter(p)
 	for _, g := range groups {
 		ls := mergeSeriesAndSampleLabels(p, seriesLabels, g.Labels)
