@@ -158,7 +158,7 @@ func symbolSize(meta block.Meta) string {
 		size += f.SizeBytes
 	}
 
-	return fmt.Sprintf("%s", humanize.Bytes(size))
+	return humanize.Bytes(size)
 }
 
 func labelsString(m map[string]string) string {
