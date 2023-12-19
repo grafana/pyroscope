@@ -21,6 +21,11 @@ var cfg struct {
 	blocks  struct {
 		path               string
 		restoreMissingMeta bool
+		compact            struct {
+			src    string
+			dst    string
+			shards int
+		}
 	}
 }
 
@@ -45,6 +50,11 @@ func main() {
 
 	blocksListCmd := blocksCmd.Command("list", "List blocks.")
 	blocksListCmd.Flag("restore-missing-meta", "").Default("false").BoolVar(&cfg.blocks.restoreMissingMeta)
+
+	blocksCompactCmd := blocksCmd.Command("compact", "Compact blocks.")
+	blocksCompactCmd.Arg("from", "The source input blocks to compact.").Required().ExistingDirVar(&cfg.blocks.compact.src)
+	blocksCompactCmd.Arg("dest", "The destination where compacted blocks should be stored.").Required().StringVar(&cfg.blocks.compact.dst)
+	blocksCompactCmd.Flag("shards", "The amount of shards to split output blocks into.").Default("0").IntVar(&cfg.blocks.compact.shards)
 
 	parquetCmd := adminCmd.Command("parquet", "Operate on a Parquet file.")
 	parquetInspectCmd := parquetCmd.Command("inspect", "Inspect a parquet file's structure.")
@@ -104,10 +114,13 @@ func main() {
 		if err := newBucketWebTool(bucketWebParams).run(ctx); err != nil {
 			os.Exit(checkError(err))
 		}
+	case blocksCompactCmd.FullCommand():
+		if err := blocksCompact(ctx, cfg.blocks.compact.src, cfg.blocks.compact.dst, cfg.blocks.compact.shards); err != nil {
+			os.Exit(checkError(err))
+		}
 	default:
 		level.Error(logger).Log("msg", "unknown command", "cmd", parsedCmd)
 	}
-
 }
 
 func checkError(err error) int {

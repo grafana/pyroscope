@@ -32,6 +32,7 @@ import (
 )
 
 type BlockReader interface {
+	Open(context.Context) error
 	Meta() block.Meta
 	Profiles() ProfileReader
 	Index() IndexReader
