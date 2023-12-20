@@ -78,6 +78,7 @@ func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount, st
 	}
 
 	symbolsCompactor := newSymbolsCompactor(dst)
+	defer runutil.CloseWithLogOnErr(util.Logger, symbolsCompactor, "close symbols compactor")
 
 	outMeta := compactMetas(srcMetas...)
 	for _, stage := range splitStages(len(writers), int(stageSize)) {
@@ -698,7 +699,7 @@ func (s *symbolsRewriter) ReWriteRow(profile profileRow) error {
 }
 
 func (s *symbolsRewriter) Close() (uint64, error) {
-	if err := s.symbolsCompactor.Close(); err != nil {
+	if err := s.symbolsCompactor.Flush(); err != nil {
 		return 0, err
 	}
 	return s.numSamples, util.CopyDir(s.symbolsCompactor.dst, filepath.Join(s.dst, symdb.DefaultDirName))
@@ -731,7 +732,7 @@ func (s *symbolsCompactor) ReWriteRow(profile profileRow) (uint64, error) {
 	return rewrittenSamples, nil
 }
 
-func (s *symbolsCompactor) Close() error {
+func (s *symbolsCompactor) Flush() error {
 	if s.flushed {
 		return nil
 	}
@@ -740,6 +741,10 @@ func (s *symbolsCompactor) Close() error {
 	}
 	s.flushed = true
 	return nil
+}
+
+func (s *symbolsCompactor) Close() error {
+	return os.RemoveAll(s.dst)
 }
 
 func (s *symbolsCompactor) loadStacktracesID(values []parquet.Value) {
