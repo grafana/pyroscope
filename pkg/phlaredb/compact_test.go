@@ -27,6 +27,7 @@ import (
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
+	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
@@ -112,6 +113,8 @@ func TestCompactWithSplitting(t *testing.T) {
 	dst := t.TempDir()
 	compacted, err := CompactWithSplitting(ctx, []BlockReader{b1, b2, b2, b1}, 16, 8, dst, SplitByFingerprint)
 	require.NoError(t, err)
+
+	require.NoDirExists(t, filepath.Join(dst, symdb.DefaultDirName))
 
 	// 4 shards one per series.
 	require.Equal(t, 4, len(compacted))
