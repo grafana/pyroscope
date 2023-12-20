@@ -14,6 +14,7 @@ Pyroscope and Tempo datasources are provisioned automatically.
 The project can be run locally with the following commands:
 
 ```shell
+GOOS=linux GOARCH=amd64 make build -C ../../..
 docker-compose up --build
 ```
 
@@ -30,7 +31,9 @@ less than the sample interval (10ms).
 
 ### Instrumentation
 
- - `rideshare` demo application instrumented with OpenTelemetry and [Pyroscope SDK](https://github.com/grafana/otel-profiling-go)
+ - `rideshare` demo application instrumented with OpenTelemetry:
+   - Go [OTel integration](https://github.com/grafana/otel-profiling-go)
+   - Java [OTel integration](https://github.com/grafana/otel-profiling-java) 
  - `pyroscope` itself is instrumented with `opentracing-go` SDK and [`spanprofiler`](../../../pkg/util/spanprofiler) for profiling integration.
 
 ### Grafana Tempo configuration
