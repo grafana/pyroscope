@@ -386,7 +386,9 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 		}
 	}
 	currentLevel++
-	opentracing.SpanFromContext(ctx).SetTag("compaction_level", currentLevel)
+	if sp := opentracing.SpanFromContext(ctx); sp != nil {
+		sp.SetTag("compaction_level", currentLevel)
+	}
 	start := time.Now()
 	defer func() {
 		c.metrics.Duration.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(time.Since(start).Seconds())
@@ -768,6 +770,9 @@ func NewBucketCompactor(
 // If maxCompactionTime is positive then after this time no more new compactions are started.
 func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Duration) (rerr error) {
 	sp := opentracing.SpanFromContext(ctx)
+	if sp == nil {
+		sp, ctx = opentracing.StartSpanFromContext(ctx, "Compact")
+	}
 	sp.SetTag("max_compaction_time", maxCompactionTime)
 	sp.SetTag("concurrency", c.concurrency)
 	defer func() {
