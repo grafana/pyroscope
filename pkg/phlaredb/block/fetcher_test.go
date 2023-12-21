@@ -110,7 +110,7 @@ func TestMetaFetcher_Fetch_ShouldReturnDiscoveredBlocksIncludingMarkedForDeletio
 	// Upload a block and mark it for deletion.
 	block3ID, block3Dir := createTestBlock(t)
 	require.NoError(t, block.Upload(ctx, logger, bkt, block3Dir))
-	require.NoError(t, block.MarkForDeletion(ctx, logger, bkt, block3ID, "", promauto.With(nil).NewCounter(prometheus.CounterOpts{})))
+	require.NoError(t, block.MarkForDeletion(ctx, logger, bkt, block3ID, "", false, promauto.With(nil).NewCounter(prometheus.CounterOpts{})))
 
 	t.Run("should include blocks marked for deletion", func(t *testing.T) {
 		actualMetas, actualPartials, actualErr := f.Fetch(ctx)
@@ -231,7 +231,7 @@ func TestMetaFetcher_FetchWithoutMarkedForDeletion_ShouldReturnDiscoveredBlocksE
 	// Upload a block and mark it for deletion.
 	block3ID, block3Dir := createTestBlock(t)
 	require.NoError(t, block.Upload(ctx, logger, bkt, block3Dir))
-	require.NoError(t, block.MarkForDeletion(ctx, logger, bkt, block3ID, "", promauto.With(nil).NewCounter(prometheus.CounterOpts{})))
+	require.NoError(t, block.MarkForDeletion(ctx, logger, bkt, block3ID, "", false, promauto.With(nil).NewCounter(prometheus.CounterOpts{})))
 
 	t.Run("should include blocks marked for deletion", func(t *testing.T) {
 		actualMetas, actualPartials, actualErr := f.FetchWithoutMarkedForDeletion(ctx)
