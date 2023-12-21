@@ -386,6 +386,8 @@ github.com/grafana/agent v0.35.4 h1:5MBSSZIB8qwDJRfeMndSTJpeHAFnz68O2DeTT/AZN2A=
 github.com/grafana/agent v0.35.4/go.mod h1:/NHq7TBP8AcX5ucJCgtbM7s5CyTnn7JDAsXKXvPsetQ=
 github.com/grafana/dskit v0.0.0-20231003142331-80423d8864b9 h1:0AW7GXOOSE5XFQhDHTPT1c6XdlHuGxFNGpLfyi1xg1U=
 github.com/grafana/dskit v0.0.0-20231003142331-80423d8864b9/go.mod h1:byPCvaG/pqi33Kq+Wvkp7WhLfmrlyy0RAoYG4yRh01I=
+github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6 h1:Z78JZ7pa6InQ5BcMB27M+NMTZ7LV+MXgOd3dZPfEdG4=
+github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6/go.mod h1:kkWM4WUV230bNG3urVRWPBnSJHs64y/0RmWjftnnn0c=
 github.com/grafana/jfr-parser v0.7.2-0.20230831140626-08fa3a941bf8 h1:Cod+QZWJXGLoCfKfuH66J3iSQ/WWw+R03R6QCwm8IB8=
 github.com/grafana/jfr-parser v0.7.2-0.20230831140626-08fa3a941bf8/go.mod h1:M5u1ux34Qo47ZBWksbMYVk40s7dvU3WMVYpxweEu4R0=
 github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91 h1:/NipyHnOmvRsVzj81j2qE0VxsvsqhOB0f4vJIhk2qCQ=
@@ -396,6 +398,8 @@ github.com/grafana/pyroscope-go v1.0.3 h1:8WWmItzLfg4m8G+j//ElSjMeMr88Y6Lvblar6q
 github.com/grafana/pyroscope-go v1.0.3/go.mod h1:0d7ftwSMBV/Awm7CCiYmHQEG8Y44Ma3YSjt+nWcWztY=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.6-0.20231130084046-2eb5d49453c0 h1:vOsbaT8Up18kaEI+/bVF38ukptKSPOXVARUCTs2bzTA=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.6-0.20231130084046-2eb5d49453c0/go.mod h1:Tk376Nbldo4Cha9RgiU7ik8WKFkNpfds98aUzS8omLE=
+github.com/grafana/pyroscope-go/godeltaprof v0.1.6 h1:nEdZ8louGAplSvIJi1HVp7kWvFvdiiYg3COLlTwJiFo=
+github.com/grafana/pyroscope-go/godeltaprof v0.1.6/go.mod h1:Tk376Nbldo4Cha9RgiU7ik8WKFkNpfds98aUzS8omLE=
 github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db h1:7aN5cccjIqCLTzedH7MZzRZt5/lsAHch6Z3L2ZGn5FA=
 github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db/go.mod h1:M5qHK+eWfAv8VR/265dIuEpL3fNfeC21tXXp9itM24A=
 github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 h1:UH//fgunKIs4JdUbpDl1VZCDaL56wXCB/5+wF6uHfaI=
