@@ -65,7 +65,7 @@ func forGivenReplicationSet[Result any, Querier any](ctx context.Context, client
 		ring.DoUntilQuorumConfig{
 			MinimizeRequests: true,
 		},
-		func(ctx context.Context, ingester *ring.InstanceDesc, _ context.CancelFunc) (ResponseFromReplica[Result], error) {
+		func(ctx context.Context, ingester *ring.InstanceDesc, _ context.CancelCauseFunc) (ResponseFromReplica[Result], error) {
 			var res ResponseFromReplica[Result]
 			client, err := clientFactory(ingester.Addr)
 			if err != nil {
