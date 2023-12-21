@@ -553,7 +553,7 @@ func (c *BlocksCleaner) cleanUserPartialBlocks(ctx context.Context, partials map
 			}
 			if !lastModified.IsZero() {
 				level.Info(userLogger).Log("msg", "stale partial block found: marking block for deletion", "block", blockID, "last modified", lastModified)
-				if err := block.MarkForDeletion(ctx, userLogger, userBucket, blockID, "stale partial block", c.partialBlocksMarkedForDeletion); err != nil {
+				if err := block.MarkForDeletion(ctx, userLogger, userBucket, blockID, "stale partial block", false, c.partialBlocksMarkedForDeletion); err != nil {
 					level.Warn(userLogger).Log("msg", "failed to mark partial block for deletion", "block", blockID, "err", err)
 				}
 			}
@@ -574,7 +574,7 @@ func (c *BlocksCleaner) applyUserRetentionPeriod(ctx context.Context, idx *bucke
 	// the cleaner will retry applying the retention in its next cycle.
 	for _, b := range blocks {
 		level.Info(userLogger).Log("msg", "applied retention: marking block for deletion", "block", b.ID, "maxTime", b.MaxTime)
-		if err := block.MarkForDeletion(ctx, userLogger, userBucket, b.ID, fmt.Sprintf("block exceeding retention of %v", retention), c.blocksMarkedForDeletion); err != nil {
+		if err := block.MarkForDeletion(ctx, userLogger, userBucket, b.ID, fmt.Sprintf("block exceeding retention of %v", retention), false, c.blocksMarkedForDeletion); err != nil {
 			level.Warn(userLogger).Log("msg", "failed to mark block for deletion", "block", b.ID, "err", err)
 		}
 	}

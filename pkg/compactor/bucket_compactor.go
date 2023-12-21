@@ -146,7 +146,7 @@ func (s *Syncer) GarbageCollect(ctx context.Context) error {
 		delCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 
 		level.Info(s.logger).Log("msg", "marking outdated block for deletion", "block", id)
-		err := block.MarkForDeletion(delCtx, s.logger, s.bkt, id, "outdated block", s.metrics.blocksMarkedForDeletion)
+		err := block.MarkForDeletion(delCtx, s.logger, s.bkt, id, "outdated block", false, s.metrics.blocksMarkedForDeletion)
 		cancel()
 		if err != nil {
 			s.metrics.garbageCollectionFailures.Inc()
@@ -596,7 +596,7 @@ func deleteBlock(bkt objstore.Bucket, id ulid.ULID, bdir string, logger log.Logg
 	delCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	level.Info(logger).Log("msg", "marking compacted block for deletion", "old_block", id)
-	if err := block.MarkForDeletion(delCtx, logger, bkt, id, "source of compacted block", blocksMarkedForDeletion); err != nil {
+	if err := block.MarkForDeletion(delCtx, logger, bkt, id, "source of compacted block", true, blocksMarkedForDeletion); err != nil {
 		return errors.Wrapf(err, "mark block %s for deletion from bucket", id)
 	}
 	return nil
