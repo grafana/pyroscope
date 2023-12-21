@@ -26,10 +26,10 @@ require (
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/mux v1.8.0
 	github.com/grafana/agent v0.35.4
-	github.com/grafana/dskit v0.0.0-20231003142331-80423d8864b9
+	github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6
 	github.com/grafana/jfr-parser v0.7.2-0.20230831140626-08fa3a941bf8
 	github.com/grafana/pyroscope-go v1.0.3
-	github.com/grafana/pyroscope-go/godeltaprof v0.1.6-0.20231130084046-2eb5d49453c0
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.6
 	github.com/grafana/pyroscope/api v0.2.0
 	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0

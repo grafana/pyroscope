@@ -83,7 +83,7 @@ func (i *authInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc
 	}
 }
 
-var defaultResolver tenant.Resolver = tenant.NewSingleResolver()
+var defaultResolver tenant.Resolver = tenant.NewMultiResolver()
 
 // ExtractTenantIDFromHeaders extracts a single TenantID from http headers.
 func ExtractTenantIDFromHeaders(ctx context.Context, headers http.Header) (string, context.Context, error) {

@@ -88,3 +88,7 @@ func (r MockRing) CleanupShuffleShardCache(identifier string) {}
 func (r MockRing) GetInstanceState(instanceID string) (ring.InstanceState, error) {
 	return 0, nil
 }
+
+func (r MockRing) GetTokenRangesForInstance(instanceID string) (ring.TokenRanges, error) {
+	return nil, nil
+}

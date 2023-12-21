@@ -879,6 +879,8 @@ github.com/creack/pty v1.1.18 h1:n56/Zwd5o6whRC5PMGretI4IdRLlmBXYNjScPaBgsbY=
 github.com/creack/pty v1.1.18/go.mod h1:MOBLtS5ELjhRRrroQr9kyvTxUAFNvYEK993ew/Vr4O4=
 github.com/cristalhq/hedgedhttp v0.7.0 h1:C2XPDC+AQH4QJt6vZI4jB5WNyF86QbSJD4C4fW3H3ro=
 github.com/cristalhq/hedgedhttp v0.7.0/go.mod h1:XkqWU6qVMutbhW68NnzjWrGtH8NUx1UfYqGYtHVKIsI=
+github.com/cristalhq/hedgedhttp v0.9.1 h1:g68L9cf8uUyQKQJwciD0A1Vgbsz+QgCjuB1I8FAsCDs=
+github.com/cristalhq/hedgedhttp v0.9.1/go.mod h1:XkqWU6qVMutbhW68NnzjWrGtH8NUx1UfYqGYtHVKIsI=
 github.com/cyphar/filepath-securejoin v0.2.3 h1:YX6ebbZCZP7VkM3scTTokDgBL2TY741X51MTk3ycuNI=
 github.com/cyphar/filepath-securejoin v0.2.3/go.mod h1:aPGpWjXOXUn2NCNjFvBE6aRxGGx79pTxQpKOJNYHHl4=
 github.com/danieljoos/wincred v1.2.0 h1:ozqKHaLK0W/ii4KVbbvluM91W2H3Sh0BncbUNPS7jLE=
@@ -1370,6 +1372,8 @@ github.com/grafana/gomemcache v0.0.0-20230316202710-a081dae0aba9 h1:WB3bGH2f1UN6
 github.com/grafana/gomemcache v0.0.0-20230316202710-a081dae0aba9/go.mod h1:PGk3RjYHpxMM8HFPhKKo+vve3DdlPUELZLSDEFehPuU=
 github.com/grafana/gomemcache v0.0.0-20230914135007-70d78eaabfe1 h1:MLYY2R60/74hfYl5vRRmC2VDo0Yuql1QQ1ig8hnvgSI=
 github.com/grafana/gomemcache v0.0.0-20230914135007-70d78eaabfe1/go.mod h1:PGk3RjYHpxMM8HFPhKKo+vve3DdlPUELZLSDEFehPuU=
+github.com/grafana/gomemcache v0.0.0-20231023152154-6947259a0586 h1:/of8Z8taCPftShATouOrBVy6GaTTjgQd/VfNiZp/VXQ=
+github.com/grafana/gomemcache v0.0.0-20231023152154-6947259a0586/go.mod h1:PGk3RjYHpxMM8HFPhKKo+vve3DdlPUELZLSDEFehPuU=
 github.com/grafana/loki v1.6.2-0.20230414223651-220cbdd4f172 h1:/zfw3KeHb5W7FIRI1nA4fti8Q4rDBZdzzk+FyNdas/A=
 github.com/grafana/loki v1.6.2-0.20230414223651-220cbdd4f172/go.mod h1:gMEIqi1Gc7wJBK7p70LU0fFGXHLYD/m7qK5Jo3cZmRc=
 github.com/grafana/loki/pkg/push v0.0.0-20230127102416-571f88bc5765 h1:VXitROTlmZtLzvokNe8ZbUKpmwldM4Hy1zdNRO32jKU=
