@@ -192,6 +192,10 @@ func (f *Phlare) initQueryScheduler() (services.Service, error) {
 func (f *Phlare) initCompactor() (serv services.Service, err error) {
 	f.Cfg.Compactor.ShardingRing.Common.ListenPort = f.Cfg.Server.HTTPListenPort
 
+	if f.storageBucket == nil {
+		return nil, nil
+	}
+
 	f.Compactor, err = compactor.NewMultitenantCompactor(f.Cfg.Compactor, f.storageBucket, f.Overrides, log.With(f.logger, "component", "compactor"), f.reg)
 	if err != nil {
 		return
