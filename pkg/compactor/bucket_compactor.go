@@ -867,7 +867,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 			ext.LogError(sp, err)
 			return errors.Wrap(err, "build compaction jobs")
 		}
-		sp.SetTag("discovered_jobs", len(jobs))
+		sp.LogKV("discovered_jobs", len(jobs))
 
 		// There is another check just before we start processing the job, but we can avoid sending it
 		// to the goroutine in the first place.
@@ -875,7 +875,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 		if err != nil {
 			return err
 		}
-		sp.SetTag("own_jobs", len(jobs))
+		sp.LogKV("own_jobs", len(jobs))
 
 		// Record the difference between now and the max time for a block being compacted. This
 		// is used to detect compactors not being able to keep up with the rate of blocks being
@@ -887,7 +887,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 
 		// Skip jobs for which the wait period hasn't been honored yet.
 		jobs = c.filterJobsByWaitPeriod(ctx, jobs)
-		sp.SetTag("filtered_jobs", len(jobs))
+		sp.LogKV("filtered_jobs", len(jobs))
 
 		// Sort jobs based on the configured ordering algorithm.
 		jobs = c.sortJobs(jobs)
