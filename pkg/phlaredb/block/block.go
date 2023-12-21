@@ -160,8 +160,10 @@ func MarkForDeletion(ctx context.Context, logger log.Logger, bkt objstore.Bucket
 	if err != nil {
 		return errors.Wrapf(err, "check exists %s in bucket", deletionMarkFile)
 	}
-	if deletionMarkExists && warnExist {
-		level.Warn(logger).Log("msg", "requested to mark for deletion, but file already exists; this should not happen; investigate", "err", errors.Errorf("file %s already exists in bucket", deletionMarkFile))
+	if deletionMarkExists {
+		if warnExist {
+			level.Warn(logger).Log("msg", "requested to mark for deletion, but file already exists; this should not happen; investigate", "err", errors.Errorf("file %s already exists in bucket", deletionMarkFile))
+		}
 		return nil
 	}
 
