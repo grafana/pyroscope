@@ -23,6 +23,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/phlaredb/downsample"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
@@ -191,6 +192,7 @@ type blockWriter struct {
 	indexRewriter   *indexRewriter
 	symbolsRewriter SymbolsRewriter
 	profilesWriter  *profilesWriter
+	downsampler     *downsample.Downsampler
 	path            string
 	meta            *block.Meta
 	totalProfiles   uint64
@@ -215,10 +217,16 @@ func newBlockWriter(dst string, meta *block.Meta, rewriterFn SymbolsRewriterFn) 
 		return nil, err
 	}
 
+	downsampler, err := downsample.NewDownsampler(blockPath)
+	if err != nil {
+		return nil, err
+	}
+
 	return &blockWriter{
 		indexRewriter:   newIndexRewriter(blockPath),
 		symbolsRewriter: rewriterFn(blockPath),
 		profilesWriter:  profileWriter,
+		downsampler:     downsampler,
 		path:            blockPath,
 		meta:            meta,
 	}, nil
@@ -237,6 +245,12 @@ func (bw *blockWriter) WriteRow(r profileRow) error {
 	if err := bw.profilesWriter.WriteRow(r); err != nil {
 		return err
 	}
+	if bw.meta != nil && bw.meta.Compaction.Level > 2 {
+		err := bw.downsampler.AddRow(r.row, r.fp)
+		if err != nil {
+			return err
+		}
+	}
 	bw.totalProfiles++
 	return nil
 }
@@ -250,6 +264,9 @@ func (bw *blockWriter) Close(ctx context.Context) error {
 		return err
 	}
 	if err := bw.profilesWriter.Close(); err != nil {
+		return err
+	}
+	if err := bw.downsampler.Close(); err != nil {
 		return err
 	}
 	metaFiles, err := metaFilesFromDir(bw.path)
