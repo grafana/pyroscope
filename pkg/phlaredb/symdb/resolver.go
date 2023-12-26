@@ -168,13 +168,13 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 	return tree, err
 }
 
-func (r *Resolver) Pprof(maxNodes int64) (*googlev1.Profile, error) {
+func (r *Resolver) Pprof(maxNodes int64, subtree []string) (*googlev1.Profile, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Pprof")
 	defer span.Finish()
 	var lock sync.Mutex
 	var p pprof.ProfileMerge
 	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
-		resolved, err := symbols.Pprof(ctx, samples, maxNodes)
+		resolved, err := symbols.Pprof(ctx, samples, maxNodes, subtree)
 		if err != nil {
 			return err
 		}
@@ -212,10 +212,22 @@ type pprofBuilder interface {
 	buildPprof() *googlev1.Profile
 }
 
-func (r *Symbols) Pprof(ctx context.Context, samples schemav1.Samples, maxNodes int64) (*googlev1.Profile, error) {
+func (r *Symbols) Pprof(
+	ctx context.Context,
+	samples schemav1.Samples,
+	maxNodes int64,
+	subtree []string,
+) (*googlev1.Profile, error) {
 	var b pprofBuilder = new(pprofProtoSymbols)
-	if maxNodes > 0 {
-		b = &pprofProtoTruncatedSymbols{maxNodes: maxNodes}
+	if maxNodes > 0 || len(subtree) > 0 {
+		x := &pprofProtoTruncatedSymbols{
+			maxNodes: maxNodes,
+			subtree:  r.functions(subtree),
+		}
+		if len(subtree) > 0 && len(x.subtree) == 0 {
+			return b.buildPprof(), nil
+		}
+		b = x
 	}
 	b.init(r, samples)
 	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, b, samples.StacktraceIDs); err != nil {
@@ -232,4 +244,33 @@ func (r *Symbols) Tree(ctx context.Context, samples schemav1.Samples) (*model.Tr
 		return nil, err
 	}
 	return t.tree, nil
+}
+
+func (r *Symbols) functions(stack []string) []int32 {
+	if len(stack) == 0 {
+		return nil
+	}
+	m := make(map[string]int32, len(stack))
+	for _, f := range stack {
+		m[f] = 0
+	}
+	c := len(stack)
+	for f := 0; f < len(r.Functions) && c > 0; f++ {
+		fn := r.Functions[f]
+		s := r.Strings[fn.Name]
+		if _, ok := m[s]; ok {
+			// We assume that no functions have the same name.
+			// Otherwise, the last one takes precedence.
+			m[s] = int32(fn.Id)
+			c--
+		}
+	}
+	if c > 0 {
+		return nil
+	}
+	s := make([]int32, len(stack))
+	for i, v := range stack {
+		s[i] = m[v]
+	}
+	return s
 }

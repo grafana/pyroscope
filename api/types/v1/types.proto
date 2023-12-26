@@ -71,3 +71,11 @@ enum TimeSeriesAggregationType {
   TIME_SERIES_AGGREGATION_TYPE_SUM = 0;
   TIME_SERIES_AGGREGATION_TYPE_AVERAGE = 1;
 }
+
+message FunctionSelector {
+  repeated Function stack_trace = 1;
+}
+
+message Function {
+  string name = 1;
+}

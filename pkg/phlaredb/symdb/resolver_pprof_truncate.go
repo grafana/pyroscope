@@ -7,6 +7,7 @@ import (
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/slices"
 )
 
 const (
@@ -31,6 +32,11 @@ type pprofProtoTruncatedSymbols struct {
 	functionsBuf []int32
 	locationsBuf []uint64
 
+	// subtree denotes the lowest common ancestor of all the stack traces.
+	// The subtree path consists of function IDs, the root is at subtree[0].
+	subtree []int32
+	fnNames func(locations []int32) ([]int32, bool)
+
 	// After truncation many samples will have the same stack trace.
 	// The map is used to deduplicate them. The key is sample.LocationId
 	// slice turned into a string: the underlying memory must not change.
@@ -52,31 +58,62 @@ func (r *pprofProtoTruncatedSymbols) init(symbols *Symbols, samples schemav1.Sam
 	// We optimistically assume that each stacktrace has only
 	// 2 unique nodes. For pathological cases it may exceed 10.
 	r.functionTree = model.NewStacktraceTree(samples.Len() * 2)
-	r.stacktraces = make([]truncatedStacktraceSample, samples.Len())
+	r.stacktraces = make([]truncatedStacktraceSample, 0, samples.Len())
 	r.sampleMap = make(map[string]*googlev1.Sample, samples.Len())
+	if len(r.subtree) > 0 {
+		r.fnNames = r.locFunctionsFiltered
+	} else {
+		r.fnNames = r.locFunctions
+	}
 }
 
 func (r *pprofProtoTruncatedSymbols) InsertStacktrace(stacktraceID uint32, locations []int32) {
 	value := int64(r.samples.Values[r.cur])
-	functions := r.locFunctions(locations)
-	functionNodeIdx := r.functionTree.Insert(functions, value)
-	r.stacktraces[r.cur] = truncatedStacktraceSample{
-		stacktraceID:    stacktraceID,
-		functionNodeIdx: functionNodeIdx,
-		value:           value,
-	}
 	r.cur++
+	functions, ok := r.fnNames(locations)
+	if ok {
+		functionNodeIdx := r.functionTree.Insert(functions, value)
+		r.stacktraces = append(r.stacktraces, truncatedStacktraceSample{
+			stacktraceID:    stacktraceID,
+			functionNodeIdx: functionNodeIdx,
+			value:           value,
+		})
+	}
 }
 
-func (r *pprofProtoTruncatedSymbols) locFunctions(locations []int32) []int32 {
+func (r *pprofProtoTruncatedSymbols) locFunctions(locations []int32) ([]int32, bool) {
 	r.functionsBuf = r.functionsBuf[:0]
 	for i := 0; i < len(locations); i++ {
 		lines := r.symbols.Locations[locations[i]].Line
 		for j := 0; j < len(lines); j++ {
-			r.functionsBuf = append(r.functionsBuf, int32(r.symbols.Functions[lines[j].FunctionId].Id))
+			r.functionsBuf = append(r.functionsBuf, int32(lines[j].FunctionId))
 		}
 	}
-	return r.functionsBuf
+	return r.functionsBuf, true
+}
+
+func (r *pprofProtoTruncatedSymbols) locFunctionsFiltered(locations []int32) ([]int32, bool) {
+	r.functionsBuf = r.functionsBuf[:0]
+	var pos int
+	pathLen := len(r.subtree)
+	for i := len(locations); i >= 0; i-- {
+		lines := r.symbols.Locations[locations[i]].Line
+		for j := len(lines); j >= 0; j-- {
+			f := int32(lines[j].FunctionId)
+			if pos < pathLen {
+				if r.subtree[pos] != f {
+					return nil, false
+				}
+				pos++
+			}
+			r.functionsBuf = append(r.functionsBuf, f)
+		}
+	}
+	if pos < len(r.subtree) {
+		return nil, false
+	}
+	slices.Reverse(r.functionsBuf)
+	return r.functionsBuf, true
 }
 
 func (r *pprofProtoTruncatedSymbols) buildPprof() *googlev1.Profile {
@@ -112,7 +149,8 @@ func (r *pprofProtoTruncatedSymbols) markNodesForTruncation() {
 func (r *pprofProtoTruncatedSymbols) addSample(n truncatedStacktraceSample) {
 	// Find the original stack trace and remove truncated
 	// locations based on the truncated functions.
-	off := r.buildFunctionsStack(n.functionNodeIdx)
+	var off int
+	r.functionsBuf, off = r.buildFunctionsStack(r.functionsBuf, n.functionNodeIdx)
 	if off < 0 {
 		// The stack has no functions without the truncation mark.
 		r.fullyTruncated += n.value
@@ -143,18 +181,18 @@ func (r *pprofProtoTruncatedSymbols) addSample(n truncatedStacktraceSample) {
 	r.sampleMap[uint64sliceString(locationsCopy)] = s
 }
 
-func (r *pprofProtoTruncatedSymbols) buildFunctionsStack(idx int32) int {
+func (r *pprofProtoTruncatedSymbols) buildFunctionsStack(funcs []int32, idx int32) ([]int32, int) {
 	offset := -1
-	r.functionsBuf = r.functionsBuf[:0]
+	funcs = funcs[:0]
 	for i := idx; i > 0; i = r.functionTree.Nodes[i].Parent {
 		n := r.functionTree.Nodes[i]
 		if offset < 0 && n.Location&truncationMark == 0 {
 			// Remember the first node to keep.
-			offset = len(r.functionsBuf)
+			offset = len(funcs)
 		}
-		r.functionsBuf = append(r.functionsBuf, n.Location&^truncationMark)
+		funcs = append(funcs, n.Location&^truncationMark)
 	}
-	return offset
+	return funcs, offset
 }
 
 func (r *pprofProtoTruncatedSymbols) createSamples() {

@@ -109,3 +109,18 @@ func extractMappingFilename(filename string) string {
 	n := strings.ReplaceAll(filename, `\`, `/`)
 	return strings.TrimSpace(filepath.Base(filepath.Clean(n)))
 }
+
+type FunctionSelector struct {
+	StackTrace []string
+}
+
+func NewFunctionSelector(selector *typesv1.FunctionSelector) *FunctionSelector {
+	if selector == nil {
+		return new(FunctionSelector)
+	}
+	s := FunctionSelector{StackTrace: make([]string, len(selector.StackTrace))}
+	for i, f := range selector.StackTrace {
+		s.StackTrace[i] = f.Name
+	}
+	return &s
+}

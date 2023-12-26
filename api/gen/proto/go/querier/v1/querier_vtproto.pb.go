@@ -356,6 +356,13 @@ func (m *SelectMergeProfileRequest) CloneVT() *SelectMergeProfileRequest {
 		tmpVal := *rhs
 		r.MaxNodes = &tmpVal
 	}
+	if rhs := m.FunctionSelector; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.FunctionSelector }); ok {
+			r.FunctionSelector = vtpb.CloneVT()
+		} else {
+			r.FunctionSelector = proto.Clone(rhs).(*v1.FunctionSelector)
+		}
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -857,6 +864,15 @@ func (this *SelectMergeProfileRequest) EqualVT(that *SelectMergeProfileRequest) 
 		return false
 	}
 	if p, q := this.MaxNodes, that.MaxNodes; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
+	if equal, ok := interface{}(this.FunctionSelector).(interface {
+		EqualVT(*v1.FunctionSelector) bool
+	}); ok {
+		if !equal.EqualVT(that.FunctionSelector) {
+			return false
+		}
+	} else if !proto.Equal(this.FunctionSelector, that.FunctionSelector) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2100,6 +2116,28 @@ func (m *SelectMergeProfileRequest) MarshalToSizedBufferVT(dAtA []byte) (int, er
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.FunctionSelector != nil {
+		if vtmsg, ok := interface{}(m.FunctionSelector).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.FunctionSelector)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = encodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x32
+	}
 	if m.MaxNodes != nil {
 		i = encodeVarint(dAtA, i, uint64(*m.MaxNodes))
 		i--
@@ -2586,6 +2624,16 @@ func (m *SelectMergeProfileRequest) SizeVT() (n int) {
 	}
 	if m.MaxNodes != nil {
 		n += 1 + sov(uint64(*m.MaxNodes))
+	}
+	if m.FunctionSelector != nil {
+		if size, ok := interface{}(m.FunctionSelector).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.FunctionSelector)
+		}
+		n += 1 + l + sov(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -4471,6 +4519,50 @@ func (m *SelectMergeProfileRequest) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.MaxNodes = &v
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FunctionSelector", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.FunctionSelector == nil {
+				m.FunctionSelector = &v1.FunctionSelector{}
+			}
+			if unmarshal, ok := interface{}(m.FunctionSelector).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.FunctionSelector); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

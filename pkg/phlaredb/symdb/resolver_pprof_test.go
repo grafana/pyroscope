@@ -15,7 +15,7 @@ func Test_memory_Resolver_ResolvePprof(t *testing.T) {
 	r := NewResolver(context.Background(), s.db)
 	defer r.Release()
 	r.AddSamples(0, s.indexed[0][0].Samples)
-	resolved, err := r.Pprof(0)
+	resolved, err := r.Pprof(0, nil)
 	require.NoError(t, err)
 	require.Equal(t, expectedFingerprint, pprofFingerprint(resolved, 0))
 }
@@ -34,7 +34,7 @@ func Test_block_Resolver_ResolvePprof_multiple_partitions(t *testing.T) {
 	defer r.Release()
 	r.AddSamples(0, s.indexed[0][0].Samples)
 	r.AddSamples(1, s.indexed[1][0].Samples)
-	resolved, err := r.Pprof(0)
+	resolved, err := r.Pprof(0, nil)
 	require.NoError(t, err)
 	require.Equal(t, expectedFingerprint, pprofFingerprint(resolved, 0))
 }
@@ -66,7 +66,7 @@ func benchmarkResolverResolvePprof(sym SymbolsReader, samples v1.Samples, n int6
 		for i := 0; i < b.N; i++ {
 			r := NewResolver(context.Background(), sym)
 			r.AddSamples(0, samples)
-			_, _ = r.Pprof(n)
+			_, _ = r.Pprof(n, nil)
 		}
 	}
 }

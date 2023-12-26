@@ -150,6 +150,36 @@
       },
       "description": "Message that represents an arbitrary HTTP body. It should only be used for\npayload formats that can't be represented as JSON, such as raw binary or\nan HTML page.\n\n\nThis message can be used both in streaming and non-streaming API methods in\nthe request as well as the response.\n\nIt can be used as a top-level request field, which is convenient if one\nwants to extract parameters from either the URL or HTTP template into the\nrequest fields and also want access to the raw HTTP body.\n\nExample:\n\n    message GetResourceRequest {\n      // A unique request id.\n      string request_id = 1;\n\n      // The raw HTTP body is bound to this field.\n      google.api.HttpBody http_body = 2;\n\n    }\n\n    service ResourceService {\n      rpc GetResource(GetResourceRequest)\n        returns (google.api.HttpBody);\n      rpc UpdateResource(google.api.HttpBody)\n        returns (google.protobuf.Empty);\n\n    }\n\nExample with streaming methods:\n\n    service CaldavService {\n      rpc GetCalendar(stream google.api.HttpBody)\n        returns (stream google.api.HttpBody);\n      rpc UpdateCalendar(stream google.api.HttpBody)\n        returns (stream google.api.HttpBody);\n\n    }\n\nUse of this type only changes how the request and response bodies are\nhandled, all other features will continue to work unchanged."
     },
+    "googlev1Function": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Unique nonzero id for the function."
+        },
+        "name": {
+          "type": "string",
+          "format": "int64",
+          "description": "Name of the function, in human-readable form if available.\n\nIndex into string table"
+        },
+        "systemName": {
+          "type": "string",
+          "format": "int64",
+          "description": "Name of the function, as identified by the system.\nFor instance, it can be a C++ mangled name.\n\nIndex into string table"
+        },
+        "filename": {
+          "type": "string",
+          "format": "int64",
+          "description": "Source file containing the function.\n\nIndex into string table"
+        },
+        "startLine": {
+          "type": "string",
+          "format": "int64",
+          "description": "Line number in source file."
+        }
+      }
+    },
     "googlev1Label": {
       "type": "object",
       "properties": {
@@ -247,7 +277,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1Function"
+            "$ref": "#/definitions/googlev1Function"
           },
           "title": "Functions referenced by locations"
         },
@@ -377,6 +407,14 @@
             "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
+        }
+      }
+    },
+    "typesv1Function": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
         }
       }
     },
@@ -527,33 +565,15 @@
     "v1FlushResponse": {
       "type": "object"
     },
-    "v1Function": {
+    "v1FunctionSelector": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string",
-          "format": "uint64",
-          "description": "Unique nonzero id for the function."
-        },
-        "name": {
-          "type": "string",
-          "format": "int64",
-          "description": "Name of the function, in human-readable form if available.\n\nIndex into string table"
-        },
-        "systemName": {
-          "type": "string",
-          "format": "int64",
-          "description": "Name of the function, as identified by the system.\nFor instance, it can be a C++ mangled name.\n\nIndex into string table"
-        },
-        "filename": {
-          "type": "string",
-          "format": "int64",
-          "description": "Source file containing the function.\n\nIndex into string table"
-        },
-        "startLine": {
-          "type": "string",
-          "format": "int64",
-          "description": "Line number in source file."
+        "stackTrace": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/typesv1Function"
+          }
         }
       }
     },
