@@ -549,14 +549,14 @@ type Querier interface {
 	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error)
 	MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spans phlaremodel.SpanSelector) (*phlaremodel.Tree, error)
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
-	MergePprof(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64, fn *phlaremodel.FunctionSelector) (*profilev1.Profile, error)
+	MergePprof(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64, fns phlaremodel.FunctionSelector) (*profilev1.Profile, error)
 	Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error)
 
 	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
 	SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest) (*phlaremodel.Tree, error)
 	SelectMergeByLabels(ctx context.Context, params *ingestv1.SelectProfilesRequest, by ...string) ([]*typesv1.Series, error)
 	SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.Tree, error)
-	SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64, fn *phlaremodel.FunctionSelector) (*profilev1.Profile, error)
+	SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64, fns phlaremodel.FunctionSelector) (*profilev1.Profile, error)
 
 	ProfileTypes(context.Context, *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error)
 	LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error)
@@ -1845,7 +1845,7 @@ func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ing
 	return r.Tree()
 }
 
-func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64, fn *phlaremodel.FunctionSelector) (*profilev1.Profile, error) {
+func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64, fns phlaremodel.FunctionSelector) (*profilev1.Profile, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergePprof - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
@@ -1880,7 +1880,9 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 		}
 		lblsPerRef[int64(chks[0].SeriesIndex)] = struct{}{}
 	}
-	r := symdb.NewResolver(ctx, b.symbols)
+	r := symdb.NewResolver(ctx, b.symbols,
+		symdb.WithResolverMaxNodes(maxNodes),
+		symdb.WithResolverFunctionSelector(fns))
 	defer r.Release()
 
 	it := query.NewBinaryJoinIterator(
@@ -1921,7 +1923,7 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 	if err := mergeByStacktraces[rowProfile](ctx, b.profiles.file, iter.NewSliceIterator(rows), r); err != nil {
 		return nil, err
 	}
-	return r.Pprof(maxNodes, fn.StackTrace)
+	return r.Pprof()
 }
 
 // Series selects the series labels from this block.

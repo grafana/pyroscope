@@ -114,13 +114,14 @@ type FunctionSelector struct {
 	StackTrace []string
 }
 
-func NewFunctionSelector(selector *typesv1.FunctionSelector) *FunctionSelector {
+func NewFunctionSelector(selector *typesv1.FunctionSelector) FunctionSelector {
+	var s FunctionSelector
 	if selector == nil {
-		return new(FunctionSelector)
+		return s
 	}
-	s := FunctionSelector{StackTrace: make([]string, len(selector.StackTrace))}
+	s.StackTrace = make([]string, len(selector.StackTrace))
 	for i, f := range selector.StackTrace {
 		s.StackTrace[i] = f.Name
 	}
-	return &s
+	return s
 }

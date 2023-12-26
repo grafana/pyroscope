@@ -32,15 +32,30 @@ type Resolver struct {
 	c int
 	m sync.Mutex
 	p map[uint64]*lazyPartition
+
+	maxNodes int64
+	subtree  model.FunctionSelector
 }
 
 type ResolverOption func(*Resolver)
 
-// WithMaxConcurrent specifies how many partitions
+// WithResolverMaxConcurrent specifies how many partitions
 // can be resolved concurrently.
-func WithMaxConcurrent(n int) ResolverOption {
+func WithResolverMaxConcurrent(n int) ResolverOption {
 	return func(r *Resolver) {
 		r.c = n
+	}
+}
+
+func WithResolverMaxNodes(n int64) ResolverOption {
+	return func(r *Resolver) {
+		r.maxNodes = n
+	}
+}
+
+func WithResolverFunctionSelector(fns model.FunctionSelector) ResolverOption {
+	return func(r *Resolver) {
+		r.subtree = fns
 	}
 }
 
@@ -52,11 +67,14 @@ type lazyPartition struct {
 	done    chan struct{}
 }
 
-func NewResolver(ctx context.Context, s SymbolsReader) *Resolver {
+func NewResolver(ctx context.Context, s SymbolsReader, opts ...ResolverOption) *Resolver {
 	r := Resolver{
 		s: s,
 		c: runtime.GOMAXPROCS(-1),
 		p: make(map[uint64]*lazyPartition),
+	}
+	for _, opt := range opts {
+		opt(&r)
 	}
 	r.span, r.ctx = opentracing.StartSpanFromContext(ctx, "NewResolver")
 	r.ctx, r.cancel = context.WithCancel(r.ctx)
@@ -168,13 +186,13 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 	return tree, err
 }
 
-func (r *Resolver) Pprof(maxNodes int64, subtree []string) (*googlev1.Profile, error) {
+func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Pprof")
 	defer span.Finish()
 	var lock sync.Mutex
 	var p pprof.ProfileMerge
 	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
-		resolved, err := symbols.Pprof(ctx, samples, maxNodes, subtree)
+		resolved, err := symbols.Pprof(ctx, samples, r.maxNodes, r.subtree)
 		if err != nil {
 			return err
 		}
@@ -216,15 +234,15 @@ func (r *Symbols) Pprof(
 	ctx context.Context,
 	samples schemav1.Samples,
 	maxNodes int64,
-	subtree []string,
+	subtree model.FunctionSelector,
 ) (*googlev1.Profile, error) {
 	var b pprofBuilder = new(pprofProtoSymbols)
-	if maxNodes > 0 || len(subtree) > 0 {
+	if maxNodes > 0 || len(subtree.StackTrace) > 0 {
 		x := &pprofProtoTruncatedSymbols{
 			maxNodes: maxNodes,
-			subtree:  r.functions(subtree),
+			subtree:  r.functions(subtree.StackTrace),
 		}
-		if len(subtree) > 0 && len(x.subtree) == 0 {
+		if len(subtree.StackTrace) > 0 && len(x.subtree) == 0 {
 			return b.buildPprof(), nil
 		}
 		b = x
