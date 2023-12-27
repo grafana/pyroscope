@@ -25,8 +25,8 @@ type interval struct {
 var (
 	intervals = []interval{
 		{
-			durationSeconds: 60,
-			shortName:       "1m",
+			durationSeconds: 5 * 60,
+			shortName:       "5m",
 		},
 		{
 			durationSeconds: 60 * 60,
