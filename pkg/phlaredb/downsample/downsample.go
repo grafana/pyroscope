@@ -148,7 +148,7 @@ func (d *Downsampler) flush(s *state, w *profilesWriter, in interval) error {
 
 	newCol()
 	repetition := -1
-	for stacktraceId, _ := range s.stackTraceIds {
+	for _, stacktraceId := range s.stackTraceIds {
 		if repetition < 1 {
 			repetition++
 		}
