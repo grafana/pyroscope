@@ -64,8 +64,8 @@ func (p *profilesWriter) WriteRow(r parquet.Row) error {
 	return nil
 }
 
-func newProfilesWriter(path string, i interval) (*profilesWriter, error) {
-	profilePath := filepath.Join(path, fmt.Sprintf("profiles_%s_%s", i.shortName, "sum")+block.ParquetSuffix)
+func newProfilesWriter(path string, i interval, aggregation string) (*profilesWriter, error) {
+	profilePath := filepath.Join(path, fmt.Sprintf("profiles_%s_%s", i.shortName, aggregation)+block.ParquetSuffix)
 	profileFile, err := os.OpenFile(profilePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return nil, err
@@ -87,7 +87,8 @@ func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) 
 }
 
 type aggregationType struct {
-	fn func(a, b int64) int64
+	fn   func(a, b int64) int64
+	name string
 }
 
 var (
@@ -95,6 +96,7 @@ var (
 		fn: func(a, b int64) int64 {
 			return a + b
 		},
+		name: "sum",
 	}
 )
 
@@ -118,8 +120,9 @@ type state struct {
 func NewDownsampler(path string) (*Downsampler, error) {
 	writers := make([]*profilesWriter, 0)
 	states := make([]*state, 0)
+	aggrType := SumAggregation
 	for _, i := range intervals {
-		writer, err := newProfilesWriter(path, i)
+		writer, err := newProfilesWriter(path, i, aggrType.name)
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +131,7 @@ func NewDownsampler(path string) (*Downsampler, error) {
 	}
 
 	return &Downsampler{
-		aggregation:    SumAggregation,
+		aggregation:    aggrType,
 		path:           path,
 		profileWriters: writers,
 		states:         states,
@@ -196,13 +199,13 @@ func (d *Downsampler) AddRow(row schemav1.ProfileRow, fp model.Fingerprint) erro
 				value := values[i].Int64()
 				index, ok := s.stackTraceIdToIndex[stacktraceId]
 				if ok {
-					s.values[index] += value // support other aggregations
+					s.values[index] = d.aggregation.fn(s.values[index], value)
 				} else {
 					s.stackTraceIds = append(s.stackTraceIds, stacktraceId)
 					s.values = append(s.values, value)
 					s.stackTraceIdToIndex[stacktraceId] = len(s.values) - 1
 				}
-				s.totalValue += value
+				s.totalValue = d.aggregation.fn(s.totalValue, value)
 			}
 			sourceSampleCount = len(values)
 		})
