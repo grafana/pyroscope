@@ -19,7 +19,7 @@ import (
 const (
 	SeriesIndexColumnName         = "SeriesIndex"
 	TimeNanosColumnName           = "TimeNanos"
-	TimeMillisecondsColumnName    = "TimeMillis"
+	TimeMillisColumnName          = "TimeMillis"
 	StacktracePartitionColumnName = "StacktracePartition"
 	TotalValueColumnName          = "TotalValue"
 	SamplesColumnName             = "Samples"
@@ -61,9 +61,9 @@ var (
 		phlareparquet.NewGroupField(SamplesColumnName, parquet.List(
 			phlareparquet.Group{
 				phlareparquet.NewGroupField("StacktraceID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
-				phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.RLEDictionary)),
+				phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
 			})),
-		phlareparquet.NewGroupField(TimeMillisecondsColumnName, parquet.Timestamp(parquet.Millisecond)),
+		phlareparquet.NewGroupField(TimeMillisColumnName, parquet.Timestamp(parquet.Millisecond)),
 		phlareparquet.NewGroupField("DurationMillis", parquet.Optional(parquet.Int(64))),
 	})
 
