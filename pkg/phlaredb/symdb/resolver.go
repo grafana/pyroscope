@@ -274,12 +274,11 @@ func (r *Symbols) functions(stack []string) []int32 {
 	}
 	c := len(stack)
 	for f := 0; f < len(r.Functions) && c > 0; f++ {
-		fn := r.Functions[f]
-		s := r.Strings[fn.Name]
+		s := r.Strings[r.Functions[f].Name]
 		if _, ok := m[s]; ok {
 			// We assume that no functions have the same name.
 			// Otherwise, the last one takes precedence.
-			m[s] = int32(fn.Id)
+			m[s] = int32(f)
 			c--
 		}
 	}

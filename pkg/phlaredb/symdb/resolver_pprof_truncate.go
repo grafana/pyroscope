@@ -96,9 +96,11 @@ func (r *pprofProtoTruncatedSymbols) locFunctionsFiltered(locations []int32) ([]
 	r.functionsBuf = r.functionsBuf[:0]
 	var pos int
 	pathLen := len(r.subtree)
-	for i := len(locations); i >= 0; i-- {
+	// Even if len(locations) < pathLen, we still
+	// need to inspect locations line by line.
+	for i := len(locations) - 1; i >= 0; i-- {
 		lines := r.symbols.Locations[locations[i]].Line
-		for j := len(lines); j >= 0; j-- {
+		for j := len(lines) - 1; j >= 0; j-- {
 			f := int32(lines[j].FunctionId)
 			if pos < pathLen {
 				if r.subtree[pos] != f {
