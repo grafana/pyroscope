@@ -8,6 +8,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
@@ -31,6 +33,18 @@ var (
 			shortName:       "1h",
 		},
 	}
+	inputSamplesHistogram = promauto.NewHistogram(
+		prometheus.HistogramOpts{
+			Name:    "pyroscope_downsampler_input_profile_samples",
+			Help:    "The number of samples per profile before downsampling",
+			Buckets: prometheus.ExponentialBuckets(32, 2, 15),
+		})
+	outputSamplesHistogram = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "pyroscope_downsampler_output_profile_samples",
+			Help:    "The number of samples per profile after downsampling",
+			Buckets: prometheus.ExponentialBuckets(32, 2, 15),
+		}, []string{"interval"})
 )
 
 type profilesWriter struct {
@@ -122,6 +136,7 @@ func NewDownsampler(path string) (*Downsampler, error) {
 }
 
 func (d *Downsampler) flush(s *state, w *profilesWriter, in interval) error {
+	outputSamplesHistogram.WithLabelValues(in.shortName).Observe(float64(len(s.values)))
 	var (
 		col    = len(s.currentRow) - 1
 		newCol = func() int {
@@ -160,6 +175,7 @@ func (d *Downsampler) flush(s *state, w *profilesWriter, in interval) error {
 
 func (d *Downsampler) AddRow(row schemav1.ProfileRow, fp model.Fingerprint) error {
 	rowTimeSeconds := row.TimeNanos() / 1000 / 1000 / 1000
+	sourceSampleCount := 0
 	for i, in := range intervals {
 		s := d.states[i]
 		aggregationTime := rowTimeSeconds / in.durationSeconds * in.durationSeconds
@@ -188,8 +204,10 @@ func (d *Downsampler) AddRow(row schemav1.ProfileRow, fp model.Fingerprint) erro
 				}
 				s.totalValue += value
 			}
+			sourceSampleCount = len(values)
 		})
 	}
+	inputSamplesHistogram.Observe(float64(sourceSampleCount))
 	return nil
 }
 
