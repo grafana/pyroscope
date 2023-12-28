@@ -296,31 +296,67 @@ type singleBlockQuerier struct {
 	openLock sync.Mutex
 	opened   bool
 	index    *index.Reader
-	profiles parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
+	profiles map[profileTableKey]*parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
 	symbols  symbolsResolver
+}
+
+type profileTableKey struct {
+	resolution  time.Duration
+	aggregation string
 }
 
 func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlareobj.Bucket, meta *block.Meta) *singleBlockQuerier {
 	q := &singleBlockQuerier{
-		logger:  phlarecontext.Logger(phlarectx),
-		metrics: contextBlockMetrics(phlarectx),
-		bucket:  phlareobj.NewPrefixedBucket(bucketReader, meta.ULID.String()),
-		meta:    meta,
+		logger:   phlarecontext.Logger(phlarectx),
+		metrics:  contextBlockMetrics(phlarectx),
+		profiles: make(map[profileTableKey]*parquetReader[*schemav1.Profile, *schemav1.ProfilePersister], 3),
+		bucket:   phlareobj.NewPrefixedBucket(bucketReader, meta.ULID.String()),
+		meta:     meta,
 	}
 	for _, f := range meta.Files {
-		switch f.RelPath {
-		case q.profiles.relPath():
-			q.profiles.meta = f
+		k, ok := parseProfileTableName(f.RelPath)
+		if ok {
+			r := &parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]{meta: f}
+			q.profiles[k] = r
+			q.tables = append(q.tables, r)
 		}
-	}
-	q.tables = []tableReader{
-		&q.profiles,
 	}
 	return q
 }
 
+func parseProfileTableName(n string) (profileTableKey, bool) {
+	if n == "profiles.parquet" {
+		return profileTableKey{}, true
+	}
+	parts := strings.Split(strings.TrimSuffix(n, block.ParquetSuffix), "_")
+	if len(parts) != 3 || parts[0] != "profiles" {
+		return profileTableKey{}, false
+	}
+	r, err := time.ParseDuration(parts[1])
+	if err != nil {
+		return profileTableKey{}, false
+	}
+	return profileTableKey{
+		resolution:  r,
+		aggregation: parts[2],
+	}, true
+}
+
 func (b *singleBlockQuerier) Profiles() ProfileReader {
-	return b.profiles.file
+	return b.originalProfileSource()
+}
+
+func (b *singleBlockQuerier) originalProfileSource() parquetobj.File {
+	return b.profileSourceTable().file
+}
+
+func (b *singleBlockQuerier) profileSourceTable() *parquetReader[*schemav1.Profile, *schemav1.ProfilePersister] {
+	return b.profiles[profileTableKey{}]
+}
+
+func (b *singleBlockQuerier) lowResProfileSource(_ *ingestv1.SelectProfilesRequest) *parquetReader[*schemav1.Profile, *schemav1.ProfilePersister] {
+	// TODO: Build key based on the aggregation type and the query time range.
+	return b.profileSourceTable()
 }
 
 func (b *singleBlockQuerier) Index() IndexReader {
@@ -1548,17 +1584,18 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 
 	var buf [][]parquet.Value
 
+	profiles := b.profileSourceTable()
 	pIt := query.NewBinaryJoinIterator(
 		0,
-		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
-		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
+		profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
+		profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
 	)
 
 	if b.meta.Version >= 2 {
 		pIt = query.NewBinaryJoinIterator(
 			0,
 			pIt,
-			b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
+			profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
 		)
 		buf = make([][]parquet.Value, 3)
 	} else {
@@ -1640,10 +1677,11 @@ func (b *singleBlockQuerier) SelectMergeByLabels(ctx context.Context, params *in
 			lblsPerRef[int64(chks[0].SeriesIndex)] = info
 		}
 	}
+	profiles := b.profileSourceTable()
 	it := query.NewBinaryJoinIterator(
 		0,
-		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
-		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
+		profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
+		profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
 	)
 
 	currSeriesIndex := int64(-1)
@@ -1678,7 +1716,7 @@ func (b *singleBlockQuerier) SelectMergeByLabels(ctx context.Context, params *in
 	if b.meta.Version == 1 {
 		columnName = "Samples.list.element.Value"
 	}
-	return mergeByLabels[Profile](ctx, b.profiles.file, columnName, iter.NewSliceIterator(rows), by...)
+	return mergeByLabels[Profile](ctx, profiles.file, columnName, iter.NewSliceIterator(rows), by...)
 }
 
 func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest) (tree *phlaremodel.Tree, err error) {
@@ -1719,16 +1757,17 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
 
+	profiles := b.lowResProfileSource(params)
 	it := query.NewBinaryJoinIterator(
 		0,
-		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
-		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), ""),
+		profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
+		profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), ""),
 	)
 
 	if b.meta.Version >= 2 {
 		it = query.NewBinaryJoinIterator(0,
 			it,
-			b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
+			profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
 		)
 	}
 	buf := make([][]parquet.Value, 1)
@@ -1754,7 +1793,7 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 	if err != nil {
 		return nil, err
 	}
-	if err := mergeByStacktraces[rowProfile](ctx, b.profiles.file, iter.NewSliceIterator(rows), r); err != nil {
+	if err := mergeByStacktraces[rowProfile](ctx, profiles.file, iter.NewSliceIterator(rows), r); err != nil {
 		return nil, err
 	}
 	return r.Tree()
@@ -1802,16 +1841,17 @@ func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ing
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
 
+	profiles := b.profileSourceTable()
 	it := query.NewBinaryJoinIterator(
 		0,
-		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
-		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), ""),
+		profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
+		profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), ""),
 	)
 
 	if b.meta.Version >= 2 {
 		it = query.NewBinaryJoinIterator(0,
 			it,
-			b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
+			profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
 		)
 	}
 	buf := make([][]parquet.Value, 1)
@@ -1837,7 +1877,7 @@ func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ing
 	if err != nil {
 		return nil, err
 	}
-	if err := mergeBySpans[rowProfile](ctx, b.profiles.file, iter.NewSliceIterator(rows), r, spans); err != nil {
+	if err := mergeBySpans[rowProfile](ctx, profiles.file, iter.NewSliceIterator(rows), r, spans); err != nil {
 		return nil, err
 	}
 	return r.Tree()
@@ -1881,16 +1921,17 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
 
+	profiles := b.lowResProfileSource(params)
 	it := query.NewBinaryJoinIterator(
 		0,
-		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
-		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), ""),
+		profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
+		profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), ""),
 	)
 
 	if b.meta.Version >= 2 {
 		it = query.NewBinaryJoinIterator(0,
 			it,
-			b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
+			profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
 		)
 	}
 	buf := make([][]parquet.Value, 1)
@@ -1916,7 +1957,7 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 	if err != nil {
 		return nil, err
 	}
-	if err := mergeByStacktraces[rowProfile](ctx, b.profiles.file, iter.NewSliceIterator(rows), r); err != nil {
+	if err := mergeByStacktraces[rowProfile](ctx, profiles.file, iter.NewSliceIterator(rows), r); err != nil {
 		return nil, err
 	}
 	return r.Pprof(maxNodes)

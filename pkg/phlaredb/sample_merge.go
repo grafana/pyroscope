@@ -27,7 +27,7 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
-	if err := mergeByStacktraces(ctx, b.profiles.file, rows, r); err != nil {
+	if err := mergeByStacktraces(ctx, b.originalProfileSource(), rows, r); err != nil {
 		return nil, err
 	}
 	return r.Tree()
@@ -40,7 +40,7 @@ func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[
 
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
-	if err := mergeByStacktraces(ctx, b.profiles.file, rows, r); err != nil {
+	if err := mergeByStacktraces(ctx, b.originalProfileSource(), rows, r); err != nil {
 		return nil, err
 	}
 	return r.Pprof(maxNodes)
@@ -55,7 +55,7 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 	if b.meta.Version == 1 {
 		columnName = "Samples.list.element.Value"
 	}
-	return mergeByLabels(ctx, b.profiles.file, columnName, rows, by...)
+	return mergeByLabels(ctx, b.originalProfileSource(), columnName, rows, by...)
 }
 
 func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
@@ -65,7 +65,7 @@ func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, rows iter.Iterato
 
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
-	if err := mergeBySpans(ctx, b.profiles.file, rows, r, spanSelector); err != nil {
+	if err := mergeBySpans(ctx, b.originalProfileSource(), rows, r, spanSelector); err != nil {
 		return nil, err
 	}
 	return r.Tree()
