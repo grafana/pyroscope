@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -234,8 +233,16 @@ func (d *Downsampler) initStateFromRow(s *state, row schemav1.ProfileRow, aggreg
 	s.currentTime = aggregationTime
 	s.currentFp = fp
 	s.totalValue = 0
-	s.values = make([]int64, 0, len(row))
-	s.stackTraceIds = make([]uint64, 0, len(row))
+	if s.values == nil {
+		s.values = make([]int64, 0, len(row))
+	} else {
+		s.values = s.values[:0]
+	}
+	if s.stackTraceIds == nil {
+		s.stackTraceIds = make([]uint64, 0, len(row))
+	} else {
+		s.stackTraceIds = s.stackTraceIds[:0]
+	}
 	s.stackTraceIdToIndex = make(map[uint64]int, len(row))
 	var (
 		col    = -1
@@ -244,9 +251,11 @@ func (d *Downsampler) initStateFromRow(s *state, row schemav1.ProfileRow, aggreg
 			return col
 		}
 	)
-	id := uuid.New()
-	s.currentRow = make(parquet.Row, 0, len(row)) // we might need to make this bigger
-	s.currentRow = append(s.currentRow, parquet.FixedLenByteArrayValue(id[:]).Level(0, 0, newCol()))
+	if s.currentRow == nil {
+		s.currentRow = make(parquet.Row, 0, len(row)) // we might need to make this bigger
+	} else {
+		s.currentRow = s.currentRow[:0]
+	}
 	s.currentRow = append(s.currentRow, parquet.Int32Value(int32(row.SeriesIndex())).Level(0, 0, newCol()))
 	s.currentRow = append(s.currentRow, parquet.Int64Value(int64(row.StacktracePartitionID())).Level(0, 0, newCol()))
 }

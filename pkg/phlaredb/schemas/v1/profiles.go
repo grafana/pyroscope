@@ -54,7 +54,6 @@ var (
 		phlareparquet.NewGroupField("DefaultSampleType", parquet.Optional(parquet.Int(64))),
 	})
 	DownsampledProfilesSchema = parquet.NewSchema("DownsampledProfile", phlareparquet.Group{
-		phlareparquet.NewGroupField("ID", parquet.UUID()),
 		phlareparquet.NewGroupField(SeriesIndexColumnName, parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField(StacktracePartitionColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField(TotalValueColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
