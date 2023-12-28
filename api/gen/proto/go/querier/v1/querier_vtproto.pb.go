@@ -356,11 +356,11 @@ func (m *SelectMergeProfileRequest) CloneVT() *SelectMergeProfileRequest {
 		tmpVal := *rhs
 		r.MaxNodes = &tmpVal
 	}
-	if rhs := m.FunctionSelector; rhs != nil {
-		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.FunctionSelector }); ok {
-			r.FunctionSelector = vtpb.CloneVT()
+	if rhs := m.StackTraceSelector; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.StackTraceSelector }); ok {
+			r.StackTraceSelector = vtpb.CloneVT()
 		} else {
-			r.FunctionSelector = proto.Clone(rhs).(*v1.FunctionSelector)
+			r.StackTraceSelector = proto.Clone(rhs).(*v1.StackTraceSelector)
 		}
 	}
 	if len(m.unknownFields) > 0 {
@@ -866,13 +866,13 @@ func (this *SelectMergeProfileRequest) EqualVT(that *SelectMergeProfileRequest) 
 	if p, q := this.MaxNodes, that.MaxNodes; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
-	if equal, ok := interface{}(this.FunctionSelector).(interface {
-		EqualVT(*v1.FunctionSelector) bool
+	if equal, ok := interface{}(this.StackTraceSelector).(interface {
+		EqualVT(*v1.StackTraceSelector) bool
 	}); ok {
-		if !equal.EqualVT(that.FunctionSelector) {
+		if !equal.EqualVT(that.StackTraceSelector) {
 			return false
 		}
-	} else if !proto.Equal(this.FunctionSelector, that.FunctionSelector) {
+	} else if !proto.Equal(this.StackTraceSelector, that.StackTraceSelector) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2116,8 +2116,8 @@ func (m *SelectMergeProfileRequest) MarshalToSizedBufferVT(dAtA []byte) (int, er
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.FunctionSelector != nil {
-		if vtmsg, ok := interface{}(m.FunctionSelector).(interface {
+	if m.StackTraceSelector != nil {
+		if vtmsg, ok := interface{}(m.StackTraceSelector).(interface {
 			MarshalToSizedBufferVT([]byte) (int, error)
 		}); ok {
 			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
@@ -2127,7 +2127,7 @@ func (m *SelectMergeProfileRequest) MarshalToSizedBufferVT(dAtA []byte) (int, er
 			i -= size
 			i = encodeVarint(dAtA, i, uint64(size))
 		} else {
-			encoded, err := proto.Marshal(m.FunctionSelector)
+			encoded, err := proto.Marshal(m.StackTraceSelector)
 			if err != nil {
 				return 0, err
 			}
@@ -2625,13 +2625,13 @@ func (m *SelectMergeProfileRequest) SizeVT() (n int) {
 	if m.MaxNodes != nil {
 		n += 1 + sov(uint64(*m.MaxNodes))
 	}
-	if m.FunctionSelector != nil {
-		if size, ok := interface{}(m.FunctionSelector).(interface {
+	if m.StackTraceSelector != nil {
+		if size, ok := interface{}(m.StackTraceSelector).(interface {
 			SizeVT() int
 		}); ok {
 			l = size.SizeVT()
 		} else {
-			l = proto.Size(m.FunctionSelector)
+			l = proto.Size(m.StackTraceSelector)
 		}
 		n += 1 + l + sov(uint64(l))
 	}
@@ -4521,7 +4521,7 @@ func (m *SelectMergeProfileRequest) UnmarshalVT(dAtA []byte) error {
 			m.MaxNodes = &v
 		case 6:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field FunctionSelector", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field StackTraceSelector", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -4548,17 +4548,17 @@ func (m *SelectMergeProfileRequest) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.FunctionSelector == nil {
-				m.FunctionSelector = &v1.FunctionSelector{}
+			if m.StackTraceSelector == nil {
+				m.StackTraceSelector = &v1.StackTraceSelector{}
 			}
-			if unmarshal, ok := interface{}(m.FunctionSelector).(interface {
+			if unmarshal, ok := interface{}(m.StackTraceSelector).(interface {
 				UnmarshalVT([]byte) error
 			}); ok {
 				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 					return err
 				}
 			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.FunctionSelector); err != nil {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.StackTraceSelector); err != nil {
 					return err
 				}
 			}

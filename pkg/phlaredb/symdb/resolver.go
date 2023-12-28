@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -34,7 +35,7 @@ type Resolver struct {
 	p map[uint64]*lazyPartition
 
 	maxNodes int64
-	subtree  model.FunctionSelector
+	sts      *typesv1.StackTraceSelector
 }
 
 type ResolverOption func(*Resolver)
@@ -53,9 +54,9 @@ func WithResolverMaxNodes(n int64) ResolverOption {
 	}
 }
 
-func WithResolverFunctionSelector(fns model.FunctionSelector) ResolverOption {
+func WithResolverStackTraceSelector(sts *typesv1.StackTraceSelector) ResolverOption {
 	return func(r *Resolver) {
-		r.subtree = fns
+		r.sts = sts
 	}
 }
 
@@ -192,7 +193,7 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	var lock sync.Mutex
 	var p pprof.ProfileMerge
 	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
-		resolved, err := symbols.Pprof(ctx, samples, r.maxNodes, r.subtree)
+		resolved, err := symbols.Pprof(ctx, samples, r.maxNodes, r.sts)
 		if err != nil {
 			return err
 		}
@@ -234,15 +235,15 @@ func (r *Symbols) Pprof(
 	ctx context.Context,
 	samples schemav1.Samples,
 	maxNodes int64,
-	subtree model.FunctionSelector,
+	sts *typesv1.StackTraceSelector,
 ) (*googlev1.Profile, error) {
 	var b pprofBuilder = new(pprofProtoSymbols)
-	if maxNodes > 0 || len(subtree.StackTrace) > 0 {
+	if maxNodes > 0 || (sts != nil && len(sts.StackTrace) > 0) {
 		x := &pprofProtoTruncatedSymbols{
 			maxNodes: maxNodes,
-			subtree:  r.functions(subtree.StackTrace),
+			subtree:  r.subtree(sts),
 		}
-		if len(subtree.StackTrace) > 0 && len(x.subtree) == 0 {
+		if len(sts.StackTrace) > 0 && len(x.subtree) == 0 {
 			return b.buildPprof(), nil
 		}
 		b = x
@@ -264,15 +265,18 @@ func (r *Symbols) Tree(ctx context.Context, samples schemav1.Samples) (*model.Tr
 	return t.tree, nil
 }
 
-func (r *Symbols) functions(stack []string) []int32 {
-	if len(stack) == 0 {
+func (r *Symbols) subtree(sts *typesv1.StackTraceSelector) []int32 {
+	if sts == nil || len(sts.StackTrace) == 0 {
 		return nil
 	}
-	m := make(map[string]int32, len(stack))
-	for _, f := range stack {
-		m[f] = 0
+	if len(sts.StackTrace) == 0 {
+		return nil
 	}
-	c := len(stack)
+	m := make(map[string]int32, len(sts.StackTrace))
+	for _, f := range sts.StackTrace {
+		m[f.Name] = 0
+	}
+	c := len(sts.StackTrace)
 	for f := 0; f < len(r.Functions) && c > 0; f++ {
 		s := r.Strings[r.Functions[f].Name]
 		if _, ok := m[s]; ok {
@@ -285,9 +289,9 @@ func (r *Symbols) functions(stack []string) []int32 {
 	if c > 0 {
 		return nil
 	}
-	s := make([]int32, len(stack))
-	for i, v := range stack {
-		s[i] = m[v]
+	s := make([]int32, len(sts.StackTrace))
+	for i, f := range sts.StackTrace {
+		s[i] = m[f.Name]
 	}
 	return s
 }

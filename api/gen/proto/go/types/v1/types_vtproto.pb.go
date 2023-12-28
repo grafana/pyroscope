@@ -282,13 +282,13 @@ func (m *BlockCompaction) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *FunctionSelector) CloneVT() *FunctionSelector {
+func (m *StackTraceSelector) CloneVT() *StackTraceSelector {
 	if m == nil {
-		return (*FunctionSelector)(nil)
+		return (*StackTraceSelector)(nil)
 	}
-	r := &FunctionSelector{}
+	r := &StackTraceSelector{}
 	if rhs := m.StackTrace; rhs != nil {
-		tmpContainer := make([]*Function, len(rhs))
+		tmpContainer := make([]*Location, len(rhs))
 		for k, v := range rhs {
 			tmpContainer[k] = v.CloneVT()
 		}
@@ -301,15 +301,15 @@ func (m *FunctionSelector) CloneVT() *FunctionSelector {
 	return r
 }
 
-func (m *FunctionSelector) CloneMessageVT() proto.Message {
+func (m *StackTraceSelector) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *Function) CloneVT() *Function {
+func (m *Location) CloneVT() *Location {
 	if m == nil {
-		return (*Function)(nil)
+		return (*Location)(nil)
 	}
-	r := &Function{
+	r := &Location{
 		Name: m.Name,
 	}
 	if len(m.unknownFields) > 0 {
@@ -319,7 +319,7 @@ func (m *Function) CloneVT() *Function {
 	return r
 }
 
-func (m *Function) CloneMessageVT() proto.Message {
+func (m *Location) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -681,7 +681,7 @@ func (this *BlockCompaction) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
-func (this *FunctionSelector) EqualVT(that *FunctionSelector) bool {
+func (this *StackTraceSelector) EqualVT(that *StackTraceSelector) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -694,10 +694,10 @@ func (this *FunctionSelector) EqualVT(that *FunctionSelector) bool {
 		vy := that.StackTrace[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &Function{}
+				p = &Location{}
 			}
 			if q == nil {
-				q = &Function{}
+				q = &Location{}
 			}
 			if !p.EqualVT(q) {
 				return false
@@ -707,14 +707,14 @@ func (this *FunctionSelector) EqualVT(that *FunctionSelector) bool {
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *FunctionSelector) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*FunctionSelector)
+func (this *StackTraceSelector) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*StackTraceSelector)
 	if !ok {
 		return false
 	}
 	return this.EqualVT(that)
 }
-func (this *Function) EqualVT(that *Function) bool {
+func (this *Location) EqualVT(that *Location) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -726,8 +726,8 @@ func (this *Function) EqualVT(that *Function) bool {
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *Function) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*Function)
+func (this *Location) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Location)
 	if !ok {
 		return false
 	}
@@ -1324,7 +1324,7 @@ func (m *BlockCompaction) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *FunctionSelector) MarshalVT() (dAtA []byte, err error) {
+func (m *StackTraceSelector) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1337,12 +1337,12 @@ func (m *FunctionSelector) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *FunctionSelector) MarshalToVT(dAtA []byte) (int, error) {
+func (m *StackTraceSelector) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *FunctionSelector) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *StackTraceSelector) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1369,7 +1369,7 @@ func (m *FunctionSelector) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Function) MarshalVT() (dAtA []byte, err error) {
+func (m *Location) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -1382,12 +1382,12 @@ func (m *Function) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Function) MarshalToVT(dAtA []byte) (int, error) {
+func (m *Location) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *Function) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *Location) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1661,7 +1661,7 @@ func (m *BlockCompaction) SizeVT() (n int) {
 	return n
 }
 
-func (m *FunctionSelector) SizeVT() (n int) {
+func (m *StackTraceSelector) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1677,7 +1677,7 @@ func (m *FunctionSelector) SizeVT() (n int) {
 	return n
 }
 
-func (m *Function) SizeVT() (n int) {
+func (m *Location) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3105,7 +3105,7 @@ func (m *BlockCompaction) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *FunctionSelector) UnmarshalVT(dAtA []byte) error {
+func (m *StackTraceSelector) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3128,10 +3128,10 @@ func (m *FunctionSelector) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: FunctionSelector: wiretype end group for non-group")
+			return fmt.Errorf("proto: StackTraceSelector: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: FunctionSelector: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: StackTraceSelector: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -3163,7 +3163,7 @@ func (m *FunctionSelector) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.StackTrace = append(m.StackTrace, &Function{})
+			m.StackTrace = append(m.StackTrace, &Location{})
 			if err := m.StackTrace[len(m.StackTrace)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -3190,7 +3190,7 @@ func (m *FunctionSelector) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Function) UnmarshalVT(dAtA []byte) error {
+func (m *Location) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -3213,10 +3213,10 @@ func (m *Function) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Function: wiretype end group for non-group")
+			return fmt.Errorf("proto: Location: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Function: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: Location: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:

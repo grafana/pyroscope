@@ -115,7 +115,7 @@ message SelectMergeProfileRequest {
   int64 start = 3; // milliseconds since epoch
   int64 end = 4; // milliseconds since epoch
   optional int64 max_nodes = 5; // Limit the nodes returned to only show the node with the max_node's biggest total
-  optional types.v1.FunctionSelector function_selector = 6; // Only return functions matching the selector
+  optional types.v1.StackTraceSelector stack_trace_selector = 6; // Only return stack traces matching the selector
 }
 
 message SelectSeriesRequest {

@@ -549,14 +549,14 @@ type Querier interface {
 	MergeByStacktraces(ctx context.Context, rows iter.Iterator[Profile]) (*phlaremodel.Tree, error)
 	MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spans phlaremodel.SpanSelector) (*phlaremodel.Tree, error)
 	MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error)
-	MergePprof(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64, fns phlaremodel.FunctionSelector) (*profilev1.Profile, error)
+	MergePprof(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64, s *typesv1.StackTraceSelector) (*profilev1.Profile, error)
 	Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error)
 
 	SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error)
 	SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest) (*phlaremodel.Tree, error)
 	SelectMergeByLabels(ctx context.Context, params *ingestv1.SelectProfilesRequest, by ...string) ([]*typesv1.Series, error)
 	SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.Tree, error)
-	SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64, fns phlaremodel.FunctionSelector) (*profilev1.Profile, error)
+	SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64, s *typesv1.StackTraceSelector) (*profilev1.Profile, error)
 
 	ProfileTypes(context.Context, *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error)
 	LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error)
@@ -1219,7 +1219,7 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 		for _, querier := range queriers {
 			querier := querier
 			g.Go(util.RecoverPanic(func() error {
-				p, err := querier.SelectMergePprof(ctx, request, r.GetMaxNodes(), phlaremodel.NewFunctionSelector(r.FunctionSelector))
+				p, err := querier.SelectMergePprof(ctx, request, r.GetMaxNodes(), r.StackTraceSelector)
 				if err != nil {
 					return err
 				}
@@ -1256,7 +1256,7 @@ func MergeProfilesPprof(ctx context.Context, stream *connect.BidiStream[ingestv1
 			g.Go(util.RecoverPanic(func() error {
 				p, err := querier.MergePprof(ctx,
 					iter.NewSliceIterator(querier.Sort(selectedProfiles[i])),
-					r.GetMaxNodes(), phlaremodel.NewFunctionSelector(r.FunctionSelector))
+					r.GetMaxNodes(), r.StackTraceSelector)
 				if err != nil {
 					return err
 				}
@@ -1845,7 +1845,7 @@ func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ing
 	return r.Tree()
 }
 
-func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64, fns phlaremodel.FunctionSelector) (*profilev1.Profile, error) {
+func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *ingestv1.SelectProfilesRequest, maxNodes int64, sts *typesv1.StackTraceSelector) (*profilev1.Profile, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergePprof - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
@@ -1882,7 +1882,7 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 	}
 	r := symdb.NewResolver(ctx, b.symbols,
 		symdb.WithResolverMaxNodes(maxNodes),
-		symdb.WithResolverFunctionSelector(fns))
+		symdb.WithResolverStackTraceSelector(sts))
 	defer r.Release()
 
 	it := query.NewBinaryJoinIterator(

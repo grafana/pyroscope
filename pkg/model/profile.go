@@ -110,12 +110,12 @@ func extractMappingFilename(filename string) string {
 	return strings.TrimSpace(filepath.Base(filepath.Clean(n)))
 }
 
-type FunctionSelector struct {
+type StackTraceSelector struct {
 	StackTrace []string
 }
 
-func NewFunctionSelector(selector *typesv1.FunctionSelector) FunctionSelector {
-	var s FunctionSelector
+func NewStackTraceSelector(selector *typesv1.StackTraceSelector) StackTraceSelector {
+	var s StackTraceSelector
 	if selector == nil {
 		return s
 	}

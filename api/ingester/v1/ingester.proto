@@ -185,8 +185,8 @@ message MergeProfilesPprofRequest {
   SelectProfilesRequest request = 1;
   // Max nodes in the resulting profile.
   optional int64 max_nodes = 3;
-  // Include stack traces that match the function selector.
-  optional types.v1.FunctionSelector function_selector = 4;
+  // Include stack traces that match the selector.
+  optional types.v1.StackTraceSelector stack_trace_selector = 4;
   // On a batch of profiles, the client sends the profiles to keep for merging.
   repeated bool profiles = 2;
 }

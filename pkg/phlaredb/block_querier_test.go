@@ -144,7 +144,7 @@ func TestBlockCompatability(t *testing.T) {
 				pcIt := &profileCounter{Iterator: it}
 
 				// TODO: It would be nice actually comparing the whole profile, but at present the result is not deterministic.
-				_, err = q.MergePprof(ctx, pcIt, 0, phlaremodel.FunctionSelector{})
+				_, err = q.MergePprof(ctx, pcIt, 0, nil)
 				require.NoError(t, err)
 
 				profileCount += pcIt.count

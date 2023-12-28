@@ -674,12 +674,12 @@ func (sq storeQuery) MergeSpanProfileRequest(req *querierv1.SelectMergeSpanProfi
 
 func (sq storeQuery) MergeProfileRequest(req *querierv1.SelectMergeProfileRequest) *querierv1.SelectMergeProfileRequest {
 	return &querierv1.SelectMergeProfileRequest{
-		ProfileTypeID:    req.ProfileTypeID,
-		LabelSelector:    req.LabelSelector,
-		Start:            int64(sq.start),
-		End:              int64(sq.end),
-		MaxNodes:         req.MaxNodes,
-		FunctionSelector: req.FunctionSelector,
+		ProfileTypeID:      req.ProfileTypeID,
+		LabelSelector:      req.LabelSelector,
+		Start:              int64(sq.start),
+		End:                int64(sq.end),
+		MaxNodes:           req.MaxNodes,
+		StackTraceSelector: req.StackTraceSelector,
 	}
 }
 

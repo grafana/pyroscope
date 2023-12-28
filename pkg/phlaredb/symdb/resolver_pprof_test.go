@@ -9,7 +9,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"github.com/grafana/pyroscope/pkg/model"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
@@ -103,8 +103,8 @@ func Test_Pprof_subtree(t *testing.T) {
 	db := NewSymDB(DefaultConfig().WithDirectory(t.TempDir()))
 	w := db.WriteProfileSymbols(0, profile)
 	r := NewResolver(context.Background(), db,
-		WithResolverFunctionSelector(model.FunctionSelector{
-			StackTrace: []string{"a", "b"},
+		WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
+			StackTrace: []*typesv1.Location{{Name: "a"}, {Name: "b"}},
 		}))
 
 	r.AddSamples(0, w[0].Samples)
