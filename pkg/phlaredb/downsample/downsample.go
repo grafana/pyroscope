@@ -166,7 +166,7 @@ func (d *Downsampler) flush(s *state, w *profilesWriter, in interval) error {
 		s.currentRow = append(s.currentRow, parquet.Int64Value(value).Level(repetition, 1, col))
 	}
 
-	s.currentRow = append(s.currentRow, parquet.Int64Value(s.currentTime*1000).Level(0, 0, newCol()))
+	s.currentRow = append(s.currentRow, parquet.Int64Value(s.currentTime*1000*1000*1000).Level(0, 0, newCol()))
 	s.currentRow = append(s.currentRow, parquet.Int64Value(in.durationSeconds*1000).Level(0, 0, newCol()))
 
 	err := w.WriteRow(s.currentRow)
