@@ -3,6 +3,7 @@ package downsample
 import (
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 
@@ -22,6 +23,28 @@ type interval struct {
 	shortName       string
 }
 
+type aggregationType struct {
+	fn        func(a, b int64) int64
+	name      string
+	finalizer func(value int64, s *state) int64
+}
+
+type state struct {
+	currentRow          parquet.Row
+	currentTime         int64
+	currentFp           model.Fingerprint
+	totalValue          int64
+	profileCount        int64
+	stackTraceIds       []uint64
+	values              []int64
+	stackTraceIdToIndex *swiss.Map[uint64, int]
+}
+
+type downsampleConfig struct {
+	interval    interval
+	aggregation aggregationType
+}
+
 var (
 	intervals = []interval{
 		{
@@ -33,6 +56,24 @@ var (
 			shortName:       "1h",
 		},
 	}
+	aggregations = []aggregationType{
+		{
+			name: "sum",
+			fn: func(a, b int64) int64 {
+				return a + b
+			},
+		},
+		{
+			name: "avg",
+			fn: func(a, b int64) int64 {
+				return a + b
+			},
+			finalizer: func(value int64, s *state) int64 {
+				return int64(math.Round(float64(value) / float64(s.profileCount)))
+			},
+		},
+	}
+	configs               = initConfigs()
 	inputSamplesHistogram = promauto.NewHistogram(
 		prometheus.HistogramOpts{
 			Name:    "pyroscope_downsampler_input_profile_samples",
@@ -46,6 +87,19 @@ var (
 			Buckets: prometheus.ExponentialBuckets(32, 2, 15),
 		}, []string{"interval"})
 )
+
+func initConfigs() []downsampleConfig {
+	configs := make([]downsampleConfig, 0)
+	for _, i := range intervals {
+		for _, a := range aggregations {
+			configs = append(configs, downsampleConfig{
+				interval:    i,
+				aggregation: a,
+			})
+		}
+	}
+	return configs
+}
 
 type profilesWriter struct {
 	*parquet.GenericWriter[*schemav1.Profile]
@@ -86,43 +140,17 @@ func newParquetProfileWriter(writer io.Writer, options ...parquet.WriterOption) 
 	)
 }
 
-type aggregationType struct {
-	fn   func(a, b int64) int64
-	name string
-}
-
-var (
-	SumAggregation = aggregationType{
-		fn: func(a, b int64) int64 {
-			return a + b
-		},
-		name: "sum",
-	}
-)
-
 type Downsampler struct {
-	aggregation    aggregationType
 	path           string
 	profileWriters []*profilesWriter
 	states         []*state
 }
 
-type state struct {
-	currentRow          parquet.Row
-	currentTime         int64
-	currentFp           model.Fingerprint
-	totalValue          int64
-	stackTraceIds       []uint64
-	values              []int64
-	stackTraceIdToIndex *swiss.Map[uint64, int]
-}
-
 func NewDownsampler(path string) (*Downsampler, error) {
 	writers := make([]*profilesWriter, 0)
 	states := make([]*state, 0)
-	aggrType := SumAggregation
-	for _, i := range intervals {
-		writer, err := newProfilesWriter(path, i, aggrType.name)
+	for _, c := range configs {
+		writer, err := newProfilesWriter(path, c.interval, c.aggregation.name)
 		if err != nil {
 			return nil, err
 		}
@@ -131,15 +159,14 @@ func NewDownsampler(path string) (*Downsampler, error) {
 	}
 
 	return &Downsampler{
-		aggregation:    aggrType,
 		path:           path,
 		profileWriters: writers,
 		states:         states,
 	}, nil
 }
 
-func (d *Downsampler) flush(s *state, w *profilesWriter, in interval) error {
-	outputSamplesHistogram.WithLabelValues(in.shortName).Observe(float64(len(s.values)))
+func (d *Downsampler) flush(s *state, w *profilesWriter, c downsampleConfig) error {
+	outputSamplesHistogram.WithLabelValues(c.interval.shortName).Observe(float64(len(s.values)))
 	var (
 		col    = len(s.currentRow) - 1
 		newCol = func() int {
@@ -147,6 +174,9 @@ func (d *Downsampler) flush(s *state, w *profilesWriter, in interval) error {
 			return col
 		}
 	)
+	if c.aggregation.finalizer != nil {
+		s.totalValue = c.aggregation.finalizer(s.totalValue, s)
+	}
 	s.currentRow = append(s.currentRow, parquet.Int64Value(s.totalValue).Level(0, 0, newCol()))
 
 	newCol()
@@ -163,11 +193,14 @@ func (d *Downsampler) flush(s *state, w *profilesWriter, in interval) error {
 		if repetition < 1 {
 			repetition++
 		}
+		if c.aggregation.finalizer != nil {
+			value = c.aggregation.finalizer(value, s)
+		}
 		s.currentRow = append(s.currentRow, parquet.Int64Value(value).Level(repetition, 1, col))
 	}
 
-	s.currentRow = append(s.currentRow, parquet.Int64Value(s.currentTime*1000*1000*1000).Level(0, 0, newCol()))
-	s.currentRow = append(s.currentRow, parquet.Int64Value(in.durationSeconds*1000).Level(0, 0, newCol()))
+	s.currentRow = append(s.currentRow, parquet.Int64Value(s.currentTime*1000).Level(0, 0, newCol()))
+	s.currentRow = append(s.currentRow, parquet.Int64Value(c.interval.durationSeconds*1000).Level(0, 0, newCol()))
 
 	err := w.WriteRow(s.currentRow)
 	if err != nil {
@@ -179,33 +212,33 @@ func (d *Downsampler) flush(s *state, w *profilesWriter, in interval) error {
 func (d *Downsampler) AddRow(row schemav1.ProfileRow, fp model.Fingerprint) error {
 	rowTimeSeconds := row.TimeNanos() / 1000 / 1000 / 1000
 	sourceSampleCount := 0
-	for i, in := range intervals {
+	for i, c := range configs {
 		s := d.states[i]
-		aggregationTime := rowTimeSeconds / in.durationSeconds * in.durationSeconds
+		aggregationTime := rowTimeSeconds / c.interval.durationSeconds * c.interval.durationSeconds
 		if len(d.states[i].currentRow) == 0 {
 			d.initStateFromRow(s, row, aggregationTime, fp)
 		}
-
 		if s.currentTime != aggregationTime || s.currentFp != fp {
-			err := d.flush(s, d.profileWriters[i], in)
+			err := d.flush(s, d.profileWriters[i], c)
 			if err != nil {
 				return err
 			}
 			d.initStateFromRow(s, row, aggregationTime, fp)
 		}
+		s.profileCount++
 		row.ForStacktraceIdsAndValues(func(stacktraceIds []parquet.Value, values []parquet.Value) {
 			for i := 0; i < len(stacktraceIds); i++ {
 				stacktraceId := stacktraceIds[i].Uint64()
 				value := values[i].Int64()
 				index, ok := s.stackTraceIdToIndex.Get(stacktraceId)
 				if ok {
-					s.values[index] = d.aggregation.fn(s.values[index], value)
+					s.values[index] = c.aggregation.fn(s.values[index], value)
 				} else {
 					s.stackTraceIds = append(s.stackTraceIds, stacktraceId)
 					s.values = append(s.values, value)
 					s.stackTraceIdToIndex.Put(stacktraceId, len(s.values)-1)
 				}
-				s.totalValue = d.aggregation.fn(s.totalValue, value)
+				s.totalValue = c.aggregation.fn(s.totalValue, value)
 			}
 			sourceSampleCount = len(values)
 		})
@@ -215,9 +248,9 @@ func (d *Downsampler) AddRow(row schemav1.ProfileRow, fp model.Fingerprint) erro
 }
 
 func (d *Downsampler) Close() error {
-	for i, in := range intervals {
+	for i, c := range configs {
 		if len(d.states[i].currentRow) > 0 {
-			err := d.flush(d.states[i], d.profileWriters[i], in)
+			err := d.flush(d.states[i], d.profileWriters[i], c)
 			if err != nil {
 				return err
 			}
@@ -234,6 +267,7 @@ func (d *Downsampler) initStateFromRow(s *state, row schemav1.ProfileRow, aggreg
 	s.currentTime = aggregationTime
 	s.currentFp = fp
 	s.totalValue = 0
+	s.profileCount = 0
 	if s.values == nil {
 		s.values = make([]int64, 0, len(row))
 	} else {
