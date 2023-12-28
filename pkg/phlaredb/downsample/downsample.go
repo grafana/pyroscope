@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/dolthub/swiss"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -113,7 +114,7 @@ type state struct {
 	totalValue          int64
 	stackTraceIds       []uint64
 	values              []int64
-	stackTraceIdToIndex map[uint64]int //
+	stackTraceIdToIndex *swiss.Map[uint64, int]
 }
 
 func NewDownsampler(path string) (*Downsampler, error) {
@@ -196,13 +197,13 @@ func (d *Downsampler) AddRow(row schemav1.ProfileRow, fp model.Fingerprint) erro
 			for i := 0; i < len(stacktraceIds); i++ {
 				stacktraceId := stacktraceIds[i].Uint64()
 				value := values[i].Int64()
-				index, ok := s.stackTraceIdToIndex[stacktraceId]
+				index, ok := s.stackTraceIdToIndex.Get(stacktraceId)
 				if ok {
 					s.values[index] = d.aggregation.fn(s.values[index], value)
 				} else {
 					s.stackTraceIds = append(s.stackTraceIds, stacktraceId)
 					s.values = append(s.values, value)
-					s.stackTraceIdToIndex[stacktraceId] = len(s.values) - 1
+					s.stackTraceIdToIndex.Put(stacktraceId, len(s.values)-1)
 				}
 				s.totalValue = d.aggregation.fn(s.totalValue, value)
 			}
@@ -243,7 +244,11 @@ func (d *Downsampler) initStateFromRow(s *state, row schemav1.ProfileRow, aggreg
 	} else {
 		s.stackTraceIds = s.stackTraceIds[:0]
 	}
-	s.stackTraceIdToIndex = make(map[uint64]int, len(row))
+	if s.stackTraceIdToIndex == nil {
+		s.stackTraceIdToIndex = swiss.NewMap[uint64, int](uint32(len(row)))
+	} else {
+		s.stackTraceIdToIndex.Clear()
+	}
 	var (
 		col    = -1
 		newCol = func() int {
