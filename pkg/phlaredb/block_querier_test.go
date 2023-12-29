@@ -1328,38 +1328,22 @@ func TestSelectMergeByStacktracesRace(t *testing.T) {
 
 func Test_singleBlockQuerier_lowResProfileSource(t *testing.T) {
 	q := &singleBlockQuerier{
-		meta: &block.Meta{},
-
 		profiles: map[profileTableKey]*parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]{
-			profileTableKey{}: &parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]{
-				meta: block.File{RelPath: "profiles.parquet"},
-			},
+			{}: {meta: block.File{RelPath: "profiles.parquet"}},
 
-			profileTableKey{
-				resolution:  5 * time.Minute,
-				aggregation: "avg",
-			}: &parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]{
+			{resolution: 5 * time.Minute, aggregation: "avg"}: {
 				meta: block.File{RelPath: "profiles_5m_avg.parquet"},
 			},
 
-			profileTableKey{
-				resolution:  5 * time.Minute,
-				aggregation: "sum",
-			}: &parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]{
+			{resolution: 5 * time.Minute, aggregation: "sum"}: {
 				meta: block.File{RelPath: "profiles_5m_sum.parquet"},
 			},
 
-			profileTableKey{
-				resolution:  time.Hour,
-				aggregation: "avg",
-			}: &parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]{
+			{resolution: time.Hour, aggregation: "avg"}: {
 				meta: block.File{RelPath: "profiles_1h_avg.parquet"},
 			},
 
-			profileTableKey{
-				resolution:  time.Hour,
-				aggregation: "sum",
-			}: &parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]{
+			{resolution: time.Hour, aggregation: "sum"}: {
 				meta: block.File{RelPath: "profiles_1h_sum.parquet"},
 			},
 		},
