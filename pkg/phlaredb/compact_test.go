@@ -90,6 +90,79 @@ func TestCompact(t *testing.T) {
 	require.Equal(t, expected.String(), res.String())
 }
 
+func TestCompactWithDownsampling(t *testing.T) {
+	ctx := context.Background()
+	b := newBlock(t, func() []*testhelper.ProfileBuilder {
+		return []*testhelper.ProfileBuilder{
+			testhelper.NewProfileBuilder(int64(time.Second*1)).
+				CPUProfile().
+				WithLabels(
+					"job", "a",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+			testhelper.NewProfileBuilder(int64(time.Second*2)).
+				CPUProfile().
+				WithLabels(
+					"job", "b",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+			testhelper.NewProfileBuilder(int64(time.Second*3)).
+				CPUProfile().
+				WithLabels(
+					"job", "c",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+		}
+	})
+	dst := t.TempDir()
+	b.meta.Compaction.Level = 2
+	compacted, err := Compact(ctx, []BlockReader{b, b, b, b}, dst)
+	require.NoError(t, err)
+	require.Equal(t, uint64(3), compacted.Stats.NumProfiles)
+	require.Equal(t, uint64(3), compacted.Stats.NumSamples)
+	require.Equal(t, uint64(3), compacted.Stats.NumSeries)
+	require.Equal(t, model.TimeFromUnix(1), compacted.MinTime)
+	require.Equal(t, model.TimeFromUnix(3), compacted.MaxTime)
+
+	for _, f := range []*block.File{
+		compacted.FileByRelPath("profiles_5m_sum.parquet"),
+		compacted.FileByRelPath("profiles_5m_avg.parquet"),
+		compacted.FileByRelPath("profiles_1h_sum.parquet"),
+		compacted.FileByRelPath("profiles_1h_avg.parquet"),
+	} {
+		require.NotNil(t, f)
+		assert.NotZero(t, f.SizeBytes)
+	}
+
+	querier := blockQuerierFromMeta(t, dst, compacted)
+	matchAll := &ingesterv1.SelectProfilesRequest{
+		LabelSelector: "{}",
+		Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
+		Start:         0,
+		End:           3600000,
+	}
+	it, err := querier.SelectMatchingProfiles(ctx, matchAll)
+	require.NoError(t, err)
+	series, err := querier.MergeByLabels(ctx, it, "job")
+	require.NoError(t, err)
+	require.Equal(t, []*typesv1.Series{
+		{Labels: phlaremodel.LabelsFromStrings("job", "a"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(1000)}}},
+		{Labels: phlaremodel.LabelsFromStrings("job", "b"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(2000)}}},
+		{Labels: phlaremodel.LabelsFromStrings("job", "c"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(3000)}}},
+	}, series)
+
+	it, err = querier.SelectMatchingProfiles(ctx, matchAll)
+	require.NoError(t, err)
+	res, err := querier.MergeByStacktraces(ctx, it)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+
+	expected := new(phlaremodel.Tree)
+	expected.InsertStack(3, "baz", "bar", "foo")
+	require.Equal(t, expected.String(), res.String())
+
+	res, err = querier.SelectMergeByStacktraces(ctx, matchAll)
+	require.NoError(t, err)
+	require.NotNil(t, res)
+}
+
 func TestCompactWithSplitting(t *testing.T) {
 	ctx := context.Background()
 
