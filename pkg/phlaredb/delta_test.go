@@ -3,15 +3,10 @@ package phlaredb
 import (
 	"testing"
 
-	"github.com/google/uuid"
-	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
-	"github.com/grafana/pyroscope/pkg/pprof"
+	schemav1testhelper "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1/testhelper"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
@@ -21,7 +16,7 @@ func TestComputeDelta(t *testing.T) {
 	builder.ForStacktraceString("a", "b", "c").AddSamples(1, 2, 3, 4)
 	builder.ForStacktraceString("a", "b", "c", "d").AddSamples(1, 2, 3, 4)
 
-	profiles, labels := newProfileSchema(builder.Profile, "memory")
+	profiles, labels := schemav1testhelper.NewProfileSchema(builder.Profile, "memory")
 
 	samples := delta.computeDelta(profiles[0], labels[0])
 	require.Empty(t, samples.StacktraceIDs)
@@ -38,7 +33,7 @@ func TestComputeDelta(t *testing.T) {
 	require.Equal(t, uint64(4), samples.Values[0])
 	require.Equal(t, uint64(4), samples.Values[1])
 
-	profiles, labels = newProfileSchema(builder.Profile, "memory")
+	profiles, labels = schemav1testhelper.NewProfileSchema(builder.Profile, "memory")
 	samples = delta.computeDelta(profiles[0], labels[0])
 	require.Empty(t, samples.StacktraceIDs)
 	samples = delta.computeDelta(profiles[1], labels[1])
@@ -53,37 +48,6 @@ func TestComputeDelta(t *testing.T) {
 	require.Equal(t, 2, len(samples.StacktraceIDs))
 	require.Equal(t, uint64(4), samples.Values[0])
 	require.Equal(t, uint64(4), samples.Values[1])
-}
-
-func newProfileSchema(p *profilev1.Profile, name string) ([]schemav1.InMemoryProfile, []phlaremodel.Labels) {
-	var (
-		labels, seriesRefs = labelsForProfile(p, &typesv1.LabelPair{Name: model.MetricNameLabel, Value: name})
-		ps                 = make([]schemav1.InMemoryProfile, len(labels))
-	)
-	for idxType := range labels {
-		ps[idxType] = schemav1.InMemoryProfile{
-			ID:                uuid.New(),
-			TimeNanos:         p.TimeNanos,
-			Comments:          p.Comment,
-			DurationNanos:     p.DurationNanos,
-			DropFrames:        p.DropFrames,
-			KeepFrames:        p.KeepFrames,
-			Period:            p.Period,
-			DefaultSampleType: p.DefaultSampleType,
-		}
-		hashes := pprof.SampleHasher{}.Hashes(p.Sample)
-		ps[idxType].Samples = schemav1.Samples{
-			StacktraceIDs: make([]uint32, len(p.Sample)),
-			Values:        make([]uint64, len(p.Sample)),
-		}
-		for i, s := range p.Sample {
-			ps[idxType].Samples.Values[i] = uint64(s.Value[idxType])
-			ps[idxType].Samples.StacktraceIDs[i] = uint32(hashes[i])
-
-		}
-		ps[idxType].SeriesFingerprint = seriesRefs[idxType]
-	}
-	return ps, labels
 }
 
 func TestDeltaSample(t *testing.T) {

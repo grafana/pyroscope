@@ -1,4 +1,4 @@
-package phlaredb
+package labels
 
 import (
 	"sort"
@@ -7,6 +7,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 )
 
@@ -49,9 +50,23 @@ func TestLabelsForProfiles(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			sort.Sort(tt.expected)
-			result, fps := labelsForProfile(newProfileFoo(), tt.in...)
+			result, fps := CreateProfileLabels(newProfileFoo(), tt.in...)
 			require.Equal(t, tt.expected, result[0])
 			require.Equal(t, model.Fingerprint(tt.expected.Hash()), fps[0])
 		})
+	}
+}
+
+func newProfileFoo() *profilev1.Profile {
+	return &profilev1.Profile{
+		StringTable: append([]string{""}, []string{"unit", "type"}...),
+		PeriodType: &profilev1.ValueType{
+			Unit: 1,
+			Type: 2,
+		},
+		SampleType: []*profilev1.ValueType{{
+			Unit: 1,
+			Type: 2,
+		}},
 	}
 }
