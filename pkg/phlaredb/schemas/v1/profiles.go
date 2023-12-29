@@ -19,7 +19,6 @@ import (
 const (
 	SeriesIndexColumnName         = "SeriesIndex"
 	TimeNanosColumnName           = "TimeNanos"
-	TimeMillisColumnName          = "TimeMillis"
 	StacktracePartitionColumnName = "StacktracePartition"
 	TotalValueColumnName          = "TotalValue"
 	SamplesColumnName             = "Samples"
@@ -54,7 +53,6 @@ var (
 		phlareparquet.NewGroupField("DefaultSampleType", parquet.Optional(parquet.Int(64))),
 	})
 	DownsampledProfilesSchema = parquet.NewSchema("DownsampledProfile", phlareparquet.Group{
-		phlareparquet.NewGroupField("ID", parquet.UUID()),
 		phlareparquet.NewGroupField(SeriesIndexColumnName, parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField(StacktracePartitionColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField(TotalValueColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
@@ -63,7 +61,7 @@ var (
 				phlareparquet.NewGroupField("StacktraceID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
 				phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
 			})),
-		phlareparquet.NewGroupField(TimeMillisColumnName, parquet.Timestamp(parquet.Millisecond)),
+		phlareparquet.NewGroupField(TimeNanosColumnName, parquet.Timestamp(parquet.Nanosecond)),
 		phlareparquet.NewGroupField("DurationMillis", parquet.Optional(parquet.Int(64))),
 	})
 

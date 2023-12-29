@@ -39,6 +39,35 @@ func TestDownsampler_AddRow(t *testing.T) {
 	verifyOutput(t, outDir, "profiles_1h_sum.parquet", 1)
 }
 
+func BenchmarkDownsampler_AddRow(b *testing.B) {
+
+	f, err := os.Open("../testdata/01HHYG6245NWHZWVP27V8WJRT7/profiles.parquet")
+	require.NoError(b, err)
+	defer func() {
+		require.NoError(b, f.Close())
+	}()
+
+	reader := parquet.NewGenericReader[*schemav1.Profile](f, schemav1.ProfilesSchema)
+	rows, err := phlareparquet.ReadAllWithBufferSize(reader, 1024)
+	require.NoError(b, err)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		outDir := b.TempDir()
+		d, err := NewDownsampler(outDir)
+
+		require.NoError(b, err)
+		for _, row := range rows {
+			err = d.AddRow(schemav1.ProfileRow(row), 1)
+			require.NoError(b, err)
+		}
+
+		err = d.Close()
+		require.NoError(b, err)
+	}
+}
+
 func verifyOutput(t *testing.T, dir string, file string, expectedRows int) {
 	stat, err := os.Stat(filepath.Join(dir, file))
 	require.NoError(t, err)
