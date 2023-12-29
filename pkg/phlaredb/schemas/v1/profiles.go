@@ -62,7 +62,6 @@ var (
 				phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
 			})),
 		phlareparquet.NewGroupField(TimeNanosColumnName, parquet.Timestamp(parquet.Nanosecond)),
-		phlareparquet.NewGroupField("DurationMillis", parquet.Optional(parquet.Int(64))),
 	})
 
 	sampleStacktraceIDColumnPath = strings.Split("Samples.list.element.StacktraceID", ".")

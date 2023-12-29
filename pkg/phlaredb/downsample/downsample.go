@@ -183,7 +183,6 @@ func (d *Downsampler) flush(s *state, w *profilesWriter, c downsampleConfig) err
 	}
 
 	s.currentRow = append(s.currentRow, parquet.Int64Value(s.currentTime*1000).Level(0, 0, newCol()))
-	s.currentRow = append(s.currentRow, parquet.Int64Value(c.interval.durationSeconds*1000).Level(0, 0, newCol()))
 
 	err := w.WriteRow(s.currentRow)
 	if err != nil {
