@@ -48,6 +48,7 @@ type PyroscopeTest struct {
 	memberlistPort int
 }
 
+const address = "127.0.0.1"
 const storeInMemory = "inmemory"
 
 func (p *PyroscopeTest) Start(t *testing.T) {
@@ -64,15 +65,15 @@ func (p *PyroscopeTest) Start(t *testing.T) {
 	require.NoError(t, err)
 
 	// set addresses and ports
-	p.config.Server.HTTPListenAddress = "127.0.0.1"
+	p.config.Server.HTTPListenAddress = address
 	p.config.Server.HTTPListenPort = p.httpPort
-	p.config.Server.GRPCListenAddress = "127.0.0.1"
-	p.config.Worker.SchedulerAddress = "127.0.0.1"
+	p.config.Server.GRPCListenAddress = address
+	p.config.Worker.SchedulerAddress = address
 	p.config.MemberlistKV.AdvertisePort = p.memberlistPort
 	p.config.MemberlistKV.TCPTransport.BindPort = p.memberlistPort
-	p.config.Ingester.LifecyclerConfig.Addr = "127.0.0.1"
-	p.config.QueryScheduler.ServiceDiscovery.SchedulerRing.InstanceAddr = "127.0.0.1"
-	p.config.Frontend.Addr = "127.0.0.1"
+	p.config.Ingester.LifecyclerConfig.Addr = address
+	p.config.QueryScheduler.ServiceDiscovery.SchedulerRing.InstanceAddr = address
+	p.config.Frontend.Addr = address
 
 	// heartbeat more often
 	p.config.Distributor.DistributorRing.HeartbeatPeriod = time.Second
@@ -122,7 +123,7 @@ func (p *PyroscopeTest) ringActive() bool {
 	return httpBodyContains(p.URL()+"/ring", "ACTIVE")
 }
 func (p *PyroscopeTest) URL() string {
-	return fmt.Sprintf("http://127.0.0.1:%d", p.httpPort)
+	return fmt.Sprintf("http://%s:%d", address, p.httpPort)
 }
 
 func (p *PyroscopeTest) queryClient() querierv1connect.QuerierServiceClient {
