@@ -507,7 +507,7 @@ func TestMergePprof(t *testing.T) {
 	require.NoError(t, err)
 
 	q.queriers[0].Sort(profiles)
-	result, err := q.queriers[0].MergePprof(ctx, iter.NewSliceIterator(profiles), 0)
+	result, err := q.queriers[0].MergePprof(ctx, iter.NewSliceIterator(profiles), 0, nil)
 	require.NoError(t, err)
 
 	data, err := proto.Marshal(generateProfile(t, 1))
@@ -556,7 +556,7 @@ func TestHeadMergePprof(t *testing.T) {
 	require.NoError(t, err)
 
 	db.headQueriers()[0].Sort(profiles)
-	result, err := db.headQueriers()[0].MergePprof(ctx, iter.NewSliceIterator(profiles), 0)
+	result, err := db.headQueriers()[0].MergePprof(ctx, iter.NewSliceIterator(profiles), 0, nil)
 	require.NoError(t, err)
 
 	data, err := proto.Marshal(generateProfile(t, 1))

@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/model"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -32,15 +33,30 @@ type Resolver struct {
 	c int
 	m sync.Mutex
 	p map[uint64]*lazyPartition
+
+	maxNodes int64
+	sts      *typesv1.StackTraceSelector
 }
 
 type ResolverOption func(*Resolver)
 
-// WithMaxConcurrent specifies how many partitions
+// WithResolverMaxConcurrent specifies how many partitions
 // can be resolved concurrently.
-func WithMaxConcurrent(n int) ResolverOption {
+func WithResolverMaxConcurrent(n int) ResolverOption {
 	return func(r *Resolver) {
 		r.c = n
+	}
+}
+
+func WithResolverMaxNodes(n int64) ResolverOption {
+	return func(r *Resolver) {
+		r.maxNodes = n
+	}
+}
+
+func WithResolverStackTraceSelector(sts *typesv1.StackTraceSelector) ResolverOption {
+	return func(r *Resolver) {
+		r.sts = sts
 	}
 }
 
@@ -52,11 +68,14 @@ type lazyPartition struct {
 	done    chan struct{}
 }
 
-func NewResolver(ctx context.Context, s SymbolsReader) *Resolver {
+func NewResolver(ctx context.Context, s SymbolsReader, opts ...ResolverOption) *Resolver {
 	r := Resolver{
 		s: s,
 		c: runtime.GOMAXPROCS(-1),
 		p: make(map[uint64]*lazyPartition),
+	}
+	for _, opt := range opts {
+		opt(&r)
 	}
 	r.span, r.ctx = opentracing.StartSpanFromContext(ctx, "NewResolver")
 	r.ctx, r.cancel = context.WithCancel(r.ctx)
@@ -168,13 +187,13 @@ func (r *Resolver) Tree() (*model.Tree, error) {
 	return tree, err
 }
 
-func (r *Resolver) Pprof(maxNodes int64) (*googlev1.Profile, error) {
+func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	span, ctx := opentracing.StartSpanFromContext(r.ctx, "Resolver.Pprof")
 	defer span.Finish()
 	var lock sync.Mutex
 	var p pprof.ProfileMerge
 	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
-		resolved, err := symbols.Pprof(ctx, samples, maxNodes)
+		resolved, err := symbols.Pprof(ctx, samples, r.maxNodes, r.sts)
 		if err != nil {
 			return err
 		}
@@ -212,10 +231,22 @@ type pprofBuilder interface {
 	buildPprof() *googlev1.Profile
 }
 
-func (r *Symbols) Pprof(ctx context.Context, samples schemav1.Samples, maxNodes int64) (*googlev1.Profile, error) {
+func (r *Symbols) Pprof(
+	ctx context.Context,
+	samples schemav1.Samples,
+	maxNodes int64,
+	sts *typesv1.StackTraceSelector,
+) (*googlev1.Profile, error) {
 	var b pprofBuilder = new(pprofProtoSymbols)
-	if maxNodes > 0 {
-		b = &pprofProtoTruncatedSymbols{maxNodes: maxNodes}
+	if maxNodes > 0 || (sts != nil && len(sts.StackTrace) > 0) {
+		x := &pprofProtoTruncatedSymbols{
+			maxNodes: maxNodes,
+			subtree:  r.subtree(sts),
+		}
+		if len(sts.StackTrace) > 0 && len(x.subtree) == 0 {
+			return b.buildPprof(), nil
+		}
+		b = x
 	}
 	b.init(r, samples)
 	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, b, samples.StacktraceIDs); err != nil {
@@ -232,4 +263,35 @@ func (r *Symbols) Tree(ctx context.Context, samples schemav1.Samples) (*model.Tr
 		return nil, err
 	}
 	return t.tree, nil
+}
+
+func (r *Symbols) subtree(sts *typesv1.StackTraceSelector) []int32 {
+	if sts == nil || len(sts.StackTrace) == 0 {
+		return nil
+	}
+	if len(sts.StackTrace) == 0 {
+		return nil
+	}
+	m := make(map[string]int32, len(sts.StackTrace))
+	for _, f := range sts.StackTrace {
+		m[f.Name] = 0
+	}
+	c := len(sts.StackTrace)
+	for f := 0; f < len(r.Functions) && c > 0; f++ {
+		s := r.Strings[r.Functions[f].Name]
+		if _, ok := m[s]; ok {
+			// We assume that no functions have the same name.
+			// Otherwise, the last one takes precedence.
+			m[s] = int32(f)
+			c--
+		}
+	}
+	if c > 0 {
+		return nil
+	}
+	s := make([]int32, len(sts.StackTrace))
+	for i, f := range sts.StackTrace {
+		s[i] = m[f.Name]
+	}
+	return s
 }

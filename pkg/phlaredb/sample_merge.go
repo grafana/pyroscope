@@ -33,17 +33,19 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 	return r.Tree()
 }
 
-func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64) (*profilev1.Profile, error) {
+func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[Profile], maxNodes int64, sts *typesv1.StackTraceSelector) (*profilev1.Profile, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergePprof - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
 
-	r := symdb.NewResolver(ctx, b.symbols)
+	r := symdb.NewResolver(ctx, b.symbols,
+		symdb.WithResolverMaxNodes(maxNodes),
+		symdb.WithResolverStackTraceSelector(sts))
 	defer r.Release()
 	if err := mergeByStacktraces(ctx, b.profiles.file, rows, r); err != nil {
 		return nil, err
 	}
-	return r.Pprof(maxNodes)
+	return r.Pprof()
 }
 
 func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
