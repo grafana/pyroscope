@@ -368,6 +368,7 @@ func TestSchedulerForwardsErrorToFrontend(t *testing.T) {
 	_, frontendClient, querierClient := setupScheduler(t, nil)
 
 	fm := &frontendMock{resp: map[uint64]*httpgrpc.HTTPResponse{}}
+
 	frontendAddress := ""
 
 	// Setup frontend grpc server
@@ -375,7 +376,7 @@ func TestSchedulerForwardsErrorToFrontend(t *testing.T) {
 		frontendGrpcServer := grpc.NewServer()
 		frontendpb.RegisterFrontendForQuerierServer(frontendGrpcServer, fm)
 
-		l, err := net.Listen("tcp", "")
+		l, err := net.Listen("tcp", "127.0.0.1:")
 		require.NoError(t, err)
 
 		frontendAddress = l.Addr().String()
