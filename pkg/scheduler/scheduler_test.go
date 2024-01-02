@@ -368,7 +368,6 @@ func TestSchedulerForwardsErrorToFrontend(t *testing.T) {
 	_, frontendClient, querierClient := setupScheduler(t, nil)
 
 	fm := &frontendMock{resp: map[uint64]*httpgrpc.HTTPResponse{}}
-
 	frontendAddress := ""
 
 	// Setup frontend grpc server
