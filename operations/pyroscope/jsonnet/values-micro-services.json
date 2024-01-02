@@ -91,6 +91,9 @@
         "persistence": {
           "enabled": false
         },
+        "readinessProbe": {
+          "initialDelaySeconds": 60
+        },
         "replicaCount": 3,
         "resources": {
           "limits": {

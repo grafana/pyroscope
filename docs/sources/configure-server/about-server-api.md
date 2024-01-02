@@ -21,16 +21,16 @@ There is one primary endpoint: POST /ingest. It accepts profile data in the requ
 
 The following query parameters are accepted:
 
-| Name               | Description                             | Notes                           |
-|:-------------------|:----------------------------------------|:--------------------------------|
-| `name`             | application name                        | required |
-| `from`             | UNIX time of when the profiling started | required                        |
-| `until`            | UNIX time of when the profiling stopped | required                        |
-| `format`           | format of the profiling data            | optional (default is `folded`)  |
-| `sampleRate`       | sample rate used in Hz                  | optional (default is 100 Hz)    |
-| `spyName`          | name of the spy used                    | optional                        |
-| `units`            | name of the profiling data unit         | optional (default is `samples`  |
-| `aggregrationType` | type of aggregration to merge profiles  | optional (default is `sum`)     |
+| Name               | Description                             | Notes                          |
+|:-------------------|:----------------------------------------|:-------------------------------|
+| `name`             | application name                        | required                       |
+| `from`             | UNIX time of when the profiling started | required                       |
+| `until`            | UNIX time of when the profiling stopped | required                       |
+| `format`           | format of the profiling data            | optional (default is `folded`) |
+| `sampleRate`       | sample rate used in Hz                  | optional (default is `100` Hz) |
+| `spyName`          | name of the spy used                    | optional                       |
+| `units`            | name of the profiling data unit         | optional (default is `samples` |
+| `aggregrationType` | type of aggregration to merge profiles  | optional (default is `sum`)    |
 
 
 `name` specifies application name. For example:
@@ -213,6 +213,210 @@ curl -X POST \
 
 {{< /code >}}
 
+## Querying profile data
+
+There is one primary endpoint for querying profile data: `GET /pyroscope/render`.
+
+The search input is provided via query parameters.
+The output is typically a JSON object containing one or more time series and a flamegraph.
+
+### Query parameters
+
+Here is an overview of the accepted query parameters:
+
+| Name           | Description                                                                           | Notes                                                |
+|:---------------|:--------------------------------------------------------------------------------------|:-----------------------------------------------------|
+| `query`        | contains the profile type and label selectors                                         | required                                             |
+| `from`         | UNIX time for the start of the search window                                          | required                                             |
+| `until`        | UNIX time for the end of the search window                                            | optional (default is `now`)                          |
+| `format`       | format of the profiling data                                                          | optional (default is `json`)                         |
+| `maxNodes`     | the maximum number of nodes the resulting flamegraph will contain                     | optional (default is `max_flamegraph_nodes_default`) |
+| `groupBy`      | one or more label names to group the time series by (doesn't apply to the flamegraph) | optional (default is no grouping)                    |
+
+#### `query`
+
+The `query` parameter is the only required search input. It carries the profile type and any labels we want to use to narrow down the output.
+The format for this parameter is similar to that of a PromQL query and can be defined as:
+
+`<profile_type>{<label_name>="<label_value>", <label_name>="<label_value>", ...}`
+
+Here is a specific example:
+
+`process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name="my_application_name"}`
+
+In a Kubernetes environment, a query could also look like:
+
+`process_cpu:cpu:nanoseconds:cpu:nanoseconds{namespace="dev", container="my_application_name"}`
+
+{{% admonition type="note" %}}
+Refer to the [profiling types documentation]({{< relref "../ingest-and-analyze-profile-data/profiling-types" >}}) for more information and [profile-metrics.json](https://github.com/grafana/pyroscope/blob/main/public/app/constants/profile-metrics.json) for a list of valid profile types.
+{{% /admonition %}}
+
+#### `from` and `until`
+
+The `from` and `until` parameters determine the start and end of the time period for the query.
+They can be provided in absolute and relative form.
+
+**Absolute time**
+
+This table details the options for passing absolute values.
+
+| Option                 | Example               | Notes              |
+|:-----------------------|:----------------------|:-------------------|
+| Date                   | `20231223`            | Format: `YYYYMMDD` |
+| Unix Time seconds      | `1577836800`          |                    | 
+| Unix Time milliseconds | `1577836800000`       |                    | 
+| Unix Time microseconds | `1577836800000000`    |                    | 
+| Unix Time nanoseconds  | `1577836800000000000` |                    |
+
+**Relative time**
+
+Relative values are always expressed as offsets from `now`.
+
+| Option         | Example              |
+|:---------------|:---------------------|
+| 3 hours ago    | `now-3h`             |
+| 30 minutes ago | `now-30m`            |
+| 2 days ago     | `now-2d`             |
+| 1 week ago     | `now-7d` or `now-1w` |
+
+Note that a single offset has to be provided, values such as `now-3h30m` will not work.
+
+**Validation**
+
+The `from` and `until` parameters are subject to validation rules related to `max_query_lookback` and `max_query_length` server parameters.
+You can find more details on these parameters in the [limits section]({{< relref "./reference-configuration-parameters#limits" >}}) of the server configuration docs.
+
+- If `max_query_lookback` is configured and`from` is before `now - max_query_lookback`, `from` will be set to `now - max_query_lookback`.
+- If `max_query_lookback` is configured and `until` is before `now - max_query_lookback` the query will not be executed.
+- If `max_query_length` is configured and the query interval is longer than this configuration, the query will no tbe executed.
+
+#### `format`
+
+The format can either be:
+- `json`, in which case the response will contain a JSON object
+- `dot`, in which case the response will be text containing a DOT representation of the profile
+
+See the [Query output](#query-output) section for more information on the response structure.
+
+#### `maxNodes`
+
+The `maxNodes` parameter truncates the number of elements in the profile response, to allow tools (for example, a frontend) to render large profiles efficiently. 
+This is typically used for profiles that are known to have large stack traces.
+
+When no value is provided, the default is taken from the `max_flamegraph_nodes_default` configuration parameter.
+When a value is provided, it is capped to the `max_flamegraph_nodes_max` configuration parameter.
+
+#### `groupBy`
+
+The `groupBy` parameter impacts the output for the time series portion of the response.
+When a valid label is provided, the response contains as many series as there are label values for the given label.
+
+{{% admonition type="note" %}}
+Pyroscope supports a single label for the group by functionality.
+{{% /admonition %}}
+
+### Query output
+
+The output of the `/pyroscope/render` endpoint is a JSON object based on the following [schema](https://github.com/grafana/pyroscope/blob/80959aeba2426f3698077fd8d2cd222d25d5a873/pkg/og/structs/flamebearer/flamebearer.go#L28-L43):
+
+```go
+type FlamebearerProfileV1 struct {
+	Flamebearer FlamebearerV1                  `json:"flamebearer"`
+	Metadata FlamebearerMetadataV1             `json:"metadata"`
+	Timeline *FlamebearerTimelineV1            `json:"timeline"`
+	Groups   map[string]*FlamebearerTimelineV1 `json:"groups"`
+}
+```
+
+#### `flamebearer`
+
+The `flamebearer` field contains data in a form suitable for rendering a flamegraph.
+Data within the flamebearer is organized in separate arrays containing the profile symbols and the sample values.
+
+#### `metadata`
+
+The `metadata` field contains additional information that is helpful to interpret the `flamebearer` data such as the unit (nanoseconds, bytes), sample rate and more.
+
+#### `timeline`
+
+The `timeline` field represents the time series for the profile.
+Pyroscope pre-computes the step interval (resolution) of the timeline using the query interval (`from` and `until`). The minimum step interval is 10 seconds.
+
+The raw profile sample data is down-sampled to the step interval (resolution) using an aggregation function. Currently only `sum` is supported.
+
+A timeline contains a start time, a list of sample values and the step interval:
+
+```json
+{
+  "timeline": {
+    "startTime": 1577836800,
+    "samples": [
+      100,
+      200,
+      400
+    ],
+    "durationDelta": 10
+  }
+}
+```
+
+#### `groups`
+
+The `groups` field is only populated when grouping is requested by the `groupBy` query parameter.
+When this is the case, the `groups` field has an entry for every label value found for the query.
+
+This example groups by a cluster:
+
+```json
+{
+  "groups": {
+    "eu-west-2": { "startTime": 1577836800, "samples": [ 200, 300, 500 ] },
+    "us-east-1": { "startTime": 1577836800, "samples": [ 100, 200, 400 ] }
+  }
+}
+```
+
+### Alternative Query Output
+
+When the `format` query parameter is `dot`, the endpoint responds with a [DOT format](https://en.wikipedia.org/wiki/DOT_(graph_description_language)) data representing the queried profile.
+This can be used to create an alternative visualization of the profile.
+
+### Example queries
+
+This example queries a local Pyroscope server for a CPU profile from the `pyroscope` service for the last hour.
+
+```curl
+curl \
+  'http://localhost:4040/pyroscope/render?query=process_cpu%3Acpu%3Ananoseconds%3Acpu%3Ananoseconds%7Bservice_name%3D%22pyroscope%22%7D&from=now-1h'
+```
+
+Here is the same query made more readable:
+
+```curl
+curl --get \
+  --data-urlencode "query=process_cpu:cpu:nanoseconds:cpu:nanoseconds{service_name=\"pyroscope\"}" \
+  --data-urlencode "from=now-1h" \
+  http://localhost:4040/pyroscope/render
+```
+
+Here is the same example in Python:
+
+```python
+import requests
+
+application_name = 'my_application_name'
+query = f'process_cpu:cpu:nanoseconds:cpu:nanoseconds{{service_name="{application_name}"}}'
+query_from = 'now-1h'
+url = f'http://localhost:4040/pyroscope/render?query={query}&from={query_from}'
+
+requests.get(url)
+```
+
+See [this Python script](https://github.com/grafana/pyroscope/tree/main/examples/api/query.py) for a complete example.
+
 ## Profile CLI
 
-The `profilecli` tool can also be used to interact with the Pyroscope server API. It supports operations such as ingesting profiles, querying for existing profiles and more. Refer to the [Profile CLI]({{< relref "../ingest-and-analyze-profile-data/profile-cli" >}}) page for more information.
+The `profilecli` tool can also be used to interact with the Pyroscope server API.
+The tool supports operations such as ingesting profiles, querying for existing profiles, and more.
+Refer to the [Profile CLI]({{< relref "../ingest-and-analyze-profile-data/profile-cli" >}}) page for more information.

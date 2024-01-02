@@ -3,7 +3,6 @@ title: Pyroscope and profiling in Grafana
 menuTitle: Pyroscope in Grafana
 description: Learn about how you can use profile data in Grafana.
 weight: 200
-draft: true
 keywords:
   - Pyroscope
   - Profiling
@@ -14,21 +13,20 @@ keywords:
 
 # Pyroscope and profiling in Grafana
 
-<!-- The concept title is required. Use a noun-based title that includes the name of the product or feature. For example: Alerting fundamentals.
+Pyroscope can be used alongside the other Grafana tools such as Loki, Tempo, Mimir, and k6.
+You can use Pyroscope to get the most granular insight into your application and how you can use it to fix issues that you may have identified via metrics, logs, traces, or anything else.
 
-A concept provides an overview and background information to help users understand a product, interface, or task. Concepts answer the question “what is it?”. Readers learn about features through concepts. Concepts do not include step-by-step procedures or reference material but often link to those materials.
+You can use Pyroscope within Grafana by using the Pyroscope data source plugin.
+This plugin lets you query Pyroscope data from within Grafana and visualize it alongside your other Grafana data.
 
-Refer to the [Concept topic documentation](https://grafana.com/docs/writers-toolkit/writing-guide/topic-types/concept/) for guidelines on writing a concept topic.
--->
+## Visualize traces and profiles data
 
-Introduce the concept.
+Here is a screenshot of the **Explore** page where combined traces and profiles to be able to see granular line-level detail when available for a trace span. This allows you to see the exact function that's causing a bottleneck in your application as well as a specific request.
 
-<!-- The introduction is required. Add an introduction to the concept to summarize the purpose or main point of the feature. -->
+![trace-profiler-view](https://grafana.com/static/img/pyroscope/pyroscope-trace-profiler-view-2023-11-30.png)
 
-## Sections
+## Integrate profiles into dashboards
 
-<!-- Add sections replacing **Sections** with subtitles for each section. Concept topics or sections explain what and why. They do not explain how. If you are a new user, you might look for concept information to learn about what Grafana is, why it might be useful to you, and what the general workflow is. -->
+Here is an example of how you can integrate profiles into your dashboards. In this case, the screenshot shows memory profiles alongside panels for logs and metrics to be able to debug OOM errors alongside the associated logs and metrics.
 
-## Useful links
-
-<!-- Link out to task or reference topics related to the concept. -->
+![dashboard](https://grafana.com/static/img/pyroscope/grafana-pyroscope-dashboard-2023-11-30.png)

@@ -155,10 +155,7 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 
 	if storeQueries.ingester.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.profileTypesFromIngesters(ctx, &ingestv1.ProfileTypesRequest{
-				Start: req.Msg.Start,
-				End:   req.Msg.End,
-			})
+			ir, err := q.profileTypesFromIngesters(ctx, storeQueries.ingester.ProfileTypesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -172,10 +169,7 @@ func (q *Querier) ProfileTypes(ctx context.Context, req *connect.Request[querier
 
 	if storeQueries.storeGateway.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.profileTypesFromStoreGateway(ctx, &ingestv1.ProfileTypesRequest{
-				Start: req.Msg.Start,
-				End:   req.Msg.End,
-			})
+			ir, err := q.profileTypesFromStoreGateway(ctx, storeQueries.storeGateway.ProfileTypesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -232,7 +226,7 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.
 
 	if storeQueries.ingester.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.labelValuesFromIngesters(ctx, req.Msg)
+			ir, err := q.labelValuesFromIngesters(ctx, storeQueries.ingester.LabelValuesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -246,7 +240,7 @@ func (q *Querier) LabelValues(ctx context.Context, req *connect.Request[typesv1.
 
 	if storeQueries.storeGateway.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.labelValuesFromStoreGateway(ctx, req.Msg)
+			ir, err := q.labelValuesFromStoreGateway(ctx, storeQueries.storeGateway.LabelValuesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -302,7 +296,7 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 
 	if storeQueries.ingester.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.labelNamesFromIngesters(ctx, req.Msg)
+			ir, err := q.labelNamesFromIngesters(ctx, storeQueries.ingester.LabelNamesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -316,7 +310,7 @@ func (q *Querier) LabelNames(ctx context.Context, req *connect.Request[typesv1.L
 
 	if storeQueries.storeGateway.shouldQuery {
 		group.Go(func() error {
-			ir, err := q.labelNamesFromStoreGateway(ctx, req.Msg)
+			ir, err := q.labelNamesFromStoreGateway(ctx, storeQueries.storeGateway.LabelNamesRequest(req.Msg))
 			if err != nil {
 				return err
 			}
@@ -680,11 +674,12 @@ func (sq storeQuery) MergeSpanProfileRequest(req *querierv1.SelectMergeSpanProfi
 
 func (sq storeQuery) MergeProfileRequest(req *querierv1.SelectMergeProfileRequest) *querierv1.SelectMergeProfileRequest {
 	return &querierv1.SelectMergeProfileRequest{
-		ProfileTypeID: req.ProfileTypeID,
-		LabelSelector: req.LabelSelector,
-		Start:         int64(sq.start),
-		End:           int64(sq.end),
-		MaxNodes:      req.MaxNodes,
+		ProfileTypeID:      req.ProfileTypeID,
+		LabelSelector:      req.LabelSelector,
+		Start:              int64(sq.start),
+		End:                int64(sq.end),
+		MaxNodes:           req.MaxNodes,
+		StackTraceSelector: req.StackTraceSelector,
 	}
 }
 
@@ -694,6 +689,30 @@ func (sq storeQuery) SeriesRequest(req *querierv1.SeriesRequest) *ingestv1.Serie
 		End:        int64(sq.end),
 		Matchers:   req.Matchers,
 		LabelNames: req.LabelNames,
+	}
+}
+
+func (sq storeQuery) LabelNamesRequest(req *typesv1.LabelNamesRequest) *typesv1.LabelNamesRequest {
+	return &typesv1.LabelNamesRequest{
+		Matchers: req.Matchers,
+		Start:    int64(sq.start),
+		End:      int64(sq.end),
+	}
+}
+
+func (sq storeQuery) LabelValuesRequest(req *typesv1.LabelValuesRequest) *typesv1.LabelValuesRequest {
+	return &typesv1.LabelValuesRequest{
+		Name:     req.Name,
+		Matchers: req.Matchers,
+		Start:    int64(sq.start),
+		End:      int64(sq.end),
+	}
+}
+
+func (sq storeQuery) ProfileTypesRequest(req *querierv1.ProfileTypesRequest) *ingestv1.ProfileTypesRequest {
+	return &ingestv1.ProfileTypesRequest{
+		Start: int64(sq.start),
+		End:   int64(sq.end),
 	}
 }
 

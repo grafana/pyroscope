@@ -223,7 +223,6 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 					Hints:         &ingestv1.Hints{Block: hints},
 				},
 				MaxNodes: req.MaxNodes,
-				// TODO(kolesnikovae): Max stacks.
 			})
 		}))
 	}
@@ -283,7 +282,8 @@ func (q *Querier) selectProfileFromStoreGateway(ctx context.Context, req *querie
 					Type:          profileType,
 					Hints:         &ingestv1.Hints{Block: hints},
 				},
-				MaxNodes: req.MaxNodes,
+				MaxNodes:           req.MaxNodes,
+				StackTraceSelector: req.StackTraceSelector,
 			})
 		}))
 	}
@@ -474,7 +474,6 @@ func (q *Querier) selectSpanProfileFromStoreGateway(ctx context.Context, req *qu
 					Hints:         &ingestv1.Hints{Block: hints},
 				},
 				MaxNodes: req.MaxNodes,
-				// TODO(kolesnikovae): Max stacks.
 			})
 		}))
 	}

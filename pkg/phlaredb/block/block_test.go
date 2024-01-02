@@ -99,7 +99,7 @@ func TestDelete(t *testing.T) {
 			require.Equal(t, 9, len(objects(t, bkt, meta.ULID)))
 
 			markedForDeletion := promauto.With(prometheus.NewRegistry()).NewCounter(prometheus.CounterOpts{Name: "test"})
-			require.NoError(t, block.MarkForDeletion(ctx, log.NewNopLogger(), bkt, meta.ULID, "", markedForDeletion))
+			require.NoError(t, block.MarkForDeletion(ctx, log.NewNopLogger(), bkt, meta.ULID, "", false, markedForDeletion))
 
 			// Full delete.
 			require.NoError(t, block.Delete(ctx, log.NewNopLogger(), bkt, meta.ULID))
@@ -260,7 +260,7 @@ func TestMarkForDeletion(t *testing.T) {
 			require.NoError(t, block.Upload(ctx, log.NewNopLogger(), bkt, path.Join(tmpDir, id.String())))
 
 			c := promauto.With(nil).NewCounter(prometheus.CounterOpts{})
-			err := block.MarkForDeletion(ctx, log.NewNopLogger(), bkt, id, "", c)
+			err := block.MarkForDeletion(ctx, log.NewNopLogger(), bkt, id, "", false, c)
 			require.NoError(t, err)
 			require.Equal(t, float64(tcase.blocksMarked), promtest.ToFloat64(c))
 		})

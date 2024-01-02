@@ -14,6 +14,7 @@ func TestProfileSeries_GetLanguage(t *testing.T) {
 		{labels: []*typesv1.LabelPair{{Name: "pyroscope_spy", Value: "gospy"}}, want: "go"},
 		{labels: []*typesv1.LabelPair{{Name: "pyroscope_spy", Value: "javaspy"}}, want: "java"},
 		{labels: []*typesv1.LabelPair{{Name: "pyroscope_spy", Value: "dotnetspy"}}, want: "dotnet"},
+		{labels: []*typesv1.LabelPair{{Name: "pyroscope_spy", Value: "grafana-agent.java"}}, want: "java"},
 		{labels: []*typesv1.LabelPair{{Name: "pyroscope_spy", Value: ""}}, want: ""},
 	}
 	for _, tt := range tests {

@@ -3,8 +3,8 @@ aliases:
   - /docs/phlare/latest/operators-guide/configure-agent/
   - /docs/phlare/latest/configure-client/
 title: "Sending profiles from your application"
-menuTitle: "Configure the Client"
-description: ""
+menuTitle: "Configure the client"
+description: "Learn how to configure the client to send profiles from your application."
 weight: 35
 ---
 

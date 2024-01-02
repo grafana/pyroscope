@@ -1,44 +1,60 @@
 version: "3"
 
 services:
-  us-east:
+  rideshare-go-ap-south:
     ports:
       - 5000
+    hostname: rideshare-go-ap-south
     environment: &env
       PYROSCOPE_SERVER_ADDRESS: http://pyroscope:4040
       OTLP_URL: tempo:4318
       OTLP_INSECURE: 1
       DEBUG_LOGGER: 1
-      REGION: us-east
+      REGION: ap-south
     build:
       context: ../../golang-push/rideshare
 
-  eu-north:
+  rideshare-go-eu-north:
     ports:
       - 5000
+    hostname: rideshare-go-eu-north
     environment:
       <<: *env
       REGION: eu-north
     build:
       context: ../../golang-push/rideshare
 
-  ap-south:
+  rideshare-java-us-east:
     ports:
       - 5000
+    hostname: rideshare-java-us-east
     environment:
       <<: *env
-      REGION: ap-south
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
+      OTEL_SERVICE_NAME: rideshare.java.push.app
+      OTEL_METRICS_EXPORTER: none
+      OTEL_TRACES_SAMPLER: always_on
+      OTEL_PROPAGATORS: tracecontext
+      PYROSCOPE_LABELS: hostname=rideshare-java-us-east
+      REGION: us-east
     build:
-      context: ../../golang-push/rideshare
+      context: ../../java/rideshare
+      dockerfile: Dockerfile.otel-instrumentation
 
   load-generator:
     environment: *env
     build:
       context: ../../golang-push/rideshare
       dockerfile: Dockerfile.load-generator
+    command:
+      - ./loadgen
+      - rideshare-go-ap-south
+      - rideshare-go-eu-north
+      - rideshare-java-us-east
 
   grafana:
-    image: grafana/grafana-dev:10.3.0-149048
+    image: grafana/grafana-dev:10.3.0-151740
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
@@ -64,7 +80,6 @@ services:
       - "9411:9411"   # zipkin
 
   pyroscope:
-    image: grafana/pyroscope:1.2.0
     environment:
       JAEGER_AGENT_HOST: tempo
       JAEGER_SAMPLER_TYPE: const
@@ -74,3 +89,6 @@ services:
       - '4040:4040'
     volumes:
       - ./pyroscope/pyroscope.yml:/etc/pyroscope.yml
+    build:
+      context: '../../../'
+      dockerfile: cmd/pyroscope/Dockerfile

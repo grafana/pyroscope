@@ -1,33 +1,34 @@
 ---
-title: What is Pyroscope?
-menuTitle: What is Pyroscope?
+title: Introduction
+menuTitle: Introduction
 description: Learn about Pyrsocope and profiling.
 weight: 10
-draft: true
 keywords:
   - Pyroscope
   - Profiling
 ---
 
-<!-- This is placeholder page while we get the content written.  -->
+# Introduction
 
-# What is Pyroscope?
+Grafana Pyroscope is a multi-tenant continuous profiling aggregation system, aligning its architectural design with Grafana Mimir, Grafana Loki, and Grafana Tempo. It facilitates the ingestion, storage, and querying of profiles and seamlessly integrates with Grafana, enabling a cohesive correlation of profiling data with existing metrics, logs, and traces.
 
-<!-- The concept title is required. Use a noun-based title that includes the name of the product or feature. For example: Alerting fundamentals.
+Engineers utilizing Pyroscope gain the ability to delve deep into the performance attributes and resource demands of their applications. Boasting an intuitive interface coupled with a vivid data visualization, Pyroscope transforms raw profiling data into readily actionable insights.
 
-A concept provides an overview and background information to help users understand a product, interface, or task. Concepts answer the question “what is it?”. Readers learn about features through concepts. Concepts do not include step-by-step procedures or reference material but often link to those materials.
+## Why Pyroscope
 
-Refer to the [Concept topic documentation](https://grafana.com/docs/writers-toolkit/writing-guide/topic-types/concept/) for guidelines on writing a concept topic.
--->
+Continuous profiling helps teams to quickly identify performance bottlenecks and optimize their applications.
+With Grafana Pyroscope, teams can easily profile their applications in production with minimal overhead.
+Starting with system-wide observability and drilling down to actionable code-level insights allows teams to identify performance issues in context no matter where they occur, so they can optimize their applications with precision.
 
-Introduce the concept.
+## Core functionality
 
-<!-- The introduction is required. Add an introduction to the concept to summarize the purpose or main point of the feature. -->
+With Pyroscope, you get access to the core profiling functionality, which you can use to find performance bottlenecks and optimize applications. The core functionality includes:
 
-## Sections
+- Minimal CPU overhead and efficient compression ensure optimal performance.
+- Architecture consistent with Loki, Mimir, and Tempo, promoting a smoother user experience.
+    - Horizontally scalable
+    - Reliable: Highly available setup ensures consistent uptime, even amidst upgrades or system failures.
+    - Multi-tenancy Support: makes it possible to run one database for multiple independent teams or business units.
+    - Cost Effective at Scale: Utilizes object storage, which allows extensive historical data storage without significant costs.
+- Advanced Analysis UI: Provides an advanced UI, high-cardinality tag/label handling, and the ability to differentiate performance between tags/labels and time intervals.
 
-<!-- Add sections replacing **Sections** with subtitles for each section. Concept topics or sections explain what and why. They do not explain how. If you are a new user, you might look for concept information to learn about what Grafana is, why it might be useful to you, and what the general workflow is. -->
-
-## Useful links
-
-<!-- Link out to task or reference topics related to the concept. -->
