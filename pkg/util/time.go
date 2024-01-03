@@ -106,26 +106,33 @@ type TimeRange struct {
 	Resolution time.Duration
 }
 
-// SplitTimeRangeByResolution splits the given time range into the minimal
-// number of non-overlapping sub-ranges aligned with resolutions.
+// SplitTimeRangeByResolution splits the given time range into the
+// minimal number of non-overlapping sub-ranges aligned with resolutions.
+// All ranges have inclusive start and end; one millisecond step.
 func SplitTimeRangeByResolution(start, end time.Time, resolutions []time.Duration, fn func(TimeRange)) {
 	if len(resolutions) == 0 {
 		fn(TimeRange{Start: start, End: end})
 		return
 	}
-	var (
-		c = start       // Current range start position.
-		r time.Duration // Current resolution.
-		p time.Duration // Previous step.
-	)
+
 	sort.Slice(resolutions, func(j, i int) bool {
 		return resolutions[i] <= resolutions[j]
 	})
+
+	// Time ranges are inclusive on both ends. In order to simplify calculation
+	// of resolution alignment, we add a millisecond to the end time.
+	// Added millisecond is subtracted from the final ranges.
+	end = end.Add(time.Millisecond)
+	var (
+		c = start       // Current range start position.
+		r time.Duration // Current resolution.
+	)
+
 	for c.Before(end) {
 		var d time.Duration = -1
 		// Find the lowest resolution aligned with the end time.
 		for _, res := range resolutions {
-			if c.UnixNano()%res.Nanoseconds() == 0 && c.Add(res).Before(end) {
+			if c.UnixNano()%res.Nanoseconds() == 0 && !c.Add(res).After(end) {
 				d = res
 				break
 			}
@@ -141,24 +148,15 @@ func SplitTimeRangeByResolution(start, end time.Time, resolutions []time.Duratio
 			d = end.Sub(c)
 		}
 		// If the resolution has changed, emit a new range.
-		if p > 0 && d != p {
-			fn(TimeRange{
-				Start: start,
-				// Ranges are inclusive.
-				End:        c.Add(-time.Millisecond),
-				Resolution: r,
-			})
+		if r != res && c.After(start) {
+			fn(TimeRange{Start: start, End: c.Add(-time.Millisecond), Resolution: r})
 			start = c
 		}
 		c = c.Add(d)
 		r = res
-		p = d
 	}
+
 	if start != c {
-		fn(TimeRange{
-			Start:      start,
-			End:        c,
-			Resolution: r,
-		})
+		fn(TimeRange{Start: start, End: c.Add(-time.Millisecond), Resolution: r})
 	}
 }
