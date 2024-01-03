@@ -123,9 +123,7 @@ func TestCompactWithDownsampling(t *testing.T) {
 
 	for _, f := range []*block.File{
 		compacted.FileByRelPath("profiles_5m_sum.parquet"),
-		compacted.FileByRelPath("profiles_5m_avg.parquet"),
 		compacted.FileByRelPath("profiles_1h_sum.parquet"),
-		compacted.FileByRelPath("profiles_1h_avg.parquet"),
 	} {
 		require.NotNil(t, f)
 		assert.NotZero(t, f.SizeBytes)
