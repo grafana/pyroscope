@@ -3,7 +3,6 @@ package downsample
 import (
 	"fmt"
 	"io"
-	"math"
 	"os"
 	"path/filepath"
 
@@ -24,9 +23,8 @@ type interval struct {
 }
 
 type aggregationType struct {
-	fn        func(a, b int64) int64
-	name      string
-	finalizer func(value int64, s *state) int64
+	fn   func(a, b int64) int64
+	name string
 }
 
 type state struct {
@@ -61,15 +59,6 @@ var (
 			name: "sum",
 			fn: func(a, b int64) int64 {
 				return a + b
-			},
-		},
-		{
-			name: "avg",
-			fn: func(a, b int64) int64 {
-				return a + b
-			},
-			finalizer: func(value int64, s *state) int64 {
-				return int64(math.Round(float64(value) / float64(s.profileCount)))
 			},
 		},
 	}
@@ -174,9 +163,6 @@ func (d *Downsampler) flush(s *state, w *profilesWriter, c downsampleConfig) err
 			return col
 		}
 	)
-	if c.aggregation.finalizer != nil {
-		s.totalValue = c.aggregation.finalizer(s.totalValue, s)
-	}
 	s.currentRow = append(s.currentRow, parquet.Int64Value(s.totalValue).Level(0, 0, newCol()))
 
 	newCol()
@@ -193,14 +179,10 @@ func (d *Downsampler) flush(s *state, w *profilesWriter, c downsampleConfig) err
 		if repetition < 1 {
 			repetition++
 		}
-		if c.aggregation.finalizer != nil {
-			value = c.aggregation.finalizer(value, s)
-		}
 		s.currentRow = append(s.currentRow, parquet.Int64Value(value).Level(repetition, 1, col))
 	}
 
-	s.currentRow = append(s.currentRow, parquet.Int64Value(s.currentTime*1000).Level(0, 0, newCol()))
-	s.currentRow = append(s.currentRow, parquet.Int64Value(c.interval.durationSeconds*1000).Level(0, 0, newCol()))
+	s.currentRow = append(s.currentRow, parquet.Int64Value(s.currentTime*1000*1000*1000).Level(0, 0, newCol()))
 
 	err := w.WriteRow(s.currentRow)
 	if err != nil {

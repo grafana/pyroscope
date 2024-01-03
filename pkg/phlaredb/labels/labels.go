@@ -1,4 +1,4 @@
-package phlaredb
+package labels
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 
 var labelNameServiceName = fmt.Sprintf("__%s__", phlaremodel.LabelNameServiceName)
 
-func labelsForProfile(p *profilev1.Profile, externalLabels ...*typesv1.LabelPair) ([]phlaremodel.Labels, []model.Fingerprint) {
+func CreateProfileLabels(p *profilev1.Profile, externalLabels ...*typesv1.LabelPair) ([]phlaremodel.Labels, []model.Fingerprint) {
 	// build label set per sample type before references are rewritten
 	var (
 		sb                                             strings.Builder

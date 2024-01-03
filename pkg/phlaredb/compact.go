@@ -217,9 +217,12 @@ func newBlockWriter(dst string, meta *block.Meta, rewriterFn SymbolsRewriterFn) 
 		return nil, err
 	}
 
-	downsampler, err := downsample.NewDownsampler(blockPath)
-	if err != nil {
-		return nil, err
+	var downsampler *downsample.Downsampler
+	if meta.Compaction.Level > 2 {
+		downsampler, err = downsample.NewDownsampler(blockPath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &blockWriter{
@@ -245,7 +248,7 @@ func (bw *blockWriter) WriteRow(r profileRow) error {
 	if err := bw.profilesWriter.WriteRow(r); err != nil {
 		return err
 	}
-	if bw.meta != nil && bw.meta.Compaction.Level > 2 {
+	if bw.downsampler != nil {
 		err := bw.downsampler.AddRow(r.row, r.fp)
 		if err != nil {
 			return err
@@ -266,8 +269,10 @@ func (bw *blockWriter) Close(ctx context.Context) error {
 	if err := bw.profilesWriter.Close(); err != nil {
 		return err
 	}
-	if err := bw.downsampler.Close(); err != nil {
-		return err
+	if bw.downsampler != nil {
+		if err := bw.downsampler.Close(); err != nil {
+			return err
+		}
 	}
 	metaFiles, err := metaFilesFromDir(bw.path)
 	if err != nil {
