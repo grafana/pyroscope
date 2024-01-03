@@ -9,6 +9,7 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -97,4 +98,46 @@ func NewDisableableTicker(interval time.Duration) (func(), <-chan time.Time) {
 
 	tick := time.NewTicker(interval)
 	return func() { tick.Stop() }, tick.C
+}
+
+// ForResolutions splits the given time range into the minimal number
+// of non-overlapping sub-ranges aligned with the given resolutions.
+func ForResolutions(start, end time.Time, resolutions []time.Duration, fn func(start, end time.Time)) {
+	var (
+		c = start       // Current range start position.
+		p time.Duration // Previous resolution.
+	)
+	sort.Slice(resolutions, func(j, i int) bool {
+		return resolutions[i] <= resolutions[j]
+	})
+	for c.Before(end) {
+		var x time.Duration = -1
+		// Find the lowest resolution aligned with the end time.
+		for _, r := range resolutions {
+			if c.UnixNano()%r.Nanoseconds() == 0 && c.Add(r).Before(end) {
+				x = r
+				break
+			}
+		}
+		if x < 0 {
+			// No suitable resolution found: add distance
+			// to the next closest aligned boundary.
+			r := resolutions[len(resolutions)-1]
+			d := c.UnixNano() % r.Nanoseconds()
+			x = r - time.Duration(d)
+		}
+		if end.Before(c.Add(x)) {
+			x = end.Sub(c)
+		}
+		// If the resolution has changed, emit a new range.
+		if p > 0 && x != p {
+			fn(start, c)
+			start = c
+		}
+		c = c.Add(x)
+		p = x
+	}
+	if start != c {
+		fn(start, c)
+	}
 }
