@@ -100,44 +100,65 @@ func NewDisableableTicker(interval time.Duration) (func(), <-chan time.Time) {
 	return func() { tick.Stop() }, tick.C
 }
 
-// ForResolutions splits the given time range into the minimal number
-// of non-overlapping sub-ranges aligned with the given resolutions.
-func ForResolutions(start, end time.Time, resolutions []time.Duration, fn func(start, end time.Time)) {
+type TimeRange struct {
+	Start      time.Time
+	End        time.Time
+	Resolution time.Duration
+}
+
+// SplitTimeRangeByResolution splits the given time range into the minimal
+// number of non-overlapping sub-ranges aligned with resolutions.
+func SplitTimeRangeByResolution(start, end time.Time, resolutions []time.Duration, fn func(TimeRange)) {
+	if len(resolutions) == 0 {
+		fn(TimeRange{Start: start, End: end})
+		return
+	}
 	var (
 		c = start       // Current range start position.
-		p time.Duration // Previous resolution.
+		r time.Duration // Current resolution.
+		p time.Duration // Previous step.
 	)
 	sort.Slice(resolutions, func(j, i int) bool {
 		return resolutions[i] <= resolutions[j]
 	})
 	for c.Before(end) {
-		var x time.Duration = -1
+		var d time.Duration = -1
 		// Find the lowest resolution aligned with the end time.
-		for _, r := range resolutions {
-			if c.UnixNano()%r.Nanoseconds() == 0 && c.Add(r).Before(end) {
-				x = r
+		for _, res := range resolutions {
+			if c.UnixNano()%res.Nanoseconds() == 0 && c.Add(res).Before(end) {
+				d = res
 				break
 			}
 		}
-		if x < 0 {
+		res := d
+		if d < 0 {
 			// No suitable resolution found: add distance
 			// to the next closest aligned boundary.
-			r := resolutions[len(resolutions)-1]
-			d := c.UnixNano() % r.Nanoseconds()
-			x = r - time.Duration(d)
+			l := resolutions[len(resolutions)-1]
+			d = l - time.Duration(c.UnixNano()%l.Nanoseconds())
 		}
-		if end.Before(c.Add(x)) {
-			x = end.Sub(c)
+		if end.Before(c.Add(d)) {
+			d = end.Sub(c)
 		}
 		// If the resolution has changed, emit a new range.
-		if p > 0 && x != p {
-			fn(start, c)
+		if p > 0 && d != p {
+			fn(TimeRange{
+				Start: start,
+				// Ranges are inclusive.
+				End:        c.Add(-time.Millisecond),
+				Resolution: r,
+			})
 			start = c
 		}
-		c = c.Add(x)
-		p = x
+		c = c.Add(d)
+		r = res
+		p = d
 	}
 	if start != c {
-		fn(start, c)
+		fn(TimeRange{
+			Start:      start,
+			End:        c,
+			Resolution: r,
+		})
 	}
 }

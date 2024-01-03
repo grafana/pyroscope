@@ -7,6 +7,7 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
+	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -45,11 +46,13 @@ func WithMaxConcurrent(n int) ResolverOption {
 }
 
 type lazyPartition struct {
-	id      uint64
-	reader  chan PartitionReader
+	m       sync.Mutex
 	samples map[uint32]int64
-	err     chan error
-	done    chan struct{}
+
+	id     uint64
+	reader chan PartitionReader
+	err    chan error
+	done   chan struct{}
 }
 
 func NewResolver(ctx context.Context, s SymbolsReader) *Resolver {
@@ -72,35 +75,51 @@ func (r *Resolver) Release() {
 }
 
 // AddSamples adds a collection of stack trace samples to the resolver.
-// Samples can be added to different partitions concurrently, but modification
-// of the same partition is not thread-safe.
+// Samples can be added to partitions concurrently.
 func (r *Resolver) AddSamples(partition uint64, s schemav1.Samples) {
-	p := r.Partition(partition)
+	p := r.partition(partition)
+	p.m.Lock()
+	defer p.m.Unlock()
 	for i, sid := range s.StacktraceIDs {
 		if sid > 0 {
-			p[sid] += int64(s.Values[i])
+			p.samples[sid] += int64(s.Values[i])
 		}
 	}
 }
 
 func (r *Resolver) AddSamplesWithSpanSelector(partition uint64, s schemav1.Samples, spanSelector model.SpanSelector) {
-	p := r.Partition(partition)
+	p := r.partition(partition)
+	p.m.Lock()
+	defer p.m.Unlock()
 	for i, sid := range s.StacktraceIDs {
 		if _, ok := spanSelector[s.Spans[i]]; ok {
-			p[sid] += int64(s.Values[i])
+			p.samples[sid] += int64(s.Values[i])
 		}
 	}
 }
 
-// Partition returns map of samples corresponding to the partition.
-// The function initializes symbols of the partition on the first occurrence.
-// The call is thread-safe, but access to the returned map is not.
-func (r *Resolver) Partition(partition uint64) map[uint32]int64 {
+func (r *Resolver) AddSamplesFromParquetRow(partition uint64, stacktraceIDs, values []parquet.Value) {
+	p := r.partition(partition)
+	p.m.Lock()
+	defer p.m.Unlock()
+	for i, sid := range stacktraceIDs {
+		p.samples[sid.Uint32()] += values[i].Int64()
+	}
+}
+
+func (r *Resolver) WithPartitionSamples(partition uint64, fn func(map[uint32]int64)) {
+	p := r.partition(partition)
+	p.m.Lock()
+	defer p.m.Unlock()
+	fn(p.samples)
+}
+
+func (r *Resolver) partition(partition uint64) *lazyPartition {
 	r.m.Lock()
 	p, ok := r.p[partition]
 	if ok {
 		r.m.Unlock()
-		return p.samples
+		return p
 	}
 	p = &lazyPartition{
 		id:      partition,
@@ -115,7 +134,7 @@ func (r *Resolver) Partition(partition uint64) map[uint32]int64 {
 		return r.acquirePartition(p)
 	})
 	// r.g.Wait() is only called at Resolver.Release.
-	return p.samples
+	return p
 }
 
 func (r *Resolver) acquirePartition(p *lazyPartition) error {

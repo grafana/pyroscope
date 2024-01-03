@@ -25,7 +25,6 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
 	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
@@ -1324,70 +1323,4 @@ func TestSelectMergeByStacktracesRace(t *testing.T) {
 
 	require.NoError(t, g.Wait())
 	require.NoError(t, querier.Close())
-}
-
-func Test_singleBlockQuerier_lowResProfileSource(t *testing.T) {
-	q := &singleBlockQuerier{
-		profiles: map[profileTableKey]*parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]{
-			{}: {meta: block.File{RelPath: "profiles.parquet"}},
-
-			{resolution: 5 * time.Minute, aggregation: "avg"}: {
-				meta: block.File{RelPath: "profiles_5m_avg.parquet"},
-			},
-
-			{resolution: 5 * time.Minute, aggregation: "sum"}: {
-				meta: block.File{RelPath: "profiles_5m_sum.parquet"},
-			},
-
-			{resolution: time.Hour, aggregation: "avg"}: {
-				meta: block.File{RelPath: "profiles_1h_avg.parquet"},
-			},
-
-			{resolution: time.Hour, aggregation: "sum"}: {
-				meta: block.File{RelPath: "profiles_1h_sum.parquet"},
-			},
-		},
-	}
-
-	for _, tc := range []struct {
-		desc        string
-		start       time.Duration
-		end         time.Duration
-		aggregation typesv1.TimeSeriesAggregationType
-		expected    profileTableKey
-	}{
-		{
-			desc:     "lowest_resolution",
-			end:      time.Hour - time.Millisecond,
-			expected: profileTableKey{resolution: time.Hour, aggregation: "sum"},
-		},
-		{
-			desc: "no_suitable_tables",
-			end:  time.Hour - 2*time.Millisecond,
-			// Uses source table.
-		},
-		{
-			desc:     "has_suitable_resolution",
-			start:    15 * time.Minute,
-			end:      time.Hour - 5*time.Minute - time.Millisecond,
-			expected: profileTableKey{resolution: 5 * time.Minute, aggregation: "sum"},
-		},
-		{
-			desc:        "avg_aggregation",
-			start:       15 * time.Minute,
-			end:         time.Hour - 5*time.Minute - time.Millisecond,
-			aggregation: typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE,
-			expected:    profileTableKey{resolution: 5 * time.Minute, aggregation: "avg"},
-		},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			assert.Equal(t,
-				q.profiles[tc.expected],
-				q.lowResProfileSource(&ingestv1.SelectProfilesRequest{
-					Start:       tc.start.Milliseconds(),
-					End:         tc.end.Milliseconds(),
-					Aggregation: &tc.aggregation,
-				}))
-		})
-	}
 }

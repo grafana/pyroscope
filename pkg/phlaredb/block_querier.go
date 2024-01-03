@@ -324,69 +324,8 @@ func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlar
 	return q
 }
 
-func parseProfileTableName(n string) (profileTableKey, bool) {
-	if n == "profiles.parquet" {
-		return profileTableKey{}, true
-	}
-	parts := strings.Split(strings.TrimSuffix(n, block.ParquetSuffix), "_")
-	if len(parts) != 3 || parts[0] != "profiles" {
-		return profileTableKey{}, false
-	}
-	r, err := time.ParseDuration(parts[1])
-	if err != nil {
-		return profileTableKey{}, false
-	}
-	return profileTableKey{
-		resolution:  r,
-		aggregation: parts[2],
-	}, true
-}
-
 func (b *singleBlockQuerier) Profiles() ProfileReader {
-	return b.originalProfileSource()
-}
-
-func (b *singleBlockQuerier) originalProfileSource() parquetobj.File {
 	return b.profileSourceTable().file
-}
-
-func (b *singleBlockQuerier) profileSourceTable() *parquetReader[*schemav1.Profile, *schemav1.ProfilePersister] {
-	return b.profiles[profileTableKey{}]
-}
-
-// lowResProfileSource returns profiles parquet table reader with the lowest
-// resolution for the given aggregation type.
-//
-// Query time range start and end must be aligned with the down-sample resolution.
-// If there is no suitable alternative, it returns the source profile table.
-func (b *singleBlockQuerier) lowResProfileSource(req *ingestv1.SelectProfilesRequest) *parquetReader[*schemav1.Profile, *schemav1.ProfilePersister] {
-	aggregation := "sum" // TODO: Use constants defined in the `downsample` package.
-	if req.GetAggregation() == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE {
-		aggregation = "avg"
-	}
-	// FIXME: Resolution should be determined at query planning phase,
-	//  and passed as a query parameter.
-	// Due to the fact that a query time range is inclusive, its upper
-	// boundary is typically not aligned with the resolution. For example,
-	// query time range [10:290] is to be split into tree sub-ranges:
-	// [10:99], [100:199], [200:290] (given split interval is 100).
-	// 99 and 199 are likely not aligned with the down-sample resolution,
-	// which prevents leveraging the down-sampled data. To work around
-	// this, we extend the query time range by min step (1 ms).
-	return b.profiles[b.lowResProfileSourceForTimeRange(req.Start, req.End+1, aggregation)]
-}
-
-func (b *singleBlockQuerier) lowResProfileSourceForTimeRange(start, end int64, aggregation string) profileTableKey {
-	var t profileTableKey
-	for k := range b.profiles {
-		r := k.resolution.Milliseconds()
-		if k.aggregation == aggregation &&
-			k.resolution > t.resolution &&
-			start%r == 0 && end%r == 0 {
-			t = k
-		}
-	}
-	return t
 }
 
 func (b *singleBlockQuerier) Index() IndexReader {
@@ -1787,43 +1726,49 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
 
-	profiles := b.lowResProfileSource(params)
-	it := query.NewBinaryJoinIterator(
-		0,
-		profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
-		profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), ""),
-	)
+	g, ctx := errgroup.WithContext(ctx)
+	util.SplitTimeRangeByResolution(time.UnixMilli(params.Start), time.UnixMilli(params.End), b.downSampleResolutions(), func(tr util.TimeRange) {
+		g.Go(func() error {
+			profiles := b.profileTable(tr.Resolution, params.GetAggregation())
+			it := query.NewBinaryJoinIterator(
+				0,
+				profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
+				profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(tr.Start.UnixNano(), tr.End.UnixNano()), ""),
+			)
 
-	if b.meta.Version >= 2 {
-		it = query.NewBinaryJoinIterator(0,
-			it,
-			profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
-		)
-	}
-	buf := make([][]parquet.Value, 1)
+			if b.meta.Version >= 2 {
+				it = query.NewBinaryJoinIterator(0,
+					it,
+					profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
+				)
+			}
+			buf := make([][]parquet.Value, 1)
 
-	// todo: we should stream profile to merge instead of loading all in memory.
-	// This is a temporary solution for now since there's a memory corruption happening.
-	rows, err := iter.Slice[rowProfile](
-		&RowsIterator[rowProfile]{
-			rows: it,
-			at: func(ir *query.IteratorResult) rowProfile {
-				buf = ir.Columns(buf, "StacktracePartition")
-				if len(buf[0]) == 0 {
-					return rowProfile{
-						rowNum: ir.RowNumber[0],
-					}
-				}
-				return rowProfile{
-					rowNum:    ir.RowNumber[0],
-					partition: buf[0][0].Uint64(),
-				}
-			},
+			// todo: we should stream profile to merge instead of loading all in memory.
+			// This is a temporary solution for now since there's a memory corruption happening.
+			rows, err := iter.Slice[rowProfile](
+				&RowsIterator[rowProfile]{
+					rows: it,
+					at: func(ir *query.IteratorResult) rowProfile {
+						buf = ir.Columns(buf, "StacktracePartition")
+						if len(buf[0]) == 0 {
+							return rowProfile{
+								rowNum: ir.RowNumber[0],
+							}
+						}
+						return rowProfile{
+							rowNum:    ir.RowNumber[0],
+							partition: buf[0][0].Uint64(),
+						}
+					},
+				})
+			if err != nil {
+				return err
+			}
+			return mergeByStacktraces[rowProfile](ctx, profiles.file, iter.NewSliceIterator(rows), r)
 		})
-	if err != nil {
-		return nil, err
-	}
-	if err := mergeByStacktraces[rowProfile](ctx, profiles.file, iter.NewSliceIterator(rows), r); err != nil {
+	})
+	if err = g.Wait(); err != nil {
 		return nil, err
 	}
 	return r.Tree()
@@ -1951,43 +1896,49 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
 
-	profiles := b.lowResProfileSource(params)
-	it := query.NewBinaryJoinIterator(
-		0,
-		profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
-		profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), ""),
-	)
+	g, ctx := errgroup.WithContext(ctx)
+	util.SplitTimeRangeByResolution(time.UnixMilli(params.Start), time.UnixMilli(params.End), b.downSampleResolutions(), func(tr util.TimeRange) {
+		g.Go(func() error {
+			profiles := b.profileTable(tr.Resolution, params.GetAggregation())
+			it := query.NewBinaryJoinIterator(
+				0,
+				profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
+				profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(tr.Start.UnixNano(), tr.End.UnixNano()), ""),
+			)
 
-	if b.meta.Version >= 2 {
-		it = query.NewBinaryJoinIterator(0,
-			it,
-			profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
-		)
-	}
-	buf := make([][]parquet.Value, 1)
+			if b.meta.Version >= 2 {
+				it = query.NewBinaryJoinIterator(0,
+					it,
+					profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
+				)
+			}
+			buf := make([][]parquet.Value, 1)
 
-	// todo: we should stream profile to merge instead of loading all in memory.
-	// This is a temporary solution for now since there's a memory corruption happening.
-	rows, err := iter.Slice[rowProfile](
-		&RowsIterator[rowProfile]{
-			rows: it,
-			at: func(ir *query.IteratorResult) rowProfile {
-				buf = ir.Columns(buf, "StacktracePartition")
-				if len(buf[0]) == 0 {
-					return rowProfile{
-						rowNum: ir.RowNumber[0],
-					}
-				}
-				return rowProfile{
-					rowNum:    ir.RowNumber[0],
-					partition: buf[0][0].Uint64(),
-				}
-			},
+			// todo: we should stream profile to merge instead of loading all in memory.
+			// This is a temporary solution for now since there's a memory corruption happening.
+			rows, err := iter.Slice[rowProfile](
+				&RowsIterator[rowProfile]{
+					rows: it,
+					at: func(ir *query.IteratorResult) rowProfile {
+						buf = ir.Columns(buf, "StacktracePartition")
+						if len(buf[0]) == 0 {
+							return rowProfile{
+								rowNum: ir.RowNumber[0],
+							}
+						}
+						return rowProfile{
+							rowNum:    ir.RowNumber[0],
+							partition: buf[0][0].Uint64(),
+						}
+					},
+				})
+			if err != nil {
+				return err
+			}
+			return mergeByStacktraces[rowProfile](ctx, profiles.file, iter.NewSliceIterator(rows), r)
 		})
-	if err != nil {
-		return nil, err
-	}
-	if err := mergeByStacktraces[rowProfile](ctx, profiles.file, iter.NewSliceIterator(rows), r); err != nil {
+	})
+	if err = g.Wait(); err != nil {
 		return nil, err
 	}
 	return r.Pprof(maxNodes)
@@ -2209,6 +2160,60 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 	}))
 
 	return g.Wait()
+}
+
+func (b *singleBlockQuerier) profileSourceTable() *parquetReader[*schemav1.Profile, *schemav1.ProfilePersister] {
+	return b.profiles[profileTableKey{}]
+}
+
+func (b *singleBlockQuerier) profileTable(resolution time.Duration, aggregation typesv1.TimeSeriesAggregationType) *parquetReader[*schemav1.Profile, *schemav1.ProfilePersister] {
+	if t, ok := b.profiles[profileTableKey{
+		resolution:  resolution,
+		aggregation: downSampleAggregation(aggregation),
+	}]; ok {
+		return t
+	}
+	return b.profileSourceTable()
+}
+
+func (b *singleBlockQuerier) downSampleResolutions() []time.Duration {
+	if len(b.profiles) < 2 {
+		// b.profiles contains only the table of original resolution.
+		return nil
+	}
+	resolutions := make([]time.Duration, 0, len(b.profiles)-1)
+	for k := range b.profiles {
+		if k.resolution > 0 {
+			resolutions = append(resolutions, k.resolution)
+		}
+	}
+	return resolutions
+}
+
+func downSampleAggregation(v typesv1.TimeSeriesAggregationType) string {
+	// TODO: Use constants defined in the `downsample` package.
+	if v == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE {
+		return "avg"
+	}
+	return "sum"
+}
+
+func parseProfileTableName(n string) (profileTableKey, bool) {
+	if n == "profiles.parquet" {
+		return profileTableKey{}, true
+	}
+	parts := strings.Split(strings.TrimSuffix(n, block.ParquetSuffix), "_")
+	if len(parts) != 3 || parts[0] != "profiles" {
+		return profileTableKey{}, false
+	}
+	r, err := time.ParseDuration(parts[1])
+	if err != nil {
+		return profileTableKey{}, false
+	}
+	return profileTableKey{
+		resolution:  r,
+		aggregation: parts[2],
+	}, true
 }
 
 type parquetReader[M schemav1.Models, P schemav1.PersisterName] struct {

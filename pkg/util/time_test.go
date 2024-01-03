@@ -16,25 +16,17 @@ func Test_ForResolutions(t *testing.T) {
 		time.Minute * 5,
 	}
 
-	type timeRange struct {
-		start, end time.Time
-		resolution time.Duration
+	expected := []TimeRange{
+		{Start: mustTime("15:04:01"), End: mustTime("15:05:00").Add(-time.Millisecond), Resolution: -1},
+		{Start: mustTime("15:05:00"), End: mustTime("16:00:00").Add(-time.Millisecond), Resolution: time.Minute * 5},
+		{Start: mustTime("16:00:00"), End: mustTime("20:00:00").Add(-time.Millisecond), Resolution: time.Hour},
+		{Start: mustTime("20:00:00"), End: mustTime("20:05:00").Add(-time.Millisecond), Resolution: time.Minute * 5},
+		{Start: mustTime("20:05:00"), End: mustTime("20:09:59"), Resolution: -1},
 	}
 
-	expected := []timeRange{
-		{start: mustTime("15:04:01"), end: mustTime("15:05:00")},
-		{start: mustTime("15:05:00"), end: mustTime("16:00:00")},
-		{start: mustTime("16:00:00"), end: mustTime("20:00:00")},
-		{start: mustTime("20:00:00"), end: mustTime("20:05:00")},
-		{start: mustTime("20:05:00"), end: mustTime("20:09:59")},
-	}
-
-	actual := make([]timeRange, 0, len(expected))
-	ForResolutions(start, end, resolutions, func(start, end time.Time) {
-		actual = append(actual, timeRange{
-			start: start,
-			end:   end,
-		})
+	actual := make([]TimeRange, 0, len(expected))
+	SplitTimeRangeByResolution(start, end, resolutions, func(r TimeRange) {
+		actual = append(actual, r)
 	})
 
 	assert.Equal(t, expected, actual)
