@@ -198,6 +198,8 @@ type blocksMetrics struct {
 
 	blockOpeningLatency prometheus.Histogram
 	blockOpened         prometheus.Gauge
+
+	profileTableAccess *prometheus.CounterVec
 }
 
 func newBlocksMetrics(reg prometheus.Registerer) *blocksMetrics {
@@ -211,6 +213,10 @@ func newBlocksMetrics(reg prometheus.Registerer) *blocksMetrics {
 			Name: "pyroscopedb_blocks_currently_open",
 			Help: "Number of blocks opened",
 		}),
+		profileTableAccess: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "pyroscopedb_blocks_profile_table_accesses_total",
+			Help: "Number of times a profile table was accessed",
+		}, []string{"table_name"}),
 	}
 	m.blockOpeningLatency = util.RegisterOrGet(reg, m.blockOpeningLatency)
 	m.blockOpened = util.RegisterOrGet(reg, m.blockOpened)

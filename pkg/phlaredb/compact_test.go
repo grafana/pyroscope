@@ -94,17 +94,17 @@ func TestCompactWithDownsampling(t *testing.T) {
 	ctx := context.Background()
 	b := newBlock(t, func() []*testhelper.ProfileBuilder {
 		return []*testhelper.ProfileBuilder{
-			testhelper.NewProfileBuilder(int64(time.Second*1)).
+			testhelper.NewProfileBuilder(int64(time.Hour-time.Minute)).
 				CPUProfile().
 				WithLabels(
 					"job", "a",
 				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
-			testhelper.NewProfileBuilder(int64(time.Second*2)).
+			testhelper.NewProfileBuilder(int64(time.Hour+time.Minute)).
 				CPUProfile().
 				WithLabels(
 					"job", "b",
 				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
-			testhelper.NewProfileBuilder(int64(time.Second*3)).
+			testhelper.NewProfileBuilder(int64(time.Hour+6*time.Minute)).
 				CPUProfile().
 				WithLabels(
 					"job", "c",
@@ -118,8 +118,8 @@ func TestCompactWithDownsampling(t *testing.T) {
 	require.Equal(t, uint64(3), compacted.Stats.NumProfiles)
 	require.Equal(t, uint64(3), compacted.Stats.NumSamples)
 	require.Equal(t, uint64(3), compacted.Stats.NumSeries)
-	require.Equal(t, model.TimeFromUnix(1), compacted.MinTime)
-	require.Equal(t, model.TimeFromUnix(3), compacted.MaxTime)
+	require.Equal(t, model.Time((time.Hour - time.Minute).Milliseconds()), compacted.MinTime)
+	require.Equal(t, model.Time((time.Hour + 6*time.Minute).Milliseconds()), compacted.MaxTime)
 
 	for _, f := range []*block.File{
 		compacted.FileByRelPath("profiles_5m_sum.parquet"),
@@ -134,16 +134,16 @@ func TestCompactWithDownsampling(t *testing.T) {
 		LabelSelector: "{}",
 		Type:          mustParseProfileSelector(t, "process_cpu:cpu:nanoseconds:cpu:nanoseconds"),
 		Start:         0,
-		End:           3600000,
+		End:           (time.Hour + 7*time.Minute - time.Millisecond).Milliseconds(),
 	}
 	it, err := querier.SelectMatchingProfiles(ctx, matchAll)
 	require.NoError(t, err)
 	series, err := querier.MergeByLabels(ctx, it, "job")
 	require.NoError(t, err)
 	require.Equal(t, []*typesv1.Series{
-		{Labels: phlaremodel.LabelsFromStrings("job", "a"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(1000)}}},
-		{Labels: phlaremodel.LabelsFromStrings("job", "b"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(2000)}}},
-		{Labels: phlaremodel.LabelsFromStrings("job", "c"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(3000)}}},
+		{Labels: phlaremodel.LabelsFromStrings("job", "a"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour - time.Minute).Milliseconds()}}},
+		{Labels: phlaremodel.LabelsFromStrings("job", "b"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour + time.Minute).Milliseconds()}}},
+		{Labels: phlaremodel.LabelsFromStrings("job", "c"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour + 6*time.Minute).Milliseconds()}}},
 	}, series)
 
 	it, err = querier.SelectMatchingProfiles(ctx, matchAll)
@@ -159,6 +159,11 @@ func TestCompactWithDownsampling(t *testing.T) {
 	res, err = querier.SelectMergeByStacktraces(ctx, matchAll)
 	require.NoError(t, err)
 	require.NotNil(t, res)
+	require.Equal(t, expected.String(), res.String())
+	assert.False(t, querier.metrics.profileTableAccess.DeleteLabelValues(""))
+	assert.True(t, querier.metrics.profileTableAccess.DeleteLabelValues("profiles_5m_sum.parquet"))
+	assert.True(t, querier.metrics.profileTableAccess.DeleteLabelValues("profiles_1h_sum.parquet"))
+	assert.True(t, querier.metrics.profileTableAccess.DeleteLabelValues("profiles.parquet"))
 }
 
 func TestCompactWithSplitting(t *testing.T) {
@@ -664,7 +669,7 @@ func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) *sing
 	return blk
 }
 
-func blockQuerierFromMeta(t *testing.T, dir string, m block.Meta) Querier {
+func blockQuerierFromMeta(t *testing.T, dir string, m block.Meta) *singleBlockQuerier {
 	t.Helper()
 	ctx := context.Background()
 	bkt, err := client.NewBucket(ctx, client.Config{

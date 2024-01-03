@@ -2163,17 +2163,24 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 }
 
 func (b *singleBlockQuerier) profileSourceTable() *parquetReader[*schemav1.Profile, *schemav1.ProfilePersister] {
-	return b.profiles[profileTableKey{}]
+	return b.profileTable(0, 0)
 }
 
-func (b *singleBlockQuerier) profileTable(resolution time.Duration, aggregation typesv1.TimeSeriesAggregationType) *parquetReader[*schemav1.Profile, *schemav1.ProfilePersister] {
-	if t, ok := b.profiles[profileTableKey{
+func (b *singleBlockQuerier) profileTable(resolution time.Duration, aggregation typesv1.TimeSeriesAggregationType) (t *parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]) {
+	defer func() {
+		if t != nil {
+			b.metrics.profileTableAccess.WithLabelValues(t.meta.RelPath).Inc()
+		}
+	}()
+	var ok bool
+	t, ok = b.profiles[profileTableKey{
 		resolution:  resolution,
 		aggregation: downSampleAggregation(aggregation),
-	}]; ok {
+	}]
+	if ok {
 		return t
 	}
-	return b.profileSourceTable()
+	return b.profiles[profileTableKey{}]
 }
 
 func (b *singleBlockQuerier) downSampleResolutions() []time.Duration {
@@ -2198,12 +2205,14 @@ func downSampleAggregation(v typesv1.TimeSeriesAggregationType) string {
 	return "sum"
 }
 
+const profileTableName = "profiles"
+
 func parseProfileTableName(n string) (profileTableKey, bool) {
-	if n == "profiles.parquet" {
+	if n == profileTableName+block.ParquetSuffix {
 		return profileTableKey{}, true
 	}
 	parts := strings.Split(strings.TrimSuffix(n, block.ParquetSuffix), "_")
-	if len(parts) != 3 || parts[0] != "profiles" {
+	if len(parts) != 3 || parts[0] != profileTableName {
 		return profileTableKey{}, false
 	}
 	r, err := time.ParseDuration(parts[1])
