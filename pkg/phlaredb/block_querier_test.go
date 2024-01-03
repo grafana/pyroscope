@@ -1358,11 +1358,6 @@ func Test_singleBlockQuerier_lowResProfileSource(t *testing.T) {
 	}{
 		{
 			desc:     "lowest_resolution",
-			end:      time.Hour,
-			expected: profileTableKey{resolution: time.Hour, aggregation: "sum"},
-		},
-		{
-			desc:     "alignment_issue",
 			end:      time.Hour - time.Millisecond,
 			expected: profileTableKey{resolution: time.Hour, aggregation: "sum"},
 		},
@@ -1372,15 +1367,15 @@ func Test_singleBlockQuerier_lowResProfileSource(t *testing.T) {
 			// Uses source table.
 		},
 		{
-			desc:     "suitable_resolution",
+			desc:     "has_suitable_resolution",
 			start:    15 * time.Minute,
-			end:      time.Hour - 5*time.Minute,
+			end:      time.Hour - 5*time.Minute - time.Millisecond,
 			expected: profileTableKey{resolution: 5 * time.Minute, aggregation: "sum"},
 		},
 		{
 			desc:        "avg_aggregation",
 			start:       15 * time.Minute,
-			end:         time.Hour - 5*time.Minute,
+			end:         time.Hour - 5*time.Minute - time.Millisecond,
 			aggregation: typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE,
 			expected:    profileTableKey{resolution: 5 * time.Minute, aggregation: "avg"},
 		},

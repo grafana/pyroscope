@@ -360,27 +360,20 @@ func (b *singleBlockQuerier) profileSourceTable() *parquetReader[*schemav1.Profi
 // Query time range start and end must be aligned with the down-sample resolution.
 // If there is no suitable alternative, it returns the source profile table.
 func (b *singleBlockQuerier) lowResProfileSource(req *ingestv1.SelectProfilesRequest) *parquetReader[*schemav1.Profile, *schemav1.ProfilePersister] {
-	var t profileTableKey
 	aggregation := "sum" // TODO: Use constants defined in the `downsample` package.
 	if req.GetAggregation() == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE {
 		aggregation = "avg"
 	}
 	// FIXME: Resolution should be determined at query planning phase,
 	//  and passed as a query parameter.
-	if t = b.lowResProfileSourceForTimeRange(req.Start, req.End, aggregation); t == (profileTableKey{}) {
-		// Due to the fact that query time range is inclusive, its upper
-		// boundary is typically not aligned with the resolution. For example,
-		// query time range [10:290] is to be split into tree sub-ranges:
-		// [10:99], [100:199], [200:290] (given split interval is 100).
-		// 99 and 199 are likely not aligned with the down-sample resolution,
-		// which prevents leveraging the down-sampled data. To work around
-		// this, we extend the query time range by min step (1 ms).
-		// As a side effect, queries will use down-sampled data even if the
-		// original query time range is less than the resolution by 1 ms.
-		// Practical implications of this are negligible.
-		t = b.lowResProfileSourceForTimeRange(req.Start, req.End+1, aggregation)
-	}
-	return b.profiles[t]
+	// Due to the fact that a query time range is inclusive, its upper
+	// boundary is typically not aligned with the resolution. For example,
+	// query time range [10:290] is to be split into tree sub-ranges:
+	// [10:99], [100:199], [200:290] (given split interval is 100).
+	// 99 and 199 are likely not aligned with the down-sample resolution,
+	// which prevents leveraging the down-sampled data. To work around
+	// this, we extend the query time range by min step (1 ms).
+	return b.profiles[b.lowResProfileSourceForTimeRange(req.Start, req.End+1, aggregation)]
 }
 
 func (b *singleBlockQuerier) lowResProfileSourceForTimeRange(start, end int64, aggregation string) profileTableKey {
