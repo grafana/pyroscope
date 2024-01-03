@@ -77,34 +77,31 @@ func (r *Resolver) Release() {
 // AddSamples adds a collection of stack trace samples to the resolver.
 // Samples can be added to partitions concurrently.
 func (r *Resolver) AddSamples(partition uint64, s schemav1.Samples) {
-	p := r.partition(partition)
-	p.m.Lock()
-	defer p.m.Unlock()
-	for i, sid := range s.StacktraceIDs {
-		if sid > 0 {
-			p.samples[sid] += int64(s.Values[i])
+	r.WithPartitionSamples(partition, func(samples map[uint32]int64) {
+		for i, sid := range s.StacktraceIDs {
+			if sid > 0 {
+				samples[sid] += int64(s.Values[i])
+			}
 		}
-	}
-}
-
-func (r *Resolver) AddSamplesWithSpanSelector(partition uint64, s schemav1.Samples, spanSelector model.SpanSelector) {
-	p := r.partition(partition)
-	p.m.Lock()
-	defer p.m.Unlock()
-	for i, sid := range s.StacktraceIDs {
-		if _, ok := spanSelector[s.Spans[i]]; ok {
-			p.samples[sid] += int64(s.Values[i])
-		}
-	}
+	})
 }
 
 func (r *Resolver) AddSamplesFromParquetRow(partition uint64, stacktraceIDs, values []parquet.Value) {
-	p := r.partition(partition)
-	p.m.Lock()
-	defer p.m.Unlock()
-	for i, sid := range stacktraceIDs {
-		p.samples[sid.Uint32()] += values[i].Int64()
-	}
+	r.WithPartitionSamples(partition, func(samples map[uint32]int64) {
+		for i, sid := range stacktraceIDs {
+			samples[sid.Uint32()] += values[i].Int64()
+		}
+	})
+}
+
+func (r *Resolver) AddSamplesWithSpanSelector(partition uint64, s schemav1.Samples, spanSelector model.SpanSelector) {
+	r.WithPartitionSamples(partition, func(samples map[uint32]int64) {
+		for i, sid := range s.StacktraceIDs {
+			if _, ok := spanSelector[s.Spans[i]]; ok {
+				samples[sid] += int64(s.Values[i])
+			}
+		}
+	})
 }
 
 func (r *Resolver) WithPartitionSamples(partition uint64, fn func(map[uint32]int64)) {
