@@ -2,6 +2,8 @@ package storegateway
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/pyroscope/pkg/phlaredb"
 )
 
 type Metrics struct {
@@ -11,6 +13,8 @@ type Metrics struct {
 	blockLoadFailures prometheus.Counter
 	blockDrops        prometheus.Counter
 	blockDropFailures prometheus.Counter
+
+	blockMetrics *phlaredb.BlocksMetrics
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
@@ -40,5 +44,6 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		Help: "Total number of local blocks that failed to be dropped.",
 	})
 	reg.MustRegister(m.Synced, m.blockDropFailures, m.blockDrops, m.blockLoadFailures, m.blockLoads)
+	m.blockMetrics = phlaredb.NewBlocksMetrics(reg)
 	return &m
 }

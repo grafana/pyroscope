@@ -24,6 +24,7 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
@@ -37,6 +38,7 @@ func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergePprof - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
@@ -50,6 +52,7 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	columnName := "TotalValue"
 	if b.meta.Version == 1 {
@@ -62,6 +65,7 @@ func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, rows iter.Iterato
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeBySpans - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()

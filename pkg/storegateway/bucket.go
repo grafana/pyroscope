@@ -44,7 +44,7 @@ type BucketStore struct {
 	stats   BucketStoreStats
 }
 
-func NewBucketStore(bucket phlareobj.Bucket, fetcher block.MetadataFetcher, tenantID string, syncDir string, logger log.Logger, Metrics *Metrics) (*BucketStore, error) {
+func NewBucketStore(bucket phlareobj.Bucket, fetcher block.MetadataFetcher, tenantID string, syncDir string, logger log.Logger, metrics *Metrics) (*BucketStore, error) {
 	s := &BucketStore{
 		fetcher:  fetcher,
 		bucket:   phlareobj.NewTenantBucketClient(tenantID, bucket, nil),
@@ -53,7 +53,7 @@ func NewBucketStore(bucket phlareobj.Bucket, fetcher block.MetadataFetcher, tena
 		logger:   logger,
 		blockSet: newBucketBlockSet(),
 		blocks:   map[ulid.ULID]*Block{},
-		metrics:  Metrics,
+		metrics:  metrics,
 	}
 
 	if err := os.MkdirAll(syncDir, 0o750); err != nil {
@@ -176,7 +176,7 @@ func (bs *BucketStore) addBlock(ctx context.Context, meta *block.Meta) (err erro
 	b, err := func() (*Block, error) {
 		bs.blocksMx.Lock()
 		defer bs.blocksMx.Unlock()
-
+		ctx = phlaredb.ContextWithBlockMetrics(ctx, bs.metrics.blockMetrics)
 		b, err := bs.createBlock(ctx, meta)
 		if err != nil {
 			return nil, errors.Wrap(err, "load block from disk")

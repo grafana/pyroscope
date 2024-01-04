@@ -70,8 +70,8 @@ type BlockQuerier struct {
 
 func NewBlockQuerier(phlarectx context.Context, bucketReader phlareobj.Bucket) *BlockQuerier {
 	return &BlockQuerier{
-		phlarectx: contextWithBlockMetrics(phlarectx,
-			newBlocksMetrics(
+		phlarectx: ContextWithBlockMetrics(phlarectx,
+			NewBlocksMetrics(
 				phlarecontext.Registry(phlarectx),
 			),
 		),
@@ -286,7 +286,7 @@ func (b *BlockQuerier) BlockInfo() []BlockInfo {
 
 type singleBlockQuerier struct {
 	logger  log.Logger
-	metrics *blocksMetrics
+	metrics *BlocksMetrics
 
 	bucket phlareobj.Bucket
 	meta   *block.Meta
@@ -308,7 +308,7 @@ type profileTableKey struct {
 func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlareobj.Bucket, meta *block.Meta) *singleBlockQuerier {
 	q := &singleBlockQuerier{
 		logger:   phlarecontext.Logger(phlarectx),
-		metrics:  contextBlockMetrics(phlarectx),
+		metrics:  blockMetricsFromContext(phlarectx),
 		profiles: make(map[profileTableKey]*parquetReader[*schemav1.Profile, *schemav1.ProfilePersister], 3),
 		bucket:   phlareobj.NewPrefixedBucket(bucketReader, meta.ULID.String()),
 		meta:     meta,
@@ -1607,6 +1607,7 @@ func (b *singleBlockQuerier) SelectMergeByLabels(ctx context.Context, params *in
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByLabels - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	if err := b.Open(ctx); err != nil {
 		return nil, err
@@ -1646,6 +1647,7 @@ func (b *singleBlockQuerier) SelectMergeByLabels(ctx context.Context, params *in
 			lblsPerRef[int64(chks[0].SeriesIndex)] = info
 		}
 	}
+
 	profiles := b.profileSourceTable()
 	it := query.NewBinaryJoinIterator(
 		0,
@@ -1692,6 +1694,7 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByStacktraces - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	if err := b.Open(ctx); err != nil {
 		return nil, err
@@ -1778,6 +1781,7 @@ func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ing
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeBySpans - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	if err := b.Open(ctx); err != nil {
 		return nil, err
@@ -1862,6 +1866,7 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergePprof - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	if err := b.Open(ctx); err != nil {
 		return nil, err
@@ -2131,7 +2136,7 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 		sp.Finish()
 	}()
 
-	ctx = contextWithBlockMetrics(ctx, q.metrics)
+	ctx = ContextWithBlockMetrics(ctx, q.metrics)
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(util.RecoverPanic(func() error {
 		return q.openTSDBIndex(ctx)
@@ -2229,11 +2234,11 @@ type parquetReader[M schemav1.Models, P schemav1.PersisterName] struct {
 	persister P
 	file      parquetobj.File
 	meta      block.File
-	metrics   *blocksMetrics
+	metrics   *BlocksMetrics
 }
 
 func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader phlareobj.BucketReader) error {
-	r.metrics = contextBlockMetrics(ctx)
+	r.metrics = blockMetricsFromContext(ctx)
 	return r.file.Open(
 		ctx,
 		bucketReader,

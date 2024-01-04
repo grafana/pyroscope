@@ -193,7 +193,7 @@ func contextHeadMetrics(ctx context.Context) *headMetrics {
 	return m
 }
 
-type blocksMetrics struct {
+type BlocksMetrics struct {
 	query *query.Metrics
 
 	blockOpeningLatency prometheus.Histogram
@@ -202,8 +202,8 @@ type blocksMetrics struct {
 	profileTableAccess *prometheus.CounterVec
 }
 
-func newBlocksMetrics(reg prometheus.Registerer) *blocksMetrics {
-	m := &blocksMetrics{
+func NewBlocksMetrics(reg prometheus.Registerer) *BlocksMetrics {
+	m := &BlocksMetrics{
 		query: query.NewMetrics(reg),
 		blockOpeningLatency: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: "pyroscopedb_block_opening_duration",
@@ -214,23 +214,24 @@ func newBlocksMetrics(reg prometheus.Registerer) *blocksMetrics {
 			Help: "Number of blocks opened",
 		}),
 		profileTableAccess: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscopedb_blocks_profile_table_accesses_total",
+			Name: "pyroscopedb_block_profile_table_accesses_total",
 			Help: "Number of times a profile table was accessed",
-		}, []string{"table_name"}),
+		}, []string{"table"}),
 	}
 	m.blockOpeningLatency = util.RegisterOrGet(reg, m.blockOpeningLatency)
 	m.blockOpened = util.RegisterOrGet(reg, m.blockOpened)
+	m.profileTableAccess = util.RegisterOrGet(reg, m.profileTableAccess)
 	return m
 }
 
-func contextWithBlockMetrics(ctx context.Context, m *blocksMetrics) context.Context {
+func ContextWithBlockMetrics(ctx context.Context, m *BlocksMetrics) context.Context {
 	return context.WithValue(ctx, blockMetricsContextKey, m)
 }
 
-func contextBlockMetrics(ctx context.Context) *blocksMetrics {
-	m, ok := ctx.Value(blockMetricsContextKey).(*blocksMetrics)
+func blockMetricsFromContext(ctx context.Context) *BlocksMetrics {
+	m, ok := ctx.Value(blockMetricsContextKey).(*BlocksMetrics)
 	if !ok {
-		return newBlocksMetrics(phlarecontext.Registry(ctx))
+		return NewBlocksMetrics(phlarecontext.Registry(ctx))
 	}
 	return m
 }
