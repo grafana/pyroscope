@@ -61,3 +61,8 @@ func (s *memoryStore) Set(ctx context.Context, tenantID string, setting *setting
 
 	return setting, nil
 }
+
+func (s *memoryStore) Sync(ctx context.Context) error {
+	// In-memory store does not have on-disk storage.
+	return nil
+}

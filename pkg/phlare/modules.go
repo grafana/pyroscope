@@ -23,6 +23,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/common/version"
+	"github.com/thanos-io/objstore"
 	objstoretracing "github.com/thanos-io/objstore/tracing/opentracing"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -135,12 +136,20 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 }
 
 func (f *Phlare) initTenantSettings() (services.Service, error) {
-	store, err := settings.NewPersistentStore(nil, f.Cfg.PhlareDB.DataPath)
+	cfg := settings.Config{
+		SyncInterval: 24 * time.Hour,
+	}
+
+	// TODO(bryan) Figure out how to open a bucket and download the latest
+	// settings database.
+	var bucket objstore.Bucket
+
+	store, err := settings.NewPersistentStore(bucket, f.Cfg.PhlareDB.DataPath)
 	if err != nil {
 		return nil, err
 	}
 
-	settings, err := settings.New(store)
+	settings, err := settings.New(cfg, store)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to init %s", TenantSettings)
 	}

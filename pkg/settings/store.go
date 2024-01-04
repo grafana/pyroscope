@@ -12,4 +12,7 @@ type Store interface {
 
 	// Set a setting for a tenant.
 	Set(ctx context.Context, tenantID string, setting *settingsv1.Setting) (*settingsv1.Setting, error)
+
+	// Trigger the store to resync with the underlying storage.
+	Sync(ctx context.Context) error
 }

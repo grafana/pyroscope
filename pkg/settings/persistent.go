@@ -113,3 +113,7 @@ func (s *persistentStore) Set(ctx context.Context, tenantID string, setting *set
 
 	return setting, nil
 }
+
+func (s *persistentStore) Sync(ctx context.Context) error {
+	panic("unimplemented")
+}
