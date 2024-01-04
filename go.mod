@@ -60,6 +60,7 @@ require (
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/xlab/treeprint v1.2.0
+	go.etcd.io/bbolt v1.3.8
 	go.uber.org/atomic v1.11.0
 	go.uber.org/goleak v1.2.1
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa

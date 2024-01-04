@@ -135,12 +135,12 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 }
 
 func (f *Phlare) initTenantSettings() (services.Service, error) {
-	mem, err := settings.NewMemoryStore()
+	store, err := settings.NewPersistentStore(nil, f.Cfg.PhlareDB.DataPath)
 	if err != nil {
 		return nil, err
 	}
 
-	settings, err := settings.New(mem)
+	settings, err := settings.New(store)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to init %s", TenantSettings)
 	}
