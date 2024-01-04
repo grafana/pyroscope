@@ -130,7 +130,7 @@ func SplitTimeRangeByResolution(start, end time.Time, resolutions []time.Duratio
 
 	for c.Before(end) {
 		var d time.Duration = -1
-		// Find the lowest resolution aligned with the end time.
+		// Find the lowest resolution aligned with the current position.
 		for _, res := range resolutions {
 			if c.UnixNano()%res.Nanoseconds() == 0 && !c.Add(res).After(end) {
 				d = res
