@@ -107,6 +107,7 @@ func compact(ctx context.Context, src, dst string, metas []*block.Meta, shards i
 		StageSize:          0,
 		SplitBy:            phlaredb.SplitByFingerprint,
 		DownsamplerEnabled: true,
+		Logger:             logger,
 	})
 	if err != nil {
 		s.Stop()

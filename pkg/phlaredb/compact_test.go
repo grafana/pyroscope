@@ -118,6 +118,7 @@ func TestCompactWithSplitting(t *testing.T) {
 		StageSize:          8,
 		SplitBy:            SplitByFingerprint,
 		DownsamplerEnabled: true,
+		Logger:             log.NewNopLogger(),
 	})
 	require.NoError(t, err)
 

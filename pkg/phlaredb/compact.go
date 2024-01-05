@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
 	"github.com/oklog/ulid"
@@ -55,6 +57,7 @@ type CompactWithSplittingOpts struct {
 	StageSize          uint64
 	SplitBy            SplitByFunc
 	DownsamplerEnabled bool
+	Logger             log.Logger
 }
 
 func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
@@ -100,7 +103,15 @@ func CompactWithSplitting(ctx context.Context, opts CompactWithSplittingOpts) (
 	outMeta := compactMetas(srcMetas...)
 	for _, stage := range splitStages(len(writers), int(opts.StageSize)) {
 		for _, idx := range stage {
-			if writers[idx], err = createBlockWriter(opts.Dst, outMeta, opts.SplitCount, idx, symbolsCompactor.Rewriter, opts.DownsamplerEnabled); err != nil {
+			if writers[idx], err = createBlockWriter(blockWriterOpts{
+				dst:                opts.Dst,
+				meta:               outMeta,
+				splitCount:         opts.SplitCount,
+				shard:              idx,
+				rewriterFn:         symbolsCompactor.Rewriter,
+				downsamplerEnabled: opts.DownsamplerEnabled,
+				logger:             opts.Logger,
+			}); err != nil {
 				return nil, fmt.Errorf("create block writer: %w", err)
 			}
 		}
@@ -135,21 +146,17 @@ func splitStages(n, s int) (stages [][]int) {
 	return stages
 }
 
-func createBlockWriter(dst string, m block.Meta, splitCount uint64, shard int, rewriterFn SymbolsRewriterFn, downsamplerEnabled bool) (*blockWriter, error) {
-	meta := m.Clone()
+func createBlockWriter(opts blockWriterOpts) (*blockWriter, error) {
+	meta := opts.meta.Clone()
 	meta.ULID = ulid.MustNew(meta.ULID.Time(), rand.Reader)
-	if splitCount > 1 {
+	if opts.splitCount > 1 {
 		if meta.Labels == nil {
 			meta.Labels = make(map[string]string)
 		}
-		meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(shard), splitCount)
+		meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(opts.shard), opts.splitCount)
 	}
-	return newBlockWriter(blockWriterOpts{
-		dst:                dst,
-		meta:               meta,
-		rewriterFn:         rewriterFn,
-		downsamplerEnabled: downsamplerEnabled,
-	})
+	opts.meta = *meta
+	return newBlockWriter(opts)
 }
 
 func compact(ctx context.Context, writers []*blockWriter, readers []BlockReader, splitBy SplitByFunc, splitCount uint64) ([]block.Meta, error) {
@@ -228,9 +235,12 @@ type SymbolsRewriterFn func(blockPath string) SymbolsRewriter
 
 type blockWriterOpts struct {
 	dst                string
-	meta               *block.Meta
+	splitCount         uint64
+	shard              int
+	meta               block.Meta
 	rewriterFn         SymbolsRewriterFn
 	downsamplerEnabled bool
+	logger             log.Logger
 }
 
 func newBlockWriter(opts blockWriterOpts) (*blockWriter, error) {
@@ -247,7 +257,8 @@ func newBlockWriter(opts blockWriterOpts) (*blockWriter, error) {
 
 	var downsampler *downsample.Downsampler
 	if opts.downsamplerEnabled && opts.meta.Compaction.Level > 2 {
-		downsampler, err = downsample.NewDownsampler(blockPath)
+		level.Debug(opts.logger).Log("msg", "downsampling enabled for block writer", "path", blockPath)
+		downsampler, err = downsample.NewDownsampler(blockPath, opts.logger)
 		if err != nil {
 			return nil, err
 		}
@@ -259,7 +270,7 @@ func newBlockWriter(opts blockWriterOpts) (*blockWriter, error) {
 		profilesWriter:  profileWriter,
 		downsampler:     downsampler,
 		path:            blockPath,
-		meta:            opts.meta,
+		meta:            &opts.meta,
 	}, nil
 }
 
