@@ -1214,6 +1214,11 @@ The `compactor` block configures the compactor.
 # CLI flag: -compactor.no-blocks-file-cleanup-enabled
 [no_blocks_file_cleanup_enabled: <boolean> | default = false]
 
+# If enabled, the compactor will downsample profiles in blocks at compaction
+# level 3 and above. The original profiles are also kept.
+# CLI flag: -compactor.downsampler-enabled
+[downsampler_enabled: <boolean> | default = false]
+
 # Number of goroutines opening blocks before compaction.
 # CLI flag: -compactor.max-opening-blocks-concurrency
 [max_opening_blocks_concurrency: <int> | default = 16]
@@ -1924,6 +1929,11 @@ The `limits` block configures default and per-tenant limits imposed by component
 # disable.
 # CLI flag: -compactor.partial-block-deletion-delay
 [compactor_partial_block_deletion_delay: <duration> | default = 1d]
+
+# If enabled, the compactor will downsample profiles in blocks at compaction
+# level 3 and above. The original profiles are also kept.
+# CLI flag: -compactor.compactor-downsampler-enabled
+[compactor_downsampler_enabled: <boolean> | default = false]
 
 # S3 server-side encryption type. Required to enable server-side encryption
 # overrides for a specific tenant. If not set, the default S3 client settings

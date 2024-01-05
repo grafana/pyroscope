@@ -48,48 +48,64 @@ type ProfileReader interface {
 	RowGroups() []parquet.RowGroup
 }
 
+type CompactWithSplittingOpts struct {
+	Src                []BlockReader
+	Dst                string
+	SplitCount         uint64
+	StageSize          uint64
+	SplitBy            SplitByFunc
+	DownsamplerEnabled bool
+}
+
 func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Meta, err error) {
-	metas, err := CompactWithSplitting(ctx, src, 1, 0, dst, SplitByFingerprint)
+	metas, err := CompactWithSplitting(ctx, CompactWithSplittingOpts{
+		Src:                src,
+		Dst:                dst,
+		SplitCount:         1,
+		StageSize:          0,
+		SplitBy:            SplitByFingerprint,
+		DownsamplerEnabled: false,
+	})
 	if err != nil {
 		return block.Meta{}, err
 	}
 	return metas[0], nil
 }
 
-func CompactWithSplitting(ctx context.Context, src []BlockReader, splitCount, stageSize uint64, dst string, splitBy SplitByFunc) (
+func CompactWithSplitting(ctx context.Context, opts CompactWithSplittingOpts) (
 	[]block.Meta, error,
 ) {
-	if len(src) <= 1 && splitCount == 1 {
+	if len(opts.Src) <= 1 && opts.SplitCount == 1 {
 		return nil, errors.New("not enough blocks to compact")
 	}
-	if splitCount == 0 {
-		splitCount = 1
+	if opts.SplitCount == 0 {
+		opts.SplitCount = 1
 	}
-	if stageSize == 0 || stageSize > splitCount {
-		stageSize = splitCount
+	if opts.StageSize == 0 || opts.StageSize > opts.SplitCount {
+		opts.StageSize = opts.SplitCount
 	}
 	var (
-		writers  = make([]*blockWriter, splitCount)
-		srcMetas = make([]block.Meta, len(src))
+		writers  = make([]*blockWriter, opts.SplitCount)
+		srcMetas = make([]block.Meta, len(opts.Src))
 		outMetas = make([]block.Meta, 0, len(writers))
 		err      error
 	)
-	for i, b := range src {
+	for i, b := range opts.Src {
 		srcMetas[i] = b.Meta()
 	}
 
-	symbolsCompactor := newSymbolsCompactor(dst)
+	symbolsCompactor := newSymbolsCompactor(opts.Dst)
 	defer runutil.CloseWithLogOnErr(util.Logger, symbolsCompactor, "close symbols compactor")
 
 	outMeta := compactMetas(srcMetas...)
-	for _, stage := range splitStages(len(writers), int(stageSize)) {
+	for _, stage := range splitStages(len(writers), int(opts.StageSize)) {
 		for _, idx := range stage {
-			if writers[idx], err = createBlockWriter(dst, outMeta, splitCount, idx, symbolsCompactor.Rewriter); err != nil {
+			if writers[idx], err = createBlockWriter(opts.Dst, outMeta, opts.SplitCount, idx, symbolsCompactor.Rewriter, opts.DownsamplerEnabled); err != nil {
 				return nil, fmt.Errorf("create block writer: %w", err)
 			}
 		}
 		var metas []block.Meta
-		if metas, err = compact(ctx, writers, src, splitBy, splitCount); err != nil {
+		if metas, err = compact(ctx, writers, opts.Src, opts.SplitBy, opts.SplitCount); err != nil {
 			return nil, err
 		}
 		outMetas = append(outMetas, metas...)
@@ -119,7 +135,7 @@ func splitStages(n, s int) (stages [][]int) {
 	return stages
 }
 
-func createBlockWriter(dst string, m block.Meta, splitCount uint64, shard int, rewriterFn SymbolsRewriterFn) (*blockWriter, error) {
+func createBlockWriter(dst string, m block.Meta, splitCount uint64, shard int, rewriterFn SymbolsRewriterFn, downsamplerEnabled bool) (*blockWriter, error) {
 	meta := m.Clone()
 	meta.ULID = ulid.MustNew(meta.ULID.Time(), rand.Reader)
 	if splitCount > 1 {
@@ -128,7 +144,12 @@ func createBlockWriter(dst string, m block.Meta, splitCount uint64, shard int, r
 		}
 		meta.Labels[sharding.CompactorShardIDLabel] = sharding.FormatShardIDLabelValue(uint64(shard), splitCount)
 	}
-	return newBlockWriter(dst, meta, rewriterFn)
+	return newBlockWriter(blockWriterOpts{
+		dst:                dst,
+		meta:               meta,
+		rewriterFn:         rewriterFn,
+		downsamplerEnabled: downsamplerEnabled,
+	})
 }
 
 func compact(ctx context.Context, writers []*blockWriter, readers []BlockReader, splitBy SplitByFunc, splitCount uint64) ([]block.Meta, error) {
@@ -205,8 +226,15 @@ type SymbolsRewriter interface {
 
 type SymbolsRewriterFn func(blockPath string) SymbolsRewriter
 
-func newBlockWriter(dst string, meta *block.Meta, rewriterFn SymbolsRewriterFn) (*blockWriter, error) {
-	blockPath := filepath.Join(dst, meta.ULID.String())
+type blockWriterOpts struct {
+	dst                string
+	meta               *block.Meta
+	rewriterFn         SymbolsRewriterFn
+	downsamplerEnabled bool
+}
+
+func newBlockWriter(opts blockWriterOpts) (*blockWriter, error) {
+	blockPath := filepath.Join(opts.dst, opts.meta.ULID.String())
 
 	if err := os.MkdirAll(blockPath, 0o777); err != nil {
 		return nil, err
@@ -218,7 +246,7 @@ func newBlockWriter(dst string, meta *block.Meta, rewriterFn SymbolsRewriterFn) 
 	}
 
 	var downsampler *downsample.Downsampler
-	if meta.Compaction.Level > 2 {
+	if opts.downsamplerEnabled && opts.meta.Compaction.Level > 2 {
 		downsampler, err = downsample.NewDownsampler(blockPath)
 		if err != nil {
 			return nil, err
@@ -227,11 +255,11 @@ func newBlockWriter(dst string, meta *block.Meta, rewriterFn SymbolsRewriterFn) 
 
 	return &blockWriter{
 		indexRewriter:   newIndexRewriter(blockPath),
-		symbolsRewriter: rewriterFn(blockPath),
+		symbolsRewriter: opts.rewriterFn(blockPath),
 		profilesWriter:  profileWriter,
 		downsampler:     downsampler,
 		path:            blockPath,
-		meta:            meta,
+		meta:            opts.meta,
 	}, nil
 }
 

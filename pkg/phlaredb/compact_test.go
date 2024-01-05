@@ -111,7 +111,14 @@ func TestCompactWithSplitting(t *testing.T) {
 		)
 	})
 	dst := t.TempDir()
-	compacted, err := CompactWithSplitting(ctx, []BlockReader{b1, b2, b2, b1}, 16, 8, dst, SplitByFingerprint)
+	compacted, err := CompactWithSplitting(ctx, CompactWithSplittingOpts{
+		Src:                []BlockReader{b1, b2, b2, b1},
+		Dst:                dst,
+		SplitCount:         16,
+		StageSize:          8,
+		SplitBy:            SplitByFingerprint,
+		DownsamplerEnabled: true,
+	})
 	require.NoError(t, err)
 
 	require.NoDirExists(t, filepath.Join(dst, symdb.DefaultDirName))
@@ -500,8 +507,14 @@ func TestCompactOldBlock(t *testing.T) {
 	require.NoError(t, err)
 	br := NewSingleBlockQuerierFromMeta(context.Background(), bkt, meta)
 	require.NoError(t, br.Open(ctx))
-	_, err = CompactWithSplitting(ctx,
-		[]BlockReader{br}, 2, 0, dst, SplitByFingerprint)
+	_, err = CompactWithSplitting(ctx, CompactWithSplittingOpts{
+		Src:                []BlockReader{br},
+		Dst:                dst,
+		SplitCount:         2,
+		StageSize:          0,
+		SplitBy:            SplitByFingerprint,
+		DownsamplerEnabled: true,
+	})
 	require.NoError(t, err)
 }
 
@@ -819,7 +832,14 @@ func Benchmark_CompactSplit(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		_, err = CompactWithSplitting(ctx, []BlockReader{bl}, 32, 32, dst, SplitByFingerprint)
+		_, err = CompactWithSplitting(ctx, CompactWithSplittingOpts{
+			Src:                []BlockReader{bl},
+			Dst:                dst,
+			SplitCount:         32,
+			StageSize:          32,
+			SplitBy:            SplitByFingerprint,
+			DownsamplerEnabled: true,
+		})
 		require.NoError(b, err)
 	}
 }

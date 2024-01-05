@@ -245,6 +245,7 @@ func getCompactionSplitBy(name string) phlaredb.SplitByFunc {
 
 type BlockCompactor struct {
 	blockOpenConcurrency int
+	downsamplerEnabled   bool
 	splitBy              phlaredb.SplitByFunc
 	logger               log.Logger
 	metrics              *CompactorMetrics
@@ -386,7 +387,14 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 	c.metrics.Ran.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Inc()
 	c.metrics.Split.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(float64(shardCount))
 
-	metas, err := phlaredb.CompactWithSplitting(ctx, readers, shardCount, stageSize, dest, c.splitBy)
+	metas, err := phlaredb.CompactWithSplitting(ctx, phlaredb.CompactWithSplittingOpts{
+		Src:                readers,
+		Dst:                dest,
+		SplitCount:         shardCount,
+		StageSize:          stageSize,
+		SplitBy:            c.splitBy,
+		DownsamplerEnabled: c.downsamplerEnabled,
+	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "compact blocks %v", dirs)
 	}
