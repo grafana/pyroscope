@@ -6,7 +6,7 @@ metadata:
   name: pyroscope-dev-compactor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -27,7 +27,7 @@ metadata:
   name: pyroscope-dev-distributor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -48,7 +48,7 @@ metadata:
   name: pyroscope-dev-ingester
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -69,7 +69,7 @@ metadata:
   name: pyroscope-dev-querier
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -90,7 +90,7 @@ metadata:
   name: pyroscope-dev-query-frontend
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -111,7 +111,7 @@ metadata:
   name: pyroscope-dev-query-scheduler
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -132,7 +132,7 @@ metadata:
   name: pyroscope-dev-store-gateway
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -153,7 +153,7 @@ metadata:
   name: pyroscope-dev-tenant-settings
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -193,7 +193,7 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -540,7 +540,7 @@ metadata:
   name: grafana-agent-config-pyroscope
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1344,7 +1344,7 @@ metadata:
   name: pyroscope-dev-overrides-config
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1361,7 +1361,7 @@ metadata:
   name: pyroscope-dev-config
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1465,7 +1465,7 @@ metadata:
   name: default-pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1512,7 +1512,7 @@ metadata:
   name: default-pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1652,7 +1652,7 @@ metadata:
   name: pyroscope-dev-memberlist
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1679,7 +1679,7 @@ metadata:
   name: pyroscope-dev-compactor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1704,7 +1704,7 @@ metadata:
   name: pyroscope-dev-compactor-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1730,7 +1730,7 @@ metadata:
   name: pyroscope-dev-distributor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1755,7 +1755,7 @@ metadata:
   name: pyroscope-dev-distributor-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1781,7 +1781,7 @@ metadata:
   name: pyroscope-dev-ingester
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1806,7 +1806,7 @@ metadata:
   name: pyroscope-dev-ingester-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1832,7 +1832,7 @@ metadata:
   name: pyroscope-dev-querier
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1857,7 +1857,7 @@ metadata:
   name: pyroscope-dev-querier-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1883,7 +1883,7 @@ metadata:
   name: pyroscope-dev-query-frontend
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1908,7 +1908,7 @@ metadata:
   name: pyroscope-dev-query-frontend-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1934,7 +1934,7 @@ metadata:
   name: pyroscope-dev-query-scheduler
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1959,7 +1959,7 @@ metadata:
   name: pyroscope-dev-query-scheduler-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -1985,7 +1985,7 @@ metadata:
   name: pyroscope-dev-store-gateway
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -2010,7 +2010,7 @@ metadata:
   name: pyroscope-dev-store-gateway-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -2036,7 +2036,7 @@ metadata:
   name: pyroscope-dev-tenant-settings
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -2061,7 +2061,7 @@ metadata:
   name: pyroscope-dev-tenant-settings-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -2087,7 +2087,7 @@ metadata:
   name: pyroscope-dev-distributor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -2103,7 +2103,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: a3cb6e4af80c65672dd00cb396c31dabfc6e13a6322472bc70ecd924b4b09a39
+        checksum/config: e89e9fb051776465479fefa868c396f0b129e494a8396eb73b854322c1095b9f
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2181,7 +2181,7 @@ metadata:
   name: pyroscope-dev-querier
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -2197,7 +2197,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: a3cb6e4af80c65672dd00cb396c31dabfc6e13a6322472bc70ecd924b4b09a39
+        checksum/config: e89e9fb051776465479fefa868c396f0b129e494a8396eb73b854322c1095b9f
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2275,7 +2275,7 @@ metadata:
   name: pyroscope-dev-query-frontend
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -2291,7 +2291,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: a3cb6e4af80c65672dd00cb396c31dabfc6e13a6322472bc70ecd924b4b09a39
+        checksum/config: e89e9fb051776465479fefa868c396f0b129e494a8396eb73b854322c1095b9f
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2369,7 +2369,7 @@ metadata:
   name: pyroscope-dev-query-scheduler
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -2385,7 +2385,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: a3cb6e4af80c65672dd00cb396c31dabfc6e13a6322472bc70ecd924b4b09a39
+        checksum/config: e89e9fb051776465479fefa868c396f0b129e494a8396eb73b854322c1095b9f
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2463,7 +2463,7 @@ metadata:
   name: pyroscope-dev-tenant-settings
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -2479,7 +2479,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: a3cb6e4af80c65672dd00cb396c31dabfc6e13a6322472bc70ecd924b4b09a39
+        checksum/config: e89e9fb051776465479fefa868c396f0b129e494a8396eb73b854322c1095b9f
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2734,7 +2734,7 @@ metadata:
   name: pyroscope-dev-compactor
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -2752,7 +2752,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: a3cb6e4af80c65672dd00cb396c31dabfc6e13a6322472bc70ecd924b4b09a39
+        checksum/config: e89e9fb051776465479fefa868c396f0b129e494a8396eb73b854322c1095b9f
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2834,7 +2834,7 @@ metadata:
   name: pyroscope-dev-ingester
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -2852,7 +2852,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: a3cb6e4af80c65672dd00cb396c31dabfc6e13a6322472bc70ecd924b4b09a39
+        checksum/config: e89e9fb051776465479fefa868c396f0b129e494a8396eb73b854322c1095b9f
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -2931,7 +2931,7 @@ metadata:
   name: pyroscope-dev-store-gateway
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.3.1
+    helm.sh/chart: pyroscope-1.3.2
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.2.1"
@@ -2949,7 +2949,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: a3cb6e4af80c65672dd00cb396c31dabfc6e13a6322472bc70ecd924b4b09a39
+        checksum/config: e89e9fb051776465479fefa868c396f0b129e494a8396eb73b854322c1095b9f
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2

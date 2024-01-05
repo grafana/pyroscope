@@ -22,7 +22,7 @@ func Test_Load(t *testing.T) {
 	r := NewResolver(context.Background(), b.reader)
 	defer r.Release()
 	r.AddSamples(0, s.indexed[0][0].Samples)
-	resolved, err := r.Pprof(0)
+	resolved, err := r.Pprof()
 	require.NoError(t, err)
 	require.Equal(t, expectedFingerprint, pprofFingerprint(resolved, 0))
 
@@ -30,7 +30,7 @@ func Test_Load(t *testing.T) {
 	r = NewResolver(context.Background(), b.reader)
 	defer r.Release()
 	r.AddSamples(2, s.indexed[2][0].Samples)
-	resolved, err = r.Pprof(0)
+	resolved, err = r.Pprof()
 	require.NoError(t, err)
 	require.Equal(t, expectedFingerprint, pprofFingerprint(resolved, 0))
 }

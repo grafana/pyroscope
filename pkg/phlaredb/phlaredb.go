@@ -35,6 +35,7 @@ const (
 	DefaultMinFreeDisk                        = 10
 	DefaultMinDiskAvailablePercentage         = 0.05
 	DefaultRetentionPolicyEnforcementInterval = 5 * time.Minute
+	DefaultRetentionExpiry                    = 4 * time.Hour // Same as default `querier.query_store_after`.
 )
 
 type Config struct {
