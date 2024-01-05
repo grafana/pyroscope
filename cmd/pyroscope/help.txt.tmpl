@@ -7,6 +7,8 @@ Usage of ./pyroscope:
     	Directory to store synchronized pyroscope block headers. This directory is not required to be persisted between restarts, but it's highly recommended in order to improve the store-gateway startup time. (default "./data/pyroscope-sync/")
   -compactor.blocks-retention-period duration
     	Delete blocks containing samples older than the specified retention period. 0 to disable.
+  -compactor.compactor-downsampler-enabled
+    	If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. (default true)
   -compactor.compactor-tenant-shard-size int
     	Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.
   -compactor.data-dir string
@@ -219,6 +221,8 @@ Usage of ./pyroscope:
     	Duration after which a keepalive probe is sent in case of no activity over the connection., Default: 2h (default 2h0m0s)
   -server.grpc.keepalive.timeout duration
     	After having pinged for keepalive check, the duration after which an idle connection should be closed, Default: 20s (default 20s)
+  -server.grpc.num-workers int
+    	If non-zero, configures the amount of GRPC server workers used to serve the requests.
   -server.http-conn-limit int
     	Maximum number of simultaneous http connections, <=0 to disable
   -server.http-idle-timeout duration
@@ -229,8 +233,12 @@ Usage of ./pyroscope:
     	HTTP server listen network, default tcp (default "tcp")
   -server.http-listen-port int
     	HTTP server listen port. (default 4040)
+  -server.http-log-closed-connections-without-response-enabled
+    	Log closed connections that did not receive any response, most likely because client didn't send any request within timeout.
+  -server.http-read-header-timeout duration
+    	Read timeout for HTTP request headers. If set to 0, value of -server.http-read-timeout is used.
   -server.http-read-timeout duration
-    	Read timeout for HTTP server (default 30s)
+    	Read timeout for entire HTTP request, including headers and body. (default 30s)
   -server.http-tls-ca-path string
     	HTTP TLS Client CA path.
   -server.http-tls-cert-path string
@@ -257,6 +265,8 @@ Usage of ./pyroscope:
     	Base path to serve all API routes from (e.g. /v1/)
   -server.register-instrumentation
     	Register the intrumentation handlers (/metrics etc). (default true)
+  -server.report-grpc-codes-in-instrumentation-label-enabled
+    	If set to true, gRPC statuses will be reported in instrumentation labels with their string representations. Otherwise, they will be reported as "error".
   -server.tls-cipher-suites string
     	Comma-separated list of cipher suites to use. If blank, the default Go cipher suites is used.
   -server.tls-min-version string

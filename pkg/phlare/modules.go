@@ -120,7 +120,7 @@ func (f *Phlare) initRuntimeConfig() (services.Service, error) {
 	// make sure to set default limits before we start loading configuration into memory
 	validation.SetDefaultLimitsForYAMLUnmarshalling(f.Cfg.LimitsConfig)
 
-	serv, err := runtimeconfig.New(f.Cfg.RuntimeConfig, prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg), log.With(f.logger, "component", "runtime-config"))
+	serv, err := runtimeconfig.New(f.Cfg.RuntimeConfig, "pyroscope", prometheus.WrapRegistererWithPrefix("pyroscope_", f.reg), log.With(f.logger, "component", "runtime-config"))
 	if err == nil {
 		// TenantLimits just delegates to RuntimeConfig and doesn't have any state or need to do
 		// anything in the start/stopping phase. Thus we can create it as part of runtime config
@@ -191,6 +191,10 @@ func (f *Phlare) initQueryScheduler() (services.Service, error) {
 
 func (f *Phlare) initCompactor() (serv services.Service, err error) {
 	f.Cfg.Compactor.ShardingRing.Common.ListenPort = f.Cfg.Server.HTTPListenPort
+
+	if f.storageBucket == nil {
+		return nil, nil
+	}
 
 	f.Compactor, err = compactor.NewMultitenantCompactor(f.Cfg.Compactor, f.storageBucket, f.Overrides, log.With(f.logger, "component", "compactor"), f.reg)
 	if err != nil {
@@ -374,7 +378,7 @@ func (f *Phlare) context() context.Context {
 func (f *Phlare) initIngester() (_ services.Service, err error) {
 	f.Cfg.Ingester.LifecyclerConfig.ListenPort = f.Cfg.Server.HTTPListenPort
 
-	svc, err := ingester.New(f.context(), f.Cfg.Ingester, f.Cfg.PhlareDB, f.storageBucket, f.Overrides)
+	svc, err := ingester.New(f.context(), f.Cfg.Ingester, f.Cfg.PhlareDB, f.storageBucket, f.Overrides, f.Cfg.Querier.QueryStoreAfter)
 	if err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-{{- if .Values.agent.enabled }}
+{{- if and (.Values.agent.enabled) (not .Values.agent.agent.configMap.create)  }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

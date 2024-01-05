@@ -184,7 +184,8 @@ func (q *Querier) selectProfileFromIngesters(ctx context.Context, req *querierv1
 					Type:          profileType,
 					Hints:         &ingestv1.Hints{Block: hints},
 				},
-				MaxNodes: req.MaxNodes,
+				MaxNodes:           req.MaxNodes,
+				StackTraceSelector: req.StackTraceSelector,
 			})
 		}))
 	}

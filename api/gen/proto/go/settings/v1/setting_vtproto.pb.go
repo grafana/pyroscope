@@ -118,6 +118,119 @@ func (m *Setting) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (this *GetSettingsRequest) EqualVT(that *GetSettingsRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetSettingsRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetSettingsRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *GetSettingsResponse) EqualVT(that *GetSettingsResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Settings) != len(that.Settings) {
+		return false
+	}
+	for i, vx := range this.Settings {
+		vy := that.Settings[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &Setting{}
+			}
+			if q == nil {
+				q = &Setting{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GetSettingsResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GetSettingsResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SetSettingsRequest) EqualVT(that *SetSettingsRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Setting.EqualVT(that.Setting) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SetSettingsRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SetSettingsRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *SetSettingsResponse) EqualVT(that *SetSettingsResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if !this.Setting.EqualVT(that.Setting) {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *SetSettingsResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*SetSettingsResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *Setting) EqualVT(that *Setting) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Name != that.Name {
+		return false
+	}
+	if this.Value != that.Value {
+		return false
+	}
+	if this.ModifiedAt != that.ModifiedAt {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Setting) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Setting)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
 // Requires gRPC-Go v1.32.0 or later.

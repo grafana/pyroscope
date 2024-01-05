@@ -371,13 +371,23 @@ grpc_tls_config:
 # CLI flag: -server.register-instrumentation
 [register_instrumentation: <boolean> | default = true]
 
+# If set to true, gRPC statuses will be reported in instrumentation labels with
+# their string representations. Otherwise, they will be reported as "error".
+# CLI flag: -server.report-grpc-codes-in-instrumentation-label-enabled
+[report_grpc_codes_in_instrumentation_label_enabled: <boolean> | default = false]
+
 # Timeout for graceful shutdowns
 # CLI flag: -server.graceful-shutdown-timeout
 [graceful_shutdown_timeout: <duration> | default = 30s]
 
-# Read timeout for HTTP server
+# Read timeout for entire HTTP request, including headers and body.
 # CLI flag: -server.http-read-timeout
 [http_server_read_timeout: <duration> | default = 30s]
+
+# Read timeout for HTTP request headers. If set to 0, value of
+# -server.http-read-timeout is used.
+# CLI flag: -server.http-read-header-timeout
+[http_server_read_header_timeout: <duration> | default = 0s]
 
 # Write timeout for HTTP server
 # CLI flag: -server.http-write-timeout
@@ -386,6 +396,11 @@ grpc_tls_config:
 # Idle timeout for HTTP server
 # CLI flag: -server.http-idle-timeout
 [http_server_idle_timeout: <duration> | default = 2m]
+
+# Log closed connections that did not receive any response, most likely because
+# client didn't send any request within timeout.
+# CLI flag: -server.http-log-closed-connections-without-response-enabled
+[http_log_closed_connections_without_response_enabled: <boolean> | default = false]
 
 # Limit on the size of a gRPC message this server can receive (bytes).
 # CLI flag: -server.grpc-max-recv-msg-size-bytes
@@ -436,6 +451,11 @@ grpc_tls_config:
 # streams, server will send GOAWAY and close the connection.
 # CLI flag: -server.grpc.keepalive.ping-without-stream-allowed
 [grpc_server_ping_without_stream_allowed: <boolean> | default = false]
+
+# If non-zero, configures the amount of GRPC server workers used to serve the
+# requests.
+# CLI flag: -server.grpc.num-workers
+[grpc_server_num_workers: <int> | default = 0]
 
 # Output log messages in the given format. Valid formats: [logfmt, json]
 # CLI flag: -log.format
@@ -1194,6 +1214,11 @@ The `compactor` block configures the compactor.
 # CLI flag: -compactor.no-blocks-file-cleanup-enabled
 [no_blocks_file_cleanup_enabled: <boolean> | default = false]
 
+# If enabled, the compactor will downsample profiles in blocks at compaction
+# level 3 and above. The original profiles are also kept.
+# CLI flag: -compactor.downsampler-enabled
+[downsampler_enabled: <boolean> | default = false]
+
 # Number of goroutines opening blocks before compaction.
 # CLI flag: -compactor.max-opening-blocks-concurrency
 [max_opening_blocks_concurrency: <int> | default = 16]
@@ -1904,6 +1929,11 @@ The `limits` block configures default and per-tenant limits imposed by component
 # disable.
 # CLI flag: -compactor.partial-block-deletion-delay
 [compactor_partial_block_deletion_delay: <duration> | default = 1d]
+
+# If enabled, the compactor will downsample profiles in blocks at compaction
+# level 3 and above. The original profiles are also kept.
+# CLI flag: -compactor.compactor-downsampler-enabled
+[compactor_downsampler_enabled: <boolean> | default = false]
 
 # S3 server-side encryption type. Required to enable server-side encryption
 # overrides for a specific tenant. If not set, the default S3 client settings

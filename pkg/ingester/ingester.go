@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
@@ -79,7 +80,7 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
-func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits) (*Ingester, error) {
+func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits, queryStoreAfter time.Duration) (*Ingester, error) {
 	i := &Ingester{
 		cfg:           cfg,
 		phlarectx:     phlarectx,
@@ -125,12 +126,15 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 	if dbConfig.MinDiskAvailablePercentage > 0 {
 		retentionPolicy.MinDiskAvailablePercentage = dbConfig.MinDiskAvailablePercentage
 	}
+	if queryStoreAfter > 0 {
+		retentionPolicy.Expiry = queryStoreAfter
+	}
 
 	if dbConfig.DisableEnforcement {
 		i.subservices, err = services.NewManager(i.lifecycler)
 	} else {
-		rpEnforcer := newRetentionPolicyEnforcer(phlarecontext.Logger(phlarectx), i, retentionPolicy, dbConfig)
-		i.subservices, err = services.NewManager(i.lifecycler, rpEnforcer)
+		dc := newDiskCleaner(phlarecontext.Logger(phlarectx), i, retentionPolicy, dbConfig)
+		i.subservices, err = services.NewManager(i.lifecycler, dc)
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "services manager")
