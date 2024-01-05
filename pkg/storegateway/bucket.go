@@ -13,6 +13,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
@@ -44,16 +45,19 @@ type BucketStore struct {
 	stats   BucketStoreStats
 }
 
-func NewBucketStore(bucket phlareobj.Bucket, fetcher block.MetadataFetcher, tenantID string, syncDir string, logger log.Logger, metrics *Metrics) (*BucketStore, error) {
+func NewBucketStore(bucket phlareobj.Bucket, fetcher block.MetadataFetcher, tenantID string, syncDir string, logger log.Logger, reg prometheus.Registerer) (*BucketStore, error) {
 	s := &BucketStore{
 		fetcher:  fetcher,
 		bucket:   phlareobj.NewTenantBucketClient(tenantID, bucket, nil),
 		tenantID: tenantID,
 		syncDir:  syncDir,
-		logger:   logger,
+		logger:   log.With(logger, "tenant", tenantID),
 		blockSet: newBucketBlockSet(),
 		blocks:   map[ulid.ULID]*Block{},
-		metrics:  metrics,
+		metrics: NewBucketStoreMetrics(prometheus.WrapRegistererWith(
+			prometheus.Labels{"tenant": tenantID},
+			reg,
+		)),
 	}
 
 	if err := os.MkdirAll(syncDir, 0o750); err != nil {

@@ -24,7 +24,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
-func TestBucketStores_BlockMetrics_Registration(t *testing.T) {
+func TestBucketStores_BlockMetricsRegistration(t *testing.T) {
 	ctx := context.Background()
 
 	bucketDir := filepath.Join(t.TempDir(), "bucket")
@@ -70,36 +70,23 @@ func TestBucketStores_BlockMetrics_Registration(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, r)
 
-	m, err := reg.Gather()
-	require.NoError(t, err)
-	gathered := make([]string, len(m))
-	var buf bytes.Buffer
-	for _, metric := range m {
-		buf.Reset()
-		_, err = expfmt.MetricFamilyToText(&buf, metric)
-		require.NoError(t, err)
-		if s := strings.TrimSpace(buf.String()); s != "" {
-			gathered = append(gathered, s)
-		}
-	}
-
-	expected := []string{`
+	tenantBlockMetrics := []string{`
 # HELP pyroscopedb_block_profile_table_accesses_total Number of times a profile table was accessed
 # TYPE pyroscopedb_block_profile_table_accesses_total counter
-pyroscopedb_block_profile_table_accesses_total{table="profiles.parquet"} 1`,
-		`
+pyroscopedb_block_profile_table_accesses_total{table="profiles.parquet",tenant="tenant-1"} 1
+`, `
 # HELP pyroscopedb_page_reads_total Total number of pages read while querying
 # TYPE pyroscopedb_page_reads_total counter
-pyroscopedb_page_reads_total{column="Samples.list.element.StacktraceID",table="profiles"} 2
-pyroscopedb_page_reads_total{column="Samples.list.element.Value",table="profiles"} 2
-pyroscopedb_page_reads_total{column="SeriesIndex",table="profiles"} 2
-pyroscopedb_page_reads_total{column="StacktracePartition",table="profiles"} 2
-pyroscopedb_page_reads_total{column="TimeNanos",table="profiles"} 2`,
-	}
+pyroscopedb_page_reads_total{column="Samples.list.element.StacktraceID",table="profiles",tenant="tenant-1"} 2
+pyroscopedb_page_reads_total{column="Samples.list.element.Value",table="profiles",tenant="tenant-1"} 2
+pyroscopedb_page_reads_total{column="SeriesIndex",table="profiles",tenant="tenant-1"} 2
+pyroscopedb_page_reads_total{column="StacktracePartition",table="profiles",tenant="tenant-1"} 2
+pyroscopedb_page_reads_total{column="TimeNanos",table="profiles",tenant="tenant-1"} 2
+`}
+	assertMetricsGathered(t, reg, true, tenantBlockMetrics)
 
-	for _, e := range expected {
-		assert.Contains(t, gathered, strings.TrimSpace(e))
-	}
+	assert.NoError(t, stores.closeBucketStore("tenant-1"))
+	assertMetricsGathered(t, reg, false, tenantBlockMetrics)
 }
 
 type mockShardingStrategy struct{}
@@ -110,4 +97,41 @@ func (m *mockShardingStrategy) FilterUsers(_ context.Context, userIDs []string) 
 
 func (m *mockShardingStrategy) FilterBlocks(_ context.Context, _ string, _ map[ulid.ULID]*block.Meta, _ map[ulid.ULID]struct{}, _ block.GaugeVec) error {
 	return nil
+}
+
+func assertMetricsGathered(tb testing.TB, reg prometheus.Gatherer, gathered bool, expected []string) {
+	m, err := reg.Gather()
+	require.NoError(tb, err)
+	actual := make([]string, 0, len(m))
+	var buf bytes.Buffer
+	for _, metric := range m {
+		buf.Reset()
+		_, err = expfmt.MetricFamilyToText(&buf, metric)
+		require.NoError(tb, err)
+		if s := strings.TrimSpace(buf.String()); len(s) > 0 {
+			actual = append(actual, s)
+		}
+	}
+
+	var p expfmt.TextParser
+	for _, e := range expected {
+		_, err = p.TextToMetricFamilies(strings.NewReader(e))
+		require.NoError(tb, err, "expected metric is not valid:\n%s", e)
+		e = strings.TrimSpace(e)
+		var found bool
+		for _, g := range actual {
+			if found = g == e; found {
+				break
+			}
+		}
+		if gathered {
+			assert.True(tb, found, "expected metric not found:\n%s", e)
+		} else {
+			assert.False(tb, found, "found unexpected metric:\n%s", e)
+		}
+	}
+
+	if tb.Failed() {
+		tb.Logf("gathered metrics:\n%s\n", strings.Join(actual, "\n\n"))
+	}
 }
