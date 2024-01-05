@@ -115,8 +115,9 @@ func SplitTimeRangeByResolution(start, end time.Time, resolutions []time.Duratio
 		return
 	}
 
-	sort.Slice(resolutions, func(j, i int) bool {
-		return resolutions[i] <= resolutions[j]
+	// Sorting resolutions in ascending order.
+	sort.Slice(resolutions, func(i, j int) bool {
+		return resolutions[i] > resolutions[j]
 	})
 
 	// Time ranges are inclusive on both ends. In order to simplify calculation

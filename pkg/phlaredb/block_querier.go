@@ -296,7 +296,7 @@ type singleBlockQuerier struct {
 	openLock sync.Mutex
 	opened   bool
 	index    *index.Reader
-	profiles map[profileTableKey]*parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
+	profiles map[profileTableKey]*parquetReader[*schemav1.ProfilePersister]
 	symbols  symbolsResolver
 }
 
@@ -309,14 +309,14 @@ func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlar
 	q := &singleBlockQuerier{
 		logger:   phlarecontext.Logger(phlarectx),
 		metrics:  blockMetricsFromContext(phlarectx),
-		profiles: make(map[profileTableKey]*parquetReader[*schemav1.Profile, *schemav1.ProfilePersister], 3),
+		profiles: make(map[profileTableKey]*parquetReader[*schemav1.ProfilePersister], 3),
 		bucket:   phlareobj.NewPrefixedBucket(bucketReader, meta.ULID.String()),
 		meta:     meta,
 	}
 	for _, f := range meta.Files {
 		k, ok := parseProfileTableName(f.RelPath)
 		if ok {
-			r := &parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]{meta: f}
+			r := &parquetReader[*schemav1.ProfilePersister]{meta: f}
 			q.profiles[k] = r
 			q.tables = append(q.tables, r)
 		}
@@ -1730,7 +1730,7 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 	defer r.Release()
 
 	g, ctx := errgroup.WithContext(ctx)
-	util.SplitTimeRangeByResolution(time.UnixMilli(params.Start), time.UnixMilli(params.End), b.downSampleResolutions(), func(tr util.TimeRange) {
+	util.SplitTimeRangeByResolution(time.UnixMilli(params.Start), time.UnixMilli(params.End), b.downsampleResolutions(), func(tr util.TimeRange) {
 		g.Go(func() error {
 			profiles := b.profileTable(tr.Resolution, params.GetAggregation())
 			it := query.NewBinaryJoinIterator(
@@ -1902,7 +1902,7 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 	defer r.Release()
 
 	g, ctx := errgroup.WithContext(ctx)
-	util.SplitTimeRangeByResolution(time.UnixMilli(params.Start), time.UnixMilli(params.End), b.downSampleResolutions(), func(tr util.TimeRange) {
+	util.SplitTimeRangeByResolution(time.UnixMilli(params.Start), time.UnixMilli(params.End), b.downsampleResolutions(), func(tr util.TimeRange) {
 		g.Go(func() error {
 			profiles := b.profileTable(tr.Resolution, params.GetAggregation())
 			it := query.NewBinaryJoinIterator(
@@ -2167,11 +2167,11 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 	return g.Wait()
 }
 
-func (b *singleBlockQuerier) profileSourceTable() *parquetReader[*schemav1.Profile, *schemav1.ProfilePersister] {
-	return b.profileTable(0, 0)
+func (b *singleBlockQuerier) profileSourceTable() *parquetReader[*schemav1.ProfilePersister] {
+	return b.profiles[profileTableKey{}]
 }
 
-func (b *singleBlockQuerier) profileTable(resolution time.Duration, aggregation typesv1.TimeSeriesAggregationType) (t *parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]) {
+func (b *singleBlockQuerier) profileTable(resolution time.Duration, aggregation typesv1.TimeSeriesAggregationType) (t *parquetReader[*schemav1.ProfilePersister]) {
 	defer func() {
 		if t != nil {
 			b.metrics.profileTableAccess.WithLabelValues(t.meta.RelPath).Inc()
@@ -2180,7 +2180,7 @@ func (b *singleBlockQuerier) profileTable(resolution time.Duration, aggregation 
 	var ok bool
 	t, ok = b.profiles[profileTableKey{
 		resolution:  resolution,
-		aggregation: downSampleAggregation(aggregation),
+		aggregation: downsampleAggregation(aggregation),
 	}]
 	if ok {
 		return t
@@ -2188,7 +2188,7 @@ func (b *singleBlockQuerier) profileTable(resolution time.Duration, aggregation 
 	return b.profiles[profileTableKey{}]
 }
 
-func (b *singleBlockQuerier) downSampleResolutions() []time.Duration {
+func (b *singleBlockQuerier) downsampleResolutions() []time.Duration {
 	if len(b.profiles) < 2 {
 		// b.profiles contains only the table of original resolution.
 		return nil
@@ -2202,12 +2202,12 @@ func (b *singleBlockQuerier) downSampleResolutions() []time.Duration {
 	return resolutions
 }
 
-func downSampleAggregation(v typesv1.TimeSeriesAggregationType) string {
-	// TODO: Use constants defined in the `downsample` package.
-	if v == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_AVERAGE {
-		return "avg"
+func downsampleAggregation(v typesv1.TimeSeriesAggregationType) string {
+	switch v {
+	case typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM:
+		return "sum"
 	}
-	return "sum"
+	return ""
 }
 
 const profileTableName = "profiles"
@@ -2230,14 +2230,14 @@ func parseProfileTableName(n string) (profileTableKey, bool) {
 	}, true
 }
 
-type parquetReader[M schemav1.Models, P schemav1.PersisterName] struct {
+type parquetReader[P schemav1.PersisterName] struct {
 	persister P
 	file      parquetobj.File
 	meta      block.File
 	metrics   *BlocksMetrics
 }
 
-func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader phlareobj.BucketReader) error {
+func (r *parquetReader[P]) open(ctx context.Context, bucketReader phlareobj.BucketReader) error {
 	r.metrics = blockMetricsFromContext(ctx)
 	return r.file.Open(
 		ctx,
@@ -2249,15 +2249,15 @@ func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader phlareobj.B
 	)
 }
 
-func (r *parquetReader[M, P]) Close() error {
+func (r *parquetReader[P]) Close() error {
 	return r.file.Close()
 }
 
-func (r *parquetReader[M, P]) relPath() string {
+func (r *parquetReader[P]) relPath() string {
 	return r.persister.Name() + block.ParquetSuffix
 }
 
-func (r *parquetReader[M, P]) columnIter(ctx context.Context, columnName string, predicate query.Predicate, alias string) query.Iterator {
+func (r *parquetReader[P]) columnIter(ctx context.Context, columnName string, predicate query.Predicate, alias string) query.Iterator {
 	index, _ := query.GetColumnIndexByPath(r.file.File.Root(), columnName)
 	if index == -1 {
 		return query.NewErrIterator(fmt.Errorf("column '%s' not found in parquet file '%s'", columnName, r.relPath()))

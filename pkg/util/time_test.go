@@ -150,6 +150,18 @@ func Test_SplitTimeRangeByResolution(t *testing.T) {
 				{Start: mustTime("16:00:00"), End: mustTime("20:00:00").Add(-time.Millisecond), Resolution: time.Hour},
 			},
 		},
+		{
+			start:       mustDateTime("2006-01-01 15:04:01"),
+			end:         mustDateTime("2006-01-03 20:09:59"),
+			resolutions: resolutions,
+			expected: []TimeRange{
+				{Start: mustDateTime("2006-01-01 15:04:01"), End: mustDateTime("2006-01-01 15:05:00").Add(-time.Millisecond), Resolution: -1},
+				{Start: mustDateTime("2006-01-01 15:05:00"), End: mustDateTime("2006-01-01 16:00:00").Add(-time.Millisecond), Resolution: time.Minute * 5},
+				{Start: mustDateTime("2006-01-01 16:00:00"), End: mustDateTime("2006-01-03 20:00:00").Add(-time.Millisecond), Resolution: time.Hour},
+				{Start: mustDateTime("2006-01-03 20:00:00"), End: mustDateTime("2006-01-03 20:05:00").Add(-time.Millisecond), Resolution: time.Minute * 5},
+				{Start: mustDateTime("2006-01-03 20:05:00"), End: mustDateTime("2006-01-03 20:09:59"), Resolution: -1},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -158,7 +170,7 @@ func Test_SplitTimeRangeByResolution(t *testing.T) {
 			actual := make([]TimeRange, 0, len(tc.expected))
 			SplitTimeRangeByResolution(tc.start, tc.end, tc.resolutions, func(r TimeRange) {
 				actual = append(actual, r)
-				t.Log(r) // TODO
+				t.Log(r)
 			})
 			assert.Equal(t, tc.expected, actual)
 		})
@@ -171,4 +183,12 @@ func mustTime(s string) time.Time {
 		panic(err)
 	}
 	return t.AddDate(1970, 1, 1)
+}
+
+func mustDateTime(s string) time.Time {
+	t, err := time.Parse(time.DateTime, s)
+	if err != nil {
+		panic(err)
+	}
+	return t
 }
