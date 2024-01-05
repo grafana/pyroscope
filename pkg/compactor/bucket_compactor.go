@@ -394,6 +394,7 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 		StageSize:          stageSize,
 		SplitBy:            c.splitBy,
 		DownsamplerEnabled: c.downsamplerEnabled,
+		Logger:             c.logger,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "compact blocks %v", dirs)

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 
 	"github.com/dolthub/swiss"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -133,9 +135,10 @@ type Downsampler struct {
 	path           string
 	profileWriters []*profilesWriter
 	states         []*state
+	logger         log.Logger
 }
 
-func NewDownsampler(path string) (*Downsampler, error) {
+func NewDownsampler(path string, logger log.Logger) (*Downsampler, error) {
 	writers := make([]*profilesWriter, 0)
 	states := make([]*state, 0)
 	for _, c := range configs {
@@ -151,10 +154,17 @@ func NewDownsampler(path string) (*Downsampler, error) {
 		path:           path,
 		profileWriters: writers,
 		states:         states,
+		logger:         logger,
 	}, nil
 }
 
 func (d *Downsampler) flush(s *state, w *profilesWriter, c downsampleConfig) error {
+	level.Debug(d.logger).Log(
+		"msg", "flushing downsampled profile",
+		"interval", c.interval,
+		"aggregation", c.aggregation,
+		"sourceProfileCount", s.profileCount,
+		"sampleCount", len(s.values))
 	outputSamplesHistogram.WithLabelValues(c.interval.shortName).Observe(float64(len(s.values)))
 	var (
 		col    = len(s.currentRow) - 1

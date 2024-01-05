@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/go-kit/log"
 	"github.com/parquet-go/parquet-go"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -17,7 +18,7 @@ import (
 
 func TestDownsampler_ProfileCounts(t *testing.T) {
 	outDir := t.TempDir()
-	d, err := NewDownsampler(outDir)
+	d, err := NewDownsampler(outDir, log.NewNopLogger())
 	require.NoError(t, err)
 
 	f, err := os.Open("../testdata/01HHYG6245NWHZWVP27V8WJRT7/profiles.parquet")
@@ -74,7 +75,7 @@ func TestDownsampler_Aggregation(t *testing.T) {
 	require.NoError(t, err)
 
 	outDir := t.TempDir()
-	d, err := NewDownsampler(outDir)
+	d, err := NewDownsampler(outDir, log.NewNopLogger())
 	require.NoError(t, err)
 
 	for _, row := range rows {
@@ -118,7 +119,7 @@ func TestDownsampler_VaryingFingerprints(t *testing.T) {
 	require.NoError(t, err)
 
 	outDir := t.TempDir()
-	d, err := NewDownsampler(outDir)
+	d, err := NewDownsampler(outDir, log.NewNopLogger())
 	require.NoError(t, err)
 
 	for i, row := range rows {
@@ -148,7 +149,7 @@ func BenchmarkDownsampler_AddRow(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		outDir := b.TempDir()
-		d, err := NewDownsampler(outDir)
+		d, err := NewDownsampler(outDir, log.NewNopLogger())
 
 		require.NoError(b, err)
 		for _, row := range rows {
