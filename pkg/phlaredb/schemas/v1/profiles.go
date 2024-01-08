@@ -20,6 +20,8 @@ const (
 	SeriesIndexColumnName         = "SeriesIndex"
 	TimeNanosColumnName           = "TimeNanos"
 	StacktracePartitionColumnName = "StacktracePartition"
+	TotalValueColumnName          = "TotalValue"
+	SamplesColumnName             = "Samples"
 )
 
 var (
@@ -40,8 +42,8 @@ var (
 		phlareparquet.NewGroupField("ID", parquet.UUID()),
 		phlareparquet.NewGroupField(SeriesIndexColumnName, parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
 		phlareparquet.NewGroupField(StacktracePartitionColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
-		phlareparquet.NewGroupField("TotalValue", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
-		phlareparquet.NewGroupField("Samples", parquet.List(sampleField)),
+		phlareparquet.NewGroupField(TotalValueColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+		phlareparquet.NewGroupField(SamplesColumnName, parquet.List(sampleField)),
 		phlareparquet.NewGroupField("DropFrames", parquet.Optional(stringRef)),
 		phlareparquet.NewGroupField("KeepFrames", parquet.Optional(stringRef)),
 		phlareparquet.NewGroupField(TimeNanosColumnName, parquet.Timestamp(parquet.Nanosecond)),
@@ -50,16 +52,30 @@ var (
 		phlareparquet.NewGroupField("Comments", parquet.List(stringRef)),
 		phlareparquet.NewGroupField("DefaultSampleType", parquet.Optional(parquet.Int(64))),
 	})
+	DownsampledProfilesSchema = parquet.NewSchema("DownsampledProfile", phlareparquet.Group{
+		phlareparquet.NewGroupField(SeriesIndexColumnName, parquet.Encoded(parquet.Uint(32), &parquet.DeltaBinaryPacked)),
+		phlareparquet.NewGroupField(StacktracePartitionColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+		phlareparquet.NewGroupField(TotalValueColumnName, parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+		phlareparquet.NewGroupField(SamplesColumnName, parquet.List(
+			phlareparquet.Group{
+				phlareparquet.NewGroupField("StacktraceID", parquet.Encoded(parquet.Uint(64), &parquet.DeltaBinaryPacked)),
+				phlareparquet.NewGroupField("Value", parquet.Encoded(parquet.Int(64), &parquet.DeltaBinaryPacked)),
+			})),
+		phlareparquet.NewGroupField(TimeNanosColumnName, parquet.Timestamp(parquet.Nanosecond)),
+	})
 
 	sampleStacktraceIDColumnPath = strings.Split("Samples.list.element.StacktraceID", ".")
-	sampleValueColumnPath        = strings.Split("Samples.list.element.Value", ".")
+	SampleValueColumnPath        = strings.Split("Samples.list.element.Value", ".")
 	sampleSpanIDColumnPath       = strings.Split("Samples.list.element.SpanID", ".")
 
 	maxProfileRow               parquet.Row
 	seriesIndexColIndex         int
 	stacktraceIDColIndex        int
+	valueColIndex               int
 	timeNanoColIndex            int
 	stacktracePartitionColIndex int
+
+	downsampledValueColIndex int
 
 	ErrColumnNotFound = fmt.Errorf("column path not found")
 )
@@ -84,11 +100,22 @@ func init() {
 		panic(fmt.Errorf("StacktraceID column not found"))
 	}
 	stacktraceIDColIndex = stacktraceIDCol.ColumnIndex
+	valueCol, ok := ProfilesSchema.Lookup(SampleValueColumnPath...)
+	if !ok {
+		panic(fmt.Errorf("Sample.Value column not found"))
+	}
+	valueColIndex = valueCol.ColumnIndex
 	stacktracePartitionCol, ok := ProfilesSchema.Lookup(StacktracePartitionColumnName)
 	if !ok {
 		panic(fmt.Errorf("StacktracePartition column not found"))
 	}
 	stacktracePartitionColIndex = stacktracePartitionCol.ColumnIndex
+
+	downsampledValueCol, ok := DownsampledProfilesSchema.Lookup(SampleValueColumnPath...)
+	if !ok {
+		panic(fmt.Errorf("Sample.Value column not found"))
+	}
+	downsampledValueColIndex = downsampledValueCol.ColumnIndex
 }
 
 type SampleColumns struct {
@@ -102,7 +129,7 @@ func (c *SampleColumns) Resolve(schema *parquet.Schema) error {
 	if c.StacktraceID, err = ResolveColumnByPath(schema, sampleStacktraceIDColumnPath); err != nil {
 		return err
 	}
-	if c.Value, err = ResolveColumnByPath(schema, sampleValueColumnPath); err != nil {
+	if c.Value, err = ResolveColumnByPath(schema, SampleValueColumnPath); err != nil {
 		return err
 	}
 	// Optional.
@@ -681,6 +708,58 @@ func (p ProfileRow) ForStacktraceIDsValues(fn func([]parquet.Value)) {
 			}
 		}
 		if col > stacktraceIDColIndex {
+			break
+		}
+	}
+	if start != -1 {
+		fn(p[start:i])
+	}
+}
+
+func (p ProfileRow) ForStacktraceIdsAndValues(fn func([]parquet.Value, []parquet.Value)) {
+	startStacktraces := -1
+	endStacktraces := -1
+	startValues := -1
+	endValues := -1
+	var i int
+	for i = 0; i < len(p); i++ {
+		col := p[i].Column()
+		if col == stacktraceIDColIndex && p[i].DefinitionLevel() == 1 {
+			if startStacktraces == -1 {
+				startStacktraces = i
+			}
+		}
+		if col > stacktraceIDColIndex && endStacktraces == -1 {
+			endStacktraces = i
+		}
+		if col == valueColIndex && p[i].DefinitionLevel() == 1 {
+			if startValues == -1 {
+				startValues = i
+			}
+		}
+		if col > valueColIndex && endValues == -1 {
+			endValues = i
+			break
+		}
+	}
+	if startStacktraces != -1 && startValues != -1 {
+		fn(p[startStacktraces:endStacktraces], p[startValues:endValues])
+	}
+}
+
+type DownsampledProfileRow parquet.Row
+
+func (p DownsampledProfileRow) ForValues(fn func([]parquet.Value)) {
+	start := -1
+	var i int
+	for i = 0; i < len(p); i++ {
+		col := p[i].Column()
+		if col == downsampledValueColIndex && p[i].DefinitionLevel() == 1 {
+			if start == -1 {
+				start = i
+			}
+		}
+		if col > downsampledValueColIndex {
 			break
 		}
 	}

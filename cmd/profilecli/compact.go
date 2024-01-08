@@ -100,7 +100,15 @@ func compact(ctx context.Context, src, dst string, metas []*block.Meta, shards i
 	s.Suffix = " Compacting data..."
 	s.Restart()
 
-	out, err := phlaredb.CompactWithSplitting(ctx, blocks, uint64(shards), 0, dst, phlaredb.SplitByFingerprint)
+	out, err := phlaredb.CompactWithSplitting(ctx, phlaredb.CompactWithSplittingOpts{
+		Src:                blocks,
+		Dst:                dst,
+		SplitCount:         uint64(shards),
+		StageSize:          0,
+		SplitBy:            phlaredb.SplitByFingerprint,
+		DownsamplerEnabled: true,
+		Logger:             logger,
+	})
 	if err != nil {
 		s.Stop()
 		return err

@@ -24,10 +24,11 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
-	if err := mergeByStacktraces(ctx, b.profiles.file, rows, r); err != nil {
+	if err := mergeByStacktraces(ctx, b.profileSourceTable().file, rows, r); err != nil {
 		return nil, err
 	}
 	return r.Tree()
@@ -37,12 +38,13 @@ func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergePprof - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	r := symdb.NewResolver(ctx, b.symbols,
 		symdb.WithResolverMaxNodes(maxNodes),
 		symdb.WithResolverStackTraceSelector(sts))
 	defer r.Release()
-	if err := mergeByStacktraces(ctx, b.profiles.file, rows, r); err != nil {
+	if err := mergeByStacktraces(ctx, b.profileSourceTable().file, rows, r); err != nil {
 		return nil, err
 	}
 	return r.Pprof()
@@ -52,22 +54,24 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	columnName := "TotalValue"
 	if b.meta.Version == 1 {
 		columnName = "Samples.list.element.Value"
 	}
-	return mergeByLabels(ctx, b.profiles.file, columnName, rows, by...)
+	return mergeByLabels(ctx, b.profileSourceTable().file, columnName, rows, by...)
 }
 
 func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeBySpans - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
-	if err := mergeBySpans(ctx, b.profiles.file, rows, r, spanSelector); err != nil {
+	if err := mergeBySpans(ctx, b.profileSourceTable().file, rows, r, spanSelector); err != nil {
 		return nil, err
 	}
 	return r.Tree()
@@ -93,12 +97,7 @@ func mergeByStacktraces[T interface{ StacktracePartition() uint64 }](ctx context
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 	for profiles.Next() {
 		p := profiles.At()
-		partition := r.Partition(p.Row.StacktracePartition())
-		stacktraces := p.Values[0]
-		values := p.Values[1]
-		for i, sid := range stacktraces {
-			partition[sid.Uint32()] += values[i].Int64()
-		}
+		r.AddSamplesFromParquetRow(p.Row.StacktracePartition(), p.Values[0], p.Values[1])
 	}
 	return profiles.Err()
 }
@@ -121,19 +120,21 @@ func mergeBySpans[T interface{ StacktracePartition() uint64 }](ctx context.Conte
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
 	for profiles.Next() {
 		p := profiles.At()
-		partition := r.Partition(p.Row.StacktracePartition())
+		partition := p.Row.StacktracePartition()
 		stacktraces := p.Values[0]
 		values := p.Values[1]
 		spans := p.Values[2]
-		for i, sid := range stacktraces {
-			spanID := spans[i].Uint64()
-			if spanID == 0 {
-				continue
+		r.WithPartitionSamples(partition, func(samples map[uint32]int64) {
+			for i, sid := range stacktraces {
+				spanID := spans[i].Uint64()
+				if spanID == 0 {
+					continue
+				}
+				if _, ok := spanSelector[spanID]; ok {
+					samples[sid.Uint32()] += values[i].Int64()
+				}
 			}
-			if _, ok := spanSelector[spanID]; ok {
-				partition[sid.Uint32()] += values[i].Int64()
-			}
-		}
+		})
 	}
 	return profiles.Err()
 }

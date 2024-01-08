@@ -1021,6 +1021,7 @@ type mockConfigProvider struct {
 	userPartialBlockDelay        map[string]time.Duration
 	userPartialBlockDelayInvalid map[string]bool
 	verifyChunks                 map[string]bool
+	downsamplerEnabled           map[string]bool
 }
 
 func newMockConfigProvider() *mockConfigProvider {
@@ -1035,6 +1036,7 @@ func newMockConfigProvider() *mockConfigProvider {
 		userPartialBlockDelay:        make(map[string]time.Duration),
 		userPartialBlockDelayInvalid: make(map[string]bool),
 		verifyChunks:                 make(map[string]bool),
+		downsamplerEnabled:           make(map[string]bool),
 	}
 }
 
@@ -1091,6 +1093,10 @@ func (m *mockConfigProvider) CompactorBlockUploadVerifyChunks(tenantID string) b
 
 func (m *mockConfigProvider) CompactorBlockUploadMaxBlockSizeBytes(user string) int64 {
 	return m.blockUploadMaxBlockSizeBytes[user]
+}
+
+func (m *mockConfigProvider) CompactorDownsamplerEnabled(user string) bool {
+	return m.downsamplerEnabled[user]
 }
 
 func (m *mockConfigProvider) S3SSEType(string) string {
