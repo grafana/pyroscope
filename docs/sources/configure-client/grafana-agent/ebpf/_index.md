@@ -12,6 +12,8 @@ aliases:
 
 <img src="/media/docs/pyroscope/ebpf_logo_color_on_white.png" width="100px;" alt="eBPF"/>
 
+{{< youtube id="UX5aeL5KeZs" >}}
+
 eBPF is an advanced technology embedded into the Linux kernel. It stands for enhanced [Berkeley Packet Filter](https://en.wikipedia.org/wiki/EBPF) and revolutionizes the capability to run sandboxed code safely within the kernel space. This technology serves multiple use cases, such as networking, security, and performance monitoring without the need to alter kernel code or load additional modules.
 
 ## Benefits and tradeoffs of using eBPF for continuous profiling
