@@ -21,6 +21,8 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
 	"github.com/oklog/ulid"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -101,6 +103,8 @@ func NewMetaSyncer(logger log.Logger, reg prometheus.Registerer, bkt objstore.Bu
 
 // SyncMetas synchronizes local state of block metas with what we have in the bucket.
 func (s *Syncer) SyncMetas(ctx context.Context) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "SyncMetas")
+	defer sp.Finish()
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
@@ -126,6 +130,8 @@ func (s *Syncer) Metas() map[ulid.ULID]*block.Meta {
 // block with a higher compaction level.
 // Call to SyncMetas function is required to populate duplicateIDs in duplicateBlocksFilter.
 func (s *Syncer) GarbageCollect(ctx context.Context) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "GarbageCollect")
+	defer sp.Finish()
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
@@ -346,26 +352,30 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 		}
 	}()
 
-	// Open all blocks
-	err = concurrency.ForEachJob(ctx, len(readers), c.blockOpenConcurrency, func(ctx context.Context, idx int) error {
-		dir := dirs[idx]
-		meta, err := block.ReadMetaFromDir(dir)
-		if err != nil {
-			return errors.Wrapf(err, "failed to read meta the block dir %s", dir)
-		}
-		b := phlaredb.NewSingleBlockQuerierFromMeta(ctx, localBucket, meta)
-		if err := b.Open(ctx); err != nil {
-			return errors.Wrapf(err, "open block %s", meta.ULID)
-		}
-		// Only load symbols if we are splitting.
-		if shardCount > 1 {
-			if err = b.Symbols().Load(ctx); err != nil {
-				return errors.Wrapf(err, "error loading symbols")
+	err = func() error {
+		sp, ctx := opentracing.StartSpanFromContext(ctx, "OpenBlocks", opentracing.Tag{Key: "concurrency", Value: c.blockOpenConcurrency})
+		defer sp.Finish()
+		// Open all blocks
+		return concurrency.ForEachJob(ctx, len(readers), c.blockOpenConcurrency, func(ctx context.Context, idx int) error {
+			dir := dirs[idx]
+			meta, err := block.ReadMetaFromDir(dir)
+			if err != nil {
+				return errors.Wrapf(err, "failed to read meta the block dir %s", dir)
 			}
-		}
-		readers[idx] = b
-		return nil
-	})
+			b := phlaredb.NewSingleBlockQuerierFromMeta(ctx, localBucket, meta)
+			if err := b.Open(ctx); err != nil {
+				return errors.Wrapf(err, "open block %s", meta.ULID)
+			}
+			// Only load symbols if we are splitting.
+			if shardCount > 1 {
+				if err = b.Symbols().Load(ctx); err != nil {
+					return errors.Wrapf(err, "error loading symbols")
+				}
+			}
+			readers[idx] = b
+			return nil
+		})
+	}()
 	if err != nil {
 		return nil, err
 	}
@@ -377,7 +387,9 @@ func (c *BlockCompactor) CompactWithSplitting(ctx context.Context, dest string, 
 		}
 	}
 	currentLevel++
-
+	if sp := opentracing.SpanFromContext(ctx); sp != nil {
+		sp.SetTag("compaction_level", currentLevel)
+	}
 	start := time.Now()
 	defer func() {
 		c.metrics.Duration.WithLabelValues(fmt.Sprintf("%d", currentLevel)).Observe(time.Since(start).Seconds())
@@ -458,87 +470,130 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 
 	level.Info(jobLogger).Log("msg", "compaction available and planned; downloading blocks", "blocks", len(toCompact), "plan", fmt.Sprintf("%v", toCompact))
 
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "CompactJob",
+		opentracing.Tag{Key: "GroupKey", Value: job.Key()},
+		opentracing.Tag{Key: "Job", Value: job.String()},
+		opentracing.Tag{Key: "Labels", Value: job.Labels().String()},
+		opentracing.Tag{Key: "MinCompactionLevel", Value: job.MinCompactionLevel()},
+		opentracing.Tag{Key: "Resolution", Value: job.Resolution()},
+		opentracing.Tag{Key: "ShardKey", Value: job.ShardingKey()},
+		opentracing.Tag{Key: "SplitStageSize", Value: job.SplitStageSize()},
+		opentracing.Tag{Key: "UseSplitting", Value: job.UseSplitting()},
+		opentracing.Tag{Key: "SplittingShards", Value: job.SplittingShards()},
+		opentracing.Tag{Key: "BlockCount", Value: len(toCompact)},
+	)
+	defer sp.Finish()
+
+	blocksToCompactDirs := make([]string, len(toCompact))
 	// Once we have a plan we need to download the actual data.
 	downloadBegin := time.Now()
 
-	err = concurrency.ForEachJob(ctx, len(toCompact), c.blockSyncConcurrency, func(ctx context.Context, idx int) error {
-		meta := toCompact[idx]
+	err = func() error {
+		sp, ctx := opentracing.StartSpanFromContext(ctx, "DownloadBlocks")
+		defer func() {
+			elapsed := time.Since(downloadBegin)
+			level.Info(jobLogger).Log("msg", "downloaded and verified blocks; compacting blocks", "blocks", len(blocksToCompactDirs), "plan", fmt.Sprintf("%v", blocksToCompactDirs), "duration", elapsed, "duration_ms", elapsed.Milliseconds())
+			sp.Finish()
+		}()
 
-		// Must be the same as in blocksToCompactDirs.
-		bdir := filepath.Join(subDir, meta.ULID.String())
+		if err := concurrency.ForEachJob(ctx, len(toCompact), c.blockSyncConcurrency, func(ctx context.Context, idx int) error {
+			meta := toCompact[idx]
+			// Must be the same as in blocksToCompactDirs.
+			bdir := filepath.Join(subDir, meta.ULID.String())
+			if err := block.Download(ctx, jobLogger, c.bkt, meta.ULID, bdir); err != nil {
+				return errors.Wrapf(err, "download block %s", meta.ULID)
+			}
 
-		if err := block.Download(ctx, jobLogger, c.bkt, meta.ULID, bdir); err != nil {
-			return errors.Wrapf(err, "download block %s", meta.ULID)
+			return nil
+		}); err != nil {
+			return err
 		}
 
+		for ix, meta := range toCompact {
+			blocksToCompactDirs[ix] = filepath.Join(subDir, meta.ULID.String())
+		}
 		return nil
-	})
+	}()
 	if err != nil {
+		ext.LogError(sp, err)
 		return false, nil, err
 	}
 
-	blocksToCompactDirs := make([]string, len(toCompact))
-	for ix, meta := range toCompact {
-		blocksToCompactDirs[ix] = filepath.Join(subDir, meta.ULID.String())
-	}
-	elapsed := time.Since(downloadBegin)
-	level.Info(jobLogger).Log("msg", "downloaded and verified blocks; compacting blocks", "blocks", len(blocksToCompactDirs), "plan", fmt.Sprintf("%v", blocksToCompactDirs), "duration", elapsed, "duration_ms", elapsed.Milliseconds())
-
-	compactionBegin := time.Now()
-
-	if job.UseSplitting() {
-		compIDs, err = c.comp.CompactWithSplitting(ctx, subDir, blocksToCompactDirs, uint64(job.SplittingShards()), uint64(job.SplitStageSize()))
-	} else {
-		compIDs, err = c.comp.CompactWithSplitting(ctx, subDir, blocksToCompactDirs, 1, 0)
-	}
+	err = func() error {
+		sp, ctx := opentracing.StartSpanFromContext(ctx, "CompactBlocks")
+		compactionBegin := time.Now()
+		defer func() {
+			sp.Finish()
+			elapsed := time.Since(compactionBegin)
+			level.Info(jobLogger).Log("msg", "compacted blocks", "new", fmt.Sprintf("%v", compIDs), "blocks", fmt.Sprintf("%v", blocksToCompactDirs), "duration", elapsed, "duration_ms", elapsed.Milliseconds())
+		}()
+		if job.UseSplitting() {
+			compIDs, err = c.comp.CompactWithSplitting(ctx, subDir, blocksToCompactDirs, uint64(job.SplittingShards()), uint64(job.SplitStageSize()))
+		} else {
+			compIDs, err = c.comp.CompactWithSplitting(ctx, subDir, blocksToCompactDirs, 1, 0)
+		}
+		outputDirs := make([]string, len(compIDs))
+		for i, id := range compIDs {
+			outputDirs[i] = filepath.Join(subDir, id.String())
+		}
+		sp.SetTag("input_dirs", blocksToCompactDirs)
+		sp.SetTag("output_dirs", outputDirs)
+		return err
+	}()
 	if err != nil {
+		ext.LogError(sp, err)
 		return false, nil, errors.Wrapf(err, "compact blocks %v", blocksToCompactDirs)
 	}
-
-	elapsed = time.Since(compactionBegin)
-	level.Info(jobLogger).Log("msg", "compacted blocks", "new", fmt.Sprintf("%v", compIDs), "blocks", fmt.Sprintf("%v", blocksToCompactDirs), "duration", elapsed, "duration_ms", elapsed.Milliseconds())
-
-	uploadBegin := time.Now()
-	uploadedBlocks := atomic.NewInt64(0)
 
 	if err = verifyCompactedBlocksTimeRanges(compIDs, toCompactMinTime.UnixMilli(), toCompactMaxTime.UnixMilli(), subDir); err != nil {
 		level.Warn(jobLogger).Log("msg", "compacted blocks verification failed", "err", err)
 		c.metrics.compactionBlocksVerificationFailed.Inc()
 	}
 
-	err = concurrency.ForEachJob(ctx, len(compIDs), c.blockSyncConcurrency, func(ctx context.Context, idx int) error {
-		ulidToUpload := compIDs[idx]
+	err = func() error {
+		sp, ctx := opentracing.StartSpanFromContext(ctx, "Uploading blocks", opentracing.Tag{Key: "count", Value: len(compIDs)})
+		uploadBegin := time.Now()
+		uploadedBlocks := atomic.NewInt64(0)
+		defer func() {
+			elapsed := time.Since(uploadBegin)
+			level.Info(jobLogger).Log("msg", "uploaded all blocks", "blocks", uploadedBlocks, "duration", elapsed, "duration_ms", elapsed.Milliseconds())
+			sp.Finish()
+		}()
+		return concurrency.ForEachJob(ctx, len(compIDs), c.blockSyncConcurrency, func(ctx context.Context, idx int) error {
+			ulidToUpload := compIDs[idx]
 
-		uploadedBlocks.Inc()
+			uploadedBlocks.Inc()
 
-		bdir := filepath.Join(subDir, ulidToUpload.String())
+			bdir := filepath.Join(subDir, ulidToUpload.String())
 
-		newMeta, err := block.ReadMetaFromDir(bdir)
-		if err != nil {
-			return errors.Wrapf(err, "failed to read meta the block dir %s", bdir)
-		}
+			newMeta, err := block.ReadMetaFromDir(bdir)
+			if err != nil {
+				return errors.Wrapf(err, "failed to read meta the block dir %s", bdir)
+			}
 
-		// Ensure the compacted block is valid.
-		if err := phlaredb.ValidateLocalBlock(ctx, bdir); err != nil {
-			return errors.Wrapf(err, "invalid result block %s", bdir)
-		}
+			// Ensure the compacted block is valid.
+			if err := phlaredb.ValidateLocalBlock(ctx, bdir); err != nil {
+				return errors.Wrapf(err, "invalid result block %s", bdir)
+			}
 
-		begin := time.Now()
-		if err := block.Upload(ctx, jobLogger, c.bkt, bdir); err != nil {
-			return errors.Wrapf(err, "upload of %s failed", ulidToUpload)
-		}
+			begin := time.Now()
+			if err := block.Upload(ctx, jobLogger, c.bkt, bdir); err != nil {
+				return errors.Wrapf(err, "upload of %s failed", ulidToUpload)
+			}
 
-		elapsed := time.Since(begin)
-		level.Info(jobLogger).Log("msg", "uploaded block", "result_block", ulidToUpload, "duration", elapsed, "duration_ms", elapsed.Milliseconds(), "labels", labels.FromMap(newMeta.Labels))
-		return nil
-	})
+			elapsed := time.Since(begin)
+			level.Info(jobLogger).Log("msg", "uploaded block", "result_block", ulidToUpload, "duration", elapsed, "duration_ms", elapsed.Milliseconds(), "labels", labels.FromMap(newMeta.Labels))
+			return nil
+		})
+	}()
+
 	if err != nil {
+		ext.LogError(sp, err)
 		return false, nil, err
 	}
 
-	elapsed = time.Since(uploadBegin)
-	level.Info(jobLogger).Log("msg", "uploaded all blocks", "blocks", uploadedBlocks, "duration", elapsed, "duration_ms", elapsed.Milliseconds())
-
+	sp, ctx = opentracing.StartSpanFromContext(ctx, "Deleting blocks", opentracing.Tag{Key: "count", Value: len(compIDs)})
+	defer sp.Finish()
 	// Mark for deletion the blocks we just compacted from the job and bucket so they do not get included
 	// into the next planning cycle.
 	// Eventually the block we just uploaded should get synced into the job again (including sync-delay).
@@ -723,6 +778,12 @@ func NewBucketCompactor(
 // Compact runs compaction over bucket.
 // If maxCompactionTime is positive then after this time no more new compactions are started.
 func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Duration) (rerr error) {
+	sp := opentracing.SpanFromContext(ctx)
+	if sp == nil {
+		sp, ctx = opentracing.StartSpanFromContext(ctx, "Compact")
+	}
+	sp.SetTag("max_compaction_time", maxCompactionTime)
+	sp.SetTag("concurrency", c.concurrency)
 	defer func() {
 		// Do not remove the compactDir if an error has occurred
 		// because potentially on the next run we would not have to download
@@ -798,6 +859,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 
 		level.Info(c.logger).Log("msg", "start sync of metas")
 		if err := c.sy.SyncMetas(ctx); err != nil {
+			ext.LogError(sp, err)
 			return errors.Wrap(err, "sync")
 		}
 
@@ -805,13 +867,16 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 		// Blocks that were compacted are garbage collected after each Compaction.
 		// However if compactor crashes we need to resolve those on startup.
 		if err := c.sy.GarbageCollect(ctx); err != nil {
+			ext.LogError(sp, err)
 			return errors.Wrap(err, "blocks garbage collect")
 		}
 
 		jobs, err := c.grouper.Groups(c.sy.Metas())
 		if err != nil {
+			ext.LogError(sp, err)
 			return errors.Wrap(err, "build compaction jobs")
 		}
+		sp.LogKV("discovered_jobs", len(jobs))
 
 		// There is another check just before we start processing the job, but we can avoid sending it
 		// to the goroutine in the first place.
@@ -819,6 +884,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 		if err != nil {
 			return err
 		}
+		sp.LogKV("own_jobs", len(jobs))
 
 		// Record the difference between now and the max time for a block being compacted. This
 		// is used to detect compactors not being able to keep up with the rate of blocks being
@@ -830,6 +896,7 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 
 		// Skip jobs for which the wait period hasn't been honored yet.
 		jobs = c.filterJobsByWaitPeriod(ctx, jobs)
+		sp.LogKV("filtered_jobs", len(jobs))
 
 		// Sort jobs based on the configured ordering algorithm.
 		jobs = c.sortJobs(jobs)
@@ -854,12 +921,14 @@ func (c *BucketCompactor) Compact(ctx context.Context, maxCompactionTime time.Du
 		for _, g := range jobs {
 			select {
 			case jobErr := <-errChan:
+				ext.LogError(sp, jobErr)
 				jobErrs.Add(jobErr)
 				break jobLoop
 			case jobChan <- g:
 			case <-maxCompactionTimeChan:
 				maxCompactionTimeReached = true
 				level.Info(c.logger).Log("msg", "max compaction time reached, no more compactions will be started")
+				sp.LogKV("msg", "max compaction time reached, no more compactions will be started")
 				break jobLoop
 			}
 		}

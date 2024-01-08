@@ -16,6 +16,8 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
 	"github.com/oklog/ulid"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 	"github.com/parquet-go/parquet-go"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
@@ -117,9 +119,13 @@ func CompactWithSplitting(ctx context.Context, opts CompactWithSplittingOpts) (
 			}
 		}
 		var metas []block.Meta
+		sp, ctx := opentracing.StartSpanFromContext(ctx, "compact.Stage", opentracing.Tag{Key: "stage", Value: stage})
 		if metas, err = compact(ctx, writers, opts.Src, opts.SplitBy, opts.SplitCount); err != nil {
+			sp.Finish()
+			ext.LogError(sp, err)
 			return nil, err
 		}
+		sp.Finish()
 		outMetas = append(outMetas, metas...)
 		// Writers are already closed, and must be GCed.
 		for j := range writers {
@@ -181,6 +187,8 @@ func compact(ctx context.Context, writers []*blockWriter, readers []BlockReader,
 	if err = rowsIt.Err(); err != nil {
 		return nil, err
 	}
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "compact.Close")
+	defer sp.Finish()
 
 	// Close all blocks
 	errs := multierror.New()

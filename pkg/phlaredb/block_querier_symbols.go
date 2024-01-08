@@ -9,6 +9,7 @@ import (
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
+	"github.com/opentracing/opentracing-go"
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
@@ -141,6 +142,8 @@ func newSymbolsResolverV2(ctx context.Context, b phlareobj.Bucket, meta *block.M
 }
 
 func (r *symbolsResolverV2) Load(ctx context.Context) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "symbols.Load")
+	defer sp.Finish()
 	return r.symbols.Load(ctx)
 }
 
