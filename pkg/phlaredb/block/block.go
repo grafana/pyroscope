@@ -15,6 +15,8 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/runutil"
 	"github.com/oklog/ulid"
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/thanos-io/objstore"
@@ -54,6 +56,9 @@ func DownloadMeta(ctx context.Context, logger log.Logger, bkt objstore.Bucket, i
 
 // Download downloads directory that is meant to be block directory.
 func Download(ctx context.Context, logger log.Logger, bucket objstore.Bucket, id ulid.ULID, dst string, options ...objstore.DownloadOption) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "block.Download", opentracing.Tag{Key: "ULID", Value: id.String()})
+	defer sp.Finish()
+
 	if err := os.MkdirAll(dst, 0o750); err != nil {
 		return errors.Wrap(err, "create dir")
 	}
@@ -141,7 +146,13 @@ func upload(ctx context.Context, logger log.Logger, bkt objstore.Bucket, bdir st
 // Upload uploads a TSDB block to the object storage. It verifies basic
 // features of Thanos block.
 func Upload(ctx context.Context, logger log.Logger, bkt objstore.Bucket, bdir string) error {
-	return upload(ctx, logger, bkt, bdir)
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "block.Upload", opentracing.Tag{Key: "dir", Value: bdir})
+	defer sp.Finish()
+	if err := upload(ctx, logger, bkt, bdir); err != nil {
+		ext.LogError(sp, err)
+		return err
+	}
+	return nil
 }
 
 func cleanUp(logger log.Logger, bkt objstore.Bucket, id ulid.ULID, err error) error {
