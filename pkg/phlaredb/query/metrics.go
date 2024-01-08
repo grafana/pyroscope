@@ -15,18 +15,23 @@ const (
 )
 
 type Metrics struct {
+	registerer     prometheus.Registerer
 	pageReadsTotal *prometheus.CounterVec
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
-	m := &Metrics{
-		pageReadsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
+	return &Metrics{
+		registerer: reg,
+
+		pageReadsTotal: util.RegisterOrGet(reg, prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "pyroscopedb_page_reads_total",
 			Help: "Total number of pages read while querying",
-		}, []string{"table", "column"}),
+		}, []string{"table", "column"})),
 	}
-	m.pageReadsTotal = util.RegisterOrGet(reg, m.pageReadsTotal)
-	return m
+}
+
+func (m *Metrics) Unregister() {
+	m.registerer.Unregister(m.pageReadsTotal)
 }
 
 func AddMetricsToContext(ctx context.Context, m *Metrics) context.Context {

@@ -67,7 +67,8 @@ func Compact(ctx context.Context, src []BlockReader, dst string) (meta block.Met
 		SplitCount:         1,
 		StageSize:          0,
 		SplitBy:            SplitByFingerprint,
-		DownsamplerEnabled: false,
+		DownsamplerEnabled: true,
+		Logger:             util.Logger,
 	})
 	if err != nil {
 		return block.Meta{}, err

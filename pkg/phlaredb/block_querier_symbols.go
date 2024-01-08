@@ -31,7 +31,7 @@ type symbolsResolver interface {
 }
 
 type symbolsResolverV1 struct {
-	stacktraces  parquetReader[*schemav1.Stacktrace, *schemav1.StacktracePersister]
+	stacktraces  parquetReader[*schemav1.StacktracePersister]
 	bucketReader phlareobj.Bucket
 	*inMemoryParquetTables
 }
