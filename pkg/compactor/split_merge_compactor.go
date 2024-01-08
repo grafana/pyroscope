@@ -25,7 +25,7 @@ func splitAndMergePlannerFactory(cfg Config) Planner {
 	return NewSplitAndMergePlanner(cfg.BlockRanges.ToMilliseconds())
 }
 
-func splitAndMergeCompactorFactory(_ context.Context, cfg Config, cfgProvider ConfigProvider, userID string, logger log.Logger, reg prometheus.Registerer) (Compactor, error) {
+func splitAndMergeCompactorFactory(_ context.Context, cfg Config, cfgProvider ConfigProvider, userID string, logger log.Logger, metrics *CompactorMetrics) (Compactor, error) {
 	splitBy := getCompactionSplitBy(cfg.CompactionSplitBy)
 	if splitBy == nil {
 		return nil, errInvalidCompactionSplitBy
@@ -35,7 +35,7 @@ func splitAndMergeCompactorFactory(_ context.Context, cfg Config, cfgProvider Co
 		downsamplerEnabled:   cfg.DownsamplerEnabled && cfgProvider.CompactorDownsamplerEnabled(userID),
 		splitBy:              splitBy,
 		logger:               logger,
-		metrics:              newCompactorMetrics(reg),
+		metrics:              metrics,
 	}, nil
 }
 

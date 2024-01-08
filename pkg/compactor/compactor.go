@@ -77,7 +77,7 @@ type BlocksCompactorFactory func(
 	cfgProvider ConfigProvider,
 	userID string,
 	logger log.Logger,
-	reg prometheus.Registerer,
+	metrics *CompactorMetrics,
 ) (Compactor, error)
 
 // BlocksPlannerFactory builds and returns the compactor and planner to use to compact a tenant's blocks.
@@ -275,6 +275,9 @@ type MultitenantCompactor struct {
 	blockUploadBytes       *prometheus.GaugeVec
 	blockUploadFiles       *prometheus.GaugeVec
 	blockUploadValidations atomic.Int64
+
+	// Compactor metrics
+	compactorMetrics *CompactorMetrics
 }
 
 // NewMultitenantCompactor makes a new MultitenantCompactor.
@@ -376,6 +379,7 @@ func newMultitenantCompactor(
 			Name: "pyroscope_block_upload_api_files_total",
 			Help: "Total number of files from successfully uploaded and validated blocks using block upload API.",
 		}, []string{"user"}),
+		compactorMetrics: newCompactorMetrics(registerer),
 	}
 
 	promauto.With(registerer).NewGaugeFunc(prometheus.GaugeOpts{
@@ -745,7 +749,7 @@ func (c *MultitenantCompactor) compactUser(ctx context.Context, userID string) e
 	}
 
 	// Create blocks compactor dependencies.
-	blocksCompactor, err := c.blocksCompactorFactory(ctx, c.compactorCfg, c.cfgProvider, userID, c.logger, c.registerer)
+	blocksCompactor, err := c.blocksCompactorFactory(ctx, c.compactorCfg, c.cfgProvider, userID, c.logger, c.compactorMetrics)
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize compactor dependencies")
 	}
