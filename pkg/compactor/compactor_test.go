@@ -1647,7 +1647,7 @@ func prepareWithConfigProvider(t *testing.T, compactorCfg Config, bucketClient o
 	logger := &componentLogger{component: "compactor", log: log.NewLogfmtLogger(logs)}
 	registry := prometheus.NewRegistry()
 
-	blocksCompactorFactory := func(ctx context.Context, cfg Config, cfgProvider ConfigProvider, userID string, logger log.Logger, reg prometheus.Registerer) (Compactor, error) {
+	blocksCompactorFactory := func(ctx context.Context, cfg Config, cfgProvider ConfigProvider, userID string, logger log.Logger, metrics *CompactorMetrics) (Compactor, error) {
 		return blockCompactor, nil
 	}
 
