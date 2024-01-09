@@ -21,7 +21,7 @@ var (
 )
 
 func NewMemoryStore() (Store, error) {
-	store := &memoryStore{
+	store := &bucketStore{
 		store:  make(map[string]map[string]*settingsv1.Setting),
 		bucket: objstore.NewInMemBucket(),
 	}
@@ -30,7 +30,7 @@ func NewMemoryStore() (Store, error) {
 }
 
 func NewBucketStore(bucket objstore.Bucket) (Store, error) {
-	store := &memoryStore{
+	store := &bucketStore{
 		store:  make(map[string]map[string]*settingsv1.Setting),
 		bucket: bucket,
 	}
@@ -49,7 +49,7 @@ func NewBucketStore(bucket objstore.Bucket) (Store, error) {
 	return store, nil
 }
 
-type memoryStore struct {
+type bucketStore struct {
 	rw sync.RWMutex
 
 	// store is kv pairs, indexed first by tenant id.
@@ -59,7 +59,7 @@ type memoryStore struct {
 	bucket objstore.Bucket
 }
 
-func (s *memoryStore) Get(ctx context.Context, tenantID string) ([]*settingsv1.Setting, error) {
+func (s *bucketStore) Get(ctx context.Context, tenantID string) ([]*settingsv1.Setting, error) {
 	s.rw.RLock()
 	defer s.rw.RUnlock()
 
@@ -76,7 +76,7 @@ func (s *memoryStore) Get(ctx context.Context, tenantID string) ([]*settingsv1.S
 	return settings, nil
 }
 
-func (s *memoryStore) Set(ctx context.Context, tenantID string, setting *settingsv1.Setting) (*settingsv1.Setting, error) {
+func (s *bucketStore) Set(ctx context.Context, tenantID string, setting *settingsv1.Setting) (*settingsv1.Setting, error) {
 	s.rw.Lock()
 	defer s.rw.Unlock()
 
@@ -99,19 +99,19 @@ func (s *memoryStore) Set(ctx context.Context, tenantID string, setting *setting
 	return setting, nil
 }
 
-func (s *memoryStore) Flush(ctx context.Context) error {
+func (s *bucketStore) Flush(ctx context.Context) error {
 	s.rw.Lock()
 	defer s.rw.Unlock()
 
 	return s.unsafeFlush(ctx)
 }
 
-func (s *memoryStore) Close() error {
+func (s *bucketStore) Close() error {
 	return s.bucket.Close()
 }
 
 // unsafeFlush will flush the store to disk. This is not thread-safe.
-func (s *memoryStore) unsafeFlush(ctx context.Context) error {
+func (s *bucketStore) unsafeFlush(ctx context.Context) error {
 	data, err := json.Marshal(s.store)
 	if err != nil {
 		return err
@@ -126,7 +126,7 @@ func (s *memoryStore) unsafeFlush(ctx context.Context) error {
 
 // unsafeLoad will sync the store with an on-disk store, if found. This is not
 // thread-safe.
-func (s *memoryStore) unsafeLoad(ctx context.Context) error {
+func (s *bucketStore) unsafeLoad(ctx context.Context) error {
 	reader, err := s.bucket.Get(ctx, settingsFilename)
 	if err != nil {
 		if s.bucket.IsObjNotFoundErr(err) {
