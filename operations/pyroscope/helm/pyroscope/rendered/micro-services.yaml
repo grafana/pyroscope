@@ -571,7 +571,7 @@ data:
     //
     // will scrape the `memory`, `cpu` and `goroutine` profiles from the `8080` port of the pod.
     //
-    // For more information see https://grafana.com/docs/phlare/latest/operators-guide/deploy-kubernetes/#optional-scrape-your-own-workloads-profiles
+    // For more information see https://grafana.com/docs/pyroscope/latest/deploy-kubernetes/helm/#optional-scrape-your-own-workloads-profiles
     discovery.relabel "kubernetes_pods" {
     	targets = concat(discovery.kubernetes.pyroscope_kubernetes.targets)
 
