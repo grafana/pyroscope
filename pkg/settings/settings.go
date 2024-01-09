@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	"time"
 
 	"github.com/bufbuild/connect-go"
 	"github.com/grafana/dskit/services"
@@ -37,6 +38,18 @@ func (ts *TenantSettings) running(ctx context.Context) error {
 }
 
 func (ts *TenantSettings) stopping(_ error) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err := ts.store.Flush(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = ts.store.Close()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
