@@ -74,9 +74,16 @@ type BlocksGrouperFactory func(
 type BlocksCompactorFactory func(
 	ctx context.Context,
 	cfg Config,
+	cfgProvider ConfigProvider,
+	userID string,
 	logger log.Logger,
-	reg prometheus.Registerer,
-) (Compactor, Planner, error)
+	metrics *CompactorMetrics,
+) (Compactor, error)
+
+// BlocksPlannerFactory builds and returns the compactor and planner to use to compact a tenant's blocks.
+type BlocksPlannerFactory func(
+	cfg Config,
+) Planner
 
 // Config holds the MultitenantCompactor config.
 type Config struct {
@@ -94,6 +101,7 @@ type Config struct {
 	TenantCleanupDelay         time.Duration `yaml:"tenant_cleanup_delay" category:"advanced"`
 	MaxCompactionTime          time.Duration `yaml:"max_compaction_time" category:"advanced"`
 	NoBlocksFileCleanupEnabled bool          `yaml:"no_blocks_file_cleanup_enabled" category:"experimental"`
+	DownsamplerEnabled         bool          `yaml:"downsampler_enabled" category:"advanced"`
 
 	// Compactor concurrency options
 	MaxOpeningBlocksConcurrency int `yaml:"max_opening_blocks_concurrency" category:"advanced"` // Number of goroutines opening blocks before compaction.
@@ -117,6 +125,7 @@ type Config struct {
 	// Allow downstream projects to customise the blocks compactor.
 	BlocksGrouperFactory   BlocksGrouperFactory   `yaml:"-"`
 	BlocksCompactorFactory BlocksCompactorFactory `yaml:"-"`
+	BlocksPlannerFactory   BlocksPlannerFactory   `yaml:"-"`
 }
 
 // RegisterFlags registers the MultitenantCompactor flags.
@@ -145,6 +154,7 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet, logger log.Logger) {
 		"If 0, blocks will be deleted straight away. Note that deleting blocks immediately can cause query failures.")
 	// f.DurationVar(&cfg.TenantCleanupDelay, "compactor.tenant-cleanup-delay", 6*time.Hour, "For tenants marked for deletion, this is time between deleting of last block, and doing final cleanup (marker files, debug files) of the tenant.")
 	f.BoolVar(&cfg.NoBlocksFileCleanupEnabled, "compactor.no-blocks-file-cleanup-enabled", false, "If enabled, will delete the bucket-index, markers and debug files in the tenant bucket when there are no blocks left in the index.")
+	f.BoolVar(&cfg.DownsamplerEnabled, "compactor.downsampler-enabled", false, "If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept.")
 	// compactor concurrency options
 	f.IntVar(&cfg.MaxOpeningBlocksConcurrency, "compactor.max-opening-blocks-concurrency", 16, "Number of goroutines opening blocks before compaction.")
 
@@ -202,6 +212,9 @@ type ConfigProvider interface {
 	// and whether the configured value was valid. If the value wasn't valid, the returned delay is the default one
 	// and the caller is responsible to warn the Mimir operator about it.
 	CompactorPartialBlockDeletionDelay(userID string) (delay time.Duration, valid bool)
+
+	// CompactorDownsamplerEnabled returns true if the downsampler is enabled for a given user.
+	CompactorDownsamplerEnabled(userId string) bool
 }
 
 // MultitenantCompactor is a multi-tenant TSDB blocks compactor based on Thanos.
@@ -218,13 +231,13 @@ type MultitenantCompactor struct {
 	// Useful for injecting mock objects from tests.
 	blocksGrouperFactory   BlocksGrouperFactory
 	blocksCompactorFactory BlocksCompactorFactory
+	blocksPlannerFactory   BlocksPlannerFactory
 
 	// Blocks cleaner is responsible to hard delete blocks marked for deletion.
 	blocksCleaner *BlocksCleaner
 
 	// Underlying compactor and planner used to compact TSDB blocks.
-	blocksPlanner   Planner
-	blocksCompactor Compactor
+	blocksPlanner Planner
 
 	// Client used to run operations on the bucket storing blocks.
 	bucketClient objstore.Bucket
@@ -262,6 +275,9 @@ type MultitenantCompactor struct {
 	blockUploadBytes       *prometheus.GaugeVec
 	blockUploadFiles       *prometheus.GaugeVec
 	blockUploadValidations atomic.Int64
+
+	// Compactor metrics
+	compactorMetrics *CompactorMetrics
 }
 
 // NewMultitenantCompactor makes a new MultitenantCompactor.
@@ -273,13 +289,14 @@ func NewMultitenantCompactor(compactorCfg Config, bucketClient objstore.Bucket, 
 
 	blocksGrouperFactory := compactorCfg.BlocksGrouperFactory
 	blocksCompactorFactory := compactorCfg.BlocksCompactorFactory
+	blocksPlannerFactory := compactorCfg.BlocksPlannerFactory
 
-	mimirCompactor, err := newMultitenantCompactor(compactorCfg, bucketClient, cfgProvider, logger, registerer, blocksGrouperFactory, blocksCompactorFactory)
+	c, err := newMultitenantCompactor(compactorCfg, bucketClient, cfgProvider, logger, registerer, blocksGrouperFactory, blocksCompactorFactory, blocksPlannerFactory)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create blocks compactor")
 	}
 
-	return mimirCompactor, nil
+	return c, nil
 }
 
 func newMultitenantCompactor(
@@ -290,6 +307,7 @@ func newMultitenantCompactor(
 	registerer prometheus.Registerer,
 	blocksGrouperFactory BlocksGrouperFactory,
 	blocksCompactorFactory BlocksCompactorFactory,
+	blocksPlannerFactory BlocksPlannerFactory,
 ) (*MultitenantCompactor, error) {
 	c := &MultitenantCompactor{
 		compactorCfg:           compactorCfg,
@@ -301,6 +319,7 @@ func newMultitenantCompactor(
 		bucketClient:           bucketClient,
 		blocksGrouperFactory:   blocksGrouperFactory,
 		blocksCompactorFactory: blocksCompactorFactory,
+		blocksPlannerFactory:   blocksPlannerFactory,
 		compactionRunsStarted: promauto.With(registerer).NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_compactor_runs_started_total",
 			Help: "Total number of compaction runs started.",
@@ -360,6 +379,7 @@ func newMultitenantCompactor(
 			Name: "pyroscope_block_upload_api_files_total",
 			Help: "Total number of files from successfully uploaded and validated blocks using block upload API.",
 		}, []string{"user"}),
+		compactorMetrics: newCompactorMetrics(registerer),
 	}
 
 	promauto.With(registerer).NewGaugeFunc(prometheus.GaugeOpts{
@@ -395,11 +415,7 @@ func newMultitenantCompactor(
 func (c *MultitenantCompactor) starting(ctx context.Context) error {
 	var err error
 
-	// Create blocks compactor dependencies.
-	c.blocksCompactor, c.blocksPlanner, err = c.blocksCompactorFactory(ctx, c.compactorCfg, c.logger, c.registerer)
-	if err != nil {
-		return errors.Wrap(err, "failed to initialize compactor dependencies")
-	}
+	c.blocksPlanner = c.blocksPlannerFactory(c.compactorCfg)
 
 	// Wrap the bucket client to write block deletion marks in the global location too.
 	c.bucketClient = block.BucketWithGlobalMarkers(c.bucketClient)
@@ -732,12 +748,18 @@ func (c *MultitenantCompactor) compactUser(ctx context.Context, userID string) e
 		return errors.Wrap(err, "failed to create syncer")
 	}
 
+	// Create blocks compactor dependencies.
+	blocksCompactor, err := c.blocksCompactorFactory(ctx, c.compactorCfg, c.cfgProvider, userID, c.logger, c.compactorMetrics)
+	if err != nil {
+		return errors.Wrap(err, "failed to initialize compactor dependencies")
+	}
+
 	compactor, err := NewBucketCompactor(
 		userLogger,
 		syncer,
 		c.blocksGrouperFactory(ctx, c.compactorCfg, c.cfgProvider, userID, userLogger, reg),
 		c.blocksPlanner,
-		c.blocksCompactor,
+		blocksCompactor,
 		path.Join(c.compactorCfg.DataDir, "compact"),
 		userBucket,
 		c.compactorCfg.CompactionConcurrency,

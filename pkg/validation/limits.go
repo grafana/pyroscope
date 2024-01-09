@@ -76,6 +76,7 @@ type Limits struct {
 	CompactorSplitGroups               int            `yaml:"compactor_split_groups" json:"compactor_split_groups"`
 	CompactorTenantShardSize           int            `yaml:"compactor_tenant_shard_size" json:"compactor_tenant_shard_size"`
 	CompactorPartialBlockDeletionDelay model.Duration `yaml:"compactor_partial_block_deletion_delay" json:"compactor_partial_block_deletion_delay"`
+	CompactorDownsamplerEnabled        bool           `yaml:"compactor_downsampler_enabled" json:"compactor_downsampler_enabled"`
 
 	// This config doesn't have a CLI flag registered here because they're registered in
 	// their own original config struct.
@@ -142,6 +143,7 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.CompactorTenantShardSize, "compactor.compactor-tenant-shard-size", 0, "Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.")
 	_ = l.CompactorPartialBlockDeletionDelay.Set("1d")
 	f.Var(&l.CompactorPartialBlockDeletionDelay, "compactor.partial-block-deletion-delay", fmt.Sprintf("If a partial block (unfinished block without %s file) hasn't been modified for this time, it will be marked for deletion. The minimum accepted value is %s: a lower value will be ignored and the feature disabled. 0 to disable.", block.MetaFilename, MinCompactorPartialBlockDeletionDelay.String()))
+	f.BoolVar(&l.CompactorDownsamplerEnabled, "compactor.compactor-downsampler-enabled", true, "If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept.")
 
 	_ = l.RejectNewerThan.Set("10m")
 	f.Var(&l.RejectNewerThan, "validation.reject-newer-than", "This limits how far into the future profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 10m.")
@@ -372,6 +374,11 @@ func (o *Overrides) CompactorPartialBlockDeletionDelay(userID string) (delay tim
 	}
 
 	return delay, true
+}
+
+// CompactorDownsamplerEnabled returns true if the downsampler is enabled for a given user.
+func (o *Overrides) CompactorDownsamplerEnabled(userId string) bool {
+	return o.getOverridesForTenant(userId).CompactorDownsamplerEnabled
 }
 
 // S3SSEType returns the per-tenant S3 SSE type.

@@ -70,8 +70,8 @@ type BlockQuerier struct {
 
 func NewBlockQuerier(phlarectx context.Context, bucketReader phlareobj.Bucket) *BlockQuerier {
 	return &BlockQuerier{
-		phlarectx: contextWithBlockMetrics(phlarectx,
-			newBlocksMetrics(
+		phlarectx: ContextWithBlockMetrics(phlarectx,
+			NewBlocksMetrics(
 				phlarecontext.Registry(phlarectx),
 			),
 		),
@@ -286,7 +286,7 @@ func (b *BlockQuerier) BlockInfo() []BlockInfo {
 
 type singleBlockQuerier struct {
 	logger  log.Logger
-	metrics *blocksMetrics
+	metrics *BlocksMetrics
 
 	bucket phlareobj.Bucket
 	meta   *block.Meta
@@ -296,31 +296,36 @@ type singleBlockQuerier struct {
 	openLock sync.Mutex
 	opened   bool
 	index    *index.Reader
-	profiles parquetReader[*schemav1.Profile, *schemav1.ProfilePersister]
+	profiles map[profileTableKey]*parquetReader[*schemav1.ProfilePersister]
 	symbols  symbolsResolver
+}
+
+type profileTableKey struct {
+	resolution  time.Duration
+	aggregation string
 }
 
 func NewSingleBlockQuerierFromMeta(phlarectx context.Context, bucketReader phlareobj.Bucket, meta *block.Meta) *singleBlockQuerier {
 	q := &singleBlockQuerier{
-		logger:  phlarecontext.Logger(phlarectx),
-		metrics: contextBlockMetrics(phlarectx),
-		bucket:  phlareobj.NewPrefixedBucket(bucketReader, meta.ULID.String()),
-		meta:    meta,
+		logger:   phlarecontext.Logger(phlarectx),
+		metrics:  blockMetricsFromContext(phlarectx),
+		profiles: make(map[profileTableKey]*parquetReader[*schemav1.ProfilePersister], 3),
+		bucket:   phlareobj.NewPrefixedBucket(bucketReader, meta.ULID.String()),
+		meta:     meta,
 	}
 	for _, f := range meta.Files {
-		switch f.RelPath {
-		case q.profiles.relPath():
-			q.profiles.meta = f
+		k, ok := parseProfileTableName(f.RelPath)
+		if ok {
+			r := &parquetReader[*schemav1.ProfilePersister]{meta: f}
+			q.profiles[k] = r
+			q.tables = append(q.tables, r)
 		}
-	}
-	q.tables = []tableReader{
-		&q.profiles,
 	}
 	return q
 }
 
 func (b *singleBlockQuerier) Profiles() ProfileReader {
-	return b.profiles.file
+	return b.profileSourceTable().file
 }
 
 func (b *singleBlockQuerier) Index() IndexReader {
@@ -1550,17 +1555,18 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 
 	var buf [][]parquet.Value
 
+	profiles := b.profileSourceTable()
 	pIt := query.NewBinaryJoinIterator(
 		0,
-		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
-		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
+		profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
+		profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
 	)
 
 	if b.meta.Version >= 2 {
 		pIt = query.NewBinaryJoinIterator(
 			0,
 			pIt,
-			b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
+			profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
 		)
 		buf = make([][]parquet.Value, 3)
 	} else {
@@ -1603,6 +1609,7 @@ func (b *singleBlockQuerier) SelectMergeByLabels(ctx context.Context, params *in
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByLabels - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	if err := b.Open(ctx); err != nil {
 		return nil, err
@@ -1642,10 +1649,12 @@ func (b *singleBlockQuerier) SelectMergeByLabels(ctx context.Context, params *in
 			lblsPerRef[int64(chks[0].SeriesIndex)] = info
 		}
 	}
+
+	profiles := b.profileSourceTable()
 	it := query.NewBinaryJoinIterator(
 		0,
-		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
-		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
+		profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), "SeriesIndex"),
+		profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), "TimeNanos"),
 	)
 
 	currSeriesIndex := int64(-1)
@@ -1680,13 +1689,14 @@ func (b *singleBlockQuerier) SelectMergeByLabels(ctx context.Context, params *in
 	if b.meta.Version == 1 {
 		columnName = "Samples.list.element.Value"
 	}
-	return mergeByLabels[Profile](ctx, b.profiles.file, columnName, iter.NewSliceIterator(rows), by...)
+	return mergeByLabels[Profile](ctx, profiles.file, columnName, iter.NewSliceIterator(rows), by...)
 }
 
 func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest) (tree *phlaremodel.Tree, err error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByStacktraces - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	if err := b.Open(ctx); err != nil {
 		return nil, err
@@ -1721,42 +1731,49 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
 
-	it := query.NewBinaryJoinIterator(
-		0,
-		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
-		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), ""),
-	)
+	g, ctx := errgroup.WithContext(ctx)
+	util.SplitTimeRangeByResolution(time.UnixMilli(params.Start), time.UnixMilli(params.End), b.downsampleResolutions(), func(tr util.TimeRange) {
+		g.Go(func() error {
+			profiles := b.profileTable(tr.Resolution, params.GetAggregation())
+			it := query.NewBinaryJoinIterator(
+				0,
+				profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
+				profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(tr.Start.UnixNano(), tr.End.UnixNano()), ""),
+			)
 
-	if b.meta.Version >= 2 {
-		it = query.NewBinaryJoinIterator(0,
-			it,
-			b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
-		)
-	}
-	buf := make([][]parquet.Value, 1)
+			if b.meta.Version >= 2 {
+				it = query.NewBinaryJoinIterator(0,
+					it,
+					profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
+				)
+			}
+			buf := make([][]parquet.Value, 1)
 
-	// todo: we should stream profile to merge instead of loading all in memory.
-	// This is a temporary solution for now since there's a memory corruption happening.
-	rows, err := iter.Slice[rowProfile](
-		&RowsIterator[rowProfile]{
-			rows: it,
-			at: func(ir *query.IteratorResult) rowProfile {
-				buf = ir.Columns(buf, "StacktracePartition")
-				if len(buf[0]) == 0 {
-					return rowProfile{
-						rowNum: ir.RowNumber[0],
-					}
-				}
-				return rowProfile{
-					rowNum:    ir.RowNumber[0],
-					partition: buf[0][0].Uint64(),
-				}
-			},
+			// todo: we should stream profile to merge instead of loading all in memory.
+			// This is a temporary solution for now since there's a memory corruption happening.
+			rows, err := iter.Slice[rowProfile](
+				&RowsIterator[rowProfile]{
+					rows: it,
+					at: func(ir *query.IteratorResult) rowProfile {
+						buf = ir.Columns(buf, "StacktracePartition")
+						if len(buf[0]) == 0 {
+							return rowProfile{
+								rowNum: ir.RowNumber[0],
+							}
+						}
+						return rowProfile{
+							rowNum:    ir.RowNumber[0],
+							partition: buf[0][0].Uint64(),
+						}
+					},
+				})
+			if err != nil {
+				return err
+			}
+			return mergeByStacktraces[rowProfile](ctx, profiles.file, iter.NewSliceIterator(rows), r)
 		})
-	if err != nil {
-		return nil, err
-	}
-	if err := mergeByStacktraces[rowProfile](ctx, b.profiles.file, iter.NewSliceIterator(rows), r); err != nil {
+	})
+	if err = g.Wait(); err != nil {
 		return nil, err
 	}
 	return r.Tree()
@@ -1766,6 +1783,7 @@ func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ing
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeBySpans - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	if err := b.Open(ctx); err != nil {
 		return nil, err
@@ -1804,16 +1822,17 @@ func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ing
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
 
+	profiles := b.profileSourceTable()
 	it := query.NewBinaryJoinIterator(
 		0,
-		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
-		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), ""),
+		profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
+		profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), ""),
 	)
 
 	if b.meta.Version >= 2 {
 		it = query.NewBinaryJoinIterator(0,
 			it,
-			b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
+			profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
 		)
 	}
 	buf := make([][]parquet.Value, 1)
@@ -1839,7 +1858,7 @@ func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ing
 	if err != nil {
 		return nil, err
 	}
-	if err := mergeBySpans[rowProfile](ctx, b.profiles.file, iter.NewSliceIterator(rows), r, spans); err != nil {
+	if err := mergeBySpans[rowProfile](ctx, profiles.file, iter.NewSliceIterator(rows), r, spans); err != nil {
 		return nil, err
 	}
 	return r.Tree()
@@ -1849,6 +1868,7 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergePprof - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 
 	if err := b.Open(ctx); err != nil {
 		return nil, err
@@ -1885,42 +1905,49 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 		symdb.WithResolverStackTraceSelector(sts))
 	defer r.Release()
 
-	it := query.NewBinaryJoinIterator(
-		0,
-		b.profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
-		b.profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(model.Time(params.Start).UnixNano(), model.Time(params.End).UnixNano()), ""),
-	)
+	g, ctx := errgroup.WithContext(ctx)
+	util.SplitTimeRangeByResolution(time.UnixMilli(params.Start), time.UnixMilli(params.End), b.downsampleResolutions(), func(tr util.TimeRange) {
+		g.Go(func() error {
+			profiles := b.profileTable(tr.Resolution, params.GetAggregation())
+			it := query.NewBinaryJoinIterator(
+				0,
+				profiles.columnIter(ctx, "SeriesIndex", query.NewMapPredicate(lblsPerRef), ""),
+				profiles.columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(tr.Start.UnixNano(), tr.End.UnixNano()), ""),
+			)
 
-	if b.meta.Version >= 2 {
-		it = query.NewBinaryJoinIterator(0,
-			it,
-			b.profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
-		)
-	}
-	buf := make([][]parquet.Value, 1)
+			if b.meta.Version >= 2 {
+				it = query.NewBinaryJoinIterator(0,
+					it,
+					profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
+				)
+			}
+			buf := make([][]parquet.Value, 1)
 
-	// todo: we should stream profile to merge instead of loading all in memory.
-	// This is a temporary solution for now since there's a memory corruption happening.
-	rows, err := iter.Slice[rowProfile](
-		&RowsIterator[rowProfile]{
-			rows: it,
-			at: func(ir *query.IteratorResult) rowProfile {
-				buf = ir.Columns(buf, "StacktracePartition")
-				if len(buf[0]) == 0 {
-					return rowProfile{
-						rowNum: ir.RowNumber[0],
-					}
-				}
-				return rowProfile{
-					rowNum:    ir.RowNumber[0],
-					partition: buf[0][0].Uint64(),
-				}
-			},
+			// todo: we should stream profile to merge instead of loading all in memory.
+			// This is a temporary solution for now since there's a memory corruption happening.
+			rows, err := iter.Slice[rowProfile](
+				&RowsIterator[rowProfile]{
+					rows: it,
+					at: func(ir *query.IteratorResult) rowProfile {
+						buf = ir.Columns(buf, "StacktracePartition")
+						if len(buf[0]) == 0 {
+							return rowProfile{
+								rowNum: ir.RowNumber[0],
+							}
+						}
+						return rowProfile{
+							rowNum:    ir.RowNumber[0],
+							partition: buf[0][0].Uint64(),
+						}
+					},
+				})
+			if err != nil {
+				return err
+			}
+			return mergeByStacktraces[rowProfile](ctx, profiles.file, iter.NewSliceIterator(rows), r)
 		})
-	if err != nil {
-		return nil, err
-	}
-	if err := mergeByStacktraces[rowProfile](ctx, b.profiles.file, iter.NewSliceIterator(rows), r); err != nil {
+	})
+	if err = g.Wait(); err != nil {
 		return nil, err
 	}
 	return r.Pprof()
@@ -2113,7 +2140,7 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 		sp.Finish()
 	}()
 
-	ctx = contextWithBlockMetrics(ctx, q.metrics)
+	ctx = ContextWithBlockMetrics(ctx, q.metrics)
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(util.RecoverPanic(func() error {
 		return q.openTSDBIndex(ctx)
@@ -2144,15 +2171,78 @@ func (q *singleBlockQuerier) openFiles(ctx context.Context) error {
 	return g.Wait()
 }
 
-type parquetReader[M schemav1.Models, P schemav1.PersisterName] struct {
+func (b *singleBlockQuerier) profileSourceTable() *parquetReader[*schemav1.ProfilePersister] {
+	return b.profiles[profileTableKey{}]
+}
+
+func (b *singleBlockQuerier) profileTable(resolution time.Duration, aggregation typesv1.TimeSeriesAggregationType) (t *parquetReader[*schemav1.ProfilePersister]) {
+	defer func() {
+		if t != nil {
+			b.metrics.profileTableAccess.WithLabelValues(t.meta.RelPath).Inc()
+		}
+	}()
+	var ok bool
+	t, ok = b.profiles[profileTableKey{
+		resolution:  resolution,
+		aggregation: downsampleAggregation(aggregation),
+	}]
+	if ok {
+		return t
+	}
+	return b.profiles[profileTableKey{}]
+}
+
+func (b *singleBlockQuerier) downsampleResolutions() []time.Duration {
+	if len(b.profiles) < 2 {
+		// b.profiles contains only the table of original resolution.
+		return nil
+	}
+	resolutions := make([]time.Duration, 0, len(b.profiles)-1)
+	for k := range b.profiles {
+		if k.resolution > 0 {
+			resolutions = append(resolutions, k.resolution)
+		}
+	}
+	return resolutions
+}
+
+func downsampleAggregation(v typesv1.TimeSeriesAggregationType) string {
+	switch v {
+	case typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM:
+		return "sum"
+	}
+	return ""
+}
+
+const profileTableName = "profiles"
+
+func parseProfileTableName(n string) (profileTableKey, bool) {
+	if n == profileTableName+block.ParquetSuffix {
+		return profileTableKey{}, true
+	}
+	parts := strings.Split(strings.TrimSuffix(n, block.ParquetSuffix), "_")
+	if len(parts) != 3 || parts[0] != profileTableName {
+		return profileTableKey{}, false
+	}
+	r, err := time.ParseDuration(parts[1])
+	if err != nil {
+		return profileTableKey{}, false
+	}
+	return profileTableKey{
+		resolution:  r,
+		aggregation: parts[2],
+	}, true
+}
+
+type parquetReader[P schemav1.PersisterName] struct {
 	persister P
 	file      parquetobj.File
 	meta      block.File
-	metrics   *blocksMetrics
+	metrics   *BlocksMetrics
 }
 
-func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader phlareobj.BucketReader) error {
-	r.metrics = contextBlockMetrics(ctx)
+func (r *parquetReader[P]) open(ctx context.Context, bucketReader phlareobj.BucketReader) error {
+	r.metrics = blockMetricsFromContext(ctx)
 	return r.file.Open(
 		ctx,
 		bucketReader,
@@ -2163,15 +2253,15 @@ func (r *parquetReader[M, P]) open(ctx context.Context, bucketReader phlareobj.B
 	)
 }
 
-func (r *parquetReader[M, P]) Close() error {
+func (r *parquetReader[P]) Close() error {
 	return r.file.Close()
 }
 
-func (r *parquetReader[M, P]) relPath() string {
+func (r *parquetReader[P]) relPath() string {
 	return r.persister.Name() + block.ParquetSuffix
 }
 
-func (r *parquetReader[M, P]) columnIter(ctx context.Context, columnName string, predicate query.Predicate, alias string) query.Iterator {
+func (r *parquetReader[P]) columnIter(ctx context.Context, columnName string, predicate query.Predicate, alias string) query.Iterator {
 	index, _ := query.GetColumnIndexByPath(r.file.File.Root(), columnName)
 	if index == -1 {
 		return query.NewErrIterator(fmt.Errorf("column '%s' not found in parquet file '%s'", columnName, r.relPath()))

@@ -21,22 +21,27 @@ func splitAndMergeGrouperFactory(_ context.Context, cfg Config, cfgProvider Conf
 		logger)
 }
 
-func splitAndMergeCompactorFactory(_ context.Context, cfg Config, logger log.Logger, reg prometheus.Registerer) (Compactor, Planner, error) {
+func splitAndMergePlannerFactory(cfg Config) Planner {
+	return NewSplitAndMergePlanner(cfg.BlockRanges.ToMilliseconds())
+}
+
+func splitAndMergeCompactorFactory(_ context.Context, cfg Config, cfgProvider ConfigProvider, userID string, logger log.Logger, metrics *CompactorMetrics) (Compactor, error) {
 	splitBy := getCompactionSplitBy(cfg.CompactionSplitBy)
 	if splitBy == nil {
-		return nil, nil, errInvalidCompactionSplitBy
+		return nil, errInvalidCompactionSplitBy
 	}
-
 	return &BlockCompactor{
 		blockOpenConcurrency: cfg.MaxOpeningBlocksConcurrency,
+		downsamplerEnabled:   cfg.DownsamplerEnabled && cfgProvider.CompactorDownsamplerEnabled(userID),
 		splitBy:              splitBy,
 		logger:               logger,
-		metrics:              newCompactorMetrics(reg),
-	}, NewSplitAndMergePlanner(cfg.BlockRanges.ToMilliseconds()), nil
+		metrics:              metrics,
+	}, nil
 }
 
 // configureSplitAndMergeCompactor updates the provided configuration injecting the split-and-merge compactor.
 func configureSplitAndMergeCompactor(cfg *Config) {
 	cfg.BlocksGrouperFactory = splitAndMergeGrouperFactory
 	cfg.BlocksCompactorFactory = splitAndMergeCompactorFactory
+	cfg.BlocksPlannerFactory = splitAndMergePlannerFactory
 }

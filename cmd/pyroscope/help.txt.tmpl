@@ -7,6 +7,8 @@ Usage of ./pyroscope:
     	Directory to store synchronized pyroscope block headers. This directory is not required to be persisted between restarts, but it's highly recommended in order to improve the store-gateway startup time. (default "./data/pyroscope-sync/")
   -compactor.blocks-retention-period duration
     	Delete blocks containing samples older than the specified retention period. 0 to disable.
+  -compactor.compactor-downsampler-enabled
+    	If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. (default true)
   -compactor.compactor-tenant-shard-size int
     	Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.
   -compactor.data-dir string

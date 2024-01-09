@@ -31,6 +31,7 @@ import (
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	phlarelabels "github.com/grafana/pyroscope/pkg/phlaredb/labels"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
@@ -183,16 +184,16 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		return nil
 	}
 
-	labels, seriesFingerprints := labelsForProfile(p, externalLabels...)
+	lbls, seriesFingerprints := phlarelabels.CreateProfileLabels(p, externalLabels...)
 
 	for i, fp := range seriesFingerprints {
-		if err := h.limiter.AllowProfile(fp, labels[i], p.TimeNanos); err != nil {
+		if err := h.limiter.AllowProfile(fp, lbls[i], p.TimeNanos); err != nil {
 			return err
 		}
 	}
 
 	// determine the stacktraces partition ID
-	partition := phlaremodel.StacktracePartitionFromProfile(labels, p)
+	partition := phlaremodel.StacktracePartitionFromProfile(lbls, p)
 
 	metricName := phlaremodel.Labels(externalLabels).Get(model.MetricNameLabel)
 
@@ -200,7 +201,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	for idxType, profile := range h.symdb.WriteProfileSymbols(partition, p) {
 		profile.ID = id
 		profile.SeriesFingerprint = seriesFingerprints[idxType]
-		profile.Samples = h.delta.computeDelta(profile, labels[idxType])
+		profile.Samples = h.delta.computeDelta(profile, lbls[idxType])
 		profile.TotalValue = profile.Samples.Sum()
 
 		if profile.Samples.Len() == 0 {
@@ -208,7 +209,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 			continue
 		}
 
-		if err := h.profiles.ingest(ctx, []schemav1.InMemoryProfile{profile}, labels[idxType], metricName); err != nil {
+		if err := h.profiles.ingest(ctx, []schemav1.InMemoryProfile{profile}, lbls[idxType], metricName); err != nil {
 			return err
 		}
 
