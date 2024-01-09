@@ -118,7 +118,6 @@ type BucketStores struct {
 	tenantsDiscovered prometheus.Gauge
 	tenantsSynced     prometheus.Gauge
 	blocksLoaded      prometheus.GaugeFunc
-	metrics           *Metrics
 }
 
 func NewBucketStores(cfg BucketStoreConfig, shardingStrategy ShardingStrategy, storageBucket phlareobj.Bucket, limits Limits, logger log.Logger, reg prometheus.Registerer) (*BucketStores, error) {
@@ -135,7 +134,6 @@ func NewBucketStores(cfg BucketStoreConfig, shardingStrategy ShardingStrategy, s
 		shardingStrategy: shardingStrategy,
 		reg:              reg,
 		limits:           limits,
-		metrics:          NewMetrics(reg),
 	}
 	// Register metrics.
 	bs.syncTimes = promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
@@ -344,7 +342,7 @@ func (bs *BucketStores) getOrCreateStore(userID string) (*BucketStore, error) {
 		userID,
 		bs.syncDirForUser(userID),
 		userLogger,
-		bs.metrics,
+		bs.reg,
 	)
 	if err != nil {
 		return nil, err
@@ -417,6 +415,7 @@ func (bs *BucketStores) closeBucketStore(userID string) error {
 	}
 
 	delete(bs.stores, userID)
+	s.metrics.Unregister()
 	unlockInDefer = false
 	bs.storesMu.Unlock()
 

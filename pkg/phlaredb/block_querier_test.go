@@ -73,7 +73,7 @@ func TestQuerierBlockEviction(t *testing.T) {
 		for i, b := range tc.blocks {
 			q.queriers[i] = &singleBlockQuerier{
 				meta:    &block.Meta{ULID: ulid.MustParse(b)},
-				metrics: newBlocksMetrics(nil),
+				metrics: NewBlocksMetrics(nil),
 			}
 		}
 
@@ -237,7 +237,7 @@ func openSingleBlockQuerierIndex(t *testing.T, blockID string) *singleBlockQueri
 	require.NoError(t, err)
 
 	q := &singleBlockQuerier{
-		metrics: newBlocksMetrics(nil),
+		metrics: NewBlocksMetrics(nil),
 		meta:    &block.Meta{ULID: ulid.MustParse(blockID)},
 		opened:  true, // Skip trying to open the block.
 		index:   reader,
@@ -736,7 +736,7 @@ func Test_singleBlockQuerier_LabelNames(t *testing.T) {
 	assert.NoError(t, err)
 
 	q := &singleBlockQuerier{
-		metrics: newBlocksMetrics(nil),
+		metrics: NewBlocksMetrics(nil),
 		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
 		opened:  true, // Skip trying to open the block.
 		index:   reader,
@@ -868,7 +868,7 @@ func Test_singleBlockQuerier_LabelValues(t *testing.T) {
 	assert.NoError(t, err)
 
 	q := &singleBlockQuerier{
-		metrics: newBlocksMetrics(nil),
+		metrics: NewBlocksMetrics(nil),
 		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
 		opened:  true, // Skip trying to open the block.
 		index:   reader,
@@ -967,7 +967,7 @@ func Test_singleBlockQuerier_ProfileTypes(t *testing.T) {
 	assert.NoError(t, err)
 
 	q := &singleBlockQuerier{
-		metrics: newBlocksMetrics(nil),
+		metrics: NewBlocksMetrics(nil),
 		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
 		opened:  true, // Skip trying to open the block.
 		index:   reader,
@@ -1069,7 +1069,7 @@ func Benchmark_singleBlockQuerier_Series(b *testing.B) {
 	assert.NoError(b, err)
 
 	q := &singleBlockQuerier{
-		metrics: newBlocksMetrics(nil),
+		metrics: NewBlocksMetrics(nil),
 		meta:    &block.Meta{ULID: ulid.MustParse(id)},
 		opened:  true, // Skip trying to open the block.
 		index:   reader,
@@ -1109,7 +1109,7 @@ func Benchmark_singleBlockQuerier_LabelNames(b *testing.B) {
 	assert.NoError(b, err)
 
 	q := &singleBlockQuerier{
-		metrics: newBlocksMetrics(nil),
+		metrics: NewBlocksMetrics(nil),
 		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
 		opened:  true, // Skip trying to open the block.
 		index:   reader,

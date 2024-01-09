@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/parquet-go/parquet-go"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/pyroscope/pkg/iter"
 )
@@ -190,6 +192,8 @@ type repeatedRowColumnIterator struct {
 	rowsFetched int64
 	pageBytes   int64
 
+	pageReads prometheus.Counter
+
 	vit  *repeatedValuePageIterator
 	prev int64
 	err  error
@@ -203,8 +207,25 @@ func NewRepeatedRowColumnIterator(ctx context.Context, rows iter.Iterator[int64]
 		vit:      getRepeatedValuePageIteratorFromPool(),
 		readSize: repeatedRowColumnIteratorReadSize,
 	}
-	r.span, r.ctx = opentracing.StartSpanFromContext(ctx, "RepeatedRowColumnIterator")
+	if len(rgs) == 0 {
+		return iter.NewEmptyIterator[[]parquet.Value]()
+	}
+	s := rgs[0].Schema()
+	if len(s.Columns()) <= column {
+		return iter.NewErrIterator[[]parquet.Value](fmt.Errorf("column %d not found", column))
+	}
+	tableName := strings.ToLower(s.Name()) + "s"
+	columnName := strings.Join(s.Columns()[column], ".")
+	r.initMetrics(getMetricsFromContext(ctx), tableName, columnName)
+	r.span, r.ctx = opentracing.StartSpanFromContext(ctx, "RepeatedRowColumnIterator", opentracing.Tags{
+		"table":  tableName,
+		"column": columnName,
+	})
 	return &r
+}
+
+func (x *repeatedRowColumnIterator) initMetrics(metrics *Metrics, table, column string) {
+	x.pageReads = metrics.pageReadsTotal.WithLabelValues(table, column)
 }
 
 func (x *repeatedRowColumnIterator) Next() bool {
@@ -285,13 +306,14 @@ func (x *repeatedRowColumnIterator) readPage(rn int64) bool {
 			return false
 		}
 	}
+	x.pageReads.Add(1)
 	pageReadDurationMs := time.Since(readPageStart).Milliseconds()
 	// NumRows return the number of row in the page
 	// not counting skipped ones (because of SeekToRow).
 	// The implementation is quite expensive, therefore
 	// we should call it once per page.
-	x.pageBytes += x.page.Size()
 	pageNumRows := x.page.NumRows()
+	x.pageBytes += x.page.Size()
 	x.maxPageRowNum = rn + pageNumRows
 	x.rowsFetched += pageNumRows
 	x.vit.reset(x.page, x.readSize)
@@ -341,12 +363,6 @@ type repeatedValuePageIterator struct {
 	off  int
 	row  []parquet.Value
 	err  error
-}
-
-func NewRepeatedValuePageIterator(page parquet.Page, readSize int) iter.Iterator[[]parquet.Value] {
-	var r repeatedValuePageIterator
-	r.reset(page, readSize)
-	return &r
 }
 
 func (x *repeatedValuePageIterator) At() []parquet.Value { return x.row }

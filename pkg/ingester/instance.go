@@ -32,7 +32,11 @@ type instance struct {
 func newInstance(phlarectx context.Context, cfg phlaredb.Config, tenantID string, localBucket, storageBucket phlareobj.Bucket, limiter Limiter) (*instance, error) {
 	cfg.DataPath = path.Join(cfg.DataPath, tenantID)
 
+	// TODO(kolesnikovae): Get rid of phlarectx and pass logger and registry directly.
 	phlarectx = phlarecontext.WrapTenant(phlarectx, tenantID)
+	reg := prometheus.WrapRegistererWith(prometheus.Labels{"component": "ingester"}, phlarecontext.Registry(phlarectx))
+	phlarectx = phlarecontext.WithRegistry(phlarectx, reg)
+
 	db, err := phlaredb.New(phlarectx, cfg, limiter, phlareobj.NewPrefixedBucket(localBucket, tenantID))
 	if err != nil {
 		return nil, err
@@ -41,7 +45,7 @@ func newInstance(phlarectx context.Context, cfg phlaredb.Config, tenantID string
 	inst := &instance{
 		PhlareDB: db,
 		logger:   phlarecontext.Logger(phlarectx),
-		reg:      phlarecontext.Registry(phlarectx),
+		reg:      reg,
 		cancel:   cancel,
 		tenantID: tenantID,
 	}

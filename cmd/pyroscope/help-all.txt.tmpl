@@ -35,6 +35,8 @@ Usage of ./pyroscope:
     	How many times to retry a failed compaction within a single compaction run. (default 3)
   -compactor.compaction-split-by string
     	Experimental: The strategy to use when splitting blocks during compaction. Supported values are: fingerprint, stacktracePartition. (default "fingerprint")
+  -compactor.compactor-downsampler-enabled
+    	If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. (default true)
   -compactor.compactor-tenant-shard-size int
     	Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.
   -compactor.data-dir string
@@ -43,6 +45,8 @@ Usage of ./pyroscope:
     	Time before a block marked for deletion is deleted from bucket. If not 0, blocks will be marked for deletion and compactor component will permanently delete blocks marked for deletion from the bucket. If 0, blocks will be deleted straight away. Note that deleting blocks immediately can cause query failures. (default 12h0m0s)
   -compactor.disabled-tenants comma-separated-list-of-strings
     	Comma separated list of tenants that cannot be compacted by this compactor. If specified, and compactor would normally pick given tenant for compaction (via -compactor.enabled-tenants or sharding), it will be ignored instead.
+  -compactor.downsampler-enabled
+    	If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept.
   -compactor.enabled-tenants comma-separated-list-of-strings
     	Comma separated list of tenants that can be compacted. If specified, only these tenants will be compacted by compactor, otherwise all tenants can be compacted. Subject to sharding.
   -compactor.first-level-compaction-wait-period duration
