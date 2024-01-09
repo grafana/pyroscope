@@ -2,11 +2,12 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-# Override default K8S cluster domain for DNS discovery
-# cluster_domain:
 
 pyroscope:
   replicaCount: 1
+
+  # -- Kubernetes cluster domain suffix for DNS discovery
+  cluster_domain: .cluster.local.
 
   image:
     repository: grafana/pyroscope
