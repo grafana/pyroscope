@@ -101,7 +101,7 @@ func (s *memoryStore) Set(ctx context.Context, tenantID string, setting *setting
 
 func (s *memoryStore) Flush(ctx context.Context) error {
 	s.rw.Lock()
-	s.rw.Unlock()
+	defer s.rw.Unlock()
 
 	return s.unsafeFlush(ctx)
 }
