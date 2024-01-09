@@ -110,7 +110,8 @@ func (s *bucketStore) Close() error {
 	return s.bucket.Close()
 }
 
-// unsafeFlush will flush the store to disk. This is not thread-safe.
+// unsafeFlush will flush the store to disk. This is not thread-safe, the
+// store's write mutex should be acquired first.
 func (s *bucketStore) unsafeFlush(ctx context.Context) error {
 	data, err := json.Marshal(s.store)
 	if err != nil {
@@ -125,7 +126,7 @@ func (s *bucketStore) unsafeFlush(ctx context.Context) error {
 }
 
 // unsafeLoad will sync the store with an on-disk store, if found. This is not
-// thread-safe.
+// thread-safe, the store's write mutex should be acquired first.
 func (s *bucketStore) unsafeLoad(ctx context.Context) error {
 	reader, err := s.bucket.Get(ctx, settingsFilename)
 	if err != nil {
