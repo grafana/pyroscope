@@ -2,7 +2,7 @@ apiVersion: v2
 name: pyroscope
 description: 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 type: application
-version: 1.3.2
+version: 1.3.3
 appVersion: 1.2.1
 dependencies:
   - name: grafana-agent
