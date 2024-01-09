@@ -539,7 +539,13 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 	if err = verifyCompactedBlocksTimeRanges(compIDs, toCompactMinTime.UnixMilli(), toCompactMaxTime.UnixMilli(), subDir); err != nil {
 		level.Warn(jobLogger).Log("msg", "compacted blocks verification failed", "err", err)
 		c.metrics.compactionBlocksVerificationFailed.Inc()
+		return false, nil, err
 	}
+
+	// Spawn a new context so we always finish uploading and marking a block for deletion in full on shutdown.
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	ctx = opentracing.ContextWithSpan(ctx, sp)
+	defer cancel()
 
 	err = func() error {
 		sp, ctx := opentracing.StartSpanFromContext(ctx, "Uploading blocks", opentracing.Tag{Key: "count", Value: len(compIDs)})
@@ -589,7 +595,7 @@ func (c *BucketCompactor) runCompactionJob(ctx context.Context, job *Job) (shoul
 	// into the next planning cycle.
 	// Eventually the block we just uploaded should get synced into the job again (including sync-delay).
 	for _, meta := range toCompact {
-		if err := deleteBlock(c.bkt, meta.ULID, filepath.Join(subDir, meta.ULID.String()), jobLogger, c.metrics.blocksMarkedForDeletion); err != nil {
+		if err := deleteBlock(ctx, c.bkt, meta.ULID, filepath.Join(subDir, meta.ULID.String()), jobLogger, c.metrics.blocksMarkedForDeletion); err != nil {
 			return false, nil, errors.Wrapf(err, "mark old block for deletion from bucket")
 		}
 	}
@@ -642,16 +648,12 @@ func verifyCompactedBlocksTimeRanges(compIDs []ulid.ULID, sourceBlocksMinTime, s
 	return nil
 }
 
-func deleteBlock(bkt objstore.Bucket, id ulid.ULID, bdir string, logger log.Logger, blocksMarkedForDeletion prometheus.Counter) error {
+func deleteBlock(ctx context.Context, bkt objstore.Bucket, id ulid.ULID, bdir string, logger log.Logger, blocksMarkedForDeletion prometheus.Counter) error {
 	if err := os.RemoveAll(bdir); err != nil {
 		return errors.Wrapf(err, "remove old block dir %s", id)
 	}
-
-	// Spawn a new context so we always mark a block for deletion in full on shutdown.
-	delCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
 	level.Info(logger).Log("msg", "marking compacted block for deletion", "old_block", id)
-	if err := block.MarkForDeletion(delCtx, logger, bkt, id, "source of compacted block", true, blocksMarkedForDeletion); err != nil {
+	if err := block.MarkForDeletion(ctx, logger, bkt, id, "source of compacted block", true, blocksMarkedForDeletion); err != nil {
 		return errors.Wrapf(err, "mark block %s for deletion from bucket", id)
 	}
 	return nil
