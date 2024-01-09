@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	jfrPprof "github.com/grafana/jfr-parser/pprof"
+	jfrPprofPyroscope "github.com/grafana/jfr-parser/pprof/pyroscope"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,18 +19,11 @@ import (
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
-	"github.com/grafana/pyroscope/pkg/og/storage"
 	"github.com/grafana/pyroscope/pkg/og/storage/segment"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
-
-func TestParser(t *testing.T) {
-	RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "Java JFR Parser suite")
-}
 
 func TestParseCompareExpectedData(t *testing.T) {
 	testdata := []struct {
@@ -53,56 +46,55 @@ func TestParseCompareExpectedData(t *testing.T) {
 		t.Run(td.jfr, func(t *testing.T) {
 			jfr, err := bench.ReadGzipFile(td.jfr)
 			require.NoError(t, err)
-			//putter := &bench.MockPutter{Keep: true}
 			k, err := segment.ParseKey("kafka.app")
 			require.NoError(t, err)
 
-			pi := &storage.PutInput{
+			pi := &jfrPprof.ParseInput{
 				StartTime:  time.UnixMilli(1000),
 				EndTime:    time.UnixMilli(2000),
-				Key:        k,
-				SpyName:    "java",
 				SampleRate: 100,
 			}
-			var labels = new(LabelsSnapshot)
+			var labels = new(jfrPprof.LabelsSnapshot)
 			if td.labels != "" {
 				labelsBytes, err := bench.ReadGzipFile(td.labels)
 				require.NoError(t, err)
 				err = proto.Unmarshal(labelsBytes, labels)
 				require.NoError(t, err)
 			}
-			req, err := ParseJFR(jfr, pi, labels)
+			req, err := jfrPprof.ParseJFR(jfr, pi, labels)
 			require.NoError(t, err)
-			if len(req.Series) == 0 {
+			if len(req.Profiles) == 0 {
 				t.Fatal(err)
 			}
-			//todo
 			jsonFile := strings.TrimSuffix(td.jfr, ".jfr.gz") + ".json.gz"
-			//err = putter.DumpJson(jsonFile)
-			err = compareWithJson(t, req, jsonFile)
+			err = compareWithJson(t, req, k, jsonFile)
 			require.NoError(t, err)
-
 		})
 	}
 }
 
-func compareWithJson(t *testing.T, req *distributormodel.PushRequest, file string) error {
+func compareWithJson(t *testing.T, parsed *jfrPprof.Profiles, key *segment.Key, file string) error {
+	defer func() {
+		for _, profile := range parsed.Profiles {
+			profile.Profile.ReturnToVTPool()
+		}
+	}()
 	type flatProfileSeries struct {
 		Labels  []*v1.LabelPair
 		Profile *profilev1.Profile
 	}
 
 	var profiles []*flatProfileSeries
-	for _, s := range req.Series {
-		for _, sample := range s.Samples {
-			sample.Profile.Normalize()
-			iterateProfileSeries(sample.Profile.Profile.CloneVT(), s.Labels, func(p *profilev1.Profile, l phlaremodel.Labels) {
-				profiles = append(profiles, &flatProfileSeries{
-					Labels:  l,
-					Profile: p,
-				})
+	for _, s := range parsed.Profiles {
+		profile := pprof.RawFromProto(s.Profile)
+		profile.Normalize()
+		seriesLabels := jfrPprofPyroscope.Labels(key.Labels(), parsed.JFREvent, s.Metric, key.AppName(), "javaspy")
+		iterateProfileSeries(profile.CloneVT(), seriesLabels, func(p *profilev1.Profile, l phlaremodel.Labels) {
+			profiles = append(profiles, &flatProfileSeries{
+				Labels:  l,
+				Profile: p,
 			})
-		}
+		})
 	}
 
 	goldBS, err := bench.ReadGzipFile(file)
@@ -261,23 +253,19 @@ func BenchmarkParser(b *testing.B) {
 		b.Run(testdata, func(b *testing.B) {
 			jfr, err := bench.ReadGzipFile(f)
 			require.NoError(b, err)
-			k, err := segment.ParseKey("kafka.app")
-			require.NoError(b, err)
-			pi := &storage.PutInput{
+			pi := &jfrPprof.ParseInput{
 				StartTime:  time.UnixMilli(1000),
 				EndTime:    time.UnixMilli(2000),
-				Key:        k,
-				SpyName:    "java",
 				SampleRate: 100,
 			}
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				profiles, err := ParseJFR(jfr, pi, nil)
+				profiles, err := jfrPprof.ParseJFR(jfr, pi, nil)
 				if err != nil {
 					b.Fatal(err)
 				}
-				if len(profiles.Series) == 0 {
+				if len(profiles.Profiles) == 0 {
 					b.Fatal()
 				}
 			}
