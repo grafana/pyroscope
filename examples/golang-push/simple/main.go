@@ -4,9 +4,10 @@ import (
 	"context"
 	"log"
 	"os"
-	"runtime/pprof"
 
 	"github.com/grafana/pyroscope-go"
+
+	"pushsimple/cputimer"
 )
 
 //go:noinline
@@ -23,9 +24,14 @@ func fastFunction(c context.Context) {
 	})
 }
 
+var functionCPUTime = cputimer.NewCPUTimerVec(cputimer.Opts{
+	Name: "slow_function_cpu_time_total",
+}, []string{"function"})
+
+var slowFunctionCPUTime = functionCPUTime.WithLabelValues("slow")
+
 func slowFunction(c context.Context) {
-	// standard pprof.Do wrappers work as well
-	pprof.Do(c, pprof.Labels("function", "slow"), func(c context.Context) {
+	slowFunctionCPUTime.Do(c, func(c context.Context) {
 		work(80000000)
 	})
 }

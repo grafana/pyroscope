@@ -28,6 +28,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
 	"go.uber.org/atomic"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -35,6 +36,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/distributor/aggregator"
+	"github.com/grafana/pyroscope/pkg/distributor/exporter"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
@@ -97,6 +99,8 @@ type Distributor struct {
 
 	subservices        *services.Manager
 	subservicesWatcher *services.FailureWatcher
+
+	exporter *exporter.Exporter
 
 	// Metrics and stats.
 	metrics                 *metrics
@@ -171,6 +175,8 @@ func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactor
 	d.Service = services.NewBasicService(d.starting, d.running, d.stopping)
 	d.rfStats.Set(int64(ingestersRing.ReplicationFactor()))
 	d.metrics.replicationFactor.Set(float64(ingestersRing.ReplicationFactor()))
+
+	d.exporter = exporter.New()
 	return d, nil
 }
 
@@ -314,6 +320,25 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 
 	if req.TotalProfiles == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no profiles received"))
+	}
+
+	for _, series := range req.Series {
+		for _, sample := range series.Samples {
+			mr := exporter.WriteRequest{
+				Timestamp: time.Unix(0, sample.Profile.TimeNanos).UnixMilli(),
+			}
+			pprof.ExtractMetrics(sample.Profile.Profile, func(labels labels.Labels, v int64) {
+				mr.TimeSeries = append(mr.TimeSeries, exporter.TimeSeries{Labels: labels, Value: float64(v)})
+			})
+
+			if len(mr.TimeSeries) > 0 {
+				go func() {
+					if sendErr := d.exporter.Send(context.Background(), &mr); sendErr != nil {
+						_ = d.logger.Log("msg", "failed to push metrics", "err", sendErr)
+					}
+				}()
+			}
+		}
 	}
 
 	// Normalisation is quite an expensive operation,
