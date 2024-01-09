@@ -31,6 +31,9 @@ EMBEDASSETS ?= embedassets
 VPREFIX := github.com/grafana/pyroscope/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
 
+# Folders with go.mod file
+GO_MOD_PATHS := api/ ebpf/ examples/golang-push/rideshare/ examples/golang-push/simple/
+
 # Add extra arguments to helm commands
 HELM_ARGS =
 
@@ -129,20 +132,20 @@ go/lint: $(BIN)/golangci-lint
 	$(GO) vet ./...
 
 .PHONY: go/mod
-go/mod:
+go/mod: $(foreach P,$(GO_MOD_PATHS),go/mod_tidy/$P)
+
+.PHONY: go/mod_tidy_root
+go/mod_tidy_root:
 	GO111MODULE=on go mod download
 	# doesn't work for go workspace
 	# GO111MODULE=on go mod verify
 	go work sync
 	GO111MODULE=on go mod tidy
-	cd api/ && GO111MODULE=on go mod download
-	cd api/ && GO111MODULE=on go mod tidy
-	cd ebpf/ && GO111MODULE=on go mod download
-	cd ebpf/ && GO111MODULE=on go mod tidy
-	cd examples/golang-push/rideshare/ && GO111MODULE=on go mod download
-	cd examples/golang-push/rideshare/ && GO111MODULE=on go mod tidy
-	cd examples/golang-push/simple/ && GO111MODULE=on go mod download
-	cd examples/golang-push/simple/ && GO111MODULE=on go mod tidy
+
+.PHONY: go/mod_tidy/%
+go/mod_tidy/%: go/mod_tidy_root
+	cd "$*" && GO111MODULE=on go mod download
+	cd "$*" && GO111MODULE=on go mod tidy
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
