@@ -36,7 +36,7 @@ func NewBucketStore(bucket objstore.Bucket) (Store, error) {
 }
 
 type bucketStore struct {
-	rw sync.RWMutex
+	rw sync.Mutex
 
 	// store is kv pairs, indexed first by tenant id.
 	store map[string]map[string]*settingsv1.Setting
