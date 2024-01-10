@@ -45,20 +45,21 @@ func (s *StoreGateway) MergeProfilesPprof(ctx context.Context, stream *connect.B
 }
 
 func (s *StoreGateway) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-	var res *connect.Response[ingestv1.ProfileTypesResponse]
+	var res *ingestv1.ProfileTypesResponse
 	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
 		var err error
-		res, err = phlaredb.ProfileTypes(ctx, req, bs.openBlocksForReading)
+		result, err := phlaredb.ProfileTypes(ctx, req, bs.openBlocksForReading)
 		if err != nil {
 			return err
 		}
+		res = result.Msg
 		return nil
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return res, nil
+	return connect.NewResponse(res), nil
 }
 
 func (s *StoreGateway) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
