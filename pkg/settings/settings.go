@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/bufbuild/connect-go"
+	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
 	"github.com/pkg/errors"
@@ -12,9 +13,10 @@ import (
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 )
 
-func New(store Store) (*TenantSettings, error) {
+func New(store Store, logger log.Logger) (*TenantSettings, error) {
 	ts := &TenantSettings{
-		store: store,
+		store:  store,
+		logger: logger,
 	}
 
 	ts.Service = services.NewBasicService(ts.starting, ts.running, ts.stopping)
@@ -25,7 +27,8 @@ func New(store Store) (*TenantSettings, error) {
 type TenantSettings struct {
 	services.Service
 
-	store Store
+	store  Store
+	logger log.Logger
 }
 
 func (ts *TenantSettings) starting(ctx context.Context) error {
@@ -33,7 +36,22 @@ func (ts *TenantSettings) starting(ctx context.Context) error {
 }
 
 func (ts *TenantSettings) running(ctx context.Context) error {
-	<-ctx.Done()
+	ticker := time.NewTicker(24 * time.Hour)
+	done := false
+
+	for !done {
+		select {
+		case <-ticker.C:
+			err := ts.store.Flush(ctx)
+			if err != nil {
+				// TODO(bryan) log
+			}
+		case <-ctx.Done():
+			ticker.Stop()
+			done = true
+		}
+	}
+
 	return nil
 }
 
