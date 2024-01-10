@@ -55,6 +55,7 @@ pyroscope:
     compactor:
       kind: StatefulSet
       replicaCount: 3
+      terminationGracePeriodSeconds: 1200
       persistence:
         enabled: false
       resources:
@@ -67,8 +68,8 @@ pyroscope:
       kind: StatefulSet
       replicaCount: 3
       persistence:
-      # The store-gateway needs not need persistent storage, but we still run it as a StatefulSet
-      # This is to avoid having blocks of data being
+        # The store-gateway needs not need persistent storage, but we still run it as a StatefulSet
+        # This is to avoid having blocks of data being
         enabled: false
       resources:
         limits:
