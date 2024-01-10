@@ -18,7 +18,8 @@
             "cpu": 1,
             "memory": "8Gi"
           }
-        }
+        },
+        "terminationGracePeriodSeconds": 1200
       },
       "distributor": {
         "kind": "Deployment",
