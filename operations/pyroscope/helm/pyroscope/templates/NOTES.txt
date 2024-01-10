@@ -22,9 +22,9 @@ The in-cluster query URL for the data source in Grafana is:
 ```
 {{- if hasKey .Values.pyroscope.components "query-frontend" }}
 {{- $port := ((index .Values.pyroscope.components "query-frontend").service).port | default .Values.pyroscope.service.port }}
-http://{{ include "pyroscope.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc.cluster.local.:{{ $port }}
+http://{{ include "pyroscope.fullname" . }}-query-frontend.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ $port }}
 {{- else }}
-http://{{ include "pyroscope.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.service.port }}
+http://{{ include "pyroscope.fullname" . }}.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ .Values.pyroscope.service.port }}
 {{- end }}
 ```
 

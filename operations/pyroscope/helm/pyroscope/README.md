@@ -1,6 +1,6 @@
 # pyroscope
 
-![Version: 1.3.3](https://img.shields.io/badge/Version-1.3.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.2.1](https://img.shields.io/badge/AppVersion-1.2.1-informational?style=flat-square)
+![Version: 1.3.4](https://img.shields.io/badge/Version-1.3.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.2.1](https://img.shields.io/badge/AppVersion-1.2.1-informational?style=flat-square)
 
 🔥 horizontally-scalable, highly-available, multi-tenant continuous profiling aggregation system
 
@@ -20,6 +20,7 @@
 | ingress.enabled | bool | `false` |  |
 | minio | object | `{"buckets":[{"name":"grafana-pyroscope-data","policy":"none","purge":false}],"drivesPerNode":2,"enabled":false,"persistence":{"size":"5Gi"},"podAnnotations":{"phlare.grafana.com/port":"9000","phlare.grafana.com/scrape":"true"},"replicas":1,"resources":{"requests":{"cpu":"100m","memory":"128Mi"}},"rootPassword":"supersecret","rootUser":"grafana-pyroscope"}` | ----------------------------------- |
 | pyroscope.affinity | object | `{}` |  |
+| pyroscope.cluster_domain | string | `".cluster.local."` | Kubernetes cluster domain suffix for DNS discovery |
 | pyroscope.components | object | `{}` |  |
 | pyroscope.config | string | The config depends on other values been set, details can be found in [`values.yaml`](./values.yaml) | Contains Phlare's configuration as a string. |
 | pyroscope.dnsPolicy | string | `"ClusterFirst"` |  |
