@@ -75,6 +75,8 @@ func (ts *TenantSettings) Set(ctx context.Context, req *connect.Request[settings
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
+	// TODO(bryan) validate req
+
 	setting, err := ts.store.Set(ctx, tenantID, req.Msg.Setting)
 	if err != nil {
 		if errors.Is(err, oldSettingErr) {

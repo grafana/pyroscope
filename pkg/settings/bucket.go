@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/thanos-io/objstore"
@@ -33,17 +32,6 @@ func NewBucketStore(bucket objstore.Bucket) (Store, error) {
 		bucket: bucket,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	store.rw.Lock()
-	defer store.rw.Unlock()
-
-	err := store.unsafeLoad(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	return store, nil
 }
 
@@ -58,8 +46,13 @@ type bucketStore struct {
 }
 
 func (s *bucketStore) Get(ctx context.Context, tenantID string) ([]*settingsv1.Setting, error) {
-	s.rw.RLock()
-	defer s.rw.RUnlock()
+	s.rw.Lock()
+	defer s.rw.Unlock()
+
+	err := s.unsafeLoad(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	tenantSettings := s.store[tenantID]
 
@@ -78,6 +71,11 @@ func (s *bucketStore) Set(ctx context.Context, tenantID string, setting *setting
 	s.rw.Lock()
 	defer s.rw.Unlock()
 
+	err := s.unsafeLoad(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	_, ok := s.store[tenantID]
 	if !ok {
 		s.store[tenantID] = make(map[string]*settingsv1.Setting, 1)
@@ -89,7 +87,7 @@ func (s *bucketStore) Set(ctx context.Context, tenantID string, setting *setting
 	}
 	s.store[tenantID][setting.Name] = setting
 
-	err := s.unsafeFlush(ctx)
+	err = s.unsafeFlush(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -108,8 +106,8 @@ func (s *bucketStore) Close() error {
 	return s.bucket.Close()
 }
 
-// unsafeFlush will flush the store to disk. This is not thread-safe, the
-// store's write mutex should be acquired first.
+// unsafeFlush will flush the store to object storage. This is not thread-safe,
+// the store's write mutex should be acquired first.
 func (s *bucketStore) unsafeFlush(ctx context.Context) error {
 	data, err := json.Marshal(s.store)
 	if err != nil {
@@ -123,8 +121,8 @@ func (s *bucketStore) unsafeFlush(ctx context.Context) error {
 	return nil
 }
 
-// unsafeLoad will sync the store with an on-disk store, if found. This is not
-// thread-safe, the store's write mutex should be acquired first.
+// unsafeLoad will read the store in object storage into memory, if it exists.
+// This is not thread-safe, the store's write mutex should be acquired first.
 func (s *bucketStore) unsafeLoad(ctx context.Context) error {
 	reader, err := s.bucket.Get(ctx, settingsFilename)
 	if err != nil {
