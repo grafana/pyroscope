@@ -6,6 +6,7 @@ import (
 
 	"github.com/bufbuild/connect-go"
 	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
 	"github.com/pkg/errors"
@@ -44,7 +45,10 @@ func (ts *TenantSettings) running(ctx context.Context) error {
 		case <-ticker.C:
 			err := ts.store.Flush(ctx)
 			if err != nil {
-				// TODO(bryan) log
+				level.Warn(ts.logger).Log(
+					"msg", "failed to refresh tenant settings",
+					"err", err,
+				)
 			}
 		case <-ctx.Done():
 			ticker.Stop()

@@ -148,7 +148,7 @@ func (f *Phlare) initTenantSettings() (services.Service, error) {
 		return nil, errors.Wrap(err, "failed to init settings store")
 	}
 
-	settings, err := settings.New(store)
+	settings, err := settings.New(store, log.With(f.logger, "component", TenantSettings))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init settings service")
 	}
