@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/grafana/dskit/httpgrpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

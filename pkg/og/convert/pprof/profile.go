@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/prometheus/prometheus/model/labels"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"

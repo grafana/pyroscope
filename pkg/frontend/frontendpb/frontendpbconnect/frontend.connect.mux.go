@@ -5,7 +5,7 @@
 package frontendpbconnect
 
 import (
-	connect_go "github.com/bufbuild/connect-go"
+	connect "connectrpc.com/connect"
 	mux "github.com/gorilla/mux"
 )
 
@@ -14,12 +14,12 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect_go.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion0_1_0
 
 // RegisterFrontendForQuerierHandler register an HTTP handler to a mux.Router from the service
 // implementation.
-func RegisterFrontendForQuerierHandler(mux *mux.Router, svc FrontendForQuerierHandler, opts ...connect_go.HandlerOption) {
-	mux.Handle("/frontendpb.FrontendForQuerier/QueryResult", connect_go.NewUnaryHandler(
+func RegisterFrontendForQuerierHandler(mux *mux.Router, svc FrontendForQuerierHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/frontendpb.FrontendForQuerier/QueryResult", connect.NewUnaryHandler(
 		"/frontendpb.FrontendForQuerier/QueryResult",
 		svc.QueryResult,
 		opts...,

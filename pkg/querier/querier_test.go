@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/pprof/profile"

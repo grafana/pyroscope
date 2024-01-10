@@ -5,7 +5,7 @@
 package storegatewayv1connect
 
 import (
-	connect_go "github.com/bufbuild/connect-go"
+	connect "connectrpc.com/connect"
 	mux "github.com/gorilla/mux"
 )
 
@@ -14,52 +14,52 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect_go.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion0_1_0
 
 // RegisterStoreGatewayServiceHandler register an HTTP handler to a mux.Router from the service
 // implementation.
-func RegisterStoreGatewayServiceHandler(mux *mux.Router, svc StoreGatewayServiceHandler, opts ...connect_go.HandlerOption) {
-	mux.Handle("/storegateway.v1.StoreGatewayService/MergeProfilesStacktraces", connect_go.NewBidiStreamHandler(
+func RegisterStoreGatewayServiceHandler(mux *mux.Router, svc StoreGatewayServiceHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/storegateway.v1.StoreGatewayService/MergeProfilesStacktraces", connect.NewBidiStreamHandler(
 		"/storegateway.v1.StoreGatewayService/MergeProfilesStacktraces",
 		svc.MergeProfilesStacktraces,
 		opts...,
 	))
-	mux.Handle("/storegateway.v1.StoreGatewayService/MergeProfilesLabels", connect_go.NewBidiStreamHandler(
+	mux.Handle("/storegateway.v1.StoreGatewayService/MergeProfilesLabels", connect.NewBidiStreamHandler(
 		"/storegateway.v1.StoreGatewayService/MergeProfilesLabels",
 		svc.MergeProfilesLabels,
 		opts...,
 	))
-	mux.Handle("/storegateway.v1.StoreGatewayService/MergeProfilesPprof", connect_go.NewBidiStreamHandler(
+	mux.Handle("/storegateway.v1.StoreGatewayService/MergeProfilesPprof", connect.NewBidiStreamHandler(
 		"/storegateway.v1.StoreGatewayService/MergeProfilesPprof",
 		svc.MergeProfilesPprof,
 		opts...,
 	))
-	mux.Handle("/storegateway.v1.StoreGatewayService/MergeSpanProfile", connect_go.NewBidiStreamHandler(
+	mux.Handle("/storegateway.v1.StoreGatewayService/MergeSpanProfile", connect.NewBidiStreamHandler(
 		"/storegateway.v1.StoreGatewayService/MergeSpanProfile",
 		svc.MergeSpanProfile,
 		opts...,
 	))
-	mux.Handle("/storegateway.v1.StoreGatewayService/ProfileTypes", connect_go.NewUnaryHandler(
+	mux.Handle("/storegateway.v1.StoreGatewayService/ProfileTypes", connect.NewUnaryHandler(
 		"/storegateway.v1.StoreGatewayService/ProfileTypes",
 		svc.ProfileTypes,
 		opts...,
 	))
-	mux.Handle("/storegateway.v1.StoreGatewayService/LabelValues", connect_go.NewUnaryHandler(
+	mux.Handle("/storegateway.v1.StoreGatewayService/LabelValues", connect.NewUnaryHandler(
 		"/storegateway.v1.StoreGatewayService/LabelValues",
 		svc.LabelValues,
 		opts...,
 	))
-	mux.Handle("/storegateway.v1.StoreGatewayService/LabelNames", connect_go.NewUnaryHandler(
+	mux.Handle("/storegateway.v1.StoreGatewayService/LabelNames", connect.NewUnaryHandler(
 		"/storegateway.v1.StoreGatewayService/LabelNames",
 		svc.LabelNames,
 		opts...,
 	))
-	mux.Handle("/storegateway.v1.StoreGatewayService/Series", connect_go.NewUnaryHandler(
+	mux.Handle("/storegateway.v1.StoreGatewayService/Series", connect.NewUnaryHandler(
 		"/storegateway.v1.StoreGatewayService/Series",
 		svc.Series,
 		opts...,
 	))
-	mux.Handle("/storegateway.v1.StoreGatewayService/BlockMetadata", connect_go.NewUnaryHandler(
+	mux.Handle("/storegateway.v1.StoreGatewayService/BlockMetadata", connect.NewUnaryHandler(
 		"/storegateway.v1.StoreGatewayService/BlockMetadata",
 		svc.BlockMetadata,
 		opts...,

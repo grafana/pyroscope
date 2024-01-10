@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/oklog/ulid"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/gogo/status"
 	"github.com/google/pprof/profile"
 	"github.com/prometheus/common/model"

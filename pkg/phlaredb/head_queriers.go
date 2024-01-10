@@ -4,7 +4,7 @@ import (
 	"context"
 	"sort"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/opentracing/opentracing-go"
 	"github.com/parquet-go/parquet-go"

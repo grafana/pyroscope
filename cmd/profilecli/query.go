@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	gprofile "github.com/google/pprof/profile"
 	"github.com/grafana/dskit/runutil"

@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 	"github.com/grafana/pyroscope/pkg/tenant"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/prometheus/prometheus/model/labels"
