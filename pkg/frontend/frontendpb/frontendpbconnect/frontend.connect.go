@@ -10,9 +10,9 @@
 package frontendpbconnect
 
 import (
+	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	connect_go "github.com/bufbuild/connect-go"
 	frontendpb "github.com/grafana/pyroscope/pkg/frontend/frontendpb"
 	http "net/http"
 	strings "strings"
@@ -23,7 +23,7 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect_go.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// FrontendForQuerierName is the fully-qualified name of the FrontendForQuerier service.
@@ -43,9 +43,15 @@ const (
 	FrontendForQuerierQueryResultProcedure = "/frontendpb.FrontendForQuerier/QueryResult"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	frontendForQuerierServiceDescriptor           = frontendpb.File_frontend_frontendpb_frontend_proto.Services().ByName("FrontendForQuerier")
+	frontendForQuerierQueryResultMethodDescriptor = frontendForQuerierServiceDescriptor.Methods().ByName("QueryResult")
+)
+
 // FrontendForQuerierClient is a client for the frontendpb.FrontendForQuerier service.
 type FrontendForQuerierClient interface {
-	QueryResult(context.Context, *connect_go.Request[frontendpb.QueryResultRequest]) (*connect_go.Response[frontendpb.QueryResultResponse], error)
+	QueryResult(context.Context, *connect.Request[frontendpb.QueryResultRequest]) (*connect.Response[frontendpb.QueryResultResponse], error)
 }
 
 // NewFrontendForQuerierClient constructs a client for the frontendpb.FrontendForQuerier service. By
@@ -55,30 +61,31 @@ type FrontendForQuerierClient interface {
 //
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
 // http://api.acme.com or https://acme.com/grpc).
-func NewFrontendForQuerierClient(httpClient connect_go.HTTPClient, baseURL string, opts ...connect_go.ClientOption) FrontendForQuerierClient {
+func NewFrontendForQuerierClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) FrontendForQuerierClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	return &frontendForQuerierClient{
-		queryResult: connect_go.NewClient[frontendpb.QueryResultRequest, frontendpb.QueryResultResponse](
+		queryResult: connect.NewClient[frontendpb.QueryResultRequest, frontendpb.QueryResultResponse](
 			httpClient,
 			baseURL+FrontendForQuerierQueryResultProcedure,
-			opts...,
+			connect.WithSchema(frontendForQuerierQueryResultMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 	}
 }
 
 // frontendForQuerierClient implements FrontendForQuerierClient.
 type frontendForQuerierClient struct {
-	queryResult *connect_go.Client[frontendpb.QueryResultRequest, frontendpb.QueryResultResponse]
+	queryResult *connect.Client[frontendpb.QueryResultRequest, frontendpb.QueryResultResponse]
 }
 
 // QueryResult calls frontendpb.FrontendForQuerier.QueryResult.
-func (c *frontendForQuerierClient) QueryResult(ctx context.Context, req *connect_go.Request[frontendpb.QueryResultRequest]) (*connect_go.Response[frontendpb.QueryResultResponse], error) {
+func (c *frontendForQuerierClient) QueryResult(ctx context.Context, req *connect.Request[frontendpb.QueryResultRequest]) (*connect.Response[frontendpb.QueryResultResponse], error) {
 	return c.queryResult.CallUnary(ctx, req)
 }
 
 // FrontendForQuerierHandler is an implementation of the frontendpb.FrontendForQuerier service.
 type FrontendForQuerierHandler interface {
-	QueryResult(context.Context, *connect_go.Request[frontendpb.QueryResultRequest]) (*connect_go.Response[frontendpb.QueryResultResponse], error)
+	QueryResult(context.Context, *connect.Request[frontendpb.QueryResultRequest]) (*connect.Response[frontendpb.QueryResultResponse], error)
 }
 
 // NewFrontendForQuerierHandler builds an HTTP handler from the service implementation. It returns
@@ -86,11 +93,12 @@ type FrontendForQuerierHandler interface {
 //
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
-func NewFrontendForQuerierHandler(svc FrontendForQuerierHandler, opts ...connect_go.HandlerOption) (string, http.Handler) {
-	frontendForQuerierQueryResultHandler := connect_go.NewUnaryHandler(
+func NewFrontendForQuerierHandler(svc FrontendForQuerierHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	frontendForQuerierQueryResultHandler := connect.NewUnaryHandler(
 		FrontendForQuerierQueryResultProcedure,
 		svc.QueryResult,
-		opts...,
+		connect.WithSchema(frontendForQuerierQueryResultMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	return "/frontendpb.FrontendForQuerier/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -105,6 +113,6 @@ func NewFrontendForQuerierHandler(svc FrontendForQuerierHandler, opts ...connect
 // UnimplementedFrontendForQuerierHandler returns CodeUnimplemented from all methods.
 type UnimplementedFrontendForQuerierHandler struct{}
 
-func (UnimplementedFrontendForQuerierHandler) QueryResult(context.Context, *connect_go.Request[frontendpb.QueryResultRequest]) (*connect_go.Response[frontendpb.QueryResultResponse], error) {
-	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("frontendpb.FrontendForQuerier.QueryResult is not implemented"))
+func (UnimplementedFrontendForQuerierHandler) QueryResult(context.Context, *connect.Request[frontendpb.QueryResultRequest]) (*connect.Response[frontendpb.QueryResultResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("frontendpb.FrontendForQuerier.QueryResult is not implemented"))
 }

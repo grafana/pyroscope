@@ -3,7 +3,7 @@ package frontend
 import (
 	"context"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
 	"golang.org/x/sync/errgroup"
 

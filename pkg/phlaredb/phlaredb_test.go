@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"

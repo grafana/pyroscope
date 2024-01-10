@@ -5,9 +5,9 @@
 package querierv1connect
 
 import (
+	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	connect_go "github.com/bufbuild/connect-go"
 	v12 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	v11 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -20,7 +20,7 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect_go.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// QuerierServiceName is the fully-qualified name of the QuerierService service.
@@ -62,25 +62,39 @@ const (
 	QuerierServiceDiffProcedure = "/querier.v1.QuerierService/Diff"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	querierServiceServiceDescriptor                      = v1.File_querier_v1_querier_proto.Services().ByName("QuerierService")
+	querierServiceProfileTypesMethodDescriptor           = querierServiceServiceDescriptor.Methods().ByName("ProfileTypes")
+	querierServiceLabelValuesMethodDescriptor            = querierServiceServiceDescriptor.Methods().ByName("LabelValues")
+	querierServiceLabelNamesMethodDescriptor             = querierServiceServiceDescriptor.Methods().ByName("LabelNames")
+	querierServiceSeriesMethodDescriptor                 = querierServiceServiceDescriptor.Methods().ByName("Series")
+	querierServiceSelectMergeStacktracesMethodDescriptor = querierServiceServiceDescriptor.Methods().ByName("SelectMergeStacktraces")
+	querierServiceSelectMergeSpanProfileMethodDescriptor = querierServiceServiceDescriptor.Methods().ByName("SelectMergeSpanProfile")
+	querierServiceSelectMergeProfileMethodDescriptor     = querierServiceServiceDescriptor.Methods().ByName("SelectMergeProfile")
+	querierServiceSelectSeriesMethodDescriptor           = querierServiceServiceDescriptor.Methods().ByName("SelectSeries")
+	querierServiceDiffMethodDescriptor                   = querierServiceServiceDescriptor.Methods().ByName("Diff")
+)
+
 // QuerierServiceClient is a client for the querier.v1.QuerierService service.
 type QuerierServiceClient interface {
 	// ProfileType returns a list of the existing profile types.
-	ProfileTypes(context.Context, *connect_go.Request[v1.ProfileTypesRequest]) (*connect_go.Response[v1.ProfileTypesResponse], error)
+	ProfileTypes(context.Context, *connect.Request[v1.ProfileTypesRequest]) (*connect.Response[v1.ProfileTypesResponse], error)
 	// LabelValues returns the existing label values for the provided label names.
-	LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error)
+	LabelValues(context.Context, *connect.Request[v11.LabelValuesRequest]) (*connect.Response[v11.LabelValuesResponse], error)
 	// LabelNames returns a list of the existing label names.
-	LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error)
+	LabelNames(context.Context, *connect.Request[v11.LabelNamesRequest]) (*connect.Response[v11.LabelNamesResponse], error)
 	// Series returns profiles series matching the request. A series is a unique label set.
-	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
+	Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error)
 	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
-	SelectMergeStacktraces(context.Context, *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error)
+	SelectMergeStacktraces(context.Context, *connect.Request[v1.SelectMergeStacktracesRequest]) (*connect.Response[v1.SelectMergeStacktracesResponse], error)
 	// SelectMergeSpans returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
-	SelectMergeSpanProfile(context.Context, *connect_go.Request[v1.SelectMergeSpanProfileRequest]) (*connect_go.Response[v1.SelectMergeSpanProfileResponse], error)
+	SelectMergeSpanProfile(context.Context, *connect.Request[v1.SelectMergeSpanProfileRequest]) (*connect.Response[v1.SelectMergeSpanProfileResponse], error)
 	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
-	SelectMergeProfile(context.Context, *connect_go.Request[v1.SelectMergeProfileRequest]) (*connect_go.Response[v12.Profile], error)
+	SelectMergeProfile(context.Context, *connect.Request[v1.SelectMergeProfileRequest]) (*connect.Response[v12.Profile], error)
 	// SelectSeries returns a time series for the total sum of the requested profiles.
-	SelectSeries(context.Context, *connect_go.Request[v1.SelectSeriesRequest]) (*connect_go.Response[v1.SelectSeriesResponse], error)
-	Diff(context.Context, *connect_go.Request[v1.DiffRequest]) (*connect_go.Response[v1.DiffResponse], error)
+	SelectSeries(context.Context, *connect.Request[v1.SelectSeriesRequest]) (*connect.Response[v1.SelectSeriesResponse], error)
+	Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error)
 }
 
 // NewQuerierServiceClient constructs a client for the querier.v1.QuerierService service. By
@@ -90,134 +104,143 @@ type QuerierServiceClient interface {
 //
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
 // http://api.acme.com or https://acme.com/grpc).
-func NewQuerierServiceClient(httpClient connect_go.HTTPClient, baseURL string, opts ...connect_go.ClientOption) QuerierServiceClient {
+func NewQuerierServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) QuerierServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	return &querierServiceClient{
-		profileTypes: connect_go.NewClient[v1.ProfileTypesRequest, v1.ProfileTypesResponse](
+		profileTypes: connect.NewClient[v1.ProfileTypesRequest, v1.ProfileTypesResponse](
 			httpClient,
 			baseURL+QuerierServiceProfileTypesProcedure,
-			opts...,
+			connect.WithSchema(querierServiceProfileTypesMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
-		labelValues: connect_go.NewClient[v11.LabelValuesRequest, v11.LabelValuesResponse](
+		labelValues: connect.NewClient[v11.LabelValuesRequest, v11.LabelValuesResponse](
 			httpClient,
 			baseURL+QuerierServiceLabelValuesProcedure,
-			opts...,
+			connect.WithSchema(querierServiceLabelValuesMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
-		labelNames: connect_go.NewClient[v11.LabelNamesRequest, v11.LabelNamesResponse](
+		labelNames: connect.NewClient[v11.LabelNamesRequest, v11.LabelNamesResponse](
 			httpClient,
 			baseURL+QuerierServiceLabelNamesProcedure,
-			opts...,
+			connect.WithSchema(querierServiceLabelNamesMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
-		series: connect_go.NewClient[v1.SeriesRequest, v1.SeriesResponse](
+		series: connect.NewClient[v1.SeriesRequest, v1.SeriesResponse](
 			httpClient,
 			baseURL+QuerierServiceSeriesProcedure,
-			opts...,
+			connect.WithSchema(querierServiceSeriesMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
-		selectMergeStacktraces: connect_go.NewClient[v1.SelectMergeStacktracesRequest, v1.SelectMergeStacktracesResponse](
+		selectMergeStacktraces: connect.NewClient[v1.SelectMergeStacktracesRequest, v1.SelectMergeStacktracesResponse](
 			httpClient,
 			baseURL+QuerierServiceSelectMergeStacktracesProcedure,
-			opts...,
+			connect.WithSchema(querierServiceSelectMergeStacktracesMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
-		selectMergeSpanProfile: connect_go.NewClient[v1.SelectMergeSpanProfileRequest, v1.SelectMergeSpanProfileResponse](
+		selectMergeSpanProfile: connect.NewClient[v1.SelectMergeSpanProfileRequest, v1.SelectMergeSpanProfileResponse](
 			httpClient,
 			baseURL+QuerierServiceSelectMergeSpanProfileProcedure,
-			opts...,
+			connect.WithSchema(querierServiceSelectMergeSpanProfileMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
-		selectMergeProfile: connect_go.NewClient[v1.SelectMergeProfileRequest, v12.Profile](
+		selectMergeProfile: connect.NewClient[v1.SelectMergeProfileRequest, v12.Profile](
 			httpClient,
 			baseURL+QuerierServiceSelectMergeProfileProcedure,
-			opts...,
+			connect.WithSchema(querierServiceSelectMergeProfileMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
-		selectSeries: connect_go.NewClient[v1.SelectSeriesRequest, v1.SelectSeriesResponse](
+		selectSeries: connect.NewClient[v1.SelectSeriesRequest, v1.SelectSeriesResponse](
 			httpClient,
 			baseURL+QuerierServiceSelectSeriesProcedure,
-			opts...,
+			connect.WithSchema(querierServiceSelectSeriesMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
-		diff: connect_go.NewClient[v1.DiffRequest, v1.DiffResponse](
+		diff: connect.NewClient[v1.DiffRequest, v1.DiffResponse](
 			httpClient,
 			baseURL+QuerierServiceDiffProcedure,
-			opts...,
+			connect.WithSchema(querierServiceDiffMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 	}
 }
 
 // querierServiceClient implements QuerierServiceClient.
 type querierServiceClient struct {
-	profileTypes           *connect_go.Client[v1.ProfileTypesRequest, v1.ProfileTypesResponse]
-	labelValues            *connect_go.Client[v11.LabelValuesRequest, v11.LabelValuesResponse]
-	labelNames             *connect_go.Client[v11.LabelNamesRequest, v11.LabelNamesResponse]
-	series                 *connect_go.Client[v1.SeriesRequest, v1.SeriesResponse]
-	selectMergeStacktraces *connect_go.Client[v1.SelectMergeStacktracesRequest, v1.SelectMergeStacktracesResponse]
-	selectMergeSpanProfile *connect_go.Client[v1.SelectMergeSpanProfileRequest, v1.SelectMergeSpanProfileResponse]
-	selectMergeProfile     *connect_go.Client[v1.SelectMergeProfileRequest, v12.Profile]
-	selectSeries           *connect_go.Client[v1.SelectSeriesRequest, v1.SelectSeriesResponse]
-	diff                   *connect_go.Client[v1.DiffRequest, v1.DiffResponse]
+	profileTypes           *connect.Client[v1.ProfileTypesRequest, v1.ProfileTypesResponse]
+	labelValues            *connect.Client[v11.LabelValuesRequest, v11.LabelValuesResponse]
+	labelNames             *connect.Client[v11.LabelNamesRequest, v11.LabelNamesResponse]
+	series                 *connect.Client[v1.SeriesRequest, v1.SeriesResponse]
+	selectMergeStacktraces *connect.Client[v1.SelectMergeStacktracesRequest, v1.SelectMergeStacktracesResponse]
+	selectMergeSpanProfile *connect.Client[v1.SelectMergeSpanProfileRequest, v1.SelectMergeSpanProfileResponse]
+	selectMergeProfile     *connect.Client[v1.SelectMergeProfileRequest, v12.Profile]
+	selectSeries           *connect.Client[v1.SelectSeriesRequest, v1.SelectSeriesResponse]
+	diff                   *connect.Client[v1.DiffRequest, v1.DiffResponse]
 }
 
 // ProfileTypes calls querier.v1.QuerierService.ProfileTypes.
-func (c *querierServiceClient) ProfileTypes(ctx context.Context, req *connect_go.Request[v1.ProfileTypesRequest]) (*connect_go.Response[v1.ProfileTypesResponse], error) {
+func (c *querierServiceClient) ProfileTypes(ctx context.Context, req *connect.Request[v1.ProfileTypesRequest]) (*connect.Response[v1.ProfileTypesResponse], error) {
 	return c.profileTypes.CallUnary(ctx, req)
 }
 
 // LabelValues calls querier.v1.QuerierService.LabelValues.
-func (c *querierServiceClient) LabelValues(ctx context.Context, req *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error) {
+func (c *querierServiceClient) LabelValues(ctx context.Context, req *connect.Request[v11.LabelValuesRequest]) (*connect.Response[v11.LabelValuesResponse], error) {
 	return c.labelValues.CallUnary(ctx, req)
 }
 
 // LabelNames calls querier.v1.QuerierService.LabelNames.
-func (c *querierServiceClient) LabelNames(ctx context.Context, req *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error) {
+func (c *querierServiceClient) LabelNames(ctx context.Context, req *connect.Request[v11.LabelNamesRequest]) (*connect.Response[v11.LabelNamesResponse], error) {
 	return c.labelNames.CallUnary(ctx, req)
 }
 
 // Series calls querier.v1.QuerierService.Series.
-func (c *querierServiceClient) Series(ctx context.Context, req *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error) {
+func (c *querierServiceClient) Series(ctx context.Context, req *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error) {
 	return c.series.CallUnary(ctx, req)
 }
 
 // SelectMergeStacktraces calls querier.v1.QuerierService.SelectMergeStacktraces.
-func (c *querierServiceClient) SelectMergeStacktraces(ctx context.Context, req *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error) {
+func (c *querierServiceClient) SelectMergeStacktraces(ctx context.Context, req *connect.Request[v1.SelectMergeStacktracesRequest]) (*connect.Response[v1.SelectMergeStacktracesResponse], error) {
 	return c.selectMergeStacktraces.CallUnary(ctx, req)
 }
 
 // SelectMergeSpanProfile calls querier.v1.QuerierService.SelectMergeSpanProfile.
-func (c *querierServiceClient) SelectMergeSpanProfile(ctx context.Context, req *connect_go.Request[v1.SelectMergeSpanProfileRequest]) (*connect_go.Response[v1.SelectMergeSpanProfileResponse], error) {
+func (c *querierServiceClient) SelectMergeSpanProfile(ctx context.Context, req *connect.Request[v1.SelectMergeSpanProfileRequest]) (*connect.Response[v1.SelectMergeSpanProfileResponse], error) {
 	return c.selectMergeSpanProfile.CallUnary(ctx, req)
 }
 
 // SelectMergeProfile calls querier.v1.QuerierService.SelectMergeProfile.
-func (c *querierServiceClient) SelectMergeProfile(ctx context.Context, req *connect_go.Request[v1.SelectMergeProfileRequest]) (*connect_go.Response[v12.Profile], error) {
+func (c *querierServiceClient) SelectMergeProfile(ctx context.Context, req *connect.Request[v1.SelectMergeProfileRequest]) (*connect.Response[v12.Profile], error) {
 	return c.selectMergeProfile.CallUnary(ctx, req)
 }
 
 // SelectSeries calls querier.v1.QuerierService.SelectSeries.
-func (c *querierServiceClient) SelectSeries(ctx context.Context, req *connect_go.Request[v1.SelectSeriesRequest]) (*connect_go.Response[v1.SelectSeriesResponse], error) {
+func (c *querierServiceClient) SelectSeries(ctx context.Context, req *connect.Request[v1.SelectSeriesRequest]) (*connect.Response[v1.SelectSeriesResponse], error) {
 	return c.selectSeries.CallUnary(ctx, req)
 }
 
 // Diff calls querier.v1.QuerierService.Diff.
-func (c *querierServiceClient) Diff(ctx context.Context, req *connect_go.Request[v1.DiffRequest]) (*connect_go.Response[v1.DiffResponse], error) {
+func (c *querierServiceClient) Diff(ctx context.Context, req *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error) {
 	return c.diff.CallUnary(ctx, req)
 }
 
 // QuerierServiceHandler is an implementation of the querier.v1.QuerierService service.
 type QuerierServiceHandler interface {
 	// ProfileType returns a list of the existing profile types.
-	ProfileTypes(context.Context, *connect_go.Request[v1.ProfileTypesRequest]) (*connect_go.Response[v1.ProfileTypesResponse], error)
+	ProfileTypes(context.Context, *connect.Request[v1.ProfileTypesRequest]) (*connect.Response[v1.ProfileTypesResponse], error)
 	// LabelValues returns the existing label values for the provided label names.
-	LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error)
+	LabelValues(context.Context, *connect.Request[v11.LabelValuesRequest]) (*connect.Response[v11.LabelValuesResponse], error)
 	// LabelNames returns a list of the existing label names.
-	LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error)
+	LabelNames(context.Context, *connect.Request[v11.LabelNamesRequest]) (*connect.Response[v11.LabelNamesResponse], error)
 	// Series returns profiles series matching the request. A series is a unique label set.
-	Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error)
+	Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error)
 	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
-	SelectMergeStacktraces(context.Context, *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error)
+	SelectMergeStacktraces(context.Context, *connect.Request[v1.SelectMergeStacktracesRequest]) (*connect.Response[v1.SelectMergeStacktracesResponse], error)
 	// SelectMergeSpans returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
-	SelectMergeSpanProfile(context.Context, *connect_go.Request[v1.SelectMergeSpanProfileRequest]) (*connect_go.Response[v1.SelectMergeSpanProfileResponse], error)
+	SelectMergeSpanProfile(context.Context, *connect.Request[v1.SelectMergeSpanProfileRequest]) (*connect.Response[v1.SelectMergeSpanProfileResponse], error)
 	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
-	SelectMergeProfile(context.Context, *connect_go.Request[v1.SelectMergeProfileRequest]) (*connect_go.Response[v12.Profile], error)
+	SelectMergeProfile(context.Context, *connect.Request[v1.SelectMergeProfileRequest]) (*connect.Response[v12.Profile], error)
 	// SelectSeries returns a time series for the total sum of the requested profiles.
-	SelectSeries(context.Context, *connect_go.Request[v1.SelectSeriesRequest]) (*connect_go.Response[v1.SelectSeriesResponse], error)
-	Diff(context.Context, *connect_go.Request[v1.DiffRequest]) (*connect_go.Response[v1.DiffResponse], error)
+	SelectSeries(context.Context, *connect.Request[v1.SelectSeriesRequest]) (*connect.Response[v1.SelectSeriesResponse], error)
+	Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error)
 }
 
 // NewQuerierServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -225,51 +248,60 @@ type QuerierServiceHandler interface {
 //
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
-func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect_go.HandlerOption) (string, http.Handler) {
-	querierServiceProfileTypesHandler := connect_go.NewUnaryHandler(
+func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	querierServiceProfileTypesHandler := connect.NewUnaryHandler(
 		QuerierServiceProfileTypesProcedure,
 		svc.ProfileTypes,
-		opts...,
+		connect.WithSchema(querierServiceProfileTypesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
-	querierServiceLabelValuesHandler := connect_go.NewUnaryHandler(
+	querierServiceLabelValuesHandler := connect.NewUnaryHandler(
 		QuerierServiceLabelValuesProcedure,
 		svc.LabelValues,
-		opts...,
+		connect.WithSchema(querierServiceLabelValuesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
-	querierServiceLabelNamesHandler := connect_go.NewUnaryHandler(
+	querierServiceLabelNamesHandler := connect.NewUnaryHandler(
 		QuerierServiceLabelNamesProcedure,
 		svc.LabelNames,
-		opts...,
+		connect.WithSchema(querierServiceLabelNamesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
-	querierServiceSeriesHandler := connect_go.NewUnaryHandler(
+	querierServiceSeriesHandler := connect.NewUnaryHandler(
 		QuerierServiceSeriesProcedure,
 		svc.Series,
-		opts...,
+		connect.WithSchema(querierServiceSeriesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
-	querierServiceSelectMergeStacktracesHandler := connect_go.NewUnaryHandler(
+	querierServiceSelectMergeStacktracesHandler := connect.NewUnaryHandler(
 		QuerierServiceSelectMergeStacktracesProcedure,
 		svc.SelectMergeStacktraces,
-		opts...,
+		connect.WithSchema(querierServiceSelectMergeStacktracesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
-	querierServiceSelectMergeSpanProfileHandler := connect_go.NewUnaryHandler(
+	querierServiceSelectMergeSpanProfileHandler := connect.NewUnaryHandler(
 		QuerierServiceSelectMergeSpanProfileProcedure,
 		svc.SelectMergeSpanProfile,
-		opts...,
+		connect.WithSchema(querierServiceSelectMergeSpanProfileMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
-	querierServiceSelectMergeProfileHandler := connect_go.NewUnaryHandler(
+	querierServiceSelectMergeProfileHandler := connect.NewUnaryHandler(
 		QuerierServiceSelectMergeProfileProcedure,
 		svc.SelectMergeProfile,
-		opts...,
+		connect.WithSchema(querierServiceSelectMergeProfileMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
-	querierServiceSelectSeriesHandler := connect_go.NewUnaryHandler(
+	querierServiceSelectSeriesHandler := connect.NewUnaryHandler(
 		QuerierServiceSelectSeriesProcedure,
 		svc.SelectSeries,
-		opts...,
+		connect.WithSchema(querierServiceSelectSeriesMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
-	querierServiceDiffHandler := connect_go.NewUnaryHandler(
+	querierServiceDiffHandler := connect.NewUnaryHandler(
 		QuerierServiceDiffProcedure,
 		svc.Diff,
-		opts...,
+		connect.WithSchema(querierServiceDiffMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	return "/querier.v1.QuerierService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -300,38 +332,38 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect_go.Hand
 // UnimplementedQuerierServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedQuerierServiceHandler struct{}
 
-func (UnimplementedQuerierServiceHandler) ProfileTypes(context.Context, *connect_go.Request[v1.ProfileTypesRequest]) (*connect_go.Response[v1.ProfileTypesResponse], error) {
-	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.ProfileTypes is not implemented"))
+func (UnimplementedQuerierServiceHandler) ProfileTypes(context.Context, *connect.Request[v1.ProfileTypesRequest]) (*connect.Response[v1.ProfileTypesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.ProfileTypes is not implemented"))
 }
 
-func (UnimplementedQuerierServiceHandler) LabelValues(context.Context, *connect_go.Request[v11.LabelValuesRequest]) (*connect_go.Response[v11.LabelValuesResponse], error) {
-	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.LabelValues is not implemented"))
+func (UnimplementedQuerierServiceHandler) LabelValues(context.Context, *connect.Request[v11.LabelValuesRequest]) (*connect.Response[v11.LabelValuesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.LabelValues is not implemented"))
 }
 
-func (UnimplementedQuerierServiceHandler) LabelNames(context.Context, *connect_go.Request[v11.LabelNamesRequest]) (*connect_go.Response[v11.LabelNamesResponse], error) {
-	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.LabelNames is not implemented"))
+func (UnimplementedQuerierServiceHandler) LabelNames(context.Context, *connect.Request[v11.LabelNamesRequest]) (*connect.Response[v11.LabelNamesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.LabelNames is not implemented"))
 }
 
-func (UnimplementedQuerierServiceHandler) Series(context.Context, *connect_go.Request[v1.SeriesRequest]) (*connect_go.Response[v1.SeriesResponse], error) {
-	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.Series is not implemented"))
+func (UnimplementedQuerierServiceHandler) Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.Series is not implemented"))
 }
 
-func (UnimplementedQuerierServiceHandler) SelectMergeStacktraces(context.Context, *connect_go.Request[v1.SelectMergeStacktracesRequest]) (*connect_go.Response[v1.SelectMergeStacktracesResponse], error) {
-	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectMergeStacktraces is not implemented"))
+func (UnimplementedQuerierServiceHandler) SelectMergeStacktraces(context.Context, *connect.Request[v1.SelectMergeStacktracesRequest]) (*connect.Response[v1.SelectMergeStacktracesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectMergeStacktraces is not implemented"))
 }
 
-func (UnimplementedQuerierServiceHandler) SelectMergeSpanProfile(context.Context, *connect_go.Request[v1.SelectMergeSpanProfileRequest]) (*connect_go.Response[v1.SelectMergeSpanProfileResponse], error) {
-	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectMergeSpanProfile is not implemented"))
+func (UnimplementedQuerierServiceHandler) SelectMergeSpanProfile(context.Context, *connect.Request[v1.SelectMergeSpanProfileRequest]) (*connect.Response[v1.SelectMergeSpanProfileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectMergeSpanProfile is not implemented"))
 }
 
-func (UnimplementedQuerierServiceHandler) SelectMergeProfile(context.Context, *connect_go.Request[v1.SelectMergeProfileRequest]) (*connect_go.Response[v12.Profile], error) {
-	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectMergeProfile is not implemented"))
+func (UnimplementedQuerierServiceHandler) SelectMergeProfile(context.Context, *connect.Request[v1.SelectMergeProfileRequest]) (*connect.Response[v12.Profile], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectMergeProfile is not implemented"))
 }
 
-func (UnimplementedQuerierServiceHandler) SelectSeries(context.Context, *connect_go.Request[v1.SelectSeriesRequest]) (*connect_go.Response[v1.SelectSeriesResponse], error) {
-	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectSeries is not implemented"))
+func (UnimplementedQuerierServiceHandler) SelectSeries(context.Context, *connect.Request[v1.SelectSeriesRequest]) (*connect.Response[v1.SelectSeriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.SelectSeries is not implemented"))
 }
 
-func (UnimplementedQuerierServiceHandler) Diff(context.Context, *connect_go.Request[v1.DiffRequest]) (*connect_go.Response[v1.DiffResponse], error) {
-	return nil, connect_go.NewError(connect_go.CodeUnimplemented, errors.New("querier.v1.QuerierService.Diff is not implemented"))
+func (UnimplementedQuerierServiceHandler) Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.Diff is not implemented"))
 }

@@ -256,7 +256,7 @@ reference-help: build
 
 $(BIN)/buf: Makefile
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/bufbuild/buf/cmd/buf@v1.20.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/bufbuild/buf/cmd/buf@v1.28.1
 
 $(BIN)/golangci-lint: Makefile
 	@mkdir -p $(@D)
@@ -264,15 +264,15 @@ $(BIN)/golangci-lint: Makefile
 
 $(BIN)/protoc-gen-go: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31.0
+	GOBIN=$(abspath $(@D)) $(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@v1.32.0
 
 $(BIN)/protoc-gen-connect-go: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/bufbuild/connect-go/cmd/protoc-gen-connect-go@v1.9.0
+	GOBIN=$(abspath $(@D)) $(GO) install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.14.0
 
 $(BIN)/protoc-gen-connect-go-mux: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/grafana/connect-go-mux/cmd/protoc-gen-connect-go-mux@v0.1.1
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grafana/connect-go-mux/cmd/protoc-gen-connect-go-mux@v0.2.0
 
 $(BIN)/protoc-gen-go-vtproto: Makefile go.mod
 	@mkdir -p $(@D)
