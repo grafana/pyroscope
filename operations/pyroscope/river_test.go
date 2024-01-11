@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/grafana/agent/pkg/river/diag"
-	"github.com/grafana/agent/pkg/river/parser"
-	"github.com/grafana/agent/pkg/river/printer"
+	"github.com/grafana/river/diag"
+	"github.com/grafana/river/parser"
+	"github.com/grafana/river/printer"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
