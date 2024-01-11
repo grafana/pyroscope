@@ -33,6 +33,9 @@ const (
 	LabelNamePyroscopeSpy = "pyroscope_spy"
 	LabelNameSessionID    = "__session_id__"
 
+	LabelNameMappingRepository = "__mapping_repository__"
+	LabelNameMappingCommit     = "__mapping_commit__"
+
 	LabelNameServiceNameK8s = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
 
 	labelSep = '\xfe'
@@ -445,4 +448,20 @@ func ParseSessionID(s string) (SessionID, error) {
 		return 0, err
 	}
 	return SessionID(binary.LittleEndian.Uint64(b[:])), nil
+}
+
+type MappingVersion struct {
+	Repository string `json:"repository,omitempty"`
+	Commit     string `json:"commit,omitempty"`
+}
+
+// MappingVersionFromLabels Attempts to extract a mapping version from the given labels.
+// Returns false if no mapping version was found.
+func MappingVersionFromLabels(lbls Labels) (MappingVersion, bool) {
+	repo := lbls.Get(LabelNameMappingRepository)
+	commit := lbls.Get(LabelNameMappingCommit)
+	return MappingVersion{
+		Repository: repo,
+		Commit:     commit,
+	}, repo != "" || commit != ""
 }

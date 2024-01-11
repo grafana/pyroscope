@@ -307,7 +307,6 @@ func Test_Limits(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.description, func(t *testing.T) {
-
 			mux := http.NewServeMux()
 			ing := newFakeIngester(t, false)
 			d, err := New(Config{
@@ -322,7 +321,7 @@ func Test_Limits(t *testing.T) {
 
 			expectedMetricDelta := map[prometheus.Collector]float64{
 				validation.DiscardedBytes.WithLabelValues(string(tc.expectedValidationReason), "user-1"): float64(uncompressedProfileSize(t, tc.pushReq)),
-				//todo make sure pyroscope_distributor_received_decompressed_bytes_sum is not incremented
+				// todo make sure pyroscope_distributor_received_decompressed_bytes_sum is not incremented
 			}
 			m1 := metricsDump(expectedMetricDelta)
 
@@ -1021,6 +1020,69 @@ func testProfile(t int64) *profilev1.Profile {
 		},
 		Period: 10000000,
 	}
+}
+
+func TestInjectMappingVersions(t *testing.T) {
+	alreadyVersionned := testProfile(3)
+	alreadyVersionned.StringTable = append(alreadyVersionned.StringTable, `foo`)
+	alreadyVersionned.Mapping[0].BuildId = int64(len(alreadyVersionned.StringTable) - 1)
+	in := []*distributormodel.ProfileSeries{
+		{
+			Labels: []*typesv1.LabelPair{},
+			Samples: []*distributormodel.ProfileSample{
+				{
+					Profile: &pprof2.Profile{
+						Profile: testProfile(1),
+					},
+				},
+			},
+		},
+		{
+			Labels: []*typesv1.LabelPair{
+				{Name: phlaremodel.LabelNameMappingRepository, Value: "grafana/pyroscope"},
+			},
+			Samples: []*distributormodel.ProfileSample{
+				{
+					Profile: &pprof2.Profile{
+						Profile: testProfile(2),
+					},
+				},
+			},
+		},
+		{
+			Labels: []*typesv1.LabelPair{
+				{Name: phlaremodel.LabelNameMappingRepository, Value: "grafana/pyroscope"},
+				{Name: phlaremodel.LabelNameMappingCommit, Value: "foobar"},
+			},
+			Samples: []*distributormodel.ProfileSample{
+				{
+					Profile: &pprof2.Profile{
+						Profile: testProfile(2),
+					},
+				},
+			},
+		},
+		{
+			Labels: []*typesv1.LabelPair{
+				{Name: phlaremodel.LabelNameMappingRepository, Value: "grafana/pyroscope"},
+				{Name: phlaremodel.LabelNameMappingCommit, Value: "foobar"},
+			},
+			Samples: []*distributormodel.ProfileSample{
+				{
+					Profile: &pprof2.Profile{
+						Profile: alreadyVersionned,
+					},
+				},
+			},
+		},
+	}
+
+	err := injectMappingVersions(in)
+	require.NoError(t, err)
+	require.Equal(t, "", in[0].Samples[0].Profile.StringTable[in[0].Samples[0].Profile.Mapping[0].BuildId])
+	require.Equal(t, `{"repository":"grafana/pyroscope"}`, in[1].Samples[0].Profile.StringTable[in[1].Samples[0].Profile.Mapping[0].BuildId])
+	require.Equal(t, `{"repository":"grafana/pyroscope","commit":"foobar"}`, in[2].Samples[0].Profile.StringTable[in[2].Samples[0].Profile.Mapping[0].BuildId])
+	require.Equal(t, `foo`, in[3].Samples[0].Profile.StringTable[in[3].Samples[0].Profile.Mapping[0].BuildId])
 }
 
 func uncompressedProfileSize(t *testing.T, req *pushv1.PushRequest) int {
