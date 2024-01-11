@@ -43,8 +43,6 @@ func TestTenantSettings_Get(t *testing.T) {
 	})
 
 	t.Run("missing tenant id", func(t *testing.T) {
-		const tenantID = "1234"
-
 		ts, cleanup := newTestTenantSettings(t, map[string][]*settingsv1.Setting{})
 		defer cleanup()
 
@@ -170,8 +168,6 @@ func TestTenantSettings_Set(t *testing.T) {
 	})
 
 	t.Run("missing tenant id", func(t *testing.T) {
-		const tenantID = "1234"
-
 		ts, cleanup := newTestTenantSettings(t, map[string][]*settingsv1.Setting{})
 		defer cleanup()
 
