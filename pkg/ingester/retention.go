@@ -25,6 +25,10 @@ import (
 const (
 	// TODO(kolesnikovae): Unify with pkg/phlaredb.
 	phlareDBLocalPath = "local"
+
+	// The name of the 'lost+found' directory which can be created on systems
+	// that use fsck (https://en.wikipedia.org/wiki/Fsck).
+	lostAndFoundDirName = "lost+found"
 )
 
 // newDiskCleaner creates a service that will intermittently clean blocks from
@@ -371,6 +375,11 @@ func (bm *realFSBlockManager) GetTenantIDs(ctx context.Context) ([]string, error
 		if !tenantDir.IsDir() {
 			continue
 		}
+
+		if tenantDir.Name() == lostAndFoundDirName {
+			continue
+		}
+
 		tenantIDs = append(tenantIDs, tenantDir.Name())
 	}
 	return tenantIDs, nil

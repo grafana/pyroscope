@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"math/rand"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -427,11 +428,17 @@ func TestFSBlockManager(t *testing.T) {
 		fs.markBlocksShippedForTenant(t, tenantID, uploadedBlockIDs...)
 	}
 
+	// Create a lost+found directory.
+	err := fs.Fs.Mkdir(path.Join(fs.Root, lostAndFoundDirName), 0755)
+	require.NoError(t, err, "failed to create %s directory", lostAndFoundDirName)
+
 	t.Run("GetTenantIDs", func(t *testing.T) {
 		bm := newFSBlockManager(root, e, fs)
 		tenantIDs, err := bm.GetTenantIDs(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, []string{"1218", "anonymous"}, tenantIDs)
+		// Explicitly check lost+found isn't in tenant id list.
+		require.NotContains(t, tenantIDs, lostAndFoundDirName)
 	})
 
 	t.Run("GetBlocksForTenant", func(t *testing.T) {
