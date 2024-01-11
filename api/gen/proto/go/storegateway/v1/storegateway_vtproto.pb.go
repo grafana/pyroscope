@@ -34,6 +34,8 @@ type StoreGatewayServiceClient interface {
 	MergeProfilesLabels(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeProfilesLabelsClient, error)
 	MergeProfilesPprof(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeProfilesPprofClient, error)
 	MergeSpanProfile(ctx context.Context, opts ...grpc.CallOption) (StoreGatewayService_MergeSpanProfileClient, error)
+	// Deprecated: ProfileType call is deprecated in the store components
+	// TODO: Remove this call in release v1.4
 	ProfileTypes(ctx context.Context, in *v1.ProfileTypesRequest, opts ...grpc.CallOption) (*v1.ProfileTypesResponse, error)
 	LabelValues(ctx context.Context, in *v11.LabelValuesRequest, opts ...grpc.CallOption) (*v11.LabelValuesResponse, error)
 	LabelNames(ctx context.Context, in *v11.LabelNamesRequest, opts ...grpc.CallOption) (*v11.LabelNamesResponse, error)
@@ -226,6 +228,8 @@ type StoreGatewayServiceServer interface {
 	MergeProfilesLabels(StoreGatewayService_MergeProfilesLabelsServer) error
 	MergeProfilesPprof(StoreGatewayService_MergeProfilesPprofServer) error
 	MergeSpanProfile(StoreGatewayService_MergeSpanProfileServer) error
+	// Deprecated: ProfileType call is deprecated in the store components
+	// TODO: Remove this call in release v1.4
 	ProfileTypes(context.Context, *v1.ProfileTypesRequest) (*v1.ProfileTypesResponse, error)
 	LabelValues(context.Context, *v11.LabelValuesRequest) (*v11.LabelValuesResponse, error)
 	LabelNames(context.Context, *v11.LabelNamesRequest) (*v11.LabelNamesResponse, error)

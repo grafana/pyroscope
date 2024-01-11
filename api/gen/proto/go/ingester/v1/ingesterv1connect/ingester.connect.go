@@ -88,6 +88,8 @@ type IngesterServiceClient interface {
 	Push(context.Context, *connect.Request[v11.PushRequest]) (*connect.Response[v11.PushResponse], error)
 	LabelValues(context.Context, *connect.Request[v12.LabelValuesRequest]) (*connect.Response[v12.LabelValuesResponse], error)
 	LabelNames(context.Context, *connect.Request[v12.LabelNamesRequest]) (*connect.Response[v12.LabelNamesResponse], error)
+	// Deprecated: ProfileType call is deprecated in the store components
+	// TODO: Remove this call in release v1.4
 	ProfileTypes(context.Context, *connect.Request[v1.ProfileTypesRequest]) (*connect.Response[v1.ProfileTypesResponse], error)
 	Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error)
 	Flush(context.Context, *connect.Request[v1.FlushRequest]) (*connect.Response[v1.FlushResponse], error)
@@ -252,6 +254,8 @@ type IngesterServiceHandler interface {
 	Push(context.Context, *connect.Request[v11.PushRequest]) (*connect.Response[v11.PushResponse], error)
 	LabelValues(context.Context, *connect.Request[v12.LabelValuesRequest]) (*connect.Response[v12.LabelValuesResponse], error)
 	LabelNames(context.Context, *connect.Request[v12.LabelNamesRequest]) (*connect.Response[v12.LabelNamesResponse], error)
+	// Deprecated: ProfileType call is deprecated in the store components
+	// TODO: Remove this call in release v1.4
 	ProfileTypes(context.Context, *connect.Request[v1.ProfileTypesRequest]) (*connect.Response[v1.ProfileTypesResponse], error)
 	Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error)
 	Flush(context.Context, *connect.Request[v1.FlushRequest]) (*connect.Response[v1.FlushResponse], error)

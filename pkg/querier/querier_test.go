@@ -51,27 +51,27 @@ func Test_QuerySampleType(t *testing.T) {
 		q := newFakeQuerier()
 		switch addr {
 		case "1":
-			q.On("ProfileTypes", mock.Anything, mock.Anything).
-				Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{
-					ProfileTypes: []*typesv1.ProfileType{
-						{ID: "foo"},
-						{ID: "bar"},
+			q.On("LabelValues", mock.Anything, mock.Anything).
+				Return(connect.NewResponse(&typesv1.LabelValuesResponse{
+					Names: []string{
+						"foo::::",
+						"bar::::",
 					},
 				}), nil)
 		case "2":
-			q.On("ProfileTypes", mock.Anything, mock.Anything).
-				Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{
-					ProfileTypes: []*typesv1.ProfileType{
-						{ID: "bar"},
-						{ID: "buzz"},
+			q.On("LabelValues", mock.Anything, mock.Anything).
+				Return(connect.NewResponse(&typesv1.LabelValuesResponse{
+					Names: []string{
+						"bar::::",
+						"buzz::::",
 					},
 				}), nil)
 		case "3":
-			q.On("ProfileTypes", mock.Anything, mock.Anything).
-				Return(connect.NewResponse(&ingestv1.ProfileTypesResponse{
-					ProfileTypes: []*typesv1.ProfileType{
-						{ID: "buzz"},
-						{ID: "foo"},
+			q.On("LabelValues", mock.Anything, mock.Anything).
+				Return(connect.NewResponse(&typesv1.LabelValuesResponse{
+					Names: []string{
+						"buzz::::",
+						"foo::::",
 					},
 				}), nil)
 		}
@@ -85,7 +85,7 @@ func Test_QuerySampleType(t *testing.T) {
 		ids = append(ids, pt.ID)
 	}
 	require.NoError(t, err)
-	require.Equal(t, []string{"bar", "buzz", "foo"}, ids)
+	require.Equal(t, []string{"bar::::", "buzz::::", "foo::::"}, ids)
 }
 
 func Test_QueryLabelValues(t *testing.T) {
