@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/bufbuild/connect-go"
@@ -97,7 +98,13 @@ func (ts *TenantSettings) Set(ctx context.Context, req *connect.Request[settings
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	// TODO(bryan) validate req
+	if req.Msg == nil || req.Msg.Setting == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("no setting values provided"))
+	}
+
+	if req.Msg.Setting.ModifiedAt <= 0 {
+		req.Msg.Setting.ModifiedAt = time.Now().UnixMilli()
+	}
 
 	setting, err := ts.store.Set(ctx, tenantID, req.Msg.Setting)
 	if err != nil {
