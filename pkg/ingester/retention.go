@@ -25,10 +25,6 @@ import (
 const (
 	// TODO(kolesnikovae): Unify with pkg/phlaredb.
 	phlareDBLocalPath = "local"
-
-	// The name of the 'lost+found' directory which can be created on systems
-	// that use fsck (https://en.wikipedia.org/wiki/Fsck).
-	lostAndFoundDirName = "lost+found"
 )
 
 // newDiskCleaner creates a service that will intermittently clean blocks from
@@ -365,22 +361,18 @@ func (bm *realFSBlockManager) GetTenantIDs(ctx context.Context) ([]string, error
 		return nil, ctx.Err()
 	}
 
-	tenantDirs, err := fs.ReadDir(bm.FS, bm.Root)
+	dirs, err := fs.ReadDir(bm.FS, bm.Root)
 	if err != nil {
 		return nil, err
 	}
 
 	tenantIDs := make([]string, 0)
-	for _, tenantDir := range tenantDirs {
-		if !tenantDir.IsDir() {
+	for _, dir := range dirs {
+		if !bm.isTenantDir(bm.Root, dir) {
 			continue
 		}
 
-		if tenantDir.Name() == lostAndFoundDirName {
-			continue
-		}
-
-		tenantIDs = append(tenantIDs, tenantDir.Name())
+		tenantIDs = append(tenantIDs, dir.Name())
 	}
 	return tenantIDs, nil
 }
@@ -454,4 +446,29 @@ func (bm *realFSBlockManager) DeleteBlock(ctx context.Context, block *tenantBloc
 		}
 		return nil
 	})
+}
+
+// isTenantDir checks if a directory is a tenant directory.
+func (bm *realFSBlockManager) isTenantDir(path string, entry fs.DirEntry) bool {
+	if !entry.IsDir() {
+		return false
+	}
+
+	subEntries, err := bm.FS.ReadDir(filepath.Join(path, entry.Name()))
+	if err != nil {
+		return false
+	}
+
+	foundLocalDir := false
+	for _, subEntry := range subEntries {
+		if !subEntry.IsDir() {
+			continue
+		}
+
+		if subEntry.Name() == phlareDBLocalPath {
+			foundLocalDir = true
+			break
+		}
+	}
+	return foundLocalDir
 }
