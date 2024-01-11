@@ -1,7 +1,7 @@
 package querier
 
 import (
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"

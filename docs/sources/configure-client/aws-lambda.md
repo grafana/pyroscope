@@ -35,17 +35,17 @@ For more details, refer to the [Building Extensions for AWS Lambda blog post](ht
 
 ## Set up the Pyroscope Lambda extension
 
-To set up the Pyroscope Lamnda extension, you need to: 
+To set up the Pyroscope Lamnda extension, you need to:
 
 1. Configure your Lamda function
-1. Set up your environment variables 
+1. Set up your environment variables
 1. Integrate the Pyroscope SDK
 
 ### Configure your Lambda function
 
 Configure your Lambda function to use the extension. Find the latest release on our [releases page](https://github.com/grafana/pyroscope-lambda-extension/releases).
 
-### Set up the environment variables 
+### Set up the environment variables
 
 Configure the extension with the following environment variables:
 

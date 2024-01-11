@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/services"

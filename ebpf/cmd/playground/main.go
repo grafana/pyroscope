@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	ebpfmetrics "github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/pkg/errors"

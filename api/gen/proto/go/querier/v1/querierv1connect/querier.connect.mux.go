@@ -5,7 +5,7 @@
 package querierv1connect
 
 import (
-	connect_go "github.com/bufbuild/connect-go"
+	connect "connectrpc.com/connect"
 	mux "github.com/gorilla/mux"
 )
 
@@ -14,52 +14,52 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect_go.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion0_1_0
 
 // RegisterQuerierServiceHandler register an HTTP handler to a mux.Router from the service
 // implementation.
-func RegisterQuerierServiceHandler(mux *mux.Router, svc QuerierServiceHandler, opts ...connect_go.HandlerOption) {
-	mux.Handle("/querier.v1.QuerierService/ProfileTypes", connect_go.NewUnaryHandler(
+func RegisterQuerierServiceHandler(mux *mux.Router, svc QuerierServiceHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/querier.v1.QuerierService/ProfileTypes", connect.NewUnaryHandler(
 		"/querier.v1.QuerierService/ProfileTypes",
 		svc.ProfileTypes,
 		opts...,
 	))
-	mux.Handle("/querier.v1.QuerierService/LabelValues", connect_go.NewUnaryHandler(
+	mux.Handle("/querier.v1.QuerierService/LabelValues", connect.NewUnaryHandler(
 		"/querier.v1.QuerierService/LabelValues",
 		svc.LabelValues,
 		opts...,
 	))
-	mux.Handle("/querier.v1.QuerierService/LabelNames", connect_go.NewUnaryHandler(
+	mux.Handle("/querier.v1.QuerierService/LabelNames", connect.NewUnaryHandler(
 		"/querier.v1.QuerierService/LabelNames",
 		svc.LabelNames,
 		opts...,
 	))
-	mux.Handle("/querier.v1.QuerierService/Series", connect_go.NewUnaryHandler(
+	mux.Handle("/querier.v1.QuerierService/Series", connect.NewUnaryHandler(
 		"/querier.v1.QuerierService/Series",
 		svc.Series,
 		opts...,
 	))
-	mux.Handle("/querier.v1.QuerierService/SelectMergeStacktraces", connect_go.NewUnaryHandler(
+	mux.Handle("/querier.v1.QuerierService/SelectMergeStacktraces", connect.NewUnaryHandler(
 		"/querier.v1.QuerierService/SelectMergeStacktraces",
 		svc.SelectMergeStacktraces,
 		opts...,
 	))
-	mux.Handle("/querier.v1.QuerierService/SelectMergeSpanProfile", connect_go.NewUnaryHandler(
+	mux.Handle("/querier.v1.QuerierService/SelectMergeSpanProfile", connect.NewUnaryHandler(
 		"/querier.v1.QuerierService/SelectMergeSpanProfile",
 		svc.SelectMergeSpanProfile,
 		opts...,
 	))
-	mux.Handle("/querier.v1.QuerierService/SelectMergeProfile", connect_go.NewUnaryHandler(
+	mux.Handle("/querier.v1.QuerierService/SelectMergeProfile", connect.NewUnaryHandler(
 		"/querier.v1.QuerierService/SelectMergeProfile",
 		svc.SelectMergeProfile,
 		opts...,
 	))
-	mux.Handle("/querier.v1.QuerierService/SelectSeries", connect_go.NewUnaryHandler(
+	mux.Handle("/querier.v1.QuerierService/SelectSeries", connect.NewUnaryHandler(
 		"/querier.v1.QuerierService/SelectSeries",
 		svc.SelectSeries,
 		opts...,
 	))
-	mux.Handle("/querier.v1.QuerierService/Diff", connect_go.NewUnaryHandler(
+	mux.Handle("/querier.v1.QuerierService/Diff", connect.NewUnaryHandler(
 		"/querier.v1.QuerierService/Diff",
 		svc.Diff,
 		opts...,

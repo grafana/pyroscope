@@ -5,7 +5,7 @@
 package pushv1connect
 
 import (
-	connect_go "github.com/bufbuild/connect-go"
+	connect "connectrpc.com/connect"
 	mux "github.com/gorilla/mux"
 )
 
@@ -14,12 +14,12 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect_go.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion0_1_0
 
 // RegisterPusherServiceHandler register an HTTP handler to a mux.Router from the service
 // implementation.
-func RegisterPusherServiceHandler(mux *mux.Router, svc PusherServiceHandler, opts ...connect_go.HandlerOption) {
-	mux.Handle("/push.v1.PusherService/Push", connect_go.NewUnaryHandler(
+func RegisterPusherServiceHandler(mux *mux.Router, svc PusherServiceHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/push.v1.PusherService/Push", connect.NewUnaryHandler(
 		"/push.v1.PusherService/Push",
 		svc.Push,
 		opts...,

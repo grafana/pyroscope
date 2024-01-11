@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	"github.com/google/go-cmp/cmp"
 	gprofile "github.com/google/pprof/profile"

@@ -5,7 +5,7 @@
 package settingsv1connect
 
 import (
-	connect_go "github.com/bufbuild/connect-go"
+	connect "connectrpc.com/connect"
 	mux "github.com/gorilla/mux"
 )
 
@@ -14,17 +14,17 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect_go.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion0_1_0
 
 // RegisterSettingsServiceHandler register an HTTP handler to a mux.Router from the service
 // implementation.
-func RegisterSettingsServiceHandler(mux *mux.Router, svc SettingsServiceHandler, opts ...connect_go.HandlerOption) {
-	mux.Handle("/settings.v1.SettingsService/Get", connect_go.NewUnaryHandler(
+func RegisterSettingsServiceHandler(mux *mux.Router, svc SettingsServiceHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/settings.v1.SettingsService/Get", connect.NewUnaryHandler(
 		"/settings.v1.SettingsService/Get",
 		svc.Get,
 		opts...,
 	))
-	mux.Handle("/settings.v1.SettingsService/Set", connect_go.NewUnaryHandler(
+	mux.Handle("/settings.v1.SettingsService/Set", connect.NewUnaryHandler(
 		"/settings.v1.SettingsService/Set",
 		svc.Set,
 		opts...,
