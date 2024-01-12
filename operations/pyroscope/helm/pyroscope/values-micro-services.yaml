@@ -84,15 +84,5 @@ pyroscope:
         # Depending on this flag and the number of tenants + blocks that need to be synced on startup, pods can take
         # some time to become ready. This value can be used to ensure Kubernetes waits long enough and reduce errors.
         initialDelaySeconds: 60
-    tenant-settings:
-      kind: Deployment
-      replicaCount: 1
-      resources:
-        limits:
-          memory: 1Gi
-        requests:
-          memory: 256Mi
-          cpu: 1
-
 minio:
   enabled: true
