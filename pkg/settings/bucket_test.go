@@ -10,7 +10,7 @@ import (
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 )
 
-func TestMemory_Get(t *testing.T) {
+func TestMemoryBucket_Get(t *testing.T) {
 	ctx := context.Background()
 	tenantID := "[anonymous]"
 
@@ -64,7 +64,7 @@ func TestMemory_Get(t *testing.T) {
 	})
 }
 
-func TestMemory_Set(t *testing.T) {
+func TestMemoryBucket_Set(t *testing.T) {
 	ctx := context.Background()
 	tenantID := "[anonymous]"
 
