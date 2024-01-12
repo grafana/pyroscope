@@ -49,12 +49,18 @@ func WithResolverMaxConcurrent(n int) ResolverOption {
 	}
 }
 
+// WithResolverMaxNodes specifies the desired maximum number
+// of nodes the resulting profile should include.
 func WithResolverMaxNodes(n int64) ResolverOption {
 	return func(r *Resolver) {
 		r.maxNodes = n
 	}
 }
 
+// WithResolverStackTraceSelector specifies the stack trace selector.
+// Only stack traces that belong to the subtree (have the prefix provided)
+// will be selected. If empty, the filter is ignored.
+// Subtree root location is the last element.
 func WithResolverStackTraceSelector(sts *typesv1.StackTraceSelector) ResolverOption {
 	return func(r *Resolver) {
 		r.sts = sts
@@ -257,7 +263,7 @@ func (r *Symbols) Pprof(
 	// If a stack trace selector is specified,
 	// check if such a profile can exist at all.
 	var subtree []int32
-	if locs := sts.GetStackTrace(); len(locs) > 0 {
+	if locs := sts.GetSubtreeRoot(); len(locs) > 0 {
 		if subtree = r.subtree(locs); len(subtree) == 0 {
 			return b.buildPprof(), nil
 		}

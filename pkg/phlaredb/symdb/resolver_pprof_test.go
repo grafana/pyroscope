@@ -104,7 +104,7 @@ func Test_Pprof_subtree(t *testing.T) {
 	w := db.WriteProfileSymbols(0, profile)
 	r := NewResolver(context.Background(), db,
 		WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
-			StackTrace: []*typesv1.Location{{Name: "a"}, {Name: "b"}},
+			SubtreeRoot: []*typesv1.Location{{Name: "a"}, {Name: "b"}},
 		}))
 
 	r.AddSamples(0, w[0].Samples)
