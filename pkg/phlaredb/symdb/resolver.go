@@ -259,7 +259,10 @@ func (r *Symbols) Pprof(
 	maxNodes int64,
 	sts *typesv1.StackTraceSelector,
 ) (*googlev1.Profile, error) {
-	var b pprofBuilder
+	// By default, we use a builder that's optimized
+	// for the simplest case: we take all the source
+	// stack traces unchanged.
+	var b pprofBuilder = new(pprofProtoSymbols)
 	// If a stack trace selector is specified,
 	// check if such a profile can exist at all.
 	var subtree []int32
@@ -276,11 +279,6 @@ func (r *Symbols) Pprof(
 			maxNodes: maxNodes,
 			subtree:  subtree,
 		}
-	} else {
-		// Otherwise, we use a builder that's optimized
-		// for the simplest case: we take all the source
-		// stack traces unchanged.
-		b = new(pprofProtoSymbols)
 	}
 	b.init(r, samples)
 	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, b, samples.StacktraceIDs); err != nil {
