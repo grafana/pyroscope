@@ -916,6 +916,7 @@ func Benchmark_CompactSplit(b *testing.B) {
 			StageSize:          32,
 			SplitBy:            SplitByFingerprint,
 			DownsamplerEnabled: true,
+			Logger:             log.NewNopLogger(),
 		})
 		require.NoError(b, err)
 	}
