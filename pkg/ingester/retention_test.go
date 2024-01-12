@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/shipper"
@@ -427,11 +428,16 @@ func TestFSBlockManager(t *testing.T) {
 		fs.markBlocksShippedForTenant(t, tenantID, uploadedBlockIDs...)
 	}
 
+	// Create a lost+found directory.
+	fs.createDirectories(t, "lost+found")
+
 	t.Run("GetTenantIDs", func(t *testing.T) {
 		bm := newFSBlockManager(root, e, fs)
 		tenantIDs, err := bm.GetTenantIDs(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, []string{"1218", "anonymous"}, tenantIDs)
+		// Explicitly check lost+found isn't in tenant id list.
+		require.NotContains(t, tenantIDs, "lost+found")
 	})
 
 	t.Run("GetBlocksForTenant", func(t *testing.T) {
@@ -459,6 +465,55 @@ func TestFSBlockManager(t *testing.T) {
 			require.NoError(t, err)
 		}
 	})
+}
+
+func TestFSBlockManager_isTenantDir(t *testing.T) {
+	const root = "/data"
+	dirPaths := []string{
+		// Skip, not tenant ids
+		"lost+found",
+		".DS_Store",
+
+		// Skip, no local dir
+		"1234/head/01HKWWF79V1STKXBNYW7WCMDGM",
+		"1234/head/01HKWWF8939QM6E7BS69X0RASG",
+
+		// Tenant dirs
+		"anonymous/local/01HKWWF3CTFC5EJN6JJ96TY4W9",
+		"anonymous/local/01HKWWF4C298KVTEEQ3RW6TVHZ",
+		"1218/local/01HKWWF5BB2DJVDP0DTMT9MDMN",
+		"1218/local/01HKWWF6AKVZDCWQB12MHWG7FN",
+		"9876/local",
+	}
+	filePaths := []string{
+		// Skip all files
+		"somefile.txt",
+	}
+
+	fs := &mockFS{
+		Fs:   afero.NewMemMapFs(),
+		Root: root,
+	}
+	fs.createDirectories(t, dirPaths...)
+	fs.createFiles(t, filePaths...)
+
+	gotTenantIDs := []string{}
+	entries, err := fs.ReadDir(fs.Root)
+	require.NoError(t, err)
+
+	bm := &realFSBlockManager{
+		Root: fs.Root,
+		FS:   fs,
+	}
+	for _, entry := range entries {
+		if bm.isTenantDir(fs.Root, entry) {
+			gotTenantIDs = append(gotTenantIDs, entry.Name())
+		}
+	}
+	slices.Sort(gotTenantIDs)
+
+	wantTenantIDs := []string{"1218", "9876", "anonymous"}
+	require.Equal(t, wantTenantIDs, gotTenantIDs)
 }
 
 func TestSortBlocks(t *testing.T) {
@@ -588,6 +643,30 @@ func (mfs *mockFS) markBlocksShippedForTenant(t *testing.T, tenantID string, blo
 	err = afero.WriteFile(mfs.Fs, shipperPath, bytes, 0755)
 	if err != nil {
 		t.Fatalf("failed to update shipper.json: %v", err)
+	}
+}
+
+func (mfs *mockFS) createDirectories(t *testing.T, paths ...string) {
+	t.Helper()
+	for _, path := range paths {
+		path = filepath.Join(mfs.Root, path)
+		err := mfs.MkdirAll(path, 0755)
+		if err != nil {
+			t.Fatalf("failed to create directory: %s: %v", path, err)
+			return
+		}
+	}
+}
+
+func (mfs *mockFS) createFiles(t *testing.T, paths ...string) {
+	t.Helper()
+	for _, path := range paths {
+		path = filepath.Join(mfs.Root, path)
+		_, err := mfs.Create(path)
+		if err != nil {
+			t.Fatalf("failed to create file: %s: %v", path, err)
+			return
+		}
 	}
 }
 

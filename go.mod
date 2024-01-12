@@ -25,13 +25,13 @@ require (
 	github.com/google/pprof v0.0.0-20230926050212-f7f687d19a98
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/mux v1.8.0
-	github.com/grafana/agent v0.35.4
 	github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6
 	github.com/grafana/jfr-parser/pprof v0.0.0-20240108135448-c7f61c1f689e
 	github.com/grafana/pyroscope-go v1.0.3
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.6
 	github.com/grafana/pyroscope/api v0.3.0
 	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
+	github.com/grafana/river v0.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0
 	github.com/json-iterator/go v1.1.12
@@ -173,6 +173,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/ncw/swift v1.0.53 // indirect
+	github.com/opencontainers/image-spec v1.1.0-rc3 // indirect
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
