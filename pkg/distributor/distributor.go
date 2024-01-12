@@ -798,21 +798,20 @@ func newRingAndLifecycler(cfg util.CommonRingConfig, instanceCount *atomic.Uint3
 // injectMappingVersions extract from the labels the mapping version and inject it into the profile's main mapping. (mapping[0])
 func injectMappingVersions(series []*distributormodel.ProfileSeries) error {
 	for _, s := range series {
-		info, ok := phlaremodel.MappingVersionFromLabels(s.Labels)
+		version, ok := phlaremodel.ServiceVersionFromLabels(s.Labels)
 		if !ok {
 			continue
 		}
-		infoString, err := json.Marshal(info)
-		if err != nil {
-			return err
-		}
 		for _, sample := range s.Samples {
-			// we skip the injection if there's no mapping or it already contains a mapping version
-			if len(sample.Profile.Mapping) == 0 || sample.Profile.StringTable[sample.Profile.Mapping[0].BuildId] != "" {
-				continue
+			for _, m := range sample.Profile.Mapping {
+				version.BuildID = sample.Profile.StringTable[m.BuildId]
+				versionString, err := json.Marshal(version)
+				if err != nil {
+					return err
+				}
+				sample.Profile.StringTable = append(sample.Profile.StringTable, string(versionString))
+				m.BuildId = int64(len(sample.Profile.StringTable) - 1)
 			}
-			sample.Profile.StringTable = append(sample.Profile.StringTable, string(infoString))
-			sample.Profile.Mapping[0].BuildId = int64(len(sample.Profile.StringTable) - 1)
 		}
 	}
 	return nil

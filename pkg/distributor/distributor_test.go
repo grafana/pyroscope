@@ -1039,7 +1039,7 @@ func TestInjectMappingVersions(t *testing.T) {
 		},
 		{
 			Labels: []*typesv1.LabelPair{
-				{Name: phlaremodel.LabelNameMappingRepository, Value: "grafana/pyroscope"},
+				{Name: phlaremodel.LabelNameServiceRepository, Value: "grafana/pyroscope"},
 			},
 			Samples: []*distributormodel.ProfileSample{
 				{
@@ -1051,8 +1051,8 @@ func TestInjectMappingVersions(t *testing.T) {
 		},
 		{
 			Labels: []*typesv1.LabelPair{
-				{Name: phlaremodel.LabelNameMappingRepository, Value: "grafana/pyroscope"},
-				{Name: phlaremodel.LabelNameMappingCommit, Value: "foobar"},
+				{Name: phlaremodel.LabelNameServiceRepository, Value: "grafana/pyroscope"},
+				{Name: phlaremodel.LabelNameServiceGitRef, Value: "foobar"},
 			},
 			Samples: []*distributormodel.ProfileSample{
 				{
@@ -1064,8 +1064,8 @@ func TestInjectMappingVersions(t *testing.T) {
 		},
 		{
 			Labels: []*typesv1.LabelPair{
-				{Name: phlaremodel.LabelNameMappingRepository, Value: "grafana/pyroscope"},
-				{Name: phlaremodel.LabelNameMappingCommit, Value: "foobar"},
+				{Name: phlaremodel.LabelNameServiceRepository, Value: "grafana/pyroscope"},
+				{Name: phlaremodel.LabelNameServiceGitRef, Value: "foobar"},
 			},
 			Samples: []*distributormodel.ProfileSample{
 				{
@@ -1081,8 +1081,8 @@ func TestInjectMappingVersions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "", in[0].Samples[0].Profile.StringTable[in[0].Samples[0].Profile.Mapping[0].BuildId])
 	require.Equal(t, `{"repository":"grafana/pyroscope"}`, in[1].Samples[0].Profile.StringTable[in[1].Samples[0].Profile.Mapping[0].BuildId])
-	require.Equal(t, `{"repository":"grafana/pyroscope","commit":"foobar"}`, in[2].Samples[0].Profile.StringTable[in[2].Samples[0].Profile.Mapping[0].BuildId])
-	require.Equal(t, `foo`, in[3].Samples[0].Profile.StringTable[in[3].Samples[0].Profile.Mapping[0].BuildId])
+	require.Equal(t, `{"repository":"grafana/pyroscope","git_ref":"foobar"}`, in[2].Samples[0].Profile.StringTable[in[2].Samples[0].Profile.Mapping[0].BuildId])
+	require.Equal(t, `{"repository":"grafana/pyroscope","git_ref":"foobar","build_id":"foo"}`, in[3].Samples[0].Profile.StringTable[in[3].Samples[0].Profile.Mapping[0].BuildId])
 }
 
 func uncompressedProfileSize(t *testing.T, req *pushv1.PushRequest) int {
