@@ -143,6 +143,7 @@ func (f *Phlare) initTenantSettings() (services.Service, error) {
 		store, err = settings.NewBucketStore(f.storageBucket)
 	default:
 		store, err = settings.NewMemoryStore()
+		level.Warn(f.logger).Log("msg", "using in-memory settings store, changes will be lost after shutdown")
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init settings store")
