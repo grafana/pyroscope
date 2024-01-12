@@ -253,16 +253,28 @@ func (r *Symbols) Pprof(
 	maxNodes int64,
 	sts *typesv1.StackTraceSelector,
 ) (*googlev1.Profile, error) {
-	var b pprofBuilder = new(pprofProtoSymbols)
-	if maxNodes > 0 || (sts != nil && len(sts.StackTrace) > 0) {
-		x := &pprofProtoTruncatedSymbols{
-			maxNodes: maxNodes,
-			subtree:  r.subtree(sts),
-		}
-		if len(sts.StackTrace) > 0 && len(x.subtree) == 0 {
+	var b pprofBuilder
+	// If a stack trace selector is specified,
+	// check if such a profile can exist at all.
+	var subtree []int32
+	if locs := sts.GetStackTrace(); len(locs) > 0 {
+		if subtree = r.subtree(locs); len(subtree) == 0 {
 			return b.buildPprof(), nil
 		}
-		b = x
+	}
+	// Truncation is applicable when there is an explicit
+	// limit on the number of the nodes in the profile, or
+	// if stack traces should be filtered.
+	if maxNodes > 0 || len(subtree) > 0 {
+		b = &pprofProtoTruncatedSymbols{
+			maxNodes: maxNodes,
+			subtree:  subtree,
+		}
+	} else {
+		// Otherwise, we use a builder that's optimized
+		// for the simplest case: we take all the source
+		// stack traces unchanged.
+		b = new(pprofProtoSymbols)
 	}
 	b.init(r, samples)
 	if err := r.Stacktraces.ResolveStacktraceLocations(ctx, b, samples.StacktraceIDs); err != nil {
@@ -281,18 +293,15 @@ func (r *Symbols) Tree(ctx context.Context, samples schemav1.Samples) (*model.Tr
 	return t.tree, nil
 }
 
-func (r *Symbols) subtree(sts *typesv1.StackTraceSelector) []int32 {
-	if sts == nil || len(sts.StackTrace) == 0 {
+func (r *Symbols) subtree(locations []*typesv1.Location) []int32 {
+	if len(locations) == 0 {
 		return nil
 	}
-	if len(sts.StackTrace) == 0 {
-		return nil
+	m := make(map[string]int32, len(locations))
+	for _, loc := range locations {
+		m[loc.Name] = 0
 	}
-	m := make(map[string]int32, len(sts.StackTrace))
-	for _, f := range sts.StackTrace {
-		m[f.Name] = 0
-	}
-	c := len(sts.StackTrace)
+	c := len(locations)
 	for f := 0; f < len(r.Functions) && c > 0; f++ {
 		s := r.Strings[r.Functions[f].Name]
 		if _, ok := m[s]; ok {
@@ -305,9 +314,9 @@ func (r *Symbols) subtree(sts *typesv1.StackTraceSelector) []int32 {
 	if c > 0 {
 		return nil
 	}
-	s := make([]int32, len(sts.StackTrace))
-	for i, f := range sts.StackTrace {
-		s[i] = m[f.Name]
+	s := make([]int32, len(locations))
+	for i, loc := range locations {
+		s[i] = m[loc.Name]
 	}
 	return s
 }
