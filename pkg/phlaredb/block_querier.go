@@ -49,8 +49,14 @@ import (
 )
 
 const (
-	defaultBatchSize      = 4096
-	parquetReadBufferSize = 256 << 10 // 256KB
+	defaultBatchSize = 4096
+
+	// This controls the buffer size for reads to a parquet io.Reader. This value should be small for memory or
+	// disk backed readers, but when the reader is backed by network storage a larger size will be advantageous.
+	//
+	// The chosen value should be larger than the page size. Page sizes depend on the write buffer size as well as
+	// on how well the data is encoded. In practice, they tend to be around 1MB.
+	parquetReadBufferSize = 2 << 20
 )
 
 type tableReader interface {
