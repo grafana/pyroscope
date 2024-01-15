@@ -12,4 +12,10 @@ type Store interface {
 
 	// Set a setting for a tenant.
 	Set(ctx context.Context, tenantID string, setting *settingsv1.Setting) (*settingsv1.Setting, error)
+
+	// Flush the store to disk.
+	Flush(ctx context.Context) error
+
+	// Close the store.
+	Close() error
 }

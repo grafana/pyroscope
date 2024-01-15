@@ -211,7 +211,7 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 		blockSelect bool
 		name        string
 	}{
-		// This tests the interoberabitlity between older ingesters and new queriers
+		// This tests the interoperability between older ingesters and new queriers
 		{false, "WithoutBlockHints"},
 		{true, "WithBlockHints"},
 	} {
