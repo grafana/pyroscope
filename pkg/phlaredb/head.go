@@ -184,6 +184,9 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		return nil
 	}
 
+	delta := phlaremodel.Labels(externalLabels).Get(phlaremodel.LabelNameDelta) != "false"
+	externalLabels = phlaremodel.Labels(externalLabels).Delete(phlaremodel.LabelNameDelta)
+
 	lbls, seriesFingerprints := phlarelabels.CreateProfileLabels(p, externalLabels...)
 
 	for i, fp := range seriesFingerprints {
@@ -201,7 +204,12 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 	for idxType, profile := range h.symdb.WriteProfileSymbols(partition, p) {
 		profile.ID = id
 		profile.SeriesFingerprint = seriesFingerprints[idxType]
-		profile.Samples = h.delta.computeDelta(profile, lbls[idxType])
+		if delta && isDeltaSupported(lbls[idxType]) {
+			profile.Samples = h.delta.computeDelta(profile)
+		} else {
+			profile.Samples = profile.Samples.Compact(false)
+		}
+
 		profile.TotalValue = profile.Samples.Sum()
 
 		if profile.Samples.Len() == 0 {
