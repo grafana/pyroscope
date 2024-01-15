@@ -205,7 +205,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 		profile.ID = id
 		profile.SeriesFingerprint = seriesFingerprints[idxType]
 		if delta && isDeltaSupported(lbls[idxType]) {
-			profile.Samples = h.delta.computeDelta(profile, lbls[idxType])
+			profile.Samples = h.delta.computeDelta(profile)
 		} else {
 			profile.Samples = profile.Samples.Compact(false)
 		}

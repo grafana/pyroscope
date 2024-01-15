@@ -39,7 +39,7 @@ func newSampleDict(samples schemav1.Samples) map[uint32]uint64 {
 	return dict
 }
 
-func (d *deltaProfiles) computeDelta(ps schemav1.InMemoryProfile, lbs phlaremodel.Labels) schemav1.Samples {
+func (d *deltaProfiles) computeDelta(ps schemav1.InMemoryProfile) schemav1.Samples {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
 

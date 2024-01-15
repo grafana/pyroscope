@@ -16,21 +16,21 @@ func TestComputeDelta(t *testing.T) {
 	builder.ForStacktraceString("a", "b", "c").AddSamples(1, 2, 3, 4)
 	builder.ForStacktraceString("a", "b", "c", "d").AddSamples(1, 2, 3, 4)
 
-	profiles, labels := schemav1testhelper.NewProfileSchema(builder.Profile, "memory")
+	profiles, _ := schemav1testhelper.NewProfileSchema(builder.Profile, "memory")
 
-	samples := delta.computeDelta(profiles[0], labels[0])
+	samples := delta.computeDelta(profiles[0])
 	require.Empty(t, samples.StacktraceIDs)
-	samples = delta.computeDelta(profiles[1], labels[1])
+	samples = delta.computeDelta(profiles[1])
 	require.Empty(t, samples.StacktraceIDs)
 
 	builder = testhelper.NewProfileBuilder(1).MemoryProfile()
 	builder.ForStacktraceString("a", "b", "c").AddSamples(2, 4, 3, 4)
 	builder.ForStacktraceString("a", "b", "c", "d").AddSamples(2, 4, 3, 4)
 
-	profiles, labels = schemav1testhelper.NewProfileSchema(builder.Profile, "memory")
-	samples = delta.computeDelta(profiles[0], labels[0])
+	profiles, _ = schemav1testhelper.NewProfileSchema(builder.Profile, "memory")
+	samples = delta.computeDelta(profiles[0])
 	require.NotEmpty(t, samples.StacktraceIDs)
-	samples = delta.computeDelta(profiles[1], labels[1])
+	samples = delta.computeDelta(profiles[1])
 	require.NotEmpty(t, samples.StacktraceIDs)
 }
 
