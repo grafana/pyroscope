@@ -2,7 +2,6 @@ package symdb
 
 import (
 	"context"
-	"math/rand"
 	"sort"
 	"testing"
 
@@ -70,13 +69,10 @@ func (s *memSuite) init() {
 func (s *memSuite) writeProfileFromFile(p uint64, f string) {
 	x, err := pprof.OpenFile(f)
 	require.NoError(s.t, err)
-	s.profiles[p] = x.Profile
+	s.profiles[p] = x.Profile.CloneVT()
+	x.Normalize()
 	w := s.db.PartitionWriter(p)
-	pc := x.Profile.CloneVT()
-	rand.Shuffle(len(pc.Sample), func(i, j int) {
-		pc.Sample[i], pc.Sample[j] = pc.Sample[j], pc.Sample[i]
-	})
-	s.indexed[p] = w.WriteProfileSymbols(pc)
+	s.indexed[p] = w.WriteProfileSymbols(x.Profile)
 }
 
 func (s *blockSuite) flush() {
@@ -157,12 +153,12 @@ func Test_Stats(t *testing.T) {
 	var actual PartitionStats
 	p.WriteStats(&actual)
 	expected := PartitionStats{
-		StacktracesTotal: 611,
-		MaxStacktraceID:  1793,
-		LocationsTotal:   762,
+		StacktracesTotal: 561,
+		MaxStacktraceID:  1713,
+		LocationsTotal:   718,
 		MappingsTotal:    3,
-		FunctionsTotal:   507,
-		StringsTotal:     700,
+		FunctionsTotal:   506,
+		StringsTotal:     699,
 	}
 	require.Equal(t, expected, actual)
 }

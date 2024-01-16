@@ -5,6 +5,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 
@@ -104,7 +105,7 @@ func Test_Pprof_subtree(t *testing.T) {
 	w := db.WriteProfileSymbols(0, profile)
 	r := NewResolver(context.Background(), db,
 		WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
-			StackTrace: []*typesv1.Location{{Name: "a"}, {Name: "b"}},
+			SubtreeRoot: []*typesv1.Location{{Name: "a"}, {Name: "b"}},
 		}))
 
 	r.AddSamples(0, w[0].Samples)
@@ -138,4 +139,102 @@ func Test_Pprof_subtree(t *testing.T) {
 	}
 
 	require.Equal(t, expected, actual)
+}
+
+func Test_Resolver_pprof_options(t *testing.T) {
+	s := newMemSuite(t, [][]string{{"testdata/profile.pb.gz"}})
+	samples := s.indexed[0][0].Samples
+	const samplesTotal = 572
+
+	var sc PartitionStats
+	s.db.partitions[0].WriteStats(&sc)
+	t.Logf("%#v\n", sc)
+
+	type testCase struct {
+		name     string
+		expected int
+		options  []ResolverOption
+	}
+
+	testCases := []testCase{
+		{
+			name:     "no options",
+			expected: samplesTotal,
+		},
+		{
+			name:     "0 max nodes",
+			expected: samplesTotal,
+			options: []ResolverOption{
+				WithResolverMaxNodes(0),
+			},
+		},
+		{
+			name:     "10 max nodes",
+			expected: 22,
+			options: []ResolverOption{
+				WithResolverMaxNodes(10),
+			},
+		},
+
+		{
+			name:     "subtree",
+			expected: 54,
+			options: []ResolverOption{
+				WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
+					SubtreeRoot: []*typesv1.Location{{Name: "runtime.main"}},
+				}),
+			},
+		},
+		{
+			name:     "subtree 10 max nodes",
+			expected: 14,
+			options: []ResolverOption{
+				WithResolverMaxNodes(10),
+				WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
+					SubtreeRoot: []*typesv1.Location{{Name: "runtime.main"}},
+				}),
+			},
+		},
+		{
+			name:     "nil StackTraceSelector",
+			expected: samplesTotal,
+			options: []ResolverOption{
+				WithResolverStackTraceSelector(nil),
+			},
+		},
+		{
+			name:     "nil StackTraceSelector 10 max nodes",
+			expected: 22,
+			options: []ResolverOption{
+				WithResolverMaxNodes(10),
+				WithResolverStackTraceSelector(nil),
+			},
+		},
+		{
+			name:     "empty StackTraceSelector.SubtreeRoot",
+			expected: samplesTotal,
+			options: []ResolverOption{
+				WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
+					SubtreeRoot: []*typesv1.Location{},
+				}),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			r := NewResolver(context.Background(), s.db, tc.options...)
+			defer r.Release()
+			r.AddSamples(0, samples)
+			p, err := r.Pprof()
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, len(p.Sample))
+
+			var sum int64
+			for _, x := range p.Sample {
+				sum += x.Value[0]
+			}
+		})
+	}
 }

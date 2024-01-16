@@ -34,10 +34,12 @@ func (r *pprofProtoSymbols) InsertStacktrace(_ uint32, locations []int32) {
 
 func (r *pprofProtoSymbols) buildPprof() *googlev1.Profile {
 	createSampleTypeStub(&r.profile)
-	copyLocations(&r.profile, r.symbols, r.lut)
-	copyFunctions(&r.profile, r.symbols, r.lut)
-	copyMappings(&r.profile, r.symbols, r.lut)
-	copyStrings(&r.profile, r.symbols, r.lut)
+	if r.symbols != nil {
+		copyLocations(&r.profile, r.symbols, r.lut)
+		copyFunctions(&r.profile, r.symbols, r.lut)
+		copyMappings(&r.profile, r.symbols, r.lut)
+		copyStrings(&r.profile, r.symbols, r.lut)
+	}
 	return &r.profile
 }
 

@@ -1135,13 +1135,13 @@
     "v1StackTraceSelector": {
       "type": "object",
       "properties": {
-        "stackTrace": {
+        "subtreeRoot": {
           "type": "array",
           "items": {
             "type": "object",
             "$ref": "#/definitions/typesv1Location"
           },
-          "description": "Only stack traces that have this stack trace as a prefix will be selected.\nIf empty, no stack traces will be selected. Leaf is at stack_trace[0]."
+          "description": "Only stack traces that belong to the subtree (have the prefix provided)\nwill be selected. If empty, the filter is ignored.\nSubtree root location is the last element."
         }
       },
       "description": "StackTraceSelector is used for filtering stack traces by locations."
