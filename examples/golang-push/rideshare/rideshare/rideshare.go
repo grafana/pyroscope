@@ -76,8 +76,16 @@ type Config struct {
 }
 
 func ReadConfig() Config {
+	appName := os.Getenv("PYROSCOPE_APPLICATION_NAME")
+	if appName == "" {
+		appName = "ride-sharing-app"
+	}
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	}
 	c := Config{
-		AppName:                    os.Getenv("PYROSCOPE_APPLICATION_NAME"),
+		AppName:                    appName,
 		PyroscopeServerAddress:     os.Getenv("PYROSCOPE_SERVER_ADDRESS"),
 		PyroscopeBasicAuthUser:     os.Getenv("PYROSCOPE_BASIC_AUTH_USER"),
 		PyroscopeBasicAuthPassword: os.Getenv("PYROSCOPE_BASIC_AUTH_PASSWORD"),
@@ -91,7 +99,8 @@ func ReadConfig() Config {
 		UseDebugTracer: os.Getenv("DEBUG_TRACER") == "1",
 		UseDebugLogger: os.Getenv("DEBUG_LOGGER") == "1",
 		Tags: map[string]string{
-			"region": os.Getenv("REGION"),
+			"region":   os.Getenv("REGION"),
+			"hostname": hostname,
 		},
 
 		ParametersPoolSize: envIntOrDefault("PARAMETERS_POOL_SIZE", 1000),
