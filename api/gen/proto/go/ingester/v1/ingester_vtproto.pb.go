@@ -1545,6 +1545,8 @@ type IngesterServiceClient interface {
 	Push(ctx context.Context, in *v11.PushRequest, opts ...grpc.CallOption) (*v11.PushResponse, error)
 	LabelValues(ctx context.Context, in *v1.LabelValuesRequest, opts ...grpc.CallOption) (*v1.LabelValuesResponse, error)
 	LabelNames(ctx context.Context, in *v1.LabelNamesRequest, opts ...grpc.CallOption) (*v1.LabelNamesResponse, error)
+	// Deprecated: ProfileType call is deprecated in the store components
+	// TODO: Remove this call in release v1.4
 	ProfileTypes(ctx context.Context, in *ProfileTypesRequest, opts ...grpc.CallOption) (*ProfileTypesResponse, error)
 	Series(ctx context.Context, in *SeriesRequest, opts ...grpc.CallOption) (*SeriesResponse, error)
 	Flush(ctx context.Context, in *FlushRequest, opts ...grpc.CallOption) (*FlushResponse, error)
@@ -1757,6 +1759,8 @@ type IngesterServiceServer interface {
 	Push(context.Context, *v11.PushRequest) (*v11.PushResponse, error)
 	LabelValues(context.Context, *v1.LabelValuesRequest) (*v1.LabelValuesResponse, error)
 	LabelNames(context.Context, *v1.LabelNamesRequest) (*v1.LabelNamesResponse, error)
+	// Deprecated: ProfileType call is deprecated in the store components
+	// TODO: Remove this call in release v1.4
 	ProfileTypes(context.Context, *ProfileTypesRequest) (*ProfileTypesResponse, error)
 	Series(context.Context, *SeriesRequest) (*SeriesResponse, error)
 	Flush(context.Context, *FlushRequest) (*FlushResponse, error)

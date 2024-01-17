@@ -10,6 +10,8 @@ service IngesterService {
   rpc Push(push.v1.PushRequest) returns (push.v1.PushResponse) {}
   rpc LabelValues(types.v1.LabelValuesRequest) returns (types.v1.LabelValuesResponse) {}
   rpc LabelNames(types.v1.LabelNamesRequest) returns (types.v1.LabelNamesResponse) {}
+  // Deprecated: ProfileType call is deprecated in the store components
+  // TODO: Remove this call in release v1.4
   rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {}
   rpc Series(SeriesRequest) returns (SeriesResponse) {}
   rpc Flush(FlushRequest) returns (FlushResponse) {}
