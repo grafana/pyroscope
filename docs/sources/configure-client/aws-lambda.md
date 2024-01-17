@@ -66,9 +66,7 @@ The Pyroscope AWS Lambda extension is compatible with all existing Pyroscope SDK
  - Initialize the SDK before setting up the AWS Lambda handler.
  - Ensure that the Pyroscope server address is configured to http://localhost:4040.
 
-Note that the SDK packages are not automatically included in the extension layer. For Java, Python, Node.js, and Ruby,
-you must either include the SDK package in the function deployment package or add it as a Lambda layer. Refer to the
-detailed guide in the AWS Lambda documentation for your specific runtime for further instructions:
+Note that the SDK packages are not automatically included in the extension layer. For Java, Python, Node.js, and Ruby, you must either include the SDK package in the function deployment package or add it as a Lambda layer. Refer to the detailed guide in the AWS Lambda documentation for your specific runtime for further instructions:
  - [Java](https://docs.aws.amazon.com/lambda/latest/dg/java-package.html#java-package-layers)
  - [Python](https://docs.aws.amazon.com/lambda/latest/dg/python-package.html#python-package-dependencies)
  - [Ruby](https://docs.aws.amazon.com/lambda/latest/dg/ruby-package.html#ruby-package-runtime-dependencies)
