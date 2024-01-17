@@ -8,7 +8,7 @@ You'll need to configure the Grafana agent for things like profiling configurati
 
 You can find a list of [arguments](https://grafana.com/docs/agent/latest/flow/reference/components/pyroscope.scrape/#arguments) and [supported blocks](https://grafana.com/docs/agent/latest/flow/reference/components/pyroscope.scrape/#blocks) in the [Grafana Agent documentation for pyroscope](https://grafana.com/docs/agent/latest/flow/reference/components/pyroscope.scrape/)
 
-Refer to [config file](./agent/config/config.river) to see an example of how to configure Grafana Agent to send profiling data to Pyroscope.
+Refer to [config file](agent/config/config.river) to see an example of how to configure Grafana Agent to send profiling data to Pyroscope.
 
 ### 2. Run Grafana agent, Grafana and Pyroscope
 
