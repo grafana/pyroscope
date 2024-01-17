@@ -9,7 +9,7 @@ require (
 	github.com/cilium/ebpf v0.11.0
 	github.com/go-kit/log v0.2.1
 	github.com/google/pprof v0.0.0-20230926050212-f7f687d19a98
-	github.com/grafana/pyroscope/api v0.2.0
+	github.com/grafana/pyroscope/api v0.4.0
 	github.com/hashicorp/golang-lru/v2 v2.0.5
 	github.com/ianlancetaylor/demangle v0.0.0-20230524184225-eabc099b10ab
 	github.com/klauspost/compress v1.17.3
@@ -25,7 +25,6 @@ require (
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bufbuild/connect-go v1.10.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
