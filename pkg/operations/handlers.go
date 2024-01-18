@@ -119,7 +119,7 @@ func postProcessBlockGroups(blockGroups []*blockGroup) *blockListResult {
 	maxBlocksPerGroup := 0
 	for i := 0; i < len(blockGroups); i += 1 {
 		blockGroup := blockGroups[i]
-		if i < len(blockGroups)-1 && !strings.Contains(blockGroup.FormattedMinTime, ":00:") {
+		if i < len(blockGroups)-1 && shouldAddToNextGroup(blockGroup.FormattedMinTime) {
 			nextGroup := blockGroups[i+1]
 			nextGroup.Blocks = append(nextGroup.Blocks, blockGroup.Blocks...)
 			blockGroup.Blocks = make([]*blockDetails, 0)
@@ -149,6 +149,10 @@ func postProcessBlockGroups(blockGroups []*blockGroup) *blockListResult {
 		MaxBlocksPerGroup: maxBlocksPerGroup,
 		GroupDuration:     groupDuration,
 	}
+}
+
+func shouldAddToNextGroup(blockMinTime string) bool {
+	return !strings.Contains(blockMinTime, ":00:") && !strings.Contains(blockMinTime, ":30:")
 }
 
 func (h *Handlers) CreateBlockDetailsHandler() func(http.ResponseWriter, *http.Request) {
