@@ -122,11 +122,13 @@ grafana.com. On this same page, create a token and use it as the Basic authentic
 pyroscope.write "write_job_name" {
         endpoint {
                 url = "<Grafana Cloud URL>"
+
+                basic_auth {
+                        username = "<Grafana Cloud User>"
+                        password = "<Grafana Cloud Password>"
+                }
         }
-        basic_auth {
-                username = "<Grafana Cloud User>"
-                password = "<Grafana Cloud Password>"
-        }
+        
 }
 ```
 
