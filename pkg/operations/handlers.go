@@ -119,7 +119,7 @@ func postProcessBlockGroups(blockGroups []*blockGroup) *blockListResult {
 	maxBlocksPerGroup := 0
 	for i := 0; i < len(blockGroups); i += 1 {
 		blockGroup := blockGroups[i]
-		if i < len(blockGroups)-1 && !strings.Contains(blockGroup.FormattedMinTime, "0:00Z") {
+		if i < len(blockGroups)-1 && !strings.Contains(blockGroup.FormattedMinTime, ":00:") {
 			nextGroup := blockGroups[i+1]
 			nextGroup.Blocks = append(nextGroup.Blocks, blockGroup.Blocks...)
 			blockGroup.Blocks = make([]*blockDetails, 0)
