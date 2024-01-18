@@ -228,3 +228,37 @@ ingress:
   #   - localhost
   # tls:
   #   - secretName: certificate
+
+# ServiceMonitor configuration
+serviceMonitor:
+  # -- If enabled, ServiceMonitor resources for Prometheus Operator are created
+  enabled: false
+  # -- Namespace selector for ServiceMonitor resources
+  namespaceSelector: {}
+  # -- Optional expressions to match on
+  matchExpressions: []
+    # - key: prometheus.io/service-monitor
+    #   operator: NotIn
+    #   values:
+    #     - "false"
+  # -- ServiceMonitor annotations
+  annotations: {}
+  # -- Additional ServiceMonitor labels
+  labels: {}
+  # -- ServiceMonitor scrape interval
+  interval: null
+  # -- ServiceMonitor scrape timeout in Go duration format (e.g. 15s)
+  scrapeTimeout: null
+  # -- ServiceMonitor relabel configs to apply to samples before scraping
+  # https://github.com/prometheus-operator/prometheus-operator/blob/master/Documentation/api.md#relabelconfig
+  relabelings: []
+  # -- ServiceMonitor metric relabel configs to apply to samples before ingestion
+  # https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#endpoint
+  metricRelabelings: []
+  # --ServiceMonitor will add labels from the service to the Prometheus metric
+  # https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#servicemonitorspec
+  targetLabels: []
+  # -- ServiceMonitor will use http by default, but you can pick https as well
+  scheme: http
+  # -- ServiceMonitor will use these tlsConfig settings to make the health check requests
+  tlsConfig: null

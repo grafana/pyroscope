@@ -128,5 +128,19 @@
     "structuredConfig": {},
     "tenantOverrides": {},
     "tolerations": []
+  },
+  "serviceMonitor": {
+    "annotations": {},
+    "enabled": false,
+    "interval": null,
+    "labels": {},
+    "matchExpressions": [],
+    "metricRelabelings": [],
+    "namespaceSelector": {},
+    "relabelings": [],
+    "scheme": "http",
+    "scrapeTimeout": null,
+    "targetLabels": [],
+    "tlsConfig": null
   }
 }
