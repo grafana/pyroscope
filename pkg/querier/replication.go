@@ -19,6 +19,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"
 	"github.com/grafana/pyroscope/pkg/util"
+	"github.com/grafana/pyroscope/pkg/util/math"
 	"github.com/grafana/pyroscope/pkg/util/spanlogger"
 )
 
@@ -131,6 +132,90 @@ func forGivenPlan[Result any, Querier any](ctx context.Context, plan map[string]
 	result = result[:idx]
 
 	return result, nil
+}
+
+// forGivenPlanIgnoringPlacement runs f, in parallel, for given plan, ignoring block placement.
+func forGivenPlanIgnoringPlacement[Result any, Querier any](ctx context.Context, plan map[string]*ingestv1.BlockHints, clientFactory func(string) (Querier, error), f QueryReplicaWithHintsFn[Result, Querier]) ([]ResponseFromReplica[Result], error) {
+	g, _ := errgroup.WithContext(ctx)
+	optimizePlanIgnoringBlockPlacement(plan)
+
+	var (
+		idx    = 0
+		result = make([]ResponseFromReplica[Result], len(plan))
+	)
+
+	for replica, hints := range plan {
+		var (
+			i = idx
+			r = replica
+			h = hints
+		)
+		idx++
+		g.Go(func() error {
+			client, err := clientFactory(r)
+			if err != nil {
+				return err
+			}
+
+			resp, err := f(ctx, client, &ingestv1.Hints{Block: h})
+			if err != nil {
+				return err
+			}
+
+			result[i] = ResponseFromReplica[Result]{r, resp}
+
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	result = result[:idx]
+
+	return result, nil
+}
+
+func optimizePlanIgnoringBlockPlacement(plan map[string]*ingestv1.BlockHints) {
+	// Step 1: Calculate total number of blocks and average blocks per replica
+	totalBlocks := 0
+	for _, h := range plan {
+		totalBlocks += len(h.Ulids)
+	}
+	averageBlocksPerReplica := totalBlocks / len(plan)
+
+	// Step 2: Sort replicas based on the number of blocks
+	replicaList := make([]string, 0, len(plan))
+	for replica := range plan {
+		replicaList = append(replicaList, replica)
+	}
+
+	sort.Slice(replicaList, func(i, j int) bool {
+		return len(plan[replicaList[i]].Ulids) < len(plan[replicaList[j]].Ulids)
+	})
+
+	// Step 3: Distribute excess blocks to replicas with fewer blocks
+	for _, replica := range replicaList {
+		h := plan[replica]
+		excessBlocks := len(h.Ulids) - averageBlocksPerReplica
+
+		if excessBlocks > 0 {
+			for _, otherReplica := range replicaList {
+				if otherReplica != replica {
+					otherH := plan[otherReplica]
+					shortfall := averageBlocksPerReplica - len(otherH.Ulids)
+
+					if shortfall > 0 {
+						moveBlocks := math.Min(excessBlocks, shortfall)
+						otherH.Ulids = append(otherH.Ulids, h.Ulids[:moveBlocks]...)
+						h.Ulids = h.Ulids[moveBlocks:]
+						excessBlocks -= moveBlocks
+					}
+				}
+			}
+		}
+	}
 }
 
 type instanceType uint8

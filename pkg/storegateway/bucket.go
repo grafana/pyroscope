@@ -16,9 +16,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 
+	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/phlaredb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
+	"github.com/grafana/pyroscope/pkg/slices"
 )
 
 // TODO move this to a config.
@@ -326,5 +328,30 @@ func (s *bucketBlockSet) getFor(mint, maxt model.Time) (bs []*Block) {
 		bs = append(bs, b)
 	}
 
+	return bs
+}
+
+func (s *bucketBlockSet) getForHints(hints *ingestv1.Hints) (bs []*Block) {
+	m := make(map[string]bool, len(hints.Block.Ulids))
+	for _, b := range hints.Block.Ulids {
+		m[b] = false
+	}
+
+	s.mtx.RLock()
+	for _, b := range s.blocks {
+		id := b.meta.ULID.String()
+		if found, ok := m[id]; ok {
+			if !found {
+				bs = append(bs, b)
+				m[id] = true
+			}
+		}
+	}
+	defer s.mtx.RUnlock()
+
+	// Drop found blocks from hints.
+	hints.Block.Ulids = slices.RemoveInPlace(hints.Block.Ulids, func(s string, _ int) bool {
+		return !m[s]
+	})
 	return bs
 }

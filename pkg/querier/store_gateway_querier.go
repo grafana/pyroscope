@@ -160,6 +160,23 @@ func forAllPlannedStoreGateways[T any](ctx context.Context, _ string, storegatew
 	}, replicationSet, f)
 }
 
+// forAllPlannedStoreGatewaysIgnoringPlacement runs f, in parallel,
+// for all store-gateways of the plan ignoring block placement.
+func forAllPlannedStoreGatewaysIgnoringPlacement[T any](
+	ctx context.Context,
+	storegatewayQuerier *StoreGatewayQuerier,
+	plan map[string]*ingestv1.BlockHints,
+	f QueryReplicaWithHintsFn[T, StoreGatewayQueryClient],
+) ([]ResponseFromReplica[T], error) {
+	return forGivenPlanIgnoringPlacement(ctx, plan, func(addr string) (StoreGatewayQueryClient, error) {
+		client, err := storegatewayQuerier.pool.GetClientFor(addr)
+		if err != nil {
+			return nil, err
+		}
+		return client.(StoreGatewayQueryClient), nil
+	}, f)
+}
+
 // GetShuffleShardingSubring returns the subring to be used for a given user. This function
 // should be used both by store-gateway and querier in order to guarantee the same logic is used.
 func GetShuffleShardingSubring(ring ring.ReadRing, userID string, limits StoreGatewayLimits) ring.ReadRing {
@@ -194,7 +211,7 @@ func (q *Querier) selectTreeFromStoreGateway(ctx context.Context, req *querierv1
 
 	var responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesStacktraces]
 	if plan != nil {
-		responses, err = forAllPlannedStoreGateways(ctx, tenantID, q.storeGatewayQuerier, plan, func(ctx context.Context, ic StoreGatewayQueryClient, hints *ingestv1.Hints) (clientpool.BidiClientMergeProfilesStacktraces, error) {
+		responses, err = forAllPlannedStoreGatewaysIgnoringPlacement(ctx, q.storeGatewayQuerier, plan, func(ctx context.Context, ic StoreGatewayQueryClient, hints *ingestv1.Hints) (clientpool.BidiClientMergeProfilesStacktraces, error) {
 			return ic.MergeProfilesStacktraces(ctx), nil
 		})
 	} else {

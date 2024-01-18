@@ -73,3 +73,23 @@ func (bs *BucketStore) createBlock(ctx context.Context, meta *block.Meta) (*Bloc
 		BlockCloser: phlaredb.NewSingleBlockQuerierFromMeta(ctx, bs.bucket, outMeta),
 	}, nil
 }
+
+func (bs *BucketStore) openRemoteBlock(ctx context.Context, blockID string) (*Block, error) {
+	// fetch the meta from the bucket
+	r, err := bs.bucket.Get(ctx, path.Join(blockID, block.MetaFilename))
+	if err != nil {
+		return nil, errors.Wrap(err, "get meta")
+	}
+	meta, err := block.Read(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "read meta")
+	}
+	if meta.Version == 0 || len(meta.Files) == 0 {
+		return nil, errors.New("meta.json is empty")
+	}
+	return &Block{
+		meta:        meta,
+		logger:      bs.logger,
+		BlockCloser: phlaredb.NewSingleBlockQuerierFromMeta(ctx, bs.bucket, meta),
+	}, nil
+}

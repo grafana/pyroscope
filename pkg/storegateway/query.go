@@ -7,6 +7,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
+	"golang.org/x/sync/errgroup"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -182,8 +183,39 @@ func (s *BucketStore) openBlocksForReading(ctx context.Context, minT, maxT model
 	return querier, nil
 }
 
+func (s *BucketStore) openHintBlocksForReading(ctx context.Context, _, _ model.Time, hints *ingestv1.Hints) (phlaredb.Queriers, error) {
+	if hints == nil || hints.Block == nil {
+		return phlaredb.Queriers{}, nil
+	}
+
+	blocks := s.blockSet.getForHints(hints)
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(128)
+	querier := make(phlaredb.Queriers, len(hints.Block.Ulids), len(hints.Block.Ulids)+len(blocks))
+	for i, id := range hints.Block.Ulids {
+		i := i
+		id := id
+		g.Go(func() error {
+			blk, err := s.openRemoteBlock(ctx, id)
+			if err != nil {
+				return err
+			}
+			querier[i] = blk
+			return nil
+		})
+	}
+	for _, b := range blocks {
+		querier = append(querier, b)
+	}
+
+	if err := querier.Open(ctx); err != nil {
+		return nil, err
+	}
+	return querier, nil
+}
+
 func (store *BucketStore) MergeProfilesStacktraces(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesStacktracesRequest, ingestv1.MergeProfilesStacktracesResponse]) error {
-	return phlaredb.MergeProfilesStacktraces(ctx, stream, store.openBlocksForReading)
+	return phlaredb.MergeProfilesStacktraces(ctx, stream, store.openHintBlocksForReading)
 }
 
 func (store *BucketStore) MergeProfilesLabels(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeProfilesLabelsRequest, ingestv1.MergeProfilesLabelsResponse]) error {
