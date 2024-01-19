@@ -1647,11 +1647,15 @@ func prepareWithConfigProvider(t *testing.T, compactorCfg Config, bucketClient o
 	logger := &componentLogger{component: "compactor", log: log.NewLogfmtLogger(logs)}
 	registry := prometheus.NewRegistry()
 
-	blocksCompactorFactory := func(ctx context.Context, cfg Config, logger log.Logger, reg prometheus.Registerer) (Compactor, Planner, error) {
-		return blockCompactor, tsdbPlanner, nil
+	blocksCompactorFactory := func(ctx context.Context, cfg Config, cfgProvider ConfigProvider, userID string, logger log.Logger, metrics *CompactorMetrics) (Compactor, error) {
+		return blockCompactor, nil
 	}
 
-	c, err := newMultitenantCompactor(compactorCfg, pyroscope_objstore.NewBucket(bucketClient), limits, logger, registry, splitAndMergeGrouperFactory, blocksCompactorFactory)
+	blocksPlannerFactory := func(cfg Config) Planner {
+		return tsdbPlanner
+	}
+
+	c, err := newMultitenantCompactor(compactorCfg, pyroscope_objstore.NewBucket(bucketClient), limits, logger, registry, splitAndMergeGrouperFactory, blocksCompactorFactory, blocksPlannerFactory)
 	require.NoError(t, err)
 
 	return c, blockCompactor, tsdbPlanner, logs, registry
@@ -1703,8 +1707,8 @@ type blockCompactorMock struct {
 	mock.Mock
 }
 
-func (m *blockCompactorMock) CompactWithSplitting(ctx context.Context, dest string, dirs []string, shardCount uint64) (result []ulid.ULID, _ error) {
-	args := m.Called(ctx, dest, dirs, shardCount)
+func (m *blockCompactorMock) CompactWithSplitting(ctx context.Context, dest string, dirs []string, shardCount, stageSize uint64) (result []ulid.ULID, _ error) {
+	args := m.Called(ctx, dest, dirs, shardCount, stageSize)
 	return args.Get(0).([]ulid.ULID), args.Error(1)
 }
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
@@ -26,6 +26,8 @@ func (f *Frontend) SelectSeries(ctx context.Context,
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).
 		SetTag("selector", c.Msg.LabelSelector).
+		SetTag("step", c.Msg.Step).
+		SetTag("by", c.Msg.GroupBy).
 		SetTag("profile_type", c.Msg.ProfileTypeID)
 
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectSeriesProcedure)
@@ -64,6 +66,7 @@ func (f *Frontend) SelectSeries(ctx context.Context,
 				End:           r.End.UnixMilli(),
 				GroupBy:       c.Msg.GroupBy,
 				Step:          c.Msg.Step,
+				Aggregation:   c.Msg.Aggregation,
 			})
 			resp, err := connectgrpc.RoundTripUnary[
 				querierv1.SelectSeriesRequest,

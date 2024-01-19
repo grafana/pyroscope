@@ -26,7 +26,7 @@ func getFreePorts(len int) (ports []int, err error) {
 	ports = make([]int, len)
 	for i := 0; i < len; i++ {
 		var a *net.TCPAddr
-		if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
+		if a, err = net.ResolveTCPAddr("tcp", "127.0.0.1:0"); err == nil {
 			var l *net.TCPListener
 			if l, err = net.ListenTCP("tcp", a); err != nil {
 				return nil, err
@@ -48,6 +48,7 @@ type PyroscopeTest struct {
 	memberlistPort int
 }
 
+const address = "127.0.0.1"
 const storeInMemory = "inmemory"
 
 func (p *PyroscopeTest) Start(t *testing.T) {
@@ -63,10 +64,16 @@ func (p *PyroscopeTest) Start(t *testing.T) {
 	err = cfg.DynamicUnmarshal(&p.config, []string{"pyroscope"}, flag.NewFlagSet("pyroscope", flag.ContinueOnError))
 	require.NoError(t, err)
 
-	// set free ports
+	// set addresses and ports
+	p.config.Server.HTTPListenAddress = address
 	p.config.Server.HTTPListenPort = p.httpPort
+	p.config.Server.GRPCListenAddress = address
+	p.config.Worker.SchedulerAddress = address
 	p.config.MemberlistKV.AdvertisePort = p.memberlistPort
 	p.config.MemberlistKV.TCPTransport.BindPort = p.memberlistPort
+	p.config.Ingester.LifecyclerConfig.Addr = address
+	p.config.QueryScheduler.ServiceDiscovery.SchedulerRing.InstanceAddr = address
+	p.config.Frontend.Addr = address
 
 	// heartbeat more often
 	p.config.Distributor.DistributorRing.HeartbeatPeriod = time.Second
@@ -116,7 +123,7 @@ func (p *PyroscopeTest) ringActive() bool {
 	return httpBodyContains(p.URL()+"/ring", "ACTIVE")
 }
 func (p *PyroscopeTest) URL() string {
-	return fmt.Sprintf("http://localhost:%d", p.httpPort)
+	return fmt.Sprintf("http://%s:%d", address, p.httpPort)
 }
 
 func (p *PyroscopeTest) queryClient() querierv1connect.QuerierServiceClient {

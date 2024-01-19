@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
@@ -61,6 +61,8 @@ type filterResponse interface {
 func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterRequest](
 	ctx context.Context, profiles []iter.Iterator[Profile], batchProfileSize int, stream B,
 ) ([][]Profile, error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "filterProfiles")
+	defer sp.Finish()
 	selection := make([][]Profile, len(profiles))
 	selectProfileResult := &ingestv1.ProfileSets{
 		Profiles:   make([]*ingestv1.SeriesProfile, 0, batchProfileSize),
@@ -78,12 +80,10 @@ func filterProfiles[B BidiServerMerge[Res, Req], Res filterResponse, Req filterR
 		Profile: maxBlockProfile,
 		Index:   0,
 	}, true, its...), batchProfileSize, func(ctx context.Context, batch []ProfileWithIndex) error {
-		sp, _ := opentracing.StartSpanFromContext(ctx, "filterProfiles - Filtering batch")
 		sp.LogFields(
 			otlog.Int("batch_len", len(batch)),
 			otlog.Int("batch_requested_size", batchProfileSize),
 		)
-		defer sp.Finish()
 
 		seriesByFP := map[model.Fingerprint]labelWithIndex{}
 		selectProfileResult.LabelsSets = selectProfileResult.LabelsSets[:0]

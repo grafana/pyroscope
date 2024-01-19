@@ -18,7 +18,7 @@
     "format:fix": "prettier --write .",
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook",
-    "prepare": "husky install"
+    "prepare:manually": "husky install"
   },
   "lint-staged": {
     "*.{ts,tsx,scss}": "yarn format:fix"
@@ -130,9 +130,9 @@
     "@fortawesome/free-regular-svg-icons": "~5.15.2",
     "@fortawesome/free-solid-svg-icons": "~5.14.0",
     "@fortawesome/react-fontawesome": "~0.1.11",
-    "@grafana/data": "10.2.0-140126",
-    "@grafana/flamegraph": "10.2.0-140126",
-    "@grafana/ui": "10.2.0-140126",
+    "@grafana/data": "10.3.0-147665",
+    "@grafana/flamegraph": "10.3.0-147665",
+    "@grafana/ui": "10.3.0-147665",
     "@hookform/resolvers": "^2.9.8",
     "@mui/base": "5.0.0-alpha.98",
     "@mui/material": "5.10.11",

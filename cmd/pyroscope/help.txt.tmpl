@@ -7,6 +7,8 @@ Usage of ./pyroscope:
     	Directory to store synchronized pyroscope block headers. This directory is not required to be persisted between restarts, but it's highly recommended in order to improve the store-gateway startup time. (default "./data/pyroscope-sync/")
   -compactor.blocks-retention-period duration
     	Delete blocks containing samples older than the specified retention period. 0 to disable.
+  -compactor.compactor-downsampler-enabled
+    	If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept. (default true)
   -compactor.compactor-tenant-shard-size int
     	Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.
   -compactor.data-dir string
@@ -29,6 +31,8 @@ Usage of ./pyroscope:
     	Backend storage to use for the ring. Supported values are: consul, etcd, inmemory, memberlist, multi. (default "memberlist")
   -compactor.split-and-merge-shards int
     	The number of shards to use when splitting blocks. 0 to disable splitting.
+  -compactor.split-and-merge-stage-size int
+    	Number of stages split shards will be written to. Number of output split shards is controlled by -compactor.split-and-merge-shards.
   -compactor.split-groups int
     	Number of groups that blocks for splitting should be grouped into. Each group of blocks is then split separately. Number of output split shards is controlled by -compactor.split-and-merge-shards. (default 1)
   -config.expand-env
@@ -37,6 +41,10 @@ Usage of ./pyroscope:
     	yaml file to load
   -consul.hostname string
     	Hostname and port of Consul. (default "localhost:8500")
+  -distributor.aggregation-period duration
+    	Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.
+  -distributor.aggregation-window duration
+    	Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.
   -distributor.client-cleanup-period duration
     	How frequently to clean up clients for ingesters that have gone away. (default 15s)
   -distributor.health-check-ingesters
@@ -123,6 +131,14 @@ Usage of ./pyroscope:
     	Directory used for local storage. (default "./data")
   -pyroscopedb.max-block-duration duration
     	Upper limit to the duration of a Pyroscope block. (default 1h0m0s)
+  -pyroscopedb.retention-policy-disable
+    	Disable retention policy enforcement
+  -pyroscopedb.retention-policy-enforcement-interval duration
+    	How often to enforce disk retention (default 5m0s)
+  -pyroscopedb.retention-policy-min-disk-available-percentage float
+    	Which percentage of free disk space to keep (default 0.05)
+  -pyroscopedb.retention-policy-min-free-disk-gb uint
+    	How much available disk space to keep in GiB (default 10)
   -pyroscopedb.row-group-target-size uint
     	How big should a single row group be uncompressed (default 1342177280)
   -querier.client-cleanup-period duration
@@ -131,6 +147,10 @@ Usage of ./pyroscope:
     	Run a health check on each ingester client during periodic cleanup. (default true)
   -querier.health-check-timeout duration
     	Timeout for ingester client healthcheck RPCs. (default 5s)
+  -querier.max-flamegraph-nodes-default int
+    	Maximum number of flamegraph nodes by default. 0 to disable. (default 8192)
+  -querier.max-flamegraph-nodes-max int
+    	Maximum number of flamegraph nodes allowed. 0 to disable.
   -querier.max-query-length duration
     	The limit to length of queries. 0 to disable. (default 1d)
   -querier.max-query-lookback duration
@@ -201,6 +221,8 @@ Usage of ./pyroscope:
     	Duration after which a keepalive probe is sent in case of no activity over the connection., Default: 2h (default 2h0m0s)
   -server.grpc.keepalive.timeout duration
     	After having pinged for keepalive check, the duration after which an idle connection should be closed, Default: 20s (default 20s)
+  -server.grpc.num-workers int
+    	If non-zero, configures the amount of GRPC server workers used to serve the requests.
   -server.http-conn-limit int
     	Maximum number of simultaneous http connections, <=0 to disable
   -server.http-idle-timeout duration
@@ -211,8 +233,12 @@ Usage of ./pyroscope:
     	HTTP server listen network, default tcp (default "tcp")
   -server.http-listen-port int
     	HTTP server listen port. (default 4040)
+  -server.http-log-closed-connections-without-response-enabled
+    	Log closed connections that did not receive any response, most likely because client didn't send any request within timeout.
+  -server.http-read-header-timeout duration
+    	Read timeout for HTTP request headers. If set to 0, value of -server.http-read-timeout is used.
   -server.http-read-timeout duration
-    	Read timeout for HTTP server (default 30s)
+    	Read timeout for entire HTTP request, including headers and body. (default 30s)
   -server.http-tls-ca-path string
     	HTTP TLS Client CA path.
   -server.http-tls-cert-path string
@@ -239,20 +265,24 @@ Usage of ./pyroscope:
     	Base path to serve all API routes from (e.g. /v1/)
   -server.register-instrumentation
     	Register the intrumentation handlers (/metrics etc). (default true)
+  -server.report-grpc-codes-in-instrumentation-label-enabled
+    	If set to true, gRPC statuses will be reported in instrumentation labels with their string representations. Otherwise, they will be reported as "error".
   -server.tls-cipher-suites string
     	Comma-separated list of cipher suites to use. If blank, the default Go cipher suites is used.
   -server.tls-min-version string
     	Minimum TLS version to use. Allowed values: VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13. If blank, the Go TLS minimum version is used.
   -storage.azure.account-key string
-    	Azure storage account key
+    	Azure storage account key. If unset, Azure managed identities will be used for authentication instead.
   -storage.azure.account-name string
     	Azure storage account name
+  -storage.azure.connection-string string
+    	If `connection-string` is set, the value of `endpoint-suffix` will not be used. Use this method over `account-key` if you need to authenticate via a SAS token. Or if you use the Azurite emulator.
   -storage.azure.container-name string
     	Azure storage container name
   -storage.azure.endpoint-suffix string
     	Azure storage endpoint suffix without schema. The account name will be prefixed to this value to create the FQDN. If set to empty string, default endpoint suffix is used.
   -storage.backend string
-    	Backend storage to use. Supported backends are: s3, gcs, azure, swift, filesystem, cos. (default "filesystem")
+    	Backend storage to use. Supported backends are: s3, gcs, azure, swift, filesystem, cos.
   -storage.cos.app-id string
     	COS app id
   -storage.cos.bucket string
@@ -266,7 +296,7 @@ Usage of ./pyroscope:
   -storage.cos.secret-key string
     	COS secret key
   -storage.filesystem.dir string
-    	Local filesystem storage directory.
+    	Local filesystem storage directory. (default "./data-shared")
   -storage.gcs.bucket-name string
     	GCS bucket name
   -storage.gcs.service-account string
@@ -336,7 +366,7 @@ Usage of ./pyroscope:
   -store-gateway.sharding-ring.unregister-on-shutdown
     	Unregister from the ring upon clean shutdown. (default true)
   -store-gateway.sharding-ring.zone-awareness-enabled
-    	True to enable zone-awareness and replicate blocks across different availability zones. This option needs be set both on the store-gateway, querier and ruler when running in microservices mode.
+    	True to enable zone-awareness and replicate blocks across different availability zones. This option needs be set both on the store-gateway and querier when running in microservices mode.
   -store-gateway.tenant-shard-size int
     	The tenant's shard size, used when store-gateway sharding is enabled. Value of 0 disables shuffle sharding for the tenant, that is all tenant blocks are sharded across all store-gateway replicas.
   -target comma-separated-list-of-strings

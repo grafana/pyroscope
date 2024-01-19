@@ -21,6 +21,11 @@ var cfg struct {
 	blocks  struct {
 		path               string
 		restoreMissingMeta bool
+		compact            struct {
+			src    string
+			dst    string
+			shards int
+		}
 	}
 }
 
@@ -38,13 +43,20 @@ func main() {
 	app.HelpFlag.Short('h')
 	app.Flag("verbose", "Enable verbose logging.").Short('v').Default("0").BoolVar(&cfg.verbose)
 
-	blocksCmd := app.Command("blocks", "Operate on Grafana Pyroscope's blocks.")
+	adminCmd := app.Command("admin", "Administrative tasks for Pyroscope cluster operators.")
+
+	blocksCmd := adminCmd.Command("blocks", "Operate on Grafana Pyroscope's blocks.")
 	blocksCmd.Flag("path", "Path to blocks directory").Default("./data/local").StringVar(&cfg.blocks.path)
 
 	blocksListCmd := blocksCmd.Command("list", "List blocks.")
 	blocksListCmd.Flag("restore-missing-meta", "").Default("false").BoolVar(&cfg.blocks.restoreMissingMeta)
 
-	parquetCmd := app.Command("parquet", "Operate on a Parquet file.")
+	blocksCompactCmd := blocksCmd.Command("compact", "Compact blocks.")
+	blocksCompactCmd.Arg("from", "The source input blocks to compact.").Required().ExistingDirVar(&cfg.blocks.compact.src)
+	blocksCompactCmd.Arg("dest", "The destination where compacted blocks should be stored.").Required().StringVar(&cfg.blocks.compact.dst)
+	blocksCompactCmd.Flag("shards", "The amount of shards to split output blocks into.").Default("0").IntVar(&cfg.blocks.compact.shards)
+
+	parquetCmd := adminCmd.Command("parquet", "Operate on a Parquet file.")
 	parquetInspectCmd := parquetCmd.Command("inspect", "Inspect a parquet file's structure.")
 	parquetInspectFiles := parquetInspectCmd.Arg("file", "parquet file path").Required().ExistingFiles()
 
@@ -60,6 +72,10 @@ func main() {
 
 	canaryExporterCmd := app.Command("canary-exporter", "Run the canary exporter.")
 	canaryExporterParams := addCanaryExporterParams(canaryExporterCmd)
+
+	bucketCmd := adminCmd.Command("bucket", "Run the bucket visualization tool.")
+	bucketWebCmd := bucketCmd.Command("web", "Run the web tool for visualizing blocks in object-store buckets.")
+	bucketWebParams := addBucketWebToolParams(bucketWebCmd)
 
 	// parse command line arguments
 	parsedCmd := kingpin.MustParse(app.Parse(os.Args[1:]))
@@ -94,10 +110,17 @@ func main() {
 		if err := newCanaryExporter(canaryExporterParams).run(ctx); err != nil {
 			os.Exit(checkError(err))
 		}
+	case bucketWebCmd.FullCommand():
+		if err := newBucketWebTool(bucketWebParams).run(ctx); err != nil {
+			os.Exit(checkError(err))
+		}
+	case blocksCompactCmd.FullCommand():
+		if err := blocksCompact(ctx, cfg.blocks.compact.src, cfg.blocks.compact.dst, cfg.blocks.compact.shards); err != nil {
+			os.Exit(checkError(err))
+		}
 	default:
 		level.Error(logger).Log("msg", "unknown command", "cmd", parsedCmd)
 	}
-
 }
 
 func checkError(err error) int {

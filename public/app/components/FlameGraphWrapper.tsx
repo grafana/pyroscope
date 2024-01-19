@@ -83,6 +83,7 @@ export function FlameGraphWrapper(props: Props) {
           data={dataFrame}
           extraHeaderElements={extraEl}
           vertical={props.vertical}
+          disableCollapsing={true}
         />
       </>
     );

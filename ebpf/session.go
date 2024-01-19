@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -42,12 +43,24 @@ type SessionOptions struct {
 	SampleRate                int
 }
 
+type SampleAggregation bool
+
+var (
+	// SampleAggregated mean samples are accumulated in ebpf, no need to dedup these
+	SampleAggregated = SampleAggregation(true)
+	// SampleNotAggregated mean values are not accumulated in ebpf, but streamed to userspace with value=1
+	// TODO make consider aggregating python in ebpf as well
+	SampleNotAggregated = SampleAggregation(false)
+)
+
+type CollectProfilesCallback func(target *sd.Target, stack []string, value uint64, pid uint32, aggregation SampleAggregation)
+
 type Session interface {
 	Start() error
 	Stop()
 	Update(SessionOptions) error
 	UpdateTargets(args sd.TargetsOptions)
-	CollectProfiles(f func(target *sd.Target, stack []string, value uint64, pid uint32)) error
+	CollectProfiles(f CollectProfilesCallback) error
 	DebugInfo() interface{}
 }
 
@@ -150,15 +163,15 @@ func (s *session) Start() error {
 
 	btf.FlushKernelSpec() // save some memory
 
-	s.perfEvents, err = attachPerfEvents(s.options.SampleRate, s.bpf.DoPerfEvent)
-	if err != nil {
-		s.stopLocked()
-		return fmt.Errorf("attach perf events: %w", err)
-	}
 	eventsReader, err := perf.NewReader(s.bpf.ProfileMaps.Events, 4*os.Getpagesize())
 	if err != nil {
 		s.stopLocked()
 		return fmt.Errorf("perf new reader for events map: %w", err)
+	}
+	s.perfEvents, err = attachPerfEvents(s.options.SampleRate, s.bpf.DoPerfEvent)
+	if err != nil {
+		s.stopLocked()
+		return fmt.Errorf("attach perf events: %w", err)
 	}
 
 	err = s.linkKProbes()
@@ -224,7 +237,7 @@ func (s *session) UpdateTargets(args sd.TargetsOptions) {
 	}
 }
 
-func (s *session) CollectProfiles(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
+func (s *session) CollectProfiles(cb CollectProfilesCallback) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -256,7 +269,7 @@ func (s *session) DebugInfo() interface{} {
 	}
 }
 
-func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, value uint64, pid uint32)) error {
+func (s *session) collectRegularProfile(cb CollectProfilesCallback) error {
 	sb := &stackBuilder{}
 
 	keys, values, batch, err := s.getCountsMapValues()
@@ -314,7 +327,7 @@ func (s *session) collectRegularProfile(cb func(t *sd.Target, stack []string, va
 			continue // only comm
 		}
 		lo.Reverse(sb.stack)
-		cb(labels, sb.stack, uint64(value), ck.Pid)
+		cb(labels, sb.stack, uint64(value), ck.Pid, SampleAggregated)
 		s.collectMetrics(labels, &stats, sb)
 	}
 
@@ -558,7 +571,7 @@ func (s *session) readEvents(events *perf.Reader,
 func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
 	for pid := range pidInfoRequests {
 		target := s.targetFinder.FindTarget(pid)
-		_ = level.Debug(s.logger).Log("msg", "got pid info request", "pid", pid, "target", target)
+		_ = level.Debug(s.logger).Log("msg", "pid info request", "pid", pid, "target", target)
 
 		func() {
 			s.mutex.Lock()
@@ -648,7 +661,7 @@ func (s *session) saveUnknownPIDLocked(pid uint32) {
 
 func (s *session) processDeadPIDsEvents(dead chan uint32) {
 	for pid := range dead {
-		_ = level.Debug(s.logger).Log("msg", "got pid dead", "pid", pid)
+		_ = level.Debug(s.logger).Log("msg", "pid dead", "pid", pid)
 		func() {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()
@@ -661,7 +674,7 @@ func (s *session) processDeadPIDsEvents(dead chan uint32) {
 func (s *session) processPIDExecRequests(requests chan uint32) {
 	for pid := range requests {
 		target := s.targetFinder.FindTarget(pid)
-		_ = level.Debug(s.logger).Log("msg", "got pid exec request", "pid", pid)
+		_ = level.Debug(s.logger).Log("msg", "pid exec request", "pid", pid)
 		func() {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()
@@ -687,10 +700,17 @@ func (s *session) linkKProbes() error {
 		prog     *ebpf.Program
 		required bool
 	}
-	var hooks = []hook{
+	var hooks []hook
+	archSys := ""
+	if "amd64" == runtime.GOARCH {
+		archSys = "__x64_"
+	} else {
+		archSys = "__arm64_"
+	}
+	hooks = []hook{
 		{kprobe: "disassociate_ctty", prog: s.bpf.DisassociateCtty, required: true},
-		{kprobe: "__x64_sys_execve", prog: s.bpf.Exec, required: false},
-		{kprobe: "__x64_sys_execveat", prog: s.bpf.Exec, required: false},
+		{kprobe: archSys + "sys_execve", prog: s.bpf.Exec, required: false},
+		{kprobe: archSys + "sys_execveat", prog: s.bpf.Exec, required: false},
 	}
 	for _, it := range hooks {
 		kp, err := link.Kprobe(it.kprobe, it.prog, nil)
@@ -735,6 +755,44 @@ func (s *session) cleanup() {
 			if err := s.bpf.Pids.Delete(pid); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
 				_ = level.Error(s.logger).Log("msg", "delete pid config", "pid", pid, "err", err)
 			}
+		}
+	}
+
+	if s.roundNumber%10 == 0 {
+		s.checkStalePids()
+	}
+}
+
+// iterate over all pids and check if they are alive
+// it is only needed in case disassociate_ctty hook somehow mises a process death
+func (s *session) checkStalePids() {
+	var (
+		m       = s.bpf.Pids
+		mapSize = m.MaxEntries()
+		nextKey = uint32(0)
+	)
+	keys := make([]uint32, mapSize)
+	values := make([]pyrobpf.ProfilePidConfig, mapSize)
+	n, err := m.BatchLookup(nil, &nextKey, keys, values, new(ebpf.BatchOptions))
+	_ = level.Debug(s.logger).Log("msg", "check stale pids", "count", n)
+	for i := 0; i < n; i++ {
+		_, err := os.Stat(fmt.Sprintf("/proc/%d/status", keys[i]))
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				_ = level.Error(s.logger).Log("msg", "check stale pids", "err", err)
+			}
+			if err := m.Delete(keys[i]); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
+				_ = level.Error(s.logger).Log("msg", "delete stale pid", "pid", keys[i], "err", err)
+			}
+			_ = level.Debug(s.logger).Log("msg", "stale pid deleted", "pid", keys[i])
+			continue
+		} else {
+			_ = level.Debug(s.logger).Log("msg", "stale pid check : alive", "pid", keys[i], "config", fmt.Sprintf("%+v", values[i]))
+		}
+	}
+	if err != nil {
+		if !errors.Is(err, ebpf.ErrKeyNotExist) {
+			_ = level.Error(s.logger).Log("msg", "check stale pids", "err", err)
 		}
 	}
 }

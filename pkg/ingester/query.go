@@ -3,7 +3,7 @@ package ingester
 import (
 	"context"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -34,6 +34,13 @@ func (i *Ingester) ProfileTypes(ctx context.Context, req *connect.Request[ingest
 func (i *Ingester) Series(ctx context.Context, req *connect.Request[ingestv1.SeriesRequest]) (*connect.Response[ingestv1.SeriesResponse], error) {
 	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[ingestv1.SeriesResponse], error) {
 		return instance.Series(ctx, req)
+	})
+}
+
+// BlockMetadata returns the metadata of the instance's blocks
+func (i *Ingester) BlockMetadata(ctx context.Context, req *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error) {
+	return forInstanceUnary(ctx, i, func(instance *instance) (*connect.Response[ingestv1.BlockMetadataResponse], error) {
+		return instance.BlockMetadata(ctx, req)
 	})
 }
 

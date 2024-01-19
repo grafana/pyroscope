@@ -9,6 +9,7 @@ import (
 
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/runutil"
+	"github.com/opentracing/opentracing-go"
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
@@ -31,7 +32,7 @@ type symbolsResolver interface {
 }
 
 type symbolsResolverV1 struct {
-	stacktraces  parquetReader[*schemav1.Stacktrace, *schemav1.StacktracePersister]
+	stacktraces  parquetReader[*schemav1.StacktracePersister]
 	bucketReader phlareobj.Bucket
 	*inMemoryParquetTables
 }
@@ -107,6 +108,16 @@ func (r stacktraceResolverV1) ResolveStacktraceLocations(ctx context.Context, ds
 	return it.Err()
 }
 
+func (r stacktraceResolverV1) LookupLocations(_ []uint64, _ uint32) []uint64 {
+	// NOTE(kolesnikovae): This API is not supported.
+	// Despite the fact that this could be implemented,
+	// practically this is not viable.
+	//
+	// The method is only implemented to satisfy the
+	// StacktraceResolver interface and must not be used.
+	return nil
+}
+
 func grow[T any](s []T, n int) []T {
 	if cap(s) < n {
 		return make([]T, n, 2*n)
@@ -131,6 +142,8 @@ func newSymbolsResolverV2(ctx context.Context, b phlareobj.Bucket, meta *block.M
 }
 
 func (r *symbolsResolverV2) Load(ctx context.Context) error {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "symbols.Load")
+	defer sp.Finish()
 	return r.symbols.Load(ctx)
 }
 

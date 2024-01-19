@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 
@@ -27,6 +28,7 @@ func parquetInspect(ctx context.Context, path string) error {
 	}
 	out := output(ctx)
 	fmt.Fprintln(out, "schema:", pf.Schema())
+	numColumns := len(pf.Schema().Columns())
 	meta := pf.Metadata()
 	fmt.Println("Num Rows:", meta.NumRows)
 	for i, rg := range meta.RowGroups {
@@ -36,13 +38,22 @@ func parquetInspect(ctx context.Context, path string) error {
 		fmt.Fprintln(out, "\t\t Columns:")
 		table := tablewriter.NewWriter(out)
 		table.SetHeader([]string{
-			"Col", "Type", "NumVal", "TotalCompressedSize", "TotalUncompressedSize", "Compression", "%", "PageCount", "AvgPageSize",
+			"Col", "Type", "NumVal", "TotalCompressedSize", "TotalUncompressedSize", "Compression", "%", "PageCount", "PageSize",
 		})
+
 		for j, ds := range rg.Columns {
-			offsets := pf.OffsetIndexes()[j]
+			offsets := pf.OffsetIndexes()[(i*numColumns)+j]
 			var avgPageSize int64
+			maxPageSize := int64(0)
+			minPageSize := int64(math.MaxInt64)
 			for _, offset := range offsets.PageLocations {
 				avgPageSize += int64(offset.CompressedPageSize)
+				if int64(offset.CompressedPageSize) > maxPageSize {
+					maxPageSize = int64(offset.CompressedPageSize)
+				}
+				if int64(offset.CompressedPageSize) < minPageSize {
+					minPageSize = int64(offset.CompressedPageSize)
+				}
 			}
 			avgPageSize /= int64(len(offsets.PageLocations))
 
@@ -56,7 +67,7 @@ func parquetInspect(ctx context.Context, path string) error {
 					fmt.Sprintf("%.2f", float64(ds.MetaData.TotalUncompressedSize-ds.MetaData.TotalCompressedSize)/float64(ds.MetaData.TotalCompressedSize)*100),
 					fmt.Sprintf("%.2f", float64(ds.MetaData.TotalCompressedSize)/float64(rg.TotalByteSize)*100),
 					fmt.Sprintf("%d", len(offsets.PageLocations)),
-					humanize.Bytes(uint64(avgPageSize)),
+					"avg:" + humanize.Bytes(uint64(avgPageSize)) + ", max:" + humanize.Bytes(uint64(maxPageSize)) + ", min:" + humanize.Bytes(uint64(minPageSize)),
 				})
 		}
 		table.Render()

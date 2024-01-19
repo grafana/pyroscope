@@ -117,6 +117,9 @@ func TestSelectMergeStacktraces(t *testing.T) {
 	requireFakeMergeProfilesStacktracesResultTree(t, res)
 }
 
+func TestSelectMergeStacktracesWithBlockDeduplication(t *testing.T) {
+}
+
 func TestSelectMergeByLabels(t *testing.T) {
 	resp1 := newFakeBidiClientSeries([]*ingestv1.ProfileSets{
 		{
@@ -171,7 +174,7 @@ func TestSelectMergeByLabels(t *testing.T) {
 		Points: []*typesv1.Point{{Timestamp: 5, Value: 5.0}, {Timestamp: 6, Value: 6.0}},
 	})
 
-	res, err := selectMergeSeries(context.Background(), []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]{
+	res, err := selectMergeSeries(context.Background(), nil, []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]{
 		{
 			response: resp1,
 		},
@@ -207,6 +210,101 @@ func TestSelectMergeByLabels(t *testing.T) {
 		{Ts: 5, Value: 5.0, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
 		{Ts: 6, Value: 6.0, Lbs: foobarlabels, LabelsHash: foobarlabels.Hash()},
 	}, values)
+}
+
+func TestSelectMergePprof(t *testing.T) {
+	resp1 := newFakeBidiClientProfiles([]*ingestv1.ProfileSets{
+		{
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
+			Profiles: []*ingestv1.SeriesProfile{
+				{LabelIndex: 0, Timestamp: 1},
+				{LabelIndex: 0, Timestamp: 2},
+				{LabelIndex: 0, Timestamp: 4},
+			},
+		},
+		{
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
+			Profiles: []*ingestv1.SeriesProfile{
+				{LabelIndex: 0, Timestamp: 5},
+				{LabelIndex: 0, Timestamp: 6},
+			},
+		},
+	})
+	resp2 := newFakeBidiClientProfiles([]*ingestv1.ProfileSets{
+		{
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
+			Profiles: []*ingestv1.SeriesProfile{
+				{LabelIndex: 0, Timestamp: 2},
+				{LabelIndex: 0, Timestamp: 3},
+				{LabelIndex: 0, Timestamp: 4},
+			},
+		},
+		{
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
+			Profiles: []*ingestv1.SeriesProfile{
+				{LabelIndex: 0, Timestamp: 5},
+				{LabelIndex: 0, Timestamp: 6},
+			},
+		},
+	})
+	resp3 := newFakeBidiClientProfiles([]*ingestv1.ProfileSets{
+		{
+			LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
+			Profiles: []*ingestv1.SeriesProfile{
+				{LabelIndex: 0, Timestamp: 3},
+				{LabelIndex: 0, Timestamp: 5},
+			},
+		},
+	})
+	res, err := selectMergePprofProfile(context.Background(), &typesv1.ProfileType{}, []ResponseFromReplica[clientpool.BidiClientMergeProfilesPprof]{
+		{
+			response: resp1,
+		},
+		{
+			response: resp2,
+		},
+		{
+			response: resp3,
+		},
+	})
+	require.NoError(t, err)
+	requireFakeMergeProfilesPprof(t, 3, res)
+	all := []testProfile{}
+	all = append(all, resp1.kept...)
+	all = append(all, resp2.kept...)
+	all = append(all, resp3.kept...)
+	sort.Slice(all, func(i, j int) bool { return all[i].Ts < all[j].Ts })
+	testhelper.EqualProto(t, all, []testProfile{
+		{Ts: 1, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 2, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 3, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 4, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 5, Labels: &typesv1.Labels{Labels: foobarlabels}},
+		{Ts: 6, Labels: &typesv1.Labels{Labels: foobarlabels}},
+	})
+	res, err = selectMergePprofProfile(context.Background(), &typesv1.ProfileType{}, []ResponseFromReplica[clientpool.BidiClientMergeProfilesPprof]{
+		{
+			response: newFakeBidiClientProfiles([]*ingestv1.ProfileSets{
+				{
+					LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
+					Profiles: []*ingestv1.SeriesProfile{
+						{LabelIndex: 0, Timestamp: 1},
+						{LabelIndex: 0, Timestamp: 2},
+						{LabelIndex: 0, Timestamp: 4},
+					},
+				},
+				{
+					LabelsSets: []*typesv1.Labels{{Labels: foobarlabels}},
+					Profiles: []*ingestv1.SeriesProfile{
+						{LabelIndex: 0, Timestamp: 5},
+						{LabelIndex: 0, Timestamp: 6},
+					},
+				},
+			}),
+		},
+	})
+	require.NoError(t, err)
+	requireFakeMergeProfilesPprof(t, 1, res)
 }
 
 func BenchmarkSelectMergeStacktraces(b *testing.B) {

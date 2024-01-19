@@ -193,38 +193,57 @@ func contextHeadMetrics(ctx context.Context) *headMetrics {
 	return m
 }
 
-type blocksMetrics struct {
+type BlocksMetrics struct {
+	registerer prometheus.Registerer
+
 	query *query.Metrics
 
+	profileTableAccess  *prometheus.CounterVec
 	blockOpeningLatency prometheus.Histogram
 	blockOpened         prometheus.Gauge
 }
 
-func newBlocksMetrics(reg prometheus.Registerer) *blocksMetrics {
-	m := &blocksMetrics{
-		query: query.NewMetrics(reg),
-		blockOpeningLatency: prometheus.NewHistogram(prometheus.HistogramOpts{
+func NewBlocksMetrics(reg prometheus.Registerer) *BlocksMetrics {
+	return &BlocksMetrics{
+		registerer: reg,
+		query:      query.NewMetrics(reg),
+
+		blockOpeningLatency: util.RegisterOrGet(reg, prometheus.NewHistogram(prometheus.HistogramOpts{
 			Name: "pyroscopedb_block_opening_duration",
 			Help: "Latency of opening a block in seconds",
-		}),
-		blockOpened: prometheus.NewGauge(prometheus.GaugeOpts{
+		})),
+
+		blockOpened: util.RegisterOrGet(reg, prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "pyroscopedb_blocks_currently_open",
 			Help: "Number of blocks opened",
-		}),
+		})),
+
+		profileTableAccess: util.RegisterOrGet(reg, prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "pyroscopedb_block_profile_table_accesses_total",
+			Help: "Number of times a profile table was accessed",
+		}, []string{"table"})),
 	}
-	m.blockOpeningLatency = util.RegisterOrGet(reg, m.blockOpeningLatency)
-	m.blockOpened = util.RegisterOrGet(reg, m.blockOpened)
-	return m
 }
 
-func contextWithBlockMetrics(ctx context.Context, m *blocksMetrics) context.Context {
+func (m *BlocksMetrics) Unregister() {
+	m.query.Unregister()
+	for _, c := range []prometheus.Collector{
+		m.profileTableAccess,
+		m.blockOpeningLatency,
+		m.blockOpened,
+	} {
+		m.registerer.Unregister(c)
+	}
+}
+
+func ContextWithBlockMetrics(ctx context.Context, m *BlocksMetrics) context.Context {
 	return context.WithValue(ctx, blockMetricsContextKey, m)
 }
 
-func contextBlockMetrics(ctx context.Context) *blocksMetrics {
-	m, ok := ctx.Value(blockMetricsContextKey).(*blocksMetrics)
+func blockMetricsFromContext(ctx context.Context) *BlocksMetrics {
+	m, ok := ctx.Value(blockMetricsContextKey).(*BlocksMetrics)
 	if !ok {
-		return newBlocksMetrics(phlarecontext.Registry(ctx))
+		return NewBlocksMetrics(phlarecontext.Registry(ctx))
 	}
 	return m
 }

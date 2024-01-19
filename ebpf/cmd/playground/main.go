@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	ebpfmetrics "github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/pkg/errors"
@@ -34,6 +34,7 @@ import (
 )
 
 var configFile = flag.String("config", "", "config file path")
+var server = flag.String("server", "http://localhost:4040", "")
 
 var (
 	config  *Config
@@ -43,7 +44,6 @@ var (
 )
 
 func main() {
-
 	config = getConfig()
 	metrics = ebpfmetrics.New(prometheus.DefaultRegisterer)
 
@@ -77,10 +77,14 @@ func main() {
 
 func collectProfiles(profiles chan *pushv1.PushRequest) {
 	builders := pprof.NewProfileBuilders(int64(config.SampleRate))
-	err := session.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32) {
+	err := session.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32, aggregation ebpfspy.SampleAggregation) {
 		labelsHash, labels := target.Labels()
 		builder := builders.BuilderForTarget(labelsHash, labels)
-		builder.AddSample(stack, value)
+		if aggregation == ebpfspy.SampleAggregated {
+			builder.CreateSample(stack, value)
+		} else {
+			builder.CreateSampleOrAddValue(stack, value)
+		}
 	})
 
 	if err != nil {
@@ -125,7 +129,7 @@ func ingest(profiles chan *pushv1.PushRequest) {
 	if err != nil {
 		panic(err)
 	}
-	client := pushv1connect.NewPusherServiceClient(httpClient, "http://localhost:4040")
+	client := pushv1connect.NewPusherServiceClient(httpClient, *server)
 
 	for {
 		it := <-profiles

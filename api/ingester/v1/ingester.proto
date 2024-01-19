@@ -10,6 +10,8 @@ service IngesterService {
   rpc Push(push.v1.PushRequest) returns (push.v1.PushResponse) {}
   rpc LabelValues(types.v1.LabelValuesRequest) returns (types.v1.LabelValuesResponse) {}
   rpc LabelNames(types.v1.LabelNamesRequest) returns (types.v1.LabelNamesResponse) {}
+  // Deprecated: ProfileType call is deprecated in the store components
+  // TODO: Remove this call in release v1.4
   rpc ProfileTypes(ProfileTypesRequest) returns (ProfileTypesResponse) {}
   rpc Series(SeriesRequest) returns (SeriesResponse) {}
   rpc Flush(FlushRequest) returns (FlushResponse) {}
@@ -17,6 +19,7 @@ service IngesterService {
   rpc MergeProfilesLabels(stream MergeProfilesLabelsRequest) returns (stream MergeProfilesLabelsResponse) {}
   rpc MergeProfilesPprof(stream MergeProfilesPprofRequest) returns (stream MergeProfilesPprofResponse) {}
   rpc MergeSpanProfile(stream MergeSpanProfileRequest) returns (stream MergeSpanProfileResponse) {}
+  rpc BlockMetadata(BlockMetadataRequest) returns (BlockMetadataResponse) {}
 }
 
 message ProfileTypesRequest {
@@ -52,8 +55,14 @@ message FlushResponse {}
 message SelectProfilesRequest {
   string label_selector = 1;
   types.v1.ProfileType type = 2;
+  // Milliseconds since epoch.
   int64 start = 3;
+  // Milliseconds since epoch.
   int64 end = 4;
+  // Optional: Hints for querying
+  optional Hints hints = 5;
+  // Optional: Aggregation
+  optional types.v1.TimeSeriesAggregationType aggregation = 6;
 }
 
 message MergeProfilesStacktracesRequest {
@@ -84,6 +93,7 @@ message MergeProfilesStacktracesResponse {
   // The server replies batch of profiles.
   // A last message without profiles signals the next message will be the result of the merge.
   ProfileSets selectedProfiles = 1;
+
   // The list of stracktraces for the profile with their respective value
   MergeProfilesStacktracesResult result = 3;
 }
@@ -91,9 +101,14 @@ message MergeProfilesStacktracesResponse {
 message SelectSpanProfileRequest {
   string label_selector = 1;
   types.v1.ProfileType type = 2;
+  // Milliseconds since epoch.
   int64 start = 3;
+  // Milliseconds since epoch.
   int64 end = 4;
+  // List of span identifiers.
   repeated string span_selector = 5;
+  // Optional: Hints for querying
+  optional Hints hints = 6;
 }
 
 message MergeSpanProfileRequest {
@@ -170,7 +185,10 @@ message MergeProfilesLabelsResponse {
 message MergeProfilesPprofRequest {
   // The client starts the stream with a request containing the profile type and the labels.
   SelectProfilesRequest request = 1;
-
+  // Max nodes in the resulting profile.
+  optional int64 max_nodes = 3;
+  // Include stack traces that match the selector.
+  optional types.v1.StackTraceSelector stack_trace_selector = 4;
   // On a batch of profiles, the client sends the profiles to keep for merging.
   repeated bool profiles = 2;
 }
@@ -181,4 +199,30 @@ message MergeProfilesPprofResponse {
   ProfileSets selectedProfiles = 1;
   // The merge result in the pprof format.
   bytes result = 2;
+}
+
+message BlockMetadataRequest {
+  // Milliseconds since epoch. If missing or zero, only the ingesters will be
+  // queried.
+  int64 start = 1;
+  // Milliseconds since epoch. If missing or zero, only the ingesters will be
+  // queried.
+  int64 end = 2;
+}
+
+message BlockMetadataResponse {
+  // Blocks that are present on the instance for the start to end period
+  repeated types.v1.BlockInfo blocks = 1;
+}
+
+// Hints are used to propagate information about querying
+message Hints {
+  BlockHints block = 1;
+}
+
+message BlockHints {
+  // The ULID of blocks to query
+  repeated string ulids = 1;
+  // When all blocks are compacted, there is no effect of the replication factor, hence we do not need to run deduplication.
+  bool deduplication = 2;
 }

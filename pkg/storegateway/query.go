@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
@@ -45,20 +45,21 @@ func (s *StoreGateway) MergeProfilesPprof(ctx context.Context, stream *connect.B
 }
 
 func (s *StoreGateway) ProfileTypes(ctx context.Context, req *connect.Request[ingestv1.ProfileTypesRequest]) (*connect.Response[ingestv1.ProfileTypesResponse], error) {
-	var res *connect.Response[ingestv1.ProfileTypesResponse]
+	var res *ingestv1.ProfileTypesResponse
 	_, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
 		var err error
-		res, err = phlaredb.ProfileTypes(ctx, req, bs.openBlocksForReading)
+		result, err := phlaredb.ProfileTypes(ctx, req, bs.openBlocksForReading)
 		if err != nil {
 			return err
 		}
+		res = result.Msg
 		return nil
 	})
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	return res, nil
+	return connect.NewResponse(res), nil
 }
 
 func (s *StoreGateway) LabelValues(ctx context.Context, req *connect.Request[typesv1.LabelValuesRequest]) (*connect.Response[typesv1.LabelValuesResponse], error) {
@@ -122,6 +123,23 @@ func (s *StoreGateway) MergeSpanProfile(ctx context.Context, stream *connect.Bid
 	return terminateStream(stream)
 }
 
+func (s *StoreGateway) BlockMetadata(ctx context.Context, req *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error) {
+	var res *ingestv1.BlockMetadataResponse
+	found, err := s.forBucketStore(ctx, func(bs *BucketStore) error {
+		var err error
+		res, err = bs.BlockMetadata(ctx, req.Msg)
+		return err
+	})
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+	if !found {
+		res = &ingestv1.BlockMetadataResponse{}
+	}
+
+	return connect.NewResponse(res), nil
+}
+
 func terminateStream[Req, Resp any](stream *connect.BidiStream[Req, Resp]) (err error) {
 	if _, err = stream.Receive(); err != nil {
 		if errors.Is(err, io.EOF) {
@@ -148,10 +166,14 @@ func (s *StoreGateway) forBucketStore(ctx context.Context, f func(*BucketStore) 
 	return false, nil
 }
 
-func (s *BucketStore) openBlocksForReading(ctx context.Context, minT, maxT model.Time) (phlaredb.Queriers, error) {
+func (s *BucketStore) openBlocksForReading(ctx context.Context, minT, maxT model.Time, hints *ingestv1.Hints) (phlaredb.Queriers, error) {
+	skipBlock := phlaredb.HintsToBlockSkipper(hints)
 	blks := s.blockSet.getFor(minT, maxT)
 	querier := make(phlaredb.Queriers, 0, len(blks))
 	for _, b := range blks {
+		if skipBlock(b.BlockID()) {
+			continue
+		}
 		querier = append(querier, b)
 	}
 	if err := querier.Open(ctx); err != nil {
@@ -174,4 +196,17 @@ func (store *BucketStore) MergeProfilesPprof(ctx context.Context, stream *connec
 
 func (store *BucketStore) MergeSpanProfile(ctx context.Context, stream *connect.BidiStream[ingestv1.MergeSpanProfileRequest, ingestv1.MergeSpanProfileResponse]) error {
 	return phlaredb.MergeSpanProfile(ctx, stream, store.openBlocksForReading)
+}
+
+func (s *BucketStore) BlockMetadata(ctx context.Context, req *ingestv1.BlockMetadataRequest) (*ingestv1.BlockMetadataResponse, error) {
+	set := s.blockSet.getFor(model.Time(req.Start), model.Time(req.End))
+	result := &ingestv1.BlockMetadataResponse{
+		Blocks: make([]*typesv1.BlockInfo, len(set)),
+	}
+	for idx, b := range set {
+		var info typesv1.BlockInfo
+		b.meta.WriteBlockInfo(&info)
+		result.Blocks[idx] = &info
+	}
+	return result, nil
 }

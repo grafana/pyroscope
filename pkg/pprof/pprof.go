@@ -8,18 +8,22 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/colega/zeropool"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/google/pprof/profile"
 	"github.com/klauspost/compress/gzip"
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/util"
 )
@@ -599,7 +603,7 @@ func (h SampleHasher) Hashes(samples []*profilev1.Sample) []uint64 {
 
 	hashes := make([]uint64, len(samples))
 	for i, sample := range samples {
-		if _, err := h.hash.Write(locationBytes(sample)); err != nil {
+		if _, err := h.hash.Write(uint64Bytes(sample.LocationId)); err != nil {
 			panic("unable to write hash")
 		}
 		sort.Sort(LabelsByKeyValue(sample.Label))
@@ -617,15 +621,15 @@ func (h SampleHasher) Hashes(samples []*profilev1.Sample) []uint64 {
 	return hashes
 }
 
-func locationBytes(sample *profilev1.Sample) []byte {
-	if len(sample.LocationId) == 0 {
+func uint64Bytes(s []uint64) []byte {
+	if len(s) == 0 {
 		return nil
 	}
 	var bs []byte
 	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&bs))
-	hdr.Len = len(sample.LocationId) * 8
+	hdr.Len = len(s) * 8
 	hdr.Cap = hdr.Len
-	hdr.Data = uintptr(unsafe.Pointer(&sample.LocationId[0]))
+	hdr.Data = uintptr(unsafe.Pointer(&s[0]))
 	return bs
 }
 
@@ -871,7 +875,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	dst.Period = e.profile.Period
 	dst.DefaultSampleType = e.profile.DefaultSampleType
 
-	dst.SampleType = slices.Grow(dst.SampleType, len(e.profile.SampleType))
+	dst.SampleType = slices.GrowLen(dst.SampleType, len(e.profile.SampleType))
 	for i, v := range e.profile.SampleType {
 		dst.SampleType[i] = &profilev1.ValueType{
 			Type: e.strings.lookupString(v.Type),
@@ -881,7 +885,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	dst.DropFrames = e.strings.lookupString(e.profile.DropFrames)
 	dst.KeepFrames = e.strings.lookupString(e.profile.KeepFrames)
 	if c := len(e.profile.Comment); c > 0 {
-		dst.Comment = slices.Grow(dst.Comment, c)
+		dst.Comment = slices.GrowLen(dst.Comment, c)
 		for i, comment := range e.profile.Comment {
 			dst.Comment[i] = e.strings.lookupString(comment)
 		}
@@ -904,7 +908,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	}
 
 	// Copy locations.
-	dst.Location = slices.Grow(dst.Location, int(e.locations.resolved))
+	dst.Location = slices.GrowLen(dst.Location, int(e.locations.resolved))
 	for i, j := range e.locations.indices {
 		// i points to the location in the source profile.
 		// j point to the location in the new profile.
@@ -930,7 +934,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	}
 
 	// Copy mappings.
-	dst.Mapping = slices.Grow(dst.Mapping, int(e.mappings.resolved))
+	dst.Mapping = slices.GrowLen(dst.Mapping, int(e.mappings.resolved))
 	for i, j := range e.mappings.indices {
 		if j == 0 {
 			continue
@@ -951,7 +955,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	}
 
 	// Copy functions.
-	dst.Function = slices.Grow(dst.Function, int(e.functions.resolved))
+	dst.Function = slices.GrowLen(dst.Function, int(e.functions.resolved))
 	for i, j := range e.functions.indices {
 		if j == 0 {
 			continue
@@ -974,7 +978,7 @@ func (e *SampleExporter) ExportSamples(dst *profilev1.Profile, samples []*profil
 	}
 
 	// Copy strings.
-	dst.StringTable = slices.Grow(dst.StringTable, int(e.strings.resolved)+1)
+	dst.StringTable = slices.GrowLen(dst.StringTable, int(e.strings.resolved)+1)
 	for i, j := range e.strings.indices {
 		if j == 0 {
 			continue
@@ -1076,7 +1080,7 @@ func RenameLabel(p *profilev1.Profile, oldName, newName string) {
 
 func ZeroLabelStrings(p *profilev1.Profile) {
 	// TODO: A true bitmap should be used instead.
-	st := slices.Grow(uint32SlicePool.Get(), len(p.StringTable))
+	st := slices.GrowLen(uint32SlicePool.Get(), len(p.StringTable))
 	slices.Clear(st)
 	defer uint32SlicePool.Put(st)
 	for _, t := range p.SampleType {
@@ -1103,4 +1107,117 @@ func ZeroLabelStrings(p *profilev1.Profile) {
 			p.StringTable[i] = zeroString
 		}
 	}
+}
+
+var languageMatchers = map[string][]string{
+	"go":     {".go", "/usr/local/go/"},
+	"java":   {"java/", "sun/"},
+	"ruby":   {".rb", "gems/"},
+	"nodejs": {"./node_modules/", ".js"},
+	"dotnet": {"System.", "Microsoft."},
+	"python": {".py"},
+	"rust":   {"main.rs", "core.rs"},
+}
+
+func GetLanguage(profile *Profile, logger log.Logger) string {
+	for _, symbol := range profile.StringTable {
+		for lang, matcherPatterns := range languageMatchers {
+			for _, pattern := range matcherPatterns {
+				if strings.HasPrefix(symbol, pattern) || strings.HasSuffix(symbol, pattern) {
+					level.Debug(logger).Log("msg", "found profile language", "lang", lang, "symbol", symbol)
+					return lang
+				}
+			}
+		}
+	}
+	return "unknown"
+}
+
+// SetProfileMetadata sets the metadata on the profile.
+func SetProfileMetadata(p *profilev1.Profile, ty *typesv1.ProfileType, timeNanos int64, period int64) {
+	m := map[string]int64{
+		ty.SampleUnit: 0,
+		ty.SampleType: 0,
+		ty.PeriodType: 0,
+		ty.PeriodUnit: 0,
+	}
+	for i, s := range p.StringTable {
+		if _, ok := m[s]; !ok {
+			m[s] = int64(i)
+		}
+	}
+	for k, v := range m {
+		if v == 0 {
+			i := int64(len(p.StringTable))
+			p.StringTable = append(p.StringTable, k)
+			m[k] = i
+		}
+	}
+
+	p.SampleType = []*profilev1.ValueType{{Type: m[ty.SampleType], Unit: m[ty.SampleUnit]}}
+	p.DefaultSampleType = m[ty.SampleType]
+	p.PeriodType = &profilev1.ValueType{Type: m[ty.PeriodType], Unit: m[ty.PeriodUnit]}
+	p.TimeNanos = timeNanos
+
+	if period != 0 {
+		p.Period = period
+	}
+
+	// Try to guess period based on the profile type.
+	// TODO: This should be encoded into the profile type.
+	switch ty.Name {
+	case "process_cpu":
+		p.Period = 1000000000
+	case "memory":
+		p.Period = 512 * 1024
+	default:
+		p.Period = 1
+	}
+}
+
+func Marshal(p *profilev1.Profile, compress bool) ([]byte, error) {
+	b, err := p.MarshalVT()
+	if err != nil {
+		return nil, err
+	}
+	if !compress {
+		return b, nil
+	}
+	var buf bytes.Buffer
+	buf.Grow(len(b) / 2)
+	gw := gzipWriterPool.Get().(*gzip.Writer)
+	gw.Reset(&buf)
+	defer func() {
+		gw.Reset(io.Discard)
+		gzipWriterPool.Put(gw)
+	}()
+	if _, err = gw.Write(b); err != nil {
+		return nil, err
+	}
+	if err = gw.Flush(); err != nil {
+		return nil, err
+	}
+	if err = gw.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func Unmarshal(data []byte, p *profilev1.Profile) error {
+	gr := gzipReaderPool.Get().(*gzipReader)
+	defer gzipReaderPool.Put(gr)
+	r, err := gr.openBytes(data)
+	if err != nil {
+		return err
+	}
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufPool.Put(buf)
+	}()
+	buf.Grow(len(data) * 2)
+	if _, err = io.Copy(buf, r); err != nil {
+		return err
+	}
+	return p.UnmarshalVT(buf.Bytes())
 }

@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/grafana/pyroscope/pkg/tenant"

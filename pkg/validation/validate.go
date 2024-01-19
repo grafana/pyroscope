@@ -53,19 +53,22 @@ const (
 	ProfileSizeLimit  Reason = "profile_size_limit"
 	SampleLabelsLimit Reason = "sample_labels_limit"
 	MalformedProfile  Reason = "malformed_profile"
+	FlameGraphLimit   Reason = "flamegraph_limit"
 
-	SeriesLimitErrorMsg                = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
-	MissingLabelsErrorMsg              = "error at least one label pair is required per profile"
-	InvalidLabelsErrorMsg              = "invalid labels '%s' with error: %s"
-	MaxLabelNamesPerSeriesErrorMsg     = "profile series '%s' has %d label names; limit %d"
-	LabelNameTooLongErrorMsg           = "profile with labels '%s' has label name too long: '%s'"
-	LabelValueTooLongErrorMsg          = "profile with labels '%s' has label value too long: '%s'"
-	DuplicateLabelNamesErrorMsg        = "profile with labels '%s' has duplicate label name: '%s'"
-	QueryTooLongErrorMsg               = "the query time range exceeds the limit (max_query_length, actual: %s, limit: %s)"
-	ProfileTooBigErrorMsg              = "the profile with labels '%s' exceeds the size limit (max_profile_size_byte, actual: %d, limit: %d)"
-	ProfileTooManySamplesErrorMsg      = "the profile with labels '%s' exceeds the samples count limit (max_profile_stacktrace_samples, actual: %d, limit: %d)"
-	ProfileTooManySampleLabelsErrorMsg = "the profile with labels '%s' exceeds the sample labels limit (max_profile_stacktrace_sample_labels, actual: %d, limit: %d)"
-	NotInIngestionWindowErrorMsg       = "profile with labels '%s' is outside of ingestion window (profile timestamp: %s, %s)"
+	SeriesLimitErrorMsg                 = "Maximum active series limit exceeded (%d/%d), reduce the number of active streams (reduce labels or reduce label values), or contact your administrator to see if the limit can be increased"
+	MissingLabelsErrorMsg               = "error at least one label pair is required per profile"
+	InvalidLabelsErrorMsg               = "invalid labels '%s' with error: %s"
+	MaxLabelNamesPerSeriesErrorMsg      = "profile series '%s' has %d label names; limit %d"
+	LabelNameTooLongErrorMsg            = "profile with labels '%s' has label name too long: '%s'"
+	LabelValueTooLongErrorMsg           = "profile with labels '%s' has label value too long: '%s'"
+	DuplicateLabelNamesErrorMsg         = "profile with labels '%s' has duplicate label name: '%s'"
+	QueryTooLongErrorMsg                = "the query time range exceeds the limit (max_query_length, actual: %s, limit: %s)"
+	ProfileTooBigErrorMsg               = "the profile with labels '%s' exceeds the size limit (max_profile_size_byte, actual: %d, limit: %d)"
+	ProfileTooManySamplesErrorMsg       = "the profile with labels '%s' exceeds the samples count limit (max_profile_stacktrace_samples, actual: %d, limit: %d)"
+	ProfileTooManySampleLabelsErrorMsg  = "the profile with labels '%s' exceeds the sample labels limit (max_profile_stacktrace_sample_labels, actual: %d, limit: %d)"
+	NotInIngestionWindowErrorMsg        = "profile with labels '%s' is outside of ingestion window (profile timestamp: %s, %s)"
+	MaxFlameGraphNodesErrorMsg          = "max flamegraph nodes limit %d is greater than allowed %d"
+	MaxFlameGraphNodesUnlimitedErrorMsg = "max flamegraph nodes limit must be set (max allowed %d)"
 )
 
 var (
@@ -320,4 +323,25 @@ func ValidateRangeRequest(limits RangeRequestLimits, tenantIDs []string, req mod
 	}
 
 	return ValidatedRangeRequest{Interval: req}, nil
+}
+
+type FlameGraphLimits interface {
+	MaxFlameGraphNodesDefault(string) int
+	MaxFlameGraphNodesMax(string) int
+}
+
+func ValidateMaxNodes(l FlameGraphLimits, tenantIDs []string, n int64) (int64, error) {
+	if n == 0 {
+		return int64(validation.SmallestPositiveNonZeroIntPerTenant(tenantIDs, l.MaxFlameGraphNodesDefault)), nil
+	}
+	maxNodes := int64(validation.SmallestPositiveNonZeroIntPerTenant(tenantIDs, l.MaxFlameGraphNodesMax))
+	if maxNodes != 0 {
+		if n > maxNodes {
+			return 0, NewErrorf(FlameGraphLimit, MaxFlameGraphNodesErrorMsg, n, maxNodes)
+		}
+		if n < 0 {
+			return 0, NewErrorf(FlameGraphLimit, MaxFlameGraphNodesUnlimitedErrorMsg, maxNodes)
+		}
+	}
+	return n, nil
 }

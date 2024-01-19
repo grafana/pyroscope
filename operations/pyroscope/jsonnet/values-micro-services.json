@@ -18,7 +18,8 @@
             "cpu": 1,
             "memory": "8Gi"
           }
-        }
+        },
+        "terminationGracePeriodSeconds": 1200
       },
       "distributor": {
         "kind": "Deployment",
@@ -91,6 +92,9 @@
         "persistence": {
           "enabled": false
         },
+        "readinessProbe": {
+          "initialDelaySeconds": 60
+        },
         "replicaCount": 3,
         "resources": {
           "limits": {
@@ -102,6 +106,9 @@
           }
         }
       }
+    },
+    "extraArgs": {
+      "store-gateway.sharding-ring.replication-factor": "3"
     }
   }
 }

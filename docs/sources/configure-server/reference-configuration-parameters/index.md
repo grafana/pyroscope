@@ -86,154 +86,9 @@ api:
 # The frontend_worker block configures the frontend-worker.
 [frontend_worker: <frontend_worker>]
 
-limits:
-  # Per-tenant ingestion rate limit in sample size per second. Units in MB.
-  # CLI flag: -distributor.ingestion-rate-limit-mb
-  [ingestion_rate_mb: <float> | default = 4]
-
-  # Per-tenant allowed ingestion burst size (in sample size). Units in MB. The
-  # burst size refers to the per-distributor local rate limiter, and should be
-  # set at least to the maximum profile size expected in a single push request.
-  # CLI flag: -distributor.ingestion-burst-size-mb
-  [ingestion_burst_size_mb: <float> | default = 2]
-
-  # Maximum length accepted for label names.
-  # CLI flag: -validation.max-length-label-name
-  [max_label_name_length: <int> | default = 1024]
-
-  # Maximum length accepted for label value. This setting also applies to the
-  # metric name.
-  # CLI flag: -validation.max-length-label-value
-  [max_label_value_length: <int> | default = 2048]
-
-  # Maximum number of label names per series.
-  # CLI flag: -validation.max-label-names-per-series
-  [max_label_names_per_series: <int> | default = 30]
-
-  # Maximum number of sessions per series. 0 to disable.
-  # CLI flag: -validation.max-sessions-per-series
-  [max_sessions_per_series: <int> | default = 0]
-
-  # Maximum size of a profile in bytes. This is based off the uncompressed size.
-  # 0 to disable.
-  # CLI flag: -validation.max-profile-size-bytes
-  [max_profile_size_bytes: <int> | default = 4194304]
-
-  # Maximum number of samples in a profile. 0 to disable.
-  # CLI flag: -validation.max-profile-stacktrace-samples
-  [max_profile_stacktrace_samples: <int> | default = 16000]
-
-  # Maximum number of labels in a profile sample. 0 to disable.
-  # CLI flag: -validation.max-profile-stacktrace-sample-labels
-  [max_profile_stacktrace_sample_labels: <int> | default = 100]
-
-  # Maximum depth of a profile stacktrace. Profiles are not rejected instead
-  # stacktraces are truncated. 0 to disable.
-  # CLI flag: -validation.max-profile-stacktrace-depth
-  [max_profile_stacktrace_depth: <int> | default = 1000]
-
-  # Maximum length of a profile symbol value (labels, function names and
-  # filenames, etc...). Profiles are not rejected instead symbol values are
-  # truncated. 0 to disable.
-  # CLI flag: -validation.max-profile-symbol-value-length
-  [max_profile_symbol_value_length: <int> | default = 65535]
-
-  # The tenant's shard size used by shuffle-sharding. Must be set both on
-  # ingesters and distributors. 0 disables shuffle sharding.
-  # CLI flag: -distributor.ingestion-tenant-shard-size
-  [ingestion_tenant_shard_size: <int> | default = 0]
-
-  # Maximum number of active series of profiles per tenant, per ingester. 0 to
-  # disable.
-  # CLI flag: -ingester.max-local-series-per-tenant
-  [max_local_series_per_tenant: <int> | default = 0]
-
-  # Maximum number of active series of profiles per tenant, across the cluster.
-  # 0 to disable. When the global limit is enabled, each ingester is configured
-  # with a dynamic local limit based on the replication factor and the current
-  # number of healthy ingesters, and is kept updated whenever the number of
-  # ingesters change.
-  # CLI flag: -ingester.max-global-series-per-tenant
-  [max_global_series_per_tenant: <int> | default = 5000]
-
-  # Limit how far back in profiling data can be queried, up until lookback
-  # duration ago. This limit is enforced in the query frontend. If the requested
-  # time range is outside the allowed range, the request will not fail, but will
-  # be modified to only query data within the allowed time range. 0 to disable,
-  # default to 7d.
-  # CLI flag: -querier.max-query-lookback
-  [max_query_lookback: <duration> | default = 1w]
-
-  # The limit to length of queries. 0 to disable.
-  # CLI flag: -querier.max-query-length
-  [max_query_length: <duration> | default = 1d]
-
-  # Maximum number of queries that will be scheduled in parallel by the
-  # frontend.
-  # CLI flag: -querier.max-query-parallelism
-  [max_query_parallelism: <int> | default = 0]
-
-  # The tenant's shard size, used when store-gateway sharding is enabled. Value
-  # of 0 disables shuffle sharding for the tenant, that is all tenant blocks are
-  # sharded across all store-gateway replicas.
-  # CLI flag: -store-gateway.tenant-shard-size
-  [store_gateway_tenant_shard_size: <int> | default = 0]
-
-  # Split queries by a time interval and execute in parallel. The value 0
-  # disables splitting by time
-  # CLI flag: -querier.split-queries-by-interval
-  [split_queries_by_interval: <duration> | default = 0s]
-
-  # Delete blocks containing samples older than the specified retention period.
-  # 0 to disable.
-  # CLI flag: -compactor.blocks-retention-period
-  [compactor_blocks_retention_period: <duration> | default = 0s]
-
-  # The number of shards to use when splitting blocks. 0 to disable splitting.
-  # CLI flag: -compactor.split-and-merge-shards
-  [compactor_split_and_merge_shards: <int> | default = 0]
-
-  # Number of groups that blocks for splitting should be grouped into. Each
-  # group of blocks is then split separately. Number of output split shards is
-  # controlled by -compactor.split-and-merge-shards.
-  # CLI flag: -compactor.split-groups
-  [compactor_split_groups: <int> | default = 1]
-
-  # Max number of compactors that can compact blocks for single tenant. 0 to
-  # disable the limit and use all compactors.
-  # CLI flag: -compactor.compactor-tenant-shard-size
-  [compactor_tenant_shard_size: <int> | default = 0]
-
-  # If a partial block (unfinished block without meta.json file) hasn't been
-  # modified for this time, it will be marked for deletion. The minimum accepted
-  # value is 4h0m0s: a lower value will be ignored and the feature disabled. 0
-  # to disable.
-  # CLI flag: -compactor.partial-block-deletion-delay
-  [compactor_partial_block_deletion_delay: <duration> | default = 1d]
-
-  # S3 server-side encryption type. Required to enable server-side encryption
-  # overrides for a specific tenant. If not set, the default S3 client settings
-  # are used.
-  [s3_sse_type: <string> | default = ""]
-
-  # S3 server-side encryption KMS Key ID. Ignored if the SSE type override is
-  # not set.
-  [s3_sse_kms_key_id: <string> | default = ""]
-
-  # S3 server-side encryption KMS encryption context. If unset and the key ID
-  # override is set, the encryption context will not be provided to S3. Ignored
-  # if the SSE type override is not set.
-  [s3_sse_kms_encryption_context: <string> | default = ""]
-
-  # This limits how far into the past profiling data can be ingested. This limit
-  # is enforced in the distributor. 0 to disable, defaults to 1h.
-  # CLI flag: -validation.reject-older-than
-  [reject_older_than: <duration> | default = 1h]
-
-  # This limits how far into the future profiling data can be ingested. This
-  # limit is enforced in the distributor. 0 to disable, defaults to 10m.
-  # CLI flag: -validation.reject-newer-than
-  [reject_newer_than: <duration> | default = 10m]
+# The limits block configures default and per-tenant limits imposed by
+# components.
+[limits: <limits>]
 
 # The query_scheduler block configures the query-scheduler.
 [query_scheduler: <query_scheduler>]
@@ -241,259 +96,8 @@ limits:
 # The ingester block configures the ingester.
 [ingester: <ingester>]
 
-store_gateway:
-  # The hash ring configuration.
-  sharding_ring:
-    # The key-value store used to share the hash ring across multiple instances.
-    kvstore:
-      # Backend storage to use for the ring. Supported values are: consul, etcd,
-      # inmemory, memberlist, multi.
-      # CLI flag: -store-gateway.sharding-ring.store
-      [store: <string> | default = "memberlist"]
-
-      # The prefix for the keys in the store. Should end with a /.
-      # CLI flag: -store-gateway.sharding-ring.prefix
-      [prefix: <string> | default = "collectors/"]
-
-      consul:
-        # Hostname and port of Consul.
-        # CLI flag: -store-gateway.sharding-ring.consul.hostname
-        [host: <string> | default = "localhost:8500"]
-
-        # ACL Token used to interact with Consul.
-        # CLI flag: -store-gateway.sharding-ring.consul.acl-token
-        [acl_token: <string> | default = ""]
-
-        # HTTP timeout when talking to Consul
-        # CLI flag: -store-gateway.sharding-ring.consul.client-timeout
-        [http_client_timeout: <duration> | default = 20s]
-
-        # Enable consistent reads to Consul.
-        # CLI flag: -store-gateway.sharding-ring.consul.consistent-reads
-        [consistent_reads: <boolean> | default = false]
-
-        # Rate limit when watching key or prefix in Consul, in requests per
-        # second. 0 disables the rate limit.
-        # CLI flag: -store-gateway.sharding-ring.consul.watch-rate-limit
-        [watch_rate_limit: <float> | default = 1]
-
-        # Burst size used in rate limit. Values less than 1 are treated as 1.
-        # CLI flag: -store-gateway.sharding-ring.consul.watch-burst-size
-        [watch_burst_size: <int> | default = 1]
-
-        # Maximum duration to wait before retrying a Compare And Swap (CAS)
-        # operation.
-        # CLI flag: -store-gateway.sharding-ring.consul.cas-retry-delay
-        [cas_retry_delay: <duration> | default = 1s]
-
-      etcd:
-        # The etcd endpoints to connect to.
-        # CLI flag: -store-gateway.sharding-ring.etcd.endpoints
-        [endpoints: <list of strings> | default = []]
-
-        # The dial timeout for the etcd connection.
-        # CLI flag: -store-gateway.sharding-ring.etcd.dial-timeout
-        [dial_timeout: <duration> | default = 10s]
-
-        # The maximum number of retries to do for failed ops.
-        # CLI flag: -store-gateway.sharding-ring.etcd.max-retries
-        [max_retries: <int> | default = 10]
-
-        # Enable TLS.
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-enabled
-        [tls_enabled: <boolean> | default = false]
-
-        # Path to the client certificate, which will be used for authenticating
-        # with the server. Also requires the key path to be configured.
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-cert-path
-        [tls_cert_path: <string> | default = ""]
-
-        # Path to the key for the client certificate. Also requires the client
-        # certificate to be configured.
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-key-path
-        [tls_key_path: <string> | default = ""]
-
-        # Path to the CA certificates to validate server certificate against. If
-        # not set, the host's root CA certificates are used.
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-ca-path
-        [tls_ca_path: <string> | default = ""]
-
-        # Override the expected name on the server certificate.
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-server-name
-        [tls_server_name: <string> | default = ""]
-
-        # Skip validating server certificate.
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-insecure-skip-verify
-        [tls_insecure_skip_verify: <boolean> | default = false]
-
-        # Override the default cipher suite list (separated by commas). Allowed
-        # values:
-        # 
-        # Secure Ciphers:
-        # - TLS_RSA_WITH_AES_128_CBC_SHA
-        # - TLS_RSA_WITH_AES_256_CBC_SHA
-        # - TLS_RSA_WITH_AES_128_GCM_SHA256
-        # - TLS_RSA_WITH_AES_256_GCM_SHA384
-        # - TLS_AES_128_GCM_SHA256
-        # - TLS_AES_256_GCM_SHA384
-        # - TLS_CHACHA20_POLY1305_SHA256
-        # - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
-        # - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
-        # - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
-        # - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
-        # - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
-        # - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
-        # - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-        # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-        # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
-        # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-        # 
-        # Insecure Ciphers:
-        # - TLS_RSA_WITH_RC4_128_SHA
-        # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
-        # - TLS_RSA_WITH_AES_128_CBC_SHA256
-        # - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
-        # - TLS_ECDHE_RSA_WITH_RC4_128_SHA
-        # - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
-        # - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
-        # - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-cipher-suites
-        [tls_cipher_suites: <string> | default = ""]
-
-        # Override the default minimum TLS version. Allowed values:
-        # VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
-        # CLI flag: -store-gateway.sharding-ring.etcd.tls-min-version
-        [tls_min_version: <string> | default = ""]
-
-        # Etcd username.
-        # CLI flag: -store-gateway.sharding-ring.etcd.username
-        [username: <string> | default = ""]
-
-        # Etcd password.
-        # CLI flag: -store-gateway.sharding-ring.etcd.password
-        [password: <string> | default = ""]
-
-      multi:
-        # Primary backend storage used by multi-client.
-        # CLI flag: -store-gateway.sharding-ring.multi.primary
-        [primary: <string> | default = ""]
-
-        # Secondary backend storage used by multi-client.
-        # CLI flag: -store-gateway.sharding-ring.multi.secondary
-        [secondary: <string> | default = ""]
-
-        # Mirror writes to secondary store.
-        # CLI flag: -store-gateway.sharding-ring.multi.mirror-enabled
-        [mirror_enabled: <boolean> | default = false]
-
-        # Timeout for storing value to secondary store.
-        # CLI flag: -store-gateway.sharding-ring.multi.mirror-timeout
-        [mirror_timeout: <duration> | default = 2s]
-
-    # Period at which to heartbeat to the ring. 0 = disabled.
-    # CLI flag: -store-gateway.sharding-ring.heartbeat-period
-    [heartbeat_period: <duration> | default = 15s]
-
-    # The heartbeat timeout after which store-gateways are considered unhealthy
-    # within the ring. 0 = never (timeout disabled).
-    # CLI flag: -store-gateway.sharding-ring.heartbeat-timeout
-    [heartbeat_timeout: <duration> | default = 1m]
-
-    # Instance ID to register in the ring.
-    # CLI flag: -store-gateway.sharding-ring.instance-id
-    [instance_id: <string> | default = "<hostname>"]
-
-    # List of network interface names to look up when finding the instance IP
-    # address.
-    # CLI flag: -store-gateway.sharding-ring.instance-interface-names
-    [instance_interface_names: <list of strings> | default = [<private network interfaces>]]
-
-    # Port to advertise in the ring (defaults to -server.http-listen-port).
-    # CLI flag: -store-gateway.sharding-ring.instance-port
-    [instance_port: <int> | default = 0]
-
-    # IP address to advertise in the ring. Default is auto-detected.
-    # CLI flag: -store-gateway.sharding-ring.instance-addr
-    [instance_addr: <string> | default = ""]
-
-    # Enable using a IPv6 instance address. (default false)
-    # CLI flag: -store-gateway.sharding-ring.instance-enable-ipv6
-    [instance_enable_ipv6: <boolean> | default = false]
-
-    # The replication factor to use when sharding blocks. This option needs be
-    # set both on the store-gateway, querier and ruler when running in
-    # microservices mode.
-    # CLI flag: -store-gateway.sharding-ring.replication-factor
-    [replication_factor: <int> | default = 1]
-
-    # File path where tokens are stored. If empty, tokens are not stored at
-    # shutdown and restored at startup.
-    # CLI flag: -store-gateway.sharding-ring.tokens-file-path
-    [tokens_file_path: <string> | default = ""]
-
-    # True to enable zone-awareness and replicate blocks across different
-    # availability zones. This option needs be set both on the store-gateway,
-    # querier and ruler when running in microservices mode.
-    # CLI flag: -store-gateway.sharding-ring.zone-awareness-enabled
-    [zone_awareness_enabled: <boolean> | default = false]
-
-    # Minimum time to wait for ring stability at startup, if set to positive
-    # value.
-    # CLI flag: -store-gateway.sharding-ring.wait-stability-min-duration
-    [wait_stability_min_duration: <duration> | default = 0s]
-
-    # Maximum time to wait for ring stability at startup. If the store-gateway
-    # ring keeps changing after this period of time, the store-gateway will
-    # start anyway.
-    # CLI flag: -store-gateway.sharding-ring.wait-stability-max-duration
-    [wait_stability_max_duration: <duration> | default = 5m]
-
-    # The availability zone where this instance is running. Required if
-    # zone-awareness is enabled.
-    # CLI flag: -store-gateway.sharding-ring.instance-availability-zone
-    [instance_availability_zone: <string> | default = ""]
-
-    # Unregister from the ring upon clean shutdown.
-    # CLI flag: -store-gateway.sharding-ring.unregister-on-shutdown
-    [unregister_on_shutdown: <boolean> | default = true]
-
-  bucket_store:
-    # Directory to store synchronized pyroscope block headers. This directory is
-    # not required to be persisted between restarts, but it's highly recommended
-    # in order to improve the store-gateway startup time.
-    # CLI flag: -blocks-storage.bucket-store.sync-dir
-    [sync_dir: <string> | default = "./data/pyroscope-sync/"]
-
-    # How frequently to scan the bucket, or to refresh the bucket index (if
-    # enabled), in order to look for changes (new blocks shipped by ingesters
-    # and blocks deleted by retention or compaction).
-    # CLI flag: -blocks-storage.bucket-store.sync-interval
-    [sync_interval: <duration> | default = 15m]
-
-    # Maximum number of concurrent tenants synching blocks.
-    # CLI flag: -blocks-storage.bucket-store.tenant-sync-concurrency
-    [tenant_sync_concurrency: <int> | default = 10]
-
-    # Blocks with minimum time within this duration are ignored, and not loaded
-    # by store-gateway. Useful when used together with
-    # -querier.query-store-after to prevent loading young blocks, because there
-    # are usually many of them (depending on number of ingesters) and they are
-    # not yet compacted. Negative values or 0 disable the filter.
-    # CLI flag: -blocks-storage.bucket-store.ignore-blocks-within
-    [ignore_blocks_within: <duration> | default = 3h]
-
-    # Number of Go routines to use when syncing block meta files from object
-    # storage per tenant.
-    # CLI flag: -blocks-storage.bucket-store.meta-sync-concurrency
-    [meta_sync_concurrency: <int> | default = 20]
-
-    # Duration after which the blocks marked for deletion will be filtered out
-    # while fetching blocks. The idea of ignore-deletion-marks-delay is to
-    # ignore blocks that are marked for deletion with some delay. This ensures
-    # store can still serve blocks that are meant to be deleted but do not have
-    # a replacement yet.
-    # CLI flag: -blocks-storage.bucket-store.ignore-deletion-marks-delay
-    [ignore_deletion_mark_delay: <duration> | default = 30m]
+# The store_gateway block configures the store-gateway.
+[store_gateway: <store_gateway>]
 
 # The memberlist block configures the Gossip memberlist.
 [memberlist: <memberlist>]
@@ -511,6 +115,22 @@ pyroscopedb:
   # CLI flag: -pyroscopedb.row-group-target-size
   [row_group_target_size: <int> | default = 1342177280]
 
+  # How much available disk space to keep in GiB
+  # CLI flag: -pyroscopedb.retention-policy-min-free-disk-gb
+  [min_free_disk_gb: <int> | default = 10]
+
+  # Which percentage of free disk space to keep
+  # CLI flag: -pyroscopedb.retention-policy-min-disk-available-percentage
+  [min_disk_available_percentage: <float> | default = 0.05]
+
+  # How often to enforce disk retention
+  # CLI flag: -pyroscopedb.retention-policy-enforcement-interval
+  [enforcement_interval: <duration> | default = 5m]
+
+  # Disable retention policy enforcement
+  # CLI flag: -pyroscopedb.retention-policy-disable
+  [disable_enforcement: <boolean> | default = false]
+
 tracing:
   # Set to false to disable tracing.
   # CLI flag: -tracing.enabled
@@ -526,300 +146,14 @@ runtime_config:
   # CLI flag: -runtime-config.file
   [file: <string> | default = ""]
 
-compactor:
-  # List of compaction time ranges.
-  # CLI flag: -compactor.block-ranges
-  [block_ranges: <list of durations> | default = 1h0m0s,2h0m0s,8h0m0s]
-
-  # Number of Go routines to use when downloading blocks for compaction and
-  # uploading resulting blocks.
-  # CLI flag: -compactor.block-sync-concurrency
-  [block_sync_concurrency: <int> | default = 8]
-
-  # Number of Go routines to use when syncing block meta files from the long
-  # term storage.
-  # CLI flag: -compactor.meta-sync-concurrency
-  [meta_sync_concurrency: <int> | default = 20]
-
-  # Directory to temporarily store blocks during compaction. This directory is
-  # not required to be persisted between restarts.
-  # CLI flag: -compactor.data-dir
-  [data_dir: <string> | default = "./data-compactor"]
-
-  # The frequency at which the compaction runs
-  # CLI flag: -compactor.compaction-interval
-  [compaction_interval: <duration> | default = 30m]
-
-  # How many times to retry a failed compaction within a single compaction run.
-  # CLI flag: -compactor.compaction-retries
-  [compaction_retries: <int> | default = 3]
-
-  # Max number of concurrent compactions running.
-  # CLI flag: -compactor.compaction-concurrency
-  [compaction_concurrency: <int> | default = 1]
-
-  # How long the compactor waits before compacting first-level blocks that are
-  # uploaded by the ingesters. This configuration option allows for the
-  # reduction of cases where the compactor begins to compact blocks before all
-  # ingesters have uploaded their blocks to the storage.
-  # CLI flag: -compactor.first-level-compaction-wait-period
-  [first_level_compaction_wait_period: <duration> | default = 25m]
-
-  # How frequently compactor should run blocks cleanup and maintenance, as well
-  # as update the bucket index.
-  # CLI flag: -compactor.cleanup-interval
-  [cleanup_interval: <duration> | default = 15m]
-
-  # Max number of tenants for which blocks cleanup and maintenance should run
-  # concurrently.
-  # CLI flag: -compactor.cleanup-concurrency
-  [cleanup_concurrency: <int> | default = 20]
-
-  # Time before a block marked for deletion is deleted from bucket. If not 0,
-  # blocks will be marked for deletion and compactor component will permanently
-  # delete blocks marked for deletion from the bucket. If 0, blocks will be
-  # deleted straight away. Note that deleting blocks immediately can cause query
-  # failures.
-  # CLI flag: -compactor.deletion-delay
-  [deletion_delay: <duration> | default = 12h]
-
-  [tenant_cleanup_delay: <duration> | default = ]
-
-  # Max time for starting compactions for a single tenant. After this time no
-  # new compactions for the tenant are started before next compaction cycle.
-  # This can help in multi-tenant environments to avoid single tenant using all
-  # compaction time, but also in single-tenant environments to force new
-  # discovery of blocks more often. 0 = disabled.
-  # CLI flag: -compactor.max-compaction-time
-  [max_compaction_time: <duration> | default = 1h]
-
-  # If enabled, will delete the bucket-index, markers and debug files in the
-  # tenant bucket when there are no blocks left in the index.
-  # CLI flag: -compactor.no-blocks-file-cleanup-enabled
-  [no_blocks_file_cleanup_enabled: <boolean> | default = false]
-
-  # Number of goroutines opening blocks before compaction.
-  # CLI flag: -compactor.max-opening-blocks-concurrency
-  [max_opening_blocks_concurrency: <int> | default = 16]
-
-  # Comma separated list of tenants that can be compacted. If specified, only
-  # these tenants will be compacted by compactor, otherwise all tenants can be
-  # compacted. Subject to sharding.
-  # CLI flag: -compactor.enabled-tenants
-  [enabled_tenants: <string> | default = ""]
-
-  # Comma separated list of tenants that cannot be compacted by this compactor.
-  # If specified, and compactor would normally pick given tenant for compaction
-  # (via -compactor.enabled-tenants or sharding), it will be ignored instead.
-  # CLI flag: -compactor.disabled-tenants
-  [disabled_tenants: <string> | default = ""]
-
-  sharding_ring:
-    # The key-value store used to share the hash ring across multiple instances.
-    kvstore:
-      # Backend storage to use for the ring. Supported values are: consul, etcd,
-      # inmemory, memberlist, multi.
-      # CLI flag: -compactor.ring.store
-      [store: <string> | default = "memberlist"]
-
-      # The prefix for the keys in the store. Should end with a /.
-      # CLI flag: -compactor.ring.prefix
-      [prefix: <string> | default = "collectors/"]
-
-      consul:
-        # Hostname and port of Consul.
-        # CLI flag: -compactor.ring.consul.hostname
-        [host: <string> | default = "localhost:8500"]
-
-        # ACL Token used to interact with Consul.
-        # CLI flag: -compactor.ring.consul.acl-token
-        [acl_token: <string> | default = ""]
-
-        # HTTP timeout when talking to Consul
-        # CLI flag: -compactor.ring.consul.client-timeout
-        [http_client_timeout: <duration> | default = 20s]
-
-        # Enable consistent reads to Consul.
-        # CLI flag: -compactor.ring.consul.consistent-reads
-        [consistent_reads: <boolean> | default = false]
-
-        # Rate limit when watching key or prefix in Consul, in requests per
-        # second. 0 disables the rate limit.
-        # CLI flag: -compactor.ring.consul.watch-rate-limit
-        [watch_rate_limit: <float> | default = 1]
-
-        # Burst size used in rate limit. Values less than 1 are treated as 1.
-        # CLI flag: -compactor.ring.consul.watch-burst-size
-        [watch_burst_size: <int> | default = 1]
-
-        # Maximum duration to wait before retrying a Compare And Swap (CAS)
-        # operation.
-        # CLI flag: -compactor.ring.consul.cas-retry-delay
-        [cas_retry_delay: <duration> | default = 1s]
-
-      etcd:
-        # The etcd endpoints to connect to.
-        # CLI flag: -compactor.ring.etcd.endpoints
-        [endpoints: <list of strings> | default = []]
-
-        # The dial timeout for the etcd connection.
-        # CLI flag: -compactor.ring.etcd.dial-timeout
-        [dial_timeout: <duration> | default = 10s]
-
-        # The maximum number of retries to do for failed ops.
-        # CLI flag: -compactor.ring.etcd.max-retries
-        [max_retries: <int> | default = 10]
-
-        # Enable TLS.
-        # CLI flag: -compactor.ring.etcd.tls-enabled
-        [tls_enabled: <boolean> | default = false]
-
-        # Path to the client certificate, which will be used for authenticating
-        # with the server. Also requires the key path to be configured.
-        # CLI flag: -compactor.ring.etcd.tls-cert-path
-        [tls_cert_path: <string> | default = ""]
-
-        # Path to the key for the client certificate. Also requires the client
-        # certificate to be configured.
-        # CLI flag: -compactor.ring.etcd.tls-key-path
-        [tls_key_path: <string> | default = ""]
-
-        # Path to the CA certificates to validate server certificate against. If
-        # not set, the host's root CA certificates are used.
-        # CLI flag: -compactor.ring.etcd.tls-ca-path
-        [tls_ca_path: <string> | default = ""]
-
-        # Override the expected name on the server certificate.
-        # CLI flag: -compactor.ring.etcd.tls-server-name
-        [tls_server_name: <string> | default = ""]
-
-        # Skip validating server certificate.
-        # CLI flag: -compactor.ring.etcd.tls-insecure-skip-verify
-        [tls_insecure_skip_verify: <boolean> | default = false]
-
-        # Override the default cipher suite list (separated by commas). Allowed
-        # values:
-        # 
-        # Secure Ciphers:
-        # - TLS_RSA_WITH_AES_128_CBC_SHA
-        # - TLS_RSA_WITH_AES_256_CBC_SHA
-        # - TLS_RSA_WITH_AES_128_GCM_SHA256
-        # - TLS_RSA_WITH_AES_256_GCM_SHA384
-        # - TLS_AES_128_GCM_SHA256
-        # - TLS_AES_256_GCM_SHA384
-        # - TLS_CHACHA20_POLY1305_SHA256
-        # - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
-        # - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
-        # - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
-        # - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
-        # - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
-        # - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
-        # - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-        # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-        # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
-        # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-        # 
-        # Insecure Ciphers:
-        # - TLS_RSA_WITH_RC4_128_SHA
-        # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
-        # - TLS_RSA_WITH_AES_128_CBC_SHA256
-        # - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
-        # - TLS_ECDHE_RSA_WITH_RC4_128_SHA
-        # - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
-        # - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
-        # - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
-        # CLI flag: -compactor.ring.etcd.tls-cipher-suites
-        [tls_cipher_suites: <string> | default = ""]
-
-        # Override the default minimum TLS version. Allowed values:
-        # VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13
-        # CLI flag: -compactor.ring.etcd.tls-min-version
-        [tls_min_version: <string> | default = ""]
-
-        # Etcd username.
-        # CLI flag: -compactor.ring.etcd.username
-        [username: <string> | default = ""]
-
-        # Etcd password.
-        # CLI flag: -compactor.ring.etcd.password
-        [password: <string> | default = ""]
-
-      multi:
-        # Primary backend storage used by multi-client.
-        # CLI flag: -compactor.ring.multi.primary
-        [primary: <string> | default = ""]
-
-        # Secondary backend storage used by multi-client.
-        # CLI flag: -compactor.ring.multi.secondary
-        [secondary: <string> | default = ""]
-
-        # Mirror writes to secondary store.
-        # CLI flag: -compactor.ring.multi.mirror-enabled
-        [mirror_enabled: <boolean> | default = false]
-
-        # Timeout for storing value to secondary store.
-        # CLI flag: -compactor.ring.multi.mirror-timeout
-        [mirror_timeout: <duration> | default = 2s]
-
-    # Period at which to heartbeat to the ring. 0 = disabled.
-    # CLI flag: -compactor.ring.heartbeat-period
-    [heartbeat_period: <duration> | default = 15s]
-
-    # The heartbeat timeout after which compactors are considered unhealthy
-    # within the ring. 0 = never (timeout disabled).
-    # CLI flag: -compactor.ring.heartbeat-timeout
-    [heartbeat_timeout: <duration> | default = 1m]
-
-    # Instance ID to register in the ring.
-    # CLI flag: -compactor.ring.instance-id
-    [instance_id: <string> | default = "<hostname>"]
-
-    # List of network interface names to look up when finding the instance IP
-    # address.
-    # CLI flag: -compactor.ring.instance-interface-names
-    [instance_interface_names: <list of strings> | default = [<private network interfaces>]]
-
-    # Port to advertise in the ring (defaults to -server.http-listen-port).
-    # CLI flag: -compactor.ring.instance-port
-    [instance_port: <int> | default = 0]
-
-    # IP address to advertise in the ring. Default is auto-detected.
-    # CLI flag: -compactor.ring.instance-addr
-    [instance_addr: <string> | default = ""]
-
-    # Enable using a IPv6 instance address. (default false)
-    # CLI flag: -compactor.ring.instance-enable-ipv6
-    [instance_enable_ipv6: <boolean> | default = false]
-
-    # Minimum time to wait for ring stability at startup. 0 to disable.
-    # CLI flag: -compactor.ring.wait-stability-min-duration
-    [wait_stability_min_duration: <duration> | default = 0s]
-
-    # Maximum time to wait for ring stability at startup. If the compactor ring
-    # keeps changing after this period of time, the compactor will start anyway.
-    # CLI flag: -compactor.ring.wait-stability-max-duration
-    [wait_stability_max_duration: <duration> | default = 5m]
-
-    # Timeout for waiting on compactor to become ACTIVE in the ring.
-    # CLI flag: -compactor.ring.wait-active-instance-timeout
-    [wait_active_instance_timeout: <duration> | default = 10m]
-
-  # The sorting to use when deciding which compaction jobs should run first for
-  # a given tenant. Supported values are: smallest-range-oldest-blocks-first,
-  # newest-blocks-first.
-  # CLI flag: -compactor.compaction-jobs-order
-  [compaction_jobs_order: <string> | default = "smallest-range-oldest-blocks-first"]
-
-  # Experimental: The strategy to use when splitting blocks during compaction.
-  # Supported values are: fingerprint, stacktracePartition.
-  # CLI flag: -compactor.compaction-split-by
-  [compaction_split_by: <string> | default = "fingerprint"]
+# The compactor block configures the compactor.
+[compactor: <compactor>]
 
 storage:
   # Backend storage to use. Supported backends are: s3, gcs, azure, swift,
   # filesystem, cos.
   # CLI flag: -storage.backend
-  [backend: <string> | default = "filesystem"]
+  [backend: <string> | default = ""]
 
   # The s3_backend block configures the connection to Amazon S3 object storage
   # backend.
@@ -1037,13 +371,23 @@ grpc_tls_config:
 # CLI flag: -server.register-instrumentation
 [register_instrumentation: <boolean> | default = true]
 
+# If set to true, gRPC statuses will be reported in instrumentation labels with
+# their string representations. Otherwise, they will be reported as "error".
+# CLI flag: -server.report-grpc-codes-in-instrumentation-label-enabled
+[report_grpc_codes_in_instrumentation_label_enabled: <boolean> | default = false]
+
 # Timeout for graceful shutdowns
 # CLI flag: -server.graceful-shutdown-timeout
 [graceful_shutdown_timeout: <duration> | default = 30s]
 
-# Read timeout for HTTP server
+# Read timeout for entire HTTP request, including headers and body.
 # CLI flag: -server.http-read-timeout
 [http_server_read_timeout: <duration> | default = 30s]
+
+# Read timeout for HTTP request headers. If set to 0, value of
+# -server.http-read-timeout is used.
+# CLI flag: -server.http-read-header-timeout
+[http_server_read_header_timeout: <duration> | default = 0s]
 
 # Write timeout for HTTP server
 # CLI flag: -server.http-write-timeout
@@ -1052,6 +396,11 @@ grpc_tls_config:
 # Idle timeout for HTTP server
 # CLI flag: -server.http-idle-timeout
 [http_server_idle_timeout: <duration> | default = 2m]
+
+# Log closed connections that did not receive any response, most likely because
+# client didn't send any request within timeout.
+# CLI flag: -server.http-log-closed-connections-without-response-enabled
+[http_log_closed_connections_without_response_enabled: <boolean> | default = false]
 
 # Limit on the size of a gRPC message this server can receive (bytes).
 # CLI flag: -server.grpc-max-recv-msg-size-bytes
@@ -1102,6 +451,11 @@ grpc_tls_config:
 # streams, server will send GOAWAY and close the connection.
 # CLI flag: -server.grpc.keepalive.ping-without-stream-allowed
 [grpc_server_ping_without_stream_allowed: <boolean> | default = false]
+
+# If non-zero, configures the amount of GRPC server workers used to serve the
+# requests.
+# CLI flag: -server.grpc.num-workers
+[grpc_server_num_workers: <int> | default = 0]
 
 # Output log messages in the given format. Valid formats: [logfmt, json]
 # CLI flag: -log.format
@@ -1526,6 +880,563 @@ The `query_scheduler` block configures the query-scheduler.
 [max_used_instances: <int> | default = 0]
 ```
 
+### store_gateway
+
+The `store_gateway` block configures the store-gateway.
+
+```yaml
+# The hash ring configuration.
+sharding_ring:
+  # The key-value store used to share the hash ring across multiple instances.
+  kvstore:
+    # Backend storage to use for the ring. Supported values are: consul, etcd,
+    # inmemory, memberlist, multi.
+    # CLI flag: -store-gateway.sharding-ring.store
+    [store: <string> | default = "memberlist"]
+
+    # The prefix for the keys in the store. Should end with a /.
+    # CLI flag: -store-gateway.sharding-ring.prefix
+    [prefix: <string> | default = "collectors/"]
+
+    consul:
+      # Hostname and port of Consul.
+      # CLI flag: -store-gateway.sharding-ring.consul.hostname
+      [host: <string> | default = "localhost:8500"]
+
+      # ACL Token used to interact with Consul.
+      # CLI flag: -store-gateway.sharding-ring.consul.acl-token
+      [acl_token: <string> | default = ""]
+
+      # HTTP timeout when talking to Consul
+      # CLI flag: -store-gateway.sharding-ring.consul.client-timeout
+      [http_client_timeout: <duration> | default = 20s]
+
+      # Enable consistent reads to Consul.
+      # CLI flag: -store-gateway.sharding-ring.consul.consistent-reads
+      [consistent_reads: <boolean> | default = false]
+
+      # Rate limit when watching key or prefix in Consul, in requests per
+      # second. 0 disables the rate limit.
+      # CLI flag: -store-gateway.sharding-ring.consul.watch-rate-limit
+      [watch_rate_limit: <float> | default = 1]
+
+      # Burst size used in rate limit. Values less than 1 are treated as 1.
+      # CLI flag: -store-gateway.sharding-ring.consul.watch-burst-size
+      [watch_burst_size: <int> | default = 1]
+
+      # Maximum duration to wait before retrying a Compare And Swap (CAS)
+      # operation.
+      # CLI flag: -store-gateway.sharding-ring.consul.cas-retry-delay
+      [cas_retry_delay: <duration> | default = 1s]
+
+    etcd:
+      # The etcd endpoints to connect to.
+      # CLI flag: -store-gateway.sharding-ring.etcd.endpoints
+      [endpoints: <list of strings> | default = []]
+
+      # The dial timeout for the etcd connection.
+      # CLI flag: -store-gateway.sharding-ring.etcd.dial-timeout
+      [dial_timeout: <duration> | default = 10s]
+
+      # The maximum number of retries to do for failed ops.
+      # CLI flag: -store-gateway.sharding-ring.etcd.max-retries
+      [max_retries: <int> | default = 10]
+
+      # Enable TLS.
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-enabled
+      [tls_enabled: <boolean> | default = false]
+
+      # Path to the client certificate, which will be used for authenticating
+      # with the server. Also requires the key path to be configured.
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-cert-path
+      [tls_cert_path: <string> | default = ""]
+
+      # Path to the key for the client certificate. Also requires the client
+      # certificate to be configured.
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-key-path
+      [tls_key_path: <string> | default = ""]
+
+      # Path to the CA certificates to validate server certificate against. If
+      # not set, the host's root CA certificates are used.
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-ca-path
+      [tls_ca_path: <string> | default = ""]
+
+      # Override the expected name on the server certificate.
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-server-name
+      [tls_server_name: <string> | default = ""]
+
+      # Skip validating server certificate.
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-insecure-skip-verify
+      [tls_insecure_skip_verify: <boolean> | default = false]
+
+      # Override the default cipher suite list (separated by commas). Allowed
+      # values:
+      # 
+      # Secure Ciphers:
+      # - TLS_RSA_WITH_AES_128_CBC_SHA
+      # - TLS_RSA_WITH_AES_256_CBC_SHA
+      # - TLS_RSA_WITH_AES_128_GCM_SHA256
+      # - TLS_RSA_WITH_AES_256_GCM_SHA384
+      # - TLS_AES_128_GCM_SHA256
+      # - TLS_AES_256_GCM_SHA384
+      # - TLS_CHACHA20_POLY1305_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+      # - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+      # - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+      # - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+      # - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+      # - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+      # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+      # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+      # 
+      # Insecure Ciphers:
+      # - TLS_RSA_WITH_RC4_128_SHA
+      # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
+      # - TLS_RSA_WITH_AES_128_CBC_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
+      # - TLS_ECDHE_RSA_WITH_RC4_128_SHA
+      # - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+      # - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+      # - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-cipher-suites
+      [tls_cipher_suites: <string> | default = ""]
+
+      # Override the default minimum TLS version. Allowed values: VersionTLS10,
+      # VersionTLS11, VersionTLS12, VersionTLS13
+      # CLI flag: -store-gateway.sharding-ring.etcd.tls-min-version
+      [tls_min_version: <string> | default = ""]
+
+      # Etcd username.
+      # CLI flag: -store-gateway.sharding-ring.etcd.username
+      [username: <string> | default = ""]
+
+      # Etcd password.
+      # CLI flag: -store-gateway.sharding-ring.etcd.password
+      [password: <string> | default = ""]
+
+    multi:
+      # Primary backend storage used by multi-client.
+      # CLI flag: -store-gateway.sharding-ring.multi.primary
+      [primary: <string> | default = ""]
+
+      # Secondary backend storage used by multi-client.
+      # CLI flag: -store-gateway.sharding-ring.multi.secondary
+      [secondary: <string> | default = ""]
+
+      # Mirror writes to secondary store.
+      # CLI flag: -store-gateway.sharding-ring.multi.mirror-enabled
+      [mirror_enabled: <boolean> | default = false]
+
+      # Timeout for storing value to secondary store.
+      # CLI flag: -store-gateway.sharding-ring.multi.mirror-timeout
+      [mirror_timeout: <duration> | default = 2s]
+
+  # Period at which to heartbeat to the ring. 0 = disabled.
+  # CLI flag: -store-gateway.sharding-ring.heartbeat-period
+  [heartbeat_period: <duration> | default = 15s]
+
+  # The heartbeat timeout after which store-gateways are considered unhealthy
+  # within the ring. 0 = never (timeout disabled).
+  # CLI flag: -store-gateway.sharding-ring.heartbeat-timeout
+  [heartbeat_timeout: <duration> | default = 1m]
+
+  # Instance ID to register in the ring.
+  # CLI flag: -store-gateway.sharding-ring.instance-id
+  [instance_id: <string> | default = "<hostname>"]
+
+  # List of network interface names to look up when finding the instance IP
+  # address.
+  # CLI flag: -store-gateway.sharding-ring.instance-interface-names
+  [instance_interface_names: <list of strings> | default = [<private network interfaces>]]
+
+  # Port to advertise in the ring (defaults to -server.http-listen-port).
+  # CLI flag: -store-gateway.sharding-ring.instance-port
+  [instance_port: <int> | default = 0]
+
+  # IP address to advertise in the ring. Default is auto-detected.
+  # CLI flag: -store-gateway.sharding-ring.instance-addr
+  [instance_addr: <string> | default = ""]
+
+  # Enable using a IPv6 instance address. (default false)
+  # CLI flag: -store-gateway.sharding-ring.instance-enable-ipv6
+  [instance_enable_ipv6: <boolean> | default = false]
+
+  # The replication factor to use when sharding blocks. This option needs be set
+  # both on the store-gateway and querier when running in microservices mode.
+  # CLI flag: -store-gateway.sharding-ring.replication-factor
+  [replication_factor: <int> | default = 1]
+
+  # File path where tokens are stored. If empty, tokens are not stored at
+  # shutdown and restored at startup.
+  # CLI flag: -store-gateway.sharding-ring.tokens-file-path
+  [tokens_file_path: <string> | default = ""]
+
+  # True to enable zone-awareness and replicate blocks across different
+  # availability zones. This option needs be set both on the store-gateway and
+  # querier when running in microservices mode.
+  # CLI flag: -store-gateway.sharding-ring.zone-awareness-enabled
+  [zone_awareness_enabled: <boolean> | default = false]
+
+  # Minimum time to wait for ring stability at startup, if set to positive
+  # value.
+  # CLI flag: -store-gateway.sharding-ring.wait-stability-min-duration
+  [wait_stability_min_duration: <duration> | default = 0s]
+
+  # Maximum time to wait for ring stability at startup. If the store-gateway
+  # ring keeps changing after this period of time, the store-gateway will start
+  # anyway.
+  # CLI flag: -store-gateway.sharding-ring.wait-stability-max-duration
+  [wait_stability_max_duration: <duration> | default = 5m]
+
+  # The availability zone where this instance is running. Required if
+  # zone-awareness is enabled.
+  # CLI flag: -store-gateway.sharding-ring.instance-availability-zone
+  [instance_availability_zone: <string> | default = ""]
+
+  # Unregister from the ring upon clean shutdown.
+  # CLI flag: -store-gateway.sharding-ring.unregister-on-shutdown
+  [unregister_on_shutdown: <boolean> | default = true]
+
+bucket_store:
+  # Directory to store synchronized pyroscope block headers. This directory is
+  # not required to be persisted between restarts, but it's highly recommended
+  # in order to improve the store-gateway startup time.
+  # CLI flag: -blocks-storage.bucket-store.sync-dir
+  [sync_dir: <string> | default = "./data/pyroscope-sync/"]
+
+  # How frequently to scan the bucket, or to refresh the bucket index (if
+  # enabled), in order to look for changes (new blocks shipped by ingesters and
+  # blocks deleted by retention or compaction).
+  # CLI flag: -blocks-storage.bucket-store.sync-interval
+  [sync_interval: <duration> | default = 15m]
+
+  # Maximum number of concurrent tenants synching blocks.
+  # CLI flag: -blocks-storage.bucket-store.tenant-sync-concurrency
+  [tenant_sync_concurrency: <int> | default = 10]
+
+  # Blocks with minimum time within this duration are ignored, and not loaded by
+  # store-gateway. Useful when used together with -querier.query-store-after to
+  # prevent loading young blocks, because there are usually many of them
+  # (depending on number of ingesters) and they are not yet compacted. Negative
+  # values or 0 disable the filter.
+  # CLI flag: -blocks-storage.bucket-store.ignore-blocks-within
+  [ignore_blocks_within: <duration> | default = 3h]
+
+  # Number of Go routines to use when syncing block meta files from object
+  # storage per tenant.
+  # CLI flag: -blocks-storage.bucket-store.meta-sync-concurrency
+  [meta_sync_concurrency: <int> | default = 20]
+
+  # Duration after which the blocks marked for deletion will be filtered out
+  # while fetching blocks. The idea of ignore-deletion-marks-delay is to ignore
+  # blocks that are marked for deletion with some delay. This ensures store can
+  # still serve blocks that are meant to be deleted but do not have a
+  # replacement yet.
+  # CLI flag: -blocks-storage.bucket-store.ignore-deletion-marks-delay
+  [ignore_deletion_mark_delay: <duration> | default = 30m]
+```
+
+### compactor
+
+The `compactor` block configures the compactor.
+
+```yaml
+# List of compaction time ranges.
+# CLI flag: -compactor.block-ranges
+[block_ranges: <list of durations> | default = 1h0m0s,2h0m0s,8h0m0s]
+
+# Number of Go routines to use when downloading blocks for compaction and
+# uploading resulting blocks.
+# CLI flag: -compactor.block-sync-concurrency
+[block_sync_concurrency: <int> | default = 8]
+
+# Number of Go routines to use when syncing block meta files from the long term
+# storage.
+# CLI flag: -compactor.meta-sync-concurrency
+[meta_sync_concurrency: <int> | default = 20]
+
+# Directory to temporarily store blocks during compaction. This directory is not
+# required to be persisted between restarts.
+# CLI flag: -compactor.data-dir
+[data_dir: <string> | default = "./data-compactor"]
+
+# The frequency at which the compaction runs
+# CLI flag: -compactor.compaction-interval
+[compaction_interval: <duration> | default = 30m]
+
+# How many times to retry a failed compaction within a single compaction run.
+# CLI flag: -compactor.compaction-retries
+[compaction_retries: <int> | default = 3]
+
+# Max number of concurrent compactions running.
+# CLI flag: -compactor.compaction-concurrency
+[compaction_concurrency: <int> | default = 1]
+
+# How long the compactor waits before compacting first-level blocks that are
+# uploaded by the ingesters. This configuration option allows for the reduction
+# of cases where the compactor begins to compact blocks before all ingesters
+# have uploaded their blocks to the storage.
+# CLI flag: -compactor.first-level-compaction-wait-period
+[first_level_compaction_wait_period: <duration> | default = 25m]
+
+# How frequently compactor should run blocks cleanup and maintenance, as well as
+# update the bucket index.
+# CLI flag: -compactor.cleanup-interval
+[cleanup_interval: <duration> | default = 15m]
+
+# Max number of tenants for which blocks cleanup and maintenance should run
+# concurrently.
+# CLI flag: -compactor.cleanup-concurrency
+[cleanup_concurrency: <int> | default = 20]
+
+# Time before a block marked for deletion is deleted from bucket. If not 0,
+# blocks will be marked for deletion and compactor component will permanently
+# delete blocks marked for deletion from the bucket. If 0, blocks will be
+# deleted straight away. Note that deleting blocks immediately can cause query
+# failures.
+# CLI flag: -compactor.deletion-delay
+[deletion_delay: <duration> | default = 12h]
+
+[tenant_cleanup_delay: <duration> | default = ]
+
+# Max time for starting compactions for a single tenant. After this time no new
+# compactions for the tenant are started before next compaction cycle. This can
+# help in multi-tenant environments to avoid single tenant using all compaction
+# time, but also in single-tenant environments to force new discovery of blocks
+# more often. 0 = disabled.
+# CLI flag: -compactor.max-compaction-time
+[max_compaction_time: <duration> | default = 1h]
+
+# If enabled, will delete the bucket-index, markers and debug files in the
+# tenant bucket when there are no blocks left in the index.
+# CLI flag: -compactor.no-blocks-file-cleanup-enabled
+[no_blocks_file_cleanup_enabled: <boolean> | default = false]
+
+# If enabled, the compactor will downsample profiles in blocks at compaction
+# level 3 and above. The original profiles are also kept.
+# CLI flag: -compactor.downsampler-enabled
+[downsampler_enabled: <boolean> | default = false]
+
+# Number of goroutines opening blocks before compaction.
+# CLI flag: -compactor.max-opening-blocks-concurrency
+[max_opening_blocks_concurrency: <int> | default = 16]
+
+# Comma separated list of tenants that can be compacted. If specified, only
+# these tenants will be compacted by compactor, otherwise all tenants can be
+# compacted. Subject to sharding.
+# CLI flag: -compactor.enabled-tenants
+[enabled_tenants: <string> | default = ""]
+
+# Comma separated list of tenants that cannot be compacted by this compactor. If
+# specified, and compactor would normally pick given tenant for compaction (via
+# -compactor.enabled-tenants or sharding), it will be ignored instead.
+# CLI flag: -compactor.disabled-tenants
+[disabled_tenants: <string> | default = ""]
+
+sharding_ring:
+  # The key-value store used to share the hash ring across multiple instances.
+  kvstore:
+    # Backend storage to use for the ring. Supported values are: consul, etcd,
+    # inmemory, memberlist, multi.
+    # CLI flag: -compactor.ring.store
+    [store: <string> | default = "memberlist"]
+
+    # The prefix for the keys in the store. Should end with a /.
+    # CLI flag: -compactor.ring.prefix
+    [prefix: <string> | default = "collectors/"]
+
+    consul:
+      # Hostname and port of Consul.
+      # CLI flag: -compactor.ring.consul.hostname
+      [host: <string> | default = "localhost:8500"]
+
+      # ACL Token used to interact with Consul.
+      # CLI flag: -compactor.ring.consul.acl-token
+      [acl_token: <string> | default = ""]
+
+      # HTTP timeout when talking to Consul
+      # CLI flag: -compactor.ring.consul.client-timeout
+      [http_client_timeout: <duration> | default = 20s]
+
+      # Enable consistent reads to Consul.
+      # CLI flag: -compactor.ring.consul.consistent-reads
+      [consistent_reads: <boolean> | default = false]
+
+      # Rate limit when watching key or prefix in Consul, in requests per
+      # second. 0 disables the rate limit.
+      # CLI flag: -compactor.ring.consul.watch-rate-limit
+      [watch_rate_limit: <float> | default = 1]
+
+      # Burst size used in rate limit. Values less than 1 are treated as 1.
+      # CLI flag: -compactor.ring.consul.watch-burst-size
+      [watch_burst_size: <int> | default = 1]
+
+      # Maximum duration to wait before retrying a Compare And Swap (CAS)
+      # operation.
+      # CLI flag: -compactor.ring.consul.cas-retry-delay
+      [cas_retry_delay: <duration> | default = 1s]
+
+    etcd:
+      # The etcd endpoints to connect to.
+      # CLI flag: -compactor.ring.etcd.endpoints
+      [endpoints: <list of strings> | default = []]
+
+      # The dial timeout for the etcd connection.
+      # CLI flag: -compactor.ring.etcd.dial-timeout
+      [dial_timeout: <duration> | default = 10s]
+
+      # The maximum number of retries to do for failed ops.
+      # CLI flag: -compactor.ring.etcd.max-retries
+      [max_retries: <int> | default = 10]
+
+      # Enable TLS.
+      # CLI flag: -compactor.ring.etcd.tls-enabled
+      [tls_enabled: <boolean> | default = false]
+
+      # Path to the client certificate, which will be used for authenticating
+      # with the server. Also requires the key path to be configured.
+      # CLI flag: -compactor.ring.etcd.tls-cert-path
+      [tls_cert_path: <string> | default = ""]
+
+      # Path to the key for the client certificate. Also requires the client
+      # certificate to be configured.
+      # CLI flag: -compactor.ring.etcd.tls-key-path
+      [tls_key_path: <string> | default = ""]
+
+      # Path to the CA certificates to validate server certificate against. If
+      # not set, the host's root CA certificates are used.
+      # CLI flag: -compactor.ring.etcd.tls-ca-path
+      [tls_ca_path: <string> | default = ""]
+
+      # Override the expected name on the server certificate.
+      # CLI flag: -compactor.ring.etcd.tls-server-name
+      [tls_server_name: <string> | default = ""]
+
+      # Skip validating server certificate.
+      # CLI flag: -compactor.ring.etcd.tls-insecure-skip-verify
+      [tls_insecure_skip_verify: <boolean> | default = false]
+
+      # Override the default cipher suite list (separated by commas). Allowed
+      # values:
+      # 
+      # Secure Ciphers:
+      # - TLS_RSA_WITH_AES_128_CBC_SHA
+      # - TLS_RSA_WITH_AES_256_CBC_SHA
+      # - TLS_RSA_WITH_AES_128_GCM_SHA256
+      # - TLS_RSA_WITH_AES_256_GCM_SHA384
+      # - TLS_AES_128_GCM_SHA256
+      # - TLS_AES_256_GCM_SHA384
+      # - TLS_CHACHA20_POLY1305_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+      # - TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+      # - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+      # - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+      # - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+      # - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+      # - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+      # - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+      # 
+      # Insecure Ciphers:
+      # - TLS_RSA_WITH_RC4_128_SHA
+      # - TLS_RSA_WITH_3DES_EDE_CBC_SHA
+      # - TLS_RSA_WITH_AES_128_CBC_SHA256
+      # - TLS_ECDHE_ECDSA_WITH_RC4_128_SHA
+      # - TLS_ECDHE_RSA_WITH_RC4_128_SHA
+      # - TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+      # - TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+      # - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+      # CLI flag: -compactor.ring.etcd.tls-cipher-suites
+      [tls_cipher_suites: <string> | default = ""]
+
+      # Override the default minimum TLS version. Allowed values: VersionTLS10,
+      # VersionTLS11, VersionTLS12, VersionTLS13
+      # CLI flag: -compactor.ring.etcd.tls-min-version
+      [tls_min_version: <string> | default = ""]
+
+      # Etcd username.
+      # CLI flag: -compactor.ring.etcd.username
+      [username: <string> | default = ""]
+
+      # Etcd password.
+      # CLI flag: -compactor.ring.etcd.password
+      [password: <string> | default = ""]
+
+    multi:
+      # Primary backend storage used by multi-client.
+      # CLI flag: -compactor.ring.multi.primary
+      [primary: <string> | default = ""]
+
+      # Secondary backend storage used by multi-client.
+      # CLI flag: -compactor.ring.multi.secondary
+      [secondary: <string> | default = ""]
+
+      # Mirror writes to secondary store.
+      # CLI flag: -compactor.ring.multi.mirror-enabled
+      [mirror_enabled: <boolean> | default = false]
+
+      # Timeout for storing value to secondary store.
+      # CLI flag: -compactor.ring.multi.mirror-timeout
+      [mirror_timeout: <duration> | default = 2s]
+
+  # Period at which to heartbeat to the ring. 0 = disabled.
+  # CLI flag: -compactor.ring.heartbeat-period
+  [heartbeat_period: <duration> | default = 15s]
+
+  # The heartbeat timeout after which compactors are considered unhealthy within
+  # the ring. 0 = never (timeout disabled).
+  # CLI flag: -compactor.ring.heartbeat-timeout
+  [heartbeat_timeout: <duration> | default = 1m]
+
+  # Instance ID to register in the ring.
+  # CLI flag: -compactor.ring.instance-id
+  [instance_id: <string> | default = "<hostname>"]
+
+  # List of network interface names to look up when finding the instance IP
+  # address.
+  # CLI flag: -compactor.ring.instance-interface-names
+  [instance_interface_names: <list of strings> | default = [<private network interfaces>]]
+
+  # Port to advertise in the ring (defaults to -server.http-listen-port).
+  # CLI flag: -compactor.ring.instance-port
+  [instance_port: <int> | default = 0]
+
+  # IP address to advertise in the ring. Default is auto-detected.
+  # CLI flag: -compactor.ring.instance-addr
+  [instance_addr: <string> | default = ""]
+
+  # Enable using a IPv6 instance address. (default false)
+  # CLI flag: -compactor.ring.instance-enable-ipv6
+  [instance_enable_ipv6: <boolean> | default = false]
+
+  # Minimum time to wait for ring stability at startup. 0 to disable.
+  # CLI flag: -compactor.ring.wait-stability-min-duration
+  [wait_stability_min_duration: <duration> | default = 0s]
+
+  # Maximum time to wait for ring stability at startup. If the compactor ring
+  # keeps changing after this period of time, the compactor will start anyway.
+  # CLI flag: -compactor.ring.wait-stability-max-duration
+  [wait_stability_max_duration: <duration> | default = 5m]
+
+  # Timeout for waiting on compactor to become ACTIVE in the ring.
+  # CLI flag: -compactor.ring.wait-active-instance-timeout
+  [wait_active_instance_timeout: <duration> | default = 10m]
+
+# The sorting to use when deciding which compaction jobs should run first for a
+# given tenant. Supported values are: smallest-range-oldest-blocks-first,
+# newest-blocks-first.
+# CLI flag: -compactor.compaction-jobs-order
+[compaction_jobs_order: <string> | default = "smallest-range-oldest-blocks-first"]
+
+# Experimental: The strategy to use when splitting blocks during compaction.
+# Supported values are: fingerprint, stacktracePartition.
+# CLI flag: -compactor.compaction-split-by
+[compaction_split_by: <string> | default = "fingerprint"]
+```
+
 ### grpc_client
 
 The `grpc_client` block configures the gRPC client used to communicate between two Pyroscope components. The supported CLI flags `<prefix>` used to reference this configuration block are:
@@ -1868,6 +1779,187 @@ The `memberlist` block configures the Gossip memberlist.
 [tls_min_version: <string> | default = ""]
 ```
 
+### limits
+
+The `limits` block configures default and per-tenant limits imposed by components.
+
+```yaml
+# Per-tenant ingestion rate limit in sample size per second. Units in MB.
+# CLI flag: -distributor.ingestion-rate-limit-mb
+[ingestion_rate_mb: <float> | default = 4]
+
+# Per-tenant allowed ingestion burst size (in sample size). Units in MB. The
+# burst size refers to the per-distributor local rate limiter, and should be set
+# at least to the maximum profile size expected in a single push request.
+# CLI flag: -distributor.ingestion-burst-size-mb
+[ingestion_burst_size_mb: <float> | default = 2]
+
+# Maximum length accepted for label names.
+# CLI flag: -validation.max-length-label-name
+[max_label_name_length: <int> | default = 1024]
+
+# Maximum length accepted for label value. This setting also applies to the
+# metric name.
+# CLI flag: -validation.max-length-label-value
+[max_label_value_length: <int> | default = 2048]
+
+# Maximum number of label names per series.
+# CLI flag: -validation.max-label-names-per-series
+[max_label_names_per_series: <int> | default = 30]
+
+# Maximum number of sessions per series. 0 to disable.
+# CLI flag: -validation.max-sessions-per-series
+[max_sessions_per_series: <int> | default = 0]
+
+# Maximum size of a profile in bytes. This is based off the uncompressed size. 0
+# to disable.
+# CLI flag: -validation.max-profile-size-bytes
+[max_profile_size_bytes: <int> | default = 4194304]
+
+# Maximum number of samples in a profile. 0 to disable.
+# CLI flag: -validation.max-profile-stacktrace-samples
+[max_profile_stacktrace_samples: <int> | default = 16000]
+
+# Maximum number of labels in a profile sample. 0 to disable.
+# CLI flag: -validation.max-profile-stacktrace-sample-labels
+[max_profile_stacktrace_sample_labels: <int> | default = 100]
+
+# Maximum depth of a profile stacktrace. Profiles are not rejected instead
+# stacktraces are truncated. 0 to disable.
+# CLI flag: -validation.max-profile-stacktrace-depth
+[max_profile_stacktrace_depth: <int> | default = 1000]
+
+# Maximum length of a profile symbol value (labels, function names and
+# filenames, etc...). Profiles are not rejected instead symbol values are
+# truncated. 0 to disable.
+# CLI flag: -validation.max-profile-symbol-value-length
+[max_profile_symbol_value_length: <int> | default = 65535]
+
+# Duration of the distributor aggregation window. Requires aggregation period to
+# be specified. 0 to disable.
+# CLI flag: -distributor.aggregation-window
+[distributor_aggregation_window: <duration> | default = 0s]
+
+# Duration of the distributor aggregation period. Requires aggregation window to
+# be specified. 0 to disable.
+# CLI flag: -distributor.aggregation-period
+[distributor_aggregation_period: <duration> | default = 0s]
+
+# The tenant's shard size used by shuffle-sharding. Must be set both on
+# ingesters and distributors. 0 disables shuffle sharding.
+# CLI flag: -distributor.ingestion-tenant-shard-size
+[ingestion_tenant_shard_size: <int> | default = 0]
+
+# Maximum number of active series of profiles per tenant, per ingester. 0 to
+# disable.
+# CLI flag: -ingester.max-local-series-per-tenant
+[max_local_series_per_tenant: <int> | default = 0]
+
+# Maximum number of active series of profiles per tenant, across the cluster. 0
+# to disable. When the global limit is enabled, each ingester is configured with
+# a dynamic local limit based on the replication factor and the current number
+# of healthy ingesters, and is kept updated whenever the number of ingesters
+# change.
+# CLI flag: -ingester.max-global-series-per-tenant
+[max_global_series_per_tenant: <int> | default = 5000]
+
+# Limit how far back in profiling data can be queried, up until lookback
+# duration ago. This limit is enforced in the query frontend. If the requested
+# time range is outside the allowed range, the request will not fail, but will
+# be modified to only query data within the allowed time range. 0 to disable,
+# default to 7d.
+# CLI flag: -querier.max-query-lookback
+[max_query_lookback: <duration> | default = 1w]
+
+# The limit to length of queries. 0 to disable.
+# CLI flag: -querier.max-query-length
+[max_query_length: <duration> | default = 1d]
+
+# Maximum number of queries that will be scheduled in parallel by the frontend.
+# CLI flag: -querier.max-query-parallelism
+[max_query_parallelism: <int> | default = 0]
+
+# Maximum number of flamegraph nodes by default. 0 to disable.
+# CLI flag: -querier.max-flamegraph-nodes-default
+[max_flamegraph_nodes_default: <int> | default = 8192]
+
+# Maximum number of flamegraph nodes allowed. 0 to disable.
+# CLI flag: -querier.max-flamegraph-nodes-max
+[max_flamegraph_nodes_max: <int> | default = 0]
+
+# The tenant's shard size, used when store-gateway sharding is enabled. Value of
+# 0 disables shuffle sharding for the tenant, that is all tenant blocks are
+# sharded across all store-gateway replicas.
+# CLI flag: -store-gateway.tenant-shard-size
+[store_gateway_tenant_shard_size: <int> | default = 0]
+
+# Split queries by a time interval and execute in parallel. The value 0 disables
+# splitting by time
+# CLI flag: -querier.split-queries-by-interval
+[split_queries_by_interval: <duration> | default = 0s]
+
+# Delete blocks containing samples older than the specified retention period. 0
+# to disable.
+# CLI flag: -compactor.blocks-retention-period
+[compactor_blocks_retention_period: <duration> | default = 0s]
+
+# The number of shards to use when splitting blocks. 0 to disable splitting.
+# CLI flag: -compactor.split-and-merge-shards
+[compactor_split_and_merge_shards: <int> | default = 0]
+
+# Number of stages split shards will be written to. Number of output split
+# shards is controlled by -compactor.split-and-merge-shards.
+# CLI flag: -compactor.split-and-merge-stage-size
+[compactor_split_and_merge_stage_size: <int> | default = 0]
+
+# Number of groups that blocks for splitting should be grouped into. Each group
+# of blocks is then split separately. Number of output split shards is
+# controlled by -compactor.split-and-merge-shards.
+# CLI flag: -compactor.split-groups
+[compactor_split_groups: <int> | default = 1]
+
+# Max number of compactors that can compact blocks for single tenant. 0 to
+# disable the limit and use all compactors.
+# CLI flag: -compactor.compactor-tenant-shard-size
+[compactor_tenant_shard_size: <int> | default = 0]
+
+# If a partial block (unfinished block without meta.json file) hasn't been
+# modified for this time, it will be marked for deletion. The minimum accepted
+# value is 4h0m0s: a lower value will be ignored and the feature disabled. 0 to
+# disable.
+# CLI flag: -compactor.partial-block-deletion-delay
+[compactor_partial_block_deletion_delay: <duration> | default = 1d]
+
+# If enabled, the compactor will downsample profiles in blocks at compaction
+# level 3 and above. The original profiles are also kept.
+# CLI flag: -compactor.compactor-downsampler-enabled
+[compactor_downsampler_enabled: <boolean> | default = true]
+
+# S3 server-side encryption type. Required to enable server-side encryption
+# overrides for a specific tenant. If not set, the default S3 client settings
+# are used.
+[s3_sse_type: <string> | default = ""]
+
+# S3 server-side encryption KMS Key ID. Ignored if the SSE type override is not
+# set.
+[s3_sse_kms_key_id: <string> | default = ""]
+
+# S3 server-side encryption KMS encryption context. If unset and the key ID
+# override is set, the encryption context will not be provided to S3. Ignored if
+# the SSE type override is not set.
+[s3_sse_kms_encryption_context: <string> | default = ""]
+
+# This limits how far into the past profiling data can be ingested. This limit
+# is enforced in the distributor. 0 to disable, defaults to 1h.
+# CLI flag: -validation.reject-older-than
+[reject_older_than: <duration> | default = 1h]
+
+# This limits how far into the future profiling data can be ingested. This limit
+# is enforced in the distributor. 0 to disable, defaults to 10m.
+# CLI flag: -validation.reject-newer-than
+[reject_newer_than: <duration> | default = 10m]
+```
+
 ### s3_storage_backend
 
 The s3_backend block configures the connection to Amazon S3 object storage backend.
@@ -1993,9 +2085,16 @@ The `azure_storage_backend` block configures the connection to Azure object stor
 # CLI flag: -storage.azure.account-name
 [account_name: <string> | default = ""]
 
-# Azure storage account key
+# Azure storage account key. If unset, Azure managed identities will be used for
+# authentication instead.
 # CLI flag: -storage.azure.account-key
 [account_key: <string> | default = ""]
+
+# If `connection-string` is set, the value of `endpoint-suffix` will not be
+# used. Use this method over `account-key` if you need to authenticate via a SAS
+# token. Or if you use the Azurite emulator.
+# CLI flag: -storage.azure.connection-string
+[connection_string: <string> | default = ""]
 
 # Azure storage container name
 # CLI flag: -storage.azure.container-name
@@ -2009,9 +2108,10 @@ The `azure_storage_backend` block configures the connection to Azure object stor
 
 # Number of retries for recoverable errors
 # CLI flag: -storage.azure.max-retries
-[max_retries: <int> | default = 20]
+[max_retries: <int> | default = 3]
 
-# User assigned identity. If empty, then System assigned identity is used.
+# User assigned managed identity. If empty, then System assigned identity is
+# used.
 # CLI flag: -storage.azure.user-assigned-id
 [user_assigned_id: <string> | default = ""]
 ```
@@ -2105,7 +2205,7 @@ The `filesystem_storage_backend` block configures the usage of local file system
 ```yaml
 # Local filesystem storage directory.
 # CLI flag: -storage.filesystem.dir
-[dir: <string> | default = ""]
+[dir: <string> | default = "./data-shared"]
 ```
 
 ```

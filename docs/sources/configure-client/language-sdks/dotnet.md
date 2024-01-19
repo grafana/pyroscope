@@ -1,7 +1,7 @@
 ---
 title: ".NET"
 menuTitle: ".NET"
-description: "Instrumenting .NET applications for continuous profiling"
+description: "Instrumenting .NET applications for continuous profiling."
 weight: 40
 aliases:
   - /docs/phlare/latest/configure-client/language-sdks/dotnet/
@@ -9,17 +9,44 @@ aliases:
 
 # .NET
 
-## How to add .NET profiling to your application
+Our .NET Profiler is a powerful tool designed to enhance the performance analysis and optimization of .NET applications. It seamlessly integrates with Pyroscope, offering real-time insights into the resource usage and bottlenecks within your .NET codebase. This integration empowers developers to pinpoint inefficiencies, improve application speed, and ensure resource-efficient operation.
+
+### Supported profiling types
+
+The .NET Profiler supports the following profiling types:
+
+* CPU
+* Wall time
+* Allocations
+* Lock contention
+* Exceptions
+
+### Compatibility
+
+Our .NET profiler works with the following .NET versions:
+* .NET 6
+* .NET 7
+* .NET 8
+
+
+## Before you begin
+
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+
+The Pyroscope server can be a local server for development or a remote server for production use.
+
+## Configure the Dotnet client
 
 1. Obtain `Pyroscope.Profiler.Native.so` and `Pyroscope.Linux.ApiWrapper.x64.so` from the [latest tarball](https://github.com/pyroscope-io/pyroscope-dotnet/releases/):
 
 ```bash
-curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.8.10-pyroscope/pyroscope.0.8.10-glibc-x86_64.tar.gz  | tar xvz -C .
+curl -s -L https://github.com/grafana/pyroscope-dotnet/releases/download/v0.8.14-pyroscope/pyroscope.0.8.14-glibc-x86_64.tar.gz  | tar xvz -C .
 ```
-Or copy them from the [latest docker image](https://hub.docker.com/r/pyroscope/pyroscope-dotnet/tags):
+
+Or copy them from the [latest docker image](https://hub.docker.com/r/pyroscope/pyroscope-dotnet/tags). We have `glibc` and `musl` versions:
 ```dockerfile
-COPY --from=pyroscope/pyroscope-dotnet:0.8.10-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
-COPY --from=pyroscope/pyroscope-dotnet:0.8.10-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
+COPY --from=pyroscope/pyroscope-dotnet:0.8.14-glibc /Pyroscope.Profiler.Native.so ./Pyroscope.Profiler.Native.so
+COPY --from=pyroscope/pyroscope-dotnet:0.8.14-glibc /Pyroscope.Linux.ApiWrapper.x64.so ./Pyroscope.Linux.ApiWrapper.x64.so
 ````
 
 2. Set the following required environment variables to enable profiler
@@ -33,20 +60,27 @@ CORECLR_PROFILER_PATH=Pyroscope.Profiler.Native.so
 LD_PRELOAD=Pyroscope.Linux.ApiWrapper.x64.so
 ```
 
+&nbsp;
 
-## Managed helper
+### .NET Profiler API
 
-With a managed helper you can interact with the Pyroscope profiler from .NET.
+With a managed helper you can interact with the Pyroscope profiler from .NET runtime. You can add labels, turn on/off profiling types, and more.
 
-First, add the Pyroscope dependency:
+To use it, first, add the Pyroscope dependency:
 
 ```shell
 dotnet add package Pyroscope
 ```
 
-## How to add profiling labels to .NET applications
+&nbsp;
 
-It is possible to add labels to the profiling data. These labels can be used to filter the data in the UI.
+### Add profiling labels to your application
+
+You can add labels to the profiling data to filter the data in the UI. Common labels include:
+* `hostname`
+* `region`
+* `team`
+* `api_endpoint`
 
 Create a `LabelSet` and wrap a piece of code with `Pyroscope.LabelsWrapper`.
 
@@ -78,7 +112,7 @@ Pyroscope.LabelsWrapper.Do(labels, () =>
 });
 ```
 
-## Dynamic profiling control
+### Dynamic control
 
 It is possible to dynamically enable/disable specific profiling types. Profiling types have to be configured prior.
 
@@ -102,7 +136,7 @@ Pyroscope.Profiler.Instance.SetContentionTrackingEnabled(enabled);
 Pyroscope.Profiler.Instance.SetExceptionTrackingEnabled(enabled);
 ```
 
-It is possible to dynamically change authorization credentials.
+It is possible to dynamically change authorization credentials:
 
 ```cs
 // Set Basic authorization username and password. Clears any previous authorization credentials.
@@ -111,7 +145,7 @@ Pyroscope.Profiler.Instance.SetBasicAuth(basicAuthUser, BasicAuthPassword);
 
 Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/examples/dotnet/rideshare/example/Program.cs) exposing this APIs as an http endpoint.
 
-## Configuration
+### Configuration options
 
 | ENVIRONMENT VARIABLE                   | Type         | DESCRIPTION                                                                                                                       |
 |----------------------------------------|--------------|-----------------------------------------------------------------------------------------------------------------------------------|
@@ -128,7 +162,9 @@ Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/exampl
 | PYROSCOPE_BASIC_AUTH_PASSWORD          | String       | For HTTP Basic Authentication, use this to send profiles to authenticated server, for example Grafana Cloud                       |
 | PYROSCOPE_TENANT_ID                    | String       | Only needed if using multi-tenancy in Pyroscope.                                                                                  |
 
-## Sending data to Pyroscope OSS or Grafana Cloud Profiles with .NET SDK
+## Send data to Pyroscope OSS or Grafana Cloud Profiles
+
+To send profiling data from your .NET application, configure your environment for either Pyroscope OSS or Grafana Cloud Profiles using the following steps:
 
 ```bash
 export CORECLR_ENABLE_PROFILING=1
@@ -138,6 +174,7 @@ export LD_PRELOAD=/dotnet/Pyroscope.Linux.ApiWrapper.x64.so
 export PYROSCOPE_PROFILING_ENABLED=1
 export PYROSCOPE_APPLICATION_NAME=example.dotnet.app
 export PYROSCOPE_SERVER_ADDRESS=<URL>
+# Use these environment variables to send data to Grafana Cloud Profiles
 export PYROSCOPE_BASIC_AUTH_USER=<User>
 export PYROSCOPE_BASIC_AUTH_PASSWORD=<Password>
 # Optional Pyroscope tenant ID (only needed if using multi-tenancy). Not needed for Grafana Cloud.
@@ -146,6 +183,6 @@ export PYROSCOPE_BASIC_AUTH_PASSWORD=<Password>
 
 To configure the .NET SDK to send data to Grafana Cloud Profiles or Pyroscope, replace the `<URL>` placeholder with the appropriate server URL. This could be the Grafana Cloud URL or your own custom Pyroscope server URL.
 
-If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafan Cloud API key.
+If you need to send data to Grafana Cloud, you'll have to configure HTTP Basic authentication. Replace `<User>` with your Grafana Cloud stack user and `<Password>` with your Grafana Cloud API key.
 
-If your Pyroscope server has multi-tenancy enabled, you'll need to configure a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.
+If your open source Pyroscope server has multi-tenancy enabled, you'll need to specify a tenant ID. Replace `<TenantID>` with your Pyroscope tenant ID.

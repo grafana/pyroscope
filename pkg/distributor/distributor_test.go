@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/kv"
@@ -22,8 +22,12 @@ import (
 	"github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	testhelper2 "github.com/grafana/pyroscope/pkg/pprof/testhelper"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	distributormodel "github.com/grafana/pyroscope/pkg/distributor/model"
@@ -84,7 +88,7 @@ func Test_ConnectPush(t *testing.T) {
 				},
 				Samples: []*pushv1.RawSample{
 					{
-						RawProfile: testProfile(t),
+						RawProfile: collectTestProfileBytes(t),
 					},
 				},
 			},
@@ -112,7 +116,7 @@ func Test_Replication(t *testing.T) {
 				},
 				Samples: []*pushv1.RawSample{
 					{
-						RawProfile: testProfile(t),
+						RawProfile: collectTestProfileBytes(t),
 					},
 				},
 			},
@@ -161,12 +165,24 @@ func Test_Subservices(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond)
 }
 
-func testProfile(t *testing.T) []byte {
+func collectTestProfileBytes(t *testing.T) []byte {
 	t.Helper()
 
 	buf := bytes.NewBuffer(nil)
 	require.NoError(t, pprof.WriteHeapProfile(buf))
 	return buf.Bytes()
+}
+
+func hugeProfileBytes(t *testing.T) []byte {
+	t.Helper()
+	b := testhelper2.NewProfileBuilderWithLabels(time.Now().UnixNano(), nil)
+	p := b.CPUProfile()
+	for i := 0; i < 10_000; i++ {
+		p.ForStacktraceString(fmt.Sprintf("my_%d", i), "other").AddSamples(1)
+	}
+	bs, err := p.Profile.MarshalVT()
+	require.NoError(t, err)
+	return bs
 }
 
 type fakeIngester struct {
@@ -201,10 +217,11 @@ func TestBuckets(t *testing.T) {
 
 func Test_Limits(t *testing.T) {
 	type testCase struct {
-		description  string
-		pushReq      *pushv1.PushRequest
-		overrides    *validation.Overrides
-		expectedCode connect.Code
+		description              string
+		pushReq                  *pushv1.PushRequest
+		overrides                *validation.Overrides
+		expectedCode             connect.Code
+		expectedValidationReason validation.Reason
 	}
 
 	testCases := []testCase{
@@ -220,7 +237,7 @@ func Test_Limits(t *testing.T) {
 						},
 						Samples: []*pushv1.RawSample{
 							{
-								RawProfile: testProfile(t),
+								RawProfile: collectTestProfileBytes(t),
 							},
 						},
 					},
@@ -232,7 +249,32 @@ func Test_Limits(t *testing.T) {
 				l.IngestionBurstSizeMB = 0.0015
 				tenantLimits["user-1"] = l
 			}),
-			expectedCode: connect.CodeResourceExhausted,
+			expectedCode:             connect.CodeResourceExhausted,
+			expectedValidationReason: validation.RateLimited,
+		},
+		{
+			description: "rate_limit_invalid_profile",
+			pushReq: &pushv1.PushRequest{
+				Series: []*pushv1.RawProfileSeries{
+					{
+						Labels: []*typesv1.LabelPair{
+							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
+						},
+						Samples: []*pushv1.RawSample{{
+							RawProfile: hugeProfileBytes(t),
+						}},
+					},
+				},
+			},
+			overrides: validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+				l := validation.MockDefaultLimits()
+				l.IngestionBurstSizeMB = 0.0015
+				l.MaxProfileStacktraceSamples = 100
+				tenantLimits["user-1"] = l
+			}),
+			expectedCode:             connect.CodeResourceExhausted,
+			expectedValidationReason: validation.RateLimited,
 		},
 		{
 			description: "labels_limit",
@@ -242,10 +284,11 @@ func Test_Limits(t *testing.T) {
 						Labels: []*typesv1.LabelPair{
 							{Name: "clusterdddwqdqdqdqdqdqw", Value: "us-central1"},
 							{Name: "__name__", Value: "cpu"},
+							{Name: phlaremodel.LabelNameServiceName, Value: "svc"},
 						},
 						Samples: []*pushv1.RawSample{
 							{
-								RawProfile: testProfile(t),
+								RawProfile: collectTestProfileBytes(t),
 							},
 						},
 					},
@@ -256,7 +299,8 @@ func Test_Limits(t *testing.T) {
 				l.MaxLabelNameLength = 12
 				tenantLimits["user-1"] = l
 			}),
-			expectedCode: connect.CodeInvalidArgument,
+			expectedCode:             connect.CodeInvalidArgument,
+			expectedValidationReason: validation.LabelNameTooLong,
 		},
 	}
 
@@ -274,6 +318,13 @@ func Test_Limits(t *testing.T) {
 			}}, tc.overrides, nil, log.NewLogfmtLogger(os.Stdout))
 
 			require.NoError(t, err)
+
+			expectedMetricDelta := map[prometheus.Collector]float64{
+				validation.DiscardedBytes.WithLabelValues(string(tc.expectedValidationReason), "user-1"): float64(uncompressedProfileSize(t, tc.pushReq)),
+				// todo make sure pyroscope_distributor_received_decompressed_bytes_sum is not incremented
+			}
+			m1 := metricsDump(expectedMetricDelta)
+
 			mux.Handle(pushv1connect.NewPusherServiceHandler(d, connect.WithInterceptors(tenant.NewAuthInterceptor(true))))
 			s := httptest.NewServer(mux)
 			defer s.Close()
@@ -283,6 +334,7 @@ func Test_Limits(t *testing.T) {
 			require.Error(t, err)
 			require.Equal(t, tc.expectedCode, connect.CodeOf(err))
 			require.Nil(t, resp)
+			expectMetricsChange(t, m1, metricsDump(expectedMetricDelta), expectedMetricDelta)
 		})
 	}
 }
@@ -543,13 +595,7 @@ func Test_SampleLabels(t *testing.T) {
 											},
 										},
 										{
-											Value: []int64{1},
-											Label: []*profilev1.Label{
-												{Key: 3, Str: 4},
-											},
-										},
-										{
-											Value: []int64{1},
+											Value: []int64{2},
 											Label: []*profilev1.Label{
 												{Key: 3, Str: 4},
 											},
@@ -790,5 +836,281 @@ func TestPush_ShuffleSharding(t *testing.T) {
 			}
 			require.Equal(t, 150, series)
 		}
+	}
+}
+
+func TestPush_Aggregation(t *testing.T) {
+	const maxSessions = 8
+	ingesterClient := newFakeIngester(t, false)
+	d, err := New(
+		Config{DistributorRing: ringConfig, PushTimeout: time.Second * 10},
+		testhelper.NewMockRing([]ring.InstanceDesc{{Addr: "foo"}}, 3),
+		&poolFactory{f: func(addr string) (client.PoolClient, error) { return ingesterClient, nil }},
+		validation.MockOverrides(func(defaults *validation.Limits, tenantLimits map[string]*validation.Limits) {
+			l := validation.MockDefaultLimits()
+			l.DistributorAggregationPeriod = model.Duration(time.Second)
+			l.DistributorAggregationWindow = model.Duration(time.Second)
+			l.MaxSessionsPerSeries = maxSessions
+			tenantLimits["user-1"] = l
+		}),
+		nil, log.NewLogfmtLogger(os.Stdout),
+	)
+	require.NoError(t, err)
+	ctx := tenant.InjectTenantID(context.Background(), "user-1")
+
+	const (
+		clients  = 10
+		requests = 10
+	)
+
+	var wg sync.WaitGroup
+	wg.Add(clients)
+	for i := 0; i < clients; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			for j := 0; j < requests; j++ {
+				_, err := d.PushParsed(ctx, &distributormodel.PushRequest{
+					Series: []*distributormodel.ProfileSeries{
+						{
+							Labels: []*typesv1.LabelPair{
+								{Name: "cluster", Value: "us-central1"},
+								{Name: "client", Value: strconv.Itoa(i)},
+								{Name: "__name__", Value: "cpu"},
+								{
+									Name:  phlaremodel.LabelNameSessionID,
+									Value: phlaremodel.SessionID(i*j + i).String(),
+								},
+							},
+							Samples: []*distributormodel.ProfileSample{
+								{
+									Profile: &pprof2.Profile{
+										Profile: testProfile(0),
+									},
+								},
+							},
+						},
+					},
+				})
+				require.NoError(t, err)
+			}
+		}()
+	}
+
+	wg.Wait()
+	d.asyncRequests.Wait()
+
+	var sum int64
+	sessions := make(map[string]struct{})
+	assert.GreaterOrEqual(t, len(ingesterClient.requests), 20)
+	assert.Less(t, len(ingesterClient.requests), 100)
+	for _, r := range ingesterClient.requests {
+		for _, s := range r.Series {
+			sessionID := phlaremodel.Labels(s.Labels).Get(phlaremodel.LabelNameSessionID)
+			sessions[sessionID] = struct{}{}
+			p, err := pprof2.RawFromBytes(s.Samples[0].RawProfile)
+			require.NoError(t, err)
+			for _, x := range p.Sample {
+				sum += x.Value[0]
+			}
+		}
+	}
+
+	// RF * samples_per_profile * clients * requests
+	assert.Equal(t, int64(3*2*clients*requests), sum)
+	assert.Equal(t, len(sessions), maxSessions)
+}
+
+func testProfile(t int64) *profilev1.Profile {
+	return &profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{
+				Type: 1,
+				Unit: 2,
+			},
+			{
+				Type: 3,
+				Unit: 4,
+			},
+		},
+		Sample: []*profilev1.Sample{
+			{
+				LocationId: []uint64{1, 2},
+				Value:      []int64{1, 10000000},
+				Label: []*profilev1.Label{
+					{Key: 5, Str: 6},
+				},
+			},
+			{
+				LocationId: []uint64{1, 2, 3},
+				Value:      []int64{1, 10000000},
+				Label: []*profilev1.Label{
+					{Key: 5, Str: 6},
+					{Key: 7, Str: 8},
+				},
+			},
+		},
+		Mapping: []*profilev1.Mapping{
+			{
+				Id:           1,
+				HasFunctions: true,
+			},
+		},
+		Location: []*profilev1.Location{
+			{
+				Id:        1,
+				MappingId: 1,
+				Line:      []*profilev1.Line{{FunctionId: 1}},
+			},
+			{
+				Id:        2,
+				MappingId: 1,
+				Line:      []*profilev1.Line{{FunctionId: 2}},
+			},
+			{
+				Id:        3,
+				MappingId: 1,
+				Line:      []*profilev1.Line{{FunctionId: 3}},
+			},
+		},
+		Function: []*profilev1.Function{
+			{
+				Id:         1,
+				Name:       9,
+				SystemName: 9,
+				Filename:   10,
+			},
+			{
+				Id:         2,
+				Name:       11,
+				SystemName: 11,
+				Filename:   12,
+			},
+			{
+				Id:         3,
+				Name:       13,
+				SystemName: 13,
+				Filename:   14,
+			},
+		},
+		StringTable: []string{
+			"",
+			"samples",
+			"count",
+			"cpu",
+			"nanoseconds",
+			// Labels
+			"foo",
+			"bar",
+			"function",
+			"slow",
+			// Functions
+			"func-foo",
+			"func-foo-path",
+			"func-bar",
+			"func-bar-path",
+			"func-baz",
+			"func-baz-path",
+		},
+		TimeNanos:     t,
+		DurationNanos: 10000000000,
+		PeriodType: &profilev1.ValueType{
+			Type: 3,
+			Unit: 4,
+		},
+		Period: 10000000,
+	}
+}
+
+func TestInjectMappingVersions(t *testing.T) {
+	alreadyVersionned := testProfile(3)
+	alreadyVersionned.StringTable = append(alreadyVersionned.StringTable, `foo`)
+	alreadyVersionned.Mapping[0].BuildId = int64(len(alreadyVersionned.StringTable) - 1)
+	in := []*distributormodel.ProfileSeries{
+		{
+			Labels: []*typesv1.LabelPair{},
+			Samples: []*distributormodel.ProfileSample{
+				{
+					Profile: &pprof2.Profile{
+						Profile: testProfile(1),
+					},
+				},
+			},
+		},
+		{
+			Labels: []*typesv1.LabelPair{
+				{Name: phlaremodel.LabelNameServiceRepository, Value: "grafana/pyroscope"},
+			},
+			Samples: []*distributormodel.ProfileSample{
+				{
+					Profile: &pprof2.Profile{
+						Profile: testProfile(2),
+					},
+				},
+			},
+		},
+		{
+			Labels: []*typesv1.LabelPair{
+				{Name: phlaremodel.LabelNameServiceRepository, Value: "grafana/pyroscope"},
+				{Name: phlaremodel.LabelNameServiceGitRef, Value: "foobar"},
+			},
+			Samples: []*distributormodel.ProfileSample{
+				{
+					Profile: &pprof2.Profile{
+						Profile: testProfile(2),
+					},
+				},
+			},
+		},
+		{
+			Labels: []*typesv1.LabelPair{
+				{Name: phlaremodel.LabelNameServiceRepository, Value: "grafana/pyroscope"},
+				{Name: phlaremodel.LabelNameServiceGitRef, Value: "foobar"},
+			},
+			Samples: []*distributormodel.ProfileSample{
+				{
+					Profile: &pprof2.Profile{
+						Profile: alreadyVersionned,
+					},
+				},
+			},
+		},
+	}
+
+	err := injectMappingVersions(in)
+	require.NoError(t, err)
+	require.Equal(t, "", in[0].Samples[0].Profile.StringTable[in[0].Samples[0].Profile.Mapping[0].BuildId])
+	require.Equal(t, `{"repository":"grafana/pyroscope"}`, in[1].Samples[0].Profile.StringTable[in[1].Samples[0].Profile.Mapping[0].BuildId])
+	require.Equal(t, `{"repository":"grafana/pyroscope","git_ref":"foobar"}`, in[2].Samples[0].Profile.StringTable[in[2].Samples[0].Profile.Mapping[0].BuildId])
+	require.Equal(t, `{"repository":"grafana/pyroscope","git_ref":"foobar","build_id":"foo"}`, in[3].Samples[0].Profile.StringTable[in[3].Samples[0].Profile.Mapping[0].BuildId])
+}
+
+func uncompressedProfileSize(t *testing.T, req *pushv1.PushRequest) int {
+	var size int
+	for _, s := range req.Series {
+		for _, label := range s.Labels {
+			size += len(label.Name) + len(label.Value)
+		}
+		for _, sample := range s.Samples {
+			p, err := pprof2.RawFromBytes(sample.RawProfile)
+			require.NoError(t, err)
+			size += p.SizeVT()
+		}
+	}
+	return size
+}
+
+func metricsDump(metrics map[prometheus.Collector]float64) map[prometheus.Collector]float64 {
+	res := make(map[prometheus.Collector]float64)
+	for m := range metrics {
+		res[m] = testutil.ToFloat64(m)
+	}
+	return res
+}
+
+func expectMetricsChange(t *testing.T, m1, m2, expectedChange map[prometheus.Collector]float64) {
+	for counter, expectedDelta := range expectedChange {
+		delta := m2[counter] - m1[counter]
+		assert.Equal(t, expectedDelta, delta, "metric %s", counter)
 	}
 }

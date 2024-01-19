@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
@@ -26,6 +26,7 @@ func (f *Frontend) SelectMergeSpanProfile(ctx context.Context,
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).
 		SetTag("selector", c.Msg.LabelSelector).
+		SetTag("max_nodes", c.Msg.MaxNodes).
 		SetTag("profile_type", c.Msg.ProfileTypeID)
 
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeSpanProfileProcedure)
@@ -40,6 +41,10 @@ func (f *Frontend) SelectMergeSpanProfile(ctx context.Context,
 	}
 	if validated.IsEmpty {
 		return connect.NewResponse(&querierv1.SelectMergeSpanProfileResponse{Flamegraph: &querierv1.FlameGraph{}}), nil
+	}
+	maxNodes, err := validation.ValidateMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
@@ -59,9 +64,8 @@ func (f *Frontend) SelectMergeSpanProfile(ctx context.Context,
 				LabelSelector: c.Msg.LabelSelector,
 				Start:         r.Start.UnixMilli(),
 				End:           r.End.UnixMilli(),
-				MaxNodes:      c.Msg.MaxNodes,
-				// TODO: Make sure we don't need to copy it.
-				SpanSelector: c.Msg.SpanSelector,
+				MaxNodes:      &maxNodes,
+				SpanSelector:  c.Msg.SpanSelector,
 			})
 			resp, err := connectgrpc.RoundTripUnary[
 				querierv1.SelectMergeSpanProfileRequest,

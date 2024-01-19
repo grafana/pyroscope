@@ -5,7 +5,7 @@
 package ingesterv1connect
 
 import (
-	connect_go "github.com/bufbuild/connect-go"
+	connect "connectrpc.com/connect"
 	mux "github.com/gorilla/mux"
 )
 
@@ -14,59 +14,64 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect_go.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion0_1_0
 
 // RegisterIngesterServiceHandler register an HTTP handler to a mux.Router from the service
 // implementation.
-func RegisterIngesterServiceHandler(mux *mux.Router, svc IngesterServiceHandler, opts ...connect_go.HandlerOption) {
-	mux.Handle("/ingester.v1.IngesterService/Push", connect_go.NewUnaryHandler(
+func RegisterIngesterServiceHandler(mux *mux.Router, svc IngesterServiceHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/ingester.v1.IngesterService/Push", connect.NewUnaryHandler(
 		"/ingester.v1.IngesterService/Push",
 		svc.Push,
 		opts...,
 	))
-	mux.Handle("/ingester.v1.IngesterService/LabelValues", connect_go.NewUnaryHandler(
+	mux.Handle("/ingester.v1.IngesterService/LabelValues", connect.NewUnaryHandler(
 		"/ingester.v1.IngesterService/LabelValues",
 		svc.LabelValues,
 		opts...,
 	))
-	mux.Handle("/ingester.v1.IngesterService/LabelNames", connect_go.NewUnaryHandler(
+	mux.Handle("/ingester.v1.IngesterService/LabelNames", connect.NewUnaryHandler(
 		"/ingester.v1.IngesterService/LabelNames",
 		svc.LabelNames,
 		opts...,
 	))
-	mux.Handle("/ingester.v1.IngesterService/ProfileTypes", connect_go.NewUnaryHandler(
+	mux.Handle("/ingester.v1.IngesterService/ProfileTypes", connect.NewUnaryHandler(
 		"/ingester.v1.IngesterService/ProfileTypes",
 		svc.ProfileTypes,
 		opts...,
 	))
-	mux.Handle("/ingester.v1.IngesterService/Series", connect_go.NewUnaryHandler(
+	mux.Handle("/ingester.v1.IngesterService/Series", connect.NewUnaryHandler(
 		"/ingester.v1.IngesterService/Series",
 		svc.Series,
 		opts...,
 	))
-	mux.Handle("/ingester.v1.IngesterService/Flush", connect_go.NewUnaryHandler(
+	mux.Handle("/ingester.v1.IngesterService/Flush", connect.NewUnaryHandler(
 		"/ingester.v1.IngesterService/Flush",
 		svc.Flush,
 		opts...,
 	))
-	mux.Handle("/ingester.v1.IngesterService/MergeProfilesStacktraces", connect_go.NewBidiStreamHandler(
+	mux.Handle("/ingester.v1.IngesterService/MergeProfilesStacktraces", connect.NewBidiStreamHandler(
 		"/ingester.v1.IngesterService/MergeProfilesStacktraces",
 		svc.MergeProfilesStacktraces,
 		opts...,
 	))
-	mux.Handle("/ingester.v1.IngesterService/MergeProfilesLabels", connect_go.NewBidiStreamHandler(
+	mux.Handle("/ingester.v1.IngesterService/MergeProfilesLabels", connect.NewBidiStreamHandler(
 		"/ingester.v1.IngesterService/MergeProfilesLabels",
 		svc.MergeProfilesLabels,
 		opts...,
 	))
-	mux.Handle("/ingester.v1.IngesterService/MergeProfilesPprof", connect_go.NewBidiStreamHandler(
+	mux.Handle("/ingester.v1.IngesterService/MergeProfilesPprof", connect.NewBidiStreamHandler(
 		"/ingester.v1.IngesterService/MergeProfilesPprof",
 		svc.MergeProfilesPprof,
 		opts...,
 	))
-	mux.Handle("/ingester.v1.IngesterService/MergeSpanProfile", connect_go.NewBidiStreamHandler(
+	mux.Handle("/ingester.v1.IngesterService/MergeSpanProfile", connect.NewBidiStreamHandler(
 		"/ingester.v1.IngesterService/MergeSpanProfile",
 		svc.MergeSpanProfile,
+		opts...,
+	))
+	mux.Handle("/ingester.v1.IngesterService/BlockMetadata", connect.NewUnaryHandler(
+		"/ingester.v1.IngesterService/BlockMetadata",
+		svc.BlockMetadata,
 		opts...,
 	))
 }

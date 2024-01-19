@@ -123,7 +123,7 @@ func NewBlocksCleaner(cfg BlocksCleanerConfig, bucketClient objstore.Bucket, own
 		tenantBlocks: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
 			Name: "pyroscope_bucket_blocks_count",
 			Help: "Total number of blocks in the bucket. Includes blocks marked for deletion, but not partial blocks.",
-		}, []string{"user"}),
+		}, []string{"user", "compaction_level"}),
 		tenantMarkedBlocks: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
 			Name: "pyroscope_bucket_blocks_marked_for_deletion_count",
 			Help: "Total number of blocks marked for deletion in the bucket.",
@@ -436,12 +436,23 @@ func (c *BlocksCleaner) cleanUser(ctx context.Context, userID string, userLogger
 		}
 	}
 
-	c.tenantBlocks.WithLabelValues(userID).Set(float64(len(idx.Blocks)))
+	c.updateBlockCountMetrics(userID, idx)
 	c.tenantMarkedBlocks.WithLabelValues(userID).Set(float64(len(idx.BlockDeletionMarks)))
 	c.tenantPartialBlocks.WithLabelValues(userID).Set(float64(len(partials)))
 	c.tenantBucketIndexLastUpdate.WithLabelValues(userID).SetToCurrentTime()
 
 	return nil
+}
+
+func (c *BlocksCleaner) updateBlockCountMetrics(userID string, idx *bucketindex.Index) {
+	blocksPerCompactionLevel := make(map[int]int)
+	for _, blk := range idx.Blocks {
+		blocksPerCompactionLevel[blk.CompactionLevel]++
+	}
+	c.tenantBlocks.DeletePartialMatch(map[string]string{"user": userID})
+	for compactionLevel, count := range blocksPerCompactionLevel {
+		c.tenantBlocks.WithLabelValues(userID, strconv.Itoa(compactionLevel)).Set(float64(count))
+	}
 }
 
 // Concurrently deletes blocks marked for deletion, and removes blocks from index.
@@ -542,7 +553,7 @@ func (c *BlocksCleaner) cleanUserPartialBlocks(ctx context.Context, partials map
 			}
 			if !lastModified.IsZero() {
 				level.Info(userLogger).Log("msg", "stale partial block found: marking block for deletion", "block", blockID, "last modified", lastModified)
-				if err := block.MarkForDeletion(ctx, userLogger, userBucket, blockID, "stale partial block", c.partialBlocksMarkedForDeletion); err != nil {
+				if err := block.MarkForDeletion(ctx, userLogger, userBucket, blockID, "stale partial block", false, c.partialBlocksMarkedForDeletion); err != nil {
 					level.Warn(userLogger).Log("msg", "failed to mark partial block for deletion", "block", blockID, "err", err)
 				}
 			}
@@ -563,7 +574,7 @@ func (c *BlocksCleaner) applyUserRetentionPeriod(ctx context.Context, idx *bucke
 	// the cleaner will retry applying the retention in its next cycle.
 	for _, b := range blocks {
 		level.Info(userLogger).Log("msg", "applied retention: marking block for deletion", "block", b.ID, "maxTime", b.MaxTime)
-		if err := block.MarkForDeletion(ctx, userLogger, userBucket, b.ID, fmt.Sprintf("block exceeding retention of %v", retention), c.blocksMarkedForDeletion); err != nil {
+		if err := block.MarkForDeletion(ctx, userLogger, userBucket, b.ID, fmt.Sprintf("block exceeding retention of %v", retention), false, c.blocksMarkedForDeletion); err != nil {
 			level.Warn(userLogger).Log("msg", "failed to mark block for deletion", "block", b.ID, "err", err)
 		}
 	}

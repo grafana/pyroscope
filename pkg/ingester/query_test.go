@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/grafana/dskit/services"
@@ -110,7 +110,7 @@ func Test_QueryMetadata(t *testing.T) {
 	ing, err := New(ctx, defaultIngesterTestConfig(t), phlaredb.Config{
 		DataPath:         dbPath,
 		MaxBlockDuration: 30 * time.Hour,
-	}, fs, &fakeLimits{})
+	}, fs, &fakeLimits{}, 0)
 	require.NoError(t, err)
 	require.NoError(t, services.StartAndAwaitRunning(context.Background(), ing))
 

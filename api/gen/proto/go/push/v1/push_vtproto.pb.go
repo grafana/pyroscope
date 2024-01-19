@@ -120,6 +120,132 @@ func (m *RawSample) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (this *PushResponse) EqualVT(that *PushResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *PushResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*PushResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *PushRequest) EqualVT(that *PushRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Series) != len(that.Series) {
+		return false
+	}
+	for i, vx := range this.Series {
+		vy := that.Series[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &RawProfileSeries{}
+			}
+			if q == nil {
+				q = &RawProfileSeries{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *PushRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*PushRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *RawProfileSeries) EqualVT(that *RawProfileSeries) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Labels) != len(that.Labels) {
+		return false
+	}
+	for i, vx := range this.Labels {
+		vy := that.Labels[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &v1.LabelPair{}
+			}
+			if q == nil {
+				q = &v1.LabelPair{}
+			}
+			if equal, ok := interface{}(p).(interface{ EqualVT(*v1.LabelPair) bool }); ok {
+				if !equal.EqualVT(q) {
+					return false
+				}
+			} else if !proto.Equal(p, q) {
+				return false
+			}
+		}
+	}
+	if len(this.Samples) != len(that.Samples) {
+		return false
+	}
+	for i, vx := range this.Samples {
+		vy := that.Samples[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &RawSample{}
+			}
+			if q == nil {
+				q = &RawSample{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *RawProfileSeries) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*RawProfileSeries)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *RawSample) EqualVT(that *RawSample) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if string(this.RawProfile) != string(that.RawProfile) {
+		return false
+	}
+	if this.ID != that.ID {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *RawSample) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*RawSample)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
 // Requires gRPC-Go v1.32.0 or later.

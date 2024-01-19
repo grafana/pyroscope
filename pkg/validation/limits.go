@@ -40,6 +40,10 @@ type Limits struct {
 	MaxProfileStacktraceDepth        int `yaml:"max_profile_stacktrace_depth" json:"max_profile_stacktrace_depth"`
 	MaxProfileSymbolValueLength      int `yaml:"max_profile_symbol_value_length" json:"max_profile_symbol_value_length"`
 
+	// Distributor aggregation.
+	DistributorAggregationWindow model.Duration `yaml:"distributor_aggregation_window" json:"distributor_aggregation_window"`
+	DistributorAggregationPeriod model.Duration `yaml:"distributor_aggregation_period" json:"distributor_aggregation_period"`
+
 	// The tenant shard size determines the how many ingesters a particular
 	// tenant will be sharded to. Needs to be specified on distributors for
 	// correct distribution and on ingesters so that the local ingestion limit
@@ -55,6 +59,10 @@ type Limits struct {
 	MaxQueryLength      model.Duration `yaml:"max_query_length" json:"max_query_length"`
 	MaxQueryParallelism int            `yaml:"max_query_parallelism" json:"max_query_parallelism"`
 
+	// FlameGraph enforced limits.
+	MaxFlameGraphNodesDefault int `yaml:"max_flamegraph_nodes_default" json:"max_flamegraph_nodes_default"`
+	MaxFlameGraphNodesMax     int `yaml:"max_flamegraph_nodes_max" json:"max_flamegraph_nodes_max"`
+
 	// Store-gateway.
 	StoreGatewayTenantShardSize int `yaml:"store_gateway_tenant_shard_size" json:"store_gateway_tenant_shard_size"`
 
@@ -64,9 +72,11 @@ type Limits struct {
 	// Compactor.
 	CompactorBlocksRetentionPeriod     model.Duration `yaml:"compactor_blocks_retention_period" json:"compactor_blocks_retention_period"`
 	CompactorSplitAndMergeShards       int            `yaml:"compactor_split_and_merge_shards" json:"compactor_split_and_merge_shards"`
+	CompactorSplitAndMergeStageSize    int            `yaml:"compactor_split_and_merge_stage_size" json:"compactor_split_and_merge_stage_size"`
 	CompactorSplitGroups               int            `yaml:"compactor_split_groups" json:"compactor_split_groups"`
 	CompactorTenantShardSize           int            `yaml:"compactor_tenant_shard_size" json:"compactor_tenant_shard_size"`
 	CompactorPartialBlockDeletionDelay model.Duration `yaml:"compactor_partial_block_deletion_delay" json:"compactor_partial_block_deletion_delay"`
+	CompactorDownsamplerEnabled        bool           `yaml:"compactor_downsampler_enabled" json:"compactor_downsampler_enabled"`
 
 	// This config doesn't have a CLI flag registered here because they're registered in
 	// their own original config struct.
@@ -120,12 +130,20 @@ func (l *Limits) RegisterFlags(f *flag.FlagSet) {
 	f.IntVar(&l.MaxProfileStacktraceDepth, "validation.max-profile-stacktrace-depth", 1000, "Maximum depth of a profile stacktrace. Profiles are not rejected instead stacktraces are truncated. 0 to disable.")
 	f.IntVar(&l.MaxProfileSymbolValueLength, "validation.max-profile-symbol-value-length", 65535, "Maximum length of a profile symbol value (labels, function names and filenames, etc...). Profiles are not rejected instead symbol values are truncated. 0 to disable.")
 
+	f.IntVar(&l.MaxFlameGraphNodesDefault, "querier.max-flamegraph-nodes-default", 8<<10, "Maximum number of flamegraph nodes by default. 0 to disable.")
+	f.IntVar(&l.MaxFlameGraphNodesMax, "querier.max-flamegraph-nodes-max", 0, "Maximum number of flamegraph nodes allowed. 0 to disable.")
+
+	f.Var(&l.DistributorAggregationWindow, "distributor.aggregation-window", "Duration of the distributor aggregation window. Requires aggregation period to be specified. 0 to disable.")
+	f.Var(&l.DistributorAggregationPeriod, "distributor.aggregation-period", "Duration of the distributor aggregation period. Requires aggregation window to be specified. 0 to disable.")
+
 	f.Var(&l.CompactorBlocksRetentionPeriod, "compactor.blocks-retention-period", "Delete blocks containing samples older than the specified retention period. 0 to disable.")
 	f.IntVar(&l.CompactorSplitAndMergeShards, "compactor.split-and-merge-shards", 0, "The number of shards to use when splitting blocks. 0 to disable splitting.")
+	f.IntVar(&l.CompactorSplitAndMergeStageSize, "compactor.split-and-merge-stage-size", 0, "Number of stages split shards will be written to. Number of output split shards is controlled by -compactor.split-and-merge-shards.")
 	f.IntVar(&l.CompactorSplitGroups, "compactor.split-groups", 1, "Number of groups that blocks for splitting should be grouped into. Each group of blocks is then split separately. Number of output split shards is controlled by -compactor.split-and-merge-shards.")
 	f.IntVar(&l.CompactorTenantShardSize, "compactor.compactor-tenant-shard-size", 0, "Max number of compactors that can compact blocks for single tenant. 0 to disable the limit and use all compactors.")
 	_ = l.CompactorPartialBlockDeletionDelay.Set("1d")
 	f.Var(&l.CompactorPartialBlockDeletionDelay, "compactor.partial-block-deletion-delay", fmt.Sprintf("If a partial block (unfinished block without %s file) hasn't been modified for this time, it will be marked for deletion. The minimum accepted value is %s: a lower value will be ignored and the feature disabled. 0 to disable.", block.MetaFilename, MinCompactorPartialBlockDeletionDelay.String()))
+	f.BoolVar(&l.CompactorDownsamplerEnabled, "compactor.compactor-downsampler-enabled", true, "If enabled, the compactor will downsample profiles in blocks at compaction level 3 and above. The original profiles are also kept.")
 
 	_ = l.RejectNewerThan.Set("10m")
 	f.Var(&l.RejectNewerThan, "validation.reject-newer-than", "This limits how far into the future profiling data can be ingested. This limit is enforced in the distributor. 0 to disable, defaults to 10m.")
@@ -263,6 +281,14 @@ func (o *Overrides) MaxSessionsPerSeries(tenantID string) int {
 	return o.getOverridesForTenant(tenantID).MaxSessionsPerSeries
 }
 
+func (o *Overrides) DistributorAggregationWindow(tenantID string) model.Duration {
+	return o.getOverridesForTenant(tenantID).DistributorAggregationWindow
+}
+
+func (o *Overrides) DistributorAggregationPeriod(tenantID string) model.Duration {
+	return o.getOverridesForTenant(tenantID).DistributorAggregationPeriod
+}
+
 // MaxLocalSeriesPerTenant returns the maximum number of series a tenant is allowed to store
 // in a single ingester.
 func (o *Overrides) MaxLocalSeriesPerTenant(tenantID string) int {
@@ -291,6 +317,16 @@ func (o *Overrides) MaxQueryLookback(tenantID string) time.Duration {
 	return time.Duration(o.getOverridesForTenant(tenantID).MaxQueryLookback)
 }
 
+// MaxFlameGraphNodesDefault returns the max flamegraph nodes used by default.
+func (o *Overrides) MaxFlameGraphNodesDefault(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).MaxFlameGraphNodesDefault
+}
+
+// MaxFlameGraphNodesMax returns the max flamegraph nodes allowed.
+func (o *Overrides) MaxFlameGraphNodesMax(tenantID string) int {
+	return o.getOverridesForTenant(tenantID).MaxFlameGraphNodesMax
+}
+
 // StoreGatewayTenantShardSize returns the store-gateway shard size for a given user.
 func (o *Overrides) StoreGatewayTenantShardSize(userID string) int {
 	return o.getOverridesForTenant(userID).StoreGatewayTenantShardSize
@@ -316,6 +352,11 @@ func (o *Overrides) CompactorSplitAndMergeShards(userID string) int {
 	return o.getOverridesForTenant(userID).CompactorSplitAndMergeShards
 }
 
+// CompactorSplitAndMergeStageSize returns the number of stages split shards will be written to.
+func (o *Overrides) CompactorSplitAndMergeStageSize(userID string) int {
+	return o.getOverridesForTenant(userID).CompactorSplitAndMergeStageSize
+}
+
 // CompactorSplitGroups returns the number of groups that blocks for splitting should be grouped into.
 func (o *Overrides) CompactorSplitGroups(userID string) int {
 	return o.getOverridesForTenant(userID).CompactorSplitGroups
@@ -333,6 +374,11 @@ func (o *Overrides) CompactorPartialBlockDeletionDelay(userID string) (delay tim
 	}
 
 	return delay, true
+}
+
+// CompactorDownsamplerEnabled returns true if the downsampler is enabled for a given user.
+func (o *Overrides) CompactorDownsamplerEnabled(userId string) bool {
+	return o.getOverridesForTenant(userId).CompactorDownsamplerEnabled
 }
 
 // S3SSEType returns the per-tenant S3 SSE type.

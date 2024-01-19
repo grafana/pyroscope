@@ -7,8 +7,13 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
-func SumSeries(series ...[]*typesv1.Series) []*typesv1.Series {
-	m := NewSeriesMerger(true)
+func MergeSeries(aggregation *typesv1.TimeSeriesAggregationType, series ...[]*typesv1.Series) []*typesv1.Series {
+	var m *SeriesMerger
+	if aggregation == nil || *aggregation == typesv1.TimeSeriesAggregationType_TIME_SERIES_AGGREGATION_TYPE_SUM {
+		m = NewSeriesMerger(true)
+	} else {
+		m = NewSeriesMerger(false)
+	}
 	for _, s := range series {
 		m.MergeSeries(s)
 	}
@@ -22,7 +27,7 @@ type SeriesMerger struct {
 }
 
 // NewSeriesMerger creates a new series merger. If sum is set, samples
-// with matching timestamps are summed, otherwise duplicates are discarded.
+// with matching timestamps are summed, otherwise duplicates are retained.
 func NewSeriesMerger(sum bool) *SeriesMerger {
 	return &SeriesMerger{
 		series: make(map[uint64]*typesv1.Series),
@@ -71,7 +76,7 @@ func (m *SeriesMerger) mergePoints(points []*typesv1.Point) int {
 	})
 	var j int
 	for i := 1; i < l; i++ {
-		if points[j].Timestamp != points[i].Timestamp {
+		if points[j].Timestamp != points[i].Timestamp || !m.sum {
 			j++
 			points[j] = points[i]
 			continue

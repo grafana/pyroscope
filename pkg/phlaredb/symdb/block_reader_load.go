@@ -27,7 +27,14 @@ func (r *Reader) Load(ctx context.Context) error {
 	if r.index.Header.Version > FormatV1 {
 		r.loadParquetTables(g)
 	}
-	return g.Wait()
+	if err := g.Wait(); err != nil {
+		return err
+	}
+	r.partitionsLoaded = true
+	for _, p := range r.partitions {
+		p.loaded = true
+	}
+	return nil
 }
 
 func (r *Reader) loadStacktraces(ctx context.Context) error {

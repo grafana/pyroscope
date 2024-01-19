@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/google/pprof/profile"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -133,6 +133,10 @@ func (i *ingesterHandlerPhlareDB) Series(context.Context, *connect.Request[inges
 }
 
 func (i *ingesterHandlerPhlareDB) Flush(context.Context, *connect.Request[ingestv1.FlushRequest]) (*connect.Response[ingestv1.FlushResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (i *ingesterHandlerPhlareDB) BlockMetadata(context.Context, *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error) {
 	return nil, errors.New("not implemented")
 }
 

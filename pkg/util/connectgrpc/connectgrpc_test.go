@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/gorilla/mux"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"

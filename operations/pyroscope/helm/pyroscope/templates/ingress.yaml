@@ -32,8 +32,19 @@ spec:
             {{- end }}
             port:
               number: {{ $.Values.pyroscope.service.port }}
-        path: /querier.v1.QuerierService/
+        path: /
         pathType: Prefix
+      - backend:
+          service:
+            {{- if gt (len $.Values.pyroscope.components) 1}}
+            name: {{ include "pyroscope.fullname" $ }}-query-frontend
+            {{- else }}
+            name: {{ include "pyroscope.fullname" $ }}
+            {{- end }}
+            port:
+              number: {{ $.Values.pyroscope.service.port }}
+        path: /querier.v1.QuerierService/
+        pathType: ImplementationSpecific
       - backend:
           service:
             {{- if gt (len $.Values.pyroscope.components) 1}}
@@ -66,7 +77,7 @@ spec:
             port:
               number: {{ $.Values.pyroscope.service.port }}
         path: /push.v1.PusherService/
-        pathType: Prefix
+        pathType: ImplementationSpecific
       - backend:
           service:
             {{- if gt (len $.Values.pyroscope.components) 1}}
@@ -78,5 +89,16 @@ spec:
               number: {{ $.Values.pyroscope.service.port }}
         path: /ingest
         pathType: Prefix
+      - backend:
+          service:
+            {{- if gt (len $.Values.pyroscope.components) 1}}
+            name: {{ include "pyroscope.fullname" $ }}-tenant-settings
+            {{- else }}
+            name: {{ include "pyroscope.fullname" $ }}
+            {{- end }}
+            port:
+              number: {{ $.Values.pyroscope.service.port }}
+        path: /settings.v1.SettingsService/
+        pathType: ImplementationSpecific
   {{- end }}
 {{- end }}

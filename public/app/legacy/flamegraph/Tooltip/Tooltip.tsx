@@ -208,6 +208,11 @@ const tooltipTitles: Record<
     formattedValue: 'Time',
     total: '% of total seconds',
   },
+  nanoseconds: {
+    percent: '% of Time spent',
+    formattedValue: 'Time',
+    total: '% of total seconds',
+  },
   lock_samples: {
     percent: '% of contended locks',
     formattedValue: 'Contended locks',

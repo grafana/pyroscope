@@ -2,11 +2,8 @@ package symdb
 
 import (
 	"context"
-	"hash/maphash"
 	"io"
-	"reflect"
 	"sync"
-	"unsafe"
 
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
@@ -36,6 +33,19 @@ func (p *PartitionWriter) ResolveStacktraceLocations(_ context.Context, dst Stac
 
 func (p *PartitionWriter) ResolveChunk(dst StacktraceInserter, sr StacktracesRange) error {
 	return p.stacktraces.ResolveChunk(dst, sr)
+}
+
+func (p *PartitionWriter) LookupLocations(dst []uint64, stacktraceID uint32) []uint64 {
+	dst = dst[:0]
+	if len(p.stacktraces.chunks) == 0 {
+		return dst
+	}
+	chunkID := stacktraceID / p.stacktraces.maxNodesPerChunk
+	localSID := stacktraceID % p.stacktraces.maxNodesPerChunk
+	if localSID == 0 || int(chunkID) > len(p.stacktraces.chunks) {
+		return dst
+	}
+	return p.stacktraces.chunks[chunkID].tree.resolveUint64(dst, localSID)
 }
 
 type stacktracesPartition struct {
@@ -102,20 +112,6 @@ func (p *stacktracesPartition) stacktraceChunkForRead(i int) (*stacktraceChunk, 
 func (p *stacktracesPartition) currentStacktraceChunk() *stacktraceChunk {
 	// Assuming there is at least one chunk.
 	return p.chunks[len(p.chunks)-1]
-}
-
-var seed = maphash.MakeSeed()
-
-func hashLocations(s []uint64) uint64 {
-	if len(s) == 0 {
-		return 0
-	}
-	var b []byte
-	hdr := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	hdr.Len = len(s) * 8
-	hdr.Cap = hdr.Len
-	hdr.Data = uintptr(unsafe.Pointer(&s[0]))
-	return maphash.Bytes(seed, b)
 }
 
 func (p *stacktracesPartition) append(dst []uint32, s []*schemav1.Stacktrace) {

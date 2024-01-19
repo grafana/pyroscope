@@ -3,24 +3,30 @@ package phlaredb
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/oklog/ulid"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+	"golang.org/x/sync/errgroup"
 
+	ingesterv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/iter"
-	"github.com/grafana/pyroscope/pkg/model"
+	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
 )
 
 func TestQuerierBlockEviction(t *testing.T) {
@@ -67,7 +73,7 @@ func TestQuerierBlockEviction(t *testing.T) {
 		for i, b := range tc.blocks {
 			q.queriers[i] = &singleBlockQuerier{
 				meta:    &block.Meta{ULID: ulid.MustParse(b)},
-				metrics: newBlocksMetrics(nil),
+				metrics: NewBlocksMetrics(nil),
 			}
 		}
 
@@ -138,7 +144,7 @@ func TestBlockCompatability(t *testing.T) {
 				pcIt := &profileCounter{Iterator: it}
 
 				// TODO: It would be nice actually comparing the whole profile, but at present the result is not deterministic.
-				_, err = q.MergePprof(ctx, pcIt)
+				_, err = q.MergePprof(ctx, pcIt, 0, nil)
 				require.NoError(t, err)
 
 				profileCount += pcIt.count
@@ -188,7 +194,7 @@ func TestBlockCompatability_SelectMergeSpans(t *testing.T) {
 
 				pcIt := &profileCounter{Iterator: it}
 
-				spanSelector, err := model.NewSpanSelector([]string{})
+				spanSelector, err := phlaremodel.NewSpanSelector([]string{})
 				require.NoError(t, err)
 				resp, err := q.MergeBySpans(ctx, pcIt, spanSelector)
 				require.NoError(t, err)
@@ -207,6 +213,10 @@ type fakeQuerier struct {
 	doErr bool
 }
 
+func (f *fakeQuerier) BlockID() string {
+	return "block-id"
+}
+
 func (f *fakeQuerier) SelectMatchingProfiles(ctx context.Context, params *ingestv1.SelectProfilesRequest) (iter.Iterator[Profile], error) {
 	// add some jitter
 	time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
@@ -218,6 +228,21 @@ func (f *fakeQuerier) SelectMatchingProfiles(ctx context.Context, params *ingest
 		profiles = append(profiles, BlockProfile{})
 	}
 	return iter.NewSliceIterator(profiles), nil
+}
+
+func openSingleBlockQuerierIndex(t *testing.T, blockID string) *singleBlockQuerier {
+	t.Helper()
+
+	reader, err := index.NewFileReader(fmt.Sprintf("testdata/%s/index.tsdb", blockID))
+	require.NoError(t, err)
+
+	q := &singleBlockQuerier{
+		metrics: NewBlocksMetrics(nil),
+		meta:    &block.Meta{ULID: ulid.MustParse(blockID)},
+		opened:  true, // Skip trying to open the block.
+		index:   reader,
+	}
+	return q
 }
 
 func TestSelectMatchingProfilesCleanUp(t *testing.T) {
@@ -235,15 +260,7 @@ func TestSelectMatchingProfilesCleanUp(t *testing.T) {
 
 func Test_singleBlockQuerier_Series(t *testing.T) {
 	ctx := context.Background()
-	reader, err := index.NewFileReader("testdata/01HA2V3CPSZ9E0HMQNNHH89WSS/index.tsdb")
-	assert.NoError(t, err)
-
-	q := &singleBlockQuerier{
-		metrics: newBlocksMetrics(nil),
-		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
-		opened:  true, // Skip trying to open the block.
-		index:   reader,
-	}
+	q := openSingleBlockQuerierIndex(t, "01HA2V3CPSZ9E0HMQNNHH89WSS")
 
 	t.Run("get all names", func(t *testing.T) {
 		want := []string{
@@ -719,7 +736,7 @@ func Test_singleBlockQuerier_LabelNames(t *testing.T) {
 	assert.NoError(t, err)
 
 	q := &singleBlockQuerier{
-		metrics: newBlocksMetrics(nil),
+		metrics: NewBlocksMetrics(nil),
 		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
 		opened:  true, // Skip trying to open the block.
 		index:   reader,
@@ -851,7 +868,7 @@ func Test_singleBlockQuerier_LabelValues(t *testing.T) {
 	assert.NoError(t, err)
 
 	q := &singleBlockQuerier{
-		metrics: newBlocksMetrics(nil),
+		metrics: NewBlocksMetrics(nil),
 		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
 		opened:  true, // Skip trying to open the block.
 		index:   reader,
@@ -922,7 +939,6 @@ func Test_singleBlockQuerier_LabelValues(t *testing.T) {
 
 		// Memory profiles shouldn't have 'function' label values.
 		got, err = q.LabelValues(ctx, connect.NewRequest(&typesv1.LabelValuesRequest{
-
 			Matchers: []string{`{__profile_type__="memory:alloc_objects:count:space:bytes", service_name="simple.golang.app"}`},
 			Name:     "function",
 		}))
@@ -951,7 +967,7 @@ func Test_singleBlockQuerier_ProfileTypes(t *testing.T) {
 	assert.NoError(t, err)
 
 	q := &singleBlockQuerier{
-		metrics: newBlocksMetrics(nil),
+		metrics: NewBlocksMetrics(nil),
 		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
 		opened:  true, // Skip trying to open the block.
 		index:   reader,
@@ -1046,13 +1062,15 @@ func Test_singleBlockQuerier_ProfileTypes(t *testing.T) {
 }
 
 func Benchmark_singleBlockQuerier_Series(b *testing.B) {
+	const id = "01HA2V3CPSZ9E0HMQNNHH89WSS"
+
 	ctx := context.Background()
-	reader, err := index.NewFileReader("testdata/01HA2V3CPSZ9E0HMQNNHH89WSS/index.tsdb")
+	reader, err := index.NewFileReader(fmt.Sprintf("testdata/%s/index.tsdb", id))
 	assert.NoError(b, err)
 
 	q := &singleBlockQuerier{
-		metrics: newBlocksMetrics(nil),
-		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
+		metrics: NewBlocksMetrics(nil),
+		meta:    &block.Meta{ULID: ulid.MustParse(id)},
 		opened:  true, // Skip trying to open the block.
 		index:   reader,
 	}
@@ -1074,6 +1092,15 @@ func Benchmark_singleBlockQuerier_Series(b *testing.B) {
 			})
 		}
 	})
+
+	b.Run("UI request", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			q.Series(ctx, &ingestv1.SeriesRequest{ //nolint:errcheck
+				Matchers:   []string{},
+				LabelNames: []string{"pyroscope_app", "service_name", "__profile_type__", "__type__", "__name__"},
+			})
+		}
+	})
 }
 
 func Benchmark_singleBlockQuerier_LabelNames(b *testing.B) {
@@ -1082,7 +1109,7 @@ func Benchmark_singleBlockQuerier_LabelNames(b *testing.B) {
 	assert.NoError(b, err)
 
 	q := &singleBlockQuerier{
-		metrics: newBlocksMetrics(nil),
+		metrics: NewBlocksMetrics(nil),
 		meta:    &block.Meta{ULID: ulid.MustParse("01HA2V3CPSZ9E0HMQNNHH89WSS")},
 		opened:  true, // Skip trying to open the block.
 		index:   reader,
@@ -1095,4 +1122,205 @@ func Benchmark_singleBlockQuerier_LabelNames(b *testing.B) {
 			}))
 		}
 	})
+}
+
+func TestSelectMergeStacktraces(t *testing.T) {
+	ctx := context.Background()
+
+	querier := newBlock(t, func() (res []*testhelper.ProfileBuilder) {
+		for i := int64(1); i < 1001; i++ {
+			res = append(res, testhelper.NewProfileBuilder(int64(time.Second)*i).
+				CPUProfile().
+				WithLabels(
+					"job", "a",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+				testhelper.NewProfileBuilder(int64(time.Second*2)*i).
+					CPUProfile().
+					WithLabels(
+						"job", "b",
+					).ForStacktraceString("foo", "bar", "buzz").AddSamples(1),
+				testhelper.NewProfileBuilder(int64(time.Second*3)*i).
+					CPUProfile().
+					WithLabels(
+						"job", "c",
+					).ForStacktraceString("foo", "bar").AddSamples(1))
+		}
+		return res
+	})
+
+	err := querier.Open(ctx)
+	require.NoError(t, err)
+
+	merge, err := querier.SelectMergeByStacktraces(ctx, &ingesterv1.SelectProfilesRequest{
+		LabelSelector: `{}`,
+		Type: &typesv1.ProfileType{
+			ID:         "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+			Name:       "process_cpu",
+			SampleType: "cpu",
+			SampleUnit: "nanoseconds",
+			PeriodType: "cpu",
+			PeriodUnit: "nanoseconds",
+		},
+		Start: 0,
+		End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
+	})
+	require.NoError(t, err)
+	expected := phlaremodel.Tree{}
+	expected.InsertStack(1000, "baz", "bar", "foo")
+	expected.InsertStack(1000, "buzz", "bar", "foo")
+	expected.InsertStack(1000, "bar", "foo")
+	require.Equal(t, expected.String(), merge.String())
+	require.NoError(t, querier.Close())
+}
+
+func TestSelectMergeLabels(t *testing.T) {
+	ctx := context.Background()
+
+	querier := newBlock(t, func() (res []*testhelper.ProfileBuilder) {
+		for i := int64(1); i < 6; i++ {
+			res = append(res, testhelper.NewProfileBuilder(int64(time.Second)*i).
+				CPUProfile().
+				WithLabels(
+					"job", "a",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+				testhelper.NewProfileBuilder(int64(time.Second)*i).
+					CPUProfile().
+					WithLabels(
+						"job", "b",
+					).ForStacktraceString("foo", "bar", "buzz").AddSamples(1),
+				testhelper.NewProfileBuilder(int64(time.Second)*i).
+					CPUProfile().
+					WithLabels(
+						"job", "c",
+					).ForStacktraceString("foo", "bar").AddSamples(1))
+		}
+		return res
+	})
+
+	err := querier.Open(ctx)
+	require.NoError(t, err)
+
+	merge, err := querier.SelectMergeByLabels(ctx, &ingesterv1.SelectProfilesRequest{
+		LabelSelector: `{}`,
+		Type: &typesv1.ProfileType{
+			ID:         "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+			Name:       "process_cpu",
+			SampleType: "cpu",
+			SampleUnit: "nanoseconds",
+			PeriodType: "cpu",
+			PeriodUnit: "nanoseconds",
+		},
+		Start: 0,
+		End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
+	}, "job")
+	require.NoError(t, err)
+	expected := []*typesv1.Series{
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "a"),
+			Points: genPoints(5),
+		},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "b"),
+			Points: genPoints(5),
+		},
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "c"),
+			Points: genPoints(5),
+		},
+	}
+	require.Equal(t, expected, merge)
+	require.NoError(t, querier.Close())
+}
+
+func genPoints(count int) []*typesv1.Point {
+	points := make([]*typesv1.Point, 0, count)
+	for i := 1; i < count+1; i++ {
+		points = append(points, &typesv1.Point{
+			Timestamp: int64(model.TimeFromUnixNano(int64(time.Second * time.Duration(i)))),
+			Value:     1,
+		})
+	}
+	return points
+}
+
+func TestSelectMergeByStacktracesRace(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	ctx := context.Background()
+
+	querier := newBlock(t, func() []*testhelper.ProfileBuilder {
+		return []*testhelper.ProfileBuilder{
+			testhelper.NewProfileBuilder(int64(time.Second*1)).
+				CPUProfile().
+				WithLabels(
+					"job", "a",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+			testhelper.NewProfileBuilder(int64(time.Second*2)).
+				CPUProfile().
+				WithLabels(
+					"job", "b",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+			testhelper.NewProfileBuilder(int64(time.Second*3)).
+				CPUProfile().
+				WithLabels(
+					"job", "c",
+				).ForStacktraceString("foo", "bar", "baz").AddSamples(1),
+		}
+	})
+
+	err := querier.Open(ctx)
+	require.NoError(t, err)
+	g, ctx := errgroup.WithContext(ctx)
+	tree := new(phlaremodel.Tree)
+	var m sync.Mutex
+
+	for i := 0; i < 30; i++ {
+		g.Go(func() error {
+			it, err := querier.SelectMatchingProfiles(ctx, &ingesterv1.SelectProfilesRequest{
+				LabelSelector: `{}`,
+				Type: &typesv1.ProfileType{
+					ID:         "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+					Name:       "process_cpu",
+					SampleType: "cpu",
+					SampleUnit: "nanoseconds",
+					PeriodType: "cpu",
+					PeriodUnit: "nanoseconds",
+				},
+				Start: 0,
+				End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
+			})
+			if err != nil {
+				return err
+			}
+			defer it.Close()
+			for it.Next() {
+			}
+			return nil
+		})
+		g.Go(func() error {
+			merge, err := querier.SelectMergeByStacktraces(ctx, &ingesterv1.SelectProfilesRequest{
+				LabelSelector: `{}`,
+				Type: &typesv1.ProfileType{
+					ID:         "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+					Name:       "process_cpu",
+					SampleType: "cpu",
+					SampleUnit: "nanoseconds",
+					PeriodType: "cpu",
+					PeriodUnit: "nanoseconds",
+				},
+				Start: 0,
+				End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
+			})
+			if err != nil {
+				return err
+			}
+			m.Lock()
+			tree.Merge(merge)
+			m.Unlock()
+			return nil
+		})
+	}
+
+	require.NoError(t, g.Wait())
+	require.NoError(t, querier.Close())
 }

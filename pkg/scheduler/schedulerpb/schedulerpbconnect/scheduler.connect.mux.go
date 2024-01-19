@@ -5,7 +5,7 @@
 package schedulerpbconnect
 
 import (
-	connect_go "github.com/bufbuild/connect-go"
+	connect "connectrpc.com/connect"
 	mux "github.com/gorilla/mux"
 )
 
@@ -14,17 +14,17 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect_go.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion0_1_0
 
 // RegisterSchedulerForQuerierHandler register an HTTP handler to a mux.Router from the service
 // implementation.
-func RegisterSchedulerForQuerierHandler(mux *mux.Router, svc SchedulerForQuerierHandler, opts ...connect_go.HandlerOption) {
-	mux.Handle("/schedulerpb.SchedulerForQuerier/QuerierLoop", connect_go.NewBidiStreamHandler(
+func RegisterSchedulerForQuerierHandler(mux *mux.Router, svc SchedulerForQuerierHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/schedulerpb.SchedulerForQuerier/QuerierLoop", connect.NewBidiStreamHandler(
 		"/schedulerpb.SchedulerForQuerier/QuerierLoop",
 		svc.QuerierLoop,
 		opts...,
 	))
-	mux.Handle("/schedulerpb.SchedulerForQuerier/NotifyQuerierShutdown", connect_go.NewUnaryHandler(
+	mux.Handle("/schedulerpb.SchedulerForQuerier/NotifyQuerierShutdown", connect.NewUnaryHandler(
 		"/schedulerpb.SchedulerForQuerier/NotifyQuerierShutdown",
 		svc.NotifyQuerierShutdown,
 		opts...,
@@ -33,8 +33,8 @@ func RegisterSchedulerForQuerierHandler(mux *mux.Router, svc SchedulerForQuerier
 
 // RegisterSchedulerForFrontendHandler register an HTTP handler to a mux.Router from the service
 // implementation.
-func RegisterSchedulerForFrontendHandler(mux *mux.Router, svc SchedulerForFrontendHandler, opts ...connect_go.HandlerOption) {
-	mux.Handle("/schedulerpb.SchedulerForFrontend/FrontendLoop", connect_go.NewBidiStreamHandler(
+func RegisterSchedulerForFrontendHandler(mux *mux.Router, svc SchedulerForFrontendHandler, opts ...connect.HandlerOption) {
+	mux.Handle("/schedulerpb.SchedulerForFrontend/FrontendLoop", connect.NewBidiStreamHandler(
 		"/schedulerpb.SchedulerForFrontend/FrontendLoop",
 		svc.FrontendLoop,
 		opts...,

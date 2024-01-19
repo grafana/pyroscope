@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/dustin/go-humanize"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -31,6 +31,13 @@ import (
 	"github.com/grafana/pyroscope/pkg/util"
 )
 
+const (
+	DefaultMinFreeDisk                        = 10
+	DefaultMinDiskAvailablePercentage         = 0.05
+	DefaultRetentionPolicyEnforcementInterval = 5 * time.Minute
+	DefaultRetentionExpiry                    = 4 * time.Hour // Same as default `querier.query_store_after`.
+)
+
 type Config struct {
 	DataPath string `yaml:"data_path,omitempty"`
 	// Blocks are generally cut once they reach 1000M of memory size, this will setup an upper limit to the duration of data that a block has that is cut by the ingester.
@@ -40,6 +47,11 @@ type Config struct {
 	RowGroupTargetSize uint64 `yaml:"row_group_target_size"`
 
 	Parquet *ParquetConfig `yaml:"-"` // Those configs should not be exposed to the user, rather they should be determined by pyroscope itself. Currently, they are solely used for test cases.
+
+	MinFreeDisk                uint64        `yaml:"min_free_disk_gb"`
+	MinDiskAvailablePercentage float64       `yaml:"min_disk_available_percentage"`
+	EnforcementInterval        time.Duration `yaml:"enforcement_interval"`
+	DisableEnforcement         bool          `yaml:"disable_enforcement"`
 }
 
 type ParquetConfig struct {
@@ -52,6 +64,10 @@ func (cfg *Config) RegisterFlags(f *flag.FlagSet) {
 	f.StringVar(&cfg.DataPath, "pyroscopedb.data-path", "./data", "Directory used for local storage.")
 	f.DurationVar(&cfg.MaxBlockDuration, "pyroscopedb.max-block-duration", 1*time.Hour, "Upper limit to the duration of a Pyroscope block.")
 	f.Uint64Var(&cfg.RowGroupTargetSize, "pyroscopedb.row-group-target-size", 10*128*1024*1024, "How big should a single row group be uncompressed") // This should roughly be 128MiB compressed
+	f.Uint64Var(&cfg.MinFreeDisk, "pyroscopedb.retention-policy-min-free-disk-gb", DefaultMinFreeDisk, "How much available disk space to keep in GiB")
+	f.Float64Var(&cfg.MinDiskAvailablePercentage, "pyroscopedb.retention-policy-min-disk-available-percentage", DefaultMinDiskAvailablePercentage, "Which percentage of free disk space to keep")
+	f.DurationVar(&cfg.EnforcementInterval, "pyroscopedb.retention-policy-enforcement-interval", DefaultRetentionPolicyEnforcementInterval, "How often to enforce disk retention")
+	f.BoolVar(&cfg.DisableEnforcement, "pyroscopedb.retention-policy-disable", false, "Disable retention policy enforcement")
 }
 
 type TenantLimiter interface {
@@ -471,4 +487,40 @@ func (f *PhlareDB) Evict(blockID ulid.ULID, fn func() error) (bool, error) {
 	f.evictCh <- e
 	<-e.done
 	return e.evicted, e.err
+}
+
+func (f *PhlareDB) BlockMetadata(ctx context.Context, req *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error) {
+
+	var result ingestv1.BlockMetadataResponse
+
+	appendInRange := func(q TimeBounded, meta *block.Meta) {
+		if !InRange(q, model.Time(req.Msg.Start), model.Time(req.Msg.End)) {
+			return
+		}
+		var info typesv1.BlockInfo
+		meta.WriteBlockInfo(&info)
+		result.Blocks = append(result.Blocks, &info)
+	}
+
+	f.headLock.RLock()
+	for _, h := range f.heads {
+		appendInRange(h, h.meta)
+	}
+	for _, h := range f.flushing {
+		appendInRange(h, h.meta)
+	}
+	f.headLock.RUnlock()
+
+	f.blockQuerier.queriersLock.RLock()
+	for _, q := range f.blockQuerier.queriers {
+		appendInRange(q, q.meta)
+	}
+	f.blockQuerier.queriersLock.RUnlock()
+
+	// blocks move from heads to flushing to blockQuerier, so we need to check if that might have happened and caused a duplicate
+	result.Blocks = lo.UniqBy(result.Blocks, func(b *typesv1.BlockInfo) string {
+		return b.Ulid
+	})
+
+	return connect.NewResponse(&result), nil
 }

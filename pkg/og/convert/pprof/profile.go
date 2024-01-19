@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/prometheus/prometheus/model/labels"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -211,7 +211,7 @@ func (p *RawProfile) createLabels(profile *pprof.Profile, md ingestion.Metadata)
 		Name:  "service_name",
 		Value: md.Key.AppName(),
 	}, &v1.LabelPair{
-		Name:  "pyroscope_spy",
+		Name:  phlaremodel.LabelNamePyroscopeSpy,
 		Value: md.SpyName,
 	})
 	for k, v := range md.Key.Labels() {

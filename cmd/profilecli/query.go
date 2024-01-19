@@ -7,26 +7,24 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
 	gprofile "github.com/google/pprof/profile"
 	"github.com/grafana/dskit/runutil"
-	"github.com/k0kubun/pp/v3"
-	"github.com/klauspost/compress/gzip"
-	"github.com/mattn/go-isatty"
-	"github.com/pkg/errors"
-	"github.com/prometheus/common/model"
-
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/operations"
+	"github.com/k0kubun/pp/v3"
+	"github.com/klauspost/compress/gzip"
+	"github.com/mattn/go-isatty"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -34,61 +32,6 @@ const (
 	outputRaw     = "raw"
 	outputPprof   = "pprof="
 )
-
-func parseTime(s string) (time.Time, error) {
-	if s == "" {
-		return time.Time{}, fmt.Errorf("empty time")
-	}
-	t, err := time.Parse(time.RFC3339, s)
-	if err == nil {
-		return t, nil
-	}
-
-	// try if it is a relative time
-	d, rerr := parseRelativeTime(s)
-	if rerr == nil {
-		return time.Now().Add(-d), nil
-	}
-
-	timestamp, terr := strconv.ParseInt(s, 10, 64)
-	if terr == nil {
-		/**
-		1689341454
-		1689341454046
-		1689341454046908
-		1689341454046908187
-		*/
-		switch len(s) {
-		case 10:
-			return time.Unix(timestamp, 0), nil
-		case 13:
-			return time.UnixMilli(timestamp), nil
-		case 16:
-			return time.UnixMicro(timestamp), nil
-		case 19:
-			return time.Unix(0, timestamp), nil
-		default:
-			return time.Time{}, fmt.Errorf("invalid timestamp length: %s", s)
-		}
-	}
-	// if not return first error
-	return time.Time{}, err
-
-}
-
-func parseRelativeTime(s string) (time.Duration, error) {
-	s = strings.TrimSpace(s)
-	if s == "now" {
-		return 0, nil
-	}
-	s = strings.TrimPrefix(s, "now-")
-
-	d, err := model.ParseDuration(s)
-	if err != nil {
-		return 0, err
-	}
-	return time.Duration(d), nil
-}
 
 func (c *phlareClient) queryClient() querierv1connect.QuerierServiceClient {
 	return querierv1connect.NewQuerierServiceClient(
@@ -119,11 +62,11 @@ type queryParams struct {
 }
 
 func (p *queryParams) parseFromTo() (from time.Time, to time.Time, err error) {
-	from, err = parseTime(p.From)
+	from, err = operations.ParseTime(p.From)
 	if err != nil {
 		return time.Time{}, time.Time{}, errors.Wrap(err, "failed to parse from")
 	}
-	to, err = parseTime(p.To)
+	to, err = operations.ParseTime(p.To)
 	if err != nil {
 		return time.Time{}, time.Time{}, errors.Wrap(err, "failed to parse to")
 	}

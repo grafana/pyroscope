@@ -1,24 +1,27 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
-import '@pyroscope/jquery-import';
-import { Provider } from 'react-redux';
-import store from '@pyroscope/redux/store';
-import './sass/profile.scss';
-import '@szhsin/react-menu/dist/index.css';
-import Notifications from '@pyroscope/ui/Notifications';
-import { Router, Switch, Route } from 'react-router-dom';
-import { ROUTES } from '@pyroscope/pages/routes';
-import { SingleView } from '@pyroscope/pages/SingleView';
-import { ComparisonView } from '@pyroscope/pages/ComparisonView';
-import { ExploreView } from '@pyroscope/pages/ExploreView';
-import { DiffView } from '@pyroscope/pages/DiffView';
 import { Sidebar } from '@pyroscope/components/Sidebar';
 import { TenantWall } from '@pyroscope/components/TenantWall';
-import { history } from '@pyroscope/util/history';
 import { useSelectFirstApp } from '@pyroscope/hooks/useAppNames';
+import '@pyroscope/jquery-import';
+import { ComparisonView } from '@pyroscope/pages/ComparisonView';
+import { DiffView } from '@pyroscope/pages/DiffView';
+import { ExploreView } from '@pyroscope/pages/ExploreView';
+import { SingleView } from '@pyroscope/pages/SingleView';
+import { ROUTES } from '@pyroscope/pages/routes';
+import store from '@pyroscope/redux/store';
+import Notifications from '@pyroscope/ui/Notifications';
+import { history } from '@pyroscope/util/history';
+import '@szhsin/react-menu/dist/index.css';
+import ReactDOM from 'react-dom/client';
+import { Provider } from 'react-redux';
+import { Route, Router, Switch } from 'react-router-dom';
+import { setupReduxQuerySync } from './redux/useReduxQuerySync';
+import './sass/profile.scss';
 
 const container = document.getElementById('reactRoot') as HTMLElement;
 const root = ReactDOM.createRoot(container);
+
+setupReduxQuerySync();
 
 function App() {
   useSelectFirstApp();

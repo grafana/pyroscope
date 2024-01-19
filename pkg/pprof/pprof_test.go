@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/google/pprof/profile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1035,4 +1036,97 @@ func Test_GroupSamplesWithout_dotnet_profile(t *testing.T) {
 	groups := GroupSamplesWithoutLabels(p.Profile, ProfileIDLabelName)
 	require.Len(t, groups, 1)
 	assert.Equal(t, groups[0].Labels, []*profilev1.Label{{Key: 66, Str: 67}, {Key: 64, Str: 65}})
+}
+
+func Test_GetProfileLanguage_go_cpu_profile(t *testing.T) {
+	p, err := OpenFile("testdata/go.cpu.labels.pprof")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "go", language)
+}
+
+func Test_GetProfileLanguage_go_heap_profile(t *testing.T) {
+	p, err := OpenFile("testdata/heap")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "go", language)
+}
+
+func Test_GetProfileLanguage_dotnet_profile(t *testing.T) {
+	p, err := OpenFile("testdata/dotnet.labels.pprof")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "dotnet", language)
+}
+
+func Test_GetProfileLanguage_java_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_java")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "java", language)
+}
+
+func Test_GetProfileLanguage_python_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_python")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "python", language)
+}
+
+func Test_GetProfileLanguage_ruby_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_ruby")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "ruby", language)
+}
+
+func Test_GetProfileLanguage_nodejs_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_nodejs")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "nodejs", language)
+}
+
+func Test_GetProfileLanguage_rust_profile(t *testing.T) {
+	p, err := OpenFile("testdata/profile_rust")
+	require.NoError(t, err)
+
+	language := GetLanguage(p, log.NewNopLogger())
+	assert.Equal(t, "rust", language)
+}
+
+func Benchmark_GetProfileLanguage(b *testing.B) {
+	tests := []string{
+		"testdata/go.cpu.labels.pprof",
+		"testdata/heap",
+		"testdata/dotnet.labels.pprof",
+		"testdata/profile_java",
+		"testdata/profile_nodejs",
+		"testdata/profile_python",
+		"testdata/profile_ruby",
+		"testdata/profile_rust",
+	}
+
+	for _, testdata := range tests {
+		f := testdata
+		b.Run(testdata, func(b *testing.B) {
+			p, err := OpenFile(f)
+			require.NoError(b, err)
+			b.ResetTimer()
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				language := GetLanguage(p, log.NewNopLogger())
+				if language == "unknown" {
+					b.Fatal()
+				}
+			}
+		})
+	}
 }

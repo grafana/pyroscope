@@ -22,7 +22,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.21.3
+          go-version: 1.21.6
       - name: Format
         run: make fmt check/unstaged-changes
   test:
@@ -33,12 +33,11 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.21.3
+          go-version: 1.21.6
       - name: Go Mod
         run: make check/go/mod
       - name: Test
         run: make go/test
-
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -47,7 +46,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.21.3
+          go-version: 1.21.6
       - name: Run linter
         run: make lint
       - name: Check helm manifests
@@ -97,7 +96,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.21.3
+          go-version: 1.21.6
       - uses: actions/setup-node@v3
         with:
           node-version: lts/hydrogen
@@ -119,7 +118,7 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.21.3
+          go-version: 1.21.6
       - uses: actions/setup-node@v3
         with:
           node-version: lts/hydrogen

@@ -29,12 +29,13 @@ uploaded to the object store bucket.
 
 ## High disk utilization
 
-To avoid losing the most recent data, Pyroscope will remove the oldest
-blocks when it detects that the volume on which the data path is located is
-close to running out of disk. This high utilization mode will be active when:
+To avoid losing the most recent data, Pyroscope will remove the oldest blocks
+when it detects that the volume on which the data path is located is close to
+running out of disk. This high utilization mode will be active every
+`-pyroscopedb.retention-policy-enforcement-interval` when:
 
-* less than 5% of the total size of the volume is available and
-* the available disk space smaller then 10GiB.
+* less than `-pyroscopedb.retention-policy-min-disk-available-percentage=0.05` of the total size of the volume is available and
+* the available disk space smaller then `-pyroscopedb.retention-policy-min-free-disk-gb=10`.
 
 The deletion will be logged like this:
 

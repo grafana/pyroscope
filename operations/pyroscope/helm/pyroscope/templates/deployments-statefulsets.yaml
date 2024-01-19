@@ -2,6 +2,7 @@
 {{- range $component, $cfg := (fromYaml (include "pyroscope.components" .)) }}
 {{- with $global }}
 {{-  $values := mustMergeOverwrite (deepCopy .Values.pyroscope ) ($cfg | default dict)}}
+{{-  $extraArgs := mustMergeOverwrite (deepCopy .Values.pyroscope.extraArgs ) ($cfg.extraArgs | default dict)}}
 ---
 apiVersion: apps/v1
 kind: {{ $cfg.kind }}
@@ -63,10 +64,10 @@ spec:
             - "-self-profiling.disable-push=true"
             - "-server.http-listen-port={{ $values.service.port }}"
             - "-memberlist.cluster-label={{ .Release.Namespace }}-{{ include "pyroscope.fullname" .}}"
-            - "-memberlist.join=dns+{{ include "pyroscope.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc.cluster.local.:{{ .Values.pyroscope.memberlist.port }}"
+            - "-memberlist.join=dns+{{ include "pyroscope.fullname" .}}-memberlist.{{ .Release.Namespace }}.svc{{ .Values.pyroscope.cluster_domain }}:{{ .Values.pyroscope.memberlist.port }}"
             - "-config.file=/etc/pyroscope/config.yaml"
             - "-runtime-config.file=/etc/pyroscope/overrides/overrides.yaml"
-          {{- range $key, $value := $values.extraArgs }}
+          {{- range $key, $value := $extraArgs }}
             - "-{{ $key }}={{ $value }}"
           {{- end }}
           {{- with $values.extraEnvVars }}
@@ -96,6 +97,9 @@ spec:
               path: /ready
               port: {{ $values.service.port_name }}
               scheme: {{ $values.service.scheme }}
+          {{- if and (hasKey $values "readinessProbe") (hasKey $values.readinessProbe "initialDelaySeconds") }}
+            initialDelaySeconds: {{ $values.readinessProbe.initialDelaySeconds }}
+          {{- end }}
           volumeMounts:
             - name: config
               mountPath: /etc/pyroscope/config.yaml
@@ -140,10 +144,6 @@ spec:
         - name: overrides-config
           configMap:
             name: {{ include "pyroscope.fullname" . }}-overrides-config
-  {{- if eq $component "compactor" }}
-        - name: data-compactor
-          emptyDir: {}
-  {{- end }}
   {{- $persistence := $values.persistence }}
   {{- if not $persistence.enabled }}
         - name: data

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/common/model"
@@ -26,6 +26,7 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 		SetTag("start", model.Time(c.Msg.Start).Time().String()).
 		SetTag("end", model.Time(c.Msg.End).Time().String()).
 		SetTag("selector", c.Msg.LabelSelector).
+		SetTag("max_nodes", c.Msg.GetMaxNodes()).
 		SetTag("profile_type", c.Msg.ProfileTypeID)
 
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceSelectMergeStacktracesProcedure)
@@ -40,6 +41,10 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 	}
 	if validated.IsEmpty {
 		return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{}), nil
+	}
+	maxNodes, err := validation.ValidateMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
@@ -59,7 +64,7 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 				LabelSelector: c.Msg.LabelSelector,
 				Start:         r.Start.UnixMilli(),
 				End:           r.End.UnixMilli(),
-				MaxNodes:      c.Msg.MaxNodes,
+				MaxNodes:      &maxNodes,
 			})
 			resp, err := connectgrpc.RoundTripUnary[
 				querierv1.SelectMergeStacktracesRequest,

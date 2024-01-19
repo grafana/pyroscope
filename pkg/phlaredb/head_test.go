@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"

@@ -5,8 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"sync"
+	"time"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
@@ -79,7 +80,7 @@ func (i *ingesterFlusherCompat) Flush() {
 	}
 }
 
-func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits) (*Ingester, error) {
+func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storageBucket phlareobj.Bucket, limits Limits, queryStoreAfter time.Duration) (*Ingester, error) {
 	i := &Ingester{
 		cfg:           cfg,
 		phlarectx:     phlarectx,
@@ -96,7 +97,7 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		localBucketCfg phlareobjclient.Config
 		err            error
 	)
-	localBucketCfg.Backend = "filesystem"
+	localBucketCfg.Backend = phlareobjclient.Filesystem
 	localBucketCfg.Filesystem.Directory = dbConfig.DataPath
 	i.localBucket, err = phlareobjclient.NewBucket(phlarectx, localBucketCfg, "local")
 	if err != nil {
@@ -114,8 +115,27 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		return nil, err
 	}
 
-	rpEnforcer := newRetentionPolicyEnforcer(phlarecontext.Logger(phlarectx), i, defaultRetentionPolicy(), dbConfig)
-	i.subservices, err = services.NewManager(i.lifecycler, rpEnforcer)
+	retentionPolicy := defaultRetentionPolicy()
+
+	if dbConfig.EnforcementInterval > 0 {
+		retentionPolicy.EnforcementInterval = dbConfig.EnforcementInterval
+	}
+	if dbConfig.MinFreeDisk > 0 {
+		retentionPolicy.MinFreeDisk = dbConfig.MinFreeDisk
+	}
+	if dbConfig.MinDiskAvailablePercentage > 0 {
+		retentionPolicy.MinDiskAvailablePercentage = dbConfig.MinDiskAvailablePercentage
+	}
+	if queryStoreAfter > 0 {
+		retentionPolicy.Expiry = queryStoreAfter
+	}
+
+	if dbConfig.DisableEnforcement {
+		i.subservices, err = services.NewManager(i.lifecycler)
+	} else {
+		dc := newDiskCleaner(phlarecontext.Logger(phlarectx), i, retentionPolicy, dbConfig)
+		i.subservices, err = services.NewManager(i.lifecycler, dc)
+	}
 	if err != nil {
 		return nil, errors.Wrap(err, "services manager")
 	}

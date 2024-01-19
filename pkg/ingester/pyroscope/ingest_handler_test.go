@@ -11,20 +11,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 
-	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
-
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/distributor/model"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
@@ -116,6 +115,17 @@ func (m *MockPushService) CompareDump(file string) {
 	expected := Dump{}
 	err = json.Unmarshal(bs, &expected)
 	require.NoError(m.T, err)
+
+	var req []*flatProfileSeries
+	for _, x := range m.reqPprof {
+		iterateProfileSeries(x.Profile.CloneVT(), x.Labels, func(p *profilev1.Profile, ls phlaremodel.Labels) {
+			req = append(req, &flatProfileSeries{
+				Labels:  ls,
+				Profile: p,
+			})
+		})
+	}
+	m.reqPprof = req
 
 	for i := range expected.Profiles {
 		expectedLabels := labels.Labels{}
@@ -395,7 +405,7 @@ func TestIngestPPROFFixtures(t *testing.T) {
 				ls := phlaremodel.Labels(actualReq.Labels)
 				require.Equal(t, testdatum.expectMetric, ls.Get(labels.MetricName))
 				require.Equal(t, "asd", ls.Get("qwe"))
-				require.Equal(t, spyName, ls.Get("pyroscope_spy"))
+				require.Equal(t, spyName, ls.Get(phlaremodel.LabelNamePyroscopeSpy))
 				require.Equal(t, "pprof.test", ls.Get("service_name"))
 				require.Equal(t, "false", ls.Get("__delta__"))
 				require.Equal(t, profile, actualReq.RawProfile)
@@ -459,4 +469,30 @@ func createPProfRequest(t *testing.T, profile, prevProfile, sampleTypeConfig []b
 	require.NoError(t, err)
 
 	return b.Bytes(), w.FormDataContentType()
+}
+
+func iterateProfileSeries(p *profilev1.Profile, seriesLabels phlaremodel.Labels, fn func(*profilev1.Profile, phlaremodel.Labels)) {
+	for _, x := range p.Sample {
+		sort.Sort(pprof.LabelsByKeyValue(x.Label))
+	}
+	sort.Sort(pprof.SamplesByLabels(p.Sample))
+	groups := pprof.GroupSamplesWithoutLabels(p, "profile_id")
+	e := pprof.NewSampleExporter(p)
+	for _, g := range groups {
+		ls := mergeSeriesAndSampleLabels(p, seriesLabels, g.Labels)
+		ps := e.ExportSamples(new(profilev1.Profile), g.Samples)
+		fn(ps, ls)
+	}
+}
+
+func mergeSeriesAndSampleLabels(p *profilev1.Profile, sl []*v1.LabelPair, pl []*profilev1.Label) []*v1.LabelPair {
+	m := phlaremodel.Labels(sl).Clone()
+	for _, l := range pl {
+		m = append(m, &v1.LabelPair{
+			Name:  p.StringTable[l.Key],
+			Value: p.StringTable[l.Str],
+		})
+	}
+	sort.Stable(m)
+	return m.Unique()
 }

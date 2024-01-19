@@ -31,6 +31,9 @@ EMBEDASSETS ?= embedassets
 VPREFIX := github.com/grafana/pyroscope/pkg/util/build
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH) -X $(VPREFIX).Version=$(IMAGE_TAG) -X $(VPREFIX).Revision=$(GIT_REVISION) -X $(VPREFIX).BuildDate=$(GIT_LAST_COMMIT_DATE)
 
+# Folders with go.mod file
+GO_MOD_PATHS := api/ ebpf/ examples/golang-push/rideshare/ examples/golang-push/simple/
+
 # Add extra arguments to helm commands
 HELM_ARGS =
 
@@ -61,9 +64,11 @@ buf/lint: $(BIN)/buf
 	cd api/ && $(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 	cd pkg && $(BIN)/buf lint || true # TODO: Fix linting problems and remove the always true
 
+EBPF_TESTS='^TestEBPF.*'
+
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
-	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) ./... ./ebpf/...
+	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS) ./... ./ebpf/...
 
 .PHONY: build
 build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)
@@ -127,20 +132,20 @@ go/lint: $(BIN)/golangci-lint
 	$(GO) vet ./...
 
 .PHONY: go/mod
-go/mod:
+go/mod: $(foreach P,$(GO_MOD_PATHS),go/mod_tidy/$P)
+
+.PHONY: go/mod_tidy_root
+go/mod_tidy_root:
 	GO111MODULE=on go mod download
 	# doesn't work for go workspace
 	# GO111MODULE=on go mod verify
 	go work sync
 	GO111MODULE=on go mod tidy
-	cd api/ && GO111MODULE=on go mod download
-	cd api/ && GO111MODULE=on go mod tidy
-	cd ebpf/ && GO111MODULE=on go mod download
-	cd ebpf/ && GO111MODULE=on go mod tidy
-	cd examples/golang-push/rideshare/ && GO111MODULE=on go mod download
-	cd examples/golang-push/rideshare/ && GO111MODULE=on go mod tidy
-	cd examples/golang-push/simple/ && GO111MODULE=on go mod download
-	cd examples/golang-push/simple/ && GO111MODULE=on go mod tidy
+
+.PHONY: go/mod_tidy/%
+go/mod_tidy/%: go/mod_tidy_root
+	cd "$*" && GO111MODULE=on go mod download
+	cd "$*" && GO111MODULE=on go mod tidy
 
 .PHONY: fmt
 fmt: $(BIN)/golangci-lint $(BIN)/buf $(BIN)/tk ## Automatically fix some lint errors
@@ -251,7 +256,7 @@ reference-help: build
 
 $(BIN)/buf: Makefile
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/bufbuild/buf/cmd/buf@v1.20.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/bufbuild/buf/cmd/buf@v1.28.1
 
 $(BIN)/golangci-lint: Makefile
 	@mkdir -p $(@D)
@@ -259,15 +264,15 @@ $(BIN)/golangci-lint: Makefile
 
 $(BIN)/protoc-gen-go: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31.0
+	GOBIN=$(abspath $(@D)) $(GO) install google.golang.org/protobuf/cmd/protoc-gen-go@v1.32.0
 
 $(BIN)/protoc-gen-connect-go: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/bufbuild/connect-go/cmd/protoc-gen-connect-go@v1.9.0
+	GOBIN=$(abspath $(@D)) $(GO) install connectrpc.com/connect/cmd/protoc-gen-connect-go@v1.14.0
 
 $(BIN)/protoc-gen-connect-go-mux: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/grafana/connect-go-mux/cmd/protoc-gen-connect-go-mux@v0.1.1
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/grafana/connect-go-mux/cmd/protoc-gen-connect-go-mux@v0.2.0
 
 $(BIN)/protoc-gen-go-vtproto: Makefile go.mod
 	@mkdir -p $(@D)
@@ -393,7 +398,9 @@ deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 
 .PHONY: deploy-micro-services
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
-	$(call deploy,pyroscope-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set pyroscope.components.querier.resources=null --set pyroscope.components.distributor.resources=null --set pyroscope.components.ingester.resources=null --set pyroscope.components.store-gateway.resources=null --set pyroscope.components.compactor.resources=null)
+	# Ensure to delete existing service, that has been created manually by the deploy target
+	kubectl delete svc --field-selector metadata.name=pyroscope-micro-services-query-frontend -l app.kubernetes.io/managed-by!=Helm
+	$(call deploy,pyroscope-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set pyroscope.components.querier.resources=null --set pyroscope.components.distributor.resources=null --set pyroscope.components.ingester.resources=null --set pyroscope.components.store-gateway.resources=null --set pyroscope.components.compactor.resources=null --set pyroscope.components.tenant-settings.resources=null)
 
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json

@@ -3,14 +3,15 @@ package frontend
 import (
 	"context"
 
-	"github.com/bufbuild/connect-go"
+	"connectrpc.com/connect"
+	"github.com/grafana/dskit/tenant"
 	"golang.org/x/sync/errgroup"
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
-	"github.com/grafana/pyroscope/pkg/util/math"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 func (f *Frontend) Diff(ctx context.Context,
@@ -19,6 +20,21 @@ func (f *Frontend) Diff(ctx context.Context,
 ) {
 	ctx = connectgrpc.WithProcedure(ctx, querierv1connect.QuerierServiceDiffProcedure)
 	g, ctx := errgroup.WithContext(ctx)
+	tenantIDs, err := tenant.TenantIDs(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	maxNodes := c.Msg.Left.GetMaxNodes()
+	if n := c.Msg.Right.GetMaxNodes(); n > maxNodes {
+		maxNodes = n
+	}
+	maxNodes, err = validation.ValidateMaxNodes(f.limits, tenantIDs, maxNodes)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	c.Msg.Left.MaxNodes = &maxNodes
+	c.Msg.Right.MaxNodes = &maxNodes
 
 	var left, right *phlaremodel.Tree
 	g.Go(func() error {
@@ -45,7 +61,6 @@ func (f *Frontend) Diff(ctx context.Context,
 		return nil, err
 	}
 
-	maxNodes := int(math.Max(c.Msg.Left.GetMaxNodes(), c.Msg.Right.GetMaxNodes()))
 	diff, err := phlaremodel.NewFlamegraphDiff(left, right, maxNodes)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)

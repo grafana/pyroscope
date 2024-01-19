@@ -47,6 +47,7 @@ import {
 import styles from './TagExplorerView.module.scss';
 import { formatTitle } from './formatTitle';
 import { FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
+import profileMetrics from '../constants/profile-metrics.json';
 
 const TIMELINE_SERIES_COLORS = [
   Color.rgb(242, 204, 12),
@@ -159,6 +160,15 @@ const TIMELINE_WRAPPER_ID = 'explore_timeline_wrapper';
 const getTimelineColor = (index: number, palette: Color[]): Color =>
   Color(palette[index % (palette.length - 1)]);
 
+const getProfileMetricTitle = (appName: Maybe<string>) => {
+  const name = appName.unwrapOr('');
+  const profileMetric = (profileMetrics as Record<string, any>)[name];
+
+  return profileMetric
+    ? `${profileMetric.type} (${profileMetric.group})`
+    : appName.unwrapOr('');
+};
+
 function TagExplorerView() {
   const { offset } = useTimeZone();
   const dispatch = useAppDispatch();
@@ -193,10 +203,10 @@ function TagExplorerView() {
       return () => fetchData.abort('cancel');
     }
     return undefined;
-  }, [from, until, query, groupByTagValue, dispatch]);
+  }, [from, until, query, groupByTagValue, refreshToken, dispatch]);
 
   useEffect(() => {
-    if (from && until && query) {
+    if (from && until && query && groupByTag) {
       const fetchData = dispatch(fetchTagExplorerView(null));
       return () => fetchData.abort('cancel');
     }
@@ -375,9 +385,7 @@ function TagExplorerView() {
         </Box>
         <CollapseBox
           isLoading={dataLoading}
-          title={appName
-            .map((a) => `${a} Tag Breakdown`)
-            .unwrapOr('Tag Breakdown')}
+          title={`${getProfileMetricTitle(appName)} Tag Breakdown`}
         >
           <div className={styles.statisticsBox}>
             <div className={styles.pieChartWrapper}>
@@ -673,13 +681,14 @@ function ExploreHeader({
 
   useEffect(() => {
     if (tagKeys.length && !selectedTag) {
-      handleGroupByTagChange(tagKeys[0]);
+      const firstGoodTag = tagKeys.find((tag) => !tag.startsWith('__'));
+      handleGroupByTagChange(firstGoodTag || tagKeys[0]);
     }
   }, [tagKeys, selectedTag, handleGroupByTagChange]);
 
   return (
     <div className={styles.header} data-testid="explore-header">
-      <span className={styles.title}>{appName.unwrapOr('')}</span>
+      <span className={styles.title}>{getProfileMetricTitle(appName)}</span>
       <div className={styles.queryGrouppedBy}>
         <span className={styles.selectName}>grouped by</span>
         <Dropdown
