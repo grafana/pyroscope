@@ -55,3 +55,5 @@ make release
 ```
 
 > Make sure to have a [Github Token](https://goreleaser.com/scm/github/?h=github#github) `GITHUB_TOKEN` correctly set.
+
+Make sure to create the release notes and CHANGELOG for any manual release. 
