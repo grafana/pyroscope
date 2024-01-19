@@ -5,7 +5,7 @@ package adhocprofiles.v1;
 import "types/v1/types.proto";
 
 service AdHocProfileService {
-  rpc Upload(AdHocProfilesUploadRequest) returns (AdHocProfilesGetResponse) {}
+  rpc Upload(AdHocProfilesUploadRequest) returns (AdHocProfilesUploadResponse) {}
   rpc Get(AdHocProfilesGetRequest) returns (AdHocProfilesGetResponse) {}
   rpc List(AdHocProfilesListRequest) returns (AdHocProfilesListResponse) {}
 }
@@ -15,14 +15,23 @@ message AdHocProfilesUploadRequest {
   string profile = 2;
 }
 
+message AdHocProfilesUploadResponse {
+  string id = 1;
+  types.v1.FlameGraph flamegraph = 2;
+  repeated string sample_types = 3;
+}
+
 message AdHocProfilesGetRequest {
   string id = 1;
+  optional string sample_type = 2;
 }
 
 message AdHocProfilesGetResponse {
   string id = 1;
   string name = 2;
-  types.v1.FlameGraph flamegraph = 3;
+  string sample_type = 3;
+  types.v1.FlameGraph flamegraph = 4;
+  repeated string sample_types = 5;
 }
 
 message AdHocProfilesListRequest {}

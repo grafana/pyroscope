@@ -32,7 +32,7 @@ type ProfileFileTypeData struct {
 	Units   metadata.Units
 }
 
-func PprofToProfile(b []byte, name string, maxNodes int) (_ []*flamebearer.FlamebearerProfile, err error) {
+func PprofToProfile(b []byte, maxNodes int) (_ []*flamebearer.FlamebearerProfile, err error) {
 	var p tree.Profile
 	if err := pprof.Decode(bytes.NewReader(b), &p); err != nil {
 		return nil, fmt.Errorf("parsing pprof: %w", err)
@@ -55,13 +55,9 @@ func PprofToProfile(b []byte, name string, maxNodes int) (_ []*flamebearer.Flame
 		if err != nil {
 			return nil, err
 		}
-		finalName := name
-		if len(p.SampleTypes()) > 1 {
-			finalName = stype
-		}
 		fb := flamebearer.NewProfile(flamebearer.ProfileConfig{
 			Tree:     t,
-			Name:     finalName,
+			Name:     stype,
 			MaxNodes: maxNodes,
 			Metadata: metadata.Metadata{
 				SpyName:    "unknown",

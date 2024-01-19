@@ -400,8 +400,17 @@
         "name": {
           "type": "string"
         },
+        "sampleType": {
+          "type": "string"
+        },
         "flamegraph": {
           "$ref": "#/definitions/v1FlameGraph"
+        },
+        "sampleTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -425,6 +434,23 @@
         },
         "name": {
           "type": "string"
+        }
+      }
+    },
+    "v1AdHocProfilesUploadResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "flamegraph": {
+          "$ref": "#/definitions/v1FlameGraph"
+        },
+        "sampleTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

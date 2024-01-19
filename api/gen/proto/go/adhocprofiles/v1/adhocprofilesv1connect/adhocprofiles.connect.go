@@ -53,7 +53,7 @@ var (
 
 // AdHocProfileServiceClient is a client for the adhocprofiles.v1.AdHocProfileService service.
 type AdHocProfileServiceClient interface {
-	Upload(context.Context, *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error)
+	Upload(context.Context, *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesUploadResponse], error)
 	Get(context.Context, *connect.Request[v1.AdHocProfilesGetRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error)
 	List(context.Context, *connect.Request[v1.AdHocProfilesListRequest]) (*connect.Response[v1.AdHocProfilesListResponse], error)
 }
@@ -68,7 +68,7 @@ type AdHocProfileServiceClient interface {
 func NewAdHocProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AdHocProfileServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	return &adHocProfileServiceClient{
-		upload: connect.NewClient[v1.AdHocProfilesUploadRequest, v1.AdHocProfilesGetResponse](
+		upload: connect.NewClient[v1.AdHocProfilesUploadRequest, v1.AdHocProfilesUploadResponse](
 			httpClient,
 			baseURL+AdHocProfileServiceUploadProcedure,
 			connect.WithSchema(adHocProfileServiceUploadMethodDescriptor),
@@ -91,13 +91,13 @@ func NewAdHocProfileServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // adHocProfileServiceClient implements AdHocProfileServiceClient.
 type adHocProfileServiceClient struct {
-	upload *connect.Client[v1.AdHocProfilesUploadRequest, v1.AdHocProfilesGetResponse]
+	upload *connect.Client[v1.AdHocProfilesUploadRequest, v1.AdHocProfilesUploadResponse]
 	get    *connect.Client[v1.AdHocProfilesGetRequest, v1.AdHocProfilesGetResponse]
 	list   *connect.Client[v1.AdHocProfilesListRequest, v1.AdHocProfilesListResponse]
 }
 
 // Upload calls adhocprofiles.v1.AdHocProfileService.Upload.
-func (c *adHocProfileServiceClient) Upload(ctx context.Context, req *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error) {
+func (c *adHocProfileServiceClient) Upload(ctx context.Context, req *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesUploadResponse], error) {
 	return c.upload.CallUnary(ctx, req)
 }
 
@@ -114,7 +114,7 @@ func (c *adHocProfileServiceClient) List(ctx context.Context, req *connect.Reque
 // AdHocProfileServiceHandler is an implementation of the adhocprofiles.v1.AdHocProfileService
 // service.
 type AdHocProfileServiceHandler interface {
-	Upload(context.Context, *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error)
+	Upload(context.Context, *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesUploadResponse], error)
 	Get(context.Context, *connect.Request[v1.AdHocProfilesGetRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error)
 	List(context.Context, *connect.Request[v1.AdHocProfilesListRequest]) (*connect.Response[v1.AdHocProfilesListResponse], error)
 }
@@ -160,7 +160,7 @@ func NewAdHocProfileServiceHandler(svc AdHocProfileServiceHandler, opts ...conne
 // UnimplementedAdHocProfileServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdHocProfileServiceHandler struct{}
 
-func (UnimplementedAdHocProfileServiceHandler) Upload(context.Context, *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error) {
+func (UnimplementedAdHocProfileServiceHandler) Upload(context.Context, *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesUploadResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("adhocprofiles.v1.AdHocProfileService.Upload is not implemented"))
 }
 
