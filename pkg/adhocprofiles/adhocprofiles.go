@@ -76,8 +76,9 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 	}
 
 	return connect.NewResponse(&v1.AdHocProfilesGetResponse{
-		Flamegraph: flamegraph,
 		Id:         id.String(),
+		Name:       c.Msg.Name,
+		Flamegraph: flamegraph,
 	}), nil
 }
 
