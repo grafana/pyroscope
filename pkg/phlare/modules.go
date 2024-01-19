@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/dskit/runtimeconfig"
 	"github.com/grafana/dskit/server"
 	"github.com/grafana/dskit/services"
+	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -75,6 +76,7 @@ const (
 	Compactor         string = "compactor"
 	Admin             string = "admin"
 	TenantSettings    string = "tenant-settings"
+	AdHocProfiles     string = "ad-hoc-profiles"
 
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
 	// IndexGateway             string = "index-gateway"
@@ -156,6 +158,17 @@ func (f *Phlare) initTenantSettings() (services.Service, error) {
 
 	f.API.RegisterTenantSettings(settings)
 	return settings, nil
+}
+
+func (f *Phlare) initAdHocProfiles() (services.Service, error) {
+	if f.storageBucket == nil {
+		level.Warn(f.logger).Log("msg", "no storage bucket configured, ad hoc profiles will not be loaded")
+		return nil, nil
+	}
+
+	a := adhocprofiles.NewAdHocProfiles(f.storageBucket, f.logger)
+	f.API.RegisterAdHocProfiles(a)
+	return a, nil
 }
 
 func (f *Phlare) initOverrides() (serv services.Service, err error) {
