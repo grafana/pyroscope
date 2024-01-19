@@ -84,6 +84,8 @@ type StoreGatewayServiceClient interface {
 	MergeProfilesLabels(context.Context) *connect.BidiStreamForClient[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]
 	MergeProfilesPprof(context.Context) *connect.BidiStreamForClient[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse]
 	MergeSpanProfile(context.Context) *connect.BidiStreamForClient[v11.MergeSpanProfileRequest, v11.MergeSpanProfileResponse]
+	// Deprecated: ProfileType call is deprecated in the store components
+	// TODO: Remove this call in release v1.4
 	ProfileTypes(context.Context, *connect.Request[v11.ProfileTypesRequest]) (*connect.Response[v11.ProfileTypesResponse], error)
 	LabelValues(context.Context, *connect.Request[v12.LabelValuesRequest]) (*connect.Response[v12.LabelValuesResponse], error)
 	LabelNames(context.Context, *connect.Request[v12.LabelNamesRequest]) (*connect.Response[v12.LabelNamesResponse], error)
@@ -223,6 +225,8 @@ type StoreGatewayServiceHandler interface {
 	MergeProfilesLabels(context.Context, *connect.BidiStream[v11.MergeProfilesLabelsRequest, v11.MergeProfilesLabelsResponse]) error
 	MergeProfilesPprof(context.Context, *connect.BidiStream[v11.MergeProfilesPprofRequest, v11.MergeProfilesPprofResponse]) error
 	MergeSpanProfile(context.Context, *connect.BidiStream[v11.MergeSpanProfileRequest, v11.MergeSpanProfileResponse]) error
+	// Deprecated: ProfileType call is deprecated in the store components
+	// TODO: Remove this call in release v1.4
 	ProfileTypes(context.Context, *connect.Request[v11.ProfileTypesRequest]) (*connect.Response[v11.ProfileTypesResponse], error)
 	LabelValues(context.Context, *connect.Request[v12.LabelValuesRequest]) (*connect.Response[v12.LabelValuesResponse], error)
 	LabelNames(context.Context, *connect.Request[v12.LabelNamesRequest]) (*connect.Response[v12.LabelNamesResponse], error)

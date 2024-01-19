@@ -47,16 +47,6 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	config := rideshare.ReadConfig()
-	config.AppName = os.Getenv("PYROSCOPE_APPLICATION_NAME")
-	if config.AppName == "" {
-		config.AppName = "ride-sharing-app"
-	}
-	hostname, err := os.Hostname()
-	if err == nil {
-		config.Tags = map[string]string{
-			"hostname": hostname,
-		}
-	}
 
 	tp, _ := setupOTEL(config)
 	defer func() {
