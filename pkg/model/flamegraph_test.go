@@ -8,7 +8,6 @@ import (
 
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 
-	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
@@ -81,7 +80,7 @@ func Test_ExportToFlamebearer(t *testing.T) {
 	})
 }
 
-var f *querierv1.FlameGraph
+var f *typesv1.FlameGraph
 
 func BenchmarkFlamegraph(b *testing.B) {
 	stacks := make([]stacktraces, 2000)

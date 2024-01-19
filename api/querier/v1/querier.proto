@@ -63,7 +63,7 @@ message SelectMergeStacktracesRequest {
 }
 
 message SelectMergeStacktracesResponse {
-  FlameGraph flamegraph = 1;
+  types.v1.FlameGraph flamegraph = 1;
 }
 
 message SelectMergeSpanProfileRequest {
@@ -76,7 +76,7 @@ message SelectMergeSpanProfileRequest {
 }
 
 message SelectMergeSpanProfileResponse {
-  FlameGraph flamegraph = 1;
+  types.v1.FlameGraph flamegraph = 1;
 }
 
 message DiffRequest {
@@ -88,25 +88,14 @@ message DiffResponse {
   FlameGraphDiff flamegraph = 1;
 }
 
-message FlameGraph {
-  repeated string names = 1;
-  repeated Level levels = 2;
-  int64 total = 3;
-  int64 max_self = 4;
-}
-
 message FlameGraphDiff {
   repeated string names = 1;
-  repeated Level levels = 2;
+  repeated types.v1.Level levels = 2;
   int64 total = 3;
   int64 max_self = 4;
 
   int64 leftTicks = 5;
   int64 rightTicks = 6;
-}
-
-message Level {
-  repeated int64 values = 1;
 }
 
 message SelectMergeProfileRequest {

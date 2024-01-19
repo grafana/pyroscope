@@ -1,10 +1,13 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "google/v1/profile.proto",
+    "title": "types/v1/types.proto",
     "version": "version not set"
   },
   "tags": [
+    {
+      "name": "AdHocProfileService"
+    },
     {
       "name": "PusherService"
     },
@@ -383,6 +386,43 @@
     "typesv1Location": {
       "type": "object",
       "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "v1AdHocProfilesGetResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "flamegraph": {
+          "$ref": "#/definitions/v1FlameGraph"
+        }
+      }
+    },
+    "v1AdHocProfilesListResponse": {
+      "type": "object",
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AdHocProfilesProfileMeta"
+          }
+        }
+      }
+    },
+    "v1AdHocProfilesProfileMeta": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         }

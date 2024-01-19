@@ -83,3 +83,14 @@ message StackTraceSelector {
 message Location {
   string name = 1;
 }
+
+message FlameGraph {
+  repeated string names = 1;
+  repeated Level levels = 2;
+  int64 total = 3;
+  int64 max_self = 4;
+}
+
+message Level {
+  repeated int64 values = 1;
+}
