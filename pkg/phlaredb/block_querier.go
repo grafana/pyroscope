@@ -1753,36 +1753,28 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 					profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
 				)
 			}
-			buf := make([][]parquet.Value, 1)
-
-			// todo: we should stream profile to merge instead of loading all in memory.
-			// This is a temporary solution for now since there's a memory corruption happening.
-			rows, err := iter.Slice[rowProfile](
-				&RowsIterator[rowProfile]{
-					rows: it,
-					at: func(ir *query.IteratorResult) rowProfile {
-						buf = ir.Columns(buf, "StacktracePartition")
-						if len(buf[0]) == 0 {
-							return rowProfile{
-								rowNum: ir.RowNumber[0],
-							}
-						}
-						return rowProfile{
-							rowNum:    ir.RowNumber[0],
-							partition: buf[0][0].Uint64(),
-						}
-					},
-				})
-			if err != nil {
-				return err
-			}
-			return mergeByStacktraces[rowProfile](ctx, profiles.file, iter.NewSliceIterator(rows), r)
+			rows := asyncRowIterator(it)
+			defer rows.Close()
+			return mergeByStacktraces(ctx, profiles.file, rows, r)
 		})
 	})
 	if err = g.Wait(); err != nil {
 		return nil, err
 	}
 	return r.Tree()
+}
+
+func asyncRowIterator(it iter.Iterator[*query.IteratorResult]) iter.Iterator[rowProfile] {
+	return iter.NewAsyncBatchIterator[*query.IteratorResult, rowProfile](
+		it, 256,
+		func(r *query.IteratorResult) rowProfile {
+			return rowProfile{
+				rowNum:    r.RowNumber[0],
+				partition: r.ColumnValue("StacktracePartition").Uint64(),
+			}
+		},
+		func(t []rowProfile) {},
+	)
 }
 
 func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ingestv1.SelectSpanProfileRequest) (*phlaremodel.Tree, error) {
