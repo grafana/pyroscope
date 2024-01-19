@@ -5,24 +5,37 @@ package adhocprofiles.v1;
 import "types/v1/types.proto";
 
 service AdHocProfileService {
+  // Upload a profile to the underlying store. The request contains a name and a base64 encoded pprof file. The response
+  // contains a generated unique identifier, a flamegraph and a list of found sample types within the profile.
   rpc Upload(AdHocProfilesUploadRequest) returns (AdHocProfilesUploadResponse) {}
+
+  // Retrieves a profile from the underlying store by id and an optional sample type. The response is similar to the one
+  // for the upload method.
   rpc Get(AdHocProfilesGetRequest) returns (AdHocProfilesGetResponse) {}
+
+  // Retrieves a list of profiles found in the underlying store.
   rpc List(AdHocProfilesListRequest) returns (AdHocProfilesListResponse) {}
 }
 
 message AdHocProfilesUploadRequest {
+  // This is typically the file name and it serves as a human readable name for the profile.
   string name = 1;
+  // This is the base64 encoded profile. Only pprof is supported at this time.
   string profile = 2;
 }
 
 message AdHocProfilesUploadResponse {
+  // A generated unique identifier that can be used to refer to this profile after the upload.
   string id = 1;
   types.v1.FlameGraph flamegraph = 2;
+  // A list of sample types contained within the uploaded profile (e.g., cpu and samples for cpu profiles).
   repeated string sample_types = 3;
 }
 
 message AdHocProfilesGetRequest {
+  // The unique identifier of the profile generated during the upload.
   string id = 1;
+  // The desired sample_type for the returned flame graph. If omitted or empty, the first profile is returned.
   optional string sample_type = 2;
 }
 
