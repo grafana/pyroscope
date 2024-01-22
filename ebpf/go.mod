@@ -16,7 +16,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.17.0
 	github.com/prometheus/common v0.44.0
-	github.com/prometheus/prometheus v0.48.1
+	github.com/prometheus/prometheus v1.99.0
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
@@ -29,7 +29,7 @@ require (
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
-	github.com/grafana/regexp v0.0.0-20221122212121-6b5c0a4cb7fd // indirect
+	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
@@ -51,3 +51,5 @@ require (
 // x/sys: v0.14.0 removes definition of BPF_F_KPROBE_MULTI_RETURN in unix/zerrors_linux.go
 // https://github.com/golang/go/issues/63969
 replace golang.org/x/sys => golang.org/x/sys v0.13.0
+
+replace github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.48.1

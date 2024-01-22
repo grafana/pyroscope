@@ -220,7 +220,6 @@ require (
 )
 
 replace (
-	github.com/dgraph-io/badger/v2 => github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/grafana/pyroscope/api => ./api
 
 	// Replace memberlist with our fork which includes some fixes that haven't been
