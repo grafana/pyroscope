@@ -403,8 +403,8 @@
         "sampleType": {
           "type": "string"
         },
-        "flamegraph": {
-          "$ref": "#/definitions/v1FlameGraph"
+        "flamebearerProfile": {
+          "type": "string"
         },
         "sampleTypes": {
           "type": "array",
@@ -441,16 +441,18 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "A generated unique identifier that can be used to refer to this profile after the upload."
         },
-        "flamegraph": {
-          "$ref": "#/definitions/v1FlameGraph"
+        "flamebearerProfile": {
+          "type": "string"
         },
         "sampleTypes": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "A list of sample types contained within the uploaded profile (e.g., cpu and samples for cpu profiles)."
         }
       }
     },

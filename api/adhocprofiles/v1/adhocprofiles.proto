@@ -27,7 +27,7 @@ message AdHocProfilesUploadRequest {
 message AdHocProfilesUploadResponse {
   // A generated unique identifier that can be used to refer to this profile after the upload.
   string id = 1;
-  types.v1.FlameGraph flamegraph = 2;
+  string flamebearer_profile = 2;
   // A list of sample types contained within the uploaded profile (e.g., cpu and samples for cpu profiles).
   repeated string sample_types = 3;
 }
@@ -43,7 +43,7 @@ message AdHocProfilesGetResponse {
   string id = 1;
   string name = 2;
   string sample_type = 3;
-  types.v1.FlameGraph flamegraph = 4;
+  string flamebearer_profile = 4;
   repeated string sample_types = 5;
 }
 

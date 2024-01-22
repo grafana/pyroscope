@@ -14,7 +14,6 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/pkg/errors"
@@ -65,7 +64,7 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 	// validate size
 	// check if json, then upload directly
 
-	flamegraph, sampleTypes, err := parse(c.Msg.Profile, nil)
+	profile, sampleTypes, err := parse(c.Msg.Profile, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse profile")
 	}
@@ -76,10 +75,15 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 		return nil, errors.Wrapf(err, "failed to upload profile")
 	}
 
+	jsonProfile, err := json.Marshal(profile)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse profile")
+	}
+
 	return connect.NewResponse(&v1.AdHocProfilesUploadResponse{
-		Id:          id.String(),
-		Flamegraph:  flamegraph,
-		SampleTypes: sampleTypes,
+		Id:                 id.String(),
+		FlamebearerProfile: string(jsonProfile),
+		SampleTypes:        sampleTypes,
 	}), nil
 }
 
@@ -103,7 +107,7 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 		return nil, err
 	}
 
-	flamegraph, sampleTypes, err := parse(adHocProfile.Data, c.Msg.SampleType)
+	profile, sampleTypes, err := parse(adHocProfile.Data, c.Msg.SampleType)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse profile")
 	}
@@ -113,12 +117,17 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 		sampleType = *c.Msg.SampleType
 	}
 
+	jsonProfile, err := json.Marshal(profile)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse profile")
+	}
+
 	return connect.NewResponse(&v1.AdHocProfilesGetResponse{
-		Id:          c.Msg.Id,
-		Name:        adHocProfile.Name,
-		Flamegraph:  flamegraph,
-		SampleType:  sampleType,
-		SampleTypes: sampleTypes,
+		Id:                 c.Msg.Id,
+		Name:               adHocProfile.Name,
+		FlamebearerProfile: string(jsonProfile),
+		SampleType:         sampleType,
+		SampleTypes:        sampleTypes,
 	}), nil
 }
 
@@ -173,7 +182,7 @@ func (a *AdHocProfiles) getBucket(ctx context.Context) (objstore.Bucket, error) 
 	return bucket, nil
 }
 
-func parse(data string, sampleType *string) (fg *typesv1.FlameGraph, sampleTypes []string, err error) {
+func parse(data string, sampleType *string) (fg *flamebearer.FlamebearerProfile, sampleTypes []string, err error) {
 	base64decoded, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to upload profile")
@@ -203,23 +212,5 @@ func parse(data string, sampleType *string) (fg *typesv1.FlameGraph, sampleTypes
 		profile = profiles[0]
 	}
 
-	levels := make([]*typesv1.Level, len(profile.Flamebearer.Levels))
-	for i, level := range profile.Flamebearer.Levels {
-		levelSlice := make([]int64, len(level))
-		for j, v := range level {
-			levelSlice[j] = int64(v)
-		}
-		levels[i] = &typesv1.Level{Values: levelSlice}
-	}
-	total := int64(0)
-	if len(levels) > 0 {
-		total = levels[0].Values[1]
-	}
-
-	return &typesv1.FlameGraph{
-		Names:   profile.Flamebearer.Names,
-		Levels:  levels,
-		Total:   total,
-		MaxSelf: int64(profile.Flamebearer.MaxSelf),
-	}, sampleTypes, nil
+	return profile, sampleTypes, nil
 }

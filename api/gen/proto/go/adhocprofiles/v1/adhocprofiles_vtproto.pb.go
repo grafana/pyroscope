@@ -7,7 +7,6 @@ package adhocprofilesv1
 import (
 	context "context"
 	fmt "fmt"
-	v1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -48,14 +47,8 @@ func (m *AdHocProfilesUploadResponse) CloneVT() *AdHocProfilesUploadResponse {
 		return (*AdHocProfilesUploadResponse)(nil)
 	}
 	r := &AdHocProfilesUploadResponse{
-		Id: m.Id,
-	}
-	if rhs := m.Flamegraph; rhs != nil {
-		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.FlameGraph }); ok {
-			r.Flamegraph = vtpb.CloneVT()
-		} else {
-			r.Flamegraph = proto.Clone(rhs).(*v1.FlameGraph)
-		}
+		Id:                 m.Id,
+		FlamebearerProfile: m.FlamebearerProfile,
 	}
 	if rhs := m.SampleTypes; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
@@ -100,16 +93,10 @@ func (m *AdHocProfilesGetResponse) CloneVT() *AdHocProfilesGetResponse {
 		return (*AdHocProfilesGetResponse)(nil)
 	}
 	r := &AdHocProfilesGetResponse{
-		Id:         m.Id,
-		Name:       m.Name,
-		SampleType: m.SampleType,
-	}
-	if rhs := m.Flamegraph; rhs != nil {
-		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.FlameGraph }); ok {
-			r.Flamegraph = vtpb.CloneVT()
-		} else {
-			r.Flamegraph = proto.Clone(rhs).(*v1.FlameGraph)
-		}
+		Id:                 m.Id,
+		Name:               m.Name,
+		SampleType:         m.SampleType,
+		FlamebearerProfile: m.FlamebearerProfile,
 	}
 	if rhs := m.SampleTypes; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
@@ -216,11 +203,7 @@ func (this *AdHocProfilesUploadResponse) EqualVT(that *AdHocProfilesUploadRespon
 	if this.Id != that.Id {
 		return false
 	}
-	if equal, ok := interface{}(this.Flamegraph).(interface{ EqualVT(*v1.FlameGraph) bool }); ok {
-		if !equal.EqualVT(that.Flamegraph) {
-			return false
-		}
-	} else if !proto.Equal(this.Flamegraph, that.Flamegraph) {
+	if this.FlamebearerProfile != that.FlamebearerProfile {
 		return false
 	}
 	if len(this.SampleTypes) != len(that.SampleTypes) {
@@ -279,11 +262,7 @@ func (this *AdHocProfilesGetResponse) EqualVT(that *AdHocProfilesGetResponse) bo
 	if this.SampleType != that.SampleType {
 		return false
 	}
-	if equal, ok := interface{}(this.Flamegraph).(interface{ EqualVT(*v1.FlameGraph) bool }); ok {
-		if !equal.EqualVT(that.Flamegraph) {
-			return false
-		}
-	} else if !proto.Equal(this.Flamegraph, that.Flamegraph) {
+	if this.FlamebearerProfile != that.FlamebearerProfile {
 		return false
 	}
 	if len(this.SampleTypes) != len(that.SampleTypes) {
@@ -386,8 +365,13 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AdHocProfileServiceClient interface {
+	// Upload a profile to the underlying store. The request contains a name and a base64 encoded pprof file. The response
+	// contains a generated unique identifier, a flamegraph and a list of found sample types within the profile.
 	Upload(ctx context.Context, in *AdHocProfilesUploadRequest, opts ...grpc.CallOption) (*AdHocProfilesUploadResponse, error)
+	// Retrieves a profile from the underlying store by id and an optional sample type. The response is similar to the one
+	// for the upload method.
 	Get(ctx context.Context, in *AdHocProfilesGetRequest, opts ...grpc.CallOption) (*AdHocProfilesGetResponse, error)
+	// Retrieves a list of profiles found in the underlying store.
 	List(ctx context.Context, in *AdHocProfilesListRequest, opts ...grpc.CallOption) (*AdHocProfilesListResponse, error)
 }
 
@@ -430,8 +414,13 @@ func (c *adHocProfileServiceClient) List(ctx context.Context, in *AdHocProfilesL
 // All implementations must embed UnimplementedAdHocProfileServiceServer
 // for forward compatibility
 type AdHocProfileServiceServer interface {
+	// Upload a profile to the underlying store. The request contains a name and a base64 encoded pprof file. The response
+	// contains a generated unique identifier, a flamegraph and a list of found sample types within the profile.
 	Upload(context.Context, *AdHocProfilesUploadRequest) (*AdHocProfilesUploadResponse, error)
+	// Retrieves a profile from the underlying store by id and an optional sample type. The response is similar to the one
+	// for the upload method.
 	Get(context.Context, *AdHocProfilesGetRequest) (*AdHocProfilesGetResponse, error)
+	// Retrieves a list of profiles found in the underlying store.
 	List(context.Context, *AdHocProfilesListRequest) (*AdHocProfilesListResponse, error)
 	mustEmbedUnimplementedAdHocProfileServiceServer()
 }
@@ -626,25 +615,10 @@ func (m *AdHocProfilesUploadResponse) MarshalToSizedBufferVT(dAtA []byte) (int, 
 			dAtA[i] = 0x1a
 		}
 	}
-	if m.Flamegraph != nil {
-		if vtmsg, ok := interface{}(m.Flamegraph).(interface {
-			MarshalToSizedBufferVT([]byte) (int, error)
-		}); ok {
-			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarint(dAtA, i, uint64(size))
-		} else {
-			encoded, err := proto.Marshal(m.Flamegraph)
-			if err != nil {
-				return 0, err
-			}
-			i -= len(encoded)
-			copy(dAtA[i:], encoded)
-			i = encodeVarint(dAtA, i, uint64(len(encoded)))
-		}
+	if len(m.FlamebearerProfile) > 0 {
+		i -= len(m.FlamebearerProfile)
+		copy(dAtA[i:], m.FlamebearerProfile)
+		i = encodeVarint(dAtA, i, uint64(len(m.FlamebearerProfile)))
 		i--
 		dAtA[i] = 0x12
 	}
@@ -744,25 +718,10 @@ func (m *AdHocProfilesGetResponse) MarshalToSizedBufferVT(dAtA []byte) (int, err
 			dAtA[i] = 0x2a
 		}
 	}
-	if m.Flamegraph != nil {
-		if vtmsg, ok := interface{}(m.Flamegraph).(interface {
-			MarshalToSizedBufferVT([]byte) (int, error)
-		}); ok {
-			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarint(dAtA, i, uint64(size))
-		} else {
-			encoded, err := proto.Marshal(m.Flamegraph)
-			if err != nil {
-				return 0, err
-			}
-			i -= len(encoded)
-			copy(dAtA[i:], encoded)
-			i = encodeVarint(dAtA, i, uint64(len(encoded)))
-		}
+	if len(m.FlamebearerProfile) > 0 {
+		i -= len(m.FlamebearerProfile)
+		copy(dAtA[i:], m.FlamebearerProfile)
+		i = encodeVarint(dAtA, i, uint64(len(m.FlamebearerProfile)))
 		i--
 		dAtA[i] = 0x22
 	}
@@ -954,14 +913,8 @@ func (m *AdHocProfilesUploadResponse) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
-	if m.Flamegraph != nil {
-		if size, ok := interface{}(m.Flamegraph).(interface {
-			SizeVT() int
-		}); ok {
-			l = size.SizeVT()
-		} else {
-			l = proto.Size(m.Flamegraph)
-		}
+	l = len(m.FlamebearerProfile)
+	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
 	if len(m.SampleTypes) > 0 {
@@ -1010,14 +963,8 @@ func (m *AdHocProfilesGetResponse) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
-	if m.Flamegraph != nil {
-		if size, ok := interface{}(m.Flamegraph).(interface {
-			SizeVT() int
-		}); ok {
-			l = size.SizeVT()
-		} else {
-			l = proto.Size(m.Flamegraph)
-		}
+	l = len(m.FlamebearerProfile)
+	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
 	if len(m.SampleTypes) > 0 {
@@ -1258,9 +1205,9 @@ func (m *AdHocProfilesUploadResponse) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Flamegraph", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field FlamebearerProfile", wireType)
 			}
-			var msglen int
+			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -1270,35 +1217,23 @@ func (m *AdHocProfilesUploadResponse) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= int(b&0x7F) << shift
+				stringLen |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if msglen < 0 {
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
 				return ErrInvalidLength
 			}
-			postIndex := iNdEx + msglen
+			postIndex := iNdEx + intStringLen
 			if postIndex < 0 {
 				return ErrInvalidLength
 			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Flamegraph == nil {
-				m.Flamegraph = &v1.FlameGraph{}
-			}
-			if unmarshal, ok := interface{}(m.Flamegraph).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Flamegraph); err != nil {
-					return err
-				}
-			}
+			m.FlamebearerProfile = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -1597,9 +1532,9 @@ func (m *AdHocProfilesGetResponse) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Flamegraph", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field FlamebearerProfile", wireType)
 			}
-			var msglen int
+			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -1609,35 +1544,23 @@ func (m *AdHocProfilesGetResponse) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				msglen |= int(b&0x7F) << shift
+				stringLen |= uint64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if msglen < 0 {
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
 				return ErrInvalidLength
 			}
-			postIndex := iNdEx + msglen
+			postIndex := iNdEx + intStringLen
 			if postIndex < 0 {
 				return ErrInvalidLength
 			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Flamegraph == nil {
-				m.Flamegraph = &v1.FlameGraph{}
-			}
-			if unmarshal, ok := interface{}(m.Flamegraph).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Flamegraph); err != nil {
-					return err
-				}
-			}
+			m.FlamebearerProfile = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {

@@ -53,8 +53,13 @@ var (
 
 // AdHocProfileServiceClient is a client for the adhocprofiles.v1.AdHocProfileService service.
 type AdHocProfileServiceClient interface {
+	// Upload a profile to the underlying store. The request contains a name and a base64 encoded pprof file. The response
+	// contains a generated unique identifier, a flamegraph and a list of found sample types within the profile.
 	Upload(context.Context, *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesUploadResponse], error)
+	// Retrieves a profile from the underlying store by id and an optional sample type. The response is similar to the one
+	// for the upload method.
 	Get(context.Context, *connect.Request[v1.AdHocProfilesGetRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error)
+	// Retrieves a list of profiles found in the underlying store.
 	List(context.Context, *connect.Request[v1.AdHocProfilesListRequest]) (*connect.Response[v1.AdHocProfilesListResponse], error)
 }
 
@@ -114,8 +119,13 @@ func (c *adHocProfileServiceClient) List(ctx context.Context, req *connect.Reque
 // AdHocProfileServiceHandler is an implementation of the adhocprofiles.v1.AdHocProfileService
 // service.
 type AdHocProfileServiceHandler interface {
+	// Upload a profile to the underlying store. The request contains a name and a base64 encoded pprof file. The response
+	// contains a generated unique identifier, a flamegraph and a list of found sample types within the profile.
 	Upload(context.Context, *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesUploadResponse], error)
+	// Retrieves a profile from the underlying store by id and an optional sample type. The response is similar to the one
+	// for the upload method.
 	Get(context.Context, *connect.Request[v1.AdHocProfilesGetRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error)
+	// Retrieves a list of profiles found in the underlying store.
 	List(context.Context, *connect.Request[v1.AdHocProfilesListRequest]) (*connect.Response[v1.AdHocProfilesListResponse], error)
 }
 
