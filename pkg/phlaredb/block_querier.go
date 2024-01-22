@@ -1668,7 +1668,7 @@ func (b *singleBlockQuerier) SelectMergeByLabels(ctx context.Context, params *in
 	buf := make([][]parquet.Value, 2)
 
 	rows := iter.NewAsyncBatchIterator[*query.IteratorResult, Profile](
-		it, 256,
+		it, 1<<10,
 		func(r *query.IteratorResult) Profile {
 			buf = r.Columns(buf, "SeriesIndex", "TimeNanos")
 			seriesIndex := buf[0][0].Int64()

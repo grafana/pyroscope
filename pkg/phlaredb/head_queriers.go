@@ -292,37 +292,34 @@ func (q *headOnDiskQuerier) SelectMergeByLabels(ctx context.Context, params *ing
 		rowIter,
 		q.rowGroup().columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"),
 	)
+
 	buf := make([][]parquet.Value, 1)
+	rows := iter.NewAsyncBatchIterator[*query.IteratorResult, Profile](
+		it, 1<<10,
+		func(r *query.IteratorResult) Profile {
+			v, ok := r.Entries[0].RowValue.(fingerprintWithRowNum)
+			if !ok {
+				panic("no fingerprint information found")
+			}
 
-	// todo: we should stream profile to merge instead of loading all in memory.
-	// This is a temporary solution for now since there's a memory corruption happening.
-	rows, err := iter.Slice[Profile](
-		&RowsIterator[Profile]{
-			rows: it,
-			at: func(ir *query.IteratorResult) Profile {
-				v, ok := ir.Entries[0].RowValue.(fingerprintWithRowNum)
-				if !ok {
-					panic("no fingerprint information found")
-				}
+			lbls, ok := labelsPerFP[v.fp]
+			if !ok {
+				panic("no profile series labels with matching fingerprint found")
+			}
 
-				lbls, ok := labelsPerFP[v.fp]
-				if !ok {
-					panic("no profile series labels with matching fingerprint found")
-				}
+			buf = r.Columns(buf, "TimeNanos")
+			return BlockProfile{
+				labels: lbls,
+				fp:     v.fp,
+				ts:     model.TimeFromUnixNano(buf[1][0].Int64()),
+				RowNum: r.RowNumber[0],
+			}
+		},
+		func(t []Profile) {},
+	)
+	defer rows.Close()
 
-				buf = ir.Columns(buf, "TimeNanos")
-				return BlockProfile{
-					labels: lbls,
-					fp:     v.fp,
-					ts:     model.TimeFromUnixNano(buf[1][0].Int64()),
-					RowNum: ir.RowNumber[0],
-				}
-			},
-		})
-	if err != nil {
-		return nil, err
-	}
-	return mergeByLabels[Profile](ctx, q.rowGroup(), "TotalValue", iter.NewSliceIterator(rows), by...)
+	return mergeByLabels[Profile](ctx, q.rowGroup(), "TotalValue", rows, by...)
 }
 
 func (q *headOnDiskQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
