@@ -158,13 +158,8 @@ func (m *SelectMergeStacktracesResponse) CloneVT() *SelectMergeStacktracesRespon
 	if m == nil {
 		return (*SelectMergeStacktracesResponse)(nil)
 	}
-	r := &SelectMergeStacktracesResponse{}
-	if rhs := m.Flamegraph; rhs != nil {
-		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.FlameGraph }); ok {
-			r.Flamegraph = vtpb.CloneVT()
-		} else {
-			r.Flamegraph = proto.Clone(rhs).(*v1.FlameGraph)
-		}
+	r := &SelectMergeStacktracesResponse{
+		Flamegraph: m.Flamegraph.CloneVT(),
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -211,13 +206,8 @@ func (m *SelectMergeSpanProfileResponse) CloneVT() *SelectMergeSpanProfileRespon
 	if m == nil {
 		return (*SelectMergeSpanProfileResponse)(nil)
 	}
-	r := &SelectMergeSpanProfileResponse{}
-	if rhs := m.Flamegraph; rhs != nil {
-		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.FlameGraph }); ok {
-			r.Flamegraph = vtpb.CloneVT()
-		} else {
-			r.Flamegraph = proto.Clone(rhs).(*v1.FlameGraph)
-		}
+	r := &SelectMergeSpanProfileResponse{
+		Flamegraph: m.Flamegraph.CloneVT(),
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -267,6 +257,37 @@ func (m *DiffResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *FlameGraph) CloneVT() *FlameGraph {
+	if m == nil {
+		return (*FlameGraph)(nil)
+	}
+	r := &FlameGraph{
+		Total:   m.Total,
+		MaxSelf: m.MaxSelf,
+	}
+	if rhs := m.Names; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Names = tmpContainer
+	}
+	if rhs := m.Levels; rhs != nil {
+		tmpContainer := make([]*Level, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.Levels = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *FlameGraph) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *FlameGraphDiff) CloneVT() *FlameGraphDiff {
 	if m == nil {
 		return (*FlameGraphDiff)(nil)
@@ -283,13 +304,9 @@ func (m *FlameGraphDiff) CloneVT() *FlameGraphDiff {
 		r.Names = tmpContainer
 	}
 	if rhs := m.Levels; rhs != nil {
-		tmpContainer := make([]*v1.Level, len(rhs))
+		tmpContainer := make([]*Level, len(rhs))
 		for k, v := range rhs {
-			if vtpb, ok := interface{}(v).(interface{ CloneVT() *v1.Level }); ok {
-				tmpContainer[k] = vtpb.CloneVT()
-			} else {
-				tmpContainer[k] = proto.Clone(v).(*v1.Level)
-			}
+			tmpContainer[k] = v.CloneVT()
 		}
 		r.Levels = tmpContainer
 	}
@@ -301,6 +318,27 @@ func (m *FlameGraphDiff) CloneVT() *FlameGraphDiff {
 }
 
 func (m *FlameGraphDiff) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *Level) CloneVT() *Level {
+	if m == nil {
+		return (*Level)(nil)
+	}
+	r := &Level{}
+	if rhs := m.Values; rhs != nil {
+		tmpContainer := make([]int64, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Values = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *Level) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -567,11 +605,7 @@ func (this *SelectMergeStacktracesResponse) EqualVT(that *SelectMergeStacktraces
 	} else if this == nil || that == nil {
 		return false
 	}
-	if equal, ok := interface{}(this.Flamegraph).(interface{ EqualVT(*v1.FlameGraph) bool }); ok {
-		if !equal.EqualVT(that.Flamegraph) {
-			return false
-		}
-	} else if !proto.Equal(this.Flamegraph, that.Flamegraph) {
+	if !this.Flamegraph.EqualVT(that.Flamegraph) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -630,11 +664,7 @@ func (this *SelectMergeSpanProfileResponse) EqualVT(that *SelectMergeSpanProfile
 	} else if this == nil || that == nil {
 		return false
 	}
-	if equal, ok := interface{}(this.Flamegraph).(interface{ EqualVT(*v1.FlameGraph) bool }); ok {
-		if !equal.EqualVT(that.Flamegraph) {
-			return false
-		}
-	} else if !proto.Equal(this.Flamegraph, that.Flamegraph) {
+	if !this.Flamegraph.EqualVT(that.Flamegraph) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -688,6 +718,54 @@ func (this *DiffResponse) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
+func (this *FlameGraph) EqualVT(that *FlameGraph) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Names) != len(that.Names) {
+		return false
+	}
+	for i, vx := range this.Names {
+		vy := that.Names[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if len(this.Levels) != len(that.Levels) {
+		return false
+	}
+	for i, vx := range this.Levels {
+		vy := that.Levels[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &Level{}
+			}
+			if q == nil {
+				q = &Level{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
+	}
+	if this.Total != that.Total {
+		return false
+	}
+	if this.MaxSelf != that.MaxSelf {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *FlameGraph) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*FlameGraph)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 func (this *FlameGraphDiff) EqualVT(that *FlameGraphDiff) bool {
 	if this == that {
 		return true
@@ -710,16 +788,12 @@ func (this *FlameGraphDiff) EqualVT(that *FlameGraphDiff) bool {
 		vy := that.Levels[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &v1.Level{}
+				p = &Level{}
 			}
 			if q == nil {
-				q = &v1.Level{}
+				q = &Level{}
 			}
-			if equal, ok := interface{}(p).(interface{ EqualVT(*v1.Level) bool }); ok {
-				if !equal.EqualVT(q) {
-					return false
-				}
-			} else if !proto.Equal(p, q) {
+			if !p.EqualVT(q) {
 				return false
 			}
 		}
@@ -741,6 +815,31 @@ func (this *FlameGraphDiff) EqualVT(that *FlameGraphDiff) bool {
 
 func (this *FlameGraphDiff) EqualMessageVT(thatMsg proto.Message) bool {
 	that, ok := thatMsg.(*FlameGraphDiff)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *Level) EqualVT(that *Level) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if len(this.Values) != len(that.Values) {
+		return false
+	}
+	for i, vx := range this.Values {
+		vy := that.Values[i]
+		if vx != vy {
+			return false
+		}
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *Level) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*Level)
 	if !ok {
 		return false
 	}
@@ -1573,24 +1672,12 @@ func (m *SelectMergeStacktracesResponse) MarshalToSizedBufferVT(dAtA []byte) (in
 		copy(dAtA[i:], m.unknownFields)
 	}
 	if m.Flamegraph != nil {
-		if vtmsg, ok := interface{}(m.Flamegraph).(interface {
-			MarshalToSizedBufferVT([]byte) (int, error)
-		}); ok {
-			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarint(dAtA, i, uint64(size))
-		} else {
-			encoded, err := proto.Marshal(m.Flamegraph)
-			if err != nil {
-				return 0, err
-			}
-			i -= len(encoded)
-			copy(dAtA[i:], encoded)
-			i = encodeVarint(dAtA, i, uint64(len(encoded)))
+		size, err := m.Flamegraph.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
 		}
+		i -= size
+		i = encodeVarint(dAtA, i, uint64(size))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -1699,24 +1786,12 @@ func (m *SelectMergeSpanProfileResponse) MarshalToSizedBufferVT(dAtA []byte) (in
 		copy(dAtA[i:], m.unknownFields)
 	}
 	if m.Flamegraph != nil {
-		if vtmsg, ok := interface{}(m.Flamegraph).(interface {
-			MarshalToSizedBufferVT([]byte) (int, error)
-		}); ok {
-			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarint(dAtA, i, uint64(size))
-		} else {
-			encoded, err := proto.Marshal(m.Flamegraph)
-			if err != nil {
-				return 0, err
-			}
-			i -= len(encoded)
-			copy(dAtA[i:], encoded)
-			i = encodeVarint(dAtA, i, uint64(len(encoded)))
+		size, err := m.Flamegraph.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
 		}
+		i -= size
+		i = encodeVarint(dAtA, i, uint64(size))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -1819,6 +1894,70 @@ func (m *DiffResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *FlameGraph) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *FlameGraph) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *FlameGraph) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.MaxSelf != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.MaxSelf))
+		i--
+		dAtA[i] = 0x20
+	}
+	if m.Total != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.Total))
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.Levels) > 0 {
+		for iNdEx := len(m.Levels) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.Levels[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if len(m.Names) > 0 {
+		for iNdEx := len(m.Names) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Names[iNdEx])
+			copy(dAtA[i:], m.Names[iNdEx])
+			i = encodeVarint(dAtA, i, uint64(len(m.Names[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *FlameGraphDiff) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -1871,24 +2010,12 @@ func (m *FlameGraphDiff) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	}
 	if len(m.Levels) > 0 {
 		for iNdEx := len(m.Levels) - 1; iNdEx >= 0; iNdEx-- {
-			if vtmsg, ok := interface{}(m.Levels[iNdEx]).(interface {
-				MarshalToSizedBufferVT([]byte) (int, error)
-			}); ok {
-				size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarint(dAtA, i, uint64(size))
-			} else {
-				encoded, err := proto.Marshal(m.Levels[iNdEx])
-				if err != nil {
-					return 0, err
-				}
-				i -= len(encoded)
-				copy(dAtA[i:], encoded)
-				i = encodeVarint(dAtA, i, uint64(len(encoded)))
+			size, err := m.Levels[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
 			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
 			i--
 			dAtA[i] = 0x12
 		}
@@ -1901,6 +2028,60 @@ func (m *FlameGraphDiff) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 			i--
 			dAtA[i] = 0xa
 		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *Level) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Level) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *Level) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Values) > 0 {
+		var pksize2 int
+		for _, num := range m.Values {
+			pksize2 += sov(uint64(num))
+		}
+		i -= pksize2
+		j1 := i
+		for _, num1 := range m.Values {
+			num := uint64(num1)
+			for num >= 1<<7 {
+				dAtA[j1] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j1++
+			}
+			dAtA[j1] = uint8(num)
+			j1++
+		}
+		i = encodeVarint(dAtA, i, uint64(pksize2))
+		i--
+		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -2256,13 +2437,7 @@ func (m *SelectMergeStacktracesResponse) SizeVT() (n int) {
 	var l int
 	_ = l
 	if m.Flamegraph != nil {
-		if size, ok := interface{}(m.Flamegraph).(interface {
-			SizeVT() int
-		}); ok {
-			l = size.SizeVT()
-		} else {
-			l = proto.Size(m.Flamegraph)
-		}
+		l = m.Flamegraph.SizeVT()
 		n += 1 + l + sov(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -2309,13 +2484,7 @@ func (m *SelectMergeSpanProfileResponse) SizeVT() (n int) {
 	var l int
 	_ = l
 	if m.Flamegraph != nil {
-		if size, ok := interface{}(m.Flamegraph).(interface {
-			SizeVT() int
-		}); ok {
-			l = size.SizeVT()
-		} else {
-			l = proto.Size(m.Flamegraph)
-		}
+		l = m.Flamegraph.SizeVT()
 		n += 1 + l + sov(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -2354,6 +2523,34 @@ func (m *DiffResponse) SizeVT() (n int) {
 	return n
 }
 
+func (m *FlameGraph) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Names) > 0 {
+		for _, s := range m.Names {
+			l = len(s)
+			n += 1 + l + sov(uint64(l))
+		}
+	}
+	if len(m.Levels) > 0 {
+		for _, e := range m.Levels {
+			l = e.SizeVT()
+			n += 1 + l + sov(uint64(l))
+		}
+	}
+	if m.Total != 0 {
+		n += 1 + sov(uint64(m.Total))
+	}
+	if m.MaxSelf != 0 {
+		n += 1 + sov(uint64(m.MaxSelf))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
 func (m *FlameGraphDiff) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -2368,13 +2565,7 @@ func (m *FlameGraphDiff) SizeVT() (n int) {
 	}
 	if len(m.Levels) > 0 {
 		for _, e := range m.Levels {
-			if size, ok := interface{}(e).(interface {
-				SizeVT() int
-			}); ok {
-				l = size.SizeVT()
-			} else {
-				l = proto.Size(e)
-			}
+			l = e.SizeVT()
 			n += 1 + l + sov(uint64(l))
 		}
 	}
@@ -2389,6 +2580,23 @@ func (m *FlameGraphDiff) SizeVT() (n int) {
 	}
 	if m.RightTicks != 0 {
 		n += 1 + sov(uint64(m.RightTicks))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *Level) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Values) > 0 {
+		l = 0
+		for _, e := range m.Values {
+			l += sov(uint64(e))
+		}
+		n += 1 + sov(uint64(l)) + l
 	}
 	n += len(m.unknownFields)
 	return n
@@ -3155,18 +3363,10 @@ func (m *SelectMergeStacktracesResponse) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Flamegraph == nil {
-				m.Flamegraph = &v1.FlameGraph{}
+				m.Flamegraph = &FlameGraph{}
 			}
-			if unmarshal, ok := interface{}(m.Flamegraph).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Flamegraph); err != nil {
-					return err
-				}
+			if err := m.Flamegraph.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		default:
@@ -3455,18 +3655,10 @@ func (m *SelectMergeSpanProfileResponse) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Flamegraph == nil {
-				m.Flamegraph = &v1.FlameGraph{}
+				m.Flamegraph = &FlameGraph{}
 			}
-			if unmarshal, ok := interface{}(m.Flamegraph).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Flamegraph); err != nil {
-					return err
-				}
+			if err := m.Flamegraph.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		default:
@@ -3701,6 +3893,161 @@ func (m *DiffResponse) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *FlameGraph) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: FlameGraph: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: FlameGraph: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Names", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Names = append(m.Names, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Levels", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Levels = append(m.Levels, &Level{})
+			if err := m.Levels[len(m.Levels)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Total", wireType)
+			}
+			m.Total = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Total |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxSelf", wireType)
+			}
+			m.MaxSelf = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.MaxSelf |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func (m *FlameGraphDiff) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -3791,17 +4138,9 @@ func (m *FlameGraphDiff) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Levels = append(m.Levels, &v1.Level{})
-			if unmarshal, ok := interface{}(m.Levels[len(m.Levels)-1]).(interface {
-				UnmarshalVT([]byte) error
-			}); ok {
-				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
-					return err
-				}
-			} else {
-				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.Levels[len(m.Levels)-1]); err != nil {
-					return err
-				}
+			m.Levels = append(m.Levels, &Level{})
+			if err := m.Levels[len(m.Levels)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
 			}
 			iNdEx = postIndex
 		case 3:
@@ -3879,6 +4218,133 @@ func (m *FlameGraphDiff) UnmarshalVT(dAtA []byte) error {
 				if b < 0x80 {
 					break
 				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Level) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Level: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Level: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType == 0 {
+				var v int64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= int64(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.Values = append(m.Values, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return ErrInvalidLength
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return ErrInvalidLength
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				var count int
+				for _, integer := range dAtA[iNdEx:postIndex] {
+					if integer < 128 {
+						count++
+					}
+				}
+				elementCount = count
+				if elementCount != 0 && len(m.Values) == 0 {
+					m.Values = make([]int64, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v int64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflow
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= int64(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.Values = append(m.Values, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field Values", wireType)
 			}
 		default:
 			iNdEx = preIndex

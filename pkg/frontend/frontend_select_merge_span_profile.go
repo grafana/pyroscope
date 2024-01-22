@@ -12,7 +12,6 @@ import (
 
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 	validationutil "github.com/grafana/pyroscope/pkg/util/validation"
@@ -41,7 +40,7 @@ func (f *Frontend) SelectMergeSpanProfile(ctx context.Context,
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 	if validated.IsEmpty {
-		return connect.NewResponse(&querierv1.SelectMergeSpanProfileResponse{Flamegraph: &typesv1.FlameGraph{}}), nil
+		return connect.NewResponse(&querierv1.SelectMergeSpanProfileResponse{Flamegraph: &querierv1.FlameGraph{}}), nil
 	}
 	maxNodes, err := validation.ValidateMaxNodes(f.limits, tenantIDs, c.Msg.GetMaxNodes())
 	if err != nil {

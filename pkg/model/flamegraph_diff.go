@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"fmt"
 
-	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/og/structs/cappedarr"
+
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 )
 
 // NewFlamegraphDiff generates a FlameGraphDiff from 2 trees.
@@ -38,7 +38,7 @@ func NewFlamegraphDiff(left, right *Tree, maxNodes int64) (*querierv1.FlameGraph
 
 	res := &querierv1.FlameGraphDiff{
 		Names:      []string{},
-		Levels:     []*typesv1.Level{},
+		Levels:     []*querierv1.Level{},
 		Total:      totalLeft + totalRight,
 		MaxSelf:    0,
 		LeftTicks:  totalLeft,
@@ -77,7 +77,7 @@ func NewFlamegraphDiff(left, right *Tree, maxNodes int64) (*querierv1.FlameGraph
 			}
 
 			if level == len(res.Levels) {
-				res.Levels = append(res.Levels, &typesv1.Level{})
+				res.Levels = append(res.Levels, &querierv1.Level{})
 			}
 			res.MaxSelf = max(res.MaxSelf, left.self)
 			res.MaxSelf = max(res.MaxSelf, rght.self)
@@ -343,7 +343,7 @@ func assertPositiveTrees(left *Tree, right *Tree) error {
 	return nil
 }
 
-func deltaEncoding(levels []*typesv1.Level, start, step int) {
+func deltaEncoding(levels []*querierv1.Level, start, step int) {
 	for _, l := range levels {
 		prev := int64(0)
 		for i := start; i < len(l.Values); i += step {

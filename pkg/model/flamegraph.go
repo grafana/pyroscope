@@ -13,7 +13,7 @@ import (
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 )
 
-func NewFlameGraph(t *Tree, maxNodes int64) *typesv1.FlameGraph {
+func NewFlameGraph(t *Tree, maxNodes int64) *querierv1.FlameGraph {
 	var total, max int64
 	for _, node := range t.root {
 		total += node.total
@@ -104,14 +104,14 @@ func NewFlameGraph(t *Tree, maxNodes int64) *typesv1.FlameGraph {
 			prev += l[i] + l[i+1]
 		}
 	}
-	levels := make([]*typesv1.Level, len(result))
+	levels := make([]*querierv1.Level, len(result))
 	for i := range levels {
-		levels[i] = &typesv1.Level{
+		levels[i] = &querierv1.Level{
 			Values: result[i],
 		}
 	}
 
-	return &typesv1.FlameGraph{
+	return &querierv1.FlameGraph{
 		Names:   names,
 		Levels:  levels,
 		Total:   total,
@@ -120,9 +120,9 @@ func NewFlameGraph(t *Tree, maxNodes int64) *typesv1.FlameGraph {
 }
 
 // ExportToFlamebearer exports the flamegraph to a Flamebearer struct.
-func ExportToFlamebearer(fg *typesv1.FlameGraph, profileType *typesv1.ProfileType) *flamebearer.FlamebearerProfile {
+func ExportToFlamebearer(fg *querierv1.FlameGraph, profileType *typesv1.ProfileType) *flamebearer.FlamebearerProfile {
 	if fg == nil {
-		fg = &typesv1.FlameGraph{}
+		fg = &querierv1.FlameGraph{}
 	}
 	unit := metadata.Units(profileType.SampleUnit)
 	sampleRate := uint32(100)
@@ -160,7 +160,7 @@ func ExportToFlamebearer(fg *typesv1.FlameGraph, profileType *typesv1.ProfileTyp
 
 func ExportDiffToFlamebearer(fg *querierv1.FlameGraphDiff, profileType *typesv1.ProfileType) *flamebearer.FlamebearerProfile {
 	// Since a normal flamegraph and a diff are so similar, convert it to reuse the export function
-	singleFlamegraph := &typesv1.FlameGraph{
+	singleFlamegraph := &querierv1.FlameGraph{
 		Names:   fg.Names,
 		Levels:  fg.Levels,
 		Total:   fg.Total,
@@ -187,7 +187,7 @@ func NewFlameGraphMerger() *FlameGraphMerger {
 // MergeFlameGraph adds the flame graph stack traces to the resulting
 // flame graph. The call is thread-safe, but the resulting flame graph
 // or tree should be only accessed after all the samples are merged.
-func (m *FlameGraphMerger) MergeFlameGraph(src *typesv1.FlameGraph) {
+func (m *FlameGraphMerger) MergeFlameGraph(src *querierv1.FlameGraph) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	deltaDecoding(src.Levels, 0, 4)
@@ -209,7 +209,7 @@ func (m *FlameGraphMerger) MergeFlameGraph(src *typesv1.FlameGraph) {
 
 func (m *FlameGraphMerger) Tree() *Tree { return m.t }
 
-func (m *FlameGraphMerger) FlameGraph(maxNodes int64) *typesv1.FlameGraph {
+func (m *FlameGraphMerger) FlameGraph(maxNodes int64) *querierv1.FlameGraph {
 	t := m.t
 	if t == nil {
 		t = new(Tree)
@@ -217,7 +217,7 @@ func (m *FlameGraphMerger) FlameGraph(maxNodes int64) *typesv1.FlameGraph {
 	return NewFlameGraph(t, maxNodes)
 }
 
-func deltaDecoding(levels []*typesv1.Level, start, step int) {
+func deltaDecoding(levels []*querierv1.Level, start, step int) {
 	for _, l := range levels {
 		prev := int64(0)
 		for i := start; i < len(l.Values); i += step {
@@ -228,7 +228,7 @@ func deltaDecoding(levels []*typesv1.Level, start, step int) {
 	}
 }
 
-func buildStack(dst []string, f *typesv1.FlameGraph, level, idx int) []string {
+func buildStack(dst []string, f *querierv1.FlameGraph, level, idx int) []string {
 	if cap(dst) < level {
 		// Actually, it should never be the case, because
 		// we know the depth in advance and can allocate
