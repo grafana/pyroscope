@@ -14,14 +14,17 @@ import (
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1"
+	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
+	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/pkg/errors"
 )
 
 type AdHocProfiles struct {
 	services.Service
 	logger      log.Logger
+	limits      frontend.Limits
 	bucket      objstore.Bucket
 	buckets     map[string]objstore.Bucket
 	bucketsLock sync.RWMutex
@@ -32,11 +35,12 @@ type AdHocProfile struct {
 	Data string `json:"data"`
 }
 
-func NewAdHocProfiles(bucket objstore.Bucket, logger log.Logger) *AdHocProfiles {
+func NewAdHocProfiles(bucket objstore.Bucket, logger log.Logger, limits frontend.Limits) *AdHocProfiles {
 	a := &AdHocProfiles{
 		logger:  logger,
 		bucket:  bucket,
 		buckets: make(map[string]objstore.Bucket),
+		limits:  limits,
 	}
 	a.Service = services.NewBasicService(nil, a.running, nil)
 	return a
@@ -48,7 +52,12 @@ func (a *AdHocProfiles) running(ctx context.Context) error {
 }
 
 func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesUploadResponse], error) {
-	bucket, err := a.getBucket(ctx)
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	bucket, err := a.getBucket(tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +73,12 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 	// validate size
 	// check if json, then upload directly
 
-	profile, sampleTypes, err := parse(c.Msg.Profile, nil)
+	maxNodes, err := validation.ValidateMaxNodes(a.limits, []string{tenantID}, c.Msg.GetMaxNodes())
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not determine max nodes")
+	}
+
+	profile, sampleTypes, err := parse(c.Msg.Profile, nil, maxNodes)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse profile")
 	}
@@ -88,7 +102,12 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 }
 
 func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProfilesGetRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error) {
-	bucket, err := a.getBucket(ctx)
+	tenantID, err := tenant.TenantID(ctx)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	bucket, err := a.getBucket(tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +126,12 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 		return nil, err
 	}
 
-	profile, sampleTypes, err := parse(adHocProfile.Data, c.Msg.SampleType)
+	maxNodes, err := validation.ValidateMaxNodes(a.limits, []string{tenantID}, c.Msg.GetMaxNodes())
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not determine max nodes")
+	}
+
+	profile, sampleTypes, err := parse(adHocProfile.Data, c.Msg.SampleType, maxNodes)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse profile")
 	}
@@ -132,7 +156,7 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 }
 
 func (a *AdHocProfiles) List(ctx context.Context, c *connect.Request[v1.AdHocProfilesListRequest]) (*connect.Response[v1.AdHocProfilesListResponse], error) {
-	bucket, err := a.getBucket(ctx)
+	bucket, err := a.getBucketFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -163,11 +187,15 @@ func (a *AdHocProfiles) List(ctx context.Context, c *connect.Request[v1.AdHocPro
 	return connect.NewResponse(&v1.AdHocProfilesListResponse{Profiles: profiles}), nil
 }
 
-func (a *AdHocProfiles) getBucket(ctx context.Context) (objstore.Bucket, error) {
+func (a *AdHocProfiles) getBucketFromContext(ctx context.Context) (objstore.Bucket, error) {
 	tenantID, err := tenant.TenantID(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	return a.getBucket(tenantID)
+}
+
+func (a *AdHocProfiles) getBucket(tenantID string) (objstore.Bucket, error) {
 	a.bucketsLock.RLock()
 	bucket, ok := a.buckets[tenantID]
 	if !ok {
@@ -182,13 +210,13 @@ func (a *AdHocProfiles) getBucket(ctx context.Context) (objstore.Bucket, error) 
 	return bucket, nil
 }
 
-func parse(data string, sampleType *string) (fg *flamebearer.FlamebearerProfile, sampleTypes []string, err error) {
+func parse(data string, sampleType *string, maxNodes int64) (fg *flamebearer.FlamebearerProfile, sampleTypes []string, err error) {
 	base64decoded, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to upload profile")
 	}
 
-	profiles, err := PprofToProfile(base64decoded, 65536)
+	profiles, err := PprofToProfile(base64decoded, int(maxNodes))
 	if err != nil {
 		return nil, nil, err
 	}

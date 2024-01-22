@@ -166,7 +166,7 @@ func (f *Phlare) initAdHocProfiles() (services.Service, error) {
 		return nil, nil
 	}
 
-	a := adhocprofiles.NewAdHocProfiles(f.storageBucket, f.logger)
+	a := adhocprofiles.NewAdHocProfiles(f.storageBucket, f.logger, f.Overrides)
 	f.API.RegisterAdHocProfiles(a)
 	return a, nil
 }

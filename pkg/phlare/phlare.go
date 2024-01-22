@@ -325,7 +325,7 @@ func (f *Phlare) setupModuleManager() error {
 		Admin:             {API, Storage},
 		Version:           {API, MemberlistKV},
 		TenantSettings:    {API},
-		AdHocProfiles:     {API, Storage},
+		AdHocProfiles:     {API, Overrides},
 	}
 
 	for mod, targets := range deps {

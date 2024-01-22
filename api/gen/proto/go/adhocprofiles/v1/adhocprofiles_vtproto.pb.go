@@ -31,6 +31,10 @@ func (m *AdHocProfilesUploadRequest) CloneVT() *AdHocProfilesUploadRequest {
 		Name:    m.Name,
 		Profile: m.Profile,
 	}
+	if rhs := m.MaxNodes; rhs != nil {
+		tmpVal := *rhs
+		r.MaxNodes = &tmpVal
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -76,6 +80,10 @@ func (m *AdHocProfilesGetRequest) CloneVT() *AdHocProfilesGetRequest {
 	if rhs := m.SampleType; rhs != nil {
 		tmpVal := *rhs
 		r.SampleType = &tmpVal
+	}
+	if rhs := m.MaxNodes; rhs != nil {
+		tmpVal := *rhs
+		r.MaxNodes = &tmpVal
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -184,6 +192,9 @@ func (this *AdHocProfilesUploadRequest) EqualVT(that *AdHocProfilesUploadRequest
 	if this.Profile != that.Profile {
 		return false
 	}
+	if p, q := this.MaxNodes, that.MaxNodes; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -235,6 +246,9 @@ func (this *AdHocProfilesGetRequest) EqualVT(that *AdHocProfilesGetRequest) bool
 		return false
 	}
 	if p, q := this.SampleType, that.SampleType; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
+	if p, q := this.MaxNodes, that.MaxNodes; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -559,6 +573,11 @@ func (m *AdHocProfilesUploadRequest) MarshalToSizedBufferVT(dAtA []byte) (int, e
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.MaxNodes != nil {
+		i = encodeVarint(dAtA, i, uint64(*m.MaxNodes))
+		i--
+		dAtA[i] = 0x18
+	}
 	if len(m.Profile) > 0 {
 		i -= len(m.Profile)
 		copy(dAtA[i:], m.Profile)
@@ -661,6 +680,11 @@ func (m *AdHocProfilesGetRequest) MarshalToSizedBufferVT(dAtA []byte) (int, erro
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.MaxNodes != nil {
+		i = encodeVarint(dAtA, i, uint64(*m.MaxNodes))
+		i--
+		dAtA[i] = 0x18
 	}
 	if m.SampleType != nil {
 		i -= len(*m.SampleType)
@@ -899,6 +923,9 @@ func (m *AdHocProfilesUploadRequest) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
+	if m.MaxNodes != nil {
+		n += 1 + sov(uint64(*m.MaxNodes))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -940,6 +967,9 @@ func (m *AdHocProfilesGetRequest) SizeVT() (n int) {
 	if m.SampleType != nil {
 		l = len(*m.SampleType)
 		n += 1 + l + sov(uint64(l))
+	}
+	if m.MaxNodes != nil {
+		n += 1 + sov(uint64(*m.MaxNodes))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1120,6 +1150,26 @@ func (m *AdHocProfilesUploadRequest) UnmarshalVT(dAtA []byte) error {
 			}
 			m.Profile = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxNodes", wireType)
+			}
+			var v int64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.MaxNodes = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
@@ -1383,6 +1433,26 @@ func (m *AdHocProfilesGetRequest) UnmarshalVT(dAtA []byte) error {
 			s := string(dAtA[iNdEx:postIndex])
 			m.SampleType = &s
 			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxNodes", wireType)
+			}
+			var v int64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.MaxNodes = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

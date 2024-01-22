@@ -22,6 +22,7 @@ message AdHocProfilesUploadRequest {
   string name = 1;
   // This is the base64 encoded profile. Only pprof is supported at this time.
   string profile = 2;
+  optional int64 max_nodes = 3;
 }
 
 message AdHocProfilesUploadResponse {
@@ -37,6 +38,7 @@ message AdHocProfilesGetRequest {
   string id = 1;
   // The desired sample_type for the returned flame graph. If omitted or empty, the first profile is returned.
   optional string sample_type = 2;
+  optional int64 max_nodes = 3;
 }
 
 message AdHocProfilesGetResponse {
