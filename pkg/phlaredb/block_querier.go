@@ -1667,35 +1667,31 @@ func (b *singleBlockQuerier) SelectMergeByLabels(ctx context.Context, params *in
 	currSeriesInfo := labelsInfo{}
 	buf := make([][]parquet.Value, 2)
 
-	// todo: we should stream profile to merge instead of loading all in memory.
-	// This is a temporary solution for now since there's a memory corruption happening.
-	rows, err := iter.Slice[Profile](
-		&RowsIterator[Profile]{
-			rows: it,
-			at: func(ir *query.IteratorResult) Profile {
-				buf = ir.Columns(buf, "SeriesIndex", "TimeNanos")
-				seriesIndex := buf[0][0].Int64()
-				if seriesIndex != currSeriesIndex {
-					currSeriesIndex = seriesIndex
-					currSeriesInfo = lblsPerRef[seriesIndex]
-				}
-				return BlockProfile{
-					labels: currSeriesInfo.lbs,
-					fp:     currSeriesInfo.fp,
-					ts:     model.TimeFromUnixNano(buf[1][0].Int64()),
-					RowNum: ir.RowNumber[0],
-				}
-			},
-		})
-	if err != nil {
-		return nil, err
-	}
+	rows := iter.NewAsyncBatchIterator[*query.IteratorResult, Profile](
+		it, 256,
+		func(r *query.IteratorResult) Profile {
+			buf = r.Columns(buf, "SeriesIndex", "TimeNanos")
+			seriesIndex := buf[0][0].Int64()
+			if seriesIndex != currSeriesIndex {
+				currSeriesIndex = seriesIndex
+				currSeriesInfo = lblsPerRef[seriesIndex]
+			}
+			return BlockProfile{
+				labels: currSeriesInfo.lbs,
+				fp:     currSeriesInfo.fp,
+				ts:     model.TimeFromUnixNano(buf[1][0].Int64()),
+				RowNum: r.RowNumber[0],
+			}
+		},
+		func(t []Profile) {},
+	)
+	defer rows.Close()
 
 	columnName := "TotalValue"
 	if b.meta.Version == 1 {
 		columnName = "Samples.list.element.Value"
 	}
-	return mergeByLabels[Profile](ctx, profiles.file, columnName, iter.NewSliceIterator(rows), by...)
+	return mergeByLabels[Profile](ctx, profiles.file, columnName, rows, by...)
 }
 
 func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest) (tree *phlaremodel.Tree, err error) {
@@ -1753,7 +1749,7 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 					profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
 				)
 			}
-			rows := asyncRowIterator(it)
+			rows := profileRowWithStacktraceIDBatchIterator(it)
 			defer rows.Close()
 			return mergeByStacktraces(ctx, profiles.file, rows, r)
 		})
@@ -1764,9 +1760,9 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 	return r.Tree()
 }
 
-func asyncRowIterator(it iter.Iterator[*query.IteratorResult]) iter.Iterator[rowProfile] {
+func profileRowWithStacktraceIDBatchIterator(it iter.Iterator[*query.IteratorResult]) iter.Iterator[rowProfile] {
 	return iter.NewAsyncBatchIterator[*query.IteratorResult, rowProfile](
-		it, 256,
+		it, 1<<10, // The size of the batch is chosen empirically.
 		func(r *query.IteratorResult) rowProfile {
 			return rowProfile{
 				rowNum:    r.RowNumber[0],
@@ -1833,30 +1829,10 @@ func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ing
 			profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
 		)
 	}
-	buf := make([][]parquet.Value, 1)
 
-	// todo: we should stream profile to merge instead of loading all in memory.
-	// This is a temporary solution for now since there's a memory corruption happening.
-	rows, err := iter.Slice[rowProfile](
-		&RowsIterator[rowProfile]{
-			rows: it,
-			at: func(ir *query.IteratorResult) rowProfile {
-				buf = ir.Columns(buf, "StacktracePartition")
-				if len(buf[0]) == 0 {
-					return rowProfile{
-						rowNum: ir.RowNumber[0],
-					}
-				}
-				return rowProfile{
-					rowNum:    ir.RowNumber[0],
-					partition: buf[0][0].Uint64(),
-				}
-			},
-		})
-	if err != nil {
-		return nil, err
-	}
-	if err := mergeBySpans[rowProfile](ctx, profiles.file, iter.NewSliceIterator(rows), r, spans); err != nil {
+	rows := profileRowWithStacktraceIDBatchIterator(it)
+	defer rows.Close()
+	if err = mergeBySpans[rowProfile](ctx, profiles.file, rows, r, spans); err != nil {
 		return nil, err
 	}
 	return r.Tree()
@@ -1919,30 +1895,9 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 					profiles.columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"),
 				)
 			}
-			buf := make([][]parquet.Value, 1)
-
-			// todo: we should stream profile to merge instead of loading all in memory.
-			// This is a temporary solution for now since there's a memory corruption happening.
-			rows, err := iter.Slice[rowProfile](
-				&RowsIterator[rowProfile]{
-					rows: it,
-					at: func(ir *query.IteratorResult) rowProfile {
-						buf = ir.Columns(buf, "StacktracePartition")
-						if len(buf[0]) == 0 {
-							return rowProfile{
-								rowNum: ir.RowNumber[0],
-							}
-						}
-						return rowProfile{
-							rowNum:    ir.RowNumber[0],
-							partition: buf[0][0].Uint64(),
-						}
-					},
-				})
-			if err != nil {
-				return err
-			}
-			return mergeByStacktraces[rowProfile](ctx, profiles.file, iter.NewSliceIterator(rows), r)
+			rows := profileRowWithStacktraceIDBatchIterator(it)
+			defer rows.Close()
+			return mergeByStacktraces[rowProfile](ctx, profiles.file, rows, r)
 		})
 	})
 	if err = g.Wait(); err != nil {
