@@ -189,18 +189,20 @@ func Test_filterAndGroupBlocks(t *testing.T) {
 						FormattedMinTime: block2.MinTime.Time().Truncate(time.Hour).UTC().Format(time.RFC3339),
 						Blocks: []*blockDetails{
 							{
-								ID:         block3.ID.String(), // block 3 is newer so it goes first
-								MinTime:    block3.MinTime.Time().UTC().Format(time.RFC3339),
-								MaxTime:    block3.MaxTime.Time().UTC().Format(time.RFC3339),
-								Duration:   59,
-								UploadedAt: time.UnixMilli(0).UTC().Format(time.RFC3339),
+								ID:                block3.ID.String(), // block 3 is newer so it goes first
+								MinTime:           block3.MinTime.Time().UTC().Format(time.RFC3339),
+								MaxTime:           block3.MaxTime.Time().UTC().Format(time.RFC3339),
+								Duration:          59,
+								FormattedDuration: "59m0s",
+								UploadedAt:        time.UnixMilli(0).UTC().Format(time.RFC3339),
 							},
 							{
-								ID:         block2.ID.String(),
-								MinTime:    block2.MinTime.Time().UTC().Format(time.RFC3339),
-								MaxTime:    block2.MaxTime.Time().UTC().Format(time.RFC3339),
-								Duration:   60,
-								UploadedAt: time.UnixMilli(0).UTC().Format(time.RFC3339),
+								ID:                block2.ID.String(),
+								MinTime:           block2.MinTime.Time().UTC().Format(time.RFC3339),
+								MaxTime:           block2.MaxTime.Time().UTC().Format(time.RFC3339),
+								Duration:          60,
+								FormattedDuration: "1h0m0s",
+								UploadedAt:        time.UnixMilli(0).UTC().Format(time.RFC3339),
 							},
 						},
 						MinTimeAge:              "4 hours ago",

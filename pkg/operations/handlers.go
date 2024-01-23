@@ -99,13 +99,14 @@ func (h *Handlers) filterAndGroupBlocks(index *bucketindex.Index, query *blockQu
 				blockGroups = append(blockGroups, blkGroup)
 			}
 			blockDetails := &blockDetails{
-				ID:               blk.ID.String(),
-				MinTime:          minTime.Format(time.RFC3339),
-				MaxTime:          blk.MaxTime.Time().UTC().Format(time.RFC3339),
-				Duration:         int(math.Round(blk.MaxTime.Sub(blk.MinTime).Minutes())),
-				UploadedAt:       blk.GetUploadedAt().UTC().Format(time.RFC3339),
-				CompactionLevel:  blk.CompactionLevel,
-				CompactorShardID: blk.CompactorShardID,
+				ID:                blk.ID.String(),
+				MinTime:           minTime.Format(time.RFC3339),
+				MaxTime:           blk.MaxTime.Time().UTC().Format(time.RFC3339),
+				Duration:          int(math.Round(blk.MaxTime.Sub(blk.MinTime).Minutes())),
+				FormattedDuration: blk.MaxTime.Sub(blk.MinTime).Round(time.Minute).String(),
+				UploadedAt:        blk.GetUploadedAt().UTC().Format(time.RFC3339),
+				CompactionLevel:   blk.CompactionLevel,
+				CompactorShardID:  blk.CompactorShardID,
 			}
 			blkGroup.Blocks = append(blkGroup.Blocks, blockDetails)
 			if blockDetails.Duration > blkGroup.MaxBlockDurationMinutes {
