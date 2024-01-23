@@ -90,14 +90,15 @@ func (h *Handlers) filterAndGroupBlocks(index *bucketindex.Index, query *blockQu
 			blkGroup, ok := blockGroupMap[truncatedMinTime]
 			if !ok {
 				blkGroup = &blockGroup{
-					MinTime:          truncatedMinTime,
-					FormattedMinTime: truncatedMinTime.Format(time.RFC3339),
-					Blocks:           make([]*blockDetails, 0),
-					MinTimeAge:       humanize.RelTime(blk.MinTime.Time(), time.Now(), "ago", ""),
+					MinTime:                 truncatedMinTime,
+					FormattedMinTime:        truncatedMinTime.Format(time.RFC3339),
+					Blocks:                  make([]*blockDetails, 0),
+					MinTimeAge:              humanize.RelTime(blk.MinTime.Time(), time.Now(), "ago", ""),
+					MaxBlockDurationMinutes: int(math.Round(blk.MaxTime.Sub(blk.MinTime).Minutes())),
 				}
 				blockGroups = append(blockGroups, blkGroup)
 			}
-			blkGroup.Blocks = append(blkGroup.Blocks, &blockDetails{
+			blockDetails := &blockDetails{
 				ID:               blk.ID.String(),
 				MinTime:          minTime.Format(time.RFC3339),
 				MaxTime:          blk.MaxTime.Time().UTC().Format(time.RFC3339),
@@ -105,7 +106,11 @@ func (h *Handlers) filterAndGroupBlocks(index *bucketindex.Index, query *blockQu
 				UploadedAt:       blk.GetUploadedAt().UTC().Format(time.RFC3339),
 				CompactionLevel:  blk.CompactionLevel,
 				CompactorShardID: blk.CompactorShardID,
-			})
+			}
+			blkGroup.Blocks = append(blkGroup.Blocks, blockDetails)
+			if blockDetails.Duration > blkGroup.MaxBlockDurationMinutes {
+				blkGroup.MaxBlockDurationMinutes = blockDetails.Duration
+			}
 			blockGroupMap[truncatedMinTime] = blkGroup
 		}
 	}
@@ -113,17 +118,21 @@ func (h *Handlers) filterAndGroupBlocks(index *bucketindex.Index, query *blockQu
 	sortBlockGroupsByMinTimeDec(blockGroups)
 
 	maxBlocksPerGroup := 0
+	maxBlockGroupDuration := 0
 	for _, blockGroup := range blockGroups {
 		sortBlockDetailsByMinTimeDec(blockGroup.Blocks)
 		if len(blockGroup.Blocks) > maxBlocksPerGroup {
 			maxBlocksPerGroup = len(blockGroup.Blocks)
+		}
+		if blockGroup.MaxBlockDurationMinutes > maxBlockGroupDuration {
+			maxBlockGroupDuration = blockGroup.MaxBlockDurationMinutes
 		}
 	}
 
 	return &blockListResult{
 		BlockGroups:          blockGroups,
 		MaxBlocksPerGroup:    maxBlocksPerGroup,
-		GroupDurationMinutes: int(h.MaxBlockDuration.Minutes()),
+		GroupDurationMinutes: maxBlockGroupDuration,
 	}
 }
 

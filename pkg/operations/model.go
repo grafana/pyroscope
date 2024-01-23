@@ -60,10 +60,11 @@ type blockDetails struct {
 }
 
 type blockGroup struct {
-	MinTime          time.Time
-	FormattedMinTime string
-	Blocks           []*blockDetails
-	MinTimeAge       string
+	MinTime                 time.Time
+	FormattedMinTime        string
+	Blocks                  []*blockDetails
+	MinTimeAge              string
+	MaxBlockDurationMinutes int
 }
 
 type blockListResult struct {
