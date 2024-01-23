@@ -165,7 +165,7 @@ func Test_filterAndGroupBlocks(t *testing.T) {
 				}, query: &blockQuery{}},
 			want: &blockListResult{
 				BlockGroups:          []*blockGroup{},
-				GroupDurationMinutes: 60,
+				GroupDurationMinutes: 0,
 			},
 		},
 		{
@@ -203,7 +203,8 @@ func Test_filterAndGroupBlocks(t *testing.T) {
 								UploadedAt: time.UnixMilli(0).UTC().Format(time.RFC3339),
 							},
 						},
-						MinTimeAge: "4 hours ago",
+						MinTimeAge:              "4 hours ago",
+						MaxBlockDurationMinutes: 60,
 					},
 				},
 				GroupDurationMinutes: 60,
