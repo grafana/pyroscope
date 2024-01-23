@@ -67,9 +67,9 @@ type blockGroup struct {
 }
 
 type blockListResult struct {
-	BlockGroups       []*blockGroup
-	MaxBlocksPerGroup int
-	GroupDuration     int
+	BlockGroups          []*blockGroup
+	MaxBlocksPerGroup    int
+	GroupDurationMinutes int
 }
 
 // Sorts a slice of block groups by MinTime in descending order.
