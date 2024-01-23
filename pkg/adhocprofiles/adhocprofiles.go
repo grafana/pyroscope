@@ -16,6 +16,7 @@ import (
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/og/convert"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/pkg/validation"
 	"github.com/pkg/errors"
@@ -78,7 +79,7 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 		return nil, errors.Wrapf(err, "could not determine max nodes")
 	}
 
-	profile, sampleTypes, err := parse(c.Msg.Profile, nil, maxNodes)
+	profile, sampleTypes, err := parse(&adHocProfile, nil, maxNodes)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse profile")
 	}
@@ -131,7 +132,7 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 		return nil, errors.Wrapf(err, "could not determine max nodes")
 	}
 
-	profile, sampleTypes, err := parse(adHocProfile.Data, c.Msg.SampleType, maxNodes)
+	profile, sampleTypes, err := parse(&adHocProfile, c.Msg.SampleType, maxNodes)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse profile")
 	}
@@ -210,13 +211,19 @@ func (a *AdHocProfiles) getBucket(tenantID string) (objstore.Bucket, error) {
 	return bucket, nil
 }
 
-func parse(data string, sampleType *string, maxNodes int64) (fg *flamebearer.FlamebearerProfile, sampleTypes []string, err error) {
-	base64decoded, err := base64.StdEncoding.DecodeString(data)
+func parse(p *AdHocProfile, sampleType *string, maxNodes int64) (fg *flamebearer.FlamebearerProfile, sampleTypes []string, err error) {
+	base64decoded, err := base64.StdEncoding.DecodeString(p.Data)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to upload profile")
 	}
 
-	profiles, err := PprofToProfile(base64decoded, int(maxNodes))
+	f := convert.ProfileFile{
+		Name:     p.Name,
+		TypeData: convert.ProfileFileTypeData{},
+		Data:     base64decoded,
+	}
+
+	profiles, err := convert.FlamebearerFromFile(f, int(maxNodes))
 	if err != nil {
 		return nil, nil, err
 	}
