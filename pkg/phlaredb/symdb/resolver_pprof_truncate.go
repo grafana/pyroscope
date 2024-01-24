@@ -34,7 +34,7 @@ type pprofProtoTruncatedSymbols struct {
 
 	// subtree denotes the lowest common ancestor of all the stack traces.
 	// The subtree path consists of function IDs, the root is at subtree[0].
-	subtree []int32
+	subtree []uint32
 	fnNames func(locations []int32) ([]int32, bool)
 
 	// After truncation many samples will have the same stack trace.
@@ -101,14 +101,14 @@ func (r *pprofProtoTruncatedSymbols) locFunctionsFiltered(locations []int32) ([]
 	for i := len(locations) - 1; i >= 0; i-- {
 		lines := r.symbols.Locations[locations[i]].Line
 		for j := len(lines) - 1; j >= 0; j-- {
-			f := int32(lines[j].FunctionId)
+			f := lines[j].FunctionId
 			if pos < pathLen {
 				if r.subtree[pos] != f {
 					return nil, false
 				}
 				pos++
 			}
-			r.functionsBuf = append(r.functionsBuf, f)
+			r.functionsBuf = append(r.functionsBuf, int32(f))
 		}
 	}
 	if pos < len(r.subtree) {

@@ -265,9 +265,9 @@ func (r *Symbols) Pprof(
 	var b pprofBuilder = new(pprofProtoSymbols)
 	// If a stack trace selector is specified,
 	// check if such a profile can exist at all.
-	var subtree []int32
+	var subtree []uint32
 	if locs := sts.GetSubtreeRoot(); len(locs) > 0 {
-		if subtree = r.subtree(locs); len(subtree) == 0 {
+		if subtree = findSubtreeRoot(r, locs); len(subtree) == 0 {
 			return b.buildPprof(), nil
 		}
 	}
@@ -295,32 +295,4 @@ func (r *Symbols) Tree(ctx context.Context, samples schemav1.Samples) (*model.Tr
 		return nil, err
 	}
 	return t.tree, nil
-}
-
-func (r *Symbols) subtree(locations []*typesv1.Location) []int32 {
-	if len(locations) == 0 {
-		return nil
-	}
-	m := make(map[string]int32, len(locations))
-	for _, loc := range locations {
-		m[loc.Name] = 0
-	}
-	c := len(locations)
-	for f := 0; f < len(r.Functions) && c > 0; f++ {
-		s := r.Strings[r.Functions[f].Name]
-		if _, ok := m[s]; ok {
-			// We assume that no functions have the same name.
-			// Otherwise, the last one takes precedence.
-			m[s] = int32(f)
-			c--
-		}
-	}
-	if c > 0 {
-		return nil
-	}
-	s := make([]int32, len(locations))
-	for i, loc := range locations {
-		s[i] = m[loc.Name]
-	}
-	return s
 }
