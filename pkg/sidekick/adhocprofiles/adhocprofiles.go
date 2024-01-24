@@ -62,6 +62,8 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 		UploadedAt: time.Now().UTC(),
 	}
 
+	// TODO: Add per-tenant upload limits (number of files, total size, etc.)
+
 	maxNodes, err := validation.ValidateMaxNodes(a.limits, []string{tenantID}, c.Msg.GetMaxNodes())
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not determine max nodes")
