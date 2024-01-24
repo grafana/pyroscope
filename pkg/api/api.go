@@ -33,7 +33,6 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/version/v1/versionv1connect"
 	"github.com/grafana/pyroscope/api/openapiv2"
-	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
@@ -45,6 +44,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
 	"github.com/grafana/pyroscope/pkg/settings"
+	"github.com/grafana/pyroscope/pkg/sidekick"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/gziphandler"
@@ -302,6 +302,6 @@ func (a *API) RegisterAdmin(ad *operations.Admin) {
 	})
 }
 
-func (a *API) RegisterAdHocProfiles(ahp *adhocprofiles.AdHocProfiles) {
-	adhocprofilesv1connect.RegisterAdHocProfileServiceHandler(a.server.HTTP, ahp, a.grpcAuthMiddleware)
+func (a *API) RegisterSidekick(s *sidekick.Sidekick) {
+	adhocprofilesv1connect.RegisterAdHocProfileServiceHandler(a.server.HTTP, s.AdHocProfiles, a.grpcAuthMiddleware)
 }

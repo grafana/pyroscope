@@ -31,7 +31,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
-	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
@@ -45,6 +44,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/querier/worker"
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/settings"
+	"github.com/grafana/pyroscope/pkg/sidekick"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	"github.com/grafana/pyroscope/pkg/usagestats"
 	"github.com/grafana/pyroscope/pkg/util"
@@ -76,7 +76,7 @@ const (
 	Compactor         string = "compactor"
 	Admin             string = "admin"
 	TenantSettings    string = "tenant-settings"
-	AdHocProfiles     string = "ad-hoc-profiles"
+	Sidekick          string = "sidekick"
 
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
 	// IndexGateway             string = "index-gateway"
@@ -160,15 +160,15 @@ func (f *Phlare) initTenantSettings() (services.Service, error) {
 	return settings, nil
 }
 
-func (f *Phlare) initAdHocProfiles() (services.Service, error) {
+func (f *Phlare) initSidekick() (services.Service, error) {
 	if f.storageBucket == nil {
-		level.Warn(f.logger).Log("msg", "no storage bucket configured, ad hoc profiles will not be loaded")
+		level.Warn(f.logger).Log("msg", "no storage bucket configured, the sidekick will not be loaded")
 		return nil, nil
 	}
 
-	a := adhocprofiles.NewAdHocProfiles(f.storageBucket, f.logger, f.Overrides)
-	f.API.RegisterAdHocProfiles(a)
-	return a, nil
+	s := sidekick.NewSidekick(f.storageBucket, f.logger, f.Overrides)
+	f.API.RegisterSidekick(s)
+	return s, nil
 }
 
 func (f *Phlare) initOverrides() (serv services.Service, err error) {

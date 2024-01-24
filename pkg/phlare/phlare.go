@@ -301,11 +301,11 @@ func (f *Phlare) setupModuleManager() error {
 	mm.RegisterModule(Admin, f.initAdmin)
 	mm.RegisterModule(All, nil)
 	mm.RegisterModule(TenantSettings, f.initTenantSettings)
-	mm.RegisterModule(AdHocProfiles, f.initAdHocProfiles)
+	mm.RegisterModule(Sidekick, f.initSidekick)
 
 	// Add dependencies
 	deps := map[string][]string{
-		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, Admin, TenantSettings, Compactor, AdHocProfiles},
+		All: {Ingester, Distributor, QueryScheduler, QueryFrontend, Querier, StoreGateway, Admin, TenantSettings, Compactor, Sidekick},
 
 		Server:            {GRPCGateway},
 		API:               {Server},
@@ -325,7 +325,7 @@ func (f *Phlare) setupModuleManager() error {
 		Admin:             {API, Storage},
 		Version:           {API, MemberlistKV},
 		TenantSettings:    {API},
-		AdHocProfiles:     {API, Overrides},
+		Sidekick:          {API, Overrides},
 	}
 
 	for mod, targets := range deps {
