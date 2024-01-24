@@ -540,7 +540,7 @@ func (f *Phlare) initAdmin() (services.Service, error) {
 		return nil, nil
 	}
 
-	a, err := operations.NewAdmin(f.storageBucket, f.logger)
+	a, err := operations.NewAdmin(f.storageBucket, f.logger, f.Cfg.PhlareDB.MaxBlockDuration)
 	if err != nil {
 		level.Info(f.logger).Log("msg", "failed to initialize admin", "err", err)
 		return nil, nil

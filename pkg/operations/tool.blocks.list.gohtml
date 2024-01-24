@@ -108,7 +108,7 @@
                                             <td class="font-monospace small">{{ $v.UploadedAt }}</td>
                                             <td class="font-monospace small">{{ $v.MinTime }}</td>
                                             <td class="font-monospace small">{{ $v.MaxTime }}</td>
-                                            <td class="font-monospace small">{{ $v.Duration }}</td>
+                                            <td class="font-monospace small">{{ $v.FormattedDuration }}</td>
                                             <td class="font-monospace small">{{ $v.CompactionLevel }}</td>
                                             <td class="font-monospace small">{{ $v.CompactorShardID }}</td>
                                         </tr>
@@ -123,7 +123,7 @@
             </div>
             {{ else }}
                 <hr/>
-                {{ $groupDuration := .SelectedBlocks.GroupDuration}}
+                {{ $groupDuration := .SelectedBlocks.GroupDurationMinutes}}
                 {{ $blockWidth := 20 }}
                 {{ $blockSpacing := 2 }}
                 {{ if gt .SelectedBlocks.MaxBlocksPerGroup 32 }}

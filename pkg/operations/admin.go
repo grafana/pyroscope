@@ -3,6 +3,7 @@ package operations
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/services"
@@ -16,12 +17,13 @@ type Admin struct {
 	handlers *Handlers
 }
 
-func NewAdmin(bucketClient objstore.Bucket, logger log.Logger) (*Admin, error) {
+func NewAdmin(bucketClient objstore.Bucket, logger log.Logger, maxBlockDuration time.Duration) (*Admin, error) {
 	a := &Admin{
 		logger: logger,
 		handlers: &Handlers{
-			Logger: logger,
-			Bucket: bucketClient,
+			Logger:           logger,
+			Bucket:           bucketClient,
+			MaxBlockDuration: maxBlockDuration,
 		},
 	}
 	a.Service = services.NewBasicService(nil, a.running, nil)
