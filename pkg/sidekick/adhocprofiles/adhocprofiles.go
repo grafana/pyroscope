@@ -27,11 +27,11 @@ import (
 )
 
 type AdHocProfiles struct {
-	logger      log.Logger
-	limits      frontend.Limits
-	bucket      objstore.Bucket
-	buckets     map[string]objstore.Bucket
-	bucketsLock sync.RWMutex
+	logger    log.Logger
+	limits    frontend.Limits
+	bucket    objstore.Bucket
+	buckets   map[string]objstore.Bucket
+	bucketsMu sync.RWMutex
 }
 
 type AdHocProfile struct {
@@ -56,22 +56,11 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	bucket, err := a.getBucket(tenantID)
-	if err != nil {
-		return nil, err
-	}
 	adHocProfile := AdHocProfile{
 		Name:       c.Msg.Name,
 		Data:       c.Msg.Profile,
 		UploadedAt: time.Now().UTC(),
 	}
-	dataToStore, err := json.Marshal(adHocProfile)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to upload profile")
-	}
-
-	// validate size
-	// check if json, then upload directly
 
 	maxNodes, err := validation.ValidateMaxNodes(a.limits, []string{tenantID}, c.Msg.GetMaxNodes())
 	if err != nil {
@@ -83,8 +72,19 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 		return nil, errors.Wrapf(err, "failed to parse profile")
 	}
 
+	bucket, err := a.getBucket(tenantID)
+	if err != nil {
+		return nil, err
+	}
+
 	uid := ulid.MustNew(ulid.Timestamp(adHocProfile.UploadedAt), rand.Reader)
 	id := strings.Join([]string{uid.String(), adHocProfile.Name}, "-")
+
+	dataToStore, err := json.Marshal(adHocProfile)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to upload profile")
+	}
+
 	err = bucket.Upload(ctx, id, bytes.NewReader(dataToStore))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to upload profile")
@@ -120,10 +120,12 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get profile")
 	}
+
 	adHocProfileBytes, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}
+
 	var adHocProfile AdHocProfile
 	err = json.Unmarshal(adHocProfileBytes, &adHocProfile)
 	if err != nil {
@@ -160,6 +162,7 @@ func (a *AdHocProfiles) List(ctx context.Context, c *connect.Request[v1.AdHocPro
 	if err != nil {
 		return nil, err
 	}
+
 	profiles := make([]*v1.AdHocProfilesProfileMetadata, 0)
 	err = bucket.Iter(ctx, "", func(s string) error {
 		separatorIndex := bytes.IndexByte([]byte(s), '-')
@@ -191,16 +194,13 @@ func (a *AdHocProfiles) getBucketFromContext(ctx context.Context) (objstore.Buck
 }
 
 func (a *AdHocProfiles) getBucket(tenantID string) (objstore.Bucket, error) {
-	a.bucketsLock.RLock()
+	a.bucketsMu.Lock()
+	defer a.bucketsMu.Unlock()
+
 	bucket, ok := a.buckets[tenantID]
 	if !ok {
-		a.bucketsLock.RUnlock()
-		a.bucketsLock.Lock()
 		bucket = objstore.NewPrefixedBucket(a.bucket, tenantID+"/adhoc")
 		a.buckets[tenantID] = bucket
-		a.bucketsLock.Unlock()
-	} else {
-		a.bucketsLock.RUnlock()
 	}
 	return bucket, nil
 }
