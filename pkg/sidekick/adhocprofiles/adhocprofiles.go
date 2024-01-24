@@ -21,8 +21,8 @@ import (
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/objstore"
-	"github.com/grafana/pyroscope/pkg/og/convert"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
+	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer/convert"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
