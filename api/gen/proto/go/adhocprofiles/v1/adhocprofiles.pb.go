@@ -28,8 +28,9 @@ type AdHocProfilesUploadRequest struct {
 
 	// This is typically the file name and it serves as a human readable name for the profile.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// This is the base64 encoded profile. Only pprof is supported at this time.
-	Profile  string `protobuf:"bytes,2,opt,name=profile,proto3" json:"profile,omitempty"`
+	// This is the profile encoded in base64. The supported formats are pprof, json, collapsed and perf-script.
+	Profile string `protobuf:"bytes,2,opt,name=profile,proto3" json:"profile,omitempty"`
+	// Max nodes can be used to truncate the response.
 	MaxNodes *int64 `protobuf:"varint,3,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
 }
 
@@ -91,11 +92,12 @@ type AdHocProfilesGetRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The unique identifier of the profile generated during the upload.
+	// The unique identifier of the profile.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	// The desired profile type (e.g., cpu, samples) for the returned flame graph. If omitted or empty, the first profile is returned.
+	// The desired profile type (e.g., cpu, samples) for the returned flame graph. If omitted the first profile is returned.
 	ProfileType *string `protobuf:"bytes,2,opt,name=profile_type,json=profileType,proto3,oneof" json:"profile_type,omitempty"`
-	MaxNodes    *int64  `protobuf:"varint,3,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
+	// Max nodes can be used to truncate the response.
+	MaxNodes *int64 `protobuf:"varint,3,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
 }
 
 func (x *AdHocProfilesGetRequest) Reset() {
@@ -156,10 +158,13 @@ type AdHocProfilesGetResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id                 string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name               string   `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	UploadedAt         string   `protobuf:"bytes,3,opt,name=uploaded_at,json=uploadedAt,proto3" json:"uploaded_at,omitempty"`
-	ProfileType        string   `protobuf:"bytes,4,opt,name=profile_type,json=profileType,proto3" json:"profile_type,omitempty"`
+	Id   string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// timestamp in milliseconds
+	UploadedAt  int64  `protobuf:"varint,3,opt,name=uploaded_at,json=uploadedAt,proto3" json:"uploaded_at,omitempty"`
+	ProfileType string `protobuf:"bytes,4,opt,name=profile_type,json=profileType,proto3" json:"profile_type,omitempty"`
+	// Some profiles formats (like pprof) can contain multiple profile (sample) types inside. One of these can be passed
+	// in the Get request using the profile_type field.
 	ProfileTypes       []string `protobuf:"bytes,5,rep,name=profile_types,json=profileTypes,proto3" json:"profile_types,omitempty"`
 	FlamebearerProfile string   `protobuf:"bytes,6,opt,name=flamebearer_profile,json=flamebearerProfile,proto3" json:"flamebearer_profile,omitempty"`
 }
@@ -210,11 +215,11 @@ func (x *AdHocProfilesGetResponse) GetName() string {
 	return ""
 }
 
-func (x *AdHocProfilesGetResponse) GetUploadedAt() string {
+func (x *AdHocProfilesGetResponse) GetUploadedAt() int64 {
 	if x != nil {
 		return x.UploadedAt
 	}
-	return ""
+	return 0
 }
 
 func (x *AdHocProfilesGetResponse) GetProfileType() string {
@@ -328,9 +333,10 @@ type AdHocProfilesProfileMetadata struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Id         string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name       string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	UploadedAt string `protobuf:"bytes,3,opt,name=uploaded_at,json=uploadedAt,proto3" json:"uploaded_at,omitempty"`
+	Id   string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// timestamp in milliseconds
+	UploadedAt int64 `protobuf:"varint,3,opt,name=uploaded_at,json=uploadedAt,proto3" json:"uploaded_at,omitempty"`
 }
 
 func (x *AdHocProfilesProfileMetadata) Reset() {
@@ -379,11 +385,11 @@ func (x *AdHocProfilesProfileMetadata) GetName() string {
 	return ""
 }
 
-func (x *AdHocProfilesProfileMetadata) GetUploadedAt() string {
+func (x *AdHocProfilesProfileMetadata) GetUploadedAt() int64 {
 	if x != nil {
 		return x.UploadedAt
 	}
-	return ""
+	return 0
 }
 
 var File_adhocprofiles_v1_adhocprofiles_proto protoreflect.FileDescriptor
@@ -416,7 +422,7 @@ var file_adhocprofiles_v1_adhocprofiles_proto_rawDesc = []byte{
 	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x12, 0x0a, 0x04,
 	0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65,
 	0x12, 0x1f, 0x0a, 0x0b, 0x75, 0x70, 0x6c, 0x6f, 0x61, 0x64, 0x65, 0x64, 0x5f, 0x61, 0x74, 0x18,
-	0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x75, 0x70, 0x6c, 0x6f, 0x61, 0x64, 0x65, 0x64, 0x41,
+	0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0a, 0x75, 0x70, 0x6c, 0x6f, 0x61, 0x64, 0x65, 0x64, 0x41,
 	0x74, 0x12, 0x21, 0x0a, 0x0c, 0x70, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x5f, 0x74, 0x79, 0x70,
 	0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x70, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65,
 	0x54, 0x79, 0x70, 0x65, 0x12, 0x23, 0x0a, 0x0d, 0x70, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x5f,
@@ -438,7 +444,7 @@ var file_adhocprofiles_v1_adhocprofiles_proto_rawDesc = []byte{
 	0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12,
 	0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e,
 	0x61, 0x6d, 0x65, 0x12, 0x1f, 0x0a, 0x0b, 0x75, 0x70, 0x6c, 0x6f, 0x61, 0x64, 0x65, 0x64, 0x5f,
-	0x61, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x75, 0x70, 0x6c, 0x6f, 0x61, 0x64,
+	0x61, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x0a, 0x75, 0x70, 0x6c, 0x6f, 0x61, 0x64,
 	0x65, 0x64, 0x41, 0x74, 0x32, 0xbe, 0x02, 0x0a, 0x13, 0x41, 0x64, 0x48, 0x6f, 0x63, 0x50, 0x72,
 	0x6f, 0x66, 0x69, 0x6c, 0x65, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x64, 0x0a, 0x06,
 	0x55, 0x70, 0x6c, 0x6f, 0x61, 0x64, 0x12, 0x2c, 0x2e, 0x61, 0x64, 0x68, 0x6f, 0x63, 0x70, 0x72,

@@ -23,7 +23,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/og/convert"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
-	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/validation"
 )
 
@@ -99,7 +98,7 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 	return connect.NewResponse(&v1.AdHocProfilesGetResponse{
 		Id:                 id,
 		Name:               adHocProfile.Name,
-		UploadedAt:         adHocProfile.UploadedAt.UTC().Format(time.RFC3339),
+		UploadedAt:         adHocProfile.UploadedAt.UnixMilli(),
 		FlamebearerProfile: string(jsonProfile),
 		ProfileType:        profile.Metadata.Name,
 		ProfileTypes:       profileTypes,
@@ -149,7 +148,7 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 	return connect.NewResponse(&v1.AdHocProfilesGetResponse{
 		Id:                 c.Msg.Id,
 		Name:               adHocProfile.Name,
-		UploadedAt:         adHocProfile.UploadedAt.UTC().Format(time.RFC3339),
+		UploadedAt:         adHocProfile.UploadedAt.UnixMilli(),
 		FlamebearerProfile: string(jsonProfile),
 		ProfileType:        profile.Metadata.Name,
 		ProfileTypes:       profileTypes,
@@ -173,7 +172,7 @@ func (a *AdHocProfiles) List(ctx context.Context, c *connect.Request[v1.AdHocPro
 		profiles = append(profiles, &v1.AdHocProfilesProfileMetadata{
 			Id:         s,
 			Name:       name,
-			UploadedAt: util.TimeFromMillis(int64(id.Time())).UTC().Format(time.RFC3339),
+			UploadedAt: int64(id.Time()),
 		})
 		return nil
 	})

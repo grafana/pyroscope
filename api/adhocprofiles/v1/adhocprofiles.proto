@@ -20,24 +20,29 @@ service AdHocProfileService {
 message AdHocProfilesUploadRequest {
   // This is typically the file name and it serves as a human readable name for the profile.
   string name = 1;
-  // This is the base64 encoded profile. Only pprof is supported at this time.
+  // This is the profile encoded in base64. The supported formats are pprof, json, collapsed and perf-script.
   string profile = 2;
+  // Max nodes can be used to truncate the response.
   optional int64 max_nodes = 3;
 }
 
 message AdHocProfilesGetRequest {
-  // The unique identifier of the profile generated during the upload.
+  // The unique identifier of the profile.
   string id = 1;
-  // The desired profile type (e.g., cpu, samples) for the returned flame graph. If omitted or empty, the first profile is returned.
+  // The desired profile type (e.g., cpu, samples) for the returned flame graph. If omitted the first profile is returned.
   optional string profile_type = 2;
+  // Max nodes can be used to truncate the response.
   optional int64 max_nodes = 3;
 }
 
 message AdHocProfilesGetResponse {
   string id = 1;
   string name = 2;
-  string uploaded_at = 3;
+  // timestamp in milliseconds
+  int64 uploaded_at = 3;
   string profile_type = 4;
+  // Some profiles formats (like pprof) can contain multiple profile (sample) types inside. One of these can be passed
+  // in the Get request using the profile_type field.
   repeated string profile_types = 5;
   string flamebearer_profile = 6;
 }
@@ -51,5 +56,6 @@ message AdHocProfilesListResponse {
 message AdHocProfilesProfileMetadata {
   string id = 1;
   string name = 2;
-  string uploaded_at = 3;
+  // timestamp in milliseconds
+  int64 uploaded_at = 3;
 }

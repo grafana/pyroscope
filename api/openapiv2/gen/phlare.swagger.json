@@ -401,7 +401,9 @@
           "type": "string"
         },
         "uploadedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "int64",
+          "title": "timestamp in milliseconds"
         },
         "profileType": {
           "type": "string"
@@ -410,7 +412,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Some profiles formats (like pprof) can contain multiple profile (sample) types inside. One of these can be passed\nin the Get request using the profile_type field."
         },
         "flamebearerProfile": {
           "type": "string"
@@ -439,7 +442,9 @@
           "type": "string"
         },
         "uploadedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "int64",
+          "title": "timestamp in milliseconds"
         }
       }
     },

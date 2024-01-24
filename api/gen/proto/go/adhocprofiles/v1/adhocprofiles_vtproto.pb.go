@@ -653,12 +653,10 @@ func (m *AdHocProfilesGetResponse) MarshalToSizedBufferVT(dAtA []byte) (int, err
 		i--
 		dAtA[i] = 0x22
 	}
-	if len(m.UploadedAt) > 0 {
-		i -= len(m.UploadedAt)
-		copy(dAtA[i:], m.UploadedAt)
-		i = encodeVarint(dAtA, i, uint64(len(m.UploadedAt)))
+	if m.UploadedAt != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.UploadedAt))
 		i--
-		dAtA[i] = 0x1a
+		dAtA[i] = 0x18
 	}
 	if len(m.Name) > 0 {
 		i -= len(m.Name)
@@ -785,12 +783,10 @@ func (m *AdHocProfilesProfileMetadata) MarshalToSizedBufferVT(dAtA []byte) (int,
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.UploadedAt) > 0 {
-		i -= len(m.UploadedAt)
-		copy(dAtA[i:], m.UploadedAt)
-		i = encodeVarint(dAtA, i, uint64(len(m.UploadedAt)))
+	if m.UploadedAt != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.UploadedAt))
 		i--
-		dAtA[i] = 0x1a
+		dAtA[i] = 0x18
 	}
 	if len(m.Name) > 0 {
 		i -= len(m.Name)
@@ -876,9 +872,8 @@ func (m *AdHocProfilesGetResponse) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
-	l = len(m.UploadedAt)
-	if l > 0 {
-		n += 1 + l + sov(uint64(l))
+	if m.UploadedAt != 0 {
+		n += 1 + sov(uint64(m.UploadedAt))
 	}
 	l = len(m.ProfileType)
 	if l > 0 {
@@ -938,9 +933,8 @@ func (m *AdHocProfilesProfileMetadata) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
-	l = len(m.UploadedAt)
-	if l > 0 {
-		n += 1 + l + sov(uint64(l))
+	if m.UploadedAt != 0 {
+		n += 1 + sov(uint64(m.UploadedAt))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1317,10 +1311,10 @@ func (m *AdHocProfilesGetResponse) UnmarshalVT(dAtA []byte) error {
 			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
-			if wireType != 2 {
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field UploadedAt", wireType)
 			}
-			var stringLen uint64
+			m.UploadedAt = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -1330,24 +1324,11 @@ func (m *AdHocProfilesGetResponse) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
+				m.UploadedAt |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.UploadedAt = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ProfileType", wireType)
@@ -1696,10 +1677,10 @@ func (m *AdHocProfilesProfileMetadata) UnmarshalVT(dAtA []byte) error {
 			m.Name = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
-			if wireType != 2 {
+			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field UploadedAt", wireType)
 			}
-			var stringLen uint64
+			m.UploadedAt = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflow
@@ -1709,24 +1690,11 @@ func (m *AdHocProfilesProfileMetadata) UnmarshalVT(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
+				m.UploadedAt |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.UploadedAt = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
