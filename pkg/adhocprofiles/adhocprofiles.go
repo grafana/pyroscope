@@ -3,23 +3,29 @@ package adhocprofiles
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"strings"
 	"sync"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
-	"github.com/google/uuid"
+	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
+	"github.com/oklog/ulid"
+	"github.com/pkg/errors"
+
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/og/convert"
 	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
+	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/validation"
-	"github.com/pkg/errors"
 )
 
 type AdHocProfiles struct {
@@ -32,8 +38,9 @@ type AdHocProfiles struct {
 }
 
 type AdHocProfile struct {
-	Name string `json:"name"`
-	Data string `json:"data"`
+	Name       string    `json:"name"`
+	Data       string    `json:"data"`
+	UploadedAt time.Time `json:"uploadedAt"`
 }
 
 func NewAdHocProfiles(bucket objstore.Bucket, logger log.Logger, limits frontend.Limits) *AdHocProfiles {
@@ -52,7 +59,7 @@ func (a *AdHocProfiles) running(ctx context.Context) error {
 	return nil
 }
 
-func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesUploadResponse], error) {
+func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error) {
 	tenantID, err := tenant.TenantID(ctx)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -63,8 +70,9 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 		return nil, err
 	}
 	adHocProfile := AdHocProfile{
-		Name: c.Msg.Name,
-		Data: c.Msg.Profile,
+		Name:       c.Msg.Name,
+		Data:       c.Msg.Profile,
+		UploadedAt: time.Now().UTC(),
 	}
 	dataToStore, err := json.Marshal(adHocProfile)
 	if err != nil {
@@ -79,13 +87,14 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 		return nil, errors.Wrapf(err, "could not determine max nodes")
 	}
 
-	profile, sampleTypes, err := parse(&adHocProfile, nil, maxNodes)
+	profile, profileTypes, err := parse(&adHocProfile, nil, maxNodes)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse profile")
 	}
 
-	id := uuid.New()
-	err = bucket.Upload(ctx, id.String(), bytes.NewReader(dataToStore))
+	uid := ulid.MustNew(ulid.Timestamp(adHocProfile.UploadedAt), rand.Reader)
+	id := strings.Join([]string{uid.String(), adHocProfile.Name}, "-")
+	err = bucket.Upload(ctx, id, bytes.NewReader(dataToStore))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to upload profile")
 	}
@@ -95,10 +104,13 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 		return nil, errors.Wrapf(err, "failed to parse profile")
 	}
 
-	return connect.NewResponse(&v1.AdHocProfilesUploadResponse{
-		Id:                 id.String(),
+	return connect.NewResponse(&v1.AdHocProfilesGetResponse{
+		Id:                 id,
+		Name:               adHocProfile.Name,
+		UploadedAt:         adHocProfile.UploadedAt.UTC().Format(time.RFC3339),
 		FlamebearerProfile: string(jsonProfile),
-		SampleTypes:        sampleTypes,
+		ProfileType:        profile.Metadata.Name,
+		ProfileTypes:       profileTypes,
 	}), nil
 }
 
@@ -132,14 +144,9 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 		return nil, errors.Wrapf(err, "could not determine max nodes")
 	}
 
-	profile, sampleTypes, err := parse(&adHocProfile, c.Msg.SampleType, maxNodes)
+	profile, profileTypes, err := parse(&adHocProfile, c.Msg.ProfileType, maxNodes)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse profile")
-	}
-
-	sampleType := ""
-	if c.Msg.SampleType != nil {
-		sampleType = *c.Msg.SampleType
 	}
 
 	jsonProfile, err := json.Marshal(profile)
@@ -150,9 +157,10 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 	return connect.NewResponse(&v1.AdHocProfilesGetResponse{
 		Id:                 c.Msg.Id,
 		Name:               adHocProfile.Name,
+		UploadedAt:         adHocProfile.UploadedAt.UTC().Format(time.RFC3339),
 		FlamebearerProfile: string(jsonProfile),
-		SampleType:         sampleType,
-		SampleTypes:        sampleTypes,
+		ProfileType:        profile.Metadata.Name,
+		ProfileTypes:       profileTypes,
 	}), nil
 }
 
@@ -161,24 +169,19 @@ func (a *AdHocProfiles) List(ctx context.Context, c *connect.Request[v1.AdHocPro
 	if err != nil {
 		return nil, err
 	}
-	profiles := make([]*v1.AdHocProfilesProfileMeta, 0)
+	profiles := make([]*v1.AdHocProfilesProfileMetadata, 0)
 	err = bucket.Iter(ctx, "", func(s string) error {
-		profileReader, err := bucket.Get(ctx, s)
+		separatorIndex := bytes.IndexByte([]byte(s), '-')
+		id, err := ulid.Parse(s[0:separatorIndex])
 		if err != nil {
-			return err
+			level.Warn(a.logger).Log("msg", "cannot parse ad hoc profile", "key", s, "err", err)
+			return nil
 		}
-		adHocProfileBytes, err := io.ReadAll(profileReader)
-		if err != nil {
-			return err
-		}
-		var adHocProfile AdHocProfile
-		err = json.Unmarshal(adHocProfileBytes, &adHocProfile)
-		if err != nil {
-			return err
-		}
-		profiles = append(profiles, &v1.AdHocProfilesProfileMeta{
-			Id:   s,
-			Name: adHocProfile.Name,
+		name := s[separatorIndex+1:]
+		profiles = append(profiles, &v1.AdHocProfilesProfileMetadata{
+			Id:         s,
+			Name:       name,
+			UploadedAt: util.TimeFromMillis(int64(id.Time())).UTC().Format(time.RFC3339),
 		})
 		return nil
 	})
@@ -211,7 +214,7 @@ func (a *AdHocProfiles) getBucket(tenantID string) (objstore.Bucket, error) {
 	return bucket, nil
 }
 
-func parse(p *AdHocProfile, sampleType *string, maxNodes int64) (fg *flamebearer.FlamebearerProfile, sampleTypes []string, err error) {
+func parse(p *AdHocProfile, profileType *string, maxNodes int64) (fg *flamebearer.FlamebearerProfile, profileTypes []string, err error) {
 	base64decoded, err := base64.StdEncoding.DecodeString(p.Data)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to upload profile")
@@ -231,21 +234,21 @@ func parse(p *AdHocProfile, sampleType *string, maxNodes int64) (fg *flamebearer
 		return nil, nil, errors.Wrapf(err, "no profiles found after parsing")
 	}
 
-	sampleTypes = make([]string, 0)
-	sampleTypeIndex := -1
+	profileTypes = make([]string, 0)
+	profileTypeIndex := -1
 	for i, p := range profiles {
-		sampleTypes = append(sampleTypes, p.Metadata.Name)
-		if sampleType != nil && p.Metadata.Name == *sampleType {
-			sampleTypeIndex = i
+		profileTypes = append(profileTypes, p.Metadata.Name)
+		if profileType != nil && p.Metadata.Name == *profileType {
+			profileTypeIndex = i
 		}
 	}
 
 	var profile *flamebearer.FlamebearerProfile
-	if sampleTypeIndex >= 0 {
-		profile = profiles[sampleTypeIndex]
+	if profileTypeIndex >= 0 {
+		profile = profiles[profileTypeIndex]
 	} else {
 		profile = profiles[0]
 	}
 
-	return profile, sampleTypes, nil
+	return profile, profileTypes, nil
 }

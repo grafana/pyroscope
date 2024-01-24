@@ -400,17 +400,20 @@
         "name": {
           "type": "string"
         },
-        "sampleType": {
+        "uploadedAt": {
           "type": "string"
         },
-        "flamebearerProfile": {
+        "profileType": {
           "type": "string"
         },
-        "sampleTypes": {
+        "profileTypes": {
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "flamebearerProfile": {
+          "type": "string"
         }
       }
     },
@@ -421,12 +424,12 @@
           "type": "array",
           "items": {
             "type": "object",
-            "$ref": "#/definitions/v1AdHocProfilesProfileMeta"
+            "$ref": "#/definitions/v1AdHocProfilesProfileMetadata"
           }
         }
       }
     },
-    "v1AdHocProfilesProfileMeta": {
+    "v1AdHocProfilesProfileMetadata": {
       "type": "object",
       "properties": {
         "id": {
@@ -434,25 +437,9 @@
         },
         "name": {
           "type": "string"
-        }
-      }
-    },
-    "v1AdHocProfilesUploadResponse": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "A generated unique identifier that can be used to refer to this profile after the upload."
         },
-        "flamebearerProfile": {
+        "uploadedAt": {
           "type": "string"
-        },
-        "sampleTypes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "A list of sample types contained within the uploaded profile (e.g., cpu and samples for cpu profiles)."
         }
       }
     },

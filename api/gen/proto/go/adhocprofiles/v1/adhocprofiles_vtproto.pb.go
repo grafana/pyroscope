@@ -46,30 +46,6 @@ func (m *AdHocProfilesUploadRequest) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *AdHocProfilesUploadResponse) CloneVT() *AdHocProfilesUploadResponse {
-	if m == nil {
-		return (*AdHocProfilesUploadResponse)(nil)
-	}
-	r := &AdHocProfilesUploadResponse{
-		Id:                 m.Id,
-		FlamebearerProfile: m.FlamebearerProfile,
-	}
-	if rhs := m.SampleTypes; rhs != nil {
-		tmpContainer := make([]string, len(rhs))
-		copy(tmpContainer, rhs)
-		r.SampleTypes = tmpContainer
-	}
-	if len(m.unknownFields) > 0 {
-		r.unknownFields = make([]byte, len(m.unknownFields))
-		copy(r.unknownFields, m.unknownFields)
-	}
-	return r
-}
-
-func (m *AdHocProfilesUploadResponse) CloneMessageVT() proto.Message {
-	return m.CloneVT()
-}
-
 func (m *AdHocProfilesGetRequest) CloneVT() *AdHocProfilesGetRequest {
 	if m == nil {
 		return (*AdHocProfilesGetRequest)(nil)
@@ -77,9 +53,9 @@ func (m *AdHocProfilesGetRequest) CloneVT() *AdHocProfilesGetRequest {
 	r := &AdHocProfilesGetRequest{
 		Id: m.Id,
 	}
-	if rhs := m.SampleType; rhs != nil {
+	if rhs := m.ProfileType; rhs != nil {
 		tmpVal := *rhs
-		r.SampleType = &tmpVal
+		r.ProfileType = &tmpVal
 	}
 	if rhs := m.MaxNodes; rhs != nil {
 		tmpVal := *rhs
@@ -103,13 +79,14 @@ func (m *AdHocProfilesGetResponse) CloneVT() *AdHocProfilesGetResponse {
 	r := &AdHocProfilesGetResponse{
 		Id:                 m.Id,
 		Name:               m.Name,
-		SampleType:         m.SampleType,
+		UploadedAt:         m.UploadedAt,
+		ProfileType:        m.ProfileType,
 		FlamebearerProfile: m.FlamebearerProfile,
 	}
-	if rhs := m.SampleTypes; rhs != nil {
+	if rhs := m.ProfileTypes; rhs != nil {
 		tmpContainer := make([]string, len(rhs))
 		copy(tmpContainer, rhs)
-		r.SampleTypes = tmpContainer
+		r.ProfileTypes = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -144,7 +121,7 @@ func (m *AdHocProfilesListResponse) CloneVT() *AdHocProfilesListResponse {
 	}
 	r := &AdHocProfilesListResponse{}
 	if rhs := m.Profiles; rhs != nil {
-		tmpContainer := make([]*AdHocProfilesProfileMeta, len(rhs))
+		tmpContainer := make([]*AdHocProfilesProfileMetadata, len(rhs))
 		for k, v := range rhs {
 			tmpContainer[k] = v.CloneVT()
 		}
@@ -161,13 +138,14 @@ func (m *AdHocProfilesListResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
-func (m *AdHocProfilesProfileMeta) CloneVT() *AdHocProfilesProfileMeta {
+func (m *AdHocProfilesProfileMetadata) CloneVT() *AdHocProfilesProfileMetadata {
 	if m == nil {
-		return (*AdHocProfilesProfileMeta)(nil)
+		return (*AdHocProfilesProfileMetadata)(nil)
 	}
-	r := &AdHocProfilesProfileMeta{
-		Id:   m.Id,
-		Name: m.Name,
+	r := &AdHocProfilesProfileMetadata{
+		Id:         m.Id,
+		Name:       m.Name,
+		UploadedAt: m.UploadedAt,
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -176,7 +154,7 @@ func (m *AdHocProfilesProfileMeta) CloneVT() *AdHocProfilesProfileMeta {
 	return r
 }
 
-func (m *AdHocProfilesProfileMeta) CloneMessageVT() proto.Message {
+func (m *AdHocProfilesProfileMetadata) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
@@ -205,37 +183,6 @@ func (this *AdHocProfilesUploadRequest) EqualMessageVT(thatMsg proto.Message) bo
 	}
 	return this.EqualVT(that)
 }
-func (this *AdHocProfilesUploadResponse) EqualVT(that *AdHocProfilesUploadResponse) bool {
-	if this == that {
-		return true
-	} else if this == nil || that == nil {
-		return false
-	}
-	if this.Id != that.Id {
-		return false
-	}
-	if this.FlamebearerProfile != that.FlamebearerProfile {
-		return false
-	}
-	if len(this.SampleTypes) != len(that.SampleTypes) {
-		return false
-	}
-	for i, vx := range this.SampleTypes {
-		vy := that.SampleTypes[i]
-		if vx != vy {
-			return false
-		}
-	}
-	return string(this.unknownFields) == string(that.unknownFields)
-}
-
-func (this *AdHocProfilesUploadResponse) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*AdHocProfilesUploadResponse)
-	if !ok {
-		return false
-	}
-	return this.EqualVT(that)
-}
 func (this *AdHocProfilesGetRequest) EqualVT(that *AdHocProfilesGetRequest) bool {
 	if this == that {
 		return true
@@ -245,7 +192,7 @@ func (this *AdHocProfilesGetRequest) EqualVT(that *AdHocProfilesGetRequest) bool
 	if this.Id != that.Id {
 		return false
 	}
-	if p, q := this.SampleType, that.SampleType; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+	if p, q := this.ProfileType, that.ProfileType; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
 		return false
 	}
 	if p, q := this.MaxNodes, that.MaxNodes; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
@@ -273,20 +220,23 @@ func (this *AdHocProfilesGetResponse) EqualVT(that *AdHocProfilesGetResponse) bo
 	if this.Name != that.Name {
 		return false
 	}
-	if this.SampleType != that.SampleType {
+	if this.UploadedAt != that.UploadedAt {
 		return false
 	}
-	if this.FlamebearerProfile != that.FlamebearerProfile {
+	if this.ProfileType != that.ProfileType {
 		return false
 	}
-	if len(this.SampleTypes) != len(that.SampleTypes) {
+	if len(this.ProfileTypes) != len(that.ProfileTypes) {
 		return false
 	}
-	for i, vx := range this.SampleTypes {
-		vy := that.SampleTypes[i]
+	for i, vx := range this.ProfileTypes {
+		vy := that.ProfileTypes[i]
 		if vx != vy {
 			return false
 		}
+	}
+	if this.FlamebearerProfile != that.FlamebearerProfile {
+		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -327,10 +277,10 @@ func (this *AdHocProfilesListResponse) EqualVT(that *AdHocProfilesListResponse) 
 		vy := that.Profiles[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
-				p = &AdHocProfilesProfileMeta{}
+				p = &AdHocProfilesProfileMetadata{}
 			}
 			if q == nil {
-				q = &AdHocProfilesProfileMeta{}
+				q = &AdHocProfilesProfileMetadata{}
 			}
 			if !p.EqualVT(q) {
 				return false
@@ -347,7 +297,7 @@ func (this *AdHocProfilesListResponse) EqualMessageVT(thatMsg proto.Message) boo
 	}
 	return this.EqualVT(that)
 }
-func (this *AdHocProfilesProfileMeta) EqualVT(that *AdHocProfilesProfileMeta) bool {
+func (this *AdHocProfilesProfileMetadata) EqualVT(that *AdHocProfilesProfileMetadata) bool {
 	if this == that {
 		return true
 	} else if this == nil || that == nil {
@@ -359,11 +309,14 @@ func (this *AdHocProfilesProfileMeta) EqualVT(that *AdHocProfilesProfileMeta) bo
 	if this.Name != that.Name {
 		return false
 	}
+	if this.UploadedAt != that.UploadedAt {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
-func (this *AdHocProfilesProfileMeta) EqualMessageVT(thatMsg proto.Message) bool {
-	that, ok := thatMsg.(*AdHocProfilesProfileMeta)
+func (this *AdHocProfilesProfileMetadata) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*AdHocProfilesProfileMetadata)
 	if !ok {
 		return false
 	}
@@ -381,7 +334,7 @@ const _ = grpc.SupportPackageIsVersion7
 type AdHocProfileServiceClient interface {
 	// Upload a profile to the underlying store. The request contains a name and a base64 encoded pprof file. The response
 	// contains a generated unique identifier, a flamegraph and a list of found sample types within the profile.
-	Upload(ctx context.Context, in *AdHocProfilesUploadRequest, opts ...grpc.CallOption) (*AdHocProfilesUploadResponse, error)
+	Upload(ctx context.Context, in *AdHocProfilesUploadRequest, opts ...grpc.CallOption) (*AdHocProfilesGetResponse, error)
 	// Retrieves a profile from the underlying store by id and an optional sample type. The response is similar to the one
 	// for the upload method.
 	Get(ctx context.Context, in *AdHocProfilesGetRequest, opts ...grpc.CallOption) (*AdHocProfilesGetResponse, error)
@@ -397,8 +350,8 @@ func NewAdHocProfileServiceClient(cc grpc.ClientConnInterface) AdHocProfileServi
 	return &adHocProfileServiceClient{cc}
 }
 
-func (c *adHocProfileServiceClient) Upload(ctx context.Context, in *AdHocProfilesUploadRequest, opts ...grpc.CallOption) (*AdHocProfilesUploadResponse, error) {
-	out := new(AdHocProfilesUploadResponse)
+func (c *adHocProfileServiceClient) Upload(ctx context.Context, in *AdHocProfilesUploadRequest, opts ...grpc.CallOption) (*AdHocProfilesGetResponse, error) {
+	out := new(AdHocProfilesGetResponse)
 	err := c.cc.Invoke(ctx, "/adhocprofiles.v1.AdHocProfileService/Upload", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -430,7 +383,7 @@ func (c *adHocProfileServiceClient) List(ctx context.Context, in *AdHocProfilesL
 type AdHocProfileServiceServer interface {
 	// Upload a profile to the underlying store. The request contains a name and a base64 encoded pprof file. The response
 	// contains a generated unique identifier, a flamegraph and a list of found sample types within the profile.
-	Upload(context.Context, *AdHocProfilesUploadRequest) (*AdHocProfilesUploadResponse, error)
+	Upload(context.Context, *AdHocProfilesUploadRequest) (*AdHocProfilesGetResponse, error)
 	// Retrieves a profile from the underlying store by id and an optional sample type. The response is similar to the one
 	// for the upload method.
 	Get(context.Context, *AdHocProfilesGetRequest) (*AdHocProfilesGetResponse, error)
@@ -443,7 +396,7 @@ type AdHocProfileServiceServer interface {
 type UnimplementedAdHocProfileServiceServer struct {
 }
 
-func (UnimplementedAdHocProfileServiceServer) Upload(context.Context, *AdHocProfilesUploadRequest) (*AdHocProfilesUploadResponse, error) {
+func (UnimplementedAdHocProfileServiceServer) Upload(context.Context, *AdHocProfilesUploadRequest) (*AdHocProfilesGetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Upload not implemented")
 }
 func (UnimplementedAdHocProfileServiceServer) Get(context.Context, *AdHocProfilesGetRequest) (*AdHocProfilesGetResponse, error) {
@@ -595,62 +548,6 @@ func (m *AdHocProfilesUploadRequest) MarshalToSizedBufferVT(dAtA []byte) (int, e
 	return len(dAtA) - i, nil
 }
 
-func (m *AdHocProfilesUploadResponse) MarshalVT() (dAtA []byte, err error) {
-	if m == nil {
-		return nil, nil
-	}
-	size := m.SizeVT()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *AdHocProfilesUploadResponse) MarshalToVT(dAtA []byte) (int, error) {
-	size := m.SizeVT()
-	return m.MarshalToSizedBufferVT(dAtA[:size])
-}
-
-func (m *AdHocProfilesUploadResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
-	if m == nil {
-		return 0, nil
-	}
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.unknownFields != nil {
-		i -= len(m.unknownFields)
-		copy(dAtA[i:], m.unknownFields)
-	}
-	if len(m.SampleTypes) > 0 {
-		for iNdEx := len(m.SampleTypes) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.SampleTypes[iNdEx])
-			copy(dAtA[i:], m.SampleTypes[iNdEx])
-			i = encodeVarint(dAtA, i, uint64(len(m.SampleTypes[iNdEx])))
-			i--
-			dAtA[i] = 0x1a
-		}
-	}
-	if len(m.FlamebearerProfile) > 0 {
-		i -= len(m.FlamebearerProfile)
-		copy(dAtA[i:], m.FlamebearerProfile)
-		i = encodeVarint(dAtA, i, uint64(len(m.FlamebearerProfile)))
-		i--
-		dAtA[i] = 0x12
-	}
-	if len(m.Id) > 0 {
-		i -= len(m.Id)
-		copy(dAtA[i:], m.Id)
-		i = encodeVarint(dAtA, i, uint64(len(m.Id)))
-		i--
-		dAtA[i] = 0xa
-	}
-	return len(dAtA) - i, nil
-}
-
 func (m *AdHocProfilesGetRequest) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -686,10 +583,10 @@ func (m *AdHocProfilesGetRequest) MarshalToSizedBufferVT(dAtA []byte) (int, erro
 		i--
 		dAtA[i] = 0x18
 	}
-	if m.SampleType != nil {
-		i -= len(*m.SampleType)
-		copy(dAtA[i:], *m.SampleType)
-		i = encodeVarint(dAtA, i, uint64(len(*m.SampleType)))
+	if m.ProfileType != nil {
+		i -= len(*m.ProfileType)
+		copy(dAtA[i:], *m.ProfileType)
+		i = encodeVarint(dAtA, i, uint64(len(*m.ProfileType)))
 		i--
 		dAtA[i] = 0x12
 	}
@@ -733,26 +630,33 @@ func (m *AdHocProfilesGetResponse) MarshalToSizedBufferVT(dAtA []byte) (int, err
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.SampleTypes) > 0 {
-		for iNdEx := len(m.SampleTypes) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.SampleTypes[iNdEx])
-			copy(dAtA[i:], m.SampleTypes[iNdEx])
-			i = encodeVarint(dAtA, i, uint64(len(m.SampleTypes[iNdEx])))
-			i--
-			dAtA[i] = 0x2a
-		}
-	}
 	if len(m.FlamebearerProfile) > 0 {
 		i -= len(m.FlamebearerProfile)
 		copy(dAtA[i:], m.FlamebearerProfile)
 		i = encodeVarint(dAtA, i, uint64(len(m.FlamebearerProfile)))
 		i--
+		dAtA[i] = 0x32
+	}
+	if len(m.ProfileTypes) > 0 {
+		for iNdEx := len(m.ProfileTypes) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ProfileTypes[iNdEx])
+			copy(dAtA[i:], m.ProfileTypes[iNdEx])
+			i = encodeVarint(dAtA, i, uint64(len(m.ProfileTypes[iNdEx])))
+			i--
+			dAtA[i] = 0x2a
+		}
+	}
+	if len(m.ProfileType) > 0 {
+		i -= len(m.ProfileType)
+		copy(dAtA[i:], m.ProfileType)
+		i = encodeVarint(dAtA, i, uint64(len(m.ProfileType)))
+		i--
 		dAtA[i] = 0x22
 	}
-	if len(m.SampleType) > 0 {
-		i -= len(m.SampleType)
-		copy(dAtA[i:], m.SampleType)
-		i = encodeVarint(dAtA, i, uint64(len(m.SampleType)))
+	if len(m.UploadedAt) > 0 {
+		i -= len(m.UploadedAt)
+		copy(dAtA[i:], m.UploadedAt)
+		i = encodeVarint(dAtA, i, uint64(len(m.UploadedAt)))
 		i--
 		dAtA[i] = 0x1a
 	}
@@ -851,7 +755,7 @@ func (m *AdHocProfilesListResponse) MarshalToSizedBufferVT(dAtA []byte) (int, er
 	return len(dAtA) - i, nil
 }
 
-func (m *AdHocProfilesProfileMeta) MarshalVT() (dAtA []byte, err error) {
+func (m *AdHocProfilesProfileMetadata) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -864,12 +768,12 @@ func (m *AdHocProfilesProfileMeta) MarshalVT() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *AdHocProfilesProfileMeta) MarshalToVT(dAtA []byte) (int, error) {
+func (m *AdHocProfilesProfileMetadata) MarshalToVT(dAtA []byte) (int, error) {
 	size := m.SizeVT()
 	return m.MarshalToSizedBufferVT(dAtA[:size])
 }
 
-func (m *AdHocProfilesProfileMeta) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+func (m *AdHocProfilesProfileMetadata) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -880,6 +784,13 @@ func (m *AdHocProfilesProfileMeta) MarshalToSizedBufferVT(dAtA []byte) (int, err
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.UploadedAt) > 0 {
+		i -= len(m.UploadedAt)
+		copy(dAtA[i:], m.UploadedAt)
+		i = encodeVarint(dAtA, i, uint64(len(m.UploadedAt)))
+		i--
+		dAtA[i] = 0x1a
 	}
 	if len(m.Name) > 0 {
 		i -= len(m.Name)
@@ -930,30 +841,6 @@ func (m *AdHocProfilesUploadRequest) SizeVT() (n int) {
 	return n
 }
 
-func (m *AdHocProfilesUploadResponse) SizeVT() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Id)
-	if l > 0 {
-		n += 1 + l + sov(uint64(l))
-	}
-	l = len(m.FlamebearerProfile)
-	if l > 0 {
-		n += 1 + l + sov(uint64(l))
-	}
-	if len(m.SampleTypes) > 0 {
-		for _, s := range m.SampleTypes {
-			l = len(s)
-			n += 1 + l + sov(uint64(l))
-		}
-	}
-	n += len(m.unknownFields)
-	return n
-}
-
 func (m *AdHocProfilesGetRequest) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -964,8 +851,8 @@ func (m *AdHocProfilesGetRequest) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
-	if m.SampleType != nil {
-		l = len(*m.SampleType)
+	if m.ProfileType != nil {
+		l = len(*m.ProfileType)
 		n += 1 + l + sov(uint64(l))
 	}
 	if m.MaxNodes != nil {
@@ -989,19 +876,23 @@ func (m *AdHocProfilesGetResponse) SizeVT() (n int) {
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
-	l = len(m.SampleType)
+	l = len(m.UploadedAt)
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
+	}
+	l = len(m.ProfileType)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
+	if len(m.ProfileTypes) > 0 {
+		for _, s := range m.ProfileTypes {
+			l = len(s)
+			n += 1 + l + sov(uint64(l))
+		}
 	}
 	l = len(m.FlamebearerProfile)
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
-	}
-	if len(m.SampleTypes) > 0 {
-		for _, s := range m.SampleTypes {
-			l = len(s)
-			n += 1 + l + sov(uint64(l))
-		}
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1033,7 +924,7 @@ func (m *AdHocProfilesListResponse) SizeVT() (n int) {
 	return n
 }
 
-func (m *AdHocProfilesProfileMeta) SizeVT() (n int) {
+func (m *AdHocProfilesProfileMetadata) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1044,6 +935,10 @@ func (m *AdHocProfilesProfileMeta) SizeVT() (n int) {
 		n += 1 + l + sov(uint64(l))
 	}
 	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
+	l = len(m.UploadedAt)
 	if l > 0 {
 		n += 1 + l + sov(uint64(l))
 	}
@@ -1192,153 +1087,6 @@ func (m *AdHocProfilesUploadRequest) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *AdHocProfilesUploadResponse) UnmarshalVT(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflow
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: AdHocProfilesUploadResponse: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: AdHocProfilesUploadResponse: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Id = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field FlamebearerProfile", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.FlamebearerProfile = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SampleTypes", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.SampleTypes = append(m.SampleTypes, string(dAtA[iNdEx:postIndex]))
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skip(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLength
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
 func (m *AdHocProfilesGetRequest) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
@@ -1402,7 +1150,7 @@ func (m *AdHocProfilesGetRequest) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SampleType", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileType", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1431,7 +1179,7 @@ func (m *AdHocProfilesGetRequest) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			s := string(dAtA[iNdEx:postIndex])
-			m.SampleType = &s
+			m.ProfileType = &s
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -1570,7 +1318,7 @@ func (m *AdHocProfilesGetResponse) UnmarshalVT(dAtA []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SampleType", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field UploadedAt", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1598,9 +1346,73 @@ func (m *AdHocProfilesGetResponse) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SampleType = string(dAtA[iNdEx:postIndex])
+			m.UploadedAt = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileType", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProfileType = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileTypes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProfileTypes = append(m.ProfileTypes, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field FlamebearerProfile", wireType)
 			}
@@ -1631,38 +1443,6 @@ func (m *AdHocProfilesGetResponse) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.FlamebearerProfile = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SampleTypes", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLength
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLength
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.SampleTypes = append(m.SampleTypes, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -1795,7 +1575,7 @@ func (m *AdHocProfilesListResponse) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Profiles = append(m.Profiles, &AdHocProfilesProfileMeta{})
+			m.Profiles = append(m.Profiles, &AdHocProfilesProfileMetadata{})
 			if err := m.Profiles[len(m.Profiles)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1822,7 +1602,7 @@ func (m *AdHocProfilesListResponse) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *AdHocProfilesProfileMeta) UnmarshalVT(dAtA []byte) error {
+func (m *AdHocProfilesProfileMetadata) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1845,10 +1625,10 @@ func (m *AdHocProfilesProfileMeta) UnmarshalVT(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: AdHocProfilesProfileMeta: wiretype end group for non-group")
+			return fmt.Errorf("proto: AdHocProfilesProfileMetadata: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: AdHocProfilesProfileMeta: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: AdHocProfilesProfileMetadata: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1914,6 +1694,38 @@ func (m *AdHocProfilesProfileMeta) UnmarshalVT(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UploadedAt", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.UploadedAt = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

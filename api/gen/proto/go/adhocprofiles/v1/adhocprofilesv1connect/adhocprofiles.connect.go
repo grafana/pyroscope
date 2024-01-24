@@ -55,7 +55,7 @@ var (
 type AdHocProfileServiceClient interface {
 	// Upload a profile to the underlying store. The request contains a name and a base64 encoded pprof file. The response
 	// contains a generated unique identifier, a flamegraph and a list of found sample types within the profile.
-	Upload(context.Context, *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesUploadResponse], error)
+	Upload(context.Context, *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error)
 	// Retrieves a profile from the underlying store by id and an optional sample type. The response is similar to the one
 	// for the upload method.
 	Get(context.Context, *connect.Request[v1.AdHocProfilesGetRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error)
@@ -73,7 +73,7 @@ type AdHocProfileServiceClient interface {
 func NewAdHocProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AdHocProfileServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	return &adHocProfileServiceClient{
-		upload: connect.NewClient[v1.AdHocProfilesUploadRequest, v1.AdHocProfilesUploadResponse](
+		upload: connect.NewClient[v1.AdHocProfilesUploadRequest, v1.AdHocProfilesGetResponse](
 			httpClient,
 			baseURL+AdHocProfileServiceUploadProcedure,
 			connect.WithSchema(adHocProfileServiceUploadMethodDescriptor),
@@ -96,13 +96,13 @@ func NewAdHocProfileServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // adHocProfileServiceClient implements AdHocProfileServiceClient.
 type adHocProfileServiceClient struct {
-	upload *connect.Client[v1.AdHocProfilesUploadRequest, v1.AdHocProfilesUploadResponse]
+	upload *connect.Client[v1.AdHocProfilesUploadRequest, v1.AdHocProfilesGetResponse]
 	get    *connect.Client[v1.AdHocProfilesGetRequest, v1.AdHocProfilesGetResponse]
 	list   *connect.Client[v1.AdHocProfilesListRequest, v1.AdHocProfilesListResponse]
 }
 
 // Upload calls adhocprofiles.v1.AdHocProfileService.Upload.
-func (c *adHocProfileServiceClient) Upload(ctx context.Context, req *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesUploadResponse], error) {
+func (c *adHocProfileServiceClient) Upload(ctx context.Context, req *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error) {
 	return c.upload.CallUnary(ctx, req)
 }
 
@@ -121,7 +121,7 @@ func (c *adHocProfileServiceClient) List(ctx context.Context, req *connect.Reque
 type AdHocProfileServiceHandler interface {
 	// Upload a profile to the underlying store. The request contains a name and a base64 encoded pprof file. The response
 	// contains a generated unique identifier, a flamegraph and a list of found sample types within the profile.
-	Upload(context.Context, *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesUploadResponse], error)
+	Upload(context.Context, *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error)
 	// Retrieves a profile from the underlying store by id and an optional sample type. The response is similar to the one
 	// for the upload method.
 	Get(context.Context, *connect.Request[v1.AdHocProfilesGetRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error)
@@ -170,7 +170,7 @@ func NewAdHocProfileServiceHandler(svc AdHocProfileServiceHandler, opts ...conne
 // UnimplementedAdHocProfileServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAdHocProfileServiceHandler struct{}
 
-func (UnimplementedAdHocProfileServiceHandler) Upload(context.Context, *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesUploadResponse], error) {
+func (UnimplementedAdHocProfileServiceHandler) Upload(context.Context, *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("adhocprofiles.v1.AdHocProfileService.Upload is not implemented"))
 }
 

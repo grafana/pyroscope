@@ -17,7 +17,6 @@ import (
 	"github.com/grafana/dskit/runtimeconfig"
 	"github.com/grafana/dskit/server"
 	"github.com/grafana/dskit/services"
-	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
@@ -32,6 +31,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
+	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"

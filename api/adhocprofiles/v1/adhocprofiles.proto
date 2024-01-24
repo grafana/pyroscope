@@ -7,7 +7,7 @@ import "types/v1/types.proto";
 service AdHocProfileService {
   // Upload a profile to the underlying store. The request contains a name and a base64 encoded pprof file. The response
   // contains a generated unique identifier, a flamegraph and a list of found sample types within the profile.
-  rpc Upload(AdHocProfilesUploadRequest) returns (AdHocProfilesUploadResponse) {}
+  rpc Upload(AdHocProfilesUploadRequest) returns (AdHocProfilesGetResponse) {}
 
   // Retrieves a profile from the underlying store by id and an optional sample type. The response is similar to the one
   // for the upload method.
@@ -25,37 +25,31 @@ message AdHocProfilesUploadRequest {
   optional int64 max_nodes = 3;
 }
 
-message AdHocProfilesUploadResponse {
-  // A generated unique identifier that can be used to refer to this profile after the upload.
-  string id = 1;
-  string flamebearer_profile = 2;
-  // A list of sample types contained within the uploaded profile (e.g., cpu and samples for cpu profiles).
-  repeated string sample_types = 3;
-}
-
 message AdHocProfilesGetRequest {
   // The unique identifier of the profile generated during the upload.
   string id = 1;
-  // The desired sample_type for the returned flame graph. If omitted or empty, the first profile is returned.
-  optional string sample_type = 2;
+  // The desired profile type (e.g., cpu, samples) for the returned flame graph. If omitted or empty, the first profile is returned.
+  optional string profile_type = 2;
   optional int64 max_nodes = 3;
 }
 
 message AdHocProfilesGetResponse {
   string id = 1;
   string name = 2;
-  string sample_type = 3;
-  string flamebearer_profile = 4;
-  repeated string sample_types = 5;
+  string uploaded_at = 3;
+  string profile_type = 4;
+  repeated string profile_types = 5;
+  string flamebearer_profile = 6;
 }
 
 message AdHocProfilesListRequest {}
 
 message AdHocProfilesListResponse {
-  repeated AdHocProfilesProfileMeta profiles = 1;
+  repeated AdHocProfilesProfileMetadata profiles = 1;
 }
 
-message AdHocProfilesProfileMeta {
+message AdHocProfilesProfileMetadata {
   string id = 1;
   string name = 2;
+  string uploaded_at = 3;
 }

@@ -165,9 +165,6 @@ func JSONToProfile(b []byte, name string, maxNodes int) ([]*flamebearer.Flamebea
 	if err := profile.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid profile: %w", err)
 	}
-	if name != "" {
-		profile.Metadata.Name = name
-	}
 
 	t, err := flamebearer.ProfileToTree(profile)
 	if err != nil {
