@@ -20,6 +20,7 @@ import (
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/server"
+	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
 	"github.com/grafana/pyroscope/public"
@@ -44,7 +45,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/scheduler"
 	"github.com/grafana/pyroscope/pkg/scheduler/schedulerpb/schedulerpbconnect"
 	"github.com/grafana/pyroscope/pkg/settings"
-	"github.com/grafana/pyroscope/pkg/sidekick"
 	"github.com/grafana/pyroscope/pkg/storegateway"
 	"github.com/grafana/pyroscope/pkg/util"
 	"github.com/grafana/pyroscope/pkg/util/gziphandler"
@@ -302,6 +302,6 @@ func (a *API) RegisterAdmin(ad *operations.Admin) {
 	})
 }
 
-func (a *API) RegisterSidekick(s *sidekick.Sidekick) {
-	adhocprofilesv1connect.RegisterAdHocProfileServiceHandler(a.server.HTTP, s.AdHocProfiles, a.grpcAuthMiddleware)
+func (a *API) RegisterAdHocProfiles(ahp *adhocprofiles.AdHocProfiles) {
+	adhocprofilesv1connect.RegisterAdHocProfileServiceHandler(a.server.HTTP, ahp, a.grpcAuthMiddleware)
 }

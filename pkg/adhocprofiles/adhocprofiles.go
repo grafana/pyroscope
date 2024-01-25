@@ -14,6 +14,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/dskit/services"
 	"github.com/grafana/dskit/tenant"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
@@ -27,6 +28,8 @@ import (
 )
 
 type AdHocProfiles struct {
+	services.Service
+
 	logger    log.Logger
 	limits    frontend.Limits
 	bucket    objstore.Bucket
@@ -47,7 +50,13 @@ func NewAdHocProfiles(bucket objstore.Bucket, logger log.Logger, limits frontend
 		buckets: make(map[string]objstore.Bucket),
 		limits:  limits,
 	}
+	a.Service = services.NewBasicService(nil, a.running, nil)
 	return a
+}
+
+func (a *AdHocProfiles) running(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
 }
 
 func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocProfilesUploadRequest]) (*connect.Response[v1.AdHocProfilesGetResponse], error) {
