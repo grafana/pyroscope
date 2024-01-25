@@ -504,11 +504,6 @@ func (m *MergeProfilesLabelsRequest) CloneVT() *MergeProfilesLabelsRequest {
 		copy(tmpContainer, rhs)
 		r.By = tmpContainer
 	}
-	if rhs := m.Metrics; rhs != nil {
-		tmpContainer := make([]v1.SeriesMetric, len(rhs))
-		copy(tmpContainer, rhs)
-		r.Metrics = tmpContainer
-	}
 	if rhs := m.StackTraceSelector; rhs != nil {
 		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.StackTraceSelector }); ok {
 			r.StackTraceSelector = vtpb.CloneVT()
@@ -1322,15 +1317,6 @@ func (this *MergeProfilesLabelsRequest) EqualVT(that *MergeProfilesLabelsRequest
 	}
 	for i, vx := range this.Profiles {
 		vy := that.Profiles[i]
-		if vx != vy {
-			return false
-		}
-	}
-	if len(this.Metrics) != len(that.Metrics) {
-		return false
-	}
-	for i, vx := range this.Metrics {
-		vy := that.Metrics[i]
 		if vx != vy {
 			return false
 		}
@@ -3267,27 +3253,6 @@ func (m *MergeProfilesLabelsRequest) MarshalToSizedBufferVT(dAtA []byte) (int, e
 			i = encodeVarint(dAtA, i, uint64(len(encoded)))
 		}
 		i--
-		dAtA[i] = 0x2a
-	}
-	if len(m.Metrics) > 0 {
-		var pksize2 int
-		for _, num := range m.Metrics {
-			pksize2 += sov(uint64(num))
-		}
-		i -= pksize2
-		j1 := i
-		for _, num1 := range m.Metrics {
-			num := uint64(num1)
-			for num >= 1<<7 {
-				dAtA[j1] = uint8(uint64(num)&0x7f | 0x80)
-				num >>= 7
-				j1++
-			}
-			dAtA[j1] = uint8(num)
-			j1++
-		}
-		i = encodeVarint(dAtA, i, uint64(pksize2))
-		i--
 		dAtA[i] = 0x22
 	}
 	if len(m.Profiles) > 0 {
@@ -4162,13 +4127,6 @@ func (m *MergeProfilesLabelsRequest) SizeVT() (n int) {
 	}
 	if len(m.Profiles) > 0 {
 		n += 1 + sov(uint64(len(m.Profiles))) + len(m.Profiles)*1
-	}
-	if len(m.Metrics) > 0 {
-		l = 0
-		for _, e := range m.Metrics {
-			l += sov(uint64(e))
-		}
-		n += 1 + sov(uint64(l)) + l
 	}
 	if m.StackTraceSelector != nil {
 		if size, ok := interface{}(m.StackTraceSelector).(interface {
@@ -6926,75 +6884,6 @@ func (m *MergeProfilesLabelsRequest) UnmarshalVT(dAtA []byte) error {
 				return fmt.Errorf("proto: wrong wireType = %d for field Profiles", wireType)
 			}
 		case 4:
-			if wireType == 0 {
-				var v v1.SeriesMetric
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflow
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					v |= v1.SeriesMetric(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				m.Metrics = append(m.Metrics, v)
-			} else if wireType == 2 {
-				var packedLen int
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return ErrIntOverflow
-					}
-					if iNdEx >= l {
-						return io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					packedLen |= int(b&0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				if packedLen < 0 {
-					return ErrInvalidLength
-				}
-				postIndex := iNdEx + packedLen
-				if postIndex < 0 {
-					return ErrInvalidLength
-				}
-				if postIndex > l {
-					return io.ErrUnexpectedEOF
-				}
-				var elementCount int
-				if elementCount != 0 && len(m.Metrics) == 0 {
-					m.Metrics = make([]v1.SeriesMetric, 0, elementCount)
-				}
-				for iNdEx < postIndex {
-					var v v1.SeriesMetric
-					for shift := uint(0); ; shift += 7 {
-						if shift >= 64 {
-							return ErrIntOverflow
-						}
-						if iNdEx >= l {
-							return io.ErrUnexpectedEOF
-						}
-						b := dAtA[iNdEx]
-						iNdEx++
-						v |= v1.SeriesMetric(b&0x7F) << shift
-						if b < 0x80 {
-							break
-						}
-					}
-					m.Metrics = append(m.Metrics, v)
-				}
-			} else {
-				return fmt.Errorf("proto: wrong wireType = %d for field Metrics", wireType)
-			}
-		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field StackTraceSelector", wireType)
 			}

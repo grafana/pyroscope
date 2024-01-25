@@ -25,7 +25,6 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
 	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
-
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
 	if err := mergeByStacktraces(ctx, b.profileSourceTable().file, rows, r); err != nil {
@@ -39,7 +38,6 @@ func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
 	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
-
 	r := symdb.NewResolver(ctx, b.symbols,
 		symdb.WithResolverMaxNodes(maxNodes),
 		symdb.WithResolverStackTraceSelector(sts))
@@ -50,17 +48,22 @@ func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[
 	return r.Pprof()
 }
 
-func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
+func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], sts *typesv1.StackTraceSelector, by ...string) ([]*typesv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
 	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
-
-	columnName := "TotalValue"
-	if b.meta.Version == 1 {
-		columnName = "Samples.list.element.Value"
+	if len(sts.GetCallSite()) == 0 {
+		columnName := "TotalValue"
+		if b.meta.Version == 1 {
+			columnName = "Samples.list.element.Value"
+		}
+		return mergeByLabels(ctx, b.profileSourceTable().file, columnName, rows, by...)
 	}
-	return mergeByLabels(ctx, b.profileSourceTable().file, columnName, rows, by...)
+	r := symdb.NewResolver(ctx, b.symbols,
+		symdb.WithResolverStackTraceSelector(sts))
+	defer r.Release()
+	return mergeByLabelsWithStackTraceSelector(ctx, b.profileSourceTable().file, rows, r, by...)
 }
 
 func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, rows iter.Iterator[Profile], spanSelector phlaremodel.SpanSelector) (*phlaremodel.Tree, error) {
@@ -68,7 +71,6 @@ func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, rows iter.Iterato
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
 	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
-
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
 	if err := mergeBySpans(ctx, b.profileSourceTable().file, rows, r, spanSelector); err != nil {
@@ -200,11 +202,12 @@ func (s *seriesBuilder) build() []*typesv1.Series {
 	return s.series.normalize()
 }
 
-func mergeByLabels[T interface {
-	Fingerprint() model.Fingerprint
-	Labels() phlaremodel.Labels
-	Timestamp() model.Time
-}](ctx context.Context, profileSource Source, columnName string, rows iter.Iterator[T], by ...string,
+func mergeByLabels[T Profile](
+	ctx context.Context,
+	profileSource Source,
+	columnName string,
+	rows iter.Iterator[T],
+	by ...string,
 ) ([]*typesv1.Series, error) {
 	column, err := v1.ResolveColumnByPath(profileSource.Schema(), strings.Split(columnName, "."))
 	if err != nil {
@@ -226,5 +229,38 @@ func mergeByLabels[T interface {
 		seriesBuilder.add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(total))
 
 	}
+	return seriesBuilder.build(), profiles.Err()
+}
+
+func mergeByLabelsWithStackTraceSelector[T Profile](
+	ctx context.Context,
+	profileSource Source,
+	rows iter.Iterator[T],
+	r *symdb.Resolver,
+	by ...string,
+) (s []*typesv1.Series, err error) {
+	var columns v1.SampleColumns
+	if err = columns.Resolve(profileSource.Schema()); err != nil {
+		return nil, err
+	}
+	profiles := query.NewRepeatedRowIterator(ctx, rows, profileSource.RowGroups(),
+		columns.StacktraceID.ColumnIndex,
+		columns.Value.ColumnIndex,
+	)
+
+	seriesBuilder := seriesBuilder{}
+	seriesBuilder.init(by...)
+
+	// TODO:
+	_ = r
+
+	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
+	for profiles.Next() {
+		row := profiles.At()
+		h := row.Row
+		total := 0
+		seriesBuilder.add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(total))
+	}
+
 	return seriesBuilder.build(), profiles.Err()
 }

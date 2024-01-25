@@ -39,22 +39,22 @@ const (
 )
 
 type SelectedStackTraces struct {
-	symbols     *Symbols
-	relations   map[uint32]stackTraceLocationRelation
-	subtree     []uint32
-	subtreeRoot uint32
-	subtreeLen  uint32
-	buf         []uint64
+	symbols   *Symbols
+	relations map[uint32]stackTraceLocationRelation
+	callSite  []uint32 // stack trace of the call site
+	location  uint32   // stack trace leaf
+	depth     uint32
+	buf       []uint64
 }
 
 func SelectStackTraces(symbols *Symbols, sts *typesv1.StackTraceSelector) *SelectedStackTraces {
 	x := &SelectedStackTraces{
 		symbols:   symbols,
-		subtree:   findSubtreeRoot(symbols, sts.GetSubtreeRoot()),
+		callSite:  findCallSite(symbols, sts.GetCallSite()),
 		relations: make(map[uint32]stackTraceLocationRelation, len(symbols.Locations)),
 	}
-	if x.subtreeLen = uint32(len(x.subtree)); x.subtreeLen > 0 {
-		x.subtreeRoot = x.subtree[x.subtreeLen-1]
+	if x.depth = uint32(len(x.callSite)); x.depth > 0 {
+		x.location = x.callSite[x.depth-1]
 	}
 	return x
 }
@@ -62,7 +62,7 @@ func SelectStackTraces(symbols *Symbols, sts *typesv1.StackTraceSelector) *Selec
 // Values writes the call tree node statistics for the
 // selected stack traces and the given set of samples.
 func (x *SelectedStackTraces) Values(m *CallTreeNodeValues, samples schemav1.Samples) {
-	if x.subtreeLen == 0 {
+	if x.depth == 0 {
 		return
 	}
 	for i, sid := range samples.StacktraceIDs {
@@ -94,9 +94,9 @@ func (x *SelectedStackTraces) appendStackTrace(locations []uint64) stackTraceLoc
 		lines := x.symbols.Locations[locations[i]].Line
 		for j := len(lines) - 1; j >= 0; j-- {
 			f := lines[j].FunctionId
-			n += eq(x.subtreeRoot, f)
-			if pos < x.subtreeLen && pos == l {
-				pos += eq(x.subtree[pos], f)
+			n += eq(x.location, f)
+			if pos < x.depth && pos == l {
+				pos += eq(x.callSite[pos], f)
 			}
 			l++
 		}
@@ -105,8 +105,8 @@ func (x *SelectedStackTraces) appendStackTrace(locations []uint64) stackTraceLoc
 		return 0
 	}
 	leaf := x.symbols.Locations[locations[0]].Line[0]
-	isLeaf := eq(x.subtreeRoot, leaf.FunctionId)
-	inSubtree := ge(pos, x.subtreeLen)
+	isLeaf := eq(x.location, leaf.FunctionId)
+	inSubtree := ge(pos, x.depth)
 	return stackTraceLocationRelation(inSubtree | isLeaf<<1 | (1-isLeaf)<<2)
 }
 
@@ -124,10 +124,11 @@ func ge(a, b uint32) uint32 {
 	return 0
 }
 
-// findSubtreeRoot returns the stack trace of the subtree root for
-// Each element in the stack trace is represented by the function ID,
-// the root location is the last element.
-func findSubtreeRoot(symbols *Symbols, locations []*typesv1.Location) []uint32 {
+// findCallSite returns the stack trace of the call site
+// where each element in the stack trace is represented by
+// the function ID. Call site is the last element.
+// TODO(kolesnikovae): typesv1.Location should also include the line number.
+func findCallSite(symbols *Symbols, locations []*typesv1.Location) []uint32 {
 	if len(locations) == 0 {
 		return nil
 	}
@@ -148,9 +149,9 @@ func findSubtreeRoot(symbols *Symbols, locations []*typesv1.Location) []uint32 {
 	if c > 0 {
 		return nil
 	}
-	subtree := make([]uint32, len(locations))
+	callSite := make([]uint32, len(locations))
 	for i, loc := range locations {
-		subtree[i] = m[loc.Name]
+		callSite[i] = m[loc.Name]
 	}
-	return subtree
+	return callSite
 }

@@ -611,7 +611,6 @@ func (sq storeQuery) MergeStacktracesRequest(req *querierv1.SelectMergeStacktrac
 
 func (sq storeQuery) MergeSeriesRequest(req *querierv1.SelectSeriesRequest, profileType *typesv1.ProfileType) *ingestv1.MergeProfilesLabelsRequest {
 	return &ingestv1.MergeProfilesLabelsRequest{
-		By: req.GroupBy,
 		Request: &ingestv1.SelectProfilesRequest{
 			Type:          profileType,
 			LabelSelector: req.LabelSelector,
@@ -619,6 +618,8 @@ func (sq storeQuery) MergeSeriesRequest(req *querierv1.SelectSeriesRequest, prof
 			End:           int64(sq.end),
 			Aggregation:   req.Aggregation,
 		},
+		By:                 req.GroupBy,
+		StackTraceSelector: req.StackTraceSelector,
 	}
 }
 
@@ -882,35 +883,35 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 				Type:          profileType,
 				Aggregation:   req.Msg.Aggregation,
 			},
-			By: req.Msg.GroupBy,
+			By:                 req.Msg.GroupBy,
+			StackTraceSelector: req.Msg.StackTraceSelector,
 		}, plan)
 	}
 
 	storeQueries := splitQueryToStores(model.Time(start), model.Time(req.Msg.End), model.Now(), q.cfg.QueryStoreAfter, plan)
-
-	var responses []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]
-
 	if !storeQueries.ingester.shouldQuery && !storeQueries.storeGateway.shouldQuery {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("start and end time are outside of the ingester and store gateway retention"))
 	}
 
-	// todo in parallel
-	if storeQueries.ingester.shouldQuery {
-		ir, err := q.selectSeriesFromIngesters(ctx, storeQueries.ingester.MergeSeriesRequest(req.Msg, profileType), plan)
-		if err != nil {
-			return nil, err
+	var ingesterResponses, storeGatewayResponse []ResponseFromReplica[clientpool.BidiClientMergeProfilesLabels]
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() (err error) {
+		if storeQueries.ingester.shouldQuery {
+			ingesterResponses, err = q.selectSeriesFromIngesters(ctx, storeQueries.ingester.MergeSeriesRequest(req.Msg, profileType), plan)
 		}
-		responses = append(responses, ir...)
+		return err
+	})
+	g.Go(func() (err error) {
+		if storeQueries.storeGateway.shouldQuery {
+			storeGatewayResponse, err = q.selectSeriesFromStoreGateway(ctx, storeQueries.storeGateway.MergeSeriesRequest(req.Msg, profileType), plan)
+		}
+		return err
+	})
+	if err = g.Wait(); err != nil {
+		return nil, err
 	}
 
-	if storeQueries.storeGateway.shouldQuery {
-		ir, err := q.selectSeriesFromStoreGateway(ctx, storeQueries.storeGateway.MergeSeriesRequest(req.Msg, profileType), plan)
-		if err != nil {
-			return nil, err
-		}
-		responses = append(responses, ir...)
-	}
-	return responses, nil
+	return append(ingesterResponses, storeGatewayResponse...), nil
 }
 
 // rangeSeries aggregates profiles into series.

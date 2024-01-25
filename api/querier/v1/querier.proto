@@ -138,12 +138,8 @@ message SelectSeriesRequest {
   repeated string group_by = 5;
   double step = 6; // Query resolution step width in seconds
   optional types.v1.TimeSeriesAggregationType aggregation = 7;
-  // Indicates which metrics to return. If empty, the metric is sum of all
-  // samples per profile. If specified, stack_trace_selector must contain
-  // the call site stack trace, otherwise the field is ignored.
-  repeated types.v1.SeriesMetric metrics = 8;
   // Only account for stack traces matching the selector
-  optional types.v1.StackTraceSelector stack_trace_selector = 9;
+  optional types.v1.StackTraceSelector stack_trace_selector = 8;
 }
 
 message SelectSeriesResponse {

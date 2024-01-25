@@ -266,8 +266,8 @@ func (r *Symbols) Pprof(
 	// If a stack trace selector is specified,
 	// check if such a profile can exist at all.
 	var subtree []uint32
-	if locs := sts.GetSubtreeRoot(); len(locs) > 0 {
-		if subtree = findSubtreeRoot(r, locs); len(subtree) == 0 {
+	if locs := sts.GetCallSite(); len(locs) > 0 {
+		if subtree = findCallSite(r, locs); len(subtree) == 0 {
 			return b.buildPprof(), nil
 		}
 	}

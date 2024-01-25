@@ -105,7 +105,7 @@ func Test_Pprof_subtree(t *testing.T) {
 	w := db.WriteProfileSymbols(0, profile)
 	r := NewResolver(context.Background(), db,
 		WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
-			SubtreeRoot: []*typesv1.Location{{Name: "a"}, {Name: "b"}},
+			CallSite: []*typesv1.Location{{Name: "a"}, {Name: "b"}},
 		}))
 
 	r.AddSamples(0, w[0].Samples)
@@ -181,7 +181,7 @@ func Test_Resolver_pprof_options(t *testing.T) {
 			expected: 54,
 			options: []ResolverOption{
 				WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
-					SubtreeRoot: []*typesv1.Location{{Name: "runtime.main"}},
+					CallSite: []*typesv1.Location{{Name: "runtime.main"}},
 				}),
 			},
 		},
@@ -191,7 +191,7 @@ func Test_Resolver_pprof_options(t *testing.T) {
 			options: []ResolverOption{
 				WithResolverMaxNodes(10),
 				WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
-					SubtreeRoot: []*typesv1.Location{{Name: "runtime.main"}},
+					CallSite: []*typesv1.Location{{Name: "runtime.main"}},
 				}),
 			},
 		},
@@ -211,11 +211,11 @@ func Test_Resolver_pprof_options(t *testing.T) {
 			},
 		},
 		{
-			name:     "empty StackTraceSelector.SubtreeRoot",
+			name:     "empty StackTraceSelector.CallSite",
 			expected: samplesTotal,
 			options: []ResolverOption{
 				WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
-					SubtreeRoot: []*typesv1.Location{},
+					CallSite: []*typesv1.Location{},
 				}),
 			},
 		},

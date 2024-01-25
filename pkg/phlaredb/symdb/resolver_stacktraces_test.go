@@ -57,7 +57,7 @@ func Test_StackTraceFilter(t *testing.T) {
 	testCases := []testCase{
 		{
 			selector: &typesv1.StackTraceSelector{
-				SubtreeRoot: []*typesv1.Location{{Name: "foo"}},
+				CallSite: []*typesv1.Location{{Name: "foo"}},
 			},
 			expected: CallTreeNodeValues{
 				Flat:          0,
@@ -68,7 +68,7 @@ func Test_StackTraceFilter(t *testing.T) {
 		},
 		{
 			selector: &typesv1.StackTraceSelector{
-				SubtreeRoot: []*typesv1.Location{{Name: "bar"}},
+				CallSite: []*typesv1.Location{{Name: "bar"}},
 			},
 			expected: CallTreeNodeValues{
 				Flat:          2,
@@ -79,7 +79,7 @@ func Test_StackTraceFilter(t *testing.T) {
 		},
 		{
 			selector: &typesv1.StackTraceSelector{
-				SubtreeRoot: []*typesv1.Location{{Name: "foo"}, {Name: "bar"}},
+				CallSite: []*typesv1.Location{{Name: "foo"}, {Name: "bar"}},
 			},
 			expected: CallTreeNodeValues{
 				Flat:          1,
@@ -90,7 +90,7 @@ func Test_StackTraceFilter(t *testing.T) {
 		},
 		{
 			selector: &typesv1.StackTraceSelector{
-				SubtreeRoot: []*typesv1.Location{{Name: "foo"}, {Name: "bar"}, {Name: "baz"}},
+				CallSite: []*typesv1.Location{{Name: "foo"}, {Name: "bar"}, {Name: "baz"}},
 			},
 			expected: CallTreeNodeValues{
 				Flat:          1,
@@ -101,7 +101,7 @@ func Test_StackTraceFilter(t *testing.T) {
 		},
 		{
 			selector: &typesv1.StackTraceSelector{
-				SubtreeRoot: []*typesv1.Location{{Name: "foo"}, {Name: "bar"}, {Name: "baz"}, {Name: "qux"}},
+				CallSite: []*typesv1.Location{{Name: "foo"}, {Name: "bar"}, {Name: "baz"}, {Name: "qux"}},
 			},
 			expected: CallTreeNodeValues{
 				Flat:          0,
@@ -151,11 +151,11 @@ func buildStackTraceSelector(p *googlev1.Profile, locs []uint64) *typesv1.StackT
 	for _, n := range locs {
 		for _, l := range p.Location[n-1].Line {
 			fn := p.Function[l.FunctionId-1]
-			selector.SubtreeRoot = append(selector.SubtreeRoot, &typesv1.Location{
+			selector.CallSite = append(selector.CallSite, &typesv1.Location{
 				Name: p.StringTable[fn.Name],
 			})
 		}
 	}
-	slices.Reverse(selector.SubtreeRoot)
+	slices.Reverse(selector.CallSite)
 	return &selector
 }

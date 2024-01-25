@@ -1212,7 +1212,7 @@ func TestSelectMergeLabels(t *testing.T) {
 		},
 		Start: 0,
 		End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
-	}, "job")
+	}, nil, "job")
 	require.NoError(t, err)
 	expected := []*typesv1.Series{
 		{

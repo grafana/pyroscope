@@ -1094,17 +1094,6 @@
         }
       }
     },
-    "v1SeriesMetric": {
-      "type": "string",
-      "enum": [
-        "SERIES_METRIC_UNSPECIFIED",
-        "SERIES_METRIC_CALL_SITE_FLAT",
-        "SERIES_METRIC_CALL_SITE_TOTAL",
-        "SERIES_METRIC_LOCATION_FLAT",
-        "SERIES_METRIC_LOCATION_TOTAL"
-      ],
-      "default": "SERIES_METRIC_UNSPECIFIED"
-    },
     "v1SeriesProfile": {
       "type": "object",
       "properties": {
@@ -1146,13 +1135,13 @@
     "v1StackTraceSelector": {
       "type": "object",
       "properties": {
-        "subtreeRoot": {
+        "callSite": {
           "type": "array",
           "items": {
             "type": "object",
             "$ref": "#/definitions/typesv1Location"
           },
-          "description": "Only stack traces that belong to the subtree (having the prefix\nprovided) will be selected. If empty, the filter is ignored.\nSubtree root location (the call site) is the last element."
+          "description": "Stack trace of the call site. Root at call_site[0].\nOnly stack traces having the prefix provided will be selected.\nIf empty, the filter is ignored."
         }
       },
       "description": "StackTraceSelector is used for filtering stack traces by locations."

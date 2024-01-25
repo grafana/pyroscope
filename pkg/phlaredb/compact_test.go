@@ -71,7 +71,7 @@ func TestCompact(t *testing.T) {
 	}
 	it, err := querier.SelectMatchingProfiles(ctx, matchAll)
 	require.NoError(t, err)
-	series, err := querier.MergeByLabels(ctx, it, "job")
+	series, err := querier.MergeByLabels(ctx, it, nil, "job")
 	require.NoError(t, err)
 	require.Equal(t, []*typesv1.Series{
 		{Labels: phlaremodel.LabelsFromStrings("job", "a"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: int64(1000)}}},
@@ -138,7 +138,7 @@ func TestCompactWithDownsampling(t *testing.T) {
 	}
 	it, err := querier.SelectMatchingProfiles(ctx, matchAll)
 	require.NoError(t, err)
-	series, err := querier.MergeByLabels(ctx, it, "job")
+	series, err := querier.MergeByLabels(ctx, it, nil, "job")
 	require.NoError(t, err)
 	require.Equal(t, []*typesv1.Series{
 		{Labels: phlaremodel.LabelsFromStrings("job", "a"), Points: []*typesv1.Point{{Value: float64(1), Timestamp: (time.Hour - time.Minute).Milliseconds()}}},
@@ -256,7 +256,7 @@ func TestCompactWithSplitting(t *testing.T) {
 	// Then we query 2 different shards and verify we have a subset of series.
 	it, err = queriers[0].SelectMatchingProfiles(ctx, matchAll)
 	require.NoError(t, err)
-	seriesResult, err := queriers[0].MergeByLabels(context.Background(), it, "job")
+	seriesResult, err := queriers[0].MergeByLabels(context.Background(), it, nil, "job")
 	require.NoError(t, err)
 	require.Equal(t,
 		[]*typesv1.Series{
@@ -268,7 +268,7 @@ func TestCompactWithSplitting(t *testing.T) {
 
 	it, err = queriers[1].SelectMatchingProfiles(ctx, matchAll)
 	require.NoError(t, err)
-	seriesResult, err = queriers[1].MergeByLabels(context.Background(), it, "job")
+	seriesResult, err = queriers[1].MergeByLabels(context.Background(), it, nil, "job")
 	require.NoError(t, err)
 	require.Equal(t,
 		[]*typesv1.Series{

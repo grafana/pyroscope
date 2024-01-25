@@ -168,12 +168,8 @@ message MergeProfilesLabelsRequest {
   SelectProfilesRequest request = 1;
   // The labels to merge by
   repeated string by = 2;
-  // Indicates which metrics to return. If empty, the metric is sum of all
-  // samples per profile. If specified, stack_trace_selector must contain
-  // the call site stack trace, otherwise the field is ignored.
-  repeated types.v1.SeriesMetric metrics = 4;
   // Consider only the stack traces that match the provided selector.
-  optional types.v1.StackTraceSelector stack_trace_selector = 5;
+  optional types.v1.StackTraceSelector stack_trace_selector = 4;
   // On a batch of profiles, the client sends the profiles to keep for merging.
   repeated bool profiles = 3;
 }
