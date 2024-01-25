@@ -1009,7 +1009,6 @@ func Test_SampleExporter_Partial(t *testing.T) {
 		Period: 10000000,
 	}
 	requireProfilesEqual(t, expected, n)
-
 }
 
 func Test_GroupSamplesWithout_Go_CPU_profile(t *testing.T) {

@@ -165,6 +165,11 @@ func decodeResponse[Resp any](r *httpgrpc.HTTPResponse) (*connect.Response[Resp]
 		return nil, err
 	}
 	resp := &connect.Response[Resp]{Msg: new(Resp)}
+	for _, h := range r.Headers {
+		for _, v := range h.Values {
+			resp.Header().Add(h.Key, v)
+		}
+	}
 	if err := proto.Unmarshal(r.Body, resp.Any().(proto.Message)); err != nil {
 		return nil, err
 	}
@@ -353,5 +358,4 @@ func (g *httpgrpcClient) Do(req *http.Request) (*http.Response, error) {
 		StatusCode:    int(resp.Code),
 		Header:        httpgrpcHeaderToConnectHeader(resp.Headers),
 	}, nil
-
 }

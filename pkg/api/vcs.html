@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Github OAuth App</title>
+</head>
+
+<body>
+
+  <button onclick="loginGithub()">Login with GitHub</button>
+  <!-- <button onclick="install()">Install with GitHub</button> -->
+  <div id="rows" style="display: flex;flex-direction: column;">
+    <input type="text" id="git_repository" value="https://github.com/grafana/pyroscope" />
+    <input type="text" id="git_ref" value="main" />
+    <input type="text" id="local_path" value="github.com/grafana/pyroscope/api/gen/proto/go/google/v1/profile.pb.go" />
+    <span id="error" style="color: red;"></span>
+    <button onclick="getFile().then()">Get File</button>
+  </div>
+  <pre id="URL"></pre>
+  <pre id="content"></pre>
+  <script>
+    const client_id = "2c7a751adb1417c21034";
+
+    // Login is required once and enforce identity, then the backend will be able to connect to github
+    // on our behalf.
+    function loginGithub() {
+      // create a CSRF token and store it locally.
+      // todo we could also add tenantID to the state
+      let possible =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      state = "";
+      for (let i = 0; i < 40; i++)
+        state += possible.charAt(Math.floor(Math.random() * possible.length));
+      localStorage.setItem("latestCSRFToken", state);
+      // login with repo access
+      fetch(`/vcs.v1.VCSService/GithubApp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      }).then((res) => res.json())
+        .then((data) => {
+          console.log(data);
+          uri = window.location.origin + window.location.pathname;
+          authURL = `https://github.com/login/oauth/authorize?client_id=${data.clientID}&redirect_uri=${uri}&state=${state}&scope=repo`;
+
+          window.location.href = authURL;
+        });
+
+    }
+
+    // For now we use OAuth App because it's easier to setup, therefore no install.
+    // In the future we want to use GitHub App and setup an install flow in our Settings page.
+    //
+    //   // For users when installing the app in the settings page.
+    //   // Installing allow for more fine-grained permissions.
+    //   // This allow to remove some sensitive repo for instance.
+    //   function install() {
+    //     // install the app for a given userID
+    //     state = "todo";
+    //     uri = window.location.origin + window.location.pathname;
+    //     window.location.href = `https://github.com/apps/pyroscope-test/installations/new?state=${state}&redirect_uri=${uri}`;
+    //     // todo once installed we should update settings
+    //   }
+
+    async function getFile() {
+      try {
+        const response = await fetch(`/vcs.v1.VCSService/GetFile`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            repositoryURL: document.getElementById("git_repository").value,
+            ref: document.getElementById("git_ref").value,
+            localPath: document.getElementById("local_path").value,
+          }),
+        });
+
+        json = await response.json();
+        if (response.status != 200) {
+          document.getElementById("error").innerText = json.code + ": " + json.message;
+          return;
+        }
+      } catch (error) {
+        document.getElementById("error").innerText = error;
+        return;
+      }
+      if (json.content) {
+        document.getElementById("error").innerText = "";
+        document.getElementById("content").innerText = atob(json.content);
+        document.getElementById("URL").innerText = json.URL;
+
+      }
+    }
+
+    function loginPyroscope() {
+      const { code, state } = window.location.search
+        .substr(1)
+        .split("&")
+        .reduce((acc, curr) => {
+          const [key, value] = curr.split("=");
+          acc[key] = value;
+          return acc;
+        }, {});
+      if (!code || !state) {
+        return;
+      }
+      // todo: validate the state is the same.
+      fetch(`/vcs.v1.VCSService/GithubLogin`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          authorizationCode: code,
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          console.log(data);
+        });
+
+    }
+    loginPyroscope();
+  </script>
+</body>
+
+</html>

@@ -24,6 +24,9 @@
       "name": "StoreGatewayService"
     },
     {
+      "name": "VCSService"
+    },
+    {
       "name": "Version"
     }
   ],
@@ -599,6 +602,19 @@
         }
       }
     },
+    "v1GetFileResponse": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string",
+          "title": "base64 content of the file"
+        },
+        "URL": {
+          "type": "string",
+          "title": "the full URL to the file"
+        }
+      }
+    },
     "v1GetSettingsResponse": {
       "type": "object",
       "properties": {
@@ -610,6 +626,17 @@
           }
         }
       }
+    },
+    "v1GithubAppResponse": {
+      "type": "object",
+      "properties": {
+        "clientID": {
+          "type": "string"
+        }
+      }
+    },
+    "v1GithubLoginResponse": {
+      "type": "object"
     },
     "v1Hints": {
       "type": "object",
