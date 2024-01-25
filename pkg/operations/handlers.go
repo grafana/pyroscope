@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -25,8 +24,9 @@ import (
 )
 
 type Handlers struct {
-	Bucket objstore.Bucket
-	Logger log.Logger
+	Bucket           objstore.Bucket
+	Logger           log.Logger
+	MaxBlockDuration time.Duration
 }
 
 func (h *Handlers) CreateIndexHandler() func(http.ResponseWriter, *http.Request) {
@@ -61,7 +61,7 @@ func (h *Handlers) CreateBlocksHandler() func(http.ResponseWriter, *http.Request
 			User:           tenantId,
 			Query:          query,
 			Now:            time.Now().UTC().Format(time.RFC3339),
-			SelectedBlocks: filterAndGroupBlocks(index, query),
+			SelectedBlocks: h.filterAndGroupBlocks(index, query),
 		})
 		if err != nil {
 			httputil.Error(w, err)
@@ -70,10 +70,10 @@ func (h *Handlers) CreateBlocksHandler() func(http.ResponseWriter, *http.Request
 	}
 }
 
-func filterAndGroupBlocks(index *bucketindex.Index, query *blockQuery) *blockListResult {
+func (h *Handlers) filterAndGroupBlocks(index *bucketindex.Index, query *blockQuery) *blockListResult {
 	queryFrom := model.TimeFromUnix(query.parsedFrom.UnixMilli() / 1000)
 	queryTo := model.TimeFromUnix(query.parsedTo.UnixMilli() / 1000)
-	blockGroupMap := make(map[string]*blockGroup)
+	blockGroupMap := make(map[time.Time]*blockGroup)
 	blockGroups := make([]*blockGroup, 0)
 
 	deletedBlocks := make(map[ulid.ULID]int64)
@@ -86,68 +86,54 @@ func filterAndGroupBlocks(index *bucketindex.Index, query *blockQuery) *blockLis
 	for _, blk := range index.Blocks {
 		if _, deleted := deletedBlocks[blk.ID]; !deleted && blk.Within(queryFrom, queryTo) {
 			minTime := blk.MinTime.Time().UTC()
-			formattedMinTime := minTime.Format(time.RFC3339)
-			blkGroup, ok := blockGroupMap[formattedMinTime]
+			truncatedMinTime := minTime.Truncate(h.MaxBlockDuration)
+			blkGroup, ok := blockGroupMap[truncatedMinTime]
 			if !ok {
 				blkGroup = &blockGroup{
-					MinTime:          minTime,
-					FormattedMinTime: formattedMinTime,
-					Blocks:           make([]*blockDetails, 0),
-					MinTimeAge:       humanize.RelTime(blk.MinTime.Time(), time.Now(), "ago", ""),
+					MinTime:                 truncatedMinTime,
+					FormattedMinTime:        truncatedMinTime.Format(time.RFC3339),
+					Blocks:                  make([]*blockDetails, 0),
+					MinTimeAge:              humanize.RelTime(blk.MinTime.Time(), time.Now(), "ago", ""),
+					MaxBlockDurationMinutes: int(math.Round(blk.MaxTime.Sub(blk.MinTime).Minutes())),
 				}
 				blockGroups = append(blockGroups, blkGroup)
 			}
-			blkGroup.Blocks = append(blkGroup.Blocks, &blockDetails{
-				ID:               blk.ID.String(),
-				MinTime:          formattedMinTime,
-				MaxTime:          blk.MaxTime.Time().UTC().Format(time.RFC3339),
-				Duration:         int(math.Round(blk.MaxTime.Sub(blk.MinTime).Minutes())),
-				UploadedAt:       blk.GetUploadedAt().UTC().Format(time.RFC3339),
-				CompactionLevel:  blk.CompactionLevel,
-				CompactorShardID: blk.CompactorShardID,
-			})
-			blockGroupMap[formattedMinTime] = blkGroup
+			blockDetails := &blockDetails{
+				ID:                blk.ID.String(),
+				MinTime:           minTime.Format(time.RFC3339),
+				MaxTime:           blk.MaxTime.Time().UTC().Format(time.RFC3339),
+				Duration:          int(math.Round(blk.MaxTime.Sub(blk.MinTime).Minutes())),
+				FormattedDuration: blk.MaxTime.Sub(blk.MinTime).Round(time.Minute).String(),
+				UploadedAt:        blk.GetUploadedAt().UTC().Format(time.RFC3339),
+				CompactionLevel:   blk.CompactionLevel,
+				CompactorShardID:  blk.CompactorShardID,
+			}
+			blkGroup.Blocks = append(blkGroup.Blocks, blockDetails)
+			if blockDetails.Duration > blkGroup.MaxBlockDurationMinutes {
+				blkGroup.MaxBlockDurationMinutes = blockDetails.Duration
+			}
+			blockGroupMap[truncatedMinTime] = blkGroup
 		}
 	}
 
 	sortBlockGroupsByMinTimeDec(blockGroups)
 
-	return postProcessBlockGroups(blockGroups)
-}
-
-func postProcessBlockGroups(blockGroups []*blockGroup) *blockListResult {
 	maxBlocksPerGroup := 0
-	for i := 0; i < len(blockGroups); i += 1 {
-		blockGroup := blockGroups[i]
-		if i < len(blockGroups)-1 && !strings.Contains(blockGroup.FormattedMinTime, "0:00Z") {
-			nextGroup := blockGroups[i+1]
-			nextGroup.Blocks = append(nextGroup.Blocks, blockGroup.Blocks...)
-			blockGroup.Blocks = make([]*blockDetails, 0)
-		}
-
+	maxBlockGroupDuration := 0
+	for _, blockGroup := range blockGroups {
 		sortBlockDetailsByMinTimeDec(blockGroup.Blocks)
-
 		if len(blockGroup.Blocks) > maxBlocksPerGroup {
 			maxBlocksPerGroup = len(blockGroup.Blocks)
 		}
-	}
-
-	finalBlockGroups := make([]*blockGroup, 0)
-	for _, blockGroup := range blockGroups {
-		if len(blockGroup.Blocks) > 0 {
-			finalBlockGroups = append(finalBlockGroups, blockGroup)
+		if blockGroup.MaxBlockDurationMinutes > maxBlockGroupDuration {
+			maxBlockGroupDuration = blockGroup.MaxBlockDurationMinutes
 		}
 	}
-	groupDuration := 60
-	if len(finalBlockGroups) > 1 {
-		groupOne := finalBlockGroups[len(finalBlockGroups)-2]
-		groupTwo := finalBlockGroups[len(finalBlockGroups)-1]
-		groupDuration = int(math.Round(groupOne.MinTime.Sub(groupTwo.MinTime).Minutes()))
-	}
+
 	return &blockListResult{
-		BlockGroups:       finalBlockGroups,
-		MaxBlocksPerGroup: maxBlocksPerGroup,
-		GroupDuration:     groupDuration,
+		BlockGroups:          blockGroups,
+		MaxBlocksPerGroup:    maxBlocksPerGroup,
+		GroupDurationMinutes: maxBlockGroupDuration,
 	}
 }
 
