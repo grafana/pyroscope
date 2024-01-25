@@ -92,7 +92,7 @@ func (q *Querier) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFil
 	}
 	// todo: we can support multiple provider: bitbucket, gitlab, etc.
 	client, err := NewGithubClient(ctx, cookie)
-	if err == nil {
+	if err != nil {
 		// todo should clear cookie this doesn't work yet.
 		cookie.MaxAge = -1
 		err := connect.NewError(
