@@ -501,7 +501,7 @@ func (*mappingsHelper) key(m *schemav1.InMemoryMapping) mappingsKey {
 		BuildId:         m.BuildId,
 		HasFunctions:    m.HasFunctions,
 		HasFilenames:    m.HasFilenames,
-		HasLineNumbers:  m.HasFunctions,
+		HasLineNumbers:  m.HasLineNumbers,
 		HasInlineFrames: m.HasInlineFrames,
 	}
 }

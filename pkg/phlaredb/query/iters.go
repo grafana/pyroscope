@@ -387,6 +387,15 @@ func (r *IteratorResult) Columns(buffer [][]parquet.Value, names ...string) [][]
 	return buffer
 }
 
+func (r *IteratorResult) ColumnValue(name string) parquet.Value {
+	for _, e := range r.Entries {
+		if e.k == name {
+			return e.V
+		}
+	}
+	return parquet.Value{}
+}
+
 // iterator - Every iterator follows this interface and can be composed.
 type Iterator = iter.SeekIterator[*IteratorResult, RowNumberWithDefinitionLevel]
 
@@ -432,6 +441,7 @@ func NewBinaryJoinIterator(definitionLevel int, left, right Iterator) *BinaryJoi
 		left:            left,
 		right:           right,
 		definitionLevel: definitionLevel,
+		res:             iteratorResultPoolGet(),
 	}
 }
 
@@ -447,7 +457,7 @@ func (bj *BinaryJoinIterator) nextOrSeek(to RowNumberWithDefinitionLevel, it Ite
 }
 
 func (bj *BinaryJoinIterator) makeResult() {
-	bj.res = iteratorResultPoolGet()
+	bj.res.Reset()
 	bj.res.RowNumber = EmptyRowNumber()
 	bj.res.RowNumber[0] = bj.left.At().RowNumber[0]
 	bj.res.Append(bj.left.At())
@@ -455,8 +465,12 @@ func (bj *BinaryJoinIterator) makeResult() {
 }
 
 func (bj *BinaryJoinIterator) Next() bool {
+	var r *IteratorResult
 	for {
-		iteratorResultPoolPut(bj.left.At())
+		if r != nil {
+			iteratorResultPoolPut(r)
+		}
+		r = bj.left.At()
 		if !bj.left.Next() {
 			bj.err = bj.left.Err()
 			return false
