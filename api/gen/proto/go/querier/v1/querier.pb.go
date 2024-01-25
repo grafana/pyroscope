@@ -257,9 +257,12 @@ type SelectMergeStacktracesRequest struct {
 
 	ProfileTypeID string `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
 	LabelSelector string `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
-	Start         int64  `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`                             // milliseconds since epoch
-	End           int64  `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`                                 // milliseconds since epoch
-	MaxNodes      *int64 `protobuf:"varint,5,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"` // Limit the nodes returned to only show the node with the max_node's biggest total
+	// Milliseconds since epoch.
+	Start int64 `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
+	// Milliseconds since epoch.
+	End int64 `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
+	// Limit the nodes returned to only show the node with the max_node's biggest total
+	MaxNodes *int64 `protobuf:"varint,5,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
 }
 
 func (x *SelectMergeStacktracesRequest) Reset() {
@@ -384,9 +387,12 @@ type SelectMergeSpanProfileRequest struct {
 	ProfileTypeID string   `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
 	LabelSelector string   `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
 	SpanSelector  []string `protobuf:"bytes,3,rep,name=span_selector,json=spanSelector,proto3" json:"span_selector,omitempty"`
-	Start         int64    `protobuf:"varint,4,opt,name=start,proto3" json:"start,omitempty"`                             // milliseconds since epoch
-	End           int64    `protobuf:"varint,5,opt,name=end,proto3" json:"end,omitempty"`                                 // milliseconds since epoch
-	MaxNodes      *int64   `protobuf:"varint,6,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"` // Limit the nodes returned to only show the node with the max_node's biggest total
+	// Milliseconds since epoch.
+	Start int64 `protobuf:"varint,4,opt,name=start,proto3" json:"start,omitempty"`
+	// Milliseconds since epoch.
+	End int64 `protobuf:"varint,5,opt,name=end,proto3" json:"end,omitempty"`
+	// Limit the nodes returned to only show the node with the max_node's biggest total
+	MaxNodes *int64 `protobuf:"varint,6,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
 }
 
 func (x *SelectMergeSpanProfileRequest) Reset() {
@@ -822,12 +828,16 @@ type SelectMergeProfileRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ProfileTypeID      string                 `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
-	LabelSelector      string                 `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
-	Start              int64                  `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`                                                            // milliseconds since epoch
-	End                int64                  `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`                                                                // milliseconds since epoch
-	MaxNodes           *int64                 `protobuf:"varint,5,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`                                // Limit the nodes returned to only show the node with the max_node's biggest total
-	StackTraceSelector *v1.StackTraceSelector `protobuf:"bytes,6,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"` // Only return stack traces matching the selector
+	ProfileTypeID string `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
+	LabelSelector string `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
+	// Milliseconds since epoch.
+	Start int64 `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
+	// Milliseconds since epoch.
+	End int64 `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
+	// Limit the nodes returned to only show the node with the max_node's biggest total
+	MaxNodes *int64 `protobuf:"varint,5,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
+	// Only return stack traces matching the selector
+	StackTraceSelector *v1.StackTraceSelector `protobuf:"bytes,6,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
 }
 
 func (x *SelectMergeProfileRequest) Reset() {
@@ -909,13 +919,21 @@ type SelectSeriesRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	ProfileTypeID string                        `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
-	LabelSelector string                        `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
-	Start         int64                         `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"` // milliseconds since epoch
-	End           int64                         `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`     // milliseconds since epoch
-	GroupBy       []string                      `protobuf:"bytes,5,rep,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
-	Step          float64                       `protobuf:"fixed64,6,opt,name=step,proto3" json:"step,omitempty"` // Query resolution step width in seconds
-	Aggregation   *v1.TimeSeriesAggregationType `protobuf:"varint,7,opt,name=aggregation,proto3,enum=types.v1.TimeSeriesAggregationType,oneof" json:"aggregation,omitempty"`
+	ProfileTypeID string `protobuf:"bytes,1,opt,name=profile_typeID,json=profileTypeID,proto3" json:"profile_typeID,omitempty"`
+	LabelSelector string `protobuf:"bytes,2,opt,name=label_selector,json=labelSelector,proto3" json:"label_selector,omitempty"`
+	// Milliseconds since epoch.
+	Start int64 `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
+	// Milliseconds since epoch.
+	End         int64                         `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
+	GroupBy     []string                      `protobuf:"bytes,5,rep,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
+	Step        float64                       `protobuf:"fixed64,6,opt,name=step,proto3" json:"step,omitempty"` // Query resolution step width in seconds
+	Aggregation *v1.TimeSeriesAggregationType `protobuf:"varint,7,opt,name=aggregation,proto3,enum=types.v1.TimeSeriesAggregationType,oneof" json:"aggregation,omitempty"`
+	// Indicates which metrics to return. If empty, the metric is sum of all
+	// samples per profile. If specified, stack_trace_selector must contain
+	// the call site stack trace, otherwise the field is ignored.
+	Metrics []v1.SeriesMetric `protobuf:"varint,8,rep,packed,name=metrics,proto3,enum=types.v1.SeriesMetric" json:"metrics,omitempty"`
+	// Only account for stack traces matching the selector
+	StackTraceSelector *v1.StackTraceSelector `protobuf:"bytes,9,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
 }
 
 func (x *SelectSeriesRequest) Reset() {
@@ -997,6 +1015,20 @@ func (x *SelectSeriesRequest) GetAggregation() v1.TimeSeriesAggregationType {
 		return *x.Aggregation
 	}
 	return v1.TimeSeriesAggregationType(0)
+}
+
+func (x *SelectSeriesRequest) GetMetrics() []v1.SeriesMetric {
+	if x != nil {
+		return x.Metrics
+	}
+	return nil
+}
+
+func (x *SelectSeriesRequest) GetStackTraceSelector() *v1.StackTraceSelector {
+	if x != nil {
+		return x.StackTraceSelector
+	}
+	return nil
 }
 
 type SelectSeriesResponse struct {
@@ -1168,7 +1200,7 @@ var file_querier_v1_querier_proto_rawDesc = []byte{
 	0x73, 0x74, 0x61, 0x63, 0x6b, 0x54, 0x72, 0x61, 0x63, 0x65, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74,
 	0x6f, 0x72, 0x88, 0x01, 0x01, 0x42, 0x0c, 0x0a, 0x0a, 0x5f, 0x6d, 0x61, 0x78, 0x5f, 0x6e, 0x6f,
 	0x64, 0x65, 0x73, 0x42, 0x17, 0x0a, 0x15, 0x5f, 0x73, 0x74, 0x61, 0x63, 0x6b, 0x5f, 0x74, 0x72,
-	0x61, 0x63, 0x65, 0x5f, 0x73, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x22, 0x96, 0x02, 0x0a,
+	0x61, 0x63, 0x65, 0x5f, 0x73, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x22, 0xb6, 0x03, 0x0a,
 	0x13, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x53, 0x65, 0x72, 0x69, 0x65, 0x73, 0x52, 0x65, 0x71,
 	0x75, 0x65, 0x73, 0x74, 0x12, 0x25, 0x0a, 0x0e, 0x70, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x5f,
 	0x74, 0x79, 0x70, 0x65, 0x49, 0x44, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x70, 0x72,
@@ -1185,8 +1217,18 @@ var file_querier_v1_querier_proto_rawDesc = []byte{
 	0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x65,
 	0x72, 0x69, 0x65, 0x73, 0x41, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x54,
 	0x79, 0x70, 0x65, 0x48, 0x00, 0x52, 0x0b, 0x61, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x88, 0x01, 0x01, 0x42, 0x0e, 0x0a, 0x0c, 0x5f, 0x61, 0x67, 0x67, 0x72, 0x65, 0x67,
-	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x40, 0x0a, 0x14, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x53,
+	0x6f, 0x6e, 0x88, 0x01, 0x01, 0x12, 0x30, 0x0a, 0x07, 0x6d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73,
+	0x18, 0x08, 0x20, 0x03, 0x28, 0x0e, 0x32, 0x16, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x76,
+	0x31, 0x2e, 0x53, 0x65, 0x72, 0x69, 0x65, 0x73, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x52, 0x07,
+	0x6d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73, 0x12, 0x53, 0x0a, 0x14, 0x73, 0x74, 0x61, 0x63, 0x6b,
+	0x5f, 0x74, 0x72, 0x61, 0x63, 0x65, 0x5f, 0x73, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x18,
+	0x09, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x76, 0x31,
+	0x2e, 0x53, 0x74, 0x61, 0x63, 0x6b, 0x54, 0x72, 0x61, 0x63, 0x65, 0x53, 0x65, 0x6c, 0x65, 0x63,
+	0x74, 0x6f, 0x72, 0x48, 0x01, 0x52, 0x12, 0x73, 0x74, 0x61, 0x63, 0x6b, 0x54, 0x72, 0x61, 0x63,
+	0x65, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x88, 0x01, 0x01, 0x42, 0x0e, 0x0a, 0x0c,
+	0x5f, 0x61, 0x67, 0x67, 0x72, 0x65, 0x67, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x17, 0x0a, 0x15,
+	0x5f, 0x73, 0x74, 0x61, 0x63, 0x6b, 0x5f, 0x74, 0x72, 0x61, 0x63, 0x65, 0x5f, 0x73, 0x65, 0x6c,
+	0x65, 0x63, 0x74, 0x6f, 0x72, 0x22, 0x40, 0x0a, 0x14, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x53,
 	0x65, 0x72, 0x69, 0x65, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x28, 0x0a,
 	0x06, 0x73, 0x65, 0x72, 0x69, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x10, 0x2e,
 	0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x65, 0x72, 0x69, 0x65, 0x73, 0x52,
@@ -1287,12 +1329,13 @@ var file_querier_v1_querier_proto_goTypes = []interface{}{
 	(*v1.Labels)(nil),                      // 17: types.v1.Labels
 	(*v1.StackTraceSelector)(nil),          // 18: types.v1.StackTraceSelector
 	(v1.TimeSeriesAggregationType)(0),      // 19: types.v1.TimeSeriesAggregationType
-	(*v1.Series)(nil),                      // 20: types.v1.Series
-	(*v1.LabelValuesRequest)(nil),          // 21: types.v1.LabelValuesRequest
-	(*v1.LabelNamesRequest)(nil),           // 22: types.v1.LabelNamesRequest
-	(*v1.LabelValuesResponse)(nil),         // 23: types.v1.LabelValuesResponse
-	(*v1.LabelNamesResponse)(nil),          // 24: types.v1.LabelNamesResponse
-	(*v11.Profile)(nil),                    // 25: google.v1.Profile
+	(v1.SeriesMetric)(0),                   // 20: types.v1.SeriesMetric
+	(*v1.Series)(nil),                      // 21: types.v1.Series
+	(*v1.LabelValuesRequest)(nil),          // 22: types.v1.LabelValuesRequest
+	(*v1.LabelNamesRequest)(nil),           // 23: types.v1.LabelNamesRequest
+	(*v1.LabelValuesResponse)(nil),         // 24: types.v1.LabelValuesResponse
+	(*v1.LabelNamesResponse)(nil),          // 25: types.v1.LabelNamesResponse
+	(*v11.Profile)(nil),                    // 26: google.v1.Profile
 }
 var file_querier_v1_querier_proto_depIdxs = []int32{
 	16, // 0: querier.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
@@ -1306,30 +1349,32 @@ var file_querier_v1_querier_proto_depIdxs = []int32{
 	12, // 8: querier.v1.FlameGraphDiff.levels:type_name -> querier.v1.Level
 	18, // 9: querier.v1.SelectMergeProfileRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
 	19, // 10: querier.v1.SelectSeriesRequest.aggregation:type_name -> types.v1.TimeSeriesAggregationType
-	20, // 11: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
-	0,  // 12: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
-	21, // 13: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
-	22, // 14: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
-	2,  // 15: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
-	4,  // 16: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
-	6,  // 17: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
-	13, // 18: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
-	14, // 19: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
-	8,  // 20: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
-	1,  // 21: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
-	23, // 22: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
-	24, // 23: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
-	3,  // 24: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
-	5,  // 25: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
-	7,  // 26: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
-	25, // 27: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
-	15, // 28: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
-	9,  // 29: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
-	21, // [21:30] is the sub-list for method output_type
-	12, // [12:21] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	20, // 11: querier.v1.SelectSeriesRequest.metrics:type_name -> types.v1.SeriesMetric
+	18, // 12: querier.v1.SelectSeriesRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	21, // 13: querier.v1.SelectSeriesResponse.series:type_name -> types.v1.Series
+	0,  // 14: querier.v1.QuerierService.ProfileTypes:input_type -> querier.v1.ProfileTypesRequest
+	22, // 15: querier.v1.QuerierService.LabelValues:input_type -> types.v1.LabelValuesRequest
+	23, // 16: querier.v1.QuerierService.LabelNames:input_type -> types.v1.LabelNamesRequest
+	2,  // 17: querier.v1.QuerierService.Series:input_type -> querier.v1.SeriesRequest
+	4,  // 18: querier.v1.QuerierService.SelectMergeStacktraces:input_type -> querier.v1.SelectMergeStacktracesRequest
+	6,  // 19: querier.v1.QuerierService.SelectMergeSpanProfile:input_type -> querier.v1.SelectMergeSpanProfileRequest
+	13, // 20: querier.v1.QuerierService.SelectMergeProfile:input_type -> querier.v1.SelectMergeProfileRequest
+	14, // 21: querier.v1.QuerierService.SelectSeries:input_type -> querier.v1.SelectSeriesRequest
+	8,  // 22: querier.v1.QuerierService.Diff:input_type -> querier.v1.DiffRequest
+	1,  // 23: querier.v1.QuerierService.ProfileTypes:output_type -> querier.v1.ProfileTypesResponse
+	24, // 24: querier.v1.QuerierService.LabelValues:output_type -> types.v1.LabelValuesResponse
+	25, // 25: querier.v1.QuerierService.LabelNames:output_type -> types.v1.LabelNamesResponse
+	3,  // 26: querier.v1.QuerierService.Series:output_type -> querier.v1.SeriesResponse
+	5,  // 27: querier.v1.QuerierService.SelectMergeStacktraces:output_type -> querier.v1.SelectMergeStacktracesResponse
+	7,  // 28: querier.v1.QuerierService.SelectMergeSpanProfile:output_type -> querier.v1.SelectMergeSpanProfileResponse
+	26, // 29: querier.v1.QuerierService.SelectMergeProfile:output_type -> google.v1.Profile
+	15, // 30: querier.v1.QuerierService.SelectSeries:output_type -> querier.v1.SelectSeriesResponse
+	9,  // 31: querier.v1.QuerierService.Diff:output_type -> querier.v1.DiffResponse
+	23, // [23:32] is the sub-list for method output_type
+	14, // [14:23] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_querier_v1_querier_proto_init() }

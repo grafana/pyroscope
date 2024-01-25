@@ -394,6 +394,18 @@ func (m *SelectSeriesRequest) CloneVT() *SelectSeriesRequest {
 		tmpVal := *rhs
 		r.Aggregation = &tmpVal
 	}
+	if rhs := m.Metrics; rhs != nil {
+		tmpContainer := make([]v1.SeriesMetric, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Metrics = tmpContainer
+	}
+	if rhs := m.StackTraceSelector; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *v1.StackTraceSelector }); ok {
+			r.StackTraceSelector = vtpb.CloneVT()
+		} else {
+			r.StackTraceSelector = proto.Clone(rhs).(*v1.StackTraceSelector)
+		}
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -916,6 +928,24 @@ func (this *SelectSeriesRequest) EqualVT(that *SelectSeriesRequest) bool {
 		return false
 	}
 	if p, q := this.Aggregation, that.Aggregation; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
+	if len(this.Metrics) != len(that.Metrics) {
+		return false
+	}
+	for i, vx := range this.Metrics {
+		vy := that.Metrics[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if equal, ok := interface{}(this.StackTraceSelector).(interface {
+		EqualVT(*v1.StackTraceSelector) bool
+	}); ok {
+		if !equal.EqualVT(that.StackTraceSelector) {
+			return false
+		}
+	} else if !proto.Equal(this.StackTraceSelector, that.StackTraceSelector) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -2200,6 +2230,49 @@ func (m *SelectSeriesRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.StackTraceSelector != nil {
+		if vtmsg, ok := interface{}(m.StackTraceSelector).(interface {
+			MarshalToSizedBufferVT([]byte) (int, error)
+		}); ok {
+			size, err := vtmsg.MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
+		} else {
+			encoded, err := proto.Marshal(m.StackTraceSelector)
+			if err != nil {
+				return 0, err
+			}
+			i -= len(encoded)
+			copy(dAtA[i:], encoded)
+			i = encodeVarint(dAtA, i, uint64(len(encoded)))
+		}
+		i--
+		dAtA[i] = 0x4a
+	}
+	if len(m.Metrics) > 0 {
+		var pksize2 int
+		for _, num := range m.Metrics {
+			pksize2 += sov(uint64(num))
+		}
+		i -= pksize2
+		j1 := i
+		for _, num1 := range m.Metrics {
+			num := uint64(num1)
+			for num >= 1<<7 {
+				dAtA[j1] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j1++
+			}
+			dAtA[j1] = uint8(num)
+			j1++
+		}
+		i = encodeVarint(dAtA, i, uint64(pksize2))
+		i--
+		dAtA[i] = 0x42
+	}
 	if m.Aggregation != nil {
 		i = encodeVarint(dAtA, i, uint64(*m.Aggregation))
 		i--
@@ -2670,6 +2743,23 @@ func (m *SelectSeriesRequest) SizeVT() (n int) {
 	}
 	if m.Aggregation != nil {
 		n += 1 + sov(uint64(*m.Aggregation))
+	}
+	if len(m.Metrics) > 0 {
+		l = 0
+		for _, e := range m.Metrics {
+			l += sov(uint64(e))
+		}
+		n += 1 + sov(uint64(l)) + l
+	}
+	if m.StackTraceSelector != nil {
+		if size, ok := interface{}(m.StackTraceSelector).(interface {
+			SizeVT() int
+		}); ok {
+			l = size.SizeVT()
+		} else {
+			l = proto.Size(m.StackTraceSelector)
+		}
+		n += 1 + l + sov(uint64(l))
 	}
 	n += len(m.unknownFields)
 	return n
@@ -4779,6 +4869,119 @@ func (m *SelectSeriesRequest) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.Aggregation = &v
+		case 8:
+			if wireType == 0 {
+				var v v1.SeriesMetric
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= v1.SeriesMetric(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.Metrics = append(m.Metrics, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflow
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return ErrInvalidLength
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return ErrInvalidLength
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				if elementCount != 0 && len(m.Metrics) == 0 {
+					m.Metrics = make([]v1.SeriesMetric, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v v1.SeriesMetric
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflow
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= v1.SeriesMetric(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.Metrics = append(m.Metrics, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field Metrics", wireType)
+			}
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StackTraceSelector", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.StackTraceSelector == nil {
+				m.StackTraceSelector = &v1.StackTraceSelector{}
+			}
+			if unmarshal, ok := interface{}(m.StackTraceSelector).(interface {
+				UnmarshalVT([]byte) error
+			}); ok {
+				if err := unmarshal.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+					return err
+				}
+			} else {
+				if err := proto.Unmarshal(dAtA[iNdEx:postIndex], m.StackTraceSelector); err != nil {
+					return err
+				}
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

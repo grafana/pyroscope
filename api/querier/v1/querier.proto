@@ -57,9 +57,12 @@ message SeriesResponse {
 message SelectMergeStacktracesRequest {
   string profile_typeID = 1;
   string label_selector = 2;
-  int64 start = 3; // milliseconds since epoch
-  int64 end = 4; // milliseconds since epoch
-  optional int64 max_nodes = 5; // Limit the nodes returned to only show the node with the max_node's biggest total
+  // Milliseconds since epoch.
+  int64 start = 3;
+  // Milliseconds since epoch.
+  int64 end = 4;
+  // Limit the nodes returned to only show the node with the max_node's biggest total
+  optional int64 max_nodes = 5;
 }
 
 message SelectMergeStacktracesResponse {
@@ -70,9 +73,12 @@ message SelectMergeSpanProfileRequest {
   string profile_typeID = 1;
   string label_selector = 2;
   repeated string span_selector = 3;
-  int64 start = 4; // milliseconds since epoch
-  int64 end = 5; // milliseconds since epoch
-  optional int64 max_nodes = 6; // Limit the nodes returned to only show the node with the max_node's biggest total
+  // Milliseconds since epoch.
+  int64 start = 4;
+  // Milliseconds since epoch.
+  int64 end = 5;
+  // Limit the nodes returned to only show the node with the max_node's biggest total
+  optional int64 max_nodes = 6;
 }
 
 message SelectMergeSpanProfileResponse {
@@ -112,20 +118,32 @@ message Level {
 message SelectMergeProfileRequest {
   string profile_typeID = 1;
   string label_selector = 2;
-  int64 start = 3; // milliseconds since epoch
-  int64 end = 4; // milliseconds since epoch
-  optional int64 max_nodes = 5; // Limit the nodes returned to only show the node with the max_node's biggest total
-  optional types.v1.StackTraceSelector stack_trace_selector = 6; // Only return stack traces matching the selector
+  // Milliseconds since epoch.
+  int64 start = 3;
+  // Milliseconds since epoch.
+  int64 end = 4;
+  // Limit the nodes returned to only show the node with the max_node's biggest total
+  optional int64 max_nodes = 5;
+  // Only return stack traces matching the selector
+  optional types.v1.StackTraceSelector stack_trace_selector = 6;
 }
 
 message SelectSeriesRequest {
   string profile_typeID = 1;
   string label_selector = 2;
-  int64 start = 3; // milliseconds since epoch
-  int64 end = 4; // milliseconds since epoch
+  // Milliseconds since epoch.
+  int64 start = 3;
+  // Milliseconds since epoch.
+  int64 end = 4;
   repeated string group_by = 5;
   double step = 6; // Query resolution step width in seconds
   optional types.v1.TimeSeriesAggregationType aggregation = 7;
+  // Indicates which metrics to return. If empty, the metric is sum of all
+  // samples per profile. If specified, stack_trace_selector must contain
+  // the call site stack trace, otherwise the field is ignored.
+  repeated types.v1.SeriesMetric metrics = 8;
+  // Only account for stack traces matching the selector
+  optional types.v1.StackTraceSelector stack_trace_selector = 9;
 }
 
 message SelectSeriesResponse {

@@ -1185,6 +1185,12 @@ type MergeProfilesLabelsRequest struct {
 	Request *SelectProfilesRequest `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
 	// The labels to merge by
 	By []string `protobuf:"bytes,2,rep,name=by,proto3" json:"by,omitempty"`
+	// Indicates which metrics to return. If empty, the metric is sum of all
+	// samples per profile. If specified, stack_trace_selector must contain
+	// the call site stack trace, otherwise the field is ignored.
+	Metrics []v1.SeriesMetric `protobuf:"varint,4,rep,packed,name=metrics,proto3,enum=types.v1.SeriesMetric" json:"metrics,omitempty"`
+	// Consider only the stack traces that match the provided selector.
+	StackTraceSelector *v1.StackTraceSelector `protobuf:"bytes,5,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
 	// On a batch of profiles, the client sends the profiles to keep for merging.
 	Profiles []bool `protobuf:"varint,3,rep,packed,name=profiles,proto3" json:"profiles,omitempty"`
 }
@@ -1231,6 +1237,20 @@ func (x *MergeProfilesLabelsRequest) GetRequest() *SelectProfilesRequest {
 func (x *MergeProfilesLabelsRequest) GetBy() []string {
 	if x != nil {
 		return x.By
+	}
+	return nil
+}
+
+func (x *MergeProfilesLabelsRequest) GetMetrics() []v1.SeriesMetric {
+	if x != nil {
+		return x.Metrics
+	}
+	return nil
+}
+
+func (x *MergeProfilesLabelsRequest) GetStackTraceSelector() *v1.StackTraceSelector {
+	if x != nil {
+		return x.StackTraceSelector
 	}
 	return nil
 }
@@ -1309,7 +1329,7 @@ type MergeProfilesPprofRequest struct {
 	Request *SelectProfilesRequest `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
 	// Max nodes in the resulting profile.
 	MaxNodes *int64 `protobuf:"varint,3,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
-	// Include stack traces that match the selector.
+	// Consider only the stack traces that match the provided selector.
 	StackTraceSelector *v1.StackTraceSelector `protobuf:"bytes,4,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
 	// On a batch of profiles, the client sends the profiles to keep for merging.
 	Profiles []bool `protobuf:"varint,2,rep,packed,name=profiles,proto3" json:"profiles,omitempty"`
@@ -1802,15 +1822,25 @@ var file_ingester_v1_ingester_proto_rawDesc = []byte{
 	0x0c, 0x66, 0x75, 0x6e, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x64, 0x73, 0x18, 0x01, 0x20,
 	0x03, 0x28, 0x05, 0x52, 0x0b, 0x66, 0x75, 0x6e, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x64, 0x73,
 	0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x03, 0x52,
-	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x86, 0x01, 0x0a, 0x1a, 0x4d, 0x65, 0x72, 0x67, 0x65,
+	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0xa6, 0x02, 0x0a, 0x1a, 0x4d, 0x65, 0x72, 0x67, 0x65,
 	0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x73, 0x4c, 0x61, 0x62, 0x65, 0x6c, 0x73, 0x52, 0x65,
 	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x3c, 0x0a, 0x07, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x22, 0x2e, 0x69, 0x6e, 0x67, 0x65, 0x73, 0x74, 0x65,
 	0x72, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x50, 0x72, 0x6f, 0x66, 0x69,
 	0x6c, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x52, 0x07, 0x72, 0x65, 0x71, 0x75,
 	0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x62, 0x79, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52,
-	0x02, 0x62, 0x79, 0x12, 0x1a, 0x0a, 0x08, 0x70, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x73, 0x18,
-	0x03, 0x20, 0x03, 0x28, 0x08, 0x52, 0x08, 0x70, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65, 0x73, 0x22,
+	0x02, 0x62, 0x79, 0x12, 0x30, 0x0a, 0x07, 0x6d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73, 0x18, 0x04,
+	0x20, 0x03, 0x28, 0x0e, 0x32, 0x16, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e,
+	0x53, 0x65, 0x72, 0x69, 0x65, 0x73, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x52, 0x07, 0x6d, 0x65,
+	0x74, 0x72, 0x69, 0x63, 0x73, 0x12, 0x53, 0x0a, 0x14, 0x73, 0x74, 0x61, 0x63, 0x6b, 0x5f, 0x74,
+	0x72, 0x61, 0x63, 0x65, 0x5f, 0x73, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x18, 0x05, 0x20,
+	0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x76, 0x31, 0x2e, 0x53,
+	0x74, 0x61, 0x63, 0x6b, 0x54, 0x72, 0x61, 0x63, 0x65, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f,
+	0x72, 0x48, 0x00, 0x52, 0x12, 0x73, 0x74, 0x61, 0x63, 0x6b, 0x54, 0x72, 0x61, 0x63, 0x65, 0x53,
+	0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x88, 0x01, 0x01, 0x12, 0x1a, 0x0a, 0x08, 0x70, 0x72,
+	0x6f, 0x66, 0x69, 0x6c, 0x65, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x08, 0x52, 0x08, 0x70, 0x72,
+	0x6f, 0x66, 0x69, 0x6c, 0x65, 0x73, 0x42, 0x17, 0x0a, 0x15, 0x5f, 0x73, 0x74, 0x61, 0x63, 0x6b,
+	0x5f, 0x74, 0x72, 0x61, 0x63, 0x65, 0x5f, 0x73, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x22,
 	0x8d, 0x01, 0x0a, 0x1b, 0x4d, 0x65, 0x72, 0x67, 0x65, 0x50, 0x72, 0x6f, 0x66, 0x69, 0x6c, 0x65,
 	0x73, 0x4c, 0x61, 0x62, 0x65, 0x6c, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
 	0x44, 0x0a, 0x10, 0x73, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x65, 0x64, 0x50, 0x72, 0x6f, 0x66, 0x69,
@@ -1991,15 +2021,16 @@ var file_ingester_v1_ingester_proto_goTypes = []interface{}{
 	(*v1.Labels)(nil),                        // 28: types.v1.Labels
 	(v1.TimeSeriesAggregationType)(0),        // 29: types.v1.TimeSeriesAggregationType
 	(*v1.LabelPair)(nil),                     // 30: types.v1.LabelPair
-	(*v1.Series)(nil),                        // 31: types.v1.Series
+	(v1.SeriesMetric)(0),                     // 31: types.v1.SeriesMetric
 	(*v1.StackTraceSelector)(nil),            // 32: types.v1.StackTraceSelector
-	(*v1.BlockInfo)(nil),                     // 33: types.v1.BlockInfo
-	(*v11.PushRequest)(nil),                  // 34: push.v1.PushRequest
-	(*v1.LabelValuesRequest)(nil),            // 35: types.v1.LabelValuesRequest
-	(*v1.LabelNamesRequest)(nil),             // 36: types.v1.LabelNamesRequest
-	(*v11.PushResponse)(nil),                 // 37: push.v1.PushResponse
-	(*v1.LabelValuesResponse)(nil),           // 38: types.v1.LabelValuesResponse
-	(*v1.LabelNamesResponse)(nil),            // 39: types.v1.LabelNamesResponse
+	(*v1.Series)(nil),                        // 33: types.v1.Series
+	(*v1.BlockInfo)(nil),                     // 34: types.v1.BlockInfo
+	(*v11.PushRequest)(nil),                  // 35: push.v1.PushRequest
+	(*v1.LabelValuesRequest)(nil),            // 36: types.v1.LabelValuesRequest
+	(*v1.LabelNamesRequest)(nil),             // 37: types.v1.LabelNamesRequest
+	(*v11.PushResponse)(nil),                 // 38: push.v1.PushResponse
+	(*v1.LabelValuesResponse)(nil),           // 39: types.v1.LabelValuesResponse
+	(*v1.LabelNamesResponse)(nil),            // 40: types.v1.LabelNamesResponse
 }
 var file_ingester_v1_ingester_proto_depIdxs = []int32{
 	27, // 0: ingester.v1.ProfileTypesResponse.profile_types:type_name -> types.v1.ProfileType
@@ -2023,40 +2054,42 @@ var file_ingester_v1_ingester_proto_depIdxs = []int32{
 	30, // 18: ingester.v1.Profile.labels:type_name -> types.v1.LabelPair
 	18, // 19: ingester.v1.Profile.stacktraces:type_name -> ingester.v1.StacktraceSample
 	7,  // 20: ingester.v1.MergeProfilesLabelsRequest.request:type_name -> ingester.v1.SelectProfilesRequest
-	15, // 21: ingester.v1.MergeProfilesLabelsResponse.selectedProfiles:type_name -> ingester.v1.ProfileSets
-	31, // 22: ingester.v1.MergeProfilesLabelsResponse.series:type_name -> types.v1.Series
-	7,  // 23: ingester.v1.MergeProfilesPprofRequest.request:type_name -> ingester.v1.SelectProfilesRequest
-	32, // 24: ingester.v1.MergeProfilesPprofRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
-	15, // 25: ingester.v1.MergeProfilesPprofResponse.selectedProfiles:type_name -> ingester.v1.ProfileSets
-	33, // 26: ingester.v1.BlockMetadataResponse.blocks:type_name -> types.v1.BlockInfo
-	26, // 27: ingester.v1.Hints.block:type_name -> ingester.v1.BlockHints
-	34, // 28: ingester.v1.IngesterService.Push:input_type -> push.v1.PushRequest
-	35, // 29: ingester.v1.IngesterService.LabelValues:input_type -> types.v1.LabelValuesRequest
-	36, // 30: ingester.v1.IngesterService.LabelNames:input_type -> types.v1.LabelNamesRequest
-	1,  // 31: ingester.v1.IngesterService.ProfileTypes:input_type -> ingester.v1.ProfileTypesRequest
-	3,  // 32: ingester.v1.IngesterService.Series:input_type -> ingester.v1.SeriesRequest
-	5,  // 33: ingester.v1.IngesterService.Flush:input_type -> ingester.v1.FlushRequest
-	8,  // 34: ingester.v1.IngesterService.MergeProfilesStacktraces:input_type -> ingester.v1.MergeProfilesStacktracesRequest
-	19, // 35: ingester.v1.IngesterService.MergeProfilesLabels:input_type -> ingester.v1.MergeProfilesLabelsRequest
-	21, // 36: ingester.v1.IngesterService.MergeProfilesPprof:input_type -> ingester.v1.MergeProfilesPprofRequest
-	12, // 37: ingester.v1.IngesterService.MergeSpanProfile:input_type -> ingester.v1.MergeSpanProfileRequest
-	23, // 38: ingester.v1.IngesterService.BlockMetadata:input_type -> ingester.v1.BlockMetadataRequest
-	37, // 39: ingester.v1.IngesterService.Push:output_type -> push.v1.PushResponse
-	38, // 40: ingester.v1.IngesterService.LabelValues:output_type -> types.v1.LabelValuesResponse
-	39, // 41: ingester.v1.IngesterService.LabelNames:output_type -> types.v1.LabelNamesResponse
-	2,  // 42: ingester.v1.IngesterService.ProfileTypes:output_type -> ingester.v1.ProfileTypesResponse
-	4,  // 43: ingester.v1.IngesterService.Series:output_type -> ingester.v1.SeriesResponse
-	6,  // 44: ingester.v1.IngesterService.Flush:output_type -> ingester.v1.FlushResponse
-	10, // 45: ingester.v1.IngesterService.MergeProfilesStacktraces:output_type -> ingester.v1.MergeProfilesStacktracesResponse
-	20, // 46: ingester.v1.IngesterService.MergeProfilesLabels:output_type -> ingester.v1.MergeProfilesLabelsResponse
-	22, // 47: ingester.v1.IngesterService.MergeProfilesPprof:output_type -> ingester.v1.MergeProfilesPprofResponse
-	13, // 48: ingester.v1.IngesterService.MergeSpanProfile:output_type -> ingester.v1.MergeSpanProfileResponse
-	24, // 49: ingester.v1.IngesterService.BlockMetadata:output_type -> ingester.v1.BlockMetadataResponse
-	39, // [39:50] is the sub-list for method output_type
-	28, // [28:39] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	31, // 21: ingester.v1.MergeProfilesLabelsRequest.metrics:type_name -> types.v1.SeriesMetric
+	32, // 22: ingester.v1.MergeProfilesLabelsRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	15, // 23: ingester.v1.MergeProfilesLabelsResponse.selectedProfiles:type_name -> ingester.v1.ProfileSets
+	33, // 24: ingester.v1.MergeProfilesLabelsResponse.series:type_name -> types.v1.Series
+	7,  // 25: ingester.v1.MergeProfilesPprofRequest.request:type_name -> ingester.v1.SelectProfilesRequest
+	32, // 26: ingester.v1.MergeProfilesPprofRequest.stack_trace_selector:type_name -> types.v1.StackTraceSelector
+	15, // 27: ingester.v1.MergeProfilesPprofResponse.selectedProfiles:type_name -> ingester.v1.ProfileSets
+	34, // 28: ingester.v1.BlockMetadataResponse.blocks:type_name -> types.v1.BlockInfo
+	26, // 29: ingester.v1.Hints.block:type_name -> ingester.v1.BlockHints
+	35, // 30: ingester.v1.IngesterService.Push:input_type -> push.v1.PushRequest
+	36, // 31: ingester.v1.IngesterService.LabelValues:input_type -> types.v1.LabelValuesRequest
+	37, // 32: ingester.v1.IngesterService.LabelNames:input_type -> types.v1.LabelNamesRequest
+	1,  // 33: ingester.v1.IngesterService.ProfileTypes:input_type -> ingester.v1.ProfileTypesRequest
+	3,  // 34: ingester.v1.IngesterService.Series:input_type -> ingester.v1.SeriesRequest
+	5,  // 35: ingester.v1.IngesterService.Flush:input_type -> ingester.v1.FlushRequest
+	8,  // 36: ingester.v1.IngesterService.MergeProfilesStacktraces:input_type -> ingester.v1.MergeProfilesStacktracesRequest
+	19, // 37: ingester.v1.IngesterService.MergeProfilesLabels:input_type -> ingester.v1.MergeProfilesLabelsRequest
+	21, // 38: ingester.v1.IngesterService.MergeProfilesPprof:input_type -> ingester.v1.MergeProfilesPprofRequest
+	12, // 39: ingester.v1.IngesterService.MergeSpanProfile:input_type -> ingester.v1.MergeSpanProfileRequest
+	23, // 40: ingester.v1.IngesterService.BlockMetadata:input_type -> ingester.v1.BlockMetadataRequest
+	38, // 41: ingester.v1.IngesterService.Push:output_type -> push.v1.PushResponse
+	39, // 42: ingester.v1.IngesterService.LabelValues:output_type -> types.v1.LabelValuesResponse
+	40, // 43: ingester.v1.IngesterService.LabelNames:output_type -> types.v1.LabelNamesResponse
+	2,  // 44: ingester.v1.IngesterService.ProfileTypes:output_type -> ingester.v1.ProfileTypesResponse
+	4,  // 45: ingester.v1.IngesterService.Series:output_type -> ingester.v1.SeriesResponse
+	6,  // 46: ingester.v1.IngesterService.Flush:output_type -> ingester.v1.FlushResponse
+	10, // 47: ingester.v1.IngesterService.MergeProfilesStacktraces:output_type -> ingester.v1.MergeProfilesStacktracesResponse
+	20, // 48: ingester.v1.IngesterService.MergeProfilesLabels:output_type -> ingester.v1.MergeProfilesLabelsResponse
+	22, // 49: ingester.v1.IngesterService.MergeProfilesPprof:output_type -> ingester.v1.MergeProfilesPprofResponse
+	13, // 50: ingester.v1.IngesterService.MergeSpanProfile:output_type -> ingester.v1.MergeSpanProfileResponse
+	24, // 51: ingester.v1.IngesterService.BlockMetadata:output_type -> ingester.v1.BlockMetadataResponse
+	41, // [41:52] is the sub-list for method output_type
+	30, // [30:41] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_ingester_v1_ingester_proto_init() }
@@ -2382,6 +2415,7 @@ func file_ingester_v1_ingester_proto_init() {
 	file_ingester_v1_ingester_proto_msgTypes[7].OneofWrappers = []interface{}{}
 	file_ingester_v1_ingester_proto_msgTypes[10].OneofWrappers = []interface{}{}
 	file_ingester_v1_ingester_proto_msgTypes[11].OneofWrappers = []interface{}{}
+	file_ingester_v1_ingester_proto_msgTypes[18].OneofWrappers = []interface{}{}
 	file_ingester_v1_ingester_proto_msgTypes[20].OneofWrappers = []interface{}{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
