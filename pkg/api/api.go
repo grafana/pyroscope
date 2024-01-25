@@ -20,7 +20,6 @@ import (
 	"github.com/grafana/dskit/kv/memberlist"
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/server"
-	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	grpcgw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
 	"github.com/grafana/pyroscope/public"
@@ -34,6 +33,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/version/v1/versionv1connect"
 	"github.com/grafana/pyroscope/api/openapiv2"
+	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
