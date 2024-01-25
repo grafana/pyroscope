@@ -130,34 +130,13 @@ func (q *headOnDiskQuerier) SelectMergeByStacktraces(ctx context.Context, params
 		),
 		q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"))
 
-	buf := make([][]parquet.Value, 1)
-
-	// todo: we should stream profile to merge instead of loading all in memory.
-	// This is a temporary solution for now since there's a memory corruption happening.
-	rows, err := iter.Slice[rowProfile](
-		&RowsIterator[rowProfile]{
-			rows: it,
-			at: func(ir *query.IteratorResult) rowProfile {
-				buf = ir.Columns(buf, "StacktracePartition")
-				if len(buf[0]) == 0 {
-					return rowProfile{
-						rowNum: ir.RowNumber[0],
-					}
-				}
-				return rowProfile{
-					rowNum:    ir.RowNumber[0],
-					partition: buf[0][0].Uint64(),
-				}
-			},
-		})
-	if err != nil {
-		return nil, err
-	}
+	rows := profileRowWithStacktraceIDBatchIterator(it)
+	defer rows.Close()
 
 	r := symdb.NewResolver(ctx, q.head.symdb)
 	defer r.Release()
 
-	if err := mergeByStacktraces[rowProfile](ctx, q.rowGroup(), iter.NewSliceIterator(rows), r); err != nil {
+	if err := mergeByStacktraces[rowProfile](ctx, q.rowGroup(), rows, r); err != nil {
 		return nil, err
 	}
 	return r.Tree()
@@ -196,34 +175,13 @@ func (q *headOnDiskQuerier) SelectMergeBySpans(ctx context.Context, params *inge
 		),
 		q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"))
 
-	buf := make([][]parquet.Value, 1)
-
-	// todo: we should stream profile to merge instead of loading all in memory.
-	// This is a temporary solution for now since there's a memory corruption happening.
-	rows, err := iter.Slice[rowProfile](
-		&RowsIterator[rowProfile]{
-			rows: it,
-			at: func(ir *query.IteratorResult) rowProfile {
-				buf = ir.Columns(buf, "StacktracePartition")
-				if len(buf[0]) == 0 {
-					return rowProfile{
-						rowNum: ir.RowNumber[0],
-					}
-				}
-				return rowProfile{
-					rowNum:    ir.RowNumber[0],
-					partition: buf[0][0].Uint64(),
-				}
-			},
-		})
-	if err != nil {
-		return nil, err
-	}
+	rows := profileRowWithStacktraceIDBatchIterator(it)
+	defer rows.Close()
 
 	r := symdb.NewResolver(ctx, q.head.symdb)
 	defer r.Release()
 
-	if err := mergeBySpans[rowProfile](ctx, q.rowGroup(), iter.NewSliceIterator(rows), r, spans); err != nil {
+	if err = mergeBySpans[rowProfile](ctx, q.rowGroup(), rows, r, spans); err != nil {
 		return nil, err
 	}
 	return r.Tree()
@@ -252,36 +210,15 @@ func (q *headOnDiskQuerier) SelectMergePprof(ctx context.Context, params *ingest
 		),
 		q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"))
 
-	buf := make([][]parquet.Value, 1)
-
-	// todo: we should stream profile to merge instead of loading all in memory.
-	// This is a temporary solution for now since there's a memory corruption happening.
-	rows, err := iter.Slice[rowProfile](
-		&RowsIterator[rowProfile]{
-			rows: it,
-			at: func(ir *query.IteratorResult) rowProfile {
-				buf = ir.Columns(buf, "StacktracePartition")
-				if len(buf[0]) == 0 {
-					return rowProfile{
-						rowNum: ir.RowNumber[0],
-					}
-				}
-				return rowProfile{
-					rowNum:    ir.RowNumber[0],
-					partition: buf[0][0].Uint64(),
-				}
-			},
-		})
-	if err != nil {
-		return nil, err
-	}
+	rows := profileRowWithStacktraceIDBatchIterator(it)
+	defer rows.Close()
 
 	r := symdb.NewResolver(ctx, q.head.symdb,
 		symdb.WithResolverMaxNodes(maxNodes),
 		symdb.WithResolverStackTraceSelector(sts))
 	defer r.Release()
 
-	if err := mergeByStacktraces[rowProfile](ctx, q.rowGroup(), iter.NewSliceIterator(rows), r); err != nil {
+	if err = mergeByStacktraces[rowProfile](ctx, q.rowGroup(), rows, r); err != nil {
 		return nil, err
 	}
 	return r.Pprof()
@@ -355,37 +292,34 @@ func (q *headOnDiskQuerier) SelectMergeByLabels(ctx context.Context, params *ing
 		rowIter,
 		q.rowGroup().columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"),
 	)
+
 	buf := make([][]parquet.Value, 1)
+	rows := iter.NewAsyncBatchIterator[*query.IteratorResult, Profile](
+		it, 1<<10,
+		func(r *query.IteratorResult) Profile {
+			v, ok := r.Entries[0].RowValue.(fingerprintWithRowNum)
+			if !ok {
+				panic("no fingerprint information found")
+			}
 
-	// todo: we should stream profile to merge instead of loading all in memory.
-	// This is a temporary solution for now since there's a memory corruption happening.
-	rows, err := iter.Slice[Profile](
-		&RowsIterator[Profile]{
-			rows: it,
-			at: func(ir *query.IteratorResult) Profile {
-				v, ok := ir.Entries[0].RowValue.(fingerprintWithRowNum)
-				if !ok {
-					panic("no fingerprint information found")
-				}
+			lbls, ok := labelsPerFP[v.fp]
+			if !ok {
+				panic("no profile series labels with matching fingerprint found")
+			}
 
-				lbls, ok := labelsPerFP[v.fp]
-				if !ok {
-					panic("no profile series labels with matching fingerprint found")
-				}
+			buf = r.Columns(buf, "TimeNanos")
+			return BlockProfile{
+				labels: lbls,
+				fp:     v.fp,
+				ts:     model.TimeFromUnixNano(buf[1][0].Int64()),
+				RowNum: r.RowNumber[0],
+			}
+		},
+		func(t []Profile) {},
+	)
+	defer rows.Close()
 
-				buf = ir.Columns(buf, "TimeNanos")
-				return BlockProfile{
-					labels: lbls,
-					fp:     v.fp,
-					ts:     model.TimeFromUnixNano(buf[1][0].Int64()),
-					RowNum: ir.RowNumber[0],
-				}
-			},
-		})
-	if err != nil {
-		return nil, err
-	}
-	return mergeByLabels[Profile](ctx, q.rowGroup(), "TotalValue", iter.NewSliceIterator(rows), by...)
+	return mergeByLabels[Profile](ctx, q.rowGroup(), "TotalValue", rows, by...)
 }
 
 func (q *headOnDiskQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
