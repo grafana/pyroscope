@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"io"
 	"strings"
-	"sync"
 	"time"
 
 	"connectrpc.com/connect"
@@ -30,11 +29,9 @@ import (
 type AdHocProfiles struct {
 	services.Service
 
-	logger    log.Logger
-	limits    frontend.Limits
-	bucket    objstore.Bucket
-	buckets   map[string]objstore.Bucket
-	bucketsMu sync.RWMutex
+	logger log.Logger
+	limits frontend.Limits
+	bucket objstore.Bucket
 }
 
 type AdHocProfile struct {
@@ -45,10 +42,9 @@ type AdHocProfile struct {
 
 func NewAdHocProfiles(bucket objstore.Bucket, logger log.Logger, limits frontend.Limits) *AdHocProfiles {
 	a := &AdHocProfiles{
-		logger:  logger,
-		bucket:  bucket,
-		buckets: make(map[string]objstore.Bucket),
-		limits:  limits,
+		logger: logger,
+		bucket: bucket,
+		limits: limits,
 	}
 	a.Service = services.NewBasicService(nil, a.running, nil)
 	return a
@@ -83,10 +79,7 @@ func (a *AdHocProfiles) Upload(ctx context.Context, c *connect.Request[v1.AdHocP
 		return nil, errors.Wrapf(err, "failed to parse profile")
 	}
 
-	bucket, err := a.getBucket(tenantID)
-	if err != nil {
-		return nil, err
-	}
+	bucket := a.getBucket(tenantID)
 
 	uid := ulid.MustNew(ulid.Timestamp(adHocProfile.UploadedAt), rand.Reader)
 	id := strings.Join([]string{uid.String(), adHocProfile.Name}, "-")
@@ -122,10 +115,7 @@ func (a *AdHocProfiles) Get(ctx context.Context, c *connect.Request[v1.AdHocProf
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	bucket, err := a.getBucket(tenantID)
-	if err != nil {
-		return nil, err
-	}
+	bucket := a.getBucket(tenantID)
 
 	reader, err := bucket.Get(ctx, c.Msg.GetId())
 	if err != nil {
@@ -201,19 +191,11 @@ func (a *AdHocProfiles) getBucketFromContext(ctx context.Context) (objstore.Buck
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	return a.getBucket(tenantID)
+	return a.getBucket(tenantID), nil
 }
 
-func (a *AdHocProfiles) getBucket(tenantID string) (objstore.Bucket, error) {
-	a.bucketsMu.Lock()
-	defer a.bucketsMu.Unlock()
-
-	bucket, ok := a.buckets[tenantID]
-	if !ok {
-		bucket = objstore.NewPrefixedBucket(a.bucket, tenantID+"/adhoc")
-		a.buckets[tenantID] = bucket
-	}
-	return bucket, nil
+func (a *AdHocProfiles) getBucket(tenantID string) objstore.Bucket {
+	return objstore.NewPrefixedBucket(a.bucket, tenantID+"/adhoc")
 }
 
 func parse(p *AdHocProfile, profileType *string, maxNodes int64) (fg *flamebearer.FlamebearerProfile, profileTypes []string, err error) {
