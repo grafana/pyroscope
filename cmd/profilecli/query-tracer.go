@@ -18,10 +18,9 @@ import (
 	"time"
 
 	"github.com/go-kit/log/level"
-	"github.com/gogo/protobuf/proto"
 	tempopb "github.com/simonswine/tempopb"
-	commonv1 "github.com/simonswine/tempopb/common/v1"
-	tracev1 "github.com/simonswine/tempopb/trace/v1"
+	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
+	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -140,7 +139,8 @@ func parseTrace(ctx context.Context, traceID string, data []byte) (*TraceResult,
 
 	// Read the existing address book.
 	trace := &tempopb.Trace{}
-	if err := proto.Unmarshal(data, trace); err != nil {
+
+	if err := trace.UnmarshalVT(data); err != nil {
 		return nil, fmt.Errorf("failed to parse trace: %w", err)
 	}
 
