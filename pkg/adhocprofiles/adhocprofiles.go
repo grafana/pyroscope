@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/dskit/tenant"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
+	"golang.org/x/exp/slices"
 
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1"
 	"github.com/grafana/pyroscope/pkg/frontend"
@@ -180,6 +181,16 @@ func (a *AdHocProfiles) List(ctx context.Context, c *connect.Request[v1.AdHocPro
 		})
 		return nil
 	})
+	cmp := func(a, b *v1.AdHocProfilesProfileMetadata) int {
+		if a.UploadedAt < b.UploadedAt {
+			return 1
+		}
+		if a.UploadedAt > b.UploadedAt {
+			return -1
+		}
+		return 0
+	}
+	slices.SortFunc(profiles, cmp)
 	if err != nil {
 		return nil, err
 	}
