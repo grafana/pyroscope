@@ -251,15 +251,15 @@ func mergeByLabelsWithStackTraceSelector[T Profile](
 	seriesBuilder := seriesBuilder{}
 	seriesBuilder.init(by...)
 
-	// TODO:
-	_ = r
-
 	defer runutil.CloseWithErrCapture(&err, profiles, "failed to close profile stream")
+	var v symdb.CallSiteValues
 	for profiles.Next() {
 		row := profiles.At()
 		h := row.Row
-		total := 0
-		seriesBuilder.add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(total))
+		if err = r.CallSiteValuesParquet(&v, h.StacktracePartition(), row.Values[0], row.Values[1]); err != nil {
+			return nil, err
+		}
+		seriesBuilder.add(h.Fingerprint(), h.Labels(), int64(h.Timestamp()), float64(v.Total))
 	}
 
 	return seriesBuilder.build(), profiles.Err()

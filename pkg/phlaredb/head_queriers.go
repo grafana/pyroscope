@@ -609,13 +609,16 @@ func (q *headInMemoryQuerier) MergeByLabels(
 		r := symdb.NewResolver(ctx, q.head.symdb,
 			symdb.WithResolverStackTraceSelector(sts))
 		defer r.Release()
+		var v symdb.CallSiteValues
 		for rows.Next() {
 			p, ok := rows.At().(ProfileWithLabels)
 			if !ok {
 				return nil, errors.New("expected ProfileWithLabels")
 			}
-			total := 0 // // TODO
-			seriesBuilder.add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(total))
+			if err := r.CallSiteValues(&v, p.StacktracePartition(), p.Samples()); err != nil {
+				return nil, err
+			}
+			seriesBuilder.add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(v.Total))
 		}
 	}
 
@@ -673,6 +676,7 @@ func (q *headInMemoryQuerier) SelectMergeByLabels(
 		r := symdb.NewResolver(ctx, q.head.symdb,
 			symdb.WithResolverStackTraceSelector(sts))
 		defer r.Release()
+		var v symdb.CallSiteValues
 		for _, fp := range ids {
 			profileSeries, ok := index.profilesPerFP[fp]
 			if !ok {
@@ -685,8 +689,10 @@ func (q *headInMemoryQuerier) SelectMergeByLabels(
 				if p.Timestamp() > end {
 					break
 				}
-				total := 0 // // TODO
-				seriesBuilder.add(fp, profileSeries.lbs, int64(p.Timestamp()), float64(total))
+				if err = r.CallSiteValues(&v, p.StacktracePartition, p.Samples); err != nil {
+					return nil, err
+				}
+				seriesBuilder.add(fp, profileSeries.lbs, int64(p.Timestamp()), float64(v.Total))
 			}
 		}
 	}

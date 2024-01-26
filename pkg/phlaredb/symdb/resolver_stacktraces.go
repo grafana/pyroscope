@@ -70,7 +70,8 @@ func (x *SelectedStackTraces) IsValid() bool {
 
 // CallSiteValues writes the call site statistics for
 // the selected stack traces and the given set of samples.
-func (x *SelectedStackTraces) CallSiteValues(m *CallSiteValues, samples schemav1.Samples) {
+func (x *SelectedStackTraces) CallSiteValues(values *CallSiteValues, samples schemav1.Samples) {
+	*values = CallSiteValues{}
 	if x.depth == 0 {
 		return
 	}
@@ -88,13 +89,14 @@ func (x *SelectedStackTraces) CallSiteValues(m *CallSiteValues, samples schemav1
 			r = x.appendStackTrace(x.buf)
 			x.relations[sid] = r
 		}
-		x.write(m, v, r)
+		x.write(values, v, r)
 	}
 }
 
 // CallSiteValuesParquet is identical to CallSiteValues
 // but accepts raw parquet values instead of samples.
-func (x *SelectedStackTraces) CallSiteValuesParquet(m *CallSiteValues, stacktraceID, value []parquet.Value) {
+func (x *SelectedStackTraces) CallSiteValuesParquet(values *CallSiteValues, stacktraceID, value []parquet.Value) {
+	*values = CallSiteValues{}
 	if x.depth == 0 {
 		return
 	}
@@ -113,7 +115,7 @@ func (x *SelectedStackTraces) CallSiteValuesParquet(m *CallSiteValues, stacktrac
 			r = x.appendStackTrace(x.buf)
 			x.relations[sid] = r
 		}
-		x.write(m, v, r)
+		x.write(values, v, r)
 	}
 }
 
