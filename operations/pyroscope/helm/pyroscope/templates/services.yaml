@@ -34,6 +34,9 @@ metadata:
   labels:
     {{- include "pyroscope.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $component | quote }}
+    {{- if .Values.serviceMonitor.enabled }}
+    prometheus.io/service-monitor: "false"
+    {{- end }}
 spec:
   type: ClusterIP
   clusterIP: None

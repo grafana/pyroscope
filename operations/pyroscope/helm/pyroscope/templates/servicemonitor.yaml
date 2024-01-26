@@ -31,6 +31,10 @@ spec:
       app.kubernetes.io/component: {{ $component | quote }}
     {{- with $serviceMonitor.matchExpressions }}
     matchExpressions:
+      - key: prometheus.io/service-monitor
+        operator: NotIn
+        values:
+          - "false"
       {{- toYaml . | nindent 6 }}
     {{- end }}
   endpoints:
