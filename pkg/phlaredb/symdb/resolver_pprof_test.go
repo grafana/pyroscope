@@ -177,7 +177,7 @@ func Test_Resolver_pprof_options(t *testing.T) {
 		},
 
 		{
-			name:     "subtree",
+			name:     "callSite",
 			expected: 54,
 			options: []ResolverOption{
 				WithResolverStackTraceSelector(&typesv1.StackTraceSelector{
@@ -186,7 +186,7 @@ func Test_Resolver_pprof_options(t *testing.T) {
 			},
 		},
 		{
-			name:     "subtree 10 max nodes",
+			name:     "callSite 10 max nodes",
 			expected: 14,
 			options: []ResolverOption{
 				WithResolverMaxNodes(10),

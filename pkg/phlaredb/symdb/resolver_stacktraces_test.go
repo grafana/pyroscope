@@ -117,7 +117,7 @@ func Test_StackTraceFilter(t *testing.T) {
 	for _, tc := range testCases {
 		selection := SelectStackTraces(symbols, tc.selector)
 		var values CallSiteValues
-		WriteCallSiteValues(&values, selection, w[0].Samples)
+		selection.CallSiteValues(&values, w[0].Samples)
 		assert.Equal(t, tc.expected, values, "selector: %+v", tc.selector)
 	}
 }
@@ -142,7 +142,7 @@ func Benchmark_StackTraceFilter(b *testing.B) {
 
 	selection := SelectStackTraces(symbols, selector)
 	for i := 0; i < b.N; i++ {
-		WriteCallSiteValues(&values, selection, samples)
+		selection.CallSiteValues(&values, samples)
 	}
 }
 

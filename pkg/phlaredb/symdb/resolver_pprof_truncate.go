@@ -32,10 +32,8 @@ type pprofProtoTruncatedSymbols struct {
 	functionsBuf []int32
 	locationsBuf []uint64
 
-	// subtree denotes the lowest common ancestor of all the stack traces.
-	// The subtree path consists of function IDs, the root is at subtree[0].
-	subtree []uint32
-	fnNames func(locations []int32) ([]int32, bool)
+	selection *SelectedStackTraces
+	fnNames   func(locations []int32) ([]int32, bool)
 
 	// After truncation many samples will have the same stack trace.
 	// The map is used to deduplicate them. The key is sample.LocationId
@@ -60,7 +58,7 @@ func (r *pprofProtoTruncatedSymbols) init(symbols *Symbols, samples schemav1.Sam
 	r.functionTree = model.NewStacktraceTree(samples.Len() * 2)
 	r.stacktraces = make([]truncatedStacktraceSample, 0, samples.Len())
 	r.sampleMap = make(map[string]*googlev1.Sample, samples.Len())
-	if len(r.subtree) > 0 {
+	if r.selection != nil && len(r.selection.callSite) > 0 {
 		r.fnNames = r.locFunctionsFiltered
 	} else {
 		r.fnNames = r.locFunctions
@@ -95,7 +93,7 @@ func (r *pprofProtoTruncatedSymbols) locFunctions(locations []int32) ([]int32, b
 func (r *pprofProtoTruncatedSymbols) locFunctionsFiltered(locations []int32) ([]int32, bool) {
 	r.functionsBuf = r.functionsBuf[:0]
 	var pos int
-	pathLen := len(r.subtree)
+	pathLen := len(r.selection.callSite)
 	// Even if len(locations) < pathLen, we still
 	// need to inspect locations line by line.
 	for i := len(locations) - 1; i >= 0; i-- {
@@ -103,7 +101,7 @@ func (r *pprofProtoTruncatedSymbols) locFunctionsFiltered(locations []int32) ([]
 		for j := len(lines) - 1; j >= 0; j-- {
 			f := lines[j].FunctionId
 			if pos < pathLen {
-				if r.subtree[pos] != f {
+				if r.selection.callSite[pos] != f {
 					return nil, false
 				}
 				pos++
@@ -111,7 +109,7 @@ func (r *pprofProtoTruncatedSymbols) locFunctionsFiltered(locations []int32) ([]
 			r.functionsBuf = append(r.functionsBuf, int32(f))
 		}
 	}
-	if pos < len(r.subtree) {
+	if pos < pathLen {
 		return nil, false
 	}
 	slices.Reverse(r.functionsBuf)

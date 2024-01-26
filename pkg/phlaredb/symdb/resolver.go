@@ -31,7 +31,7 @@ type Resolver struct {
 	s SymbolsReader
 	g *errgroup.Group
 	c int
-	m sync.Mutex
+	m sync.RWMutex
 	p map[uint64]*lazyPartition
 
 	maxNodes int64
@@ -57,7 +57,7 @@ func WithResolverMaxNodes(n int64) ResolverOption {
 }
 
 // WithResolverStackTraceSelector specifies the stack trace selector.
-// Only stack traces that belong to the subtree (have the prefix provided)
+// Only stack traces that belong to the callSite (have the prefix provided)
 // will be selected. If empty, the filter is ignored.
 // Subtree root location is the last element.
 func WithResolverStackTraceSelector(sts *typesv1.StackTraceSelector) ResolverOption {
@@ -75,12 +75,16 @@ type lazyPartition struct {
 	fetchOnce sync.Once
 	resolver  *Resolver
 	reader    PartitionReader
+	selection *SelectedStackTraces
 	err       error
 }
 
 func (p *lazyPartition) fetch() error {
 	p.fetchOnce.Do(func() {
 		p.reader, p.err = p.resolver.s.Partition(p.resolver.ctx, p.id)
+		if p.err == nil && p.resolver.sts != nil {
+			p.selection = SelectStackTraces(p.reader.Symbols(), p.resolver.sts)
+		}
 	})
 	return p.err
 }
@@ -159,9 +163,38 @@ func (r *Resolver) WithPartitionSamples(partition uint64, fn func(map[uint32]int
 	fn(p.samples)
 }
 
+func (r *Resolver) CallSiteValues(values *CallSiteValues, partition uint64, samples schemav1.Samples) error {
+	p := r.partition(partition)
+	if err := p.fetch(); err != nil {
+		return err
+	}
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.selection.CallSiteValues(values, samples)
+	return nil
+}
+
+func (r *Resolver) CallSiteValuesParquet(values *CallSiteValues, partition uint64, stacktraceID, value []parquet.Value) error {
+	p := r.partition(partition)
+	if err := p.fetch(); err != nil {
+		return err
+	}
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.selection.CallSiteValuesParquet(values, stacktraceID, value)
+	return nil
+}
+
 func (r *Resolver) partition(partition uint64) *lazyPartition {
-	r.m.Lock()
+	r.m.RLock()
 	p, ok := r.p[partition]
+	if ok {
+		r.m.RUnlock()
+		return p
+	}
+	r.m.RUnlock()
+	r.m.Lock()
+	p, ok = r.p[partition]
 	if ok {
 		r.m.Unlock()
 		return p
@@ -173,7 +206,7 @@ func (r *Resolver) partition(partition uint64) *lazyPartition {
 	}
 	r.p[partition] = p
 	r.m.Unlock()
-	// Fetch partition in the background.
+	// Fetch partition in the background, not blocking the caller.
 	// p.reader must be accessed only after p.fetch returns.
 	r.g.Go(p.fetch)
 	// r.g.Wait() is called at Resolver.Release.
@@ -204,7 +237,7 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	var lock sync.Mutex
 	var p pprof.ProfileMerge
 	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
-		resolved, err := symbols.Pprof(ctx, samples, r.maxNodes, r.sts)
+		resolved, err := symbols.Pprof(ctx, samples, r.maxNodes, SelectStackTraces(symbols, r.sts))
 		if err != nil {
 			return err
 		}
@@ -241,7 +274,7 @@ func (r *Symbols) Pprof(
 	ctx context.Context,
 	samples schemav1.Samples,
 	maxNodes int64,
-	sts *typesv1.StackTraceSelector,
+	selection *SelectedStackTraces,
 ) (*googlev1.Profile, error) {
 	// By default, we use a builder that's optimized
 	// for the simplest case: we take all the source
@@ -249,19 +282,17 @@ func (r *Symbols) Pprof(
 	var b pprofBuilder = new(pprofProtoSymbols)
 	// If a stack trace selector is specified,
 	// check if such a profile can exist at all.
-	var subtree []uint32
-	if locs := sts.GetCallSite(); len(locs) > 0 {
-		if subtree = findCallSite(r, locs); len(subtree) == 0 {
-			return b.buildPprof(), nil
-		}
+	if !selection.IsValid() {
+		// Build an empty profile.
+		return b.buildPprof(), nil
 	}
 	// Truncation is applicable when there is an explicit
 	// limit on the number of the nodes in the profile, or
 	// if stack traces should be filtered.
-	if maxNodes > 0 || len(subtree) > 0 {
+	if maxNodes > 0 || len(selection.callSite) > 0 {
 		b = &pprofProtoTruncatedSymbols{
-			maxNodes: maxNodes,
-			subtree:  subtree,
+			maxNodes:  maxNodes,
+			selection: selection,
 		}
 	}
 	b.init(r, samples)
