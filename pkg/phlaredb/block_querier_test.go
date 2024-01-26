@@ -1236,7 +1236,7 @@ func TestSelectMergeLabels_StackTraceSelector(t *testing.T) {
 	ctx := context.Background()
 
 	querier := newBlock(t, func() (res []*testhelper.ProfileBuilder) {
-		for i := int64(1); i < 6; i++ {
+		for i := int64(1); i < 7; i++ {
 			// Keep in mind that leaf is at location[0].
 			res = append(res, testhelper.NewProfileBuilder(int64(time.Second)*i).
 				CPUProfile().
@@ -1274,7 +1274,7 @@ func TestSelectMergeLabels_StackTraceSelector(t *testing.T) {
 	expected := []*typesv1.Series{
 		{
 			Labels: phlaremodel.LabelsFromStrings("job", "a"),
-			Points: genPoints(5),
+			Points: genPoints(6),
 		},
 	}
 	require.Equal(t, expected, merge)
