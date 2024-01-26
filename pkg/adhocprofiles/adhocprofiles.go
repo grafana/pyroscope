@@ -176,7 +176,7 @@ func (a *AdHocProfiles) List(ctx context.Context, c *connect.Request[v1.AdHocPro
 
 	profiles := make([]*v1.AdHocProfilesProfileMetadata, 0)
 	err = bucket.Iter(ctx, "", func(s string) error {
-		separatorIndex := bytes.IndexByte([]byte(s), '-')
+		separatorIndex := strings.IndexRune(s, '-')
 		id, err := ulid.Parse(s[0:separatorIndex])
 		if err != nil {
 			level.Warn(a.logger).Log("msg", "cannot parse ad hoc profile", "key", s, "err", err)
