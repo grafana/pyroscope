@@ -79,9 +79,9 @@ type lazyPartition struct {
 	err       error
 }
 
-func (p *lazyPartition) fetch() error {
+func (p *lazyPartition) fetch(ctx context.Context) error {
 	p.fetchOnce.Do(func() {
-		p.reader, p.err = p.resolver.s.Partition(p.resolver.ctx, p.id)
+		p.reader, p.err = p.resolver.s.Partition(ctx, p.id)
 		if p.err == nil && p.resolver.sts != nil {
 			p.selection = SelectStackTraces(p.reader.Symbols(), p.resolver.sts)
 		}
@@ -165,7 +165,7 @@ func (r *Resolver) WithPartitionSamples(partition uint64, fn func(map[uint32]int
 
 func (r *Resolver) CallSiteValues(values *CallSiteValues, partition uint64, samples schemav1.Samples) error {
 	p := r.partition(partition)
-	if err := p.fetch(); err != nil {
+	if err := p.fetch(r.ctx); err != nil {
 		return err
 	}
 	p.m.Lock()
@@ -176,7 +176,7 @@ func (r *Resolver) CallSiteValues(values *CallSiteValues, partition uint64, samp
 
 func (r *Resolver) CallSiteValuesParquet(values *CallSiteValues, partition uint64, stacktraceID, value []parquet.Value) error {
 	p := r.partition(partition)
-	if err := p.fetch(); err != nil {
+	if err := p.fetch(r.ctx); err != nil {
 		return err
 	}
 	p.m.Lock()
@@ -208,7 +208,9 @@ func (r *Resolver) partition(partition uint64) *lazyPartition {
 	r.m.Unlock()
 	// Fetch partition in the background, not blocking the caller.
 	// p.reader must be accessed only after p.fetch returns.
-	r.g.Go(p.fetch)
+	r.g.Go(func() error {
+		return p.fetch(r.ctx)
+	})
 	// r.g.Wait() is called at Resolver.Release.
 	return p
 }
@@ -249,12 +251,12 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 }
 
 func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, schemav1.Samples) error) error {
-	g, ctx := errgroup.WithContext(ctx)
+	g, _ := errgroup.WithContext(ctx)
 	g.SetLimit(r.c)
 	for _, p := range r.p {
 		p := p
 		g.Go(func() error {
-			if err := p.fetch(); err != nil {
+			if err := p.fetch(ctx); err != nil {
 				return err
 			}
 			m := schemav1.NewSamplesFromMap(p.samples)
