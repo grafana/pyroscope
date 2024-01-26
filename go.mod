@@ -43,6 +43,7 @@ require (
 	github.com/mattn/go-isatty v0.0.19
 	github.com/minio/minio-go/v7 v7.0.61
 	github.com/mitchellh/go-wordwrap v1.0.1
+	github.com/oauth2-proxy/oauth2-proxy/v7 v7.5.1
 	github.com/oklog/ulid v1.3.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.11.0
@@ -66,6 +67,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/goleak v1.2.1
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
+	golang.org/x/mod v0.14.0
 	golang.org/x/net v0.19.0
 	golang.org/x/oauth2 v0.15.0
 	golang.org/x/sync v0.5.0
@@ -123,7 +125,6 @@ require (
 	github.com/efficientgo/core v1.0.0-rc.2 // indirect
 	github.com/efficientgo/e2e v0.14.1-0.20230710114240-c316eb95ae5b // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/github/go-pipe v1.0.2 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -213,7 +214,6 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
-	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/term v0.15.0 // indirect
 	golang.org/x/tools v0.15.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect

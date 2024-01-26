@@ -58,7 +58,7 @@ func (q *Querier) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.Gi
 	if err != nil {
 		return nil, err
 	}
-	cookieValue, err := encryptAES256(token)
+	cookieValue, err := encrypt(token)
 	if err != nil {
 		return nil, err
 	}
@@ -93,13 +93,12 @@ func (q *Querier) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFil
 	// todo: we can support multiple provider: bitbucket, gitlab, etc.
 	client, err := NewGithubClient(ctx, cookie)
 	if err != nil {
-		// todo should clear cookie this doesn't work yet.
-		cookie.MaxAge = -1
 		err := connect.NewError(
 			connect.CodeUnauthenticated,
 			err,
 		)
 		cookie.Value = ""
+		cookie.MaxAge = -1
 		err.Meta().Set("Set-Cookie", cookie.String())
 		return nil, err
 	}
@@ -138,7 +137,7 @@ func NewGithubClient(ctx context.Context, cookie *http.Cookie) (*githubClient, e
 	if err != nil {
 		return nil, err
 	}
-	token, err := decryptAES256(cookie.Value)
+	token, err := decrypt(cookie.Value)
 	if err != nil {
 		return nil, err
 	}

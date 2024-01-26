@@ -8,17 +8,18 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/cilium/ebpf v0.11.0
 	github.com/go-kit/log v0.2.1
-	github.com/google/pprof v0.0.0-20230926050212-f7f687d19a98
+	github.com/google/pprof v0.0.0-20231205033806-a5a03c77bf08
 	github.com/grafana/pyroscope/api v0.2.0
 	github.com/hashicorp/golang-lru/v2 v2.0.5
 	github.com/ianlancetaylor/demangle v0.0.0-20230524184225-eabc099b10ab
-	github.com/klauspost/compress v1.17.3
+	github.com/klauspost/compress v1.17.4
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.17.0
-	github.com/prometheus/common v0.44.0
+	github.com/prometheus/common v0.45.0
+	github.com/prometheus/prometheus v0.49.1
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
+	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb
 	golang.org/x/sys v0.15.0
 )
 
@@ -28,10 +29,10 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
+	github.com/grafana/regexp v0.0.0-20221122212121-6b5c0a4cb7fd // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
-	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
+	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect

@@ -61,7 +61,13 @@ func RoundTripUnary[Req any, Res any](ctx context.Context, rt GRPCRoundTripper, 
 		return nil, err
 	}
 	if res.Code/100 != 2 {
-		return nil, connect.NewError(HTTPToCode(res.Code), errors.New(string(res.Body)))
+		err := connect.NewError(HTTPToCode(res.Code), errors.New(string(res.Body)))
+		for _, h := range res.Headers {
+			for _, v := range h.Values {
+				err.Meta().Add(h.Key, v)
+			}
+		}
+		return nil, err
 	}
 	return decodeResponse[Res](res)
 }
