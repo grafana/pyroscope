@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/log"
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
@@ -68,13 +67,22 @@ func WithResolverStackTraceSelector(sts *typesv1.StackTraceSelector) ResolverOpt
 }
 
 type lazyPartition struct {
+	id uint64
+
 	m       sync.Mutex
 	samples map[uint32]int64
 
-	id     uint64
-	reader chan PartitionReader
-	err    chan error
-	done   chan struct{}
+	fetchOnce sync.Once
+	resolver  *Resolver
+	reader    PartitionReader
+	err       error
+}
+
+func (p *lazyPartition) fetch() error {
+	p.fetchOnce.Do(func() {
+		p.reader, p.err = p.resolver.s.Partition(p.resolver.ctx, p.id)
+	})
+	return p.err
 }
 
 func NewResolver(ctx context.Context, s SymbolsReader, opts ...ResolverOption) *Resolver {
@@ -94,8 +102,23 @@ func NewResolver(ctx context.Context, s SymbolsReader, opts ...ResolverOption) *
 
 func (r *Resolver) Release() {
 	r.cancel()
-	// The error is already sent to the caller.
-	_ = r.g.Wait()
+	// Wait for all partitions to be fetched / canceled.
+	if err := r.g.Wait(); err != nil {
+		r.span.SetTag("error", err)
+	}
+	// Release acquired partition readers.
+	var wg sync.WaitGroup
+	for _, p := range r.p {
+		wg.Add(1)
+		p := p
+		go func() {
+			defer wg.Done()
+			if p.reader != nil {
+				p.reader.Release()
+			}
+		}()
+	}
+	wg.Wait()
 	r.span.Finish()
 }
 
@@ -144,51 +167,17 @@ func (r *Resolver) partition(partition uint64) *lazyPartition {
 		return p
 	}
 	p = &lazyPartition{
-		id:      partition,
-		samples: make(map[uint32]int64),
-		err:     make(chan error),
-		done:    make(chan struct{}),
-		reader:  make(chan PartitionReader, 1),
+		id:       partition,
+		samples:  make(map[uint32]int64),
+		resolver: r,
 	}
 	r.p[partition] = p
 	r.m.Unlock()
-	r.g.Go(func() error {
-		return r.acquirePartition(p)
-	})
-	// r.g.Wait() is only called at Resolver.Release.
+	// Fetch partition in the background.
+	// p.reader must be accessed only after p.fetch returns.
+	r.g.Go(p.fetch)
+	// r.g.Wait() is called at Resolver.Release.
 	return p
-}
-
-func (r *Resolver) acquirePartition(p *lazyPartition) error {
-	pr, err := r.s.Partition(r.ctx, p.id)
-	if err != nil {
-		r.span.LogFields(log.String("err", err.Error()))
-		select {
-		case <-r.ctx.Done():
-			return r.ctx.Err()
-		case p.err <- err:
-			// Signal the partition receiver
-			// about the failure, so it won't
-			// block and return early.
-			return err
-		}
-	}
-	// We've acquired the partition and must release it
-	// once resolution finished or canceled.
-	select {
-	case p.reader <- pr:
-		// We transferred ownership to the recipient,
-		// which is now responsible for releasing the
-		// partition.
-		<-p.done
-	case <-r.ctx.Done():
-		// We still own the partition and must release
-		// it on our own. It's guaranteed that p.c receiver
-		// has no access to the partition.
-		pr.Release()
-		return r.ctx.Err()
-	}
-	return nil
 }
 
 func (r *Resolver) Tree() (*model.Tree, error) {
@@ -232,16 +221,11 @@ func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, schemav1.S
 	for _, p := range r.p {
 		p := p
 		g.Go(func() error {
-			defer close(p.done)
-			select {
-			case err := <-p.err:
+			if err := p.fetch(); err != nil {
 				return err
-			case <-ctx.Done():
-				return ctx.Err()
-			case pr := <-p.reader:
-				defer pr.Release()
-				return fn(pr.Symbols(), schemav1.NewSamplesFromMap(p.samples))
 			}
+			m := schemav1.NewSamplesFromMap(p.samples)
+			return fn(p.reader.Symbols(), m)
 		})
 	}
 	return g.Wait()
@@ -295,4 +279,36 @@ func (r *Symbols) Tree(ctx context.Context, samples schemav1.Samples) (*model.Tr
 		return nil, err
 	}
 	return t.tree, nil
+}
+
+// findCallSite returns the stack trace of the call site
+// where each element in the stack trace is represented by
+// the function ID. Call site is the last element.
+// TODO(kolesnikovae): Location should also include the line number.
+func findCallSite(symbols *Symbols, locations []*typesv1.Location) []uint32 {
+	if len(locations) == 0 {
+		return nil
+	}
+	m := make(map[string]uint32, len(locations))
+	for _, loc := range locations {
+		m[loc.Name] = 0
+	}
+	c := len(m) // Only count unique names.
+	for f := 0; f < len(symbols.Functions) && c > 0; f++ {
+		s := symbols.Strings[symbols.Functions[f].Name]
+		if _, ok := m[s]; ok {
+			// We assume that no functions have the same name.
+			// Otherwise, the last one takes precedence.
+			m[s] = uint32(f) // f is FunctionId
+			c--
+		}
+	}
+	if c > 0 {
+		return nil
+	}
+	callSite := make([]uint32, len(locations))
+	for i, loc := range locations {
+		callSite[i] = m[loc.Name]
+	}
+	return callSite
 }

@@ -51,7 +51,7 @@ func Test_StackTraceFilter(t *testing.T) {
 
 	type testCase struct {
 		selector *typesv1.StackTraceSelector
-		expected CallTreeNodeValues
+		expected CallSiteValues
 	}
 
 	testCases := []testCase{
@@ -59,7 +59,7 @@ func Test_StackTraceFilter(t *testing.T) {
 			selector: &typesv1.StackTraceSelector{
 				CallSite: []*typesv1.Location{{Name: "foo"}},
 			},
-			expected: CallTreeNodeValues{
+			expected: CallSiteValues{
 				Flat:          0,
 				Total:         3,
 				LocationFlat:  2,
@@ -70,7 +70,7 @@ func Test_StackTraceFilter(t *testing.T) {
 			selector: &typesv1.StackTraceSelector{
 				CallSite: []*typesv1.Location{{Name: "bar"}},
 			},
-			expected: CallTreeNodeValues{
+			expected: CallSiteValues{
 				Flat:          2,
 				Total:         4,
 				LocationFlat:  3,
@@ -81,7 +81,7 @@ func Test_StackTraceFilter(t *testing.T) {
 			selector: &typesv1.StackTraceSelector{
 				CallSite: []*typesv1.Location{{Name: "foo"}, {Name: "bar"}},
 			},
-			expected: CallTreeNodeValues{
+			expected: CallSiteValues{
 				Flat:          1,
 				Total:         2,
 				LocationFlat:  3,
@@ -92,7 +92,7 @@ func Test_StackTraceFilter(t *testing.T) {
 			selector: &typesv1.StackTraceSelector{
 				CallSite: []*typesv1.Location{{Name: "foo"}, {Name: "bar"}, {Name: "baz"}},
 			},
-			expected: CallTreeNodeValues{
+			expected: CallSiteValues{
 				Flat:          1,
 				Total:         1,
 				LocationFlat:  2,
@@ -103,7 +103,7 @@ func Test_StackTraceFilter(t *testing.T) {
 			selector: &typesv1.StackTraceSelector{
 				CallSite: []*typesv1.Location{{Name: "foo"}, {Name: "bar"}, {Name: "baz"}, {Name: "qux"}},
 			},
-			expected: CallTreeNodeValues{
+			expected: CallSiteValues{
 				Flat:          0,
 				Total:         0,
 				LocationFlat:  1,
@@ -115,10 +115,10 @@ func Test_StackTraceFilter(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		f := SelectStackTraces(symbols, tc.selector)
-		var actual CallTreeNodeValues
-		f.Values(&actual, w[0].Samples)
-		assert.Equal(t, tc.expected, actual, "selector: %+v", tc.selector)
+		selection := SelectStackTraces(symbols, tc.selector)
+		var values CallSiteValues
+		WriteCallSiteValues(&values, selection, w[0].Samples)
+		assert.Equal(t, tc.expected, values, "selector: %+v", tc.selector)
 	}
 }
 
@@ -135,14 +135,14 @@ func Benchmark_StackTraceFilter(b *testing.B) {
 	p := s.profiles[0]
 	stack := p.Sample[len(p.Sample)/3].LocationId
 	selector := buildStackTraceSelector(p, stack[len(stack)/10:])
-	var values CallTreeNodeValues
+	var values CallSiteValues
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	selection := SelectStackTraces(symbols, selector)
 	for i := 0; i < b.N; i++ {
-		selection.Values(&values, samples)
+		WriteCallSiteValues(&values, selection, samples)
 	}
 }
 

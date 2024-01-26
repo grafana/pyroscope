@@ -5,8 +5,8 @@ import (
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 )
 
-// CallTreeNodeValues represents statistics associated with a call tree node.
-type CallTreeNodeValues struct {
+// CallSiteValues represents statistics associated with a call tree node.
+type CallSiteValues struct {
 	// Flat is the sum of sample values directly attributed to the node.
 	Flat uint64
 	// Total is the total sum of sample values attributed to the node and
@@ -59,9 +59,9 @@ func SelectStackTraces(symbols *Symbols, sts *typesv1.StackTraceSelector) *Selec
 	return x
 }
 
-// Values writes the call tree node statistics for the
-// selected stack traces and the given set of samples.
-func (x *SelectedStackTraces) Values(m *CallTreeNodeValues, samples schemav1.Samples) {
+// WriteCallSiteValues writes the call site statistics for
+// the selected stack traces and the given set of samples.
+func WriteCallSiteValues(m *CallSiteValues, x *SelectedStackTraces, samples schemav1.Samples) {
 	if x.depth == 0 {
 		return
 	}
@@ -122,36 +122,4 @@ func ge(a, b uint32) uint32 {
 		return 1
 	}
 	return 0
-}
-
-// findCallSite returns the stack trace of the call site
-// where each element in the stack trace is represented by
-// the function ID. Call site is the last element.
-// TODO(kolesnikovae): typesv1.Location should also include the line number.
-func findCallSite(symbols *Symbols, locations []*typesv1.Location) []uint32 {
-	if len(locations) == 0 {
-		return nil
-	}
-	m := make(map[string]uint32, len(locations))
-	for _, loc := range locations {
-		m[loc.Name] = 0
-	}
-	c := len(m) // Only count unique names.
-	for f := 0; f < len(symbols.Functions) && c > 0; f++ {
-		s := symbols.Strings[symbols.Functions[f].Name]
-		if _, ok := m[s]; ok {
-			// We assume that no functions have the same name.
-			// Otherwise, the last one takes precedence.
-			m[s] = uint32(f) // f is FunctionId
-			c--
-		}
-	}
-	if c > 0 {
-		return nil
-	}
-	callSite := make([]uint32, len(locations))
-	for i, loc := range locations {
-		callSite[i] = m[loc.Name]
-	}
-	return callSite
 }

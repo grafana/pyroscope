@@ -184,7 +184,11 @@ func (r *Reader) Close() error {
 var ErrPartitionNotFound = fmt.Errorf("partition not found")
 
 func (r *Reader) Partition(ctx context.Context, partition uint64) (PartitionReader, error) {
-	return r.partition(ctx, partition)
+	p, err := r.partition(ctx, partition)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, error) {
@@ -196,7 +200,6 @@ func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, e
 		if err := p.init(ctx); err != nil {
 			return nil, err
 		}
-		return p, nil
 	}
 	return p, nil
 }
