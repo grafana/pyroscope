@@ -1,10 +1,13 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "google/v1/profile.proto",
+    "title": "types/v1/types.proto",
     "version": "version not set"
   },
   "tags": [
+    {
+      "name": "AdHocProfileService"
+    },
     {
       "name": "PusherService"
     },
@@ -385,6 +388,63 @@
       "properties": {
         "name": {
           "type": "string"
+        }
+      }
+    },
+    "v1AdHocProfilesGetResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "uploadedAt": {
+          "type": "string",
+          "format": "int64",
+          "title": "timestamp in milliseconds"
+        },
+        "profileType": {
+          "type": "string"
+        },
+        "profileTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Some profiles formats (like pprof) can contain multiple profile (sample) types inside. One of these can be passed\nin the Get request using the profile_type field."
+        },
+        "flamebearerProfile": {
+          "type": "string"
+        }
+      }
+    },
+    "v1AdHocProfilesListResponse": {
+      "type": "object",
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1AdHocProfilesProfileMetadata"
+          }
+        }
+      }
+    },
+    "v1AdHocProfilesProfileMetadata": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "uploadedAt": {
+          "type": "string",
+          "format": "int64",
+          "title": "timestamp in milliseconds"
         }
       }
     },
