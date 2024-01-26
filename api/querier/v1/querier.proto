@@ -124,7 +124,7 @@ message SelectMergeProfileRequest {
   int64 end = 4;
   // Limit the nodes returned to only show the node with the max_node's biggest total
   optional int64 max_nodes = 5;
-  // Only return stack traces matching the selector
+  // Select stack traces that match the provided selector.
   optional types.v1.StackTraceSelector stack_trace_selector = 6;
 }
 
@@ -136,9 +136,10 @@ message SelectSeriesRequest {
   // Milliseconds since epoch.
   int64 end = 4;
   repeated string group_by = 5;
-  double step = 6; // Query resolution step width in seconds
+  double step = 6;
+  // Query resolution step width in seconds
   optional types.v1.TimeSeriesAggregationType aggregation = 7;
-  // Only account for stack traces matching the selector
+  // Select stack traces that match the provided selector.
   optional types.v1.StackTraceSelector stack_trace_selector = 8;
 }
 

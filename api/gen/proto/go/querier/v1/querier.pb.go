@@ -836,7 +836,7 @@ type SelectMergeProfileRequest struct {
 	End int64 `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
 	// Limit the nodes returned to only show the node with the max_node's biggest total
 	MaxNodes *int64 `protobuf:"varint,5,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
-	// Only return stack traces matching the selector
+	// Select stack traces that match the provided selector.
 	StackTraceSelector *v1.StackTraceSelector `protobuf:"bytes,6,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
 }
 
@@ -924,11 +924,12 @@ type SelectSeriesRequest struct {
 	// Milliseconds since epoch.
 	Start int64 `protobuf:"varint,3,opt,name=start,proto3" json:"start,omitempty"`
 	// Milliseconds since epoch.
-	End         int64                         `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
-	GroupBy     []string                      `protobuf:"bytes,5,rep,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
-	Step        float64                       `protobuf:"fixed64,6,opt,name=step,proto3" json:"step,omitempty"` // Query resolution step width in seconds
+	End     int64    `protobuf:"varint,4,opt,name=end,proto3" json:"end,omitempty"`
+	GroupBy []string `protobuf:"bytes,5,rep,name=group_by,json=groupBy,proto3" json:"group_by,omitempty"`
+	Step    float64  `protobuf:"fixed64,6,opt,name=step,proto3" json:"step,omitempty"`
+	// Query resolution step width in seconds
 	Aggregation *v1.TimeSeriesAggregationType `protobuf:"varint,7,opt,name=aggregation,proto3,enum=types.v1.TimeSeriesAggregationType,oneof" json:"aggregation,omitempty"`
-	// Only account for stack traces matching the selector
+	// Select stack traces that match the provided selector.
 	StackTraceSelector *v1.StackTraceSelector `protobuf:"bytes,8,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
 }
 

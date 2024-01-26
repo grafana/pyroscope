@@ -1185,7 +1185,7 @@ type MergeProfilesLabelsRequest struct {
 	Request *SelectProfilesRequest `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
 	// The labels to merge by
 	By []string `protobuf:"bytes,2,rep,name=by,proto3" json:"by,omitempty"`
-	// Consider only the stack traces that match the provided selector.
+	// Select stack traces that match the provided selector.
 	StackTraceSelector *v1.StackTraceSelector `protobuf:"bytes,4,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
 	// On a batch of profiles, the client sends the profiles to keep for merging.
 	Profiles []bool `protobuf:"varint,3,rep,packed,name=profiles,proto3" json:"profiles,omitempty"`
@@ -1318,7 +1318,7 @@ type MergeProfilesPprofRequest struct {
 	Request *SelectProfilesRequest `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
 	// Max nodes in the resulting profile.
 	MaxNodes *int64 `protobuf:"varint,3,opt,name=max_nodes,json=maxNodes,proto3,oneof" json:"max_nodes,omitempty"`
-	// Consider only the stack traces that match the provided selector.
+	// Select stack traces that match the provided selector.
 	StackTraceSelector *v1.StackTraceSelector `protobuf:"bytes,4,opt,name=stack_trace_selector,json=stackTraceSelector,proto3,oneof" json:"stack_trace_selector,omitempty"`
 	// On a batch of profiles, the client sends the profiles to keep for merging.
 	Profiles []bool `protobuf:"varint,2,rep,packed,name=profiles,proto3" json:"profiles,omitempty"`
