@@ -400,7 +400,7 @@ deploy: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 deploy-micro-services: $(BIN)/kind $(BIN)/helm docker-image/pyroscope/build
 	# Ensure to delete existing service, that has been created manually by the deploy target
 	kubectl delete svc --field-selector metadata.name=pyroscope-micro-services-query-frontend -l app.kubernetes.io/managed-by!=Helm
-	$(call deploy,pyroscope-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set pyroscope.components.querier.resources=null --set pyroscope.components.distributor.resources=null --set pyroscope.components.ingester.resources=null --set pyroscope.components.store-gateway.resources=null --set pyroscope.components.compactor.resources=null --set pyroscope.components.tenant-settings.resources=null)
+	$(call deploy,pyroscope-micro-services,--values=operations/pyroscope/helm/pyroscope/values-micro-services.yaml --set pyroscope.components.querier.resources=null --set pyroscope.components.distributor.resources=null --set pyroscope.components.ingester.resources=null --set pyroscope.components.store-gateway.resources=null --set pyroscope.components.compactor.resources=null)
 
 .PHONY: deploy-monitoring
 deploy-monitoring: $(BIN)/tk $(BIN)/kind tools/monitoring/environments/default/spec.json
