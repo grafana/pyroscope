@@ -24,6 +24,7 @@ import (
 
 	"github.com/grafana/pyroscope/public"
 
+	"github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1/adhocprofilesv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1/ingesterv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
@@ -33,6 +34,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/version/v1/versionv1connect"
 	"github.com/grafana/pyroscope/api/openapiv2"
+	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
@@ -309,4 +311,8 @@ func (a *API) RegisterAdmin(ad *operations.Admin) {
 	a.indexPage.AddLinks(defaultWeight, "Admin", []IndexPageLink{
 		{Desc: "Object Storage Tenants & Blocks", Path: "/ops/object-store/tenants"},
 	})
+}
+
+func (a *API) RegisterAdHocProfiles(ahp *adhocprofiles.AdHocProfiles) {
+	adhocprofilesv1connect.RegisterAdHocProfileServiceHandler(a.server.HTTP, ahp, a.grpcAuthMiddleware)
 }

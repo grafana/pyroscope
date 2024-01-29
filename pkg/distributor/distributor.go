@@ -3,6 +3,7 @@ package distributor
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"expvar"
 	"flag"
 	"fmt"
@@ -322,6 +323,10 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 		for _, sample := range series.Samples {
 			sample.Profile.Normalize()
 		}
+	}
+
+	if err := injectMappingVersions(req.Series); err != nil {
+		_ = level.Warn(d.logger).Log("msg", "failed to inject mapping versions", "err", err)
 	}
 
 	// If aggregation is configured for the tenant, we try to determine
@@ -788,4 +793,26 @@ func newRingAndLifecycler(cfg util.CommonRingConfig, instanceCount *atomic.Uint3
 	}
 
 	return distributorsRing, distributorsLifecycler, nil
+}
+
+// injectMappingVersions extract from the labels the mapping version and inject it into the profile's main mapping. (mapping[0])
+func injectMappingVersions(series []*distributormodel.ProfileSeries) error {
+	for _, s := range series {
+		version, ok := phlaremodel.ServiceVersionFromLabels(s.Labels)
+		if !ok {
+			continue
+		}
+		for _, sample := range s.Samples {
+			for _, m := range sample.Profile.Mapping {
+				version.BuildID = sample.Profile.StringTable[m.BuildId]
+				versionString, err := json.Marshal(version)
+				if err != nil {
+					return err
+				}
+				sample.Profile.StringTable = append(sample.Profile.StringTable, string(versionString))
+				m.BuildId = int64(len(sample.Profile.StringTable) - 1)
+			}
+		}
+	}
+	return nil
 }

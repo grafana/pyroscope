@@ -72,7 +72,7 @@
     "image": {
       "pullPolicy": "IfNotPresent",
       "repository": "grafana/pyroscope",
-      "tag": "1.2.1"
+      "tag": "1.3.0"
     },
     "imagePullSecrets": [],
     "initContainers": [],
@@ -128,5 +128,19 @@
     "structuredConfig": {},
     "tenantOverrides": {},
     "tolerations": []
+  },
+  "serviceMonitor": {
+    "annotations": {},
+    "enabled": false,
+    "interval": null,
+    "labels": {},
+    "matchExpressions": [],
+    "metricRelabelings": [],
+    "namespaceSelector": {},
+    "relabelings": [],
+    "scheme": "http",
+    "scrapeTimeout": null,
+    "targetLabels": [],
+    "tlsConfig": null
   }
 }

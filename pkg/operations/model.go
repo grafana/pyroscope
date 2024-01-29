@@ -47,29 +47,31 @@ func readQuery(r *http.Request) *blockQuery {
 }
 
 type blockDetails struct {
-	ID               string
-	MinTime          string
-	MaxTime          string
-	Duration         int
-	UploadedAt       string
-	CompactorShardID string
-	CompactionLevel  int
-	Size             string
-	Stats            block.BlockStats
-	Labels           map[string]string
+	ID                string
+	MinTime           string
+	MaxTime           string
+	Duration          int
+	FormattedDuration string
+	UploadedAt        string
+	CompactorShardID  string
+	CompactionLevel   int
+	Size              string
+	Stats             block.BlockStats
+	Labels            map[string]string
 }
 
 type blockGroup struct {
-	MinTime          time.Time
-	FormattedMinTime string
-	Blocks           []*blockDetails
-	MinTimeAge       string
+	MinTime                 time.Time
+	FormattedMinTime        string
+	Blocks                  []*blockDetails
+	MinTimeAge              string
+	MaxBlockDurationMinutes int
 }
 
 type blockListResult struct {
-	BlockGroups       []*blockGroup
-	MaxBlocksPerGroup int
-	GroupDuration     int
+	BlockGroups          []*blockGroup
+	MaxBlocksPerGroup    int
+	GroupDurationMinutes int
 }
 
 // Sorts a slice of block groups by MinTime in descending order.

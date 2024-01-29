@@ -144,6 +144,7 @@ func Test_filterAndGroupBlocks(t *testing.T) {
 	block2 := &bucketindex.Block{ID: ulid.MustNew(2, nil), MinTime: model.Now().Add(-4 * time.Hour), MaxTime: model.Now().Add(-3 * time.Hour)}
 	block3 := &bucketindex.Block{ID: ulid.MustNew(3, nil), MinTime: model.Now().Add(-4*time.Hour + time.Minute), MaxTime: model.Now().Add(-3 * time.Hour)}
 	block4 := &bucketindex.Block{ID: ulid.MustNew(4, nil), MinTime: model.Now().Add(-12 * time.Hour), MaxTime: model.Now().Add(-10 * time.Hour)}
+	h := &Handlers{MaxBlockDuration: time.Hour}
 
 	type args struct {
 		index *bucketindex.Index
@@ -163,8 +164,8 @@ func Test_filterAndGroupBlocks(t *testing.T) {
 					BlockDeletionMarks: bucketindex.BlockDeletionMarks{},
 				}, query: &blockQuery{}},
 			want: &blockListResult{
-				BlockGroups:   []*blockGroup{},
-				GroupDuration: 60,
+				BlockGroups:          []*blockGroup{},
+				GroupDurationMinutes: 0,
 			},
 		},
 		{
@@ -184,35 +185,38 @@ func Test_filterAndGroupBlocks(t *testing.T) {
 				// block 4 is not included because it is outside the query window
 				BlockGroups: []*blockGroup{
 					{
-						MinTime:          block2.MinTime.Time().UTC(),
-						FormattedMinTime: block2.MinTime.Time().UTC().Format(time.RFC3339),
+						MinTime:          block2.MinTime.Time().Truncate(time.Hour).UTC(),
+						FormattedMinTime: block2.MinTime.Time().Truncate(time.Hour).UTC().Format(time.RFC3339),
 						Blocks: []*blockDetails{
 							{
-								ID:         block3.ID.String(), // block 3 is newer so it goes first
-								MinTime:    block3.MinTime.Time().UTC().Format(time.RFC3339),
-								MaxTime:    block3.MaxTime.Time().UTC().Format(time.RFC3339),
-								Duration:   59,
-								UploadedAt: time.UnixMilli(0).UTC().Format(time.RFC3339),
+								ID:                block3.ID.String(), // block 3 is newer so it goes first
+								MinTime:           block3.MinTime.Time().UTC().Format(time.RFC3339),
+								MaxTime:           block3.MaxTime.Time().UTC().Format(time.RFC3339),
+								Duration:          59,
+								FormattedDuration: "59m0s",
+								UploadedAt:        time.UnixMilli(0).UTC().Format(time.RFC3339),
 							},
 							{
-								ID:         block2.ID.String(),
-								MinTime:    block2.MinTime.Time().UTC().Format(time.RFC3339),
-								MaxTime:    block2.MaxTime.Time().UTC().Format(time.RFC3339),
-								Duration:   60,
-								UploadedAt: time.UnixMilli(0).UTC().Format(time.RFC3339),
+								ID:                block2.ID.String(),
+								MinTime:           block2.MinTime.Time().UTC().Format(time.RFC3339),
+								MaxTime:           block2.MaxTime.Time().UTC().Format(time.RFC3339),
+								Duration:          60,
+								FormattedDuration: "1h0m0s",
+								UploadedAt:        time.UnixMilli(0).UTC().Format(time.RFC3339),
 							},
 						},
-						MinTimeAge: "4 hours ago",
+						MinTimeAge:              "4 hours ago",
+						MaxBlockDurationMinutes: 60,
 					},
 				},
-				GroupDuration:     60,
-				MaxBlocksPerGroup: 2,
+				GroupDurationMinutes: 60,
+				MaxBlocksPerGroup:    2,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, filterAndGroupBlocks(tt.args.index, tt.args.query), "filterAndGroupBlocks(%v, %v)", tt.args.index, tt.args.query)
+			assert.Equalf(t, tt.want, h.filterAndGroupBlocks(tt.args.index, tt.args.query), "filterAndGroupBlocks(%v, %v)", tt.args.index, tt.args.query)
 		})
 	}
 }

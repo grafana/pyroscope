@@ -1,0 +1,69 @@
+{{- if .Values.serviceMonitor.enabled }}
+{{- $global := . }}
+{{- $serviceMonitor := .Values.serviceMonitor }}
+{{- range $component, $cfg := (fromYaml (include "pyroscope.components" .)) }}
+{{- with $global }}
+{{-  $values := mustMergeOverwrite (deepCopy .Values.pyroscope ) ($cfg | default dict)}}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $cfg.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pyroscope.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component | quote }}
+    {{- with $serviceMonitor.labels }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $serviceMonitor.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $serviceMonitor.namespaceSelector }}
+  namespaceSelector:
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "pyroscope.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $component | quote }}
+    matchExpressions:
+      - key: prometheus.io/service-monitor
+        operator: NotIn
+        values:
+          - "false"
+    {{- with $serviceMonitor.matchExpressions }}
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  endpoints:
+    - port: {{ $values.service.port_name }}
+      {{- with $serviceMonitor.interval }}
+      interval: {{ . }}
+      {{- end }}
+      {{- with $serviceMonitor.scrapeTimeout }}
+      scrapeTimeout: {{ . }}
+      {{- end }}
+      {{- with $serviceMonitor.relabelings }}
+      relabelings:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $serviceMonitor.metricRelabelings }}
+      metricRelabelings:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $serviceMonitor.scheme }}
+      scheme: {{ . }}
+      {{- end }}
+      {{- with $serviceMonitor.tlsConfig }}
+      tlsConfig:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- with $serviceMonitor.targetLabels }}
+  targetLabels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

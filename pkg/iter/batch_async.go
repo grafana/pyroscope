@@ -81,6 +81,9 @@ func (x *AsyncBatchIterator[T, N]) loadBatch() bool {
 	var b batch[N]
 	select {
 	case b = <-x.c:
+		if b.done != nil {
+			defer close(b.done)
+		}
 	case <-x.done:
 	}
 	if len(b.buffered) == 0 {
@@ -91,7 +94,6 @@ func (x *AsyncBatchIterator[T, N]) loadBatch() bool {
 	// immediately start filling the buffer.
 	x.buffered, x.batch = x.batch, b.buffered
 	x.idx = -1
-	close(b.done)
 	return true
 }
 

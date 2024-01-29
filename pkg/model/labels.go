@@ -22,17 +22,20 @@ import (
 var seps = []byte{'\xff'}
 
 const (
-	LabelNameProfileType  = "__profile_type__"
-	LabelNameType         = "__type__"
-	LabelNameUnit         = "__unit__"
-	LabelNamePeriodType   = "__period_type__"
-	LabelNamePeriodUnit   = "__period_unit__"
-	LabelNameDelta        = "__delta__"
-	LabelNameProfileName  = pmodel.MetricNameLabel
-	LabelNameServiceName  = "service_name"
-	LabelNamePyroscopeSpy = "pyroscope_spy"
-	LabelNameSessionID    = "__session_id__"
+	LabelNameProfileType = "__profile_type__"
+	LabelNameType        = "__type__"
+	LabelNameUnit        = "__unit__"
+	LabelNamePeriodType  = "__period_type__"
+	LabelNamePeriodUnit  = "__period_unit__"
+	LabelNameDelta       = "__delta__"
+	LabelNameProfileName = pmodel.MetricNameLabel
+	LabelNameSessionID   = "__session_id__"
 
+	LabelNameServiceName       = "service_name"
+	LabelNameServiceRepository = "service_repository"
+	LabelNameServiceGitRef     = "service_git_ref"
+
+	LabelNamePyroscopeSpy   = "pyroscope_spy"
 	LabelNameServiceNameK8s = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
 
 	labelSep = '\xfe'
@@ -445,4 +448,21 @@ func ParseSessionID(s string) (SessionID, error) {
 		return 0, err
 	}
 	return SessionID(binary.LittleEndian.Uint64(b[:])), nil
+}
+
+type ServiceVersion struct {
+	Repository string `json:"repository,omitempty"`
+	GitRef     string `json:"git_ref,omitempty"`
+	BuildID    string `json:"build_id,omitempty"`
+}
+
+// ServiceVersionFromLabels Attempts to extract a service version from the given labels.
+// Returns false if no service version was found.
+func ServiceVersionFromLabels(lbls Labels) (ServiceVersion, bool) {
+	repo := lbls.Get(LabelNameServiceRepository)
+	gitref := lbls.Get(LabelNameServiceGitRef)
+	return ServiceVersion{
+		Repository: repo,
+		GitRef:     gitref,
+	}, repo != "" || gitref != ""
 }

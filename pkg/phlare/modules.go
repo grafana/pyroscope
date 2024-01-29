@@ -31,6 +31,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
+	"github.com/grafana/pyroscope/pkg/adhocprofiles"
 	apiversion "github.com/grafana/pyroscope/pkg/api/version"
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
@@ -75,6 +76,7 @@ const (
 	Compactor         string = "compactor"
 	Admin             string = "admin"
 	TenantSettings    string = "tenant-settings"
+	AdHocProfiles     string = "ad-hoc-profiles"
 
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
 	// IndexGateway             string = "index-gateway"
@@ -156,6 +158,17 @@ func (f *Phlare) initTenantSettings() (services.Service, error) {
 
 	f.API.RegisterTenantSettings(settings)
 	return settings, nil
+}
+
+func (f *Phlare) initAdHocProfiles() (services.Service, error) {
+	if f.storageBucket == nil {
+		level.Warn(f.logger).Log("msg", "no storage bucket configured, ad hoc profiles will not be loaded")
+		return nil, nil
+	}
+
+	a := adhocprofiles.NewAdHocProfiles(f.storageBucket, f.logger, f.Overrides)
+	f.API.RegisterAdHocProfiles(a)
+	return a, nil
 }
 
 func (f *Phlare) initOverrides() (serv services.Service, err error) {
@@ -527,7 +540,7 @@ func (f *Phlare) initAdmin() (services.Service, error) {
 		return nil, nil
 	}
 
-	a, err := operations.NewAdmin(f.storageBucket, f.logger)
+	a, err := operations.NewAdmin(f.storageBucket, f.logger, f.Cfg.PhlareDB.MaxBlockDuration)
 	if err != nil {
 		level.Info(f.logger).Log("msg", "failed to initialize admin", "err", err)
 		return nil, nil

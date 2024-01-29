@@ -287,12 +287,12 @@ func (m *StackTraceSelector) CloneVT() *StackTraceSelector {
 		return (*StackTraceSelector)(nil)
 	}
 	r := &StackTraceSelector{}
-	if rhs := m.StackTrace; rhs != nil {
+	if rhs := m.SubtreeRoot; rhs != nil {
 		tmpContainer := make([]*Location, len(rhs))
 		for k, v := range rhs {
 			tmpContainer[k] = v.CloneVT()
 		}
-		r.StackTrace = tmpContainer
+		r.SubtreeRoot = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -687,11 +687,11 @@ func (this *StackTraceSelector) EqualVT(that *StackTraceSelector) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if len(this.StackTrace) != len(that.StackTrace) {
+	if len(this.SubtreeRoot) != len(that.SubtreeRoot) {
 		return false
 	}
-	for i, vx := range this.StackTrace {
-		vy := that.StackTrace[i]
+	for i, vx := range this.SubtreeRoot {
+		vy := that.SubtreeRoot[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
 				p = &Location{}
@@ -1354,9 +1354,9 @@ func (m *StackTraceSelector) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.StackTrace) > 0 {
-		for iNdEx := len(m.StackTrace) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.StackTrace[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+	if len(m.SubtreeRoot) > 0 {
+		for iNdEx := len(m.SubtreeRoot) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.SubtreeRoot[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -1667,8 +1667,8 @@ func (m *StackTraceSelector) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if len(m.StackTrace) > 0 {
-		for _, e := range m.StackTrace {
+	if len(m.SubtreeRoot) > 0 {
+		for _, e := range m.SubtreeRoot {
 			l = e.SizeVT()
 			n += 1 + l + sov(uint64(l))
 		}
@@ -3136,7 +3136,7 @@ func (m *StackTraceSelector) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field StackTrace", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field SubtreeRoot", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3163,8 +3163,8 @@ func (m *StackTraceSelector) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.StackTrace = append(m.StackTrace, &Location{})
-			if err := m.StackTrace[len(m.StackTrace)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			m.SubtreeRoot = append(m.SubtreeRoot, &Location{})
+			if err := m.SubtreeRoot[len(m.SubtreeRoot)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
