@@ -11,6 +11,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+// StdPackages returns a map of all standard packages for the given version.
 func StdPackages(version string) (map[string]struct{}, error) {
 	if version != "" {
 		version = "@go" + version
