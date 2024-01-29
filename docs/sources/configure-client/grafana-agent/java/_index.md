@@ -72,10 +72,11 @@ see [profiler-options](https://github.com/async-profiler/async-profiler?tab=read
 You must run the agent as root and inside host pid namespace for the `pyroscope.java`
 and `discover.process` components to work.
 
-### Send data Grafana Cloud Profiles
+### Send data to Grafana Cloud Profiles
 
-When sending to Grafana Cloud Profiles, you can use the following `pyroscope.write` component configuration which makes
-uses of environment variables:
+When sending to Grafana Cloud Profiles, you can use the following `pyroscope.write` component configuration which uses environment variables. 
+
+Ensure that you have appropriately configured the `GC_URL`, `GC_USER`, and `GC_PASSWORD` environment variables.
 
 ```river
 pyroscope.write "endpoint" {
