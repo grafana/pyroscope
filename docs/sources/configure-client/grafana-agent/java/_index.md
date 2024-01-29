@@ -7,8 +7,8 @@ weight: 20
 
 # Profiling Java via the Grafana Agent
 
-Grafana Agent supports Java profiling in [Flow mode](/docs/agent/latest/flow/). The configuration file is written in
-the [River](/docs/agent/latest/flow/config-language/) language and is composed of components that are used to collect,
+Grafana Agent supports Java profiling in [Flow mode](/docs/agent/latest/flow/). Written in the
+[River](/docs/agent/latest/flow/config-language/) language, the configuration file is composed of components that are used to collect,
 transform, and send data.
 
 ## Configuration
