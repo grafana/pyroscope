@@ -65,7 +65,7 @@ The following arguments are supported:
 | `lock`        | `string`   | Lock profiling sampling configuration. It is passed as `--lock` arg to async-profiler.                   | "10ms"  | no       |
 
 For more information on async-profiler configuration,
-see [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options)
+see [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options).
 
 ### Privileges
 
