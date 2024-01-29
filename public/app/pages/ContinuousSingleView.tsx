@@ -36,6 +36,7 @@ import { isLoadingOrReloading } from './loading';
 import { Panel } from '@pyroscope/components/Panel';
 import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
 import { FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
+import { formatAsOBject } from '@pyroscope/util/formatDate';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -59,11 +60,19 @@ function ContinuousSingleView() {
     return undefined;
   }, [from, until, query, refreshToken, maxNodes, dispatch]);
 
+  const start: number = formatAsOBject(from).getTime();
+  const end: number = formatAsOBject(until).getTime();
+
   const flamegraphRenderer = (() => {
     switch (singleView.type) {
       case 'loaded':
       case 'reloading': {
-        return <FlameGraphWrapper profile={singleView.profile} />;
+        return <FlameGraphWrapper
+          profile={singleView.profile}
+          query={query}
+          start={start}
+          end={end}
+        />;
       }
 
       default: {

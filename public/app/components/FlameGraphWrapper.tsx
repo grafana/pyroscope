@@ -24,6 +24,9 @@ type Props = {
   sharedQuery?: SharedQuery;
   timelineEl?: React.ReactNode;
   diff?: boolean;
+  query?: string;
+  start?: number;
+  end?: number;
 };
 
 export function FlameGraphWrapper(props: Props) {
