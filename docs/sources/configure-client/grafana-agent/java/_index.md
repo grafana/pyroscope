@@ -33,7 +33,7 @@ pyroscope.java "java" {
 Using the `targets` argument, you can specify which processes and containers to profile on the machine. The `targets`
 can be from `discovery.process` component. You can use `discovery.process` join argument to join process targets with
 extra discoveries such as `dicovery.kubernetes`, `discovery.docker` and `discovery.dockerswarm`.
-To relabel discovered targets and set your own labels you can use the `discovery.relabel` component. For more
+You can use the `discovery.relabel` component to relabel discovered targets and set your own labels . For more
 information, see [Components](/docs/agent/latest/flow/concepts/components/).
 
 The `forward_to` parameter should point to a `pyroscope.write` component to send the collected profiles to your
