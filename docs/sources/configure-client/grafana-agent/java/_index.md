@@ -1,6 +1,6 @@
 ---
-title: "Profiling Java via the Grafana Agent"
-menuTitle: "Profiling Java via the Grafana Agent"
+title: "Profiling Java using the Grafana Agent"
+menuTitle: "Profiling Java using the Grafana Agent"
 description: "Learn about using Grafana Agent for continuous profiling Java processes for performance optimization."
 weight: 20
 ---
