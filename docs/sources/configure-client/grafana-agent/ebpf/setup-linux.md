@@ -62,10 +62,23 @@ We're [working on a more flexible configuration](https://github.com/grafana/agen
 Create a file named `agent.river` with the following content:
 
 ```river
+discovery.process "all" {
+
+}
+
+discovery.relabel "agent" {
+    targets = discovery.process.all.targets
+    // Filter needed processes
+    rule {
+        source_labels = ["__meta_process_exe"]
+        regex = ".*/grafana-agent"
+        action = "keep"
+    }
+}
+
 pyroscope.ebpf "instance" {
  forward_to     = [pyroscope.write.endpoint.receiver]
- targets_only   = false
- default_target = {"service_name" = "local"}
+ targets = discovery.relabel.agent.targets
 }
 
 pyroscope.scrape "local" {
@@ -124,3 +137,4 @@ To verify that the profiles are received by the Pyroscope server, go to the Pyro
 [pyroscope-ds]: /docs/grafana/latest/datasources/grafana-pyroscope/
 [config-reference]: ../configuration/
 [gcloud]: /products/cloud/
+[discovery.process](/docs/agent/next/flow/reference/components/discovery.process/)

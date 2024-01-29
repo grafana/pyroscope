@@ -7,7 +7,7 @@ services:
       - '4040:4040'
 
   app:
-    image: 'grafana/agent:latest'
+    image: 'grafana/agent:main'
     user: root
     privileged: true
     pid: 'host'

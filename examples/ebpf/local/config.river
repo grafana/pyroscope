@@ -1,0 +1,54 @@
+
+// discovery.process produces targets with the following labels:`
+// "__process_pid__"
+// "__meta_process_exe"
+// "__meta_process_cwd"
+// "__meta_process_commandline"
+// "__meta_process_username"
+// "__meta_process_uid"
+// "__container_id__"
+// See reference doc for more info https://grafana.com/docs/agent/next/flow/reference/components/discovery.process/
+
+discovery.process "all" {
+
+}
+
+discovery.relabel "agent" {
+    targets = discovery.process.all.targets
+    // Filter needed processes
+    rule {
+        source_labels = ["__meta_process_exe"]
+        regex = ".*/grafana-agent"
+        action = "keep"
+    }
+     // provide arbitrary service_name label, otherwise it will be "unspecified"
+    rule {
+        source_labels = ["__meta_process_exe"]
+        target_label = "service_name"
+        regex = ".*/grafana-agent"
+        action = "replace"
+        replacement = "ebpf/local/grafana-agent"
+    }
+}
+
+
+pyroscope.ebpf "instance" {
+  forward_to = [pyroscope.write.endpoint.receiver]
+  targets = concat(
+    discovery.relabel.agent.output,
+    [{"__process_pid__" = "1", "service_name" = "ebpf/local/init"}],
+  )
+}
+
+
+pyroscope.write "endpoint" {
+  endpoint {
+    url = "http://pyroscope:4040"
+    // url = "<Grafana Cloud URL>"
+    // basic_auth {
+    //  username = "<Grafana Cloud User>"
+    //  password = "<Grafana Cloud Password>"
+    // }
+  }
+}
+
