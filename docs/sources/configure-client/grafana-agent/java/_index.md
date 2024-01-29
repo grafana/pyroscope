@@ -258,8 +258,9 @@ pyroscope.write "example" {
 ```
 
 ## References
+For more information: 
 
-[Examples](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent/java)
-[pyroscope.java](/docs/agent/next/flow/reference/components/pyroscope.java/)
-[discovery.process](/docs/agent/next/flow/reference/components/discovery.process/)
-[discovery.kubernetes](/docs/agent/next/flow/reference/components/discovery.kubernetes/)
+* [Examples](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent/java)
+* [`pyroscope.java`](/docs/agent/next/flow/reference/components/pyroscope.java/)
+* [`discovery.process`](/docs/agent/next/flow/reference/components/discovery.process/)
+* [`discovery.kubernetes`](/docs/agent/next/flow/reference/components/discovery.kubernetes/)
