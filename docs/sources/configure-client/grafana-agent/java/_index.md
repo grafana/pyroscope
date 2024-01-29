@@ -48,8 +48,8 @@ Pyroscope Server or [Grafana Cloud](/products/cloud/).
 The special label `__process_pid__` _must always_ be present in each target of `targets` and corresponds to the `PID` of
 the process to profile.
 
-The special label `service_name` is required and must always be present. If it is not specified, `pyroscope.java` will
-attempt to infer it from discovery meta labels. If `service_name` is not specified and could not be inferred, then it is
+The special label `service_name` is required and must always be present. If `service_name` is not specified, `pyroscope.java`
+attempts to infer it from discovery meta labels. If `service_name` is not specified and could not be inferred, then it is
 set to `unspecified`.
 
 The `profiling_config` block describes how async-profiler is invoked.
