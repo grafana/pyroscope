@@ -90,7 +90,6 @@ pyroscope.write "endpoint" {
 }
 ```
 
-Ensure that you have appropriately configured the `GC_URL`, `GC_USER`, and `GC_PASSWORD` environment variables.
 
 ## Examples
 
