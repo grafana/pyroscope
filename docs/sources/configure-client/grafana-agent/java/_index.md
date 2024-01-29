@@ -67,7 +67,7 @@ The following arguments are supported:
 For more information on async-profiler configuration,
 see [profiler-options](https://github.com/async-profiler/async-profiler?tab=readme-ov-file#profiler-options).
 
-### Privileges
+### Set privileges for the Agent
 
 You must run the agent as root and inside host pid namespace for the `pyroscope.java`
 and `discover.process` components to work.
