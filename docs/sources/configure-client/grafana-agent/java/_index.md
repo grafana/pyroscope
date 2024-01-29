@@ -5,7 +5,7 @@ description: "Learn about using Grafana Agent for continuous profiling Java proc
 weight: 20
 ---
 
-# Profiling Java via the Grafana Agent
+# Profiling Java using the Grafana Agent
 
 Grafana Agent supports Java profiling in [Flow mode](/docs/agent/latest/flow/). Written in the
 [River](/docs/agent/latest/flow/config-language/) language, the configuration file is composed of components that are used to collect,
