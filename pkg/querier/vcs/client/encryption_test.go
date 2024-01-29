@@ -14,7 +14,7 @@ func TestEncodeOAuth(t *testing.T) {
 		AccessToken:  "a1b2c3d4e5f6",
 		TokenType:    "access_token",
 		RefreshToken: "a1b2c3d4e5f6",
-		Expiry:       time.Unix(200, 0),
+		Expiry:       time.Unix(200, 0).UTC(),
 	}
 	enc, err := encryptToken(token, key)
 	require.NoError(t, err)
