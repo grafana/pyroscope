@@ -69,7 +69,7 @@ see [profiler-options](https://github.com/async-profiler/async-profiler?tab=read
 
 ### Privileges
 
-You are required to run the agent as root and inside host pid namespace in order to `pyroscope.java`
+You must run the agent as root and inside host pid namespace for the `pyroscope.java`
 and `discover.process` components to work.
 
 ### Send data Grafana Cloud Profiles
