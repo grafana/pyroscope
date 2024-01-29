@@ -11,7 +11,7 @@ Grafana Agent supports Java profiling in [Flow mode](/docs/agent/latest/flow/). 
 [River](/docs/agent/latest/flow/config-language/) language, the configuration file is composed of components that are used to collect,
 transform, and send data.
 
-## Configuration
+## Configure the components
 
 The `pyroscope.java` component is used to continuously profile Java processes running on the local Linux OS
 using [async-profiler](https://github.com/async-profiler/async-profiler).
