@@ -17,7 +17,9 @@ message GithubLoginRequest {
   string authorizationCode = 1;
 }
 
-message GithubLoginResponse {}
+message GithubLoginResponse {
+  string cookie = 1;
+}
 
 message GetFileRequest {
   // the full path to the repository

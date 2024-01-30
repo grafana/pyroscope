@@ -37,9 +37,11 @@ func (q *Service) GithubApp(ctx context.Context, req *connect.Request[vcsv1.Gith
 
 func (q *Service) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.GithubLoginRequest]) (*connect.Response[vcsv1.GithubLoginResponse], error) {
 	resp := connect.NewResponse(&vcsv1.GithubLoginResponse{})
-	if err := client.AuthorizeGithub(ctx, req.Msg.AuthorizationCode, resp.Header()); err != nil {
+	cookie, err := client.AuthorizeGithub(ctx, req.Msg.AuthorizationCode)
+	if err != nil {
 		return nil, fmt.Errorf("failed to authorize github: %w", err)
 	}
+	resp.Msg.Cookie = cookie
 	return resp, nil
 }
 

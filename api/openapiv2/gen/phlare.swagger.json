@@ -696,7 +696,12 @@
       }
     },
     "v1GithubLoginResponse": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "cookie": {
+          "type": "string"
+        }
+      }
     },
     "v1Hints": {
       "type": "object",

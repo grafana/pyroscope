@@ -70,18 +70,18 @@ func unAuthorizeError(err error, cookie *http.Cookie) error {
 	return connectErr
 }
 
-func AuthorizeGithub(ctx context.Context, authorizationCode string, responseHeaders http.Header) error {
+func AuthorizeGithub(ctx context.Context, authorizationCode string) (string, error) {
 	auth, err := githubOAuth()
 	if err != nil {
-		return err
+		return "", err
 	}
 	token, err := auth.Exchange(ctx, authorizationCode)
 	if err != nil {
-		return err
+		return "", err
 	}
 	cookieValue, err := encryptToken(token, githubSessionSecret)
 	if err != nil {
-		return err
+		return "", err
 	}
 	// Sets a cookie with the encrypted token.
 	// Only the server can decrypt the cookie.
@@ -90,12 +90,12 @@ func AuthorizeGithub(ctx context.Context, authorizationCode string, responseHead
 		Value: cookieValue,
 		// Refresh expiry is 6 months based on github docs
 		Expires:  time.Now().Add(15811200 * time.Second),
-		HttpOnly: true,
+		HttpOnly: false,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	}
-	responseHeaders.Add("Set-Cookie", cookie.String())
-	return nil
+	// responseHeaders.Add("Set-Cookie", cookie.String())
+	return cookie.String(), nil
 }
 
 type githubClient struct {
