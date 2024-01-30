@@ -74,10 +74,10 @@ enum TimeSeriesAggregationType {
 
 // StackTraceSelector is used for filtering stack traces by locations.
 message StackTraceSelector {
-  // Only stack traces that belong to the subtree (have the prefix provided)
-  // will be selected. If empty, the filter is ignored.
-  // Subtree root location is the last element.
-  repeated Location subtree_root = 1;
+  // Stack trace of the call site. Root at call_site[0].
+  // Only stack traces having the prefix provided will be selected.
+  // If empty, the filter is ignored.
+  repeated Location call_site = 1;
 }
 
 message Location {

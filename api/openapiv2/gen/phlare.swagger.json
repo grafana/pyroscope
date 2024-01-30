@@ -1040,12 +1040,12 @@
         "start": {
           "type": "string",
           "format": "int64",
-          "title": "milliseconds since epoch"
+          "description": "Milliseconds since epoch."
         },
         "end": {
           "type": "string",
           "format": "int64",
-          "title": "milliseconds since epoch"
+          "description": "Milliseconds since epoch."
         },
         "maxNodes": {
           "type": "string",
@@ -1195,13 +1195,13 @@
     "v1StackTraceSelector": {
       "type": "object",
       "properties": {
-        "subtreeRoot": {
+        "callSite": {
           "type": "array",
           "items": {
             "type": "object",
             "$ref": "#/definitions/typesv1Location"
           },
-          "description": "Only stack traces that belong to the subtree (have the prefix provided)\nwill be selected. If empty, the filter is ignored.\nSubtree root location is the last element."
+          "description": "Stack trace of the call site. Root at call_site[0].\nOnly stack traces having the prefix provided will be selected.\nIf empty, the filter is ignored."
         }
       },
       "description": "StackTraceSelector is used for filtering stack traces by locations."

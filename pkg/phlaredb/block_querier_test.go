@@ -1212,7 +1212,7 @@ func TestSelectMergeLabels(t *testing.T) {
 		},
 		Start: 0,
 		End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
-	}, "job")
+	}, nil, "job")
 	require.NoError(t, err)
 	expected := []*typesv1.Series{
 		{
@@ -1226,6 +1226,55 @@ func TestSelectMergeLabels(t *testing.T) {
 		{
 			Labels: phlaremodel.LabelsFromStrings("job", "c"),
 			Points: genPoints(5),
+		},
+	}
+	require.Equal(t, expected, merge)
+	require.NoError(t, querier.Close())
+}
+
+func TestSelectMergeLabels_StackTraceSelector(t *testing.T) {
+	ctx := context.Background()
+
+	querier := newBlock(t, func() (res []*testhelper.ProfileBuilder) {
+		for i := int64(1); i < 7; i++ {
+			// Keep in mind that leaf is at location[0].
+			res = append(res, testhelper.NewProfileBuilder(int64(time.Second)*i).
+				CPUProfile().
+				WithLabels("job", "a").
+				ForStacktraceString("foo").AddSamples(1).
+				ForStacktraceString("baz", "bar", "foo").AddSamples(1).
+				ForStacktraceString("baz", "foo").AddSamples(1),
+			)
+		}
+		return res
+	})
+
+	err := querier.Open(ctx)
+	require.NoError(t, err)
+
+	merge, err := querier.SelectMergeByLabels(ctx, &ingesterv1.SelectProfilesRequest{
+		LabelSelector: `{}`,
+		Type: &typesv1.ProfileType{
+			ID:         "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+			Name:       "process_cpu",
+			SampleType: "cpu",
+			SampleUnit: "nanoseconds",
+			PeriodType: "cpu",
+			PeriodUnit: "nanoseconds",
+		},
+		Start: 0,
+		End:   int64(model.TimeFromUnixNano(math.MaxInt64)),
+	}, &typesv1.StackTraceSelector{
+		CallSite: []*typesv1.Location{
+			{Name: "foo"},
+			{Name: "bar"},
+		},
+	}, "job")
+	require.NoError(t, err)
+	expected := []*typesv1.Series{
+		{
+			Labels: phlaremodel.LabelsFromStrings("job", "a"),
+			Points: genPoints(6),
 		},
 	}
 	require.Equal(t, expected, merge)

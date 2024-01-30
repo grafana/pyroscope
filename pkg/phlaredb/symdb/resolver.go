@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/log"
 	"github.com/parquet-go/parquet-go"
 	"golang.org/x/sync/errgroup"
 
@@ -32,7 +31,7 @@ type Resolver struct {
 	s SymbolsReader
 	g *errgroup.Group
 	c int
-	m sync.Mutex
+	m sync.RWMutex
 	p map[uint64]*lazyPartition
 
 	maxNodes int64
@@ -58,7 +57,7 @@ func WithResolverMaxNodes(n int64) ResolverOption {
 }
 
 // WithResolverStackTraceSelector specifies the stack trace selector.
-// Only stack traces that belong to the subtree (have the prefix provided)
+// Only stack traces that belong to the callSite (have the prefix provided)
 // will be selected. If empty, the filter is ignored.
 // Subtree root location is the last element.
 func WithResolverStackTraceSelector(sts *typesv1.StackTraceSelector) ResolverOption {
@@ -68,13 +67,26 @@ func WithResolverStackTraceSelector(sts *typesv1.StackTraceSelector) ResolverOpt
 }
 
 type lazyPartition struct {
+	id uint64
+
 	m       sync.Mutex
 	samples map[uint32]int64
 
-	id     uint64
-	reader chan PartitionReader
-	err    chan error
-	done   chan struct{}
+	fetchOnce sync.Once
+	resolver  *Resolver
+	reader    PartitionReader
+	selection *SelectedStackTraces
+	err       error
+}
+
+func (p *lazyPartition) fetch(ctx context.Context) error {
+	p.fetchOnce.Do(func() {
+		p.reader, p.err = p.resolver.s.Partition(ctx, p.id)
+		if p.err == nil && p.resolver.sts != nil {
+			p.selection = SelectStackTraces(p.reader.Symbols(), p.resolver.sts)
+		}
+	})
+	return p.err
 }
 
 func NewResolver(ctx context.Context, s SymbolsReader, opts ...ResolverOption) *Resolver {
@@ -94,8 +106,23 @@ func NewResolver(ctx context.Context, s SymbolsReader, opts ...ResolverOption) *
 
 func (r *Resolver) Release() {
 	r.cancel()
-	// The error is already sent to the caller.
-	_ = r.g.Wait()
+	// Wait for all partitions to be fetched / canceled.
+	if err := r.g.Wait(); err != nil {
+		r.span.SetTag("error", err)
+	}
+	// Release acquired partition readers.
+	var wg sync.WaitGroup
+	for _, p := range r.p {
+		wg.Add(1)
+		p := p
+		go func() {
+			defer wg.Done()
+			if p.reader != nil {
+				p.reader.Release()
+			}
+		}()
+	}
+	wg.Wait()
 	r.span.Finish()
 }
 
@@ -136,59 +163,56 @@ func (r *Resolver) WithPartitionSamples(partition uint64, fn func(map[uint32]int
 	fn(p.samples)
 }
 
+func (r *Resolver) CallSiteValues(values *CallSiteValues, partition uint64, samples schemav1.Samples) error {
+	p := r.partition(partition)
+	if err := p.fetch(r.ctx); err != nil {
+		return err
+	}
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.selection.CallSiteValues(values, samples)
+	return nil
+}
+
+func (r *Resolver) CallSiteValuesParquet(values *CallSiteValues, partition uint64, stacktraceID, value []parquet.Value) error {
+	p := r.partition(partition)
+	if err := p.fetch(r.ctx); err != nil {
+		return err
+	}
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.selection.CallSiteValuesParquet(values, stacktraceID, value)
+	return nil
+}
+
 func (r *Resolver) partition(partition uint64) *lazyPartition {
-	r.m.Lock()
+	r.m.RLock()
 	p, ok := r.p[partition]
+	if ok {
+		r.m.RUnlock()
+		return p
+	}
+	r.m.RUnlock()
+	r.m.Lock()
+	p, ok = r.p[partition]
 	if ok {
 		r.m.Unlock()
 		return p
 	}
 	p = &lazyPartition{
-		id:      partition,
-		samples: make(map[uint32]int64),
-		err:     make(chan error),
-		done:    make(chan struct{}),
-		reader:  make(chan PartitionReader, 1),
+		id:       partition,
+		samples:  make(map[uint32]int64),
+		resolver: r,
 	}
 	r.p[partition] = p
 	r.m.Unlock()
+	// Fetch partition in the background, not blocking the caller.
+	// p.reader must be accessed only after p.fetch returns.
 	r.g.Go(func() error {
-		return r.acquirePartition(p)
+		return p.fetch(r.ctx)
 	})
-	// r.g.Wait() is only called at Resolver.Release.
+	// r.g.Wait() is called at Resolver.Release.
 	return p
-}
-
-func (r *Resolver) acquirePartition(p *lazyPartition) error {
-	pr, err := r.s.Partition(r.ctx, p.id)
-	if err != nil {
-		r.span.LogFields(log.String("err", err.Error()))
-		select {
-		case <-r.ctx.Done():
-			return r.ctx.Err()
-		case p.err <- err:
-			// Signal the partition receiver
-			// about the failure, so it won't
-			// block and return early.
-			return err
-		}
-	}
-	// We've acquired the partition and must release it
-	// once resolution finished or canceled.
-	select {
-	case p.reader <- pr:
-		// We transferred ownership to the recipient,
-		// which is now responsible for releasing the
-		// partition.
-		<-p.done
-	case <-r.ctx.Done():
-		// We still own the partition and must release
-		// it on our own. It's guaranteed that p.c receiver
-		// has no access to the partition.
-		pr.Release()
-		return r.ctx.Err()
-	}
-	return nil
 }
 
 func (r *Resolver) Tree() (*model.Tree, error) {
@@ -215,7 +239,7 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 	var lock sync.Mutex
 	var p pprof.ProfileMerge
 	err := r.withSymbols(ctx, func(symbols *Symbols, samples schemav1.Samples) error {
-		resolved, err := symbols.Pprof(ctx, samples, r.maxNodes, r.sts)
+		resolved, err := symbols.Pprof(ctx, samples, r.maxNodes, SelectStackTraces(symbols, r.sts))
 		if err != nil {
 			return err
 		}
@@ -227,21 +251,16 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 }
 
 func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, schemav1.Samples) error) error {
-	g, ctx := errgroup.WithContext(ctx)
+	g, _ := errgroup.WithContext(ctx)
 	g.SetLimit(r.c)
 	for _, p := range r.p {
 		p := p
 		g.Go(func() error {
-			defer close(p.done)
-			select {
-			case err := <-p.err:
+			if err := p.fetch(ctx); err != nil {
 				return err
-			case <-ctx.Done():
-				return ctx.Err()
-			case pr := <-p.reader:
-				defer pr.Release()
-				return fn(pr.Symbols(), schemav1.NewSamplesFromMap(p.samples))
 			}
+			m := schemav1.NewSamplesFromMap(p.samples)
+			return fn(p.reader.Symbols(), m)
 		})
 	}
 	return g.Wait()
@@ -257,7 +276,7 @@ func (r *Symbols) Pprof(
 	ctx context.Context,
 	samples schemav1.Samples,
 	maxNodes int64,
-	sts *typesv1.StackTraceSelector,
+	selection *SelectedStackTraces,
 ) (*googlev1.Profile, error) {
 	// By default, we use a builder that's optimized
 	// for the simplest case: we take all the source
@@ -265,19 +284,17 @@ func (r *Symbols) Pprof(
 	var b pprofBuilder = new(pprofProtoSymbols)
 	// If a stack trace selector is specified,
 	// check if such a profile can exist at all.
-	var subtree []int32
-	if locs := sts.GetSubtreeRoot(); len(locs) > 0 {
-		if subtree = r.subtree(locs); len(subtree) == 0 {
-			return b.buildPprof(), nil
-		}
+	if !selection.IsValid() {
+		// Build an empty profile.
+		return b.buildPprof(), nil
 	}
 	// Truncation is applicable when there is an explicit
 	// limit on the number of the nodes in the profile, or
 	// if stack traces should be filtered.
-	if maxNodes > 0 || len(subtree) > 0 {
+	if maxNodes > 0 || len(selection.callSite) > 0 {
 		b = &pprofProtoTruncatedSymbols{
-			maxNodes: maxNodes,
-			subtree:  subtree,
+			maxNodes:  maxNodes,
+			selection: selection,
 		}
 	}
 	b.init(r, samples)
@@ -297,30 +314,34 @@ func (r *Symbols) Tree(ctx context.Context, samples schemav1.Samples) (*model.Tr
 	return t.tree, nil
 }
 
-func (r *Symbols) subtree(locations []*typesv1.Location) []int32 {
+// findCallSite returns the stack trace of the call site
+// where each element in the stack trace is represented by
+// the function ID. Call site is the last element.
+// TODO(kolesnikovae): Location should also include the line number.
+func findCallSite(symbols *Symbols, locations []*typesv1.Location) []uint32 {
 	if len(locations) == 0 {
 		return nil
 	}
-	m := make(map[string]int32, len(locations))
+	m := make(map[string]uint32, len(locations))
 	for _, loc := range locations {
 		m[loc.Name] = 0
 	}
-	c := len(locations)
-	for f := 0; f < len(r.Functions) && c > 0; f++ {
-		s := r.Strings[r.Functions[f].Name]
+	c := len(m) // Only count unique names.
+	for f := 0; f < len(symbols.Functions) && c > 0; f++ {
+		s := symbols.Strings[symbols.Functions[f].Name]
 		if _, ok := m[s]; ok {
 			// We assume that no functions have the same name.
 			// Otherwise, the last one takes precedence.
-			m[s] = int32(f)
+			m[s] = uint32(f) // f is FunctionId
 			c--
 		}
 	}
 	if c > 0 {
 		return nil
 	}
-	s := make([]int32, len(locations))
+	callSite := make([]uint32, len(locations))
 	for i, loc := range locations {
-		s[i] = m[loc.Name]
+		callSite[i] = m[loc.Name]
 	}
-	return s
+	return callSite
 }
