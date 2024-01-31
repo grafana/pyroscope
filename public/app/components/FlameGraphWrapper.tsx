@@ -16,14 +16,14 @@ import {
 } from '@pyroscope/util/features';
 
 import { flamebearerToDataFrameDTO } from '@pyroscope/util/flamebearer';
-import { Line } from './Code';
+import { CodeProps } from './Code';
 
 export type DrawerState = {
   gitRef: string;
   repository: string;
   filename: string;
   functionName: string;
-  lines: Line[];
+  code: CodeProps;
 };
 
 type Props = {
