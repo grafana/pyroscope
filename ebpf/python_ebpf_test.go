@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/pyroscope/ebpf/metrics"
+	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/sd"
 	"github.com/grafana/pyroscope/ebpf/symtab"
 	"github.com/grafana/pyroscope/ebpf/testutil"
@@ -89,12 +90,12 @@ func compareProfiles(t *testing.T, l log.Logger, expected []byte, actual map[str
 func collectProfiles(t *testing.T, l log.Logger, profiler Session) map[string]struct{} {
 	l = log.With(l, "component", "profiles")
 	profiles := map[string]struct{}{}
-	err := profiler.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32, _ SampleAggregation) {
-		lo.Reverse(stack)
-		sample := strings.Join(stack, ";")
+	err := profiler.CollectProfiles(func(ps pprof.ProfileSample) {
+		lo.Reverse(ps.Stack)
+		sample := strings.Join(ps.Stack, ";")
 		profiles[sample] = struct{}{}
-		_ = l.Log("target", target.String(),
-			"pid", pid,
+		_ = l.Log("target", ps.Target.String(),
+			"pid", ps.Pid,
 			"stack", sample)
 	})
 	require.NoError(t, err)

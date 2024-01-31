@@ -20,15 +20,12 @@ type SymbolCache struct {
 	kallsyms *SymbolTab
 	logger   log.Logger
 
-	//options CacheOptions
-
 	metrics *metrics.SymtabMetrics
 }
 type CacheOptions struct {
 	PidCacheOptions      GCacheOptions
 	BuildIDCacheOptions  GCacheOptions
 	SameFileCacheOptions GCacheOptions
-	//SymbolOptions        SymbolOptions
 }
 
 func NewSymbolCache(logger log.Logger, options CacheOptions, metrics *metrics.SymtabMetrics) (*SymbolCache, error) {
