@@ -35,7 +35,10 @@ import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuit
 import { isLoadingOrReloading } from './loading';
 import { Panel } from '@pyroscope/components/Panel';
 import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
-import { DrawerState, FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
+import {
+  DrawerState,
+  FlameGraphWrapper,
+} from '@pyroscope/components/FlameGraphWrapper';
 import { formatAsOBject } from '@pyroscope/util/formatDate';
 import styles from './ContinuousSingleView.module.scss';
 import { Box, Card, IconButton, InlineField, InlineLabel } from '@grafana/ui';
@@ -66,19 +69,23 @@ function ContinuousSingleView() {
   const start: number = formatAsOBject(from).getTime();
   const end: number = formatAsOBject(until).getTime();
 
-  const [drawerState, setDrawerState] = useState<DrawerState | undefined>(undefined);
+  const [drawerState, setDrawerState] = useState<DrawerState | undefined>(
+    undefined
+  );
 
   const flamegraphRenderer = (() => {
     switch (singleView.type) {
       case 'loaded':
       case 'reloading': {
-        return <FlameGraphWrapper
-          profile={singleView.profile}
-          query={query}
-          start={start}
-          end={end}
-          setDrawerState={setDrawerState}
-        />;
+        return (
+          <FlameGraphWrapper
+            profile={singleView.profile}
+            query={query}
+            start={start}
+            end={end}
+            setDrawerState={setDrawerState}
+          />
+        );
       }
 
       default: {
@@ -181,7 +188,10 @@ function ContinuousSingleView() {
           />
         </Panel>
         <div className={styles.container}>
-          <Panel isLoading={isLoadingOrReloading([singleView.type])} className={styles.flamegraphContainer}>
+          <Panel
+            isLoading={isLoadingOrReloading([singleView.type])}
+            className={styles.flamegraphContainer}
+          >
             {flamegraphRenderer}
           </Panel>
           {drawerState && (
@@ -190,56 +200,64 @@ function ContinuousSingleView() {
               className={styles.codeContainer}
               title="Function Details"
               headerActions={
-                <IconButton name="times-circle" variant="secondary" aria-label="close" />
-              }>
-               <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                >
-                  <InlineLabel width="auto"> Repository</InlineLabel>
-                  <span>{drawerState.repository}</span>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    paddingTop: '0.5rem',
-                  }}
-                >
-                  <InlineLabel width="auto"> Commit</InlineLabel>
-                  <span>{drawerState.gitRef}</span>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    paddingTop: '0.5rem',
-                  }}
-                >
-                  <InlineLabel width="auto">File</InlineLabel>
-                  <span>{drawerState.filename}</span>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    paddingTop: '0.5rem',
-                  }}
-                >
-                  <InlineLabel width="auto">Function name</InlineLabel>
-                  <span>{drawerState.functionName}</span>
-                </div>
+                <IconButton
+                  name="times-circle"
+                  variant="secondary"
+                  aria-label="close"
+                />
+              }
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <InlineLabel width="auto"> Repository</InlineLabel>
+                <span>{drawerState.repository}</span>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  paddingTop: '0.5rem',
+                }}
+              >
+                <InlineLabel width="auto"> Commit</InlineLabel>
+                <span>{drawerState.gitRef}</span>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  paddingTop: '0.5rem',
+                }}
+              >
+                <InlineLabel width="auto">File</InlineLabel>
+                <span>{drawerState.filename}</span>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  paddingTop: '0.5rem',
+                }}
+              >
+                <InlineLabel width="auto">Function name</InlineLabel>
+                <span>{drawerState.functionName}</span>
+              </div>
 
-                <InlineLabel
-                  style={{
-                    marginBottom: '0.5rem',
-                  }}
-                >
-                  Breakdown per lines:
-                </InlineLabel>
-                <Code lines={drawerState.lines}></Code>
+              <InlineLabel
+                style={{
+                  marginBottom: '0.5rem',
+                }}
+              >
+                Breakdown per lines:
+              </InlineLabel>
+              <Code
+                lines={drawerState.code.lines}
+                unit={drawerState.code.unit}
+              ></Code>
             </Panel>
           )}
         </div>

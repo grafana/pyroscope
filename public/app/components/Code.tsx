@@ -1,6 +1,8 @@
+import { getValueFormat, ValueFormatter } from '@grafana/data';
 import React from 'react';
 
-type CodeProps = {
+export type CodeProps = {
+  unit: string;
   lines: Line[];
 };
 
@@ -11,19 +13,23 @@ export type Line = {
   flat: number;
 };
 
-function fmtNumber(n: number): string {
-  if (n === 0) {
-    return '           .';
-  }
-  if (`${n}`.length <= 13) {
-    return `${n}`.padStart(12, ' ');
-  }
-  return n.toString();
-}
-
-const Code = ({ lines }: CodeProps) => {
+const Code = ({ lines, unit }: CodeProps) => {
   const totalSelf = lines.reduce((acc, { flat }) => acc + flat, 0);
   const totalTotal = lines.reduce((acc, { cum }) => acc + cum, 0);
+  const fmt = formatter(unit);
+
+  function formatValue(n: number): string {
+    if (n === 0) {
+      return '           .';
+    }
+    let fmted = fmt(n);
+    const txt = fmted.text + fmted.suffix;
+    if (`${txt}`.length <= 13) {
+      return `${txt}`.padStart(12, ' ');
+    }
+    return txt;
+  }
+
   return (
     <pre
       style={{
@@ -34,8 +40,8 @@ const Code = ({ lines }: CodeProps) => {
       <div>
         <span>
           Total:
-          {fmtNumber(totalSelf).slice(4)}
-          {fmtNumber(totalTotal)}
+          {formatValue(totalSelf).slice(4)}
+          {formatValue(totalTotal)}
           {` `}(flat, cum)
         </span>
       </div>
@@ -48,8 +54,8 @@ const Code = ({ lines }: CodeProps) => {
         >
           <span> {number}</span>
           <span>
-            {fmtNumber(flat).slice(number.toString().length + 1)}
-            {fmtNumber(cum)}
+            {formatValue(flat).slice(number.toString().length + 1)}
+            {formatValue(cum)}
             {`          ${line}`}
           </span>
         </div>
@@ -58,3 +64,20 @@ const Code = ({ lines }: CodeProps) => {
   );
 };
 export default Code;
+
+function formatter(unit: string): ValueFormatter {
+  switch (unit) {
+    case 'nanoseconds':
+      return getValueFormat('ns');
+    case 'microseconds':
+      return getValueFormat('µs');
+    case 'milliseconds':
+      return getValueFormat('ms');
+    case 'seconds':
+      return getValueFormat('s');
+    case 'count':
+      return (n: number) => ({ text: `${n}`, suffix: '' });
+    default:
+      return getValueFormat(unit);
+  }
+}
