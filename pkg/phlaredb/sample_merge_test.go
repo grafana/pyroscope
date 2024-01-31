@@ -343,7 +343,7 @@ func TestMergeSampleByLabels(t *testing.T) {
 			require.NoError(t, err)
 
 			q.queriers[0].Sort(profiles)
-			series, err := q.queriers[0].MergeByLabels(ctx, iter.NewSliceIterator(profiles), tc.by...)
+			series, err := q.queriers[0].MergeByLabels(ctx, iter.NewSliceIterator(profiles), nil, tc.by...)
 			require.NoError(t, err)
 
 			testhelper.EqualProto(t, tc.expected, series)
@@ -458,7 +458,7 @@ func TestHeadMergeSampleByLabels(t *testing.T) {
 			require.NoError(t, err)
 
 			db.headQueriers()[0].Sort(profiles)
-			series, err := db.headQueriers()[0].MergeByLabels(ctx, iter.NewSliceIterator(profiles), tc.by...)
+			series, err := db.headQueriers()[0].MergeByLabels(ctx, iter.NewSliceIterator(profiles), nil, tc.by...)
 			require.NoError(t, err)
 
 			testhelper.EqualProto(t, tc.expected, series)

@@ -287,12 +287,12 @@ func (m *StackTraceSelector) CloneVT() *StackTraceSelector {
 		return (*StackTraceSelector)(nil)
 	}
 	r := &StackTraceSelector{}
-	if rhs := m.SubtreeRoot; rhs != nil {
+	if rhs := m.CallSite; rhs != nil {
 		tmpContainer := make([]*Location, len(rhs))
 		for k, v := range rhs {
 			tmpContainer[k] = v.CloneVT()
 		}
-		r.SubtreeRoot = tmpContainer
+		r.CallSite = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -687,11 +687,11 @@ func (this *StackTraceSelector) EqualVT(that *StackTraceSelector) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if len(this.SubtreeRoot) != len(that.SubtreeRoot) {
+	if len(this.CallSite) != len(that.CallSite) {
 		return false
 	}
-	for i, vx := range this.SubtreeRoot {
-		vy := that.SubtreeRoot[i]
+	for i, vx := range this.CallSite {
+		vy := that.CallSite[i]
 		if p, q := vx, vy; p != q {
 			if p == nil {
 				p = &Location{}
@@ -1354,9 +1354,9 @@ func (m *StackTraceSelector) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.SubtreeRoot) > 0 {
-		for iNdEx := len(m.SubtreeRoot) - 1; iNdEx >= 0; iNdEx-- {
-			size, err := m.SubtreeRoot[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+	if len(m.CallSite) > 0 {
+		for iNdEx := len(m.CallSite) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.CallSite[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -1667,8 +1667,8 @@ func (m *StackTraceSelector) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if len(m.SubtreeRoot) > 0 {
-		for _, e := range m.SubtreeRoot {
+	if len(m.CallSite) > 0 {
+		for _, e := range m.CallSite {
 			l = e.SizeVT()
 			n += 1 + l + sov(uint64(l))
 		}
@@ -3136,7 +3136,7 @@ func (m *StackTraceSelector) UnmarshalVT(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SubtreeRoot", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field CallSite", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3163,8 +3163,8 @@ func (m *StackTraceSelector) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SubtreeRoot = append(m.SubtreeRoot, &Location{})
-			if err := m.SubtreeRoot[len(m.SubtreeRoot)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			m.CallSite = append(m.CallSite, &Location{})
+			if err := m.CallSite[len(m.CallSite)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

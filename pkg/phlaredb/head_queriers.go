@@ -88,11 +88,11 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 			continue
 		}
 		profiles = append(profiles, BlockProfile{
-			labels:              lbls,
-			fp:                  v.fp,
-			ts:                  model.TimeFromUnixNano(buf[0][0].Int64()),
-			stacktracePartition: retrieveStacktracePartition(buf, 1),
-			RowNum:              res.RowNumber[0],
+			labels:      lbls,
+			fingerprint: v.fp,
+			timestamp:   model.TimeFromUnixNano(buf[0][0].Int64()),
+			partition:   retrieveStacktracePartition(buf, 1),
+			rowNum:      res.RowNumber[0],
 		})
 	}
 	if err := pIt.Err(); err != nil {
@@ -130,7 +130,7 @@ func (q *headOnDiskQuerier) SelectMergeByStacktraces(ctx context.Context, params
 		),
 		q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"))
 
-	rows := profileRowWithStacktraceIDBatchIterator(it)
+	rows := profileRowBatchIterator(it)
 	defer rows.Close()
 
 	r := symdb.NewResolver(ctx, q.head.symdb)
@@ -175,7 +175,7 @@ func (q *headOnDiskQuerier) SelectMergeBySpans(ctx context.Context, params *inge
 		),
 		q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"))
 
-	rows := profileRowWithStacktraceIDBatchIterator(it)
+	rows := profileRowBatchIterator(it)
 	defer rows.Close()
 
 	r := symdb.NewResolver(ctx, q.head.symdb)
@@ -210,7 +210,7 @@ func (q *headOnDiskQuerier) SelectMergePprof(ctx context.Context, params *ingest
 		),
 		q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"))
 
-	rows := profileRowWithStacktraceIDBatchIterator(it)
+	rows := profileRowBatchIterator(it)
 	defer rows.Close()
 
 	r := symdb.NewResolver(ctx, q.head.symdb,
@@ -265,14 +265,19 @@ func (q *headOnDiskQuerier) MergePprof(ctx context.Context, rows iter.Iterator[P
 	return r.Pprof()
 }
 
-func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
+func (q *headOnDiskQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], sts *typesv1.StackTraceSelector, by ...string) ([]*typesv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - HeadOnDisk")
 	defer sp.Finish()
-
-	return mergeByLabels(ctx, q.rowGroup(), "TotalValue", rows, by...)
+	if len(sts.GetCallSite()) == 0 {
+		return mergeByLabels(ctx, q.rowGroup(), "TotalValue", rows, by...)
+	}
+	r := symdb.NewResolver(ctx, q.head.symdb,
+		symdb.WithResolverStackTraceSelector(sts))
+	defer r.Release()
+	return mergeByLabelsWithStackTraceSelector(ctx, q.rowGroup(), rows, r, by...)
 }
 
-func (q *headOnDiskQuerier) SelectMergeByLabels(ctx context.Context, params *ingestv1.SelectProfilesRequest, by ...string) ([]*typesv1.Series, error) {
+func (q *headOnDiskQuerier) SelectMergeByLabels(ctx context.Context, params *ingestv1.SelectProfilesRequest, sts *typesv1.StackTraceSelector, by ...string) ([]*typesv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByLabels - HeadOnDisk")
 	defer sp.Finish()
 
@@ -284,42 +289,30 @@ func (q *headOnDiskQuerier) SelectMergeByLabels(ctx context.Context, params *ing
 
 	// get time nano information for profiles
 	var (
-		start = model.Time(params.Start)
-		end   = model.Time(params.End)
+		start = model.Time(params.Start).UnixNano()
+		end   = model.Time(params.End).UnixNano()
 	)
 	it := query.NewBinaryJoinIterator(
 		0,
 		rowIter,
-		q.rowGroup().columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start.UnixNano(), end.UnixNano()), "TimeNanos"),
+		q.rowGroup().columnIter(ctx, "TimeNanos", query.NewIntBetweenPredicate(start, end), "TimeNanos"),
 	)
 
-	buf := make([][]parquet.Value, 1)
-	rows := iter.NewAsyncBatchIterator[*query.IteratorResult, Profile](
-		it, 1<<10,
-		func(r *query.IteratorResult) Profile {
-			v, ok := r.Entries[0].RowValue.(fingerprintWithRowNum)
-			if !ok {
-				panic("no fingerprint information found")
-			}
+	if len(sts.GetCallSite()) == 0 {
+		rows := profileBatchIteratorByFingerprints(it, labelsPerFP)
+		defer rows.Close()
+		return mergeByLabels[Profile](ctx, q.rowGroup(), "TotalValue", rows, by...)
+	}
 
-			lbls, ok := labelsPerFP[v.fp]
-			if !ok {
-				panic("no profile series labels with matching fingerprint found")
-			}
+	r := symdb.NewResolver(ctx, q.head.symdb,
+		symdb.WithResolverStackTraceSelector(sts))
+	defer r.Release()
 
-			buf = r.Columns(buf, "TimeNanos")
-			return BlockProfile{
-				labels: lbls,
-				fp:     v.fp,
-				ts:     model.TimeFromUnixNano(buf[1][0].Int64()),
-				RowNum: r.RowNumber[0],
-			}
-		},
-		func(t []Profile) {},
-	)
+	it = query.NewBinaryJoinIterator(0, it, q.rowGroup().columnIter(ctx, "StacktracePartition", nil, "StacktracePartition"))
+	rows := profileBatchIteratorByFingerprints(it, labelsPerFP)
 	defer rows.Close()
 
-	return mergeByLabels[Profile](ctx, q.rowGroup(), "TotalValue", rows, by...)
+	return mergeByLabelsWithStackTraceSelector[Profile](ctx, q.rowGroup(), rows, r, by...)
 }
 
 func (q *headOnDiskQuerier) Series(ctx context.Context, params *ingestv1.SeriesRequest) ([]*typesv1.Labels, error) {
@@ -342,10 +335,10 @@ func (q *headOnDiskQuerier) Sort(in []Profile) []Profile {
 	var rowI, rowJ int64
 	sort.Slice(in, func(i, j int) bool {
 		if pI, ok := in[i].(BlockProfile); ok {
-			rowI = pI.RowNum
+			rowI = pI.rowNum
 		}
 		if pJ, ok := in[j].(BlockProfile); ok {
-			rowJ = pJ.RowNum
+			rowJ = pJ.rowNum
 		}
 		return rowI < rowJ
 	})
@@ -592,20 +585,43 @@ func (q *headInMemoryQuerier) MergePprof(ctx context.Context, rows iter.Iterator
 	return r.Pprof()
 }
 
-func (q *headInMemoryQuerier) MergeByLabels(ctx context.Context, rows iter.Iterator[Profile], by ...string) ([]*typesv1.Series, error) {
+func (q *headInMemoryQuerier) MergeByLabels(
+	ctx context.Context,
+	rows iter.Iterator[Profile],
+	sts *typesv1.StackTraceSelector,
+	by ...string,
+) ([]*typesv1.Series, error) {
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeByLabels - HeadInMemory")
 	defer sp.Finish()
 
 	seriesBuilder := seriesBuilder{}
 	seriesBuilder.init(by...)
 
-	for rows.Next() {
-		p, ok := rows.At().(ProfileWithLabels)
-		if !ok {
-			return nil, errors.New("expected ProfileWithLabels")
+	if len(sts.GetCallSite()) == 0 {
+		for rows.Next() {
+			p, ok := rows.At().(ProfileWithLabels)
+			if !ok {
+				return nil, errors.New("expected ProfileWithLabels")
+			}
+			seriesBuilder.add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(p.Total()))
 		}
-		seriesBuilder.add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(p.Total()))
+	} else {
+		r := symdb.NewResolver(ctx, q.head.symdb,
+			symdb.WithResolverStackTraceSelector(sts))
+		defer r.Release()
+		var v symdb.CallSiteValues
+		for rows.Next() {
+			p, ok := rows.At().(ProfileWithLabels)
+			if !ok {
+				return nil, errors.New("expected ProfileWithLabels")
+			}
+			if err := r.CallSiteValues(&v, p.StacktracePartition(), p.Samples()); err != nil {
+				return nil, err
+			}
+			seriesBuilder.add(p.Fingerprint(), p.Labels(), int64(p.Timestamp()), float64(v.Total))
+		}
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -613,7 +629,12 @@ func (q *headInMemoryQuerier) MergeByLabels(ctx context.Context, rows iter.Itera
 	return seriesBuilder.build(), nil
 }
 
-func (q *headInMemoryQuerier) SelectMergeByLabels(ctx context.Context, params *ingestv1.SelectProfilesRequest, by ...string) ([]*typesv1.Series, error) {
+func (q *headInMemoryQuerier) SelectMergeByLabels(
+	ctx context.Context,
+	params *ingestv1.SelectProfilesRequest,
+	sts *typesv1.StackTraceSelector,
+	by ...string,
+) ([]*typesv1.Series, error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeByLabels - HeadInMemory")
 	defer sp.Finish()
 
@@ -635,19 +656,44 @@ func (q *headInMemoryQuerier) SelectMergeByLabels(ctx context.Context, params *i
 	index.mutex.RLock()
 	defer index.mutex.RUnlock()
 
-	for _, fp := range ids {
-		profileSeries, ok := index.profilesPerFP[fp]
-		if !ok {
-			continue
-		}
-		for _, p := range profileSeries.profiles {
-			if p.Timestamp() < start {
+	if len(sts.GetCallSite()) == 0 {
+		for _, fp := range ids {
+			profileSeries, ok := index.profilesPerFP[fp]
+			if !ok {
 				continue
 			}
-			if p.Timestamp() > end {
-				break
+			for _, p := range profileSeries.profiles {
+				if p.Timestamp() < start {
+					continue
+				}
+				if p.Timestamp() > end {
+					break
+				}
+				seriesBuilder.add(fp, profileSeries.lbs, int64(p.Timestamp()), float64(p.Total()))
 			}
-			seriesBuilder.add(fp, profileSeries.lbs, int64(p.Timestamp()), float64(p.Total()))
+		}
+	} else {
+		r := symdb.NewResolver(ctx, q.head.symdb,
+			symdb.WithResolverStackTraceSelector(sts))
+		defer r.Release()
+		var v symdb.CallSiteValues
+		for _, fp := range ids {
+			profileSeries, ok := index.profilesPerFP[fp]
+			if !ok {
+				continue
+			}
+			for _, p := range profileSeries.profiles {
+				if p.Timestamp() < start {
+					continue
+				}
+				if p.Timestamp() > end {
+					break
+				}
+				if err = r.CallSiteValues(&v, p.StacktracePartition, p.Samples); err != nil {
+					return nil, err
+				}
+				seriesBuilder.add(fp, profileSeries.lbs, int64(p.Timestamp()), float64(v.Total))
+			}
 		}
 	}
 	return seriesBuilder.build(), nil
