@@ -1,0 +1,15 @@
+.container {
+  display: flex;
+  flex-direction: row;
+}
+
+.flamegraphContainer {
+  flex-grow: 1;
+  width: 70%;
+}
+
+.codeContainer {
+  flex-grow: 1;
+  width: 30%;
+  padding-left: 8px;
+}

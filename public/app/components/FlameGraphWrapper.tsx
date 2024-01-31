@@ -16,6 +16,14 @@ import {
 } from '@pyroscope/util/features';
 
 import { flamebearerToDataFrameDTO } from '@pyroscope/util/flamebearer';
+import { Line } from './Code';
+
+export type DrawerState = {
+  gitRef: string;
+  repository: string;
+  filename: string;
+  lines: Line[];
+};
 
 type Props = {
   profile?: Profile;
@@ -27,6 +35,7 @@ type Props = {
   query?: string;
   start?: number;
   end?: number;
+  setDrawerState?: (state: DrawerState) => void;
 };
 
 export function FlameGraphWrapper(props: Props) {
