@@ -17,7 +17,10 @@ func TestBackAndForth(t *testing.T) {
 	const sampleRate = 97
 	period := time.Second.Nanoseconds() / int64(sampleRate)
 
-	builders := NewProfileBuilders(97)
+	builders := NewProfileBuilders(BuildersOptions{
+		SampleRate:    int64(97),
+		PerPIDProfile: false,
+	})
 
 	builder := builders.BuilderForTarget(1, labels.Labels{{Name: "foo", Value: "bar"}})
 	builder.CreateSample([]string{"a", "b", "c"}, 239)
