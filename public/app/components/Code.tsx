@@ -51,7 +51,7 @@ const Code = ({ lines, unit }: CodeProps) => {
         <div
           key={line + number + cum + flat}
           style={{
-            color: flat === 0 ? 'gray' : '#ccccdc',
+            color: flat + cum === 0 ? 'gray' : '#ccccdc',
           }}
         >
           <span> {number}</span>
