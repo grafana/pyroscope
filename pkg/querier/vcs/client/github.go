@@ -114,6 +114,9 @@ func (gh *githubClient) GetFile(ctx context.Context, req FileRequest) (File, err
 		}
 		return File{}, err
 	}
+	if file == nil {
+		return File{}, ErrNotFound
+	}
 	// We only support files retrieval.
 	if file.Type != nil && *file.Type != "file" {
 		return File{}, connect.NewError(connect.CodeInvalidArgument, errors.New("path is not a file"))
@@ -124,7 +127,7 @@ func (gh *githubClient) GetFile(ctx context.Context, req FileRequest) (File, err
 	}
 	return File{
 		Content: content,
-		URL:     toString(file.DownloadURL),
+		URL:     toString(file.HTMLURL),
 	}, nil
 }
 
