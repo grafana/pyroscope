@@ -82,7 +82,6 @@ func (f *Frontend) SelectMergeStacktraces(ctx context.Context,
 	}
 
 	t := m.Tree()
-	t.FormatNodeNames(phlaremodel.DropGoTypeParameters)
 	return connect.NewResponse(&querierv1.SelectMergeStacktracesResponse{
 		Flamegraph: phlaremodel.NewFlameGraph(t, c.Msg.GetMaxNodes()),
 	}), nil
