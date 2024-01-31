@@ -20,7 +20,7 @@ import (
 // The main user of the function is Rewriter: as far as is not
 // known which partitions will be fetched in advance, but it is
 // known that all of them or majority will be requested, preloading
-// all of them is more efficient yet consumes more memory.
+// is more efficient yet consumes more memory.
 func (r *Reader) Load(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error { return r.loadStacktraces(ctx) })
@@ -30,10 +30,7 @@ func (r *Reader) Load(ctx context.Context) error {
 	if err := g.Wait(); err != nil {
 		return err
 	}
-	r.partitionsLoaded = true
-	for _, p := range r.partitions {
-		p.loaded = true
-	}
+	r.loaded = true
 	return nil
 }
 

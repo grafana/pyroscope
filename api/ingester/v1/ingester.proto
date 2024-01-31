@@ -166,10 +166,10 @@ message StacktraceSample {
 message MergeProfilesLabelsRequest {
   // The client starts the stream with a request containing the profile type and the labels.
   SelectProfilesRequest request = 1;
-
   // The labels to merge by
   repeated string by = 2;
-
+  // Select stack traces that match the provided selector.
+  optional types.v1.StackTraceSelector stack_trace_selector = 4;
   // On a batch of profiles, the client sends the profiles to keep for merging.
   repeated bool profiles = 3;
 }
@@ -187,7 +187,7 @@ message MergeProfilesPprofRequest {
   SelectProfilesRequest request = 1;
   // Max nodes in the resulting profile.
   optional int64 max_nodes = 3;
-  // Include stack traces that match the selector.
+  // Select stack traces that match the provided selector.
   optional types.v1.StackTraceSelector stack_trace_selector = 4;
   // On a batch of profiles, the client sends the profiles to keep for merging.
   repeated bool profiles = 2;

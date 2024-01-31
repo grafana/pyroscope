@@ -31,10 +31,13 @@ type Reader struct {
 
 	chunkFetchBufferSize int
 
-	index            IndexFile
-	partitions       []*partition
-	partitionsMap    map[uint64]*partition
-	partitionsLoaded bool
+	index         IndexFile
+	partitions    []*partition
+	partitionsMap map[uint64]*partition
+
+	// Indicates whether the block reader was loaded.
+	// Loaded partitions are not released.
+	loaded bool
 
 	locations parquetobj.File
 	mappings  parquetobj.File
@@ -181,7 +184,11 @@ func (r *Reader) Close() error {
 var ErrPartitionNotFound = fmt.Errorf("partition not found")
 
 func (r *Reader) Partition(ctx context.Context, partition uint64) (PartitionReader, error) {
-	return r.partition(ctx, partition)
+	p, err := r.partition(ctx, partition)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, error) {
@@ -189,18 +196,16 @@ func (r *Reader) partition(ctx context.Context, partition uint64) (*partition, e
 	if !ok {
 		return nil, ErrPartitionNotFound
 	}
-	if !r.partitionsLoaded {
+	if !r.loaded {
 		if err := p.init(ctx); err != nil {
 			return nil, err
 		}
-		return p, nil
 	}
 	return p, nil
 }
 
 type partition struct {
 	reader *Reader
-	loaded bool // true if the partition is loaded and should not be released
 
 	stacktraceChunks []*stacktraceChunkReader
 	locations        parquetTableRange[*schemav1.InMemoryLocation, *schemav1.LocationPersister]
@@ -214,7 +219,7 @@ func (p *partition) init(ctx context.Context) (err error) {
 }
 
 func (p *partition) Release() {
-	if !p.loaded {
+	if !p.reader.loaded {
 		p.tx().release()
 	}
 }

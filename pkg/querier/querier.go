@@ -616,7 +616,6 @@ func (sq storeQuery) MergeStacktracesRequest(req *querierv1.SelectMergeStacktrac
 
 func (sq storeQuery) MergeSeriesRequest(req *querierv1.SelectSeriesRequest, profileType *typesv1.ProfileType) *ingestv1.MergeProfilesLabelsRequest {
 	return &ingestv1.MergeProfilesLabelsRequest{
-		By: req.GroupBy,
 		Request: &ingestv1.SelectProfilesRequest{
 			Type:          profileType,
 			LabelSelector: req.LabelSelector,
@@ -624,6 +623,8 @@ func (sq storeQuery) MergeSeriesRequest(req *querierv1.SelectSeriesRequest, prof
 			End:           int64(sq.end),
 			Aggregation:   req.Aggregation,
 		},
+		By:                 req.GroupBy,
+		StackTraceSelector: req.StackTraceSelector,
 	}
 }
 
@@ -887,7 +888,8 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 				Type:          profileType,
 				Aggregation:   req.Msg.Aggregation,
 			},
-			By: req.Msg.GroupBy,
+			By:                 req.Msg.GroupBy,
+			StackTraceSelector: req.Msg.StackTraceSelector,
 		}, plan)
 	}
 
@@ -900,6 +902,7 @@ func (q *Querier) selectSeries(ctx context.Context, req *connect.Request[querier
 	}
 
 	// todo in parallel
+
 	if storeQueries.ingester.shouldQuery {
 		ir, err := q.selectSeriesFromIngesters(ctx, storeQueries.ingester.MergeSeriesRequest(req.Msg, profileType), plan)
 		if err != nil {
