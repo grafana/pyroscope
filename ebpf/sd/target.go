@@ -35,7 +35,7 @@ const (
 	labelServiceName                = "service_name"
 	labelServiceNameK8s             = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
 	metricValue                     = "process_cpu"
-	labelMetaPyroscopeOptionsPrefix = "__meta_pyroscope_options_"
+	labelMetaPyroscopeOptionsPrefix = "__meta_pyroscope_ebpf_options_"
 
 	OptionGoTableFallback    = labelMetaPyroscopeOptionsPrefix + "go_table_fallback"
 	OptionPythonFullFilePath = labelMetaPyroscopeOptionsPrefix + "python_full_file_path"
