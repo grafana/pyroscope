@@ -20,6 +20,10 @@ func StandardLibraryURL(path string) (string, bool) {
 	}
 	path = strings.TrimPrefix(path, stdLocal)
 	path = strings.TrimPrefix(path, stdGoRoot)
+	// macos support
+	if idx := strings.Index(path, "/libexec/src/"); idx > 0 {
+		path = path[idx+len("/libexec/src/"):]
+	}
 	fileName := filepath.Base(path)
 	packageName := strings.TrimSuffix(path, "/"+fileName)
 	// Todo: Send more metadata from SDK to fetch the correct version of Go std packages.

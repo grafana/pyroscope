@@ -42,6 +42,11 @@ func TestStandardLibraryURL(t *testing.T) {
 			expected:   "https://raw.githubusercontent.com/golang/go/master/src/vendor/golang.org/x/net/http2/hpack/tables.go",
 			expectedOk: true,
 		},
+		{
+			input:      "/usr/local/Cellar/go/1.21.3/libexec/src/runtime/netpoll_kqueue.go",
+			expected:   "https://raw.githubusercontent.com/golang/go/master/src/runtime/netpoll_kqueue.go",
+			expectedOk: true,
+		},
 	} {
 		t.Run(tt.input, func(t *testing.T) {
 			actual, ok := StandardLibraryURL(tt.input)
