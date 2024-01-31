@@ -7,8 +7,8 @@ type CodeProps = {
 export type Line = {
   line: string;
   number: number;
-  total: number;
-  self: number;
+  cum: number;
+  flat: number;
 };
 
 function fmtNumber(n: number): string {
@@ -22,8 +22,8 @@ function fmtNumber(n: number): string {
 }
 
 const Code = ({ lines }: CodeProps) => {
-  const totalSelf = lines.reduce((acc, { self }) => acc + self, 0);
-  const totalTotal = lines.reduce((acc, { total }) => acc + total, 0);
+  const totalSelf = lines.reduce((acc, { flat }) => acc + flat, 0);
+  const totalTotal = lines.reduce((acc, { cum }) => acc + cum, 0);
   return (
     <pre
       style={{
@@ -39,17 +39,17 @@ const Code = ({ lines }: CodeProps) => {
           {` `}(flat, cum)
         </span>
       </div>
-      {lines.map(({ line, number, total, self }) => (
+      {lines.map(({ line, number, cum: cum, flat: flat }) => (
         <div
-          key={line + number + total + self}
+          key={line + number + cum + flat}
           style={{
-            color: self === 0 ? 'gray' : '#ccccdc',
+            color: flat === 0 ? 'gray' : '#ccccdc',
           }}
         >
           <span> {number}</span>
           <span>
-            {fmtNumber(self).slice(number.toString().length + 1)}
-            {fmtNumber(total)}
+            {fmtNumber(flat).slice(number.toString().length + 1)}
+            {fmtNumber(cum)}
             {`          ${line}`}
           </span>
         </div>

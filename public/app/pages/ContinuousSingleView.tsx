@@ -221,6 +221,16 @@ function ContinuousSingleView() {
                   <InlineLabel width="auto">File</InlineLabel>
                   <span>{drawerState.filename}</span>
                 </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    paddingTop: '0.5rem',
+                  }}
+                >
+                  <InlineLabel width="auto">Function name</InlineLabel>
+                  <span>{drawerState.functionName}</span>
+                </div>
 
                 <InlineLabel
                   style={{

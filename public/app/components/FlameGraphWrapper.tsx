@@ -22,6 +22,7 @@ export type DrawerState = {
   gitRef: string;
   repository: string;
   filename: string;
+  functionName: string;
   lines: Line[];
 };
 
