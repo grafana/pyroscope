@@ -24,6 +24,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/pyroscope/ebpf/cpuonline"
 	"github.com/grafana/pyroscope/ebpf/metrics"
+	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/pyrobpf"
 	"github.com/grafana/pyroscope/ebpf/python"
 	"github.com/grafana/pyroscope/ebpf/rlimit"
@@ -41,26 +42,15 @@ type SessionOptions struct {
 	CacheOptions              symtab.CacheOptions
 	Metrics                   *metrics.Metrics
 	SampleRate                int
+	VerifierLogSize           int
 }
 
-type SampleAggregation bool
-
-var (
-	// SampleAggregated mean samples are accumulated in ebpf, no need to dedup these
-	SampleAggregated = SampleAggregation(true)
-	// SampleNotAggregated mean values are not accumulated in ebpf, but streamed to userspace with value=1
-	// TODO make consider aggregating python in ebpf as well
-	SampleNotAggregated = SampleAggregation(false)
-)
-
-type CollectProfilesCallback func(target *sd.Target, stack []string, value uint64, pid uint32, aggregation SampleAggregation)
-
 type Session interface {
+	pprof.SamplesCollector
 	Start() error
 	Stop()
 	Update(SessionOptions) error
 	UpdateTargets(args sd.TargetsOptions)
-	CollectProfiles(f CollectProfilesCallback) error
 	DebugInfo() interface{}
 }
 
@@ -152,11 +142,10 @@ func (s *session) Start() error {
 	}
 
 	opts := &ebpf.CollectionOptions{
-		Programs: ebpf.ProgramOptions{
-			LogDisabled: true,
-		},
+		Programs: s.progOptions(),
 	}
 	if err := pyrobpf.LoadProfileObjects(&s.bpf, opts); err != nil {
+		s.logVerifierError(err)
 		s.stopLocked()
 		return fmt.Errorf("load bpf objects: %w", err)
 	}
@@ -237,7 +226,7 @@ func (s *session) UpdateTargets(args sd.TargetsOptions) {
 	}
 }
 
-func (s *session) CollectProfiles(cb CollectProfilesCallback) error {
+func (s *session) CollectProfiles(cb pprof.CollectProfilesCallback) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -269,7 +258,7 @@ func (s *session) DebugInfo() interface{} {
 	}
 }
 
-func (s *session) collectRegularProfile(cb CollectProfilesCallback) error {
+func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error {
 	sb := &stackBuilder{}
 
 	keys, values, batch, err := s.getCountsMapValues()
@@ -327,7 +316,14 @@ func (s *session) collectRegularProfile(cb CollectProfilesCallback) error {
 			continue // only comm
 		}
 		lo.Reverse(sb.stack)
-		cb(labels, sb.stack, uint64(value), ck.Pid, SampleAggregated)
+		cb(pprof.ProfileSample{
+			Target:      labels,
+			Pid:         ck.Pid,
+			Aggregation: pprof.SampleAggregated,
+			SampleType:  pprof.SampleTypeCpu,
+			Stack:       sb.stack,
+			Value:       uint64(value),
+		})
 		s.collectMetrics(labels, &stats, sb)
 	}
 
@@ -571,7 +567,7 @@ func (s *session) readEvents(events *perf.Reader,
 func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
 	for pid := range pidInfoRequests {
 		target := s.targetFinder.FindTarget(pid)
-		_ = level.Debug(s.logger).Log("msg", "pid info request", "pid", pid, "target", target)
+		//_ = level.Debug(s.logger).Log("msg", "pid info request", "pid", pid, "target", target)
 
 		func() {
 			s.mutex.Lock()
@@ -579,7 +575,7 @@ func (s *session) processPidInfoRequests(pidInfoRequests <-chan uint32) {
 
 			_, alreadyDead := s.pids.dead[pid]
 			if alreadyDead {
-				_ = level.Debug(s.logger).Log("msg", "pid info request for dead pid", "pid", pid)
+				//_ = level.Debug(s.logger).Log("msg", "pid info request for dead pid", "pid", pid)
 				return
 			}
 
@@ -597,6 +593,7 @@ func (s *session) startProfilingLocked(pid uint32, target *sd.Target) {
 		return
 	}
 	typ := s.selectProfilingType(pid, target)
+	fmt.Printf("pt %d  %+v %s\n", pid, typ, target.String())
 	if typ.typ == pyrobpf.ProfilingTypePython {
 		go s.tryStartPythonProfiling(pid, target, typ)
 		return
@@ -661,7 +658,7 @@ func (s *session) saveUnknownPIDLocked(pid uint32) {
 
 func (s *session) processDeadPIDsEvents(dead chan uint32) {
 	for pid := range dead {
-		_ = level.Debug(s.logger).Log("msg", "pid dead", "pid", pid)
+		//_ = level.Debug(s.logger).Log("msg", "pid dead", "pid", pid)
 		func() {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()
@@ -674,14 +671,14 @@ func (s *session) processDeadPIDsEvents(dead chan uint32) {
 func (s *session) processPIDExecRequests(requests chan uint32) {
 	for pid := range requests {
 		target := s.targetFinder.FindTarget(pid)
-		_ = level.Debug(s.logger).Log("msg", "pid exec request", "pid", pid)
+		//_ = level.Debug(s.logger).Log("msg", "pid exec request", "pid", pid)
 		func() {
 			s.mutex.Lock()
 			defer s.mutex.Unlock()
 
 			_, alreadyDead := s.pids.dead[pid]
 			if alreadyDead {
-				_ = level.Debug(s.logger).Log("msg", "pid exec request for dead pid", "pid", pid)
+				//_ = level.Debug(s.logger).Log("msg", "pid exec request for dead pid", "pid", pid)
 				return
 			}
 
@@ -730,7 +727,7 @@ func (s *session) cleanup() {
 	s.symCache.Cleanup()
 
 	for pid := range s.pids.dead {
-		_ = level.Debug(s.logger).Log("msg", "cleanup dead pid", "pid", pid)
+		//_ = level.Debug(s.logger).Log("msg", "cleanup dead pid", "pid", pid)
 		delete(s.pids.dead, pid)
 		delete(s.pids.unknown, pid)
 		delete(s.pids.all, pid)
@@ -793,6 +790,32 @@ func (s *session) checkStalePids() {
 	if err != nil {
 		if !errors.Is(err, ebpf.ErrKeyNotExist) {
 			_ = level.Error(s.logger).Log("msg", "check stale pids", "err", err)
+		}
+	}
+}
+
+func (s *session) logVerifierError(err error) {
+	if s.options.VerifierLogSize <= 0 {
+		return
+	}
+	var e *ebpf.VerifierError
+	if errors.As(err, &e) {
+		for _, l := range e.Log {
+			level.Error(s.logger).Log("verifier", l)
+		}
+	}
+}
+
+func (s *session) progOptions() ebpf.ProgramOptions {
+	if s.options.VerifierLogSize > 0 {
+		return ebpf.ProgramOptions{
+			LogDisabled: false,
+			LogSize:     s.options.VerifierLogSize,
+			LogLevel:    ebpf.LogLevelInstruction | ebpf.LogLevelBranch | ebpf.LogLevelStats,
+		}
+	} else {
+		return ebpf.ProgramOptions{
+			LogDisabled: true,
 		}
 	}
 }

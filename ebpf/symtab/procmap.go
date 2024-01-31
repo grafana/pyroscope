@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"unsafe"
+	//"github.com/grafana/phlare/ebpf/symtab"
 )
 
 // ProcMapPermissions contains permission settings read from `/proc/[pid]/maps`.
@@ -20,6 +22,36 @@ type ProcMapPermissions struct {
 	Shared bool
 	// mapping is marked as [P]rivate (copy on write)
 	Private bool
+}
+
+func (p *ProcMapPermissions) String() string {
+	var res string
+	if p.Read {
+		res += "r"
+	} else {
+		res += "-"
+	}
+	if p.Write {
+		res += "w"
+	} else {
+		res += "-"
+	}
+	if p.Execute {
+		res += "x"
+	} else {
+		res += "-"
+	}
+	if p.Shared {
+		res += "s"
+	} else {
+		res += "-"
+	}
+	if p.Private {
+		res += "p"
+	} else {
+		res += "-"
+	}
+	return res
 }
 
 // ProcMap contains the process memory-mappings of the process
@@ -39,6 +71,22 @@ type ProcMap struct {
 	Inode uint64
 	// The file or psuedofile (or empty==anonymous)
 	Pathname string
+}
+
+func (p *ProcMap) String() string {
+	return fmt.Sprintf("%x-%x %s %x %x:%x %s",
+		p.StartAddr, p.EndAddr, p.Perms.String(), p.Offset, p.Dev, p.Inode, p.Pathname)
+}
+
+type ProcMaps []*ProcMap
+
+func (p ProcMaps) String() string {
+	var sb strings.Builder
+	for _, m := range p {
+		sb.WriteString(m.String())
+		sb.WriteString("\n")
+	}
+	return sb.String()
 }
 
 type file struct {
@@ -267,4 +315,26 @@ func tokenToStringUnsafe(tok []byte) string {
 	sh.Data = uintptr(unsafe.Pointer(&tok[0]))
 	sh.Len = len(tok)
 	return res
+}
+
+func FindLastRXMap(maps []*ProcMap) *ProcMap {
+	for i := len(maps) - 1; i >= 0; i-- {
+		m := maps[i]
+		if m.Perms.Read && m.Perms.Execute {
+			return m
+		}
+	}
+	return nil
+}
+
+// FindReadableMap return a map entry that is readable and not writable or nil
+func FindReadableMap(maps []*ProcMap) *ProcMap {
+	var readable *ProcMap
+	for _, m := range maps {
+		if m.Perms.Read && !m.Perms.Write {
+			readable = m
+			break
+		}
+	}
+	return readable
 }

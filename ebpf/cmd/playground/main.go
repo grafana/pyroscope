@@ -43,11 +43,35 @@ var (
 	session ebpfspy.Session
 )
 
+type splitLog struct {
+	err  log.Logger
+	rest log.Logger
+}
+
+func (s splitLog) Log(keyvals ...interface{}) error {
+	if len(keyvals)%2 != 0 {
+		return s.err.Log(keyvals...)
+	}
+	for i := 0; i < len(keyvals); i += 2 {
+		if keyvals[i] == "level" {
+			vv := keyvals[i+1]
+			vvs, ok := vv.(fmt.Stringer)
+			if ok && vvs.String() == "error" {
+				return s.err.Log(keyvals...)
+			}
+		}
+	}
+	return s.rest.Log(keyvals...)
+}
+
 func main() {
 	config = getConfig()
 	metrics = ebpfmetrics.New(prometheus.DefaultRegisterer)
 
-	logger = log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
+	logger = &splitLog{
+		err:  log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr)),
+		rest: log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
+	}
 
 	targetFinder, err := sd.NewTargetFinder(os.DirFS("/"), logger, convertTargetOptions())
 	if err != nil {
@@ -76,16 +100,11 @@ func main() {
 }
 
 func collectProfiles(profiles chan *pushv1.PushRequest) {
-	builders := pprof.NewProfileBuilders(int64(config.SampleRate))
-	err := session.CollectProfiles(func(target *sd.Target, stack []string, value uint64, pid uint32, aggregation ebpfspy.SampleAggregation) {
-		labelsHash, labels := target.Labels()
-		builder := builders.BuilderForTarget(labelsHash, labels)
-		if aggregation == ebpfspy.SampleAggregated {
-			builder.CreateSample(stack, value)
-		} else {
-			builder.CreateSampleOrAddValue(stack, value)
-		}
+	builders := pprof.NewProfileBuilders(pprof.BuildersOptions{
+		SampleRate:    int64(config.SampleRate),
+		PerPIDProfile: true,
 	})
+	err := pprof.Collect(builders, session)
 
 	if err != nil {
 		panic(err)
@@ -163,6 +182,7 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 		PythonEnabled:             config.PythonEnabled,
 		Metrics:                   metrics,
 		CacheOptions:              config.CacheOptions,
+		VerifierLogSize:           1024 * 1024 * 20,
 	}
 }
 
@@ -296,7 +316,6 @@ func getProcessTargets() []sd.DiscoveryTarget {
 			"__meta_process_comm":   string(comm),
 			"__meta_process_cgroup": string(cgroup),
 		}
-		_ = level.Debug(logger).Log("msg", "process target", "target", target.DebugString())
 		res = append(res, target)
 	}
 	return res
@@ -326,7 +345,6 @@ func relabelProcessTargets(targets []sd.DiscoveryTarget, cfg []*RelabelConfig) [
 			continue
 		}
 		tt := sd.DiscoveryTarget(lbls.Map())
-		_ = level.Debug(logger).Log("msg", "relabelled process", "target", tt.DebugString())
 		res = append(res, tt)
 	}
 	return res
