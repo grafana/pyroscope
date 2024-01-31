@@ -22,6 +22,7 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/pyroscope/ebpf/cpp/demangle"
 	"github.com/grafana/pyroscope/ebpf/cpuonline"
 	"github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/grafana/pyroscope/ebpf/pprof"
@@ -40,6 +41,7 @@ type SessionOptions struct {
 	UnknownSymbolAddress      bool // use 0xcafebabe instead of [unknown]
 	PythonEnabled             bool
 	CacheOptions              symtab.CacheOptions
+	SymbolOptions             symtab.SymbolOptions
 	Metrics                   *metrics.Metrics
 	SampleRate                int
 	VerifierLogSize           int
@@ -278,15 +280,19 @@ func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error 
 		if ck.KernStack >= 0 {
 			knownStacks[uint32(ck.KernStack)] = true
 		}
-		labels := s.targetFinder.FindTarget(ck.Pid)
-		if labels == nil {
+		target := s.targetFinder.FindTarget(ck.Pid)
+		if target == nil {
 			continue
 		}
 		if _, ok := s.pids.dead[ck.Pid]; ok {
 			continue
 		}
 
-		proc := s.symCache.GetProcTable(symtab.PidKey(ck.Pid))
+		pk := symtab.PidKey(ck.Pid)
+		proc := s.symCache.GetProcTableCached(pk)
+		if proc == nil {
+			proc = s.symCache.NewProcTable(pk, s.targetSymbolOptions(target))
+		}
 		if proc.Error() != nil {
 			s.pids.dead[uint32(proc.Pid())] = struct{}{}
 			// in theory if we saw this process alive before, we could try resolving tack anyway
@@ -317,14 +323,14 @@ func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error 
 		}
 		lo.Reverse(sb.stack)
 		cb(pprof.ProfileSample{
-			Target:      labels,
+			Target:      target,
 			Pid:         ck.Pid,
 			Aggregation: pprof.SampleAggregated,
 			SampleType:  pprof.SampleTypeCpu,
 			Stack:       sb.stack,
 			Value:       uint64(value),
 		})
-		s.collectMetrics(labels, &stats, sb)
+		s.collectMetrics(target, &stats, sb)
 	}
 
 	if err = s.clearCountsMap(keys, batch); err != nil {
@@ -593,10 +599,13 @@ func (s *session) startProfilingLocked(pid uint32, target *sd.Target) {
 		return
 	}
 	typ := s.selectProfilingType(pid, target)
-	fmt.Printf("pt %d  %+v %s\n", pid, typ, target.String())
 	if typ.typ == pyrobpf.ProfilingTypePython {
 		go s.tryStartPythonProfiling(pid, target, typ)
 		return
+	}
+	pyproc := s.pyperf.FindProc(pid)
+	if pyproc != nil {
+		s.pyperf.RemoveDeadPID(pid)
 	}
 	s.setPidConfig(pid, typ, s.options.CollectUser, s.options.CollectKernel)
 }
@@ -626,7 +635,7 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) procInfoLit
 
 	_ = level.Debug(s.logger).Log("exe", exePath, "pid", pid)
 
-	if s.options.PythonEnabled && strings.HasPrefix(exe, "python") || exe == "uwsgi" {
+	if s.pythonEnabled(target) && strings.HasPrefix(exe, "python") || exe == "uwsgi" {
 		return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypePython}
 	}
 	return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypeFramepointers}
@@ -818,6 +827,33 @@ func (s *session) progOptions() ebpf.ProgramOptions {
 			LogDisabled: true,
 		}
 	}
+}
+
+func (s *session) targetSymbolOptions(target *sd.Target) *symtab.SymbolOptions {
+	opt := new(symtab.SymbolOptions)
+	*opt = s.options.SymbolOptions
+	overrideSymbolOptions(target, opt)
+	return opt
+}
+
+func overrideSymbolOptions(t *sd.Target, opt *symtab.SymbolOptions) {
+	if v, present := t.GetFlag(sd.OptionGoTableFallback); present {
+		opt.GoTableFallback = v
+	}
+	if v, present := t.GetFlag(sd.OptionPythonFullFilePath); present {
+		opt.PythonFullFilePath = v
+	}
+	if v, present := t.Get(sd.OptionDemangle); present {
+		opt.DemangleOptions = demangle.ConvertDemangleOptions(v)
+	}
+}
+
+func (s *session) pythonEnabled(target *sd.Target) bool {
+	enabled := s.options.PythonEnabled
+	if v, present := target.GetFlag(sd.OptionPythonEnabled); present {
+		enabled = v
+	}
+	return enabled
 }
 
 type stackBuilder struct {

@@ -30,11 +30,17 @@ func (t *DiscoveryTarget) DebugString() string {
 }
 
 const (
-	labelContainerID    = "__container_id__"
-	labelPID            = "__process_pid__"
-	labelServiceName    = "service_name"
-	labelServiceNameK8s = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
-	metricValue         = "process_cpu"
+	labelContainerID                = "__container_id__"
+	labelPID                        = "__process_pid__"
+	labelServiceName                = "service_name"
+	labelServiceNameK8s             = "__meta_kubernetes_pod_annotation_pyroscope_io_service_name"
+	metricValue                     = "process_cpu"
+	labelMetaPyroscopeOptionsPrefix = "__meta_pyroscope_options_"
+
+	OptionGoTableFallback    = labelMetaPyroscopeOptionsPrefix + "go_table_fallback"
+	OptionPythonFullFilePath = labelMetaPyroscopeOptionsPrefix + "python_full_file_path"
+	OptionPythonEnabled      = labelMetaPyroscopeOptionsPrefix + "python_enabled"
+	OptionDemangle           = labelMetaPyroscopeOptionsPrefix + "demangle"
 )
 
 type Target struct {
@@ -53,7 +59,9 @@ func NewTarget(cid containerID, pid uint32, target DiscoveryTarget) *Target {
 
 	lset := make(map[string]string, len(target))
 	for k, v := range target {
-		if strings.HasPrefix(k, model.ReservedLabelPrefix) && k != labels.MetricName {
+		if strings.HasPrefix(k, model.ReservedLabelPrefix) &&
+			k != labels.MetricName &&
+			!strings.HasPrefix(k, labelMetaPyroscopeOptionsPrefix) {
 			continue
 		}
 		lset[k] = v
@@ -113,6 +121,16 @@ func (t *Target) Labels() (uint64, labels.Labels) {
 
 func (t *Target) String() string {
 	return t.labels.String()
+}
+
+func (t *Target) Get(k string) (string, bool) {
+	v := t.labels.Get(k)
+	return v, v != ""
+}
+
+func (t *Target) GetFlag(k string) (bool, bool) {
+	v := t.labels.Get(k)
+	return v == "true", v != ""
 }
 
 type containerID string

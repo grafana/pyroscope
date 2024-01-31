@@ -46,6 +46,11 @@ func (s *session) collectPythonProfile(cb pprof.CollectProfilesCallback) error {
 
 		sb.reset()
 
+		proc := s.pyperf.FindProc(event.Pid)
+		if proc == nil {
+			continue
+		}
+
 		sb.append(s.comm(event.Pid))
 		var kStack []byte
 		if event.StackStatus == uint8(python.StackStatusError) {
@@ -65,7 +70,7 @@ func (s *session) collectPythonProfile(cb pprof.CollectProfilesCallback) error {
 				sym, err := pySymbols.GetSymbol(event.Stack[i], svc)
 				if err == nil {
 					filename := python.PythonString(sym.File[:], &sym.FileType)
-					if !s.options.CacheOptions.SymbolOptions.PythonFullFilePath {
+					if !proc.SymbolOptions.PythonFullFilePath {
 						iSep := strings.LastIndexByte(filename, '/')
 						if iSep != 1 {
 							filename = filename[iSep+1:]
@@ -170,13 +175,16 @@ func (s *session) startPythonProfiling(pid uint32, target *sd.Target, pi procInf
 		s.setPidConfig(pid, pi, false, false)
 		return alive
 	}
-
-	err = pyPerf.StartPythonProfiling(pid, pyData, svc)
-	if err != nil {
-		_ = level.Error(s.logger).Log("err", err, "msg", "pyperf process profiling init failed", "pid", pid)
-		pi.typ = pyrobpf.ProfilingTypeError
-		s.setPidConfig(pid, pi, false, false)
-		return false
+	err = nil
+	proc := pyPerf.FindProc(pid)
+	if proc == nil {
+		proc, err = pyPerf.NewProc(pid, pyData, s.targetSymbolOptions(target), svc)
+		if err != nil {
+			_ = level.Error(s.logger).Log("err", err, "msg", "pyperf process profiling init failed", "pid", pid)
+			pi.typ = pyrobpf.ProfilingTypeError
+			s.setPidConfig(pid, pi, false, false)
+			return false
+		}
 	}
 	_ = level.Info(s.logger).Log("msg", "pyperf process profiling init success", "pid", pid,
 		"py_data", fmt.Sprintf("%+v", pyData), "target", target.String())

@@ -20,7 +20,7 @@ type SymbolCache struct {
 	kallsyms *SymbolTab
 	logger   log.Logger
 
-	options CacheOptions
+	//options CacheOptions
 
 	metrics *metrics.SymtabMetrics
 }
@@ -28,7 +28,7 @@ type CacheOptions struct {
 	PidCacheOptions      GCacheOptions
 	BuildIDCacheOptions  GCacheOptions
 	SameFileCacheOptions GCacheOptions
-	SymbolOptions        SymbolOptions
+	//SymbolOptions        SymbolOptions
 }
 
 func NewSymbolCache(logger log.Logger, options CacheOptions, metrics *metrics.SymtabMetrics) (*SymbolCache, error) {
@@ -49,8 +49,8 @@ func NewSymbolCache(logger log.Logger, options CacheOptions, metrics *metrics.Sy
 		pidCache: cache,
 		kallsyms: nil,
 		elfCache: elfCache,
-		options:  options,
-		metrics:  metrics,
+		//options:  options,
+		metrics: metrics,
 	}, nil
 }
 
@@ -64,11 +64,15 @@ func (sc *SymbolCache) Cleanup() {
 	sc.pidCache.Cleanup()
 }
 
-func (sc *SymbolCache) GetProcTable(pid PidKey) *ProcTable {
+func (sc *SymbolCache) GetProcTableCached(pid PidKey) *ProcTable {
 	cached := sc.pidCache.Get(pid)
 	if cached != nil {
 		return cached
 	}
+	return nil
+}
+
+func (sc *SymbolCache) NewProcTable(pid PidKey, symbolOptions *SymbolOptions) *ProcTable {
 
 	level.Debug(sc.logger).Log("msg", "NewProcTable", "pid", pid)
 	fresh := NewProcTable(sc.logger, ProcTableOptions{
@@ -76,7 +80,7 @@ func (sc *SymbolCache) GetProcTable(pid PidKey) *ProcTable {
 		ElfTableOptions: ElfTableOptions{
 			ElfCache:      sc.elfCache,
 			Metrics:       sc.metrics,
-			SymbolOptions: &sc.options.SymbolOptions,
+			SymbolOptions: symbolOptions,
 		},
 	})
 

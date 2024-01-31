@@ -14,6 +14,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
+	"github.com/grafana/pyroscope/ebpf/cpp/demangle"
 	ebpfmetrics "github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
@@ -28,7 +29,6 @@ import (
 	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/sd"
 	"github.com/grafana/pyroscope/ebpf/symtab"
-	"github.com/grafana/pyroscope/ebpf/symtab/elf"
 	"github.com/prometheus/client_golang/prometheus"
 	commonconfig "github.com/prometheus/common/config"
 )
@@ -211,12 +211,13 @@ var defaultConfig = Config{
 	UnknownSymbolModuleOffset: true,
 	UnknownSymbolAddress:      true,
 	PythonEnabled:             true,
+	SymbolOptions: symtab.SymbolOptions{
+		GoTableFallback:    true,
+		PythonFullFilePath: false,
+		DemangleOptions:    demangle.DemangleFull,
+	},
 	CacheOptions: symtab.CacheOptions{
-		SymbolOptions: symtab.SymbolOptions{
-			GoTableFallback:    true,
-			PythonFullFilePath: false,
-			DemangleOptions:    elf.DemangleFull,
-		},
+
 		PidCacheOptions: symtab.GCacheOptions{
 			Size:       239,
 			KeepRounds: 8,
@@ -243,6 +244,7 @@ type Config struct {
 	UnknownSymbolModuleOffset bool
 	UnknownSymbolAddress      bool
 	PythonEnabled             bool
+	SymbolOptions             symtab.SymbolOptions
 	CacheOptions              symtab.CacheOptions
 	SampleRate                int
 	TargetsOnly               bool
