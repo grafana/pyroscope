@@ -232,14 +232,9 @@ function ContinuousSingleView() {
                   <span>{drawerState.functionName}</span>
                 </div>
 
-                <InlineLabel
-                  style={{
-                    marginBottom: '0.5rem',
-                  }}
-                >
-                  Breakdown per lines:
-                </InlineLabel>
-                <Code lines={drawerState.lines}></Code>
+                <div style={{ paddingTop: '0.5rem' }}>
+                  <Code lines={drawerState.lines}></Code>
+                </div>
             </Panel>
           )}
         </div>
