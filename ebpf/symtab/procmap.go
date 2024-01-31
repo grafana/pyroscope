@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"unsafe"
-	//"github.com/grafana/phlare/ebpf/symtab"
 )
 
 // ProcMapPermissions contains permission settings read from `/proc/[pid]/maps`.
