@@ -35,6 +35,8 @@ const Code = ({ lines, unit }: CodeProps) => {
       style={{
         fontFamily: 'monospace',
         fontSize: '12px',
+        overflowX: 'auto',
+        whiteSpace: 'pre',
       }}
     >
       <div>
