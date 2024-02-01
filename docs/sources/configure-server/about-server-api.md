@@ -249,7 +249,7 @@ In a Kubernetes environment, a query could also look like:
 `process_cpu:cpu:nanoseconds:cpu:nanoseconds{namespace="dev", container="my_application_name"}`
 
 {{% admonition type="note" %}}
-Refer to the [profiling types documentation]({{< relref "../ingest-and-analyze-profile-data/profiling-types" >}}) for more information and [profile-metrics.json](https://github.com/grafana/pyroscope/blob/main/public/app/constants/profile-metrics.json) for a list of valid profile types.
+Refer to the [profiling types documentation]({{< relref "../view-and-analyze-profile-data/profiling-types" >}}) for more information and [profile-metrics.json](https://github.com/grafana/pyroscope/blob/main/public/app/constants/profile-metrics.json) for a list of valid profile types.
 {{% /admonition %}}
 
 #### `from` and `until`
@@ -419,4 +419,4 @@ See [this Python script](https://github.com/grafana/pyroscope/tree/main/examples
 
 The `profilecli` tool can also be used to interact with the Pyroscope server API.
 The tool supports operations such as ingesting profiles, querying for existing profiles, and more.
-Refer to the [Profile CLI]({{< relref "../ingest-and-analyze-profile-data/profile-cli" >}}) page for more information.
+Refer to the [Profile CLI]({{< relref "../view-and-analyze-profile-data/profile-cli" >}}) page for more information.
