@@ -204,6 +204,7 @@ function ContinuousSingleView() {
                   name="times-circle"
                   variant="secondary"
                   aria-label="close"
+                  onClick={() => setDrawerState(undefined)}
                 />
               }
             >
@@ -234,7 +235,11 @@ function ContinuousSingleView() {
                 }}
               >
                 <InlineLabel width="auto">File</InlineLabel>
-                <span>{drawerState.filename}</span>
+                <div style={{
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>{drawerState.filename}</div>
               </div>
               <div
                 style={{

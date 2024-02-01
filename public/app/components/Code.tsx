@@ -1,5 +1,7 @@
-import { getValueFormat, ValueFormatter } from '@grafana/data';
 import React from 'react';
+import { css } from '@emotion/css';
+import { getValueFormat, GrafanaTheme2, ValueFormatter } from '@grafana/data';
+import { useStyles2 } from '@grafana/ui';
 
 export type CodeProps = {
   unit: string;
@@ -19,6 +21,8 @@ const Code = ({ lines, unit }: CodeProps) => {
   const fmt = formatter(unit);
 
   function formatValue(n: number): string {
+    const style = useStyles2(getStyles);
+
     if (n === 0) {
       return '           .';
     }
@@ -35,6 +39,8 @@ const Code = ({ lines, unit }: CodeProps) => {
       style={{
         fontFamily: 'monospace',
         fontSize: '12px',
+        overflowX: 'scroll',
+        whiteSpace: 'pre',
       }}
     >
       <div>
@@ -63,6 +69,9 @@ const Code = ({ lines, unit }: CodeProps) => {
     </pre>
   );
 };
+
+const getStyles = (theme: GrafanaTheme2) => ({});
+
 export default Code;
 
 function formatter(unit: string): ValueFormatter {
