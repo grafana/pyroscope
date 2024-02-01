@@ -103,6 +103,7 @@ func (p *ProcTable) refreshProcMap(procMaps []byte) error {
 	}
 
 	for _, m := range maps {
+		level.Debug(p.logger).Log("msg", "processing map", "f", m.Pathname, "start", fmt.Sprintf("%x", m.StartAddr), "end", fmt.Sprintf("%x", m.EndAddr))
 		p.ranges = append(p.ranges, elfRange{
 			mapRange: m,
 		})
@@ -131,6 +132,7 @@ func (p *ProcTable) getElfTable(r *elfRange) *ElfTable {
 	e, ok := p.file2Table[f]
 	if !ok {
 		e = p.createElfTable(r.mapRange)
+		level.Debug(p.logger).Log("msg", "created elf table", "elf_table", e, "file", f, "map_range", r.mapRange)
 		if e != nil {
 			p.file2Table[f] = e
 		}
@@ -139,20 +141,26 @@ func (p *ProcTable) getElfTable(r *elfRange) *ElfTable {
 }
 
 func (p *ProcTable) Resolve(pc uint64) Symbol {
+	level.Debug(p.logger).Log("msg", "resolving symbol", "pc", fmt.Sprintf("%x", pc))
 	if pc == 0xcccccccccccccccc || pc == 0x9090909090909090 {
+		level.Debug(p.logger).Log("msg", "pc is 0xcccccccccccccccc or 0x9090909090909090", "pc", fmt.Sprintf("%x", pc))
 		return Symbol{Start: 0, Name: "end_of_stack", Module: "[unknown]"}
 	}
 	i, found := slices.BinarySearchFunc(p.ranges, pc, binarySearchElfRange)
 	if !found {
+		level.Debug(p.logger).Log("msg", "module not found", "pc", fmt.Sprintf("%x", pc))
 		return Symbol{}
 	}
 	r := p.ranges[i]
+	level.Debug(p.logger).Log("msg", "module found", "pc", fmt.Sprintf("%x", pc), "module", r.mapRange.Pathname)
 	t := r.elfTable
 	if t == nil {
+		level.Debug(p.logger).Log("msg", "map range has no elf table", "pc", fmt.Sprintf("%x", pc))
 		return Symbol{}
 	}
 	s := t.Resolve(pc)
 	moduleOffset := pc - t.base
+	level.Debug(p.logger).Log("msg", "resolved symbol", "pc", fmt.Sprintf("%x", pc), "symbol", s, "module", r.mapRange.Pathname, "module_offset", fmt.Sprintf("%x", moduleOffset))
 	if s == "" {
 		return Symbol{Start: moduleOffset, Module: r.mapRange.Pathname}
 	}

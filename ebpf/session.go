@@ -490,18 +490,18 @@ func (s *session) WalkStack(sb *stackBuilder, stack []byte, resolver symtab.Symb
 			stats.known++
 		} else {
 			if sym.Module != "" {
-				if s.options.UnknownSymbolModuleOffset {
-					name = fmt.Sprintf("%s+%x", sym.Module, sym.Start)
-				} else {
-					name = sym.Module
-				}
+				//if s.options.UnknownSymbolModuleOffset {
+				name = fmt.Sprintf("%s+%x", sym.Module, sym.Start)
+				//} else {
+				//	name = sym.Module
+				//}
 				stats.unknownSymbols++
 			} else {
-				if s.options.UnknownSymbolAddress {
-					name = fmt.Sprintf("%x", instructionPointer)
-				} else {
-					name = "[unknown]"
-				}
+				//if s.options.UnknownSymbolAddress {
+				name = fmt.Sprintf("%x", instructionPointer)
+				//} else {
+				//	name = "[unknown]"
+				//}
 				stats.unknownModules++
 			}
 		}
