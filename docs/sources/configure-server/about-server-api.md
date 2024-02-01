@@ -1,17 +1,17 @@
 ---
 description: Learn about the Pyrocope server API
-menuTitle: Server API Overview
+menuTitle: Server API overview
 title: Pyroscope Server HTTP API Reference
 weight: 20
 ---
 
-# Pyroscope Server HTTP API Reference
+# Pyroscope server HTTP API reference
 
 Pyroscope server exposes an HTTP API for querying profiling data and ingesting profiling data from other sources.
 
 ## Authentication
 
-Grafana Pyroscope does not include an authentication layer. Operators should use an authenticating reverse proxy for security.
+Grafana Pyroscope doesn't include an authentication layer. Operators should use an authenticating reverse proxy for security.
 
 In multi-tenant mode, Pyroscope requires the X-Scope-OrgID HTTP header set to a string identifying the tenant. This responsibility should be handled by the authenticating reverse proxy. For more information, refer to the [multi-tenancy documentation]({{< relref "./about-tenant-ids" >}}).
 
@@ -42,11 +42,11 @@ The request body contains profiling data, and the Content-Type header may be use
 
 Some of the query parameters depend on the format of profiling data. Pyroscope currently supports three major ingestion formats.
 
-### Text Formats
+### Text formats
 
 These formats handle simple ingestion of profiling data, such as `cpu` samples, and typically don't support metadata (e.g., labels) within the format. All necessary metadata is derived from query parameters, and the format is specified by the `format` query parameter.
 
-**Supported Formats:**
+**Supported formats:**
 
 - **Folded**: Also known as `collapsed`, this is the default format. Each line contains a stacktrace followed by the sample count for that stacktrace. For example:
 ```
@@ -62,7 +62,7 @@ foo;baz
 foo;bar
 ```
 
-### pprof format
+### The `pprof` format
 
 The `pprof` format is a widely used binary profiling data format, particularly prevalent in the Go ecosystem.
 
@@ -72,13 +72,13 @@ When using this format, certain query parameters have specific behaviors:
 - **name**: This parameter contains the _prefix_ of the application name. Since a single request might include multiple profile types, the complete application name is formed by concatenating this prefix with the profile type. For instance, if you send CPU profiling data and set `name` to `my-app{}`, it will be displayed in pyroscope as `my-app.cpu{}`.
 - **units**, **aggregationType**, and **sampleRate**: These parameters are ignored. The actual values are determined based on the profile types present in the data (refer to the "Sample Type Configuration" section for more details).
 
-#### Sample Type Configuration
+#### Sample type configuration
 
-Pyroscope server inherently supports standard Go profile types such as `cpu`, `inuse_objects`, `inuse_space`, `alloc_objects`, and `alloc_space`. When dealing with software that generates data in pprof format, you may need to supply a custom sample type configuration for Pyroscope to interpret the data correctly.
+Pyroscope server inherently supports standard Go profile types such as `cpu`, `inuse_objects`, `inuse_space`, `alloc_objects`, and `alloc_space`. When dealing with software that generates data in `pprof` format, you may need to supply a custom sample type configuration for Pyroscope to interpret the data correctly.
 
-For an example Python script to ingest a pprof file with a custom sample type configuration, see **[this Python script](https://github.com/grafana/pyroscope/tree/main/examples/api/ingest_pprof.py).**
+For an example Python script to ingest a `pprof` file with a custom sample type configuration, see **[this Python script](https://github.com/grafana/pyroscope/tree/main/examples/api/ingest_pprof.py).**
 
-To ingest pprof data with custom sample type configuration, modify your requests as follows:
+To ingest `pprof` data with custom sample type configuration, modify your requests as follows:
 * Set Content-Type to `multipart/form-data`.
 * Upload the profile data in a form file field named `profile`.
 * Include the sample type configuration in a form file field named `sample_type_config`.
@@ -264,9 +264,9 @@ This table details the options for passing absolute values.
 | Option                 | Example               | Notes              |
 |:-----------------------|:----------------------|:-------------------|
 | Date                   | `20231223`            | Format: `YYYYMMDD` |
-| Unix Time seconds      | `1577836800`          |                    | 
-| Unix Time milliseconds | `1577836800000`       |                    | 
-| Unix Time microseconds | `1577836800000000`    |                    | 
+| Unix Time seconds      | `1577836800`          |                    |
+| Unix Time milliseconds | `1577836800000`       |                    |
+| Unix Time microseconds | `1577836800000000`    |                    |
 | Unix Time nanoseconds  | `1577836800000000000` |                    |
 
 **Relative time**
@@ -301,7 +301,7 @@ See the [Query output](#query-output) section for more information on the respon
 
 #### `maxNodes`
 
-The `maxNodes` parameter truncates the number of elements in the profile response, to allow tools (for example, a frontend) to render large profiles efficiently. 
+The `maxNodes` parameter truncates the number of elements in the profile response, to allow tools (for example, a frontend) to render large profiles efficiently.
 This is typically used for profiles that are known to have large stack traces.
 
 When no value is provided, the default is taken from the `max_flamegraph_nodes_default` configuration parameter.
@@ -377,7 +377,7 @@ This example groups by a cluster:
 }
 ```
 
-### Alternative Query Output
+### Alternative query output
 
 When the `format` query parameter is `dot`, the endpoint responds with a [DOT format](https://en.wikipedia.org/wiki/DOT_(graph_description_language)) data representing the queried profile.
 This can be used to create an alternative visualization of the profile.

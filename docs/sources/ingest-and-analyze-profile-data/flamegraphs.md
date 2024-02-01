@@ -2,7 +2,9 @@
 title: "Flamegraphs: Visualizing performance data"
 menuTitle: Flamegraphs
 description: Learn about flamegraphs to help visualize performance data.
-weight: 100
+weight: 33
+aliases:
+  - ../introduction/flamegraphs/
 keywords:
   - Pyroscope
   - Profiling
