@@ -103,7 +103,6 @@ func (p *ProcTable) refreshProcMap(procMaps []byte) error {
 	}
 
 	for _, m := range maps {
-		level.Debug(p.logger).Log("msg", "processing map", "f", m.Pathname, "start", fmt.Sprintf("%x", m.StartAddr), "end", fmt.Sprintf("%x", m.EndAddr))
 		p.ranges = append(p.ranges, elfRange{
 			mapRange: m,
 		})
