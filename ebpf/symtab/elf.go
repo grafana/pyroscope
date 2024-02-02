@@ -90,7 +90,6 @@ func (et *ElfTable) findBase(e *elf2.MMapedElfFile) bool {
 }
 
 func (et *ElfTable) load() {
-	level.Debug(et.logger).Log("msg", "loading elf table", "f", et.elfFilePath)
 	if et.loaded {
 		return
 	}
@@ -108,7 +107,6 @@ func (et *ElfTable) load() {
 		et.onLoadError(errElfBaseNotFound)
 		return
 	}
-	level.Debug(et.logger).Log("msg", "found elf base", "f", et.elfFilePath, "base", fmt.Sprintf("%x", et.base))
 	buildID, err := me.BuildID()
 	if err != nil && !errors.Is(err, elf2.ErrNoBuildIDSection) {
 		et.onLoadError(err)
@@ -134,7 +132,6 @@ func (et *ElfTable) load() {
 	}
 
 	debugFilePath := et.findDebugFile(buildID, me)
-	level.Debug(et.logger).Log("msg", " debug file", "f", debugFilePath)
 	if debugFilePath != "" {
 		debugMe, err := elf2.NewMMapedElfFile(path.Join(et.fs, debugFilePath))
 		if err != nil {
