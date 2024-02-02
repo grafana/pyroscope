@@ -1,11 +1,11 @@
 ---
 description: Learn about the Pyrocope server API
-menuTitle: Server API overview
-title: Pyroscope Server HTTP API Reference
+menuTitle: Server HTTP API 
+title: Pyroscope Server HTTP API
 weight: 20
 ---
 
-# Pyroscope server HTTP API reference
+# Pyroscope server HTTP API
 
 Pyroscope server exposes an HTTP API for querying profiling data and ingesting profiling data from other sources.
 

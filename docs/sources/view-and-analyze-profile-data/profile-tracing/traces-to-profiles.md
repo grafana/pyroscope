@@ -9,7 +9,7 @@ keywords:
   - tracing
 ---
 
-# Trace to profiles
+# Traces to profiles
 
 [//]: # 'Shared content for Trace to profiles in the Tempo data source'
 
