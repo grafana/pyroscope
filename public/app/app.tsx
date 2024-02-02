@@ -30,7 +30,7 @@ declare global {
 }
 
 if (typeof window !== 'undefined') {
-  // Set the root path for icons to load them from Grafana's CDN instead of bundling locally
+  // Icons from @grafana/ui are not bundled, this forces them to be loaded via a CDN instead.
   window.__grafana_public_path__ = 'https://grafana-assets.grafana.net/grafana/10.3.0/public/';
 }
 
