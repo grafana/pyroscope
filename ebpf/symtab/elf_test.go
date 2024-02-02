@@ -138,7 +138,7 @@ func TestFindBaseAlignedNoSeparateCode(t *testing.T) {
 	assert.Equal(t, uint64(0x559f9d29f000), et.base)
 }
 
-func TestFindBaseAlignedSeparateCode(t *testing.T) {
+func TestFindBaseUnalignedSeparateCode(t *testing.T) {
 	//555e3d192000-555e3d1ac000 r--p 00000000 00:3e 1824988                    /smoketest
 	//555e3d1ac000-555e3d212000 r-xp 00019000 00:3e 1824988                    /smoketest
 	//555e3d212000-555e3d218000 r--p 0007e000 00:3e 1824988                    /smoketest
