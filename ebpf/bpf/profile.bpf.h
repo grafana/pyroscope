@@ -15,6 +15,8 @@ struct sample_key {
 #define PROFILING_TYPE_FRAMEPOINTERS 2
 #define PROFILING_TYPE_PYTHON 3
 #define PROFILING_TYPE_ERROR 4
+#define PROFILING_TYPE_PARCA_NATIVE 5
+
 
 struct pid_config {
     uint8_t type;
@@ -55,12 +57,13 @@ struct {
 
 struct {
     __uint(type, BPF_MAP_TYPE_PROG_ARRAY);
-    __uint(max_entries, 1);
+    __uint(max_entries, 2);
     __type(key, int);
     __array(values, int (void *));
 } progs SEC(".maps");
 
 #define PROG_IDX_PYTHON 0
+#define PROG_IDX_PARCA_NATIVE 1
 
 #include "stacks.h"
 

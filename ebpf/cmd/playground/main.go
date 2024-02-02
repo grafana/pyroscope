@@ -130,6 +130,7 @@ func collectProfiles(profiles chan *pushv1.PushRequest) {
 				RawProfile: buf.Bytes(),
 			}},
 		}}}
+		_ = level.Debug(logger).Log("msg", "ebpf append done", "bytes_sent", len(buf.Bytes()), "labels", builder.Labels.String())
 		select {
 		case profiles <- req:
 		default:
@@ -180,9 +181,12 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 		UnknownSymbolAddress:      config.UnknownSymbolAddress,
 		UnknownSymbolModuleOffset: config.UnknownSymbolModuleOffset,
 		PythonEnabled:             config.PythonEnabled,
+		RubyEnabled:               config.RubyEnabled,
+		DwarfEnabled:              config.DwarfEnabled,
 		Metrics:                   metrics,
 		CacheOptions:              config.CacheOptions,
 		VerifierLogSize:           1024 * 1024 * 20,
+		SymbolOptions:             config.SymbolOptions,
 	}
 }
 
@@ -211,6 +215,8 @@ var defaultConfig = Config{
 	UnknownSymbolModuleOffset: true,
 	UnknownSymbolAddress:      true,
 	PythonEnabled:             true,
+	RubyEnabled:               true,
+	DwarfEnabled:              true,
 	SymbolOptions: symtab.SymbolOptions{
 		GoTableFallback:    true,
 		PythonFullFilePath: false,
@@ -244,6 +250,8 @@ type Config struct {
 	UnknownSymbolModuleOffset bool
 	UnknownSymbolAddress      bool
 	PythonEnabled             bool
+	RubyEnabled               bool
+	DwarfEnabled              bool
 	SymbolOptions             symtab.SymbolOptions
 	CacheOptions              symtab.CacheOptions
 	SampleRate                int

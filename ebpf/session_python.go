@@ -223,9 +223,7 @@ func (s *session) getPyPerf() *python.Perf {
 func (s *session) loadPyPerf() (*python.Perf, error) {
 	defer btf.FlushKernelSpec() // save some memory
 	opts := &ebpf.CollectionOptions{
-		Programs: ebpf.ProgramOptions{
-			LogDisabled: true,
-		},
+		Programs: s.progOptions(),
 		MapReplacements: map[string]*ebpf.Map{
 			"stacks": s.bpf.Stacks,
 		},
@@ -239,7 +237,8 @@ func (s *session) loadPyPerf() (*python.Perf, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pyperf create %w", err)
 	}
-	err = s.bpf.ProfileMaps.Progs.Update(uint32(0), s.pyperfBpf.PerfPrograms.PyperfCollect, ebpf.UpdateAny)
+	//todo replace 0 with named const
+	err = s.bpf.ProfileMaps.Progs.Update(uint32(pyrobpf.ProgIdxPython), s.pyperfBpf.PerfPrograms.PyperfCollect, ebpf.UpdateAny)
 	if err != nil {
 		return nil, fmt.Errorf("pyperf link %w", err)
 	}

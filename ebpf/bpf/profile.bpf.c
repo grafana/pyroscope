@@ -60,6 +60,13 @@ int do_perf_event(struct bpf_perf_event_data *ctx) {
         return 0;
     }
 
+    if (config->type == PROFILING_TYPE_PARCA_NATIVE) {
+        bpf_printk("call parca native");
+        bpf_tail_call(ctx, &progs, PROG_IDX_PARCA_NATIVE);
+        bpf_printk("call parca native fail");
+        return 0;
+    }
+
     if (config->type == PROFILING_TYPE_FRAMEPOINTERS) {
         key.pid = tgid;
         key.kern_stack = -1;

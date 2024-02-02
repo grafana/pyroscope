@@ -67,6 +67,7 @@ musl/dwarfdump:
 .phony: bpf/gen
 bpf/gen:
 	go generate pyrobpf/gen.go
+	#go generate parca/maps/gen.go
 	go generate python/gen.go
 
 .PHONY: ebpf.amd64.test

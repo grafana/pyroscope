@@ -25,6 +25,8 @@ import (
 	"github.com/grafana/pyroscope/ebpf/cpp/demangle"
 	"github.com/grafana/pyroscope/ebpf/cpuonline"
 	"github.com/grafana/pyroscope/ebpf/metrics"
+	"github.com/grafana/pyroscope/ebpf/parca"
+	//"github.com/grafana/pyroscope/ebpf/parca/maps"
 	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/pyrobpf"
 	"github.com/grafana/pyroscope/ebpf/python"
@@ -40,6 +42,8 @@ type SessionOptions struct {
 	UnknownSymbolModuleOffset bool // use libfoo.so+0xef instead of libfoo.so for unknown symbols
 	UnknownSymbolAddress      bool // use 0xcafebabe instead of [unknown]
 	PythonEnabled             bool
+	RubyEnabled               bool
+	DwarfEnabled              bool
 	CacheOptions              symtab.CacheOptions
 	SymbolOptions             symtab.SymbolOptions
 	Metrics                   *metrics.Metrics
@@ -104,6 +108,10 @@ type session struct {
 	pyperfEvents []*python.PerfPyEvent
 	pyperfBpf    python.PerfObjects
 	pyperfError  error
+
+	parca *parca.Parca
+	//parcaBPF maps.ParcaNativeObjects
+	parcaErr error
 
 	pids            pids
 	pidExecRequests chan uint32
@@ -231,16 +239,21 @@ func (s *session) UpdateTargets(args sd.TargetsOptions) {
 func (s *session) CollectProfiles(cb pprof.CollectProfilesCallback) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	var err error
 
 	s.symCache.NextRound()
 	s.roundNumber++
 
-	err := s.collectPythonProfile(cb)
+	//err := s.collectPythonProfile(cb)
+	//if err != nil {
+	//	return err
+	//}
+
+	err = s.collectRegularProfile(cb)
 	if err != nil {
 		return err
 	}
-
-	err = s.collectRegularProfile(cb)
+	err = s.collectParcaLocked(cb)
 	if err != nil {
 		return err
 	}
@@ -478,41 +491,46 @@ func (s *session) WalkStack(sb *stackBuilder, stack []byte, resolver symtab.Symb
 	if len(stack) == 0 {
 		return
 	}
-	var stackFrames []string
+	var stackFrames []string //todo wtf, use sb or at least reuse
 	for i := 0; i < 127; i++ {
 		instructionPointerBytes := stack[i*8 : i*8+8]
 		instructionPointer := binary.LittleEndian.Uint64(instructionPointerBytes)
 		if instructionPointer == 0 {
 			break
 		}
-		sym := resolver.Resolve(instructionPointer)
-		var name string
-		if sym.Name != "" {
-			name = sym.Name
-			stats.known++
-		} else {
-			if sym.Module != "" {
-				if s.options.UnknownSymbolModuleOffset {
-					name = fmt.Sprintf("%s+%x", sym.Module, sym.Start)
-				} else {
-					name = sym.Module
-				}
-				stats.unknownSymbols++
-			} else {
-				if s.options.UnknownSymbolAddress {
-					name = fmt.Sprintf("%x", instructionPointer)
-				} else {
-					name = "[unknown]"
-				}
-				stats.unknownModules++
-			}
-		}
+		name := s.resolvePC(resolver, instructionPointer, stats)
 		stackFrames = append(stackFrames, name)
 	}
 	lo.Reverse(stackFrames)
 	for _, s := range stackFrames {
 		sb.append(s)
 	}
+}
+
+func (s *session) resolvePC(resolver symtab.SymbolTable, instructionPointer uint64, stats *StackResolveStats) string {
+	sym := resolver.Resolve(instructionPointer)
+	var name string
+	if sym.Name != "" {
+		name = sym.Name
+		stats.known++
+	} else {
+		if sym.Module != "" {
+			if s.options.UnknownSymbolModuleOffset {
+				name = fmt.Sprintf("%s+%x", sym.Module, sym.Start)
+			} else {
+				name = sym.Module
+			}
+			stats.unknownSymbols++
+		} else {
+			if s.options.UnknownSymbolAddress {
+				name = fmt.Sprintf("%x", instructionPointer)
+			} else {
+				name = "[unknown]"
+			}
+			stats.unknownModules++
+		}
+	}
+	return name
 }
 
 func (s *session) readEvents(events *perf.Reader,
@@ -609,6 +627,11 @@ func (s *session) startProfilingLocked(pid uint32, target *sd.Target) {
 			s.pyperf.RemoveDeadPID(pid)
 		}
 	}
+	if typ.typ == pyrobpf.ProfilingTypeParcaNative {
+		go s.tryStartParcaNativeProfiling(pid, target, typ)
+		return
+	}
+
 	s.setPidConfig(pid, typ, s.options.CollectUser, s.options.CollectKernel)
 }
 
@@ -638,7 +661,14 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) procInfoLit
 	_ = level.Debug(s.logger).Log("exe", exePath, "pid", pid)
 
 	if s.pythonEnabled(target) && strings.HasPrefix(exe, "python") || exe == "uwsgi" {
-		return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypePython}
+		//return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypePython}
+		return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypeParcaNative}
+	}
+	if s.rubyEnabled(target) && strings.HasPrefix(exe, "ruby") {
+		return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypeParcaNative}
+	}
+	if s.dwarfEnabled(target) {
+		return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypeParcaNative}
 	}
 	return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypeFramepointers}
 }
@@ -853,6 +883,22 @@ func overrideSymbolOptions(t *sd.Target, opt *symtab.SymbolOptions) {
 func (s *session) pythonEnabled(target *sd.Target) bool {
 	enabled := s.options.PythonEnabled
 	if v, present := target.GetFlag(sd.OptionPythonEnabled); present {
+		enabled = v
+	}
+	return enabled
+}
+
+func (s *session) dwarfEnabled(target *sd.Target) bool {
+	enabled := s.options.DwarfEnabled
+	if v, present := target.GetFlag(sd.OptionDwarfEnabled); present {
+		enabled = v
+	}
+	return enabled
+}
+
+func (s *session) rubyEnabled(target *sd.Target) bool {
+	enabled := s.options.RubyEnabled
+	if v, present := target.GetFlag(sd.OptionRubyEnabled); present {
 		enabled = v
 	}
 	return enabled

@@ -40,6 +40,8 @@ const (
 	OptionGoTableFallback    = labelMetaPyroscopeOptionsPrefix + "go_table_fallback"
 	OptionPythonFullFilePath = labelMetaPyroscopeOptionsPrefix + "python_full_file_path"
 	OptionPythonEnabled      = labelMetaPyroscopeOptionsPrefix + "python_enabled"
+	OptionRubyEnabled        = labelMetaPyroscopeOptionsPrefix + "ruby_enabled"
+	OptionDwarfEnabled       = labelMetaPyroscopeOptionsPrefix + "dwarf_enabled"
 	OptionDemangle           = labelMetaPyroscopeOptionsPrefix + "demangle"
 )
 
