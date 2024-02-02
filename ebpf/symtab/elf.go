@@ -78,6 +78,12 @@ func (et *ElfTable) findBase(e *elf2.MMapedElfFile) bool {
 				et.base = m.StartAddr - prog.Vaddr
 				return true
 			}
+			alignedProgOffset := uint64(prog.Off) & 0xfffffffffffff000
+			if uint64(m.Offset) == alignedProgOffset {
+				d := prog.Off - alignedProgOffset
+				et.base = m.StartAddr + d - prog.Vaddr
+				return true
+			}
 		}
 	}
 	return false
@@ -99,8 +105,7 @@ func (et *ElfTable) load() {
 	defer me.Close() // todo do not close if it is the selected elf
 
 	if !et.findBase(me) {
-		et.err = errElfBaseNotFound
-		level.Error(et.logger).Log("msg", "elf base not found", "f", et.elfFilePath, "fs", et.fs)
+		et.onLoadError(errElfBaseNotFound)
 		return
 	}
 	level.Debug(et.logger).Log("msg", "found elf base", "f", et.elfFilePath, "base", fmt.Sprintf("%x", et.base))
@@ -357,6 +362,9 @@ func errorType(err error) string {
 	}
 	if errors.Is(err, os.ErrInvalid) {
 		return "ErrInvalid"
+	}
+	if errors.Is(err, errElfBaseNotFound) {
+		return "ElfBaseNotFound"
 	}
 	return "Other"
 }
