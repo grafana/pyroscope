@@ -37,6 +37,6 @@ Options for Visualizing Data in Grafana:
 
 For more information on using profiles in Grafana, refer to [Pyroscope and profiles in Grafana]({{< relref "../introduction/pyroscope-in-grafana#pyroscope-and-profiling-in-grafana" >}}).
 
-Note the Pyroscope app plugin is cloud only...
+The Pyroscope app plugin works for Grafana Cloud. 
 
 For more information on configuring these data sources, refer to the Pyroscope data source documentation in [Grafana Cloud](/docs/grafana-cloud/connect-externally-hosted/data-sources/grafana-pyroscope/) and [Grafana](/docs/grafana/latest/datasources/grafana-pyroscope/).
