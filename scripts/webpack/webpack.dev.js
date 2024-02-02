@@ -16,8 +16,8 @@ module.exports = merge(common, {
       '/assets/grafana/*': {
         target: 'http://localhost:4041',
         pathRewrite: { '^/assets': '' },
-        logLevel: 'debug'
-      }
+        logLevel: 'debug',
+      },
     },
   },
   optimization: {
