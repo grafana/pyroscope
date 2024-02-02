@@ -23,6 +23,17 @@ const root = ReactDOM.createRoot(container);
 
 setupReduxQuerySync();
 
+declare global {
+  interface Window {
+    __grafana_public_path__: string;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  // Set the root path for icons to load them from Grafana's CDN instead of bundling locally
+  window.__grafana_public_path__ = 'https://grafana-assets.grafana.net/grafana/10.3.0/public/';
+}
+
 function App() {
   useSelectFirstApp();
 
