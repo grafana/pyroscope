@@ -202,17 +202,14 @@ func (et *ElfTable) createSymbolTable(me *elf2.MMapedElfFile) (SymbolNameResolve
 var errTableDead = fmt.Errorf("non cached table dead")
 
 func (et *ElfTable) Resolve(pc uint64) string {
-	level.Debug(et.logger).Log("msg", "resolving symbol", "f", et.elfFilePath, "pc", fmt.Sprintf("%x", pc))
 	if !et.loaded {
 		et.load()
 	}
 	if et.err != nil {
-		level.Debug(et.logger).Log("msg", "resolve load error", "f", et.elfFilePath, "err", et.err)
 		return ""
 	}
 	pc -= et.base
 	res := et.table.Resolve(pc)
-	level.Debug(et.logger).Log("msg", "resolve result", "f", et.elfFilePath, "pc", fmt.Sprintf("%x", pc), "base", fmt.Sprintf("%x", et.base), "res", res)
 	if res != "" {
 		return res
 	}
