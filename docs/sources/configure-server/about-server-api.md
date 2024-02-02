@@ -1,7 +1,7 @@
 ---
 description: Learn about the Pyrocope server API
 menuTitle: Server HTTP API 
-title: Pyroscope Server HTTP API
+title: Pyroscope server HTTP API
 weight: 20
 ---
 
