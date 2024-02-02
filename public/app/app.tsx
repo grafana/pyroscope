@@ -31,7 +31,7 @@ declare global {
 
 if (typeof window !== 'undefined') {
   // Icons from @grafana/ui are not bundled, this forces them to be loaded via a CDN instead.
-  window.__grafana_public_path__ = 'https://grafana-assets.grafana.net/grafana/public/';
+  window.__grafana_public_path__ = 'assets/grafana/';
 }
 
 function App() {

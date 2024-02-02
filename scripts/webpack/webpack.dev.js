@@ -13,6 +13,11 @@ module.exports = merge(common, {
     proxy: {
       '/pyroscope': 'http://localhost:4040',
       '/querier.v1.QuerierService': 'http://localhost:4040',
+      '/assets/grafana/*': {
+        target: 'http://localhost:4041',
+        pathRewrite: { '^/assets': '' },
+        logLevel: 'debug'
+      }
     },
   },
   optimization: {
