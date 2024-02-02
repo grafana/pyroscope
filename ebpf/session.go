@@ -603,9 +603,11 @@ func (s *session) startProfilingLocked(pid uint32, target *sd.Target) {
 		go s.tryStartPythonProfiling(pid, target, typ)
 		return
 	}
-	pyproc := s.pyperf.FindProc(pid)
-	if pyproc != nil {
-		s.pyperf.RemoveDeadPID(pid)
+	if s.pyperf != nil {
+		pyproc := s.pyperf.FindProc(pid)
+		if pyproc != nil {
+			s.pyperf.RemoveDeadPID(pid)
+		}
 	}
 	s.setPidConfig(pid, typ, s.options.CollectUser, s.options.CollectKernel)
 }
