@@ -74,7 +74,7 @@ defer span.End()
 
 To view the span profiles in Grafana Tempo, you need to have a Grafana instance running and a datasource configured to link Trace spans and profiles.
 
-For documentation on how to configure the datasource see [here](https://grafana.com/docs/grafana/latest/datasources/tempo/configure-tempo-data-source/#trace-to-profiles).
+Refer to the [datasource configuration documentation]({{< relref "/docs/grafana/latest/datasources/tempo/configure-tempo-data-source/#trace-to-profiles" >}}) to see how to configure the visualization to link trace spans with profiles.
 
 To use a simple configuration, follow these steps:
 
