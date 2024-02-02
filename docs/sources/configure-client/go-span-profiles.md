@@ -7,6 +7,7 @@ weight: 100
 
 # Go span profiles with trace-to-profiles
 
+![span-profiles screenshot](https://grafana.com/static/img/docs/tempo/profiles/tempo-profiles-Span-link-profile-data-source.png)
 
 ## Prerequisites
 
@@ -24,7 +25,7 @@ link traces with the profiling data, and find resource usage for specific lines 
 :::
 
 
-## Configuring the tracer
+## Configure the otel-profiling-go package
 
 To start collecting Span Profiles for your Go application, you need to include [otel-profiling-go](https://github.com/pyroscope-io/otel-profiling-go) in your code. 
 
@@ -68,6 +69,26 @@ defer span.End()
 
 // Your code goes here.
 ```
+
+## View the span profiles in Grafana Tempo
+
+To view the span profiles in Grafana Tempo, you need to have a Grafana instance running and a datasource configured to link Trace spans and profiles.
+
+For documentation on how to configure the datasource see [here](https://grafana.com/docs/grafana/latest/datasources/tempo/configure-tempo-data-source/#trace-to-profiles).
+
+To use a simple configuration, follow these steps:
+
+1. Select a Pyroscope data source from the Data source drop-down.
+
+2. Optional: Choose any tags to use in the query. If left blank, the default values of service.name and service.namespace are used.
+
+The tags you configure must be present in the spans attributes or resources for a trace to profiles span link to appear. You can optionally configure a new name for the tag. This is useful for example if the tag has dots in the name and the target data source doesn’t allow using dots in labels. In that case you can for example remap service.name to service_name.
+
+3. Select one or more profile types to use in the query. Select the drop-down and choose options from the menu.
+
+The profile type or app must be selected for the query to be valid. Grafana doesn’t show any data if the profile type or app isn’t selected when a query runs.
+
+![span-profiles configuration](https://grafana.com/static/img/docs/tempo/profiles/Tempo-data-source-profiles-Settings.png)
 
 ## Examples
 
