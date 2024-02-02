@@ -108,9 +108,8 @@ func (et *ElfTable) load() {
 		return
 	}
 	buildID, err := me.BuildID()
-	if err != nil && !errors.Is(err, elf2.ErrNoBuildIDSection) {
-		et.onLoadError(err)
-		return
+	if err != nil {
+		level.Error(et.logger).Log("msg", "failed to get build id", "err", err, "f", et.elfFilePath, "fs", et.fs)
 	}
 
 	symbols := et.options.ElfCache.GetSymbolsByBuildID(buildID)
