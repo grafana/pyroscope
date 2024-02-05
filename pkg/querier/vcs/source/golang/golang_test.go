@@ -44,7 +44,12 @@ func TestStandardLibraryURL(t *testing.T) {
 		},
 		{
 			input:      "/usr/local/Cellar/go/1.21.3/libexec/src/runtime/netpoll_kqueue.go",
-			expected:   "https://raw.githubusercontent.com/golang/go/master/src/runtime/netpoll_kqueue.go",
+			expected:   "https://raw.githubusercontent.com/golang/go/go1.21.3/src/runtime/netpoll_kqueue.go",
+			expectedOk: true,
+		},
+		{
+			input:      "/opt/hostedtoolcache/go/1.21.6/x64/src/runtime/mgc.go",
+			expected:   "https://raw.githubusercontent.com/golang/go/go1.21.6/src/runtime/mgc.go",
 			expectedOk: true,
 		},
 	} {
