@@ -142,6 +142,7 @@ function ComparisonDiffApp() {
         </Panel>
         <div className="diff-instructions-wrapper">
           <Panel
+            dataTestId="baseline-panel"
             isLoading={isLoading}
             className="diff-instructions-wrapper-side"
             title={<ChartTitle titleKey="baseline" color={leftColor} />}
@@ -181,6 +182,7 @@ function ComparisonDiffApp() {
             />
           </Panel>
           <Panel
+            dataTestId="comparison-panel"
             isLoading={isLoading}
             className="diff-instructions-wrapper-side"
             title={<ChartTitle titleKey="comparison" color={rightColor} />}
@@ -220,7 +222,7 @@ function ComparisonDiffApp() {
             />
           </Panel>
         </div>
-        <Panel isLoading={isLoading}>
+        <Panel isLoading={isLoading} dataTestId="diff-panel">
           <FlameGraphWrapper profile={diffView.profile} diff={true} />
         </Panel>
       </PageContentWrapper>

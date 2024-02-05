@@ -230,6 +230,7 @@ function ComparisonApp() {
           data-testid="comparison-container"
         >
           <Panel
+            dataTestId="baseline-panel"
             isLoading={isLoading}
             className={styles.comparisonPane}
             title={<ChartTitle titleKey="baseline" color={leftColor} />}
@@ -279,6 +280,7 @@ function ComparisonApp() {
           </Panel>
 
           <Panel
+            dataTestId="comparison-panel"
             isLoading={isLoading}
             className={styles.comparisonPane}
             title={<ChartTitle titleKey="comparison" color={rightColor} />}
