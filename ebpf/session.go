@@ -738,7 +738,6 @@ func (s *session) cleanup() {
 	s.symCache.Cleanup()
 
 	for pid := range s.pids.dead {
-		//_ = level.Debug(s.logger).Log("msg", "cleanup dead pid", "pid", pid)
 		delete(s.pids.dead, pid)
 		delete(s.pids.unknown, pid)
 		delete(s.pids.all, pid)
