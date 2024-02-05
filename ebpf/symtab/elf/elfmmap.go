@@ -11,11 +11,6 @@ import (
 	"github.com/ianlancetaylor/demangle"
 )
 
-var DemangleNone []demangle.Option = nil
-var DemangleSimplified = []demangle.Option{demangle.NoParams, demangle.NoEnclosingParams, demangle.NoTemplateParams}
-var DemangleTemplates = []demangle.Option{demangle.NoParams, demangle.NoEnclosingParams}
-var DemangleFull = []demangle.Option{demangle.NoClones}
-
 type MMapedElfFile struct {
 	elf.FileHeader
 	Sections []elf.SectionHeader
