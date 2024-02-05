@@ -164,7 +164,7 @@ func (et *ElfTable) load() {
 }
 
 func (et *ElfTable) createSymbolTable(me *elf2.MMapedElfFile) (SymbolNameResolver, error) {
-	level.Debug(et.logger).Log("msg", "create symbol table", "f", me.FilePath())
+	level.Debug(et.logger).Log("msg", "create symbol table", "path", me.FilePath())
 	goTable, goErr := me.NewGoTable()
 	if !et.options.SymbolOptions.GoTableFallback && goErr == nil {
 		return goTable, nil
