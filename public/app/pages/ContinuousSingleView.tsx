@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import 'react-dom';
 
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
@@ -35,14 +35,7 @@ import AddAnnotationMenuItem from './continuous/contextMenu/AddAnnotation.menuit
 import { isLoadingOrReloading } from './loading';
 import { Panel } from '@pyroscope/components/Panel';
 import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
-import {
-  DrawerState,
-  FlameGraphWrapper,
-} from '@pyroscope/components/FlameGraphWrapper';
-import { formatAsOBject } from '@pyroscope/util/formatDate';
-import styles from './ContinuousSingleView.module.scss';
-import { Box, Card, IconButton, InlineField, InlineLabel } from '@grafana/ui';
-import Code from '@pyroscope/components/Code';
+import { FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
@@ -66,26 +59,11 @@ function ContinuousSingleView() {
     return undefined;
   }, [from, until, query, refreshToken, maxNodes, dispatch]);
 
-  const start: number = formatAsOBject(from).getTime();
-  const end: number = formatAsOBject(until).getTime();
-
-  const [drawerState, setDrawerState] = useState<DrawerState | undefined>(
-    undefined
-  );
-
   const flamegraphRenderer = (() => {
     switch (singleView.type) {
       case 'loaded':
       case 'reloading': {
-        return (
-          <FlameGraphWrapper
-            profile={singleView.profile}
-            query={query}
-            start={start}
-            end={end}
-            setDrawerState={setDrawerState}
-          />
-        );
+        return <FlameGraphWrapper profile={singleView.profile} />;
       }
 
       default: {
@@ -187,87 +165,9 @@ function ContinuousSingleView() {
             }
           />
         </Panel>
-        <div className={styles.container}>
-          <Panel
-            isLoading={isLoadingOrReloading([singleView.type])}
-            className={styles.flamegraphContainer}
-          >
-            {flamegraphRenderer}
-          </Panel>
-          {drawerState && (
-            <Panel
-              isLoading={false}
-              className={styles.codeContainer}
-              title="Function Details"
-              headerActions={
-                <IconButton
-                  name="times-circle"
-                  variant="secondary"
-                  aria-label="close"
-                  onClick={() => setDrawerState(undefined)}
-                />
-              }
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
-                <InlineLabel width="auto"> Repository</InlineLabel>
-                <span>{drawerState.repository}</span>
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  paddingTop: '0.5rem',
-                }}
-              >
-                <InlineLabel width="auto"> Commit</InlineLabel>
-                <span>{drawerState.gitRef}</span>
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  paddingTop: '0.5rem',
-                }}
-              >
-                <InlineLabel width="auto">File</InlineLabel>
-                <div style={{
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}>{drawerState.filename}</div>
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  paddingTop: '0.5rem',
-                }}
-              >
-                <InlineLabel width="auto">Function name</InlineLabel>
-                <span>{drawerState.functionName}</span>
-              </div>
-
-              <div style={{ paddingTop: '0.5rem' }}>
-                <InlineLabel
-                  style={{
-                    marginBottom: '0.5rem',
-                  }}
-                >
-                  Breakdown per lines:
-                </InlineLabel>
-              </div>
-              <Code
-                lines={drawerState.code.lines}
-                unit={drawerState.code.unit}
-              ></Code>
-            </Panel>
-          )}
-        </div>
+        <Panel isLoading={isLoadingOrReloading([singleView.type])}>
+          {flamegraphRenderer}
+        </Panel>
       </PageContentWrapper>
     </div>
   );

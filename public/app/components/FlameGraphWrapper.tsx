@@ -16,15 +16,6 @@ import {
 } from '@pyroscope/util/features';
 
 import { flamebearerToDataFrameDTO } from '@pyroscope/util/flamebearer';
-import { CodeProps } from './Code';
-
-export type DrawerState = {
-  gitRef: string;
-  repository: string;
-  filename: string;
-  functionName: string;
-  code: CodeProps;
-};
 
 type Props = {
   profile?: Profile;
@@ -33,10 +24,6 @@ type Props = {
   sharedQuery?: SharedQuery;
   timelineEl?: React.ReactNode;
   diff?: boolean;
-  query?: string;
-  start?: number;
-  end?: number;
-  setDrawerState?: (state: DrawerState) => void;
 };
 
 export function FlameGraphWrapper(props: Props) {

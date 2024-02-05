@@ -10,7 +10,6 @@ export type PanelProps = {
   children: ReactNode;
   className?: string;
   headerActions?: ReactNode;
-  dataTestId?: string;
 };
 
 /** Common pattern which wraps a chart and optional title */
