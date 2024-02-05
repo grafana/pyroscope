@@ -46,8 +46,7 @@ func NewSymbolCache(logger log.Logger, options CacheOptions, metrics *metrics.Sy
 		pidCache: cache,
 		kallsyms: nil,
 		elfCache: elfCache,
-		//options:  options,
-		metrics: metrics,
+		metrics:  metrics,
 	}, nil
 }
 
