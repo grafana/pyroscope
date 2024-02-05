@@ -112,7 +112,7 @@ func NewParca(logger log.Logger, profilingDuration time.Duration) (*Parca, error
 			DWARFUnwindingMixedModeEnabled:    false,
 			BPFVerboseLoggingEnabled:          false,
 			BPFEventsBufferSize:               uint32(8 * os.Getpagesize()),
-			PythonUnwindingEnabled:            false,
+			PythonUnwindingEnabled:            true,
 			RubyUnwindingEnabled:              true,
 			RateLimitUnwindInfo:               50,
 			RateLimitProcessMappings:          50,

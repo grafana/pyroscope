@@ -463,17 +463,17 @@ func (m *Maps) SetInterpreterData() error {
 		}
 	}
 	//
-	//if m.pyperfModule != nil {
-	//	versions, err := python.GetVersions()
-	//	if err != nil {
-	//		return fmt.Errorf("get python versions: %w", err)
-	//	}
-	//
-	//	err = m.setPyperfVersionOffsets(versions)
-	//	if err != nil {
-	//		return fmt.Errorf("set pyperf version offsets: %w", err)
-	//	}
-	//}
+	if m.modules.PythonObjects != nil {
+		versions, err := python.GetVersions()
+		if err != nil {
+			return fmt.Errorf("get python versions: %w", err)
+		}
+
+		err = m.setPyperfVersionOffsets(versions)
+		if err != nil {
+			return fmt.Errorf("set pyperf version offsets: %w", err)
+		}
+	}
 
 	return nil
 }
