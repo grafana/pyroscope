@@ -1,11 +1,11 @@
 ---
-title: Go span profiles with trace-to-profiles
-sidebar_label: Go span profiles
-description: Go span profiles with trace-to-profiles
+title: Span profiles with Traces to profiles for Go
+menuTitle: Span profiles with Traces to profiles (Go)
+description: Learn about and configure Span profiles with Traces to profiles in Grafana for the Go language.
 weight: 100
 ---
 
-# Go span profiles with trace-to-profiles
+# Span profiles with Traces to profiles for Go
 
 ![span-profiles screenshot](https://grafana.com/static/img/docs/tempo/profiles/tempo-profiles-Span-link-profile-data-source.png)
 
