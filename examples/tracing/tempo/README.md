@@ -1,4 +1,4 @@
-### This is a pre-release demo project for internal use only
+# Span Profiles with Grafana Tempo and Pyroscope
 
 The docker compose consists of:
  - Ride share demo application
