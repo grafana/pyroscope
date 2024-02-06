@@ -25,8 +25,8 @@ Profiling data can be presented in a variety of formats presents such as:
 Pyroscope offers both a Command Line Interface (CLI) and an Application Programming Interface (API) to interact with and retrieve profiling data. These tools provide flexibility in how you access and manage your profiling information.
 
 You can export profiling data from Pyroscope in various formats:
+- **pprof**: Support for pprof, gzip compressed pprof, for example, `foo.pprof.gz`
 - **JSON**: JSON object easy to integrate with other tools and scripts
-- **dot**: text containing a DOT representation of the profile
 
 Integrating Pyroscope with Grafana is a common and recommended approach for visualizing profiling data. Grafana, being a powerful tool for data visualization, can effectively display profiling data in an accessible and insightful manner.
 
