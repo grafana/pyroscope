@@ -64,7 +64,7 @@ func main() {
 
 Now that we set up the tracer, we can create a new trace from anywhere and the profiler will automatically capture profiles for it.
 ```go
-ctx, span := otel.Tracer("tracerName").Start(context.Background(), "ExampleSpan")
+ctx, span := otel.Tracer("tracerName").Start(ctx, "ExampleSpan")
 defer span.End()
 
 // Your code goes here.
