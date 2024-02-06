@@ -11,6 +11,7 @@ keywords:
   - profiles datastore
   - observability
   - continuous profiling
+  - sample-based profiling
 ---
 # Grafana Pyroscope documentation
 
