@@ -9,10 +9,12 @@ weight: 100
 
 ![span-profiles screenshot](https://grafana.com/static/img/docs/tempo/profiles/tempo-profiles-Span-link-profile-data-source.png)
 
-## Prerequisites
+## Before you begin
 
-1. Profiling: You will need to have your application instrumented with Pyroscopes Go SDK. If you haven't done this yet, please refer to the [Go (push mode)]({{< relref "../configure-client/language-sdks/go_push" >}}) guide.
-2. Tracing: You will need to have your application instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/go/getting-started/) guide.
+Your applications must be instrumented for profiling and tracing before you can use span profiles. 
+
+* Profiling: Your application must be instrumented with Pyroscopes Go SDK. If you haven't done this yet, please refer to the [Go (push mode)]({{< relref "../configure-client/language-sdks/go_push" >}}) guide.
+* Tracing: Your application must be instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/go/getting-started/) guide.
 
 ## OpenTelemetry support
 
