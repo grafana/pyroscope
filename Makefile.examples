@@ -1,0 +1,35 @@
+
+.PHONY: tools/update_examples
+tools/update_examples:
+	go run tools/update_examples.go
+
+.PHONY: rideshare/docker/push
+rideshare/docker/push: rideshare/docker/push-golang rideshare/docker/push-loadgen rideshare/docker/push-python rideshare/docker/push-ruby rideshare/docker/push-dotnet rideshare/docker/push-java rideshare/docker/push-rust
+
+.PHONY: rideshare/docker/push-golang
+rideshare/docker/push-golang:
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-golang -t $(IMAGE_PREFIX)pyroscope-rideshare-golang:$(IMAGE_TAG) examples/golang-push/rideshare
+
+.PHONY: rideshare/docker/push-loadgen
+rideshare/docker/push-loadgen:
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen:$(IMAGE_TAG) -f examples/golang-push/rideshare/Dockerfile.load-generator examples/golang-push/rideshare
+
+.PHONY: rideshare/docker/push-python
+rideshare/docker/push-python:
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-python -t $(IMAGE_PREFIX)pyroscope-rideshare-python:$(IMAGE_TAG) examples/python/rideshare/flask
+
+.PHONY: rideshare/docker/push-ruby
+rideshare/docker/push-ruby:
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-ruby -t $(IMAGE_PREFIX)pyroscope-rideshare-ruby:$(IMAGE_TAG) examples/ruby/rideshare_rails
+
+.PHONY: rideshare/docker/push-dotnet
+rideshare/docker/push-dotnet:
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-dotnet -t $(IMAGE_PREFIX)pyroscope-rideshare-dotnet:$(IMAGE_TAG) examples/dotnet/rideshare/
+
+.PHONY: rideshare/docker/push-java
+rideshare/docker/push-java:
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-java -t $(IMAGE_PREFIX)pyroscope-rideshare-java:$(IMAGE_TAG) examples/java/rideshare
+
+.PHONY: rideshare/docker/push-rust
+rideshare/docker/push-rust:
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-rust -t $(IMAGE_PREFIX)pyroscope-rideshare-rust:$(IMAGE_TAG) examples/rust/rideshare
