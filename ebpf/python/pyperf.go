@@ -13,7 +13,6 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/grafana/pyroscope/ebpf/metrics"
 	"github.com/grafana/pyroscope/ebpf/symtab"
-	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 type Perf struct {
@@ -26,9 +25,14 @@ type Perf struct {
 	events      []*PerfPyEvent
 	eventsLock  sync.Mutex
 	sc          *symtab.SymbolCache
-	pidCache    *lru.Cache[uint32, *PerfPyPidData]
+	pidCache    map[uint32]*Proc
 	prevSymbols map[uint32]*PerfPySymbol
 	wg          sync.WaitGroup
+}
+
+type Proc struct {
+	PerfPyPidData *PerfPyPidData
+	SymbolOptions *symtab.SymbolOptions
 }
 
 func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *ebpf.Map, pidDataHasMap *ebpf.Map, symbolsHashMap *ebpf.Map) (*Perf, error) {
@@ -36,9 +40,7 @@ func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *eb
 	if err != nil {
 		return nil, fmt.Errorf("perf new reader: %w", err)
 	}
-	pidCache, err := lru.NewWithEvict[uint32, *PerfPyPidData](512, func(key uint32, value *PerfPyPidData) {
-		_ = pidDataHasMap.Delete(key)
-	})
+	pidCache := make(map[uint32]*Proc)
 	if err != nil {
 		return nil, fmt.Errorf("pyperf pid cache %w", err)
 	}
@@ -58,18 +60,27 @@ func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *eb
 	return res, nil
 }
 
-func (s *Perf) StartPythonProfiling(pid uint32, data *PerfPyPidData, serviceName string) error {
-	if s.pidCache.Contains(pid) {
-		return nil
+func (s *Perf) FindProc(pid uint32) *Proc {
+	return s.pidCache[pid]
+}
+
+func (s *Perf) NewProc(pid uint32, data *PerfPyPidData, options *symtab.SymbolOptions, serviceName string) (*Proc, error) {
+	prev := s.pidCache[pid]
+	if prev != nil {
+		return prev, nil
 	}
 
 	err := s.pidDataHashMap.Update(pid, data, ebpf.UpdateAny)
 	if err != nil { // should never happen
-		return fmt.Errorf("updating pid data hash map: %w", err)
+		return nil, fmt.Errorf("updating pid data hash map: %w", err)
 	}
 	s.metrics.ProcessInitSuccess.WithLabelValues(serviceName).Inc()
-	s.pidCache.Add(pid, data)
-	return nil
+	n := &Proc{
+		PerfPyPidData: data,
+		SymbolOptions: options,
+	}
+	s.pidCache[pid] = n
+	return n, nil
 }
 
 func (s *Perf) loop() {
@@ -195,7 +206,7 @@ func (s *Perf) GetSymbols(svcReason string) (map[uint32]*PerfPySymbol, error) {
 }
 
 func (s *Perf) RemoveDeadPID(pid uint32) {
-	s.pidCache.Remove(pid)
+	delete(s.pidCache, pid)
 	err := s.pidDataHashMap.Delete(pid)
 	if err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
 		_ = level.Error(s.logger).Log("msg", "[pyperf] deleting pid data hash map", "err", err)

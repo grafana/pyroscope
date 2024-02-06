@@ -22,8 +22,10 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/pyroscope/ebpf/cpp/demangle"
 	"github.com/grafana/pyroscope/ebpf/cpuonline"
 	"github.com/grafana/pyroscope/ebpf/metrics"
+	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/pyrobpf"
 	"github.com/grafana/pyroscope/ebpf/python"
 	"github.com/grafana/pyroscope/ebpf/rlimit"
@@ -39,28 +41,18 @@ type SessionOptions struct {
 	UnknownSymbolAddress      bool // use 0xcafebabe instead of [unknown]
 	PythonEnabled             bool
 	CacheOptions              symtab.CacheOptions
+	SymbolOptions             symtab.SymbolOptions
 	Metrics                   *metrics.Metrics
 	SampleRate                int
+	VerifierLogSize           int
 }
 
-type SampleAggregation bool
-
-var (
-	// SampleAggregated mean samples are accumulated in ebpf, no need to dedup these
-	SampleAggregated = SampleAggregation(true)
-	// SampleNotAggregated mean values are not accumulated in ebpf, but streamed to userspace with value=1
-	// TODO make consider aggregating python in ebpf as well
-	SampleNotAggregated = SampleAggregation(false)
-)
-
-type CollectProfilesCallback func(target *sd.Target, stack []string, value uint64, pid uint32, aggregation SampleAggregation)
-
 type Session interface {
+	pprof.SamplesCollector
 	Start() error
 	Stop()
 	Update(SessionOptions) error
 	UpdateTargets(args sd.TargetsOptions)
-	CollectProfiles(f CollectProfilesCallback) error
 	DebugInfo() interface{}
 }
 
@@ -152,11 +144,10 @@ func (s *session) Start() error {
 	}
 
 	opts := &ebpf.CollectionOptions{
-		Programs: ebpf.ProgramOptions{
-			LogDisabled: true,
-		},
+		Programs: s.progOptions(),
 	}
 	if err := pyrobpf.LoadProfileObjects(&s.bpf, opts); err != nil {
+		s.logVerifierError(err)
 		s.stopLocked()
 		return fmt.Errorf("load bpf objects: %w", err)
 	}
@@ -237,7 +228,7 @@ func (s *session) UpdateTargets(args sd.TargetsOptions) {
 	}
 }
 
-func (s *session) CollectProfiles(cb CollectProfilesCallback) error {
+func (s *session) CollectProfiles(cb pprof.CollectProfilesCallback) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -269,7 +260,7 @@ func (s *session) DebugInfo() interface{} {
 	}
 }
 
-func (s *session) collectRegularProfile(cb CollectProfilesCallback) error {
+func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error {
 	sb := &stackBuilder{}
 
 	keys, values, batch, err := s.getCountsMapValues()
@@ -289,15 +280,19 @@ func (s *session) collectRegularProfile(cb CollectProfilesCallback) error {
 		if ck.KernStack >= 0 {
 			knownStacks[uint32(ck.KernStack)] = true
 		}
-		labels := s.targetFinder.FindTarget(ck.Pid)
-		if labels == nil {
+		target := s.targetFinder.FindTarget(ck.Pid)
+		if target == nil {
 			continue
 		}
 		if _, ok := s.pids.dead[ck.Pid]; ok {
 			continue
 		}
 
-		proc := s.symCache.GetProcTable(symtab.PidKey(ck.Pid))
+		pk := symtab.PidKey(ck.Pid)
+		proc := s.symCache.GetProcTableCached(pk)
+		if proc == nil {
+			proc = s.symCache.NewProcTable(pk, s.targetSymbolOptions(target))
+		}
 		if proc.Error() != nil {
 			s.pids.dead[uint32(proc.Pid())] = struct{}{}
 			// in theory if we saw this process alive before, we could try resolving tack anyway
@@ -327,8 +322,15 @@ func (s *session) collectRegularProfile(cb CollectProfilesCallback) error {
 			continue // only comm
 		}
 		lo.Reverse(sb.stack)
-		cb(labels, sb.stack, uint64(value), ck.Pid, SampleAggregated)
-		s.collectMetrics(labels, &stats, sb)
+		cb(pprof.ProfileSample{
+			Target:      target,
+			Pid:         ck.Pid,
+			Aggregation: pprof.SampleAggregated,
+			SampleType:  pprof.SampleTypeCpu,
+			Stack:       sb.stack,
+			Value:       uint64(value),
+		})
+		s.collectMetrics(target, &stats, sb)
 	}
 
 	if err = s.clearCountsMap(keys, batch); err != nil {
@@ -601,6 +603,12 @@ func (s *session) startProfilingLocked(pid uint32, target *sd.Target) {
 		go s.tryStartPythonProfiling(pid, target, typ)
 		return
 	}
+	if s.pyperf != nil {
+		pyproc := s.pyperf.FindProc(pid)
+		if pyproc != nil {
+			s.pyperf.RemoveDeadPID(pid)
+		}
+	}
 	s.setPidConfig(pid, typ, s.options.CollectUser, s.options.CollectKernel)
 }
 
@@ -629,7 +637,7 @@ func (s *session) selectProfilingType(pid uint32, target *sd.Target) procInfoLit
 
 	_ = level.Debug(s.logger).Log("exe", exePath, "pid", pid)
 
-	if s.options.PythonEnabled && strings.HasPrefix(exe, "python") || exe == "uwsgi" {
+	if s.pythonEnabled(target) && strings.HasPrefix(exe, "python") || exe == "uwsgi" {
 		return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypePython}
 	}
 	return procInfoLite{pid: pid, comm: string(comm), typ: pyrobpf.ProfilingTypeFramepointers}
@@ -730,7 +738,6 @@ func (s *session) cleanup() {
 	s.symCache.Cleanup()
 
 	for pid := range s.pids.dead {
-		_ = level.Debug(s.logger).Log("msg", "cleanup dead pid", "pid", pid)
 		delete(s.pids.dead, pid)
 		delete(s.pids.unknown, pid)
 		delete(s.pids.all, pid)
@@ -795,6 +802,59 @@ func (s *session) checkStalePids() {
 			_ = level.Error(s.logger).Log("msg", "check stale pids", "err", err)
 		}
 	}
+}
+
+func (s *session) logVerifierError(err error) {
+	if s.options.VerifierLogSize <= 0 {
+		return
+	}
+	var e *ebpf.VerifierError
+	if errors.As(err, &e) {
+		for _, l := range e.Log {
+			level.Error(s.logger).Log("verifier", l)
+		}
+	}
+}
+
+func (s *session) progOptions() ebpf.ProgramOptions {
+	if s.options.VerifierLogSize > 0 {
+		return ebpf.ProgramOptions{
+			LogDisabled: false,
+			LogSize:     s.options.VerifierLogSize,
+			LogLevel:    ebpf.LogLevelInstruction | ebpf.LogLevelBranch | ebpf.LogLevelStats,
+		}
+	} else {
+		return ebpf.ProgramOptions{
+			LogDisabled: true,
+		}
+	}
+}
+
+func (s *session) targetSymbolOptions(target *sd.Target) *symtab.SymbolOptions {
+	opt := new(symtab.SymbolOptions)
+	*opt = s.options.SymbolOptions
+	overrideSymbolOptions(target, opt)
+	return opt
+}
+
+func overrideSymbolOptions(t *sd.Target, opt *symtab.SymbolOptions) {
+	if v, present := t.GetFlag(sd.OptionGoTableFallback); present {
+		opt.GoTableFallback = v
+	}
+	if v, present := t.GetFlag(sd.OptionPythonFullFilePath); present {
+		opt.PythonFullFilePath = v
+	}
+	if v, present := t.Get(sd.OptionDemangle); present {
+		opt.DemangleOptions = demangle.ConvertDemangleOptions(v)
+	}
+}
+
+func (s *session) pythonEnabled(target *sd.Target) bool {
+	enabled := s.options.PythonEnabled
+	if v, present := target.GetFlag(sd.OptionPythonEnabled); present {
+		enabled = v
+	}
+	return enabled
 }
 
 type stackBuilder struct {
