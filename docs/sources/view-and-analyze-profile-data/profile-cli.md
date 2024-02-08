@@ -3,10 +3,11 @@ aliases:
   - /docs/phlare/latest/operators-guide/configuring/profile-cli/
   - /docs/phlare/latest/profile-cli/
   - /docs/pyroscope/latest/configure-server/profile-cli/
+  - ../ingest-and-analyze-profile-data/profile-cli/
 description: Getting started with the profile CLI tool.
 menuTitle: Profile CLI
 title: Profile CLI
-weight: 50
+weight: 60
 ---
 
 # Profile CLI
