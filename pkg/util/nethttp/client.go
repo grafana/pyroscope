@@ -64,7 +64,10 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	tracer.start(req)
 
 	carrier := opentracing.HTTPHeadersCarrier(req.Header)
-	tracer.sp.Tracer().Inject(tracer.sp.Context(), opentracing.HTTPHeaders, carrier)
+	err := tracer.sp.Tracer().Inject(tracer.sp.Context(), opentracing.HTTPHeaders, carrier)
+	if err != nil {
+		return rt.RoundTrip(req)
+	}
 
 	resp, err := rt.RoundTrip(req)
 
