@@ -28,10 +28,10 @@
       // todo we could also add tenantID to the state
       let possible =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-      state = "";
+      nonce = "";
       for (let i = 0; i < 40; i++)
-        state += possible.charAt(Math.floor(Math.random() * possible.length));
-      localStorage.setItem("latestCSRFToken", state);
+        nonce += possible.charAt(Math.floor(Math.random() * possible.length));
+      localStorage.setItem("latestCSRFToken", nonce);
       // login with repo access
       fetch(`/vcs.v1.VCSService/GithubApp`, {
         method: "POST",
@@ -42,8 +42,12 @@
       }).then((res) => res.json())
         .then((data) => {
           console.log(data);
-          uri = window.location.origin + window.location.pathname;
-          authURL = `https://github.com/login/oauth/authorize?client_id=${data.clientID}&redirect_uri=${uri}&state=${state}&scope=repo`;
+          state = JSON.stringify({
+            nonce: nonce,
+            redirect_uri: window.location.origin + window.location.pathname,
+          });
+          state = btoa(state);
+          authURL = `https://github.com/login/oauth/authorize?client_id=${data.clientID}&state=${state}&scope=repo`;
 
           window.location.href = authURL;
         });
