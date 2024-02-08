@@ -3,6 +3,8 @@ title: Analyze app performance using Pyroscope
 menuTitle: Analyze app performance
 description: How to use the Pyroscope UI to analyze performance of your applications.
 weight: 40
+aliases:
+  - ../ingest-and-analyze-profile-data/analyze-profiles/
 draft: true
 keywords:
   - pyroscope

@@ -80,16 +80,20 @@ can help you pin down a profiling target.
 
 You are required to run the agent as root and inside host pid namespace in order to `pyroscope.ebpf` component to work.
 
-### Container ID
+### Targets
 
-Each collected stack trace is then associated with a specified target from the targets list, determined by a
-container ID. This association process involves checking the `__container_id__`, `__meta_docker_container_id`, `__meta_dockerswarm_task_container_id`
-and `__meta_kubernetes_pod_container_id` labels of a target against the `/proc/{pid}/cgroup` of a process.
+One of the following special labels _must_ be included in each target of `targets` and the label must correspond to the container or process that is profiled:
 
-If a corresponding container ID is found, the stack traces are aggregated per target based on the container ID.
-If a container ID is not found, the stack trace is associated with a `default_target`.
+* `__container_id__`: The container ID.
+* `__meta_docker_container_id`: The ID of the Docker container.
+* `__meta_kubernetes_pod_container_id`: The ID of the Kubernetes pod container.
+* `__process_pid__` : The process ID.
 
-Any stack traces not associated with a listed target are ignored.
+Each process is then associated with a specified target from the targets list, determined by a container ID or process PID.
+
+If a process's container ID matches a target's container ID label, the stack traces are aggregated per target based on the container ID.
+If a process's PID matches a target's process PID label, the stack traces are aggregated per target based on the process PID.
+Otherwise, the process is not profiled.
 
 ### Service name
 
