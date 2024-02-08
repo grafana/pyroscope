@@ -3,6 +3,8 @@ title: Use the Pyroscope UI to explore profiling data
 menuTitle: Use the Pyroscope UI
 description: How to use the Pyroscope UI to explore profile data.
 weight: 40
+aliases:
+  - ../ingest-and-analyze-profile-data/profile-ui/
 keywords:
   - pyroscope
   - performance analysis
