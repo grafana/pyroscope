@@ -35,6 +35,14 @@ import (
 
 var configFile = flag.String("config", "", "config file path")
 var server = flag.String("server", "http://localhost:4040", "")
+var discoverFreq = flag.Duration("discover.freq",
+	//5 * time.Second,
+	5*time.Hour, //todo remove
+	"")
+
+var collectFreq = flag.Duration("collect.freq",
+	15*time.Second,
+	"")
 
 var (
 	config  *Config
@@ -90,12 +98,17 @@ func main() {
 
 	profiles := make(chan *pushv1.PushRequest, 128)
 	go ingest(profiles)
+
+	discoverTicker := time.NewTicker(*discoverFreq)
+	collectTicker := time.NewTicker(*collectFreq)
+
 	for {
-		time.Sleep(5 * time.Second)
-
-		collectProfiles(profiles)
-
-		session.UpdateTargets(convertTargetOptions())
+		select {
+		case <-discoverTicker.C:
+			session.UpdateTargets(convertTargetOptions())
+		case <-collectTicker.C:
+			collectProfiles(profiles)
+		}
 	}
 }
 
@@ -183,6 +196,8 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 		Metrics:                   metrics,
 		CacheOptions:              config.CacheOptions,
 		VerifierLogSize:           1024 * 1024 * 20,
+		PythonBPFErrorLogEnabled:  config.PythonBPFLogErr,
+		PythonBPFDebugLogEnabled:  config.PythonBPFLogDebug,
 	}
 }
 
@@ -236,6 +251,8 @@ var defaultConfig = Config{
 	DefaultTarget:      nil,
 	ContainerCacheSize: 1024,
 	RelabelConfig:      nil,
+	PythonBPFLogErr:    true,
+	PythonBPFLogDebug:  true,
 }
 
 type Config struct {
@@ -251,6 +268,8 @@ type Config struct {
 	DefaultTarget             map[string]string
 	ContainerCacheSize        int
 	RelabelConfig             []*RelabelConfig
+	PythonBPFLogErr           bool
+	PythonBPFLogDebug         bool
 }
 
 type RelabelConfig struct {

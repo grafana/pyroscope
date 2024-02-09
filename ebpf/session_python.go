@@ -3,6 +3,7 @@
 package ebpfspy
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 	"strings"
@@ -11,126 +12,11 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/pyroscope/ebpf/pprof"
 	"github.com/grafana/pyroscope/ebpf/pyrobpf"
 	"github.com/grafana/pyroscope/ebpf/python"
 	"github.com/grafana/pyroscope/ebpf/sd"
 	"github.com/samber/lo"
 )
-
-func (s *session) collectPythonProfile(cb pprof.CollectProfilesCallback) error {
-	if s.pyperf == nil {
-		return nil
-	}
-	s.pyperfEvents = s.pyperf.CollectEvents(s.pyperfEvents)
-	if len(s.pyperfEvents) == 0 {
-		return nil
-	}
-	defer func() {
-		for i := range s.pyperfEvents {
-			s.pyperfEvents[i] = nil
-		}
-	}()
-	pySymbols := s.pyperf.GetLazySymbols()
-
-	sb := &stackBuilder{}
-	stacktraceErrors := 0
-	unknownSymbols := 0
-	for _, event := range s.pyperfEvents {
-		stats := StackResolveStats{}
-		labels := s.targetFinder.FindTarget(event.Pid)
-		if labels == nil {
-			continue
-		}
-		svc := labels.ServiceName()
-
-		sb.reset()
-
-		proc := s.pyperf.FindProc(event.Pid)
-		if proc == nil {
-			continue
-		}
-
-		sb.append(s.comm(event.Pid))
-		var kStack []byte
-		if event.StackStatus == uint8(python.StackStatusError) {
-			_ = level.Debug(s.logger).Log("msg", "collect python",
-				"stack_status", python.StackStatus(event.StackStatus),
-				"pid", event.Pid,
-				"err", python.PyError(event.Err))
-			s.options.Metrics.Python.StacktraceError.Inc()
-			stacktraceErrors += 1
-			continue
-		} else {
-			begin := len(sb.stack)
-			if event.StackStatus == uint8(python.StackStatusTruncated) {
-
-			}
-			for i := 0; i < int(event.StackLen); i++ {
-				sym, err := pySymbols.GetSymbol(event.Stack[i], svc)
-				if err == nil {
-					filename := python.PythonString(sym.File[:], &sym.FileType)
-					if !proc.SymbolOptions.PythonFullFilePath {
-						iSep := strings.LastIndexByte(filename, '/')
-						if iSep != 1 {
-							filename = filename[iSep+1:]
-						}
-					}
-					classname := python.PythonString(sym.Classname[:], &sym.ClassnameType)
-					name := python.PythonString(sym.Name[:], &sym.NameType)
-					if skipPythonFrame(classname, filename, name) {
-						continue
-					}
-					var frame string
-					if classname == "" {
-						frame = fmt.Sprintf("%s %s", filename, name)
-					} else {
-						frame = fmt.Sprintf("%s %s.%s", filename, classname, name)
-					}
-					sb.append(frame)
-				} else {
-					sb.append("pyperf_unknown")
-					s.options.Metrics.Python.UnknownSymbols.WithLabelValues(svc).Inc()
-					unknownSymbols += 1
-				}
-			}
-
-			end := len(sb.stack)
-			lo.Reverse(sb.stack[begin:end])
-		}
-		if s.options.CollectKernel && event.KernStack != -1 {
-			kStack = s.GetStack(event.KernStack)
-			s.WalkStack(sb, kStack, s.symCache.GetKallsyms(), &stats)
-		}
-		if len(sb.stack) == 1 {
-			continue // only comm .. todo skip with an option
-		}
-		lo.Reverse(sb.stack)
-		cb(pprof.ProfileSample{
-			Target:      labels,
-			Stack:       sb.stack,
-			Value:       1,
-			Value2:      0,
-			Pid:         event.Pid,
-			Aggregation: pprof.SampleNotAggregated,
-			SampleType:  pprof.SampleTypeCpu,
-		})
-		s.collectMetrics(labels, &stats, sb)
-	}
-	if stacktraceErrors > 0 {
-		_ = level.Error(s.logger).Log("msg", "python stacktrace errors", "count", stacktraceErrors)
-	}
-	if unknownSymbols > 0 {
-		_ = level.Error(s.logger).Log("msg", "python unknown symbols", "count", unknownSymbols)
-	}
-	return nil
-}
-
-func skipPythonFrame(classname string, filename string, name string) bool {
-	// for now only skip _Py_InitCleanup frames in userspace
-	// https://github.com/python/cpython/blob/9eb2489266c4c1f115b8f72c0728db737cc8a815/Python/specialize.c#L2534
-	return classname == "" && filename == "__init__" && name == "__init__"
-}
 
 func (s *session) tryStartPythonProfiling(pid uint32, target *sd.Target, pi procInfoLite) {
 	const nTries = 4
@@ -153,7 +39,7 @@ func (s *session) startPythonProfiling(pid uint32, target *sd.Target, pi procInf
 	if dead {
 		return false
 	}
-	pyPerf := s.getPyPerfLocked()
+	pyPerf := s.getPyPerfLocked(target)
 	if pyPerf == nil {
 		_ = level.Error(s.logger).Log("err", "pyperf process profiling init failed. pyperf == nil", "pid", pid)
 		pi.typ = pyrobpf.ProfilingTypeError
@@ -161,7 +47,7 @@ func (s *session) startPythonProfiling(pid uint32, target *sd.Target, pi procInf
 		return false
 	}
 
-	pyData, err := python.GetPyPerfPidData(s.logger, pid)
+	pyData, err := python.GetPyPerfPidData(s.logger, pid, s.collectKernelEnabled(target))
 	svc := target.ServiceName()
 	if err != nil {
 		alive := processAlive(pid)
@@ -193,7 +79,7 @@ func (s *session) startPythonProfiling(pid uint32, target *sd.Target, pi procInf
 }
 
 // may return nil if loadPyPerf returns error
-func (s *session) getPyPerfLocked() *python.Perf {
+func (s *session) getPyPerfLocked(cause *sd.Target) *python.Perf {
 	if s.pyperf != nil {
 		return s.pyperf
 	}
@@ -201,7 +87,7 @@ func (s *session) getPyPerfLocked() *python.Perf {
 		return nil
 	}
 	s.options.Metrics.Python.Load.Inc()
-	pyperf, err := s.loadPyPerf()
+	pyperf, err := s.loadPyPerf(cause)
 	if err != nil {
 		s.pyperfError = err
 		s.options.Metrics.Python.LoadError.Inc()
@@ -217,25 +103,38 @@ func (s *session) getPyPerfLocked() *python.Perf {
 func (s *session) getPyPerf() *python.Perf {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	return s.getPyPerfLocked()
+	return s.getPyPerfLocked(nil)
 }
 
-func (s *session) loadPyPerf() (*python.Perf, error) {
+func (s *session) loadPyPerf(cause *sd.Target) (*python.Perf, error) {
 	defer btf.FlushKernelSpec() // save some memory
+
 	opts := &ebpf.CollectionOptions{
-		Programs: ebpf.ProgramOptions{
-			LogDisabled: true,
-		},
+		Programs: s.progOptions(),
 		MapReplacements: map[string]*ebpf.Map{
 			"stacks": s.bpf.Stacks,
+			"counts": s.bpf.ProfileMaps.Counts,
 		},
 	}
-
-	err := python.LoadPerfObjects(&s.pyperfBpf, opts)
+	spec, err := python.LoadPerf()
 	if err != nil {
 		return nil, fmt.Errorf("pyperf load %w", err)
 	}
-	pyperf, err := python.NewPerf(s.logger, s.options.Metrics.Python, s.pyperfBpf.PerfMaps.PyEvents, s.pyperfBpf.PerfMaps.PyPidConfig, s.pyperfBpf.PerfMaps.PySymbols)
+	err = spec.RewriteConstants(map[string]interface{}{
+		"global_config": python.PerfGlobalConfigT{
+			BpfLogErr:   boolToU8(s.pythonBPFErrorLogEnabled(cause)),
+			BpfLogDebug: boolToU8(s.pythonBPFDebugLogEnabled(cause)),
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("pyperf rewrite constants %w", err)
+	}
+	err = spec.LoadAndAssign(&s.pyperfBpf, opts)
+	if err != nil {
+		s.logVerifierError(err)
+		return nil, fmt.Errorf("pyperf load %w", err)
+	}
+	pyperf, err := python.NewPerf(s.logger, s.options.Metrics.Python, s.pyperfBpf.PerfMaps.PyPidConfig, s.pyperfBpf.PerfMaps.PySymbols)
 	if err != nil {
 		return nil, fmt.Errorf("pyperf create %w", err)
 	}
@@ -247,7 +146,79 @@ func (s *session) loadPyPerf() (*python.Perf, error) {
 	return pyperf, nil
 }
 
+func (s *session) GetPythonStack(stackId int64) []byte {
+	if s.pyperfBpf.PythonStacks == nil {
+		return nil
+	}
+	stackIdU32 := uint32(stackId)
+	res, err := s.pyperfBpf.PythonStacks.LookupBytes(stackIdU32)
+	if err != nil {
+		return nil
+	}
+	return res
+}
+
+func (s *session) WalkPythonStack(sb *stackBuilder, stack []byte, target *sd.Target, proc *python.Proc, pySymbols *python.LazySymbols, stats *StackResolveStats) {
+	if len(stack) == 0 {
+		return
+	}
+
+	svc := target.ServiceName()
+
+	begin := len(sb.stack)
+	for len(stack) > 0 {
+		symbolIDBytes := stack[:4]
+		stack = stack[4:]
+		symbolID := binary.LittleEndian.Uint32(symbolIDBytes)
+		if symbolID == 0 {
+			break
+		}
+		sym, err := pySymbols.GetSymbol(symbolID, svc)
+		if err == nil {
+			filename := python.PythonString(sym.File[:], &sym.FileType)
+			if !proc.SymbolOptions.PythonFullFilePath {
+				iSep := strings.LastIndexByte(filename, '/')
+				if iSep != 1 {
+					filename = filename[iSep+1:]
+				}
+			}
+			classname := python.PythonString(sym.Classname[:], &sym.ClassnameType)
+			name := python.PythonString(sym.Name[:], &sym.NameType)
+			if skipPythonFrame(classname, filename, name) {
+				continue
+			}
+			var frame string
+			if classname == "" {
+				frame = filename + " " + name
+			} else {
+				frame = filename + " " + classname + "." + name
+			}
+			sb.append(frame)
+			stats.known += 1
+		} else {
+			sb.append("pyperf_unknown")
+			s.options.Metrics.Python.UnknownSymbols.WithLabelValues(svc).Inc()
+			stats.unknownSymbols += 1
+		}
+	}
+	end := len(sb.stack)
+	lo.Reverse(sb.stack[begin:end])
+}
+
+func skipPythonFrame(classname string, filename string, name string) bool {
+	// for now only skip _Py_InitCleanup frames in userspace
+	// https://github.com/python/cpython/blob/9eb2489266c4c1f115b8f72c0728db737cc8a815/Python/specialize.c#L2534
+	return classname == "" && filename == "__init__" && name == "__init__"
+}
+
 func processAlive(pid uint32) bool {
 	_, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
 	return err == nil
+}
+
+func boolToU8(err bool) uint8 {
+	if err {
+		return 1
+	}
+	return 0
 }

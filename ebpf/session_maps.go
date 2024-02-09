@@ -84,8 +84,7 @@ func (s *session) clearCountsMap(keys []pyrobpf.ProfileSampleKey, batch bool) er
 	return nil
 }
 
-func (s *session) clearStacksMap(knownKeys map[uint32]bool) error {
-	m := s.bpf.Stacks
+func (s *session) clearStacksMap(knownKeys map[uint32]bool, m *ebpf.Map) error {
 	cnt := 0
 	errs := 0
 	if s.roundNumber%10 == 0 {
@@ -99,7 +98,7 @@ func (s *session) clearStacksMap(knownKeys map[uint32]bool) error {
 			if !ok {
 				err := it.Err()
 				if err != nil {
-					return fmt.Errorf("clearStacksMap fail: %w", err)
+					return fmt.Errorf("clearStacksMap fail: %w %s", err, m.String())
 				}
 				break
 			}
@@ -116,6 +115,7 @@ func (s *session) clearStacksMap(knownKeys map[uint32]bool) error {
 			"msg", "clearStacksMap deleted all stacks",
 			"count", cnt,
 			"unsuccessful", errs,
+			"map", m.String(),
 		)
 		return nil
 	}
@@ -131,6 +131,7 @@ func (s *session) clearStacksMap(knownKeys map[uint32]bool) error {
 		"msg", "clearStacksMap deleted known stacks",
 		"count", cnt,
 		"unsuccessful", errs,
+		"map", m.String(),
 	)
 	return nil
 }
