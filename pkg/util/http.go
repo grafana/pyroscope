@@ -23,7 +23,6 @@ import (
 	"github.com/grafana/dskit/multierror"
 	"github.com/grafana/dskit/tracing"
 	"github.com/grafana/dskit/user"
-	"github.com/opentracing-contrib/go-stdlib/nethttp"
 	"github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/http2"
@@ -31,6 +30,7 @@ import (
 
 	"github.com/grafana/pyroscope/pkg/tenant"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
+	"github.com/grafana/pyroscope/pkg/util/nethttp"
 )
 
 var defaultTransport http.RoundTripper = &http2.Transport{
@@ -60,8 +60,7 @@ func InstrumentedHTTPClient() *http.Client {
 func WrapWithInstrumentedHTTPTransport(next http.RoundTripper) http.RoundTripper {
 	next = &nethttp.Transport{RoundTripper: next}
 	return RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
-		req, tr := nethttp.TraceRequest(opentracing.GlobalTracer(), req)
-		defer tr.Finish()
+		req = nethttp.TraceRequest(opentracing.GlobalTracer(), req)
 		return next.RoundTrip(req)
 	})
 }
