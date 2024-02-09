@@ -25,5 +25,7 @@ EXPOSE 5000
 
 RUN rm -f tmp/pids/server.pid
 
-CMD ["rails", "s", "-b", "0.0.0.0", "-p", "5000"]
+ENV RIDESHARE_LISTEN_PORT=5000
+
+CMD sh -c "exec rails s -b 0.0.0.0 -p ${RIDESHARE_LISTEN_PORT}"
 

@@ -1,17 +1,7 @@
-const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-//const { dependencies: pyroOSSDeps } = require('../../og/package.json');
-const webpack = require('webpack');
-const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
-
-// this is so that we don't import dependencies twice, once from pyroscope-oss and another from here
-// const deps = Object.entries(pyroOSSDeps).reduce((prev, [name]) => {
-//   return {
-//     ...prev,
-//     [name]: path.resolve(__dirname, `../../node_modules/${name}`),
-//   };
-// }, {});
 
 module.exports = {
   target: 'web',
@@ -57,6 +47,14 @@ module.exports = {
   plugins: [
     new MiniCssExtractPlugin({
       filename: '[name].[contenthash].css',
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: 'node_modules/@grafana/ui/dist/public/img/icons',
+          to: 'grafana/img/icons/',
+        },
+      ],
     }),
   ],
   module: {

@@ -23,6 +23,17 @@ const root = ReactDOM.createRoot(container);
 
 setupReduxQuerySync();
 
+declare global {
+  interface Window {
+    __grafana_public_path__: string;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  // Icons from @grafana/ui are not bundled, this forces them to be loaded via a CDN instead.
+  window.__grafana_public_path__ = 'assets/grafana/';
+}
+
 function App() {
   useSelectFirstApp();
 

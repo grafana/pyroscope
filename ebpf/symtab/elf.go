@@ -78,6 +78,12 @@ func (et *ElfTable) findBase(e *elf2.MMapedElfFile) bool {
 				et.base = m.StartAddr - prog.Vaddr
 				return true
 			}
+			alignedProgOffset := uint64(prog.Off) & 0xfffffffffffff000
+			if uint64(m.Offset) == alignedProgOffset {
+				d := prog.Off - alignedProgOffset
+				et.base = m.StartAddr + d - prog.Vaddr
+				return true
+			}
 		}
 	}
 	return false
@@ -98,13 +104,12 @@ func (et *ElfTable) load() {
 	defer me.Close() // todo do not close if it is the selected elf
 
 	if !et.findBase(me) {
-		et.err = errElfBaseNotFound
+		et.onLoadError(errElfBaseNotFound)
 		return
 	}
 	buildID, err := me.BuildID()
-	if err != nil && !errors.Is(err, elf2.ErrNoBuildIDSection) {
-		et.onLoadError(err)
-		return
+	if err != nil {
+		level.Error(et.logger).Log("msg", "failed to get build id", "err", err, "f", et.elfFilePath, "fs", et.fs)
 	}
 
 	symbols := et.options.ElfCache.GetSymbolsByBuildID(buildID)
@@ -145,7 +150,6 @@ func (et *ElfTable) load() {
 	}
 
 	symbols, err = et.createSymbolTable(me)
-	level.Debug(et.logger).Log("msg", "create symbol table", "f", me.FilePath())
 	if err != nil {
 		et.onLoadError(err)
 		return
@@ -160,6 +164,7 @@ func (et *ElfTable) load() {
 }
 
 func (et *ElfTable) createSymbolTable(me *elf2.MMapedElfFile) (SymbolNameResolver, error) {
+	level.Debug(et.logger).Log("msg", "create symbol table", "path", me.FilePath())
 	goTable, goErr := me.NewGoTable()
 	if !et.options.SymbolOptions.GoTableFallback && goErr == nil {
 		return goTable, nil
@@ -350,6 +355,9 @@ func errorType(err error) string {
 	}
 	if errors.Is(err, os.ErrInvalid) {
 		return "ErrInvalid"
+	}
+	if errors.Is(err, errElfBaseNotFound) {
+		return "ElfBaseNotFound"
 	}
 	return "Other"
 }
