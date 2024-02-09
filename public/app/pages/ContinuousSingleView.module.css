@@ -1,0 +1,30 @@
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.flamegraphContainer {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  animation: fadeIn 1s;
+}
+
+.flamegraphComponent {
+  flex-basis: 50%;
+  flex-grow: 1;
+  flex-shrink: 0;
+}
+
+.extraPanel {
+  flex-basis: 50%;
+  flex-grow: 1;
+  flex-shrink: 0;
+
+  margin-left: 16px;
+  border-left: 2px solid #000;
+}
