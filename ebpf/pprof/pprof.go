@@ -37,9 +37,6 @@ type SampleAggregation bool
 var (
 	// SampleAggregated mean samples are accumulated in ebpf, no need to dedup these
 	SampleAggregated = SampleAggregation(true)
-	// SampleNotAggregated mean values are not accumulated in ebpf, but streamed to userspace with value=1
-	// TODO make consider aggregating python in ebpf as well
-	SampleNotAggregated = SampleAggregation(false)
 )
 
 type CollectProfilesCallback func(sample ProfileSample)
