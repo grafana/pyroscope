@@ -54,6 +54,11 @@ type Target struct {
 	fingerprintCalculated bool
 }
 
+// todo remove, make containerID exported or use string
+func NewTargetForTesting(cid string, pid uint32, target DiscoveryTarget) *Target {
+	return NewTarget(containerID(cid), pid, target)
+}
+
 func NewTarget(cid containerID, pid uint32, target DiscoveryTarget) *Target {
 	serviceName := target[labelServiceName]
 	if serviceName == "" {

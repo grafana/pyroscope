@@ -100,10 +100,10 @@ func (s *session) getPyPerfLocked(cause *sd.Target) *python.Perf {
 
 // getPyPerf is used for testing to wait for pyperf to load
 // it may take long time to load and verify, especially running in qemu with no kvm
-func (s *session) getPyPerf() *python.Perf {
+func (s *session) getPyPerf(cause *sd.Target) *python.Perf {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	return s.getPyPerfLocked(nil)
+	return s.getPyPerfLocked(cause)
 }
 
 func (s *session) loadPyPerf(cause *sd.Target) (*python.Perf, error) {
