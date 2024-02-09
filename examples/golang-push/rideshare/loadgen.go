@@ -38,6 +38,9 @@ func main() {
 			"us-east",
 			"eu-north",
 			"ap-south",
+			"us-east-ruby",
+			"eu-north-ruby",
+			"ap-south-ruby",
 		}
 	}
 

@@ -1,0 +1,6 @@
+FROM golang:1.19
+
+
+COPY loadgen.go ./loadgen.go
+RUN go build -o /loadgen loadgen.go
+CMD [ "/loadgen" ]

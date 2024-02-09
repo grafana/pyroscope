@@ -6,8 +6,8 @@ services:
     environment:
       - REGION=us-east
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
-      - PARAMETERS_POOL_SIZE=1000
-      - PARAMETERS_POOL_BUFFER_SIZE_KB=1000
+      - PARAMETERS_POOL_SIZE=10000
+      - PARAMETERS_POOL_BUFFER_SIZE_KB=10000
     build:
       context: .
 
@@ -34,6 +34,35 @@ services:
     image: grafana/pyroscope:latest
     ports:
       - '4040:4040'
+
+  us-east-ruby:
+    ports:
+      - 5000
+    environment:
+      - REGION=us-east
+      - COMPRESSION=low
+    build:
+      context: ./rideshare_rails
+    links:
+      - 'pyroscope'
+
+  eu-north-ruby:
+    ports:
+      - 5000
+    environment:
+      - REGION=eu-north
+    build:
+      context: ./rideshare_rails
+
+  ap-south-ruby:
+    ports:
+      - 5000
+    environment:
+      - REGION=ap-south
+      - COMPRESSION=high
+    build:
+      context: ./rideshare_rails
+
 
   load-generator:
     build:

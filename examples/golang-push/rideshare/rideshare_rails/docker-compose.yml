@@ -1,0 +1,47 @@
+version: "3"
+services:
+  us-east:
+    ports:
+      - 3000
+    environment:
+      - REGION=us-east
+      - COMPRESSION=low
+    build:
+      context: .
+    links:
+      - 'pyroscope'
+
+  eu-north:
+    ports:
+      - 3000
+    environment:
+      - REGION=eu-north
+    build:
+      context: .
+
+  ap-south:
+    ports:
+      - 3000
+    environment:
+      - REGION=ap-south
+      - COMPRESSION=high
+    build:
+      context: .
+
+  pyroscope:
+    image: pyroscope/pyroscope
+    environment:
+      - PYROSCOPE_LOG_LEVEL=error
+    ports:
+      - '4040:4040'
+    command:
+      - 'server'
+
+  load-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile.load-generator
+    links:
+      - us-east
+      - ap-south
+      - eu-north
