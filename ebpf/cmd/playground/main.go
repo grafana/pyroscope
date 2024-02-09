@@ -36,8 +36,7 @@ import (
 var configFile = flag.String("config", "", "config file path")
 var server = flag.String("server", "http://localhost:4040", "")
 var discoverFreq = flag.Duration("discover.freq",
-	//5 * time.Second,
-	5*time.Hour, //todo remove
+	5*time.Second,
 	"")
 
 var collectFreq = flag.Duration("collect.freq",
