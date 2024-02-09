@@ -31,6 +31,6 @@ end
 
 
 set :bind, '0.0.0.0'
-set :port, 5000
+set :port, ENV["RIDESHARE_LISTEN_PORT"] || 5000
 
 run Sinatra::Application.run!

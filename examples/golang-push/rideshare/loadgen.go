@@ -19,7 +19,7 @@ import (
 	"rideshare/rideshare"
 )
 
-var hosts = []string{}
+var urls = []string{}
 
 var vehicles = []string{
 	"bike",
@@ -32,12 +32,12 @@ var client *http.Client
 func main() {
 	c := rideshare.ReadConfig()
 	c.AppName = "load-generator"
-	hosts = os.Args[1:]
-	if len(hosts) == 0 {
-		hosts = []string{
-			"us-east",
-			"eu-north",
-			"ap-south",
+	urls = os.Args[1:]
+	if len(urls) == 0 {
+		urls = []string{
+			"http://us-east:5000",
+			"http://eu-north:5000",
+			"http://ap-south:5000",
 		}
 	}
 
@@ -82,7 +82,7 @@ func main() {
 		_ = tp.Shutdown(context.Background())
 	}()
 
-	groups := groupHosts(hosts, groupByFactor)
+	groups := groupHosts(urls, groupByFactor)
 	for _, group := range groups {
 		go func(group []string) {
 			for {
@@ -110,7 +110,7 @@ func groupHosts(hosts []string, groupsOf int) [][]string {
 	return res
 }
 
-func orderVehicle(ctx context.Context, host, vehicle string) error {
+func orderVehicle(ctx context.Context, baseURL, vehicle string) error {
 	ctx, span := otel.GetTracerProvider().Tracer("").Start(ctx, "OrderVehicle")
 	defer span.End()
 
@@ -124,7 +124,7 @@ func orderVehicle(ctx context.Context, host, vehicle string) error {
 	}
 
 	span.SetAttributes(attribute.String("vehicle", vehicle))
-	url := fmt.Sprintf("http://%s:5000/%s", host, vehicle)
+	url := fmt.Sprintf("%s/%s", baseURL, vehicle)
 	fmt.Println("requesting", url)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)

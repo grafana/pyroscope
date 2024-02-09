@@ -10,6 +10,7 @@ app_name = os.getenv("PYROSCOPE_APPLICATION_NAME", "flask-ride-sharing-app")
 server_addr = os.getenv("PYROSCOPE_SERVER_ADDRESS", "http://pyroscope:4040")
 basic_auth_username = os.getenv("PYROSCOPE_BASIC_AUTH_USER", "")
 basic_auth_password = os.getenv("PYROSCOPE_BASIC_AUTH_PASSWORD", "")
+port = int(os.getenv("RIDESHARE_LISTEN_PORT", "5000"))
 
 pyroscope.configure(
 	application_name = app_name,
@@ -49,5 +50,5 @@ def environment():
     return result
 
 if __name__ == '__main__':
-    app.run(threaded=False, processes=1, host='0.0.0.0', debug=False)
+    app.run(threaded=False, processes=1, host='0.0.0.0', port=port, debug=False)
 

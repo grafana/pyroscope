@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -72,7 +73,8 @@ func main() {
 	http.Handle("/scooter", otelhttp.NewHandler(http.HandlerFunc(scooterRoute), "ScooterHandler"))
 	http.Handle("/car", otelhttp.NewHandler(http.HandlerFunc(carRoute), "CarHandler"))
 
-	log.Fatal(http.ListenAndServe(":5000", nil))
+	addr := fmt.Sprintf(":%s", config.RideshareListenPort)
+	log.Fatal(http.ListenAndServe(addr, nil))
 }
 
 func setupOTEL(c rideshare.Config) (tp *sdktrace.TracerProvider, err error) {

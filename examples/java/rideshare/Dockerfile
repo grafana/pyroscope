@@ -30,6 +30,7 @@ ENV PYROSCOPE_PROFILER_ALLOC=512k
 ENV PYROSCOPE_UPLOAD_INTERVAL=15s
 ENV PYROSCOPE_LOG_LEVEL=debug
 ENV PYROSCOPE_SERVER_ADDRESS=http://localhost:4040
+ENV RIDESHARE_LISTEN_PORT=5000
 EXPOSE 5000
 
 COPY --from=builder /opt/app/build/libs/rideshare-1.0-SNAPSHOT.jar /opt/app/build/libs/rideshare-1.0-SNAPSHOT.jar
@@ -38,4 +39,4 @@ WORKDIR /opt/app
 
 ADD https://github.com/grafana/pyroscope-java/releases/download/v0.12.2/pyroscope.jar /opt/app/pyroscope.jar
 
-CMD ["java", "-Dserver.port=5000",  "-javaagent:pyroscope.jar", "-jar", "./build/libs/rideshare-1.0-SNAPSHOT.jar" ]
+CMD sh -c "exec java -Dserver.port=${RIDESHARE_LISTEN_PORT} -javaagent:pyroscope.jar -jar ./build/libs/rideshare-1.0-SNAPSHOT.jar"

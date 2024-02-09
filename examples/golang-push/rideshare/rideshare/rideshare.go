@@ -73,6 +73,7 @@ type Config struct {
 
 	ParametersPoolSize       int
 	ParametersPoolBufferSize int
+	RideshareListenPort      string
 }
 
 func ReadConfig() Config {
@@ -109,6 +110,11 @@ func ReadConfig() Config {
 		// more readable from as an env var, we represent the env var value in
 		// kb.
 		ParametersPoolBufferSize: envIntOrDefault("PARAMETERS_POOL_BUFFER_SIZE_KB", 1000) * 1000,
+
+		RideshareListenPort: os.Getenv("RIDESHARE_LISTEN_PORT"),
+	}
+	if c.RideshareListenPort == "" {
+		c.RideshareListenPort = "5000"
 	}
 	if c.AppName == "" {
 		c.AppName = "ride-sharing-app"
