@@ -20,7 +20,7 @@ services:
     build:
       context: .
       dockerfile: client-cgi/Dockerfile
-    command: cgi-fcgi -bind -connect pyroscope_php-fpm:9000
+    command: cgi-fcgi -bind -connect php:9000
     depends_on:
       - php
     environment:
