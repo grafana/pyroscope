@@ -25,7 +25,7 @@ Here are the steps needed to use PGO in the Rideshare example application.
     go test -bench=BenchmarkApp -count=10 main_test.go
     ```
 
-3. Extract a profile in pprof format with `profilecli` (see the [Profile CLI documentation](https://grafana.com/docs/pyroscope/latest/ingest-and-analyze-profile-data/profile-cli/#install-profile-cli) if needed)
+3. Extract a profile in pprof format with `profilecli` (see the [Profile CLI documentation](https://grafana.com/docs/pyroscope/latest/ingest-and-analyze-profile-data/profile-cli/#install-profile-cli) for further reference)
 
     ```shell
     profilecli query merge \
@@ -36,23 +36,23 @@ Here are the steps needed to use PGO in the Rideshare example application.
         --output=pprof=./default.pgo
     ```
 
-    This command will place the pgo (pprof) file in the current folder (`/examples/golang-pgo/rideshare/`).
+    This command will create a default.pgo (pprof) file in the current folder (`/examples/golang-pgo/rideshare/`).
 
-4. Rebuild the Rideshare application
+4. Rebuild the Rideshare application. This will pick up the newly created PGO file automatically.
 
     ```shell
     docker-compose down
     docker-compose up --build --detach
     ```
 
-5. [Optional] Verify that the application was built with PGO
+5. (Optional) Verify that the application was built with PGO
 
     ```shell 
    docker exec -it golang-pgo-rideshare-go-1 /bin/bash
    go version -m main
    exit
     ```
-    You should see a line like the following in the output:
+    You should see this line in the output:
     ```shell
    ...
    build	-pgo=/go/src/app/default.pgo
@@ -63,3 +63,4 @@ Here are the steps needed to use PGO in the Rideshare example application.
    ```shell
    go test -bench=BenchmarkApp -count=10 main_test.go
    ```
+7. (Optional) Use a tool such as [benchstat](https://pkg.go.dev/golang.org/x/perf/cmd/benchstat) to compare the two benchmarks.
