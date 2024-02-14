@@ -161,8 +161,8 @@ func NewDownsampler(path string, logger log.Logger) (*Downsampler, error) {
 func (d *Downsampler) flush(s *state, w *profilesWriter, c downsampleConfig) error {
 	level.Debug(d.logger).Log(
 		"msg", "flushing downsampled profile",
-		"interval", c.interval,
-		"aggregation", c.aggregation,
+		"interval", c.interval.shortName,
+		"aggregation", c.aggregation.name,
 		"sourceProfileCount", s.profileCount,
 		"sampleCount", len(s.values))
 	outputSamplesHistogram.WithLabelValues(c.interval.shortName).Observe(float64(len(s.values)))

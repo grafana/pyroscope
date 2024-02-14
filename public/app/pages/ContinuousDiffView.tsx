@@ -29,8 +29,17 @@ import { isLoadingOrReloading } from './loading';
 import { Panel } from '@pyroscope/components/Panel';
 import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
 import { FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
+import styles from './ContinuousSingleView.module.css';
 
-function ComparisonDiffApp() {
+type ContinuousDiffViewProps = {
+  extraButton?: React.ReactNode;
+  extraPanel?: React.ReactNode;
+};
+
+function ComparisonDiffApp({
+  extraButton,
+  extraPanel,
+}: ContinuousDiffViewProps) {
   const dispatch = useAppDispatch();
   const {
     diffView,
@@ -222,8 +231,17 @@ function ComparisonDiffApp() {
             />
           </Panel>
         </div>
-        <Panel isLoading={isLoading} dataTestId="diff-panel">
-          <FlameGraphWrapper profile={diffView.profile} diff={true} />
+        <Panel isLoading={isLoading} headerActions={extraButton}>
+          {extraPanel ? (
+            <div className={styles.flamegraphContainer}>
+              <div className={styles.flamegraphComponent}>
+                <FlameGraphWrapper profile={diffView.profile} diff={true} />
+              </div>
+              <div className={styles.extraPanel}>{extraPanel}</div>
+            </div>
+          ) : (
+            <FlameGraphWrapper profile={diffView.profile} diff={true} />
+          )}
         </Panel>
       </PageContentWrapper>
     </div>
