@@ -12,6 +12,8 @@ import (
 	"github.com/google/go-github/v58/github"
 	"golang.org/x/oauth2"
 	o2endpoints "golang.org/x/oauth2/endpoints"
+
+	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
 )
 
 var (
@@ -100,6 +102,22 @@ func AuthorizeGithub(ctx context.Context, authorizationCode string) (string, err
 
 type githubClient struct {
 	client *github.Client
+}
+
+func (gh *githubClient) GetCommit(ctx context.Context, owner, repo, ref string) (*vcsv1.GetCommitResponse, error) {
+	commit, _, err := gh.client.Repositories.GetCommit(ctx, owner, repo, ref, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &vcsv1.GetCommitResponse{
+		Sha:     toString(commit.SHA),
+		Message: toString(commit.Commit.Message),
+		Author: &vcsv1.CommitAuthor{
+			Login:     toString(commit.Author.Login),
+			AvatarURL: toString(commit.Author.AvatarURL),
+		},
+		Date: commit.Commit.Author.Date.Format(time.RFC3339),
+	}, nil
 }
 
 func (gh *githubClient) GetFile(ctx context.Context, req FileRequest) (File, error) {

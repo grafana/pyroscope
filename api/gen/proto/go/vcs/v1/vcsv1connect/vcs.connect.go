@@ -39,6 +39,8 @@ const (
 	VCSServiceGithubLoginProcedure = "/vcs.v1.VCSService/GithubLogin"
 	// VCSServiceGetFileProcedure is the fully-qualified name of the VCSService's GetFile RPC.
 	VCSServiceGetFileProcedure = "/vcs.v1.VCSService/GetFile"
+	// VCSServiceGetCommitProcedure is the fully-qualified name of the VCSService's GetCommit RPC.
+	VCSServiceGetCommitProcedure = "/vcs.v1.VCSService/GetCommit"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -47,6 +49,7 @@ var (
 	vCSServiceGithubAppMethodDescriptor   = vCSServiceServiceDescriptor.Methods().ByName("GithubApp")
 	vCSServiceGithubLoginMethodDescriptor = vCSServiceServiceDescriptor.Methods().ByName("GithubLogin")
 	vCSServiceGetFileMethodDescriptor     = vCSServiceServiceDescriptor.Methods().ByName("GetFile")
+	vCSServiceGetCommitMethodDescriptor   = vCSServiceServiceDescriptor.Methods().ByName("GetCommit")
 )
 
 // VCSServiceClient is a client for the vcs.v1.VCSService service.
@@ -54,6 +57,7 @@ type VCSServiceClient interface {
 	GithubApp(context.Context, *connect.Request[v1.GithubAppRequest]) (*connect.Response[v1.GithubAppResponse], error)
 	GithubLogin(context.Context, *connect.Request[v1.GithubLoginRequest]) (*connect.Response[v1.GithubLoginResponse], error)
 	GetFile(context.Context, *connect.Request[v1.GetFileRequest]) (*connect.Response[v1.GetFileResponse], error)
+	GetCommit(context.Context, *connect.Request[v1.GetCommitRequest]) (*connect.Response[v1.GetCommitResponse], error)
 }
 
 // NewVCSServiceClient constructs a client for the vcs.v1.VCSService service. By default, it uses
@@ -84,6 +88,12 @@ func NewVCSServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(vCSServiceGetFileMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		getCommit: connect.NewClient[v1.GetCommitRequest, v1.GetCommitResponse](
+			httpClient,
+			baseURL+VCSServiceGetCommitProcedure,
+			connect.WithSchema(vCSServiceGetCommitMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -92,6 +102,7 @@ type vCSServiceClient struct {
 	githubApp   *connect.Client[v1.GithubAppRequest, v1.GithubAppResponse]
 	githubLogin *connect.Client[v1.GithubLoginRequest, v1.GithubLoginResponse]
 	getFile     *connect.Client[v1.GetFileRequest, v1.GetFileResponse]
+	getCommit   *connect.Client[v1.GetCommitRequest, v1.GetCommitResponse]
 }
 
 // GithubApp calls vcs.v1.VCSService.GithubApp.
@@ -109,11 +120,17 @@ func (c *vCSServiceClient) GetFile(ctx context.Context, req *connect.Request[v1.
 	return c.getFile.CallUnary(ctx, req)
 }
 
+// GetCommit calls vcs.v1.VCSService.GetCommit.
+func (c *vCSServiceClient) GetCommit(ctx context.Context, req *connect.Request[v1.GetCommitRequest]) (*connect.Response[v1.GetCommitResponse], error) {
+	return c.getCommit.CallUnary(ctx, req)
+}
+
 // VCSServiceHandler is an implementation of the vcs.v1.VCSService service.
 type VCSServiceHandler interface {
 	GithubApp(context.Context, *connect.Request[v1.GithubAppRequest]) (*connect.Response[v1.GithubAppResponse], error)
 	GithubLogin(context.Context, *connect.Request[v1.GithubLoginRequest]) (*connect.Response[v1.GithubLoginResponse], error)
 	GetFile(context.Context, *connect.Request[v1.GetFileRequest]) (*connect.Response[v1.GetFileResponse], error)
+	GetCommit(context.Context, *connect.Request[v1.GetCommitRequest]) (*connect.Response[v1.GetCommitResponse], error)
 }
 
 // NewVCSServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -140,6 +157,12 @@ func NewVCSServiceHandler(svc VCSServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(vCSServiceGetFileMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	vCSServiceGetCommitHandler := connect.NewUnaryHandler(
+		VCSServiceGetCommitProcedure,
+		svc.GetCommit,
+		connect.WithSchema(vCSServiceGetCommitMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/vcs.v1.VCSService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case VCSServiceGithubAppProcedure:
@@ -148,6 +171,8 @@ func NewVCSServiceHandler(svc VCSServiceHandler, opts ...connect.HandlerOption) 
 			vCSServiceGithubLoginHandler.ServeHTTP(w, r)
 		case VCSServiceGetFileProcedure:
 			vCSServiceGetFileHandler.ServeHTTP(w, r)
+		case VCSServiceGetCommitProcedure:
+			vCSServiceGetCommitHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -167,4 +192,8 @@ func (UnimplementedVCSServiceHandler) GithubLogin(context.Context, *connect.Requ
 
 func (UnimplementedVCSServiceHandler) GetFile(context.Context, *connect.Request[v1.GetFileRequest]) (*connect.Response[v1.GetFileResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vcs.v1.VCSService.GetFile is not implemented"))
+}
+
+func (UnimplementedVCSServiceHandler) GetCommit(context.Context, *connect.Request[v1.GetCommitRequest]) (*connect.Response[v1.GetCommitResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("vcs.v1.VCSService.GetCommit is not implemented"))
 }

@@ -32,6 +32,9 @@ type FileFinder struct {
 
 // NewFileFinder returns a new FileFinder.
 func NewFileFinder(client VCSClient, repo giturl.IGitURL, path, ref string, httpClient *http.Client, logger log.Logger) *FileFinder {
+	if ref == "" {
+		ref = "HEAD"
+	}
 	return &FileFinder{
 		client:     client,
 		logger:     logger,

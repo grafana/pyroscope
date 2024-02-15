@@ -77,3 +77,22 @@ func (q *Service) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFil
 	}
 	return connect.NewResponse(file), nil
 }
+
+func (q *Service) GetCommit(ctx context.Context, req *connect.Request[vcsv1.GetCommitRequest]) (*connect.Response[vcsv1.GetCommitResponse], error) {
+	gitURL, err := giturl.NewGitURL(req.Msg.RepositoryURL)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	if gitURL.GetProvider() != apis.ProviderGitHub.String() {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("only GitHub repositories are supported"))
+	}
+	ghClient, err := client.GithubClient(ctx, req.Header())
+	if err != nil {
+		return nil, err
+	}
+	commit, err := ghClient.GetCommit(ctx, gitURL.GetOwnerName(), gitURL.GetRepoName(), req.Msg.Ref)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(commit), nil
+}

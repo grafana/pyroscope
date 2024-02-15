@@ -527,6 +527,19 @@
         }
       }
     },
+    "v1CommitAuthor": {
+      "type": "object",
+      "properties": {
+        "login": {
+          "type": "string",
+          "title": "the author login"
+        },
+        "avatarURL": {
+          "type": "string",
+          "title": "the author avatar URL"
+        }
+      }
+    },
     "v1DiffResponse": {
       "type": "object",
       "properties": {
@@ -659,6 +672,31 @@
         },
         "data": {
           "$ref": "#/definitions/v1GetBuildInfoData"
+        }
+      }
+    },
+    "v1GetCommitResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "title": "the commit message"
+        },
+        "author": {
+          "$ref": "#/definitions/v1CommitAuthor",
+          "title": "the commit author login"
+        },
+        "date": {
+          "type": "string",
+          "title": "the commit date"
+        },
+        "sha": {
+          "type": "string",
+          "title": "the commit sha"
+        },
+        "URL": {
+          "type": "string",
+          "title": "the full URL to the commit"
         }
       }
     },
