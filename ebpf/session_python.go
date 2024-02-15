@@ -120,10 +120,16 @@ func (s *session) loadPyPerf(cause *sd.Target) (*python.Perf, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pyperf load %w", err)
 	}
+	nsDev, nsIno, err := getPIDNamespace()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get pid namespace %w", err)
+	}
 	err = spec.RewriteConstants(map[string]interface{}{
 		"global_config": python.PerfGlobalConfigT{
 			BpfLogErr:   boolToU8(s.pythonBPFErrorLogEnabled(cause)),
 			BpfLogDebug: boolToU8(s.pythonBPFDebugLogEnabled(cause)),
+			NsPidDev:    nsDev,
+			NsPidIno:    nsIno,
 		},
 	})
 	if err != nil {

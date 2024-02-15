@@ -40,6 +40,8 @@ enum {
 struct global_config_t {
     uint8_t bpf_log_err;
     uint8_t bpf_log_debug;
+    uint64_t ns_pid_dev;
+    uint64_t ns_pid_ino;
 };
 
 const volatile struct global_config_t global_config;
@@ -278,7 +280,7 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
 SEC("perf_event")
 int pyperf_collect(struct bpf_perf_event_data *ctx) {
     u32 pid;
-    current_pid(&pid);
+    current_pid(global_config.ns_pid_dev, global_config.ns_pid_ino, &pid);
     if (pid == 0) {
         return 0;
     }

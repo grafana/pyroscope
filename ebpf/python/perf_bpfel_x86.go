@@ -15,6 +15,9 @@ import (
 type PerfGlobalConfigT struct {
 	BpfLogErr   uint8
 	BpfLogDebug uint8
+	_           [6]byte
+	NsPidDev    uint64
+	NsPidIno    uint64
 }
 
 type PerfLibc struct {
