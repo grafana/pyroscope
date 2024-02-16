@@ -8,7 +8,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/cilium/ebpf v0.11.0
 	github.com/go-kit/log v0.2.1
-	github.com/google/pprof v0.0.0-20230926050212-f7f687d19a98
+	github.com/google/pprof v0.0.0-20240117000934-35fc243c5815
 	github.com/grafana/pyroscope/api v0.4.0
 	github.com/hashicorp/golang-lru/v2 v2.0.5
 	github.com/ianlancetaylor/demangle v0.0.0-20230524184225-eabc099b10ab

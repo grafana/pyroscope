@@ -1,51 +1,33 @@
 package integration
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"math/rand"
-	"mime/multipart"
-	"net/http"
 	"os"
-	"path/filepath"
-	"strings"
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
-
-	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
-
-	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
-
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
-	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
+	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/pkg/og/ingestion"
+	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
 const repoRoot = "../../../"
 
 var (
 	golangHeap = []expectedMetric{
-		{"memory:alloc_objects:count:space:bytes", 0},
-		{"memory:alloc_space:bytes:space:bytes", 1},
-		{"memory:inuse_objects:count:space:bytes", 2},
-		{"memory:inuse_space:bytes:space:bytes", 3},
+		{"memory:alloc_objects:count:space:bytes", nil, 0},
+		{"memory:alloc_space:bytes:space:bytes", nil, 1},
+		{"memory:inuse_objects:count:space:bytes", nil, 2},
+		{"memory:inuse_space:bytes:space:bytes", nil, 3},
 	}
 	golangCPU = []expectedMetric{
-		{"process_cpu:samples:count:cpu:nanoseconds", 0},
-		{"process_cpu:cpu:nanoseconds:cpu:nanoseconds", 1},
+		{"process_cpu:samples:count:cpu:nanoseconds", nil, 0},
+		{"process_cpu:cpu:nanoseconds:cpu:nanoseconds", nil, 1},
 	}
 	_        = golangHeap
 	_        = golangCPU
@@ -61,7 +43,7 @@ var (
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
 			metrics: []expectedMetric{
-				{"process_cpu:cpu:nanoseconds:cpu:nanoseconds", 0},
+				{"process_cpu:cpu:nanoseconds:cpu:nanoseconds", nil, 0},
 			},
 		},
 		{
@@ -101,8 +83,8 @@ var (
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
 			metrics: []expectedMetric{
-				{"wall:sample:count:wall:microseconds", 0},
-				{"wall:wall:microseconds:wall:microseconds", 1},
+				{"wall:sample:count:wall:microseconds", nil, 0},
+				{"wall:wall:microseconds:wall:microseconds", nil, 1},
 			},
 		},
 		{
@@ -122,8 +104,8 @@ var (
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
 			metrics: []expectedMetric{
-				{"memory:space:bytes:space:bytes", 1},
-				{"memory:objects:count:space:bytes", 0},
+				{"memory:space:bytes:space:bytes", nil, 1},
+				{"memory:objects:count:space:bytes", nil, 0},
 			},
 		},
 		{
@@ -131,8 +113,8 @@ var (
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
 			metrics: []expectedMetric{
-				{"memory:inuse_space:bytes:inuse_space:bytes", 1},
-				{"memory:inuse_objects:count:inuse_space:bytes", 0},
+				{"memory:inuse_space:bytes:inuse_space:bytes", nil, 1},
+				{"memory:inuse_objects:count:inuse_space:bytes", nil, 0},
 			},
 		},
 		{
@@ -140,8 +122,8 @@ var (
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
 			metrics: []expectedMetric{
-				{"wall:samples:count:wall:microseconds", 0},
-				{"wall:wall:microseconds:wall:microseconds", 1},
+				{"wall:samples:count:wall:microseconds", nil, 0},
+				{"wall:wall:microseconds:wall:microseconds", nil, 1},
 			},
 		},
 		{
@@ -150,7 +132,7 @@ var (
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
 			metrics: []expectedMetric{
-				{"goroutines:goroutine:count:goroutine:count", 0},
+				{"goroutines:goroutine:count:goroutine:count", nil, 0},
 			},
 		},
 		{
@@ -159,8 +141,8 @@ var (
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
 			metrics: []expectedMetric{
-				{"block:delay:nanoseconds:contentions:count", 1},
-				{"block:contentions:count:contentions:count", 0},
+				{"block:delay:nanoseconds:contentions:count", nil, 1},
+				{"block:contentions:count:contentions:count", nil, 0},
 			},
 		},
 		{
@@ -169,8 +151,8 @@ var (
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
 			metrics: []expectedMetric{
-				{"mutex:contentions:count:contentions:count", 0},
-				{"mutex:delay:nanoseconds:contentions:count", 1},
+				{"mutex:contentions:count:contentions:count", nil, 0},
+				{"mutex:delay:nanoseconds:contentions:count", nil, 1},
 			},
 		},
 		{
@@ -179,8 +161,8 @@ var (
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
 			metrics: []expectedMetric{
-				{"memory:alloc_objects:count:space:bytes", 0},
-				{"memory:alloc_space:bytes:space:bytes", 1},
+				{"memory:alloc_objects:count:space:bytes", nil, 0},
+				{"memory:alloc_space:bytes:space:bytes", nil, 1},
 			},
 		},
 		{
@@ -190,7 +172,7 @@ var (
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
 			metrics: []expectedMetric{
-				{"process_cpu:samples:count::milliseconds", 0},
+				{"process_cpu:samples:count::milliseconds", nil, 0},
 			},
 			spyName: pprof2.SpyNameForFunctionNameRewrite(),
 		},
@@ -203,7 +185,7 @@ var (
 			expectStatusPush:   400,
 			expectedError:      "function id is 0",
 			metrics: []expectedMetric{
-				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
+				{"process_cpu:cpu:nanoseconds::nanoseconds", nil, 0},
 			},
 			needFunctionIDFix: true,
 			spyName:           "dotnetspy",
@@ -219,9 +201,9 @@ var (
 			expectedError:      "function id is 0",
 			metrics: []expectedMetric{
 				// notice how they all use process_cpu metric
-				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
-				{"process_cpu:alloc_samples:count::nanoseconds", 2}, // this was rewriten by ingest handler to replace -
-				{"process_cpu:alloc_size:bytes::nanoseconds", 3},    // this was rewriten by ingest handler to replace -
+				{"process_cpu:cpu:nanoseconds::nanoseconds", nil, 0},
+				{"process_cpu:alloc_samples:count::nanoseconds", nil, 2}, // this was rewriten by ingest handler to replace -
+				{"process_cpu:alloc_size:bytes::nanoseconds", nil, 3},    // this was rewriten by ingest handler to replace -
 			},
 			needFunctionIDFix: true,
 			spyName:           "dotnetspy",
@@ -233,10 +215,10 @@ var (
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
 			metrics: []expectedMetric{
-				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
-				{"process_cpu:alloc_samples:count::nanoseconds", 2},
-				{"process_cpu:alloc_size:bytes::nanoseconds", 3},
-				{"process_cpu:alloc_size:bytes::nanoseconds", 3},
+				{"process_cpu:cpu:nanoseconds::nanoseconds", nil, 0},
+				{"process_cpu:alloc_samples:count::nanoseconds", nil, 2},
+				{"process_cpu:alloc_size:bytes::nanoseconds", nil, 3},
+				{"process_cpu:alloc_size:bytes::nanoseconds", nil, 3},
 			},
 			spyName: "dotnetspy",
 		},
@@ -246,7 +228,7 @@ var (
 			expectStatusPush:   400,
 			expectStatusIngest: 422,
 			metrics: []expectedMetric{
-				{"process_cpu:cpu:nanoseconds::nanoseconds", 0},
+				{"process_cpu:cpu:nanoseconds::nanoseconds", nil, 0},
 			},
 		},
 	}
@@ -257,15 +239,18 @@ func TestIngest(t *testing.T) {
 	p.Start(t)
 	defer p.Stop(t)
 
-	for _, testdatum := range testdata {
-		t.Run(testdatum.profile, func(t *testing.T) {
+	for _, td := range testdata {
+		t.Run(td.profile, func(t *testing.T) {
+			rb := p.NewRequestBuilder(t).
+				Spy(td.spyName)
+			req := rb.IngestPPROFRequest(td.profile, td.prevProfile, td.sampleTypeConfig)
+			p.Ingest(t, req, td.expectStatusIngest)
 
-			appName := ingest(t, &p, testdatum)
-
-			if testdatum.expectStatusIngest == 200 {
-				for _, metric := range testdatum.metrics {
-					render(t, &p, metric, appName, testdatum)
-					selectMerge(t, &p, metric, appName, testdatum, true)
+			if td.expectStatusIngest == 200 {
+				for _, metric := range td.metrics {
+					rb.Render(metric.name)
+					profile := rb.SelectMergeProfile(metric.name, metric.query)
+					assertPPROF(t, profile, metric, td, true)
 				}
 			}
 		})
@@ -273,39 +258,34 @@ func TestIngest(t *testing.T) {
 }
 
 func TestPush(t *testing.T) {
-	p := PyroscopeTest{}
+	p := new(PyroscopeTest)
 	p.Start(t)
 	defer p.Stop(t)
 
-	for _, testdatum := range testdata {
-		if testdatum.prevProfile != "" {
+	for _, td := range testdata {
+		if td.prevProfile != "" {
 			continue
 		}
-		t.Run(testdatum.profile, func(t *testing.T) {
+		t.Run(td.profile, func(t *testing.T) {
+			rb := p.NewRequestBuilder(t)
 
-			appName := push(t, &p, testdatum)
+			req := rb.PushPPROFRequest(td.profile, td.metrics[0].name)
+			rb.Push(req, td.expectStatusPush, td.expectedError)
 
-			if testdatum.expectStatusPush == 200 {
-				for _, metric := range testdatum.metrics {
-					render(t, &p, metric, appName, testdatum)
-					selectMerge(t, &p, metric, appName, testdatum, false)
+			if td.expectStatusPush == 200 {
+				for _, metric := range td.metrics {
+					rb.Render(metric.name)
+					profile := rb.SelectMergeProfile(metric.name, metric.query)
+
+					assertPPROF(t, profile, metric, td, false)
 				}
 			}
 		})
 	}
-	//time.Sleep(10 * time.Hour)
 }
 
-func selectMerge(t *testing.T, p *PyroscopeTest, metric expectedMetric, name string, testdatum pprofTestData, fixes bool) {
-	qc := p.queryClient()
-	resp, err := qc.SelectMergeProfile(context.Background(), connect.NewRequest(&querierv1.SelectMergeProfileRequest{
-		ProfileTypeID: metric.name,
-		Start:         time.Unix(0, 0).UnixMilli(),
-		End:           time.Now().UnixMilli(),
-		LabelSelector: fmt.Sprintf("{service_name=\"%s\"}", name),
-	}))
+func assertPPROF(t *testing.T, resp *connect.Response[profilev1.Profile], metric expectedMetric, testdatum pprofTestData, fixes bool) {
 
-	require.NoError(t, err)
 	assert.Equal(t, 1, len(resp.Msg.SampleType))
 
 	profileBytes, err := os.ReadFile(testdatum.profile)
@@ -332,22 +312,6 @@ func selectMerge(t *testing.T, p *PyroscopeTest, metric expectedMetric, name str
 	require.Equal(t, expectedStacktraces, actualStacktraces)
 }
 
-func render(t *testing.T, p *PyroscopeTest, metric expectedMetric, appName string, testdatum pprofTestData) {
-	queryURL := p.URL() + "/pyroscope/render?query=" + metric.name + "{service_name=\"" + appName + "\"}&from=946656000&until=now&format=collapsed"
-	fmt.Println(queryURL)
-	queryRes, err := http.Get(queryURL)
-	require.NoError(t, err)
-	body := bytes.NewBuffer(nil)
-	_, err = io.Copy(body, queryRes.Body)
-	assert.NoError(t, err)
-	fb := new(flamebearer.FlamebearerProfile)
-	err = json.Unmarshal(body.Bytes(), fb)
-	assert.NoError(t, err, testdatum.profile, body.String(), queryURL)
-	assert.Greater(t, len(fb.Flamebearer.Names), 1, testdatum.profile, body.String(), queryRes)
-	assert.Greater(t, fb.Flamebearer.NumTicks, 1, testdatum.profile, body.String(), queryRes)
-	// todo check actual stacktrace contents
-}
-
 type pprofTestData struct {
 	profile            string
 	prevProfile        string
@@ -362,132 +326,6 @@ type pprofTestData struct {
 
 type expectedMetric struct {
 	name     string
+	query    map[string]string
 	valueIDX int
-}
-
-func push(t *testing.T, p *PyroscopeTest, testdatum pprofTestData) string {
-	appName := createAppname(testdatum)
-	cl := p.pushClient()
-
-	rawProfile, err := os.ReadFile(testdatum.profile)
-	require.NoError(t, err)
-
-	rawProfile = updateTimestamp(t, rawProfile)
-
-	metricName := strings.Split(testdatum.metrics[0].name, ":")[0]
-
-	_, err = cl.Push(context.TODO(), connect.NewRequest(&pushv1.PushRequest{
-		Series: []*pushv1.RawProfileSeries{{
-			Labels: []*typesv1.LabelPair{
-				{Name: "__name__", Value: metricName},
-				{Name: "__delta__", Value: "false"},
-				{Name: "service_name", Value: appName},
-			},
-			Samples: []*pushv1.RawSample{{RawProfile: rawProfile}},
-		}},
-	}))
-	if testdatum.expectStatusPush == 200 {
-		assert.NoError(t, err)
-	} else {
-		assert.Error(t, err)
-		var connectErr *connect.Error
-		if ok := errors.As(err, &connectErr); ok {
-			toHTTP := connectgrpc.CodeToHTTP(connectErr.Code())
-			assert.Equal(t, testdatum.expectStatusPush, int(toHTTP))
-			if testdatum.expectedError != "" {
-				assert.Contains(t, connectErr.Error(), testdatum.expectedError)
-			}
-		} else {
-			assert.Fail(t, "unexpected error type", err)
-		}
-	}
-
-	return appName
-}
-
-func updateTimestamp(t *testing.T, rawProfile []byte) []byte {
-	expectedProfile, err := pprof.RawFromBytes(rawProfile)
-	require.NoError(t, err)
-	expectedProfile.Profile.TimeNanos = time.Now().Add(-time.Minute).UnixNano()
-	buf := bytes.NewBuffer(nil)
-	_, err = expectedProfile.WriteTo(buf)
-	require.NoError(t, err)
-	rawProfile = buf.Bytes()
-	return rawProfile
-}
-
-func ingest(t *testing.T, p *PyroscopeTest, testdatum pprofTestData) string {
-	var (
-		profile, prevProfile, sampleTypeConfig []byte
-		err                                    error
-	)
-	profile, err = os.ReadFile(testdatum.profile)
-	assert.NoError(t, err)
-	if testdatum.prevProfile != "" {
-		prevProfile, err = os.ReadFile(testdatum.prevProfile)
-		assert.NoError(t, err)
-	}
-	if testdatum.sampleTypeConfig != "" {
-		sampleTypeConfig, err = os.ReadFile(testdatum.sampleTypeConfig)
-		assert.NoError(t, err)
-	}
-	bs, ct := createPProfRequest(t, profile, prevProfile, sampleTypeConfig)
-
-	spyName := "foo239"
-	if testdatum.spyName != "" {
-		spyName = testdatum.spyName
-	}
-
-	appName := createAppname(testdatum)
-	url := p.URL() + "/ingest?name=" + appName + "&spyName=" + spyName
-	req, err := http.NewRequest("POST", url, bytes.NewReader(bs))
-	require.NoError(t, err)
-	req.Header.Set("Content-Type", ct)
-
-	res, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	require.Equal(t, testdatum.expectStatusIngest, res.StatusCode, testdatum.profile)
-	fmt.Printf("%+v %+v\n", testdatum, res)
-	return appName
-}
-
-func createAppname(testdatum pprofTestData) string {
-	return fmt.Sprintf("pprof.integration.%s.%d",
-		strings.ReplaceAll(filepath.Base(testdatum.profile), "-", "_"),
-		rand.Uint64())
-}
-
-func createPProfRequest(t *testing.T, profile, prevProfile, sampleTypeConfig []byte) ([]byte, string) {
-	const (
-		formFieldProfile          = "profile"
-		formFieldPreviousProfile  = "prev_profile"
-		formFieldSampleTypeConfig = "sample_type_config"
-	)
-
-	var b bytes.Buffer
-	w := multipart.NewWriter(&b)
-
-	profileW, err := w.CreateFormFile(formFieldProfile, "not used")
-	require.NoError(t, err)
-	_, err = profileW.Write(profile)
-	require.NoError(t, err)
-
-	if sampleTypeConfig != nil {
-
-		sampleTypeConfigW, err := w.CreateFormFile(formFieldSampleTypeConfig, "not used")
-		require.NoError(t, err)
-		_, err = sampleTypeConfigW.Write(sampleTypeConfig)
-		require.NoError(t, err)
-	}
-
-	if prevProfile != nil {
-		prevProfileW, err := w.CreateFormFile(formFieldPreviousProfile, "not used")
-		require.NoError(t, err)
-		_, err = prevProfileW.Write(prevProfile)
-		require.NoError(t, err)
-	}
-	err = w.Close()
-	require.NoError(t, err)
-
-	return b.Bytes(), w.FormDataContentType()
 }
