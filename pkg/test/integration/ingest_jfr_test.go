@@ -17,10 +17,8 @@ type jfrTestData struct {
 	jfr    string
 	labels string
 
-	expectedMetrics  []expectedMetric
-	sampleTypeConfig string
-	expectStatus     int
-	expectedError    string
+	expectedMetrics []expectedMetric
+	expectStatus    int
 }
 
 const (

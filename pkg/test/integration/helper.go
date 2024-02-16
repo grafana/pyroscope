@@ -141,20 +141,6 @@ func (p *PyroscopeTest) URL() string {
 	return fmt.Sprintf("http://%s:%d", address, p.httpPort)
 }
 
-func (p *PyroscopeTest) queryClient() querierv1connect.QuerierServiceClient {
-	return querierv1connect.NewQuerierServiceClient(
-		http.DefaultClient,
-		p.URL(),
-	)
-}
-
-func (p *PyroscopeTest) pushClient() pushv1connect.PusherServiceClient {
-	return pushv1connect.NewPusherServiceClient(
-		http.DefaultClient,
-		p.URL(),
-	)
-}
-
 func httpBodyContains(url string, needle string) bool {
 	fmt.Println("httpBodyContains", url, needle)
 	res, err := http.Get(url)
