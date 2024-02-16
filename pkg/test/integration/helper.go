@@ -2,20 +2,11 @@ package integration
 
 import (
 	"bytes"
-	"connectrpc.com/connect"
 	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
-	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
-	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
-	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"math/rand"
 	"mime/multipart"
@@ -27,13 +18,22 @@ import (
 	"testing"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	"github.com/grafana/pyroscope/pkg/cfg"
+	"github.com/grafana/pyroscope/pkg/og/structs/flamebearer"
 	"github.com/grafana/pyroscope/pkg/phlare"
+	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/util/connectgrpc"
 )
 
 // getFreePorts returns a number of free local port for the tests to listen on. Note this will make sure the returned ports do not overlap, by stopping to listen once all ports are allocated

@@ -1,16 +1,18 @@
 package integration
 
 import (
-	"connectrpc.com/connect"
 	"fmt"
+	"os"
+	"testing"
+
+	"connectrpc.com/connect"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
 	"github.com/grafana/pyroscope/pkg/pprof"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
 )
 
 type jfrTestData struct {

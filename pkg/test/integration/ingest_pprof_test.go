@@ -1,18 +1,18 @@
 package integration
 
 import (
-	"connectrpc.com/connect"
 	"fmt"
-	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 
-	"github.com/grafana/pyroscope/pkg/og/ingestion"
+	"connectrpc.com/connect"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pprof2 "github.com/grafana/pyroscope/pkg/og/convert/pprof"
 	"github.com/grafana/pyroscope/pkg/og/convert/pprof/bench"
+	"github.com/grafana/pyroscope/pkg/og/ingestion"
 	"github.com/grafana/pyroscope/pkg/pprof"
 )
 
