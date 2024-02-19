@@ -1,14 +1,11 @@
 package python
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/perf"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/pyroscope/ebpf/metrics"
@@ -16,7 +13,6 @@ import (
 )
 
 type Perf struct {
-	rd             *perf.Reader
 	logger         log.Logger
 	pidDataHashMap *ebpf.Map
 	symbolsHashMp  *ebpf.Map
@@ -27,36 +23,22 @@ type Perf struct {
 	sc          *symtab.SymbolCache
 	pidCache    map[uint32]*Proc
 	prevSymbols map[uint32]*PerfPySymbol
-	wg          sync.WaitGroup
 }
 
-type Proc struct {
+type Proc struct { // consider merging with symtab.ProcTable
 	PerfPyPidData *PerfPyPidData
 	SymbolOptions *symtab.SymbolOptions
 }
 
-func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, perfEventMap *ebpf.Map, pidDataHasMap *ebpf.Map, symbolsHashMap *ebpf.Map) (*Perf, error) {
-	rd, err := perf.NewReader(perfEventMap, 4*os.Getpagesize())
-	if err != nil {
-		return nil, fmt.Errorf("perf new reader: %w", err)
-	}
+func NewPerf(logger log.Logger, metrics *metrics.PythonMetrics, pidDataHasMap *ebpf.Map, symbolsHashMap *ebpf.Map) (*Perf, error) {
 	pidCache := make(map[uint32]*Proc)
-	if err != nil {
-		return nil, fmt.Errorf("pyperf pid cache %w", err)
-	}
 	res := &Perf{
-		rd:             rd,
 		logger:         logger,
 		pidDataHashMap: pidDataHasMap,
 		symbolsHashMp:  symbolsHashMap,
 		pidCache:       pidCache,
 		metrics:        metrics,
 	}
-	res.wg.Add(1)
-	go func() {
-		defer res.wg.Done()
-		res.loop()
-	}()
 	return res, nil
 }
 
@@ -83,44 +65,6 @@ func (s *Perf) NewProc(pid uint32, data *PerfPyPidData, options *symtab.SymbolOp
 	return n, nil
 }
 
-func (s *Perf) loop() {
-	defer s.rd.Close()
-
-	for {
-		record, err := s.rd.Read()
-		if err != nil {
-			if errors.Is(err, perf.ErrClosed) {
-				return
-			}
-			_ = level.Error(s.logger).Log("msg", "[pyperf] reading from perf event reader", "err", err)
-			continue
-		}
-
-		if record.LostSamples != 0 {
-			s.metrics.LostSamples.Add(float64(record.LostSamples))
-			_ = level.Debug(s.logger).Log("msg", "[pyperf] perf event ring buffer full, dropped samples", "n", record.LostSamples)
-		}
-
-		if record.RawSample != nil {
-			event := new(PerfPyEvent)
-			err := ReadPyEvent(record.RawSample, event)
-			if err != nil {
-				_ = level.Error(s.logger).Log("msg", "[pyperf] parsing perf event record", "err", err)
-				continue
-			}
-			s.eventsLock.Lock()
-			s.events = append(s.events, event)
-			s.eventsLock.Unlock()
-		}
-	}
-
-}
-
-func (s *Perf) Close() {
-	_ = s.rd.Close()
-	s.wg.Wait()
-}
-
 func (s *Perf) CollectEvents(buf []*PerfPyEvent) []*PerfPyEvent {
 	buf = buf[:0]
 	s.eventsLock.Lock()
@@ -142,8 +86,8 @@ func (s *Perf) CollectEvents(buf []*PerfPyEvent) []*PerfPyEvent {
 	return buf
 }
 
-func (s *Perf) GetLazySymbols() LazySymbols {
-	return LazySymbols{
+func (s *Perf) GetLazySymbols() *LazySymbols {
+	return &LazySymbols{
 		symbols: s.prevSymbols,
 		fresh:   false,
 		perf:    s,
@@ -211,31 +155,6 @@ func (s *Perf) RemoveDeadPID(pid uint32) {
 	if err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
 		_ = level.Error(s.logger).Log("msg", "[pyperf] deleting pid data hash map", "err", err)
 	}
-}
-
-func ReadPyEvent(raw []byte, event *PerfPyEvent) error {
-	if len(raw) < 1 {
-		return fmt.Errorf("unexpected pyevent size %d", len(raw))
-	}
-	status := StackStatus(raw[0])
-
-	if status == StackStatusError && len(raw) < 16 || status != 1 && len(raw) < 320 {
-		return fmt.Errorf("unexpected pyevent size %d", len(raw))
-	}
-	event.StackStatus = uint8(status)
-	event.Err = raw[1]
-	event.Reserved2 = raw[2]
-	event.Reserved3 = raw[3]
-	event.Pid = binary.LittleEndian.Uint32(raw[4:])
-	event.KernStack = int64(binary.LittleEndian.Uint64(raw[8:]))
-	if status == StackStatusError {
-		return nil
-	}
-	event.StackLen = binary.LittleEndian.Uint32(raw[16:])
-	for i := 0; i < 75; i++ {
-		event.Stack[i] = binary.LittleEndian.Uint32(raw[20+i*4:])
-	}
-	return nil
 }
 
 // LazySymbols tries to reuse a map from previous profile collection.
