@@ -19,7 +19,7 @@ import (
 func FixGoProfile(p *profilev1.Profile) *profilev1.Profile {
 	var n int
 	for i, s := range p.StringTable {
-		c := DropGoTypeParameters(p.StringTable[i])
+		c := DropGoTypeParameters(s)
 		if c != s {
 			p.StringTable[i] = c
 			n++
