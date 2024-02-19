@@ -10,7 +10,6 @@
 #define PF_KTHREAD 0x00200000
 
 struct global_config_t {
-    uint64_t ns_pid_dev;
     uint64_t ns_pid_ino;
 };
 
@@ -19,7 +18,7 @@ const volatile struct global_config_t global_config;
 SEC("perf_event")
 int do_perf_event(struct bpf_perf_event_data *ctx) {
     u32 tgid = 0;
-    current_pid(global_config.ns_pid_dev, global_config.ns_pid_ino, &tgid);
+    current_pid(global_config.ns_pid_ino, &tgid);
 
     struct sample_key key = {};
     u32 *val, one = 1;
@@ -95,7 +94,7 @@ int BPF_KPROBE(disassociate_ctty, int on_exit) {
         return 0;
     }
     u32 pid = 0;
-    current_pid(global_config.ns_pid_dev, global_config.ns_pid_ino, &pid);
+    current_pid(global_config.ns_pid_ino, &pid);
     if (pid == 0) {
         return 0;
     }
@@ -111,7 +110,7 @@ int BPF_KPROBE(disassociate_ctty, int on_exit) {
 SEC("kprobe/exec")
 int BPF_KPROBE(exec, void *_) {
     u32 pid = 0;
-    current_pid(global_config.ns_pid_dev, global_config.ns_pid_ino, &pid);
+    current_pid(global_config.ns_pid_ino, &pid);
     if (pid == 0) {
         return 0;
     }

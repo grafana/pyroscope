@@ -154,13 +154,12 @@ func (s *session) Start() error {
 		return fmt.Errorf("pyrobpf load %w", err)
 	}
 
-	nsDev, nsIno, err := getPIDNamespace()
+	_, nsIno, err := getPIDNamespace()
 	if err != nil {
 		return fmt.Errorf("unable to get pid namespace %w", err)
 	}
 	err = spec.RewriteConstants(map[string]interface{}{
 		"global_config": pyrobpf.ProfileGlobalConfigT{
-			NsPidDev: nsDev,
 			NsPidIno: nsIno,
 		},
 	})
