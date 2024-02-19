@@ -56,6 +56,9 @@ func GithubClient(ctx context.Context, requestHeaders http.Header) (*githubClien
 	if err != nil {
 		return nil, unAuthorizeError(err, cookie)
 	}
+	if !token.Valid() {
+		return nil, unAuthorizeError(errors.New("invalid or expired token"), cookie)
+	}
 	return &githubClient{
 		client: github.NewClient(auth.Client(ctx, token)),
 	}, nil
@@ -88,10 +91,9 @@ func AuthorizeGithub(ctx context.Context, authorizationCode string) (string, err
 	// Sets a cookie with the encrypted token.
 	// Only the server can decrypt the cookie.
 	cookie := http.Cookie{
-		Name:  gitHubCookieName,
-		Value: cookieValue,
-		// Refresh expiry is 6 months based on github docs
-		Expires:  time.Now().Add(15811200 * time.Second),
+		Name:     gitHubCookieName,
+		Value:    cookieValue,
+		Expires:  token.Expiry.Add(-10 * time.Second),
 		HttpOnly: false,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
