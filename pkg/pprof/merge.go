@@ -36,6 +36,12 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 	m.tmp = slices.GrowLen(m.tmp, len(p.StringTable))
 	m.stringTable.Index(m.tmp, p.StringTable)
 	RewriteStrings(p, m.tmp)
+	if len(m.profile.StringTable) == 0 {
+		// Right after initialisation we need to make
+		// sure that the string identifiers are normalized
+		// among profiles.
+		RewriteStrings(m.profile, m.tmp)
+	}
 
 	if err := combineHeaders(m.profile, p); err != nil {
 		return err
