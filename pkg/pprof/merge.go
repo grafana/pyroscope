@@ -29,7 +29,6 @@ func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
 	ConvertIDsToIndices(p)
 	if m.profile == nil {
 		m.init(p)
-		return nil
 	}
 
 	// We rewrite strings first in order to compare
@@ -118,30 +117,19 @@ func (m *ProfileMerge) init(x *profilev1.Profile) {
 		})
 
 	m.profile = &profilev1.Profile{
-		SampleType:        make([]*profilev1.ValueType, len(x.SampleType)),
-		DropFrames:        x.DropFrames,
-		KeepFrames:        x.KeepFrames,
-		TimeNanos:         x.TimeNanos,
-		DurationNanos:     x.DurationNanos,
+		SampleType: make([]*profilev1.ValueType, len(x.SampleType)),
+		DropFrames: x.DropFrames,
+		KeepFrames: x.KeepFrames,
+		TimeNanos:  x.TimeNanos,
+		// Profile durations are summed up, therefore
+		// we skip the field at initialization.
+		// DurationNanos:  x.DurationNanos,
 		PeriodType:        x.PeriodType.CloneVT(),
 		Period:            x.Period,
 		DefaultSampleType: x.DefaultSampleType,
 	}
 	for i, st := range x.SampleType {
 		m.profile.SampleType[i] = st.CloneVT()
-	}
-
-	m.sampleTable.Append(x.Sample)
-	m.locationTable.Append(x.Location)
-	m.functionTable.Append(x.Function)
-	m.mappingTable.Append(x.Mapping)
-	m.stringTable.Append(x.StringTable)
-
-	for i, s := range x.Sample {
-		dst := m.sampleTable.s[i].Value
-		for j, v := range s.Value {
-			dst[j] += v
-		}
 	}
 }
 
