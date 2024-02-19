@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"strings"
 
@@ -385,9 +386,10 @@ func (f *Phlare) Run() error {
 				ApplicationName: "pyroscope",
 				ServerAddress:   fmt.Sprintf("http://%s:%d", "localhost", f.Cfg.Server.HTTPListenPort),
 				Tags: map[string]string{
-					"hostname": os.Getenv("HOSTNAME"),
-					"target":   "all",
-					"version":  version.Version,
+					"hostname":           os.Getenv("HOSTNAME"),
+					"target":             "all",
+					"service_git_ref":    serviceGitRef(),
+					"service_repository": "https://github.com/grafana/pyroscope",
 				},
 				ProfileTypes: []pyroscope.ProfileType{
 					pyroscope.ProfileCPU,
@@ -560,4 +562,20 @@ func printRoutes(r *mux.Router) {
 	if err != nil {
 		fmt.Printf("failed to walk routes %s\n", err)
 	}
+}
+
+// serviceGitRef attempts to find the git revision of the service. Default to HEAD.
+func serviceGitRef() string {
+	if version.Revision != "" {
+		return version.Revision
+	}
+	buildInfo, ok := debug.ReadBuildInfo()
+	if ok {
+		for _, setting := range buildInfo.Settings {
+			if setting.Key == "vcs.revision" {
+				return setting.Value
+			}
+		}
+	}
+	return "HEAD"
 }

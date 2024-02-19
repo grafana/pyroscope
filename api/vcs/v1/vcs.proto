@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package vcs.v1;
+
+service VCSService {
+  rpc GithubApp(GithubAppRequest) returns (GithubAppResponse) {}
+  rpc GithubLogin(GithubLoginRequest) returns (GithubLoginResponse) {}
+  rpc GetFile(GetFileRequest) returns (GetFileResponse) {}
+  rpc GetCommit(GetCommitRequest) returns (GetCommitResponse) {}
+}
+message GithubAppRequest {}
+
+message GithubAppResponse {
+  string clientID = 1;
+}
+
+message GithubLoginRequest {
+  string authorizationCode = 1;
+}
+
+message GithubLoginResponse {
+  string cookie = 1;
+}
+
+message GetFileRequest {
+  // the full path to the repository
+  string repositoryURL = 1;
+  // the vcs ref to get the file from
+  string ref = 2;
+  // the path to the file as provided by the symbols
+  string localPath = 3;
+}
+
+message GetFileResponse {
+  // base64 content of the file
+  string content = 1;
+  // the full URL to the file
+  string URL = 2;
+}
+
+message GetCommitRequest {
+  // the full path to the repository
+  string repositoryURL = 1;
+  // the vcs ref to get the file from
+  string ref = 2;
+}
+
+message GetCommitResponse {
+  // the commit message
+  string message = 1;
+  // the commit author login
+  CommitAuthor author = 2;
+  // the commit date
+  string date = 3;
+  // the commit sha
+  string sha = 4;
+  // the full URL to the commit
+  string URL = 5;
+}
+
+message CommitAuthor {
+  // the author login
+  string login = 1;
+  // the author avatar URL
+  string avatarURL = 2;
+}
