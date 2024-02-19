@@ -244,10 +244,6 @@ type QuerierSvc interface {
 func (a *API) RegisterQuerier(svc QuerierSvc) {
 	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware, a.grpcLogMiddleware)
 	vcsv1connect.RegisterVCSServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware, a.grpcLogMiddleware)
-	// todo remove this once we have a proper UI for the VCS
-	a.RegisterRoute("/vcs", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "./pkg/api/vcs.html")
-	}), true, true, "GET", "POST")
 }
 
 func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceClient) {
