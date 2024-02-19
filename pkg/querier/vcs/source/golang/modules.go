@@ -31,8 +31,8 @@ type Module struct {
 	FilePath string
 }
 
-// ParseModulePath parses the module from the given path.
-func ParseModulePath(path string) (Module, bool) {
+// ParseModuleFromPath parses the module from the given path.
+func ParseModuleFromPath(path string) (Module, bool) {
 	parts := strings.Split(path, "@v")
 	if len(parts) != 2 {
 		return Module{}, false

@@ -98,7 +98,6 @@ func AuthorizeGithub(ctx context.Context, authorizationCode string) (string, err
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	}
-	// responseHeaders.Add("Set-Cookie", cookie.String())
 	return cookie.String(), nil
 }
 

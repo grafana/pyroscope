@@ -106,7 +106,7 @@ func TestParseModulePath(t *testing.T) {
 		},
 	} {
 		t.Run(tt.input, func(t *testing.T) {
-			mod, ok := ParseModulePath(tt.input)
+			mod, ok := ParseModuleFromPath(tt.input)
 			require.Equal(t, tt.expectedOk, ok)
 			require.Equal(t, tt.expected, mod)
 		})

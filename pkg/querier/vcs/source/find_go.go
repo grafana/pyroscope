@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
+	"path"
 	"strings"
 	"time"
 
@@ -31,10 +31,10 @@ func (ff FileFinder) findGoFile(ctx context.Context) (*vcsv1.GetFileResponse, er
 		return ff.fetchRepoFile(ctx, relativePath, ff.ref)
 	}
 
-	modFile, ok := golang.ParseModulePath(ff.path)
+	modFile, ok := golang.ParseModuleFromPath(ff.path)
 	if ok {
 		mainModule := module.Version{
-			Path:    filepath.Join(ff.repo.GetHostName(), ff.repo.GetOwnerName(), ff.repo.GetRepoName()),
+			Path:    path.Join(ff.repo.GetHostName(), ff.repo.GetOwnerName(), ff.repo.GetRepoName()),
 			Version: module.PseudoVersion("", "", time.Time{}, ff.ref),
 		}
 		modf, err := ff.fetchGoMod(ctx)

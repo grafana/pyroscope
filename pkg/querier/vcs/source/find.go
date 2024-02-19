@@ -46,14 +46,14 @@ func NewFileFinder(client VCSClient, repo giturl.IGitURL, path, ref string, http
 }
 
 // Find returns the file content and URL.
-func (arg FileFinder) Find(ctx context.Context) (*vcsv1.GetFileResponse, error) {
-	switch filepath.Ext(arg.path) {
+func (ff FileFinder) Find(ctx context.Context) (*vcsv1.GetFileResponse, error) {
+	switch filepath.Ext(ff.path) {
 	case ExtGo:
-		return arg.findGoFile(ctx)
+		return ff.findGoFile(ctx)
 	// todo: add more languages support
 	default:
 		// by default we return the file content at the given path without any processing.
-		content, err := arg.fetchRepoFile(ctx, arg.path, arg.ref)
+		content, err := ff.fetchRepoFile(ctx, ff.path, ff.ref)
 		if err != nil {
 			return nil, err
 		}
@@ -76,18 +76,18 @@ func (arg FileFinder) fetchRepoFile(ctx context.Context, path, ref string) (*vcs
 }
 
 // fetchURL fetches the file content from the given URL.
-func (arg FileFinder) fetchURL(ctx context.Context, url string, decodeBase64 bool) (*vcsv1.GetFileResponse, error) {
+func (ff FileFinder) fetchURL(ctx context.Context, url string, decodeBase64 bool) (*vcsv1.GetFileResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := arg.httpClient.Do(req) // todo: use a custom client with timeout
+	resp, err := ff.httpClient.Do(req) // todo: use a custom client with timeout
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("failed to fetch go lib %s: %s", url, resp.Status))
+		return nil, connect.NewError(connect.CodeNotFound, fmt.Errorf("failed to fetch %s: %s", url, resp.Status))
 	}
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
