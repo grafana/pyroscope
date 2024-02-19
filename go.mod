@@ -24,14 +24,14 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-github/v58 v58.0.1-0.20240111193443-e9f52699f5e5
-	github.com/google/pprof v0.0.0-20231205033806-a5a03c77bf08
+	github.com/google/pprof v0.0.0-20240117000934-35fc243c5815
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6
-	github.com/grafana/jfr-parser/pprof v0.0.0-20240108135448-c7f61c1f689e
+	github.com/grafana/jfr-parser/pprof v0.0.0-20240126072739-986e71dc0361
 	github.com/grafana/pyroscope-go v1.0.3
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.7
-	github.com/grafana/pyroscope/api v0.3.0
+	github.com/grafana/pyroscope/api v0.4.0
 	github.com/grafana/regexp v0.0.0-20221123153739-15dc172cd2db
 	github.com/grafana/river v0.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0

@@ -373,8 +373,13 @@ github.com/google/pprof v0.0.0-20200229191704-1ebb73c60ed3/go.mod h1:ZgVRPoUq/hf
 github.com/google/pprof v0.0.0-20200430221834-fc25d7d30c6d/go.mod h1:ZgVRPoUq/hfqzAqh7sHMqb3I9Rq5C59dIz2SbBwJ4eM=
 github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99/go.mod h1:ZgVRPoUq/hfqzAqh7sHMqb3I9Rq5C59dIz2SbBwJ4eM=
 github.com/google/pprof v0.0.0-20211214055906-6f57359322fd/go.mod h1:KgnwoLYCZ8IQu3XUZ8Nc/bM9CCZFOyjUNOSygVozoDg=
+<<<<<<< HEAD
 github.com/google/pprof v0.0.0-20231205033806-a5a03c77bf08 h1:PxlBVtIFHR/mtWk2i0gTEdCz+jBnqiuHNSki0epDbVs=
 github.com/google/pprof v0.0.0-20231205033806-a5a03c77bf08/go.mod h1:czg5+yv1E0ZGTi6S6vVK1mke0fV+FaUhNGcd6VRS9Ik=
+=======
+github.com/google/pprof v0.0.0-20240117000934-35fc243c5815 h1:WzfWbQz/Ze8v6l++GGbGNFZnUShVpP/0xffCPLL+ax8=
+github.com/google/pprof v0.0.0-20240117000934-35fc243c5815/go.mod h1:czg5+yv1E0ZGTi6S6vVK1mke0fV+FaUhNGcd6VRS9Ik=
+>>>>>>> origin/main
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/google/s2a-go v0.1.7 h1:60BLSyTrOV4/haCDW4zb1guZItoSq8foHCXrAnjBo/o=
 github.com/google/s2a-go v0.1.7/go.mod h1:50CgR4k1jNlWBu4UfS4AcfhVe1r6pdZPygJ3R8F0Qdw=
@@ -396,8 +401,8 @@ github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6 h1:Z78JZ7pa6InQ5BcMB
 github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6/go.mod h1:kkWM4WUV230bNG3urVRWPBnSJHs64y/0RmWjftnnn0c=
 github.com/grafana/jfr-parser v0.8.0 h1:/uo2wZNXrxw7tKLFwP2omJ3EQGMkD9wzhPsRogVofc0=
 github.com/grafana/jfr-parser v0.8.0/go.mod h1:M5u1ux34Qo47ZBWksbMYVk40s7dvU3WMVYpxweEu4R0=
-github.com/grafana/jfr-parser/pprof v0.0.0-20240108135448-c7f61c1f689e h1:Xpf1EsOY+ZMQYzusCLEixnWifv36J/jLz0GihnEyuNA=
-github.com/grafana/jfr-parser/pprof v0.0.0-20240108135448-c7f61c1f689e/go.mod h1:SDOa+U4/vAkuGjYBWXJpHpiaesbeXuhaQW4xzHzTSL4=
+github.com/grafana/jfr-parser/pprof v0.0.0-20240126072739-986e71dc0361 h1:TtNajaiSRfM2Mz8N7ouFQDFlviXbIEk9Hts0yoZnhGM=
+github.com/grafana/jfr-parser/pprof v0.0.0-20240126072739-986e71dc0361/go.mod h1:P5406BrWxjahTzVF6aCSumNI1KPlZJc0zO0v+zKZ4gc=
 github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91 h1:/NipyHnOmvRsVzj81j2qE0VxsvsqhOB0f4vJIhk2qCQ=
 github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91/go.mod h1:MS2lj3INKhZjWNqd3N0m3J+Jxf3DAOnAH9VT3Sh9MUE=
 github.com/grafana/objstore v0.0.0-20231121154247-84f91ea90e72 h1:o22hsDMQ3kv/0N9PkzHQSd5xMmmmdA5UJR7Jb4xISZQ=
