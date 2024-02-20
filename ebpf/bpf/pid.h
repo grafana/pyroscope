@@ -20,7 +20,7 @@ static __always_inline void current_pid(uint64_t ns_pid_ino, uint32_t *pid) {
     struct task_struct *task = (struct task_struct *)bpf_get_current_task();
 
     // retrieve level nested namespaces
-    unsigned int level = BPF_CORE_READ(task, nsproxy, pid_ns_for_children, level);
+    unsigned int level = BPF_CORE_READ(task, group_leader, nsproxy, pid_ns_for_children, level);
 
     // match the level with pid ns inode
 #pragma unroll
@@ -28,9 +28,9 @@ static __always_inline void current_pid(uint64_t ns_pid_ino, uint32_t *pid) {
         if ((level - i) < 0) {
             break;
         }
-        inum = BPF_CORE_READ(task, thread_pid, numbers[level - i].ns, ns.inum);
+        inum = BPF_CORE_READ(task, group_leader, thread_pid, numbers[level - i].ns, ns.inum);
         if (inum == ns_pid_ino) {
-            *pid = BPF_CORE_READ(task, thread_pid, numbers[level - i].nr);
+            *pid = BPF_CORE_READ(task, group_leader, thread_pid, numbers[level - i].nr);
             break;
         }
     }
