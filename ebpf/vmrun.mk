@@ -4,9 +4,9 @@ QEMU_ARCH ?= amd64
 KVM_ARGS ?= -enable-kvm -cpu host
 ifeq ($(QEMU_ARCH),amd64)
 QEMU_BIN = qemu-system-x86_64 -M pc   -append "root=/dev/vda console=ttyS0  noresume init=/usr/sbin/init"
-KERNEL = testdata/qemu_img/data/amd64/vmlinuz-6.1.0-18-amd64
-INITRD = testdata/qemu_img/data/amd64/initrd.img-6.1.0-18-amd64
-DISK = testdata/qemu_img/data/amd64/disk.ext4
+KERNEL = testdata/qemu_img/amd64/vmlinuz-6.1.0-18-amd64
+INITRD = testdata/qemu_img/amd64/initrd.img-6.1.0-18-amd64
+DISK = testdata/qemu_img/amd64/disk.ext4
 else ifeq ($(QEMU_ARCH),arm64)
 QEMU_BIN=qemu-system-aarch64 -M virt -cpu cortex-a57  -append "root=/dev/vda2 console=ttyAMA0 noresume"
 #INITRD=$(TMP_EBPF)/initrd.img-5.10.0-26-arm64
