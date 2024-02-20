@@ -8,7 +8,6 @@
 #define PID_NESTED_NAMESPACES_MAX 4
 
 static __always_inline void current_pid(uint64_t ns_pid_ino, uint32_t *pid) {
-    struct upid upid;
     unsigned int inum;
 
     // fallback to host pid, if no inode provided
@@ -29,11 +28,9 @@ static __always_inline void current_pid(uint64_t ns_pid_ino, uint32_t *pid) {
         if ((level - i) < 0) {
             break;
         }
-        upid = BPF_CORE_READ(task, thread_pid, numbers[level - i]);
-        inum = BPF_CORE_READ(upid.ns, ns.inum);
-
+        inum = BPF_CORE_READ(task, thread_pid, numbers[level - i].ns, ns.inum);
         if (inum == ns_pid_ino) {
-            *pid = upid.nr;
+            *pid = BPF_CORE_READ(task, thread_pid, numbers[level - i].nr);
             break;
         }
     }
