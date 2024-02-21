@@ -295,6 +295,9 @@ func (d *Distributor) PushParsed(ctx context.Context, req *distributormodel.Push
 				d.metrics.receivedCompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(len(raw.RawProfile)))
 			}
 			p := raw.Profile
+			if profLanguage == "go" {
+				p.Profile = pprof.FixGoProfile(p.Profile)
+			}
 			decompressedSize := p.SizeVT()
 			d.metrics.receivedDecompressedBytes.WithLabelValues(profName, tenantID).Observe(float64(decompressedSize))
 			d.metrics.receivedSamples.WithLabelValues(profName, tenantID).Observe(float64(len(p.Sample)))
