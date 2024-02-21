@@ -209,7 +209,7 @@ func split(p *profilev1.Profile) ([]*profilev1.Sample, []int) {
 	const avgGroupSize = 16 // Estimate.
 	groups := make([]int, 0, len(samples)/avgGroupSize)
 	var prev []byte
-	for i := 1; i < len(samples); i++ {
+	for i := 0; i < len(samples); i++ {
 		cur := suffix(samples[i].LocationId)
 		if !bytes.Equal(cur, prev) {
 			groups = append(groups, i)
