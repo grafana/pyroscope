@@ -20,15 +20,25 @@ type ProfileMerge struct {
 	sampleTable   RewriteTable[SampleKey, *profilev1.Sample, *profilev1.Sample]
 }
 
-// Merge adds p to the profile merge.
-// Profile is modified in place but not retained by the function.
+// Merge adds p to the profile merge, cloning new objects.
+// Profile p is modified in place but not retained by the function.
 func (m *ProfileMerge) Merge(p *profilev1.Profile) error {
+	return m.merge(p, true)
+}
+
+// MergeNoClone adds p to the profile merge, borrowing objects.
+// Profile p is modified in place and retained by the function.
+func (m *ProfileMerge) MergeNoClone(p *profilev1.Profile) error {
+	return m.merge(p, false)
+}
+
+func (m *ProfileMerge) merge(p *profilev1.Profile, clone bool) error {
 	if p == nil || len(p.StringTable) < 2 {
 		return nil
 	}
 	ConvertIDsToIndices(p)
 	if m.profile == nil {
-		m.init(p)
+		m.init(p, clone)
 	}
 
 	// We rewrite strings first in order to compare
@@ -98,7 +108,7 @@ func (m *ProfileMerge) Profile() *profilev1.Profile {
 	return m.profile
 }
 
-func (m *ProfileMerge) init(x *profilev1.Profile) {
+func (m *ProfileMerge) init(x *profilev1.Profile, clone bool) {
 	factor := 2
 	m.stringTable = NewRewriteTable(
 		factor*len(x.StringTable),
@@ -106,21 +116,35 @@ func (m *ProfileMerge) init(x *profilev1.Profile) {
 		func(s string) string { return s },
 	)
 
-	m.functionTable = NewRewriteTable[FunctionKey, *profilev1.Function, *profilev1.Function](
-		factor*len(x.Function), GetFunctionKey, cloneVT[*profilev1.Function])
+	if clone {
+		m.functionTable = NewRewriteTable[FunctionKey, *profilev1.Function, *profilev1.Function](
+			factor*len(x.Function), GetFunctionKey, cloneVT[*profilev1.Function])
 
-	m.mappingTable = NewRewriteTable[MappingKey, *profilev1.Mapping, *profilev1.Mapping](
-		factor*len(x.Mapping), GetMappingKey, cloneVT[*profilev1.Mapping])
+		m.mappingTable = NewRewriteTable[MappingKey, *profilev1.Mapping, *profilev1.Mapping](
+			factor*len(x.Mapping), GetMappingKey, cloneVT[*profilev1.Mapping])
 
-	m.locationTable = NewRewriteTable[LocationKey, *profilev1.Location, *profilev1.Location](
-		factor*len(x.Location), GetLocationKey, cloneVT[*profilev1.Location])
+		m.locationTable = NewRewriteTable[LocationKey, *profilev1.Location, *profilev1.Location](
+			factor*len(x.Location), GetLocationKey, cloneVT[*profilev1.Location])
 
-	m.sampleTable = NewRewriteTable[SampleKey, *profilev1.Sample, *profilev1.Sample](
-		factor*len(x.Sample), GetSampleKey, func(sample *profilev1.Sample) *profilev1.Sample {
-			c := sample.CloneVT()
-			slices.Clear(c.Value)
-			return c
-		})
+		m.sampleTable = NewRewriteTable[SampleKey, *profilev1.Sample, *profilev1.Sample](
+			factor*len(x.Sample), GetSampleKey, func(sample *profilev1.Sample) *profilev1.Sample {
+				c := sample.CloneVT()
+				slices.Clear(c.Value)
+				return c
+			})
+	} else {
+		m.functionTable = NewRewriteTable[FunctionKey, *profilev1.Function, *profilev1.Function](
+			factor*len(x.Function), GetFunctionKey, noClone[*profilev1.Function])
+
+		m.mappingTable = NewRewriteTable[MappingKey, *profilev1.Mapping, *profilev1.Mapping](
+			factor*len(x.Mapping), GetMappingKey, noClone[*profilev1.Mapping])
+
+		m.locationTable = NewRewriteTable[LocationKey, *profilev1.Location, *profilev1.Location](
+			factor*len(x.Location), GetLocationKey, noClone[*profilev1.Location])
+
+		m.sampleTable = NewRewriteTable[SampleKey, *profilev1.Sample, *profilev1.Sample](
+			factor*len(x.Sample), GetSampleKey, noClone[*profilev1.Sample])
+	}
 
 	m.profile = &profilev1.Profile{
 		SampleType: make([]*profilev1.ValueType, len(x.SampleType)),
@@ -138,6 +162,8 @@ func (m *ProfileMerge) init(x *profilev1.Profile) {
 		m.profile.SampleType[i] = st.CloneVT()
 	}
 }
+
+func noClone[T any](t T) T { return t }
 
 func cloneVT[T interface{ CloneVT() T }](t T) T { return t.CloneVT() }
 

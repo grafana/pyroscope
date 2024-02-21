@@ -34,6 +34,6 @@ func FixGoProfile(p *profilev1.Profile) *profilev1.Profile {
 	var m ProfileMerge
 	// We safely ignore the error as the only case when it can
 	// happen is when merged profiles are of different types.
-	_ = m.Merge(p)
+	_ = m.MergeNoClone(p)
 	return m.Profile()
 }
