@@ -211,7 +211,7 @@ func split(p *profilev1.Profile) ([]*profilev1.Sample, []int) {
 	var prev []byte
 	for i := 1; i < len(samples); i++ {
 		cur := suffix(samples[i].LocationId)
-		if bytes.Compare(cur, prev) != 0 {
+		if !bytes.Equal(cur, prev) {
 			groups = append(groups, i)
 			prev = cur
 		}
