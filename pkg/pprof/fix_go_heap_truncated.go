@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	minGroupSize = 0
+	minGroupSize = 2
 
 	tokens    = 8
 	tokenLen  = 16
@@ -28,15 +28,14 @@ func MayHaveGoHeapTruncatedStacktraces(p *profilev1.Profile) bool {
 	if !hasGoHeapSampleTypes(p) {
 		return false
 	}
-	var maxDepth int
+	// Some truncated stacks have depth less than the depth limit (32).
+	const minDepth = 28
 	for _, s := range p.Sample {
-		if l := len(s.LocationId); l > maxDepth {
-			maxDepth = l
+		if len(s.LocationId) >= minDepth {
+			return true
 		}
 	}
-	// For some reason, some truncated stacks have
-	// a depth less than the depth limit (32).
-	return maxDepth >= 28
+	return false
 }
 
 func hasGoHeapSampleTypes(p *profilev1.Profile) bool {
@@ -105,7 +104,7 @@ func RepairGoHeapTruncatedStacktraces(p *profilev1.Profile) {
 		//
 		// We skip the top/right-most token, as it is not needed,
 		// because there can be no more complete stack trace.
-		for j := 1; j <= tokens; j++ {
+		for j := uint32(1); j <= tokens; j++ {
 			hi := suffixBytesLen - j*tokens
 			lo := hi - tokenBytesLen
 			// By taking a string representation of the slice,
@@ -117,42 +116,89 @@ func RepairGoHeapTruncatedStacktraces(p *profilev1.Profile) {
 			c, ok := m[k]
 			if !ok || j > c.off {
 				// This group has more complete stack traces:
-				m[k] = group{idx: g, off: j}
+				m[k] = group{
+					gid: uint32(i),
+					off: j,
+				}
 			}
 		}
 	}
+
+	// Now we handle chaining. Consider the following stacks:
+	//  1   2   3   4
+	//  a   b  [d] (f)
+	//  b   c  [e] (g)
+	//  c  [d] (f)  h
+	//  d  [e] (g)  i
+	//
+	// We can't associate 3-rd stack with the 1-st one because their tokens
+	// do not overlap (given the token size is 2). However, we can associate
+	// it transitively through the 2nd stack.
+	//
+	// Dependencies:
+	//  - group i depends on d[i].
+	//  - d[i] depends on d[d[i].gid].
+	d := make([]group, len(groups))
+	for i := 0; i < len(groups); i++ {
+		g := groups[i]
+		t := topToken(samples[g].LocationId)
+		k := unsafeString(t)
+		c, ok := m[k]
+		if !ok || c.off == 0 || groups[c.gid] == g {
+			// The current group has the most complete stack trace.
+			continue
+		}
+		d[i] = c
+	}
+
 	// Then, for each group, we test, if there is another group with a more
 	// complete suffix, overlapping with the given one by at least one token.
 	// If such stack trace exists, all stack traces of the group are appended
 	// with the missing part.
 	for i := 0; i < len(groups); i++ {
 		g := groups[i]
+		c := d[i]
+		var off uint32
+		for c.off > 0 {
+			off += c.off
+			n := d[c.gid]
+			if n.off == 0 {
+				// Stop early to preserve c.
+				break
+			}
+			c = n
+		}
+		if off == 0 {
+			// The current group has the most complete stack trace.
+			continue
+		}
+		// The reference stack trace.
+		appx := samples[groups[c.gid]].LocationId
+		// It's possible that the reference stack trace does not
+		// include the part we're looking for. In this case, we
+		// simply ignore the group. Although it's possible to infer
+		// this piece from other stacks, this is left for further
+		// improvements.
+		if int(off) >= len(appx) {
+			continue
+		}
+		appx = appx[uint32(len(appx))-off:]
+		// Now we append the missing part to all stack traces of the group.
 		n := len(groups)
 		if i+1 < len(groups) {
 			n = groups[i+1]
 		}
-		t := topToken(samples[g].LocationId)
-		k := unsafeString(t)
-		c, ok := m[k]
-		if !ok || c.off == 0 || c.idx == g {
-			// The current group has the most complete stack trace.
-			continue
-		}
-		// Take the stack trace reference and append the
-		// missing part to all stack traces in this group.
-		s := samples[c.idx].LocationId
 		for j := g; j < n; j++ {
-			// Locations typically already have some
-			// extra capacity, therefore no major allocations
-			// are expected here.
-			samples[j].LocationId = append(samples[j].LocationId, s[len(s)-c.off:]...)
+			// Locations typically already have some extra capacity,
+			// therefore no major allocations are expected here.
+			samples[j].LocationId = append(samples[j].LocationId, appx...)
 		}
 	}
 }
 
 type group struct {
-	idx int
-	off int
+	gid uint32
+	off uint32
 }
 
 // suffix returns the last suffixLen locations
