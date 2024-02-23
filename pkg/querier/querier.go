@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"sync"
@@ -29,13 +30,13 @@ import (
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	vcsv1connect "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/querier/vcs"
-	"github.com/grafana/pyroscope/pkg/util/math"
+	pmath "github.com/grafana/pyroscope/pkg/util/math"
 	"github.com/grafana/pyroscope/pkg/util/spanlogger"
 )
 
@@ -475,6 +476,40 @@ func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffR
 	}), nil
 }
 
+func (q *Querier) GetProfileStats(ctx context.Context, req *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
+	// TODO open a span
+
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) (*typesv1.GetProfileStatsResponse, error) {
+		response, err := ic.GetProfileStats(childCtx, connect.NewRequest(&typesv1.GetProfileStatsRequest{}))
+		if err != nil {
+			return nil, err
+		}
+		return response.Msg, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: get stats from bucket
+
+	response := &typesv1.GetProfileStatsResponse{
+		DataIngested:      false,
+		OldestProfileTime: math.MaxInt64,
+		NewestProfileTime: math.MinInt64,
+	}
+	for _, r := range responses {
+		response.DataIngested = response.DataIngested || r.response.DataIngested
+		if r.response.OldestProfileTime < response.OldestProfileTime {
+			response.OldestProfileTime = r.response.OldestProfileTime
+		}
+		if r.response.NewestProfileTime > response.NewestProfileTime {
+			response.NewestProfileTime = r.response.NewestProfileTime
+		}
+	}
+
+	return connect.NewResponse(response), nil
+}
+
 func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeStacktraces")
 	level.Info(spanlogger.FromContext(ctx, q.logger)).Log(
@@ -713,10 +748,10 @@ func splitQueryToStores(start, end model.Time, now model.Time, queryStoreAfter t
 	queries.queryStoreAfter = queryStoreAfter
 	cutOff := now.Add(-queryStoreAfter)
 	if start.Before(cutOff) {
-		queries.storeGateway = storeQuery{shouldQuery: true, start: start, end: math.Min(cutOff, end)}
+		queries.storeGateway = storeQuery{shouldQuery: true, start: start, end: pmath.Min(cutOff, end)}
 	}
 	if end.After(cutOff) {
-		queries.ingester = storeQuery{shouldQuery: true, start: math.Max(cutOff, start), end: end}
+		queries.ingester = storeQuery{shouldQuery: true, start: pmath.Max(cutOff, start), end: end}
 		// Note that the ranges must not overlap.
 		if queries.storeGateway.shouldQuery {
 			queries.ingester.start++

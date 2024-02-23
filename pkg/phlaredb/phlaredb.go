@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sync"
@@ -523,4 +524,37 @@ func (f *PhlareDB) BlockMetadata(ctx context.Context, req *connect.Request[inges
 	})
 
 	return connect.NewResponse(&result), nil
+}
+
+func (f *PhlareDB) GetProfileStats(ctx context.Context, req *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
+	metas := make([]*block.Meta, 0)
+	f.headLock.RLock()
+	for _, h := range f.heads {
+		metas = append(metas, h.meta)
+	}
+	for _, h := range f.flushing {
+		metas = append(metas, h.meta)
+	}
+	f.headLock.RUnlock()
+	f.blockQuerier.queriersLock.RLock()
+	for _, q := range f.blockQuerier.queriers {
+		metas = append(metas, q.meta)
+	}
+	f.blockQuerier.queriersLock.RUnlock()
+
+	response := &typesv1.GetProfileStatsResponse{
+		DataIngested:      len(metas) > 0,
+		OldestProfileTime: math.MaxInt64,
+		NewestProfileTime: math.MinInt64,
+	}
+	for _, m := range metas {
+		if response.OldestProfileTime > m.MinTime.Time().UnixMilli() {
+			response.OldestProfileTime = m.MinTime.Time().UnixMilli()
+		}
+		if response.NewestProfileTime < m.MaxTime.Time().UnixMilli() {
+			response.NewestProfileTime = m.MaxTime.Time().UnixMilli()
+		}
+	}
+
+	return connect.NewResponse(response), nil
 }

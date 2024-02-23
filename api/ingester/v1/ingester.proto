@@ -20,6 +20,8 @@ service IngesterService {
   rpc MergeProfilesPprof(stream MergeProfilesPprofRequest) returns (stream MergeProfilesPprofResponse) {}
   rpc MergeSpanProfile(stream MergeSpanProfileRequest) returns (stream MergeSpanProfileResponse) {}
   rpc BlockMetadata(BlockMetadataRequest) returns (BlockMetadataResponse) {}
+  // GetProfileStats returns profile stats for the current tenant.
+  rpc GetProfileStats(types.v1.GetProfileStatsRequest) returns (types.v1.GetProfileStatsResponse) {}
 }
 
 message ProfileTypesRequest {

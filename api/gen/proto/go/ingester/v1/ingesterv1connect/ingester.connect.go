@@ -65,6 +65,9 @@ const (
 	// IngesterServiceBlockMetadataProcedure is the fully-qualified name of the IngesterService's
 	// BlockMetadata RPC.
 	IngesterServiceBlockMetadataProcedure = "/ingester.v1.IngesterService/BlockMetadata"
+	// IngesterServiceGetProfileStatsProcedure is the fully-qualified name of the IngesterService's
+	// GetProfileStats RPC.
+	IngesterServiceGetProfileStatsProcedure = "/ingester.v1.IngesterService/GetProfileStats"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -81,6 +84,7 @@ var (
 	ingesterServiceMergeProfilesPprofMethodDescriptor       = ingesterServiceServiceDescriptor.Methods().ByName("MergeProfilesPprof")
 	ingesterServiceMergeSpanProfileMethodDescriptor         = ingesterServiceServiceDescriptor.Methods().ByName("MergeSpanProfile")
 	ingesterServiceBlockMetadataMethodDescriptor            = ingesterServiceServiceDescriptor.Methods().ByName("BlockMetadata")
+	ingesterServiceGetProfileStatsMethodDescriptor          = ingesterServiceServiceDescriptor.Methods().ByName("GetProfileStats")
 )
 
 // IngesterServiceClient is a client for the ingester.v1.IngesterService service.
@@ -98,6 +102,8 @@ type IngesterServiceClient interface {
 	MergeProfilesPprof(context.Context) *connect.BidiStreamForClient[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]
 	MergeSpanProfile(context.Context) *connect.BidiStreamForClient[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]
 	BlockMetadata(context.Context, *connect.Request[v1.BlockMetadataRequest]) (*connect.Response[v1.BlockMetadataResponse], error)
+	// GetProfileStats returns profile stats for the current tenant.
+	GetProfileStats(context.Context, *connect.Request[v12.GetProfileStatsRequest]) (*connect.Response[v12.GetProfileStatsResponse], error)
 }
 
 // NewIngesterServiceClient constructs a client for the ingester.v1.IngesterService service. By
@@ -176,6 +182,12 @@ func NewIngesterServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(ingesterServiceBlockMetadataMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		getProfileStats: connect.NewClient[v12.GetProfileStatsRequest, v12.GetProfileStatsResponse](
+			httpClient,
+			baseURL+IngesterServiceGetProfileStatsProcedure,
+			connect.WithSchema(ingesterServiceGetProfileStatsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -192,6 +204,7 @@ type ingesterServiceClient struct {
 	mergeProfilesPprof       *connect.Client[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]
 	mergeSpanProfile         *connect.Client[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]
 	blockMetadata            *connect.Client[v1.BlockMetadataRequest, v1.BlockMetadataResponse]
+	getProfileStats          *connect.Client[v12.GetProfileStatsRequest, v12.GetProfileStatsResponse]
 }
 
 // Push calls ingester.v1.IngesterService.Push.
@@ -249,6 +262,11 @@ func (c *ingesterServiceClient) BlockMetadata(ctx context.Context, req *connect.
 	return c.blockMetadata.CallUnary(ctx, req)
 }
 
+// GetProfileStats calls ingester.v1.IngesterService.GetProfileStats.
+func (c *ingesterServiceClient) GetProfileStats(ctx context.Context, req *connect.Request[v12.GetProfileStatsRequest]) (*connect.Response[v12.GetProfileStatsResponse], error) {
+	return c.getProfileStats.CallUnary(ctx, req)
+}
+
 // IngesterServiceHandler is an implementation of the ingester.v1.IngesterService service.
 type IngesterServiceHandler interface {
 	Push(context.Context, *connect.Request[v11.PushRequest]) (*connect.Response[v11.PushResponse], error)
@@ -264,6 +282,8 @@ type IngesterServiceHandler interface {
 	MergeProfilesPprof(context.Context, *connect.BidiStream[v1.MergeProfilesPprofRequest, v1.MergeProfilesPprofResponse]) error
 	MergeSpanProfile(context.Context, *connect.BidiStream[v1.MergeSpanProfileRequest, v1.MergeSpanProfileResponse]) error
 	BlockMetadata(context.Context, *connect.Request[v1.BlockMetadataRequest]) (*connect.Response[v1.BlockMetadataResponse], error)
+	// GetProfileStats returns profile stats for the current tenant.
+	GetProfileStats(context.Context, *connect.Request[v12.GetProfileStatsRequest]) (*connect.Response[v12.GetProfileStatsResponse], error)
 }
 
 // NewIngesterServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -338,6 +358,12 @@ func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect.Handl
 		connect.WithSchema(ingesterServiceBlockMetadataMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	ingesterServiceGetProfileStatsHandler := connect.NewUnaryHandler(
+		IngesterServiceGetProfileStatsProcedure,
+		svc.GetProfileStats,
+		connect.WithSchema(ingesterServiceGetProfileStatsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/ingester.v1.IngesterService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case IngesterServicePushProcedure:
@@ -362,6 +388,8 @@ func NewIngesterServiceHandler(svc IngesterServiceHandler, opts ...connect.Handl
 			ingesterServiceMergeSpanProfileHandler.ServeHTTP(w, r)
 		case IngesterServiceBlockMetadataProcedure:
 			ingesterServiceBlockMetadataHandler.ServeHTTP(w, r)
+		case IngesterServiceGetProfileStatsProcedure:
+			ingesterServiceGetProfileStatsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -413,4 +441,8 @@ func (UnimplementedIngesterServiceHandler) MergeSpanProfile(context.Context, *co
 
 func (UnimplementedIngesterServiceHandler) BlockMetadata(context.Context, *connect.Request[v1.BlockMetadataRequest]) (*connect.Response[v1.BlockMetadataResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.BlockMetadata is not implemented"))
+}
+
+func (UnimplementedIngesterServiceHandler) GetProfileStats(context.Context, *connect.Request[v12.GetProfileStatsRequest]) (*connect.Response[v12.GetProfileStatsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ingester.v1.IngesterService.GetProfileStats is not implemented"))
 }
