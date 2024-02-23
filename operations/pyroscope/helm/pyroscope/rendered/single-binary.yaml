@@ -9,7 +9,7 @@ metadata:
     helm.sh/chart: pyroscope-1.4.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.3.0"
+    app.kubernetes.io/version: "1.4.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -42,7 +42,7 @@ metadata:
     helm.sh/chart: pyroscope-1.4.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.3.0"
+    app.kubernetes.io/version: "1.4.0"
     app.kubernetes.io/managed-by: Helm
 ---
 # Source: pyroscope/templates/configmap-agent.yaml
@@ -55,7 +55,7 @@ metadata:
     helm.sh/chart: pyroscope-1.4.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.3.0"
+    app.kubernetes.io/version: "1.4.0"
     app.kubernetes.io/managed-by: Helm
 data:
   config.river: |
@@ -859,7 +859,7 @@ metadata:
     helm.sh/chart: pyroscope-1.4.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.3.0"
+    app.kubernetes.io/version: "1.4.0"
     app.kubernetes.io/managed-by: Helm
 data:
   overrides.yaml: |
@@ -876,7 +876,7 @@ metadata:
     helm.sh/chart: pyroscope-1.4.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.3.0"
+    app.kubernetes.io/version: "1.4.0"
     app.kubernetes.io/managed-by: Helm
 data:
   config.yaml: |
@@ -973,7 +973,7 @@ metadata:
     helm.sh/chart: pyroscope-1.4.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.3.0"
+    app.kubernetes.io/version: "1.4.0"
     app.kubernetes.io/managed-by: Helm
 rules:
 - apiGroups:
@@ -1020,7 +1020,7 @@ metadata:
     helm.sh/chart: pyroscope-1.4.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.3.0"
+    app.kubernetes.io/version: "1.4.0"
     app.kubernetes.io/managed-by: Helm
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -1092,7 +1092,7 @@ metadata:
     helm.sh/chart: pyroscope-1.4.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.3.0"
+    app.kubernetes.io/version: "1.4.0"
     app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
@@ -1119,7 +1119,7 @@ metadata:
     helm.sh/chart: pyroscope-1.4.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.3.0"
+    app.kubernetes.io/version: "1.4.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -1144,7 +1144,7 @@ metadata:
     helm.sh/chart: pyroscope-1.4.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.3.0"
+    app.kubernetes.io/version: "1.4.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -1252,7 +1252,7 @@ metadata:
     helm.sh/chart: pyroscope-1.4.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
-    app.kubernetes.io/version: "1.3.0"
+    app.kubernetes.io/version: "1.4.0"
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: "all"
 spec:
@@ -1267,7 +1267,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 02c53e3c97a4551c7208f4b80596401f1a76ec2f1b1e1e9cbd7a43b155683f05
+        checksum/config: b906ef8e01597c430910cc549fc827b9a229d382ec754987a7add1db0e889d4c
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
