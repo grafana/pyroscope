@@ -140,6 +140,10 @@ func (i *ingesterHandlerPhlareDB) BlockMetadata(context.Context, *connect.Reques
 	return nil, errors.New("not implemented")
 }
 
+func (i *ingesterHandlerPhlareDB) GetProfileStats(context.Context, *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
 func TestMergeProfilesStacktraces(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 

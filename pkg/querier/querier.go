@@ -34,10 +34,13 @@ import (
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/querier/vcs"
+	"github.com/grafana/pyroscope/pkg/storegateway"
 	pmath "github.com/grafana/pyroscope/pkg/util/math"
 	"github.com/grafana/pyroscope/pkg/util/spanlogger"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type Config struct {
@@ -72,25 +75,53 @@ type Querier struct {
 // querier frontend sets the limit.
 const maxNodesDefault = int64(2048)
 
-func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, storeGatewayQuerier *StoreGatewayQuerier, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Querier, error) {
+type NewQuerierParams struct {
+	Cfg             Config
+	StoreGatewayCfg storegateway.Config
+	Overrides       *validation.Overrides
+	StorageBucket   phlareobj.Bucket
+	IngestersRing   ring.ReadRing
+	PoolFactory     ring_client.PoolFactory
+	Reg             prometheus.Registerer
+	Logger          log.Logger
+	ClientOptions   []connect.ClientOption
+}
+
+func New(params *NewQuerierParams) (*Querier, error) {
 	// disable gzip compression for querier-ingester communication as most of payload are not benefit from it.
-	clientsMetrics := promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+	clientsMetrics := promauto.With(params.Reg).NewGauge(prometheus.GaugeOpts{
 		Namespace: "pyroscope",
 		Name:      "querier_ingester_clients",
 		Help:      "The current number of ingester clients.",
 	})
 
+	// if a storage bucket is configured we need to create a store gateway querier
+	var storeGatewayQuerier *StoreGatewayQuerier
+	var err error
+	if params.StorageBucket != nil {
+		storeGatewayQuerier, err = newStoreGatewayQuerier(
+			params.StoreGatewayCfg,
+			params.PoolFactory,
+			params.Overrides,
+			log.With(params.Logger, "component", "store-gateway-querier"),
+			params.Reg,
+			params.ClientOptions...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	q := &Querier{
-		cfg:    cfg,
-		logger: logger,
+		cfg:    params.Cfg,
+		logger: params.Logger,
 		ingesterQuerier: NewIngesterQuerier(
-			clientpool.NewIngesterPool(cfg.PoolConfig, ingestersRing, factory, clientsMetrics, logger, clientsOptions...),
-			ingestersRing,
+			clientpool.NewIngesterPool(params.Cfg.PoolConfig, params.IngestersRing, params.PoolFactory, clientsMetrics, params.Logger, params.ClientOptions...),
+			params.IngestersRing,
 		),
 		storeGatewayQuerier: storeGatewayQuerier,
-		VCSServiceHandler:   vcs.New(logger),
+		VCSServiceHandler:   vcs.New(params.Logger),
 	}
-	var err error
+
 	svcs := []services.Service{q.ingesterQuerier.pool}
 	if storeGatewayQuerier != nil {
 		svcs = append(svcs, storeGatewayQuerier)
