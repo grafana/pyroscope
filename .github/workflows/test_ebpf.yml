@@ -94,7 +94,7 @@ jobs:
           qemu/start_and_wait
       - name: Copy test binary
         run: >
-          F=$(realpath ebpf.${{ matrix.arch }}.test) 
+          F=$(realpath ./ebpf/ebpf.${{ matrix.arch }}.test) 
           make -C ./ebpf/testdata/qemu_img 
           qemu/scp
       - name: Exec test binary
