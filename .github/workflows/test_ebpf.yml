@@ -93,9 +93,9 @@ jobs:
       - name: Copy test binary
         run: >
           F=$(realpath ./ebpf/ebpf.${{ matrix.arch }}.test) make -C ./ebpf/testdata/qemu_img qemu/scp
-      - name: Uname
+      - name: Uname & tests
         run: >
-          CMD="uname -a && sudo apt update && docker ps -a && docker pull ubuntu:latest"  make -C ./ebpf/testdata/qemu_img qemu/exec
+          CMD="uname -a && sudo apt update && docker ps -a && docker pull korniltsev/ebpf-testdata-rideshare:3.8-slim"  make -C ./ebpf/testdata/qemu_img qemu/exec
       - name: Exec test binary
         run: >
           CMD=./ebpf.${{ matrix.arch }}.test make -C ./ebpf/testdata/qemu_img qemu/exec
