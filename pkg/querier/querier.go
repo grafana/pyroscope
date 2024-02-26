@@ -16,6 +16,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
+	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
@@ -35,6 +36,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/querier/vcs"
 	"github.com/grafana/pyroscope/pkg/storegateway"
@@ -66,6 +68,9 @@ type Querier struct {
 	storeGatewayQuerier *StoreGatewayQuerier
 
 	vcsv1connect.VCSServiceHandler
+
+	storageBucket        phlareobj.Bucket
+	tenantConfigProvider phlareobj.TenantConfigProvider
 }
 
 // TODO(kolesnikovae): For backwards compatibility.
@@ -80,6 +85,7 @@ type NewQuerierParams struct {
 	StoreGatewayCfg storegateway.Config
 	Overrides       *validation.Overrides
 	StorageBucket   phlareobj.Bucket
+	CfgProvider     phlareobj.TenantConfigProvider
 	IngestersRing   ring.ReadRing
 	PoolFactory     ring_client.PoolFactory
 	Reg             prometheus.Registerer
@@ -118,8 +124,10 @@ func New(params *NewQuerierParams) (*Querier, error) {
 			clientpool.NewIngesterPool(params.Cfg.PoolConfig, params.IngestersRing, params.PoolFactory, clientsMetrics, params.Logger, params.ClientOptions...),
 			params.IngestersRing,
 		),
-		storeGatewayQuerier: storeGatewayQuerier,
-		VCSServiceHandler:   vcs.New(params.Logger),
+		storeGatewayQuerier:  storeGatewayQuerier,
+		VCSServiceHandler:    vcs.New(params.Logger),
+		storageBucket:        params.StorageBucket,
+		tenantConfigProvider: params.CfgProvider,
 	}
 
 	svcs := []services.Service{q.ingesterQuerier.pool}
@@ -508,7 +516,8 @@ func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffR
 }
 
 func (q *Querier) GetProfileStats(ctx context.Context, req *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
-	// TODO open a span
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "GetProfileStats")
+	defer sp.Finish()
 
 	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) (*typesv1.GetProfileStatsResponse, error) {
 		response, err := ic.GetProfileStats(childCtx, connect.NewRequest(&typesv1.GetProfileStatsRequest{}))
@@ -520,8 +529,6 @@ func (q *Querier) GetProfileStats(ctx context.Context, req *connect.Request[type
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO: get stats from bucket
 
 	response := &typesv1.GetProfileStatsResponse{
 		DataIngested:      false,
@@ -535,6 +542,30 @@ func (q *Querier) GetProfileStats(ctx context.Context, req *connect.Request[type
 		}
 		if r.response.NewestProfileTime > response.NewestProfileTime {
 			response.NewestProfileTime = r.response.NewestProfileTime
+		}
+	}
+
+	if q.storageBucket != nil {
+		tenantId, err := tenant.TenantID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		index, err := bucketindex.ReadIndex(ctx, q.storageBucket, tenantId, q.tenantConfigProvider, q.logger)
+		if err != nil && !errors.Is(err, bucketindex.ErrIndexNotFound) {
+			return nil, err
+		}
+		if index != nil && len(index.Blocks) > 0 {
+			// assuming blocks are ordered by time in ascending order
+			// ignoring deleted blocks as we only need the overall time range of blocks
+			minTime := index.Blocks[0].MinTime.Time().UnixMilli()
+			if minTime < response.OldestProfileTime {
+				response.OldestProfileTime = minTime
+			}
+			maxTime := index.Blocks[len(index.Blocks)-1].MaxTime.Time().UnixMilli()
+			if maxTime > response.NewestProfileTime {
+				response.NewestProfileTime = maxTime
+			}
+			response.DataIngested = true
 		}
 	}
 

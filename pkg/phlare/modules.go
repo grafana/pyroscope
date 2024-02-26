@@ -250,6 +250,7 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 		Cfg:             f.Cfg.Querier,
 		StoreGatewayCfg: f.Cfg.StoreGateway,
 		Overrides:       f.Overrides,
+		CfgProvider:     f.Overrides,
 		StorageBucket:   f.storageBucket,
 		IngestersRing:   f.ring,
 		Reg:             f.reg,
