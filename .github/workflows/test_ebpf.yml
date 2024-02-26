@@ -80,7 +80,7 @@ jobs:
         with:
           go-version: 1.21.6
       - name: Install qemu
-        run: sudo apt-get update && sudo apt-get -y install qemu-system-x86
+        run: sudo apt-get update && sudo apt-get -y install qemu-system-x86 qemu-system-aarch64
       - name: build tests
         run: make -C ./ebpf ebpf.${{ matrix.arch }}.test
       - name: Pull VM image
