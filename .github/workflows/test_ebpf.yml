@@ -73,8 +73,10 @@ jobs:
             initrd: arm64/boot_extra/initramfs-5.10.205-195.807.amzn2.aarch64.img
 
     steps:
-      - name: Checkout code
+      - name: Checkout code with submodule
         uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - name: Install Go
         uses: actions/setup-go@v4
         with:
