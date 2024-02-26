@@ -78,9 +78,6 @@ ebpf.arm64.test:
 	CGO_ENABLED=$(EBPF_CGO_ENABLED_ARM64) GOOS=linux GOARCH=arm64 \
 		$(GO) test -c $(EBPF_GO_TEST_FLAGS_ARM64) -o ebpf.arm64.test ./
 
-include vmrun.mk
-
-
 .PHONY: go/test/amd64
 go/test/amd64: ebpf.amd64.test
 	whoami | grep root
