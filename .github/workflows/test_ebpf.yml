@@ -87,6 +87,8 @@ jobs:
         run: make -C ./ebpf ebpf.${{ matrix.arch }}.test
       - name: Pull VM image
         run: make -C ./ebpf/testdata/qemu_img dist/pull
+      - name: Save some space
+        run: docker system prune -f -a
       - name: Start VM
         run: >
           KVM_ARGS="" ARCH=${{ matrix.arch }} KERNEL=${{ matrix.kernel }} INITRD=${{ matrix.initrd }} make -C ./ebpf/testdata/qemu_img qemu/start_and_wait
