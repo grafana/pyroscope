@@ -95,7 +95,7 @@ jobs:
           F=$(realpath ./ebpf/ebpf.${{ matrix.arch }}.test) make -C ./ebpf/testdata/qemu_img qemu/scp
       - name: Uname
         run: >
-          CMD="uname -a && apt update && docker ps -a && docker pull ubuntu:latest"  make -C ./ebpf/testdata/qemu_img qemu/exec
+          CMD="uname -a && sudo apt update && docker ps -a && docker pull ubuntu:latest"  make -C ./ebpf/testdata/qemu_img qemu/exec
       - name: Exec test binary
         run: >
           CMD=./ebpf.${{ matrix.arch }}.test make -C ./ebpf/testdata/qemu_img qemu/exec
