@@ -7,6 +7,8 @@ on:
     paths:
       - ebpf/**
   pull_request:
+    paths:
+      - ebpf/**
 
 concurrency:
   # Cancel any running workflow for the same branch when new commits are pushed.
@@ -27,8 +29,49 @@ jobs:
           go-version: 1.21.6
       - name: Test
         run: sudo make -C ./ebpf go/test/amd64
-  test_ebpf_amd64_qemu:
+  test_ebpf_qemu:
     runs-on: ubuntu-latest-16-cores
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            kernel: amd64/boot/vmlinuz-4.19.0-26-amd64
+            initrd: amd64/boot/initrd.img-4.19.0-26-amd64
+          - arch: amd64
+            kernel: amd64/boot/vmlinuz-5.10.0-28-amd64
+            initrd: amd64/boot/initrd.img-5.10.0-28-amd64
+          - arch: amd64
+            kernel: amd64/boot/vmlinuz-5.15.0-94-generic
+            initrd: amd64/boot/initrd.img-5.15.0-94-generic
+          - arch: amd64
+            kernel: amd64/boot/vmlinuz-5.4.0-150-generic
+            initrd: amd64/boot/initrd.img-5.4.0-150-generic
+          - arch: amd64
+            kernel: amd64/boot/vmlinuz-6.1.0-18-amd64
+            initrd: amd64/boot/initrd.img-6.1.0-18-amd64
+          - arch: amd64
+            kernel: amd64/boot_extra/vmlinuz-5.10.205-195.807.amzn2.x86_64
+            initrd: amd64/boot_extra/initramfs-5.10.205-195.807.amzn2.x86_64.img
+
+          - arch: arm64
+            kernel: arm64/boot/vmlinuz-4.19.0-26-arm64
+            initrd: arm64/boot/initrd.img-4.19.0-26-arm64
+          - arch: arm64
+            kernel: arm64/boot/vmlinuz-5.10.0-28-arm64
+            initrd: arm64/boot/initrd.img-5.10.0-28-arm64
+          - arch: arm64
+            kernel: arm64/boot/vmlinuz-5.15.0-94-generic
+            initrd: arm64/boot/initrd.img-5.15.0-94-generic
+          - arch: arm64
+            kernel: arm64/boot/vmlinuz-5.4.0-150-generic
+            initrd: arm64/boot/initrd.img-5.4.0-150-generic
+          - arch: arm64
+            kernel: arm64/boot/vmlinuz-6.1.0-18-arm64
+            initrd: arm64/boot/initrd.img-6.1.0-18-arm64
+          - arch: arm64
+            kernel: arm64/boot_extra/vmlinuz-5.10.205-195.807.amzn2.aarch64
+            initrd: arm64/boot_extra/initramfs-5.10.205-195.807.amzn2.aarch64.img
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -38,20 +81,9 @@ jobs:
           go-version: 1.21.6
       - name: Install qemu
         run: sudo apt-get update && sudo apt-get -y install qemu-system-x86
-      - name: Test
-        run: EBPF_RUN_IN_VM=1 make -C ./ebpf go/test/amd64
-  test_ebpf_arm64_qemu:
-    runs-on: ubuntu-latest-16-cores
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Install Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: 1.21.6
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-      - name: Install qemu
-        run: sudo apt-get update && sudo apt-get -y install qemu-system-aarch64
-      - name: Test
-        run: EBPF_RUN_IN_VM=1 make -C ./ebpf go/test/arm64
+      - name: build tests
+        run: make -C ./ebpf ebpf.${{ matrix.arch }}.test
+      - name: Pull VM image
+        run: make -C ./ebpf/testdata/qemu_imgs dist/pull
+      - name: Start VM
+        run: ARCH=${{ matrix.arch }} KERNEL=${{ matrix.kernel }} INITRD=${{ matrix.initrd }} make -C ./ebpf/testdata/qemu_imgs qemu/start_and_wait
