@@ -39,8 +39,8 @@ Ensure your Golang application exposes pprof endpoints.
 
 [//]: # (TODO&#40;korniltsev&#41; What should go here?)
 
-This procedure uses Grafana Agent to send data to Pyroscope using an example River configuration file for the Grafana Agent in Flow mode. 
-Make sure you have [Grafana Agent in Flow mode](/docs/agent/latest/flow/setup/install/) installed. 
+This procedure uses Grafana Agent to send data to Pyroscope using an example River configuration file for the Grafana Agent in Flow mode.
+Make sure you have [Grafana Agent in Flow mode](/docs/agent/latest/flow/setup/install/) installed.
 
 ### Prepare Grafana Agent Flow configuration file
 
@@ -61,36 +61,36 @@ and `pyroscope.scrape`.
     pyroscope.scrape "scrape_job_name" {
             targets    = [{"__address__" = "localhost:4040", "service_name" = "example_service"}]
             forward_to = [pyroscope.write.write_job_name.receiver]
-    
+
             profiling_config {
                     profile.process_cpu {
                             enabled = true
                     }
-    
+
                     profile.godeltaprof_memory {
                             enabled = true
                     }
-    
+
                     profile.memory { // disable memory, use godeltaprof_memory instead
                             enabled = false
                     }
-    
+
                     profile.godeltaprof_mutex {
                             enabled = true
                     }
-    
+
                     profile.mutex { // disable mutex, use godeltaprof_mutex instead
                             enabled = false
                     }
-    
+
                     profile.godeltaprof_block {
                             enabled = true
                     }
-    
+
                     profile.block { // disable block, use godeltaprof_block instead
                             enabled = false
                     }
-    
+
                     profile.goroutine {
                             enabled = true
                     }
@@ -98,18 +98,18 @@ and `pyroscope.scrape`.
     }
 
     ```
-3. Save the changes to the file. 
+3. Save the changes to the file.
 ### Start Grafana Agent Flow
 
 1. Start a local Pyroscope instance for testing purposes
     ```bash
-    docker run -p 4040:4040 grafana/pyroscope 
+    docker run -p 4040:4040 grafana/pyroscope
     ```
 2. Start Grafana Agent
     ```bash
     grafana-agent-flow run conifguration.river
     ```
-3. Open a browser to http://localhost:4040. The page should list profiles. 
+3. Open a browser to http://localhost:4040. The page should list profiles.
 
 ## Examples
 
@@ -128,56 +128,56 @@ pyroscope.write "write_job_name" {
                         password = "<Grafana Cloud Password>"
                 }
         }
-        
+
 }
 ```
 
 ### Discover Kubernetes targets
 
-1. Select all pods 
+1. Select all pods
   ```river
   discovery.kubernetes "all_pods" {
           role = "pod"
   }
   ```
-2. Drop not running pods, create `namespace`, `pod`, `node` and `container` labels. 
+2. Drop not running pods, create `namespace`, `pod`, `node` and `container` labels.
   Compose `service_name` label based on `namespace` and `container` labels.
   Select only services matching regex pattern `(ns1/.*)|(ns2/container-.*0)`.
     ```river
-    
+
     discovery.relabel "specific_pods" {
             targets = discovery.kubernetes.all_pods.targets
-    
+
             rule {
                     action        = "drop"
                     regex         = "Succeeded|Failed|Completed"
                     source_labels = ["__meta_kubernetes_pod_phase"]
             }
-    
+
             rule {
                     action        = "replace"
                     source_labels = ["__meta_kubernetes_namespace"]
                     target_label  = "namespace"
             }
-    
+
             rule {
                     action        = "replace"
                     source_labels = ["__meta_kubernetes_pod_name"]
                     target_label  = "pod"
             }
-    
+
             rule {
                     action        = "replace"
                     source_labels = ["__meta_kubernetes_node_name"]
                     target_label  = "node"
             }
-    
+
             rule {
                     action        = "replace"
                     source_labels = ["__meta_kubernetes_pod_container_name"]
                     target_label  = "container"
             }
-    
+
             rule {
                     action        = "replace"
                     regex         = "(.*)@(.*)"
@@ -186,8 +186,8 @@ pyroscope.write "write_job_name" {
                     source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
                     target_label  = "service_name"
             }
-            
-            rule { 
+
+            rule {
                     action        = "keep"
                     regex         = "(ns1/.*)|(ns2/container-.*0)"
                     source_labels = ["service_name"]
@@ -218,7 +218,7 @@ router.PathPrefix("/debug/pprof").Handler(http.DefaultServeMux)
 ```
 
 ## References
-[Example using grafana-agent](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent).
+[Example using grafana-agent](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation).
 [pyroscope.scrape](/docs/agent/latest/flow/reference/components/pyroscope.scrape/)
 [pyroscope.write](/docs/agent/latest/flow/reference/components/pyroscope.write/)
 [discovery.kubernetes](/docs/agent/latest/flow/reference/components/discovery.kubernetes/)
