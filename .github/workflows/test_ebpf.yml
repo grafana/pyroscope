@@ -97,8 +97,13 @@ jobs:
           F=$(realpath ./ebpf/ebpf.${{ matrix.arch }}.test) 
           make -C ./ebpf/testdata/qemu_img 
           qemu/scp
+      - name: Uname
+        run: >
+          CMD="uname -a"
+          make -C ./ebpf/testdata/qemu_img
+          qemu/exec
       - name: Exec test binary
         run: >
-          F=./ebpf.${{ matrix.arch }}.test
+          CMD=./ebpf.${{ matrix.arch }}.test
           make -C ./ebpf/testdata/qemu_img
           qemu/exec
