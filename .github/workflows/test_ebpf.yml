@@ -84,6 +84,21 @@ jobs:
       - name: build tests
         run: make -C ./ebpf ebpf.${{ matrix.arch }}.test
       - name: Pull VM image
-        run: make -C ./ebpf/testdata/qemu_imgs dist/pull
+        run: make -C ./ebpf/testdata/qemu_img dist/pull
       - name: Start VM
-        run: ARCH=${{ matrix.arch }} KERNEL=${{ matrix.kernel }} INITRD=${{ matrix.initrd }} make -C ./ebpf/testdata/qemu_imgs qemu/start_and_wait
+        run: >
+          ARCH=${{ matrix.arch }}
+          KERNEL=${{ matrix.kernel }}
+          INITRD=${{ matrix.initrd }}
+          make -C ./ebpf/testdata/qemu_img 
+          qemu/start_and_wait
+      - name: Copy test binary
+        run: >
+          F=$(realpath ebpf.${{ matrix.arch }}.test) 
+          make -C ./ebpf/testdata/qemu_img 
+          qemu/scp
+      - name: Exec test binary
+        run: >
+          F=./ebpf.${{ matrix.arch }}.test
+          make -C ./ebpf/testdata/qemu_img
+          qemu/exec
