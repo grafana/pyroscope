@@ -9,7 +9,7 @@ In this example we show a simplified, basic use case of Pyroscope. We simulate a
 - `/car`     : calls the `OrderCar(search_radius)` function to order a car
 - `/scooter` : calls the `OrderScooter(search_radius)` function to order a scooter
 
-We also simulate running 3 distinct servers in 3 different regions (via [docker-compose.yml](https://github.com/pyroscope-io/pyroscope/blob/main/examples/golang-push/rideshare/docker-compose.yml))
+We also simulate running 3 distinct servers in 3 different regions (via [docker-compose.yml](https://github.com/pyroscope-io/pyroscope/blob/main/examples/language-sdk-instrumentation/golang-push/rideshare/docker-compose.yml))
 - us-east
 - eu-north
 - ap-south

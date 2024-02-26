@@ -134,7 +134,9 @@ func updateGolang() {
 	log.Println(last.tag.Name)
 	s.sh("cd ./examples/golang-push/rideshare &&  go get github.com/grafana/pyroscope-go@" + last.versionV() +
 		" && go mod tidy")
-	s.sh("cd ./examples/golang-push/simple    &&  go get github.com/grafana/pyroscope-go@" + last.versionV() +
+	s.sh("cd ./examples/language-sdk-instrumentation/golang-push/rideshare &&  go get github.com/grafana/pyroscope-go@" + last.versionV() +
+		" && go mod tidy")
+	s.sh("cd ./examples/language-sdk-instrumentation/golang-push/simple    &&  go get github.com/grafana/pyroscope-go@" + last.versionV() +
 		" && go mod tidy")
 }
 
