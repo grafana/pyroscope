@@ -89,6 +89,7 @@ jobs:
         run: make -C ./ebpf/testdata/qemu_img dist/pull
       - name: Start VM
         run: >
+          KVM_ARGS=""
           ARCH=${{ matrix.arch }}
           KERNEL=${{ matrix.kernel }}
           INITRD=${{ matrix.initrd }}
