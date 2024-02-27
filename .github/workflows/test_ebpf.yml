@@ -70,9 +70,9 @@ jobs:
 #          - arch: arm64
 #            kernel: arm64/boot/vmlinuz-6.1.0-18-arm64
 #            initrd: arm64/boot/initrd.img-6.1.0-18-arm64
-#          - arch: arm64
-#            kernel: arm64/boot_extra/vmlinuz-5.10.205-195.807.amzn2.aarch64
-#            initrd: arm64/boot_extra/initramfs-5.10.205-195.807.amzn2.aarch64.img
+          - arch: arm64
+            kernel: arm64/boot_extra/vmlinuz-5.10.205-195.807.amzn2.aarch64
+            initrd: arm64/boot_extra/initramfs-5.10.205-195.807.amzn2.aarch64.img
 
     steps:
       - name: Checkout code with submodule
