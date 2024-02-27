@@ -37,8 +37,10 @@ func (m *ProfileMerge) merge(p *profilev1.Profile, clone bool) error {
 		return nil
 	}
 	ConvertIDsToIndices(p)
+	var initial bool
 	if m.profile == nil {
 		m.init(p, clone)
+		initial = true
 	}
 
 	// We rewrite strings first in order to compare
@@ -46,7 +48,7 @@ func (m *ProfileMerge) merge(p *profilev1.Profile, clone bool) error {
 	m.tmp = slices.GrowLen(m.tmp, len(p.StringTable))
 	m.stringTable.Index(m.tmp, p.StringTable)
 	RewriteStrings(p, m.tmp)
-	if len(m.profile.StringTable) == 0 {
+	if initial {
 		// Right after initialisation we need to make
 		// sure that the string identifiers are normalized
 		// among profiles.
