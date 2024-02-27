@@ -84,7 +84,6 @@ go/test/amd64: ebpf.amd64.test
 	uname -m | grep x86_64
 	./ebpf.amd64.test
 
-
 .PHONY: go/test/arm64
 go/test/arm64: ebpf.arm64.test
 	whoami | grep root
