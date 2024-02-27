@@ -36,40 +36,40 @@ jobs:
     strategy:
       matrix:
         include:
-#          - arch: amd64
-#            kernel: amd64/boot/vmlinuz-4.19.0-26-amd64
-#            initrd: amd64/boot/initrd.img-4.19.0-26-amd64
-#          - arch: amd64
-#            kernel: amd64/boot/vmlinuz-5.10.0-28-amd64
-#            initrd: amd64/boot/initrd.img-5.10.0-28-amd64
-#          - arch: amd64
-#            kernel: amd64/boot/vmlinuz-5.15.0-94-generic
-#            initrd: amd64/boot/initrd.img-5.15.0-94-generic
-#          - arch: amd64
-#            kernel: amd64/boot/vmlinuz-5.4.0-150-generic
-#            initrd: amd64/boot/initrd.img-5.4.0-150-generic
-#          - arch: amd64
-#            kernel: amd64/boot/vmlinuz-6.1.0-18-amd64
-#            initrd: amd64/boot/initrd.img-6.1.0-18-amd64
+          - arch: amd64
+            kernel: amd64/boot/vmlinuz-4.19.0-26-amd64
+            initrd: amd64/boot/initrd.img-4.19.0-26-amd64
+          - arch: amd64
+            kernel: amd64/boot/vmlinuz-5.10.0-28-amd64
+            initrd: amd64/boot/initrd.img-5.10.0-28-amd64
+          - arch: amd64
+            kernel: amd64/boot/vmlinuz-5.15.0-94-generic
+            initrd: amd64/boot/initrd.img-5.15.0-94-generic
+          - arch: amd64
+            kernel: amd64/boot/vmlinuz-5.4.0-150-generic
+            initrd: amd64/boot/initrd.img-5.4.0-150-generic
+          - arch: amd64
+            kernel: amd64/boot/vmlinuz-6.1.0-18-amd64
+            initrd: amd64/boot/initrd.img-6.1.0-18-amd64
           - arch: amd64
             kernel: amd64/boot_extra/vmlinuz-5.10.205-195.807.amzn2.x86_64
             initrd: amd64/boot_extra/initramfs-5.10.205-195.807.amzn2.x86_64.img
 
-#          - arch: arm64
-#            kernel: arm64/boot/vmlinuz-4.19.0-26-arm64
-#            initrd: arm64/boot/initrd.img-4.19.0-26-arm64
-#          - arch: arm64
-#            kernel: arm64/boot/vmlinuz-5.10.0-28-arm64
-#            initrd: arm64/boot/initrd.img-5.10.0-28-arm64
-#          - arch: arm64
-#            kernel: arm64/boot/vmlinuz-5.15.0-94-generic
-#            initrd: arm64/boot/initrd.img-5.15.0-94-generic
-#          - arch: arm64
-#            kernel: arm64/boot/vmlinuz-5.4.0-150-generic
-#            initrd: arm64/boot/initrd.img-5.4.0-150-generic
-#          - arch: arm64
-#            kernel: arm64/boot/vmlinuz-6.1.0-18-arm64
-#            initrd: arm64/boot/initrd.img-6.1.0-18-arm64
+          - arch: arm64
+            kernel: arm64/boot/vmlinuz-4.19.0-26-arm64
+            initrd: arm64/boot/initrd.img-4.19.0-26-arm64
+          - arch: arm64
+            kernel: arm64/boot/vmlinuz-5.10.0-28-arm64
+            initrd: arm64/boot/initrd.img-5.10.0-28-arm64
+          - arch: arm64
+            kernel: arm64/boot/vmlinuz-5.15.0-94-generic
+            initrd: arm64/boot/initrd.img-5.15.0-94-generic
+          - arch: arm64
+            kernel: arm64/boot/vmlinuz-5.4.0-150-generic
+            initrd: arm64/boot/initrd.img-5.4.0-150-generic
+          - arch: arm64
+            kernel: arm64/boot/vmlinuz-6.1.0-18-arm64
+            initrd: arm64/boot/initrd.img-6.1.0-18-arm64
           - arch: arm64
             kernel: arm64/boot_extra/vmlinuz-5.10.205-195.807.amzn2.aarch64
             initrd: arm64/boot_extra/initramfs-5.10.205-195.807.amzn2.aarch64.img
@@ -85,22 +85,20 @@ jobs:
           go-version: 1.21.6
       - name: Install qemu
         run: sudo apt-get update && sudo apt-get -y install qemu-system-x86 qemu-system-aarch64
-      - name: build tests
+      - name: Build tests
         run: make -C ./ebpf ebpf.${{ matrix.arch }}.test
       - name: Pull VM image
         run: make -C ./ebpf/testdata/qemu_img dist/pull
-      - name: Save some space
-        run: docker system prune -f -a
       - name: Start VM
         run: >
           KVM_ARGS="" ARCH=${{ matrix.arch }} KERNEL=${{ matrix.kernel }} INITRD=${{ matrix.initrd }} make -C ./ebpf/testdata/qemu_img qemu/start_and_wait
       - name: Copy test binary
         run: >
           F=$(realpath ./ebpf/ebpf.${{ matrix.arch }}.test) make -C ./ebpf/testdata/qemu_img qemu/scp
-      - name: Uname & tests
+      - name: Uname
         run: >
-          CMD="uname -a && sudo apt update && docker ps -a && docker pull korniltsev/ebpf-testdata-rideshare:3.8-slim"  make -C ./ebpf/testdata/qemu_img qemu/exec
-      - name: Exec test binary
+          CMD="uname -a"  make -C ./ebpf/testdata/qemu_img qemu/exec
+      - name: Run tests
         run: >
           CMD=./ebpf.${{ matrix.arch }}.test make -C ./ebpf/testdata/qemu_img qemu/exec
       - name: Setup tmate session for debugging # TODO remove it before merge
