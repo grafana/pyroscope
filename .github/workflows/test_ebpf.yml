@@ -1,4 +1,4 @@
-name: ci ebpf
+name: Test eBPF
 on:
   push:
     branches:
@@ -19,6 +19,7 @@ concurrency:
 
 jobs:
   test_ebpf_amd64:
+    name: Test eBPF on amd64 bare-metal
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -30,6 +31,7 @@ jobs:
       - name: Test
         run: sudo make -C ./ebpf go/test/amd64
   test_ebpf_qemu:
+    name: Test eBPF on QEMU
     runs-on: ubuntu-latest
     strategy:
       matrix:
