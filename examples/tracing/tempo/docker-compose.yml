@@ -12,7 +12,7 @@ services:
       DEBUG_LOGGER: 1
       REGION: ap-south
     build:
-      context: ../../golang-push/rideshare
+      context: ../../language-sdk-instrumentation/golang-push/rideshare
 
   rideshare-go-eu-north:
     ports:
@@ -22,7 +22,7 @@ services:
       <<: *env
       REGION: eu-north
     build:
-      context: ../../golang-push/rideshare
+      context: ../../language-sdk-instrumentation/golang-push/rideshare
 
   rideshare-java-us-east:
     ports:
@@ -39,19 +39,19 @@ services:
       PYROSCOPE_LABELS: hostname=rideshare-java-us-east
       REGION: us-east
     build:
-      context: ../../java/rideshare
+      context: ../../language-sdk-instrumentation/java/rideshare
       dockerfile: Dockerfile.otel-instrumentation
 
   load-generator:
     environment: *env
     build:
-      context: ../../golang-push/rideshare
+      context: ../../language-sdk-instrumentation/golang-push/rideshare
       dockerfile: Dockerfile.load-generator
     command:
       - ./loadgen
-      - rideshare-go-ap-south
-      - rideshare-go-eu-north
-      - rideshare-java-us-east
+      - http://rideshare-go-ap-south:5000
+      - http://rideshare-go-eu-north:5000
+      - http://rideshare-java-us-east:5000
 
   grafana:
     image: grafana/grafana-dev:10.3.0-151740

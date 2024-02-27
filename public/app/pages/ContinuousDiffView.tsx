@@ -231,7 +231,11 @@ function ComparisonDiffApp({
             />
           </Panel>
         </div>
-        <Panel isLoading={isLoading} headerActions={extraButton}>
+        <Panel
+          isLoading={isLoading}
+          headerActions={extraButton}
+          dataTestId="diff-panel"
+        >
           {extraPanel ? (
             <div className={styles.flamegraphContainer}>
               <div className={styles.flamegraphComponent}>
