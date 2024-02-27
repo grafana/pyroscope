@@ -37,10 +37,13 @@ const (
 	metricValue                     = "process_cpu"
 	labelMetaPyroscopeOptionsPrefix = "__meta_pyroscope_ebpf_options_"
 
-	OptionGoTableFallback    = labelMetaPyroscopeOptionsPrefix + "go_table_fallback"
-	OptionPythonFullFilePath = labelMetaPyroscopeOptionsPrefix + "python_full_file_path"
-	OptionPythonEnabled      = labelMetaPyroscopeOptionsPrefix + "python_enabled"
-	OptionDemangle           = labelMetaPyroscopeOptionsPrefix + "demangle"
+	OptionGoTableFallback          = labelMetaPyroscopeOptionsPrefix + "go_table_fallback"
+	OptionCollectKernel            = labelMetaPyroscopeOptionsPrefix + "collect_kernel"
+	OptionPythonFullFilePath       = labelMetaPyroscopeOptionsPrefix + "python_full_file_path"
+	OptionPythonEnabled            = labelMetaPyroscopeOptionsPrefix + "python_enabled"
+	OptionPythonBPFDebugLogEnabled = labelMetaPyroscopeOptionsPrefix + "python_bpf_debug_log"
+	OptionPythonBPFErrorLogEnabled = labelMetaPyroscopeOptionsPrefix + "python_bpf_error_log"
+	OptionDemangle                 = labelMetaPyroscopeOptionsPrefix + "demangle"
 )
 
 type Target struct {
@@ -49,6 +52,11 @@ type Target struct {
 	serviceName           string
 	fingerprint           uint64
 	fingerprintCalculated bool
+}
+
+// todo remove, make containerID exported or use string
+func NewTargetForTesting(cid string, pid uint32, target DiscoveryTarget) *Target {
+	return NewTarget(containerID(cid), pid, target)
 }
 
 func NewTarget(cid containerID, pid uint32, target DiscoveryTarget) *Target {

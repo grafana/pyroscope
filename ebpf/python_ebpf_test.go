@@ -145,7 +145,10 @@ func startPythonProfiler(t *testing.T, l log.Logger, containerID string) Session
 	require.NoError(t, err, "Try running as privileged root user")
 
 	impl := s.(*session)
-	perf := impl.getPyPerf() // pyperf may take long time to load and verify, especially running in qemu with no kvm
+	fake_target := sd.NewTargetForTesting(containerID, 0, map[string]string{
+		"service_name": "fake",
+	})
+	perf := impl.getPyPerf(fake_target) // pyperf may take long time to load and verify, especially running in qemu with no kvm
 	require.NotNil(t, perf)
 
 	return s

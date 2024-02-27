@@ -29,10 +29,12 @@ import (
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	vcsv1connect "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/pprof"
+	"github.com/grafana/pyroscope/pkg/querier/vcs"
 	"github.com/grafana/pyroscope/pkg/util/math"
 	"github.com/grafana/pyroscope/pkg/util/spanlogger"
 )
@@ -58,6 +60,8 @@ type Querier struct {
 
 	ingesterQuerier     *IngesterQuerier
 	storeGatewayQuerier *StoreGatewayQuerier
+
+	vcsv1connect.VCSServiceHandler
 }
 
 // TODO(kolesnikovae): For backwards compatibility.
@@ -83,6 +87,7 @@ func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactor
 			ingestersRing,
 		),
 		storeGatewayQuerier: storeGatewayQuerier,
+		VCSServiceHandler:   vcs.New(logger),
 	}
 	var err error
 	svcs := []services.Service{q.ingesterQuerier.pool}
