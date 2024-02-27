@@ -36,9 +36,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - arch: amd64
-            kernel: amd64/boot/vmlinuz-4.19.0-26-amd64
-            initrd: amd64/boot/initrd.img-4.19.0-26-amd64
+#          - arch: amd64 # https://github.com/grafana/pyroscope/issues/3033
+#            kernel: amd64/boot/vmlinuz-4.19.0-26-amd64
+#            initrd: amd64/boot/initrd.img-4.19.0-26-amd64
           - arch: amd64
             kernel: amd64/boot/vmlinuz-5.10.0-28-amd64
             initrd: amd64/boot/initrd.img-5.10.0-28-amd64
@@ -55,9 +55,9 @@ jobs:
             kernel: amd64/boot_extra/vmlinuz-5.10.205-195.807.amzn2.x86_64
             initrd: amd64/boot_extra/initramfs-5.10.205-195.807.amzn2.x86_64.img
 
-          - arch: arm64
-            kernel: arm64/boot/vmlinuz-4.19.0-26-arm64
-            initrd: arm64/boot/initrd.img-4.19.0-26-arm64
+#          - arch: arm64 # https://github.com/grafana/pyroscope/issues/3033
+#            kernel: arm64/boot/vmlinuz-4.19.0-26-arm64
+#            initrd: arm64/boot/initrd.img-4.19.0-26-arm64
           - arch: arm64
             kernel: arm64/boot/vmlinuz-5.10.0-28-arm64
             initrd: arm64/boot/initrd.img-5.10.0-28-arm64
