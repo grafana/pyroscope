@@ -299,6 +299,7 @@ type singleBlockQuerier struct {
 
 	tables []tableReader
 
+	queries  sync.WaitGroup
 	openLock sync.Mutex
 	opened   bool
 	index    *index.Reader
@@ -353,10 +354,11 @@ func (b *singleBlockQuerier) ProfileTypes(ctx context.Context, req *connect.Requ
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "ProfileTypes Block")
 	defer sp.Finish()
 
-	err := b.Open(ctx)
-	if err != nil {
+	if err := b.Open(ctx); err != nil {
 		return nil, err
 	}
+	b.queries.Add(1)
+	defer b.queries.Done()
 
 	values, err := b.index.LabelValues(phlaremodel.LabelNameProfileType)
 	if err != nil {
@@ -384,10 +386,11 @@ func (b *singleBlockQuerier) LabelValues(ctx context.Context, req *connect.Reque
 
 	params := req.Msg
 
-	err := b.Open(ctx)
-	if err != nil {
+	if err := b.Open(ctx); err != nil {
 		return nil, err
 	}
+	b.queries.Add(1)
+	defer b.queries.Done()
 
 	names, err := b.index.LabelNames()
 	if err != nil {
@@ -451,10 +454,11 @@ func (b *singleBlockQuerier) LabelNames(ctx context.Context, req *connect.Reques
 
 	params := req.Msg
 
-	err := b.Open(ctx)
-	if err != nil {
+	if err := b.Open(ctx); err != nil {
 		return nil, err
 	}
+	b.queries.Add(1)
+	defer b.queries.Done()
 
 	selectors, err := parseSelectors(params.Matchers)
 	if err != nil {
@@ -516,6 +520,12 @@ func (b *singleBlockQuerier) Close() error {
 		b.openLock.Unlock()
 		b.metrics.blockOpened.Dec()
 	}()
+
+	if !b.opened {
+		return nil
+	}
+	b.queries.Wait()
+
 	errs := multierror.New()
 	if b.index != nil {
 		err := b.index.Close()
@@ -524,7 +534,6 @@ func (b *singleBlockQuerier) Close() error {
 			errs.Add(err)
 		}
 	}
-
 	for _, t := range b.tables {
 		if err := t.Close(); err != nil {
 			errs.Add(err)
@@ -1523,6 +1532,9 @@ func (b *singleBlockQuerier) SelectMatchingProfiles(ctx context.Context, params 
 	if err := b.Open(ctx); err != nil {
 		return nil, err
 	}
+	b.queries.Add(1)
+	defer b.queries.Done()
+
 	matchers, err := parser.ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
@@ -1627,6 +1639,9 @@ func (b *singleBlockQuerier) SelectMergeByLabels(
 	if err := b.Open(ctx); err != nil {
 		return nil, err
 	}
+	b.queries.Add(1)
+	defer b.queries.Done()
+
 	matchers, err := parser.ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
@@ -1704,6 +1719,9 @@ func (b *singleBlockQuerier) SelectMergeByStacktraces(ctx context.Context, param
 	if err := b.Open(ctx); err != nil {
 		return nil, err
 	}
+	b.queries.Add(1)
+	defer b.queries.Done()
+
 	matchers, err := parser.ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
@@ -1770,6 +1788,9 @@ func (b *singleBlockQuerier) SelectMergeBySpans(ctx context.Context, params *ing
 	if err := b.Open(ctx); err != nil {
 		return nil, err
 	}
+	b.queries.Add(1)
+	defer b.queries.Done()
+
 	matchers, err := parser.ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
@@ -1835,6 +1856,9 @@ func (b *singleBlockQuerier) SelectMergePprof(ctx context.Context, params *inges
 	if err := b.Open(ctx); err != nil {
 		return nil, err
 	}
+	b.queries.Add(1)
+	defer b.queries.Done()
+
 	matchers, err := parser.ParseMetricSelector(params.LabelSelector)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "failed to parse label selectors: "+err.Error())
@@ -1902,10 +1926,11 @@ func (b *singleBlockQuerier) Series(ctx context.Context, params *ingestv1.Series
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "Series Block")
 	defer sp.Finish()
 
-	err := b.Open(ctx)
-	if err != nil {
+	if err := b.Open(ctx); err != nil {
 		return nil, err
 	}
+	b.queries.Add(1)
+	defer b.queries.Done()
 
 	selectors, err := parseSelectors(params.Matchers)
 	if err != nil {
@@ -2056,13 +2081,10 @@ func (q *singleBlockQuerier) openTSDBIndex(ctx context.Context) error {
 func (q *singleBlockQuerier) Open(ctx context.Context) error {
 	q.openLock.Lock()
 	defer q.openLock.Unlock()
-
-	// already open
-	if q.opened {
-		return nil
-	}
-	if err := q.openFiles(ctx); err != nil {
-		return err
+	if !q.opened {
+		if err := q.openFiles(ctx); err != nil {
+			return err
+		}
 	}
 	q.metrics.blockOpened.Inc()
 	q.opened = true

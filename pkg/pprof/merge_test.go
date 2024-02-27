@@ -368,3 +368,60 @@ func Test_Merge_Sample(t *testing.T) {
 
 	testhelper.EqualProto(t, expected, m.Profile())
 }
+
+func TestMergeEmpty(t *testing.T) {
+	var m ProfileMerge
+
+	err := m.Merge(&profilev1.Profile{
+		SampleType: []*profilev1.ValueType{
+			{
+				Type: 2,
+				Unit: 1,
+			},
+		},
+		PeriodType: &profilev1.ValueType{
+			Type: 2,
+			Unit: 1,
+		},
+		StringTable: []string{"", "nanoseconds", "cpu"},
+	})
+	require.NoError(t, err)
+	err = m.Merge(&profilev1.Profile{
+		Sample: []*profilev1.Sample{
+			{
+				LocationId: []uint64{1},
+				Value:      []int64{1},
+			},
+		},
+		Location: []*profilev1.Location{
+			{
+				Id:        1,
+				MappingId: 1,
+				Line:      []*profilev1.Line{{FunctionId: 1, Line: 1}},
+			},
+		},
+		Function: []*profilev1.Function{
+			{
+				Id:   1,
+				Name: 1,
+			},
+		},
+		SampleType: []*profilev1.ValueType{
+			{
+				Type: 3,
+				Unit: 2,
+			},
+		},
+		PeriodType: &profilev1.ValueType{
+			Type: 3,
+			Unit: 2,
+		},
+		Mapping: []*profilev1.Mapping{
+			{
+				Id: 1,
+			},
+		},
+		StringTable: []string{"", "bar", "nanoseconds", "cpu"},
+	})
+	require.NoError(t, err)
+}
