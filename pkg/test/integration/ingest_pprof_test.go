@@ -37,6 +37,7 @@ var (
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
 			metrics:            golangHeap,
+			needsGoHeapFix:     true,
 		},
 		{
 			profile:            repoRoot + "pkg/pprof/testdata/profile_java",
@@ -92,12 +93,14 @@ var (
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
 			metrics:            golangHeap,
+			needsGoHeapFix:     true,
 		},
 		{
 			profile:            repoRoot + "pkg/og/convert/pprof/testdata/heap.pb.gz",
 			expectStatusIngest: 200,
 			expectStatusPush:   200,
 			metrics:            golangHeap,
+			needsGoHeapFix:     true,
 		},
 		{
 			profile:            repoRoot + "pkg/og/convert/pprof/testdata/heap-js.pprof",
@@ -250,7 +253,7 @@ func TestIngest(t *testing.T) {
 				for _, metric := range td.metrics {
 					rb.Render(metric.name)
 					profile := rb.SelectMergeProfile(metric.name, metric.query)
-					assertPPROF(t, profile, metric, td, true)
+					assertPPROF(t, profile, metric, td, td.fixAtIngest)
 				}
 			}
 		})
@@ -277,14 +280,14 @@ func TestPush(t *testing.T) {
 					rb.Render(metric.name)
 					profile := rb.SelectMergeProfile(metric.name, metric.query)
 
-					assertPPROF(t, profile, metric, td, false)
+					assertPPROF(t, profile, metric, td, td.fixAtPush)
 				}
 			}
 		})
 	}
 }
 
-func assertPPROF(t *testing.T, resp *connect.Response[profilev1.Profile], metric expectedMetric, testdatum pprofTestData, fixes bool) {
+func assertPPROF(t *testing.T, resp *connect.Response[profilev1.Profile], metric expectedMetric, testdatum pprofTestData, fix func(*pprof.Profile) *pprof.Profile) {
 
 	assert.Equal(t, 1, len(resp.Msg.SampleType))
 
@@ -293,16 +296,10 @@ func assertPPROF(t *testing.T, resp *connect.Response[profilev1.Profile], metric
 	expectedProfile, err := pprof.RawFromBytes(profileBytes)
 	require.NoError(t, err)
 
-	if fixes {
-		if testdatum.spyName == pprof2.SpyNameForFunctionNameRewrite() {
-			pprof2.FixFunctionNamesForScriptingLanguages(expectedProfile, ingestion.Metadata{SpyName: testdatum.spyName})
-		}
-
-		if testdatum.needFunctionIDFix {
-			pprof2.FixFunctionIDForBrokenDotnet(expectedProfile.Profile)
-		}
-
+	if fix != nil {
+		expectedProfile = fix(expectedProfile)
 	}
+
 	actualStacktraces := bench.StackCollapseProto(resp.Msg, 0, 1)
 	expectedStacktraces := bench.StackCollapseProto(expectedProfile.Profile, metric.valueIDX, 1)
 
@@ -322,6 +319,27 @@ type pprofTestData struct {
 	expectedError      string
 	metrics            []expectedMetric
 	needFunctionIDFix  bool
+	needsGoHeapFix     bool
+}
+
+func (d *pprofTestData) fixAtPush(p *pprof.Profile) *pprof.Profile {
+	if d.needsGoHeapFix {
+		p.Profile = pprof.FixGoProfile(p.Profile)
+	}
+	return p
+}
+
+func (d *pprofTestData) fixAtIngest(p *pprof.Profile) *pprof.Profile {
+	if d.spyName == pprof2.SpyNameForFunctionNameRewrite() {
+		pprof2.FixFunctionNamesForScriptingLanguages(p, ingestion.Metadata{SpyName: d.spyName})
+	}
+	if d.needFunctionIDFix {
+		pprof2.FixFunctionIDForBrokenDotnet(p.Profile)
+	}
+	if d.needsGoHeapFix {
+		p.Profile = pprof.FixGoProfile(p.Profile)
+	}
+	return p
 }
 
 type expectedMetric struct {
