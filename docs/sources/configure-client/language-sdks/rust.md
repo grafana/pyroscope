@@ -162,5 +162,5 @@ As of 0.5.0, the Pyroscope Agent supports tagging within threads. Check the [tag
 
 #### Stand-alone examples
 
-- [**basic**](https://github.com/grafana/pyroscope/tree/main/examples/rust/basic): Simple Rust application that uses the Pyroscope Library.
-- [**rideshare**](https://github.com/grafana/pyroscope/tree/main/examples/rust/rideshare): A multi-instances web service running on Docker.
+- [**basic**](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/rust/basic): Simple Rust application that uses the Pyroscope Library.
+- [**rideshare**](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/rust/rideshare): A multi-instances web service running on Docker.
