@@ -97,6 +97,8 @@ jobs:
           F=$(realpath ./ebpf/ebpf.${{ matrix.arch }}.test) make -C ./ebpf/testdata/qemu_img qemu/scp
       - name: Setup tmate session for debugging
         uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
       - name: Uname & tests
         run: >
           CMD="uname -a && sudo apt update && docker ps -a && docker pull korniltsev/ebpf-testdata-rideshare:3.8-slim"  make -C ./ebpf/testdata/qemu_img qemu/exec
