@@ -2,13 +2,13 @@
 aliases:
   - /docs/phlare/latest/operators-guide/configure-agent/
   - /docs/phlare/latest/configure-client/
-title: "Sending profiles from your application"
+title: "Configure the client to send profiles"
 menuTitle: "Configure the client"
 description: "Learn how to configure the client to send profiles from your application."
 weight: 35
 ---
 
-# Sending profiles from your application
+# Configure the client to send profiles
 
 Pyroscope is a continuous profiling database that allows you to analyze the performance of your applications.
 When sending profiles to Pyroscope, you can choose between two primary methods: SDK Instrumentation and auto-instrumentation using the Grafana Agent.
@@ -17,7 +17,7 @@ This document explains these two techniques and guide you when to choose each on
 
 ![Pyroscope agent server diagram](https://grafana.com/media/docs/pyroscope/pyroscope_client_server_diagram.png)
 
-## Auto-instrumentation with Grafana Agent
+## About auto-instrumentation with Grafana Agent
 
 The Grafana Agent is a component that runs alongside your application and periodically gathers profiling data from it.
 This method is suitable when you want to collect profiles from existing applications without modifying their source code.
@@ -31,7 +31,7 @@ Here's how it works:
 
 Using the Grafana Agent provides a hassle-free option, especially when dealing with multiple applications or microservices, allowing you to centralize the profiling process without changing your application's codebase.
 
-## Instrumentation with Pyroscope SDKs
+## About instrumentation with Pyroscope SDKs
 
 Alternatively, Pyroscope SDKs offer you the ability to instrument your application directly for more precise profiling.
 Use the SDKs when you want complete control over the profiling process or when the application you are profiling is written in a language supported by the SDKs (for example, Java, Python, .NET, and others).
