@@ -776,21 +776,6 @@ path-to-regexp@0.1.7:
   resolved "https://registry.yarnpkg.com/path-to-regexp/-/path-to-regexp-0.1.7.tgz#df604178005f522f15eb4490e7247a1bfaa67f8c"
   integrity sha512-5DFkuoqlv1uYQKxy8omFBeJPQcdoE07Kv2sferDCrAq1ohOU+MSDswDIbnx3YAM60qIOnYa53wBhXW0EbMonrQ==
 
-pprof@^3.2.0:
-  version "3.3.0"
-  resolved "https://registry.yarnpkg.com/pprof/-/pprof-3.3.0.tgz#d38c6424f8f3fad6301bcb5da90c4fd39985bfca"
-  integrity sha512-DCu3tPa3fJhNcgWdGmoOH84woRL5OUsCEt+I9Nj4SwbQItqCLvQ7FaNBYkNh9guVeDrbUyKaVqv1z6DfespGww==
-  dependencies:
-    "@mapbox/node-pre-gyp" "^1.0.9"
-    bindings "^1.2.1"
-    delay "^5.0.0"
-    findit2 "^2.2.3"
-    nan "^2.17.0"
-    p-limit "^3.0.0"
-    protobufjs "~7.2.4"
-    source-map "~0.8.0-beta.0"
-    split "^1.0.1"
-
 pprof@^4.0.0:
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/pprof/-/pprof-4.0.0.tgz#81c94be27aa8da44e4941f2592a8225359df006e"
