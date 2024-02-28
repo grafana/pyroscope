@@ -3352,7 +3352,7 @@ var pyVersions = map[Version]*UserOffsets{
 		PyASCIIObjectSize:                 40,
 		PyCompactUnicodeObjectSize:        56,
 	},
-	// 3.13.0 testdata/python-x64/3.13.0-rc/libpython3.13.so.1.0
+	// 3.13.0 testdata/python-x64/3.13.0a4/libpython3.13.so.1.0
 	{3, 13, 0}: {
 		PyVarObject_ob_size:               16,
 		PyObject_ob_type:                  8,
