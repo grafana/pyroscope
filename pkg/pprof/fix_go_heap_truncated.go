@@ -117,7 +117,8 @@ func RepairGoHeapTruncatedStacktraces(p *profilev1.Profile) {
 			if !ok || j > c.off {
 				// This group has more complete stack traces:
 				m[k] = group{
-					gid: uint32(i),
+					// gid 0 is reserved as a sentinel value.
+					gid: uint32(i + 1),
 					off: j,
 				}
 			}
@@ -137,14 +138,14 @@ func RepairGoHeapTruncatedStacktraces(p *profilev1.Profile) {
 	//
 	// Dependencies:
 	//  - group i depends on d[i].
-	//  - d[i] depends on d[d[i].gid].
+	//  - d[i] depends on d[d[i].gid-1].
 	d := make([]group, len(groups))
 	for i := 0; i < len(groups); i++ {
 		g := groups[i]
 		t := topToken(samples[g].LocationId)
 		k := unsafeString(t)
 		c, ok := m[k]
-		if !ok || c.off == 0 || groups[c.gid] == g {
+		if !ok || c.gid-1 == uint32(i) {
 			// The current group has the most complete stack trace.
 			continue
 		}
@@ -159,21 +160,27 @@ func RepairGoHeapTruncatedStacktraces(p *profilev1.Profile) {
 		g := groups[i]
 		c := d[i]
 		var off uint32
-		for c.off > 0 {
+		var j int
+		for c.gid > 0 && c.off > 0 {
 			off += c.off
-			n := d[c.gid]
-			if n.off == 0 {
+			n := d[c.gid-1]
+			if n.gid == 0 || c.off == 0 {
 				// Stop early to preserve c.
 				break
 			}
 			c = n
+			j++
+			if j == tokenLen {
+				// Profiles with deeply recursive stack traces are ignored.
+				return
+			}
 		}
 		if off == 0 {
 			// The current group has the most complete stack trace.
 			continue
 		}
 		// The reference stack trace.
-		appx := samples[groups[c.gid]].LocationId
+		appx := samples[groups[c.gid-1]].LocationId
 		// It's possible that the reference stack trace does not
 		// include the part we're looking for. In this case, we
 		// simply ignore the group. Although it's possible to infer
