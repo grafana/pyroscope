@@ -335,6 +335,8 @@ func getProcessTargets() []sd.DiscoveryTarget {
 			"__meta_process_exe":    exe,
 			"__meta_process_comm":   string(comm),
 			"__meta_process_cgroup": string(cgroup),
+			"pid":                   spid,
+			"exe":                   exe,
 		}
 		res = append(res, target)
 	}
