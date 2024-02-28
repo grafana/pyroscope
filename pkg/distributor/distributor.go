@@ -198,20 +198,6 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 		Series: make([]*distributormodel.ProfileSeries, 0, len(grpcReq.Msg.Series)),
 	}
 
-	// All allocated pprof.Profile instances must be closed after use.
-	var n int
-	for i := 0; i < len(grpcReq.Msg.Series); i++ {
-		n += len(grpcReq.Msg.Series[i].Samples)
-	}
-	profiles := make([]*pprof.Profile, 0, n)
-	defer func() {
-		for _, p := range profiles {
-			if p.Profile != nil {
-				p.Close()
-			}
-		}
-	}()
-
 	for _, grpcSeries := range grpcReq.Msg.Series {
 		series := &distributormodel.ProfileSeries{
 			Labels:  grpcSeries.Labels,
@@ -222,7 +208,6 @@ func (d *Distributor) Push(ctx context.Context, grpcReq *connect.Request[pushv1.
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInvalidArgument, err)
 			}
-			profiles = append(profiles, profile)
 			sample := &distributormodel.ProfileSample{
 				Profile:    profile,
 				RawProfile: grpcSample.RawProfile,
@@ -402,14 +387,8 @@ func (d *Distributor) sendRequests(ctx context.Context, req *distributormodel.Pu
 		series.Labels = d.limitMaxSessionsPerSeries(tenantID, series.Labels)
 	}
 
-	// Next we split profiles by labels. Newly allocated profiles should be closed after use.
-	profileSeries, newProfiles := extractSampleSeries(req)
-	defer func() {
-		for _, p := range newProfiles {
-			p.Close()
-		}
-	}()
-
+	// Next we split profiles by labels.
+	profileSeries := extractSampleSeries(req)
 	// Filter our series and profiles without samples.
 	for _, series := range profileSeries {
 		series.Samples = slices.RemoveInPlace(series.Samples, func(sample *distributormodel.ProfileSample, _ int) bool {
@@ -638,9 +617,8 @@ func (d *Distributor) HealthyInstancesCount() int {
 	return int(d.healthyInstancesCount.Load())
 }
 
-func extractSampleSeries(req *distributormodel.PushRequest) ([]*distributormodel.ProfileSeries, []*pprof.Profile) {
+func extractSampleSeries(req *distributormodel.PushRequest) []*distributormodel.ProfileSeries {
 	profileSeries := make([]*distributormodel.ProfileSeries, 0, len(req.Series))
-	newProfiles := make([]*pprof.Profile, 0, 2*len(req.Series))
 	for _, series := range req.Series {
 		s := &distributormodel.ProfileSeries{
 			Labels:  series.Labels,
@@ -663,7 +641,6 @@ func extractSampleSeries(req *distributormodel.PushRequest) ([]*distributormodel
 				// Therefore, the slice has to be copied and samples zeroed to
 				// avoid ownership issues.
 				profile := exportSamples(e, group.Samples)
-				newProfiles = append(newProfiles, profile)
 				// Note that group.Labels reference strings from the source profile.
 				labels := mergeSeriesAndSampleLabels(raw.Profile.Profile, series.Labels, group.Labels)
 				profileSeries = append(profileSeries, &distributormodel.ProfileSeries{
@@ -676,7 +653,7 @@ func extractSampleSeries(req *distributormodel.PushRequest) ([]*distributormodel
 			profileSeries = append(profileSeries, s)
 		}
 	}
-	return profileSeries, newProfiles
+	return profileSeries
 }
 
 func (d *Distributor) limitMaxSessionsPerSeries(tenantID string, labels phlaremodel.Labels) phlaremodel.Labels {
