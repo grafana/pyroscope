@@ -218,7 +218,7 @@ router.PathPrefix("/debug/pprof").Handler(http.DefaultServeMux)
 ```
 
 ## References
-[Example using grafana-agent](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent).
+[Example using grafana-agent](https://github.com/grafana/pyroscope/tree/release/v1.3/examples/grafana-agent).
 [pyroscope.scrape](/docs/agent/latest/flow/reference/components/pyroscope.scrape/)
 [pyroscope.write](/docs/agent/latest/flow/reference/components/pyroscope.write/)
 [discovery.kubernetes](/docs/agent/latest/flow/reference/components/discovery.kubernetes/)
