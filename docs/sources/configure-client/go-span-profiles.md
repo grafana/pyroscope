@@ -8,7 +8,7 @@ weight: 100
 # Span profiles with Traces to profiles for Go
 
 Span Profiles represents a major shift in profiling methodology, enabling deeper analysis of both tracing and profiling data.
-Traditional continuous profiling provides a system-wide view over fixed intervals.
+Traditional continuous profiling provides an application-wide view over fixed intervals.
 In contrast, Span Profiles delivers focused, dynamic analysis on specific execution scopes within applications, such as individual requests or specific trace spans.
 
 This shift enables a more granular view of performance, enhancing the utility of profiles by linking them directly with traces for a comprehensive understanding of application behavior. As a result, engineering teams can more efficiently identify and address performance bottlenecks.
