@@ -16,6 +16,7 @@ type Version struct {
 var Py313 = &Version{Major: 3, Minor: 13}
 var Py312 = &Version{Major: 3, Minor: 12}
 var Py311 = &Version{Major: 3, Minor: 11}
+var Py310 = &Version{Major: 3, Minor: 10}
 var Py37 = &Version{Major: 3, Minor: 7}
 
 func (p *Version) Compare(other *Version) int {

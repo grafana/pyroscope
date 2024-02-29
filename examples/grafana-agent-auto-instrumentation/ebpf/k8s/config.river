@@ -10,7 +10,7 @@ discovery.kubernetes "local_pods" {
 }
 
 discovery.relabel "specific_pods" {
-  targets = discovery.kubernetes.all_pods.targets
+  targets = discovery.kubernetes.local_pods.targets
   rule {
     action = "drop"
     regex = "Succeeded|Failed|Completed"
