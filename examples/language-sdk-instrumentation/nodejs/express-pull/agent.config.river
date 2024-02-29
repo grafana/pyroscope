@@ -26,4 +26,9 @@ pyroscope.scrape "default" {
     {"__address__" = "ap-south:5000", "service_name"="nodejs"},
   ]
   forward_to = [pyroscope.write.example.receiver]
+  profiling_config {
+    profile.memory { // disable memory, use godeltaprof_memory instead
+      path = "/debug/pprof/heap"
+    }
+  }
 }
