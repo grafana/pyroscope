@@ -35,7 +35,7 @@ func decryptToken(encodedText string, key []byte) (*oauth2.Token, error) {
 	}
 
 	if len(encryptedData) < gcmNonceSize {
-		return nil, fmt.Errorf("malformed token")
+		return nil, errors.New("malformed token")
 	}
 
 	cipher, err := encryption.NewGCMCipher(key)
