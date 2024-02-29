@@ -2,6 +2,9 @@
 title: Span profiles with Traces to profiles for Go
 menuTitle: Span profiles with Traces to profiles (Go)
 description: Learn about and configure Span profiles with Traces to profiles in Grafana for the Go language.
+aliases:
+  - /docs/pyroscope/next/configure-client/go-span-profiles/
+  - /docs/pyroscope/latest/configure-client/go-span-profiles/
 weight: 100
 ---
 
@@ -19,15 +22,15 @@ To learn more about Span Profiles, refer to [Combining tracing and profiling for
 
 To use Span Profiles, you need to:
 
-* [Configure Pyroscope to send profiling data]({{< relref "../configure-client" >}})
-* Configure a client-side package to link traces and profiles: [Go](https://github.com/grafana/otel-profiling-go), [Ruby](https://github.com/grafana/otel-profiling-ruby), and [Java](https://github.com/grafana/otel-profiling-java)
+* [Configure Pyroscope to send profiling data]({{< relref "../../configure-client" >}})
+* Configure a client-side package to link traces and profiles: [Go](https://github.com/grafana/otel-profiling-go)
 * [Configure Tempo data source in Grafana or Grafana Cloud to discover linked traces and profiles](/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source/)
 
 ## Before you begin
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
-* Profiling: Your application must be instrumented with Pyroscopes Go SDK. If you haven't done this yet, please refer to the [Go (push mode)]({{< relref "../configure-client/language-sdks/go_push" >}}) guide.
+* Profiling: Your application must be instrumented with Pyroscopes Go SDK. If you haven't done this yet, please refer to the [Go (push mode)]({{< relref "../language-sdks/go_push" >}}) guide.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/go/getting-started/) guide.
 
 ### OpenTelemetry support
@@ -91,12 +94,12 @@ defer span.End()
 To view the span profiles in Grafana Tempo, you need to have a Grafana instance with a Tempo data source configured to link trace spans and profiles.
 Refer to the configuration documentation for [Grafana](/docs/grafana/<GRAFANA_VERSION>/datasources/tempo/configure-tempo-data-source) or [Grafana Cloud](/docs/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source).
 
-To learn how to set up Traces to profiles and view the span profiles, refer to [Traces to profiles]({{< relref "../view-and-analyze-profile-data/profile-tracing/traces-to-profiles" >}}).
+To learn how to set up Traces to profiles and view the span profiles, refer to [Traces to profiles]({{< relref "../../view-and-analyze-profile-data/profile-tracing/traces-to-profiles" >}}).
 
 
 ## Examples
 
-Check out the [examples](https://github.com/grafana/pyroscope/tree/release/v1.4/examples/tracing/tempo) directory in the Pyroscope GitHub repository to
+Check out the [examples directory](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) in the Pyroscope GitHub repository to
 find a complete example application that demonstrates tracing integration features.
 
 <!-- ## Using tracing exemplars manually
