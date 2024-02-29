@@ -1,6 +1,8 @@
 package pprof
 
 import (
+	"bufio"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,7 +10,7 @@ import (
 )
 
 func Test_FixGoProfile(t *testing.T) {
-	p, err := OpenFile("testdata/heap_go1.21.pprof")
+	p, err := OpenFile("testdata/goheapfix/heap_go_truncated_4.pb.gz")
 	require.NoError(t, err)
 
 	f := FixGoProfile(p.Profile)
@@ -33,4 +35,25 @@ func Test_FixGoProfile(t *testing.T) {
 	assert.Equal(t, 168, len(p.Location)-len(f.Location))
 	assert.Equal(t, 77, len(p.Function)-len(f.Function))
 	assert.Equal(t, 78, len(p.StringTable)-len(f.StringTable))
+}
+
+func Test_DropGoTypeParameters(t *testing.T) {
+	ef, err := os.Open("testdata/go_type_parameters.expected.txt")
+	require.NoError(t, err)
+	defer ef.Close()
+
+	in, err := os.Open("testdata/go_type_parameters.txt")
+	require.NoError(t, err)
+	defer in.Close()
+
+	input := bufio.NewScanner(in)
+	expected := bufio.NewScanner(ef)
+	for input.Scan() {
+		expected.Scan()
+		require.Equal(t, expected.Text(), dropGoTypeParameters(input.Text()))
+	}
+
+	require.NoError(t, input.Err())
+	require.NoError(t, expected.Err())
+	require.False(t, expected.Scan())
 }

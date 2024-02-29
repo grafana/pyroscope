@@ -74,7 +74,7 @@ and `discover.process` components to work.
 
 ### Send data to Grafana Cloud Profiles
 
-When sending to Grafana Cloud Profiles, you can use the following `pyroscope.write` component configuration which uses environment variables. 
+When sending to Grafana Cloud Profiles, you can use the following `pyroscope.write` component configuration which uses environment variables.
 
 Ensure that you have appropriately configured the `GC_URL`, `GC_USER`, and `GC_PASSWORD` environment variables.
 
@@ -258,9 +258,10 @@ pyroscope.write "example" {
 ```
 
 ## References
-For more information: 
 
-* [Examples](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent/java)
+For more information:
+
+* [Examples](https://github.com/grafana/pyroscope/tree/main/examples/grafana-agent-auto-instrumentation/java)
 * [`pyroscope.java`](/docs/agent/next/flow/reference/components/pyroscope.java/)
 * [`discovery.process`](/docs/agent/next/flow/reference/components/discovery.process/)
 * [`discovery.kubernetes`](/docs/agent/next/flow/reference/components/discovery.kubernetes/)
