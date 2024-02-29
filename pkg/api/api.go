@@ -39,6 +39,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
 	"github.com/grafana/pyroscope/pkg/frontend/frontendpb/frontendpbconnect"
+	"github.com/grafana/pyroscope/pkg/heapanalyzer"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	"github.com/grafana/pyroscope/pkg/ingester/pyroscope"
 	"github.com/grafana/pyroscope/pkg/operations"
@@ -311,4 +312,13 @@ func (a *API) RegisterAdmin(ad *operations.Admin) {
 
 func (a *API) RegisterAdHocProfiles(ahp *adhocprofiles.AdHocProfiles) {
 	adhocprofilesv1connect.RegisterAdHocProfileServiceHandler(a.server.HTTP, ahp, a.grpcAuthMiddleware)
+}
+
+func (a *API) RegisterHeapAnalyzer(h *heapanalyzer.HeapAnalyzer) {
+	a.RegisterRoute("/heap-analyzer/heap-dumps", http.HandlerFunc(h.HeapDumpsHandler), false, true, "GET")
+	a.RegisterRoute("/heap-analyzer/heap-dump/{id}", http.HandlerFunc(h.HeapDumpHandler), false, true, "GET")
+	a.RegisterRoute("/heap-analyzer/heap-dump/{id}/objects", http.HandlerFunc(h.HeapDumpObjectsHandler), false, true, "GET")
+	a.RegisterRoute("/heap-analyzer/heap-dump/{id}/object/{oid}", http.HandlerFunc(h.HeapDumpObjectHandler), false, true, "GET")
+	a.RegisterRoute("/heap-analyzer/heap-dump/{id}/object/{oid}/references", http.HandlerFunc(h.HeapDumpObjectReferencesHandler), false, true, "GET")
+	a.RegisterRoute("/heap-analyzer/heap-dump/{id}/object/{oid}/fields", http.HandlerFunc(h.HeapDumpObjectFieldsHandler), false, true, "GET")
 }

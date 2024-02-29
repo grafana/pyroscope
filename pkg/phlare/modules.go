@@ -36,6 +36,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/compactor"
 	"github.com/grafana/pyroscope/pkg/distributor"
 	"github.com/grafana/pyroscope/pkg/frontend"
+	"github.com/grafana/pyroscope/pkg/heapanalyzer"
 	"github.com/grafana/pyroscope/pkg/ingester"
 	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
@@ -77,6 +78,7 @@ const (
 	Admin             string = "admin"
 	TenantSettings    string = "tenant-settings"
 	AdHocProfiles     string = "ad-hoc-profiles"
+	HeapAnalyzer      string = "heap-analyzer"
 
 	// QueryFrontendTripperware string = "query-frontend-tripperware"
 	// IndexGateway             string = "index-gateway"
@@ -169,6 +171,12 @@ func (f *Phlare) initAdHocProfiles() (services.Service, error) {
 	a := adhocprofiles.NewAdHocProfiles(f.storageBucket, f.logger, f.Overrides)
 	f.API.RegisterAdHocProfiles(a)
 	return a, nil
+}
+
+func (f *Phlare) initHeapAnalyzer() (services.Service, error) {
+	h := heapanalyzer.NewHeapAnalyzer(f.logger)
+	f.API.RegisterHeapAnalyzer(h)
+	return h, nil
 }
 
 func (f *Phlare) initOverrides() (serv services.Service, err error) {
