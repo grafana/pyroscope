@@ -17,7 +17,7 @@ weight: 100
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles. 
 
-* Profiling: Your application must be instrumented with Pyroscopes Go SDK. If you haven't done this yet, please refer to the [Go (push mode)]({{< relref "../configure-client/language-sdks/go_push" >}}) guide.
+* Profiling: Your application must be instrumented with Pyroscopes Go SDK. If you haven't done this yet, please refer to the [Go (push mode)]({{< relref "../language-sdks/go_push" >}}) guide.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/go/getting-started/) guide.
 
 ## OpenTelemetry support

@@ -13,7 +13,7 @@ weight: 100
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles. 
 
-* Profiling: Your application must be instrumented with Pyroscopes Java client SDK. If you haven't done this yet, please refer to the [Java ()]({{< relref "../configure-client/language-sdks/java" >}}) guide.
+* Profiling: Your application must be instrumented with Pyroscopes Java client SDK. If you haven't done this yet, please refer to the [Java ()]({{< relref "../language-sdks/java" >}}) guide.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/java/getting-started/) guide.
 
 ## OpenTelemetry support

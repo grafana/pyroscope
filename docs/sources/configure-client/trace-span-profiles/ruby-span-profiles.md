@@ -13,7 +13,7 @@ weight: 100
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles. 
 
-* Profiling: Your application must be instrumented with Pyroscopes Ruby SDK. If you haven't done this yet, please refer to the [Ruby (push mode)]({{< relref "../configure-client/language-sdks/ruby" >}}) guide.
+* Profiling: Your application must be instrumented with Pyroscopes Ruby SDK. If you haven't done this yet, please refer to the [Ruby (push mode)]({{< relref "../language-sdks/ruby" >}}) guide.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/ruby/getting-started/) guide.
 
 ## OpenTelemetry support
