@@ -3,7 +3,6 @@ title: Span profiles with Traces to profiles for Go
 menuTitle: Span profiles with Traces to profiles (Go)
 description: Learn about and configure Span profiles with Traces to profiles in Grafana for the Go language.
 aliases:
-  - /docs/phlare/latest/configure-client/grafana-agent/
   - /docs/pyroscope/next/configure-client/go-span-profiles/
   - /docs/pyroscope/latest/configure-client/go-span-profiles/
 weight: 100
