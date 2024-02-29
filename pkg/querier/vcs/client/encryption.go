@@ -34,8 +34,6 @@ func decryptToken(encodedText string, key []byte) (*oauth2.Token, error) {
 		return nil, err
 	}
 
-	// TODO(bryan) This check might not work if there are multiple blocks and
-	// the final block is smaller than the nonce.
 	if len(encryptedData) < gcmNonceSize {
 		return nil, fmt.Errorf("malformed token")
 	}
