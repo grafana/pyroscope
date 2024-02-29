@@ -21,10 +21,10 @@ Your applications must be instrumented for profiling and tracing before you can 
 Pyroscope can integrate with distributed tracing systems supporting [**OpenTelemetry**](https://opentelemetry.io/docs/instrumentation/java/getting-started/) standard which allows you to
 link traces with the profiling data, and find resource usage for specific lines of code for your trace spans
 
-:::note
+{{< admonition type="note" >}}
  * Only CPU profiling is supported at the moment.
  * Because of how sampling profilers work, spans shorter than the sample interval may not be captured. Java CPU profiler probes stack traces 100 times per second, meaning that spans shorter than 10ms may not be captured.
-:::
+{{< /admonition >}}
 
 
 ## Configure the otel-profiling-java package
@@ -46,7 +46,7 @@ java -jar ./build/libs/rideshare-1.0-SNAPSHOT.jar \
 
 ```
 
-Next you need to create and configure the tracer provider:
+Next, you need to create and configure the tracer provider:
 ```java
 implementation("io.pyroscope:otel:0.10.1.1")
 
