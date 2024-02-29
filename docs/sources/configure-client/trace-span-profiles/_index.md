@@ -22,7 +22,7 @@ Get Started:
 - Configure Pyroscope: Begin sending profiling data to unlock the full potential of Span Profiles
 - Client-Side Packages: Easily link traces and profiles using available packages for Go, Ruby, and Java
   - Go: [Span profiles with Traces to profiles (Go)]({{< relref "./docs/pyroscope/latest/configure-client/trace-span-profiles/go-span-profiles" >}})
-  - Java: [Span profiles with Traces to profiles (Java)]({{< relref "./docs/pyroscope/latest/configure-client/trace-span-profiles/java-span-profiles/" >}})
+  - Java: [Span profiles with Traces to profiles (Java)]({{< relref "./docs/pyroscope/latest/configure-client/trace-span-profiles/java-span-profiles" >}})
   - Ruby: [Span profiles with Traces to profiles (Ruby)]({{< relref "./docs/pyroscope/latest/configure-client/trace-span-profiles/ruby-span-profiles" >}})
 - Grafana Tempo: Visualize and analyze Span Profiles within the Grafana Tempo UI
 
