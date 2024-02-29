@@ -23,3 +23,13 @@ func TestEncodeOAuth(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, token, actual)
 }
+
+func Test_decryptToken(t *testing.T) {
+	t.Run("malformed token shorter than nonce size", func(t *testing.T) {
+		encoded := "xxxx"
+		key := []byte("0123456789abcdef")
+
+		_, err := decryptToken(encoded, key)
+		require.EqualError(t, err, "malformed token")
+	})
+}

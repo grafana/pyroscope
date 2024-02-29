@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 
 	encryption "github.com/oauth2-proxy/oauth2-proxy/v7/pkg/encryption"
 	"golang.org/x/oauth2"
@@ -24,11 +25,21 @@ func encryptToken(token *oauth2.Token, key []byte) (string, error) {
 	return base64.StdEncoding.EncodeToString(enc), nil
 }
 
+// TODO(bryan) this is kind of a hack and I found it through debugging.
+const gcmNonceSize = 12
+
 func decryptToken(encodedText string, key []byte) (*oauth2.Token, error) {
 	encryptedData, err := base64.StdEncoding.DecodeString(encodedText)
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO(bryan) This check might not work if there are multiple blocks and
+	// the final block is smaller than the nonce.
+	if len(encryptedData) < gcmNonceSize {
+		return nil, fmt.Errorf("malformed token")
+	}
+
 	cipher, err := encryption.NewGCMCipher(key)
 	if err != nil {
 		return nil, err
