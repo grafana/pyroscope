@@ -374,7 +374,6 @@ func TestIngestPPROFFixtures(t *testing.T) {
 func comparePPROF(t *testing.T, actual *profilev1.Profile, profile2 []byte) {
 	expected, err := pprof.RawFromBytes(profile2)
 	require.NoError(t, err)
-	defer expected.Close()
 
 	require.Equal(t, len(expected.SampleType), len(actual.SampleType))
 	for i := range actual.SampleType {

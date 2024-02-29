@@ -24,6 +24,13 @@ func (b *singleBlockQuerier) MergeByStacktraces(ctx context.Context, rows iter.I
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByStacktraces - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+
+	if err := b.Open(ctx); err != nil {
+		return nil, err
+	}
+	b.queries.Add(1)
+	defer b.queries.Done()
+
 	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()
@@ -37,6 +44,13 @@ func (b *singleBlockQuerier) MergePprof(ctx context.Context, rows iter.Iterator[
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergePprof - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+
+	if err := b.Open(ctx); err != nil {
+		return nil, err
+	}
+	b.queries.Add(1)
+	defer b.queries.Done()
+
 	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 	r := symdb.NewResolver(ctx, b.symbols,
 		symdb.WithResolverMaxNodes(maxNodes),
@@ -52,6 +66,13 @@ func (b *singleBlockQuerier) MergeByLabels(ctx context.Context, rows iter.Iterat
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "MergeByLabels - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+
+	if err := b.Open(ctx); err != nil {
+		return nil, err
+	}
+	b.queries.Add(1)
+	defer b.queries.Done()
+
 	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 	if len(sts.GetCallSite()) == 0 {
 		columnName := "TotalValue"
@@ -70,6 +91,13 @@ func (b *singleBlockQuerier) MergeBySpans(ctx context.Context, rows iter.Iterato
 	sp, _ := opentracing.StartSpanFromContext(ctx, "MergeBySpans - Block")
 	defer sp.Finish()
 	sp.SetTag("block ULID", b.meta.ULID.String())
+
+	if err := b.Open(ctx); err != nil {
+		return nil, err
+	}
+	b.queries.Add(1)
+	defer b.queries.Done()
+
 	ctx = query.AddMetricsToContext(ctx, b.metrics.query)
 	r := symdb.NewResolver(ctx, b.symbols)
 	defer r.Release()

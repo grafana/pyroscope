@@ -15,6 +15,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -148,7 +149,25 @@ func (s *session) Start() error {
 	opts := &ebpf.CollectionOptions{
 		Programs: s.progOptions(),
 	}
-	if err := pyrobpf.LoadProfileObjects(&s.bpf, opts); err != nil {
+	spec, err := pyrobpf.LoadProfile()
+	if err != nil {
+		return fmt.Errorf("pyrobpf load %w", err)
+	}
+
+	_, nsIno, err := getPIDNamespace()
+	if err != nil {
+		return fmt.Errorf("unable to get pid namespace %w", err)
+	}
+	err = spec.RewriteConstants(map[string]interface{}{
+		"global_config": pyrobpf.ProfileGlobalConfigT{
+			NsPidIno: nsIno,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("pyrobpf rewrite constants %w", err)
+	}
+	err = spec.LoadAndAssign(&s.bpf, opts)
+	if err != nil {
 		s.logVerifierError(err)
 		s.stopLocked()
 		return fmt.Errorf("load bpf objects: %w", err)
@@ -904,4 +923,15 @@ func (s *stackBuilder) reset() {
 
 func (s *stackBuilder) append(sym string) {
 	s.stack = append(s.stack, sym)
+}
+
+func getPIDNamespace() (dev uint64, ino uint64, err error) {
+	stat, err := os.Stat("/proc/self/ns/pid")
+	if err != nil {
+		return 0, 0, err
+	}
+	if st, ok := stat.Sys().(*syscall.Stat_t); ok {
+		return st.Dev, st.Ino, nil
+	}
+	return 0, 0, fmt.Errorf("could not determine pid namespace")
 }
