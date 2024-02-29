@@ -92,5 +92,5 @@ If your Pyroscope server has multi-tenancy enabled, you'll need to configure a t
 ## Python profiling examples
 
 Check out the following resources to learn more about Python profiling:
-- [Python examples](https://github.com/pyroscope-io/pyroscope/tree/main/examples/python)
+- [Python examples](https://github.com/pyroscope-io/pyroscope/tree/release/v1.4/examples/python)
 - [Python demo](https://demo.pyroscope.io/?query=rideshare-app-python.cpu%7B%7D) showing Python example with tags

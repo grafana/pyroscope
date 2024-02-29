@@ -210,6 +210,6 @@ If your Pyroscope server has multi-tenancy enabled, you'll need to configure a t
 ## Java profiling examples
 
 Check out the following resources to learn more about Java profiling:
-- [Java examples](https://github.com/grafana/pyroscope/tree/main/examples/java/rideshare)
+- [Java examples](https://github.com/grafana/pyroscope/tree/release/v1.4/examples/java/rideshare)
 - [Java Demo](https://demo.pyroscope.io/?query=rideshare-app-java.itimer%7B%7D) showing Java example with tags
-- [Java blog post](https://github.com/grafana/pyroscope/tree/main/examples/java/rideshare#readme)
+- [Java blog post](https://github.com/grafana/pyroscope/tree/release/v1.4/examples/java/rideshare#readme)

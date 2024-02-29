@@ -94,7 +94,7 @@ The profile type or app must be selected for the query to be valid. Grafana does
 
 ## Examples
 
-Check out the [examples](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) directory in our repository to
+Check out the [examples](https://github.com/grafana/pyroscope/tree/release/v1.4/examples/tracing/tempo) directory in our repository to
 find a complete example application that demonstrates tracing integration features.
 
 <!-- ## Using tracing exemplars manually
