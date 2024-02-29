@@ -22,8 +22,8 @@ To learn more about Span Profiles, refer to [Combining tracing and profiling for
 
 To use Span Profiles, you need to:
 
-* [Configure Pyroscope to send profiling data]({{< relref "../configure-client" >}})
-* Configure a client-side package to link traces and profiles: [Go](https://github.com/grafana/otel-profiling-go), [Ruby](https://github.com/grafana/otel-profiling-ruby), and [Java](https://github.com/grafana/otel-profiling-java)
+* [Configure Pyroscope to send profiling data]({{< relref "../../configure-client" >}})
+* Configure a client-side package to link traces and profiles: [Go](https://github.com/grafana/otel-profiling-go)
 * [Configure Tempo data source in Grafana or Grafana Cloud to discover linked traces and profiles](/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source/)
 
 ## Before you begin
@@ -94,7 +94,7 @@ defer span.End()
 To view the span profiles in Grafana Tempo, you need to have a Grafana instance with a Tempo data source configured to link trace spans and profiles.
 Refer to the configuration documentation for [Grafana](/docs/grafana/<GRAFANA_VERSION>/datasources/tempo/configure-tempo-data-source) or [Grafana Cloud](/docs/grafana-cloud/connect-externally-hosted/data-sources/tempo/configure-tempo-data-source).
 
-To learn how to set up Traces to profiles and view the span profiles, refer to [Traces to profiles]({{< relref "../view-and-analyze-profile-data/profile-tracing/traces-to-profiles" >}}).
+To learn how to set up Traces to profiles and view the span profiles, refer to [Traces to profiles]({{< relref "../../view-and-analyze-profile-data/profile-tracing/traces-to-profiles" >}}).
 
 
 ## Examples

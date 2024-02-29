@@ -13,7 +13,7 @@ keywords:
 
 {{< admonition type="note" >}}
 
-Your application must be instrumented for profiles and traces. For more information, refer to [Span profiles for Traces to profiles]({{< relref "../../configure-client/go-span-profiles" >}}).
+Your application must be instrumented for profiles and traces. For more information, refer to [Span profiles for Traces to profiles]({{< relref "../../configure-client/trace-span-profiles" >}}).
 
 {{< /admonition >}}
 
