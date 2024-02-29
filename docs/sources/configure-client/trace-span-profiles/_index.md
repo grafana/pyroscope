@@ -11,13 +11,13 @@ Span Profiles are a powerful feature that further enhances the value of continuo
 
 This method enhances understanding of application behavior by directly linking traces with profiling data, enabling engineering teams to pinpoint and resolve performance bottlenecks with precision.
 
-Key Benefits and Features:
+Key benefits and features:
 
-- Deep Analysis: Understand the specifics of code execution within particular time frames, offering granular insights into application performance
-- Seamless Integration: Smoothly transition from a high-level trace overview to detailed profiling of specific trace spans within Grafana’s trace view
-- Efficiency and Cost Savings: Quickly identify and address performance issues, reducing troubleshooting time and operational costs
+- Deep analysis: Understand the specifics of code execution within particular time frames, offering granular insights into application performance
+- Seamless integration: Smoothly transition from a high-level trace overview to detailed profiling of specific trace spans within Grafana’s trace view
+- Efficiency and cost savings: Quickly identify and address performance issues, reducing troubleshooting time and operational costs
 
-Get Started:
+Get started:
 
 - Configure Pyroscope: Begin sending profiling data to unlock the full potential of Span Profiles
 - Client-Side Packages: Easily link traces and profiles using available packages for Go, Ruby, and Java
