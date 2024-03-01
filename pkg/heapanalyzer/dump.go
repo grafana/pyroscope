@@ -55,6 +55,28 @@ func (d *Dump) InitHeap() (err error) {
 	return err
 }
 
+// Object returns all heap objects.
+func (d *Dump) Objects() []*Object {
+	var buckets []*Object
+
+	d.gocore.ForEachObject(func(x gocore.Object) bool {
+		addr := fmt.Sprintf("%x", d.gocore.Addr(x))
+		typeName := typeName(d.gocore, x)
+
+		buckets = append(buckets, &Object{
+			Id:          addr, // TODO: use real id
+			Type:        typeName,
+			Address:     addr,
+			DisplayName: typeName + " [" + addr + "]", // TODO: use real display name
+			Size:        d.gocore.Size(x),
+		})
+
+		return true
+	})
+
+	return buckets
+}
+
 // ObjectTypes returns a list of object types in the heap, sorted by total size.
 func (d *Dump) ObjectTypes() []*ObjectTypeStats {
 	level.Debug(d.l).Log("msg", "calculating object types")

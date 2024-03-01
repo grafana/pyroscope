@@ -23,4 +23,5 @@ type Object struct {
 	Type        string `json:"type"`
 	Address     string `json:"address"`
 	DisplayName string `json:"displayName"`
+	Size        int64  `json:"size"`
 }

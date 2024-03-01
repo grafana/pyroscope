@@ -40,7 +40,7 @@ func NewHeapAnalyzer(logger log.Logger) *HeapAnalyzer {
 		dumps:    map[string]*Dump{},
 	}
 	h.Service = services.NewBasicService(nil, h.running, nil)
-	err := os.MkdirAll(h.localDir, 0755)
+	err := os.MkdirAll(h.localDir, 0o755)
 	if err != nil {
 		panic(err)
 	}
@@ -176,6 +176,7 @@ func (h *HeapAnalyzer) HeapDumpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// curl   http://localhost:4040/heap-analyzer/heap-dump/0eed7d49-b9da-420d-b4a4-f041b2aca70b/object-types
 func (h *HeapAnalyzer) HeapDumpObjectTypesHandler(w http.ResponseWriter, r *http.Request) {
 	id := getHeapDumpId(r)
 	level.Info(h.logger).Log("msg", "retrieving heap dump object types", "hid", id)
@@ -200,8 +201,29 @@ func (h *HeapAnalyzer) HeapDumpObjectTypesHandler(w http.ResponseWriter, r *http
 	}
 }
 
+// curl   http://localhost:4040/heap-analyzer/heap-dump/0eed7d49-b9da-420d-b4a4-f041b2aca70b/objects
 func (h *HeapAnalyzer) HeapDumpObjectsHandler(w http.ResponseWriter, r *http.Request) {
+	id := getHeapDumpId(r)
 	level.Info(h.logger).Log("msg", "retrieving heap dump objects", "hid", getHeapDumpId(r))
+
+	h.dumpsSync.Lock()
+	defer h.dumpsSync.Unlock()
+
+	dump, err := h.getDumpLocked(id)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	types := dump.Objects()
+	data, err := json.Marshal(types)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	_, err = w.Write(data)
+	if err != nil {
+		httputil.Error(w, err)
+	}
 }
 
 func (h *HeapAnalyzer) HeapDumpObjectHandler(w http.ResponseWriter, r *http.Request) {
@@ -254,7 +276,7 @@ func (h *HeapAnalyzer) getDumpLocked(id string) (*Dump, error) {
 
 func writeDumpFile(dir string, id string, name string, part io.Reader) error {
 	fname := dir + "/" + id + "/" + name
-	err := os.MkdirAll(filepath.Dir(fname), 0755)
+	err := os.MkdirAll(filepath.Dir(fname), 0o755)
 	if err != nil {
 		return err
 	}
