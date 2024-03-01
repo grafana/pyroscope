@@ -25,3 +25,12 @@ type Object struct {
 	DisplayName string `json:"displayName"`
 	Size        int64  `json:"size"`
 }
+
+type Field struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Value   string `json:"value,omitempty"`
+	Pointer string `json:"pointer,omitempty"`
+
+	Fields []*Field `json:"fields"`
+}
