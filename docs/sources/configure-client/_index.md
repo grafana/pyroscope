@@ -109,4 +109,13 @@ To get started, choose one of the integrations below:
    </tr>
 </table>
 
+## Enriching profile data
+
+You can add tags to your profiles to help correlate them with your other telemetry signals. Some common tags that are used are version, region, environment, request types, etc. You have the ability to add tags using both the SDK and the agent.
+
+Valid tag formats may contain ASCII letters and digits, as well as underscores. It must match the regex `[a-zA-Z_][a-zA-Z0-9_]`. 
+In Pyroscope, a period (`.`) is not a valid character inside of tags and labels. 
+
+## Assistance with Pyroscope
+
 If you have more questions, feel free to reach out in [our Slack channel](https://grafana.slack.com/) or create an [issue on GitHub](https://github.com/grafana/pyroscope) and the Pyroscope team will help!
