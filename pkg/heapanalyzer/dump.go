@@ -2,6 +2,7 @@ package heapanalyzer
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -54,6 +55,50 @@ func (d *Dump) InitHeap() (err error) {
 	return err
 }
 
-func (d *Dump) ObjectTypes() []ObjectTypeStats {
-	return nil
+// ObjectTypes returns a list of object types in the heap, sorted by total size.
+func (d *Dump) ObjectTypes() []*ObjectTypeStats {
+	level.Debug(d.l).Log("msg", "calculating object types")
+
+	var buckets []*ObjectTypeStats
+	m := map[string]*ObjectTypeStats{}
+
+	d.gocore.ForEachObject(func(x gocore.Object) bool {
+		name := typeName(d.gocore, x)
+		b := m[name]
+		if b == nil {
+			b = &ObjectTypeStats{Type: name, TotalSize: d.gocore.Size(x)}
+			buckets = append(buckets, b)
+			m[name] = b
+		}
+		b.Count++
+		return true
+	})
+
+	level.Debug(d.l).Log("msg", "calculated object types", "count", len(buckets))
+
+	sort.Slice(buckets, func(i, j int) bool {
+		return buckets[i].TotalSize*buckets[i].Count > buckets[j].TotalSize*buckets[j].Count
+	})
+
+	return buckets
+}
+
+// typeName returns a string representing the type of this object.
+func typeName(c *gocore.Process, x gocore.Object) string {
+	size := c.Size(x)
+	typ, repeat := c.Type(x)
+	if typ == nil {
+		return fmt.Sprintf("unk%d", size)
+	}
+
+	name := typ.String()
+	n := size / typ.Size
+	if n > 1 {
+		if repeat < n {
+			name = fmt.Sprintf("[%d+%d?]%s", repeat, n-repeat, name)
+		} else {
+			name = fmt.Sprintf("[%d]%s", repeat, name)
+		}
+	}
+	return name
 }
