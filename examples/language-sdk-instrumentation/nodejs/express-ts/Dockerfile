@@ -2,7 +2,7 @@ FROM node:latest
 
 WORKDIR /app
 
-COPY package.json .
+COPY package.json yarn.lock .
 COPY tsconfig.json .
 RUN yarn 
 COPY *.ts .
