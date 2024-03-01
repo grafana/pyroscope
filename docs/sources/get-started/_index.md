@@ -17,7 +17,7 @@ Choose one of the following options to get started with Pyroscope:
 
 - The following **video tutorial** uses [`docker-compose`](https://github.com/grafana/pyroscope/tree/main/tools/docker-compose) to declaratively deploy Pyroscope and Grafana.
 
-  {{< vimeo 766316030 >}}
+{{< youtube id="XL2yTCPy2e0" >}}
 
 For more information on the different ways to deploy Pyroscope, see [Pyroscope deployment modes]({{< relref "../reference-pyroscope-architecture/deployment-modes/index.md" >}}).
 
