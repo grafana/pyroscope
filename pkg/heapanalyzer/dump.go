@@ -66,11 +66,14 @@ func (d *Dump) ObjectTypes() []*ObjectTypeStats {
 		name := typeName(d.gocore, x)
 		b := m[name]
 		if b == nil {
-			b = &ObjectTypeStats{Type: name, TotalSize: d.gocore.Size(x)}
+			b = &ObjectTypeStats{Type: name, TotalSize: d.gocore.Size(x), Count: 1}
 			buckets = append(buckets, b)
 			m[name] = b
+		} else {
+			b.Count++
+			b.TotalSize += d.gocore.Size(x)
 		}
-		b.Count++
+
 		return true
 	})
 
