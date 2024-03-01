@@ -86,7 +86,7 @@ func (p *Process) calculateDominators() *dominators {
 }
 
 func runLT(p *Process) ltDom {
-	p.typeHeap()
+	p.TypeHeap()
 	p.reverseEdges()
 
 	nVertices := 1 + len(p.rootIdx) + p.nObj

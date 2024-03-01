@@ -374,8 +374,8 @@ func (c typeChunk) String() string {
 	return fmt.Sprintf("%x[%d]%s", c.off, c.r, c.t)
 }
 
-// typeHeap tries to label all the heap objects with types.
-func (p *Process) typeHeap() {
+// TypeHeap tries to label all the heap objects with types.
+func (p *Process) TypeHeap() {
 	p.initTypeHeap.Do(func() {
 		// Type info for the start of each object. a.k.a. "0 offset" typings.
 		p.types = make([]typeInfo, p.nObj)

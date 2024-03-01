@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -27,12 +28,16 @@ type HeapAnalyzer struct {
 	services.Service
 	localDir string
 	logger   log.Logger
+
+	dumpsSync sync.Mutex       // for now only one access at a time TODO improve it
+	dumps     map[string]*Dump // TODO do not grow indefinitely, need cleanup/lru
 }
 
 func NewHeapAnalyzer(logger log.Logger) *HeapAnalyzer {
 	h := &HeapAnalyzer{
 		logger:   logger,
 		localDir: "/tmp/heapdumps", // todo configure
+		dumps:    map[string]*Dump{},
 	}
 	h.Service = services.NewBasicService(nil, h.running, nil)
 	err := os.MkdirAll(h.localDir, 0755)
@@ -128,12 +133,12 @@ func (h *HeapAnalyzer) HeapDumpsHandler(w http.ResponseWriter, r *http.Request) 
 			level.Error(h.logger).Log("msg", "error parsing heap dump id", "id", d.Name(), "err", err)
 			continue
 		}
-		heapdump, err := h.readHeapDumpInfo(id.String())
+		heapDump, err := h.readHeapDumpInfo(id.String())
 		if err != nil {
 			level.Error(h.logger).Log("msg", "error reading heap dump info", "id", d.Name(), "err", err)
 			continue
 		}
-		heapDumps = append(heapDumps, heapdump)
+		heapDumps = append(heapDumps, heapDump)
 	}
 	data, err := json.Marshal(heapDumps)
 	if err != nil {
@@ -172,7 +177,27 @@ func (h *HeapAnalyzer) HeapDumpHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HeapAnalyzer) HeapDumpObjectTypesHandler(w http.ResponseWriter, r *http.Request) {
-	level.Info(h.logger).Log("msg", "retrieving heap dump object types", "hid", getHeapDumpId(r))
+	id := getHeapDumpId(r)
+	level.Info(h.logger).Log("msg", "retrieving heap dump object types", "hid", id)
+
+	h.dumpsSync.Lock()
+	defer h.dumpsSync.Unlock()
+
+	dump, err := h.getDumpLocked(id)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	types := dump.ObjectTypes()
+	data, err := json.Marshal(types)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	_, err = w.Write(data)
+	if err != nil {
+		httputil.Error(w, err)
+	}
 }
 
 func (h *HeapAnalyzer) HeapDumpObjectsHandler(w http.ResponseWriter, r *http.Request) {
@@ -192,16 +217,39 @@ func (h *HeapAnalyzer) HeapDumpObjectFieldsHandler(w http.ResponseWriter, r *htt
 }
 
 func (h *HeapAnalyzer) readHeapDumpInfo(id string) (*HeapDump, error) {
-	heapdump, err := os.ReadFile(h.localDir + "/" + id + "/" + heapDumpInfoFile)
+	heapDumpBytes, err := os.ReadFile(h.localDir + "/" + id + "/" + heapDumpInfoFile)
 	if err != nil {
 		return nil, err
 	}
-	heapdumpBytes := new(HeapDump)
-	err = json.Unmarshal(heapdump, heapdumpBytes)
+	heapDump := new(HeapDump)
+	err = json.Unmarshal(heapDumpBytes, heapDump)
 	if err != nil {
 		return nil, err
 	}
-	return heapdumpBytes, nil
+	return heapDump, nil
+}
+
+func (h *HeapAnalyzer) getDumpLocked(id string) (*Dump, error) {
+	d, ok := h.dumps[id]
+	if ok {
+		return d, nil
+	}
+	heapDump, err := h.readHeapDumpInfo(id)
+	if err != nil {
+		return nil, err
+	}
+	t1 := time.Now()
+	d, err = NewDump(h.logger,
+		h.localDir+"/"+id+"/exe",
+		h.localDir+"/"+id+"/core",
+		heapDump)
+	t2 := time.Now()
+	level.Info(h.logger).Log("msg", "NewDump", "id", id, "duration", t2.Sub(t1))
+	if err != nil {
+		return nil, err
+	}
+	h.dumps[id] = d
+	return d, nil
 }
 
 func writeDumpFile(dir string, id string, name string, part io.Reader) error {
@@ -224,7 +272,12 @@ func writeDumpFile(dir string, id string, name string, part io.Reader) error {
 
 func getHeapDumpId(r *http.Request) string {
 	vars := mux.Vars(r)
-	return vars["id"]
+	id := vars["id"]
+	_, err := uuid.Parse(id)
+	if err != nil {
+		panic(err)
+	}
+	return id
 }
 
 func getObjectId(r *http.Request) string {

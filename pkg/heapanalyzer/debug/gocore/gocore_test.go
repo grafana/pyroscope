@@ -83,7 +83,7 @@ func loadExampleVersion(t *testing.T, version string) *Process {
 	if err != nil {
 		t.Fatalf("can't parse Go core: %s", err)
 	}
-	p.typeHeap()
+	p.TypeHeap()
 	return p
 }
 
