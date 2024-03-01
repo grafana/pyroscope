@@ -32,5 +32,5 @@ type Field struct {
 	Value   string `json:"value,omitempty"`
 	Pointer string `json:"pointer,omitempty"`
 
-	Fields []*Field `json:"fields"`
+	Fields []*Field `json:"fields,omitempty"`
 }
