@@ -1,0 +1,6 @@
+coredump
+test_exe
+test_exe.s
+main
+test_exe.gnu.s
+test_exe.go.s
