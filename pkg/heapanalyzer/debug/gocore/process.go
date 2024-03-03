@@ -159,6 +159,7 @@ func Core(proc *core.Process) (p *Process, err error) {
 
 	// Read all the data that depend on runtime globals.
 	p.buildVersion = p.rtGlobals["buildVersion"].String()
+	p.fixupRuntimeConstants(p.buildVersion)
 
 	// runtime._type varint name length encoding, and mheap curArena
 	// counting changed behavior in 1.17 without explicitly related type
@@ -499,6 +500,12 @@ func (p *Process) readSpans(mheap region, arenas []arena) {
 				h.base = min
 				h.size = elemSize
 			}
+			for i := int64(0); i < n; i++ {
+				op := min.Add(i * elemSize)
+				p.markObject(op)
+				p.nObj++
+				//fmt.Printf("[heap] %x %v\n", op, alloc[i])
+			}
 
 			// Process special records.
 			for sp := s.Field("specials"); sp.Address() != 0; sp = sp.Field("next") {
@@ -819,6 +826,29 @@ func (p *Process) readFrame(sp, pc core.Address) (*Frame, error) {
 	frame.Live = live
 
 	return frame, nil
+}
+
+func (p *Process) fixupRuntimeConstants(goVersion string) {
+	if strings.HasPrefix(goVersion, "go1.21") { // todo 22
+		//const (
+		//	PCDATA_UnsafePoint   = 0
+		//	PCDATA_StackMapIndex = 1
+		//	PCDATA_InlTreeIndex  = 2
+		//	PCDATA_ArgLiveIndex  = 3
+		//
+		//	FUNCDATA_ArgsPointerMaps    = 0
+		//	FUNCDATA_LocalsPointerMaps  = 1
+		//	FUNCDATA_StackObjects       = 2
+		//	FUNCDATA_InlTree            = 3
+		//	FUNCDATA_OpenCodedDeferInfo = 4
+		//	FUNCDATA_ArgInfo            = 5
+		//	FUNCDATA_ArgLiveInfo        = 6
+		//	FUNCDATA_WrapInfo           = 7
+		//)
+		p.rtConstants["_PCDATA_StackMapIndex"] = 1
+		//p.rtConstants["_FUNCDATA_LocalsPointerMaps"] = 1
+		//p.rtConstants["_FUNCDATA_ArgsPointerMaps"] = 0
+	}
 }
 
 // A Stats struct is the node of a tree representing the entire memory
