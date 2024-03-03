@@ -126,7 +126,10 @@ func (m *module) readFunc(r region, pctab region, funcnametab region) *Func {
 		f.pcdata = append(f.pcdata, r.p.proc.ReadInt32(a))
 		a = a.Add(4)
 	}
-	a = a.Align(r.p.proc.PtrSize())
+	if m.r.HasField("gofunc") {
+	} else {
+		a = a.Align(r.p.proc.PtrSize())
+	}
 
 	if nfd.typ.Size == 1 { // go 1.12 and beyond, this is a uint8
 		n = uint32(nfd.Uint8())
