@@ -6,7 +6,6 @@ package gocore
 
 import (
 	"math/bits"
-	"strings"
 
 	"github.com/grafana/pyroscope/pkg/heapanalyzer/debug/core"
 )
@@ -15,96 +14,117 @@ import (
 // Unreachable (garbage) objects are not represented as Objects.
 type Object core.Address
 
+func (p *Process) markObject(x core.Address) {
+	h := p.findHeapInfo(x)
+	if h == nil { // not in heap or not in a valid span
+		// Invalid spans can happen with intra-stack pointers.
+		return
+	}
+	// Round down to object start.
+	x = h.base.Add(x.Sub(h.base) / h.size * h.size)
+	// Object start may map to a different info. Reload heap info.
+	h = p.findHeapInfo(x)
+	// Find mark bit
+	b := uint64(x) % heapInfoSize / 8
+	if h.mark&(uint64(1)<<b) != 0 { // already found
+		return
+	}
+	h.mark |= uint64(1) << b
+	//n++
+	//live += h.size
+	//q = append(q, Object(x))
+}
+
 // markObjects finds all the live objects in the heap and marks them
 // in the p.heapInfo mark fields.
 func (p *Process) markObjects() {
-	ptrSize := p.proc.PtrSize()
+	//ptrSize := p.proc.PtrSize()
 
 	// number of live objects found so far
 	n := 0
 	// total size of live objects
-	var live int64
-
-	var q []Object
-
-	// Function to call when we find a new pointer.
-	add := func(x core.Address) {
-		h := p.findHeapInfo(x)
-		if h == nil { // not in heap or not in a valid span
-			// Invalid spans can happen with intra-stack pointers.
-			return
-		}
-		// Round down to object start.
-		x = h.base.Add(x.Sub(h.base) / h.size * h.size)
-		// Object start may map to a different info. Reload heap info.
-		h = p.findHeapInfo(x)
-		// Find mark bit
-		b := uint64(x) % heapInfoSize / 8
-		if h.mark&(uint64(1)<<b) != 0 { // already found
-			return
-		}
-		h.mark |= uint64(1) << b
-		n++
-		live += h.size
-		q = append(q, Object(x))
-	}
-
-	// Start with scanning all the roots.
-	// Note that we don't just use the DWARF roots, just in case DWARF isn't complete.
-	// Instead we use exactly what the runtime uses.
-
-	// Goroutine roots
-	for _, g := range p.goroutines {
-		for _, f := range g.frames {
-			for a := range f.Live {
-				add(p.proc.ReadPtr(a))
-			}
-		}
-	}
-
-	// Global roots
-	for _, m := range p.modules {
-		for _, s := range [2]string{"data", "bss"} {
-			min := core.Address(m.r.Field(s).Uintptr())
-			max := core.Address(m.r.Field("e" + s).Uintptr())
-			gc := m.r.Field("gc" + s + "mask").Field("bytedata").Address()
-			num := max.Sub(min) / ptrSize
-			for i := int64(0); i < num; i++ {
-				if p.proc.ReadUint8(gc.Add(i/8))>>uint(i%8)&1 != 0 {
-					add(p.proc.ReadPtr(min.Add(i * ptrSize)))
-				}
-			}
-		}
-	}
-
-	// Finalizers
-	for _, r := range p.globals {
-		if !strings.HasPrefix(r.Name, "finalizer for ") {
-			continue
-		}
-		for _, f := range r.Type.Fields {
-			if f.Type.Kind == KindPtr {
-				add(p.proc.ReadPtr(r.Addr.Add(f.Off)))
-			}
-		}
-	}
-
-	// Expand root set to all reachable objects.
-	for len(q) > 0 {
-		x := q[len(q)-1]
-		q = q[:len(q)-1]
-
-		// Scan object for pointers.
-		size := p.Size(x)
-		for i := int64(0); i < size; i += ptrSize {
-			a := core.Address(x).Add(i)
-			if p.isPtrFromHeap(a) {
-				add(p.proc.ReadPtr(a))
-			}
-		}
-	}
-
-	p.nObj = n
+	//var live int64
+	//
+	//var q []Object
+	//
+	//// Function to call when we find a new pointer.
+	//add := func(x core.Address) {
+	//	h := p.findHeapInfo(x)
+	//	if h == nil { // not in heap or not in a valid span
+	//		// Invalid spans can happen with intra-stack pointers.
+	//		return
+	//	}
+	//	// Round down to object start.
+	//	x = h.base.Add(x.Sub(h.base) / h.size * h.size)
+	//	// Object start may map to a different info. Reload heap info.
+	//	h = p.findHeapInfo(x)
+	//	// Find mark bit
+	//	b := uint64(x) % heapInfoSize / 8
+	//	if h.mark&(uint64(1)<<b) != 0 { // already found
+	//		return
+	//	}
+	//	h.mark |= uint64(1) << b
+	//	n++
+	//	live += h.size
+	//	q = append(q, Object(x))
+	//}
+	//
+	//// Start with scanning all the roots.
+	//// Note that we don't just use the DWARF roots, just in case DWARF isn't complete.
+	//// Instead we use exactly what the runtime uses.
+	//
+	//// Goroutine roots
+	//for _, g := range p.goroutines {
+	//	for _, f := range g.frames {
+	//		for a := range f.Live {
+	//			add(p.proc.ReadPtr(a))
+	//		}
+	//	}
+	//}
+	//
+	//// Global roots
+	//for _, m := range p.modules {
+	//	for _, s := range [2]string{"data", "bss"} {
+	//		min := core.Address(m.r.Field(s).Uintptr())
+	//		max := core.Address(m.r.Field("e" + s).Uintptr())
+	//		gc := m.r.Field("gc" + s + "mask").Field("bytedata").Address()
+	//		num := max.Sub(min) / ptrSize
+	//		for i := int64(0); i < num; i++ {
+	//			if p.proc.ReadUint8(gc.Add(i/8))>>uint(i%8)&1 != 0 {
+	//				add(p.proc.ReadPtr(min.Add(i * ptrSize)))
+	//			}
+	//		}
+	//	}
+	//}
+	//
+	//// Finalizers
+	//for _, r := range p.globals {
+	//	if !strings.HasPrefix(r.Name, "finalizer for ") {
+	//		continue
+	//	}
+	//	for _, f := range r.Type.Fields {
+	//		if f.Type.Kind == KindPtr {
+	//			add(p.proc.ReadPtr(r.Addr.Add(f.Off)))
+	//		}
+	//	}
+	//}
+	//
+	//// Expand root set to all reachable objects.
+	//for len(q) > 0 {
+	//	x := q[len(q)-1]
+	//	q = q[:len(q)-1]
+	//
+	//	// Scan object for pointers.
+	//	size := p.Size(x)
+	//	for i := int64(0); i < size; i += ptrSize {
+	//		a := core.Address(x).Add(i)
+	//		if p.isPtrFromHeap(a) {
+	//			add(p.proc.ReadPtr(a))
+	//		}
+	//	}
+	//}
+	//
+	//p.nObj = n
 
 	// Initialize firstIdx fields in the heapInfo, for fast object index lookups.
 	n = 0
@@ -120,12 +140,12 @@ func (p *Process) markObjects() {
 		panic("object count wrong")
 	}
 
-	// Update stats to include the live/garbage distinction.
-	alloc := p.Stats().Child("heap").Child("in use spans").Child("alloc")
-	alloc.Children = []*Stats{
-		&Stats{"live", live, nil},
-		&Stats{"garbage", alloc.Size - live, nil},
-	}
+	//// Update stats to include the live/garbage distinction.
+	//alloc := p.Stats().Child("heap").Child("in use spans").Child("alloc")
+	//alloc.Children = []*Stats{
+	//	&Stats{"live", live, nil},
+	//	&Stats{"garbage", alloc.Size - live, nil},
+	//}
 }
 
 // isPtrFromHeap reports whether the inferior at address a contains a pointer.
