@@ -6,6 +6,7 @@ package gocore
 
 import (
 	"debug/dwarf"
+	"debug/elf"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -13,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/grafana/pyroscope/pkg/heapanalyzer/debug/core"
+	"github.com/grafana/pyroscope/pkg/heapanalyzer/debug/gocore/dd/bininspect"
 )
 
 // read DWARF types from core dump.
@@ -480,9 +482,10 @@ func (p *Process) readGlobals() {
 
 func (p *Process) readStackVars() {
 	type Var struct {
-		name string
-		off  int64
-		typ  *Type
+		//name string
+		//off  int64
+		//typ  *Type
+		e *dwarf.Entry
 	}
 	vars := map[*Func][]Var{}
 	var curfn *Func
@@ -524,63 +527,72 @@ func (p *Process) readStackVars() {
 		if aloc == nil {
 			continue
 		}
-		if aloc.Class != dwarf.ClassExprLoc {
-			// TODO: handle ClassLocListPtr here.
-			// As of go 1.11, locals are encoded this way.
-			// Until we fix this TODO, viewcore will not be able to
-			// show local variables.
-			continue
+		if aloc.Class != dwarf.ClassExprLoc && aloc.Class != dwarf.ClassLocListPtr {
+			panic(fmt.Sprintf("unexpected attr loc class: %v", aloc.Class))
 		}
-		// Interpret locations of the form
-		//    DW_OP_call_frame_cfa
-		//    DW_OP_consts <off>
-		//    DW_OP_plus
-		// (with possibly missing DW_OP_consts & DW_OP_plus for the zero offset.)
-		// TODO: handle other possible locations (e.g. register locations).
-		loc := aloc.Val.([]byte)
-		if len(loc) == 0 || loc[0] != _DW_OP_call_frame_cfa {
-			continue
-		}
-		loc = loc[1:]
-		var off int64
-		if len(loc) != 0 && loc[0] == _DW_OP_consts {
-			loc = loc[1:]
-			var s uint
-			for len(loc) > 0 {
-				b := loc[0]
-				loc = loc[1:]
-				off += int64(b&0x7f) << s
-				s += 7
-				if b&0x80 == 0 {
-					break
-				}
-			}
-			off = off << (64 - s) >> (64 - s)
-			if len(loc) == 0 || loc[0] != _DW_OP_plus {
-				continue
-			}
-			loc = loc[1:]
-		}
-		if len(loc) != 0 {
-			continue // more stuff we don't recognize
-		}
-		f := e.AttrField(dwarf.AttrType)
-		if f == nil {
-			continue
-		}
-		dt, err := d.Type(f.Val.(dwarf.Offset))
-		if err != nil {
-			panic(err)
-		}
-		nf := e.AttrField(dwarf.AttrName)
-		if nf == nil {
-			continue
-		}
-		name := nf.Val.(string)
-		vars[curfn] = append(vars[curfn], Var{name: name, off: off, typ: p.dwarfMap[dt]})
+		vars[curfn] = append(vars[curfn], Var{e: e})
+		//if aloc.Class != dwarf.ClassExprLoc {
+		//	// TODO: handle ClassLocListPtr here.
+		//	// As of go 1.11, locals are encoded this way.
+		//	// Until we fix this TODO, viewcore will not be able to
+		//	// show local variables.
+		//	bininspect.Foo()
+		//	continue
+		//}
+		//// Interpret locations of the form
+		////    DW_OP_call_frame_cfa
+		////    DW_OP_consts <off>
+		////    DW_OP_plus
+		//// (with possibly missing DW_OP_consts & DW_OP_plus for the zero offset.)
+		//// TODO: handle other possible locations (e.g. register locations).
+		//loc := aloc.Val.([]byte)
+		//if len(loc) == 0 || loc[0] != _DW_OP_call_frame_cfa {
+		//	continue
+		//}
+		//loc = loc[1:]
+		//var off int64
+		//if len(loc) != 0 && loc[0] == _DW_OP_consts {
+		//	loc = loc[1:]
+		//	var s uint
+		//	for len(loc) > 0 {
+		//		b := loc[0]
+		//		loc = loc[1:]
+		//		off += int64(b&0x7f) << s
+		//		s += 7
+		//		if b&0x80 == 0 {
+		//			break
+		//		}
+		//	}
+		//	off = off << (64 - s) >> (64 - s)
+		//	if len(loc) == 0 || loc[0] != _DW_OP_plus {
+		//		continue
+		//	}
+		//	loc = loc[1:]
+		//}
+		//if len(loc) != 0 {
+		//	continue // more stuff we don't recognize
+		//}
+		//f := e.AttrField(dwarf.AttrType)
+		//if f == nil {
+		//	continue
+		//}
+		//dt, err := d.Type(f.Val.(dwarf.Offset))
+		//if err != nil {
+		//	panic(err)
+		//}
+		//nf := e.AttrField(dwarf.AttrName)
+		//if nf == nil {
+		//	continue
+		//}
+		//name := nf.Val.(string)
+		//vars[curfn] = append(vars[curfn], Var{name: name, off: off, typ: p.dwarfMap[dt]})
 	}
-
-	// Get roots from goroutine stacks.
+	var di *bininspect.DwarfInspector
+	exeElf, err := elf.Open(p.proc.ExeFile())
+	if err == nil {
+		defer exeElf.Close()
+		di = bininspect.NewDwarfInspector(&bininspect.ElfMetadata{File: exeElf, Arch: "amd64"}, d) // Get roots from goroutine stacks.
+	}
 	for _, g := range p.goroutines {
 		for _, f := range g.frames {
 			// Start with all pointer slots as unnamed.
@@ -588,18 +600,63 @@ func (p *Process) readStackVars() {
 			for a := range f.Live {
 				unnamed[a] = true
 			}
+
 			// Emit roots for DWARF entries.
 			for _, v := range vars[f.f] {
-				r := &Root{
-					Name:  v.name,
-					Addr:  f.max.Add(v.off),
-					Type:  v.typ,
-					Frame: f,
+				if di == nil {
+					continue
 				}
-				f.roots = append(f.roots, r)
-				// Remove this variable from the set of unnamed pointers.
-				for a := r.Addr; a < r.Addr.Add(r.Type.Size); a = a.Add(p.proc.PtrSize()) {
-					delete(unnamed, a)
+				locs, err := di.GetParameterLocationAtPC(v.e, uint64(f.PC()))
+				if err != nil {
+					//fmt.Println(err)
+					continue
+				}
+				name, _ := v.e.AttrField(dwarf.AttrName).Val.(string)
+				typ := p.varTyp(d, v.e)
+
+				pieceAddr := func(p bininspect.ParameterPiece) core.Address {
+					return f.max.Add(p.StackOffset).Add(-8) // TODO why -8??
+				}
+
+				if len(locs.Pieces) == 1 {
+					if locs.Pieces[0].InReg {
+						continue
+					}
+					addr := pieceAddr(locs.Pieces[0])
+					r := &Root{
+						//Name:  fmt.Sprintf("goroutine %x | frame %x | %s", g.Addr(), frameNo, name),
+						Name:  name, //todo need meaningfull name for the reference
+						Addr:  addr,
+						Type:  typ,
+						Frame: f,
+					}
+					f.roots = append(f.roots, r)
+					for a := r.Addr; a < r.Addr.Add(r.Type.Size); a = a.Add(p.proc.PtrSize()) {
+						delete(unnamed, a)
+					}
+				} else if len(locs.Pieces) > 1 && typ != nil && typ.Kind == KindSlice && typ.Elem != nil {
+					for _, piece := range locs.Pieces {
+						if piece.InReg {
+							continue
+						}
+						addr := pieceAddr(piece)
+						if unnamed[addr] {
+							ptype := p.runtimeNameMap[("*" + typ.Elem.String())]
+							if ptype == nil || len(ptype) == 0 {
+								continue
+							}
+							r := &Root{
+								Name:  name,
+								Addr:  addr,
+								Type:  ptype[0],
+								Frame: f,
+							}
+							f.roots = append(f.roots, r)
+							for a := r.Addr; a < r.Addr.Add(r.Type.Size); a = a.Add(p.proc.PtrSize()) {
+								delete(unnamed, a)
+							}
+						}
+					}
 				}
 			}
 			// Emit roots for unnamed pointer slots in the frame.
@@ -620,6 +677,26 @@ func (p *Process) readStackVars() {
 			}
 		}
 	}
+}
+
+func (p *Process) varTyp(d *dwarf.Data, e *dwarf.Entry) *Type {
+	vt := e.AttrField(dwarf.AttrType)
+	if vt == nil {
+		return nil
+	}
+	if vt.Class != dwarf.ClassReference {
+		return nil
+	}
+	offset, ok := vt.Val.(dwarf.Offset)
+	if !ok {
+		return nil
+	}
+	dt, err := d.Type(offset)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	return p.dwarfMap[dt]
 }
 
 /* Dwarf encoding notes

@@ -37,6 +37,8 @@ const (
 
 // A Process represents the state of the process that core dumped.
 type Process struct {
+	exeFile string
+
 	meta metadata // basic metadata about the core
 
 	entryPoint Address
@@ -340,6 +342,7 @@ func Core(corePath, base, exePath string) (*Process, error) {
 	}
 
 	p := &Process{
+		exeFile:    exePath,
 		meta:       meta,
 		entryPoint: entryPoint,
 		args:       args,
@@ -747,6 +750,10 @@ func (p *Process) Warnings() []string {
 // Args returns the initial part of the program arguments.
 func (p *Process) Args() string {
 	return p.args
+}
+
+func (p *Process) ExeFile() string {
+	return p.exeFile
 }
 
 // ELF/Linux types

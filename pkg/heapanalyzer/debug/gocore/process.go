@@ -16,6 +16,8 @@ import (
 
 // A Process represents the state of a Go process that core dumped.
 type Process struct {
+	exeFile string
+
 	proc *core.Process
 
 	// data structure for fast object finding
@@ -139,6 +141,7 @@ func Core(proc *core.Process) (p *Process, err error) {
 	*/
 
 	p = &Process{
+		exeFile:    proc.ExeFile(),
 		proc:       proc,
 		runtimeMap: map[core.Address]*Type{},
 		dwarfMap:   map[dwarf.Type]*Type{},
