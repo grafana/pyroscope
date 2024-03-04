@@ -34,3 +34,7 @@ type Field struct {
 
 	Fields []*Field `json:"fields,omitempty"`
 }
+
+type Reference struct {
+	From string `json:"from"`
+}

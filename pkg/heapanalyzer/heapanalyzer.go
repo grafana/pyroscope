@@ -253,6 +253,7 @@ func (h *HeapAnalyzer) HeapDumpObjectHandler(w http.ResponseWriter, r *http.Requ
 	level.Info(h.logger).Log("msg", "retrieving heap dump object", "hid", id, "oid", objID)
 }
 
+// curl    http://localhost:4040/heap-analyzer/heap-dump/3c541eff-e18d-4de2-ae67-22823513843b/object/c000100120/references
 func (h *HeapAnalyzer) HeapDumpObjectReferencesHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getHeapDumpId(r)
 	if err != nil {
@@ -264,6 +265,29 @@ func (h *HeapAnalyzer) HeapDumpObjectReferencesHandler(w http.ResponseWriter, r 
 	if err != nil {
 		httputil.Error(w, err)
 		return
+	}
+
+	h.dumpsSync.Lock()
+	defer h.dumpsSync.Unlock()
+
+	dump, err := h.getDumpLocked(id)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	references, err := dump.ObjectReferences(objID)
+	if err != nil {
+		httputil.Error(w, err)
+	}
+
+	data, err := json.Marshal(references)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	_, err = w.Write(data)
+	if err != nil {
+		httputil.Error(w, err)
 	}
 
 	level.Info(h.logger).Log("msg", "retrieving heap dump object references", "hid", id, "oid", objID)

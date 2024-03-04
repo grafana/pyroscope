@@ -315,6 +315,7 @@ func (d *Dump) findObject(obj int64) (*object, error) {
 	typ, repeat := d.gocore.Type(x)
 
 	return &object{
+		obj:    x,
 		addr:   addr,
 		size:   size,
 		typ:    typ,
@@ -389,6 +390,48 @@ func typeFieldName(t *gocore.Type, off int64) string {
 		}
 	}
 	return ".???"
+}
+
+// ObjectReferences return all references to a heap object.
+func (d *Dump) ObjectReferences(obj int64) ([]*Reference, error) {
+	o, err := d.findObject(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	references := make([]*Reference, 0)
+
+	d.gocore.ForEachReversePtr(o.obj, func(z gocore.Object, r *gocore.Root, i, j int64) bool {
+		// TODO: do we need this?
+		if len(references) > 30 {
+			level.Warn(d.l).Log("msg", "additional references elided")
+			return false
+		}
+
+		ref := &Reference{}
+
+		if r != nil {
+			ref.From = fmt.Sprintf("%s%s", r.Name, typeFieldName(r.Type, i))
+		} else {
+			t, r := d.gocore.Type(z)
+			if t == nil {
+				ref.From = fmt.Sprintf("%s", buildPointer(d.gocore, d.gocore.Addr(z).Add(i)))
+			} else {
+				idx := ""
+				if r > 1 {
+					idx = fmt.Sprintf("[%d]", i/t.Size)
+					i %= t.Size
+				}
+				ref.From = fmt.Sprintf("%s%s%s", buildPointer(d.gocore, d.gocore.Addr(z)), idx, typeFieldName(t, i))
+			}
+		}
+
+		references = append(references, ref)
+
+		return true
+	})
+
+	return references, nil
 }
 
 // Object returns all heap objects.

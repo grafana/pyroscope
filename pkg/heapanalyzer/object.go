@@ -10,5 +10,6 @@ type object struct {
 	addr   core.Address
 	size   int64
 	typ    *gocore.Type
+	obj    gocore.Object
 	repeat int64
 }
