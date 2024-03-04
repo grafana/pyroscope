@@ -252,7 +252,7 @@ func (d *Dump) getFields(c *gocore.Process, name string, a core.Address, t *goco
 		}
 
 		subfields = append(subfields, &Field{
-			Name:  typeFieldName(t, 1), // is it len?
+			Name:  typeFieldName(t, c.Process().PtrSize()),
 			Type:  "int",
 			Value: fmt.Sprintf("%d", n),
 		})
@@ -274,13 +274,12 @@ func (d *Dump) getFields(c *gocore.Process, name string, a core.Address, t *goco
 					Pointer: fmt.Sprintf("%x", c.Process().ReadPtr(a)),
 				},
 				{
-					Name:  typeFieldName(t, 1),
+					Name:  typeFieldName(t, c.Process().PtrSize()),
 					Type:  "int",
 					Value: fmt.Sprintf("%d", c.Process().ReadInt(a.Add(c.Process().PtrSize()))),
 				},
 				{
-					// Name:  typeFieldName(t, 2), // FIXME: check why here we don't get `cap` field
-					Name:  "cap",
+					Name:  typeFieldName(t, c.Process().PtrSize()*2),
 					Type:  "int",
 					Value: fmt.Sprintf("%d", c.Process().ReadInt(a.Add(c.Process().PtrSize()*2))),
 				},
