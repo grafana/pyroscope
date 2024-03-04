@@ -250,23 +250,6 @@ func (h *HeapAnalyzer) HeapDumpObjectHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	level.Info(h.logger).Log("msg", "retrieving heap dump object", "hid", id, "oid", objID)
-}
-
-// curl    http://localhost:4040/heap-analyzer/heap-dump/3c541eff-e18d-4de2-ae67-22823513843b/object/c000100120/references
-func (h *HeapAnalyzer) HeapDumpObjectReferencesHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := getHeapDumpId(r)
-	if err != nil {
-		httputil.Error(w, err)
-		return
-	}
-
-	objID, err := getObjectId(r)
-	if err != nil {
-		httputil.Error(w, err)
-		return
-	}
-
 	h.dumpsSync.Lock()
 	defer h.dumpsSync.Unlock()
 
@@ -275,42 +258,7 @@ func (h *HeapAnalyzer) HeapDumpObjectReferencesHandler(w http.ResponseWriter, r 
 		httputil.Error(w, err)
 		return
 	}
-	references, err := dump.ObjectReferences(objID)
-	if err != nil {
-		httputil.Error(w, err)
-	}
-
-	data, err := json.Marshal(references)
-	if err != nil {
-		httputil.Error(w, err)
-		return
-	}
-	_, err = w.Write(data)
-	if err != nil {
-		httputil.Error(w, err)
-	}
-
-	level.Info(h.logger).Log("msg", "retrieving heap dump object references", "hid", id, "oid", objID)
-}
-
-// curl   http://localhost:4040/heap-analyzer/heap-dump/0eed7d49-b9da-420d-b4a4-f041b2aca70b/objects/0x1234
-func (h *HeapAnalyzer) HeapDumpObjectFieldsHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := getHeapDumpId(r)
-	if err != nil {
-		httputil.Error(w, err)
-		return
-	}
-
-	objID, err := getObjectId(r)
-	if err != nil {
-		httputil.Error(w, err)
-		return
-	}
-
-	h.dumpsSync.Lock()
-	defer h.dumpsSync.Unlock()
-
-	dump, err := h.getDumpLocked(id)
+	obj, err := dump.findObject(objID)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -318,9 +266,27 @@ func (h *HeapAnalyzer) HeapDumpObjectFieldsHandler(w http.ResponseWriter, r *htt
 	fields, err := dump.ObjectFields(objID)
 	if err != nil {
 		httputil.Error(w, err)
+		return
+	}
+	references, err := dump.ObjectReferences(objID)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	tName := typeName(dump.gocore, obj.obj)
+	objectWithDetails := &ObjectWithDetails{
+		Object: Object{
+			Id:          fmt.Sprintf("%x", obj.addr),
+			Type:        tName,
+			Address:     fmt.Sprintf("%x", obj.addr),
+			DisplayName: fmt.Sprintf("%s [%x]", tName, obj.addr),
+			Size:        obj.size,
+		},
+		Fields:     fields,
+		References: references,
 	}
 
-	data, err := json.Marshal(fields)
+	data, err := json.Marshal(objectWithDetails)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -330,7 +296,7 @@ func (h *HeapAnalyzer) HeapDumpObjectFieldsHandler(w http.ResponseWriter, r *htt
 		httputil.Error(w, err)
 	}
 
-	level.Info(h.logger).Log("msg", "retrieving heap dump object fields", "hid", id, "oid", objID)
+	level.Info(h.logger).Log("msg", "retrieving heap dump object details", "hid", id, "oid", objID)
 }
 
 func (h *HeapAnalyzer) readHeapDumpInfo(id string) (*HeapDump, error) {

@@ -35,6 +35,13 @@ type Field struct {
 	Fields []*Field `json:"fields,omitempty"`
 }
 
+type ObjectWithDetails struct {
+	Object
+
+	Fields     []*Field     `json:"fields"`
+	References []*Reference `json:"references"`
+}
+
 type Reference struct {
 	From string `json:"from"`
 }
