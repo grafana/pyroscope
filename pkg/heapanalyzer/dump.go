@@ -79,6 +79,7 @@ func (d *Dump) ObjectFields(obj int64) ([]*Field, error) {
 		end = n * o.typ.Size
 	}
 
+	// TODO: investigate how if we should handle this
 	for i := end; i < o.size; i += d.gocore.Process().PtrSize() {
 		// fmt.Fprintf(w, "<tr><td>f%d</td><td colspan=\"2\">?</td>", i)
 		if d.gocore.IsPtr(o.addr.Add(i)) {
@@ -110,6 +111,8 @@ func (d *Dump) ObjectFields(obj int64) ([]*Field, error) {
 // the idea is to instead of writing to a writer, we append the field to the list of fields
 // c is a d.gocore and so in
 func (d *Dump) getFields(c *gocore.Process, name string, a core.Address, t *gocore.Type, fields []*Field) []*Field {
+	level.Info(d.l).Log("msg", "type", "type", t.Kind.String())
+
 	switch t.Kind {
 	case gocore.KindBool:
 		v := c.Process().ReadUint8(a) != 0
@@ -232,7 +235,8 @@ func (d *Dump) getFields(c *gocore.Process, name string, a core.Address, t *goco
 			b := make([]byte, n2)
 			c.Process().ReadAt(b, c.Process().ReadPtr(a))
 			subfields = append(subfields, &Field{
-				Type:    "*uint8",
+				Name:    typeFieldName(t, 0),
+				Type:    t.Elem.String(),
 				Pointer: fmt.Sprintf("%x", c.Process().ReadPtr(a)),
 			})
 
@@ -240,7 +244,7 @@ func (d *Dump) getFields(c *gocore.Process, name string, a core.Address, t *goco
 		}
 
 		subfields = append(subfields, &Field{
-			Name:  "len", // is it len?
+			Name:  typeFieldName(t, 1), // is it len?
 			Type:  "int",
 			Value: fmt.Sprintf("%d", n),
 		})
@@ -253,11 +257,28 @@ func (d *Dump) getFields(c *gocore.Process, name string, a core.Address, t *goco
 		})
 	case gocore.KindSlice:
 		fields = append(fields, &Field{
-			Name:    name,
-			Type:    t.String(),
-			Value:   fmt.Sprintf("%d", c.Process().ReadInt(a.Add(c.Process().PtrSize()))),
-			Pointer: fmt.Sprintf("%d", c.Process().ReadInt(a.Add(c.Process().PtrSize()*2))),
+			Name: name,
+			Type: t.String(),
+			Fields: []*Field{
+				{
+					Name:    typeFieldName(t, 0),
+					Type:    t.Elem.String(),
+					Pointer: fmt.Sprintf("%x", c.Process().ReadPtr(a)),
+				},
+				{
+					Name:  typeFieldName(t, 1),
+					Type:  "int",
+					Value: fmt.Sprintf("%d", c.Process().ReadInt(a.Add(c.Process().PtrSize()))),
+				},
+				{
+					// Name:  typeFieldName(t, 2), // TODO: check why here we don't get `cap` field
+					Name:  "cap",
+					Type:  "int",
+					Value: fmt.Sprintf("%d", c.Process().ReadInt(a.Add(c.Process().PtrSize()*2))),
+				},
+			},
 		})
+
 	case gocore.KindArray:
 		fields = append(fields, &Field{
 			Name:  name,
@@ -291,6 +312,83 @@ func (d *Dump) findObject(obj int64) (*object, error) {
 		typ:    typ,
 		repeat: repeat,
 	}, nil
+}
+
+// func htmlPointerAt(c *gocore.Process, a core.Address, live map[core.Address]bool) string {
+// 	if live != nil && !live[a] {
+// 		return "dead" // TODO: handle dead pointers better
+// 	}
+
+// 	return htmlPointer(c, c.Process().ReadPtr(a))
+// }
+
+// func htmlPointer(c *gocore.Process, a core.Address) string {
+// 	if a == 0 {
+// 		return "nil"
+// 	}
+// 	x, i := c.FindObject(a)
+// 	if x == 0 {
+// 		return fmt.Sprintf("%x", a)
+// 	}
+// 	s := fmt.Sprintf("<a href=\"/object?o=%x\">object %x</a>", c.Addr(x), c.Addr(x))
+// 	if i == 0 {
+// 		return s
+// 	}
+
+// 	t, r := c.Type(x)
+// 	if t == nil || i >= r*t.Size {
+// 		return fmt.Sprintf("%s+%d", s, i)
+// 	}
+// 	idx := ""
+// 	if r > 1 {
+// 		idx = fmt.Sprintf("[%d]", i/t.Size)
+// 		i %= t.Size
+// 	}
+// 	return fmt.Sprintf("%s%s%s", s, idx, typeFieldName(t, i))
+// }
+
+// typeFieldName returns the name of the field at offset off in t.
+func typeFieldName(t *gocore.Type, off int64) string {
+	switch t.Kind {
+	case gocore.KindBool, gocore.KindInt, gocore.KindUint, gocore.KindFloat:
+		return ""
+	case gocore.KindComplex:
+		if off == 0 {
+			return ".real"
+		}
+		return ".imag"
+	case gocore.KindIface, gocore.KindEface:
+		if off == 0 {
+			return ".type"
+		}
+		return ".data"
+	case gocore.KindPtr, gocore.KindFunc:
+		return ""
+	case gocore.KindString:
+		if off == 0 {
+			return ".ptr"
+		}
+		return ".len"
+	case gocore.KindSlice:
+		if off == 0 {
+			return ".ptr"
+		}
+		if off <= t.Size/2 {
+			return ".len"
+		}
+		return ".cap"
+	case gocore.KindArray:
+		s := t.Elem.Size
+		i := off / s
+		return fmt.Sprintf("[%d]%s", i, typeFieldName(t.Elem, off-i*s))
+	case gocore.KindStruct:
+		for _, f := range t.Fields {
+			if f.Off <= off && off < f.Off+f.Type.Size {
+				return "." + f.Name + typeFieldName(f.Type, off-f.Off)
+			}
+		}
+	}
+	return ".???"
 }
 
 // Object returns all heap objects.
