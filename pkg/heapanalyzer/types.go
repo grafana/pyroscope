@@ -27,7 +27,7 @@ type Object struct {
 }
 
 type Field struct {
-	Name    string `json:"name"`
+	Name    string `json:"name,omitempty"`
 	Type    string `json:"type"`
 	Value   string `json:"value,omitempty"`
 	Pointer string `json:"pointer,omitempty"`

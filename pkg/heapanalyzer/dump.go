@@ -202,9 +202,9 @@ func (d *Dump) getFields(c *gocore.Process, name string, a core.Address, t *goco
 		}
 	case gocore.KindPtr:
 		fields = append(fields, &Field{
-			Name:  name,
-			Type:  t.String(),
-			Value: fmt.Sprintf("%x", c.Process().ReadPtr(a)),
+			Name:    name,
+			Type:    t.String(),
+			Pointer: fmt.Sprintf("%x", c.Process().ReadPtr(a)),
 		})
 	case gocore.KindFunc:
 		if fn := c.Process().ReadPtr(a); fn != 0 {
@@ -220,6 +220,8 @@ func (d *Dump) getFields(c *gocore.Process, name string, a core.Address, t *goco
 		}
 	case gocore.KindString:
 		n := c.Process().ReadInt(a.Add(c.Process().PtrSize()))
+		var displayValue string
+		subfields := make([]*Field, 0)
 		if n > 0 {
 			n2 := n
 			ddd := ""
@@ -229,20 +231,26 @@ func (d *Dump) getFields(c *gocore.Process, name string, a core.Address, t *goco
 			}
 			b := make([]byte, n2)
 			c.Process().ReadAt(b, c.Process().ReadPtr(a))
-			fields = append(fields, &Field{
-				Name:    name,
-				Type:    "string",
-				Value:   fmt.Sprintf("%s%s", string(b), ddd),
+			subfields = append(subfields, &Field{
+				Type:    "*uint8",
 				Pointer: fmt.Sprintf("%x", c.Process().ReadPtr(a)),
 			})
-		} else {
-			fields = append(fields, &Field{
-				Name:    name,
-				Type:    "string",
-				Value:   "",
-				Pointer: fmt.Sprintf("%x", c.Process().ReadPtr(a)),
-			})
+
+			displayValue = fmt.Sprintf("%s%s", string(b), ddd)
 		}
+
+		subfields = append(subfields, &Field{
+			Name:  "len", // is it len?
+			Type:  "int",
+			Value: fmt.Sprintf("%d", n),
+		})
+
+		fields = append(fields, &Field{
+			Name:   name,
+			Type:   "string",
+			Value:  displayValue,
+			Fields: subfields,
+		})
 	case gocore.KindSlice:
 		fields = append(fields, &Field{
 			Name:    name,
@@ -257,16 +265,9 @@ func (d *Dump) getFields(c *gocore.Process, name string, a core.Address, t *goco
 			Value: fmt.Sprintf("%d", t.Count),
 		})
 	case gocore.KindStruct:
-		fields2 := make([]*Field, 0)
 		for _, f := range t.Fields {
-			fields2 = d.getFields(c, name+"."+f.Name, a.Add(f.Off), f.Type, fields2)
+			fields = d.getFields(c, name+"."+f.Name, a.Add(f.Off), f.Type, fields)
 		}
-		fields = append(fields, &Field{
-			Name:   name,
-			Type:   t.String(),
-			Value:  fmt.Sprintf("%x", c.Process().ReadPtr(a)),
-			Fields: fields2,
-		})
 	default:
 		level.Warn(d.l).Log("msg", "unsupported type", "type", t.Kind.String())
 	}
