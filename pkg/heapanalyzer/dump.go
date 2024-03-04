@@ -87,7 +87,7 @@ func (d *Dump) ObjectFields(obj int64) ([]*Field, error) {
 		}
 
 		if d.gocore.IsPtr(o.addr.Add(i)) {
-			// TODO: check why here we don't return a proper pointer
+			// FIXME: check why here we don't return a proper pointer
 			f.Pointer = buildPointer(d.gocore, d.gocore.Process().ReadPtr(o.addr.Add(i)))
 		} else {
 			// below it's commented a binary representation of the value
@@ -279,7 +279,7 @@ func (d *Dump) getFields(c *gocore.Process, name string, a core.Address, t *goco
 					Value: fmt.Sprintf("%d", c.Process().ReadInt(a.Add(c.Process().PtrSize()))),
 				},
 				{
-					// Name:  typeFieldName(t, 2), // TODO: check why here we don't get `cap` field
+					// Name:  typeFieldName(t, 2), // FIXME: check why here we don't get `cap` field
 					Name:  "cap",
 					Type:  "int",
 					Value: fmt.Sprintf("%d", c.Process().ReadInt(a.Add(c.Process().PtrSize()*2))),
@@ -287,7 +287,7 @@ func (d *Dump) getFields(c *gocore.Process, name string, a core.Address, t *goco
 			},
 		})
 	case gocore.KindArray:
-		// TODO: array should also have subfields
+		// FIXME: array should also have subfields
 		fields = append(fields, &Field{
 			Name:  name,
 			Type:  t.String(),
