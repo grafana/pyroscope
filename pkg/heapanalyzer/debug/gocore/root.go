@@ -8,6 +8,14 @@ import (
 	"github.com/grafana/pyroscope/pkg/heapanalyzer/debug/core"
 )
 
+type RootFlag int
+
+const (
+	RootFlagNone RootFlag = 0
+	// stack slice may be not contiguous and we should not read cap
+	RootFlagStackSlice RootFlag = 1
+)
+
 // A Root is an area of memory that might have pointers into the Go heap.
 type Root struct {
 	Name string
@@ -19,4 +27,6 @@ type Root struct {
 	// others dead. Consult Frame.Live to find out which pointers in a stack
 	// root are live.
 	Frame *Frame
+	Flags RootFlag
+	Desc  string
 }

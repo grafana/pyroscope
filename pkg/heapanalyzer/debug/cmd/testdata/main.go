@@ -51,6 +51,8 @@ type StructWithPointers struct {
 	fs []*Foo
 }
 
+var globfs []*Foo
+
 //go:noinline
 func loop() {
 	var arr [0x30]byte
@@ -99,6 +101,11 @@ func loop() {
 			foosArrayNoPointers[0] = *a
 			foosArrayNoPointers[1] = *b
 			*ssp = ss
+			globfs = append(globfs, a)
+			globfs = append(globfs, b)
+			globfs = append(globfs, new(Foo))
+			globfs = append(globfs, new(Foo))
+			globfs = append(globfs, new(Foo))
 			pp(a)
 			pp(b)
 			dump()

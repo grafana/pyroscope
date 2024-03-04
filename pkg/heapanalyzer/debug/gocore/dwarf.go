@@ -594,7 +594,7 @@ func (p *Process) readStackVars() {
 		di = bininspect.NewDwarfInspector(&bininspect.ElfMetadata{File: exeElf, Arch: "amd64"}, d) // Get roots from goroutine stacks.
 	}
 	for _, g := range p.goroutines {
-		for _, f := range g.frames {
+		for frameNo, f := range g.frames {
 			// Start with all pointer slots as unnamed.
 			unnamed := map[core.Address]bool{}
 			for a := range f.Live {
@@ -617,6 +617,13 @@ func (p *Process) readStackVars() {
 				pieceAddr := func(p bininspect.ParameterPiece) core.Address {
 					return f.max.Add(p.StackOffset).Add(-8) // TODO why -8??
 				}
+				addRoot := func(r *Root) {
+					r.Desc = fmt.Sprintf("goroutine %x | frame %x | %s", g.Addr(), frameNo, name)
+					f.roots = append(f.roots, r)
+					for a := r.Addr; a < r.Addr.Add(r.Type.Size); a = a.Add(p.proc.PtrSize()) {
+						delete(unnamed, a)
+					}
+				}
 
 				if len(locs.Pieces) == 1 {
 					if locs.Pieces[0].InReg {
@@ -624,16 +631,12 @@ func (p *Process) readStackVars() {
 					}
 					addr := pieceAddr(locs.Pieces[0])
 					r := &Root{
-						//Name:  fmt.Sprintf("goroutine %x | frame %x | %s", g.Addr(), frameNo, name),
-						Name:  name, //todo need meaningfull name for the reference
+						Name:  name,
 						Addr:  addr,
 						Type:  typ,
 						Frame: f,
 					}
-					f.roots = append(f.roots, r)
-					for a := r.Addr; a < r.Addr.Add(r.Type.Size); a = a.Add(p.proc.PtrSize()) {
-						delete(unnamed, a)
-					}
+					addRoot(r)
 				} else if len(locs.Pieces) > 1 && typ != nil && typ.Kind == KindSlice && typ.Elem != nil {
 					for _, piece := range locs.Pieces {
 						if piece.InReg {
@@ -641,20 +644,14 @@ func (p *Process) readStackVars() {
 						}
 						addr := pieceAddr(piece)
 						if unnamed[addr] {
-							ptype := p.runtimeNameMap[("*" + typ.Elem.String())]
-							if ptype == nil || len(ptype) == 0 {
-								continue
-							}
 							r := &Root{
 								Name:  name,
 								Addr:  addr,
-								Type:  ptype[0],
+								Type:  typ,
 								Frame: f,
+								Flags: RootFlagStackSlice,
 							}
-							f.roots = append(f.roots, r)
-							for a := r.Addr; a < r.Addr.Add(r.Type.Size); a = a.Add(p.proc.PtrSize()) {
-								delete(unnamed, a)
-							}
+							addRoot(r)
 						}
 					}
 				}

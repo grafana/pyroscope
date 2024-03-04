@@ -505,7 +505,19 @@ func (p *Process) TypeHeap() {
 		p.ForEachRoot(func(r *Root) bool {
 			if r.Frame != nil {
 				fr.live = r.Frame.Live
-				p.typeObject(r.Addr, r.Type, fr, add)
+				if r.Flags&RootFlagStackSlice == RootFlagStackSlice {
+					p.typeObject(r.Addr, r.Type, fr, func(address core.Address, t *Type, i int64) {
+						o, _ := p.FindObject(address)
+						if o == 0 || t == nil || t.Size == 0 {
+							add(address, t, i)
+						} else {
+							rep := p.Size(o) / t.Size
+							add(p.Addr(o), t, rep)
+						}
+					})
+				} else {
+					p.typeObject(r.Addr, r.Type, fr, add)
+				}
 			} else {
 				p.typeObject(r.Addr, r.Type, p.proc, add)
 			}
