@@ -79,28 +79,36 @@ func (d *Dump) ObjectFields(obj int64) ([]*Field, error) {
 		end = n * o.typ.Size
 	}
 
-	// TODO: investigate how if we should handle this
+	// handling unknown types
 	for i := end; i < o.size; i += d.gocore.Process().PtrSize() {
-		// fmt.Fprintf(w, "<tr><td>f%d</td><td colspan=\"2\">?</td>", i)
+		f := &Field{
+			Name: fmt.Sprintf("f%d", i),
+			Type: "unknown",
+		}
+
 		if d.gocore.IsPtr(o.addr.Add(i)) {
-			// fmt.Fprintf(w, "<td>%s</td>", htmlPointer(c, c.Process().ReadPtr(addr.Add(i))))
+			// TODO: check why here we don't return a proper pointer
+			f.Pointer = buildPointer(d.gocore, d.gocore.Process().ReadPtr(o.addr.Add(i)))
 		} else {
-			// fmt.Fprintf(w, "<td><pre>")
-			for j := int64(0); j < d.gocore.Process().PtrSize(); j++ {
-				// fmt.Fprintf(w, "%02x ", c.Process().ReadUint8(addr.Add(i+j)))
-			}
-			// fmt.Fprintf(w, "</pre></td><td><pre>")
+			// below it's commented a binary representation of the value
+			// like: 00 94 4a 00 00 00 00 00
+			// for j := int64(0); j < d.gocore.Process().PtrSize(); j++ {
+			// 	f.Value += fmt.Sprintf("%02x ", d.gocore.Process().ReadUint8(o.addr.Add(i+j)))
+			// }
+
+			// below it's commented a string representation of the value
+			// like: ..J....
 			for j := int64(0); j < d.gocore.Process().PtrSize(); j++ {
 				r := d.gocore.Process().ReadUint8(o.addr.Add(i + j))
 				if r >= 32 && r <= 126 {
-					// fmt.Fprintf(w, "%s", html.EscapeString(string(rune(r))))
+					f.Value += string(rune(r))
 				} else {
-					// fmt.Fprintf(w, ".")
+					f.Value += "."
 				}
 			}
-			// fmt.Fprintf(w, "</pre></td>")
 		}
-		// fmt.Fprintf(w, "</tr>\n")
+
+		fields = append(fields, f)
 	}
 
 	return fields, nil
@@ -278,8 +286,8 @@ func (d *Dump) getFields(c *gocore.Process, name string, a core.Address, t *goco
 				},
 			},
 		})
-
 	case gocore.KindArray:
+		// TODO: array should also have subfields
 		fields = append(fields, &Field{
 			Name:  name,
 			Type:  t.String(),
@@ -314,38 +322,30 @@ func (d *Dump) findObject(obj int64) (*object, error) {
 	}, nil
 }
 
-// func htmlPointerAt(c *gocore.Process, a core.Address, live map[core.Address]bool) string {
-// 	if live != nil && !live[a] {
-// 		return "dead" // TODO: handle dead pointers better
-// 	}
+func buildPointer(c *gocore.Process, a core.Address) string {
+	if a == 0 {
+		return "nil"
+	}
+	x, i := c.FindObject(a)
+	if x == 0 {
+		return fmt.Sprintf("%x", a)
+	}
+	s := fmt.Sprintf("%x", c.Addr(x))
+	if i == 0 {
+		return s
+	}
 
-// 	return htmlPointer(c, c.Process().ReadPtr(a))
-// }
-
-// func htmlPointer(c *gocore.Process, a core.Address) string {
-// 	if a == 0 {
-// 		return "nil"
-// 	}
-// 	x, i := c.FindObject(a)
-// 	if x == 0 {
-// 		return fmt.Sprintf("%x", a)
-// 	}
-// 	s := fmt.Sprintf("<a href=\"/object?o=%x\">object %x</a>", c.Addr(x), c.Addr(x))
-// 	if i == 0 {
-// 		return s
-// 	}
-
-// 	t, r := c.Type(x)
-// 	if t == nil || i >= r*t.Size {
-// 		return fmt.Sprintf("%s+%d", s, i)
-// 	}
-// 	idx := ""
-// 	if r > 1 {
-// 		idx = fmt.Sprintf("[%d]", i/t.Size)
-// 		i %= t.Size
-// 	}
-// 	return fmt.Sprintf("%s%s%s", s, idx, typeFieldName(t, i))
-// }
+	t, r := c.Type(x)
+	if t == nil || i >= r*t.Size {
+		return fmt.Sprintf("%s+%d", s, i)
+	}
+	idx := ""
+	if r > 1 {
+		idx = fmt.Sprintf("[%d]", i/t.Size)
+		i %= t.Size
+	}
+	return fmt.Sprintf("%s%s%s", s, idx, typeFieldName(t, i))
+}
 
 // typeFieldName returns the name of the field at offset off in t.
 func typeFieldName(t *gocore.Type, off int64) string {
