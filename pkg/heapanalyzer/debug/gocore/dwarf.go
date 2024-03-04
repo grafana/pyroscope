@@ -13,12 +13,18 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/go-delve/delve/pkg/dwarf/godwarf"
 	"github.com/grafana/pyroscope/pkg/heapanalyzer/debug/core"
 	"github.com/grafana/pyroscope/pkg/heapanalyzer/debug/gocore/dd/bininspect"
+	"github.com/grafana/pyroscope/pkg/heapanalyzer/debug/gocore/delve"
 )
 
 // read DWARF types from core dump.
 func (p *Process) readDWARFTypes() {
+	p.typemap = delve.TypeMap{
+		RuntimeTypeToDIE: make(map[uint64]delve.RuntimeTypeDIE),
+		TypeCache:        make(map[dwarf.Offset]godwarf.Type),
+	}
 	d, _ := p.proc.DWARF()
 
 	// Make one of our own Types for each dwarf type.
@@ -37,7 +43,12 @@ func (p *Process) readDWARFTypes() {
 			}
 			t := &Type{Name: gocoreName(dt), Size: dwarfSize(dt, p.proc.PtrSize())}
 			p.dwarfMap[dt] = t
+			p.dwarfOffsetMap[e.Offset] = t
 			types = append(types, t)
+			p.typemap.RegisterRuntimeTypeToDIE(e)
+		case dwarf.TagClassType, dwarf.TagUnionType, dwarf.TagConstType, dwarf.TagVolatileType, dwarf.TagRestrictType, dwarf.TagEnumerationType, dwarf.TagUnspecifiedType:
+			p.typemap.RegisterRuntimeTypeToDIE(e)
+			r.SkipChildren()
 		}
 	}
 

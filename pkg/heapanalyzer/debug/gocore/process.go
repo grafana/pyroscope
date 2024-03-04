@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/grafana/pyroscope/pkg/heapanalyzer/debug/core"
+	"github.com/grafana/pyroscope/pkg/heapanalyzer/debug/gocore/delve"
 )
 
 // A Process represents the state of a Go process that core dumped.
@@ -44,6 +45,8 @@ type Process struct {
 
 	// map from dwarf type to *Type
 	dwarfMap map[dwarf.Type]*Type
+
+	dwarfOffsetMap map[dwarf.Offset]*Type
 
 	// map from address of runtime._type to *Type
 	runtimeMap map[core.Address]*Type
@@ -79,6 +82,7 @@ type Process struct {
 	// Sorted list of all roots.
 	// Only initialized if FlagReverse is passed to Core.
 	rootIdx []*Root
+	typemap delve.TypeMap
 }
 
 // Process returns the core.Process used to construct this Process.
@@ -141,10 +145,11 @@ func Core(proc *core.Process) (p *Process, err error) {
 	*/
 
 	p = &Process{
-		exeFile:    proc.ExeFile(),
-		proc:       proc,
-		runtimeMap: map[core.Address]*Type{},
-		dwarfMap:   map[dwarf.Type]*Type{},
+		exeFile:        proc.ExeFile(),
+		proc:           proc,
+		runtimeMap:     map[core.Address]*Type{},
+		dwarfMap:       map[dwarf.Type]*Type{},
+		dwarfOffsetMap: map[dwarf.Offset]*Type{},
 	}
 
 	// Initialize everything that just depends on DWARF.

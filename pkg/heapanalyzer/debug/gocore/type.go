@@ -157,6 +157,11 @@ func (p *Process) runtimeType2Type(a core.Address, d core.Address) *Type {
 		}
 	}
 
+	var delveType *Type
+	if rtdie, ok := p.typemap.RuntimeTypeToDIE[uint64(a)-uint64(m.types)]; ok {
+		delveType = p.dwarfOffsetMap[rtdie.Offset]
+	}
+
 	// Read information out of the runtime._type.
 	var name string
 	if m != nil {
@@ -195,9 +200,14 @@ func (p *Process) runtimeType2Type(a core.Address, d core.Address) *Type {
 	// (The matched type will be one constructed from DWARF info.)
 	// It must match name, size, and pointer bits.
 	var candidates []*Type
-	for _, t := range p.runtimeNameMap[name] {
-		if size == t.Size && equal(ptrs, t.ptrs()) {
-			candidates = append(candidates, t)
+	if delveType != nil {
+		candidates = append(candidates, delveType)
+	} else {
+		//fmt.Printf("unknown delve type %s\n", name)
+		for _, t := range p.runtimeNameMap[name] {
+			if size == t.Size && equal(ptrs, t.ptrs()) {
+				candidates = append(candidates, t)
+			}
 		}
 	}
 	// There may be multiple candidates, when they are the pointers to the same type name,
