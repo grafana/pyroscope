@@ -22,6 +22,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/heapanalyzer/debug/gocore"
 	httputil "github.com/grafana/pyroscope/pkg/util/http"
 )
 
@@ -333,6 +334,51 @@ func (h *HeapAnalyzer) getDumpLocked(id string) (*Dump, error) {
 	}
 	h.dumps[id] = d
 	return d, nil
+}
+
+func (h *HeapAnalyzer) HeapDumpInspectionsHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getHeapDumpId(r)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+
+	h.dumpsSync.Lock()
+	defer h.dumpsSync.Unlock()
+
+	dump, err := h.getDumpLocked(id)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	inspectors := []inspector{
+		NewDuplicateStringInspector(dump.gocore),
+	}
+
+	dump.gocore.ForEachObject(func(x gocore.Object) bool {
+		for _, i := range inspectors {
+			err := i.Consume(x)
+			if err != nil {
+				return false
+			}
+		}
+		return true
+	})
+
+	results := make([]*InspectionResult, len(inspectors))
+	for i, ins := range inspectors {
+		results[i], err = ins.GetResult()
+	}
+
+	data, err := json.Marshal(results)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	_, err = w.Write(data)
+	if err != nil {
+		httputil.Error(w, err)
+	}
 }
 
 func writeDumpFile(dir string, id string, name string, part io.Reader) error {
