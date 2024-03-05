@@ -520,6 +520,19 @@ func (p *Process) readSpans(mheap region, arenas []arena) {
 				sp = sp.Deref() // *special to special
 				if sp.Field("kind").Uint8() != uint8(p.rtConstants["_KindSpecialFinalizer"]) {
 					// All other specials (just profile records) can't point into the heap.
+					//if kind == uint8(p.rtConstants["_KindSpecialProfile"]) {
+					//	ppp := min.Add(int64(sp.Field("offset").Uint16()))
+					//	specialprofileType := region{p: p, a: sp.a, typ: p.findType("runtime.specialprofile")}
+					//	br := specialprofileType.Field("b")
+					//	br = br.Deref()
+					//	//b := br.Address()
+					//	fmt.Printf("profile special %x %x\n", ppp, br.a)
+					//  TODO we can try to recover object type from stacktrace
+					// LEAQ	type:main.Foo(SB), AX
+					// CALL	runtime.newobject(SB)
+					// CMPL	runtime.writeBarrier(SB), $0          ; <<< in the profile bucket stack we have this address
+					// if we disassemble previous two instructions we can get the type of the object
+					//}
 					continue
 				}
 				obj := min.Add(int64(sp.Field("offset").Uint16()))
