@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -209,6 +210,8 @@ func (h *HeapAnalyzer) HeapDumpObjectTypesHandler(w http.ResponseWriter, r *http
 }
 
 // curl   http://localhost:4040/heap-analyzer/heap-dump/0eed7d49-b9da-420d-b4a4-f041b2aca70b/objects
+// curl  "http://localhost:4040/heap-analyzer/heap-dump/0eed7d49-b9da-420d-b4a4-f041b2aca70b/objects?type_re=^net/http.*\$&offset=10&limit=10" | jq
+// curl "http://localhost:4040/heap-analyzer/heap-dump/0eed7d49-b9da-420d-b4a4-f041b2aca70b/objects?type=net/http.Request&offset=10&limit=10" | jq
 func (h *HeapAnalyzer) HeapDumpObjectsHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getHeapDumpId(r)
 	if err != nil {
@@ -226,8 +229,24 @@ func (h *HeapAnalyzer) HeapDumpObjectsHandler(w http.ResponseWriter, r *http.Req
 		httputil.Error(w, err)
 		return
 	}
-	types := dump.Objects()
-	data, err := json.Marshal(types)
+
+	var filter Filter[*Object] = NoFilter[*Object]{}
+	if r.URL.Query().Get("type") != "" {
+		filter = ObjectTypeNameFilter{r.URL.Query().Get("type")}
+	} else if r.URL.Query().Get("type_re") != "" {
+		re, err := regexp.Compile(r.URL.Query().Get("type_re"))
+		if err != nil {
+			httputil.Error(w, err)
+			return
+		}
+		filter = ObjectTypeNameRegexFilter{re}
+	}
+
+	objects := dump.ObjectsFilter(filter)
+
+	objects = pagination(objects, r)
+
+	data, err := json.Marshal(objects)
 	if err != nil {
 		httputil.Error(w, err)
 		return
@@ -424,4 +443,23 @@ func getObjectId(r *http.Request) (int64, error) {
 func getObjectFieldId(r *http.Request) string {
 	vars := mux.Vars(r)
 	return vars["fid"]
+}
+
+func pagination[T any](ts []T, r *http.Request) []T {
+	offset := 0
+	limit := len(ts)
+	if r.URL.Query().Get("offset") != "" {
+		offset, _ = strconv.Atoi(r.URL.Query().Get("offset"))
+	}
+	if r.URL.Query().Get("limit") != "" {
+		limit, _ = strconv.Atoi(r.URL.Query().Get("limit"))
+	}
+	if offset > len(ts) {
+		offset = len(ts)
+	}
+	ts = ts[offset:]
+	if limit < len(ts) {
+		ts = ts[:limit]
+	}
+	return ts
 }

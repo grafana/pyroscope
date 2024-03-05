@@ -3,6 +3,7 @@ package heapanalyzer
 import (
 	"fmt"
 	"math"
+	"regexp"
 	"sort"
 
 	"github.com/go-kit/log"
@@ -435,21 +436,53 @@ func (d *Dump) ObjectReferences(obj int64) ([]*Reference, error) {
 	return references, nil
 }
 
-// Object returns all heap objects.
+type Filter[T any] interface {
+	Filter(T) bool
+}
+
+type NoFilter[T any] struct{}
+
+func (NoFilter[T]) Filter(T) bool {
+	return true
+}
+
+type ObjectTypeNameFilter struct {
+	TypeName string
+}
+
+func (f ObjectTypeNameFilter) Filter(o *Object) bool {
+	return o.Type == f.TypeName
+}
+
+type ObjectTypeNameRegexFilter struct {
+	Regexp *regexp.Regexp
+}
+
+func (f ObjectTypeNameRegexFilter) Filter(o *Object) bool {
+	return f.Regexp.FindString(o.Type) != ""
+}
+
 func (d *Dump) Objects() []*Object {
+	return d.ObjectsFilter(NoFilter[*Object]{})
+}
+
+func (d *Dump) ObjectsFilter(f Filter[*Object]) []*Object {
 	var buckets []*Object
 
 	d.gocore.ForEachObject(func(x gocore.Object) bool {
 		addr := fmt.Sprintf("%x", d.gocore.Addr(x))
 		typeName := typeName(d.gocore, x)
 
-		buckets = append(buckets, &Object{
+		o := &Object{
 			Id:          addr, // TODO: use real id
 			Type:        typeName,
 			Address:     addr,
 			DisplayName: typeName + " [" + addr + "]", // TODO: use real display name
 			Size:        d.gocore.Size(x),
-		})
+		}
+		if f.Filter(o) {
+			buckets = append(buckets, o)
+		}
 
 		return true
 	})
