@@ -43,5 +43,8 @@ type ObjectWithDetails struct {
 }
 
 type Reference struct {
-	From string `json:"from"`
+	From    string `json:"from"`
+	Type    string `json:"type"`
+	Reason  string `json:"reason,omitempty"`
+	Pointer string `json:"pointer,omitempty"`
 }

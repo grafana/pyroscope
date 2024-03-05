@@ -88,6 +88,8 @@ func (d *Dump) ObjectFields(obj int64) ([]*Field, error) {
 		}
 
 		if d.gocore.IsPtr(o.addr.Add(i)) {
+			// Originally here we do call buildPointerWithDetails, but since we use a pointer
+			// address as the objectID we cut just to the pointer address
 			f.Pointer = buildPointer(d.gocore, d.gocore.Process().ReadPtr(o.addr.Add(i)))
 		} else {
 			// below it's commented a binary representation of the value
@@ -325,7 +327,24 @@ func (d *Dump) findObject(obj int64) (*object, error) {
 	}, nil
 }
 
+// buildPointer returns a string representation of a pointer, e.g.:
+// "0x1234" or "nil"
 func buildPointer(c *gocore.Process, a core.Address) string {
+	if a == 0 {
+		return "nil"
+	}
+	x, _ := c.FindObject(a)
+	if x == 0 {
+		return fmt.Sprintf("%x", a)
+	}
+	return fmt.Sprintf("%x", c.Addr(x))
+}
+
+// buildPointerWithDetails returns a string representation of a pointer,
+// including details about the object it points to, e.g.:
+// "0x1234" or "0x1234+8" or "0x1234+8[1].field"
+// It returns "nil" for a zero pointer.
+func buildPointerWithDetails(c *gocore.Process, a core.Address) string {
 	if a == 0 {
 		return "nil"
 	}
@@ -413,18 +432,27 @@ func (d *Dump) ObjectReferences(obj int64) ([]*Reference, error) {
 		ref := &Reference{}
 
 		if r != nil {
+			ref.Type = "root"
+			ref.Reason = r.Desc
 			ref.From = fmt.Sprintf("%s%s", r.Name, typeFieldName(r.Type, i))
+
+			if ref.Reason == "" {
+				ref.Reason = "global"
+			}
 		} else {
+			ref.Type = "heap"
 			t, r := d.gocore.Type(z)
 			if t == nil {
-				ref.From = fmt.Sprintf("%s", buildPointer(d.gocore, d.gocore.Addr(z).Add(i)))
+				ref.From = fmt.Sprintf("%s", buildPointerWithDetails(d.gocore, d.gocore.Addr(z).Add(i)))
+				ref.Pointer = fmt.Sprintf("%s", buildPointer(d.gocore, d.gocore.Addr(z).Add(i)))
 			} else {
 				idx := ""
 				if r > 1 {
 					idx = fmt.Sprintf("[%d]", i/t.Size)
 					i %= t.Size
 				}
-				ref.From = fmt.Sprintf("%s%s%s", buildPointer(d.gocore, d.gocore.Addr(z)), idx, typeFieldName(t, i))
+				ref.From = fmt.Sprintf("%s%s%s", buildPointerWithDetails(d.gocore, d.gocore.Addr(z)), idx, typeFieldName(t, i))
+				ref.Pointer = fmt.Sprintf("%s", buildPointer(d.gocore, d.gocore.Addr(z).Add(i)))
 			}
 		}
 
