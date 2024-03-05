@@ -661,34 +661,42 @@ func (d *Dump) ObjectsFilter(f Filter[*Object]) []*Object {
 }
 
 // ObjectTypes returns a list of object types in the heap, sorted by total size.
-func (d *Dump) ObjectTypes() []*ObjectTypeStats {
+func (d *Dump) ObjectTypes() *ObjectTypesResult {
 	level.Debug(d.l).Log("msg", "calculating object types")
 
-	var buckets []*ObjectTypeStats
+	result := &ObjectTypesResult{
+		Items: make([]*ObjectTypeStats, 0),
+	}
 	m := map[string]*ObjectTypeStats{}
 
 	d.gocore.ForEachObject(func(x gocore.Object) bool {
 		name := typeName(d.gocore, x)
 		b := m[name]
+
+		objSize := d.gocore.Size(x)
+
+		result.TotalCount++
+		result.TotalSize += objSize
+
 		if b == nil {
-			b = &ObjectTypeStats{Type: name, TotalSize: d.gocore.Size(x), Count: 1}
-			buckets = append(buckets, b)
+			b = &ObjectTypeStats{Type: name, Size: objSize, Count: 1}
+			result.Items = append(result.Items, b)
 			m[name] = b
 		} else {
 			b.Count++
-			b.TotalSize += d.gocore.Size(x)
+			b.Size += objSize
 		}
 
 		return true
 	})
 
-	level.Debug(d.l).Log("msg", "calculated object types", "count", len(buckets))
+	level.Debug(d.l).Log("msg", "calculated object types", "count", len(result.Items))
 
-	sort.Slice(buckets, func(i, j int) bool {
-		return buckets[i].TotalSize*buckets[i].Count > buckets[j].TotalSize*buckets[j].Count
+	sort.Slice(result.Items, func(i, j int) bool {
+		return result.Items[i].Size*result.Items[i].Count > result.Items[j].Size*result.Items[j].Count
 	})
 
-	return buckets
+	return result
 }
 
 // typeName returns a string representing the type of this object.

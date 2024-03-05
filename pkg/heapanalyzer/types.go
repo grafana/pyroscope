@@ -13,9 +13,15 @@ type HeapDump struct {
 }
 
 type ObjectTypeStats struct {
-	Type      string `json:"type"`
-	Count     int64  `json:"count"`
-	TotalSize int64  `json:"totalSize"`
+	Type  string `json:"type"`
+	Count int64  `json:"count"`
+	Size  int64  `json:"size"`
+}
+
+type ObjectTypesResult struct {
+	TotalCount int64              `json:"totalCount"`
+	TotalSize  int64              `json:"totalSize"`
+	Items      []*ObjectTypeStats `json:"items"`
 }
 
 type Object struct {
