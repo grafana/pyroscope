@@ -465,13 +465,11 @@ func (d *Dump) ObjectReferences(obj int64) ([]*Reference, error) {
 }
 
 // ObjectReachable return a shorter path from a root to a heap object.
-func (d *Dump) ObjectReachable(objID int64) ([]string, error) {
+func (d *Dump) ObjectReachable(objID int64) ([]*Reference, error) {
 	o, err := d.findObject(objID)
 	if err != nil {
 		return nil, err
 	}
-
-	reachable := make([]string, 0)
 
 	// Breadth-first search backwards until we reach a root.
 	type hop struct {
@@ -483,17 +481,27 @@ func (d *Dump) ObjectReachable(objID int64) ([]string, error) {
 	depth[o.obj] = 0
 	q := []gocore.Object{o.obj}
 	done := false
+	var reachable []*Reference
+
 	for !done {
 		if len(q) == 0 {
 			return nil, fmt.Errorf("can't find a root that can reach the object")
 		}
 		y := q[0]
 		q = q[1:]
+
+		// start (or restart)
+		reachable = make([]*Reference, 0)
+
 		d.gocore.ForEachReversePtr(y, func(x gocore.Object, r *gocore.Root, i, j int64) bool {
 			if r != nil {
 				// found it.
 				if r.Frame == nil {
-					reachable = append(reachable, r.Name)
+					reachable = append(reachable, &Reference{
+						From:   r.Name,
+						Reason: "global",
+						Type:   "root",
+					})
 				} else {
 					// Print stack up to frame in question.
 					var frames []*gocore.Frame
@@ -502,29 +510,48 @@ func (d *Dump) ObjectReachable(objID int64) ([]string, error) {
 					}
 					for k := len(frames) - 1; k >= 0; k-- {
 						// here was a line break
-						reachable = append(reachable, frames[k].Func().Name())
+						reachable = append(reachable, &Reference{
+							From:   frames[k].Func().Name(),
+							Type:   "root",
+							Reason: r.Desc,
+						})
 					}
 					// Print frame + variable in frame.
-					reachable = append(reachable, fmt.Sprintf("%s.%s", r.Frame.Func().Name(), r.Name))
+					reachable = append(reachable, &Reference{
+						From:   fmt.Sprintf("%s.%s", r.Frame.Func().Name(), r.Name),
+						Type:   "root",
+						Reason: r.Desc,
+					})
 				}
+
 				if typeName := typeFieldName(r.Type, i); typeName != "" {
 					// here was a line break
-					reachable = append(reachable, typeName)
+					reachable = append(reachable, &Reference{
+						From: typeName,
+						Type: "root",
+					})
 				}
 
 				z := y
 				for {
-					reachable = append(reachable, fmt.Sprintf("%x[%s]", d.gocore.Addr(z), typeName(d.gocore, z)))
+					reachable = append(reachable, &Reference{
+						Type:    "heap", // TODO: check if is that correct?
+						From:    typeName(d.gocore, z),
+						Pointer: fmt.Sprintf("%x", d.gocore.Addr(z)),
+					})
 
 					if z == o.obj {
-						// here was a line break
+						// we found the object
 						break
 					}
 					// Find an edge out of z which goes to an object
 					// closer to obj.
 					d.gocore.ForEachPtr(z, func(i int64, w gocore.Object, j int64) bool {
 						if dd, ok := depth[w]; ok && dd < depth[z] {
-							reachable = append(reachable, fmt.Sprintf("%s → %s", objField(d.gocore, z, i), objRegion(d.gocore, w, j)))
+							reachable = append(reachable, &Reference{
+								From: fmt.Sprintf("%s → %s", objField(d.gocore, z, i), objRegion(d.gocore, w, j)),
+								Type: "heap",
+							})
 							z = w
 							return false
 						}
@@ -535,6 +562,7 @@ func (d *Dump) ObjectReachable(objID int64) ([]string, error) {
 				done = true
 				return false
 			}
+
 			if _, ok := depth[x]; ok {
 				// we already found a shorter path to this object.
 				return true
