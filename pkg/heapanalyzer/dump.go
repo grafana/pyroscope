@@ -464,6 +464,120 @@ func (d *Dump) ObjectReferences(obj int64) ([]*Reference, error) {
 	return references, nil
 }
 
+// ObjectReachable return a shorter path from a root to a heap object.
+func (d *Dump) ObjectReachable(objID int64) ([]string, error) {
+	o, err := d.findObject(objID)
+	if err != nil {
+		return nil, err
+	}
+
+	reachable := make([]string, 0)
+
+	// Breadth-first search backwards until we reach a root.
+	type hop struct {
+		i int64         // offset in "from" object (the key in the path map) where the pointer is
+		x gocore.Object // the "to" object
+		j int64         // the offset in the "to" object
+	}
+	depth := map[gocore.Object]int{}
+	depth[o.obj] = 0
+	q := []gocore.Object{o.obj}
+	done := false
+	for !done {
+		if len(q) == 0 {
+			return nil, fmt.Errorf("can't find a root that can reach the object")
+		}
+		y := q[0]
+		q = q[1:]
+		d.gocore.ForEachReversePtr(y, func(x gocore.Object, r *gocore.Root, i, j int64) bool {
+			if r != nil {
+				// found it.
+				if r.Frame == nil {
+					reachable = append(reachable, r.Name)
+				} else {
+					// Print stack up to frame in question.
+					var frames []*gocore.Frame
+					for f := r.Frame.Parent(); f != nil; f = f.Parent() {
+						frames = append(frames, f)
+					}
+					for k := len(frames) - 1; k >= 0; k-- {
+						// here was a line break
+						reachable = append(reachable, frames[k].Func().Name())
+					}
+					// Print frame + variable in frame.
+					reachable = append(reachable, fmt.Sprintf("%s.%s", r.Frame.Func().Name(), r.Name))
+				}
+				if typeName := typeFieldName(r.Type, i); typeName != "" {
+					// here was a line break
+					reachable = append(reachable, typeName)
+				}
+
+				z := y
+				for {
+					reachable = append(reachable, fmt.Sprintf("%x[%s]", d.gocore.Addr(z), typeName(d.gocore, z)))
+
+					if z == o.obj {
+						// here was a line break
+						break
+					}
+					// Find an edge out of z which goes to an object
+					// closer to obj.
+					d.gocore.ForEachPtr(z, func(i int64, w gocore.Object, j int64) bool {
+						if dd, ok := depth[w]; ok && dd < depth[z] {
+							reachable = append(reachable, fmt.Sprintf("%s → %s", objField(d.gocore, z, i), objRegion(d.gocore, w, j)))
+							z = w
+							return false
+						}
+						return true
+					})
+					// here was a line break
+				}
+				done = true
+				return false
+			}
+			if _, ok := depth[x]; ok {
+				// we already found a shorter path to this object.
+				return true
+			}
+			depth[x] = depth[y] + 1
+			q = append(q, x)
+			return true
+		})
+	}
+
+	return reachable, nil
+}
+
+// Returns the name of the field at offset off in x.
+func objField(c *gocore.Process, x gocore.Object, off int64) string {
+	t, r := c.Type(x)
+	if t == nil {
+		return fmt.Sprintf("f%d", off)
+	}
+	s := ""
+	if r > 1 {
+		s = fmt.Sprintf("[%d]", off/t.Size)
+		off %= t.Size
+	}
+	return s + typeFieldName(t, off)
+}
+
+func objRegion(c *gocore.Process, x gocore.Object, off int64) string {
+	t, r := c.Type(x)
+	if t == nil {
+		return fmt.Sprintf("f%d", off)
+	}
+	if off == 0 {
+		return ""
+	}
+	s := ""
+	if r > 1 {
+		s = fmt.Sprintf("[%d]", off/t.Size)
+		off %= t.Size
+	}
+	return s + typeFieldName(t, off)
+}
+
 type Filter[T any] interface {
 	Filter(T) bool
 }

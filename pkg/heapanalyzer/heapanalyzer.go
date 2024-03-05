@@ -319,6 +319,46 @@ func (h *HeapAnalyzer) HeapDumpObjectHandler(w http.ResponseWriter, r *http.Requ
 	level.Info(h.logger).Log("msg", "retrieving heap dump object details", "hid", id, "oid", objID)
 }
 
+func (h *HeapAnalyzer) HeapObjectReachableHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getHeapDumpId(r)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+
+	objID, err := getObjectId(r)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+
+	h.dumpsSync.Lock()
+	defer h.dumpsSync.Unlock()
+
+	dump, err := h.getDumpLocked(id)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	reachable, err := dump.ObjectReachable(objID)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+
+	data, err := json.Marshal(reachable)
+	if err != nil {
+		httputil.Error(w, err)
+		return
+	}
+	_, err = w.Write(data)
+	if err != nil {
+		httputil.Error(w, err)
+	}
+
+	level.Info(h.logger).Log("msg", "retrieving object reachable from root", "hid", id, "oid", objID)
+}
+
 func (h *HeapAnalyzer) readHeapDumpInfo(id string) (*HeapDump, error) {
 	heapDumpBytes, err := os.ReadFile(h.localDir + "/" + id + "/" + heapDumpInfoFile)
 	if err != nil {

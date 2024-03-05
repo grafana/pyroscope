@@ -322,4 +322,5 @@ func (a *API) RegisterHeapAnalyzer(h *heapanalyzer.HeapAnalyzer) {
 	a.RegisterRoute("/heap-analyzer/heap-dump/{id}/objects", http.HandlerFunc(h.HeapDumpObjectsHandler), false, true, "GET")
 	a.RegisterRoute("/heap-analyzer/heap-dump/{id}/inspections", http.HandlerFunc(h.HeapDumpInspectionsHandler), false, true, "GET")
 	a.RegisterRoute("/heap-analyzer/heap-dump/{id}/object/{oid}", http.HandlerFunc(h.HeapDumpObjectHandler), false, true, "GET")
+	a.RegisterRoute("/heap-analyzer/heap-dump/{id}/object/{oid}/reachable", http.HandlerFunc(h.HeapObjectReachableHandler), false, true, "GET")
 }
