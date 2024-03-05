@@ -632,32 +632,36 @@ func (f ObjectTypeNameRegexFilter) Filter(o *Object) bool {
 	return f.Regexp.FindString(o.Type) != ""
 }
 
-func (d *Dump) Objects() []*Object {
-	return d.ObjectsFilter(NoFilter[*Object]{})
-}
-
-func (d *Dump) ObjectsFilter(f Filter[*Object]) []*Object {
-	var buckets []*Object
+func (d *Dump) ObjectsFilter(f Filter[*Object]) *ObjectResults {
+	result := &ObjectResults{
+		Items:      make([]*Object, 0),
+		TotalCount: 0,
+		TotalSize:  0,
+	}
 
 	d.gocore.ForEachObject(func(x gocore.Object) bool {
 		addr := fmt.Sprintf("%x", d.gocore.Addr(x))
 		typeName := typeName(d.gocore, x)
+
+		objSize := d.gocore.Size(x)
+		result.TotalCount++
+		result.TotalSize += objSize
 
 		o := &Object{
 			Id:          addr, // TODO: use real id
 			Type:        typeName,
 			Address:     addr,
 			DisplayName: typeName + " [" + addr + "]", // TODO: use real display name
-			Size:        d.gocore.Size(x),
+			Size:        objSize,
 		}
 		if f.Filter(o) {
-			buckets = append(buckets, o)
+			result.Items = append(result.Items, o)
 		}
 
 		return true
 	})
 
-	return buckets
+	return result
 }
 
 // ObjectTypes returns a list of object types in the heap, sorted by total size.

@@ -12,16 +12,32 @@ type HeapDump struct {
 	Labels    *typesv1.Labels `json:"labels"`
 }
 
+// ObjectTypeStats represents the stats of a heap object type
+// like the Type (name),Count (number of objects),
+// and Size (total size of all objects of this type in bytes)
 type ObjectTypeStats struct {
 	Type  string `json:"type"`
 	Count int64  `json:"count"`
 	Size  int64  `json:"size"`
 }
 
+// ObjectTypesResult is a wrapper for the ObjectTypeStats
+// that includes the total count and size of all objects
+// warning: TotalCount is not the same as len(Items)
+// it's a sum of all the counts in the Items
 type ObjectTypesResult struct {
 	TotalCount int64              `json:"totalCount"`
 	TotalSize  int64              `json:"totalSize"`
 	Items      []*ObjectTypeStats `json:"items"`
+}
+
+// ObjectResults is a wrapper for the Object
+// that includes the total count and size of all objects
+// in heap
+type ObjectResults struct {
+	TotalCount int64     `json:"totalCount"`
+	TotalSize  int64     `json:"totalSize"`
+	Items      []*Object `json:"items"`
 }
 
 type Object struct {

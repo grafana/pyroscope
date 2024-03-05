@@ -242,11 +242,10 @@ func (h *HeapAnalyzer) HeapDumpObjectsHandler(w http.ResponseWriter, r *http.Req
 		filter = ObjectTypeNameRegexFilter{re}
 	}
 
-	objects := dump.ObjectsFilter(filter)
+	result := dump.ObjectsFilter(filter)
+	result.Items = pagination(result.Items, r)
 
-	objects = pagination(objects, r)
-
-	data, err := json.Marshal(objects)
+	data, err := json.Marshal(result)
 	if err != nil {
 		httputil.Error(w, err)
 		return
