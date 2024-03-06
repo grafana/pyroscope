@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"runtime/debug"
 	"strconv"
@@ -50,6 +51,8 @@ type StructWithPointers struct {
 	f  *Foo
 	fs []*Foo
 }
+
+var httpHandler http.Handler
 
 var globfs []*Foo
 
@@ -110,6 +113,9 @@ func loop() {
 			pp(b)
 			dump()
 		}
+		if cnt == 0 {
+			createHandler()
+		}
 		cnt += 1
 		if loop > 2 {
 			break
@@ -117,6 +123,33 @@ func loop() {
 	}
 	fmt.Printf("+%+v %+v %+v %+v %+v %+v", a, b, foos, iiints, foosArray, foosArrayNoPointers)
 	fmt.Printf("+%+v %+v %+v %+v %+v %+v", a, b, arr, ssp)
+}
+
+func createHandler() {
+	it := new(Foo)
+	it.name = "handler"
+	it.Next = root
+
+	jit := new(Foo)
+	jit.name = "handler"
+	jit.Next = root
+
+	httpHandler = http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Write([]byte("Hello, world!"))
+		writer.Write([]byte(it.name))
+		writer.Write([]byte("Hello, world!"))
+		writer.Write([]byte(jit.name))
+		writer.Write([]byte(fmt.Sprintf("%+v", it)))
+		writer.Write([]byte(fmt.Sprintf("%+v", jit)))
+	})
+	fmt.Printf("httpHandler %x\n", unsafe.Pointer(&httpHandler))
+	debugHttpHandler()
+}
+
+func debugHttpHandler() {
+	go func() {
+		http.ListenAndServe(":8383", httpHandler)
+	}()
 }
 
 func pp(a *Foo) {

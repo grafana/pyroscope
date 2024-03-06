@@ -94,9 +94,9 @@ func (d *Dump) ObjectFields(obj int64) ([]*Field, error) {
 		} else {
 			// below it's commented a binary representation of the value
 			// like: 00 94 4a 00 00 00 00 00
-			// for j := int64(0); j < d.gocore.Process().PtrSize(); j++ {
-			// 	f.Value += fmt.Sprintf("%02x ", d.gocore.Process().ReadUint8(o.addr.Add(i+j)))
-			// }
+			for j := int64(0); j < d.gocore.Process().PtrSize(); j++ {
+				f.ValueHex += fmt.Sprintf("%02x ", d.gocore.Process().ReadUint8(o.addr.Add(i+j)))
+			}
 
 			// below it's commented a string representation of the value
 			// like: ..J....

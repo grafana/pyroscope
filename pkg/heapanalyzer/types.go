@@ -49,10 +49,11 @@ type Object struct {
 }
 
 type Field struct {
-	Name    string `json:"name,omitempty"`
-	Type    string `json:"type"`
-	Value   string `json:"value,omitempty"`
-	Pointer string `json:"pointer,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Type     string `json:"type"`
+	Value    string `json:"value,omitempty"`
+	ValueHex string `json:"value_hex,omitempty"` // for debugging unknowns
+	Pointer  string `json:"pointer,omitempty"`
 
 	Fields []*Field `json:"fields,omitempty"`
 }
