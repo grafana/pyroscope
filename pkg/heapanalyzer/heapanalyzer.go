@@ -107,6 +107,22 @@ func (h *HeapAnalyzer) IngestHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	// try to load dump: parse size & object count
+	d, err := NewDump(h.logger,
+		h.localDir+"/"+id+"/exe",
+		h.localDir+"/"+id+"/core",
+		heapDump)
+	if err != nil {
+		httputil.Error(w, fmt.Errorf("can't test dump: %w", err))
+		return
+	}
+
+	// calculate stats
+	s := d.CalculateStats()
+	heapDump.HeapStats = s
+	level.Info(h.logger).Log("msg", "heap stat size & count", s.TotalSize, s.TotalObjects)
+
 	heapDumpBytes, err := json.Marshal(heapDump)
 	if err != nil {
 		httputil.Error(w, err)

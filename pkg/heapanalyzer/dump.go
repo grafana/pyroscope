@@ -664,6 +664,24 @@ func (d *Dump) ObjectsFilter(f Filter[*Object]) *ObjectResults {
 	return result
 }
 
+// CalculateStats calculates the stats of the heap.
+// It returns the total size and the total number of objects in the heap.
+func (d *Dump) CalculateStats() HeapStats {
+	var totalCount, totalSize int64
+
+	d.gocore.ForEachObject(func(x gocore.Object) bool {
+		totalCount = totalCount + 1
+		totalSize = totalSize + d.gocore.Size(x)
+
+		return true
+	})
+
+	return HeapStats{
+		TotalSize:    totalSize,
+		TotalObjects: totalCount,
+	}
+}
+
 // ObjectTypes returns a list of object types in the heap, sorted by total size.
 func (d *Dump) ObjectTypes() *ObjectTypesResult {
 	level.Debug(d.l).Log("msg", "calculating object types")

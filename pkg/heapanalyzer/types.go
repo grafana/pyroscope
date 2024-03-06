@@ -7,9 +7,20 @@ import (
 type HeapDump struct {
 	Id string `json:"id"`
 
+	// HeapStats - stats of the heap
+	HeapStats HeapStats `json:"stats"`
+
 	// unix millis
 	CreatedAt int64           `json:"createdAt"`
 	Labels    *typesv1.Labels `json:"labels"`
+}
+
+// HeapStats represents the stats of a heap
+type HeapStats struct {
+	// TotalSize - total size of the heap in bytes
+	TotalSize int64 `json:"totalSize"`
+	// TotalObjects - number of objects in the heap
+	TotalObjects int64 `json:"totalObjects"`
 }
 
 // ObjectTypeStats represents the stats of a heap object type
