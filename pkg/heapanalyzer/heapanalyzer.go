@@ -303,6 +303,12 @@ func (h *HeapAnalyzer) HeapDumpObjectHandler(w http.ResponseWriter, r *http.Requ
 		httputil.Error(w, err)
 		return
 	}
+
+	// try to build code URLs
+	for _, f := range fields {
+		f.Url = getCodeSearchUrl(f.Type)
+	}
+
 	references, err := dump.ObjectReferences(objID)
 	if err != nil {
 		httputil.Error(w, err)
@@ -316,6 +322,7 @@ func (h *HeapAnalyzer) HeapDumpObjectHandler(w http.ResponseWriter, r *http.Requ
 			Address:     fmt.Sprintf("%x", obj.addr),
 			DisplayName: fmt.Sprintf("%s [%x]", tName, obj.addr),
 			Size:        obj.size,
+			Url:         getCodeSearchUrl(tName),
 		},
 		Fields:     fields,
 		References: references,

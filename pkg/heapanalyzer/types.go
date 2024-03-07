@@ -54,6 +54,7 @@ type ObjectResults struct {
 type Object struct {
 	Id          string `json:"id"`
 	Type        string `json:"type"`
+	Url         string `json:"url,omitempty"`
 	Address     string `json:"address"`
 	DisplayName string `json:"displayName"`
 	Size        int64  `json:"size"`
@@ -62,6 +63,7 @@ type Object struct {
 type Field struct {
 	Name     string `json:"name,omitempty"`
 	Type     string `json:"type"`
+	Url      string `json:"url,omitempty"`
 	Value    string `json:"value,omitempty"`
 	ValueHex string `json:"value_hex,omitempty"` // for debugging unknowns
 	Pointer  string `json:"pointer,omitempty"`
