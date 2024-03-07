@@ -79,20 +79,32 @@ func (r *gzipReader) openBytes(input []byte) (io.Reader, error) {
 }
 
 func NewProfile() *Profile {
-	return RawFromProto(new(profilev1.Profile))
+	return RawFromProto(profilev1.ProfileFromVTPool())
 }
 
 func RawFromProto(pbp *profilev1.Profile) *Profile {
-	return &Profile{Profile: pbp}
+	buf := bufPool.Get().(*bytes.Buffer)
+	return &Profile{Profile: pbp, buf: buf}
 }
 
+// Read RawProfile from bytes
 func RawFromBytes(input []byte) (_ *Profile, err error) {
 	gzipReader := gzipReaderPool.Get().(*gzipReader)
+	// We borrow all the necessary objects from respective pools in advance.
+	// If an error happens before the function returns, we ensure that these
+	// are returned to their pools. Otherwise, the ownership is transferred to
+	// the caller: Profile.Close must be called to dispose the resources
+	// allocated.
 	buf := bufPool.Get().(*bytes.Buffer)
+	pbp := profilev1.ProfileFromVTPool()
 	defer func() {
+		// Note that gzip reader should be returned unconditionally.
 		gzipReaderPool.Put(gzipReader)
-		buf.Reset()
-		bufPool.Put(buf)
+		if err != nil {
+			buf.Reset()
+			bufPool.Put(buf)
+			pbp.ReturnToVTPool()
+		}
 	}()
 
 	r, err := gzipReader.openBytes(input)
@@ -104,28 +116,29 @@ func RawFromBytes(input []byte) (_ *Profile, err error) {
 		return nil, errors.Wrap(err, "copy to buffer")
 	}
 
-	rawSize := buf.Len()
-	pbp := new(profilev1.Profile)
 	if err = pbp.UnmarshalVT(buf.Bytes()); err != nil {
 		return nil, err
 	}
 
-	return &Profile{
-		Profile: pbp,
-		rawSize: rawSize,
-	}, nil
+	return &Profile{Profile: pbp, buf: buf}, nil
 }
 
+// Read Profile from Bytes
 func FromBytes(input []byte, fn func(*profilev1.Profile, int) error) error {
 	p, err := RawFromBytes(input)
 	if err != nil {
 		return err
 	}
-	return fn(p.Profile, p.rawSize)
+	uncompressedSize := p.buf.Len()
+	p.buf.Reset()
+	bufPool.Put(p.buf)
+	err = fn(p.Profile, uncompressedSize)
+	p.ReturnToVTPool()
+	return err
 }
 
 func FromProfile(p *profile.Profile) (*profilev1.Profile, error) {
-	var r profilev1.Profile
+	r := profilev1.ProfileFromVTPool()
 	strings := make(map[string]int)
 
 	r.Sample = make([]*profilev1.Sample, 0, len(p.Sample))
@@ -263,7 +276,7 @@ func FromProfile(p *profile.Profile) (*profilev1.Profile, error) {
 	for s, i := range strings {
 		r.StringTable[i] = s
 	}
-	return &r, nil
+	return r, nil
 }
 
 func addString(strings map[string]int, s string) int64 {
@@ -286,19 +299,28 @@ func OpenFile(path string) (*Profile, error) {
 
 type Profile struct {
 	*profilev1.Profile
-	hasher  SampleHasher
-	rawSize int
+	// raw []byte
+	buf *bytes.Buffer
+
+	hasher SampleHasher
+}
+
+func (p *Profile) Close() {
+	p.Profile.ReturnToVTPool()
+	p.buf.Reset()
+	bufPool.Put(p.buf)
+}
+
+func (p *Profile) SizeBytes() int {
+	return p.buf.Len()
 }
 
 // WriteTo writes the profile to the given writer.
 func (p *Profile) WriteTo(w io.Writer) (int64, error) {
-	buf := bufPool.Get().(*bytes.Buffer)
-	defer func() {
-		buf.Reset()
-		bufPool.Put(buf)
-	}()
-	buf.Grow(p.SizeVT())
-	data := buf.Bytes()
+	// reuse the data buffer if possible
+	p.buf.Reset()
+	p.buf.Grow(p.SizeVT())
+	data := p.buf.Bytes()
 	n, err := p.MarshalToVT(data)
 	if err != nil {
 		return 0, err
@@ -320,6 +342,10 @@ func (p *Profile) WriteTo(w io.Writer) (int64, error) {
 	if err := gzipWriter.Close(); err != nil {
 		return 0, errors.Wrap(err, "gzip close")
 	}
+
+	// reset buffer
+	p.buf.Reset()
+
 	return int64(written), nil
 }
 

@@ -394,10 +394,10 @@ github.com/gorilla/mux v1.8.0/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB7
 github.com/gorilla/websocket v1.5.0 h1:PPwGk2jz7EePpoHN/+ClbZu8SPxiqlu12wZP/3sWmnc=
 github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6 h1:Z78JZ7pa6InQ5BcMB27M+NMTZ7LV+MXgOd3dZPfEdG4=
 github.com/grafana/dskit v0.0.0-20231221015914-de83901bf4d6/go.mod h1:kkWM4WUV230bNG3urVRWPBnSJHs64y/0RmWjftnnn0c=
-github.com/grafana/jfr-parser v0.8.1-0.20240228024232-8abcb81c304c h1:vNY68kvB3UYSeh7zHehOpfqk6CCpLYmuYKnF53GTpSk=
-github.com/grafana/jfr-parser v0.8.1-0.20240228024232-8abcb81c304c/go.mod h1:M5u1ux34Qo47ZBWksbMYVk40s7dvU3WMVYpxweEu4R0=
-github.com/grafana/jfr-parser/pprof v0.0.0-20240228024232-8abcb81c304c h1:tGu1DTlK+gbYR/uBUcRhT2OZB1dSauxamLtDuSUj7AQ=
-github.com/grafana/jfr-parser/pprof v0.0.0-20240228024232-8abcb81c304c/go.mod h1:P5406BrWxjahTzVF6aCSumNI1KPlZJc0zO0v+zKZ4gc=
+github.com/grafana/jfr-parser v0.8.0 h1:/uo2wZNXrxw7tKLFwP2omJ3EQGMkD9wzhPsRogVofc0=
+github.com/grafana/jfr-parser v0.8.0/go.mod h1:M5u1ux34Qo47ZBWksbMYVk40s7dvU3WMVYpxweEu4R0=
+github.com/grafana/jfr-parser/pprof v0.0.0-20240126072739-986e71dc0361 h1:TtNajaiSRfM2Mz8N7ouFQDFlviXbIEk9Hts0yoZnhGM=
+github.com/grafana/jfr-parser/pprof v0.0.0-20240126072739-986e71dc0361/go.mod h1:P5406BrWxjahTzVF6aCSumNI1KPlZJc0zO0v+zKZ4gc=
 github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91 h1:/NipyHnOmvRsVzj81j2qE0VxsvsqhOB0f4vJIhk2qCQ=
 github.com/grafana/memberlist v0.3.1-0.20220708130638-bd88e10a3d91/go.mod h1:MS2lj3INKhZjWNqd3N0m3J+Jxf3DAOnAH9VT3Sh9MUE=
 github.com/grafana/objstore v0.0.0-20231121154247-84f91ea90e72 h1:o22hsDMQ3kv/0N9PkzHQSd5xMmmmdA5UJR7Jb4xISZQ=

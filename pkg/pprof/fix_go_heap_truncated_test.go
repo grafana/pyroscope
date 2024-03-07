@@ -30,6 +30,7 @@ func Test_UpdateFixtures_RepairGoTruncatedStacktraces(t *testing.T) {
 		func() {
 			p, err := OpenFile(path)
 			require.NoError(t, err, path)
+			defer p.Close()
 			f, err := os.Create(path + ".fixed")
 			require.NoError(t, err, path)
 			defer f.Close()

@@ -1073,7 +1073,7 @@ func (c *querierServiceClient) SelectMergeSpanProfile(ctx context.Context, in *S
 }
 
 func (c *querierServiceClient) SelectMergeProfile(ctx context.Context, in *SelectMergeProfileRequest, opts ...grpc.CallOption) (*v11.Profile, error) {
-	out := new(v11.Profile)
+	out := v11.ProfileFromVTPool()
 	err := c.cc.Invoke(ctx, "/querier.v1.QuerierService/SelectMergeProfile", in, out, opts...)
 	if err != nil {
 		return nil, err
