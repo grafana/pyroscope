@@ -17,6 +17,11 @@ func getCodeSearchUrl(t string) string {
 		return ""
 	}
 
+	// hardcode for the demo
+	if t == "github.com/aws/aws-sdk-go/aws/endpoints.endpoint" {
+		return "https://github.com/aws/aws-sdk-go/blob/c314bba988044f1c8e47f85327898d4d9d4f72ac/aws/endpoints/defaults.go#L116"
+	}
+
 	matches := searchableType.FindStringSubmatch(t)
 	if matches == nil {
 		return ""
