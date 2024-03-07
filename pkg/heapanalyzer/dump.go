@@ -721,12 +721,15 @@ func (d *Dump) ObjectTypes() *ObjectTypesResult {
 	return result
 }
 
+const unknownTypeMarker = "Unknown ("
+const unknownTypeFMT = "Unknown (%d)"
+
 // typeName returns a string representing the type of this object.
 func typeName(c *gocore.Process, x gocore.Object) string {
 	size := c.Size(x)
 	typ, repeat := c.Type(x)
 	if typ == nil {
-		return fmt.Sprintf("unk%d", size)
+		return fmt.Sprintf(unknownTypeFMT, size)
 	}
 
 	name := typ.String()

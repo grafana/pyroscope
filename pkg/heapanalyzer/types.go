@@ -52,12 +52,13 @@ type ObjectResults struct {
 }
 
 type Object struct {
-	Id          string `json:"id"`
-	Type        string `json:"type"`
-	Url         string `json:"url,omitempty"`
-	Address     string `json:"address"`
-	DisplayName string `json:"displayName"`
-	Size        int64  `json:"size"`
+	Id            string `json:"id"`
+	Type          string `json:"type"`
+	Url           string `json:"url,omitempty"`
+	Address       string `json:"address"`
+	DisplayName   string `json:"displayName"`
+	ReachableName string `json:"reachableName,omitempty"` // for unknown types
+	Size          int64  `json:"size"`
 }
 
 type Field struct {

@@ -261,6 +261,8 @@ func (h *HeapAnalyzer) HeapDumpObjectsHandler(w http.ResponseWriter, r *http.Req
 	result := dump.ObjectsFilter(filter)
 	result.Items = pagination(result.Items, r)
 
+	fillUnknownReachableNames(dump, result)
+
 	data, err := json.Marshal(result)
 	if err != nil {
 		httputil.Error(w, err)
@@ -269,6 +271,30 @@ func (h *HeapAnalyzer) HeapDumpObjectsHandler(w http.ResponseWriter, r *http.Req
 	_, err = w.Write(data)
 	if err != nil {
 		httputil.Error(w, err)
+	}
+}
+
+func fillUnknownReachableName(dump *Dump, item *Object) {
+	if !strings.Contains(item.Type, unknownTypeMarker) {
+		return
+	}
+	o, err := strconv.ParseInt(item.Address, 16, 64)
+	if err != nil {
+		return
+	}
+	refs, err := dump.ObjectReachable(o)
+	if err != nil {
+		return
+	}
+	if len(refs) == 0 {
+		return
+	}
+	item.ReachableName = refs[0].Reason + " " + refs[0].From
+}
+
+func fillUnknownReachableNames(dump *Dump, result *ObjectResults) {
+	for _, item := range result.Items {
+		fillUnknownReachableName(dump, item)
 	}
 }
 
