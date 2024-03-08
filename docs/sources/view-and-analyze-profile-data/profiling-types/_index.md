@@ -14,7 +14,7 @@ keywords:
 
 # Understand profiling types and their uses in Pyroscope
 
-Profiling is an essential tool for understanding and optimizing application performance. In Pyroscope, various profiling types allow for an in-depth analysis of different aspects of your application. This guide will explore these types and explain their impact on your program.
+Profiling is an essential tool for understanding and optimizing application performance. In Pyroscope, various profiling types allow for an in-depth analysis of different aspects of your application. This guide explores these types and explain their impact on your program.
 
 ## Profiling types
 
@@ -22,7 +22,7 @@ In Pyroscope, profiling types refer to different dimensions of application perfo
 
 ## Available profile types
 
-Various languages support different profiling types. Pyroscope supports the following profiling types as of `v1.2.0`:
+Various languages support different profiling types. Pyroscope supports the following profiling types as of `v1.4.0`:
 
 | Profile Type       | Go    | Java  | .NET  | Ruby  | Python | Rust  | Node.js | eBPF (Go) | eBPF (Python) |
 |--------------------|-------|-------|-------|-------|--------|-------|---------|-----------|--------------|
@@ -51,26 +51,31 @@ CPU profiling measures the amount of CPU time consumed by different parts of you
 - **When to use**: To identify and optimize CPU-intensive functions
 - **Flamegraph insight**: The width of blocks indicates the CPU time consumed by each function
 
-![example flamegraph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
+As you can see here, the UI is showing a spike in CPU along with the flamegraph associated with that spike.
+Often times without profiling you may get similar insights from metrics, but with profiling you have more details into the specific cause of a spike in CPU usage at the line level
 
-As you can see here the UI is showing a spike in CPU along with the flamegraph associated with that spike. Often times without profiling you may get similar insights from metrics, but with profiling you have more details into the specific cause of a spike in CPU usage at the line level
+![example flamegraph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
 
 <!-- ## FGprof (for go)
 [todo add a link to the docs for fgprof]  -->
 
 ## Memory allocation profiling
 
-Memory allocation profiling tracks the amount and frequency of memory allocations by the application. Excessive or inefficient memory allocation can lead to memory leaks and high garbage collection overhead, impacting application efficiency.
+Memory allocation profiling tracks the amount and frequency of memory allocations by the application.
+Excessive or inefficient memory allocation can lead to memory leaks and high garbage collection overhead, impacting application efficiency.
 
 - **Types**: Alloc Objects, Alloc Space
 - **When to use**: For identifying and optimizing memory usage patterns
 - **Flamegraph insight**: Highlights functions where memory allocation is high
 
+The timeline shows memory allocations over time and is great for debugging memory related issues.
+A common example is when a memory leak is created due to improper handling of memory in a function.
+This can be identified by looking at the timeline and seeing a gradual increase in memory allocations that never goes down.
+This is a clear indicator of a memory leak.
+
 ![memory leak example](https://grafana.com/static/img/pyroscope/pyroscope-memory-leak-2023-11-30.png)
 
-The timeline shows memory allocations over time and is great for debugging memory related issues. A common example is when a memory leak is created due to improper handling of memory in a function. This can be identified by looking at the timeline and seeing a gradual increase in memory allocations that never goes down. This is a clear indicator of a memory leak.
-
-Without profiling this is may be something that is exhibited in metrics or OOM logs but with profiling you have more details into the specific function that is allocating the memory which is causiing the leak at the line level.
+Without profiling, this is may be something that's exhibited in metrics or out-of-memory errors (OOM) logs but with profiling you have more details into the specific function that's allocating the memory which is causing the leak at the line level.
 
 ## Goroutine profiling
 
@@ -93,6 +98,6 @@ Block profiling measures the frequency and duration of blocking operations, wher
 
 - **Types**: Block Count, Block Duration
 - **When to use**: To identify and reduce blocking delays
-- **Flamegraph insight**: Identifies where and how long threads are being blocked
+- **Flamegraph insight**: Identifies where and how long threads are blocked
 
 <!-- # Next Steps: Exploring Pyroscope's UI(link to ui analysis docs) -->
