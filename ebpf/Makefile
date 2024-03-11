@@ -1,7 +1,6 @@
 GO ?= go
 RIDESHARE_REPO ?= korniltsev
 RIDESHARE="testdata/rideshare-flask-no-pip"
-TMP_EBPF := $(shell pwd)/.tmp/ebpf
 
 ifeq ($(shell uname -s),Linux)
 ifeq ($(shell uname -m),x86_64)
@@ -22,7 +21,7 @@ EBPF_GO_TEST_FLAGS_ARM64 = -v
 EBPF_CGO_ENABLED_ARM64 = 0
 endif # $(shell uname -s),Linux
 
-EBPF_RUN_IN_VM ?= 0
+
 
 
 .phony: python/dwarfdump
@@ -79,51 +78,17 @@ ebpf.arm64.test:
 	CGO_ENABLED=$(EBPF_CGO_ENABLED_ARM64) GOOS=linux GOARCH=arm64 \
 		$(GO) test -c $(EBPF_GO_TEST_FLAGS_ARM64) -o ebpf.arm64.test ./
 
-ifeq ($(EBPF_RUN_IN_VM),1)
-
-$(TMP_EBPF)/vm_image_amd64: Makefile
-	mkdir -p $(TMP_EBPF)
-	docker run -v $(TMP_EBPF):/mnt/images \
-		quay.io/lvh-images/kind:6.0-main \
-		cp /data/images/kind_6.0.qcow2.zst /mnt/images/vm_image_amd64.zst
-	zstd -f -d $(TMP_EBPF)/vm_image_amd64.zst
-
-$(TMP_EBPF)/vm_image_arm64: Makefile
-	mkdir -p $(TMP_EBPF)
-	docker run -v $(TMP_EBPF):/mnt/images \
-		pyroscope/ebpf-test-vm-image:debian-5.10-aarch64 \
-		cp debian-5.10-aarch64.qcow2.zst vmlinuz-5.10.0-26-arm64 initrd.img-5.10.0-26-arm64 /mnt/images
-	zstd -f -d $(TMP_EBPF)/debian-5.10-aarch64.qcow2.zst
-	mv -f $(TMP_EBPF)/debian-5.10-aarch64.qcow2.zst $(TMP_EBPF)/vm_image_arm64
-
-
-.PHONY: go/test/amd64
-go/test/amd64: $(TMP_EBPF)/vm_image_amd64 ebpf.amd64.test
-	bash vmrun_amd64.sh $(TMP_EBPF)/vm_image_amd64 ebpf.amd64.test
-
-.PHONY: go/test/arm64
-go/test/arm64: $(TMP_EBPF)/vm_image_arm64 ebpf.arm64.test
-	bash vmrun_arm64.sh \
-		$(TMP_EBPF)/vmlinuz-5.10.0-26-arm64 \
-		$(TMP_EBPF)/initrd.img-5.10.0-26-arm64  \
-		$(TMP_EBPF)/debian-5.10-aarch64.qcow2 \
-		ebpf.arm64.test
-else
-
 .PHONY: go/test/amd64
 go/test/amd64: ebpf.amd64.test
 	whoami | grep root
 	uname -m | grep x86_64
 	./ebpf.amd64.test
 
-
 .PHONY: go/test/arm64
 go/test/arm64: ebpf.arm64.test
 	whoami | grep root
 	uname -m | grep aarch64
 	./ebpf.arm64.test
-
-endif
 
 .phony: rideshare/gen
 rideshare/gen:
