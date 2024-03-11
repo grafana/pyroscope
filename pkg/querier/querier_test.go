@@ -2,9 +2,12 @@ package querier
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
+	"path"
 	"sort"
 	"testing"
 	"time"
@@ -13,6 +16,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/pprof/profile"
+	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
 	"github.com/prometheus/common/model"
@@ -27,9 +31,15 @@ import (
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/pkg/storegateway"
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/testhelper"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type poolFactory struct {
@@ -1353,6 +1363,98 @@ func Test_splitQueryToStores(t *testing.T) {
 			require.Equal(t, tc.expected, actual)
 		})
 	}
+}
+
+func Test_GetProfileStats(t *testing.T) {
+	ctx := tenant.InjectTenantID(context.Background(), "1234")
+
+	dbPath := t.TempDir()
+	localBucket, err := objstoreclient.NewBucket(ctx, objstoreclient.Config{
+		StorageBackendConfig: objstoreclient.StorageBackendConfig{
+			Backend: objstoreclient.Filesystem,
+			Filesystem: filesystem.Config{
+				Directory: dbPath,
+			},
+		},
+		StoragePrefix: "testdata",
+	}, "")
+	require.NoError(t, err)
+
+	index := bucketindex.Index{Blocks: []*bucketindex.Block{{
+		MinTime: 0,
+		MaxTime: 3,
+	}},
+		Version: bucketindex.IndexVersion3,
+	}
+	indexJson, err := json.Marshal(index)
+	require.NoError(t, err)
+
+	var gzipContent bytes.Buffer
+	gzip := gzip.NewWriter(&gzipContent)
+	gzip.Name = bucketindex.IndexFilename
+	_, err = gzip.Write(indexJson)
+	gzip.Close()
+	require.NoError(t, err)
+
+	err = localBucket.Upload(ctx, path.Join("1234", "phlaredb", bucketindex.IndexCompressedFilename), &gzipContent)
+	require.NoError(t, err)
+
+	req := connect.NewRequest(&typesv1.GetProfileStatsRequest{})
+	querier, err := New(&NewQuerierParams{
+		Cfg: Config{
+			PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+		},
+		IngestersRing: testhelper.NewMockRing([]ring.InstanceDesc{
+			{Addr: "1"},
+			{Addr: "2"},
+			{Addr: "3"},
+		}, 3),
+		PoolFactory: &poolFactory{f: func(addr string) (client.PoolClient, error) {
+			q := newFakeQuerier()
+			switch addr {
+			case "1":
+				q.On("GetProfileStats", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.GetProfileStatsResponse{
+					DataIngested:      true,
+					OldestProfileTime: 1,
+					NewestProfileTime: 4,
+				}), nil)
+			case "2":
+				q.On("GetProfileStats", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.GetProfileStatsResponse{
+					DataIngested:      true,
+					OldestProfileTime: 1,
+					NewestProfileTime: 5,
+				}), nil)
+			case "3":
+				q.On("GetProfileStats", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.GetProfileStatsResponse{
+					DataIngested:      true,
+					OldestProfileTime: 2,
+					NewestProfileTime: 5,
+				}), nil)
+			}
+			return q, nil
+		}},
+		Logger:        log.NewLogfmtLogger(os.Stdout),
+		StorageBucket: localBucket,
+		StoreGatewayCfg: storegateway.Config{
+			ShardingRing: storegateway.RingConfig{
+				Ring: util.CommonRingConfig{
+					KVStore: kv.Config{
+						Store: "inmemory",
+					},
+				},
+				ReplicationFactor: 1,
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	out, err := querier.GetProfileStats(ctx, req)
+	require.NoError(t, err)
+	require.Equal(t, &typesv1.GetProfileStatsResponse{
+		DataIngested:      true,
+		OldestProfileTime: 0,
+		NewestProfileTime: 5,
+	}, out.Msg)
 }
 
 // The code below can be useful for testing deduping directly to a cluster.

@@ -2,6 +2,7 @@ package phlaredb
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"os"
 	"testing"
@@ -22,6 +23,7 @@ import (
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/testhelper"
 )
 
@@ -566,6 +568,47 @@ func Test_endRangeForTimestamp(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.expected, endRangeForTimestamp(tt.ts, 1*time.Hour.Nanoseconds()))
+		})
+	}
+}
+
+func Test_getProfileStatsFromMetas(t *testing.T) {
+	tests := []struct {
+		name  string
+		metas []*block.Meta
+		want  *typesv1.GetProfileStatsResponse
+	}{
+		{
+			name:  "no metas should result in no data ingested",
+			metas: []*block.Meta{},
+			want: &typesv1.GetProfileStatsResponse{
+				DataIngested:      false,
+				OldestProfileTime: math.MaxInt64,
+				NewestProfileTime: math.MinInt64,
+			},
+		},
+		{
+			name: "valid metas should result in data ingested",
+			metas: []*block.Meta{
+				{
+					MinTime: model.TimeFromUnix(1710161819),
+					MaxTime: model.TimeFromUnix(1710172239),
+				},
+				{
+					MinTime: model.TimeFromUnix(1710171819),
+					MaxTime: model.TimeFromUnix(1710174239),
+				},
+			},
+			want: &typesv1.GetProfileStatsResponse{
+				DataIngested:      true,
+				OldestProfileTime: 1710161819000,
+				NewestProfileTime: 1710174239000,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, getProfileStatsFromMetas(tt.metas), "getProfileStatsFromMetas(%v)", tt.metas)
 		})
 	}
 }

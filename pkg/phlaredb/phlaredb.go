@@ -547,6 +547,11 @@ func (f *PhlareDB) GetProfileStats(ctx context.Context, req *connect.Request[typ
 	}
 	f.blockQuerier.queriersLock.RUnlock()
 
+	response := getProfileStatsFromMetas(metas)
+	return connect.NewResponse(response), nil
+}
+
+func getProfileStatsFromMetas(metas []*block.Meta) *typesv1.GetProfileStatsResponse {
 	response := &typesv1.GetProfileStatsResponse{
 		DataIngested:      len(metas) > 0,
 		OldestProfileTime: math.MaxInt64,
@@ -561,6 +566,5 @@ func (f *PhlareDB) GetProfileStats(ctx context.Context, req *connect.Request[typ
 			response.NewestProfileTime = m.MaxTime.Time().UnixMilli()
 		}
 	}
-
-	return connect.NewResponse(response), nil
+	return response
 }
