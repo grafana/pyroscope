@@ -36,3 +36,7 @@ The nodes below those represent the functions that were called from those functi
 This continues until you reach the bottom of the flamegraph.
 
 This is a CPU profile, but profiles can represent many other types of resource such as memory, network, disk, etc.
+
+## Flamegraph visualization panel UI
+
+To learn more about the flamegraph user interface, refer to [Flame graph visualization panel](https://grafana.com/docs/grafana-cloud/visualizations/panels-visualizations/visualizations/flame-graph).

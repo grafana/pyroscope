@@ -30,13 +30,14 @@ You can export profiling data from Pyroscope in various formats:
 
 Integrating Pyroscope with Grafana is a common and recommended approach for visualizing profiling data. Grafana, being a powerful tool for data visualization, can effectively display profiling data in an accessible and insightful manner.
 
-Options for Visualizing Data in Grafana:
+Options for visualizing data in Grafana:
+
 - **Pyroscope App Plugin**: This plugin is specifically designed for Pyroscope data. It allows for easy browsing, analysis, and comparison of multiple profiles across different labels or time periods. This is particularly useful for a comprehensive overview of your application's performance.
-- **Explore Tab**: In Grafana, the Explore tab is suited for making targeted queries on your profiling data. This is useful for in-depth analysis of specific aspects of your application's performance.
+- **Explore tab**: In Grafana, **Explore** is suited for making targeted queries on your profiling data. This is useful for in-depth analysis of specific aspects of your application's performance.
 - **Dashboard**: Grafana dashboards are excellent for integrating profiling data with other metrics. You can display Pyroscope data alongside other dashboard items, creating a unified view of your application’s overall health and performance.
 
 For more information on using profiles in Grafana, refer to [Pyroscope and profiles in Grafana]({{< relref "../introduction/pyroscope-in-grafana#pyroscope-and-profiling-in-grafana" >}}).
 
-The Pyroscope app plugin works for Grafana Cloud. 
+The Pyroscope app plugin works for Grafana Cloud.
 
 For more information on configuring these data sources, refer to the Pyroscope data source documentation in [Grafana Cloud](/docs/grafana-cloud/connect-externally-hosted/data-sources/grafana-pyroscope/) and [Grafana](/docs/grafana/latest/datasources/grafana-pyroscope/).
