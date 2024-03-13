@@ -12,7 +12,10 @@ keywords:
 
 Grafana Pyroscope is a multi-tenant continuous profiling aggregation system, aligning its architectural design with Grafana Mimir, Grafana Loki, and Grafana Tempo. It facilitates the ingestion, storage, and querying of profiles and seamlessly integrates with Grafana, enabling a cohesive correlation of profiling data with existing metrics, logs, and traces.
 
-Engineers utilizing Pyroscope gain the ability to delve deep into the performance attributes and resource demands of their applications. Boasting an intuitive interface coupled with a vivid data visualization, Pyroscope transforms raw profiling data into readily actionable insights.
+Engineers using Pyroscope gain the ability to delve deep into the performance attributes and resource demands of their applications.
+Boasting an intuitive interface coupled with a vivid data visualization, Pyroscope transforms raw profiling data into readily actionable insights.
+
+{{< youtube id="XL2yTCPy2e0" >}}
 
 ## Why Pyroscope
 
