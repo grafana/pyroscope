@@ -285,11 +285,6 @@ type BlockInfo struct {
 	Series      uint64
 }
 
-func (b *BlockQuerier) BlockInfo() []BlockInfo {
-	result := make([]BlockInfo, len(b.queriers))
-	return result
-}
-
 type singleBlockQuerier struct {
 	logger  log.Logger
 	metrics *BlocksMetrics

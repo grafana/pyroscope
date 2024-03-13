@@ -200,10 +200,10 @@ func (r *replicasPerBlockID) removeBlock(ulid string) {
 }
 
 // this step removes sharded blocks that don't have all the shards present for a time window
-func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() error {
+func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() (bool, error) {
 	type compactionKey struct {
-		level int32
-		minT  int64
+		level   int32
+		minTime int64
 	}
 	compactions := make(map[compactionKey][]string)
 
@@ -211,15 +211,12 @@ func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() error {
 	for blockID := range r.m {
 		meta, ok := r.meta[blockID]
 		if !ok {
-			return fmt.Errorf("meta missing for block id %s", blockID)
-		}
-		if !ok {
-			continue
+			return false, fmt.Errorf("meta missing for block id %s", blockID)
 		}
 
 		key := compactionKey{
-			level: 0,
-			minT:  meta.MinTime,
+			level:   0,
+			minTime: meta.MinTime,
 		}
 
 		if meta.Compaction != nil {
@@ -230,8 +227,9 @@ func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() error {
 
 	// now we go through every group and check if we see at least a block for each shard
 	var (
-		shardsSeen    []bool
-		shardedBlocks []string
+		shardsSeen       []bool
+		shardedBlocks    []string
+		hasShardedBlocks bool
 	)
 	for _, blocks := range compactions {
 		shardsSeen = shardsSeen[:0]
@@ -239,7 +237,7 @@ func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() error {
 		for _, block := range blocks {
 			meta, ok := r.meta[block]
 			if !ok {
-				return fmt.Errorf("meta missing for block id %s", block)
+				return false, fmt.Errorf("meta missing for block id %s", block)
 			}
 
 			shardIdx, shards, ok := shardFromBlock(meta)
@@ -247,6 +245,7 @@ func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() error {
 				// not a sharded block continue
 				continue
 			}
+			hasShardedBlocks = true
 			shardedBlocks = append(shardedBlocks, block)
 
 			if len(shardsSeen) == 0 {
@@ -261,7 +260,7 @@ func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() error {
 			}
 
 			if len(shardsSeen) != int(shards) {
-				return fmt.Errorf("shard length mismatch, shards seen: %d, shards as per label: %d", len(shardsSeen), shards)
+				return false, fmt.Errorf("shard length mismatch, shards seen: %d, shards as per label: %d", len(shardsSeen), shards)
 			}
 
 			shardsSeen[shardIdx] = true
@@ -285,22 +284,30 @@ func (r *replicasPerBlockID) pruneIncompleteShardedBlocks() error {
 		}
 	}
 
-	return nil
+	return hasShardedBlocks, nil
 }
 
 // prunes blocks that are contained by a higher compaction level block
-func (r *replicasPerBlockID) pruneSupersededBlocks() error {
+func (r *replicasPerBlockID) pruneSupersededBlocks(sharded bool) error {
 	for blockID := range r.m {
 		meta, ok := r.meta[blockID]
 		if !ok {
-			if !ok {
-				return fmt.Errorf("meta missing for block id %s", blockID)
-			}
+			return fmt.Errorf("meta missing for block id %s", blockID)
 		}
 		if meta.Compaction == nil {
 			continue
 		}
 		if meta.Compaction.Level < 2 {
+			continue
+		}
+		// At split phase of compaction, L2 is an intermediate step where we
+		// split each group into split_shards parts, thus there will be up to
+		// groups_num * split_shards blocks, which is typically _significantly_
+		// greater that the number of source blocks. Moreover, these blocks are
+		// not yet deduplicated, therefore we should prefer L1 blocks over them.
+		// As an optimisation, we drop all L2 blocks.
+		if sharded && meta.Compaction.Level == 2 {
+			r.removeBlock(blockID)
 			continue
 		}
 		for _, blockID := range meta.Compaction.Parents {
@@ -331,11 +338,21 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1
 		smallestCompactionLevel = int32(0)
 	)
 
-	if err := r.pruneIncompleteShardedBlocks(); err != nil {
+	sharded, err := r.pruneIncompleteShardedBlocks()
+	if err != nil {
 		level.Warn(r.logger).Log("msg", "block planning failed to prune incomplete sharded blocks", "err", err)
 		return nil
 	}
-	if err := r.pruneSupersededBlocks(); err != nil {
+
+	// Depending on whether split sharding is used, the compaction level at
+	// which we the data gets deduplicated differs: if split sharding is
+	// enabled, we deduplicate at level 3, and at level 2 otherwise.
+	var deduplicationLevel int32 = 2
+	if sharded {
+		deduplicationLevel = 3
+	}
+
+	if err := r.pruneSupersededBlocks(sharded); err != nil {
 		level.Warn(r.logger).Log("msg", "block planning failed to prune superseded blocks", "err", err)
 		return nil
 	}
@@ -351,8 +368,9 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1
 		if !ok {
 			continue
 		}
-		// when we see a block with CompactionLevel <=1 or a block without compaction section, we want the queriers to deduplicate
-		if meta.Compaction == nil || meta.Compaction.Level <= 1 {
+		// when we see a block with CompactionLevel less than the level at which data is deduplicated,
+		// or a block without compaction section, we want the queriers to deduplicate
+		if meta.Compaction == nil || meta.Compaction.Level < deduplicationLevel {
 			deduplicate = true
 		}
 
