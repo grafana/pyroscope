@@ -1,5 +1,5 @@
 ---
-title: "Linking tracing and profiling with span profiles"
+title: "Linking tracing and profiling with Span Profiles"
 menuTitle: "Linking traces and profiles"
 description: "Learn how to configure the client to Link tracing and profiling with span profiles."
 weight: 35
