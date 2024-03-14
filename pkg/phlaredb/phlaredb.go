@@ -2,6 +2,7 @@ package phlaredb
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"math"
@@ -530,41 +531,52 @@ func (f *PhlareDB) GetProfileStats(ctx context.Context, req *connect.Request[typ
 	sp, _ := opentracing.StartSpanFromContext(ctx, "PhlareDB GetProfileStats")
 	defer sp.Finish()
 
-	metas := make([]*block.Meta, 0)
+	minTimes := make([]model.Time, 0)
+	maxTimes := make([]model.Time, 0)
 
 	f.headLock.RLock()
 	for _, h := range f.heads {
-		metas = append(metas, h.meta)
+		minT, maxT := h.Bounds()
+		minTimes = append(minTimes, minT)
+		maxTimes = append(maxTimes, maxT)
 	}
 	for _, h := range f.flushing {
-		metas = append(metas, h.meta)
+		minT, maxT := h.Bounds()
+		minTimes = append(minTimes, minT)
+		maxTimes = append(maxTimes, maxT)
 	}
 	f.headLock.RUnlock()
 
 	f.blockQuerier.queriersLock.RLock()
 	for _, q := range f.blockQuerier.queriers {
-		metas = append(metas, q.meta)
+		minT, maxT := q.Bounds()
+		minTimes = append(minTimes, minT)
+		maxTimes = append(maxTimes, maxT)
 	}
 	f.blockQuerier.queriersLock.RUnlock()
 
-	response := getProfileStatsFromMetas(metas)
-	return connect.NewResponse(response), nil
+	response, err := getProfileStatsFromBounds(minTimes, maxTimes)
+	return connect.NewResponse(response), err
 }
 
-func getProfileStatsFromMetas(metas []*block.Meta) *typesv1.GetProfileStatsResponse {
+func getProfileStatsFromBounds(minTimes, maxTimes []model.Time) (*typesv1.GetProfileStatsResponse, error) {
+	if len(minTimes) != len(maxTimes) {
+		return nil, errors.New("minTimes and maxTimes differ in length")
+	}
 	response := &typesv1.GetProfileStatsResponse{
-		DataIngested:      len(metas) > 0,
+		DataIngested:      len(minTimes) > 0,
 		OldestProfileTime: math.MaxInt64,
 		NewestProfileTime: math.MinInt64,
 	}
 
-	for _, m := range metas {
-		if response.OldestProfileTime > m.MinTime.Time().UnixMilli() {
-			response.OldestProfileTime = m.MinTime.Time().UnixMilli()
+	for i, minTime := range minTimes {
+		maxTime := maxTimes[i]
+		if response.OldestProfileTime > minTime.Time().UnixMilli() {
+			response.OldestProfileTime = minTime.Time().UnixMilli()
 		}
-		if response.NewestProfileTime < m.MaxTime.Time().UnixMilli() {
-			response.NewestProfileTime = m.MaxTime.Time().UnixMilli()
+		if response.NewestProfileTime < maxTime.Time().UnixMilli() {
+			response.NewestProfileTime = maxTime.Time().UnixMilli()
 		}
 	}
-	return response
+	return response, nil
 }
