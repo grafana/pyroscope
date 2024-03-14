@@ -17,7 +17,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
-	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/symdb"
 )
 
@@ -101,7 +100,11 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 
 	// Sort profiles by time, the slice is already sorted by series order
 	sort.Slice(profiles, func(i, j int) bool {
-		return profiles[i].Timestamp() < profiles[j].Timestamp()
+		a, b := profiles[i], profiles[j]
+		if a.Timestamp() != b.Timestamp() {
+			return a.Timestamp() < b.Timestamp()
+		}
+		return phlaremodel.CompareLabelPairs(a.Labels(), b.Labels()) < 0
 	})
 
 	return iter.NewSliceIterator(profiles), nil
@@ -374,29 +377,41 @@ func (q *headInMemoryQuerier) SelectMatchingProfiles(ctx context.Context, params
 		end   = model.Time(params.End)
 	)
 
-	iters := make([]iter.Iterator[Profile], 0, len(ids))
 	index.mutex.RLock()
-	defer index.mutex.RUnlock()
-
+	var size int
+	for _, v := range index.profilesPerFP {
+		size += len(v.profiles)
+	}
+	profiles := make([]Profile, 0, size)
 	for _, fp := range ids {
-		profileSeries, ok := index.profilesPerFP[fp]
+		s, ok := index.profilesPerFP[fp]
 		if !ok {
 			continue
 		}
-
-		profiles := make([]*schemav1.InMemoryProfile, len(profileSeries.profiles))
-		copy(profiles, profileSeries.profiles)
-
-		iters = append(iters,
-			NewSeriesIterator(
-				profileSeries.lbs,
-				profileSeries.fp,
-				iter.NewTimeRangedIterator(iter.NewSliceIterator(profiles), start, end),
-			),
-		)
+		for _, p := range s.profiles {
+			if p.Timestamp() > end {
+				break
+			}
+			if p.Timestamp() < start {
+				continue
+			}
+			profiles = append(profiles, ProfileWithLabels{
+				profile: p,
+				lbs:     s.lbs,
+				fp:      s.fp,
+			})
+		}
 	}
+	index.mutex.RUnlock()
 
-	return iter.NewMergeIterator(maxBlockProfile, false, iters...), nil
+	sort.Slice(profiles, func(i, j int) bool {
+		a, b := profiles[i], profiles[j]
+		if a.Timestamp() != b.Timestamp() {
+			return a.Timestamp() < b.Timestamp()
+		}
+		return phlaremodel.CompareLabelPairs(a.Labels(), b.Labels()) < 0
+	})
+	return iter.NewSliceIterator(profiles), nil
 }
 
 func (q *headInMemoryQuerier) SelectMergeByStacktraces(ctx context.Context, params *ingestv1.SelectProfilesRequest) (*phlaremodel.Tree, error) {
