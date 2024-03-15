@@ -190,9 +190,28 @@ func Test_replicasPerBlockID_blockPlan(t *testing.T) {
 					{
 						addr: "store-gateway-0",
 						response: []*typesv1.BlockInfo{
-							newBlockInfo("a-1").withCompactionLevel(2).withCompactionSources("a").withCompactionParents("a").withCompactorShard(1, 2).withMinTime(t1, time.Hour-time.Second).info(),
-							newBlockInfo("b-1").withCompactionLevel(2).withCompactionSources("b").withCompactionParents("b").withCompactorShard(2, 2).withMinTime(t2, time.Hour-(500*time.Millisecond)).info(),
-							newBlockInfo("b-2").withCompactionLevel(2).withCompactionSources("b").withCompactionParents("b").withCompactorShard(2, 2).withMinTime(t2, time.Hour-time.Second).info(),
+							newBlockInfo("a-1").
+								withCompactionLevel(3).
+								withCompactionSources("a").
+								withCompactionParents("a").
+								withCompactorShard(0, 2).
+								withMinTime(t1, time.Hour-time.Second).
+								info(),
+
+							newBlockInfo("b-1").
+								withCompactionLevel(3).
+								withCompactionSources("b").
+								withCompactionParents("b").
+								withCompactorShard(0, 2).
+								withMinTime(t2, time.Hour-(500*time.Millisecond)).info(),
+
+							newBlockInfo("b-2").
+								withCompactionLevel(3).
+								withCompactionSources("b").
+								withCompactionParents("b").
+								withCompactorShard(1, 2).
+								withMinTime(t2, time.Hour-time.Second).
+								info(),
 						},
 					},
 				}, storeGatewayInstance)
@@ -205,8 +224,9 @@ func Test_replicasPerBlockID_blockPlan(t *testing.T) {
 			},
 		},
 		{
-			// Using a split-and-merge compactor, the level 2 will be referencing sources but will not guarantee that all the source is in the
-			// TEST if all splits are there before erasing the level 1 before.
+			// Using a split-and-merge compactor, deduplication happens at level 3,
+			// level 2 is intermediate step, where series distributed among shards
+			// but not yet deduplicated.
 			name: "ignore blocks which are sharded and in level 2",
 			inputs: func(r *replicasPerBlockID) {
 				r.add([]ResponseFromReplica[[]*typesv1.BlockInfo]{
@@ -223,6 +243,25 @@ func Test_replicasPerBlockID_blockPlan(t *testing.T) {
 						addr: "store-gateway-0",
 						response: []*typesv1.BlockInfo{
 							newBlockInfo("a").info(),
+							newBlockInfo("a-1").
+								withCompactionLevel(2).
+								withCompactionSources("a").
+								withCompactionParents("a").
+								withCompactorShard(0, 2).
+								info(),
+
+							newBlockInfo("a-2").
+								withCompactionLevel(2).
+								withCompactionSources("a").
+								withCompactionParents("a").
+								withCompactorShard(1, 2).
+								info(),
+
+							newBlockInfo("a-3").
+								withCompactionLevel(3).
+								withCompactionSources("a-2").
+								withCompactorShard(0, 3).
+								info(),
 						},
 					},
 				}, storeGatewayInstance)
