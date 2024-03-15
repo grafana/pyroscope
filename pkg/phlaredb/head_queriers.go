@@ -101,7 +101,11 @@ func (q *headOnDiskQuerier) SelectMatchingProfiles(ctx context.Context, params *
 
 	// Sort profiles by time, the slice is already sorted by series order
 	sort.Slice(profiles, func(i, j int) bool {
-		return profiles[i].Timestamp() < profiles[j].Timestamp()
+		a, b := profiles[i], profiles[j]
+		if a.Timestamp() != b.Timestamp() {
+			return a.Timestamp() < b.Timestamp()
+		}
+		return phlaremodel.CompareLabelPairs(a.Labels(), b.Labels()) < 0
 	})
 
 	return iter.NewSliceIterator(profiles), nil
