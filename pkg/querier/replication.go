@@ -345,8 +345,8 @@ func (r *replicasPerBlockID) blockPlan(ctx context.Context) map[string]*ingestv1
 	}
 
 	// Depending on whether split sharding is used, the compaction level at
-	// which we the data gets deduplicated differs: if split sharding is
-	// enabled, we deduplicate at level 3, and at level 2 otherwise.
+	// which the data gets deduplicated differs: if split sharding is enabled,
+	// we deduplicate at level 3, and at level 2 otherwise.
 	var deduplicationLevel int32 = 2
 	if sharded {
 		deduplicationLevel = 3
