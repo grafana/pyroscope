@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/dskit/dns"
@@ -245,20 +246,18 @@ func (f *Phlare) setupWorkerTimeout() {
 }
 
 func (f *Phlare) initQuerier() (services.Service, error) {
-	var (
-		storeGatewayQuerier *querier.StoreGatewayQuerier
-		err                 error
-	)
-
-	// if a storage bucket is configure we need to create a store gateway querier
-	if f.storageBucket != nil {
-		storeGatewayQuerier, err = querier.NewStoreGatewayQuerier(f.Cfg.StoreGateway, nil, f.Overrides, log.With(f.logger, "component", "store-gateway-querier"), f.reg, f.auth)
-		if err != nil {
-			return nil, err
-		}
+	newQuerierParams := &querier.NewQuerierParams{
+		Cfg:             f.Cfg.Querier,
+		StoreGatewayCfg: f.Cfg.StoreGateway,
+		Overrides:       f.Overrides,
+		CfgProvider:     f.Overrides,
+		StorageBucket:   f.storageBucket,
+		IngestersRing:   f.ring,
+		Reg:             f.reg,
+		Logger:          log.With(f.logger, "component", "querier"),
+		ClientOptions:   []connect.ClientOption{f.auth},
 	}
-
-	querierSvc, err := querier.New(f.Cfg.Querier, f.ring, nil, storeGatewayQuerier, f.reg, log.With(f.logger, "component", "querier"), f.auth)
+	querierSvc, err := querier.New(newQuerierParams)
 	if err != nil {
 		return nil, err
 	}
@@ -267,12 +266,12 @@ func (f *Phlare) initQuerier() (services.Service, error) {
 		f.API.RegisterPyroscopeHandlers(querierSvc)
 		f.API.RegisterQuerier(querierSvc)
 	}
-	worker, err := worker.NewQuerierWorker(f.Cfg.Worker, querier.NewGRPCHandler(querierSvc), log.With(f.logger, "component", "querier-worker"), f.reg)
+	qWorker, err := worker.NewQuerierWorker(f.Cfg.Worker, querier.NewGRPCHandler(querierSvc), log.With(f.logger, "component", "querier-worker"), f.reg)
 	if err != nil {
 		return nil, err
 	}
 
-	sm, err := services.NewManager(querierSvc, worker)
+	sm, err := services.NewManager(querierSvc, qWorker)
 	if err != nil {
 		return nil, err
 	}

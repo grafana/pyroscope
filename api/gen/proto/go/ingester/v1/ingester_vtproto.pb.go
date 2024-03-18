@@ -1571,6 +1571,8 @@ type IngesterServiceClient interface {
 	MergeProfilesPprof(ctx context.Context, opts ...grpc.CallOption) (IngesterService_MergeProfilesPprofClient, error)
 	MergeSpanProfile(ctx context.Context, opts ...grpc.CallOption) (IngesterService_MergeSpanProfileClient, error)
 	BlockMetadata(ctx context.Context, in *BlockMetadataRequest, opts ...grpc.CallOption) (*BlockMetadataResponse, error)
+	// GetProfileStats returns profile stats for the current tenant.
+	GetProfileStats(ctx context.Context, in *v1.GetProfileStatsRequest, opts ...grpc.CallOption) (*v1.GetProfileStatsResponse, error)
 }
 
 type ingesterServiceClient struct {
@@ -1768,6 +1770,15 @@ func (c *ingesterServiceClient) BlockMetadata(ctx context.Context, in *BlockMeta
 	return out, nil
 }
 
+func (c *ingesterServiceClient) GetProfileStats(ctx context.Context, in *v1.GetProfileStatsRequest, opts ...grpc.CallOption) (*v1.GetProfileStatsResponse, error) {
+	out := new(v1.GetProfileStatsResponse)
+	err := c.cc.Invoke(ctx, "/ingester.v1.IngesterService/GetProfileStats", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // IngesterServiceServer is the server API for IngesterService service.
 // All implementations must embed UnimplementedIngesterServiceServer
 // for forward compatibility
@@ -1785,6 +1796,8 @@ type IngesterServiceServer interface {
 	MergeProfilesPprof(IngesterService_MergeProfilesPprofServer) error
 	MergeSpanProfile(IngesterService_MergeSpanProfileServer) error
 	BlockMetadata(context.Context, *BlockMetadataRequest) (*BlockMetadataResponse, error)
+	// GetProfileStats returns profile stats for the current tenant.
+	GetProfileStats(context.Context, *v1.GetProfileStatsRequest) (*v1.GetProfileStatsResponse, error)
 	mustEmbedUnimplementedIngesterServiceServer()
 }
 
@@ -1824,6 +1837,9 @@ func (UnimplementedIngesterServiceServer) MergeSpanProfile(IngesterService_Merge
 }
 func (UnimplementedIngesterServiceServer) BlockMetadata(context.Context, *BlockMetadataRequest) (*BlockMetadataResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BlockMetadata not implemented")
+}
+func (UnimplementedIngesterServiceServer) GetProfileStats(context.Context, *v1.GetProfileStatsRequest) (*v1.GetProfileStatsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetProfileStats not implemented")
 }
 func (UnimplementedIngesterServiceServer) mustEmbedUnimplementedIngesterServiceServer() {}
 
@@ -2068,6 +2084,24 @@ func _IngesterService_BlockMetadata_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IngesterService_GetProfileStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.GetProfileStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IngesterServiceServer).GetProfileStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ingester.v1.IngesterService/GetProfileStats",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IngesterServiceServer).GetProfileStats(ctx, req.(*v1.GetProfileStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // IngesterService_ServiceDesc is the grpc.ServiceDesc for IngesterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2102,6 +2136,10 @@ var IngesterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BlockMetadata",
 			Handler:    _IngesterService_BlockMetadata_Handler,
+		},
+		{
+			MethodName: "GetProfileStats",
+			Handler:    _IngesterService_GetProfileStats_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

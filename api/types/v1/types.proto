@@ -83,3 +83,14 @@ message StackTraceSelector {
 message Location {
   string name = 1;
 }
+
+message GetProfileStatsRequest {}
+
+message GetProfileStatsResponse {
+  // Whether we received any data at any time in the past.
+  bool data_ingested = 1;
+  // Milliseconds since epoch.
+  int64 oldest_profile_time = 2;
+  // Milliseconds since epoch.
+  int64 newest_profile_time = 3;
+}

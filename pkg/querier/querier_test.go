@@ -2,9 +2,12 @@ package querier
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
+	"path"
 	"sort"
 	"testing"
 	"time"
@@ -13,6 +16,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/pprof/profile"
+	"github.com/grafana/dskit/kv"
 	"github.com/grafana/dskit/ring"
 	"github.com/grafana/dskit/ring/client"
 	"github.com/prometheus/common/model"
@@ -27,9 +31,15 @@ import (
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	objstoreclient "github.com/grafana/pyroscope/pkg/objstore/client"
+	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
+	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	pprofth "github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/pkg/storegateway"
+	"github.com/grafana/pyroscope/pkg/tenant"
 	"github.com/grafana/pyroscope/pkg/testhelper"
+	"github.com/grafana/pyroscope/pkg/util"
 )
 
 type poolFactory struct {
@@ -41,45 +51,52 @@ func (p poolFactory) FromInstance(desc ring.InstanceDesc) (client.PoolClient, er
 }
 
 func Test_QuerySampleType(t *testing.T) {
-	querier, err := New(Config{
-		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-	}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "1"},
-		{Addr: "2"},
-		{Addr: "3"},
-	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
-		q := newFakeQuerier()
-		switch addr {
-		case "1":
-			q.On("LabelValues", mock.Anything, mock.Anything).
-				Return(connect.NewResponse(&typesv1.LabelValuesResponse{
-					Names: []string{
-						"foo::::",
-						"bar::::",
-					},
-				}), nil)
-		case "2":
-			q.On("LabelValues", mock.Anything, mock.Anything).
-				Return(connect.NewResponse(&typesv1.LabelValuesResponse{
-					Names: []string{
-						"bar::::",
-						"buzz::::",
-					},
-				}), nil)
-		case "3":
-			q.On("LabelValues", mock.Anything, mock.Anything).
-				Return(connect.NewResponse(&typesv1.LabelValuesResponse{
-					Names: []string{
-						"buzz::::",
-						"foo::::",
-					},
-				}), nil)
-		}
-		return q, nil
-	}}, nil, nil, log.NewLogfmtLogger(os.Stdout))
-
+	querier, err := New(&NewQuerierParams{
+		Cfg: Config{
+			PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+		},
+		IngestersRing: testhelper.NewMockRing([]ring.InstanceDesc{
+			{Addr: "1"},
+			{Addr: "2"},
+			{Addr: "3"},
+		}, 3),
+		PoolFactory: &poolFactory{f: func(addr string) (client.PoolClient, error) {
+			q := newFakeQuerier()
+			switch addr {
+			case "1":
+				q.On("LabelValues", mock.Anything, mock.Anything).
+					Return(connect.NewResponse(&typesv1.LabelValuesResponse{
+						Names: []string{
+							"foo::::",
+							"bar::::",
+						},
+					}), nil)
+			case "2":
+				q.On("LabelValues", mock.Anything, mock.Anything).
+					Return(connect.NewResponse(&typesv1.LabelValuesResponse{
+						Names: []string{
+							"bar::::",
+							"buzz::::",
+						},
+					}), nil)
+			case "3":
+				q.On("LabelValues", mock.Anything, mock.Anything).
+					Return(connect.NewResponse(&typesv1.LabelValuesResponse{
+						Names: []string{
+							"buzz::::",
+							"foo::::",
+						},
+					}), nil)
+			}
+			return q, nil
+		}},
+		Logger: log.NewLogfmtLogger(os.Stdout),
+	})
 	require.NoError(t, err)
+
 	out, err := querier.ProfileTypes(context.Background(), connect.NewRequest(&querierv1.ProfileTypesRequest{}))
+	require.NoError(t, err)
+
 	ids := make([]string, 0, len(out.Msg.ProfileTypes))
 	for _, pt := range out.Msg.ProfileTypes {
 		ids = append(ids, pt.ID)
@@ -90,24 +107,29 @@ func Test_QuerySampleType(t *testing.T) {
 
 func Test_QueryLabelValues(t *testing.T) {
 	req := connect.NewRequest(&typesv1.LabelValuesRequest{Name: "foo"})
-	querier, err := New(Config{
-		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-	}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "1"},
-		{Addr: "2"},
-		{Addr: "3"},
-	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
-		q := newFakeQuerier()
-		switch addr {
-		case "1":
-			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelValuesResponse{Names: []string{"foo", "bar"}}), nil)
-		case "2":
-			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelValuesResponse{Names: []string{"bar", "buzz"}}), nil)
-		case "3":
-			q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelValuesResponse{Names: []string{"buzz", "foo"}}), nil)
-		}
-		return q, nil
-	}}, nil, nil, log.NewLogfmtLogger(os.Stdout))
+	querier, err := New(&NewQuerierParams{
+		Cfg: Config{
+			PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+		},
+		IngestersRing: testhelper.NewMockRing([]ring.InstanceDesc{
+			{Addr: "1"},
+			{Addr: "2"},
+			{Addr: "3"},
+		}, 3),
+		PoolFactory: &poolFactory{f: func(addr string) (client.PoolClient, error) {
+			q := newFakeQuerier()
+			switch addr {
+			case "1":
+				q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelValuesResponse{Names: []string{"foo", "bar"}}), nil)
+			case "2":
+				q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelValuesResponse{Names: []string{"bar", "buzz"}}), nil)
+			case "3":
+				q.On("LabelValues", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelValuesResponse{Names: []string{"buzz", "foo"}}), nil)
+			}
+			return q, nil
+		}},
+		Logger: log.NewLogfmtLogger(os.Stdout),
+	})
 
 	require.NoError(t, err)
 	out, err := querier.LabelValues(context.Background(), req)
@@ -117,24 +139,29 @@ func Test_QueryLabelValues(t *testing.T) {
 
 func Test_QueryLabelNames(t *testing.T) {
 	req := connect.NewRequest(&typesv1.LabelNamesRequest{})
-	querier, err := New(Config{
-		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-	}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "1"},
-		{Addr: "2"},
-		{Addr: "3"},
-	}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
-		q := newFakeQuerier()
-		switch addr {
-		case "1":
-			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}}), nil)
-		case "2":
-			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"bar", "buzz"}}), nil)
-		case "3":
-			q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"buzz", "foo"}}), nil)
-		}
-		return q, nil
-	}}, nil, nil, log.NewLogfmtLogger(os.Stdout))
+	querier, err := New(&NewQuerierParams{
+		Cfg: Config{
+			PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+		},
+		IngestersRing: testhelper.NewMockRing([]ring.InstanceDesc{
+			{Addr: "1"},
+			{Addr: "2"},
+			{Addr: "3"},
+		}, 3),
+		PoolFactory: &poolFactory{f: func(addr string) (client.PoolClient, error) {
+			q := newFakeQuerier()
+			switch addr {
+			case "1":
+				q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"foo", "bar"}}), nil)
+			case "2":
+				q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"bar", "buzz"}}), nil)
+			case "3":
+				q.On("LabelNames", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.LabelNamesResponse{Names: []string{"buzz", "foo"}}), nil)
+			}
+			return q, nil
+		}},
+		Logger: log.NewLogfmtLogger(os.Stdout),
+	})
 
 	require.NoError(t, err)
 	out, err := querier.LabelNames(context.Background(), req)
@@ -146,28 +173,33 @@ func Test_Series(t *testing.T) {
 	foobarlabels := phlaremodel.NewLabelsBuilder(nil).Set("foo", "bar")
 	foobuzzlabels := phlaremodel.NewLabelsBuilder(nil).Set("foo", "buzz")
 	req := connect.NewRequest(&querierv1.SeriesRequest{Matchers: []string{`{foo="bar"}`}})
-	ingesterReponse := connect.NewResponse(&ingestv1.SeriesResponse{LabelsSet: []*typesv1.Labels{
+	ingesterResponse := connect.NewResponse(&ingestv1.SeriesResponse{LabelsSet: []*typesv1.Labels{
 		{Labels: foobarlabels.Labels()},
 		{Labels: foobuzzlabels.Labels()},
 	}})
-	querier, err := New(Config{
-		PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-	}, testhelper.NewMockRing([]ring.InstanceDesc{
-		{Addr: "1"},
-		{Addr: "2"},
-		{Addr: "3"},
-	}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
-		q := newFakeQuerier()
-		switch addr {
-		case "1":
-			q.On("Series", mock.Anything, mock.Anything).Return(ingesterReponse, nil)
-		case "2":
-			q.On("Series", mock.Anything, mock.Anything).Return(ingesterReponse, nil)
-		case "3":
-			q.On("Series", mock.Anything, mock.Anything).Return(ingesterReponse, nil)
-		}
-		return q, nil
-	}}, nil, nil, log.NewLogfmtLogger(os.Stdout))
+	querier, err := New(&NewQuerierParams{
+		Cfg: Config{
+			PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+		},
+		IngestersRing: testhelper.NewMockRing([]ring.InstanceDesc{
+			{Addr: "1"},
+			{Addr: "2"},
+			{Addr: "3"},
+		}, 3),
+		PoolFactory: &poolFactory{func(addr string) (client.PoolClient, error) {
+			q := newFakeQuerier()
+			switch addr {
+			case "1":
+				q.On("Series", mock.Anything, mock.Anything).Return(ingesterResponse, nil)
+			case "2":
+				q.On("Series", mock.Anything, mock.Anything).Return(ingesterResponse, nil)
+			case "3":
+				q.On("Series", mock.Anything, mock.Anything).Return(ingesterResponse, nil)
+			}
+			return q, nil
+		}},
+		Logger: log.NewLogfmtLogger(os.Stdout),
+	})
 
 	require.NoError(t, err)
 	out, err := querier.Series(context.Background(), req)
@@ -273,24 +305,29 @@ func Test_SelectMergeStacktraces(t *testing.T) {
 					},
 				},
 			})
-			querier, err := New(Config{
-				PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-			}, testhelper.NewMockRing([]ring.InstanceDesc{
-				{Addr: "1"},
-				{Addr: "2"},
-				{Addr: "3"},
-			}, 3), &poolFactory{func(addr string) (client.PoolClient, error) {
-				q := newFakeQuerier()
-				switch addr {
-				case "1":
-					q.mockMergeStacktraces(bidi1, []string{"a", "d"}, tc.blockSelect)
-				case "2":
-					q.mockMergeStacktraces(bidi2, []string{"b", "d"}, tc.blockSelect)
-				case "3":
-					q.mockMergeStacktraces(bidi3, []string{"c", "d"}, tc.blockSelect)
-				}
-				return q, nil
-			}}, nil, nil, log.NewLogfmtLogger(os.Stdout))
+			querier, err := New(&NewQuerierParams{
+				Cfg: Config{
+					PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+				},
+				IngestersRing: testhelper.NewMockRing([]ring.InstanceDesc{
+					{Addr: "1"},
+					{Addr: "2"},
+					{Addr: "3"},
+				}, 3),
+				PoolFactory: &poolFactory{func(addr string) (client.PoolClient, error) {
+					q := newFakeQuerier()
+					switch addr {
+					case "1":
+						q.mockMergeStacktraces(bidi1, []string{"a", "d"}, tc.blockSelect)
+					case "2":
+						q.mockMergeStacktraces(bidi2, []string{"b", "d"}, tc.blockSelect)
+					case "3":
+						q.mockMergeStacktraces(bidi3, []string{"c", "d"}, tc.blockSelect)
+					}
+					return q, nil
+				}},
+				Logger: log.NewLogfmtLogger(os.Stdout),
+			})
 			require.NoError(t, err)
 			flame, err := querier.SelectMergeStacktraces(context.Background(), req)
 			require.NoError(t, err)
@@ -390,32 +427,37 @@ func Test_SelectMergeProfiles(t *testing.T) {
 					},
 				},
 			})
-			querier, err := New(Config{
-				PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-			}, testhelper.NewMockRing([]ring.InstanceDesc{
-				{Addr: "1"},
-				{Addr: "2"},
-				{Addr: "3"},
-			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
-				q := newFakeQuerier()
-				switch addr {
-				case "1":
-					q.mockMergeProfile(bidi1, []string{"a", "d"}, tc.blockSelect)
-				case "2":
-					q.mockMergeProfile(bidi2, []string{"b", "d"}, tc.blockSelect)
-				case "3":
-					q.mockMergeProfile(bidi3, []string{"c", "d"}, tc.blockSelect)
-				}
-				switch addr {
-				case "1":
-					q.On("MergeProfilesPprof", mock.Anything).Once().Return(bidi1)
-				case "2":
-					q.On("MergeProfilesPprof", mock.Anything).Once().Return(bidi2)
-				case "3":
-					q.On("MergeProfilesPprof", mock.Anything).Once().Return(bidi3)
-				}
-				return q, nil
-			}}, nil, nil, log.NewLogfmtLogger(os.Stdout))
+			querier, err := New(&NewQuerierParams{
+				Cfg: Config{
+					PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+				},
+				IngestersRing: testhelper.NewMockRing([]ring.InstanceDesc{
+					{Addr: "1"},
+					{Addr: "2"},
+					{Addr: "3"},
+				}, 3),
+				PoolFactory: &poolFactory{f: func(addr string) (client.PoolClient, error) {
+					q := newFakeQuerier()
+					switch addr {
+					case "1":
+						q.mockMergeProfile(bidi1, []string{"a", "d"}, tc.blockSelect)
+					case "2":
+						q.mockMergeProfile(bidi2, []string{"b", "d"}, tc.blockSelect)
+					case "3":
+						q.mockMergeProfile(bidi3, []string{"c", "d"}, tc.blockSelect)
+					}
+					switch addr {
+					case "1":
+						q.On("MergeProfilesPprof", mock.Anything).Once().Return(bidi1)
+					case "2":
+						q.On("MergeProfilesPprof", mock.Anything).Once().Return(bidi2)
+					case "3":
+						q.On("MergeProfilesPprof", mock.Anything).Once().Return(bidi3)
+					}
+					return q, nil
+				}},
+				Logger: log.NewLogfmtLogger(os.Stdout),
+			})
 			require.NoError(t, err)
 			res, err := querier.SelectMergeProfile(context.Background(), req)
 			require.NoError(t, err)
@@ -524,24 +566,29 @@ func TestSelectSeries(t *testing.T) {
 					},
 				},
 			}, &typesv1.Series{Labels: foobarlabels, Points: []*typesv1.Point{{Value: 1, Timestamp: 1}, {Value: 2, Timestamp: 2}}})
-			querier, err := New(Config{
-				PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
-			}, testhelper.NewMockRing([]ring.InstanceDesc{
-				{Addr: "1"},
-				{Addr: "2"},
-				{Addr: "3"},
-			}, 3), &poolFactory{f: func(addr string) (client.PoolClient, error) {
-				q := newFakeQuerier()
-				switch addr {
-				case "1":
-					q.mockMergeLabels(bidi1, []string{"a", "d"}, tc.blockSelect)
-				case "2":
-					q.mockMergeLabels(bidi2, []string{"b", "d"}, tc.blockSelect)
-				case "3":
-					q.mockMergeLabels(bidi3, []string{"c", "d"}, tc.blockSelect)
-				}
-				return q, nil
-			}}, nil, nil, log.NewLogfmtLogger(os.Stdout))
+			querier, err := New(&NewQuerierParams{
+				Cfg: Config{
+					PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+				},
+				IngestersRing: testhelper.NewMockRing([]ring.InstanceDesc{
+					{Addr: "1"},
+					{Addr: "2"},
+					{Addr: "3"},
+				}, 3),
+				PoolFactory: &poolFactory{f: func(addr string) (client.PoolClient, error) {
+					q := newFakeQuerier()
+					switch addr {
+					case "1":
+						q.mockMergeLabels(bidi1, []string{"a", "d"}, tc.blockSelect)
+					case "2":
+						q.mockMergeLabels(bidi2, []string{"b", "d"}, tc.blockSelect)
+					case "3":
+						q.mockMergeLabels(bidi3, []string{"c", "d"}, tc.blockSelect)
+					}
+					return q, nil
+				}},
+				Logger: log.NewLogfmtLogger(os.Stdout),
+			})
 			require.NoError(t, err)
 			res, err := querier.SelectSeries(context.Background(), req)
 			require.NoError(t, err)
@@ -677,6 +724,22 @@ func (f *fakeQuerierIngester) BlockMetadata(ctx context.Context, req *connect.Re
 	)
 	if args[0] != nil {
 		res = args[0].(*connect.Response[ingestv1.BlockMetadataResponse])
+	}
+	if args[1] != nil {
+		err = args.Get(1).(error)
+	}
+
+	return res, err
+}
+
+func (f *fakeQuerierIngester) GetProfileStats(ctx context.Context, req *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
+	var (
+		args = f.Called(ctx, req)
+		res  *connect.Response[typesv1.GetProfileStatsResponse]
+		err  error
+	)
+	if args[0] != nil {
+		res = args[0].(*connect.Response[typesv1.GetProfileStatsResponse])
 	}
 	if args[1] != nil {
 		err = args.Get(1).(error)
@@ -1300,6 +1363,98 @@ func Test_splitQueryToStores(t *testing.T) {
 			require.Equal(t, tc.expected, actual)
 		})
 	}
+}
+
+func Test_GetProfileStats(t *testing.T) {
+	ctx := tenant.InjectTenantID(context.Background(), "1234")
+
+	dbPath := t.TempDir()
+	localBucket, err := objstoreclient.NewBucket(ctx, objstoreclient.Config{
+		StorageBackendConfig: objstoreclient.StorageBackendConfig{
+			Backend: objstoreclient.Filesystem,
+			Filesystem: filesystem.Config{
+				Directory: dbPath,
+			},
+		},
+		StoragePrefix: "testdata",
+	}, "")
+	require.NoError(t, err)
+
+	index := bucketindex.Index{Blocks: []*bucketindex.Block{{
+		MinTime: 0,
+		MaxTime: 3,
+	}},
+		Version: bucketindex.IndexVersion3,
+	}
+	indexJson, err := json.Marshal(index)
+	require.NoError(t, err)
+
+	var gzipContent bytes.Buffer
+	gzip := gzip.NewWriter(&gzipContent)
+	gzip.Name = bucketindex.IndexFilename
+	_, err = gzip.Write(indexJson)
+	gzip.Close()
+	require.NoError(t, err)
+
+	err = localBucket.Upload(ctx, path.Join("1234", "phlaredb", bucketindex.IndexCompressedFilename), &gzipContent)
+	require.NoError(t, err)
+
+	req := connect.NewRequest(&typesv1.GetProfileStatsRequest{})
+	querier, err := New(&NewQuerierParams{
+		Cfg: Config{
+			PoolConfig: clientpool.PoolConfig{ClientCleanupPeriod: 1 * time.Millisecond},
+		},
+		IngestersRing: testhelper.NewMockRing([]ring.InstanceDesc{
+			{Addr: "1"},
+			{Addr: "2"},
+			{Addr: "3"},
+		}, 3),
+		PoolFactory: &poolFactory{f: func(addr string) (client.PoolClient, error) {
+			q := newFakeQuerier()
+			switch addr {
+			case "1":
+				q.On("GetProfileStats", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.GetProfileStatsResponse{
+					DataIngested:      true,
+					OldestProfileTime: 1,
+					NewestProfileTime: 4,
+				}), nil)
+			case "2":
+				q.On("GetProfileStats", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.GetProfileStatsResponse{
+					DataIngested:      true,
+					OldestProfileTime: 1,
+					NewestProfileTime: 5,
+				}), nil)
+			case "3":
+				q.On("GetProfileStats", mock.Anything, mock.Anything).Return(connect.NewResponse(&typesv1.GetProfileStatsResponse{
+					DataIngested:      true,
+					OldestProfileTime: 2,
+					NewestProfileTime: 5,
+				}), nil)
+			}
+			return q, nil
+		}},
+		Logger:        log.NewLogfmtLogger(os.Stdout),
+		StorageBucket: localBucket,
+		StoreGatewayCfg: storegateway.Config{
+			ShardingRing: storegateway.RingConfig{
+				Ring: util.CommonRingConfig{
+					KVStore: kv.Config{
+						Store: "inmemory",
+					},
+				},
+				ReplicationFactor: 1,
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	out, err := querier.GetProfileStats(ctx, req)
+	require.NoError(t, err)
+	require.Equal(t, &typesv1.GetProfileStatsResponse{
+		DataIngested:      true,
+		OldestProfileTime: 0,
+		NewestProfileTime: 5,
+	}, out.Msg)
 }
 
 // The code below can be useful for testing deduping directly to a cluster.

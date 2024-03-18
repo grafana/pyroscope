@@ -2,6 +2,7 @@ package phlaredb
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"os"
 	"testing"
@@ -137,6 +138,10 @@ func (i *ingesterHandlerPhlareDB) Flush(context.Context, *connect.Request[ingest
 }
 
 func (i *ingesterHandlerPhlareDB) BlockMetadata(context.Context, *connect.Request[ingestv1.BlockMetadataRequest]) (*connect.Response[ingestv1.BlockMetadataResponse], error) {
+	return nil, errors.New("not implemented")
+}
+
+func (i *ingesterHandlerPhlareDB) GetProfileStats(context.Context, *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -562,6 +567,49 @@ func Test_endRangeForTimestamp(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.expected, endRangeForTimestamp(tt.ts, 1*time.Hour.Nanoseconds()))
+		})
+	}
+}
+
+func Test_getProfileStatsFromMetas(t *testing.T) {
+	tests := []struct {
+		name     string
+		minTimes []model.Time
+		maxTimes []model.Time
+		want     *typesv1.GetProfileStatsResponse
+	}{
+		{
+			name:     "no metas should result in no data ingested",
+			minTimes: []model.Time{},
+			maxTimes: []model.Time{},
+			want: &typesv1.GetProfileStatsResponse{
+				DataIngested:      false,
+				OldestProfileTime: math.MaxInt64,
+				NewestProfileTime: math.MinInt64,
+			},
+		},
+		{
+			name: "valid metas should result in data ingested",
+			minTimes: []model.Time{
+				model.TimeFromUnix(1710161819),
+				model.TimeFromUnix(1710171819),
+			},
+			maxTimes: []model.Time{
+				model.TimeFromUnix(1710172239),
+				model.TimeFromUnix(1710174239),
+			},
+			want: &typesv1.GetProfileStatsResponse{
+				DataIngested:      true,
+				OldestProfileTime: 1710161819000,
+				NewestProfileTime: 1710174239000,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			response, err := getProfileStatsFromBounds(tt.minTimes, tt.maxTimes)
+			require.NoError(t, err)
+			assert.Equalf(t, tt.want, response, "getProfileStatsFromBounds(%v, %v)", tt.minTimes, tt.maxTimes)
 		})
 	}
 }

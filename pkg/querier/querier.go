@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"sync"
@@ -15,6 +16,7 @@ import (
 	"github.com/grafana/dskit/ring"
 	ring_client "github.com/grafana/dskit/ring/client"
 	"github.com/grafana/dskit/services"
+	"github.com/grafana/dskit/tenant"
 	"github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
@@ -29,14 +31,18 @@ import (
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
-	vcsv1connect "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
 	"github.com/grafana/pyroscope/pkg/clientpool"
 	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
+	phlareobj "github.com/grafana/pyroscope/pkg/objstore"
+	"github.com/grafana/pyroscope/pkg/phlaredb/bucketindex"
 	"github.com/grafana/pyroscope/pkg/pprof"
 	"github.com/grafana/pyroscope/pkg/querier/vcs"
-	"github.com/grafana/pyroscope/pkg/util/math"
+	"github.com/grafana/pyroscope/pkg/storegateway"
+	pmath "github.com/grafana/pyroscope/pkg/util/math"
 	"github.com/grafana/pyroscope/pkg/util/spanlogger"
+	"github.com/grafana/pyroscope/pkg/validation"
 )
 
 type Config struct {
@@ -62,6 +68,9 @@ type Querier struct {
 	storeGatewayQuerier *StoreGatewayQuerier
 
 	vcsv1connect.VCSServiceHandler
+
+	storageBucket        phlareobj.Bucket
+	tenantConfigProvider phlareobj.TenantConfigProvider
 }
 
 // TODO(kolesnikovae): For backwards compatibility.
@@ -71,25 +80,56 @@ type Querier struct {
 // querier frontend sets the limit.
 const maxNodesDefault = int64(2048)
 
-func New(cfg Config, ingestersRing ring.ReadRing, factory ring_client.PoolFactory, storeGatewayQuerier *StoreGatewayQuerier, reg prometheus.Registerer, logger log.Logger, clientsOptions ...connect.ClientOption) (*Querier, error) {
+type NewQuerierParams struct {
+	Cfg             Config
+	StoreGatewayCfg storegateway.Config
+	Overrides       *validation.Overrides
+	StorageBucket   phlareobj.Bucket
+	CfgProvider     phlareobj.TenantConfigProvider
+	IngestersRing   ring.ReadRing
+	PoolFactory     ring_client.PoolFactory
+	Reg             prometheus.Registerer
+	Logger          log.Logger
+	ClientOptions   []connect.ClientOption
+}
+
+func New(params *NewQuerierParams) (*Querier, error) {
 	// disable gzip compression for querier-ingester communication as most of payload are not benefit from it.
-	clientsMetrics := promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+	clientsMetrics := promauto.With(params.Reg).NewGauge(prometheus.GaugeOpts{
 		Namespace: "pyroscope",
 		Name:      "querier_ingester_clients",
 		Help:      "The current number of ingester clients.",
 	})
 
-	q := &Querier{
-		cfg:    cfg,
-		logger: logger,
-		ingesterQuerier: NewIngesterQuerier(
-			clientpool.NewIngesterPool(cfg.PoolConfig, ingestersRing, factory, clientsMetrics, logger, clientsOptions...),
-			ingestersRing,
-		),
-		storeGatewayQuerier: storeGatewayQuerier,
-		VCSServiceHandler:   vcs.New(logger),
-	}
+	// if a storage bucket is configured we need to create a store gateway querier
+	var storeGatewayQuerier *StoreGatewayQuerier
 	var err error
+	if params.StorageBucket != nil {
+		storeGatewayQuerier, err = newStoreGatewayQuerier(
+			params.StoreGatewayCfg,
+			params.PoolFactory,
+			params.Overrides,
+			log.With(params.Logger, "component", "store-gateway-querier"),
+			params.Reg,
+			params.ClientOptions...)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	q := &Querier{
+		cfg:    params.Cfg,
+		logger: params.Logger,
+		ingesterQuerier: NewIngesterQuerier(
+			clientpool.NewIngesterPool(params.Cfg.PoolConfig, params.IngestersRing, params.PoolFactory, clientsMetrics, params.Logger, params.ClientOptions...),
+			params.IngestersRing,
+		),
+		storeGatewayQuerier:  storeGatewayQuerier,
+		VCSServiceHandler:    vcs.New(params.Logger),
+		storageBucket:        params.StorageBucket,
+		tenantConfigProvider: params.CfgProvider,
+	}
+
 	svcs := []services.Service{q.ingesterQuerier.pool}
 	if storeGatewayQuerier != nil {
 		svcs = append(svcs, storeGatewayQuerier)
@@ -475,6 +515,63 @@ func (q *Querier) Diff(ctx context.Context, req *connect.Request[querierv1.DiffR
 	}), nil
 }
 
+func (q *Querier) GetProfileStats(ctx context.Context, req *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
+	sp, ctx := opentracing.StartSpanFromContext(ctx, "GetProfileStats")
+	defer sp.Finish()
+
+	responses, err := forAllIngesters(ctx, q.ingesterQuerier, func(childCtx context.Context, ic IngesterQueryClient) (*typesv1.GetProfileStatsResponse, error) {
+		response, err := ic.GetProfileStats(childCtx, connect.NewRequest(&typesv1.GetProfileStatsRequest{}))
+		if err != nil {
+			return nil, err
+		}
+		return response.Msg, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	response := &typesv1.GetProfileStatsResponse{
+		DataIngested:      false,
+		OldestProfileTime: math.MaxInt64,
+		NewestProfileTime: math.MinInt64,
+	}
+	for _, r := range responses {
+		response.DataIngested = response.DataIngested || r.response.DataIngested
+		if r.response.OldestProfileTime < response.OldestProfileTime {
+			response.OldestProfileTime = r.response.OldestProfileTime
+		}
+		if r.response.NewestProfileTime > response.NewestProfileTime {
+			response.NewestProfileTime = r.response.NewestProfileTime
+		}
+	}
+
+	if q.storageBucket != nil {
+		tenantId, err := tenant.TenantID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		index, err := bucketindex.ReadIndex(ctx, q.storageBucket, tenantId, q.tenantConfigProvider, q.logger)
+		if err != nil && !errors.Is(err, bucketindex.ErrIndexNotFound) {
+			return nil, err
+		}
+		if index != nil && len(index.Blocks) > 0 {
+			// assuming blocks are ordered by time in ascending order
+			// ignoring deleted blocks as we only need the overall time range of blocks
+			minTime := index.Blocks[0].MinTime.Time().UnixMilli()
+			if minTime < response.OldestProfileTime {
+				response.OldestProfileTime = minTime
+			}
+			maxTime := index.Blocks[len(index.Blocks)-1].MaxTime.Time().UnixMilli()
+			if maxTime > response.NewestProfileTime {
+				response.NewestProfileTime = maxTime
+			}
+			response.DataIngested = true
+		}
+	}
+
+	return connect.NewResponse(response), nil
+}
+
 func (q *Querier) SelectMergeStacktraces(ctx context.Context, req *connect.Request[querierv1.SelectMergeStacktracesRequest]) (*connect.Response[querierv1.SelectMergeStacktracesResponse], error) {
 	sp, ctx := opentracing.StartSpanFromContext(ctx, "SelectMergeStacktraces")
 	level.Info(spanlogger.FromContext(ctx, q.logger)).Log(
@@ -713,10 +810,10 @@ func splitQueryToStores(start, end model.Time, now model.Time, queryStoreAfter t
 	queries.queryStoreAfter = queryStoreAfter
 	cutOff := now.Add(-queryStoreAfter)
 	if start.Before(cutOff) {
-		queries.storeGateway = storeQuery{shouldQuery: true, start: start, end: math.Min(cutOff, end)}
+		queries.storeGateway = storeQuery{shouldQuery: true, start: start, end: pmath.Min(cutOff, end)}
 	}
 	if end.After(cutOff) {
-		queries.ingester = storeQuery{shouldQuery: true, start: math.Max(cutOff, start), end: end}
+		queries.ingester = storeQuery{shouldQuery: true, start: pmath.Max(cutOff, start), end: end}
 		// Note that the ranges must not overlap.
 		if queries.storeGateway.shouldQuery {
 			queries.ingester.start++

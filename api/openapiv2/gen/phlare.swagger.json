@@ -713,6 +713,25 @@
         }
       }
     },
+    "v1GetProfileStatsResponse": {
+      "type": "object",
+      "properties": {
+        "dataIngested": {
+          "type": "boolean",
+          "description": "Whether we received any data at any time in the past."
+        },
+        "oldestProfileTime": {
+          "type": "string",
+          "format": "int64",
+          "description": "Milliseconds since epoch."
+        },
+        "newestProfileTime": {
+          "type": "string",
+          "format": "int64",
+          "description": "Milliseconds since epoch."
+        }
+      }
+    },
     "v1GetSettingsResponse": {
       "type": "object",
       "properties": {

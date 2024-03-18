@@ -2,8 +2,10 @@ package phlaredb
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sync"
@@ -523,4 +525,58 @@ func (f *PhlareDB) BlockMetadata(ctx context.Context, req *connect.Request[inges
 	})
 
 	return connect.NewResponse(&result), nil
+}
+
+func (f *PhlareDB) GetProfileStats(ctx context.Context, req *connect.Request[typesv1.GetProfileStatsRequest]) (*connect.Response[typesv1.GetProfileStatsResponse], error) {
+	sp, _ := opentracing.StartSpanFromContext(ctx, "PhlareDB GetProfileStats")
+	defer sp.Finish()
+
+	minTimes := make([]model.Time, 0)
+	maxTimes := make([]model.Time, 0)
+
+	f.headLock.RLock()
+	for _, h := range f.heads {
+		minT, maxT := h.Bounds()
+		minTimes = append(minTimes, minT)
+		maxTimes = append(maxTimes, maxT)
+	}
+	for _, h := range f.flushing {
+		minT, maxT := h.Bounds()
+		minTimes = append(minTimes, minT)
+		maxTimes = append(maxTimes, maxT)
+	}
+	f.headLock.RUnlock()
+
+	f.blockQuerier.queriersLock.RLock()
+	for _, q := range f.blockQuerier.queriers {
+		minT, maxT := q.Bounds()
+		minTimes = append(minTimes, minT)
+		maxTimes = append(maxTimes, maxT)
+	}
+	f.blockQuerier.queriersLock.RUnlock()
+
+	response, err := getProfileStatsFromBounds(minTimes, maxTimes)
+	return connect.NewResponse(response), err
+}
+
+func getProfileStatsFromBounds(minTimes, maxTimes []model.Time) (*typesv1.GetProfileStatsResponse, error) {
+	if len(minTimes) != len(maxTimes) {
+		return nil, errors.New("minTimes and maxTimes differ in length")
+	}
+	response := &typesv1.GetProfileStatsResponse{
+		DataIngested:      len(minTimes) > 0,
+		OldestProfileTime: math.MaxInt64,
+		NewestProfileTime: math.MinInt64,
+	}
+
+	for i, minTime := range minTimes {
+		maxTime := maxTimes[i]
+		if response.OldestProfileTime > minTime.Time().UnixMilli() {
+			response.OldestProfileTime = minTime.Time().UnixMilli()
+		}
+		if response.NewestProfileTime < maxTime.Time().UnixMilli() {
+			response.NewestProfileTime = maxTime.Time().UnixMilli()
+		}
+	}
+	return response, nil
 }
