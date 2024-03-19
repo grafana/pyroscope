@@ -83,7 +83,7 @@ The Comparison page facilitates side-by-side comparison of profiles either based
 
 To run a comparison:
 
-1. Select two different sets of labels (for exmaple, `env:production` vs. `env:development`) and or time periods, reflected by the sub-timelines above each flamegraph.
+1. Select two different sets of labels (for example, `env:production` vs. `env:development`) and or time periods, reflected by the sub-timelines above each flamegraph.
 2. View the resulting flamegraphs side by side to identify disparities in performance.
 
 There are many practical use cases for comparison for companies using Pyroscope.
