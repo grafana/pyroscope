@@ -11,7 +11,7 @@ weight: 100
 
 ## Before you begin
 
-Your applications must be instrumented for profiling and tracing before you can use span profiles. 
+Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
 * Profiling: Your application must be instrumented with Pyroscopes Java client SDK. If you haven't done this yet, please refer to the [Java ()]({{< relref "../language-sdks/java" >}}) guide.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/java/getting-started/) guide.
@@ -29,9 +29,9 @@ link traces with the profiling data, and find resource usage for specific lines 
 
 ## Configure the otel-profiling-java package
 
-To start collecting Span Profiles for your Java application, you need to include [otel-profiling-java](https://github.com/pyroscope-io/otel-profiling-java) in your code. 
+To start collecting Span Profiles for your Java application, you need to include [otel-profiling-java](https://github.com/pyroscope-io/otel-profiling-java) in your code.
 
-This package is a `TracerProvider` implementation, that labels profiling data with span IDs which makes it possible to query for span-specific profiling data in Grafana Tempo UI. 
+This package is a `TracerProvider` implementation, that labels profiling data with span IDs which makes it possible to query for span-specific profiling data in Grafana Tempo UI.
 
 ```shell
 java -jar ./build/libs/rideshare-1.0-SNAPSHOT.jar \
@@ -51,7 +51,7 @@ Next, you need to create and configure the tracer provider:
 implementation("io.pyroscope:otel:0.10.1.1")
 
 // obtain SdkTracerProviderBuilder
-SdkTracerProviderBuilder tpBuilder = ... 
+SdkTracerProviderBuilder tpBuilder = ...
 
 // Add PyroscopeOtelSpanProcessor to SdkTracerProviderBuilder
 PyroscopeOtelConfiguration pyroscopeTelemetryConfig = new PyroscopeOtelConfiguration.Builder()
@@ -96,5 +96,4 @@ The profile type or app must be selected for the query to be valid. Grafana does
 
 ## Examples
 
-Check out the [examples](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) directory in our repository to
-find a complete example application that demonstrates tracing integration features.
+Check out the [examples](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) directory for a complete demo application that shows tracing integration features.

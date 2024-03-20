@@ -99,8 +99,7 @@ To learn how to set up Traces to profiles and view the span profiles, refer to [
 
 ## Examples
 
-Check out the [examples directory](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) in the Pyroscope GitHub repository to
-find a complete example application that demonstrates tracing integration features.
+Check out the [examples](https://github.com/grafana/pyroscope/tree/main/examples/tracing/tempo) directory for a complete demo application that shows tracing integration features.
 
 <!-- ## Using tracing exemplars manually
 
