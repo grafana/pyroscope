@@ -87,6 +87,7 @@ type Config struct {
 
 	MultitenancyEnabled bool              `yaml:"multitenancy_enabled,omitempty"`
 	Analytics           usagestats.Config `yaml:"analytics"`
+	ShowBanner          bool              `yaml:"show_banner,omitempty"`
 
 	ConfigFile      string `yaml:"-"`
 	ConfigExpandEnv bool   `yaml:"-"`
@@ -133,6 +134,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 		"The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode. ")
 	f.BoolVar(&c.MultitenancyEnabled, "auth.multitenancy-enabled", false, "When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.")
 	f.BoolVar(&c.ConfigExpandEnv, "config.expand-env", false, "Expands ${var} in config according to the values of the environment variables.")
+	f.BoolVar(&c.ShowBanner, "config.show_banner", true, "Prints the application banner at startup.")
 
 	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.MemberlistKV.RegisterFlags(f)
@@ -354,7 +356,9 @@ var banner = `
  `
 
 func (f *Phlare) Run() error {
-	_ = cli.GradientBanner(banner, os.Stderr)
+	if f.Cfg.ShowBanner {
+		_ = cli.GradientBanner(banner, os.Stderr)
+	}
 
 	serviceMap, err := f.ModuleManager.InitModuleServices(f.Cfg.Target...)
 	if err != nil {
