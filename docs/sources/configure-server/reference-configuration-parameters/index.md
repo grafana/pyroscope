@@ -53,7 +53,7 @@ Each variable reference is replaced at startup by the value of the environment v
 The replacement is case-sensitive and occurs before the YAML file is parsed.
 References to undefined variables are replaced by empty strings unless you specify a default value or custom error text.
 
-To specify a default value, use `${VAR:default_value}`,
+To specify a default value, use `${VAR:-default_value}`,
 where `default_value` is the value to use if the environment variable is undefined.
 
 ## Configuration parameters
