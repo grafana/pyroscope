@@ -112,12 +112,10 @@ func (e *StringsEncoder) writeHeader(strings []string) (err error) {
 }
 
 func (e *StringsEncoder) blockEncoding(b []string) byte {
-	var x uint16
 	for _, s := range b {
-		x |= uint16(len(s)) >> 8
-	}
-	if x > 0 {
-		return 16
+		if len(s) > 255 {
+			return 16
+		}
 	}
 	return 8
 }
