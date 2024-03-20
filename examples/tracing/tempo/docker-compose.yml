@@ -80,6 +80,7 @@ services:
       - "9411:9411"   # zipkin
 
   pyroscope:
+    image: grafana/pyroscope:latest
     environment:
       JAEGER_AGENT_HOST: tempo
       JAEGER_SAMPLER_TYPE: const
@@ -89,6 +90,3 @@ services:
       - '4040:4040'
     volumes:
       - ./pyroscope/pyroscope.yml:/etc/pyroscope.yml
-    build:
-      context: '../../../'
-      dockerfile: cmd/pyroscope/Dockerfile
