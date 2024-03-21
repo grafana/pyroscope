@@ -38,7 +38,7 @@ type StringsEncoder struct {
 
 func NewStringsEncoder(w io.Writer) *StringsEncoder { return &StringsEncoder{w: w} }
 
-func (e *StringsEncoder) WriteStrings(strings []string) error {
+func (e *StringsEncoder) EncodeStrings(strings []string) error {
 	if e.blockSize == 0 {
 		e.blockSize = 1 << 10 // 1k strings per block by default.
 	}
@@ -138,6 +138,13 @@ type StringsDecoder struct {
 
 func NewStringsDecoder(r io.Reader) *StringsDecoder { return &StringsDecoder{r: r} }
 
+func (d *StringsDecoder) StringsLen() (int, error) {
+	if err := d.readHeader(); err != nil {
+		return 0, err
+	}
+	return int(d.stringsLen), nil
+}
+
 func (d *StringsDecoder) readHeader() (err error) {
 	d.buf = slices.GrowLen(d.buf, 12)
 	if _, err = io.ReadFull(d.r, d.buf); err != nil {
@@ -149,21 +156,14 @@ func (d *StringsDecoder) readHeader() (err error) {
 	// Sanity checks are needed as we process the stream data
 	// before verifying the check sum.
 	if d.blocksLen > 1<<20 || d.stringsLen > 1<<20 || d.blockSize > 1<<20 {
-		return fmt.Errorf("malformed header")
+		return ErrInvalidSize
 	}
 	d.blocks = slices.GrowLen(d.blocks, int(d.blocksLen))
 	_, err = io.ReadFull(d.r, d.blocks)
 	return err
 }
 
-func (d *StringsDecoder) StringsLen() (int, error) {
-	if err := d.readHeader(); err != nil {
-		return 0, err
-	}
-	return int(d.stringsLen), nil
-}
-
-func (d *StringsDecoder) ReadStrings(dst []string) (err error) {
+func (d *StringsDecoder) DecodeStrings(dst []string) (err error) {
 	for i := 0; i < len(d.blocks); i++ {
 		bs := d.blockSize
 		if i == len(d.blocks)-1 && d.stringsLen%d.blockSize > 0 {
