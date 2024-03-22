@@ -83,12 +83,12 @@ func Test_StringsEncoding(t *testing.T) {
 			if tc.blockSize > 0 {
 				e.blockSize = tc.blockSize
 			}
-			require.NoError(t, e.WriteStrings(tc.strings))
+			require.NoError(t, e.EncodeStrings(tc.strings))
 			d := NewStringsDecoder(bufio.NewReader(&output))
 			n, err := d.StringsLen()
 			require.NoError(t, err)
 			out := make([]string, n)
-			require.NoError(t, d.ReadStrings(out))
+			require.NoError(t, d.DecodeStrings(out))
 			require.Equal(t, tc.strings, out)
 		})
 	}

@@ -1,7 +1,6 @@
 package symdb
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
 	"fmt"
@@ -61,6 +60,13 @@ func (e *LocationsEncoder) writeHeader() (err error) {
 	return err
 }
 
+func (e *LocationsEncoder) Reset(w io.Writer) {
+	e.locations = 0
+	e.blockSize = 0
+	e.buf = e.buf[:0]
+	e.w = w
+}
+
 type LocationsDecoder struct {
 	r io.Reader
 	d locationsBlockDecoder
@@ -97,21 +103,22 @@ func (d *LocationsDecoder) readHeader() (err error) {
 
 func (d *LocationsDecoder) DecodeLocations(locations []v1.InMemoryLocation) error {
 	blocks := int((d.locations + d.blockSize - 1) / d.blockSize)
-	// It's expected that the reader is already buffered.
-	r, ok := d.r.(*bufio.Reader)
-	if !ok {
-		bufSize := int(d.blockSize * 16) // 16 bytes per location.
-		r = bufio.NewReaderSize(d.r, bufSize)
-	}
 	for i := 0; i < blocks; i++ {
 		lo := i * int(d.blockSize)
 		hi := math.Min(lo+int(d.blockSize), int(d.locations))
 		block := locations[lo:hi]
-		if err := d.d.decode(r, block); err != nil {
+		if err := d.d.decode(d.r, block); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (d *LocationsDecoder) Reset(r io.Reader) {
+	d.locations = 0
+	d.blockSize = 0
+	d.buf = d.buf[:0]
+	d.r = r
 }
 
 type locationsBlockEncoder struct {
@@ -276,8 +283,8 @@ func (d *locationsBlockDecoder) readHeader(r io.Reader) error {
 	return nil
 }
 
-func (d *locationsBlockDecoder) decode(r *bufio.Reader, locations []v1.InMemoryLocation) error {
-	if err := d.readHeader(r); err != nil {
+func (d *locationsBlockDecoder) decode(r io.Reader, locations []v1.InMemoryLocation) (err error) {
+	if err = d.readHeader(r); err != nil {
 		return err
 	}
 	if d.header.LocationsLen > uint32(len(locations)) {
@@ -286,63 +293,41 @@ func (d *locationsBlockDecoder) decode(r *bufio.Reader, locations []v1.InMemoryL
 
 	var enc delta.BinaryPackedEncoding
 	// First we decode mapping_id and assign them to locations.
-	buf, err := r.Peek(int(d.header.MappingSize))
+	d.tmp = slices.GrowLen(d.tmp, int(d.header.MappingSize))
+	if _, err = io.ReadFull(r, d.tmp); err != nil {
+		return err
+	}
+	d.mappings, err = enc.DecodeInt32(d.mappings, d.tmp)
 	if err != nil {
 		return err
 	}
-	d.mappings = slices.GrowLen(d.mappings, int(d.header.LocationsLen))
-	d.mappings, err = enc.DecodeInt32(d.mappings, buf)
-	if err != nil {
-		return err
-	}
-	_, _ = r.Discard(len(buf))
 
 	// Line count per location.
 	// One byte per location.
-	buf, err = r.Peek(int(d.header.LocationsLen))
-	if err != nil {
+	d.lineCount = slices.GrowLen(d.lineCount, int(d.header.LocationsLen))
+	if _, err = io.ReadFull(r, d.lineCount); err != nil {
 		return err
 	}
-	d.lineCount = slices.GrowLen(d.lineCount, int(d.header.LocationsLen))
-	copy(d.lineCount, buf)
-	_, _ = r.Discard(len(buf))
 
 	// Lines. A single slice backs all the location line
 	// sub-slices. But it has to be allocated as we can't
 	// reference d.lines, which is reusable.
 	lines := make([]v1.InMemoryLine, d.header.LinesLen)
-	// Unlike other members, d.header.LinesSize potentially
-	// might be too big to fit into the reader's buffer.
-	// This is not expected, but we have to handle it in
-	// a graceful way.
-	if r.Size() > int(d.header.LinesSize) {
-		buf, err = r.Peek(int(d.header.LinesSize))
-		if err != nil {
-			return err
-		}
-	} else {
-		buf = make([]byte, int(d.header.LinesSize))
-		if _, err = io.ReadFull(r, buf); err != nil {
-			return err
-		}
+	d.tmp = slices.GrowLen(d.tmp, int(d.header.LinesSize))
+	if _, err = io.ReadFull(r, d.tmp); err != nil {
+		return err
 	}
 	d.lines = slices.GrowLen(d.lines, int(d.header.LinesLen))
-	d.lines, err = enc.DecodeInt32(d.lines, buf)
+	d.lines, err = enc.DecodeInt32(d.lines, d.tmp)
 	if err != nil {
 		return err
 	}
 	copy(lines, *(*[]v1.InMemoryLine)(unsafe.Pointer(&d.lines)))
-	if r.Size() > int(d.header.LinesSize) {
-		// Advance the buffer offset, if we haven't read from it.
-		// Note that this invalidates buf, therefore it can only
-		// be done after it was decoded.
-		_, _ = r.Discard(len(buf))
-	}
 
 	// In most cases we end up here.
 	if d.header.AddrSize == 0 && d.header.IsFoldedSize == 0 {
 		var o int // Offset within the lines slice.
-		for i := uint32(0); i < d.header.LocationsLen; i++ {
+		for i := 0; i < len(locations); i++ {
 			locations[i].MappingId = uint32(d.mappings[i])
 			n := o + int(d.lineCount[i])
 			locations[i].Line = lines[o:n]
@@ -353,25 +338,23 @@ func (d *locationsBlockDecoder) decode(r *bufio.Reader, locations []v1.InMemoryL
 
 	// Otherwise, inspect all the optional fields.
 	if int(d.header.AddrSize) > 0 {
-		buf, err = r.Peek(int(d.header.AddrSize))
-		if err != nil {
+		d.tmp = slices.GrowLen(d.tmp, int(d.header.AddrSize))
+		if _, err = io.ReadFull(r, d.tmp); err != nil {
 			return err
 		}
 		d.address = slices.GrowLen(d.address, int(d.header.LocationsLen))
-		d.address, err = enc.DecodeInt64(d.address, buf)
+		d.address, err = enc.DecodeInt64(d.address, d.tmp)
 		if err != nil {
 			return err
 		}
-		_, _ = r.Discard(len(buf))
 	}
 	if int(d.header.IsFoldedSize) > 0 {
-		buf, err = r.Peek(int(d.header.IsFoldedSize))
-		if err != nil {
+		d.tmp = slices.GrowLen(d.tmp, int(d.header.IsFoldedSize))
+		if _, err = io.ReadFull(r, d.tmp); err != nil {
 			return err
 		}
 		d.folded = slices.GrowLen(d.folded, int(d.header.LocationsLen))
-		decodeBoolean(d.folded, buf)
-		_, _ = r.Discard(len(buf))
+		decodeBoolean(d.folded, d.tmp)
 	}
 
 	var o int // Offset within the lines slice.
