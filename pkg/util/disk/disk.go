@@ -3,6 +3,9 @@
 package diskutil
 
 import (
+	"fmt"
+	"math"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -24,30 +27,21 @@ func (v *volumeChecker) HasHighDiskUtilization(path string) (*VolumeStats, error
 		return nil, err
 	}
 
-  // Convert [stat.Bavail] to uint64 safely, considering it can be negative, and represented
-  // as an int64 on BSD systems.
-  //
-  // See https://cs.opensource.google/go/x/sys/+/refs/tags/v0.18.0:unix/ztypes_freebsd_arm64.go;l=96
-  var bytesAvailable uint64
-  if stat.Bavail < 0 {
-    bytesAvailable = 0
-  } else {
-    bytesAvailable = uint64(stat.Bavail) * uint64(stat.Bsize)
-  }
+	//nolint:unconvert // In BSD family (except OpenBSD), the type of stat.Bavail is int64.
+	avail := uint64(stat.Bavail)
+	isValid := avail&math.MaxInt64 == avail && stat.Blocks > 0
+	if !isValid {
+		return nil, fmt.Errorf("invalid statfs values: %+v", stat)
+	}
 
 	// available means accessible to the current user, while free means bytes
 	// for privileged users. (Linux sometimes reserves some space for root)
 	var (
 		stats = VolumeStats{
-			BytesAvailable: bytesAvailable,
+			BytesAvailable: avail * uint64(stat.Bsize),
 		}
-		percentageAvailable = 0.0
+		percentageAvailable = float64(avail) / float64(stat.Blocks*uint64(stat.Bsize))
 	)
-
-  // Ensure [stat.Blocks] is greater than zero to avoid division by zero.
-  if stat.Blocks > 0 {  
-    percentageAvailable = float64(bytesAvailable) / float64(uint64(stat.Blocks) * uint64(stat.Bsize))
-  }
 
 	// if bytes available is bigger than minFreeDisk => not in high disk utilization
 	if stats.BytesAvailable >= v.minFreeDisk {
