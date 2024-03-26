@@ -32,16 +32,16 @@ func NewFunctionsEncoder(w io.Writer) *FunctionsEncoder {
 	return &FunctionsEncoder{w: w}
 }
 
-func (e *FunctionsEncoder) EncodeFunctions(locations []v1.InMemoryFunction) error {
+func (e *FunctionsEncoder) EncodeFunctions(functions []v1.InMemoryFunction) error {
 	if e.blockSize == 0 {
 		e.blockSize = defaultFunctionsBlockSize
 	}
-	e.functions = len(locations)
+	e.functions = len(functions)
 	if err := e.writeHeader(); err != nil {
 		return err
 	}
-	for i := 0; i < len(locations); i += e.blockSize {
-		block := locations[i:math.Min(i+e.blockSize, len(locations))]
+	for i := 0; i < len(functions); i += e.blockSize {
+		block := functions[i:math.Min(i+e.blockSize, len(functions))]
 		if _, err := e.e.encode(e.w, block); err != nil {
 			return err
 		}

@@ -137,8 +137,6 @@ type locationsBlockEncoder struct {
 
 	tmp []byte
 	buf bytes.Buffer
-
-	hasFolded bool
 }
 
 const locationsBlockHeaderSize = int(unsafe.Sizeof(locationsBlockHeader{}))
@@ -186,6 +184,7 @@ func (h *locationsBlockHeader) unmarshal(b []byte) {
 func (e *locationsBlockEncoder) encode(w io.Writer, locations []v1.InMemoryLocation) (int64, error) {
 	e.initWrite(len(locations))
 	var addr int64
+	var folded bool
 	for i, loc := range locations {
 		e.mapping[i] = int32(loc.MappingId)
 		e.lineCount[i] = byte(len(loc.Line))
@@ -197,7 +196,7 @@ func (e *locationsBlockEncoder) encode(w io.Writer, locations []v1.InMemoryLocat
 		}
 		addr |= int64(loc.Address)
 		e.addr[i] = int64(loc.Address)
-		e.hasFolded = e.hasFolded || loc.IsFolded
+		folded = folded || loc.IsFolded
 		e.folded[i] = loc.IsFolded
 	}
 
@@ -221,7 +220,7 @@ func (e *locationsBlockEncoder) encode(w io.Writer, locations []v1.InMemoryLocat
 		e.buf.Write(e.tmp)
 	}
 
-	if e.hasFolded {
+	if folded {
 		e.tmp = slices.GrowLen(e.tmp, len(e.folded)/8)
 		encodeBoolean(e.tmp, e.folded)
 		e.header.IsFoldedSize = uint32(len(e.tmp))
