@@ -130,7 +130,7 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 		retentionPolicy.Expiry = queryStoreAfter
 	}
 
-	if dbConfig.DisableEnforcement {
+	if dbConfig.DisableEnforcement || storageBucket == nil {
 		i.subservices, err = services.NewManager(i.lifecycler)
 	} else {
 		dc := newDiskCleaner(phlarecontext.Logger(phlarectx), i, retentionPolicy, dbConfig)
