@@ -11,114 +11,14 @@ import (
 
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
-	"github.com/grafana/pyroscope/pkg/util/math"
 )
-
-type MappingsEncoder struct {
-	w io.Writer
-	e mappingsBlockEncoder
-
-	blockSize int
-	mappings  int
-
-	buf []byte
-}
-
-const (
-	defaultMappingsBlockSize = 1 << 10
-)
-
-func NewMappingsEncoder(w io.Writer) *MappingsEncoder {
-	return &MappingsEncoder{w: w}
-}
-
-func (e *MappingsEncoder) EncodeMappings(mappings []v1.InMemoryMapping) error {
-	if e.blockSize == 0 {
-		e.blockSize = defaultMappingsBlockSize
-	}
-	e.mappings = len(mappings)
-	if err := e.writeHeader(); err != nil {
-		return err
-	}
-	for i := 0; i < len(mappings); i += e.blockSize {
-		block := mappings[i:math.Min(i+e.blockSize, len(mappings))]
-		if _, err := e.e.encode(e.w, block); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (e *MappingsEncoder) writeHeader() (err error) {
-	e.buf = slices.GrowLen(e.buf, 8)
-	binary.LittleEndian.PutUint32(e.buf[0:4], uint32(e.mappings))
-	binary.LittleEndian.PutUint32(e.buf[4:8], uint32(e.blockSize))
-	_, err = e.w.Write(e.buf)
-	return err
-}
-
-func (e *MappingsEncoder) Reset(w io.Writer) {
-	e.mappings = 0
-	e.blockSize = 0
-	e.buf = e.buf[:0]
-	e.w = w
-}
-
-type MappingsDecoder struct {
-	r io.Reader
-	d mappingsBlockDecoder
-
-	blockSize uint32
-	mappings  uint32
-
-	buf []byte
-}
-
-func NewMappingsDecoder(r io.Reader) *MappingsDecoder { return &MappingsDecoder{r: r} }
-
-func (d *MappingsDecoder) MappingsLen() (int, error) {
-	if err := d.readHeader(); err != nil {
-		return 0, err
-	}
-	return int(d.mappings), nil
-}
-
-func (d *MappingsDecoder) readHeader() (err error) {
-	d.buf = slices.GrowLen(d.buf, 8)
-	if _, err = io.ReadFull(d.r, d.buf); err != nil {
-		return err
-	}
-	d.mappings = binary.LittleEndian.Uint32(d.buf[0:4])
-	d.blockSize = binary.LittleEndian.Uint32(d.buf[4:8])
-	// Sanity checks are needed as we process the stream data
-	// before verifying the check sum.
-	if d.mappings > 1<<20 || d.blockSize > 1<<20 {
-		return ErrInvalidSize
-	}
-	return nil
-}
-
-func (d *MappingsDecoder) DecodeMappings(mappings []v1.InMemoryMapping) error {
-	blocks := int((d.mappings + d.blockSize - 1) / d.blockSize)
-	for i := 0; i < blocks; i++ {
-		lo := i * int(d.blockSize)
-		hi := math.Min(lo+int(d.blockSize), int(d.mappings))
-		block := mappings[lo:hi]
-		if err := d.d.decode(d.r, block); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (d *MappingsDecoder) Reset(r io.Reader) {
-	d.mappings = 0
-	d.blockSize = 0
-	d.buf = d.buf[:0]
-	d.r = r
-}
 
 const mappingsBlockHeaderSize = int(unsafe.Sizeof(mappingsBlockHeader{}))
+
+var (
+	_ symbolsBlockEncoder[v1.InMemoryMapping] = (*mappingsBlockEncoder)(nil)
+	_ symbolsBlockDecoder[v1.InMemoryMapping] = (*mappingsBlockDecoder)(nil)
+)
 
 type mappingsBlockHeader struct {
 	MappingsLen  uint32
@@ -167,7 +67,7 @@ type mappingsBlockEncoder struct {
 	ints64 []int64
 }
 
-func (e *mappingsBlockEncoder) encode(w io.Writer, mappings []v1.InMemoryMapping) (int64, error) {
+func (e *mappingsBlockEncoder) encode(w io.Writer, mappings []v1.InMemoryMapping) error {
 	e.initWrite(len(mappings))
 	var enc delta.BinaryPackedEncoding
 
@@ -240,12 +140,11 @@ func (e *mappingsBlockEncoder) encode(w io.Writer, mappings []v1.InMemoryMapping
 
 	e.tmp = slices.GrowLen(e.tmp, mappingsBlockHeaderSize)
 	e.header.marshal(e.tmp)
-	n, err := w.Write(e.tmp)
-	if err != nil {
-		return int64(n), err
+	if _, err := w.Write(e.tmp); err != nil {
+		return err
 	}
-	m, err := e.buf.WriteTo(w)
-	return m + int64(n), err
+	_, err := e.buf.WriteTo(w)
+	return err
 }
 
 func (e *mappingsBlockEncoder) initWrite(mappings int) {

@@ -1,7 +1,6 @@
 package symdb
 
 import (
-	"bufio"
 	"bytes"
 	"strings"
 	"testing"
@@ -79,16 +78,16 @@ func Test_StringsEncoding(t *testing.T) {
 		tc := tc
 		t.Run(tc.description, func(t *testing.T) {
 			var output bytes.Buffer
-			e := NewStringsEncoder(&output)
+			e := newSymbolsEncoder[string](&output, new(stringsBlockEncoder))
 			if tc.blockSize > 0 {
-				e.blockSize = tc.blockSize
+				e.bs = tc.blockSize
 			}
-			require.NoError(t, e.EncodeStrings(tc.strings))
-			d := NewStringsDecoder(bufio.NewReader(&output))
-			n, err := d.StringsLen()
+			require.NoError(t, e.Encode(tc.strings))
+			d := newSymbolsDecoder[string](&output, new(stringsBlockDecoder))
+			n, err := d.Open()
 			require.NoError(t, err)
 			out := make([]string, n)
-			require.NoError(t, d.DecodeStrings(out))
+			require.NoError(t, d.Decode(out))
 			require.Equal(t, tc.strings, out)
 		})
 	}

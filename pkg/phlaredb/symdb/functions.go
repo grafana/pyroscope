@@ -11,114 +11,14 @@ import (
 
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
-	"github.com/grafana/pyroscope/pkg/util/math"
 )
-
-type FunctionsEncoder struct {
-	w io.Writer
-	e functionsBlockEncoder
-
-	blockSize int
-	functions int
-
-	buf []byte
-}
-
-const (
-	defaultFunctionsBlockSize = 1 << 10
-)
-
-func NewFunctionsEncoder(w io.Writer) *FunctionsEncoder {
-	return &FunctionsEncoder{w: w}
-}
-
-func (e *FunctionsEncoder) EncodeFunctions(functions []v1.InMemoryFunction) error {
-	if e.blockSize == 0 {
-		e.blockSize = defaultFunctionsBlockSize
-	}
-	e.functions = len(functions)
-	if err := e.writeHeader(); err != nil {
-		return err
-	}
-	for i := 0; i < len(functions); i += e.blockSize {
-		block := functions[i:math.Min(i+e.blockSize, len(functions))]
-		if _, err := e.e.encode(e.w, block); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (e *FunctionsEncoder) writeHeader() (err error) {
-	e.buf = slices.GrowLen(e.buf, 8)
-	binary.LittleEndian.PutUint32(e.buf[0:4], uint32(e.functions))
-	binary.LittleEndian.PutUint32(e.buf[4:8], uint32(e.blockSize))
-	_, err = e.w.Write(e.buf)
-	return err
-}
-
-func (e *FunctionsEncoder) Reset(w io.Writer) {
-	e.functions = 0
-	e.blockSize = 0
-	e.buf = e.buf[:0]
-	e.w = w
-}
-
-type FunctionsDecoder struct {
-	r io.Reader
-	d functionsBlockDecoder
-
-	blockSize uint32
-	functions uint32
-
-	buf []byte
-}
-
-func NewFunctionsDecoder(r io.Reader) *FunctionsDecoder { return &FunctionsDecoder{r: r} }
-
-func (d *FunctionsDecoder) FunctionsLen() (int, error) {
-	if err := d.readHeader(); err != nil {
-		return 0, err
-	}
-	return int(d.functions), nil
-}
-
-func (d *FunctionsDecoder) readHeader() (err error) {
-	d.buf = slices.GrowLen(d.buf, 8)
-	if _, err = io.ReadFull(d.r, d.buf); err != nil {
-		return err
-	}
-	d.functions = binary.LittleEndian.Uint32(d.buf[0:4])
-	d.blockSize = binary.LittleEndian.Uint32(d.buf[4:8])
-	// Sanity checks are needed as we process the stream data
-	// before verifying the check sum.
-	if d.functions > 1<<20 || d.blockSize > 1<<20 {
-		return ErrInvalidSize
-	}
-	return nil
-}
-
-func (d *FunctionsDecoder) DecodeFunctions(functions []v1.InMemoryFunction) error {
-	blocks := int((d.functions + d.blockSize - 1) / d.blockSize)
-	for i := 0; i < blocks; i++ {
-		lo := i * int(d.blockSize)
-		hi := math.Min(lo+int(d.blockSize), int(d.functions))
-		block := functions[lo:hi]
-		if err := d.d.decode(d.r, block); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (d *FunctionsDecoder) Reset(r io.Reader) {
-	d.functions = 0
-	d.blockSize = 0
-	d.buf = d.buf[:0]
-	d.r = r
-}
 
 const functionsBlockHeaderSize = int(unsafe.Sizeof(functionsBlockHeader{}))
+
+var (
+	_ symbolsBlockEncoder[v1.InMemoryFunction] = (*functionsBlockEncoder)(nil)
+	_ symbolsBlockDecoder[v1.InMemoryFunction] = (*functionsBlockDecoder)(nil)
+)
 
 type functionsBlockHeader struct {
 	FunctionsLen   uint32
@@ -159,7 +59,7 @@ type functionsBlockEncoder struct {
 	ints []int32
 }
 
-func (e *functionsBlockEncoder) encode(w io.Writer, functions []v1.InMemoryFunction) (int64, error) {
+func (e *functionsBlockEncoder) encode(w io.Writer, functions []v1.InMemoryFunction) error {
 	e.initWrite(len(functions))
 	var enc delta.BinaryPackedEncoding
 
@@ -193,12 +93,11 @@ func (e *functionsBlockEncoder) encode(w io.Writer, functions []v1.InMemoryFunct
 
 	e.tmp = slices.GrowLen(e.tmp, functionsBlockHeaderSize)
 	e.header.marshal(e.tmp)
-	n, err := w.Write(e.tmp)
-	if err != nil {
-		return int64(n), err
+	if _, err := w.Write(e.tmp); err != nil {
+		return err
 	}
-	m, err := e.buf.WriteTo(w)
-	return m + int64(n), err
+	_, err := e.buf.WriteTo(w)
+	return err
 }
 
 func (e *functionsBlockEncoder) initWrite(functions int) {

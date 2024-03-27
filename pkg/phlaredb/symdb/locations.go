@@ -11,135 +11,17 @@ import (
 
 	v1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
-	"github.com/grafana/pyroscope/pkg/util/math"
 )
-
-// https://parquet.apache.org/docs/file-format/data-pages/encodings/#delta-encoding-delta_binary_packed--5
-
-type LocationsEncoder struct {
-	w io.Writer
-	e locationsBlockEncoder
-
-	blockSize int
-	locations int
-
-	buf []byte
-}
 
 const (
-	maxLocationLines          = 255
-	defaultLocationsBlockSize = 1 << 10
+	maxLocationLines         = 255
+	locationsBlockHeaderSize = int(unsafe.Sizeof(locationsBlockHeader{}))
 )
 
-func NewLocationsEncoder(w io.Writer) *LocationsEncoder {
-	return &LocationsEncoder{w: w}
-}
-
-func (e *LocationsEncoder) EncodeLocations(locations []v1.InMemoryLocation) error {
-	if e.blockSize == 0 {
-		e.blockSize = defaultLocationsBlockSize
-	}
-	e.locations = len(locations)
-	if err := e.writeHeader(); err != nil {
-		return err
-	}
-	for i := 0; i < len(locations); i += e.blockSize {
-		block := locations[i:math.Min(i+e.blockSize, len(locations))]
-		if _, err := e.e.encode(e.w, block); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (e *LocationsEncoder) writeHeader() (err error) {
-	e.buf = slices.GrowLen(e.buf, 8)
-	binary.LittleEndian.PutUint32(e.buf[0:4], uint32(e.locations))
-	binary.LittleEndian.PutUint32(e.buf[4:8], uint32(e.blockSize))
-	_, err = e.w.Write(e.buf)
-	return err
-}
-
-func (e *LocationsEncoder) Reset(w io.Writer) {
-	e.locations = 0
-	e.blockSize = 0
-	e.buf = e.buf[:0]
-	e.w = w
-}
-
-type LocationsDecoder struct {
-	r io.Reader
-	d locationsBlockDecoder
-
-	blockSize uint32
-	locations uint32
-
-	buf []byte
-}
-
-func NewLocationsDecoder(r io.Reader) *LocationsDecoder { return &LocationsDecoder{r: r} }
-
-func (d *LocationsDecoder) LocationsLen() (int, error) {
-	if err := d.readHeader(); err != nil {
-		return 0, err
-	}
-	return int(d.locations), nil
-}
-
-func (d *LocationsDecoder) readHeader() (err error) {
-	d.buf = slices.GrowLen(d.buf, 8)
-	if _, err = io.ReadFull(d.r, d.buf); err != nil {
-		return err
-	}
-	d.locations = binary.LittleEndian.Uint32(d.buf[0:4])
-	d.blockSize = binary.LittleEndian.Uint32(d.buf[4:8])
-	// Sanity checks are needed as we process the stream data
-	// before verifying the check sum.
-	if d.locations > 1<<20 || d.blockSize > 1<<20 {
-		return ErrInvalidSize
-	}
-	return nil
-}
-
-func (d *LocationsDecoder) DecodeLocations(locations []v1.InMemoryLocation) error {
-	blocks := int((d.locations + d.blockSize - 1) / d.blockSize)
-	for i := 0; i < blocks; i++ {
-		lo := i * int(d.blockSize)
-		hi := math.Min(lo+int(d.blockSize), int(d.locations))
-		block := locations[lo:hi]
-		if err := d.d.decode(d.r, block); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (d *LocationsDecoder) Reset(r io.Reader) {
-	d.locations = 0
-	d.blockSize = 0
-	d.buf = d.buf[:0]
-	d.r = r
-}
-
-type locationsBlockEncoder struct {
-	header locationsBlockHeader
-
-	mapping []int32
-	// Assuming there is no locations with more than 255 lines.
-	// We could even use a nibble (4 bits), but there are locations
-	// with 10 and more functions, therefore there is a change that
-	// capacity of 2^4 is not enough in all cases.
-	lineCount []byte
-	lines     []int32
-	// Optional.
-	addr   []int64
-	folded []bool
-
-	tmp []byte
-	buf bytes.Buffer
-}
-
-const locationsBlockHeaderSize = int(unsafe.Sizeof(locationsBlockHeader{}))
+var (
+	_ symbolsBlockEncoder[v1.InMemoryLocation] = (*locationsBlockEncoder)(nil)
+	_ symbolsBlockDecoder[v1.InMemoryLocation] = (*locationsBlockDecoder)(nil)
+)
 
 type locationsBlockHeader struct {
 	LocationsLen uint32 // Number of locations
@@ -151,9 +33,6 @@ type locationsBlockHeader struct {
 	IsFoldedSize uint32 // Size of the encoded slice of is_folded
 }
 
-// isValid reports whether the header contains sane values.
-// This is important as the block might be read before the
-// checksum validation.
 func (h *locationsBlockHeader) isValid() bool {
 	return h.LocationsLen > 0 && h.LocationsLen < 1<<20 &&
 		h.MappingSize > 0 && h.MappingSize < 1<<20 &&
@@ -181,7 +60,25 @@ func (h *locationsBlockHeader) unmarshal(b []byte) {
 	h.IsFoldedSize = binary.LittleEndian.Uint32(b[20:24])
 }
 
-func (e *locationsBlockEncoder) encode(w io.Writer, locations []v1.InMemoryLocation) (int64, error) {
+type locationsBlockEncoder struct {
+	header locationsBlockHeader
+
+	mapping []int32
+	// Assuming there is no locations with more than 255 lines.
+	// We could even use a nibble (4 bits), but there are locations
+	// with 10 and more functions, therefore there is a change that
+	// capacity of 2^4 is not enough in all cases.
+	lineCount []byte
+	lines     []int32
+	// Optional.
+	addr   []int64
+	folded []bool
+
+	tmp []byte
+	buf bytes.Buffer
+}
+
+func (e *locationsBlockEncoder) encode(w io.Writer, locations []v1.InMemoryLocation) error {
 	e.initWrite(len(locations))
 	var addr int64
 	var folded bool
@@ -229,12 +126,11 @@ func (e *locationsBlockEncoder) encode(w io.Writer, locations []v1.InMemoryLocat
 
 	e.tmp = slices.GrowLen(e.tmp, locationsBlockHeaderSize)
 	e.header.marshal(e.tmp)
-	n, err := w.Write(e.tmp)
-	if err != nil {
-		return int64(n), err
+	if _, err := w.Write(e.tmp); err != nil {
+		return err
 	}
-	m, err := e.buf.WriteTo(w)
-	return m + int64(n), err
+	_, err := e.buf.WriteTo(w)
+	return err
 }
 
 func (e *locationsBlockEncoder) initWrite(locations int) {
