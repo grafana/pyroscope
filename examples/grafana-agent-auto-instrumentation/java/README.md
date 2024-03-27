@@ -8,7 +8,7 @@ Using this example, you'll learn how to use Grafana Agent for continuous Java pr
 
 ### Profiling methodologies
 
-Java applications can be profiled via Pyroscope using three methodologies. The example showcases the the Pyroscope profiler as a `javaagent` to a running process, initializing the profiler at application startup without source code modifications or extra dependencies. Manage configuration using Java parameters or environment variables.
+Java applications can be profiled via Pyroscope using three methodologies. The example showcases attaching the the Pyroscope profiler as a `javaagent` to a running process via the Grafana Agent without source code modifications or extra dependencies. Manage configuration using Java parameters or environment variables.
 
 Refer to the [official documentation](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/java/) for an in-depth understanding and additional configuration options for Java profiling with the Grafana Agent.
 
