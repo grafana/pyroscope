@@ -59,10 +59,12 @@ pyroscope.ebpf "instance" {
 }
 
 pyroscope.write "endpoint" {
-    url = "http://pyroscope:4040"
-    // url = "<Grafana Cloud URL>"
-    // basic_auth {
-    //  username = "<Grafana Cloud User>"
-    //  password = "<Grafana Cloud Password>"
-    // }
+    endpoint {
+      url = "http://pyroscope:4040"
+      // url = "<Grafana Cloud URL>"
+      // basic_auth {
+      //  username = "<Grafana Cloud User>"
+      //  password = "<Grafana Cloud Password>"
+      // }
+    }
 }
