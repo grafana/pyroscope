@@ -133,7 +133,8 @@ func New(phlarectx context.Context, cfg Config, dbConfig phlaredb.Config, storag
 	if dbConfig.DisableEnforcement {
 		i.subservices, err = services.NewManager(i.lifecycler)
 	} else {
-		dc := newDiskCleaner(phlarecontext.Logger(phlarectx), i, retentionPolicy, dbConfig)
+		isStorageBucketPresent := (storageBucket != nil)
+		dc := newDiskCleaner(phlarecontext.Logger(phlarectx), i, retentionPolicy, dbConfig, isStorageBucketPresent)
 		i.subservices, err = services.NewManager(i.lifecycler, dc)
 	}
 	if err != nil {
