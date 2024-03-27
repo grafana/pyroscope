@@ -21,7 +21,7 @@
 - Added: Opinionated `border` removal on iframes in all browsers.
 - Removed: Opinionated `border-radius` on form controls.
 - Removed: Opinionated `box-shadow` on form controls to match UA expectations.
-- Fixed: `Edge` comments without `Chrome` are are changed to `Edge 18-`.
+- Fixed: `Edge` comments without `Chrome` are changed to `Edge 18-`.
 - Fixed: `Chrome` comments without `Edge` have `Edge` added.
 - Fixed: Nested list `dl` normalizations split.
 - Fixed: Logical `margin-block` normalization changed to `margin`.

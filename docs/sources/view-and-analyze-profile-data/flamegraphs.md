@@ -29,7 +29,7 @@ Horizontally, the flamegraph represents 100% of the time that this application w
 The width of each node represents the amount of time spent in that function.
 The wider the node, the more time spent in that function. The narrower the node, the less time spent in that function.
 
-Vertically, the nodes in the flamegraph represent the heirarchy of which functions were called and how much time was spent in each function.
+Vertically, the nodes in the flamegraph represent the hierarchy of which functions were called and how much time was spent in each function.
 The top node is the root node and represents the total amount of time spent in the application.
 The nodes below it represent the functions that were called and how much time was spent in each function.
 The nodes below those represent the functions that were called from those functions and how much time was spent in each function.
