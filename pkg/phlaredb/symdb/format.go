@@ -7,6 +7,9 @@ import (
 	"hash/crc32"
 	"io"
 	"unsafe"
+
+	"github.com/grafana/pyroscope/pkg/slices"
+	"github.com/grafana/pyroscope/pkg/util/math"
 )
 
 // The database is a collection of files. The only file that is guaranteed
@@ -484,3 +487,157 @@ func (f *IndexFile) WriteTo(dst io.Writer) (n int64, err error) {
 
 	return w.offset, nil
 }
+
+// symbolic information such as locations, functions, mappings,
+// and strings is represented as Array of Structures in memory,
+// and is encoded as Structure of Arrays when written on disk.
+//
+// The common structure of the encoded symbolic data is as follows:
+//
+// [Header]
+// [Data encoded in blocks]
+// [CRC32]
+//
+// Where the block format depends on the contents.
+//
+// Note that the data is decoded in a stream fashion, therefore
+// any error in the data will be detected only after all the blocks
+// are read in and decoded.
+type symbolsBlockHeader struct {
+	Magic   [4]byte
+	Version uint32
+	// Length denotes the total number of items encoded.
+	Length uint32
+	// BlockSize denotes the number of items per block.
+	BlockSize uint32
+}
+
+const (
+	defaultSymbolsBlockSize = 1 << 10
+	symbolsBlockHeaderSize  = int(unsafe.Sizeof(mappingsBlockHeader{}))
+)
+
+func newSymbolsBlockHeader(n, bs int) symbolsBlockHeader {
+	return symbolsBlockHeader{
+		Magic:     symdbMagic,
+		Version:   1,
+		Length:    uint32(n),
+		BlockSize: uint32(bs),
+	}
+}
+
+func (h *symbolsBlockHeader) marshal(b []byte) {
+	b[0], b[1], b[2], b[3] = h.Magic[0], h.Magic[1], h.Magic[2], h.Magic[3]
+	binary.BigEndian.PutUint32(b[4:8], h.Version)
+	binary.BigEndian.PutUint32(b[8:12], h.Length)
+	binary.BigEndian.PutUint32(b[12:16], h.BlockSize)
+}
+
+func (h *symbolsBlockHeader) unmarshal(b []byte) {
+	h.Magic[0], h.Magic[1], h.Magic[2], h.Magic[3] = b[0], b[1], b[2], b[3]
+	h.Version = binary.BigEndian.Uint32(b[4:8])
+	h.Length = binary.BigEndian.Uint32(b[8:12])
+	h.BlockSize = binary.BigEndian.Uint32(b[12:16])
+}
+
+func (h *symbolsBlockHeader) validate() error {
+	if h.Magic[0] != symdbMagic[0] ||
+		h.Magic[1] != symdbMagic[1] ||
+		h.Magic[2] != symdbMagic[2] ||
+		h.Magic[3] != symdbMagic[3] {
+		return ErrInvalidMagic
+	}
+	if h.Version >= 2 {
+		return ErrUnknownVersion
+	}
+	if h.Length >= 1<<20 && h.BlockSize >= 1<<20 {
+		return ErrInvalidSize
+	}
+	return nil
+}
+
+func writeSymbolsBlockHeader(w io.Writer, buf []byte, h symbolsBlockHeader) ([]byte, error) {
+	if err := h.validate(); err != nil {
+		return buf, err
+	}
+	buf = slices.GrowLen(buf, symbolsBlockHeaderSize)
+	h.marshal(buf)
+	_, err := w.Write(buf)
+	return buf, err
+}
+
+func readSymbolsBlockHeader(r io.Reader, buf []byte, h *symbolsBlockHeader) ([]byte, error) {
+	buf = slices.GrowLen(buf, symbolsBlockHeaderSize)
+	if _, err := io.ReadFull(r, buf); err != nil {
+		return buf, err
+	}
+	h.unmarshal(buf)
+	return buf, h.validate()
+}
+
+type symbolsBlockEncoder[T any] interface {
+	encode(w io.Writer, block []T) error
+}
+
+type symbolsEncoder[T any] struct {
+	w   io.Writer
+	e   symbolsBlockEncoder[T]
+	bs  int
+	buf []byte
+}
+
+func newSymbolsEncoder[T any](w io.Writer, e symbolsBlockEncoder[T]) *symbolsEncoder[T] {
+	return &symbolsEncoder[T]{w: w, e: e, bs: defaultSymbolsBlockSize}
+}
+
+func (e *symbolsEncoder[T]) Encode(items []T) (err error) {
+	h := newSymbolsBlockHeader(len(items), e.bs)
+	if e.buf, err = writeSymbolsBlockHeader(e.w, e.buf, h); err != nil {
+		return err
+	}
+	for i := uint32(0); i < h.Length; i += h.BlockSize {
+		block := items[i:math.Min(i+h.BlockSize, h.Length)]
+		if err = e.e.encode(e.w, block); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (e *symbolsEncoder[T]) Reset(w io.Writer) { e.w = w }
+
+type symbolsBlockDecoder[T any] interface {
+	decode(r io.Reader, block []T) error
+}
+
+type symbolsDecoder[T any] struct {
+	r io.Reader
+	h symbolsBlockHeader
+	d symbolsBlockDecoder[T]
+
+	buf []byte
+}
+
+func newSymbolsDecoder[T any](r io.Reader, d symbolsBlockDecoder[T]) *symbolsDecoder[T] {
+	return &symbolsDecoder[T]{r: r, d: d}
+}
+
+func (d *symbolsDecoder[T]) Open() (n int, err error) {
+	d.buf, err = readSymbolsBlockHeader(d.r, d.buf, &d.h)
+	return int(d.h.Length), err
+}
+
+func (d *symbolsDecoder[T]) Decode(items []T) error {
+	blocks := int((d.h.Length + d.h.BlockSize - 1) / d.h.BlockSize)
+	for i := 0; i < blocks; i++ {
+		lo := i * int(d.h.BlockSize)
+		hi := math.Min(lo+int(d.h.BlockSize), int(d.h.Length))
+		block := items[lo:hi]
+		if err := d.d.decode(d.r, block); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *symbolsDecoder[T]) Reset(r io.Reader) { d.r = r }
