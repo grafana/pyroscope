@@ -8,18 +8,9 @@ Using this example, you'll learn how to use Grafana Agent for continuous Java pr
 
 ### Profiling methodologies
 
-Java applications can be profiled via Pyroscope using three methodologies. The example emphasizes the first method, showcasing the attachment of the Pyroscope profiler as a `javaagent`. 
+Java applications can be profiled via Pyroscope using three methodologies. The example showcases the the Pyroscope profiler as a `javaagent` to a running process, initializing the profiler at application startup without source code modifications or extra dependencies. Manage configuration using Java parameters or environment variables.
 
 Refer to the [official documentation](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/java/) for an in-depth understanding and additional configuration options for Java profiling with the Grafana Agent.
-
-The three methodologies are as follows:
-
-1. **Java Agent** (this example): Attach the Pyroscope profiler as a `javaagent` to a running process, initializing the profiler at application startup without source code modifications or extra dependencies. Manage configuration using Java parameters or environment variables.
-
-2. **OTel Integration** ([docs](https://grafana.com/docs/pyroscope/next/configure-client/trace-span-profiles/java-span-profiles/)): Utilize the OTel integration as an extension to `otel-java-instrumentation`, in conjunction with `opentelemetry-javaagent` to link java profiles with trace spans. This method is suitable for applications already using OpenTelemetry.
-
-3. **Direct Dependency** ([docs](https://grafana.com/docs/pyroscope/next/configure-client/language-sdks/java/)): Integrate Pyroscope directly within your application's code to allow dynamic profiler management.
-
 
 ### Grafana Agent and async-profiler
 
