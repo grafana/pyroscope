@@ -4,17 +4,23 @@ This repository provides a practical demonstration of leveraging the Grafana Age
 
 ## Overview
 
-Using this example, you'll learn how to use Grafana Agent for continuous Java process profiling using Pyroscope with the async-profiler. This example provides an insightful view into application performance.
+The Grafana Agent automates Java process discovery for profiling, streamlining the setup per application. It enables precise and targeted profiling configurations through the Grafana Agent settings.
 
-### Profiling methodologies
-
-Java applications can be profiled via Pyroscope using three methodologies. The example showcases attaching the the Pyroscope profiler as a `javaagent` to a running process via the Grafana Agent without source code modifications or extra dependencies. Manage configuration using Java parameters or environment variables.
+Java profiling via the Grafana Agent is based on a few Grafana Agent components:
+- `discovery.process` (and optionally `discovery.kubernetes`) for process discovery
+- `discovery.relabel` for detecting java processes and setting up labels
+- `pyroscope.java` for enabling profiling for specific applications
+- `pyroscope.write` for writing the profiles data to a remote endpoint
 
 Refer to the [official documentation](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/java/) for an in-depth understanding and additional configuration options for Java profiling with the Grafana Agent.
+Also, check the [Grafana Agent Components reference](https://grafana.com/docs/agent/latest/flow/reference/components/) for more details on each used component.
 
-### Grafana Agent and async-profiler
+### async-profiler
 
-The Grafana Agent automates Java process discovery for profiling, streamlining the setup per application. It enables precise and targeted profiling configurations through the Grafana Agent settings.
+The `pyroscope.java` agent component internally uses the [async-profiler](https://github.com/async-profiler/async-profiler) library.
+This approach offers a key advantage over other instrumentation mechanisms in that you can profile applications that are already running without interruptions (code changes, config changes or restarts).
+
+Under the hood, this is achieved by attaching to the application at a process level and issuing commands to control profiling.
 
 ## Getting started
 
@@ -31,7 +37,9 @@ To use this example:
 After the container is operational, the Grafana Agent profiles the Java application using he defined configuration.
 
 ## Considerations
+
 You need root privileges to run the Grafana Agent for profiling. The Agent must be executed within the host's PID namespace.
 
 ## Documentation
+
 Refer to the [official documentation](https://grafana.com/docs/pyroscope/latest/configure-client/grafana-agent/java/) for an in-depth understanding and additional configuration options for Java profiling with the Grafana Agent.
