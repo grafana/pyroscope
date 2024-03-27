@@ -6,7 +6,7 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.5.0
+    helm.sh/chart: pyroscope-1.5.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.5.0"
@@ -39,7 +39,7 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.5.0
+    helm.sh/chart: pyroscope-1.5.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.5.0"
@@ -52,7 +52,7 @@ metadata:
   name: grafana-agent-config-pyroscope
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.5.0
+    helm.sh/chart: pyroscope-1.5.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.5.0"
@@ -856,7 +856,7 @@ metadata:
   name: pyroscope-dev-overrides-config
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.5.0
+    helm.sh/chart: pyroscope-1.5.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.5.0"
@@ -873,7 +873,7 @@ metadata:
   name: pyroscope-dev-config
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.5.0
+    helm.sh/chart: pyroscope-1.5.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.5.0"
@@ -970,7 +970,7 @@ metadata:
   name: default-pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.5.0
+    helm.sh/chart: pyroscope-1.5.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.5.0"
@@ -1017,7 +1017,7 @@ metadata:
   name: default-pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.5.0
+    helm.sh/chart: pyroscope-1.5.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.5.0"
@@ -1089,7 +1089,7 @@ metadata:
   name: pyroscope-dev-memberlist
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.5.0
+    helm.sh/chart: pyroscope-1.5.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.5.0"
@@ -1116,7 +1116,7 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.5.0
+    helm.sh/chart: pyroscope-1.5.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.5.0"
@@ -1141,7 +1141,7 @@ metadata:
   name: pyroscope-dev-headless
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.5.0
+    helm.sh/chart: pyroscope-1.5.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.5.0"
@@ -1249,7 +1249,7 @@ metadata:
   name: pyroscope-dev
   namespace: default
   labels:
-    helm.sh/chart: pyroscope-1.5.0
+    helm.sh/chart: pyroscope-1.5.1
     app.kubernetes.io/name: pyroscope
     app.kubernetes.io/instance: pyroscope-dev
     app.kubernetes.io/version: "1.5.0"
@@ -1267,7 +1267,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: 4aa3d082e930605af26ad2b83a11b021b8a6b7037b3940ac00e64e249cffaba9
+        checksum/config: ec81de8bad384cad5500a0b93a2270b8e1068ba9084c2696e531711b8a96b30f
         profiles.grafana.com/cpu.port_name: http2
         profiles.grafana.com/cpu.scrape: "true"
         profiles.grafana.com/goroutine.port_name: http2
@@ -1290,7 +1290,7 @@ spec:
         - name: "pyroscope"
           securityContext:
             {}
-          image: "grafana/pyroscope:1.4.0"
+          image: "grafana/pyroscope:1.5.0"
           imagePullPolicy: IfNotPresent
           args:
             - "-target=all"

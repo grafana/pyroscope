@@ -12,7 +12,7 @@ pyroscope:
   image:
     repository: grafana/pyroscope
     pullPolicy: IfNotPresent
-    # Overrides the image tag whose default is the chart appVersion.
+    # Allows to override the image tag, which defaults to the appVersion in the chart metadata
     tag: ""
 
   extraArgs:
