@@ -98,7 +98,7 @@ async function connectRequest(
     // We could parse the response
     return Result.ok(data);
   } catch (e) {
-    // We couldn't parse, but there's definitly some data
+    // We couldn't parse, but there's definitely some data
     return Result.err(
       new ResponseOkNotInJSONFormat(response.value.status, textBody)
     );
@@ -181,7 +181,7 @@ async function fetchAndHandleErrors(
       )
     );
   } catch (e) {
-    // We couldn't parse, but there's definitly some data
+    // We couldn't parse, but there's definitely some data
     // We must handle this case since the go server sometimes responds with plain text
 
     // It's HTML
