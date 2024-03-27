@@ -10,7 +10,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@pyroscope/nodejs": "^0.2.x",
-    "express": "^4.17.3",
+    "express": "^4.19.2",
     "morgan": "^1.10.0"
   },
   "resolutions": {
