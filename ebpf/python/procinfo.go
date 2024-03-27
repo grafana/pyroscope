@@ -18,7 +18,7 @@ type ProcInfo struct {
 	Glibc         []*symtab.ProcMap
 }
 
-var rePython = regexp.MustCompile("/.*/((?:lib)?python)(\\d+)\\.(\\d+)(?:[mu]?(?:\\.so)?)?(?:.1.0)?$")
+var rePython = regexp.MustCompile("/.*/((?:lib)?python)(\\d+)\\.(\\d+)(?:[mu]?(-pyston\\d.\\d)?(?:\\.so)?)?(?:.1.0)?$")
 
 // GetProcInfo parses /proc/pid/map of a python process.
 func GetProcInfo(s *bufio.Scanner) (ProcInfo, error) {
@@ -58,7 +58,7 @@ func GetProcInfo(s *bufio.Scanner) (ProcInfo, error) {
 				strings.Contains(m.Pathname, "/lib/ld-musl-aarch64.so.1") {
 				res.Musl = append(res.Musl, m)
 			}
-			if strings.HasSuffix(m.Pathname, "/libc.so.6") {
+			if strings.HasSuffix(m.Pathname, "/libc.so.6") || strings.HasSuffix(m.Pathname, "/libc-2") {
 				res.Glibc = append(res.Glibc, m)
 			}
 		}
