@@ -304,11 +304,11 @@ $(BIN)/jb: Makefile go.mod
 
 $(BIN)/helm: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.12.3
+	GOBIN=$(abspath $(@D)) $(GO) install helm.sh/helm/v3/cmd/helm@v3.14.3
 
 $(BIN)/kubeconform: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install github.com/yannh/kubeconform/cmd/kubeconform@v0.5.0
+	GOBIN=$(abspath $(@D)) $(GO) install github.com/yannh/kubeconform/cmd/kubeconform@v0.6.4
 
 $(BIN)/mage: Makefile go.mod
 	@mkdir -p $(@D)
@@ -356,7 +356,7 @@ helm/lint: $(BIN)/helm
 	$(BIN)/helm lint ./operations/pyroscope/helm/pyroscope/
 
 helm/docs: $(BIN)/helm
-	docker run --rm --volume "$(CURDIR)/operations/pyroscope/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.8.1
+	docker run --rm --volume "$(CURDIR)/operations/pyroscope/helm:/helm-docs" -u "$(shell id -u)" jnorwood/helm-docs:v1.13.1
 
 .PHONY: goreleaser/lint
 goreleaser/lint: $(BIN)/goreleaser
