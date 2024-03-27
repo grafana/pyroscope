@@ -29,14 +29,15 @@ const (
 
 // newDiskCleaner creates a service that will intermittently clean blocks from
 // disk.
-func newDiskCleaner(logger log.Logger, evictor blockEvictor, policy retentionPolicy, cfg phlaredb.Config) *diskCleaner {
+func newDiskCleaner(logger log.Logger, evictor blockEvictor, policy retentionPolicy, cfg phlaredb.Config, isStorageBucketPresent bool) *diskCleaner {
 	dc := &diskCleaner{
-		logger:        logger,
-		policy:        policy,
-		config:        cfg,
-		blockManager:  newFSBlockManager(cfg.DataPath, evictor, newFS()),
-		volumeChecker: diskutil.NewVolumeChecker(policy.MinFreeDisk*1024*1024*1024, policy.MinDiskAvailablePercentage),
-		stop:          make(chan struct{}),
+		logger:                 logger,
+		policy:                 policy,
+		config:                 cfg,
+		blockManager:           newFSBlockManager(cfg.DataPath, evictor, newFS()),
+		volumeChecker:          diskutil.NewVolumeChecker(policy.MinFreeDisk*1024*1024*1024, policy.MinDiskAvailablePercentage),
+		stop:                   make(chan struct{}),
+		isStorageBucketPresent: isStorageBucketPresent,
 	}
 	dc.Service = services.NewBasicService(nil, dc.running, dc.stopping)
 
@@ -78,11 +79,12 @@ type retentionPolicy struct {
 type diskCleaner struct {
 	services.Service
 
-	logger        log.Logger
-	config        phlaredb.Config
-	policy        retentionPolicy
-	blockManager  fsBlockManager
-	volumeChecker diskutil.VolumeChecker
+	logger                 log.Logger
+	config                 phlaredb.Config
+	policy                 retentionPolicy
+	blockManager           fsBlockManager
+	volumeChecker          diskutil.VolumeChecker
+	isStorageBucketPresent bool
 
 	stop chan struct{}
 	wg   sync.WaitGroup
@@ -100,8 +102,10 @@ func (dc *diskCleaner) running(ctx context.Context) error {
 	var bytesDeleted int
 	var hasHighDiskUtilization bool
 	for {
-		deleted = dc.DeleteUploadedBlocks(ctx)
-		level.Debug(dc.logger).Log("msg", "cleaned uploaded blocks", "count", deleted)
+		if dc.isStorageBucketPresent {
+			deleted = dc.DeleteUploadedBlocks(ctx)
+			level.Debug(dc.logger).Log("msg", "cleaned uploaded blocks", "count", deleted)
+		}
 
 		deleted, bytesDeleted, hasHighDiskUtilization = dc.CleanupBlocksWhenHighDiskUtilization(ctx)
 		if hasHighDiskUtilization {

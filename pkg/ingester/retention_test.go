@@ -58,7 +58,7 @@ func TestDiskCleaner_DeleteUploadedBlocks(t *testing.T) {
 
 		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
 			DataPath: "./data",
-		})
+		}, true)
 		dc.blockManager = bm
 
 		want := 1
@@ -111,7 +111,7 @@ func TestDiskCleaner_DeleteUploadedBlocks(t *testing.T) {
 
 		dc := newDiskCleaner(log.NewNopLogger(), e, policy, phlaredb.Config{
 			DataPath: "./data",
-		})
+		}, true)
 		dc.blockManager = bm
 
 		want := 1
@@ -129,7 +129,7 @@ func TestDiskCleaner_DeleteUploadedBlocks(t *testing.T) {
 
 		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
 			DataPath: "./data",
-		})
+		}, true)
 		dc.blockManager = bm
 
 		want := 0
@@ -152,7 +152,7 @@ func TestDiskCleaner_DeleteUploadedBlocks(t *testing.T) {
 
 		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
 			DataPath: "./data",
-		})
+		}, true)
 		dc.blockManager = bm
 
 		want := 0
@@ -194,7 +194,7 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 
 		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
 			DataPath: "./data",
-		})
+		}, true)
 		dc.blockManager = bm
 		dc.volumeChecker = vc
 
@@ -256,7 +256,7 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 
 		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
 			DataPath: "./data",
-		})
+		}, true)
 		dc.blockManager = bm
 		dc.volumeChecker = vc
 
@@ -305,7 +305,7 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 
 		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
 			DataPath: "./data",
-		})
+		}, true)
 		dc.blockManager = bm
 		dc.volumeChecker = vc
 
