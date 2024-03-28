@@ -55,14 +55,16 @@ discovery.relabel "specific_pods" {
 
 pyroscope.ebpf "instance" {
     forward_to = [pyroscope.write.endpoint.receiver]
-    targets = discovery.relabel.specific_pods.targets
+    targets = discovery.relabel.specific_pods.output
 }
 
 pyroscope.write "endpoint" {
-    url = "http://pyroscope:4040"
-    // url = "<Grafana Cloud URL>"
-    // basic_auth {
-    //  username = "<Grafana Cloud User>"
-    //  password = "<Grafana Cloud Password>"
-    // }
+    endpoint {
+      url = "http://pyroscope:4040"
+      // url = "<Grafana Cloud URL>"
+      // basic_auth {
+      //  username = "<Grafana Cloud User>"
+      //  password = "<Grafana Cloud Password>"
+      // }
+    }
 }
