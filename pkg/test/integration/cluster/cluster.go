@@ -420,6 +420,8 @@ func (comp *Component) nodeName() string {
 	return fmt.Sprintf("%s-%d", comp.Target, comp.replica)
 }
 
+var lockRegistry sync.Mutex
+
 func (comp *Component) start(_ context.Context) (*phlare.Phlare, error) {
 	fs := flag.NewFlagSet(comp.nodeName(), flag.PanicOnError)
 	if err := cfg.DynamicUnmarshal(&comp.cfg, comp.flags, fs); err != nil {
@@ -429,6 +431,8 @@ func (comp *Component) start(_ context.Context) (*phlare.Phlare, error) {
 	// Hack to avoid clashing metrics, we should track down the use of globals
 	// restore oldReg := prometheus.DefaultRegisterer
 	comp.reg = prometheus.NewRegistry()
+	lockRegistry.Lock()
+	defer lockRegistry.Unlock()
 	prometheus.DefaultRegisterer = comp.reg
 	prometheus.DefaultGatherer = comp.reg
 	f, err := phlare.New(comp.cfg)
