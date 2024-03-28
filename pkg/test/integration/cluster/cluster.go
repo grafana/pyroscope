@@ -185,6 +185,7 @@ func (c *Cluster) Prepare() (err error) {
 		comp.flags = append(
 			nodeNameFlags(comp.nodeName()),
 			[]string{
+				"-tracing.enabled=false", // data race
 				"-distributor.replication-factor=3",
 				"-store-gateway.sharding-ring.replication-factor=3",
 				fmt.Sprintf("-target=%s", comp.Target),
