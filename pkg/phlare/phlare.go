@@ -220,17 +220,18 @@ type Phlare struct {
 	serviceMap    map[string]services.Service
 	deps          map[string][]string
 
-	API           *api.API
-	Server        *server.Server
-	SignalHandler *signals.Handler
-	MemberlistKV  *memberlist.KVInitService
-	ring          *ring.Ring
-	usageReport   *usagestats.Reporter
-	RuntimeConfig *runtimeconfig.Manager
-	Overrides     *validation.Overrides
-	Compactor     *compactor.MultitenantCompactor
-	admin         *operations.Admin
-	versions      *apiversion.Service
+	API            *api.API
+	Server         *server.Server
+	SignalHandler  *signals.Handler
+	MemberlistKV   *memberlist.KVInitService
+	ring           *ring.Ring
+	usageReport    *usagestats.Reporter
+	RuntimeConfig  *runtimeconfig.Manager
+	Overrides      *validation.Overrides
+	Compactor      *compactor.MultitenantCompactor
+	admin          *operations.Admin
+	versions       *apiversion.Service
+	serviceManager *services.Manager
 
 	TenantLimits validation.TenantLimits
 
@@ -375,6 +376,8 @@ func (f *Phlare) Run() error {
 	if err != nil {
 		return err
 	}
+	f.serviceManager = sm
+
 	f.API.RegisterRoute("/ready", f.readyHandler(sm), false, false, "GET")
 
 	RegisterHealthServer(f.Server.HTTP, grpcutil.WithManager(sm))
@@ -501,6 +504,14 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 
 		util.WriteTextResponse(w, "ready")
 	}
+}
+
+func (f *Phlare) Stop() func(context.Context) error {
+	if f.serviceManager == nil {
+		return func(context.Context) error { return nil }
+	}
+	f.serviceManager.StopAsync()
+	return f.serviceManager.AwaitStopped
 }
 
 func (f *Phlare) stopped() {
