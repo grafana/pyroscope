@@ -435,6 +435,7 @@ func (comp *Component) start(_ context.Context) (*phlare.Phlare, error) {
 	defer lockRegistry.Unlock()
 	prometheus.DefaultRegisterer = comp.reg
 	prometheus.DefaultGatherer = comp.reg
+	comp.cfg.Server.Gatherer = comp.reg
 	f, err := phlare.New(comp.cfg)
 	if err != nil {
 		return nil, err
