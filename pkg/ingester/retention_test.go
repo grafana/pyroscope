@@ -369,7 +369,7 @@ func TestDiskCleaner_isBlockDeletable(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			dc.policy.Expiry = tt.Expiry
 
-			got := dc.isBlockDeletable(tt.Block)
+			got := dc.isBlockDeletable(tt.Block, true)
 			require.Equal(t, tt.Want, got)
 		})
 	}
