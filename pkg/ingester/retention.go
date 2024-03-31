@@ -29,15 +29,14 @@ const (
 
 // newDiskCleaner creates a service that will intermittently clean blocks from
 // disk.
-func newDiskCleaner(logger log.Logger, evictor blockEvictor, policy retentionPolicy, cfg phlaredb.Config, isStorageBucketPresent bool) *diskCleaner {
+func newDiskCleaner(logger log.Logger, evictor blockEvictor, policy retentionPolicy, cfg phlaredb.Config) *diskCleaner {
 	dc := &diskCleaner{
-		logger:                 logger,
-		policy:                 policy,
-		config:                 cfg,
-		blockManager:           newFSBlockManager(cfg.DataPath, evictor, newFS()),
-		volumeChecker:          diskutil.NewVolumeChecker(policy.MinFreeDisk*1024*1024*1024, policy.MinDiskAvailablePercentage),
-		stop:                   make(chan struct{}),
-		isStorageBucketPresent: isStorageBucketPresent,
+		logger:        logger,
+		policy:        policy,
+		config:        cfg,
+		blockManager:  newFSBlockManager(cfg.DataPath, evictor, newFS()),
+		volumeChecker: diskutil.NewVolumeChecker(policy.MinFreeDisk*1024*1024*1024, policy.MinDiskAvailablePercentage),
+		stop:          make(chan struct{}),
 	}
 	dc.Service = services.NewBasicService(nil, dc.running, dc.stopping)
 
@@ -79,12 +78,11 @@ type retentionPolicy struct {
 type diskCleaner struct {
 	services.Service
 
-	logger                 log.Logger
-	config                 phlaredb.Config
-	policy                 retentionPolicy
-	blockManager           fsBlockManager
-	volumeChecker          diskutil.VolumeChecker
-	isStorageBucketPresent bool
+	logger        log.Logger
+	config        phlaredb.Config
+	policy        retentionPolicy
+	blockManager  fsBlockManager
+	volumeChecker diskutil.VolumeChecker
 
 	stop chan struct{}
 	wg   sync.WaitGroup
@@ -102,10 +100,8 @@ func (dc *diskCleaner) running(ctx context.Context) error {
 	var bytesDeleted int
 	var hasHighDiskUtilization bool
 	for {
-		if dc.isStorageBucketPresent {
-			deleted = dc.DeleteUploadedBlocks(ctx)
-			level.Debug(dc.logger).Log("msg", "cleaned uploaded blocks", "count", deleted)
-		}
+		deleted = dc.DeleteUploadedBlocks(ctx)
+		level.Debug(dc.logger).Log("msg", "cleaned uploaded blocks", "count", deleted)
 
 		deleted, bytesDeleted, hasHighDiskUtilization = dc.CleanupBlocksWhenHighDiskUtilization(ctx)
 		if hasHighDiskUtilization {
@@ -363,6 +359,32 @@ type realFSBlockManager struct {
 	FS      fileSystem
 }
 
+func (bm *realFSBlockManager) getUploadedBlockIds(tenantID string) (map[ulid.ULID]struct{}, error) {
+	localDirPath := filepath.Join(bm.Root, tenantID, phlareDBLocalPath)
+
+	shipperPath := filepath.Join(localDirPath, shipper.MetaFilename)
+	bytes, err := fs.ReadFile(bm.FS, shipperPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return make(map[ulid.ULID]struct{}), nil
+		}
+		return nil, err
+	}
+
+	var meta shipper.Meta
+	err = json.Unmarshal(bytes, &meta)
+	if err != nil {
+		return nil, err
+	}
+
+	uploadedBlockIDs := make(map[ulid.ULID]struct{}, len(meta.Uploaded))
+	for _, id := range meta.Uploaded {
+		uploadedBlockIDs[id] = struct{}{}
+	}
+
+	return uploadedBlockIDs, nil
+}
+
 func (bm *realFSBlockManager) GetTenantIDs(ctx context.Context) ([]string, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -395,21 +417,9 @@ func (bm *realFSBlockManager) GetBlocksForTenant(ctx context.Context, tenantID s
 		return nil, err
 	}
 
-	shipperPath := filepath.Join(localDirPath, shipper.MetaFilename)
-	bytes, err := fs.ReadFile(bm.FS, shipperPath)
+	uploadedBlockIDs, err := bm.getUploadedBlockIds(tenantID)
 	if err != nil {
 		return nil, err
-	}
-
-	var meta shipper.Meta
-	err = json.Unmarshal(bytes, &meta)
-	if err != nil {
-		return nil, err
-	}
-
-	uploadedBlockIDs := make(map[ulid.ULID]struct{}, len(meta.Uploaded))
-	for _, id := range meta.Uploaded {
-		uploadedBlockIDs[id] = struct{}{}
 	}
 
 	// Read blocks.
