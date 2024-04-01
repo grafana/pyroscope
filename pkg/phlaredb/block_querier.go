@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -27,7 +28,6 @@ import (
 	"github.com/prometheus/prometheus/promql/parser"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 

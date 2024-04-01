@@ -2,12 +2,12 @@ package symdb
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"

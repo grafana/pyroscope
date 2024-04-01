@@ -2,10 +2,9 @@ package operations
 
 import (
 	"net/http"
+	"slices"
 	"strings"
 	"time"
-
-	"golang.org/x/exp/slices"
 
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 )

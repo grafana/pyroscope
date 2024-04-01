@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/grafana/dskit/tenant"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
-	"golang.org/x/exp/slices"
 
 	v1 "github.com/grafana/pyroscope/api/gen/proto/go/adhocprofiles/v1"
 	"github.com/grafana/pyroscope/pkg/frontend"

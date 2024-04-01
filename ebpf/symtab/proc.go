@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/pkg/errors"
-	"golang.org/x/exp/slices"
 )
 
 type ProcTable struct {
