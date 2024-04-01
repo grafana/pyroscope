@@ -80,7 +80,7 @@ discovery.relabel "agent" {
 
 pyroscope.ebpf "instance" {
  forward_to     = [pyroscope.write.endpoint.receiver]
- targets = discovery.relabel.agent.targets
+ targets = discovery.relabel.agent.output
 }
 
 pyroscope.scrape "local" {

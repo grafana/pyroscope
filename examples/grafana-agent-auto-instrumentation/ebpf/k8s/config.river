@@ -55,7 +55,7 @@ discovery.relabel "specific_pods" {
 
 pyroscope.ebpf "instance" {
     forward_to = [pyroscope.write.endpoint.receiver]
-    targets = discovery.relabel.specific_pods.targets
+    targets = discovery.relabel.specific_pods.output
 }
 
 pyroscope.write "endpoint" {
