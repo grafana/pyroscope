@@ -195,7 +195,7 @@ pyroscope.write "write_job_name" {
     }
     ```
 
-3. Use `discovery.relabel.specific_pods.targets` as a target for `pyroscope.scrape` block.
+3. Use `discovery.relabel.specific_pods.output` as a target for `pyroscope.scrape` block.
 
     ```river
         pyroscope.scrape "scrape_job_name" {
