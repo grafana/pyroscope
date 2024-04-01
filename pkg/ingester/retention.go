@@ -153,7 +153,7 @@ func (dc *diskCleaner) DeleteUploadedBlocks(ctx context.Context) int {
 		}
 
 		for _, block := range blocks {
-			if !dc.isBlockDeletable(block, false) {
+			if !dc.isBlockDeletable(block, true) {
 				continue
 			}
 
