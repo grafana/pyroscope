@@ -77,6 +77,7 @@ type Config struct {
 	AccessKeyID      string         `yaml:"access_key_id"`
 	Insecure         bool           `yaml:"insecure" category:"advanced"`
 	SignatureVersion string         `yaml:"signature_version" category:"advanced"`
+	BucketLookupType string         `yaml:"bucket_lookup_type" category:"advanced"`
 
 	SSE  SSEConfig  `yaml:"sse"`
 	HTTP HTTPConfig `yaml:"http"`
@@ -98,6 +99,7 @@ func (cfg *Config) RegisterFlagsWithPrefix(prefix string, f *flag.FlagSet) {
 	f.StringVar(&cfg.SignatureVersion, prefix+"s3.signature-version", SignatureVersionV4, fmt.Sprintf("The signature version to use for authenticating against S3. Supported values are: %s.", strings.Join(supportedSignatureVersions, ", ")))
 	cfg.SSE.RegisterFlagsWithPrefix(prefix+"s3.sse.", f)
 	cfg.HTTP.RegisterFlagsWithPrefix(prefix, f)
+	f.StringVar(&cfg.BucketLookupType, prefix+"s3.bucket-lookup-type", "auto", "The bucket lokup type for s3, supported values are: auto,virtual-hosted,path")
 }
 
 // Validate config and returns error on failure

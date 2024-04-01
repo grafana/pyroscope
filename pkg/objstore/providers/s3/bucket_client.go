@@ -58,6 +58,19 @@ func newS3Config(cfg Config) (s3.Config, error) {
 			Transport:             cfg.HTTP.Transport,
 		},
 		// Enforce signature version 2 if CLI flag is set
-		SignatureV2: cfg.SignatureVersion == SignatureVersionV2,
+		SignatureV2:      cfg.SignatureVersion == SignatureVersionV2,
+		BucketLookupType: getS3BucketLookupType(cfg.BucketLookupType),
 	}, nil
+}
+
+var bucketLookupTypes = []string{"auto", "virtual-hosted", "path"}
+
+func getS3BucketLookupType(lookupType string) s3.BucketLookupType {
+	for i, item := range bucketLookupTypes {
+		if item == lookupType {
+			return s3.BucketLookupType(i)
+		}
+	}
+
+	return s3.BucketLookupType(0)
 }
