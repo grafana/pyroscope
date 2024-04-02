@@ -716,7 +716,6 @@ type mockVolumeChecker struct {
 }
 
 func (vc *mockVolumeChecker) HasHighDiskUtilization(path string) (*diskutil.VolumeStats, error) {
-	fmt.Println(path)
 	args := vc.Called(path)
 	return args[0].(*diskutil.VolumeStats), args.Error(1)
 }
