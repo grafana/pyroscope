@@ -323,7 +323,7 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 	})
 }
 
-func TestDiskCleaner_isBlockDeletable(t *testing.T) {
+func TestDiskCleaner_isBlockDeletableForUploadedBlocks(t *testing.T) {
 	tests := []struct {
 		Name   string
 		Expiry time.Duration
@@ -376,7 +376,7 @@ func TestDiskCleaner_isBlockDeletable(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			dc.policy.Expiry = tt.Expiry
 
-			got := dc.isBlockDeletable(tt.Block, true)
+			got := tt.Block.Uploaded && dc.isExpired(tt.Block)
 			require.Equal(t, tt.Want, got)
 		})
 	}

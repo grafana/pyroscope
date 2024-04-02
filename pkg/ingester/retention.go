@@ -153,7 +153,7 @@ func (dc *diskCleaner) DeleteUploadedBlocks(ctx context.Context) int {
 		}
 
 		for _, block := range blocks {
-			if !dc.isBlockDeletable(block, true) {
+			if !block.Uploaded || !dc.isExpired(block) {
 				continue
 			}
 
@@ -233,7 +233,7 @@ func (dc *diskCleaner) CleanupBlocksWhenHighDiskUtilization(ctx context.Context)
 	prevVolumeStats := &diskutil.VolumeStats{}
 	filesDeleted := 0
 	for _, block := range blocks {
-		if !dc.isBlockDeletable(block, false) {
+		if !dc.isExpired(block) {
 			continue
 		}
 
@@ -289,19 +289,12 @@ func (dc *diskCleaner) CleanupBlocksWhenHighDiskUtilization(ctx context.Context)
 }
 
 // isBlockDeletable returns true if this block can be deleted.
-func (dc *diskCleaner) isBlockDeletable(block *tenantBlock, deleteOnlyUploaded bool) bool {
+func (dc *diskCleaner) isExpired(block *tenantBlock) bool {
 	// TODO(kolesnikovae):
 	//  Expiry defaults to -querier.query-store-after which should be deprecated,
 	//  blocks-storage.bucket-store.ignore-blocks-within can be used instead.
 	expiryTs := time.Now().Add(-dc.policy.Expiry)
-
-	isExpired := ulid.Time(block.ID.Time()).Before(expiryTs)
-
-	if deleteOnlyUploaded {
-		return block.Uploaded && isExpired
-	}
-
-	return isExpired
+	return ulid.Time(block.ID.Time()).Before(expiryTs)
 }
 
 // blocksByUploadAndAge implements sorting tenantBlock by uploaded then by age
