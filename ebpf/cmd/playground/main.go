@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -252,6 +253,10 @@ var defaultConfig = Config{
 	RelabelConfig:      nil,
 	PythonBPFLogErr:    true,
 	PythonBPFLogDebug:  true,
+	BPFMapsOptions: ebpfspy.BPFMapsOptions{
+		PIDMapSize:     2048,
+		SymbolsMapSize: 16384,
+	},
 }
 
 type Config struct {
@@ -269,6 +274,7 @@ type Config struct {
 	RelabelConfig             []*RelabelConfig
 	PythonBPFLogErr           bool
 	PythonBPFLogDebug         bool
+	BPFMapsOptions            ebpfspy.BPFMapsOptions
 }
 
 type RelabelConfig struct {
@@ -332,9 +338,9 @@ func getProcessTargets() []sd.DiscoveryTarget {
 		target := sd.DiscoveryTarget{
 			"__process_pid__":       spid,
 			"__meta_process_cwd":    cwd,
-			"__meta_process_exe":    exe,
-			"__meta_process_comm":   string(comm),
-			"__meta_process_cgroup": string(cgroup),
+			"__meta_process_exe":    strings.TrimSpace(exe),
+			"__meta_process_comm":   strings.TrimSpace(string(comm)),
+			"__meta_process_cgroup": strings.TrimSpace(string(cgroup)),
 			"pid":                   spid,
 			"exe":                   exe,
 		}
@@ -362,7 +368,10 @@ func relabelProcessTargets(targets []sd.DiscoveryTarget, cfg []*RelabelConfig) [
 	var res []sd.DiscoveryTarget
 	for _, target := range targets {
 		lbls := labels.FromMap(target)
+		fmt.Printf("before relabeling %+v\n", lbls)
 		lbls, keep := relabel.Process(lbls, promConfig...)
+		fmt.Printf("after relabeling %v %+v\n", keep, lbls)
+
 		if !keep {
 			continue
 		}

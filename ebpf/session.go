@@ -48,6 +48,12 @@ type SessionOptions struct {
 	VerifierLogSize           int
 	PythonBPFErrorLogEnabled  bool
 	PythonBPFDebugLogEnabled  bool
+	BPFMapsOptions            BPFMapsOptions
+}
+
+type BPFMapsOptions struct {
+	PIDMapSize     uint32
+	SymbolsMapSize uint32
 }
 
 type Session interface {
@@ -152,6 +158,9 @@ func (s *session) Start() error {
 	spec, err := pyrobpf.LoadProfile()
 	if err != nil {
 		return fmt.Errorf("pyrobpf load %w", err)
+	}
+	if s.options.BPFMapsOptions.PIDMapSize != 0 {
+		spec.Maps[pyrobpf.MapNamePIDs].MaxEntries = s.options.BPFMapsOptions.PIDMapSize
 	}
 
 	_, nsIno, err := getPIDNamespace()
@@ -778,9 +787,6 @@ func (s *session) cleanup() {
 		s.symCache.RemoveDeadPID(symtab.PidKey(pid))
 		if s.pyperf != nil {
 			s.pyperf.RemoveDeadPID(pid)
-		}
-		if err := s.bpf.Pids.Delete(pid); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
-			_ = level.Error(s.logger).Log("msg", "delete pid config", "pid", pid, "err", err)
 		}
 		s.targetFinder.RemoveDeadPID(pid)
 	}
