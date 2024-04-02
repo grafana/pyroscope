@@ -2,6 +2,8 @@ package symdb
 
 import (
 	"context"
+	"fmt"
+	"hash/crc32"
 	"io"
 	"sync"
 
@@ -13,9 +15,9 @@ type PartitionWriter struct {
 
 	stacktraces *stacktracesPartition
 	strings     deduplicatingSlice[string, string, *stringsHelper]
-	mappings    deduplicatingSlice[*schemav1.InMemoryMapping, mappingsKey, *mappingsHelper]
-	functions   deduplicatingSlice[*schemav1.InMemoryFunction, functionsKey, *functionsHelper]
-	locations   deduplicatingSlice[*schemav1.InMemoryLocation, locationsKey, *locationsHelper]
+	mappings    deduplicatingSlice[schemav1.InMemoryMapping, mappingsKey, *mappingsHelper]
+	functions   deduplicatingSlice[schemav1.InMemoryFunction, functionsKey, *functionsHelper]
+	locations   deduplicatingSlice[schemav1.InMemoryLocation, locationsKey, *locationsHelper]
 }
 
 func (p *PartitionWriter) AppendStacktraces(dst []uint32, s []*schemav1.Stacktrace) {
@@ -311,15 +313,15 @@ func SplitStacktraces(s []uint32, n uint32) []StacktracesRange {
 	return cs
 }
 
-func (p *PartitionWriter) AppendLocations(dst []uint32, locations []*schemav1.InMemoryLocation) {
+func (p *PartitionWriter) AppendLocations(dst []uint32, locations []schemav1.InMemoryLocation) {
 	p.locations.append(dst, locations)
 }
 
-func (p *PartitionWriter) AppendMappings(dst []uint32, mappings []*schemav1.InMemoryMapping) {
+func (p *PartitionWriter) AppendMappings(dst []uint32, mappings []schemav1.InMemoryMapping) {
 	p.mappings.append(dst, mappings)
 }
 
-func (p *PartitionWriter) AppendFunctions(dst []uint32, functions []*schemav1.InMemoryFunction) {
+func (p *PartitionWriter) AppendFunctions(dst []uint32, functions []schemav1.InMemoryFunction) {
 	p.functions.append(dst, functions)
 }
 
@@ -363,4 +365,44 @@ func (p *PartitionWriter) WriteStats(s *PartitionStats) {
 
 func (p *PartitionWriter) Release() {
 	// Noop. Satisfies PartitionReader interface.
+}
+
+func (p *PartitionWriter) write(w *fileWriter) (err error) {
+	senc := newSymbolsEncoder[string](w.w, new(stringsBlockEncoder))
+	senc.Encode(p.strings.slice)
+
+	menc := newSymbolsEncoder[schemav1.InMemoryMapping](w.w, new(mappingsBlockEncoder))
+	menc.Encode(p.mappings.slice)
+
+	fenc := newSymbolsEncoder[schemav1.InMemoryFunction](w.w, new(functionsBlockEncoder))
+	fenc.Encode(p.functions.slice)
+
+	lenc := newSymbolsEncoder[schemav1.InMemoryLocation](w.w, new(locationsBlockEncoder))
+	lenc.Encode(p.locations.slice)
+
+	for ci, c := range p.stacktraces.chunks {
+		stacks := c.stacks
+		if stacks == 0 {
+			stacks = uint32(len(p.stacktraces.hashToIdx))
+		}
+		h := StacktraceChunkHeader{
+			Offset:             w.w.offset,
+			Size:               0, // Set later.
+			Partition:          p.header.Partition,
+			ChunkIndex:         uint16(ci),
+			ChunkEncoding:      ChunkEncodingGroupVarint,
+			Stacktraces:        stacks,
+			StacktraceNodes:    c.tree.len(),
+			StacktraceMaxDepth: 0, // TODO
+			StacktraceMaxNodes: c.partition.maxNodesPerChunk,
+			CRC:                0, // Set later.
+		}
+		crc := crc32.New(castagnoli)
+		if h.Size, err = c.WriteTo(io.MultiWriter(crc, w.w)); err != nil {
+			return fmt.Errorf("writing stacktrace chunk data: %w", err)
+		}
+		h.CRC = crc.Sum32()
+		p.header.StacktraceChunks = append(p.header.StacktraceChunks, h)
+	}
+	return nil
 }

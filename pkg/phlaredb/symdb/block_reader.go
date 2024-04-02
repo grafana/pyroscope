@@ -144,22 +144,22 @@ func (r *Reader) file(name string) (block.File, error) {
 func (r *Reader) partitionReader(h *PartitionHeader) *partition {
 	p := &partition{
 		reader: r,
-		locations: parquetTableRange[*schemav1.InMemoryLocation, *schemav1.LocationPersister]{
+		locations: parquetTableRange[schemav1.InMemoryLocation, schemav1.LocationPersister]{
 			bucket:  r.bucket,
 			headers: h.Locations,
 			file:    &r.locations,
 		},
-		mappings: parquetTableRange[*schemav1.InMemoryMapping, *schemav1.MappingPersister]{
+		mappings: parquetTableRange[schemav1.InMemoryMapping, schemav1.MappingPersister]{
 			bucket:  r.bucket,
 			headers: h.Mappings,
 			file:    &r.mappings,
 		},
-		functions: parquetTableRange[*schemav1.InMemoryFunction, *schemav1.FunctionPersister]{
+		functions: parquetTableRange[schemav1.InMemoryFunction, schemav1.FunctionPersister]{
 			bucket:  r.bucket,
 			headers: h.Functions,
 			file:    &r.functions,
 		},
-		strings: parquetTableRange[string, *schemav1.StringPersister]{
+		strings: parquetTableRange[string, schemav1.StringPersister]{
 			bucket:  r.bucket,
 			headers: h.Strings,
 			file:    &r.strings,
@@ -208,10 +208,10 @@ type partition struct {
 	reader *Reader
 
 	stacktraceChunks []*stacktraceChunkReader
-	locations        parquetTableRange[*schemav1.InMemoryLocation, *schemav1.LocationPersister]
-	mappings         parquetTableRange[*schemav1.InMemoryMapping, *schemav1.MappingPersister]
-	functions        parquetTableRange[*schemav1.InMemoryFunction, *schemav1.FunctionPersister]
-	strings          parquetTableRange[string, *schemav1.StringPersister]
+	locations        parquetTableRange[schemav1.InMemoryLocation, schemav1.LocationPersister]
+	mappings         parquetTableRange[schemav1.InMemoryMapping, schemav1.MappingPersister]
+	functions        parquetTableRange[schemav1.InMemoryFunction, schemav1.FunctionPersister]
+	strings          parquetTableRange[string, schemav1.StringPersister]
 }
 
 func (p *partition) init(ctx context.Context) (err error) {

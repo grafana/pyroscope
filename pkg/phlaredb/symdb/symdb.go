@@ -26,9 +26,9 @@ type PartitionReader interface {
 
 type Symbols struct {
 	Stacktraces StacktraceResolver
-	Locations   []*schemav1.InMemoryLocation
-	Mappings    []*schemav1.InMemoryMapping
-	Functions   []*schemav1.InMemoryFunction
+	Locations   []schemav1.InMemoryLocation
+	Mappings    []schemav1.InMemoryMapping
+	Functions   []schemav1.InMemoryFunction
 	Strings     []string
 }
 

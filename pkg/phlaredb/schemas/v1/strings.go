@@ -13,13 +13,13 @@ var stringsSchema = parquet.NewSchema("String", phlareparquet.Group{
 
 type StringPersister struct{}
 
-func (*StringPersister) Name() string { return "strings" }
+func (StringPersister) Name() string { return "strings" }
 
-func (*StringPersister) Schema() *parquet.Schema { return stringsSchema }
+func (StringPersister) Schema() *parquet.Schema { return stringsSchema }
 
-func (*StringPersister) SortingColumns() parquet.SortingOption { return parquet.SortingColumns() }
+func (StringPersister) SortingColumns() parquet.SortingOption { return parquet.SortingColumns() }
 
-func (*StringPersister) Deconstruct(row parquet.Row, id uint64, s string) parquet.Row {
+func (StringPersister) Deconstruct(row parquet.Row, id uint64, s string) parquet.Row {
 	if cap(row) < 2 {
 		row = make(parquet.Row, 0, 2)
 	}
@@ -29,6 +29,6 @@ func (*StringPersister) Deconstruct(row parquet.Row, id uint64, s string) parque
 	return row
 }
 
-func (*StringPersister) Reconstruct(row parquet.Row) (id uint64, s string, err error) {
+func (StringPersister) Reconstruct(row parquet.Row) (id uint64, s string, err error) {
 	return 0, row[1].String(), nil
 }

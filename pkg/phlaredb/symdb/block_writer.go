@@ -28,10 +28,10 @@ type writer struct {
 	files       []block.File
 
 	// Parquet tables.
-	mappings  parquetWriter[*schemav1.InMemoryMapping, *schemav1.MappingPersister]
-	functions parquetWriter[*schemav1.InMemoryFunction, *schemav1.FunctionPersister]
-	locations parquetWriter[*schemav1.InMemoryLocation, *schemav1.LocationPersister]
-	strings   parquetWriter[string, *schemav1.StringPersister]
+	mappings  parquetWriter[schemav1.InMemoryMapping, schemav1.MappingPersister]
+	functions parquetWriter[schemav1.InMemoryFunction, schemav1.FunctionPersister]
+	locations parquetWriter[schemav1.InMemoryLocation, schemav1.LocationPersister]
+	strings   parquetWriter[string, schemav1.StringPersister]
 }
 
 func newWriter(c *Config) *writer {

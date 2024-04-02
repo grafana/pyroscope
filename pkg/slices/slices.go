@@ -1,7 +1,7 @@
 package slices
 
 import (
-	"golang.org/x/exp/slices"
+	"slices"
 )
 
 // RemoveInPlace removes all elements from a slice that match the given predicate.
