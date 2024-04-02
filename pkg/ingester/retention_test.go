@@ -252,7 +252,14 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 				BytesAvailable:      100,
 				BytesTotal:          200,
 			}, nil).
-			Once() // Expect the loop to break after a single block delete (since the subsequent blocks aren't uploaded).
+			Once()
+		vc.On("HasHighDiskUtilization", mock.Anything).
+			Return(&diskutil.VolumeStats{
+				HighDiskUtilization: false,
+				BytesAvailable:      100,
+				BytesTotal:          200,
+			}, nil).
+			Once()
 
 		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
 			DataPath: "./data",
@@ -261,7 +268,7 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 		dc.volumeChecker = vc
 
 		deleted, bytesFreed, hadHighDisk := dc.CleanupBlocksWhenHighDiskUtilization(context.Background())
-		require.Equal(t, 1, deleted)
+		require.Equal(t, 2, deleted)
 		require.Equal(t, 100, bytesFreed)
 		require.True(t, hadHighDisk)
 	})
@@ -709,6 +716,7 @@ type mockVolumeChecker struct {
 }
 
 func (vc *mockVolumeChecker) HasHighDiskUtilization(path string) (*diskutil.VolumeStats, error) {
+	fmt.Println(path)
 	args := vc.Called(path)
 	return args[0].(*diskutil.VolumeStats), args.Error(1)
 }
