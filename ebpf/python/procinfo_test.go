@@ -293,6 +293,7 @@ func TestPython(t *testing.T) {
 		testdataPath + "python-x64/3.6.6/lib/libpython3.6m.so.1.0",
 		testdataPath + "python-x64/3.8.11/lib/libpython3.8.so.1.0",
 		testdataPath + "python-x64/3.8.10/lib/libpython3.8.so.1.0",
+		testdataPath + "python-x64/3.8.10/lib/libpython3.8-pyston2.3.so.1.0",
 		testdataPath + "python-arm64/3.7.12/lib/libpython3.7m.so.1.0",
 		testdataPath + "python-arm64/3.5.1/lib/libpython3.5m.so.1.0",
 		testdataPath + "python-arm64/3.9.15/lib/libpython3.9.so.1.0",
@@ -398,6 +399,7 @@ func TestPython(t *testing.T) {
 		testdataPath + "python-arm64/3.6.6/lib/libpython3.6m.so.1.0",
 		testdataPath + "python-arm64/3.8.11/lib/libpython3.8.so.1.0",
 		testdataPath + "python-arm64/3.8.10/lib/libpython3.8.so.1.0",
+		testdataPath + "python-arm64/3.8.10/lib/libpython3.8-pyston2.3.so.1.0",
 	}
 	for _, f := range fs {
 		t.Run(f, func(t *testing.T) {
