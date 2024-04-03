@@ -22,6 +22,10 @@
         "terminationGracePeriodSeconds": 1200
       },
       "distributor": {
+        "autoscaling": {
+          "enabled": true,
+          "minReplicas": 2
+        },
         "kind": "Deployment",
         "replicaCount": 2,
         "resources": {

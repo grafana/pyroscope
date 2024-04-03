@@ -36,6 +36,9 @@ pyroscope:
     distributor:
       kind: Deployment
       replicaCount: 2
+      autoscaling:
+        enabled: true
+        minReplicas: 2 
       resources:
         limits:
           memory: 1Gi
