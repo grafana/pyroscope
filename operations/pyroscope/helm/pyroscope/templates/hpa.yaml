@@ -2,8 +2,9 @@
 {{- range $component, $cfg := (fromYaml (include "pyroscope.components" .)) }}
 {{- with $global }}
 {{- $autoScalingValues := mergeOverwrite (fromYaml (include "pyroscope.defaultAutoscalingComponents" .)) ($cfg.autoscaling | default dict) }}
----
+
 {{- if $autoScalingValues.enabled }}
+---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
