@@ -91,3 +91,16 @@ If no components are defined fall back to single binary statefulset
 all: {kind: "StatefulSet", name: "{{$full_name}}"}
 {{- end }}
 {{- end }}
+
+{{- define "pyroscope.defaultAutoscalingComponents" -}}
+enabled: false
+minReplicas: 1
+maxReplicas: 3
+targetCPUUtilizationPercentage: 60
+targetMemoryUtilizationPercentage: null
+customMetrics: []
+behavior:
+    enabled: false
+    scaleDown: {}
+    scaleUp: {}
+{{- end }}

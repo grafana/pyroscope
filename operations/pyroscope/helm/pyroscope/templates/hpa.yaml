@@ -1,0 +1,54 @@
+{{- $global := . }}
+{{- range $component, $cfg := (fromYaml (include "pyroscope.components" .)) }}
+{{- with $global }}
+{{- $autoScalingValues := mergeOverwrite (fromYaml (include "pyroscope.defaultAutoscalingComponents" .)) ($cfg.autoscaling | default dict) }}
+
+{{- if $autoScalingValues.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $cfg.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pyroscope.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $component | quote }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: {{ $cfg.kind }}
+    name: {{ $cfg.name }}
+  minReplicas: {{ $autoScalingValues.minReplicas }}
+  maxReplicas: {{ $autoScalingValues.maxReplicas }}
+  metrics:
+  {{- with  $autoScalingValues.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ . }}
+  {{- end }}
+  {{- with  $autoScalingValues.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ . }}
+  {{- end }}
+  {{- with $autoScalingValues.customMetrics }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if $autoScalingValues.behavior.enabled }}
+  behavior:
+    {{- with $autoScalingValues.behavior.scaleDown }}
+    scaleDown: {{ toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with $autoScalingValues.behavior.scaleUp }}
+    scaleUp: {{ toYaml . | nindent 6 }}
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
