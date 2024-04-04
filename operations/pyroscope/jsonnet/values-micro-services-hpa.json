@@ -22,6 +22,10 @@
         "terminationGracePeriodSeconds": 1200
       },
       "distributor": {
+        "autoscaling": {
+          "enabled": true,
+          "minReplicas": 2
+        },
         "kind": "Deployment",
         "replicaCount": 2,
         "resources": {
@@ -49,6 +53,19 @@
         "terminationGracePeriodSeconds": 600
       },
       "querier": {
+        "autoscaling": {
+          "behavior": {
+            "enabled": true,
+            "scaleDown": {
+              "stabilizationWindowSeconds": 60
+            }
+          },
+          "enabled": true,
+          "maxReplicas": 4,
+          "minReplicas": 2,
+          "targetCPUUtilizationPercentage": null,
+          "targetMemoryUtilizationPercentage": 60
+        },
         "kind": "Deployment",
         "replicaCount": 3,
         "resources": {
@@ -62,6 +79,13 @@
         }
       },
       "query-frontend": {
+        "autoscaling": {
+          "enabled": true,
+          "maxReplicas": 4,
+          "minReplicas": 2,
+          "targetCPUUtilizationPercentage": null,
+          "targetMemoryUtilizationPercentage": 60
+        },
         "kind": "Deployment",
         "replicaCount": 2,
         "resources": {
@@ -75,6 +99,12 @@
         }
       },
       "query-scheduler": {
+        "autoscaling": {
+          "enabled": true,
+          "maxReplicas": 4,
+          "minReplicas": 2,
+          "targetCPUUtilizationPercentage": 40
+        },
         "kind": "Deployment",
         "replicaCount": 2,
         "resources": {

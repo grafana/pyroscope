@@ -2384,6 +2384,121 @@ spec:
         - name: data
           emptyDir: {}
 ---
+# Source: pyroscope/templates/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pyroscope-dev-distributor
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.5.1
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.5.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "distributor"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: pyroscope-dev-distributor
+  minReplicas: 2
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+---
+# Source: pyroscope/templates/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pyroscope-dev-querier
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.5.1
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.5.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "querier"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: pyroscope-dev-querier
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 60
+  behavior:
+    scaleDown: 
+      stabilizationWindowSeconds: 60
+---
+# Source: pyroscope/templates/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pyroscope-dev-query-frontend
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.5.1
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.5.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "query-frontend"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: pyroscope-dev-query-frontend
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 60
+---
+# Source: pyroscope/templates/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pyroscope-dev-query-scheduler
+  namespace: default
+  labels:
+    helm.sh/chart: pyroscope-1.5.1
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope-dev
+    app.kubernetes.io/version: "1.5.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: "query-scheduler"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: pyroscope-dev-query-scheduler
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 40
+---
 # Source: pyroscope/charts/agent/templates/controllers/statefulset.yaml
 apiVersion: apps/v1
 kind: StatefulSet

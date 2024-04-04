@@ -9,6 +9,16 @@ pyroscope:
     querier:
       kind: Deployment
       replicaCount: 3
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+        maxReplicas: 4
+        targetMemoryUtilizationPercentage: 60
+        targetCPUUtilizationPercentage: null
+        behavior:
+          enabled: true
+          scaleDown:
+            stabilizationWindowSeconds: 60
       resources:
         limits:
           memory: 1Gi
@@ -18,6 +28,12 @@ pyroscope:
     query-frontend:
       kind: Deployment
       replicaCount: 2
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+        maxReplicas: 4
+        targetMemoryUtilizationPercentage: 60
+        targetCPUUtilizationPercentage: null
       resources:
         limits:
           memory: 1Gi
@@ -27,6 +43,11 @@ pyroscope:
     query-scheduler:
       kind: Deployment
       replicaCount: 2
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+        maxReplicas: 4
+        targetCPUUtilizationPercentage: 40
       resources:
         limits:
           memory: 1Gi
@@ -36,6 +57,10 @@ pyroscope:
     distributor:
       kind: Deployment
       replicaCount: 2
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+
       resources:
         limits:
           memory: 1Gi
