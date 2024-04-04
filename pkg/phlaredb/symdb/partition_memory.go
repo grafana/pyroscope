@@ -56,7 +56,7 @@ type stacktracesPartition struct {
 	m         sync.RWMutex
 	hashToIdx map[uint64]uint32
 	chunks    []*stacktraceChunk
-	header    []StacktraceChunkHeader
+	header    []StacktraceBlockHeader
 }
 
 func newStacktracesPartition(maxNodesPerChunk uint32) *stacktracesPartition {
@@ -74,7 +74,7 @@ func newStacktracesPartition(maxNodesPerChunk uint32) *stacktracesPartition {
 func (p *stacktracesPartition) size() uint64 {
 	p.m.RLock()
 	// TODO: map footprint isn't accounted
-	v := len(p.header) * stacktraceChunkHeaderSize
+	v := len(p.header) * stacktraceBlockHeaderSize
 	for _, c := range p.chunks {
 		v += stacktraceTreeNodeSize * cap(c.tree.nodes)
 	}
@@ -367,42 +367,62 @@ func (p *PartitionWriter) Release() {
 	// Noop. Satisfies PartitionReader interface.
 }
 
-func (p *PartitionWriter) write(w *fileWriter) (err error) {
-	senc := newSymbolsEncoder[string](w.w, new(stringsBlockEncoder))
-	senc.Encode(p.strings.slice)
-
-	menc := newSymbolsEncoder[schemav1.InMemoryMapping](w.w, new(mappingsBlockEncoder))
-	menc.Encode(p.mappings.slice)
-
-	fenc := newSymbolsEncoder[schemav1.InMemoryFunction](w.w, new(functionsBlockEncoder))
-	fenc.Encode(p.functions.slice)
-
-	lenc := newSymbolsEncoder[schemav1.InMemoryLocation](w.w, new(locationsBlockEncoder))
-	lenc.Encode(p.locations.slice)
-
+func (p *PartitionWriter) writeTo(w *writer) (err error) {
+	if p.header.Strings, err = writeSymbolBlocks(w.dataFile, p.strings.slice, w.stringsEncoder); err != nil {
+		return err
+	}
+	if p.header.Mappings, err = writeSymbolBlocks(w.dataFile, p.mappings.slice, w.mappingsEncoder); err != nil {
+		return err
+	}
+	if p.header.Functions, err = writeSymbolBlocks(w.dataFile, p.functions.slice, w.functionsEncoder); err != nil {
+		return err
+	}
+	if p.header.Locations, err = writeSymbolBlocks(w.dataFile, p.locations.slice, w.locationsEncoder); err != nil {
+		return err
+	}
 	for ci, c := range p.stacktraces.chunks {
 		stacks := c.stacks
 		if stacks == 0 {
 			stacks = uint32(len(p.stacktraces.hashToIdx))
 		}
-		h := StacktraceChunkHeader{
-			Offset:             w.w.offset,
-			Size:               0, // Set later.
+		h := StacktraceBlockHeader{
+			Offset:             w.dataFile.w.offset,
 			Partition:          p.header.Partition,
-			ChunkIndex:         uint16(ci),
-			ChunkEncoding:      ChunkEncodingGroupVarint,
+			BlockIndex:         uint16(ci),
+			Encoding:           StacktraceEncodingGroupVarint,
 			Stacktraces:        stacks,
 			StacktraceNodes:    c.tree.len(),
-			StacktraceMaxDepth: 0, // TODO
 			StacktraceMaxNodes: c.partition.maxNodesPerChunk,
-			CRC:                0, // Set later.
 		}
 		crc := crc32.New(castagnoli)
-		if h.Size, err = c.WriteTo(io.MultiWriter(crc, w.w)); err != nil {
+		if h.Size, err = c.WriteTo(io.MultiWriter(crc, w.dataFile)); err != nil {
 			return fmt.Errorf("writing stacktrace chunk data: %w", err)
 		}
 		h.CRC = crc.Sum32()
-		p.header.StacktraceChunks = append(p.header.StacktraceChunks, h)
+		p.header.Stacktraces = append(p.header.Stacktraces, h)
 	}
 	return nil
+}
+
+func writeSymbolBlocks[T any](f *fileWriter, s []T, e *symbolsEncoder[T]) ([]SymbolsBlockReference, error) {
+	// TODO(kolesnikovae): Split into blocks (< 1M).
+	h, err := writeSymbolsBlock(f, func(w io.Writer) error {
+		e.Reset(w)
+		err := e.Encode(s)
+		e.Reset(nil)
+		return err
+	})
+	return []SymbolsBlockReference{h}, err
+}
+
+func writeSymbolsBlock(w *fileWriter, fn func(io.Writer) error) (h SymbolsBlockReference, err error) {
+	h.Offset = uint32(w.w.offset)
+	crc := crc32.New(castagnoli)
+	mw := io.MultiWriter(crc, w.w)
+	if err = fn(mw); err != nil {
+		return h, err
+	}
+	h.Size = uint32(w.w.offset) - h.Offset
+	h.CRC = crc.Sum32()
+	return h, nil
 }

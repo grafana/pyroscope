@@ -146,26 +146,26 @@ func (r *Reader) partitionReader(h *PartitionHeader) *partition {
 		reader: r,
 		locations: parquetTableRange[schemav1.InMemoryLocation, schemav1.LocationPersister]{
 			bucket:  r.bucket,
-			headers: h.Locations,
+			headers: SymbolsBlockReferencesAsRows(h.Locations),
 			file:    &r.locations,
 		},
 		mappings: parquetTableRange[schemav1.InMemoryMapping, schemav1.MappingPersister]{
 			bucket:  r.bucket,
-			headers: h.Mappings,
+			headers: SymbolsBlockReferencesAsRows(h.Mappings),
 			file:    &r.mappings,
 		},
 		functions: parquetTableRange[schemav1.InMemoryFunction, schemav1.FunctionPersister]{
 			bucket:  r.bucket,
-			headers: h.Functions,
+			headers: SymbolsBlockReferencesAsRows(h.Functions),
 			file:    &r.functions,
 		},
 		strings: parquetTableRange[string, schemav1.StringPersister]{
 			bucket:  r.bucket,
-			headers: h.Strings,
+			headers: SymbolsBlockReferencesAsRows(h.Strings),
 			file:    &r.strings,
 		},
 	}
-	p.setStacktracesChunks(h.StacktraceChunks)
+	p.setStacktracesChunks(h.Stacktraces)
 	return p
 }
 
@@ -295,7 +295,7 @@ func (p *partition) ResolveStacktraceLocations(ctx context.Context, dst Stacktra
 	return nil
 }
 
-func (p *partition) setStacktracesChunks(chunks []StacktraceChunkHeader) {
+func (p *partition) setStacktracesChunks(chunks []StacktraceBlockHeader) {
 	p.stacktraceChunks = make([]*stacktraceChunkReader, len(chunks))
 	for i, c := range chunks {
 		p.stacktraceChunks[i] = &stacktraceChunkReader{
@@ -347,7 +347,7 @@ func (r *stacktracesLookup) do() error {
 
 type stacktraceChunkReader struct {
 	reader *Reader
-	header StacktraceChunkHeader
+	header StacktraceBlockHeader
 
 	r refctr.Counter
 	t *parentPointerTree

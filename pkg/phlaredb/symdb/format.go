@@ -36,16 +36,16 @@ const (
 	DefaultDirName = "symbols"
 
 	IndexFileName       = "index.symdb"
-	StacktracesFileName = "stacktraces.symdb"
+	StacktracesFileName = "stacktraces.symdb" // Used in v1 and v2.
+	DataFileName        = "data.symdb"        // Added in v3.
 )
-
-const HeaderSize = int(unsafe.Sizeof(Header{}))
 
 const (
 	_ = iota
 
 	FormatV1
 	FormatV2
+	FormatV3
 
 	unknownVersion
 )
@@ -95,6 +95,8 @@ type Header struct {
 	Version  uint32
 	Reserved [8]byte // Reserved for future use.
 }
+
+const HeaderSize = int(unsafe.Sizeof(Header{}))
 
 func (h *Header) MarshalBinary() ([]byte, error) {
 	b := make([]byte, HeaderSize)
@@ -171,11 +173,11 @@ type PartitionHeaders []*PartitionHeader
 type PartitionHeader struct {
 	Partition uint64
 
-	StacktraceChunks []StacktraceChunkHeader
-	Locations        []RowRangeReference
-	Mappings         []RowRangeReference
-	Functions        []RowRangeReference
-	Strings          []RowRangeReference
+	Stacktraces []StacktraceBlockHeader
+	Locations   []SymbolsBlockReference
+	Mappings    []SymbolsBlockReference
+	Functions   []SymbolsBlockReference
+	Strings     []SymbolsBlockReference
 }
 
 func (h *PartitionHeaders) Size() int64 {
@@ -220,13 +222,13 @@ func (h *PartitionHeaders) Unmarshal(b []byte) error {
 
 func (h *PartitionHeaders) fromChunks(b []byte) error {
 	s := len(b)
-	if s%stacktraceChunkHeaderSize > 0 {
+	if s%stacktraceBlockHeaderSize > 0 {
 		return ErrInvalidSize
 	}
-	chunks := make([]StacktraceChunkHeader, s/stacktraceChunkHeaderSize)
+	chunks := make([]StacktraceBlockHeader, s/stacktraceBlockHeaderSize)
 	for i := range chunks {
-		off := i * stacktraceChunkHeaderSize
-		chunks[i].unmarshal(b[off : off+stacktraceChunkHeaderSize])
+		off := i * stacktraceBlockHeaderSize
+		chunks[i].unmarshal(b[off : off+stacktraceBlockHeaderSize])
 	}
 	var p *PartitionHeader
 	for _, c := range chunks {
@@ -234,60 +236,60 @@ func (h *PartitionHeaders) fromChunks(b []byte) error {
 			p = &PartitionHeader{Partition: c.Partition}
 			*h = append(*h, p)
 		}
-		p.StacktraceChunks = append(p.StacktraceChunks, c)
+		p.Stacktraces = append(p.Stacktraces, c)
 	}
 	return nil
 }
 
 func (h *PartitionHeader) marshal(buf []byte) {
 	binary.BigEndian.PutUint64(buf[0:8], h.Partition)
-	binary.BigEndian.PutUint32(buf[8:12], uint32(len(h.StacktraceChunks)))
+	binary.BigEndian.PutUint32(buf[8:12], uint32(len(h.Stacktraces)))
 	binary.BigEndian.PutUint32(buf[12:16], uint32(len(h.Locations)))
 	binary.BigEndian.PutUint32(buf[16:20], uint32(len(h.Mappings)))
 	binary.BigEndian.PutUint32(buf[20:24], uint32(len(h.Functions)))
 	binary.BigEndian.PutUint32(buf[24:28], uint32(len(h.Strings)))
 	n := 28
-	for i := range h.StacktraceChunks {
-		h.StacktraceChunks[i].marshal(buf[n:])
-		n += stacktraceChunkHeaderSize
+	for i := range h.Stacktraces {
+		h.Stacktraces[i].marshal(buf[n:])
+		n += stacktraceBlockHeaderSize
 	}
-	n += marshalRowRangeReferences(buf[n:], h.Locations)
-	n += marshalRowRangeReferences(buf[n:], h.Mappings)
-	n += marshalRowRangeReferences(buf[n:], h.Functions)
-	marshalRowRangeReferences(buf[n:], h.Strings)
+	n += marshalSymbolsBlockReferences(buf[n:], h.Locations)
+	n += marshalSymbolsBlockReferences(buf[n:], h.Mappings)
+	n += marshalSymbolsBlockReferences(buf[n:], h.Functions)
+	marshalSymbolsBlockReferences(buf[n:], h.Strings)
 }
 
 func (h *PartitionHeader) unmarshal(buf []byte) (err error) {
 	h.Partition = binary.BigEndian.Uint64(buf[0:8])
-	h.StacktraceChunks = make([]StacktraceChunkHeader, int(binary.BigEndian.Uint32(buf[8:12])))
-	h.Locations = make([]RowRangeReference, int(binary.BigEndian.Uint32(buf[12:16])))
-	h.Mappings = make([]RowRangeReference, int(binary.BigEndian.Uint32(buf[16:20])))
-	h.Functions = make([]RowRangeReference, int(binary.BigEndian.Uint32(buf[20:24])))
-	h.Strings = make([]RowRangeReference, int(binary.BigEndian.Uint32(buf[24:28])))
+	h.Stacktraces = make([]StacktraceBlockHeader, int(binary.BigEndian.Uint32(buf[8:12])))
+	h.Locations = make([]SymbolsBlockReference, int(binary.BigEndian.Uint32(buf[12:16])))
+	h.Mappings = make([]SymbolsBlockReference, int(binary.BigEndian.Uint32(buf[16:20])))
+	h.Functions = make([]SymbolsBlockReference, int(binary.BigEndian.Uint32(buf[20:24])))
+	h.Strings = make([]SymbolsBlockReference, int(binary.BigEndian.Uint32(buf[24:28])))
 
 	buf = buf[28:]
-	stacktracesSize := len(h.StacktraceChunks) * stacktraceChunkHeaderSize
+	stacktracesSize := len(h.Stacktraces) * stacktraceBlockHeaderSize
 	if err = h.unmarshalStacktraceChunks(buf[:stacktracesSize]); err != nil {
 		return err
 	}
 	buf = buf[stacktracesSize:]
-	locationsSize := len(h.Locations) * rowRangeReferenceSize
-	if err = h.unmarshalRowRangeReferences(h.Locations, buf[:locationsSize]); err != nil {
+	locationsSize := len(h.Locations) * symbolsBlockReferenceSize
+	if err = h.unmarshalSymbolsBlockReferences(h.Locations, buf[:locationsSize]); err != nil {
 		return err
 	}
 	buf = buf[locationsSize:]
-	mappingsSize := len(h.Mappings) * rowRangeReferenceSize
-	if err = h.unmarshalRowRangeReferences(h.Mappings, buf[:mappingsSize]); err != nil {
+	mappingsSize := len(h.Mappings) * symbolsBlockReferenceSize
+	if err = h.unmarshalSymbolsBlockReferences(h.Mappings, buf[:mappingsSize]); err != nil {
 		return err
 	}
 	buf = buf[mappingsSize:]
-	functionsSize := len(h.Functions) * rowRangeReferenceSize
-	if err = h.unmarshalRowRangeReferences(h.Functions, buf[:functionsSize]); err != nil {
+	functionsSize := len(h.Functions) * symbolsBlockReferenceSize
+	if err = h.unmarshalSymbolsBlockReferences(h.Functions, buf[:functionsSize]); err != nil {
 		return err
 	}
 	buf = buf[functionsSize:]
-	stringsSize := len(h.Strings) * rowRangeReferenceSize
-	if err = h.unmarshalRowRangeReferences(h.Strings, buf[:stringsSize]); err != nil {
+	stringsSize := len(h.Strings) * symbolsBlockReferenceSize
+	if err = h.unmarshalSymbolsBlockReferences(h.Strings, buf[:stringsSize]); err != nil {
 		return err
 	}
 
@@ -296,46 +298,72 @@ func (h *PartitionHeader) unmarshal(buf []byte) (err error) {
 
 func (h *PartitionHeader) Size() int64 {
 	s := 28
-	s += len(h.StacktraceChunks) * stacktraceChunkHeaderSize
+	s += len(h.Stacktraces) * stacktraceBlockHeaderSize
 	r := len(h.Locations) + len(h.Mappings) + len(h.Functions) + len(h.Strings)
-	s += r * rowRangeReferenceSize
+	s += r * symbolsBlockReferenceSize
 	return int64(s)
 }
 
 func (h *PartitionHeader) unmarshalStacktraceChunks(b []byte) error {
 	s := len(b)
-	if s%stacktraceChunkHeaderSize > 0 {
+	if s%stacktraceBlockHeaderSize > 0 {
 		return ErrInvalidSize
 	}
-	for i := range h.StacktraceChunks {
-		off := i * stacktraceChunkHeaderSize
-		h.StacktraceChunks[i].unmarshal(b[off : off+stacktraceChunkHeaderSize])
+	for i := range h.Stacktraces {
+		off := i * stacktraceBlockHeaderSize
+		h.Stacktraces[i].unmarshal(b[off : off+stacktraceBlockHeaderSize])
 	}
 	return nil
 }
 
-func (h *PartitionHeader) unmarshalRowRangeReferences(refs []RowRangeReference, b []byte) error {
+func (h *PartitionHeader) unmarshalSymbolsBlockReferences(refs []SymbolsBlockReference, b []byte) error {
 	s := len(b)
-	if s%rowRangeReferenceSize > 0 {
+	if s%symbolsBlockReferenceSize > 0 {
 		return ErrInvalidSize
 	}
 	for i := range refs {
-		off := i * rowRangeReferenceSize
-		refs[i].unmarshal(b[off : off+rowRangeReferenceSize])
+		off := i * symbolsBlockReferenceSize
+		refs[i].unmarshal(b[off : off+symbolsBlockReferenceSize])
 	}
 	return nil
 }
 
-func marshalRowRangeReferences(b []byte, refs []RowRangeReference) int {
+func marshalSymbolsBlockReferences(b []byte, refs []SymbolsBlockReference) int {
 	var off int
 	for i := range refs {
-		refs[i].marshal(b[off : off+rowRangeReferenceSize])
-		off += rowRangeReferenceSize
+		refs[i].marshal(b[off : off+symbolsBlockReferenceSize])
+		off += symbolsBlockReferenceSize
 	}
 	return off
 }
 
-const rowRangeReferenceSize = int(unsafe.Sizeof(RowRangeReference{}))
+type SymbolsBlockReference struct {
+	Offset uint32
+	Size   uint32
+	CRC    uint32
+}
+
+const symbolsBlockReferenceSize = int(unsafe.Sizeof(SymbolsBlockReference{}))
+
+func (r *SymbolsBlockReference) marshal(b []byte) {
+	binary.BigEndian.PutUint32(b[0:4], r.Offset)
+	binary.BigEndian.PutUint32(b[4:8], r.Size)
+	binary.BigEndian.PutUint32(b[8:12], r.CRC)
+}
+
+func (r *SymbolsBlockReference) unmarshal(b []byte) {
+	r.Offset = binary.BigEndian.Uint32(b[0:4])
+	r.Size = binary.BigEndian.Uint32(b[4:8])
+	r.CRC = binary.BigEndian.Uint32(b[8:12])
+}
+
+func (r *SymbolsBlockReference) AsRowRange() RowRangeReference {
+	return RowRangeReference{
+		RowGroup: r.Offset,
+		Index:    r.Size,
+		Rows:     r.CRC,
+	}
+}
 
 type RowRangeReference struct {
 	RowGroup uint32
@@ -343,73 +371,11 @@ type RowRangeReference struct {
 	Rows     uint32
 }
 
-func (r *RowRangeReference) marshal(b []byte) {
-	binary.BigEndian.PutUint32(b[0:4], r.RowGroup)
-	binary.BigEndian.PutUint32(b[4:8], r.Index)
-	binary.BigEndian.PutUint32(b[8:12], r.Rows)
-}
-
-func (r *RowRangeReference) unmarshal(b []byte) {
-	r.RowGroup = binary.BigEndian.Uint32(b[0:4])
-	r.Index = binary.BigEndian.Uint32(b[4:8])
-	r.Rows = binary.BigEndian.Uint32(b[8:12])
-}
-
-const stacktraceChunkHeaderSize = int(unsafe.Sizeof(StacktraceChunkHeader{}))
-
-type StacktraceChunkHeader struct {
-	Offset int64
-	Size   int64
-
-	Partition     uint64
-	ChunkIndex    uint16
-	ChunkEncoding ChunkEncoding
-	_             [5]byte // Reserved.
-
-	Stacktraces        uint32 // Number of unique stack traces in the chunk.
-	StacktraceNodes    uint32 // Number of nodes in the stacktrace tree.
-	StacktraceMaxDepth uint32 // Max stack trace depth in the tree.
-	StacktraceMaxNodes uint32 // Max number of nodes at the time of the chunk creation.
-
-	_   [12]byte // Padding. 64 bytes per chunk header.
-	CRC uint32   // Checksum of the chunk data [Offset:Size).
-}
-
-type ChunkEncoding byte
-
-const (
-	_ ChunkEncoding = iota
-	ChunkEncodingGroupVarint
-)
-
-func (h *StacktraceChunkHeader) marshal(b []byte) {
-	binary.BigEndian.PutUint64(b[0:8], uint64(h.Offset))
-	binary.BigEndian.PutUint64(b[8:16], uint64(h.Size))
-	binary.BigEndian.PutUint64(b[16:24], h.Partition)
-	binary.BigEndian.PutUint16(b[24:26], h.ChunkIndex)
-	b[27] = byte(h.ChunkEncoding)
-	// 5 bytes reserved.
-	binary.BigEndian.PutUint32(b[32:36], h.Stacktraces)
-	binary.BigEndian.PutUint32(b[36:40], h.StacktraceNodes)
-	binary.BigEndian.PutUint32(b[40:44], h.StacktraceMaxDepth)
-	binary.BigEndian.PutUint32(b[44:48], h.StacktraceMaxNodes)
-	// 12 bytes reserved.
-	binary.BigEndian.PutUint32(b[60:64], h.CRC)
-}
-
-func (h *StacktraceChunkHeader) unmarshal(b []byte) {
-	h.Offset = int64(binary.BigEndian.Uint64(b[0:8]))
-	h.Size = int64(binary.BigEndian.Uint64(b[8:16]))
-	h.Partition = binary.BigEndian.Uint64(b[16:24])
-	h.ChunkIndex = binary.BigEndian.Uint16(b[24:26])
-	h.ChunkEncoding = ChunkEncoding(b[27])
-	// 5 bytes reserved.
-	h.Stacktraces = binary.BigEndian.Uint32(b[32:36])
-	h.StacktraceNodes = binary.BigEndian.Uint32(b[36:40])
-	h.StacktraceMaxDepth = binary.BigEndian.Uint32(b[40:44])
-	h.StacktraceMaxNodes = binary.BigEndian.Uint32(b[44:48])
-	// 12 bytes reserved.
-	h.CRC = binary.BigEndian.Uint32(b[60:64])
+// SymbolsBlockReferencesAsRows re-interprets SymbolsBlockReference as
+// RowRangeReference, that used to describe parquet table row ranges (v2).
+// Both types have identical binary layouts but different semantics.
+func SymbolsBlockReferencesAsRows(s []SymbolsBlockReference) []RowRangeReference {
+	return *(*[]RowRangeReference)(unsafe.Pointer(&s))
 }
 
 func ReadIndexFile(b []byte) (f IndexFile, err error) {
@@ -441,7 +407,7 @@ func ReadIndexFile(b []byte) (f IndexFile, err error) {
 			return f, fmt.Errorf("unmarshal stacktraces: %w", err)
 		}
 
-	case FormatV2:
+	case FormatV2, FormatV3:
 		ph := f.TOC.Entries[tocEntryPartitionHeaders]
 		if err = f.PartitionHeaders.Unmarshal(b[ph.Offset : ph.Offset+ph.Size]); err != nil {
 			return f, fmt.Errorf("reading partition headers: %w", err)
@@ -488,6 +454,64 @@ func (f *IndexFile) WriteTo(dst io.Writer) (n int64, err error) {
 	return w.offset, nil
 }
 
+type StacktraceBlockHeader struct {
+	Offset int64
+	Size   int64
+
+	Partition  uint64 // Used in v1.
+	BlockIndex uint16 // Used in v1.
+
+	Encoding ChunkEncoding
+	_        [5]byte // Reserved.
+
+	Stacktraces        uint32 // Number of unique stack traces in the chunk.
+	StacktraceNodes    uint32 // Number of nodes in the stacktrace tree.
+	StacktraceMaxDepth uint32 // Max stack trace depth in the tree.
+	StacktraceMaxNodes uint32 // Max number of nodes at the time of the chunk creation.
+
+	_   [12]byte // Padding. 64 bytes per chunk header.
+	CRC uint32   // Checksum of the chunk data [Offset:Size).
+}
+
+const stacktraceBlockHeaderSize = int(unsafe.Sizeof(StacktraceBlockHeader{}))
+
+type ChunkEncoding byte
+
+const (
+	_ ChunkEncoding = iota
+	StacktraceEncodingGroupVarint
+)
+
+func (h *StacktraceBlockHeader) marshal(b []byte) {
+	binary.BigEndian.PutUint64(b[0:8], uint64(h.Offset))
+	binary.BigEndian.PutUint64(b[8:16], uint64(h.Size))
+	binary.BigEndian.PutUint64(b[16:24], h.Partition)
+	binary.BigEndian.PutUint16(b[24:26], h.BlockIndex)
+	b[27] = byte(h.Encoding)
+	// 5 bytes reserved.
+	binary.BigEndian.PutUint32(b[32:36], h.Stacktraces)
+	binary.BigEndian.PutUint32(b[36:40], h.StacktraceNodes)
+	binary.BigEndian.PutUint32(b[40:44], h.StacktraceMaxDepth)
+	binary.BigEndian.PutUint32(b[44:48], h.StacktraceMaxNodes)
+	// 12 bytes reserved.
+	binary.BigEndian.PutUint32(b[60:64], h.CRC)
+}
+
+func (h *StacktraceBlockHeader) unmarshal(b []byte) {
+	h.Offset = int64(binary.BigEndian.Uint64(b[0:8]))
+	h.Size = int64(binary.BigEndian.Uint64(b[8:16]))
+	h.Partition = binary.BigEndian.Uint64(b[16:24])
+	h.BlockIndex = binary.BigEndian.Uint16(b[24:26])
+	h.Encoding = ChunkEncoding(b[27])
+	// 5 bytes reserved.
+	h.Stacktraces = binary.BigEndian.Uint32(b[32:36])
+	h.StacktraceNodes = binary.BigEndian.Uint32(b[36:40])
+	h.StacktraceMaxDepth = binary.BigEndian.Uint32(b[40:44])
+	h.StacktraceMaxNodes = binary.BigEndian.Uint32(b[44:48])
+	// 12 bytes reserved.
+	h.CRC = binary.BigEndian.Uint32(b[60:64])
+}
+
 // symbolic information such as locations, functions, mappings,
 // and strings is represented as Array of Structures in memory,
 // and is encoded as Structure of Arrays when written on disk.
@@ -512,10 +536,7 @@ type symbolsBlockHeader struct {
 	BlockSize uint32
 }
 
-const (
-	defaultSymbolsBlockSize = 1 << 10
-	symbolsBlockHeaderSize  = int(unsafe.Sizeof(mappingsBlockHeader{}))
-)
+const symbolsBlockHeaderSize = int(unsafe.Sizeof(symbolsBlockHeader{}))
 
 func newSymbolsBlockHeader(n, bs int) symbolsBlockHeader {
 	return symbolsBlockHeader{
@@ -541,10 +562,7 @@ func (h *symbolsBlockHeader) unmarshal(b []byte) {
 }
 
 func (h *symbolsBlockHeader) validate() error {
-	if h.Magic[0] != symdbMagic[0] ||
-		h.Magic[1] != symdbMagic[1] ||
-		h.Magic[2] != symdbMagic[2] ||
-		h.Magic[3] != symdbMagic[3] {
+	if !bytes.Equal(h.Magic[:], symdbMagic[:]) {
 		return ErrInvalidMagic
 	}
 	if h.Version >= 2 {
@@ -585,6 +603,8 @@ type symbolsEncoder[T any] struct {
 	bs  int
 	buf []byte
 }
+
+const defaultSymbolsBlockSize = 1 << 10
 
 func newSymbolsEncoder[T any](w io.Writer, e symbolsBlockEncoder[T]) *symbolsEncoder[T] {
 	return &symbolsEncoder[T]{w: w, e: e, bs: defaultSymbolsBlockSize}
