@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log/level"
@@ -23,8 +24,9 @@ func (c *phlareClient) pusherClient() pushv1connect.PusherServiceClient {
 
 type uploadParams struct {
 	*phlareClient
-	paths       []string
-	extraLabels map[string]string
+	paths             []string
+	extraLabels       map[string]string
+	overrideTimestamp bool
 }
 
 func addUploadParams(cmd commander) *uploadParams {
@@ -37,6 +39,7 @@ func addUploadParams(cmd commander) *uploadParams {
 
 	cmd.Arg("path", "Path(s) to profile(s) to upload").Required().ExistingFilesVar(&params.paths)
 	cmd.Flag("extra-labels", "Add additional labels to the profile(s)").StringMapVar(&params.extraLabels)
+	cmd.Flag("override-timestamp", "Set the profile timestamp to now").BoolVar(&params.overrideTimestamp)
 	return params
 }
 
@@ -64,6 +67,14 @@ func upload(ctx context.Context, params *uploadParams) (err error) {
 		profile, err := pprof.RawFromBytes(data)
 		if err != nil {
 			return err
+		}
+
+		if params.overrideTimestamp {
+			profile.TimeNanos = time.Now().UnixNano()
+			data, err = pprof.Marshal(profile.Profile, true)
+			if err != nil {
+				return err
+			}
 		}
 
 		// detect name if no name has been set
