@@ -68,7 +68,7 @@ EBPF_TESTS='^TestEBPF.*'
 
 .PHONY: go/test
 go/test: $(BIN)/gotestsum
-	$(BIN)/gotestsum -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS) ./... ./ebpf/...
+	$(BIN)/gotestsum --junitfile .go-test.junit.xml -- $(GO_TEST_FLAGS) -skip $(EBPF_TESTS) ./... ./ebpf/...
 
 .PHONY: build
 build: frontend/build go/bin ## Do a production build (requiring the frontend build to be present)
@@ -324,7 +324,7 @@ $(BIN)/goreleaser: Makefile go.mod
 
 $(BIN)/gotestsum: Makefile go.mod
 	@mkdir -p $(@D)
-	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.9.0
+	GOBIN=$(abspath $(@D)) $(GO) install gotest.tools/gotestsum@v1.11.0
 
 DLV_VERSION=v1.21.0
 

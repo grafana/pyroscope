@@ -38,6 +38,12 @@ jobs:
         run: make check/go/mod
       - name: Test
         run: make go/test
+      - uses: actions/upload-artifact@v3  # upload test results
+        if: success() || failure()        # run this step even if previous step failed
+        with:
+          name: go-test-results
+          path: .go-test.junit.xml
+
   lint:
     runs-on: ubuntu-latest
     steps:

@@ -9,6 +9,9 @@ bin
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# Exclude junit test results
+/*.junit.xml
+
 /cmd/phlare/data
 /cmd/pyroscope/data
 pyroscope-sync/

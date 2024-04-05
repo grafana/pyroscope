@@ -1,0 +1,20 @@
+name: test-report
+on:
+  workflow_run:
+    workflows: ['ci']                     # runs after CI workflow
+    types:
+      - completed
+permissions:
+  contents: read
+  actions: read
+  checks: write
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: dorny/test-reporter@v1
+      with:
+        artifact: go-test-results         # artifact name
+        name: Go Tests                    # Name of the check run which will be created
+        path: '*.xml'                     # Path to test results (inside artifact .zip)
+        reporter: java-junit              # Format of test results
