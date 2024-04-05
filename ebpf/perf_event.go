@@ -19,15 +19,15 @@ type perfEvent struct {
 
 func newPerfEvent(cpu int, sampleRate int) (*perfEvent, error) {
 	var (
-		fd  int
-		err error
+		fd   int
+		err  error
+		attr = unix.PerfEventAttr{
+			Type:   unix.PERF_TYPE_SOFTWARE,
+			Config: unix.PERF_COUNT_SW_CPU_CLOCK,
+			Bits:   unix.PerfBitFreq,
+			Sample: uint64(sampleRate),
+		}
 	)
-	attr := unix.PerfEventAttr{
-		Type:   unix.PERF_TYPE_SOFTWARE,
-		Config: unix.PERF_COUNT_SW_CPU_CLOCK,
-		Bits:   unix.PerfBitFreq,
-		Sample: uint64(sampleRate),
-	}
 	fd, err = unix.PerfEventOpen(&attr, -1, cpu, -1, unix.PERF_FLAG_FD_CLOEXEC)
 	if err != nil {
 		return nil, fmt.Errorf("open perf event: %w", err)
