@@ -2,19 +2,23 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"math/rand"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	pm "github.com/prometheus/client_model/go"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
@@ -116,6 +120,19 @@ func nodeNameFlags(nodeName string) []string {
 	}
 }
 
+func listenAddrFlags(listenAddr string) []string {
+	return []string{
+		"-compactor.ring.instance-addr=" + listenAddr,
+		"-distributor.ring.instance-addr=" + listenAddr,
+		"-ingester.lifecycler.addr=" + listenAddr,
+		"-memberlist.advertise-addr=" + listenAddr,
+		"-overrides-exporter.ring.instance-addr=" + listenAddr,
+		"-query-frontend.instance-addr=" + listenAddr,
+		"-query-scheduler.ring.instance-addr=" + listenAddr,
+		"-store-gateway.sharding-ring.instance-addr=" + listenAddr,
+	}
+}
+
 func (c *Cluster) pickHealthyComponent(targets ...string) (addr string, err error) {
 	results := make([][]string, len(targets))
 
@@ -150,7 +167,7 @@ func (c *Cluster) Prepare() (err error) {
 
 	// allocate two tcp ports per component
 	portsPerComponent := 3
-	listenAddr := "0.0.0.0"
+	listenAddr := "127.0.0.1"
 	ports, err := getFreeTCPPorts(listenAddr, len(c.Components)*portsPerComponent)
 	if err != nil {
 		return err
@@ -184,6 +201,8 @@ func (c *Cluster) Prepare() (err error) {
 
 		comp.flags = append(
 			nodeNameFlags(comp.nodeName()),
+			listenAddrFlags("127.0.0.1")...)
+		comp.flags = append(comp.flags,
 			[]string{
 				"-tracing.enabled=false", // data race
 				"-distributor.replication-factor=3",
@@ -237,7 +256,11 @@ func (c *Cluster) Start(ctx context.Context) (err error) {
 
 	notReady := make(map[*Component]error)
 
+	countPerTarget := map[string]int{}
+
 	for _, comp := range c.Components {
+		countPerTarget[comp.Target]++
+
 		p, err := comp.start(ctx)
 		if err != nil {
 			return err
@@ -273,7 +296,14 @@ func (c *Cluster) Start(ctx context.Context) (err error) {
 							return err
 						}
 
-						return t.querierReadyCheck(ctx, 3, 3)
+						return t.querierReadyCheck(ctx, countPerTarget["ingester"], countPerTarget["store-gateway"])
+					}
+					if t.Target == "distributor" {
+						if err := t.httpReadyCheck(ctx); err != nil {
+							return err
+						}
+
+						return t.distributorReadyCheck(ctx, countPerTarget["ingester"], countPerTarget["distributor"])
 					}
 
 					return t.httpReadyCheck(ctx)
@@ -327,59 +357,128 @@ type Component struct {
 	reg     *prometheus.Registry
 }
 
-func (comp *Component) querierReadyCheck(ctx context.Context, expectedIngesters, expectedStoreGateways int) error {
-	metrics, err := comp.reg.Gather()
+type gatherCheck struct {
+	g          prometheus.Gatherer
+	conditions []gatherCoditions
+}
+
+func (c *gatherCheck) addExpectValue(value float64, metricName string, labelPairs ...string) *gatherCheck {
+	c.conditions = append(c.conditions, gatherCoditions{
+		metricName:    metricName,
+		labelPairs:    labelPairs,
+		expectedValue: value,
+	})
+	return c
+}
+
+type gatherCoditions struct {
+	metricName    string
+	labelPairs    []string
+	expectedValue float64
+}
+
+func (c *gatherCoditions) String() string {
+	b := strings.Builder{}
+	b.WriteString(c.metricName)
+	b.WriteRune('{')
+	for i := 0; i < len(c.labelPairs); i += 2 {
+		b.WriteString(c.labelPairs[i])
+		b.WriteRune('=')
+		b.WriteString(c.labelPairs[i+1])
+		b.WriteRune(',')
+	}
+	s := b.String()
+	return s[:len(s)-1] + "}"
+}
+
+func (c *gatherCoditions) matches(pairs []*pm.LabelPair) bool {
+outer:
+	for i := 0; i < len(c.labelPairs); i += 2 {
+		for _, l := range pairs {
+			if l.GetName() != c.labelPairs[i] {
+				continue
+			}
+			if l.GetValue() == c.labelPairs[i+1] {
+				continue outer // match move to next pair
+			}
+			return false // value wrong
+		}
+		return false // label not found
+	}
+	return true
+}
+
+func (comp *Component) checkMetrics() *gatherCheck {
+	return &gatherCheck{
+		g: comp.reg,
+	}
+}
+
+func (g *gatherCheck) run(ctx context.Context) error {
+	actualValues := make([]float64, len(g.conditions))
+
+	// maps from metric name to condition index
+	nameMap := make(map[string][]int)
+	for idx, c := range g.conditions {
+		// not a number
+		actualValues[idx] = math.NaN()
+		nameMap[c.metricName] = append(nameMap[c.metricName], idx)
+	}
+
+	// now gather actual metrics
+	metrics, err := g.g.Gather()
 	if err != nil {
 		return err
 	}
-
-	activeIngesters := 0
-	activeStoreGateways := 0
 
 	for _, m := range metrics {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
 
-		if m.GetName() == "pyroscope_ring_members" {
-			for _, sm := range m.GetMetric() {
-				foundIngester := false
-				foundStoreGateway := false
-				foundActive := false
-				for _, l := range sm.GetLabel() {
-					if l.GetName() == "name" && l.GetValue() == "ingester" {
-						foundIngester = true
-					}
-					if l.GetName() == "name" && l.GetValue() == "store-gateway-client" {
-						foundStoreGateway = true
-					}
-					if l.GetName() == "state" && l.GetValue() == "ACTIVE" {
-						foundActive = true
-					}
-				}
-				if foundIngester && foundActive {
-					if v := sm.GetGauge().GetValue(); v > 0 {
-						activeIngesters = int(v)
-					}
-				}
-				if foundStoreGateway && foundActive {
-					if v := sm.GetGauge().GetValue(); v > 0 {
-						activeStoreGateways = int(v)
-					}
+		conditions, ok := nameMap[m.GetName()]
+		if !ok {
+			continue
+		}
+
+		// now iterate over all label pairs
+		for _, sm := range m.GetMetric() {
+			// check for each condition if it matches with he labels
+			for _, condIdx := range conditions {
+				if g.conditions[condIdx].matches(sm.Label) {
+					actualValues[condIdx] = sm.GetGauge().GetValue() // TODO: handle other types
 				}
 			}
 		}
 	}
 
-	if activeIngesters != expectedIngesters {
-		return fmt.Errorf("expected %d active ingesters, got %d", expectedIngesters, activeIngesters)
-	}
-	if activeStoreGateways != expectedStoreGateways {
-		return fmt.Errorf("expected %d active store gateways, got %d", expectedStoreGateways, activeStoreGateways)
+	errs := make([]error, len(actualValues))
+	for idx, actual := range actualValues {
+		cond := g.conditions[idx]
+		if math.IsNaN(actual) {
+			errs[idx] = fmt.Errorf("metric for %s not found", cond.String())
+			continue
+		}
+		if actual != cond.expectedValue {
+			errs[idx] = fmt.Errorf("unexpected value for %s: expected %f, got %f", cond.String(), cond.expectedValue, actual)
+		}
 	}
 
-	return nil
+	return errors.Join(errs...)
+}
 
+func (comp *Component) querierReadyCheck(ctx context.Context, expectedIngesters, expectedStoreGateways int) (err error) {
+	check := comp.checkMetrics().
+		addExpectValue(float64(expectedIngesters), "pyroscope_ring_members", "name", "ingester", "state", "ACTIVE").
+		addExpectValue(float64(expectedStoreGateways), "pyroscope_ring_members", "name", "store-gateway-client", "state", "ACTIVE")
+	return check.run(ctx)
+}
+
+func (comp *Component) distributorReadyCheck(ctx context.Context, expectedIngesters, expectedDistributors int) (err error) {
+	check := comp.checkMetrics().
+		addExpectValue(float64(expectedIngesters), "pyroscope_ring_members", "name", "ingester", "state", "ACTIVE").
+		addExpectValue(float64(expectedDistributors), "pyroscope_ring_members", "name", "distributor", "state", "ACTIVE")
+	return check.run(ctx)
 }
 
 func (comp *Component) httpReadyCheck(ctx context.Context) error {
