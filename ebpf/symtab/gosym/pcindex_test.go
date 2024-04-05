@@ -2,10 +2,10 @@ package gosym
 
 import (
 	"math/rand"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/slices"
 )
 
 func TestPCIndex_FindIndex(t *testing.T) {

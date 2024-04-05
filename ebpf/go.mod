@@ -19,7 +19,6 @@ require (
 	github.com/prometheus/prometheus v1.99.0
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb
 	golang.org/x/sys v0.16.0
 )
 
@@ -37,6 +36,7 @@ require (
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/procfs v0.11.1 // indirect
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
+	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb // indirect
 	golang.org/x/net v0.20.0 // indirect
 	golang.org/x/oauth2 v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect

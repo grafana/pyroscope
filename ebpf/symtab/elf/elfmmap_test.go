@@ -2,11 +2,11 @@ package elf
 
 import (
 	"debug/elf"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 )
 
 func TestElfSymbolComparison(t *testing.T) {

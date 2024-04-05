@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"sort"
 	"testing"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"

@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/grafana/regexp"
-	"golang.org/x/exp/slices"
 )
 
 var ghToken string
