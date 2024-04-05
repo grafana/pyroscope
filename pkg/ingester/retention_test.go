@@ -252,7 +252,14 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 				BytesAvailable:      100,
 				BytesTotal:          200,
 			}, nil).
-			Once() // Expect the loop to break after a single block delete (since the subsequent blocks aren't uploaded).
+			Once()
+		vc.On("HasHighDiskUtilization", mock.Anything).
+			Return(&diskutil.VolumeStats{
+				HighDiskUtilization: false,
+				BytesAvailable:      100,
+				BytesTotal:          200,
+			}, nil).
+			Once()
 
 		dc := newDiskCleaner(log.NewNopLogger(), e, defaultRetentionPolicy(), phlaredb.Config{
 			DataPath: "./data",
@@ -261,7 +268,7 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 		dc.volumeChecker = vc
 
 		deleted, bytesFreed, hadHighDisk := dc.CleanupBlocksWhenHighDiskUtilization(context.Background())
-		require.Equal(t, 1, deleted)
+		require.Equal(t, 2, deleted)
 		require.Equal(t, 100, bytesFreed)
 		require.True(t, hadHighDisk)
 	})
@@ -316,7 +323,7 @@ func TestDiskCleaner_EnforceHighDiskUtilization(t *testing.T) {
 	})
 }
 
-func TestDiskCleaner_isBlockDeletable(t *testing.T) {
+func TestDiskCleaner_isBlockDeletableForUploadedBlocks(t *testing.T) {
 	tests := []struct {
 		Name   string
 		Expiry time.Duration
@@ -369,7 +376,7 @@ func TestDiskCleaner_isBlockDeletable(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			dc.policy.Expiry = tt.Expiry
 
-			got := dc.isBlockDeletable(tt.Block)
+			got := tt.Block.Uploaded && dc.isExpired(tt.Block)
 			require.Equal(t, tt.Want, got)
 		})
 	}
