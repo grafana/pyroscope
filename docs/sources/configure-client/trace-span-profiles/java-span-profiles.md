@@ -1,4 +1,3 @@
-
 ---
 title: Span profiles with Traces to profiles for Java
 menuTitle: Span profiles with Traces to profiles (Java)
