@@ -93,10 +93,7 @@ type partitionRewriter struct {
 	mappings    *lookupTable[*schemav1.InMemoryMapping]
 	functions   *lookupTable[*schemav1.InMemoryFunction]
 	strings     *lookupTable[string]
-
-	// FIXME(kolesnikovae): schemav1.Stacktrace should be just a uint32 slice:
-	//   type Stacktrace []uint32
-	current []*schemav1.Stacktrace
+	current     []*schemav1.Stacktrace
 }
 
 func (p *partitionRewriter) reset() {
