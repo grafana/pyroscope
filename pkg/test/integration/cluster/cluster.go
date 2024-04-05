@@ -362,6 +362,7 @@ type gatherCheck struct {
 	conditions []gatherCoditions
 }
 
+//nolint:unparam
 func (c *gatherCheck) addExpectValue(value float64, metricName string, labelPairs ...string) *gatherCheck {
 	c.conditions = append(c.conditions, gatherCoditions{
 		metricName:    metricName,
