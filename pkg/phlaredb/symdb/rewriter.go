@@ -5,6 +5,8 @@ import (
 	"math"
 	"sort"
 
+	lru "github.com/hashicorp/golang-lru/v2"
+
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/slices"
 )
@@ -12,7 +14,7 @@ import (
 type Rewriter struct {
 	symdb      *SymDB
 	source     SymbolsReader
-	partitions map[uint64]*partitionRewriter
+	partitions *lru.Cache[uint64, *partitionRewriter]
 }
 
 func NewRewriter(w *SymDB, r SymbolsReader) *Rewriter {
@@ -38,50 +40,53 @@ func (r *Rewriter) Rewrite(partition uint64, stacktraces []uint32) error {
 
 func (r *Rewriter) init(partition uint64) (p *partitionRewriter, err error) {
 	if r.partitions == nil {
-		r.partitions = make(map[uint64]*partitionRewriter)
+		r.partitions, _ = lru.NewWithEvict(2, func(_ uint64, p *partitionRewriter) {
+			p.reader.Release()
+		})
 	}
-	if p, err = r.getOrCreatePartition(partition); err != nil {
-		return nil, err
-	}
-	return p, nil
+	return r.getOrCreatePartitionRewriter(partition)
 }
 
-func (r *Rewriter) getOrCreatePartition(partition uint64) (_ *partitionRewriter, err error) {
-	p, ok := r.partitions[partition]
+func (r *Rewriter) getOrCreatePartitionRewriter(partition uint64) (_ *partitionRewriter, err error) {
+	p, ok := r.partitions.Get(partition)
 	if ok {
 		p.reset()
 		return p, nil
 	}
-
-	n := &partitionRewriter{name: partition}
-	n.dst = r.symdb.PartitionWriter(partition)
-	// Note that the partition is not released: we want to keep
-	// it during the whole lifetime of the rewriter.
-	pr, err := r.source.Partition(context.TODO(), partition)
+	pr, err := r.newRewriter(partition)
 	if err != nil {
 		return nil, err
 	}
+	r.partitions.Add(partition, pr)
+	return pr, nil
+}
+
+func (r *Rewriter) newRewriter(p uint64) (*partitionRewriter, error) {
+	n := &partitionRewriter{name: p}
+	reader, err := r.source.Partition(context.TODO(), p)
+	if err != nil {
+		return nil, err
+	}
+	n.reader = reader
+	n.dst = r.symdb.PartitionWriter(p)
 	// We clone locations, functions, and mappings,
 	// because these object will be modified.
-	n.src = cloneSymbolsPartially(pr.Symbols())
+	n.src = cloneSymbolsPartially(reader.Symbols())
 	var stats PartitionStats
-	pr.WriteStats(&stats)
-
+	reader.WriteStats(&stats)
 	n.stacktraces = newLookupTable[[]int32](stats.MaxStacktraceID)
 	n.locations = newLookupTable[*schemav1.InMemoryLocation](stats.LocationsTotal)
 	n.mappings = newLookupTable[*schemav1.InMemoryMapping](stats.MappingsTotal)
 	n.functions = newLookupTable[*schemav1.InMemoryFunction](stats.FunctionsTotal)
 	n.strings = newLookupTable[string](stats.StringsTotal)
-
-	r.partitions[partition] = n
 	return n, nil
 }
 
 type partitionRewriter struct {
-	name uint64
-
-	src *Symbols
-	dst *PartitionWriter
+	name   uint64
+	src    *Symbols
+	dst    *PartitionWriter
+	reader PartitionReader
 
 	stacktraces *lookupTable[[]int32]
 	locations   *lookupTable[*schemav1.InMemoryLocation]
