@@ -290,10 +290,10 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 	// Cutting the index is relatively quick op (no I/O).
 	err = s.index.cutRowGroup(s.flushBuffer)
 	// The buffer references profiles, so we should reset it in order for
-	// the GC to reclaim the memory. Note that the profile buffer holds values;
-	// therefore, zeroing is not needed, in contrast to the label buffer.
-	slices.Clear(s.flushBufferLbs)
+	// the GC to reclaim the memory.
+	slices.Clear(s.flushBuffer)
 	s.flushBuffer = s.flushBuffer[:0]
+	slices.Clear(s.flushBufferLbs)
 	s.flushBufferLbs = s.flushBufferLbs[:0]
 	s.profilesLock.Lock()
 	defer s.profilesLock.Unlock()

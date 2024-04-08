@@ -24,6 +24,7 @@ import (
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb"
 	"github.com/grafana/pyroscope/pkg/phlaredb/tsdb/index"
+	"github.com/grafana/pyroscope/pkg/slices"
 )
 
 // delta encoding for ranges
@@ -489,21 +490,14 @@ func (pi *profilesIndex) cutRowGroup(rgProfiles []schemav1.InMemoryProfile) erro
 
 	for fp, ps := range pi.profilesPerFP {
 		count := countPerFP[fp]
-		// empty all in memory profiles
-		for i := range ps.profiles[:count] {
-			// Allow GC to evict the object.
-			ps.profiles[i] = nil
-		}
-		ps.profiles = ps.profiles[count:]
-
+		n := copy(ps.profiles, ps.profiles[count:])
+		slices.Clear(ps.profiles[n:])
+		ps.profiles = ps.profiles[:n]
 		// attach rowGroup and rowNum information
-		rowRange := rowRangePerFP[ps.fp]
-
 		ps.profilesOnDisk = append(
 			ps.profilesOnDisk,
-			rowRange,
+			rowRangePerFP[ps.fp],
 		)
-
 	}
 
 	return nil
