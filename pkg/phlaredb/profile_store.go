@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/query"
 	schemav1 "github.com/grafana/pyroscope/pkg/phlaredb/schemas/v1"
+	"github.com/grafana/pyroscope/pkg/slices"
 	"github.com/grafana/pyroscope/pkg/util/build"
 )
 
@@ -288,7 +289,12 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 	s.rowGroups = append(s.rowGroups, rowGroup)
 	// Cutting the index is relatively quick op (no I/O).
 	err = s.index.cutRowGroup(s.flushBuffer)
-
+	// The buffer references profiles, so we should reset it in order for
+	// the GC to reclaim the memory. Note that the profile buffer holds values;
+	// therefore, zeroing is not needed, in contrast to the label buffer.
+	slices.Clear(s.flushBufferLbs)
+	s.flushBuffer = s.flushBuffer[:0]
+	s.flushBufferLbs = s.flushBufferLbs[:0]
 	s.profilesLock.Lock()
 	defer s.profilesLock.Unlock()
 	for i := range s.slice[:count] {
