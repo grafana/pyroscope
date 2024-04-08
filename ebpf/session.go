@@ -144,6 +144,7 @@ func NewSession(
 }
 
 func (s *session) Start() error {
+	s.printDebugInfo()
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	var err error
@@ -752,16 +753,11 @@ func (s *session) linkKProbes() error {
 		required bool
 	}
 	var hooks []hook
-	archSys := ""
-	if "amd64" == runtime.GOARCH {
-		archSys = "__x64_"
-	} else {
-		archSys = "__arm64_"
-	}
+
 	hooks = []hook{
 		{kprobe: "disassociate_ctty", prog: s.bpf.DisassociateCtty, required: true},
-		{kprobe: archSys + "sys_execve", prog: s.bpf.Exec, required: false},
-		{kprobe: archSys + "sys_execveat", prog: s.bpf.Exec, required: false},
+		{kprobe: "sys_execve", prog: s.bpf.Exec, required: false},
+		{kprobe: "sys_execveat", prog: s.bpf.Exec, required: false},
 	}
 	for _, it := range hooks {
 		kp, err := link.Kprobe(it.kprobe, it.prog, nil)
@@ -799,9 +795,6 @@ func (s *session) cleanup() {
 			}
 			delete(s.pids.unknown, pid)
 			delete(s.pids.all, pid)
-			if err := s.bpf.Pids.Delete(pid); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
-				_ = level.Error(s.logger).Log("msg", "delete pid config", "pid", pid, "err", err)
-			}
 		}
 	}
 
@@ -917,6 +910,12 @@ func (s *session) pythonBPFErrorLogEnabled(target *sd.Target) bool {
 		enabled = v
 	}
 	return enabled
+}
+
+func (s *session) printDebugInfo() {
+	_ = level.Debug(s.logger).Log("arch", runtime.GOARCH)
+	pv, _ := os.ReadFile("/proc/version")
+	_ = level.Debug(s.logger).Log("/proc/version", pv)
 }
 
 type stackBuilder struct {

@@ -198,17 +198,18 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 		VerifierLogSize:           1024 * 1024 * 20,
 		PythonBPFErrorLogEnabled:  config.PythonBPFLogErr,
 		PythonBPFDebugLogEnabled:  config.PythonBPFLogDebug,
+		BPFMapsOptions:            config.BPFMapsOptions,
 	}
 }
 
 func getConfig() *Config {
 	flag.Parse()
 
-	if *configFile == "" {
-		panic("config file not specified")
-	}
 	var config = new(Config)
 	*config = defaultConfig
+	if *configFile == "" {
+		return config
+	}
 	configBytes, err := os.ReadFile(*configFile)
 	if err != nil {
 		panic(err)
@@ -368,9 +369,7 @@ func relabelProcessTargets(targets []sd.DiscoveryTarget, cfg []*RelabelConfig) [
 	var res []sd.DiscoveryTarget
 	for _, target := range targets {
 		lbls := labels.FromMap(target)
-		fmt.Printf("before relabeling %+v\n", lbls)
 		lbls, keep := relabel.Process(lbls, promConfig...)
-		fmt.Printf("after relabeling %v %+v\n", keep, lbls)
 
 		if !keep {
 			continue
