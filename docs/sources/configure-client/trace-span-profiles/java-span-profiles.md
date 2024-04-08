@@ -48,7 +48,7 @@ java -jar ./build/libs/rideshare-1.0-SNAPSHOT.jar \
 
 Next, you need to create and configure the tracer provider:
 ```java
-implementation("io.pyroscope:otel:0.10.1.1")
+implementation("io.pyroscope:otel:0.10.1.11")
 
 // obtain SdkTracerProviderBuilder
 SdkTracerProviderBuilder tpBuilder = ...
