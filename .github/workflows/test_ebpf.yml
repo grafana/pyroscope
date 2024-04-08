@@ -101,3 +101,8 @@ jobs:
       - name: Run tests
         run: >
           CMD=./ebpf.${{ matrix.arch }}.test make -C ./ebpf/testdata/qemu_img qemu/exec
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
