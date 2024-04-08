@@ -17,7 +17,7 @@ hero:
   width: 110
   height: 110
   description: >-
-    Grafana Pyroscope is an open source software project for aggregating continuous profiling data. Continuous profiling is an observability signal that allows you to understand your workload's resources usage down to the line number.
+    Grafana Pyroscope is an open source software project for aggregating continuous profiling data. Continuous profiling is an observability signal that allows you to understand your workload's resources usage down to the source code line number.
     Grafana Pyroscope is fully integrated with Grafana allowing you to correlate with other observability signals, like metrics, logs, and traces.
 cards:
   title_class: pt-0 lh-1
