@@ -42,25 +42,10 @@ func githubOAuth() (*oauth2.Config, error) {
 	}, nil
 }
 
-// GithubClient returns a github client for the given request headers.
-func GithubClient(ctx context.Context, requestHeaders http.Header) (*githubClient, error) {
-	auth, err := githubOAuth()
-	if err != nil {
-		return nil, err
-	}
-	cookie, err := (&http.Request{Header: requestHeaders}).Cookie(gitHubCookieName)
-	if err != nil {
-		return nil, err
-	}
-	token, err := decryptToken(cookie.Value, githubSessionSecret)
-	if err != nil {
-		return nil, unAuthorizeError(err, cookie)
-	}
-	if !token.Valid() {
-		return nil, unAuthorizeError(errors.New("invalid or expired token"), cookie)
-	}
+// GithubClient returns a github client.
+func GithubClient(ctx context.Context, token *oauth2.Token) (*githubClient, error) {
 	return &githubClient{
-		client: github.NewClient(auth.Client(ctx, token)),
+		client: github.NewClient(nil).WithAuthToken(token.AccessToken),
 	}, nil
 }
 
@@ -75,30 +60,18 @@ func unAuthorizeError(err error, cookie *http.Cookie) error {
 	return connectErr
 }
 
-func AuthorizeGithub(ctx context.Context, authorizationCode string) (string, error) {
+func AuthorizeGithub(ctx context.Context, authorizationCode string) (*oauth2.Token, error) {
 	auth, err := githubOAuth()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+
 	token, err := auth.Exchange(ctx, authorizationCode)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	cookieValue, err := encryptToken(token, githubSessionSecret)
-	if err != nil {
-		return "", err
-	}
-	// Sets a cookie with the encrypted token.
-	// Only the server can decrypt the cookie.
-	cookie := http.Cookie{
-		Name:     gitHubCookieName,
-		Value:    cookieValue,
-		Expires:  token.Expiry.Add(-10 * time.Second),
-		HttpOnly: false,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-	}
-	return cookie.String(), nil
+
+	return token, nil
 }
 
 type githubClient struct {

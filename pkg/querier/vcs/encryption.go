@@ -1,4 +1,4 @@
-package client
+package vcs
 
 import (
 	"encoding/base64"
