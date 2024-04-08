@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"slices"
 	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/thanos-io/objstore"
-	"golang.org/x/exp/slices"
 
 	settingsv1 "github.com/grafana/pyroscope/api/gen/proto/go/settings/v1"
 )

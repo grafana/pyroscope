@@ -679,7 +679,6 @@ func newBlock(t testing.TB, generator func() []*testhelper.ProfileBuilder) *sing
 	}
 	blk := NewSingleBlockQuerierFromMeta(ctx, bkt, meta)
 	require.NoError(t, blk.Open(ctx))
-	require.NoError(t, blk.symbols.Load(ctx))
 	return blk
 }
 
@@ -903,7 +902,6 @@ func Benchmark_CompactSplit(b *testing.B) {
 	require.NoError(b, err)
 	bl := NewSingleBlockQuerierFromMeta(ctx, bkt, meta)
 	require.NoError(b, bl.Open(ctx))
-	require.NoError(b, bl.Symbols().Load(ctx))
 	dst := b.TempDir()
 
 	b.ResetTimer()

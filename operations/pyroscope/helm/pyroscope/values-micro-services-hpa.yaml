@@ -1,0 +1,113 @@
+# Default values for pyroscope.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+pyroscope:
+  extraArgs:
+    store-gateway.sharding-ring.replication-factor: "3"
+  components:
+    querier:
+      kind: Deployment
+      replicaCount: 3
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+        maxReplicas: 4
+        targetMemoryUtilizationPercentage: 60
+        targetCPUUtilizationPercentage: null
+        behavior:
+          enabled: true
+          scaleDown:
+            stabilizationWindowSeconds: 60
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 1
+    query-frontend:
+      kind: Deployment
+      replicaCount: 2
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+        maxReplicas: 4
+        targetMemoryUtilizationPercentage: 60
+        targetCPUUtilizationPercentage: null
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 100m
+    query-scheduler:
+      kind: Deployment
+      replicaCount: 2
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+        maxReplicas: 4
+        targetCPUUtilizationPercentage: 40
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 100m
+    distributor:
+      kind: Deployment
+      replicaCount: 2
+      autoscaling:
+        enabled: true
+        minReplicas: 2
+
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 256Mi
+          cpu: 500m
+    ingester:
+      kind: StatefulSet
+      replicaCount: 3
+      terminationGracePeriodSeconds: 600
+      resources:
+        limits:
+          memory: 16Gi
+        requests:
+          memory: 8Gi
+          cpu: 1
+    compactor:
+      kind: StatefulSet
+      replicaCount: 3
+      terminationGracePeriodSeconds: 1200
+      persistence:
+        enabled: false
+      resources:
+        limits:
+          memory: 16Gi
+        requests:
+          memory: 8Gi
+          cpu: 1
+    store-gateway:
+      kind: StatefulSet
+      replicaCount: 3
+      persistence:
+        # The store-gateway needs not need persistent storage, but we still run it as a StatefulSet
+        # This is to avoid having blocks of data being
+        enabled: false
+      resources:
+        limits:
+          memory: 16Gi
+        requests:
+          memory: 8Gi
+          cpu: 1
+      readinessProbe:
+        # The store gateway can be configured to wait on startup for ring stability to be reached before it becomes
+        # ready. See the `store-gateway.sharding-ring.wait-stability-min-duration` server argument for more information.
+        #
+        # Depending on this flag and the number of tenants + blocks that need to be synced on startup, pods can take
+        # some time to become ready. This value can be used to ensure Kubernetes waits long enough and reduce errors.
+        initialDelaySeconds: 60
+minio:
+  enabled: true
