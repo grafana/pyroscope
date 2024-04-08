@@ -1,6 +1,8 @@
 package vcs
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"os"
 
@@ -17,6 +19,11 @@ var (
 	githubAppClientSecret = os.Getenv("GITHUB_CLIENT_SECRET")
 	githubSessionSecret   = []byte(os.Getenv("GITHUB_SESSION_SECRET"))
 )
+
+type gitSessionTokenCookie struct {
+	Metadata        string `json:"metadata"`
+	ExpiryTimestamp int64  `json:"expiry"`
+}
 
 func tokenFromRequest(req connect.AnyRequest) (*oauth2.Token, error) {
 	cookie, err := (&http.Request{Header: req.Header()}).Cookie(gitHubCookieName)
@@ -38,9 +45,18 @@ func encodeToken(token *oauth2.Token) (string, error) {
 		return "", err
 	}
 
+	bytes, err := json.Marshal(gitSessionTokenCookie{
+		Metadata:        encrypted,
+		ExpiryTimestamp: token.Expiry.UnixMilli(),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	encoded := base64.StdEncoding.EncodeToString(bytes)
 	cookie := http.Cookie{
 		Name:     gitHubCookieName,
-		Value:    encrypted,
+		Value:    encoded,
 		Expires:  token.Expiry,
 		HttpOnly: false,
 		Secure:   true,
@@ -50,7 +66,28 @@ func encodeToken(token *oauth2.Token) (string, error) {
 }
 
 func decodeToken(value string) (*oauth2.Token, error) {
-	token, err := decryptToken(value, githubSessionSecret)
+	var token *oauth2.Token
+
+	decoded, err := base64.StdEncoding.DecodeString(value)
+	if err != nil {
+		return nil, err
+	}
+
+	sessionToken := gitSessionTokenCookie{}
+	err = json.Unmarshal(decoded, &sessionToken)
+	if err != nil {
+		// This may be a legacy cookie. Legacy cookies aren't base64 encoded
+		// JSON objects, but rather a base64 encoded crypto hash.
+		var innerErr error
+		token, innerErr = decryptToken(value, githubSessionSecret)
+		if innerErr != nil {
+			// Legacy fallback failed, return the original error.
+			return nil, err
+		}
+		return token, nil
+	}
+
+	token, err = decryptToken(sessionToken.Metadata, githubSessionSecret)
 	if err != nil {
 		return nil, err
 	}
