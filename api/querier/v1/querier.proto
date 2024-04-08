@@ -150,3 +150,36 @@ message SelectSeriesRequest {
 message SelectSeriesResponse {
   repeated types.v1.Series series = 1;
 }
+
+message CallGraph {
+  repeated CallGraphNode nodes = 1;
+  repeated CallGraphEdge edges = 2;
+  // The total weight of the graph, used to compute percentages.
+  uint64 total_value = 3;
+  // The total number of nodes in the source full graph.
+  uint64 nodes_total = 4;
+  // The number of nodes not present in the graph.
+  uint64 nodes_dropped = 5;
+}
+
+message CallGraphNode {
+  // Values associated to this node. Self is exclusive to this node,
+  // total includes all descendents.
+  uint64 total = 1;
+  uint64 self = 2;
+  string name = 3;
+}
+
+message CallGraphEdge {
+  // source is the index of the source node in the nodes array.
+  uint32 source = 1;
+  // destination is the index of the destination node in the nodes array.
+  uint32 destination = 2;
+  // sum of samples the edge represents.
+  uint64 total = 3;
+  // residual edges connect nodes that were connected through a
+  // separate node, which has been removed from the report.
+  bool residual = 4;
+  // An inline edge represents a call that was inlined into the caller.
+  bool inline = 5;
+}
