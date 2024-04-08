@@ -55,9 +55,10 @@ This integration enables a cohesive correlation of profiling data with existing 
 Continuous profiling provides ongoing, in-depth insights into application performance.
 With Pyroscope, you go from a bunch of flame graph files on your desktop to a database you can query and analyze production data in a structured way.
 
-<video style="border-radius: 1%; width: 75%; display: block; margin-left: auto; margin-right: auto;" autoplay loop>
+<!--video style="border-radius: 1%; width: 75%; display: block; margin-left: auto; margin-right: auto;" autoplay loop>
   <source src="ui.webm" type="video/webm">
-</video>
+</video-->
+![Pyroscope UI showing the comparison view](/media/docs/pyroscope/screenshot-pyroscope-comp-view.png)
 
 ## Explore
 
