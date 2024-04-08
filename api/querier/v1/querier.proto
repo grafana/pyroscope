@@ -154,12 +154,10 @@ message SelectSeriesResponse {
 message CallGraph {
   repeated CallGraphNode nodes = 1;
   repeated CallGraphEdge edges = 2;
-  // The total weight of the graph, used to compute percentages.
+  // The total weight of the graph before truncation, used to compute percentages.
   uint64 total_value = 3;
-  // The total number of nodes in the source full graph.
+  // The total number of nodes in the source graph before truncation.
   uint64 nodes_total = 4;
-  // The number of nodes not present in the graph.
-  uint64 nodes_dropped = 5;
 }
 
 message CallGraphNode {
