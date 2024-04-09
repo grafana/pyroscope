@@ -41,7 +41,6 @@ type profileStore struct {
 
 	path      string
 	persister schemav1.Persister[*schemav1.Profile]
-	writer    *parquet.GenericWriter[*schemav1.Profile]
 
 	// lock serializes appends to the slice. Every new profile is appended
 	// to the slice and to the index (has its own lock). In practice, it's
@@ -87,10 +86,6 @@ func newProfileStore(phlarectx context.Context) *profileStore {
 	}
 	s.flushWg.Add(1)
 	go s.cutRowGroupLoop()
-	// Initialize writer on /dev/null
-	// TODO: Reuse parquet.Writer beyond life time of the head.
-	s.writer = newParquetProfileWriter(io.Discard)
-
 	return s
 }
 
@@ -205,13 +200,7 @@ func (s *profileStore) DeleteRowGroups() error {
 }
 
 func (s *profileStore) prepareFile(path string) (f *os.File, err error) {
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
-	if err != nil {
-		return nil, err
-	}
-	s.writer.Reset(file)
-
-	return file, err
+	return os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 }
 
 // cutRowGroups gets called, when a patrticular row group has been finished
@@ -255,12 +244,13 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 		return err
 	}
 
-	n, err := parquet.CopyRows(s.writer, schemav1.NewInMemoryProfilesRowReader(s.flushBuffer))
+	w := newParquetProfileWriter(f)
+	n, err := parquet.CopyRows(w, schemav1.NewInMemoryProfilesRowReader(s.flushBuffer))
 	if err != nil {
 		return errors.Wrap(err, "write row group segments to disk")
 	}
 
-	if err := s.writer.Close(); err != nil {
+	if err = w.Close(); err != nil {
 		return errors.Wrap(err, "close row group segment writer")
 	}
 
@@ -301,7 +291,7 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 		s.metrics.samples.Sub(float64(len(s.slice[i].Samples.StacktraceIDs)))
 	}
 	// reset slice and metrics
-	s.slice = copySlice(s.slice[count:])
+	s.slice = s.slice[:copy(s.slice, s.slice[count:])]
 	currentSize := s.size.Sub(size)
 	if err != nil {
 		return err
@@ -377,23 +367,21 @@ func (s *profileStore) loadProfilesToFlush(count int) uint64 {
 }
 
 func (s *profileStore) writeRowGroups(path string, rowGroups []parquet.RowGroup) (n uint64, numRowGroups uint64, err error) {
-	fileCloser, err := s.prepareFile(path)
+	f, err := s.prepareFile(path)
 	if err != nil {
 		return 0, 0, err
 	}
-	defer runutil.CloseWithErrCapture(&err, fileCloser, "closing parquet file")
+	defer runutil.CloseWithErrCapture(&err, f, "closing parquet file")
 	readers := make([]parquet.RowReader, len(rowGroups))
 	for i, rg := range rowGroups {
 		readers[i] = rg.Rows()
 	}
-	n, numRowGroups, err = phlareparquet.CopyAsRowGroups(s.writer, schemav1.NewMergeProfilesRowReader(readers), s.cfg.MaxBufferRowCount)
-
-	if err := s.writer.Close(); err != nil {
+	w := newParquetProfileWriter(f)
+	n, numRowGroups, err = phlareparquet.CopyAsRowGroups(w, schemav1.NewMergeProfilesRowReader(readers), s.cfg.MaxBufferRowCount)
+	if err = w.Close(); err != nil {
 		return 0, 0, err
 	}
-
 	s.rowsFlushed += n
-
 	return n, numRowGroups, nil
 }
 
@@ -553,10 +541,4 @@ func (r *seriesIDRowsRewriter) ReadRows(rows []parquet.Row) (int, error) {
 	r.pos += int64(n)
 
 	return n, nil
-}
-
-func copySlice[T any](in []T) []T {
-	out := make([]T, len(in))
-	copy(out, in)
-	return out
 }
