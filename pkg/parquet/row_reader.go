@@ -11,10 +11,6 @@ import (
 	"github.com/grafana/pyroscope/pkg/util/loser"
 )
 
-const (
-	defaultRowBufferSize = 64
-)
-
 var (
 	_ parquet.RowReader          = (*emptyRowReader)(nil)
 	_ parquet.RowReader          = (*ErrRowReader)(nil)
@@ -143,8 +139,10 @@ func (r *BufferedRowReaderIterator) Close() error {
 	return r.err
 }
 
+// TODO: refactor: the ReadAll and ReadAllWithBufferSize functions are only used in tests.
+
 func ReadAll(r parquet.RowReader) ([]parquet.Row, error) {
-	return ReadAllWithBufferSize(r, defaultRowBufferSize)
+	return ReadAllWithBufferSize(r, 1)
 }
 
 func ReadAllWithBufferSize(r parquet.RowReader, bufferSize int) ([]parquet.Row, error) {
