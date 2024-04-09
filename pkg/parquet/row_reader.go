@@ -45,7 +45,7 @@ func NewMergeRowReader(readers []parquet.RowReader, maxValue parquet.Row, less f
 	}
 	its := make([]iter.Iterator[parquet.Row], len(readers))
 	for i := range readers {
-		its[i] = NewBufferedRowReaderIterator(readers[i], defaultRowBufferSize)
+		its[i] = NewBufferedRowReaderIterator(readers[i], 1)
 	}
 
 	return NewIteratorRowReader(

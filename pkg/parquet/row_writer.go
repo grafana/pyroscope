@@ -18,7 +18,7 @@ func CopyAsRowGroups(dst RowWriterFlusher, src parquet.RowReader, rowGroupNumCou
 	if rowGroupNumCount <= 0 {
 		panic("rowGroupNumCount must be positive")
 	}
-	bufferSize := defaultRowBufferSize
+	bufferSize := 1
 	// We clamp the buffer to the rowGroupNumCount to avoid allocating a buffer that is too large.
 	if rowGroupNumCount < bufferSize {
 		bufferSize = rowGroupNumCount
