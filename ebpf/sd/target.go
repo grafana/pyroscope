@@ -37,13 +37,11 @@ const (
 	metricValue                     = "process_cpu"
 	labelMetaPyroscopeOptionsPrefix = "__meta_pyroscope_ebpf_options_"
 
-	OptionGoTableFallback          = labelMetaPyroscopeOptionsPrefix + "go_table_fallback"
-	OptionCollectKernel            = labelMetaPyroscopeOptionsPrefix + "collect_kernel"
-	OptionPythonFullFilePath       = labelMetaPyroscopeOptionsPrefix + "python_full_file_path"
-	OptionPythonEnabled            = labelMetaPyroscopeOptionsPrefix + "python_enabled"
-	OptionPythonBPFDebugLogEnabled = labelMetaPyroscopeOptionsPrefix + "python_bpf_debug_log"
-	OptionPythonBPFErrorLogEnabled = labelMetaPyroscopeOptionsPrefix + "python_bpf_error_log"
-	OptionDemangle                 = labelMetaPyroscopeOptionsPrefix + "demangle"
+	OptionGoTableFallback    = labelMetaPyroscopeOptionsPrefix + "go_table_fallback"
+	OptionCollectKernel      = labelMetaPyroscopeOptionsPrefix + "collect_kernel"
+	OptionPythonFullFilePath = labelMetaPyroscopeOptionsPrefix + "python_full_file_path"
+	OptionPythonEnabled      = labelMetaPyroscopeOptionsPrefix + "python_enabled"
+	OptionDemangle           = labelMetaPyroscopeOptionsPrefix + "demangle"
 )
 
 type Target struct {

@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -48,7 +47,6 @@ var collectFreq = flag.Duration("collect.freq",
 	15*time.Second,
 	"")
 
-var logBPF = flag.Bool("log.bpf", true, "reads /sys/kernel/debug/tracing/trace_pipe and prints to stdout")
 var logProfile = flag.Bool("log.profile", true, "prints profiles to stdout")
 var logProfileFormat = flag.String("log.profile.format", "collapsed", "")
 
@@ -103,9 +101,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if *logBPF {
-		go printBpfLog()
-	}
 
 	profiles := make(chan *pushv1.PushRequest, 128)
 	go ingest(profiles)
@@ -120,19 +115,6 @@ func main() {
 		case <-collectTicker.C:
 			collectProfiles(profiles)
 		}
-	}
-}
-
-func printBpfLog() {
-	f, err := os.Open("/sys/kernel/debug/tracing/trace_pipe")
-	if err != nil {
-		fmt.Println("error opening trace_pipe", err)
-		return
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		fmt.Println(scanner.Text())
 	}
 }
 
@@ -225,6 +207,7 @@ func convertSessionOptions() ebpfspy.SessionOptions {
 		VerifierLogSize:           1024 * 1024 * 20,
 		PythonBPFErrorLogEnabled:  config.PythonBPFLogErr,
 		PythonBPFDebugLogEnabled:  config.PythonBPFLogDebug,
+		PintBPFLog:                config.PrintBPFLog,
 		BPFMapsOptions:            config.BPFMapsOptions,
 	}
 }
@@ -281,6 +264,7 @@ var defaultConfig = Config{
 	RelabelConfig:      nil,
 	PythonBPFLogErr:    true,
 	PythonBPFLogDebug:  true,
+	PrintBPFLog:        true,
 	BPFMapsOptions: ebpfspy.BPFMapsOptions{
 		PIDMapSize:     2048,
 		SymbolsMapSize: 16384,
@@ -302,6 +286,7 @@ type Config struct {
 	RelabelConfig             []*RelabelConfig
 	PythonBPFLogErr           bool
 	PythonBPFLogDebug         bool
+	PrintBPFLog               bool
 	BPFMapsOptions            ebpfspy.BPFMapsOptions
 }
 

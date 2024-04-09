@@ -1,0 +1,11 @@
+{
+  "RelabelConfig": [
+    {
+      "SourceLabels": [
+        "exe"
+      ],
+      "Regex": ".*/python3.*",
+      "Action": "keep"
+    }
+  ]
+}

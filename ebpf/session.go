@@ -6,6 +6,7 @@
 package ebpfspy
 
 import (
+	"bufio"
 	_ "embed"
 	"encoding/binary"
 	"errors"
@@ -48,6 +49,7 @@ type SessionOptions struct {
 	VerifierLogSize           int
 	PythonBPFErrorLogEnabled  bool
 	PythonBPFDebugLogEnabled  bool
+	PintBPFLog                bool
 	BPFMapsOptions            BPFMapsOptions
 }
 
@@ -209,7 +211,7 @@ func (s *session) Start() error {
 	s.pidInfoRequests = pidInfoRequests
 	s.pidExecRequests = pidExecRequests
 	s.deadPIDEvents = deadPIDsEvents
-	s.wg.Add(4)
+	s.wg.Add(5)
 	s.started = true
 	go func() {
 		defer s.wg.Done()
@@ -226,6 +228,12 @@ func (s *session) Start() error {
 	go func() {
 		defer s.wg.Done()
 		s.processPIDExecRequests(pidExecRequests)
+	}()
+	go func() {
+		defer s.wg.Done()
+		if s.printBPFLogEnabled() {
+			go s.printBpfLog()
+		}
 	}()
 	return nil
 }
@@ -899,20 +907,31 @@ func (s *session) pythonEnabled(target *sd.Target) bool {
 	return enabled
 }
 
-func (s *session) pythonBPFDebugLogEnabled(target *sd.Target) bool {
-	enabled := s.options.PythonBPFDebugLogEnabled
-	if v, present := target.GetFlag(sd.OptionPythonBPFDebugLogEnabled); present {
-		enabled = v
+const (
+	OptionPythonBPFDebugLogEnabled = "PYROSCOPE_EBPF_PYTHON_BPF_DEBUG_LOG"
+	OptionPythonBPFErrorLogEnabled = "PYROSCOPE_EBPF_PYTHON_BPF_ERROR_LOG"
+	OptionPrintBPFLog              = "PYROSCOPE_EBPF_PRINT_BPF_LOG"
+)
+
+func (s *session) pythonBPFDebugLogEnabled() bool {
+	if s.options.PythonBPFDebugLogEnabled {
+		return true
 	}
-	return enabled
+	return os.Getenv(OptionPythonBPFDebugLogEnabled) == "true"
 }
 
-func (s *session) pythonBPFErrorLogEnabled(target *sd.Target) bool {
-	enabled := s.options.PythonBPFErrorLogEnabled
-	if v, present := target.GetFlag(sd.OptionPythonBPFErrorLogEnabled); present {
-		enabled = v
+func (s *session) pythonBPFErrorLogEnabled() bool {
+	if s.options.PythonBPFErrorLogEnabled {
+		return true
 	}
-	return enabled
+	return os.Getenv(OptionPythonBPFErrorLogEnabled) == "true"
+}
+
+func (s *session) printBPFLogEnabled() bool {
+	if s.options.PintBPFLog {
+		return true
+	}
+	return os.Getenv(OptionPrintBPFLog) == "true"
 }
 
 func (s *session) printDebugInfo() {
@@ -935,6 +954,19 @@ func (s *stackBuilder) append(sym string) {
 
 func (s *session) numCPU() int {
 	return len(s.perfEvents)
+}
+
+func (s *session) printBpfLog() {
+	f, err := os.Open("/sys/kernel/debug/tracing/trace_pipe")
+	if err != nil {
+		fmt.Println("error opening trace_pipe", err)
+		return
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+	}
 }
 
 func getPIDNamespace() (dev uint64, ino uint64, err error) {
