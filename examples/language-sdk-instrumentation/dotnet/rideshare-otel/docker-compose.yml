@@ -1,0 +1,62 @@
+version: "3"
+services:
+  pyroscope:
+    image: grafana/pyroscope:latest
+    ports:
+      - '4040:4040'
+
+  us-east:
+    platform: linux/amd64
+    ports:
+      - 5000
+    environment:
+      - REGION=us-east
+      - PYROSCOPE_LABELS=region:us-east
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+      - RIDESHARE_LISTEN_PORT=5000
+    build:
+      context: .
+
+  eu-north:
+    platform: linux/amd64
+    ports:
+      - 5000
+    environment:
+      - REGION=eu-north
+      - PYROSCOPE_LABELS=region:eu-north
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+      - RIDESHARE_LISTEN_PORT=5000
+
+    build:
+      context: .
+
+  ap-south:
+    platform: linux/amd64
+    ports:
+      - 5000
+    environment:
+      - REGION=ap-south
+      - PYROSCOPE_LABELS=region:ap-south
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+      - RIDESHARE_LISTEN_PORT=5000
+    build:
+      context: .
+
+  ap-south-alpine:
+    platform: linux/amd64
+    ports:
+      - 5000
+    environment:
+      - REGION=ap-south
+      - PYROSCOPE_LABELS=region:ap-south-alpine
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+      - RIDESHARE_LISTEN_PORT=5000
+    build:
+      context: .
+      dockerfile: musl.Dockerfile
+
+  load-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile.load-generator
+
