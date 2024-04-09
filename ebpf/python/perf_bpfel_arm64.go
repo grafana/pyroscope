@@ -12,6 +12,8 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type PerfErrorStats struct{ Errors [15]uint32 }
+
 type PerfGlobalConfigT struct {
 	BpfLogErr   uint8
 	BpfLogDebug uint8
@@ -152,6 +154,7 @@ type PerfProgramSpecs struct {
 // It can be passed ebpf.CollectionSpec.Assign.
 type PerfMapSpecs struct {
 	Counts       *ebpf.MapSpec `ebpf:"counts"`
+	PyErrors     *ebpf.MapSpec `ebpf:"py_errors"`
 	PyPidConfig  *ebpf.MapSpec `ebpf:"py_pid_config"`
 	PyProgs      *ebpf.MapSpec `ebpf:"py_progs"`
 	PyStateHeap  *ebpf.MapSpec `ebpf:"py_state_heap"`
@@ -180,6 +183,7 @@ func (o *PerfObjects) Close() error {
 // It can be passed to LoadPerfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type PerfMaps struct {
 	Counts       *ebpf.Map `ebpf:"counts"`
+	PyErrors     *ebpf.Map `ebpf:"py_errors"`
 	PyPidConfig  *ebpf.Map `ebpf:"py_pid_config"`
 	PyProgs      *ebpf.Map `ebpf:"py_progs"`
 	PyStateHeap  *ebpf.Map `ebpf:"py_state_heap"`
@@ -191,6 +195,7 @@ type PerfMaps struct {
 func (m *PerfMaps) Close() error {
 	return _PerfClose(
 		m.Counts,
+		m.PyErrors,
 		m.PyPidConfig,
 		m.PyProgs,
 		m.PyStateHeap,

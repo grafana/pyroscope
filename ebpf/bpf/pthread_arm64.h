@@ -28,6 +28,7 @@ static __always_inline int pyro_pthread_getspecific(struct libc *libc, int32_t k
     void *tls_base = NULL;
 
     if (pyro_bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.uw.tp_value)) {
+        log_error("failed to read fsbase");
         return -1;
     }
 
@@ -57,6 +58,7 @@ int __always_inline pthread_getspecific_glibc(const struct libc *libc, int32_t k
             &res,
             sizeof(res),
             tls_base + libc->pthread_specific1stblock + key * 0x10 + 0x08)) {
+        log_error("glibc err 1");
         return -1;
     }
     *out = res;
@@ -81,9 +83,11 @@ int __always_inline pthread_getspecific_musl(const struct libc *libc, int32_t ke
 //   5fc60:       d65f03c0        ret
     void *tmp;
     if (bpf_probe_read_user(&tmp,sizeof(tmp), tls_base - libc->pthread_size + libc->pthread_specific1stblock)) {
+        log_error("musl err 1");
         return -1;
     }
     if (bpf_probe_read_user(&tmp, sizeof(tmp), tmp + key * 0x8)) {
+        log_error("musl err 2");
         return -1;
     }
     *out = tmp;

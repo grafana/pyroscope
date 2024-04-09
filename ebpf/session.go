@@ -391,6 +391,9 @@ func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error 
 			return fmt.Errorf("clear stacks map %w", err)
 		}
 	}
+	if s.pyperfBpf.PythonStacks != nil {
+		s.collectPythonMetrics()
+	}
 	return nil
 }
 
@@ -928,6 +931,10 @@ func (s *stackBuilder) reset() {
 
 func (s *stackBuilder) append(sym string) {
 	s.stack = append(s.stack, sym)
+}
+
+func (s *session) numCPU() int {
+	return len(s.perfEvents)
 }
 
 func getPIDNamespace() (dev uint64, ino uint64, err error) {

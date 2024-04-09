@@ -214,6 +214,32 @@ func (s *session) WalkPythonStack(sb *stackBuilder, stack []byte, target *sd.Tar
 	lo.Reverse(sb.stack[begin:end])
 }
 
+func (s *session) collectPythonMetrics() {
+	var (
+		m = s.pyperfBpf.PyErrors
+	)
+	key := uint32(0)
+	values := make([]python.PerfErrorStats, s.numCPU())
+
+	err := m.Lookup(key, &values)
+
+	if err != nil {
+		_ = level.Error(s.logger).Log("msg", "collect python errors", "err", err)
+		return
+	}
+	res := python.PerfErrorStats{}
+	for _, value := range values {
+		for j := 0; j < len(value.Errors); j++ {
+			res.Errors[j] += value.Errors[j]
+		}
+	}
+	for i, v := range res.Errors {
+		if v != 0 {
+			_ = level.Error(s.logger).Log("msg", "python error", "error", i, "count", v)
+		}
+	}
+}
+
 func skipPythonFrame(classname string, filename string, name string) bool {
 	// for now only skip _Py_InitCleanup frames in userspace
 	// https://github.com/python/cpython/blob/9eb2489266c4c1f115b8f72c0728db737cc8a815/Python/specialize.c#L2534

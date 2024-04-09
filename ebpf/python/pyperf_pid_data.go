@@ -91,6 +91,9 @@ func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidD
 	if err != nil {
 		return nil, fmt.Errorf("failed to get python tss key %w", err)
 	}
+	if data.TssKey != 0 {
+		level.Warn(l).Log("msg", "tss key is not 0", "tss key", data.TssKey)
+	}
 
 	var vframeCode, vframeBack, vframeLocalPlus int16
 	if version.Compare(Py311) >= 0 {

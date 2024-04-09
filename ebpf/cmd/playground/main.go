@@ -3,12 +3,16 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/google/pprof/profile"
+	"github.com/samber/lo"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -43,6 +47,10 @@ var discoverFreq = flag.Duration("discover.freq",
 var collectFreq = flag.Duration("collect.freq",
 	15*time.Second,
 	"")
+
+var logBPF = flag.Bool("log.bpf", true, "reads /sys/kernel/debug/tracing/trace_pipe and prints to stdout")
+var logProfile = flag.Bool("log.profile", true, "prints profiles to stdout")
+var logProfileFormat = flag.String("log.profile.format", "collapsed", "")
 
 var (
 	config  *Config
@@ -95,6 +103,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	if *logBPF {
+		go printBpfLog()
+	}
 
 	profiles := make(chan *pushv1.PushRequest, 128)
 	go ingest(profiles)
@@ -109,6 +120,19 @@ func main() {
 		case <-collectTicker.C:
 			collectProfiles(profiles)
 		}
+	}
+}
+
+func printBpfLog() {
+	f, err := os.Open("/sys/kernel/debug/tracing/trace_pipe")
+	if err != nil {
+		fmt.Println("error opening trace_pipe", err)
+		return
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
 	}
 }
 
@@ -136,6 +160,9 @@ func collectProfiles(profiles chan *pushv1.PushRequest) {
 		_, err := builder.Write(buf)
 		if err != nil {
 			panic(err)
+		}
+		if *logProfile {
+			printProfile(builder.Profile, builder.Labels)
 		}
 		req := &pushv1.PushRequest{Series: []*pushv1.RawProfileSeries{{
 			Labels: protoLabels,
@@ -378,4 +405,46 @@ func relabelProcessTargets(targets []sd.DiscoveryTarget, cfg []*RelabelConfig) [
 		res = append(res, tt)
 	}
 	return res
+}
+
+func printProfile(p *profile.Profile, l labels.Labels) {
+	if *logProfileFormat == "collapsed" {
+		printProfileCollapsed(p, l)
+	} else {
+		fmt.Println(l.String())
+		fmt.Println(p.String())
+	}
+}
+
+func printProfileCollapsed(p *profile.Profile, l labels.Labels) {
+	stacks := map[string]int64{}
+	for _, sample := range p.Sample {
+		stack := []string{}
+		for _, location := range sample.Location {
+			stack = append(stack, location.Line[0].Function.Name)
+		}
+		lo.Reverse(stack)
+		sstack := strings.Join(stack, ";")
+		stacks[sstack] += sample.Value[0]
+	}
+	type entry struct {
+		v int64
+		k string
+	}
+	var es []entry
+
+	for k, v := range stacks {
+		es = append(es, entry{v, k})
+	}
+	slices.SortFunc(es, func(a, b entry) int {
+		if a.v == b.v {
+			return strings.Compare(a.k, b.k)
+		}
+		return int(a.v - b.v)
+	})
+	fmt.Println(l.String())
+	for _, e := range es {
+		fmt.Printf("%s: %d\n", e.k, e.v)
+	}
+
 }
