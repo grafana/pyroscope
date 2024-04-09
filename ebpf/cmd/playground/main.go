@@ -363,14 +363,22 @@ func getProcessTargets() []sd.DiscoveryTarget {
 				_ = level.Error(logger).Log("err", err, "msg", "reading cgroup", "pid", spid)
 			}
 		}
+		cmdline, err := os.ReadFile(fmt.Sprintf("/proc/%s/cmdline", spid))
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				_ = level.Error(logger).Log("err", err, "msg", "reading cmdline", "pid", spid)
+			}
+		}
+		cmdline = bytes.ReplaceAll(cmdline, []byte{0}, []byte(" "))
 		target := sd.DiscoveryTarget{
-			"__process_pid__":       spid,
-			"__meta_process_cwd":    cwd,
-			"__meta_process_exe":    strings.TrimSpace(exe),
-			"__meta_process_comm":   strings.TrimSpace(string(comm)),
-			"__meta_process_cgroup": strings.TrimSpace(string(cgroup)),
-			"pid":                   spid,
-			"exe":                   exe,
+			"__process_pid__": spid,
+			"cwd":             cwd,
+			"exe":             strings.TrimSpace(exe),
+			"comm":            strings.TrimSpace(string(comm)),
+			"cgroup":          strings.TrimSpace(string(cgroup)),
+			"pid":             spid,
+			"cmdline":         strings.TrimSpace(string(cmdline)),
+			"service_name":    fmt.Sprintf("%s at %s", string(cmdline), string(cwd)),
 		}
 		res = append(res, target)
 	}
