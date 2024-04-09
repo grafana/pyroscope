@@ -105,6 +105,6 @@ rideshare/gen:
 	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.11-alpine     --build-arg="PYTHON_VERSION=3.11-alpine"    $(RIDESHARE)
 	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.12-alpine     --build-arg="PYTHON_VERSION=3.12-alpine"    $(RIDESHARE)
 	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:3.13-rc-alpine  --build-arg="PYTHON_VERSION=3.13-rc-alpine" $(RIDESHARE)
-	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:ubuntu-18.04  --build-arg="BASE=ubuntu:18.04" -f $(RIDESHARE)/ubuntu.Dockerfile $(RIDESHARE)
+	#docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:ubuntu-18.04  --build-arg="BASE=ubuntu:18.04" -f $(RIDESHARE)/ubuntu.Dockerfile $(RIDESHARE)
 	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:ubuntu-20.04  --build-arg="BASE=ubuntu:20.04" -f $(RIDESHARE)/ubuntu.Dockerfile $(RIDESHARE)
 	docker buildx build --platform=linux/amd64,linux/arm64 --push -t $(RIDESHARE_REPO)/ebpf-testdata-rideshare:ubuntu-22.04  --build-arg="BASE=ubuntu:22.04" -f $(RIDESHARE)/ubuntu.Dockerfile $(RIDESHARE)
