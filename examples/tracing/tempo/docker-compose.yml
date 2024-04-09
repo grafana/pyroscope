@@ -42,6 +42,24 @@ services:
       context: ../../language-sdk-instrumentation/java/rideshare
       dockerfile: Dockerfile.otel-instrumentation
 
+  rideshare-dotnet-eu-west:
+    ports:
+      - 5000
+    hostname: rideshare-dotnet-eu-west
+    environment:
+      <<: *env
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo:4317
+      OTEL_SERVICE_NAME: rideshare.dotnet.push.app
+      OTEL_METRICS_EXPORTER: none
+      OTEL_TRACES_SAMPLER: always_on
+      OTEL_PROPAGATORS: tracecontext
+      PYROSCOPE_LABELS: hostname=rideshare-dotnet-eu-west
+      REGION: eu-west
+    build:
+      context: ../../language-sdk-instrumentation/dotnet/rideshare-otel
+      dockerfile: Dockerfile
+
   load-generator:
     environment: *env
     build:
@@ -52,6 +70,7 @@ services:
       - http://rideshare-go-ap-south:5000
       - http://rideshare-go-eu-north:5000
       - http://rideshare-java-us-east:5000
+      - http://rideshare-dotnet-eu-west:5000
 
   grafana:
     image: grafana/grafana-dev:10.3.0-151740

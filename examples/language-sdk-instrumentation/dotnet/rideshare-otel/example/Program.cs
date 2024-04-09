@@ -34,13 +34,9 @@ public static class Program
             .WithTracing(b =>
             {
                 b
-                .AddSource("service")
-                .ConfigureResource(resource =>
-                    resource.AddService(
-                        serviceName: "service",
-                        serviceVersion: "1.0"))
                 .AddAspNetCoreInstrumentation()
                 .AddConsoleExporter()
+                .AddOtlpExporter()
                 .AddProcessor(new PyroscopeSpanProcessor());
             });
 
