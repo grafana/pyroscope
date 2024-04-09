@@ -9,6 +9,7 @@ namespace Example;
 using System.Collections;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -24,10 +25,16 @@ public static class Program
         }
         object globalLock = new();
         var strings = new List<string>();
+
+        var loggerFactory = LoggerFactory.Create(loggingBuilder => {
+            loggingBuilder.AddConsole();
+            loggingBuilder.SetMinimumLevel(LogLevel.Debug);
+        });
+
         var orderService = new OrderService();
         var bikeService = new BikeService(orderService);
         var scooterService = new ScooterService(orderService);
-        var carService = new CarService(orderService);
+        var carService = new CarService(orderService, loggerFactory);
 
         var builder = WebApplication.CreateBuilder(args);
         builder.Services.AddOpenTelemetry()
@@ -37,8 +44,9 @@ public static class Program
                 .AddAspNetCoreInstrumentation()
                 .AddConsoleExporter()
                 .AddOtlpExporter()
-                .AddProcessor(new PyroscopeSpanProcessor());
+                .AddProcessor(new PyroscopeSpanProcessor(loggerFactory));
             });
+        builder.Services.AddLogging();
 
         var app = builder.Build();
         app.MapGet("/bike", () =>
