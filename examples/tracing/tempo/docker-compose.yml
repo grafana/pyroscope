@@ -54,6 +54,7 @@ services:
       OTEL_METRICS_EXPORTER: none
       OTEL_TRACES_SAMPLER: always_on
       OTEL_PROPAGATORS: tracecontext
+      OTEL_RESOURCE_ATTRIBUTES: host.name=rideshare-dotnet-eu-west
       PYROSCOPE_LABELS: hostname=rideshare-dotnet-eu-west
       REGION: eu-west
     build:

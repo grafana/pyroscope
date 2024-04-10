@@ -1,37 +1,36 @@
 using System;
-using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 
 namespace Example;
 
-class PyroscopeSpanProcessor : BaseProcessor<System.Diagnostics.Activity> {
-  private readonly ILogger _logger;
-  
-  public PyroscopeSpanProcessor(ILoggerFactory loggerFactory)
-  {
-    _logger = loggerFactory.CreateLogger("main");
-  }
+class PyroscopeSpanProcessor : BaseProcessor<System.Diagnostics.Activity>
+{
 
-  public override void OnStart(System.Diagnostics.Activity data) {
-        _logger.LogInformation("OnStart()");
-        if (data.RootId == null) {
+    private const string ProfileIdSpanTagKey = "pyroscope.profile.id";
+
+    public override void OnStart(System.Diagnostics.Activity data)
+    {
+        if (!IsRootSpan(data)) {
             return;
         }
-        _logger.LogInformation("PyroscopeSpanProcessor: Current thread ID: {0}", Environment.CurrentManagedThreadId);
-        _logger.LogInformation("Setting dynamic tag {span_id}", data.SpanId.ToString());
-        Pyroscope.Profiler.Instance.SetDynamicTag("profile_id", data.SpanId.ToString());
-        Pyroscope.Profiler.Instance.SetDynamicTag("span_id", data.SpanId.ToString());
+        var spanId = data.SpanId.ToString();
+
+        try
+        {
+            ulong spanIdUlong = Convert.ToUInt64(spanId.ToUpper(), 16);
+            Pyroscope.Profiler.Instance.SetProfileId(spanIdUlong);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Caught exception while setting profile id profiler: {ex.Message}");
+        }
+
+        data.AddTag(ProfileIdSpanTagKey, spanId);
     }
 
-    public override void OnEnd(System.Diagnostics.Activity data) {
-        _logger.LogInformation("OnEnd()");
-        if (data.RootId == null) {
-            return;
-        }
-        _logger.LogInformation("PyroscopeSpanProcessor: Current thread ID: {0}", Environment.CurrentManagedThreadId);
-        _logger.LogInformation("Setting dynamic tag {span_id}", data.SpanId.ToString());
-        Pyroscope.Profiler.Instance.SetDynamicTag("profile_id", data.SpanId.ToString());
-        Pyroscope.Profiler.Instance.SetDynamicTag("span_id", data.SpanId.ToString());
-        data.AddTag("pyroscope.profile.id", data.SpanId.ToString());
+    private static bool IsRootSpan(System.Diagnostics.Activity data)
+    {
+        var parent = data.Parent;
+        return parent == null || parent.HasRemoteParent;
     }
 }
