@@ -174,17 +174,17 @@ func BenchmarkRowReader(b *testing.B) {
 
 func TestMergeProfiles(t *testing.T) {
 	reader := NewMergeProfilesRowReader([]parquet.RowReader{
-		NewInMemoryProfilesRowReader([]InMemoryProfile{
+		NewInMemoryProfilesRowReader([]*InMemoryProfile{
 			{SeriesIndex: 1, TimeNanos: 1},
 			{SeriesIndex: 2, TimeNanos: 2},
 			{SeriesIndex: 3, TimeNanos: 3},
 		}),
-		NewInMemoryProfilesRowReader([]InMemoryProfile{
+		NewInMemoryProfilesRowReader([]*InMemoryProfile{
 			{SeriesIndex: 1, TimeNanos: 4},
 			{SeriesIndex: 2, TimeNanos: 5},
 			{SeriesIndex: 3, TimeNanos: 6},
 		}),
-		NewInMemoryProfilesRowReader([]InMemoryProfile{
+		NewInMemoryProfilesRowReader([]*InMemoryProfile{
 			{SeriesIndex: 1, TimeNanos: 7},
 			{SeriesIndex: 2, TimeNanos: 8},
 			{SeriesIndex: 3, TimeNanos: 9},
@@ -193,7 +193,7 @@ func TestMergeProfiles(t *testing.T) {
 
 	actual, err := phlareparquet.ReadAll(reader)
 	require.NoError(t, err)
-	compareProfileRows(t, generateProfileRow([]InMemoryProfile{
+	compareProfileRows(t, generateProfileRow([]*InMemoryProfile{
 		{SeriesIndex: 1, TimeNanos: 1},
 		{SeriesIndex: 1, TimeNanos: 4},
 		{SeriesIndex: 1, TimeNanos: 7},
@@ -212,18 +212,18 @@ func TestLessProfileRows(t *testing.T) {
 		expected bool
 	}{
 		{
-			a:        generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0],
-			b:        generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0],
+			a:        generateProfileRow([]*InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0],
+			b:        generateProfileRow([]*InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0],
 			expected: false,
 		},
 		{
-			a:        generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0],
-			b:        generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 2}})[0],
+			a:        generateProfileRow([]*InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0],
+			b:        generateProfileRow([]*InMemoryProfile{{SeriesIndex: 1, TimeNanos: 2}})[0],
 			expected: true,
 		},
 		{
-			a:        generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0],
-			b:        generateProfileRow([]InMemoryProfile{{SeriesIndex: 2, TimeNanos: 1}})[0],
+			a:        generateProfileRow([]*InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0],
+			b:        generateProfileRow([]*InMemoryProfile{{SeriesIndex: 2, TimeNanos: 1}})[0],
 			expected: true,
 		},
 	} {
@@ -237,16 +237,16 @@ func TestProfileRowStacktraceIDs(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		expected []uint32
-		profile  InMemoryProfile
+		profile  *InMemoryProfile
 	}{
-		{"empty", nil, InMemoryProfile{}},
-		{"one sample", []uint32{1}, InMemoryProfile{
+		{"empty", nil, &InMemoryProfile{}},
+		{"one sample", []uint32{1}, &InMemoryProfile{
 			SeriesIndex:         1,
 			StacktracePartition: 2,
 			TotalValue:          3,
 			Samples:             Samples{StacktraceIDs: []uint32{1}, Values: []uint64{1}},
 		}},
-		{"many", []uint32{1, 1, 2, 3, 4}, InMemoryProfile{
+		{"many", []uint32{1, 1, 2, 3, 4}, &InMemoryProfile{
 			SeriesIndex:         1,
 			StacktracePartition: 2,
 			TotalValue:          3,
@@ -258,7 +258,7 @@ func TestProfileRowStacktraceIDs(t *testing.T) {
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			rows := generateProfileRow([]InMemoryProfile{tc.profile})
+			rows := generateProfileRow([]*InMemoryProfile{tc.profile})
 			var ids []uint32
 			ProfileRow(rows[0]).ForStacktraceIDsValues(func(values []parquet.Value) {
 				for _, v := range values {
@@ -271,7 +271,7 @@ func TestProfileRowStacktraceIDs(t *testing.T) {
 }
 
 func TestProfileRowMutateValues(t *testing.T) {
-	row := ProfileRow(generateProfileRow([]InMemoryProfile{
+	row := ProfileRow(generateProfileRow([]*InMemoryProfile{
 		{
 			Samples: Samples{
 				StacktraceIDs: []uint32{1, 1, 2, 3, 4},
@@ -294,9 +294,9 @@ func TestProfileRowMutateValues(t *testing.T) {
 }
 
 func BenchmarkProfileRows(b *testing.B) {
-	a := generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0]
-	a1 := generateProfileRow([]InMemoryProfile{{SeriesIndex: 1, TimeNanos: 2}})[0]
-	a2 := generateProfileRow([]InMemoryProfile{{SeriesIndex: 2, TimeNanos: 1}})[0]
+	a := generateProfileRow([]*InMemoryProfile{{SeriesIndex: 1, TimeNanos: 1}})[0]
+	a1 := generateProfileRow([]*InMemoryProfile{{SeriesIndex: 1, TimeNanos: 2}})[0]
+	a2 := generateProfileRow([]*InMemoryProfile{{SeriesIndex: 2, TimeNanos: 1}})[0]
 
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -311,7 +311,7 @@ func BenchmarkProfileRows(b *testing.B) {
 func Benchmark_SpanID_Encoding(b *testing.B) {
 	const profilesN = 1000
 
-	profiles := func(share float64) []InMemoryProfile {
+	profiles := func(share float64) []*InMemoryProfile {
 		randomSpanIDs := make([]uint64, int(samplesPerProfile*share))
 		inMemoryProfiles := generateMemoryProfiles(profilesN)
 		for j := range inMemoryProfiles {
@@ -372,7 +372,7 @@ func compareProfileRows(t *testing.T, expected, actual []parquet.Row) {
 	}
 }
 
-func generateProfileRow(in []InMemoryProfile) []parquet.Row {
+func generateProfileRow(in []*InMemoryProfile) []parquet.Row {
 	rows := make([]parquet.Row, len(in))
 	for i, p := range in {
 		rows[i] = deconstructMemoryProfile(p, rows[i])
@@ -380,8 +380,8 @@ func generateProfileRow(in []InMemoryProfile) []parquet.Row {
 	return rows
 }
 
-func generateMemoryProfiles(n int) []InMemoryProfile {
-	profiles := make([]InMemoryProfile, n)
+func generateMemoryProfiles(n int) []*InMemoryProfile {
+	profiles := make([]*InMemoryProfile, n)
 	for i := 0; i < n; i++ {
 		stacktraceID := make([]uint32, samplesPerProfile)
 		value := make([]uint64, samplesPerProfile)
@@ -389,7 +389,7 @@ func generateMemoryProfiles(n int) []InMemoryProfile {
 			stacktraceID[j] = uint32(j)
 			value[j] = uint64(j)
 		}
-		profiles[i] = InMemoryProfile{
+		profiles[i] = &InMemoryProfile{
 			ID:                uuid.MustParse(fmt.Sprintf("00000000-0000-0000-0000-%012d", i)),
 			SeriesIndex:       uint32(i),
 			DropFrames:        1,

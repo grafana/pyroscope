@@ -47,7 +47,7 @@ type profileStore struct {
 	// only purpose is to accommodate the parquet writer: slice is never
 	// accessed for reads.
 	profilesLock sync.Mutex
-	slice        []schemav1.InMemoryProfile
+	slice        []*schemav1.InMemoryProfile
 
 	// Rows lock synchronises access to the on-disk row groups.
 	// When the in-memory index (profiles) is being flushed on disk,
@@ -62,7 +62,7 @@ type profileStore struct {
 	flushQueue     chan int // channel to signal that a flush is needed for slice[:n]
 	closeOnce      sync.Once
 	flushWg        sync.WaitGroup
-	flushBuffer    []schemav1.InMemoryProfile
+	flushBuffer    []*schemav1.InMemoryProfile
 	flushBufferLbs []phlaremodel.Labels
 	onFlush        func()
 }
@@ -305,7 +305,7 @@ func (s *profileStore) cutRowGroup(count int) (err error) {
 }
 
 type byLabels struct {
-	p   []schemav1.InMemoryProfile
+	p   []*schemav1.InMemoryProfile
 	lbs []phlaremodel.Labels
 }
 
@@ -341,7 +341,7 @@ func (by byLabels) Less(i, j int) bool {
 // loadProfilesToFlush loads and sort profiles to flush into flushBuffer and returns the size of the profiles.
 func (s *profileStore) loadProfilesToFlush(count int) uint64 {
 	if cap(s.flushBuffer) < count {
-		s.flushBuffer = make([]schemav1.InMemoryProfile, 0, count)
+		s.flushBuffer = make([]*schemav1.InMemoryProfile, 0, count)
 	}
 	if cap(s.flushBufferLbs) < count {
 		s.flushBufferLbs = make([]phlaremodel.Labels, 0, count)
@@ -385,7 +385,7 @@ func (s *profileStore) writeRowGroups(path string, rowGroups []parquet.RowGroup)
 	return n, numRowGroups, nil
 }
 
-func (s *profileStore) ingest(_ context.Context, profiles []schemav1.InMemoryProfile, lbs phlaremodel.Labels, profileName string) error {
+func (s *profileStore) ingest(_ context.Context, profiles []*schemav1.InMemoryProfile, lbs phlaremodel.Labels, profileName string) error {
 	s.profilesLock.Lock()
 	defer s.profilesLock.Unlock()
 
@@ -400,7 +400,7 @@ func (s *profileStore) ingest(_ context.Context, profiles []schemav1.InMemoryPro
 		}
 
 		// add profile to the index
-		s.index.Add(&p, lbs, profileName)
+		s.index.Add(p, lbs, profileName)
 
 		// increase size of stored data
 		addedBytes := profiles[pos].Size()

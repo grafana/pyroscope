@@ -217,7 +217,7 @@ func (h *Head) Ingest(ctx context.Context, p *profilev1.Profile, id uuid.UUID, e
 			continue
 		}
 
-		if err := h.profiles.ingest(ctx, []schemav1.InMemoryProfile{profile}, lbls[idxType], metricName); err != nil {
+		if err := h.profiles.ingest(ctx, []*schemav1.InMemoryProfile{profile}, lbls[idxType], metricName); err != nil {
 			return err
 		}
 

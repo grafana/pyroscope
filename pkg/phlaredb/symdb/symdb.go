@@ -175,7 +175,7 @@ func (s *SymDB) newPartition(partition uint64) *PartitionWriter {
 	return &p
 }
 
-func (s *SymDB) WriteProfileSymbols(partition uint64, profile *profilev1.Profile) []schemav1.InMemoryProfile {
+func (s *SymDB) WriteProfileSymbols(partition uint64, profile *profilev1.Profile) []*schemav1.InMemoryProfile {
 	return s.PartitionWriter(partition).WriteProfileSymbols(profile)
 }
 

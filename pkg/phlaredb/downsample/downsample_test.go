@@ -44,7 +44,7 @@ func TestDownsampler_ProfileCounts(t *testing.T) {
 }
 
 func TestDownsampler_Aggregation(t *testing.T) {
-	profiles := make([]schemav1.InMemoryProfile, 0)
+	profiles := make([]*schemav1.InMemoryProfile, 0)
 	builder := testhelper.NewProfileBuilder(1703853310000000000).CPUProfile() // 2023-12-29T12:35:10Z
 	builder.ForStacktraceString("a", "b", "c").AddSamples(30)
 	builder.ForStacktraceString("a", "b", "c", "d").AddSamples(20)
@@ -106,7 +106,7 @@ func TestDownsampler_Aggregation(t *testing.T) {
 }
 
 func TestDownsampler_VaryingFingerprints(t *testing.T) {
-	profiles := make([]schemav1.InMemoryProfile, 0)
+	profiles := make([]*schemav1.InMemoryProfile, 0)
 	for i := 0; i < 5; i++ {
 		builder := testhelper.NewProfileBuilder(1703853310000000000).CPUProfile() // 2023-12-29T12:35:10Z
 		builder.ForStacktraceString("a", "b", "c").AddSamples(30)

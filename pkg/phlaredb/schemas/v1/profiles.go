@@ -81,7 +81,7 @@ var (
 )
 
 func init() {
-	maxProfileRow = deconstructMemoryProfile(InMemoryProfile{
+	maxProfileRow = deconstructMemoryProfile(&InMemoryProfile{
 		SeriesIndex: math.MaxUint32,
 		TimeNanos:   math.MaxInt64,
 	}, maxProfileRow)
@@ -514,14 +514,14 @@ func copySlice[T any](in []T) []T {
 	return out
 }
 
-func NewInMemoryProfilesRowReader(slice []InMemoryProfile) *SliceRowReader[InMemoryProfile] {
-	return &SliceRowReader[InMemoryProfile]{
+func NewInMemoryProfilesRowReader(slice []*InMemoryProfile) *SliceRowReader[*InMemoryProfile] {
+	return &SliceRowReader[*InMemoryProfile]{
 		slice:     slice,
 		serialize: deconstructMemoryProfile,
 	}
 }
 
-func deconstructMemoryProfile(imp InMemoryProfile, row parquet.Row) parquet.Row {
+func deconstructMemoryProfile(imp *InMemoryProfile, row parquet.Row) parquet.Row {
 	var (
 		col    = -1
 		newCol = func() int {

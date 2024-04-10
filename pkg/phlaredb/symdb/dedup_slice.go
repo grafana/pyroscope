@@ -29,7 +29,7 @@ var (
 //   - PartitionWriter should only rewrite profile symbol indices;
 //   - InMemoryProfile should be created somewhere else on the call side.
 
-func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []schemav1.InMemoryProfile {
+func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []*schemav1.InMemoryProfile {
 	// create a rewriter state
 	rewrites := &rewriter{}
 
@@ -87,9 +87,9 @@ func (p *PartitionWriter) WriteProfileSymbols(profile *profilev1.Profile) []sche
 	p.locations.ingest(locs, rewrites)
 	samplesPerType := p.convertSamples(rewrites, profile.Sample, spans)
 
-	profiles := make([]schemav1.InMemoryProfile, len(samplesPerType))
+	profiles := make([]*schemav1.InMemoryProfile, len(samplesPerType))
 	for idxType := range samplesPerType {
-		profiles[idxType] = schemav1.InMemoryProfile{
+		profiles[idxType] = &schemav1.InMemoryProfile{
 			StacktracePartition: p.header.Partition,
 			Samples:             samplesPerType[idxType],
 			DropFrames:          profile.DropFrames,

@@ -462,7 +462,7 @@ func (pi *profilesIndex) writeTo(ctx context.Context, path string) ([][]rowRange
 	return rangesPerRG, writer.Close()
 }
 
-func (pi *profilesIndex) cutRowGroup(rgProfiles []schemav1.InMemoryProfile) error {
+func (pi *profilesIndex) cutRowGroup(rgProfiles []*schemav1.InMemoryProfile) error {
 	pi.mutex.Lock()
 	defer pi.mutex.Unlock()
 

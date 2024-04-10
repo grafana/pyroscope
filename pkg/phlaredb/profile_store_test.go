@@ -236,7 +236,7 @@ func TestProfileStore_RowGroupSplitting(t *testing.T) {
 
 			for i := 0; i < 100; i++ {
 				p := tc.values(i)
-				require.NoError(t, store.ingest(ctx, []schemav1.InMemoryProfile{p.p}, p.lbls, p.profileName))
+				require.NoError(t, store.ingest(ctx, []*schemav1.InMemoryProfile{&p.p}, p.lbls, p.profileName))
 				for store.flushing.Load() {
 					time.Sleep(time.Millisecond)
 				}
@@ -302,7 +302,7 @@ func TestProfileStore_Ingestion_SeriesIndexes(t *testing.T) {
 
 	for i := 0; i < 9; i++ {
 		p := threeProfileStreams(i)
-		require.NoError(t, store.ingest(ctx, []schemav1.InMemoryProfile{p.p}, p.lbls, p.profileName))
+		require.NoError(t, store.ingest(ctx, []*schemav1.InMemoryProfile{&p.p}, p.lbls, p.profileName))
 	}
 
 	// flush profiles and ensure the correct number of files are created
@@ -345,7 +345,7 @@ func BenchmarkFlush(b *testing.B) {
 			for i := 0; i < 10^6; i++ {
 				p := threeProfileStreams(i)
 				p.p.Samples = samples
-				require.NoError(b, store.ingest(ctx, []schemav1.InMemoryProfile{p.p}, p.lbls, p.profileName))
+				require.NoError(b, store.ingest(ctx, []*schemav1.InMemoryProfile{&p.p}, p.lbls, p.profileName))
 			}
 			require.NoError(b, store.cutRowGroup(len(store.slice)))
 		}
@@ -602,7 +602,7 @@ func TestRemoveFailedSegment(t *testing.T) {
 	require.NoError(t, store.Init(dir, defaultParquetConfig, contextHeadMetrics(context.Background())))
 	// fake a failed segment
 	_, err := os.Create(dir + "/profiles.0.parquet")
-	require.NoError(t, store.ingest(context.Background(), []schemav1.InMemoryProfile{{}}, phlaremodel.LabelsFromStrings(), "memory"))
+	require.NoError(t, store.ingest(context.Background(), []*schemav1.InMemoryProfile{{}}, phlaremodel.LabelsFromStrings(), "memory"))
 	require.NoError(t, err)
 	err = store.cutRowGroup(1)
 	require.NoError(t, err)

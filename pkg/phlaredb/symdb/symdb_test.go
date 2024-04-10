@@ -22,7 +22,7 @@ type memSuite struct {
 	db       *SymDB
 	files    [][]string
 	profiles map[uint64]*googlev1.Profile
-	indexed  map[uint64][]v1.InMemoryProfile
+	indexed  map[uint64][]*v1.InMemoryProfile
 }
 
 type blockSuite struct {
@@ -58,7 +58,7 @@ func (s *memSuite) init() {
 		s.db = NewSymDB(s.config)
 	}
 	s.profiles = make(map[uint64]*googlev1.Profile)
-	s.indexed = make(map[uint64][]v1.InMemoryProfile)
+	s.indexed = make(map[uint64][]*v1.InMemoryProfile)
 	for p, files := range s.files {
 		for _, f := range files {
 			s.writeProfileFromFile(uint64(p), f)
