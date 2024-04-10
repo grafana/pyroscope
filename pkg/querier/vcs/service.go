@@ -61,7 +61,28 @@ func (q *Service) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.Gi
 }
 
 func (q *Service) GithubRefresh(ctx context.Context, req *connect.Request[vcsv1.GithubRefreshRequest]) (*connect.Response[vcsv1.GithubRefreshResponse], error) {
-	panic("unimplemented")
+	token, err := tokenFromRequest(req)
+	if err != nil {
+		q.logger.Log("err", err, "msg", "failed to extract token from request")
+		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid token"))
+	}
+
+	newToken, err := refreshToken(ctx, token)
+	if err != nil {
+		q.logger.Log("err", err, "msg", "failed to refresh token with GitHub")
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to refresh token"))
+	}
+
+	cookie, err := encodeToken(newToken)
+	if err != nil {
+		q.logger.Log("err", err, "msg", "failed to encode GitHub OAuth token")
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to refresh token"))
+	}
+
+	res := &vcsv1.GithubRefreshResponse{
+		Cookie: cookie,
+	}
+	return connect.NewResponse(res), nil
 }
 
 func (q *Service) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFileRequest]) (*connect.Response[vcsv1.GetFileResponse], error) {

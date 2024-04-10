@@ -1,11 +1,14 @@
 package vcs
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
+	"time"
 
 	"connectrpc.com/connect"
 	"golang.org/x/oauth2"
@@ -13,7 +16,8 @@ import (
 )
 
 const (
-	gitHubCookieName = "GitSession"
+	githubCookieName = "GitSession"
+	githubRefreshURL = "https://github.com/login/oauth/access_token"
 )
 
 var (
@@ -25,6 +29,24 @@ var (
 type gitSessionTokenCookie struct {
 	Metadata        string `json:"metadata"`
 	ExpiryTimestamp int64  `json:"expiry"`
+}
+
+type githubAuthToken struct {
+	AccessToken           string `json:"access_token"`
+	ExpiresIn             int    `json:"expires_in"`
+	RefreshToken          string `json:"refresh_token"`
+	RefreshTokenExpiresIn int    `json:"refresh_token_expires_in"`
+	Scope                 string `json:"scope"`
+	TokenType             string `json:"token_type"`
+}
+
+func (t githubAuthToken) toOAuthToken() *oauth2.Token {
+	return &oauth2.Token{
+		AccessToken:  t.AccessToken,
+		TokenType:    t.TokenType,
+		RefreshToken: t.RefreshToken,
+		Expiry:       time.Now().Add(time.Duration(t.ExpiresIn) * time.Second),
+	}
 }
 
 func githubOAuthConfig() (*oauth2.Config, error) {
@@ -41,8 +63,42 @@ func githubOAuthConfig() (*oauth2.Config, error) {
 	}, nil
 }
 
+func refreshToken(ctx context.Context, oldToken *oauth2.Token) (*oauth2.Token, error) {
+	req, err := http.NewRequestWithContext(ctx, "POST", githubRefreshURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.URL.RawQuery = buildRefreshQuery(req.URL.Query(), oldToken).Encode()
+
+	client := http.Client{
+		Timeout: 10 * time.Second,
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer req.Body.Close()
+
+	githubToken := githubAuthToken{}
+	err = json.NewDecoder(res.Body).Decode(&githubToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	newToken := githubToken.toOAuthToken()
+	return newToken, nil
+}
+
+func buildRefreshQuery(query url.Values, token *oauth2.Token) url.Values {
+	query.Add("client_id", githubAppClientID)
+	query.Add("client_secret", githubAppClientSecret)
+	query.Add("grant_type", "refresh_token")
+	query.Add("refresh_token", token.RefreshToken)
+	return query
+}
+
 func tokenFromRequest(req connect.AnyRequest) (*oauth2.Token, error) {
-	cookie, err := (&http.Request{Header: req.Header()}).Cookie(gitHubCookieName)
+	cookie, err := (&http.Request{Header: req.Header()}).Cookie(githubCookieName)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +127,7 @@ func encodeToken(token *oauth2.Token) (string, error) {
 
 	encoded := base64.StdEncoding.EncodeToString(bytes)
 	cookie := http.Cookie{
-		Name:     gitHubCookieName,
+		Name:     githubCookieName,
 		Value:    encoded,
 		Expires:  token.Expiry,
 		HttpOnly: false,
