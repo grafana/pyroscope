@@ -31,19 +31,27 @@ func New(logger log.Logger) *Service {
 
 func (q *Service) GithubApp(ctx context.Context, req *connect.Request[vcsv1.GithubAppRequest]) (*connect.Response[vcsv1.GithubAppResponse], error) {
 	return connect.NewResponse(&vcsv1.GithubAppResponse{
-		ClientID: client.GithubAppClientID,
+		ClientID: githubAppClientID,
 	}), nil
 }
 
 func (q *Service) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.GithubLoginRequest]) (*connect.Response[vcsv1.GithubLoginResponse], error) {
-	token, err := client.AuthorizeGithub(ctx, req.Msg.AuthorizationCode)
+	cfg, err := githubOAuthConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to authorize github: %w", err)
+		q.logger.Log("err", err, "msg", "failed to get GitHub OAuth config")
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to authorize with GitHub"))
+	}
+
+	token, err := cfg.Exchange(ctx, req.Msg.AuthorizationCode)
+	if err != nil {
+		q.logger.Log("err", err, "msg", "failed to exchange authorization code with GitHub")
+		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("failed to authorize with GitHub"))
 	}
 
 	cookie, err := encodeToken(token)
 	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to encode cookie"))
+		q.logger.Log("err", err, "msg", "failed to encode GitHub OAuth token")
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to authorize with GitHub"))
 	}
 
 	res := &vcsv1.GithubLoginResponse{

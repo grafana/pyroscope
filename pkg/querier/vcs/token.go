@@ -3,11 +3,13 @@ package vcs
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 
 	"connectrpc.com/connect"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/endpoints"
 )
 
 const (
@@ -23,6 +25,20 @@ var (
 type gitSessionTokenCookie struct {
 	Metadata        string `json:"metadata"`
 	ExpiryTimestamp int64  `json:"expiry"`
+}
+
+func githubOAuthConfig() (*oauth2.Config, error) {
+	if githubAppClientID == "" {
+		return nil, fmt.Errorf("missing GITHUB_CLIENT_ID environment variable")
+	}
+	if githubAppClientSecret == "" {
+		return nil, fmt.Errorf("missing GITHUB_CLIENT_SECRET environment variable")
+	}
+	return &oauth2.Config{
+		ClientID:     githubAppClientID,
+		ClientSecret: githubAppClientSecret,
+		Endpoint:     endpoints.GitHub,
+	}, nil
 }
 
 func tokenFromRequest(req connect.AnyRequest) (*oauth2.Token, error) {

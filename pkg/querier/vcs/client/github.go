@@ -5,73 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"connectrpc.com/connect"
 	"github.com/google/go-github/v58/github"
 	"golang.org/x/oauth2"
-	o2endpoints "golang.org/x/oauth2/endpoints"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
 )
-
-var (
-	GithubAppClientID     = os.Getenv("GITHUB_CLIENT_ID")
-	githubAppClientSecret = os.Getenv("GITHUB_CLIENT_SECRET")
-	githubSessionSecret   = []byte(os.Getenv("GITHUB_SESSION_SECRET"))
-)
-
-const (
-	gitHubCookieName = "GitSession"
-)
-
-// githubOAuth returns a github oauth2 config.
-// Returns an error if the environment variables are not set.
-func githubOAuth() (*oauth2.Config, error) {
-	if GithubAppClientID == "" {
-		return nil, errors.New("missing GITHUB_CLIENT_ID environment variable")
-	}
-	if githubAppClientSecret == "" {
-		return nil, errors.New("missing GITHUB_CLIENT_SECRET environment variable")
-	}
-	return &oauth2.Config{
-		ClientID:     GithubAppClientID,
-		ClientSecret: githubAppClientSecret,
-		Endpoint:     o2endpoints.GitHub,
-	}, nil
-}
 
 // GithubClient returns a github client.
 func GithubClient(ctx context.Context, token *oauth2.Token) (*githubClient, error) {
 	return &githubClient{
 		client: github.NewClient(nil).WithAuthToken(token.AccessToken),
 	}, nil
-}
-
-func unAuthorizeError(err error, cookie *http.Cookie) error {
-	connectErr := connect.NewError(
-		connect.CodeUnauthenticated,
-		err,
-	)
-	cookie.Value = ""
-	cookie.MaxAge = -1
-	connectErr.Meta().Set("Set-Cookie", cookie.String())
-	return connectErr
-}
-
-func AuthorizeGithub(ctx context.Context, authorizationCode string) (*oauth2.Token, error) {
-	auth, err := githubOAuth()
-	if err != nil {
-		return nil, err
-	}
-
-	token, err := auth.Exchange(ctx, authorizationCode)
-	if err != nil {
-		return nil, err
-	}
-
-	return token, nil
 }
 
 type githubClient struct {
