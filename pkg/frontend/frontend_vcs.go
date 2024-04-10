@@ -17,6 +17,10 @@ func (f *Frontend) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.G
 	return connectgrpc.RoundTripUnary[vcsv1.GithubLoginRequest, vcsv1.GithubLoginResponse](ctx, f, req)
 }
 
+func (f *Frontend) GithubRefresh(ctx context.Context, req *connect.Request[vcsv1.GithubRefreshRequest]) (*connect.Response[vcsv1.GithubRefreshResponse], error) {
+	return connectgrpc.RoundTripUnary[vcsv1.GithubRefreshRequest, vcsv1.GithubRefreshResponse](ctx, f, req)
+}
+
 func (f *Frontend) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFileRequest]) (*connect.Response[vcsv1.GetFileResponse], error) {
 	return connectgrpc.RoundTripUnary[vcsv1.GetFileRequest, vcsv1.GetFileResponse](ctx, f, req)
 }

@@ -5,6 +5,7 @@ package vcs.v1;
 service VCSService {
   rpc GithubApp(GithubAppRequest) returns (GithubAppResponse) {}
   rpc GithubLogin(GithubLoginRequest) returns (GithubLoginResponse) {}
+  rpc GithubRefresh(GithubRefreshRequest) returns (GithubRefreshResponse) {}
   rpc GetFile(GetFileRequest) returns (GetFileResponse) {}
   rpc GetCommit(GetCommitRequest) returns (GetCommitResponse) {}
 }
@@ -19,6 +20,12 @@ message GithubLoginRequest {
 }
 
 message GithubLoginResponse {
+  string cookie = 1;
+}
+
+message GithubRefreshRequest {}
+
+message GithubRefreshResponse {
   string cookie = 1;
 }
 
