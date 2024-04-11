@@ -10,7 +10,7 @@
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
-    "@pyroscope/nodejs": "^0.2.x",
+    "@pyroscope/nodejs": "0.3.1",
     "axios": "^0.26.1",
     "express": "^4.17.3",
     "morgan": "^1.10.0",
@@ -22,6 +22,7 @@
     "@types/morgan": "^1.9.3"
   },
   "resolutions": {
-    "protobufjs": "^7.2.4"
+    "protobufjs": "^7.2.4",
+    "@types/mime": "3.0.4"
   }
 }
