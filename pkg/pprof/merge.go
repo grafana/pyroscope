@@ -32,8 +32,18 @@ func (m *ProfileMerge) MergeNoClone(p *profilev1.Profile) error {
 	return m.merge(p, false)
 }
 
+func isProfileValid(p *profilev1.Profile) bool {
+	return p != nil &&
+		len(p.SampleType) > 0 &&
+		len(p.StringTable) > 1 &&
+		len(p.Sample) > 0 &&
+		len(p.Location) > 0 &&
+		len(p.Mapping) > 0 &&
+		p.PeriodType != nil
+}
+
 func (m *ProfileMerge) merge(p *profilev1.Profile, clone bool) error {
-	if p == nil || len(p.StringTable) < 2 {
+	if !isProfileValid(p) {
 		return nil
 	}
 	ConvertIDsToIndices(p)

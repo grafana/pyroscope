@@ -141,7 +141,9 @@ func (r *Resolver) AddSamples(partition uint64, s schemav1.Samples) {
 func (r *Resolver) AddSamplesFromParquetRow(partition uint64, stacktraceIDs, values []parquet.Value) {
 	r.WithPartitionSamples(partition, func(samples map[uint32]int64) {
 		for i, sid := range stacktraceIDs {
-			samples[sid.Uint32()] += values[i].Int64()
+			if s := sid.Uint32(); s > 0 {
+				samples[s] += values[i].Int64()
+			}
 		}
 	})
 }
@@ -149,7 +151,7 @@ func (r *Resolver) AddSamplesFromParquetRow(partition uint64, stacktraceIDs, val
 func (r *Resolver) AddSamplesWithSpanSelector(partition uint64, s schemav1.Samples, spanSelector model.SpanSelector) {
 	r.WithPartitionSamples(partition, func(samples map[uint32]int64) {
 		for i, sid := range s.StacktraceIDs {
-			if _, ok := spanSelector[s.Spans[i]]; ok {
+			if _, ok := spanSelector[s.Spans[i]]; ok && sid > 0 {
 				samples[sid] += int64(s.Values[i])
 			}
 		}
@@ -247,7 +249,10 @@ func (r *Resolver) Pprof() (*googlev1.Profile, error) {
 		defer lock.Unlock()
 		return p.Merge(resolved)
 	})
-	return p.Profile(), err
+	if err != nil {
+		return nil, err
+	}
+	return p.Profile(), nil
 }
 
 func (r *Resolver) withSymbols(ctx context.Context, fn func(*Symbols, schemav1.Samples) error) error {
