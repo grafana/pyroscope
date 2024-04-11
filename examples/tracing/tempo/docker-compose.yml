@@ -61,6 +61,23 @@ services:
       context: ../../language-sdk-instrumentation/dotnet/rideshare-otel
       dockerfile: Dockerfile
 
+  rideshare-dotnet-eu-south:
+    ports:
+      - 5000
+    hostname: rideshare-dotnet-eu-south
+    environment:
+      <<: *env
+      PYROSCOPE_LABELS: hostname=rideshare-dotnet-eu-south
+      REGION: eu-north
+      JAEGER_SERVICE_NAME: rideshare.dotnet.opentracing.push.app
+      JAEGER_AGENT_HOST: tempo
+      JAEGER_SAMPLER_TYPE: const
+      JAEGER_SAMPLER_PARAM: 1.0
+      JAEGER_REPORTER_LOG_SPANS: true
+    build:
+      context: ../../language-sdk-instrumentation/dotnet/rideshare-opentracing
+      dockerfile: Dockerfile
+
   load-generator:
     environment: *env
     build:
@@ -72,6 +89,7 @@ services:
       - http://rideshare-go-eu-north:5000
       - http://rideshare-java-us-east:5000
       - http://rideshare-dotnet-eu-west:5000
+      - http://rideshare-dotnet-eu-south:5000
 
   grafana:
     image: grafana/grafana-dev:10.3.0-151740

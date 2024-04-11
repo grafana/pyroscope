@@ -17,12 +17,12 @@ class PyroscopeSpanProcessor : BaseProcessor<System.Diagnostics.Activity>
 
         try
         {
-            ulong spanIdUlong = Convert.ToUInt64(spanId.ToUpper(), 16);
-            Pyroscope.Profiler.Instance.SetProfileId(spanIdUlong);
+            ulong spanIdLong = Convert.ToUInt64(spanId.ToUpper(), 16);
+            Pyroscope.Profiler.Instance.SetProfileId(spanIdLong);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Caught exception while setting profile id profiler: {ex.Message}");
+            Console.WriteLine($"Caught exception while setting profile id in profiler instance: {ex.Message}");
         }
 
         data.AddTag(ProfileIdSpanTagKey, spanId);
