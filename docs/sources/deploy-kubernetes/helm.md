@@ -71,7 +71,7 @@ Use a custom namespace so that you don't have to overwrite the default namespace
    ```
    {{% /admonition %}}
 
-   - Option B: Install Pyroscope as micro-services. In this mode, as you scale out the number of instances, they will share a singular backend for storage and querying.
+   - Option B: Install Pyroscope as multiple microservices. In this mode, as you scale out the number of instances, they will share a singular backend for storage and querying.
 
    ```bash
    # Gather the default config for micro-services
@@ -80,7 +80,7 @@ Use a custom namespace so that you don't have to overwrite the default namespace
    ```
 
    {{% admonition type="note" %}}
-   The output of the command contains the query URLs necessary for the following steps, so for a micro-service setup, it will look like this:
+   The output of the command contains the query URLs necessary for the following steps, so for a microservice setup, it will look like this:
 
    ```
    [...]
@@ -96,7 +96,7 @@ Use a custom namespace so that you don't have to overwrite the default namespace
    kubectl -n pyroscope-test get pods
    ```
 
-   The results look similar to this when you are in micro-services mode:
+   The results look similar to this when you are in microservices mode:
 
    ```bash
    kubectl -n pyroscope-test get pods
@@ -113,7 +113,7 @@ Use a custom namespace so that you don't have to overwrite the default namespace
    pyroscope-querier-66bf58dfcc-zbggm      1/1     Running   0          3m23s
    ```
 
-1. Wait until all of the pods have a status of `Running` or `Completed`, which might take a few minutes.
+1. Wait until all the pods have a status of `Running` or `Completed`, which might take a few minutes.
 
 ## Query profiles in Grafana
 

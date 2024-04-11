@@ -50,7 +50,7 @@ What this block does, is:
 2. execute the `find_nearest_vehicle()` function
 3. Before the block ends it will (behind the scenes) remove the `{ "vehicle" => "car" }` from the application since that block is complete
 
-## Resulting flamegraph / performance results from the example
+## Resulting flame graph / performance results from the example
 ### Running the example
 To run the example run the following commands:
 ```
@@ -64,7 +64,7 @@ docker-compose up --build
 # docker-compose down
 ```
 
-What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flamegraph that looks like this (below). After we give 20-30 seconds for the flamegraph to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
+What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flame graph that looks like this (below). After we give 20-30 seconds for the flame graph to update and then click the refresh button we see our 3 functions at the bottom of the flame graph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
 
 ## Where's the performance bottleneck?
 ![python_first_slide_05](https://user-images.githubusercontent.com/23323466/135881284-c75a5b65-6151-44fb-a459-c1f9559cb51a.jpg)
@@ -86,13 +86,13 @@ We can also see that the `mutex_lock()` function is consuming almost 70% of CPU 
 ![python_second_slide_05](https://user-images.githubusercontent.com/23323466/135805908-ae9a1650-51fc-457a-8c47-0b56e8538b08.jpg)
 
 ## Comparing two time periods
-Using Pyroscope's "comparison view" we can actually select two different time ranges from the timeline to compare the resulting flamegraphs. The pink section on the left timeline results in the left flamegraph, and the blue section on the right represents the right flamegraph.
+Using Pyroscope's "comparison view" we can actually select two different time ranges from the timeline to compare the resulting flame graphs. The pink section on the left timeline results in the left flame graph, and the blue section on the right represents the right flame graph.
 
 When we select a period of low-cpu utilization and a period of high-cpu utilization we can see that there is clearly different behavior in the `mutex_lock()` function where it takes **51% of CPU** during low-cpu times and **78% of CPU** during high-cpu times.
 ![python_third_slide_05](https://user-images.githubusercontent.com/23323466/135805969-55fdee40-fe0c-412d-9ec0-0bbc6a748ed4.jpg)
 
-## Visualizing Diff Between Two Flamegraphs
-While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flamegraphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flamegraph.
+## Visualizing Diff Between Two Flame graphs
+While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flame graphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flame graph.
 ![python_fourth_slide_05](https://user-images.githubusercontent.com/23323466/135805986-594ffa3b-e735-4f91-875d-4f76fdff2b60.jpg)
 
 ### More use cases

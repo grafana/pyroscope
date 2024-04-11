@@ -30,7 +30,7 @@ To use Span Profiles, you need to:
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
-* Profiling: Your application must be instrumented with Pyroscopes Go SDK. If you haven't done this yet, please refer to the [Go (push mode)]({{< relref "../language-sdks/go_push" >}}) guide.
+* Profiling: Your application must be instrumented with Pyroscope's Go SDK. If you haven't done this yet, please refer to the [Go (push mode)]({{< relref "../language-sdks/go_push" >}}) guide.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/go/getting-started/) guide.
 
 ### OpenTelemetry support
@@ -103,7 +103,7 @@ Check out the [examples](https://github.com/grafana/pyroscope/tree/main/examples
 
 <!-- ## Using tracing exemplars manually
 
-If you're not using open telemetry integration you can still use exemplars storage to store profiles associated with some execution context (e.g individual HTTP / GRPC request). To create exemplars you need to tag specific parts of your code with a special `profile_id` tag, for example, in golang you could do this:
+If you're not using open telemetry integration you can still use exemplars storage to store profiles associated with some execution context (e.g. individual HTTP / GRPC request). To create exemplars you need to tag specific parts of your code with a special `profile_id` tag, for example, in golang you could do this:
 ```golang
 pprof.Do(ctx, pprof.Labels("profile_id", "8474e98b95013e4f"), func(ctx context.Context) {
   slowRequest()

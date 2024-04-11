@@ -36,7 +36,7 @@ The data model within the block is fairly aligned to Google's [proto definition]
 
 
 Profile series labels contain additional information gathered at ingestion time and can
-be used to select certain profiles. They are comparable to Prometeus'/Loki's labels
+be used to select certain profiles. They are comparable to Prometheus/Loki labels
 and typical label names are `namespace` and `pod` to describe which workload the profiles
 are coming from.
 

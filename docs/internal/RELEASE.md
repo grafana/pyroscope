@@ -18,9 +18,9 @@ To release a new version of the project you need to follow the following steps:
 >
 > ⚠️  Incorrect: `release/v1.3.0`
 
-The CI will automatically handle the build and create a draft github release.
+The CI will automatically handle the build and create a draft GitHub release.
 
-Once ready, you can edit and publish the draft release on Github. You will need to take the release notes and append them to the `CHANGELOG.md` file in the root of the repository. 
+Once ready, you can edit and publish the draft release on GitHub. You will need to take the release notes and append them to the `CHANGELOG.md` file in the root of the repository.
 
 The list of changes from the CHANGELOG.md file form the basis of the public-facing release notes. Release notes are added to the [public Pyroscope documentation](https://grafana.com/docs/pyroscope/latest/release-notes/). These release notes follow the same pattern for each release: 
 
@@ -50,7 +50,7 @@ To create a new release first prepare the release using:
 make release/prepare
 ```
 
-This will build and packages all artifacts without pushing or creating the github release.
+This will build and packages all artifacts without pushing or creating the GitHub release.
 
 Once you're ready you can then tag your release.
 
@@ -64,6 +64,6 @@ And finally push the release using:
 make release
 ```
 
-> Make sure to have a [Github Token](https://goreleaser.com/scm/github/?h=github#github) `GITHUB_TOKEN` correctly set.
+> Make sure to have a [GitHub Token](https://goreleaser.com/scm/github/?h=github#github) `GITHUB_TOKEN` correctly set.
 
 Make sure to create the release notes and CHANGELOG for any manual release. 
