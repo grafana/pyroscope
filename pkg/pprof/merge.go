@@ -218,8 +218,12 @@ func equalValueType(st1, st2 *profilev1.ValueType) bool {
 
 func RewriteStrings(p *profilev1.Profile, n []uint32) {
 	for _, t := range p.SampleType {
-		t.Unit = int64(n[t.Unit])
-		t.Type = int64(n[t.Type])
+		if t.Unit != 0 {
+			t.Unit = int64(n[t.Unit])
+		}
+		if t.Type != 0 {
+			t.Type = int64(n[t.Type])
+		}
 	}
 	for _, s := range p.Sample {
 		for _, l := range s.Label {
@@ -238,8 +242,12 @@ func RewriteStrings(p *profilev1.Profile, n []uint32) {
 	}
 	p.DropFrames = int64(n[p.DropFrames])
 	p.KeepFrames = int64(n[p.KeepFrames])
-	p.PeriodType.Type = int64(n[p.PeriodType.Type])
-	p.PeriodType.Unit = int64(n[p.PeriodType.Unit])
+	if p.PeriodType.Type != 0 {
+		p.PeriodType.Type = int64(n[p.PeriodType.Type])
+	}
+	if p.PeriodType.Unit != 0 {
+		p.PeriodType.Unit = int64(n[p.PeriodType.Unit])
+	}
 	for i, x := range p.Comment {
 		p.Comment[i] = int64(n[x])
 	}
