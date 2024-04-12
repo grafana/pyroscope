@@ -124,13 +124,19 @@ func (s *session) loadPyPerf(cause *sd.Target) (*python.Perf, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to get pid namespace %w", err)
 	}
+	errLogEnabled := s.pythonBPFErrorLogEnabled()
+	debugLogEnabled := s.pythonBPFDebugLogEnabled()
 	err = spec.RewriteConstants(map[string]interface{}{
 		"global_config": python.PerfGlobalConfigT{
-			BpfLogErr:   boolToU8(s.pythonBPFErrorLogEnabled(cause)),
-			BpfLogDebug: boolToU8(s.pythonBPFDebugLogEnabled(cause)),
+			BpfLogErr:   boolToU8(errLogEnabled),
+			BpfLogDebug: boolToU8(debugLogEnabled),
 			NsPidIno:    nsIno,
 		},
 	})
+	if errLogEnabled || debugLogEnabled {
+		_ = level.Warn(s.logger).Log("msg", "bpf log enabled (debug or error). Do not use in production.")
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("pyperf rewrite constants %w", err)
 	}
@@ -212,6 +218,32 @@ func (s *session) WalkPythonStack(sb *stackBuilder, stack []byte, target *sd.Tar
 	}
 	end := len(sb.stack)
 	lo.Reverse(sb.stack[begin:end])
+}
+
+func (s *session) collectPythonMetrics() {
+	var (
+		m = s.pyperfBpf.PyErrors
+	)
+	key := uint32(0)
+	values := make([]python.PerfErrorStats, s.numCPU())
+
+	err := m.Lookup(key, &values)
+
+	if err != nil {
+		_ = level.Error(s.logger).Log("msg", "collect python errors", "err", err)
+		return
+	}
+	res := python.PerfErrorStats{}
+	for _, value := range values {
+		for j := 0; j < len(value.Errors); j++ {
+			res.Errors[j] += value.Errors[j]
+		}
+	}
+	for i, v := range res.Errors {
+		if v != 0 {
+			_ = level.Error(s.logger).Log("msg", "python error", "error", i, "count", v)
+		}
+	}
 }
 
 func skipPythonFrame(classname string, filename string, name string) bool {

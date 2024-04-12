@@ -5,7 +5,6 @@
 #include "bpf_tracing.h"
 #include "profile.bpf.h"
 #include "pid.h"
-#include "ume.h"
 
 #define PF_KTHREAD 0x00200000
 
@@ -28,12 +27,10 @@ int do_perf_event(struct bpf_perf_event_data *ctx) {
         return 0;
     }
     int flags = 0;
-    if (pyro_bpf_core_read(&flags, sizeof(flags), &task->flags)) {
-        bpf_dbg_printk("failed to read task->flags\n");
+    if (bpf_core_read(&flags, sizeof(flags), &task->flags)) {
         return 0;
     }
     if (flags & PF_KTHREAD) {
-        bpf_dbg_printk("skipping kthread %d\n", tgid);
         return 0;
     }
 
@@ -46,7 +43,6 @@ int do_perf_event(struct bpf_perf_event_data *ctx) {
                 .padding_ = 0
         };
         if (bpf_map_update_elem(&pids, &tgid, &unknown, BPF_NOEXIST)) {
-            bpf_dbg_printk("failed to update pids map. probably concurrent update\n");
             return 0;
         }
         struct pid_event event = {

@@ -48,6 +48,7 @@ type SessionOptions struct {
 	VerifierLogSize           int
 	PythonBPFErrorLogEnabled  bool
 	PythonBPFDebugLogEnabled  bool
+	PrintBPFLog               bool
 	BPFMapsOptions            BPFMapsOptions
 }
 
@@ -118,6 +119,7 @@ type session struct {
 
 	pids            pids
 	pidExecRequests chan uint32
+	bpflogFile      *os.File
 }
 
 func NewSession(
@@ -211,7 +213,7 @@ func (s *session) Start() error {
 	s.pidInfoRequests = pidInfoRequests
 	s.pidExecRequests = pidExecRequests
 	s.deadPIDEvents = deadPIDsEvents
-	s.wg.Add(4)
+	s.wg.Add(5)
 	s.started = true
 	go func() {
 		defer s.wg.Done()
@@ -228,6 +230,12 @@ func (s *session) Start() error {
 	go func() {
 		defer s.wg.Done()
 		s.processPIDExecRequests(pidExecRequests)
+	}()
+	go func() {
+		defer s.wg.Done()
+		if s.printBPFLogEnabled() {
+			go s.printBpfLog()
+		}
 	}()
 	return nil
 }
@@ -395,6 +403,9 @@ func (s *session) collectRegularProfile(cb pprof.CollectProfilesCallback) error 
 			return fmt.Errorf("clear stacks map %w", err)
 		}
 	}
+	if s.pyperfBpf.PythonStacks != nil {
+		s.collectPythonMetrics()
+	}
 	return nil
 }
 
@@ -458,6 +469,10 @@ func (s *session) stopLocked() {
 	if s.pidExecRequests != nil {
 		close(s.pidExecRequests)
 		s.pidExecRequests = nil
+	}
+	if s.bpflogFile != nil {
+		_ = s.bpflogFile.Close()
+		s.bpflogFile = nil
 	}
 	s.started = false
 }
@@ -900,20 +915,31 @@ func (s *session) pythonEnabled(target *sd.Target) bool {
 	return enabled
 }
 
-func (s *session) pythonBPFDebugLogEnabled(target *sd.Target) bool {
-	enabled := s.options.PythonBPFDebugLogEnabled
-	if v, present := target.GetFlag(sd.OptionPythonBPFDebugLogEnabled); present {
-		enabled = v
+const (
+	OptionPythonBPFDebugLogEnabled = "PYROSCOPE_EBPF_PYTHON_BPF_DEBUG_LOG"
+	OptionPythonBPFErrorLogEnabled = "PYROSCOPE_EBPF_PYTHON_BPF_ERROR_LOG"
+	OptionPrintBPFLog              = "PYROSCOPE_EBPF_PRINT_BPF_LOG"
+)
+
+func (s *session) pythonBPFDebugLogEnabled() bool {
+	if s.options.PythonBPFDebugLogEnabled {
+		return true
 	}
-	return enabled
+	return os.Getenv(OptionPythonBPFDebugLogEnabled) == "true"
 }
 
-func (s *session) pythonBPFErrorLogEnabled(target *sd.Target) bool {
-	enabled := s.options.PythonBPFErrorLogEnabled
-	if v, present := target.GetFlag(sd.OptionPythonBPFErrorLogEnabled); present {
-		enabled = v
+func (s *session) pythonBPFErrorLogEnabled() bool {
+	if s.options.PythonBPFErrorLogEnabled {
+		return true
 	}
-	return enabled
+	return os.Getenv(OptionPythonBPFErrorLogEnabled) == "true"
+}
+
+func (s *session) printBPFLogEnabled() bool {
+	if s.options.PrintBPFLog {
+		return true
+	}
+	return os.Getenv(OptionPrintBPFLog) == "true"
 }
 
 func (s *session) printDebugInfo() {
@@ -932,6 +958,10 @@ func (s *stackBuilder) reset() {
 
 func (s *stackBuilder) append(sym string) {
 	s.stack = append(s.stack, sym)
+}
+
+func (s *session) numCPU() int {
+	return len(s.perfEvents)
 }
 
 func getPIDNamespace() (dev uint64, ino uint64, err error) {

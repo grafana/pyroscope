@@ -7,7 +7,7 @@
 
 #include "vmlinux.h"
 #include "bpf_helpers.h"
-#include "ume.h"
+#include "bpf_core_read.h"
 #include "pyoffsets.h"
 
 
@@ -28,10 +28,12 @@ static __always_inline int pyro_pthread_getspecific(struct libc *libc, int32_t k
     }
     void *tls_base = NULL;
 
-
-    if (pyro_bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.fsbase)) {
+    log_debug("pyro_pthread_getspecific(amd64) key=%d pthread_size=%llx o_pthread_specific1stblock=%llx", key, libc->pthread_size, libc->pthread_specific1stblock);
+    if (bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.fsbase)) {
+        log_error("pyro_pthread_getspecific(amd64) failed to read fsbase");
         return -1;
     }
+    log_debug("pyro_pthread_getspecific(amd64)  tls_base=%llx musl=%d", tls_base, libc->musl);
 
 
     if (libc->musl) {
@@ -53,8 +55,10 @@ static __always_inline int pthread_getspecific_glibc(const struct libc *libc, in
             &tmp,
             sizeof(tmp),
             tls_base + libc->pthread_specific1stblock + key * 0x10 + 0x08)) {
+        log_error("pthread_getspecific_glibc(amd64) err 1");
         return -1;
     }
+    log_debug("pthread_getspecific_glibc(amd64) res=%llx", tmp);
     *out = tmp;
     return 0;
 }
@@ -85,16 +89,21 @@ static __always_inline int pthread_getspecific_musl(const struct libc *libc, int
 //   56409:       48 8b 04 f8             mov    rax,QWORD PTR [rax+rdi*8]
 //   5640d:       c3                      ret
     void *tmp = NULL;
-
     if (bpf_probe_read_user(&tmp,sizeof(tmp), tls_base)) {
+        log_error("pthread_getspecific_musl(amd64) err 1");
         return -1;
     }
+    log_debug("pthread_getspecific_musl(amd64) tmp=%llx", tmp);
     if (bpf_probe_read_user(&tmp, sizeof(tmp), tmp + libc->pthread_specific1stblock)) {
+        log_error("pthread_getspecific_musl(amd64) err 2");
         return -1;
     }
+    log_debug("pthread_getspecific_musl(amd64) tmp2=%llx", tmp);
     if (bpf_probe_read_user(&tmp, sizeof(tmp), tmp + key * 0x8)) {
+        log_error("pthread_getspecific_musl(amd64) err 3");
         return -1;
     }
+    log_debug("pthread_getspecific_musl(amd64) res=%llx", tmp);
     *out = tmp;
     return 0;
 }

@@ -7,7 +7,7 @@
 
 #include "vmlinux.h"
 #include "bpf_helpers.h"
-#include "ume.h"
+#include "bpf_core_read.h"
 #include "pyoffsets.h"
 
 #if !defined(__TARGET_ARCH_arm64)
@@ -26,10 +26,12 @@ static __always_inline int pyro_pthread_getspecific(struct libc *libc, int32_t k
         return -1;
     }
     void *tls_base = NULL;
-
-    if (pyro_bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.uw.tp_value)) {
+    log_debug("pyro_pthread_getspecific(arm64) key=%d pthread_size=%llx o_pthread_specific1stblock=%llx", key, libc->pthread_size, libc->pthread_specific1stblock);
+    if (bpf_core_read(&tls_base, sizeof(tls_base), &task->thread.uw.tp_value)) {
+        log_error("pyro_pthread_getspecific(arm64) failed to read task->thread.uw.tp_value");
         return -1;
     }
+    log_debug("pyro_pthread_getspecific(arm64)  tls_base=%llx musl=%d", tls_base, libc->musl);
 
 
     if (libc->musl) {
@@ -57,8 +59,10 @@ int __always_inline pthread_getspecific_glibc(const struct libc *libc, int32_t k
             &res,
             sizeof(res),
             tls_base + libc->pthread_specific1stblock + key * 0x10 + 0x08)) {
+        log_error("pthread_getspecific_glibc(arm64) err 1");
         return -1;
     }
+    log_debug("pthread_getspecific_glibc(arm64) res=%llx", res);
     *out = res;
     return 0;
 }
@@ -81,11 +85,14 @@ int __always_inline pthread_getspecific_musl(const struct libc *libc, int32_t ke
 //   5fc60:       d65f03c0        ret
     void *tmp;
     if (bpf_probe_read_user(&tmp,sizeof(tmp), tls_base - libc->pthread_size + libc->pthread_specific1stblock)) {
+        log_error("pthread_getspecific_musl(arm64) err 1");
         return -1;
     }
     if (bpf_probe_read_user(&tmp, sizeof(tmp), tmp + key * 0x8)) {
+        log_error("pthread_getspecific_musl(arm64) err 2");
         return -1;
     }
+    log_debug("pthread_getspecific_musl(arm64) res=%llx", tmp);
     *out = tmp;
     return 0;
 }

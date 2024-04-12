@@ -8,7 +8,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/google/pprof/profile"
+	"github.com/samber/lo"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -44,6 +47,12 @@ var collectFreq = flag.Duration("collect.freq",
 	15*time.Second,
 	"")
 
+var logProfile = flag.Bool("log.profile", true, "prints profiles to stdout")
+var logBPF = flag.Bool("log.bpf", false, "")
+var logBPFPythonDebug = flag.Bool("log.bpf.python.debug", false, "")
+var logBPFPythonError = flag.Bool("log.bpf.python.error", false, "")
+var logProfileFormat = flag.String("log.profile.format", "collapsed", "")
+
 var (
 	config  *Config
 	logger  log.Logger
@@ -73,8 +82,8 @@ func (s splitLog) Log(keyvals ...interface{}) error {
 }
 
 func main() {
-	config = getConfig()
 	metrics = ebpfmetrics.New(prometheus.DefaultRegisterer)
+	config = getConfig()
 
 	logger = &splitLog{
 		err:  log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr)),
@@ -114,7 +123,7 @@ func main() {
 
 func collectProfiles(profiles chan *pushv1.PushRequest) {
 	builders := pprof.NewProfileBuilders(pprof.BuildersOptions{
-		SampleRate:    int64(config.SampleRate),
+		SampleRate:    int64(config.SessionOptions.SampleRate),
 		PerPIDProfile: true,
 	})
 	err := pprof.Collect(builders, session)
@@ -136,6 +145,9 @@ func collectProfiles(profiles chan *pushv1.PushRequest) {
 		_, err := builder.Write(buf)
 		if err != nil {
 			panic(err)
+		}
+		if *logProfile {
+			printProfile(builder.Profile, builder.Labels)
 		}
 		req := &pushv1.PushRequest{Series: []*pushv1.RawProfileSeries{{
 			Labels: protoLabels,
@@ -177,36 +189,24 @@ func ingest(profiles chan *pushv1.PushRequest) {
 }
 
 func convertTargetOptions() sd.TargetsOptions {
-	return sd.TargetsOptions{
-		TargetsOnly:        config.TargetsOnly,
-		Targets:            relabelProcessTargets(getProcessTargets(), config.RelabelConfig),
-		DefaultTarget:      config.DefaultTarget,
-		ContainerCacheSize: config.ContainerCacheSize,
+	targets := relabelProcessTargets(getProcessTargets(), config.RelabelConfig)
+	options := config.TargetsOptions
+	if options.Targets == nil {
+		options.Targets = targets
 	}
+	return options
 }
 
 func convertSessionOptions() ebpfspy.SessionOptions {
-	return ebpfspy.SessionOptions{
-		CollectUser:               config.CollectUser,
-		CollectKernel:             config.CollectKernel,
-		SampleRate:                config.SampleRate,
-		UnknownSymbolAddress:      config.UnknownSymbolAddress,
-		UnknownSymbolModuleOffset: config.UnknownSymbolModuleOffset,
-		PythonEnabled:             config.PythonEnabled,
-		Metrics:                   metrics,
-		CacheOptions:              config.CacheOptions,
-		VerifierLogSize:           1024 * 1024 * 20,
-		PythonBPFErrorLogEnabled:  config.PythonBPFLogErr,
-		PythonBPFDebugLogEnabled:  config.PythonBPFLogDebug,
-		BPFMapsOptions:            config.BPFMapsOptions,
-	}
+	return config.SessionOptions
 }
 
 func getConfig() *Config {
 	flag.Parse()
 
 	var config = new(Config)
-	*config = defaultConfig
+	*config = defaultConfig()
+
 	if *configFile == "" {
 		return config
 	}
@@ -221,61 +221,58 @@ func getConfig() *Config {
 	return config
 }
 
-var defaultConfig = Config{
-	CollectUser:               true,
-	CollectKernel:             true,
-	UnknownSymbolModuleOffset: true,
-	UnknownSymbolAddress:      true,
-	PythonEnabled:             true,
-	SymbolOptions: symtab.SymbolOptions{
-		GoTableFallback:    true,
-		PythonFullFilePath: false,
-		DemangleOptions:    demangle.DemangleFull,
-	},
-	CacheOptions: symtab.CacheOptions{
+func defaultConfig() Config {
+	return Config{
+		SessionOptions: ebpfspy.SessionOptions{
+			CollectUser:               true,
+			CollectKernel:             true,
+			UnknownSymbolModuleOffset: true,
+			UnknownSymbolAddress:      true,
+			PythonEnabled:             true,
+			CacheOptions: symtab.CacheOptions{
 
-		PidCacheOptions: symtab.GCacheOptions{
-			Size:       239,
-			KeepRounds: 8,
+				PidCacheOptions: symtab.GCacheOptions{
+					Size:       239,
+					KeepRounds: 8,
+				},
+				BuildIDCacheOptions: symtab.GCacheOptions{
+					Size:       239,
+					KeepRounds: 8,
+				},
+				SameFileCacheOptions: symtab.GCacheOptions{
+					Size:       239,
+					KeepRounds: 8,
+				},
+			},
+			SymbolOptions: symtab.SymbolOptions{
+				GoTableFallback:    true,
+				PythonFullFilePath: false,
+				DemangleOptions:    demangle.DemangleFull,
+			},
+			Metrics:                  metrics,
+			SampleRate:               100,
+			VerifierLogSize:          0,
+			PythonBPFErrorLogEnabled: false,
+			PythonBPFDebugLogEnabled: false,
+			PrintBPFLog:              false,
+			BPFMapsOptions: ebpfspy.BPFMapsOptions{
+				PIDMapSize:     2048,
+				SymbolsMapSize: 16384,
+			},
 		},
-		BuildIDCacheOptions: symtab.GCacheOptions{
-			Size:       239,
-			KeepRounds: 8,
+		TargetsOptions: sd.TargetsOptions{
+			Targets:            nil,
+			TargetsOnly:        true,
+			DefaultTarget:      nil,
+			ContainerCacheSize: 1024,
 		},
-		SameFileCacheOptions: symtab.GCacheOptions{
-			Size:       239,
-			KeepRounds: 8,
-		},
-	},
-	SampleRate:         97,
-	TargetsOnly:        true,
-	DefaultTarget:      nil,
-	ContainerCacheSize: 1024,
-	RelabelConfig:      nil,
-	PythonBPFLogErr:    true,
-	PythonBPFLogDebug:  true,
-	BPFMapsOptions: ebpfspy.BPFMapsOptions{
-		PIDMapSize:     2048,
-		SymbolsMapSize: 16384,
-	},
+	}
 }
 
 type Config struct {
-	CollectUser               bool
-	CollectKernel             bool
-	UnknownSymbolModuleOffset bool
-	UnknownSymbolAddress      bool
-	PythonEnabled             bool
-	SymbolOptions             symtab.SymbolOptions
-	CacheOptions              symtab.CacheOptions
-	SampleRate                int
-	TargetsOnly               bool
-	DefaultTarget             map[string]string
-	ContainerCacheSize        int
-	RelabelConfig             []*RelabelConfig
-	PythonBPFLogErr           bool
-	PythonBPFLogDebug         bool
-	BPFMapsOptions            ebpfspy.BPFMapsOptions
+	SessionOptions ebpfspy.SessionOptions
+	TargetsOptions sd.TargetsOptions
+	RelabelConfig  []*RelabelConfig
 }
 
 type RelabelConfig struct {
@@ -336,14 +333,22 @@ func getProcessTargets() []sd.DiscoveryTarget {
 				_ = level.Error(logger).Log("err", err, "msg", "reading cgroup", "pid", spid)
 			}
 		}
+		cmdline, err := os.ReadFile(fmt.Sprintf("/proc/%s/cmdline", spid))
+		if err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				_ = level.Error(logger).Log("err", err, "msg", "reading cmdline", "pid", spid)
+			}
+		}
+		cmdline = bytes.ReplaceAll(cmdline, []byte{0}, []byte(" "))
 		target := sd.DiscoveryTarget{
-			"__process_pid__":       spid,
-			"__meta_process_cwd":    cwd,
-			"__meta_process_exe":    strings.TrimSpace(exe),
-			"__meta_process_comm":   strings.TrimSpace(string(comm)),
-			"__meta_process_cgroup": strings.TrimSpace(string(cgroup)),
-			"pid":                   spid,
-			"exe":                   exe,
+			"__process_pid__": spid,
+			"cwd":             cwd,
+			"exe":             strings.TrimSpace(exe),
+			"comm":            strings.TrimSpace(string(comm)),
+			"cgroup":          strings.TrimSpace(string(cgroup)),
+			"pid":             spid,
+			"cmdline":         strings.TrimSpace(string(cmdline)),
+			"service_name":    fmt.Sprintf("%s at %s", string(cmdline), string(cwd)),
 		}
 		res = append(res, target)
 	}
@@ -378,4 +383,46 @@ func relabelProcessTargets(targets []sd.DiscoveryTarget, cfg []*RelabelConfig) [
 		res = append(res, tt)
 	}
 	return res
+}
+
+func printProfile(p *profile.Profile, l labels.Labels) {
+	if *logProfileFormat == "collapsed" {
+		printProfileCollapsed(p, l)
+	} else {
+		fmt.Println(l.String())
+		fmt.Println(p.String())
+	}
+}
+
+func printProfileCollapsed(p *profile.Profile, l labels.Labels) {
+	stacks := map[string]int64{}
+	for _, sample := range p.Sample {
+		stack := []string{}
+		for _, location := range sample.Location {
+			stack = append(stack, location.Line[0].Function.Name)
+		}
+		lo.Reverse(stack)
+		sstack := strings.Join(stack, ";")
+		stacks[sstack] += sample.Value[0]
+	}
+	type entry struct {
+		v int64
+		k string
+	}
+	var es []entry
+
+	for k, v := range stacks {
+		es = append(es, entry{v, k})
+	}
+	slices.SortFunc(es, func(a, b entry) int {
+		if a.v == b.v {
+			return strings.Compare(a.k, b.k)
+		}
+		return int(a.v - b.v)
+	})
+	fmt.Println(l.String())
+	for _, e := range es {
+		fmt.Printf("%s: %d\n", e.k, e.v)
+	}
+
 }

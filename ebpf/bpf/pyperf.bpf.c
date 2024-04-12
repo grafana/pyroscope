@@ -4,6 +4,16 @@
 #include "vmlinux.h"
 #include "bpf_helpers.h"
 
+struct global_config_t {
+    uint8_t bpf_log_err;
+    uint8_t bpf_log_debug;
+    uint64_t ns_pid_ino;
+};
+
+const volatile struct global_config_t global_config;
+#define log_error(fmt, ...) if (global_config.bpf_log_err) bpf_printk("[pyperf error] " fmt, ##__VA_ARGS__)
+#define log_debug(fmt, ...) if (global_config.bpf_log_debug) bpf_printk("[pyperf debug] "fmt, ##__VA_ARGS__)
+
 #include "pthread.bpf.h"
 #include "pid.h"
 #include "stacks.h"
@@ -34,18 +44,19 @@ enum {
     PY_ERROR_FRAME_OWNER = 13,
     PY_ERROR_FRAME_OWNER_INVALID = 14,
 
-
+    __PY_ERROR_TOTAL_NUMBER_OF_ERRORS = 15, // not an error
 };
 
-struct global_config_t {
-    uint8_t bpf_log_err;
-    uint8_t bpf_log_debug;
-    uint64_t ns_pid_ino;
+struct error_stats {
+    uint32_t errors[__PY_ERROR_TOTAL_NUMBER_OF_ERRORS];
 };
 
-const volatile struct global_config_t global_config;
-#define log_error(fmt, ...) if (global_config.bpf_log_err) bpf_printk(fmt, ##__VA_ARGS__)
-#define log_debug(fmt, ...) if (global_config.bpf_log_debug) bpf_printk(fmt, ##__VA_ARGS__)
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __uint(max_entries, 1);
+    __type(key, u32);
+    __type(value, struct error_stats);
+} py_errors SEC(".maps");
 
 typedef struct {
     uint32_t major;
@@ -185,8 +196,17 @@ static __always_inline int submit_sample(
 }
 
 static __always_inline int submit_error_sample(
-    uint8_t err) { //todo replace with more useful log
+    uint8_t err) {
     log_error("pyperf_err: %d\n", err);
+    uint32_t zero = 0;
+    struct error_stats *stats = bpf_map_lookup_elem(&py_errors, &zero);
+    if (stats) {
+        if (err < __PY_ERROR_TOTAL_NUMBER_OF_ERRORS) {
+            stats->errors[err]++;
+        } else {
+            stats->errors[PY_ERROR_GENERIC]++; // should not happen
+        }
+    }
     return -1;
 }
 
@@ -261,6 +281,7 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
     if (get_thread_state(pid_data, &thread_state)) {
         return submit_error_sample(PY_ERROR_THREAD_STATE);
     }
+    log_debug("thread_state %lx", thread_state);
 
     // pre-initialize event struct in case any subprogram below fails
     event->stack_len = 0;
@@ -269,6 +290,7 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
         if (get_top_frame(pid_data, state, thread_state)) {
             return submit_error_sample(PY_ERROR_TOP_FRAME);
         }
+        log_debug("top frame %lx", state->frame_ptr);
         // jump to reading first set of Python frames
         bpf_tail_call(ctx, &py_progs, PYTHON_PROG_IDX_READ_PYTHON_STACK);
         // we won't ever get here
@@ -278,6 +300,7 @@ static __always_inline int pyperf_collect_impl(struct bpf_perf_event_data* ctx, 
 
 SEC("perf_event")
 int pyperf_collect(struct bpf_perf_event_data *ctx) {
+    log_debug(" ================ collect sample ================ ");
     u32 pid;
     current_pid(global_config.ns_pid_ino, &pid);
     if (pid == 0) {
@@ -289,7 +312,6 @@ int pyperf_collect(struct bpf_perf_event_data *ctx) {
 
 static __always_inline int check_first_arg(void *code_ptr,
                                            py_offset_config *offsets,
-                                           py_symbol *symbol,
                                            bool *out_first_self,
                                            bool *out_first_cls) {
     // Figure out if we want to parse class name, basically checking the name of
@@ -300,46 +322,227 @@ static __always_inline int check_first_arg(void *code_ptr,
     // out from the code object.
     void *args_ptr;
     uint64_t args_size;
+    log_debug("check_first_arg");
+
     if (offsets->PyCodeObject_co_varnames == -1) {
         if (bpf_probe_read_user(
                 &args_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_localsplusnames)) {
+            log_error("failed to read co_localsplusnames at %lx", code_ptr);
             return -1;
         }
     } else {
         if (bpf_probe_read_user(
                 &args_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_varnames)) {
+            log_error("failed to read co_varnames at %lx", code_ptr);
             return -1;
         }
     }
     if (args_ptr == 0) {
+        log_debug("args NULL");
         *out_first_self = false;
         *out_first_cls = false;
         return 0;
     }
     if (bpf_probe_read_user(
             &args_size, sizeof(args_size), args_ptr + offsets->PyVarObject_ob_size)) {
+        log_error("failed to read ob_size at %lx", args_ptr);
         return -1;
     }
     if (args_size < 1) {
+        log_debug("args empty");
         *out_first_self = false;
         *out_first_cls = false;
         return 0;
     }
     if (bpf_probe_read_user(
             &args_ptr, sizeof(void *), args_ptr + offsets->PyTupleObject_ob_item)) {
+        log_error("failed to read ob_item at %lx", args_ptr);
         return -1;
     }
-    if (pystr_read(args_ptr, offsets, symbol->name, sizeof(symbol->name), &symbol->name_type)) {
+    uint64_t symbol_name = 0;
+    struct py_str_type symbol_name_type = {};
+    if (pystr_read(args_ptr, offsets, (char *)&symbol_name, sizeof(symbol_name), &symbol_name_type)) {
+        log_error("failed to read arg name at %lx", args_ptr);
         return -1;
     }
     // compare strings as ints to save instructions
     char self_str[4] = {'s', 'e', 'l', 'f'};
     char cls_str[4] = {'c', 'l', 's', '\0'};
-    *out_first_self = *(int32_t *) symbol->name == *(int32_t *) self_str;
-    *out_first_cls = *(int32_t *) symbol->name == *(int32_t *) cls_str;
-
+    *out_first_self = (*(int32_t *) &symbol_name) == *(int32_t *) self_str;
+    *out_first_cls = (*(int32_t *) &symbol_name) == *(int32_t *) cls_str;
+    log_debug("first arg %s", &symbol_name);
     return 0;
 }
+
+#define IGNORE_NAMES_ERROR 1
+
+
+static __always_inline int get_code_name( void *cur_frame,
+                                          void *code_ptr,
+                                          py_offset_config *offsets,
+                                          py_symbol *symbol) {
+    void *pystr_ptr;
+
+    // read PyCodeObject's name into symbol
+    if (bpf_probe_read_user(
+            &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_name)) {
+        log_error("failed to read co_name at %lx", code_ptr);
+#if defined(IGNORE_NAMES_ERROR)
+        log_error("CodErr1");
+        *((u64 *) symbol->classname) = 0x31727245646f43; // CodErr1
+        symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+        symbol->classname_type.size_codepoints = 7;
+        return 0;
+#else
+        return -PY_ERROR_NAME;
+#endif
+    }
+    if (pystr_read(pystr_ptr, offsets, symbol->name, sizeof(symbol->name), &symbol->name_type)) {
+        log_error("failed to read name at %lx", pystr_ptr);
+#if defined(IGNORE_NAMES_ERROR)
+        log_error("CodErr2");
+        *((u64 *) symbol->classname) = 0x32727245646f43; // CodErr2
+        symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+        symbol->classname_type.size_codepoints = 7;
+        return 0;
+#else
+        return -PY_ERROR_NAME;
+#endif
+    }
+    return 0;
+}
+static __always_inline int get_file_name( void *cur_frame,
+                                           void *code_ptr,
+                                           py_offset_config *offsets,
+                                           py_symbol *symbol) {
+    void *pystr_ptr;
+    // read PyCodeObject's filename into symbol
+    if (bpf_probe_read_user(
+            &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_filename)) {
+        log_error("failed to read co_filename at %lx", code_ptr);
+#if defined(IGNORE_NAMES_ERROR)
+        log_error("FilErr1");
+        *((u64 *) symbol->classname) = 0x317272456c6946; // FilErr1
+        symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+        symbol->classname_type.size_codepoints = 7;
+        return 0;
+#else
+        return -PY_ERROR_FILE_NAME;
+#endif
+    }
+    if (pystr_ptr == 0) {
+        log_error("null file name");
+        return 0;
+    }
+    if (pystr_read(pystr_ptr, offsets, symbol->file, sizeof(symbol->file), &symbol->file_type)) {
+        log_error("failed to read file name at %lx", pystr_ptr);
+#if defined(IGNORE_NAMES_ERROR)
+        log_error("FilErr2");
+        *((u64 *) symbol->classname) = 0x327272456c6946; // FilErr2
+        symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+        symbol->classname_type.size_codepoints = 7;
+        return 0;
+#else
+        return -PY_ERROR_FILE_NAME;
+#endif
+    }
+    return 0;
+
+}
+static __always_inline int get_class_name( void *cur_frame,
+                                           void *code_ptr,
+                                           py_offset_config *offsets,
+                                           py_symbol *symbol) {
+    bool first_self;
+    bool first_cls;
+    log_debug("get_names");
+    if (check_first_arg(code_ptr, offsets, &first_self, &first_cls)) {
+
+#if defined(IGNORE_NAMES_ERROR)
+        log_debug("ignore_names_error check_first_arg");
+        first_self = false;
+        first_cls = false;
+#else
+        return -PY_ERROR_FIRST_ARG;
+#endif
+    }
+    log_debug("first_self %d first_cls %d", first_self, first_cls);
+
+    if (!first_self && !first_cls) {
+        return 0;
+    }
+
+    // Read class name from $frame->f_localsplus[0]->ob_type->tp_name.
+    void *ptr;
+    if (bpf_probe_read_user(
+            &ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_localsplus))) {
+        log_error("failed to read f_localsplus at %lx", cur_frame);
+#if defined(IGNORE_NAMES_ERROR)
+        log_error("ErrCls1");
+        *((u64 *) symbol->classname) = 0x31736c43727245; // ErrCls1
+        symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+        symbol->classname_type.size_codepoints = 7;
+        return 0;
+#else
+        return -PY_ERROR_CLASS_NAME;
+#endif
+    }
+    if (ptr) {
+        if (first_self) {
+            // we are working with an instance, first we need to get type
+            if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyObject_ob_type)) {
+                log_error("failed to read ob_type at %lx", ptr);
+#if defined(IGNORE_NAMES_ERROR)
+                log_error("ErrCls2");
+                *((u64 *) symbol->classname) = 0x32736c43727245; // ErrCls2
+                symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+                symbol->classname_type.size_codepoints = 7;
+                return 0;
+#else
+                return -PY_ERROR_CLASS_NAME;
+#endif
+            }
+        }
+        // https://github.com/python/cpython/blob/d73501602f863a54c872ce103cd3fa119e38bac9/Include/cpython/object.h#L106
+        if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyTypeObject_tp_name)) {
+            log_error("failed to read tp_name at %lx", ptr);
+#if defined(IGNORE_NAMES_ERROR)
+            log_error("ErrCls3");
+            *((u64 *) symbol->classname) = 0x33736c43727245; // ErrCls3
+            symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+            symbol->classname_type.size_codepoints = 7;
+            return 0;
+#else
+            return -PY_ERROR_CLASS_NAME;
+#endif
+        }
+        long len = bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr);
+        if (len < 0) {
+            log_error("failed to read class name at %lx", ptr);
+#if defined(IGNORE_NAMES_ERROR)
+            log_error("ErrCls4");
+            *((u64 *) symbol->classname) = 0x34736c43727245; // ErrCls4
+            symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+            symbol->classname_type.size_codepoints = 7;
+            return 0;
+#else
+            return -PY_ERROR_CLASS_NAME;
+#endif
+        }
+        symbol->classname_type.type = PYSTR_TYPE_UTF8;
+        symbol->classname_type.size_codepoints = len - 1;
+    } else {
+        log_error("NullCls");
+        // this happens in rideshare flask example under 3.9.18
+        // todo: we should be able to get the class name
+        // https://github.com/fabioz/PyDev.Debugger/blob/2cf10e3fb2ace33b6ef36d66332c82b62815e856/_pydevd_bundle/pydevd_utils.py#L104
+        *((u64 *) symbol->classname) = 0x736c436c6c754e; // NullCls
+        symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
+        symbol->classname_type.size_codepoints = 7;
+    }
+    return 0;
+}
+
 
 // return -PY_ERR_XX on error, 0 on success
 static __always_inline int get_names(
@@ -348,12 +551,6 @@ static __always_inline int get_names(
         py_offset_config *offsets,
         py_symbol *symbol,
         void *ctx) {
-
-    bool first_self;
-    bool first_cls;
-    if (check_first_arg(code_ptr, offsets, symbol, &first_self, &first_cls)) {
-        return -PY_ERROR_FIRST_ARG;
-    }
 
     // We re-use the same py_symbol instance across loop iterations, which means
     // we will have left-over data in the struct. Although this won't affect
@@ -365,63 +562,16 @@ static __always_inline int get_names(
     // compilation time using the FAIL_COMPILATION_IF macro.
     bpf_perf_prog_read_value(ctx, (struct bpf_perf_event_value *) symbol, sizeof(py_symbol));
 
-    // Read class name from $frame->f_localsplus[0]->ob_type->tp_name.
-    if (first_self || first_cls) {
-        void *ptr;
-        if (bpf_probe_read_user(
-                &ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_localsplus))) {
-            bpf_dbg_printk("failed to read f_localsplus at %x\n", cur_frame + offsets->VFrame_localsplus);
-            return -PY_ERROR_CLASS_NAME;
-        }
-        if (ptr) {
-            if (first_self) {
-                // we are working with an instance, first we need to get type
-                if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyObject_ob_type)) {
-                    bpf_dbg_printk("failed to read ob_type at %x\n", ptr);
-                    return -PY_ERROR_CLASS_NAME;
-                }
-            }
-            // https://github.com/python/cpython/blob/d73501602f863a54c872ce103cd3fa119e38bac9/Include/cpython/object.h#L106
-            if (bpf_probe_read_user(&ptr, sizeof(void *), ptr + offsets->PyTypeObject_tp_name)) {
-                bpf_dbg_printk("failed to read tp_name at %x\n", ptr);
-                return -PY_ERROR_CLASS_NAME;
-            }
-            long len = bpf_probe_read_user_str(&symbol->classname, sizeof(symbol->classname), ptr);
-            if (len < 0) {
-                bpf_dbg_printk("failed to read class name at %x\n", ptr);
-                return -PY_ERROR_CLASS_NAME;
-            }
-            symbol->classname_type.type = PYSTR_TYPE_UTF8;
-            symbol->classname_type.size_codepoints = len - 1;
-        } else {
-            // this happens in rideshare flask example under 3.9.18
-            // todo: we should be able to get the class name
-            // https://github.com/fabioz/PyDev.Debugger/blob/2cf10e3fb2ace33b6ef36d66332c82b62815e856/_pydevd_bundle/pydevd_utils.py#L104
-            *((u64 *) symbol->classname) = 0x736c436c6c754e; // NullCls
-            symbol->classname_type.type = PYSTR_TYPE_1BYTE | PYSTR_TYPE_ASCII;
-            symbol->classname_type.size_codepoints = 7;
-        }
+    if (get_class_name(cur_frame, code_ptr, offsets, symbol)) {
+        return -PY_ERROR_CLASS_NAME;
     }
 
     void *pystr_ptr;
-    // read PyCodeObject's filename into symbol
-    if (bpf_probe_read_user(
-            &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_filename)) {
+    if (get_file_name(cur_frame, code_ptr, offsets, symbol)) {
         return -PY_ERROR_FILE_NAME;
     }
-    if (pystr_ptr == 0) {
-        return 0;
-    }
-    if (pystr_read(pystr_ptr, offsets, symbol->file, sizeof(symbol->file), &symbol->file_type)) {
-        bpf_dbg_printk("failed to read file name at %x\n", pystr_ptr);
-        return -PY_ERROR_FILE_NAME;
-    }
-    // read PyCodeObject's name into symbol
-    if (bpf_probe_read_user(
-            &pystr_ptr, sizeof(void *), code_ptr + offsets->PyCodeObject_co_name)) {
-        return -PY_ERROR_NAME;
-    }
-    if (pystr_read(pystr_ptr, offsets, symbol->name, sizeof(symbol->name), &symbol->name_type)) {
+
+    if (get_code_name(cur_frame, code_ptr, offsets, symbol)) {
         return -PY_ERROR_NAME;
     }
     return 0;
@@ -450,12 +600,14 @@ static __always_inline int get_frame_data(
                 &owner, sizeof(owner), (void *) (cur_frame + offsets->PyInterpreterFrame_owner))) {
             return -PY_ERROR_FRAME_OWNER;
         }
+        log_debug("frame owner %lx", owner);
         if (owner == FRAME_OWNED_BY_CSTACK) {
             if (bpf_probe_read_user(
                     frame_ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_previous))) {
                 return -PY_ERROR_FRAME_PREV;
             }
             cur_frame = *frame_ptr;
+            log_debug("frame %lx", cur_frame);
             if (!cur_frame) {
                 return 0;
             }
@@ -470,6 +622,7 @@ static __always_inline int get_frame_data(
             &code_ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_code))) {
         return -PY_ERROR_FRAME_CODE;
     }
+    log_debug("code %lx", code_ptr);
     if (!code_ptr) {
         return 0; // todo learn when this happens, c extension?
     }
@@ -478,10 +631,14 @@ static __always_inline int get_frame_data(
     if (res < 0) {
         return res;
     }
+    log_debug("sym name %s", symbol->name);
+    log_debug("sym file %s", symbol->file);
+    log_debug("sym cls  %s", symbol->classname);
 
     // read next PyFrameObject/PyInterpreterFrame pointer, update in place
     if (bpf_probe_read_user(
             frame_ptr, sizeof(void *), (void *) (cur_frame + offsets->VFrame_previous))) {
+        log_error("failed to read f_back at %lx", cur_frame);
         return -PY_ERROR_FRAME_PREV;
     }
 
@@ -515,6 +672,7 @@ static __always_inline int get_symbol_id(
         *out_symbol_id = *symbol_id_ptr;
         return 0;
     }
+    log_error("get_symbol_id failed");
     *out_symbol_id = 0;
     return -1;
 }
@@ -530,6 +688,8 @@ int read_python_stack(struct bpf_perf_event_data *ctx) {
     py_symbol *sym = &state->sym;
 #pragma unroll
     for (int i = 0; i < PYTHON_STACK_FRAMES_PER_PROG; i++) {
+        log_debug("------- frame %d %lx ---------- ", sample->stack_len, state->frame_ptr);
+
         last_res = get_frame_data((void **) &state->frame_ptr, &state->offsets, sym, ctx);
         if (last_res < 0) {
             return submit_error_sample((uint8_t) (-last_res));
