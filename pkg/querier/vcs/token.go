@@ -5,9 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"connectrpc.com/connect"
@@ -18,6 +20,13 @@ import (
 const (
 	githubCookieName = "GitSession"
 	githubRefreshURL = "https://github.com/login/oauth/access_token"
+
+	// Duration of a GitHub refresh token. The original OAuth flow doesn't
+	// return the refresh token expiry, so we need to store it separately.
+	// GitHub docs state this value will never change:
+	//
+	// https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/refreshing-user-access-tokens
+	githubRefreshExpiryDuration = 15897600 * time.Second
 )
 
 var (
@@ -32,12 +41,12 @@ type gitSessionTokenCookie struct {
 }
 
 type githubAuthToken struct {
-	AccessToken           string `json:"access_token"`
-	ExpiresIn             int    `json:"expires_in"`
-	RefreshToken          string `json:"refresh_token"`
-	RefreshTokenExpiresIn int    `json:"refresh_token_expires_in"`
-	Scope                 string `json:"scope"`
-	TokenType             string `json:"token_type"`
+	AccessToken           string        `json:"access_token"`
+	ExpiresIn             time.Duration `json:"expires_in"`
+	RefreshToken          string        `json:"refresh_token"`
+	RefreshTokenExpiresIn time.Duration `json:"refresh_token_expires_in"`
+	Scope                 string        `json:"scope"`
+	TokenType             string        `json:"token_type"`
 }
 
 func (t githubAuthToken) toOAuthToken() *oauth2.Token {
@@ -45,7 +54,7 @@ func (t githubAuthToken) toOAuthToken() *oauth2.Token {
 		AccessToken:  t.AccessToken,
 		TokenType:    t.TokenType,
 		RefreshToken: t.RefreshToken,
-		Expiry:       time.Now().Add(time.Duration(t.ExpiresIn) * time.Second),
+		Expiry:       time.Now().Add(t.ExpiresIn),
 	}
 }
 
@@ -77,15 +86,23 @@ func refreshToken(ctx context.Context, oldToken *oauth2.Token) (*oauth2.Token, e
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
-	defer req.Body.Close()
+	defer res.Body.Close()
 
-	githubToken := githubAuthToken{}
-	err = json.NewDecoder(res.Body).Decode(&githubToken)
+	bytes, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
+	// The response body is application/x-www-form-urlencoded, so we parse it
+	// via url.ParseQuery.
+	payload, err := url.ParseQuery(string(bytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse response body: %w", err)
+	}
+
+	githubToken := githubAuthTokenFromFormURLEncoded(payload)
 	newToken := githubToken.toOAuthToken()
+
 	return newToken, nil
 }
 
@@ -95,6 +112,31 @@ func buildRefreshQuery(query url.Values, token *oauth2.Token) url.Values {
 	query.Add("grant_type", "refresh_token")
 	query.Add("refresh_token", token.RefreshToken)
 	return query
+}
+
+func githubAuthTokenFromFormURLEncoded(values url.Values) githubAuthToken {
+	token := githubAuthToken{
+		AccessToken:           values.Get("access_token"),
+		ExpiresIn:             0,
+		RefreshToken:          values.Get("refresh_token"),
+		RefreshTokenExpiresIn: 0,
+		Scope:                 values.Get("scope"),
+		TokenType:             values.Get("token_type"),
+	}
+
+	expiresIn, err := strconv.Atoi(values.Get("expires_in"))
+	if err != nil {
+		expiresIn = 0
+	}
+	token.ExpiresIn = time.Duration(expiresIn) * time.Second
+
+	refreshTokenExpiresIn, err := strconv.Atoi(values.Get("refresh_token_expires_in"))
+	if err != nil {
+		refreshTokenExpiresIn = 0
+	}
+	token.RefreshTokenExpiresIn = time.Duration(refreshTokenExpiresIn) * time.Second
+
+	return token
 }
 
 func tokenFromRequest(req connect.AnyRequest) (*oauth2.Token, error) {
@@ -107,7 +149,6 @@ func tokenFromRequest(req connect.AnyRequest) (*oauth2.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return token, nil
 }
 
@@ -129,7 +170,7 @@ func encodeToken(token *oauth2.Token) (string, error) {
 	cookie := http.Cookie{
 		Name:     githubCookieName,
 		Value:    encoded,
-		Expires:  token.Expiry,
+		Expires:  time.Now().Add(githubRefreshExpiryDuration),
 		HttpOnly: false,
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
