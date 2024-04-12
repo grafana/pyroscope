@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	giturl "github.com/kubescape/go-git-url"
 	"github.com/kubescape/go-git-url/apis"
+	"golang.org/x/oauth2"
 
 	vcsv1 "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1"
 	vcsv1connect "github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
@@ -92,6 +94,11 @@ func (q *Service) GetFile(ctx context.Context, req *connect.Request[vcsv1.GetFil
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid token"))
 	}
 
+	err = rejectExpiredToken(token)
+	if err != nil {
+		return nil, err
+	}
+
 	// initialize and parse the git repo URL
 	gitURL, err := giturl.NewGitURL(req.Msg.RepositoryURL)
 	if err != nil {
@@ -132,6 +139,11 @@ func (q *Service) GetCommit(ctx context.Context, req *connect.Request[vcsv1.GetC
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid token"))
 	}
 
+	err = rejectExpiredToken(token)
+	if err != nil {
+		return nil, err
+	}
+
 	gitURL, err := giturl.NewGitURL(req.Msg.RepositoryURL)
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -151,4 +163,11 @@ func (q *Service) GetCommit(ctx context.Context, req *connect.Request[vcsv1.GetC
 		return nil, err
 	}
 	return connect.NewResponse(commit), nil
+}
+
+func rejectExpiredToken(token *oauth2.Token) error {
+	if time.Now().After(token.Expiry) {
+		return connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("token is expired"))
+	}
+	return nil
 }
