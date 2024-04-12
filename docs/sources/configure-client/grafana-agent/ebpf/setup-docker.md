@@ -10,9 +10,11 @@ weight: 20
 To set up eBPF profiling with Grafana Agent on Linux, you need to:
 
 - Verify that your system meets the requirements.
-- Create a Grafana Agent configuration file. For more information, see [Configuration reference][config-reference].
-- Run the Grafana Agent.
-- Finally, verify that profiles are received.
+- Create a Grafana Agent configuration file. For more information, refer to the [Configuration reference][config-reference].
+- Run Grafana Agent or Grafana Alloy.
+- Verify that profiles are received.
+
+{{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
 
 ## Prerequisites
 
@@ -40,9 +42,10 @@ docker info | grep Kernel
 
 Make sure you have a kernel version >= 4.9.
 
-## Configure the Grafana Agent
+## Configure Grafana Agent
 
-We'll configure the Grafana Agent eBPF profiler to profile local containers. To do so we'll use the `discovery.docker` component to discover local containers and the `pyroscope.ebpf` component to profile them.
+You can configure the Grafana Agent eBPF profiler to profile local containers.
+To do so, use the `discovery.docker` component to discover local containers and the `pyroscope.ebpf` component to profile them.
 
 Create a file named `agent.river` with the following content:
 
@@ -82,9 +85,9 @@ If you're using your own Pyroscope server, you can remove the `basic_auth` secti
 
 For more information, refer to the [Configure the Grafana Pyroscope data source documentation](/docs/grafana-cloud/connect-externally-hosted/data-sources/grafana-pyroscope#configure-the-grafana-pyroscope-data-source).
 
-## Start the Grafana Agent
+## Start Grafana Agent
 
-To start the Grafana Agent with docker, run:
+To start Grafana Agent with Docker, run:
 
 ```shell
 docker run \
