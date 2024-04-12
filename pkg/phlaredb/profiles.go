@@ -493,7 +493,6 @@ func (pi *profilesIndex) cutRowGroup(rgProfiles []*schemav1.InMemoryProfile) err
 		n := copy(ps.profiles, ps.profiles[count:])
 		slices.Clear(ps.profiles[n:])
 		ps.profiles = ps.profiles[:n]
-		// attach rowGroup and rowNum information
 		ps.profilesOnDisk = append(
 			ps.profilesOnDisk,
 			rowRangePerFP[ps.fp],
