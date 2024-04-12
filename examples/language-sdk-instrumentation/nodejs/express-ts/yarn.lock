@@ -81,10 +81,10 @@
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
   integrity sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==
 
-"@pyroscope/nodejs@0.3.1":
-  version "0.3.1"
-  resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.3.1.tgz#36b02c5349ae6d0313762236bae59451c0f1871e"
-  integrity sha512-UFmT4mEqOM8ueTsJuS16Mr3wdbUajw68Mb8PRyoLl1qJgP0UQdEJhfIVJIiXNWnwoDfCbiMDluhX3S9/20tDJQ==
+"@pyroscope/nodejs@0.3.3":
+  version "0.3.3"
+  resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.3.3.tgz#88544606fc6c80ec97eee1aa5348998f9376cb72"
+  integrity sha512-NMcLJDHPbblnaZ+aocmS0QW0PBwF8RsAcbPsEGsxArAuCFag5Ps40pR/v9bL2HGNm62CEk2Di40wJG2Savn0Pw==
   dependencies:
     "@datadog/pprof" "^4.0.1"
     axios "^0.28.0"

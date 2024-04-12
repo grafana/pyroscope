@@ -2,6 +2,17 @@
 # yarn lockfile v1
 
 
+"@datadog/pprof@^4.0.1":
+  version "4.1.0"
+  resolved "https://registry.yarnpkg.com/@datadog/pprof/-/pprof-4.1.0.tgz#db86a720f1dfecbcab8838bc1f148eb0a402af55"
+  integrity sha512-g7EWI185nwSuFwlmnAGDPxbPsqe+ipOoDB2oP841WMNRaJBPRdg5J90c+6ucmyltuC9VpTrmzzqcachkOTzZEQ==
+  dependencies:
+    delay "^5.0.0"
+    node-gyp-build "<4.0"
+    p-limit "^3.1.0"
+    pprof-format "^2.0.7"
+    source-map "^0.7.4"
+
 "@mapbox/node-pre-gyp@^1.0.9":
   version "1.0.11"
   resolved "https://registry.yarnpkg.com/@mapbox/node-pre-gyp/-/node-pre-gyp-1.0.11.tgz#417db42b7f5323d79e93b34a6d7a2a12c0df43fa"
@@ -70,11 +81,12 @@
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
   integrity sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==
 
-"@pyroscope/nodejs@^0.2.x":
-  version "0.2.9"
-  resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.2.9.tgz#90a27340a09e1ce80887889f5f2aa7dbf2381242"
-  integrity sha512-pIw4pIqcNZTZxTUuV0OUI18UZEmx9lT2GaT75ny6FKVe2L1gxAwTCf5TKk8VsnUGY66buUkyaTHcTm7fy0BP/Q==
+"@pyroscope/nodejs@0.3.3":
+  version "0.3.3"
+  resolved "https://registry.yarnpkg.com/@pyroscope/nodejs/-/nodejs-0.3.3.tgz#88544606fc6c80ec97eee1aa5348998f9376cb72"
+  integrity sha512-NMcLJDHPbblnaZ+aocmS0QW0PBwF8RsAcbPsEGsxArAuCFag5Ps40pR/v9bL2HGNm62CEk2Di40wJG2Savn0Pw==
   dependencies:
+    "@datadog/pprof" "^4.0.1"
     axios "^0.28.0"
     debug "^4.3.3"
     form-data "^4.0.0"
@@ -701,6 +713,11 @@ node-fetch@^2.6.7:
   dependencies:
     whatwg-url "^5.0.0"
 
+node-gyp-build@<4.0:
+  version "3.9.0"
+  resolved "https://registry.yarnpkg.com/node-gyp-build/-/node-gyp-build-3.9.0.tgz#53a350187dd4d5276750da21605d1cb681d09e25"
+  integrity sha512-zLcTg6P4AbcHPq465ZMFNXx7XpKKJh+7kkN699NiQWisR2uWYOWNWqRHAmbnmKiL4e9aLSlmy5U7rEMUXV59+A==
+
 nopt@^5.0.0:
   version "5.0.0"
   resolved "https://registry.yarnpkg.com/nopt/-/nopt-5.0.0.tgz#530942bb58a512fccafe53fe210f13a25355dc88"
@@ -754,7 +771,7 @@ once@^1.3.0:
   dependencies:
     wrappy "1"
 
-p-limit@^3.0.0:
+p-limit@^3.0.0, p-limit@^3.1.0:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/p-limit/-/p-limit-3.1.0.tgz#e1daccbe78d0d1388ca18c64fea38e3e57e3706b"
   integrity sha512-TYOanM3wGwNGsZN2cVTYPArw454xnXj5qmWF1bEoAc4+cU/ol7GVh7odevjp1FNHduHc3KZMcFduxU5Xc6uJRQ==
@@ -775,6 +792,11 @@ path-to-regexp@0.1.7:
   version "0.1.7"
   resolved "https://registry.yarnpkg.com/path-to-regexp/-/path-to-regexp-0.1.7.tgz#df604178005f522f15eb4490e7247a1bfaa67f8c"
   integrity sha512-5DFkuoqlv1uYQKxy8omFBeJPQcdoE07Kv2sferDCrAq1ohOU+MSDswDIbnx3YAM60qIOnYa53wBhXW0EbMonrQ==
+
+pprof-format@^2.0.7:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/pprof-format/-/pprof-format-2.1.0.tgz#acc8d7773bcf4faf0a3d3df11bceefba7ac06664"
+  integrity sha512-0+G5bHH0RNr8E5hoZo/zJYsL92MhkZjwrHp3O2IxmY8RJL9ooKeuZ8Tm0ZNBw5sGZ9TiM71sthTjWoR2Vf5/xw==
 
 pprof@^4.0.0:
   version "4.0.0"
@@ -963,7 +985,7 @@ signal-exit@^3.0.0:
   resolved "https://registry.yarnpkg.com/signal-exit/-/signal-exit-3.0.7.tgz#a9a1767f8af84155114eaabd73f99273c8f59ad9"
   integrity sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==
 
-source-map@^0.7.3:
+source-map@^0.7.3, source-map@^0.7.4:
   version "0.7.4"
   resolved "https://registry.yarnpkg.com/source-map/-/source-map-0.7.4.tgz#a9bbe705c9d8846f4e08ff6765acf0f1b0898656"
   integrity sha512-l3BikUxvPOcn5E74dZiq5BGsTb5yEwhaTSzccU6t4sDOH8NWJCstKO5QT2CvtFoK6F0saL7p9xHAqHOlCPJygA==

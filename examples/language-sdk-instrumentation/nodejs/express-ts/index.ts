@@ -40,6 +40,7 @@ SourceMapper.create(["."])
       appName: 'nodejs',
       serverAddress: 'http://pyroscope:4040',
       sourceMapper: sourceMapper,
+      tags: { region },
     });
     Pyroscope.start();
   })
