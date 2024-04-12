@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using System.Net.Http;
+using System.Collections;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
-using System.Collections;
 
 using Jaeger;
 using Jaeger.Senders;
@@ -14,7 +16,9 @@ using Jaeger.Senders.Thrift;
 using Jaeger.Reporters;
 using OpenTracing.Contrib.NetCore.Configuration;
 using OpenTracing;
-using System.Net.Http;
+
+using Pyroscope.Tracing.OpenTracing;
+using OpenTracing.Util;
 
 namespace Example;
 
@@ -29,19 +33,9 @@ public static class Program
         Configuration.SenderConfiguration.DefaultSenderResolver = new SenderResolver(loggerFactory).RegisterSenderFactory<ThriftSenderFactory>();
         var tracingConfig = Configuration.FromEnv(loggerFactory);
         var tracer = tracingConfig.GetTracer();
+        GlobalTracer.Register(new PyroscopeTracer(tracer));
 
-        builder.Services.AddOpenTracingCoreServices(b => {
-                b.AddAspNetCore()
-                    .ConfigureAspNetCore(options => {
-                        options.Hosting.OnRequest = (span, request) => {
-                            var spanId = span.Context.SpanId;
-                            var spanIdLong = Convert.ToUInt64(spanId.ToUpper(), 16);
-                            Pyroscope.Profiler.Instance.SetProfileId(spanIdLong);
-                            span.SetTag("pyroscope.profile.id", spanId);
-                        };
-                    });
-            });
-        builder.Services.AddSingleton(tracer);
+        builder.Services.AddOpenTracing();
 
         var app = builder.Build();
 

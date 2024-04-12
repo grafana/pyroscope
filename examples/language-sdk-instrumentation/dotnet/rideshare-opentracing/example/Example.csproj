@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Jaeger" Version="1.0.3" />
     <PackageReference Include="OpenTracing.Contrib.NetCore" Version="0.9.0" />
-    <PackageReference Include="Pyroscope" Version="0.8.0" />
+    <PackageReference Include="Pyroscope" Version="0.8.14" />
+    <PackageReference Include="Pyroscope.Tracing.OpenTracing" Version="0.1.0" />
   </ItemGroup>
 </Project>

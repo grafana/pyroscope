@@ -2,14 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
-using Microsoft.AspNetCore.Http;
-
-namespace Example;
-
 using System.Collections;
+
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+
 using OpenTelemetry.Trace;
+
+using Pyroscope.Tracing.OpenTelemetry;
+
+namespace Example;
 
 public static class Program
 {
