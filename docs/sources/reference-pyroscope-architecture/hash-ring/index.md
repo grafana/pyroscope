@@ -20,7 +20,7 @@ The token determines the location on the hash ring deterministically.
 This allows independent determination of what instance of Pyroscope is the authoritative owner of any specific data.
 
 For example, profiles are sharded across [ingesters]({{< relref "../components/ingester.md" >}}).
-The token of a given profile is computed by hashing all of the profile’ labels and the tenant ID: the result of which is an unsigned 32-bit integer within the space of the tokens.
+The token of a given profile is computed by hashing all of the profile’s labels and the tenant ID: the result of which is an unsigned 32-bit integer within the space of the tokens.
 The ingester that owns that series is the instance that owns the range of the tokens, including the profile token.
 
 To divide up set of possible tokens (`2^32`) across the available instances within the cluster, all of the running instances of a given Pyroscope component, such as the ingesters, join a hash ring.
@@ -28,7 +28,7 @@ The hash ring is a data structure that splits the space of the tokens into multi
 
 Upon startup, an instance generates random token values, and it registers them into the ring.
 The values that each instance registers determine which instance owns a given token.
-A token is owned by the instance that registered the smallest value that is higher than the token being looked up (by wrapping around zero when it reaches `(2^32)-1)`.
+A token is owned by the instance that registered the smallest value that is higher than the token being looked up (by wrapping around zero when it reaches `(2^32)-1)`).
 
 To replicate the data across multiple instances, Pyroscope finds the replicas by starting from the authoritative owner of the data and walking the ring clockwise.
 Data is replicated to the next instances found while walking the ring.
@@ -43,7 +43,7 @@ To better understand how it works, take four ingesters and a tokens space betwee
 - Ingester #4 is registered in the ring with the token `9`
 
 Pyroscope receives an incoming performance profile with labels `{__name__="process_cpu", instance="1.1.1.1"}`.
-It hashes the profile’ labels, and the result of the hashing function is the token `3`.
+It hashes the profile’s labels, and the result of the hashing function is the token `3`.
 
 To find which ingester owns token `3`, Pyroscope looks up the token `3` in the ring and finds the ingester that is registered with the smallest token larger than `3`.
 The ingester #2, which is registered with token `4`, is the authoritative owner of the profile `{__name__="process_cpu",instance="1.1.1.1"}`.
@@ -89,4 +89,4 @@ Pyroscope primarily uses the hash ring for sharding and replication.
 Features that are built using the hash ring:
 
 - **Service discovery**: Instances can discover each other looking up who is registered in the ring.
-- **Heartbeating**: Instances periodically send an heartbeat to the ring to signal they're up and running. An instance is considered unhealthy if misses the heartbeat for some period of time.
+- **Heartbeats**: Instances periodically send a heartbeat to the ring to signal they're up and running. An instance is considered unhealthy if it misses the heartbeat for some period of time.

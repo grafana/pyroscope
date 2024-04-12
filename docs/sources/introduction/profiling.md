@@ -6,7 +6,7 @@ weight: 20
 keywords:
   - pyroscope
   - continuous profiling
-  - flamegraphs
+  - flame graphs
 ---
 
 # Profiling fundamentals
@@ -53,7 +53,7 @@ Continuous profiling provides:
 - **Economical advantages**:
     - **Resource optimization**: Continual monitoring ensures resources aren't wasted, leading to cost savings.
     - **Rapid problem resolution**: Faster troubleshooting means reduced time and monetary investment in issue rectification, letting developers channel their efforts into productive endeavors.
-- **Unintrusive operation**: Specifically designed to work quietly in the background, continuous profiling doesn't compromise the performance of live environments.
+- **Non-intrusive operation**: Specifically designed to work quietly in the background, continuous profiling doesn't compromise the performance of live environments.
 7. **Real-time response**: It equips teams with the ability to act instantly, addressing issues as they arise rather than post-occurrence, which is crucial for maintaining high system availability.
 
 ## How to choose between traditional and continuous profiling

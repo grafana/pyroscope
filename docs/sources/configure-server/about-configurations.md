@@ -22,7 +22,7 @@ It is recommended to use a single configuration file and either pass it to all r
 
 This helps avoid a common misconfiguration pitfall: while certain configuration parameters might look like they’re only needed by one type of component, they might in fact be used by multiple components. For example, the `-distributor.replication-factor` CLI flag is not only required by ingesters, but also by distributors and queriers.
 
-By using a single configuration file, you ensure that each component gets all of the configuration that it needs without needing to track which parameter belongs to which component.
+By using a single configuration file, you ensure that each component gets all the configuration that it needs without needing to track which parameter belongs to which component.
 There is no harm in passing a configuration that is specific to one component (such as an ingester) to another component (such as a querier). In such case, the configuration is simply ignored.
 
 If necessary, you can use advanced CLI flags to override specific values on a particular Pyroscope component or replica. This can be helpful if you want to change a parameter that is specific to a certain component, without having to do a full restart of all other components.

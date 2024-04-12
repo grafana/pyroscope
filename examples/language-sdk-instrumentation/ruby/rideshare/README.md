@@ -60,7 +60,7 @@ docker-compose up --build
 # docker-compose down
 ```
 
-What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flamegraph that looks like this. After we give 20-30 seconds for the flamegraph to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
+What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flame graph that looks like this. After we give 20-30 seconds for the flame graph to update and then click the refresh button we see our 3 functions at the bottom of the flame graph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
 
 ## Where's the performance bottleneck?
 ![ruby_first_slide_01-01](https://user-images.githubusercontent.com/23323466/139566972-2f04b826-d05c-4307-9b60-4376840001ab.jpg)
@@ -84,14 +84,14 @@ We can also see that the `mutex_lock()` function is consuming almost 70% of CPU 
 ![ruby_second_slide_01](https://user-images.githubusercontent.com/23323466/139566994-f3f8c2f3-6bc4-40ca-ac4e-8fc862d0c0ad.jpg)
 
 ## Comparing two time periods
-Using Pyroscope's "comparison view" we can actually select two different time ranges from the timeline to compare the resulting flamegraphs. The pink section on the left timeline results in the left flamegraph and the blue section on the right represents the right flamegraph.
+Using Pyroscope's "comparison view" we can actually select two different time ranges from the timeline to compare the resulting flame graphs. The pink section on the left timeline results in the left flame graph and the blue section on the right represents the right flame graph.
 
 When we select a period of low-cpu utilization, and a period of high-cpu utilization we can see that there is clearly different behavior in the `mutex_lock()` function where it takes **23% of CPU** during low-cpu times and **70% of CPU** during high-cpu times.
 
 ![ruby_third_slide_01-01](https://user-images.githubusercontent.com/23323466/139567004-96064c5b-570c-48a4-aa9a-07a46a0646a5.jpg)
 
-## Visualizing Diff Between Two Flamegraphs
-While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flamegraphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flamegraph.
+## Visualizing diff between two flame graphs
+While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flame graphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flame graph.
 
 ![ruby_fourth_slide_01-01](https://user-images.githubusercontent.com/23323466/139567016-3f738923-2429-4f93-8fe0-cc0ca8c765fd.jpg)
 
