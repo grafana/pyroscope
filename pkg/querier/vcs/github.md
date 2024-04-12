@@ -9,9 +9,9 @@ sequenceDiagram
     participant Client
     participant Pyroscope
     participant GitHub
-    User->>Client: Select a Flamegraph Node
-    Client->>Pyroscope: Request Flamegraph Data For Node
-    Pyroscope-->>Client: Flamegraph Data
+    User->>Client: Select a Flame graph Node
+    Client->>Pyroscope: Request Flame graph Data For Node
+    Pyroscope-->>Client: Flame graph Data
     Client-->Client: if the data has source code information
     Client->>Pyroscope: Request Github App client ID
     Pyroscope-->>Client: Github App client ID

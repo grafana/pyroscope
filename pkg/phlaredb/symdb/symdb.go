@@ -172,6 +172,9 @@ func (s *SymDB) newPartition(partition uint64) *PartitionWriter {
 	p.mappings.init()
 	p.functions.init()
 	p.locations.init()
+	// To ensure that the first string is always "".
+	p.strings.slice = append(p.strings.slice, "")
+	p.strings.lookup[""] = 0
 	return &p
 }
 

@@ -154,7 +154,7 @@
     "lodash.groupby": "^4.6.0",
     "lodash.map": "^4.6.0",
     "prismjs": "^1.27.0",
-    "protobufjs": "^7.2.4",
+    "protobufjs": "^7.2.5",
     "react": "^18.2.0",
     "react-copy-to-clipboard": "^5.0.4",
     "react-datepicker": "^4.7.0",

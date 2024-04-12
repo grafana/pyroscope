@@ -15,7 +15,7 @@ keywords:
 
 # Understand 'self' vs. 'total' metrics in profiling with Pyroscope
 
-Profiling in Pyroscope provideds many different ways of analyzing your profiling data. One of the key pieces of this analysis are the metrics 'self' and 'total', whose understanding is key for accurate interpretation of profiling data in both CPU and memory contexts. These metrics can be seen both within the table and the flamegraph view of the UI.
+Profiling in Pyroscope provides many different ways of analyzing your profiling data. One of the key pieces of this analysis are the metrics 'self' and 'total', whose understanding is key for accurate interpretation of profiling data in both CPU and memory contexts. These metrics can be seen both within the table and the flame graph view of the UI.
 
 ![Self vs total annotated](https://grafana.com/media/docs/pyroscope/self_vs_total_annotated.png)
 
@@ -74,7 +74,7 @@ handle_request()
 ## 'Self' and 'Total' in memory profiling
 
 - **Self in Memory**: For memory profiling, 'self' measures the memory allocated by the function itself, vital for detecting direct memory allocation issues.
-- **Total in Memory**: 'Total' memory includes allocations by the function and its called functions, essential for assessing overall memory footprint.
+- **Total in Memory**: 'Total' memory includes allocations by the function and it's called functions, essential for assessing overall memory footprint.
 
 The same example from the CPU profiling section can be used to illustrate the concepts of 'self' and 'total' in memory profiling, just with memory units instead of CPU.
 

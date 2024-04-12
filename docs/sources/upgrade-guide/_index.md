@@ -24,7 +24,7 @@ This upgrade guide applies to on-premise installations and not for Grafana Cloud
 Version 1.0 of Pyroscope is a major release that includes breaking changes.
 This guide explains how to upgrade to v1.0 from previous versions.
 
-This document describes in detail the changes that we've made to Pyroscope and how they affect you. For convinience, at the end of this guide we provide short checklists for you to follow.
+This document describes in detail the changes that we've made to Pyroscope and how they affect you. For convenience, at the end of this guide we provide short checklists for you to follow.
 
 ### New architecture
 
@@ -91,7 +91,7 @@ We provide the following checklists to help you upgrade to v1.0.
 
 When upgrading to v1.0, we suggest that you follow this checklist:
 * Migrate your configuration from the old format to the new format (old config is usually located at `/etc/pyroscope/server.yml` and the new config is at `/etc/pyroscope/config.yaml`). There's a detailed description of all configuration parameters [here]({{< relref "../configure-server/reference-configuration-parameters" >}}).
-* Upgrade docker image image from `pyroscope/pyroscope` to `grafana/pyroscope`. Link to the new docker image is [here](https://hub.docker.com/r/grafana/pyroscope).
+* Upgrade docker image from `pyroscope/pyroscope` to `grafana/pyroscope`. Link to the new docker image is [here](https://hub.docker.com/r/grafana/pyroscope).
 * Delete old data (typically found at `/var/lib/pyroscope`).
 
 #### Upgrade Checklist for Helm deployments

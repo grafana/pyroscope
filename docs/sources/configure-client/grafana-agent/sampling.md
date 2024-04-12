@@ -9,7 +9,7 @@ weight: 30
 
 Applications often have many instances deployed. While Pyroscope is designed to handle large amounts of profiling data, you may want only a subset of the application's instances to be scraped.
 
-For example, the volume of profiling data your application generates may make it unreasonable to profile every instance or you might be targeting cost-reduction.
+For example, the volume of profiling data your application generates may make it unreasonable to profile every instance, or you might be targeting cost-reduction.
 
 Through configuration of the Grafana Agent, Pyroscope can sample scrape targets.
 

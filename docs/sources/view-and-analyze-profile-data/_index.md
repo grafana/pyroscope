@@ -9,14 +9,14 @@ keywords:
   - pyroscope
   - UI
   - performance analysis
-  - flamegraphs
+  - flame graphs
   - CLI
 ---
 
 # View and analyze profile data
 
 Profiling data can be presented in a variety of formats presents such as:
-- **Flamegraphs**: Visualize call relationships and identify hotspots.
+- **Flame graphs**: Visualize call relationships and identify hotspots.
 - **Tables**: View detailed statistics for specific functions or time periods.
 - **Charts and graphs**: Analyze trends and compare performance across different metrics.
 
