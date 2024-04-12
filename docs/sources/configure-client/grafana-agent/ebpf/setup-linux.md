@@ -11,9 +11,11 @@ To set up eBPF profiling with Grafana Agent on Linux, you need to:
 
 - Verify that your system meets the requirements.
 - Install the Grafana Agent Flow mode.
-- Create a Grafana Agent configuration file. For more information, see [Configuration reference][config-reference].
-- Run the Grafana Agent.
+- Create a Grafana Agent configuration file. For more information, refer to [Configuration reference][config-reference].
+- Run Grafana Agent or Grafana Alloy.
 - Finally, verify that profiles are received.
+
+{{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
 
 ## Prerequisites
 
