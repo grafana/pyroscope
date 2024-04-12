@@ -21,7 +21,8 @@
     "@types/morgan": "^1.9.3"
   },
   "resolutions": {
-    "protobufjs": "^7.2.4",
+    "protobufjs": "^7.2.5",
+    "tar": "^6.2.1",
     "@types/mime": "3.0.4"
   }
 }
