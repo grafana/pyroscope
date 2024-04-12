@@ -1,0 +1,101 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/aleks/go/src/github.com/grafana/pyroscope/examples/language-sdk-instrumentation/dotnet/rideshare-otel/example/Example.csproj": {}
+  },
+  "projects": {
+    "/Users/aleks/go/src/github.com/grafana/pyroscope/examples/language-sdk-instrumentation/dotnet/rideshare-otel/example/Example.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/aleks/go/src/github.com/grafana/pyroscope/examples/language-sdk-instrumentation/dotnet/rideshare-otel/example/Example.csproj",
+        "projectName": "example",
+        "projectPath": "/Users/aleks/go/src/github.com/grafana/pyroscope/examples/language-sdk-instrumentation/dotnet/rideshare-otel/example/Example.csproj",
+        "packagesPath": "/Users/aleks/.nuget/packages/",
+        "outputPath": "/Users/aleks/go/src/github.com/grafana/pyroscope/examples/language-sdk-instrumentation/dotnet/rideshare-otel/example/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/aleks/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net6.0"
+        ],
+        "sources": {
+          "/Users/aleks/go/src/github.com/grafana/pyroscope-dotnet/Pyroscope/Pyroscope.Tracing/Pyroscope.Tracing.OpenTracing/bin/Debug": {},
+          "/Users/aleks/go/src/github.com/grafana/pyroscope/examples/language-sdk-instrumentation/dotnet/rideshare-otel/nuget": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net6.0": {
+            "targetAlias": "net6.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net6.0": {
+          "targetAlias": "net6.0",
+          "dependencies": {
+            "Grpc.Core": {
+              "target": "Package",
+              "version": "[2.46.6, )"
+            },
+            "OpenTelemetry": {
+              "target": "Package",
+              "version": "[1.8.0, )"
+            },
+            "OpenTelemetry.Exporter.Console": {
+              "target": "Package",
+              "version": "[1.8.0, )"
+            },
+            "OpenTelemetry.Exporter.OpenTelemetryProtocol": {
+              "target": "Package",
+              "version": "[1.8.0, )"
+            },
+            "OpenTelemetry.Extensions.Hosting": {
+              "target": "Package",
+              "version": "[1.8.0, )"
+            },
+            "OpenTelemetry.Instrumentation.AspNetCore": {
+              "target": "Package",
+              "version": "[1.8.0, )"
+            },
+            "Pyroscope.Tracing.OpenTelemetry": {
+              "target": "Package",
+              "version": "[0.1.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.AspNetCore.App": {
+              "privateAssets": "none"
+            },
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/8.0.203/RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

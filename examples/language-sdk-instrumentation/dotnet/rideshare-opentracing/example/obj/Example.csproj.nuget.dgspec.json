@@ -1,0 +1,88 @@
+{
+  "format": 1,
+  "restore": {
+    "/Users/aleks/go/src/github.com/grafana/pyroscope/examples/language-sdk-instrumentation/dotnet/rideshare-opentracing/example/Example.csproj": {}
+  },
+  "projects": {
+    "/Users/aleks/go/src/github.com/grafana/pyroscope/examples/language-sdk-instrumentation/dotnet/rideshare-opentracing/example/Example.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/Users/aleks/go/src/github.com/grafana/pyroscope/examples/language-sdk-instrumentation/dotnet/rideshare-opentracing/example/Example.csproj",
+        "projectName": "example",
+        "projectPath": "/Users/aleks/go/src/github.com/grafana/pyroscope/examples/language-sdk-instrumentation/dotnet/rideshare-opentracing/example/Example.csproj",
+        "packagesPath": "/Users/aleks/.nuget/packages/",
+        "outputPath": "/Users/aleks/go/src/github.com/grafana/pyroscope/examples/language-sdk-instrumentation/dotnet/rideshare-opentracing/example/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/Users/aleks/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net6.0"
+        ],
+        "sources": {
+          "/Users/aleks/go/src/github.com/grafana/pyroscope-dotnet/Pyroscope/Pyroscope.Tracing/Pyroscope.Tracing.OpenTracing/bin/Debug": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net6.0": {
+            "targetAlias": "net6.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net6.0": {
+          "targetAlias": "net6.0",
+          "dependencies": {
+            "Jaeger": {
+              "target": "Package",
+              "version": "[1.0.3, )"
+            },
+            "OpenTracing.Contrib.NetCore": {
+              "target": "Package",
+              "version": "[0.9.0, )"
+            },
+            "Pyroscope": {
+              "target": "Package",
+              "version": "[0.8.14, )"
+            },
+            "Pyroscope.Tracing.OpenTracing": {
+              "target": "Package",
+              "version": "[0.1.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.AspNetCore.App": {
+              "privateAssets": "none"
+            },
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/8.0.203/RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

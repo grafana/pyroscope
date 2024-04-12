@@ -77,7 +77,7 @@ For more documentation on how to add the Pyroscope agent to your code, see the [
    </tr>
    <tr>
       <td align="center"><a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/nodejs/"><img src="https://user-images.githubusercontent.com/23323466/178160551-a79ee6ff-a5d6-419e-89e6-39047cb08126.png" width="100px;" alt=""/><br />
-        <b>NodeJS</b></a><br />
+        <b>Node.js</b></a><br />
           <a href="https://grafana.com/docs/pyroscope/latest/configure-client/language-sdks/nodejs/" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/nodejs/express" title="examples">Examples</a>
       </td>
@@ -136,11 +136,11 @@ Pyroscope is possible thanks to the excellent work of many people, including but
 
 * Brendan Gregg — inventor of Flame Graphs
 * Julia Evans — creator of rbspy — sampling profiler for Ruby
-* Vladimir Agafonkin — creator of flamebearer — fast flamegraph renderer
+* Vladimir Agafonkin — creator of flamebearer — fast flame graph renderer
 * Ben Frederickson — creator of py-spy — sampling profiler for Python
 * Adam Saponara — creator of phpspy — sampling profiler for PHP
 * Alexei Starovoitov, Brendan Gregg, and many others who made BPF based profiling in Linux kernel possible
-* Jamie Wong — creator of speedscope — interactive flamegraph visualizer
+* Jamie Wong — creator of speedscope — interactive flame graph visualizer
 
 ## Contributing
 

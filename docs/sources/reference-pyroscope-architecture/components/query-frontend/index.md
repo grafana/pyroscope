@@ -18,6 +18,6 @@ We recommend that you run at least two query-frontend replicas for high-availabi
 The following steps describe how a query moves through the query-frontend.
 
 1. A query-frontend receives a query.
-1. The query-frontend places the query in an queue by communicating with the query-scheduler, where it waits to be picked up by a querier.
+1. The query-frontend places the query in a queue by communicating with the query-scheduler, where it waits to be picked up by a querier.
 1. A querier picks up the query from the queue and executes it.
 1. A querier or queriers return the result to query-frontend, which then aggregates and forwards the results to the client.
