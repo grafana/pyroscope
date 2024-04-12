@@ -79,7 +79,7 @@ Knowing there is an issue with the `orderCar()` function we automatically select
 We can also see that the `mutexLock()` function is consuming 76% of CPU resources during this time period.
 ![2_java_second_slide-02-01](https://user-images.githubusercontent.com/23323466/173831827-085b9fe5-0538-4ea4-8da7-777b71359bf9.png)
 
-## Comparing Two Tag Sets with FlameQL
+## Comparing two tag sets with FlameQL
 Using Pyroscope's "comparison view" we can actually select two different sets of tags using Pyroscope's prometheus-inspired query language [FlameQL](https://pyroscope.io/docs/flameql/) to compare the resulting flame graphs. The pink section on the left timeline contains all data where to region is **not equal to** eu-north
 ```
 REGION != "eu-north"
@@ -94,7 +94,7 @@ In the graph where `REGION = "eu-north"`, `checkDriverAvailability()` takes ~92%
 
 ![3_java_third_slide-01-01](https://user-images.githubusercontent.com/23323466/173831391-769d3f26-4b7a-4c2d-815c-324ecbbf06f5.png)
 
-## Visualizing Diff Between Two Flame graphs
+## Visualizing diff between two flame graphs
 While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flame graphs is better visualized via a diff flame graph, where red represents cpu time added and green represents cpu time removed. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flame graph.
 ![4_java_fourth_slide-01](https://user-images.githubusercontent.com/23323466/173279888-85c9eead-e3cd-48e6-bf73-204e1074ad2b.jpg)
 

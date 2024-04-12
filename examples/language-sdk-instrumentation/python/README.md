@@ -91,7 +91,7 @@ Using Pyroscope's "comparison view" we can actually select two different time ra
 When we select a period of low-cpu utilization and a period of high-cpu utilization we can see that there is clearly different behavior in the `mutex_lock()` function where it takes **51% of CPU** during low-cpu times and **78% of CPU** during high-cpu times.
 ![python_third_slide_05](https://user-images.githubusercontent.com/23323466/135805969-55fdee40-fe0c-412d-9ec0-0bbc6a748ed4.jpg)
 
-## Visualizing Diff Between Two Flame graphs
+## Visualizing diff between two flame graphs
 While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flame graphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flame graph.
 ![python_fourth_slide_05](https://user-images.githubusercontent.com/23323466/135805986-594ffa3b-e735-4f91-875d-4f76fdff2b60.jpg)
 

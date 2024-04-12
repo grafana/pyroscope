@@ -75,7 +75,7 @@ This is a clear indicator of a memory leak.
 
 ![memory leak example](https://grafana.com/static/img/pyroscope/pyroscope-memory-leak-2023-11-30.png)
 
-Without profiling, this is maybe something that's exhibited in metrics or out-of-memory errors (OOM) logs but with profiling you have more details into the specific function that's allocating the memory which is causing the leak at the line level.
+Without profiling, this may be something that's exhibited in metrics or out-of-memory errors (OOM) logs but with profiling you have more details into the specific function that's allocating the memory which is causing the leak at the line level.
 
 ## Goroutine profiling
 

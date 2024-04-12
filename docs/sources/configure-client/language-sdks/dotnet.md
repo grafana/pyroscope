@@ -143,7 +143,7 @@ It is possible to dynamically change authorization credentials:
 Pyroscope.Profiler.Instance.SetBasicAuth(basicAuthUser, BasicAuthPassword);
 ```
 
-Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/examples/language-sdk-instrumentation/dotnet/rideshare/example/Program.cs) exposing these APIs as http endpoints.
+Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/examples/language-sdk-instrumentation/dotnet/rideshare/example/Program.cs) exposing these APIs as HTTP endpoints.
 
 ### Configuration options
 

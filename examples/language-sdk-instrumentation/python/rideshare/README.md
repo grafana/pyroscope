@@ -108,7 +108,7 @@ When we select a period of low-cpu utilization and a period of high-cpu utilizat
 
 ![python_pop_out_library_comparison_00](https://user-images.githubusercontent.com/23323466/191374975-d374db02-4cb1-48d5-bc1a-6194193a9f09.png)
 
-## Visualizing Diff Between Two Flame graphs
+## Visualizing diff between two flame graphs
 
 While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flame graphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flame graph.
 ![find_nearest_vehicle_diff](https://user-images.githubusercontent.com/23323466/191320888-b49eb7de-06d5-4e6b-b9ac-198d7c9e2fcf.png)

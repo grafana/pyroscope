@@ -90,7 +90,7 @@ When we select a period of low-cpu utilization, and a period of high-cpu utiliza
 
 ![ruby_third_slide_01-01](https://user-images.githubusercontent.com/23323466/139567004-96064c5b-570c-48a4-aa9a-07a46a0646a5.jpg)
 
-## Visualizing Diff Between Two Flame graphs
+## Visualizing diff between two flame graphs
 While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flame graphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flame graph.
 
 ![ruby_fourth_slide_01-01](https://user-images.githubusercontent.com/23323466/139567016-3f738923-2429-4f93-8fe0-cc0ca8c765fd.jpg)
