@@ -68,6 +68,8 @@ type Session interface {
 type SessionDebugInfo struct {
 	ElfCache symtab.ElfCacheDebugInfo                          `river:"elf_cache,attr,optional"`
 	PidCache symtab.GCacheDebugInfo[symtab.ProcTableDebugInfo] `river:"pid_cache,attr,optional"`
+	Arch     string                                            `river:"arch,attr"`
+	Kernel   string                                            `river:"kernel,attr"`
 }
 
 type pids struct {
@@ -277,12 +279,14 @@ func (s *session) CollectProfiles(cb pprof.CollectProfilesCallback) error {
 }
 
 func (s *session) DebugInfo() interface{} {
+	pv, _ := os.ReadFile("/proc/version")
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
 	return SessionDebugInfo{
 		ElfCache: s.symCache.ElfCacheDebugInfo(),
 		PidCache: s.symCache.PidCacheDebugInfo(),
+		Arch:     runtime.GOARCH,
+		Kernel:   string(pv),
 	}
 }
 
