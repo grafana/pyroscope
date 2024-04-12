@@ -36,7 +36,7 @@ struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, u32);
     __type(value, struct pid_config);
-    __uint(max_entries, 1024);
+    __uint(max_entries, 2048);
 } pids SEC(".maps");
 
 

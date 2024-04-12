@@ -2,6 +2,8 @@ package python
 
 import "fmt"
 
+const MapNameSymbols = "py_symbols"
+
 /*
 enum {
     STACK_STATUS_COMPLETE = 0,

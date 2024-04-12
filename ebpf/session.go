@@ -48,6 +48,12 @@ type SessionOptions struct {
 	VerifierLogSize           int
 	PythonBPFErrorLogEnabled  bool
 	PythonBPFDebugLogEnabled  bool
+	BPFMapsOptions            BPFMapsOptions
+}
+
+type BPFMapsOptions struct {
+	PIDMapSize     uint32
+	SymbolsMapSize uint32
 }
 
 type Session interface {
@@ -62,6 +68,8 @@ type Session interface {
 type SessionDebugInfo struct {
 	ElfCache symtab.ElfCacheDebugInfo                          `river:"elf_cache,attr,optional"`
 	PidCache symtab.GCacheDebugInfo[symtab.ProcTableDebugInfo] `river:"pid_cache,attr,optional"`
+	Arch     string                                            `river:"arch,attr"`
+	Kernel   string                                            `river:"kernel,attr"`
 }
 
 type pids struct {
@@ -138,6 +146,7 @@ func NewSession(
 }
 
 func (s *session) Start() error {
+	s.printDebugInfo()
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	var err error
@@ -152,6 +161,9 @@ func (s *session) Start() error {
 	spec, err := pyrobpf.LoadProfile()
 	if err != nil {
 		return fmt.Errorf("pyrobpf load %w", err)
+	}
+	if s.options.BPFMapsOptions.PIDMapSize != 0 {
+		spec.Maps[pyrobpf.MapNamePIDs].MaxEntries = s.options.BPFMapsOptions.PIDMapSize
 	}
 
 	_, nsIno, err := getPIDNamespace()
@@ -267,12 +279,14 @@ func (s *session) CollectProfiles(cb pprof.CollectProfilesCallback) error {
 }
 
 func (s *session) DebugInfo() interface{} {
+	pv, _ := os.ReadFile("/proc/version")
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
 	return SessionDebugInfo{
 		ElfCache: s.symCache.ElfCacheDebugInfo(),
 		PidCache: s.symCache.PidCacheDebugInfo(),
+		Arch:     runtime.GOARCH,
+		Kernel:   string(pv),
 	}
 }
 
@@ -743,16 +757,11 @@ func (s *session) linkKProbes() error {
 		required bool
 	}
 	var hooks []hook
-	archSys := ""
-	if "amd64" == runtime.GOARCH {
-		archSys = "__x64_"
-	} else {
-		archSys = "__arm64_"
-	}
+
 	hooks = []hook{
 		{kprobe: "disassociate_ctty", prog: s.bpf.DisassociateCtty, required: true},
-		{kprobe: archSys + "sys_execve", prog: s.bpf.Exec, required: false},
-		{kprobe: archSys + "sys_execveat", prog: s.bpf.Exec, required: false},
+		{kprobe: "sys_execve", prog: s.bpf.Exec, required: false},
+		{kprobe: "sys_execveat", prog: s.bpf.Exec, required: false},
 	}
 	for _, it := range hooks {
 		kp, err := link.Kprobe(it.kprobe, it.prog, nil)
@@ -779,9 +788,6 @@ func (s *session) cleanup() {
 		if s.pyperf != nil {
 			s.pyperf.RemoveDeadPID(pid)
 		}
-		if err := s.bpf.Pids.Delete(pid); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
-			_ = level.Error(s.logger).Log("msg", "delete pid config", "pid", pid, "err", err)
-		}
 		s.targetFinder.RemoveDeadPID(pid)
 	}
 
@@ -793,9 +799,6 @@ func (s *session) cleanup() {
 			}
 			delete(s.pids.unknown, pid)
 			delete(s.pids.all, pid)
-			if err := s.bpf.Pids.Delete(pid); err != nil && !errors.Is(err, ebpf.ErrKeyNotExist) {
-				_ = level.Error(s.logger).Log("msg", "delete pid config", "pid", pid, "err", err)
-			}
 		}
 	}
 
@@ -911,6 +914,12 @@ func (s *session) pythonBPFErrorLogEnabled(target *sd.Target) bool {
 		enabled = v
 	}
 	return enabled
+}
+
+func (s *session) printDebugInfo() {
+	_ = level.Debug(s.logger).Log("arch", runtime.GOARCH)
+	pv, _ := os.ReadFile("/proc/version")
+	_ = level.Debug(s.logger).Log("/proc/version", pv)
 }
 
 type stackBuilder struct {
