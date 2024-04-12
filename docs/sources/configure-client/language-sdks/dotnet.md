@@ -31,7 +31,7 @@ Our .NET profiler works with the following .NET versions:
 
 ## Before you begin
 
-To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
 
 The Pyroscope server can be a local server for development or a remote server for production use.
 
@@ -143,7 +143,7 @@ It is possible to dynamically change authorization credentials:
 Pyroscope.Profiler.Instance.SetBasicAuth(basicAuthUser, BasicAuthPassword);
 ```
 
-Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/examples/dotnet/rideshare/example/Program.cs) exposing this APIs as an http endpoint.
+Here is a simple [example](https://github.com/grafana/pyroscope/blob/main/examples/language-sdk-instrumentation/dotnet/rideshare/example/Program.cs) exposing this APIs as an http endpoint.
 
 ### Configuration options
 

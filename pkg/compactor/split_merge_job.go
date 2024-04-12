@@ -7,11 +7,11 @@ package compactor
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/prometheus/prometheus/model/labels"
-	"golang.org/x/exp/slices"
 
 	"github.com/grafana/pyroscope/pkg/phlaredb/block"
 	"github.com/grafana/pyroscope/pkg/phlaredb/sharding"

@@ -63,9 +63,28 @@ func (t *Tree) InsertStack(v int64, stack ...string) {
 	}
 	r := &node{children: t.root}
 	n := r
-	for j := range stack {
+	for s := range stack {
+		name := stack[s]
 		n.total += v
-		n = n.insert(stack[j])
+		// Inlined node.insert
+		i, j := 0, len(n.children)
+		for i < j {
+			h := int(uint(i+j) >> 1)
+			if n.children[h].name < name {
+				i = h + 1
+			} else {
+				j = h
+			}
+		}
+		if i < len(n.children) && n.children[i].name == name {
+			n = n.children[i]
+		} else {
+			child := &node{parent: n, name: name}
+			n.children = append(n.children, child)
+			copy(n.children[i+1:], n.children[i:])
+			n.children[i] = child
+			n = child
+		}
 	}
 	// Leaf.
 	n.total += v

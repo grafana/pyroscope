@@ -649,7 +649,7 @@ func Test_SampleLabels(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.description, func(t *testing.T) {
-			series, _ := extractSampleSeries(tc.pushReq)
+			series := extractSampleSeries(tc.pushReq)
 			require.Len(t, series, len(tc.series))
 			for i, actualSeries := range series {
 				expectedSeries := tc.series[i]

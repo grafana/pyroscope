@@ -12,6 +12,8 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type ProfileGlobalConfigT struct{ NsPidIno uint64 }
+
 type ProfilePidConfig struct {
 	Type          uint8
 	CollectUser   uint8

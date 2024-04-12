@@ -56,7 +56,7 @@ type StoreGatewayQuerier struct {
 	subservicesWatcher *services.FailureWatcher
 }
 
-func NewStoreGatewayQuerier(
+func newStoreGatewayQuerier(
 	gatewayCfg storegateway.Config,
 	factory ring_client.PoolFactory,
 	limits StoreGatewayLimits,

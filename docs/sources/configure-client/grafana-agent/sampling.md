@@ -61,4 +61,4 @@ discovery.relabel "profile_pods" {
 
 This strategy does not guarantee precise sampling. Due to its reliance on an MD5 hash, there is not a perfectly uniform distribution of scrape targets into shards. Larger numbers of scrape targets will yield increasingly accurate sampling.
 
-Keep in mind, if the label being hashed is deterministic, you will see deterministic sharding and thereby deterministic sampling of scrape targets. Similarly, if the the label being hashed is non-deterministic, you will see scrape targets being sampled in a non-deterministic fashion.
+Keep in mind, if the label being hashed is deterministic, you will see deterministic sharding and thereby deterministic sampling of scrape targets. Similarly, if the label being hashed is non-deterministic, you will see scrape targets being sampled in a non-deterministic fashion.

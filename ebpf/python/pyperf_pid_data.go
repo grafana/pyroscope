@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/pyroscope/ebpf/symtab"
 )
 
-func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
+func GetPyPerfPidData(l log.Logger, pid uint32, collectKernel bool) (*PerfPyPidData, error) {
 	mapsFD, err := os.Open(fmt.Sprintf("/proc/%d/maps", pid))
 	if err != nil {
 		return nil, fmt.Errorf("reading proc maps %d: %w", pid, err)
@@ -142,6 +142,11 @@ func GetPyPerfPidData(l log.Logger, pid uint32) (*PerfPyPidData, error) {
 		PyVarObjectObSize:             offsets.PyVarObject_ob_size,
 		PyObjectObType:                offsets.PyObject_ob_type,
 		PyTypeObjectTpName:            offsets.PyTypeObject_tp_name,
+	}
+	if collectKernel {
+		data.CollectKernel = 1
+	} else {
+		data.CollectKernel = 0
 	}
 	return data, nil
 }

@@ -1,0 +1,144 @@
+{
+  "minio": {
+    "enabled": true
+  },
+  "pyroscope": {
+    "components": {
+      "compactor": {
+        "kind": "StatefulSet",
+        "persistence": {
+          "enabled": false
+        },
+        "replicaCount": 3,
+        "resources": {
+          "limits": {
+            "memory": "16Gi"
+          },
+          "requests": {
+            "cpu": 1,
+            "memory": "8Gi"
+          }
+        },
+        "terminationGracePeriodSeconds": 1200
+      },
+      "distributor": {
+        "autoscaling": {
+          "enabled": true,
+          "minReplicas": 2
+        },
+        "kind": "Deployment",
+        "replicaCount": 2,
+        "resources": {
+          "limits": {
+            "memory": "1Gi"
+          },
+          "requests": {
+            "cpu": "500m",
+            "memory": "256Mi"
+          }
+        }
+      },
+      "ingester": {
+        "kind": "StatefulSet",
+        "replicaCount": 3,
+        "resources": {
+          "limits": {
+            "memory": "16Gi"
+          },
+          "requests": {
+            "cpu": 1,
+            "memory": "8Gi"
+          }
+        },
+        "terminationGracePeriodSeconds": 600
+      },
+      "querier": {
+        "autoscaling": {
+          "behavior": {
+            "enabled": true,
+            "scaleDown": {
+              "stabilizationWindowSeconds": 60
+            }
+          },
+          "enabled": true,
+          "maxReplicas": 4,
+          "minReplicas": 2,
+          "targetCPUUtilizationPercentage": null,
+          "targetMemoryUtilizationPercentage": 60
+        },
+        "kind": "Deployment",
+        "replicaCount": 3,
+        "resources": {
+          "limits": {
+            "memory": "1Gi"
+          },
+          "requests": {
+            "cpu": 1,
+            "memory": "256Mi"
+          }
+        }
+      },
+      "query-frontend": {
+        "autoscaling": {
+          "enabled": true,
+          "maxReplicas": 4,
+          "minReplicas": 2,
+          "targetCPUUtilizationPercentage": null,
+          "targetMemoryUtilizationPercentage": 60
+        },
+        "kind": "Deployment",
+        "replicaCount": 2,
+        "resources": {
+          "limits": {
+            "memory": "1Gi"
+          },
+          "requests": {
+            "cpu": "100m",
+            "memory": "256Mi"
+          }
+        }
+      },
+      "query-scheduler": {
+        "autoscaling": {
+          "enabled": true,
+          "maxReplicas": 4,
+          "minReplicas": 2,
+          "targetCPUUtilizationPercentage": 40
+        },
+        "kind": "Deployment",
+        "replicaCount": 2,
+        "resources": {
+          "limits": {
+            "memory": "1Gi"
+          },
+          "requests": {
+            "cpu": "100m",
+            "memory": "256Mi"
+          }
+        }
+      },
+      "store-gateway": {
+        "kind": "StatefulSet",
+        "persistence": {
+          "enabled": false
+        },
+        "readinessProbe": {
+          "initialDelaySeconds": 60
+        },
+        "replicaCount": 3,
+        "resources": {
+          "limits": {
+            "memory": "16Gi"
+          },
+          "requests": {
+            "cpu": 1,
+            "memory": "8Gi"
+          }
+        }
+      }
+    },
+    "extraArgs": {
+      "store-gateway.sharding-ring.replication-factor": "3"
+    }
+  }
+}

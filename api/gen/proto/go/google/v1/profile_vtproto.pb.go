@@ -10,7 +10,6 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	io "io"
 	bits "math/bits"
-	sync "sync"
 )
 
 const (
@@ -1273,64 +1272,6 @@ func encodeVarint(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
-
-var vtprotoPool_Profile = sync.Pool{
-	New: func() interface{} {
-		return &Profile{}
-	},
-}
-
-func (m *Profile) ResetVT() {
-	for _, mm := range m.SampleType[:cap(m.SampleType)] {
-		if mm != nil {
-			mm.Reset()
-		}
-	}
-	f0 := m.SampleType[:0]
-	for _, mm := range m.Sample[:cap(m.Sample)] {
-		if mm != nil {
-			mm.Reset()
-		}
-	}
-	f1 := m.Sample[:0]
-	for _, mm := range m.Mapping[:cap(m.Mapping)] {
-		if mm != nil {
-			mm.Reset()
-		}
-	}
-	f2 := m.Mapping[:0]
-	for _, mm := range m.Location[:cap(m.Location)] {
-		if mm != nil {
-			mm.Reset()
-		}
-	}
-	f3 := m.Location[:0]
-	for _, mm := range m.Function[:cap(m.Function)] {
-		if mm != nil {
-			mm.Reset()
-		}
-	}
-	f4 := m.Function[:0]
-	f5 := m.StringTable[:0]
-	f6 := m.Comment[:0]
-	m.Reset()
-	m.SampleType = f0
-	m.Sample = f1
-	m.Mapping = f2
-	m.Location = f3
-	m.Function = f4
-	m.StringTable = f5
-	m.Comment = f6
-}
-func (m *Profile) ReturnToVTPool() {
-	if m != nil {
-		m.ResetVT()
-		vtprotoPool_Profile.Put(m)
-	}
-}
-func ProfileFromVTPool() *Profile {
-	return vtprotoPool_Profile.Get().(*Profile)
-}
 func (m *Profile) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -1647,14 +1588,7 @@ func (m *Profile) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if len(m.SampleType) == cap(m.SampleType) {
-				m.SampleType = append(m.SampleType, &ValueType{})
-			} else {
-				m.SampleType = m.SampleType[:len(m.SampleType)+1]
-				if m.SampleType[len(m.SampleType)-1] == nil {
-					m.SampleType[len(m.SampleType)-1] = &ValueType{}
-				}
-			}
+			m.SampleType = append(m.SampleType, &ValueType{})
 			if err := m.SampleType[len(m.SampleType)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1688,14 +1622,7 @@ func (m *Profile) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if len(m.Sample) == cap(m.Sample) {
-				m.Sample = append(m.Sample, &Sample{})
-			} else {
-				m.Sample = m.Sample[:len(m.Sample)+1]
-				if m.Sample[len(m.Sample)-1] == nil {
-					m.Sample[len(m.Sample)-1] = &Sample{}
-				}
-			}
+			m.Sample = append(m.Sample, &Sample{})
 			if err := m.Sample[len(m.Sample)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1729,14 +1656,7 @@ func (m *Profile) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if len(m.Mapping) == cap(m.Mapping) {
-				m.Mapping = append(m.Mapping, &Mapping{})
-			} else {
-				m.Mapping = m.Mapping[:len(m.Mapping)+1]
-				if m.Mapping[len(m.Mapping)-1] == nil {
-					m.Mapping[len(m.Mapping)-1] = &Mapping{}
-				}
-			}
+			m.Mapping = append(m.Mapping, &Mapping{})
 			if err := m.Mapping[len(m.Mapping)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1770,14 +1690,7 @@ func (m *Profile) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if len(m.Location) == cap(m.Location) {
-				m.Location = append(m.Location, &Location{})
-			} else {
-				m.Location = m.Location[:len(m.Location)+1]
-				if m.Location[len(m.Location)-1] == nil {
-					m.Location[len(m.Location)-1] = &Location{}
-				}
-			}
+			m.Location = append(m.Location, &Location{})
 			if err := m.Location[len(m.Location)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -1811,14 +1724,7 @@ func (m *Profile) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if len(m.Function) == cap(m.Function) {
-				m.Function = append(m.Function, &Function{})
-			} else {
-				m.Function = m.Function[:len(m.Function)+1]
-				if m.Function[len(m.Function)-1] == nil {
-					m.Function[len(m.Function)-1] = &Function{}
-				}
-			}
+			m.Function = append(m.Function, &Function{})
 			if err := m.Function[len(m.Function)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -2038,7 +1944,7 @@ func (m *Profile) UnmarshalVT(dAtA []byte) error {
 					}
 				}
 				elementCount = count
-				if elementCount != 0 && len(m.Comment) == 0 && cap(m.Comment) < elementCount {
+				if elementCount != 0 && len(m.Comment) == 0 {
 					m.Comment = make([]int64, 0, elementCount)
 				}
 				for iNdEx < postIndex {

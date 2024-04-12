@@ -34,6 +34,6 @@ storage:
   trace:
     backend: local                     # backend configuration to use
     wal:
-      path: /tmp/tempo/wal             # where to store the the wal locally
+      path: /tmp/tempo/wal             # where to store the wal locally
     local:
       path: /tmp/tempo/blocks

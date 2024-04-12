@@ -8,11 +8,11 @@ rideshare/docker/push: rideshare/docker/push-golang rideshare/docker/push-loadge
 
 .PHONY: rideshare/docker/push-golang
 rideshare/docker/push-golang:
-	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-golang -t $(IMAGE_PREFIX)pyroscope-rideshare-golang:$(IMAGE_TAG) examples/golang-push/rideshare
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-golang -t $(IMAGE_PREFIX)pyroscope-rideshare-golang:$(IMAGE_TAG) examples/language-sdk-instrumentation/golang-push/rideshare
 
 .PHONY: rideshare/docker/push-loadgen
 rideshare/docker/push-loadgen:
-	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen:$(IMAGE_TAG) -f examples/golang-push/rideshare/Dockerfile.load-generator examples/golang-push/rideshare
+	docker buildx build --push --platform $(IMAGE_PLATFORM) -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen -t $(IMAGE_PREFIX)pyroscope-rideshare-loadgen:$(IMAGE_TAG) -f examples/language-sdk-instrumentation/golang-push/rideshare/Dockerfile.load-generator examples/language-sdk-instrumentation/golang-push/rideshare
 
 .PHONY: rideshare/docker/push-python
 rideshare/docker/push-python:

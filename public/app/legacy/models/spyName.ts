@@ -15,7 +15,7 @@ export const SpyNameFirstClass = [
 ] as const;
 
 export const SpyNameOther = [
-  'scrape', // for compability purposes, it should be golang
+  'scrape', // for compatibility purposes, it should be golang
   'tracing',
   'unknown',
 ] as const;

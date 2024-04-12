@@ -184,7 +184,7 @@
     "zod": "^3.22.3"
   },
   "optionalDependencies": {
-    "@pyroscope/nodejs": "^0.2.5"
+    "@pyroscope/nodejs": "^0.2.9"
   },
   "resolutions": {
     "jquery": "^3.6.4",

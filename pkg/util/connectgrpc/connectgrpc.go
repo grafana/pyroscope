@@ -61,7 +61,13 @@ func RoundTripUnary[Req any, Res any](ctx context.Context, rt GRPCRoundTripper, 
 		return nil, err
 	}
 	if res.Code/100 != 2 {
-		return nil, connect.NewError(HTTPToCode(res.Code), errors.New(string(res.Body)))
+		err := connect.NewError(HTTPToCode(res.Code), errors.New(string(res.Body)))
+		for _, h := range res.Headers {
+			for _, v := range h.Values {
+				err.Meta().Add(h.Key, v)
+			}
+		}
+		return nil, err
 	}
 	return decodeResponse[Res](res)
 }
@@ -165,6 +171,11 @@ func decodeResponse[Resp any](r *httpgrpc.HTTPResponse) (*connect.Response[Resp]
 		return nil, err
 	}
 	resp := &connect.Response[Resp]{Msg: new(Resp)}
+	for _, h := range r.Headers {
+		for _, v := range h.Values {
+			resp.Header().Add(h.Key, v)
+		}
+	}
 	if err := proto.Unmarshal(r.Body, resp.Any().(proto.Message)); err != nil {
 		return nil, err
 	}
@@ -353,5 +364,4 @@ func (g *httpgrpcClient) Do(req *http.Request) (*http.Response, error) {
 		StatusCode:    int(resp.Code),
 		Header:        httpgrpcHeaderToConnectHeader(resp.Headers),
 	}, nil
-
 }

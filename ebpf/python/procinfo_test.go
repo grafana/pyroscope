@@ -131,6 +131,38 @@ ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsysca
 	require.Equal(t, info.Version, Version{3, 7, 0})
 	require.NotNil(t, info.PythonMaps)
 	require.Nil(t, info.LibPythonMaps)
+
+	maps = `aaaae1f10000-aaaae2040000 r-xp 00000000 103:01 980158                    /usr/bin/uwsgi
+aaaae204f000-aaaae2052000 r--p 0012f000 103:01 980158                    /usr/bin/uwsgi
+aaaae2052000-aaaae2065000 rw-p 00132000 103:01 980158                    /usr/bin/uwsgi
+aaaae2065000-aaaae206c000 rw-p 00000000 00:00 0
+aaaaeb0dc000-aaaaef082000 rw-p 00000000 00:00 0                          [heap]
+aaaaef082000-aaaaf6ad7000 rw-p 00000000 00:00 0                          [heap]
+ffffa259d000-ffffa25a1000 rw-p 00000000 00:00 0
+ffffa25a1000-ffffa26fc000 r-xp 00000000 103:01 831681                    /usr/lib/aarch64-linux-gnu/libc-2.31.so
+ffffa26fc000-ffffa270b000 ---p 0015b000 103:01 831681                    /usr/lib/aarch64-linux-gnu/libc-2.31.so
+ffffa270b000-ffffa270f000 r--p 0015a000 103:01 831681                    /usr/lib/aarch64-linux-gnu/libc-2.31.so
+ffffa270f000-ffffa2711000 rw-p 0015e000 103:01 831681                    /usr/lib/aarch64-linux-gnu/libc-2.31.so
+ffffa2711000-ffffa2714000 rw-p 00000000 00:00 0
+ffffa2714000-ffffa2b35000 r-xp 00000000 103:01 836228                    /usr/lib/libpython3.8-pyston2.3.so.1.0
+ffffa2b35000-ffffa2b45000 ---p 00421000 103:01 836228                    /usr/lib/libpython3.8-pyston2.3.so.1.0
+ffffa2b45000-ffffa2b4c000 r--p 00421000 103:01 836228                    /usr/lib/libpython3.8-pyston2.3.so.1.0
+ffffa2b4c000-ffffa2b83000 rw-p 00428000 103:01 836228                    /usr/lib/libpython3.8-pyston2.3.so.1.0
+ffffa2b83000-ffffa2ba4000 rw-p 00000000 00:00 0
+ffffa32a1000-ffffa32a3000 r--p 00000000 00:00 0                          [vvar]
+ffffa32a3000-ffffa32a4000 r-xp 00000000 00:00 0                          [vdso]
+ffffa32a4000-ffffa32a5000 r--p 00021000 103:01 836208                    /usr/lib/ld-linux-aarch64.so.1
+ffffa32a5000-ffffa32a7000 rw-p 00022000 103:01 836208                    /usr/lib/ld-linux-aarch64.so.1
+ffffa4126000-ffffa45e6000 rwxp 00000000 00:00 0
+ffffa45e6000-ffffa52e6000 rwxp 00000000 00:00 0
+fffff8c25000-fffff8c53000 rw-p 00000000 00:00 0                          [stack]`
+
+	info, err = GetProcInfo(bufio.NewScanner(bytes.NewReader([]byte(maps))))
+	require.NoError(t, err)
+	require.Nil(t, info.Musl)
+	require.Equal(t, info.Version, Version{3, 8, 0})
+	require.Nil(t, info.PythonMaps)
+	require.NotNil(t, info.LibPythonMaps)
 }
 
 const testdataPath = "../testdata/"
@@ -261,6 +293,7 @@ func TestPython(t *testing.T) {
 		testdataPath + "python-x64/3.6.6/lib/libpython3.6m.so.1.0",
 		testdataPath + "python-x64/3.8.11/lib/libpython3.8.so.1.0",
 		testdataPath + "python-x64/3.8.10/lib/libpython3.8.so.1.0",
+		testdataPath + "python-x64/3.8.12/lib/libpython3.8-pyston2.3.so.1.0",
 		testdataPath + "python-arm64/3.7.12/lib/libpython3.7m.so.1.0",
 		testdataPath + "python-arm64/3.5.1/lib/libpython3.5m.so.1.0",
 		testdataPath + "python-arm64/3.9.15/lib/libpython3.9.so.1.0",
@@ -366,6 +399,7 @@ func TestPython(t *testing.T) {
 		testdataPath + "python-arm64/3.6.6/lib/libpython3.6m.so.1.0",
 		testdataPath + "python-arm64/3.8.11/lib/libpython3.8.so.1.0",
 		testdataPath + "python-arm64/3.8.10/lib/libpython3.8.so.1.0",
+		testdataPath + "python-arm64/3.8.12/lib/libpython3.8-pyston2.3.so.1.0",
 	}
 	for _, f := range fs {
 		t.Run(f, func(t *testing.T) {

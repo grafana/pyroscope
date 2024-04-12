@@ -31,6 +31,7 @@ import (
 	"github.com/grafana/pyroscope/api/gen/proto/go/settings/v1/settingsv1connect"
 	statusv1 "github.com/grafana/pyroscope/api/gen/proto/go/status/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/storegateway/v1/storegatewayv1connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/vcs/v1/vcsv1connect"
 	"github.com/grafana/pyroscope/api/gen/proto/go/version/v1/versionv1connect"
 	"github.com/grafana/pyroscope/api/openapiv2"
 	"github.com/grafana/pyroscope/pkg/adhocprofiles"
@@ -234,9 +235,15 @@ func (a *API) RegisterRing(r http.Handler) {
 	})
 }
 
+type QuerierSvc interface {
+	querierv1connect.QuerierServiceHandler
+	vcsv1connect.VCSServiceHandler
+}
+
 // RegisterQuerier registers the endpoints associated with the querier.
-func (a *API) RegisterQuerier(svc querierv1connect.QuerierServiceHandler) {
+func (a *API) RegisterQuerier(svc QuerierSvc) {
 	querierv1connect.RegisterQuerierServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware, a.grpcLogMiddleware)
+	vcsv1connect.RegisterVCSServiceHandler(a.server.HTTP, svc, a.grpcAuthMiddleware, a.grpcLogMiddleware)
 }
 
 func (a *API) RegisterPyroscopeHandlers(client querierv1connect.QuerierServiceClient) {

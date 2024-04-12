@@ -4,9 +4,19 @@
 
 To release a new version of the project you need to follow the following steps:
 
-1. Create a new branch for the release (e.g., `release/v0.x`)
-2. Create the tag for the release (e.g., `v0.x.0`)
+1. Create a new branch for the release (e.g., `release/vX.Y`)
+2. Create the tag for the release (e.g., `vX.Y.Z`)
 3. Push the release branch and tag to the remote
+4. Create a GitHub label for backports:
+
+   ```gh label create "backport release/vX.Y" -d "This label will backport a merged PR to the release/vX.Y branch" -c "#0052cc"```
+
+> [!IMPORTANT]
+> The release branch should only contain the major (X) and minor (Y) version, but not the patch level (Z), for example:
+>
+> ✅ Correct: `release/v1.3`
+>
+> ⚠️  Incorrect: `release/v1.3.0`
 
 The CI will automatically handle the build and create a draft github release.
 

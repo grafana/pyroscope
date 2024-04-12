@@ -13,7 +13,7 @@ The Ruby Profiler revolutionizes performance tuning in Ruby applications. Integr
 
 ## Before you begin
 
-To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
 
 The Pyroscope server can be a local server for development or a remote server for production use.
 
@@ -99,5 +99,5 @@ If your Pyroscope server has multi-tenancy enabled, you'll need to configure a t
 ## Ruby profiling examples
 
 Check out the following resources to learn more about Ruby profiling:
-- [Ruby examples](https://github.com/pyroscope-io/pyroscope/tree/main/examples/ruby)
+- [Ruby examples](https://github.com/pyroscope-io/pyroscope/tree/main/examples/language-sdk-instrumentation/ruby)
 - [Ruby Demo](https://demo.pyroscope.io/?query=rideshare-app-ruby.cpu%7B%7D) showing Ruby example with tags

@@ -1,0 +1,34 @@
+logging {
+  level = "debug"
+  format = "logfmt"
+}
+
+pyroscope.write "example" {
+  // Send metrics to a locally running Pyroscope instance.
+  endpoint {
+    url = "http://pyroscope:4040"
+
+    // To send data to Grafana Cloud you'll need to provide username and password.
+    // basic_auth {
+    //   username = "myuser"
+    //   password = "mypassword"
+    // }
+  }
+  external_labels = {
+    "env" = "example",
+  }
+}
+
+pyroscope.scrape "default" {
+  targets = [
+    {"__address__" = "us-east:5000", "service_name"="nodejs"},
+    {"__address__" = "eu-north:5000", "service_name"="nodejs"},
+    {"__address__" = "ap-south:5000", "service_name"="nodejs"},
+  ]
+  forward_to = [pyroscope.write.example.receiver]
+  profiling_config {
+    profile.memory { // disable memory, use godeltaprof_memory instead
+      path = "/debug/pprof/heap"
+    }
+  }
+}

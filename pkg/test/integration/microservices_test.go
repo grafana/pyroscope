@@ -1,0 +1,184 @@
+package integration
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"testing"
+	"time"
+
+	"connectrpc.com/connect"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
+
+	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
+	querierv1 "github.com/grafana/pyroscope/api/gen/proto/go/querier/v1"
+	"github.com/grafana/pyroscope/api/gen/proto/go/querier/v1/querierv1connect"
+	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/pprof/testhelper"
+	"github.com/grafana/pyroscope/pkg/test/integration/cluster"
+)
+
+// TestMicroServicesIntegration tests the integration of the microservices in a
+// similar to is actually run in the scalable/high availability setup.
+//
+// After the cluster is fully started, it pushes profiles for a number of services
+// and then queries the series, label names and label values. It then stops some
+// of the services and runs the same queries again to check if the cluster is still
+// able to respond to queries.
+func TestMicroServicesIntegration(t *testing.T) {
+	c := cluster.NewMicroServiceCluster()
+	ctx := context.Background()
+
+	require.NoError(t, c.Prepare())
+	for _, comp := range c.Components {
+		t.Log(comp.String())
+	}
+
+	// start returns as soon the cluster is ready
+	require.NoError(t, c.Start(ctx))
+	t.Log("Cluster ready")
+	defer func() {
+		waitStopped := c.Stop()
+		require.NoError(t, waitStopped(ctx))
+	}()
+
+	tc := newTestCtx(c)
+	t.Run("PushProfiles", func(t *testing.T) {
+		tc.pushProfiles(ctx, t)
+	})
+
+	t.Run("HealthyCluster", func(t *testing.T) {
+		tc.runQueryTest(ctx, t)
+	})
+
+	componentsToStop := map[string]struct{}{"store-gateway": {}, "ingester": {}}
+	g, gctx := errgroup.WithContext(ctx)
+	for _, comp := range c.Components {
+		if _, ok := componentsToStop[comp.Target]; ok {
+			t.Logf("Stopping %s", comp.Target)
+			awaitStop := comp.Stop()
+			delete(componentsToStop, comp.Target)
+			g.Go(func() error {
+				return awaitStop(gctx)
+			})
+		}
+	}
+	// wait for services being stopped
+	require.NoError(t, g.Wait())
+
+	t.Run("DegradedCluster", func(t *testing.T) {
+		tc.runQueryTest(ctx, t)
+	})
+
+}
+
+func newTestCtx(x interface {
+	PushClient() pushv1connect.PusherServiceClient
+	QueryClient() querierv1connect.QuerierServiceClient
+}) *testCtx {
+	return &testCtx{
+		now:          time.Now().Truncate(time.Second),
+		serviceCount: 100,
+		samples:      5,
+		querier:      x.QueryClient(),
+		pusher:       x.PushClient(),
+	}
+}
+
+type testCtx struct {
+	now          time.Time
+	serviceCount int
+	samples      int
+
+	querier querierv1connect.QuerierServiceClient
+	pusher  pushv1connect.PusherServiceClient
+}
+
+func (tc *testCtx) pushProfiles(ctx context.Context, t *testing.T) {
+	g, gctx := errgroup.WithContext(ctx)
+
+	g.SetLimit(20)
+	// for loop range over serviceCount
+	for i := 0; i < tc.serviceCount; i++ {
+		var i = i
+		g.Go(func() error {
+			serviceName := fmt.Sprintf("test-service-%d", i)
+			builder := testhelper.NewProfileBuilder(int64(1)).
+				CPUProfile().
+				WithLabels(
+					"job", "test",
+					"service_name", serviceName,
+				)
+			builder.ForStacktraceString("foo", "bar", "baz").AddSamples(1)
+			for j := 0; j < tc.samples; j++ {
+				builder.TimeNanos = tc.now.Add(time.Duration(j) * 5 * time.Second).UnixNano()
+				if (i+j)%3 == 0 {
+					builder.ForStacktraceString("foo", "bar", "boz").AddSamples(3)
+				}
+			}
+
+			rawProfile, err := builder.MarshalVT()
+			require.NoError(t, err)
+
+			_, err = tc.pusher.Push(gctx, connect.NewRequest(&pushv1.PushRequest{
+				Series: []*pushv1.RawProfileSeries{{
+					Labels:  builder.Labels,
+					Samples: []*pushv1.RawSample{{RawProfile: rawProfile}},
+				}},
+			}))
+			return err
+		})
+	}
+	require.NoError(t, g.Wait())
+
+}
+
+func (tc *testCtx) runQueryTest(ctx context.Context, t *testing.T) {
+	t.Run("QuerySeries", func(t *testing.T) {
+		resp, err := tc.querier.Series(ctx, connect.NewRequest(&querierv1.SeriesRequest{
+			Start:      tc.now.Add(-time.Hour).UnixMilli(),
+			End:        tc.now.Add(time.Hour).UnixMilli(),
+			LabelNames: []string{"__profile_type__", "job", "service_name"},
+		}))
+		require.NoError(t, err)
+		require.Len(t, resp.Msg.LabelsSet, 100)
+	})
+	t.Run("QueryLabelNames", func(t *testing.T) {
+		resp, err := tc.querier.LabelNames(ctx, connect.NewRequest(&typesv1.LabelNamesRequest{
+			Start: tc.now.Add(-time.Hour).UnixMilli(),
+			End:   tc.now.Add(time.Hour).UnixMilli(),
+		}))
+		require.NoError(t, err)
+		assert.Equal(t, []string{
+			"__name__",
+			"__period_type__",
+			"__period_unit__",
+			"__profile_type__",
+			"__service_name__",
+			"__type__",
+			"__unit__",
+			"job",
+			"service_name",
+		}, resp.Msg.Names)
+	})
+
+	t.Run("QueryLabelValues", func(t *testing.T) {
+		resp, err := tc.querier.LabelValues(ctx, connect.NewRequest(&typesv1.LabelValuesRequest{
+			Start: tc.now.Add(-time.Hour).UnixMilli(),
+			End:   tc.now.Add(time.Hour).UnixMilli(),
+			Name:  "service_name",
+		}))
+		require.NoError(t, err)
+		// loop over numbers from i too serviceCount
+		expectedValues := make([]string, tc.serviceCount)
+		for i := 0; i < tc.serviceCount; i++ {
+			// check if the service name is in the response
+			expectedValues[i] = fmt.Sprintf("test-service-%d", i)
+		}
+		sort.Strings(expectedValues)
+		assert.Equal(t, expectedValues, resp.Msg.Names)
+	})
+}

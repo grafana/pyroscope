@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -13,11 +14,13 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	ingestv1 "github.com/grafana/pyroscope/api/gen/proto/go/ingester/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
+	"github.com/grafana/pyroscope/pkg/iter"
 	phlaremodel "github.com/grafana/pyroscope/pkg/model"
 	"github.com/grafana/pyroscope/pkg/objstore/providers/filesystem"
 	phlarecontext "github.com/grafana/pyroscope/pkg/phlare/context"
@@ -253,6 +256,65 @@ func mustParseProfileSelector(t testing.TB, selector string) *typesv1.ProfileTyp
 	ps, err := phlaremodel.ParseProfileTypeSelector(selector)
 	require.NoError(t, err)
 	return ps
+}
+
+func TestHead_SelectMatchingProfiles_Order(t *testing.T) {
+	ctx := testContext(t)
+	const n = 15
+	head, err := NewHead(ctx, Config{
+		DataPath: t.TempDir(),
+		Parquet: &ParquetConfig{
+			MaxBufferRowCount: n - 1,
+		},
+	}, NoLimit)
+	require.NoError(t, err)
+
+	c := make(chan struct{})
+	var closeOnce sync.Once
+	head.profiles.onFlush = func() {
+		closeOnce.Do(func() {
+			close(c)
+		})
+	}
+
+	now := time.Now()
+	for i := 0; i < n; i++ {
+		x := newProfileFoo()
+		// Make sure some of our profiles have matching timestamps.
+		x.TimeNanos = now.Add(time.Second * time.Duration(i-i%2)).UnixNano()
+		require.NoError(t, head.Ingest(ctx, x, uuid.UUID{}, []*typesv1.LabelPair{
+			{Name: "job", Value: "foo"},
+			{Name: "x", Value: strconv.Itoa(i)},
+		}...))
+	}
+
+	<-c
+	q := head.Queriers()
+	assert.Equal(t, 2, len(q)) // on-disk and in-memory parts.
+
+	typ, err := phlaremodel.ParseProfileTypeSelector(":type:unit:type:unit")
+	require.NoError(t, err)
+	req := &ingestv1.SelectProfilesRequest{
+		LabelSelector: "{}",
+		Type:          typ,
+		End:           now.Add(time.Hour).UnixMilli(),
+	}
+
+	profiles := make([]Profile, 0, n)
+	for _, b := range q {
+		i, err := b.SelectMatchingProfiles(ctx, req)
+		require.NoError(t, err)
+		s, err := iter.Slice(i)
+		require.NoError(t, err)
+		profiles = append(profiles, s...)
+	}
+
+	assert.Equal(t, n, len(profiles))
+	for i, p := range profiles {
+		x, err := strconv.Atoi(p.Labels().Get("x"))
+		require.NoError(t, err)
+		require.Equal(t, i, x, "SelectMatchingProfiles order mismatch")
+	}
 }
 
 func TestHeadFlush(t *testing.T) {

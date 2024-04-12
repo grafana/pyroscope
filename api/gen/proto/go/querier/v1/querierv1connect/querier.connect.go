@@ -60,6 +60,9 @@ const (
 	QuerierServiceSelectSeriesProcedure = "/querier.v1.QuerierService/SelectSeries"
 	// QuerierServiceDiffProcedure is the fully-qualified name of the QuerierService's Diff RPC.
 	QuerierServiceDiffProcedure = "/querier.v1.QuerierService/Diff"
+	// QuerierServiceGetProfileStatsProcedure is the fully-qualified name of the QuerierService's
+	// GetProfileStats RPC.
+	QuerierServiceGetProfileStatsProcedure = "/querier.v1.QuerierService/GetProfileStats"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -74,6 +77,7 @@ var (
 	querierServiceSelectMergeProfileMethodDescriptor     = querierServiceServiceDescriptor.Methods().ByName("SelectMergeProfile")
 	querierServiceSelectSeriesMethodDescriptor           = querierServiceServiceDescriptor.Methods().ByName("SelectSeries")
 	querierServiceDiffMethodDescriptor                   = querierServiceServiceDescriptor.Methods().ByName("Diff")
+	querierServiceGetProfileStatsMethodDescriptor        = querierServiceServiceDescriptor.Methods().ByName("GetProfileStats")
 )
 
 // QuerierServiceClient is a client for the querier.v1.QuerierService service.
@@ -88,13 +92,16 @@ type QuerierServiceClient interface {
 	Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error)
 	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *connect.Request[v1.SelectMergeStacktracesRequest]) (*connect.Response[v1.SelectMergeStacktracesResponse], error)
-	// SelectMergeSpans returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	// SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeSpanProfile(context.Context, *connect.Request[v1.SelectMergeSpanProfileRequest]) (*connect.Response[v1.SelectMergeSpanProfileResponse], error)
 	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(context.Context, *connect.Request[v1.SelectMergeProfileRequest]) (*connect.Response[v12.Profile], error)
 	// SelectSeries returns a time series for the total sum of the requested profiles.
 	SelectSeries(context.Context, *connect.Request[v1.SelectSeriesRequest]) (*connect.Response[v1.SelectSeriesResponse], error)
+	// Diff returns a diff of two profiles
 	Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error)
+	// GetProfileStats returns profile stats for the current tenant.
+	GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
 }
 
 // NewQuerierServiceClient constructs a client for the querier.v1.QuerierService service. By
@@ -161,6 +168,12 @@ func NewQuerierServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(querierServiceDiffMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		getProfileStats: connect.NewClient[v11.GetProfileStatsRequest, v11.GetProfileStatsResponse](
+			httpClient,
+			baseURL+QuerierServiceGetProfileStatsProcedure,
+			connect.WithSchema(querierServiceGetProfileStatsMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -175,6 +188,7 @@ type querierServiceClient struct {
 	selectMergeProfile     *connect.Client[v1.SelectMergeProfileRequest, v12.Profile]
 	selectSeries           *connect.Client[v1.SelectSeriesRequest, v1.SelectSeriesResponse]
 	diff                   *connect.Client[v1.DiffRequest, v1.DiffResponse]
+	getProfileStats        *connect.Client[v11.GetProfileStatsRequest, v11.GetProfileStatsResponse]
 }
 
 // ProfileTypes calls querier.v1.QuerierService.ProfileTypes.
@@ -222,6 +236,11 @@ func (c *querierServiceClient) Diff(ctx context.Context, req *connect.Request[v1
 	return c.diff.CallUnary(ctx, req)
 }
 
+// GetProfileStats calls querier.v1.QuerierService.GetProfileStats.
+func (c *querierServiceClient) GetProfileStats(ctx context.Context, req *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error) {
+	return c.getProfileStats.CallUnary(ctx, req)
+}
+
 // QuerierServiceHandler is an implementation of the querier.v1.QuerierService service.
 type QuerierServiceHandler interface {
 	// ProfileType returns a list of the existing profile types.
@@ -234,13 +253,16 @@ type QuerierServiceHandler interface {
 	Series(context.Context, *connect.Request[v1.SeriesRequest]) (*connect.Response[v1.SeriesResponse], error)
 	// SelectMergeStacktraces returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeStacktraces(context.Context, *connect.Request[v1.SelectMergeStacktracesRequest]) (*connect.Response[v1.SelectMergeStacktracesResponse], error)
-	// SelectMergeSpans returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
+	// SelectMergeSpanProfile returns matching profiles aggregated in a flamegraph format. It will combine samples from within the same callstack, with each element being grouped by its function name.
 	SelectMergeSpanProfile(context.Context, *connect.Request[v1.SelectMergeSpanProfileRequest]) (*connect.Response[v1.SelectMergeSpanProfileResponse], error)
 	// SelectMergeProfile returns matching profiles aggregated in pprof format. It will contain all information stored (so including filenames and line number, if ingested).
 	SelectMergeProfile(context.Context, *connect.Request[v1.SelectMergeProfileRequest]) (*connect.Response[v12.Profile], error)
 	// SelectSeries returns a time series for the total sum of the requested profiles.
 	SelectSeries(context.Context, *connect.Request[v1.SelectSeriesRequest]) (*connect.Response[v1.SelectSeriesResponse], error)
+	// Diff returns a diff of two profiles
 	Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error)
+	// GetProfileStats returns profile stats for the current tenant.
+	GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error)
 }
 
 // NewQuerierServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -303,6 +325,12 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.Handler
 		connect.WithSchema(querierServiceDiffMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	querierServiceGetProfileStatsHandler := connect.NewUnaryHandler(
+		QuerierServiceGetProfileStatsProcedure,
+		svc.GetProfileStats,
+		connect.WithSchema(querierServiceGetProfileStatsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/querier.v1.QuerierService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case QuerierServiceProfileTypesProcedure:
@@ -323,6 +351,8 @@ func NewQuerierServiceHandler(svc QuerierServiceHandler, opts ...connect.Handler
 			querierServiceSelectSeriesHandler.ServeHTTP(w, r)
 		case QuerierServiceDiffProcedure:
 			querierServiceDiffHandler.ServeHTTP(w, r)
+		case QuerierServiceGetProfileStatsProcedure:
+			querierServiceGetProfileStatsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -366,4 +396,8 @@ func (UnimplementedQuerierServiceHandler) SelectSeries(context.Context, *connect
 
 func (UnimplementedQuerierServiceHandler) Diff(context.Context, *connect.Request[v1.DiffRequest]) (*connect.Response[v1.DiffResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.Diff is not implemented"))
+}
+
+func (UnimplementedQuerierServiceHandler) GetProfileStats(context.Context, *connect.Request[v11.GetProfileStatsRequest]) (*connect.Response[v11.GetProfileStatsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("querier.v1.QuerierService.GetProfileStats is not implemented"))
 }

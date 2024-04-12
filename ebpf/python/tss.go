@@ -6,6 +6,7 @@ import (
 	"os"
 )
 
+// todo split offsets validation and offset usage into separate routines
 func GetTSSKey(pid uint32, version Version, offsets *UserOffsets, autoTLSkeyAddr, pyRuntime uint64, libc *PerfLibc) (int32, error) {
 	fd, err := os.Open(fmt.Sprintf("/proc/%d/mem", pid))
 	if err != nil {

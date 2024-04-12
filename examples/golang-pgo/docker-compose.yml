@@ -1,0 +1,15 @@
+version: "3"
+services:
+  rideshare-go:
+    environment:
+      - REGION=us-east
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
+    build:
+      context: .
+    ports:
+      - '5001:5001'
+
+  pyroscope:
+    image: grafana/pyroscope:latest
+    ports:
+      - '4040:4040'

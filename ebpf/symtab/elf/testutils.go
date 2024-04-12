@@ -6,10 +6,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	gosym2 "github.com/grafana/pyroscope/ebpf/symtab/gosym"
-	"golang.org/x/exp/slices"
 )
 
 type TestSym struct {

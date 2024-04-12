@@ -53,7 +53,7 @@ Each variable reference is replaced at startup by the value of the environment v
 The replacement is case-sensitive and occurs before the YAML file is parsed.
 References to undefined variables are replaced by empty strings unless you specify a default value or custom error text.
 
-To specify a default value, use `${VAR:default_value}`,
+To specify a default value, use `${VAR:-default_value}`,
 where `default_value` is the value to use if the environment variable is undefined.
 
 ## Configuration parameters
@@ -264,6 +264,10 @@ analytics:
   # Enable anonymous usage reporting.
   # CLI flag: -usage-stats.enabled
   [reporting_enabled: <boolean> | default = true]
+
+# Prints the application banner at startup.
+# CLI flag: -config.show_banner
+[show_banner: <boolean> | default = true]
 ```
 
 ### server
@@ -1998,6 +2002,10 @@ The s3_backend block configures the connection to Amazon S3 object storage backe
 # are: v4, v2.
 # CLI flag: -storage.s3.signature-version
 [signature_version: <string> | default = "v4"]
+
+# Set this to `true` to force the bucket lookup to be using path-style.
+# CLI flag: -storage.s3.force-path-style
+[force_path_style: <boolean> | default = false]
 
 sse:
   # Enable AWS Server Side Encryption. Supported values: SSE-KMS, SSE-S3.

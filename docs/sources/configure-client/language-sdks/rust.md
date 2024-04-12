@@ -13,7 +13,7 @@ Optimize your Rust applications with our advanced Rust Profiler. In collaboratio
 
 ## Before you begin
 
-To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
 
 The Pyroscope server can be a local server for development or a remote server for production use.
 
@@ -162,5 +162,5 @@ As of 0.5.0, the Pyroscope Agent supports tagging within threads. Check the [tag
 
 #### Stand-alone examples
 
-- [**basic**](https://github.com/grafana/pyroscope/tree/main/examples/rust/basic): Simple Rust application that uses the Pyroscope Library.
-- [**rideshare**](https://github.com/grafana/pyroscope/tree/main/examples/rust/rideshare): A multi-instances web service running on Docker.
+- [**basic**](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/rust/basic): Simple Rust application that uses the Pyroscope Library.
+- [**rideshare**](https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/rust/rideshare): A multi-instances web service running on Docker.

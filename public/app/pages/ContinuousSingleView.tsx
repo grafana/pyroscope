@@ -36,8 +36,17 @@ import { isLoadingOrReloading } from './loading';
 import { Panel } from '@pyroscope/components/Panel';
 import { PageContentWrapper } from '@pyroscope/pages/PageContentWrapper';
 import { FlameGraphWrapper } from '@pyroscope/components/FlameGraphWrapper';
+import styles from './ContinuousSingleView.module.css';
 
-function ContinuousSingleView() {
+type ContinuousSingleViewProps = {
+  extraButton?: React.ReactNode;
+  extraPanel?: React.ReactNode;
+};
+
+function ContinuousSingleView({
+  extraButton,
+  extraPanel,
+}: ContinuousSingleViewProps) {
   const dispatch = useAppDispatch();
   const { offset } = useTimeZone();
   const { colorMode } = useColorMode();
@@ -165,8 +174,20 @@ function ContinuousSingleView() {
             }
           />
         </Panel>
-        <Panel isLoading={isLoadingOrReloading([singleView.type])}>
-          {flamegraphRenderer}
+        <Panel
+          isLoading={isLoadingOrReloading([singleView.type])}
+          headerActions={extraButton}
+        >
+          {extraPanel ? (
+            <div className={styles.flamegraphContainer}>
+              <div className={styles.flamegraphComponent}>
+                {flamegraphRenderer}
+              </div>
+              <div className={styles.extraPanel}>{extraPanel}</div>
+            </div>
+          ) : (
+            flamegraphRenderer
+          )}
         </Panel>
       </PageContentWrapper>
     </div>

@@ -13,7 +13,7 @@ Our Python Profiler, when integrated with Pyroscope, transforms the way you anal
 
 ## Before you begin
 
-To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
+To capture and analyze profiling data, you need either a hosted Pyroscope OSS server or a hosted [Pryoscope instance with Grafana Cloud Profiles](/products/cloud/profiles-for-continuous-profiling/) (requires a free Grafana Cloud account).
 
 The Pyroscope server can be a local server for development or a remote server for production use.
 
@@ -92,5 +92,5 @@ If your Pyroscope server has multi-tenancy enabled, you'll need to configure a t
 ## Python profiling examples
 
 Check out the following resources to learn more about Python profiling:
-- [Python examples](https://github.com/pyroscope-io/pyroscope/tree/main/examples/python)
+- [Python examples](https://github.com/pyroscope-io/pyroscope/tree/main/examples/language-sdk-instrumentation/python)
 - [Python demo](https://demo.pyroscope.io/?query=rideshare-app-python.cpu%7B%7D) showing Python example with tags

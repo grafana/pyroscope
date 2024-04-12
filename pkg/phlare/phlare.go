@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"strings"
 
@@ -86,6 +87,7 @@ type Config struct {
 
 	MultitenancyEnabled bool              `yaml:"multitenancy_enabled,omitempty"`
 	Analytics           usagestats.Config `yaml:"analytics"`
+	ShowBanner          bool              `yaml:"show_banner,omitempty"`
 
 	ConfigFile      string `yaml:"-"`
 	ConfigExpandEnv bool   `yaml:"-"`
@@ -132,6 +134,7 @@ func (c *Config) RegisterFlagsWithContext(ctx context.Context, f *flag.FlagSet) 
 		"The alias 'all' can be used in the list to load a number of core modules and will enable single-binary mode. ")
 	f.BoolVar(&c.MultitenancyEnabled, "auth.multitenancy-enabled", false, "When set to true, incoming HTTP requests must specify tenant ID in HTTP X-Scope-OrgId header. When set to false, tenant ID anonymous is used instead.")
 	f.BoolVar(&c.ConfigExpandEnv, "config.expand-env", false, "Expands ${var} in config according to the values of the environment variables.")
+	f.BoolVar(&c.ShowBanner, "config.show_banner", true, "Prints the application banner at startup.")
 
 	c.registerServerFlagsWithChangedDefaultValues(f)
 	c.MemberlistKV.RegisterFlags(f)
@@ -217,17 +220,18 @@ type Phlare struct {
 	serviceMap    map[string]services.Service
 	deps          map[string][]string
 
-	API           *api.API
-	Server        *server.Server
-	SignalHandler *signals.Handler
-	MemberlistKV  *memberlist.KVInitService
-	ring          *ring.Ring
-	usageReport   *usagestats.Reporter
-	RuntimeConfig *runtimeconfig.Manager
-	Overrides     *validation.Overrides
-	Compactor     *compactor.MultitenantCompactor
-	admin         *operations.Admin
-	versions      *apiversion.Service
+	API            *api.API
+	Server         *server.Server
+	SignalHandler  *signals.Handler
+	MemberlistKV   *memberlist.KVInitService
+	ring           *ring.Ring
+	usageReport    *usagestats.Reporter
+	RuntimeConfig  *runtimeconfig.Manager
+	Overrides      *validation.Overrides
+	Compactor      *compactor.MultitenantCompactor
+	admin          *operations.Admin
+	versions       *apiversion.Service
+	serviceManager *services.Manager
 
 	TenantLimits validation.TenantLimits
 
@@ -353,7 +357,9 @@ var banner = `
  `
 
 func (f *Phlare) Run() error {
-	_ = cli.GradientBanner(banner, os.Stderr)
+	if f.Cfg.ShowBanner {
+		_ = cli.GradientBanner(banner, os.Stderr)
+	}
 
 	serviceMap, err := f.ModuleManager.InitModuleServices(f.Cfg.Target...)
 	if err != nil {
@@ -370,6 +376,8 @@ func (f *Phlare) Run() error {
 	if err != nil {
 		return err
 	}
+	f.serviceManager = sm
+
 	f.API.RegisterRoute("/ready", f.readyHandler(sm), false, false, "GET")
 
 	RegisterHealthServer(f.Server.HTTP, grpcutil.WithManager(sm))
@@ -385,9 +393,10 @@ func (f *Phlare) Run() error {
 				ApplicationName: "pyroscope",
 				ServerAddress:   fmt.Sprintf("http://%s:%d", "localhost", f.Cfg.Server.HTTPListenPort),
 				Tags: map[string]string{
-					"hostname": os.Getenv("HOSTNAME"),
-					"target":   "all",
-					"version":  version.Version,
+					"hostname":           os.Getenv("HOSTNAME"),
+					"target":             "all",
+					"service_git_ref":    serviceGitRef(),
+					"service_repository": "https://github.com/grafana/pyroscope",
 				},
 				ProfileTypes: []pyroscope.ProfileType{
 					pyroscope.ProfileCPU,
@@ -497,6 +506,14 @@ func (f *Phlare) readyHandler(sm *services.Manager) http.HandlerFunc {
 	}
 }
 
+func (f *Phlare) Stop() func(context.Context) error {
+	if f.serviceManager == nil {
+		return func(context.Context) error { return nil }
+	}
+	f.serviceManager.StopAsync()
+	return f.serviceManager.AwaitStopped
+}
+
 func (f *Phlare) stopped() {
 	level.Info(f.logger).Log("msg", "Pyroscope stopped")
 	if f.tracer != nil {
@@ -560,4 +577,20 @@ func printRoutes(r *mux.Router) {
 	if err != nil {
 		fmt.Printf("failed to walk routes %s\n", err)
 	}
+}
+
+// serviceGitRef attempts to find the git revision of the service. Default to HEAD.
+func serviceGitRef() string {
+	if version.Revision != "" {
+		return version.Revision
+	}
+	buildInfo, ok := debug.ReadBuildInfo()
+	if ok {
+		for _, setting := range buildInfo.Settings {
+			if setting.Key == "vcs.revision" {
+				return setting.Value
+			}
+		}
+	}
+	return "HEAD"
 }

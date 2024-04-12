@@ -2,12 +2,12 @@ package symdb
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 
 	googlev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -144,7 +144,7 @@ func Test_Pprof_subtree(t *testing.T) {
 func Test_Resolver_pprof_options(t *testing.T) {
 	s := newMemSuite(t, [][]string{{"testdata/profile.pb.gz"}})
 	samples := s.indexed[0][0].Samples
-	const samplesTotal = 572
+	const samplesTotal = 561
 
 	var sc PartitionStats
 	s.db.partitions[0].WriteStats(&sc)

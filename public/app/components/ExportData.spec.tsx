@@ -113,7 +113,7 @@ describe('ExportData', () => {
       );
     });
 
-    it('uses the the date if its the only thing available', () => {
+    it('uses the date if its the only thing available', () => {
       expect(
         getFilename(
           undefined,
