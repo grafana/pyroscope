@@ -195,8 +195,8 @@ func copyStrings(profile *googlev1.Profile, symbols *Symbols, lut []uint32) {
 	// required by the pprof format. Therefore, we create one
 	// at index 0 to ensure correctness.
 	z := -1
-	for i := 0; i < len(profile.StringTable); i++ {
-		s := profile.StringTable[i]
+	for i := 0; i < len(symbols.Strings); i++ {
+		s := symbols.Strings[i]
 		if s == "" {
 			z = i
 			break
@@ -229,13 +229,18 @@ func copyStrings(profile *googlev1.Profile, symbols *Symbols, lut []uint32) {
 	}
 	n := len(profile.StringTable)
 	lut = slices.GrowLen(lut, n)
-	var j int
-	for i := 0; i < len(profile.StringTable); i++ {
+	j := 1 // Skip "" as its index is deterministic.
+	for i := 1; i < len(profile.StringTable); i++ {
 		s := profile.StringTable[i]
-		if s == "" && i > 0 {
+		if s == "" {
 			continue
 		}
-		lut[i] = uint32(j)
+		x := i
+		if i == z {
+			// Move item at the "" index to 0.
+			x = 0
+		}
+		lut[x] = uint32(j)
 		profile.StringTable[j] = s
 		j++
 	}
