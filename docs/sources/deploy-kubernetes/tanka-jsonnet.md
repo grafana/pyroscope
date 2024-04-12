@@ -54,7 +54,7 @@ You can use [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com
    tk env set environments/default --server-from-context=$(kubectl config current-context)
    ```
 
-1. Decide if you want to run Pyroscope in the monolithic or the micro-services mode
+1. Decide if you want to run Pyroscope in the monolithic or the microservices mode
 
   - Option A) For monolithic mode the file `environments/default/main.jsonnet`, should look like;
 
@@ -67,7 +67,7 @@ You can use [Tanka](https://tanka.dev/) and [jsonnet-bundler](https://github.com
     })
     ```
 
-  - Option B) For micro services mode the file `environments/default/main.jsonnet`, should look like;
+  - Option B) For microservices mode the file `environments/default/main.jsonnet`, should look like;
 
     ```jsonnet
     local pyroscope = import 'pyroscope/jsonnet/pyroscope/pyroscope.libsonnet';

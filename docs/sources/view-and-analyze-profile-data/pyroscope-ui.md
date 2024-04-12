@@ -8,7 +8,7 @@ aliases:
 keywords:
   - pyroscope
   - performance analysis
-  - flamegraphs
+  - flame graphs
 ---
 
 # Use the Pyroscope UI to explore profiling data
@@ -51,7 +51,7 @@ To use the Tag Explorer:
 
 ## Single view
 
-The Single View page in Pyroscope's UI is built for in-depth profile analysis. Here, you can explore a single flamegraph with multiple viewing options and functionalities:
+The Single View page in Pyroscope's UI is built for in-depth profile analysis. Here, you can explore a single flame graph with multiple viewing options and functionalities:
 
 Table view
 : Breaks down the profiling data into a sortable table format.
@@ -59,20 +59,20 @@ Table view
 Sandwich view
 : Displays both the callers and callees for a selected function, offering a comprehensive view of function interactions.
 
-Flamegraph view
-: Visualizes profiling data in a flamegraph format, allowing easy identification of resource-intensive functions.
+Flame graph view
+: Visualizes profiling data in a flame graph format, allowing easy identification of resource-intensive functions.
 
 Export & share
-: Options to export the flamegraph for offline analysis or share it via a flamegraph.com link for collaborative review.
+: Options to export the flame graph for offline analysis or share it via a flamegraph.com link for collaborative review.
 
 <!-- Visual Placeholder:** *Screenshots demonstrating each view option in the Single View page.* -->
 
 The screenshot above shows a spike in CPU usage.
-Without profiling, we would go from a memory spike to digging through code or guessing what the cause of it is. However, with profiling, you can use the flamegraph and table to see exactly which function is most responsible for the spike. Often this will show up as a single node taking up a noticeably disproportionate width in the flamegraph as seen below with the "checkDriverAvailability" function.
+Without profiling, we would go from a memory spike to digging through code or guessing what the cause of it is. However, with profiling, you can use the flame graph and table to see exactly which function is most responsible for the spike. Often this will show up as a single node taking up a noticeably disproportionate width in the flame graph as seen below with the "checkDriverAvailability" function.
 
 ![example-flamegraph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
 
-However, in some instances it may be a function that is called many times and is taking up a large amount of space in the flamegraph.
+However, in some instances it may be a function that is called many times and is taking up a large amount of space in the flame graph.
 In this case, you can use the sandwich view to see that a logging function called throughout many functions in the codebase is the culprit.
 
 ![example-sandwich-view](https://grafana.com/static/img/pyroscope/sandwich-view-2023-11-30.png)
@@ -83,8 +83,8 @@ The Comparison page facilitates side-by-side comparison of profiles either based
 
 To run a comparison:
 
-1. Select two different sets of labels (for exmaple, `env:production` vs. `env:development`) and or time periods, reflected by the sub-timelines above each flamegraph.
-2. View the resulting flamegraphs side by side to identify disparities in performance.
+1. Select two different sets of labels (for example, `env:production` vs. `env:development`) and or time periods, reflected by the sub-timelines above each flame graph.
+2. View the resulting flame graphs side by side to identify disparities in performance.
 
 There are many practical use cases for comparison for companies using Pyroscope.
 Some examples of labels below expressed as `label:value` are:
@@ -101,7 +101,7 @@ Release analysis
 Region
 : Compare `region:us-east-1` vs. `region:us-west-1`
 
-Another example where time is more important than labels is when you want to compare two different time periods. For example, in investigating the cause of a memory leak you would see something like the following where the timeline shows an steadily increasing amount of memory allocations over time. This is a clear indicator of a memory leak.
+Another example where time is more important than labels is when you want to compare two different time periods. For example, in investigating the cause of a memory leak you would see something like the following where the timeline shows a steadily increasing amount of memory allocations over time. This is a clear indicator of a memory leak.
 
 You can then use the comparison page to compare the memory allocations between two different time periods where allocations were low and where allocations were high which would allow you to identify the function that is causing the memory leak.
 
@@ -110,13 +110,13 @@ You can then use the comparison page to compare the memory allocations between t
 ## Diff page: Identify changes with differential analysis
 
 The Diff page is an extension of the comparison page, crucial for more easily visually showing the differences between two profiling data sets.
-It normalizes the data by comparing the percentage of total time spent in each function so that the resulting flamegraph is comparing the __share__ of time spent in each function rather than the absolute amount of time spent in each function.
+It normalizes the data by comparing the percentage of total time spent in each function so that the resulting flame graph is comparing the __share__ of time spent in each function rather than the absolute amount of time spent in each function.
 This is important because it allows you to compare two different queries that may have different total amounts of time spent in each function.
 
-Similar to a git diff it takes the flamegraphs from the comparison page and highlights the differences between the two flamegraphs where red represents an increase in CPU usage from the baseline to the comparison and green represents a decrease.
+Similar to a git diff it takes the flame graphs from the comparison page and highlights the differences between the two flame graphs where red represents an increase in CPU usage from the baseline to the comparison and green represents a decrease.
 
 Using the same examples from above, here is a diff between two label sets:
 ![diff-ui](https://grafana.com/static/img/pyroscope/pyroscope-ui-diff-2023-11-30.png)
 
-<!-- and a diff between two time periods during a introduction of a memory leak:
+<!-- and a diff between two time periods during an introduction of a memory leak:
 ![memory leak](https://grafana.com/static/img/pyroscope/pyroscope-memory-leak-2023-11-30.png) -->

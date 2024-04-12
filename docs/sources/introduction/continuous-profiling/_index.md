@@ -7,7 +7,7 @@ keywords:
   - pyroscope
   - phlare
   - continuous profiling
-  - flamegraphs
+  - flame graphs
 ---
 
 ## When to use continuous profiling
@@ -15,13 +15,13 @@ keywords:
 Continuous profiling is a systematic method of collecting and analyzing performance data from production systems.
 
 Traditionally, profiling is used as an ad-hoc debugging tool in languages like Go and Java.
-You are probably used to running a benchmark tool locally and getting a pprof file in Go or maybe connecting into a misbehaving prod instance and pulling a flamegraph from a JFR file in Java.
+You are probably used to running a benchmark tool locally and getting a pprof file in Go or maybe connecting into a misbehaving prod instance and pulling a flame graph from a JFR file in Java.
 This is great for debugging but not so great for production.
 
-![example flamegraph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
+![example flame graph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
 
 {{% admonition type="note" %}}
-To learn more about flamegraphs, refer to [Flamegraphs: Visualizing performance data]({{< relref "../../view-and-analyze-profile-data/flamegraphs" >}}).
+To learn more about flame graphs, refer to [Flame graphs: Visualizing performance data]({{< relref "../../view-and-analyze-profile-data/flamegraphs" >}}).
 {{% /admonition %}}
 
 Continuous profiling is a modern approach which is safer and more scalable for production environments.
