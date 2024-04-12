@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/parquet-go/parquet-go"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	phlareparquet "github.com/grafana/pyroscope/pkg/parquet"
@@ -439,4 +440,16 @@ func generateSamples(n int) []*Sample {
 		}
 	}
 	return samples
+}
+
+func Test_SamplesFromMap(t *testing.T) {
+	m := map[uint32]int64{
+		1: 2,
+		0: 0,
+		2: 3,
+		3: -1,
+	}
+	samples := NewSamplesFromMap(m)
+	assert.Equal(t, len(m), cap(samples.Values))
+	assert.Equal(t, 2, len(samples.Values))
 }

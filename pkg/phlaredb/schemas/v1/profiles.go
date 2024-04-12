@@ -337,10 +337,14 @@ func NewSamplesFromMap(m map[uint32]int64) Samples {
 	}
 	var i int
 	for k, v := range m {
-		s.StacktraceIDs[i] = k
-		s.Values[i] = uint64(v)
-		i++
+		if k != 0 && v > 0 {
+			s.StacktraceIDs[i] = k
+			s.Values[i] = uint64(v)
+			i++
+		}
 	}
+	s.StacktraceIDs = s.StacktraceIDs[:i]
+	s.Values = s.Values[:i]
 	sort.Sort(s)
 	return s
 }
