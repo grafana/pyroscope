@@ -257,21 +257,27 @@ func RewriteStrings(p *profilev1.Profile, n []uint32) {
 func RewriteFunctions(p *profilev1.Profile, n []uint32) {
 	for _, loc := range p.Location {
 		for _, line := range loc.Line {
-			line.FunctionId = uint64(n[line.FunctionId-1]) + 1
+			if line.FunctionId > 0 {
+				line.FunctionId = uint64(n[line.FunctionId-1]) + 1
+			}
 		}
 	}
 }
 
 func RewriteMappings(p *profilev1.Profile, n []uint32) {
 	for _, loc := range p.Location {
-		loc.MappingId = uint64(n[loc.MappingId-1]) + 1
+		if loc.MappingId > 0 {
+			loc.MappingId = uint64(n[loc.MappingId-1]) + 1
+		}
 	}
 }
 
 func RewriteLocations(p *profilev1.Profile, n []uint32) {
 	for _, s := range p.Sample {
 		for i, loc := range s.LocationId {
-			s.LocationId[i] = uint64(n[loc-1]) + 1
+			if loc > 0 {
+				s.LocationId[i] = uint64(n[loc-1]) + 1
+			}
 		}
 	}
 }
