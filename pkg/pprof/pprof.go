@@ -1177,7 +1177,6 @@ func Unmarshal(data []byte, p *profilev1.Profile) error {
 }
 
 func sanitizeReferences(p *profilev1.Profile) {
-	values := len(p.SampleType)
 	ms := int64(len(p.StringTable))
 	// Handle the case when "" is not present,
 	// or is not at string_table[0].
@@ -1187,22 +1186,31 @@ func sanitizeReferences(p *profilev1.Profile) {
 			z = int64(i)
 		}
 	}
-	var o int64
 	if z == -1 {
+		// No empty string found in the table.
+		// Reduce number of invariants by adding one.
 		z = ms
-		o = 1
 		p.StringTable = append(p.StringTable, "")
+		ms++
 	}
-	// Swap zero string. Noop if string_table[0] == "".
+	// Swap zero string.
 	p.StringTable[z], p.StringTable[0] = p.StringTable[0], p.StringTable[z]
 	// Now we need to update references to strings:
 	// invalid references (>= len(string_table)) are set to 0.
 	// references to empty string are set to 0.
 	str := func(i int64) int64 {
+		if i == 0 && z > 0 {
+			// z > 0 indicates that "" is not at string_table[0].
+			// This means that element that used to be at 0 has
+			// been moved to z.
+			return z
+		}
 		if i == z || i >= ms {
+			// The reference to empty string, or a string that is
+			// not present in the table.
 			return 0
 		}
-		return i + o
+		return i
 	}
 
 	for _, x := range p.SampleType {
@@ -1281,8 +1289,9 @@ func sanitizeReferences(p *profilev1.Profile) {
 		x.Id, t[x.Id] = j, j
 		j++
 	}
+	vs := len(p.SampleType)
 	p.Sample = slices.RemoveInPlace(p.Sample, func(x *profilev1.Sample, _ int) bool {
-		if len(x.Value) != values {
+		if len(x.Value) != vs {
 			return true
 		}
 		for i := range x.LocationId {
