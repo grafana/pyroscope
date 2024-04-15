@@ -13,9 +13,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Jaeger;
 using Jaeger.Senders;
 using Jaeger.Senders.Thrift;
-using Jaeger.Reporters;
-using OpenTracing.Contrib.NetCore.Configuration;
-using OpenTracing;
 
 using Pyroscope.Tracing.OpenTracing;
 using OpenTracing.Util;
@@ -33,7 +30,9 @@ public static class Program
         Configuration.SenderConfiguration.DefaultSenderResolver = new SenderResolver(loggerFactory).RegisterSenderFactory<ThriftSenderFactory>();
         var tracingConfig = Configuration.FromEnv(loggerFactory);
         var tracer = tracingConfig.GetTracer();
-        GlobalTracer.Register(new PyroscopeTracer(tracer));
+        GlobalTracer.Register(new PyroscopeTracer.Builder(tracer)
+            .WithRootSpanOnly(true)
+            .Build());
 
         builder.Services.AddOpenTracing();
 
