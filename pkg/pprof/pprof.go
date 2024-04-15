@@ -352,13 +352,16 @@ var currentTime = time.Now
 //   - Then remove unused references.
 //   - Ensure that the profile has a time_nanos set
 //   - Removes addresses from symbolized profiles.
+//   - Removes elements with invalid references.
+//   - Converts identifiers to indices.
+//   - Ensures that string_table[0] is "".
 func (p *Profile) Normalize() {
 	// if the profile has no time, set it to now
 	if p.TimeNanos == 0 {
 		p.TimeNanos = currentTime().UnixNano()
 	}
 
-	p.ensureHasMapping()
+	sanitizeReferences(p.Profile)
 	p.clearAddresses()
 
 	// Non-string labels are not supported.
@@ -415,29 +418,6 @@ func (p *Profile) clearAddresses() {
 	for _, l := range p.Location {
 		if p.Mapping[l.MappingId-1].HasFunctions {
 			l.Address = 0
-		}
-	}
-}
-
-// ensureHasMapping ensures all locations have at least a mapping.
-func (p *Profile) ensureHasMapping() {
-	var mId uint64
-	for _, m := range p.Mapping {
-		if mId < m.Id {
-			mId = m.Id
-		}
-	}
-	var fake *profilev1.Mapping
-	for _, l := range p.Location {
-		if l.MappingId == 0 {
-			if fake == nil {
-				fake = &profilev1.Mapping{
-					Id:          mId + 1,
-					MemoryLimit: ^uint64(0),
-				}
-				p.Mapping = append(p.Mapping, fake)
-			}
-			l.MappingId = fake.Id
 		}
 	}
 }
@@ -1194,4 +1174,127 @@ func Unmarshal(data []byte, p *profilev1.Profile) error {
 		return err
 	}
 	return p.UnmarshalVT(buf.Bytes())
+}
+
+func sanitizeReferences(p *profilev1.Profile) {
+	values := len(p.SampleType)
+	ms := int64(len(p.StringTable))
+	// Handle the case when "" is not present,
+	// or is not at string_table[0].
+	z := int64(-1)
+	for i, s := range p.StringTable {
+		if s == "" {
+			z = int64(i)
+		}
+	}
+	var o int64
+	if z == -1 {
+		z = ms
+		o = 1
+		p.StringTable = append(p.StringTable, "")
+	}
+	// Swap zero string. Noop if string_table[0] == "".
+	p.StringTable[z], p.StringTable[0] = p.StringTable[0], p.StringTable[z]
+	// Now we need to update references to strings:
+	// invalid references (>= len(string_table)) are set to 0.
+	// references to empty string are set to 0.
+	str := func(i int64) int64 {
+		if i == z || i >= ms {
+			return 0
+		}
+		return i + o
+	}
+
+	for _, x := range p.SampleType {
+		x.Type = str(x.Type)
+		x.Unit = str(x.Unit)
+	}
+	if p.PeriodType != nil {
+		p.PeriodType.Type = str(p.PeriodType.Type)
+		p.PeriodType.Unit = str(p.PeriodType.Unit)
+	}
+	p.DefaultSampleType = str(p.DefaultSampleType)
+	p.DropFrames = str(p.DropFrames)
+	p.KeepFrames = str(p.KeepFrames)
+	for i := range p.Comment {
+		p.Comment[i] = str(p.Comment[i])
+	}
+
+	t := make(map[uint64]uint64, len(p.Location))
+	clearMap := func() {
+		for k := range t {
+			delete(t, k)
+		}
+	}
+
+	// Sanitize mappings and references to them.
+	// Locations with invalid references are removed.
+	j := uint64(1)
+	for _, x := range p.Mapping {
+		x.BuildId = str(x.BuildId)
+		x.Filename = str(x.Filename)
+		x.Id, t[x.Id] = j, j
+		j++
+	}
+	// Rewrite references to mappings, removing invalid ones.
+	// Locations with mapping ID 0 are allowed: in this case,
+	// a mapping stub is created.
+	var mapping *profilev1.Mapping
+	p.Location = slices.RemoveInPlace(p.Location, func(x *profilev1.Location, _ int) bool {
+		if x.MappingId == 0 {
+			if mapping == nil {
+				mapping = &profilev1.Mapping{Id: uint64(len(p.Mapping) + 1)}
+				p.Mapping = append(p.Mapping, mapping)
+			}
+			x.MappingId = mapping.Id
+			return false
+		}
+		x.MappingId = t[x.MappingId]
+		return x.MappingId == 0
+	})
+
+	// Sanitize functions and references to them.
+	// Locations with invalid references are removed.
+	clearMap()
+	j = 1
+	for _, x := range p.Function {
+		x.Name = str(x.Name)
+		x.SystemName = str(x.SystemName)
+		x.Filename = str(x.Filename)
+		x.Id, t[x.Id] = j, j
+		j++
+	}
+	p.Location = slices.RemoveInPlace(p.Location, func(x *profilev1.Location, _ int) bool {
+		for _, line := range x.Line {
+			if line.FunctionId = t[line.FunctionId]; line.FunctionId == 0 {
+				return true
+			}
+		}
+		return false
+	})
+
+	// Sanitize locations and references to them.
+	// Samples with invalid references are removed.
+	clearMap()
+	j = 1
+	for _, x := range p.Location {
+		x.Id, t[x.Id] = j, j
+		j++
+	}
+	p.Sample = slices.RemoveInPlace(p.Sample, func(x *profilev1.Sample, _ int) bool {
+		if len(x.Value) != values {
+			return true
+		}
+		for i := range x.LocationId {
+			if x.LocationId[i] = t[x.LocationId[i]]; x.LocationId[i] == 0 {
+				return true
+			}
+		}
+		for _, l := range x.Label {
+			l.Key = str(l.Key)
+			l.Str = str(l.Str)
+			l.NumUnit = str(l.NumUnit)
+		}
+		return false
+	})
 }
