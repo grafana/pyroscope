@@ -14,5 +14,6 @@
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.8.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.8.0" />
     <PackageReference Include="Pyroscope.Tracing.OpenTelemetry" Version="0.1.0" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
   </ItemGroup>
 </Project>

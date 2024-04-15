@@ -37,9 +37,13 @@ public static class Program
             {
                 b
                 .AddAspNetCoreInstrumentation()
+                .AddSource("Example.ScooterService")
                 .AddConsoleExporter()
                 .AddOtlpExporter()
-                .AddProcessor(new PyroscopeSpanProcessor());
+                .AddProcessor(
+                    new PyroscopeSpanProcessor.Builder()
+                        .WithRootSpanOnly(false)
+                        .Build());
             });
         var app = builder.Build();
 
