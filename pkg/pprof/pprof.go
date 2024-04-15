@@ -1205,7 +1205,7 @@ func sanitizeReferences(p *profilev1.Profile) {
 			// been moved to z.
 			return z
 		}
-		if i == z || i >= ms {
+		if i == z || i >= ms || i < 0 {
 			// The reference to empty string, or a string that is
 			// not present in the table.
 			return 0
