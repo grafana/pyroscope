@@ -361,7 +361,7 @@ func (p *Profile) Normalize() {
 		p.TimeNanos = currentTime().UnixNano()
 	}
 
-	sanitizeReferences(p.Profile)
+	sanitizeProfile(p.Profile)
 	p.clearAddresses()
 
 	// Non-string labels are not supported.
@@ -1176,7 +1176,10 @@ func Unmarshal(data []byte, p *profilev1.Profile) error {
 	return p.UnmarshalVT(buf.Bytes())
 }
 
-func sanitizeReferences(p *profilev1.Profile) {
+func sanitizeProfile(p *profilev1.Profile) {
+	if p == nil {
+		return
+	}
 	ms := int64(len(p.StringTable))
 	// Handle the case when "" is not present,
 	// or is not at string_table[0].
@@ -1213,14 +1216,19 @@ func sanitizeReferences(p *profilev1.Profile) {
 		return i
 	}
 
-	for _, x := range p.SampleType {
+	p.SampleType = slices.RemoveInPlace(p.SampleType, func(x *profilev1.ValueType, _ int) bool {
+		if x == nil {
+			return true
+		}
 		x.Type = str(x.Type)
 		x.Unit = str(x.Unit)
-	}
+		return false
+	})
 	if p.PeriodType != nil {
 		p.PeriodType.Type = str(p.PeriodType.Type)
 		p.PeriodType.Unit = str(p.PeriodType.Unit)
 	}
+
 	p.DefaultSampleType = str(p.DefaultSampleType)
 	p.DropFrames = str(p.DropFrames)
 	p.KeepFrames = str(p.KeepFrames)
@@ -1228,27 +1236,34 @@ func sanitizeReferences(p *profilev1.Profile) {
 		p.Comment[i] = str(p.Comment[i])
 	}
 
+	// Sanitize mappings and references to them.
+	// Locations with invalid references are removed.
 	t := make(map[uint64]uint64, len(p.Location))
 	clearMap := func() {
 		for k := range t {
 			delete(t, k)
 		}
 	}
-
-	// Sanitize mappings and references to them.
-	// Locations with invalid references are removed.
 	j := uint64(1)
-	for _, x := range p.Mapping {
+	p.Mapping = slices.RemoveInPlace(p.Mapping, func(x *profilev1.Mapping, _ int) bool {
+		if x == nil {
+			return true
+		}
 		x.BuildId = str(x.BuildId)
 		x.Filename = str(x.Filename)
 		x.Id, t[x.Id] = j, j
 		j++
-	}
+		return false
+	})
+
 	// Rewrite references to mappings, removing invalid ones.
 	// Locations with mapping ID 0 are allowed: in this case,
 	// a mapping stub is created.
 	var mapping *profilev1.Mapping
 	p.Location = slices.RemoveInPlace(p.Location, func(x *profilev1.Location, _ int) bool {
+		if x == nil {
+			return true
+		}
 		if x.MappingId == 0 {
 			if mapping == nil {
 				mapping = &profilev1.Mapping{Id: uint64(len(p.Mapping) + 1)}
@@ -1265,13 +1280,18 @@ func sanitizeReferences(p *profilev1.Profile) {
 	// Locations with invalid references are removed.
 	clearMap()
 	j = 1
-	for _, x := range p.Function {
+	p.Function = slices.RemoveInPlace(p.Function, func(x *profilev1.Function, _ int) bool {
+		if x == nil {
+			return true
+		}
 		x.Name = str(x.Name)
 		x.SystemName = str(x.SystemName)
 		x.Filename = str(x.Filename)
 		x.Id, t[x.Id] = j, j
 		j++
-	}
+		return false
+	})
+	// Check locations again, verifying that all functions are valid.
 	p.Location = slices.RemoveInPlace(p.Location, func(x *profilev1.Location, _ int) bool {
 		for _, line := range x.Line {
 			if line.FunctionId = t[line.FunctionId]; line.FunctionId == 0 {
@@ -1289,8 +1309,12 @@ func sanitizeReferences(p *profilev1.Profile) {
 		x.Id, t[x.Id] = j, j
 		j++
 	}
+
 	vs := len(p.SampleType)
 	p.Sample = slices.RemoveInPlace(p.Sample, func(x *profilev1.Sample, _ int) bool {
+		if x == nil {
+			return true
+		}
 		if len(x.Value) != vs {
 			return true
 		}
@@ -1300,6 +1324,9 @@ func sanitizeReferences(p *profilev1.Profile) {
 			}
 		}
 		for _, l := range x.Label {
+			if l == nil {
+				return true
+			}
 			l.Key = str(l.Key)
 			l.Str = str(l.Str)
 			l.NumUnit = str(l.NumUnit)

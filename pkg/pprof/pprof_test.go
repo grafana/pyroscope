@@ -326,12 +326,88 @@ func Test_sanitizeReferences(t *testing.T) {
 				StringTable: []string{""},
 			},
 		},
+		{
+			name:     "nil_profile",
+			profile:  nil,
+			expected: nil,
+		},
+		{
+			name: "nil_sample_type",
+			profile: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{nil},
+			},
+			expected: &profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{},
+				StringTable: []string{""},
+			},
+		},
+		{
+			name: "nil_sample",
+			profile: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{{}},
+				Sample:     []*profilev1.Sample{nil},
+			},
+			expected: &profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{{}},
+				Sample:      []*profilev1.Sample{},
+				StringTable: []string{""},
+			},
+		},
+		{
+			name: "nil_location",
+			profile: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{{}},
+				Sample:     []*profilev1.Sample{{LocationId: []uint64{1}, Value: []int64{1}}},
+				Location:   []*profilev1.Location{nil},
+			},
+			expected: &profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{{}},
+				Sample:      []*profilev1.Sample{},
+				Location:    []*profilev1.Location{},
+				StringTable: []string{""},
+			},
+		},
+		{
+			name: "nil_function",
+			profile: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{{}},
+				Sample:     []*profilev1.Sample{{LocationId: []uint64{1}, Value: []int64{1}}},
+				Location:   []*profilev1.Location{{Line: []*profilev1.Line{{FunctionId: 1}}}},
+				Function:   []*profilev1.Function{nil},
+			},
+			expected: &profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{{}},
+				Sample:      []*profilev1.Sample{},
+				Location:    []*profilev1.Location{},
+				Function:    []*profilev1.Function{},
+				Mapping:     []*profilev1.Mapping{{Id: 1}},
+				StringTable: []string{""},
+			},
+		},
+		{
+			name: "nil_mapping",
+			profile: &profilev1.Profile{
+				SampleType: []*profilev1.ValueType{{}},
+				Sample:     []*profilev1.Sample{{LocationId: []uint64{1}, Value: []int64{1}}},
+				Location:   []*profilev1.Location{{MappingId: 1, Line: []*profilev1.Line{{FunctionId: 1}}}},
+				Function:   []*profilev1.Function{nil},
+				Mapping:    []*profilev1.Mapping{nil},
+			},
+			expected: &profilev1.Profile{
+				SampleType:  []*profilev1.ValueType{{}},
+				Sample:      []*profilev1.Sample{},
+				Location:    []*profilev1.Location{},
+				Function:    []*profilev1.Function{},
+				Mapping:     []*profilev1.Mapping{},
+				StringTable: []string{""},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			sanitizeReferences(tc.profile)
+			sanitizeProfile(tc.profile)
 			assert.Equal(t, tc.expected, tc.profile)
 		})
 	}
@@ -339,14 +415,23 @@ func Test_sanitizeReferences(t *testing.T) {
 
 func Test_sanitize_fixtures(t *testing.T) {
 	require.NoError(t, filepath.WalkDir("testdata", func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || filepath.Ext(path) == ".txt" {
+		switch {
+		case err != nil:
 			return err
+		case filepath.Ext(path) == ".txt":
+			return nil
+		case d.IsDir():
+			if d.Name() == "fuzz" {
+				return fs.SkipDir
+			}
+			return nil
 		}
+
 		t.Run(path, func(t *testing.T) {
 			f, err := OpenFile(path)
 			require.NoError(t, err)
 			c := f.CloneVT()
-			sanitizeReferences(f.Profile)
+			sanitizeProfile(f.Profile)
 			assert.Equal(t, len(c.Sample), len(f.Sample))
 			assert.Equal(t, len(c.Location), len(f.Location))
 			assert.Equal(t, len(c.Function), len(f.Function))

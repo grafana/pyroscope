@@ -33,10 +33,11 @@ func (m *ProfileMerge) MergeNoClone(p *profilev1.Profile) error {
 }
 
 func (m *ProfileMerge) merge(p *profilev1.Profile, clone bool) error {
-	if p == nil || len(p.StringTable) < 2 {
+	if p == nil || len(p.Sample) == 0 || len(p.StringTable) < 2 {
 		return nil
 	}
-	sanitizeReferences(p)
+
+	sanitizeProfile(p)
 	var initial bool
 	if m.profile == nil {
 		m.init(p, clone)
@@ -213,6 +214,9 @@ func compatible(a, b *profilev1.Profile) error {
 // equalValueType returns true if the two value types are semantically
 // equal. It ignores the internal fields used during encode/decode.
 func equalValueType(st1, st2 *profilev1.ValueType) bool {
+	if st1 == nil || st2 == nil {
+		return false
+	}
 	return st1.Type == st2.Type && st1.Unit == st2.Unit
 }
 
@@ -242,11 +246,13 @@ func RewriteStrings(p *profilev1.Profile, n []uint32) {
 	}
 	p.DropFrames = int64(n[p.DropFrames])
 	p.KeepFrames = int64(n[p.KeepFrames])
-	if p.PeriodType.Type != 0 {
-		p.PeriodType.Type = int64(n[p.PeriodType.Type])
-	}
-	if p.PeriodType.Unit != 0 {
-		p.PeriodType.Unit = int64(n[p.PeriodType.Unit])
+	if p.PeriodType != nil {
+		if p.PeriodType.Type != 0 {
+			p.PeriodType.Type = int64(n[p.PeriodType.Type])
+		}
+		if p.PeriodType.Unit != 0 {
+			p.PeriodType.Unit = int64(n[p.PeriodType.Unit])
+		}
 	}
 	for i, x := range p.Comment {
 		p.Comment[i] = int64(n[x])
