@@ -35,6 +35,51 @@ func Test_Merge_Self(t *testing.T) {
 	testhelper.EqualProto(t, p.Profile, m.Profile())
 }
 
+func Test_Merge_ZeroReferences(t *testing.T) {
+	p, err := OpenFile("testdata/go.cpu.labels.pprof")
+	require.NoError(t, err)
+
+	t.Run("mappingID=0", func(t *testing.T) {
+		before := p.Location[10]
+		p.Location[10].MappingId = 0
+		defer func() {
+			p.Location[10] = before
+		}()
+
+		var m ProfileMerge
+		require.NoError(t, m.Merge(p.Profile))
+
+		testhelper.EqualProto(t, p.Profile, m.Profile())
+	})
+
+	t.Run("locationID=0", func(t *testing.T) {
+		before := p.Sample[10].LocationId[0]
+		p.Sample[10].LocationId[0] = 0
+		defer func() {
+			p.Sample[10].LocationId[0] = before
+		}()
+
+		var m ProfileMerge
+		require.NoError(t, m.Merge(p.Profile))
+
+		testhelper.EqualProto(t, p.Profile, m.Profile())
+	})
+
+	t.Run("functionID=0", func(t *testing.T) {
+		before := p.Location[10].Line[0].FunctionId
+		p.Location[10].Line[0].FunctionId = 0
+		defer func() {
+			p.Location[10].Line[0].FunctionId = before
+		}()
+
+		var m ProfileMerge
+		require.NoError(t, m.Merge(p.Profile))
+
+		testhelper.EqualProto(t, p.Profile, m.Profile())
+	})
+
+}
+
 func Test_Merge_Halves(t *testing.T) {
 	p, err := OpenFile("testdata/go.cpu.labels.pprof")
 	require.NoError(t, err)
