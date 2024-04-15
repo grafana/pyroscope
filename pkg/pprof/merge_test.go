@@ -1,6 +1,8 @@
 package pprof
 
 import (
+	"bytes"
+	"encoding/gob"
 	"os"
 	"testing"
 
@@ -17,6 +19,29 @@ func Test_Merge_Single(t *testing.T) {
 	var m ProfileMerge
 	require.NoError(t, m.Merge(p.Profile))
 	testhelper.EqualProto(t, p.Profile, m.Profile())
+}
+
+func Fuzz_Merge_Single(f *testing.F) {
+	p, err := OpenFile("testdata/go.cpu.labels.pprof")
+	require.NoError(f, err)
+
+	buf := new(bytes.Buffer)
+	require.NoError(f, gob.NewEncoder(buf).Encode(p.Profile))
+	f.Add(buf.Bytes())
+
+	f.Fuzz(func(t *testing.T, data []byte) {
+		var p Profile
+		err := gob.NewDecoder(bytes.NewReader(data)).Decode(&p.Profile)
+		if err != nil {
+			return
+		}
+
+		var m ProfileMerge
+		err = m.Merge(p.Profile)
+		if err != nil {
+			return
+		}
+	})
 }
 
 func Test_Merge_Self(t *testing.T) {
