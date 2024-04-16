@@ -2,7 +2,7 @@
 title: Span profiles with Traces to profiles for Ruby
 menuTitle: Span profiles with Traces to profiles (Ruby)
 description: Learn about and configure Span profiles with Traces to profiles in Grafana for the Ruby language.
-weight: 100
+weight: 102
 ---
 
 # Span profiles with Traces to profiles for Ruby
@@ -13,7 +13,7 @@ weight: 100
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
-* Profiling: Your application must be instrumented with Pyroscope's Ruby SDK. If you haven't done this yet, please refer to the [Ruby (push mode)]({{< relref "../language-sdks/ruby" >}}) guide.
+* Profiling: Your application must be instrumented with Pyroscope's Ruby SDK. If you haven't done this yet, please refer to the [Ruby]({{< relref "../language-sdks/ruby" >}}) guide.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/ruby/getting-started/) guide.
 
 ## OpenTelemetry support

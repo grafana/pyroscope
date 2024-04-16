@@ -2,7 +2,7 @@
 title: Span profiles with Traces to profiles for Java
 menuTitle: Span profiles with Traces to profiles (Java)
 description: Learn about and configure Span profiles with Traces to profiles in Grafana for the Java language.
-weight: 100
+weight: 101
 ---
 
 # Span profiles with Traces to profiles for Java
@@ -13,7 +13,7 @@ weight: 100
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
-* Profiling: Your application must be instrumented with Pyroscope's Java client SDK. If you haven't done this yet, please refer to the [Java ()]({{< relref "../language-sdks/java" >}}) guide.
+* Profiling: Your application must be instrumented with Pyroscope's Java client SDK. If you haven't done this yet, please refer to the [Java]({{< relref "../language-sdks/java" >}}) guide.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/java/getting-started/) guide.
 
 ## OpenTelemetry support
