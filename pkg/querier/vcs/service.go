@@ -49,6 +49,7 @@ func (q *Service) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.Gi
 		q.logger.Log("err", err, "msg", "failed to exchange authorization code with GitHub")
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("failed to authorize with GitHub"))
 	}
+	token.Expiry = time.Now().Add(5*time.Minute + 30*time.Second) // DEBUG shrink token expiry.
 
 	cookie, err := encodeToken(token)
 	if err != nil {
@@ -57,7 +58,7 @@ func (q *Service) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.Gi
 	}
 
 	res := &vcsv1.GithubLoginResponse{
-		Cookie: cookie,
+		Cookie: cookie.String(),
 	}
 	return connect.NewResponse(res), nil
 }
@@ -69,11 +70,20 @@ func (q *Service) GithubRefresh(ctx context.Context, req *connect.Request[vcsv1.
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("invalid token"))
 	}
 
-	newToken, err := refreshToken(ctx, token)
+	githubRequest, err := buildGithubRefreshRequest(ctx, token)
+	if err != nil {
+		q.logger.Log("err", err, "msg", "failed to extract token from request")
+		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to refresh token"))
+	}
+
+	githubToken, err := refreshGithubToken(githubRequest)
 	if err != nil {
 		q.logger.Log("err", err, "msg", "failed to refresh token with GitHub")
 		return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("failed to refresh token"))
 	}
+
+	newToken := githubToken.toOAuthToken()
+	newToken.Expiry = time.Now().Add(5*time.Minute + 30*time.Second) // DEBUG shrink token expiry.
 
 	cookie, err := encodeToken(newToken)
 	if err != nil {
@@ -82,7 +92,7 @@ func (q *Service) GithubRefresh(ctx context.Context, req *connect.Request[vcsv1.
 	}
 
 	res := &vcsv1.GithubRefreshResponse{
-		Cookie: cookie,
+		Cookie: cookie.String(),
 	}
 	return connect.NewResponse(res), nil
 }
