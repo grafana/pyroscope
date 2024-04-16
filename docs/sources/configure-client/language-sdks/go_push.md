@@ -97,7 +97,7 @@ pprof.Do(context.Background(), pprof.Labels("controller", "slow_controller"), fu
 
 ### Mutex profiling
 
-Mutex profiling is useful for finding sources of contention within your application. It helps you to find out which mutexes are being held by which goroutines.
+Mutex profiling is useful for finding sources of contention within your application. It helps you find out which mutexes are being held by which goroutines.
 
 To enable mutex profiling, you need to add the following code to your application:
 

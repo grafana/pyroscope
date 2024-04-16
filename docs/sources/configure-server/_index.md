@@ -13,6 +13,6 @@ weight: 40
 
 # Configure the Pyroscope server
 
-Pyroscope's server is built to be horizontally scalable and to support organizations of all sizes.
+The Pyroscope server is built to be horizontally scalable and to support organizations of all sizes.
 
 {{< section menuTitle="true" >}}

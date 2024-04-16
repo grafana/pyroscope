@@ -36,7 +36,7 @@ The following languages SDKs provide support for sending profiles from your appl
    </tr>
    <tr>
       <td align="center"><a href="./nodejs"><img src="https://user-images.githubusercontent.com/23323466/178160551-a79ee6ff-a5d6-419e-89e6-39047cb08126.png" width="100px;" alt=""/><br />
-        <b>NodeJS</b></a><br />
+        <b>Node.js</b></a><br />
           <a href="./nodejs" title="Documentation">Documentation</a><br />
           <a href="https://github.com/grafana/pyroscope/tree/main/examples/language-sdk-instrumentation/nodejs/express" title="examples">Examples</a>
       </td>
