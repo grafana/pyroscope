@@ -28,8 +28,9 @@ type ProfileSample struct {
 }
 
 type ProfileSeries struct {
-	Labels  []*v1.LabelPair
-	Samples []*ProfileSample
+	Labels   []*v1.LabelPair
+	Samples  []*ProfileSample
+	Language string
 }
 
 func (p *ProfileSeries) GetLanguage() string {

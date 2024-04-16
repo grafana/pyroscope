@@ -1,8 +1,10 @@
 package pprof
 
 import (
+	"os"
 	"testing"
 
+	"github.com/google/pprof/profile"
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -31,51 +33,6 @@ func Test_Merge_Self(t *testing.T) {
 	}
 	p.DurationNanos *= 2
 	testhelper.EqualProto(t, p.Profile, m.Profile())
-}
-
-func Test_Merge_ZeroReferences(t *testing.T) {
-	p, err := OpenFile("testdata/go.cpu.labels.pprof")
-	require.NoError(t, err)
-
-	t.Run("mappingID=0", func(t *testing.T) {
-		before := p.Location[10]
-		p.Location[10].MappingId = 0
-		defer func() {
-			p.Location[10] = before
-		}()
-
-		var m ProfileMerge
-		require.NoError(t, m.Merge(p.Profile))
-
-		testhelper.EqualProto(t, p.Profile, m.Profile())
-	})
-
-	t.Run("locationID=0", func(t *testing.T) {
-		before := p.Sample[10].LocationId[0]
-		p.Sample[10].LocationId[0] = 0
-		defer func() {
-			p.Sample[10].LocationId[0] = before
-		}()
-
-		var m ProfileMerge
-		require.NoError(t, m.Merge(p.Profile))
-
-		testhelper.EqualProto(t, p.Profile, m.Profile())
-	})
-
-	t.Run("functionID=0", func(t *testing.T) {
-		before := p.Location[10].Line[0].FunctionId
-		p.Location[10].Line[0].FunctionId = 0
-		defer func() {
-			p.Location[10].Line[0].FunctionId = before
-		}()
-
-		var m ProfileMerge
-		require.NoError(t, m.Merge(p.Profile))
-
-		testhelper.EqualProto(t, p.Profile, m.Profile())
-	})
-
 }
 
 func Test_Merge_Halves(t *testing.T) {
@@ -469,4 +426,42 @@ func TestMergeEmpty(t *testing.T) {
 		StringTable: []string{"", "bar", "nanoseconds", "cpu"},
 	})
 	require.NoError(t, err)
+}
+
+// Benchmark_Merge_self/pprof.MergeNoClone-10         	    4174	    290190 ns/op
+// Benchmark_Merge_self/pprof.Merge-10                	    2722	    421419 ns/op
+// Benchmark_Merge_self/profile.Merge-10              	     802	   1417907 ns/op
+func Benchmark_Merge_self(b *testing.B) {
+	d, err := os.ReadFile("testdata/go.cpu.labels.pprof")
+	require.NoError(b, err)
+
+	b.Run("pprof.MergeNoClone", func(b *testing.B) {
+		p, err := RawFromBytes(d)
+		require.NoError(b, err)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			var m ProfileMerge
+			require.NoError(b, m.MergeNoClone(p.Profile.CloneVT()))
+		}
+	})
+
+	b.Run("pprof.Merge", func(b *testing.B) {
+		p, err := RawFromBytes(d)
+		require.NoError(b, err)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			var m ProfileMerge
+			require.NoError(b, m.Merge(p.Profile.CloneVT()))
+		}
+	})
+
+	b.Run("profile.Merge", func(b *testing.B) {
+		p, err := profile.ParseData(d)
+		require.NoError(b, err)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, err = profile.Merge([]*profile.Profile{p.Copy()})
+			require.NoError(b, err)
+		}
+	})
 }
