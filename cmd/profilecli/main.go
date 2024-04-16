@@ -60,6 +60,10 @@ func main() {
 	parquetInspectCmd := parquetCmd.Command("inspect", "Inspect a parquet file's structure.")
 	parquetInspectFiles := parquetInspectCmd.Arg("file", "parquet file path").Required().ExistingFiles()
 
+	tsdbCmd := adminCmd.Command("tsdb", "Operate on a TSDB index file.")
+	tsdbSeriesCmd := tsdbCmd.Command("series", "dump series in an TSDB index file.")
+	tsdbSeriesFiles := tsdbSeriesCmd.Arg("file", "tsdb file path").Required().ExistingFiles()
+
 	queryCmd := app.Command("query", "Query profile store.")
 	queryMergeCmd := queryCmd.Command("merge", "Request merged profile.")
 	queryMergeOutput := queryMergeCmd.Flag("output", "How to output the result, examples: console, raw, pprof=./my.pprof").Default("console").String()
@@ -94,6 +98,12 @@ func main() {
 	case parquetInspectCmd.FullCommand():
 		for _, file := range *parquetInspectFiles {
 			if err := parquetInspect(ctx, file); err != nil {
+				os.Exit(checkError(err))
+			}
+		}
+	case tsdbSeriesCmd.FullCommand():
+		for _, file := range *tsdbSeriesFiles {
+			if err := tsdbSeries(ctx, file); err != nil {
 				os.Exit(checkError(err))
 			}
 		}

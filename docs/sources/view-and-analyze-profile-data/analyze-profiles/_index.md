@@ -9,7 +9,7 @@ draft: true
 keywords:
   - pyroscope
   - performance analysis
-  - flamegraphs
+  - flame graphs
 ---
 
 <!-- This page is unpublished until we have more information. -->

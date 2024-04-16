@@ -9,7 +9,7 @@ keywords:
   - pyroscope
   - profiling types
   - application performance
-  - flamegraphs
+  - flame graphs
 ---
 
 # Understand profiling types and their uses in Pyroscope
@@ -49,12 +49,12 @@ Various languages support different profiling types. Pyroscope supports the foll
 CPU profiling measures the amount of CPU time consumed by different parts of your application code. High CPU usage can indicate inefficient code, leading to poor performance and increased operational costs. It's used to identify and optimize CPU-intensive functions in your application.
 
 - **When to use**: To identify and optimize CPU-intensive functions
-- **Flamegraph insight**: The width of blocks indicates the CPU time consumed by each function
+- **Flame graph insight**: The width of blocks indicates the CPU time consumed by each function
 
-As you can see here, the UI is showing a spike in CPU along with the flamegraph associated with that spike.
+As you can see here, the UI is showing a spike in CPU along with the flame graph associated with that spike.
 Often times without profiling you may get similar insights from metrics, but with profiling you have more details into the specific cause of a spike in CPU usage at the line level
 
-![example flamegraph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
+![example flame graph](https://grafana.com/static/img/pyroscope/pyroscope-ui-single-2023-11-30.png)
 
 <!-- ## FGprof (for go)
 [todo add a link to the docs for fgprof]  -->
@@ -66,7 +66,7 @@ Excessive or inefficient memory allocation can lead to memory leaks and high gar
 
 - **Types**: Alloc Objects, Alloc Space
 - **When to use**: For identifying and optimizing memory usage patterns
-- **Flamegraph insight**: Highlights functions where memory allocation is high
+- **Flame graph insight**: Highlights functions where memory allocation is high
 
 The timeline shows memory allocations over time and is great for debugging memory related issues.
 A common example is when a memory leak is created due to improper handling of memory in a function.
@@ -75,14 +75,14 @@ This is a clear indicator of a memory leak.
 
 ![memory leak example](https://grafana.com/static/img/pyroscope/pyroscope-memory-leak-2023-11-30.png)
 
-Without profiling, this is may be something that's exhibited in metrics or out-of-memory errors (OOM) logs but with profiling you have more details into the specific function that's allocating the memory which is causing the leak at the line level.
+Without profiling, this may be something that's exhibited in metrics or out-of-memory errors (OOM) logs but with profiling you have more details into the specific function that's allocating the memory which is causing the leak at the line level.
 
 ## Goroutine profiling
 
 Goroutines are lightweight threads in Go, used for concurrent operations. Goroutine profiling measures the usage and performance of these threads. Poor management can lead to issues like deadlocks and excessive resource usage.
 
 - **When to use**: Especially useful in Go applications for concurrency management
-- **Flamegraph insight**: Provides a view of goroutine distribution and issues
+- **Flame graph insight**: Provides a view of goroutine distribution and issues
 
 ## Mutex profiling
 
@@ -90,7 +90,7 @@ Mutex profiling involves analyzing mutex (mutual exclusion) locks, used to preve
 
 - **Types**: Mutex Count, Mutex Duration
 - **When to use**: To optimize thread synchronization and reduce lock contention
-- **Flamegraph insight**: Shows frequency and duration of mutex operations
+- **Flame graph insight**: Shows frequency and duration of mutex operations
 
 ## Block profiling
 
@@ -98,6 +98,6 @@ Block profiling measures the frequency and duration of blocking operations, wher
 
 - **Types**: Block Count, Block Duration
 - **When to use**: To identify and reduce blocking delays
-- **Flamegraph insight**: Identifies where and how long threads are blocked
+- **Flame graph insight**: Identifies where and how long threads are blocked
 
 <!-- # Next Steps: Exploring Pyroscope's UI(link to ui analysis docs) -->

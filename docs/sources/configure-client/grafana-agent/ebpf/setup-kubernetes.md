@@ -11,9 +11,11 @@ To set up eBPF profiling with Grafana Agent on Kubernetes, you need to:
 
 - Verify that your cluster meets the prerequisites.
 - Add the Grafana helm repository.
-- Create a Grafana Agent configuration file. For more information, see [Configuration reference][config-reference].
-- Install the Grafana Agent.
-- Finally, verify that profiles are received.
+- Create a Grafana Agent configuration file. For more information, refer to [Configuration reference][config-reference].
+- Install Grafana Agent.
+- Verify that profiles are received.
+
+{{< docs/shared lookup="agent-deprecation.md" source="alloy" version="next" >}}
 
 ## Prerequisites
 
@@ -23,7 +25,9 @@ Before you begin, you need:
 - A Pyroscope server where the agent will send profiling data.
 - Access to Grafana with the [Grafana Pyroscope datasource][pyroscope-ds] provisioned.
 
-> Note: If you don't have a Grafana and/or a Pyroscope server, you can use the [Grafana Cloud][gcloud] free plan to get started.
+{{< admonition type="note" >}}
+If you don't have a Grafana and/or a Pyroscope server, you can use the [Grafana Cloud][gcloud] free plan to get started.
+{{< /admonition >}}
 
 ## Verify that your cluster meets the requirements
 
@@ -41,7 +45,7 @@ Make sure all nodes have a kernel version >= 4.9.
 
 ## Add the Grafana Helm repository
 
-We recommend using [Helm][helm] to install the Grafana Agent. To add the Grafana Helm repository, run:
+We recommend using [Helm][helm] to install Grafana Agent. To add the Grafana Helm repository, run:
 
 ```shell
 helm repo add grafana https://grafana.github.io/helm-charts
@@ -54,7 +58,7 @@ You can verify that the repository was added successfully by running:
 helm search repo grafana/grafana-agent
 ```
 
-It should return a list of available versions of the Grafana Agent.
+It should return a list of available versions of Grafana Agent.
 
 ## Create a Grafana Agent configuration file
 

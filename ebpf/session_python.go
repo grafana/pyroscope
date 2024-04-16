@@ -134,6 +134,10 @@ func (s *session) loadPyPerf(cause *sd.Target) (*python.Perf, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pyperf rewrite constants %w", err)
 	}
+	if s.options.BPFMapsOptions.SymbolsMapSize != 0 {
+		spec.Maps[python.MapNameSymbols].MaxEntries = s.options.BPFMapsOptions.SymbolsMapSize
+	}
+
 	err = spec.LoadAndAssign(&s.pyperfBpf, opts)
 	if err != nil {
 		s.logVerifierError(err)

@@ -1,8 +1,10 @@
 package pprof
 
 import (
+	"os"
 	"testing"
 
+	"github.com/google/pprof/profile"
 	"github.com/stretchr/testify/require"
 
 	profilev1 "github.com/grafana/pyroscope/api/gen/proto/go/google/v1"
@@ -424,4 +426,42 @@ func TestMergeEmpty(t *testing.T) {
 		StringTable: []string{"", "bar", "nanoseconds", "cpu"},
 	})
 	require.NoError(t, err)
+}
+
+// Benchmark_Merge_self/pprof.MergeNoClone-10         	    4174	    290190 ns/op
+// Benchmark_Merge_self/pprof.Merge-10                	    2722	    421419 ns/op
+// Benchmark_Merge_self/profile.Merge-10              	     802	   1417907 ns/op
+func Benchmark_Merge_self(b *testing.B) {
+	d, err := os.ReadFile("testdata/go.cpu.labels.pprof")
+	require.NoError(b, err)
+
+	b.Run("pprof.MergeNoClone", func(b *testing.B) {
+		p, err := RawFromBytes(d)
+		require.NoError(b, err)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			var m ProfileMerge
+			require.NoError(b, m.MergeNoClone(p.Profile.CloneVT()))
+		}
+	})
+
+	b.Run("pprof.Merge", func(b *testing.B) {
+		p, err := RawFromBytes(d)
+		require.NoError(b, err)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			var m ProfileMerge
+			require.NoError(b, m.Merge(p.Profile.CloneVT()))
+		}
+	})
+
+	b.Run("profile.Merge", func(b *testing.B) {
+		p, err := profile.ParseData(d)
+		require.NoError(b, err)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, err = profile.Merge([]*profile.Profile{p.Copy()})
+			require.NoError(b, err)
+		}
+	})
 }

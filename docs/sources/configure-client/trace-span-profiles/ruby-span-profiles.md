@@ -13,7 +13,7 @@ weight: 100
 
 Your applications must be instrumented for profiling and tracing before you can use span profiles.
 
-* Profiling: Your application must be instrumented with Pyroscopes Ruby SDK. If you haven't done this yet, please refer to the [Ruby (push mode)]({{< relref "../language-sdks/ruby" >}}) guide.
+* Profiling: Your application must be instrumented with Pyroscope's Ruby SDK. If you haven't done this yet, please refer to the [Ruby (push mode)]({{< relref "../language-sdks/ruby" >}}) guide.
 * Tracing: Your application must be instrumented with OpenTelemetry traces. If you haven't done this yet, please refer to the [OpenTelemetry](https://opentelemetry.io/docs/ruby/getting-started/) guide.
 
 ## OpenTelemetry support
@@ -63,13 +63,13 @@ To use a simple configuration, follow these steps:
 
 1. Select a Pyroscope data source from the Data source drop-down.
 
-2. Optional: Choose any tags to use in the query. If left blank, the default values of service.name and service.namespace are used.
+2. Optional: Choose any tags to use in the query. If left blank, the default values of `service.name` and `service.namespace` are used.
 
-The tags you configure must be present in the spans attributes or resources for a trace to profiles span link to appear. You can optionally configure a new name for the tag. This is useful for example if the tag has dots in the name and the target data source doesn’t allow using dots in labels. In that case you can for example remap service.name to service_name.
+The tags you configure must be present in the spans attributes or resources for a trace to profiles span link to appear. You can optionally configure a new name for the tag. This is useful for example if the tag has dots in the name and the target data source doesn't allow using dots in labels. In that case you can for example remap service.name to service_name.
 
 3. Select one or more profile types to use in the query. Select the drop-down and choose options from the menu.
 
-The profile type or app must be selected for the query to be valid. Grafana doesn’t show any data if the profile type or app isn’t selected when a query runs.
+The profile type or app must be selected for the query to be valid. Grafana doesn't show any data if the profile type or app isn’t selected when a query runs.
 
 ![span-profiles configuration](https://grafana.com/static/img/docs/tempo/profiles/Tempo-data-source-profiles-Settings.png)
 

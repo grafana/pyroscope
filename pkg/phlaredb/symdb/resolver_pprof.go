@@ -191,36 +191,68 @@ func copyMappings(profile *googlev1.Profile, symbols *Symbols, lut []uint32) {
 }
 
 func copyStrings(profile *googlev1.Profile, symbols *Symbols, lut []uint32) {
-	profile.StringTable = make([]string, len(symbols.Strings))
+	// symbols.Strings may not contain empty strings as it is
+	// required by the pprof format. Therefore, we create one
+	// at index 0 to ensure correctness.
+	z := -1
+	for i := 0; i < len(symbols.Strings); i++ {
+		s := symbols.Strings[i]
+		if s == "" {
+			z = i
+			break
+		}
+	}
+	// o is the offset to apply to the string table:
+	// it's 0 if the empty string is present, 1 otherwise.
+	var o int64
+	if z < 0 {
+		// There is no empty string. We need to allocate one.
+		// Otherwise, if "" is at any place other than 0, we
+		// only need to swap the strings after we gather them.
+		o = 1
+	}
+	profile.StringTable = make([]string, len(symbols.Strings)+int(o))
+	// Gather strings referenced by the profile: profile.StringTable
+	// is a sparse array with empty slots, that will be removed later.
 	for _, m := range profile.Mapping {
-		profile.StringTable[m.Filename] = symbols.Strings[m.Filename]
-		profile.StringTable[m.BuildId] = symbols.Strings[m.BuildId]
+		profile.StringTable[m.Filename+o] = symbols.Strings[m.Filename]
+		profile.StringTable[m.BuildId+o] = symbols.Strings[m.BuildId]
 	}
 	for _, f := range profile.Function {
-		profile.StringTable[f.Name] = symbols.Strings[f.Name]
-		profile.StringTable[f.Filename] = symbols.Strings[f.Filename]
-		profile.StringTable[f.SystemName] = symbols.Strings[f.SystemName]
+		profile.StringTable[f.Name+o] = symbols.Strings[f.Name]
+		profile.StringTable[f.Filename+o] = symbols.Strings[f.Filename]
+		profile.StringTable[f.SystemName+o] = symbols.Strings[f.SystemName]
+	}
+	// Swap zero string, if needed.
+	if z > 0 {
+		profile.StringTable[z], profile.StringTable[0] = profile.StringTable[0], profile.StringTable[z]
 	}
 	n := len(profile.StringTable)
 	lut = slices.GrowLen(lut, n)
-	var j int
-	for i := 0; i < len(profile.StringTable); i++ {
+	j := 1 // Skip "" as its index is deterministic.
+	for i := 1; i < len(profile.StringTable); i++ {
 		s := profile.StringTable[i]
-		if s == "" && i > 0 {
+		if s == "" {
 			continue
 		}
-		lut[i] = uint32(j)
+		x := i
+		if i == z {
+			// Move item at the "" index to 0.
+			x = 0
+		}
+		lut[x] = uint32(j)
 		profile.StringTable[j] = s
 		j++
 	}
+	// Rewrite string references in the profile.
 	profile.StringTable = profile.StringTable[:j]
 	for _, m := range profile.Mapping {
-		m.Filename = int64(lut[m.Filename])
-		m.BuildId = int64(lut[m.BuildId])
+		m.Filename = int64(lut[m.Filename+o])
+		m.BuildId = int64(lut[m.BuildId+o])
 	}
 	for _, f := range profile.Function {
-		f.Name = int64(lut[f.Name])
-		f.Filename = int64(lut[f.Filename])
-		f.SystemName = int64(lut[f.SystemName])
+		f.Name = int64(lut[f.Name+o])
+		f.Filename = int64(lut[f.Filename+o])
+		f.SystemName = int64(lut[f.SystemName+o])
 	}
 }

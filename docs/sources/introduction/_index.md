@@ -29,9 +29,10 @@ With Pyroscope, you get access to the core profiling functionality, which you ca
 
 - Minimal CPU overhead and efficient compression ensure optimal performance.
 - Architecture consistent with Loki, Mimir, and Tempo, promoting a smoother user experience.
-    - Horizontally scalable
+    - Horizontally scalable:  You can run Grafana Pyroscope
+   across multiple machines. You can easily scale the database to handle the profiling volumes your workload generates.
     - Reliable: Highly available setup ensures consistent uptime, even amidst upgrades or system failures.
     - Multi-tenancy Support: makes it possible to run one database for multiple independent teams or business units.
-    - Cost Effective at Scale: Utilizes object storage, which allows extensive historical data storage without significant costs.
+    - Cost Effective at Scale: Utilizes object storage, which allows extensive historical data storage without significant costs. It is compatible with multiple object store implementations, including AWS S3,
+  Google Cloud Storage, Azure Blob Storage, OpenStack Swift, as well as any S3-compatible object storage.
 - Advanced Analysis UI: Provides an advanced UI, high-cardinality tag/label handling, and the ability to differentiate performance between tags/labels and time intervals.
-
