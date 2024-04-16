@@ -2,16 +2,22 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using System.Collections;
+
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+
+using OpenTelemetry.Trace;
+
+using Pyroscope.Tracing.OpenTelemetry;
 
 namespace Example;
-
-using System.Collections;
-using Microsoft.AspNetCore.Builder;
 
 public static class Program
 {
     private static readonly List<FileStream> Files = new();
+    public const string CustomActivitySourceName = "Example.ScooterService";
     public static void Main(string[] args)
     {
         for (int i = 0; i < 1024; i++)
@@ -20,12 +26,28 @@ public static class Program
         }
         object globalLock = new();
         var strings = new List<string>();
+
         var orderService = new OrderService();
         var bikeService = new BikeService(orderService);
         var scooterService = new ScooterService(orderService);
         var carService = new CarService(orderService);
 
-        var app = WebApplication.CreateBuilder(args).Build();
+        var builder = WebApplication.CreateBuilder(args);
+        builder.Services.AddOpenTelemetry()
+            .WithTracing(b =>
+            {
+                b
+                .AddAspNetCoreInstrumentation()
+                .AddSource(CustomActivitySourceName)
+                .AddConsoleExporter()
+                .AddOtlpExporter()
+                .AddProcessor(
+                    new PyroscopeSpanProcessor.Builder()
+                        .WithRootSpanOnly(true)
+                        .Build());
+            });
+        var app = builder.Build();
+
         app.MapGet("/bike", () =>
         {
             bikeService.Order(1);
@@ -99,7 +121,7 @@ public static class Program
                 {
                     throw new Exception("foobar" + i);
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                 }
             }
