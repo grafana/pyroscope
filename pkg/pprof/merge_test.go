@@ -1,8 +1,6 @@
 package pprof
 
 import (
-	"bytes"
-	"encoding/gob"
 	"os"
 	"testing"
 
@@ -22,24 +20,25 @@ func Test_Merge_Single(t *testing.T) {
 }
 
 func Fuzz_Merge_Single(f *testing.F) {
-	p, err := OpenFile("testdata/go.cpu.labels.pprof")
-	require.NoError(f, err)
 
-	buf := new(bytes.Buffer)
-	require.NoError(f, gob.NewEncoder(buf).Encode(p.Profile))
-	f.Add(buf.Bytes())
+	for _, file := range []string{
+		"testdata/go.cpu.labels.pprof",
+		"testdata/heap",
+		"testdata/profile_java",
+		"testdata/profile_rust",
+	} {
+		raw, err := OpenFile(file)
+		require.NoError(f, err)
+		data, err := raw.MarshalVT()
+		require.NoError(f, err)
+		f.Add(data)
+	}
 
 	f.Fuzz(func(t *testing.T, data []byte) {
-		var p Profile
-		err := gob.NewDecoder(bytes.NewReader(data)).Decode(&p.Profile)
-		if err != nil {
-			return
-		}
-
-		var m ProfileMerge
-		err = m.Merge(p.Profile)
-		if err != nil {
-			return
+		var p profilev1.Profile
+		if err := p.UnmarshalVT(data); err != nil {
+			var m ProfileMerge
+			_ = m.Merge(&p)
 		}
 	})
 }
