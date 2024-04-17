@@ -93,6 +93,40 @@ func (m *GithubLoginResponse) CloneMessageVT() proto.Message {
 	return m.CloneVT()
 }
 
+func (m *GithubRefreshRequest) CloneVT() *GithubRefreshRequest {
+	if m == nil {
+		return (*GithubRefreshRequest)(nil)
+	}
+	r := &GithubRefreshRequest{}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *GithubRefreshRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *GithubRefreshResponse) CloneVT() *GithubRefreshResponse {
+	if m == nil {
+		return (*GithubRefreshResponse)(nil)
+	}
+	r := &GithubRefreshResponse{
+		Cookie: m.Cookie,
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *GithubRefreshResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (m *GetFileRequest) CloneVT() *GetFileRequest {
 	if m == nil {
 		return (*GetFileRequest)(nil)
@@ -265,6 +299,41 @@ func (this *GithubLoginResponse) EqualMessageVT(thatMsg proto.Message) bool {
 	}
 	return this.EqualVT(that)
 }
+func (this *GithubRefreshRequest) EqualVT(that *GithubRefreshRequest) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GithubRefreshRequest) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GithubRefreshRequest)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+func (this *GithubRefreshResponse) EqualVT(that *GithubRefreshResponse) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Cookie != that.Cookie {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *GithubRefreshResponse) EqualMessageVT(thatMsg proto.Message) bool {
+	that, ok := thatMsg.(*GithubRefreshResponse)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
 func (this *GetFileRequest) EqualVT(that *GetFileRequest) bool {
 	if this == that {
 		return true
@@ -399,6 +468,7 @@ const _ = grpc.SupportPackageIsVersion7
 type VCSServiceClient interface {
 	GithubApp(ctx context.Context, in *GithubAppRequest, opts ...grpc.CallOption) (*GithubAppResponse, error)
 	GithubLogin(ctx context.Context, in *GithubLoginRequest, opts ...grpc.CallOption) (*GithubLoginResponse, error)
+	GithubRefresh(ctx context.Context, in *GithubRefreshRequest, opts ...grpc.CallOption) (*GithubRefreshResponse, error)
 	GetFile(ctx context.Context, in *GetFileRequest, opts ...grpc.CallOption) (*GetFileResponse, error)
 	GetCommit(ctx context.Context, in *GetCommitRequest, opts ...grpc.CallOption) (*GetCommitResponse, error)
 }
@@ -429,6 +499,15 @@ func (c *vCSServiceClient) GithubLogin(ctx context.Context, in *GithubLoginReque
 	return out, nil
 }
 
+func (c *vCSServiceClient) GithubRefresh(ctx context.Context, in *GithubRefreshRequest, opts ...grpc.CallOption) (*GithubRefreshResponse, error) {
+	out := new(GithubRefreshResponse)
+	err := c.cc.Invoke(ctx, "/vcs.v1.VCSService/GithubRefresh", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *vCSServiceClient) GetFile(ctx context.Context, in *GetFileRequest, opts ...grpc.CallOption) (*GetFileResponse, error) {
 	out := new(GetFileResponse)
 	err := c.cc.Invoke(ctx, "/vcs.v1.VCSService/GetFile", in, out, opts...)
@@ -453,6 +532,7 @@ func (c *vCSServiceClient) GetCommit(ctx context.Context, in *GetCommitRequest, 
 type VCSServiceServer interface {
 	GithubApp(context.Context, *GithubAppRequest) (*GithubAppResponse, error)
 	GithubLogin(context.Context, *GithubLoginRequest) (*GithubLoginResponse, error)
+	GithubRefresh(context.Context, *GithubRefreshRequest) (*GithubRefreshResponse, error)
 	GetFile(context.Context, *GetFileRequest) (*GetFileResponse, error)
 	GetCommit(context.Context, *GetCommitRequest) (*GetCommitResponse, error)
 	mustEmbedUnimplementedVCSServiceServer()
@@ -467,6 +547,9 @@ func (UnimplementedVCSServiceServer) GithubApp(context.Context, *GithubAppReques
 }
 func (UnimplementedVCSServiceServer) GithubLogin(context.Context, *GithubLoginRequest) (*GithubLoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GithubLogin not implemented")
+}
+func (UnimplementedVCSServiceServer) GithubRefresh(context.Context, *GithubRefreshRequest) (*GithubRefreshResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GithubRefresh not implemented")
 }
 func (UnimplementedVCSServiceServer) GetFile(context.Context, *GetFileRequest) (*GetFileResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFile not implemented")
@@ -523,6 +606,24 @@ func _VCSService_GithubLogin_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _VCSService_GithubRefresh_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GithubRefreshRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(VCSServiceServer).GithubRefresh(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/vcs.v1.VCSService/GithubRefresh",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(VCSServiceServer).GithubRefresh(ctx, req.(*GithubRefreshRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _VCSService_GetFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetFileRequest)
 	if err := dec(in); err != nil {
@@ -573,6 +674,10 @@ var VCSService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GithubLogin",
 			Handler:    _VCSService_GithubLogin_Handler,
+		},
+		{
+			MethodName: "GithubRefresh",
+			Handler:    _VCSService_GithubRefresh_Handler,
 		},
 		{
 			MethodName: "GetFile",
@@ -719,6 +824,79 @@ func (m *GithubLoginResponse) MarshalToVT(dAtA []byte) (int, error) {
 }
 
 func (m *GithubLoginResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	if len(m.Cookie) > 0 {
+		i -= len(m.Cookie)
+		copy(dAtA[i:], m.Cookie)
+		i = encodeVarint(dAtA, i, uint64(len(m.Cookie)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *GithubRefreshRequest) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GithubRefreshRequest) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *GithubRefreshRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i -= len(m.unknownFields)
+		copy(dAtA[i:], m.unknownFields)
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *GithubRefreshResponse) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GithubRefreshResponse) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *GithubRefreshResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m == nil {
 		return 0, nil
 	}
@@ -1056,6 +1234,30 @@ func (m *GithubLoginRequest) SizeVT() (n int) {
 }
 
 func (m *GithubLoginResponse) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Cookie)
+	if l > 0 {
+		n += 1 + l + sov(uint64(l))
+	}
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *GithubRefreshRequest) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *GithubRefreshResponse) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -1425,6 +1627,140 @@ func (m *GithubLoginResponse) UnmarshalVT(dAtA []byte) error {
 		}
 		if fieldNum <= 0 {
 			return fmt.Errorf("proto: GithubLoginResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Cookie", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Cookie = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GithubRefreshRequest) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GithubRefreshRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GithubRefreshRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GithubRefreshResponse) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflow
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GithubRefreshResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GithubRefreshResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
