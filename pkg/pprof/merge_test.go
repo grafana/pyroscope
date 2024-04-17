@@ -44,7 +44,7 @@ var eventWriter = &eventSocket{
 	fMap: make(map[string]net.Conn),
 }
 
-func eventWrite(t *testing.T, msg []byte) int {
+func eventWrite(t *testing.T, msg []byte) {
 	eventWriter.lck.Lock()
 	c, ok := eventWriter.fMap[eventName(t)]
 	if !ok {
@@ -53,15 +53,14 @@ func eventWrite(t *testing.T, msg []byte) int {
 		if err != nil {
 			eventWriter.lck.Unlock()
 			t.Fatalf("error connecting: %v", err)
-			return 0
+			return
 		}
 		eventWriter.fMap[eventName(t)] = c
 	}
 	eventWriter.lck.Unlock()
-	n, err := c.Write(msg)
+	_, err := c.Write(msg)
 
 	require.NoError(t, err)
-	return n
 }
 
 func eventName(t testing.TB) string {
