@@ -4,7 +4,7 @@ on:
     - cron: '0 0 * * 1-5' # Run every weekday at midnight
 
 jobs:
-  go/fuzz/merge-single:
+  go-fuzz-merge-single:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
