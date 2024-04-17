@@ -14,7 +14,7 @@ using Jaeger;
 using Jaeger.Senders;
 using Jaeger.Senders.Thrift;
 
-using Pyroscope.Tracing.OpenTracing;
+using Pyroscope.OpenTracing;
 using OpenTracing.Util;
 
 namespace Example;
@@ -30,9 +30,7 @@ public static class Program
         Configuration.SenderConfiguration.DefaultSenderResolver = new SenderResolver(loggerFactory).RegisterSenderFactory<ThriftSenderFactory>();
         var tracingConfig = Configuration.FromEnv(loggerFactory);
         var tracer = tracingConfig.GetTracer();
-        GlobalTracer.Register(new PyroscopeTracer.Builder(tracer)
-            .WithRootSpanOnly(true)
-            .Build());
+        GlobalTracer.Register(new PyroscopeTracer(tracer));
 
         builder.Services.AddOpenTracing();
 
