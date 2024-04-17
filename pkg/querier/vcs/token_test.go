@@ -139,7 +139,7 @@ func Test_tokenFromRequest(t *testing.T) {
 			AccessToken:  "my_access_token",
 			TokenType:    "my_token_type",
 			RefreshToken: "my_refresh_token",
-			Expiry:       time.Unix(1713298947, 0), // 2024-04-16T20:22:27.346Z
+			Expiry:       time.Unix(1713298947, 0).UTC(), // 2024-04-16T20:22:27.346Z
 		}
 
 		// The type of request here doesn't matter.
@@ -170,7 +170,7 @@ func Test_encodeToken(t *testing.T) {
 		AccessToken:  "my_access_token",
 		TokenType:    "my_token_type",
 		RefreshToken: "my_refresh_token",
-		Expiry:       time.Unix(1713298947, 0), // 2024-04-16T20:22:27.346Z
+		Expiry:       time.Unix(1713298947, 0).UTC(), // 2024-04-16T20:22:27.346Z
 	}
 
 	got, err := encodeToken(token)
@@ -190,7 +190,7 @@ func Test_decodeToken(t *testing.T) {
 			AccessToken:  "my_access_token",
 			TokenType:    "my_token_type",
 			RefreshToken: "my_refresh_token",
-			Expiry:       time.Unix(1713298947, 0), // 2024-04-16T20:22:27.346Z
+			Expiry:       time.Unix(1713298947, 0).UTC(), // 2024-04-16T20:22:27.346Z
 		}
 		cookie := testEncodeCookie(t, want)
 
@@ -204,7 +204,7 @@ func Test_decodeToken(t *testing.T) {
 			AccessToken:  "my_access_token",
 			TokenType:    "my_token_type",
 			RefreshToken: "my_refresh_token",
-			Expiry:       time.Unix(1713298947, 0), // 2024-04-16T20:22:27.346Z
+			Expiry:       time.Unix(1713298947, 0).UTC(), // 2024-04-16T20:22:27.346Z
 		}
 		cookie := testEncodeLegacyCookie(t, want)
 
