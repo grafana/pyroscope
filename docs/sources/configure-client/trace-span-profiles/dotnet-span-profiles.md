@@ -32,14 +32,14 @@ link traces with the profiling data, and find resource usage for specific lines 
 {{< /admonition >}}
 
 
-## Configure the `Pyroscope.Tracing.OpenTelemetry` package
+## Configure the `Pyroscope.OpenTelemetry` package
 
-To start collecting Span Profiles for your .NET application, you need to include [Pyroscope.Tracing.OpenTelemetry](https://github.com/grafana/pyroscope-dotnet/tree/main/Pyroscope/Pyroscope.Tracing/Pyroscope.Tracing.OpenTelemetry) in your code.
+To start collecting Span Profiles for your .NET application, you need to include [Pyroscope.OpenTelemetry](https://github.com/grafana/pyroscope-dotnet/tree/main/Pyroscope/Pyroscope.OpenTelemetry) in your code.
 
 This package provides a [`SpanProcessor`](https://github.com/open-telemetry/opentelemetry-dotnet/blob/main/src/OpenTelemetry/BaseProcessor.cs) implementation, which connects the two telemetry signals (traces and profiles) together.
 
 ```shell
-dotnet add package Pyroscope.Tracing.OpenTelemetry
+dotnet add package Pyroscope.OpenTelemetry
 ```
 
 Next, we need to create and register the `PyroscopeSpanProcessor`:
@@ -51,9 +51,7 @@ builder.Services.AddOpenTelemetry()
         .AddAspNetCoreInstrumentation()
         .AddConsoleExporter()
         .AddOtlpExporter()
-        .AddProcessor(new PyroscopeSpanProcessor.Builder()
-            .WithRootSpanOnly(true)
-            .Build());
+        .AddProcessor(new Pyroscope.OpenTelemetry.PyroscopeSpanProcessor());
     });
 ```
 
