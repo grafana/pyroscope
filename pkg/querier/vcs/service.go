@@ -49,7 +49,6 @@ func (q *Service) GithubLogin(ctx context.Context, req *connect.Request[vcsv1.Gi
 		q.logger.Log("err", err, "msg", "failed to exchange authorization code with GitHub")
 		return nil, connect.NewError(connect.CodeUnauthenticated, fmt.Errorf("failed to authorize with GitHub"))
 	}
-	token.Expiry = time.Now().Add(5*time.Minute + 30*time.Second) // DEBUG shrink token expiry.
 
 	cookie, err := encodeToken(token)
 	if err != nil {
@@ -83,7 +82,6 @@ func (q *Service) GithubRefresh(ctx context.Context, req *connect.Request[vcsv1.
 	}
 
 	newToken := githubToken.toOAuthToken()
-	newToken.Expiry = time.Now().Add(5*time.Minute + 30*time.Second) // DEBUG shrink token expiry.
 
 	cookie, err := encodeToken(newToken)
 	if err != nil {
